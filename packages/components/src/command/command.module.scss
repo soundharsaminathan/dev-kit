@@ -1,0 +1,53 @@
+@use "@dev-ui/tokens/scss" as *;
+
+.root {
+  box-sizing: border-box;
+  display: flex;
+  width: 100%;
+  max-height: inherit;
+  flex-direction: column;
+  gap: var(--space-1);
+  overflow-y: auto;
+  color: var(--color-fg);
+
+  :global([data-listbox=""]) {
+    max-height: 18rem;
+    overflow-y: auto;
+    scroll-padding-block: var(--space-1);
+    padding: 0;
+    outline: none;
+  }
+
+  &[data-variant="default"] {
+    padding: 0.375rem;
+
+    :global([data-listbox=""]) {
+      padding: 0;
+    }
+
+    :global([data-search-field=""]) {
+      padding-bottom: 0;
+    }
+
+    :global([data-listbox=""] [data-separator=""]) {
+      margin-block: 0.375rem;
+      margin-inline: -0.375rem;
+    }
+
+    :global([data-search-field] > [data-input-group=""]) {
+      border-radius: var(--radius-sm);
+    }
+  }
+
+  &[data-variant="borderless"] {
+    :global([data-search-field] > [data-input-group=""]) {
+      border: 0;
+      background-color: transparent;
+      box-shadow: none;
+    }
+
+    :global([data-search-field=""]) {
+      border-bottom: 1px solid var(--color-border);
+    }
+  }
+}

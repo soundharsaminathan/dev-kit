@@ -1,0 +1,114 @@
+@use "@dev-ui/tokens/scss" as *;
+
+.root {
+  position: relative;
+  overflow: auto;
+  outline: none;
+  --fade-size: 1.5rem;
+
+  &[data-overflow-y-start] {
+    -webkit-mask-image: linear-gradient(
+      to bottom,
+      transparent,
+      black min(var(--fade-size), var(--scroll-area-overflow-y-start))
+    );
+    mask-image: linear-gradient(
+      to bottom,
+      transparent,
+      black min(var(--fade-size), var(--scroll-area-overflow-y-start))
+    );
+  }
+
+  &[data-overflow-y-end] {
+    -webkit-mask-image: linear-gradient(
+      to bottom,
+      black calc(100% - min(var(--fade-size), var(--scroll-area-overflow-y-end))),
+      transparent
+    );
+    mask-image: linear-gradient(
+      to bottom,
+      black calc(100% - min(var(--fade-size), var(--scroll-area-overflow-y-end))),
+      transparent
+    );
+  }
+
+  &[data-overflow-y-start][data-overflow-y-end] {
+    -webkit-mask-image:
+      linear-gradient(
+        to bottom,
+        transparent,
+        black min(var(--fade-size), var(--scroll-area-overflow-y-start))
+      ),
+      linear-gradient(
+        to bottom,
+        black calc(100% - min(var(--fade-size), var(--scroll-area-overflow-y-end))),
+        transparent
+      );
+    -webkit-mask-composite: source-in;
+    mask-image:
+      linear-gradient(
+        to bottom,
+        transparent,
+        black min(var(--fade-size), var(--scroll-area-overflow-y-start))
+      ),
+      linear-gradient(
+        to bottom,
+        black calc(100% - min(var(--fade-size), var(--scroll-area-overflow-y-end))),
+        transparent
+      );
+    mask-composite: intersect;
+  }
+
+  &[data-overflow-x-start] {
+    -webkit-mask-image: linear-gradient(
+      to right,
+      transparent,
+      black min(var(--fade-size), var(--scroll-area-overflow-x-start))
+    );
+    mask-image: linear-gradient(
+      to right,
+      transparent,
+      black min(var(--fade-size), var(--scroll-area-overflow-x-start))
+    );
+  }
+
+  &[data-overflow-x-end] {
+    -webkit-mask-image: linear-gradient(
+      to right,
+      black calc(100% - min(var(--fade-size), var(--scroll-area-overflow-x-end))),
+      transparent
+    );
+    mask-image: linear-gradient(
+      to right,
+      black calc(100% - min(var(--fade-size), var(--scroll-area-overflow-x-end))),
+      transparent
+    );
+  }
+
+  &[data-overflow-x-start][data-overflow-x-end] {
+    -webkit-mask-image:
+      linear-gradient(
+        to right,
+        transparent,
+        black min(var(--fade-size), var(--scroll-area-overflow-x-start))
+      ),
+      linear-gradient(
+        to right,
+        black calc(100% - min(var(--fade-size), var(--scroll-area-overflow-x-end))),
+        transparent
+      );
+    -webkit-mask-composite: source-in;
+    mask-image:
+      linear-gradient(
+        to right,
+        transparent,
+        black min(var(--fade-size), var(--scroll-area-overflow-x-start))
+      ),
+      linear-gradient(
+        to right,
+        black calc(100% - min(var(--fade-size), var(--scroll-area-overflow-x-end))),
+        transparent
+      );
+    mask-composite: intersect;
+  }
+}

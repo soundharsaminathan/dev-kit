@@ -1,0 +1,67 @@
+@use "@dev-ui/tokens/scss" as *;
+
+.root {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: calc(var(--space-1) * 1.5);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.875rem;
+  line-height: 1.25;
+  color: var(--color-fg-muted);
+  overflow-wrap: anywhere;
+}
+
+.item {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  border-radius: var(--radius-sm);
+  padding-inline: 0.125rem;
+  line-height: 1;
+  text-decoration: none;
+  color: inherit;
+  transition: color 150ms ease;
+  -webkit-tap-highlight-color: transparent;
+
+  &:not([data-current="true"]):not([data-disabled="true"]):hover {
+    color: var(--color-fg);
+  }
+
+  &[data-current="true"] {
+    color: var(--color-fg);
+    font-weight: var(--font-weight-medium);
+    cursor: default;
+    pointer-events: none;
+  }
+
+  &[data-disabled="true"] {
+    color: var(--color-fg-disabled);
+    cursor: var(--cursor-disabled);
+    pointer-events: none;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--color-border-focus);
+    outline-offset: 2px;
+  }
+}
+
+.separator {
+  display: inline-flex;
+  align-items: center;
+  color: var(--color-fg-muted);
+
+  svg {
+    width: 1rem;
+    height: 1rem;
+  }
+}

@@ -1,0 +1,10 @@
+@use "@dev-ui/tokens/scss" as *;
+
+.swatch {
+  position: relative;
+  flex-shrink: 0;
+  width: 1.25rem;
+  height: 1.25rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}

@@ -1,0 +1,112 @@
+@use "@dev-ui/tokens/scss" as *;
+
+.group {
+  display: inline-flex;
+  width: 100%;
+  height: 2rem;
+  box-sizing: border-box;
+  align-items: stretch;
+  border: 1px solid var(--color-border-field);
+  border-radius: var(--input-radius);
+  background-color: var(--color-field);
+  overflow: hidden;
+
+  &:has([data-size="sm"]) {
+    height: 1.75rem;
+  }
+
+  &:has([data-size="lg"]) {
+    height: 2.25rem;
+  }
+
+  &:focus-within {
+    border-color: var(--color-border-focus);
+    box-shadow: 0 0 0 2px var(--color-border-focus-muted);
+  }
+
+  &[data-disabled="true"] {
+    border-color: var(--color-border-disabled);
+    background-color: var(--color-disabled);
+  }
+
+  &[data-invalid="true"] {
+    border-color: var(--color-border-danger);
+    box-shadow: 0 0 0 2px var(--color-danger-muted);
+  }
+}
+
+.input {
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  flex: 1 1 auto;
+  align-self: stretch;
+  box-sizing: border-box;
+  border: 0;
+  background-color: transparent;
+  padding-inline: 0.625rem;
+  font-size: 0.875rem;
+  line-height: 1.25;
+  color: var(--color-fg);
+  outline: none;
+  text-align: inherit;
+
+  &::placeholder {
+    color: var(--color-fg-muted);
+  }
+
+  &:disabled {
+    cursor: var(--cursor-disabled);
+    color: var(--color-fg-disabled);
+  }
+
+  &[data-size="sm"] {
+    font-size: 0.875rem;
+  }
+}
+
+.button {
+  display: inline-flex;
+  flex-shrink: 0;
+  min-height: 0;
+  align-self: stretch;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-inline-start: 1px solid var(--color-border-field);
+  background-color: var(--color-neutral);
+  color: var(--color-fg-on-neutral);
+  cursor: var(--cursor-interactive);
+
+  &:first-child {
+    border-inline-start: 0;
+    border-inline-end: 1px solid var(--color-border-field);
+  }
+
+  &:hover:not(:disabled) {
+    background-color: var(--color-neutral-hover);
+  }
+
+  &:disabled {
+    cursor: var(--cursor-disabled);
+    background-color: var(--color-disabled);
+    color: var(--color-fg-disabled);
+  }
+
+  &[data-size="sm"] {
+    width: 1.75rem;
+  }
+
+  &[data-size="md"] {
+    width: 2rem;
+  }
+
+  &[data-size="lg"] {
+    width: 2.25rem;
+  }
+
+  svg {
+    width: 0.875rem;
+    height: 0.875rem;
+  }
+}

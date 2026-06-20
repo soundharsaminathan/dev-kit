@@ -1,0 +1,43 @@
+@use "@dev-ui/tokens/scss" as *;
+
+.backdrop {
+  position: fixed;
+  inset: 0;
+  background-color: rgb(0 0 0 / var(--modal-backdrop-opacity, 40%));
+  backdrop-filter: blur(var(--modal-backdrop-blur, 4px));
+}
+
+.viewport {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+  pointer-events: none;
+}
+
+.panel {
+  position: relative;
+  display: flex;
+  max-height: calc(100vh - var(--space-8));
+  width: 100%;
+  max-width: min(24rem, calc(100vw - var(--space-8)));
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: var(--modal-radius);
+  background-color: var(--modal-background);
+  box-shadow:
+    0 10px 15px -3px rgb(0 0 0 / 10%),
+    0 4px 6px -4px rgb(0 0 0 / 10%);
+  outline: none;
+  pointer-events: auto;
+}
+
+@media (min-width: 640px) {
+  .panel {
+    max-height: 90vh;
+  }
+}

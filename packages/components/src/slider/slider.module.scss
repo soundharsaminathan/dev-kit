@@ -1,0 +1,128 @@
+@use "@dev-ui/tokens/scss" as *;
+@use "../shared/visually-hidden" as *;
+
+.root {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  gap: var(--space-2);
+
+  &[data-orientation="vertical"] {
+    align-items: center;
+  }
+}
+
+.control {
+  position: relative;
+  display: flex;
+  flex-grow: 1;
+  touch-action: none;
+  user-select: none;
+  cursor: var(--slider-cursor);
+
+  &[data-orientation="horizontal"] {
+    width: 100%;
+    padding-block: var(--space-2);
+  }
+
+  &[data-orientation="vertical"] {
+    height: 12rem;
+    align-items: center;
+    padding-inline: var(--space-2);
+  }
+
+  &[data-disabled="true"] {
+    cursor: var(--cursor-disabled);
+  }
+}
+
+.track {
+  position: relative;
+  flex-grow: 1;
+  overflow: visible;
+  border-radius: var(--slider-track-radius);
+  background-color: var(--color-neutral);
+  cursor: var(--slider-cursor);
+
+  .control[data-orientation="horizontal"] & {
+    width: 100%;
+    height: var(--slider-size);
+  }
+
+  .control[data-orientation="vertical"] & {
+    width: var(--slider-size);
+    height: 100%;
+  }
+}
+
+.fill {
+  position: absolute;
+  overflow: hidden;
+  border-radius: inherit;
+  background-color: var(--slider-fill-color);
+  pointer-events: none;
+
+  .track[data-orientation="horizontal"] & {
+    top: 0;
+    left: 0;
+    height: 100%;
+  }
+
+  .track[data-orientation="vertical"] & {
+    bottom: 0;
+    left: 0;
+    width: 100%;
+  }
+}
+
+.thumb {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  z-index: 1;
+  display: grid;
+  width: var(--slider-thumb-size);
+  height: var(--slider-thumb-size);
+  place-items: center;
+  border: 0;
+  border-radius: var(--slider-thumb-radius);
+  background-color: var(--color-fg);
+  box-shadow: var(--slider-thumb-shadow);
+  transform: translate(-50%, -50%);
+  cursor: var(--slider-cursor);
+  pointer-events: auto;
+
+  .track[data-orientation="vertical"] & {
+    top: auto;
+    left: 50%;
+    transform: translate(-50%, 50%);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--color-border-focus);
+    outline-offset: 2px;
+  }
+
+  &[data-disabled="true"] {
+    cursor: var(--cursor-disabled);
+    background-color: var(--color-fg-disabled);
+  }
+
+  &[data-dragging="true"] {
+    cursor: var(--slider-dragging-cursor);
+  }
+}
+
+.output {
+  font-size: 0.875rem;
+  color: var(--color-fg-muted);
+  font-variant-numeric: tabular-nums;
+
+  &[data-disabled="true"] {
+    color: var(--color-fg-disabled);
+  }
+}
+
+.visuallyHidden {
+  @include visually-hidden;
+}

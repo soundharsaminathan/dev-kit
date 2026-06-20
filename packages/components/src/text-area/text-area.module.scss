@@ -1,0 +1,59 @@
+@use "@dev-ui/tokens/scss" as *;
+
+.textArea {
+  display: block;
+  width: 100%;
+  min-height: 4.5rem;
+  border: 1px solid var(--color-border-field);
+  border-radius: var(--input-radius);
+  background-color: var(--color-field);
+  padding: 0.5rem 0.625rem;
+  font-family: inherit;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--color-fg);
+  outline: none;
+  resize: vertical;
+  transition:
+    border-color 150ms ease,
+    box-shadow 150ms ease;
+  -webkit-tap-highlight-color: transparent;
+
+  &::placeholder {
+    color: var(--color-fg-muted);
+  }
+
+  &:focus-visible,
+  &[data-focus-visible="true"] {
+    border-color: var(--color-border-focus);
+    box-shadow: 0 0 0 2px var(--color-border-focus-muted);
+  }
+
+  &:disabled,
+  &[data-disabled="true"] {
+    cursor: var(--cursor-disabled);
+    border-color: var(--color-border-disabled);
+    background-color: var(--color-disabled);
+    color: var(--color-fg-disabled);
+    resize: none;
+  }
+
+  &:invalid,
+  &[data-invalid="true"] {
+    border-color: var(--color-border-danger);
+    box-shadow: 0 0 0 2px var(--color-danger-muted);
+  }
+
+  &[data-size="sm"] {
+    min-height: 4rem;
+    font-size: 0.875rem;
+  }
+
+  &[data-size="md"] {
+    min-height: 4.5rem;
+  }
+
+  &[data-size="lg"] {
+    min-height: 5rem;
+  }
+}

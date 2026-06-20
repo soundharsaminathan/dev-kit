@@ -1,0 +1,53 @@
+@use "@dev-ui/tokens/scss" as *;
+
+@keyframes progress-indeterminate {
+  0% {
+    transform: translateX(-100%) scaleX(0.5);
+  }
+
+  50% {
+    transform: translateX(0%) scaleX(0.5);
+  }
+
+  100% {
+    transform: translateX(100%) scaleX(0.5);
+  }
+}
+
+.root {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.track {
+  position: relative;
+  width: 100%;
+  height: var(--progress-track-size);
+  overflow: hidden;
+  border-radius: var(--progress-track-radius);
+  background-color: var(--color-muted);
+}
+
+.fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 100%;
+  transform-origin: left center;
+  background-color: var(--progress-fill-color, var(--color-primary));
+  transition: width 150ms ease, transform 150ms ease;
+
+  &[data-indeterminate="true"] {
+    animation: progress-indeterminate 1.5s ease-in-out infinite;
+  }
+}
+
+.output {
+  margin-left: auto;
+  font-size: 0.875rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-fg-muted);
+}

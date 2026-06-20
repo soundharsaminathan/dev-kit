@@ -1,0 +1,125 @@
+@use "@dev-ui/tokens/scss" as *;
+
+.wrapper {
+  position: relative;
+  width: 100%;
+  min-height: 0;
+  overflow: auto;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background-color: var(--color-bg);
+}
+
+.table {
+  width: 100%;
+  min-width: 100%;
+  border-collapse: collapse;
+  border-spacing: 0;
+  font-size: 0.875rem;
+  color: var(--color-fg);
+  outline: none;
+  user-select: none;
+}
+
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background-color: color-mix(in srgb, var(--color-bg) 95%, transparent);
+  backdrop-filter: blur(8px);
+}
+
+.column {
+  box-sizing: border-box;
+  height: 2.5rem;
+  border-bottom: 1px solid var(--color-border);
+  padding: 0 0.625rem;
+  text-align: start;
+  vertical-align: middle;
+  font-weight: var(--font-weight-medium);
+  color: var(--color-fg-muted);
+  white-space: nowrap;
+  outline: none;
+
+  &[data-allows-sorting="true"] {
+    cursor: var(--cursor-interactive);
+  }
+
+  &[data-hovered="true"],
+  &:hover {
+    color: var(--color-fg);
+  }
+
+  &[data-focus-visible="true"] {
+    outline: 2px solid var(--color-border-focus);
+    outline-offset: -2px;
+  }
+
+  &[data-pressed="true"] {
+    color: var(--color-fg);
+  }
+}
+
+.columnContent {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.columnLabel {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sortIndicator {
+  width: 0.875rem;
+  height: 0.875rem;
+  flex-shrink: 0;
+  color: var(--color-fg-muted);
+  transition: transform 150ms ease;
+
+  &[data-direction="descending"] {
+    transform: rotate(180deg);
+  }
+}
+
+.body {
+  background-color: var(--color-bg);
+}
+
+.row {
+  border-bottom: 1px solid var(--color-border);
+  outline: none;
+  transition: background-color 150ms ease;
+
+  &[data-hovered="true"],
+  &[data-focused="true"] {
+    background-color: var(--color-highlight);
+    color: var(--color-fg-on-highlight);
+  }
+
+  &[data-selected="true"] {
+    background-color: var(--color-accent-muted);
+  }
+
+  &[data-focus-visible="true"] {
+    box-shadow: inset 3px 0 0 0 var(--color-border-focus);
+  }
+}
+
+.cell {
+  box-sizing: border-box;
+  height: 2.5rem;
+  padding: 0 0.625rem;
+  vertical-align: middle;
+  white-space: nowrap;
+  outline: none;
+
+  &[data-focus-visible="true"] {
+    outline: 2px solid var(--color-border-focus);
+    outline-offset: -2px;
+  }
+}

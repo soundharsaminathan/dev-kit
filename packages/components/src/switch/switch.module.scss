@@ -1,0 +1,108 @@
+@use "@dev-ui/tokens/scss" as *;
+@use "../shared/visually-hidden" as *;
+
+.root {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.control {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  border-radius: var(--switch-radius);
+  cursor: var(--cursor-interactive);
+
+  &:focus-within:focus-visible {
+    outline: 2px solid var(--color-border-focus);
+    outline-offset: 2px;
+  }
+
+  &[data-disabled="true"] {
+    cursor: var(--cursor-disabled);
+  }
+}
+
+.visuallyHidden {
+  @include visually-hidden;
+}
+
+.indicator {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  border: 1px solid transparent;
+  border-radius: var(--switch-radius);
+  background-color: var(--color-neutral);
+  padding: 2px;
+  transition: background-color 200ms ease;
+
+  &[data-size="sm"] {
+    width: 2.25rem;
+    height: 1.25rem;
+  }
+
+  &[data-size="md"] {
+    width: 2.75rem;
+    height: 1.5rem;
+  }
+
+  &[data-size="lg"] {
+    width: 3.25rem;
+    height: 1.75rem;
+  }
+
+  &[data-selected="true"] {
+    background-color: var(--color-accent);
+  }
+
+  &[data-disabled="true"] {
+    border-color: var(--color-border-disabled);
+    background-color: transparent;
+
+    &[data-selected="true"] {
+      background-color: var(--color-disabled);
+    }
+  }
+}
+
+.thumb {
+  pointer-events: none;
+  border-radius: var(--switch-radius);
+  background-color: white;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 10%);
+  transition: transform 200ms ease;
+
+  .indicator[data-size="sm"] & {
+    width: 1rem;
+    height: 1rem;
+  }
+
+  .indicator[data-size="md"] & {
+    width: 1.25rem;
+    height: 1.25rem;
+  }
+
+  .indicator[data-size="lg"] & {
+    width: 1.5rem;
+    height: 1.5rem;
+  }
+
+  .indicator[data-size="sm"][data-selected="true"] & {
+    transform: translateX(1rem);
+  }
+
+  .indicator[data-size="md"][data-selected="true"] & {
+    transform: translateX(1.25rem);
+  }
+
+  .indicator[data-size="lg"][data-selected="true"] & {
+    transform: translateX(1.5rem);
+  }
+
+  .indicator[data-disabled="true"] & {
+    background-color: var(--color-fg-disabled);
+  }
+}

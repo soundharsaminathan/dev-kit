@@ -1,0 +1,91 @@
+@use "@dev-ui/tokens/scss" as *;
+
+.fieldset {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
+
+.legend {
+  padding: 0;
+}
+
+.fieldGroup {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.field {
+  display: flex;
+  width: 100%;
+  gap: var(--space-2);
+
+  &[data-orientation="vertical"] {
+    flex-direction: column;
+  }
+
+  &[data-orientation="horizontal"] {
+    flex-direction: row;
+    align-items: center;
+
+    &:has([data-slot="description"]) {
+      align-items: flex-start;
+    }
+  }
+
+  &:invalid:has([data-field-error]) [data-slot="description"] {
+    display: none;
+  }
+}
+
+.fieldContent {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.label {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  font-size: 0.875rem;
+  line-height: 1;
+  user-select: none;
+
+  &[data-required="true"]::after {
+    margin-left: 0.125rem;
+    color: var(--color-fg-danger);
+    content: "*";
+  }
+
+  &[data-disabled="true"] {
+    cursor: var(--cursor-disabled);
+    color: var(--color-fg-disabled);
+  }
+
+  &[data-invalid="true"] {
+    color: var(--color-fg-danger);
+  }
+
+  svg {
+    width: 0.75rem;
+    height: 0.75rem;
+  }
+}
+
+.description {
+  font-size: 0.875rem;
+  color: var(--color-fg-muted);
+
+  &[data-disabled="true"] {
+    color: var(--color-fg-disabled);
+  }
+}
+
+.fieldError {
+  font-size: 0.875rem;
+  color: var(--color-fg-danger);
+}

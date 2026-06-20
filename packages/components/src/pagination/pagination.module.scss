@@ -1,0 +1,63 @@
+@use "@dev-ui/tokens/scss" as *;
+@use "../shared/visually-hidden" as *;
+
+.root {
+  display: flex;
+  width: 100%;
+  justify-content: center;
+  margin-inline: auto;
+}
+
+.list {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-1);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.item {
+  display: contents;
+}
+
+.link {
+  min-width: 2.25rem;
+
+  &[data-active="true"] {
+    font-weight: 600;
+    text-decoration: underline;
+    text-underline-offset: 4px;
+  }
+}
+
+.previous,
+.next {
+  gap: var(--space-1);
+  padding-inline: 0.625rem;
+}
+
+.label {
+  @media (max-width: 639px) {
+    @include visually-hidden;
+  }
+}
+
+.ellipsis {
+  display: flex;
+  width: 2.25rem;
+  height: 2.25rem;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-fg-muted);
+
+  svg {
+    width: 1rem;
+    height: 1rem;
+  }
+}
+
+.visuallyHidden {
+  @include visually-hidden;
+}

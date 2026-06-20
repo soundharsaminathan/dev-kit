@@ -1,0 +1,78 @@
+@use "@dev-ui/tokens/scss" as *;
+@use "../shared/visually-hidden" as *;
+
+.root {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.control {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  border-radius: var(--checkbox-radius);
+  cursor: var(--cursor-interactive);
+
+  &:focus-within:focus-visible {
+    outline: 2px solid var(--color-border-focus);
+    outline-offset: 2px;
+  }
+
+  &[data-disabled="true"] {
+    cursor: var(--cursor-disabled);
+  }
+}
+
+.visuallyHidden {
+  @include visually-hidden;
+}
+
+.indicator {
+  display: grid;
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+  place-content: center;
+  border: 1px solid var(--color-border-control);
+  border-radius: var(--checkbox-radius);
+  background-color: transparent;
+  color: transparent;
+  transition:
+    background-color 75ms ease,
+    border-color 75ms ease,
+    color 75ms ease;
+
+  svg {
+    width: 0.75rem;
+    height: 0.75rem;
+  }
+
+  &[data-selected="true"],
+  &[data-indeterminate="true"] {
+    border-color: transparent;
+    background-color: var(--color-primary);
+    color: var(--color-fg-on-primary);
+  }
+
+  &[data-disabled="true"] {
+    border-color: var(--color-border-disabled);
+
+    &[data-selected="true"],
+    &[data-indeterminate="true"] {
+      background-color: var(--color-disabled);
+      color: var(--color-fg-disabled);
+    }
+  }
+
+  &[data-invalid="true"] {
+    border-color: var(--color-border-danger);
+
+    &[data-selected="true"],
+    &[data-indeterminate="true"] {
+      background-color: var(--color-danger-muted);
+      color: var(--color-fg-on-danger);
+    }
+  }
+}

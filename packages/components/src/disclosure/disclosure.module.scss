@@ -1,0 +1,69 @@
+@use "@dev-ui/tokens/scss" as *;
+
+.root {
+  width: 100%;
+
+  &[data-expanded="true"] {
+    .chevron {
+      transform: rotate(180deg);
+    }
+  }
+}
+
+.heading {
+  margin: 0;
+  display: flex;
+}
+
+.trigger {
+  display: flex;
+  flex: 1;
+  width: 100%;
+  cursor: var(--cursor-interactive);
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+  border: none;
+  border-radius: var(--radius-md);
+  background: transparent;
+  padding: 0.75rem 0;
+  font-size: 0.875rem;
+  font-weight: var(--font-weight-medium);
+  text-align: left;
+  color: var(--color-fg);
+  outline: none;
+
+  &[data-focus-visible="true"] {
+    outline: 2px solid var(--color-border-focus);
+    outline-offset: 2px;
+  }
+
+  &[data-disabled="true"] {
+    cursor: var(--cursor-disabled);
+    color: var(--color-fg-disabled);
+    pointer-events: none;
+  }
+}
+
+.chevron {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+  margin-top: 0.125rem;
+  color: var(--color-fg-muted);
+  transition: transform 200ms ease;
+}
+
+.panel {
+  overflow: hidden;
+  font-size: 0.875rem;
+  color: var(--color-fg-muted);
+
+  &[data-hidden="true"] {
+    display: none;
+  }
+}
+
+.panelInner {
+  padding-bottom: 0.75rem;
+}

@@ -1,0 +1,78 @@
+@use "@dev-ui/tokens/scss" as *;
+
+.root {
+  position: relative;
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  height: 2rem;
+  cursor: text;
+  align-items: center;
+  border: 1px solid var(--color-border-field);
+  border-radius: var(--input-radius);
+  background-color: var(--color-field);
+  transition:
+    border-color 150ms ease,
+    box-shadow 150ms ease;
+
+  &[data-size="sm"] {
+    height: 1.75rem;
+  }
+
+  &[data-size="lg"] {
+    height: 2.25rem;
+  }
+
+  &[data-focus-within="true"] {
+    border-color: var(--color-border-focus);
+    box-shadow: 0 0 0 2px var(--color-border-focus-muted);
+  }
+
+  &[data-disabled="true"] {
+    cursor: var(--cursor-disabled);
+    border-color: var(--color-border-disabled);
+    background-color: var(--color-disabled);
+  }
+
+  &[data-invalid="true"] {
+    border-color: var(--color-border-danger);
+    box-shadow: 0 0 0 2px var(--color-danger-muted);
+  }
+
+  &:has([data-textarea]) {
+    height: auto;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  :global([data-input-control]) {
+    flex: 1;
+    border: 0;
+    border-radius: 0;
+    background-color: transparent;
+    box-shadow: none;
+  }
+
+  :global([data-input-control]:focus-visible),
+  :global([data-input-control][data-focus-visible="true"]) {
+    box-shadow: none;
+  }
+}
+
+.addon {
+  display: flex;
+  flex-shrink: 0;
+  cursor: text;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  padding-inline: var(--space-2);
+  color: var(--color-fg-muted);
+  user-select: none;
+
+  .root:has([data-textarea]) & {
+    width: 100%;
+    justify-content: flex-start;
+    padding-inline: 0.625rem;
+  }
+}

@@ -1,0 +1,32 @@
+@use "@dev-ui/tokens/scss" as *;
+
+.group {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.kbd {
+  display: inline-flex;
+  height: 1.25rem;
+  width: fit-content;
+  min-width: 1.25rem;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  padding-inline: var(--space-1);
+  border-radius: var(--radius-sm);
+  background-color: var(--color-muted);
+  font-family: var(--font-sans, inherit);
+  font-size: 0.75rem;
+  font-weight: var(--font-weight-medium);
+  color: var(--color-fg-muted);
+  pointer-events: none;
+  user-select: none;
+
+  svg {
+    width: 0.75rem;
+    height: 0.75rem;
+    flex-shrink: 0;
+  }
+}

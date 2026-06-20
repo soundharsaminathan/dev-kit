@@ -1,0 +1,45 @@
+// Component-level token aliases
+
+:root {
+  --btn-radius: var(--radius-md);
+  --btn-font-weight: var(--font-weight-medium);
+
+  --badge-radius: var(--radius-md);
+  --alert-radius: var(--radius-lg);
+  --input-radius: var(--radius-md);
+  --card-radius: var(--radius-lg);
+  --popover-radius: var(--radius-md);
+  --tooltip-radius: var(--radius-sm);
+  --tag-radius: var(--radius-lg);
+  --list-box-item-radius: var(--radius-sm);
+  --checkbox-radius: 4px;
+  --checkbox-card-radius: var(--radius-lg);
+  --radio-radius: 9999px;
+  --radio-card-radius: var(--radius-lg);
+  --switch-radius: 9999px;
+  --switch-card-radius: var(--radius-lg);
+  --avatar-radius: 9999px;
+  --color-area-radius: var(--radius-md);
+  --color-swatch-picker-item-radius: var(--radius-md);
+  --calendar-cell-radius: var(--radius-lg);
+  --calendar-cell-size: 2.25rem;
+  --calendar-range-radius: var(--radius-sm);
+
+  --modal-backdrop-blur: 4px;
+  --modal-backdrop-opacity: 40%;
+  --modal-background: var(--color-bg);
+  --modal-radius: var(--radius-lg);
+
+  --slider-track-radius: var(--radius-full);
+  --slider-thumb-radius: var(--radius-full);
+  --slider-thumb-size: calc(var(--space-3) * 1);
+  --slider-thumb-shadow: none;
+  --slider-fill-color: var(--color-primary);
+  --slider-cursor: var(--cursor-interactive);
+  --slider-dragging-cursor: var(--cursor-interactive);
+  --slider-size: var(--space-1);
+
+  --progress-track-size: var(--space-1);
+  --progress-track-radius: var(--radius-full);
+  --progress-fill-color: var(--color-primary);
+}

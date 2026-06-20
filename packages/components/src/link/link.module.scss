@@ -1,0 +1,36 @@
+@use "@dev-ui/tokens/scss" as *;
+
+.root {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  transition: color 150ms ease;
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+
+  &:focus-visible {
+    outline: 2px solid var(--color-border-focus);
+    outline-offset: 2px;
+  }
+
+  &[data-variant="accent"] {
+    color: var(--color-fg-accent);
+  }
+
+  &[data-variant="quiet"] {
+    font-weight: var(--font-weight-medium);
+    color: var(--color-fg);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
+  &[data-variant="unstyled"] {
+    color: inherit;
+  }
+
+  &[data-disabled="true"] {
+    color: var(--color-fg-disabled);
+    pointer-events: none;
+    cursor: var(--cursor-disabled);
+  }
+}

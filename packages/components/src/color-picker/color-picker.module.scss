@@ -1,0 +1,31 @@
+@use "@dev-ui/tokens/scss" as *;
+
+.root {
+  display: inline-flex;
+}
+
+.trigger {
+  display: inline-flex;
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 16rem;
+}
+
+.areaRow {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.sliders {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.verticalSlider {
+  height: auto;
+  align-self: stretch;
+}

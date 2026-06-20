@@ -1,0 +1,43 @@
+{
+  "name": "@dev-ui/storybook",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "storybook": "storybook dev -p 6006",
+    "build-storybook": "storybook build",
+    "test:coverage": "vitest run --coverage --config ../../vitest.config.ts --project storybook",
+    "test:e2e": "playwright test --config playwright.config.ts",
+    "test:e2e:update": "playwright test --config playwright.config.ts --update-snapshots"
+  },
+  "dependencies": {
+    "@dev-ui/components": "workspace:*",
+    "@dev-ui/tokens": "workspace:*",
+    "react": "catalog:",
+    "react-dom": "catalog:"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "^4.11.3",
+    "@internationalized/date": "^3.12.2",
+    "@playwright/test": "^1.60.0",
+    "@storybook/addon-a11y": "^10.4.4",
+    "@storybook/addon-themes": "^10.4.4",
+    "@storybook/addon-vitest": "^10.4.4",
+    "@storybook/react": "^10.4.4",
+    "@storybook/react-vite": "^10.4.4",
+    "@vitest/browser-playwright": "^4.1.8",
+    "mockdate": "^3.0.5",
+    "msw": "^2.14.6",
+    "msw-storybook-addon": "^2.0.7",
+    "playwright": "^1.60.0",
+    "sass": "^1.101.0",
+    "storybook": "^10.4.4",
+    "typescript": "^6.0.3",
+    "vite": "^8.0.16"
+  },
+  "msw": {
+    "workerDirectory": [
+      "public"
+    ]
+  }
+}

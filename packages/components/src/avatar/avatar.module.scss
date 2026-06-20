@@ -1,0 +1,164 @@
+@use "@dev-ui/tokens/scss" as *;
+
+.root {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
+  border-radius: var(--avatar-radius);
+  background-color: var(--color-muted);
+
+  &[data-size="sm"] {
+    width: 1.5rem;
+    height: 1.5rem;
+  }
+
+  &[data-size="md"] {
+    width: 2rem;
+    height: 2rem;
+  }
+
+  &[data-size="lg"] {
+    width: 2.5rem;
+    height: 2.5rem;
+  }
+}
+
+.image {
+  width: 100%;
+  height: 100%;
+  aspect-ratio: 1;
+  border-radius: inherit;
+  object-fit: cover;
+}
+
+.fallback {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+  border-radius: inherit;
+  background-color: var(--color-muted);
+  font-size: 0.875rem;
+  user-select: none;
+
+  .root[data-size="sm"] & {
+    font-size: 0.625rem;
+  }
+}
+
+.badge {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  background-color: var(--color-primary);
+  color: var(--color-fg-on-primary);
+  box-shadow: 0 0 0 2px var(--color-bg);
+  user-select: none;
+
+  .root[data-size="sm"] & {
+    width: 0.5rem;
+    height: 0.5rem;
+
+    svg {
+      display: none;
+    }
+  }
+
+  .root[data-size="md"] & {
+    width: 0.625rem;
+    height: 0.625rem;
+
+    svg {
+      width: 0.5rem;
+      height: 0.5rem;
+    }
+  }
+
+  .root[data-size="lg"] & {
+    width: 0.75rem;
+    height: 0.75rem;
+
+    svg {
+      width: 0.5rem;
+      height: 0.5rem;
+    }
+  }
+}
+
+.group {
+  display: flex;
+
+  &[data-size="sm"] .root {
+    width: 1.5rem;
+    height: 1.5rem;
+  }
+
+  &[data-size="md"] .root {
+    width: 2rem;
+    height: 2rem;
+  }
+
+  &[data-size="lg"] .root {
+    width: 2.5rem;
+    height: 2.5rem;
+  }
+
+  .root {
+    box-shadow: 0 0 0 2px var(--color-bg);
+
+    & + .root {
+      margin-left: -0.5rem;
+    }
+  }
+}
+
+.groupCount {
+  position: relative;
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--avatar-radius);
+  background-color: var(--color-muted);
+  color: var(--color-fg-muted);
+  box-shadow: 0 0 0 2px var(--color-bg);
+  width: 2rem;
+  height: 2rem;
+  font-size: 0.875rem;
+
+  svg {
+    width: 1rem;
+    height: 1rem;
+  }
+
+  .group[data-size="sm"] & {
+    width: 1.5rem;
+    height: 1.5rem;
+    font-size: 0.625rem;
+
+    svg {
+      width: 0.75rem;
+      height: 0.75rem;
+    }
+  }
+
+  .group[data-size="lg"] & {
+    width: 2.5rem;
+    height: 2.5rem;
+    font-size: 1rem;
+
+    svg {
+      width: 1.25rem;
+      height: 1.25rem;
+    }
+  }
+}

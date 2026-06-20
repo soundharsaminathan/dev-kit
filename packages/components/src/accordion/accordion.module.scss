@@ -1,0 +1,11 @@
+@use "@dev-ui/tokens/scss" as *;
+
+.root {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+
+  [data-disclosure]:not(:last-child) {
+    border-bottom: 1px solid var(--color-border);
+  }
+}

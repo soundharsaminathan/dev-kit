@@ -1,0 +1,198 @@
+import { cn, composeRefs } from "@dev-ui/core";
+import { useFocusRing } from "@react-aria/focus";
+import { useHover } from "@react-aria/interactions";
+import { useTab, useTabList, useTabPanel } from "@react-aria/tabs";
+import { mergeProps } from "@react-aria/utils";
+import { useTabListState } from "@react-stately/tabs";
+import {
+  createContext,
+  isValidElement,
+  type ReactNode,
+  useContext,
+  useMemo,
+  useRef,
+} from "react";
+import {
+  findChildByDisplayName,
+  getCollectionChild,
+  getDisabledKeys,
+  parseCollectionItems,
+} from "../list-box/collection-utils";
+import styles from "./tabs.module.scss";
+import type {
+  TabListContextValue,
+  TabListProps,
+  TabPanelProps,
+  TabProps,
+  TabsContextValue,
+  TabsProps,
+} from "./tabs.types";
+
+const TabsContext = createContext<TabsContextValue | null>(null);
+const TabListContext = createContext<TabListContextValue | null>(null);
+
+function useTabsContext(component: string): TabsContextValue {
+  const context = useContext(TabsContext);
+  if (!context) {
+    throw new Error(`${component} must be used within Tabs`);
+  }
+  return context;
+}
+
+function useTabListContext(component: string): TabListContextValue {
+  const context = useContext(TabListContext);
+  if (!context) {
+    throw new Error(`${component} must be used within TabList`);
+  }
+  return context;
+}
+
+function Tabs<T extends object>({
+  children,
+  className,
+  orientation = "horizontal",
+  ref: _ref,
+  ...stateProps
+}: TabsProps<T>) {
+  const tabItems = useMemo(() => {
+    const tabList = findChildByDisplayName(children, "TabList");
+    if (!tabList || !isValidElement(tabList)) {
+      return [];
+    }
+    const tabListChildren = (tabList.props as { children?: ReactNode })
+      .children;
+    return parseCollectionItems(tabListChildren, "Tab");
+  }, [children]);
+
+  const state = useTabListState({
+    ...stateProps,
+    items: tabItems,
+    disabledKeys: getDisabledKeys(tabItems),
+    children: (item) => getCollectionChild(item),
+  });
+
+  const contextValue = useMemo(
+    () => ({
+      state: state as TabsContextValue["state"],
+      orientation,
+    }),
+    [state, orientation],
+  );
+
+  return (
+    <TabsContext.Provider value={contextValue}>
+      <div
+        data-tabs=""
+        data-orientation={orientation}
+        className={cn(styles.root, className)}
+      >
+        {children}
+      </div>
+    </TabsContext.Provider>
+  );
+}
+
+function TabList({
+  children,
+  className,
+  variant = "default",
+  ref,
+}: TabListProps) {
+  const { state, orientation } = useTabsContext("TabList");
+  const tabListRef = useRef<HTMLDivElement>(null);
+  const { tabListProps } = useTabList({ orientation }, state, tabListRef);
+  const listContext = useMemo(() => ({ variant }), [variant]);
+
+  return (
+    <TabListContext.Provider value={listContext}>
+      <div
+        {...tabListProps}
+        ref={composeRefs(tabListRef, ref)}
+        data-tab-list=""
+        data-orientation={orientation}
+        data-variant={variant}
+        className={cn(styles.list, className)}
+      >
+        {children}
+      </div>
+    </TabListContext.Provider>
+  );
+}
+TabList.displayName = "TabList";
+
+function Tab({ id, children, className, isDisabled, ref }: TabProps) {
+  const { state, orientation } = useTabsContext("Tab");
+  const { variant } = useTabListContext("Tab");
+  const tabRef = useRef<HTMLDivElement>(null);
+  const {
+    tabProps,
+    isSelected,
+    isDisabled: isTabDisabled,
+  } = useTab(
+    {
+      key: id,
+      ...(isDisabled !== undefined ? { isDisabled } : {}),
+    },
+    state,
+    tabRef,
+  );
+  const { hoverProps, isHovered } = useHover({
+    isDisabled: isTabDisabled,
+  });
+  const { focusProps, isFocusVisible } = useFocusRing();
+
+  return (
+    <div
+      {...mergeProps(tabProps, hoverProps, focusProps)}
+      ref={composeRefs(tabRef, ref)}
+      data-tab=""
+      data-orientation={orientation}
+      data-variant={variant}
+      data-selected={isSelected ? "true" : undefined}
+      data-hovered={isHovered ? "true" : undefined}
+      data-disabled={isTabDisabled ? "true" : undefined}
+      data-focus-visible={isFocusVisible ? "true" : undefined}
+      className={cn(styles.tab, className)}
+    >
+      {isSelected ? (
+        <span
+          data-tab-indicator=""
+          aria-hidden="true"
+          className={styles.selectionIndicator}
+        />
+      ) : null}
+      <span data-tab-content="" className={styles.tabContent}>
+        {children}
+      </span>
+    </div>
+  );
+}
+Tab.displayName = "Tab";
+
+function TabPanel({ id, children, className, ref }: TabPanelProps) {
+  const { state } = useTabsContext("TabPanel");
+  const panelRef = useRef<HTMLDivElement>(null);
+  const { tabPanelProps } = useTabPanel({ id }, state, panelRef);
+  const isSelected = state.selectedKey === id;
+
+  return (
+    <div
+      {...tabPanelProps}
+      ref={composeRefs(panelRef, ref)}
+      data-tab-panel=""
+      data-inert={isSelected ? undefined : "true"}
+      className={cn(styles.panel, className)}
+    >
+      {children}
+    </div>
+  );
+}
+TabPanel.displayName = "TabPanel";
+
+export type {
+  TabListProps,
+  TabPanelProps,
+  TabProps,
+  TabsProps,
+} from "./tabs.types";
+export { Tab, TabList, TabPanel, Tabs };

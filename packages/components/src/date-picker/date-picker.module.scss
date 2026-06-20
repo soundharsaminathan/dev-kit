@@ -1,0 +1,81 @@
+@use "@dev-ui/tokens/scss" as *;
+
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  width: 100%;
+}
+
+.trigger {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  align-items: center;
+  gap: 0;
+  border: 1px solid var(--color-border-field);
+  border-radius: var(--input-radius);
+  background-color: var(--color-field);
+  overflow: hidden;
+
+  [data-date-picker-input] {
+    flex: 1;
+    min-width: 0;
+  }
+
+  [data-date-input] {
+    width: 100%;
+    border: 0;
+    border-radius: 0;
+    background-color: transparent;
+    box-shadow: none;
+
+    &:focus-within {
+      border-color: transparent;
+      box-shadow: none;
+    }
+  }
+
+  &:focus-within {
+    border-color: var(--color-border-focus);
+    box-shadow: 0 0 0 2px var(--color-border-focus-muted);
+  }
+
+  &[data-disabled="true"] {
+    cursor: var(--cursor-disabled);
+    border-color: var(--color-border-disabled);
+    background-color: var(--color-disabled);
+  }
+
+  &[data-invalid="true"] {
+    border-color: var(--color-border-danger);
+    box-shadow: 0 0 0 2px var(--color-danger-muted);
+  }
+}
+
+.rangeSeparator {
+  flex-shrink: 0;
+  color: var(--color-fg-muted);
+  padding-inline: var(--space-1);
+  font-size: 0.875rem;
+  user-select: none;
+}
+
+.calendarButton {
+  flex-shrink: 0;
+  border-radius: 0;
+  border-inline-start: 1px solid var(--color-border-field);
+}
+
+.calendarIcon {
+  width: 1rem;
+  height: 1rem;
+}
+
+.popover {
+  padding: var(--space-3);
+}
+
+.dialog {
+  outline: none;
+}

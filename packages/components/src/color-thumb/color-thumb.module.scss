@@ -1,0 +1,30 @@
+@use "@dev-ui/tokens/scss" as *;
+@use "../shared/visually-hidden" as *;
+
+.thumb {
+  position: absolute;
+  z-index: 1;
+  box-sizing: border-box;
+  width: 1.5rem;
+  height: 1.5rem;
+  border: 2px solid var(--color-bg);
+  border-radius: var(--radius-full);
+  box-shadow: 0 0 0 1px rgb(0 0 0 / 40%);
+  cursor: var(--slider-cursor);
+  pointer-events: auto;
+
+  &[data-focus-visible="true"] {
+    outline: 2px solid var(--color-border-focus);
+    outline-offset: 2px;
+  }
+
+  &[data-disabled="true"] {
+    cursor: var(--cursor-disabled);
+    border-color: var(--color-border-disabled);
+    background-color: var(--color-disabled) !important;
+  }
+}
+
+.visuallyHidden {
+  @include visually-hidden;
+}

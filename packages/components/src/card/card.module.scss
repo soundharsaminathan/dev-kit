@@ -1,0 +1,129 @@
+@use "@dev-ui/tokens/scss" as *;
+
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding-block: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--card-radius);
+  background-color: var(--color-card);
+  font-size: 0.75rem;
+  line-height: 1.625;
+
+  &:has(> img:first-child) {
+    padding-top: 0;
+  }
+
+  > img:first-child {
+    border-top-left-radius: var(--card-radius);
+    border-top-right-radius: var(--card-radius);
+  }
+
+  > img:last-child {
+    border-bottom-left-radius: var(--card-radius);
+    border-bottom-right-radius: var(--card-radius);
+  }
+
+  &:has([data-card-footer]) {
+    padding-bottom: 0;
+  }
+
+  &[data-size="sm"] {
+    gap: var(--space-3);
+    padding-block: var(--space-3);
+
+    &:has([data-card-footer]) {
+      padding-bottom: 0;
+    }
+  }
+}
+
+.header {
+  display: grid;
+  auto-rows: min-content;
+  align-items: start;
+  gap: var(--space-1);
+  padding-inline: var(--space-4);
+  border-top-left-radius: var(--card-radius);
+  border-top-right-radius: var(--card-radius);
+
+  .root[data-size="sm"] & {
+    padding-inline: var(--space-3);
+  }
+
+  &:has([data-card-description]) {
+    grid-template-rows: auto auto;
+  }
+
+  &:has([data-card-action]) {
+    grid-template-columns: 1fr auto;
+  }
+
+  &:global(.border-b) {
+    padding-bottom: var(--space-4);
+
+    .root[data-size="sm"] & {
+      padding-bottom: var(--space-3);
+    }
+  }
+}
+
+.title {
+  font-family: var(--font-sans, inherit);
+  font-size: 1rem;
+  font-weight: var(--font-weight-medium);
+  line-height: 1.375;
+
+  .root[data-size="sm"] & {
+    font-size: 0.875rem;
+  }
+}
+
+.description {
+  color: var(--color-fg-muted);
+  font-size: 0.875rem;
+  line-height: 1.625;
+
+  .root[data-size="sm"] & {
+    font-size: 0.75rem;
+    line-height: 1.625;
+  }
+}
+
+.action {
+  grid-column-start: 2;
+  grid-row: 1 / span 2;
+  align-self: start;
+  justify-self: end;
+}
+
+.content {
+  padding-inline: var(--space-4);
+
+  .root[data-size="sm"] & {
+    padding-inline: var(--space-3);
+  }
+}
+
+.footer {
+  display: flex;
+  align-items: center;
+  padding-inline: var(--space-4);
+  padding-bottom: var(--space-4);
+  border-bottom-left-radius: var(--card-radius);
+  border-bottom-right-radius: var(--card-radius);
+
+  .root[data-size="sm"] & {
+    padding-inline: var(--space-3);
+    padding-bottom: var(--space-3);
+  }
+
+  &:global(.border-t) {
+    padding-top: var(--space-4);
+
+    .root[data-size="sm"] & {
+      padding-top: var(--space-3);
+    }
+  }
+}

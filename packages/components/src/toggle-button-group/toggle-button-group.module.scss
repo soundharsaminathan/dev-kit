@@ -1,0 +1,47 @@
+@use "@dev-ui/tokens/scss" as *;
+
+.root {
+  display: flex;
+  width: fit-content;
+  align-items: stretch;
+
+  &[data-orientation="horizontal"] {
+    flex-direction: row;
+
+    :global([data-toggle-button][data-variant="default"]) {
+      &:not(:first-child) {
+        border-top-left-radius: 0;
+        border-bottom-left-radius: 0;
+        margin-left: -1px;
+      }
+
+      &:not(:last-child) {
+        border-top-right-radius: 0;
+        border-bottom-right-radius: 0;
+      }
+    }
+  }
+
+  &[data-orientation="vertical"] {
+    flex-direction: column;
+
+    :global([data-toggle-button][data-variant="default"]) {
+      &:not(:first-child) {
+        border-top-left-radius: 0;
+        border-top-right-radius: 0;
+        margin-top: -1px;
+      }
+
+      &:not(:last-child) {
+        border-bottom-left-radius: 0;
+        border-bottom-right-radius: 0;
+      }
+    }
+  }
+
+  :global([data-toggle-button]) {
+    min-width: 0;
+    flex-shrink: 0;
+    box-shadow: none;
+  }
+}

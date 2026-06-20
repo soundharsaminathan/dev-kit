@@ -1,0 +1,50 @@
+@use "@dev-ui/tokens/scss" as *;
+
+.root {
+  display: flex;
+  width: 100%;
+  max-width: 24rem;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.main {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.hueSlider,
+.alphaSlider {
+  height: auto;
+  align-self: stretch;
+}
+
+.fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.fieldsHex {
+  flex-direction: row;
+  align-items: center;
+}
+
+.fieldRow {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.field {
+  flex: 1;
+}
+
+.formatSelect {
+  width: auto;
+}
+
+.formatSelectHex {
+  flex: 1;
+}

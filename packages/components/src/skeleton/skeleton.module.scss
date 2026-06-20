@@ -1,0 +1,155 @@
+@use "@dev-ui/tokens/scss" as *;
+
+@keyframes skeleton-shimmer {
+  0% {
+    background-position: 100%;
+  }
+
+  100% {
+    background-position: 0%;
+  }
+}
+
+@keyframes skeleton-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@mixin skeleton-surface {
+  position: relative;
+  overflow: hidden;
+  color: transparent;
+  background-color: var(--color-muted);
+  border-color: transparent;
+  box-shadow: none;
+  text-decoration: none;
+}
+
+@mixin skeleton-shimmer {
+  background-image: linear-gradient(
+    to right,
+    var(--color-muted) 33%,
+    color-mix(in oklab, var(--color-muted), var(--color-bg) 45%),
+    var(--color-muted) 66%
+  );
+  background-size: 300% 100%;
+  background-repeat: no-repeat;
+  animation: skeleton-shimmer 2s ease-in-out infinite;
+}
+
+.root {
+  &[data-skeleton-loading="true"] {
+    pointer-events: none;
+    user-select: none;
+
+    &[data-animation="shimmer"] {
+      [data-text],
+      [data-label],
+      [data-description],
+      [data-card-title],
+      [data-card-description],
+      [data-button],
+      [data-badge],
+      [data-kbd],
+      [data-avatar],
+      [data-avatar-group-count],
+      h1,
+      h2,
+      h3,
+      h4,
+      h5,
+      h6,
+      p {
+        @include skeleton-surface;
+        @include skeleton-shimmer;
+        border-radius: var(--radius-sm);
+      }
+
+      [data-button],
+      [data-badge],
+      [data-kbd] {
+        border-color: transparent;
+      }
+
+      [data-avatar],
+      [data-avatar-group-count] {
+        border-radius: var(--avatar-radius);
+      }
+
+      [data-avatar] *,
+      [data-badge] *,
+      [data-button] *,
+      [data-kbd] * {
+        visibility: hidden;
+      }
+    }
+
+    &[data-animation="pulse"] {
+      [data-text],
+      [data-label],
+      [data-description],
+      [data-card-title],
+      [data-card-description],
+      [data-button],
+      [data-badge],
+      [data-kbd],
+      [data-avatar],
+      [data-avatar-group-count],
+      h1,
+      h2,
+      h3,
+      h4,
+      h5,
+      h6,
+      p {
+        @include skeleton-surface;
+        animation: skeleton-pulse 2s ease-in-out infinite;
+        border-radius: var(--radius-sm);
+      }
+    }
+
+    &[data-animation="none"] {
+      [data-text],
+      [data-label],
+      [data-description],
+      [data-card-title],
+      [data-card-description],
+      [data-button],
+      [data-badge],
+      [data-kbd],
+      [data-avatar],
+      [data-avatar-group-count],
+      h1,
+      h2,
+      h3,
+      h4,
+      h5,
+      h6,
+      p {
+        @include skeleton-surface;
+        border-radius: var(--radius-sm);
+      }
+    }
+  }
+}
+
+.placeholderBlock {
+  @include skeleton-surface;
+  display: block;
+  height: 1.5rem;
+  border-radius: var(--radius-md);
+}
+
+.root[data-skeleton-loading="true"][data-animation="shimmer"].placeholderBlock {
+  @include skeleton-shimmer;
+}
+
+.root[data-skeleton-loading="true"][data-animation="pulse"].placeholderBlock {
+  animation: skeleton-pulse 2s ease-in-out infinite;
+}

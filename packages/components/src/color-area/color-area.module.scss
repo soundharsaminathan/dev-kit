@@ -1,0 +1,19 @@
+@use "@dev-ui/tokens/scss" as *;
+
+.root {
+  position: relative;
+  display: block;
+  aspect-ratio: 1;
+  width: 12rem;
+  min-width: 5rem;
+  overflow: hidden;
+  border-radius: var(--color-area-radius);
+  touch-action: none;
+  user-select: none;
+  cursor: var(--slider-cursor);
+
+  &[data-disabled="true"] {
+    cursor: var(--cursor-disabled);
+    background: var(--color-disabled) !important;
+  }
+}

@@ -1,0 +1,22 @@
+packages:
+  - "packages/*"
+  - "apps/*"
+
+catalog:
+  react: ^19.2.0
+  react-dom: ^19.2.0
+  vite: ^8.0.16
+
+# pnpm 11: replaces package.json "pnpm.onlyBuiltDependencies"
+allowBuilds:
+  "@biomejs/biome": true
+  "@parcel/watcher": true
+  core-js: false
+  esbuild: true
+  msw: true
+
+# pnpm 11 defaults to 1440 (1 day); restore pre-v11 behavior for dev tooling
+minimumReleaseAge: 0
+
+patchedDependencies:
+  '@storybook/addon-vitest@10.4.4': patches/@storybook__addon-vitest@10.4.4.patch

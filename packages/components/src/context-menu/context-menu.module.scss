@@ -1,0 +1,12 @@
+@use "@dev-ui/tokens/scss" as *;
+
+.trigger {
+  -webkit-touch-callout: none;
+}
+
+.anchor {
+  position: fixed;
+  left: 0;
+  top: 0;
+  pointer-events: none;
+}

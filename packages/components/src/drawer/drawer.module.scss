@@ -1,0 +1,319 @@
+@use "@dev-ui/tokens/scss" as *;
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  isolation: isolate;
+  z-index: 50;
+  --drawer-bleed: 2.5rem;
+  --drawer-inset: 0px;
+  --drawer-peek: 24px;
+}
+
+.backdrop {
+  position: fixed;
+  inset: 0;
+  border: none;
+  padding: 0;
+  margin: 0;
+  cursor: default;
+  pointer-events: auto;
+  background-color: rgb(0 0 0 / 70%);
+  opacity: calc(1 - var(--drawer-swipe-progress, 0));
+  transition: opacity 500ms cubic-bezier(0.32, 0.72, 0, 1);
+
+  &[data-ending-style] {
+    opacity: 0;
+  }
+
+  &[data-starting-style] {
+    opacity: 0;
+  }
+
+  &[data-swiping] {
+    transition-duration: 0ms;
+  }
+}
+
+.viewport {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  touch-action: none;
+  pointer-events: none;
+}
+
+.viewport-top {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  padding-bottom: 3rem;
+}
+
+.viewport-bottom {
+  display: grid;
+  grid-template-rows: 1fr auto;
+  overflow: visible;
+  padding-top: 3rem;
+}
+
+.viewport-left {
+  display: flex;
+  justify-content: flex-start;
+  padding-inline-end: 3rem;
+}
+
+.viewport-right {
+  display: flex;
+  justify-content: flex-end;
+  padding-inline-start: 3rem;
+}
+
+.popup {
+  position: relative;
+  display: flex;
+  max-height: 100%;
+  min-height: 0;
+  width: 100%;
+  min-width: 0;
+  flex-direction: column;
+  border: 1px solid var(--color-border);
+  background-color: var(--color-bg);
+  color: var(--color-fg);
+  box-shadow: 0 -8px 24px -12px rgb(0 0 0 / 35%);
+  outline: none;
+  will-change: transform, height;
+  pointer-events: auto;
+  transition-property: transform, box-shadow, height, background-color, margin,
+    padding;
+  transition-duration: calc(500ms * var(--drawer-swipe-strength, 1));
+  transition-timing-function: cubic-bezier(0.32, 0.72, 0, 1);
+  --drawer-scale-base: calc(
+    max(0, 1 - (var(--nested-drawers, 0) * 0.05))
+  );
+  --drawer-scale: clamp(
+    0,
+    calc(var(--drawer-scale-base) + (0.05 * var(--drawer-stack-progress))),
+    1
+  );
+  --drawer-shrink: calc(1 - var(--drawer-scale));
+  --drawer-stack-offset: max(
+    0px,
+    calc(
+      (var(--nested-drawers, 0) - var(--drawer-stack-progress)) *
+        var(--drawer-peek)
+    )
+  );
+  --drawer-stack-progress: clamp(0, var(--drawer-swipe-progress, 0), 1);
+
+  &[data-ending-style],
+  &[data-starting-style] {
+    box-shadow: none;
+  }
+
+  &[data-nested-drawer-open] {
+    overflow: hidden;
+  }
+
+  &[data-nested-drawer-swiping],
+  &[data-swiping] {
+    transition: none;
+    user-select: none;
+  }
+}
+
+.popup-top {
+  grid-row-start: 1;
+  max-height: calc(100dvh - 3rem);
+  min-height: 5rem;
+  width: 100%;
+  transform-origin: 50% 0;
+  transform: translateY(var(--drawer-swipe-movement-y, 0px));
+  border-top: 0;
+  border-radius: 0 0 var(--radius-xl) var(--radius-xl);
+
+  &[data-ending-style] {
+    transform: translateY(-100%);
+  }
+
+  &[data-starting-style] {
+    transform: translateY(-100%);
+  }
+}
+
+.popup-bottom {
+  grid-row-start: 2;
+  margin-bottom: calc(0px - var(--drawer-bleed));
+  max-height: calc(100dvh - 3rem + var(--drawer-bleed));
+  min-height: 5rem;
+  width: 100%;
+  transform-origin: 50% 100%;
+  transform: translateY(var(--drawer-swipe-movement-y, 0px));
+  border-bottom: 0;
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  padding-bottom: calc(
+    env(safe-area-inset-bottom, 0px) + var(--drawer-bleed)
+  );
+
+  &[data-ending-style] {
+    transform: translateY(100%);
+  }
+
+  &[data-starting-style] {
+    transform: translateY(100%);
+  }
+}
+
+.popup-left {
+  flex-direction: row-reverse;
+  align-items: center;
+  width: auto;
+  flex-shrink: 0;
+  height: 100%;
+  max-width: calc(100dvw - 3rem);
+  min-width: 5rem;
+  transform-origin: right;
+  transform: translateX(var(--drawer-swipe-movement-x, 0px));
+  border-left: 0;
+  border-radius: 0 var(--radius-xl) var(--radius-xl) 0;
+
+  > :not([data-slot="drawer-handle"]) {
+    flex: 1;
+    min-width: 0;
+    min-height: 0;
+    align-self: stretch;
+  }
+
+  &[data-ending-style] {
+    transform: translateX(-100%);
+  }
+
+  &[data-starting-style] {
+    transform: translateX(-100%);
+  }
+}
+
+.popup-right {
+  flex-direction: row;
+  align-items: center;
+  width: auto;
+  flex-shrink: 0;
+  height: 100%;
+  max-width: calc(100dvw - 3rem);
+  min-width: 5rem;
+  transform-origin: left;
+  transform: translateX(var(--drawer-swipe-movement-x, 0px));
+  border-right: 0;
+  border-radius: var(--radius-xl) 0 0 var(--radius-xl);
+
+  > :not([data-slot="drawer-handle"]) {
+    flex: 1;
+    min-width: 0;
+    min-height: 0;
+    align-self: stretch;
+  }
+
+  &[data-ending-style] {
+    transform: translateX(100%);
+  }
+
+  &[data-starting-style] {
+    transform: translateX(100%);
+  }
+}
+
+.handle {
+  flex-shrink: 0;
+  cursor: grab;
+  touch-action: none;
+  border-radius: var(--radius-full);
+  background-color: color-mix(in srgb, var(--color-fg) 20%, transparent);
+  user-select: none;
+
+  &[data-orientation="horizontal"] {
+    margin: var(--space-2) auto;
+    width: 3rem;
+    height: 0.375rem;
+  }
+
+  &[data-orientation="vertical"] {
+    margin-inline: var(--space-2);
+    width: 0.375rem;
+    height: 3rem;
+  }
+
+  &:active {
+    cursor: grabbing;
+  }
+}
+
+.swipeArea {
+  position: fixed;
+  z-index: 50;
+  touch-action: none;
+}
+
+.swipeArea-top {
+  inset-inline: 0;
+  top: 0;
+  height: 2rem;
+}
+
+.swipeArea-bottom {
+  inset-inline: 0;
+  bottom: 0;
+  height: 2rem;
+}
+
+.swipeArea-left {
+  inset-block: 0;
+  left: 0;
+  width: 2rem;
+}
+
+.swipeArea-right {
+  inset-block: 0;
+  right: 0;
+  width: 2rem;
+}
+
+.indent {
+  position: relative;
+  z-index: 1;
+  min-height: 100vh;
+  background-color: var(--color-bg);
+  transition:
+    transform 500ms cubic-bezier(0.32, 0.72, 0, 1),
+    border-radius 500ms cubic-bezier(0.32, 0.72, 0, 1);
+
+  &[data-active] {
+    transform: translate3d(
+        0,
+        calc(8px * (1 - var(--drawer-swipe-progress, 0))),
+        0
+      )
+      scale(calc(0.96 + 0.04 * var(--drawer-swipe-progress, 0)));
+    border-radius: var(--radius-2xl);
+  }
+
+  &[data-inactive] {
+    transform: translate3d(0, 0, 0) scale(1);
+    border-radius: 0;
+  }
+}
+
+.indentBackground {
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  background-color: rgb(0 0 0 / 100%);
+  transition: opacity 500ms cubic-bezier(0.32, 0.72, 0, 1);
+
+  &[data-active] {
+    opacity: 1;
+  }
+
+  &[data-inactive] {
+    opacity: 0;
+  }
+}

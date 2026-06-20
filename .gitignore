@@ -1,0 +1,27 @@
+node_modules/
+dist/
+coverage/
+.rslib/
+*.tsbuildinfo
+
+# Storybook
+storybook-static/
+apps/storybook/playwright-report/
+apps/storybook/test-results/
+
+# IDE
+.idea/
+.cursor/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env
+.env
+.env.*
+
+# Logs
+*.log

@@ -1,0 +1,13 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true
+  },
+  "references": [
+    { "path": "./packages/tokens" },
+    { "path": "./packages/core" },
+    { "path": "./packages/components" },
+    { "path": "./apps/storybook" }
+  ],
+  "include": []
+}

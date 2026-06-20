@@ -1,0 +1,29 @@
+@use "@dev-ui/tokens/scss" as *;
+
+@keyframes loader-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.root {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+}
+
+.icon {
+  width: 1rem;
+  height: 1rem;
+  animation: loader-spin 0.8s linear infinite;
+}
+
+.ringTrack {
+  stroke: currentColor;
+  opacity: 0.25;
+}
+
+.ringSegment {
+  fill: currentColor;
+}

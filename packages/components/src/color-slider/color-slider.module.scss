@@ -1,0 +1,60 @@
+@use "@dev-ui/tokens/scss" as *;
+@use "../shared/visually-hidden" as *;
+
+.root {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  gap: var(--space-2);
+
+  &[data-orientation="vertical"] {
+    align-items: center;
+    height: 12rem;
+  }
+}
+
+.control {
+  position: relative;
+  display: flex;
+  flex-grow: 1;
+  touch-action: none;
+  user-select: none;
+  cursor: var(--slider-cursor);
+
+  &::before {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    background: repeating-conic-gradient(#e6e6e6 0% 25%, #fff 0% 50%) 50% /
+      16px 16px;
+    content: "";
+  }
+
+  &[data-orientation="horizontal"] {
+    width: 12rem;
+    height: 1.5rem;
+    padding-block: var(--space-2);
+  }
+
+  &[data-orientation="vertical"] {
+    width: 1.5rem;
+    height: 100%;
+    padding-inline: var(--space-2);
+  }
+
+  &[data-disabled="true"] {
+    cursor: var(--cursor-disabled);
+    background: var(--color-disabled) !important;
+  }
+}
+
+.output {
+  font-size: 0.875rem;
+  color: var(--color-fg-muted);
+  font-variant-numeric: tabular-nums;
+
+  &[data-disabled="true"] {
+    color: var(--color-fg-disabled);
+  }
+}
