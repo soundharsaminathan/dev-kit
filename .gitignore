@@ -8,6 +8,7 @@ coverage/
 storybook-static/
 apps/storybook/playwright-report/
 apps/storybook/test-results/
+test-results/
 
 # IDE
 .idea/

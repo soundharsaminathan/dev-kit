@@ -12,6 +12,7 @@
     "check": "biome check . && pnpm run typecheck && pnpm run test",
     "prepare": "husky",
     "test": "vitest run",
+    "test:ci": "vitest run --reporter=default --reporter=github-actions --reporter=junit --outputFile=test-results/junit.xml",
     "test:coverage": "vitest run --coverage --project core --project components",
     "test:watch": "vitest",
     "storybook": "pnpm --filter @dev-ui/tokens run generate-scss && pnpm --filter @dev-ui/storybook run storybook",
