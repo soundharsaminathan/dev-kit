@@ -4,6 +4,7 @@ import {
   getDisclosure,
   getDisclosurePanel,
   gotoStory,
+  VIEWPORT_SCREENSHOT_OPTIONS,
 } from "./helpers/storybook";
 import { responsiveDescribeOptions } from "./helpers/viewports";
 
@@ -23,7 +24,7 @@ test.describe("Disclosure", () => {
         page.getByRole("button", { name: TRIGGER_LABEL }),
       ).toBeVisible();
       await expect(page).toHaveScreenshot("disclosure-default-collapsed.png", {
-        fullPage: true,
+        ...VIEWPORT_SCREENSHOT_OPTIONS,
       });
     });
 
@@ -37,7 +38,7 @@ test.describe("Disclosure", () => {
       );
 
       await expect(page).toHaveScreenshot("disclosure-default-expanded.png", {
-        fullPage: true,
+        ...VIEWPORT_SCREENSHOT_OPTIONS,
       });
     });
   });

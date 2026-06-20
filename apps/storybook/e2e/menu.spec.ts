@@ -4,6 +4,7 @@ import {
   expectOverlayBelowTrigger,
   getMenuContent,
   gotoStory,
+  VIEWPORT_SCREENSHOT_OPTIONS,
   waitForMenuReady,
 } from "./helpers/storybook";
 import { responsiveDescribeOptions } from "./helpers/viewports";
@@ -30,7 +31,7 @@ test.describe("Menu", () => {
         page.getByRole("button", { name: "Open menu" }),
       ).toBeVisible();
       await expect(page).toHaveScreenshot("menu-default-closed.png", {
-        fullPage: true,
+        ...VIEWPORT_SCREENSHOT_OPTIONS,
       });
     });
 
@@ -41,7 +42,7 @@ test.describe("Menu", () => {
       await waitForMenuReady(page);
 
       await expect(page).toHaveScreenshot("menu-default-open.png", {
-        fullPage: true,
+        ...VIEWPORT_SCREENSHOT_OPTIONS,
       });
     });
   });

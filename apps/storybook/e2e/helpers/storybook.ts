@@ -55,6 +55,11 @@ export async function gotoStory(
 
 export const VIEWPORT_SCREENSHOT_OPTIONS = { fullPage: false } as const;
 
+/**
+ * Capture a Storybook story screenshot at the fixed Playwright viewport.
+ * Uses viewport-only capture (not fullPage) so dimensions stay 1280×720
+ * across local and CI environments.
+ */
 export async function expectStoryScreenshot(
   page: Page,
   storyId: string,
@@ -69,7 +74,7 @@ export async function expectStoryScreenshot(
     await options.beforeScreenshot(page);
   }
   await expect(page).toHaveScreenshot(screenshotName, {
-    fullPage: options?.fullPage ?? true,
+    fullPage: options?.fullPage ?? false,
   });
 }
 
