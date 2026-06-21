@@ -1,0 +1,52 @@
+{
+  "name": "dev-kit",
+  "$schema": "./node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": ".",
+  "projectType": "application",
+  "tags": ["scope:workspace", "type:app"],
+  "targets": {
+    "biome:check": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "{workspaceRoot}",
+        "command": "biome check ."
+      },
+      "inputs": ["default", "{workspaceRoot}/biome.json"]
+    },
+    "check": {
+      "executor": "nx:noop",
+      "dependsOn": ["biome:check", "typecheck", "test"]
+    },
+    "typecheck": {
+      "executor": "nx:noop",
+      "dependsOn": [
+        "tokens:typecheck",
+        "core:typecheck",
+        "components:typecheck",
+        "storybook:typecheck"
+      ]
+    },
+    "test": {
+      "executor": "nx:noop",
+      "dependsOn": [
+        "core:test",
+        "components:test",
+        "storybook:test",
+        "scripts:test"
+      ]
+    },
+    "test:ci": {
+      "executor": "nx:noop",
+      "dependsOn": [
+        "core:test:ci",
+        "components:test:ci",
+        "storybook:test:ci",
+        "scripts:test:ci"
+      ]
+    },
+    "test:coverage": {
+      "executor": "nx:noop",
+      "dependsOn": ["core:test:coverage", "components:test:coverage"]
+    }
+  }
+}

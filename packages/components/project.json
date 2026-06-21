@@ -6,6 +6,43 @@
   "tags": ["scope:components", "type:lib"],
   "implicitDependencies": ["core", "tokens"],
   "targets": {
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "packages/components",
+        "command": "tsc -b --pretty false"
+      },
+      "dependsOn": ["^typecheck"]
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "{workspaceRoot}",
+        "command": "vitest run --config vitest.config.ts --project components"
+      },
+      "dependsOn": ["tokens:build:tokens"]
+    },
+    "test:ci": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "{workspaceRoot}",
+        "command": "vitest run --coverage --config vitest.config.ts --project components --reporter=default --reporter=github-actions --reporter=junit --outputFile=test-results/junit-components.xml"
+      },
+      "dependsOn": ["tokens:build:tokens"],
+      "outputs": [
+        "{workspaceRoot}/coverage",
+        "{workspaceRoot}/test-results/junit-components.xml"
+      ]
+    },
+    "test:coverage": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "{workspaceRoot}",
+        "command": "vitest run --coverage --config vitest.config.ts --project components"
+      },
+      "dependsOn": ["tokens:build:tokens"],
+      "outputs": ["{workspaceRoot}/coverage"]
+    },
     "build": {
       "executor": "nx:run-script",
       "options": {
