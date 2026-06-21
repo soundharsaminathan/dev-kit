@@ -14,6 +14,7 @@ allowBuilds:
   core-js: false
   esbuild: true
   msw: true
+  nx: true
 
 # pnpm 11 defaults to 1440 (1 day); restore pre-v11 behavior for dev tooling
 minimumReleaseAge: 0

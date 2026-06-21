@@ -58,6 +58,14 @@ export default defineConfig({
         },
       },
       path.join(rootDir, "apps/storybook/vitest.config.ts"),
+      {
+        test: {
+          name: "scripts",
+          root: path.join(rootDir, "scripts"),
+          environment: "node",
+          sequence: { groupOrder: 3 },
+        },
+      },
     ],
   },
 });

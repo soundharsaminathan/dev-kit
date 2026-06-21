@@ -1,0 +1,16 @@
+{
+  "name": "tokens",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "packages/tokens/src",
+  "projectType": "library",
+  "tags": ["scope:shared", "type:lib"],
+  "targets": {
+    "build:tokens": {
+      "executor": "nx:run-script",
+      "options": {
+        "script": "generate-scss"
+      },
+      "outputs": ["{projectRoot}/scss"]
+    }
+  }
+}

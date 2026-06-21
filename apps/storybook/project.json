@@ -1,0 +1,34 @@
+{
+  "name": "storybook",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/storybook",
+  "projectType": "application",
+  "tags": ["scope:storybook", "type:app"],
+  "implicitDependencies": ["components", "tokens"],
+  "targets": {
+    "test:e2e": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "apps/storybook",
+        "command": "playwright test --config playwright.config.ts"
+      },
+      "dependsOn": ["tokens:build:tokens"]
+    },
+    "test:e2e:affected": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "{workspaceRoot}",
+        "command": "pnpm exec tsx scripts/run-affected-e2e.ts"
+      },
+      "dependsOn": ["tokens:build:tokens"]
+    },
+    "test:e2e:update": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "apps/storybook",
+        "command": "playwright test --config playwright.config.ts --update-snapshots"
+      },
+      "dependsOn": ["tokens:build:tokens"]
+    }
+  }
+}
