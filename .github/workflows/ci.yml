@@ -64,7 +64,9 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           coverage-file: coverage/coverage-summary.json
-          package-name: dev-kit
+          custom-title: dev-kit coverage
+          package-manager: pnpm
+          skip-step: base-coverage
 
   visual:
     name: Playwright visual
