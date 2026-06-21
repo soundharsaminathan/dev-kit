@@ -16,6 +16,7 @@
       "{workspaceRoot}/tsconfig.base.json",
       "{workspaceRoot}/biome.json",
       "{workspaceRoot}/vitest.config.ts",
+      "{workspaceRoot}/vitest.coverage.ts",
       "{workspaceRoot}/vitest.setup.ts"
     ],
     "e2eInputs": [
@@ -47,12 +48,19 @@
     "test:ci": {
       "cache": true,
       "inputs": ["default", "^production"],
-      "outputs": ["{workspaceRoot}/coverage", "{workspaceRoot}/test-results"]
+      "outputs": [
+        "{workspaceRoot}/coverage/*",
+        "{workspaceRoot}/coverage/coverage-summary.json",
+        "{workspaceRoot}/test-results"
+      ]
     },
     "test:coverage": {
       "cache": true,
       "inputs": ["default", "^production"],
-      "outputs": ["{workspaceRoot}/coverage"]
+      "outputs": [
+        "{workspaceRoot}/coverage/*",
+        "{workspaceRoot}/coverage/coverage-summary.json"
+      ]
     },
     "typecheck": {
       "cache": true,
@@ -79,5 +87,6 @@
       }
     }
   ],
-  "analytics": true
+  "analytics": true,
+  "nxCloudId": "6a383bbed7cb00b8f176ba6b"
 }

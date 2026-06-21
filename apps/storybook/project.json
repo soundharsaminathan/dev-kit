@@ -26,11 +26,11 @@
       "executor": "nx:run-commands",
       "options": {
         "cwd": "{workspaceRoot}",
-        "command": "vitest run --coverage --config vitest.config.ts --project storybook --reporter=default --reporter=github-actions --reporter=junit --outputFile=test-results/junit-storybook.xml"
+        "command": "pnpm exec tsx scripts/run-vitest-ci.ts storybook"
       },
       "dependsOn": ["tokens:build:tokens"],
       "outputs": [
-        "{workspaceRoot}/coverage",
+        "{workspaceRoot}/coverage/storybook",
         "{workspaceRoot}/test-results/junit-storybook.xml"
       ]
     },

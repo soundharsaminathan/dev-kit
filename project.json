@@ -37,16 +37,34 @@
     },
     "test:ci": {
       "executor": "nx:noop",
+      "dependsOn": ["merge-coverage"]
+    },
+    "merge-coverage": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "{workspaceRoot}",
+        "command": "pnpm exec tsx scripts/merge-coverage.ts"
+      },
       "dependsOn": [
         "core:test:ci",
         "components:test:ci",
         "storybook:test:ci",
         "scripts:test:ci"
-      ]
+      ],
+      "outputs": ["{workspaceRoot}/coverage/coverage-summary.json"]
     },
     "test:coverage": {
       "executor": "nx:noop",
-      "dependsOn": ["core:test:coverage", "components:test:coverage"]
+      "dependsOn": ["merge-coverage:coverage"]
+    },
+    "merge-coverage:coverage": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "{workspaceRoot}",
+        "command": "pnpm exec tsx scripts/merge-coverage.ts"
+      },
+      "dependsOn": ["core:test:coverage", "components:test:coverage"],
+      "outputs": ["{workspaceRoot}/coverage/coverage-summary.json"]
     }
   }
 }
