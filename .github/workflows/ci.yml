@@ -58,15 +58,21 @@ jobs:
           path: coverage/
           retention-days: 14
 
-      - name: Publish coverage summary
-        uses: ArtiomTr/jest-coverage-report-action@v2
+      - name: Format coverage comment
+        id: coverage
         if: github.event_name == 'pull_request' && always() && !cancelled()
+        run: |
+          if [ -f coverage/coverage-summary.json ]; then
+            pnpm exec tsx scripts/format-coverage-comment.ts
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Publish coverage summary
+        uses: marocchino/sticky-pull-request-comment@v2
+        if: steps.coverage.outputs.available == 'true'
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          coverage-file: coverage/coverage-summary.json
-          custom-title: dev-kit coverage
-          package-manager: pnpm
-          skip-step: base-coverage
+          header: coverage
+          path: coverage-comment.md
 
   visual:
     name: Playwright visual
