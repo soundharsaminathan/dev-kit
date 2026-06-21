@@ -30,7 +30,9 @@ jobs:
 
       - name: Run affected Vitest (PR)
         if: github.event_name != 'merge_group'
-        run: pnpm exec nx affected -t test:ci --base=origin/${{ github.base_ref }}
+        run: |
+          pnpm exec nx affected -t test:ci --base=origin/${{ github.base_ref }}
+          pnpm exec nx run dev-kit:merge-coverage
         env:
           CI: true
 

@@ -25,10 +25,10 @@
       "executor": "nx:run-commands",
       "options": {
         "cwd": "{workspaceRoot}",
-        "command": "vitest run --coverage --config vitest.config.ts --project core --reporter=default --reporter=github-actions --reporter=junit --outputFile=test-results/junit-core.xml"
+        "command": "pnpm exec tsx scripts/run-vitest-ci.ts core"
       },
       "outputs": [
-        "{workspaceRoot}/coverage",
+        "{workspaceRoot}/coverage/core",
         "{workspaceRoot}/test-results/junit-core.xml"
       ]
     },
@@ -36,9 +36,9 @@
       "executor": "nx:run-commands",
       "options": {
         "cwd": "{workspaceRoot}",
-        "command": "vitest run --coverage --config vitest.config.ts --project core"
+        "command": "pnpm exec tsx scripts/run-vitest-ci.ts core --coverage-only"
       },
-      "outputs": ["{workspaceRoot}/coverage"]
+      "outputs": ["{workspaceRoot}/coverage/core"]
     },
     "build": {
       "executor": "nx:run-script",

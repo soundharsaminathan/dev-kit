@@ -2,10 +2,7 @@
   "$schema": "./node_modules/nx/schemas/nx-schema.json",
   "defaultBase": "main",
   "namedInputs": {
-    "default": [
-      "{projectRoot}/**/*",
-      "sharedGlobals"
-    ],
+    "default": ["{projectRoot}/**/*", "sharedGlobals"],
     "production": [
       "default",
       "!{projectRoot}/**/?(*.)+(spec|test).[jt]s?(x)?(.snap)",
@@ -19,6 +16,7 @@
       "{workspaceRoot}/tsconfig.base.json",
       "{workspaceRoot}/biome.json",
       "{workspaceRoot}/vitest.config.ts",
+      "{workspaceRoot}/vitest.coverage.ts",
       "{workspaceRoot}/vitest.setup.ts"
     ],
     "e2eInputs": [
@@ -33,80 +31,52 @@
   "targetDefaults": {
     "build:tokens": {
       "cache": true,
-      "inputs": [
-        "production",
-        "^production"
-      ]
+      "inputs": ["production", "^production"]
     },
     "build": {
       "cache": true,
-      "inputs": [
-        "production",
-        "^production"
-      ]
+      "inputs": ["production", "^production"]
     },
     "build-storybook": {
       "cache": true,
-      "inputs": [
-        "production",
-        "^production"
-      ]
+      "inputs": ["production", "^production"]
     },
     "test": {
       "cache": true,
-      "inputs": [
-        "default",
-        "^production"
-      ]
+      "inputs": ["default", "^production"]
     },
     "test:ci": {
       "cache": true,
-      "inputs": [
-        "default",
-        "^production"
-      ],
+      "inputs": ["default", "^production"],
       "outputs": [
-        "{workspaceRoot}/coverage",
+        "{workspaceRoot}/coverage/*",
+        "{workspaceRoot}/coverage/coverage-summary.json",
         "{workspaceRoot}/test-results"
       ]
     },
     "test:coverage": {
       "cache": true,
-      "inputs": [
-        "default",
-        "^production"
-      ],
+      "inputs": ["default", "^production"],
       "outputs": [
-        "{workspaceRoot}/coverage"
+        "{workspaceRoot}/coverage/*",
+        "{workspaceRoot}/coverage/coverage-summary.json"
       ]
     },
     "typecheck": {
       "cache": true,
-      "inputs": [
-        "production",
-        "^production"
-      ]
+      "inputs": ["production", "^production"]
     },
     "biome:check": {
       "cache": true,
-      "inputs": [
-        "default",
-        "{workspaceRoot}/biome.json"
-      ]
+      "inputs": ["default", "{workspaceRoot}/biome.json"]
     },
     "test:e2e": {
       "cache": true,
-      "inputs": [
-        "e2eInputs",
-        "^production"
-      ]
+      "inputs": ["e2eInputs", "^production"]
     },
     "test:e2e:affected": {
       "cache": true,
-      "inputs": [
-        "e2eInputs",
-        "^production"
-      ]
+      "inputs": ["e2eInputs", "^production"]
     }
   },
   "plugins": [

@@ -16,10 +16,10 @@
       "executor": "nx:run-commands",
       "options": {
         "cwd": "{workspaceRoot}",
-        "command": "vitest run --coverage --config vitest.config.ts --project scripts --reporter=default --reporter=github-actions --reporter=junit --outputFile=test-results/junit-scripts.xml"
+        "command": "pnpm exec tsx scripts/run-vitest-ci.ts scripts"
       },
       "outputs": [
-        "{workspaceRoot}/coverage",
+        "{workspaceRoot}/coverage/scripts",
         "{workspaceRoot}/test-results/junit-scripts.xml"
       ]
     }
