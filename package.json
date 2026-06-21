@@ -17,22 +17,28 @@
     "test:watch": "vitest",
     "storybook": "pnpm --filter @dev-ui/tokens run generate-scss && pnpm --filter @dev-ui/storybook run storybook",
     "build:storybook": "pnpm --filter @dev-ui/tokens run generate-scss && pnpm --filter @dev-ui/components run build && pnpm --filter @dev-ui/storybook run build-storybook",
-    "test:e2e": "pnpm --filter @dev-ui/storybook run test:e2e",
-    "test:e2e:update": "pnpm --filter @dev-ui/storybook run test:e2e:update"
+    "test:e2e": "nx run storybook:test:e2e",
+    "test:e2e:affected": "nx run storybook:test:e2e:affected",
+    "test:e2e:update": "nx run storybook:test:e2e:update",
+    "affected:e2e": "nx affected -t test:e2e:affected",
+    "precommit:e2e": "pnpm build:tokens && pnpm exec tsx scripts/run-affected-e2e.ts --staged"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.0",
+    "@nx/js": "^23.0.0",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
+    "@vitest/coverage-v8": "^4.1.8",
     "husky": "^9.1.7",
     "jsdom": "^29.1.1",
     "lint-staged": "^17.0.7",
+    "nx": "^23.0.0",
     "react": "catalog:",
     "react-dom": "catalog:",
     "typescript": "^6.0.3",
-    "@vitest/coverage-v8": "^4.1.8",
+    "tsx": "^4.22.4",
     "vitest": "^4.1.8"
   },
   "engines": {

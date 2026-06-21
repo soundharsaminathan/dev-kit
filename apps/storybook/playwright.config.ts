@@ -67,7 +67,7 @@ export default defineConfig({
       "pnpm --filter @dev-ui/tokens run generate-scss && pnpm exec storybook dev -p 6006",
     cwd: dirname,
     url: storybookUrl,
-    reuseExistingServer: false,
+    reuseExistingServer: !isCI,
     timeout: 120_000,
     env: {
       STORYBOOK_PLAYWRIGHT_E2E: "1",
