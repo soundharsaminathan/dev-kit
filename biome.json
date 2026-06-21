@@ -55,7 +55,7 @@
       "semicolons": "always",
       "trailingCommas": "all"
     },
-    "jsxRuntime": "transparent"
+    "jsxRuntime": "reactClassic"
   },
   "json": {
     "formatter": {
