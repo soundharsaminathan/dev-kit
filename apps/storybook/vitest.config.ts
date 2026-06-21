@@ -29,8 +29,9 @@ export default defineConfig({
     name: "storybook",
     sequence: { groupOrder: 2 },
     coverage: {
-      reportsDirectory: "./coverage",
+      reportsDirectory: path.join(dirname, "../../coverage"),
       include: ["../../packages/components/src/**/*.{ts,tsx}"],
+      reporter: ["text", "text-summary", "html", "lcov", "json-summary"],
       exclude: [
         "**/__tests__/**",
         "**/*.test.{ts,tsx}",

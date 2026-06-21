@@ -37,6 +37,22 @@ jobs:
           path: test-results/junit.xml
           reporter: java-junit
 
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v7
+        if: always() && !cancelled()
+        with:
+          name: coverage-report
+          path: coverage/
+          retention-days: 14
+
+      - name: Publish coverage summary
+        uses: ArtiomTr/jest-coverage-report-action@v2
+        if: github.event_name == 'pull_request' && always() && !cancelled()
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          coverage-file: coverage/coverage-summary.json
+          package-name: dev-kit
+
   visual:
     name: Playwright visual
     runs-on: ubuntu-latest
