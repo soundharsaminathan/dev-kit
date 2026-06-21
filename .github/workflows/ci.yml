@@ -68,7 +68,7 @@ jobs:
           fi
 
       - name: Publish coverage summary
-        uses: marocchino/sticky-pull-request-comment@v2
+        uses: marocchino/sticky-pull-request-comment@v3
         if: steps.coverage.outputs.available == 'true'
         with:
           header: coverage
