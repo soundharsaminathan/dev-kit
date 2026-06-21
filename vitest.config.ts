@@ -13,14 +13,26 @@ const coverageExclude = [
   "**/scss-modules.d.ts",
 ];
 
+const coverageReporters = [
+  "text",
+  "text-summary",
+  "html",
+  "lcov",
+  "json-summary",
+] as const;
+
+const sharedCoverage = {
+  provider: "v8" as const,
+  reporter: [...coverageReporters],
+  exclude: coverageExclude,
+};
+
 export default defineConfig({
   test: {
     maxWorkers: 4,
     coverage: {
-      provider: "v8",
-      reporter: ["text", "text-summary", "html"],
+      ...sharedCoverage,
       reportsDirectory: path.join(rootDir, "coverage"),
-      exclude: coverageExclude,
     },
     projects: [
       {
@@ -30,7 +42,8 @@ export default defineConfig({
           environment: "node",
           sequence: { groupOrder: 0 },
           coverage: {
-            reportsDirectory: "./coverage",
+            ...sharedCoverage,
+            reportsDirectory: path.join(rootDir, "coverage"),
             include: ["src/**/*.{ts,tsx}"],
           },
         },
@@ -47,7 +60,8 @@ export default defineConfig({
           hookTimeout: 15_000,
           sequence: { groupOrder: 1 },
           coverage: {
-            reportsDirectory: "./coverage",
+            ...sharedCoverage,
+            reportsDirectory: path.join(rootDir, "coverage"),
             include: ["src/**/*.{ts,tsx}"],
           },
         },
