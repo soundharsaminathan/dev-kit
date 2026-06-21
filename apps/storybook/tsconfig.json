@@ -8,6 +8,7 @@
   "include": [
     "stories",
     ".storybook",
+    "playwright.config.ts",
     "../../packages/components/src/scss-modules.d.ts"
   ]
 }

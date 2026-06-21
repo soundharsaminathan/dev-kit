@@ -1,12 +1,13 @@
 import path from "node:path";
+import { env } from "node:process";
 import { fileURLToPath } from "node:url";
 import { defineConfig, devices } from "@playwright/test";
 import { RESPONSIVE_TAG, VIEWPORTS } from "./e2e/helpers/viewports";
 
 const dirname = path.dirname(fileURLToPath(import.meta.url));
-const storybookPort = Number(process.env.STORYBOOK_PORT ?? 6006);
-const storybookUrl =
-  process.env.STORYBOOK_URL ?? `http://localhost:${storybookPort}`;
+const storybookPort = Number(env.STORYBOOK_PORT ?? 6006);
+const storybookUrl = env.STORYBOOK_URL ?? `http://localhost:${storybookPort}`;
+const isCI = Boolean(env.CI);
 
 const chromiumUse = {
   ...devices["Desktop Chrome"],
@@ -18,10 +19,10 @@ const chromiumUse = {
 export default defineConfig({
   testDir: path.join(dirname, "e2e"),
   fullyParallel: true,
-  forbidOnly: Boolean(process.env.CI),
-  retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : undefined,
-  reporter: process.env.CI ? [["github"], ["html", { open: "never" }]] : "list",
+  forbidOnly: isCI,
+  retries: isCI ? 2 : 0,
+  ...(isCI ? { workers: 4 } : {}),
+  reporter: isCI ? [["github"], ["html", { open: "never" }]] : "list",
   snapshotPathTemplate:
     "{testDir}/{testFilePath}-snapshots/{arg}-{projectName}{ext}",
   use: {
@@ -66,7 +67,7 @@ export default defineConfig({
       "pnpm --filter @dev-ui/tokens run generate-scss && pnpm exec storybook dev -p 6006",
     cwd: dirname,
     url: storybookUrl,
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: !isCI,
     timeout: 120_000,
   },
 });
