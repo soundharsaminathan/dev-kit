@@ -43,6 +43,7 @@ function ColorEditor({
       >
         <div className={styles.main}>
           <ColorArea
+            aria-label="Saturation and brightness"
             colorSpace="hsb"
             xChannel="saturation"
             yChannel="brightness"

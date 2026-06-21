@@ -6,8 +6,11 @@
     "jsxImportSource": "react"
   },
   "include": [
+    "env.d.ts",
     "stories",
-    ".storybook",
+    ".storybook/**/*.ts",
+    ".storybook/**/*.tsx",
+    "playwright.config.ts",
     "../../packages/components/src/scss-modules.d.ts"
   ]
 }

@@ -5,6 +5,7 @@ import {
   getPopover,
   getSelectTrigger,
   gotoStory,
+  VIEWPORT_SCREENSHOT_OPTIONS,
 } from "./helpers/storybook";
 import { responsiveDescribeOptions } from "./helpers/viewports";
 
@@ -21,7 +22,7 @@ test.describe("Select", () => {
         page.getByRole("button", { name: "Provider" }),
       ).toBeVisible();
       await expect(page).toHaveScreenshot("select-default-closed.png", {
-        fullPage: true,
+        ...VIEWPORT_SCREENSHOT_OPTIONS,
       });
     });
 
@@ -33,7 +34,7 @@ test.describe("Select", () => {
       await page.getByRole("listbox").waitFor({ state: "visible" });
 
       await expect(page).toHaveScreenshot("select-default-open.png", {
-        fullPage: true,
+        ...VIEWPORT_SCREENSHOT_OPTIONS,
       });
     });
   });

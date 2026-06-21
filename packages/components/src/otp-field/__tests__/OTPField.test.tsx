@@ -5,6 +5,32 @@ import { Group } from "../../group/Group";
 import { Input } from "../../input/Input";
 import { OTPField, OTPFieldSeparator } from "../OTPField";
 
+function focusInput(input: HTMLElement) {
+  act(() => {
+    input.focus();
+  });
+}
+
+function changeInput(input: HTMLElement, value: string) {
+  act(() => {
+    fireEvent.change(input, { target: { value } });
+  });
+}
+
+function keyDownInput(input: HTMLElement, key: string) {
+  act(() => {
+    fireEvent.keyDown(input, { key });
+  });
+}
+
+function pasteInput(input: HTMLElement, data: string) {
+  act(() => {
+    fireEvent.paste(input, {
+      clipboardData: { getData: () => data },
+    });
+  });
+}
+
 describe("OTPField", () => {
   it("renders default digit inputs for the given length", () => {
     render(<OTPField length={6} aria-label="Verification code" />);
@@ -46,10 +72,10 @@ describe("OTPField", () => {
     );
     const inputs = screen.getAllByRole("textbox");
 
-    fireEvent.change(inputs[0]!, { target: { value: "1" } });
+    changeInput(inputs[0]!, "1");
     expect(onChange).toHaveBeenLastCalledWith("1");
 
-    fireEvent.change(inputs[1]!, { target: { value: "2" } });
+    changeInput(inputs[1]!, "2");
     expect(onChange).toHaveBeenLastCalledWith("12");
   });
 
@@ -57,7 +83,7 @@ describe("OTPField", () => {
     render(<OTPField length={3} aria-label="Verification code" />);
     const inputs = screen.getAllByRole("textbox");
 
-    fireEvent.change(inputs[0]!, { target: { value: "1" } });
+    changeInput(inputs[0]!, "1");
     expect(inputs[1]).toHaveFocus();
   });
 
@@ -67,9 +93,9 @@ describe("OTPField", () => {
     );
     const inputs = screen.getAllByRole("textbox");
 
-    inputs[1]?.focus();
-    fireEvent.keyDown(inputs[1]!, { key: "Backspace" });
-    fireEvent.keyDown(inputs[1]!, { key: "Backspace" });
+    focusInput(inputs[1]!);
+    keyDownInput(inputs[1]!, "Backspace");
+    keyDownInput(inputs[1]!, "Backspace");
 
     expect(inputs[0]).toHaveFocus();
   });
@@ -85,11 +111,7 @@ describe("OTPField", () => {
     );
     const inputs = screen.getAllByRole("textbox");
 
-    fireEvent.paste(inputs[0]!, {
-      clipboardData: {
-        getData: () => "123456",
-      },
-    });
+    pasteInput(inputs[0]!, "123456");
 
     expect(onChange).toHaveBeenLastCalledWith("123456");
     expect(inputs[5]).toHaveFocus();
@@ -128,8 +150,8 @@ describe("OTPField", () => {
     );
     const inputs = screen.getAllByRole("textbox");
 
-    inputs[1]?.focus();
-    fireEvent.keyDown(inputs[1]!, { key: "Delete" });
+    focusInput(inputs[1]!);
+    keyDownInput(inputs[1]!, "Delete");
 
     expect(onChange).toHaveBeenLastCalledWith("13");
   });
@@ -146,8 +168,8 @@ describe("OTPField", () => {
     );
     const inputs = screen.getAllByRole("textbox");
 
-    inputs[0]?.focus();
-    fireEvent.keyDown(inputs[0]!, { key: "Backspace" });
+    focusInput(inputs[0]!);
+    keyDownInput(inputs[0]!, "Backspace");
 
     expect(onChange).toHaveBeenLastCalledWith("2");
     expect(inputs[0]).toHaveFocus();
@@ -159,11 +181,11 @@ describe("OTPField", () => {
     );
     const inputs = screen.getAllByRole("textbox");
 
-    inputs[1]?.focus();
-    fireEvent.keyDown(inputs[1]!, { key: "ArrowLeft" });
+    focusInput(inputs[1]!);
+    keyDownInput(inputs[1]!, "ArrowLeft");
     expect(inputs[0]).toHaveFocus();
 
-    fireEvent.keyDown(inputs[0]!, { key: "ArrowRight" });
+    keyDownInput(inputs[0]!, "ArrowRight");
     expect(inputs[1]).toHaveFocus();
   });
 
@@ -177,16 +199,11 @@ describe("OTPField", () => {
         onChange={onChange}
       />,
     );
+    const input = screen.getAllByRole("textbox")[0]!;
 
-    fireEvent.change(screen.getAllByRole("textbox")[0]!, {
-      target: { value: "1" },
-    });
-    fireEvent.keyDown(screen.getAllByRole("textbox")[0]!, {
-      key: "Backspace",
-    });
-    fireEvent.paste(screen.getAllByRole("textbox")[0]!, {
-      clipboardData: { getData: () => "123" },
-    });
+    changeInput(input, "1");
+    keyDownInput(input, "Backspace");
+    pasteInput(input, "123");
 
     expect(onChange).not.toHaveBeenCalled();
   });
@@ -202,9 +219,7 @@ describe("OTPField", () => {
       />,
     );
 
-    fireEvent.change(screen.getAllByRole("textbox")[0]!, {
-      target: { value: "1" },
-    });
+    changeInput(screen.getAllByRole("textbox")[0]!, "1");
 
     expect(onChange).not.toHaveBeenCalled();
   });
@@ -219,9 +234,7 @@ describe("OTPField", () => {
       />,
     );
 
-    fireEvent.paste(screen.getAllByRole("textbox")[0]!, {
-      clipboardData: { getData: () => "----" },
-    });
+    pasteInput(screen.getAllByRole("textbox")[0]!, "----");
 
     expect(onChange).not.toHaveBeenCalled();
   });
@@ -237,9 +250,7 @@ describe("OTPField", () => {
     );
     const inputs = screen.getAllByRole("textbox");
 
-    fireEvent.paste(inputs[2]!, {
-      clipboardData: { getData: () => "345678" },
-    });
+    pasteInput(inputs[2]!, "345678");
 
     expect(onChange).toHaveBeenLastCalledWith("34");
     expect(inputs[3]).toHaveFocus();
@@ -260,9 +271,7 @@ describe("OTPField", () => {
       </OTPField>,
     );
 
-    fireEvent.change(screen.getAllByRole("textbox")[0]!, {
-      target: { value: "1" },
-    });
+    changeInput(screen.getAllByRole("textbox")[0]!, "1");
 
     expect(onChange).not.toHaveBeenCalled();
   });
@@ -277,8 +286,8 @@ describe("OTPField", () => {
 
     act(() => {
       inputs[0]?.focus();
+      fireEvent.focus(inputs[0]!);
     });
-    fireEvent.focus(inputs[0]!);
 
     expect(selectSpy).toHaveBeenCalled();
     selectSpy.mockRestore();
@@ -303,9 +312,7 @@ describe("OTPField", () => {
       />,
     );
 
-    fireEvent.change(screen.getAllByRole("textbox")[0]!, {
-      target: { value: "a1b" },
-    });
+    changeInput(screen.getAllByRole("textbox")[0]!, "a1b");
 
     expect(onChange).toHaveBeenLastCalledWith("1");
   });

@@ -117,6 +117,19 @@ type ColorFieldRootProps = Omit<
   children?: ReactNode;
 };
 
+function resolveFieldLabel(props: {
+  label?: ReactNode;
+  "aria-label"?: string;
+}) {
+  if (typeof props.label === "string") {
+    return props.label;
+  }
+  if (typeof props["aria-label"] === "string") {
+    return props["aria-label"];
+  }
+  return undefined;
+}
+
 function ColorRegularFieldRoot({
   children,
   isDisabled,
@@ -133,8 +146,10 @@ function ColorRegularFieldRoot({
   const inputRef = useRef<HTMLInputElement>(null);
   const resolvedDisabled = Boolean(isDisabled);
   const resolvedInvalid = Boolean(isInvalid);
+  const resolvedLabel = resolveFieldLabel(props);
   const ariaProps = {
     ...mergedProps,
+    ...(resolvedLabel ? { label: resolvedLabel } : {}),
     ...(field?.inputId ? { id: field.inputId } : {}),
     isDisabled: resolvedDisabled,
     isInvalid: resolvedInvalid,
@@ -214,6 +229,7 @@ function ColorChannelFieldRoot({
   const inputRef = useRef<HTMLInputElement>(null);
   const resolvedDisabled = Boolean(isDisabled);
   const resolvedInvalid = Boolean(isInvalid);
+  const resolvedLabel = resolveFieldLabel(props);
   const channelStateOptions = {
     ...mergedProps,
     channel,
@@ -223,6 +239,7 @@ function ColorChannelFieldRoot({
   const ariaProps = {
     ...mergedProps,
     channel,
+    ...(resolvedLabel ? { label: resolvedLabel } : {}),
     ...(colorSpace !== undefined ? { colorSpace } : {}),
     ...(field?.inputId ? { id: field.inputId } : {}),
     isDisabled: resolvedDisabled,

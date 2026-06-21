@@ -1,4 +1,5 @@
 @use "@dev-ui/tokens/scss" as *;
+@use "../shared/visually-hidden" as *;
 
 .root {
   display: inline-flex;
@@ -28,4 +29,8 @@
 .verticalSlider {
   height: auto;
   align-self: stretch;
+}
+
+.srOnly {
+  @include visually-hidden;
 }

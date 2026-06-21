@@ -4,6 +4,7 @@ import {
   expectOverlayBelowTrigger,
   gotoStory,
   openTooltip,
+  VIEWPORT_SCREENSHOT_OPTIONS,
 } from "./helpers/storybook";
 import { responsiveDescribeOptions } from "./helpers/viewports";
 
@@ -22,7 +23,7 @@ test.describe("Tooltip", () => {
         page.getByRole("button", { name: TRIGGER_NAME }),
       ).toBeVisible();
       await expect(page).toHaveScreenshot("tooltip-default-closed.png", {
-        fullPage: true,
+        ...VIEWPORT_SCREENSHOT_OPTIONS,
       });
     });
 
@@ -32,7 +33,7 @@ test.describe("Tooltip", () => {
       await openTooltip(page, TRIGGER_NAME);
 
       await expect(page).toHaveScreenshot("tooltip-default-open.png", {
-        fullPage: true,
+        ...VIEWPORT_SCREENSHOT_OPTIONS,
       });
     });
   });
