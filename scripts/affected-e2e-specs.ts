@@ -192,6 +192,12 @@ export function toPlaywrightArgs(result: AffectedE2eResult): string[] {
   return result.specs.map((spec) => `e2e/${spec}`);
 }
 
+export function resolveAffectedE2eForArgv(argv: string[]): AffectedE2eResult {
+  return hasFlag(argv, "--staged")
+    ? resolveAffectedE2eFromStaged()
+    : resolveAffectedE2eFromGit(parseBaseArg(argv));
+}
+
 function parseBaseArg(argv: string[]): string {
   const baseFlagIndex = argv.indexOf("--base");
   if (baseFlagIndex !== -1 && argv[baseFlagIndex + 1]) {
@@ -205,19 +211,29 @@ function hasFlag(argv: string[], flag: string): boolean {
   return argv.includes(flag);
 }
 
+export function formatAffectedE2eCliOutput(result: AffectedE2eResult): {
+  stdout: string;
+  stderr?: string;
+} {
+  if (result.mode === "all") {
+    return { stdout: "all", stderr: result.reason };
+  }
+
+  if (result.mode === "none") {
+    return { stdout: "none", stderr: result.reason };
+  }
+
+  return { stdout: result.specs.join("\n") };
+}
+
 if (import.meta.url.endsWith(process.argv[1]?.replaceAll("\\", "/") ?? "")) {
   const argv = process.argv.slice(2);
-  const result = hasFlag(argv, "--staged")
-    ? resolveAffectedE2eFromStaged()
-    : resolveAffectedE2eFromGit(parseBaseArg(argv));
+  const result = resolveAffectedE2eForArgv(argv);
+  const { stdout, stderr } = formatAffectedE2eCliOutput(result);
 
-  if (result.mode === "all") {
-    console.log("all");
-    console.error(result.reason);
-  } else if (result.mode === "none") {
-    console.log("none");
-    console.error(result.reason);
-  } else {
-    console.log(result.specs.join("\n"));
+  console.log(stdout);
+
+  if (stderr) {
+    console.error(stderr);
   }
 }
