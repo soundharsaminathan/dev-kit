@@ -1,12 +1,8 @@
 import "@testing-library/jest-dom/vitest";
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { Dialog } from "../../dialog/Dialog";
 import { Overlay } from "../Overlay";
-
-vi.mock("../../hooks/use-is-mobile", () => ({
-  useIsMobile: () => false,
-}));
 
 describe("Overlay", () => {
   it("renders modal content by default", () => {

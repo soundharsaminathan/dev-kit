@@ -1,0 +1,27 @@
+{
+  "name": "scripts",
+  "$schema": "../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "scripts",
+  "projectType": "library",
+  "tags": ["scope:scripts", "type:lib"],
+  "targets": {
+    "test": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "{workspaceRoot}",
+        "command": "vitest run --config vitest.config.ts --project scripts"
+      }
+    },
+    "test:ci": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "{workspaceRoot}",
+        "command": "vitest run --coverage --config vitest.config.ts --project scripts --reporter=default --reporter=github-actions --reporter=junit --outputFile=test-results/junit-scripts.xml"
+      },
+      "outputs": [
+        "{workspaceRoot}/coverage",
+        "{workspaceRoot}/test-results/junit-scripts.xml"
+      ]
+    }
+  }
+}

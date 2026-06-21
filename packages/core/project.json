@@ -6,6 +6,40 @@
   "tags": ["scope:shared", "type:lib"],
   "implicitDependencies": ["tokens"],
   "targets": {
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "packages/core",
+        "command": "tsc -b --pretty false"
+      },
+      "dependsOn": ["tokens:typecheck"]
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "{workspaceRoot}",
+        "command": "vitest run --config vitest.config.ts --project core"
+      }
+    },
+    "test:ci": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "{workspaceRoot}",
+        "command": "vitest run --coverage --config vitest.config.ts --project core --reporter=default --reporter=github-actions --reporter=junit --outputFile=test-results/junit-core.xml"
+      },
+      "outputs": [
+        "{workspaceRoot}/coverage",
+        "{workspaceRoot}/test-results/junit-core.xml"
+      ]
+    },
+    "test:coverage": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "{workspaceRoot}",
+        "command": "vitest run --coverage --config vitest.config.ts --project core"
+      },
+      "outputs": ["{workspaceRoot}/coverage"]
+    },
     "build": {
       "executor": "nx:run-script",
       "options": {

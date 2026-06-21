@@ -12,7 +12,11 @@
     ],
     "sharedGlobals": [
       "{workspaceRoot}/pnpm-lock.yaml",
-      "{workspaceRoot}/tsconfig.json"
+      "{workspaceRoot}/tsconfig.json",
+      "{workspaceRoot}/tsconfig.base.json",
+      "{workspaceRoot}/biome.json",
+      "{workspaceRoot}/vitest.config.ts",
+      "{workspaceRoot}/vitest.setup.ts"
     ],
     "e2eInputs": [
       "default",
@@ -28,9 +32,35 @@
       "cache": true,
       "inputs": ["production", "^production"]
     },
+    "build": {
+      "cache": true,
+      "inputs": ["production", "^production"]
+    },
+    "build-storybook": {
+      "cache": true,
+      "inputs": ["production", "^production"]
+    },
     "test": {
       "cache": true,
       "inputs": ["default", "^production"]
+    },
+    "test:ci": {
+      "cache": true,
+      "inputs": ["default", "^production"],
+      "outputs": ["{workspaceRoot}/coverage", "{workspaceRoot}/test-results"]
+    },
+    "test:coverage": {
+      "cache": true,
+      "inputs": ["default", "^production"],
+      "outputs": ["{workspaceRoot}/coverage"]
+    },
+    "typecheck": {
+      "cache": true,
+      "inputs": ["production", "^production"]
+    },
+    "biome:check": {
+      "cache": true,
+      "inputs": ["default", "{workspaceRoot}/biome.json"]
     },
     "test:e2e": {
       "cache": true,
@@ -48,5 +78,6 @@
         "analyzeSourceFiles": false
       }
     }
-  ]
+  ],
+  "analytics": true
 }

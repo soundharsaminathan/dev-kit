@@ -5,6 +5,13 @@
   "projectType": "library",
   "tags": ["scope:shared", "type:lib"],
   "targets": {
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "packages/tokens",
+        "command": "tsc -b --pretty false"
+      }
+    },
     "build:tokens": {
       "executor": "nx:run-script",
       "options": {

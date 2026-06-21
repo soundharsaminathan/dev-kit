@@ -6,6 +6,50 @@
   "tags": ["scope:storybook", "type:app"],
   "implicitDependencies": ["components", "tokens"],
   "targets": {
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "apps/storybook",
+        "command": "tsc -b --pretty false"
+      },
+      "dependsOn": ["^typecheck"]
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "{workspaceRoot}",
+        "command": "vitest run --config vitest.config.ts --project storybook"
+      },
+      "dependsOn": ["tokens:build:tokens"]
+    },
+    "test:ci": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "{workspaceRoot}",
+        "command": "vitest run --coverage --config vitest.config.ts --project storybook --reporter=default --reporter=github-actions --reporter=junit --outputFile=test-results/junit-storybook.xml"
+      },
+      "dependsOn": ["tokens:build:tokens"],
+      "outputs": [
+        "{workspaceRoot}/coverage",
+        "{workspaceRoot}/test-results/junit-storybook.xml"
+      ]
+    },
+    "storybook": {
+      "executor": "nx:run-script",
+      "options": {
+        "script": "storybook"
+      },
+      "continuous": true,
+      "dependsOn": ["tokens:build:tokens"]
+    },
+    "build-storybook": {
+      "executor": "nx:run-script",
+      "options": {
+        "script": "build-storybook"
+      },
+      "outputs": ["{projectRoot}/storybook-static"],
+      "dependsOn": ["components:build"]
+    },
     "test:e2e": {
       "executor": "nx:run-commands",
       "options": {
