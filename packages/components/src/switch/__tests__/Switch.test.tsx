@@ -32,7 +32,11 @@ describe("Switch", () => {
   });
 
   it("renders a standalone indicator by wrapping it in control", () => {
-    render(<SwitchIndicator aria-label="Standalone" />);
+    render(
+      <SwitchControl aria-label="Standalone">
+        <SwitchIndicator />
+      </SwitchControl>,
+    );
     expect(
       screen.getByRole("switch", { name: "Standalone" }),
     ).toBeInTheDocument();
@@ -74,8 +78,8 @@ describe("Switch", () => {
 
   it("applies explicit indicator size", () => {
     render(
-      <Switch aria-label="Notifications">
-        <SwitchControl>
+      <Switch>
+        <SwitchControl aria-label="Notifications">
           <SwitchIndicator size="sm" />
         </SwitchControl>
       </Switch>,
@@ -91,8 +95,8 @@ describe("Switch", () => {
 
   it("renders custom indicator and thumb content", () => {
     render(
-      <Switch aria-label="Notifications">
-        <SwitchControl>
+      <Switch>
+        <SwitchControl aria-label="Notifications">
           <SwitchIndicator className="custom-indicator">
             <SwitchThumb className="custom-thumb" />
           </SwitchIndicator>

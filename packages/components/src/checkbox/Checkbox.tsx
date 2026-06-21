@@ -66,14 +66,17 @@ function Checkbox({
   ...props
 }: CheckboxProps) {
   const autoId = useId();
+  const labelId = useId();
   const inputId = idProp ?? autoId;
 
   return (
     <div ref={ref} data-checkbox="" className={cn(styles.root, className)}>
       {typeof children === "string" ? (
         <>
-          <CheckboxControl {...props} id={inputId} />
-          <Label htmlFor={inputId}>{children}</Label>
+          <CheckboxControl {...props} id={inputId} aria-labelledby={labelId} />
+          <Label id={labelId} htmlFor={inputId}>
+            {children}
+          </Label>
         </>
       ) : (
         ((children as ReactNode) ?? <CheckboxControl {...props} id={inputId} />)

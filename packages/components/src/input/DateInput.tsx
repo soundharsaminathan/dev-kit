@@ -13,6 +13,21 @@ import styles from "./input.module.scss";
 const normalizeSegmentWhitespace = (text: string) =>
   text.replace(/[\u00A0\u2007\u2009\u202F]/g, " ");
 
+function getDateSegmentKeys(segments: DateSegment[]): string[] {
+  const literalOccurrence = new Map<string, number>();
+
+  return segments.map((segment) => {
+    if (segment.type !== "literal") {
+      return segment.type;
+    }
+
+    const text = normalizeSegmentWhitespace(segment.text);
+    const occurrence = literalOccurrence.get(text) ?? 0;
+    literalOccurrence.set(text, occurrence + 1);
+    return `literal-${text}-${occurrence}`;
+  });
+}
+
 function DateSegmentInner({
   segment,
   state,
@@ -41,6 +56,7 @@ function DateInput({ size = "md", className }: DateInputProps) {
   const context = useDateInputContext("DateInput");
   const ref = useRef<HTMLDivElement>(null);
   const state = context.state;
+  const segmentKeys = getDateSegmentKeys(state.segments);
 
   return (
     <div
@@ -52,9 +68,9 @@ function DateInput({ size = "md", className }: DateInputProps) {
       data-disabled={state.isDisabled ? "true" : undefined}
       className={cn(styles.dateInput, className)}
     >
-      {state.segments.map((segment) => (
+      {state.segments.map((segment, index) => (
         <DateSegmentInner
-          key={`${segment.type}-${normalizeSegmentWhitespace(segment.text)}-${segment.isPlaceholder}`}
+          key={segmentKeys[index]}
           segment={segment}
           state={state}
         />

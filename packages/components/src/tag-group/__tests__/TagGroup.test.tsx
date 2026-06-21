@@ -6,7 +6,7 @@ import { Tag, TagGroup, TagGroupLabel, TagList } from "../TagGroup";
 describe("TagGroup", () => {
   it("renders tags from static children", () => {
     render(
-      <TagGroup size="md">
+      <TagGroup aria-label="Categories" size="md">
         <TagGroupLabel>Categories</TagGroupLabel>
         <TagList>
           <Tag>News</Tag>
@@ -32,7 +32,7 @@ describe("TagGroup", () => {
     const onRemove = vi.fn();
 
     render(
-      <TagGroup onRemove={onRemove}>
+      <TagGroup aria-label="Tags" onRemove={onRemove}>
         <TagList>
           <Tag id="news">News</Tag>
           <Tag id="travel">Travel</Tag>
@@ -51,7 +51,7 @@ describe("TagGroup", () => {
 
   it("marks disabled tags", () => {
     render(
-      <TagGroup>
+      <TagGroup aria-label="Tags">
         <TagList>
           <Tag isDisabled>News</Tag>
           <Tag>Travel</Tag>
@@ -67,7 +67,7 @@ describe("TagGroup", () => {
 
   it("marks tags with links", () => {
     render(
-      <TagGroup>
+      <TagGroup aria-label="Tags">
         <TagList>
           <Tag href="#">News</Tag>
         </TagList>
@@ -82,7 +82,11 @@ describe("TagGroup", () => {
 
   it("supports explicit tag ids and text values", () => {
     render(
-      <TagGroup selectionMode="single" defaultSelectedKeys={["custom-id"]}>
+      <TagGroup
+        aria-label="Tags"
+        selectionMode="single"
+        defaultSelectedKeys={["custom-id"]}
+      >
         <TagList>
           <Tag id="custom-id" textValue="Custom news">
             News
@@ -99,7 +103,7 @@ describe("TagGroup", () => {
 
   it("reflects hover and focus-visible states on tags", () => {
     render(
-      <TagGroup>
+      <TagGroup aria-label="Tags">
         <TagList>
           <Tag>News</Tag>
         </TagList>
@@ -120,7 +124,7 @@ describe("TagGroup", () => {
 
   it("does not reflect hover on disabled tags", () => {
     render(
-      <TagGroup>
+      <TagGroup aria-label="Tags">
         <TagList>
           <Tag isDisabled>News</Tag>
         </TagList>
@@ -136,7 +140,7 @@ describe("TagGroup", () => {
 
   it("applies size to the group and tag list", () => {
     render(
-      <TagGroup size="lg">
+      <TagGroup aria-label="Tags" size="lg">
         <TagList>
           <Tag>News</Tag>
         </TagList>
@@ -171,7 +175,7 @@ describe("TagGroup", () => {
 
   it("applies custom class names", () => {
     render(
-      <TagGroup className="custom-group">
+      <TagGroup aria-label="Categories" className="custom-group">
         <TagGroupLabel className="custom-label">Categories</TagGroupLabel>
         <TagList className="custom-list">
           <Tag>News</Tag>

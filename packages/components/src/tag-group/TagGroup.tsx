@@ -85,6 +85,13 @@ function getTagCollectionChild(item: TagItem): CollectionElement<TagItem> {
   ) as CollectionElement<TagItem>;
 }
 
+function getLabelText(children: ReactNode): string | undefined {
+  if (typeof children === "string" || typeof children === "number") {
+    return String(children);
+  }
+  return undefined;
+}
+
 function TagGroup({
   children,
   className,
@@ -93,6 +100,14 @@ function TagGroup({
   ...props
 }: TagGroupProps<TagItem>) {
   const listRef = useRef<HTMLDivElement>(null);
+  const labelChild = findChildByDisplayName(children, "TagGroupLabel");
+  const labelFromChild = labelChild
+    ? getLabelText((labelChild.props as { children?: ReactNode }).children)
+    : undefined;
+  const resolvedLabel =
+    props.label ??
+    labelFromChild ??
+    (typeof props["aria-label"] === "string" ? props["aria-label"] : undefined);
   const tagListChild = findChildByDisplayName(children, "TagList");
   const tagItems = useMemo(
     () =>
@@ -114,6 +129,7 @@ function TagGroup({
     useTagGroup(
       {
         ...props,
+        ...(resolvedLabel ? { label: resolvedLabel } : {}),
         ...(onRemove !== undefined ? { onRemove } : {}),
       },
       state,
@@ -156,6 +172,7 @@ function TagGroupLabel({ className, ...props }: TagGroupLabelProps) {
     />
   );
 }
+TagGroupLabel.displayName = "TagGroupLabel";
 
 function TagList({ className, children: _children, ...props }: TagListProps) {
   const { gridProps, listRef, state, size } = useTagGroupContext("TagList");

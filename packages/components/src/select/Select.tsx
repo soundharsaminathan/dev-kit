@@ -104,7 +104,10 @@ function Select<T extends CollectionItem>({
   const labelFromChild = labelChild
     ? getLabelText((labelChild.props as { children?: ReactNode }).children)
     : undefined;
-  const resolvedLabel = props.label ?? labelFromChild;
+  const resolvedLabel =
+    props.label ??
+    labelFromChild ??
+    (typeof props["aria-label"] === "string" ? props["aria-label"] : undefined);
   const selectAriaProps = {
     ...props,
     ...(resolvedLabel ? { label: resolvedLabel } : {}),
