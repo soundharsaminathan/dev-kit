@@ -6,6 +6,7 @@ import {
   getPopover,
   gotoStory,
   openCombobox,
+  VIEWPORT_SCREENSHOT_OPTIONS,
 } from "./helpers/storybook";
 import { responsiveDescribeOptions } from "./helpers/viewports";
 
@@ -20,7 +21,7 @@ test.describe("Combobox", () => {
 
       await expect(getComboboxInput(page)).toBeVisible();
       await expect(page).toHaveScreenshot("combobox-default-closed.png", {
-        fullPage: true,
+        ...VIEWPORT_SCREENSHOT_OPTIONS,
       });
     });
 
@@ -30,7 +31,7 @@ test.describe("Combobox", () => {
       await openCombobox(page);
 
       await expect(page).toHaveScreenshot("combobox-default-open.png", {
-        fullPage: true,
+        ...VIEWPORT_SCREENSHOT_OPTIONS,
       });
     });
   });

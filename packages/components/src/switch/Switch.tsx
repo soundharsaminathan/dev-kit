@@ -41,6 +41,7 @@ function Switch({
   ...props
 }: SwitchProps) {
   const autoId = useId();
+  const labelId = useId();
   const inputId = idProp ?? autoId;
 
   return (
@@ -48,8 +49,15 @@ function Switch({
       <div ref={ref} data-switch="" className={cn(styles.root, className)}>
         {typeof children === "string" ? (
           <>
-            <SwitchControl {...props} id={inputId} size={size} />
-            <Label htmlFor={inputId}>{children}</Label>
+            <SwitchControl
+              {...props}
+              id={inputId}
+              size={size}
+              aria-labelledby={labelId}
+            />
+            <Label id={labelId} htmlFor={inputId}>
+              {children}
+            </Label>
           </>
         ) : (
           ((children as ReactNode) ?? (

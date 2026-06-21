@@ -7,6 +7,7 @@ export type DialogContextValue = {
   triggerRef: RefObject<Element | null>;
   overlayTriggerProps: HTMLAttributes<HTMLElement>;
   panelRef: RefObject<HTMLDivElement | null>;
+  titleId: string;
   titlePropsRef: RefObject<HTMLAttributes<HTMLElement>>;
   descriptionId: string | undefined;
   setDescriptionId: (id: string | undefined) => void;

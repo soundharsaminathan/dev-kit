@@ -25,6 +25,7 @@
     "@storybook/addon-vitest": "^10.4.4",
     "@storybook/react": "^10.4.4",
     "@storybook/react-vite": "^10.4.4",
+    "@types/node": "^25.9.3",
     "@vitest/browser-playwright": "^4.1.8",
     "mockdate": "^3.0.5",
     "msw": "^2.14.6",

@@ -4,7 +4,17 @@ import { useLocale } from "@react-aria/i18n";
 import { useNumberField } from "@react-aria/numberfield";
 import { mergeProps } from "@react-aria/utils";
 import { useNumberFieldState } from "@react-stately/numberfield";
-import { createContext, useContext, useMemo, useRef } from "react";
+import {
+  Children,
+  cloneElement,
+  createContext,
+  type HTMLAttributes,
+  isValidElement,
+  type ReactNode,
+  useContext,
+  useMemo,
+  useRef,
+} from "react";
 import { Field } from "../field/Field";
 import { useFieldContext, useFieldInputAria } from "../field/field-context";
 import styles from "./number-field.module.scss";
@@ -52,6 +62,35 @@ function PlusIcon() {
   );
 }
 
+function getLabelText(children: ReactNode): string | undefined {
+  if (typeof children === "string" || typeof children === "number") {
+    return String(children);
+  }
+  return undefined;
+}
+
+function renderNumberFieldChildren(
+  children: ReactNode,
+  labelProps: React.HTMLAttributes<HTMLElement>,
+  hasLabelProp: boolean,
+) {
+  return Children.map(children, (child) => {
+    if (!isValidElement(child)) {
+      return child;
+    }
+
+    const type = child.type as { displayName?: string };
+    if (!hasLabelProp && type.displayName === "Label") {
+      return cloneElement(
+        child,
+        mergeProps(labelProps, child.props as HTMLAttributes<HTMLElement>),
+      );
+    }
+
+    return child;
+  });
+}
+
 function NumberField({
   children,
   className,
@@ -81,15 +120,33 @@ function NumberFieldRoot({
   const field = useFieldContext();
   const inputRef = useRef<HTMLInputElement>(null);
   const { locale } = useLocale();
+  const labelChild = Children.toArray(children).find(
+    (child) =>
+      isValidElement(child) &&
+      (child.type as { displayName?: string }).displayName === "Label",
+  );
+  const labelFromChild = isValidElement(labelChild)
+    ? getLabelText((labelChild.props as { children?: ReactNode }).children)
+    : undefined;
+  const resolvedLabel =
+    props.label ??
+    labelFromChild ??
+    (typeof props["aria-label"] === "string" ? props["aria-label"] : undefined);
   const ariaProps: Parameters<typeof useNumberField>[0] = {
     ...props,
+    ...(resolvedLabel ? { label: resolvedLabel } : {}),
     ...(field?.inputId ? { id: field.inputId } : {}),
     ...(isDisabled !== undefined ? { isDisabled } : {}),
     ...(isInvalid !== undefined ? { isInvalid } : {}),
   };
   const state = useNumberFieldState({ ...props, locale });
-  const { groupProps, inputProps, incrementButtonProps, decrementButtonProps } =
-    useNumberField(ariaProps, state, inputRef);
+  const {
+    groupProps,
+    inputProps,
+    incrementButtonProps,
+    decrementButtonProps,
+    labelProps,
+  } = useNumberField(ariaProps, state, inputRef);
 
   const contextValue = useMemo(
     () => ({
@@ -115,7 +172,9 @@ function NumberFieldRoot({
 
   return (
     <NumberFieldContext.Provider value={contextValue}>
-      {children ?? (
+      {children ? (
+        renderNumberFieldChildren(children, labelProps, Boolean(props.label))
+      ) : (
         <NumberFieldGroup>
           <NumberFieldDecrement />
           <NumberFieldInput />

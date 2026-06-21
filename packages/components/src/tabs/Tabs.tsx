@@ -54,14 +54,18 @@ function Tabs<T extends object>({
   ref: _ref,
   ...stateProps
 }: TabsProps<T>) {
+  const hasTabList = useMemo(
+    () => Boolean(findChildByDisplayName(children, "TabList")),
+    [children],
+  );
   const tabItems = useMemo(() => {
     const tabList = findChildByDisplayName(children, "TabList");
-    if (!tabList || !isValidElement(tabList)) {
-      return [];
+    if (tabList && isValidElement(tabList)) {
+      const tabListChildren = (tabList.props as { children?: ReactNode })
+        .children;
+      return parseCollectionItems(tabListChildren, "Tab");
     }
-    const tabListChildren = (tabList.props as { children?: ReactNode })
-      .children;
-    return parseCollectionItems(tabListChildren, "Tab");
+    return parseCollectionItems(children, "TabPanel");
   }, [children]);
 
   const state = useTabListState({
@@ -86,6 +90,19 @@ function Tabs<T extends object>({
         data-orientation={orientation}
         className={cn(styles.root, className)}
       >
+        {!hasTabList && tabItems.length > 0 ? (
+          <TabList
+            aria-hidden="true"
+            className={styles.hiddenTabList}
+            data-hidden-tab-list=""
+          >
+            {tabItems.map((item) => (
+              <Tab key={String(item.id)} id={item.id}>
+                {String(item.id)}
+              </Tab>
+            ))}
+          </TabList>
+        ) : null}
         {children}
       </div>
     </TabsContext.Provider>
@@ -97,6 +114,7 @@ function TabList({
   className,
   variant = "default",
   ref,
+  ...props
 }: TabListProps) {
   const { state, orientation } = useTabsContext("TabList");
   const tabListRef = useRef<HTMLDivElement>(null);
@@ -106,7 +124,7 @@ function TabList({
   return (
     <TabListContext.Provider value={listContext}>
       <div
-        {...tabListProps}
+        {...mergeProps(tabListProps, props)}
         ref={composeRefs(tabListRef, ref)}
         data-tab-list=""
         data-orientation={orientation}

@@ -36,7 +36,11 @@ describe("Checkbox", () => {
   });
 
   it("renders a standalone indicator by wrapping it in control", () => {
-    render(<CheckboxIndicator aria-label="Standalone" />);
+    render(
+      <CheckboxControl aria-label="Standalone">
+        <CheckboxIndicator />
+      </CheckboxControl>,
+    );
     expect(
       screen.getByRole("checkbox", { name: "Standalone" }),
     ).toBeInTheDocument();

@@ -5,6 +5,7 @@ import {
   getMenuContent,
   gotoStory,
   openContextMenu,
+  VIEWPORT_SCREENSHOT_OPTIONS,
 } from "./helpers/storybook";
 import { responsiveDescribeOptions } from "./helpers/viewports";
 
@@ -20,7 +21,7 @@ test.describe("ContextMenu", () => {
 
       await expect(page.getByText("Right click me")).toBeVisible();
       await expect(page).toHaveScreenshot("context-menu-default-closed.png", {
-        fullPage: true,
+        ...VIEWPORT_SCREENSHOT_OPTIONS,
       });
     });
 
@@ -30,7 +31,7 @@ test.describe("ContextMenu", () => {
       await openContextMenu(page);
 
       await expect(page).toHaveScreenshot("context-menu-default-open.png", {
-        fullPage: true,
+        ...VIEWPORT_SCREENSHOT_OPTIONS,
       });
     });
 
@@ -42,7 +43,7 @@ test.describe("ContextMenu", () => {
       await expect(page).toHaveScreenshot(
         "context-menu-button-trigger-open.png",
         {
-          fullPage: true,
+          ...VIEWPORT_SCREENSHOT_OPTIONS,
         },
       );
     });

@@ -5,7 +5,12 @@ import { ColorArea } from "../color-area/ColorArea";
 import { ColorPickerStateContext } from "../color-context";
 import { ColorSlider } from "../color-slider/ColorSlider";
 import { ColorSwatch } from "../color-swatch/ColorSwatch";
-import { Dialog, DialogBody, DialogContent } from "../dialog/Dialog";
+import {
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogTitle,
+} from "../dialog/Dialog";
 import { Modal } from "../modal/Modal";
 import styles from "./color-picker.module.scss";
 import type { ColorPickerProps } from "./types";
@@ -41,9 +46,11 @@ function ColorPicker({
           {children ? null : (
             <Modal>
               <DialogContent>
+                <DialogTitle className={styles.srOnly}>Pick color</DialogTitle>
                 <DialogBody className={styles.content}>
                   <div className={styles.areaRow}>
                     <ColorArea
+                      aria-label="Saturation and brightness"
                       colorSpace="hsb"
                       xChannel="saturation"
                       yChannel="brightness"

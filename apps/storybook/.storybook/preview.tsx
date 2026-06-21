@@ -1,9 +1,8 @@
-/** @jsx react-jsx */
 import { OverlayProvider } from "@dev-ui/components/popover";
 import type { Preview } from "@storybook/react-vite";
 import MockDate from "mockdate";
 import { initialize, mswLoader } from "msw-storybook-addon";
-import { type ReactNode, useLayoutEffect } from "react";
+import React, { type ReactNode, useLayoutEffect } from "react";
 import "@dev-ui/tokens/scss";
 import "@dev-ui/components/styles";
 import "./preview.css";
@@ -49,7 +48,7 @@ function ThemeSync({
     localStorage.setItem("theme-mode", mode);
   }, [preset, mode]);
 
-  return <>{children}</>;
+  return children;
 }
 
 const preview: Preview = {
@@ -90,6 +89,11 @@ const preview: Preview = {
   initialGlobals: {
     themePreset: "modern-minimal",
     themeMode: "light",
+    // Playwright e2e runs its own axe scans via @axe-core/playwright; disable
+    // addon auto-runs to avoid conflicting axe-core versions on window.axe.
+    a11y: {
+      manual: true,
+    },
   },
   decorators: [
     (Story, context) => {

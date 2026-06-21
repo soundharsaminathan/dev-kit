@@ -1,4 +1,9 @@
 @use "@dev-ui/tokens/scss" as *;
+@use "../shared/visually-hidden" as *;
+
+.hiddenTabList {
+  @include visually-hidden;
+}
 
 .root {
   display: flex;

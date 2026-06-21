@@ -1,6 +1,10 @@
 import { expect, test } from "@playwright/test";
 import { expectStoryAccessible } from "./helpers/a11y";
-import { getTabsRoot, gotoStory } from "./helpers/storybook";
+import {
+  getTabsRoot,
+  gotoStory,
+  VIEWPORT_SCREENSHOT_OPTIONS,
+} from "./helpers/storybook";
 import { responsiveDescribeOptions } from "./helpers/viewports";
 
 const STORIES = {
@@ -15,7 +19,7 @@ test.describe("Tabs", () => {
 
       await expect(page.getByRole("tab", { name: "Account" })).toBeVisible();
       await expect(page).toHaveScreenshot("tabs-default-account.png", {
-        fullPage: true,
+        ...VIEWPORT_SCREENSHOT_OPTIONS,
       });
     });
 
@@ -29,7 +33,7 @@ test.describe("Tabs", () => {
       );
 
       await expect(page).toHaveScreenshot("tabs-default-password.png", {
-        fullPage: true,
+        ...VIEWPORT_SCREENSHOT_OPTIONS,
       });
     });
 
@@ -38,7 +42,7 @@ test.describe("Tabs", () => {
 
       await expect(page.getByRole("tab", { name: "Account" })).toBeVisible();
       await expect(page).toHaveScreenshot("tabs-line-account.png", {
-        fullPage: true,
+        ...VIEWPORT_SCREENSHOT_OPTIONS,
       });
     });
   });

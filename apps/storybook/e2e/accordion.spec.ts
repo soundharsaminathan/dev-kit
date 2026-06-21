@@ -4,6 +4,7 @@ import {
   getDisclosure,
   getDisclosurePanel,
   gotoStory,
+  VIEWPORT_SCREENSHOT_OPTIONS,
 } from "./helpers/storybook";
 import { responsiveDescribeOptions } from "./helpers/viewports";
 
@@ -26,7 +27,7 @@ test.describe("Accordion", () => {
         page.getByRole("button", { name: FIRST_QUESTION }),
       ).toBeVisible();
       await expect(page).toHaveScreenshot("accordion-default-collapsed.png", {
-        fullPage: true,
+        ...VIEWPORT_SCREENSHOT_OPTIONS,
       });
     });
 
@@ -42,7 +43,7 @@ test.describe("Accordion", () => {
       await expect(page).toHaveScreenshot(
         "accordion-default-first-expanded.png",
         {
-          fullPage: true,
+          ...VIEWPORT_SCREENSHOT_OPTIONS,
         },
       );
     });
@@ -58,7 +59,7 @@ test.describe("Accordion", () => {
       await expect(page).toHaveScreenshot(
         "accordion-allows-multiple-one-expanded.png",
         {
-          fullPage: true,
+          ...VIEWPORT_SCREENSHOT_OPTIONS,
         },
       );
     });
@@ -74,7 +75,7 @@ test.describe("Accordion", () => {
       await expect(page).toHaveScreenshot(
         "accordion-default-expanded-second.png",
         {
-          fullPage: true,
+          ...VIEWPORT_SCREENSHOT_OPTIONS,
         },
       );
     });
