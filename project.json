@@ -51,7 +51,10 @@
         "storybook:test:ci",
         "scripts:test:ci"
       ],
-      "outputs": ["{workspaceRoot}/coverage/coverage-summary.json"]
+      "outputs": [
+        "{workspaceRoot}/coverage/coverage-summary.json",
+        "{workspaceRoot}/coverage/lcov.info"
+      ]
     },
     "test:coverage": {
       "executor": "nx:noop",
@@ -64,7 +67,10 @@
         "command": "pnpm exec tsx scripts/merge-coverage.ts"
       },
       "dependsOn": ["core:test:coverage", "components:test:coverage"],
-      "outputs": ["{workspaceRoot}/coverage/coverage-summary.json"]
+      "outputs": [
+        "{workspaceRoot}/coverage/coverage-summary.json",
+        "{workspaceRoot}/coverage/lcov.info"
+      ]
     }
   }
 }

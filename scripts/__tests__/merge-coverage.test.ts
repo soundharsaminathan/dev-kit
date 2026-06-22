@@ -1,10 +1,28 @@
-import { describe, expect, it } from "vitest";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { afterEach, describe, expect, it } from "vitest";
 import {
   computeCoverageTotal,
   mergeCoverageSummaries,
   mergeFileCoverage,
+  mergeLcovReports,
   mergeMetrics,
 } from "../merge-coverage.ts";
+
+const tempDirs: string[] = [];
+
+function makeTempDir(): string {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "dev-kit-coverage-"));
+  tempDirs.push(dir);
+  return dir;
+}
+
+afterEach(() => {
+  for (const dir of tempDirs.splice(0)) {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
 
 const metrics = (total: number, covered: number) => ({
   total,
@@ -80,5 +98,29 @@ describe("mergeCoverageSummaries", () => {
 
     expect(merged["src/shared.ts"].lines).toEqual(metrics(4, 3));
     expect(merged["src/shared.ts"].statements).toEqual(metrics(4, 3));
+  });
+});
+
+describe("mergeLcovReports", () => {
+  it("concatenates project lcov files into coverage/lcov.info", () => {
+    const rootDir = makeTempDir();
+    const coreDir = path.join(rootDir, "coverage", "core");
+    const componentsDir = path.join(rootDir, "coverage", "components");
+    fs.mkdirSync(coreDir, { recursive: true });
+    fs.mkdirSync(componentsDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(coreDir, "lcov.info"),
+      "SF:core.ts\nend_of_record\n",
+    );
+    fs.writeFileSync(
+      path.join(componentsDir, "lcov.info"),
+      "SF:button.tsx\nend_of_record\n",
+    );
+
+    const outputPath = mergeLcovReports(rootDir);
+
+    expect(outputPath).toBe(path.join(rootDir, "coverage", "lcov.info"));
+    expect(fs.readFileSync(outputPath!, "utf8")).toContain("SF:core.ts");
+    expect(fs.readFileSync(outputPath!, "utf8")).toContain("SF:button.tsx");
   });
 });

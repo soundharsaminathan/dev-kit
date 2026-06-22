@@ -46,7 +46,7 @@ export function formatCoverageComment(
     formatMetricRow("Functions", total.functions),
     formatMetricRow("Lines", total.lines),
     "",
-    "Download the full HTML report from the `coverage-report` workflow artifact.",
+    "View detailed coverage on [Codecov](https://app.codecov.io/gh/soundharsaminathan/dev-kit), or download the HTML report from the `coverage-report` workflow artifact.",
   ].join("\n");
 }
 

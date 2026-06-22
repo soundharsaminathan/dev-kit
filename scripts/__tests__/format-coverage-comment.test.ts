@@ -24,5 +24,6 @@ describe("formatCoverageComment", () => {
     expect(comment).toContain("| Branches | 68/80 | 85.00% |");
     expect(comment).toContain("| Functions | 38/40 | 95.00% |");
     expect(comment).toContain("| Lines | 95/100 | 95.00% |");
+    expect(comment).toContain("app.codecov.io/gh/soundharsaminathan/dev-kit");
   });
 });

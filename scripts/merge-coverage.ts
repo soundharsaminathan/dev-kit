@@ -125,6 +125,35 @@ export function readProjectCoverageSummaries(
   return summaries;
 }
 
+export function mergeLcovReports(rootDir = workspaceRoot): string | null {
+  const parts: string[] = [];
+
+  for (const project of COVERAGE_PROJECTS) {
+    const lcovPath = path.join(
+      coverageReportsDir(rootDir, project),
+      "lcov.info",
+    );
+
+    if (!fs.existsSync(lcovPath)) {
+      continue;
+    }
+
+    parts.push(fs.readFileSync(lcovPath, "utf8").trimEnd());
+  }
+
+  if (parts.length === 0) {
+    return null;
+  }
+
+  const outputDir = path.join(rootDir, "coverage");
+  fs.mkdirSync(outputDir, { recursive: true });
+
+  const outputPath = path.join(outputDir, "lcov.info");
+  fs.writeFileSync(outputPath, `${parts.join("\n")}\n`);
+
+  return outputPath;
+}
+
 export function writeMergedCoverageSummary(
   rootDir = workspaceRoot,
 ): CoverageSummary & { total: FileCoverage } {
@@ -142,6 +171,7 @@ export function writeMergedCoverageSummary(
 
   const outputPath = path.join(outputDir, "coverage-summary.json");
   fs.writeFileSync(outputPath, `${JSON.stringify(merged, null, 2)}\n`);
+  mergeLcovReports(rootDir);
 
   return merged;
 }

@@ -4,6 +4,8 @@ on:
   pull_request:
     branches: ["**"]
   merge_group:
+  push:
+    branches: [main]
 
 permissions:
   contents: read
@@ -29,7 +31,7 @@ jobs:
         run: pnpm --filter @dev-ui/storybook exec playwright install chromium --with-deps
 
       - name: Run affected Vitest (PR)
-        if: github.event_name != 'merge_group'
+        if: github.event_name == 'pull_request'
         run: |
           pnpm exec nx affected -t test:ci --base=origin/${{ github.base_ref }}
           pnpm exec nx run dev-kit:merge-coverage
@@ -38,6 +40,12 @@ jobs:
 
       - name: Run full Vitest suite (merge queue)
         if: github.event_name == 'merge_group'
+        run: pnpm exec nx run dev-kit:test:ci
+        env:
+          CI: true
+
+      - name: Run full Vitest suite (main)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: pnpm exec nx run dev-kit:test:ci
         env:
           CI: true
@@ -57,22 +65,6 @@ jobs:
           name: coverage-report
           path: coverage/
           retention-days: 14
-
-      - name: Format coverage comment
-        id: coverage
-        if: github.event_name == 'pull_request' && always() && !cancelled()
-        run: |
-          if [ -f coverage/coverage-summary.json ]; then
-            pnpm exec tsx scripts/format-coverage-comment.ts
-            echo "available=true" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Publish coverage summary
-        uses: marocchino/sticky-pull-request-comment@v3
-        if: steps.coverage.outputs.available == 'true'
-        with:
-          header: coverage
-          path: coverage-comment.md
 
   visual:
     name: Playwright visual
@@ -94,8 +86,14 @@ jobs:
         env:
           CI: true
 
+      - name: Run Playwright tests (full suite on main)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: pnpm test:e2e
+        env:
+          CI: true
+
       - name: Run affected Playwright tests
-        if: github.event_name != 'merge_group'
+        if: github.event_name == 'pull_request'
         run: pnpm affected:e2e --base=origin/${{ github.base_ref }}
         env:
           CI: true
@@ -115,3 +113,30 @@ jobs:
           name: playwright-test-results
           path: apps/storybook/test-results/
           retention-days: 7
+
+  codecov:
+    name: Codecov
+    needs: test
+    if: always() && !cancelled() && needs.test.result != 'cancelled'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/download-artifact@v7
+        continue-on-error: true
+        id: coverage-artifact
+        with:
+          name: coverage-report
+          path: coverage
+
+      - name: Upload coverage to Codecov
+        if: steps.coverage-artifact.outcome == 'success' && hashFiles('coverage/lcov.info') != ''
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: coverage/lcov.info
+          disable_search: true
+          fail_ci_if_error: false
