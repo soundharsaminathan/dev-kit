@@ -2,21 +2,31 @@ import { Skeleton } from "@dev-ui/components/skeleton";
 import { Text } from "@dev-ui/components/text";
 
 type SkeletonPlaygroundProps = {
-  animation?: "shimmer" | "pulse" | "none";
+  variant?: "placeholder" | "content";
   isLoading?: boolean;
+  animation?: "shimmer" | "pulse" | "none";
 };
 
+const frameStyle = { width: "100%", maxWidth: 280 } as const;
+
 export default function SkeletonPlayground({
-  isLoading = false,
-  animation,
+  variant = "content",
+  isLoading = true,
+  animation = "shimmer",
 }: SkeletonPlaygroundProps = {}) {
-  if (isLoading) {
+  if (variant === "placeholder") {
     return (
-      <Skeleton isLoading>
-        <Text>Loading text</Text>
-      </Skeleton>
+      <div style={frameStyle}>
+        <Skeleton animation={animation} />
+      </div>
     );
   }
 
-  return <Skeleton {...(animation !== undefined ? { animation } : {})} />;
+  return (
+    <div style={frameStyle}>
+      <Skeleton isLoading={isLoading} animation={animation}>
+        <Text>Loading text</Text>
+      </Skeleton>
+    </div>
+  );
 }
