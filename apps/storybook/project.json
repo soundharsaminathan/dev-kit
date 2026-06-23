@@ -34,6 +34,15 @@
         "{workspaceRoot}/test-results/junit-storybook.xml"
       ]
     },
+    "test:coverage": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "{workspaceRoot}",
+        "command": "pnpm exec tsx scripts/run-vitest-ci.ts storybook --coverage-only"
+      },
+      "dependsOn": ["tokens:build:tokens"],
+      "outputs": ["{workspaceRoot}/coverage/storybook"]
+    },
     "storybook": {
       "executor": "nx:run-script",
       "options": {

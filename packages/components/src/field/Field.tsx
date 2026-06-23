@@ -1,5 +1,5 @@
 import { cn } from "@dev-ui/core";
-import { useId, useLayoutEffect, useState } from "react";
+import { useCallback, useId, useLayoutEffect, useRef, useState } from "react";
 import { Text } from "../text/Text";
 import styles from "./field.module.scss";
 import type {
@@ -12,7 +12,11 @@ import type {
   LabelProps,
   LegendProps,
 } from "./field.types";
-import { FieldContext, useFieldContext } from "./field-context";
+import {
+  FieldContext,
+  getFieldLabelText,
+  useFieldContext,
+} from "./field-context";
 
 function Fieldset({ className, ...props }: FieldsetProps) {
   return (
@@ -51,19 +55,31 @@ function Field({
   ...props
 }: FieldProps) {
   const inputId = useId();
+  const labelId = useId();
   const descriptionId = useId();
   const errorId = useId();
+  const labelTextRef = useRef<string | undefined>(undefined);
+  const setLabelText = useCallback((value: string | undefined) => {
+    labelTextRef.current = value;
+  }, []);
   const [hasDescription, setHasDescription] = useState(false);
   const [hasError, setHasError] = useState(false);
+
+  useLayoutEffect(() => {
+    return () => setLabelText(undefined);
+  }, [setLabelText]);
 
   return (
     <FieldContext.Provider
       value={{
         inputId,
+        labelId,
         descriptionId,
         errorId,
+        labelTextRef,
         hasDescription,
         hasError,
+        setLabelText,
         setHasDescription,
         setHasError,
       }}
@@ -90,12 +106,19 @@ function FieldContent({ className, ...props }: FieldContentProps) {
   );
 }
 
-function Label({ className, htmlFor, children, ...props }: LabelProps) {
+function Label({ className, htmlFor, id, children, ...props }: LabelProps) {
   const field = useFieldContext();
+  const text = getFieldLabelText(children);
+
+  if (field) {
+    field.setLabelText(text);
+  }
+
   return (
     <label
       data-slot="label"
       data-label=""
+      id={id ?? field?.labelId}
       htmlFor={htmlFor ?? field?.inputId}
       className={cn(styles.label, className)}
       {...props}

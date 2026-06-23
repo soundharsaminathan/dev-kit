@@ -74,8 +74,8 @@ function ColorEditor({
           {showFormatSelector ? (
             <Select
               aria-label="Color format"
-              selectedKey={colorFormat}
-              onSelectionChange={(key) => {
+              value={colorFormat}
+              onChange={(key) => {
                 if (key) {
                   setColorFormat(String(key) as ColorFormat);
                 }

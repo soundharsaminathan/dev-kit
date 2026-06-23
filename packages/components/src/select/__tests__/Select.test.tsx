@@ -1,7 +1,7 @@
 import "@testing-library/jest-dom/vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { Label } from "../../field/Field";
+import { Field, Label } from "../../field/Field";
 import {
   Select,
   SelectContent,
@@ -107,7 +107,7 @@ describe("Select", () => {
 
   it("supports custom trigger and value content", () => {
     render(
-      <Select aria-label="Provider" items={items} selectedKey="a">
+      <Select aria-label="Provider" items={items} value="a">
         <SelectTrigger>
           <SelectValue placeholder="Pick one" />
         </SelectTrigger>
@@ -143,6 +143,30 @@ describe("Select", () => {
     );
 
     fireEvent.click(screen.getByRole("button"));
+
+    expect(
+      screen.getByRole("listbox", { name: "Provider" }),
+    ).toBeInTheDocument();
+  });
+
+  it("labels from a Label sibling in an outer Field", () => {
+    render(
+      <Field>
+        <Label>Provider</Label>
+        <Select placeholder="Choose">
+          <SelectTrigger />
+          <SelectContent>
+            <SelectItem id="a">Option A</SelectItem>
+          </SelectContent>
+        </Select>
+      </Field>,
+    );
+
+    expect(
+      screen.getByRole("button", { name: "Choose Provider" }),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Choose Provider" }));
 
     expect(
       screen.getByRole("listbox", { name: "Provider" }),

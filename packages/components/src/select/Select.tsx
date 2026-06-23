@@ -16,6 +16,7 @@ import {
 } from "react";
 import { Button } from "../button/Button";
 import { Field } from "../field/Field";
+import { useFieldContext } from "../field/field-context";
 import {
   type CollectionItem,
   findChildByDisplayName,
@@ -100,17 +101,34 @@ function Select<T extends CollectionItem>({
   ...props
 }: SelectProps<T>) {
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const parentField = useFieldContext();
   const labelChild = findChildByDisplayName(children, "Label");
   const labelFromChild = labelChild
     ? getLabelText((labelChild.props as { children?: ReactNode }).children)
     : undefined;
+  const labelFromParentField = parentField?.labelTextRef.current;
+  const hasExplicitLabel =
+    props.label !== undefined ||
+    labelFromChild !== undefined ||
+    typeof props["aria-label"] === "string";
+  const hasParentFieldLabel =
+    !hasExplicitLabel &&
+    labelFromParentField !== undefined &&
+    parentField?.labelId !== undefined;
   const resolvedLabel =
     props.label ??
     labelFromChild ??
-    (typeof props["aria-label"] === "string" ? props["aria-label"] : undefined);
+    (typeof props["aria-label"] === "string"
+      ? props["aria-label"]
+      : undefined) ??
+    labelFromParentField;
   const selectAriaProps = {
     ...props,
-    ...(resolvedLabel ? { label: resolvedLabel } : {}),
+    ...(hasParentFieldLabel
+      ? { "aria-labelledby": parentField.labelId }
+      : resolvedLabel
+        ? { label: resolvedLabel }
+        : {}),
   };
   const contentChild = findChildByDisplayName(children, "SelectContent");
   const itemsList = useMemo((): CollectionItem[] => {
@@ -199,7 +217,13 @@ function Select<T extends CollectionItem>({
           <HiddenSelect
             state={state}
             triggerRef={triggerRef}
-            label={resolvedLabel}
+            {...(hasParentFieldLabel
+              ? { "aria-labelledby": parentField.labelId }
+              : labelFromChild && labelProps.id
+                ? { "aria-labelledby": String(labelProps.id) }
+                : resolvedLabel
+                  ? { label: resolvedLabel }
+                  : {})}
             {...(props.name ? { name: props.name } : {})}
             {...(isDisabled !== undefined ? { isDisabled } : {})}
           />
@@ -243,7 +267,7 @@ function SelectValue({
   placeholder: placeholderProp,
 }: SelectValueProps) {
   const { state, valueProps, placeholder } = useSelectContext("SelectValue");
-  const selectedText = state.selectedItem?.textValue ?? null;
+  const selectedText = state.selectedItems[0]?.textValue ?? null;
   const resolvedPlaceholder = placeholderProp ?? placeholder;
   const isPlaceholder = !selectedText;
 

@@ -3,6 +3,7 @@ import path from "node:path";
 export const COVERAGE_PROJECTS = [
   "core",
   "components",
+  "showcase",
   "storybook",
   "scripts",
 ] as const;

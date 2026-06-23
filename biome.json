@@ -11,6 +11,7 @@
       "!**/dist",
       "!**/node_modules",
       "!**/storybook-static",
+      "!**/routeTree.gen.ts",
       "!**/*.scss"
     ]
   },

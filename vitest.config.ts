@@ -68,6 +68,34 @@ export default defineConfig({
           },
         },
       },
+      {
+        test: {
+          name: "showcase",
+          root: path.join(rootDir, "apps/showcase"),
+          include: ["src/**/*.{test,spec}.{ts,tsx}"],
+          exclude: ["e2e/**"],
+          environment: "jsdom",
+          css: true,
+          globals: true,
+          setupFiles: [
+            path.join(rootDir, "vitest.setup.ts"),
+            path.join(rootDir, "apps/showcase/vitest.setup.ts"),
+          ],
+          testTimeout: 15_000,
+          hookTimeout: 15_000,
+          sequence: { groupOrder: 2 },
+          coverage: {
+            ...sharedCoverage,
+            reportsDirectory: coverageReportsDir(rootDir, "showcase"),
+            include: ["src/**/*.{ts,tsx}"],
+          },
+        },
+        resolve: {
+          alias: {
+            "@": path.join(rootDir, "apps/showcase/src"),
+          },
+        },
+      },
       path.join(rootDir, "apps/storybook/vitest.config.ts"),
       {
         test: {

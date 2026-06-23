@@ -22,6 +22,7 @@ import {
   getDisabledKeys,
   parseCollectionItems,
 } from "./collection-utils";
+import { useFilteredListState } from "./filter-list-collection";
 import styles from "./list-box.module.scss";
 import type {
   ListBoxContextValue,
@@ -175,36 +176,6 @@ function ListBoxItemRenderer<T extends object>({
   );
 }
 
-function filterCollectionNodes<T extends object>(
-  nodes: Iterable<Node<T>>,
-  nodeFilter: (nodeTextValue: string) => boolean,
-): Iterable<Node<T>> {
-  const filtered: Node<T>[] = [];
-
-  for (const node of nodes) {
-    if (node.type === "section") {
-      const childNodes = [
-        ...filterCollectionNodes(node.childNodes ?? [], nodeFilter),
-      ];
-      if (childNodes.length > 0) {
-        filtered.push({ ...node, childNodes });
-      }
-      continue;
-    }
-
-    if (node.type === "item") {
-      if (nodeFilter(String(node.textValue ?? ""))) {
-        filtered.push(node);
-      }
-      continue;
-    }
-
-    filtered.push(node);
-  }
-
-  return filtered;
-}
-
 function ListBox<T extends CollectionItem>({
   ref,
   items: itemsProp,
@@ -231,21 +202,8 @@ function ListBox<T extends CollectionItem>({
     disabledKeys: getDisabledKeys(itemsList),
   };
 
-  const collectionFilter = useMemo(() => {
-    if (!command?.nodeFilter) {
-      return undefined;
-    }
-
-    const nodeFilter = command.nodeFilter;
-    return (nodes: Iterable<Node<T>>) =>
-      filterCollectionNodes(nodes, nodeFilter);
-  }, [command?.nodeFilter]);
-
-  const state = useListState(
-    (collectionFilter
-      ? { ...listStateProps, filter: collectionFilter }
-      : listStateProps) as ListProps<T>,
-  );
+  const baseState = useListState(listStateProps as ListProps<T>);
+  const state = useFilteredListState(baseState, command?.nodeFilter);
 
   const { listBoxProps } = useListBox(
     command
