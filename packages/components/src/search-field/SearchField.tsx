@@ -5,7 +5,7 @@ import { useSearchField } from "@react-aria/searchfield";
 import { mergeProps } from "@react-aria/utils";
 import { useSearchFieldState } from "@react-stately/searchfield";
 import { createContext, useContext, useMemo, useRef } from "react";
-import { useOptionalCommandContext } from "../command/command-context";
+import { useOptionalAutocompleteContext } from "../autocomplete/autocomplete-context";
 import { Field } from "../field/Field";
 import { useFieldContext, useFieldInputAria } from "../field/field-context";
 import styles from "./search-field.module.scss";
@@ -127,7 +127,7 @@ function SearchFieldInput({
   className,
   placeholder,
 }: SearchFieldInputProps) {
-  const command = useOptionalCommandContext();
+  const autocomplete = useOptionalAutocompleteContext();
   const { inputRef, inputProps, isDisabled } =
     useSearchFieldContext("SearchFieldInput");
   const field = useFieldContext();
@@ -135,11 +135,11 @@ function SearchFieldInput({
 
   const inputAria = inputProps as React.InputHTMLAttributes<HTMLInputElement>;
   const fieldAria = useFieldInputAria(inputAria);
-  const resolvedInputProps = command
-    ? mergeProps(focusProps, { type: "search" }, command.inputProps, {
-        value: command.autocompleteState.inputValue,
+  const resolvedInputProps = autocomplete
+    ? mergeProps(focusProps, { type: "search" }, autocomplete.inputProps, {
+        value: autocomplete.autocompleteState.inputValue,
         onChange: (event: React.ChangeEvent<HTMLInputElement>) => {
-          command.inputProps.onChange?.(event.target.value);
+          autocomplete.inputProps.onChange?.(event.target.value);
         },
       })
     : mergeProps(inputProps, focusProps);
@@ -148,7 +148,7 @@ function SearchFieldInput({
     <input
       {...resolvedInputProps}
       {...fieldAria}
-      ref={composeRefs(command?.inputRef ?? inputRef, ref)}
+      ref={composeRefs(autocomplete?.inputRef ?? inputRef, ref)}
       id={field?.inputId}
       placeholder={placeholder}
       data-search-field-input=""
@@ -166,14 +166,14 @@ function SearchFieldClear({
   children,
   ...props
 }: SearchFieldClearProps) {
-  const command = useOptionalCommandContext();
+  const autocomplete = useOptionalAutocompleteContext();
   const { state, clearButtonProps } = useSearchFieldContext("SearchFieldClear");
   const buttonRef = useRef<HTMLButtonElement>(null);
   const { buttonProps } = useButton(
     clearButtonProps as Parameters<typeof useButton>[0],
     buttonRef,
   );
-  const value = command?.autocompleteState.inputValue ?? state.value;
+  const value = autocomplete?.autocompleteState.inputValue ?? state.value;
 
   if (!value) {
     return null;

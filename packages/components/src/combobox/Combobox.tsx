@@ -169,10 +169,7 @@ function ComboboxPopover({ className, placement }: ComboboxPopoverProps) {
 
   return (
     <OverlayContainer>
-      <Popover
-        placement={placement ?? "bottom start"}
-        className="overflow-hidden"
-      >
+      <Popover placement={placement ?? "bottom start"}>
         <ListBoxWithState
           ref={listBoxRef}
           state={state}

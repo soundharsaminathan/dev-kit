@@ -1,16 +1,21 @@
+import { getComponentVisualInteraction } from "@/lib/component-visual-interactions";
 import {
   type ControlValues,
   defaultControlValues,
   type SerializableControl,
 } from "@/modules/showcase/types";
 import { getAllRegistryEntries } from "@/registry";
-import type { ComponentRegistryConfig } from "@/registry/types";
+import type {
+  ComponentRegistryConfig,
+  VisualInteraction,
+} from "@/registry/types";
 
 export interface VisualTestCase {
   slug: string;
   caseId: string;
   screenshotName: string;
   values: ControlValues;
+  interaction?: VisualInteraction;
 }
 
 function visualControls(
@@ -82,6 +87,56 @@ function buildScreenshotName(caseId: string): string {
   return `playground-${caseId}.png`;
 }
 
+function buildInteractionCaseValues(
+  controls: SerializableControl[],
+  defaults: ControlValues,
+): ControlValues {
+  const values = { ...defaults };
+
+  for (const control of controls) {
+    if (
+      (control.name === "defaultOpen" || control.name === "defaultExpanded") &&
+      control.type === "boolean"
+    ) {
+      values[control.name] = false;
+    }
+  }
+
+  return values;
+}
+
+function appendInteractionCase(
+  config: ComponentRegistryConfig,
+  defaults: ControlValues,
+  cases: VisualTestCase[],
+  seen: Set<string>,
+) {
+  const interaction = getComponentVisualInteraction(config.slug);
+  if (!interaction) {
+    return;
+  }
+
+  const caseId = `${config.slug}--open-interaction`;
+  const values =
+    config.normalizeControlValues?.(
+      buildInteractionCaseValues(config.controls, defaults),
+    ) ?? buildInteractionCaseValues(config.controls, defaults);
+  const dedupeId = `${caseId}:${JSON.stringify(values)}:${interaction}`;
+
+  if (seen.has(dedupeId)) {
+    return;
+  }
+  seen.add(dedupeId);
+
+  cases.push({
+    slug: config.slug,
+    caseId,
+    screenshotName: buildScreenshotName(caseId),
+    values,
+    interaction,
+  });
+}
+
 export function generateVisualTestCasesForConfig(
   config: ComponentRegistryConfig,
 ): VisualTestCase[] {
@@ -107,6 +162,34 @@ export function generateVisualTestCasesForConfig(
       values,
     });
   }
+
+  for (const extraCase of config.extraVisualCases ?? []) {
+    const values = {
+      ...defaults,
+      ...extraCase.values,
+    };
+    const normalizedValues = config.normalizeControlValues?.(values) ?? values;
+    const dedupeKey = JSON.stringify(normalizedValues);
+    const interactionKey = extraCase.interaction ?? "";
+    const dedupeId = `${extraCase.caseId}:${dedupeKey}:${interactionKey}`;
+
+    if (seen.has(dedupeId)) {
+      continue;
+    }
+    seen.add(dedupeId);
+
+    cases.push({
+      slug: config.slug,
+      caseId: extraCase.caseId,
+      screenshotName: buildScreenshotName(extraCase.caseId),
+      values: normalizedValues,
+      ...(extraCase.interaction !== undefined
+        ? { interaction: extraCase.interaction }
+        : {}),
+    });
+  }
+
+  appendInteractionCase(config, defaults, cases, seen);
 
   return cases;
 }

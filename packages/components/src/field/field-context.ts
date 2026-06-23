@@ -8,6 +8,7 @@ export function getFieldLabelText(children: ReactNode): string | undefined {
 }
 
 export type FieldContextValue = {
+  name: string | undefined;
   inputId: string;
   labelId: string;
   descriptionId: string;

@@ -1,9 +1,16 @@
 import { cn, composeRefs } from "@dev-ui/core";
+import type { DragPreviewRenderer } from "@react-aria/dnd";
 import { useFocusRing } from "@react-aria/focus";
+import { useLocale } from "@react-aria/i18n";
 import { useHover } from "@react-aria/interactions";
 import type { AriaListBoxOptions } from "@react-aria/listbox";
 import { useListBox, useOption } from "@react-aria/listbox";
+import { ListKeyboardDelegate } from "@react-aria/selection";
 import { mergeProps } from "@react-aria/utils";
+import type {
+  DraggableCollectionState,
+  DroppableCollectionState,
+} from "@react-stately/dnd";
 import type { ListProps, ListState } from "@react-stately/list";
 import { useListState } from "@react-stately/list";
 import type { Node } from "@react-types/shared";
@@ -11,11 +18,17 @@ import {
   createContext,
   type ReactNode,
   type Ref,
+  type RefObject,
   useContext,
   useMemo,
   useRef,
 } from "react";
-import { useOptionalCommandContext } from "../command/command-context";
+import { useOptionalAutocompleteContext } from "../autocomplete/autocomplete-context";
+import {
+  CollectionDropIndicator,
+  DragAndDropContext,
+  type DragAndDropHooks,
+} from "../drag-and-drop";
 import {
   type CollectionItem,
   getCollectionChild,
@@ -71,6 +84,12 @@ type ListBoxCollectionProps<T extends object> = {
   selectionMode: "single" | "multiple" | "none";
   className?: string | undefined;
   standalone?: boolean | undefined;
+  dragAndDropHooks?: DragAndDropHooks | undefined;
+  dragState?: DraggableCollectionState | undefined;
+  dropState?: DroppableCollectionState | undefined;
+  droppableCollectionProps?: React.HTMLAttributes<HTMLElement> | undefined;
+  isRootDropTarget?: boolean | undefined;
+  dragPreview?: ReactNode;
   ref?: Ref<HTMLUListElement>;
 };
 
@@ -80,6 +99,12 @@ function ListBoxCollection<T extends object>({
   selectionMode,
   className,
   standalone,
+  dragAndDropHooks,
+  dragState,
+  dropState,
+  droppableCollectionProps,
+  isRootDropTarget,
+  dragPreview,
   ref,
 }: Omit<ListBoxCollectionProps<T>, "children">) {
   const contextValue = useMemo(
@@ -90,32 +115,122 @@ function ListBoxCollection<T extends object>({
     [state, selectionMode],
   );
 
+  const dragAndDropContextValue = useMemo(
+    () => ({
+      dragAndDropHooks,
+      dragState,
+      dropState,
+    }),
+    [dragAndDropHooks, dragState, dropState],
+  );
+
+  const showDropIndicators = Boolean(
+    dragAndDropHooks && dragState && dropState,
+  );
+
   return (
-    <ListBoxContext.Provider value={contextValue}>
-      <ul
-        {...listBoxProps}
-        ref={ref}
-        data-listbox=""
-        data-standalone={standalone ? "true" : undefined}
-        className={cn(styles.root, className)}
-      >
-        {renderCollectionItems(state)}
-      </ul>
-    </ListBoxContext.Provider>
+    <DragAndDropContext.Provider value={dragAndDropContextValue}>
+      <ListBoxContext.Provider value={contextValue}>
+        <ul
+          {...mergeProps(listBoxProps, droppableCollectionProps)}
+          ref={ref}
+          data-listbox=""
+          data-standalone={standalone ? "true" : undefined}
+          data-drop-target={isRootDropTarget ? "true" : undefined}
+          className={cn(styles.root, className)}
+        >
+          {renderCollectionItems(
+            state,
+            showDropIndicators ? dragAndDropHooks : undefined,
+            showDropIndicators ? dragState : undefined,
+            showDropIndicators ? dropState : undefined,
+          )}
+        </ul>
+        {dragPreview}
+      </ListBoxContext.Provider>
+    </DragAndDropContext.Provider>
   );
 }
 
-function renderCollectionItems<T extends object>(state: ListState<T>) {
-  return [...state.collection].map((item) => {
-    if (item.type === "item") {
-      return (
+function renderCollectionItems<T extends object>(
+  state: ListState<T>,
+  dragAndDropHooks?: DragAndDropHooks,
+  dragState?: DraggableCollectionState,
+  dropState?: DroppableCollectionState,
+) {
+  const items = [...state.collection].filter((node) => node.type === "item");
+  const hasDragAndDrop = Boolean(dragAndDropHooks && dragState && dropState);
+
+  return items.flatMap((item, index) => {
+    const elements: ReactNode[] = [];
+
+    if (hasDragAndDrop) {
+      elements.push(
+        <CollectionDropIndicator
+          key={`before-${String(item.key)}`}
+          target={{ type: "item", key: item.key, dropPosition: "before" }}
+          dragAndDropHooks={dragAndDropHooks!}
+          dropState={dropState!}
+        />,
+      );
+    }
+
+    elements.push(
+      hasDragAndDrop ? (
+        <ListBoxDraggableItemRenderer
+          key={item.key}
+          item={item}
+          dragAndDropHooks={dragAndDropHooks!}
+          dragState={dragState!}
+          dropState={dropState!}
+        >
+          {(item.value as CollectionItem).label}
+        </ListBoxDraggableItemRenderer>
+      ) : (
         <ListBoxItemRenderer key={item.key} item={item}>
           {(item.value as CollectionItem).label}
         </ListBoxItemRenderer>
+      ),
+    );
+
+    if (hasDragAndDrop && index === items.length - 1) {
+      elements.push(
+        <CollectionDropIndicator
+          key={`after-${String(item.key)}`}
+          target={{ type: "item", key: item.key, dropPosition: "after" }}
+          dragAndDropHooks={dragAndDropHooks!}
+          dropState={dropState!}
+        />,
       );
     }
-    return null;
+
+    return elements;
   });
+}
+
+function ListBoxItemContent({
+  children,
+  selectionMode,
+  isSelected,
+}: {
+  children: ReactNode;
+  selectionMode: "single" | "multiple" | "none";
+  isSelected: boolean;
+}) {
+  return (
+    <>
+      {typeof children === "string" ? (
+        <ListBoxItemLabel>{children}</ListBoxItemLabel>
+      ) : (
+        children
+      )}
+      {selectionMode !== "none" && isSelected ? (
+        <span data-listbox-item-indicator="" className={styles.indicator}>
+          <CheckIcon />
+        </span>
+      ) : null}
+    </>
+  );
 }
 
 function ListBoxItemRenderer<T extends object>({
@@ -161,19 +276,213 @@ function ListBoxItemRenderer<T extends object>({
         data-selection-mode={selectionMode}
         className={cn(styles.item, className)}
       >
-        {typeof children === "string" ? (
-          <ListBoxItemLabel>{children}</ListBoxItemLabel>
-        ) : (
-          children
-        )}
-        {selectionMode !== "none" && isSelected ? (
-          <span data-listbox-item-indicator="" className={styles.indicator}>
-            <CheckIcon />
-          </span>
-        ) : null}
+        <ListBoxItemContent
+          selectionMode={selectionMode}
+          isSelected={isSelected}
+        >
+          {children}
+        </ListBoxItemContent>
       </li>
     </ListBoxItemContext.Provider>
   );
+}
+
+function ListBoxDraggableItemRenderer<T extends object>({
+  item,
+  children,
+  className,
+  dragAndDropHooks,
+  dragState,
+  dropState,
+}: {
+  item: Node<T>;
+  children: ReactNode;
+  className?: string | undefined;
+  dragAndDropHooks: DragAndDropHooks;
+  dragState: DraggableCollectionState;
+  dropState: DroppableCollectionState;
+}) {
+  const { state, selectionMode = "single" } = useListBoxContext("ListBoxItem");
+  const ref = useRef<HTMLLIElement>(null);
+  const { optionProps, isSelected, isFocused, isDisabled } = useOption(
+    { key: item.key },
+    state,
+    ref,
+  );
+  const { hoverProps, isHovered } = useHover({ isDisabled });
+  const { focusProps, isFocusVisible } = useFocusRing();
+  const { dragProps } = dragAndDropHooks.useDraggableItem!(
+    { key: item.key, hasAction: false },
+    dragState,
+  );
+  const droppableItem = dragAndDropHooks.useDroppableItem!(
+    {
+      target: { type: "item", key: item.key, dropPosition: "on" },
+    },
+    dropState,
+    ref,
+  );
+
+  const isDraggable = !(
+    dragState.isDisabled || dragState.selectionManager.isDisabled(item.key)
+  );
+  const isDragging = dragState.isDragging(item.key);
+
+  const itemContext: ListBoxItemContextValue = {
+    item: item as Node<CollectionItem>,
+    isSelected,
+    isDisabled,
+    isFocused,
+    isFocusVisible,
+    isHovered,
+    selectionMode,
+  };
+
+  return (
+    <ListBoxItemContext.Provider value={itemContext}>
+      <li
+        {...mergeProps(
+          optionProps,
+          hoverProps,
+          focusProps,
+          dragProps,
+          droppableItem.dropProps,
+        )}
+        ref={ref}
+        data-listbox-item=""
+        data-selected={isSelected ? "true" : undefined}
+        data-disabled={isDisabled ? "true" : undefined}
+        data-hovered={isHovered ? "true" : undefined}
+        data-focused={isFocused ? "true" : undefined}
+        data-focus-visible={isFocusVisible ? "true" : undefined}
+        data-selection-mode={selectionMode}
+        data-dragging={isDragging ? "true" : undefined}
+        data-drop-target={droppableItem.isDropTarget ? "true" : undefined}
+        data-allows-dragging={isDraggable ? "true" : undefined}
+        className={cn(styles.item, className)}
+      >
+        <ListBoxItemContent
+          selectionMode={selectionMode}
+          isSelected={isSelected}
+        >
+          {children}
+        </ListBoxItemContent>
+      </li>
+    </ListBoxItemContext.Provider>
+  );
+}
+
+function useListBoxDragAndDrop<T extends object>({
+  dragAndDropHooks,
+  state,
+  listRef,
+}: {
+  dragAndDropHooks?: DragAndDropHooks | undefined;
+  state: ListState<T>;
+  listRef: RefObject<HTMLUListElement | null>;
+}) {
+  const { direction } = useLocale();
+  const preview = useRef<DragPreviewRenderer | null>(null);
+  const { collection, selectionManager } = state;
+  const isListDraggable = Boolean(
+    dragAndDropHooks?.useDraggableCollectionState,
+  );
+  const isListDroppable = Boolean(
+    dragAndDropHooks?.useDroppableCollectionState,
+  );
+  const useDraggableCollectionState =
+    dragAndDropHooks?.useDraggableCollectionState;
+  const useDraggableCollection = dragAndDropHooks?.useDraggableCollection;
+  const useDroppableCollectionState =
+    dragAndDropHooks?.useDroppableCollectionState;
+  const useDroppableCollection = dragAndDropHooks?.useDroppableCollection;
+
+  const keyboardDelegate = useMemo(
+    () =>
+      new ListKeyboardDelegate({
+        collection,
+        disabledKeys: selectionManager.disabledKeys,
+        disabledBehavior: selectionManager.disabledBehavior,
+        ref: listRef,
+        layout: "stack",
+        orientation: "vertical",
+        direction,
+      }),
+    [collection, selectionManager, listRef, direction],
+  );
+
+  let dragState: DraggableCollectionState | undefined;
+  let dropState: DroppableCollectionState | undefined;
+  let droppableCollectionProps: React.HTMLAttributes<HTMLElement> | undefined;
+  let isRootDropTarget = false;
+  let dragPreview: ReactNode = null;
+
+  if (
+    isListDraggable &&
+    dragAndDropHooks &&
+    useDraggableCollectionState &&
+    useDraggableCollection
+  ) {
+    // biome-ignore lint/correctness/useHookAtTopLevel: drag hooks are stable for this list instance
+    dragState = useDraggableCollectionState({
+      collection,
+      selectionManager,
+      ...(dragAndDropHooks.renderDragPreview ? { preview } : {}),
+    });
+    // biome-ignore lint/correctness/useHookAtTopLevel: drag hooks are stable for this list instance
+    useDraggableCollection({}, dragState, listRef);
+
+    if (dragAndDropHooks.renderDragPreview && dragAndDropHooks.DragPreview) {
+      const DragPreview = dragAndDropHooks.DragPreview;
+      dragPreview = (
+        <DragPreview ref={preview}>
+          {dragAndDropHooks.renderDragPreview}
+        </DragPreview>
+      );
+    }
+  }
+
+  if (
+    isListDroppable &&
+    dragAndDropHooks &&
+    useDroppableCollectionState &&
+    useDroppableCollection
+  ) {
+    // biome-ignore lint/correctness/useHookAtTopLevel: drop hooks are stable for this list instance
+    dropState = useDroppableCollectionState({
+      collection,
+      selectionManager,
+    });
+
+    const dropTargetDelegate =
+      dragAndDropHooks.dropTargetDelegate ??
+      new dragAndDropHooks.ListDropTargetDelegate(collection, listRef, {
+        orientation: "vertical",
+        layout: "stack",
+        direction,
+      });
+
+    // biome-ignore lint/correctness/useHookAtTopLevel: drop hooks are stable for this list instance
+    const droppableCollection = useDroppableCollection(
+      {
+        keyboardDelegate,
+        dropTargetDelegate,
+      },
+      dropState,
+      listRef,
+    );
+    droppableCollectionProps = droppableCollection.collectionProps;
+    isRootDropTarget = dropState.isDropTarget({ type: "root" });
+  }
+
+  return {
+    isListDraggable,
+    dragState,
+    dropState,
+    droppableCollectionProps,
+    isRootDropTarget,
+    dragPreview,
+  };
 }
 
 function ListBox<T extends CollectionItem>({
@@ -182,11 +491,12 @@ function ListBox<T extends CollectionItem>({
   children,
   className,
   selectionMode = "single",
+  dragAndDropHooks,
   ...props
 }: ListBoxProps<T>) {
-  const command = useOptionalCommandContext();
+  const autocomplete = useOptionalAutocompleteContext();
   const listRef = useRef<HTMLUListElement>(null);
-  const resolvedListRef = command?.collectionRef ?? listRef;
+  const resolvedListRef = autocomplete?.collectionRef ?? listRef;
   const itemsList = useMemo((): CollectionItem[] => {
     if (itemsProp) {
       return [...itemsProp];
@@ -203,12 +513,37 @@ function ListBox<T extends CollectionItem>({
   };
 
   const baseState = useListState(listStateProps as ListProps<T>);
-  const state = useFilteredListState(baseState, command?.nodeFilter);
+  const state = useFilteredListState(baseState, autocomplete?.nodeFilter);
+
+  const {
+    isListDraggable,
+    dragState,
+    dropState,
+    droppableCollectionProps,
+    isRootDropTarget,
+    dragPreview,
+  } = useListBoxDragAndDrop({
+    dragAndDropHooks,
+    state,
+    listRef: resolvedListRef,
+  });
+
+  const listBoxAriaOptions = {
+    ...props,
+    selectionMode,
+    ...(isListDraggable || props.shouldSelectOnPressUp
+      ? {
+          shouldSelectOnPressUp: Boolean(
+            isListDraggable || props.shouldSelectOnPressUp,
+          ),
+        }
+      : {}),
+  };
 
   const { listBoxProps } = useListBox(
-    command
-      ? { ...props, selectionMode, ...command.collectionProps }
-      : { ...props, selectionMode },
+    autocomplete
+      ? { ...listBoxAriaOptions, ...autocomplete.collectionProps }
+      : listBoxAriaOptions,
     state,
     resolvedListRef,
   );
@@ -220,6 +555,12 @@ function ListBox<T extends CollectionItem>({
       selectionMode={selectionMode}
       className={className}
       standalone
+      dragAndDropHooks={dragAndDropHooks}
+      dragState={dragState}
+      dropState={dropState}
+      droppableCollectionProps={droppableCollectionProps}
+      isRootDropTarget={isRootDropTarget}
+      dragPreview={dragPreview}
       ref={composeRefs(resolvedListRef, ref)}
     />
   );
@@ -229,16 +570,43 @@ export function ListBoxWithState<T extends object>({
   state,
   listBoxOptions,
   className,
+  dragAndDropHooks,
   ref,
 }: {
   state: ListState<T>;
   listBoxOptions: AriaListBoxOptions<T>;
   className?: string | undefined;
+  dragAndDropHooks?: DragAndDropHooks | undefined;
   ref?: Ref<HTMLUListElement>;
 }) {
   const listRef = useRef<HTMLUListElement>(null);
   const selectionMode = listBoxOptions.selectionMode ?? "single";
-  const { listBoxProps } = useListBox(listBoxOptions, state, listRef);
+
+  const {
+    isListDraggable,
+    dragState,
+    dropState,
+    droppableCollectionProps,
+    isRootDropTarget,
+    dragPreview,
+  } = useListBoxDragAndDrop({
+    dragAndDropHooks,
+    state,
+    listRef,
+  });
+
+  const listBoxAriaOptions = {
+    ...listBoxOptions,
+    ...(isListDraggable || listBoxOptions.shouldSelectOnPressUp
+      ? {
+          shouldSelectOnPressUp: Boolean(
+            isListDraggable || listBoxOptions.shouldSelectOnPressUp,
+          ),
+        }
+      : {}),
+  };
+
+  const { listBoxProps } = useListBox(listBoxAriaOptions, state, listRef);
 
   return (
     <ListBoxCollection
@@ -246,6 +614,12 @@ export function ListBoxWithState<T extends object>({
       listBoxProps={listBoxProps}
       selectionMode={selectionMode}
       className={className}
+      dragAndDropHooks={dragAndDropHooks}
+      dragState={dragState}
+      dropState={dropState}
+      droppableCollectionProps={droppableCollectionProps}
+      isRootDropTarget={isRootDropTarget}
+      dragPreview={dragPreview}
       ref={composeRefs(listRef, ref)}
     />
   );

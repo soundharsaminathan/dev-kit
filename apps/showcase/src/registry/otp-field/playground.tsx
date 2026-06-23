@@ -13,6 +13,10 @@ type OTPFieldPlaygroundProps = {
   showSeparator?: boolean;
 };
 
+function getDigitKeys(length: number) {
+  return Array.from({ length }, (_, position) => `otp-digit-${position + 1}`);
+}
+
 export default function OTPFieldPlayground({
   labelText = "Verification code",
   showSeparator = false,
@@ -36,7 +40,16 @@ export default function OTPFieldPlayground({
             <Input aria-label="Digit 6" />
           </Group>
         </div>
-      ) : null}
+      ) : (
+        <Group>
+          {getDigitKeys(length).map((digitKey, position) => (
+            <Input
+              key={digitKey}
+              aria-label={position === 0 ? undefined : `Digit ${position + 1}`}
+            />
+          ))}
+        </Group>
+      )}
     </OTPField>
   );
 }

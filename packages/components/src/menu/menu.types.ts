@@ -17,6 +17,7 @@ export type MenuContentProps<T extends CollectionItem = CollectionItem> =
     children?: ReactNode;
     className?: string | undefined;
     placement?: Placement | undefined;
+    portalContainer?: Element | undefined;
   };
 
 export type MenuItemProps = {
@@ -48,6 +49,7 @@ export type MenuContextValue<T extends object = CollectionItem> = {
   popoverRef: React.RefObject<HTMLDivElement | null>;
   menuRef: React.RefObject<HTMLElement | null>;
   itemsList: CollectionItem[];
+  portalContainer?: Element | undefined;
 };
 
 export type MenuItemContextValue = {

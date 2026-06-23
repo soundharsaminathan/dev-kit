@@ -10,6 +10,8 @@ import {
   toggleBooleanControl,
 } from "./screenshots";
 
+const OVERLAY_INITIAL_CONTROLS = new Set(["defaultOpen", "defaultExpanded"]);
+
 function controlDiffers(
   control: SerializableControl,
   values: ControlValues,
@@ -26,14 +28,14 @@ function controlDiffers(
   return false;
 }
 
-async function applyNonDefaultOpenControls(
+async function applyNonOverlayInitialControls(
   page: Page,
   controls: SerializableControl[],
   values: ControlValues,
   defaults: ControlValues,
 ) {
   for (const control of controls) {
-    if (control.name === "defaultOpen") {
+    if (OVERLAY_INITIAL_CONTROLS.has(control.name)) {
       continue;
     }
 
@@ -62,28 +64,49 @@ export async function applyControlValues(
   values: ControlValues,
   defaults: ControlValues,
 ) {
-  const hasDefaultOpen = controls.some(
-    (control) => control.name === "defaultOpen" && control.type === "boolean",
+  const overlayControls = controls.filter(
+    (control) =>
+      OVERLAY_INITIAL_CONTROLS.has(control.name) && control.type === "boolean",
   );
-  const initialOpen = Boolean(defaults.defaultOpen);
-  const targetOpen = Boolean(values.defaultOpen ?? defaults.defaultOpen);
+
+  if (overlayControls.length === 0) {
+    await applyNonOverlayInitialControls(page, controls, values, defaults);
+    return;
+  }
+
+  const activeStates = Object.fromEntries(
+    overlayControls.map((control) => [
+      control.name,
+      Boolean(defaults[control.name]),
+    ]),
+  );
+  const targetStates = Object.fromEntries(
+    overlayControls.map((control) => [
+      control.name,
+      Boolean(values[control.name] ?? defaults[control.name]),
+    ]),
+  );
   const otherControlsNeedChanges = controls.some(
     (control) =>
-      control.name !== "defaultOpen" &&
+      !OVERLAY_INITIAL_CONTROLS.has(control.name) &&
       controlDiffers(control, values, defaults),
   );
 
-  let overlayOpen = initialOpen;
-
-  if (hasDefaultOpen && overlayOpen && otherControlsNeedChanges) {
-    await toggleBooleanControl(page, formatControlLabel("defaultOpen"));
-    overlayOpen = false;
+  if (otherControlsNeedChanges) {
+    for (const control of overlayControls) {
+      if (activeStates[control.name]) {
+        await toggleBooleanControl(page, formatControlLabel(control.name));
+        activeStates[control.name] = false;
+      }
+    }
   }
 
-  await applyNonDefaultOpenControls(page, controls, values, defaults);
+  await applyNonOverlayInitialControls(page, controls, values, defaults);
 
-  if (hasDefaultOpen && overlayOpen !== targetOpen) {
-    await toggleBooleanControl(page, formatControlLabel("defaultOpen"));
+  for (const control of overlayControls) {
+    if (activeStates[control.name] !== targetStates[control.name]) {
+      await toggleBooleanControl(page, formatControlLabel(control.name));
+    }
   }
 }
 

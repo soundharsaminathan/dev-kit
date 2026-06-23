@@ -8,9 +8,11 @@ import {
   type TouchEvent,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
 } from "react";
+import { flushSync } from "react-dom";
 
 const LONG_PRESS_DELAY = 500;
 const TOUCH_MOVE_THRESHOLD = 10;
@@ -31,6 +33,7 @@ interface ContextMenuAnchor {
 
 interface UseContextMenuTriggerProps {
   state: ContextMenuTriggerState;
+  defaultOpen?: boolean | undefined;
   isDisabled?: boolean | undefined;
   onContextMenu?: MouseEventHandler<HTMLDivElement> | undefined;
   triggerProps?: Omit<ComponentPropsWithoutRef<"div">, "onContextMenu">;
@@ -74,6 +77,7 @@ interface UseContextMenuTriggerResult {
 
 function useContextMenuTrigger({
   state,
+  defaultOpen = false,
   isDisabled = false,
   onContextMenu,
   triggerProps,
@@ -87,7 +91,6 @@ function useContextMenuTrigger({
     key: 0,
   });
   const menuRef = useRef<HTMLDivElement>(null);
-  const [, rerenderAfterAnchorMount] = useState(0);
   const touchPositionRef = useRef<{ x: number; y: number } | null>(null);
   const longPressTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
@@ -117,27 +120,110 @@ function useContextMenuTrigger({
     }
   }, []);
 
-  const openAtPoint = useCallback(
-    (x: number, y: number, size = 0) => {
-      setAnchor((currentAnchor) => {
-        const nextAnchor = {
-          x,
-          y,
-          size,
-          key: currentAnchor.key + 1,
-        };
-        anchorPositionRef.current = nextAnchor;
-        return nextAnchor;
-      });
-      allowMouseUpRef.current = false;
-      state.open("first");
+  const registerOutsideMouseUp = useCallback(
+    (doc: Document) => {
+      doc.addEventListener(
+        "mouseup",
+        (mouseEvent) => {
+          if (!allowMouseUpRef.current) {
+            mouseEvent.preventDefault();
+            mouseEvent.stopPropagation();
+            return;
+          }
 
-      clearAllowMouseUpTimeout();
-      allowMouseUpTimeoutRef.current = setTimeout(() => {
-        allowMouseUpRef.current = true;
-      }, LONG_PRESS_DELAY);
+          clearAllowMouseUpTimeout();
+          allowMouseUpRef.current = false;
+
+          const mouseTarget = mouseEvent.target;
+          if (!isNode(mouseTarget)) {
+            return;
+          }
+
+          if (
+            menuRef.current?.contains(mouseTarget) ||
+            triggerRef.current?.contains(mouseTarget)
+          ) {
+            return;
+          }
+
+          state.close();
+        },
+        { capture: true, once: true },
+      );
     },
     [clearAllowMouseUpTimeout, state],
+  );
+
+  const moveAnchorToPoint = useCallback((x: number, y: number, size = 0) => {
+    setAnchor((currentAnchor) => {
+      const nextAnchor = {
+        x,
+        y,
+        size,
+        key: currentAnchor.key + 1,
+      };
+      anchorPositionRef.current = nextAnchor;
+      return nextAnchor;
+    });
+  }, []);
+
+  useLayoutEffect(() => {
+    if (!defaultOpen || isDisabled) {
+      return;
+    }
+
+    const trigger = triggerRef.current;
+    if (!trigger) {
+      return;
+    }
+
+    const rect = trigger.getBoundingClientRect();
+    moveAnchorToPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
+  }, [defaultOpen, isDisabled, moveAnchorToPoint]);
+
+  const openAtPoint = useCallback(
+    (x: number, y: number, size = 0) => {
+      const isReposition = state.isOpen;
+      const doc = triggerRef.current?.ownerDocument ?? document;
+
+      flushSync(() => {
+        setAnchor((currentAnchor) => {
+          const nextAnchor = {
+            x,
+            y,
+            size,
+            key: currentAnchor.key + 1,
+          };
+          anchorPositionRef.current = nextAnchor;
+          return nextAnchor;
+        });
+      });
+
+      const scheduleAllowMouseUp = () => {
+        allowMouseUpTimeoutRef.current = setTimeout(() => {
+          allowMouseUpRef.current = true;
+        }, LONG_PRESS_DELAY);
+      };
+
+      if (isReposition) {
+        flushSync(() => {
+          state.close();
+        });
+        state.open("first");
+        if (!allowMouseUpRef.current) {
+          scheduleAllowMouseUp();
+        }
+        registerOutsideMouseUp(doc);
+        return;
+      }
+
+      allowMouseUpRef.current = false;
+      clearAllowMouseUpTimeout();
+      state.open("first");
+      scheduleAllowMouseUp();
+      registerOutsideMouseUp(doc);
+    },
+    [clearAllowMouseUpTimeout, registerOutsideMouseUp, state],
   );
 
   const anchorRefCallback = useCallback((element: HTMLSpanElement | null) => {
@@ -147,7 +233,10 @@ function useContextMenuTrigger({
         const { x, y, size } = anchorPositionRef.current;
         return DOMRect.fromRect({ x, y, width: size, height: size });
       };
-      rerenderAfterAnchorMount((version) => version + 1);
+      element.getClientRects = () => {
+        const rect = element.getBoundingClientRect();
+        return [rect] as unknown as DOMRectList;
+      };
     }
   }, []);
 
@@ -258,36 +347,6 @@ function useContextMenuTrigger({
       event.preventDefault();
       event.stopPropagation();
       openAtPoint(event.clientX, event.clientY);
-
-      const doc = event.currentTarget.ownerDocument;
-      doc.addEventListener(
-        "mouseup",
-        (mouseEvent) => {
-          if (!allowMouseUpRef.current) {
-            mouseEvent.preventDefault();
-            mouseEvent.stopPropagation();
-            return;
-          }
-
-          clearAllowMouseUpTimeout();
-          allowMouseUpRef.current = false;
-
-          const mouseTarget = mouseEvent.target;
-          if (!isNode(mouseTarget)) {
-            return;
-          }
-
-          if (
-            menuRef.current?.contains(mouseTarget) ||
-            triggerRef.current?.contains(mouseTarget)
-          ) {
-            return;
-          }
-
-          state.close();
-        },
-        { capture: true, once: true },
-      );
     },
     onTouchStart(event: TouchEvent<HTMLDivElement>) {
       if (isDisabled || event.touches.length !== 1) {

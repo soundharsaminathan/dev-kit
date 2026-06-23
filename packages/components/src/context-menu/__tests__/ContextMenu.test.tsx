@@ -61,6 +61,9 @@ describe("ContextMenu", () => {
 
     expect(screen.getByRole("menu")).toBeInTheDocument();
     expect(screen.getByRole("menuitem", { name: "Edit" })).toBeInTheDocument();
+    expect(
+      document.body.contains(document.querySelector("[data-popover]")),
+    ).toBe(true);
   });
 
   it("opens via the context menu open event", () => {

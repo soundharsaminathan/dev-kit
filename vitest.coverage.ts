@@ -16,3 +16,11 @@ export function coverageReportsDir(
 ): string {
   return path.join(workspaceRoot, "coverage", project);
 }
+
+export const COVERAGE_INCLUDES: Record<CoverageProject, readonly string[]> = {
+  core: ["src/**/*.{ts,tsx}"],
+  components: ["src/**/*.{ts,tsx}"],
+  showcase: ["src/**/*.{ts,tsx}"],
+  scripts: ["**/*.{ts,tsx}"],
+  storybook: ["../../packages/components/src/**/*.{ts,tsx}"],
+};

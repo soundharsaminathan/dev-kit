@@ -1,5 +1,13 @@
 import { cn } from "@dev-ui/core";
-import { useCallback, useId, useLayoutEffect, useRef, useState } from "react";
+import { FormValidationContext } from "@react-stately/form";
+import {
+  useCallback,
+  useContext,
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import { Text } from "../text/Text";
 import styles from "./field.module.scss";
 import type {
@@ -52,6 +60,7 @@ function Field({
   orientation = "vertical",
   className,
   children,
+  name,
   ...props
 }: FieldProps) {
   const inputId = useId();
@@ -72,6 +81,7 @@ function Field({
   return (
     <FieldContext.Provider
       value={{
+        name,
         inputId,
         labelId,
         descriptionId,
@@ -150,16 +160,24 @@ function Description({ className, id, ...props }: DescriptionProps) {
 
 function FieldError({ className, id, children, ...props }: FieldErrorProps) {
   const field = useFieldContext();
+  const validationErrors = useContext(FormValidationContext);
+  const validationMessage =
+    field?.name != null ? validationErrors[field.name] : undefined;
+  const resolvedChildren =
+    children ??
+    (Array.isArray(validationMessage)
+      ? validationMessage.join(", ")
+      : validationMessage);
 
   useLayoutEffect(() => {
-    if (!children) {
+    if (!resolvedChildren) {
       return undefined;
     }
     field?.setHasError(true);
     return () => field?.setHasError(false);
-  }, [children, field]);
+  }, [resolvedChildren, field]);
 
-  if (!children) {
+  if (!resolvedChildren) {
     return null;
   }
 
@@ -172,7 +190,7 @@ function FieldError({ className, id, children, ...props }: FieldErrorProps) {
       className={cn(styles.fieldError, className)}
       {...props}
     >
-      {children}
+      {resolvedChildren}
     </div>
   );
 }

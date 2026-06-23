@@ -27,6 +27,14 @@ test.describe("OTPField", () => {
   });
 
   test.describe("interactions", () => {
+    test("default layout renders digit inputs", async ({ page }) => {
+      await gotoStory(page, STORIES.default);
+
+      const inputs = page.getByRole("textbox");
+      await expect(inputs).toHaveCount(6);
+      await expect(page.getByText("Verification code")).toBeVisible();
+    });
+
     test("separator layout accepts digit input", async ({ page }) => {
       await gotoStory(page, STORIES.separator);
 

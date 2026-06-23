@@ -25,7 +25,7 @@ export default function PopoverPlayground({
 
   return (
     <OverlayProvider>
-      <button ref={triggerRef} type="button">
+      <button ref={triggerRef} type="button" onClick={() => state.open()}>
         Trigger
       </button>
       <PopoverProvider

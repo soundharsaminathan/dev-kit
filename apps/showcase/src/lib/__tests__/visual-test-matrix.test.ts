@@ -50,6 +50,29 @@ describe("visual-test-matrix", () => {
     ]);
   });
 
+  it("generates interaction cases for components with visual interactions", () => {
+    const cases = generateVisualTestCasesForConfig({
+      name: "Context Menu",
+      slug: "context-menu",
+      category: "overlays",
+      description: "Context Menu",
+      controls: [
+        { name: "isDisabled", type: "boolean", defaultValue: false },
+        { name: "defaultOpen", type: "boolean", defaultValue: false },
+      ],
+    });
+
+    expect(cases).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          caseId: "context-menu--open-interaction",
+          screenshotName: "playground-context-menu--open-interaction.png",
+          interaction: "context-menu-open",
+        }),
+      ]),
+    );
+  });
+
   it("covers every registry component", () => {
     const slugs = new Set(
       generateVisualTestCases().map((testCase) => testCase.slug),

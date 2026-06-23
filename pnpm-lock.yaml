@@ -256,6 +256,9 @@ importers:
       '@react-aria/focus':
         specifier: ^3.22.1
         version: 3.22.1(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      '@react-aria/form':
+        specifier: ^3.2.1
+        version: 3.2.1(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       '@react-aria/gridlist':
         specifier: ^3.15.1
         version: 3.15.1(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -277,6 +280,9 @@ importers:
       '@react-aria/menu':
         specifier: ^3.22.1
         version: 3.22.1(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      '@react-aria/meter':
+        specifier: ^3.5.1
+        version: 3.5.1(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       '@react-aria/numberfield':
         specifier: ^3.12.1
         version: 3.13.1(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -322,6 +328,9 @@ importers:
       '@react-aria/toggle':
         specifier: ^3.13.1
         version: 3.13.1(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      '@react-aria/toolbar':
+        specifier: 3.0.0-beta.26
+        version: 3.0.0-beta.26(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       '@react-aria/tooltip':
         specifier: ^3.10.1
         version: 3.10.1(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -355,9 +364,15 @@ importers:
       '@react-stately/disclosure':
         specifier: ^3.1.1
         version: 3.1.1(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      '@react-stately/dnd':
+        specifier: ^3.8.1
+        version: 3.8.1(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       '@react-stately/form':
         specifier: ^3.3.1
         version: 3.3.1(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      '@react-stately/layout':
+        specifier: ^4.7.1
+        version: 4.7.1(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       '@react-stately/list':
         specifier: ^3.14.1
         version: 3.14.1(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -403,9 +418,15 @@ importers:
       '@react-stately/tree':
         specifier: ^3.10.1
         version: 3.10.1(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      '@react-stately/virtualizer':
+        specifier: ^4.5.1
+        version: 4.5.1(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       '@react-types/color':
         specifier: ^3.2.0
         version: 3.2.0(@react-spectrum/provider@3.11.1(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      '@react-types/meter':
+        specifier: ^3.5.0
+        version: 3.5.0(@react-spectrum/provider@3.11.1(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       '@react-types/shared':
         specifier: ^3.35.0
         version: 3.35.0(react@19.2.7)
@@ -2178,6 +2199,12 @@ packages:
       react: ^16.8.0 || ^17.0.0-rc.1 || ^18.0.0 || ^19.0.0-rc.1
       react-dom: ^16.8.0 || ^17.0.0-rc.1 || ^18.0.0 || ^19.0.0-rc.1
 
+  '@react-aria/form@3.2.1':
+    resolution: {integrity: sha512-uSNi8/lSFTMPGHzCeAPmFVQ8h8rRulInSVdstRL3hFmyjEOd2gGeKHwssCcLHmujy3T+K/AGeOQiKFpz2hjZEw==}
+    peerDependencies:
+      react: ^16.8.0 || ^17.0.0-rc.1 || ^18.0.0 || ^19.0.0-rc.1
+      react-dom: ^16.8.0 || ^17.0.0-rc.1 || ^18.0.0 || ^19.0.0-rc.1
+
   '@react-aria/gridlist@3.15.1':
     resolution: {integrity: sha512-NBcAklJVaJiWPaqW0xaytxr/JJAd2FuSulq/j2jEe6jLO8bb74DNmyOR5vGVMUa5gXbIc/Yi3FGKFRn/7R2xDQ==}
     peerDependencies:
@@ -2216,6 +2243,12 @@ packages:
 
   '@react-aria/menu@3.22.1':
     resolution: {integrity: sha512-ASP2u11+jg4OQh+QaDlWb7upMgsMITBQTjPFPbUJp6eE4q/cddLPYf4/9yfxh/bwTg0iDdzoDrgdtbwNGYNSfg==}
+    peerDependencies:
+      react: ^16.8.0 || ^17.0.0-rc.1 || ^18.0.0 || ^19.0.0-rc.1
+      react-dom: ^16.8.0 || ^17.0.0-rc.1 || ^18.0.0 || ^19.0.0-rc.1
+
+  '@react-aria/meter@3.5.1':
+    resolution: {integrity: sha512-e7QN/Q/gpljItmeiHSf8+7dajU+Ix1rWAPjPoAoqcAuzfItIPQprnz6TCFUU27ozgh3L7UnLzROwfIz1eUEkuw==}
     peerDependencies:
       react: ^16.8.0 || ^17.0.0-rc.1 || ^18.0.0 || ^19.0.0-rc.1
       react-dom: ^16.8.0 || ^17.0.0-rc.1 || ^18.0.0 || ^19.0.0-rc.1
@@ -2310,6 +2343,12 @@ packages:
       react: ^16.8.0 || ^17.0.0-rc.1 || ^18.0.0 || ^19.0.0-rc.1
       react-dom: ^16.8.0 || ^17.0.0-rc.1 || ^18.0.0 || ^19.0.0-rc.1
 
+  '@react-aria/toolbar@3.0.0-beta.26':
+    resolution: {integrity: sha512-D66zIPJhAtBYBSgZlc0pmO2GdAvvAibqTfyEuG86iC5+nOuexzwbDZYG1t0xDmhD6y4ahwsBViGaLWdt7zizpA==}
+    peerDependencies:
+      react: ^16.8.0 || ^17.0.0-rc.1 || ^18.0.0 || ^19.0.0-rc.1
+      react-dom: ^16.8.0 || ^17.0.0-rc.1 || ^18.0.0 || ^19.0.0-rc.1
+
   '@react-aria/tooltip@3.10.1':
     resolution: {integrity: sha512-rdA8uX2Byzo9fbqVsJ29ebnufnOG/8DvFFlSHL7X+hUy6onQo/dByl8Q7mINCM2eYdF4VlTtMZKdoVtIMcIAdg==}
     peerDependencies:
@@ -2330,6 +2369,12 @@ packages:
 
   '@react-spectrum/color@3.2.1':
     resolution: {integrity: sha512-FbB+GaVufsN+obNJmUAe8XGZTeJjEWvEf/k/7nxDxoDCBdg/o6eEPONAZyID5Dj1f8BZKNym8VURxDZx7IIyuQ==}
+    peerDependencies:
+      react: ^16.8.0 || ^17.0.0-rc.1 || ^18.0.0 || ^19.0.0-rc.1
+      react-dom: ^16.8.0 || ^17.0.0-rc.1 || ^18.0.0 || ^19.0.0-rc.1
+
+  '@react-spectrum/meter@3.6.1':
+    resolution: {integrity: sha512-SPniuBSUtMV0GIWG9L2UzqksGQ9VXc4U2577MT1TC2jYEkBdajVx1kt+9lNFdDFzZWjUb2eW8G3Zto/0xDEu2w==}
     peerDependencies:
       react: ^16.8.0 || ^17.0.0-rc.1 || ^18.0.0 || ^19.0.0-rc.1
       react-dom: ^16.8.0 || ^17.0.0-rc.1 || ^18.0.0 || ^19.0.0-rc.1
@@ -2388,8 +2433,20 @@ packages:
       react: ^16.8.0 || ^17.0.0-rc.1 || ^18.0.0 || ^19.0.0-rc.1
       react-dom: ^16.8.0 || ^17.0.0-rc.1 || ^18.0.0 || ^19.0.0-rc.1
 
+  '@react-stately/dnd@3.8.1':
+    resolution: {integrity: sha512-wIfLh3JQPgel6pW/hV/+JczNQH8+yovciPn5Ziif6tfilxCQH01R5WDqDJRPFqpFXX+IRZ/f4F+Tj+GdHOJmKQ==}
+    peerDependencies:
+      react: ^16.8.0 || ^17.0.0-rc.1 || ^18.0.0 || ^19.0.0-rc.1
+      react-dom: ^16.8.0 || ^17.0.0-rc.1 || ^18.0.0 || ^19.0.0-rc.1
+
   '@react-stately/form@3.3.1':
     resolution: {integrity: sha512-Wz5CK6X4bUo+VBUZLTrRDMXVdlTUVvQbaWTBzINf1zDeiNvGRsnv43L4OSQu/y9xfbtzJz/m2SH2ZTu1//aQXg==}
+    peerDependencies:
+      react: ^16.8.0 || ^17.0.0-rc.1 || ^18.0.0 || ^19.0.0-rc.1
+      react-dom: ^16.8.0 || ^17.0.0-rc.1 || ^18.0.0 || ^19.0.0-rc.1
+
+  '@react-stately/layout@4.7.1':
+    resolution: {integrity: sha512-71fNbW2LoaRpy337wYhdANkx0E4xbqQuelW39msV//ZZ6SVEK/AuOHEKwgyympKkYXi6Ri/op0snOzH0LmXvyw==}
     peerDependencies:
       react: ^16.8.0 || ^17.0.0-rc.1 || ^18.0.0 || ^19.0.0-rc.1
       react-dom: ^16.8.0 || ^17.0.0-rc.1 || ^18.0.0 || ^19.0.0-rc.1
@@ -2483,8 +2540,21 @@ packages:
       react: ^16.8.0 || ^17.0.0-rc.1 || ^18.0.0 || ^19.0.0-rc.1
       react-dom: ^16.8.0 || ^17.0.0-rc.1 || ^18.0.0 || ^19.0.0-rc.1
 
+  '@react-stately/virtualizer@4.5.1':
+    resolution: {integrity: sha512-lNP20ZDf4GLFYe5WGeWtacjvxqtIAnDudvzW6sBRlfQcQJb4D/DAEl6zvHVUOZ9oPznPg6COxrGmncdY7Pdh8Q==}
+    peerDependencies:
+      react: ^16.8.0 || ^17.0.0-rc.1 || ^18.0.0 || ^19.0.0-rc.1
+      react-dom: ^16.8.0 || ^17.0.0-rc.1 || ^18.0.0 || ^19.0.0-rc.1
+
   '@react-types/color@3.2.0':
     resolution: {integrity: sha512-beV3vz80nzZ1EuYUM7296Kyi3AHcMrbQw0qub/9yzHWVTKKc5sy/e4dCMKcWL/ArkeAyc7jDOiui190RQ4l0Fw==}
+    peerDependencies:
+      '@react-spectrum/provider': ^3.0.0
+      react: ^16.8.0 || ^17.0.0-rc.1 || ^18.0.0 || ^19.0.0-rc.1
+      react-dom: ^16.8.0 || ^17.0.0-rc.1 || ^18.0.0 || ^19.0.0-rc.1
+
+  '@react-types/meter@3.5.0':
+    resolution: {integrity: sha512-t3FN9s3hsuy+IPo69mq95mhE9+LMBkTlKNJ5heB/lgTEi1/ADQNDvGAPUoqGc9jOyUHpLaLe7+ddpx78MmNrKw==}
     peerDependencies:
       '@react-spectrum/provider': ^3.0.0
       react: ^16.8.0 || ^17.0.0-rc.1 || ^18.0.0 || ^19.0.0-rc.1
@@ -6795,6 +6865,13 @@ snapshots:
       react-aria: 3.49.0(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       react-dom: 19.2.7(react@19.2.7)
 
+  '@react-aria/form@3.2.1(react-dom@19.2.7(react@19.2.7))(react@19.2.7)':
+    dependencies:
+      '@swc/helpers': 0.5.23
+      react: 19.2.7
+      react-aria: 3.49.0(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      react-dom: 19.2.7(react@19.2.7)
+
   '@react-aria/gridlist@3.15.1(react-dom@19.2.7(react@19.2.7))(react@19.2.7)':
     dependencies:
       '@swc/helpers': 0.5.23
@@ -6842,6 +6919,13 @@ snapshots:
       react-dom: 19.2.7(react@19.2.7)
 
   '@react-aria/menu@3.22.1(react-dom@19.2.7(react@19.2.7))(react@19.2.7)':
+    dependencies:
+      '@swc/helpers': 0.5.23
+      react: 19.2.7
+      react-aria: 3.49.0(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      react-dom: 19.2.7(react@19.2.7)
+
+  '@react-aria/meter@3.5.1(react-dom@19.2.7(react@19.2.7))(react@19.2.7)':
     dependencies:
       '@swc/helpers': 0.5.23
       react: 19.2.7
@@ -6956,6 +7040,13 @@ snapshots:
       react-aria: 3.49.0(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       react-dom: 19.2.7(react@19.2.7)
 
+  '@react-aria/toolbar@3.0.0-beta.26(react-dom@19.2.7(react@19.2.7))(react@19.2.7)':
+    dependencies:
+      '@swc/helpers': 0.5.23
+      react: 19.2.7
+      react-aria: 3.49.0(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      react-dom: 19.2.7(react@19.2.7)
+
   '@react-aria/tooltip@3.10.1(react-dom@19.2.7(react@19.2.7))(react@19.2.7)':
     dependencies:
       '@swc/helpers': 0.5.23
@@ -6986,6 +7077,13 @@ snapshots:
       react: 19.2.7
       react-dom: 19.2.7(react@19.2.7)
       react-stately: 3.47.0(react@19.2.7)
+
+  '@react-spectrum/meter@3.6.1(react-dom@19.2.7(react@19.2.7))(react@19.2.7)':
+    dependencies:
+      '@adobe/react-spectrum': 3.47.1(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      '@swc/helpers': 0.5.23
+      react: 19.2.7
+      react-dom: 19.2.7(react@19.2.7)
 
   '@react-spectrum/provider@3.11.1(react-dom@19.2.7(react@19.2.7))(react@19.2.7)':
     dependencies:
@@ -7050,7 +7148,21 @@ snapshots:
       react-dom: 19.2.7(react@19.2.7)
       react-stately: 3.47.0(react@19.2.7)
 
+  '@react-stately/dnd@3.8.1(react-dom@19.2.7(react@19.2.7))(react@19.2.7)':
+    dependencies:
+      '@swc/helpers': 0.5.23
+      react: 19.2.7
+      react-dom: 19.2.7(react@19.2.7)
+      react-stately: 3.47.0(react@19.2.7)
+
   '@react-stately/form@3.3.1(react-dom@19.2.7(react@19.2.7))(react@19.2.7)':
+    dependencies:
+      '@swc/helpers': 0.5.23
+      react: 19.2.7
+      react-dom: 19.2.7(react@19.2.7)
+      react-stately: 3.47.0(react@19.2.7)
+
+  '@react-stately/layout@4.7.1(react-dom@19.2.7(react@19.2.7))(react@19.2.7)':
     dependencies:
       '@swc/helpers': 0.5.23
       react: 19.2.7
@@ -7165,12 +7277,27 @@ snapshots:
       react-dom: 19.2.7(react@19.2.7)
       react-stately: 3.47.0(react@19.2.7)
 
+  '@react-stately/virtualizer@4.5.1(react-dom@19.2.7(react@19.2.7))(react@19.2.7)':
+    dependencies:
+      '@swc/helpers': 0.5.23
+      react: 19.2.7
+      react-dom: 19.2.7(react@19.2.7)
+      react-stately: 3.47.0(react@19.2.7)
+
   '@react-types/color@3.2.0(@react-spectrum/provider@3.11.1(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)':
     dependencies:
       '@react-aria/color': 3.2.1(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       '@react-spectrum/color': 3.2.1(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       '@react-spectrum/provider': 3.11.1(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       '@react-stately/color': 3.10.1(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      react: 19.2.7
+      react-dom: 19.2.7(react@19.2.7)
+
+  '@react-types/meter@3.5.0(@react-spectrum/provider@3.11.1(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)':
+    dependencies:
+      '@react-aria/meter': 3.5.1(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      '@react-spectrum/meter': 3.6.1(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      '@react-spectrum/provider': 3.11.1(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       react: 19.2.7
       react-dom: 19.2.7(react@19.2.7)
 

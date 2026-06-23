@@ -7,6 +7,7 @@ import {
   waitForControlsPanel,
 } from "./helpers/apply-controls";
 import { expectPageScreenshot } from "./helpers/screenshots";
+import { runVisualInteraction } from "./helpers/visual-interactions";
 
 const visualCases = generateVisualTestCases();
 
@@ -62,6 +63,9 @@ test.describe("Visual regression", () => {
                 visualCase.values,
                 defaults,
               );
+              if (visualCase.interaction) {
+                await runVisualInteraction(demoPage, visualCase.interaction);
+              }
             },
           },
         );

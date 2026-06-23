@@ -28,7 +28,12 @@
 }
 
 .link:hover {
+  background: var(--color-neutral);
   color: var(--color-fg);
+}
+
+.linkActive:hover {
+  background: var(--color-neutral-hover);
 }
 
 .linkActive {

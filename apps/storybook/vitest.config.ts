@@ -3,10 +3,8 @@ import { fileURLToPath } from "node:url";
 import { storybookTest } from "@storybook/addon-vitest/vitest-plugin";
 import { playwright } from "@vitest/browser-playwright";
 import { defineConfig } from "vitest/config";
-import { coverageReportsDir } from "../../vitest.coverage.ts";
 
 const dirname = path.dirname(fileURLToPath(import.meta.url));
-const workspaceRoot = path.join(dirname, "../..");
 
 export default defineConfig({
   optimizeDeps: {
@@ -30,18 +28,6 @@ export default defineConfig({
   test: {
     name: "storybook",
     sequence: { groupOrder: 2 },
-    coverage: {
-      reportsDirectory: coverageReportsDir(workspaceRoot, "storybook"),
-      include: ["../../packages/components/src/**/*.{ts,tsx}"],
-      reporter: ["text", "text-summary", "html", "lcov", "json-summary"],
-      exclude: [
-        "**/__tests__/**",
-        "**/*.test.{ts,tsx}",
-        "**/*.types.ts",
-        "**/index.ts",
-        "**/*.module.scss",
-      ],
-    },
     browser: {
       enabled: true,
       provider: playwright({}),

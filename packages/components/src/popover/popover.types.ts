@@ -6,6 +6,7 @@ export type PopoverProps = HTMLAttributes<HTMLDivElement> & {
   placement?: Placement | undefined;
   offset?: number | undefined;
   className?: string | undefined;
+  portalContainer?: Element | undefined;
   ref?: Ref<HTMLDivElement>;
 };
 
@@ -16,4 +17,5 @@ export type PopoverContextValue = {
   placement?: Placement | undefined;
   offset?: number | undefined;
   isNonModal?: boolean | undefined;
+  portalContainer?: Element | undefined;
 };

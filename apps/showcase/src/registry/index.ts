@@ -2,6 +2,8 @@ import { accordionConfig } from "./accordion/config";
 import accordionPlayground from "./accordion/playground";
 import { alertConfig } from "./alert/config";
 import alertPlayground from "./alert/playground";
+import { autocompleteConfig } from "./autocomplete/config";
+import autocompletePlayground from "./autocomplete/playground";
 import { avatarConfig } from "./avatar/config";
 import avatarPlayground from "./avatar/playground";
 import { badgeConfig } from "./badge/config";
@@ -34,20 +36,24 @@ import { colorSwatchPickerConfig } from "./color-swatch-picker/config";
 import colorSwatchPickerPlayground from "./color-swatch-picker/playground";
 import { colorThumbConfig } from "./color-thumb/config";
 import colorThumbPlayground from "./color-thumb/playground";
+import { colorWheelConfig } from "./color-wheel/config";
+import colorWheelPlayground from "./color-wheel/playground";
 import { comboboxConfig } from "./combobox/config";
 import comboboxPlayground from "./combobox/playground";
-import { commandConfig } from "./command/config";
-import commandPlayground from "./command/playground";
 import { contextMenuConfig } from "./context-menu/config";
 import contextMenuPlayground from "./context-menu/playground";
 import { dateFieldConfig } from "./date-field/config";
 import dateFieldPlayground from "./date-field/playground";
 import { datePickerConfig } from "./date-picker/config";
 import datePickerPlayground from "./date-picker/playground";
+import { dateRangePickerConfig } from "./date-range-picker/config";
+import dateRangePickerPlayground from "./date-range-picker/playground";
 import { dialogConfig } from "./dialog/config";
 import dialogPlayground from "./dialog/playground";
 import { disclosureConfig } from "./disclosure/config";
 import disclosurePlayground from "./disclosure/playground";
+import { dragAndDropConfig } from "./drag-and-drop/config";
+import dragAndDropPlayground from "./drag-and-drop/playground";
 import { drawerConfig } from "./drawer/config";
 import drawerPlayground from "./drawer/playground";
 import { dropZoneConfig } from "./drop-zone/config";
@@ -58,6 +64,10 @@ import { fieldConfig } from "./field/config";
 import fieldPlayground from "./field/playground";
 import { fileTriggerConfig } from "./file-trigger/config";
 import fileTriggerPlayground from "./file-trigger/playground";
+import { formConfig } from "./form/config";
+import formPlayground from "./form/playground";
+import { gridListConfig } from "./grid-list/config";
+import gridListPlayground from "./grid-list/playground";
 import { groupConfig } from "./group/config";
 import groupPlayground from "./group/playground";
 import { headingConfig } from "./heading/config";
@@ -68,6 +78,8 @@ import { inputGroupConfig } from "./input-group/config";
 import inputGroupPlayground from "./input-group/playground";
 import { kbdConfig } from "./kbd/config";
 import kbdPlayground from "./kbd/playground";
+import { keyboardConfig } from "./keyboard/config";
+import keyboardPlayground from "./keyboard/playground";
 import { linkConfig } from "./link/config";
 import linkPlayground from "./link/playground";
 import { listBoxConfig } from "./list-box/config";
@@ -76,6 +88,8 @@ import { loaderConfig } from "./loader/config";
 import loaderPlayground from "./loader/playground";
 import { menuConfig } from "./menu/config";
 import menuPlayground from "./menu/playground";
+import { meterConfig } from "./meter/config";
+import meterPlayground from "./meter/playground";
 import { modalConfig } from "./modal/config";
 import modalPlayground from "./modal/playground";
 import { numberFieldConfig } from "./number-field/config";
@@ -84,6 +98,8 @@ import { otpFieldConfig } from "./otp-field/config";
 import otpFieldPlayground from "./otp-field/playground";
 import { overlayConfig } from "./overlay/config";
 import overlayPlayground from "./overlay/playground";
+import { overlayArrowConfig } from "./overlay-arrow/config";
+import overlayArrowPlayground from "./overlay-arrow/playground";
 import { paginationConfig } from "./pagination/config";
 import paginationPlayground from "./pagination/playground";
 import { popoverConfig } from "./popover/config";
@@ -128,11 +144,15 @@ import { toggleButtonConfig } from "./toggle-button/config";
 import toggleButtonPlayground from "./toggle-button/playground";
 import { toggleButtonGroupConfig } from "./toggle-button-group/config";
 import toggleButtonGroupPlayground from "./toggle-button-group/playground";
+import { toolbarConfig } from "./toolbar/config";
+import toolbarPlayground from "./toolbar/playground";
 import { tooltipConfig } from "./tooltip/config";
 import tooltipPlayground from "./tooltip/playground";
 import { treeConfig } from "./tree/config";
 import treePlayground from "./tree/playground";
 import type { ComponentRegistryEntry, ComponentSlug } from "./types";
+import { virtualizerConfig } from "./virtualizer/config";
+import virtualizerPlayground from "./virtualizer/playground";
 
 const registry = {
   accordion: {
@@ -203,6 +223,10 @@ const registry = {
     config: colorSwatchPickerConfig,
     Playground: colorSwatchPickerPlayground,
   },
+  "color-wheel": {
+    config: colorWheelConfig,
+    Playground: colorWheelPlayground,
+  },
   "color-thumb": {
     config: colorThumbConfig,
     Playground: colorThumbPlayground,
@@ -211,9 +235,9 @@ const registry = {
     config: comboboxConfig,
     Playground: comboboxPlayground,
   },
-  command: {
-    config: commandConfig,
-    Playground: commandPlayground,
+  autocomplete: {
+    config: autocompleteConfig,
+    Playground: autocompletePlayground,
   },
   "context-menu": {
     config: contextMenuConfig,
@@ -226,6 +250,10 @@ const registry = {
   "date-picker": {
     config: datePickerConfig,
     Playground: datePickerPlayground,
+  },
+  "date-range-picker": {
+    config: dateRangePickerConfig,
+    Playground: dateRangePickerPlayground,
   },
   dialog: {
     config: dialogConfig,
@@ -243,6 +271,10 @@ const registry = {
     config: dropZoneConfig,
     Playground: dropZonePlayground,
   },
+  "drag-and-drop": {
+    config: dragAndDropConfig,
+    Playground: dragAndDropPlayground,
+  },
   empty: {
     config: emptyConfig,
     Playground: emptyPlayground,
@@ -251,9 +283,17 @@ const registry = {
     config: fieldConfig,
     Playground: fieldPlayground,
   },
+  form: {
+    config: formConfig,
+    Playground: formPlayground,
+  },
   "file-trigger": {
     config: fileTriggerConfig,
     Playground: fileTriggerPlayground,
+  },
+  "grid-list": {
+    config: gridListConfig,
+    Playground: gridListPlayground,
   },
   group: {
     config: groupConfig,
@@ -275,6 +315,10 @@ const registry = {
     config: kbdConfig,
     Playground: kbdPlayground,
   },
+  keyboard: {
+    config: keyboardConfig,
+    Playground: keyboardPlayground,
+  },
   link: {
     config: linkConfig,
     Playground: linkPlayground,
@@ -286,6 +330,10 @@ const registry = {
   loader: {
     config: loaderConfig,
     Playground: loaderPlayground,
+  },
+  meter: {
+    config: meterConfig,
+    Playground: meterPlayground,
   },
   menu: {
     config: menuConfig,
@@ -306,6 +354,10 @@ const registry = {
   overlay: {
     config: overlayConfig,
     Playground: overlayPlayground,
+  },
+  "overlay-arrow": {
+    config: overlayArrowConfig,
+    Playground: overlayArrowPlayground,
   },
   pagination: {
     config: paginationConfig,
@@ -387,6 +439,10 @@ const registry = {
     config: toastConfig,
     Playground: toastPlayground,
   },
+  toolbar: {
+    config: toolbarConfig,
+    Playground: toolbarPlayground,
+  },
   "toggle-button": {
     config: toggleButtonConfig,
     Playground: toggleButtonPlayground,
@@ -402,6 +458,10 @@ const registry = {
   tree: {
     config: treeConfig,
     Playground: treePlayground,
+  },
+  virtualizer: {
+    config: virtualizerConfig,
+    Playground: virtualizerPlayground,
   },
 } as const satisfies Record<string, ComponentRegistryEntry>;
 

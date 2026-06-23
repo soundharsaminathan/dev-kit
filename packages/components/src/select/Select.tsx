@@ -312,9 +312,7 @@ function SelectContent<T extends CollectionItem>({
 
   return (
     <OverlayContainer>
-      <Popover placement={placement} className="overflow-hidden">
-        {listBox}
-      </Popover>
+      <Popover placement={placement}>{listBox}</Popover>
     </OverlayContainer>
   );
 }

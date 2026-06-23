@@ -45,6 +45,8 @@ export const componentCategories: ComponentCategory[] = [
       { slug: "skeleton", name: "Skeleton" },
       { slug: "avatar", name: "Avatar" },
       { slug: "progress-bar", name: "Progress Bar" },
+      { slug: "meter", name: "Meter" },
+      { slug: "keyboard", name: "Keyboard" },
     ],
   },
   {
@@ -59,6 +61,8 @@ export const componentCategories: ComponentCategory[] = [
       { slug: "overlay", name: "Overlay" },
       { slug: "table", name: "Table" },
       { slug: "tree", name: "Tree" },
+      { slug: "grid-list", name: "Grid List" },
+      { slug: "virtualizer", name: "Virtualizer" },
     ],
   },
   {
@@ -66,6 +70,7 @@ export const componentCategories: ComponentCategory[] = [
     slug: "forms",
     components: [
       { slug: "field", name: "Field" },
+      { slug: "form", name: "Form" },
       { slug: "input", name: "Input" },
       { slug: "text-field", name: "Text Field" },
       { slug: "text-area", name: "Text Area" },
@@ -79,6 +84,7 @@ export const componentCategories: ComponentCategory[] = [
       { slug: "input-group", name: "Input Group" },
       { slug: "otp-field", name: "OTP Field" },
       { slug: "drop-zone", name: "Drop Zone" },
+      { slug: "drag-and-drop", name: "Drag and Drop" },
     ],
   },
   {
@@ -89,13 +95,14 @@ export const componentCategories: ComponentCategory[] = [
       { slug: "combobox", name: "Combobox" },
       { slug: "list-box", name: "List Box" },
       { slug: "popover", name: "Popover" },
+      { slug: "overlay-arrow", name: "Overlay Arrow" },
       { slug: "menu", name: "Menu" },
       { slug: "context-menu", name: "Context Menu" },
       { slug: "tooltip", name: "Tooltip" },
       { slug: "modal", name: "Modal" },
       { slug: "dialog", name: "Dialog" },
       { slug: "drawer", name: "Drawer" },
-      { slug: "command", name: "Command" },
+      { slug: "autocomplete", name: "Autocomplete" },
     ],
   },
   {
@@ -107,6 +114,7 @@ export const componentCategories: ComponentCategory[] = [
       { slug: "accordion", name: "Accordion" },
       { slug: "breadcrumbs", name: "Breadcrumbs" },
       { slug: "pagination", name: "Pagination" },
+      { slug: "toolbar", name: "Toolbar" },
     ],
   },
   {
@@ -117,6 +125,7 @@ export const componentCategories: ComponentCategory[] = [
       { slug: "date-field", name: "Date Field" },
       { slug: "time-field", name: "Time Field" },
       { slug: "date-picker", name: "Date Picker" },
+      { slug: "date-range-picker", name: "Date Range Picker" },
     ],
   },
   {
@@ -127,6 +136,7 @@ export const componentCategories: ComponentCategory[] = [
       { slug: "color-swatch", name: "Color Swatch" },
       { slug: "color-area", name: "Color Area" },
       { slug: "color-slider", name: "Color Slider", scale: 1 },
+      { slug: "color-wheel", name: "Color Wheel" },
       { slug: "color-field", name: "Color Field" },
       { slug: "color-swatch-picker", name: "Color Swatch Picker" },
       { slug: "color-picker", name: "Color Picker" },

@@ -2,6 +2,7 @@ import type { AriaListBoxOptions } from "@react-aria/listbox";
 import type { ListState } from "@react-stately/list";
 import type { Node } from "@react-types/shared";
 import type { ComponentPropsWithoutRef, ReactNode, Ref } from "react";
+import type { DragAndDropHooks } from "../drag-and-drop";
 import type { CollectionItem } from "./collection-utils";
 
 export type ListBoxProps<T extends CollectionItem = CollectionItem> =
@@ -9,6 +10,7 @@ export type ListBoxProps<T extends CollectionItem = CollectionItem> =
     items?: Iterable<T> | undefined;
     children?: ReactNode;
     className?: string | undefined;
+    dragAndDropHooks?: DragAndDropHooks | undefined;
     ref?: Ref<HTMLUListElement>;
   };
 
