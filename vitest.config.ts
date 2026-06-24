@@ -11,6 +11,7 @@ const coverageExclude = [
   "**/index.ts",
   "**/*.module.scss",
   "**/scss-modules.d.ts",
+  "scripts/vite/**",
 ];
 
 const coverageReporters = [
@@ -90,6 +91,8 @@ export default defineConfig({
           name: "scripts",
           root: path.join(rootDir, "scripts"),
           environment: "node",
+          testTimeout: 15_000,
+          fileParallelism: false,
           sequence: { groupOrder: 3 },
         },
       },
