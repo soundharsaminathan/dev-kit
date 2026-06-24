@@ -6,7 +6,11 @@ import {
   applyControlValues,
   waitForControlsPanel,
 } from "./helpers/apply-controls";
-import { expectPageScreenshot, waitForThemesPage } from "./helpers/screenshots";
+import {
+  expectPageScreenshot,
+  VIEWPORT_SCREENSHOT_OPTIONS,
+  waitForThemesPage,
+} from "./helpers/screenshots";
 import { runVisualInteraction } from "./helpers/visual-interactions";
 
 const visualCases = generateVisualTestCases();
@@ -56,7 +60,7 @@ test.describe("Visual regression", () => {
           `/components/${visualCase.slug}`,
           visualCase.screenshotName,
           {
-            fullPage: true,
+            ...VIEWPORT_SCREENSHOT_OPTIONS,
             beforeScreenshot: async (demoPage) => {
               await waitForControlsPanel(demoPage);
               await applyControlValues(
