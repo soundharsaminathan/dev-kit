@@ -1,3 +1,4 @@
+import { THEME_FONT_FAMILIES } from "@dev-ui/tokens";
 import { expect, type Locator, type Page } from "@playwright/test";
 
 export const VIEWPORT_SCREENSHOT_OPTIONS = { fullPage: false } as const;
@@ -15,7 +16,18 @@ async function prepareShowcaseStorage(page: Page) {
 
 export async function waitForScreenshotReady(page: Page) {
   await page.waitForLoadState("networkidle");
-  await page.evaluate(() => document.fonts.ready);
+  await page.evaluate(
+    async (families) => {
+      await Promise.all(
+        families.flatMap((family) => [
+          document.fonts.load(`400 16px "${family}"`),
+          document.fonts.load(`600 16px "${family}"`),
+        ]),
+      );
+      await document.fonts.ready;
+    },
+    [...THEME_FONT_FAMILIES],
+  );
 }
 
 export async function gotoShowcasePage(page: Page, path: string) {

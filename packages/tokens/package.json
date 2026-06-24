@@ -16,7 +16,16 @@
       "import": "./src/index.ts",
       "default": "./src/index.ts"
     },
-    "./react-aria-integration": "./src/react-aria-integration.ts"
+    "./react-aria-integration": "./src/react-aria-integration.ts",
+    "./fonts": {
+      "import": "./src/theme-fonts.ts",
+      "default": "./src/theme-fonts.ts"
+    },
+    "./theme-font-families": {
+      "types": "./src/theme-font-families.ts",
+      "import": "./src/theme-font-families.ts",
+      "default": "./src/theme-font-families.ts"
+    }
   },
   "scripts": {
     "generate-scss": "tsx src/generate-scss.ts",
@@ -27,6 +36,14 @@
     "src"
   ],
   "dependencies": {
+    "@fontsource/fira-code": "^5.2.7",
+    "@fontsource/ibm-plex-mono": "^5.2.7",
+    "@fontsource/inter": "^5.2.8",
+    "@fontsource/jetbrains-mono": "^5.2.8",
+    "@fontsource/lora": "^5.2.8",
+    "@fontsource/montserrat": "^5.2.8",
+    "@fontsource/plus-jakarta-sans": "^5.2.8",
+    "@fontsource/source-serif-4": "^5.2.9",
     "colorjs.io": "^0.6.1"
   },
   "devDependencies": {

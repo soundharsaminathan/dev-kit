@@ -1,6 +1,7 @@
 import { createRouter, RouterProvider } from "@tanstack/react-router";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
+import "@dev-ui/tokens/fonts";
 import "@dev-ui/tokens/scss";
 import "@dev-ui/components/styles";
 import "@/styles/global.scss";

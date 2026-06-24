@@ -3,6 +3,7 @@ import type { Preview } from "@storybook/react-vite";
 import MockDate from "mockdate";
 import { initialize, mswLoader } from "msw-storybook-addon";
 import React, { type ReactNode, useLayoutEffect } from "react";
+import "@dev-ui/tokens/fonts";
 import "@dev-ui/tokens/scss";
 import "@dev-ui/components/styles";
 import "./preview.css";
