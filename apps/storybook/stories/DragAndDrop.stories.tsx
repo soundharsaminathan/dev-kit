@@ -1,9 +1,12 @@
+import type { DragAndDropOptions } from "@dev-ui/components/drag-and-drop";
 import { useDragAndDrop } from "@dev-ui/components/drag-and-drop";
 import type { CollectionItem } from "@dev-ui/components/list-box";
 import { ListBox } from "@dev-ui/components/list-box";
-import type { DroppableCollectionReorderEvent, Key } from "@react-types/shared";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useCallback, useMemo, useState } from "react";
+
+type ReorderEvent = Parameters<NonNullable<DragAndDropOptions["onReorder"]>>[0];
+type ItemKey = CollectionItem["id"];
 
 const INITIAL_ITEMS: CollectionItem[] = [
   { id: 1, label: "Documents" },
@@ -18,8 +21,8 @@ type DragAndDropStoryArgs = {
 
 function moveItems(
   items: CollectionItem[],
-  targetKey: Key,
-  keys: Set<Key>,
+  targetKey: ItemKey,
+  keys: Set<ItemKey>,
   position: "before" | "after",
 ): CollectionItem[] {
   const moving = [...keys]
@@ -43,7 +46,7 @@ function ReorderableListDemo({
   const [items, setItems] = useState(INITIAL_ITEMS);
 
   const getItems = useCallback(
-    (keys: Set<Key>) =>
+    (keys: Set<ItemKey>) =>
       [...keys].map((key) => ({
         "text/plain":
           items.find((item) => item.id === key)?.label?.toString() ?? "",
@@ -51,7 +54,7 @@ function ReorderableListDemo({
     [items],
   );
 
-  const onReorder = useCallback((event: DroppableCollectionReorderEvent) => {
+  const onReorder = useCallback((event: ReorderEvent) => {
     if (event.target.dropPosition === "before") {
       setItems((current) =>
         moveItems(current, event.target.key, event.keys, "before"),

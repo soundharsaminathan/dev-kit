@@ -1,5 +1,5 @@
 import { Button } from "@dev-ui/components/button";
-import { getThemePreset, resolveSemanticColors } from "@dev-ui/tokens";
+import { getBuiltInTheme, resolveSemanticColors } from "@dev-ui/tokens";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect } from "storybook/test";
 
@@ -151,13 +151,13 @@ export const CssCheck: Story = {
     variant: "primary",
   },
   globals: {
-    themePreset: "modern-minimal",
+    theme: "default",
     themeMode: "light",
   },
   play: async ({ canvas }) => {
     const button = canvas.getByRole("button", { name: /submit/i });
     const expected = resolveSemanticColors(
-      getThemePreset("modern-minimal"),
+      getBuiltInTheme("default")!,
       "light",
     )["color-primary"];
     await expect(getComputedStyle(button).backgroundColor).toBe(expected);

@@ -10,18 +10,22 @@
   border: 1px solid transparent;
   border-radius: var(--btn-radius);
   font-family: var(--font-sans, inherit);
-  font-size: 0.875rem;
+  font-size: var(--btn-font-size);
   font-weight: var(--btn-font-weight);
-  line-height: 1.25;
+  line-height: var(--btn-line-height);
   white-space: nowrap;
   cursor: var(--cursor-interactive);
   user-select: none;
   background-clip: padding-box;
   transition:
-    background-color 150ms ease,
-    border-color 150ms ease,
-    color 150ms ease,
-    box-shadow 150ms ease;
+    background-color var(--interaction-transition-duration)
+      var(--interaction-transition-curve),
+    border-color var(--interaction-transition-duration)
+      var(--interaction-transition-curve),
+    color var(--interaction-transition-duration)
+      var(--interaction-transition-curve),
+    box-shadow var(--interaction-transition-duration)
+      var(--interaction-transition-curve);
   -webkit-tap-highlight-color: transparent;
 
   svg {
@@ -30,8 +34,9 @@
   }
 
   &:focus-visible {
-    outline: 2px solid var(--color-border-focus);
-    outline-offset: 2px;
+    outline: var(--interaction-focus-ring-width) solid
+      var(--interaction-focus-ring-color);
+    outline-offset: var(--interaction-focus-ring-offset);
   }
 
   &:disabled,

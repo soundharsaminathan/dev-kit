@@ -1,7 +1,7 @@
 /** A named display mode (`"light"`, `"dark"`, or any custom mode). */
 export type ModeName = string;
 
-/** How a semantic token resolves to a CSS value. */
+/** How a token resolves to a CSS value. */
 export type SemanticTarget =
   | { ref: string }
   | { onOf: string }
@@ -13,14 +13,30 @@ export type SemanticTarget =
       };
     };
 
-export type SemanticCategory = "background" | "foreground" | "border";
+export type TokenCategory =
+  | "background"
+  | "foreground"
+  | "border"
+  | "effect"
+  | "interaction"
+  | "component"
+  | "foundation";
 
-export interface SemanticToken {
+export interface TokenDefinition {
   target: SemanticTarget | Record<ModeName, SemanticTarget>;
-  category: SemanticCategory;
+  category: TokenCategory;
   scales?: readonly string[];
   description?: string;
 }
 
+/** @deprecated Use TokenDefinition */
+export type SemanticToken = TokenDefinition;
+
 /** Token name without the leading `--` (e.g. `"color-bg"`). */
-export type SemanticVocabulary = Record<string, SemanticToken>;
+export type TokenVocabulary = Record<string, TokenDefinition>;
+
+/** @deprecated Use TokenVocabulary */
+export type SemanticVocabulary = TokenVocabulary;
+
+/** @deprecated Use TokenCategory */
+export type SemanticCategory = "background" | "foreground" | "border";

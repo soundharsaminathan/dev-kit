@@ -1,29 +1,50 @@
-import type { ThemeMode } from "@dev-ui/tokens";
+import {
+  ACTIVE_THEME_STORAGE_KEY,
+  type CustomTheme,
+  createCustomThemeId,
+  getBuiltInThemeIds,
+  loadCustomThemes,
+  resolveTheme,
+  resolveThemeById,
+  saveCustomThemes,
+  THEME_MODE_STORAGE_KEY,
+  type ThemeDefinition,
+  type ThemeMode,
+  themeToCss,
+} from "@dev-ui/tokens";
 import type React from "react";
 import {
   createContext,
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
+  useMemo,
   useState,
 } from "react";
 
+const CUSTOM_STYLE_ID = "dev-ui-theme-overrides";
+
+type ModePreference = ThemeMode | "system";
+
 export interface ThemeContextValue {
-  preset: string;
+  theme: string;
   mode: ThemeMode;
-  setPreset: (preset: string) => void;
+  themes: ThemeDefinition[];
+  customThemes: CustomTheme[];
+  liveTheme: ThemeDefinition | null;
+  setTheme: (themeId: string) => void;
   setMode: (mode: ThemeMode) => void;
   toggleMode: () => void;
+  setLiveTheme: (definition: ThemeDefinition | null) => void;
+  saveCustomTheme: (
+    theme: Omit<CustomTheme, "id" | "createdAt"> & { id?: string },
+  ) => CustomTheme;
+  deleteCustomTheme: (themeId: string) => void;
 }
 
 const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
 
-const THEME_STORAGE_KEY = "theme-preset";
-const MODE_STORAGE_KEY = "theme-mode";
-
-/**
- * Get the root element (document.documentElement)
- */
 function getRootElement(): HTMLElement {
   if (typeof document === "undefined") {
     throw new Error("ThemeProvider can only be used in a browser environment");
@@ -31,9 +52,6 @@ function getRootElement(): HTMLElement {
   return document.documentElement;
 }
 
-/**
- * Get system preference for dark mode
- */
 function getSystemPreference(): ThemeMode {
   if (typeof window === "undefined" || !window.matchMedia) {
     return "light";
@@ -43,116 +61,184 @@ function getSystemPreference(): ThemeMode {
     : "light";
 }
 
+function readStoredTheme(): string {
+  if (typeof window === "undefined") return "default";
+  return localStorage.getItem(ACTIVE_THEME_STORAGE_KEY) || "default";
+}
+
+function readModePreference(defaultMode: ThemeMode | "system"): ModePreference {
+  if (typeof window === "undefined") {
+    return defaultMode === "system" ? "system" : defaultMode;
+  }
+  const stored = localStorage.getItem(THEME_MODE_STORAGE_KEY);
+  if (stored === "system" || stored === "light" || stored === "dark") {
+    return stored;
+  }
+  return defaultMode === "system" ? "system" : defaultMode;
+}
+
+function applyThemeStyleSheet(_themeId: string, css: string | null): void {
+  if (typeof document === "undefined") return;
+
+  const existing = document.getElementById(CUSTOM_STYLE_ID);
+  if (!css) {
+    existing?.remove();
+    return;
+  }
+
+  const style =
+    existing ??
+    Object.assign(document.createElement("style"), { id: CUSTOM_STYLE_ID });
+  style.textContent = css;
+  if (!existing) {
+    document.head.appendChild(style);
+  }
+}
+
+function applyCustomThemeStyles(
+  themeId: string,
+  customThemes: CustomTheme[],
+): void {
+  if (!themeId.startsWith("custom-")) {
+    applyThemeStyleSheet(themeId, null);
+    return;
+  }
+
+  const resolved = resolveThemeById(themeId, customThemes);
+  applyThemeStyleSheet(themeId, themeToCss(resolved, themeId));
+}
+
+function applyLiveThemeStyles(definition: ThemeDefinition): void {
+  const resolved = resolveTheme(definition);
+  applyThemeStyleSheet(definition.id, themeToCss(resolved, definition.id));
+}
+
 export interface ThemeProviderProps {
   children: React.ReactNode;
-  /** Default theme preset name */
-  defaultPreset?: string;
-  /** Default theme mode */
+  defaultTheme?: string;
   defaultMode?: ThemeMode | "system";
-  /** Storage key prefix (for multiple apps) */
   storageKeyPrefix?: string;
 }
 
-/**
- * ThemeProvider component
- * Manages theme preset and mode selection, persisting to localStorage
- */
 export function ThemeProvider({
   children,
-  defaultPreset = "modern-minimal",
+  defaultTheme = "default",
   defaultMode = "system",
-  storageKeyPrefix = "",
 }: ThemeProviderProps) {
-  const storagePresetKey = storageKeyPrefix
-    ? `${storageKeyPrefix}-${THEME_STORAGE_KEY}`
-    : THEME_STORAGE_KEY;
-  const storageModeKey = storageKeyPrefix
-    ? `${storageKeyPrefix}-${MODE_STORAGE_KEY}`
-    : MODE_STORAGE_KEY;
+  const builtInIds = useMemo(() => getBuiltInThemeIds(), []);
+  const [customThemes, setCustomThemes] = useState<CustomTheme[]>(() =>
+    typeof window === "undefined" ? [] : loadCustomThemes(),
+  );
+  const [liveTheme, setLiveTheme] = useState<ThemeDefinition | null>(null);
 
-  // Initialize state from localStorage or defaults
-  const [preset, setPresetState] = useState<string>(() => {
-    if (typeof window === "undefined") {
-      return defaultPreset;
-    }
-    return localStorage.getItem(storagePresetKey) || defaultPreset;
+  const [theme, setThemeState] = useState<string>(() => {
+    const stored = readStoredTheme();
+    return stored || defaultTheme;
   });
 
-  const [mode, setModeState] = useState<ThemeMode>(() => {
-    if (typeof window === "undefined") {
-      return defaultMode === "system" ? getSystemPreference() : defaultMode;
-    }
-    const stored = localStorage.getItem(storageModeKey);
-    if (stored === "system") {
-      return getSystemPreference();
-    }
-    return (
-      (stored as ThemeMode) ||
-      (defaultMode === "system" ? getSystemPreference() : defaultMode)
-    );
-  });
+  const [modePreference, setModePreference] = useState<ModePreference>(() =>
+    readModePreference(defaultMode),
+  );
+  const [systemMode, setSystemMode] = useState<ThemeMode>(() =>
+    getSystemPreference(),
+  );
 
-  // Apply theme attributes to root element
-  useEffect(() => {
+  const mode: ThemeMode =
+    modePreference === "system" ? systemMode : modePreference;
+
+  const themes = useMemo<ThemeDefinition[]>(() => {
+    const builtIn = builtInIds.map((id) => resolveThemeById(id, customThemes));
+    return [...builtIn, ...customThemes];
+  }, [builtInIds, customThemes]);
+
+  useLayoutEffect(() => {
     const root = getRootElement();
-    root.setAttribute("data-theme-preset", preset);
+    const activeThemeId = liveTheme?.id ?? theme;
+    root.setAttribute("data-theme", activeThemeId);
     root.setAttribute("data-theme-mode", mode);
-  }, [preset, mode]);
 
-  // Listen for system preference changes
-  useEffect(() => {
-    if (typeof window === "undefined" || !window.matchMedia) {
-      return;
+    if (liveTheme) {
+      applyLiveThemeStyles(liveTheme);
+    } else {
+      applyCustomThemeStyles(theme, customThemes);
     }
+
+    localStorage.setItem(ACTIVE_THEME_STORAGE_KEY, theme);
+  }, [theme, mode, customThemes, liveTheme]);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.matchMedia) return;
 
     const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
     const handleChange = () => {
-      const stored = localStorage.getItem(storageModeKey);
-      if (stored === "system" || (!stored && defaultMode === "system")) {
-        setModeState(getSystemPreference());
+      if (modePreference === "system") {
+        setSystemMode(getSystemPreference());
       }
     };
 
-    // Modern browsers
     if (mediaQuery.addEventListener) {
       mediaQuery.addEventListener("change", handleChange);
       return () => mediaQuery.removeEventListener("change", handleChange);
     }
-    // Fallback for older browsers
     mediaQuery.addListener(handleChange);
     return () => mediaQuery.removeListener(handleChange);
-  }, [defaultMode, storageModeKey]);
+  }, [modePreference]);
 
-  const setPreset = useCallback(
-    (newPreset: string) => {
-      setPresetState(newPreset);
-      if (typeof window !== "undefined") {
-        localStorage.setItem(storagePresetKey, newPreset);
-      }
-    },
-    [storagePresetKey],
-  );
+  const setTheme = useCallback((themeId: string) => {
+    setThemeState(themeId);
+  }, []);
 
-  const setMode = useCallback(
-    (newMode: ThemeMode) => {
-      setModeState(newMode);
-      if (typeof window !== "undefined") {
-        localStorage.setItem(storageModeKey, newMode);
-      }
-    },
-    [storageModeKey],
-  );
+  const setMode = useCallback((newMode: ThemeMode) => {
+    setModePreference(newMode);
+    localStorage.setItem(THEME_MODE_STORAGE_KEY, newMode);
+  }, []);
 
   const toggleMode = useCallback(() => {
     setMode(mode === "light" ? "dark" : "light");
   }, [mode, setMode]);
 
+  const saveCustomTheme = useCallback(
+    (
+      input: Omit<CustomTheme, "id" | "createdAt"> & { id?: string },
+    ): CustomTheme => {
+      const saved: CustomTheme = {
+        ...input,
+        id: input.id?.startsWith("custom-")
+          ? (input.id as CustomTheme["id"])
+          : createCustomThemeId(),
+        createdAt: new Date().toISOString(),
+      };
+      setCustomThemes((current) => {
+        const next = [...current.filter((item) => item.id !== saved.id), saved];
+        saveCustomThemes(next);
+        return next;
+      });
+      return saved;
+    },
+    [],
+  );
+
+  const deleteCustomTheme = useCallback((themeId: string) => {
+    setCustomThemes((current) => {
+      const next = current.filter((item) => item.id !== themeId);
+      saveCustomThemes(next);
+      return next;
+    });
+    setThemeState((current) => (current === themeId ? "default" : current));
+  }, []);
+
   const value: ThemeContextValue = {
-    preset,
+    theme,
     mode,
-    setPreset,
+    themes,
+    customThemes,
+    liveTheme,
+    setTheme,
     setMode,
     toggleMode,
+    setLiveTheme,
+    saveCustomTheme,
+    deleteCustomTheme,
   };
 
   return (
@@ -160,10 +246,6 @@ export function ThemeProvider({
   );
 }
 
-/**
- * Hook to access theme context
- * @throws Error if used outside ThemeProvider
- */
 export function useTheme(): ThemeContextValue {
   const context = useContext(ThemeContext);
   if (context === undefined) {

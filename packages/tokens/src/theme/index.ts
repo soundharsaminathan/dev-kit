@@ -26,11 +26,38 @@ export {
   getSemanticColor,
   resolveSemanticColors,
 } from "./resolve-semantic-colors.js";
+export { resolveTheme, resolveThemeById } from "./resolve-theme.js";
 export { DEFAULT_SEMANTICS } from "./semantics.js";
+export {
+  COLOR_SEED_KEYS,
+  type ColorSeedKey,
+  createThemeDraft,
+  definitionToThemeDraft,
+  type EditableToken,
+  listEditableTokens,
+  listEditableTokensByLayer,
+  resolveThemeDraft,
+  setColorSeed,
+  setTokenOverride,
+  type ThemeDraft,
+  TOKEN_LAYER_LABELS,
+  TOKEN_LAYER_ORDER,
+  type TokenLayerKey,
+  themeDraftToDefinition,
+} from "./theme-draft.js";
+export {
+  emitThemeBlock,
+  getAllSemanticVocabulary,
+  themeSelector,
+  themeToCss,
+} from "./theme-to-css.js";
 export type {
   ModeName,
   SemanticCategory,
   SemanticTarget,
   SemanticToken,
   SemanticVocabulary,
+  TokenCategory,
+  TokenDefinition,
+  TokenVocabulary,
 } from "./types.js";

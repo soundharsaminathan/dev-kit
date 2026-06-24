@@ -1,5 +1,5 @@
 import { Button } from "@dev-ui/components/button";
-import { getThemePreset, getThemePresetNames } from "@dev-ui/tokens";
+import { getBuiltInThemeIds, resolveThemeById } from "@dev-ui/tokens";
 import { createFileRoute } from "@tanstack/react-router";
 import styles from "@/modules/components-list/components-list.module.scss";
 
@@ -8,15 +8,15 @@ export const Route = createFileRoute("/themes")({
 });
 
 function ThemesPage() {
-  const presets = getThemePresetNames();
+  const themeIds = getBuiltInThemeIds();
 
   return (
     <div className={styles.page}>
       <div>
-        <h1 className={styles.pageTitle}>Theme presets</h1>
+        <h1 className={styles.pageTitle}>Themes</h1>
         <p className={styles.pageDescription}>
-          Compare all presets in light and dark mode. Use the header controls to
-          switch the global theme.
+          Compare built-in themes in light and dark mode. Use the header
+          controls to switch the global theme.
         </p>
       </div>
 
@@ -30,10 +30,10 @@ function ThemesPage() {
             marginTop: "1rem",
           }}
         >
-          {presets.map((presetName) => (
+          {themeIds.map((themeId) => (
             <div
-              key={`${presetName}-light`}
-              data-theme-preset={presetName}
+              key={`${themeId}-light`}
+              data-theme={themeId}
               data-theme-mode="light"
               style={{
                 padding: "1.25rem",
@@ -44,7 +44,7 @@ function ThemesPage() {
               }}
             >
               <h3 style={{ marginBottom: "0.75rem", fontWeight: 600 }}>
-                {getThemePreset(presetName).label}
+                {resolveThemeById(themeId).label}
               </h3>
               <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
                 <Button variant="primary" size="sm">
@@ -53,13 +53,16 @@ function ThemesPage() {
                 <Button variant="default" size="sm">
                   Default
                 </Button>
+                <Button variant="quiet" size="sm">
+                  Quiet
+                </Button>
               </div>
             </div>
           ))}
         </div>
       </section>
 
-      <section>
+      <section style={{ marginTop: "2rem" }}>
         <h2 className={styles.sectionTitle}>Dark mode</h2>
         <div
           style={{
@@ -69,10 +72,10 @@ function ThemesPage() {
             marginTop: "1rem",
           }}
         >
-          {presets.map((presetName) => (
+          {themeIds.map((themeId) => (
             <div
-              key={`${presetName}-dark`}
-              data-theme-preset={presetName}
+              key={`${themeId}-dark`}
+              data-theme={themeId}
               data-theme-mode="dark"
               style={{
                 padding: "1.25rem",
@@ -83,7 +86,7 @@ function ThemesPage() {
               }}
             >
               <h3 style={{ marginBottom: "0.75rem", fontWeight: 600 }}>
-                {getThemePreset(presetName).label}
+                {resolveThemeById(themeId).label}
               </h3>
               <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
                 <Button variant="primary" size="sm">
@@ -91,6 +94,9 @@ function ThemesPage() {
                 </Button>
                 <Button variant="default" size="sm">
                   Default
+                </Button>
+                <Button variant="quiet" size="sm">
+                  Quiet
                 </Button>
               </div>
             </div>

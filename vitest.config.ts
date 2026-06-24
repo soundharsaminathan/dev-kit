@@ -35,10 +35,18 @@ export default defineConfig({
     projects: [
       {
         test: {
+          name: "tokens",
+          root: path.join(rootDir, "packages/tokens"),
+          environment: "node",
+          sequence: { groupOrder: 0 },
+        },
+      },
+      {
+        test: {
           name: "core",
           root: path.join(rootDir, "packages/core"),
           environment: "node",
-          sequence: { groupOrder: 0 },
+          sequence: { groupOrder: 2 },
         },
       },
       {
@@ -54,7 +62,7 @@ export default defineConfig({
           setupFiles: [path.join(rootDir, "vitest.setup.ts")],
           testTimeout: 15_000,
           hookTimeout: 15_000,
-          sequence: { groupOrder: 1 },
+          sequence: { groupOrder: 2 },
         },
         resolve: {
           alias: {
@@ -93,7 +101,7 @@ export default defineConfig({
           environment: "node",
           testTimeout: 15_000,
           fileParallelism: false,
-          sequence: { groupOrder: 3 },
+          sequence: { groupOrder: 4 },
         },
       },
     ],

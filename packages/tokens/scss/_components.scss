@@ -1,44 +1,69 @@
-// Component-level token aliases
-
 :root {
   --btn-radius: var(--radius-md);
   --btn-font-weight: var(--font-weight-medium);
-
+  --btn-font-size: var(--font-size-sm);
+  --btn-font-size-xs: var(--font-size-xs);
+  --btn-font-size-sm: 0.8125rem;
+  --btn-line-height: var(--line-height-tight);
+  --btn-shadow: var(--shadow-none);
+  --btn-icon-size: var(--font-size-sm);
+  --btn-icon-size-xs: var(--font-size-xs);
+  --btn-icon-size-sm: var(--font-size-md);
+  --btn-icon-size-lg: var(--font-size-md);
+  --btn-spinner-border-width: 2px;
+  --btn-spinner-duration: 0.6s;
   --badge-radius: var(--radius-md);
   --alert-radius: var(--radius-lg);
   --input-radius: var(--radius-md);
+  --input-font-size: var(--font-size-sm);
+  --input-line-height: var(--line-height-tight);
+  --input-padding-inline: 0.625rem;
+  --input-focus-ring-width: 2px;
+  --input-shadow: var(--shadow-none);
+  --select-radius: var(--input-radius);
+  --select-font-size: var(--input-font-size);
   --card-radius: var(--radius-lg);
+  --card-shadow: var(--shadow-sm);
+  --card-background: var(--color-card);
   --popover-radius: var(--radius-md);
   --tooltip-radius: var(--radius-sm);
+  --tooltip-padding: 0.375rem 0.625rem;
+  --tooltip-font-size: var(--font-size-xs);
+  --tooltip-shadow: var(--shadow-md);
   --tag-radius: var(--radius-lg);
   --list-box-item-radius: var(--radius-sm);
   --checkbox-radius: 4px;
   --checkbox-card-radius: var(--radius-lg);
-  --radio-radius: 9999px;
+  --radio-radius: var(--radius-full);
   --radio-card-radius: var(--radius-lg);
-  --switch-radius: 9999px;
+  --switch-radius: var(--radius-full);
   --switch-card-radius: var(--radius-lg);
-  --avatar-radius: 9999px;
+  --avatar-radius: var(--radius-full);
   --color-area-radius: var(--radius-md);
   --color-swatch-picker-item-radius: var(--radius-md);
   --calendar-cell-radius: var(--radius-lg);
   --calendar-cell-size: 2.25rem;
   --calendar-range-radius: var(--radius-sm);
-
-  --modal-backdrop-blur: 4px;
+  --dialog-radius: var(--radius-lg);
+  --dialog-shadow: var(--shadow-lg);
+  --dialog-padding: var(--space-6);
+  --modal-backdrop-blur: var(--blur-sm);
   --modal-backdrop-opacity: 40%;
   --modal-background: var(--color-bg);
   --modal-radius: var(--radius-lg);
-
+  --modal-shadow: var(--shadow-lg);
+  --table-border-color: var(--color-border);
+  --table-header-background: var(--color-muted);
+  --table-cell-padding: var(--space-3);
+  --table-font-size: var(--font-size-sm);
   --slider-track-radius: var(--radius-full);
   --slider-thumb-radius: var(--radius-full);
   --slider-thumb-size: calc(var(--space-3) * 1);
-  --slider-thumb-shadow: none;
+  --slider-thumb-shadow: var(--shadow-none);
   --slider-fill-color: var(--color-primary);
   --slider-cursor: var(--cursor-interactive);
   --slider-dragging-cursor: var(--cursor-interactive);
   --slider-size: var(--space-1);
-
   --progress-track-size: var(--space-1);
   --progress-track-radius: var(--radius-full);
   --progress-fill-color: var(--color-primary);

@@ -9,8 +9,8 @@ export function getControlsPanel(page: Page): Locator {
 
 async function prepareShowcaseStorage(page: Page) {
   await page.addInitScript(() => {
-    window.localStorage.setItem("theme-preset", "modern-minimal");
-    window.localStorage.setItem("theme-mode", "light");
+    window.localStorage.setItem("dev-ui-theme", "default");
+    window.localStorage.setItem("dev-ui-theme-mode", "light");
   });
 }
 
@@ -37,16 +37,13 @@ export async function gotoShowcasePage(page: Page, path: string) {
 }
 
 export async function waitForThemesPage(page: Page) {
-  await page.getByRole("heading", { name: "Theme presets" }).waitFor({
+  await page.getByRole("heading", { name: "Themes" }).waitFor({
     state: "visible",
   });
   await page.getByRole("heading", { name: "Dark mode" }).waitFor({
     state: "visible",
   });
-  await page
-    .locator("[data-theme-preset]")
-    .last()
-    .waitFor({ state: "visible" });
+  await page.locator("[data-theme]").last().waitFor({ state: "visible" });
 }
 
 export async function setEnumControl(page: Page, label: string, value: string) {

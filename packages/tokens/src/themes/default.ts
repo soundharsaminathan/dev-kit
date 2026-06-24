@@ -1,7 +1,8 @@
-import type { ThemePreset } from "../types.js";
+import type { ThemeDefinition } from "../types.js";
 
-export const modernMinimal: ThemePreset = {
-  label: "Modern Minimal",
+export const defaultTheme: ThemeDefinition = {
+  id: "default",
+  label: "Default",
   color: {
     algorithm: "oklch",
     seeds: {

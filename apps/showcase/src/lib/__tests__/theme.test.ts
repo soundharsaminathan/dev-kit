@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { formatPresetLabel } from "../theme";
+import { formatThemeLabel } from "../format-theme-label";
 
-describe("formatPresetLabel", () => {
-  it("title-cases hyphenated preset names", () => {
-    expect(formatPresetLabel("modern-minimal")).toBe("Modern Minimal");
+describe("formatThemeLabel", () => {
+  it("title-cases hyphenated theme ids", () => {
+    expect(formatThemeLabel("neo-brutalism")).toBe("Neo Brutalism");
   });
 
-  it("handles single-word presets", () => {
-    expect(formatPresetLabel("catppuccin")).toBe("Catppuccin");
+  it("uses provided label when available", () => {
+    expect(formatThemeLabel("glass", "Glassmorphism")).toBe("Glassmorphism");
   });
 });

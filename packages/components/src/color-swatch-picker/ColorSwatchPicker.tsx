@@ -5,10 +5,16 @@ import {
   parseColor,
   useColorPickerState,
 } from "@react-stately/color";
-import { createContext, type KeyboardEvent, useContext, useMemo } from "react";
+import {
+  createContext,
+  type KeyboardEvent,
+  useCallback,
+  useContext,
+  useMemo,
+} from "react";
 import { ColorPickerStateContext } from "../color-context";
-import { ColorSwatch } from "../color-swatch/ColorSwatch";
 import styles from "./color-swatch-picker.module.scss";
+import { PickerColorSwatch } from "./PickerColorSwatch";
 import type {
   ColorSwatchPickerItemProps,
   ColorSwatchPickerProps,
@@ -22,6 +28,13 @@ type ColorSwatchPickerContextValue = {
 
 const ColorSwatchPickerContext =
   createContext<ColorSwatchPickerContextValue | null>(null);
+
+const ARROW_KEY_DELTA: Record<string, number> = {
+  ArrowRight: 1,
+  ArrowDown: 1,
+  ArrowLeft: -1,
+  ArrowUp: -1,
+};
 
 function useColorSwatchPickerContext(
   component: string,
@@ -57,6 +70,39 @@ function ColorSwatchPicker({
     [isDisabled, state],
   );
 
+  const handleGroupKeyDown = useCallback(
+    (event: KeyboardEvent<HTMLDivElement>) => {
+      const delta = ARROW_KEY_DELTA[event.key];
+      if (!delta || isDisabled) {
+        return;
+      }
+
+      const items = [
+        ...event.currentTarget.querySelectorAll<HTMLElement>(
+          '[data-color-swatch-picker-item]:not([data-disabled="true"])',
+        ),
+      ];
+      const currentIndex = items.findIndex(
+        (item) => item.getAttribute("aria-checked") === "true",
+      );
+      if (currentIndex === -1 || items.length === 0) {
+        return;
+      }
+
+      event.preventDefault();
+      const nextIndex = (currentIndex + delta + items.length) % items.length;
+      const nextItem = items[nextIndex];
+      const nextColor = nextItem?.dataset.colorValue;
+      if (!nextColor) {
+        return;
+      }
+
+      state.setColor(parseColor(nextColor));
+      nextItem.focus();
+    },
+    [isDisabled, state],
+  );
+
   return (
     <ColorPickerStateContext.Provider value={state}>
       <ColorSwatchPickerContext.Provider value={contextValue}>
@@ -67,6 +113,7 @@ function ColorSwatchPicker({
           data-color-swatch-picker=""
           data-disabled={isDisabled ? "true" : undefined}
           className={cn(styles.root, className)}
+          onKeyDown={handleGroupKeyDown}
         >
           {children}
         </div>
@@ -111,20 +158,19 @@ function ColorSwatchPickerItem({
         tabIndex: selected ? 0 : -1,
         onClick: (event: React.MouseEvent<HTMLDivElement>) => {
           onClick?.(event);
-          if (!event.defaultPrevented) {
+          if (!event.defaultPrevented && !isDisabled) {
             selectColor(parsedColor);
           }
         },
         onKeyDown: handleKeyDown,
       })}
       data-color-swatch-picker-item=""
+      data-color-value={parsedColor.toString("hex")}
       data-selected={selected ? "true" : undefined}
       data-disabled={isDisabled ? "true" : undefined}
       className={cn(styles.item, className)}
     >
-      {children ?? (
-        <ColorSwatch color={parsedColor} className={styles.swatch} />
-      )}
+      {children ?? <PickerColorSwatch color={parsedColor} />}
     </div>
   );
 }

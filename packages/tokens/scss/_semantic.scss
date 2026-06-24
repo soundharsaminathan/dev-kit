@@ -1,6 +1,3 @@
-// Semantic color vocabulary (DEFAULT_SEMANTICS)
-// Maps --color-* tokens to primitive ramps. Do not edit by hand.
-
 :root {
   --color-bg: var(--neutral-50);
   --color-muted: var(--neutral-200);
@@ -85,4 +82,17 @@
   --color-popover: var(--neutral-100);
   --color-sidebar: var(--neutral-100);
   --color-border-sidebar: var(--neutral-300);
+  --surface-primary: var(--color-bg);
+  --surface-secondary: var(--color-muted);
+  --surface-tertiary: var(--color-field);
+  --surface-elevated: var(--color-card);
+  --surface-overlay: var(--color-popover);
+  --text-primary: var(--color-fg);
+  --text-secondary: var(--color-fg-muted);
+  --text-tertiary: var(--color-fg-disabled);
+  --text-inverse: var(--color-fg-inverse);
+  --border-default: var(--color-border);
+  --border-subtle: var(--color-border-field);
+  --border-strong: var(--color-border-active);
+  --border-focus: var(--color-border-focus);
 }

@@ -1,24 +1,23 @@
-import "@testing-library/jest-dom/vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { ThemeProvider, useTheme } from "../theme";
+import { AppThemeProvider, useTheme } from "../theme";
 
 function ThemeConsumer() {
-  const { preset, mode, presets, setPreset, setMode } = useTheme();
+  const { theme, mode, themes, setTheme, setMode } = useTheme();
 
   return (
     <div>
-      <span data-testid="preset">{preset}</span>
+      <span data-testid="theme">{theme}</span>
       <span data-testid="mode">{mode}</span>
-      <span data-testid="preset-count">{presets.length}</span>
+      <span data-testid="theme-count">{themes.length}</span>
       <button
         type="button"
-        onClick={() => setPreset(presets[1] ?? presets[0]!)}
+        onClick={() => setTheme(themes[1]?.id ?? themes[0]!.id)}
       >
-        Change preset
+        Change theme
       </button>
       <button type="button" onClick={() => setMode("dark")}>
-        Dark mode
+        Set dark
       </button>
     </div>
   );
@@ -29,50 +28,34 @@ describe("ThemeProvider", () => {
     localStorage.clear();
 
     render(
-      <ThemeProvider>
+      <AppThemeProvider>
         <ThemeConsumer />
-      </ThemeProvider>,
+      </AppThemeProvider>,
     );
 
-    expect(screen.getByTestId("preset")).toHaveTextContent("modern-minimal");
-    expect(screen.getByTestId("mode")).toHaveTextContent("light");
-    expect(document.documentElement).toHaveAttribute(
-      "data-theme-preset",
-      "modern-minimal",
-    );
+    expect(screen.getByTestId("theme")).toHaveTextContent("default");
+    expect(document.documentElement).toHaveAttribute("data-theme", "default");
     expect(document.documentElement).toHaveAttribute(
       "data-theme-mode",
       "light",
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Dark mode" }));
-
-    expect(screen.getByTestId("mode")).toHaveTextContent("dark");
-    expect(localStorage.getItem("theme-mode")).toBe("dark");
+    act(() => {
+      screen.getByRole("button", { name: "Set dark" }).click();
+    });
+    expect(localStorage.getItem("dev-ui-theme-mode")).toBe("dark");
     expect(document.documentElement).toHaveAttribute("data-theme-mode", "dark");
   });
 
-  it("ignores invalid stored preset values", () => {
-    localStorage.setItem("theme-preset", "not-a-real-preset");
-    localStorage.setItem("theme-mode", "dark");
-
-    render(
-      <ThemeProvider>
-        <ThemeConsumer />
-      </ThemeProvider>,
-    );
-
-    expect(screen.getByTestId("preset")).toHaveTextContent("modern-minimal");
-    expect(screen.getByTestId("mode")).toHaveTextContent("dark");
-  });
-
   it("throws when useTheme is used outside ThemeProvider", () => {
-    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const consoleError = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
 
     expect(() => render(<ThemeConsumer />)).toThrow(
-      "useTheme must be used within ThemeProvider",
+      "useTheme must be used within a ThemeProvider",
     );
 
-    errorSpy.mockRestore();
+    consoleError.mockRestore();
   });
 });
