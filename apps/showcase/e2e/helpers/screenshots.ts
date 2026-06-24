@@ -73,6 +73,7 @@ export async function expectPageScreenshot(
   await gotoShowcasePage(page, path);
   if (options?.beforeScreenshot) {
     await options.beforeScreenshot(page);
+    await waitForScreenshotReady(page);
   }
   const target = options?.locator ?? page;
   await expect(target).toHaveScreenshot(screenshotName, {

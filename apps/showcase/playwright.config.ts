@@ -9,10 +9,16 @@ const showcasePort = Number(env.SHOWCASE_PORT ?? 5173);
 const showcaseUrl = env.SHOWCASE_URL ?? `http://localhost:${showcasePort}`;
 const isCI = Boolean(env.CI);
 
+const chromiumArgs = [
+  "--font-render-hinting=none",
+  "--disable-font-subpixel-positioning",
+  "--force-color-profile=srgb",
+] as const;
+
 const chromiumUse = {
   ...devices["Desktop Chrome"],
   launchOptions: {
-    args: ["--font-render-hinting=none"],
+    args: [...chromiumArgs],
   },
 };
 
@@ -28,7 +34,9 @@ export default defineConfig({
   expect: {
     toHaveScreenshot: {
       animations: "disabled",
+      caret: "hide",
       maxDiffPixelRatio: isCI ? 0.02 : 0.01,
+      stylePath: path.join(dirname, "e2e/screenshot.css"),
     },
   },
   use: {

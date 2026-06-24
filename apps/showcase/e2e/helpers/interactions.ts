@@ -118,6 +118,9 @@ export async function openDisclosure(page: Page) {
     .first();
   await trigger.waitFor({ state: "visible" });
   await trigger.click();
+  const disclosure = getDemoFrame(page).locator('[data-disclosure=""]').first();
+  await disclosure.waitFor({ state: "visible" });
+  await expect(disclosure).toHaveAttribute("data-expanded", "true");
   await getDemoFrame(page)
     .locator('[data-disclosure-panel=""]')
     .first()
