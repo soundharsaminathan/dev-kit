@@ -1,5 +1,11 @@
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { formatCoverageComment } from "../format-coverage-comment.ts";
+import {
+  formatCoverageComment,
+  writeCoverageComment,
+} from "../format-coverage-comment.ts";
 
 const metrics = (total: number, covered: number, pct: number) => ({
   total,
@@ -24,5 +30,36 @@ describe("formatCoverageComment", () => {
     expect(comment).toContain("| Branches | 68/80 | 85.00% |");
     expect(comment).toContain("| Functions | 38/40 | 95.00% |");
     expect(comment).toContain("| Lines | 95/100 | 95.00% |");
+  });
+
+  it("throws when the summary is missing total metrics", () => {
+    expect(() => formatCoverageComment({} as never)).toThrow(
+      "coverage-summary.json is missing a total entry",
+    );
+  });
+});
+
+describe("writeCoverageComment", () => {
+  it("writes markdown from a coverage summary file", () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "coverage-comment-"));
+    const summaryPath = path.join(tempDir, "coverage-summary.json");
+    const outputPath = path.join(tempDir, "coverage-comment.md");
+
+    fs.writeFileSync(
+      summaryPath,
+      JSON.stringify({
+        total: {
+          lines: metrics(10, 8, 80),
+          statements: metrics(10, 8, 80),
+          functions: metrics(4, 3, 75),
+          branches: metrics(6, 4, 66.67),
+        },
+      }),
+    );
+
+    const comment = writeCoverageComment(summaryPath, outputPath);
+
+    expect(comment).toContain("## dev-kit coverage");
+    expect(fs.readFileSync(outputPath, "utf8")).toBe(comment);
   });
 });

@@ -156,6 +156,7 @@ function ColorSliderControl({
           {...mergeProps(trackProps, { ref: trackRef })}
           data-color-slider-track=""
           data-orientation={state.orientation}
+          className={styles.track}
           style={{
             ...trackStyle,
             ...(isDisabled

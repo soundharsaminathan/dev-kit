@@ -7,15 +7,19 @@
     "build:tokens": "nx run tokens:build:tokens",
     "format": "biome format --write .",
     "typecheck": "nx run dev-kit:typecheck",
+    "check:deprecated": "pnpm exec tsx scripts/check-deprecated.ts",
     "check": "nx run dev-kit:check",
     "prepare": "husky",
     "test": "nx run dev-kit:test",
     "test:coverage": "nx run dev-kit:test:coverage",
     "test:watch": "vitest",
     "storybook": "nx run storybook:storybook",
+    "dev:showcase": "nx run showcase:dev",
     "build:storybook": "nx run storybook:build-storybook",
     "test:e2e": "nx run storybook:test:e2e",
     "test:e2e:update": "nx run storybook:test:e2e:update",
+    "test:showcase:e2e": "nx run showcase:test:e2e",
+    "test:showcase:e2e:update": "nx run showcase:test:e2e:update",
     "affected:e2e": "nx affected -t test:e2e:affected",
     "precommit": "nx affected -t typecheck,test --uncommitted --exclude=storybook,dev-kit"
   },
@@ -35,7 +39,8 @@
     "react-dom": "catalog:",
     "typescript": "^6.0.3",
     "tsx": "^4.22.4",
-    "vitest": "^4.1.8"
+    "vitest": "^4.1.8",
+    "vitest-axe": "^0.1.0"
   },
   "engines": {
     "node": ">=24.0.0",

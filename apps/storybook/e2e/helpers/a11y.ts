@@ -1,8 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, type Page } from "@playwright/test";
-import { DEFAULT_GLOBALS, gotoStory } from "./storybook";
-
-export const STORY_ROOT = "#storybook-root";
+import { DEFAULT_GLOBALS, gotoStory, STORY_ROOT } from "./storybook";
 
 const WCAG_TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"] as const;
 

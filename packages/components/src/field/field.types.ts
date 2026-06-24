@@ -7,6 +7,7 @@ export type LegendProps = ComponentPropsWithoutRef<"legend">;
 export type FieldGroupProps = ComponentPropsWithoutRef<"div">;
 
 export type FieldProps = ComponentPropsWithoutRef<"div"> & {
+  name?: string | undefined;
   orientation?: FieldOrientation | undefined;
 };
 

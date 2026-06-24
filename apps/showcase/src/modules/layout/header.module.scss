@@ -1,0 +1,60 @@
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  height: 3.5rem;
+  padding: 0 1.5rem;
+  border-bottom: 1px solid var(--color-border);
+  background: color-mix(in oklch, var(--color-bg) 92%, transparent);
+  backdrop-filter: blur(8px);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.logo {
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.nav {
+  display: none;
+  align-items: center;
+  gap: 1rem;
+}
+
+.navLink {
+  font-size: 0.875rem;
+  color: var(--color-fg-muted);
+  transition: color 0.15s ease;
+}
+
+.navLink:hover,
+.navLinkActive {
+  color: var(--color-fg);
+  font-weight: 600;
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.presetSelect {
+  min-width: 10rem;
+}
+
+@media (min-width: 768px) {
+  .nav {
+    display: flex;
+  }
+}

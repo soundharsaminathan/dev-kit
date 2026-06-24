@@ -1,0 +1,13 @@
+@use "@dev-ui/tokens/scss" as *;
+
+.indicator {
+  height: 2px;
+  margin-block: var(--space-1);
+  border-radius: 1px;
+  background-color: var(--color-primary);
+  opacity: 0;
+
+  &[data-drop-target="true"] {
+    opacity: 1;
+  }
+}

@@ -1,9 +1,14 @@
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   computeCoverageTotal,
   mergeCoverageSummaries,
   mergeFileCoverage,
   mergeMetrics,
+  readProjectCoverageSummaries,
+  writeMergedCoverageSummary,
 } from "../merge-coverage.ts";
 
 const metrics = (total: number, covered: number) => ({
@@ -80,5 +85,59 @@ describe("mergeCoverageSummaries", () => {
 
     expect(merged["src/shared.ts"].lines).toEqual(metrics(4, 3));
     expect(merged["src/shared.ts"].statements).toEqual(metrics(4, 3));
+  });
+});
+
+describe("readProjectCoverageSummaries", () => {
+  it("reads per-project coverage summaries from disk", () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "merge-coverage-"));
+    const scriptsSummaryDir = path.join(tempDir, "coverage", "scripts");
+    fs.mkdirSync(scriptsSummaryDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(scriptsSummaryDir, "coverage-summary.json"),
+      JSON.stringify({
+        "scripts/example.ts": fileCoverage([2, 2], [2, 2]),
+      }),
+    );
+
+    const summaries = readProjectCoverageSummaries(tempDir);
+
+    expect(summaries).toHaveLength(1);
+    expect(summaries[0]["scripts/example.ts"]).toEqual(
+      fileCoverage([2, 2], [2, 2]),
+    );
+  });
+});
+
+describe("writeMergedCoverageSummary", () => {
+  it("merges project summaries into coverage/coverage-summary.json", () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "merge-coverage-"));
+    const coreSummaryDir = path.join(tempDir, "coverage", "core");
+    fs.mkdirSync(coreSummaryDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(coreSummaryDir, "coverage-summary.json"),
+      JSON.stringify({
+        "src/a.ts": fileCoverage([2, 2], [2, 2]),
+      }),
+    );
+
+    const merged = writeMergedCoverageSummary(tempDir);
+    const output = JSON.parse(
+      fs.readFileSync(
+        path.join(tempDir, "coverage", "coverage-summary.json"),
+        "utf8",
+      ),
+    ) as typeof merged;
+
+    expect(merged["src/a.ts"]).toEqual(fileCoverage([2, 2], [2, 2]));
+    expect(output.total).toEqual(merged.total);
+  });
+
+  it("throws when no project summaries exist", () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "merge-coverage-"));
+
+    expect(() => writeMergedCoverageSummary(tempDir)).toThrow(
+      "No project coverage summaries found",
+    );
   });
 });

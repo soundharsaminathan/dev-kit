@@ -236,24 +236,26 @@ function TableHeaderRowRenderer<T extends object>({
 
   return (
     <tr {...rowProps} ref={ref} data-table-header-row="" className={styles.row}>
-      {[...node.childNodes].map((columnNode) => {
-        if (columnNode.type === "placeholder") {
-          const placeholder = columnNode as Node<T> & { colSpan?: number };
+      {[...(state.collection.getChildren?.(node.key) ?? [])].map(
+        (columnNode) => {
+          if (columnNode.type === "placeholder") {
+            const placeholder = columnNode as Node<T> & { colSpan?: number };
+            return (
+              <th
+                key={columnNode.key}
+                colSpan={placeholder.colSpan ?? undefined}
+              />
+            );
+          }
           return (
-            <th
+            <TableColumnHeaderRenderer
               key={columnNode.key}
-              colSpan={placeholder.colSpan ?? undefined}
+              state={state}
+              node={columnNode}
             />
           );
-        }
-        return (
-          <TableColumnHeaderRenderer
-            key={columnNode.key}
-            state={state}
-            node={columnNode}
-          />
-        );
-      })}
+        },
+      )}
     </tr>
   );
 }
@@ -305,7 +307,7 @@ function TableRowRenderer<T extends object>({
       data-focus-visible={isFocusVisible ? "true" : undefined}
       className={styles.row}
     >
-      {[...node.childNodes].map((cell) => (
+      {[...(state.collection.getChildren?.(node.key) ?? [])].map((cell) => (
         <TableCellRenderer key={cell.key} state={state} node={cell} />
       ))}
     </tr>

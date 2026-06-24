@@ -2,6 +2,7 @@ import { execSync } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
+  COVERAGE_INCLUDES,
   COVERAGE_PROJECTS,
   type CoverageProject,
   coverageReportsDir,
@@ -28,6 +29,9 @@ export function buildVitestCiCommand(
     `--project ${project}`,
     "--coverage.enabled=true",
     `--coverage.reportsDirectory=${reportsDir}`,
+    ...COVERAGE_INCLUDES[project].flatMap((pattern) => [
+      `--coverage.include=${pattern}`,
+    ]),
     "--coverage.reporter=text",
     "--coverage.reporter=text-summary",
     "--coverage.reporter=html",

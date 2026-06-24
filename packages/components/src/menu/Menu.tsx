@@ -153,10 +153,17 @@ function Menu({ children, className, ...props }: MenuProps) {
 function MenuContent<T extends CollectionItem>({
   className,
   placement,
+  portalContainer,
   ...props
 }: MenuContentProps<T>) {
-  const { overlayState, menuProps, menuRef, itemsList } =
-    useMenuContext("MenuContent");
+  const {
+    overlayState,
+    menuProps,
+    menuRef,
+    itemsList,
+    portalContainer: contextPortalContainer,
+  } = useMenuContext("MenuContent");
+  const resolvedPortalContainer = portalContainer ?? contextPortalContainer;
 
   const treeState = useTreeState({
     ...menuProps,
@@ -184,8 +191,17 @@ function MenuContent<T extends CollectionItem>({
   }
 
   return (
-    <OverlayContainer>
-      <Popover placement={placement} className="overflow-hidden">
+    <OverlayContainer
+      {...(resolvedPortalContainer != null
+        ? { portalContainer: resolvedPortalContainer }
+        : {})}
+    >
+      <Popover
+        placement={placement}
+        {...(resolvedPortalContainer != null
+          ? { portalContainer: resolvedPortalContainer }
+          : {})}
+      >
         <ul
           {...listProps}
           ref={menuRef as React.Ref<HTMLUListElement>}

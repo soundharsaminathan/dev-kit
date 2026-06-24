@@ -1,0 +1,79 @@
+{
+  "name": "showcase",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/showcase",
+  "projectType": "application",
+  "tags": ["scope:showcase", "type:app"],
+  "implicitDependencies": ["components", "tokens"],
+  "targets": {
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "apps/showcase",
+        "command": "tsc -b --pretty false"
+      },
+      "dependsOn": ["^typecheck"]
+    },
+    "dev": {
+      "executor": "nx:run-script",
+      "options": {
+        "script": "dev"
+      },
+      "continuous": true,
+      "dependsOn": ["tokens:build:tokens"]
+    },
+    "build": {
+      "executor": "nx:run-script",
+      "options": {
+        "script": "build"
+      },
+      "outputs": ["{projectRoot}/dist"],
+      "dependsOn": ["tokens:build:tokens", "components:build"]
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "{workspaceRoot}",
+        "command": "vitest run --config vitest.config.ts --project showcase"
+      },
+      "dependsOn": ["tokens:build:tokens", "components:build"]
+    },
+    "test:ci": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "{workspaceRoot}",
+        "command": "pnpm exec tsx scripts/run-vitest-ci.ts showcase"
+      },
+      "dependsOn": ["tokens:build:tokens", "components:build"],
+      "outputs": [
+        "{workspaceRoot}/coverage/showcase",
+        "{workspaceRoot}/test-results/junit-showcase.xml"
+      ]
+    },
+    "test:coverage": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "{workspaceRoot}",
+        "command": "pnpm exec tsx scripts/run-vitest-ci.ts showcase --coverage-only"
+      },
+      "dependsOn": ["tokens:build:tokens", "components:build"],
+      "outputs": ["{workspaceRoot}/coverage/showcase"]
+    },
+    "test:e2e": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "apps/showcase",
+        "command": "playwright test --config playwright.config.ts"
+      },
+      "dependsOn": ["tokens:build:tokens", "components:build"]
+    },
+    "test:e2e:update": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "apps/showcase",
+        "command": "playwright test --config playwright.config.ts --update-snapshots"
+      },
+      "dependsOn": ["tokens:build:tokens", "components:build"]
+    }
+  }
+}

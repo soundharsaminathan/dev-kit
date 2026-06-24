@@ -7,7 +7,8 @@
     { "path": "./packages/tokens" },
     { "path": "./packages/core" },
     { "path": "./packages/components" },
-    { "path": "./apps/storybook" }
+    { "path": "./apps/storybook" },
+    { "path": "./apps/showcase" }
   ],
   "include": []
 }

@@ -1,0 +1,51 @@
+.scope {
+  position: relative;
+  isolation: isolate;
+  min-height: calc(100vh - 3.5rem);
+}
+
+.portalHost {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.portalHost > :global(*) {
+  pointer-events: auto;
+}
+
+.root {
+  position: relative;
+}
+
+.portalHost :global([data-modal-backdrop]),
+.portalHost :global([data-modal-viewport]) {
+  position: absolute;
+  inset: 0;
+}
+
+.portalHost :global(div:has([data-drawer])),
+.portalHost :global(div:has([data-drawer]) > *) {
+  position: absolute;
+  inset: 0;
+}
+
+.portalHost :global(div:has(+ [data-popover])) {
+  position: absolute;
+  inset: 0;
+}
+
+.portalHost :global([data-modal]) {
+  max-height: calc(100% - var(--space-8));
+}
+
+@media (min-width: 640px) {
+  .portalHost :global([data-modal]) {
+    max-height: 90%;
+  }
+}
+
+.portalHost :global([data-drawer]) {
+  max-height: 100%;
+}

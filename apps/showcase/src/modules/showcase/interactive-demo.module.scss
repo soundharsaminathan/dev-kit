@@ -1,0 +1,35 @@
+.root {
+  overflow: hidden;
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 0 !important;
+}
+
+.controls {
+  padding: 1.25rem;
+  border-top: 1px solid var(--color-border);
+  background: var(--color-card);
+}
+
+@media (min-width: 768px) {
+  .content {
+    flex-direction: row;
+    align-items: stretch;
+  }
+
+  .content > :first-child {
+    flex: 1;
+    border-bottom: none;
+    border-right: 1px solid var(--color-border);
+  }
+
+  .controls {
+    width: 18rem;
+    flex-shrink: 0;
+    border-top: none;
+  }
+}

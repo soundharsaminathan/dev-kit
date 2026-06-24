@@ -1,0 +1,19 @@
+.frame {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  min-height: 12rem;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  padding: 2rem;
+  background: var(--color-bg);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.frame :global([data-sidebar-container]) {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  height: 100%;
+}

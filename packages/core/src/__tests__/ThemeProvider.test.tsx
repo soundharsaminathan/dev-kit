@@ -9,8 +9,8 @@ function createMatchMediaMock(
   listeners?: {
     addEventListener?: MediaQueryList["addEventListener"] | undefined;
     removeEventListener?: MediaQueryList["removeEventListener"] | undefined;
-    addListener?: MediaQueryList["addListener"] | undefined;
-    removeListener?: MediaQueryList["removeListener"] | undefined;
+    addListener?: ((handler: () => void) => void) | undefined;
+    removeListener?: ((handler: () => void) => void) | undefined;
   },
 ): (query: string) => MediaQueryList {
   return (query: string) =>

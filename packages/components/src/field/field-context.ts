@@ -1,11 +1,22 @@
-import { createContext, useContext } from "react";
+import { createContext, type ReactNode, useContext } from "react";
+
+export function getFieldLabelText(children: ReactNode): string | undefined {
+  if (typeof children === "string" || typeof children === "number") {
+    return String(children);
+  }
+  return undefined;
+}
 
 export type FieldContextValue = {
+  name: string | undefined;
   inputId: string;
+  labelId: string;
   descriptionId: string;
   errorId: string;
+  labelTextRef: { current: string | undefined };
   hasDescription: boolean;
   hasError: boolean;
+  setLabelText: (value: string | undefined) => void;
   setHasDescription: (value: boolean) => void;
   setHasError: (value: boolean) => void;
 };
