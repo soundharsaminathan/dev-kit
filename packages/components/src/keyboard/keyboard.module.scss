@@ -1,0 +1,29 @@
+@use "@dev-ui/tokens/scss" as *;
+
+.root {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.key {
+  display: inline-flex;
+  min-width: 1.5rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background-color: var(--color-bg-subtle);
+  padding-inline: var(--space-2);
+  padding-block: var(--space-1);
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 0.75rem;
+  line-height: 1;
+  color: var(--color-fg-muted);
+}
+
+.group {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}

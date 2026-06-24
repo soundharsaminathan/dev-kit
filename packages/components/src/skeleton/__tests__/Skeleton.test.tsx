@@ -7,10 +7,9 @@ import { Skeleton } from "../Skeleton";
 describe("Skeleton", () => {
   it("renders placeholder when empty", () => {
     const { container } = render(<Skeleton />);
-    expect(container.firstChild).toHaveAttribute(
-      "data-skeleton-loading",
-      "true",
-    );
+    const skeleton = container.firstChild as HTMLElement;
+    expect(skeleton).toHaveAttribute("data-skeleton-loading", "true");
+    expect(skeleton.className).toMatch(/placeholderBlock/);
   });
 
   it("wraps children when loading", () => {

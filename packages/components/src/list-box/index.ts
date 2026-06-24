@@ -1,3 +1,4 @@
+export type { CollectionItem } from "./collection-utils";
 export {
   ListBox,
   ListBoxItem,

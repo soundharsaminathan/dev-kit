@@ -48,23 +48,30 @@ function runPlaywright(extraArgs: string[]): number {
   return result.status ?? 1;
 }
 
+export function runAffectedE2e(argv = process.argv.slice(2)): number {
+  const affected = hasFlag(argv, "--staged")
+    ? resolveAffectedE2eFromStaged()
+    : resolveAffectedE2eFromGit(parseBaseArg(argv));
+
+  if (affected.mode === "none") {
+    console.log(`Skipping Playwright e2e: ${affected.reason}`);
+    return 0;
+  }
+
+  if (affected.mode === "all") {
+    console.log(`Running full Playwright e2e suite: ${affected.reason}`);
+    return runPlaywright([]);
+  }
+
+  const specArgs = toPlaywrightArgs(affected);
+  console.log(
+    `Running affected Playwright specs (${specArgs.length}): ${specArgs.join(", ")}`,
+  );
+  return runPlaywright(specArgs);
+}
+
 const argv = process.argv.slice(2);
-const affected = hasFlag(argv, "--staged")
-  ? resolveAffectedE2eFromStaged()
-  : resolveAffectedE2eFromGit(parseBaseArg(argv));
-
-if (affected.mode === "none") {
-  console.log(`Skipping Playwright e2e: ${affected.reason}`);
-  process.exit(0);
+const entryPath = fileURLToPath(import.meta.url);
+if (process.argv[1] && path.resolve(process.argv[1]) === entryPath) {
+  process.exit(runAffectedE2e(argv));
 }
-
-if (affected.mode === "all") {
-  console.log(`Running full Playwright e2e suite: ${affected.reason}`);
-  process.exit(runPlaywright([]));
-}
-
-const specArgs = toPlaywrightArgs(affected);
-console.log(
-  `Running affected Playwright specs (${specArgs.length}): ${specArgs.join(", ")}`,
-);
-process.exit(runPlaywright(specArgs));

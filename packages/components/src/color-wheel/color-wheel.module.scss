@@ -1,0 +1,21 @@
+@use "@dev-ui/tokens/scss" as *;
+
+.root {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.track {
+  position: relative;
+  width: 10rem;
+  height: 10rem;
+  border-radius: 50%;
+}
+
+.trackInner {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+}

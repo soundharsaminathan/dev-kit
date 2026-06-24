@@ -1,5 +1,4 @@
 import { cn } from "@dev-ui/core";
-import { useRef } from "react";
 import styles from "./skeleton.module.scss";
 import type { SkeletonProps } from "./skeleton.types";
 
@@ -10,7 +9,6 @@ function Skeleton({
   animation = "shimmer",
   ...props
 }: SkeletonProps) {
-  const ref = useRef<HTMLDivElement>(null);
   const hasChildren = children != null;
   const shouldShowSkeleton = isLoading ?? !hasChildren;
   const rootClassName = cn(
@@ -25,7 +23,6 @@ function Skeleton({
 
   return (
     <div
-      ref={ref}
       data-skeleton-loading={shouldShowSkeleton ? "true" : undefined}
       data-animation={shouldShowSkeleton ? animation : undefined}
       aria-busy={shouldShowSkeleton ? true : undefined}

@@ -1,0 +1,17 @@
+.pager {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--color-border);
+}
+
+.link {
+  font-size: 0.875rem;
+  color: var(--color-fg-muted);
+}
+
+.link:hover {
+  color: var(--color-fg);
+  text-decoration: underline;
+}

@@ -1,0 +1,9 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`defaultControlValues > matches snapshot for mixed control defaults 1`] = `
+{
+  "children": "Button",
+  "disabled": false,
+  "variant": "default",
+}
+`;

@@ -146,5 +146,23 @@ test.describe("ContextMenu", () => {
         viewport!.height + tolerance,
       );
     });
+    test("opens menu near the pointer", async ({ page }) => {
+      await gotoStory(page, STORIES.default);
+
+      const trigger = getContextMenuTrigger(page);
+      const box = await trigger.boundingBox();
+      expect(box).not.toBeNull();
+
+      const clickX = box!.x + 24;
+      const clickY = box!.y + 36;
+      await page.mouse.click(clickX, clickY, { button: "right" });
+      await expect(getMenuContent(page)).toBeVisible();
+
+      const menuBox = await getMenuContent(page).boundingBox();
+      expect(menuBox).not.toBeNull();
+
+      expect(Math.abs(menuBox!.x - clickX)).toBeLessThan(48);
+      expect(Math.abs(menuBox!.y - clickY)).toBeLessThan(48);
+    });
   });
 });

@@ -39,6 +39,7 @@ function Popover({
   placement: placementProp,
   offset = 8,
   className,
+  portalContainer: portalContainerProp,
   children,
   ...props
 }: PopoverProps) {
@@ -49,7 +50,9 @@ function Popover({
     placement: contextPlacement,
     offset: contextOffset,
     isNonModal,
+    portalContainer: contextPortalContainer,
   } = usePopoverContext("Popover");
+  const portalContainer = portalContainerProp ?? contextPortalContainer;
   const internalPopoverRef = useRef<HTMLDivElement>(null);
   const popoverRef = contextPopoverRef ?? internalPopoverRef;
   const placement = placementProp ?? contextPlacement ?? "bottom";
@@ -101,7 +104,7 @@ function Popover({
   }
 
   return (
-    <Overlay>
+    <Overlay {...(portalContainer != null ? { portalContainer } : {})}>
       {!isNonModal ? (
         <div {...underlayProps} className={styles.underlay} />
       ) : null}

@@ -12,9 +12,13 @@ import {
   toPlaywrightArgs,
 } from "../affected-e2e-specs.ts";
 
-vi.mock("node:child_process", () => ({
-  execSync: vi.fn(),
-}));
+vi.mock("node:child_process", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("node:child_process")>();
+  return {
+    ...actual,
+    execSync: vi.fn(),
+  };
+});
 
 const mockExecSync = vi.mocked(execSync);
 

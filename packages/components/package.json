@@ -369,11 +369,11 @@
       "import": "./dist/otp-field/index.js",
       "default": "./dist/otp-field/index.js"
     },
-    "./command": {
-      "development": "./src/command/index.ts",
-      "types": "./dist/command/index.d.ts",
-      "import": "./dist/command/index.js",
-      "default": "./dist/command/index.js"
+    "./autocomplete": {
+      "development": "./src/autocomplete/index.ts",
+      "types": "./dist/autocomplete/index.d.ts",
+      "import": "./dist/autocomplete/index.js",
+      "default": "./dist/autocomplete/index.js"
     },
     "./overlay": {
       "development": "./src/overlay/index.ts",
@@ -411,6 +411,60 @@
       "import": "./dist/date-picker/index.js",
       "default": "./dist/date-picker/index.js"
     },
+    "./meter": {
+      "development": "./src/meter/index.ts",
+      "types": "./dist/meter/index.d.ts",
+      "import": "./dist/meter/index.js",
+      "default": "./dist/meter/index.js"
+    },
+    "./toolbar": {
+      "development": "./src/toolbar/index.ts",
+      "types": "./dist/toolbar/index.d.ts",
+      "import": "./dist/toolbar/index.js",
+      "default": "./dist/toolbar/index.js"
+    },
+    "./form": {
+      "development": "./src/form/index.ts",
+      "types": "./dist/form/index.d.ts",
+      "import": "./dist/form/index.js",
+      "default": "./dist/form/index.js"
+    },
+    "./keyboard": {
+      "development": "./src/keyboard/index.ts",
+      "types": "./dist/keyboard/index.d.ts",
+      "import": "./dist/keyboard/index.js",
+      "default": "./dist/keyboard/index.js"
+    },
+    "./overlay-arrow": {
+      "development": "./src/overlay-arrow/index.ts",
+      "types": "./dist/overlay-arrow/index.d.ts",
+      "import": "./dist/overlay-arrow/index.js",
+      "default": "./dist/overlay-arrow/index.js"
+    },
+    "./color-wheel": {
+      "development": "./src/color-wheel/index.ts",
+      "types": "./dist/color-wheel/index.d.ts",
+      "import": "./dist/color-wheel/index.js",
+      "default": "./dist/color-wheel/index.js"
+    },
+    "./grid-list": {
+      "development": "./src/grid-list/index.ts",
+      "types": "./dist/grid-list/index.d.ts",
+      "import": "./dist/grid-list/index.js",
+      "default": "./dist/grid-list/index.js"
+    },
+    "./drag-and-drop": {
+      "development": "./src/drag-and-drop/index.ts",
+      "types": "./dist/drag-and-drop/index.d.ts",
+      "import": "./dist/drag-and-drop/index.js",
+      "default": "./dist/drag-and-drop/index.js"
+    },
+    "./virtualizer": {
+      "development": "./src/virtualizer/index.ts",
+      "types": "./dist/virtualizer/index.d.ts",
+      "import": "./dist/virtualizer/index.js",
+      "default": "./dist/virtualizer/index.js"
+    },
     "./button/styles": {
       "development": "./src/styles.ts",
       "import": "./dist/styles.js",
@@ -440,9 +494,9 @@
   },
   "dependencies": {
     "@base-ui/react": "1.4.1",
-    "@internationalized/date": "^3.12.2",
     "@dev-ui/core": "workspace:*",
     "@dev-ui/tokens": "workspace:*",
+    "@internationalized/date": "^3.12.2",
     "@react-aria/autocomplete": "3.0.0-rc.8",
     "@react-aria/breadcrumbs": "^3.6.1",
     "@react-aria/button": "^3.15.1",
@@ -455,6 +509,7 @@
     "@react-aria/disclosure": "^3.2.1",
     "@react-aria/dnd": "^3.12.1",
     "@react-aria/focus": "^3.22.1",
+    "@react-aria/form": "^3.2.1",
     "@react-aria/gridlist": "^3.15.1",
     "@react-aria/i18n": "^3.9.1",
     "@react-aria/interactions": "^3.28.1",
@@ -462,6 +517,7 @@
     "@react-aria/link": "^3.9.1",
     "@react-aria/listbox": "^3.16.1",
     "@react-aria/menu": "^3.22.1",
+    "@react-aria/meter": "^3.5.1",
     "@react-aria/numberfield": "^3.12.1",
     "@react-aria/overlays": "^3.32.1",
     "@react-aria/progress": "^3.5.1",
@@ -477,6 +533,7 @@
     "@react-aria/tag": "^3.9.1",
     "@react-aria/toast": "^3.1.1",
     "@react-aria/toggle": "^3.13.1",
+    "@react-aria/toolbar": "3.0.0-beta.26",
     "@react-aria/tooltip": "^3.10.1",
     "@react-aria/tree": "^3.2.1",
     "@react-aria/utils": "^3.34.1",
@@ -488,7 +545,9 @@
     "@react-stately/combobox": "^3.14.1",
     "@react-stately/datepicker": "^3.17.1",
     "@react-stately/disclosure": "^3.1.1",
+    "@react-stately/dnd": "^3.8.1",
     "@react-stately/form": "^3.3.1",
+    "@react-stately/layout": "^4.7.1",
     "@react-stately/list": "^3.14.1",
     "@react-stately/menu": "^3.10.1",
     "@react-stately/numberfield": "^3.10.1",
@@ -504,7 +563,9 @@
     "@react-stately/toggle": "^3.10.1",
     "@react-stately/tooltip": "^3.6.1",
     "@react-stately/tree": "^3.10.1",
+    "@react-stately/virtualizer": "^4.5.1",
     "@react-types/color": "^3.2.0",
+    "@react-types/meter": "^3.5.0",
     "@react-types/shared": "^3.35.0"
   },
   "devDependencies": {

@@ -1,5 +1,7 @@
 import { expect, type Locator, type Page } from "@playwright/test";
 
+export const STORY_ROOT = "#storybook-root";
+
 export const DEFAULT_GLOBALS = {
   themePreset: "modern-minimal",
   themeMode: "light",
@@ -49,8 +51,14 @@ export async function gotoStory(
   storyId: string,
   globals: Record<string, string> = DEFAULT_GLOBALS,
 ) {
-  await page.goto(storyIframeUrl(storyId, globals));
-  await page.waitForLoadState("networkidle");
+  await page.goto(storyIframeUrl(storyId, globals), {
+    waitUntil: "domcontentloaded",
+  });
+  const storyRoot = page.locator(STORY_ROOT);
+  await storyRoot.waitFor({ state: "attached" });
+  await expect(storyRoot.locator(":scope > *").first()).toBeVisible({
+    timeout: 30_000,
+  });
 }
 
 export const VIEWPORT_SCREENSHOT_OPTIONS = { fullPage: false } as const;

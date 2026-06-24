@@ -10,6 +10,7 @@ import {
   useMemo,
   useRef,
 } from "react";
+import { createPortal } from "react-dom";
 import {
   findChildByDisplayName,
   parseCollectionItems,
@@ -53,13 +54,15 @@ function ContextMenu({
 }: ContextMenuProps) {
   const popoverRef = useRef<HTMLDivElement>(null);
   const contentChild = findChildByDisplayName(children, "MenuContent");
+  const opensByDefault = defaultOpen === true && !isDisabled;
   const overlayState = useMenuTriggerState({
-    ...(defaultOpen !== undefined ? { defaultOpen } : {}),
+    ...(defaultOpen !== undefined ? { defaultOpen: opensByDefault } : {}),
     ...(isOpen !== undefined ? { isOpen } : {}),
     ...(onOpenChange !== undefined ? { onOpenChange } : {}),
   });
   const contextMenu = useContextMenuTrigger({
     state: overlayState,
+    defaultOpen: opensByDefault,
     isDisabled,
     onContextMenu,
     triggerProps,
@@ -80,6 +83,9 @@ function ContextMenu({
     return [];
   }, [contentChild]);
 
+  const portalContainer =
+    typeof document !== "undefined" ? document.body : undefined;
+
   const contextValue = useMemo(
     (): MenuContextValue => ({
       overlayState,
@@ -93,6 +99,7 @@ function ContextMenu({
       menuRef: contextMenu.menuRef,
       popoverRef,
       itemsList,
+      portalContainer,
     }),
     [
       overlayState,
@@ -102,14 +109,32 @@ function ContextMenu({
       menuProps,
       ariaLabel,
       itemsList,
+      portalContainer,
     ],
   );
 
   const renderedContent = contentChild
     ? cloneElement(contentChild as ReactElement<{ placement?: string }>, {
-        placement: "bottom start",
+        placement:
+          (contentChild.props as { placement?: string }).placement ??
+          "bottom start",
       })
     : null;
+
+  const anchorElement = (
+    <span
+      key={contextMenu.anchor.key}
+      ref={contextMenu.anchorRefCallback}
+      aria-hidden="true"
+      className={styles.anchor}
+      style={{
+        left: contextMenu.anchor.x,
+        top: contextMenu.anchor.y,
+        width: contextMenu.anchor.size,
+        height: contextMenu.anchor.size,
+      }}
+    />
+  );
 
   return (
     <MenuContext.Provider value={contextValue}>
@@ -131,16 +156,7 @@ function ContextMenu({
         >
           {getNonContentChildren(children, "MenuContent")}
         </div>
-        <span
-          key={contextMenu.anchor.key}
-          ref={contextMenu.anchorRefCallback}
-          aria-hidden="true"
-          className={styles.anchor}
-          style={{
-            width: contextMenu.anchor.size,
-            height: contextMenu.anchor.size,
-          }}
-        />
+        {portalContainer ? createPortal(anchorElement, portalContainer) : null}
         {renderedContent}
       </PopoverProvider>
     </MenuContext.Provider>

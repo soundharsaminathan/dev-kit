@@ -62,26 +62,34 @@ function getItemTextValue(item: TreeNode | ParsedTreeItem): string {
   return String(item.id);
 }
 
-function augmentTreeCollection<T>(
-  collection: ReturnType<typeof useTreeState<T>>["collection"],
-): ReturnType<typeof useTreeState<T>>["collection"] {
+function augmentTreeCollection(
+  collection: ReturnType<typeof useTreeState<TreeNode>>["collection"],
+): ReturnType<typeof useTreeState<TreeNode>>["collection"] & {
+  getChildren(key: Key): Iterable<Node<TreeNode>>;
+} {
   if (
     "getChildren" in collection &&
     typeof collection.getChildren === "function"
   ) {
-    return collection;
+    return collection as ReturnType<
+      typeof useTreeState<TreeNode>
+    >["collection"] & {
+      getChildren(key: Key): Iterable<Node<TreeNode>>;
+    };
   }
 
   return Object.assign(collection, {
     getChildren(key: Key) {
-      const parent = collection.getItem(key);
       return {
         *[Symbol.iterator]() {
-          if (!parent?.childNodes) {
+          const parent = collection.getItem(key);
+          const children = parent?.value?.children;
+          if (!children?.length) {
             return;
           }
-          for (const child of parent.childNodes) {
-            const item = collection.getItem(child.key);
+
+          for (const child of children) {
+            const item = collection.getItem(child.id);
             if (item) {
               yield item;
             }
@@ -89,7 +97,9 @@ function augmentTreeCollection<T>(
         },
       };
     },
-  });
+  }) as ReturnType<typeof useTreeState<TreeNode>>["collection"] & {
+    getChildren(key: Key): Iterable<Node<TreeNode>>;
+  };
 }
 
 function getTreeCollectionChild(item: TreeNode): CollectionElement<TreeNode> {
@@ -304,9 +314,6 @@ function Tree<T extends TreeNode>({
 
   const state = useMemo(() => {
     const collection = augmentTreeCollection(baseState.collection);
-    if (collection === baseState.collection) {
-      return baseState;
-    }
     return { ...baseState, collection };
   }, [baseState]);
 

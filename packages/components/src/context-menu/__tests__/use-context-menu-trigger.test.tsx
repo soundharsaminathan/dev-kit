@@ -124,7 +124,12 @@ function ContextMenuTriggerHarness({
         key={anchor.key}
         ref={anchorRefCallback}
         data-testid="anchor"
-        style={{ width: anchor.size, height: anchor.size }}
+        style={{
+          left: anchor.x,
+          top: anchor.y,
+          width: anchor.size,
+          height: anchor.size,
+        }}
       />
       <div ref={menuRef} data-popover="" data-testid="menu">
         {menuContent ?? (isOpen ? "Menu" : null)}
@@ -151,7 +156,11 @@ describe("useContextMenuTrigger", () => {
     fireEvent.contextMenu(trigger, { clientX: 40, clientY: 20 });
 
     expect(screen.getByTestId("state-open")).toHaveTextContent("true");
-    expect(screen.getByTestId("anchor")).toHaveStyle({ width: "0px" });
+    expect(screen.getByTestId("anchor")).toHaveStyle({
+      left: "40px",
+      top: "20px",
+      width: "0px",
+    });
   });
 
   it("ignores context menu when disabled", () => {
@@ -341,10 +350,18 @@ describe("useContextMenuTrigger", () => {
       bottom: 80,
     });
 
-    fireEvent.contextMenu(document.body, { clientX: 50, clientY: 25 });
+    expect(screen.getByTestId("anchor")).toHaveStyle({
+      left: "0px",
+      top: "0px",
+    });
+
+    fireEvent.contextMenu(trigger, { clientX: 50, clientY: 25 });
 
     expect(screen.getByTestId("state-open")).toHaveTextContent("true");
-    expect(screen.getByTestId("anchor")).toBeInTheDocument();
+    expect(screen.getByTestId("anchor")).toHaveStyle({
+      left: "50px",
+      top: "25px",
+    });
   });
 
   it("delegates to another trigger while open and closes the current menu", () => {

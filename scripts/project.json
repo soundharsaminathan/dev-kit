@@ -22,6 +22,14 @@
         "{workspaceRoot}/coverage/scripts",
         "{workspaceRoot}/test-results/junit-scripts.xml"
       ]
+    },
+    "test:coverage": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "{workspaceRoot}",
+        "command": "pnpm exec tsx scripts/run-vitest-ci.ts scripts --coverage-only"
+      },
+      "outputs": ["{workspaceRoot}/coverage/scripts"]
     }
   }
 }
