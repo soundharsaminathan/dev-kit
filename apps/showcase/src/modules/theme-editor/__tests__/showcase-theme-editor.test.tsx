@@ -2,9 +2,15 @@
 import "@testing-library/jest-dom/vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { useEffect, useState } from "react";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AppThemeProvider, useTheme } from "@/lib/theme";
 import { ShowcaseThemeEditor } from "@/modules/theme-editor/showcase-theme-editor";
+import { LIVE_THEME_ID } from "./theme-editor-drawer.mock";
+
+vi.mock("@dev-ui/components/theme-editor", async () => ({
+  ThemeEditorDrawer: (await import("./theme-editor-drawer.mock"))
+    .ThemeEditorDrawerMock,
+}));
 
 const customThemeInput = {
   label: "Saved theme",
@@ -40,6 +46,10 @@ function SeededEditor() {
 }
 
 describe("ShowcaseThemeEditor", () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
   it("opens the drawer and applies live theme edits", () => {
     render(
       <AppThemeProvider>
@@ -53,7 +63,9 @@ describe("ShowcaseThemeEditor", () => {
     fireEvent.change(screen.getByLabelText("Theme name"), {
       target: { value: "Live preview theme" },
     });
-    expect(document.documentElement.getAttribute("data-theme")).toBeTruthy();
+    expect(document.documentElement.getAttribute("data-theme")).toBe(
+      LIVE_THEME_ID,
+    );
   });
 
   it("saves, loads, and deletes custom themes", async () => {
@@ -86,7 +98,7 @@ describe("ShowcaseThemeEditor", () => {
         screen.queryByRole("heading", { name: "Saved themes" }),
       ).not.toBeInTheDocument();
     });
-  }, 60_000);
+  });
 
   it("clears live preview when the drawer closes", async () => {
     render(
@@ -98,6 +110,9 @@ describe("ShowcaseThemeEditor", () => {
     fireEvent.change(screen.getByLabelText("Theme name"), {
       target: { value: "Live preview theme" },
     });
+    expect(document.documentElement.getAttribute("data-theme")).toBe(
+      LIVE_THEME_ID,
+    );
 
     fireEvent.click(screen.getByRole("button", { name: "Close theme editor" }));
 
@@ -105,6 +120,9 @@ describe("ShowcaseThemeEditor", () => {
       expect(
         screen.queryByRole("button", { name: "Close theme editor" }),
       ).not.toBeInTheDocument();
+      expect(document.documentElement.getAttribute("data-theme")).toBe(
+        "default",
+      );
     });
   });
 });
