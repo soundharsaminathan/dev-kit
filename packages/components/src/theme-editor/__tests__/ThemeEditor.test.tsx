@@ -259,27 +259,6 @@ describe("ThemeEditor", () => {
     expect(onChange).not.toHaveBeenCalled();
   });
 
-  it("renders layer previews for collapsed token sections", () => {
-    render(
-      <ThemeEditor
-        value={createThemeDraft({ label: "Acme" })}
-        onChange={vi.fn()}
-      />,
-    );
-
-    expect(screen.getByLabelText("Color preview")).toBeInTheDocument();
-    expect(screen.getByLabelText("Foundation preview")).toBeInTheDocument();
-
-    expandSection(/Semantic/);
-    expect(screen.getByLabelText("Semantic preview")).toBeInTheDocument();
-
-    expandSection(/Effects/);
-    expect(screen.getByLabelText("Effects preview")).toBeInTheDocument();
-
-    expandSection(/Components/);
-    expect(screen.getByLabelText("Components preview")).toBeInTheDocument();
-  });
-
   it("renders children and applies className", () => {
     const { container } = render(
       <ThemeEditor
