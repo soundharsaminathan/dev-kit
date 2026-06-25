@@ -7,14 +7,7 @@ import {
   COVERAGE_THRESHOLDS,
   type CoverageProject,
   coverageReportsDir,
-  type LibCoverageProject,
 } from "../vitest.coverage.ts";
-
-function isLibCoverageProject(
-  project: CoverageProject,
-): project is LibCoverageProject {
-  return project in COVERAGE_THRESHOLDS;
-}
 
 const workspaceRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -47,15 +40,12 @@ export function buildVitestCiCommand(
     "--coverage.reporter=json-summary",
   ];
 
-  if (isLibCoverageProject(project)) {
-    const thresholds = COVERAGE_THRESHOLDS[project];
-    args.push(
-      `--coverage.thresholds.lines=${thresholds.lines}`,
-      `--coverage.thresholds.statements=${thresholds.statements}`,
-      `--coverage.thresholds.functions=${thresholds.functions}`,
-      `--coverage.thresholds.branches=${thresholds.branches}`,
-    );
-  }
+  args.push(
+    `--coverage.thresholds.lines=${COVERAGE_THRESHOLDS.lines}`,
+    `--coverage.thresholds.statements=${COVERAGE_THRESHOLDS.statements}`,
+    `--coverage.thresholds.functions=${COVERAGE_THRESHOLDS.functions}`,
+    `--coverage.thresholds.branches=${COVERAGE_THRESHOLDS.branches}`,
+  );
 
   if (!options.coverageOnly) {
     args.push(
@@ -82,9 +72,9 @@ export function runVitestCi(
   });
 }
 
-if (import.meta.url.endsWith(process.argv[1]?.replaceAll("\\", "/") ?? "")) {
-  const projectArg = process.argv[2];
-  const coverageOnly = process.argv.includes("--coverage-only");
+export function runVitestCiFromArgv(argv: string[]): void {
+  const projectArg = argv[0];
+  const coverageOnly = argv.includes("--coverage-only");
 
   if (!projectArg || !isCoverageProject(projectArg)) {
     throw new Error(
@@ -93,4 +83,8 @@ if (import.meta.url.endsWith(process.argv[1]?.replaceAll("\\", "/") ?? "")) {
   }
 
   runVitestCi(projectArg, { coverageOnly });
+}
+
+if (import.meta.url.endsWith(process.argv[1]?.replaceAll("\\", "/") ?? "")) {
+  runVitestCiFromArgv(process.argv.slice(2));
 }

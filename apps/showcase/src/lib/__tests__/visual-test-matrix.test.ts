@@ -81,4 +81,32 @@ describe("visual-test-matrix", () => {
       expect(slugs.has(entry.config.slug)).toBe(true);
     }
   });
+
+  it("dedupes extra visual cases and normalizes values", () => {
+    const cases = generateVisualTestCasesForConfig({
+      name: "Drawer",
+      slug: "drawer",
+      category: "overlays",
+      description: "Drawer",
+      controls: [{ name: "defaultOpen", type: "boolean", defaultValue: false }],
+      normalizeControlValues: (values) => ({
+        ...values,
+        defaultOpen: Boolean(values.defaultOpen),
+      }),
+      extraVisualCases: [
+        {
+          caseId: "drawer--custom",
+          values: { defaultOpen: true },
+        },
+        {
+          caseId: "drawer--custom",
+          values: { defaultOpen: true },
+        },
+      ],
+    });
+
+    expect(
+      cases.filter((testCase) => testCase.caseId === "drawer--custom"),
+    ).toHaveLength(1);
+  });
 });

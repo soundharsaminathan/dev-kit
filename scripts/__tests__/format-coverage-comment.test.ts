@@ -4,6 +4,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   formatCoverageComment,
+  readLibCoverageSummaries,
   writeCoverageComment,
 } from "../format-coverage-comment.ts";
 
@@ -64,6 +65,36 @@ describe("formatCoverageComment", () => {
     expect(() => formatCoverageComment({} as never)).toThrow(
       "coverage-summary.json is missing a total entry",
     );
+  });
+});
+
+describe("readLibCoverageSummaries", () => {
+  it("reads per-library coverage summaries when present", () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "lib-coverage-"));
+    const componentsDir = path.join(tempDir, "coverage", "components");
+    fs.mkdirSync(componentsDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(componentsDir, "coverage-summary.json"),
+      JSON.stringify({
+        total: {
+          lines: metrics(10, 9, 90),
+          statements: metrics(10, 9, 90),
+          functions: metrics(4, 4, 100),
+          branches: metrics(6, 5, 83.33),
+        },
+      }),
+    );
+
+    const summaries = readLibCoverageSummaries(tempDir);
+
+    expect(summaries).toEqual([
+      expect.objectContaining({
+        project: "components",
+        total: expect.objectContaining({
+          lines: expect.objectContaining({ pct: 90 }),
+        }),
+      }),
+    ]);
   });
 });
 

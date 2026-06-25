@@ -255,4 +255,87 @@ describe("ThemeProvider", () => {
     expect(localStorage.getItem("dev-ui-theme")).toBe("default");
     expect(document.getElementById("dev-ui-theme-overrides")).not.toBeNull();
   });
+
+  it("saves and deletes custom themes", () => {
+    function CustomThemeManager() {
+      const { saveCustomTheme, deleteCustomTheme, customThemes, theme } =
+        useTheme();
+
+      return (
+        <div>
+          <span data-testid="count">{customThemes.length}</span>
+          <button
+            type="button"
+            onClick={() =>
+              saveCustomTheme({
+                label: "Saved",
+                extends: "default",
+                color: {
+                  algorithm: "oklch",
+                  seeds: {
+                    neutral: "#808080",
+                    accent: "#0000ff",
+                    success: "#00aa00",
+                    warning: "#ffaa00",
+                    danger: "#aa0000",
+                    info: "#0088ff",
+                  },
+                },
+              })
+            }
+          >
+            Save custom
+          </button>
+          <button
+            type="button"
+            onClick={() => deleteCustomTheme(customThemes[0]?.id ?? "")}
+          >
+            Delete custom
+          </button>
+        </div>
+      );
+    }
+
+    render(
+      <ThemeProvider defaultMode="light">
+        <CustomThemeManager />
+      </ThemeProvider>,
+    );
+
+    act(() => {
+      screen.getByRole("button", { name: "Save custom" }).click();
+    });
+    expect(screen.getByTestId("count")).toHaveTextContent("1");
+
+    act(() => {
+      screen.getByRole("button", { name: "Delete custom" }).click();
+    });
+    expect(screen.getByTestId("count")).toHaveTextContent("0");
+  });
+
+  it("uses legacy media query listeners when addEventListener is unavailable", () => {
+    const addListener = vi.fn();
+    const removeListener = vi.fn();
+
+    vi.mocked(window.matchMedia).mockImplementation(
+      createMatchMediaMock(() => false, {
+        addEventListener: undefined,
+        removeEventListener: undefined,
+        addListener,
+        removeListener,
+      }),
+    );
+
+    localStorage.setItem("dev-ui-theme-mode", "system");
+
+    const { unmount } = render(
+      <ThemeProvider defaultMode="system">
+        <ThemeConsumer />
+      </ThemeProvider>,
+    );
+
+    expect(addListener).toHaveBeenCalled();
+    unmount();
+    expect(removeListener).toHaveBeenCalled();
+  });
 });

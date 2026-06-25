@@ -2,7 +2,7 @@ import type { ThemeDefinition, ThemeMode } from "../types.js";
 import { onBlackWhite } from "../vendor/color-kernel.js";
 import { resolveColorConfig } from "./primitives.js";
 import { DEFAULT_SEMANTICS } from "./semantics.js";
-import type { SemanticTarget } from "./types.js";
+import type { SemanticTarget, TokenVocabulary } from "./types.js";
 
 function isPerMode(
   target: SemanticTarget | Record<string, SemanticTarget>,
@@ -57,6 +57,7 @@ function resolveTargetValue(
 export function resolveSemanticColors(
   theme: ThemeDefinition,
   mode: ThemeMode,
+  semantics: TokenVocabulary = DEFAULT_SEMANTICS,
 ): Record<string, string> {
   if (!theme.color) {
     throw new Error(`Theme "${theme.id}" has no color configuration`);
@@ -65,7 +66,7 @@ export function resolveSemanticColors(
   const ramps = mode === "light" ? resolved.light : resolved.dark;
 
   const out: Record<string, string> = {};
-  for (const [name, token] of Object.entries(DEFAULT_SEMANTICS)) {
+  for (const [name, token] of Object.entries(semantics)) {
     const target = isPerMode(token.target)
       ? (token.target[mode] ?? token.target.light)
       : token.target;

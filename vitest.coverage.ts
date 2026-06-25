@@ -26,29 +26,12 @@ export interface CoverageThresholds {
   branches: number;
 }
 
-/** Minimum coverage enforced in CI for library packages. */
-export const COVERAGE_THRESHOLDS: Record<
-  LibCoverageProject,
-  CoverageThresholds
-> = {
-  core: {
-    lines: 70,
-    statements: 70,
-    functions: 65,
-    branches: 60,
-  },
-  components: {
-    lines: 90,
-    statements: 90,
-    functions: 90,
-    branches: 80,
-  },
-  tokens: {
-    lines: 50,
-    statements: 50,
-    functions: 50,
-    branches: 35,
-  },
+/** Minimum coverage enforced in CI for all packages and apps. */
+export const COVERAGE_THRESHOLDS: CoverageThresholds = {
+  lines: 90,
+  statements: 90,
+  functions: 90,
+  branches: 80,
 };
 
 export function coverageReportsDir(
@@ -64,5 +47,5 @@ export const COVERAGE_INCLUDES: Record<CoverageProject, readonly string[]> = {
   tokens: ["src/**/*.ts"],
   showcase: ["src/**/*.{ts,tsx}"],
   scripts: ["**/*.{ts,tsx}"],
-  storybook: ["../../packages/components/src/**/*.{ts,tsx}"],
+  storybook: ["src/**/*.{ts,tsx}"],
 };

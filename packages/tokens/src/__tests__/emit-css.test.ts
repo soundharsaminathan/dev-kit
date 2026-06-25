@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { resolveTarget } from "../theme/emit-css.js";
+import { emitCss, resolveTarget } from "../theme/emit-css.js";
 
 describe("resolveTarget", () => {
   it("resolves ref targets", () => {
@@ -23,5 +23,37 @@ describe("resolveTarget", () => {
         },
       }),
     ).toBe("color-mix(in oklch, var(--color-bg) 50%, transparent)");
+  });
+});
+
+describe("emitCss", () => {
+  it("emits css variables for a vocabulary", () => {
+    const css = emitCss(
+      {
+        "space-1": {
+          target: { value: "0.25rem" },
+          category: "foundation",
+        },
+      },
+      { selector: ":root" },
+    );
+
+    expect(css).toContain(":root {");
+    expect(css).toContain("--space-1: 0.25rem;");
+  });
+
+  it("uses light mode targets for per-mode tokens", () => {
+    const css = emitCss({
+      "color-bg": {
+        target: {
+          light: { value: "#ffffff" },
+          dark: { value: "#000000" },
+        },
+        category: "background",
+      },
+    });
+
+    expect(css).toContain("--color-bg: #ffffff;");
+    expect(css).not.toContain("#000000");
   });
 });

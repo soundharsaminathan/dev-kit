@@ -10,6 +10,7 @@ import {
   normalizeThemeId,
   terminalTheme,
 } from "../themes/index.js";
+import type { CustomTheme } from "../types.js";
 
 describe("resolveTheme", () => {
   it("resolves default theme with color and tokens", () => {
@@ -132,5 +133,47 @@ describe("resolveTheme", () => {
       },
     };
     expect(() => resolveTheme(a, { a, b })).toThrow(/cycle/i);
+  });
+
+  it("throws when a theme extends an unknown parent", () => {
+    expect(() =>
+      resolveTheme({
+        id: "orphan",
+        label: "Orphan",
+        extends: "missing-parent",
+        color: {
+          algorithm: "oklch",
+          seeds: { neutral: "#000", accent: "#00f" },
+        },
+      }),
+    ).toThrow(/unknown theme/i);
+  });
+
+  it("resolves custom themes by id", () => {
+    const custom: CustomTheme = {
+      id: "custom-brand",
+      label: "Brand",
+      extends: "default" as const,
+      createdAt: "2026-01-01T00:00:00.000Z",
+      color: {
+        algorithm: "oklch" as const,
+        seeds: {
+          neutral: "#111111",
+          accent: "#ff00ff",
+          success: "#00aa00",
+          warning: "#ffaa00",
+          danger: "#aa0000",
+          info: "#0088ff",
+        },
+      },
+    };
+
+    const resolved = resolveThemeById("custom-brand", [custom]);
+    expect(resolved.id).toBe("custom-brand");
+    expect(resolved.color?.seeds.accent).toBe("#ff00ff");
+  });
+
+  it("throws for unknown theme ids", () => {
+    expect(() => resolveThemeById("not-real")).toThrow(/Unknown theme/i);
   });
 });
