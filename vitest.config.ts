@@ -4,6 +4,8 @@ import { defineConfig } from "vitest/config";
 
 const rootDir = path.dirname(fileURLToPath(import.meta.url));
 
+const testExclude = ["**/dist/**", "**/node_modules/**", "**/e2e/**"];
+
 const coverageExclude = [
   "**/__tests__/**",
   "**/*.test.{ts,tsx}",
@@ -33,6 +35,7 @@ const sharedCoverage = {
 export default defineConfig({
   test: {
     maxWorkers: 4,
+    exclude: testExclude,
     coverage: sharedCoverage,
     projects: [
       {
@@ -48,7 +51,7 @@ export default defineConfig({
           name: "core",
           root: path.join(rootDir, "packages/core"),
           include: ["src/**/*.{test,spec}.{ts,tsx}"],
-          exclude: ["dist/**"],
+          exclude: testExclude,
           environment: "node",
           sequence: { groupOrder: 2 },
         },
@@ -57,6 +60,8 @@ export default defineConfig({
         test: {
           name: "components",
           root: path.join(rootDir, "packages/components"),
+          include: ["src/**/*.{test,spec}.{ts,tsx}"],
+          exclude: testExclude,
           environment: "jsdom",
           env: {
             VIRT_ON: "1",
@@ -79,7 +84,7 @@ export default defineConfig({
           name: "showcase",
           root: path.join(rootDir, "apps/showcase"),
           include: ["src/**/*.{test,spec}.{ts,tsx}"],
-          exclude: ["e2e/**"],
+          exclude: [...testExclude, "e2e/**"],
           environment: "jsdom",
           css: true,
           globals: true,
@@ -105,6 +110,7 @@ export default defineConfig({
           environment: "node",
           testTimeout: 15_000,
           fileParallelism: false,
+          pool: "forks",
           sequence: { groupOrder: 4 },
         },
       },

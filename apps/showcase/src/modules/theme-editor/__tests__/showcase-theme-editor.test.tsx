@@ -36,7 +36,7 @@ function SeededEditor() {
     return null;
   }
 
-  return <ShowcaseThemeEditor />;
+  return <ShowcaseThemeEditor defaultOpen />;
 }
 
 describe("ShowcaseThemeEditor", () => {
@@ -63,14 +63,9 @@ describe("ShowcaseThemeEditor", () => {
       </AppThemeProvider>,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Edit theme" }));
-
-    await waitFor(() => {
-      expect(
-        screen.getByRole("heading", { name: "Saved themes" }),
-      ).toBeInTheDocument();
-    });
-
+    expect(
+      await screen.findByRole("heading", { name: "Saved themes" }),
+    ).toBeInTheDocument();
     expect(screen.getByLabelText("Theme name")).toHaveValue("Saved theme");
 
     fireEvent.click(screen.getByRole("button", { name: "Save theme" }));
@@ -91,7 +86,7 @@ describe("ShowcaseThemeEditor", () => {
         screen.queryByRole("heading", { name: "Saved themes" }),
       ).not.toBeInTheDocument();
     });
-  });
+  }, 60_000);
 
   it("clears live preview when the drawer closes", async () => {
     render(

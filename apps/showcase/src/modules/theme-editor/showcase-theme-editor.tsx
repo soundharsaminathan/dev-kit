@@ -5,7 +5,13 @@ import {
   definitionToThemeDraft,
   themeDraftToDefinition,
 } from "@dev-ui/tokens";
-import { type ReactNode, useCallback, useState } from "react";
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { formatThemeLabel, useTheme } from "@/lib/theme";
 import styles from "./showcase-theme-editor.module.scss";
 
@@ -34,23 +40,39 @@ function ShowcaseThemeEditor({
   const [draft, setDraft] = useState(() => createThemeDraft());
   const [editingId, setEditingId] = useState<string | undefined>();
 
+  const syncDraftFromActiveTheme = useCallback(() => {
+    const existing = customThemes.find((item) => item.id === activeTheme);
+    if (existing) {
+      setEditingId(existing.id);
+      setDraft(definitionToThemeDraft(existing));
+      return;
+    }
+
+    setEditingId(undefined);
+    setDraft(createThemeDraft());
+  }, [activeTheme, customThemes]);
+
+  const hasSyncedInitialOpen = useRef(false);
+
+  useEffect(() => {
+    if (hasSyncedInitialOpen.current || !(defaultOpen || isOpen)) {
+      return;
+    }
+
+    hasSyncedInitialOpen.current = true;
+    syncDraftFromActiveTheme();
+  }, [defaultOpen, isOpen, syncDraftFromActiveTheme]);
+
   const handleOpenChange = useCallback(
     (open: boolean) => {
       if (open) {
-        const existing = customThemes.find((item) => item.id === activeTheme);
-        if (existing) {
-          setEditingId(existing.id);
-          setDraft(definitionToThemeDraft(existing));
-        } else {
-          setEditingId(undefined);
-          setDraft(createThemeDraft());
-        }
+        syncDraftFromActiveTheme();
       } else {
         setLiveTheme(null);
       }
       onOpenChange?.(open);
     },
-    [activeTheme, customThemes, onOpenChange, setLiveTheme],
+    [onOpenChange, setLiveTheme, syncDraftFromActiveTheme],
   );
 
   const handleSave = useCallback(() => {

@@ -44,7 +44,7 @@ describe("showcase routes", () => {
     await renderRoute("/components/");
 
     expect(
-      screen.getByRole("heading", { name: "Components" }),
+      await screen.findByRole("heading", { name: "Components" }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("heading", { name: "Buttons" }),

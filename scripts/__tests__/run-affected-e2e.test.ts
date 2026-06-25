@@ -1,67 +1,50 @@
-import { spawnSync } from "node:child_process";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, type Mock, vi } from "vitest";
 import {
-  resolveAffectedE2eFromGit,
-  resolveAffectedE2eFromStaged,
-  toPlaywrightArgs,
-} from "../affected-e2e-specs.ts";
-import { runAffectedE2e } from "../run-affected-e2e.ts";
+  type RunAffectedE2eDeps,
+  runAffectedE2e,
+} from "../run-affected-e2e.ts";
 
-vi.mock("node:child_process", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("node:child_process")>();
-  return {
-    ...actual,
-    spawnSync: vi.fn(),
-  };
-});
+type MockRunAffectedE2eDeps = {
+  [K in keyof RunAffectedE2eDeps]: Mock<RunAffectedE2eDeps[K]>;
+};
 
-vi.mock("../affected-e2e-specs.ts", async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import("../affected-e2e-specs.ts")>();
+function createDeps(
+  overrides: Partial<MockRunAffectedE2eDeps> = {},
+): MockRunAffectedE2eDeps {
   return {
-    ...actual,
     resolveAffectedE2eFromGit: vi.fn(),
     resolveAffectedE2eFromStaged: vi.fn(),
     toPlaywrightArgs: vi.fn(),
+    spawnSync: vi.fn().mockReturnValue({ status: 0 }),
+    ...overrides,
   };
-});
+}
 
-const mockSpawnSync = vi.mocked(spawnSync);
-const mockResolveFromGit = vi.mocked(resolveAffectedE2eFromGit);
-const mockResolveFromStaged = vi.mocked(resolveAffectedE2eFromStaged);
-const mockToPlaywrightArgs = vi.mocked(toPlaywrightArgs);
+function runWithDeps(argv: string[], deps: MockRunAffectedE2eDeps): number {
+  return runAffectedE2e(argv, deps as unknown as RunAffectedE2eDeps);
+}
 
 describe("runAffectedE2e", () => {
-  beforeEach(() => {
-    mockSpawnSync.mockReset();
-    mockResolveFromGit.mockReset();
-    mockResolveFromStaged.mockReset();
-    mockToPlaywrightArgs.mockReset();
-    mockSpawnSync.mockReturnValue({ status: 0 } as never);
-  });
-
-  afterEach(() => {
-    vi.unstubAllEnvs();
-  });
-
   it("skips when no affected specs are found", () => {
-    mockResolveFromGit.mockReturnValue({
+    const deps = createDeps();
+    deps.resolveAffectedE2eFromGit.mockReturnValue({
       mode: "none",
       reason: "no component changes",
     });
 
-    expect(runAffectedE2e([])).toBe(0);
-    expect(mockSpawnSync).not.toHaveBeenCalled();
+    expect(runWithDeps([], deps)).toBe(0);
+    expect(deps.spawnSync).not.toHaveBeenCalled();
   });
 
   it("runs the full suite when all specs are affected", () => {
-    mockResolveFromGit.mockReturnValue({
+    const deps = createDeps();
+    deps.resolveAffectedE2eFromGit.mockReturnValue({
       mode: "all",
       reason: "shared config changed",
     });
 
-    expect(runAffectedE2e([])).toBe(0);
-    expect(mockSpawnSync).toHaveBeenCalledWith(
+    expect(runWithDeps([], deps)).toBe(0);
+    expect(deps.spawnSync).toHaveBeenCalledWith(
       "pnpm",
       expect.arrayContaining(["exec", "playwright", "test"]),
       expect.any(Object),
@@ -69,15 +52,16 @@ describe("runAffectedE2e", () => {
   });
 
   it("runs only affected specs from staged changes", () => {
-    mockResolveFromStaged.mockReturnValue({
+    const deps = createDeps();
+    deps.resolveAffectedE2eFromStaged.mockReturnValue({
       mode: "specs",
       specs: ["button"],
     });
-    mockToPlaywrightArgs.mockReturnValue(["e2e/button.spec.ts"]);
+    deps.toPlaywrightArgs.mockReturnValue(["e2e/button.spec.ts"]);
 
-    expect(runAffectedE2e(["--staged"])).toBe(0);
-    expect(mockResolveFromStaged).toHaveBeenCalled();
-    expect(mockSpawnSync).toHaveBeenCalledWith(
+    expect(runWithDeps(["--staged"], deps)).toBe(0);
+    expect(deps.resolveAffectedE2eFromStaged).toHaveBeenCalled();
+    expect(deps.spawnSync).toHaveBeenCalledWith(
       "pnpm",
       expect.arrayContaining(["e2e/button.spec.ts"]),
       expect.any(Object),
@@ -85,35 +69,40 @@ describe("runAffectedE2e", () => {
   });
 
   it("uses the provided base ref for git diffs", () => {
-    mockResolveFromGit.mockReturnValue({
+    const deps = createDeps();
+    deps.resolveAffectedE2eFromGit.mockReturnValue({
       mode: "none",
       reason: "no changes",
     });
 
-    runAffectedE2e(["--base", "origin/develop"]);
+    runWithDeps(["--base", "origin/develop"], deps);
 
-    expect(mockResolveFromGit).toHaveBeenCalledWith("origin/develop");
+    expect(deps.resolveAffectedE2eFromGit).toHaveBeenCalledWith(
+      "origin/develop",
+    );
   });
 
   it("returns a non-zero status when playwright fails", () => {
-    mockResolveFromGit.mockReturnValue({
+    const deps = createDeps();
+    deps.resolveAffectedE2eFromGit.mockReturnValue({
       mode: "all",
       reason: "shared config changed",
     });
-    mockSpawnSync.mockReturnValue({ status: 2 } as never);
+    deps.spawnSync.mockReturnValue({ status: 2 } as never);
 
-    expect(runAffectedE2e([])).toBe(2);
+    expect(runWithDeps([], deps)).toBe(2);
   });
 
   it("throws when playwright cannot be spawned", () => {
-    mockResolveFromGit.mockReturnValue({
+    const deps = createDeps();
+    deps.resolveAffectedE2eFromGit.mockReturnValue({
       mode: "all",
       reason: "shared config changed",
     });
-    mockSpawnSync.mockReturnValue({
+    deps.spawnSync.mockReturnValue({
       error: new Error("spawn failed"),
     } as never);
 
-    expect(() => runAffectedE2e([])).toThrow("spawn failed");
+    expect(() => runWithDeps([], deps)).toThrow("spawn failed");
   });
 });
