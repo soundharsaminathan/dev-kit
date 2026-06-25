@@ -21,6 +21,17 @@ const ARIA_RULES = [
   "link-name",
 ] as const;
 
+let axeQueue: Promise<unknown> = Promise.resolve();
+
+function runAxeSerial<T>(run: () => Promise<T>): Promise<T> {
+  const next = axeQueue.then(run, run);
+  axeQueue = next.then(
+    () => undefined,
+    () => undefined,
+  );
+  return next;
+}
+
 function formatViolations(violations: AxeResults["violations"]) {
   return violations
     .map(
@@ -36,22 +47,28 @@ function assertNoViolations(results: AxeResults) {
 }
 
 export async function expectNoA11yViolations(container: Element) {
-  const results = await axe(container, {
-    runOnly: { type: "tag", values: [...WCAG_TAGS] },
+  await runAxeSerial(async () => {
+    const results = await axe(container, {
+      runOnly: { type: "tag", values: [...WCAG_TAGS] },
+    });
+    assertNoViolations(results);
   });
-  assertNoViolations(results);
 }
 
 export async function expectNoColorContrastViolations(container: Element) {
-  const results = await axe(container, {
-    runOnly: { type: "rule", values: ["color-contrast"] },
+  await runAxeSerial(async () => {
+    const results = await axe(container, {
+      runOnly: { type: "rule", values: ["color-contrast"] },
+    });
+    assertNoViolations(results);
   });
-  assertNoViolations(results);
 }
 
 export async function expectNoAriaViolations(container: Element) {
-  const results = await axe(container, {
-    runOnly: { type: "rule", values: [...ARIA_RULES] },
+  await runAxeSerial(async () => {
+    const results = await axe(container, {
+      runOnly: { type: "rule", values: [...ARIA_RULES] },
+    });
+    assertNoViolations(results);
   });
-  assertNoViolations(results);
 }
