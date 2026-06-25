@@ -313,6 +313,84 @@ describe("ThemeProvider", () => {
     expect(screen.getByTestId("count")).toHaveTextContent("0");
   });
 
+  it("applies stylesheet when the active theme is a saved custom theme", () => {
+    function CustomThemeSwitcher() {
+      const { saveCustomTheme, setTheme } = useTheme();
+
+      return (
+        <button
+          type="button"
+          onClick={() => {
+            const saved = saveCustomTheme({
+              label: "Saved",
+              extends: "default",
+              color: {
+                algorithm: "oklch",
+                seeds: {
+                  neutral: "#808080",
+                  accent: "#0000ff",
+                  success: "#00aa00",
+                  warning: "#ffaa00",
+                  danger: "#aa0000",
+                  info: "#0088ff",
+                },
+              },
+            });
+            setTheme(saved.id);
+          }}
+        >
+          Use custom theme
+        </button>
+      );
+    }
+
+    render(
+      <ThemeProvider defaultMode="light">
+        <CustomThemeSwitcher />
+      </ThemeProvider>,
+    );
+
+    act(() => {
+      screen.getByRole("button", { name: "Use custom theme" }).click();
+    });
+
+    const style = document.getElementById("dev-ui-theme-overrides");
+    expect(style).not.toBeNull();
+    expect(style?.textContent).toContain("--color-accent");
+    expect(document.documentElement.getAttribute("data-theme")).toMatch(
+      /^custom-/,
+    );
+  });
+
+  it("defaults to light mode when matchMedia is unavailable", () => {
+    Object.defineProperty(window, "matchMedia", {
+      writable: true,
+      configurable: true,
+      value: undefined,
+    });
+    localStorage.setItem("dev-ui-theme-mode", "system");
+
+    render(
+      <ThemeProvider defaultMode="system">
+        <ThemeConsumer />
+      </ThemeProvider>,
+    );
+
+    expect(screen.getByTestId("mode")).toHaveTextContent("light");
+  });
+
+  it("falls back to defaultMode when stored mode preference is invalid", () => {
+    localStorage.setItem("dev-ui-theme-mode", "invalid");
+
+    render(
+      <ThemeProvider defaultMode="light">
+        <ThemeConsumer />
+      </ThemeProvider>,
+    );
+
+    expect(screen.getByTestId("mode")).toHaveTextContent("light");
+  });
+
   it("uses legacy media query listeners when addEventListener is unavailable", () => {
     const addListener = vi.fn();
     const removeListener = vi.fn();
