@@ -16,7 +16,17 @@ describe("buildVitestCiCommand", () => {
     expect(command).toContain("--coverage.reportsDirectory=");
     expect(command.replaceAll("\\", "/")).toContain("coverage/components");
     expect(command).toContain("--coverage.reporter=json-summary");
+    expect(command).toContain("--coverage.thresholds.lines=90");
+    expect(command).toContain("--coverage.thresholds.statements=90");
+    expect(command).toContain("--coverage.thresholds.functions=90");
+    expect(command).toContain("--coverage.thresholds.branches=80");
     expect(command).toContain("--outputFile=test-results/junit-components.xml");
+  });
+
+  it("omits coverage thresholds for non-library projects", () => {
+    const command = buildVitestCiCommand("showcase");
+
+    expect(command).not.toContain("--coverage.thresholds.");
   });
 
   it("omits junit reporters in coverage-only mode", () => {

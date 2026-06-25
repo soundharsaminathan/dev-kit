@@ -32,6 +32,34 @@ describe("formatCoverageComment", () => {
     expect(comment).toContain("| Lines | 95/100 | 95.00% |");
   });
 
+  it("renders per-library coverage sections", () => {
+    const comment = formatCoverageComment(
+      {
+        total: {
+          lines: metrics(100, 95, 95),
+          statements: metrics(120, 114, 95),
+          functions: metrics(40, 38, 95),
+          branches: metrics(80, 68, 85),
+        },
+      },
+      [
+        {
+          project: "components",
+          total: {
+            lines: metrics(50, 46, 92),
+            statements: metrics(60, 55, 91.67),
+            functions: metrics(20, 19, 95),
+            branches: metrics(30, 24, 80),
+          },
+        },
+      ],
+    );
+
+    expect(comment).toContain("## Libraries");
+    expect(comment).toContain("### components");
+    expect(comment).toContain("| Lines | 46/50 | 92.00% |");
+  });
+
   it("throws when the summary is missing total metrics", () => {
     expect(() => formatCoverageComment({} as never)).toThrow(
       "coverage-summary.json is missing a total entry",

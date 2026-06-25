@@ -43,6 +43,7 @@
     "test": {
       "executor": "nx:noop",
       "dependsOn": [
+        "tokens:test",
         "core:test",
         "components:test",
         "showcase:test",
@@ -63,6 +64,7 @@
       "dependsOn": [
         "core:test:ci",
         "components:test:ci",
+        "tokens:test:ci",
         "showcase:test:ci",
         "storybook:test:ci",
         "scripts:test:ci"
@@ -82,6 +84,7 @@
       "dependsOn": [
         "core:test:coverage",
         "components:test:coverage",
+        "tokens:test:coverage",
         "showcase:test:coverage",
         "storybook:test:coverage",
         "scripts:test:coverage"

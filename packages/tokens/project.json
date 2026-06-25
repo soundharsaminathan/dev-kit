@@ -18,6 +18,44 @@
         "script": "generate-scss"
       },
       "outputs": ["{projectRoot}/scss"]
+    },
+    "build:types": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "packages/tokens",
+        "command": "tsc -b --pretty false"
+      },
+      "outputs": ["{projectRoot}/dist"]
+    },
+    "build": {
+      "executor": "nx:noop",
+      "dependsOn": ["build:tokens", "build:types"]
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "{workspaceRoot}",
+        "command": "vitest run --config vitest.config.ts --project tokens"
+      }
+    },
+    "test:ci": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "{workspaceRoot}",
+        "command": "pnpm exec tsx scripts/run-vitest-ci.ts tokens"
+      },
+      "outputs": [
+        "{workspaceRoot}/coverage/tokens",
+        "{workspaceRoot}/test-results/junit-tokens.xml"
+      ]
+    },
+    "test:coverage": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "{workspaceRoot}",
+        "command": "pnpm exec tsx scripts/run-vitest-ci.ts tokens --coverage-only"
+      },
+      "outputs": ["{workspaceRoot}/coverage/tokens"]
     }
   }
 }

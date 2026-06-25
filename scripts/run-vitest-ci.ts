@@ -4,9 +4,17 @@ import { fileURLToPath } from "node:url";
 import {
   COVERAGE_INCLUDES,
   COVERAGE_PROJECTS,
+  COVERAGE_THRESHOLDS,
   type CoverageProject,
   coverageReportsDir,
+  type LibCoverageProject,
 } from "../vitest.coverage.ts";
+
+function isLibCoverageProject(
+  project: CoverageProject,
+): project is LibCoverageProject {
+  return project in COVERAGE_THRESHOLDS;
+}
 
 const workspaceRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -38,6 +46,16 @@ export function buildVitestCiCommand(
     "--coverage.reporter=lcov",
     "--coverage.reporter=json-summary",
   ];
+
+  if (isLibCoverageProject(project)) {
+    const thresholds = COVERAGE_THRESHOLDS[project];
+    args.push(
+      `--coverage.thresholds.lines=${thresholds.lines}`,
+      `--coverage.thresholds.statements=${thresholds.statements}`,
+      `--coverage.thresholds.functions=${thresholds.functions}`,
+      `--coverage.thresholds.branches=${thresholds.branches}`,
+    );
+  }
 
   if (!options.coverageOnly) {
     args.push(
