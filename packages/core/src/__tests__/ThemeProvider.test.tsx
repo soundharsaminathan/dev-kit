@@ -97,7 +97,7 @@ describe("ThemeProvider", () => {
   });
 
   it("restores theme and mode from localStorage", () => {
-    localStorage.setItem("dev-ui-theme", "glass");
+    localStorage.setItem("dev-ui-theme", "glassmorphism");
     localStorage.setItem("dev-ui-theme-mode", "light");
 
     render(
@@ -106,7 +106,7 @@ describe("ThemeProvider", () => {
       </ThemeProvider>,
     );
 
-    expect(screen.getByTestId("theme")).toHaveTextContent("glass");
+    expect(screen.getByTestId("theme")).toHaveTextContent("glassmorphism");
     expect(screen.getByTestId("mode")).toHaveTextContent("light");
   });
 

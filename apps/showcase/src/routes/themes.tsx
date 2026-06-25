@@ -1,4 +1,10 @@
 import { Button } from "@dev-ui/components/button";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@dev-ui/components/card";
 import { getBuiltInThemeIds, resolveThemeById } from "@dev-ui/tokens";
 import { createFileRoute } from "@tanstack/react-router";
 import styles from "@/modules/components-list/components-list.module.scss";
@@ -6,6 +12,15 @@ import styles from "@/modules/components-list/components-list.module.scss";
 export const Route = createFileRoute("/themes")({
   component: ThemesPage,
 });
+
+const previewCardStyle = {
+  padding: "1.25rem",
+  border: "var(--card-border-width, 1px) solid var(--color-border)",
+  borderRadius: "var(--card-radius)",
+  background: "var(--surface-background, var(--color-bg))",
+  boxShadow: "var(--card-shadow)",
+  color: "var(--color-fg)",
+} as const;
 
 function ThemesPage() {
   const themeIds = getBuiltInThemeIds();
@@ -35,13 +50,7 @@ function ThemesPage() {
               key={`${themeId}-light`}
               data-theme={themeId}
               data-theme-mode="light"
-              style={{
-                padding: "1.25rem",
-                border: "1px solid var(--color-border)",
-                borderRadius: "var(--radius-lg)",
-                background: "var(--color-bg)",
-                color: "var(--color-fg)",
-              }}
+              style={previewCardStyle}
             >
               <h3 style={{ marginBottom: "0.75rem", fontWeight: 600 }}>
                 {resolveThemeById(themeId).label}
@@ -57,6 +66,12 @@ function ThemesPage() {
                   Quiet
                 </Button>
               </div>
+              <Card size="sm" style={{ marginTop: "0.75rem" }}>
+                <CardHeader>
+                  <CardTitle>Surface</CardTitle>
+                </CardHeader>
+                <CardContent>Soft extruded surface</CardContent>
+              </Card>
             </div>
           ))}
         </div>
@@ -77,13 +92,7 @@ function ThemesPage() {
               key={`${themeId}-dark`}
               data-theme={themeId}
               data-theme-mode="dark"
-              style={{
-                padding: "1.25rem",
-                border: "1px solid var(--color-border)",
-                borderRadius: "var(--radius-lg)",
-                background: "var(--color-bg)",
-                color: "var(--color-fg)",
-              }}
+              style={previewCardStyle}
             >
               <h3 style={{ marginBottom: "0.75rem", fontWeight: 600 }}>
                 {resolveThemeById(themeId).label}
@@ -99,6 +108,12 @@ function ThemesPage() {
                   Quiet
                 </Button>
               </div>
+              <Card size="sm" style={{ marginTop: "0.75rem" }}>
+                <CardHeader>
+                  <CardTitle>Surface</CardTitle>
+                </CardHeader>
+                <CardContent>Soft extruded surface</CardContent>
+              </Card>
             </div>
           ))}
         </div>

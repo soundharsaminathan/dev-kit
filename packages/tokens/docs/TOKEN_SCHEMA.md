@@ -9,7 +9,7 @@ Design tokens in `@dev-ui/tokens` are organized in layers. TypeScript is the sou
 | Foundation | `--radius-*`, `--space-*`, `--font-size-*`, `--motion-*` | `src/tokens/foundation.ts` |
 | Primitives | `--neutral-*`, `--accent-*`, `--on-neutral-*` | Per-theme color config |
 | Semantic | `--color-*`, `--surface-*`, `--text-*`, `--border-*` | `src/theme/semantics.ts`, `src/tokens/semantic.ts` |
-| Effects | `--shadow-*`, `--blur-*`, `--elevation-*`, `--glass-*`, `--material-*` | `src/tokens/effects.ts` |
+| Effects | `--shadow-*`, `--blur-*`, `--elevation-*`, `--glass-*` (`--glass-fill`, `--glass-border`, `--glass-backdrop-blur`, `--glass-vibrant-background`), `--material-*`, `--neumo-*` (`--neumo-hill`, `--neumo-dent`), `--brutal-*`, `--aurora-*`, `--terminal-*` | `src/tokens/effects.ts` |
 | Interaction | `--interaction-*` | `src/tokens/interaction.ts` |
 | Component | `--btn-*`, `--input-*`, `--modal-*`, etc. | `src/tokens/components.ts` |
 
@@ -33,7 +33,9 @@ A theme (`ThemeDefinition`) includes:
 - `radiusFactor`, `fonts` — optional overrides
 - `tokens` — partial overrides for effects, interaction, components
 
-Built-in themes: `default`, `material`, `glass`.
+Built-in themes: `default`, `material`, `glassmorphism`, `neumorphism`, `neo-brutalism`, `aurora`, `terminal`.
+
+Legacy aliases: `glass` → `glassmorphism`, `skeuomorphism` → `default`.
 
 Custom themes use ids `custom-<uuid>`, stored in `localStorage` under `dev-ui-custom-themes`.
 

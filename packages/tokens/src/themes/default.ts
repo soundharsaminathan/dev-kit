@@ -6,12 +6,12 @@ export const defaultTheme: ThemeDefinition = {
   color: {
     algorithm: "oklch",
     seeds: {
-      neutral: "#737373",
-      accent: "#3b82f6",
-      success: "#22c55e",
-      warning: "#eab308",
-      danger: "#ef4444",
-      info: "#3b82f6",
+      neutral: "#64748b",
+      accent: "#8b5cf6",
+      success: "#34d399",
+      warning: "#fbbf24",
+      danger: "#f472b6",
+      info: "#38bdf8",
     },
   },
   radiusFactor: 1,

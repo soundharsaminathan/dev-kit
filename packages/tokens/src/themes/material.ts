@@ -5,6 +5,17 @@ export const materialTheme: ThemeDefinition = {
   label: "Material",
   extends: "default",
   radiusFactor: 0.75,
+  color: {
+    algorithm: "oklch",
+    seeds: {
+      neutral: "#64748b",
+      accent: "#8b5cf6",
+      success: "#34d399",
+      warning: "#fbbf24",
+      danger: "#f472b6",
+      info: "#38bdf8",
+    },
+  },
   tokens: {
     effects: {
       "shadow-sm": {
@@ -53,6 +64,39 @@ export const materialTheme: ThemeDefinition = {
       },
       "modal-shadow": {
         target: { ref: "elevation-3" },
+        category: "component",
+      },
+      "scrollbar-size": {
+        target: { value: "8px" },
+        category: "component",
+      },
+      "scrollbar-thumb-radius": {
+        target: { ref: "radius-sm" },
+        category: "component",
+      },
+      "scrollbar-track-radius": {
+        target: { ref: "radius-sm" },
+        category: "component",
+      },
+      "scrollbar-thumb-background": {
+        target: {
+          mix: {
+            space: "oklch",
+            stops: [{ ref: "color-neutral" }, 85, { value: "transparent" }],
+          },
+        },
+        category: "component",
+      },
+      "scrollbar-thumb-hover-background": {
+        target: { ref: "color-neutral-hover" },
+        category: "component",
+      },
+      "scrollbar-thumb-active-background": {
+        target: { ref: "color-neutral-active" },
+        category: "component",
+      },
+      "scrollbar-thumb-shadow": {
+        target: { ref: "elevation-1" },
         category: "component",
       },
     },

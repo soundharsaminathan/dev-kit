@@ -17,7 +17,10 @@ function themeExtraVars(theme: ResolvedTheme): Record<string, string> {
   return vars;
 }
 
-function resolveTokenTarget(target: TokenDefinition["target"]): SemanticTarget {
+function resolveTokenTarget(
+  target: TokenDefinition["target"],
+  mode: ThemeMode,
+): SemanticTarget {
   if (
     "ref" in target ||
     "onOf" in target ||
@@ -27,10 +30,17 @@ function resolveTokenTarget(target: TokenDefinition["target"]): SemanticTarget {
     return target as SemanticTarget;
   }
   const perMode = target as Record<string, SemanticTarget>;
-  return perMode.light ?? (Object.values(perMode)[0] as SemanticTarget);
+  return (
+    perMode[mode] ??
+    perMode.light ??
+    (Object.values(perMode)[0] as SemanticTarget)
+  );
 }
 
-function themeTokenOverrideLines(theme: ResolvedTheme): string[] {
+function themeTokenOverrideLines(
+  theme: ResolvedTheme,
+  mode: ThemeMode,
+): string[] {
   const merged = mergeVocabularies(
     theme.tokens.effects,
     theme.tokens.interaction,
@@ -39,11 +49,13 @@ function themeTokenOverrideLines(theme: ResolvedTheme): string[] {
   const lines: string[] = [];
   for (const [name, token] of Object.entries(merged)) {
     lines.push(
-      `  --${name}: ${resolveTarget(resolveTokenTarget(token.target))};`,
+      `  --${name}: ${resolveTarget(resolveTokenTarget(token.target, mode))};`,
     );
   }
   return lines;
 }
+
+export const THEME_SCOPE_SELECTOR = "[data-theme][data-theme-mode]";
 
 export function themeSelector(themeId: string, mode: ThemeMode): string {
   return `[data-theme="${themeId}"][data-theme-mode="${mode}"]`;
@@ -72,7 +84,7 @@ export function emitThemeBlock(
     if (line.startsWith("  --")) lines.push(line);
   }
 
-  const overrideLines = themeTokenOverrideLines(theme);
+  const overrideLines = themeTokenOverrideLines(theme, mode);
   if (overrideLines.length > 0) {
     lines.push(...overrideLines);
   }

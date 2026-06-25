@@ -7,6 +7,8 @@ describe("formatThemeLabel", () => {
   });
 
   it("uses provided label when available", () => {
-    expect(formatThemeLabel("glass", "Glassmorphism")).toBe("Glassmorphism");
+    expect(formatThemeLabel("glassmorphism", "Glassmorphism")).toBe(
+      "Glassmorphism",
+    );
   });
 });

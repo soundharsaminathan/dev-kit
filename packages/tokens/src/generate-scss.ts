@@ -7,6 +7,7 @@ import { resolveTheme } from "./theme/resolve-theme.js";
 import {
   emitThemeBlock,
   getAllSemanticVocabulary,
+  THEME_SCOPE_SELECTOR,
 } from "./theme/theme-to-css.js";
 import {
   type BuiltInThemeId,
@@ -41,7 +42,9 @@ function generateComponentsSCSS(): string {
 }
 
 function generateSemanticsSCSS(): string {
-  return emitCss(getAllSemanticVocabulary());
+  return emitCss(getAllSemanticVocabulary(), {
+    selector: THEME_SCOPE_SELECTOR,
+  });
 }
 
 function generateThemeFile(themeId: BuiltInThemeId): string {

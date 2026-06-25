@@ -53,6 +53,7 @@ export {
   getBuiltInTheme,
   getBuiltInThemeIds,
   getBuiltInThemes,
+  normalizeThemeId,
 } from "./themes/index.js";
 export {
   DEFAULT_TOKEN_TREE,

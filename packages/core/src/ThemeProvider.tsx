@@ -63,7 +63,12 @@ function getSystemPreference(): ThemeMode {
 
 function readStoredTheme(): string {
   if (typeof window === "undefined") return "default";
-  return localStorage.getItem(ACTIVE_THEME_STORAGE_KEY) || "default";
+  const stored = localStorage.getItem(ACTIVE_THEME_STORAGE_KEY) || "default";
+  return stored === "glass"
+    ? "glassmorphism"
+    : stored === "skeuomorphism"
+      ? "default"
+      : stored;
 }
 
 function readModePreference(defaultMode: ThemeMode | "system"): ModePreference {

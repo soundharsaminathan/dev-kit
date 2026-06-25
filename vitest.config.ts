@@ -45,6 +45,8 @@ export default defineConfig({
         test: {
           name: "core",
           root: path.join(rootDir, "packages/core"),
+          include: ["src/**/*.{test,spec}.{ts,tsx}"],
+          exclude: ["dist/**"],
           environment: "node",
           sequence: { groupOrder: 2 },
         },

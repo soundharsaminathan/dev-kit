@@ -4,18 +4,24 @@
   display: inline-flex;
   width: 100%;
   align-items: center;
-  border: 1px solid var(--color-border-field);
+  border: 1px solid var(--input-border-color, var(--color-border-field));
   border-radius: var(--input-radius);
-  background-color: var(--color-field);
+  background-color: var(--input-background, var(--color-field));
+  background-image: var(--input-surface-gradient, none);
   padding-inline: var(--input-padding-inline);
   font-size: var(--input-font-size);
   line-height: var(--input-line-height);
   color: var(--color-fg);
   outline: none;
+  box-shadow: var(--input-shadow, none);
+  backdrop-filter: blur(var(--input-backdrop-blur, 0));
+  -webkit-backdrop-filter: blur(var(--input-backdrop-blur, 0));
   transition:
     border-color var(--interaction-transition-duration)
       var(--interaction-transition-curve),
     box-shadow var(--interaction-transition-duration)
+      var(--interaction-transition-curve),
+    background-color var(--interaction-transition-duration)
       var(--interaction-transition-curve);
   -webkit-tap-highlight-color: transparent;
 
@@ -33,9 +39,13 @@
   &:disabled,
   &[data-disabled="true"] {
     cursor: var(--cursor-disabled);
-    border-color: var(--color-border-disabled);
-    background-color: var(--color-disabled);
-    color: var(--color-fg-disabled);
+    border-color: var(
+      --input-disabled-border-color,
+      var(--color-border-disabled)
+    );
+    background-color: var(--input-disabled-background, var(--color-disabled));
+    color: var(--input-disabled-foreground, var(--color-fg-disabled));
+    box-shadow: var(--input-disabled-shadow, none);
   }
 
   &:invalid,
@@ -63,18 +73,24 @@
   width: 100%;
   align-items: center;
   gap: 0.125rem;
-  border: 1px solid var(--color-border-field);
+  border: 1px solid var(--input-border-color, var(--color-border-field));
   border-radius: var(--input-radius);
-  background-color: var(--color-field);
+  background-color: var(--input-background, var(--color-field));
+  background-image: var(--input-surface-gradient, none);
   padding-inline: var(--input-padding-inline);
   font-size: var(--input-font-size);
   line-height: var(--input-line-height);
   color: var(--color-fg);
   outline: none;
+  box-shadow: var(--input-shadow, none);
+  backdrop-filter: blur(var(--input-backdrop-blur, 0));
+  -webkit-backdrop-filter: blur(var(--input-backdrop-blur, 0));
   transition:
     border-color var(--interaction-transition-duration)
       var(--interaction-transition-curve),
     box-shadow var(--interaction-transition-duration)
+      var(--interaction-transition-curve),
+    background-color var(--interaction-transition-duration)
       var(--interaction-transition-curve);
 
   &:focus-within {
@@ -85,9 +101,13 @@
 
   &[data-disabled="true"] {
     cursor: var(--cursor-disabled);
-    border-color: var(--color-border-disabled);
-    background-color: var(--color-disabled);
-    color: var(--color-fg-disabled);
+    border-color: var(
+      --input-disabled-border-color,
+      var(--color-border-disabled)
+    );
+    background-color: var(--input-disabled-background, var(--color-disabled));
+    color: var(--input-disabled-foreground, var(--color-fg-disabled));
+    box-shadow: var(--input-disabled-shadow, none);
   }
 
   &[data-size="sm"] {

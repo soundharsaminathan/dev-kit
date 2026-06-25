@@ -48,6 +48,7 @@ export {
 export {
   emitThemeBlock,
   getAllSemanticVocabulary,
+  THEME_SCOPE_SELECTOR,
   themeSelector,
   themeToCss,
 } from "./theme-to-css.js";

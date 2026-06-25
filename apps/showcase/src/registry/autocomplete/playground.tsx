@@ -19,13 +19,7 @@ export default function AutocompletePlayground({
   variant = "default",
 }: AutocompletePlaygroundProps = {}) {
   return (
-    <div
-      style={{
-        width: 420,
-        border: "1px solid var(--color-border)",
-        borderRadius: 8,
-      }}
-    >
+    <div style={{ width: 420 }}>
       <Autocomplete aria-label={ariaLabel} variant={variant}>
         <AutocompleteInput aria-label="Search" placeholder={placeholder} />
         <AutocompleteContent aria-label="Results" selectionMode="none">

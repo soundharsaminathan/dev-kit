@@ -3,7 +3,9 @@
   "compilerOptions": {
     "rootDir": "src",
     "outDir": "dist",
-    "noEmit": false
+    "composite": true,
+    "noEmit": false,
+    "emitDeclarationOnly": true
   },
   "include": ["src"],
   "references": [{ "path": "../tokens" }]

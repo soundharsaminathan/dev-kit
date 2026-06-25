@@ -1,8 +1,9 @@
 import { cn } from "@dev-ui/core";
 import { useAutocomplete } from "@react-aria/autocomplete";
 import { useFilter } from "@react-aria/i18n";
+import { useFocusWithin } from "@react-aria/interactions";
 import { useAutocompleteState } from "@react-stately/autocomplete";
-import { useCallback, useMemo, useRef } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import styles from "./autocomplete.module.scss";
 import type { AutocompleteProps } from "./autocomplete.types";
 import { AutocompleteContext } from "./autocomplete-context";
@@ -16,6 +17,10 @@ function Autocomplete({
 }: AutocompleteProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const collectionRef = useRef<HTMLUListElement>(null);
+  const [isFocusWithin, setIsFocusWithin] = useState(false);
+  const { focusWithinProps } = useFocusWithin({
+    onFocusWithinChange: setIsFocusWithin,
+  });
   const { contains } = useFilter({
     sensitivity: "base",
     ignorePunctuation: true,
@@ -62,8 +67,10 @@ function Autocomplete({
   return (
     <AutocompleteContext.Provider value={contextValue}>
       <div
+        {...focusWithinProps}
         data-autocomplete=""
         data-variant={variant}
+        data-focus-within={isFocusWithin ? "true" : undefined}
         className={cn(styles.root, className)}
       >
         {children}

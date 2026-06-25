@@ -1,5 +1,5 @@
 import "@testing-library/jest-dom/vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import {
   Autocomplete,
@@ -48,6 +48,11 @@ describe("Autocomplete", () => {
       </Autocomplete>,
     );
 
+    const searchbox = screen.getByRole("searchbox");
+    act(() => {
+      searchbox.focus();
+    });
+
     expect(
       screen.getByRole("option", { name: "Calendar" }),
     ).toBeInTheDocument();
@@ -65,5 +70,29 @@ describe("Autocomplete", () => {
     expect(
       screen.queryByRole("option", { name: "Settings" }),
     ).not.toBeInTheDocument();
+  });
+
+  it("hides the menu until the autocomplete is focused", () => {
+    const { container } = render(
+      <Autocomplete aria-label="Commands">
+        <AutocompleteInput aria-label="Search" />
+        <AutocompleteContent aria-label="Results" selectionMode="none">
+          <AutocompleteItem id="calendar">Calendar</AutocompleteItem>
+        </AutocompleteContent>
+      </Autocomplete>,
+    );
+
+    const listbox = container.querySelector("[data-listbox='']");
+    expect(listbox).toHaveStyle({ display: "none" });
+
+    const searchbox = screen.getByRole("searchbox");
+    act(() => {
+      searchbox.focus();
+    });
+    expect(container.querySelector("[data-autocomplete='']")).toHaveAttribute(
+      "data-focus-within",
+      "true",
+    );
+    expect(listbox).not.toHaveStyle({ display: "none" });
   });
 });
