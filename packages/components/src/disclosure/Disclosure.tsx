@@ -9,6 +9,7 @@ import { AccordionContext } from "../accordion/accordion-context";
 import styles from "./disclosure.module.scss";
 import type {
   DisclosureContextValue,
+  DisclosurePanelMountWhen,
   DisclosurePanelProps,
   DisclosureProps,
   DisclosureTriggerProps,
@@ -135,14 +136,41 @@ function DisclosureTrigger({
 }
 DisclosureTrigger.displayName = "DisclosureTrigger";
 
+function shouldMountPanelChildren(
+  mountWhen: DisclosurePanelMountWhen,
+  isExpanded: boolean,
+  hasMounted: boolean,
+): boolean {
+  switch (mountWhen) {
+    case "expanded":
+      return isExpanded;
+    case "expanded-once":
+      return isExpanded || hasMounted;
+    default:
+      return true;
+  }
+}
+
 function DisclosurePanel({
   children,
   className,
+  mountWhen = "always",
   ref,
   ...props
 }: DisclosurePanelProps) {
   const { panelProps, panelRef, state } =
     useDisclosureContext("DisclosurePanel");
+  const hasMountedRef = useRef(state.isExpanded);
+
+  if (state.isExpanded) {
+    hasMountedRef.current = true;
+  }
+
+  const shouldMountChildren = shouldMountPanelChildren(
+    mountWhen,
+    state.isExpanded,
+    hasMountedRef.current,
+  );
 
   return (
     <div
@@ -152,7 +180,9 @@ function DisclosurePanel({
       data-hidden={state.isExpanded ? undefined : "true"}
       className={cn(styles.panel, className)}
     >
-      <div className={styles.panelInner}>{children}</div>
+      <div className={styles.panelInner}>
+        {shouldMountChildren ? children : null}
+      </div>
     </div>
   );
 }

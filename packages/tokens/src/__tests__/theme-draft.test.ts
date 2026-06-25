@@ -5,6 +5,7 @@ import {
   definitionToThemeDraft,
   listEditableTokens,
   listEditableTokensByLayer,
+  listEditableTokensForLayer,
   resolveThemeDraft,
   setColorSeed,
   setTokenOverride,
@@ -65,11 +66,17 @@ describe("theme-draft", () => {
     const resolved = resolveThemeDraft(draft);
     const tokens = listEditableTokens(draft, resolved);
     const grouped = listEditableTokensByLayer(draft, resolved);
+    const interactionTokens = listEditableTokensForLayer(
+      draft,
+      "interaction",
+      resolved,
+    );
 
     expect(tokens.length).toBeGreaterThan(0);
     expect(TOKEN_LAYER_ORDER.every((layer) => grouped[layer].length > 0)).toBe(
       true,
     );
+    expect(interactionTokens).toEqual(grouped.interaction);
   });
 
   it("updates color seeds and clears blank overrides", () => {

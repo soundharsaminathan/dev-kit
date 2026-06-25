@@ -134,6 +134,41 @@ export function resolveThemeDraft(draft: ThemeDraft): ResolvedTheme {
   return resolveTheme(themeDraftToDefinition(draft));
 }
 
+function listEditableTokensInLayer(
+  draft: ThemeDraft,
+  layer: TokenLayerKey,
+  vocabulary: ResolvedTheme["tokens"][TokenLayerKey],
+): EditableToken[] {
+  const tokens: EditableToken[] = [];
+
+  for (const [name, token] of Object.entries(vocabulary)) {
+    const cssValue = resolveTarget(resolveTokenTarget(token.target));
+    const overrideValue = getOverrideValue(draft.tokenOverrides, layer, name);
+    const item: EditableToken = {
+      name,
+      layer,
+      cssValue,
+      category: token.category,
+      isOverride: overrideValue !== undefined,
+    };
+    if (overrideValue !== undefined) {
+      item.overrideValue = overrideValue;
+    }
+    tokens.push(item);
+  }
+
+  return tokens;
+}
+
+export function listEditableTokensForLayer(
+  draft: ThemeDraft,
+  layer: TokenLayerKey,
+  resolved?: ResolvedTheme,
+): EditableToken[] {
+  const theme = resolved ?? resolveThemeDraft(draft);
+  return listEditableTokensInLayer(draft, layer, theme.tokens[layer]);
+}
+
 export function listEditableTokens(
   draft: ThemeDraft,
   resolved?: ResolvedTheme,
@@ -142,22 +177,9 @@ export function listEditableTokens(
   const tokens: EditableToken[] = [];
 
   for (const layer of TOKEN_LAYER_ORDER) {
-    const vocabulary = theme.tokens[layer];
-    for (const [name, token] of Object.entries(vocabulary)) {
-      const cssValue = resolveTarget(resolveTokenTarget(token.target));
-      const overrideValue = getOverrideValue(draft.tokenOverrides, layer, name);
-      const item: EditableToken = {
-        name,
-        layer,
-        cssValue,
-        category: token.category,
-        isOverride: overrideValue !== undefined,
-      };
-      if (overrideValue !== undefined) {
-        item.overrideValue = overrideValue;
-      }
-      tokens.push(item);
-    }
+    tokens.push(
+      ...listEditableTokensInLayer(draft, layer, theme.tokens[layer]),
+    );
   }
 
   return tokens;

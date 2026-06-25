@@ -2,7 +2,6 @@ import { cn } from "@dev-ui/core";
 import {
   COLOR_SEED_KEYS,
   getBuiltInThemeIds,
-  listEditableTokensByLayer,
   resolveThemeDraft,
   setColorSeed,
   setTokenOverride,
@@ -36,9 +35,15 @@ function ThemeEditorPanel({
   className,
 }: ThemeEditorPanelProps) {
   const resolved = useMemo(() => resolveThemeDraft(value), [value]);
-  const tokensByLayer = useMemo(
-    () => listEditableTokensByLayer(value, resolved),
-    [value, resolved],
+  const tokenCountByLayer = useMemo(
+    () =>
+      Object.fromEntries(
+        TOKEN_LAYER_ORDER.map((layer) => [
+          layer,
+          Object.keys(resolved.tokens[layer]).length,
+        ]),
+      ) as Record<TokenLayerKey, number>,
+    [resolved],
   );
 
   const handleTokenChange = (
@@ -100,7 +105,7 @@ function ThemeEditorPanel({
               ({COLOR_SEED_KEYS.length})
             </span>
           </DisclosureTrigger>
-          <DisclosurePanel>
+          <DisclosurePanel mountWhen="expanded-once">
             <ThemeLayerPreview section="color" />
             <div className={styles.tokenList}>
               {COLOR_SEED_KEYS.map((seed) => (
@@ -121,9 +126,11 @@ function ThemeEditorPanel({
         {TOKEN_LAYER_ORDER.map((layer) => (
           <TokenLayerPanel
             key={layer}
+            draft={value}
+            resolved={resolved}
             layer={layer}
             label={TOKEN_LAYER_LABELS[layer]}
-            tokens={tokensByLayer[layer]}
+            tokenCount={tokenCountByLayer[layer]}
             onTokenChange={handleTokenChange}
             headerContent={
               layer === "foundation" ? (

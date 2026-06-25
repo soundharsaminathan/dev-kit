@@ -1,11 +1,5 @@
 import { createThemeDraft } from "@dev-ui/tokens";
-import {
-  act,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { ThemeEditorDrawer } from "../ThemeEditorDrawer";
 
@@ -27,7 +21,7 @@ describe("ThemeEditorDrawer", () => {
     expect(screen.getByText("Foundation")).toBeInTheDocument();
   });
 
-  it("opens the drawer and renders theme fields", async () => {
+  it("opens the drawer from the trigger", () => {
     render(
       <ThemeEditorDrawer
         value={draft}
@@ -36,13 +30,9 @@ describe("ThemeEditorDrawer", () => {
       />,
     );
 
-    await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "Edit theme" }));
-    });
+    fireEvent.click(screen.getByRole("button", { name: "Edit theme" }));
 
-    await waitFor(() => {
-      expect(screen.getByLabelText("Theme name")).toHaveValue("Acme");
-    });
+    expect(screen.getByLabelText("Theme name")).toHaveValue("Acme");
     expect(screen.getByText("Color")).toBeInTheDocument();
     expect(screen.getByText("Foundation")).toBeInTheDocument();
   });

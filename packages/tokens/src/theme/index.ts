@@ -36,6 +36,7 @@ export {
   type EditableToken,
   listEditableTokens,
   listEditableTokensByLayer,
+  listEditableTokensForLayer,
   resolveThemeDraft,
   setColorSeed,
   setTokenOverride,
