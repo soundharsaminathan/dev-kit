@@ -2,15 +2,10 @@
 import "@testing-library/jest-dom/vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { useEffect, useState } from "react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import { AppThemeProvider, useTheme } from "@/lib/theme";
 import { ShowcaseThemeEditor } from "@/modules/theme-editor/showcase-theme-editor";
 import { LIVE_THEME_ID } from "./theme-editor-drawer.mock";
-
-vi.mock("@dev-ui/components/theme-editor", async () => ({
-  ThemeEditorDrawer: (await import("./theme-editor-drawer.mock"))
-    .ThemeEditorDrawerMock,
-}));
 
 const customThemeInput = {
   label: "Saved theme",

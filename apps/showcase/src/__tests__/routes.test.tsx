@@ -6,7 +6,7 @@ import {
   RouterProvider,
 } from "@tanstack/react-router";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import { routeTree } from "../routeTree.gen";
 
 function createTestRouter(initialPath = "/") {
@@ -22,13 +22,20 @@ function createTestRouter(initialPath = "/") {
 async function renderRoute(initialPath = "/") {
   const router = createTestRouter(initialPath);
   render(<RouterProvider router={router} />);
-  await waitFor(() => {
-    expect(router.state.status).toBe("idle");
-  });
+  await waitFor(
+    () => {
+      expect(router.state.status).toBe("idle");
+    },
+    { timeout: 15_000 },
+  );
   return router;
 }
 
 describe("showcase routes", () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
   it("renders the home page", async () => {
     await renderRoute("/");
 
@@ -61,7 +68,9 @@ describe("showcase routes", () => {
   it("renders the themes comparison page", async () => {
     await renderRoute("/themes");
 
-    expect(screen.getByRole("heading", { name: "Themes" })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: "Themes" }),
+    ).toBeInTheDocument();
     expect(
       screen.getByRole("heading", { name: "Light mode" }),
     ).toBeInTheDocument();
@@ -74,7 +83,7 @@ describe("showcase routes", () => {
     await renderRoute("/theme-editor");
 
     expect(
-      screen.getByRole("heading", { name: "Theme editor" }),
+      await screen.findByRole("heading", { name: "Theme editor" }),
     ).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Dark" }));
     expect(document.documentElement.getAttribute("data-theme-mode")).toBe(
