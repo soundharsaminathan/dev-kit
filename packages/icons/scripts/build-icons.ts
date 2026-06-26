@@ -141,6 +141,22 @@ const MATERIAL_SYMBOL_STYLES = {
   },
 } as const;
 
+type PackConfig = (typeof packLibraries)[number];
+type MaterialSymbolsVariant = keyof typeof MATERIAL_SYMBOL_STYLES;
+type PhosphorWeight = "regular" | "fill" | "duotone";
+
+function isMaterialSymbolsPack(
+  pack: PackConfig,
+): pack is PackConfig & { materialSymbols: MaterialSymbolsVariant } {
+  return "materialSymbols" in pack;
+}
+
+function isPhosphorPack(
+  pack: PackConfig,
+): pack is PackConfig & { phosphorWeight: PhosphorWeight } {
+  return "phosphorWeight" in pack;
+}
+
 function buildMaterialSymbolComponent(
   iconName: string,
   exportName: string,
@@ -221,14 +237,14 @@ function buildPackModule(packId: PackId): string {
     })
     .sort((a, b) => a.semanticName.localeCompare(b.semanticName));
 
-  if (packConfig.materialSymbols) {
+  if (isMaterialSymbolsPack(packConfig)) {
     const components = mappings
       .map(({ semanticName, sourceName }) => {
         const exportName = toExportName(semanticName);
         return buildMaterialSymbolComponent(
           sourceName,
           exportName,
-          packConfig.materialSymbols!,
+          packConfig.materialSymbols,
         );
       })
       .join("\n\n");
@@ -240,7 +256,7 @@ function buildPackModule(packId: PackId): string {
       })
       .join("\n");
 
-    const materialStyle = MATERIAL_SYMBOL_STYLES[packConfig.materialSymbols!];
+    const materialStyle = MATERIAL_SYMBOL_STYLES[packConfig.materialSymbols];
 
     return `"use client";
 
@@ -272,25 +288,23 @@ export default pack;
     })
     .join("\n");
 
-  const wrappers =
-    packConfig.phosphorWeight != null
-      ? mappings
-          .map(({ semanticName, sourceName }) =>
-            buildPhosphorComponent(
-              semanticName,
-              sourceName,
-              packConfig.phosphorWeight!,
-            ),
-          )
-          .join("\n\n")
-      : "";
+  const wrappers = isPhosphorPack(packConfig)
+    ? mappings
+        .map(({ semanticName, sourceName }) =>
+          buildPhosphorComponent(
+            semanticName,
+            sourceName,
+            packConfig.phosphorWeight,
+          ),
+        )
+        .join("\n\n")
+    : "";
 
   const packEntries = mappings
     .map(({ semanticName, sourceName }) => {
-      const exportName =
-        packConfig.phosphorWeight != null || packConfig.materialSymbols
-          ? toExportName(semanticName)
-          : toSafeIdentifier(sourceName);
+      const exportName = isPhosphorPack(packConfig)
+        ? toExportName(semanticName)
+        : toSafeIdentifier(sourceName);
       return `  "${semanticName}": ${exportName},`;
     })
     .join("\n");
@@ -351,7 +365,7 @@ function buildPackPackages(): void {
   };
 
   const exports: Record<string, Record<string, string>> = {};
-  const hasMaterialSymbols = packLibraries.some((pack) => pack.materialSymbols);
+  const hasMaterialSymbols = packLibraries.some(isMaterialSymbolsPack);
 
   for (const packId of packIds) {
     const packEntryDir = join(packsSrcDir, packId);
@@ -362,7 +376,7 @@ function buildPackPackages(): void {
       buildPackModule(packId),
     );
 
-    if (packConfig?.materialSymbols) {
+    if (packConfig && isMaterialSymbolsPack(packConfig)) {
       writeGeneratedFile(
         join(packEntryDir, "material-symbols.css"),
         buildMaterialSymbolsCss(packConfig.materialSymbols),
@@ -371,7 +385,7 @@ function buildPackPackages(): void {
 
     exports[`./${packId}`] = {
       development: `./src/${packId}/index.tsx`,
-      types: `./dist/${packId}/index.d.ts`,
+      types: `./src/${packId}/index.tsx`,
       import: `./dist/${packId}/index.js`,
       default: `./dist/${packId}/index.js`,
     };

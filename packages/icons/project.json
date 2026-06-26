@@ -23,7 +23,7 @@
         "cwd": "packages/icons",
         "command": "tsc -b --pretty false"
       },
-      "dependsOn": ["build:icons"]
+      "dependsOn": ["build:icons", "icons-packs:typecheck"]
     },
     "test": {
       "executor": "nx:run-commands",

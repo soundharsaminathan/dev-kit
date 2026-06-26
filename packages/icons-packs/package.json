@@ -7,79 +7,79 @@
   "exports": {
     "./lucide": {
       "development": "./src/lucide/index.tsx",
-      "types": "./dist/lucide/index.d.ts",
+      "types": "./src/lucide/index.tsx",
       "import": "./dist/lucide/index.js",
       "default": "./dist/lucide/index.js"
     },
     "./heroicons-outline": {
       "development": "./src/heroicons-outline/index.tsx",
-      "types": "./dist/heroicons-outline/index.d.ts",
+      "types": "./src/heroicons-outline/index.tsx",
       "import": "./dist/heroicons-outline/index.js",
       "default": "./dist/heroicons-outline/index.js"
     },
     "./heroicons-solid": {
       "development": "./src/heroicons-solid/index.tsx",
-      "types": "./dist/heroicons-solid/index.d.ts",
+      "types": "./src/heroicons-solid/index.tsx",
       "import": "./dist/heroicons-solid/index.js",
       "default": "./dist/heroicons-solid/index.js"
     },
     "./phosphor-regular": {
       "development": "./src/phosphor-regular/index.tsx",
-      "types": "./dist/phosphor-regular/index.d.ts",
+      "types": "./src/phosphor-regular/index.tsx",
       "import": "./dist/phosphor-regular/index.js",
       "default": "./dist/phosphor-regular/index.js"
     },
     "./phosphor-fill": {
       "development": "./src/phosphor-fill/index.tsx",
-      "types": "./dist/phosphor-fill/index.d.ts",
+      "types": "./src/phosphor-fill/index.tsx",
       "import": "./dist/phosphor-fill/index.js",
       "default": "./dist/phosphor-fill/index.js"
     },
     "./phosphor-duotone": {
       "development": "./src/phosphor-duotone/index.tsx",
-      "types": "./dist/phosphor-duotone/index.d.ts",
+      "types": "./src/phosphor-duotone/index.tsx",
       "import": "./dist/phosphor-duotone/index.js",
       "default": "./dist/phosphor-duotone/index.js"
     },
     "./tabler-outline": {
       "development": "./src/tabler-outline/index.tsx",
-      "types": "./dist/tabler-outline/index.d.ts",
+      "types": "./src/tabler-outline/index.tsx",
       "import": "./dist/tabler-outline/index.js",
       "default": "./dist/tabler-outline/index.js"
     },
     "./tabler-filled": {
       "development": "./src/tabler-filled/index.tsx",
-      "types": "./dist/tabler-filled/index.d.ts",
+      "types": "./src/tabler-filled/index.tsx",
       "import": "./dist/tabler-filled/index.js",
       "default": "./dist/tabler-filled/index.js"
     },
     "./fluent-outline": {
       "development": "./src/fluent-outline/index.tsx",
-      "types": "./dist/fluent-outline/index.d.ts",
+      "types": "./src/fluent-outline/index.tsx",
       "import": "./dist/fluent-outline/index.js",
       "default": "./dist/fluent-outline/index.js"
     },
     "./fluent-filled": {
       "development": "./src/fluent-filled/index.tsx",
-      "types": "./dist/fluent-filled/index.d.ts",
+      "types": "./src/fluent-filled/index.tsx",
       "import": "./dist/fluent-filled/index.js",
       "default": "./dist/fluent-filled/index.js"
     },
     "./material-symbols-outlined": {
       "development": "./src/material-symbols-outlined/index.tsx",
-      "types": "./dist/material-symbols-outlined/index.d.ts",
+      "types": "./src/material-symbols-outlined/index.tsx",
       "import": "./dist/material-symbols-outlined/index.js",
       "default": "./dist/material-symbols-outlined/index.js"
     },
     "./material-symbols-rounded": {
       "development": "./src/material-symbols-rounded/index.tsx",
-      "types": "./dist/material-symbols-rounded/index.d.ts",
+      "types": "./src/material-symbols-rounded/index.tsx",
       "import": "./dist/material-symbols-rounded/index.js",
       "default": "./dist/material-symbols-rounded/index.js"
     },
     "./material-symbols-sharp": {
       "development": "./src/material-symbols-sharp/index.tsx",
-      "types": "./dist/material-symbols-sharp/index.d.ts",
+      "types": "./src/material-symbols-sharp/index.tsx",
       "import": "./dist/material-symbols-sharp/index.js",
       "default": "./dist/material-symbols-sharp/index.js"
     }
