@@ -5,6 +5,8 @@
   },
   "references": [
     { "path": "./packages/tokens" },
+    { "path": "./packages/icons" },
+    { "path": "./packages/icons-packs" },
     { "path": "./packages/core" },
     { "path": "./packages/components" },
     { "path": "./apps/storybook" },

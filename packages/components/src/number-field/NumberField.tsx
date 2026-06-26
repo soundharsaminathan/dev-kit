@@ -1,4 +1,5 @@
 import { cn, composeRefs } from "@dev-ui/core";
+import { Icon } from "@dev-ui/icons";
 import { useButton } from "@react-aria/button";
 import { useLocale } from "@react-aria/i18n";
 import { useNumberField } from "@react-aria/numberfield";
@@ -34,32 +35,6 @@ function useNumberFieldContext(component: string): NumberFieldContextValue {
     throw new Error(`${component} must be used within NumberField`);
   }
   return context;
-}
-
-function MinusIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path
-        d="M5 12h14"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
-
-function PlusIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path
-        d="M12 5v14M5 12h14"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
 }
 
 function getLabelText(children: ReactNode): string | undefined {
@@ -254,7 +229,7 @@ function NumberFieldDecrement({
       data-size="md"
       className={cn(styles.button, className)}
     >
-      {children ?? <MinusIcon />}
+      {children ?? <Icon name="minus" />}
     </button>
   );
 }
@@ -283,7 +258,7 @@ function NumberFieldIncrement({
       data-size="md"
       className={cn(styles.button, className)}
     >
-      {children ?? <PlusIcon />}
+      {children ?? <Icon name="plus" />}
     </button>
   );
 }

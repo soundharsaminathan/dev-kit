@@ -28,6 +28,7 @@
     "vite-plugin-dts": "^4.5.4"
   },
   "dependencies": {
+    "@dev-ui/icons": "workspace:*",
     "@dev-ui/tokens": "workspace:*",
     "clsx": "^2.1.1"
   },

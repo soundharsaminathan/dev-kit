@@ -1,0 +1,122 @@
+{
+  "name": "@dev-ui/icons-packs",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "description": "Optional icon packs for DevKit",
+  "exports": {
+    "./lucide": {
+      "development": "./src/lucide/index.tsx",
+      "types": "./dist/lucide/index.d.ts",
+      "import": "./dist/lucide/index.js",
+      "default": "./dist/lucide/index.js"
+    },
+    "./heroicons-outline": {
+      "development": "./src/heroicons-outline/index.tsx",
+      "types": "./dist/heroicons-outline/index.d.ts",
+      "import": "./dist/heroicons-outline/index.js",
+      "default": "./dist/heroicons-outline/index.js"
+    },
+    "./heroicons-solid": {
+      "development": "./src/heroicons-solid/index.tsx",
+      "types": "./dist/heroicons-solid/index.d.ts",
+      "import": "./dist/heroicons-solid/index.js",
+      "default": "./dist/heroicons-solid/index.js"
+    },
+    "./phosphor-regular": {
+      "development": "./src/phosphor-regular/index.tsx",
+      "types": "./dist/phosphor-regular/index.d.ts",
+      "import": "./dist/phosphor-regular/index.js",
+      "default": "./dist/phosphor-regular/index.js"
+    },
+    "./phosphor-fill": {
+      "development": "./src/phosphor-fill/index.tsx",
+      "types": "./dist/phosphor-fill/index.d.ts",
+      "import": "./dist/phosphor-fill/index.js",
+      "default": "./dist/phosphor-fill/index.js"
+    },
+    "./phosphor-duotone": {
+      "development": "./src/phosphor-duotone/index.tsx",
+      "types": "./dist/phosphor-duotone/index.d.ts",
+      "import": "./dist/phosphor-duotone/index.js",
+      "default": "./dist/phosphor-duotone/index.js"
+    },
+    "./tabler-outline": {
+      "development": "./src/tabler-outline/index.tsx",
+      "types": "./dist/tabler-outline/index.d.ts",
+      "import": "./dist/tabler-outline/index.js",
+      "default": "./dist/tabler-outline/index.js"
+    },
+    "./tabler-filled": {
+      "development": "./src/tabler-filled/index.tsx",
+      "types": "./dist/tabler-filled/index.d.ts",
+      "import": "./dist/tabler-filled/index.js",
+      "default": "./dist/tabler-filled/index.js"
+    },
+    "./fluent-outline": {
+      "development": "./src/fluent-outline/index.tsx",
+      "types": "./dist/fluent-outline/index.d.ts",
+      "import": "./dist/fluent-outline/index.js",
+      "default": "./dist/fluent-outline/index.js"
+    },
+    "./fluent-filled": {
+      "development": "./src/fluent-filled/index.tsx",
+      "types": "./dist/fluent-filled/index.d.ts",
+      "import": "./dist/fluent-filled/index.js",
+      "default": "./dist/fluent-filled/index.js"
+    },
+    "./material-symbols-outlined": {
+      "development": "./src/material-symbols-outlined/index.tsx",
+      "types": "./dist/material-symbols-outlined/index.d.ts",
+      "import": "./dist/material-symbols-outlined/index.js",
+      "default": "./dist/material-symbols-outlined/index.js"
+    },
+    "./material-symbols-rounded": {
+      "development": "./src/material-symbols-rounded/index.tsx",
+      "types": "./dist/material-symbols-rounded/index.d.ts",
+      "import": "./dist/material-symbols-rounded/index.js",
+      "default": "./dist/material-symbols-rounded/index.js"
+    },
+    "./material-symbols-sharp": {
+      "development": "./src/material-symbols-sharp/index.tsx",
+      "types": "./dist/material-symbols-sharp/index.d.ts",
+      "import": "./dist/material-symbols-sharp/index.js",
+      "default": "./dist/material-symbols-sharp/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "scripts": {
+    "build": "vite build"
+  },
+  "sideEffects": [
+    "**/*.css",
+    "**/material-symbols-*/**"
+  ],
+  "dependencies": {
+    "@fontsource-variable/material-symbols-outlined": "^5.2.7",
+    "@fontsource-variable/material-symbols-rounded": "^5.2.7",
+    "@fontsource-variable/material-symbols-sharp": "^5.2.7"
+  },
+  "peerDependencies": {
+    "react": ">=19.2.0 <20",
+    "lucide-react": "*",
+    "@heroicons/react": "*",
+    "@phosphor-icons/react": "*",
+    "@tabler/icons-react": "*",
+    "@fluentui/react-icons": "*"
+  },
+  "devDependencies": {
+    "@fluentui/react-icons": "^2.0.319",
+    "@heroicons/react": "^2.2.0",
+    "@phosphor-icons/react": "^2.1.10",
+    "@tabler/icons-react": "^3.36.0",
+    "@vitejs/plugin-react": "^5.1.0",
+    "lucide-react": "^0.575.0",
+    "typescript": "^6.0.3",
+    "vite": "catalog:",
+    "vite-plugin-dts": "^4.5.4"
+  }
+}

@@ -22,16 +22,18 @@ const controls: SerializableControl[] = [
 describe("Controls", () => {
   it("renders a control for each config entry", () => {
     render(
-      <Controls
-        controls={controls}
-        values={{
-          children: "Button",
-          disabled: false,
-          count: 2,
-          variant: "default",
-        }}
-        onChange={vi.fn()}
-      />,
+      <TestProviders>
+        <Controls
+          controls={controls}
+          values={{
+            children: "Button",
+            disabled: false,
+            count: 2,
+            variant: "default",
+          }}
+          onChange={vi.fn()}
+        />
+      </TestProviders>,
     );
 
     expect(screen.getByText("Label")).toBeInTheDocument();

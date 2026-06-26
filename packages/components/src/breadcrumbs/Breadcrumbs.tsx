@@ -1,4 +1,5 @@
 import { cn, composeRefs } from "@dev-ui/core";
+import { Icon } from "@dev-ui/icons";
 import { useBreadcrumbItem, useBreadcrumbs } from "@react-aria/breadcrumbs";
 import { useFocusRing } from "@react-aria/focus";
 import { useHover } from "@react-aria/interactions";
@@ -47,20 +48,6 @@ function useBreadcrumbItemContext(
     throw new Error(`${component} must be used within BreadcrumbItem`);
   }
   return context;
-}
-
-function ChevronRightIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path
-        d="M9 6l6 6-6 6"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
 }
 
 function isBreadcrumbItemElement(
@@ -286,7 +273,7 @@ function BreadcrumbSeparator({
       aria-hidden="true"
       className={cn(styles.separator, className)}
     >
-      {children ?? <ChevronRightIcon />}
+      {children ?? <Icon name="chevron-right" />}
     </span>
   );
 }

@@ -97,7 +97,9 @@ describe("showcase routes", () => {
     expect(
       screen.getByRole("link", { name: "Component Showcase" }),
     ).toBeInTheDocument();
-    expect(screen.getAllByLabelText("Theme")[0]).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Edit theme" }),
+    ).toBeInTheDocument();
     expect(screen.getByLabelText("Theme mode")).toBeInTheDocument();
   });
 });

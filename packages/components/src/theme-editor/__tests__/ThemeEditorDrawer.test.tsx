@@ -24,8 +24,10 @@ describe("ThemeEditorDrawer", () => {
     );
 
     expect(screen.getByLabelText("Theme name")).toHaveValue("Acme");
-    expect(screen.getByText("Color")).toBeInTheDocument();
-    expect(screen.getByText("Foundation")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Base style/ }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Color")).not.toBeInTheDocument();
   });
 
   it("opens the drawer from the trigger", () => {
@@ -40,8 +42,10 @@ describe("ThemeEditorDrawer", () => {
     fireEvent.click(screen.getByRole("button", { name: "Edit theme" }));
 
     expect(screen.getByLabelText("Theme name")).toHaveValue("Acme");
-    expect(screen.getByText("Color")).toBeInTheDocument();
-    expect(screen.getByText("Foundation")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Base style/ }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Color")).not.toBeInTheDocument();
   });
 
   it("renders a custom trigger instead of the default button", () => {

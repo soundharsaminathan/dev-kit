@@ -17,6 +17,7 @@
   position: relative;
   display: flex;
   flex-grow: 1;
+  border-radius: var(--slider-track-radius);
   touch-action: none;
   user-select: none;
   cursor: var(--slider-cursor);
@@ -33,13 +34,11 @@
 
   &[data-orientation="horizontal"] {
     width: 12rem;
-    padding-block: var(--space-2);
   }
 
   &[data-orientation="vertical"] {
     width: 1.5rem;
     height: 100%;
-    padding-inline: var(--space-2);
   }
 
   &[data-disabled="true"] {
@@ -52,7 +51,7 @@
   position: relative;
   flex-grow: 1;
   overflow: visible;
-  border-radius: var(--slider-track-radius);
+  border-radius: inherit;
   touch-action: none;
 
   .control[data-orientation="horizontal"] & {

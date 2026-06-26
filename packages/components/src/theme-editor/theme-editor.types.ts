@@ -7,13 +7,6 @@ export interface ThemeEditorPanelProps {
   className?: string;
 }
 
-/** @deprecated Use ThemeEditorPanel or ThemeEditorDrawer instead. */
-export interface ThemeEditorProps extends ThemeEditorPanelProps {
-  /** When set, injects live preview CSS for this theme id on `document.head`. */
-  previewThemeId?: string;
-  children?: ReactNode;
-}
-
 export interface ThemeEditorDrawerProps {
   value: ThemeDraft;
   onChange: (value: ThemeDraft) => void;
@@ -26,6 +19,8 @@ export interface ThemeEditorDrawerProps {
   /** Omit for default button; pass `null` to hide the trigger. */
   trigger?: ReactNode | null;
   triggerLabel?: string;
+  /** Rendered above the editor panel in the drawer body. */
+  panelHeader?: ReactNode;
   children?: ReactNode;
   className?: string;
 }

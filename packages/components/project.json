@@ -49,7 +49,7 @@
         "script": "build"
       },
       "outputs": ["{projectRoot}/dist"],
-      "dependsOn": ["core:build", "tokens:build:tokens"]
+      "dependsOn": ["core:build", "tokens:build:tokens", "icons:build"]
     }
   }
 }

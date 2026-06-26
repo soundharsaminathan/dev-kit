@@ -1,4 +1,9 @@
 import {
+  type IconPackModule,
+  IconProvider,
+  type IconTheme,
+} from "@dev-ui/icons";
+import {
   ACTIVE_THEME_STORAGE_KEY,
   type CustomTheme,
   createCustomThemeId,
@@ -118,12 +123,16 @@ export interface ThemeProviderProps {
   defaultTheme?: string;
   defaultMode?: ThemeMode | "system";
   storageKeyPrefix?: string;
+  icons?: IconTheme | undefined;
+  initialIconPack?: IconPackModule | undefined;
 }
 
 export function ThemeProvider({
   children,
   defaultTheme = "default",
   defaultMode = "system",
+  icons,
+  initialIconPack,
 }: ThemeProviderProps) {
   const builtInIds = useMemo(() => getBuiltInThemeIds(), []);
   const [customThemes, setCustomThemes] = useState<CustomTheme[]>(() =>
@@ -242,7 +251,11 @@ export function ThemeProvider({
   };
 
   return (
-    <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>
+    <ThemeContext.Provider value={value}>
+      <IconProvider icons={icons} initialPack={initialIconPack}>
+        {children}
+      </IconProvider>
+    </ThemeContext.Provider>
   );
 }
 

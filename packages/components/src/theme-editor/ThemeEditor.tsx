@@ -1,11 +1,18 @@
 import { cn } from "@dev-ui/core";
 import { resolveThemeDraft, themeToCss } from "@dev-ui/tokens";
+import type { ReactNode } from "react";
 import { useLayoutEffect, useMemo } from "react";
 import { ThemeEditorPanel } from "./ThemeEditorPanel";
 import styles from "./theme-editor.module.scss";
-import type { ThemeEditorProps } from "./theme-editor.types";
+import type { ThemeEditorPanelProps } from "./theme-editor.types";
 
 const PREVIEW_STYLE_ID = "dev-ui-theme-editor-preview";
+
+export interface ThemeEditorProps extends ThemeEditorPanelProps {
+  /** When set, injects live preview CSS for this theme id on `document.head`. */
+  previewThemeId?: string;
+  children?: ReactNode;
+}
 
 /** Inline theme editor panel. Prefer ThemeEditorDrawer for live app editing. */
 function ThemeEditor({
@@ -46,6 +53,5 @@ function ThemeEditor({
 export type {
   ThemeEditorDrawerProps,
   ThemeEditorPanelProps,
-  ThemeEditorProps,
 } from "./theme-editor.types";
 export { ThemeEditor };
