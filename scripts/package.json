@@ -1,0 +1,9 @@
+{
+  "name": "@dev-ui/build-scripts",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "glob": "^11.0.3",
+    "vite-plugin-dts": "^4.5.4"
+  }
+}

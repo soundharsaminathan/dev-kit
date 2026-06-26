@@ -35,9 +35,15 @@
   align-items: center;
   border: 1px solid transparent;
   border-radius: var(--switch-radius);
-  background-color: var(--color-neutral);
+  background-color: var(--switch-indicator-background, var(--color-neutral));
+  background-image: var(--switch-indicator-surface-gradient, none);
   padding: 2px;
-  transition: background-color 200ms ease;
+  box-shadow: var(--switch-indicator-shadow, none);
+  transition:
+    background-color 200ms ease,
+    background-image 200ms ease,
+    box-shadow var(--interaction-transition-duration)
+      var(--interaction-transition-curve);
 
   &[data-size="sm"] {
     width: 2.25rem;
@@ -55,7 +61,10 @@
   }
 
   &[data-selected="true"] {
-    background-color: var(--color-accent);
+    background-color: var(
+      --switch-indicator-background-selected,
+      var(--color-accent)
+    );
   }
 
   &[data-disabled="true"] {
@@ -71,8 +80,9 @@
 .thumb {
   pointer-events: none;
   border-radius: var(--switch-radius);
-  background-color: white;
-  box-shadow: 0 1px 2px rgb(0 0 0 / 10%);
+  background-color: var(--switch-thumb-background, white);
+  background-image: var(--switch-thumb-surface-gradient, none);
+  box-shadow: var(--switch-thumb-shadow);
   transition: transform 200ms ease;
 
   .indicator[data-size="sm"] & {

@@ -9,8 +9,8 @@ export function getControlsPanel(page: Page): Locator {
 
 async function prepareShowcaseStorage(page: Page) {
   await page.addInitScript(() => {
-    window.localStorage.setItem("theme-preset", "modern-minimal");
-    window.localStorage.setItem("theme-mode", "light");
+    window.localStorage.setItem("dev-ui-theme", "default");
+    window.localStorage.setItem("dev-ui-theme-mode", "light");
   });
 }
 
@@ -37,16 +37,31 @@ export async function gotoShowcasePage(page: Page, path: string) {
 }
 
 export async function waitForThemesPage(page: Page) {
-  await page.getByRole("heading", { name: "Theme presets" }).waitFor({
+  await page.getByRole("heading", { name: "Themes" }).waitFor({
     state: "visible",
   });
   await page.getByRole("heading", { name: "Dark mode" }).waitFor({
     state: "visible",
   });
-  await page
-    .locator("[data-theme-preset]")
-    .last()
-    .waitFor({ state: "visible" });
+  await page.locator("[data-theme]").last().waitFor({ state: "visible" });
+}
+
+export async function waitForComponentCardPreviews(page: Page) {
+  const cards = page.locator("[data-component]");
+  const count = await cards.count();
+
+  for (let index = 0; index < count; index++) {
+    await cards.nth(index).scrollIntoViewIfNeeded();
+  }
+
+  await expect(
+    page.locator('[data-component][data-preview="pending"]'),
+  ).toHaveCount(0, { timeout: 30_000 });
+
+  await page.evaluate(() => {
+    window.scrollTo(0, 0);
+  });
+  await waitForScreenshotReady(page);
 }
 
 export async function setEnumControl(page: Page, label: string, value: string) {

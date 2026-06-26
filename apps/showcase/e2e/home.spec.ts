@@ -7,7 +7,7 @@ test.describe("Home", () => {
       page.getByRole("heading", { name: "Component Showcase" }),
     ).toBeVisible();
     await expect(
-      page.getByText(/interactive playgrounds and compare theme presets/i),
+      page.getByText(/interactive playgrounds, compare themes/i),
     ).toBeVisible();
   });
 
@@ -24,8 +24,6 @@ test.describe("Home", () => {
     await page.goto("/");
     await page.getByRole("link", { name: "Compare themes" }).click();
     await expect(page).toHaveURL("/themes");
-    await expect(
-      page.getByRole("heading", { name: "Theme presets" }),
-    ).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Themes" })).toBeVisible();
   });
 });

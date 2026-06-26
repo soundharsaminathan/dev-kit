@@ -7,21 +7,30 @@
   align-items: center;
   justify-content: center;
   gap: var(--space-1);
-  border: 1px solid transparent;
+  border: 1px solid var(--btn-border-color, transparent);
   border-radius: var(--btn-radius);
   font-family: var(--font-sans, inherit);
-  font-size: 0.875rem;
+  font-size: var(--btn-font-size);
   font-weight: var(--btn-font-weight);
-  line-height: 1.25;
+  line-height: var(--btn-line-height);
   white-space: nowrap;
   cursor: var(--cursor-interactive);
   user-select: none;
   background-clip: padding-box;
+  box-shadow: var(--btn-shadow, none);
   transition:
-    background-color 150ms ease,
-    border-color 150ms ease,
-    color 150ms ease,
-    box-shadow 150ms ease;
+    background-color var(--interaction-transition-duration)
+      var(--interaction-transition-curve),
+    background-image var(--interaction-transition-duration)
+      var(--interaction-transition-curve),
+    border-color var(--interaction-transition-duration)
+      var(--interaction-transition-curve),
+    color var(--interaction-transition-duration)
+      var(--interaction-transition-curve),
+    box-shadow var(--interaction-transition-duration)
+      var(--interaction-transition-curve),
+    transform var(--interaction-transition-duration)
+      var(--interaction-transition-curve);
   -webkit-tap-highlight-color: transparent;
 
   svg {
@@ -30,65 +39,105 @@
   }
 
   &:focus-visible {
-    outline: 2px solid var(--color-border-focus);
-    outline-offset: 2px;
+    outline: var(--interaction-focus-ring-width) solid
+      var(--interaction-focus-ring-color);
+    outline-offset: var(--interaction-focus-ring-offset);
   }
 
   &:disabled,
   &[data-disabled="true"] {
     cursor: var(--cursor-disabled);
-    background-color: var(--color-disabled);
-    color: var(--color-fg-disabled);
-    border-color: var(--color-border-disabled);
+    background-color: var(--btn-disabled-background, var(--color-disabled));
+    color: var(--btn-disabled-foreground, var(--color-fg-disabled));
+    border-color: var(--btn-disabled-border-color, var(--color-border-disabled));
+    box-shadow: var(--btn-disabled-shadow, none);
+    background-image: none;
+  }
+
+  &[data-variant="primary"]:disabled,
+  &[data-variant="primary"][data-disabled="true"] {
+    background-color: var(
+      --btn-primary-disabled-background,
+      var(--btn-disabled-background, var(--color-disabled))
+    );
+    color: var(
+      --btn-primary-disabled-foreground,
+      var(--btn-disabled-foreground, var(--color-fg-primary-disabled))
+    );
+    border-color: var(
+      --btn-primary-disabled-border-color,
+      var(--btn-disabled-border-color, var(--color-border-disabled))
+    );
+    box-shadow: var(
+      --btn-primary-disabled-shadow,
+      var(--btn-disabled-shadow, none)
+    );
   }
 
   &[data-selected="true"]:not([data-disabled="true"]) {
-    background-color: var(--color-selected);
+    background-color: var(--btn-default-background, var(--color-selected));
     color: var(--color-fg-on-selected);
     border-color: var(--color-border-active);
+    box-shadow: var(--btn-selected-shadow, var(--btn-shadow, none));
 
     &[data-hovered="true"] {
-      background-color: var(--color-selected-hover);
+      background-color: var(--btn-hover-background, var(--color-selected-hover));
     }
 
     &[data-pressed="true"] {
-      background-color: var(--color-selected-active);
+      background-color: var(--btn-default-background, var(--color-selected-active));
+      box-shadow: var(--btn-pressed-shadow, var(--btn-selected-shadow, var(--btn-shadow, none)));
     }
   }
 
   &[data-variant="default"] {
-    background-color: var(--color-neutral);
+    background-color: var(--btn-default-background, var(--color-neutral));
+    background-image: var(
+      --btn-default-surface-gradient,
+      var(--btn-surface-gradient, none)
+    );
     color: var(--color-fg-on-neutral);
-    border-color: var(--color-border);
+    border-color: var(--btn-border-color, var(--color-border));
 
     &[data-hovered="true"]:not([data-disabled="true"]):not([data-selected="true"]) {
-      background-color: var(--color-neutral-hover);
-      border-color: var(--color-border-hover);
+      background-color: var(--btn-hover-background, var(--color-neutral-hover));
+      border-color: var(--btn-border-color, var(--color-border-hover));
+      box-shadow: var(--btn-hover-shadow, var(--btn-shadow, none));
     }
 
     &[data-pressed="true"]:not([data-disabled="true"]):not([data-selected="true"]) {
-      background-color: var(--color-neutral-active);
-      border-color: var(--color-border-active);
+      background-color: var(--btn-default-background, var(--color-neutral-active));
+      border-color: var(--btn-border-color, var(--color-border-active));
+      box-shadow: var(--btn-pressed-shadow, var(--btn-shadow, none));
+      transform: scale(var(--interaction-press-scale));
     }
   }
 
   &[data-variant="primary"] {
-    background-color: var(--color-primary);
-    color: var(--color-fg-on-primary);
-    border-color: transparent;
+    background-color: var(--btn-primary-background, var(--color-primary));
+    background-image: var(
+      --btn-primary-surface-gradient,
+      var(--btn-surface-gradient, none)
+    );
+    color: var(--btn-primary-foreground, var(--color-fg-on-primary));
+    border-color: var(--btn-border-color, transparent);
 
     &[data-hovered="true"]:not([data-disabled="true"]):not([data-selected="true"]) {
-      background-color: var(--color-primary-hover);
+      background-color: var(--btn-hover-background, var(--color-primary-hover));
+      box-shadow: var(--btn-hover-shadow, var(--btn-shadow, none));
     }
 
     &[data-pressed="true"]:not([data-disabled="true"]):not([data-selected="true"]) {
-      background-color: var(--color-primary-active);
+      background-color: var(--btn-primary-background, var(--color-primary-active));
+      box-shadow: var(--btn-pressed-shadow, var(--btn-shadow, none));
+      transform: scale(var(--interaction-press-scale));
     }
 
     &[data-selected="true"]:not([data-disabled="true"]) {
-      background-color: var(--color-primary-active);
-      color: var(--color-fg-on-primary);
+      background-color: var(--btn-primary-background, var(--color-primary-active));
+      color: var(--btn-primary-foreground, var(--color-fg-on-primary));
       border-color: transparent;
+      box-shadow: var(--btn-selected-shadow, var(--btn-shadow, none));
     }
   }
 

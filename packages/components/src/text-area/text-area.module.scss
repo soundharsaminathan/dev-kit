@@ -32,9 +32,13 @@
   &:disabled,
   &[data-disabled="true"] {
     cursor: var(--cursor-disabled);
-    border-color: var(--color-border-disabled);
-    background-color: var(--color-disabled);
-    color: var(--color-fg-disabled);
+    border-color: var(
+      --input-disabled-border-color,
+      var(--color-border-disabled)
+    );
+    background-color: var(--input-disabled-background, var(--color-disabled));
+    color: var(--input-disabled-foreground, var(--color-fg-disabled));
+    box-shadow: var(--input-disabled-shadow, none);
     resize: none;
   }
 

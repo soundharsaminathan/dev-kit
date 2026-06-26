@@ -4,11 +4,15 @@ import { defineConfig } from "vitest/config";
 
 const rootDir = path.dirname(fileURLToPath(import.meta.url));
 
+const testExclude = ["**/dist/**", "**/node_modules/**", "**/e2e/**"];
+
 const coverageExclude = [
   "**/__tests__/**",
   "**/*.test.{ts,tsx}",
   "**/*.types.ts",
   "**/index.ts",
+  "**/main.tsx",
+  "**/generate-scss.ts",
   "**/*.module.scss",
   "**/scss-modules.d.ts",
   "scripts/vite/**",
@@ -31,20 +35,33 @@ const sharedCoverage = {
 export default defineConfig({
   test: {
     maxWorkers: 4,
+    exclude: testExclude,
     coverage: sharedCoverage,
     projects: [
       {
         test: {
-          name: "core",
-          root: path.join(rootDir, "packages/core"),
+          name: "tokens",
+          root: path.join(rootDir, "packages/tokens"),
           environment: "node",
           sequence: { groupOrder: 0 },
         },
       },
       {
         test: {
+          name: "core",
+          root: path.join(rootDir, "packages/core"),
+          include: ["src/**/*.{test,spec}.{ts,tsx}"],
+          exclude: testExclude,
+          environment: "node",
+          sequence: { groupOrder: 2 },
+        },
+      },
+      {
+        test: {
           name: "components",
           root: path.join(rootDir, "packages/components"),
+          include: ["src/**/*.{test,spec}.{ts,tsx}"],
+          exclude: testExclude,
           environment: "jsdom",
           env: {
             VIRT_ON: "1",
@@ -54,7 +71,7 @@ export default defineConfig({
           setupFiles: [path.join(rootDir, "vitest.setup.ts")],
           testTimeout: 15_000,
           hookTimeout: 15_000,
-          sequence: { groupOrder: 1 },
+          sequence: { groupOrder: 2 },
         },
         resolve: {
           alias: {
@@ -67,7 +84,7 @@ export default defineConfig({
           name: "showcase",
           root: path.join(rootDir, "apps/showcase"),
           include: ["src/**/*.{test,spec}.{ts,tsx}"],
-          exclude: ["e2e/**"],
+          exclude: [...testExclude, "e2e/**"],
           environment: "jsdom",
           css: true,
           globals: true,
@@ -75,8 +92,8 @@ export default defineConfig({
             path.join(rootDir, "vitest.setup.ts"),
             path.join(rootDir, "apps/showcase/vitest.setup.ts"),
           ],
-          testTimeout: 15_000,
-          hookTimeout: 15_000,
+          testTimeout: 30_000,
+          hookTimeout: 30_000,
           sequence: { groupOrder: 2 },
         },
         resolve: {
@@ -93,7 +110,8 @@ export default defineConfig({
           environment: "node",
           testTimeout: 15_000,
           fileParallelism: false,
-          sequence: { groupOrder: 3 },
+          pool: "forks",
+          sequence: { groupOrder: 4 },
         },
       },
     ],

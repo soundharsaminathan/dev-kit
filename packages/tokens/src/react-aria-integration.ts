@@ -1,5 +1,5 @@
-import { getThemePreset, type ThemePresetName } from "./presets/index.js";
 import { getSemanticColor } from "./theme/resolve-semantic-colors.js";
+import { resolveThemeById } from "./theme/resolve-theme.js";
 import type { ThemeMode } from "./types.js";
 
 export interface AriaThemeColors {
@@ -29,11 +29,11 @@ export interface AriaThemeColors {
 }
 
 export function themeTokensToAriaColors(
-  presetName: ThemePresetName,
+  themeId: string,
   mode: ThemeMode,
 ): AriaThemeColors {
-  const preset = getThemePreset(presetName);
-  const c = (token: string) => getSemanticColor(preset, mode, token);
+  const theme = resolveThemeById(themeId);
+  const c = (token: string) => getSemanticColor(theme, mode, token);
 
   const background = c("color-bg");
   const backgroundHover = c("color-muted");
@@ -109,7 +109,7 @@ export function getAriaColorScheme(mode: ThemeMode): "light" | "dark" {
 }
 
 export function getAriaThemeConfig(
-  presetName: ThemePresetName,
+  themeId: string,
   mode: ThemeMode,
 ): {
   colorScheme: "light" | "dark";
@@ -117,6 +117,6 @@ export function getAriaThemeConfig(
 } {
   return {
     colorScheme: getAriaColorScheme(mode),
-    theme: themeTokensToAriaColors(presetName, mode),
+    theme: themeTokensToAriaColors(themeId, mode),
   };
 }

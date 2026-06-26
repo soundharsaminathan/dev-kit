@@ -8,18 +8,18 @@
 }
 
 .groupLabel {
-  font-size: 0.875rem;
+  font-size: var(--font-size-sm);
   font-weight: var(--font-weight-medium);
   color: var(--color-fg);
 }
 
 .groupDescription {
-  font-size: 0.875rem;
+  font-size: var(--font-size-sm);
   color: var(--color-fg-muted);
 }
 
 .groupError {
-  font-size: 0.875rem;
+  font-size: var(--font-size-sm);
   color: var(--color-fg-danger);
 }
 
@@ -38,8 +38,9 @@
   cursor: var(--cursor-interactive);
 
   &:focus-within:focus-visible {
-    outline: 2px solid var(--color-border-focus);
-    outline-offset: 2px;
+    outline: var(--interaction-focus-ring-width) solid
+      var(--interaction-focus-ring-color);
+    outline-offset: var(--interaction-focus-ring-offset);
   }
 
   &[data-disabled="true"] {
@@ -58,18 +59,18 @@
   flex-shrink: 0;
   place-content: center;
   border: 1px solid var(--color-border-control);
-  border-radius: 9999px;
+  border-radius: var(--radio-radius);
   background-color: transparent;
   color: transparent;
   transition:
-    background-color 75ms ease,
-    border-color 75ms ease,
-    color 75ms ease;
+    background-color var(--motion-fast) var(--interaction-transition-curve),
+    border-color var(--motion-fast) var(--interaction-transition-curve),
+    color var(--motion-fast) var(--interaction-transition-curve);
 
   &::before {
     width: 0.375rem;
     height: 0.375rem;
-    border-radius: 9999px;
+    border-radius: var(--radio-radius);
     background-color: currentColor;
     content: "";
   }

@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import {
   COVERAGE_INCLUDES,
   COVERAGE_PROJECTS,
+  COVERAGE_THRESHOLDS,
   type CoverageProject,
   coverageReportsDir,
 } from "../vitest.coverage.ts";
@@ -39,6 +40,13 @@ export function buildVitestCiCommand(
     "--coverage.reporter=json-summary",
   ];
 
+  args.push(
+    `--coverage.thresholds.lines=${COVERAGE_THRESHOLDS.lines}`,
+    `--coverage.thresholds.statements=${COVERAGE_THRESHOLDS.statements}`,
+    `--coverage.thresholds.functions=${COVERAGE_THRESHOLDS.functions}`,
+    `--coverage.thresholds.branches=${COVERAGE_THRESHOLDS.branches}`,
+  );
+
   if (!options.coverageOnly) {
     args.push(
       "--reporter=default",
@@ -64,9 +72,9 @@ export function runVitestCi(
   });
 }
 
-if (import.meta.url.endsWith(process.argv[1]?.replaceAll("\\", "/") ?? "")) {
-  const projectArg = process.argv[2];
-  const coverageOnly = process.argv.includes("--coverage-only");
+export function runVitestCiFromArgv(argv: string[]): void {
+  const projectArg = argv[0];
+  const coverageOnly = argv.includes("--coverage-only");
 
   if (!projectArg || !isCoverageProject(projectArg)) {
     throw new Error(
@@ -75,4 +83,8 @@ if (import.meta.url.endsWith(process.argv[1]?.replaceAll("\\", "/") ?? "")) {
   }
 
   runVitestCi(projectArg, { coverageOnly });
+}
+
+if (import.meta.url.endsWith(process.argv[1]?.replaceAll("\\", "/") ?? "")) {
+  runVitestCiFromArgv(process.argv.slice(2));
 }

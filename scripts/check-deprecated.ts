@@ -151,8 +151,15 @@ function formatHost(): ts.FormatDiagnosticsHost {
   };
 }
 
-function main() {
-  const usages = collectDeprecatedUsages(resolveTsconfigProjects());
+export function runCheckDeprecated(
+  options: {
+    collectUsages?: typeof collectDeprecatedUsages;
+    resolveProjects?: typeof resolveTsconfigProjects;
+  } = {},
+): void {
+  const collectUsages = options.collectUsages ?? collectDeprecatedUsages;
+  const resolveProjects = options.resolveProjects ?? resolveTsconfigProjects;
+  const usages = collectUsages(resolveProjects());
 
   if (usages.length === 0) {
     return;
@@ -164,7 +171,9 @@ function main() {
   process.exitCode = 1;
 }
 
+export { runCheckDeprecated as main };
+
 const entryPath = fileURLToPath(import.meta.url);
 if (process.argv[1] && path.resolve(process.argv[1]) === entryPath) {
-  main();
+  runCheckDeprecated();
 }

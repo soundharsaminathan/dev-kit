@@ -13,9 +13,13 @@
   min-width: 0;
   align-items: center;
   gap: 0;
-  border: 1px solid var(--color-border-field);
+  border: 1px solid var(--input-border-color, var(--color-border-field));
   border-radius: var(--input-radius);
-  background-color: var(--color-field);
+  background-color: var(--input-background, var(--color-field));
+  background-image: var(--input-surface-gradient, none);
+  box-shadow: var(--input-shadow, none);
+  backdrop-filter: blur(var(--input-backdrop-blur, 0));
+  -webkit-backdrop-filter: blur(var(--input-backdrop-blur, 0));
   overflow: hidden;
 
   [data-date-picker-input] {
@@ -43,13 +47,27 @@
 
   &[data-disabled="true"] {
     cursor: var(--cursor-disabled);
-    border-color: var(--color-border-disabled);
-    background-color: var(--color-disabled);
+    border-color: var(
+      --input-disabled-border-color,
+      var(--color-border-disabled)
+    );
+    background-color: var(--input-disabled-background, var(--color-disabled));
+    box-shadow: var(--input-disabled-shadow, none);
   }
 
   &[data-invalid="true"] {
     border-color: var(--color-border-danger);
     box-shadow: 0 0 0 2px var(--color-danger-muted);
+  }
+
+  :global(button) {
+    --btn-shadow: none;
+    --btn-hover-shadow: none;
+    --btn-pressed-shadow: none;
+    --btn-selected-shadow: none;
+    --btn-disabled-shadow: none;
+    --btn-primary-disabled-shadow: none;
+    box-shadow: none;
   }
 }
 

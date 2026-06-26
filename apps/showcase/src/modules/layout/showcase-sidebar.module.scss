@@ -19,21 +19,23 @@
 .link {
   display: block;
   padding: 0.35rem 0.5rem;
-  border-radius: var(--radius-md);
+  border-radius: var(--list-box-item-radius, var(--radius-md));
   font-size: 0.8rem;
   color: var(--color-fg-muted);
   transition:
-    background 0.15s ease,
-    color 0.15s ease;
+    background-color var(--interaction-transition-duration, 0.15s)
+      var(--interaction-transition-curve, ease),
+    color var(--interaction-transition-duration, 0.15s)
+      var(--interaction-transition-curve, ease);
 }
 
 .link:hover {
-  background: var(--color-neutral);
+  background: var(--color-neutral-hover, var(--color-neutral));
   color: var(--color-fg);
 }
 
 .linkActive:hover {
-  background: var(--color-neutral-hover);
+  background: var(--color-neutral-active, var(--color-neutral-hover));
 }
 
 .linkActive {
@@ -55,8 +57,10 @@
   width: 15rem;
   height: calc(100vh - 3.5rem);
   flex-shrink: 0;
-  border-right: 1px solid var(--color-border);
-  background: var(--color-bg);
+  border-right: var(--card-border-width, 1px) solid
+    var(--card-border-color, var(--color-border));
+  background: var(--surface-background, var(--color-bg));
+  color: var(--color-fg);
 }
 
 .content {

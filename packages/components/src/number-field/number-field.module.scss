@@ -6,9 +6,13 @@
   height: 2rem;
   box-sizing: border-box;
   align-items: stretch;
-  border: 1px solid var(--color-border-field);
+  border: 1px solid var(--input-border-color, var(--color-border-field));
   border-radius: var(--input-radius);
-  background-color: var(--color-field);
+  background-color: var(--input-background, var(--color-field));
+  background-image: var(--input-surface-gradient, none);
+  box-shadow: var(--input-shadow, none);
+  backdrop-filter: blur(var(--input-backdrop-blur, 0));
+  -webkit-backdrop-filter: blur(var(--input-backdrop-blur, 0));
   overflow: hidden;
 
   &:has([data-size="sm"]) {
@@ -25,8 +29,12 @@
   }
 
   &[data-disabled="true"] {
-    border-color: var(--color-border-disabled);
-    background-color: var(--color-disabled);
+    border-color: var(
+      --input-disabled-border-color,
+      var(--color-border-disabled)
+    );
+    background-color: var(--input-disabled-background, var(--color-disabled));
+    box-shadow: var(--input-disabled-shadow, none);
   }
 
   &[data-invalid="true"] {

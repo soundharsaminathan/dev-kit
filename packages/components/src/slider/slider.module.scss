@@ -41,7 +41,8 @@
   flex-grow: 1;
   overflow: visible;
   border-radius: var(--slider-track-radius);
-  background-color: var(--color-neutral);
+  background-color: var(--slider-track-background, var(--color-neutral));
+  box-shadow: var(--slider-track-shadow, none);
   cursor: var(--slider-cursor);
 
   .control[data-orientation="horizontal"] & {
@@ -84,9 +85,11 @@
   width: var(--slider-thumb-size);
   height: var(--slider-thumb-size);
   place-items: center;
-  border: 0;
+  border-width: var(--slider-thumb-border-width, 0);
+  border-style: solid;
+  border-color: var(--slider-thumb-border-color, transparent);
   border-radius: var(--slider-thumb-radius);
-  background-color: var(--color-fg);
+  background-color: var(--slider-thumb-background, var(--color-fg));
   box-shadow: var(--slider-thumb-shadow);
   transform: translate(-50%, -50%);
   cursor: var(--slider-cursor);

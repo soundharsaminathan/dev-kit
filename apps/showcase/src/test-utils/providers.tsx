@@ -1,11 +1,6 @@
-import { OverlayProvider } from "@dev-ui/components/popover";
+import { ThemeProvider } from "@dev-ui/core";
 import type { ReactNode } from "react";
-import { ThemeProvider } from "@/lib/theme";
 
 export function TestProviders({ children }: { children: ReactNode }) {
-  return (
-    <ThemeProvider>
-      <OverlayProvider>{children}</OverlayProvider>
-    </ThemeProvider>
-  );
+  return <ThemeProvider defaultMode="light">{children}</ThemeProvider>;
 }

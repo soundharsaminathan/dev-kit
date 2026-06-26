@@ -46,7 +46,7 @@
         "script": "build"
       },
       "outputs": ["{projectRoot}/dist"],
-      "dependsOn": ["tokens:build:tokens"]
+      "dependsOn": ["tokens:build"]
     }
   }
 }

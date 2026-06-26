@@ -226,8 +226,7 @@ export function formatAffectedE2eCliOutput(result: AffectedE2eResult): {
   return { stdout: result.specs.join("\n") };
 }
 
-if (import.meta.url.endsWith(process.argv[1]?.replaceAll("\\", "/") ?? "")) {
-  const argv = process.argv.slice(2);
+export function runAffectedE2eCli(argv = process.argv.slice(2)): void {
   const result = resolveAffectedE2eForArgv(argv);
   const { stdout, stderr } = formatAffectedE2eCliOutput(result);
 
@@ -236,4 +235,8 @@ if (import.meta.url.endsWith(process.argv[1]?.replaceAll("\\", "/") ?? "")) {
   if (stderr) {
     console.error(stderr);
   }
+}
+
+if (import.meta.url.endsWith(process.argv[1]?.replaceAll("\\", "/") ?? "")) {
+  runAffectedE2eCli();
 }

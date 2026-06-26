@@ -9,6 +9,7 @@ import {
   resolveAffectedE2eFromGit,
   resolveAffectedE2eFromStaged,
   resolveAffectedE2eSpecs,
+  runAffectedE2eCli,
   toPlaywrightArgs,
 } from "../affected-e2e-specs.ts";
 
@@ -405,6 +406,19 @@ describe("toPlaywrightArgs", () => {
         specs: ["button.spec.ts", "modal.spec.ts"],
       }),
     ).toEqual(["e2e/button.spec.ts", "e2e/modal.spec.ts"]);
+  });
+});
+
+describe("runAffectedE2eCli", () => {
+  it("prints affected spec paths", () => {
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    runAffectedE2eCli(["--staged"]);
+
+    expect(logSpy).toHaveBeenCalled();
+    logSpy.mockRestore();
+    errorSpy.mockRestore();
   });
 });
 

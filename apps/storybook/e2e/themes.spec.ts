@@ -44,9 +44,14 @@ test.describe("Themes", () => {
     test("theme showcase renders preset sections", async ({ page }) => {
       await gotoStory(page, STORIES.themeShowcase);
 
-      await expect(page.getByText("Theme Presets Showcase")).toBeVisible();
       await expect(
-        page.getByRole("button", { name: "Primary Button" }),
+        page.getByRole("heading", { name: "Theme Showcase" }),
+      ).toBeVisible();
+      await expect(
+        page.getByRole("heading", { name: "Default" }),
+      ).toBeVisible();
+      await expect(
+        page.getByRole("button", { name: "Primary" }).first(),
       ).toBeVisible();
     });
   });

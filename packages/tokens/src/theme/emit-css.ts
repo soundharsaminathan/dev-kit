@@ -1,8 +1,8 @@
 import type {
   ModeName,
   SemanticTarget,
-  SemanticToken,
-  SemanticVocabulary,
+  TokenDefinition,
+  TokenVocabulary,
 } from "./types.js";
 
 export function resolveTarget(target: SemanticTarget): string {
@@ -15,7 +15,7 @@ export function resolveTarget(target: SemanticTarget): string {
 }
 
 function isPerMode(
-  target: SemanticToken["target"],
+  target: TokenDefinition["target"],
 ): target is Record<ModeName, SemanticTarget> {
   return !(
     "ref" in target ||
@@ -25,7 +25,7 @@ function isPerMode(
   );
 }
 
-function baseTarget(target: SemanticToken["target"]): SemanticTarget {
+function baseTarget(target: TokenDefinition["target"]): SemanticTarget {
   if (!isPerMode(target)) return target;
   return target.light ?? (Object.values(target)[0] as SemanticTarget);
 }
@@ -36,7 +36,7 @@ export interface EmitCssOptions {
 }
 
 export function emitCss(
-  vocab: SemanticVocabulary,
+  vocab: TokenVocabulary,
   options: EmitCssOptions = {},
 ): string {
   const indent = options.indent ?? "  ";
