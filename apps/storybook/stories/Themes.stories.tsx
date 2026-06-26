@@ -1,6 +1,6 @@
 import { Button } from "@dev-ui/components/button";
 import { getBuiltInThemeIds, resolveThemeById } from "@dev-ui/tokens";
-import type { Meta, StoryObj } from "@storybook/react";
+import type { Meta, StoryObj } from "@storybook/react-vite";
 
 const meta = {
   title: "Foundation/Themes",

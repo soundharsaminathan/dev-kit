@@ -1,6 +1,6 @@
 import type { StorybookConfig } from "@storybook/react-vite";
 import { mergeConfig } from "vite";
-import { devAppOptimizeDeps } from "../../../scripts/vite/dev-app";
+import { devAppOptimizeDeps } from "../../../scripts/vite/dev-app.ts";
 
 const isPlaywrightE2E = process.env.STORYBOOK_PLAYWRIGHT_E2E === "1";
 
