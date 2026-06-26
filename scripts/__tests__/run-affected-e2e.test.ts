@@ -110,6 +110,17 @@ describe("runAffectedE2e", () => {
     expect(runWithDeps([], deps)).toBe(2);
   });
 
+  it("defaults to exit code 1 when playwright returns no status", () => {
+    const deps = createDeps();
+    deps.resolveAffectedE2eFromGit.mockReturnValue({
+      mode: "all",
+      reason: "shared config changed",
+    });
+    deps.spawnSync.mockReturnValue({ status: null } as never);
+
+    expect(runWithDeps([], deps)).toBe(1);
+  });
+
   it("throws when playwright cannot be spawned", () => {
     const deps = createDeps();
     deps.resolveAffectedE2eFromGit.mockReturnValue({

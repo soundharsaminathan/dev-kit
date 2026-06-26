@@ -96,6 +96,25 @@ describe("readLibCoverageSummaries", () => {
       }),
     ]);
   });
+
+  it("skips library summaries that are missing total metrics", () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "lib-coverage-"));
+    const componentsDir = path.join(tempDir, "coverage", "components");
+    fs.mkdirSync(componentsDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(componentsDir, "coverage-summary.json"),
+      JSON.stringify({
+        "src/example.ts": {
+          lines: metrics(10, 9, 90),
+          statements: metrics(10, 9, 90),
+          functions: metrics(4, 4, 100),
+          branches: metrics(6, 5, 83.33),
+        },
+      }),
+    );
+
+    expect(readLibCoverageSummaries(tempDir)).toEqual([]);
+  });
 });
 
 describe("writeCoverageComment", () => {

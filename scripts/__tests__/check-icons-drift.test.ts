@@ -142,4 +142,43 @@ describe("check-icons-drift", () => {
     );
     expect(exit).toHaveBeenCalledWith(1);
   });
+
+  it("uses default collaborators when no options are provided", () => {
+    const log = vi.fn();
+    const error = vi.fn();
+    const exit = vi.fn((code: number) => {
+      throw new Error(`exit:${code}`);
+    }) as (code: number) => never;
+    mockExecSync.mockReturnValue("");
+
+    runCheckIconsDrift({ log, error, exit });
+
+    expect(mockExecSync).toHaveBeenCalled();
+    expect(log).toHaveBeenCalledWith("Icon generated files are up to date.");
+  });
+
+  it("uses the default error logger when drift is detected", () => {
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const exit = vi.fn((code: number) => {
+      throw new Error(`exit:${code}`);
+    }) as (code: number) => never;
+    let call = 0;
+
+    expect(() =>
+      runCheckIconsDrift({
+        rootDir: fixtureRoot,
+        readSnapshot: () => {
+          call += 1;
+          return call === 1
+            ? snapshot
+            : { ...snapshot, packLoaders: "changed" };
+        },
+        runBuild: vi.fn(),
+        exit,
+      }),
+    ).toThrow("exit:1");
+
+    expect(errorSpy).toHaveBeenCalledWith("Icon codegen drift detected in:");
+    errorSpy.mockRestore();
+  });
 });

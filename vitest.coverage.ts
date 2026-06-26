@@ -33,7 +33,7 @@ export const COVERAGE_THRESHOLDS: CoverageThresholds = {
   lines: 90,
   statements: 90,
   functions: 90,
-  branches: 80,
+  branches: 90,
 };
 
 export function coverageReportsDir(
