@@ -62,4 +62,16 @@ describe("color-kernel", () => {
 
     expect(onBlackWhite(neutral)).toMatch(/black|white/);
   });
+
+  it("generates every scale step for each palette", () => {
+    const palettes = resolvePaletteSeeds({
+      neutral: "#64748b",
+      accent: "#3b82f6",
+    });
+
+    for (const step of palettes.steps) {
+      expect(palettes.light.accent?.[step]).toMatch(/^oklch\(/);
+      expect(palettes.dark.accent?.[step]).toMatch(/^oklch\(/);
+    }
+  });
 });

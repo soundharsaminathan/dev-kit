@@ -80,4 +80,55 @@ describe("ColorSwatchPicker", () => {
 
     consoleError.mockRestore();
   });
+
+  it("ignores selection and arrow keys when disabled", () => {
+    const onChange = vi.fn();
+    render(
+      <ColorSwatchPicker
+        defaultValue="#6366f1"
+        onChange={onChange}
+        isDisabled
+        aria-label="Colors"
+      >
+        <ColorSwatchPickerItem color="#6366f1" />
+        <ColorSwatchPickerItem color="#ef4444" />
+      </ColorSwatchPicker>,
+    );
+
+    const items = screen.getAllByRole("radio");
+    fireEvent.click(items[1]!);
+    expect(onChange).not.toHaveBeenCalled();
+
+    fireEvent.keyDown(screen.getByRole("radiogroup"), { key: "ArrowLeft" });
+    expect(items[0]).toHaveAttribute("aria-checked", "true");
+  });
+
+  it("wraps selection when navigating with arrow keys", () => {
+    render(
+      <ColorSwatchPicker defaultValue="#6366f1" aria-label="Colors">
+        <ColorSwatchPickerItem color="#6366f1" />
+        <ColorSwatchPickerItem color="#ef4444" />
+      </ColorSwatchPicker>,
+    );
+
+    const group = screen.getByRole("radiogroup");
+    const items = screen.getAllByRole("radio");
+    items[0]?.focus();
+
+    fireEvent.keyDown(group, { key: "ArrowLeft" });
+    expect(items[1]).toHaveAttribute("aria-checked", "true");
+  });
+
+  it("supports Color values instead of hex strings", () => {
+    render(
+      <ColorSwatchPicker
+        defaultValue={parseColor("#6366f1")}
+        aria-label="Colors"
+      >
+        <ColorSwatchPickerItem color={parseColor("#6366f1")} />
+      </ColorSwatchPicker>,
+    );
+
+    expect(screen.getByRole("radio")).toHaveAttribute("aria-checked", "true");
+  });
 });

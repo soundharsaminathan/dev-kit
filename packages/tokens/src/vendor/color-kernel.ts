@@ -63,7 +63,11 @@ export function oklchCss(o: Oklch): string {
   return `oklch(${L} ${C} ${H})`;
 }
 
-function toSrgb(input: string | Oklch): { r: number; g: number; b: number } {
+export function toSrgb(input: string | Oklch): {
+  r: number;
+  g: number;
+  b: number;
+} {
   const color =
     typeof input === "string"
       ? new Color(input)

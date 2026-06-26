@@ -27,5 +27,14 @@ describe("generate-scss", () => {
     expect(fs.existsSync(path.join(tempDir, "themes", "_index.scss"))).toBe(
       true,
     );
+
+    const defaultThemeScss = fs.readFileSync(
+      path.join(tempDir, "_default-theme.scss"),
+      "utf8",
+    );
+    expect(defaultThemeScss).toContain("--radius-factor:");
+    expect(defaultThemeScss).toContain("--font-sans:");
+    expect(defaultThemeScss).toContain("--font-serif:");
+    expect(defaultThemeScss).toContain("--font-mono:");
   });
 });

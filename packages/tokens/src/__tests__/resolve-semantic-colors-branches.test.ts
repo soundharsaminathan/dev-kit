@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { resolveSemanticColors } from "../theme/resolve-semantic-colors.js";
+import {
+  getSemanticColor,
+  resolveSemanticColors,
+} from "../theme/resolve-semantic-colors.js";
 import type { TokenVocabulary } from "../theme/types.js";
 import { builtInThemes } from "../themes/index.js";
 
@@ -44,5 +47,35 @@ describe("resolve-semantic-colors branches", () => {
     expect(light["test-per-mode"]).toContain("oklch(");
     expect(dark["test-per-mode"]).toContain("oklch(");
     expect(dark["test-per-mode"]).not.toBe(light["test-per-mode"]);
+  });
+
+  it("throws when the theme has no color configuration", () => {
+    expect(() =>
+      resolveSemanticColors(
+        { id: "empty", label: "Empty" },
+        "light",
+        testSemantics,
+      ),
+    ).toThrow(/no color configuration/i);
+  });
+
+  it("falls back to light mode for per-mode targets", () => {
+    const colors = resolveSemanticColors(builtInThemes.default, "dark", {
+      "dark-only-missing-light": {
+        target: { dark: { ref: "neutral-900" } },
+        category: "background",
+      },
+    } satisfies TokenVocabulary);
+
+    expect(colors["dark-only-missing-light"]).toContain("oklch(");
+  });
+
+  it("returns individual semantic colors by name", () => {
+    expect(
+      getSemanticColor(builtInThemes.default, "light", "color-bg"),
+    ).toContain("oklch(");
+    expect(
+      getSemanticColor(builtInThemes.default, "light", "missing-token"),
+    ).toBeUndefined();
   });
 });

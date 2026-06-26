@@ -1,14 +1,14 @@
 import { expect, test } from "@playwright/test";
-import { gotoStory } from "./helpers/storybook";
+import { DEFAULT_GLOBALS, gotoStory } from "./helpers/storybook";
 
 const STORY = "components-searchfield--default";
 
 test.describe("icon packs", () => {
-  test("toolbar switches icon pack for search field", async ({ page }) => {
-    await gotoStory(page, STORY);
-
-    await page.getByRole("button", { name: "Icons" }).click();
-    await page.getByRole("option", { name: "Heroicons Outline" }).click();
+  test("icon pack global switches icons for search field", async ({ page }) => {
+    await gotoStory(page, STORY, {
+      ...DEFAULT_GLOBALS,
+      iconPack: "heroicons-outline",
+    });
 
     const input = page.getByRole("searchbox");
     await expect(input).toBeVisible();

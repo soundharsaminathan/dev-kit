@@ -63,6 +63,9 @@ describe("showcase routes", () => {
 
     expect(screen.getByRole("heading", { name: "Button" })).toBeInTheDocument();
     expect(screen.getByText("Playground")).toBeInTheDocument();
+    expect(
+      screen.getByRole("navigation", { name: "Component pager" }),
+    ).toBeInTheDocument();
   });
 
   it("renders the themes comparison page", async () => {
