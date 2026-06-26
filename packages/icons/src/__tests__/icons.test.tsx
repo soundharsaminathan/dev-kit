@@ -1,3 +1,4 @@
+import "@testing-library/jest-dom/vitest";
 import lucidePack from "@dev-ui/icons-packs/lucide";
 import materialSymbolsOutlinedPack from "@dev-ui/icons-packs/material-symbols-outlined";
 import materialSymbolsRoundedPack from "@dev-ui/icons-packs/material-symbols-rounded";
@@ -5,11 +6,20 @@ import materialSymbolsSharpPack from "@dev-ui/icons-packs/material-symbols-sharp
 import { render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import {
+  __setActivePackForTests,
+  cachePackModule,
+  getActivePackId,
+} from "../core/icon-cache";
+import { getCustomPackIds } from "../core/register-icon-pack";
+import type { IconPackModule } from "../core/types";
+import {
   __clearCustomPacksForTests,
   __resetIconCachesForTests,
   Icon,
+  IconButton,
   IconProvider,
   registerIconPack,
+  useIcons,
 } from "../index";
 
 describe("IconProvider", () => {
@@ -130,7 +140,7 @@ describe("IconProvider", () => {
     const { container } = render(
       <IconProvider
         icons={{ library: "material-symbols", variant }}
-        initialPack={pack}
+        initialPack={pack as IconPackModule}
       >
         <Icon name="search" />
       </IconProvider>,
@@ -161,5 +171,83 @@ describe("registerIconPack", () => {
     });
 
     errorSpy.mockRestore();
+  });
+
+  it("tracks registered custom pack ids", () => {
+    __clearCustomPacksForTests();
+
+    registerIconPack("acme", {
+      load: async () => ({
+        default: { id: "acme", icons: {} },
+      }),
+    });
+
+    expect(getCustomPackIds()).toEqual(["acme"]);
+  });
+});
+
+describe("IconButton", () => {
+  it("renders a labeled icon button", () => {
+    render(
+      <IconProvider icons={{ library: "lucide" }} initialPack={lucidePack}>
+        <IconButton name="search" label="Search" />
+      </IconProvider>,
+    );
+
+    expect(screen.getByRole("button", { name: "Search" })).toBeInTheDocument();
+  });
+});
+
+describe("useIcons", () => {
+  it("throws outside of an IconProvider", () => {
+    const BrokenConsumer = () => {
+      useIcons();
+      return null;
+    };
+
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    expect(() => render(<BrokenConsumer />)).toThrow(
+      "useIcons must be used within an IconProvider",
+    );
+
+    errorSpy.mockRestore();
+  });
+});
+
+describe("icon cache", () => {
+  it("tracks the active pack id and reuses in-flight loads", async () => {
+    __resetIconCachesForTests();
+
+    let resolvePack: (value: IconPackModule) => void = () => {};
+    const pendingPack = new Promise<IconPackModule>((resolve) => {
+      resolvePack = resolve;
+    });
+
+    const tracked = cachePackModule("tracked", pendingPack);
+    expect(cachePackModule("tracked", pendingPack)).toBe(tracked);
+
+    __setActivePackForTests("tracked", { id: "tracked", icons: {} });
+    expect(getActivePackId()).toBe("tracked");
+
+    resolvePack({ id: "tracked", icons: {} });
+    await expect(tracked).resolves.toEqual({ id: "tracked", icons: {} });
+  });
+});
+
+describe("IconProvider", () => {
+  it("loads built-in packs without an initial pack", async () => {
+    __resetIconCachesForTests();
+    __clearCustomPacksForTests();
+
+    render(
+      <IconProvider icons={{ library: "lucide" }}>
+        <Icon name="search" data-testid="search-icon" />
+      </IconProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("search-icon")).toBeInTheDocument();
+    });
   });
 });

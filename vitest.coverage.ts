@@ -4,6 +4,7 @@ export const COVERAGE_PROJECTS = [
   "core",
   "components",
   "tokens",
+  "icons",
   "showcase",
   "storybook",
   "scripts",
@@ -15,6 +16,7 @@ export const LIB_COVERAGE_PROJECTS = [
   "core",
   "components",
   "tokens",
+  "icons",
 ] as const satisfies readonly CoverageProject[];
 
 export type LibCoverageProject = (typeof LIB_COVERAGE_PROJECTS)[number];
@@ -45,6 +47,7 @@ export const COVERAGE_INCLUDES: Record<CoverageProject, readonly string[]> = {
   core: ["src/**/*.{ts,tsx}"],
   components: ["src/**/*.{ts,tsx}"],
   tokens: ["src/**/*.ts"],
+  icons: ["src/**/*.{ts,tsx}"],
   showcase: ["src/**/*.{ts,tsx}"],
   scripts: ["**/*.{ts,tsx}"],
   storybook: ["src/**/*.{ts,tsx}"],

@@ -8,6 +8,5 @@
     "emitDeclarationOnly": true,
     "jsx": "react-jsx"
   },
-  "include": ["src"],
-  "exclude": ["src/**/__tests__/**"]
+  "include": ["src"]
 }

@@ -15,6 +15,8 @@ const coverageExclude = [
   "**/generate-scss.ts",
   "**/*.module.scss",
   "**/scss-modules.d.ts",
+  "**/generated/**",
+  "**/*.generated.ts",
   "scripts/vite/**",
 ];
 
