@@ -1,19 +1,53 @@
-import { expect, test } from "@playwright/test";
+import { expect, type Page, test } from "@playwright/test";
+import { getDemoFrame, gotoShowcasePage } from "./helpers/screenshots";
+
+function getIconPackTrigger(page: Page) {
+  return page.getByRole("button", { name: / Icon pack$/ });
+}
+
+async function selectIconPack(page: Page, label: string) {
+  await getIconPackTrigger(page).click();
+  await page.getByRole("option", { name: label }).click();
+}
+
+async function expectDemoSearchIcon(
+  page: Page,
+  selector: string,
+  font?: RegExp,
+) {
+  await page.waitForLoadState("networkidle");
+  const icon = getDemoFrame(page)
+    .locator("[data-search-field-group]")
+    .locator(selector)
+    .first();
+  await expect(icon).toBeVisible({ timeout: 30_000 });
+  if (font) {
+    await expect(icon).toHaveCSS("font-family", font);
+  }
+}
 
 test.describe("icon packs", () => {
   test("switches icon pack without breaking search field", async ({ page }) => {
-    await page.goto("/components/search-field");
+    test.setTimeout(120_000);
+
+    await gotoShowcasePage(page, "/components/search-field");
 
     await page.getByRole("button", { name: "Edit theme" }).click();
+    await expect(
+      page.getByRole("heading", { name: "Theme editor", level: 2 }),
+    ).toBeVisible();
 
-    const iconPackSelect = page.getByRole("combobox", { name: "Icon pack" });
-    await expect(iconPackSelect).toBeVisible();
+    await expect(getIconPackTrigger(page)).toBeVisible();
 
-    await iconPackSelect.click();
-    await page.getByRole("option", { name: "Heroicons Outline" }).click();
-
+    await selectIconPack(page, "Heroicons Outline");
+    await page.getByRole("button", { name: "Done" }).click();
     await expect(page.getByRole("searchbox")).toBeVisible();
-    await expect(page.locator("svg").first()).toBeVisible();
+    await expectDemoSearchIcon(page, "svg");
+
+    await page.getByRole("button", { name: "Edit theme" }).click();
+    await expect(
+      page.getByRole("heading", { name: "Theme editor", level: 2 }),
+    ).toBeVisible();
 
     const materialPacks = [
       {
@@ -34,19 +68,20 @@ test.describe("icon packs", () => {
     ] as const;
 
     for (const pack of materialPacks) {
-      await iconPackSelect.click();
-      await page.getByRole("option", { name: pack.label }).click();
-
+      await selectIconPack(page, pack.label);
+      await page.getByRole("button", { name: "Done" }).click();
       await expect(page.getByRole("searchbox")).toBeVisible();
-      const icon = page.locator(pack.selector).first();
-      await expect(icon).toBeVisible();
-      await expect(icon).toHaveCSS("font-family", pack.font);
+      await expectDemoSearchIcon(page, pack.selector, pack.font);
+
+      await page.getByRole("button", { name: "Edit theme" }).click();
+      await expect(
+        page.getByRole("heading", { name: "Theme editor", level: 2 }),
+      ).toBeVisible();
     }
 
-    await iconPackSelect.click();
-    await page.getByRole("option", { name: "Tabler Outline" }).click();
-
+    await selectIconPack(page, "Tabler Outline");
+    await page.getByRole("button", { name: "Done" }).click();
     await expect(page.getByRole("searchbox")).toBeVisible();
-    await expect(page.locator("svg").first()).toBeVisible();
+    await expectDemoSearchIcon(page, "svg");
   });
 });
