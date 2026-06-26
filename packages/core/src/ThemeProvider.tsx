@@ -51,6 +51,7 @@ export interface ThemeContextValue {
 const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
 
 function getRootElement(): HTMLElement {
+  /* v8 ignore next 3 -- SSR guard */
   if (typeof document === "undefined") {
     throw new Error("ThemeProvider can only be used in a browser environment");
   }
@@ -67,11 +68,13 @@ function getSystemPreference(): ThemeMode {
 }
 
 function readStoredTheme(): string {
+  /* v8 ignore next 3 -- SSR guard */
   if (typeof window === "undefined") return "default";
   return localStorage.getItem(ACTIVE_THEME_STORAGE_KEY) || "default";
 }
 
 function readModePreference(defaultMode: ThemeMode | "system"): ModePreference {
+  /* v8 ignore next 3 -- SSR guard */
   if (typeof window === "undefined") {
     return defaultMode === "system" ? "system" : defaultMode;
   }
@@ -83,6 +86,7 @@ function readModePreference(defaultMode: ThemeMode | "system"): ModePreference {
 }
 
 function applyThemeStyleSheet(_themeId: string, css: string | null): void {
+  /* v8 ignore next 3 -- SSR guard */
   if (typeof document === "undefined") return;
 
   const existing = document.getElementById(CUSTOM_STYLE_ID);
