@@ -522,8 +522,16 @@ export default defineConfig({
   );
 }
 
-function formatGeneratedPacks(): void {
-  execSync("pnpm exec biome check --write packages/icons-packs/src", {
+function formatGeneratedOutputs(): void {
+  const paths = [
+    "packages/icons-packs/project.json",
+    "packages/icons-packs/tsconfig.json",
+    "packages/icons-packs/src",
+    "packages/icons/src/loaders/pack-loaders.generated.ts",
+    "packages/icons/src/generated",
+  ];
+
+  execSync(`pnpm exec biome check --write ${paths.join(" ")}`, {
     cwd: workspaceRoot,
     stdio: "inherit",
   });
@@ -534,7 +542,7 @@ function main(): void {
   buildPackIds();
   buildPackLoaders();
   buildPackPackages();
-  formatGeneratedPacks();
+  formatGeneratedOutputs();
   console.log(
     `Generated ${iconNames.length} icons across ${packIds.length} packs.`,
   );
