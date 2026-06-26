@@ -8,7 +8,8 @@
     "target": "ES2022",
     "composite": true,
     "noEmit": false,
-    "emitDeclarationOnly": true
+    "emitDeclarationOnly": true,
+    "types": ["node"]
   },
   "include": ["src/**/*"],
   "exclude": ["src/generate-scss.ts"]

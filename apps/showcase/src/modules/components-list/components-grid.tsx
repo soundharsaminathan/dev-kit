@@ -8,7 +8,7 @@ export function ComponentsGrid({ category }: { category: ComponentCategory }) {
       <h2 className={styles.sectionTitle}>{category.title}</h2>
       <div className={styles.grid}>
         {category.components.map((component) => (
-          <ComponentCard key={component.slug} {...component} />
+          <ComponentCard key={component.slug} deferPreview {...component} />
         ))}
       </div>
     </section>

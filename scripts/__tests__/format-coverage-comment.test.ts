@@ -4,6 +4,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   formatCoverageComment,
+  readLibCoverageSummaries,
   writeCoverageComment,
 } from "../format-coverage-comment.ts";
 
@@ -32,10 +33,68 @@ describe("formatCoverageComment", () => {
     expect(comment).toContain("| Lines | 95/100 | 95.00% |");
   });
 
+  it("renders per-library coverage sections", () => {
+    const comment = formatCoverageComment(
+      {
+        total: {
+          lines: metrics(100, 95, 95),
+          statements: metrics(120, 114, 95),
+          functions: metrics(40, 38, 95),
+          branches: metrics(80, 68, 85),
+        },
+      },
+      [
+        {
+          project: "components",
+          total: {
+            lines: metrics(50, 46, 92),
+            statements: metrics(60, 55, 91.67),
+            functions: metrics(20, 19, 95),
+            branches: metrics(30, 24, 80),
+          },
+        },
+      ],
+    );
+
+    expect(comment).toContain("## Libraries");
+    expect(comment).toContain("### components");
+    expect(comment).toContain("| Lines | 46/50 | 92.00% |");
+  });
+
   it("throws when the summary is missing total metrics", () => {
     expect(() => formatCoverageComment({} as never)).toThrow(
       "coverage-summary.json is missing a total entry",
     );
+  });
+});
+
+describe("readLibCoverageSummaries", () => {
+  it("reads per-library coverage summaries when present", () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "lib-coverage-"));
+    const componentsDir = path.join(tempDir, "coverage", "components");
+    fs.mkdirSync(componentsDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(componentsDir, "coverage-summary.json"),
+      JSON.stringify({
+        total: {
+          lines: metrics(10, 9, 90),
+          statements: metrics(10, 9, 90),
+          functions: metrics(4, 4, 100),
+          branches: metrics(6, 5, 83.33),
+        },
+      }),
+    );
+
+    const summaries = readLibCoverageSummaries(tempDir);
+
+    expect(summaries).toEqual([
+      expect.objectContaining({
+        project: "components",
+        total: expect.objectContaining({
+          lines: expect.objectContaining({ pct: 90 }),
+        }),
+      }),
+    ]);
   });
 });
 

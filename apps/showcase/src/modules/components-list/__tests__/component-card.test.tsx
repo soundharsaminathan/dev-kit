@@ -60,4 +60,14 @@ describe("ComponentCard", () => {
     expect(screen.getByRole("link", { name: "Missing" })).toBeInTheDocument();
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
   });
+
+  it("activates deferred previews on hover", () => {
+    render(<ComponentCard name="Button" slug="button" deferPreview />);
+    const card = screen.getByRole("link", { name: "Button" });
+    expect(
+      screen.queryByRole("button", { name: "Button" }),
+    ).not.toBeInTheDocument();
+    fireEvent.mouseEnter(card);
+    expect(screen.getByRole("button", { name: "Button" })).toBeInTheDocument();
+  });
 });

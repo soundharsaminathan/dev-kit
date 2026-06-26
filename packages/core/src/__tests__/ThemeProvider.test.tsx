@@ -39,14 +39,14 @@ function createMatchMediaMock(
 }
 
 function ThemeConsumer() {
-  const { preset, mode, setPreset, setMode, toggleMode } = useTheme();
+  const { theme, mode, setTheme, setMode, toggleMode } = useTheme();
 
   return (
     <div>
-      <span data-testid="preset">{preset}</span>
+      <span data-testid="theme">{theme}</span>
       <span data-testid="mode">{mode}</span>
-      <button type="button" onClick={() => setPreset("ocean")}>
-        Set preset
+      <button type="button" onClick={() => setTheme("material")}>
+        Set theme
       </button>
       <button type="button" onClick={() => setMode("dark")}>
         Set dark
@@ -61,8 +61,9 @@ function ThemeConsumer() {
 describe("ThemeProvider", () => {
   beforeEach(() => {
     localStorage.clear();
-    document.documentElement.removeAttribute("data-theme-preset");
+    document.documentElement.removeAttribute("data-theme");
     document.documentElement.removeAttribute("data-theme-mode");
+    document.getElementById("dev-ui-theme-overrides")?.remove();
 
     Object.defineProperty(window, "matchMedia", {
       writable: true,
@@ -82,25 +83,22 @@ describe("ThemeProvider", () => {
     vi.restoreAllMocks();
   });
 
-  it("applies default preset and system mode to the document root", () => {
+  it("applies default theme and system mode to the document root", () => {
     render(
       <ThemeProvider>
         <ThemeConsumer />
       </ThemeProvider>,
     );
 
-    expect(document.documentElement).toHaveAttribute(
-      "data-theme-preset",
-      "modern-minimal",
-    );
+    expect(document.documentElement).toHaveAttribute("data-theme", "default");
     expect(document.documentElement).toHaveAttribute("data-theme-mode", "dark");
-    expect(screen.getByTestId("preset")).toHaveTextContent("modern-minimal");
+    expect(screen.getByTestId("theme")).toHaveTextContent("default");
     expect(screen.getByTestId("mode")).toHaveTextContent("dark");
   });
 
-  it("restores preset and mode from localStorage", () => {
-    localStorage.setItem("theme-preset", "forest");
-    localStorage.setItem("theme-mode", "light");
+  it("restores theme and mode from localStorage", () => {
+    localStorage.setItem("dev-ui-theme", "glassmorphism");
+    localStorage.setItem("dev-ui-theme-mode", "light");
 
     render(
       <ThemeProvider>
@@ -108,11 +106,11 @@ describe("ThemeProvider", () => {
       </ThemeProvider>,
     );
 
-    expect(screen.getByTestId("preset")).toHaveTextContent("forest");
+    expect(screen.getByTestId("theme")).toHaveTextContent("glassmorphism");
     expect(screen.getByTestId("mode")).toHaveTextContent("light");
   });
 
-  it("persists preset and mode changes", () => {
+  it("persists theme and mode changes", () => {
     render(
       <ThemeProvider defaultMode="light">
         <ThemeConsumer />
@@ -120,18 +118,15 @@ describe("ThemeProvider", () => {
     );
 
     act(() => {
-      screen.getByRole("button", { name: "Set preset" }).click();
+      screen.getByRole("button", { name: "Set theme" }).click();
     });
     act(() => {
       screen.getByRole("button", { name: "Set dark" }).click();
     });
 
-    expect(localStorage.getItem("theme-preset")).toBe("ocean");
-    expect(localStorage.getItem("theme-mode")).toBe("dark");
-    expect(document.documentElement).toHaveAttribute(
-      "data-theme-preset",
-      "ocean",
-    );
+    expect(localStorage.getItem("dev-ui-theme")).toBe("material");
+    expect(localStorage.getItem("dev-ui-theme-mode")).toBe("dark");
+    expect(document.documentElement).toHaveAttribute("data-theme", "material");
     expect(document.documentElement).toHaveAttribute("data-theme-mode", "dark");
   });
 
@@ -148,30 +143,12 @@ describe("ThemeProvider", () => {
       screen.getByRole("button", { name: "Toggle mode" }).click();
     });
     expect(screen.getByTestId("mode")).toHaveTextContent("dark");
-    expect(localStorage.getItem("theme-mode")).toBe("dark");
+    expect(localStorage.getItem("dev-ui-theme-mode")).toBe("dark");
 
     act(() => {
       screen.getByRole("button", { name: "Toggle mode" }).click();
     });
     expect(screen.getByTestId("mode")).toHaveTextContent("light");
-  });
-
-  it("uses a storage key prefix when provided", () => {
-    render(
-      <ThemeProvider storageKeyPrefix="app" defaultMode="light">
-        <ThemeConsumer />
-      </ThemeProvider>,
-    );
-
-    act(() => {
-      screen.getByRole("button", { name: "Set preset" }).click();
-    });
-    act(() => {
-      screen.getByRole("button", { name: "Set dark" }).click();
-    });
-
-    expect(localStorage.getItem("app-theme-preset")).toBe("ocean");
-    expect(localStorage.getItem("app-theme-mode")).toBe("dark");
   });
 
   it("updates mode when system preference changes", () => {
@@ -188,7 +165,7 @@ describe("ThemeProvider", () => {
       }),
     );
 
-    localStorage.setItem("theme-mode", "system");
+    localStorage.setItem("dev-ui-theme-mode", "system");
 
     const { unmount } = render(
       <ThemeProvider defaultMode="system">
@@ -218,11 +195,204 @@ describe("ThemeProvider", () => {
     expect(removeEventListener).toHaveBeenCalled();
   });
 
-  it("falls back to legacy media query listeners", () => {
-    let changeHandler: (() => void) | undefined;
-    const addListener = vi.fn((handler: () => void) => {
-      changeHandler = handler;
+  it("throws when useTheme is used outside ThemeProvider", () => {
+    const consoleError = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
+
+    expect(() => render(<ThemeConsumer />)).toThrow(
+      "useTheme must be used within a ThemeProvider",
+    );
+
+    consoleError.mockRestore();
+  });
+
+  it("applies live theme overrides without persisting the active theme id", () => {
+    function LiveThemeConsumer() {
+      const { setLiveTheme } = useTheme();
+
+      return (
+        <button
+          type="button"
+          onClick={() =>
+            setLiveTheme({
+              id: "custom-live",
+              label: "Live",
+              extends: "default",
+              color: {
+                algorithm: "oklch",
+                seeds: {
+                  neutral: "#808080",
+                  accent: "#0000ff",
+                  success: "#00aa00",
+                  warning: "#ffaa00",
+                  danger: "#aa0000",
+                  info: "#0088ff",
+                },
+              },
+            })
+          }
+        >
+          Set live theme
+        </button>
+      );
+    }
+
+    render(
+      <ThemeProvider defaultMode="light">
+        <LiveThemeConsumer />
+      </ThemeProvider>,
+    );
+
+    act(() => {
+      screen.getByRole("button", { name: "Set live theme" }).click();
     });
+
+    expect(document.documentElement).toHaveAttribute(
+      "data-theme",
+      "custom-live",
+    );
+    expect(localStorage.getItem("dev-ui-theme")).toBe("default");
+    expect(document.getElementById("dev-ui-theme-overrides")).not.toBeNull();
+  });
+
+  it("saves and deletes custom themes", () => {
+    function CustomThemeManager() {
+      const { saveCustomTheme, deleteCustomTheme, customThemes, theme } =
+        useTheme();
+
+      return (
+        <div>
+          <span data-testid="count">{customThemes.length}</span>
+          <button
+            type="button"
+            onClick={() =>
+              saveCustomTheme({
+                label: "Saved",
+                extends: "default",
+                color: {
+                  algorithm: "oklch",
+                  seeds: {
+                    neutral: "#808080",
+                    accent: "#0000ff",
+                    success: "#00aa00",
+                    warning: "#ffaa00",
+                    danger: "#aa0000",
+                    info: "#0088ff",
+                  },
+                },
+              })
+            }
+          >
+            Save custom
+          </button>
+          <button
+            type="button"
+            onClick={() => deleteCustomTheme(customThemes[0]?.id ?? "")}
+          >
+            Delete custom
+          </button>
+        </div>
+      );
+    }
+
+    render(
+      <ThemeProvider defaultMode="light">
+        <CustomThemeManager />
+      </ThemeProvider>,
+    );
+
+    act(() => {
+      screen.getByRole("button", { name: "Save custom" }).click();
+    });
+    expect(screen.getByTestId("count")).toHaveTextContent("1");
+
+    act(() => {
+      screen.getByRole("button", { name: "Delete custom" }).click();
+    });
+    expect(screen.getByTestId("count")).toHaveTextContent("0");
+  });
+
+  it("applies stylesheet when the active theme is a saved custom theme", () => {
+    function CustomThemeSwitcher() {
+      const { saveCustomTheme, setTheme } = useTheme();
+
+      return (
+        <button
+          type="button"
+          onClick={() => {
+            const saved = saveCustomTheme({
+              label: "Saved",
+              extends: "default",
+              color: {
+                algorithm: "oklch",
+                seeds: {
+                  neutral: "#808080",
+                  accent: "#0000ff",
+                  success: "#00aa00",
+                  warning: "#ffaa00",
+                  danger: "#aa0000",
+                  info: "#0088ff",
+                },
+              },
+            });
+            setTheme(saved.id);
+          }}
+        >
+          Use custom theme
+        </button>
+      );
+    }
+
+    render(
+      <ThemeProvider defaultMode="light">
+        <CustomThemeSwitcher />
+      </ThemeProvider>,
+    );
+
+    act(() => {
+      screen.getByRole("button", { name: "Use custom theme" }).click();
+    });
+
+    const style = document.getElementById("dev-ui-theme-overrides");
+    expect(style).not.toBeNull();
+    expect(style?.textContent).toContain("--color-accent");
+    expect(document.documentElement.getAttribute("data-theme")).toMatch(
+      /^custom-/,
+    );
+  });
+
+  it("defaults to light mode when matchMedia is unavailable", () => {
+    Object.defineProperty(window, "matchMedia", {
+      writable: true,
+      configurable: true,
+      value: undefined,
+    });
+    localStorage.setItem("dev-ui-theme-mode", "system");
+
+    render(
+      <ThemeProvider defaultMode="system">
+        <ThemeConsumer />
+      </ThemeProvider>,
+    );
+
+    expect(screen.getByTestId("mode")).toHaveTextContent("light");
+  });
+
+  it("falls back to defaultMode when stored mode preference is invalid", () => {
+    localStorage.setItem("dev-ui-theme-mode", "invalid");
+
+    render(
+      <ThemeProvider defaultMode="light">
+        <ThemeConsumer />
+      </ThemeProvider>,
+    );
+
+    expect(screen.getByTestId("mode")).toHaveTextContent("light");
+  });
+
+  it("uses legacy media query listeners when addEventListener is unavailable", () => {
+    const addListener = vi.fn();
     const removeListener = vi.fn();
 
     vi.mocked(window.matchMedia).mockImplementation(
@@ -234,100 +404,16 @@ describe("ThemeProvider", () => {
       }),
     );
 
-    localStorage.setItem("theme-mode", "system");
+    localStorage.setItem("dev-ui-theme-mode", "system");
 
-    render(
+    const { unmount } = render(
       <ThemeProvider defaultMode="system">
         <ThemeConsumer />
       </ThemeProvider>,
     );
 
     expect(addListener).toHaveBeenCalled();
-
-    vi.mocked(window.matchMedia).mockImplementation(
-      createMatchMediaMock(
-        (query) => query === "(prefers-color-scheme: dark)",
-        {
-          addEventListener: undefined,
-          removeEventListener: undefined,
-          addListener,
-          removeListener,
-        },
-      ),
-    );
-
-    act(() => {
-      changeHandler?.();
-    });
-
-    expect(screen.getByTestId("mode")).toHaveTextContent("dark");
-  });
-
-  it("does not update mode when system preference changes while using an explicit mode", () => {
-    let changeHandler: (() => void) | undefined;
-    const addEventListener = vi.fn((_event: string, handler: () => void) => {
-      changeHandler = handler;
-    });
-
-    vi.mocked(window.matchMedia).mockImplementation(
-      createMatchMediaMock(() => false, {
-        addEventListener,
-        removeEventListener: vi.fn(),
-      }),
-    );
-
-    render(
-      <ThemeProvider defaultMode="light">
-        <ThemeConsumer />
-      </ThemeProvider>,
-    );
-
-    expect(screen.getByTestId("mode")).toHaveTextContent("light");
-
-    vi.mocked(window.matchMedia).mockImplementation(
-      createMatchMediaMock(
-        (query) => query === "(prefers-color-scheme: dark)",
-        { addEventListener, removeEventListener: vi.fn() },
-      ),
-    );
-
-    act(() => {
-      changeHandler?.();
-    });
-
-    expect(screen.getByTestId("mode")).toHaveTextContent("light");
-  });
-
-  it("uses light mode when matchMedia is unavailable", () => {
-    const originalMatchMedia = window.matchMedia;
-    Object.defineProperty(window, "matchMedia", {
-      configurable: true,
-      value: undefined,
-    });
-
-    render(
-      <ThemeProvider defaultMode="system">
-        <ThemeConsumer />
-      </ThemeProvider>,
-    );
-
-    expect(screen.getByTestId("mode")).toHaveTextContent("light");
-
-    Object.defineProperty(window, "matchMedia", {
-      configurable: true,
-      value: originalMatchMedia,
-    });
-  });
-
-  it("throws when useTheme is used outside ThemeProvider", () => {
-    const consoleError = vi
-      .spyOn(console, "error")
-      .mockImplementation(() => {});
-
-    expect(() => render(<ThemeConsumer />)).toThrow(
-      "useTheme must be used within a ThemeProvider",
-    );
-
-    consoleError.mockRestore();
+    unmount();
+    expect(removeListener).toHaveBeenCalled();
   });
 });

@@ -1,6 +1,6 @@
 import { OverlayProvider } from "@dev-ui/components/popover";
 import { createRootRoute, Outlet } from "@tanstack/react-router";
-import { ThemeProvider } from "@/lib/theme";
+import { AppThemeProvider } from "@/lib/theme";
 import styles from "@/modules/layout/app-shell.module.scss";
 import { Header } from "@/modules/layout/header";
 import { ComponentNotFound } from "@/modules/layout/not-found";
@@ -12,7 +12,7 @@ export const Route = createRootRoute({
 
 function RootLayout() {
   return (
-    <ThemeProvider>
+    <AppThemeProvider>
       <div className={styles.shell}>
         <OverlayProvider>
           <Header />
@@ -21,6 +21,6 @@ function RootLayout() {
           <Outlet />
         </main>
       </div>
-    </ThemeProvider>
+    </AppThemeProvider>
   );
 }

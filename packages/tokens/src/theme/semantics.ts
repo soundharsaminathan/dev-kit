@@ -1,24 +1,24 @@
-import type { SemanticToken, SemanticVocabulary } from "./types.js";
+import type { TokenDefinition, TokenVocabulary } from "./types.js";
 
 const NEUTRAL = ["neutral", ".."] as const;
 const PRIMARY = ["neutral", "accent", ".."] as const;
 
-const bg = (ref: string, scales?: readonly string[]): SemanticToken => {
-  const token: SemanticToken = { target: { ref }, category: "background" };
+const bg = (ref: string, scales?: readonly string[]): TokenDefinition => {
+  const token: TokenDefinition = { target: { ref }, category: "background" };
   if (scales) token.scales = scales;
   return token;
 };
-const fg = (ref: string, scales?: readonly string[]): SemanticToken => {
-  const token: SemanticToken = { target: { ref }, category: "foreground" };
+const fg = (ref: string, scales?: readonly string[]): TokenDefinition => {
+  const token: TokenDefinition = { target: { ref }, category: "foreground" };
   if (scales) token.scales = scales;
   return token;
 };
-const bd = (ref: string, scales?: readonly string[]): SemanticToken => {
-  const token: SemanticToken = { target: { ref }, category: "border" };
+const bd = (ref: string, scales?: readonly string[]): TokenDefinition => {
+  const token: TokenDefinition = { target: { ref }, category: "border" };
   if (scales) token.scales = scales;
   return token;
 };
-const on = (onOf: string): SemanticToken => ({
+const on = (onOf: string): TokenDefinition => ({
   target: { onOf },
   category: "foreground",
 });
@@ -107,4 +107,4 @@ export const DEFAULT_SEMANTICS = {
   "color-popover": bg("neutral-100", NEUTRAL),
   "color-sidebar": bg("neutral-100", NEUTRAL),
   "color-border-sidebar": bd("neutral-300", NEUTRAL),
-} satisfies SemanticVocabulary;
+} satisfies TokenVocabulary;

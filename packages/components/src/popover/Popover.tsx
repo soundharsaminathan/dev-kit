@@ -6,9 +6,40 @@ import {
   usePopover,
 } from "@react-aria/overlays";
 import { mergeProps } from "@react-aria/utils";
-import { createContext, useContext, useLayoutEffect, useRef } from "react";
+import {
+  createContext,
+  type RefObject,
+  useContext,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+} from "react";
 import styles from "./popover.module.scss";
 import type { PopoverContextValue, PopoverProps } from "./popover.types";
+
+function resolvePopoverAnchor(trigger: Element | null): Element | null {
+  if (!trigger) {
+    return null;
+  }
+
+  return trigger.closest("[data-input-group]") ?? trigger;
+}
+
+function usePopoverAnchorRef(
+  triggerRef: RefObject<Element | null>,
+): RefObject<Element | null> {
+  return useMemo(
+    () => ({
+      get current() {
+        return resolvePopoverAnchor(triggerRef.current);
+      },
+      set current(_value: Element | null) {
+        // Positioning follows the resolved anchor; ignore external assignment.
+      },
+    }),
+    [triggerRef],
+  );
+}
 
 const PopoverContext = createContext<PopoverContextValue | null>(null);
 
@@ -57,10 +88,11 @@ function Popover({
   const popoverRef = contextPopoverRef ?? internalPopoverRef;
   const placement = placementProp ?? contextPlacement ?? "bottom";
   const resolvedOffset = contextOffset ?? offset;
+  const anchorRef = usePopoverAnchorRef(triggerRef);
 
   const { popoverProps, underlayProps } = usePopover(
     {
-      triggerRef,
+      triggerRef: anchorRef,
       popoverRef,
       placement,
       offset: resolvedOffset,
@@ -74,30 +106,28 @@ function Popover({
       return;
     }
 
-    const trigger = triggerRef.current;
+    const anchor = anchorRef.current;
     const popover = popoverRef.current;
-    if (!trigger || !popover) {
+    if (!anchor || !popover) {
       return;
     }
-
-    const widthElement = trigger.closest("[data-input-group]") ?? trigger;
 
     const syncTriggerWidth = () => {
       popover.style.setProperty(
         "--trigger-width",
-        `${widthElement.getBoundingClientRect().width}px`,
+        `${anchor.getBoundingClientRect().width}px`,
       );
     };
 
     syncTriggerWidth();
 
     const observer = new ResizeObserver(syncTriggerWidth);
-    observer.observe(widthElement);
+    observer.observe(anchor);
 
     return () => {
       observer.disconnect();
     };
-  }, [state.isOpen, triggerRef, popoverRef]);
+  }, [state.isOpen, anchorRef, popoverRef]);
 
   if (!state.isOpen) {
     return null;

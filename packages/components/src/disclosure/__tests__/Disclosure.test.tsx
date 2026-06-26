@@ -83,6 +83,25 @@ describe("Disclosure", () => {
     expect(onExpandedChange).toHaveBeenCalledWith(true);
   });
 
+  it("does not mount panel children until expanded when mountWhen is expanded", () => {
+    render(
+      <Disclosure>
+        <DisclosureTrigger>System Requirements</DisclosureTrigger>
+        <DisclosurePanel mountWhen="expanded">
+          Details about requirements.
+        </DisclosurePanel>
+      </Disclosure>,
+    );
+
+    expect(
+      screen.queryByText("Details about requirements."),
+    ).not.toBeInTheDocument();
+    fireEvent.click(
+      screen.getByRole("button", { name: "System Requirements" }),
+    );
+    expect(screen.getByText("Details about requirements.")).toBeVisible();
+  });
+
   it("syncs expansion state inside an accordion", () => {
     render(
       <Accordion>

@@ -54,6 +54,24 @@
 
 .expandButton {
   flex-shrink: 0;
+  --btn-shadow: none;
+  --btn-hover-shadow: none;
+  --btn-pressed-shadow: none;
+  --btn-selected-shadow: none;
+  --btn-disabled-shadow: none;
+  --btn-primary-disabled-shadow: none;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+
+  &[data-hovered="true"],
+  &[data-pressed="true"] {
+    background-color: transparent;
+  }
+
+  &:focus-visible {
+    outline: none;
+  }
 
   &[data-expanded="true"] svg {
     transform: rotate(90deg);

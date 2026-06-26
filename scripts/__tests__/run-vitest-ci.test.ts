@@ -1,6 +1,12 @@
 import { execSync } from "node:child_process";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
-import { buildVitestCiCommand, runVitestCi } from "../run-vitest-ci.ts";
+import {
+  buildVitestCiCommand,
+  runVitestCi,
+  runVitestCiFromArgv,
+} from "../run-vitest-ci.ts";
 
 vi.mock("node:child_process", () => ({
   execSync: vi.fn(),
@@ -16,7 +22,18 @@ describe("buildVitestCiCommand", () => {
     expect(command).toContain("--coverage.reportsDirectory=");
     expect(command.replaceAll("\\", "/")).toContain("coverage/components");
     expect(command).toContain("--coverage.reporter=json-summary");
+    expect(command).toContain("--coverage.thresholds.lines=90");
+    expect(command).toContain("--coverage.thresholds.statements=90");
+    expect(command).toContain("--coverage.thresholds.functions=90");
+    expect(command).toContain("--coverage.thresholds.branches=80");
     expect(command).toContain("--outputFile=test-results/junit-components.xml");
+  });
+
+  it("applies coverage thresholds for app projects", () => {
+    const command = buildVitestCiCommand("showcase");
+
+    expect(command).toContain("--coverage.thresholds.lines=90");
+    expect(command).toContain("--coverage.thresholds.branches=80");
   });
 
   it("omits junit reporters in coverage-only mode", () => {
@@ -24,6 +41,22 @@ describe("buildVitestCiCommand", () => {
 
     expect(command).not.toContain("--reporter=junit");
     expect(command).not.toContain("--outputFile=");
+  });
+});
+
+describe("runVitestCiFromArgv", () => {
+  it("throws for an invalid project", () => {
+    expect(() => runVitestCiFromArgv(["invalid-project"])).toThrow(
+      /Usage: pnpm exec tsx scripts\/run-vitest-ci.ts/,
+    );
+  });
+
+  it("runs coverage for a valid project argument", () => {
+    mockExecSync.mockClear();
+
+    runVitestCiFromArgv(["scripts", "--coverage-only"]);
+
+    expect(mockExecSync).toHaveBeenCalled();
   });
 });
 
@@ -40,5 +73,25 @@ describe("runVitestCi", () => {
         stdio: "inherit",
       }),
     );
+  });
+});
+
+describe("run-vitest-ci cli", () => {
+  it("runs coverage for a valid project argument", () => {
+    const workspaceRoot = path.resolve(
+      path.dirname(fileURLToPath(import.meta.url)),
+      "../..",
+    );
+
+    expect(() =>
+      execSync(
+        "pnpm exec tsx scripts/run-vitest-ci.ts scripts --coverage-only",
+        {
+          cwd: workspaceRoot,
+          stdio: "pipe",
+          env: process.env,
+        },
+      ),
+    ).not.toThrow();
   });
 });

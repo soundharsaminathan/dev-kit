@@ -1,8 +1,10 @@
 import { expect, test } from "@playwright/test";
 import { expectStoryAccessible } from "./helpers/a11y";
 import {
+  expectOverlayAlignedWithTrigger,
   expectOverlayBelowTrigger,
   getComboboxInput,
+  getInputGroup,
   getPopover,
   gotoStory,
   openCombobox,
@@ -124,12 +126,16 @@ test.describe("Combobox", () => {
   });
 
   test.describe("layout", responsiveDescribeOptions, () => {
-    test("listbox opens below the input", async ({ page }) => {
+    test("listbox opens aligned below the input group", async ({ page }) => {
       await gotoStory(page, STORIES.default);
 
-      const input = await openCombobox(page);
+      await openCombobox(page);
 
-      await expectOverlayBelowTrigger(input, getPopover(page));
+      const trigger = getInputGroup(page);
+      const popover = getPopover(page);
+
+      await expectOverlayBelowTrigger(trigger, popover);
+      await expectOverlayAlignedWithTrigger(trigger, popover);
     });
 
     test("open listbox stays within the viewport", async ({ page }) => {

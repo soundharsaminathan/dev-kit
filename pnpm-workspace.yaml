@@ -1,6 +1,7 @@
 packages:
   - "packages/*"
   - "apps/*"
+  - "scripts"
 
 catalog:
   react: ^19.2.0
@@ -18,6 +19,3 @@ allowBuilds:
 
 # pnpm 11 defaults to 1440 (1 day); restore pre-v11 behavior for dev tooling
 minimumReleaseAge: 0
-
-patchedDependencies:
-  '@storybook/addon-vitest@10.4.4': patches/@storybook__addon-vitest@10.4.4.patch

@@ -1,10 +1,11 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   collectDeprecatedUsages,
   formatDeprecatedUsages,
   resolveTsconfigProjects,
+  runCheckDeprecated,
 } from "../check-deprecated.ts";
 
 const fixtureRoot = path.join(
@@ -66,5 +67,52 @@ describe("check-deprecated", () => {
         },
       ]),
     ).toBe("apps/showcase/src/example.ts:10:5 'selectedKey' is deprecated.");
+  });
+
+  it("throws when a project tsconfig cannot be parsed", () => {
+    expect(() =>
+      collectDeprecatedUsages(
+        [path.join(fixtureRoot, "invalid-tsconfig.json")],
+        fixtureRoot,
+      ),
+    ).toThrow();
+  });
+
+  it("resolves referenced project configs from a root tsconfig", () => {
+    const projects = resolveTsconfigProjects(
+      path.join(fixtureRoot, "root-with-references.json"),
+    );
+
+    expect(projects[0]?.replaceAll("\\", "/")).toContain("child/tsconfig.json");
+  });
+
+  it("reports deprecated usages from main", () => {
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    process.exitCode = 0;
+    runCheckDeprecated({
+      collectUsages: () => [
+        {
+          file: "src/example.ts",
+          line: 1,
+          column: 1,
+          message: "deprecated",
+        },
+      ],
+      resolveProjects: () => [],
+    });
+
+    expect(process.exitCode).toBe(1);
+    expect(errorSpy).toHaveBeenCalled();
+    errorSpy.mockRestore();
+  });
+
+  it("leaves exit code unchanged when no deprecated usages are found", () => {
+    process.exitCode = 0;
+    runCheckDeprecated({
+      collectUsages: () => [],
+      resolveProjects: () => [],
+    });
+    expect(process.exitCode).toBe(0);
   });
 });

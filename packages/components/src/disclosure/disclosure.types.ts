@@ -16,8 +16,12 @@ export type DisclosureTriggerProps =
     ref?: Ref<HTMLButtonElement>;
   };
 
+export type DisclosurePanelMountWhen = "always" | "expanded" | "expanded-once";
+
 export type DisclosurePanelProps = React.ComponentPropsWithoutRef<"div"> & {
   className?: string | undefined;
+  /** When to mount panel children. Defaults to always (hidden-but-mounted). */
+  mountWhen?: DisclosurePanelMountWhen | undefined;
   ref?: Ref<HTMLDivElement>;
 };
 

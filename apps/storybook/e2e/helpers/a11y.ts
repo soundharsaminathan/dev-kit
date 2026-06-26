@@ -12,7 +12,7 @@ export type A11yScanOptions = {
   /** Limit scan to the Storybook story mount. Default true when no `beforeScan`. */
   scopeToStory?: boolean;
   /** Prepare interactive state before scanning (e.g. open a menu). */
-  beforeScan?: (page: Page) => Promise<void>;
+  beforeScan?: (page: Page) => undefined | Promise<unknown>;
 };
 
 export type StoryA11yOptions = A11yScanOptions & {

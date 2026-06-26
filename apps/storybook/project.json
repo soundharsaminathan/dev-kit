@@ -4,7 +4,7 @@
   "sourceRoot": "apps/storybook",
   "projectType": "application",
   "tags": ["scope:storybook", "type:app"],
-  "implicitDependencies": ["components", "tokens"],
+  "implicitDependencies": ["components", "core", "tokens"],
   "targets": {
     "typecheck": {
       "executor": "nx:run-commands",

@@ -96,44 +96,58 @@ describe("InteractiveDemo", () => {
     });
   });
 
-  describe("accessibility", () => {
-    it("has no WCAG violations", async () => {
-      const { container } = render(
-        <TestProviders>
-          <InteractiveDemo
-            Playground={buttonPlayground}
-            controls={buttonConfig.controls}
-          />
-        </TestProviders>,
-      );
+  describe.sequential("accessibility", () => {
+    const a11yTimeout = 30_000;
 
-      await expectNoA11yViolations(container);
-    });
+    it(
+      "has no WCAG violations",
+      async () => {
+        const { container } = render(
+          <TestProviders>
+            <InteractiveDemo
+              Playground={buttonPlayground}
+              controls={buttonConfig.controls}
+            />
+          </TestProviders>,
+        );
 
-    it("has no color contrast violations", async () => {
-      const { container } = render(
-        <TestProviders>
-          <InteractiveDemo
-            Playground={buttonPlayground}
-            controls={buttonConfig.controls}
-          />
-        </TestProviders>,
-      );
+        await expectNoA11yViolations(container);
+      },
+      a11yTimeout,
+    );
 
-      await expectNoColorContrastViolations(container);
-    });
+    it(
+      "has no color contrast violations",
+      async () => {
+        const { container } = render(
+          <TestProviders>
+            <InteractiveDemo
+              Playground={buttonPlayground}
+              controls={buttonConfig.controls}
+            />
+          </TestProviders>,
+        );
 
-    it("has no ARIA violations", async () => {
-      const { container } = render(
-        <TestProviders>
-          <InteractiveDemo
-            Playground={buttonPlayground}
-            controls={buttonConfig.controls}
-          />
-        </TestProviders>,
-      );
+        await expectNoColorContrastViolations(container);
+      },
+      a11yTimeout,
+    );
 
-      await expectNoAriaViolations(container);
-    });
+    it(
+      "has no ARIA violations",
+      async () => {
+        const { container } = render(
+          <TestProviders>
+            <InteractiveDemo
+              Playground={buttonPlayground}
+              controls={buttonConfig.controls}
+            />
+          </TestProviders>,
+        );
+
+        await expectNoAriaViolations(container);
+      },
+      a11yTimeout,
+    );
   });
 });

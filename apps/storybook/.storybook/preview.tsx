@@ -7,18 +7,19 @@ import "@dev-ui/tokens/fonts";
 import "@dev-ui/tokens/scss";
 import "@dev-ui/components/styles";
 import "./preview.css";
-import { getThemePresetNames } from "@dev-ui/tokens";
+import {
+  ACTIVE_THEME_STORAGE_KEY,
+  getBuiltInThemeIds,
+  THEME_MODE_STORAGE_KEY,
+} from "@dev-ui/tokens";
 import { mswHandlers } from "./msw-handlers";
 
 initialize({ onUnhandledRequest: "bypass" });
 
-const themePresets = getThemePresetNames();
-const presetItems = themePresets.map((preset) => ({
-  value: preset,
-  title: preset
-    .split("-")
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" "),
+const themeIds = getBuiltInThemeIds();
+const themeItems = themeIds.map((themeId) => ({
+  value: themeId,
+  title: themeId.charAt(0).toUpperCase() + themeId.slice(1),
 }));
 
 const modeItems = [
@@ -26,28 +27,25 @@ const modeItems = [
   { value: "dark", title: "Dark", icon: "moon" as const },
 ];
 
-/** Sync preset + mode toolbar globals to document root data attributes */
 function ThemeSync({
-  preset,
+  theme,
   mode,
   children,
 }: {
-  preset: string;
+  theme: string;
   mode: string;
   children: ReactNode;
 }) {
-  // Apply immediately so Storybook play functions see the correct theme
-  // (useLayoutEffect alone runs after the first paint / play tick).
   if (typeof document !== "undefined") {
     const root = document.documentElement;
-    root.setAttribute("data-theme-preset", preset);
+    root.setAttribute("data-theme", theme);
     root.setAttribute("data-theme-mode", mode);
   }
 
   useLayoutEffect(() => {
-    localStorage.setItem("theme-preset", preset);
-    localStorage.setItem("theme-mode", mode);
-  }, [preset, mode]);
+    localStorage.setItem(ACTIVE_THEME_STORAGE_KEY, theme);
+    localStorage.setItem(THEME_MODE_STORAGE_KEY, mode);
+  }, [theme, mode]);
 
   return children;
 }
@@ -58,22 +56,19 @@ const preview: Preview = {
     msw: { handlers: mswHandlers },
   },
   async beforeEach() {
-    localStorage.setItem("theme-preset", "modern-minimal");
-    localStorage.setItem("theme-mode", "light");
-    document.documentElement.setAttribute(
-      "data-theme-preset",
-      "modern-minimal",
-    );
+    localStorage.setItem(ACTIVE_THEME_STORAGE_KEY, "default");
+    localStorage.setItem(THEME_MODE_STORAGE_KEY, "light");
+    document.documentElement.setAttribute("data-theme", "default");
     document.documentElement.setAttribute("data-theme-mode", "light");
     MockDate.set("2024-04-01T12:00:00Z");
   },
   globalTypes: {
-    themePreset: {
-      description: "Color palette preset",
+    theme: {
+      description: "Visual theme",
       toolbar: {
-        title: "Preset",
+        title: "Theme",
         icon: "paintbrush",
-        items: presetItems,
+        items: themeItems,
         dynamicTitle: true,
       },
     },
@@ -88,21 +83,18 @@ const preview: Preview = {
     },
   },
   initialGlobals: {
-    themePreset: "modern-minimal",
+    theme: "default",
     themeMode: "light",
-    // Playwright e2e runs its own axe scans via @axe-core/playwright; disable
-    // addon auto-runs to avoid conflicting axe-core versions on window.axe.
     a11y: {
       manual: true,
     },
   },
   decorators: [
     (Story, context) => {
-      const preset =
-        (context.globals.themePreset as string) ?? "modern-minimal";
+      const theme = (context.globals.theme as string) ?? "default";
       const mode = (context.globals.themeMode as string) ?? "light";
       return (
-        <ThemeSync preset={preset} mode={mode}>
+        <ThemeSync theme={theme} mode={mode}>
           <OverlayProvider>
             <div
               style={{

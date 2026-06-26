@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as ThemesRouteImport } from './routes/themes'
+import { Route as ThemeEditorRouteImport } from './routes/theme-editor'
 import { Route as ComponentsRouteRouteImport } from './routes/components/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ComponentsIndexRouteImport } from './routes/components/index'
@@ -18,6 +19,11 @@ import { Route as ComponentsSlugRouteImport } from './routes/components/$slug'
 const ThemesRoute = ThemesRouteImport.update({
   id: '/themes',
   path: '/themes',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ThemeEditorRoute = ThemeEditorRouteImport.update({
+  id: '/theme-editor',
+  path: '/theme-editor',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ComponentsRouteRoute = ComponentsRouteRouteImport.update({
@@ -44,12 +50,14 @@ const ComponentsSlugRoute = ComponentsSlugRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/components': typeof ComponentsRouteRouteWithChildren
+  '/theme-editor': typeof ThemeEditorRoute
   '/themes': typeof ThemesRoute
   '/components/$slug': typeof ComponentsSlugRoute
   '/components/': typeof ComponentsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/theme-editor': typeof ThemeEditorRoute
   '/themes': typeof ThemesRoute
   '/components/$slug': typeof ComponentsSlugRoute
   '/components': typeof ComponentsIndexRoute
@@ -58,6 +66,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/components': typeof ComponentsRouteRouteWithChildren
+  '/theme-editor': typeof ThemeEditorRoute
   '/themes': typeof ThemesRoute
   '/components/$slug': typeof ComponentsSlugRoute
   '/components/': typeof ComponentsIndexRoute
@@ -67,15 +76,17 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/components'
+    | '/theme-editor'
     | '/themes'
     | '/components/$slug'
     | '/components/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/themes' | '/components/$slug' | '/components'
+  to: '/' | '/theme-editor' | '/themes' | '/components/$slug' | '/components'
   id:
     | '__root__'
     | '/'
     | '/components'
+    | '/theme-editor'
     | '/themes'
     | '/components/$slug'
     | '/components/'
@@ -84,6 +95,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ComponentsRouteRoute: typeof ComponentsRouteRouteWithChildren
+  ThemeEditorRoute: typeof ThemeEditorRoute
   ThemesRoute: typeof ThemesRoute
 }
 
@@ -94,6 +106,13 @@ declare module '@tanstack/react-router' {
       path: '/themes'
       fullPath: '/themes'
       preLoaderRoute: typeof ThemesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/theme-editor': {
+      id: '/theme-editor'
+      path: '/theme-editor'
+      fullPath: '/theme-editor'
+      preLoaderRoute: typeof ThemeEditorRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/components': {
@@ -144,6 +163,7 @@ const ComponentsRouteRouteWithChildren = ComponentsRouteRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ComponentsRouteRoute: ComponentsRouteRouteWithChildren,
+  ThemeEditorRoute: ThemeEditorRoute,
   ThemesRoute: ThemesRoute,
 }
 export const routeTree = rootRouteImport

@@ -111,6 +111,10 @@ export function getComboboxInput(page: Page): Locator {
   return page.getByRole("combobox");
 }
 
+export function getInputGroup(page: Page): Locator {
+  return page.locator('[data-input-group=""]');
+}
+
 export function getEditableDateSegment(page: Page, index = 0): Locator {
   return page
     .locator('[data-date-segment]:not([aria-hidden="true"])')
@@ -204,6 +208,24 @@ export async function expectOverlayBelowTrigger(
 
   expect(overlayBox.y).toBeGreaterThanOrEqual(
     triggerBox.y + triggerBox.height - tolerance,
+  );
+}
+
+export async function expectOverlayAlignedWithTrigger(
+  trigger: Locator,
+  overlay: Locator,
+  tolerance = 2,
+) {
+  const triggerBox = await trigger.boundingBox();
+  const overlayBox = await overlay.boundingBox();
+
+  if (!triggerBox || !overlayBox) {
+    throw new Error("Could not measure trigger or overlay bounds");
+  }
+
+  expect(Math.abs(overlayBox.x - triggerBox.x)).toBeLessThanOrEqual(tolerance);
+  expect(Math.abs(overlayBox.width - triggerBox.width)).toBeLessThanOrEqual(
+    tolerance,
   );
 }
 

@@ -8,7 +8,8 @@ import { ToggleButton } from "@dev-ui/components/toggle-button";
 import { ToggleButtonGroup } from "@dev-ui/components/toggle-button-group";
 import { cn } from "@dev-ui/core";
 import { Link } from "@tanstack/react-router";
-import { formatPresetLabel, useTheme } from "@/lib/theme";
+import { formatThemeLabel, useTheme } from "@/lib/theme";
+import { ShowcaseThemeEditor } from "@/modules/theme-editor/showcase-theme-editor";
 import styles from "./header.module.scss";
 
 const navItems = [
@@ -18,7 +19,7 @@ const navItems = [
 ] as const;
 
 export function Header() {
-  const { preset, mode, presets, setPreset, setMode } = useTheme();
+  const { theme, mode, themes, setTheme, setMode } = useTheme();
 
   return (
     <header className={styles.header}>
@@ -45,17 +46,17 @@ export function Header() {
       <div className={styles.controls}>
         <Select
           className={styles.presetSelect}
-          value={preset}
+          value={theme}
           onChange={(key) => {
-            if (key) setPreset(String(key) as typeof preset);
+            if (key) setTheme(String(key));
           }}
-          aria-label="Theme preset"
+          aria-label="Theme"
         >
           <SelectTrigger />
           <SelectContent>
-            {presets.map((name) => (
-              <SelectItem key={name} id={name}>
-                {formatPresetLabel(name)}
+            {themes.map((item) => (
+              <SelectItem key={item.id} id={item.id}>
+                {formatThemeLabel(item.id, item.label)}
               </SelectItem>
             ))}
           </SelectContent>
@@ -72,6 +73,7 @@ export function Header() {
           <ToggleButton id="light">Light</ToggleButton>
           <ToggleButton id="dark">Dark</ToggleButton>
         </ToggleButtonGroup>
+        <ShowcaseThemeEditor />
       </div>
     </header>
   );

@@ -8,6 +8,7 @@
   flex-direction: column;
   gap: var(--space-1);
   overflow-y: auto;
+  border: 0;
   color: var(--color-fg);
 
   :global([data-listbox=""]) {
@@ -16,6 +17,10 @@
     scroll-padding-block: var(--space-1);
     padding: 0;
     outline: none;
+  }
+
+  &:not([data-focus-within="true"]) :global([data-listbox=""]) {
+    display: none;
   }
 
   &[data-variant="default"] {
@@ -29,6 +34,12 @@
       padding-bottom: 0;
     }
 
+    :global([data-search-field-group=""]) {
+      border: 0;
+      background-color: transparent;
+      box-shadow: none;
+    }
+
     :global([data-listbox=""] [data-separator=""]) {
       margin-block: 0.375rem;
       margin-inline: -0.375rem;
@@ -40,6 +51,12 @@
   }
 
   &[data-variant="borderless"] {
+    :global([data-search-field-group=""]) {
+      border: 0;
+      background-color: transparent;
+      box-shadow: none;
+    }
+
     :global([data-search-field] > [data-input-group=""]) {
       border: 0;
       background-color: transparent;

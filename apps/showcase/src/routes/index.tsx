@@ -12,7 +12,8 @@ function HomePage() {
         <h1 className={styles.pageTitle}>Component Showcase</h1>
         <p className={styles.pageDescription}>
           A personal gallery of UI components built with React Aria and design
-          tokens. Browse interactive playgrounds and compare theme presets.
+          tokens. Browse interactive playgrounds, compare themes, and create
+          custom palettes.
         </p>
       </div>
       <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>

@@ -9,6 +9,7 @@ import {
 import {
   expectPageScreenshot,
   VIEWPORT_SCREENSHOT_OPTIONS,
+  waitForComponentCardPreviews,
   waitForThemesPage,
 } from "./helpers/screenshots";
 import { runVisualInteraction } from "./helpers/visual-interactions";
@@ -24,6 +25,7 @@ test.describe("Visual regression", () => {
     test("components index", async ({ page }) => {
       await expectPageScreenshot(page, "/components", "components-index.png", {
         fullPage: true,
+        beforeScreenshot: waitForComponentCardPreviews,
       });
     });
 

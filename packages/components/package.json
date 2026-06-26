@@ -173,6 +173,12 @@
       "import": "./dist/color-editor/index.js",
       "default": "./dist/color-editor/index.js"
     },
+    "./theme-editor": {
+      "development": "./src/theme-editor/index.ts",
+      "types": "./dist/theme-editor/index.d.ts",
+      "import": "./dist/theme-editor/index.js",
+      "default": "./dist/theme-editor/index.js"
+    },
     "./text-field": {
       "development": "./src/text-field/index.ts",
       "types": "./dist/text-field/index.d.ts",
