@@ -82,6 +82,7 @@ export function ComponentCard({
       tabIndex={0}
       aria-label={name}
       data-component={slug}
+      data-preview={showPreview ? "ready" : "pending"}
       className={styles.card}
       onClick={goToComponent}
       onKeyDown={handleKeyDown}

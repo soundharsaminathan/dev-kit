@@ -46,6 +46,24 @@ export async function waitForThemesPage(page: Page) {
   await page.locator("[data-theme]").last().waitFor({ state: "visible" });
 }
 
+export async function waitForComponentCardPreviews(page: Page) {
+  const cards = page.locator("[data-component]");
+  const count = await cards.count();
+
+  for (let index = 0; index < count; index++) {
+    await cards.nth(index).scrollIntoViewIfNeeded();
+  }
+
+  await expect(
+    page.locator('[data-component][data-preview="pending"]'),
+  ).toHaveCount(0, { timeout: 30_000 });
+
+  await page.evaluate(() => {
+    window.scrollTo(0, 0);
+  });
+  await waitForScreenshotReady(page);
+}
+
 export async function setEnumControl(page: Page, label: string, value: string) {
   const controls = getControlsPanel(page);
   const field = controls.getByText(label, { exact: true }).locator("..");
