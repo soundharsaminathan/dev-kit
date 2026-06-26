@@ -19,7 +19,7 @@ export type RunAffectedE2eDeps = {
   spawnSync: typeof nodeSpawnSync;
 };
 
-function createDefaultDeps(): RunAffectedE2eDeps {
+export function createDefaultDeps(): RunAffectedE2eDeps {
   return {
     resolveAffectedE2eFromGit,
     resolveAffectedE2eFromStaged,

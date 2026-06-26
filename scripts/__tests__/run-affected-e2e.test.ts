@@ -1,5 +1,11 @@
 import { describe, expect, it, type Mock, vi } from "vitest";
 import {
+  resolveAffectedE2eFromGit,
+  resolveAffectedE2eFromStaged,
+  toPlaywrightArgs,
+} from "../affected-e2e-specs.ts";
+import {
+  createDefaultDeps,
   type RunAffectedE2eDeps,
   runAffectedE2e,
 } from "../run-affected-e2e.ts";
@@ -25,6 +31,17 @@ function runWithDeps(argv: string[], deps: MockRunAffectedE2eDeps): number {
 }
 
 describe("runAffectedE2e", () => {
+  it("creates default dependencies", () => {
+    const deps = createDefaultDeps();
+
+    expect(deps.resolveAffectedE2eFromGit).toBe(resolveAffectedE2eFromGit);
+    expect(deps.resolveAffectedE2eFromStaged).toBe(
+      resolveAffectedE2eFromStaged,
+    );
+    expect(deps.toPlaywrightArgs).toBe(toPlaywrightArgs);
+    expect(typeof deps.spawnSync).toBe("function");
+  });
+
   it("skips when no affected specs are found", () => {
     const deps = createDeps();
     deps.resolveAffectedE2eFromGit.mockReturnValue({

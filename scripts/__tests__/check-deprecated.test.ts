@@ -1,3 +1,5 @@
+import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
@@ -84,6 +86,86 @@ describe("check-deprecated", () => {
     );
 
     expect(projects[0]?.replaceAll("\\", "/")).toContain("child/tsconfig.json");
+  });
+
+  it("collects deprecated usages from project sources", () => {
+    const usages = collectDeprecatedUsages(
+      [path.join(fixtureRoot, "deprecated-tsconfig.json")],
+      fixtureRoot,
+    );
+
+    expect(usages.length).toBeGreaterThan(0);
+    expect(usages[0]?.file.replaceAll("\\", "/")).toContain(
+      "deprecated-usage.ts",
+    );
+    expect(usages[0]?.message.toLowerCase()).toContain("deprecated");
+  });
+
+  it("sorts deprecated usages by file, line, and column", () => {
+    const usages = collectDeprecatedUsages(
+      [path.join(fixtureRoot, "deprecated-tsconfig.json")],
+      fixtureRoot,
+    );
+
+    const sorted = [...usages].sort((left, right) => {
+      const byFile = left.file.localeCompare(right.file);
+      if (byFile !== 0) {
+        return byFile;
+      }
+
+      if (left.line !== right.line) {
+        return left.line - right.line;
+      }
+
+      return left.column - right.column;
+    });
+
+    expect(usages).toEqual(sorted);
+  });
+
+  it("accepts absolute project config paths", () => {
+    const usages = collectDeprecatedUsages(
+      [path.join(fixtureRoot, "deprecated-tsconfig.json")],
+      fixtureRoot,
+    );
+
+    expect(usages.length).toBeGreaterThan(0);
+  });
+
+  it("falls back to default project configs when references are empty", () => {
+    const projects = resolveTsconfigProjects(
+      path.join(fixtureRoot, "empty-references.json"),
+    );
+
+    expect(projects).toEqual([
+      "packages/tokens/tsconfig.json",
+      "packages/core/tsconfig.json",
+      "packages/components/tsconfig.json",
+      "apps/storybook/tsconfig.json",
+      "apps/showcase/tsconfig.json",
+    ]);
+  });
+
+  it("resolves referenced project directories without a tsconfig suffix", () => {
+    const projects = resolveTsconfigProjects(
+      path.join(fixtureRoot, "root-with-directory-reference.json"),
+    );
+
+    expect(projects[0]?.replaceAll("\\", "/")).toContain("child/tsconfig.json");
+  });
+
+  it("throws when the root tsconfig cannot be parsed", () => {
+    const brokenPath = path.join(
+      os.tmpdir(),
+      `broken-tsconfig-${process.pid}.json`,
+    );
+    fs.writeFileSync(brokenPath, '{\n  "compilerOptions": {\n');
+
+    try {
+      expect(() => resolveTsconfigProjects(brokenPath)).toThrow();
+    } finally {
+      fs.unlinkSync(brokenPath);
+    }
   });
 
   it("reports deprecated usages from main", () => {

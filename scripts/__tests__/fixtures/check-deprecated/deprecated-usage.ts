@@ -1,3 +1,3 @@
-import { greet } from "./deprecated.js";
+import { legacyGreet } from "./deprecated.js";
 
-export const message = greet("world");
+export const message = legacyGreet("world");

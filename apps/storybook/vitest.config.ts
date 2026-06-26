@@ -3,17 +3,28 @@ import { fileURLToPath } from "node:url";
 import { storybookTest } from "@storybook/addon-vitest/vitest-plugin";
 import { playwright } from "@vitest/browser-playwright";
 import { defineConfig } from "vitest/config";
+import { devAppOptimizeDeps } from "../../scripts/vite/dev-app.ts";
 
 const dirname = path.dirname(fileURLToPath(import.meta.url));
+const vitestSetup = path.join(dirname, ".storybook/vitest.setup.ts");
 
 export default defineConfig({
   optimizeDeps: {
+    ...devAppOptimizeDeps,
+    holdUntilCrawlEnd: true,
     include: [
       "storybook/test",
       "msw-storybook-addon",
       "mockdate",
+      "lucide-react",
       "@dev-ui/components/popover",
+      "@dev-ui/components/styles",
     ],
+  },
+  server: {
+    warmup: {
+      clientFiles: [vitestSetup],
+    },
   },
   plugins: [
     storybookTest({
@@ -28,12 +39,14 @@ export default defineConfig({
   test: {
     name: "storybook",
     sequence: { groupOrder: 2 },
+    fileParallelism: false,
+    maxWorkers: 1,
     browser: {
       enabled: true,
       provider: playwright({}),
       headless: true,
       instances: [{ browser: "chromium" }],
     },
-    setupFiles: [path.join(dirname, ".storybook/vitest.setup.ts")],
+    setupFiles: [vitestSetup],
   },
 });
