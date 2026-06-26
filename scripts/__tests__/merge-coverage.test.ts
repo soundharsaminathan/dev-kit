@@ -110,6 +110,12 @@ describe("mergeCoverageSummaries", () => {
 });
 
 describe("readProjectCoverageSummaries", () => {
+  it("skips projects without a coverage summary file", () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "merge-coverage-"));
+
+    expect(readProjectCoverageSummaries(tempDir)).toEqual([]);
+  });
+
   it("reads per-project coverage summaries from disk", () => {
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "merge-coverage-"));
     const scriptsSummaryDir = path.join(tempDir, "coverage", "scripts");

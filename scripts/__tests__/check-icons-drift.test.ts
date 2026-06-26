@@ -181,4 +181,20 @@ describe("check-icons-drift", () => {
     expect(errorSpy).toHaveBeenCalledWith("Icon codegen drift detected in:");
     errorSpy.mockRestore();
   });
+
+  it("invokes main when loaded as the entry script", async () => {
+    const entryPath = path.resolve(
+      path.dirname(fileURLToPath(import.meta.url)),
+      "../check-icons-drift.ts",
+    );
+    const originalArgv = process.argv;
+
+    mockExecSync.mockReturnValue("");
+    process.argv = ["node", entryPath];
+    vi.resetModules();
+    await import("../check-icons-drift.ts");
+    process.argv = originalArgv;
+
+    expect(mockExecSync).toHaveBeenCalled();
+  });
 });

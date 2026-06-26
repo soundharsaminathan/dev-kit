@@ -465,6 +465,19 @@ describe("runAffectedE2eCli", () => {
     logSpy.mockRestore();
     errorSpy.mockRestore();
   });
+
+  it("prints affected spec paths without stderr for specs mode", () => {
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    mockExecSync.mockReturnValue("packages/components/src/button/Button.tsx\n");
+    runAffectedE2eCli([]);
+
+    expect(logSpy).toHaveBeenCalledWith("button.spec.ts");
+    expect(errorSpy).not.toHaveBeenCalled();
+    logSpy.mockRestore();
+    errorSpy.mockRestore();
+  });
 });
 
 afterEach(() => {

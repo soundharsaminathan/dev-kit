@@ -374,4 +374,17 @@ describe("check-deprecated", () => {
     });
     expect(process.exitCode).toBe(0);
   });
+
+  it("sorts usages on the same line by column", () => {
+    const usages = collectDeprecatedUsages(
+      [path.join(fixtureRoot, "deprecated-same-line-tsconfig.json")],
+      fixtureRoot,
+    );
+    const sameLineUsages = usages.filter((usage) => usage.line === 1);
+
+    expect(sameLineUsages).toHaveLength(2);
+    expect(sameLineUsages[0]?.column).toBeLessThan(
+      sameLineUsages[1]?.column ?? 0,
+    );
+  });
 });

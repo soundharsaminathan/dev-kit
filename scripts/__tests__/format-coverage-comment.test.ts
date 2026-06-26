@@ -97,6 +97,12 @@ describe("readLibCoverageSummaries", () => {
     ]);
   });
 
+  it("skips library summaries when the summary file is missing", () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "lib-coverage-"));
+
+    expect(readLibCoverageSummaries(tempDir)).toEqual([]);
+  });
+
   it("skips library summaries that are missing total metrics", () => {
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "lib-coverage-"));
     const componentsDir = path.join(tempDir, "coverage", "components");
