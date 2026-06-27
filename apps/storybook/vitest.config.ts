@@ -3,7 +3,10 @@ import { fileURLToPath } from "node:url";
 import { storybookTest } from "@storybook/addon-vitest/vitest-plugin";
 import { playwright } from "@vitest/browser-playwright";
 import { defineConfig } from "vitest/config";
-import { devAppOptimizeDeps } from "../../scripts/vite/dev-app.ts";
+import {
+  CORE_OPTIMIZE_DEPS,
+  devAppOptimizeDeps,
+} from "../../scripts/vite/dev-app.ts";
 
 const dirname = path.dirname(fileURLToPath(import.meta.url));
 const vitestSetup = path.join(dirname, ".storybook/vitest.setup.ts");
@@ -11,8 +14,8 @@ const vitestSetup = path.join(dirname, ".storybook/vitest.setup.ts");
 export default defineConfig({
   optimizeDeps: {
     ...devAppOptimizeDeps,
-    holdUntilCrawlEnd: true,
     include: [
+      ...CORE_OPTIMIZE_DEPS,
       "storybook/test",
       "msw-storybook-addon",
       "mockdate",

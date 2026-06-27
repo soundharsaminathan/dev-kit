@@ -60,9 +60,15 @@ describe("color-context", () => {
       { wrapper: Wrapper },
     );
 
-    expect(result.current.value?.toString("hex")).toMatch(/6366f1/i);
-    expect(result.current.onChange).toBeTypeOf("function");
-    expect(result.current["aria-label"]).toBe("Hue");
+    const merged = result.current as unknown as {
+      value: { toString: (format: string) => string };
+      onChange: (value: unknown) => void;
+      "aria-label": string;
+    };
+
+    expect(merged.value.toString("hex")).toMatch(/6366f1/i);
+    expect(merged.onChange).toBeTypeOf("function");
+    expect(merged["aria-label"]).toBe("Hue");
   });
 
   it("returns props unchanged when picker state is missing", () => {

@@ -45,7 +45,7 @@ describe("Meter", () => {
 
   it("handles undefined values and invalid ranges", () => {
     const { container, rerender } = render(
-      <Meter aria-label="Storage used" value={undefined}>
+      <Meter aria-label="Storage used">
         <MeterTrack />
       </Meter>,
     );
