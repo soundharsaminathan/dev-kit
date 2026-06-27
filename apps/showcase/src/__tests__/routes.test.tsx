@@ -6,7 +6,13 @@ import {
   createRouter,
   RouterProvider,
 } from "@tanstack/react-router";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { routeTree } from "../routeTree.gen";
 
@@ -27,7 +33,7 @@ type RenderRouteOptions = {
 
 async function renderRoute(
   initialPath = "/",
-  { ready, timeout = 25_000 }: RenderRouteOptions = {},
+  { ready, timeout = 15_000 }: RenderRouteOptions = {},
 ) {
   const router = createTestRouter(initialPath);
   render(<RouterProvider router={router} />);
@@ -76,7 +82,13 @@ describe("showcase routes", () => {
   });
 
   it("renders a component detail page", async () => {
-    await renderRoute("/components/button");
+    await renderRoute("/components/button", {
+      ready: () => {
+        expect(
+          screen.getByRole("heading", { name: "Button" }),
+        ).toBeInTheDocument();
+      },
+    });
 
     expect(screen.getByRole("heading", { name: "Button" })).toBeInTheDocument();
     expect(screen.getByText("Playground")).toBeInTheDocument();
@@ -89,12 +101,25 @@ describe("showcase routes", () => {
   });
 
   it("renders the last component without a next pager link", async () => {
-    await renderRoute("/components/tag-group");
+    await renderRoute("/components/tag-group", {
+      ready: () => {
+        expect(
+          screen.getByRole("heading", { name: "Tag Group" }),
+        ).toBeInTheDocument();
+      },
+    });
 
     expect(
       screen.getByRole("heading", { name: "Tag Group" }),
     ).toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: /→/i })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("navigation", { name: "Component pager" }),
+    ).toBeInTheDocument();
+    expect(
+      within(
+        screen.getByRole("navigation", { name: "Component pager" }),
+      ).queryByRole("link", { name: /→/i }),
+    ).not.toBeInTheDocument();
   });
 
   it("renders a component with normalized control values", async () => {

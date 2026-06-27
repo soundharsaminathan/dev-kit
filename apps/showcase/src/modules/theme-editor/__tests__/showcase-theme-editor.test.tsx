@@ -155,17 +155,25 @@ describe("ShowcaseThemeEditor", () => {
       </AppThemeProvider>,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: /Theme/ }));
-    fireEvent.click(screen.getByRole("option", { name: "Material" }));
-    expect(screen.getByRole("button", { name: /Theme/ })).toHaveTextContent(
-      "Material",
-    );
+    const drawer = await screen.findByTestId("theme-editor-drawer");
 
-    fireEvent.click(screen.getByRole("button", { name: /Icon pack/ }));
-    fireEvent.click(screen.getByRole("option", { name: "Heroicons Outline" }));
-    expect(screen.getByRole("button", { name: /Icon pack/ })).toHaveTextContent(
-      "Heroicons Outline",
+    fireEvent.click(within(drawer).getByRole("button", { name: /Theme/ }));
+    fireEvent.click(await screen.findByRole("option", { name: "Material" }));
+    await waitFor(() => {
+      expect(
+        within(drawer).getByRole("button", { name: /Theme/ }),
+      ).toHaveTextContent("Material");
+    });
+
+    fireEvent.click(within(drawer).getByRole("button", { name: /Icon pack/ }));
+    fireEvent.click(
+      await screen.findByRole("option", { name: "Heroicons Outline" }),
     );
+    await waitFor(() => {
+      expect(
+        within(drawer).getByRole("button", { name: /Icon pack/ }),
+      ).toHaveTextContent("Heroicons Outline");
+    });
   });
 
   it("supports controlled open state and custom triggers", () => {
