@@ -35,4 +35,16 @@ describe("primitives", () => {
     expect(css).toContain("--font-sans: Inter;");
     expect(css).not.toContain("--on-neutral-500:");
   });
+
+  it("emits on-color variables when enabled", () => {
+    const resolved = resolveColorConfig(DEFAULT_COLOR_CONFIG);
+    const css = emitPrimitivesBlock({
+      selector: ":root",
+      resolved,
+      mode: "light",
+      onColors: true,
+    });
+
+    expect(css).toContain("--on-neutral-500:");
+  });
 });

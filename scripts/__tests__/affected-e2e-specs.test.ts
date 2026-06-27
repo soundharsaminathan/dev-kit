@@ -265,6 +265,22 @@ describe("resolveAffectedE2eFromGit", () => {
       specs: ["button.spec.ts"],
     });
   });
+
+  it("keeps an origin-prefixed base ref unchanged", () => {
+    mockExecSync.mockImplementation((command) => {
+      if (command === "git diff --name-only origin/develop") {
+        return "README.md";
+      }
+
+      if (command === "git ls-files --others --exclude-standard") {
+        return "";
+      }
+
+      throw new Error(`unexpected command: ${command}`);
+    });
+
+    expect(resolveAffectedE2eFromGit("origin/develop").mode).toBe("none");
+  });
 });
 
 describe("resolveAffectedE2eFromStaged", () => {
@@ -354,6 +370,22 @@ describe("resolveAffectedE2eForArgv", () => {
       specs: ["button.spec.ts"],
     });
   });
+
+  it("falls back to origin/main when no base env vars are set", () => {
+    mockExecSync.mockImplementation((command) => {
+      if (command === "git diff --name-only origin/main") {
+        return "README.md";
+      }
+
+      if (command === "git ls-files --others --exclude-standard") {
+        return "";
+      }
+
+      throw new Error(`unexpected command: ${command}`);
+    });
+
+    expect(resolveAffectedE2eForArgv([]).mode).toBe("none");
+  });
 });
 
 describe("formatAffectedE2eCliOutput", () => {
@@ -417,6 +449,32 @@ describe("runAffectedE2eCli", () => {
     runAffectedE2eCli(["--staged"]);
 
     expect(logSpy).toHaveBeenCalled();
+    logSpy.mockRestore();
+    errorSpy.mockRestore();
+  });
+
+  it("prints stderr when the result includes a reason", () => {
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    mockExecSync.mockReturnValue("README.md");
+    runAffectedE2eCli([]);
+
+    expect(logSpy).toHaveBeenCalledWith("none");
+    expect(errorSpy).toHaveBeenCalledWith("No visual-relevant file changes");
+    logSpy.mockRestore();
+    errorSpy.mockRestore();
+  });
+
+  it("prints affected spec paths without stderr for specs mode", () => {
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    mockExecSync.mockReturnValue("packages/components/src/button/Button.tsx\n");
+    runAffectedE2eCli([]);
+
+    expect(logSpy).toHaveBeenCalledWith("button.spec.ts");
+    expect(errorSpy).not.toHaveBeenCalled();
     logSpy.mockRestore();
     errorSpy.mockRestore();
   });

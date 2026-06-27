@@ -43,7 +43,7 @@ describe("Header", () => {
     expect(
       screen.getByRole("button", { name: "Edit theme" }),
     ).toBeInTheDocument();
-    expect(screen.getAllByLabelText("Theme")[0]).toBeInTheDocument();
+    expect(screen.queryByLabelText("Theme")).not.toBeInTheDocument();
   });
 
   it("updates theme mode from the toggle group", () => {

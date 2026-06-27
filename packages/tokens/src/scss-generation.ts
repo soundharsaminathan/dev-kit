@@ -53,7 +53,7 @@ function generateThemeFile(themeId: BuiltInThemeId): string {
   return `${light}\n\n${dark}\n`;
 }
 
-function generateDefaultThemeSCSS(theme: ResolvedTheme): string {
+export function generateDefaultThemeSCSS(theme: ResolvedTheme): string {
   const resolved = resolveColorConfig(theme.color);
   const extraVars: Record<string, string> = {};
   if (theme.radiusFactor !== undefined) {

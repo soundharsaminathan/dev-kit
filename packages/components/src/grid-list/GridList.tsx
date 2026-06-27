@@ -1,4 +1,5 @@
 import { cn, composeRefs } from "@dev-ui/core";
+import { Icon } from "@dev-ui/icons";
 import { useFocusRing } from "@react-aria/focus";
 import { useGridList, useGridListItem } from "@react-aria/gridlist";
 import { useHover } from "@react-aria/interactions";
@@ -47,25 +48,6 @@ function useGridListContext(component: string): GridListContextValue {
     throw new Error(`${component} must be used within GridList`);
   }
   return context;
-}
-
-function CheckIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      aria-hidden="true"
-      className={styles.checkIcon}
-    >
-      <path
-        d="M20 6L9 17l-5-5"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
 }
 
 function GridListItemRenderer({
@@ -129,7 +111,7 @@ function GridListItemRenderer({
         </div>
         {selectionMode !== "none" && isSelected ? (
           <span data-grid-list-item-indicator="" className={styles.indicator}>
-            <CheckIcon />
+            <Icon name="check" className={styles.checkIcon} />
           </span>
         ) : null}
       </div>

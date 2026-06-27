@@ -22,6 +22,11 @@ describe("theme-draft", () => {
     expect(draft.color.seeds.neutral).toBeDefined();
   });
 
+  it("stores radiusFactor when provided at creation", () => {
+    const draft = createThemeDraft({ radiusFactor: 1.25 });
+    expect(draft.radiusFactor).toBe(1.25);
+  });
+
   it("sets and clears token overrides", () => {
     const draft = createThemeDraft();
     const withOverride = setTokenOverride(
@@ -43,6 +48,30 @@ describe("theme-draft", () => {
     expect(
       cleared.tokenOverrides.interaction?.["interaction-hover-scale"],
     ).toBeUndefined();
+  });
+
+  it("clears whitespace-only overrides", () => {
+    const draft = setTokenOverride(
+      createThemeDraft(),
+      "foundation",
+      "radius-sm",
+      "  ",
+    );
+
+    expect(draft.tokenOverrides.foundation?.["radius-sm"]).toBeUndefined();
+  });
+
+  it("preserves category when overriding an existing token", () => {
+    const draft = setTokenOverride(
+      createThemeDraft(),
+      "interaction",
+      "interaction-hover-scale",
+      "1.05",
+    );
+
+    expect(
+      draft.tokenOverrides.interaction?.["interaction-hover-scale"]?.category,
+    ).toBeDefined();
   });
 
   it("converts draft to theme definition", () => {
@@ -77,6 +106,21 @@ describe("theme-draft", () => {
       true,
     );
     expect(interactionTokens).toEqual(grouped.interaction);
+  });
+
+  it("lists editable tokens across layers", () => {
+    const draft = createThemeDraft({ label: "Acme" });
+    const tokens = listEditableTokens(draft);
+    expect(tokens.length).toBeGreaterThan(0);
+    expect(tokens.some((token) => token.layer === "foundation")).toBe(true);
+  });
+
+  it("groups editable tokens by layer and updates color seeds", () => {
+    const draft = setColorSeed(createThemeDraft(), "accent", "#123456");
+    const grouped = listEditableTokensByLayer(draft);
+
+    expect(grouped.foundation.length).toBeGreaterThan(0);
+    expect(draft.color.seeds.accent).toBe("#123456");
   });
 
   it("updates color seeds and clears blank overrides", () => {

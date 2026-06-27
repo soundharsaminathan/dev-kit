@@ -1,4 +1,5 @@
 import { cn } from "@dev-ui/core";
+import { Icon } from "@dev-ui/icons";
 import { Button } from "../button/Button";
 import styles from "./pagination.module.scss";
 import type {
@@ -8,44 +9,6 @@ import type {
   PaginationListProps,
   PaginationProps,
 } from "./pagination.types";
-
-function ChevronLeftIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path
-        d="M15 6l-6 6 6 6"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
-function ChevronRightIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path
-        d="M9 6l6 6-6 6"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
-function MoreHorizontalIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <circle cx="5" cy="12" r="1.5" fill="currentColor" />
-      <circle cx="12" cy="12" r="1.5" fill="currentColor" />
-      <circle cx="19" cy="12" r="1.5" fill="currentColor" />
-    </svg>
-  );
-}
 
 function Pagination({ className, ...props }: PaginationProps) {
   return (
@@ -90,7 +53,7 @@ function PaginationPrevious({ className, ...props }: PaginationLinkProps) {
       className={cn(styles.previous, className)}
       {...props}
     >
-      <ChevronLeftIcon />
+      <Icon name="chevron-left" />
       <span className={styles.label}>Previous</span>
     </PaginationLink>
   );
@@ -104,7 +67,7 @@ function PaginationNext({ className, ...props }: PaginationLinkProps) {
       {...props}
     >
       <span className={styles.label}>Next</span>
-      <ChevronRightIcon />
+      <Icon name="chevron-right" />
     </PaginationLink>
   );
 }
@@ -116,7 +79,7 @@ function PaginationEllipsis({ className, ...props }: PaginationEllipsisProps) {
       className={cn(styles.ellipsis, className)}
       {...props}
     >
-      <MoreHorizontalIcon />
+      <Icon name="more-horizontal" />
       <span className={styles.visuallyHidden}>More pages</span>
     </span>
   );

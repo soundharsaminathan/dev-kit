@@ -25,7 +25,7 @@ describe("buildVitestCiCommand", () => {
     expect(command).toContain("--coverage.thresholds.lines=90");
     expect(command).toContain("--coverage.thresholds.statements=90");
     expect(command).toContain("--coverage.thresholds.functions=90");
-    expect(command).toContain("--coverage.thresholds.branches=80");
+    expect(command).toContain("--coverage.thresholds.branches=90");
     expect(command).toContain("--outputFile=test-results/junit-components.xml");
   });
 
@@ -33,7 +33,7 @@ describe("buildVitestCiCommand", () => {
     const command = buildVitestCiCommand("showcase");
 
     expect(command).toContain("--coverage.thresholds.lines=90");
-    expect(command).toContain("--coverage.thresholds.branches=80");
+    expect(command).toContain("--coverage.thresholds.branches=90");
   });
 
   it("omits junit reporters in coverage-only mode", () => {
@@ -47,6 +47,12 @@ describe("buildVitestCiCommand", () => {
 describe("runVitestCiFromArgv", () => {
   it("throws for an invalid project", () => {
     expect(() => runVitestCiFromArgv(["invalid-project"])).toThrow(
+      /Usage: pnpm exec tsx scripts\/run-vitest-ci.ts/,
+    );
+  });
+
+  it("throws when the project argument is missing", () => {
+    expect(() => runVitestCiFromArgv([])).toThrow(
       /Usage: pnpm exec tsx scripts\/run-vitest-ci.ts/,
     );
   });

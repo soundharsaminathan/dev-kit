@@ -1,4 +1,5 @@
 import { cn, composeRefs } from "@dev-ui/core";
+import { Icon } from "@dev-ui/icons";
 import { OverlayContainer } from "@react-aria/overlays";
 import { HiddenSelect, useSelect } from "@react-aria/select";
 import { mergeProps } from "@react-aria/utils";
@@ -42,25 +43,6 @@ function useSelectContext(component: string): SelectContextValue {
     throw new Error(`${component} must be used within Select`);
   }
   return context;
-}
-
-function ChevronDownIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      aria-hidden="true"
-      className={styles.chevron}
-    >
-      <path
-        d="M6 9l6 6 6-6"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
 }
 
 function getLabelText(children: ReactNode): string | undefined {
@@ -254,7 +236,7 @@ function SelectTrigger({
       {children ?? (
         <>
           <SelectValue />
-          <ChevronDownIcon />
+          <Icon name="chevron-down" className={styles.chevron} />
         </>
       )}
     </Button>

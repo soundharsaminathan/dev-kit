@@ -63,7 +63,11 @@ export function oklchCss(o: Oklch): string {
   return `oklch(${L} ${C} ${H})`;
 }
 
-function toSrgb(input: string | Oklch): { r: number; g: number; b: number } {
+export function toSrgb(input: string | Oklch): {
+  r: number;
+  g: number;
+  b: number;
+} {
   const color =
     typeof input === "string"
       ? new Color(input)
@@ -84,7 +88,7 @@ export function onBlackWhite(background: string): "black" | "white" {
     : "white";
 }
 
-function resample(anchors: readonly number[], n: number): number[] {
+export function resample(anchors: readonly number[], n: number): number[] {
   if (n <= 1) return [anchors[anchors.length - 1]!];
   if (n === anchors.length) return [...anchors];
   const out: number[] = [];

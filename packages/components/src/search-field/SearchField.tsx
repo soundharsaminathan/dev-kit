@@ -1,4 +1,5 @@
 import { cn, composeRefs } from "@dev-ui/core";
+import { Icon } from "@dev-ui/icons";
 import { useButton } from "@react-aria/button";
 import { useFocusRing } from "@react-aria/focus";
 import { useSearchField } from "@react-aria/searchfield";
@@ -25,38 +26,6 @@ function useSearchFieldContext(component: string): SearchFieldContextValue {
     throw new Error(`${component} must be used within SearchField`);
   }
   return context;
-}
-
-function SearchIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      aria-hidden="true"
-      className={styles.icon}
-    >
-      <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="2" />
-      <path
-        d="M20 20l-3-3"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
-
-function ClearIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path
-        d="M18 6L6 18M6 6l12 12"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
 }
 
 function SearchField({
@@ -98,7 +67,7 @@ function SearchField({
       >
         {children ?? (
           <SearchFieldGroup>
-            <SearchIcon />
+            <Icon name="search" className={styles.icon} />
             <SearchFieldInput placeholder={placeholder} />
             <SearchFieldClear />
           </SearchFieldGroup>
@@ -187,7 +156,7 @@ function SearchFieldClear({
       data-search-field-clear=""
       className={cn(styles.clear, className)}
     >
-      {children ?? <ClearIcon />}
+      {children ?? <Icon name="x" />}
     </button>
   );
 }

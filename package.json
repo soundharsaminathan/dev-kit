@@ -3,8 +3,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "nx run-many -t build --projects=core,components",
+    "build": "nx run-many -t build --projects=icons,icons-packs,core,components",
     "build:tokens": "nx run tokens:build:tokens",
+    "icons:build": "nx run icons:build:icons",
     "format": "biome format --write .",
     "typecheck": "nx run dev-kit:typecheck",
     "check:deprecated": "pnpm exec tsx scripts/check-deprecated.ts",

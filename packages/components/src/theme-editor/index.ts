@@ -1,10 +1,10 @@
+export type { ThemeEditorProps } from "./ThemeEditor";
 export { ThemeEditor } from "./ThemeEditor";
 export { ThemeEditorDrawer } from "./ThemeEditorDrawer";
 export { ThemeEditorPanel } from "./ThemeEditorPanel";
 export type {
   ThemeEditorDrawerProps,
   ThemeEditorPanelProps,
-  ThemeEditorProps,
 } from "./theme-editor.types";
 export {
   draftToLiveDefinition,

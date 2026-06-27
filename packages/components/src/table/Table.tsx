@@ -1,4 +1,5 @@
 import { cn, composeRefs } from "@dev-ui/core";
+import { Icon } from "@dev-ui/icons";
 import { useFocusRing } from "@react-aria/focus";
 import { useHover } from "@react-aria/interactions";
 import type { AriaTableProps } from "@react-aria/table";
@@ -54,15 +55,15 @@ function SortIcon({
   className?: string | undefined;
 }) {
   return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      aria-hidden="true"
-      data-direction={direction}
+    <Icon
       className={className}
-    >
-      <path d="M12 5l6 7H6l6-7z" fill="currentColor" />
-    </svg>
+      {...(direction !== undefined
+        ? ({ "data-direction": direction } as {
+            "data-direction": typeof direction;
+          })
+        : {})}
+      name="chevron-up"
+    />
   );
 }
 

@@ -1,5 +1,12 @@
 import { Button } from "@dev-ui/components/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+} from "@dev-ui/components/select";
 import { ThemeEditorDrawer } from "@dev-ui/components/theme-editor";
+import { packLibraries, resolveIconTheme } from "@dev-ui/icons";
 import {
   createThemeDraft,
   definitionToThemeDraft,
@@ -12,7 +19,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { formatThemeLabel, useTheme } from "@/lib/theme";
+import { formatThemeLabel, useIcons, useTheme } from "@/lib/theme";
 import styles from "./showcase-theme-editor.module.scss";
 
 interface ShowcaseThemeEditorProps {
@@ -30,12 +37,14 @@ function ShowcaseThemeEditor({
 }: ShowcaseThemeEditorProps) {
   const {
     theme: activeTheme,
+    themes,
     customThemes,
     saveCustomTheme,
     deleteCustomTheme,
     setTheme,
     setLiveTheme,
   } = useTheme();
+  const { packId, setTheme: setIconTheme } = useIcons();
 
   const [draft, setDraft] = useState(() => createThemeDraft());
   const [editingId, setEditingId] = useState<string | undefined>();
@@ -107,6 +116,44 @@ function ShowcaseThemeEditor({
       onLivePreview={setLiveTheme}
       {...(trigger !== undefined ? { trigger } : {})}
       triggerLabel="Edit theme"
+      panelHeader={
+        <>
+          <Select
+            className={styles.presetSelect}
+            value={activeTheme}
+            onChange={(key) => {
+              if (key) setTheme(String(key));
+            }}
+            aria-label="Theme"
+          >
+            <SelectTrigger />
+            <SelectContent>
+              {themes.map((item) => (
+                <SelectItem key={item.id} id={item.id}>
+                  {formatThemeLabel(item.id, item.label)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select
+            className={styles.presetSelect}
+            value={packId}
+            onChange={(key) => {
+              if (key) setIconTheme(resolveIconTheme(String(key)));
+            }}
+            aria-label="Icon pack"
+          >
+            <SelectTrigger />
+            <SelectContent>
+              {packLibraries.map((pack) => (
+                <SelectItem key={pack.id} id={pack.id}>
+                  {pack.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </>
+      }
     >
       {customThemes.length > 0 ? (
         <div>

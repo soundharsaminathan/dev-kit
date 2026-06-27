@@ -15,6 +15,8 @@ const coverageExclude = [
   "**/generate-scss.ts",
   "**/*.module.scss",
   "**/scss-modules.d.ts",
+  "**/generated/**",
+  "**/*.generated.ts",
   "scripts/vite/**",
 ];
 
@@ -48,6 +50,19 @@ export default defineConfig({
       },
       {
         test: {
+          name: "icons",
+          root: path.join(rootDir, "packages/icons"),
+          include: ["src/**/*.{test,spec}.{ts,tsx}"],
+          exclude: testExclude,
+          environment: "jsdom",
+          css: true,
+          globals: true,
+          setupFiles: [path.join(rootDir, "vitest.setup.ts")],
+          sequence: { groupOrder: 2 },
+        },
+      },
+      {
+        test: {
           name: "core",
           root: path.join(rootDir, "packages/core"),
           include: ["src/**/*.{test,spec}.{ts,tsx}"],
@@ -68,14 +83,21 @@ export default defineConfig({
           },
           css: true,
           globals: true,
-          setupFiles: [path.join(rootDir, "vitest.setup.ts")],
           testTimeout: 15_000,
           hookTimeout: 15_000,
           sequence: { groupOrder: 2 },
+          setupFiles: [
+            path.join(rootDir, "vitest.setup.ts"),
+            path.join(rootDir, "packages/components/vitest.setup.tsx"),
+          ],
         },
         resolve: {
           alias: {
             "@": path.join(rootDir, "packages/components/src"),
+            "@dev-ui/icons-packs/lucide": path.join(
+              rootDir,
+              "packages/icons-packs/src/lucide/index.tsx",
+            ),
           },
         },
       },

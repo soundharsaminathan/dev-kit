@@ -1,0 +1,40 @@
+{
+  "name": "@dev-ui/icons",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "description": "Icon system for dev-kit component library",
+  "exports": {
+    ".": {
+      "development": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "scripts": {
+    "build": "vite build",
+    "build:icons": "tsx scripts/build-icons.ts",
+    "test:coverage": "vitest run --coverage --config ../../vitest.config.ts --project icons"
+  },
+  "sideEffects": false,
+  "peerDependencies": {
+    "react": ">=19.2.0 <20"
+  },
+  "devDependencies": {
+    "@dev-ui/icons-packs": "workspace:*",
+    "@fluentui/react-icons": "^2.0.319",
+    "@heroicons/react": "^2.2.0",
+    "@phosphor-icons/react": "^2.1.10",
+    "@tabler/icons-react": "^3.36.0",
+    "@vitejs/plugin-react": "^5.1.0",
+    "lucide-react": "^0.575.0",
+    "typescript": "^6.0.3",
+    "vite": "catalog:",
+    "vite-plugin-dts": "^4.5.4"
+  }
+}

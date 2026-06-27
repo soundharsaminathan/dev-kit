@@ -1,4 +1,5 @@
 import { cn } from "@dev-ui/core";
+import { Icon } from "@dev-ui/icons";
 import {
   createContext,
   useCallback,
@@ -59,30 +60,7 @@ function useControllableOpen(
 }
 
 function PanelLeftIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      aria-hidden="true"
-      className={styles.panelLeftIcon}
-    >
-      <rect
-        x="3"
-        y="3"
-        width="18"
-        height="18"
-        rx="2"
-        stroke="currentColor"
-        strokeWidth="2"
-      />
-      <path
-        d="M9 3v18"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
+  return <Icon name="panel-left" className={styles.panelLeftIcon} />;
 }
 
 function SidebarProvider({

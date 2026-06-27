@@ -13,6 +13,7 @@ export function ThemeEditorDrawerMock({
   onLivePreview,
   trigger,
   triggerLabel = "Edit theme",
+  panelHeader,
   children,
 }: {
   value: ThemeDraft;
@@ -26,6 +27,7 @@ export function ThemeEditorDrawerMock({
   ) => void;
   trigger?: ReactNode | null;
   triggerLabel?: string;
+  panelHeader?: ReactNode;
   children?: ReactNode;
 }) {
   const [internalOpen, setInternalOpen] = useState(defaultOpen ?? false);
@@ -79,6 +81,7 @@ export function ThemeEditorDrawerMock({
           <button type="button" onClick={() => onSave?.(value)}>
             Save theme
           </button>
+          {panelHeader}
           {children}
         </div>
       ) : null}

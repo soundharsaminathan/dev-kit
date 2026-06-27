@@ -37,6 +37,15 @@ describe("mergeMetrics", () => {
       pct: (13 / 15) * 100,
     });
   });
+
+  it("returns 100% when both metric totals are zero", () => {
+    expect(mergeMetrics(metrics(0, 0), metrics(0, 0))).toEqual({
+      total: 0,
+      covered: 0,
+      skipped: 0,
+      pct: 100,
+    });
+  });
 });
 
 describe("mergeFileCoverage", () => {
@@ -86,9 +95,27 @@ describe("mergeCoverageSummaries", () => {
     expect(merged["src/shared.ts"].lines).toEqual(metrics(4, 3));
     expect(merged["src/shared.ts"].statements).toEqual(metrics(4, 3));
   });
+
+  it("ignores total entries and invalid file coverage payloads", () => {
+    const merged = mergeCoverageSummaries([
+      {
+        total: fileCoverage([2, 2], [2, 2]),
+        "src/a.ts": fileCoverage([2, 2], [2, 2]),
+        "src/invalid.ts": { lines: "bad" } as never,
+      },
+    ]);
+
+    expect(Object.keys(merged)).toEqual(["src/a.ts", "total"]);
+  });
 });
 
 describe("readProjectCoverageSummaries", () => {
+  it("skips projects without a coverage summary file", () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "merge-coverage-"));
+
+    expect(readProjectCoverageSummaries(tempDir)).toEqual([]);
+  });
+
   it("reads per-project coverage summaries from disk", () => {
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "merge-coverage-"));
     const scriptsSummaryDir = path.join(tempDir, "coverage", "scripts");

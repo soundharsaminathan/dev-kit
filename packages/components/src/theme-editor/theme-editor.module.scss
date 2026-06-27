@@ -46,10 +46,19 @@
 }
 
 .drawerBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
   flex: 1;
   min-height: 0;
   overflow: auto;
   padding: var(--space-4);
+}
+
+.panelHeader {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
 }
 
 .drawerFooter {

@@ -13,7 +13,10 @@
   "dependencies": {
     "@dev-ui/components": "workspace:*",
     "@dev-ui/core": "workspace:*",
+    "@dev-ui/icons": "workspace:*",
+    "@dev-ui/icons-packs": "workspace:*",
     "@dev-ui/tokens": "workspace:*",
+    "lucide-react": "^0.575.0",
     "@internationalized/date": "^3.12.2",
     "@react-aria/overlays": "^3.32.1",
     "@react-stately/overlays": "^3.7.1",

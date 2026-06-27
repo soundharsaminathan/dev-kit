@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "noEmit": true,
+    "skipLibCheck": true
+  },
+  "include": [
+    "deprecated.ts",
+    "deprecated-usage.ts",
+    "deprecated-usage-2.ts",
+    "node_modules/fake-pkg/index.ts",
+    "ambient.d.ts"
+  ]
+}

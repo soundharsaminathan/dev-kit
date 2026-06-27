@@ -1,4 +1,6 @@
 import { OverlayProvider } from "@dev-ui/components/popover";
+import { IconProvider, packLibraries, resolveIconTheme } from "@dev-ui/icons";
+import lucidePack from "@dev-ui/icons-packs/lucide";
 import type { Preview } from "@storybook/react-vite";
 import MockDate from "mockdate";
 import { initialize, mswLoader } from "msw-storybook-addon";
@@ -27,6 +29,26 @@ const modeItems = [
   { value: "dark", title: "Dark", icon: "moon" as const },
 ];
 
+const iconPackItems = packLibraries.map((pack) => ({
+  value: pack.id,
+  title: pack.label,
+}));
+
+function IconPackSync({
+  iconPack,
+  children,
+}: {
+  iconPack: string;
+  children: ReactNode;
+}) {
+  const iconTheme = resolveIconTheme(iconPack);
+
+  return (
+    <IconProvider icons={iconTheme} initialPack={lucidePack}>
+      {children}
+    </IconProvider>
+  );
+}
 function ThemeSync({
   theme,
   mode,
@@ -81,10 +103,20 @@ const preview: Preview = {
         dynamicTitle: true,
       },
     },
+    iconPack: {
+      description: "Icon library",
+      toolbar: {
+        title: "Icons",
+        icon: "component",
+        items: iconPackItems,
+        dynamicTitle: true,
+      },
+    },
   },
   initialGlobals: {
     theme: "default",
     themeMode: "light",
+    iconPack: "lucide",
     a11y: {
       manual: true,
     },
@@ -93,22 +125,25 @@ const preview: Preview = {
     (Story, context) => {
       const theme = (context.globals.theme as string) ?? "default";
       const mode = (context.globals.themeMode as string) ?? "light";
+      const iconPack = (context.globals.iconPack as string) ?? "lucide";
       return (
-        <ThemeSync theme={theme} mode={mode}>
-          <OverlayProvider>
-            <div
-              style={{
-                boxSizing: "border-box",
-                padding: "1rem",
-                background: "var(--color-bg)",
-                color: "var(--color-fg)",
-                height: "100%",
-              }}
-            >
-              <Story />
-            </div>
-          </OverlayProvider>
-        </ThemeSync>
+        <IconPackSync iconPack={iconPack}>
+          <ThemeSync theme={theme} mode={mode}>
+            <OverlayProvider>
+              <div
+                style={{
+                  boxSizing: "border-box",
+                  padding: "1rem",
+                  background: "var(--color-bg)",
+                  color: "var(--color-fg)",
+                  height: "100%",
+                }}
+              >
+                <Story />
+              </div>
+            </OverlayProvider>
+          </ThemeSync>
+        </IconPackSync>
       );
     },
   ],

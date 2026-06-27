@@ -1,4 +1,5 @@
 import { cn, composeRefs } from "@dev-ui/core";
+import { Icon } from "@dev-ui/icons";
 import { useFocusRing } from "@react-aria/focus";
 import { useHover } from "@react-aria/interactions";
 import type { AriaMenuOptions } from "@react-aria/menu";
@@ -40,25 +41,6 @@ import type {
 import { MenuContext, useMenuContext } from "./menu-context";
 
 const MenuItemContext = createContext<MenuItemContextValue | null>(null);
-
-function CheckIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      aria-hidden="true"
-      className={styles.checkIcon}
-    >
-      <path
-        d="M20 6L9 17l-5-5"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
 
 function getTriggerChild(children: ReactNode, contentDisplayName: string) {
   let found: ReactElement | null = null;
@@ -296,7 +278,7 @@ function MenuItemRenderer({
         )}
         {selectionMode !== "none" && isSelected ? (
           <span data-menu-item-indicator="" className={styles.indicator}>
-            <CheckIcon />
+            <Icon name="check" className={styles.checkIcon} />
           </span>
         ) : null}
       </li>

@@ -1,3 +1,4 @@
+export type { IconPackModule, IconTheme } from "@dev-ui/icons";
 export { cn } from "./cn";
 export { composeRefs } from "./compose-refs";
 export type {
