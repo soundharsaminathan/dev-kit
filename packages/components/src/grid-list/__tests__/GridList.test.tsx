@@ -1,5 +1,5 @@
 import "@testing-library/jest-dom/vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { GridList, GridListItem } from "../index";
 
@@ -111,8 +111,39 @@ describe("GridList", () => {
       </GridList>,
     );
 
-    const item = screen.getByText("One").closest("[data-grid-list-item]")!;
+    const item = screen
+      .getByText("One")
+      .closest("[data-grid-list-item]") as HTMLElement;
     fireEvent.pointerEnter(item, { pointerType: "mouse" });
     expect(item).toHaveAttribute("data-hovered", "true");
+  });
+
+  it("renders custom item children and labels", () => {
+    render(
+      <GridList aria-label="Files" selectionMode="none">
+        <GridListItem id="one">
+          <span data-testid="custom-item">Custom one</span>
+        </GridListItem>
+      </GridList>,
+    );
+
+    expect(screen.getByTestId("custom-item")).toBeInTheDocument();
+  });
+
+  it("reflects focus-visible state on grid items", () => {
+    render(
+      <GridList aria-label="Files" selectionMode="none">
+        <GridListItem id="one">One</GridListItem>
+      </GridList>,
+    );
+
+    const item = screen
+      .getByText("One")
+      .closest("[data-grid-list-item]") as HTMLElement;
+    act(() => {
+      item.focus();
+    });
+    fireEvent.keyDown(item, { key: "Tab" });
+    expect(item).toHaveAttribute("data-focus-visible", "true");
   });
 });

@@ -7,6 +7,7 @@ import {
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { TokenLayerPanel } from "../TokenLayerPanel";
+import styles from "../theme-editor.module.scss";
 
 describe("TokenLayerPanel", () => {
   it("returns null when tokenCount is zero", () => {
@@ -98,5 +99,68 @@ describe("TokenLayerPanel", () => {
       null,
       expect.any(String),
     );
+  });
+
+  it("shows css hints for tokens without overrides", () => {
+    const draft = createThemeDraft({ label: "Acme" });
+    const resolved = resolveThemeDraft(draft);
+
+    render(
+      <TokenLayerPanel
+        draft={draft}
+        resolved={resolved}
+        layer="foundation"
+        label="Foundation"
+        tokenCount={3}
+        onTokenChange={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /Foundation/ }));
+
+    expect(document.querySelector(`.${styles.tokenHint}`)).toBeTruthy();
+  });
+
+  it("renders optional header content", () => {
+    const draft = createThemeDraft({ label: "Acme" });
+    const resolved = resolveThemeDraft(draft);
+
+    render(
+      <TokenLayerPanel
+        draft={draft}
+        resolved={resolved}
+        layer="foundation"
+        label="Foundation"
+        tokenCount={3}
+        headerContent={<p>Layer header</p>}
+        onTokenChange={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /Foundation/ }));
+    expect(screen.getByText("Layer header")).toBeInTheDocument();
+  });
+
+  it("ignores empty change events until blur", () => {
+    const draft = createThemeDraft({ label: "Acme" });
+    const resolved = resolveThemeDraft(draft);
+    const onTokenChange = vi.fn();
+
+    render(
+      <TokenLayerPanel
+        draft={draft}
+        resolved={resolved}
+        layer="foundation"
+        label="Foundation"
+        tokenCount={3}
+        onTokenChange={onTokenChange}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /Foundation/ }));
+
+    const radiusInput = screen.getByLabelText("radius-sm value");
+    fireEvent.change(radiusInput, { target: { value: "" } });
+    expect(onTokenChange).not.toHaveBeenCalled();
   });
 });

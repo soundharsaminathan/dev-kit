@@ -131,4 +131,39 @@ describe("ColorSwatchPicker", () => {
 
     expect(screen.getByRole("radio")).toHaveAttribute("aria-checked", "true");
   });
+
+  it("selects swatches with Enter and Space keys", () => {
+    render(
+      <ColorSwatchPicker defaultValue="#6366f1" aria-label="Colors">
+        <ColorSwatchPickerItem color="#6366f1" />
+        <ColorSwatchPickerItem color="#ef4444" />
+      </ColorSwatchPicker>,
+    );
+
+    const items = screen.getAllByRole("radio");
+    items[1]?.focus();
+
+    fireEvent.keyDown(items[1]!, { key: "Enter" });
+    expect(items[1]).toHaveAttribute("aria-checked", "true");
+
+    items[0]?.focus();
+    fireEvent.keyDown(items[0]!, { key: " " });
+    expect(items[0]).toHaveAttribute("aria-checked", "true");
+  });
+
+  it("labels the group with aria-labelledby", () => {
+    render(
+      <>
+        <span id="colors-label">Palette</span>
+        <ColorSwatchPicker aria-labelledby="colors-label">
+          <ColorSwatchPickerItem color="#6366f1" />
+        </ColorSwatchPicker>
+      </>,
+    );
+
+    expect(screen.getByRole("radiogroup")).toHaveAttribute(
+      "aria-labelledby",
+      "colors-label",
+    );
+  });
 });

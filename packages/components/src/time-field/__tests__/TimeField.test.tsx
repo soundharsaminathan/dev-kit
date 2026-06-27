@@ -40,4 +40,23 @@ describe("TimeField", () => {
       "true",
     );
   });
+
+  it("renders description and error message props", () => {
+    render(
+      <TimeField
+        aria-label="Meeting time"
+        description="24-hour format"
+        errorMessage="Time is required"
+        isInvalid
+      />,
+    );
+
+    expect(screen.getByText("24-hour format")).toBeInTheDocument();
+    expect(screen.getByText("Time is required")).toBeInTheDocument();
+  });
+
+  it("renders a label prop without a Label child", () => {
+    render(<TimeField label="Meeting time" />);
+    expect(screen.getByText("Meeting time")).toBeInTheDocument();
+  });
 });

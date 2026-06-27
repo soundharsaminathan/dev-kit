@@ -85,4 +85,79 @@ describe("Virtualizer", () => {
       expect.stringContaining("height"),
     );
   });
+
+  it("falls back to offsetWidth when clientWidth is zero", () => {
+    const { container } = render(
+      <Virtualizer
+        aria-label="Large list"
+        items={items.slice(0, 5)}
+        height={120}
+        rowHeight={40}
+        selectionMode="none"
+      />,
+    );
+
+    const scroller = container.querySelector(
+      "[data-virtualizer='']",
+    ) as HTMLElement;
+    Object.defineProperty(scroller, "clientWidth", {
+      configurable: true,
+      value: 0,
+    });
+    Object.defineProperty(scroller, "offsetWidth", {
+      configurable: true,
+      value: 240,
+    });
+
+    fireEvent.scroll(scroller);
+    expect(screen.getByText("Item 1")).toBeInTheDocument();
+  });
+
+  it("renders item labels when renderItem is omitted", () => {
+    render(
+      <Virtualizer
+        aria-label="Large list"
+        items={items.slice(0, 3)}
+        height={120}
+        rowHeight={40}
+        selectionMode="none"
+      />,
+    );
+
+    expect(screen.getByText("Item 2")).toBeInTheDocument();
+  });
+
+  it("accepts custom layout options", () => {
+    const { container } = render(
+      <Virtualizer
+        aria-label="Large list"
+        items={items.slice(0, 5)}
+        height={120}
+        rowHeight={48}
+        layoutOptions={{ padding: 4 }}
+        selectionMode="none"
+      />,
+    );
+
+    expect(
+      container.querySelector("[data-virtualizer='']"),
+    ).toBeInTheDocument();
+  });
+
+  it("skips disabled items in selection", () => {
+    render(
+      <Virtualizer
+        aria-label="Large list"
+        items={[
+          { id: "1", label: "Item 1" },
+          { id: "2", label: "Item 2", isDisabled: true },
+        ]}
+        height={120}
+        rowHeight={40}
+        selectionMode="single"
+      />,
+    );
+
+    expect(screen.getByText("Item 1")).toBeInTheDocument();
+  });
 });

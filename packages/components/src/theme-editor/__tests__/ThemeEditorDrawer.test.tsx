@@ -148,4 +148,17 @@ describe("ThemeEditorDrawer", () => {
     expect(onOpenChange).toHaveBeenCalledWith(true);
     expect(screen.queryByLabelText("Theme name")).not.toBeInTheDocument();
   });
+
+  it("renders a custom panel header when provided", () => {
+    render(
+      <ThemeEditorDrawer
+        defaultOpen
+        value={draft}
+        onChange={vi.fn()}
+        panelHeader={<p>Custom panel header</p>}
+      />,
+    );
+
+    expect(screen.getByText("Custom panel header")).toBeInTheDocument();
+  });
 });

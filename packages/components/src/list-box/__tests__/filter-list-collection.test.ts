@@ -1,7 +1,12 @@
+import type { ListState } from "@react-stately/list";
 import { ListCollection } from "@react-stately/list";
 import type { Node } from "@react-types/shared";
+import { renderHook } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { filterListCollection } from "../filter-list-collection";
+import {
+  filterListCollection,
+  useFilteredListState,
+} from "../filter-list-collection";
 
 type Item = { id: string; label: string };
 
@@ -71,5 +76,38 @@ describe("filterListCollection", () => {
 
     expect([...filtered]).toHaveLength(1);
     expect(filtered.getChildren?.("na")).toBeDefined();
+  });
+
+  it("returns non-item nodes unchanged", () => {
+    const header = {
+      ...createNode("header", "item", "Header"),
+      type: "header",
+    } as Node<Item>;
+    const collection = new ListCollection([header]);
+
+    const filtered = filterListCollection(collection, () => false);
+
+    expect([...filtered]).toHaveLength(1);
+    expect(filtered.at(0)?.type).toBe("header");
+  });
+});
+
+describe("useFilteredListState", () => {
+  it("returns the original collection when no filter is provided", () => {
+    const collection = new ListCollection([createNode("one", "item", "One")]);
+    const nextSelectionManager = { collection };
+    const selectionManager = {
+      withCollection: () => nextSelectionManager,
+    };
+    const state = {
+      collection,
+      disabledKeys: new Set<string>(),
+      selectionManager,
+    } as unknown as ListState<Item>;
+
+    const { result } = renderHook(() => useFilteredListState(state, undefined));
+
+    expect(result.current.collection).toBe(collection);
+    expect(result.current.selectionManager).toBe(nextSelectionManager);
   });
 });

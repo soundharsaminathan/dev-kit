@@ -5,10 +5,14 @@ import { Button } from "../../button/Button";
 import {
   Sidebar,
   SidebarContent,
+  SidebarFooter,
   SidebarHeader,
   SidebarItem,
   SidebarList,
   SidebarProvider,
+  SidebarSection,
+  SidebarSectionHeading,
+  SidebarTooltip,
   useSidebarContext,
 } from "../Sidebar";
 
@@ -110,5 +114,71 @@ describe("Sidebar", () => {
     );
 
     consoleError.mockRestore();
+  });
+
+  it("supports controlled open state", () => {
+    const onOpenChange = vi.fn();
+    const { rerender } = render(
+      <SidebarProvider isOpen={false} onOpenChange={onOpenChange}>
+        <Sidebar>
+          <SidebarContent>Content</SidebarContent>
+        </Sidebar>
+      </SidebarProvider>,
+    );
+
+    const sidebar = document.querySelector("[data-sidebar='']");
+    expect(sidebar).not.toHaveAttribute("data-expanded");
+
+    rerender(
+      <SidebarProvider isOpen onOpenChange={onOpenChange}>
+        <Sidebar>
+          <SidebarContent>Content</SidebarContent>
+        </Sidebar>
+      </SidebarProvider>,
+    );
+
+    expect(document.querySelector("[data-sidebar='']")).toHaveAttribute(
+      "data-expanded",
+      "true",
+    );
+  });
+
+  it("renders section, footer, placement, and tooltip helpers", () => {
+    render(
+      <SidebarProvider defaultOpen={false}>
+        <Sidebar placement="right">
+          <SidebarHeader>Header</SidebarHeader>
+          <SidebarContent>
+            <SidebarSection>
+              <SidebarSectionHeading>Navigation</SidebarSectionHeading>
+              <SidebarList>
+                <SidebarItem>
+                  <Button variant="quiet">Home</Button>
+                </SidebarItem>
+              </SidebarList>
+            </SidebarSection>
+            <SidebarTooltip content="Settings">
+              <Button variant="quiet">Settings</Button>
+            </SidebarTooltip>
+          </SidebarContent>
+          <SidebarFooter>Footer</SidebarFooter>
+        </Sidebar>
+      </SidebarProvider>,
+    );
+
+    expect(document.querySelector("[data-sidebar='']")).toHaveAttribute(
+      "data-placement",
+      "right",
+    );
+    expect(
+      document.querySelector("[data-sidebar-section='']"),
+    ).toBeInTheDocument();
+    expect(
+      document.querySelector("[data-sidebar-section-heading='']"),
+    ).toHaveTextContent("Navigation");
+    expect(
+      document.querySelector("[data-sidebar-footer='']"),
+    ).toHaveTextContent("Footer");
+    expect(screen.getByText("Settings")).toBeInTheDocument();
   });
 });

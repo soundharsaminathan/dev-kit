@@ -85,6 +85,11 @@ describe("ColorField", () => {
     expect(screen.getByRole("textbox", { name: "Accent" })).toBeInTheDocument();
   });
 
+  it("renders the default input when children are omitted", () => {
+    render(<ColorField defaultValue="#6366f1" aria-label="Hex" />);
+    expect(screen.getByRole("textbox", { name: "Hex" })).toBeInTheDocument();
+  });
+
   it("renders inside Field with shared input id", () => {
     render(
       <Field>
@@ -133,5 +138,13 @@ describe("ColorField", () => {
     );
 
     expect(screen.getByText("Plain text child")).toBeInTheDocument();
+  });
+
+  it("marks read-only regular color fields", () => {
+    render(<ColorField defaultValue="#6366f1" aria-label="Hex" isReadOnly />);
+
+    expect(screen.getByRole("textbox", { name: "Hex" })).toHaveAttribute(
+      "readonly",
+    );
   });
 });

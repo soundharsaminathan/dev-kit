@@ -125,4 +125,44 @@ describe("useKeyboardShortcut", () => {
 
     expect(onPress).not.toHaveBeenCalled();
   });
+
+  it("skips select targets when ignoreInputFocus is true", () => {
+    const onPress = vi.fn();
+    renderHook(() =>
+      useKeyboardShortcut({
+        key: "k",
+        metaKey: true,
+        ignoreInputFocus: true,
+        onPress,
+      }),
+    );
+
+    const select = document.createElement("select");
+    document.body.appendChild(select);
+    fireEvent.keyDown(select, { key: "k", metaKey: true, bubbles: true });
+    document.body.removeChild(select);
+
+    expect(onPress).not.toHaveBeenCalled();
+  });
+
+  it("skips contenteditable targets when ignoreInputFocus is true", () => {
+    const onPress = vi.fn();
+    renderHook(() =>
+      useKeyboardShortcut({
+        key: "k",
+        metaKey: true,
+        ignoreInputFocus: true,
+        onPress,
+      }),
+    );
+
+    const editable = document.createElement("div");
+    editable.contentEditable = "true";
+    Object.defineProperty(editable, "isContentEditable", { value: true });
+    document.body.appendChild(editable);
+    fireEvent.keyDown(editable, { key: "k", metaKey: true, bubbles: true });
+    document.body.removeChild(editable);
+
+    expect(onPress).not.toHaveBeenCalled();
+  });
 });
