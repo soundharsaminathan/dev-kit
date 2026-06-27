@@ -1,4 +1,4 @@
-import type { Page } from "@playwright/test";
+import { expect, type Page } from "@playwright/test";
 import type {
   ControlValues,
   SerializableControl,
@@ -6,6 +6,7 @@ import type {
 import { formatControlLabel } from "./control-labels";
 import {
   getControlsPanel,
+  getDemoFrame,
   setEnumControl,
   toggleBooleanControl,
 } from "./screenshots";
@@ -58,6 +59,121 @@ async function applyNonOverlayInitialControls(
   }
 }
 
+function getDefaultOpenSurface(page: Page) {
+  return page
+    .locator(
+      '[role="dialog"], [data-popover=""], [data-drawer=""], [data-modal], [data-menu-content=""], [role="menu"]',
+    )
+    .or(getDemoFrame(page).locator("[data-sidebar-container]"));
+}
+
+async function waitForDefaultOpenSurface(page: Page) {
+  const surface = getDefaultOpenSurface(page);
+  if (
+    await surface
+      .first()
+      .isVisible()
+      .catch(() => false)
+  ) {
+    return;
+  }
+
+  const demo = getDemoFrame(page);
+  for (const name of [
+    "Open modal",
+    "Open dialog",
+    "Open overlay",
+    "Open drawer",
+    "Trigger",
+  ]) {
+    const button = demo.getByRole("button", { name, exact: true });
+    if (await button.isVisible().catch(() => false)) {
+      await button.click();
+      break;
+    }
+  }
+
+  if (
+    await surface
+      .first()
+      .isVisible()
+      .catch(() => false)
+  ) {
+    return;
+  }
+
+  const defaultOpenLabel = formatControlLabel("defaultOpen");
+  if (
+    await getControlsPanel(page)
+      .getByText(defaultOpenLabel, { exact: true })
+      .isVisible()
+      .catch(() => false)
+  ) {
+    await toggleBooleanControl(page, defaultOpenLabel);
+    await toggleBooleanControl(page, defaultOpenLabel);
+  }
+
+  await expect(surface.first()).toBeVisible({ timeout: 10_000 });
+}
+
+async function waitForDefaultExpandedPanel(page: Page) {
+  const panel = getDemoFrame(page).locator(
+    '[data-disclosure-panel=""]:not([data-hidden="true"])',
+  );
+  if (await panel.isVisible().catch(() => false)) {
+    return;
+  }
+
+  const trigger = getDemoFrame(page).locator('[data-disclosure-trigger=""]');
+  if (await trigger.isVisible().catch(() => false)) {
+    await trigger.click();
+  }
+
+  if (await panel.isVisible().catch(() => false)) {
+    return;
+  }
+
+  const label = formatControlLabel("defaultExpanded");
+  if (
+    await getControlsPanel(page)
+      .getByText(label, { exact: true })
+      .isVisible()
+      .catch(() => false)
+  ) {
+    await toggleBooleanControl(page, label);
+    await toggleBooleanControl(page, label);
+  }
+
+  await expect(panel).toBeVisible({ timeout: 10_000 });
+}
+
+async function waitForOverlayInitialState(
+  page: Page,
+  values: ControlValues,
+  defaults: ControlValues,
+  overlayControls: SerializableControl[],
+) {
+  const isDisabled = Boolean(values.isDisabled);
+
+  for (const control of overlayControls) {
+    const shouldBeOpen = Boolean(
+      values[control.name] ?? defaults[control.name],
+    );
+    if (!shouldBeOpen || isDisabled) {
+      continue;
+    }
+
+    if (control.name === "defaultOpen") {
+      await waitForDefaultOpenSurface(page);
+      continue;
+    }
+
+    if (control.name === "defaultExpanded") {
+      await waitForDefaultExpandedPanel(page);
+    }
+  }
+}
+
 export async function applyControlValues(
   page: Page,
   controls: SerializableControl[],
@@ -74,29 +190,32 @@ export async function applyControlValues(
     return;
   }
 
-  const activeStates = Object.fromEntries(
+  const overlayStates = Object.fromEntries(
     overlayControls.map((control) => [
       control.name,
       Boolean(defaults[control.name]),
     ]),
   );
-  const targetStates = Object.fromEntries(
+  const overlayTargets = Object.fromEntries(
     overlayControls.map((control) => [
       control.name,
       Boolean(values[control.name] ?? defaults[control.name]),
     ]),
   );
-  const otherControlsNeedChanges = controls.some(
+  const needsOtherChanges = controls.some(
     (control) =>
       !OVERLAY_INITIAL_CONTROLS.has(control.name) &&
       controlDiffers(control, values, defaults),
   );
+  const shouldCloseOverlayFirst = overlayControls.some(
+    (control) => overlayStates[control.name] && needsOtherChanges,
+  );
 
-  if (otherControlsNeedChanges) {
+  if (shouldCloseOverlayFirst) {
     for (const control of overlayControls) {
-      if (activeStates[control.name]) {
+      if (overlayStates[control.name]) {
         await toggleBooleanControl(page, formatControlLabel(control.name));
-        activeStates[control.name] = false;
+        overlayStates[control.name] = false;
       }
     }
   }
@@ -104,10 +223,13 @@ export async function applyControlValues(
   await applyNonOverlayInitialControls(page, controls, values, defaults);
 
   for (const control of overlayControls) {
-    if (activeStates[control.name] !== targetStates[control.name]) {
+    if (overlayStates[control.name] !== overlayTargets[control.name]) {
       await toggleBooleanControl(page, formatControlLabel(control.name));
+      overlayStates[control.name] = overlayTargets[control.name];
     }
   }
+
+  await waitForOverlayInitialState(page, values, defaults, overlayControls);
 }
 
 export async function waitForControlsPanel(page: Page) {
