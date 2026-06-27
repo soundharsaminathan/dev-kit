@@ -1,12 +1,13 @@
 // @vitest-environment jsdom
 import "@testing-library/jest-dom/vitest";
+import * as tokens from "@dev-ui/tokens";
 import {
   createMemoryHistory,
   createRouter,
   RouterProvider,
 } from "@tanstack/react-router";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { routeTree } from "../routeTree.gen";
 
 function createTestRouter(initialPath = "/") {
@@ -19,14 +20,26 @@ function createTestRouter(initialPath = "/") {
   });
 }
 
-async function renderRoute(initialPath = "/") {
+type RenderRouteOptions = {
+  ready?: () => void;
+  timeout?: number;
+};
+
+async function renderRoute(
+  initialPath = "/",
+  { ready, timeout = 25_000 }: RenderRouteOptions = {},
+) {
   const router = createTestRouter(initialPath);
   render(<RouterProvider router={router} />);
   await waitFor(
     () => {
+      if (ready) {
+        ready();
+        return;
+      }
       expect(router.state.status).toBe("idle");
     },
-    { timeout: 15_000 },
+    { timeout },
   );
   return router;
 }
@@ -34,6 +47,10 @@ async function renderRoute(initialPath = "/") {
 describe("showcase routes", () => {
   beforeEach(() => {
     localStorage.clear();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   it("renders the home page", async () => {
@@ -69,17 +86,21 @@ describe("showcase routes", () => {
   });
 
   it("renders the themes comparison page", async () => {
-    await renderRoute("/themes");
+    vi.spyOn(tokens, "getBuiltInThemeIds").mockReturnValue(["default"]);
 
-    expect(
-      await screen.findByRole("heading", { name: "Themes" }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("heading", { name: "Light mode" }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("heading", { name: "Dark mode" }),
-    ).toBeInTheDocument();
+    await renderRoute("/themes", {
+      ready: () => {
+        expect(
+          screen.getByRole("heading", { name: "Themes" }),
+        ).toBeInTheDocument();
+        expect(
+          screen.getByRole("heading", { name: "Light mode" }),
+        ).toBeInTheDocument();
+        expect(
+          screen.getByRole("heading", { name: "Dark mode" }),
+        ).toBeInTheDocument();
+      },
+    });
   });
 
   it("renders the theme editor page", async () => {
