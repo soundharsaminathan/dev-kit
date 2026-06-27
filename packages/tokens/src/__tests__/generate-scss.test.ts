@@ -2,9 +2,11 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { generateSCSS } from "../scss-generation.js";
+import { generateDefaultThemeSCSS, generateSCSS } from "../scss-generation.js";
+import { resolveTheme } from "../theme/resolve-theme.js";
+import { builtInThemes } from "../themes/index.js";
 
-describe("generate-scss", () => {
+describe("generateSCSS", () => {
   const tempDirs: string[] = [];
 
   afterEach(() => {
@@ -36,5 +38,32 @@ describe("generate-scss", () => {
     expect(defaultThemeScss).toContain("--font-sans:");
     expect(defaultThemeScss).toContain("--font-serif:");
     expect(defaultThemeScss).toContain("--font-mono:");
+  });
+});
+
+describe("generateDefaultThemeSCSS", () => {
+  it("emits radius and font variables when present", () => {
+    const css = generateDefaultThemeSCSS(resolveTheme(builtInThemes.default));
+
+    expect(css).toContain("--radius-factor:");
+    expect(css).toContain("--font-sans:");
+    expect(css).toContain("--font-serif:");
+    expect(css).toContain("--font-mono:");
+  });
+
+  it("omits optional font variables when fonts are missing", () => {
+    const css = generateDefaultThemeSCSS(
+      resolveTheme({
+        id: "minimal",
+        label: "Minimal",
+        color: builtInThemes.default.color!,
+        radiusFactor: 0.5,
+      }),
+    );
+
+    expect(css).toContain("--radius-factor:");
+    expect(css).not.toContain("--font-sans:");
+    expect(css).not.toContain("--font-serif:");
+    expect(css).not.toContain("--font-mono:");
   });
 });

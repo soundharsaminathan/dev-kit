@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { resolveTheme, resolveThemeById } from "../theme/resolve-theme.js";
 import {
   auroraTheme,
+  builtInThemes,
   getBuiltInTheme,
   glassmorphismTheme,
   materialTheme,
@@ -10,7 +11,9 @@ import {
   normalizeThemeId,
   terminalTheme,
 } from "../themes/index.js";
-import type { CustomTheme } from "../types.js";
+import type { CustomTheme, ThemeDefinition } from "../types.js";
+
+const baseColor = builtInThemes.default.color!;
 
 describe("resolveTheme", () => {
   it("resolves default theme with color and tokens", () => {
@@ -113,25 +116,31 @@ describe("resolveTheme", () => {
     });
   });
 
+  it("inherits extends from the base theme when override omits it", () => {
+    const resolved = resolveTheme({
+      id: "child",
+      label: "Child",
+      color: baseColor,
+    });
+
+    expect(resolved.id).toBe("child");
+    expect(resolved.color?.seeds.neutral).toBeDefined();
+  });
+
   it("detects inheritance cycles", () => {
-    const a = {
+    const a: ThemeDefinition = {
       id: "a",
       label: "A",
       extends: "b",
-      color: {
-        algorithm: "oklch" as const,
-        seeds: { neutral: "#000", accent: "#00f" },
-      },
+      color: baseColor,
     };
-    const b = {
+    const b: ThemeDefinition = {
       id: "b",
       label: "B",
       extends: "a",
-      color: {
-        algorithm: "oklch" as const,
-        seeds: { neutral: "#000", accent: "#00f" },
-      },
+      color: baseColor,
     };
+
     expect(() => resolveTheme(a, { a, b })).toThrow(/cycle/i);
   });
 
@@ -141,12 +150,18 @@ describe("resolveTheme", () => {
         id: "orphan",
         label: "Orphan",
         extends: "missing-parent",
-        color: {
-          algorithm: "oklch",
-          seeds: { neutral: "#000", accent: "#00f" },
-        },
+        color: baseColor,
       }),
     ).toThrow(/unknown theme/i);
+  });
+
+  it("throws when the resolved theme has no color configuration", () => {
+    expect(() =>
+      resolveTheme({
+        id: "no-color",
+        label: "No color",
+      }),
+    ).toThrow(/no color configuration/i);
   });
 
   it("resolves custom themes by id", () => {
@@ -171,6 +186,20 @@ describe("resolveTheme", () => {
     const resolved = resolveThemeById("custom-brand", [custom]);
     expect(resolved.id).toBe("custom-brand");
     expect(resolved.color?.seeds.accent).toBe("#ff00ff");
+  });
+
+  it("resolves custom themes from the registry", () => {
+    const custom: ThemeDefinition = {
+      id: "custom-test",
+      label: "Custom",
+      extends: "default",
+      color: baseColor,
+      radiusFactor: 1.2,
+    };
+
+    const resolved = resolveTheme(custom, { "custom-test": custom });
+    expect(resolved.radiusFactor).toBe(1.2);
+    expect(resolveThemeById("default")).toBeDefined();
   });
 
   it("throws for unknown theme ids", () => {

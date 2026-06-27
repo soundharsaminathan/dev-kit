@@ -88,7 +88,7 @@ export function onBlackWhite(background: string): "black" | "white" {
     : "white";
 }
 
-function resample(anchors: readonly number[], n: number): number[] {
+export function resample(anchors: readonly number[], n: number): number[] {
   if (n <= 1) return [anchors[anchors.length - 1]!];
   if (n === anchors.length) return [...anchors];
   const out: number[] = [];
