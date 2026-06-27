@@ -1,8 +1,14 @@
 // @vitest-environment jsdom
 import "@testing-library/jest-dom/vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { useEffect, useState } from "react";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AppThemeProvider, useTheme } from "@/lib/theme";
 import { ShowcaseThemeEditor } from "@/modules/theme-editor/showcase-theme-editor";
 import { LIVE_THEME_ID } from "./theme-editor-drawer.mock";
@@ -79,11 +85,17 @@ describe("ShowcaseThemeEditor", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByRole("button", { name: /Saved theme/i }),
+        within(screen.getByRole("list")).getByRole("button", {
+          name: "Saved theme",
+        }),
       ).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole("button", { name: /Saved theme/i }));
+    fireEvent.click(
+      within(screen.getByRole("list")).getByRole("button", {
+        name: "Saved theme",
+      }),
+    );
 
     const deleteButtons = screen.getAllByRole("button", { name: "Delete" });
     fireEvent.click(deleteButtons[0]!);
@@ -119,5 +131,55 @@ describe("ShowcaseThemeEditor", () => {
         "default",
       );
     });
+  });
+
+  it("opens from the trigger and syncs the active theme draft", async () => {
+    render(
+      <AppThemeProvider>
+        <ShowcaseThemeEditor />
+      </AppThemeProvider>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Edit theme" }));
+
+    expect(
+      await screen.findByRole("button", { name: "Close theme editor" }),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText("Theme name")).toHaveValue("My theme");
+  });
+
+  it("changes theme and icon pack from header selects", async () => {
+    render(
+      <AppThemeProvider>
+        <ShowcaseThemeEditor defaultOpen />
+      </AppThemeProvider>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /Theme/ }));
+    fireEvent.click(screen.getByRole("option", { name: "Material" }));
+    expect(screen.getByRole("button", { name: /Theme/ })).toHaveTextContent(
+      "Material",
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /Icon pack/ }));
+    fireEvent.click(screen.getByRole("option", { name: "Heroicons Outline" }));
+    expect(screen.getByRole("button", { name: /Icon pack/ })).toHaveTextContent(
+      "Heroicons Outline",
+    );
+  });
+
+  it("supports controlled open state and custom triggers", () => {
+    render(
+      <AppThemeProvider>
+        <ShowcaseThemeEditor isOpen onOpenChange={vi.fn()} trigger={null} />
+      </AppThemeProvider>,
+    );
+
+    expect(
+      screen.getByRole("button", { name: "Close theme editor" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Edit theme" }),
+    ).not.toBeInTheDocument();
   });
 });

@@ -109,4 +109,30 @@ describe("visual-test-matrix", () => {
       cases.filter((testCase) => testCase.caseId === "drawer--custom"),
     ).toHaveLength(1);
   });
+
+  it("dedupes interaction cases already added via extraVisualCases", () => {
+    const cases = generateVisualTestCasesForConfig({
+      name: "Context Menu",
+      slug: "context-menu",
+      category: "overlays",
+      description: "Context Menu",
+      controls: [
+        { name: "isDisabled", type: "boolean", defaultValue: false },
+        { name: "defaultOpen", type: "boolean", defaultValue: false },
+      ],
+      extraVisualCases: [
+        {
+          caseId: "context-menu--open-interaction",
+          values: { isDisabled: false, defaultOpen: false },
+          interaction: "context-menu-open",
+        },
+      ],
+    });
+
+    expect(
+      cases.filter(
+        (testCase) => testCase.caseId === "context-menu--open-interaction",
+      ),
+    ).toHaveLength(1);
+  });
 });

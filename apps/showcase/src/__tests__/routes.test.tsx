@@ -83,6 +83,27 @@ describe("showcase routes", () => {
     expect(
       screen.getByRole("navigation", { name: "Component pager" }),
     ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: /← Toggle Button/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("renders the last component without a next pager link", async () => {
+    await renderRoute("/components/tag-group");
+
+    expect(
+      screen.getByRole("heading", { name: "Tag Group" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /→/i })).not.toBeInTheDocument();
+  });
+
+  it("renders a component with normalized control values", async () => {
+    await renderRoute("/components/color-slider");
+
+    expect(
+      screen.getByRole("heading", { name: "Color Slider" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Playground")).toBeInTheDocument();
   });
 
   it("renders the themes comparison page", async () => {
@@ -125,5 +146,30 @@ describe("showcase routes", () => {
       screen.getByRole("button", { name: "Edit theme" }),
     ).toBeInTheDocument();
     expect(screen.getByLabelText("Theme mode")).toBeInTheDocument();
+  });
+
+  it("renders not found for unknown component slugs", async () => {
+    await renderRoute("/components/not-a-real-component");
+
+    expect(
+      await screen.findByRole("heading", { name: "Component not found" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "Back to components" }),
+    ).toBeInTheDocument();
+  });
+
+  it("switches back to light mode on the theme editor page", async () => {
+    await renderRoute("/theme-editor");
+
+    fireEvent.click(screen.getByRole("button", { name: "Dark" }));
+    expect(document.documentElement.getAttribute("data-theme-mode")).toBe(
+      "dark",
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Light" }));
+    expect(document.documentElement.getAttribute("data-theme-mode")).toBe(
+      "light",
+    );
   });
 });

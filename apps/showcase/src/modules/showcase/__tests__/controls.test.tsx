@@ -88,6 +88,30 @@ describe("Controls", () => {
     expect(onChange).toHaveBeenCalledWith("count", 5);
   });
 
+  it("calls onChange when enum select changes", () => {
+    const onChange = vi.fn();
+    render(
+      <TestProviders>
+        <Controls
+          controls={[
+            {
+              name: "variant",
+              type: "enum",
+              options: ["default", "primary"],
+              defaultValue: "default",
+            },
+          ]}
+          values={{ variant: "default" }}
+          onChange={onChange}
+        />
+      </TestProviders>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /Variant/ }));
+    fireEvent.click(screen.getByRole("option", { name: "primary" }));
+    expect(onChange).toHaveBeenCalledWith("variant", "primary");
+  });
+
   it("formats aria-label control names", () => {
     render(
       <Controls

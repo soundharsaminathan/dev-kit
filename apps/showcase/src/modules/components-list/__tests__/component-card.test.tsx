@@ -1,5 +1,11 @@
 import "@testing-library/jest-dom/vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { ComponentCard } from "../component-card";
 
@@ -69,5 +75,45 @@ describe("ComponentCard", () => {
     ).not.toBeInTheDocument();
     fireEvent.mouseEnter(card);
     expect(screen.getByRole("button", { name: "Button" })).toBeInTheDocument();
+  });
+
+  it("activates deferred previews on focus", () => {
+    render(<ComponentCard name="Button" slug="button" deferPreview />);
+    const card = screen.getByRole("link", { name: "Button" });
+    fireEvent.focus(card);
+    expect(screen.getByRole("button", { name: "Button" })).toBeInTheDocument();
+  });
+
+  it("activates deferred previews when scrolled into view", async () => {
+    const observe = vi.fn();
+    const disconnect = vi.fn();
+    let observerCallback: IntersectionObserverCallback | undefined;
+
+    class MockIntersectionObserver {
+      constructor(callback: IntersectionObserverCallback) {
+        observerCallback = callback;
+      }
+      observe = observe;
+      disconnect = disconnect;
+    }
+
+    vi.stubGlobal("IntersectionObserver", MockIntersectionObserver);
+
+    render(<ComponentCard name="Button" slug="button" deferPreview />);
+
+    expect(observe).toHaveBeenCalled();
+    act(() => {
+      observerCallback?.(
+        [{ isIntersecting: true } as IntersectionObserverEntry],
+        {} as IntersectionObserver,
+      );
+    });
+    await waitFor(() => {
+      expect(
+        screen.getByRole("button", { name: "Button" }),
+      ).toBeInTheDocument();
+    });
+
+    vi.unstubAllGlobals();
   });
 });
