@@ -2,6 +2,7 @@ import { THEME_FONT_FAMILIES } from "@dev-ui/tokens";
 import { expect, type Locator, type Page } from "@playwright/test";
 
 export const FULL_PAGE_SCREENSHOT_OPTIONS = { fullPage: true } as const;
+export const VIEWPORT_SCREENSHOT_OPTIONS = { fullPage: false } as const;
 
 export function getControlsPanel(page: Page): Locator {
   return page.getByTestId("controls-panel");

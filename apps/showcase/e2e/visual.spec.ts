@@ -8,7 +8,7 @@ import {
 } from "./helpers/apply-controls";
 import {
   expectPageScreenshot,
-  FULL_PAGE_SCREENSHOT_OPTIONS,
+  VIEWPORT_SCREENSHOT_OPTIONS,
   waitForComponentCardPreviews,
   waitForThemesPage,
 } from "./helpers/screenshots";
@@ -62,7 +62,7 @@ test.describe("Visual regression", () => {
           `/components/${visualCase.slug}`,
           visualCase.screenshotName,
           {
-            ...FULL_PAGE_SCREENSHOT_OPTIONS,
+            ...VIEWPORT_SCREENSHOT_OPTIONS,
             beforeScreenshot: async (demoPage) => {
               await waitForControlsPanel(demoPage);
               await applyControlValues(
