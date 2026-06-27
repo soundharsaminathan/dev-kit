@@ -1,4 +1,5 @@
 import { cn, composeRefs } from "@dev-ui/core";
+import { Icon } from "@dev-ui/icons";
 import type { DragPreviewRenderer } from "@react-aria/dnd";
 import { useFocusRing } from "@react-aria/focus";
 import { useLocale } from "@react-aria/i18n";
@@ -57,25 +58,6 @@ function useListBoxContext(component: string): ListBoxContextValue {
     throw new Error(`${component} must be used within ListBox`);
   }
   return context;
-}
-
-function CheckIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      aria-hidden="true"
-      className={styles.checkIcon}
-    >
-      <path
-        d="M20 6L9 17l-5-5"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
 }
 
 type ListBoxCollectionProps<T extends object> = {
@@ -226,7 +208,7 @@ function ListBoxItemContent({
       )}
       {selectionMode !== "none" && isSelected ? (
         <span data-listbox-item-indicator="" className={styles.indicator}>
-          <CheckIcon />
+          <Icon name="check" className={styles.checkIcon} />
         </span>
       ) : null}
     </>

@@ -1,4 +1,5 @@
 import { cn } from "@dev-ui/core";
+import { Icon } from "@dev-ui/icons";
 import { useButton } from "@react-aria/button";
 import { useFocusRing } from "@react-aria/focus";
 import { useHover } from "@react-aria/interactions";
@@ -24,19 +25,6 @@ import type {
   TagProps,
 } from "./tag-group.types";
 import { TagGroupContext, useTagGroupContext } from "./tag-group-context";
-
-function CloseIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path
-        d="M18 6L6 18M6 6l12 12"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
 
 function parseTagItems(children: ReactNode): TagItem[] {
   const items: TagItem[] = [];
@@ -235,7 +223,7 @@ function TagRenderer({ node }: { node: Node<TagItem> }) {
           data-slot="remove"
           className={styles.remove}
         >
-          <CloseIcon />
+          <Icon name="x" />
         </button>
       ) : null}
     </div>

@@ -1,6 +1,7 @@
 import { THEME_FONT_FAMILIES } from "@dev-ui/tokens";
 import { expect, type Locator, type Page } from "@playwright/test";
 
+export const FULL_PAGE_SCREENSHOT_OPTIONS = { fullPage: true } as const;
 export const VIEWPORT_SCREENSHOT_OPTIONS = { fullPage: false } as const;
 
 export function getControlsPanel(page: Page): Locator {
@@ -14,8 +15,37 @@ async function prepareShowcaseStorage(page: Page) {
   });
 }
 
-export async function waitForScreenshotReady(page: Page) {
-  await page.waitForLoadState("networkidle");
+export async function waitForAppHeader(page: Page) {
+  const header = page
+    .locator("header")
+    .filter({ has: page.getByRole("link", { name: "Component Showcase" }) });
+  await expect(header).toBeVisible();
+  await expect(
+    header.getByRole("link", { name: "Component Showcase" }),
+  ).toBeVisible();
+  await expect(
+    header.getByRole("button", { name: "Edit theme" }),
+  ).toBeVisible();
+  await expect(
+    header.getByRole("radiogroup", { name: "Theme mode" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Theme editor", level: 2 }),
+  ).toBeHidden();
+}
+
+async function closeThemeEditorDrawer(page: Page) {
+  const themeEditor = page.getByRole("heading", {
+    name: "Theme editor",
+    level: 2,
+  });
+  if (await themeEditor.isVisible().catch(() => false)) {
+    await page.getByRole("button", { name: "Close theme editor" }).click();
+    await themeEditor.waitFor({ state: "hidden" });
+  }
+}
+
+async function waitForFonts(page: Page) {
   await page.evaluate(
     async (families) => {
       await Promise.all(
@@ -30,10 +60,28 @@ export async function waitForScreenshotReady(page: Page) {
   );
 }
 
+export async function preparePageForScreenshot(page: Page) {
+  await closeThemeEditorDrawer(page);
+  await page.evaluate(() => {
+    window.scrollTo(0, 0);
+  });
+  const header = page
+    .locator("header")
+    .filter({ has: page.getByRole("link", { name: "Component Showcase" }) });
+  if (await header.isVisible().catch(() => false)) {
+    await waitForAppHeader(page);
+  }
+  await waitForFonts(page);
+}
+
+export async function waitForScreenshotReady(page: Page) {
+  await page.waitForLoadState("load");
+  await waitForFonts(page);
+}
+
 export async function gotoShowcasePage(page: Page, path: string) {
   await prepareShowcaseStorage(page);
-  await page.goto(path);
-  await waitForScreenshotReady(page);
+  await page.goto(path, { waitUntil: "load" });
 }
 
 export async function waitForThemesPage(page: Page) {
@@ -57,18 +105,16 @@ export async function waitForComponentCardPreviews(page: Page) {
   await expect(
     page.locator('[data-component][data-preview="pending"]'),
   ).toHaveCount(0, { timeout: 30_000 });
-
-  await page.evaluate(() => {
-    window.scrollTo(0, 0);
-  });
-  await waitForScreenshotReady(page);
 }
 
 export async function setEnumControl(page: Page, label: string, value: string) {
   const controls = getControlsPanel(page);
   const field = controls.getByText(label, { exact: true }).locator("..");
   await field.getByRole("button").click();
-  await page.getByRole("option", { name: value }).click();
+  const option = page.getByRole("option", { name: value });
+  await option.waitFor({ state: "visible" });
+  await option.click();
+  await option.waitFor({ state: "hidden" });
 }
 
 export async function toggleBooleanControl(page: Page, label: string) {
@@ -88,7 +134,15 @@ export async function expectPageScreenshot(
   await gotoShowcasePage(page, path);
   if (options?.beforeScreenshot) {
     await options.beforeScreenshot(page);
+  }
+  if (options?.locator) {
+    await closeThemeEditorDrawer(page);
+    await page.evaluate(() => {
+      window.scrollTo(0, 0);
+    });
     await waitForScreenshotReady(page);
+  } else {
+    await preparePageForScreenshot(page);
   }
   const target = options?.locator ?? page;
   await expect(target).toHaveScreenshot(screenshotName, {

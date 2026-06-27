@@ -17,10 +17,21 @@
       "executor": "nx:noop",
       "dependsOn": ["biome:check", "typecheck", "test"]
     },
+    "check-icons-drift": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "{workspaceRoot}",
+        "command": "pnpm exec tsx scripts/check-icons-drift.ts"
+      },
+      "dependsOn": ["icons:build:icons"]
+    },
     "typecheck": {
       "executor": "nx:noop",
       "dependsOn": [
+        "check-icons-drift",
         "tokens:typecheck",
+        "icons:typecheck",
+        "icons-packs:typecheck",
         "core:typecheck",
         "components:typecheck",
         "storybook:typecheck",
@@ -43,6 +54,7 @@
     "test": {
       "executor": "nx:noop",
       "dependsOn": [
+        "icons:test",
         "tokens:test",
         "core:test",
         "components:test",
@@ -62,6 +74,7 @@
         "command": "pnpm exec tsx scripts/merge-coverage.ts"
       },
       "dependsOn": [
+        "icons:test:ci",
         "core:test:ci",
         "components:test:ci",
         "tokens:test:ci",

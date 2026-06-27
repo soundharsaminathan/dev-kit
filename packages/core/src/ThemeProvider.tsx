@@ -1,4 +1,9 @@
 import {
+  type IconPackModule,
+  IconProvider,
+  type IconTheme,
+} from "@dev-ui/icons";
+import {
   ACTIVE_THEME_STORAGE_KEY,
   type CustomTheme,
   createCustomThemeId,
@@ -46,6 +51,7 @@ export interface ThemeContextValue {
 const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
 
 function getRootElement(): HTMLElement {
+  /* v8 ignore next 3 -- SSR guard */
   if (typeof document === "undefined") {
     throw new Error("ThemeProvider can only be used in a browser environment");
   }
@@ -62,11 +68,13 @@ function getSystemPreference(): ThemeMode {
 }
 
 function readStoredTheme(): string {
+  /* v8 ignore next 3 -- SSR guard */
   if (typeof window === "undefined") return "default";
   return localStorage.getItem(ACTIVE_THEME_STORAGE_KEY) || "default";
 }
 
 function readModePreference(defaultMode: ThemeMode | "system"): ModePreference {
+  /* v8 ignore next 3 -- SSR guard */
   if (typeof window === "undefined") {
     return defaultMode === "system" ? "system" : defaultMode;
   }
@@ -78,6 +86,7 @@ function readModePreference(defaultMode: ThemeMode | "system"): ModePreference {
 }
 
 function applyThemeStyleSheet(_themeId: string, css: string | null): void {
+  /* v8 ignore next 3 -- SSR guard */
   if (typeof document === "undefined") return;
 
   const existing = document.getElementById(CUSTOM_STYLE_ID);
@@ -118,12 +127,16 @@ export interface ThemeProviderProps {
   defaultTheme?: string;
   defaultMode?: ThemeMode | "system";
   storageKeyPrefix?: string;
+  icons?: IconTheme | undefined;
+  initialIconPack?: IconPackModule | undefined;
 }
 
 export function ThemeProvider({
   children,
   defaultTheme = "default",
   defaultMode = "system",
+  icons,
+  initialIconPack,
 }: ThemeProviderProps) {
   const builtInIds = useMemo(() => getBuiltInThemeIds(), []);
   const [customThemes, setCustomThemes] = useState<CustomTheme[]>(() =>
@@ -242,7 +255,11 @@ export function ThemeProvider({
   };
 
   return (
-    <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>
+    <ThemeContext.Provider value={value}>
+      <IconProvider icons={icons} initialPack={initialIconPack}>
+        {children}
+      </IconProvider>
+    </ThemeContext.Provider>
   );
 }
 

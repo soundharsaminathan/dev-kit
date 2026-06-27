@@ -40,4 +40,23 @@ describe("DateField", () => {
       "true",
     );
   });
+
+  it("renders description and error message props", () => {
+    render(
+      <DateField
+        aria-label="Event date"
+        description="Use your local timezone"
+        errorMessage="Date is required"
+        isInvalid
+      />,
+    );
+
+    expect(screen.getByText("Use your local timezone")).toBeInTheDocument();
+    expect(screen.getByText("Date is required")).toBeInTheDocument();
+  });
+
+  it("renders a label prop without a Label child", () => {
+    render(<DateField label="Event date" />);
+    expect(screen.getByText("Event date")).toBeInTheDocument();
+  });
 });

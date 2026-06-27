@@ -1,0 +1,66 @@
+{
+  "name": "icons",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "packages/icons/src",
+  "projectType": "library",
+  "tags": ["scope:shared", "type:lib"],
+  "targets": {
+    "build:icons": {
+      "executor": "nx:run-script",
+      "options": {
+        "script": "build:icons"
+      },
+      "outputs": [
+        "{projectRoot}/src/generated",
+        "{projectRoot}/src/loaders/pack-loaders.generated.ts",
+        "{workspaceRoot}/packages/icons-packs/src",
+        "{workspaceRoot}/packages/icons-packs/package.json"
+      ]
+    },
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "packages/icons",
+        "command": "tsc -b --pretty false"
+      },
+      "dependsOn": ["build:icons", "icons-packs:typecheck"]
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "{workspaceRoot}",
+        "command": "vitest run --config vitest.config.ts --project icons"
+      },
+      "dependsOn": ["build:icons"]
+    },
+    "test:ci": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "{workspaceRoot}",
+        "command": "pnpm exec tsx scripts/run-vitest-ci.ts icons"
+      },
+      "dependsOn": ["build:icons"],
+      "outputs": [
+        "{workspaceRoot}/coverage/icons",
+        "{workspaceRoot}/test-results/junit-icons.xml"
+      ]
+    },
+    "test:coverage": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "{workspaceRoot}",
+        "command": "pnpm exec tsx scripts/run-vitest-ci.ts icons --coverage-only"
+      },
+      "dependsOn": ["build:icons"],
+      "outputs": ["{workspaceRoot}/coverage/icons"]
+    },
+    "build": {
+      "executor": "nx:run-script",
+      "options": {
+        "script": "build"
+      },
+      "outputs": ["{projectRoot}/dist"],
+      "dependsOn": ["build:icons"]
+    }
+  }
+}

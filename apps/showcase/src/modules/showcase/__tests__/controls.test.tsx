@@ -22,16 +22,18 @@ const controls: SerializableControl[] = [
 describe("Controls", () => {
   it("renders a control for each config entry", () => {
     render(
-      <Controls
-        controls={controls}
-        values={{
-          children: "Button",
-          disabled: false,
-          count: 2,
-          variant: "default",
-        }}
-        onChange={vi.fn()}
-      />,
+      <TestProviders>
+        <Controls
+          controls={controls}
+          values={{
+            children: "Button",
+            disabled: false,
+            count: 2,
+            variant: "default",
+          }}
+          onChange={vi.fn()}
+        />
+      </TestProviders>,
     );
 
     expect(screen.getByText("Label")).toBeInTheDocument();
@@ -84,6 +86,30 @@ describe("Controls", () => {
       target: { value: "5" },
     });
     expect(onChange).toHaveBeenCalledWith("count", 5);
+  });
+
+  it("calls onChange when enum select changes", () => {
+    const onChange = vi.fn();
+    render(
+      <TestProviders>
+        <Controls
+          controls={[
+            {
+              name: "variant",
+              type: "enum",
+              options: ["default", "primary"],
+              defaultValue: "default",
+            },
+          ]}
+          values={{ variant: "default" }}
+          onChange={onChange}
+        />
+      </TestProviders>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /Variant/ }));
+    fireEvent.click(screen.getByRole("option", { name: "primary" }));
+    expect(onChange).toHaveBeenCalledWith("variant", "primary");
   });
 
   it("formats aria-label control names", () => {

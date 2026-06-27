@@ -48,4 +48,34 @@ describe("DragAndDropPlayground", () => {
     ).toEqual([{ "text/plain": "Documents" }]);
     expect(screen.getByText("Documents")).toBeInTheDocument();
   });
+
+  it("ignores reorder events with unsupported drop positions", () => {
+    render(
+      <TestProviders>
+        <DragAndDropPlayground aria-label="Files" />
+      </TestProviders>,
+    );
+
+    capturedOptions?.onReorder?.({
+      target: { key: 2, dropPosition: "on" },
+      keys: new Set([1]),
+    } as Parameters<NonNullable<DragAndDropOptions["onReorder"]>>[0]);
+
+    expect(screen.getByText("Documents")).toBeInTheDocument();
+  });
+
+  it("ignores reorder events with unknown targets", () => {
+    render(
+      <TestProviders>
+        <DragAndDropPlayground aria-label="Files" />
+      </TestProviders>,
+    );
+
+    capturedOptions?.onReorder?.({
+      target: { key: 999, dropPosition: "before" },
+      keys: new Set([1]),
+    } as Parameters<NonNullable<DragAndDropOptions["onReorder"]>>[0]);
+
+    expect(screen.getByText("Documents")).toBeInTheDocument();
+  });
 });

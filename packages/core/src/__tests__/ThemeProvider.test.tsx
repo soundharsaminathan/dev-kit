@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import "@testing-library/jest-dom/vitest";
 import { act, cleanup, render, screen } from "@testing-library/react";
+import { renderToString } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ThemeProvider, useTheme } from "../ThemeProvider";
 
@@ -258,8 +259,7 @@ describe("ThemeProvider", () => {
 
   it("saves and deletes custom themes", () => {
     function CustomThemeManager() {
-      const { saveCustomTheme, deleteCustomTheme, customThemes, theme } =
-        useTheme();
+      const { saveCustomTheme, deleteCustomTheme, customThemes } = useTheme();
 
       return (
         <div>
@@ -391,6 +391,315 @@ describe("ThemeProvider", () => {
     expect(screen.getByTestId("mode")).toHaveTextContent("light");
   });
 
+  it("resets active theme to default when deleting the current custom theme", () => {
+    function DeleteActiveThemeConsumer() {
+      const { saveCustomTheme, deleteCustomTheme, setTheme, theme } =
+        useTheme();
+
+      return (
+        <div>
+          <span data-testid="theme">{theme}</span>
+          <button
+            type="button"
+            onClick={() => {
+              const saved = saveCustomTheme({
+                id: "custom-saved",
+                label: "Saved",
+                extends: "default",
+                color: {
+                  algorithm: "oklch",
+                  seeds: {
+                    neutral: "#808080",
+                    accent: "#0000ff",
+                    success: "#00aa00",
+                    warning: "#ffaa00",
+                    danger: "#aa0000",
+                    info: "#0088ff",
+                  },
+                },
+              });
+              setTheme(saved.id);
+            }}
+          >
+            Use saved theme
+          </button>
+          <button
+            type="button"
+            onClick={() => deleteCustomTheme("custom-saved")}
+          >
+            Delete active theme
+          </button>
+        </div>
+      );
+    }
+
+    render(
+      <ThemeProvider defaultMode="light">
+        <DeleteActiveThemeConsumer />
+      </ThemeProvider>,
+    );
+
+    act(() => {
+      screen.getByRole("button", { name: "Use saved theme" }).click();
+    });
+    expect(screen.getByTestId("theme")).toHaveTextContent("custom-saved");
+
+    act(() => {
+      screen.getByRole("button", { name: "Delete active theme" }).click();
+    });
+    expect(screen.getByTestId("theme")).toHaveTextContent("default");
+    expect(document.getElementById("dev-ui-theme-overrides")).toBeNull();
+  });
+
+  it("preserves a custom id when saving an existing custom theme", () => {
+    function SaveWithIdConsumer() {
+      const { saveCustomTheme, customThemes } = useTheme();
+
+      return (
+        <div>
+          <span data-testid="id">{customThemes[0]?.id ?? "none"}</span>
+          <button
+            type="button"
+            onClick={() =>
+              saveCustomTheme({
+                id: "custom-existing",
+                label: "Existing",
+                extends: "default",
+                color: {
+                  algorithm: "oklch",
+                  seeds: {
+                    neutral: "#808080",
+                    accent: "#0000ff",
+                    success: "#00aa00",
+                    warning: "#ffaa00",
+                    danger: "#aa0000",
+                    info: "#0088ff",
+                  },
+                },
+              })
+            }
+          >
+            Save with id
+          </button>
+        </div>
+      );
+    }
+
+    render(
+      <ThemeProvider defaultMode="light">
+        <SaveWithIdConsumer />
+      </ThemeProvider>,
+    );
+
+    act(() => {
+      screen.getByRole("button", { name: "Save with id" }).click();
+    });
+
+    expect(screen.getByTestId("id")).toHaveTextContent("custom-existing");
+  });
+
+  it("clears custom stylesheet when switching back to a built-in theme", () => {
+    function ThemeSwitcher() {
+      const { saveCustomTheme, setTheme } = useTheme();
+
+      return (
+        <button
+          type="button"
+          onClick={() => {
+            const saved = saveCustomTheme({
+              label: "Saved",
+              extends: "default",
+              color: {
+                algorithm: "oklch",
+                seeds: {
+                  neutral: "#808080",
+                  accent: "#0000ff",
+                  success: "#00aa00",
+                  warning: "#ffaa00",
+                  danger: "#aa0000",
+                  info: "#0088ff",
+                },
+              },
+            });
+            setTheme(saved.id);
+            setTheme("default");
+          }}
+        >
+          Switch back
+        </button>
+      );
+    }
+
+    render(
+      <ThemeProvider defaultMode="light">
+        <ThemeSwitcher />
+      </ThemeProvider>,
+    );
+
+    act(() => {
+      screen.getByRole("button", { name: "Switch back" }).click();
+    });
+
+    expect(document.getElementById("dev-ui-theme-overrides")).toBeNull();
+    expect(document.documentElement).toHaveAttribute("data-theme", "default");
+  });
+
+  it("clears live theme overrides and restores the saved theme", () => {
+    function LiveThemeToggle() {
+      const { setLiveTheme } = useTheme();
+
+      return (
+        <>
+          <button
+            type="button"
+            onClick={() =>
+              setLiveTheme({
+                id: "custom-live",
+                label: "Live",
+                extends: "default",
+                color: {
+                  algorithm: "oklch",
+                  seeds: {
+                    neutral: "#808080",
+                    accent: "#0000ff",
+                    success: "#00aa00",
+                    warning: "#ffaa00",
+                    danger: "#aa0000",
+                    info: "#0088ff",
+                  },
+                },
+              })
+            }
+          >
+            Set live theme
+          </button>
+          <button type="button" onClick={() => setLiveTheme(null)}>
+            Clear live theme
+          </button>
+        </>
+      );
+    }
+
+    render(
+      <ThemeProvider defaultMode="light">
+        <LiveThemeToggle />
+      </ThemeProvider>,
+    );
+
+    act(() => {
+      screen.getByRole("button", { name: "Set live theme" }).click();
+    });
+    expect(document.documentElement).toHaveAttribute(
+      "data-theme",
+      "custom-live",
+    );
+
+    act(() => {
+      screen.getByRole("button", { name: "Clear live theme" }).click();
+    });
+    expect(document.documentElement).toHaveAttribute("data-theme", "default");
+  });
+
+  it("updates an existing theme stylesheet when re-applying custom styles", () => {
+    function ThemeStyleUpdater() {
+      const { saveCustomTheme, setTheme } = useTheme();
+
+      return (
+        <button
+          type="button"
+          onClick={() => {
+            const first = saveCustomTheme({
+              label: "First",
+              extends: "default",
+              color: {
+                algorithm: "oklch",
+                seeds: {
+                  neutral: "#808080",
+                  accent: "#0000ff",
+                  success: "#00aa00",
+                  warning: "#ffaa00",
+                  danger: "#aa0000",
+                  info: "#0088ff",
+                },
+              },
+            });
+            setTheme(first.id);
+            const second = saveCustomTheme({
+              id: first.id,
+              label: "Second",
+              extends: "default",
+              color: {
+                algorithm: "oklch",
+                seeds: {
+                  neutral: "#909090",
+                  accent: "#0000ff",
+                  success: "#00aa00",
+                  warning: "#ffaa00",
+                  danger: "#aa0000",
+                  info: "#0088ff",
+                },
+              },
+            });
+            setTheme(second.id);
+          }}
+        >
+          Update theme styles
+        </button>
+      );
+    }
+
+    render(
+      <ThemeProvider defaultMode="light">
+        <ThemeStyleUpdater />
+      </ThemeProvider>,
+    );
+
+    act(() => {
+      screen.getByRole("button", { name: "Update theme styles" }).click();
+    });
+
+    const style = document.getElementById("dev-ui-theme-overrides");
+    expect(style).not.toBeNull();
+    expect(document.querySelectorAll("#dev-ui-theme-overrides")).toHaveLength(
+      1,
+    );
+  });
+
+  it("ignores system preference updates when mode preference is not system", () => {
+    let changeHandler: (() => void) | undefined;
+    const addEventListener = vi.fn((_event: string, handler: () => void) => {
+      changeHandler = handler;
+    });
+
+    vi.mocked(window.matchMedia).mockImplementation(
+      createMatchMediaMock(() => false, {
+        addEventListener,
+        removeEventListener: vi.fn(),
+      }),
+    );
+
+    render(
+      <ThemeProvider defaultMode="light">
+        <ThemeConsumer />
+      </ThemeProvider>,
+    );
+
+    expect(screen.getByTestId("mode")).toHaveTextContent("light");
+
+    vi.mocked(window.matchMedia).mockImplementation(
+      createMatchMediaMock(
+        (query) => query === "(prefers-color-scheme: dark)",
+        { addEventListener, removeEventListener: vi.fn() },
+      ),
+    );
+
+    act(() => {
+      changeHandler?.();
+    });
+
+    expect(screen.getByTestId("mode")).toHaveTextContent("light");
+  });
+
   it("uses legacy media query listeners when addEventListener is unavailable", () => {
     const addListener = vi.fn();
     const removeListener = vi.fn();
@@ -415,5 +724,30 @@ describe("ThemeProvider", () => {
     expect(addListener).toHaveBeenCalled();
     unmount();
     expect(removeListener).toHaveBeenCalled();
+  });
+});
+
+/**
+ * @vitest-environment node
+ */
+describe("ThemeProvider SSR", () => {
+  it("renders children without browser globals", () => {
+    const html = renderToString(
+      <ThemeProvider defaultMode="light">
+        <span>Themed content</span>
+      </ThemeProvider>,
+    );
+
+    expect(html).toContain("Themed content");
+  });
+
+  it("defaults system mode to light when matchMedia is unavailable", () => {
+    const html = renderToString(
+      <ThemeProvider defaultMode="system">
+        <span data-mode="probe">System mode</span>
+      </ThemeProvider>,
+    );
+
+    expect(html).toContain("System mode");
   });
 });

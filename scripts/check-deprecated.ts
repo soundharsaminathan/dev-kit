@@ -53,6 +53,33 @@ export function resolveTsconfigProjects(
     });
 }
 
+function createProjectLanguageService(
+  parsed: ts.ParsedCommandLine,
+  host: ts.CompilerHost,
+): ts.LanguageService {
+  const serviceHost: ts.LanguageServiceHost = {
+    getCompilationSettings: () => parsed.options,
+    getScriptFileNames: () => parsed.fileNames,
+    getScriptVersion: () => "0",
+    getScriptSnapshot: (fileName) => {
+      const text = host.readFile(fileName);
+      return text === undefined
+        ? undefined
+        : ts.ScriptSnapshot.fromString(text);
+    },
+    getCurrentDirectory: () => host.getCurrentDirectory(),
+    getDefaultLibFileName: (options) => host.getDefaultLibFileName(options),
+    fileExists: host.fileExists.bind(host),
+    readFile: host.readFile.bind(host),
+    readDirectory: host.readDirectory?.bind(host),
+    directoryExists: host.directoryExists?.bind(host),
+    useCaseSensitiveFileNames: host.useCaseSensitiveFileNames?.bind(host),
+    getNewLine: () => host.getNewLine?.() ?? "\n",
+  };
+
+  return ts.createLanguageService(serviceHost, ts.createDocumentRegistry());
+}
+
 export function collectDeprecatedUsages(
   configPaths: readonly string[] = DEFAULT_PROJECTS,
   rootDir = workspaceRoot,
@@ -84,22 +111,23 @@ export function collectDeprecatedUsages(
     }
 
     const host = ts.createCompilerHost(parsed.options, true);
-    const program = ts.createProgram(parsed.fileNames, parsed.options, host);
+    const languageService = createProjectLanguageService(parsed, host);
 
-    for (const sourceFile of program.getSourceFiles()) {
-      if (sourceFile.isDeclarationFile) {
+    for (const fileName of parsed.fileNames) {
+      if (fileName.includes("node_modules") || fileName.endsWith(".d.ts")) {
         continue;
       }
 
-      if (sourceFile.fileName.includes("node_modules")) {
-        continue;
-      }
-
-      const diagnostics = program
-        .getSuggestionDiagnostics(sourceFile)
+      const diagnostics = languageService
+        .getSuggestionDiagnostics(fileName)
         .filter((diagnostic) => diagnostic.code === DEPRECATED_DIAGNOSTIC_CODE);
 
       for (const diagnostic of diagnostics) {
+        const sourceFile = diagnostic.file;
+        if (!sourceFile) {
+          continue;
+        }
+
         const start = diagnostic.start ?? 0;
         const { line, character } =
           sourceFile.getLineAndCharacterOfPosition(start);

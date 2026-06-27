@@ -18,6 +18,8 @@ const bd = (ref: string, scales?: readonly string[]): TokenDefinition => {
   if (scales) token.scales = scales;
   return token;
 };
+
+export const semanticTokenBuilders = { bg, fg, bd };
 const on = (onOf: string): TokenDefinition => ({
   target: { onOf },
   category: "foreground",

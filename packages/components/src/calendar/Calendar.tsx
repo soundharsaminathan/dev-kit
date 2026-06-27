@@ -1,4 +1,5 @@
 import { cn, composeRefs } from "@dev-ui/core";
+import { Icon } from "@dev-ui/icons";
 import { createCalendar } from "@internationalized/date";
 import {
   useCalendar,
@@ -39,44 +40,6 @@ function useCalendarContext(component: string): CalendarContextValue {
     );
   }
   return context;
-}
-
-function ChevronLeftIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      aria-hidden="true"
-      className={styles.chevron}
-    >
-      <path
-        d="M15 18l-6-6 6-6"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
-function ChevronRightIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      aria-hidden="true"
-      className={styles.chevron}
-    >
-      <path
-        d="M9 18l6-6-6-6"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
 }
 
 function Calendar<T extends import("@internationalized/date").DateValue>({
@@ -122,7 +85,7 @@ function Calendar<T extends import("@internationalized/date").DateValue>({
                 isIconOnly
                 aria-label={prevButtonProps["aria-label"]}
               >
-                <ChevronLeftIcon />
+                <Icon name="chevron-left" className={styles.chevron} />
               </Button>
               <CalendarHeading />
               <Button
@@ -131,7 +94,7 @@ function Calendar<T extends import("@internationalized/date").DateValue>({
                 isIconOnly
                 aria-label={nextButtonProps["aria-label"]}
               >
-                <ChevronRightIcon />
+                <Icon name="chevron-right" className={styles.chevron} />
               </Button>
             </CalendarHeader>
             <CalendarGrid />
@@ -186,7 +149,7 @@ function RangeCalendar<T extends import("@internationalized/date").DateValue>({
                 isIconOnly
                 aria-label={prevButtonProps["aria-label"]}
               >
-                <ChevronLeftIcon />
+                <Icon name="chevron-left" className={styles.chevron} />
               </Button>
               <CalendarHeading />
               <Button
@@ -195,7 +158,7 @@ function RangeCalendar<T extends import("@internationalized/date").DateValue>({
                 isIconOnly
                 aria-label={nextButtonProps["aria-label"]}
               >
-                <ChevronRightIcon />
+                <Icon name="chevron-right" className={styles.chevron} />
               </Button>
             </CalendarHeader>
             <CalendarGrid />
@@ -228,7 +191,7 @@ function CalendarHeader({
             isIconOnly
             aria-label={prevButtonProps["aria-label"]}
           >
-            <ChevronLeftIcon />
+            <Icon name="chevron-left" className={styles.chevron} />
           </Button>
           <CalendarHeading />
           <Button
@@ -237,7 +200,7 @@ function CalendarHeader({
             isIconOnly
             aria-label={nextButtonProps["aria-label"]}
           >
-            <ChevronRightIcon />
+            <Icon name="chevron-right" className={styles.chevron} />
           </Button>
         </>
       )}

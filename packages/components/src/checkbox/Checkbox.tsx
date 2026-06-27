@@ -1,4 +1,5 @@
 import { cn } from "@dev-ui/core";
+import { Icon } from "@dev-ui/icons";
 import { useCheckbox, useCheckboxGroupItem } from "@react-aria/checkbox";
 import { useFocusRing } from "@react-aria/focus";
 import { useHover } from "@react-aria/interactions";
@@ -30,33 +31,6 @@ type CheckboxRenderState = {
 };
 
 const CheckboxContext = createContext<CheckboxRenderState | null>(null);
-
-function CheckIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path
-        d="M20 6L9 17l-5-5"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
-function MinusIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path
-        d="M5 12h14"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
 
 function Checkbox({
   id: idProp,
@@ -251,9 +225,9 @@ function CheckboxIndicator({
     >
       {children ??
         (ctx.isIndeterminate ? (
-          <MinusIcon />
+          <Icon name="minus" />
         ) : ctx.isSelected ? (
-          <CheckIcon />
+          <Icon name="check" />
         ) : null)}
     </span>
   );

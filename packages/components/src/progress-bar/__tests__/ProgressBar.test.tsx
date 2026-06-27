@@ -76,6 +76,11 @@ describe("ProgressBar", () => {
     expect(screen.getByText("25%")).toBeInTheDocument();
   });
 
+  it("handles undefined value", () => {
+    render(<ProgressBar aria-label="Loading" />);
+    expect(screen.getByRole("progressbar")).toBeInTheDocument();
+  });
+
   it("throws when ProgressBarFill is used outside ProgressBar", () => {
     const consoleError = vi
       .spyOn(console, "error")

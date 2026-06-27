@@ -23,6 +23,7 @@ const chromiumUse = {
 };
 
 export default defineConfig({
+  globalSetup: path.join(dirname, "e2e/global-setup.ts"),
   testDir: path.join(dirname, "e2e"),
   fullyParallel: true,
   forbidOnly: isCI,

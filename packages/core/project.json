@@ -12,7 +12,7 @@
         "cwd": "packages/core",
         "command": "tsc -b --pretty false"
       },
-      "dependsOn": ["tokens:typecheck"]
+      "dependsOn": ["tokens:typecheck", "icons:typecheck"]
     },
     "test": {
       "executor": "nx:run-commands",
@@ -46,7 +46,7 @@
         "script": "build"
       },
       "outputs": ["{projectRoot}/dist"],
-      "dependsOn": ["tokens:build"]
+      "dependsOn": ["tokens:build", "icons:build"]
     }
   }
 }

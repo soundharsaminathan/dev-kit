@@ -1,4 +1,0 @@
-{
-  "extends": "./missing-base.json",
-  "include": ["clean.ts"]
-}

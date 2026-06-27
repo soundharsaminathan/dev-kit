@@ -1,4 +1,5 @@
 import { cn, composeRefs } from "@dev-ui/core";
+import { Icon } from "@dev-ui/icons";
 import { useButton } from "@react-aria/button";
 import { useDisclosure } from "@react-aria/disclosure";
 import { useFocusRing } from "@react-aria/focus";
@@ -23,25 +24,6 @@ function useDisclosureContext(component: string): DisclosureContextValue {
     throw new Error(`${component} must be used within Disclosure`);
   }
   return context;
-}
-
-function ChevronDownIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      aria-hidden="true"
-      className={styles.chevron}
-    >
-      <path
-        d="M6 9l6 6 6-6"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
 }
 
 function Disclosure({
@@ -129,7 +111,7 @@ function DisclosureTrigger({
         className={cn(styles.trigger, className)}
       >
         {children}
-        <ChevronDownIcon />
+        <Icon name="chevron-down" className={styles.chevron} />
       </button>
     </h3>
   );

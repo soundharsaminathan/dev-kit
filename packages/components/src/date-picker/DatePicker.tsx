@@ -1,4 +1,5 @@
 import { cn } from "@dev-ui/core";
+import { Icon } from "@dev-ui/icons";
 import { createCalendar } from "@internationalized/date";
 import {
   type AriaDatePickerProps,
@@ -94,33 +95,6 @@ function renderPickerChildren(
 
     return child;
   });
-}
-
-function CalendarIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      aria-hidden="true"
-      className={styles.calendarIcon}
-    >
-      <rect
-        x="3"
-        y="4"
-        width="18"
-        height="18"
-        rx="2"
-        stroke="currentColor"
-        strokeWidth="2"
-      />
-      <path
-        d="M16 2v4M8 2v4M3 10h18"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
 }
 
 function DatePickerInput({
@@ -308,7 +282,7 @@ function DatePickerButton({
       data-date-picker-button=""
       className={cn(styles.calendarButton, className)}
     >
-      {children ?? <CalendarIcon />}
+      {children ?? <Icon name="calendar" className={styles.calendarIcon} />}
     </Button>
   );
 }

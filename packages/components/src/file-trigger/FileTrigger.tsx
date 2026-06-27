@@ -1,4 +1,5 @@
 import { cn } from "@dev-ui/core";
+import { Icon } from "@dev-ui/icons";
 import { useButton } from "@react-aria/button";
 import { mergeProps } from "@react-aria/utils";
 import {
@@ -15,19 +16,6 @@ import type { FileTriggerProps } from "./file-trigger.types";
 
 function isNativeTriggerElement(child: ReactElement): boolean {
   return typeof child.type === "string";
-}
-
-function ClearIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path
-        d="M18 6L6 18M6 6l12 12"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
 }
 
 function FileTriggerClear({
@@ -57,7 +45,7 @@ function FileTriggerClear({
       data-file-trigger-clear=""
       className={styles.clear}
     >
-      <ClearIcon />
+      <Icon name="x" />
     </button>
   );
 }

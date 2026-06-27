@@ -1,4 +1,5 @@
 import { cn, composeRefs } from "@dev-ui/core";
+import { Icon } from "@dev-ui/icons";
 import { useButton } from "@react-aria/button";
 import { useDialog } from "@react-aria/dialog";
 import { useOverlayTrigger } from "@react-aria/overlays";
@@ -131,20 +132,6 @@ function renderDialogChildren(
   });
 }
 
-function CloseIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path
-        d="M18 6L6 18M6 6l12 12"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
 function Dialog({ children, className, ...props }: DialogProps) {
   const triggerRef = useRef<Element>(null);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -220,7 +207,7 @@ function DialogContent({
           className={styles.closeButton}
           onClick={() => overlayState.close()}
         >
-          <CloseIcon />
+          <Icon name="x" />
         </Button>
       ) : null}
     </div>

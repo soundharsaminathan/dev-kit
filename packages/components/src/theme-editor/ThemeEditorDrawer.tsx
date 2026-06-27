@@ -17,6 +17,7 @@ function ThemeEditorDrawer({
   onLivePreview,
   trigger,
   triggerLabel = "Edit theme",
+  panelHeader,
   children,
   className,
 }: ThemeEditorDrawerProps) {
@@ -76,6 +77,9 @@ function ThemeEditorDrawer({
           </header>
 
           <div className={styles.drawerBody}>
+            {panelHeader ? (
+              <div className={styles.panelHeader}>{panelHeader}</div>
+            ) : null}
             <ThemeEditorPanel value={value} onChange={onChange} />
           </div>
 

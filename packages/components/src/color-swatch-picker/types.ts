@@ -1,4 +1,4 @@
-import type { ColorPickerProps } from "@react-stately/color";
+import type { Color, ColorPickerProps } from "@react-stately/color";
 import type { ReactNode } from "react";
 
 export type ColorSwatchPickerProps = ColorPickerProps & {
@@ -9,7 +9,9 @@ export type ColorSwatchPickerProps = ColorPickerProps & {
   "aria-labelledby"?: string;
 };
 
-export type ColorSwatchPickerItemProps =
-  React.ComponentPropsWithoutRef<"div"> & {
-    color: string;
-  };
+export type ColorSwatchPickerItemProps = Omit<
+  React.ComponentPropsWithoutRef<"div">,
+  "color"
+> & {
+  color: string | Color;
+};

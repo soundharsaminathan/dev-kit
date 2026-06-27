@@ -1,4 +1,5 @@
 import { cn } from "@dev-ui/core";
+import { Icon } from "@dev-ui/icons";
 import type { AriaButtonProps } from "@react-aria/button";
 import { OverlayContainer } from "@react-aria/overlays";
 import { useToast, useToastRegion } from "@react-aria/toast";
@@ -50,20 +51,6 @@ function useToastItemContext(component: string): ToastItemContextValue {
     throw new Error(`${component} must be used within Toast`);
   }
   return context;
-}
-
-function CloseIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path
-        d="M18 6L6 18M6 6l12 12"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
 }
 
 function resolveVariant(
@@ -343,7 +330,7 @@ function ToastClose({ className, ...props }: ToastCloseProps) {
       data-toast-close=""
       className={cn(styles.close, className)}
     >
-      <CloseIcon />
+      <Icon name="x" />
     </Button>
   );
 }

@@ -1,4 +1,5 @@
 import { cn, composeRefs } from "@dev-ui/core";
+import { Icon } from "@dev-ui/icons";
 import { useFocusRing } from "@react-aria/focus";
 import { useGridListSelectionCheckbox } from "@react-aria/gridlist";
 import { useHover } from "@react-aria/interactions";
@@ -29,20 +30,6 @@ import {
   useTreeContext,
   useTreeItemContext,
 } from "./tree-context";
-
-function ChevronRightIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path
-        d="M9 6l6 6-6 6"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
 
 type ParsedTreeItem = {
   id: Key;
@@ -468,7 +455,7 @@ function TreeItemContent({ children, className }: TreeItemContentProps) {
           data-expanded={isExpanded ? "true" : undefined}
           className={styles.expandButton}
         >
-          <ChevronRightIcon />
+          <Icon name="chevron-right" />
         </Button>
       ) : (
         <span

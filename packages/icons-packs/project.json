@@ -1,0 +1,25 @@
+{
+  "name": "icons-packs",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "packages/icons-packs/src",
+  "projectType": "library",
+  "tags": ["scope:shared", "type:lib"],
+  "targets": {
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "packages/icons-packs",
+        "command": "tsc -b --pretty false"
+      },
+      "dependsOn": ["icons:build:icons"]
+    },
+    "build": {
+      "executor": "nx:run-script",
+      "options": {
+        "script": "build"
+      },
+      "outputs": ["{projectRoot}/dist"],
+      "dependsOn": ["icons:build:icons", "icons:build"]
+    }
+  }
+}
