@@ -15,6 +15,7 @@ import {
   useMemo,
   useRef,
 } from "react";
+import { useOverlayExit } from "../hooks/use-overlay-exit";
 import { findChildByDisplayName } from "../list-box/collection-utils";
 import styles from "./tooltip.module.scss";
 import type {
@@ -127,6 +128,8 @@ function Tooltip({
   );
 }
 
+const OVERLAY_EXIT_DURATION_MS = 200;
+
 function TooltipContent({
   children,
   className,
@@ -141,6 +144,10 @@ function TooltipContent({
     mergeProps(tooltipProps, props) as Parameters<typeof useTooltip>[0],
     state,
   );
+  const { isRendered, dataState, onTransitionEnd } = useOverlayExit(
+    state.isOpen,
+    OVERLAY_EXIT_DURATION_MS,
+  );
 
   useInteractOutside({
     ref: tooltipRef,
@@ -151,7 +158,7 @@ function TooltipContent({
   });
 
   useLayoutEffect(() => {
-    if (!state.isOpen || !fullWidth) {
+    if (!isRendered || !fullWidth) {
       return;
     }
 
@@ -176,9 +183,9 @@ function TooltipContent({
     return () => {
       observer.disconnect();
     };
-  }, [state.isOpen, fullWidth, triggerRef]);
+  }, [isRendered, fullWidth, triggerRef]);
 
-  if (!state.isOpen) {
+  if (!isRendered) {
     return null;
   }
 
@@ -192,7 +199,14 @@ function TooltipContent({
       role="tooltip"
       className={cn(styles.content, className)}
     >
-      {children}
+      <div
+        data-state={dataState}
+        data-placement={placement}
+        onTransitionEnd={onTransitionEnd}
+        className={styles.contentSurface}
+      >
+        {children}
+      </div>
     </div>
   );
 }

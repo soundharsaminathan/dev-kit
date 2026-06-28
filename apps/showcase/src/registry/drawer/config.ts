@@ -5,5 +5,18 @@ export const drawerConfig: ComponentRegistryConfig = {
   slug: "drawer",
   category: "overlays",
   description: "Drawer component showcase.",
-  controls: [{ name: "children", type: "string", defaultValue: "Drawer" }],
+  controls: [
+    {
+      name: "placement",
+      type: "enum",
+      options: ["top", "bottom", "left", "right"],
+      defaultValue: "bottom",
+    },
+    { name: "title", type: "string", defaultValue: "Drawer title" },
+    {
+      name: "body",
+      type: "string",
+      defaultValue: "Swipe down or click outside to dismiss.",
+    },
+  ],
 };

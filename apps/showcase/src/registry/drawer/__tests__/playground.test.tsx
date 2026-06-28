@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import "@testing-library/jest-dom/vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import DrawerPlayground from "@/registry/drawer/playground";
 import { TestProviders } from "@/test-utils/providers";
@@ -19,8 +19,10 @@ describe("DrawerPlayground", () => {
     ).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Close" }));
-    expect(
-      screen.queryByRole("heading", { name: "Test drawer" }),
-    ).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(
+        screen.queryByRole("heading", { name: "Test drawer" }),
+      ).not.toBeInTheDocument();
+    });
   });
 });

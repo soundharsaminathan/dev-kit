@@ -83,7 +83,7 @@ describe("Autocomplete", () => {
     );
 
     const listbox = container.querySelector("[data-listbox='']");
-    expect(listbox).toHaveStyle({ display: "none" });
+    expect(listbox).toHaveStyle({ opacity: "0", visibility: "hidden" });
 
     const searchbox = screen.getByRole("searchbox");
     act(() => {
@@ -93,7 +93,7 @@ describe("Autocomplete", () => {
       "data-focus-within",
       "true",
     );
-    expect(listbox).not.toHaveStyle({ display: "none" });
+    expect(listbox).toHaveStyle({ opacity: "1", visibility: "visible" });
   });
 
   it("shows all options again when the query is cleared", () => {

@@ -129,10 +129,26 @@ export async function focusFirstDateSegment(page: Page) {
   return segment;
 }
 
+export async function waitForPopoverSettled(page: Page) {
+  const popover = getPopover(page);
+  await expect(popover).toHaveAttribute("data-state", "open");
+  await popover.evaluate(
+    (element) =>
+      new Promise<void>((resolve) => {
+        const duration = Number.parseFloat(
+          getComputedStyle(element).transitionDuration,
+        );
+        const delayMs = Number.isFinite(duration) ? duration * 1000 + 50 : 250;
+        window.setTimeout(resolve, delayMs);
+      }),
+  );
+}
+
 export async function openCombobox(page: Page) {
   const input = getComboboxInput(page);
   await input.focus();
   await page.getByRole("listbox").waitFor({ state: "visible" });
+  await waitForPopoverSettled(page);
   return input;
 }
 

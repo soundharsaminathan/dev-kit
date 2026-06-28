@@ -1,8 +1,8 @@
 import "@testing-library/jest-dom/vitest";
 import { useOverlayTriggerState } from "@react-stately/overlays";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { useRef } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { OverlayProvider, Popover, PopoverProvider } from "../Popover";
 
 type PopoverHarnessProps = {
@@ -56,6 +56,14 @@ function PopoverHarness({
 }
 
 describe("Popover", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it("renders popover content when open", () => {
     render(<PopoverHarness />);
     expect(screen.getByText("Popover content")).toBeInTheDocument();
@@ -90,6 +98,10 @@ describe("Popover", () => {
     expect(screen.getByText("Popover content")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Dismiss" }));
+
+    act(() => {
+      vi.advanceTimersByTime(200);
+    });
 
     expect(screen.queryByText("Popover content")).not.toBeInTheDocument();
   });

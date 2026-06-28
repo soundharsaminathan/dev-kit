@@ -159,7 +159,7 @@ function DisclosurePanel({
       {...mergeProps(panelProps, props)}
       ref={composeRefs(panelRef, ref)}
       data-disclosure-panel=""
-      data-hidden={state.isExpanded ? undefined : "true"}
+      data-expanded={state.isExpanded ? "true" : undefined}
       className={cn(styles.panel, className)}
     >
       <div className={styles.panelInner}>

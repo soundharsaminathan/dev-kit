@@ -62,6 +62,9 @@
   border-radius: inherit;
   background-color: var(--slider-fill-color);
   pointer-events: none;
+  transition:
+    width var(--motion-fast) var(--interaction-transition-curve),
+    height var(--motion-fast) var(--interaction-transition-curve);
 
   .track[data-orientation="horizontal"] & {
     top: 0;
@@ -73,6 +76,10 @@
     bottom: 0;
     left: 0;
     width: 100%;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    transition-duration: 0ms;
   }
 }
 
@@ -94,6 +101,7 @@
   transform: translate(-50%, -50%);
   cursor: var(--slider-cursor);
   pointer-events: auto;
+  transition: transform var(--motion-fast) var(--interaction-transition-curve);
 
   .track[data-orientation="vertical"] & {
     top: auto;
@@ -113,6 +121,9 @@
 
   &[data-dragging="true"] {
     cursor: var(--slider-dragging-cursor);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    transition-duration: 0ms;
   }
 }
 

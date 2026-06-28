@@ -1,0 +1,84 @@
+@use "@dev-ui/tokens/scss" as *;
+
+@mixin overlay-enter-exit {
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity var(--motion-fast) var(--interaction-transition-curve),
+    transform var(--motion-normal) var(--interaction-transition-curve);
+
+  &[data-state="closing"] {
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  &[data-placement^="top"] {
+    transform: translateY(0.5rem) scale(0.97);
+
+    &[data-state="closing"] {
+      transform: translateY(0.5rem) scale(0.98);
+    }
+  }
+
+  &[data-placement^="bottom"] {
+    transform: translateY(-0.5rem) scale(0.97);
+
+    &[data-state="closing"] {
+      transform: translateY(-0.5rem) scale(0.98);
+    }
+  }
+
+  &[data-placement^="left"],
+  &[data-placement^="start"] {
+    transform: translateX(0.5rem) scale(0.97);
+
+    &[data-state="closing"] {
+      transform: translateX(0.5rem) scale(0.98);
+    }
+  }
+
+  &[data-placement^="right"],
+  &[data-placement^="end"] {
+    transform: translateX(-0.5rem) scale(0.97);
+
+    &[data-state="closing"] {
+      transform: translateX(-0.5rem) scale(0.98);
+    }
+  }
+
+  &[data-state="open"] {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translate(0, 0) scale(1);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    transition-duration: 0ms;
+    transform: none;
+
+    &[data-state="open"] {
+      transform: none;
+    }
+
+    &[data-state="closing"] {
+      transform: none;
+    }
+  }
+}
+
+@mixin overlay-underlay-fade {
+  opacity: 0;
+  transition: opacity var(--motion-fast) var(--interaction-transition-curve);
+
+  &[data-state="open"] {
+    opacity: 1;
+  }
+
+  &[data-state="closing"] {
+    opacity: 0;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    transition-duration: 0ms;
+  }
+}

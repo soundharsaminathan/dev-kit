@@ -103,7 +103,7 @@ test.describe("Disclosure", () => {
       await gotoStory(page, STORIES.default);
 
       await expect(getDisclosurePanel(page)).toHaveAttribute(
-        "data-hidden",
+        "aria-hidden",
         "true",
       );
     });
@@ -115,7 +115,8 @@ test.describe("Disclosure", () => {
 
       const panel = getDisclosurePanel(page);
       await expect(panel).toBeVisible();
-      await expect(panel).not.toHaveAttribute("data-hidden", "");
+      await expect(panel).toHaveAttribute("data-expanded", "true");
+      await expect(panel).not.toHaveAttribute("aria-hidden", "true");
     });
   });
 

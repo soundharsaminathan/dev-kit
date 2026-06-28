@@ -573,7 +573,8 @@
     "@react-stately/virtualizer": "^4.5.1",
     "@react-types/color": "^3.2.0",
     "@react-types/meter": "^3.5.0",
-    "@react-types/shared": "^3.35.0"
+    "@react-types/shared": "^3.35.0",
+    "motion": "^11.15.0"
   },
   "devDependencies": {
     "@dev-ui/icons-packs": "workspace:*",

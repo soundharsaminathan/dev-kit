@@ -12,6 +12,12 @@ import {
 } from "@react-stately/toast";
 import type { DOMAttributes } from "@react-types/shared";
 import {
+  AnimatePresence,
+  type HTMLMotionProps,
+  motion,
+  useReducedMotion,
+} from "motion/react";
+import {
   createContext,
   type ReactNode,
   useCallback,
@@ -21,6 +27,10 @@ import {
 } from "react";
 import { Button } from "../button/Button";
 import { Loader } from "../loader/Loader";
+import {
+  getToastItemMotion,
+  getToastItemTransition,
+} from "../motion/overlay-motion";
 import styles from "./toast.module.scss";
 import type {
   ToastCloseProps,
@@ -228,18 +238,22 @@ function ToastRegion({
         data-position={position}
         className={cn(styles.region, className)}
       >
-        {state.visibleToasts.map((item) => (
-          <DefaultToastItem key={item.key} item={item} />
-        ))}
+        <AnimatePresence initial={false}>
+          {state.visibleToasts.map((item) => (
+            <DefaultToastItem key={item.key} item={item} />
+          ))}
+        </AnimatePresence>
       </div>
     </OverlayContainer>
   );
 }
 
 function Toast({ toast, variant, className, children, ...props }: ToastProps) {
-  const { state } = useToastContext("Toast");
+  const { state, position } = useToastContext("Toast");
+  const reducedMotion = useReducedMotion();
   const ref = useRef<HTMLDivElement>(null);
   const resolvedVariant = resolveVariant(variant, toast.content);
+  const toastMotion = getToastItemMotion(position, reducedMotion);
   const {
     toastProps,
     contentProps,
@@ -260,15 +274,19 @@ function Toast({ toast, variant, className, children, ...props }: ToastProps) {
 
   return (
     <ToastItemContext.Provider value={itemContext}>
-      <div
-        {...toastProps}
+      <motion.div
+        {...(toastProps as unknown as HTMLMotionProps<"div">)}
         ref={ref}
+        initial={toastMotion.initial}
+        animate={toastMotion.animate}
+        exit={toastMotion.exit}
+        transition={getToastItemTransition(reducedMotion)}
         data-toast=""
         data-variant={resolvedVariant}
         className={cn(styles.toast, className)}
       >
         {children}
-      </div>
+      </motion.div>
     </ToastItemContext.Provider>
   );
 }

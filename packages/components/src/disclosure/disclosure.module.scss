@@ -51,19 +51,28 @@
   flex-shrink: 0;
   margin-top: 0.125rem;
   color: var(--color-fg-muted);
-  transition: transform 200ms ease;
+  transition: transform var(--motion-normal) var(--interaction-transition-curve);
 }
 
 .panel {
+  display: grid;
+  grid-template-rows: 0fr;
   overflow: hidden;
   font-size: 0.875rem;
   color: var(--color-fg-muted);
+  transition: grid-template-rows var(--motion-normal)
+    var(--interaction-transition-curve);
 
-  &[data-hidden="true"] {
-    display: none;
+  &[data-expanded="true"] {
+    grid-template-rows: 1fr;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    transition-duration: 0ms;
   }
 }
 
 .panelInner {
+  overflow: hidden;
   padding-bottom: 0.75rem;
 }

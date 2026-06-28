@@ -51,6 +51,7 @@
 
 .tab {
   position: relative;
+  position: relative;
   display: inline-flex;
   flex: 1;
   cursor: default;
@@ -128,8 +129,17 @@
   flex: 1;
   font-size: 0.875rem;
   outline: none;
+  transition: opacity var(--motion-fast) var(--interaction-transition-curve);
 
   &[data-inert="true"] {
-    display: none;
+    visibility: hidden;
+    height: 0;
+    overflow: hidden;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    transition-duration: 0ms;
   }
 }

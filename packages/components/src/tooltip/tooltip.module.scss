@@ -1,4 +1,5 @@
 @use "@dev-ui/tokens/scss" as *;
+@use "../shared/overlay-animation" as *;
 
 .root {
   position: relative;
@@ -64,4 +65,8 @@
     left: calc(100% + 0.5rem);
     transform: translateY(-50%);
   }
+}
+
+.contentSurface {
+  @include overlay-enter-exit;
 }

@@ -9,14 +9,27 @@ import {
 import { mergeProps } from "@react-aria/utils";
 import { useOverlayTriggerState } from "@react-stately/overlays";
 import {
+  AnimatePresence,
+  animate,
+  type HTMLMotionProps,
+  type MotionValue,
+  motion,
+  useMotionValue,
+  useReducedMotion,
+} from "motion/react";
+import {
   createContext,
   type HTMLAttributes,
   type RefObject,
   useContext,
   useLayoutEffect,
   useRef,
-  useState,
 } from "react";
+import {
+  getDrawerPanelMotion,
+  getDrawerPanelTransition,
+} from "../motion/drawer-motion";
+import { EASE_DRAWER, SPRING_DRAWER_SWIPE } from "../motion/ease";
 import styles from "./drawer.module.scss";
 import type {
   DrawerHandleProps,
@@ -82,38 +95,71 @@ function getSwipeDelta(
   }
 }
 
-function applySwipeStyle(
-  element: HTMLDivElement,
+function getSwipeOffset(
   placement: DrawerPlacement,
-  deltaX: number,
-  deltaY: number,
-) {
+  dismissDelta: number,
+): { x: number; y: number } {
+  switch (placement) {
+    case "bottom":
+      return { x: 0, y: dismissDelta };
+    case "top":
+      return { x: 0, y: -dismissDelta };
+    case "left":
+      return { x: -dismissDelta, y: 0 };
+    case "right":
+      return { x: dismissDelta, y: 0 };
+  }
+}
+
+function applySwipeStyle({
+  element,
+  placement,
+  deltaX,
+  deltaY,
+  swipeX,
+  swipeY,
+}: {
+  element: HTMLDivElement;
+  placement: DrawerPlacement;
+  deltaX: number;
+  deltaY: number;
+  swipeX: MotionValue<number>;
+  swipeY: MotionValue<number>;
+}) {
   const dismissDelta = getSwipeDelta(placement, deltaX, deltaY);
   const progress = Math.min(dismissDelta / DISMISS_THRESHOLD, 1);
-  const movementX =
-    placement === "left"
-      ? -dismissDelta
-      : placement === "right"
-        ? dismissDelta
-        : 0;
-  const movementY =
-    placement === "top"
-      ? -dismissDelta
-      : placement === "bottom"
-        ? dismissDelta
-        : 0;
+  const { x, y } = getSwipeOffset(placement, dismissDelta);
+  const overlay = element.closest('[class*="overlay"]') as HTMLElement | null;
 
-  element.style.setProperty("--drawer-swipe-movement-x", `${movementX}px`);
-  element.style.setProperty("--drawer-swipe-movement-y", `${movementY}px`);
-  element.style.setProperty("--drawer-swipe-progress", String(progress));
+  swipeX.set(x);
+  swipeY.set(y);
+  overlay?.style.setProperty("--drawer-swipe-progress", String(progress));
   element.dataset.swiping = "true";
 }
 
-function clearSwipeStyle(element: HTMLDivElement) {
-  element.style.removeProperty("--drawer-swipe-movement-x");
-  element.style.removeProperty("--drawer-swipe-movement-y");
-  element.style.removeProperty("--drawer-swipe-progress");
+function clearSwipeStyle({
+  element,
+  swipeX,
+  swipeY,
+}: {
+  element: HTMLDivElement;
+  swipeX: MotionValue<number>;
+  swipeY: MotionValue<number>;
+}) {
+  const overlay = element.closest('[class*="overlay"]') as HTMLElement | null;
+
+  swipeX.set(0);
+  swipeY.set(0);
+  overlay?.style.removeProperty("--drawer-swipe-progress");
   delete element.dataset.swiping;
+}
+
+function resetSwipeOffset(
+  swipeX: MotionValue<number>,
+  swipeY: MotionValue<number>,
+) {
+  animate(swipeX, 0, SPRING_DRAWER_SWIPE);
+  animate(swipeY, 0, SPRING_DRAWER_SWIPE);
 }
 
 function useDrawerSwipe({
@@ -121,11 +167,15 @@ function useDrawerSwipe({
   swipeToDismiss,
   onDismiss,
   panelRef,
+  swipeX,
+  swipeY,
 }: {
   placement: DrawerPlacement;
   swipeToDismiss: boolean;
   onDismiss: () => void;
   panelRef: RefObject<HTMLDivElement | null>;
+  swipeX: MotionValue<number>;
+  swipeY: MotionValue<number>;
 }): DrawerMoveProps {
   const deltaRef = useRef({ x: 0, y: 0 });
 
@@ -151,7 +201,14 @@ function useDrawerSwipe({
       if (!panel) {
         return;
       }
-      applySwipeStyle(panel, placement, deltaX, deltaY);
+      applySwipeStyle({
+        element: panel,
+        placement,
+        deltaX,
+        deltaY,
+        swipeX,
+        swipeY,
+      });
     },
     onMoveEnd() {
       if (!swipeToDismiss) {
@@ -165,11 +222,14 @@ function useDrawerSwipe({
 
       const { x, y } = deltaRef.current;
       const dismissDelta = getSwipeDelta(placement, x, y);
-      clearSwipeStyle(panel);
+      clearSwipeStyle({ element: panel, swipeX, swipeY });
 
       if (dismissDelta >= DISMISS_THRESHOLD) {
         onDismiss();
+        return;
       }
+
+      resetSwipeOffset(swipeX, swipeY);
     },
   });
 
@@ -188,8 +248,10 @@ function Drawer({
   swipeToDismiss = true,
   style,
 }: DrawerProps) {
+  const reducedMotion = useReducedMotion();
   const panelRef = useRef<HTMLDivElement>(null);
-  const [isStarting, setIsStarting] = useState(false);
+  const swipeX = useMotionValue(0);
+  const swipeY = useMotionValue(0);
   const state = useOverlayTriggerState({
     ...(isOpen !== undefined ? { isOpen } : {}),
     ...(defaultOpen !== undefined ? { defaultOpen } : {}),
@@ -204,95 +266,119 @@ function Drawer({
     state,
     panelRef,
   );
+  const { style: _backdropStyle, ...backdropProps } = underlayProps;
+  const { style: _panelStyle, ...panelMotionProps } = modalProps;
 
   const swipeProps = useDrawerSwipe({
     placement,
     swipeToDismiss,
     onDismiss: state.close,
     panelRef,
+    swipeX,
+    swipeY,
   });
+
+  const panelMotion = getDrawerPanelMotion(placement, reducedMotion);
+  const panelTransition = getDrawerPanelTransition(reducedMotion);
 
   useLayoutEffect(() => {
     if (!state.isOpen) {
       return;
     }
 
-    setIsStarting(true);
-    const frame = requestAnimationFrame(() => {
-      setIsStarting(false);
-    });
-
     const focusTarget = getInitialFocusTarget(panelRef.current);
     if (focusTarget !== true) {
       focusTarget.focus();
     }
-
-    return () => {
-      cancelAnimationFrame(frame);
-    };
   }, [state.isOpen]);
 
-  if (!state.isOpen) {
-    return (
-      <DrawerContext.Provider value={{ placement, moveProps: {} }}>
-        {null}
-      </DrawerContext.Provider>
-    );
-  }
-
   return (
-    <DrawerContext.Provider value={{ placement, moveProps: swipeProps }}>
+    <DrawerContext.Provider
+      value={{ placement, moveProps: state.isOpen ? swipeProps : {} }}
+    >
       <DrawerPlacementContext.Provider value={placement}>
         <OverlayContainer>
-          <Overlay>
-            <div className={styles.overlay}>
-              {isDismissable ? (
-                <button
-                  type="button"
-                  {...underlayProps}
-                  aria-label="Dismiss"
-                  className={styles.backdrop}
-                  data-open=""
-                  onClick={() => {
-                    state.close();
-                  }}
-                />
-              ) : (
-                <div
-                  {...underlayProps}
-                  className={styles.backdrop}
-                  data-open=""
-                />
-              )}
-              <div
-                className={cn(styles.viewport, styles[`viewport-${placement}`])}
-                data-open=""
-              >
-                <div
-                  {...mergeProps(modalProps, swipeProps)}
-                  ref={panelRef}
-                  data-drawer=""
-                  data-open=""
-                  data-swipe-disabled={swipeToDismiss ? undefined : ""}
-                  data-starting-style={isStarting ? "" : undefined}
-                  className={cn(
-                    styles.popup,
-                    styles[`popup-${placement}`],
-                    resolveClassName(className, state.isOpen),
+          <AnimatePresence>
+            {state.isOpen ? (
+              <Overlay key="drawer">
+                <div className={styles.overlay} data-drawer-root="">
+                  {isDismissable ? (
+                    <motion.button
+                      type="button"
+                      {...(backdropProps as unknown as HTMLMotionProps<"button">)}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.25, ease: EASE_DRAWER }}
+                      aria-label="Dismiss"
+                      className={styles.backdrop}
+                      data-drawer-backdrop=""
+                      data-open=""
+                      onClick={() => {
+                        state.close();
+                      }}
+                    />
+                  ) : (
+                    <motion.div
+                      {...(backdropProps as unknown as HTMLMotionProps<"div">)}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.25, ease: EASE_DRAWER }}
+                      className={styles.backdrop}
+                      data-drawer-backdrop=""
+                      data-open=""
+                    />
                   )}
-                  style={style}
-                >
-                  {isDismissable ? (
-                    <DismissButton onDismiss={state.close} />
-                  ) : null}
-                  {children}
-                  {isDismissable ? (
-                    <DismissButton onDismiss={state.close} />
-                  ) : null}
+                  <div
+                    className={cn(
+                      styles.viewport,
+                      styles[`viewport-${placement}`],
+                    )}
+                    data-drawer-viewport=""
+                    data-open=""
+                  >
+                    <motion.div
+                      {...(mergeProps(
+                        panelMotionProps,
+                        swipeProps,
+                      ) as unknown as HTMLMotionProps<"div">)}
+                      ref={panelRef}
+                      initial={panelMotion.initial}
+                      animate={panelMotion.animate}
+                      exit={panelMotion.exit}
+                      transition={panelTransition}
+                      style={
+                        {
+                          x: swipeX,
+                          y: swipeY,
+                          ...(style ?? {}),
+                        } as unknown as NonNullable<
+                          HTMLMotionProps<"div">["style"]
+                        >
+                      }
+                      data-drawer=""
+                      data-open=""
+                      data-swipe-disabled={swipeToDismiss ? undefined : ""}
+                      className={cn(
+                        styles.popup,
+                        styles[`popup-${placement}`],
+                        resolveClassName(className, state.isOpen),
+                      )}
+                    >
+                      {isDismissable ? (
+                        <DismissButton onDismiss={state.close} />
+                      ) : null}
+                      {children}
+                      {isDismissable ? (
+                        <DismissButton onDismiss={state.close} />
+                      ) : null}
+                    </motion.div>
+                  </div>
                 </div>
-              </div>
-            </div>
-          </Overlay>
+              </Overlay>
+            ) : null}
+          </AnimatePresence>
         </OverlayContainer>
       </DrawerPlacementContext.Provider>
     </DrawerContext.Provider>

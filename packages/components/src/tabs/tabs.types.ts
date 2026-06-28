@@ -44,4 +44,5 @@ export type TabsContextValue<T extends object = object> = {
 
 export type TabListContextValue = {
   variant: TabsVariant;
+  layoutId: string;
 };

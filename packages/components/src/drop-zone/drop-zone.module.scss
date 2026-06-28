@@ -12,6 +12,11 @@
   padding: var(--space-6);
   font-size: 0.875rem;
   outline: none;
+  transition:
+    border-color var(--interaction-transition-duration)
+      var(--interaction-transition-curve),
+    background-color var(--interaction-transition-duration)
+      var(--interaction-transition-curve);
 
   &:focus-visible {
     border-color: var(--color-border-focus);

@@ -1,4 +1,5 @@
 @use "@dev-ui/tokens/scss" as *;
+@use "../shared/overlay-animation" as *;
 
 .popover {
   z-index: 50;
@@ -11,9 +12,11 @@
   backdrop-filter: blur(var(--popover-backdrop-blur, 0));
   -webkit-backdrop-filter: blur(var(--popover-backdrop-blur, 0));
   outline: none;
+  @include overlay-enter-exit;
 }
 
 .underlay {
   position: fixed;
   inset: 0;
+  @include overlay-underlay-fade;
 }

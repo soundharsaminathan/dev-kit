@@ -1,6 +1,6 @@
 import "@testing-library/jest-dom/vitest";
 import { setInteractionModality } from "@react-aria/interactions";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Button } from "../../button/Button";
 import { Tooltip, TooltipContent } from "../Tooltip";
@@ -189,7 +189,9 @@ describe("Tooltip", () => {
     expect(screen.getByRole("tooltip")).toBeInTheDocument();
 
     fireEvent.click(trigger);
-    vi.runAllTimers();
+    act(() => {
+      vi.advanceTimersByTime(200);
+    });
     expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
   });
 
@@ -212,7 +214,9 @@ describe("Tooltip", () => {
     expect(screen.getByRole("tooltip")).toHaveTextContent("Save file");
 
     fireEvent.keyDown(trigger, { key: "Enter" });
-    vi.runAllTimers();
+    act(() => {
+      vi.advanceTimersByTime(200);
+    });
     expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
   });
 });

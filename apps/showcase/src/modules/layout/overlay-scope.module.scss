@@ -25,8 +25,9 @@
   inset: 0;
 }
 
-.portalHost :global(div:has([data-drawer])),
-.portalHost :global(div:has([data-drawer]) > *) {
+.portalHost :global([data-drawer-root]),
+.portalHost :global([data-drawer-backdrop]),
+.portalHost :global([data-drawer-viewport]) {
   position: absolute;
   inset: 0;
 }

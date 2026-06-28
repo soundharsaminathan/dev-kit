@@ -4,11 +4,13 @@ import { useHover } from "@react-aria/interactions";
 import { useTab, useTabList, useTabPanel } from "@react-aria/tabs";
 import { mergeProps } from "@react-aria/utils";
 import { useTabListState } from "@react-stately/tabs";
+import { type HTMLMotionProps, motion } from "motion/react";
 import {
   createContext,
   isValidElement,
   type ReactNode,
   useContext,
+  useId,
   useMemo,
   useRef,
 } from "react";
@@ -18,6 +20,7 @@ import {
   getDisabledKeys,
   parseCollectionItems,
 } from "../list-box/collection-utils";
+import { LayoutIndicator } from "../motion/LayoutIndicator";
 import styles from "./tabs.module.scss";
 import type {
   TabListContextValue,
@@ -118,13 +121,21 @@ function TabList({
 }: TabListProps) {
   const { state, orientation } = useTabsContext("TabList");
   const tabListRef = useRef<HTMLDivElement>(null);
+  const layoutId = useId();
   const { tabListProps } = useTabList({ orientation }, state, tabListRef);
-  const listContext = useMemo(() => ({ variant }), [variant]);
+  const listContext = useMemo(
+    () => ({ variant, layoutId }),
+    [variant, layoutId],
+  );
 
   return (
     <TabListContext.Provider value={listContext}>
-      <div
-        {...mergeProps(tabListProps, props)}
+      <motion.div
+        layoutRoot
+        {...(mergeProps(
+          tabListProps,
+          props,
+        ) as unknown as HTMLMotionProps<"div">)}
         ref={composeRefs(tabListRef, ref)}
         data-tab-list=""
         data-orientation={orientation}
@@ -132,7 +143,7 @@ function TabList({
         className={cn(styles.list, className)}
       >
         {children}
-      </div>
+      </motion.div>
     </TabListContext.Provider>
   );
 }
@@ -140,7 +151,7 @@ TabList.displayName = "TabList";
 
 function Tab({ id, children, className, isDisabled, ref }: TabProps) {
   const { state, orientation } = useTabsContext("Tab");
-  const { variant } = useTabListContext("Tab");
+  const { variant, layoutId } = useTabListContext("Tab");
   const tabRef = useRef<HTMLDivElement>(null);
   const {
     tabProps,
@@ -173,9 +184,8 @@ function Tab({ id, children, className, isDisabled, ref }: TabProps) {
       className={cn(styles.tab, className)}
     >
       {isSelected ? (
-        <span
-          data-tab-indicator=""
-          aria-hidden="true"
+        <LayoutIndicator
+          layoutId={layoutId}
           className={styles.selectionIndicator}
         />
       ) : null}

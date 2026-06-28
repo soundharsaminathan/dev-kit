@@ -332,9 +332,11 @@ describe("Drawer", () => {
     });
 
     expect(panel).toHaveAttribute("data-swiping", "true");
-    expect(panel?.style.getPropertyValue("--drawer-swipe-progress")).not.toBe(
-      "",
-    );
+    expect(
+      (
+        panel?.closest('[class*="overlay"]') as HTMLElement | null
+      )?.style.getPropertyValue("--drawer-swipe-progress"),
+    ).not.toBe("");
 
     act(() => {
       fireEvent.pointerUp(window, {
@@ -451,7 +453,7 @@ describe("Drawer", () => {
     expect(getDrawerPanel()).toHaveStyle({ maxWidth: "320px" });
   });
 
-  it("removes the starting style after the opening frame", async () => {
+  it("animates open without starting-style attributes", async () => {
     render(
       <Drawer defaultOpen>
         <p>Drawer content</p>
@@ -459,11 +461,8 @@ describe("Drawer", () => {
     );
 
     const panel = getDrawerPanel();
-    expect(panel).toHaveAttribute("data-starting-style", "");
-
-    await waitFor(() => {
-      expect(panel).not.toHaveAttribute("data-starting-style");
-    });
+    expect(panel).toBeInTheDocument();
+    expect(panel).not.toHaveAttribute("data-starting-style");
   });
 
   it("focuses nested dialog content when present", async () => {

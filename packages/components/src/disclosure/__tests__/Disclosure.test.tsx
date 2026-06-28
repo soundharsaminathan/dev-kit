@@ -21,7 +21,7 @@ describe("Disclosure", () => {
     expect(panel).toBeVisible();
   });
 
-  it("marks expanded and hidden panel states", () => {
+  it("marks expanded panel states", () => {
     render(
       <Disclosure defaultExpanded>
         <DisclosureTrigger>System Requirements</DisclosureTrigger>
@@ -33,9 +33,10 @@ describe("Disclosure", () => {
       "data-expanded",
       "true",
     );
-    expect(
-      document.querySelector("[data-disclosure-panel]"),
-    ).not.toHaveAttribute("data-hidden");
+    expect(document.querySelector("[data-disclosure-panel]")).toHaveAttribute(
+      "data-expanded",
+      "true",
+    );
   });
 
   it("reflects disabled state on the trigger", () => {
