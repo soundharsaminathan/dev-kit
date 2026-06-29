@@ -3,7 +3,7 @@ import { ToggleButtonGroup } from "@dev-ui/components/toggle-button-group";
 
 type ToggleButtonGroupPlaygroundProps = {
   selectionMode?: "single" | "multiple";
-  defaultSelectedKeys?: string[];
+  defaultSelectedKeys?: string | string[];
   variant?: "default" | "primary" | "quiet";
   size?: "xs" | "sm" | "md" | "lg";
   orientation?: "horizontal" | "vertical";
@@ -13,13 +13,18 @@ type ToggleButtonGroupPlaygroundProps = {
 
 export default function ToggleButtonGroupPlayground({
   selectionMode = "single",
-  defaultSelectedKeys = ["bold"],
+  defaultSelectedKeys: defaultSelectedKeysProp = ["bold"],
   variant = "default",
   size = "md",
   orientation = "horizontal",
   isDisabled = false,
   disallowEmptySelection = false,
 }: ToggleButtonGroupPlaygroundProps = {}) {
+  const defaultSelectedKeys =
+    typeof defaultSelectedKeysProp === "string"
+      ? defaultSelectedKeysProp.split(",").map((value) => value.trim())
+      : defaultSelectedKeysProp;
+
   return (
     <ToggleButtonGroup
       selectionMode={selectionMode}

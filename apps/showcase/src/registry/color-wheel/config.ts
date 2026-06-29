@@ -8,5 +8,6 @@ export const colorWheelConfig: ComponentRegistryConfig = {
   controls: [
     { name: "aria-label", type: "string", defaultValue: "Hue" },
     { name: "isDisabled", type: "boolean", defaultValue: false },
+    { name: "defaultValue", type: "string", defaultValue: "#6366f1" },
   ],
 };

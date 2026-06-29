@@ -8,5 +8,6 @@ export const calendarConfig: ComponentRegistryConfig = {
   controls: [
     { name: "isDisabled", type: "boolean", defaultValue: false },
     { name: "isReadOnly", type: "boolean", defaultValue: false },
+    { name: "aria-label", type: "string", defaultValue: "Event date" },
   ],
 };

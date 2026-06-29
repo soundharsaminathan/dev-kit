@@ -6,18 +6,8 @@ export const skeletonConfig: ComponentRegistryConfig = {
   category: "typography",
   description: "Skeleton component showcase.",
   controls: [
-    {
-      name: "variant",
-      type: "enum",
-      options: ["placeholder", "content"],
-      defaultValue: "content",
-    },
-    { name: "isLoading", type: "boolean", defaultValue: true },
-    {
-      name: "animation",
-      type: "enum",
-      options: ["shimmer", "pulse", "none"],
-      defaultValue: "shimmer",
-    },
+    { name: "animation", type: "enum", options: ["shimmer", "pulse", "none"] },
+    { name: "isLoading", type: "boolean" },
+    { name: "variant", type: "enum", options: ["placeholder", "content"] },
   ],
 };

@@ -5,5 +5,15 @@ export const scrollFadeConfig: ComponentRegistryConfig = {
   slug: "scroll-fade",
   category: "layout",
   description: "Scroll Fade component showcase.",
-  controls: [{ name: "children", type: "string", defaultValue: "ScrollFade" }],
+  controls: [
+    {
+      name: "direction",
+      type: "enum",
+      options: ["vertical", "horizontal"],
+      defaultValue: "vertical",
+    },
+    { name: "itemCount", type: "number", defaultValue: 20 },
+    { name: "width", type: "number", defaultValue: 240 },
+    { name: "height", type: "number", defaultValue: 160 },
+  ],
 };

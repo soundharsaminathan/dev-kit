@@ -7,6 +7,8 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
+    "registry:generate": "tsx scripts/generate-registry.ts",
+    "registry:sync": "tsx scripts/generate-registry.ts --sync",
     "test:e2e": "playwright test --config playwright.config.ts",
     "test:e2e:update": "playwright test --config playwright.config.ts --update-snapshots"
   },

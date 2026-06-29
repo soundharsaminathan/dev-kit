@@ -5,5 +5,14 @@ export const menuConfig: ComponentRegistryConfig = {
   slug: "menu",
   category: "overlays",
   description: "Menu component showcase.",
-  controls: [{ name: "triggerLabel", type: "string", defaultValue: "Actions" }],
+  controls: [
+    { name: "triggerLabel", type: "string", defaultValue: "Actions" },
+    {
+      name: "placement",
+      type: "enum",
+      options: ["bottom", "top", "left", "right", "bottom start", "bottom end"],
+      defaultValue: "bottom start",
+    },
+    { name: "showDangerItem", type: "boolean", defaultValue: true },
+  ],
 };

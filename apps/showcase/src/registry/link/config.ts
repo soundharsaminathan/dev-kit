@@ -5,5 +5,15 @@ export const linkConfig: ComponentRegistryConfig = {
   slug: "link",
   category: "typography",
   description: "Link component showcase.",
-  controls: [{ name: "children", type: "string", defaultValue: "Link" }],
+  controls: [
+    {
+      name: "variant",
+      type: "enum",
+      options: ["accent", "quiet", "unstyled"],
+      defaultValue: "accent",
+    },
+    { name: "isDisabled", type: "boolean" },
+    { name: "children", type: "string", defaultValue: "Learn more" },
+    { name: "href", type: "string", defaultValue: "https://example.com" },
+  ],
 };

@@ -1,6 +1,11 @@
 /**
- * Generates registry config + playground stubs from Storybook stories.
- * Run: pnpm exec tsx apps/showcase/scripts/generate-registry.ts
+ * Registry tooling from Storybook stories.
+ *
+ * Scaffold new entries (config + playground stubs):
+ *   pnpm exec tsx apps/showcase/scripts/generate-registry.ts
+ *
+ * Re-sync controls on existing configs (preserves hand-tuned fields):
+ *   pnpm exec tsx apps/showcase/scripts/generate-registry.ts --sync
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -10,7 +15,9 @@ const STORIES_DIR = path.resolve(ROOT, "../storybook/stories");
 const REGISTRY_DIR = path.resolve(ROOT, "src/registry");
 
 const SKIP_STORIES = new Set(["Themes.stories.tsx"]);
-const EXISTING = new Set(["button", "select", "switch"]);
+const HAND_TUNED_SLUGS = new Set(["button", "select", "switch"]);
+
+const SYNC_MODE = process.argv.includes("--sync");
 
 const CATEGORY_BY_SLUG: Record<string, string> = {
   button: "buttons",
@@ -92,6 +99,35 @@ const CATEGORY_BY_SLUG: Record<string, string> = {
   "tag-group": "feedback",
 };
 
+type ParsedControl =
+  | { name: string; type: "boolean"; defaultValue?: boolean }
+  | { name: string; type: "string"; defaultValue?: string }
+  | {
+      name: string;
+      type: "number";
+      defaultValue?: number;
+      min?: number;
+      max?: number;
+      step?: number;
+    }
+  | { name: string; type: "enum"; options: string[]; defaultValue?: string };
+
+type ExistingConfig = {
+  name?: string;
+  category?: string;
+  description: string | null;
+  scale?: number;
+  hasNormalize: boolean;
+  hasExtraVisual: boolean;
+  normalizeImport?: string;
+  src: string;
+};
+
+type PlaygroundMeta = {
+  props: string[];
+  unions: Map<string, string[]>;
+};
+
 function pascalToSlug(name: string): string {
   return name
     .replace(/([a-z0-9])([A-Z])/g, "$1-$2")
@@ -110,59 +146,117 @@ function slugToConfigName(slug: string): string {
   return slug.replace(/-([a-z])/g, (_, char: string) => char.toUpperCase());
 }
 
-type ParsedControl =
-  | { name: string; type: "boolean"; defaultValue?: boolean }
-  | { name: string; type: "string"; defaultValue?: string }
-  | { name: string; type: "number"; defaultValue?: number }
-  | { name: string; type: "enum"; options: string[]; defaultValue?: string };
+function extractObjectBlock(source: string, key: string): string | null {
+  const keyIndex = source.indexOf(`${key}:`);
+  if (keyIndex === -1) return null;
 
-function parseArgTypes(source: string): ParsedControl[] {
-  const argTypesMatch = source.match(/argTypes:\s*\{([\s\S]*?)\n\s*\},/);
-  if (!argTypesMatch) return [];
+  const braceStart = source.indexOf("{", keyIndex);
+  if (braceStart === -1) return null;
 
-  const block = argTypesMatch[1];
-  const controls: ParsedControl[] = [];
-  const entryRegex = /(\w+|"[^"]+"):\s*\{([^}]*)\}/g;
-  let match: RegExpExecArray | null = entryRegex.exec(block);
+  let depth = 0;
+  for (let i = braceStart; i < source.length; i++) {
+    if (source[i] === "{") depth++;
+    else if (source[i] === "}") {
+      depth--;
+      if (depth === 0) {
+        return source.slice(braceStart + 1, i);
+      }
+    }
+  }
 
-  while (match) {
-    const rawName = match[1];
+  return null;
+}
+
+function parseTopLevelEntries(block: string) {
+  const entries: Array<{ name: string; body: string }> = [];
+  let i = 0;
+
+  while (i < block.length) {
+    while (i < block.length && /[\s,]/.test(block[i])) i++;
+    if (i >= block.length) break;
+
+    const nameMatch = block.slice(i).match(/^([\w"-]+|"[^"]+")\s*:/);
+    if (!nameMatch) break;
+
+    const rawName = nameMatch[1];
     const name = rawName.replaceAll('"', "");
-    const body = match[2];
-    const controlMatch = body.match(/control:\s*"([^"]+)"/);
-    const optionsMatch = body.match(/options:\s*\[([^\]]*)\]/);
+    i += nameMatch[0].length;
 
-    if (!controlMatch) {
-      match = entryRegex.exec(block);
+    while (i < block.length && /\s/.test(block[i])) i++;
+    if (block[i] !== "{") {
+      i++;
       continue;
     }
 
+    let depth = 0;
+    const bodyStart = i;
+    for (; i < block.length; i++) {
+      if (block[i] === "{") depth++;
+      else if (block[i] === "}") {
+        depth--;
+        if (depth === 0) {
+          entries.push({ name, body: block.slice(bodyStart + 1, i) });
+          i++;
+          break;
+        }
+      }
+    }
+  }
+
+  return entries;
+}
+
+function parseArgTypes(source: string): ParsedControl[] {
+  const block = extractObjectBlock(source, "argTypes");
+  if (!block) return [];
+
+  const controls: ParsedControl[] = [];
+
+  for (const entry of parseTopLevelEntries(block)) {
+    const controlMatch = entry.body.match(/control:\s*"([^"]+)"/);
+    const optionsMatch = entry.body.match(/options:\s*\[([^\]]*)\]/);
+
+    if (!controlMatch) continue;
+
     const control = controlMatch[1];
     if (control === "boolean") {
-      controls.push({ name, type: "boolean" });
+      controls.push({ name: entry.name, type: "boolean" });
     } else if (control === "text") {
-      controls.push({ name, type: "string" });
+      controls.push({ name: entry.name, type: "string" });
     } else if (control === "number") {
-      controls.push({ name, type: "number" });
+      controls.push({ name: entry.name, type: "number" });
     } else if (control === "select" && optionsMatch) {
-      const options = optionsMatch[1]
+      const rawOptions = optionsMatch[1]
         .split(",")
-        .map((option) => option.trim().replaceAll(/['"]/g, ""))
+        .map((option) => option.trim())
         .filter(Boolean);
-      controls.push({ name, type: "enum", options });
+      const allNumeric = rawOptions.every((option) =>
+        /^-?\d+(\.\d+)?$/.test(option),
+      );
+      if (allNumeric) {
+        const numbers = rawOptions.map(Number);
+        controls.push({
+          name: entry.name,
+          type: "number",
+          min: Math.min(...numbers),
+          max: Math.max(...numbers),
+          step: numbers.length > 1 ? numbers[1] - numbers[0] : 1,
+        });
+      } else {
+        const options = rawOptions.map((option) =>
+          option.replaceAll(/['"]/g, ""),
+        );
+        controls.push({ name: entry.name, type: "enum", options });
+      }
     }
-
-    match = entryRegex.exec(block);
   }
 
   return controls;
 }
 
 function parseArgs(source: string): Record<string, unknown> {
-  const argsMatch = source.match(/args:\s*\{([\s\S]*?)\n\s*\},/);
-  if (!argsMatch) return {};
-
-  const block = argsMatch[1];
+  const block = extractObjectBlock(source, "args");
+  if (!block) return {};
   const args: Record<string, unknown> = {};
   const lineRegex = /^\s*([\w"-]+):\s*(.+?),?\s*$/gm;
   let match: RegExpExecArray | null = lineRegex.exec(block);
@@ -205,6 +299,42 @@ function parseTitle(source: string): string | null {
   return match?.[1] ?? null;
 }
 
+function parsePlaygroundMeta(slug: string): PlaygroundMeta {
+  const pgPath = path.join(REGISTRY_DIR, slug, "playground.tsx");
+  if (!fs.existsSync(pgPath)) {
+    return { props: [], unions: new Map() };
+  }
+
+  const src = fs.readFileSync(pgPath, "utf8");
+  const props = new Set<string>();
+  const unions = new Map<string, string[]>();
+
+  const typeMatch = src.match(/type \w+PlaygroundProps = \{([\s\S]*?)\};/);
+  if (typeMatch) {
+    for (const line of typeMatch[1].split("\n")) {
+      const unionMatch = line.match(/^\s*(\w+)\??:\s*(.+);?\s*$/);
+      if (!unionMatch) continue;
+      const name = unionMatch[1];
+      props.add(name);
+      const typePart = unionMatch[2].trim();
+      const stringUnion = [...typePart.matchAll(/"([^"]+)"/g)].map((m) => m[1]);
+      if (stringUnion.length > 0) {
+        unions.set(name, stringUnion);
+      }
+    }
+  }
+
+  const fnMatch = src.match(
+    /export default function \w+Playground\(\{([\s\S]*?)\}(?:\s*=\s*\{\})?/,
+  );
+  if (fnMatch) {
+    for (const m of fnMatch[1].matchAll(/^\s*(\w+)\s*=/gm)) props.add(m[1]);
+    for (const m of fnMatch[1].matchAll(/^\s*(\w+)\??:/gm)) props.add(m[1]);
+  }
+
+  return { props: [...props].filter((p) => p !== "...props"), unions };
+}
+
 function applyDefaults(
   controls: ParsedControl[],
   args: Record<string, unknown>,
@@ -224,29 +354,125 @@ function applyDefaults(
   }
 }
 
-function hasCustomRender(source: string): boolean {
-  return /render:\s*\(/.test(source) && !/component:\s*\w+/.test(source);
+function inferControl(
+  name: string,
+  value: unknown,
+  unions: Map<string, string[]>,
+): ParsedControl | null {
+  if (unions.has(name)) {
+    return { name, type: "enum", options: unions.get(name)! };
+  }
+  if (typeof value === "boolean") return { name, type: "boolean" };
+  if (typeof value === "number") return { name, type: "number" };
+  if (typeof value === "string") return { name, type: "string" };
+  return null;
 }
 
-function writeConfig(slug: string, name: string, controls: ParsedControl[]) {
+function buildControls(
+  storyControls: ParsedControl[],
+  args: Record<string, unknown>,
+  playground: PlaygroundMeta,
+): ParsedControl[] {
+  const controls: ParsedControl[] = [];
+  const seen = new Set<string>();
+
+  for (const control of storyControls) {
+    controls.push({ ...control });
+    seen.add(control.name);
+  }
+
+  for (const name of playground.props) {
+    if (seen.has(name)) continue;
+    const value = args[name];
+    const inferred = inferControl(name, value, playground.unions);
+    if (inferred) {
+      controls.push(inferred);
+      seen.add(name);
+    }
+  }
+
+  for (const [name, value] of Object.entries(args)) {
+    if (seen.has(name)) continue;
+    const inferred = inferControl(name, value, playground.unions);
+    if (inferred) {
+      controls.push(inferred);
+      seen.add(name);
+    }
+  }
+
+  applyDefaults(controls, args);
+  return controls;
+}
+
+function formatControl(control: ParsedControl): string {
+  if (control.type === "enum") {
+    const defaultValue =
+      control.defaultValue !== undefined
+        ? `, defaultValue: ${JSON.stringify(control.defaultValue)}`
+        : "";
+    return `    { name: ${JSON.stringify(control.name)}, type: "enum", options: ${JSON.stringify(control.options)}${defaultValue} },`;
+  }
+
+  if (control.type === "number") {
+    const extras: string[] = [];
+    if (control.defaultValue !== undefined) {
+      extras.push(`defaultValue: ${control.defaultValue}`);
+    }
+    if (control.min !== undefined) extras.push(`min: ${control.min}`);
+    if (control.max !== undefined) extras.push(`max: ${control.max}`);
+    if (control.step !== undefined) extras.push(`step: ${control.step}`);
+    const suffix = extras.length > 0 ? `, ${extras.join(", ")}` : "";
+    return `    { name: ${JSON.stringify(control.name)}, type: "number"${suffix} },`;
+  }
+
+  const defaultValue =
+    control.defaultValue !== undefined
+      ? `, defaultValue: ${JSON.stringify(control.defaultValue)}`
+      : "";
+  return `    { name: ${JSON.stringify(control.name)}, type: "${control.type}"${defaultValue} },`;
+}
+
+function readExistingConfig(slug: string): ExistingConfig | null {
+  const configPath = path.join(REGISTRY_DIR, slug, "config.ts");
+  if (!fs.existsSync(configPath)) return null;
+  const src = fs.readFileSync(configPath, "utf8");
+
+  const name = src.match(/name:\s*"([^"]+)"/)?.[1];
+  const category = src.match(/category:\s*"([^"]+)"/)?.[1];
+  const description = src.match(
+    /description:\s*(?:"([^"]+)"|(\n\s*`[\s\S]*?`))/,
+  );
+  const scale = src.match(/scale:\s*([\d.]+)/)?.[1];
+  const hasNormalize = /normalizeControlValues:/.test(src);
+  const hasExtraVisual = /extraVisualCases:/.test(src);
+  const normalizeImport = src.match(
+    /^import \{ normalize\w+ \} from "\.\/normalize";$/m,
+  )?.[0];
+
+  return {
+    name,
+    category,
+    description:
+      description?.[1] ??
+      (description?.[0]?.includes("`")
+        ? description[0].replace(/^\s*description:\s*/, "").trim()
+        : null),
+    scale: scale ? Number(scale) : undefined,
+    hasNormalize,
+    hasExtraVisual,
+    normalizeImport,
+    src,
+  };
+}
+
+function writeScaffoldConfig(
+  slug: string,
+  name: string,
+  controls: ParsedControl[],
+) {
   const configVar = `${slugToConfigName(slug)}Config`;
   const category = CATEGORY_BY_SLUG[slug] ?? "forms";
-  const controlsLines = controls
-    .map((control) => {
-      if (control.type === "enum") {
-        const defaultValue =
-          control.defaultValue !== undefined
-            ? `, defaultValue: ${JSON.stringify(control.defaultValue)}`
-            : "";
-        return `    { name: ${JSON.stringify(control.name)}, type: "enum", options: ${JSON.stringify(control.options)}${defaultValue} },`;
-      }
-      const defaultValue =
-        control.defaultValue !== undefined
-          ? `, defaultValue: ${JSON.stringify(control.defaultValue)}`
-          : "";
-      return `    { name: ${JSON.stringify(control.name)}, type: "${control.type}"${defaultValue} },`;
-    })
-    .join("\n");
+  const controlsLines = controls.map(formatControl).join("\n");
 
   const content = `import type { ComponentRegistryConfig } from "../types";
 
@@ -262,6 +488,57 @@ ${controlsLines}
 `;
 
   fs.mkdirSync(path.join(REGISTRY_DIR, slug), { recursive: true });
+  fs.writeFileSync(path.join(REGISTRY_DIR, slug, "config.ts"), content);
+}
+
+function writeSyncedConfig(
+  slug: string,
+  controls: ParsedControl[],
+  existing: ExistingConfig,
+) {
+  const configVar = `${slugToConfigName(slug)}Config`;
+  const controlsLines = controls.map(formatControl).join("\n");
+
+  const imports = ['import type { ComponentRegistryConfig } from "../types";'];
+  if (existing.normalizeImport) imports.push(existing.normalizeImport);
+
+  const optionalLines: string[] = [];
+  if (existing.scale !== undefined) {
+    optionalLines.push(`  scale: ${existing.scale},`);
+  }
+  if (existing.hasNormalize) {
+    const fnName = existing.normalizeImport?.match(/normalize\w+/)?.[0];
+    if (fnName) optionalLines.push(`  normalizeControlValues: ${fnName},`);
+  }
+  if (existing.hasExtraVisual) {
+    const extraMatch = existing.src.match(/extraVisualCases:\s*\[[\s\S]*?\],/);
+    if (extraMatch) optionalLines.push(`  ${extraMatch[0]}`);
+  }
+
+  const description =
+    existing.description &&
+    !existing.description.endsWith("component showcase.")
+      ? existing.description
+      : `${existing.name ?? slugToDisplayName(slug)} component showcase.`;
+
+  const descriptionLine =
+    typeof description === "string" && description.includes("\n")
+      ? `description:\n    ${description},`
+      : `description: ${JSON.stringify(description)},`;
+
+  const content = `${imports.join("\n")}
+
+export const ${configVar}: ComponentRegistryConfig = {
+  name: ${JSON.stringify(existing.name ?? slugToDisplayName(slug))},
+  slug: ${JSON.stringify(slug)},
+  category: ${JSON.stringify(existing.category ?? "forms")},
+  ${descriptionLine}
+${optionalLines.length > 0 ? `${optionalLines.join("\n")}\n` : ""}  controls: [
+${controlsLines}
+  ],
+};
+`;
+
   fs.writeFileSync(path.join(REGISTRY_DIR, slug, "config.ts"), content);
 }
 
@@ -314,54 +591,106 @@ function writeStubPlayground(slug: string, name: string) {
   fs.writeFileSync(path.join(REGISTRY_DIR, slug, "playground.tsx"), content);
 }
 
-const storyFiles = fs
-  .readdirSync(STORIES_DIR)
-  .filter((file) => file.endsWith(".stories.tsx") && !SKIP_STORIES.has(file));
+function hasCustomRender(source: string): boolean {
+  return /render:\s*\(/.test(source) && !/component:\s*\w+/.test(source);
+}
 
-const generated: string[] = [];
-const stubs: string[] = [];
+function listStoryFiles(): string[] {
+  return fs
+    .readdirSync(STORIES_DIR)
+    .filter((file) => file.endsWith(".stories.tsx") && !SKIP_STORIES.has(file));
+}
 
-for (const file of storyFiles) {
-  const source = fs.readFileSync(path.join(STORIES_DIR, file), "utf8");
-  const title = parseTitle(source);
-  if (!title) continue;
+function runSync() {
+  let updated = 0;
+  let skipped = 0;
 
-  const slug = pascalToSlug(title);
-  if (EXISTING.has(slug)) continue;
+  for (const file of listStoryFiles()) {
+    const source = fs.readFileSync(path.join(STORIES_DIR, file), "utf8");
+    const title = parseTitle(source);
+    if (!title) continue;
 
-  const controls = parseArgTypes(source);
-  const args = parseArgs(source);
-  applyDefaults(controls, args);
+    const slug = pascalToSlug(title);
+    if (HAND_TUNED_SLUGS.has(slug)) {
+      skipped++;
+      continue;
+    }
 
-  const component = parseComponentImport(source);
-  const customRender = hasCustomRender(source);
+    const existing = readExistingConfig(slug);
+    if (!existing) continue;
 
-  writeConfig(
-    slug,
-    title.replace(/([a-z])([A-Z])/g, "$1 $2"),
-    controls.length > 0
-      ? controls
-      : [{ name: "children", type: "string", defaultValue: title }],
-  );
+    const storyControls = parseArgTypes(source);
+    const args = parseArgs(source);
+    const playground = parsePlaygroundMeta(slug);
+    const controls = buildControls(storyControls, args, playground);
 
-  if (component && !customRender) {
-    writeSimplePlayground(
+    if (controls.length === 0) {
+      controls.push({
+        name: "children",
+        type: "string",
+        defaultValue: existing.name ?? slugToDisplayName(slug),
+      });
+    }
+
+    writeSyncedConfig(slug, controls, existing);
+    updated++;
+  }
+
+  console.log(`Synced ${updated} configs, skipped ${skipped} hand-tuned.`);
+}
+
+function runGenerate() {
+  const generated: string[] = [];
+  const stubs: string[] = [];
+
+  for (const file of listStoryFiles()) {
+    const source = fs.readFileSync(path.join(STORIES_DIR, file), "utf8");
+    const title = parseTitle(source);
+    if (!title) continue;
+
+    const slug = pascalToSlug(title);
+    if (HAND_TUNED_SLUGS.has(slug)) continue;
+
+    const controls = parseArgTypes(source);
+    const args = parseArgs(source);
+    applyDefaults(controls, args);
+
+    const component = parseComponentImport(source);
+    const customRender = hasCustomRender(source);
+
+    writeScaffoldConfig(
       slug,
-      component.componentName,
-      component.importPath,
-      controls,
-      args,
+      title.replace(/([a-z])([A-Z])/g, "$1 $2"),
+      controls.length > 0
+        ? controls
+        : [{ name: "children", type: "string", defaultValue: title }],
     );
-    generated.push(slug);
-  } else {
-    writeStubPlayground(slug, slugToDisplayName(slug));
-    stubs.push(slug);
+
+    if (component && !customRender) {
+      writeSimplePlayground(
+        slug,
+        component.componentName,
+        component.importPath,
+        controls,
+        args,
+      );
+      generated.push(slug);
+    } else {
+      writeStubPlayground(slug, slugToDisplayName(slug));
+      stubs.push(slug);
+    }
+  }
+
+  console.log(
+    `Generated ${generated.length} playgrounds, ${stubs.length} stubs.`,
+  );
+  if (stubs.length > 0) {
+    console.log("Stubs needing manual playgrounds:", stubs.join(", "));
   }
 }
 
-console.log(
-  `Generated ${generated.length} playgrounds, ${stubs.length} stubs.`,
-);
-if (stubs.length > 0) {
-  console.log("Stubs needing manual playgrounds:", stubs.join(", "));
+if (SYNC_MODE) {
+  runSync();
+} else {
+  runGenerate();
 }

@@ -10,7 +10,7 @@ export const colorSliderConfig: ComponentRegistryConfig = {
   scale: 1,
   normalizeControlValues: normalizeColorSliderValues,
   controls: [
-    { name: "defaultValue", type: "string", defaultValue: "#6366f1" },
+    { name: "aria-label", type: "string", defaultValue: "Hue" },
     {
       name: "channel",
       type: "enum",
@@ -32,13 +32,13 @@ export const colorSliderConfig: ComponentRegistryConfig = {
       options: ["hsb", "hsl", "rgb"],
       defaultValue: "hsb",
     },
-    { name: "aria-label", type: "string", defaultValue: "Hue" },
+    { name: "isDisabled", type: "boolean", defaultValue: false },
     {
       name: "orientation",
       type: "enum",
       options: ["horizontal", "vertical"],
       defaultValue: "horizontal",
     },
-    { name: "isDisabled", type: "boolean", defaultValue: false },
+    { name: "defaultValue", type: "string", defaultValue: "#6366f1" },
   ],
 };

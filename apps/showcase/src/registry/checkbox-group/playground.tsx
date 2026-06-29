@@ -5,7 +5,7 @@ type CheckboxGroupPlaygroundProps = {
   "aria-label"?: string;
   description?: string;
   errorMessage?: string;
-  defaultValue?: string[];
+  defaultValue?: string | string[];
   isDisabled?: boolean;
   isInvalid?: boolean;
 };
@@ -14,10 +14,15 @@ export default function CheckboxGroupPlayground({
   "aria-label": ariaLabel = "Notifications",
   description,
   errorMessage,
-  defaultValue = ["email"],
+  defaultValue: defaultValueProp = ["email"],
   isDisabled = false,
   isInvalid = false,
 }: CheckboxGroupPlaygroundProps = {}) {
+  const defaultValue =
+    typeof defaultValueProp === "string"
+      ? defaultValueProp.split(",").map((value) => value.trim())
+      : defaultValueProp;
+
   return (
     <CheckboxGroup
       aria-label={ariaLabel}

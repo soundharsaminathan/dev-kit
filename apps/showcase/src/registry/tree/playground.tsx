@@ -20,15 +20,20 @@ type TreePlaygroundProps = {
   "aria-label"?: string;
   selectionMode?: "none" | "single" | "multiple";
   useCollection?: boolean;
-  defaultExpandedKeys?: string[];
+  defaultExpandedKeys?: string | string[];
 };
 
 export default function TreePlayground({
   "aria-label": ariaLabel = "Files",
   selectionMode = "none",
   useCollection = false,
-  defaultExpandedKeys = ["1"],
+  defaultExpandedKeys: defaultExpandedKeysProp = ["1"],
 }: TreePlaygroundProps = {}) {
+  const defaultExpandedKeys =
+    typeof defaultExpandedKeysProp === "string"
+      ? defaultExpandedKeysProp.split(",").map((value) => value.trim())
+      : defaultExpandedKeysProp;
+
   return useCollection ? (
     <Tree
       items={items}

@@ -3,16 +3,21 @@ import { ListBox, ListBoxItem } from "@dev-ui/components/list-box";
 type ListBoxPlaygroundProps = {
   "aria-label"?: string;
   selectionMode?: "single" | "multiple" | "none";
-  defaultSelectedKeys?: string[];
+  defaultSelectedKeys?: string | string[];
   disallowEmptySelection?: boolean;
 };
 
 export default function ListBoxPlayground({
   "aria-label": ariaLabel = "Countries",
   selectionMode = "single",
-  defaultSelectedKeys = ["us"],
+  defaultSelectedKeys: defaultSelectedKeysProp = ["us"],
   disallowEmptySelection = false,
 }: ListBoxPlaygroundProps = {}) {
+  const defaultSelectedKeys =
+    typeof defaultSelectedKeysProp === "string"
+      ? defaultSelectedKeysProp.split(",").map((value) => value.trim())
+      : defaultSelectedKeysProp;
+
   return (
     <ListBox
       aria-label={ariaLabel}

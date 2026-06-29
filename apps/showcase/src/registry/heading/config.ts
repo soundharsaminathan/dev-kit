@@ -5,5 +5,8 @@ export const headingConfig: ComponentRegistryConfig = {
   slug: "heading",
   category: "typography",
   description: "Heading component showcase.",
-  controls: [{ name: "children", type: "string", defaultValue: "Heading" }],
+  controls: [
+    { name: "level", type: "number", defaultValue: 1, min: 1, max: 6, step: 1 },
+    { name: "children", type: "string", defaultValue: "Section title" },
+  ],
 };

@@ -230,6 +230,8 @@
   --btn-icon-size-lg: var(--font-size-md);
   --btn-spinner-border-width: 2px;
   --btn-spinner-duration: 0.6s;
+  --btn-hover-scale: 1.02;
+  --btn-press-scale: 0.93;
   --disabled-background: var(--neumo-recessed-surface);
   --disabled-foreground: var(--color-fg-muted);
   --disabled-border-color: transparent;
@@ -575,6 +577,8 @@
   --btn-icon-size-lg: var(--font-size-md);
   --btn-spinner-border-width: 2px;
   --btn-spinner-duration: 0.6s;
+  --btn-hover-scale: 1.02;
+  --btn-press-scale: 0.93;
   --disabled-background: var(--neumo-recessed-surface);
   --disabled-foreground: var(--color-fg-muted);
   --disabled-border-color: transparent;

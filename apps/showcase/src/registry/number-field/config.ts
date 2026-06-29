@@ -18,5 +18,14 @@ export const numberFieldConfig: ComponentRegistryConfig = {
     { name: "minValue", type: "number", defaultValue: 0 },
     { name: "maxValue", type: "number", defaultValue: 100 },
     { name: "step", type: "number", defaultValue: 1 },
+    {
+      name: "inputSize",
+      type: "enum",
+      options: ["sm", "md", "lg"],
+      defaultValue: "md",
+    },
+    { name: "isDisabled", type: "boolean", defaultValue: false },
+    { name: "isInvalid", type: "boolean", defaultValue: false },
+    { name: "isRequired", type: "boolean", defaultValue: false },
   ],
 };

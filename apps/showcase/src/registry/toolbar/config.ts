@@ -6,12 +6,12 @@ export const toolbarConfig: ComponentRegistryConfig = {
   category: "navigation",
   description: "Toolbar component showcase.",
   controls: [
+    { name: "aria-label", type: "string", defaultValue: "Formatting" },
     {
       name: "orientation",
       type: "enum",
       options: ["horizontal", "vertical"],
       defaultValue: "horizontal",
     },
-    { name: "aria-label", type: "string", defaultValue: "Formatting" },
   ],
 };

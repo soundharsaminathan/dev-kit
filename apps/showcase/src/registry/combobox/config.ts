@@ -15,5 +15,17 @@ export const comboboxConfig: ComponentRegistryConfig = {
     { name: "isDisabled", type: "boolean", defaultValue: false },
     { name: "isRequired", type: "boolean", defaultValue: false },
     { name: "isInvalid", type: "boolean", defaultValue: false },
+    {
+      name: "menuTrigger",
+      type: "enum",
+      options: ["focus", "input", "manual"],
+      defaultValue: "focus",
+    },
+    {
+      name: "placement",
+      type: "enum",
+      options: ["bottom", "top", "start", "end"],
+      defaultValue: "bottom",
+    },
   ],
 };

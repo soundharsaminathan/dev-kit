@@ -36,10 +36,41 @@
     color var(--interaction-transition-duration)
       var(--interaction-transition-curve),
     box-shadow var(--interaction-transition-duration)
-      var(--interaction-transition-curve),
-    transform var(--interaction-transition-duration)
       var(--interaction-transition-curve);
   -webkit-tap-highlight-color: transparent;
+
+  &:not([data-motion-press="true"]) {
+    transition:
+      background-color var(--interaction-transition-duration)
+        var(--interaction-transition-curve),
+      background-image var(--interaction-transition-duration)
+        var(--interaction-transition-curve),
+      border-color var(--interaction-transition-duration)
+        var(--interaction-transition-curve),
+      color var(--interaction-transition-duration)
+        var(--interaction-transition-curve),
+      box-shadow var(--interaction-transition-duration)
+        var(--interaction-transition-curve),
+      transform var(--interaction-transition-duration)
+        var(--interaction-transition-curve);
+  }
+
+  &:not([data-motion-press="true"]):not([data-variant="link"])[data-hovered="true"]:not(
+      [data-state="disabled"]
+    ):not([data-pending="true"]) {
+    transform: scale(var(--btn-hover-scale));
+  }
+
+  &:not([data-motion-press="true"]):not([data-variant="link"])[data-pressed="true"]:not(
+      [data-state="disabled"]
+    ):not([data-pending="true"]) {
+    transform: scale(var(--btn-press-scale));
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    transition-duration: 0ms;
+    transform: none;
+  }
 
   svg {
     flex-shrink: 0;
@@ -134,7 +165,6 @@
       background-color: var(--btn-default-background, var(--color-neutral-active));
       border-color: var(--btn-border-color, var(--color-border-active));
       box-shadow: var(--btn-pressed-shadow, var(--btn-shadow, none));
-      transform: scale(var(--interaction-press-scale));
     }
   }
 
@@ -155,7 +185,6 @@
     &[data-pressed="true"]:not([data-state="disabled"]):not([data-pending="true"]) {
       background-color: var(--btn-primary-background, var(--color-primary-active));
       box-shadow: var(--btn-pressed-shadow, var(--btn-shadow, none));
-      transform: scale(var(--interaction-press-scale));
     }
 
     &:disabled,

@@ -5,5 +5,5 @@ export const avatarConfig: ComponentRegistryConfig = {
   slug: "avatar",
   category: "typography",
   description: "Avatar component showcase.",
-  controls: [{ name: "children", type: "string", defaultValue: "Avatar" }],
+  controls: [{ name: "size", type: "enum", options: ["sm", "md", "lg"] }],
 };

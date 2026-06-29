@@ -12,5 +12,6 @@ export const otpFieldConfig: ComponentRegistryConfig = {
     { name: "isRequired", type: "boolean", defaultValue: false },
     { name: "labelText", type: "string", defaultValue: "Verification code" },
     { name: "showSeparator", type: "boolean", defaultValue: false },
+    { name: "length", type: "number", defaultValue: 6 },
   ],
 };

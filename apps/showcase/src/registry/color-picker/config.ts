@@ -5,5 +5,8 @@ export const colorPickerConfig: ComponentRegistryConfig = {
   slug: "color-picker",
   category: "color",
   description: "Color Picker component showcase.",
-  controls: [{ name: "defaultOpen", type: "boolean", defaultValue: false }],
+  controls: [
+    { name: "defaultOpen", type: "boolean", defaultValue: false },
+    { name: "defaultValue", type: "string", defaultValue: "#6366f1" },
+  ],
 };

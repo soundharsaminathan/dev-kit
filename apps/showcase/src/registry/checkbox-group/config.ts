@@ -9,5 +9,7 @@ export const checkboxGroupConfig: ComponentRegistryConfig = {
     { name: "aria-label", type: "string", defaultValue: "Notifications" },
     { name: "description", type: "string" },
     { name: "errorMessage", type: "string" },
+    { name: "isDisabled", type: "boolean", defaultValue: false },
+    { name: "isInvalid", type: "boolean", defaultValue: false },
   ],
 };

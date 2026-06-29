@@ -9,5 +9,17 @@ export const contextMenuConfig: ComponentRegistryConfig = {
     { name: "aria-label", type: "string", defaultValue: "Actions" },
     { name: "isDisabled", type: "boolean", defaultValue: false },
     { name: "defaultOpen", type: "boolean", defaultValue: false },
+    {
+      name: "placement",
+      type: "enum",
+      options: ["bottom", "top", "left", "right", "bottom start", "bottom end"],
+      defaultValue: "bottom start",
+    },
+    {
+      name: "triggerType",
+      type: "enum",
+      options: ["area", "button"],
+      defaultValue: "area",
+    },
   ],
 };

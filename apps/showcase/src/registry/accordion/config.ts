@@ -7,5 +7,11 @@ export const accordionConfig: ComponentRegistryConfig = {
   description: "Accordion component showcase.",
   controls: [
     { name: "allowsMultipleExpanded", type: "boolean", defaultValue: false },
+    {
+      name: "defaultExpandedKey",
+      type: "enum",
+      options: ["none", "getting-started", "customization", "typescript"],
+      defaultValue: "none",
+    },
   ],
 };

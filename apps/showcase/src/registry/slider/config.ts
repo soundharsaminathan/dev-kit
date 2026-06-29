@@ -11,5 +11,12 @@ export const sliderConfig: ComponentRegistryConfig = {
     { name: "minValue", type: "number", defaultValue: 0 },
     { name: "maxValue", type: "number", defaultValue: 100 },
     { name: "step", type: "number", defaultValue: 1 },
+    {
+      name: "orientation",
+      type: "enum",
+      options: ["horizontal", "vertical"],
+      defaultValue: "horizontal",
+    },
+    { name: "isDisabled", type: "boolean", defaultValue: false },
   ],
 };

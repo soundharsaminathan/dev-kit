@@ -7,7 +7,7 @@ export const keyboardConfig: ComponentRegistryConfig = {
   description: "Keyboard component showcase.",
   controls: [
     { name: "children", type: "string", defaultValue: "K" },
-    { name: "showGroup", type: "boolean", defaultValue: false },
+    { name: "showGroup", type: "boolean", defaultValue: true },
     { name: "modifierKey", type: "string", defaultValue: "⌘" },
   ],
 };

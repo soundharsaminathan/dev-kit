@@ -5,5 +5,14 @@ export const inputConfig: ComponentRegistryConfig = {
   slug: "input",
   category: "forms",
   description: "Input component showcase.",
-  controls: [{ name: "children", type: "string", defaultValue: "Input" }],
+  controls: [
+    {
+      name: "size",
+      type: "enum",
+      options: ["sm", "md", "lg"],
+      defaultValue: "md",
+    },
+    { name: "disabled", type: "boolean" },
+    { name: "placeholder", type: "string", defaultValue: "Enter text" },
+  ],
 };

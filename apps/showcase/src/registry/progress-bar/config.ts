@@ -6,10 +6,10 @@ export const progressBarConfig: ComponentRegistryConfig = {
   category: "typography",
   description: "Progress Bar component showcase.",
   controls: [
-    { name: "value", type: "number", defaultValue: 60 },
     { name: "minValue", type: "number", defaultValue: 0 },
     { name: "maxValue", type: "number", defaultValue: 100 },
     { name: "isIndeterminate", type: "boolean", defaultValue: false },
     { name: "aria-label", type: "string", defaultValue: "Upload progress" },
+    { name: "value", type: "number", defaultValue: 60 },
   ],
 };

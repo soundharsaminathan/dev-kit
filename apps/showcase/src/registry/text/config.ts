@@ -11,5 +11,10 @@ export const textConfig: ComponentRegistryConfig = {
       type: "string",
       defaultValue: "Helper text for a field.",
     },
+    {
+      name: "slot",
+      type: "enum",
+      options: ["label", "description", "errorMessage"],
+    },
   ],
 };

@@ -27,6 +27,8 @@ export const DEFAULT_COMPONENTS = {
   "btn-icon-size-lg": ref("font-size-md", "component"),
   "btn-spinner-border-width": val("2px", "component"),
   "btn-spinner-duration": val("0.6s", "component"),
+  "btn-hover-scale": val("1.02", "component"),
+  "btn-press-scale": val("0.93", "component"),
 
   "disabled-background": ref("color-disabled", "component"),
   "disabled-foreground": ref("color-fg-disabled", "component"),

@@ -5,5 +5,8 @@ export const paginationConfig: ComponentRegistryConfig = {
   slug: "pagination",
   category: "navigation",
   description: "Pagination component showcase.",
-  controls: [{ name: "children", type: "string", defaultValue: "Pagination" }],
+  controls: [
+    { name: "totalPages", type: "number", defaultValue: 10 },
+    { name: "initialPage", type: "number", defaultValue: 2 },
+  ],
 };

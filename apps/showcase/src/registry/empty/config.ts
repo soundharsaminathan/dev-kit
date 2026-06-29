@@ -12,5 +12,13 @@ export const emptyConfig: ComponentRegistryConfig = {
       type: "string",
       defaultValue: "Create your first project to get started.",
     },
+    {
+      name: "mediaVariant",
+      type: "enum",
+      options: ["default", "icon"],
+      defaultValue: "icon",
+    },
+    { name: "actionLabel", type: "string", defaultValue: "Create project" },
+    { name: "showAction", type: "boolean", defaultValue: true },
   ],
 };

@@ -9,5 +9,14 @@ export const timeFieldConfig: ComponentRegistryConfig = {
     { name: "label", type: "string", defaultValue: "Meeting time" },
     { name: "description", type: "string", defaultValue: "" },
     { name: "errorMessage", type: "string", defaultValue: "" },
+    {
+      name: "labelMode",
+      type: "enum",
+      options: ["prop", "element"],
+      defaultValue: "element",
+    },
+    { name: "isDisabled", type: "boolean", defaultValue: false },
+    { name: "isRequired", type: "boolean", defaultValue: false },
+    { name: "isInvalid", type: "boolean", defaultValue: false },
   ],
 };

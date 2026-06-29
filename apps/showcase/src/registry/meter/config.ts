@@ -6,9 +6,9 @@ export const meterConfig: ComponentRegistryConfig = {
   category: "typography",
   description: "Meter component showcase.",
   controls: [
-    { name: "value", type: "number", defaultValue: 60 },
     { name: "minValue", type: "number", defaultValue: 0 },
     { name: "maxValue", type: "number", defaultValue: 100 },
     { name: "aria-label", type: "string", defaultValue: "Storage used" },
+    { name: "value", type: "number", defaultValue: 60 },
   ],
 };

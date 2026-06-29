@@ -11,7 +11,7 @@ export const sidebarConfig: ComponentRegistryConfig = {
       name: "placement",
       type: "enum",
       options: ["left", "right"],
-      defaultValue: "right",
+      defaultValue: "left",
     },
   ],
 };

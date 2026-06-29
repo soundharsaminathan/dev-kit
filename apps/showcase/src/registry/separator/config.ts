@@ -5,5 +5,12 @@ export const separatorConfig: ComponentRegistryConfig = {
   slug: "separator",
   category: "typography",
   description: "Separator component showcase.",
-  controls: [{ name: "children", type: "string", defaultValue: "Separator" }],
+  controls: [
+    {
+      name: "orientation",
+      type: "enum",
+      options: ["horizontal", "vertical"],
+      defaultValue: "horizontal",
+    },
+  ],
 };

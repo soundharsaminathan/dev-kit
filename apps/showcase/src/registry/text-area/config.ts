@@ -19,5 +19,13 @@ export const textAreaConfig: ComponentRegistryConfig = {
       defaultValue: "We never share your messages.",
     },
     { name: "showField", type: "boolean", defaultValue: false },
+    {
+      name: "size",
+      type: "enum",
+      options: ["sm", "md", "lg"],
+      defaultValue: "md",
+    },
+    { name: "rows", type: "number", defaultValue: 4 },
+    { name: "disabled", type: "boolean", defaultValue: false },
   ],
 };

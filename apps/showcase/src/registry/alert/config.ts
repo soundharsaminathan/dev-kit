@@ -5,5 +5,12 @@ export const alertConfig: ComponentRegistryConfig = {
   slug: "alert",
   category: "layout",
   description: "Alert component showcase.",
-  controls: [{ name: "children", type: "string", defaultValue: "Alert" }],
+  controls: [
+    {
+      name: "variant",
+      type: "enum",
+      options: ["neutral", "danger", "warning", "info", "success"],
+      defaultValue: "neutral",
+    },
+  ],
 };

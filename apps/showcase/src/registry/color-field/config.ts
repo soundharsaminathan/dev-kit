@@ -9,5 +9,6 @@ export const colorFieldConfig: ComponentRegistryConfig = {
     { name: "aria-label", type: "string", defaultValue: "Hex" },
     { name: "isDisabled", type: "boolean", defaultValue: false },
     { name: "isInvalid", type: "boolean", defaultValue: false },
+    { name: "defaultValue", type: "string", defaultValue: "#6366f1" },
   ],
 };

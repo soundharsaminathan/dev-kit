@@ -6,7 +6,6 @@ export const overlayConfig: ComponentRegistryConfig = {
   category: "layout",
   description: "Overlay component showcase.",
   controls: [
-    { name: "defaultOpen", type: "boolean", defaultValue: true },
     {
       name: "type",
       type: "enum",
@@ -16,7 +15,7 @@ export const overlayConfig: ComponentRegistryConfig = {
     {
       name: "mobileType",
       type: "enum",
-      options: ["modal", "popover", "drawer"],
+      options: ["modal", "popover", "drawer", "null"],
       defaultValue: "drawer",
     },
     { name: "title", type: "string", defaultValue: "Overlay title" },

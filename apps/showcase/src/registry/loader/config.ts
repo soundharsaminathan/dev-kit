@@ -5,5 +5,12 @@ export const loaderConfig: ComponentRegistryConfig = {
   slug: "loader",
   category: "typography",
   description: "Loader component showcase.",
-  controls: [{ name: "children", type: "string", defaultValue: "Loader" }],
+  controls: [
+    {
+      name: "variant",
+      type: "enum",
+      options: ["spinner", "ring"],
+      defaultValue: "spinner",
+    },
+  ],
 };
