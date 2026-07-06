@@ -43,6 +43,8 @@ export const DEFAULT_FOUNDATION = {
   "motion-scale-enter": val("0.97"),
   "motion-scale-exit": val("0.98"),
 
+  "border-width": val("1px"),
+
   "cursor-interactive": val("pointer"),
   "cursor-disabled": val("not-allowed"),
 } satisfies TokenVocabulary;

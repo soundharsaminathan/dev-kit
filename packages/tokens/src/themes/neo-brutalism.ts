@@ -77,6 +77,10 @@ export const neoBrutalismTheme: ThemeDefinition = {
         target: { ref: "brutal-radius" },
         category: "component",
       },
+      "btn-border-width": {
+        target: { ref: "brutal-border-width" },
+        category: "component",
+      },
       "btn-shadow": {
         target: { ref: "brutal-shadow" },
         category: "component",

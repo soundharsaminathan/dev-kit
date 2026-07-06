@@ -111,7 +111,7 @@ export async function setEnumControl(page: Page, label: string, value: string) {
   const controls = getControlsPanel(page);
   const field = controls.getByText(label, { exact: true }).locator("..");
   await field.getByRole("button").click();
-  const option = page.getByRole("option", { name: value });
+  const option = page.getByRole("option", { name: value, exact: true });
   await option.waitFor({ state: "visible" });
   await option.click();
   await option.waitFor({ state: "hidden" });

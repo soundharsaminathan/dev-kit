@@ -70,6 +70,9 @@ describe("Popover", () => {
     expect(
       screen.getByText("Popover content").closest("[data-popover]"),
     ).toHaveAttribute("data-popover", "");
+    expect(
+      screen.getByText("Popover content").closest("[data-popover]"),
+    ).toHaveAttribute("data-state", "open");
   });
 
   it("does not render when closed", () => {

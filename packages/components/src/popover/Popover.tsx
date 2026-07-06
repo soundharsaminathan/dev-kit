@@ -166,6 +166,7 @@ function Popover({
             style={panelStyle}
             ref={composeRefs(popoverRef, ref)}
             data-popover=""
+            data-state={state.isOpen ? "open" : "closed"}
             data-placement={placement}
             className={cn(styles.popover, className)}
           >

@@ -219,6 +219,7 @@
   --btn-primary-surface-gradient: none;
   --btn-default-surface-gradient: none;
   --btn-border-color: transparent;
+  --btn-border-width: var(--brutal-border-width);
   --btn-backdrop-blur: 0px;
   --btn-default-background: var(--color-neutral);
   --btn-primary-background: var(--color-primary);
@@ -263,7 +264,7 @@
   --select-radius: var(--input-radius);
   --select-font-size: var(--input-font-size);
   --card-radius: var(--brutal-radius);
-  --card-border-width: 1px;
+  --card-border-width: var(--border-width);
   --card-shadow: var(--brutal-shadow);
   --card-background: var(--color-card);
   --card-surface-gradient: none;
@@ -565,6 +566,7 @@
   --btn-primary-surface-gradient: none;
   --btn-default-surface-gradient: none;
   --btn-border-color: transparent;
+  --btn-border-width: var(--brutal-border-width);
   --btn-backdrop-blur: 0px;
   --btn-default-background: var(--color-neutral);
   --btn-primary-background: var(--color-primary);
@@ -609,7 +611,7 @@
   --select-radius: var(--input-radius);
   --select-font-size: var(--input-font-size);
   --card-radius: var(--brutal-radius);
-  --card-border-width: 1px;
+  --card-border-width: var(--border-width);
   --card-shadow: var(--brutal-shadow);
   --card-background: var(--color-card);
   --card-surface-gradient: none;

@@ -6,7 +6,7 @@
   height: 2rem;
   box-sizing: border-box;
   align-items: stretch;
-  border: 1px solid var(--input-border-color, var(--color-border-field));
+  border: var(--border-width) solid var(--input-border-color, var(--color-border-field));
   border-radius: var(--input-radius);
   background-color: var(--input-background, var(--color-field));
   background-image: var(--input-surface-gradient, none);

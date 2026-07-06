@@ -220,6 +220,7 @@
   --btn-primary-surface-gradient: var(--neumo-primary-gradient);
   --btn-default-surface-gradient: var(--neumo-button-gradient);
   --btn-border-color: transparent;
+  --btn-border-width: var(--border-width);
   --btn-backdrop-blur: 0px;
   --btn-default-background: var(--neumo-button-surface);
   --btn-primary-background: var(--color-accent);
@@ -567,6 +568,7 @@
   --btn-primary-surface-gradient: var(--neumo-primary-gradient);
   --btn-default-surface-gradient: var(--neumo-button-gradient);
   --btn-border-color: transparent;
+  --btn-border-width: var(--border-width);
   --btn-backdrop-blur: 0px;
   --btn-default-background: var(--neumo-button-surface);
   --btn-primary-background: var(--accent-400);

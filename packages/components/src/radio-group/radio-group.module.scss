@@ -58,7 +58,7 @@
   height: 1rem;
   flex-shrink: 0;
   place-content: center;
-  border: 1px solid var(--color-border-control);
+  border: var(--border-width) solid var(--color-border-control);
   border-radius: var(--radio-radius);
   background-color: transparent;
   color: transparent;

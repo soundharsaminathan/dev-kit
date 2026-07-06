@@ -33,7 +33,7 @@
   display: inline-flex;
   flex-shrink: 0;
   align-items: center;
-  border: 1px solid transparent;
+  border: var(--border-width) solid transparent;
   border-radius: var(--switch-radius);
   background-color: var(--switch-indicator-background, var(--color-neutral));
   background-image: var(--switch-indicator-surface-gradient, none);

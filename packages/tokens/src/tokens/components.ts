@@ -17,6 +17,7 @@ export const DEFAULT_COMPONENTS = {
   "btn-primary-surface-gradient": val("none", "component"),
   "btn-default-surface-gradient": val("none", "component"),
   "btn-border-color": val("transparent", "component"),
+  "btn-border-width": ref("border-width", "component"),
   "btn-backdrop-blur": val("0px", "component"),
   "btn-default-background": ref("color-neutral", "component"),
   "btn-primary-background": ref("color-primary", "component"),
@@ -76,7 +77,7 @@ export const DEFAULT_COMPONENTS = {
   "select-font-size": ref("input-font-size", "component"),
 
   "card-radius": ref("radius-lg", "component"),
-  "card-border-width": val("1px", "component"),
+  "card-border-width": ref("border-width", "component"),
   "card-shadow": ref("shadow-sm", "component"),
   "card-background": ref("color-card", "component"),
   "card-surface-gradient": val("none", "component"),

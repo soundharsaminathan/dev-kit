@@ -4,7 +4,7 @@
   display: inline-flex;
   width: 100%;
   align-items: center;
-  border: 1px solid var(--input-border-color, var(--color-border-field));
+  border: var(--border-width) solid var(--input-border-color, var(--color-border-field));
   border-radius: var(--input-radius);
   background-color: var(--input-background, var(--color-field));
   background-image: var(--input-surface-gradient, none);
@@ -73,7 +73,7 @@
   width: 100%;
   align-items: center;
   gap: 0.125rem;
-  border: 1px solid var(--input-border-color, var(--color-border-field));
+  border: var(--border-width) solid var(--input-border-color, var(--color-border-field));
   border-radius: var(--input-radius);
   background-color: var(--input-background, var(--color-field));
   background-image: var(--input-surface-gradient, none);

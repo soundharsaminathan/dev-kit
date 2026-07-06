@@ -26,7 +26,7 @@
   max-width: min(24rem, calc(100vw - var(--space-8)));
   flex-direction: column;
   overflow: hidden;
-  border: 1px solid var(--modal-border-color, var(--color-border));
+  border: var(--border-width) solid var(--modal-border-color, var(--color-border));
   border-radius: var(--modal-radius);
   background: var(--modal-background);
   box-shadow: var(--modal-shadow);

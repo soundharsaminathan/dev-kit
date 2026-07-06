@@ -13,7 +13,7 @@
   align-items: center;
   justify-content: center;
   gap: var(--space-1);
-  border: 1px solid var(--btn-border-color, transparent);
+  border: var(--btn-border-width) solid var(--btn-border-color, transparent);
   border-radius: var(--btn-radius);
   font-family: var(--font-sans, inherit);
   font-size: var(--btn-font-size);
