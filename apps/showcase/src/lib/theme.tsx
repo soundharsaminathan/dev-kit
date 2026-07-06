@@ -8,6 +8,7 @@ export function AppThemeProvider({ children }: { children: ReactNode }) {
       defaultTheme="default"
       icons={{ library: "lucide" }}
       initialIconPack={lucidePack}
+      preloadIconPacks={!import.meta.env.VITEST}
     >
       {children}
     </ThemeProvider>

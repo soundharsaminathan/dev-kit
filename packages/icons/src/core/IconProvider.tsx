@@ -9,6 +9,7 @@ import {
   useState,
 } from "react";
 import { defaultPackLoaders } from "../loaders/pack-loaders";
+import { preloadIconPacks } from "../loaders/preload-icon-packs";
 import {
   cachePackModule,
   getActivePack,
@@ -26,6 +27,7 @@ export interface IconProviderProps {
   icons?: IconTheme | undefined;
   initialPack?: IconPackModule | undefined;
   loaders?: Record<string, () => Promise<{ default: IconPackModule }>>;
+  preloadPacks?: boolean | undefined;
 }
 
 async function loadPackModule(
@@ -52,6 +54,7 @@ export function IconProvider({
   icons,
   initialPack,
   loaders = defaultPackLoaders,
+  preloadPacks = false,
 }: IconProviderProps) {
   const defaultTheme = useMemo<IconTheme>(
     () => icons ?? { library: "lucide" },
@@ -70,6 +73,11 @@ export function IconProvider({
   const [isLoading, setIsLoading] = useState(false);
 
   const packId = resolvePackId(theme);
+
+  useEffect(() => {
+    if (!preloadPacks) return;
+    void preloadIconPacks(loaders);
+  }, [loaders, preloadPacks]);
 
   useEffect(() => {
     if (initialPack && resolvePackId(defaultTheme) === packId) {

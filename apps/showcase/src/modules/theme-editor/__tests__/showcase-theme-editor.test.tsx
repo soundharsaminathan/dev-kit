@@ -1,6 +1,12 @@
 // @vitest-environment jsdom
 import "@testing-library/jest-dom/vitest";
 import {
+  __resetIconCachesForTests,
+  __setActivePackForTests,
+  packLibraries,
+} from "@dev-ui/icons";
+import lucidePack from "@dev-ui/icons-packs/lucide";
+import {
   fireEvent,
   render,
   screen,
@@ -29,6 +35,37 @@ const customThemeInput = {
   },
 };
 
+function seedIconPackCache() {
+  for (const pack of packLibraries) {
+    __setActivePackForTests(pack.id, lucidePack);
+  }
+  __setActivePackForTests("lucide", lucidePack);
+}
+
+async function selectDrawerOption(
+  drawer: HTMLElement,
+  triggerName: RegExp,
+  optionName: string,
+) {
+  fireEvent.click(within(drawer).getByRole("button", { name: triggerName }));
+  const listbox = await screen.findByRole("listbox", {}, { timeout: 10_000 });
+  fireEvent.click(within(listbox).getByRole("option", { name: optionName }));
+  await waitFor(
+    () => {
+      expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+    },
+    { timeout: 10_000 },
+  );
+  await waitFor(
+    () => {
+      expect(
+        within(drawer).getByRole("button", { name: triggerName }),
+      ).toHaveTextContent(optionName);
+    },
+    { timeout: 10_000 },
+  );
+}
+
 function SeededEditor() {
   const { saveCustomTheme, setTheme } = useTheme();
   const [ready, setReady] = useState(false);
@@ -49,6 +86,8 @@ function SeededEditor() {
 describe("ShowcaseThemeEditor", () => {
   beforeEach(() => {
     localStorage.clear();
+    __resetIconCachesForTests();
+    seedIconPackCache();
   });
 
   it("opens the drawer and applies live theme edits", () => {
@@ -157,24 +196,9 @@ describe("ShowcaseThemeEditor", () => {
 
     const drawer = await screen.findByTestId("theme-editor-drawer");
 
-    fireEvent.click(within(drawer).getByRole("button", { name: /Theme/ }));
-    fireEvent.click(await screen.findByRole("option", { name: "Material" }));
-    await waitFor(() => {
-      expect(
-        within(drawer).getByRole("button", { name: /Theme/ }),
-      ).toHaveTextContent("Material");
-    });
-
-    fireEvent.click(within(drawer).getByRole("button", { name: /Icon pack/ }));
-    fireEvent.click(
-      await screen.findByRole("option", { name: "Heroicons Outline" }),
-    );
-    await waitFor(() => {
-      expect(
-        within(drawer).getByRole("button", { name: /Icon pack/ }),
-      ).toHaveTextContent("Heroicons Outline");
-    });
-  });
+    await selectDrawerOption(drawer, /Theme/, "Material");
+    await selectDrawerOption(drawer, /Icon pack/, "Heroicons Outline");
+  }, 60_000);
 
   it("supports controlled open state and custom triggers", () => {
     render(

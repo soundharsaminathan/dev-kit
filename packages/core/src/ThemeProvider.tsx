@@ -129,6 +129,7 @@ export interface ThemeProviderProps {
   storageKeyPrefix?: string;
   icons?: IconTheme | undefined;
   initialIconPack?: IconPackModule | undefined;
+  preloadIconPacks?: boolean | undefined;
 }
 
 export function ThemeProvider({
@@ -137,6 +138,7 @@ export function ThemeProvider({
   defaultMode = "system",
   icons,
   initialIconPack,
+  preloadIconPacks = false,
 }: ThemeProviderProps) {
   const builtInIds = useMemo(() => getBuiltInThemeIds(), []);
   const [customThemes, setCustomThemes] = useState<CustomTheme[]>(() =>
@@ -159,10 +161,15 @@ export function ThemeProvider({
   const mode: ThemeMode =
     modePreference === "system" ? systemMode : modePreference;
 
-  const themes = useMemo<ThemeDefinition[]>(() => {
-    const builtIn = builtInIds.map((id) => resolveThemeById(id, customThemes));
-    return [...builtIn, ...customThemes];
-  }, [builtInIds, customThemes]);
+  const builtInThemesList = useMemo<ThemeDefinition[]>(
+    () => builtInIds.map((id) => resolveThemeById(id)),
+    [builtInIds],
+  );
+
+  const themes = useMemo<ThemeDefinition[]>(
+    () => [...builtInThemesList, ...customThemes],
+    [builtInThemesList, customThemes],
+  );
 
   useLayoutEffect(() => {
     const root = getRootElement();
@@ -256,7 +263,11 @@ export function ThemeProvider({
 
   return (
     <ThemeContext.Provider value={value}>
-      <IconProvider icons={icons} initialPack={initialIconPack}>
+      <IconProvider
+        icons={icons}
+        initialPack={initialIconPack}
+        preloadPacks={preloadIconPacks}
+      >
         {children}
       </IconProvider>
     </ThemeContext.Provider>

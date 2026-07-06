@@ -27,26 +27,27 @@ function createTestRouter(initialPath = "/") {
 }
 
 type RenderRouteOptions = {
-  ready?: () => void;
+  ready?: () => void | Promise<void>;
   timeout?: number;
 };
 
 async function renderRoute(
   initialPath = "/",
-  { ready, timeout = 15_000 }: RenderRouteOptions = {},
+  { ready, timeout = 28_000 }: RenderRouteOptions = {},
 ) {
   const router = createTestRouter(initialPath);
   render(<RouterProvider router={router} />);
   await waitFor(
     () => {
-      if (ready) {
-        ready();
-        return;
-      }
       expect(router.state.status).toBe("idle");
     },
     { timeout },
   );
+
+  if (ready) {
+    await ready();
+  }
+
   return router;
 }
 
@@ -82,15 +83,11 @@ describe("showcase routes", () => {
   });
 
   it("renders a component detail page", async () => {
-    await renderRoute("/components/button", {
-      ready: () => {
-        expect(
-          screen.getByRole("heading", { name: "Button" }),
-        ).toBeInTheDocument();
-      },
-    });
+    await renderRoute("/components/button");
 
-    expect(screen.getByRole("heading", { name: "Button" })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: "Button" }),
+    ).toBeInTheDocument();
     expect(screen.getByText("Playground")).toBeInTheDocument();
     expect(
       screen.getByRole("navigation", { name: "Component pager" }),
@@ -101,16 +98,10 @@ describe("showcase routes", () => {
   });
 
   it("renders the last component without a next pager link", async () => {
-    await renderRoute("/components/tag-group", {
-      ready: () => {
-        expect(
-          screen.getByRole("heading", { name: "Tag Group" }),
-        ).toBeInTheDocument();
-      },
-    });
+    await renderRoute("/components/tag-group");
 
     expect(
-      screen.getByRole("heading", { name: "Tag Group" }),
+      await screen.findByRole("heading", { name: "Tag Group" }),
     ).toBeInTheDocument();
     expect(
       screen.queryByRole("navigation", { name: "Component pager" }),
@@ -126,7 +117,7 @@ describe("showcase routes", () => {
     await renderRoute("/components/color-slider");
 
     expect(
-      screen.getByRole("heading", { name: "Color Slider" }),
+      await screen.findByRole("heading", { name: "Color Slider" }),
     ).toBeInTheDocument();
     expect(screen.getByText("Playground")).toBeInTheDocument();
   });

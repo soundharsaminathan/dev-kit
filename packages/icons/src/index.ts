@@ -35,3 +35,4 @@ export {
   defaultPackLoaders,
   loadIconPack,
 } from "./loaders/pack-loaders";
+export { preloadIconPacks } from "./loaders/preload-icon-packs";

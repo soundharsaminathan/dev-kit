@@ -44,7 +44,7 @@ function IconPackSync({
   const iconTheme = resolveIconTheme(iconPack);
 
   return (
-    <IconProvider icons={iconTheme} initialPack={lucidePack}>
+    <IconProvider icons={iconTheme} initialPack={lucidePack} preloadPacks>
       {children}
     </IconProvider>
   );
