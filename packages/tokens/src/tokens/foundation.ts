@@ -35,6 +35,14 @@ export const DEFAULT_FOUNDATION = {
   "motion-normal": val("200ms"),
   "motion-slow": val("300ms"),
 
+  "motion-offset-sm": val("8px"),
+  "motion-offset-md": val("10px"),
+  "motion-offset-lg": val("20px"),
+  "motion-blur-sm": val("3px"),
+  "motion-blur-md": val("6px"),
+  "motion-scale-enter": val("0.97"),
+  "motion-scale-exit": val("0.98"),
+
   "cursor-interactive": val("pointer"),
   "cursor-disabled": val("not-allowed"),
 } satisfies TokenVocabulary;

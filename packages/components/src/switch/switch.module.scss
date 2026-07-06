@@ -40,8 +40,8 @@
   padding: 2px;
   box-shadow: var(--switch-indicator-shadow, none);
   transition:
-    background-color 200ms ease,
-    background-image 200ms ease,
+    background-color var(--motion-normal) var(--interaction-transition-curve),
+    background-image var(--motion-normal) var(--interaction-transition-curve),
     box-shadow var(--interaction-transition-duration)
       var(--interaction-transition-curve);
 
@@ -83,7 +83,6 @@
   background-color: var(--switch-thumb-background, white);
   background-image: var(--switch-thumb-surface-gradient, none);
   box-shadow: var(--switch-thumb-shadow);
-  transition: transform 200ms ease;
 
   .indicator[data-size="sm"] & {
     width: 1rem;
@@ -98,18 +97,6 @@
   .indicator[data-size="lg"] & {
     width: 1.5rem;
     height: 1.5rem;
-  }
-
-  .indicator[data-size="sm"][data-selected="true"] & {
-    transform: translateX(1rem);
-  }
-
-  .indicator[data-size="md"][data-selected="true"] & {
-    transform: translateX(1.25rem);
-  }
-
-  .indicator[data-size="lg"][data-selected="true"] & {
-    transform: translateX(1.5rem);
   }
 
   .indicator[data-disabled="true"] & {

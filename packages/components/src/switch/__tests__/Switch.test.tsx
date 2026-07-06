@@ -109,9 +109,9 @@ describe("Switch", () => {
   });
 
   it("renders thumb without context when used outside control", () => {
-    render(<SwitchThumb data-testid="thumb" />);
+    render(<SwitchThumb className="orphan-thumb" />);
 
-    const thumb = screen.getByTestId("thumb");
+    const thumb = document.querySelector(".orphan-thumb");
     expect(thumb).not.toHaveAttribute("data-selected");
     expect(thumb).not.toHaveAttribute("data-disabled");
   });

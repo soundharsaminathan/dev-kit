@@ -471,15 +471,16 @@
       "import": "./dist/virtualizer/index.js",
       "default": "./dist/virtualizer/index.js"
     },
-    "./button/styles": {
-      "development": "./src/styles.ts",
-      "import": "./dist/styles.js",
-      "default": "./dist/styles.js"
-    },
     "./styles": {
       "development": "./src/styles.ts",
       "import": "./dist/styles.js",
       "default": "./dist/styles.js"
+    },
+    "./motion": {
+      "development": "./src/motion/index.ts",
+      "types": "./dist/motion/index.d.ts",
+      "import": "./dist/motion/index.js",
+      "default": "./dist/motion/index.js"
     }
   },
   "files": [

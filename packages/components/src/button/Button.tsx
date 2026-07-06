@@ -2,50 +2,11 @@ import { cn, composeRefs } from "@dev-ui/core";
 import { useButton } from "@react-aria/button";
 import { useHover } from "@react-aria/interactions";
 import { filterDOMProps, mergeProps } from "@react-aria/utils";
-import { type HTMLMotionProps, motion, useReducedMotion } from "motion/react";
-import { type ElementType, useLayoutEffect, useRef, useState } from "react";
-import { useHoverCapable } from "../hooks/use-hover-capable";
-import { SPRING_PRESS } from "../motion/ease";
+import { type HTMLMotionProps, motion } from "motion/react";
+import { type ElementType, useRef } from "react";
+import { usePressAnimation } from "../motion/use-press-animation";
 import styles from "./button.module.scss";
 import type { ButtonProps } from "./button.types";
-
-function readCssNumber(element: HTMLElement, name: string) {
-  const value = Number.parseFloat(
-    getComputedStyle(element).getPropertyValue(name),
-  );
-  return Number.isFinite(value) ? value : undefined;
-}
-
-function useButtonMotionScales(
-  ref: React.RefObject<HTMLButtonElement | null>,
-  enabled: boolean,
-) {
-  const [scales, setScales] = useState<{
-    hover: number;
-    press: number;
-  } | null>(null);
-
-  useLayoutEffect(() => {
-    if (!enabled) {
-      setScales(null);
-      return;
-    }
-
-    const element = ref.current;
-    if (!element) {
-      return;
-    }
-
-    const hover = readCssNumber(element, "--btn-hover-scale");
-    const press = readCssNumber(element, "--btn-press-scale");
-
-    if (hover !== undefined && press !== undefined) {
-      setScales({ hover, press });
-    }
-  }, [enabled, ref]);
-
-  return scales;
-}
 
 function renderChildren(children: React.ReactNode) {
   if (typeof children === "string") {
@@ -70,17 +31,14 @@ function Button<C extends ElementType = "button">({
   const domRef = useRef<HTMLButtonElement>(null);
   const fallbackRef = useRef<HTMLButtonElement>(null);
   const refForHook = isNativeButton ? domRef : fallbackRef;
-  const reducedMotion = useReducedMotion();
-  const canHover = useHoverCapable();
 
   const disabled = Boolean(rest.disabled ?? isDisabled);
   const useMotionPress =
-    isNativeButton &&
-    variant !== "link" &&
-    !disabled &&
-    !isPending &&
-    !reducedMotion;
-  const motionScales = useButtonMotionScales(domRef, useMotionPress);
+    isNativeButton && variant !== "link" && !disabled && !isPending;
+  const { enabled: motionPressEnabled, motionProps } = usePressAnimation(
+    domRef,
+    { enabled: useMotionPress },
+  );
 
   const { buttonProps, isPressed } = useButton(
     {
@@ -109,18 +67,9 @@ function Button<C extends ElementType = "button">({
     "data-pending": isPending ? "true" : undefined,
     "data-state": disabled ? "disabled" : undefined,
     "data-hovered": isHovered ? "true" : undefined,
-    "data-motion-press": useMotionPress ? "true" : undefined,
+    "data-motion-press": motionPressEnabled ? "true" : undefined,
     "aria-busy": isPending ? true : undefined,
   };
-
-  const motionPressProps =
-    useMotionPress && motionScales
-      ? {
-          whileTap: { scale: motionScales.press },
-          whileHover: canHover ? { scale: motionScales.hover } : undefined,
-          transition: SPRING_PRESS,
-        }
-      : {};
 
   const content = (
     <>
@@ -142,7 +91,7 @@ function Button<C extends ElementType = "button">({
           buttonProps,
           hoverProps,
           domProps,
-          motionPressProps,
+          motionProps,
         ) as unknown as HTMLMotionProps<"button">)}
         ref={composeRefs(
           domRef,

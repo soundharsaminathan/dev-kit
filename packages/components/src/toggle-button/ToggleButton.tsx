@@ -4,7 +4,9 @@ import { useFocusRing } from "@react-aria/focus";
 import { useHover } from "@react-aria/interactions";
 import { mergeProps } from "@react-aria/utils";
 import { useToggleState } from "@react-stately/toggle";
+import { type HTMLMotionProps, motion } from "motion/react";
 import { useContext, useRef } from "react";
+import { usePressAnimation } from "../motion/use-press-animation";
 import { ToggleButtonGroupContext } from "../toggle-button-group/toggle-button-group-context";
 import styles from "./toggle-button.module.scss";
 import type { ToggleButtonProps } from "./toggle-button.types";
@@ -29,6 +31,10 @@ function ToggleButtonStandalone({
   const domRef = useRef<HTMLButtonElement>(null);
   const state = useToggleState(props);
   const disabled = Boolean(isDisabled);
+  const { enabled: motionPressEnabled, motionProps } = usePressAnimation(
+    domRef,
+    { enabled: !disabled },
+  );
   const { buttonProps, isPressed, isSelected } = useToggleButton(
     { ...props, isDisabled: disabled },
     state,
@@ -38,8 +44,13 @@ function ToggleButtonStandalone({
   const { focusProps, isFocusVisible } = useFocusRing();
 
   return (
-    <button
-      {...mergeProps(buttonProps, hoverProps, focusProps)}
+    <motion.button
+      {...(mergeProps(
+        buttonProps,
+        hoverProps,
+        focusProps,
+        motionProps,
+      ) as unknown as HTMLMotionProps<"button">)}
       ref={composeRefs(domRef, ref)}
       type="button"
       data-button=""
@@ -52,10 +63,11 @@ function ToggleButtonStandalone({
       data-hovered={isHovered ? "true" : undefined}
       data-disabled={disabled ? "true" : undefined}
       data-focus-visible={isFocusVisible ? "true" : undefined}
+      data-motion-press={motionPressEnabled ? "true" : undefined}
       className={cn(styles.root, className)}
     >
       {renderChildren(children)}
-    </button>
+    </motion.button>
   );
 }
 
@@ -70,6 +82,10 @@ function ToggleButtonInGroup({
   const groupContext = useContext(ToggleButtonGroupContext);
   const domRef = useRef<HTMLButtonElement>(null);
   const disabled = Boolean(isDisabled);
+  const { enabled: motionPressEnabled, motionProps } = usePressAnimation(
+    domRef,
+    { enabled: !disabled },
+  );
   const { buttonProps, isPressed, isSelected } = useToggleButtonGroupItem(
     {
       ...props,
@@ -83,8 +99,13 @@ function ToggleButtonInGroup({
   const { focusProps, isFocusVisible } = useFocusRing();
 
   return (
-    <button
-      {...mergeProps(buttonProps, hoverProps, focusProps)}
+    <motion.button
+      {...(mergeProps(
+        buttonProps,
+        hoverProps,
+        focusProps,
+        motionProps,
+      ) as unknown as HTMLMotionProps<"button">)}
       ref={composeRefs(domRef, ref)}
       type="button"
       data-button=""
@@ -97,10 +118,11 @@ function ToggleButtonInGroup({
       data-hovered={isHovered ? "true" : undefined}
       data-disabled={disabled ? "true" : undefined}
       data-focus-visible={isFocusVisible ? "true" : undefined}
+      data-motion-press={motionPressEnabled ? "true" : undefined}
       className={cn(styles.root, className)}
     >
       {renderChildren(children)}
-    </button>
+    </motion.button>
   );
 }
 

@@ -83,6 +83,7 @@ export default defineConfig({
           },
           css: true,
           globals: true,
+          maxWorkers: 2,
           testTimeout: 15_000,
           hookTimeout: 15_000,
           sequence: { groupOrder: 2 },

@@ -202,8 +202,8 @@
   --interaction-focus-ring-color: var(--color-border-focus);
   --interaction-transition-duration: 80ms;
   --interaction-transition-curve: linear;
-  --interaction-hover-scale: 1;
-  --interaction-press-scale: 1;
+  --interaction-hover-scale: 1.02;
+  --interaction-press-scale: 0.93;
   --btn-radius: var(--radius-sm);
   --btn-font-weight: var(--font-weight-medium);
   --btn-font-size: var(--font-size-sm);
@@ -548,8 +548,8 @@
   --interaction-focus-ring-color: var(--color-border-focus);
   --interaction-transition-duration: 80ms;
   --interaction-transition-curve: linear;
-  --interaction-hover-scale: 1;
-  --interaction-press-scale: 1;
+  --interaction-hover-scale: 1.02;
+  --interaction-press-scale: 0.93;
   --btn-radius: var(--radius-sm);
   --btn-font-weight: var(--font-weight-medium);
   --btn-font-size: var(--font-size-sm);

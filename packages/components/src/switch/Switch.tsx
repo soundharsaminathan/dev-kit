@@ -4,6 +4,7 @@ import { useHover } from "@react-aria/interactions";
 import { useSwitch } from "@react-aria/switch";
 import { mergeProps } from "@react-aria/utils";
 import { useToggleState } from "@react-stately/toggle";
+import { motion, useReducedMotion } from "motion/react";
 import {
   createContext,
   type ReactNode,
@@ -12,6 +13,7 @@ import {
   useRef,
 } from "react";
 import { Label } from "../field/Field";
+import { getSwapTransition } from "../motion/presets";
 import styles from "./switch.module.scss";
 import type {
   SwitchControlProps,
@@ -20,6 +22,12 @@ import type {
   SwitchSize,
   SwitchThumbProps,
 } from "./switch.types";
+
+const THUMB_OFFSET: Record<SwitchSize, number> = {
+  sm: 16,
+  md: 20,
+  lg: 24,
+};
 
 type SwitchRenderState = {
   isSelected: boolean;
@@ -151,15 +159,20 @@ function SwitchIndicator({
   );
 }
 
-function SwitchThumb({ className, ...props }: SwitchThumbProps) {
+function SwitchThumb({ className }: SwitchThumbProps) {
   const ctx = useContext(SwitchContext);
+  const styleContext = useContext(SwitchStyleContext);
+  const reducedMotion = useReducedMotion();
+  const size = ctx?.size ?? styleContext.size;
+  const offset = THUMB_OFFSET[size];
 
   return (
-    <span
+    <motion.span
       className={cn(styles.thumb, className)}
       data-selected={ctx?.isSelected ? "true" : undefined}
       data-disabled={ctx?.isDisabled ? "true" : undefined}
-      {...props}
+      animate={{ x: ctx?.isSelected ? offset : 0 }}
+      transition={getSwapTransition(reducedMotion)}
     />
   );
 }

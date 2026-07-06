@@ -28,6 +28,13 @@
   --motion-fast: 100ms;
   --motion-normal: 200ms;
   --motion-slow: 300ms;
+  --motion-offset-sm: 8px;
+  --motion-offset-md: 10px;
+  --motion-offset-lg: 20px;
+  --motion-blur-sm: 3px;
+  --motion-blur-md: 6px;
+  --motion-scale-enter: 0.97;
+  --motion-scale-exit: 0.98;
   --cursor-interactive: pointer;
   --cursor-disabled: not-allowed;
 }

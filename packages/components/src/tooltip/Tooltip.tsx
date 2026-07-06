@@ -3,6 +3,7 @@ import { useInteractOutside } from "@react-aria/interactions";
 import { useTooltip, useTooltipTrigger } from "@react-aria/tooltip";
 import { mergeProps } from "@react-aria/utils";
 import { useTooltipTriggerState } from "@react-stately/tooltip";
+import { AnimatePresence, motion } from "motion/react";
 import {
   Children,
   cloneElement,
@@ -15,8 +16,8 @@ import {
   useMemo,
   useRef,
 } from "react";
-import { useOverlayExit } from "../hooks/use-overlay-exit";
 import { findChildByDisplayName } from "../list-box/collection-utils";
+import { usePresenceAnimation } from "../motion/use-presence-animation";
 import styles from "./tooltip.module.scss";
 import type {
   TooltipContentProps,
@@ -128,8 +129,6 @@ function Tooltip({
   );
 }
 
-const OVERLAY_EXIT_DURATION_MS = 200;
-
 function TooltipContent({
   children,
   className,
@@ -144,10 +143,7 @@ function TooltipContent({
     mergeProps(tooltipProps, props) as Parameters<typeof useTooltip>[0],
     state,
   );
-  const { isRendered, dataState, onTransitionEnd } = useOverlayExit(
-    state.isOpen,
-    OVERLAY_EXIT_DURATION_MS,
-  );
+  const presence = usePresenceAnimation("tooltip", { placement });
 
   useInteractOutside({
     ref: tooltipRef,
@@ -158,7 +154,7 @@ function TooltipContent({
   });
 
   useLayoutEffect(() => {
-    if (!isRendered || !fullWidth) {
+    if (!state.isOpen || !fullWidth) {
       return;
     }
 
@@ -183,31 +179,37 @@ function TooltipContent({
     return () => {
       observer.disconnect();
     };
-  }, [isRendered, fullWidth, triggerRef]);
-
-  if (!isRendered) {
-    return null;
-  }
+  }, [state.isOpen, fullWidth, triggerRef]);
 
   return (
-    <div
-      {...mergeProps(overlayTooltipProps, props)}
-      ref={composeRefs(tooltipRef, ref)}
-      data-tooltip-content=""
-      data-placement={placement}
-      data-match-trigger-width={fullWidth ? "true" : undefined}
-      role="tooltip"
-      className={cn(styles.content, className)}
-    >
-      <div
-        data-state={dataState}
-        data-placement={placement}
-        onTransitionEnd={onTransitionEnd}
-        className={styles.contentSurface}
-      >
-        {children}
-      </div>
-    </div>
+    <AnimatePresence mode="wait">
+      {state.isOpen ? (
+        <div
+          key="tooltip"
+          {...mergeProps(overlayTooltipProps, props)}
+          ref={composeRefs(tooltipRef, ref)}
+          data-tooltip-content=""
+          data-placement={placement}
+          data-match-trigger-width={fullWidth ? "true" : undefined}
+          role="tooltip"
+          className={cn(styles.content, className)}
+        >
+          <motion.div
+            initial={presence.motion.initial}
+            animate={presence.motion.animate}
+            exit={{
+              ...presence.motion.exit,
+              transition: presence.exitTransition,
+            }}
+            transition={presence.transition}
+            data-placement={placement}
+            className={styles.contentSurface}
+          >
+            {children}
+          </motion.div>
+        </div>
+      ) : null}
+    </AnimatePresence>
   );
 }
 TooltipContent.displayName = "TooltipContent";

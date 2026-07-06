@@ -7,6 +7,6 @@ export const DEFAULT_INTERACTION = {
   "interaction-focus-ring-color": ref("color-border-focus", "interaction"),
   "interaction-transition-duration": val("150ms", "interaction"),
   "interaction-transition-curve": val("ease", "interaction"),
-  "interaction-hover-scale": val("1", "interaction"),
-  "interaction-press-scale": val("1", "interaction"),
+  "interaction-hover-scale": val("1.02", "interaction"),
+  "interaction-press-scale": val("0.93", "interaction"),
 } satisfies TokenVocabulary;

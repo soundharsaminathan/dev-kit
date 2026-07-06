@@ -67,10 +67,9 @@ describe("Popover", () => {
   it("renders popover content when open", () => {
     render(<PopoverHarness />);
     expect(screen.getByText("Popover content")).toBeInTheDocument();
-    expect(screen.getByText("Popover content")).toHaveAttribute(
-      "data-popover",
-      "",
-    );
+    expect(
+      screen.getByText("Popover content").closest("[data-popover]"),
+    ).toHaveAttribute("data-popover", "");
   });
 
   it("does not render when closed", () => {
@@ -80,10 +79,10 @@ describe("Popover", () => {
 
   it("renders a modal underlay by default", () => {
     render(<PopoverHarness />);
-    const popover = screen.getByText("Popover content");
-    const overlayRoot = popover.parentElement;
 
-    expect(overlayRoot?.children.length).toBeGreaterThan(1);
+    expect(
+      document.querySelector("[data-popover-underlay]"),
+    ).toBeInTheDocument();
   });
 
   it("skips the underlay for non-modal popovers", () => {
@@ -109,8 +108,20 @@ describe("Popover", () => {
   it("syncs trigger width from an input group container", () => {
     render(<PopoverHarness withInputGroup />);
 
-    const popover = screen.getByText("Popover content");
-    expect(popover.style.getPropertyValue("--trigger-width")).not.toBe("");
+    const popover = screen
+      .getByText("Popover content")
+      .closest("[data-popover]") as HTMLElement | null;
+    expect(popover?.style.getPropertyValue("--trigger-width")).not.toBe("");
+  });
+
+  it("positions the popover panel from React Aria overlay styles", () => {
+    render(<PopoverHarness />);
+
+    const popover = screen
+      .getByText("Popover content")
+      .closest("[data-popover]");
+    expect(popover).toHaveStyle({ position: "absolute" });
+    expect(popover?.getAttribute("style")).toMatch(/top:|left:/);
   });
 
   it("throws when used outside PopoverProvider", () => {

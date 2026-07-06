@@ -1,8 +1,6 @@
 @use "@dev-ui/tokens/scss" as *;
-@use "../shared/overlay-animation" as *;
 
-.root {
-  position: relative;
+.root {  position: relative;
   display: inline-flex;
   width: fit-content;
   overflow: visible;
@@ -68,5 +66,5 @@
 }
 
 .contentSurface {
-  @include overlay-enter-exit;
+  width: 100%;
 }
