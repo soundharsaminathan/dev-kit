@@ -138,4 +138,47 @@ describe("Autocomplete", () => {
 
     expect(screen.getByRole("searchbox")).toBeInTheDocument();
   });
+
+  it("shows all options again when the query is cleared", () => {
+    render(
+      <Autocomplete aria-label="Commands">
+        <AutocompleteInput aria-label="Search" />
+        <AutocompleteContent aria-label="Results" selectionMode="none">
+          <AutocompleteItem id="calendar">Calendar</AutocompleteItem>
+          <AutocompleteItem id="settings">Settings</AutocompleteItem>
+        </AutocompleteContent>
+      </Autocomplete>,
+    );
+
+    const searchbox = screen.getByRole("searchbox");
+    act(() => {
+      searchbox.focus();
+    });
+
+    fireEvent.change(searchbox, { target: { value: "cal" } });
+    expect(
+      screen.queryByRole("option", { name: "Settings" }),
+    ).not.toBeInTheDocument();
+
+    fireEvent.change(searchbox, { target: { value: "" } });
+    expect(
+      screen.getByRole("option", { name: "Settings" }),
+    ).toBeInTheDocument();
+  });
+
+  it("accepts custom filter options", () => {
+    render(
+      <Autocomplete
+        aria-label="Commands"
+        filter={{ sensitivity: "base", ignorePunctuation: false }}
+      >
+        <AutocompleteInput aria-label="Search" />
+        <AutocompleteContent aria-label="Results" selectionMode="none">
+          <AutocompleteItem id="calendar">Calendar</AutocompleteItem>
+        </AutocompleteContent>
+      </Autocomplete>,
+    );
+
+    expect(screen.getByRole("searchbox")).toBeInTheDocument();
+  });
 });
