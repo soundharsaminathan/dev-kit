@@ -61,12 +61,8 @@ const motionMock = vi.hoisted(() => {
   >();
 
   return {
-    AnimatePresence: ({ children }: { children?: React.ReactNode }) => {
-      if (children == null || children === false) {
-        return null;
-      }
-      return children;
-    },
+    AnimatePresence: ({ children }: { children?: React.ReactNode }) =>
+      children ?? null,
     MotionGlobalConfig: { skipAnimations: true },
     animate: () => Promise.resolve(),
     motion: new Proxy(

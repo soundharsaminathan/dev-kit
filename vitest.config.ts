@@ -17,6 +17,7 @@ const coverageExclude = [
   "**/scss-modules.d.ts",
   "**/generated/**",
   "**/*.generated.ts",
+  "**/playground.tsx",
   "scripts/vite/**",
 ];
 
@@ -115,6 +116,7 @@ export default defineConfig({
             path.join(rootDir, "vitest.setup.ts"),
             path.join(rootDir, "apps/showcase/vitest.setup.ts"),
           ],
+          maxWorkers: 2,
           testTimeout: 15_000,
           hookTimeout: 15_000,
           sequence: { groupOrder: 2 },
@@ -123,6 +125,8 @@ export default defineConfig({
           alias: {
             "@": path.join(rootDir, "apps/showcase/src"),
           },
+          conditions: ["development", "import", "module", "browser", "default"],
+          dedupe: ["react", "react-dom", "motion"],
         },
       },
       path.join(rootDir, "apps/storybook/vitest.config.ts"),

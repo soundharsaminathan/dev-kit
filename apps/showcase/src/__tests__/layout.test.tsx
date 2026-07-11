@@ -6,8 +6,44 @@ import {
   RouterProvider,
 } from "@tanstack/react-router";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { routeTree } from "../routeTree.gen";
+
+vi.mock("@/modules/layout/showcase-sidebar", () => ({
+  ShowcaseSidebar: () => (
+    <nav aria-label="Components">
+      <a href="/components/button">Button</a>
+    </nav>
+  ),
+  ComponentsLayout: ({ children }: { children: React.ReactNode }) => (
+    <div>
+      <nav aria-label="Components">
+        <a href="/components/button">Button</a>
+      </nav>
+      <div>{children}</div>
+    </div>
+  ),
+}));
+
+vi.mock("@/registry", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/registry")>();
+  function StubPlayground() {
+    return <div data-testid="playground-stub">Playground stub</div>;
+  }
+  function withStub(
+    entry: NonNullable<ReturnType<typeof actual.getRegistryEntry>>,
+  ) {
+    return { ...entry, Playground: StubPlayground };
+  }
+  return {
+    ...actual,
+    getRegistryEntry: (slug: Parameters<typeof actual.getRegistryEntry>[0]) => {
+      const entry = actual.getRegistryEntry(slug);
+      return entry ? withStub(entry) : null;
+    },
+    getAllRegistryEntries: () => actual.getAllRegistryEntries().map(withStub),
+  };
+});
 
 function createTestRouter(initialPath = "/components/button") {
   const history = createMemoryHistory({ initialEntries: [initialPath] });

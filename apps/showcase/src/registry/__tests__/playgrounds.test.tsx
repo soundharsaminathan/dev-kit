@@ -1,9 +1,24 @@
 import "@testing-library/jest-dom/vitest";
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { InteractiveDemo } from "@/modules/showcase/interactive-demo";
 import { TestProviders } from "@/test-utils/providers";
 import { getAllRegistryEntries } from "../index";
+
+vi.mock("@/registry", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/registry")>();
+  function StubPlayground() {
+    return <div data-testid="playground-stub">Playground stub</div>;
+  }
+  return {
+    ...actual,
+    getAllRegistryEntries: () =>
+      actual.getAllRegistryEntries().map((entry) => ({
+        ...entry,
+        Playground: StubPlayground,
+      })),
+  };
+});
 
 describe("registry playgrounds", () => {
   it.each(

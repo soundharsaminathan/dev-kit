@@ -7,6 +7,7 @@ import {
 } from "@dev-ui/icons";
 import lucidePack from "@dev-ui/icons-packs/lucide";
 import {
+  act,
   fireEvent,
   render,
   screen,
@@ -48,22 +49,16 @@ async function selectDrawerOption(
   optionName: string,
 ) {
   fireEvent.click(within(drawer).getByRole("button", { name: triggerName }));
-  const listbox = await screen.findByRole("listbox", {}, { timeout: 10_000 });
+  const listbox = await screen.findByRole("listbox");
   fireEvent.click(within(listbox).getByRole("option", { name: optionName }));
-  await waitFor(
-    () => {
-      expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
-    },
-    { timeout: 10_000 },
-  );
-  await waitFor(
-    () => {
-      expect(
-        within(drawer).getByRole("button", { name: triggerName }),
-      ).toHaveTextContent(optionName);
-    },
-    { timeout: 10_000 },
-  );
+  await waitFor(() => {
+    expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+  });
+  await waitFor(() => {
+    expect(
+      within(drawer).getByRole("button", { name: triggerName }),
+    ).toHaveTextContent(optionName);
+  });
 }
 
 function SeededEditor() {
@@ -115,20 +110,20 @@ describe("ShowcaseThemeEditor", () => {
       </AppThemeProvider>,
     );
 
+    await act(async () => {});
+
     expect(
-      await screen.findByRole("heading", { name: "Saved themes" }),
+      screen.getByRole("heading", { name: "Saved themes" }),
     ).toBeInTheDocument();
     expect(screen.getByLabelText("Theme name")).toHaveValue("Saved theme");
 
     fireEvent.click(screen.getByRole("button", { name: "Save theme" }));
 
-    await waitFor(() => {
-      expect(
-        within(screen.getByRole("list")).getByRole("button", {
-          name: "Saved theme",
-        }),
-      ).toBeInTheDocument();
-    });
+    expect(
+      within(screen.getByRole("list")).getByRole("button", {
+        name: "Saved theme",
+      }),
+    ).toBeInTheDocument();
 
     fireEvent.click(
       within(screen.getByRole("list")).getByRole("button", {
@@ -136,14 +131,11 @@ describe("ShowcaseThemeEditor", () => {
       }),
     );
 
-    const deleteButtons = screen.getAllByRole("button", { name: "Delete" });
-    fireEvent.click(deleteButtons[0]!);
+    fireEvent.click(screen.getAllByRole("button", { name: "Delete" })[0]!);
 
-    await waitFor(() => {
-      expect(
-        screen.queryByRole("heading", { name: "Saved themes" }),
-      ).not.toBeInTheDocument();
-    });
+    expect(
+      screen.queryByRole("heading", { name: "Saved themes" }),
+    ).not.toBeInTheDocument();
   });
 
   it("clears live preview when the drawer closes", async () => {

@@ -5,6 +5,19 @@ import type { ReactNode, Ref } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { ShowcaseSidebar } from "@/modules/layout/showcase-sidebar";
 
+vi.mock("@/lib/components-data", () => ({
+  componentCategories: [
+    {
+      title: "Buttons",
+      slug: "buttons",
+      components: [
+        { slug: "button", name: "Button" },
+        { slug: "toggle-button", name: "Toggle Button" },
+      ],
+    },
+  ],
+}));
+
 vi.mock("@tanstack/react-router", async (importOriginal) => {
   const actual =
     await importOriginal<typeof import("@tanstack/react-router")>();

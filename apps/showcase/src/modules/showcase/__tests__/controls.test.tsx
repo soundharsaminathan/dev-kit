@@ -88,7 +88,7 @@ describe("Controls", () => {
     expect(onChange).toHaveBeenCalledWith("count", 5);
   });
 
-  it("calls onChange when enum select changes", () => {
+  it("calls onChange when enum select changes", async () => {
     const onChange = vi.fn();
     render(
       <TestProviders>
@@ -108,7 +108,7 @@ describe("Controls", () => {
     );
 
     fireEvent.click(screen.getByRole("button", { name: /Variant/ }));
-    fireEvent.click(screen.getByRole("option", { name: "primary" }));
+    fireEvent.click(await screen.findByRole("option", { name: "primary" }));
     expect(onChange).toHaveBeenCalledWith("variant", "primary");
   });
 
