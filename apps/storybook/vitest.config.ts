@@ -10,6 +10,7 @@ import {
 
 const dirname = path.dirname(fileURLToPath(import.meta.url));
 const vitestSetup = path.join(dirname, ".storybook/vitest.setup.ts");
+const isCI = Boolean(process.env.CI);
 
 export default defineConfig({
   optimizeDeps: {
@@ -46,15 +47,22 @@ export default defineConfig({
     fileParallelism: false,
     maxWorkers: 1,
     testTimeout: 30_000,
-    retry: process.env.CI ? 2 : 0,
+    hookTimeout: 30_000,
+    retry: isCI ? 1 : 0,
     browser: {
       enabled: true,
       provider: playwright({
         launchOptions: {
-          args: ["--disable-dev-shm-usage", "--no-sandbox", "--disable-gpu"],
+          args: [
+            "--disable-dev-shm-usage",
+            "--no-sandbox",
+            "--disable-gpu",
+            "--disable-extensions",
+          ],
         },
       }),
       headless: true,
+      screenshotFailures: false,
       instances: [{ browser: "chromium" }],
     },
     setupFiles: [vitestSetup],

@@ -1,11 +1,34 @@
 import { Link } from "@dev-ui/components/link";
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import type { MouseEvent, ReactNode } from "react";
 import { expect } from "storybook/test";
+
+function PreventNavigation({ children }: { children: ReactNode }) {
+  return (
+    <div
+      onClickCapture={(event: MouseEvent) => {
+        const target = event.target;
+        if (target instanceof Element && target.closest("a[href]")) {
+          event.preventDefault();
+        }
+      }}
+    >
+      {children}
+    </div>
+  );
+}
 
 const meta = {
   title: "Components/Link",
   component: Link,
   tags: ["ai-generated"],
+  decorators: [
+    (Story) => (
+      <PreventNavigation>
+        <Story />
+      </PreventNavigation>
+    ),
+  ],
   argTypes: {
     variant: {
       control: "select",

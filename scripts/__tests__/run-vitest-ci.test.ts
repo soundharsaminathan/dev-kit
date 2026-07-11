@@ -36,6 +36,20 @@ describe("buildVitestCiCommand", () => {
     expect(command).toContain("--coverage.thresholds.branches=90");
   });
 
+  it("runs storybook without coverage instrumentation", () => {
+    const command = buildVitestCiCommand("storybook");
+
+    expect(command).toContain("--project storybook");
+    expect(command).not.toContain("--coverage.enabled=true");
+    expect(command).toContain("--outputFile=test-results/junit-storybook.xml");
+  });
+
+  it("rejects coverage-only mode for storybook", () => {
+    expect(() =>
+      buildVitestCiCommand("storybook", { coverageOnly: true }),
+    ).toThrow(/does not collect coverage/);
+  });
+
   it("omits junit reporters in coverage-only mode", () => {
     const command = buildVitestCiCommand("scripts", { coverageOnly: true });
 

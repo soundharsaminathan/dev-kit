@@ -99,7 +99,6 @@
         "components:test:coverage",
         "tokens:test:coverage",
         "showcase:test:coverage",
-        "storybook:test:coverage",
         "scripts:test:coverage"
       ],
       "outputs": ["{workspaceRoot}/coverage/coverage-summary.json"]

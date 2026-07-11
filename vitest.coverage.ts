@@ -6,11 +6,15 @@ export const COVERAGE_PROJECTS = [
   "tokens",
   "icons",
   "showcase",
-  "storybook",
   "scripts",
 ] as const;
 
 export type CoverageProject = (typeof COVERAGE_PROJECTS)[number];
+
+/** Projects that run in CI via run-vitest-ci (includes browser-only suites). */
+export const CI_TEST_PROJECTS = [...COVERAGE_PROJECTS, "storybook"] as const;
+
+export type CiTestProject = (typeof CI_TEST_PROJECTS)[number];
 
 export const LIB_COVERAGE_PROJECTS = [
   "core",
@@ -50,5 +54,10 @@ export const COVERAGE_INCLUDES: Record<CoverageProject, readonly string[]> = {
   icons: ["src/**/*.{ts,tsx}"],
   showcase: ["src/**/*.{ts,tsx}"],
   scripts: ["**/*.{ts,tsx}"],
-  storybook: ["src/**/*.{ts,tsx}"],
 };
+
+export function isCoverageProject(
+  project: CiTestProject,
+): project is CoverageProject {
+  return (COVERAGE_PROJECTS as readonly string[]).includes(project);
+}
