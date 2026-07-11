@@ -1,4 +1,4 @@
-export { useReducedMotion } from "motion/react";
+export { MotionGlobalConfig, useReducedMotion } from "motion/react";
 export {
   getDrawerPanelMotion,
   getDrawerPanelTransition,

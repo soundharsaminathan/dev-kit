@@ -17,6 +17,7 @@
     "@dev-ui/icons-packs": "workspace:*",
     "@dev-ui/tokens": "workspace:*",
     "lucide-react": "^0.575.0",
+    "motion": "11.15.0",
     "react": "catalog:",
     "react-dom": "catalog:"
   },

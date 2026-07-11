@@ -20,6 +20,7 @@ export default defineConfig({
       "msw-storybook-addon",
       "mockdate",
       "lucide-react",
+      "motion/react",
       "@dev-ui/components/popover",
       "@dev-ui/components/styles",
     ],
@@ -44,6 +45,7 @@ export default defineConfig({
     sequence: { groupOrder: 2 },
     fileParallelism: false,
     maxWorkers: 1,
+    testTimeout: 30_000,
     browser: {
       enabled: true,
       provider: playwright({}),

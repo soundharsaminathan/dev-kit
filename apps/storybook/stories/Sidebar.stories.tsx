@@ -13,6 +13,7 @@ import {
   useSidebarContext,
 } from "@dev-ui/components/sidebar";
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { expect } from "storybook/test";
 
 function SidebarToggle() {
   const { toggleSidebar } = useSidebarContext("SidebarToggle");
@@ -89,6 +90,15 @@ export const Default: Story = {};
 export const Collapsed: Story = {
   args: {
     defaultOpen: false,
+  },
+  play: async ({ canvas }) => {
+    const sidebar = canvas.getByRole("navigation", { name: "Sidebar" });
+    await expect(sidebar.closest("[data-sidebar='']")).not.toHaveAttribute(
+      "data-expanded",
+    );
+    await expect(
+      canvas.getByRole("button", { name: "Toggle sidebar" }),
+    ).toBeInTheDocument();
   },
 };
 
