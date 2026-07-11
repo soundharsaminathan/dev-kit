@@ -46,9 +46,14 @@ export default defineConfig({
     fileParallelism: false,
     maxWorkers: 1,
     testTimeout: 30_000,
+    retry: process.env.CI ? 2 : 0,
     browser: {
       enabled: true,
-      provider: playwright({}),
+      provider: playwright({
+        launchOptions: {
+          args: ["--disable-dev-shm-usage", "--no-sandbox", "--disable-gpu"],
+        },
+      }),
       headless: true,
       instances: [{ browser: "chromium" }],
     },
