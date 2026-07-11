@@ -39,6 +39,12 @@ describe("defaultControlValues", () => {
     });
   });
 
+  it("skips enum controls with no options", () => {
+    expect(
+      defaultControlValues([{ name: "variant", type: "enum", options: [] }]),
+    ).toEqual({});
+  });
+
   it("matches snapshot for mixed control defaults", () => {
     const values = defaultControlValues([
       { name: "children", type: "string", defaultValue: "Button" },

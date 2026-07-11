@@ -43,4 +43,11 @@ describe("normalizeColorSliderValues", () => {
       channel: "lightness",
     });
   });
+
+  it("defaults color space and channel when omitted", () => {
+    expect(normalizeColorSliderValues({})).toMatchObject({
+      colorSpace: "hsb",
+      channel: "hue",
+    });
+  });
 });

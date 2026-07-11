@@ -2,10 +2,12 @@
 import "@testing-library/jest-dom/vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+import DateFieldPlayground from "@/registry/date-field/playground";
 import FileTriggerPlayground from "@/registry/file-trigger/playground";
 import PaginationPlayground from "@/registry/pagination/playground";
 import PopoverPlayground from "@/registry/popover/playground";
 import ScrollFadePlayground from "@/registry/scroll-fade/playground";
+import SeparatorPlayground from "@/registry/separator/playground";
 import SkeletonPlayground from "@/registry/skeleton/playground";
 import TagGroupPlayground from "@/registry/tag-group/playground";
 import ToastPlayground from "@/registry/toast/playground";
@@ -36,6 +38,48 @@ describe("playground interactions", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Show toast" }));
     expect(screen.getByText("Files uploaded")).toBeInTheDocument();
+  });
+
+  it("shows a toast without an action when the label is empty", () => {
+    render(
+      <TestProviders>
+        <ToastPlayground showAction actionLabel="" />
+      </TestProviders>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Show toast" }));
+    expect(screen.getByText("Files uploaded")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Install" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("renders a vertical separator", () => {
+    const { container } = render(
+      <TestProviders>
+        <SeparatorPlayground orientation="vertical" />
+      </TestProviders>,
+    );
+
+    expect(container.querySelector('[role="separator"]')).toBeInTheDocument();
+  });
+
+  it("renders date field label as a prop with description and error", () => {
+    render(
+      <TestProviders>
+        <DateFieldPlayground
+          labelMode="prop"
+          label="Appointment"
+          description="Pick a day"
+          errorMessage="Required"
+          isInvalid
+        />
+      </TestProviders>,
+    );
+
+    expect(screen.getAllByText("Appointment").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Pick a day").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Required").length).toBeGreaterThan(0);
   });
 
   it("handles file selection in single and multiple modes", () => {

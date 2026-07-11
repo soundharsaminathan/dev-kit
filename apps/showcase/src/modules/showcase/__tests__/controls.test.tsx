@@ -138,6 +138,32 @@ describe("Controls", () => {
     expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
   });
 
+  it("falls back when string, number, and enum values are missing", () => {
+    render(
+      <TestProviders>
+        <Controls
+          controls={[
+            { name: "label", type: "string" },
+            { name: "count", type: "number" },
+            {
+              name: "variant",
+              type: "enum",
+              options: ["default", "primary"],
+            },
+          ]}
+          values={{}}
+          onChange={vi.fn()}
+        />
+      </TestProviders>,
+    );
+
+    expect(screen.getByRole("textbox")).toHaveValue("");
+    expect(screen.getByRole("spinbutton")).toHaveValue(0);
+    expect(screen.getByRole("button", { name: /Variant/ })).toHaveTextContent(
+      "default",
+    );
+  });
+
   it("does not emit React Aria label warnings for enum selects", async () => {
     await withReactAriaLabelWarningGuard(() => {
       render(

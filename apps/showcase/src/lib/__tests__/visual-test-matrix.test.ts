@@ -50,6 +50,27 @@ describe("visual-test-matrix", () => {
     ]);
   });
 
+  it("uses empty segment when a non-default value stringifies blank", () => {
+    const cases = generateVisualTestCasesForConfig({
+      name: "Badge",
+      slug: "badge",
+      category: "typography",
+      description: "Badge",
+      controls: [
+        {
+          name: "variant",
+          type: "enum",
+          options: ["", "primary"],
+          defaultValue: "primary",
+        },
+      ],
+    });
+
+    expect(cases.map((testCase) => testCase.caseId)).toContain(
+      "badge--variant-empty",
+    );
+  });
+
   it("generates interaction cases for components with visual interactions", () => {
     const cases = generateVisualTestCasesForConfig({
       name: "Context Menu",

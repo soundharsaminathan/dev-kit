@@ -200,6 +200,32 @@ describe("ShowcaseThemeEditor", () => {
     await selectDrawerOption(drawer, /Icon pack/, "Heroicons Outline");
   }, 60_000);
 
+  it("marks inactive saved themes with the default button variant", async () => {
+    render(
+      <AppThemeProvider>
+        <SeededEditor />
+      </AppThemeProvider>,
+    );
+
+    expect(
+      await screen.findByRole("heading", { name: "Saved themes" }),
+    ).toBeInTheDocument();
+
+    const drawer = await screen.findByTestId("theme-editor-drawer");
+    await selectDrawerOption(drawer, /Theme/, "Material");
+
+    const savedThemeButton = within(screen.getByRole("list")).getByRole(
+      "button",
+      { name: "Saved theme" },
+    );
+    expect(savedThemeButton).not.toHaveAttribute("data-variant", "primary");
+
+    fireEvent.click(savedThemeButton);
+    await waitFor(() => {
+      expect(savedThemeButton).toHaveAttribute("data-variant", "primary");
+    });
+  }, 60_000);
+
   it("supports controlled open state and custom triggers", () => {
     render(
       <AppThemeProvider>
