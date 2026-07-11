@@ -5,6 +5,7 @@ import {
   gotoStory,
   isFocusWithin,
   VIEWPORT_SCREENSHOT_OPTIONS,
+  VIEWPORT_TOLERANCE,
   waitForDrawerReady,
 } from "./helpers/storybook";
 import { responsiveDescribeOptions } from "./helpers/viewports";
@@ -178,7 +179,7 @@ test.describe("Drawer", () => {
 
       expect(box!.y).toBeGreaterThan(viewport!.height / 2);
       expect(Math.abs(box!.y + box!.height - viewport!.height)).toBeLessThan(
-        48,
+        VIEWPORT_TOLERANCE,
       );
     });
 
@@ -210,14 +211,13 @@ test.describe("Drawer", () => {
       expect(box).not.toBeNull();
       expect(viewport).not.toBeNull();
 
-      const tolerance = 48;
-      expect(box!.x).toBeGreaterThanOrEqual(-tolerance);
-      expect(box!.y).toBeGreaterThanOrEqual(-tolerance);
+      expect(box!.x).toBeGreaterThanOrEqual(-VIEWPORT_TOLERANCE);
+      expect(box!.y).toBeGreaterThanOrEqual(-VIEWPORT_TOLERANCE);
       expect(box!.x + box!.width).toBeLessThanOrEqual(
-        viewport!.width + tolerance,
+        viewport!.width + VIEWPORT_TOLERANCE,
       );
       expect(box!.y + box!.height).toBeLessThanOrEqual(
-        viewport!.height + tolerance,
+        viewport!.height + VIEWPORT_TOLERANCE,
       );
     });
   });

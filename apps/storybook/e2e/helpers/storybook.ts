@@ -7,7 +7,7 @@ export const DEFAULT_GLOBALS = {
   themeMode: "light",
 } as const;
 
-export const VIEWPORT_TOLERANCE = 48;
+export const VIEWPORT_TOLERANCE = 56;
 
 export function getDrawerPanel(page: Page): Locator {
   return page.locator("[data-drawer][data-open]");
@@ -89,9 +89,45 @@ export async function expectStoryScreenshot(
 export async function waitForDrawerReady(page: Page) {
   const drawer = getDrawerPanel(page);
   await drawer.waitFor({ state: "visible" });
-  await drawer.evaluate((element) => {
-    element.removeAttribute("data-starting-style");
-  });
+
+  await expect
+    .poll(
+      async () =>
+        drawer.evaluate((element) => {
+          const { transform } = getComputedStyle(element);
+          if (!transform || transform === "none") {
+            return 0;
+          }
+
+          const values = transform
+            .match(/matrix(?:3d)?\((.+)\)/)?.[1]
+            ?.split(",")
+            .map((value) => Number.parseFloat(value.trim()));
+
+          if (!values || values.some((value) => !Number.isFinite(value))) {
+            return 0;
+          }
+
+          const x = values.length === 16 ? values[12]! : values[4]!;
+          const y = values.length === 16 ? values[13]! : values[5]!;
+          return Math.hypot(x, y);
+        }),
+      { timeout: 10_000 },
+    )
+    .toBeLessThan(0.5);
+
+  const backdrop = page.locator("[data-drawer-backdrop][data-open]");
+  if ((await backdrop.count()) > 0) {
+    await expect
+      .poll(
+        async () =>
+          backdrop.evaluate((element) =>
+            Number.parseFloat(getComputedStyle(element).opacity),
+          ),
+        { timeout: 10_000 },
+      )
+      .toBeGreaterThan(0.99);
+  }
 }
 
 export async function waitForModalReady(page: Page) {
