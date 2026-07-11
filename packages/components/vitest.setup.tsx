@@ -78,7 +78,7 @@ const motionMock = vi.hoisted(() => {
       },
     ),
     useMotionValue: (initial?: number) => createMotionValue(initial ?? 0),
-    useReducedMotion: () => true,
+    useReducedMotion: vi.fn(() => true),
   };
 });
 

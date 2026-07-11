@@ -1,10 +1,15 @@
 import "@testing-library/jest-dom/vitest";
 import { act, fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { useReducedMotion } from "motion/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { ToggleButtonGroup } from "../../toggle-button-group/ToggleButtonGroup";
 import { ToggleButton } from "../ToggleButton";
 
 describe("ToggleButton", () => {
+  afterEach(() => {
+    vi.mocked(useReducedMotion).mockReturnValue(true);
+  });
+
   it("renders a toggle button", () => {
     render(<ToggleButton aria-label="Bold">Bold</ToggleButton>);
     expect(screen.getByRole("button", { name: "Bold" })).toBeInTheDocument();
@@ -72,6 +77,26 @@ describe("ToggleButton", () => {
     expect(button).toHaveAttribute("data-focus-visible", "true");
   });
 
+  it("marks pressed state while the pointer is down", () => {
+    render(<ToggleButton aria-label="Bold">Bold</ToggleButton>);
+    const button = screen.getByRole("button", { name: "Bold" });
+
+    fireEvent.pointerDown(button);
+    expect(button).toHaveAttribute("data-pressed", "true");
+  });
+
+  it("enables motion press when CSS scale tokens are present", () => {
+    vi.mocked(useReducedMotion).mockReturnValue(false);
+    vi.spyOn(window, "getComputedStyle").mockReturnValue({
+      getPropertyValue: (name: string) =>
+        name === "--btn-hover-scale" ? "1.02" : "0.98",
+    } as unknown as CSSStyleDeclaration);
+
+    render(<ToggleButton aria-label="Bold">Bold</ToggleButton>);
+    const button = screen.getByRole("button", { name: "Bold" });
+    expect(button).toHaveAttribute("data-motion-press", "true");
+  });
+
   it("inherits group styling when rendered inside ToggleButtonGroup", () => {
     render(
       <ToggleButtonGroup variant="quiet" size="lg" isIconOnly>
@@ -85,5 +110,19 @@ describe("ToggleButton", () => {
     expect(button).toHaveAttribute("data-variant", "quiet");
     expect(button).toHaveAttribute("data-size", "lg");
     expect(button).toHaveAttribute("data-icon-only", "true");
+  });
+
+  it("marks pressed state for group toggle buttons", () => {
+    render(
+      <ToggleButtonGroup>
+        <ToggleButton id="bold" aria-label="Bold">
+          Bold
+        </ToggleButton>
+      </ToggleButtonGroup>,
+    );
+
+    const button = screen.getByRole("radio", { name: "Bold" });
+    fireEvent.pointerDown(button);
+    expect(button).toHaveAttribute("data-pressed", "true");
   });
 });

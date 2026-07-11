@@ -28,6 +28,7 @@ export function usePresenceAnimation(
   options?: {
     placement?: string;
     toastPosition?: ToastPosition;
+    distance?: number;
   },
 ) {
   const reduced = useReducedMotion();

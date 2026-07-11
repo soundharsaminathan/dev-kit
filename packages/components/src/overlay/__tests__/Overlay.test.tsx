@@ -132,4 +132,30 @@ describe("Overlay", () => {
     fireEvent.keyDown(document, { key: "Escape" });
     expect(screen.getByText("Dismissable modal")).toBeInTheDocument();
   });
+
+  it("renders a standalone popover without dialog context", () => {
+    expect(() =>
+      render(
+        <Overlay type="popover">
+          <div>Standalone popover</div>
+        </Overlay>,
+      ),
+    ).toThrow(/Popover must be used within a picker/);
+  });
+
+  it("keeps desktop type when viewport is not mobile", () => {
+    mockMobileViewport(false);
+
+    render(
+      <Dialog defaultOpen>
+        <button type="button">Open</button>
+        <Overlay type="modal" mobileType="drawer">
+          <div>Desktop modal</div>
+        </Overlay>
+      </Dialog>,
+    );
+
+    expect(document.querySelector("[data-modal='']")).toBeInTheDocument();
+    expect(document.querySelector("[data-drawer='']")).not.toBeInTheDocument();
+  });
 });
