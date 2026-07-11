@@ -19,16 +19,25 @@ function createTestRouter(initialPath = "/components/button") {
   });
 }
 
+async function renderRoute(initialPath: string) {
+  const router = createTestRouter(initialPath);
+  render(<RouterProvider router={router} />);
+  await waitFor(
+    () => {
+      expect(router.state.status).toBe("idle");
+    },
+    { timeout: 5_000 },
+  );
+  return router;
+}
+
 describe("Component pager", () => {
   it("links to neighboring components", async () => {
-    const router = createTestRouter("/components/button");
-    render(<RouterProvider router={router} />);
+    await renderRoute("/components/button");
 
-    await waitFor(() => {
-      expect(router.state.status).toBe("idle");
+    const pager = await screen.findByRole("navigation", {
+      name: "Component pager",
     });
-
-    const pager = screen.getByRole("navigation", { name: "Component pager" });
     expect(pager).toBeInTheDocument();
     expect(pager.querySelector("a")).toBeTruthy();
   });
@@ -36,14 +45,9 @@ describe("Component pager", () => {
 
 describe("Header theme controls", () => {
   it("switches theme mode from the header", async () => {
-    const router = createTestRouter("/theme-editor");
-    render(<RouterProvider router={router} />);
+    await renderRoute("/theme-editor");
 
-    await waitFor(() => {
-      expect(router.state.status).toBe("idle");
-    });
-
-    fireEvent.click(screen.getByRole("radio", { name: "Dark" }));
+    fireEvent.click(await screen.findByRole("radio", { name: "Dark" }));
     expect(document.documentElement).toHaveAttribute("data-theme-mode", "dark");
   });
 });
