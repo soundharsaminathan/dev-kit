@@ -23,30 +23,32 @@ function createTestRouter(initialPath = "/") {
     history,
     defaultPendingMinMs: 0,
     defaultPendingMs: 0,
+    defaultPreload: false,
   });
 }
 
 type RenderRouteOptions = {
-  ready?: () => void | Promise<void>;
+  ready?: () => void;
   timeout?: number;
 };
 
 async function renderRoute(
   initialPath = "/",
-  { ready, timeout = 28_000 }: RenderRouteOptions = {},
+  { ready, timeout = 5_000 }: RenderRouteOptions = {},
 ) {
   const router = createTestRouter(initialPath);
   render(<RouterProvider router={router} />);
+
   await waitFor(
     () => {
+      if (ready) {
+        ready();
+        return;
+      }
       expect(router.state.status).toBe("idle");
     },
     { timeout },
   );
-
-  if (ready) {
-    await ready();
-  }
 
   return router;
 }
@@ -61,33 +63,42 @@ describe("showcase routes", () => {
   });
 
   it("renders the home page", async () => {
-    await renderRoute("/");
+    await renderRoute("/", {
+      ready: () => {
+        expect(
+          screen.getByRole("heading", { name: "Component Showcase" }),
+        ).toBeInTheDocument();
+      },
+    });
 
-    expect(
-      screen.getByRole("heading", { name: "Component Showcase" }),
-    ).toBeInTheDocument();
     expect(
       screen.getByRole("link", { name: "Browse components" }),
     ).toBeInTheDocument();
   });
 
   it("renders the components index", async () => {
-    await renderRoute("/components/");
+    await renderRoute("/components/", {
+      ready: () => {
+        expect(
+          screen.getByRole("heading", { name: "Components" }),
+        ).toBeInTheDocument();
+      },
+    });
 
-    expect(
-      await screen.findByRole("heading", { name: "Components" }),
-    ).toBeInTheDocument();
     expect(
       screen.getByRole("heading", { name: "Buttons" }),
     ).toBeInTheDocument();
   });
 
   it("renders a component detail page", async () => {
-    await renderRoute("/components/button");
+    await renderRoute("/components/button", {
+      ready: () => {
+        expect(
+          screen.getByRole("heading", { name: "Button" }),
+        ).toBeInTheDocument();
+      },
+    });
 
-    expect(
-      await screen.findByRole("heading", { name: "Button" }),
-    ).toBeInTheDocument();
     expect(screen.getByText("Playground")).toBeInTheDocument();
     expect(
       screen.getByRole("navigation", { name: "Component pager" }),
@@ -98,11 +109,14 @@ describe("showcase routes", () => {
   });
 
   it("renders the last component without a next pager link", async () => {
-    await renderRoute("/components/tag-group");
+    await renderRoute("/components/tag-group", {
+      ready: () => {
+        expect(
+          screen.getByRole("heading", { name: "Tag Group" }),
+        ).toBeInTheDocument();
+      },
+    });
 
-    expect(
-      await screen.findByRole("heading", { name: "Tag Group" }),
-    ).toBeInTheDocument();
     expect(
       screen.queryByRole("navigation", { name: "Component pager" }),
     ).toBeInTheDocument();
@@ -114,11 +128,14 @@ describe("showcase routes", () => {
   });
 
   it("renders a component with normalized control values", async () => {
-    await renderRoute("/components/color-slider");
+    await renderRoute("/components/color-slider", {
+      ready: () => {
+        expect(
+          screen.getByRole("heading", { name: "Color Slider" }),
+        ).toBeInTheDocument();
+      },
+    });
 
-    expect(
-      await screen.findByRole("heading", { name: "Color Slider" }),
-    ).toBeInTheDocument();
     expect(screen.getByText("Playground")).toBeInTheDocument();
   });
 
@@ -141,11 +158,14 @@ describe("showcase routes", () => {
   });
 
   it("renders the theme editor page", async () => {
-    await renderRoute("/theme-editor");
+    await renderRoute("/theme-editor", {
+      ready: () => {
+        expect(
+          screen.getByRole("heading", { name: "Theme editor" }),
+        ).toBeInTheDocument();
+      },
+    });
 
-    expect(
-      await screen.findByRole("heading", { name: "Theme editor" }),
-    ).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Dark" }));
     expect(document.documentElement.getAttribute("data-theme-mode")).toBe(
       "dark",
@@ -153,11 +173,14 @@ describe("showcase routes", () => {
   });
 
   it("renders the app header on routed pages", async () => {
-    await renderRoute("/theme-editor");
+    await renderRoute("/theme-editor", {
+      ready: () => {
+        expect(
+          screen.getByRole("link", { name: "Component Showcase" }),
+        ).toBeInTheDocument();
+      },
+    });
 
-    expect(
-      screen.getByRole("link", { name: "Component Showcase" }),
-    ).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "Edit theme" }),
     ).toBeInTheDocument();
@@ -165,18 +188,27 @@ describe("showcase routes", () => {
   });
 
   it("renders not found for unknown component slugs", async () => {
-    await renderRoute("/components/not-a-real-component");
+    await renderRoute("/components/not-a-real-component", {
+      ready: () => {
+        expect(
+          screen.getByRole("heading", { name: "Component not found" }),
+        ).toBeInTheDocument();
+      },
+    });
 
-    expect(
-      await screen.findByRole("heading", { name: "Component not found" }),
-    ).toBeInTheDocument();
     expect(
       screen.getByRole("link", { name: "Back to components" }),
     ).toBeInTheDocument();
   });
 
   it("switches back to light mode on the theme editor page", async () => {
-    await renderRoute("/theme-editor");
+    await renderRoute("/theme-editor", {
+      ready: () => {
+        expect(
+          screen.getByRole("heading", { name: "Theme editor" }),
+        ).toBeInTheDocument();
+      },
+    });
 
     fireEvent.click(screen.getByRole("button", { name: "Dark" }));
     expect(document.documentElement.getAttribute("data-theme-mode")).toBe(

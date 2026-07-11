@@ -56,7 +56,7 @@ describe("components-data", () => {
     expect(slugToName("my-custom-widget")).toBe("MyCustomWidget");
   });
 
-  it("getRegisteredSlugs only includes components with registry entries", () => {
+  it("getRegisteredSlugs returns every catalog component slug", () => {
     const slugs = getRegisteredSlugs();
     expect(slugs.length).toBeGreaterThan(0);
     for (const slug of slugs) {

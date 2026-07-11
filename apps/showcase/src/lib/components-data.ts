@@ -1,5 +1,3 @@
-import { getRegistryEntry } from "@/registry";
-
 export interface ComponentInfo {
   name: string;
   slug: string;
@@ -177,9 +175,7 @@ export function getComponentNeighbors(slug: string) {
 }
 
 export function getRegisteredSlugs(): string[] {
-  return allComponents
-    .map((component) => component.slug)
-    .filter((slug) => getRegistryEntry(slug) != null);
+  return allComponents.map((component) => component.slug);
 }
 
 export function slugToName(slug: string): string {

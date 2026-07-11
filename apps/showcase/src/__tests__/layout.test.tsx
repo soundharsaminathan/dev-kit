@@ -16,6 +16,7 @@ function createTestRouter(initialPath = "/components/button") {
     history,
     defaultPendingMinMs: 0,
     defaultPendingMs: 0,
+    defaultPreload: false,
   });
 }
 

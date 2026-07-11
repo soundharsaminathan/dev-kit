@@ -2,6 +2,7 @@ import { useNavigate } from "@tanstack/react-router";
 import {
   createElement,
   type KeyboardEvent,
+  Suspense,
   useCallback,
   useEffect,
   useRef,
@@ -95,7 +96,15 @@ export function ComponentCard({
           className={styles.previewInner}
           style={{ transform: `scale(${scale})` }}
         >
-          {preview ?? <span className={styles.placeholder}>{name}</span>}
+          {preview ? (
+            <Suspense
+              fallback={<span className={styles.placeholder}>{name}</span>}
+            >
+              {preview}
+            </Suspense>
+          ) : (
+            <span className={styles.placeholder}>{name}</span>
+          )}
         </div>
       </div>
       <span className={styles.name}>{name}</span>

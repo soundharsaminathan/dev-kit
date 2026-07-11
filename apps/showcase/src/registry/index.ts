@@ -1,467 +1,397 @@
+import { type ComponentType, lazy } from "react";
 import { accordionConfig } from "./accordion/config";
-import accordionPlayground from "./accordion/playground";
 import { alertConfig } from "./alert/config";
-import alertPlayground from "./alert/playground";
 import { autocompleteConfig } from "./autocomplete/config";
-import autocompletePlayground from "./autocomplete/playground";
 import { avatarConfig } from "./avatar/config";
-import avatarPlayground from "./avatar/playground";
 import { badgeConfig } from "./badge/config";
-import badgePlayground from "./badge/playground";
 import { breadcrumbsConfig } from "./breadcrumbs/config";
-import breadcrumbsPlayground from "./breadcrumbs/playground";
 import { buttonConfig } from "./button/config";
-import buttonPlayground from "./button/playground";
 import { calendarConfig } from "./calendar/config";
-import calendarPlayground from "./calendar/playground";
 import { cardConfig } from "./card/config";
-import cardPlayground from "./card/playground";
 import { checkboxConfig } from "./checkbox/config";
-import checkboxPlayground from "./checkbox/playground";
 import { checkboxGroupConfig } from "./checkbox-group/config";
-import checkboxGroupPlayground from "./checkbox-group/playground";
 import { colorAreaConfig } from "./color-area/config";
-import colorAreaPlayground from "./color-area/playground";
 import { colorEditorConfig } from "./color-editor/config";
-import colorEditorPlayground from "./color-editor/playground";
 import { colorFieldConfig } from "./color-field/config";
-import colorFieldPlayground from "./color-field/playground";
 import { colorPickerConfig } from "./color-picker/config";
-import colorPickerPlayground from "./color-picker/playground";
 import { colorSliderConfig } from "./color-slider/config";
-import colorSliderPlayground from "./color-slider/playground";
 import { colorSwatchConfig } from "./color-swatch/config";
-import colorSwatchPlayground from "./color-swatch/playground";
 import { colorSwatchPickerConfig } from "./color-swatch-picker/config";
-import colorSwatchPickerPlayground from "./color-swatch-picker/playground";
 import { colorThumbConfig } from "./color-thumb/config";
-import colorThumbPlayground from "./color-thumb/playground";
 import { colorWheelConfig } from "./color-wheel/config";
-import colorWheelPlayground from "./color-wheel/playground";
 import { comboboxConfig } from "./combobox/config";
-import comboboxPlayground from "./combobox/playground";
 import { contextMenuConfig } from "./context-menu/config";
-import contextMenuPlayground from "./context-menu/playground";
 import { dateFieldConfig } from "./date-field/config";
-import dateFieldPlayground from "./date-field/playground";
 import { datePickerConfig } from "./date-picker/config";
-import datePickerPlayground from "./date-picker/playground";
 import { dateRangePickerConfig } from "./date-range-picker/config";
-import dateRangePickerPlayground from "./date-range-picker/playground";
 import { dialogConfig } from "./dialog/config";
-import dialogPlayground from "./dialog/playground";
 import { disclosureConfig } from "./disclosure/config";
-import disclosurePlayground from "./disclosure/playground";
 import { dragAndDropConfig } from "./drag-and-drop/config";
-import dragAndDropPlayground from "./drag-and-drop/playground";
 import { drawerConfig } from "./drawer/config";
-import drawerPlayground from "./drawer/playground";
 import { dropZoneConfig } from "./drop-zone/config";
-import dropZonePlayground from "./drop-zone/playground";
 import { emptyConfig } from "./empty/config";
-import emptyPlayground from "./empty/playground";
 import { fieldConfig } from "./field/config";
-import fieldPlayground from "./field/playground";
 import { fileTriggerConfig } from "./file-trigger/config";
-import fileTriggerPlayground from "./file-trigger/playground";
 import { formConfig } from "./form/config";
-import formPlayground from "./form/playground";
 import { gridListConfig } from "./grid-list/config";
-import gridListPlayground from "./grid-list/playground";
 import { groupConfig } from "./group/config";
-import groupPlayground from "./group/playground";
 import { headingConfig } from "./heading/config";
-import headingPlayground from "./heading/playground";
 import { inputConfig } from "./input/config";
-import inputPlayground from "./input/playground";
 import { inputGroupConfig } from "./input-group/config";
-import inputGroupPlayground from "./input-group/playground";
 import { kbdConfig } from "./kbd/config";
-import kbdPlayground from "./kbd/playground";
 import { keyboardConfig } from "./keyboard/config";
-import keyboardPlayground from "./keyboard/playground";
 import { linkConfig } from "./link/config";
-import linkPlayground from "./link/playground";
 import { listBoxConfig } from "./list-box/config";
-import listBoxPlayground from "./list-box/playground";
 import { loaderConfig } from "./loader/config";
-import loaderPlayground from "./loader/playground";
 import { menuConfig } from "./menu/config";
-import menuPlayground from "./menu/playground";
 import { meterConfig } from "./meter/config";
-import meterPlayground from "./meter/playground";
 import { modalConfig } from "./modal/config";
-import modalPlayground from "./modal/playground";
 import { numberFieldConfig } from "./number-field/config";
-import numberFieldPlayground from "./number-field/playground";
 import { otpFieldConfig } from "./otp-field/config";
-import otpFieldPlayground from "./otp-field/playground";
 import { overlayConfig } from "./overlay/config";
-import overlayPlayground from "./overlay/playground";
 import { overlayArrowConfig } from "./overlay-arrow/config";
-import overlayArrowPlayground from "./overlay-arrow/playground";
 import { paginationConfig } from "./pagination/config";
-import paginationPlayground from "./pagination/playground";
 import { popoverConfig } from "./popover/config";
-import popoverPlayground from "./popover/playground";
 import { progressBarConfig } from "./progress-bar/config";
-import progressBarPlayground from "./progress-bar/playground";
 import { radioGroupConfig } from "./radio-group/config";
-import radioGroupPlayground from "./radio-group/playground";
 import { scrollFadeConfig } from "./scroll-fade/config";
-import scrollFadePlayground from "./scroll-fade/playground";
 import { searchFieldConfig } from "./search-field/config";
-import searchFieldPlayground from "./search-field/playground";
 import { selectConfig } from "./select/config";
-import selectPlayground from "./select/playground";
 import { separatorConfig } from "./separator/config";
-import separatorPlayground from "./separator/playground";
 import { sidebarConfig } from "./sidebar/config";
-import sidebarPlayground from "./sidebar/playground";
 import { skeletonConfig } from "./skeleton/config";
-import skeletonPlayground from "./skeleton/playground";
 import { sliderConfig } from "./slider/config";
-import sliderPlayground from "./slider/playground";
 import { switchConfig } from "./switch/config";
-import switchPlayground from "./switch/playground";
 import { tableConfig } from "./table/config";
-import tablePlayground from "./table/playground";
 import { tabsConfig } from "./tabs/config";
-import tabsPlayground from "./tabs/playground";
 import { tagGroupConfig } from "./tag-group/config";
-import tagGroupPlayground from "./tag-group/playground";
 import { textConfig } from "./text/config";
-import textPlayground from "./text/playground";
 import { textAreaConfig } from "./text-area/config";
-import textAreaPlayground from "./text-area/playground";
 import { textFieldConfig } from "./text-field/config";
-import textFieldPlayground from "./text-field/playground";
 import { timeFieldConfig } from "./time-field/config";
-import timeFieldPlayground from "./time-field/playground";
 import { toastConfig } from "./toast/config";
-import toastPlayground from "./toast/playground";
 import { toggleButtonConfig } from "./toggle-button/config";
-import toggleButtonPlayground from "./toggle-button/playground";
 import { toggleButtonGroupConfig } from "./toggle-button-group/config";
-import toggleButtonGroupPlayground from "./toggle-button-group/playground";
 import { toolbarConfig } from "./toolbar/config";
-import toolbarPlayground from "./toolbar/playground";
 import { tooltipConfig } from "./tooltip/config";
-import tooltipPlayground from "./tooltip/playground";
 import { treeConfig } from "./tree/config";
-import treePlayground from "./tree/playground";
 import type { ComponentRegistryEntry, ComponentSlug } from "./types";
 import { virtualizerConfig } from "./virtualizer/config";
-import virtualizerPlayground from "./virtualizer/playground";
+
+function playground(
+  loader: () => Promise<{ default: ComponentType<Record<string, unknown>> }>,
+) {
+  return lazy(loader);
+}
 
 const registry = {
   accordion: {
     config: accordionConfig,
-    Playground: accordionPlayground,
+    Playground: playground(() => import("./accordion/playground")),
   },
   alert: {
     config: alertConfig,
-    Playground: alertPlayground,
-  },
-  avatar: {
-    config: avatarConfig,
-    Playground: avatarPlayground,
-  },
-  badge: {
-    config: badgeConfig,
-    Playground: badgePlayground,
-  },
-  breadcrumbs: {
-    config: breadcrumbsConfig,
-    Playground: breadcrumbsPlayground,
-  },
-  button: {
-    config: buttonConfig,
-    Playground: buttonPlayground,
-  },
-  calendar: {
-    config: calendarConfig,
-    Playground: calendarPlayground,
-  },
-  card: {
-    config: cardConfig,
-    Playground: cardPlayground,
-  },
-  checkbox: {
-    config: checkboxConfig,
-    Playground: checkboxPlayground,
-  },
-  "checkbox-group": {
-    config: checkboxGroupConfig,
-    Playground: checkboxGroupPlayground,
-  },
-  "color-area": {
-    config: colorAreaConfig,
-    Playground: colorAreaPlayground,
-  },
-  "color-editor": {
-    config: colorEditorConfig,
-    Playground: colorEditorPlayground,
-  },
-  "color-field": {
-    config: colorFieldConfig,
-    Playground: colorFieldPlayground,
-  },
-  "color-picker": {
-    config: colorPickerConfig,
-    Playground: colorPickerPlayground,
-  },
-  "color-slider": {
-    config: colorSliderConfig,
-    Playground: colorSliderPlayground,
-  },
-  "color-swatch": {
-    config: colorSwatchConfig,
-    Playground: colorSwatchPlayground,
-  },
-  "color-swatch-picker": {
-    config: colorSwatchPickerConfig,
-    Playground: colorSwatchPickerPlayground,
-  },
-  "color-wheel": {
-    config: colorWheelConfig,
-    Playground: colorWheelPlayground,
-  },
-  "color-thumb": {
-    config: colorThumbConfig,
-    Playground: colorThumbPlayground,
-  },
-  combobox: {
-    config: comboboxConfig,
-    Playground: comboboxPlayground,
+    Playground: playground(() => import("./alert/playground")),
   },
   autocomplete: {
     config: autocompleteConfig,
-    Playground: autocompletePlayground,
+    Playground: playground(() => import("./autocomplete/playground")),
+  },
+  avatar: {
+    config: avatarConfig,
+    Playground: playground(() => import("./avatar/playground")),
+  },
+  badge: {
+    config: badgeConfig,
+    Playground: playground(() => import("./badge/playground")),
+  },
+  breadcrumbs: {
+    config: breadcrumbsConfig,
+    Playground: playground(() => import("./breadcrumbs/playground")),
+  },
+  button: {
+    config: buttonConfig,
+    Playground: playground(() => import("./button/playground")),
+  },
+  calendar: {
+    config: calendarConfig,
+    Playground: playground(() => import("./calendar/playground")),
+  },
+  card: {
+    config: cardConfig,
+    Playground: playground(() => import("./card/playground")),
+  },
+  checkbox: {
+    config: checkboxConfig,
+    Playground: playground(() => import("./checkbox/playground")),
+  },
+  "checkbox-group": {
+    config: checkboxGroupConfig,
+    Playground: playground(() => import("./checkbox-group/playground")),
+  },
+  "color-area": {
+    config: colorAreaConfig,
+    Playground: playground(() => import("./color-area/playground")),
+  },
+  "color-editor": {
+    config: colorEditorConfig,
+    Playground: playground(() => import("./color-editor/playground")),
+  },
+  "color-field": {
+    config: colorFieldConfig,
+    Playground: playground(() => import("./color-field/playground")),
+  },
+  "color-picker": {
+    config: colorPickerConfig,
+    Playground: playground(() => import("./color-picker/playground")),
+  },
+  "color-slider": {
+    config: colorSliderConfig,
+    Playground: playground(() => import("./color-slider/playground")),
+  },
+  "color-swatch": {
+    config: colorSwatchConfig,
+    Playground: playground(() => import("./color-swatch/playground")),
+  },
+  "color-swatch-picker": {
+    config: colorSwatchPickerConfig,
+    Playground: playground(() => import("./color-swatch-picker/playground")),
+  },
+  "color-thumb": {
+    config: colorThumbConfig,
+    Playground: playground(() => import("./color-thumb/playground")),
+  },
+  "color-wheel": {
+    config: colorWheelConfig,
+    Playground: playground(() => import("./color-wheel/playground")),
+  },
+  combobox: {
+    config: comboboxConfig,
+    Playground: playground(() => import("./combobox/playground")),
   },
   "context-menu": {
     config: contextMenuConfig,
-    Playground: contextMenuPlayground,
+    Playground: playground(() => import("./context-menu/playground")),
   },
   "date-field": {
     config: dateFieldConfig,
-    Playground: dateFieldPlayground,
+    Playground: playground(() => import("./date-field/playground")),
   },
   "date-picker": {
     config: datePickerConfig,
-    Playground: datePickerPlayground,
+    Playground: playground(() => import("./date-picker/playground")),
   },
   "date-range-picker": {
     config: dateRangePickerConfig,
-    Playground: dateRangePickerPlayground,
+    Playground: playground(() => import("./date-range-picker/playground")),
   },
   dialog: {
     config: dialogConfig,
-    Playground: dialogPlayground,
+    Playground: playground(() => import("./dialog/playground")),
   },
   disclosure: {
     config: disclosureConfig,
-    Playground: disclosurePlayground,
-  },
-  drawer: {
-    config: drawerConfig,
-    Playground: drawerPlayground,
-  },
-  "drop-zone": {
-    config: dropZoneConfig,
-    Playground: dropZonePlayground,
+    Playground: playground(() => import("./disclosure/playground")),
   },
   "drag-and-drop": {
     config: dragAndDropConfig,
-    Playground: dragAndDropPlayground,
+    Playground: playground(() => import("./drag-and-drop/playground")),
+  },
+  drawer: {
+    config: drawerConfig,
+    Playground: playground(() => import("./drawer/playground")),
+  },
+  "drop-zone": {
+    config: dropZoneConfig,
+    Playground: playground(() => import("./drop-zone/playground")),
   },
   empty: {
     config: emptyConfig,
-    Playground: emptyPlayground,
+    Playground: playground(() => import("./empty/playground")),
   },
   field: {
     config: fieldConfig,
-    Playground: fieldPlayground,
-  },
-  form: {
-    config: formConfig,
-    Playground: formPlayground,
+    Playground: playground(() => import("./field/playground")),
   },
   "file-trigger": {
     config: fileTriggerConfig,
-    Playground: fileTriggerPlayground,
+    Playground: playground(() => import("./file-trigger/playground")),
+  },
+  form: {
+    config: formConfig,
+    Playground: playground(() => import("./form/playground")),
   },
   "grid-list": {
     config: gridListConfig,
-    Playground: gridListPlayground,
+    Playground: playground(() => import("./grid-list/playground")),
   },
   group: {
     config: groupConfig,
-    Playground: groupPlayground,
+    Playground: playground(() => import("./group/playground")),
   },
   heading: {
     config: headingConfig,
-    Playground: headingPlayground,
+    Playground: playground(() => import("./heading/playground")),
   },
   input: {
     config: inputConfig,
-    Playground: inputPlayground,
+    Playground: playground(() => import("./input/playground")),
   },
   "input-group": {
     config: inputGroupConfig,
-    Playground: inputGroupPlayground,
+    Playground: playground(() => import("./input-group/playground")),
   },
   kbd: {
     config: kbdConfig,
-    Playground: kbdPlayground,
+    Playground: playground(() => import("./kbd/playground")),
   },
   keyboard: {
     config: keyboardConfig,
-    Playground: keyboardPlayground,
+    Playground: playground(() => import("./keyboard/playground")),
   },
   link: {
     config: linkConfig,
-    Playground: linkPlayground,
+    Playground: playground(() => import("./link/playground")),
   },
   "list-box": {
     config: listBoxConfig,
-    Playground: listBoxPlayground,
+    Playground: playground(() => import("./list-box/playground")),
   },
   loader: {
     config: loaderConfig,
-    Playground: loaderPlayground,
-  },
-  meter: {
-    config: meterConfig,
-    Playground: meterPlayground,
+    Playground: playground(() => import("./loader/playground")),
   },
   menu: {
     config: menuConfig,
-    Playground: menuPlayground,
+    Playground: playground(() => import("./menu/playground")),
+  },
+  meter: {
+    config: meterConfig,
+    Playground: playground(() => import("./meter/playground")),
   },
   modal: {
     config: modalConfig,
-    Playground: modalPlayground,
+    Playground: playground(() => import("./modal/playground")),
   },
   "number-field": {
     config: numberFieldConfig,
-    Playground: numberFieldPlayground,
+    Playground: playground(() => import("./number-field/playground")),
   },
   "otp-field": {
     config: otpFieldConfig,
-    Playground: otpFieldPlayground,
+    Playground: playground(() => import("./otp-field/playground")),
   },
   overlay: {
     config: overlayConfig,
-    Playground: overlayPlayground,
+    Playground: playground(() => import("./overlay/playground")),
   },
   "overlay-arrow": {
     config: overlayArrowConfig,
-    Playground: overlayArrowPlayground,
+    Playground: playground(() => import("./overlay-arrow/playground")),
   },
   pagination: {
     config: paginationConfig,
-    Playground: paginationPlayground,
+    Playground: playground(() => import("./pagination/playground")),
   },
   popover: {
     config: popoverConfig,
-    Playground: popoverPlayground,
+    Playground: playground(() => import("./popover/playground")),
   },
   "progress-bar": {
     config: progressBarConfig,
-    Playground: progressBarPlayground,
+    Playground: playground(() => import("./progress-bar/playground")),
   },
   "radio-group": {
     config: radioGroupConfig,
-    Playground: radioGroupPlayground,
+    Playground: playground(() => import("./radio-group/playground")),
   },
   "scroll-fade": {
     config: scrollFadeConfig,
-    Playground: scrollFadePlayground,
+    Playground: playground(() => import("./scroll-fade/playground")),
   },
   "search-field": {
     config: searchFieldConfig,
-    Playground: searchFieldPlayground,
+    Playground: playground(() => import("./search-field/playground")),
   },
   select: {
     config: selectConfig,
-    Playground: selectPlayground,
+    Playground: playground(() => import("./select/playground")),
   },
   separator: {
     config: separatorConfig,
-    Playground: separatorPlayground,
+    Playground: playground(() => import("./separator/playground")),
   },
   sidebar: {
     config: sidebarConfig,
-    Playground: sidebarPlayground,
+    Playground: playground(() => import("./sidebar/playground")),
   },
   skeleton: {
     config: skeletonConfig,
-    Playground: skeletonPlayground,
+    Playground: playground(() => import("./skeleton/playground")),
   },
   slider: {
     config: sliderConfig,
-    Playground: sliderPlayground,
+    Playground: playground(() => import("./slider/playground")),
   },
   switch: {
     config: switchConfig,
-    Playground: switchPlayground,
+    Playground: playground(() => import("./switch/playground")),
   },
   table: {
     config: tableConfig,
-    Playground: tablePlayground,
+    Playground: playground(() => import("./table/playground")),
   },
   tabs: {
     config: tabsConfig,
-    Playground: tabsPlayground,
+    Playground: playground(() => import("./tabs/playground")),
   },
   "tag-group": {
     config: tagGroupConfig,
-    Playground: tagGroupPlayground,
+    Playground: playground(() => import("./tag-group/playground")),
   },
   text: {
     config: textConfig,
-    Playground: textPlayground,
+    Playground: playground(() => import("./text/playground")),
   },
   "text-area": {
     config: textAreaConfig,
-    Playground: textAreaPlayground,
+    Playground: playground(() => import("./text-area/playground")),
   },
   "text-field": {
     config: textFieldConfig,
-    Playground: textFieldPlayground,
+    Playground: playground(() => import("./text-field/playground")),
   },
   "time-field": {
     config: timeFieldConfig,
-    Playground: timeFieldPlayground,
+    Playground: playground(() => import("./time-field/playground")),
   },
   toast: {
     config: toastConfig,
-    Playground: toastPlayground,
-  },
-  toolbar: {
-    config: toolbarConfig,
-    Playground: toolbarPlayground,
+    Playground: playground(() => import("./toast/playground")),
   },
   "toggle-button": {
     config: toggleButtonConfig,
-    Playground: toggleButtonPlayground,
+    Playground: playground(() => import("./toggle-button/playground")),
   },
   "toggle-button-group": {
     config: toggleButtonGroupConfig,
-    Playground: toggleButtonGroupPlayground,
+    Playground: playground(() => import("./toggle-button-group/playground")),
+  },
+  toolbar: {
+    config: toolbarConfig,
+    Playground: playground(() => import("./toolbar/playground")),
   },
   tooltip: {
     config: tooltipConfig,
-    Playground: tooltipPlayground,
+    Playground: playground(() => import("./tooltip/playground")),
   },
   tree: {
     config: treeConfig,
-    Playground: treePlayground,
+    Playground: playground(() => import("./tree/playground")),
   },
   virtualizer: {
     config: virtualizerConfig,
-    Playground: virtualizerPlayground,
+    Playground: playground(() => import("./virtualizer/playground")),
   },
 } as const satisfies Record<string, ComponentRegistryEntry>;
 

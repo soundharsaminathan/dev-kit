@@ -7,6 +7,7 @@ import {
 import {
   type ComponentType,
   createElement,
+  Suspense,
   useCallback,
   useMemo,
   useState,
@@ -77,7 +78,9 @@ export function InteractiveDemo({
         <CardTitle>{title}</CardTitle>
       </CardHeader>
       <CardContent className={styles.content}>
-        <DemoFrame>{previewElement}</DemoFrame>
+        <DemoFrame>
+          <Suspense fallback={null}>{previewElement}</Suspense>
+        </DemoFrame>
         <aside className={styles.controls} data-testid="controls-panel">
           <Controls
             controls={controls}

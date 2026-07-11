@@ -115,8 +115,8 @@ export default defineConfig({
             path.join(rootDir, "vitest.setup.ts"),
             path.join(rootDir, "apps/showcase/vitest.setup.ts"),
           ],
-          testTimeout: 30_000,
-          hookTimeout: 30_000,
+          testTimeout: 15_000,
+          hookTimeout: 15_000,
           sequence: { groupOrder: 2 },
         },
         resolve: {

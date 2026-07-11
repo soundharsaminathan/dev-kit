@@ -20,10 +20,12 @@ vi.mock("@tanstack/react-router", async () => {
 });
 
 describe("ComponentCard", () => {
-  it("renders component preview for registered slug", () => {
+  it("renders component preview for registered slug", async () => {
     render(<ComponentCard name="Button" slug="button" />);
     expect(screen.getByRole("link", { name: "Button" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Button" })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("button", { name: "Button" }, { timeout: 5_000 }),
+    ).toBeInTheDocument();
   });
 
   it("navigates on click", () => {
@@ -67,21 +69,25 @@ describe("ComponentCard", () => {
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
   });
 
-  it("activates deferred previews on hover", () => {
+  it("activates deferred previews on hover", async () => {
     render(<ComponentCard name="Button" slug="button" deferPreview />);
     const card = screen.getByRole("link", { name: "Button" });
     expect(
       screen.queryByRole("button", { name: "Button" }),
     ).not.toBeInTheDocument();
     fireEvent.mouseEnter(card);
-    expect(screen.getByRole("button", { name: "Button" })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("button", { name: "Button" }, { timeout: 5_000 }),
+    ).toBeInTheDocument();
   });
 
-  it("activates deferred previews on focus", () => {
+  it("activates deferred previews on focus", async () => {
     render(<ComponentCard name="Button" slug="button" deferPreview />);
     const card = screen.getByRole("link", { name: "Button" });
     fireEvent.focus(card);
-    expect(screen.getByRole("button", { name: "Button" })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("button", { name: "Button" }, { timeout: 5_000 }),
+    ).toBeInTheDocument();
   });
 
   it("activates deferred previews when scrolled into view", async () => {
