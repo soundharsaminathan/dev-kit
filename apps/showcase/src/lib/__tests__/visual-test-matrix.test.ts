@@ -24,7 +24,7 @@ describe("visual-test-matrix", () => {
     ]);
   });
 
-  it("generates enum and boolean combinations", () => {
+  it("generates one-at-a-time enum and boolean variants", () => {
     const cases = generateVisualTestCasesForConfig({
       name: "Badge",
       slug: "badge",
@@ -41,12 +41,41 @@ describe("visual-test-matrix", () => {
       ],
     });
 
-    expect(cases).toHaveLength(4);
+    expect(cases).toHaveLength(3);
     expect(cases.map((testCase) => testCase.caseId)).toEqual([
       "badge",
-      "badge--disabled-true",
       "badge--variant-primary",
-      "badge--disabled-true--variant-primary",
+      "badge--disabled-true",
+    ]);
+  });
+
+  it("skips controls and enum options opted out of visual coverage", () => {
+    const cases = generateVisualTestCasesForConfig({
+      name: "Panel",
+      slug: "panel",
+      category: "overlays",
+      description: "Panel",
+      controls: [
+        {
+          name: "placement",
+          type: "enum",
+          options: ["bottom", "top", "bottom start"],
+          defaultValue: "bottom start",
+          omitFromVisual: ["bottom"],
+        },
+        {
+          name: "defaultExpandedKey",
+          type: "enum",
+          options: ["none", "one"],
+          defaultValue: "none",
+          visual: false,
+        },
+      ],
+    });
+
+    expect(cases.map((testCase) => testCase.caseId)).toEqual([
+      "panel",
+      "panel--placement-top",
     ]);
   });
 
@@ -101,6 +130,11 @@ describe("visual-test-matrix", () => {
     for (const entry of getAllRegistryEntries()) {
       expect(slugs.has(entry.config.slug)).toBe(true);
     }
+  });
+
+  it("stays one-at-a-time so CI does not time out", () => {
+    const cases = generateVisualTestCases();
+    expect(cases.length).toBeLessThan(500);
   });
 
   it("dedupes extra visual cases and normalizes values", () => {

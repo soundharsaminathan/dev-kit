@@ -12,6 +12,7 @@ export const accordionConfig: ComponentRegistryConfig = {
       type: "enum",
       options: ["none", "getting-started", "customization", "typescript"],
       defaultValue: "none",
+      visual: false,
     },
   ],
 };

@@ -27,7 +27,7 @@ export default defineConfig({
   testDir: path.join(dirname, "e2e"),
   fullyParallel: true,
   forbidOnly: isCI,
-  retries: isCI ? 2 : 0,
+  retries: isCI ? 1 : 0,
   ...(isCI ? { workers: 2 } : {}),
   reporter: isCI ? [["github"], ["html", { open: "never" }]] : "list",
   snapshotPathTemplate:

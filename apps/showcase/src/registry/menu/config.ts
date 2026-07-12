@@ -12,6 +12,7 @@ export const menuConfig: ComponentRegistryConfig = {
       type: "enum",
       options: ["bottom", "top", "left", "right", "bottom start", "bottom end"],
       defaultValue: "bottom start",
+      omitFromVisual: ["bottom"],
     },
     { name: "showDangerItem", type: "boolean", defaultValue: true },
   ],

@@ -22,36 +22,34 @@ function visualControls(
   controls: SerializableControl[],
 ): SerializableControl[] {
   return controls.filter(
-    (control) => control.type === "enum" || control.type === "boolean",
+    (control) =>
+      (control.type === "enum" || control.type === "boolean") &&
+      control.visual !== false,
   );
 }
 
-function cartesianValues(
+/**
+ * Default state plus one non-default value per control.
+ * Avoids the cartesian explosion that made CI exceed the job timeout.
+ */
+function oneAtATimeValues(
   controls: SerializableControl[],
 ): Record<string, unknown>[] {
   const axes = visualControls(controls);
-  if (axes.length === 0) {
-    return [{}];
-  }
-
-  let combinations: Record<string, unknown>[] = [{}];
+  const combinations: Record<string, unknown>[] = [{}];
 
   for (const control of axes) {
-    const next: Record<string, unknown>[] = [];
-
-    for (const combo of combinations) {
-      if (control.type === "enum") {
-        for (const option of control.options) {
-          next.push({ ...combo, [control.name]: option });
+    if (control.type === "enum") {
+      const omitted = new Set(control.omitFromVisual ?? []);
+      for (const option of control.options) {
+        if (option === control.defaultValue || omitted.has(option)) {
+          continue;
         }
-      } else {
-        for (const value of [false, true] as const) {
-          next.push({ ...combo, [control.name]: value });
-        }
+        combinations.push({ [control.name]: option });
       }
+    } else {
+      combinations.push({ [control.name]: !control.defaultValue });
     }
-
-    combinations = next;
   }
 
   return combinations;
@@ -144,7 +142,7 @@ export function generateVisualTestCasesForConfig(
   const seen = new Set<string>();
   const cases: VisualTestCase[] = [];
 
-  for (const partialValues of cartesianValues(config.controls)) {
+  for (const partialValues of oneAtATimeValues(config.controls)) {
     let values = { ...defaults, ...partialValues };
     values = config.normalizeControlValues?.(values) ?? values;
 

@@ -2,6 +2,8 @@ export interface BooleanControl {
   name: string;
   type: "boolean";
   defaultValue?: boolean;
+  /** When false, skip this control in generated visual regression cases. */
+  visual?: boolean;
 }
 
 export interface StringControl {
@@ -25,6 +27,10 @@ export interface EnumControl {
   type: "enum";
   options: readonly string[];
   defaultValue?: string;
+  /** When false, skip this control in generated visual regression cases. */
+  visual?: boolean;
+  /** Enum values excluded from generated visual regression cases. */
+  omitFromVisual?: readonly string[];
 }
 
 export type SerializableControl =
