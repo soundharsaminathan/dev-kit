@@ -180,6 +180,7 @@ function getBlockingOverlay(page: Page) {
       "[data-modal-viewport]",
       "[data-drawer-viewport]",
       "[data-drawer-backdrop]",
+      "[data-popover-underlay]",
       '[data-popover=""]',
       '[role="dialog"]',
     ].join(", "),
@@ -193,10 +194,6 @@ async function dismissBlockingOverlay(page: Page) {
   }
 
   await page.keyboard.press("Escape");
-  if (!(await overlay.isVisible().catch(() => false))) {
-    return;
-  }
-
   await expect(overlay)
     .toBeHidden({ timeout: 3_000 })
     .catch(() => undefined);
@@ -214,13 +211,7 @@ async function closeOverlayControls(
       continue;
     }
 
-    const stillBlocked = await getBlockingOverlay(page)
-      .first()
-      .isVisible()
-      .catch(() => false);
-    await toggleBooleanControl(page, formatControlLabel(control.name), {
-      force: stillBlocked,
-    });
+    await toggleBooleanControl(page, formatControlLabel(control.name));
     overlayStates[control.name] = false;
   }
 }

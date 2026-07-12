@@ -110,21 +110,17 @@ export async function waitForComponentCardPreviews(page: Page) {
 export async function setEnumControl(page: Page, label: string, value: string) {
   const controls = getControlsPanel(page);
   const field = controls.getByText(label, { exact: true }).locator("..");
-  await field.getByRole("button").click();
+  await field.getByRole("button").click({ force: true });
   const option = page.getByRole("option", { name: value, exact: true });
   await option.waitFor({ state: "visible" });
-  await option.click();
+  await option.click({ force: true });
   await option.waitFor({ state: "hidden" });
 }
 
-export async function toggleBooleanControl(
-  page: Page,
-  label: string,
-  options?: { force?: boolean },
-) {
+export async function toggleBooleanControl(page: Page, label: string) {
   await getControlsPanel(page)
     .getByText(label, { exact: true })
-    .click(options?.force ? { force: true } : undefined);
+    .click({ force: true });
 }
 
 export async function expectPageScreenshot(
