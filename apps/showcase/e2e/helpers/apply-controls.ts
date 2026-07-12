@@ -174,6 +174,57 @@ async function waitForOverlayInitialState(
   }
 }
 
+function getBlockingOverlay(page: Page) {
+  return page.locator(
+    [
+      "[data-modal-viewport]",
+      "[data-drawer-viewport]",
+      "[data-drawer-backdrop]",
+      '[data-popover=""]',
+      '[role="dialog"]',
+    ].join(", "),
+  );
+}
+
+async function dismissBlockingOverlay(page: Page) {
+  const overlay = getBlockingOverlay(page).first();
+  if (!(await overlay.isVisible().catch(() => false))) {
+    return;
+  }
+
+  await page.keyboard.press("Escape");
+  if (!(await overlay.isVisible().catch(() => false))) {
+    return;
+  }
+
+  await expect(overlay)
+    .toBeHidden({ timeout: 3_000 })
+    .catch(() => undefined);
+}
+
+async function closeOverlayControls(
+  page: Page,
+  overlayControls: SerializableControl[],
+  overlayStates: Record<string, boolean>,
+) {
+  await dismissBlockingOverlay(page);
+
+  for (const control of overlayControls) {
+    if (!overlayStates[control.name]) {
+      continue;
+    }
+
+    const stillBlocked = await getBlockingOverlay(page)
+      .first()
+      .isVisible()
+      .catch(() => false);
+    await toggleBooleanControl(page, formatControlLabel(control.name), {
+      force: stillBlocked,
+    });
+    overlayStates[control.name] = false;
+  }
+}
+
 export async function applyControlValues(
   page: Page,
   controls: SerializableControl[],
@@ -212,12 +263,7 @@ export async function applyControlValues(
   );
 
   if (shouldCloseOverlayFirst) {
-    for (const control of overlayControls) {
-      if (overlayStates[control.name]) {
-        await toggleBooleanControl(page, formatControlLabel(control.name));
-        overlayStates[control.name] = false;
-      }
-    }
+    await closeOverlayControls(page, overlayControls, overlayStates);
   }
 
   await applyNonOverlayInitialControls(page, controls, values, defaults);

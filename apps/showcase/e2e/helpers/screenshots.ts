@@ -117,8 +117,14 @@ export async function setEnumControl(page: Page, label: string, value: string) {
   await option.waitFor({ state: "hidden" });
 }
 
-export async function toggleBooleanControl(page: Page, label: string) {
-  await getControlsPanel(page).getByText(label, { exact: true }).click();
+export async function toggleBooleanControl(
+  page: Page,
+  label: string,
+  options?: { force?: boolean },
+) {
+  await getControlsPanel(page)
+    .getByText(label, { exact: true })
+    .click(options?.force ? { force: true } : undefined);
 }
 
 export async function expectPageScreenshot(
