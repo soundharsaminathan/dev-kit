@@ -124,6 +124,29 @@ export default defineConfig({
           },
         },
       },
+      {
+        test: {
+          name: "portfolio",
+          root: path.join(rootDir, "apps/portfolio"),
+          include: ["src/**/*.{test,spec}.{ts,tsx}"],
+          exclude: [...testExclude, "e2e/**"],
+          environment: "jsdom",
+          css: true,
+          globals: true,
+          setupFiles: [
+            path.join(rootDir, "vitest.setup.ts"),
+            path.join(rootDir, "apps/portfolio/vitest.setup.ts"),
+          ],
+          testTimeout: 30_000,
+          hookTimeout: 30_000,
+          sequence: { groupOrder: 2 },
+        },
+        resolve: {
+          alias: {
+            "@": path.join(rootDir, "apps/portfolio/src"),
+          },
+        },
+      },
       path.join(rootDir, "apps/storybook/vitest.config.ts"),
       {
         test: {

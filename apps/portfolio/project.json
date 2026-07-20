@@ -1,0 +1,42 @@
+{
+  "name": "portfolio",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/portfolio",
+  "projectType": "application",
+  "tags": ["scope:portfolio", "type:app"],
+  "implicitDependencies": ["components", "tokens"],
+  "targets": {
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "apps/portfolio",
+        "command": "tsc -b --pretty false"
+      },
+      "dependsOn": ["^typecheck", "tokens:build:tokens", "components:build"]
+    },
+    "dev": {
+      "executor": "nx:run-script",
+      "options": {
+        "script": "dev"
+      },
+      "continuous": true,
+      "dependsOn": ["tokens:build:tokens"]
+    },
+    "build": {
+      "executor": "nx:run-script",
+      "options": {
+        "script": "build"
+      },
+      "outputs": ["{projectRoot}/dist"],
+      "dependsOn": ["tokens:build:tokens", "components:build"]
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "{workspaceRoot}",
+        "command": "vitest run --config vitest.config.ts --project portfolio"
+      },
+      "dependsOn": ["tokens:build:tokens", "components:build"]
+    }
+  }
+}

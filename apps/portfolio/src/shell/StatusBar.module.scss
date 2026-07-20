@@ -1,0 +1,43 @@
+.bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: var(--ide-status-height);
+  padding: 0 10px;
+  background: var(--ide-accent);
+  color: #fff;
+  font-size: 11px;
+  user-select: none;
+}
+
+.item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 3px;
+  opacity: 0.95;
+}
+
+.item:hover {
+  background: rgb(255 255 255 / 14%);
+}
+
+.spacer {
+  flex: 1;
+}
+
+.muted {
+  opacity: 0.85;
+}
+
+@media (max-width: 768px) {
+  .hideMobile {
+    display: none;
+  }
+}

@@ -1,0 +1,47 @@
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  width: var(--ide-sidebar-width);
+  min-width: 0;
+  background: var(--ide-bg-sidebar);
+  border-right: 1px solid var(--ide-border);
+  overflow: hidden;
+  animation: fadeSlideIn 180ms ease;
+}
+
+@keyframes fadeSlideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ide-fg-muted);
+}
+
+.body {
+  flex: 1;
+  overflow: auto;
+  padding: 0 0 12px;
+  min-height: 0;
+}
+
+.closed {
+  width: 0;
+  border: 0;
+  overflow: hidden;
+  padding: 0;
+}
