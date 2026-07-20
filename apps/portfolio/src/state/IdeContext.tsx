@@ -18,7 +18,12 @@ export type SidebarMode =
 
 export type PanelTab = "terminal" | "problems";
 
+export type MainView = "editor" | "agent";
+
 type IdeContextValue = {
+  mainView: MainView;
+  openAgent: () => void;
+  closeAgent: () => void;
   sidebarMode: SidebarMode;
   setSidebarMode: (mode: SidebarMode) => void;
   sidebarOpen: boolean;
@@ -47,6 +52,7 @@ const IdeContext = createContext<IdeContextValue | null>(null);
 const DEFAULT_FILE = "README.md";
 
 export function IdeProvider({ children }: { children: ReactNode }) {
+  const [mainView, setMainView] = useState<MainView>("editor");
   const [sidebarMode, setSidebarModeState] = useState<SidebarMode>("explorer");
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [openTabs, setOpenTabs] = useState<string[]>([DEFAULT_FILE]);
@@ -71,7 +77,18 @@ export function IdeProvider({ children }: { children: ReactNode }) {
     return () => mq.removeEventListener("change", sync);
   }, []);
 
+  const openAgent = useCallback(() => {
+    setMainView("agent");
+    setSidebarOpen(false);
+    setPanelOpen(false);
+  }, []);
+
+  const closeAgent = useCallback(() => {
+    setMainView("editor");
+  }, []);
+
   const setSidebarMode = useCallback((mode: SidebarMode) => {
+    setMainView("editor");
     setSidebarModeState((prev) => {
       if (prev === mode) {
         setSidebarOpen((open) => !open);
@@ -87,6 +104,7 @@ export function IdeProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const openFile = useCallback((id: string) => {
+    setMainView("editor");
     if (id === "contact.sh") {
       setPanelOpen(true);
       setPanelTab("terminal");
@@ -127,6 +145,7 @@ export function IdeProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const openTerminal = useCallback(() => {
+    setMainView("editor");
     setPanelOpen(true);
     setPanelTab("terminal");
   }, []);
@@ -146,6 +165,7 @@ export function IdeProvider({ children }: { children: ReactNode }) {
       }
       if (meta && e.key === "`") {
         e.preventDefault();
+        setMainView("editor");
         setPanelOpen((v) => !v);
         setPanelTab("terminal");
         return;
@@ -160,6 +180,9 @@ export function IdeProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<IdeContextValue>(
     () => ({
+      mainView,
+      openAgent,
+      closeAgent,
       sidebarMode,
       setSidebarMode,
       sidebarOpen,
@@ -183,6 +206,9 @@ export function IdeProvider({ children }: { children: ReactNode }) {
       mobileMode,
     }),
     [
+      mainView,
+      openAgent,
+      closeAgent,
       sidebarMode,
       setSidebarMode,
       sidebarOpen,

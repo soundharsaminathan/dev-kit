@@ -1,4 +1,12 @@
-import { Blocks, Bug, Files, GitBranch, Search, Settings } from "lucide-react";
+import {
+  Blocks,
+  Bot,
+  Bug,
+  Files,
+  GitBranch,
+  Search,
+  Settings,
+} from "lucide-react";
 import { useTheme } from "@/lib/theme";
 import type { SidebarMode } from "@/state/IdeContext";
 import { useIde } from "@/state/IdeContext";
@@ -13,7 +21,8 @@ const items: { id: SidebarMode; label: string; icon: typeof Files }[] = [
 ];
 
 export function ActivityBar({ className }: { className?: string | undefined }) {
-  const { sidebarMode, setSidebarMode, setPaletteOpen } = useIde();
+  const { sidebarMode, setSidebarMode, setPaletteOpen, mainView, openAgent } =
+    useIde();
   const { toggleMode } = useTheme();
 
   return (
@@ -22,15 +31,25 @@ export function ActivityBar({ className }: { className?: string | undefined }) {
         <button
           key={id}
           type="button"
-          className={`${styles.btn} ${sidebarMode === id ? styles.btnActive : ""}`}
+          className={`${styles.btn} ${mainView === "editor" && sidebarMode === id ? styles.btnActive : ""}`}
           aria-label={label}
-          aria-pressed={sidebarMode === id}
+          aria-pressed={mainView === "editor" && sidebarMode === id}
           title={label}
           onClick={() => setSidebarMode(id)}
         >
           <Icon size={22} strokeWidth={1.6} />
         </button>
       ))}
+      <button
+        type="button"
+        className={`${styles.btn} ${mainView === "agent" ? styles.btnActive : ""}`}
+        aria-label="Agent"
+        aria-pressed={mainView === "agent"}
+        title="Agent"
+        onClick={() => openAgent()}
+      >
+        <Bot size={22} strokeWidth={1.6} />
+      </button>
       <div className={styles.spacer} />
       <button
         type="button"

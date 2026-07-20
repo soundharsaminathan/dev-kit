@@ -1,3 +1,4 @@
+import { AgentWindow } from "@/agent/AgentWindow";
 import { useIde } from "@/state/IdeContext";
 import { ActivityBar } from "./ActivityBar";
 import { CommandPalette } from "./CommandPalette";
@@ -10,18 +11,25 @@ import { StatusBar } from "./StatusBar";
 import { TitleBar } from "./TitleBar";
 
 export function IdeShell() {
-  const { sidebarOpen, mobileMode, setSidebarOpen } = useIde();
+  const { sidebarOpen, mobileMode, setSidebarOpen, mainView } = useIde();
+  const isAgent = mainView === "agent";
 
   return (
     <div className={styles.shell}>
       <TitleBar />
       <div
-        className={`${styles.body} ${!sidebarOpen && !mobileMode ? styles.bodySidebarClosed : ""}`}
+        className={`${styles.body} ${
+          isAgent
+            ? styles.bodyAgent
+            : !sidebarOpen && !mobileMode
+              ? styles.bodySidebarClosed
+              : ""
+        }`}
       >
         {!mobileMode ? (
           <ActivityBar className={styles.activityHiddenOnMobile} />
         ) : null}
-        {mobileMode && sidebarOpen ? (
+        {!isAgent && mobileMode && sidebarOpen ? (
           <div className={styles.sidebarOverlay}>
             <button
               type="button"
@@ -32,14 +40,22 @@ export function IdeShell() {
             <SideBar />
           </div>
         ) : null}
-        {!mobileMode ? <SideBar /> : null}
+        {!isAgent && !mobileMode ? <SideBar /> : null}
         <div className={styles.mainColumn}>
-          <div className={styles.editorStack}>
-            <EditorArea />
-          </div>
-          <div className={styles.panelSlot}>
-            <Panel />
-          </div>
+          {isAgent ? (
+            <div className={styles.editorStack}>
+              <AgentWindow />
+            </div>
+          ) : (
+            <>
+              <div className={styles.editorStack}>
+                <EditorArea />
+              </div>
+              <div className={styles.panelSlot}>
+                <Panel />
+              </div>
+            </>
+          )}
         </div>
       </div>
       <StatusBar />

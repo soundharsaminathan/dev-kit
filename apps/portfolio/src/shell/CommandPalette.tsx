@@ -21,6 +21,7 @@ export function CommandPalette() {
     setSidebarMode,
     setPanelOpen,
     setPanelTab,
+    openAgent,
   } = useIde();
   const { toggleMode } = useTheme();
   const [query, setQuery] = useState("");
@@ -35,6 +36,12 @@ export function CommandPalette() {
       run: () => openFile(id),
     }));
     const actions: PaletteItem[] = [
+      {
+        id: "action:agent",
+        label: "Open Agent",
+        meta: "view",
+        run: openAgent,
+      },
       {
         id: "action:terminal",
         label: "Open Contact Terminal",
@@ -99,6 +106,7 @@ export function CommandPalette() {
     ];
     return [...actions, ...fileItems];
   }, [
+    openAgent,
     openFile,
     openTerminal,
     setPanelOpen,
