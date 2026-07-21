@@ -59,17 +59,30 @@ export function getPublic<T>(
   return request<T>(path, init);
 }
 
+async function withAuthToken<T>(
+  getToken: () => Promise<string | null>,
+  run: (token: string) => Promise<T>,
+): Promise<T> {
+  const token = await getToken();
+  if (!token) {
+    throw new ApiError("Missing auth token", 401);
+  }
+  return run(token);
+}
+
 export function createApiClient(getToken: () => Promise<string | null>) {
   return {
     get<T>(path: string, init?: Omit<RequestOptions, "body" | "token">) {
-      return getToken().then((token) => request<T>(path, { ...init, token }));
+      return withAuthToken(getToken, (token) =>
+        request<T>(path, { ...init, token }),
+      );
     },
     post<T>(
       path: string,
       body?: unknown,
       init?: Omit<RequestOptions, "body" | "token">,
     ) {
-      return getToken().then((token) =>
+      return withAuthToken(getToken, (token) =>
         request<T>(path, { ...init, method: "POST", body, token }),
       );
     },
@@ -78,7 +91,7 @@ export function createApiClient(getToken: () => Promise<string | null>) {
       body?: unknown,
       init?: Omit<RequestOptions, "body" | "token">,
     ) {
-      return getToken().then((token) =>
+      return withAuthToken(getToken, (token) =>
         request<T>(path, { ...init, method: "PATCH", body, token }),
       );
     },
@@ -87,12 +100,12 @@ export function createApiClient(getToken: () => Promise<string | null>) {
       body?: unknown,
       init?: Omit<RequestOptions, "body" | "token">,
     ) {
-      return getToken().then((token) =>
+      return withAuthToken(getToken, (token) =>
         request<T>(path, { ...init, method: "PUT", body, token }),
       );
     },
     delete<T>(path: string, init?: Omit<RequestOptions, "body" | "token">) {
-      return getToken().then((token) =>
+      return withAuthToken(getToken, (token) =>
         request<T>(path, { ...init, method: "DELETE", token }),
       );
     },
