@@ -18,6 +18,9 @@ permissions:
   contents: read
   id-token: write
 
+env:
+  NX_CLOUD_ACCESS_TOKEN: ${{ secrets.NX_CLOUD_ACCESS_TOKEN }}
+
 jobs:
   test-api:
     name: Step Up API tests
