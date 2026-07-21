@@ -28,11 +28,14 @@ function MeLayout() {
     select: (state) => state.location.pathname,
   });
   const isHome = pathname === "/me" || pathname === "/me/";
+  const isTrainers =
+    pathname === "/me/trainers" || pathname.startsWith("/me/trainers/");
+  const bannerOwnsChildSwitcher = isHome || isTrainers;
 
   return (
     <ActiveStudentProvider>
       <AppShell variant="me">
-        {!isHome ? <ChildSwitcher /> : null}
+        {!bannerOwnsChildSwitcher ? <ChildSwitcher /> : null}
         <Outlet />
       </AppShell>
     </ActiveStudentProvider>

@@ -281,6 +281,17 @@
   color: inherit;
 }
 
+.bentoInitial {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--color-primary);
+}
+
 @media (hover: hover) and (pointer: fine) {
   .metricCard:hover,
   .quickLink:hover {

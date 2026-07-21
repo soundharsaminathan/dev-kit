@@ -132,7 +132,10 @@ function MeBookingsPage() {
                         {booking.batch?.name ??
                           booking.type.replaceAll("_", " ")}
                       </span>
-                      <Badge variant={STATUS_VARIANT[booking.status]}>
+                      <Badge
+                        appearance="subtle"
+                        variant={STATUS_VARIANT[booking.status]}
+                      >
                         {booking.status}
                       </Badge>
                     </div>

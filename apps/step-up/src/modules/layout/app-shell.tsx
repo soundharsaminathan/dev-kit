@@ -40,6 +40,14 @@ function isMemberHome(pathname: string) {
   return pathname === "/me" || pathname === "/me/";
 }
 
+function isMemberTrainers(pathname: string) {
+  return pathname === "/me/trainers" || pathname.startsWith("/me/trainers/");
+}
+
+function isStaffHome(pathname: string) {
+  return pathname === "/app" || pathname === "/app/";
+}
+
 function isTrainersPath(pathname: string) {
   return (
     pathname === "/app/trainers" ||
@@ -63,7 +71,10 @@ export function AppShell({ variant, children }: AppShellProps) {
     user?.role === "TRAINER" ||
     isTrainersPath(pathname) ||
     isProfileHubPath(pathname);
-  const edgeToEdge = variant === "me" && isMemberHome(pathname);
+  const edgeToEdge =
+    (variant === "me" &&
+      (isMemberHome(pathname) || isMemberTrainers(pathname))) ||
+    (variant === "app" && user?.role === "TRAINER" && isStaffHome(pathname));
 
   return (
     <SidebarProvider defaultOpen className={styles.shell}>
