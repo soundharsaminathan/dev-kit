@@ -68,11 +68,10 @@ jobs:
           VITE_FIREBASE_APP_ID: ${{ secrets.STEP_UP_FIREBASE_APP_ID }}
           VITE_SENTRY_DSN: ${{ secrets.STEP_UP_SENTRY_DSN_WEB }}
       - name: Publish to Cloudflare Pages
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy apps/step-up/dist --project-name=step-up
+        run: npx --yes wrangler@4 pages deploy apps/step-up/dist --project-name=step-up
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
   deploy-api:
     name: Deploy Cloud Run
