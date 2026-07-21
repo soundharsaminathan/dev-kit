@@ -117,6 +117,7 @@ function NotificationsControl({
   tone?: "default" | "onMedia";
 }) {
   const api = useApi();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const isMobile = useIsMobile();
@@ -124,8 +125,9 @@ function NotificationsControl({
   const panelRef = useRef<HTMLDivElement>(null);
 
   const query = useQuery({
-    queryKey: ["notifications"],
+    queryKey: ["notifications", user?.id],
     queryFn: () => api.get<NotificationItem[]>("/notifications"),
+    enabled: Boolean(user),
   });
 
   const markRead = useMutation({
