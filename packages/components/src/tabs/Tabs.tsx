@@ -5,10 +5,17 @@ import { useTab, useTabList, useTabPanel } from "@react-aria/tabs";
 import { mergeProps } from "@react-aria/utils";
 import { useTabListState } from "@react-stately/tabs";
 import {
+  type HTMLMotionProps,
+  MotionConfig,
+  motion,
+  useReducedMotion,
+} from "motion/react";
+import {
   createContext,
   isValidElement,
   type ReactNode,
   useContext,
+  useId,
   useMemo,
   useRef,
 } from "react";
@@ -18,6 +25,7 @@ import {
   getDisabledKeys,
   parseCollectionItems,
 } from "../list-box/collection-utils";
+import { SPRING_LAYOUT } from "../motion/ease";
 import styles from "./tabs.module.scss";
 import type {
   TabListContextValue,
@@ -54,6 +62,8 @@ function Tabs<T extends object>({
   ref: _ref,
   ...stateProps
 }: TabsProps<T>) {
+  const layoutId = useId();
+  const reducedMotion = useReducedMotion();
   const hasTabList = useMemo(
     () => Boolean(findChildByDisplayName(children, "TabList")),
     [children],
@@ -79,33 +89,36 @@ function Tabs<T extends object>({
     () => ({
       state: state as TabsContextValue["state"],
       orientation,
+      layoutId,
     }),
-    [state, orientation],
+    [state, orientation, layoutId],
   );
 
   return (
-    <TabsContext.Provider value={contextValue}>
-      <div
-        data-tabs=""
-        data-orientation={orientation}
-        className={cn(styles.root, className)}
-      >
-        {!hasTabList && tabItems.length > 0 ? (
-          <TabList
-            aria-hidden="true"
-            className={styles.hiddenTabList}
-            data-hidden-tab-list=""
-          >
-            {tabItems.map((item) => (
-              <Tab key={String(item.id)} id={item.id}>
-                {String(item.id)}
-              </Tab>
-            ))}
-          </TabList>
-        ) : null}
-        {children}
-      </div>
-    </TabsContext.Provider>
+    <MotionConfig transition={reducedMotion ? { duration: 0 } : SPRING_LAYOUT}>
+      <TabsContext.Provider value={contextValue}>
+        <div
+          data-tabs=""
+          data-orientation={orientation}
+          className={cn(styles.root, className)}
+        >
+          {!hasTabList && tabItems.length > 0 ? (
+            <TabList
+              aria-hidden="true"
+              className={styles.hiddenTabList}
+              data-hidden-tab-list=""
+            >
+              {tabItems.map((item) => (
+                <Tab key={String(item.id)} id={item.id}>
+                  {String(item.id)}
+                </Tab>
+              ))}
+            </TabList>
+          ) : null}
+          {children}
+        </div>
+      </TabsContext.Provider>
+    </MotionConfig>
   );
 }
 
@@ -123,23 +136,27 @@ function TabList({
 
   return (
     <TabListContext.Provider value={listContext}>
-      <div
-        {...mergeProps(tabListProps, props)}
+      <motion.div
+        {...(mergeProps(
+          tabListProps,
+          props,
+        ) as unknown as HTMLMotionProps<"div">)}
         ref={composeRefs(tabListRef, ref)}
+        layoutRoot
         data-tab-list=""
         data-orientation={orientation}
         data-variant={variant}
         className={cn(styles.list, className)}
       >
         {children}
-      </div>
+      </motion.div>
     </TabListContext.Provider>
   );
 }
 TabList.displayName = "TabList";
 
 function Tab({ id, children, className, isDisabled, ref }: TabProps) {
-  const { state, orientation } = useTabsContext("Tab");
+  const { state, orientation, layoutId } = useTabsContext("Tab");
   const { variant } = useTabListContext("Tab");
   const tabRef = useRef<HTMLDivElement>(null);
   const {
@@ -173,7 +190,8 @@ function Tab({ id, children, className, isDisabled, ref }: TabProps) {
       className={cn(styles.tab, className)}
     >
       {isSelected ? (
-        <span
+        <motion.span
+          layoutId={layoutId}
           data-tab-indicator=""
           aria-hidden="true"
           className={styles.selectionIndicator}

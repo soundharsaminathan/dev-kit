@@ -21,6 +21,7 @@ export const DEFAULT_COMPONENTS = {
   "btn-default-background": ref("color-neutral", "component"),
   "btn-primary-background": ref("color-primary", "component"),
   "btn-primary-foreground": ref("color-fg-on-primary", "component"),
+  "btn-primary-hover-background": ref("color-primary-hover", "component"),
   "btn-icon-size": ref("font-size-sm", "component"),
   "btn-icon-size-xs": ref("font-size-xs", "component"),
   "btn-icon-size-sm": ref("font-size-md", "component"),
@@ -37,10 +38,7 @@ export const DEFAULT_COMPONENTS = {
   "btn-disabled-foreground": ref("disabled-foreground", "component"),
   "btn-disabled-border-color": ref("disabled-border-color", "component"),
   "btn-disabled-shadow": ref("disabled-shadow", "component"),
-  "btn-primary-disabled-background": ref(
-    "btn-disabled-background",
-    "component",
-  ),
+  "btn-primary-disabled-background": ref("neutral-500", "component"),
   "btn-primary-disabled-foreground": ref(
     "color-fg-primary-disabled",
     "component",
@@ -57,7 +55,7 @@ export const DEFAULT_COMPONENTS = {
   "input-font-size": ref("font-size-sm", "component"),
   "input-line-height": ref("line-height-tight", "component"),
   "input-padding-inline": val("0.625rem", "component"),
-  "input-focus-ring-width": val("2px", "component"),
+  "input-focus-ring-width": val("1px", "component"),
   "input-shadow": ref("shadow-none", "component"),
   "input-background": ref("color-field", "component"),
   "input-border-color": ref("color-border-field", "component"),

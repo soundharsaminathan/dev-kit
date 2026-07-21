@@ -730,6 +730,28 @@ const CircleDashed = ({
   </span>
 );
 
+const CircleUser = ({
+  className,
+  style,
+  "aria-hidden": ariaHidden = true,
+}: {
+  className?: string;
+  style?: React.CSSProperties;
+  "aria-hidden"?: boolean;
+}) => (
+  <span
+    aria-hidden={ariaHidden}
+    className={
+      className
+        ? `material-symbols-rounded ${className}`
+        : "material-symbols-rounded"
+    }
+    style={{ fontSize: "1.25em", lineHeight: 1, ...style }}
+  >
+    account_circle
+  </span>
+);
+
 const Clipboard = ({
   className,
   style,
@@ -2988,6 +3010,7 @@ const pack = {
     "chevrons-up-down": ChevronsUpDown,
     circle: Circle,
     "circle-dashed": CircleDashed,
+    "circle-user": CircleUser,
     clipboard: Clipboard,
     "clipboard-paste": ClipboardPaste,
     clock: Clock,

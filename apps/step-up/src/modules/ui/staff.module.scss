@@ -1,0 +1,299 @@
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 0.75rem);
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 0.75rem);
+}
+
+.sectionTitle {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--color-fg) 52%, transparent);
+}
+
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3, 0.75rem);
+}
+
+.metricCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 0.5rem);
+  padding: var(--space-4, 1rem);
+  border-radius: var(--radius-2xl, 1.25rem);
+  border: var(--card-border-width, 1px) solid
+    var(--card-border-color, color-mix(in srgb, var(--color-fg) 12%, transparent));
+  background: var(--card-background, var(--color-card, var(--color-bg)));
+  box-shadow: var(--card-shadow, var(--shadow-sm, 0 1px 3px rgb(0 0 0 / 6%)));
+  text-decoration: none;
+  color: inherit;
+  min-height: 5.5rem;
+  transition:
+    transform var(--motion-fast, 150ms) ease,
+    box-shadow var(--motion-normal, 200ms) ease;
+}
+
+.metricCard:active {
+  transform: scale(var(--interaction-press-scale, 0.98));
+}
+
+.metricLabel {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2, 0.5rem);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: color-mix(in srgb, var(--color-fg) 62%, transparent);
+}
+
+.metricIcon {
+  display: grid;
+  place-items: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: var(--radius-lg, 0.75rem);
+  background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+  color: var(--color-primary);
+}
+
+.metricIcon svg {
+  width: 0.9375rem;
+  height: 0.9375rem;
+}
+
+.metricValue {
+  font-size: 1.75rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.metricHint {
+  font-size: 0.75rem;
+  color: color-mix(in srgb, var(--color-fg) 52%, transparent);
+}
+
+.attentionCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 0.5rem);
+  padding: var(--space-4, 1rem);
+  border-radius: var(--radius-2xl, 1.25rem);
+  border: var(--card-border-width, 1px) solid
+    var(--card-border-color, color-mix(in srgb, var(--color-fg) 12%, transparent));
+  background: var(--card-background, var(--color-card, var(--color-bg)));
+  box-shadow: var(--card-shadow, var(--shadow-sm, 0 1px 3px rgb(0 0 0 / 6%)));
+  text-align: start;
+  width: 100%;
+}
+
+.attentionTop {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-2, 0.5rem);
+}
+
+.attentionTitle {
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.attentionMeta {
+  font-size: 0.8125rem;
+  color: color-mix(in srgb, var(--color-fg) 62%, transparent);
+}
+
+.rowCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1, 0.25rem);
+  padding: var(--space-4, 1rem);
+  width: 100%;
+  text-align: start;
+}
+
+.rowWithAvatar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3, 0.75rem);
+  width: 100%;
+}
+
+.trainerAvatar {
+  flex-shrink: 0;
+  --avatar-radius: var(--radius-lg, 0.75rem);
+  width: 3.25rem;
+  height: 3.25rem;
+}
+
+.rowBody {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-1, 0.25rem);
+  min-width: 0;
+}
+
+.rowTitle {
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+}
+
+.rowMeta {
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  color: color-mix(in srgb, var(--color-fg) 62%, transparent);
+}
+
+.rowFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2, 0.5rem);
+  margin-top: var(--space-2, 0.5rem);
+}
+
+.rowActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2, 0.5rem);
+  margin-top: var(--space-3, 0.75rem);
+}
+
+.softPanel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4, 1rem);
+  padding: var(--space-4, 1rem);
+  border-radius: var(--radius-2xl, 1.25rem);
+  border: var(--card-border-width, 1px) solid
+    var(--card-border-color, color-mix(in srgb, var(--color-fg) 12%, transparent));
+  background: var(--card-background, var(--color-card, var(--color-bg)));
+  box-shadow: var(--card-shadow, var(--shadow-sm, 0 1px 3px rgb(0 0 0 / 6%)));
+}
+
+.panelTitle {
+  font-size: 1.0625rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.panelDesc {
+  font-size: 0.875rem;
+  color: color-mix(in srgb, var(--color-fg) 62%, transparent);
+}
+
+.sheetStack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4, 1rem);
+}
+
+.sheetActions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 0.5rem);
+}
+
+.quickLinks {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 0.5rem);
+}
+
+.quickLink {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3, 0.75rem);
+  min-height: 3.25rem;
+  padding: var(--space-3, 0.75rem) var(--space-4, 1rem);
+  border-radius: var(--radius-2xl, 1.25rem);
+  border: var(--card-border-width, 1px) solid
+    var(--card-border-color, color-mix(in srgb, var(--color-fg) 12%, transparent));
+  background: var(--card-background, var(--color-card, var(--color-bg)));
+  box-shadow: var(--card-shadow, var(--shadow-sm, 0 1px 3px rgb(0 0 0 / 6%)));
+  text-decoration: none;
+  color: inherit;
+  font-weight: 600;
+}
+
+.quickLinkMeta {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: color-mix(in srgb, var(--color-fg) 52%, transparent);
+}
+
+.statGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3, 0.75rem);
+}
+
+.filterGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3, 0.75rem);
+}
+
+.statTile {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1, 0.25rem);
+  padding: var(--space-4, 1rem);
+  border-radius: var(--radius-2xl, 1.25rem);
+  border: var(--card-border-width, 1px) solid
+    var(--card-border-color, color-mix(in srgb, var(--color-fg) 12%, transparent));
+  background: var(--card-background, var(--color-card, var(--color-bg)));
+  box-shadow: var(--card-shadow, var(--shadow-sm, 0 1px 3px rgb(0 0 0 / 6%)));
+}
+
+.statLabel {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: color-mix(in srgb, var(--color-fg) 56%, transparent);
+}
+
+.statValue {
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.linkWrap {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .metricCard:hover,
+  .quickLink:hover {
+    box-shadow: var(--elevation-2, 0 4px 12px rgb(0 0 0 / 8%));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .metricCard {
+    transition-duration: 0ms;
+  }
+
+  .metricCard:active {
+    transform: none;
+  }
+}

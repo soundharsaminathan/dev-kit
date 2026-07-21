@@ -1,0 +1,59 @@
+.block {
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--color-fg) 6%, transparent) 0%,
+    color-mix(in srgb, var(--color-fg) 12%, transparent) 50%,
+    color-mix(in srgb, var(--color-fg) 6%, transparent) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 0.75rem);
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 0.5rem);
+  padding: var(--space-3, 0.75rem);
+  border-radius: var(--radius-2xl, 1.25rem);
+  background: color-mix(in srgb, var(--color-fg) 3%, transparent);
+}
+
+.batchRow {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-3, 0.75rem);
+  padding: var(--space-3, 0.75rem);
+  border-radius: var(--radius-xl, 1rem);
+  background: color-mix(in srgb, var(--color-fg) 3%, transparent);
+}
+
+.batchBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 0.5rem);
+  flex: 1;
+  min-width: 0;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: -100% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .block {
+    animation: none;
+    background: color-mix(in srgb, var(--color-fg) 8%, transparent);
+  }
+}

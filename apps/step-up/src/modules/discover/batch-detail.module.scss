@@ -1,0 +1,170 @@
+.hero {
+  position: relative;
+  aspect-ratio: 16 / 10;
+  border-radius: var(--radius-2xl, 1.25rem);
+  overflow: hidden;
+  background: color-mix(in srgb, var(--color-primary) 16%, var(--color-bg));
+}
+
+.heroImg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.heroFallback {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  background:
+    radial-gradient(
+      circle at 30% 20%,
+      color-mix(in srgb, var(--color-primary) 40%, transparent),
+      transparent 55%
+    ),
+    linear-gradient(
+      160deg,
+      color-mix(in srgb, var(--color-primary) 24%, var(--color-bg)),
+      var(--color-bg)
+    );
+}
+
+.heroIcon {
+  width: 2.5rem;
+  height: 2.5rem;
+  color: color-mix(in srgb, var(--color-primary) 70%, var(--color-fg));
+  opacity: 0.85;
+}
+
+.badge {
+  position: absolute;
+  top: var(--space-3, 0.75rem);
+  left: var(--space-3, 0.75rem);
+}
+
+.stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2, 0.5rem) var(--space-3, 0.75rem);
+  align-items: center;
+}
+
+.stat {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  min-height: 2rem;
+  padding-inline: var(--space-3, 0.75rem);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-fg) 5%, transparent);
+  font-size: 0.8125rem;
+  font-weight: 500;
+}
+
+.stat[data-full="true"] {
+  background: color-mix(in srgb, var(--color-danger, #e5484d) 12%, transparent);
+  color: var(--color-danger, #e5484d);
+}
+
+.stat :global(svg) {
+  width: 0.875rem;
+  height: 0.875rem;
+  color: var(--color-warning, #ff9f0a);
+}
+
+.price {
+  margin-inline-start: auto;
+  font-weight: 700;
+  font-size: 1rem;
+}
+
+.trainer {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3, 0.75rem);
+  padding: var(--space-3, 0.75rem);
+  border-radius: var(--radius-2xl, 1.25rem);
+  background: color-mix(in srgb, var(--color-fg) 4%, transparent);
+}
+
+.trainerAvatar {
+  flex-shrink: 0;
+  --avatar-radius: var(--radius-lg, 0.75rem);
+  width: 2.75rem;
+  height: 2.75rem;
+}
+
+.trainerLabel {
+  font-size: 0.75rem;
+  color: color-mix(in srgb, var(--color-fg) 56%, transparent);
+}
+
+.trainerName {
+  font-weight: 600;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 0.5rem);
+}
+
+.sectionTitle {
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.muted {
+  color: color-mix(in srgb, var(--color-fg) 62%, transparent);
+  font-size: 0.875rem;
+  line-height: 1.45;
+}
+
+.styleList,
+.sessionList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 0.5rem);
+}
+
+.sessionItem {
+  min-height: 2.75rem;
+  display: flex;
+  align-items: center;
+  padding-inline: var(--space-3, 0.75rem);
+  border-radius: var(--radius-xl, 1rem);
+  background: color-mix(in srgb, var(--color-fg) 4%, transparent);
+  font-size: 0.875rem;
+}
+
+.bookForm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4, 1rem);
+}
+
+.successActions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 0.5rem);
+  width: min(20rem, 100%);
+}
+
+.ratingSection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 0.75rem);
+  padding: var(--space-3, 0.75rem);
+  border-radius: var(--radius-2xl, 1.25rem);
+  background: color-mix(in srgb, var(--color-fg) 4%, transparent);
+}
+
+.ratingError {
+  color: var(--color-danger, #b42318);
+  font-size: 0.875rem;
+}

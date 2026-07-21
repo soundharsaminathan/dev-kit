@@ -1,0 +1,19 @@
+-- AlterTable
+ALTER TABLE "User" ADD COLUMN "encryptedKey" TEXT NOT NULL DEFAULT '';
+ALTER TABLE "User" ADD COLUMN "piiCiphertext" TEXT NOT NULL DEFAULT '';
+ALTER TABLE "User" ADD COLUMN "piiIv" TEXT NOT NULL DEFAULT '';
+ALTER TABLE "User" ADD COLUMN "emailHash" TEXT NOT NULL DEFAULT '';
+
+ALTER TABLE "User" DROP COLUMN "email";
+ALTER TABLE "User" DROP COLUMN "name";
+ALTER TABLE "User" DROP COLUMN "phone";
+ALTER TABLE "User" DROP COLUMN "bio";
+ALTER TABLE "User" DROP COLUMN "instagramUrl";
+
+ALTER TABLE "User" ALTER COLUMN "encryptedKey" DROP DEFAULT;
+ALTER TABLE "User" ALTER COLUMN "piiCiphertext" DROP DEFAULT;
+ALTER TABLE "User" ALTER COLUMN "piiIv" DROP DEFAULT;
+ALTER TABLE "User" ALTER COLUMN "emailHash" DROP DEFAULT;
+
+-- CreateIndex
+CREATE INDEX "User_studioId_emailHash_idx" ON "User"("studioId", "emailHash");

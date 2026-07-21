@@ -1,0 +1,102 @@
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5, 1.25rem);
+  padding-block: var(--space-2, 0.5rem);
+}
+
+.modeTabs {
+  display: flex;
+  gap: var(--space-1, 0.25rem);
+  margin: 0;
+  padding: var(--space-1, 0.25rem);
+  border: 0;
+  min-inline-size: 0;
+  border-radius: var(--radius-xl, 1rem);
+  background: color-mix(in srgb, var(--color-fg) 6%, transparent);
+}
+
+.modeTab {
+  flex: 1;
+  padding: var(--space-2, 0.5rem) var(--space-3, 0.75rem);
+  border: 0;
+  border-radius: var(--radius-lg, 0.75rem);
+  background: transparent;
+  font: inherit;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: color-mix(in srgb, var(--color-fg) 56%, transparent);
+  cursor: pointer;
+  transition:
+    background-color var(--motion-fast, 150ms) ease,
+    color var(--motion-fast, 150ms) ease,
+    transform var(--motion-fast, 150ms) ease;
+}
+
+.modeTab[data-active="true"] {
+  background: var(--color-bg);
+  color: var(--color-fg);
+  font-weight: 600;
+  box-shadow: 0 1px 4px color-mix(in srgb, var(--color-fg) 10%, transparent);
+}
+
+.modeTab:active {
+  transform: scale(var(--interaction-press-scale, 0.98));
+}
+
+.scanArea {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 0.75rem);
+  align-items: center;
+}
+
+.video {
+  width: 100%;
+  max-width: 20rem;
+  aspect-ratio: 1;
+  border-radius: var(--radius-2xl, 1.25rem);
+  object-fit: cover;
+  background: color-mix(in srgb, var(--color-fg) 8%, transparent);
+}
+
+.scanFrame {
+  position: absolute;
+  pointer-events: none;
+  width: min(14rem, 70%);
+  aspect-ratio: 1;
+  border: 2.5px solid var(--color-primary);
+  border-radius: var(--radius-xl, 1rem);
+  opacity: 0.6;
+}
+
+.hint {
+  margin: 0;
+  font-size: 0.9375rem;
+  line-height: 1.45;
+  text-align: center;
+  color: color-mix(in srgb, var(--color-fg) 62%, transparent);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 0.5rem);
+}
+
+.successActions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 0.5rem);
+  width: min(20rem, 100%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .modeTab {
+    transition-duration: 0ms;
+  }
+
+  .modeTab:active {
+    transform: none;
+  }
+}

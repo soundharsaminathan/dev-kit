@@ -1,0 +1,339 @@
+@use "@dev-ui/tokens/scss" as *;
+
+.row {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.5rem;
+  transition: background-color var(--motion-fast, 120ms) ease;
+
+  &[data-mine] {
+    flex-direction: row-reverse;
+  }
+
+  &[data-highlighted] .bubble {
+    outline: 2px solid color-mix(in srgb, var(--color-primary) 55%, transparent);
+    outline-offset: 2px;
+  }
+}
+
+.avatar {
+  flex-shrink: 0;
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  max-width: min(75%, 480px);
+
+  .row[data-mine] & {
+    align-items: flex-end;
+  }
+}
+
+.senderName {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: color-mix(in srgb, var(--color-fg) 65%, transparent);
+  padding-inline-start: 0.35rem;
+}
+
+.bubbleWrap {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+
+  .row[data-mine] & {
+    flex-direction: row-reverse;
+  }
+
+  &:hover .actions,
+  &:focus-within .actions {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+
+.bubble {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  width: max-content;
+  max-width: 100%;
+  min-width: 0;
+  padding: 0.55rem 0.75rem;
+  border-radius: 1.25rem;
+  background-color: #ffffff;
+  box-shadow:
+    0 1px 2px color-mix(in srgb, var(--color-fg) 8%, transparent),
+    0 2px 8px color-mix(in srgb, var(--color-fg) 6%, transparent);
+  border-end-start-radius: 0.35rem;
+  overflow: hidden;
+
+  .row[data-mine] & {
+    background-color: #ffffff;
+    border-end-start-radius: 1.25rem;
+    border-end-end-radius: 0.35rem;
+  }
+
+  &[data-flush] {
+    position: relative;
+    padding: 0;
+    gap: 0;
+    background-color: transparent;
+    box-shadow:
+      0 1px 2px color-mix(in srgb, var(--color-fg) 10%, transparent),
+      0 3px 10px color-mix(in srgb, var(--color-fg) 7%, transparent);
+  }
+
+  &[data-flush] .text {
+    padding: 0.45rem 0.7rem 0.15rem;
+    background-color: #ffffff;
+  }
+
+  .row[data-mine] &[data-flush] .text {
+    background-color: #ffffff;
+  }
+
+  &[data-flush] .time {
+    position: absolute;
+    inset-block-start: 0.4rem;
+    inset-inline-end: 0.45rem;
+    z-index: 500;
+    padding: 0.15rem 0.35rem;
+    border-radius: 999px;
+    background: color-mix(in srgb, #000 45%, transparent);
+    color: #fff;
+    backdrop-filter: blur(4px);
+  }
+
+  &[data-flush]:has(.text) .time {
+    position: static;
+    inset: auto;
+    background: transparent;
+    color: color-mix(in srgb, var(--color-fg) 50%, transparent);
+    backdrop-filter: none;
+    padding: 0 0.7rem 0.4rem;
+    border-radius: 0;
+    align-self: flex-end;
+  }
+
+  &[data-rich] {
+    min-width: min(100%, 280px);
+    padding: 0.7rem 0.85rem 0.55rem;
+  }
+
+  &[data-deleted] {
+    font-style: italic;
+  }
+
+  &[data-pending] {
+    opacity: 0.72;
+  }
+
+  &[data-failed] {
+    outline: 1px solid color-mix(in srgb, var(--color-danger) 55%, transparent);
+  }
+}
+
+.replyPreview {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  padding: 0.35rem 0.5rem;
+  border: none;
+  border-inline-start: 3px solid var(--color-primary);
+  border-radius: var(--radius-sm, 0.25rem);
+  background: color-mix(in srgb, var(--color-fg) 6%, transparent);
+  font: inherit;
+  color: inherit;
+  text-align: start;
+  cursor: pointer;
+  font-size: 0.8rem;
+  width: 100%;
+
+  &:hover {
+    background: color-mix(in srgb, var(--color-fg) 10%, transparent);
+  }
+}
+
+.replyName {
+  font-weight: 600;
+}
+
+.replyText {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 260px;
+  color: color-mix(in srgb, var(--color-fg) 70%, transparent);
+}
+
+.images {
+  display: grid;
+  gap: 1.5px;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--color-fg) 8%, transparent);
+
+  &[data-multi] {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: min(100%, 268px);
+  }
+
+  a {
+    display: block;
+    line-height: 0;
+    overflow: hidden;
+  }
+}
+
+.image {
+  display: block;
+  width: 100%;
+  max-width: 268px;
+  max-height: 340px;
+  min-height: 140px;
+  object-fit: cover;
+}
+
+.text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.time {
+  align-self: flex-end;
+  font-size: 0.65rem;
+  line-height: 1;
+  white-space: nowrap;
+  color: color-mix(in srgb, var(--color-fg) 50%, transparent);
+}
+
+.actions {
+  flex-shrink: 0;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--motion-fast, 120ms) ease;
+}
+
+.actionsVisible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.actions .items {
+  gap: 0.15rem;
+}
+
+.actionButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  padding: 0;
+  margin: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: color-mix(in srgb, var(--color-fg) 60%, transparent);
+  cursor: pointer;
+  line-height: 0;
+  transition: background-color var(--motion-fast, 120ms) ease;
+
+  :global(svg) {
+    display: block;
+    width: 0.875rem;
+    height: 0.875rem;
+    flex-shrink: 0;
+  }
+
+  &:hover {
+    background: color-mix(in srgb, var(--color-fg) 8%, transparent);
+    color: var(--color-fg);
+  }
+}
+
+.picker {
+  padding: 0.25rem;
+  border: 1px solid color-mix(in srgb, var(--color-fg) 12%, transparent);
+  border-radius: 999px;
+  background: var(--color-bg);
+  width: fit-content;
+}
+
+.picker .items {
+  gap: 0.15rem;
+}
+
+.pickerEmoji {
+  display: grid;
+  place-items: center;
+  width: 1.9rem;
+  height: 1.9rem;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  font-size: 1.05rem;
+  cursor: pointer;
+  transition:
+    background-color var(--motion-fast, 120ms) ease,
+    transform var(--motion-fast, 120ms) ease;
+
+  &:hover {
+    background: color-mix(in srgb, var(--color-fg) 8%, transparent);
+    transform: scale(var(--interaction-hover-scale, 1.1));
+  }
+}
+
+.reactions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.reactionChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.1rem 0.45rem;
+  border: 1px solid color-mix(in srgb, var(--color-fg) 12%, transparent);
+  border-radius: 999px;
+  background: var(--color-bg);
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: border-color var(--motion-fast, 120ms) ease;
+
+  &:hover {
+    border-color: var(--color-primary);
+  }
+
+  &[data-mine] {
+    border-color: var(--color-primary);
+    background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+  }
+}
+
+.reactionCount {
+  font-variant-numeric: tabular-nums;
+  color: color-mix(in srgb, var(--color-fg) 65%, transparent);
+}
+
+.sendAlert {
+  width: 100%;
+  max-width: 100%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .row,
+  .actions,
+  .actionButton,
+  .pickerEmoji,
+  .reactionChip {
+    transition-duration: 0ms;
+  }
+
+  .pickerEmoji:hover {
+    transform: none;
+  }
+}

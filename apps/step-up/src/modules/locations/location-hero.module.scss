@@ -1,0 +1,120 @@
+@use "@dev-ui/tokens/scss" as *;
+
+.hero {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin: 0 calc(-1 * var(--screen-pad-x, 1rem));
+}
+
+.mediaButton {
+  appearance: none;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  display: block;
+  width: 100%;
+  position: relative;
+  aspect-ratio: 4 / 5;
+  max-height: min(70vh, 32rem);
+  overflow: hidden;
+  background: color-mix(in srgb, var(--color-fg) 8%, transparent);
+  cursor: pointer;
+}
+
+@media (min-width: 720px) {
+  .mediaButton {
+    aspect-ratio: 16 / 9;
+    max-height: 28rem;
+    border-radius: 0 0 var(--radius-2xl, 1.25rem) var(--radius-2xl, 1.25rem);
+  }
+}
+
+.media,
+.fallback {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.fallback {
+  background:
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--color-accent, #c45c26) 40%, transparent),
+      color-mix(in srgb, var(--color-fg) 14%, transparent)
+    );
+}
+
+.scrim {
+  position: absolute;
+  inset: auto 0 0;
+  height: 40%;
+  background: linear-gradient(to top, rgb(0 0 0 / 45%), transparent);
+  pointer-events: none;
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 0.5rem);
+  padding: var(--space-5, 1.25rem) var(--screen-pad-x, 1rem) 0;
+}
+
+.titles {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-3, 0.75rem);
+}
+
+.title {
+  margin: 0;
+  font-size: clamp(1.75rem, 5vw, 2.35rem);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+}
+
+.rating {
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+
+.star {
+  width: 1rem;
+  height: 1rem;
+}
+
+.ratingCount {
+  font-weight: 500;
+  color: color-mix(in srgb, var(--color-fg) 58%, transparent);
+}
+
+.address {
+  margin: 0;
+  color: color-mix(in srgb, var(--color-fg) 68%, transparent);
+  font-size: 0.975rem;
+}
+
+.description {
+  margin: var(--space-2, 0.5rem) 0 0;
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+.directions {
+  margin-top: var(--space-2, 0.5rem);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--color-accent, var(--color-fg));
+  font-weight: 600;
+  text-decoration: none;
+  width: fit-content;
+}

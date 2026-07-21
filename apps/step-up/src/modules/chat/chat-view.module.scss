@@ -1,0 +1,221 @@
+@use "@dev-ui/tokens/scss" as *;
+
+.root {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  overflow: visible;
+}
+
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-fg) 10%, transparent);
+  background: var(--color-bg);
+}
+
+.backButton {
+  display: none;
+}
+
+.headerMain {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-width: 0;
+  flex: 1;
+  padding: 0.15rem 0.25rem;
+  margin-inline: -0.25rem;
+  border: none;
+  background: transparent;
+  color: inherit;
+  text-align: start;
+  border-radius: var(--radius-md, 0.5rem);
+
+  &:is(button) {
+    cursor: pointer;
+
+    &:hover {
+      background: color-mix(in srgb, var(--color-fg) 5%, transparent);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--color-primary);
+      outline-offset: 2px;
+    }
+  }
+}
+
+.membersButton {
+  flex-shrink: 0;
+  margin-inline-start: auto;
+}
+
+.headerText {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.headerTitle {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.headerSub {
+  font-size: 0.75rem;
+  color: color-mix(in srgb, var(--color-fg) 60%, transparent);
+  min-height: 1em;
+}
+
+.body {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background-color: color-mix(
+    in srgb,
+    var(--color-primary) 16%,
+    color-mix(in srgb, var(--color-fg) 9%, var(--color-bg))
+  );
+  background-image:
+    radial-gradient(
+      color-mix(in srgb, var(--color-fg) 6%, transparent) 0.9px,
+      transparent 1.1px
+    ),
+    radial-gradient(
+      color-mix(in srgb, var(--color-primary) 9%, transparent) 0.9px,
+      transparent 1.1px
+    );
+  background-size: 18px 18px, 18px 18px;
+  background-position: 0 0, 9px 9px;
+}
+
+.list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1rem;
+}
+
+.listLoading {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  padding: 1rem;
+}
+
+.skeletonRow {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.5rem;
+
+  &[data-mine] {
+    flex-direction: row-reverse;
+  }
+}
+
+.skeletonBubble {
+  max-width: min(75%, 480px);
+  overflow: hidden;
+  border-radius: 1.25rem;
+  border-end-start-radius: 0.35rem;
+  box-shadow:
+    0 1px 2px color-mix(in srgb, var(--color-fg) 8%, transparent),
+    0 2px 8px color-mix(in srgb, var(--color-fg) 6%, transparent);
+
+  .skeletonRow[data-mine] & {
+    border-end-start-radius: 1.25rem;
+    border-end-end-radius: 0.35rem;
+  }
+}
+
+.listLoading .skeletonFill {
+  flex-shrink: 0;
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--color-fg) 7%, #fff) 0%,
+    color-mix(in srgb, var(--color-fg) 7%, #fff) 40%,
+    color-mix(in srgb, var(--color-fg) 18%, #fff) 50%,
+    color-mix(in srgb, var(--color-fg) 7%, #fff) 60%,
+    color-mix(in srgb, var(--color-fg) 7%, #fff) 100%
+  );
+  background-size: 220% 100%;
+  animation: chatSkeletonShimmer 1.35s ease-in-out infinite;
+}
+
+@keyframes chatSkeletonShimmer {
+  0% {
+    background-position: 100% 0;
+  }
+
+  100% {
+    background-position: -100% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .listLoading .skeletonFill {
+    animation: none;
+    background: color-mix(in srgb, var(--color-fg) 8%, #fff);
+  }
+}
+
+.loadOlder {
+  display: flex;
+  justify-content: center;
+}
+
+.emptyList {
+  flex: 1;
+  display: grid;
+  place-items: center;
+}
+
+.item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.daySeparator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-block: 0.5rem;
+
+  span {
+    padding: 0.2rem 0.75rem;
+    border-radius: 999px;
+    background: #fff;
+    box-shadow: 0 1px 2px color-mix(in srgb, var(--color-fg) 10%, transparent);
+    font-size: 0.75rem;
+    color: color-mix(in srgb, var(--color-fg) 60%, transparent);
+  }
+}
+
+@media (max-width: 720px) {
+  .backButton {
+    display: inline-flex;
+  }
+}

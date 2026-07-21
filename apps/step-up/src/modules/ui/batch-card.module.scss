@@ -1,0 +1,205 @@
+.card {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  gap: var(--space-3, 0.75rem);
+  padding: var(--space-3, 0.75rem);
+  overflow: visible;
+  border-radius: var(--radius-xl, 1rem);
+  background: var(--card-background, var(--color-card, var(--color-bg)));
+  box-shadow: var(--shadow-sm, 0 1px 3px rgb(0 0 0 / 6%));
+  color: inherit;
+  text-decoration: none;
+  transition:
+    transform var(--motion-fast, 150ms) ease,
+    box-shadow var(--motion-normal, 200ms) ease;
+}
+
+.card:active {
+  transform: scale(var(--interaction-press-scale, 0.98));
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .card:hover {
+    box-shadow: var(--elevation-2, 0 4px 14px rgb(0 0 0 / 8%));
+  }
+}
+
+.thumb {
+  position: relative;
+  flex-shrink: 0;
+  width: 4.5rem;
+  height: 4.5rem;
+  border-radius: var(--radius-lg, 0.75rem);
+  background: color-mix(in srgb, var(--color-primary) 18%, var(--color-bg));
+  overflow: hidden;
+}
+
+.thumbImg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.thumbFallback {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  background:
+    radial-gradient(
+      circle at 30% 20%,
+      color-mix(in srgb, var(--color-primary) 35%, transparent),
+      transparent 55%
+    ),
+    linear-gradient(
+      160deg,
+      color-mix(in srgb, var(--color-primary) 22%, var(--color-bg)),
+      var(--color-bg)
+    );
+}
+
+.thumbIcon {
+  width: 1.5rem;
+  height: 1.5rem;
+  color: color-mix(in srgb, var(--color-primary) 70%, var(--color-fg));
+  opacity: 0.85;
+}
+
+.badge {
+  position: absolute;
+  top: var(--space-1, 0.25rem);
+  left: var(--space-1, 0.25rem);
+  font-size: 0.625rem;
+  padding-block: 0.1rem;
+  padding-inline: 0.35rem;
+  max-width: calc(100% - 0.5rem);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--space-1, 0.25rem);
+  min-width: 0;
+  flex: 1;
+}
+
+.top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-2, 0.5rem);
+}
+
+.titleBlock {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2, 0.5rem);
+  min-width: 0;
+  flex: 1;
+}
+
+.name {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  line-height: 1.25;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.rating {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  flex-shrink: 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.star {
+  width: 0.75rem;
+  height: 0.75rem;
+  color: var(--color-warning, #ff9f0a);
+}
+
+.trainers {
+  flex-shrink: 0;
+  margin-block: 0.1rem;
+}
+
+.footer {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-2, 0.5rem);
+  margin-top: var(--space-1, 0.25rem);
+}
+
+.stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2, 0.5rem);
+  font-size: 0.75rem;
+  color: color-mix(in srgb, var(--color-fg) 56%, transparent);
+  min-width: 0;
+}
+
+.stats [data-full="true"] {
+  color: var(--color-danger, #e5484d);
+  font-weight: 600;
+}
+
+.price {
+  font-weight: 700;
+  color: var(--color-fg);
+}
+
+.footerEnd {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-1, 0.25rem);
+  flex-shrink: 0;
+  max-width: 55%;
+}
+
+.schedule {
+  font-size: 0.75rem;
+  color: color-mix(in srgb, var(--color-fg) 64%, transparent);
+  text-align: end;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+.cta {
+  flex-shrink: 0;
+  min-height: 1.75rem;
+  display: inline-flex;
+  align-items: center;
+  padding-inline: var(--space-3, 0.75rem);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+  color: var(--color-primary);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card {
+    transition-duration: 0ms;
+  }
+
+  .card:active {
+    transform: none;
+  }
+}

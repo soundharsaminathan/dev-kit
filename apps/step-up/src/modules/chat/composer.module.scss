@@ -1,0 +1,238 @@
+@use "@dev-ui/tokens/scss" as *;
+
+.root {
+  flex-shrink: 0;
+  position: relative;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  border-top: 1px solid color-mix(in srgb, var(--color-fg) 10%, transparent);
+  background: var(--color-bg);
+  overflow: visible;
+}
+
+.replyBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.4rem 0.6rem;
+  border-inline-start: 3px solid var(--color-primary);
+  border-radius: var(--radius-sm, 0.25rem);
+  background: color-mix(in srgb, var(--color-fg) 5%, transparent);
+}
+
+.replyInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.replyName {
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.replyText {
+  font-size: 0.8rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: color-mix(in srgb, var(--color-fg) 65%, transparent);
+}
+
+.previews {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.voiceDraft,
+.recordingBar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.45rem 0.65rem;
+  border: 1px solid color-mix(in srgb, var(--color-fg) 12%, transparent);
+  border-radius: var(--radius-md, 0.5rem);
+  background: color-mix(in srgb, var(--color-fg) 4%, transparent);
+}
+
+.voicePreview {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+}
+
+.voiceDuration {
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+  color: color-mix(in srgb, var(--color-fg) 70%, transparent);
+  white-space: nowrap;
+}
+
+.recordingDot {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 50%;
+  background: var(--color-danger, #e5484d);
+  animation: recording-pulse 1s ease-in-out infinite;
+}
+
+@keyframes recording-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.35;
+  }
+}
+
+.previewWrap {
+  position: relative;
+}
+
+.preview {
+  width: 64px;
+  height: 64px;
+  object-fit: cover;
+  border-radius: var(--radius-md, 0.5rem);
+  display: block;
+}
+
+.previewRemove {
+  position: absolute;
+  inset-block-start: -0.35rem;
+  inset-inline-end: -0.35rem;
+  display: grid;
+  place-items: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  border: none;
+  border-radius: 50%;
+  background: var(--color-fg);
+  color: var(--color-bg);
+  cursor: pointer;
+  font-size: 0.65rem;
+}
+
+.attachmentForm {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 0.6rem;
+  border: 1px solid color-mix(in srgb, var(--color-fg) 12%, transparent);
+  border-radius: var(--radius-md, 0.5rem);
+}
+
+.formRow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.formSpacer {
+  flex: 1;
+}
+
+.formInput {
+  flex: 1;
+  min-width: 0;
+  padding: 0.45rem 0.65rem;
+  border: 1px solid color-mix(in srgb, var(--color-fg) 15%, transparent);
+  border-radius: var(--radius-md, 0.5rem);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 0.9rem;
+  transition: border-color var(--motion-fast, 120ms) ease;
+
+  &:focus {
+    outline: none;
+    border-color: var(--color-primary);
+  }
+}
+
+.inputRow {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.25rem;
+}
+
+.iconBar,
+.sendBar {
+  flex-shrink: 0;
+}
+
+.iconBar .items,
+.sendBar .items {
+  gap: 0.125rem;
+}
+
+.textInput {
+  flex: 1;
+  min-width: 0;
+  min-height: 1.75rem;
+  max-height: 8rem;
+  margin-block: 0;
+  padding: 0.35rem 0.85rem;
+  border: 1px solid color-mix(in srgb, var(--color-fg) 15%, transparent);
+  border-radius: 1.25rem;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 0.95rem;
+  line-height: 1.35;
+  resize: none;
+  overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  transition: border-color var(--motion-fast, 120ms) ease;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+
+  &:focus {
+    outline: none;
+    border-color: var(--color-primary);
+  }
+}
+
+.iconButton {
+  display: grid;
+  place-items: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+
+  &:hover {
+    background: color-mix(in srgb, var(--color-fg) 8%, transparent);
+  }
+}
+
+.error {
+  color: var(--color-danger, #e5484d);
+  font-size: 0.85rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .formInput,
+  .textInput {
+    transition-duration: 0ms;
+  }
+
+  .recordingDot {
+    animation: none;
+  }
+}

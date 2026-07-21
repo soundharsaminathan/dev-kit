@@ -73,6 +73,18 @@ export default defineConfig({
       },
       {
         test: {
+          name: "hooks",
+          root: path.join(rootDir, "packages/hooks"),
+          include: ["src/**/*.{test,spec}.{ts,tsx}"],
+          exclude: testExclude,
+          environment: "jsdom",
+          globals: true,
+          setupFiles: [path.join(rootDir, "vitest.setup.ts")],
+          sequence: { groupOrder: 2 },
+        },
+      },
+      {
+        test: {
           name: "components",
           root: path.join(rootDir, "packages/components"),
           include: ["src/**/*.{test,spec}.{ts,tsx}"],

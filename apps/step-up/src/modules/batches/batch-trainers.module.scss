@@ -1,0 +1,133 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4, 1rem);
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3, 0.75rem);
+}
+
+.copy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.eyebrow {
+  margin: 0;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--color-fg) 52%, transparent);
+}
+
+.heading {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.summary {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  color: color-mix(in srgb, var(--color-fg) 62%, transparent);
+}
+
+.mediaFill {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.mediaFallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--color-primary);
+}
+
+.profileBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 0.75rem);
+}
+
+.profileBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.profileLabel {
+  margin: 0;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--color-fg) 48%, transparent);
+}
+
+.profileValue {
+  margin: 0;
+  color: var(--color-fg);
+  font-size: 0.875rem;
+}
+
+.sheetList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 0.5rem);
+  margin-block: var(--space-3, 0.75rem);
+  max-height: 18rem;
+  overflow: auto;
+}
+
+.sheetRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3, 0.75rem);
+  padding: var(--space-2, 0.5rem) var(--space-3, 0.75rem);
+  border-radius: var(--radius-lg, 0.75rem);
+  background: color-mix(in srgb, var(--color-fg) 4%, transparent);
+}
+
+.sheetMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+  font-size: 0.75rem;
+  color: color-mix(in srgb, var(--color-fg) 58%, transparent);
+}
+
+.sheetHint {
+  margin: 0;
+  font-size: 0.75rem;
+  color: color-mix(in srgb, var(--color-fg) 58%, transparent);
+}
+
+.sheetError {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--color-danger, #e5484d);
+}
+
+.sheetActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2, 0.5rem);
+  margin-block-start: var(--space-3, 0.75rem);
+}

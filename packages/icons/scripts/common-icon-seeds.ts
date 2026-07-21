@@ -56,6 +56,7 @@ export const commonIconSeeds = [
   { semantic: "menu", lucide: "Menu", tabler: "IconMenu" },
   { semantic: "user", lucide: "User", tabler: "IconUser" },
   { semantic: "users", lucide: "Users", tabler: "IconUsers" },
+  { semantic: "circle-user", lucide: "CircleUser", tabler: "IconUserCircle" },
   { semantic: "mail", lucide: "Mail", tabler: "IconMail" },
   { semantic: "bell", lucide: "Bell", tabler: "IconBell" },
   { semantic: "calendar", lucide: "Calendar", tabler: "IconCalendar" },

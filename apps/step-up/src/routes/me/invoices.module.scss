@@ -1,0 +1,40 @@
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 0.5rem);
+}
+
+.row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 0.75rem);
+  padding: var(--space-4, 1rem);
+  border-radius: var(--radius-2xl, 1.25rem);
+  background: color-mix(in srgb, var(--color-fg) 4%, transparent);
+}
+
+.rowTop {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3, 0.75rem);
+}
+
+.amount {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.due {
+  margin: 0.25rem 0 0;
+  font-size: 0.8125rem;
+  color: color-mix(in srgb, var(--color-fg) 56%, transparent);
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  min-height: 2.75rem;
+}

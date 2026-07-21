@@ -1,0 +1,9 @@
+.feed {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4, 1rem);
+}
+
+.loadMore {
+  min-height: 1px;
+}

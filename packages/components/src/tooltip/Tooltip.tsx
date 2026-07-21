@@ -1,10 +1,13 @@
 import { cn, composeRefs } from "@dev-ui/core";
+import { useCanHover } from "@dev-ui/hooks";
 import { useInteractOutside } from "@react-aria/interactions";
+import { OverlayContainer, type Placement } from "@react-aria/overlays";
 import { useTooltip, useTooltipTrigger } from "@react-aria/tooltip";
 import { mergeProps } from "@react-aria/utils";
 import { useTooltipTriggerState } from "@react-stately/tooltip";
 import {
   Children,
+  type CSSProperties,
   cloneElement,
   createContext,
   isValidElement,
@@ -14,6 +17,7 @@ import {
   useLayoutEffect,
   useMemo,
   useRef,
+  useState,
 } from "react";
 import { findChildByDisplayName } from "../list-box/collection-utils";
 import styles from "./tooltip.module.scss";
@@ -22,8 +26,9 @@ import type {
   TooltipContextValue,
   TooltipProps,
 } from "./tooltip.types";
-import { useCanHover } from "./use-can-hover";
 import { useTouchTooltipTriggerProps } from "./use-touch-tooltip-trigger";
+
+const TOOLTIP_GAP = 8;
 
 const TooltipContext = createContext<TooltipContextValue | null>(null);
 
@@ -47,6 +52,45 @@ function getTriggerChild(children: ReactNode, contentDisplayName: string) {
     }
   });
   return found;
+}
+
+function getPortalStyle(placement: Placement, rect: DOMRect): CSSProperties {
+  const centerX = rect.left + rect.width / 2;
+  const centerY = rect.top + rect.height / 2;
+
+  if (placement === "right" || placement.startsWith("right")) {
+    return {
+      position: "fixed",
+      top: centerY,
+      left: rect.right + TOOLTIP_GAP,
+      transform: "translateY(-50%)",
+    };
+  }
+
+  if (placement === "left" || placement.startsWith("left")) {
+    return {
+      position: "fixed",
+      top: centerY,
+      left: rect.left - TOOLTIP_GAP,
+      transform: "translate(-100%, -50%)",
+    };
+  }
+
+  if (placement === "top" || placement.startsWith("top")) {
+    return {
+      position: "fixed",
+      top: rect.top - TOOLTIP_GAP,
+      left: centerX,
+      transform: "translate(-50%, -100%)",
+    };
+  }
+
+  return {
+    position: "fixed",
+    top: rect.bottom + TOOLTIP_GAP,
+    left: centerX,
+    transform: "translateX(-50%)",
+  };
 }
 
 function Tooltip({
@@ -131,12 +175,14 @@ function TooltipContent({
   children,
   className,
   placement = "bottom",
+  portal = false,
   ref,
   ...props
 }: TooltipContentProps) {
   const { state, tooltipProps, triggerRef, fullWidth, canHover } =
     useTooltipContext("TooltipContent");
   const tooltipRef = useRef<HTMLDivElement>(null);
+  const [portalStyle, setPortalStyle] = useState<CSSProperties>();
   const { tooltipProps: overlayTooltipProps } = useTooltip(
     mergeProps(tooltipProps, props) as Parameters<typeof useTooltip>[0],
     state,
@@ -151,7 +197,7 @@ function TooltipContent({
   });
 
   useLayoutEffect(() => {
-    if (!state.isOpen || !fullWidth) {
+    if (!state.isOpen || !fullWidth || portal) {
       return;
     }
 
@@ -176,25 +222,63 @@ function TooltipContent({
     return () => {
       observer.disconnect();
     };
-  }, [state.isOpen, fullWidth, triggerRef]);
+  }, [state.isOpen, fullWidth, portal, triggerRef]);
+
+  useLayoutEffect(() => {
+    if (!state.isOpen || !portal) {
+      setPortalStyle(undefined);
+      return;
+    }
+
+    const syncPosition = () => {
+      const trigger = triggerRef.current;
+      if (!trigger) {
+        return;
+      }
+      setPortalStyle(
+        getPortalStyle(placement, trigger.getBoundingClientRect()),
+      );
+    };
+
+    syncPosition();
+    window.addEventListener("scroll", syncPosition, true);
+    window.addEventListener("resize", syncPosition);
+
+    return () => {
+      window.removeEventListener("scroll", syncPosition, true);
+      window.removeEventListener("resize", syncPosition);
+    };
+  }, [state.isOpen, portal, placement, triggerRef]);
 
   if (!state.isOpen) {
     return null;
   }
 
-  return (
+  if (portal && !portalStyle) {
+    return null;
+  }
+
+  const content = (
     <div
       {...mergeProps(overlayTooltipProps, props)}
       ref={composeRefs(tooltipRef, ref)}
       data-tooltip-content=""
       data-placement={placement}
-      data-match-trigger-width={fullWidth ? "true" : undefined}
+      data-portal={portal ? "true" : undefined}
+      data-match-trigger-width={fullWidth && !portal ? "true" : undefined}
       role="tooltip"
       className={cn(styles.content, className)}
+      style={portal ? portalStyle : undefined}
     >
       {children}
     </div>
   );
+
+  if (portal) {
+    return <OverlayContainer>{content}</OverlayContainer>;
+  }
+
+  return content;
 }
 TooltipContent.displayName = "TooltipContent";
 

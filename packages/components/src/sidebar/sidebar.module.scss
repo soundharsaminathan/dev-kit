@@ -89,6 +89,20 @@
   overflow: hidden;
 }
 
+.root:not([data-expanded="true"]) {
+  [data-sidebar-label] {
+    display: none;
+  }
+
+  .heading {
+    visibility: hidden;
+  }
+
+  .item :global([data-button=""]) {
+    justify-content: center;
+  }
+}
+
 .section {
   position: relative;
   display: flex;
@@ -124,9 +138,13 @@
   min-width: 0;
   flex-direction: column;
   gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
 .item {
+  text-align: start;
   white-space: nowrap;
 
   :global([data-button=""]) {

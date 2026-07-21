@@ -1,0 +1,57 @@
+@use "@dev-ui/tokens/scss" as *;
+
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 0.75rem);
+}
+
+.heading {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.mediaIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  color: var(--color-primary);
+
+  svg {
+    width: 1.5rem;
+    height: 1.5rem;
+  }
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 0.75rem);
+}
+
+.map {
+  height: 14rem;
+  border-radius: var(--radius-xl, 1rem);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm, 0 1px 3px rgb(0 0 0 / 6%));
+}
+
+.loading {
+  height: 14rem;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-xl, 1rem);
+  background: color-mix(in srgb, var(--color-fg) 5%, transparent);
+  color: color-mix(in srgb, var(--color-fg) 62%, transparent);
+}
+
+.directions {
+  font-weight: 600;
+  color: var(--color-accent, var(--color-fg));
+  text-decoration: none;
+  font-size: 0.9375rem;
+}

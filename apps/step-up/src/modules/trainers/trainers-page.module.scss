@@ -1,0 +1,116 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 0.75rem);
+}
+
+.intro {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2, 0.5rem) var(--space-3, 0.75rem);
+  padding: var(--space-3, 0.75rem) var(--space-4, 1rem);
+  border-radius: var(--radius-2xl, 1.25rem);
+  background: var(--hero-gradient, var(--color-primary));
+  color: var(--color-primary-fg, #fff);
+  box-shadow: var(--shadow-sm, 0 1px 2px rgb(0 0 0 / 6%));
+}
+
+.introAction {
+  margin-inline-start: auto;
+}
+
+.introStat {
+  margin: 0;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  opacity: 0.92;
+}
+
+.introStat strong {
+  font-size: 1rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  opacity: 1;
+}
+
+.toolbar {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-3, 0.75rem);
+  min-width: 0;
+}
+
+.toolbarRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3, 0.75rem);
+  min-width: 0;
+}
+
+.viewToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1, 0.25rem);
+  margin-inline-start: auto;
+  flex-shrink: 0;
+}
+
+.viewChip {
+  position: relative;
+  flex-shrink: 0;
+  min-height: 2rem;
+  padding-inline: var(--space-3, 0.75rem);
+  border: 0;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-fg) 6%, transparent);
+  color: var(--color-fg);
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    background-color var(--motion-fast, 150ms) ease,
+    color var(--motion-fast, 150ms) ease,
+    transform var(--motion-fast, 150ms) ease;
+}
+
+.viewChip::before {
+  content: "";
+  position: absolute;
+  inset: calc((2.75rem - 100%) / -2) 0;
+}
+
+.viewChip:active {
+  transform: scale(var(--interaction-press-scale, 0.98));
+}
+
+.viewChipActive {
+  background: var(--color-primary);
+  color: var(--color-primary-fg, #fff);
+  font-weight: 600;
+}
+
+@media (max-width: 40rem) {
+  .toolbarRow {
+    flex-wrap: wrap;
+  }
+
+  .viewToggle {
+    width: 100%;
+    margin-inline-start: 0;
+    justify-content: flex-end;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .viewChip {
+    transition-duration: 0ms;
+  }
+
+  .viewChip:active {
+    transform: none;
+  }
+}

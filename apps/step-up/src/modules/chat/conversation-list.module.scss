@@ -1,0 +1,403 @@
+@use "@dev-ui/tokens/scss" as *;
+
+.root {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-fg) 10%, transparent);
+}
+
+.headerTitle {
+  font-weight: 700;
+  font-size: 1.05rem;
+}
+
+.headerActions {
+  position: relative;
+  z-index: 2;
+  flex-shrink: 0;
+}
+
+.headerActions .items {
+  gap: 0.15rem;
+}
+
+.toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  padding: 0.75rem 1rem 0.5rem;
+}
+
+.search {
+  width: 100%;
+}
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.filterBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.7rem;
+  border: 1px solid color-mix(in srgb, var(--color-fg) 14%, transparent);
+  border-radius: 999px;
+  background: transparent;
+  color: color-mix(in srgb, var(--color-fg) 72%, transparent);
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 550;
+  cursor: pointer;
+  transition:
+    background-color var(--motion-fast, 120ms) ease,
+    border-color var(--motion-fast, 120ms) ease,
+    color var(--motion-fast, 120ms) ease;
+
+  &:hover {
+    background: color-mix(in srgb, var(--color-fg) 6%, transparent);
+    color: var(--color-fg);
+  }
+
+  &[data-selected] {
+    background: color-mix(in srgb, var(--color-primary) 14%, transparent);
+    border-color: color-mix(in srgb, var(--color-primary) 35%, transparent);
+    color: var(--color-fg);
+  }
+}
+
+.filterCount {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.1rem;
+  height: 1.1rem;
+  padding-inline: 0.25rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-fg) 12%, transparent);
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 1;
+
+  [data-selected] & {
+    background: color-mix(in srgb, var(--color-primary) 22%, transparent);
+  }
+}
+
+.groupNameInput {
+  margin: 0.75rem 1rem 0;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid color-mix(in srgb, var(--color-fg) 15%, transparent);
+  border-radius: var(--radius-md, 0.5rem);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+
+  &:focus {
+    outline: none;
+    border-color: var(--color-primary);
+  }
+}
+
+.contactSearch {
+  padding: 0.75rem 1rem 0.25rem;
+}
+
+.itemMeta {
+  font-size: 0.75rem;
+  color: color-mix(in srgb, var(--color-fg) 55%, transparent);
+}
+
+.items {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  padding: 0.5rem;
+  gap: 0.15rem;
+}
+
+.sectionLabel {
+  margin: 0.35rem 0 0.1rem;
+  padding-inline: 0.65rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--color-fg) 45%, transparent);
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.55rem 0.65rem;
+  border: none;
+  border-radius: var(--radius-md, 0.5rem);
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  text-align: start;
+  width: 100%;
+  transition: background-color var(--motion-fast, 120ms) ease;
+
+  &:hover {
+    background: color-mix(in srgb, var(--color-fg) 6%, transparent);
+  }
+
+  &[data-active],
+  &[data-selected] {
+    background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+  }
+}
+
+.itemBody {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.itemTop,
+.itemBottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.itemName {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.itemTime {
+  flex-shrink: 0;
+  font-size: 0.75rem;
+  color: color-mix(in srgb, var(--color-fg) 55%, transparent);
+}
+
+.itemPreview {
+  font-size: 0.85rem;
+  color: color-mix(in srgb, var(--color-fg) 60%, transparent);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.unread {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  min-width: 1.25rem;
+  height: 1.25rem;
+  padding-inline: 0.3rem;
+  border-radius: 999px;
+  background: var(--color-primary);
+  color: var(--color-primary-fg, #fff);
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.empty {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3, 0.75rem);
+  padding: var(--space-8, 2rem) var(--space-5, 1.25rem);
+  text-align: center;
+}
+
+.emptyArt {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 5.5rem;
+  height: 5.5rem;
+  margin-bottom: var(--space-2, 0.5rem);
+}
+
+.emptyOrb {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-2xl, 1.25rem);
+  background: var(--hero-gradient, var(--color-primary));
+  box-shadow: var(--shadow-md, 0 8px 24px rgb(0 0 0 / 12%));
+  transform: rotate(-8deg);
+}
+
+.emptyOrbSecondary {
+  position: absolute;
+  inset: 0.55rem -0.4rem -0.4rem 0.55rem;
+  z-index: -1;
+  border-radius: var(--radius-2xl, 1.25rem);
+  background: color-mix(in srgb, var(--color-primary) 18%, var(--color-bg));
+  border: 1px solid color-mix(in srgb, var(--color-primary) 28%, transparent);
+  transform: rotate(12deg);
+}
+
+.emptyIcon {
+  position: relative;
+  z-index: 1;
+  width: 1.75rem;
+  height: 1.75rem;
+  color: var(--color-primary-fg, #fff);
+}
+
+.emptyTitle {
+  margin: 0;
+  max-width: 16rem;
+  font-size: 1.35rem;
+  font-weight: 750;
+  letter-spacing: -0.03em;
+  line-height: 1.2;
+}
+
+.emptyDescription {
+  margin: 0;
+  max-width: 17rem;
+  font-size: 0.9375rem;
+  line-height: 1.45;
+  color: color-mix(in srgb, var(--color-fg) 58%, transparent);
+}
+
+.emptyActions {
+  display: flex;
+  width: 100%;
+  max-width: 14rem;
+  margin-top: var(--space-2, 0.5rem);
+}
+
+.emptyFiltered {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3, 0.75rem);
+  padding: var(--space-8, 2rem) var(--space-5, 1.25rem);
+  text-align: center;
+}
+
+.emptyFilteredIcon {
+  display: grid;
+  place-items: center;
+  width: 3rem;
+  height: 3rem;
+  border-radius: var(--radius-xl, 1rem);
+  background: color-mix(in srgb, var(--color-primary) 14%, var(--color-bg));
+  color: var(--color-primary);
+}
+
+.emptyFilteredText {
+  margin: 0;
+  max-width: 16rem;
+  font-size: 0.9375rem;
+  line-height: 1.45;
+  color: color-mix(in srgb, var(--color-fg) 58%, transparent);
+}
+
+.listLoading {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  padding: 0.5rem;
+  gap: 0.15rem;
+}
+
+.skeletonItem {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.55rem 0.65rem;
+}
+
+.skeletonBody {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.skeletonTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.listLoading .skeletonFill {
+  flex-shrink: 0;
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--color-fg) 7%, #fff) 0%,
+    color-mix(in srgb, var(--color-fg) 7%, #fff) 40%,
+    color-mix(in srgb, var(--color-fg) 18%, #fff) 50%,
+    color-mix(in srgb, var(--color-fg) 7%, #fff) 60%,
+    color-mix(in srgb, var(--color-fg) 7%, #fff) 100%
+  );
+  background-size: 220% 100%;
+  animation: conversationSkeletonShimmer 1.35s ease-in-out infinite;
+}
+
+@keyframes conversationSkeletonShimmer {
+  0% {
+    background-position: 100% 0;
+  }
+
+  100% {
+    background-position: -100% 0;
+  }
+}
+
+.groupFooter {
+  padding: 0.75rem 1rem;
+  border-top: 1px solid color-mix(in srgb, var(--color-fg) 10%, transparent);
+}
+
+.error {
+  padding: 0 1rem 0.75rem;
+  color: var(--color-danger, #e5484d);
+  font-size: 0.85rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .item,
+  .filterBadge {
+    transition-duration: 0ms;
+  }
+
+  .emptyOrb,
+  .emptyOrbSecondary {
+    transform: none;
+  }
+
+  .listLoading .skeletonFill {
+    animation: none;
+    background: color-mix(in srgb, var(--color-fg) 8%, #fff);
+  }
+}

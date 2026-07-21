@@ -1,0 +1,114 @@
+@use "@dev-ui/tokens/scss" as *;
+
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 0.75rem);
+}
+
+.heading {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.body,
+.notes {
+  margin: 0;
+  line-height: 1.5;
+  color: color-mix(in srgb, var(--color-fg) 82%, transparent);
+}
+
+.amenityList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2, 0.5rem);
+}
+
+.amenity {
+  padding: 0.4rem 0.75rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-fg) 5%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-fg) 10%, transparent);
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.hoursList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.hoursRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  font-size: 0.9375rem;
+}
+
+.faqList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 0.5rem);
+}
+
+.faq {
+  border-radius: var(--radius-xl, 1rem);
+  border: 1px solid color-mix(in srgb, var(--color-fg) 10%, transparent);
+  background: color-mix(in srgb, var(--color-fg) 3%, transparent);
+  padding: 0.85rem 1rem;
+
+  summary {
+    font-weight: 650;
+    cursor: pointer;
+  }
+
+  p {
+    margin: 0.65rem 0 0;
+    line-height: 1.5;
+    color: color-mix(in srgb, var(--color-fg) 78%, transparent);
+  }
+}
+
+.quoteList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 0.75rem);
+}
+
+.quote {
+  padding: var(--space-4, 1rem);
+  border-radius: var(--radius-xl, 1rem);
+  background:
+    linear-gradient(
+      160deg,
+      color-mix(in srgb, var(--color-fg) 6%, transparent),
+      color-mix(in srgb, var(--color-fg) 2%, transparent)
+    );
+  border: 1px solid color-mix(in srgb, var(--color-fg) 8%, transparent);
+}
+
+.quoteText {
+  margin: 0;
+  font-size: 1.05rem;
+  line-height: 1.45;
+  letter-spacing: -0.01em;
+}
+
+.quoteMeta {
+  margin: 0.65rem 0 0;
+  font-size: 0.8125rem;
+  color: color-mix(in srgb, var(--color-fg) 58%, transparent);
+  font-weight: 600;
+}

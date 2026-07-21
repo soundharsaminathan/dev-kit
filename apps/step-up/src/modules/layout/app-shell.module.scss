@@ -1,0 +1,136 @@
+.shell {
+  --sidebar-current-width: var(--sidebar-width-icon);
+  height: 100%;
+  min-height: 100%;
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0;
+  overflow: hidden;
+  background: var(--surface-background, var(--color-bg));
+}
+
+.shell:has([data-sidebar=""][data-expanded="true"]) {
+  --sidebar-current-width: var(--sidebar-width);
+}
+
+.sidebarWrap {
+  position: sticky;
+  top: 0;
+  align-self: start;
+  height: 100dvh;
+  background: var(--card-background, #fff);
+  --color-sidebar: var(--card-background, #fff);
+  border-inline-end: 1px solid color-mix(in srgb, var(--color-fg) 8%, transparent);
+}
+
+.sidebarWrap :global([data-sidebar-header]) {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.sidebarTitle {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.sidebarWrap
+  :global([data-sidebar=""]:not([data-expanded="true"]) [data-sidebar-header]) {
+  justify-content: center;
+}
+
+.sidebarWrap :global([data-sidebar=""]) {
+  height: 100%;
+}
+
+.sidebarWrap :global([data-sidebar=""]) > div:first-child {
+  display: none;
+}
+
+.sidebarWrap :global([data-sidebar-container]) {
+  position: static;
+  height: 100%;
+}
+
+.workspace {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  height: 100dvh;
+  max-height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--surface-background, var(--color-bg));
+}
+
+.headerSlot {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  background: color-mix(in srgb, var(--color-bg) 82%, transparent);
+  backdrop-filter: blur(16px);
+  border-bottom: 1px solid color-mix(in srgb, var(--color-fg) 8%, transparent);
+}
+
+.main {
+  min-width: 0;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--surface-background, var(--color-bg));
+}
+
+.content {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.content > * {
+  flex-shrink: 0;
+}
+
+@media (max-width: 767px) {
+  .shell {
+    --sidebar-current-width: 0px;
+    grid-template-columns: 1fr;
+  }
+
+  .sidebarWrap {
+    display: none;
+  }
+
+  .workspace {
+    height: 100dvh;
+    max-height: 100dvh;
+  }
+
+  .content::after {
+    content: "";
+    flex-shrink: 0;
+    height: calc(6rem + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+@media (display-mode: standalone) {
+  .workspace:not([data-home-banner="true"]) {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+}

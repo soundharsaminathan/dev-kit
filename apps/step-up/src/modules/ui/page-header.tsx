@@ -1,0 +1,29 @@
+import { Heading } from "@dev-ui/components/heading";
+import { Text } from "@dev-ui/components/text";
+import type { ReactNode } from "react";
+import styles from "./page-header.module.scss";
+
+type PageHeaderProps = {
+  title: string;
+  description?: string;
+  actions?: ReactNode;
+};
+
+/** @deprecated Prefer Screen for new pages. Kept for remaining wizard screens. */
+export function PageHeader({ title, description, actions }: PageHeaderProps) {
+  return (
+    <div className={styles.header}>
+      <div className={styles.copy}>
+        <Heading level={1} className={styles.title}>
+          {title}
+        </Heading>
+        {description ? (
+          <Text slot="description" className={styles.description}>
+            {description}
+          </Text>
+        ) : null}
+      </div>
+      {actions ? <div className={styles.actions}>{actions}</div> : null}
+    </div>
+  );
+}

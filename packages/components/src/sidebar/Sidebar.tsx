@@ -1,4 +1,5 @@
 import { cn } from "@dev-ui/core";
+import { useKeyboardShortcut } from "@dev-ui/hooks";
 import { Icon } from "@dev-ui/icons";
 import {
   createContext,
@@ -8,7 +9,6 @@ import {
   useMemo,
   useState,
 } from "react";
-import { useKeyboardShortcut } from "../hooks/use-keyboard-shortcut";
 import { Tooltip, TooltipContent } from "../tooltip/Tooltip";
 import styles from "./sidebar.module.scss";
 import type {
@@ -247,9 +247,11 @@ function SidebarItem({
   const { isOpen } = useSidebarContext("SidebarItem");
 
   const content = tooltip ? (
-    <Tooltip isDisabled={isOpen} delay={0}>
+    <Tooltip isDisabled={isOpen} delay={0} fullWidth>
       {children}
-      <TooltipContent>{tooltip}</TooltipContent>
+      <TooltipContent placement="right" portal>
+        {tooltip}
+      </TooltipContent>
     </Tooltip>
   ) : (
     children
@@ -268,7 +270,9 @@ function SidebarTooltip({ content, children }: SidebarTooltipProps) {
   return (
     <Tooltip isDisabled={isOpen} delay={0}>
       {children}
-      <TooltipContent placement="right">{content}</TooltipContent>
+      <TooltipContent placement="right" portal>
+        {content}
+      </TooltipContent>
     </Tooltip>
   );
 }

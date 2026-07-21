@@ -1,0 +1,73 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5, 1.25rem);
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 0.5rem);
+}
+
+.sectionHeading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3, 0.75rem);
+  padding-inline: var(--space-1, 0.25rem);
+}
+
+.sectionLabel {
+  margin: 0;
+  padding-inline: var(--space-1, 0.25rem);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: color-mix(in srgb, var(--color-fg) 62%, transparent);
+}
+
+.sectionHeading .sectionLabel {
+  padding-inline: 0;
+}
+
+.sectionLink {
+  flex-shrink: 0;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--color-primary);
+  text-decoration: none;
+  min-height: 2.75rem;
+  display: inline-flex;
+  align-items: center;
+}
+
+.goalSheet {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4, 1rem);
+  padding-block: var(--space-2, 0.5rem);
+}
+
+.goalOptions {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-2, 0.5rem);
+}
+
+.goalOption {
+  min-height: 2.75rem;
+  border-radius: var(--radius-xl, 1rem);
+  border: 1px solid color-mix(in srgb, var(--color-fg) 12%, transparent);
+  background: var(--card-background, #fff);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.goalOption[data-selected="true"] {
+  border-color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+  color: var(--color-primary);
+}

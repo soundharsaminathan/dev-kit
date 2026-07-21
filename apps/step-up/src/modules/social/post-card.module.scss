@@ -1,0 +1,65 @@
+@use "@dev-ui/tokens/scss" as *;
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding-bottom: 1.25rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-fg) 10%, transparent);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.author {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-weight: 600;
+}
+
+.repostLabel {
+  font-size: 0.85rem;
+}
+
+.media {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  border-radius: var(--radius-md, 0.5rem);
+  background: color-mix(in srgb, var(--color-fg) 6%, transparent);
+  aspect-ratio: 1;
+}
+
+.image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.count {
+  position: absolute;
+  right: 0.6rem;
+  bottom: 0.6rem;
+  padding: 0.2rem 0.45rem;
+  border-radius: var(--radius-sm, 0.25rem);
+  background: color-mix(in srgb, var(--color-bg, #111) 75%, transparent);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.caption {
+  white-space: pre-wrap;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  align-items: center;
+}

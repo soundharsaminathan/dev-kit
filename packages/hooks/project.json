@@ -1,0 +1,49 @@
+{
+  "name": "hooks",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "packages/hooks/src",
+  "projectType": "library",
+  "tags": ["scope:shared", "type:lib"],
+  "targets": {
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "packages/hooks",
+        "command": "tsc -b --pretty false"
+      }
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "{workspaceRoot}",
+        "command": "vitest run --config vitest.config.ts --project hooks"
+      }
+    },
+    "test:ci": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "{workspaceRoot}",
+        "command": "pnpm exec tsx scripts/run-vitest-ci.ts hooks"
+      },
+      "outputs": [
+        "{workspaceRoot}/coverage/hooks",
+        "{workspaceRoot}/test-results/junit-hooks.xml"
+      ]
+    },
+    "test:coverage": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "{workspaceRoot}",
+        "command": "pnpm exec tsx scripts/run-vitest-ci.ts hooks --coverage-only"
+      },
+      "outputs": ["{workspaceRoot}/coverage/hooks"]
+    },
+    "build": {
+      "executor": "nx:run-script",
+      "options": {
+        "script": "build"
+      },
+      "outputs": ["{projectRoot}/dist"]
+    }
+  }
+}

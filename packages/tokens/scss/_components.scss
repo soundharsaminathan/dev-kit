@@ -18,6 +18,7 @@
   --btn-default-background: var(--color-neutral);
   --btn-primary-background: var(--color-primary);
   --btn-primary-foreground: var(--color-fg-on-primary);
+  --btn-primary-hover-background: var(--color-primary-hover);
   --btn-icon-size: var(--font-size-sm);
   --btn-icon-size-xs: var(--font-size-xs);
   --btn-icon-size-sm: var(--font-size-md);
@@ -32,7 +33,7 @@
   --btn-disabled-foreground: var(--disabled-foreground);
   --btn-disabled-border-color: var(--disabled-border-color);
   --btn-disabled-shadow: var(--disabled-shadow);
-  --btn-primary-disabled-background: var(--btn-disabled-background);
+  --btn-primary-disabled-background: var(--neutral-500);
   --btn-primary-disabled-foreground: var(--color-fg-primary-disabled);
   --btn-primary-disabled-border-color: var(--btn-disabled-border-color);
   --btn-primary-disabled-shadow: var(--btn-disabled-shadow);
@@ -42,7 +43,7 @@
   --input-font-size: var(--font-size-sm);
   --input-line-height: var(--line-height-tight);
   --input-padding-inline: 0.625rem;
-  --input-focus-ring-width: 2px;
+  --input-focus-ring-width: 1px;
   --input-shadow: var(--shadow-none);
   --input-background: var(--color-field);
   --input-border-color: var(--color-border-field);

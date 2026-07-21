@@ -1,0 +1,114 @@
+name: Step Up Deploy
+
+on:
+  push:
+    branches: [main, step-up]
+    paths:
+      - "apps/step-up/**"
+      - "apps/step-up-api/**"
+      - "packages/components/**"
+      - "packages/tokens/**"
+      - "packages/core/**"
+      - "packages/icons/**"
+      - "packages/icons-packs/**"
+      - ".github/workflows/step-up-deploy.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  test-api:
+    name: Step Up API tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/setup
+      - name: Generate Prisma client
+        run: pnpm --filter @step-up/api prisma:generate
+      - name: Test API
+        run: pnpm exec nx run step-up-api:test
+      - name: Typecheck API
+        run: pnpm exec nx run step-up-api:typecheck
+
+  test-web:
+    name: Step Up web typecheck
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/setup
+      - name: Typecheck web
+        run: pnpm exec nx run step-up:typecheck
+      - name: Test web
+        run: pnpm exec nx run step-up:test
+
+  deploy-web:
+    name: Deploy Cloudflare Pages
+    needs: [test-web]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/step-up'
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/setup
+      - name: Build Step Up web
+        run: pnpm exec nx run step-up:build
+        env:
+          VITE_API_URL: ${{ vars.STEP_UP_API_URL }}
+          VITE_AUTH_BYPASS: "false"
+          VITE_FIREBASE_API_KEY: ${{ secrets.STEP_UP_FIREBASE_API_KEY }}
+          VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.STEP_UP_FIREBASE_AUTH_DOMAIN }}
+          VITE_FIREBASE_PROJECT_ID: ${{ secrets.STEP_UP_FIREBASE_PROJECT_ID }}
+          VITE_FIREBASE_APP_ID: ${{ secrets.STEP_UP_FIREBASE_APP_ID }}
+          VITE_SENTRY_DSN: ${{ secrets.STEP_UP_SENTRY_DSN_WEB }}
+      - name: Publish to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy apps/step-up/dist --project-name=step-up
+
+  deploy-api:
+    name: Deploy Cloud Run
+    needs: [test-api]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/step-up'
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker ${{ vars.GCP_REGION }}-docker.pkg.dev --quiet
+      - name: Build and push image
+        run: |
+          IMAGE="${{ vars.GCP_REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/step-up/api:${{ github.sha }}"
+          docker build -f apps/step-up-api/Dockerfile -t "$IMAGE" apps/step-up-api
+          docker push "$IMAGE"
+          echo "IMAGE=$IMAGE" >> "$GITHUB_ENV"
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud run deploy step-up-api \
+            --image "$IMAGE" \
+            --region "${{ vars.GCP_REGION }}" \
+            --platform managed \
+            --allow-unauthenticated \
+            --min-instances 0 \
+            --max-instances 3 \
+            --port 8080 \
+            --set-secrets=DATABASE_URL=STEP_UP_DATABASE_URL:latest,FIREBASE_PRIVATE_KEY=STEP_UP_FIREBASE_PRIVATE_KEY:latest,SESSION_QR_SECRET=STEP_UP_SESSION_QR_SECRET:latest,JOBS_SECRET=STEP_UP_JOBS_SECRET:latest,SENTRY_DSN=STEP_UP_SENTRY_DSN_API:latest \
+            --set-env-vars=AUTH_BYPASS=false,FIREBASE_PROJECT_ID=${{ secrets.STEP_UP_FIREBASE_PROJECT_ID }},FIREBASE_CLIENT_EMAIL=${{ secrets.STEP_UP_FIREBASE_CLIENT_EMAIL }},SENTRY_ENVIRONMENT=production,R2_ACCOUNT_ID=${{ secrets.R2_ACCOUNT_ID }},R2_BUCKET=${{ secrets.R2_BUCKET }},R2_PUBLIC_URL=${{ secrets.R2_PUBLIC_URL }}
+      - name: Prisma migrate deploy
+        run: |
+          pnpm install --filter @step-up/api...
+          pnpm --filter @step-up/api exec prisma migrate deploy
+        env:
+          DATABASE_URL: ${{ secrets.STEP_UP_DATABASE_URL }}

@@ -1,0 +1,103 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4, 1rem);
+}
+
+.contest {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 0.75rem);
+  padding: var(--space-4, 1rem);
+  border-radius: var(--radius-2xl, 1.25rem);
+  background: color-mix(in srgb, var(--color-fg) 4%, transparent);
+}
+
+.contestTitle {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.contestMeta {
+  margin: 0.25rem 0 0;
+  font-size: 0.8125rem;
+  color: color-mix(in srgb, var(--color-fg) 56%, transparent);
+}
+
+.contestDesc {
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: color-mix(in srgb, var(--color-fg) 72%, transparent);
+}
+
+.categories {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 0.5rem);
+}
+
+.categoryRow {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 0.5rem);
+  min-height: 2.75rem;
+  padding: var(--space-3, 0.75rem);
+  border-radius: var(--radius-xl, 1rem);
+  background: color-mix(in srgb, var(--color-bg) 80%, transparent);
+}
+
+.categoryTop {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2, 0.5rem);
+}
+
+.categoryName {
+  font-weight: 600;
+  font-size: 0.9375rem;
+}
+
+.categoryMeta {
+  font-size: 0.8125rem;
+  color: color-mix(in srgb, var(--color-fg) 56%, transparent);
+}
+
+.registerForm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4, 1rem);
+}
+
+.fieldGroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 0.5rem);
+}
+
+.fieldLabel {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: color-mix(in srgb, var(--color-fg) 62%, transparent);
+}
+
+.checkList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1, 0.25rem);
+}
+
+.checkItem {
+  min-height: 2.75rem;
+  display: flex;
+  align-items: center;
+}
+
+.alert {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--color-danger, #ff3b30);
+}

@@ -13,6 +13,7 @@ import {
   type HTMLAttributes,
   type RefObject,
   useContext,
+  useEffect,
   useLayoutEffect,
   useRef,
   useState,
@@ -30,6 +31,7 @@ import type {
 } from "./drawer.types";
 
 const DISMISS_THRESHOLD = 100;
+const EXIT_ANIMATION_MS = 550;
 
 const DrawerPlacementContext = createContext<DrawerPlacement>("bottom");
 
@@ -189,12 +191,18 @@ function Drawer({
   style,
 }: DrawerProps) {
   const panelRef = useRef<HTMLDivElement>(null);
-  const [isStarting, setIsStarting] = useState(false);
+  const openFrameRef = useRef<number | undefined>(undefined);
   const state = useOverlayTriggerState({
     ...(isOpen !== undefined ? { isOpen } : {}),
     ...(defaultOpen !== undefined ? { defaultOpen } : {}),
     ...(onOpenChange !== undefined ? { onOpenChange } : {}),
   });
+  const isPresentRef = useRef(state.isOpen);
+  const [isPresent, setIsPresent] = useState(state.isOpen);
+  const [isStarting, setIsStarting] = useState(state.isOpen);
+  const [isEnding, setIsEnding] = useState(false);
+
+  isPresentRef.current = isPresent;
 
   const { modalProps, underlayProps } = useModalOverlay(
     {
@@ -213,26 +221,74 @@ function Drawer({
   });
 
   useLayoutEffect(() => {
-    if (!state.isOpen) {
+    if (state.isOpen) {
+      setIsPresent(true);
+      setIsEnding(false);
+      setIsStarting(true);
+
+      openFrameRef.current = requestAnimationFrame(() => {
+        openFrameRef.current = requestAnimationFrame(() => {
+          setIsStarting(false);
+        });
+      });
+
+      const focusTarget = getInitialFocusTarget(panelRef.current);
+      if (focusTarget !== true) {
+        focusTarget.focus();
+      }
+
+      return () => {
+        if (openFrameRef.current !== undefined) {
+          cancelAnimationFrame(openFrameRef.current);
+        }
+      };
+    }
+
+    if (isPresentRef.current) {
+      setIsStarting(false);
+      setIsEnding(true);
+    }
+  }, [state.isOpen]);
+
+  useEffect(() => {
+    if (!isEnding) {
       return;
     }
 
-    setIsStarting(true);
-    const frame = requestAnimationFrame(() => {
-      setIsStarting(false);
-    });
-
-    const focusTarget = getInitialFocusTarget(panelRef.current);
-    if (focusTarget !== true) {
-      focusTarget.focus();
+    const panel = panelRef.current;
+    if (!panel) {
+      setIsPresent(false);
+      setIsEnding(false);
+      return;
     }
 
-    return () => {
-      cancelAnimationFrame(frame);
+    let finished = false;
+    const finishExit = () => {
+      if (finished) {
+        return;
+      }
+      finished = true;
+      setIsPresent(false);
+      setIsEnding(false);
     };
-  }, [state.isOpen]);
 
-  if (!state.isOpen) {
+    const onTransitionEnd = (event: TransitionEvent) => {
+      if (event.target !== panel || event.propertyName !== "transform") {
+        return;
+      }
+      finishExit();
+    };
+
+    panel.addEventListener("transitionend", onTransitionEnd);
+    const timeout = window.setTimeout(finishExit, EXIT_ANIMATION_MS);
+
+    return () => {
+      panel.removeEventListener("transitionend", onTransitionEnd);
+      window.clearTimeout(timeout);
+    };
+  }, [isEnding]);
+
+  if (!isPresent) {
     return (
       <DrawerContext.Provider value={{ placement, moveProps: {} }}>
         {null}
@@ -253,6 +309,8 @@ function Drawer({
                   aria-label="Dismiss"
                   className={styles.backdrop}
                   data-open=""
+                  data-starting-style={isStarting ? "" : undefined}
+                  data-ending-style={isEnding ? "" : undefined}
                   onClick={() => {
                     state.close();
                   }}
@@ -262,6 +320,8 @@ function Drawer({
                   {...underlayProps}
                   className={styles.backdrop}
                   data-open=""
+                  data-starting-style={isStarting ? "" : undefined}
+                  data-ending-style={isEnding ? "" : undefined}
                 />
               )}
               <div
@@ -275,6 +335,7 @@ function Drawer({
                   data-open=""
                   data-swipe-disabled={swipeToDismiss ? undefined : ""}
                   data-starting-style={isStarting ? "" : undefined}
+                  data-ending-style={isEnding ? "" : undefined}
                   className={cn(
                     styles.popup,
                     styles[`popup-${placement}`],

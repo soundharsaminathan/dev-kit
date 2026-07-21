@@ -4,7 +4,7 @@
   "sourceRoot": "packages/components/src",
   "projectType": "library",
   "tags": ["scope:components", "type:lib"],
-  "implicitDependencies": ["core", "tokens"],
+  "implicitDependencies": ["core", "hooks", "tokens"],
   "targets": {
     "typecheck": {
       "executor": "nx:run-commands",
@@ -49,7 +49,12 @@
         "script": "build"
       },
       "outputs": ["{projectRoot}/dist"],
-      "dependsOn": ["core:build", "tokens:build:tokens", "icons:build"]
+      "dependsOn": [
+        "core:build",
+        "hooks:build",
+        "tokens:build:tokens",
+        "icons:build"
+      ]
     }
   }
 }

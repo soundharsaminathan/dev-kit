@@ -1,0 +1,66 @@
+import {
+  Body,
+  Controller,
+  Get,
+  Inject,
+  Param,
+  Patch,
+  Post,
+  UseGuards,
+} from "@nestjs/common";
+import { UserRole } from "@prisma/client";
+import { IsDateString, IsString } from "class-validator";
+import { AttendanceService } from "../attendance/attendance.service";
+import { AuthGuard } from "../auth/auth.guard";
+import { Roles } from "../auth/roles.decorator";
+import { RolesGuard } from "../auth/roles.guard";
+import { SessionsService } from "./sessions.service";
+
+class CreateSessionDto {
+  @IsString()
+  batchId!: string;
+
+  @IsDateString()
+  startsAt!: string;
+
+  @IsDateString()
+  endsAt!: string;
+}
+
+@Controller("sessions")
+@UseGuards(AuthGuard, RolesGuard)
+export class SessionsController {
+  constructor(
+    @Inject(SessionsService) private readonly sessionsService: SessionsService,
+    @Inject(AttendanceService)
+    private readonly attendanceService: AttendanceService,
+  ) {}
+
+  @Get("batch/:batchId")
+  listByBatch(@Param("batchId") batchId: string) {
+    return this.sessionsService.listByBatch(batchId);
+  }
+
+  @Get(":id")
+  getById(@Param("id") id: string) {
+    return this.sessionsService.getById(id);
+  }
+
+  @Get(":id/qr")
+  @Roles(UserRole.OWNER, UserRole.STAFF, UserRole.TRAINER)
+  qrToken(@Param("id") id: string) {
+    return this.attendanceService.createSessionQrToken(id);
+  }
+
+  @Post()
+  @Roles(UserRole.OWNER, UserRole.STAFF, UserRole.TRAINER)
+  create(@Body() dto: CreateSessionDto) {
+    return this.sessionsService.create(dto);
+  }
+
+  @Patch(":id/complete")
+  @Roles(UserRole.OWNER, UserRole.STAFF, UserRole.TRAINER)
+  complete(@Param("id") id: string) {
+    return this.sessionsService.complete(id);
+  }
+}

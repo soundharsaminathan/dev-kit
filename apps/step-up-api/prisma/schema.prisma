@@ -1,0 +1,941 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  OWNER
+  STAFF
+  TRAINER
+  STUDENT
+  PARENT
+}
+
+enum BatchCategory {
+  KIDS
+  ADULTS
+}
+
+enum EnrollmentMode {
+  STAFF_ONLY
+  SELF_JOIN
+}
+
+enum PlanType {
+  FIXED_BATCH
+  UNLIMITED_KIDS
+  UNLIMITED_ADULTS
+}
+
+enum BillingCadence {
+  MONTHLY
+  FULL_BATCH
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  DUE
+  EXPIRED
+}
+
+enum InvoiceStatus {
+  PENDING
+  PAID
+  OVERDUE
+}
+
+enum PaymentMethod {
+  CASH
+  UPI_MANUAL
+}
+
+enum SessionStatus {
+  SCHEDULED
+  COMPLETED
+  CANCELLED
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+}
+
+enum AttendanceSource {
+  TRAINER
+  DESK
+  QR
+}
+
+enum BookingType {
+  OPEN_SEAT
+  TRIAL
+  PRIVATE
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+}
+
+enum NotificationType {
+  MISSED_SESSION
+  PLAN_EXPIRING
+  PAYMENT_OVERDUE
+  RENEWED
+  NOT_RENEWED
+  NEW_FOLLOW
+}
+
+enum ProfileVisibility {
+  PUBLIC
+  PRIVATE
+}
+
+enum FollowRequestStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}
+
+enum ConversationType {
+  DM
+  GROUP
+  BATCH
+}
+
+enum ConversationRole {
+  ADMIN
+  MEMBER
+}
+
+enum MessageType {
+  TEXT
+  IMAGE
+  AUDIO
+  POLL
+  EVENT
+  LOCATION
+  SYSTEM
+}
+
+enum EventRsvpStatus {
+  GOING
+  MAYBE
+  DECLINED
+}
+
+enum ContestStatus {
+  DRAFT
+  OPEN
+  CLOSED
+  COMPLETED
+  CANCELLED
+}
+
+enum ContestEntryType {
+  INDIVIDUAL
+  GROUP
+}
+
+enum ContestEntryStatus {
+  PENDING
+  CONFIRMED
+  WITHDRAWN
+}
+
+enum BranchMediaKind {
+  IMAGE
+  VIDEO
+}
+
+enum BranchMediaCategory {
+  STUDIO
+  RECEPTION
+  PRACTICE_HALL
+  EVENTS
+  FACILITIES
+  OTHER
+}
+
+model User {
+  id                String            @id @default(cuid())
+  firebaseUid       String            @unique
+  encryptedKey      String
+  piiCiphertext     String
+  piiIv             String
+  emailHash         String
+  role              UserRole
+  photoUrl          String?
+  bannerUrl         String?
+  coverUrl          String?
+  styles            String[]
+  profileVisibility ProfileVisibility @default(PRIVATE)
+  studioId          String?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  studio            Studio?           @relation("StudioMembers", fields: [studioId], references: [id])
+  ownedStudio       Studio?           @relation("StudioOwner")
+  parentLinks       ParentChild[]     @relation("Parent")
+  childLinks        ParentChild[]     @relation("Child")
+  createdBatches    Batch[]           @relation("BatchCreator")
+  trainedBatches    BatchTrainer[]
+  batchEnrollments  BatchEnrollment[]
+  batchRatings      BatchRating[]
+  createdPlans      Plan[]            @relation("PlanCreator")
+  subscriptions     Subscription[]
+  invoices          Invoice[]
+  markedAttendance  Attendance[]      @relation("AttendanceMarker")
+  attendanceRecords Attendance[]      @relation("StudentAttendance")
+  bookings          Booking[]         @relation("StudentBookings")
+  trainerBookings   Booking[]         @relation("TrainerBookings")
+  notifications     Notification[]
+  pushDevices       PushDevice[]
+  posts             Post[]            @relation("PostAuthor")
+  postLikes         PostLike[]
+  postComments      PostComment[]     @relation("CommentAuthor")
+  following         Follow[]          @relation("Following")
+  followers         Follow[]          @relation("Followers")
+  followRequestsSent     FollowRequest[] @relation("FollowRequester")
+  followRequestsReceived FollowRequest[] @relation("FollowTarget")
+  conversationsCreated    Conversation[]       @relation("ConversationCreator")
+  conversationMemberships ConversationMember[]
+  messagesSent            Message[]            @relation("MessageSender")
+  messageReactions        MessageReaction[]
+  pollVotes               PollVote[]
+  eventRsvps              ChatEventRsvp[]
+  contestsCreated         Contest[]            @relation("ContestCreator")
+  contestJudgeships       ContestJudge[]
+  contestEntriesRegistered ContestEntry[]      @relation("ContestEntryRegistrar")
+  contestEntryMemberships ContestEntryMember[]
+  contestScores           ContestScore[]
+  contestCertificatesIssued ContestCertificate[] @relation("ContestCertificateIssuer")
+  studentGoals              StudentGoal[]
+  studentAchievements       StudentAchievement[]
+
+  @@index([studioId, emailHash])
+}
+
+model ParentChild {
+  id           String @id @default(cuid())
+  parentUserId String
+  childUserId  String
+
+  parent User @relation("Parent", fields: [parentUserId], references: [id], onDelete: Cascade)
+  child  User @relation("Child", fields: [childUserId], references: [id], onDelete: Cascade)
+
+  @@unique([parentUserId, childUserId])
+}
+
+model Studio {
+  id      String   @id @default(cuid())
+  name    String
+  address String?
+  photos  String[]
+  contact String?
+  ownerId String   @unique
+
+  owner                User                 @relation("StudioOwner", fields: [ownerId], references: [id])
+  members              User[]               @relation("StudioMembers")
+  settings             StudioSettings?
+  branches             StudioBranch[]
+  batches              Batch[]
+  plans                Plan[]
+  invoices             Invoice[]
+  bookings             Booking[]
+  certificateTemplates CertificateTemplate[]
+  contests             Contest[]
+  studentGoals         StudentGoal[]
+  achievements         Achievement[]
+}
+
+model StudioSettings {
+  studioId           String @id
+  graceDays          Int    @default(3)
+  expireAlertDays    Int    @default(7)
+  platformFeePercent Float  @default(5)
+
+  studio Studio @relation(fields: [studioId], references: [id], onDelete: Cascade)
+}
+
+model StudioBranch {
+  id           String   @id @default(cuid())
+  studioId     String
+  name         String
+  address      String
+  latitude     Float?
+  longitude    Float?
+  description  String?
+  coverMediaId String?  @unique
+  amenities    String[] @default([])
+  openingHours Json?
+  pricingBlurb String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  studio       Studio              @relation(fields: [studioId], references: [id], onDelete: Cascade)
+  coverMedia   BranchMedia?        @relation("BranchCover", fields: [coverMediaId], references: [id], onDelete: SetNull)
+  media        BranchMedia[]       @relation("BranchMediaItems")
+  faqs         BranchFaq[]
+  testimonials BranchTestimonial[]
+  batches      Batch[]
+  contests     Contest[]
+
+  @@index([studioId])
+}
+
+model BranchMedia {
+  id         String              @id @default(cuid())
+  branchId   String
+  kind       BranchMediaKind
+  category   BranchMediaCategory @default(STUDIO)
+  objectKey  String
+  caption    String?
+  altText    String?
+  sortOrder  Int                 @default(0)
+  metadata   Json?
+  archivedAt DateTime?
+  createdAt  DateTime            @default(now())
+  updatedAt  DateTime            @updatedAt
+
+  branch   StudioBranch  @relation("BranchMediaItems", fields: [branchId], references: [id], onDelete: Cascade)
+  coverFor StudioBranch? @relation("BranchCover")
+
+  @@index([branchId, sortOrder])
+  @@index([branchId, archivedAt])
+}
+
+model BranchFaq {
+  id        String   @id @default(cuid())
+  branchId  String
+  question  String
+  answer    String
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  branch StudioBranch @relation(fields: [branchId], references: [id], onDelete: Cascade)
+
+  @@index([branchId, sortOrder])
+}
+
+model BranchTestimonial {
+  id         String   @id @default(cuid())
+  branchId   String
+  quote      String
+  authorName String
+  rating     Int?
+  sortOrder  Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  branch StudioBranch @relation(fields: [branchId], references: [id], onDelete: Cascade)
+
+  @@index([branchId, sortOrder])
+}
+
+model CertificateTemplate {
+  id        String   @id @default(cuid())
+  studioId  String
+  name      String
+  isSample  Boolean  @default(false)
+  layoutJson Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  studio            Studio             @relation(fields: [studioId], references: [id], onDelete: Cascade)
+  batches           Batch[]
+  contests          Contest[]
+  contestCategories ContestCategory[]
+  contestCertificates ContestCertificate[]
+
+  @@index([studioId])
+}
+
+model Batch {
+  id                    String         @id @default(cuid())
+  studioId              String
+  branchId              String
+  name                  String
+  category              BatchCategory
+  danceCategories       Json
+  scheduleJson          Json
+  capacity              Int
+  enrollmentMode        EnrollmentMode
+  creatorId             String
+  monthlyPlanId         String?
+  fullBatchPlanId       String?
+  active                Boolean        @default(true)
+  certificationEnabled  Boolean        @default(false)
+  certificateTemplateId String?
+  coverImageUrl         String?
+  ratingAvg             Float?
+  ratingCount           Int            @default(0)
+
+  studio              Studio               @relation(fields: [studioId], references: [id], onDelete: Cascade)
+  branch              StudioBranch         @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  creator             User                 @relation("BatchCreator", fields: [creatorId], references: [id])
+  monthlyPlan         Plan?                @relation("BatchMonthlyPlan", fields: [monthlyPlanId], references: [id])
+  fullBatchPlan       Plan?                @relation("BatchFullBatchPlan", fields: [fullBatchPlanId], references: [id])
+  certificateTemplate CertificateTemplate? @relation(fields: [certificateTemplateId], references: [id], onDelete: SetNull)
+  trainers            BatchTrainer[]
+  enrollments         BatchEnrollment[]
+  sessions            Session[]
+  conversation        Conversation?
+  bookings            Booking[]
+  ratings             BatchRating[]
+}
+
+model BatchRating {
+  id        String   @id @default(cuid())
+  batchId   String
+  studentId String
+  rating    Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  batch   Batch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  student User  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([batchId, studentId])
+  @@index([batchId])
+  @@index([studentId])
+}
+
+model BatchTrainer {
+  batchId   String
+  trainerId String
+
+  batch   Batch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  trainer User  @relation(fields: [trainerId], references: [id], onDelete: Cascade)
+
+  @@id([batchId, trainerId])
+}
+
+model BatchEnrollment {
+  id        String @id @default(cuid())
+  batchId   String
+  studentId String
+
+  batch   Batch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  student User  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([batchId, studentId])
+}
+
+model Plan {
+  id             String         @id @default(cuid())
+  studioId       String
+  creatorId      String
+  name           String
+  type           PlanType
+  billingCadence BillingCadence @default(MONTHLY)
+  classCredits   Int?
+  priceMonthly   Decimal        @db.Decimal(10, 2)
+  active         Boolean        @default(true)
+
+  studio          Studio         @relation(fields: [studioId], references: [id], onDelete: Cascade)
+  creator         User           @relation("PlanCreator", fields: [creatorId], references: [id])
+  monthlyBatches  Batch[]        @relation("BatchMonthlyPlan")
+  fullBatchBatches Batch[]       @relation("BatchFullBatchPlan")
+  subscriptions   Subscription[]
+}
+
+model Subscription {
+  id               String             @id @default(cuid())
+  studentId        String
+  planId           String
+  periodStart      DateTime
+  periodEnd        DateTime
+  status           SubscriptionStatus
+  creditsRemaining Int?
+
+  student  User      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  plan     Plan      @relation(fields: [planId], references: [id], onDelete: Cascade)
+  invoices Invoice[]
+}
+
+model Invoice {
+  id                 String         @id @default(cuid())
+  studentId          String
+  subscriptionId     String?
+  amount             Decimal        @db.Decimal(10, 2)
+  status             InvoiceStatus
+  paymentMethod      PaymentMethod?
+  paidAt             DateTime?
+  platformFeePercent Float
+  studioId           String
+
+  student      User          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  subscription Subscription? @relation(fields: [subscriptionId], references: [id])
+  studio       Studio        @relation(fields: [studioId], references: [id], onDelete: Cascade)
+}
+
+model Session {
+  id       String        @id @default(cuid())
+  batchId  String
+  startsAt DateTime
+  endsAt   DateTime
+  status   SessionStatus @default(SCHEDULED)
+
+  batch      Batch        @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  attendance Attendance[]
+  bookings   Booking[]
+}
+
+model Attendance {
+  id         String           @id @default(cuid())
+  sessionId  String
+  studentId  String
+  status     AttendanceStatus
+  markedById String
+  source     AttendanceSource
+
+  session  Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  student  User    @relation("StudentAttendance", fields: [studentId], references: [id], onDelete: Cascade)
+  markedBy User    @relation("AttendanceMarker", fields: [markedById], references: [id])
+
+  @@unique([sessionId, studentId])
+}
+
+model Booking {
+  id        String        @id @default(cuid())
+  studioId  String
+  studentId String
+  type      BookingType
+  batchId   String?
+  sessionId String?
+  trainerId String?
+  status    BookingStatus @default(PENDING)
+  notes     String?
+  startsAt  DateTime?
+  endsAt    DateTime?
+
+  studio  Studio   @relation(fields: [studioId], references: [id], onDelete: Cascade)
+  student User     @relation("StudentBookings", fields: [studentId], references: [id], onDelete: Cascade)
+  batch   Batch?   @relation(fields: [batchId], references: [id], onDelete: SetNull)
+  session Session? @relation(fields: [sessionId], references: [id])
+  trainer User?    @relation("TrainerBookings", fields: [trainerId], references: [id])
+
+  @@index([batchId])
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  type      NotificationType
+  title     String
+  body      String
+  readAt    DateTime?
+  createdAt DateTime         @default(now())
+  meta      Json?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model PushDevice {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Follow {
+  followerId  String
+  followingId String
+  createdAt   DateTime @default(now())
+
+  follower  User @relation("Following", fields: [followerId], references: [id], onDelete: Cascade)
+  following User @relation("Followers", fields: [followingId], references: [id], onDelete: Cascade)
+
+  @@id([followerId, followingId])
+  @@index([followingId])
+}
+
+model FollowRequest {
+  id          String              @id @default(cuid())
+  requesterId String
+  targetId    String
+  status      FollowRequestStatus @default(PENDING)
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  requester User @relation("FollowRequester", fields: [requesterId], references: [id], onDelete: Cascade)
+  target    User @relation("FollowTarget", fields: [targetId], references: [id], onDelete: Cascade)
+
+  @@unique([requesterId, targetId])
+  @@index([targetId, status])
+}
+
+model Post {
+  id         String   @id @default(cuid())
+  authorId   String
+  caption    String?
+  imageUrls  String[]
+  repostOfId String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  author   User          @relation("PostAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  repostOf Post?         @relation("PostReposts", fields: [repostOfId], references: [id], onDelete: SetNull)
+  reposts  Post[]        @relation("PostReposts")
+  likes    PostLike[]
+  comments PostComment[]
+
+  @@index([authorId, createdAt])
+  @@index([repostOfId])
+}
+
+model PostLike {
+  postId    String
+  userId    String
+  createdAt DateTime @default(now())
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([postId, userId])
+  @@index([userId])
+}
+
+model PostComment {
+  id        String   @id @default(cuid())
+  postId    String
+  authorId  String
+  body      String
+  createdAt DateTime @default(now())
+
+  post   Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  author User @relation("CommentAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([postId, createdAt])
+}
+
+model Conversation {
+  id            String           @id @default(cuid())
+  type          ConversationType
+  title         String?
+  imageUrl      String?
+  batchId       String?          @unique
+  dmKey         String?          @unique
+  encryptedKey  String
+  createdById   String?
+  lastMessageAt DateTime?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  batch     Batch?               @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  createdBy User?                @relation("ConversationCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  members   ConversationMember[]
+  messages  Message[]
+
+  @@index([lastMessageAt])
+}
+
+model ConversationMember {
+  conversationId String
+  userId         String
+  role           ConversationRole @default(MEMBER)
+  lastReadAt     DateTime?
+  joinedAt       DateTime         @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([conversationId, userId])
+  @@index([userId])
+}
+
+model Message {
+  id              String      @id @default(cuid())
+  conversationId  String
+  senderId        String
+  clientMessageId String?
+  type            MessageType
+  ciphertext      String?
+  iv              String?
+  imageUrls       String[]
+  audioUrl        String?
+  audioDuration   Int?
+  replyToId       String?
+  deletedAt       DateTime?
+  createdAt       DateTime    @default(now())
+
+  conversation Conversation      @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       User              @relation("MessageSender", fields: [senderId], references: [id], onDelete: Cascade)
+  replyTo      Message?          @relation("MessageReplies", fields: [replyToId], references: [id], onDelete: SetNull)
+  replies      Message[]         @relation("MessageReplies")
+  reactions    MessageReaction[]
+  poll         Poll?
+  event        ChatEvent?
+
+  @@unique([conversationId, senderId, clientMessageId])
+  @@index([conversationId, createdAt])
+}
+
+model MessageReaction {
+  messageId String
+  userId    String
+  emoji     String
+  createdAt DateTime @default(now())
+
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([messageId, userId, emoji])
+  @@index([userId])
+}
+
+model Poll {
+  id          String    @id @default(cuid())
+  messageId   String    @unique
+  question    String
+  multiSelect Boolean   @default(false)
+  closesAt    DateTime?
+  createdAt   DateTime  @default(now())
+
+  message Message      @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  options PollOption[]
+}
+
+model PollOption {
+  id     String @id @default(cuid())
+  pollId String
+  label  String
+  order  Int
+
+  poll  Poll       @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  votes PollVote[]
+
+  @@index([pollId])
+}
+
+model PollVote {
+  optionId  String
+  userId    String
+  createdAt DateTime @default(now())
+
+  option PollOption @relation(fields: [optionId], references: [id], onDelete: Cascade)
+  user   User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([optionId, userId])
+  @@index([userId])
+}
+
+model ChatEvent {
+  id            String    @id @default(cuid())
+  messageId     String    @unique
+  title         String
+  description   String?
+  startsAt      DateTime
+  endsAt        DateTime?
+  locationLabel String?
+  latitude      Float?
+  longitude     Float?
+  createdAt     DateTime  @default(now())
+
+  message Message         @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  rsvps   ChatEventRsvp[]
+}
+
+model ChatEventRsvp {
+  eventId   String
+  userId    String
+  status    EventRsvpStatus
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+
+  event ChatEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([eventId, userId])
+}
+
+model Contest {
+  id                     String        @id @default(cuid())
+  studioId               String
+  branchId               String?
+  title                  String
+  description            String?
+  startsAt               DateTime
+  endsAt                 DateTime
+  registrationOpensAt    DateTime?
+  registrationClosesAt   DateTime?
+  status                 ContestStatus @default(DRAFT)
+  creatorId              String
+  certificationEnabled   Boolean       @default(false)
+  certificateTemplateId  String?
+  createdAt              DateTime      @default(now())
+  updatedAt              DateTime      @updatedAt
+
+  studio              Studio               @relation(fields: [studioId], references: [id], onDelete: Cascade)
+  branch              StudioBranch?        @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  creator             User                 @relation("ContestCreator", fields: [creatorId], references: [id])
+  certificateTemplate CertificateTemplate? @relation(fields: [certificateTemplateId], references: [id], onDelete: SetNull)
+  categories          ContestCategory[]
+
+  @@index([studioId, status])
+  @@index([studioId, startsAt])
+}
+
+model ContestCategory {
+  id                    String           @id @default(cuid())
+  contestId             String
+  name                  String
+  danceStyle            String
+  ageMin                Int
+  ageMax                Int
+  entryType             ContestEntryType
+  maxEntries            Int?
+  maxGroupSize          Int?
+  certificateTemplateId String?
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
+
+  contest             Contest              @relation(fields: [contestId], references: [id], onDelete: Cascade)
+  certificateTemplate CertificateTemplate? @relation(fields: [certificateTemplateId], references: [id], onDelete: SetNull)
+  judges              ContestJudge[]
+  entries             ContestEntry[]
+
+  @@index([contestId])
+}
+
+model ContestJudge {
+  categoryId String
+  judgeId    String
+
+  category ContestCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  judge    User            @relation(fields: [judgeId], references: [id], onDelete: Cascade)
+
+  @@id([categoryId, judgeId])
+}
+
+model ContestEntry {
+  id             String             @id @default(cuid())
+  categoryId     String
+  teamName       String?
+  status         ContestEntryStatus @default(CONFIRMED)
+  registeredById String
+  placement      Int?
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  category     ContestCategory      @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  registeredBy User                 @relation("ContestEntryRegistrar", fields: [registeredById], references: [id])
+  members      ContestEntryMember[]
+  scores       ContestScore[]
+  certificate  ContestCertificate?
+
+  @@index([categoryId, status])
+}
+
+model ContestScore {
+  id        String   @id @default(cuid())
+  entryId   String
+  judgeId   String
+  score     Int
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  entry ContestEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  judge User         @relation(fields: [judgeId], references: [id], onDelete: Cascade)
+
+  @@unique([entryId, judgeId])
+  @@index([judgeId])
+  @@index([entryId])
+}
+
+model ContestEntryMember {
+  entryId   String
+  studentId String
+
+  entry   ContestEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  student User         @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@id([entryId, studentId])
+  @@index([studentId])
+}
+
+model ContestCertificate {
+  id                String   @id @default(cuid())
+  entryId           String   @unique
+  templateId        String
+  certificateNumber String
+  issuedAt          DateTime @default(now())
+  issuedById        String
+  layoutSnapshot    Json
+
+  entry    ContestEntry        @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  template CertificateTemplate @relation(fields: [templateId], references: [id], onDelete: Restrict)
+  issuedBy User                @relation("ContestCertificateIssuer", fields: [issuedById], references: [id])
+
+  @@unique([certificateNumber])
+  @@index([certificateNumber])
+}
+
+enum StudentGoalType {
+  MONTHLY_SESSIONS
+}
+
+model StudentGoal {
+  id          String          @id @default(cuid())
+  userId      String
+  studioId    String
+  type        StudentGoalType @default(MONTHLY_SESSIONS)
+  target      Int
+  periodStart DateTime
+  periodEnd   DateTime
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  studio Studio @relation(fields: [studioId], references: [id], onDelete: Cascade)
+
+  @@index([userId, studioId, periodStart])
+  @@index([studioId])
+}
+
+model Achievement {
+  id          String   @id @default(cuid())
+  studioId    String?
+  code        String   @unique
+  title       String
+  description String
+  icon        String
+  criteria    Json
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  studio              Studio?              @relation(fields: [studioId], references: [id], onDelete: Cascade)
+  studentAchievements StudentAchievement[]
+
+  @@index([studioId, active])
+}
+
+model StudentAchievement {
+  id            String   @id @default(cuid())
+  userId        String
+  achievementId String
+  earnedAt      DateTime @default(now())
+  meta          Json?
+
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  achievement Achievement @relation(fields: [achievementId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, achievementId])
+  @@index([userId])
+  @@index([achievementId])
+}

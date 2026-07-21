@@ -1,0 +1,57 @@
+.hero {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6, 1.5rem);
+  padding: var(--space-8, 2rem) var(--space-4, 1rem) var(--space-10, 2.5rem);
+  min-height: calc(100dvh - 8rem);
+  justify-content: center;
+  max-width: 28rem;
+  margin-inline: auto;
+}
+
+.brand {
+  font-size: clamp(2.75rem, 12vw, 4rem);
+  font-weight: 800;
+  letter-spacing: -0.05em;
+  line-height: 0.95;
+  background: linear-gradient(
+    135deg,
+    var(--color-fg) 0%,
+    color-mix(in srgb, var(--color-primary) 72%, var(--color-fg)) 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.headline {
+  font-size: 1.25rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.35;
+  color: color-mix(in srgb, var(--color-fg) 88%, transparent);
+}
+
+.support {
+  font-size: 1rem;
+  line-height: 1.55;
+  color: color-mix(in srgb, var(--color-fg) 62%, transparent);
+}
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 0.75rem);
+  margin-top: var(--space-2, 0.5rem);
+}
+
+@media (min-width: 768px) {
+  .hero {
+    padding-block: var(--space-12, 3rem);
+    max-width: 32rem;
+  }
+
+  .headline {
+    font-size: 1.375rem;
+  }
+}
