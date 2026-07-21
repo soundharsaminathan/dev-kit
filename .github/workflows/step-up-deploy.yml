@@ -58,7 +58,7 @@ jobs:
       - uses: actions/checkout@v6
       - uses: ./.github/actions/setup
       - name: Build Step Up web
-        run: pnpm exec nx run step-up:build
+        run: pnpm exec nx run step-up:build --skip-nx-cache
         env:
           VITE_API_URL: ${{ vars.STEP_UP_API_URL }}
           VITE_AUTH_BYPASS: "false"
