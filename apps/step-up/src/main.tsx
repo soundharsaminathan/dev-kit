@@ -1,4 +1,6 @@
 import { Loader } from "@dev-ui/components/loader";
+import { IconProvider } from "@dev-ui/icons";
+import lucidePack from "@dev-ui/icons-packs/lucide";
 import { createRouter, RouterProvider } from "@tanstack/react-router";
 import { StrictMode, useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
@@ -50,11 +52,13 @@ function AppRouter() {
 
   if (!ready) {
     return (
-      <div
-        style={{ display: "grid", placeItems: "center", minHeight: "100dvh" }}
-      >
-        <Loader aria-label="Loading" />
-      </div>
+      <IconProvider icons={{ library: "lucide" }} initialPack={lucidePack}>
+        <div
+          style={{ display: "grid", placeItems: "center", minHeight: "100dvh" }}
+        >
+          <Loader aria-label="Loading" />
+        </div>
+      </IconProvider>
     );
   }
 
