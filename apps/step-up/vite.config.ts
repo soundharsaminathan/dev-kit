@@ -132,6 +132,7 @@ export default defineConfig(({ mode }) => {
           ],
         },
         workbox: {
+          maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
           globPatterns: ["**/*.{js,css,html,ico,svg,png,woff2,webmanifest}"],
           globIgnores: [
             "**/material-symbols-*/**",
