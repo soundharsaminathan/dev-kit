@@ -13,9 +13,10 @@ export function globEntryMap(options: {
       ignore: ["**/*.d.ts", ...ignore],
     }).map((file) => {
       const normalized = file.replaceAll("\\", "/");
-      const entryName = normalized
-        .slice(0, normalized.length - extname(normalized).length)
-        .replace(/\/index$/, "");
+      const entryName = normalized.slice(
+        0,
+        normalized.length - extname(normalized).length,
+      );
       return [entryName, resolve(srcDir, file)];
     }),
   );
