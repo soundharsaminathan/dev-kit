@@ -4,16 +4,19 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useApi } from "@/lib/api-context";
 import { STUDIO_ID } from "@/lib/constants";
-import { AppBottomSheet } from "@/modules/ui/app-bottom-sheet";
+import {
+  ExpandableBentoGrid,
+  type ExpandableBentoItem,
+} from "@/modules/ui/expandable-bento-grid";
 import { FilterChipRow } from "@/modules/ui/filter-chip-row";
 import { FormInput } from "@/modules/ui/form-input";
-import { PressableCard } from "@/modules/ui/pressable-card";
 import { PullToRefresh } from "@/modules/ui/pull-to-refresh";
 import { Screen } from "@/modules/ui/screen";
 import { SkeletonCardList } from "@/modules/ui/skeleton-block";
 import staff from "@/modules/ui/staff.module.scss";
 import { EmptyState, ErrorState } from "@/modules/ui/states";
 import { TouchButton } from "@/modules/ui/touch-button";
+import styles from "./bookings.module.scss";
 
 type Booking = {
   id: string;
@@ -46,13 +49,144 @@ function toLocalInputValue(date: Date) {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
+function defaultReviewWindow() {
+  const start = new Date();
+  start.setMinutes(0, 0, 0);
+  start.setHours(start.getHours() + 1);
+  const end = new Date(start);
+  end.setHours(end.getHours() + 1);
+  return {
+    startsAt: toLocalInputValue(start),
+    endsAt: toLocalInputValue(end),
+  };
+}
+
+function BookingMedia({ name }: { name: string }) {
+  return (
+    <span className={staff.bentoInitial} aria-hidden>
+      {name.slice(0, 1).toUpperCase() || "?"}
+    </span>
+  );
+}
+
+function BookingReviewPanel({
+  booking,
+  isPending,
+  onConfirm,
+  onDecline,
+}: {
+  booking: Booking;
+  isPending: boolean;
+  onConfirm: (times?: { startsAt: string; endsAt: string }) => void;
+  onDecline: () => void;
+}) {
+  const defaults = defaultReviewWindow();
+  const [startsAt, setStartsAt] = useState(defaults.startsAt);
+  const [endsAt, setEndsAt] = useState(defaults.endsAt);
+
+  const studentName = booking.student?.name ?? booking.studentId;
+  const typeLabel = booking.type.replaceAll("_", " ");
+
+  return (
+    <div className={styles.body}>
+      <div className={styles.block}>
+        <p className={styles.blockLabel}>Status</p>
+        <div className={styles.statusRow}>
+          <Badge appearance="subtle" variant={STATUS_VARIANT[booking.status]}>
+            {booking.status}
+          </Badge>
+        </div>
+      </div>
+
+      <div className={styles.block}>
+        <p className={styles.blockLabel}>Request</p>
+        <p className={styles.blockValue}>{typeLabel}</p>
+      </div>
+
+      {booking.student?.email ? (
+        <div className={styles.block}>
+          <p className={styles.blockLabel}>Student</p>
+          <p className={styles.blockValue}>
+            {studentName}
+            <br />
+            {booking.student.email}
+          </p>
+        </div>
+      ) : null}
+
+      {booking.notes ? (
+        <div className={styles.block}>
+          <p className={styles.blockLabel}>Notes</p>
+          <p className={styles.blockValue}>{booking.notes}</p>
+        </div>
+      ) : null}
+
+      {booking.startsAt && booking.endsAt ? (
+        <div className={styles.block}>
+          <p className={styles.blockLabel}>Scheduled</p>
+          <p className={styles.blockValue}>
+            {new Date(booking.startsAt).toLocaleString()} –{" "}
+            {new Date(booking.endsAt).toLocaleTimeString()}
+          </p>
+        </div>
+      ) : null}
+
+      {booking.status === "PENDING" ? (
+        <div className={styles.review}>
+          <FormInput
+            label="Starts at"
+            type="datetime-local"
+            value={startsAt}
+            onChange={setStartsAt}
+          />
+          <FormInput
+            label="Ends at"
+            type="datetime-local"
+            value={endsAt}
+            onChange={setEndsAt}
+          />
+          <div className={styles.reviewActions}>
+            <TouchButton
+              variant="primary"
+              fullWidth
+              isPending={isPending}
+              onClick={() =>
+                onConfirm({
+                  startsAt: new Date(startsAt).toISOString(),
+                  endsAt: new Date(endsAt).toISOString(),
+                })
+              }
+            >
+              Confirm with time
+            </TouchButton>
+            <TouchButton
+              variant="default"
+              fullWidth
+              isPending={isPending}
+              onClick={() => onConfirm()}
+            >
+              Confirm without time
+            </TouchButton>
+            <TouchButton
+              variant="danger"
+              fullWidth
+              isPending={isPending}
+              onClick={onDecline}
+            >
+              Decline
+            </TouchButton>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function BookingsPage() {
   const api = useApi();
   const queryClient = useQueryClient();
   const [filter, setFilter] = useState("ALL");
-  const [activeId, setActiveId] = useState<string | null>(null);
-  const [startsAt, setStartsAt] = useState("");
-  const [endsAt, setEndsAt] = useState("");
+  const [gridKey, setGridKey] = useState(0);
 
   const bookings = useQuery({
     queryKey: ["bookings", "studio", STUDIO_ID],
@@ -80,10 +214,8 @@ function BookingsPage() {
           : {}),
       }),
     onSuccess: () => {
-      setActiveId(null);
-      setStartsAt("");
-      setEndsAt("");
       invalidateBookings();
+      setGridKey((key) => key + 1);
     },
   });
 
@@ -105,19 +237,45 @@ function BookingsPage() {
     (booking) => booking.status === "PENDING",
   ).length;
 
-  const activeBooking =
-    sortedBookings.find((booking) => booking.id === activeId) ?? null;
+  const items: ExpandableBentoItem[] = useMemo(
+    () =>
+      filtered.map((booking) => {
+        const studentName = booking.student?.name ?? booking.studentId;
+        const typeLabel = booking.type.replaceAll("_", " ");
+        const subtitleParts = [typeLabel, booking.status];
+        if (booking.notes) subtitleParts.push(booking.notes);
 
-  const openReview = (booking: Booking) => {
-    const start = new Date();
-    start.setMinutes(0, 0, 0);
-    start.setHours(start.getHours() + 1);
-    const end = new Date(start);
-    end.setHours(end.getHours() + 1);
-    setActiveId(booking.id);
-    setStartsAt(toLocalInputValue(start));
-    setEndsAt(toLocalInputValue(end));
-  };
+        return {
+          id: booking.id,
+          title: studentName,
+          subtitle: subtitleParts.join(" · "),
+          description: booking.notes
+            ? `${typeLabel} · ${booking.notes}`
+            : typeLabel,
+          media: <BookingMedia name={studentName} />,
+          content: (
+            <BookingReviewPanel
+              booking={booking}
+              isPending={updateStatus.isPending}
+              onConfirm={(times) =>
+                updateStatus.mutate({
+                  id: booking.id,
+                  status: "CONFIRMED",
+                  ...times,
+                })
+              }
+              onDecline={() =>
+                updateStatus.mutate({
+                  id: booking.id,
+                  status: "CANCELLED",
+                })
+              }
+            />
+          ),
+        };
+      }),
+    [filtered, updateStatus.isPending, updateStatus.mutate],
+  );
 
   return (
     <Screen
@@ -179,122 +337,14 @@ function BookingsPage() {
           ) : null}
 
           {filtered.length > 0 ? (
-            <div className={staff.list}>
-              {filtered.map((booking) => (
-                <PressableCard key={booking.id} asDiv>
-                  <div className={staff.rowCard}>
-                    <div className={staff.attentionTop}>
-                      <span className={staff.rowTitle}>
-                        {booking.student?.name ?? booking.studentId}
-                      </span>
-                      <Badge variant={STATUS_VARIANT[booking.status]}>
-                        {booking.status}
-                      </Badge>
-                    </div>
-                    <p className={staff.rowMeta}>
-                      {booking.type.replaceAll("_", " ")}
-                      {booking.notes ? ` · ${booking.notes}` : ""}
-                    </p>
-                    {booking.startsAt && booking.endsAt ? (
-                      <p className={staff.rowMeta}>
-                        {new Date(booking.startsAt).toLocaleString()} –{" "}
-                        {new Date(booking.endsAt).toLocaleTimeString()}
-                      </p>
-                    ) : null}
-                    {booking.status === "PENDING" ? (
-                      <div className={staff.rowActions}>
-                        <TouchButton
-                          size="md"
-                          variant="primary"
-                          onClick={() => openReview(booking)}
-                        >
-                          Review
-                        </TouchButton>
-                      </div>
-                    ) : null}
-                  </div>
-                </PressableCard>
-              ))}
-            </div>
+            <ExpandableBentoGrid
+              key={gridKey}
+              items={items}
+              aria-label="Booking requests"
+            />
           ) : null}
         </div>
       </PullToRefresh>
-
-      <AppBottomSheet
-        isOpen={Boolean(activeBooking)}
-        onOpenChange={(open) => {
-          if (!open) setActiveId(null);
-        }}
-        title={
-          activeBooking
-            ? `Review ${activeBooking.student?.name ?? "booking"}`
-            : "Review booking"
-        }
-      >
-        {activeBooking ? (
-          <div className={staff.sheetStack}>
-            <p className={staff.rowMeta}>
-              {activeBooking.type.replaceAll("_", " ")}
-              {activeBooking.notes ? ` · ${activeBooking.notes}` : ""}
-            </p>
-            <FormInput
-              label="Starts at"
-              type="datetime-local"
-              value={startsAt}
-              onChange={setStartsAt}
-            />
-            <FormInput
-              label="Ends at"
-              type="datetime-local"
-              value={endsAt}
-              onChange={setEndsAt}
-            />
-            <div className={staff.sheetActions}>
-              <TouchButton
-                variant="primary"
-                fullWidth
-                isPending={updateStatus.isPending}
-                onClick={() =>
-                  updateStatus.mutate({
-                    id: activeBooking.id,
-                    status: "CONFIRMED",
-                    startsAt: new Date(startsAt).toISOString(),
-                    endsAt: new Date(endsAt).toISOString(),
-                  })
-                }
-              >
-                Confirm with time
-              </TouchButton>
-              <TouchButton
-                variant="default"
-                fullWidth
-                isPending={updateStatus.isPending}
-                onClick={() =>
-                  updateStatus.mutate({
-                    id: activeBooking.id,
-                    status: "CONFIRMED",
-                  })
-                }
-              >
-                Confirm without time
-              </TouchButton>
-              <TouchButton
-                variant="danger"
-                fullWidth
-                isPending={updateStatus.isPending}
-                onClick={() =>
-                  updateStatus.mutate({
-                    id: activeBooking.id,
-                    status: "CANCELLED",
-                  })
-                }
-              >
-                Decline
-              </TouchButton>
-            </div>
-          </div>
-        ) : null}
-      </AppBottomSheet>
     </Screen>
   );
 }

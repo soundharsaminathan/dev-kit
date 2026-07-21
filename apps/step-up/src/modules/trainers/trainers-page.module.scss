@@ -4,6 +4,10 @@
   gap: var(--space-3, 0.75rem);
 }
 
+.root[data-has-banner="true"] {
+  gap: var(--space-4, 1rem);
+}
+
 .intro {
   display: flex;
   flex-wrap: wrap;
@@ -14,6 +18,14 @@
   background: var(--hero-gradient, var(--color-primary));
   color: var(--color-primary-fg, #fff);
   box-shadow: var(--shadow-sm, 0 1px 2px rgb(0 0 0 / 6%));
+}
+
+.intro[data-tone="quiet"] {
+  padding: var(--space-1, 0.25rem) var(--space-1, 0.25rem);
+  border-radius: 0;
+  background: transparent;
+  color: var(--color-fg);
+  box-shadow: none;
 }
 
 .introAction {
@@ -28,11 +40,26 @@
   opacity: 0.92;
 }
 
+.intro[data-tone="quiet"] .introStat {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2rem;
+  padding-inline: var(--space-3, 0.75rem);
+  border-radius: var(--radius-full, 9999px);
+  background: color-mix(in srgb, var(--color-fg) 6%, transparent);
+  opacity: 1;
+}
+
 .introStat strong {
   font-size: 1rem;
   font-weight: 800;
   letter-spacing: -0.03em;
   opacity: 1;
+}
+
+.intro[data-tone="quiet"] .introStat strong {
+  font-size: 0.8125rem;
+  margin-inline-end: 0.2em;
 }
 
 .toolbar {

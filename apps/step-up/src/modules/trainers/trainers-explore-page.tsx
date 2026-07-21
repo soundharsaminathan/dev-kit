@@ -1,10 +1,15 @@
+import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
+import { useApi } from "@/lib/api-context";
 import {
   collectTrainerStyleFilters,
   trainerHasStyle,
 } from "@/lib/dance-styles";
 import { ENTITY_ICONS } from "@/lib/entity-icons";
+import { useActiveStudentContext } from "@/modules/me/child-switcher";
+import { HomeStudioBanner } from "@/modules/me/home-sections";
+import type { HomePayload } from "@/modules/me/home-types";
 import { useFollowMutations } from "@/modules/social/use-follow";
 import { FilterChipRow } from "@/modules/ui/filter-chip-row";
 import { PullToRefresh } from "@/modules/ui/pull-to-refresh";
@@ -59,6 +64,43 @@ function sortForExplore(trainers: StudioTrainer[]) {
     }
     return b.followerCount - a.followerCount;
   });
+}
+
+function MemberTrainersBanner({
+  showDiscoverCta,
+}: {
+  showDiscoverCta: boolean;
+}) {
+  const api = useApi();
+  const { studentId } = useActiveStudentContext();
+  const homeQuery = useQuery({
+    queryKey: ["home", studentId],
+    queryFn: () => {
+      const params = new URLSearchParams();
+      if (studentId) params.set("studentId", studentId);
+      const search = params.toString();
+      return api.get<HomePayload>(`/home${search ? `?${search}` : ""}`);
+    },
+    enabled: Boolean(studentId),
+    staleTime: 30_000,
+  });
+
+  return (
+    <HomeStudioBanner
+      banner={homeQuery.data?.banner ?? null}
+      studioName={homeQuery.data?.studio?.name ?? null}
+      title="Meet your instructors"
+      cta={
+        showDiscoverCta
+          ? {
+              label: "Discover classes",
+              to: "/me/book",
+              icon: "search",
+            }
+          : null
+      }
+    />
+  );
 }
 
 export function TrainersExplorePage({
@@ -123,12 +165,25 @@ export function TrainersExplorePage({
     });
   }
 
+  const showStats = trainers.length > 0;
+  const showMemberBanner = !isStaff;
+
   return (
     <section className="screen screen-wide" aria-label="Trainers">
       <PullToRefresh onRefresh={() => query.refetch()}>
-        <div className={styles.root}>
-          {trainers.length > 0 ? (
-            <div className={styles.intro}>
+        <div
+          className={styles.root}
+          data-has-banner={showMemberBanner ? "true" : undefined}
+        >
+          {showMemberBanner ? (
+            <MemberTrainersBanner showDiscoverCta={trainers.length > 0} />
+          ) : null}
+
+          {showStats ? (
+            <div
+              className={styles.intro}
+              data-tone={showMemberBanner ? "quiet" : undefined}
+            >
               <p className={styles.introStat}>
                 <strong>{trainers.length}</strong>{" "}
                 {trainers.length === 1 ? "trainer" : "trainers"}

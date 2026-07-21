@@ -1,12 +1,19 @@
-import { Badge } from "@dev-ui/components/badge";
 import type { IconName } from "@dev-ui/icons";
 import { Icon } from "@dev-ui/icons";
 import { useQuery } from "@tanstack/react-query";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useMemo } from "react";
 import { useApi } from "@/lib/api-context";
+import { useAuth } from "@/lib/auth";
 import { STUDIO_ID } from "@/lib/constants";
 import { ENTITY_ICONS } from "@/lib/entity-icons";
+import { coverUrl, type StudioBranch } from "@/modules/locations/types";
+import { HomeStudioBanner } from "@/modules/me/home-sections";
 import { AnimatedMetric } from "@/modules/ui/animated-metric";
+import {
+  ExpandableBentoGrid,
+  type ExpandableBentoItem,
+} from "@/modules/ui/expandable-bento-grid";
 import { PullToRefresh } from "@/modules/ui/pull-to-refresh";
 import { Screen } from "@/modules/ui/screen";
 import { SkeletonBlock } from "@/modules/ui/skeleton-block";
@@ -28,6 +35,14 @@ type Booking = {
   notes?: string | null;
   student?: { id: string; name: string; email: string } | null;
 };
+type Studio = { id: string; name: string };
+
+function greetingFor(date: Date) {
+  const hours = date.getHours();
+  if (hours < 12) return "Good morning";
+  if (hours < 17) return "Good afternoon";
+  return "Good evening";
+}
 
 export const Route = createFileRoute("/app/")({
   component: AppDashboardPage,
@@ -68,9 +83,24 @@ function MetricLink({
 
 function AppDashboardPage() {
   const api = useApi();
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const isTrainer = user?.role === "TRAINER";
   const batches = useQuery({
     queryKey: ["batches", STUDIO_ID],
     queryFn: () => api.get<Batch[]>(`/batches/studio/${STUDIO_ID}`),
+  });
+  const studio = useQuery({
+    queryKey: ["studio", STUDIO_ID],
+    queryFn: () => api.get<Studio>(`/studios/${STUDIO_ID}`),
+    enabled: isTrainer,
+    staleTime: 5 * 60 * 1000,
+  });
+  const branches = useQuery({
+    queryKey: ["branches", STUDIO_ID],
+    queryFn: () => api.get<StudioBranch[]>(`/studios/${STUDIO_ID}/branches`),
+    enabled: isTrainer,
+    staleTime: 5 * 60 * 1000,
   });
   const plans = useQuery({
     queryKey: ["plans", STUDIO_ID],
@@ -93,8 +123,43 @@ function AppDashboardPage() {
     members.data?.filter((member) => member.role === "TRAINER").length ?? null;
   const planCount = plans.data?.length ?? null;
 
-  const pending = (bookings.data ?? []).filter(
-    (booking) => booking.status === "PENDING",
+  const pending = useMemo(
+    () =>
+      (bookings.data ?? []).filter((booking) => booking.status === "PENDING"),
+    [bookings.data],
+  );
+
+  const pendingItems: ExpandableBentoItem[] = useMemo(
+    () =>
+      pending.map((booking) => {
+        const studentName = booking.student?.name ?? booking.studentId;
+        const typeLabel = booking.type.replaceAll("_", " ");
+        return {
+          id: booking.id,
+          title: studentName,
+          subtitle: typeLabel,
+          description: booking.notes
+            ? `${typeLabel} · ${booking.notes}`
+            : typeLabel,
+          media: (
+            <span className={staff.bentoInitial} aria-hidden>
+              {studentName.slice(0, 1).toUpperCase() || "?"}
+            </span>
+          ),
+          actionLabel: "Review",
+          onAction: () => {
+            void navigate({ to: "/app/bookings" });
+          },
+          content: booking.notes ? (
+            <p className={staff.attentionMeta}>{booking.notes}</p>
+          ) : (
+            <p className={staff.attentionMeta}>
+              Tap Review to confirm or decline this request.
+            </p>
+          ),
+        };
+      }),
+    [navigate, pending],
   );
 
   const anyError =
@@ -106,135 +171,148 @@ function AppDashboardPage() {
       plans.refetch(),
       members.refetch(),
       bookings.refetch(),
+      ...(isTrainer ? [studio.refetch(), branches.refetch()] : []),
     ]);
   }
 
-  return (
-    <Screen title="Home" subtitle="A calm glance at your studio today.">
-      <PullToRefresh onRefresh={refresh}>
+  const bannerBranch = branches.data?.[0] ?? null;
+  const firstName = user?.name.split(" ")[0] || "coach";
+
+  const body = (
+    <PullToRefresh onRefresh={refresh}>
+      <div className={staff.section}>
+        {anyError ? (
+          <ErrorState
+            description="Some studio stats could not be loaded."
+            action={
+              <TouchButton variant="primary" onClick={() => void refresh()}>
+                Try again
+              </TouchButton>
+            }
+          />
+        ) : null}
+
+        <div className={staff.metrics}>
+          <MetricLink
+            to="/app/batches"
+            icon={ENTITY_ICONS.batch}
+            label="Batches"
+            value={activeBatches}
+            hint="Active classes"
+            loading={batches.isLoading}
+          />
+          <MetricLink
+            to="/app/students"
+            icon={ENTITY_ICONS.student}
+            label="Students"
+            value={studentCount}
+            hint="Enrolled members"
+            loading={members.isLoading}
+          />
+          <MetricLink
+            to="/app/trainers"
+            icon={ENTITY_ICONS.trainer}
+            label="Trainers"
+            value={trainerCount}
+            hint="Teaching team"
+            loading={members.isLoading}
+          />
+          <MetricLink
+            to="/app/plans"
+            icon="clipboard"
+            label="Plans"
+            value={planCount}
+            hint="Memberships"
+            loading={plans.isLoading}
+          />
+        </div>
+
         <div className={staff.section}>
-          {anyError ? (
-            <ErrorState
-              description="Some studio stats could not be loaded."
+          <p className={staff.sectionTitle}>Needs attention</p>
+          {bookings.isLoading ? (
+            <SkeletonBlock height="5rem" radius="var(--radius-2xl)" />
+          ) : null}
+          {!bookings.isLoading && pending.length === 0 ? (
+            <EmptyState
+              title="All clear"
+              description="No pending bookings to approve."
               action={
-                <TouchButton variant="primary" onClick={() => void refresh()}>
-                  Try again
+                <TouchButton variant="primary">
+                  <Link to="/app/bookings/new">Add booking</Link>
                 </TouchButton>
               }
             />
           ) : null}
-
-          <div className={staff.metrics}>
-            <MetricLink
-              to="/app/batches"
-              icon={ENTITY_ICONS.batch}
-              label="Batches"
-              value={activeBatches}
-              hint="Active classes"
-              loading={batches.isLoading}
-            />
-            <MetricLink
-              to="/app/students"
-              icon={ENTITY_ICONS.student}
-              label="Students"
-              value={studentCount}
-              hint="Enrolled members"
-              loading={members.isLoading}
-            />
-            <MetricLink
-              to="/app/trainers"
-              icon={ENTITY_ICONS.trainer}
-              label="Trainers"
-              value={trainerCount}
-              hint="Teaching team"
-              loading={members.isLoading}
-            />
-            <MetricLink
-              to="/app/plans"
-              icon="clipboard"
-              label="Plans"
-              value={planCount}
-              hint="Memberships"
-              loading={plans.isLoading}
-            />
-          </div>
-
-          <div className={staff.section}>
-            <p className={staff.sectionTitle}>Needs attention</p>
-            {bookings.isLoading ? (
-              <SkeletonBlock height="5rem" radius="var(--radius-2xl)" />
-            ) : null}
-            {!bookings.isLoading && pending.length === 0 ? (
-              <EmptyState
-                title="All clear"
-                description="No pending bookings to approve."
-                action={
-                  <TouchButton variant="primary">
-                    <Link to="/app/bookings/new">Add booking</Link>
-                  </TouchButton>
-                }
+          {pending.length > 0 ? (
+            <div className={staff.list}>
+              <ExpandableBentoGrid
+                items={pendingItems}
+                aria-label="Pending booking requests"
               />
-            ) : null}
-            {pending.length > 0 ? (
-              <div className={staff.list}>
-                {pending.slice(0, 5).map((booking) => (
-                  <Link
-                    key={booking.id}
-                    to="/app/bookings"
-                    className={staff.linkWrap}
-                  >
-                    <div className={staff.attentionCard}>
-                      <div className={staff.attentionTop}>
-                        <span className={staff.attentionTitle}>
-                          {booking.student?.name ?? booking.studentId}
-                        </span>
-                        <Badge variant="warning">PENDING</Badge>
-                      </div>
-                      <p className={staff.attentionMeta}>
-                        {booking.type.replaceAll("_", " ")}
-                        {booking.notes ? ` · ${booking.notes}` : ""}
-                      </p>
-                    </div>
-                  </Link>
-                ))}
-                {pending.length > 5 ? (
-                  <TouchButton variant="quiet" fullWidth>
-                    <Link to="/app/bookings">
-                      View all {pending.length} pending
-                    </Link>
-                  </TouchButton>
-                ) : (
-                  <TouchButton variant="quiet" fullWidth>
-                    <Link to="/app/bookings">Review bookings</Link>
-                  </TouchButton>
-                )}
-              </div>
-            ) : null}
-          </div>
-
-          <div className={staff.section}>
-            <p className={staff.sectionTitle}>Shortcuts</p>
-            <div className={staff.quickLinks}>
-              <Link to="/app/retention" className={staff.quickLink}>
-                Retention
-                <span className={staff.quickLinkMeta}>Renewals</span>
-              </Link>
-              <Link to="/app/payments" className={staff.quickLink}>
-                Payments
-                <span className={staff.quickLinkMeta}>Earnings</span>
-              </Link>
-              <Link to="/app/invoices" className={staff.quickLink}>
-                Invoices
-                <span className={staff.quickLinkMeta}>Mark paid</span>
-              </Link>
-              <Link to="/app/settings" className={staff.quickLink}>
-                Settings
-                <span className={staff.quickLinkMeta}>Studio</span>
-              </Link>
+              <TouchButton variant="quiet" fullWidth>
+                <Link to="/app/bookings">Open bookings</Link>
+              </TouchButton>
             </div>
+          ) : null}
+        </div>
+
+        <div className={staff.section}>
+          <p className={staff.sectionTitle}>Shortcuts</p>
+          <div className={staff.quickLinks}>
+            <Link to="/app/retention" className={staff.quickLink}>
+              Retention
+              <span className={staff.quickLinkMeta}>Renewals</span>
+            </Link>
+            <Link to="/app/payments" className={staff.quickLink}>
+              Payments
+              <span className={staff.quickLinkMeta}>Earnings</span>
+            </Link>
+            <Link to="/app/invoices" className={staff.quickLink}>
+              Invoices
+              <span className={staff.quickLinkMeta}>Mark paid</span>
+            </Link>
+            <Link to="/app/settings" className={staff.quickLink}>
+              Settings
+              <span className={staff.quickLinkMeta}>Studio</span>
+            </Link>
           </div>
         </div>
-      </PullToRefresh>
+      </div>
+    </PullToRefresh>
+  );
+
+  if (isTrainer) {
+    return (
+      <section className="screen" aria-label="Home">
+        <HomeStudioBanner
+          variant="app"
+          banner={
+            bannerBranch
+              ? {
+                  branchId: bannerBranch.id,
+                  branchName: bannerBranch.name,
+                  imageUrl: coverUrl(bannerBranch),
+                  altText:
+                    bannerBranch.coverMedia?.altText ?? bannerBranch.name,
+                }
+              : null
+          }
+          studioName={studio.data?.name ?? null}
+          title={`${greetingFor(new Date())}, ${firstName} — let's teach`}
+          cta={{
+            label: "View your schedule",
+            to: "/app/calendar",
+            icon: "calendar",
+          }}
+        />
+        {body}
+      </section>
+    );
+  }
+
+  return (
+    <Screen title="Home" subtitle="A calm glance at your studio today.">
+      {body}
     </Screen>
   );
 }

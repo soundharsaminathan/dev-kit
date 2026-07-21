@@ -9,7 +9,10 @@
   display: flex;
   gap: var(--space-1, 0.25rem);
   overflow-x: auto;
+  margin: 0;
   padding-block: var(--space-1, 0.25rem);
+  padding-inline: 0;
+  list-style: none;
   scrollbar-width: none;
   flex: 1;
   min-width: 0;

@@ -52,18 +52,23 @@ export function HomeStudioBanner({
   studioName,
   greeting,
   firstName,
+  title,
   cta,
+  variant = "me",
   flushTop = false,
 }: {
   banner: HomeBanner | null;
   studioName?: string | null;
-  greeting: string;
-  firstName: string;
-  cta?: { label: string; to: string } | null;
+  greeting?: string;
+  firstName?: string;
+  title?: string;
+  cta?: { label: string; to: string; icon?: IconName } | null;
+  variant?: "me" | "app";
   flushTop?: boolean;
 }) {
   const navigate = useNavigate();
-  const headline = `${greeting}, ${firstName} — let's dance`;
+  const headline =
+    title ?? `${greeting ?? "Hey"}, ${firstName ?? "dancer"} — let's dance`;
 
   return (
     <section
@@ -84,10 +89,10 @@ export function HomeStudioBanner({
       )}
       <div className={styles.studioBannerScrim} aria-hidden />
       <div className={styles.studioBannerTop}>
-        <ChildSwitcher tone="onMedia" />
+        {variant === "me" ? <ChildSwitcher tone="onMedia" /> : null}
         <div className={styles.studioBannerActions}>
           <TooltipIconBar placement="bottom">
-            <NotificationsControl variant="me" tone="onMedia" />
+            <NotificationsControl variant={variant} tone="onMedia" />
           </TooltipIconBar>
         </div>
       </div>
@@ -106,7 +111,7 @@ export function HomeStudioBanner({
             void navigate({ to: cta.to as "/me/book" });
           }}
         >
-          <Icon name="search" />
+          <Icon name={cta.icon ?? "search"} />
           <span>
             <strong>{cta.label}</strong>
           </span>
