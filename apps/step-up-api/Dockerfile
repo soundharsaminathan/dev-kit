@@ -6,7 +6,7 @@ FROM node:24-alpine AS deps
 WORKDIR /app
 RUN corepack enable && corepack prepare pnpm@11.6.0 --activate
 COPY package.json ./
-RUN echo "dangerouslyAllowAllBuilds=true" > .npmrc \
+RUN printf '%s\n' 'packages:' "  - '.'" 'dangerouslyAllowAllBuilds: true' > pnpm-workspace.yaml \
   && pnpm install --no-frozen-lockfile
 
 FROM node:24-alpine AS builder
