@@ -82,6 +82,7 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v6
+      - uses: ./.github/actions/setup
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
         with:
@@ -111,7 +112,7 @@ jobs:
             --set-env-vars=AUTH_BYPASS=false,FIREBASE_PROJECT_ID=${{ secrets.STEP_UP_FIREBASE_PROJECT_ID }},FIREBASE_CLIENT_EMAIL=${{ secrets.STEP_UP_FIREBASE_CLIENT_EMAIL }},SENTRY_ENVIRONMENT=production,R2_ACCOUNT_ID=${{ secrets.R2_ACCOUNT_ID }},R2_BUCKET=${{ secrets.R2_BUCKET }},R2_PUBLIC_URL=${{ secrets.R2_PUBLIC_URL }}
       - name: Prisma migrate deploy
         run: |
-          pnpm install --filter @step-up/api...
+          pnpm --filter @step-up/api prisma:generate
           pnpm --filter @step-up/api exec prisma migrate deploy
         env:
           DATABASE_URL: ${{ secrets.STEP_UP_DATABASE_URL }}
