@@ -1,0 +1,79 @@
+.touch {
+  min-height: 2.75rem !important;
+  padding-inline: var(--space-5, 1.25rem) !important;
+  font-weight: 600;
+  border-radius: var(--radius-xl, 1rem) !important;
+  box-shadow: var(--shadow-sm, 0 1px 2px rgb(0 0 0 / 6%));
+  transition:
+    transform var(--motion-fast, 150ms) ease,
+    background-color var(--interaction-transition-duration, 220ms)
+      var(--interaction-transition-curve, ease);
+}
+
+.touch:active:not([data-disabled="true"]) {
+  transform: scale(var(--interaction-press-scale, 0.98));
+}
+
+.fullWidth {
+  width: 100%;
+}
+
+.bar {
+  position: fixed;
+  inset-inline: 0;
+  bottom: 0;
+  z-index: 25;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 0.5rem);
+  padding: var(--space-3, 0.75rem) var(--space-4, 1rem);
+  padding-bottom: calc(var(--space-3, 0.75rem) + env(safe-area-inset-bottom, 0px));
+  background: color-mix(in srgb, var(--color-bg) 90%, transparent);
+  backdrop-filter: blur(16px);
+  border-top: 1px solid color-mix(in srgb, var(--color-fg) 8%, transparent);
+  box-shadow: 0 -8px 24px rgb(0 0 0 / 4%);
+}
+
+.primary {
+  display: flex;
+  width: 100%;
+}
+
+.primary > * {
+  flex: 1;
+}
+
+.secondary {
+  display: flex;
+  width: 100%;
+}
+
+@media (min-width: 768px) {
+  .bar {
+    position: sticky;
+    inset-inline: auto;
+    bottom: var(--space-4, 1rem);
+    width: min(40rem, calc(100% - 2rem));
+    margin-inline: auto;
+    padding: var(--space-3, 0.75rem) var(--space-4, 1rem);
+    border-radius: var(--radius-2xl, 1.25rem);
+    border: 1px solid color-mix(in srgb, var(--color-fg) 8%, transparent);
+    box-shadow: var(--shadow-lg, 0 16px 40px rgb(0 0 0 / 12%));
+  }
+}
+
+@media (max-width: 767px) {
+  .bar {
+    bottom: calc(4.25rem);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .touch {
+    transition-duration: 0ms;
+  }
+
+  .touch:active:not([data-disabled="true"]) {
+    transform: none;
+  }
+}

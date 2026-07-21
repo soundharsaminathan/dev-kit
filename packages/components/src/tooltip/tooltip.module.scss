@@ -64,4 +64,11 @@
     left: calc(100% + 0.5rem);
     transform: translateY(-50%);
   }
+
+  &[data-portal="true"] {
+    top: auto;
+    left: auto;
+    right: auto;
+    bottom: auto;
+  }
 }

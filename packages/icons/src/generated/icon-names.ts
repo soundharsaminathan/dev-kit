@@ -35,6 +35,7 @@ export const iconNames = [
   "chevrons-up-down",
   "circle",
   "circle-dashed",
+  "circle-user",
   "clipboard",
   "clipboard-paste",
   "clock",

@@ -1,0 +1,92 @@
+.root {
+  position: relative;
+}
+
+.items {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.itemAnchor {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.tooltipLayer {
+  position: absolute;
+  inset-inline: 0;
+  z-index: 40;
+  pointer-events: none;
+}
+
+.tooltipLayerPortal {
+  position: fixed;
+  inset-inline: unset;
+  z-index: 1000;
+}
+
+.tooltipTop {
+  bottom: calc(100% + 0.5rem);
+}
+
+.tooltipTopPortal {
+  bottom: auto;
+  transform: translateY(calc(-100% - 0.5rem));
+}
+
+.tooltipBottom {
+  top: calc(100% + 0.5rem);
+}
+
+.tooltipBottomPortal {
+  top: auto;
+  transform: translateY(0.5rem);
+}
+
+.tooltipPanel {
+  display: inline-flex;
+  width: max-content;
+  overflow: hidden;
+  border-radius: var(--radius-md, 0.5rem);
+  background: color-mix(in srgb, var(--color-fg) 92%, transparent);
+  color: var(--color-bg);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 18%);
+}
+
+.labelStrip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2rem;
+}
+
+.labelSegment {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-inline: 0.625rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.measure {
+  position: absolute;
+  inset-inline-start: 0;
+  top: 0;
+  display: inline-flex;
+  height: 0;
+  overflow: hidden;
+  pointer-events: none;
+  visibility: hidden;
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tooltipPanel {
+    transition-duration: 0ms;
+  }
+}

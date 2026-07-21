@@ -1,0 +1,60 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4, 1rem);
+}
+
+.filters {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2, 0.5rem);
+}
+
+.filterBtn {
+  position: relative;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1, 0.25rem);
+  min-height: 2rem;
+  min-width: 2rem;
+  padding-inline: var(--space-2, 0.5rem);
+  border: 0;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-fg) 6%, transparent);
+  color: var(--color-fg);
+  cursor: pointer;
+}
+
+.filterBtn::before {
+  content: "";
+  position: absolute;
+  inset: calc((2.75rem - 100%) / -2);
+}
+
+.filterBtn[data-active="true"] {
+  background: color-mix(in srgb, var(--color-primary) 14%, transparent);
+  color: var(--color-primary);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 0.75rem);
+}
+
+.filterForm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4, 1rem);
+}
+
+.filterActions {
+  display: flex;
+  gap: var(--space-2, 0.5rem);
+}
+
+.filterActions > * {
+  flex: 1;
+}

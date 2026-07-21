@@ -1,0 +1,59 @@
+.shell {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-bg);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4, 1rem);
+  min-height: 3.5rem;
+  padding: var(--space-3, 0.75rem) var(--space-4, 1rem);
+  padding-top: calc(var(--space-3, 0.75rem) + env(safe-area-inset-top, 0px));
+  border-bottom: 1px solid color-mix(in srgb, var(--color-fg) 8%, transparent);
+  backdrop-filter: blur(16px);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: color-mix(in srgb, var(--color-bg) 86%, transparent);
+}
+
+.brand {
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+.nav {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2, 0.5rem);
+}
+
+.main {
+  flex: 1;
+  width: 100%;
+  max-width: 42rem;
+  margin-inline: auto;
+}
+
+.footer {
+  padding: var(--space-6, 1.5rem) var(--space-4, 1rem);
+  padding-bottom: calc(var(--space-6, 1.5rem) + env(safe-area-inset-bottom, 0px));
+  text-align: center;
+  color: color-mix(in srgb, var(--color-fg) 56%, transparent);
+  font-size: 0.875rem;
+}
+
+@media (min-width: 768px) {
+  .header {
+    padding-inline: var(--space-6, 1.5rem);
+  }
+
+  .main {
+    max-width: 56rem;
+  }
+}

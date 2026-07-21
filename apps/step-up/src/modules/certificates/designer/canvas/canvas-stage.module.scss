@@ -1,0 +1,19 @@
+.viewport {
+  flex: 1;
+  min-height: 280px;
+  overflow: auto;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 16px;
+  background:
+    radial-gradient(circle at 1px 1px, rgb(0 0 0 / 8%) 1px, transparent 0)
+      0 0 / 16px 16px,
+    #e8eaed;
+  border-radius: 12px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.scaler {
+  flex-shrink: 0;
+}

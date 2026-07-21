@@ -1,0 +1,21 @@
+.row {
+  display: flex;
+  gap: var(--space-3, 0.75rem);
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  padding-block: var(--space-1, 0.25rem);
+  padding-inline: var(--space-1, 0.25rem);
+  margin-inline: calc(var(--space-1, 0.25rem) * -1);
+  scrollbar-width: none;
+}
+
+.row::-webkit-scrollbar {
+  display: none;
+}
+
+.row > * {
+  flex: 0 0 auto;
+  scroll-snap-align: start;
+}

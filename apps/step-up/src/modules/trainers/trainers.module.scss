@@ -1,0 +1,483 @@
+@use "@dev-ui/tokens/scss" as *;
+
+.cardsList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 0.75rem);
+}
+
+.cardShell {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  gap: var(--space-2, 0.5rem);
+  padding-inline-end: var(--space-3, 0.75rem);
+}
+
+.cardHit {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+.cardActions {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.cardRow {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3, 0.75rem);
+  padding: var(--space-3, 0.75rem);
+  width: 100%;
+  text-align: start;
+}
+
+.cardBody {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-2, 0.5rem);
+  min-width: 0;
+}
+
+.cardTop {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-2, 0.5rem);
+}
+
+.cardName {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+}
+
+.cardMeta {
+  font-size: 0.8125rem;
+  color: color-mix(in srgb, var(--color-fg) 58%, transparent);
+}
+
+.followCounts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3, 0.75rem);
+  font-size: 0.8125rem;
+  color: color-mix(in srgb, var(--color-fg) 62%, transparent);
+}
+
+.followCountsCompact {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2, 0.5rem);
+  font-size: 0.75rem;
+  color: color-mix(in srgb, var(--color-fg) 62%, transparent);
+}
+
+.followCounts strong,
+.followCountsCompact strong {
+  color: var(--color-fg);
+  font-variant-numeric: tabular-nums;
+}
+
+.styleTags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1, 0.25rem);
+}
+
+.avatarLg {
+  flex-shrink: 0;
+  --avatar-radius: var(--radius-lg, 0.75rem);
+  width: 3.25rem;
+  height: 3.25rem;
+}
+
+.avatarMd {
+  flex-shrink: 0;
+  --avatar-radius: var(--radius-md, 0.5rem);
+  width: 2.75rem;
+  height: 2.75rem;
+}
+
+.avatarXl {
+  flex-shrink: 0;
+  --avatar-radius: var(--radius-xl, 1rem);
+  width: 4rem;
+  height: 4rem;
+}
+
+.bentoRoot {
+  --bento-tile-size: 13.5rem;
+  --bento-gap: var(--space-2, 0.5rem);
+  width: 100%;
+  max-width: 100%;
+  overflow-x: clip;
+}
+
+.bentoGrid {
+  display: grid;
+  grid-template-columns: repeat(var(--bento-columns, 3), var(--bento-tile-size));
+  gap: var(--bento-gap);
+  width: fit-content;
+  max-width: 100%;
+}
+
+.bentoGridExpanded {
+  grid-auto-flow: row;
+}
+
+.bentoTile {
+  position: relative;
+  aspect-ratio: 1;
+  width: var(--bento-tile-size);
+  border-radius: var(--radius-xl, 1rem);
+  overflow: hidden;
+  border: var(--card-border-width, 1px) solid
+    var(--card-border-color, color-mix(in srgb, var(--color-fg) 12%, transparent));
+  box-shadow: var(--card-shadow, var(--shadow-sm, 0 1px 3px rgb(0 0 0 / 6%)));
+}
+
+.bentoPhoto {
+  position: absolute;
+  inset: 0;
+  background-color: color-mix(in srgb, var(--color-fg) 8%, transparent);
+  background-size: cover;
+  background-position: center top;
+  background-repeat: no-repeat;
+}
+
+.bentoPhoto[data-fallback="true"] {
+  display: grid;
+  place-items: center;
+  background: linear-gradient(
+    160deg,
+    color-mix(in srgb, var(--color-primary) 28%, transparent),
+    color-mix(in srgb, var(--color-fg) 12%, transparent)
+  );
+}
+
+.bentoPhotoFallback {
+  font-size: 3.5rem;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  color: color-mix(in srgb, var(--color-fg) 42%, transparent);
+}
+
+.bentoTileOverlay {
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  z-index: 1;
+  display: flex;
+  align-items: flex-end;
+  padding: var(--space-2, 0.5rem);
+  pointer-events: none;
+}
+
+.bentoTileName {
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  padding-inline: 0.4375rem;
+  padding-block: 0.125rem;
+  border-radius: var(--badge-radius, 999px);
+  background-color: color-mix(in srgb, var(--color-bg) 88%, transparent);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+  color: var(--color-fg);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bentoMoreBtn,
+.bentoCloseBtn {
+  position: absolute;
+  top: var(--space-2, 0.5rem);
+  right: var(--space-2, 0.5rem);
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-bg) 72%, transparent);
+  color: var(--color-fg);
+  backdrop-filter: blur(8px);
+  cursor: pointer;
+  transition:
+    background-color var(--motion-fast, 150ms) ease,
+    transform var(--motion-fast, 150ms) ease;
+}
+
+.bentoMoreBtn:active,
+.bentoCloseBtn:active {
+  transform: scale(var(--interaction-press-scale, 0.95));
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .bentoMoreBtn:hover,
+  .bentoCloseBtn:hover {
+    background: color-mix(in srgb, var(--color-bg) 88%, transparent);
+  }
+}
+
+.bentoExpanded {
+  position: relative;
+  width: 100%;
+  height: var(--bento-tile-size);
+  border-radius: var(--radius-xl, 1rem);
+  overflow: hidden;
+  border: var(--card-border-width, 1px) solid
+    var(--card-border-color, color-mix(in srgb, var(--color-fg) 12%, transparent));
+  background: var(--color-card, var(--color-bg));
+  box-shadow: var(--elevation-2, 0 4px 12px rgb(0 0 0 / 8%));
+}
+
+.bentoExpandedInner {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+  height: 100%;
+  min-height: 0;
+}
+
+.bentoExpandedInner[data-direction="left"] {
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+}
+
+.bentoExpanded .bentoPhoto {
+  position: relative;
+  height: 100%;
+  min-height: 0;
+}
+
+.bentoExpandedBody {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--space-1, 0.25rem);
+  min-width: 0;
+  height: 100%;
+  padding: var(--space-2, 0.5rem) var(--space-3, 0.75rem);
+  overflow: hidden;
+}
+
+.bentoExpandedHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-2, 0.5rem);
+}
+
+.bentoExpandedName {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.2;
+}
+
+.bentoExpandedStyles {
+  align-content: flex-start;
+  overflow: hidden;
+}
+
+.bentoExpandedActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1, 0.25rem);
+}
+
+.bentoEmpty {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: color-mix(in srgb, var(--color-fg) 58%, transparent);
+}
+
+.stackRoot {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 0.75rem);
+  align-items: center;
+  padding-block: var(--space-1, 0.25rem);
+}
+
+.stackViewport {
+  position: relative;
+  max-width: 100%;
+  overflow: hidden;
+  box-sizing: border-box;
+  padding-inline: 1.25rem;
+}
+
+.stackTrack {
+  display: flex;
+  touch-action: pan-y;
+  cursor: grab;
+}
+
+.stackTrack:active {
+  cursor: grabbing;
+}
+
+.stackCard {
+  position: relative;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  height: 26rem;
+  border-radius: var(--radius-2xl, 1.25rem);
+  border: var(--card-border-width, 1px) solid
+    var(--card-border-color, color-mix(in srgb, var(--color-fg) 12%, transparent));
+  background: var(--card-background, var(--color-card, var(--color-bg)));
+  box-shadow: var(--card-shadow, var(--shadow-sm, 0 1px 3px rgb(0 0 0 / 6%)));
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.stackCardPhoto {
+  position: relative;
+  min-height: 0;
+  background-color: color-mix(in srgb, var(--color-fg) 8%, transparent);
+  background-size: cover;
+  background-position: center top;
+  background-repeat: no-repeat;
+}
+
+.stackCardPhoto[data-fallback="true"] {
+  display: grid;
+  place-items: center;
+  background: linear-gradient(
+    160deg,
+    color-mix(in srgb, var(--color-primary) 28%, transparent),
+    color-mix(in srgb, var(--color-fg) 12%, transparent)
+  );
+}
+
+.stackPhotoFallback {
+  font-size: 3.5rem;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  color: color-mix(in srgb, var(--color-fg) 42%, transparent);
+}
+
+.stackCardContent {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--space-1, 0.25rem);
+  min-height: 0;
+  padding: var(--space-3, 0.75rem) var(--space-4, 1rem);
+  text-align: center;
+  background: var(--card-background, var(--color-card, var(--color-bg)));
+  border-top: 1px solid
+    color-mix(in srgb, var(--color-fg) 8%, transparent);
+}
+
+.stackName {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.2;
+}
+
+.stackStyleList {
+  justify-content: center;
+}
+
+.stackEmpty,
+.stackCounter {
+  margin: 0;
+  font-size: 0.75rem;
+  color: color-mix(in srgb, var(--color-fg) 58%, transparent);
+}
+
+.stackFollowCounts {
+  display: flex;
+  justify-content: center;
+}
+
+.stackFollowAction {
+  display: flex;
+  justify-content: center;
+  margin-top: var(--space-2, 0.5rem);
+}
+
+.stackOpenBtn {
+  position: absolute;
+  right: var(--space-4, 1rem);
+  bottom: var(--space-4, 1rem);
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-fg) 10%, transparent);
+  color: var(--color-fg);
+  cursor: pointer;
+  transition:
+    background-color var(--motion-fast, 150ms) ease,
+    transform var(--motion-fast, 150ms) ease;
+}
+
+.stackOpenBtn:active {
+  transform: scale(var(--interaction-press-scale, 0.95));
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .stackOpenBtn:hover {
+    background: color-mix(in srgb, var(--color-fg) 16%, transparent);
+  }
+}
+
+.stackDots {
+  display: flex;
+  gap: var(--space-2, 0.5rem);
+}
+
+.stackDot {
+  width: 0.625rem;
+  height: 0.625rem;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-fg) 24%, transparent);
+  cursor: pointer;
+  transition: background-color var(--motion-fast, 150ms) ease;
+}
+
+.stackDotActive {
+  background: color-mix(in srgb, var(--color-fg) 58%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bentoMoreBtn,
+  .bentoCloseBtn,
+  .stackOpenBtn,
+  .stackDot {
+    transition-duration: 0ms;
+  }
+
+  .bentoMoreBtn:active,
+  .bentoCloseBtn:active,
+  .stackOpenBtn:active {
+    transform: none;
+  }
+}

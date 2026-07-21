@@ -1,0 +1,149 @@
+.root {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  min-height: 22rem;
+  width: 100%;
+  flex-direction: column;
+  align-items: center;
+  overflow: hidden;
+  padding-block: var(--space-2, 0.5rem);
+}
+
+.title {
+  margin: 0 0 var(--space-4, 1rem);
+  width: 100%;
+  align-self: flex-start;
+  font-size: 1.125rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.viewport {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  overflow: hidden;
+  cursor: grab;
+  padding-inline: var(--space-1, 0.25rem);
+  mask-image: linear-gradient(
+    to right,
+    transparent,
+    #000 8%,
+    #000 92%,
+    transparent
+  );
+
+  &:active {
+    cursor: grabbing;
+  }
+}
+
+.viewportPanning {
+  touch-action: none;
+}
+
+.viewportScroll {
+  touch-action: pan-y;
+}
+
+.track {
+  display: flex;
+  width: max-content;
+  flex-direction: column;
+  gap: var(--space-3, 0.75rem);
+  padding-inline-end: var(--space-8, 2rem);
+}
+
+.row {
+  display: flex;
+  width: max-content;
+  gap: var(--space-3, 0.75rem);
+}
+
+.chip {
+  display: flex;
+  width: max-content;
+  align-items: center;
+  gap: var(--space-2, 0.5rem);
+  padding: var(--space-2, 0.5rem) var(--space-4, 1rem);
+  border: var(--card-border-width, 1px) solid
+    color-mix(in srgb, var(--color-fg) 12%, transparent);
+  border-radius: var(--radius-full, 9999px);
+  background: color-mix(in srgb, var(--color-fg) 5%, transparent);
+  color: inherit;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.chipSelected {
+  border-color: color-mix(in srgb, var(--color-primary) 45%, transparent);
+  background: color-mix(in srgb, var(--color-primary) 10%, var(--color-bg));
+}
+
+.chipEmoji {
+  font-size: 1.125rem;
+  line-height: 1;
+}
+
+.particles {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+}
+
+.particle {
+  position: absolute;
+  bottom: 5rem;
+  left: 50%;
+  translate: -50% 0;
+  font-size: 2.25rem;
+  line-height: 1;
+}
+
+.particleAbove {
+  z-index: 3;
+}
+
+.particleBelow {
+  z-index: 1;
+}
+
+.summary {
+  position: absolute;
+  bottom: var(--space-2, 0.5rem);
+  left: 50%;
+  z-index: 2;
+  translate: -50% 0;
+  padding: var(--space-2, 0.5rem) var(--space-6, 1.5rem);
+  border: var(--card-border-width, 1px) solid
+    color-mix(in srgb, var(--color-fg) 12%, transparent);
+  border-radius: var(--radius-full, 9999px);
+  background: var(--card-background, var(--color-card, var(--color-bg)));
+  font-size: 1rem;
+  font-weight: 700;
+  box-shadow: var(--shadow-md, 0 8px 24px rgb(0 0 0 / 10%));
+}
+
+@media (max-width: 28rem) {
+  .root {
+    min-height: 18rem;
+  }
+
+  .chip {
+    font-size: 0.875rem;
+    padding-inline: var(--space-3, 0.75rem);
+  }
+
+  .particle {
+    font-size: 1.75rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chip {
+    transition: none;
+  }
+}

@@ -1,0 +1,41 @@
+@use "@dev-ui/tokens/scss" as *;
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.25rem;
+}
+
+.cell {
+  position: relative;
+  aspect-ratio: 1;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--color-fg) 6%, transparent);
+  color: inherit;
+  text-decoration: none;
+}
+
+.image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.placeholder {
+  width: 100%;
+  height: 100%;
+  background: color-mix(in srgb, var(--color-fg) 8%, transparent);
+}
+
+.badge {
+  position: absolute;
+  top: 0.4rem;
+  right: 0.4rem;
+  padding: 0.15rem 0.4rem;
+  border-radius: var(--radius-sm, 0.25rem);
+  background: color-mix(in srgb, var(--color-bg, #111) 75%, transparent);
+  color: var(--color-fg);
+  font-size: 0.7rem;
+  font-weight: 600;
+}

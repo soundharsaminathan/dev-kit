@@ -3,7 +3,7 @@ import type { SearchFieldState } from "@react-stately/searchfield";
 import type { DOMAttributes, ReactNode, Ref, RefObject } from "react";
 
 export type SearchFieldProps = AriaSearchFieldProps & {
-  className?: string;
+  className?: string | undefined;
   children?: ReactNode;
   placeholder?: string | undefined;
 };

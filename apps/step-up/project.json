@@ -1,0 +1,46 @@
+{
+  "name": "step-up",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/step-up",
+  "projectType": "application",
+  "tags": ["scope:step-up", "type:app"],
+  "implicitDependencies": ["components", "tokens"],
+  "targets": {
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "apps/step-up",
+        "command": "tsc -b --pretty false"
+      },
+      "dependsOn": ["^typecheck", "tokens:build:tokens", "components:build"]
+    },
+    "dev": {
+      "executor": "nx:run-script",
+      "options": {
+        "script": "dev"
+      },
+      "continuous": true,
+      "dependsOn": ["tokens:build:tokens"]
+    },
+    "build": {
+      "executor": "nx:run-script",
+      "options": {
+        "script": "build"
+      },
+      "outputs": ["{projectRoot}/dist"],
+      "dependsOn": [
+        "tokens:build:tokens",
+        "components:build",
+        "icons-packs:build"
+      ]
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "apps/step-up",
+        "command": "vitest run --config vitest.config.ts"
+      },
+      "dependsOn": ["tokens:build:tokens", "components:build"]
+    }
+  }
+}

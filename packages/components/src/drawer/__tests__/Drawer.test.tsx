@@ -30,6 +30,18 @@ function getDrawerPanel() {
   return document.querySelector("[data-drawer]") as HTMLElement | null;
 }
 
+function finishDrawerExit() {
+  const panel = getDrawerPanel();
+  if (panel) {
+    act(() => {
+      fireEvent.transitionEnd(panel, {
+        propertyName: "transform",
+        bubbles: true,
+      });
+    });
+  }
+}
+
 function swipeDrawer(
   placement: DrawerPlacement,
   distance = 120,
@@ -190,6 +202,7 @@ describe("Drawer", () => {
     const backdrop = getBackdrop();
     expect(backdrop).toBeTruthy();
     fireEvent.click(backdrop!);
+    finishDrawerExit();
 
     expect(screen.queryByText("Drawer content")).not.toBeInTheDocument();
   });
@@ -202,6 +215,7 @@ describe("Drawer", () => {
     );
 
     fireEvent.click(screen.getAllByRole("button", { name: "Dismiss" })[0]!);
+    finishDrawerExit();
 
     expect(screen.queryByText("Drawer content")).not.toBeInTheDocument();
   });
@@ -217,6 +231,7 @@ describe("Drawer", () => {
       getDrawerPanel()?.focus();
     });
     fireEvent.keyDown(getDrawerPanel()!, { key: "Escape", code: "Escape" });
+    finishDrawerExit();
 
     expect(screen.queryByText("Drawer content")).not.toBeInTheDocument();
   });
@@ -261,6 +276,7 @@ describe("Drawer", () => {
     );
 
     swipeDrawer("bottom");
+    finishDrawerExit();
 
     expect(screen.queryByText("Drawer content")).not.toBeInTheDocument();
   });
@@ -273,6 +289,7 @@ describe("Drawer", () => {
     );
 
     swipeDrawer("top");
+    finishDrawerExit();
 
     expect(screen.queryByText("Drawer content")).not.toBeInTheDocument();
   });
@@ -285,6 +302,7 @@ describe("Drawer", () => {
     );
 
     swipeDrawer("left");
+    finishDrawerExit();
 
     expect(screen.queryByText("Left drawer")).not.toBeInTheDocument();
   });
@@ -297,6 +315,7 @@ describe("Drawer", () => {
     );
 
     swipeDrawer("right");
+    finishDrawerExit();
 
     expect(screen.queryByText("Right drawer")).not.toBeInTheDocument();
   });
@@ -359,6 +378,7 @@ describe("Drawer", () => {
     );
 
     swipeDrawer("bottom", 120, screen.getByTestId("drawer-handle"));
+    finishDrawerExit();
 
     expect(screen.queryByText("Drawer content")).not.toBeInTheDocument();
   });
@@ -463,6 +483,28 @@ describe("Drawer", () => {
 
     await waitFor(() => {
       expect(panel).not.toHaveAttribute("data-starting-style");
+    });
+  });
+
+  it("applies ending style while closing", async () => {
+    render(
+      <Drawer defaultOpen>
+        <p>Drawer content</p>
+      </Drawer>,
+    );
+
+    const backdrop = getBackdrop();
+    expect(backdrop).toBeTruthy();
+    fireEvent.click(backdrop!);
+
+    const panel = getDrawerPanel();
+    expect(panel).toHaveAttribute("data-ending-style", "");
+    expect(backdrop).toHaveAttribute("data-ending-style", "");
+
+    finishDrawerExit();
+
+    await waitFor(() => {
+      expect(screen.queryByText("Drawer content")).not.toBeInTheDocument();
     });
   });
 
@@ -582,6 +624,7 @@ describe("Drawer", () => {
         <p>Drawer content</p>
       </Drawer>,
     );
+    finishDrawerExit();
 
     act(() => {
       fireEvent.pointerMove(window, {

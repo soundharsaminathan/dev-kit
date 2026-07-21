@@ -124,6 +124,7 @@ import {
   TrayIcon,
   TrendUpIcon,
   UploadSimpleIcon,
+  UserCircleIcon,
   UserIcon,
   UsersIcon,
   WalletIcon,
@@ -267,6 +268,10 @@ const Circle = (
 const CircleDashed = (
   props: Omit<React.ComponentProps<typeof CircleDashedIcon>, "weight">,
 ) => <CircleDashedIcon weight="duotone" {...props} />;
+
+const CircleUser = (
+  props: Omit<React.ComponentProps<typeof UserCircleIcon>, "weight">,
+) => <UserCircleIcon weight="duotone" {...props} />;
 
 const Clipboard = (
   props: Omit<React.ComponentProps<typeof ClipboardIcon>, "weight">,
@@ -708,6 +713,7 @@ const pack = {
     "chevrons-up-down": ChevronsUpDown,
     circle: Circle,
     "circle-dashed": CircleDashed,
+    "circle-user": CircleUser,
     clipboard: Clipboard,
     "clipboard-paste": ClipboardPaste,
     clock: Clock,

@@ -1,0 +1,45 @@
+{
+  "name": "step-up-api",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/step-up-api/src",
+  "projectType": "application",
+  "tags": ["scope:step-up", "type:app"],
+  "targets": {
+    "build": {
+      "executor": "nx:run-script",
+      "options": {
+        "script": "build"
+      },
+      "outputs": ["{projectRoot}/dist"],
+      "dependsOn": ["prisma:generate"]
+    },
+    "dev": {
+      "executor": "nx:run-script",
+      "options": {
+        "script": "dev"
+      },
+      "continuous": true,
+      "dependsOn": ["prisma:generate"]
+    },
+    "test": {
+      "executor": "nx:run-script",
+      "options": {
+        "script": "test"
+      }
+    },
+    "prisma:generate": {
+      "executor": "nx:run-script",
+      "options": {
+        "script": "prisma:generate"
+      }
+    },
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "apps/step-up-api",
+        "command": "tsc -p tsconfig.build.json --noEmit"
+      },
+      "dependsOn": ["prisma:generate"]
+    }
+  }
+}

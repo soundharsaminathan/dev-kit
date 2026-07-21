@@ -11,11 +11,16 @@ catalog:
 # pnpm 11: replaces package.json "pnpm.onlyBuiltDependencies"
 allowBuilds:
   "@biomejs/biome": true
+  "@firebase/util": true
   "@parcel/watcher": true
+  "@prisma/client": true
+  "@prisma/engines": true
   core-js: false
   esbuild: true
   msw: true
   nx: true
+  prisma: true
+  protobufjs: true
 
 # pnpm 11 defaults to 1440 (1 day); restore pre-v11 behavior for dev tooling
 minimumReleaseAge: 0

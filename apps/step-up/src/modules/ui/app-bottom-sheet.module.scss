@@ -1,0 +1,14 @@
+.body {
+  padding: 0 var(--space-4, 1rem) var(--space-5, 1.25rem);
+  padding-bottom: calc(var(--space-5, 1.25rem) + env(safe-area-inset-bottom, 0px));
+  max-height: min(78vh, 36rem);
+  overflow: auto;
+}
+
+.title {
+  margin: 0 0 var(--space-3, 0.75rem);
+  padding-inline: var(--space-1, 0.25rem);
+  font-size: 1.125rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}

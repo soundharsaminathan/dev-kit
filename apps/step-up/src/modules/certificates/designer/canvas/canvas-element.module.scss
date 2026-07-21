@@ -1,0 +1,92 @@
+.root {
+  position: absolute;
+  box-sizing: border-box;
+  touch-action: none;
+  user-select: none;
+}
+
+.selected {
+  outline: 1.5px solid #2563eb;
+  outline-offset: 1px;
+}
+
+.locked {
+  cursor: not-allowed;
+}
+
+.content {
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  position: relative;
+  overflow: hidden;
+}
+
+.editOverlay {
+  width: 100%;
+  height: 100%;
+  background: rgb(255 255 255 / 92%);
+  box-sizing: border-box;
+  padding: 2px;
+}
+
+.handle {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  border: 1.5px solid #2563eb;
+  background: #fff;
+  border-radius: 2px;
+  padding: 0;
+  z-index: 2;
+}
+
+.nw {
+  top: -5px;
+  left: -5px;
+  cursor: nwse-resize;
+}
+
+.ne {
+  top: -5px;
+  right: -5px;
+  cursor: nesw-resize;
+}
+
+.sw {
+  bottom: -5px;
+  left: -5px;
+  cursor: nesw-resize;
+}
+
+.se {
+  bottom: -5px;
+  right: -5px;
+  cursor: nwse-resize;
+}
+
+.rotateHandle {
+  position: absolute;
+  top: -28px;
+  left: 50%;
+  width: 12px;
+  height: 12px;
+  margin-left: -6px;
+  border-radius: 50%;
+  border: 1.5px solid #2563eb;
+  background: #fff;
+  padding: 0;
+  cursor: grab;
+  z-index: 2;
+
+  &::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 12px;
+    width: 1px;
+    height: 14px;
+    background: #2563eb;
+    transform: translateX(-50%);
+  }
+}

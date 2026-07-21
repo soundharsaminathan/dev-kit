@@ -40,6 +40,7 @@ export type TabPanelProps = {
 export type TabsContextValue<T extends object = object> = {
   state: TabListState<T>;
   orientation: TabsOrientation;
+  layoutId: string;
 };
 
 export type TabListContextValue = {

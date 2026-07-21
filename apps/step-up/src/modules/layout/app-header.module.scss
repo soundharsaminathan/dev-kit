@@ -1,0 +1,256 @@
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  min-height: 3.5rem;
+  padding: 0.625rem 1.25rem;
+  padding-top: calc(0.625rem + env(safe-area-inset-top, 0px));
+}
+
+.brand {
+  min-width: 0;
+}
+
+.brandLabel {
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.actions {
+  position: relative;
+  min-width: 0;
+}
+
+.actions .items {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.actions :global(svg),
+.menuLink :global(svg) {
+  width: 1.25rem;
+  height: 1.25rem;
+  flex-shrink: 0;
+}
+
+.navIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: var(--radius-xl, 1rem);
+  color: color-mix(in srgb, var(--color-fg) 72%, transparent);
+  transition:
+    background-color var(--motion-fast, 150ms) ease,
+    color var(--motion-fast, 150ms) ease,
+    transform var(--motion-fast, 150ms) ease;
+}
+
+.navIcon:active {
+  transform: scale(var(--interaction-press-scale, 0.98));
+}
+
+.navIcon:hover {
+  background: color-mix(in srgb, var(--color-fg) 6%, transparent);
+  color: var(--color-fg);
+}
+
+.navIconActive {
+  background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+  color: var(--color-primary);
+}
+
+.control {
+  position: relative;
+}
+
+.header .actions .control :global(button[data-icon-only="true"]) {
+  width: 2.75rem;
+  height: 2.75rem;
+}
+
+.header .actions .control :global(button svg) {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.header .actions .control :global(button [data-avatar-fallback] svg) {
+  width: 0.875rem;
+  height: 0.875rem;
+  color: color-mix(in srgb, var(--color-fg) 62%, transparent);
+}
+
+.control :global(button) {
+  position: relative;
+}
+
+.badge {
+  position: absolute;
+  top: 0.2rem;
+  right: 0.2rem;
+  min-width: 1rem;
+  height: 1rem;
+  padding-inline: 0.2rem;
+  border-radius: 999px;
+  background: var(--color-primary);
+  color: var(--color-bg);
+  font-size: 0.625rem;
+  font-weight: 700;
+  line-height: 1rem;
+  text-align: center;
+  pointer-events: none;
+}
+
+.onMediaButton {
+  color: #fff !important;
+  background: color-mix(in srgb, #fff 18%, transparent) !important;
+  backdrop-filter: blur(12px);
+  border-radius: var(--radius-full, 9999px);
+}
+
+.control[data-tone="onMedia"] .badge {
+  background: #fff;
+  color: var(--color-primary);
+}
+
+.profileTrigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  max-width: 12rem;
+}
+
+.profileName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.875rem;
+}
+
+.dropdown {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  right: 0;
+  z-index: 30;
+  width: min(20rem, calc(100vw - 2rem));
+  max-height: min(24rem, 70vh);
+  overflow: auto;
+  padding: 0.5rem;
+  border-radius: var(--radius-xl, 1rem);
+  border: 1px solid color-mix(in srgb, var(--color-fg) 10%, transparent);
+  background: var(--color-bg);
+  box-shadow: var(--shadow-lg, 0 24px 48px rgb(0 0 0 / 12%));
+}
+
+.panelHeader {
+  padding: 0.5rem 0.75rem 0.75rem;
+  font-weight: 600;
+}
+
+.drawerBody {
+  padding: 0 1rem 1.25rem;
+  padding-bottom: calc(1.25rem + env(safe-area-inset-bottom, 0px));
+  max-height: min(70vh, 28rem);
+  overflow: auto;
+}
+
+.notificationList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.notificationItem {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.2rem;
+  width: 100%;
+  padding: 0.75rem;
+  border: 0;
+  border-radius: var(--radius-lg, 0.75rem);
+  background: transparent;
+  color: inherit;
+  text-align: start;
+  cursor: pointer;
+  transition: background-color var(--motion-fast, 150ms) ease;
+}
+
+.notificationItem:hover,
+.notificationItem:active {
+  background: color-mix(in srgb, var(--color-fg) 6%, transparent);
+}
+
+.notificationItem[data-unread="true"] {
+  background: color-mix(in srgb, var(--color-primary) 8%, transparent);
+}
+
+.notificationItem[data-link="true"] .notificationMeta {
+  color: color-mix(in srgb, var(--color-primary) 72%, transparent);
+}
+
+.notificationTitle {
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.notificationBody {
+  font-size: 0.8125rem;
+  color: color-mix(in srgb, var(--color-fg) 68%, transparent);
+}
+
+.notificationMeta {
+  font-size: 0.75rem;
+  color: color-mix(in srgb, var(--color-fg) 48%, transparent);
+}
+
+.empty {
+  display: block;
+  padding: 1rem 0.75rem;
+  color: color-mix(in srgb, var(--color-fg) 56%, transparent);
+}
+
+.menuLink {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.75rem;
+  border: 0;
+  border-radius: var(--radius-lg, 0.75rem);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+  transition: background-color var(--motion-fast, 150ms) ease;
+}
+
+.menuLink:hover,
+.menuLink:active {
+  background: color-mix(in srgb, var(--color-fg) 6%, transparent);
+}
+
+@media (max-width: 767px) {
+  .header {
+    padding-inline: 1rem;
+  }
+
+  .profileName {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .notificationItem,
+  .menuLink,
+  .navIcon {
+    transition-duration: 0ms;
+  }
+}

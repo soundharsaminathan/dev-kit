@@ -1,0 +1,95 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4, 1rem);
+}
+
+.qrCard {
+  overflow: hidden;
+}
+
+.qrContent {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3, 0.75rem);
+}
+
+.qrCanvas {
+  display: block;
+  border-radius: var(--radius-xl, 1rem);
+  box-shadow: var(--shadow-sm, 0 1px 3px rgb(0 0 0 / 8%));
+}
+
+.qrHint {
+  margin: 0;
+  color: color-mix(in srgb, var(--color-fg) 62%, transparent);
+  font-size: 0.875rem;
+  text-align: center;
+}
+
+.summaryRow {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 0.75rem);
+}
+
+.summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2, 0.5rem);
+}
+
+.bulkError {
+  margin: 0;
+  color: var(--color-danger, #ff3b30);
+  font-size: 0.875rem;
+}
+
+.bulkWarning {
+  margin: 0;
+  color: color-mix(in srgb, var(--color-warning, #ff9f0a) 88%, var(--color-fg));
+  font-size: 0.875rem;
+  line-height: 1.45;
+}
+
+.roster {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 0.75rem);
+}
+
+.studentRow {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 0.75rem);
+}
+
+.studentHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3, 0.75rem);
+}
+
+.studentMeta {
+  min-width: 0;
+}
+
+.studentName {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.studentStatus {
+  margin: var(--space-1, 0.25rem) 0 0;
+  color: color-mix(in srgb, var(--color-fg) 62%, transparent);
+  font-size: 0.875rem;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2, 0.5rem);
+}

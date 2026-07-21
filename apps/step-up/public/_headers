@@ -1,0 +1,11 @@
+/sw.js
+  Cache-Control: no-cache
+
+/firebase-messaging-sw.js
+  Cache-Control: no-cache
+
+/workbox-*.js
+  Cache-Control: no-cache
+
+/manifest.webmanifest
+  Content-Type: application/manifest+json

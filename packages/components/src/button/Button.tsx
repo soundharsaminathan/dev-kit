@@ -53,6 +53,7 @@ function Button<C extends ElementType = "button">({
   const Component = as ?? "button";
   const sharedProps = {
     className: cn(styles.root, className),
+    "data-button": "",
     "data-variant": variant,
     "data-size": size,
     "data-icon-only": isIconOnly ? "true" : undefined,
