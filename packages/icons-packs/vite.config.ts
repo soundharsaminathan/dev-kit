@@ -30,7 +30,10 @@ export default defineConfig({
     rollupOptions: {
       external: createExternalMatcher(externals),
       output: {
-        entryFileNames: "[name]/index.js",
+        entryFileNames: (chunk) => {
+          const name = chunk.name.replace(/\/index$/, "");
+          return `${name}/index.js`;
+        },
         preserveModules: false,
       },
     },
