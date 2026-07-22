@@ -1,4 +1,3 @@
-import { Badge } from "@dev-ui/components/badge";
 import { useNavigate } from "@tanstack/react-router";
 import { FollowButton } from "@/modules/social/follow-button";
 import { StyleList } from "@/modules/styles/style-list";
@@ -25,24 +24,17 @@ export function TrainerCardsView({
     <div className={styles.cardsList}>
       {trainers.map((trainer) => (
         <PressableCard key={trainer.id} asDiv className={styles.cardShell}>
-          <button
-            type="button"
-            className={styles.cardHit}
-            onClick={() =>
-              void navigate({ to: "/users/$id", params: { id: trainer.id } })
-            }
-          >
-            <div className={styles.cardRow}>
+          <div className={styles.cardRow}>
+            <button
+              type="button"
+              className={styles.cardHit}
+              onClick={() =>
+                void navigate({ to: "/users/$id", params: { id: trainer.id } })
+              }
+            >
               <TrainerAvatar name={trainer.name} photoUrl={trainer.photoUrl} />
               <div className={styles.cardBody}>
-                <div className={styles.cardTop}>
-                  <span className={styles.cardName}>{trainer.name}</span>
-                  {trainer.isFollowing ? (
-                    <Badge appearance="subtle">Following</Badge>
-                  ) : trainer.followRequestStatus === "PENDING" ? (
-                    <Badge appearance="subtle">Requested</Badge>
-                  ) : null}
-                </div>
+                <span className={styles.cardName}>{trainer.name}</span>
                 <FollowCounts
                   followerCount={trainer.followerCount}
                   followingCount={trainer.followingCount}
@@ -54,19 +46,19 @@ export function TrainerCardsView({
                   <p className={styles.cardMeta}>No styles listed yet</p>
                 )}
               </div>
-            </div>
-          </button>
-          {!trainer.isOwnProfile && onToggleFollow ? (
-            <div className={styles.cardActions}>
-              <FollowButton
-                isFollowing={trainer.isFollowing}
-                followRequestStatus={trainer.followRequestStatus}
-                isPending={isFollowPending?.(trainer.id)}
-                onFollow={() => onToggleFollow(trainer)}
-                onUnfollow={() => onToggleFollow(trainer)}
-              />
-            </div>
-          ) : null}
+            </button>
+            {!trainer.isOwnProfile && onToggleFollow ? (
+              <div className={styles.cardActions}>
+                <FollowButton
+                  isFollowing={trainer.isFollowing}
+                  followRequestStatus={trainer.followRequestStatus}
+                  isPending={isFollowPending?.(trainer.id)}
+                  onFollow={() => onToggleFollow(trainer)}
+                  onUnfollow={() => onToggleFollow(trainer)}
+                />
+              </div>
+            ) : null}
+          </div>
         </PressableCard>
       ))}
     </div>
