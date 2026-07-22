@@ -9,16 +9,21 @@ import styles from "./dance-loader.module.scss";
 
 const LOADER_GIF = "/loader.gif";
 
-const LOADING_PHRASES = [
-  "Stretching it out…",
-  "Finding the groove…",
-  "Spotting the turn…",
-  "Marking the combo…",
-  "Feeling the rhythm…",
-  "Stepping into it…",
-] as const;
+type LoadingPhrase = {
+  lead: string;
+  keyword: string;
+};
 
-const CYCLE_MS = 1600;
+const LOADING_PHRASES: readonly LoadingPhrase[] = [
+  { lead: "Stretching it ", keyword: "out…" },
+  { lead: "Finding the ", keyword: "groove…" },
+  { lead: "Spotting the ", keyword: "turn…" },
+  { lead: "Marking the ", keyword: "combo…" },
+  { lead: "Feeling the ", keyword: "rhythm…" },
+  { lead: "Stepping into ", keyword: "it…" },
+];
+
+const CYCLE_MS = 2200;
 const CASCADE_STAGGER = 0.025;
 const EASE_OUT = [0.16, 1, 0.3, 1] as const;
 const ROLL_BLUR = "blur(6px)";
@@ -30,46 +35,64 @@ const SPRING_SWAP = {
   mass: 0.55,
 };
 
+const CASCADE_CONTAINER_VARIANTS: Variants = {
+  initial: {},
+  animate: {
+    transition: { staggerChildren: CASCADE_STAGGER },
+  },
+  exit: {
+    transition: {
+      staggerChildren: CASCADE_STAGGER * 0.5,
+      staggerDirection: -1,
+      when: "afterChildren",
+    },
+  },
+};
+
 const CASCADE_LETTER_VARIANTS: Variants = {
   initial: { opacity: 0, y: "105%", filter: ROLL_BLUR },
-  animate: (delay: number = 0) => ({
+  animate: {
     opacity: 1,
     y: "0%",
     filter: "blur(0px)",
-    transition: { ...SPRING_SWAP, delay },
-  }),
-  exit: (delay: number = 0) => ({
+    transition: SPRING_SWAP,
+  },
+  exit: {
     opacity: 0,
     y: "-105%",
     filter: ROLL_BLUR,
-    transition: { duration: 0.16, ease: EASE_OUT, delay: delay * 0.5 },
-  }),
+    transition: { duration: 0.16, ease: EASE_OUT },
+  },
 };
 
 function phraseIndexAt(count: number, now = Date.now()) {
   return Math.floor(now / CYCLE_MS) % count;
 }
 
+function phraseText(phrase: LoadingPhrase | string) {
+  if (typeof phrase === "string") return phrase;
+  return `${phrase.lead}${phrase.keyword}`;
+}
+
+function keywordStart(phrase: LoadingPhrase | string) {
+  if (typeof phrase === "string") {
+    const match = phrase.match(/^(.*\s)(\S+)$/);
+    return match ? match[1]!.length : 0;
+  }
+  return phrase.lead.length;
+}
+
 type DanceLoaderProps = {
   label?: string;
   caption?: string;
-  phrases?: readonly string[];
+  phrases?: readonly (LoadingPhrase | string)[];
 };
 
-function splitEmphasis(text: string) {
-  const match = text.match(/^(.*\s)(\S+)$/);
-  if (!match) return { lead: "", emphasis: text, splitAt: 0 };
-  return {
-    lead: match[1]!,
-    emphasis: match[2]!,
-    splitAt: match[1]!.length,
-  };
-}
-
-function CascadingCaption({ text }: { text: string }) {
+function CascadingCaption({ phrase }: { phrase: LoadingPhrase | string }) {
   const reducedMotion = useReducedMotion();
   const skipEnterRef = useRef(true);
-  const { lead, emphasis, splitAt } = splitEmphasis(text);
+  const text = phraseText(phrase);
+  const splitAt = keywordStart(phrase);
 
   useLayoutEffect(() => {
     skipEnterRef.current = false;
@@ -78,8 +101,8 @@ function CascadingCaption({ text }: { text: string }) {
   if (reducedMotion) {
     return (
       <p className={styles.caption}>
-        {lead}
-        <span className={styles.emphasis}>{emphasis}</span>
+        {text.slice(0, splitAt)}
+        <span className={styles.emphasis}>{text.slice(splitAt)}</span>
       </p>
     );
   }
@@ -94,22 +117,31 @@ function CascadingCaption({ text }: { text: string }) {
           <motion.span
             key={text}
             className={styles.cascadeLayer}
+            variants={CASCADE_CONTAINER_VARIANTS}
             initial={skipEnterRef.current ? false : "initial"}
             animate="animate"
             exit="exit"
             aria-hidden
           >
-            {text.split("").map((char, i) => (
-              <motion.span
-                // biome-ignore lint/suspicious/noArrayIndexKey: stable glyph slots in phrase
-                key={i}
-                custom={i * CASCADE_STAGGER}
-                variants={CASCADE_LETTER_VARIANTS}
-                className={i >= splitAt ? styles.letterEmphasis : styles.letter}
-              >
-                {char}
-              </motion.span>
-            ))}
+            {text.split("").map((char, i) => {
+              const isSpace = /\s/.test(char);
+              return (
+                <motion.span
+                  // biome-ignore lint/suspicious/noArrayIndexKey: stable glyph slots in phrase
+                  key={i}
+                  variants={CASCADE_LETTER_VARIANTS}
+                  className={
+                    isSpace
+                      ? styles.letterSpace
+                      : i >= splitAt
+                        ? styles.letterEmphasis
+                        : styles.letter
+                  }
+                >
+                  {isSpace ? "\u00A0" : char}
+                </motion.span>
+              );
+            })}
           </motion.span>
         </AnimatePresence>
       </span>
@@ -154,7 +186,7 @@ export function DanceLoader({
       {reducedMotion ? null : (
         <img className={styles.dancer} src={LOADER_GIF} alt="" aria-hidden />
       )}
-      <CascadingCaption text={currentPhrase} />
+      <CascadingCaption phrase={currentPhrase} />
     </div>
   );
 }

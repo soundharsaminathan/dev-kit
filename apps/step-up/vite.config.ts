@@ -60,12 +60,86 @@ self.addEventListener("notificationclick", (event) => {
   };
 }
 
+function stepUpManualChunks(id: string) {
+  const normalized = id.replace(/\\/g, "/");
+
+  if (normalized.includes("node_modules")) {
+    if (
+      normalized.includes("/firebase/") ||
+      normalized.includes("/@firebase/")
+    ) {
+      return "vendor-firebase";
+    }
+    if (normalized.includes("/socket.io")) {
+      return "vendor-socket";
+    }
+    if (normalized.includes("/@tiptap/")) {
+      return "vendor-tiptap";
+    }
+    if (normalized.includes("/@zxing/")) {
+      return "vendor-zxing";
+    }
+    if (normalized.includes("/read-excel-file")) {
+      return "vendor-excel";
+    }
+    if (
+      normalized.includes("/leaflet") ||
+      normalized.includes("/react-leaflet")
+    ) {
+      return "vendor-maps";
+    }
+    if (
+      normalized.includes("/motion/") ||
+      normalized.includes("/framer-motion")
+    ) {
+      return "vendor-motion";
+    }
+    if (normalized.includes("/@tanstack/")) {
+      return "vendor-tanstack";
+    }
+    if (
+      normalized.includes("/react-dom") ||
+      normalized.includes("/react/") ||
+      normalized.includes("/scheduler/")
+    ) {
+      return "vendor-react";
+    }
+    return;
+  }
+
+  if (!normalized.includes("/apps/step-up/src/")) {
+    return;
+  }
+
+  if (normalized.includes("/src/modules/certificates/")) {
+    return "role-staff-certificates";
+  }
+  if (normalized.includes("/src/modules/discover/")) {
+    return "role-member-discover";
+  }
+  if (normalized.includes("/src/modules/onboarding/")) {
+    return "role-member-onboarding";
+  }
+  if (normalized.includes("/src/modules/me/")) {
+    return "role-member-shell";
+  }
+
+  return;
+}
+
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, appRoot, "");
   return {
     server: {
       port: 5180,
       open: true,
+    },
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks: stepUpManualChunks,
+        },
+      },
     },
     optimizeDeps: {
       ...devAppOptimizeDeps,
@@ -90,6 +164,14 @@ export default defineConfig(({ mode }) => {
         routesDirectory: "./src/routes",
         generatedRouteTree: "./src/routeTree.gen.ts",
         autoCodeSplitting: true,
+        codeSplittingOptions: {
+          defaultBehavior: [
+            ["component"],
+            ["errorComponent"],
+            ["pendingComponent"],
+            ["notFoundComponent"],
+          ],
+        },
       }),
       react(),
       firebaseMessagingSwPlugin(env),

@@ -418,7 +418,7 @@ export function TrainerBentoView({
         }
         style={gridStyle}
       >
-        {trainers.map((trainer) => {
+        {trainers.map((trainer, index) => {
           const placement = gridPlacements?.get(trainer.id);
 
           if (trainer.id === activeId && expansionPlan && placement) {
@@ -460,21 +460,34 @@ export function TrainerBentoView({
               }
               transition={transition}
             >
-              <TrainerPhoto trainer={trainer} />
-              <div className={styles.bentoTileOverlay}>
-                <span className={styles.bentoTileName}>{trainer.name}</span>
-              </div>
               <button
                 type="button"
-                className={styles.bentoMoreBtn}
+                className={styles.bentoTileHit}
                 aria-label={`Show details for ${trainer.name}`}
                 aria-expanded={false}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  setActiveId(trainer.id);
+                onClick={() => {
+                  const plan = getExpansionPlan(
+                    index,
+                    columnsPerRow,
+                    trainers.length,
+                  );
+                  if (plan) {
+                    setActiveId(trainer.id);
+                    return;
+                  }
+                  void navigate({
+                    to: "/users/$id",
+                    params: { id: trainer.id },
+                  });
                 }}
               >
-                <Icon name="more-horizontal" aria-hidden />
+                <TrainerPhoto trainer={trainer} />
+                <div className={styles.bentoTileOverlay}>
+                  <span className={styles.bentoTileName}>{trainer.name}</span>
+                </div>
+                <span className={styles.bentoMoreBtn} aria-hidden>
+                  <Icon name="more-horizontal" aria-hidden />
+                </span>
               </button>
             </motion.div>
           );

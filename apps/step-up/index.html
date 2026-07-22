@@ -143,26 +143,97 @@
         font-weight: 500;
         line-height: 1.3;
         letter-spacing: -0.03em;
-        color: #1b2a4a;
+        color: #1c1a17;
         text-align: center;
         transform: translateY(-50%);
-      }
-
-      #boot-splash .caption .emphasis {
-        color: #8b9af7;
       }
 
       html[data-theme-mode="dark"] #boot-splash .caption {
         color: oklch(0.95 0.01 78);
       }
 
-      html[data-theme-mode="dark"] #boot-splash .caption .emphasis {
-        color: #a8b4ff;
+      #boot-splash .cascade {
+        position: relative;
+        display: block;
+        width: 100%;
+        overflow: hidden;
+        white-space: nowrap;
+        line-height: 1.3;
+      }
+
+      #boot-splash .measure {
+        display: block;
+        visibility: hidden;
+        white-space: nowrap;
+      }
+
+      #boot-splash .cascade-layer {
+        position: absolute;
+        left: 0;
+        top: 0;
+        display: flex;
+        justify-content: center;
+        width: 100%;
+        height: 100%;
+        white-space: pre;
+      }
+
+      #boot-splash .letter {
+        display: inline-block;
+        white-space: pre;
+      }
+
+      #boot-splash .letter.brand {
+        color: #ee8a55;
+      }
+
+      #boot-splash .letter.space {
+        width: 0.28em;
+        flex-shrink: 0;
+      }
+
+      #boot-splash .cascade-layer[data-state="enter"] .letter {
+        animation: boot-letter-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+      }
+
+      #boot-splash .cascade-layer[data-state="exit"] .letter {
+        animation: boot-letter-out 0.18s ease both;
+      }
+
+      @keyframes boot-letter-in {
+        from {
+          opacity: 0;
+          transform: translateY(105%);
+          filter: blur(6px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+          filter: blur(0);
+        }
+      }
+
+      @keyframes boot-letter-out {
+        from {
+          opacity: 1;
+          transform: translateY(0);
+          filter: blur(0);
+        }
+        to {
+          opacity: 0;
+          transform: translateY(-105%);
+          filter: blur(6px);
+        }
       }
 
       @media (prefers-reduced-motion: reduce) {
         #boot-splash .dancer {
           display: none;
+        }
+
+        #boot-splash .cascade-layer[data-state="enter"] .letter,
+        #boot-splash .cascade-layer[data-state="exit"] .letter {
+          animation: none;
         }
       }
     </style>
@@ -171,43 +242,89 @@
     <div id="root">
       <div id="boot-splash" role="status" aria-live="polite" aria-label="Loading">
         <img class="dancer" src="/loader.gif" alt="" />
-        <p class="caption" id="boot-splash-caption">
-          Stretching it <span class="emphasis">out…</span>
-        </p>
+        <p class="caption" id="boot-splash-caption" aria-hidden="true"></p>
       </div>
     </div>
     <script>
       (function () {
         var phrases = [
-          "Stretching it out…",
-          "Finding the groove…",
-          "Spotting the turn…",
-          "Marking the combo…",
-          "Feeling the rhythm…",
-          "Stepping into it…",
+          { lead: "Stretching it ", keyword: "out…" },
+          { lead: "Finding the ", keyword: "groove…" },
+          { lead: "Spotting the ", keyword: "turn…" },
+          { lead: "Marking the ", keyword: "combo…" },
+          { lead: "Feeling the ", keyword: "rhythm…" },
+          { lead: "Stepping into ", keyword: "it…" },
         ];
+        var CYCLE_MS = 2200;
+        var STAGGER = 0.025;
         var el = document.getElementById("boot-splash-caption");
         if (!el) return;
+        var reduce =
+          window.matchMedia &&
+          window.matchMedia("(prefers-reduced-motion: reduce)").matches;
         var last = -1;
-        function paint(text) {
-          var match = text.match(/^(.*\s)(\S+)$/);
-          if (!match) {
-            el.textContent = text;
-            return;
+        var cascade = document.createElement("span");
+        cascade.className = "cascade";
+        var measure = document.createElement("span");
+        measure.className = "measure";
+        measure.setAttribute("aria-hidden", "true");
+        cascade.appendChild(measure);
+        el.appendChild(cascade);
+
+        function letterNodes(phrase) {
+          var text = phrase.lead + phrase.keyword;
+          var splitAt = phrase.lead.length;
+          var nodes = [];
+          for (var k = 0; k < text.length; k++) {
+            var ch = text.charAt(k);
+            var span = document.createElement("span");
+            if (/\s/.test(ch)) {
+              span.className = "letter space";
+              span.textContent = "\u00A0";
+            } else {
+              span.className =
+                k >= splitAt ? "letter brand" : "letter";
+              span.textContent = ch;
+            }
+            span.style.animationDelay = k * STAGGER + "s";
+            nodes.push(span);
           }
-          el.replaceChildren(
-            document.createTextNode(match[1]),
-            Object.assign(document.createElement("span"), {
-              className: "emphasis",
-              textContent: match[2],
-            }),
-          );
+          return nodes;
         }
+
+        function paint(phrase, animate) {
+          var text = phrase.lead + phrase.keyword;
+          measure.textContent = text;
+          var incoming = document.createElement("span");
+          incoming.className = "cascade-layer";
+          incoming.setAttribute(
+            "data-state",
+            animate && !reduce ? "enter" : "idle",
+          );
+          var letters = letterNodes(phrase);
+          for (var i = 0; i < letters.length; i++) {
+            incoming.appendChild(letters[i]);
+          }
+
+          var outgoing = cascade.querySelector(".cascade-layer");
+          if (outgoing && animate && !reduce) {
+            outgoing.setAttribute("data-state", "exit");
+            var exitMs = 180 + text.length * STAGGER * 500;
+            window.setTimeout(function () {
+              if (outgoing.parentNode) outgoing.parentNode.removeChild(outgoing);
+            }, exitMs);
+          } else if (outgoing) {
+            outgoing.parentNode.removeChild(outgoing);
+          }
+          cascade.appendChild(incoming);
+        }
+
         function tick() {
-          var i = Math.floor(Date.now() / 1600) % phrases.length;
+          var i = Math.floor(Date.now() / CYCLE_MS) % phrases.length;
           if (i === last) return;
+          var animate = last !== -1;
           last = i;
-          paint(phrases[i]);
+          paint(phrases[i], animate);
         }
         tick();
         setInterval(tick, 100);

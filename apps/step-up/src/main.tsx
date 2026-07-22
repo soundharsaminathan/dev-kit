@@ -9,7 +9,9 @@ import "@dev-ui/components/styles";
 import "@/styles/global.scss";
 import { ApiProvider } from "@/lib/api-context";
 import { AuthProvider, useAuth } from "@/lib/auth";
+import { homePathForUser } from "@/lib/require-auth";
 import { initSentry } from "@/lib/sentry";
+import { preloadSessionProviders } from "@/lib/session-gate";
 import { DanceLoader } from "@/modules/ui/dance-loader";
 import { routeTree } from "./routeTree.gen";
 
@@ -30,15 +32,37 @@ declare module "@tanstack/react-router" {
 
 function AppRouter() {
   const auth = useAuth();
-  const [ready, setReady] = useState(!auth.loading);
+  const [ready, setReady] = useState(false);
   const userId = auth.user?.id;
   const invalidatedFor = useRef<{ userId: string | undefined } | null>(null);
 
   useEffect(() => {
-    if (!auth.loading) {
-      setReady(true);
+    if (auth.loading) {
+      return;
     }
-  }, [auth.loading]);
+
+    let cancelled = false;
+    const user = auth.user;
+
+    async function warmRoleBundle() {
+      if (user) {
+        await preloadSessionProviders();
+        const home = homePathForUser(user);
+        if (home === "/app" || home.startsWith("/me")) {
+          void router.preloadRoute({ to: home });
+        }
+      }
+      if (!cancelled) {
+        setReady(true);
+      }
+    }
+
+    void warmRoleBundle();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [auth.loading, userId, auth.user]);
 
   useEffect(() => {
     if (!ready) {
