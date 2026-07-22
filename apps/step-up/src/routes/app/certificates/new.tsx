@@ -4,10 +4,8 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useCallback, useState } from "react";
 import { useApi } from "@/lib/api-context";
 import { STUDIO_ID } from "@/lib/constants";
-import {
-  CertificateDesigner,
-  isCertificateDocumentValid,
-} from "@/modules/certificates/designer/certificate-designer";
+import { CertificateDesigner } from "@/modules/certificates/designer/certificate-designer";
+import { isCertificateDocumentValid } from "@/modules/certificates/designer/document-valid";
 import {
   type CertificateDocument,
   type CertificateTemplate,

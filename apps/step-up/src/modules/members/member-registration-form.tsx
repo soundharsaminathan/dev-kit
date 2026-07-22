@@ -3,6 +3,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useApi } from "@/lib/api-context";
 import { STUDIO_ID } from "@/lib/constants";
+import { setLastLoginIdentifier } from "@/lib/last-login";
 import { StyleSpreePicker } from "@/modules/styles/style-spree-picker";
 import { FormInput } from "@/modules/ui/form-input";
 import { Screen } from "@/modules/ui/screen";
@@ -64,7 +65,8 @@ export function MemberRegistrationForm({
         phone: phone.trim() || undefined,
         styles,
       }),
-    onSuccess: async () => {
+    onSuccess: async (created) => {
+      setLastLoginIdentifier(created.email);
       await queryClient.invalidateQueries({
         queryKey: ["studio-members", STUDIO_ID],
       });

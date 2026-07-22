@@ -3,7 +3,7 @@ import { useMemo } from "react";
 import { STUDIO_ID } from "@/lib/constants";
 import { CalendarPage } from "@/modules/calendar/calendar-page";
 import type { CalendarViewMode } from "@/modules/calendar/types";
-import { useActiveStudentContext } from "@/modules/me/child-switcher";
+import { useActiveStudentContext } from "@/modules/me/use-active-student-context";
 
 type CalendarSearch = {
   view: CalendarViewMode;

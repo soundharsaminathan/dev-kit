@@ -11,7 +11,7 @@ import {
   Query,
   UseGuards,
 } from "@nestjs/common";
-import { ProfileVisibility, UserRole } from "@prisma/client";
+import { ExperienceLevel, ProfileVisibility, UserRole } from "@prisma/client";
 import { Type } from "class-transformer";
 import {
   ArrayMaxSize,
@@ -69,6 +69,19 @@ class UpdateProfileDto {
   @IsArray()
   @IsString({ each: true })
   styles?: string[];
+
+  @IsOptional()
+  @IsEnum(ExperienceLevel)
+  experienceLevel?: ExperienceLevel;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  scheduleVibe?: string[];
+
+  @IsOptional()
+  @IsString()
+  preferredBranchId?: string | null;
 
   @IsOptional()
   @IsEnum(ProfileVisibility)
@@ -152,6 +165,12 @@ export class UsersController {
   @Get("me")
   getMe(@CurrentUser() user: DecryptedUser) {
     return user;
+  }
+
+  @Post("me/onboarding/complete")
+  @Roles(UserRole.STUDENT)
+  completeOnboarding(@CurrentUser() user: DecryptedUser) {
+    return this.usersService.completeOnboarding(user.id);
   }
 
   @Get("me/follow-requests")

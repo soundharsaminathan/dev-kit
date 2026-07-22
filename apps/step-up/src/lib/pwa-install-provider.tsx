@@ -1,26 +1,14 @@
 import {
-  createContext,
   type ReactNode,
   useCallback,
-  useContext,
   useEffect,
   useMemo,
   useState,
 } from "react";
-
-type BeforeInstallPromptEvent = Event & {
-  prompt: () => Promise<void>;
-  userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
-};
-
-type PwaInstallContextValue = {
-  canInstall: boolean;
-  isStandalone: boolean;
-  isIos: boolean;
-  promptInstall: () => Promise<"accepted" | "dismissed" | "unavailable">;
-};
-
-const PwaInstallContext = createContext<PwaInstallContextValue | null>(null);
+import {
+  type BeforeInstallPromptEvent,
+  PwaInstallContext,
+} from "@/lib/pwa-install-context";
 
 function detectStandalone(): boolean {
   if (typeof window === "undefined") {
@@ -95,12 +83,4 @@ export function PwaInstallProvider({ children }: { children: ReactNode }) {
       {children}
     </PwaInstallContext.Provider>
   );
-}
-
-export function usePwaInstall(): PwaInstallContextValue {
-  const ctx = useContext(PwaInstallContext);
-  if (!ctx) {
-    throw new Error("usePwaInstall must be used within PwaInstallProvider");
-  }
-  return ctx;
 }

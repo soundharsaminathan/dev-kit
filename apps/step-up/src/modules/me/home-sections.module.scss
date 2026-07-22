@@ -587,6 +587,7 @@
 }
 
 .goalCard {
+  position: relative;
   display: grid;
   grid-template-columns: auto 1fr;
   gap: var(--space-4, 1rem);
@@ -598,14 +599,37 @@
   width: 100%;
   border: none;
   text-align: start;
-  cursor: pointer;
   font: inherit;
   color: inherit;
   transition: transform var(--motion-fast, 150ms) ease;
 }
 
-.goalCard:active {
+.goalCard:has(.goalMenu) {
+  grid-template-columns: auto 1fr auto;
+}
+
+.goalHit {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border: 0;
+  border-radius: inherit;
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+}
+
+.goalCard[data-interactive="true"]:has(.goalHit:active) {
   transform: scale(var(--interaction-press-scale, 0.98));
+}
+
+.goalCopy {
+  min-width: 0;
+}
+
+.goalMenu {
+  position: relative;
+  z-index: 2;
 }
 
 .goalRing {
@@ -759,7 +783,7 @@
   .hero:active,
   .quickCard:active,
   .progressCard:active,
-  .goalCard:active,
+  .goalCard[data-interactive="true"]:has(.goalHit:active),
   .communityCard:active,
   .studioBannerPill:active,
   .upcomingCard:active,

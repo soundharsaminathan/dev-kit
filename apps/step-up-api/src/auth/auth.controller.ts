@@ -1,4 +1,13 @@
-import { Body, Controller, Inject, Post, Req, UseGuards } from "@nestjs/common";
+import {
+  Body,
+  Controller,
+  ForbiddenException,
+  Inject,
+  Post,
+  Req,
+  UnauthorizedException,
+  UseGuards,
+} from "@nestjs/common";
 import { UserRole } from "@prisma/client";
 import { IsEmail, IsEnum, IsOptional, IsString } from "class-validator";
 import { MediaService } from "../media/media.service";
@@ -8,7 +17,7 @@ import {
   type DecryptedUser,
   UserCryptoService,
 } from "../users/user-crypto.service";
-import type { VerifiedAuth } from "./firebase.service";
+import { FirebaseService, type VerifiedAuth } from "./firebase.service";
 import { TokenGuard } from "./token.guard";
 
 class SyncUserDto {
@@ -33,6 +42,11 @@ class SyncUserDto {
   fcmToken?: string;
 }
 
+class BypassLoginDto {
+  @IsEmail()
+  email!: string;
+}
+
 @Controller("auth")
 export class AuthController {
   constructor(
@@ -40,7 +54,30 @@ export class AuthController {
     @Inject(UserCryptoService) private readonly crypto: UserCryptoService,
     @Inject(MediaService) private readonly media: MediaService,
     @Inject(PushService) private readonly push: PushService,
+    @Inject(FirebaseService) private readonly firebase: FirebaseService,
   ) {}
+
+  @Post("bypass-login")
+  async bypassLogin(@Body() dto: BypassLoginDto): Promise<DecryptedUser> {
+    if (!this.firebase.isBypassEnabled()) {
+      throw new ForbiddenException("Bypass login is disabled");
+    }
+
+    const emailHash = this.crypto.hashEmail(dto.email);
+    const user = await this.prisma.user.findFirst({
+      where: { emailHash },
+      orderBy: { createdAt: "desc" },
+    });
+    if (!user) {
+      throw new UnauthorizedException("No account found for this email");
+    }
+
+    const decrypted = this.crypto.decryptUser(user);
+    return {
+      ...decrypted,
+      photoUrl: await this.media.signReadUrl(decrypted.photoUrl),
+    };
+  }
 
   @Post("sync")
   @UseGuards(TokenGuard)

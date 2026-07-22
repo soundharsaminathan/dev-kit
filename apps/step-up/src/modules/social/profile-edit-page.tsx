@@ -18,8 +18,16 @@ import { updateProfile } from "firebase/auth";
 import { useState } from "react";
 import { useApi } from "@/lib/api-context";
 import { useAuth } from "@/lib/auth";
-import { isAuthBypassEnabled, STUDIO_ID } from "@/lib/constants";
+import {
+  type ExperienceLevel,
+  isAuthBypassEnabled,
+  STUDIO_ID,
+} from "@/lib/constants";
 import { getFirebaseAuth } from "@/lib/firebase";
+import {
+  EXPERIENCE_LEVELS,
+  SCHEDULE_VIBES,
+} from "@/modules/onboarding/options";
 import { InstallAppPanel } from "@/modules/pwa/install-app-panel";
 import { StylePicker } from "@/modules/styles/style-picker";
 import { ImageCropSheet } from "@/modules/ui/image-crop-sheet";
@@ -56,6 +64,9 @@ type ProfileFormValues = {
   instagramUrl: string;
   isPublic: boolean;
   styles: string[];
+  experienceLevel: ExperienceLevel | "";
+  scheduleVibe: string[];
+  preferredBranchId: string;
 };
 
 type ProfileEditPageProps = {
@@ -176,7 +187,8 @@ function ProfileEditForm({ backTo, profile }: ProfileEditFormProps) {
 
   const canToggleVisibility =
     user?.role === "STUDENT" || user?.role === "PARENT";
-  const canEditStyles = user?.role === "TRAINER";
+  const canEditStyles = user?.role === "TRAINER" || user?.role === "STUDENT";
+  const canEditPrefs = user?.role === "STUDENT";
 
   const saveMutation = useMutation({
     mutationFn: async (values: ProfileFormValues) => {
@@ -189,6 +201,9 @@ function ProfileEditForm({ backTo, profile }: ProfileEditFormProps) {
         coverUrl?: string | null;
         instagramUrl?: string | null;
         styles?: string[];
+        experienceLevel?: ExperienceLevel | null;
+        scheduleVibe?: string[];
+        preferredBranchId?: string | null;
       }>("/users/me", {
         name: trimmedName,
         bio: values.bio.trim(),
@@ -198,7 +213,14 @@ function ProfileEditForm({ backTo, profile }: ProfileEditFormProps) {
         ...(normalizeInstagramUrl(values.instagramUrl)
           ? { instagramUrl: normalizeInstagramUrl(values.instagramUrl) }
           : {}),
-        ...(user?.role === "TRAINER" ? { styles: values.styles } : {}),
+        ...(canEditStyles ? { styles: values.styles } : {}),
+        ...(canEditPrefs
+          ? {
+              experienceLevel: values.experienceLevel || undefined,
+              scheduleVibe: values.scheduleVibe,
+              preferredBranchId: values.preferredBranchId || null,
+            }
+          : {}),
         profileVisibility: values.isPublic ? "PUBLIC" : "PRIVATE",
       });
 
@@ -223,6 +245,13 @@ function ProfileEditForm({ backTo, profile }: ProfileEditFormProps) {
         photoUrl: saved.photoUrl ?? null,
         instagramUrl: saved.instagramUrl ?? null,
         ...(saved.styles ? { styles: saved.styles } : {}),
+        ...(saved.experienceLevel !== undefined
+          ? { experienceLevel: saved.experienceLevel }
+          : {}),
+        ...(saved.scheduleVibe ? { scheduleVibe: saved.scheduleVibe } : {}),
+        ...(saved.preferredBranchId !== undefined
+          ? { preferredBranchId: saved.preferredBranchId }
+          : {}),
       });
       setSaveMessage("Profile saved.");
       await queryClient.invalidateQueries({ queryKey: ["profile", userId] });
@@ -239,6 +268,9 @@ function ProfileEditForm({ backTo, profile }: ProfileEditFormProps) {
       instagramUrl: profile.instagramUrl ?? "",
       isPublic: profile.profileVisibility === "PUBLIC",
       styles: profile.styles,
+      experienceLevel: user?.experienceLevel ?? "",
+      scheduleVibe: user?.scheduleVibe ?? [],
+      preferredBranchId: user?.preferredBranchId ?? "",
     } satisfies ProfileFormValues,
     onSubmit: async ({ value }) => {
       setSaveMessage(null);
@@ -250,6 +282,15 @@ function ProfileEditForm({ backTo, profile }: ProfileEditFormProps) {
         );
       }
     },
+  });
+
+  const branchesQuery = useQuery({
+    queryKey: ["branches", STUDIO_ID, "profile-edit"],
+    queryFn: () =>
+      api.get<Array<{ id: string; name: string; address: string }>>(
+        `/studios/${STUDIO_ID}/branches`,
+      ),
+    enabled: canEditPrefs,
   });
 
   function handleSelect(kind: ProfileImageKind, files: FileList | null) {
@@ -556,7 +597,9 @@ function ProfileEditForm({ backTo, profile }: ProfileEditFormProps) {
                       <div className={styles.stylesHeader}>
                         <h3 className={styles.stylesTitle}>Dance styles</h3>
                         <p className={styles.cardDesc}>
-                          Shown on your trainer profile and cards.
+                          {user?.role === "TRAINER"
+                            ? "Shown on your trainer profile and cards."
+                            : "Powers your Discover recommendations."}
                         </p>
                       </div>
                       <StylePicker
@@ -566,6 +609,102 @@ function ProfileEditForm({ backTo, profile }: ProfileEditFormProps) {
                     </div>
                   )}
                 </form.Field>
+              ) : null}
+
+              {canEditPrefs ? (
+                <>
+                  <form.Field name="experienceLevel">
+                    {(field) => (
+                      <div className={styles.stylesBlock}>
+                        <div className={styles.stylesHeader}>
+                          <h3 className={styles.stylesTitle}>Experience</h3>
+                        </div>
+                        <div className={styles.prefGrid}>
+                          {EXPERIENCE_LEVELS.map((level) => (
+                            <button
+                              key={level.id}
+                              type="button"
+                              className={styles.prefChip}
+                              data-selected={
+                                field.state.value === level.id
+                                  ? "true"
+                                  : undefined
+                              }
+                              onClick={() => field.handleChange(level.id)}
+                            >
+                              {level.title}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </form.Field>
+
+                  <form.Field name="scheduleVibe">
+                    {(field) => (
+                      <div className={styles.stylesBlock}>
+                        <div className={styles.stylesHeader}>
+                          <h3 className={styles.stylesTitle}>Schedule vibe</h3>
+                        </div>
+                        <div className={styles.prefGrid}>
+                          {SCHEDULE_VIBES.map((vibe) => {
+                            const selected = field.state.value.includes(
+                              vibe.id,
+                            );
+                            return (
+                              <button
+                                key={vibe.id}
+                                type="button"
+                                className={styles.prefChip}
+                                data-selected={selected ? "true" : undefined}
+                                onClick={() =>
+                                  field.handleChange(
+                                    selected
+                                      ? field.state.value.filter(
+                                          (entry) => entry !== vibe.id,
+                                        )
+                                      : [...field.state.value, vibe.id],
+                                  )
+                                }
+                              >
+                                {vibe.label}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </form.Field>
+
+                  <form.Field name="preferredBranchId">
+                    {(field) => (
+                      <div className={styles.stylesBlock}>
+                        <div className={styles.stylesHeader}>
+                          <h3 className={styles.stylesTitle}>
+                            Preferred location
+                          </h3>
+                        </div>
+                        <div className={styles.prefGrid}>
+                          {(branchesQuery.data ?? []).map((branch) => (
+                            <button
+                              key={branch.id}
+                              type="button"
+                              className={styles.prefChip}
+                              data-selected={
+                                field.state.value === branch.id
+                                  ? "true"
+                                  : undefined
+                              }
+                              onClick={() => field.handleChange(branch.id)}
+                            >
+                              {branch.name}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </form.Field>
+                </>
               ) : null}
             </div>
           </section>

@@ -60,7 +60,7 @@ type ChatViewProps = {
   onBack?: () => void;
 };
 
-export function useChatMessages(conversationId: string) {
+function useChatMessages(conversationId: string) {
   const api = useApi();
   return useInfiniteQuery({
     queryKey: chatMessagesKey(conversationId),
@@ -79,7 +79,7 @@ export function useChatMessages(conversationId: string) {
   });
 }
 
-export function useMessageActions(conversationId: string) {
+function useMessageActions(conversationId: string) {
   const api = useApi();
   const queryClient = useQueryClient();
   const { user } = useAuth();

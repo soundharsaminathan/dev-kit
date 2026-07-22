@@ -40,6 +40,49 @@ function styleBadgeFromCategories(danceCategories: unknown): string | null {
   return name || null;
 }
 
+const WEEKEND_DAYS = new Set([0, 6]);
+const WEEKDAY_DAYS = new Set([1, 2, 3, 4, 5]);
+
+function scheduleVibeScore(scheduleJson: unknown, vibes: string[]): number {
+  if (!vibes.length || !scheduleJson || typeof scheduleJson !== "object") {
+    return 0;
+  }
+  const schedule = scheduleJson as {
+    weekdays?: number[];
+    startTime?: string;
+    frequency?: string;
+  };
+  const days =
+    schedule.frequency === "DAILY"
+      ? [0, 1, 2, 3, 4, 5, 6]
+      : (schedule.weekdays ?? []);
+  const startHour = schedule.startTime
+    ? Number(schedule.startTime.slice(0, 2))
+    : null;
+  let score = 0;
+  for (const vibe of vibes) {
+    if (vibe === "flexible") {
+      score += 1;
+      continue;
+    }
+    if (vibe === "weekends" && days.some((day) => WEEKEND_DAYS.has(day))) {
+      score += 2;
+    }
+    if (
+      vibe === "weekday_evenings" &&
+      days.some((day) => WEEKDAY_DAYS.has(day)) &&
+      startHour != null &&
+      startHour >= 17
+    ) {
+      score += 2;
+    }
+    if (vibe === "mornings" && startHour != null && startHour < 12) {
+      score += 2;
+    }
+  }
+  return score;
+}
+
 @Injectable()
 export class HomeService {
   constructor(
@@ -443,6 +486,7 @@ export class HomeService {
     }
 
     const preferredBranchId =
+      student.preferredBranchId ??
       nextSession?.batch.branch?.id ??
       enrollments.find((row) => row.batch.branch?.id)?.batch.branch?.id ??
       null;
@@ -528,6 +572,8 @@ export class HomeService {
     const studentStyles = new Set(
       (student.styles ?? []).map((style) => style.toLowerCase()),
     );
+    const studentVibes = student.scheduleVibe ?? [];
+    const preferredBatchBranchId = student.preferredBranchId ?? null;
 
     let recommendations: Awaited<ReturnType<BatchesService["listByStudio"]>> =
       [];
@@ -541,6 +587,21 @@ export class HomeService {
           if (studentStyles.size === 0) return true;
           const badge = batch.styleBadge?.toLowerCase();
           return badge ? studentStyles.has(badge) : true;
+        })
+        .sort((a, b) => {
+          const aBranch =
+            preferredBatchBranchId && a.branchId === preferredBatchBranchId
+              ? 1
+              : 0;
+          const bBranch =
+            preferredBatchBranchId && b.branchId === preferredBatchBranchId
+              ? 1
+              : 0;
+          if (aBranch !== bBranch) return bBranch - aBranch;
+          return (
+            scheduleVibeScore(b.scheduleJson, studentVibes) -
+            scheduleVibeScore(a.scheduleJson, studentVibes)
+          );
         })
         .slice(0, 8);
     }

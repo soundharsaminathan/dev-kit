@@ -1,15 +1,15 @@
 import {
+  createUserWithEmailAndPassword,
   type User as FirebaseUser,
   onAuthStateChanged,
   signInWithEmailAndPassword,
   signInWithPopup,
   signOut,
+  updateProfile,
 } from "firebase/auth";
 import {
-  createContext,
   type ReactNode,
   useCallback,
-  useContext,
   useEffect,
   useMemo,
   useRef,
@@ -17,8 +17,13 @@ import {
 } from "react";
 import { apiRequest } from "./api";
 import {
+  AuthContext,
+  type AuthContextValue,
+  type AuthUser,
+} from "./auth-context";
+import {
   DEV_USERS,
-  type DevUser,
+  type ExperienceLevel,
   findDevUserByLogin,
   isAuthBypassEnabled,
   resolveLoginEmail,
@@ -26,13 +31,7 @@ import {
   type UserRole,
 } from "./constants";
 import { getFirebaseAuth, googleProvider } from "./firebase";
-
-export type AuthUser = DevUser & {
-  bio?: string | null | undefined;
-  photoUrl?: string | null | undefined;
-  instagramUrl?: string | null | undefined;
-  styles?: string[] | undefined;
-};
+import { setLastLoginIdentifier } from "./last-login";
 
 type SyncedApiUser = {
   id: string;
@@ -44,22 +43,13 @@ type SyncedApiUser = {
   photoUrl?: string | null | undefined;
   instagramUrl?: string | null | undefined;
   styles?: string[] | undefined;
-};
-
-export type AuthContextValue = {
-  user: AuthUser | null;
-  loading: boolean;
-  loginAsDev: (role: UserRole) => void;
-  signIn: (identifier: string, password: string) => Promise<AuthUser>;
-  signInWithGoogle: () => Promise<AuthUser>;
-  signOutUser: () => Promise<void>;
-  getIdToken: () => Promise<string | null>;
-  updateUser: (patch: Partial<AuthUser>) => void;
+  experienceLevel?: ExperienceLevel | null | undefined;
+  scheduleVibe?: string[] | undefined;
+  preferredBranchId?: string | null | undefined;
+  onboardingCompletedAt?: string | Date | null | undefined;
 };
 
 const STORAGE_KEY = "step-up-dev-user";
-
-const AuthContext = createContext<AuthContextValue | null>(null);
 
 function readStoredDevUser(): AuthUser | null {
   if (!isAuthBypassEnabled()) {
@@ -85,10 +75,16 @@ function mapSyncedUser(user: SyncedApiUser): AuthUser {
     name: user.name,
     role: user.role,
     studioId: user.studioId ?? STUDIO_ID,
-    bio: user.bio,
-    photoUrl: user.photoUrl,
-    instagramUrl: user.instagramUrl,
-    styles: user.styles,
+    bio: user.bio ?? null,
+    photoUrl: user.photoUrl ?? null,
+    instagramUrl: user.instagramUrl ?? null,
+    styles: user.styles ?? [],
+    experienceLevel: user.experienceLevel ?? null,
+    scheduleVibe: user.scheduleVibe ?? [],
+    preferredBranchId: user.preferredBranchId ?? null,
+    onboardingCompletedAt: user.onboardingCompletedAt
+      ? String(user.onboardingCompletedAt)
+      : null,
   };
 }
 
@@ -106,9 +102,39 @@ async function syncFirebaseUser(firebaseUser: FirebaseUser): Promise<AuthUser> {
   return mapSyncedUser(synced);
 }
 
+async function createBypassStudent(input: {
+  email: string;
+  name: string;
+}): Promise<AuthUser> {
+  const id = `dev-signup-${Date.now()}`;
+  const token = `dev:STUDENT:${id}`;
+  const synced = await apiRequest<SyncedApiUser>("/auth/sync", {
+    method: "POST",
+    token,
+    body: {
+      name: input.name.trim() || "New dancer",
+      email: input.email.trim().toLowerCase(),
+      studioId: STUDIO_ID,
+    },
+  });
+  return mapSyncedUser({
+    ...synced,
+    onboardingCompletedAt: synced.onboardingCompletedAt ?? null,
+    styles: synced.styles ?? [],
+    experienceLevel: synced.experienceLevel ?? null,
+    scheduleVibe: synced.scheduleVibe ?? [],
+    preferredBranchId: synced.preferredBranchId ?? null,
+  });
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(() => readStoredDevUser());
-  const [loading, setLoading] = useState(!isAuthBypassEnabled());
+  const [loading, setLoading] = useState(() => {
+    if (!isAuthBypassEnabled()) {
+      return true;
+    }
+    return Boolean(readStoredDevUser());
+  });
   const syncWaitersRef = useRef(
     new Map<
       string,
@@ -163,8 +189,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (isAuthBypassEnabled()) {
-      setLoading(false);
-      return;
+      const stored = readStoredDevUser();
+      if (!stored) {
+        setLoading(false);
+        return;
+      }
+
+      let cancelled = false;
+      void (async () => {
+        try {
+          const me = await apiRequest<SyncedApiUser>("/users/me", {
+            token: `dev:${stored.role}:${stored.id}`,
+          });
+          if (cancelled) {
+            return;
+          }
+          const mapped = mapSyncedUser(me);
+          setUser(mapped);
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(mapped));
+        } catch {
+          if (!cancelled) {
+            localStorage.removeItem(STORAGE_KEY);
+            setUser(null);
+          }
+        } finally {
+          if (!cancelled) {
+            setLoading(false);
+          }
+        }
+      })();
+
+      return () => {
+        cancelled = true;
+      };
     }
 
     const auth = getFirebaseAuth();
@@ -220,19 +277,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const devUser = DEV_USERS[role];
     setUser(devUser);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(devUser));
+    setLastLoginIdentifier(devUser.email);
   }, []);
 
   const signIn = useCallback(
-    async (identifier: string, password: string) => {
+    async (identifier: string, _password: string) => {
       if (isAuthBypassEnabled()) {
         const match = findDevUserByLogin(identifier);
-        if (!match) {
+        if (match) {
+          loginAsDev(match.role);
+          setLastLoginIdentifier(identifier);
+          return match;
+        }
+
+        const trimmed = identifier.trim().toLowerCase();
+        if (!trimmed.includes("@")) {
           throw new Error(
-            `No dev account matches “${identifier.trim()}”. Try owner, staff, trainer, student, parent, or trainer-1.`,
+            `No dev account matches “${identifier.trim()}”. Try owner, staff, trainer, student, parent, or an email you registered with.`,
           );
         }
-        loginAsDev(match.role);
-        return match;
+
+        try {
+          const synced = await apiRequest<SyncedApiUser>("/auth/bypass-login", {
+            method: "POST",
+            body: { email: trimmed },
+          });
+          const mapped = mapSyncedUser(synced);
+          setUser(mapped);
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(mapped));
+          setLastLoginIdentifier(identifier);
+          return mapped;
+        } catch {
+          throw new Error(
+            `No account found for “${trimmed}”. Register first, or use a seeded role like student.`,
+          );
+        }
       }
 
       const auth = getFirebaseAuth();
@@ -244,27 +323,97 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const credential = await signInWithEmailAndPassword(
         auth,
         email,
-        password,
+        _password,
       );
-      return waitForSync(credential.user.uid);
+      const synced = await waitForSync(credential.user.uid);
+      setLastLoginIdentifier(identifier);
+      return synced;
     },
     [loginAsDev, waitForSync],
   );
 
-  const signInWithGoogle = useCallback(async () => {
-    if (isAuthBypassEnabled()) {
-      loginAsDev("STUDENT");
-      return DEV_USERS.STUDENT;
-    }
+  const signUp = useCallback(
+    async (email: string, password: string, name: string) => {
+      if (isAuthBypassEnabled()) {
+        const created = await createBypassStudent({
+          email,
+          name: name.trim() || "New dancer",
+        });
+        setUser(created);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(created));
+        setLastLoginIdentifier(email);
+        return created;
+      }
 
-    const auth = getFirebaseAuth();
-    if (!auth) {
-      throw new Error("Firebase is not configured");
-    }
+      const auth = getFirebaseAuth();
+      if (!auth) {
+        throw new Error("Firebase is not configured");
+      }
 
-    const credential = await signInWithPopup(auth, googleProvider);
-    return waitForSync(credential.user.uid);
-  }, [loginAsDev, waitForSync]);
+      const credential = await createUserWithEmailAndPassword(
+        auth,
+        email.trim(),
+        password,
+      );
+      const displayName = name.trim();
+      if (displayName) {
+        await updateProfile(credential.user, { displayName });
+      }
+      const synced = await waitForSync(credential.user.uid);
+      setLastLoginIdentifier(email);
+      if (displayName && synced.name !== displayName) {
+        try {
+          const token = await credential.user.getIdToken();
+          const patched = await apiRequest<SyncedApiUser>("/users/me", {
+            method: "PATCH",
+            token,
+            body: { name: displayName },
+          });
+          const mapped = mapSyncedUser(patched);
+          setUser(mapped);
+          lastSyncedRef.current = {
+            uid: credential.user.uid,
+            user: mapped,
+          };
+          return mapped;
+        } catch {
+          return synced;
+        }
+      }
+      return synced;
+    },
+    [waitForSync],
+  );
+
+  const signInWithGoogle = useCallback(
+    async (options?: { asNewStudent?: boolean }) => {
+      if (isAuthBypassEnabled()) {
+        if (options?.asNewStudent) {
+          const created = await createBypassStudent({
+            email: `google-${Date.now()}@stepup.dev`,
+            name: "New dancer",
+          });
+          setUser(created);
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(created));
+          setLastLoginIdentifier(created.email);
+          return created;
+        }
+        loginAsDev("STUDENT");
+        return DEV_USERS.STUDENT;
+      }
+
+      const auth = getFirebaseAuth();
+      if (!auth) {
+        throw new Error("Firebase is not configured");
+      }
+
+      const credential = await signInWithPopup(auth, googleProvider);
+      const synced = await waitForSync(credential.user.uid);
+      setLastLoginIdentifier(synced.email);
+      return synced;
+    },
+    [loginAsDev, waitForSync],
+  );
 
   const signOutUser = useCallback(async () => {
     if (isAuthBypassEnabled()) {
@@ -315,12 +464,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  const value = useMemo(
+  const value = useMemo<AuthContextValue>(
     () => ({
       user,
       loading,
       loginAsDev,
       signIn,
+      signUp,
       signInWithGoogle,
       signOutUser,
       getIdToken,
@@ -331,6 +481,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       loading,
       loginAsDev,
       signIn,
+      signUp,
       signInWithGoogle,
       signOutUser,
       getIdToken,
@@ -339,12 +490,4 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-}
-
-export function useAuth() {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error("useAuth must be used within AuthProvider");
-  }
-  return context;
 }

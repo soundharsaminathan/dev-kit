@@ -1,30 +1,5 @@
-import { createContext, type ReactNode, useContext } from "react";
-import { useActiveStudent } from "@/lib/use-active-student";
 import styles from "./child-switcher.module.scss";
-
-type ActiveStudentContextValue = ReturnType<typeof useActiveStudent>;
-
-const ActiveStudentContext = createContext<ActiveStudentContextValue | null>(
-  null,
-);
-
-export function ActiveStudentProvider({ children }: { children: ReactNode }) {
-  const value = useActiveStudent();
-  return (
-    <ActiveStudentContext.Provider value={value}>
-      {children}
-    </ActiveStudentContext.Provider>
-  );
-}
-
-export function useActiveStudentContext(): ActiveStudentContextValue {
-  const ctx = useContext(ActiveStudentContext);
-  if (!ctx)
-    throw new Error(
-      "useActiveStudentContext must be used inside ActiveStudentProvider",
-    );
-  return ctx;
-}
+import { useActiveStudentContext } from "./use-active-student-context";
 
 export function ChildSwitcher({
   tone = "default",

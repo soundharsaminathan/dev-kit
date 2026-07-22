@@ -1,18 +1,21 @@
+import { useIsMobile } from "@dev-ui/hooks";
 import { Icon, type IconName } from "@dev-ui/icons";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useEffect, useId, useRef, useState } from "react";
+import { AppBottomSheet } from "./app-bottom-sheet";
 import styles from "./bloom-menu.module.scss";
 
 export type BloomMenuItem = {
   id: string;
   label: string;
-  icon: IconName;
+  icon?: IconName;
 };
 
 export type BloomMenuProps = {
   items: BloomMenuItem[];
   onSelect?: (id: string) => void;
   triggerLabel?: string;
+  triggerIcon?: IconName | null;
   panelTitle?: string;
   className?: string;
   columns?: 1 | 2 | 3;
@@ -44,18 +47,20 @@ export function BloomMenu({
   items,
   onSelect,
   triggerLabel = "Create",
+  triggerIcon = "plus",
   panelTitle = "Create",
   className,
   columns,
 }: BloomMenuProps) {
   const [open, setOpen] = useState(false);
   const reduce = useReducedMotion();
+  const isMobile = useIsMobile();
   const layoutId = useId();
   const ref = useRef<HTMLDivElement>(null);
   const cols = resolveColumns(items.length, columns);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open || isMobile) return;
 
     function onKey(event: KeyboardEvent) {
       if (event.key === "Escape") setOpen(false);
@@ -73,17 +78,68 @@ export function BloomMenu({
       window.removeEventListener("keydown", onKey);
       window.removeEventListener("pointerdown", onPointer);
     };
-  }, [open]);
+  }, [open, isMobile]);
 
   const morph = reduce ? { duration: 0.15 } : SPRING_FOLDER;
   const rootClassName = [styles.root, className].filter(Boolean).join(" ");
   const rows = Math.ceil(items.length / cols);
+  const triggerIconNode =
+    triggerIcon == null ? null : <Icon name={triggerIcon} />;
+
+  function handleSelect(id: string) {
+    onSelect?.(id);
+    setOpen(false);
+  }
+
+  if (isMobile) {
+    return (
+      <div className={rootClassName}>
+        <button
+          type="button"
+          className={styles.trigger}
+          aria-haspopup="dialog"
+          aria-expanded={open}
+          onClick={() => setOpen(true)}
+        >
+          <span className={styles.triggerLabel}>
+            {triggerLabel}
+            {triggerIconNode}
+          </span>
+        </button>
+
+        <AppBottomSheet isOpen={open} onOpenChange={setOpen} title={panelTitle}>
+          <div className={styles.sheetList}>
+            {items.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                className={styles.sheetItem}
+                onClick={() => handleSelect(item.id)}
+              >
+                {item.icon ? (
+                  <span className={styles.itemIcon}>
+                    <Icon name={item.icon} />
+                  </span>
+                ) : null}
+                <span
+                  className={styles.sheetItemLabel}
+                  data-alone={item.icon ? undefined : "true"}
+                >
+                  {item.label}
+                </span>
+              </button>
+            ))}
+          </div>
+        </AppBottomSheet>
+      </div>
+    );
+  }
 
   return (
     <div ref={ref} className={rootClassName}>
       <div className={styles.spacer} aria-hidden>
         {triggerLabel}
-        <Icon name="plus" />
+        {triggerIconNode}
       </div>
 
       <div className={styles.stage}>
@@ -143,10 +199,7 @@ export function BloomMenu({
                         className={styles.item}
                         data-border-end={col < cols - 1 ? "true" : undefined}
                         data-border-bottom={row < rows - 1 ? "true" : undefined}
-                        onClick={() => {
-                          onSelect?.(item.id);
-                          setOpen(false);
-                        }}
+                        onClick={() => handleSelect(item.id)}
                       >
                         <motion.span
                           className={styles.itemContent}
@@ -167,12 +220,25 @@ export function BloomMenu({
                           transition={{
                             delay: reduce ? 0 : 0.1 + dist * 0.07,
                             ...SPRING_ITEM,
+                            filter: {
+                              type: "tween",
+                              duration: 0.28,
+                              ease: EASE_OUT,
+                              delay: reduce ? 0 : 0.1 + dist * 0.07,
+                            },
                           }}
                         >
-                          <span className={styles.itemIcon}>
-                            <Icon name={item.icon} />
+                          {item.icon ? (
+                            <span className={styles.itemIcon}>
+                              <Icon name={item.icon} />
+                            </span>
+                          ) : null}
+                          <span
+                            className={styles.itemLabel}
+                            data-alone={item.icon ? undefined : "true"}
+                          >
+                            {item.label}
                           </span>
-                          <span className={styles.itemLabel}>{item.label}</span>
                         </motion.span>
                       </button>
                     );
@@ -195,7 +261,7 @@ export function BloomMenu({
             >
               <motion.span layout className={styles.triggerLabel}>
                 {triggerLabel}
-                <Icon name="plus" />
+                {triggerIconNode}
               </motion.span>
             </motion.button>
           )}

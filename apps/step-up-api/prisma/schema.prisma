@@ -97,6 +97,13 @@ enum ProfileVisibility {
   PRIVATE
 }
 
+enum ExperienceLevel {
+  BEGINNER
+  SOME_EXPERIENCE
+  INTERMEDIATE
+  ADVANCED
+}
+
 enum FollowRequestStatus {
   PENDING
   ACCEPTED
@@ -174,13 +181,18 @@ model User {
   photoUrl          String?
   bannerUrl         String?
   coverUrl          String?
-  styles            String[]
-  profileVisibility ProfileVisibility @default(PRIVATE)
-  studioId          String?
-  createdAt         DateTime          @default(now())
-  updatedAt         DateTime          @updatedAt
+  styles                 String[]
+  experienceLevel        ExperienceLevel?
+  scheduleVibe           String[]          @default([])
+  preferredBranchId      String?
+  onboardingCompletedAt  DateTime?
+  profileVisibility      ProfileVisibility @default(PRIVATE)
+  studioId               String?
+  createdAt              DateTime          @default(now())
+  updatedAt              DateTime          @updatedAt
 
   studio            Studio?           @relation("StudioMembers", fields: [studioId], references: [id])
+  preferredBranch   StudioBranch?     @relation("UserPreferredBranch", fields: [preferredBranchId], references: [id], onDelete: SetNull)
   ownedStudio       Studio?           @relation("StudioOwner")
   parentLinks       ParentChild[]     @relation("Parent")
   childLinks        ParentChild[]     @relation("Child")
@@ -220,6 +232,7 @@ model User {
   studentAchievements       StudentAchievement[]
 
   @@index([studioId, emailHash])
+  @@index([preferredBranchId])
 }
 
 model ParentChild {
@@ -279,13 +292,14 @@ model StudioBranch {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  studio       Studio              @relation(fields: [studioId], references: [id], onDelete: Cascade)
-  coverMedia   BranchMedia?        @relation("BranchCover", fields: [coverMediaId], references: [id], onDelete: SetNull)
-  media        BranchMedia[]       @relation("BranchMediaItems")
-  faqs         BranchFaq[]
-  testimonials BranchTestimonial[]
-  batches      Batch[]
-  contests     Contest[]
+  studio            Studio              @relation(fields: [studioId], references: [id], onDelete: Cascade)
+  coverMedia        BranchMedia?        @relation("BranchCover", fields: [coverMediaId], references: [id], onDelete: SetNull)
+  media             BranchMedia[]       @relation("BranchMediaItems")
+  faqs              BranchFaq[]
+  testimonials      BranchTestimonial[]
+  batches           Batch[]
+  contests          Contest[]
+  preferredByUsers  User[]              @relation("UserPreferredBranch")
 
   @@index([studioId])
 }

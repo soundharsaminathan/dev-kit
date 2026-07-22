@@ -8,6 +8,7 @@ import "@dev-ui/tokens/fonts";
 import "@dev-ui/tokens/scss";
 import "@dev-ui/components/styles";
 import "@/styles/global.scss";
+import { ApiProvider } from "@/lib/api-context";
 import { AuthProvider, useAuth } from "@/lib/auth";
 import { initSentry } from "@/lib/sentry";
 import { routeTree } from "./routeTree.gen";
@@ -73,7 +74,9 @@ if (!rootElement) {
 createRoot(rootElement).render(
   <StrictMode>
     <AuthProvider>
-      <AppRouter />
+      <ApiProvider>
+        <AppRouter />
+      </ApiProvider>
     </AuthProvider>
   </StrictMode>,
 );

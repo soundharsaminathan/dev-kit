@@ -38,27 +38,27 @@ function FloatingEmoji({
       initial={{ y: 0, x: 0, opacity: 0, scale: 0.6, rotate: 0 }}
       animate={
         reduceMotion
-          ? { y: -120, opacity: [0, 1, 0], scale: 1 }
+          ? { y: -48, opacity: [0, 1, 0], scale: 1 }
           : {
-              y: [0, isMobile ? -180 : -260, isMobile ? -180 : -260, 30],
+              y: [0, isMobile ? -72 : -96, isMobile ? -72 : -96, 16],
               x: [
                 0,
-                xOffset * (isMobile ? 0.6 : 1),
-                xOffset * (isMobile ? 0.5 : 0.8),
+                xOffset * (isMobile ? 0.35 : 0.5),
+                xOffset * (isMobile ? 0.25 : 0.4),
               ],
               opacity: [0, 1, 1, 0],
-              scale: [0.6, isMobile ? 2 : 3, isMobile ? 2 : 3, 0.6],
+              scale: [0.7, isMobile ? 1.35 : 1.55, isMobile ? 1.35 : 1.55, 0.7],
               rotate: [0, rotate, rotate * 0.5],
             }
       }
       transition={{
-        duration: reduceMotion ? 0.4 : 1,
+        duration: reduceMotion ? 0.4 : 0.85,
         ease: "easeInOut",
         delay: reduceMotion ? 0 : delay,
       }}
       onUpdate={(latest) => {
         if (typeof latest.y === "number") {
-          const threshold = isMobile ? -90 : -130;
+          const threshold = isMobile ? -36 : -48;
           setPhase(latest.y < threshold ? "up" : "down");
         }
       }}
@@ -98,8 +98,8 @@ export function StyleSpreePicker({
     const newParticles: Particle[] = Array.from({ length: 3 }).map(() => ({
       id: crypto.randomUUID(),
       emoji,
-      xOffset: (Math.random() - 0.5) * 180,
-      rotate: (Math.random() - 0.5) * 40,
+      xOffset: (Math.random() - 0.5) * 96,
+      rotate: (Math.random() - 0.5) * 28,
     }));
 
     setParticles(newParticles);

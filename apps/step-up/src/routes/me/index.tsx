@@ -1,8 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useApi } from "@/lib/api-context";
-import { useActiveStudentContext } from "@/modules/me/child-switcher";
 import {
   AchievementBadge,
   BatchProgressCard,
@@ -17,8 +16,9 @@ import {
   UpcomingClassCard,
 } from "@/modules/me/home-sections";
 import type { HomePayload } from "@/modules/me/home-types";
+import { useActiveStudentContext } from "@/modules/me/use-active-student-context";
 import { InstallAppBar } from "@/modules/pwa/install-app-bar";
-import { AppBottomSheet } from "@/modules/ui/app-bottom-sheet";
+import { BloomMenu } from "@/modules/ui/bloom-menu";
 import { HScrollRow } from "@/modules/ui/h-scroll-row";
 import { PullToRefresh } from "@/modules/ui/pull-to-refresh";
 import { SkeletonBlock } from "@/modules/ui/skeleton-block";
@@ -30,33 +30,73 @@ export const Route = createFileRoute("/me/")({
   component: MeHomePage,
 });
 
-const GOAL_PRESETS = [4, 8, 12, 16];
+const GOAL_BLOOM_ITEMS = [4, 8, 12, 16].map((value) => ({
+  id: String(value),
+  label: `${value} sessions`,
+}));
 
 function MeHomePage() {
   const api = useApi();
   const queryClient = useQueryClient();
   const { studentId } = useActiveStudentContext();
   const [installBarVisible, setInstallBarVisible] = useState(false);
-  const [goalOpen, setGoalOpen] = useState(false);
-  const [goalDraft, setGoalDraft] = useState(8);
+
+  const homeQueryKey = ["home", studentId] as const;
+  const goalRequestId = useRef(0);
 
   const homeQuery = useQuery({
-    queryKey: ["home", studentId],
-    queryFn: () => {
+    queryKey: homeQueryKey,
+    queryFn: ({ signal }) => {
       const params = new URLSearchParams();
       if (studentId) params.set("studentId", studentId);
       const query = params.toString();
-      return api.get<HomePayload>(`/home${query ? `?${query}` : ""}`);
+      return api.get<HomePayload>(`/home${query ? `?${query}` : ""}`, {
+        signal,
+      });
     },
     enabled: Boolean(studentId),
     staleTime: 30_000,
   });
 
   const goalMutation = useMutation({
-    mutationFn: (target: number) => api.put(`/goals/me`, { target, studentId }),
-    onSuccess: async () => {
-      setGoalOpen(false);
-      await queryClient.invalidateQueries({ queryKey: ["home", studentId] });
+    mutationFn: (target: number) => {
+      const body: { target: number; studentId?: string } = { target };
+      if (studentId) body.studentId = studentId;
+      return api.put<{ id: string; target: number }>("/goals/me", body);
+    },
+    onMutate: async (target) => {
+      const requestId = ++goalRequestId.current;
+      await queryClient.cancelQueries({ queryKey: homeQueryKey });
+      const previous = queryClient.getQueryData<HomePayload>(homeQueryKey);
+      queryClient.setQueryData<HomePayload>(homeQueryKey, (current) =>
+        current ? { ...current, goal: { ...current.goal, target } } : current,
+      );
+      return { previous, requestId };
+    },
+    onError: (_error, _target, context) => {
+      if (!context || context.requestId !== goalRequestId.current) return;
+      if (context.previous) {
+        queryClient.setQueryData(homeQueryKey, context.previous);
+      }
+    },
+    onSuccess: (saved, _target, context) => {
+      if (!context || context.requestId !== goalRequestId.current) return;
+      queryClient.setQueryData<HomePayload>(homeQueryKey, (current) =>
+        current
+          ? {
+              ...current,
+              goal: {
+                ...current.goal,
+                id: saved.id,
+                target: saved.target,
+              },
+            }
+          : current,
+      );
+    },
+    onSettled: async (_data, _error, _target, context) => {
+      if (!context || context.requestId !== goalRequestId.current) return;
+      await queryClient.invalidateQueries({ queryKey: homeQueryKey });
     },
   });
 
@@ -67,6 +107,12 @@ function MeHomePage() {
   const showTrialPromo = data
     ? !(data.hasEnrollment ?? data.progress.length > 0)
     : false;
+
+  function selectGoalPreset(id: string) {
+    const target = Number(id);
+    if (!Number.isFinite(target)) return;
+    goalMutation.mutate(target);
+  }
 
   return (
     <section className="screen">
@@ -185,10 +231,16 @@ function MeHomePage() {
 
                   <GoalRing
                     goal={data.goal}
-                    onOpen={() => {
-                      setGoalDraft(data.goal.target);
-                      setGoalOpen(true);
-                    }}
+                    menu={
+                      <BloomMenu
+                        items={GOAL_BLOOM_ITEMS}
+                        columns={2}
+                        triggerLabel="Update"
+                        triggerIcon={null}
+                        panelTitle="Sessions this month"
+                        onSelect={selectGoalPreset}
+                      />
+                    }
                   />
                 </>
               ) : null}
@@ -244,37 +296,6 @@ function MeHomePage() {
           ) : null}
         </div>
       </PullToRefresh>
-
-      <AppBottomSheet
-        isOpen={goalOpen}
-        onOpenChange={setGoalOpen}
-        title="Monthly session goal"
-      >
-        <div className={styles.goalSheet}>
-          <p>How many sessions do you want this month?</p>
-          <div className={styles.goalOptions}>
-            {GOAL_PRESETS.map((value) => (
-              <button
-                key={value}
-                type="button"
-                className={styles.goalOption}
-                data-selected={goalDraft === value ? "true" : undefined}
-                onClick={() => setGoalDraft(value)}
-              >
-                {value}
-              </button>
-            ))}
-          </div>
-          <TouchButton
-            variant="primary"
-            fullWidth
-            isDisabled={goalMutation.isPending}
-            onClick={() => goalMutation.mutate(goalDraft)}
-          >
-            Save goal
-          </TouchButton>
-        </div>
-      </AppBottomSheet>
     </section>
   );
 }

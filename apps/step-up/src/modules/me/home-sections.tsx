@@ -1,7 +1,7 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@dev-ui/components/avatar";
 import { Icon, type IconName } from "@dev-ui/icons";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { resolveDanceStyle } from "@/lib/dance-styles";
 import { NotificationsControl } from "@/modules/layout/app-header";
 import { AnimatedMetric } from "@/modules/ui/animated-metric";
@@ -511,36 +511,49 @@ export function JourneyStats({ stats }: { stats: HomePayload["stats"] }) {
 export function GoalRing({
   goal,
   onOpen,
+  menu,
 }: {
   goal: HomePayload["goal"];
-  onOpen: () => void;
+  onOpen?: () => void;
+  menu?: ReactNode;
 }) {
   const percent = Math.min(
     100,
     Math.round((goal.current / Math.max(goal.target, 1)) * 100),
   );
+  const interactive = Boolean(onOpen) && !menu;
 
   return (
-    <button
-      type="button"
+    <div
       className={`${styles.goalCard} ${styles.sectionEnter}`}
       data-delay="3"
-      onClick={onOpen}
+      data-interactive={interactive ? "true" : "false"}
     >
+      {interactive ? (
+        <button
+          type="button"
+          className={styles.goalHit}
+          onClick={onOpen}
+          aria-label="Update monthly goal"
+        />
+      ) : null}
       <div
         className={styles.goalRing}
         style={{ ["--progress" as string]: percent }}
       >
         <div className={styles.goalRingInner}>{percent}%</div>
       </div>
-      <div>
+      <div className={styles.goalCopy}>
         <p className={styles.timelineTitle}>Monthly goal</p>
         <p className={styles.timelineMeta}>
           {goal.current} of {goal.target} sessions
         </p>
-        <p className={styles.timelineMeta}>Tap to update</p>
+        {interactive ? (
+          <p className={styles.timelineMeta}>Tap to update</p>
+        ) : null}
       </div>
-    </button>
+      {menu ? <div className={styles.goalMenu}>{menu}</div> : null}
+    </div>
   );
 }
 
