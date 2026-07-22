@@ -2,12 +2,24 @@ export const STUDIO_ID = "studio-seed-1";
 
 export type UserRole = "OWNER" | "STAFF" | "TRAINER" | "STUDENT" | "PARENT";
 
+export type ExperienceLevel =
+  | "BEGINNER"
+  | "SOME_EXPERIENCE"
+  | "INTERMEDIATE"
+  | "ADVANCED";
+
 export type DevUser = {
   id: string;
   email: string;
   name: string;
   role: UserRole;
   studioId: string;
+  styles?: string[] | undefined;
+  experienceLevel?: ExperienceLevel | null | undefined;
+  scheduleVibe?: string[] | undefined;
+  preferredBranchId?: string | null | undefined;
+  onboardingCompletedAt?: string | null | undefined;
+  photoUrl?: string | null | undefined;
 };
 
 export const DEV_USERS: Record<UserRole, DevUser> = {
@@ -38,6 +50,11 @@ export const DEV_USERS: Record<UserRole, DevUser> = {
     name: "Alex Student",
     role: "STUDENT",
     studioId: STUDIO_ID,
+    styles: ["Hip Hop"],
+    experienceLevel: "BEGINNER",
+    scheduleVibe: ["weekday_evenings", "weekends"],
+    preferredBranchId: "branch-main-1",
+    onboardingCompletedAt: "2026-01-01T00:00:00.000Z",
   },
   PARENT: {
     id: "parent-1",

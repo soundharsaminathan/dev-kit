@@ -16,7 +16,7 @@ import { STUDIO_ID } from "@/lib/constants";
 import { ENTITY_ICONS } from "@/lib/entity-icons";
 import { BatchRatingInput } from "@/modules/discover/batch-rating";
 import { useDiscoverBatch } from "@/modules/discover/use-discover";
-import { useActiveStudentContext } from "@/modules/me/child-switcher";
+import { useActiveStudentContext } from "@/modules/me/use-active-student-context";
 import { AppBottomSheet } from "@/modules/ui/app-bottom-sheet";
 import { FormInput } from "@/modules/ui/form-input";
 import { Screen } from "@/modules/ui/screen";

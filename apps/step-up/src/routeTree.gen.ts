@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as StudioRouteImport } from './routes/studio'
+import { Route as RegisterRouteImport } from './routes/register'
 import { Route as MeRouteImport } from './routes/me'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppRouteImport } from './routes/app'
@@ -21,6 +22,7 @@ import { Route as TrainersIdRouteImport } from './routes/trainers.$id'
 import { Route as PostsIdRouteImport } from './routes/posts.$id'
 import { Route as MeProfileRouteImport } from './routes/me/profile'
 import { Route as MePlansRouteImport } from './routes/me/plans'
+import { Route as MeOnboardingRouteImport } from './routes/me/onboarding'
 import { Route as MeInvoicesRouteImport } from './routes/me/invoices'
 import { Route as MeFeedRouteImport } from './routes/me/feed'
 import { Route as MeContestsRouteImport } from './routes/me/contests'
@@ -80,6 +82,11 @@ const StudioRoute = StudioRouteImport.update({
   path: '/studio',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RegisterRoute = RegisterRouteImport.update({
+  id: '/register',
+  path: '/register',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const MeRoute = MeRouteImport.update({
   id: '/me',
   path: '/me',
@@ -133,6 +140,11 @@ const MeProfileRoute = MeProfileRouteImport.update({
 const MePlansRoute = MePlansRouteImport.update({
   id: '/plans',
   path: '/plans',
+  getParentRoute: () => MeRoute,
+} as any)
+const MeOnboardingRoute = MeOnboardingRouteImport.update({
+  id: '/onboarding',
+  path: '/onboarding',
   getParentRoute: () => MeRoute,
 } as any)
 const MeInvoicesRoute = MeInvoicesRouteImport.update({
@@ -407,6 +419,7 @@ export interface FileRoutesByFullPath {
   '/app': typeof AppRouteWithChildren
   '/login': typeof LoginRoute
   '/me': typeof MeRouteWithChildren
+  '/register': typeof RegisterRoute
   '/studio': typeof StudioRoute
   '/app/calendar': typeof AppCalendarRoute
   '/app/feed': typeof AppFeedRoute
@@ -423,6 +436,7 @@ export interface FileRoutesByFullPath {
   '/me/contests': typeof MeContestsRoute
   '/me/feed': typeof MeFeedRoute
   '/me/invoices': typeof MeInvoicesRoute
+  '/me/onboarding': typeof MeOnboardingRoute
   '/me/plans': typeof MePlansRoute
   '/me/profile': typeof MeProfileRoute
   '/posts/$id': typeof PostsIdRoute
@@ -472,6 +486,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/register': typeof RegisterRoute
   '/studio': typeof StudioRoute
   '/app/calendar': typeof AppCalendarRoute
   '/app/feed': typeof AppFeedRoute
@@ -488,6 +503,7 @@ export interface FileRoutesByTo {
   '/me/contests': typeof MeContestsRoute
   '/me/feed': typeof MeFeedRoute
   '/me/invoices': typeof MeInvoicesRoute
+  '/me/onboarding': typeof MeOnboardingRoute
   '/me/plans': typeof MePlansRoute
   '/me/profile': typeof MeProfileRoute
   '/posts/$id': typeof PostsIdRoute
@@ -540,6 +556,7 @@ export interface FileRoutesById {
   '/app': typeof AppRouteWithChildren
   '/login': typeof LoginRoute
   '/me': typeof MeRouteWithChildren
+  '/register': typeof RegisterRoute
   '/studio': typeof StudioRoute
   '/app/calendar': typeof AppCalendarRoute
   '/app/feed': typeof AppFeedRoute
@@ -556,6 +573,7 @@ export interface FileRoutesById {
   '/me/contests': typeof MeContestsRoute
   '/me/feed': typeof MeFeedRoute
   '/me/invoices': typeof MeInvoicesRoute
+  '/me/onboarding': typeof MeOnboardingRoute
   '/me/plans': typeof MePlansRoute
   '/me/profile': typeof MeProfileRoute
   '/posts/$id': typeof PostsIdRoute
@@ -609,6 +627,7 @@ export interface FileRouteTypes {
     | '/app'
     | '/login'
     | '/me'
+    | '/register'
     | '/studio'
     | '/app/calendar'
     | '/app/feed'
@@ -625,6 +644,7 @@ export interface FileRouteTypes {
     | '/me/contests'
     | '/me/feed'
     | '/me/invoices'
+    | '/me/onboarding'
     | '/me/plans'
     | '/me/profile'
     | '/posts/$id'
@@ -674,6 +694,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/login'
+    | '/register'
     | '/studio'
     | '/app/calendar'
     | '/app/feed'
@@ -690,6 +711,7 @@ export interface FileRouteTypes {
     | '/me/contests'
     | '/me/feed'
     | '/me/invoices'
+    | '/me/onboarding'
     | '/me/plans'
     | '/me/profile'
     | '/posts/$id'
@@ -741,6 +763,7 @@ export interface FileRouteTypes {
     | '/app'
     | '/login'
     | '/me'
+    | '/register'
     | '/studio'
     | '/app/calendar'
     | '/app/feed'
@@ -757,6 +780,7 @@ export interface FileRouteTypes {
     | '/me/contests'
     | '/me/feed'
     | '/me/invoices'
+    | '/me/onboarding'
     | '/me/plans'
     | '/me/profile'
     | '/posts/$id'
@@ -809,6 +833,7 @@ export interface RootRouteChildren {
   AppRoute: typeof AppRouteWithChildren
   LoginRoute: typeof LoginRoute
   MeRoute: typeof MeRouteWithChildren
+  RegisterRoute: typeof RegisterRoute
   StudioRoute: typeof StudioRoute
   PostsIdRoute: typeof PostsIdRoute
   TrainersIdRoute: typeof TrainersIdRoute
@@ -822,6 +847,13 @@ declare module '@tanstack/react-router' {
       path: '/studio'
       fullPath: '/studio'
       preLoaderRoute: typeof StudioRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/register': {
+      id: '/register'
+      path: '/register'
+      fullPath: '/register'
+      preLoaderRoute: typeof RegisterRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/me': {
@@ -899,6 +931,13 @@ declare module '@tanstack/react-router' {
       path: '/plans'
       fullPath: '/me/plans'
       preLoaderRoute: typeof MePlansRouteImport
+      parentRoute: typeof MeRoute
+    }
+    '/me/onboarding': {
+      id: '/me/onboarding'
+      path: '/onboarding'
+      fullPath: '/me/onboarding'
+      preLoaderRoute: typeof MeOnboardingRouteImport
       parentRoute: typeof MeRoute
     }
     '/me/invoices': {
@@ -1376,6 +1415,7 @@ interface MeRouteChildren {
   MeContestsRoute: typeof MeContestsRoute
   MeFeedRoute: typeof MeFeedRoute
   MeInvoicesRoute: typeof MeInvoicesRoute
+  MeOnboardingRoute: typeof MeOnboardingRoute
   MePlansRoute: typeof MePlansRoute
   MeProfileRoute: typeof MeProfileRoute
   MeIndexRoute: typeof MeIndexRoute
@@ -1399,6 +1439,7 @@ const MeRouteChildren: MeRouteChildren = {
   MeContestsRoute: MeContestsRoute,
   MeFeedRoute: MeFeedRoute,
   MeInvoicesRoute: MeInvoicesRoute,
+  MeOnboardingRoute: MeOnboardingRoute,
   MePlansRoute: MePlansRoute,
   MeProfileRoute: MeProfileRoute,
   MeIndexRoute: MeIndexRoute,
@@ -1420,6 +1461,7 @@ const rootRouteChildren: RootRouteChildren = {
   AppRoute: AppRouteWithChildren,
   LoginRoute: LoginRoute,
   MeRoute: MeRouteWithChildren,
+  RegisterRoute: RegisterRoute,
   StudioRoute: StudioRoute,
   PostsIdRoute: PostsIdRoute,
   TrainersIdRoute: TrainersIdRoute,

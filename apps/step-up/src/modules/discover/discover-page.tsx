@@ -22,11 +22,15 @@ const CATEGORY_CHIPS = [
 
 export function DiscoverPage({
   initialBranchId,
+  initialStyle,
+  initialIntent,
 }: {
   initialBranchId?: string;
+  initialStyle?: string;
+  initialIntent?: "trial";
 } = {}) {
   const [category, setCategory] = useState("ALL");
-  const [style, setStyle] = useState<string | undefined>();
+  const [style, setStyle] = useState<string | undefined>(initialStyle);
   const [search, setSearch] = useState("");
   const [draftSearch, setDraftSearch] = useState("");
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -59,9 +63,11 @@ export function DiscoverPage({
     <Screen
       title="Discover"
       subtitle={
-        branchId
-          ? "Classes at this location."
-          : "Find a class by style, level, or schedule."
+        initialIntent === "trial"
+          ? "Pick a class and book your free trial."
+          : branchId
+            ? "Classes at this location."
+            : "Find a class by style, level, or schedule."
       }
     >
       <PullToRefresh onRefresh={() => query.refetch()}>

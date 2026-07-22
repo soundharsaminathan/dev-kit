@@ -21,9 +21,12 @@ function LandingPage() {
         </p>
         <div className={styles.actions}>
           <TouchButton variant="primary" fullWidth>
-            <Link to="/login">Sign in</Link>
+            <Link to="/register">Join as a student</Link>
           </TouchButton>
           <TouchButton variant="default" fullWidth>
+            <Link to="/login">Sign in</Link>
+          </TouchButton>
+          <TouchButton variant="quiet" fullWidth>
             <Link to="/studio">Explore the studio</Link>
           </TouchButton>
         </div>

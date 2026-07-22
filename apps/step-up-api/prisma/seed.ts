@@ -81,6 +81,14 @@ async function upsertUser(user: SeedUser) {
     bio: user.bio,
     instagramUrl: user.instagramUrl,
   });
+  const studentOnboarding =
+    user.role === UserRole.STUDENT && user.styles.length > 0
+      ? {
+          experienceLevel: "BEGINNER" as const,
+          scheduleVibe: ["weekday_evenings", "weekends"],
+          onboardingCompletedAt: new Date(),
+        }
+      : {};
   await prisma.user.upsert({
     where: { firebaseUid: user.firebaseUid },
     update: {
@@ -90,6 +98,7 @@ async function upsertUser(user: SeedUser) {
       profileVisibility: user.profileVisibility,
       studioId: STUDIO_ID,
       role: user.role,
+      ...studentOnboarding,
     },
     create: {
       id: user.id,
@@ -100,6 +109,7 @@ async function upsertUser(user: SeedUser) {
       profileVisibility: user.profileVisibility,
       role: user.role,
       studioId: STUDIO_ID,
+      ...studentOnboarding,
     },
   });
 }
@@ -601,6 +611,17 @@ async function main() {
       longitude: 77.64,
       description: "Bright lakeside space for evening batches.",
       amenities: ["ac", "wifi"],
+    },
+  });
+
+  await prisma.user.updateMany({
+    where: {
+      studioId: STUDIO_ID,
+      role: UserRole.STUDENT,
+      preferredBranchId: null,
+    },
+    data: {
+      preferredBranchId: mainBranch.id,
     },
   });
 

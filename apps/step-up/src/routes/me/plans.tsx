@@ -5,7 +5,7 @@ import { useState } from "react";
 import { useApi } from "@/lib/api-context";
 import { useAuth } from "@/lib/auth";
 import { STUDIO_ID } from "@/lib/constants";
-import { useActiveStudentContext } from "@/modules/me/child-switcher";
+import { useActiveStudentContext } from "@/modules/me/use-active-student-context";
 import { AppBottomSheet } from "@/modules/ui/app-bottom-sheet";
 import { PullToRefresh } from "@/modules/ui/pull-to-refresh";
 import { Screen } from "@/modules/ui/screen";

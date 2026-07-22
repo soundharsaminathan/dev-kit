@@ -2,7 +2,8 @@
   position: relative;
   isolation: isolate;
   display: flex;
-  min-height: 22rem;
+  flex: 1;
+  min-height: 18rem;
   width: 100%;
   flex-direction: column;
   align-items: center;
@@ -11,6 +12,7 @@
 }
 
 .title {
+  flex-shrink: 0;
   margin: 0 0 var(--space-4, 1rem);
   width: 100%;
   align-self: flex-start;
@@ -22,9 +24,14 @@
 .viewport {
   position: relative;
   z-index: 2;
+  display: flex;
+  flex: 1;
+  min-height: 0;
   width: 100%;
+  align-items: center;
   overflow: hidden;
   cursor: grab;
+  padding-block: var(--space-6, 1.5rem);
   padding-inline: var(--space-1, 0.25rem);
   mask-image: linear-gradient(
     to right,
@@ -96,9 +103,9 @@
 
 .particle {
   position: absolute;
-  bottom: 5rem;
+  top: 52%;
   left: 50%;
-  translate: -50% 0;
+  translate: -50% -50%;
   font-size: 2.25rem;
   line-height: 1;
 }
@@ -128,10 +135,6 @@
 }
 
 @media (max-width: 28rem) {
-  .root {
-    min-height: 18rem;
-  }
-
   .chip {
     font-size: 0.875rem;
     padding-inline: var(--space-3, 0.75rem);

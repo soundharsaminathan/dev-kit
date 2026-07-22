@@ -11,7 +11,7 @@ type FollowButtonProps = {
   className?: string | undefined;
 };
 
-export function followButtonLabel(input: {
+function followButtonLabel(input: {
   isFollowing: boolean;
   followRequestStatus?: "PENDING" | "ACCEPTED" | "REJECTED" | null | undefined;
   profileVisibility?: "PUBLIC" | "PRIVATE" | undefined;

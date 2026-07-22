@@ -1,7 +1,7 @@
 import { QueryClient } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError } from "@/lib/api";
-import { chatMessagesKey } from "@/lib/chat-socket";
+import { chatMessagesKey } from "@/lib/chat-cache";
 import {
   deliverPendingSend,
   flushOutbox,

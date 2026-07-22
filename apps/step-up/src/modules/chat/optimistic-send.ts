@@ -6,7 +6,7 @@ import {
   removeMessageFromCache,
   replaceOptimisticMessage,
   updateMessagesInCache,
-} from "@/lib/chat-socket";
+} from "@/lib/chat-cache";
 import type {
   ChatLocation,
   ChatMessage,

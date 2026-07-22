@@ -7,9 +7,9 @@ import {
   trainerHasStyle,
 } from "@/lib/dance-styles";
 import { ENTITY_ICONS } from "@/lib/entity-icons";
-import { useActiveStudentContext } from "@/modules/me/child-switcher";
 import { HomeStudioBanner } from "@/modules/me/home-sections";
 import type { HomePayload } from "@/modules/me/home-types";
+import { useActiveStudentContext } from "@/modules/me/use-active-student-context";
 import { useFollowMutations } from "@/modules/social/use-follow";
 import { FilterChipRow } from "@/modules/ui/filter-chip-row";
 import { PullToRefresh } from "@/modules/ui/pull-to-refresh";

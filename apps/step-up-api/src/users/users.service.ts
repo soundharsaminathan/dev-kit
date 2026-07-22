@@ -1,11 +1,17 @@
 import { randomUUID } from "node:crypto";
 import {
+  BadRequestException,
   ConflictException,
   Inject,
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
-import { AttendanceStatus, ProfileVisibility, UserRole } from "@prisma/client";
+import {
+  AttendanceStatus,
+  type ExperienceLevel,
+  ProfileVisibility,
+  UserRole,
+} from "@prisma/client";
 import { MediaService } from "../media/media.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { isAlwaysPublicRole } from "../social/visibility";
@@ -349,6 +355,9 @@ export class UsersService {
       coverUrl?: string;
       instagramUrl?: string;
       styles?: string[];
+      experienceLevel?: ExperienceLevel;
+      scheduleVibe?: string[];
+      preferredBranchId?: string | null;
       profileVisibility?: ProfileVisibility;
     },
   ) {
@@ -356,6 +365,19 @@ export class UsersService {
       where: { id },
     });
     const current = this.crypto.decryptUser(existing);
+
+    if (data.preferredBranchId) {
+      const branch = await this.prisma.studioBranch.findFirst({
+        where: {
+          id: data.preferredBranchId,
+          ...(existing.studioId ? { studioId: existing.studioId } : {}),
+        },
+        select: { id: true },
+      });
+      if (!branch) {
+        throw new BadRequestException("Preferred branch was not found");
+      }
+    }
 
     const piiChanged =
       data.name !== undefined ||
@@ -375,7 +397,7 @@ export class UsersService {
           : current.instagramUrl,
     };
 
-    const { profileVisibility, styles } = data;
+    const { profileVisibility, styles, experienceLevel, scheduleVibe } = data;
     const normalizeImage = (value: string | undefined) =>
       value !== undefined
         ? value
@@ -397,12 +419,58 @@ export class UsersService {
         ...(bannerUrl !== undefined ? { bannerUrl } : {}),
         ...(coverUrl !== undefined ? { coverUrl } : {}),
         ...(styles !== undefined ? { styles } : {}),
+        ...(experienceLevel !== undefined ? { experienceLevel } : {}),
+        ...(scheduleVibe !== undefined ? { scheduleVibe } : {}),
+        ...(data.preferredBranchId !== undefined
+          ? { preferredBranchId: data.preferredBranchId || null }
+          : {}),
         ...(profileVisibility !== undefined && !isAlwaysPublicRole(role)
           ? { profileVisibility }
           : isAlwaysPublicRole(role)
             ? { profileVisibility: ProfileVisibility.PUBLIC }
             : {}),
       },
+    });
+
+    return this.presentUser(updated);
+  }
+
+  async completeOnboarding(id: string) {
+    const existing = await this.prisma.user.findUniqueOrThrow({
+      where: { id },
+    });
+    const current = this.crypto.decryptUser(existing);
+    const missing: string[] = [];
+
+    if (!current.name?.trim() || current.name.trim() === "New User") {
+      missing.push("name");
+    }
+    if ((current.styles ?? []).length < 1) {
+      missing.push("styles");
+    }
+    if (!current.experienceLevel) {
+      missing.push("experienceLevel");
+    }
+    if ((current.scheduleVibe ?? []).length < 1) {
+      missing.push("scheduleVibe");
+    }
+    if (!current.preferredBranchId) {
+      missing.push("preferredBranchId");
+    }
+
+    if (missing.length > 0) {
+      throw new BadRequestException(
+        `Onboarding incomplete: missing ${missing.join(", ")}`,
+      );
+    }
+
+    if (current.onboardingCompletedAt) {
+      return this.presentUser(existing);
+    }
+
+    const updated = await this.prisma.user.update({
+      where: { id },
+      data: { onboardingCompletedAt: new Date() },
     });
 
     return this.presentUser(updated);

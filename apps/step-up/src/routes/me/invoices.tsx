@@ -2,7 +2,7 @@ import { Badge } from "@dev-ui/components/badge";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { useApi } from "@/lib/api-context";
-import { useActiveStudentContext } from "@/modules/me/child-switcher";
+import { useActiveStudentContext } from "@/modules/me/use-active-student-context";
 import { PullToRefresh } from "@/modules/ui/pull-to-refresh";
 import { Screen } from "@/modules/ui/screen";
 import { SkeletonCardList } from "@/modules/ui/skeleton-block";
