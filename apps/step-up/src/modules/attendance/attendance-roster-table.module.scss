@@ -1,0 +1,199 @@
+@use "@dev-ui/tokens/scss" as *;
+
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 0.75rem);
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3, 0.75rem);
+}
+
+.toolbarActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2, 0.5rem);
+  margin-inline-start: auto;
+}
+
+.selectionBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3, 0.75rem);
+  padding: var(--space-3, 0.75rem) var(--space-4, 1rem);
+  border-radius: var(--radius-xl, 1rem);
+  border: 1px solid color-mix(in srgb, var(--color-primary) 22%, transparent);
+  background: color-mix(in srgb, var(--color-primary) 10%, var(--color-bg));
+}
+
+.selectionLabel {
+  font-size: 0.875rem;
+  color: color-mix(in srgb, var(--color-fg) 72%, transparent);
+}
+
+.selectionLabel strong {
+  color: var(--color-fg);
+  font-variant-numeric: tabular-nums;
+}
+
+.selectionActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2, 0.5rem);
+  margin-inline-start: auto;
+}
+
+.tableWrap {
+  width: 100%;
+  overflow: auto;
+  border: 1px solid color-mix(in srgb, var(--color-fg) 12%, transparent);
+  border-radius: var(--radius-xl, 1rem);
+  background: var(--card-background, var(--color-card, var(--color-bg)));
+  box-shadow: var(--card-shadow, var(--shadow-sm, 0 1px 3px rgb(0 0 0 / 6%)));
+}
+
+.table {
+  width: 100%;
+  min-width: 36rem;
+  border-collapse: collapse;
+  border-spacing: 0;
+  font-size: 0.875rem;
+}
+
+.thead {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: color-mix(in srgb, var(--color-bg) 92%, transparent);
+  backdrop-filter: blur(8px);
+}
+
+.th {
+  height: 2.75rem;
+  padding: 0 var(--space-3, 0.75rem);
+  border-bottom: 1px solid color-mix(in srgb, var(--color-fg) 10%, transparent);
+  color: color-mix(in srgb, var(--color-fg) 58%, transparent);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-align: start;
+  text-transform: uppercase;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.sortButton {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1, 0.25rem);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  cursor: pointer;
+}
+
+.sortButton:hover {
+  color: var(--color-fg);
+}
+
+.sortIcon {
+  width: 0.875rem;
+  height: 0.875rem;
+  flex-shrink: 0;
+  opacity: 0.35;
+  transition:
+    transform var(--motion-fast, 150ms) ease,
+    opacity var(--motion-fast, 150ms) ease;
+}
+
+.sortButton[data-direction="ascending"] .sortIcon,
+.sortButton[data-direction="descending"] .sortIcon {
+  opacity: 1;
+  color: var(--color-fg);
+}
+
+.sortButton[data-direction="descending"] .sortIcon {
+  transform: rotate(180deg);
+}
+
+.tr {
+  border-bottom: 1px solid color-mix(in srgb, var(--color-fg) 8%, transparent);
+  transition: background-color var(--motion-fast, 150ms) ease;
+}
+
+.tr:last-child {
+  border-bottom: 0;
+}
+
+.tr[data-selected] {
+  background: color-mix(in srgb, var(--color-primary) 8%, transparent);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .tr:hover {
+    background: color-mix(in srgb, var(--color-fg) 4%, transparent);
+  }
+
+  .tr[data-selected]:hover {
+    background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+  }
+}
+
+.td {
+  height: 3.5rem;
+  padding: var(--space-2, 0.5rem) var(--space-3, 0.75rem);
+  vertical-align: middle;
+}
+
+.studentCell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  min-width: 0;
+}
+
+.studentName {
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--color-fg);
+}
+
+.studentDetail {
+  font-size: 0.75rem;
+  color: color-mix(in srgb, var(--color-fg) 58%, transparent);
+}
+
+.rowActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1, 0.25rem);
+}
+
+.emptyCell {
+  padding: var(--space-8, 2rem) var(--space-4, 1rem);
+  text-align: center;
+  color: color-mix(in srgb, var(--color-fg) 58%, transparent);
+}
+
+.footerMeta {
+  margin: 0;
+  font-size: 0.75rem;
+  color: color-mix(in srgb, var(--color-fg) 52%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tr,
+  .sortIcon {
+    transition-duration: 0ms;
+  }
+}

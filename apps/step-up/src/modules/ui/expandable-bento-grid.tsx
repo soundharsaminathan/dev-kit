@@ -1,6 +1,13 @@
 import { Icon } from "@dev-ui/icons";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { type ReactNode, useEffect, useId, useRef, useState } from "react";
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+} from "react";
 import styles from "./expandable-bento-grid.module.scss";
 
 export type ExpandableBentoItem = {
@@ -19,6 +26,10 @@ export type ExpandableBentoGridProps = {
   items: ExpandableBentoItem[];
   className?: string;
   "aria-label"?: string;
+  activeId?: string | null;
+  defaultActiveId?: string | null;
+  onActiveIdChange?: ((id: string | null) => void) | undefined;
+  hideCards?: boolean | undefined;
 };
 
 const PANEL_SPRING = {
@@ -32,13 +43,31 @@ export function ExpandableBentoGrid({
   items,
   className,
   "aria-label": ariaLabel = "Items",
+  activeId: activeIdProp,
+  defaultActiveId = null,
+  onActiveIdChange,
+  hideCards = false,
 }: ExpandableBentoGridProps) {
   const layoutId = useId();
   const reducedMotion = useReducedMotion();
-  const [activeId, setActiveId] = useState<string | null>(null);
-  const panelRef = useRef<HTMLDivElement>(null);
+  const [uncontrolledActiveId, setUncontrolledActiveId] = useState<
+    string | null
+  >(defaultActiveId);
+  const isControlled = activeIdProp !== undefined;
+  const activeId = isControlled ? activeIdProp : uncontrolledActiveId;
+
+  const setActiveId = useCallback(
+    (next: string | null) => {
+      if (!isControlled) {
+        setUncontrolledActiveId(next);
+      }
+      onActiveIdChange?.(next);
+    },
+    [isControlled, onActiveIdChange],
+  );
 
   const active = items.find((item) => item.id === activeId) ?? null;
+  const panelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -58,7 +87,7 @@ export function ExpandableBentoGrid({
       document.body.style.overflow = "";
       window.removeEventListener("keydown", onKeyDown);
     };
-  }, [active]);
+  }, [active, setActiveId]);
 
   useEffect(() => {
     if (!active) return;
@@ -72,13 +101,20 @@ export function ExpandableBentoGrid({
 
     window.addEventListener("pointerdown", onPointerDown);
     return () => window.removeEventListener("pointerdown", onPointerDown);
-  }, [active]);
+  }, [active, setActiveId]);
 
   const rootClassName = [styles.root, className].filter(Boolean).join(" ");
+  const gridClassName = [styles.grid, hideCards ? styles.gridHidden : null]
+    .filter(Boolean)
+    .join(" ");
 
   return (
     <div className={rootClassName}>
-      <ul className={styles.grid} aria-label={ariaLabel}>
+      <ul
+        className={gridClassName}
+        aria-label={ariaLabel}
+        aria-hidden={hideCards}
+      >
         {items.map((item) => {
           const isActive = activeId === item.id;
           return (

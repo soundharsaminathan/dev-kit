@@ -81,7 +81,10 @@
   display: inline-flex;
   align-items: center;
   gap: var(--space-1, 0.25rem);
+  margin: 0;
   margin-inline-start: auto;
+  padding: 0;
+  list-style: none;
   flex-shrink: 0;
 }
 

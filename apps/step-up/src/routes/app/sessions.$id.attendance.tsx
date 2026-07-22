@@ -1,20 +1,24 @@
-import { Badge } from "@dev-ui/components/badge";
 import { Button } from "@dev-ui/components/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@dev-ui/components/card";
+import { Icon } from "@dev-ui/icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import QRCode from "qrcode";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useApi } from "@/lib/api-context";
+import { AttendanceRosterTable } from "@/modules/attendance/attendance-roster-table";
+import type {
+  AttendanceRosterEntry,
+  AttendanceStatusValue,
+} from "@/modules/attendance/types";
 import { ApiState } from "@/modules/ui/api-state";
+import {
+  ExpandableBentoGrid,
+  type ExpandableBentoItem,
+} from "@/modules/ui/expandable-bento-grid";
 import { PageHeader } from "@/modules/ui/page-header";
 import styles from "./sessions.$id.attendance.module.scss";
+
+const QR_ITEM_ID = "check-in-qr";
 
 type Session = {
   id: string;
@@ -22,16 +26,6 @@ type Session = {
   startsAt: string;
   endsAt: string;
   batch?: { name: string };
-};
-
-type RosterEntry = {
-  studentId: string;
-  student: { name: string };
-  attendance: {
-    id: string;
-    status: "PRESENT" | "ABSENT";
-    source: "TRAINER" | "DESK" | "QR";
-  } | null;
 };
 
 function formatSessionDateTime(value: string) {
@@ -44,12 +38,6 @@ function formatSessionDateTime(value: string) {
   });
 }
 
-function attendanceSourceLabel(source: "TRAINER" | "DESK" | "QR") {
-  if (source === "QR") return "Checked in via QR";
-  if (source === "DESK") return "Marked at desk";
-  return "Marked by trainer";
-}
-
 export const Route = createFileRoute("/app/sessions/$id/attendance")({
   component: SessionAttendancePage,
 });
@@ -60,7 +48,7 @@ function QrCanvas({ token }: { token: string }) {
   useEffect(() => {
     if (!canvasRef.current || !token) return;
     void QRCode.toCanvas(canvasRef.current, token, {
-      width: 240,
+      width: 280,
       margin: 2,
       errorCorrectionLevel: "M",
     });
@@ -79,6 +67,8 @@ function SessionAttendancePage() {
   const { id } = Route.useParams();
   const api = useApi();
   const queryClient = useQueryClient();
+  const [activeQrId, setActiveQrId] = useState<string | null>(null);
+  const qrOpen = activeQrId === QR_ITEM_ID;
 
   const sessionQuery = useQuery({
     queryKey: ["session", id],
@@ -87,7 +77,8 @@ function SessionAttendancePage() {
 
   const rosterQuery = useQuery({
     queryKey: ["attendance-roster", id],
-    queryFn: () => api.get<RosterEntry[]>(`/attendance/session/${id}/roster`),
+    queryFn: () =>
+      api.get<AttendanceRosterEntry[]>(`/attendance/session/${id}/roster`),
     enabled: Boolean(id),
   });
 
@@ -95,41 +86,62 @@ function SessionAttendancePage() {
     queryKey: ["session-qr", id],
     queryFn: () =>
       api.get<{ token: string; expiresAt: string }>(`/sessions/${id}/qr`),
-    enabled: Boolean(id),
-    refetchInterval: 60_000,
+    enabled: Boolean(id) && qrOpen,
+    refetchInterval: qrOpen ? 60_000 : false,
   });
+
+  function invalidateAttendance() {
+    void queryClient.invalidateQueries({
+      queryKey: ["attendance-roster", id],
+    });
+    void queryClient.invalidateQueries({ queryKey: ["attendance", id] });
+  }
 
   const markAllPresent = useMutation({
     mutationFn: () =>
       api.post<{ marked: number; failed: number }>(
         `/attendance/session/${id}/mark-all-present`,
       ),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({
-        queryKey: ["attendance-roster", id],
-      });
-      void queryClient.invalidateQueries({ queryKey: ["attendance", id] });
-    },
+    onSuccess: invalidateAttendance,
   });
 
   const markAttendance = useMutation({
     mutationFn: (payload: {
       studentId: string;
-      status: "PRESENT" | "ABSENT";
-      source?: "TRAINER" | "DESK";
+      status: AttendanceStatusValue;
     }) =>
       api.post("/attendance/mark", {
         sessionId: id,
         studentId: payload.studentId,
         status: payload.status,
-        source: payload.source ?? "TRAINER",
+        source: "TRAINER",
       }),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({
-        queryKey: ["attendance-roster", id],
-      });
-      void queryClient.invalidateQueries({ queryKey: ["attendance", id] });
+    onSuccess: invalidateAttendance,
+  });
+
+  const markSelected = useMutation({
+    mutationFn: async (payload: {
+      studentIds: string[];
+      status: AttendanceStatusValue;
+    }) => {
+      const results = await Promise.allSettled(
+        payload.studentIds.map((studentId) =>
+          api.post("/attendance/mark", {
+            sessionId: id,
+            studentId,
+            status: payload.status,
+            source: "TRAINER",
+          }),
+        ),
+      );
+      return {
+        marked: results.filter((result) => result.status === "fulfilled")
+          .length,
+        failed: results.filter((result) => result.status === "rejected").length,
+        status: payload.status,
+      };
     },
+    onSuccess: invalidateAttendance,
   });
 
   const summary = useMemo(() => {
@@ -153,38 +165,65 @@ function SessionAttendancePage() {
         .join(" · ")
     : "Mark attendance for enrolled students.";
 
+  const isBusy =
+    markAllPresent.isPending ||
+    markAttendance.isPending ||
+    markSelected.isPending;
+
+  const bulkError =
+    markAllPresent.error ?? markSelected.error ?? markAttendance.error;
+  const bulkResult = markSelected.data ?? markAllPresent.data;
+
+  const qrExpiresLabel = qrQuery.data
+    ? formatSessionDateTime(qrQuery.data.expiresAt)
+    : "session end";
+
+  const qrItem: ExpandableBentoItem = {
+    id: QR_ITEM_ID,
+    title: "Check-in QR",
+    subtitle: "Student self check-in",
+    description: `Students scan this code to check in. Valid until ${qrExpiresLabel}.`,
+    media: qrQuery.data?.token ? (
+      <div className={styles.qrMediaFrame}>
+        <QrCanvas token={qrQuery.data.token} />
+      </div>
+    ) : (
+      <span className={styles.qrMediaIcon} aria-hidden>
+        <Icon name="camera" />
+      </span>
+    ),
+    content: (
+      <p className={styles.qrHint}>
+        {qrQuery.isError
+          ? "QR code unavailable for this session."
+          : qrQuery.isLoading || !qrQuery.data?.token
+            ? "Generating QR code…"
+            : "Display this at the front desk or projector for self check-in."}
+      </p>
+    ),
+  };
+
   return (
     <section className={`page ${styles.root}`}>
-      <PageHeader title="Session attendance" description={sessionDescription} />
+      <PageHeader
+        title="Session attendance"
+        description={sessionDescription}
+        actions={
+          <Button variant="primary" onClick={() => setActiveQrId(QR_ITEM_ID)}>
+            Generate QR
+          </Button>
+        }
+      />
 
-      <Card className={styles.qrCard}>
-        <CardHeader>
-          <CardTitle>Check-in QR</CardTitle>
-          <CardDescription>
-            Students scan this code to check in. Valid until{" "}
-            {qrQuery.data
-              ? formatSessionDateTime(qrQuery.data.expiresAt)
-              : "session end"}
-            .
-          </CardDescription>
-        </CardHeader>
-        <CardContent className={styles.qrContent}>
-          {qrQuery.data?.token ? (
-            <>
-              <QrCanvas token={qrQuery.data.token} />
-              <p className={styles.qrHint}>
-                Display this at the front desk or projector for self check-in.
-              </p>
-            </>
-          ) : (
-            <p className={styles.qrHint}>
-              {qrQuery.isLoading
-                ? "Loading QR code…"
-                : "QR code unavailable for this session."}
-            </p>
-          )}
-        </CardContent>
-      </Card>
+      <div className={styles.qrBento}>
+        <ExpandableBentoGrid
+          items={[qrItem]}
+          activeId={activeQrId}
+          onActiveIdChange={setActiveQrId}
+          hideCards
+          aria-label="Check-in QR"
+        />
+      </div>
 
       <ApiState
         isLoading={rosterQuery.isLoading || sessionQuery.isLoading}
@@ -199,113 +238,80 @@ function SessionAttendancePage() {
           <>
             {roster.length > 0 ? (
               <div className={styles.summaryRow}>
-                <div className={styles.summary}>
-                  <Badge variant="neutral">{summary.total} enrolled</Badge>
-                  <Badge variant="success">{summary.present} present</Badge>
-                  <Badge variant="danger">{summary.absent} absent</Badge>
-                  {summary.unmarked > 0 ? (
-                    <Badge variant="warning">{summary.unmarked} unmarked</Badge>
-                  ) : null}
-                </div>
-                {summary.unmarked > 0 ? (
-                  <Button
-                    variant="primary"
-                    isDisabled={
-                      markAllPresent.isPending || markAttendance.isPending
-                    }
-                    onClick={() => markAllPresent.mutate()}
+                <fieldset
+                  className={styles.summary}
+                  aria-label="Attendance summary"
+                >
+                  <span className={styles.statChip} data-tone="neutral">
+                    <strong>{summary.total}</strong>
+                    enrolled
+                  </span>
+                  <span
+                    className={styles.statChip}
+                    data-tone="present"
+                    data-active={summary.present > 0 ? "" : undefined}
                   >
-                    {markAllPresent.isPending
-                      ? "Marking…"
-                      : `Mark all present (${summary.unmarked})`}
-                  </Button>
-                ) : null}
+                    <strong>{summary.present}</strong>
+                    present
+                  </span>
+                  <span
+                    className={styles.statChip}
+                    data-tone="absent"
+                    data-active={summary.absent > 0 ? "" : undefined}
+                  >
+                    <strong>{summary.absent}</strong>
+                    absent
+                  </span>
+                  <span
+                    className={styles.statChip}
+                    data-tone="unmarked"
+                    data-active={summary.unmarked > 0 ? "" : undefined}
+                  >
+                    <strong>{summary.unmarked}</strong>
+                    unmarked
+                  </span>
+                </fieldset>
               </div>
             ) : null}
 
-            {markAllPresent.isError ? (
+            {bulkError ? (
               <p className={styles.bulkError} role="alert">
-                {markAllPresent.error instanceof Error
-                  ? markAllPresent.error.message
-                  : "Could not mark all students present."}
+                {bulkError instanceof Error
+                  ? bulkError.message
+                  : "Could not update attendance."}
               </p>
             ) : null}
 
-            {markAllPresent.data && markAllPresent.data.failed > 0 ? (
+            {bulkResult && bulkResult.failed > 0 ? (
               <p className={styles.bulkWarning} role="status">
-                Marked {markAllPresent.data.marked} students present.{" "}
-                {markAllPresent.data.failed} could not be marked — check
-                subscriptions and try again individually.
+                Marked {bulkResult.marked} students
+                {"status" in bulkResult && bulkResult.status
+                  ? ` ${bulkResult.status === "PRESENT" ? "present" : "absent"}`
+                  : " present"}
+                . {bulkResult.failed} could not be marked — check subscriptions
+                and try again individually.
               </p>
             ) : null}
 
-            <div className={styles.roster}>
-              {roster.map((entry) => {
-                const status = entry.attendance?.status ?? null;
-                const isPending =
-                  markAllPresent.isPending ||
-                  (markAttendance.isPending &&
-                    markAttendance.variables?.studentId === entry.studentId);
-
-                return (
-                  <Card key={entry.studentId}>
-                    <CardContent className={styles.studentRow}>
-                      <div className={styles.studentHeader}>
-                        <div className={styles.studentMeta}>
-                          <p className={styles.studentName}>
-                            {entry.student.name}
-                          </p>
-                          <p className={styles.studentStatus}>
-                            {status === "PRESENT"
-                              ? attendanceSourceLabel(entry.attendance!.source)
-                              : status === "ABSENT"
-                                ? "Marked absent"
-                                : "Not marked yet"}
-                          </p>
-                        </div>
-                        {status ? (
-                          <Badge
-                            variant={
-                              status === "PRESENT" ? "success" : "danger"
-                            }
-                          >
-                            {status === "PRESENT" ? "Present" : "Absent"}
-                          </Badge>
-                        ) : (
-                          <Badge variant="neutral">Unmarked</Badge>
-                        )}
-                      </div>
-                      <div className={styles.actions}>
-                        <Button
-                          variant={status === "PRESENT" ? "primary" : "default"}
-                          isDisabled={isPending || markAllPresent.isPending}
-                          onClick={() =>
-                            markAttendance.mutate({
-                              studentId: entry.studentId,
-                              status: "PRESENT",
-                            })
-                          }
-                        >
-                          Present
-                        </Button>
-                        <Button
-                          variant={status === "ABSENT" ? "primary" : "default"}
-                          isDisabled={isPending || markAllPresent.isPending}
-                          onClick={() =>
-                            markAttendance.mutate({
-                              studentId: entry.studentId,
-                              status: "ABSENT",
-                            })
-                          }
-                        >
-                          Absent
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </div>
+            {roster.length > 0 ? (
+              <AttendanceRosterTable
+                roster={roster}
+                isBusy={isBusy}
+                pendingStudentId={
+                  markAttendance.isPending
+                    ? (markAttendance.variables?.studentId ?? null)
+                    : null
+                }
+                unmarkedCount={summary.unmarked}
+                onMarkAllUnmarkedPresent={() => markAllPresent.mutate()}
+                onMarkOne={(studentId, status) =>
+                  markAttendance.mutate({ studentId, status })
+                }
+                onMarkSelected={(studentIds, status) =>
+                  markSelected.mutate({ studentIds, status })
+                }
+              />
+            ) : null}
           </>
         )}
       </ApiState>
