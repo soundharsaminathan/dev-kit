@@ -51,6 +51,40 @@ export const DEV_USERS: Record<UserRole, DevUser> = {
 export const STAFF_ROLES: UserRole[] = ["OWNER", "STAFF", "TRAINER"];
 export const MEMBER_ROLES: UserRole[] = ["STUDENT", "PARENT"];
 
+export function findDevUserByLogin(identifier: string): DevUser | undefined {
+  const query = identifier.trim().toLowerCase();
+  if (!query) {
+    return undefined;
+  }
+
+  return Object.values(DEV_USERS).find((devUser) =>
+    [
+      devUser.email,
+      devUser.email.split("@")[0] ?? "",
+      devUser.id,
+      devUser.role,
+      devUser.name,
+    ].some((candidate) => candidate.toLowerCase() === query),
+  );
+}
+
+/** Maps username / id / role aliases to a Firebase email, or passes emails through. */
+export function resolveLoginEmail(identifier: string): string {
+  const match = findDevUserByLogin(identifier);
+  if (match) {
+    return match.email;
+  }
+
+  const trimmed = identifier.trim();
+  if (trimmed.includes("@")) {
+    return trimmed;
+  }
+
+  throw new Error(
+    `Unknown username “${trimmed}”. Use an email, or try owner, staff, trainer, student, parent, or trainer-1.`,
+  );
+}
+
 export function isAuthBypassEnabled() {
   return import.meta.env.VITE_AUTH_BYPASS === "true";
 }

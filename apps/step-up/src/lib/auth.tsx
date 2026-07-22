@@ -19,7 +19,9 @@ import { apiRequest } from "./api";
 import {
   DEV_USERS,
   type DevUser,
+  findDevUserByLogin,
   isAuthBypassEnabled,
+  resolveLoginEmail,
   STUDIO_ID,
   type UserRole,
 } from "./constants";
@@ -48,7 +50,7 @@ export type AuthContextValue = {
   user: AuthUser | null;
   loading: boolean;
   loginAsDev: (role: UserRole) => void;
-  signIn: (email: string, password: string) => Promise<AuthUser>;
+  signIn: (identifier: string, password: string) => Promise<AuthUser>;
   signInWithGoogle: () => Promise<AuthUser>;
   signOutUser: () => Promise<void>;
   getIdToken: () => Promise<string | null>;
@@ -221,25 +223,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signIn = useCallback(
-    async (email: string, _password: string) => {
+    async (identifier: string, password: string) => {
       if (isAuthBypassEnabled()) {
-        const query = email.trim().toLowerCase();
-        const match = Object.values(DEV_USERS).find((devUser) =>
-          [
-            devUser.email,
-            devUser.email.split("@")[0] ?? "",
-            devUser.id,
-            devUser.role,
-            devUser.name,
-          ].some((candidate) => candidate.toLowerCase() === query),
-        );
+        const match = findDevUserByLogin(identifier);
         if (!match) {
           throw new Error(
-            `No dev account matches “${email.trim()}”. Try owner, staff, trainer, student, or parent.`,
+            `No dev account matches “${identifier.trim()}”. Try owner, staff, trainer, student, parent, or trainer-1.`,
           );
         }
         loginAsDev(match.role);
-        return DEV_USERS[match.role];
+        return match;
       }
 
       const auth = getFirebaseAuth();
@@ -247,10 +240,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw new Error("Firebase is not configured");
       }
 
+      const email = resolveLoginEmail(identifier);
       const credential = await signInWithEmailAndPassword(
         auth,
         email,
-        _password,
+        password,
       );
       return waitForSync(credential.user.uid);
     },
