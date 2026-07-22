@@ -1,6 +1,7 @@
 import { ValidationPipe } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
 import { AppModule } from "./app.module";
+import { RedisIoAdapter } from "./realtime/redis-io.adapter";
 import { captureException, initSentry } from "./sentry";
 
 async function bootstrap() {
@@ -20,6 +21,10 @@ async function bootstrap() {
       forbidNonWhitelisted: true,
     }),
   );
+
+  const redisIoAdapter = new RedisIoAdapter(app, process.env.REDIS_URL ?? null);
+  await redisIoAdapter.connectToRedis();
+  app.useWebSocketAdapter(redisIoAdapter);
 
   const port = Number(process.env.PORT ?? 3000);
   await app.listen(port);

@@ -6,7 +6,8 @@ export type NotificationType =
   | "PAYMENT_OVERDUE"
   | "RENEWED"
   | "NOT_RENEWED"
-  | "NEW_FOLLOW";
+  | "NEW_FOLLOW"
+  | "CHAT_MESSAGE";
 
 export type NotificationMeta = {
   sessionId?: string;
@@ -15,6 +16,7 @@ export type NotificationMeta = {
   planId?: string;
   invoiceId?: string;
   followerId?: string;
+  conversationId?: string;
 };
 
 export type NotificationDestination =
@@ -22,6 +24,10 @@ export type NotificationDestination =
   | { to: "/me/plans" }
   | { to: "/me/invoices" }
   | { to: "/me/attendance" }
+  | { to: "/me/messages" }
+  | { to: "/me/messages/$id"; params: { id: string } }
+  | { to: "/app/messages" }
+  | { to: "/app/messages/$id"; params: { id: string } }
   | { to: "/users/$id"; params: { id: string } }
   | { to: "/app/sessions/$id/attendance"; params: { id: string } }
   | { to: "/app/batches/$id"; params: { id: string } }
@@ -45,12 +51,14 @@ function asMeta(value: unknown): NotificationMeta {
   const planId = pick("planId");
   const invoiceId = pick("invoiceId");
   const followerId = pick("followerId");
+  const conversationId = pick("conversationId");
   if (sessionId) meta.sessionId = sessionId;
   if (batchId) meta.batchId = batchId;
   if (subscriptionId) meta.subscriptionId = subscriptionId;
   if (planId) meta.planId = planId;
   if (invoiceId) meta.invoiceId = invoiceId;
   if (followerId) meta.followerId = followerId;
+  if (conversationId) meta.conversationId = conversationId;
   return meta;
 }
 
@@ -65,6 +73,17 @@ export function resolveNotificationDestination(
     return m.followerId
       ? { to: "/users/$id", params: { id: m.followerId } }
       : null;
+  }
+
+  if (type === "CHAT_MESSAGE") {
+    if (variant === "me") {
+      return m.conversationId
+        ? { to: "/me/messages/$id", params: { id: m.conversationId } }
+        : { to: "/me/messages" };
+    }
+    return m.conversationId
+      ? { to: "/app/messages/$id", params: { id: m.conversationId } }
+      : { to: "/app/messages" };
   }
 
   if (variant === "me") {

@@ -7,6 +7,10 @@ import {
 import { NotificationsService } from "../notifications/notifications.service";
 import { PrismaService } from "../prisma/prisma.service";
 
+function dayKey(date: Date) {
+  return date.toISOString().slice(0, 10);
+}
+
 @Injectable()
 export class JobsService {
   constructor(
@@ -17,6 +21,8 @@ export class JobsService {
 
   async runDaily() {
     const now = new Date();
+    const today = dayKey(now);
+
     const dueUpdated = await this.prisma.subscription.updateMany({
       where: {
         status: SubscriptionStatus.ACTIVE,
@@ -38,9 +44,11 @@ export class JobsService {
       await this.notifications.create({
         userId: subscription.studentId,
         type: NotificationType.NOT_RENEWED,
-        title: "Plan not renewed",
-        body: `Your ${subscription.plan.name} plan has expired. Renew to keep attending classes.`,
+        planName: subscription.plan.name,
+        dedupeKey: `NOT_RENEWED:${subscription.id}`,
         meta: { subscriptionId: subscription.id, planId: subscription.planId },
+        entityType: "subscription",
+        entityId: subscription.id,
       });
     }
 
@@ -81,9 +89,12 @@ export class JobsService {
       await this.notifications.create({
         userId: subscription.studentId,
         type: NotificationType.PLAN_EXPIRING,
-        title: "Plan expiring soon",
-        body: `Your ${subscription.plan.name} plan expires on ${subscription.periodEnd.toISOString().slice(0, 10)}.`,
+        planName: subscription.plan.name,
+        periodEnd: subscription.periodEnd.toISOString().slice(0, 10),
+        dedupeKey: `PLAN_EXPIRING:${subscription.id}:${today}`,
         meta: { subscriptionId: subscription.id },
+        entityType: "subscription",
+        entityId: subscription.id,
       });
     }
 
@@ -96,9 +107,10 @@ export class JobsService {
       await this.notifications.create({
         userId: invoice.studentId,
         type: NotificationType.PAYMENT_OVERDUE,
-        title: "Payment overdue",
-        body: "You have an overdue invoice. Bookings are frozen until payment is received.",
+        dedupeKey: `PAYMENT_OVERDUE:${invoice.id}:${today}`,
         meta: { invoiceId: invoice.id },
+        entityType: "invoice",
+        entityId: invoice.id,
       });
     }
 

@@ -23,4 +23,22 @@ describe("resolveNotificationDestination", () => {
   it("returns null for NEW_FOLLOW without a followerId", () => {
     expect(resolveNotificationDestination("NEW_FOLLOW", {}, "me")).toBeNull();
   });
+
+  it("routes chat notifications to the conversation", () => {
+    expect(
+      resolveNotificationDestination(
+        "CHAT_MESSAGE",
+        { conversationId: "c-1" },
+        "me",
+      ),
+    ).toEqual({ to: "/me/messages/$id", params: { id: "c-1" } });
+
+    expect(
+      resolveNotificationDestination(
+        "CHAT_MESSAGE",
+        { conversationId: "c-1" },
+        "app",
+      ),
+    ).toEqual({ to: "/app/messages/$id", params: { id: "c-1" } });
+  });
 });

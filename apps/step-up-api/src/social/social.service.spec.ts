@@ -185,9 +185,12 @@ describe("SocialService.follow notifications", () => {
     expect(notifications.create).toHaveBeenCalledWith({
       userId: "trainer-1",
       type: NotificationType.NEW_FOLLOW,
-      title: "New follower",
-      body: "Alex started following you.",
+      followerName: "Alex",
+      dedupeKey: "NEW_FOLLOW:trainer-1:viewer-1",
       meta: { followerId: "viewer-1" },
+      actorId: "viewer-1",
+      entityType: "user",
+      entityId: "viewer-1",
     });
   });
 

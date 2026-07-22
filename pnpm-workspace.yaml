@@ -17,6 +17,7 @@ allowBuilds:
   "@prisma/engines": true
   core-js: false
   esbuild: true
+  msgpackr-extract: true
   msw: true
   nx: true
   prisma: true

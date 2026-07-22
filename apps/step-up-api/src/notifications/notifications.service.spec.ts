@@ -3,50 +3,62 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NotificationsService } from "./notifications.service";
 
 describe("NotificationsService.create", () => {
+  const commands = {
+    create: vi.fn(),
+  };
+  const unreadCache = {
+    get: vi.fn(),
+    increment: vi.fn(),
+    decrement: vi.fn(),
+    refresh: vi.fn(),
+    invalidate: vi.fn(),
+  };
+  const gateway = {
+    emitToUser: vi.fn(),
+  };
   const prisma = {
     notification: {
-      create: vi.fn(),
+      findMany: vi.fn(),
+      findFirst: vi.fn(),
+      update: vi.fn(),
+      updateMany: vi.fn(),
+      count: vi.fn(),
     },
-  };
-
-  const push = {
-    sendToUser: vi.fn(),
   };
 
   let service: NotificationsService;
 
   beforeEach(() => {
     vi.clearAllMocks();
-    service = new NotificationsService(prisma as never, push as never);
+    service = new NotificationsService(
+      prisma as never,
+      unreadCache as never,
+      gateway as never,
+      commands as never,
+    );
   });
 
-  it("persists the notification and sends a push message", async () => {
-    prisma.notification.create.mockResolvedValue({
+  it("delegates create to commands service", async () => {
+    commands.create.mockResolvedValue({
       id: "notif-1",
       userId: "user-1",
       type: NotificationType.RENEWED,
-      title: "Plan renewed",
-      body: "Your plan is active.",
     });
-    push.sendToUser.mockResolvedValue(undefined);
 
     await service.create({
       userId: "user-1",
       type: NotificationType.RENEWED,
-      title: "Plan renewed",
-      body: "Your plan is active.",
+      planName: "Monthly",
+      periodEnd: "2026-08-01",
       meta: { subscriptionId: "sub-1" },
     });
 
-    expect(prisma.notification.create).toHaveBeenCalled();
-    expect(push.sendToUser).toHaveBeenCalledWith("user-1", {
-      title: "Plan renewed",
-      body: "Your plan is active.",
-      data: {
-        notificationId: "notif-1",
+    expect(commands.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: "user-1",
         type: NotificationType.RENEWED,
-        subscriptionId: "sub-1",
-      },
-    });
+      }),
+    );
+    expect(gateway.emitToUser).not.toHaveBeenCalled();
   });
 });

@@ -40,4 +40,9 @@ export class JobsController {
   runDaily() {
     return this.jobsService.runDaily();
   }
+
+  @Post("notifications/run-scheduled")
+  runScheduledNotifications() {
+    return this.jobsService.runDaily();
+  }
 }

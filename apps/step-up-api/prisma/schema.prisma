@@ -90,6 +90,26 @@ enum NotificationType {
   RENEWED
   NOT_RENEWED
   NEW_FOLLOW
+  CHAT_MESSAGE
+}
+
+enum NotificationChannel {
+  IN_APP
+  PUSH
+  EMAIL
+}
+
+enum DeliveryStatus {
+  PENDING
+  SENT
+  FAILED
+  SKIPPED
+}
+
+enum NotificationStatus {
+  ACTIVE
+  ARCHIVED
+  DELETED
 }
 
 enum ProfileVisibility {
@@ -207,9 +227,10 @@ model User {
   attendanceRecords Attendance[]      @relation("StudentAttendance")
   bookings          Booking[]         @relation("StudentBookings")
   trainerBookings   Booking[]         @relation("TrainerBookings")
-  notifications     Notification[]
-  pushDevices       PushDevice[]
-  posts             Post[]            @relation("PostAuthor")
+  notifications            Notification[]
+  pushDevices              PushDevice[]
+  notificationPreferences  NotificationPreference[]
+  posts                    Post[]            @relation("PostAuthor")
   postLikes         PostLike[]
   postComments      PostComment[]     @relation("CommentAuthor")
   following         Follow[]          @relation("Following")
@@ -541,28 +562,91 @@ model Booking {
 }
 
 model Notification {
-  id        String           @id @default(cuid())
-  userId    String
-  type      NotificationType
-  title     String
-  body      String
-  readAt    DateTime?
-  createdAt DateTime         @default(now())
-  meta      Json?
+  id         String             @id @default(cuid())
+  userId     String
+  type       NotificationType
+  title      String
+  body       String
+  status     NotificationStatus @default(ACTIVE)
+  readAt     DateTime?
+  archivedAt DateTime?
+  deletedAt  DateTime?
+  dedupeKey  String?
+  deepLink   String?
+  actorId    String?
+  entityType String?
+  entityId   String?
+  meta       Json?
+  createdAt  DateTime           @default(now())
+  updatedAt  DateTime           @updatedAt
+
+  user       User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deliveries NotificationDelivery[]
+
+  @@unique([userId, dedupeKey])
+  @@index([userId, status, createdAt(sort: Desc)])
+  @@index([userId, readAt, status])
+}
+
+model NotificationDelivery {
+  id             String              @id @default(cuid())
+  notificationId String
+  channel        NotificationChannel
+  status         DeliveryStatus      @default(PENDING)
+  providerId     String?
+  errorCode      String?
+  attemptCount   Int                 @default(0)
+  sentAt         DateTime?
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  notification Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+
+  @@index([notificationId, channel])
+  @@index([status, updatedAt])
+}
+
+model NotificationPreference {
+  id                String              @id @default(cuid())
+  userId            String
+  type              String
+  channel           NotificationChannel
+  enabled           Boolean             @default(true)
+  quietStartMinutes Int?
+  quietEndMinutes   Int?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, type, channel])
 }
 
 model PushDevice {
-  id        String   @id @default(cuid())
-  userId    String
-  token     String   @unique
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id         String   @id @default(cuid())
+  userId     String
+  token      String   @unique
+  platform   String   @default("web")
+  appVersion String?
+  userAgent  String?
+  lastSeenAt DateTime @default(now())
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+}
+
+model OutboxEvent {
+  id          String    @id @default(cuid())
+  type        String
+  payload     Json
+  createdAt   DateTime  @default(now())
+  publishedAt DateTime?
+  attempts    Int       @default(0)
+
+  @@index([publishedAt, createdAt])
 }
 
 model Follow {

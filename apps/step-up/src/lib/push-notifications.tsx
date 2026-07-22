@@ -3,6 +3,11 @@ import { type ReactNode, useEffect, useRef } from "react";
 import { useApi } from "@/lib/api-context";
 import { useAuth } from "@/lib/auth";
 import { isAuthBypassEnabled } from "@/lib/constants";
+import {
+  isPriorityToastType,
+  notificationsListKey,
+  notificationsUnreadKey,
+} from "@/lib/notifications-cache";
 
 export function PushNotificationsProvider({
   children,
@@ -31,10 +36,10 @@ export function PushNotificationsProvider({
         return;
       }
 
-      await api.post("/auth/sync", {
-        name: user!.name,
-        email: user!.email,
-        fcmToken,
+      await api.post("/notifications/devices", {
+        token: fcmToken,
+        platform: "web",
+        userAgent: navigator.userAgent,
       });
 
       syncedRef.current = syncKey;
@@ -83,8 +88,21 @@ export function PushNotificationsProvider({
 
       await registerPush(fcmToken);
 
-      onMessage(messaging, () => {
-        void queryClient.invalidateQueries({ queryKey: ["notifications"] });
+      onMessage(messaging, (payload) => {
+        void queryClient.invalidateQueries({
+          queryKey: notificationsListKey(user!.id),
+        });
+        void queryClient.invalidateQueries({
+          queryKey: notificationsUnreadKey(user!.id),
+        });
+
+        const type = payload.data?.type;
+        if (type && isPriorityToastType(type) && payload.notification) {
+          // Browser may also show SW notification when focused; keep soft feedback via title.
+          console.info(
+            `[notifications] ${payload.notification.title ?? type}: ${payload.notification.body ?? ""}`,
+          );
+        }
       });
     }
 

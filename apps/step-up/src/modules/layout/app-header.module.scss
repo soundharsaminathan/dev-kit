@@ -65,6 +65,7 @@
 
 .control {
   position: relative;
+  z-index: 5;
 }
 
 .header .actions .control :global(button[data-icon-only="true"]) {
@@ -85,23 +86,36 @@
 
 .control :global(button) {
   position: relative;
+  overflow: visible;
 }
 
 .badge {
   position: absolute;
-  top: 0.2rem;
-  right: 0.2rem;
-  min-width: 1rem;
-  height: 1rem;
-  padding-inline: 0.2rem;
+  top: 0;
+  right: 0;
+  translate: 18% -18%;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.05rem;
+  height: 1.05rem;
+  padding-inline: 0.25rem;
   border-radius: 999px;
   background: var(--color-primary);
   color: var(--color-bg);
   font-size: 0.625rem;
   font-weight: 700;
-  line-height: 1rem;
+  line-height: 1;
   text-align: center;
   pointer-events: none;
+  box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--color-fg) 14%, transparent);
+}
+
+.control[data-tone="onMedia"] .badge {
+  background: #fff;
+  color: var(--color-primary);
+  box-shadow: 0 0 0 1.5px color-mix(in srgb, #fff 55%, transparent);
 }
 
 .onMediaButton {
@@ -109,11 +123,6 @@
   background: color-mix(in srgb, #fff 18%, transparent) !important;
   backdrop-filter: blur(12px);
   border-radius: var(--radius-full, 9999px);
-}
-
-.control[data-tone="onMedia"] .badge {
-  background: #fff;
-  color: var(--color-primary);
 }
 
 .profileTrigger {
@@ -134,86 +143,497 @@
   position: absolute;
   top: calc(100% + 0.5rem);
   right: 0;
-  z-index: 30;
-  width: min(20rem, calc(100vw - 2rem));
-  max-height: min(24rem, 70vh);
-  overflow: auto;
-  padding: 0.5rem;
-  border-radius: var(--radius-xl, 1rem);
-  border: 1px solid color-mix(in srgb, var(--color-fg) 10%, transparent);
-  background: var(--color-bg);
-  box-shadow: var(--shadow-lg, 0 24px 48px rgb(0 0 0 / 12%));
-}
-
-.panelHeader {
-  padding: 0.5rem 0.75rem 0.75rem;
-  font-weight: 600;
+  z-index: 50;
+  width: min(22.5rem, calc(100vw - 1.5rem));
+  max-height: min(28rem, 74vh);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--radius-2xl, 1.25rem);
+  border: 1px solid color-mix(in srgb, var(--color-fg) 8%, transparent);
+  background: color-mix(in srgb, var(--color-bg) 92%, transparent);
+  color: var(--color-fg);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--color-fg) 4%, transparent),
+    0 18px 48px rgb(0 0 0 / 14%);
+  backdrop-filter: blur(18px);
 }
 
 .drawerBody {
-  padding: 0 1rem 1.25rem;
-  padding-bottom: calc(1.25rem + env(safe-area-inset-bottom, 0px));
-  max-height: min(70vh, 28rem);
-  overflow: auto;
+  padding: 0 0.75rem 1rem;
+  padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+  max-height: min(74vh, 32rem);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  color: var(--color-fg);
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  max-height: inherit;
+  color: var(--color-fg);
+}
+
+.panelHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-shrink: 0;
+  padding: 1rem 1rem 0.75rem;
+}
+
+.panelHeading {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.panelTitleBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.panelTitle {
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  color: var(--color-fg);
+}
+
+.panelSubtitle {
+  font-size: 0.75rem;
+  line-height: 1.3;
+  color: var(--color-fg-muted);
+}
+
+.unreadChip {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  padding: 0.15rem 0.5rem;
+  border-radius: var(--radius-full, 9999px);
+  background: color-mix(in srgb, var(--color-primary) 14%, transparent);
+  color: var(--color-primary);
+  font-size: 0.6875rem;
+  font-weight: 650;
+  letter-spacing: 0.01em;
+}
+
+.panelActions {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  flex-shrink: 0;
+}
+
+.headerAction {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border: 0;
+  border-radius: var(--radius-full, 9999px);
+  background: color-mix(in srgb, var(--color-fg) 5%, transparent);
+  color: var(--color-fg-muted);
+  cursor: pointer;
+  transition:
+    background-color var(--motion-fast, 150ms) ease,
+    color var(--motion-fast, 150ms) ease,
+    transform var(--motion-fast, 150ms) ease;
+}
+
+.headerAction :global(svg) {
+  width: 1rem;
+  height: 1rem;
+}
+
+.headerAction:hover {
+  background: color-mix(in srgb, var(--color-fg) 9%, transparent);
+  color: var(--color-fg);
+}
+
+.headerAction:active {
+  transform: scale(var(--interaction-press-scale, 0.96));
+}
+
+.statusStrip {
+  flex-shrink: 0;
+  margin: 0 1rem 0.5rem;
+  padding: 0.45rem 0.7rem;
+  border-radius: var(--radius-lg, 0.75rem);
+  font-size: 0.75rem;
+  font-weight: 550;
+  color: var(--color-fg);
+  background: color-mix(in srgb, var(--color-warning, #d97706) 14%, transparent);
 }
 
 .notificationList {
   list-style: none;
   margin: 0;
-  padding: 0;
+  padding: 0.15rem 0.5rem 0.65rem;
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: 0.15rem;
+  overflow: auto;
+  min-height: 0;
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--color-fg) 38%, transparent)
+    color-mix(in srgb, var(--color-fg) 6%, transparent);
+}
+
+.notificationList::-webkit-scrollbar {
+  width: 0.5rem;
+}
+
+.notificationList::-webkit-scrollbar-track {
+  margin-block: 0.35rem;
+  background: color-mix(in srgb, var(--color-fg) 6%, transparent);
+  border-radius: 999px;
+}
+
+.notificationList::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--color-fg) 38%, transparent);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+.notificationList::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--color-fg) 52%, transparent);
+  background-clip: padding-box;
+  border: 2px solid transparent;
 }
 
 .notificationItem {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: start;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.7rem 0.7rem;
+  border: 0;
+  border-radius: var(--radius-xl, 1rem);
+  background: transparent;
+  color: var(--color-fg);
+  text-align: start;
+  cursor: pointer;
+  transition:
+    background-color var(--motion-fast, 150ms) ease,
+    transform var(--motion-fast, 150ms) ease;
+}
+
+.notificationItem:hover {
+  background: color-mix(in srgb, var(--color-fg) 5%, transparent);
+}
+
+.notificationItem:active {
+  transform: scale(var(--interaction-press-scale, 0.99));
+  background: color-mix(in srgb, var(--color-fg) 7%, transparent);
+}
+
+.notificationItem[data-unread="true"] {
+  background: color-mix(in srgb, var(--color-primary) 7%, transparent);
+}
+
+.notificationItem[data-unread="true"]:hover {
+  background: color-mix(in srgb, var(--color-primary) 11%, transparent);
+}
+
+.notificationIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: var(--radius-lg, 0.75rem);
+  background: color-mix(in srgb, var(--color-fg) 6%, transparent);
+  color: var(--color-fg-muted);
+  flex-shrink: 0;
+}
+
+.notificationIcon :global(svg) {
+  width: 1.05rem;
+  height: 1.05rem;
+}
+
+.notificationItem[data-type="MISSED_SESSION"] .notificationIcon,
+.notificationItem[data-type="PLAN_EXPIRING"] .notificationIcon,
+.notificationItem[data-type="NOT_RENEWED"] .notificationIcon {
+  background: color-mix(in srgb, var(--color-warning, #d97706) 16%, transparent);
+  color: var(--color-warning, #b45309);
+}
+
+.notificationItem[data-type="PAYMENT_OVERDUE"] .notificationIcon {
+  background: color-mix(in srgb, var(--color-danger, #dc2626) 14%, transparent);
+  color: var(--color-danger, #b91c1c);
+}
+
+.notificationItem[data-type="RENEWED"] .notificationIcon,
+.notificationItem[data-type="NEW_FOLLOW"] .notificationIcon {
+  background: color-mix(in srgb, var(--color-success, #16a34a) 14%, transparent);
+  color: var(--color-success, #15803d);
+}
+
+.notificationItem[data-type="CHAT_MESSAGE"] .notificationIcon {
+  background: color-mix(in srgb, var(--color-primary) 14%, transparent);
+  color: var(--color-primary);
+}
+
+.notificationContent {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
   gap: 0.2rem;
+  min-width: 0;
+  padding-top: 0.1rem;
+}
+
+.notificationTop {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.notificationTitle {
+  font-size: 0.875rem;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+  color: var(--color-fg);
+}
+
+.notificationTime {
+  flex-shrink: 0;
+  font-size: 0.6875rem;
+  font-weight: 550;
+  color: var(--color-fg-muted);
+}
+
+.notificationBody {
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  color: var(--color-fg-muted);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.unreadDot {
+  width: 0.45rem;
+  height: 0.45rem;
+  margin-top: 0.55rem;
+  border-radius: 999px;
+  background: var(--color-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 18%, transparent);
+  flex-shrink: 0;
+}
+
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 2.25rem 1.25rem 2.5rem;
+  text-align: center;
+}
+
+.emptyIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  margin-bottom: 0.35rem;
+  border-radius: var(--radius-xl, 1rem);
+  background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+  color: var(--color-primary);
+}
+
+.emptyIcon :global(svg) {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.emptyTitle {
+  font-size: 0.9375rem;
+  font-weight: 650;
+  letter-spacing: -0.015em;
+  color: var(--color-fg);
+}
+
+.emptyBody {
+  max-width: 16rem;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: var(--color-fg-muted);
+}
+
+.prefScroll {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;
+}
+
+.prefScroll::before,
+.prefScroll::after {
+  content: "";
+  position: absolute;
+  inset-inline: 0.5rem;
+  z-index: 2;
+  height: 1.5rem;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity var(--motion-fast, 150ms) ease;
+}
+
+.prefScroll::before {
+  top: 0;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--color-bg) 92%, transparent) 0%,
+    transparent 100%
+  );
+  box-shadow: inset 0 10px 14px -12px color-mix(in srgb, var(--color-fg) 28%, transparent);
+}
+
+.prefScroll::after {
+  bottom: 0;
+  background: linear-gradient(
+    0deg,
+    color-mix(in srgb, var(--color-bg) 92%, transparent) 0%,
+    transparent 100%
+  );
+  box-shadow: inset 0 -10px 14px -12px color-mix(in srgb, var(--color-fg) 28%, transparent);
+}
+
+.prefScroll[data-fade-top="true"]::before,
+.prefScroll[data-fade-bottom="true"]::after {
+  opacity: 1;
+}
+
+.prefList {
+  list-style: none;
+  margin: 0;
+  padding: 0.15rem 0.5rem 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  overflow: auto;
+  min-height: 0;
+  flex: 1;
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--color-fg) 38%, transparent)
+    color-mix(in srgb, var(--color-fg) 6%, transparent);
+}
+
+.prefList::-webkit-scrollbar {
+  width: 0.5rem;
+}
+
+.prefList::-webkit-scrollbar-track {
+  margin-block: 0.35rem;
+  background: color-mix(in srgb, var(--color-fg) 6%, transparent);
+  border-radius: 999px;
+}
+
+.prefList::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--color-fg) 38%, transparent);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+.prefList::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--color-fg) 52%, transparent);
+  background-clip: padding-box;
+  border: 2px solid transparent;
+}
+
+.prefRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
   width: 100%;
-  padding: 0.75rem;
+  padding: 0.8rem 0.85rem;
   border: 0;
-  border-radius: var(--radius-lg, 0.75rem);
-  background: transparent;
-  color: inherit;
+  border-radius: var(--radius-xl, 1rem);
+  background: color-mix(in srgb, var(--color-fg) 3.5%, transparent);
+  color: var(--color-fg);
   text-align: start;
   cursor: pointer;
   transition: background-color var(--motion-fast, 150ms) ease;
 }
 
-.notificationItem:hover,
-.notificationItem:active {
+.prefRow:hover {
   background: color-mix(in srgb, var(--color-fg) 6%, transparent);
 }
 
-.notificationItem[data-unread="true"] {
-  background: color-mix(in srgb, var(--color-primary) 8%, transparent);
+.prefCopy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
 }
 
-.notificationItem[data-link="true"] .notificationMeta {
-  color: color-mix(in srgb, var(--color-primary) 72%, transparent);
-}
-
-.notificationTitle {
+.prefLabel {
   font-size: 0.875rem;
   font-weight: 600;
+  letter-spacing: -0.01em;
 }
 
-.notificationBody {
-  font-size: 0.8125rem;
-  color: color-mix(in srgb, var(--color-fg) 68%, transparent);
-}
-
-.notificationMeta {
+.prefHint {
   font-size: 0.75rem;
-  color: color-mix(in srgb, var(--color-fg) 48%, transparent);
+  color: var(--color-fg-muted);
+}
+
+.prefSwitch {
+  position: relative;
+  width: 2.5rem;
+  height: 1.45rem;
+  flex-shrink: 0;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-fg) 14%, transparent);
+  transition: background-color var(--motion-fast, 150ms) ease;
+}
+
+.prefThumb {
+  position: absolute;
+  top: 0.15rem;
+  left: 0.15rem;
+  width: 1.15rem;
+  height: 1.15rem;
+  border-radius: 999px;
+  background: var(--color-bg);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 18%);
+  transition: transform var(--motion-fast, 150ms) ease;
+}
+
+.prefRow[data-enabled="true"] .prefSwitch {
+  background: var(--color-primary);
+}
+
+.prefRow[data-enabled="true"] .prefThumb {
+  transform: translateX(1.05rem);
 }
 
 .empty {
   display: block;
   padding: 1rem 0.75rem;
-  color: color-mix(in srgb, var(--color-fg) 56%, transparent);
+  color: var(--color-fg-muted);
 }
 
 .menuLink {
@@ -250,7 +670,16 @@
 @media (prefers-reduced-motion: reduce) {
   .notificationItem,
   .menuLink,
-  .navIcon {
+  .navIcon,
+  .headerAction,
+  .prefThumb,
+  .prefScroll::before,
+  .prefScroll::after {
     transition-duration: 0ms;
+  }
+
+  .notificationItem:active,
+  .headerAction:active {
+    transform: none;
   }
 }

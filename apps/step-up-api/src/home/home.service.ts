@@ -297,7 +297,12 @@ export class HomeService {
           })
         : Promise.resolve([]),
       this.prisma.notification.count({
-        where: { userId: actor.id, readAt: null },
+        where: {
+          userId: actor.id,
+          readAt: null,
+          status: "ACTIVE",
+          deletedAt: null,
+        },
       }),
       this.prisma.post.count({
         where: studioId

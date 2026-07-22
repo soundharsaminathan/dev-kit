@@ -76,18 +76,20 @@ export function HomeStudioBanner({
       data-delay="0"
       data-flush-top={flushTop ? "true" : undefined}
     >
-      {banner?.imageUrl ? (
-        <img
-          className={styles.studioBannerImage}
-          src={banner.imageUrl}
-          alt={banner.altText ?? banner.branchName}
-          loading="eager"
-          decoding="async"
-        />
-      ) : (
-        <div className={styles.studioBannerFallback} aria-hidden />
-      )}
-      <div className={styles.studioBannerScrim} aria-hidden />
+      <div className={styles.studioBannerMedia}>
+        {banner?.imageUrl ? (
+          <img
+            className={styles.studioBannerImage}
+            src={banner.imageUrl}
+            alt={banner.altText ?? banner.branchName ?? ""}
+            loading="eager"
+            decoding="async"
+          />
+        ) : (
+          <div className={styles.studioBannerFallback} aria-hidden />
+        )}
+        <div className={styles.studioBannerScrim} aria-hidden />
+      </div>
       <div className={styles.studioBannerTop}>
         {variant === "me" ? <ChildSwitcher tone="onMedia" /> : null}
         <div className={styles.studioBannerActions}>

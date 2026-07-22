@@ -35,7 +35,22 @@ firebase.messaging().onBackgroundMessage((payload) => {
 });
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  event.waitUntil(clients.openWindow("/"));
+  const data = event.notification.data || {};
+  const target = data.deepLink || data.link || "/";
+  const path = typeof target === "string" && target.startsWith("/") && !target.startsWith("//")
+    ? target
+    : "/";
+  event.waitUntil(
+    clients.matchAll({ type: "window", includeUncontrolled: true }).then((windowClients) => {
+      for (const client of windowClients) {
+        if ("focus" in client) {
+          client.navigate(path);
+          return client.focus();
+        }
+      }
+      return clients.openWindow(path);
+    }),
+  );
 });`;
   };
 

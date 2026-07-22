@@ -14,6 +14,7 @@ import {
   UserRole,
 } from "@prisma/client";
 import { MediaService } from "../media/media.service";
+import { ChatNotificationBridgeService } from "../notifications/chat-notification-bridge.service";
 import { PrismaService } from "../prisma/prisma.service";
 import {
   type DecryptedUser,
@@ -185,6 +186,8 @@ export class ChatService {
     @Inject(UserCryptoService) private readonly userCrypto: UserCryptoService,
     @Inject(ChatGateway) private readonly gateway: ChatGateway,
     @Inject(MediaService) private readonly media: MediaService,
+    @Inject(ChatNotificationBridgeService)
+    private readonly chatNotifications: ChatNotificationBridgeService,
   ) {}
 
   private decryptPayload(
@@ -768,6 +771,23 @@ export class ChatService {
       conversationId,
       message: serialized,
     });
+
+    const preview =
+      serialized.text?.slice(0, 120) ||
+      (serialized.imageUrls?.length ? "Sent a photo" : null) ||
+      (serialized.audioUrl ? "Sent a voice message" : null) ||
+      "New message";
+
+    void this.chatNotifications
+      .notifyNewMessage({
+        conversationId,
+        senderId: user.id,
+        messageId: serialized.id,
+        preview,
+        conversationTitle: conversation.title,
+      })
+      .catch(() => undefined);
+
     return serialized;
   }
 

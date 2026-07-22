@@ -10,6 +10,7 @@ import { CalendarModule } from "./calendar/calendar.module";
 import { CertificatesModule } from "./certificates/certificates.module";
 import { ChatModule } from "./chat/chat.module";
 import { ContestsModule } from "./contests/contests.module";
+import { EventsModule } from "./events/events.module";
 import { HealthModule } from "./health/health.module";
 import { HomeModule } from "./home/home.module";
 import { JobsModule } from "./jobs/jobs.module";
@@ -17,6 +18,8 @@ import { MediaModule } from "./media/media.module";
 import { NotificationsModule } from "./notifications/notifications.module";
 import { PlansModule } from "./plans/plans.module";
 import { PrismaModule } from "./prisma/prisma.module";
+import { QueueModule } from "./queues/queue.module";
+import { RedisModule } from "./redis/redis.module";
 import { RetentionModule } from "./retention/retention.module";
 import { SessionsModule } from "./sessions/sessions.module";
 import { SocialModule } from "./social/social.module";
@@ -29,6 +32,9 @@ import { UsersModule } from "./users/users.module";
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     PrismaModule,
+    RedisModule,
+    QueueModule.forRoot(),
+    EventsModule,
     UserCryptoModule,
     AuthModule,
     UsersModule,

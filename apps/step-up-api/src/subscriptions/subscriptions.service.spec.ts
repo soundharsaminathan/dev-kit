@@ -61,7 +61,8 @@ describe("SubscriptionsService.renewManual", () => {
       expect.objectContaining({
         userId: "student-1",
         type: NotificationType.RENEWED,
-        title: "Plan renewed",
+        planName: "Kids Unlimited",
+        dedupeKey: "RENEWED:sub-new",
         meta: { subscriptionId: "sub-new", planId: "plan-1" },
       }),
     );
