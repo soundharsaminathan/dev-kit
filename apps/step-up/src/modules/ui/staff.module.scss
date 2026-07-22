@@ -2,6 +2,9 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-3, 0.75rem);
+  list-style: none;
+  margin: 0;
+  padding: 0;
 }
 
 .section {
@@ -41,6 +44,10 @@
   box-shadow: var(--card-shadow, var(--shadow-sm, 0 1px 3px rgb(0 0 0 / 6%)));
   text-decoration: none;
   color: inherit;
+  font: inherit;
+  text-align: start;
+  width: 100%;
+  cursor: pointer;
   min-height: 5.5rem;
   transition:
     transform var(--motion-fast, 150ms) ease,
@@ -287,6 +294,19 @@
   color: inherit;
 }
 
+.listAvatar {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 3.25rem;
+  height: 3.25rem;
+  overflow: hidden;
+  border-radius: var(--radius-lg, 0.75rem);
+  background: color-mix(in srgb, var(--color-primary) 14%, var(--color-muted));
+  color: var(--color-primary);
+}
+
 .bentoInitial {
   display: flex;
   align-items: center;
@@ -300,7 +320,8 @@
 
 @media (hover: hover) and (pointer: fine) {
   .metricCard:hover,
-  .quickLink:hover {
+  .quickLink:hover,
+  .linkWrap:hover .statTile {
     box-shadow: var(--elevation-2, 0 4px 12px rgb(0 0 0 / 8%));
   }
 }

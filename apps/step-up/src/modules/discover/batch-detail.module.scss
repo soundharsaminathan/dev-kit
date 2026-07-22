@@ -1,3 +1,9 @@
+.preview {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4, 1rem);
+}
+
 .hero {
   position: relative;
   aspect-ratio: 16 / 10;
@@ -167,4 +173,34 @@
 .ratingError {
   color: var(--color-danger, #b42318);
   font-size: 0.875rem;
+}
+
+.requestStatus {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3, 0.75rem);
+  padding: var(--space-3, 0.75rem);
+  border-radius: var(--radius-2xl, 1.25rem);
+  background: color-mix(in srgb, var(--color-warning, #ff9f0a) 12%, transparent);
+}
+
+.requestStatus[data-status="CONFIRMED"] {
+  background: color-mix(in srgb, var(--color-success, #30a46c) 12%, transparent);
+}
+
+.requestEyebrow {
+  margin: 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--color-fg) 56%, transparent);
+}
+
+.requestTitle {
+  margin: 0.15rem 0 0.35rem;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
 }

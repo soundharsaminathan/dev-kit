@@ -1,0 +1,98 @@
+.panel {
+  height: 100%;
+  background: var(--color-card, var(--color-bg));
+  box-shadow: var(--elevation-3, 0 16px 40px rgb(0 0 0 / 18%));
+}
+
+.panelFullscreen {
+  width: 100dvw;
+  max-width: none;
+  margin-inline-start: -3rem;
+  border: none;
+  border-radius: 0;
+}
+
+.panelSide {
+  width: min(28rem, calc(100dvw - 3rem));
+}
+
+.shell {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+}
+
+.header {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3, 0.75rem);
+  padding: var(--space-3, 0.75rem) var(--space-4, 1rem);
+  padding-top: calc(var(--space-3, 0.75rem) + env(safe-area-inset-top, 0px));
+  border-bottom: 1px solid color-mix(in srgb, var(--color-border) 80%, transparent);
+}
+
+.title {
+  min-width: 0;
+  font-size: 1.0625rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.close {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  margin: -0.25rem;
+  border: 0;
+  border-radius: var(--radius-lg, 0.75rem);
+  background: transparent;
+  color: color-mix(in srgb, var(--color-fg) 58%, transparent);
+  cursor: pointer;
+  transition:
+    color var(--interaction-transition-duration, 150ms)
+      var(--interaction-transition-curve, ease),
+    background-color var(--interaction-transition-duration, 150ms)
+      var(--interaction-transition-curve, ease);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .close:hover {
+    color: var(--color-fg);
+    background: color-mix(in srgb, var(--color-fg) 6%, transparent);
+  }
+}
+
+.close:active {
+  transform: scale(var(--interaction-press-scale, 0.98));
+}
+
+.body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: var(--space-4, 1rem);
+  padding-bottom: calc(var(--space-5, 1.25rem) + env(safe-area-inset-bottom, 0px));
+  scrollbar-width: thin;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .close {
+    transition-duration: 0ms;
+  }
+
+  .close:active {
+    transform: none;
+  }
+}

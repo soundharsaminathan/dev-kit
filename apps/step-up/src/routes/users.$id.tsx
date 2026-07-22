@@ -1,7 +1,6 @@
 import { Button } from "@dev-ui/components/button";
-import { Empty, EmptyDescription, EmptyTitle } from "@dev-ui/components/empty";
 import { Text } from "@dev-ui/components/text";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import {
   createFileRoute,
   useNavigate,
@@ -10,13 +9,16 @@ import {
 import { useApi } from "@/lib/api-context";
 import { useAuth } from "@/lib/auth";
 import { MEMBER_ROLES } from "@/lib/constants";
+import type { ChatConversation } from "@/modules/chat/types";
+import { AppShell } from "@/modules/layout/app-shell";
 import { PublicShell } from "@/modules/layout/public-shell";
-import { PostGrid } from "@/modules/social/post-grid";
 import { ProfileHeader } from "@/modules/social/profile-header";
+import { ProfileTabs } from "@/modules/social/profile-tabs";
 import type { SocialProfile } from "@/modules/social/types";
 import { useFollowMutations } from "@/modules/social/use-follow";
 import { ApiState } from "@/modules/ui/api-state";
-import { TouchButton } from "@/modules/ui/touch-button";
+import { Screen } from "@/modules/ui/screen";
+import styles from "./users.$id.module.scss";
 
 export const Route = createFileRoute("/users/$id")({
   component: UserProfilePage,
@@ -36,16 +38,31 @@ function UserProfilePage() {
     enabled: Boolean(user),
   });
 
+  const messageMutation = useMutation({
+    mutationFn: () =>
+      api.post<ChatConversation>("/chat/conversations", {
+        type: "DM",
+        memberIds: [id],
+      }),
+    onSuccess: (conversation) => {
+      if (!user) return;
+      const to = MEMBER_ROLES.includes(user.role)
+        ? "/me/messages/$id"
+        : "/app/messages/$id";
+      void navigate({ to, params: { id: conversation.id } });
+    },
+  });
+
   const goBack = () => {
     if (typeof window !== "undefined" && window.history.length > 1) {
       router.history.back();
       return;
     }
     if (user && MEMBER_ROLES.includes(user.role)) {
-      void navigate({ to: "/me/profile" });
+      void navigate({ to: "/me/trainers" });
       return;
     }
-    void navigate({ to: "/app/profile" });
+    void navigate({ to: "/app/trainers" });
   };
 
   if (loading) {
@@ -65,71 +82,61 @@ function UserProfilePage() {
     );
   }
 
-  return (
-    <section className="page-narrow stack">
-      <TouchButton variant="quiet" size="sm" onClick={goBack}>
-        Back
-      </TouchButton>
-      <ApiState
-        isLoading={query.isLoading}
-        isError={query.isError}
-        error={query.error}
-        data={query.data}
-        emptyTitle="Profile not found"
-        emptyDescription="This profile is unavailable."
-      >
-        {(profile) => (
-          <>
-            <ProfileHeader
-              profile={profile}
-              followPending={isPendingFor(id)}
-              onFollow={() =>
-                follow(
-                  id,
-                  profile.profileVisibility === "PRIVATE"
-                    ? "requested"
-                    : "following",
-                )
-              }
-              onUnfollow={() => unfollow(id)}
-              onEdit={
-                profile.isOwnProfile
-                  ? () => {
-                      void navigate({
-                        to:
-                          user.role === "STUDENT" || user.role === "PARENT"
-                            ? "/me/profile/edit"
-                            : "/app/profile",
-                      });
-                    }
-                  : undefined
-              }
-            />
+  const batchDetailTo = MEMBER_ROLES.includes(user.role)
+    ? ("/me/batches/$id" as const)
+    : ("/app/batches/$id" as const);
+  const shellVariant = MEMBER_ROLES.includes(user.role) ? "me" : "app";
 
-            {profile.canViewContent ? (
-              profile.posts.length > 0 ? (
-                <PostGrid posts={profile.posts} />
-              ) : (
-                <Empty>
-                  <EmptyTitle>No posts yet</EmptyTitle>
-                  <EmptyDescription>
-                    {profile.isOwnProfile
-                      ? "Share your first photo from the feed."
-                      : "This profile has not posted yet."}
-                  </EmptyDescription>
-                </Empty>
-              )
-            ) : (
-              <Empty>
-                <EmptyTitle>This account is private</EmptyTitle>
-                <EmptyDescription>
-                  Follow this account to see their photos.
-                </EmptyDescription>
-              </Empty>
-            )}
-          </>
-        )}
-      </ApiState>
-    </section>
+  return (
+    <AppShell variant={shellVariant}>
+      <Screen title={query.data?.name ?? "Profile"} showBack onBack={goBack}>
+        <ApiState
+          isLoading={query.isLoading}
+          isError={query.isError}
+          error={query.error}
+          data={query.data}
+          emptyTitle="Profile not found"
+          emptyDescription="This profile is unavailable."
+        >
+          {(profile) => (
+            <div className={styles.root}>
+              <ProfileHeader
+                profile={profile}
+                followPending={isPendingFor(id)}
+                messagePending={messageMutation.isPending}
+                onFollow={() =>
+                  follow(
+                    id,
+                    profile.profileVisibility === "PRIVATE"
+                      ? "requested"
+                      : "following",
+                  )
+                }
+                onUnfollow={() => unfollow(id)}
+                onMessage={
+                  profile.isOwnProfile
+                    ? undefined
+                    : () => messageMutation.mutate()
+                }
+                onEdit={
+                  profile.isOwnProfile
+                    ? () => {
+                        void navigate({
+                          to:
+                            user.role === "STUDENT" || user.role === "PARENT"
+                              ? "/me/profile/edit"
+                              : "/app/profile",
+                        });
+                      }
+                    : undefined
+                }
+              />
+
+              <ProfileTabs profile={profile} detailTo={batchDetailTo} />
+            </div>
+          )}
+        </ApiState>
+      </Screen>
+    </AppShell>
   );
 }

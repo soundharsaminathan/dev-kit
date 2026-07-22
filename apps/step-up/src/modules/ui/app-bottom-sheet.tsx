@@ -5,7 +5,7 @@ import styles from "./app-bottom-sheet.module.scss";
 type AppBottomSheetProps = {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  title?: string;
+  title?: string | undefined;
   children: ReactNode;
 };
 

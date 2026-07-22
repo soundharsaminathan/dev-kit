@@ -29,6 +29,11 @@ import { CurrentUser } from "../auth/current-user.decorator";
 import { Roles } from "../auth/roles.decorator";
 import { RolesGuard } from "../auth/roles.guard";
 import { SocialService } from "../social/social.service";
+import {
+  isStudentFunnelPeriod,
+  STUDENT_FUNNEL_PERIODS,
+  type StudentFunnelPeriod,
+} from "./student-funnel";
 import type { DecryptedUser } from "./user-crypto.service";
 import { UsersService } from "./users.service";
 
@@ -249,6 +254,24 @@ export class UsersController {
   @Roles(UserRole.OWNER, UserRole.STAFF)
   listStudents(@Param("studioId") studioId: string, @Query("q") q?: string) {
     return this.usersService.listStudents(studioId, q);
+  }
+
+  @Get("studio/:studioId/student-funnel")
+  @Roles(UserRole.OWNER, UserRole.STAFF)
+  getStudentFunnel(
+    @Param("studioId") studioId: string,
+    @Query("period") period?: string,
+  ) {
+    if (period !== undefined && !isStudentFunnelPeriod(period)) {
+      throw new BadRequestException(
+        `Invalid period. Expected one of: ${STUDENT_FUNNEL_PERIODS.join(", ")}`,
+      );
+    }
+
+    return this.usersService.getStudentFunnel(
+      studioId,
+      (period as StudentFunnelPeriod | undefined) ?? "lifetime",
+    );
   }
 
   @Get("studio/:studioId/students/:studentId")

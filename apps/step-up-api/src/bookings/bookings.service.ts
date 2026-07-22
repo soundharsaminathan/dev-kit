@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Inject,
   Injectable,
@@ -45,6 +46,13 @@ export class BookingsService {
       include: {
         student: {
           select: { id: true, ...userPiiSelect },
+        },
+        batch: {
+          select: {
+            id: true,
+            name: true,
+            trainers: { select: { trainerId: true } },
+          },
         },
       },
     });
@@ -94,6 +102,24 @@ export class BookingsService {
         batch._count.enrollments >= batch.capacity
       ) {
         throw new BadRequestException("Batch is at capacity");
+      }
+
+      const existingOpen = await this.prisma.booking.findFirst({
+        where: {
+          batchId: data.batchId,
+          studentId: data.studentId,
+          status: {
+            in: [BookingStatus.PENDING, BookingStatus.CONFIRMED],
+          },
+        },
+        select: { id: true, status: true },
+      });
+      if (existingOpen) {
+        throw new ConflictException(
+          existingOpen.status === BookingStatus.PENDING
+            ? "You already have a booking request waiting for studio approval"
+            : "You already have a confirmed booking for this class",
+        );
       }
     }
 

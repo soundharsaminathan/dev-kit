@@ -1,65 +1,27 @@
-import { Badge } from "@dev-ui/components/badge";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useApi } from "@/lib/api-context";
+import { useAuth } from "@/lib/auth";
 import { STUDIO_ID } from "@/lib/constants";
+import { BookingReviewPanel } from "@/modules/bookings/booking-review-panel";
 import {
-  ExpandableBentoGrid,
-  type ExpandableBentoItem,
-} from "@/modules/ui/expandable-bento-grid";
+  isBookingForTrainer,
+  type StudioBooking,
+} from "@/modules/bookings/types";
+import { AppDrawer } from "@/modules/ui/app-drawer";
 import { FilterChipRow } from "@/modules/ui/filter-chip-row";
-import { FormInput } from "@/modules/ui/form-input";
+import { PressableCard } from "@/modules/ui/pressable-card";
 import { PullToRefresh } from "@/modules/ui/pull-to-refresh";
 import { Screen } from "@/modules/ui/screen";
 import { SkeletonCardList } from "@/modules/ui/skeleton-block";
 import staff from "@/modules/ui/staff.module.scss";
 import { EmptyState, ErrorState } from "@/modules/ui/states";
 import { TouchButton } from "@/modules/ui/touch-button";
-import styles from "./bookings.module.scss";
-
-type Booking = {
-  id: string;
-  type: string;
-  status: string;
-  studentId: string;
-  notes?: string | null;
-  startsAt?: string | null;
-  endsAt?: string | null;
-  sessionId?: string | null;
-  student?: { id: string; name: string; email: string } | null;
-};
-
-const STATUS_VARIANT: Record<
-  string,
-  "success" | "warning" | "danger" | "info" | undefined
-> = {
-  CONFIRMED: "success",
-  COMPLETED: "info",
-  PENDING: "warning",
-  CANCELLED: "danger",
-};
 
 export const Route = createFileRoute("/app/bookings/")({
   component: BookingsPage,
 });
-
-function toLocalInputValue(date: Date) {
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
-}
-
-function defaultReviewWindow() {
-  const start = new Date();
-  start.setMinutes(0, 0, 0);
-  start.setHours(start.getHours() + 1);
-  const end = new Date(start);
-  end.setHours(end.getHours() + 1);
-  return {
-    startsAt: toLocalInputValue(start),
-    endsAt: toLocalInputValue(end),
-  };
-}
 
 function BookingMedia({ name }: { name: string }) {
   return (
@@ -69,128 +31,17 @@ function BookingMedia({ name }: { name: string }) {
   );
 }
 
-function BookingReviewPanel({
-  booking,
-  isPending,
-  onConfirm,
-  onDecline,
-}: {
-  booking: Booking;
-  isPending: boolean;
-  onConfirm: (times?: { startsAt: string; endsAt: string }) => void;
-  onDecline: () => void;
-}) {
-  const defaults = defaultReviewWindow();
-  const [startsAt, setStartsAt] = useState(defaults.startsAt);
-  const [endsAt, setEndsAt] = useState(defaults.endsAt);
-
-  const studentName = booking.student?.name ?? booking.studentId;
-  const typeLabel = booking.type.replaceAll("_", " ");
-
-  return (
-    <div className={styles.body}>
-      <div className={styles.block}>
-        <p className={styles.blockLabel}>Status</p>
-        <div className={styles.statusRow}>
-          <Badge appearance="subtle" variant={STATUS_VARIANT[booking.status]}>
-            {booking.status}
-          </Badge>
-        </div>
-      </div>
-
-      <div className={styles.block}>
-        <p className={styles.blockLabel}>Request</p>
-        <p className={styles.blockValue}>{typeLabel}</p>
-      </div>
-
-      {booking.student?.email ? (
-        <div className={styles.block}>
-          <p className={styles.blockLabel}>Student</p>
-          <p className={styles.blockValue}>
-            {studentName}
-            <br />
-            {booking.student.email}
-          </p>
-        </div>
-      ) : null}
-
-      {booking.notes ? (
-        <div className={styles.block}>
-          <p className={styles.blockLabel}>Notes</p>
-          <p className={styles.blockValue}>{booking.notes}</p>
-        </div>
-      ) : null}
-
-      {booking.startsAt && booking.endsAt ? (
-        <div className={styles.block}>
-          <p className={styles.blockLabel}>Scheduled</p>
-          <p className={styles.blockValue}>
-            {new Date(booking.startsAt).toLocaleString()} –{" "}
-            {new Date(booking.endsAt).toLocaleTimeString()}
-          </p>
-        </div>
-      ) : null}
-
-      {booking.status === "PENDING" ? (
-        <div className={styles.review}>
-          <FormInput
-            label="Starts at"
-            type="datetime-local"
-            value={startsAt}
-            onChange={setStartsAt}
-          />
-          <FormInput
-            label="Ends at"
-            type="datetime-local"
-            value={endsAt}
-            onChange={setEndsAt}
-          />
-          <div className={styles.reviewActions}>
-            <TouchButton
-              variant="primary"
-              fullWidth
-              isPending={isPending}
-              onClick={() =>
-                onConfirm({
-                  startsAt: new Date(startsAt).toISOString(),
-                  endsAt: new Date(endsAt).toISOString(),
-                })
-              }
-            >
-              Confirm with time
-            </TouchButton>
-            <TouchButton
-              variant="default"
-              fullWidth
-              isPending={isPending}
-              onClick={() => onConfirm()}
-            >
-              Confirm without time
-            </TouchButton>
-            <TouchButton
-              variant="danger"
-              fullWidth
-              isPending={isPending}
-              onClick={onDecline}
-            >
-              Decline
-            </TouchButton>
-          </div>
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
 function BookingsPage() {
   const api = useApi();
+  const { user } = useAuth();
   const queryClient = useQueryClient();
+  const isTrainer = user?.role === "TRAINER";
   const [filter, setFilter] = useState("ALL");
-  const [gridKey, setGridKey] = useState(0);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const bookings = useQuery({
     queryKey: ["bookings", "studio", STUDIO_ID],
-    queryFn: () => api.get<Booking[]>(`/bookings/studio/${STUDIO_ID}`),
+    queryFn: () => api.get<StudioBooking[]>(`/bookings/studio/${STUDIO_ID}`),
   });
 
   const invalidateBookings = () => {
@@ -207,7 +58,7 @@ function BookingsPage() {
       startsAt?: string;
       endsAt?: string;
     }) =>
-      api.patch<Booking>(`/bookings/${values.id}/status`, {
+      api.patch<StudioBooking>(`/bookings/${values.id}/status`, {
         status: values.status,
         ...(values.startsAt && values.endsAt
           ? { startsAt: values.startsAt, endsAt: values.endsAt }
@@ -215,18 +66,23 @@ function BookingsPage() {
       }),
     onSuccess: () => {
       invalidateBookings();
-      setGridKey((key) => key + 1);
+      setSelectedId(null);
     },
   });
 
-  const sortedBookings = useMemo(() => {
+  const scopedBookings = useMemo(() => {
     const items = bookings.data ?? [];
-    return [...items].sort((a, b) => {
+    if (!isTrainer || !user?.id) return items;
+    return items.filter((booking) => isBookingForTrainer(booking, user.id));
+  }, [bookings.data, isTrainer, user?.id]);
+
+  const sortedBookings = useMemo(() => {
+    return [...scopedBookings].sort((a, b) => {
       if (a.status === "PENDING" && b.status !== "PENDING") return -1;
       if (a.status !== "PENDING" && b.status === "PENDING") return 1;
       return 0;
     });
-  }, [bookings.data]);
+  }, [scopedBookings]);
 
   const filtered = useMemo(() => {
     if (filter === "ALL") return sortedBookings;
@@ -237,45 +93,10 @@ function BookingsPage() {
     (booking) => booking.status === "PENDING",
   ).length;
 
-  const items: ExpandableBentoItem[] = useMemo(
-    () =>
-      filtered.map((booking) => {
-        const studentName = booking.student?.name ?? booking.studentId;
-        const typeLabel = booking.type.replaceAll("_", " ");
-        const subtitleParts = [typeLabel, booking.status];
-        if (booking.notes) subtitleParts.push(booking.notes);
-
-        return {
-          id: booking.id,
-          title: studentName,
-          subtitle: subtitleParts.join(" · "),
-          description: booking.notes
-            ? `${typeLabel} · ${booking.notes}`
-            : typeLabel,
-          media: <BookingMedia name={studentName} />,
-          content: (
-            <BookingReviewPanel
-              booking={booking}
-              isPending={updateStatus.isPending}
-              onConfirm={(times) =>
-                updateStatus.mutate({
-                  id: booking.id,
-                  status: "CONFIRMED",
-                  ...times,
-                })
-              }
-              onDecline={() =>
-                updateStatus.mutate({
-                  id: booking.id,
-                  status: "CANCELLED",
-                })
-              }
-            />
-          ),
-        };
-      }),
-    [filtered, updateStatus.isPending, updateStatus.mutate],
-  );
+  const selected =
+    filtered.find((booking) => booking.id === selectedId) ??
+    scopedBookings.find((booking) => booking.id === selectedId) ??
+    null;
 
   return (
     <Screen
@@ -283,12 +104,16 @@ function BookingsPage() {
       subtitle={
         pendingCount > 0
           ? `${pendingCount} pending approval`
-          : "Review trial, open seat, and private requests."
+          : isTrainer
+            ? "Review requests for your batches."
+            : "Review trial, open seat, and private requests."
       }
       actions={
-        <TouchButton variant="primary" size="md">
-          <Link to="/app/bookings/new">Add</Link>
-        </TouchButton>
+        !isTrainer ? (
+          <TouchButton variant="primary" size="md">
+            <Link to="/app/bookings/new">Add</Link>
+          </TouchButton>
+        ) : undefined
       }
     >
       <PullToRefresh onRefresh={() => bookings.refetch()}>
@@ -327,24 +152,88 @@ function BookingsPage() {
           {bookings.data && filtered.length === 0 ? (
             <EmptyState
               title="No bookings"
-              description="Bookings created for this studio will appear here."
+              description={
+                isTrainer
+                  ? "Pending requests for your batches will appear here."
+                  : "Bookings created for this studio will appear here."
+              }
               action={
-                <TouchButton variant="primary">
-                  <Link to="/app/bookings/new">Add booking</Link>
-                </TouchButton>
+                !isTrainer ? (
+                  <TouchButton variant="primary">
+                    <Link to="/app/bookings/new">Add booking</Link>
+                  </TouchButton>
+                ) : undefined
               }
             />
           ) : null}
 
           {filtered.length > 0 ? (
-            <ExpandableBentoGrid
-              key={gridKey}
-              items={items}
-              aria-label="Booking requests"
-            />
+            <ul className={staff.list} aria-label="Booking requests">
+              {filtered.map((booking) => {
+                const studentName = booking.student?.name ?? booking.studentId;
+                const typeLabel = booking.type.replaceAll("_", " ");
+                const subtitleParts = [
+                  typeLabel,
+                  booking.batch?.name,
+                  booking.status,
+                ].filter(Boolean);
+                if (booking.notes) subtitleParts.push(booking.notes);
+
+                return (
+                  <li key={booking.id}>
+                    <PressableCard onClick={() => setSelectedId(booking.id)}>
+                      <div className={staff.rowCard}>
+                        <div className={staff.rowWithAvatar}>
+                          <span className={staff.listAvatar}>
+                            <BookingMedia name={studentName} />
+                          </span>
+                          <div className={staff.rowBody}>
+                            <span className={staff.rowTitle}>
+                              {studentName}
+                            </span>
+                            <span className={staff.rowMeta}>
+                              {subtitleParts.join(" · ")}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </PressableCard>
+                  </li>
+                );
+              })}
+            </ul>
           ) : null}
         </div>
       </PullToRefresh>
+
+      <AppDrawer
+        isOpen={selected != null}
+        onOpenChange={(open) => {
+          if (!open) setSelectedId(null);
+        }}
+        title={selected?.student?.name ?? selected?.studentId ?? "Request"}
+      >
+        {selected ? (
+          <BookingReviewPanel
+            key={selected.id}
+            booking={selected}
+            isPending={updateStatus.isPending}
+            onConfirm={(times) =>
+              updateStatus.mutate({
+                id: selected.id,
+                status: "CONFIRMED",
+                ...times,
+              })
+            }
+            onDecline={() =>
+              updateStatus.mutate({
+                id: selected.id,
+                status: "CANCELLED",
+              })
+            }
+          />
+        ) : null}
+      </AppDrawer>
     </Screen>
   );
 }
