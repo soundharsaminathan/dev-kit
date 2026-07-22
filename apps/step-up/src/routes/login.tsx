@@ -153,7 +153,7 @@ function LoginPage() {
             isPending={pending}
             isDisabled={!online}
           >
-            Continue with email
+            Sign in
           </TouchButton>
           <TouchButton
             variant="default"
