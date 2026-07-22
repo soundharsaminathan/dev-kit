@@ -68,9 +68,12 @@ export function BatchDetailPage() {
       });
     },
     onSuccess: () => {
-      void queryClient.invalidateQueries({
-        queryKey: ["bookings", "student", studentId],
-      });
+      void Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: ["bookings", "student", studentId],
+        }),
+        queryClient.invalidateQueries({ queryKey: ["batches", id] }),
+      ]);
       setBookOpen(false);
       setSuccess(true);
       setNotes("");
@@ -144,6 +147,12 @@ export function BatchDetailPage() {
       : batch.remainingSeats === 0
         ? "Class full"
         : `${batch.remainingSeats} seat${batch.remainingSeats === 1 ? "" : "s"} left`;
+  const openBooking = batch.viewerBooking;
+  const hasPendingRequest = openBooking?.status === "PENDING";
+  const hasConfirmedRequest =
+    openBooking?.status === "CONFIRMED" && !batch.viewerEnrolled;
+  const showBookingCta =
+    !batch.viewerEnrolled && !hasPendingRequest && !hasConfirmedRequest;
 
   if (enrollSuccess) {
     return (
@@ -207,7 +216,7 @@ export function BatchDetailPage() {
         {...(batch.scheduleLabel ? { subtitle: batch.scheduleLabel } : {})}
         showBack
         backTo="/me/book"
-        paddedCta={!batch.viewerEnrolled}
+        paddedCta={showBookingCta || hasPendingRequest || hasConfirmedRequest}
       >
         <div className={styles.hero}>
           {batch.coverImageUrl ? (
@@ -226,6 +235,37 @@ export function BatchDetailPage() {
             <Badge className={styles.badge}>{batch.styleBadge}</Badge>
           ) : null}
         </div>
+
+        {hasPendingRequest || hasConfirmedRequest ? (
+          <div
+            className={styles.requestStatus}
+            data-status={openBooking?.status}
+          >
+            <div>
+              <p className={styles.requestEyebrow}>
+                {hasPendingRequest ? "Request pending" : "Request confirmed"}
+              </p>
+              <p className={styles.requestTitle}>
+                {hasPendingRequest
+                  ? "Waiting for studio approval"
+                  : "Your booking is confirmed"}
+              </p>
+              <p className={styles.muted}>
+                {openBooking?.type.replaceAll("_", " ")}
+                {openBooking?.notes ? ` · ${openBooking.notes}` : ""}
+                {hasPendingRequest
+                  ? ". The studio will confirm your spot — track updates under My bookings."
+                  : ". Check My bookings for the confirmed time."}
+              </p>
+            </div>
+            <Badge
+              appearance="subtle"
+              variant={hasPendingRequest ? "warning" : "success"}
+            >
+              {openBooking?.status}
+            </Badge>
+          </div>
+        ) : null}
 
         <div className={styles.stats}>
           {batch.ratingAvg != null && batch.ratingAvg > 0 ? (
@@ -349,7 +389,13 @@ export function BatchDetailPage() {
         ) : null}
       </Screen>
 
-      {!batch.viewerEnrolled ? (
+      {hasPendingRequest || hasConfirmedRequest ? (
+        <StickyCtaBar>
+          <TouchButton variant="primary" fullWidth>
+            <Link to="/me/bookings">View request status</Link>
+          </TouchButton>
+        </StickyCtaBar>
+      ) : showBookingCta ? (
         <StickyCtaBar>
           {isFull ? (
             <TouchButton variant="primary" fullWidth isDisabled>

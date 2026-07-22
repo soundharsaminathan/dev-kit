@@ -1,0 +1,15 @@
+@use "@dev-ui/tokens/scss" as *;
+
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  margin-inline: calc(var(--space-4) * -1);
+  padding-bottom: var(--space-8);
+}
+
+@media (min-width: 768px) {
+  .root {
+    margin-inline: calc(var(--space-6, 1.5rem) * -1);
+  }
+}

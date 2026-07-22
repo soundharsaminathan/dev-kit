@@ -1,136 +1,182 @@
 @use "@dev-ui/tokens/scss" as *;
 
 .root {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 1.5rem;
-  align-items: start;
-}
-
-.cover {
-  grid-column: 1 / -1;
-  width: 100%;
-  aspect-ratio: 3 / 1;
-  border-radius: var(--radius-2xl, 1.25rem);
-  overflow: hidden;
-
-  img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    display: block;
-  }
-}
-
-.avatar {
-  flex-shrink: 0;
-}
-
-.hasCover .avatar {
-  margin-top: -2.25rem;
-  box-shadow: 0 0 0 3px var(--color-bg);
-}
-
-.avatarSquare {
-  --avatar-radius: var(--radius-xl, 1rem);
-  width: 5rem;
-  height: 5rem;
-}
-
-.meta {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
-  min-width: 0;
+  gap: var(--space-4);
+  padding-inline: var(--space-4);
 }
 
-.titleRow {
-  display: flex;
+.topRow {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--space-5);
   align-items: center;
-  gap: 0.5rem;
+}
 
-  h1 {
-    font-size: 1.5rem;
-    font-weight: 700;
-    letter-spacing: -0.02em;
-    line-height: 1.15;
+.avatarWrap {
+  width: 5.5rem;
+  height: 5.5rem;
+  flex-shrink: 0;
+
+  :global([data-avatar]) {
+    width: 100%;
+    height: 100%;
   }
-}
 
-.lock {
-  width: 1.1rem;
-  height: 1.1rem;
-  color: color-mix(in srgb, var(--color-fg) 55%, transparent);
-}
-
-.counts {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1rem;
-  font-size: 0.9rem;
-  color: color-mix(in srgb, var(--color-fg) 65%, transparent);
-
-  strong {
-    color: var(--color-fg);
+  :global([data-avatar-fallback]) {
+    font-size: 1.5rem;
     font-weight: 600;
   }
 }
 
+.stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-2);
+  margin: 0;
+  min-width: 0;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.125rem;
+  text-align: center;
+  min-width: 0;
+}
+
+.statValue {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  color: var(--color-fg);
+}
+
+.statLabel {
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.2;
+  color: color-mix(in srgb, var(--color-fg) 65%, transparent);
+}
+
+.bioBlock {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.nameRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.name {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+}
+
+.lock {
+  width: 0.95rem;
+  height: 0.95rem;
+  color: color-mix(in srgb, var(--color-fg) 55%, transparent);
+}
+
 .bio {
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.45;
   white-space: pre-wrap;
+  color: var(--color-fg);
+}
+
+.link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  width: fit-content;
+  max-width: 100%;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-primary);
+  text-decoration: none;
+  transition:
+    color var(--interaction-transition-duration)
+      var(--interaction-transition-curve),
+    opacity var(--interaction-transition-duration)
+      var(--interaction-transition-curve);
+
+  span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &:hover {
+    opacity: 0.85;
+  }
+
+  &:active {
+    transform: scale(var(--interaction-press-scale));
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    transition-duration: 0ms;
+
+    &:active {
+      transform: none;
+    }
+  }
+}
+
+.linkIcon {
+  width: 0.875rem;
+  height: 0.875rem;
+  flex-shrink: 0;
 }
 
 .styles {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
+  gap: var(--space-2);
+  margin-top: var(--space-1);
 }
 
 .actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-2);
 }
 
-@media (max-width: 640px) {
-  .root {
-    grid-template-columns: 1fr;
-    justify-items: center;
-    text-align: center;
-    gap: 0.75rem;
+.actionPrimary,
+.actionSecondary {
+  width: 100%;
+  min-height: 2.75rem;
+}
+
+.actions:has(> :only-child) {
+  grid-template-columns: 1fr;
+}
+
+@media (max-width: 380px) {
+  .avatarWrap {
+    width: 4.75rem;
+    height: 4.75rem;
   }
 
-  .titleRow h1 {
-    font-size: 1.25rem;
+  .statValue {
+    font-size: 1rem;
   }
 
-  .counts {
-    font-size: 0.8125rem;
-    gap: 0.75rem;
-  }
-
-  .bio {
-    font-size: 0.875rem;
-  }
-
-  .meta {
-    align-items: center;
-    gap: 0.5rem;
-  }
-
-  .titleRow {
-    justify-content: center;
-  }
-
-  .counts {
-    justify-content: center;
-  }
-
-  .styles {
-    justify-content: center;
-  }
-
-  .actions {
-    justify-content: center;
+  .statLabel {
+    font-size: 0.6875rem;
   }
 }

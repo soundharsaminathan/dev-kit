@@ -16,6 +16,13 @@ import { MediaService } from "../media/media.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { isAlwaysPublicRole } from "../social/visibility";
 import {
+  batchHasCompletedSession,
+  batchHasScheduledSession,
+  countStudentFunnel,
+  type StudentFunnelCounts,
+  type StudentFunnelPeriod,
+} from "./student-funnel";
+import {
   type DecryptedUser,
   type EncryptedUserFields,
   UserCryptoService,
@@ -474,6 +481,71 @@ export class UsersService {
     });
 
     return this.presentUser(updated);
+  }
+
+  async getStudentFunnel(
+    studioId: string,
+    period: StudentFunnelPeriod = "lifetime",
+  ): Promise<StudentFunnelCounts> {
+    const students = await this.prisma.user.findMany({
+      where: { studioId, role: UserRole.STUDENT },
+      select: {
+        id: true,
+        createdAt: true,
+        batchEnrollments: {
+          where: { batch: { studioId } },
+          select: {
+            batch: {
+              select: {
+                id: true,
+                active: true,
+                sessions: { select: { status: true } },
+              },
+            },
+          },
+        },
+        bookings: {
+          where: { studioId },
+          select: {
+            type: true,
+            status: true,
+            sessionId: true,
+          },
+        },
+        attendanceRecords: {
+          where: { session: { batch: { studioId } } },
+          select: {
+            sessionId: true,
+            status: true,
+          },
+        },
+        subscriptions: {
+          where: { plan: { studioId } },
+          select: { status: true },
+        },
+      },
+    });
+
+    return countStudentFunnel(
+      students.map((student) => ({
+        id: student.id,
+        createdAt: student.createdAt,
+        enrollments: student.batchEnrollments.map((enrollment) => ({
+          batchId: enrollment.batch.id,
+          batchActive: enrollment.batch.active,
+          hasScheduledSession: batchHasScheduledSession(
+            enrollment.batch.sessions,
+          ),
+          hasCompletedSession: batchHasCompletedSession(
+            enrollment.batch.sessions,
+          ),
+        })),
+        bookings: student.bookings,
+        attendance: student.attendanceRecords,
+        subscriptions: student.subscriptions,
+      })),
+      period,
+    );
   }
 
   async linkParentChild(parentUserId: string, childUserId: string) {

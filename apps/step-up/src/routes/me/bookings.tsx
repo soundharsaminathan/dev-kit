@@ -3,7 +3,12 @@ import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useApi } from "@/lib/api-context";
+import {
+  BatchDetailPreview,
+  BookingWithoutBatchPreview,
+} from "@/modules/discover/batch-detail-preview";
 import { useActiveStudentContext } from "@/modules/me/use-active-student-context";
+import { BloomPanel } from "@/modules/ui/bloom-panel";
 import { FilterChipRow } from "@/modules/ui/filter-chip-row";
 import { PressableCard } from "@/modules/ui/pressable-card";
 import { PullToRefresh } from "@/modules/ui/pull-to-refresh";
@@ -41,6 +46,7 @@ function MeBookingsPage() {
   const api = useApi();
   const { studentId } = useActiveStudentContext();
   const [filter, setFilter] = useState("ALL");
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const bookings = useQuery({
     queryKey: ["bookings", "student", studentId],
@@ -65,6 +71,11 @@ function MeBookingsPage() {
   const pendingCount = sortedBookings.filter(
     (booking) => booking.status === "PENDING",
   ).length;
+
+  const selected = useMemo(
+    () => sortedBookings.find((booking) => booking.id === selectedId) ?? null,
+    [selectedId, sortedBookings],
+  );
 
   return (
     <Screen
@@ -125,7 +136,10 @@ function MeBookingsPage() {
           {filtered.length > 0 ? (
             <div className={staff.list}>
               {filtered.map((booking) => (
-                <PressableCard key={booking.id} asDiv>
+                <PressableCard
+                  key={booking.id}
+                  onClick={() => setSelectedId(booking.id)}
+                >
                   <div className={staff.rowCard}>
                     <div className={staff.attentionTop}>
                       <span className={staff.rowTitle}>
@@ -160,6 +174,28 @@ function MeBookingsPage() {
           ) : null}
         </div>
       </PullToRefresh>
+
+      <BloomPanel
+        isOpen={Boolean(selected)}
+        onOpenChange={(open) => {
+          if (!open) setSelectedId(null);
+        }}
+        title={selected?.batch?.name ?? selected?.type.replaceAll("_", " ")}
+      >
+        {selected?.batch?.id ? (
+          <BatchDetailPreview
+            batchId={selected.batch.id}
+            studentId={studentId}
+            booking={selected}
+            onOpenFull={() => setSelectedId(null)}
+          />
+        ) : selected ? (
+          <BookingWithoutBatchPreview
+            type={selected.type}
+            notes={selected.notes}
+          />
+        ) : null}
+      </BloomPanel>
     </Screen>
   );
 }

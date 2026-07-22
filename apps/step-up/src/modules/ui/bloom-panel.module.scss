@@ -1,0 +1,100 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  padding: var(--space-6, 1.5rem);
+  pointer-events: none;
+}
+
+.overlay > * {
+  pointer-events: auto;
+}
+
+.backdrop {
+  position: absolute;
+  inset: 0;
+  background: color-mix(in srgb, var(--color-fg) 28%, transparent);
+  backdrop-filter: blur(2px);
+}
+
+.panel {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  width: min(28rem, 100%);
+  max-height: min(80vh, 40rem);
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--color-border) 80%, transparent);
+  background: var(--color-card, var(--color-bg));
+  box-shadow: var(--elevation-2, 0 8px 24px rgb(0 0 0 / 12%));
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2, 0.5rem);
+  flex-shrink: 0;
+  padding: var(--space-3, 0.75rem) var(--space-4, 1rem);
+  border-bottom: 1px solid color-mix(in srgb, var(--color-border) 80%, transparent);
+}
+
+.headerTitle {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: color-mix(in srgb, var(--color-fg) 58%, transparent);
+}
+
+.close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  margin: -0.25rem;
+  border: 0;
+  border-radius: var(--radius-md, 0.5rem);
+  background: transparent;
+  color: color-mix(in srgb, var(--color-fg) 58%, transparent);
+  cursor: pointer;
+  transition:
+    color var(--interaction-transition-duration, 150ms)
+      var(--interaction-transition-curve, ease),
+    background-color var(--interaction-transition-duration, 150ms)
+      var(--interaction-transition-curve, ease);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .close:hover {
+    color: var(--color-fg);
+    background: color-mix(in srgb, var(--color-fg) 6%, transparent);
+  }
+}
+
+.close:active {
+  transform: scale(var(--interaction-press-scale, 0.98));
+}
+
+.body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: var(--space-4, 1rem);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .close {
+    transition-duration: 0ms;
+  }
+
+  .close:active {
+    transform: none;
+  }
+
+  .backdrop {
+    backdrop-filter: none;
+  }
+}

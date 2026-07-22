@@ -7,6 +7,7 @@ import {
 } from "@nestjs/common";
 import {
   BillingCadence,
+  BookingStatus,
   EnrollmentMode,
   PlanType,
   type Prisma,
@@ -348,20 +349,49 @@ export class BatchesService {
 
     let viewerRating: number | null = null;
     let viewerEnrolled = false;
+    let viewerBooking: {
+      id: string;
+      type: string;
+      status: BookingStatus;
+      notes: string | null;
+      startsAt: Date | null;
+      endsAt: Date | null;
+    } | null = null;
 
     if (options?.studentId) {
       viewerEnrolled = batch.enrollments.some(
         (enrollment) => enrollment.studentId === options.studentId,
       );
-      const existingRating = await this.prisma.batchRating.findUnique({
-        where: {
-          batchId_studentId: {
+      const [existingRating, openBooking] = await Promise.all([
+        this.prisma.batchRating.findUnique({
+          where: {
+            batchId_studentId: {
+              batchId: id,
+              studentId: options.studentId,
+            },
+          },
+        }),
+        this.prisma.booking.findFirst({
+          where: {
             batchId: id,
             studentId: options.studentId,
+            status: {
+              in: [BookingStatus.PENDING, BookingStatus.CONFIRMED],
+            },
           },
-        },
-      });
+          orderBy: [{ status: "asc" }, { id: "desc" }],
+          select: {
+            id: true,
+            type: true,
+            status: true,
+            notes: true,
+            startsAt: true,
+            endsAt: true,
+          },
+        }),
+      ]);
       viewerRating = existingRating?.rating ?? null;
+      viewerBooking = openBooking;
     }
 
     return {
@@ -372,6 +402,7 @@ export class BatchesService {
       }),
       viewerRating,
       viewerEnrolled,
+      viewerBooking,
     };
   }
 

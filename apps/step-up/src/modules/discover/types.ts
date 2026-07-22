@@ -39,6 +39,14 @@ export type DiscoverBatch = {
   }>;
   viewerRating?: number | null;
   viewerEnrolled?: boolean;
+  viewerBooking?: {
+    id: string;
+    type: string;
+    status: "PENDING" | "CONFIRMED" | "CANCELLED" | "COMPLETED";
+    notes?: string | null;
+    startsAt?: string | null;
+    endsAt?: string | null;
+  } | null;
 };
 
 export function discoverCtaLabel(batch: DiscoverBatch) {

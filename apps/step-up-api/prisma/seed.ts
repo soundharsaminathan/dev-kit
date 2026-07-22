@@ -6,6 +6,7 @@ import {
   BookingStatus,
   BookingType,
   EnrollmentMode,
+  type Prisma,
   PrismaClient,
   ProfileVisibility,
   SessionStatus,
@@ -651,7 +652,7 @@ async function main() {
     category: "KIDS" | "ADULTS";
     branchId: string;
     danceCategories: Array<{ name: string; description: string }>;
-    scheduleJson: Record<string, unknown>;
+    scheduleJson: Prisma.InputJsonValue;
     capacity: number;
     enrollmentMode: EnrollmentMode;
     creatorId: string;
