@@ -59,7 +59,8 @@ describe("JobsService.runDaily", () => {
       expect.objectContaining({
         userId: "student-1",
         type: NotificationType.NOT_RENEWED,
-        title: "Plan not renewed",
+        planName: "Adults Unlimited",
+        dedupeKey: "NOT_RENEWED:sub-due",
         meta: { subscriptionId: "sub-due", planId: "plan-1" },
       }),
     );

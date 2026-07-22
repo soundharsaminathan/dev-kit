@@ -174,9 +174,12 @@ export class AttendanceService {
       await this.notifications.create({
         userId: data.studentId,
         type: NotificationType.MISSED_SESSION,
-        title: "Missed session",
-        body: `You were marked absent for ${session.batch.name} on ${session.startsAt.toISOString().slice(0, 10)}.`,
+        batchName: session.batch.name,
+        sessionDate: session.startsAt.toISOString().slice(0, 10),
+        dedupeKey: `MISSED_SESSION:${data.sessionId}:${data.studentId}`,
         meta: { sessionId: data.sessionId, batchId: session.batchId },
+        entityType: "session",
+        entityId: data.sessionId,
       });
     }
 

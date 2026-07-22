@@ -1,5 +1,6 @@
 .studioBanner {
   position: relative;
+  z-index: 2;
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
@@ -9,13 +10,20 @@
   margin-block-start: calc(-1 * var(--space-3, 0.75rem));
   padding: calc(0.75rem + env(safe-area-inset-top, 0px)) var(--space-4, 1rem)
     var(--space-5, 1.25rem);
-  overflow: hidden;
+  overflow: visible;
   color: #fff;
 }
 
 .studioBanner[data-flush-top="true"] {
   margin-block-start: 0;
   padding-top: var(--space-3, 0.75rem);
+}
+
+.studioBannerMedia {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
 }
 
 .studioBannerImage,
@@ -45,7 +53,7 @@
 
 .studioBannerTop {
   position: relative;
-  z-index: 1;
+  z-index: 3;
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -54,6 +62,8 @@
 }
 
 .studioBannerActions {
+  position: relative;
+  z-index: 4;
   display: flex;
   align-items: center;
   margin-inline-start: auto;

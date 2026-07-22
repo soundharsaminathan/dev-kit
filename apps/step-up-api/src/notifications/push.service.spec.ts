@@ -17,6 +17,7 @@ describe("PushService", () => {
       findMany: vi.fn(),
       upsert: vi.fn(),
       delete: vi.fn(),
+      deleteMany: vi.fn(),
     },
   };
 
@@ -38,28 +39,42 @@ describe("PushService", () => {
 
   it("registers a device token for a user", async () => {
     prisma.pushDevice.upsert.mockResolvedValue({ id: "device-1" });
+    prisma.pushDevice.findMany.mockResolvedValue([{ id: "device-1" }]);
 
-    await service.registerToken("user-1", "fcm-token-1");
+    await service.registerToken("user-1", "fcm-token-1", { platform: "web" });
 
-    expect(prisma.pushDevice.upsert).toHaveBeenCalledWith({
-      where: { token: "fcm-token-1" },
-      create: { userId: "user-1", token: "fcm-token-1" },
-      update: { userId: "user-1" },
-    });
+    expect(prisma.pushDevice.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { token: "fcm-token-1" },
+        create: expect.objectContaining({
+          userId: "user-1",
+          token: "fcm-token-1",
+          platform: "web",
+        }),
+        update: expect.objectContaining({
+          userId: "user-1",
+          platform: "web",
+        }),
+      }),
+    );
   });
 
   it("sends a multicast push to registered devices", async () => {
     prisma.pushDevice.findMany.mockResolvedValue([
-      { token: "fcm-token-1" },
-      { token: "fcm-token-2" },
+      { token: "fcm-token-1", platform: "web" },
+      { token: "fcm-token-2", platform: "ios" },
     ]);
     sendEachForMulticast.mockResolvedValue({
-      responses: [{ success: true }, { success: true }],
+      responses: [
+        { success: true, messageId: "m1" },
+        { success: true, messageId: "m2" },
+      ],
     });
 
     await service.sendToUser("user-1", {
       title: "Plan renewed",
       body: "Your plan is active.",
+      deepLink: "/me/plans",
       data: { notificationId: "notif-1", type: "RENEWED" },
     });
 
@@ -70,12 +85,18 @@ describe("PushService", () => {
           title: "Plan renewed",
           body: "Your plan is active.",
         },
+        webpush: expect.objectContaining({
+          fcmOptions: { link: "/me/plans" },
+        }),
       }),
     );
   });
 
   it("removes invalid registration tokens", async () => {
-    prisma.pushDevice.findMany.mockResolvedValue([{ token: "stale-token" }]);
+    prisma.pushDevice.findMany.mockResolvedValue([
+      { token: "stale-token", platform: "web" },
+    ]);
+    prisma.pushDevice.delete.mockResolvedValue({ id: "device-1" });
     sendEachForMulticast.mockResolvedValue({
       responses: [
         {
@@ -84,11 +105,10 @@ describe("PushService", () => {
         },
       ],
     });
-    prisma.pushDevice.delete.mockResolvedValue({ id: "device-1" });
 
     await service.sendToUser("user-1", {
-      title: "Missed session",
-      body: "You were marked absent.",
+      title: "Hi",
+      body: "There",
     });
 
     expect(prisma.pushDevice.delete).toHaveBeenCalledWith({

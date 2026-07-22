@@ -152,9 +152,12 @@ export class SubscriptionsService {
     await this.notifications.create({
       userId: existing.studentId,
       type: NotificationType.RENEWED,
-      title: "Plan renewed",
-      body: `Your ${existing.plan.name} plan is active through ${periodEnd.toISOString().slice(0, 10)}.`,
+      planName: existing.plan.name,
+      periodEnd: periodEnd.toISOString().slice(0, 10),
+      dedupeKey: `RENEWED:${renewed.id}`,
       meta: { subscriptionId: renewed.id, planId: existing.planId },
+      entityType: "subscription",
+      entityId: renewed.id,
     });
 
     return renewed;

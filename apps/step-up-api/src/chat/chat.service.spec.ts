@@ -123,6 +123,10 @@ describe("ChatService", () => {
     signReadUrls: vi.fn(async (values: string[]) => values),
   };
 
+  const chatNotifications = {
+    notifyNewMessage: vi.fn().mockResolvedValue(undefined),
+  };
+
   let service: ChatService;
 
   beforeEach(() => {
@@ -133,6 +137,7 @@ describe("ChatService", () => {
       userCrypto as never,
       gateway as never,
       media as never,
+      chatNotifications as never,
     );
   });
 
@@ -506,6 +511,7 @@ describe("ChatService", () => {
       expect(result.id).toBe("msg-1");
       expect(prisma.message.create).not.toHaveBeenCalled();
       expect(gateway.emitToConversation).not.toHaveBeenCalled();
+      expect(chatNotifications.notifyNewMessage).not.toHaveBeenCalled();
     });
 
     it("stores clientMessageId on create and emits once", async () => {
@@ -565,6 +571,14 @@ describe("ChatService", () => {
         "conv-1",
         "message.new",
         expect.objectContaining({ conversationId: "conv-1" }),
+      );
+      expect(chatNotifications.notifyNewMessage).toHaveBeenCalledTimes(1);
+      expect(chatNotifications.notifyNewMessage).toHaveBeenCalledWith(
+        expect.objectContaining({
+          conversationId: "conv-1",
+          senderId: "student-1",
+          messageId: "msg-2",
+        }),
       );
     });
   });

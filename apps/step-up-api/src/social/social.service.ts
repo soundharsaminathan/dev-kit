@@ -277,9 +277,12 @@ export class SocialService {
     await this.notifications.create({
       userId: targetId,
       type: NotificationType.NEW_FOLLOW,
-      title: "New follower",
-      body: `${followerName} started following you.`,
+      followerName,
+      dedupeKey: `NEW_FOLLOW:${targetId}:${follower.id}`,
       meta: { followerId: follower.id },
+      actorId: follower.id,
+      entityType: "user",
+      entityId: follower.id,
     });
   }
 

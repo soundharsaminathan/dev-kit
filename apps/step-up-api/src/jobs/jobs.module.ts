@@ -7,5 +7,6 @@ import { JobsService } from "./jobs.service";
   imports: [NotificationsModule],
   controllers: [JobsController],
   providers: [JobsService, JobsSecretGuard],
+  exports: [JobsService],
 })
 export class JobsModule {}

@@ -10,6 +10,12 @@ import { useEffect, useRef, useState } from "react";
 import { useApi } from "@/lib/api-context";
 import { useAuth } from "@/lib/auth";
 import {
+  notificationsListKey,
+  notificationsUnreadKey,
+  publishNotificationBroadcast,
+} from "@/lib/notifications-cache";
+import { useNotificationsSocket } from "@/lib/notifications-socket-provider";
+import {
   TooltipIconBar,
   TooltipIconBarItem,
 } from "@/modules/ui/tooltip-icon-bar";
@@ -23,6 +29,7 @@ import {
   type NotificationDestination,
   resolveNotificationDestination,
 } from "./notification-links";
+import { NotificationPreferencesPanel } from "./notification-preferences";
 
 type AppHeaderProps = {
   variant: ShellVariant;
@@ -34,8 +41,14 @@ type NotificationItem = {
   title: string;
   body: string;
   meta?: unknown;
+  deepLink?: string | null;
   readAt: string | null;
   createdAt: string;
+};
+
+type NotificationsPage = {
+  items: NotificationItem[];
+  nextCursor: string | null;
 };
 
 function formatRelative(iso: string) {
@@ -49,63 +62,193 @@ function formatRelative(iso: string) {
   return `${days}d`;
 }
 
+function notificationIcon(
+  type: string,
+):
+  | "calendar"
+  | "credit-card"
+  | "badge-check"
+  | "alert-circle"
+  | "user"
+  | "message-square"
+  | "bell" {
+  switch (type) {
+    case "MISSED_SESSION":
+      return "calendar";
+    case "PAYMENT_OVERDUE":
+      return "credit-card";
+    case "RENEWED":
+      return "badge-check";
+    case "PLAN_EXPIRING":
+    case "NOT_RENEWED":
+      return "alert-circle";
+    case "NEW_FOLLOW":
+      return "user";
+    case "CHAT_MESSAGE":
+      return "message-square";
+    default:
+      return "bell";
+  }
+}
+
 function NotificationsPanel({
   items,
   loading,
+  connected,
   variant,
+  unreadCount,
+  showPreferences,
+  onTogglePreferences,
   onMarkRead,
+  onMarkAllRead,
   onOpen,
 }: {
   items: NotificationItem[];
   loading: boolean;
+  connected: boolean;
   variant: ShellVariant;
+  unreadCount: number;
+  showPreferences: boolean;
+  onTogglePreferences: () => void;
   onMarkRead: (id: string) => void;
+  onMarkAllRead: () => void;
   onOpen: (destination: NotificationDestination) => void;
 }) {
-  if (loading) {
-    return <Text className={styles.empty}>Loading…</Text>;
-  }
-
-  if (items.length === 0) {
-    return <Text className={styles.empty}>No notifications yet</Text>;
+  if (showPreferences) {
+    return (
+      <div className={styles.panel}>
+        <div className={styles.panelHeader}>
+          <div className={styles.panelHeading}>
+            <button
+              type="button"
+              className={styles.headerAction}
+              aria-label="Back to notifications"
+              onClick={onTogglePreferences}
+            >
+              <Icon name="chevron-left" />
+            </button>
+            <div className={styles.panelTitleBlock}>
+              <span className={styles.panelTitle}>Preferences</span>
+              <span className={styles.panelSubtitle}>Push alerts by type</span>
+            </div>
+          </div>
+        </div>
+        <NotificationPreferencesPanel />
+      </div>
+    );
   }
 
   return (
-    <ul className={styles.notificationList}>
-      {items.map((item) => {
-        const destination = resolveNotificationDestination(
-          item.type,
-          item.meta,
-          variant,
-        );
-
-        return (
-          <li key={item.id}>
+    <div className={styles.panel}>
+      <div className={styles.panelHeader}>
+        <div className={styles.panelTitleBlock}>
+          <span className={styles.panelTitle}>Notifications</span>
+          {unreadCount > 0 ? (
+            <span className={styles.unreadChip}>{unreadCount} new</span>
+          ) : (
+            <span className={styles.panelSubtitle}>
+              You&apos;re all caught up
+            </span>
+          )}
+        </div>
+        <div className={styles.panelActions}>
+          <button
+            type="button"
+            className={styles.headerAction}
+            aria-label="Notification preferences"
+            onClick={onTogglePreferences}
+          >
+            <Icon name="settings" />
+          </button>
+          {unreadCount > 0 ? (
             <button
               type="button"
-              className={styles.notificationItem}
-              data-unread={item.readAt ? undefined : "true"}
-              data-link={destination ? "true" : undefined}
-              onClick={() => {
-                if (!item.readAt) {
-                  onMarkRead(item.id);
-                }
-                if (destination) {
-                  onOpen(destination);
-                }
-              }}
+              className={styles.headerAction}
+              aria-label="Mark all as read"
+              onClick={onMarkAllRead}
             >
-              <span className={styles.notificationTitle}>{item.title}</span>
-              <span className={styles.notificationBody}>{item.body}</span>
-              <span className={styles.notificationMeta}>
-                {formatRelative(item.createdAt)}
-                {destination ? " · Open" : ""}
-              </span>
+              <Icon name="check-circle" />
             </button>
-          </li>
-        );
-      })}
-    </ul>
+          ) : null}
+        </div>
+      </div>
+
+      {!connected ? (
+        <div className={styles.statusStrip} data-tone="warn">
+          Live updates paused — retrying
+        </div>
+      ) : null}
+
+      {loading ? (
+        <div className={styles.emptyState}>
+          <span className={styles.emptyIcon}>
+            <Icon name="bell" />
+          </span>
+          <span className={styles.emptyTitle}>Loading</span>
+          <span className={styles.emptyBody}>
+            Fetching your latest updates…
+          </span>
+        </div>
+      ) : items.length === 0 ? (
+        <div className={styles.emptyState}>
+          <span className={styles.emptyIcon}>
+            <Icon name="bell" />
+          </span>
+          <span className={styles.emptyTitle}>No notifications yet</span>
+          <span className={styles.emptyBody}>
+            Class reminders, payments, and social updates will show up here.
+          </span>
+        </div>
+      ) : (
+        <ul className={styles.notificationList}>
+          {items.map((item) => {
+            const destination = resolveNotificationDestination(
+              item.type,
+              item.meta,
+              variant,
+            );
+            const unread = !item.readAt;
+
+            return (
+              <li key={item.id}>
+                <button
+                  type="button"
+                  className={styles.notificationItem}
+                  data-unread={unread ? "true" : undefined}
+                  data-type={item.type}
+                  onClick={() => {
+                    if (unread) {
+                      onMarkRead(item.id);
+                    }
+                    if (destination) {
+                      onOpen(destination);
+                    }
+                  }}
+                >
+                  <span className={styles.notificationIcon} aria-hidden>
+                    <Icon name={notificationIcon(item.type)} />
+                  </span>
+                  <span className={styles.notificationContent}>
+                    <span className={styles.notificationTop}>
+                      <span className={styles.notificationTitle}>
+                        {item.title}
+                      </span>
+                      <span className={styles.notificationTime}>
+                        {formatRelative(item.createdAt)}
+                      </span>
+                    </span>
+                    <span className={styles.notificationBody}>{item.body}</span>
+                  </span>
+                  {unread ? (
+                    <span className={styles.unreadDot} aria-hidden />
+                  ) : null}
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
   );
 }
 
@@ -121,24 +264,92 @@ function NotificationsControl({
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const isMobile = useIsMobile();
+  const { connected } = useNotificationsSocket();
   const [open, setOpen] = useState(false);
+  const [showPreferences, setShowPreferences] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
 
   const query = useQuery({
-    queryKey: ["notifications", user?.id],
-    queryFn: () => api.get<NotificationItem[]>("/notifications"),
+    queryKey: notificationsListKey(user?.id),
+    queryFn: () => api.get<NotificationsPage>("/notifications?limit=40"),
     enabled: Boolean(user),
+    refetchInterval: connected ? false : 30_000,
+  });
+
+  const unreadQuery = useQuery({
+    queryKey: notificationsUnreadKey(user?.id),
+    queryFn: () => api.get<{ count: number }>("/notifications/unread-count"),
+    enabled: Boolean(user),
+    refetchInterval: connected ? false : 30_000,
   });
 
   const markRead = useMutation({
     mutationFn: (id: string) => api.patch(`/notifications/${id}/read`),
-    onSuccess: () => {
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: ["notifications"] });
+      const previousList = queryClient.getQueryData<NotificationsPage>(
+        notificationsListKey(user?.id),
+      );
+      const previousUnread = queryClient.getQueryData<{ count: number }>(
+        notificationsUnreadKey(user?.id),
+      );
+      queryClient.setQueryData(
+        notificationsListKey(user?.id),
+        (current: NotificationsPage | undefined) => {
+          if (!current) return current;
+          return {
+            ...current,
+            items: current.items.map((item) =>
+              item.id === id
+                ? { ...item, readAt: new Date().toISOString() }
+                : item,
+            ),
+          };
+        },
+      );
+      if (previousUnread && previousUnread.count > 0) {
+        queryClient.setQueryData(notificationsUnreadKey(user?.id), {
+          count: previousUnread.count - 1,
+        });
+      }
+      publishNotificationBroadcast({
+        type: "invalidate",
+        userId: user!.id,
+      });
+      return { previousList, previousUnread };
+    },
+    onError: (_error, _id, context) => {
+      if (context?.previousList) {
+        queryClient.setQueryData(
+          notificationsListKey(user?.id),
+          context.previousList,
+        );
+      }
+      if (context?.previousUnread) {
+        queryClient.setQueryData(
+          notificationsUnreadKey(user?.id),
+          context.previousUnread,
+        );
+      }
+    },
+    onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: ["notifications"] });
     },
   });
 
-  const items = query.data ?? [];
-  const unreadCount = items.filter((item) => !item.readAt).length;
+  const markAllRead = useMutation({
+    mutationFn: () => api.post("/notifications/mark-all-read"),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["notifications"] });
+      publishNotificationBroadcast({
+        type: "invalidate",
+        userId: user!.id,
+      });
+    },
+  });
+
+  const items = query.data?.items ?? [];
+  const unreadCount = unreadQuery.data?.count ?? 0;
 
   useEffect(() => {
     if (!open || isMobile) return;
@@ -165,8 +376,13 @@ function NotificationsControl({
     <NotificationsPanel
       items={items}
       loading={query.isLoading}
+      connected={connected}
       variant={variant}
+      unreadCount={unreadCount}
+      showPreferences={showPreferences}
+      onTogglePreferences={() => setShowPreferences((value) => !value)}
       onMarkRead={(id) => markRead.mutate(id)}
+      onMarkAllRead={() => markAllRead.mutate()}
       onOpen={openDestination}
     />
   );
@@ -187,7 +403,10 @@ function NotificationsControl({
           aria-label={notificationsLabel}
           aria-expanded={open}
           className={tone === "onMedia" ? styles.onMediaButton : undefined}
-          onClick={() => setOpen((value) => !value)}
+          onClick={() => {
+            setShowPreferences(false);
+            setOpen((value) => !value);
+          }}
         >
           <Icon name="bell" />
           {unreadCount > 0 ? (
@@ -204,9 +423,6 @@ function NotificationsControl({
           role="dialog"
           aria-label="Notifications"
         >
-          <div className={styles.panelHeader}>
-            <Text>Notifications</Text>
-          </div>
           {panel}
         </div>
       ) : null}
@@ -214,15 +430,15 @@ function NotificationsControl({
       <Drawer
         placement="bottom"
         isOpen={isMobile && open}
-        onOpenChange={setOpen}
+        onOpenChange={(next) => {
+          setOpen(next);
+          if (!next) {
+            setShowPreferences(false);
+          }
+        }}
       >
         <DrawerHandle />
-        <div className={styles.drawerBody}>
-          <div className={styles.panelHeader}>
-            <Text>Notifications</Text>
-          </div>
-          {panel}
-        </div>
+        <div className={styles.drawerBody}>{panel}</div>
       </Drawer>
     </div>
   );
