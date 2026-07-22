@@ -31,7 +31,3 @@ export { iconNames } from "./generated/icon-names";
 export type { GeneratedPackId } from "./generated/pack-ids";
 export { packIds } from "./generated/pack-ids";
 export type { PackLoaderMap } from "./loaders/pack-loaders";
-export {
-  defaultPackLoaders,
-  loadIconPack,
-} from "./loaders/pack-loaders";

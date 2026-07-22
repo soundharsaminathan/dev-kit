@@ -241,7 +241,10 @@ describe("IconProvider", () => {
     __clearCustomPacksForTests();
 
     render(
-      <IconProvider icons={{ library: "lucide" }}>
+      <IconProvider
+        icons={{ library: "lucide" }}
+        loaders={{ lucide: () => import("@dev-ui/icons-packs/lucide") }}
+      >
         <Icon name="search" data-testid="search-icon" />
       </IconProvider>,
     );

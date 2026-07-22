@@ -31,6 +31,7 @@ export function AppThemeProvider({ children }: { children: ReactNode }) {
       defaultTheme={STAFF_THEME}
       icons={{ library: "lucide" }}
       initialIconPack={lucidePack}
+      iconLoaders={{}}
     >
       <EnsureSurfaceTheme>{children}</EnsureSurfaceTheme>
     </ThemeProvider>

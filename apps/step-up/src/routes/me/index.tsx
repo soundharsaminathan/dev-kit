@@ -19,9 +19,9 @@ import type { HomePayload } from "@/modules/me/home-types";
 import { useActiveStudentContext } from "@/modules/me/use-active-student-context";
 import { InstallAppBar } from "@/modules/pwa/install-app-bar";
 import { BloomMenu } from "@/modules/ui/bloom-menu";
-import { DanceLoader } from "@/modules/ui/dance-loader";
 import { HScrollRow } from "@/modules/ui/h-scroll-row";
 import { PullToRefresh } from "@/modules/ui/pull-to-refresh";
+import { SkeletonBlock } from "@/modules/ui/skeleton-block";
 import { EmptyState, ErrorState } from "@/modules/ui/states";
 import { TouchButton } from "@/modules/ui/touch-button";
 import styles from "./home.module.scss";
@@ -34,6 +34,37 @@ const GOAL_BLOOM_ITEMS = [4, 8, 12, 16].map((value) => ({
   id: String(value),
   label: `${value} sessions`,
 }));
+
+function MeHomeSkeleton() {
+  return (
+    <section className="screen" aria-busy="true" aria-label="Loading home">
+      <div className={styles.root}>
+        <SkeletonBlock
+          height="18.5rem"
+          radius="0"
+          className={styles.skeletonBanner}
+        />
+        <SkeletonBlock height="6.5rem" radius="var(--radius-2xl, 1.25rem)" />
+        <div className={styles.section}>
+          <SkeletonBlock height="0.875rem" width="30%" />
+          <SkeletonBlock height="5rem" radius="var(--radius-xl, 1rem)" />
+        </div>
+        <div className={styles.section}>
+          <SkeletonBlock height="0.875rem" width="40%" />
+          <SkeletonBlock height="7rem" radius="var(--radius-xl, 1rem)" />
+        </div>
+        <div className={styles.section}>
+          <SkeletonBlock height="0.875rem" width="35%" />
+          <div className={styles.skeletonRow}>
+            <SkeletonBlock height="4.5rem" radius="var(--radius-xl, 1rem)" />
+            <SkeletonBlock height="4.5rem" radius="var(--radius-xl, 1rem)" />
+            <SkeletonBlock height="4.5rem" radius="var(--radius-xl, 1rem)" />
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
 
 function MeHomePage() {
   const api = useApi();
@@ -118,7 +149,7 @@ function MeHomePage() {
   }
 
   if (waitingForHome) {
-    return <DanceLoader />;
+    return <MeHomeSkeleton />;
   }
 
   return (
