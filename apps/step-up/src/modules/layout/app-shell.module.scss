@@ -107,6 +107,16 @@
   flex-shrink: 0;
 }
 
+.content[data-fill-height="true"] {
+  overflow: hidden;
+}
+
+.content[data-fill-height="true"] > * {
+  flex: 1;
+  min-height: 0;
+  flex-shrink: 1;
+}
+
 @media (max-width: 767px) {
   .shell {
     --sidebar-current-width: 0px;

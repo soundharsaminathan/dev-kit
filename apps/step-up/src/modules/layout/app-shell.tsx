@@ -9,7 +9,7 @@ import {
 } from "@dev-ui/components/sidebar";
 import { Text } from "@dev-ui/components/text";
 import { useRouterState } from "@tanstack/react-router";
-import type { ReactNode } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { AppHeader } from "@/modules/layout/app-header";
 import { BottomToolbar } from "@/modules/layout/bottom-toolbar";
@@ -61,11 +61,33 @@ function isProfileHubPath(pathname: string) {
   return pathname === "/app/profile" || pathname.startsWith("/app/profile/");
 }
 
+function isMessagesPath(pathname: string) {
+  return (
+    pathname === "/app/messages" ||
+    pathname.startsWith("/app/messages/") ||
+    pathname === "/me/messages" ||
+    pathname.startsWith("/me/messages/")
+  );
+}
+
+function isCertificatesPath(pathname: string) {
+  return (
+    pathname === "/app/certificates" ||
+    pathname.startsWith("/app/certificates/")
+  );
+}
+
+function needsCollapsedSidebar(pathname: string) {
+  return isMessagesPath(pathname) || isCertificatesPath(pathname);
+}
+
 export function AppShell({ variant, children }: AppShellProps) {
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
   });
   const { user } = useAuth();
+  const collapseSidebar = needsCollapsedSidebar(pathname);
+  const [sidebarOpen, setSidebarOpen] = useState(!collapseSidebar);
   const hideHeader =
     variant === "me" ||
     user?.role === "TRAINER" ||
@@ -76,8 +98,16 @@ export function AppShell({ variant, children }: AppShellProps) {
       (isMemberHome(pathname) || isMemberTrainers(pathname))) ||
     (variant === "app" && user?.role === "TRAINER" && isStaffHome(pathname));
 
+  useEffect(() => {
+    setSidebarOpen(!collapseSidebar);
+  }, [collapseSidebar]);
+
   return (
-    <SidebarProvider defaultOpen className={styles.shell}>
+    <SidebarProvider
+      isOpen={sidebarOpen}
+      onOpenChange={setSidebarOpen}
+      className={styles.shell}
+    >
       <div className={styles.sidebarWrap}>
         <Sidebar placement="left">
           <SidebarHeader>
@@ -105,7 +135,11 @@ export function AppShell({ variant, children }: AppShellProps) {
           </div>
         ) : null}
         <main className={styles.main}>
-          <div className={styles.content} data-app-scroll>
+          <div
+            className={styles.content}
+            data-app-scroll
+            data-fill-height={collapseSidebar ? "true" : undefined}
+          >
             {children}
           </div>
         </main>

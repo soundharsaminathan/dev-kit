@@ -64,11 +64,11 @@
   .page {
     max-width: none;
     margin-inline: 0;
-    padding-inline: var(--space-6, 1.5rem);
+    padding-inline: var(--space-3, 0.75rem);
   }
 
   .layout {
-    grid-template-columns: minmax(16rem, 20rem) 1fr;
+    grid-template-columns: minmax(13rem, 15rem) minmax(0, 1fr);
   }
 
   .sidebar {

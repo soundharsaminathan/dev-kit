@@ -1,7 +1,7 @@
 import { useOnlineStatus } from "@dev-ui/hooks";
 import { useQueryClient } from "@tanstack/react-query";
 import { type ReactNode, useEffect, useState } from "react";
-import { io, type Socket } from "socket.io-client";
+import type { Socket } from "socket.io-client";
 import {
   appendMessageToCache,
   chatConversationsKey,
@@ -49,114 +49,118 @@ export function ChatSocketProvider({ children }: { children: ReactNode }) {
     let active = true;
     let created: Socket | null = null;
 
-    void getIdToken().then((token) => {
-      if (!active || !token) {
-        return;
-      }
-
-      created = io(`${getApiBaseUrl()}/chat`, {
-        auth: { token },
-        transports: ["websocket", "polling"],
-        reconnectionAttempts: 2,
-      });
-
-      created.on("connect_error", () => {
-        if (!created) {
+    void Promise.all([getIdToken(), import("socket.io-client")]).then(
+      ([token, { io }]) => {
+        if (!active || !token) {
           return;
         }
-        created.io.opts.reconnection = false;
-        created.disconnect();
-      });
 
-      created.on("message.new", ({ message }: { message: ChatMessage }) => {
-        appendMessageToCache(queryClient, message);
-        void queryClient.invalidateQueries({
-          queryKey: chatConversationsKey,
+        created = io(`${getApiBaseUrl()}/chat`, {
+          auth: { token },
+          transports: ["websocket", "polling"],
+          reconnectionAttempts: 2,
         });
-      });
 
-      created.on(
-        "message.deleted",
-        (payload: { conversationId: string; messageId: string }) => {
-          updateMessagesInCache(
-            queryClient,
-            payload.conversationId,
-            (message) =>
-              message.id === payload.messageId
-                ? {
-                    ...message,
-                    deleted: true,
-                    text: null,
-                    location: null,
-                    imageUrls: [],
-                    audioUrl: null,
-                    audioDuration: null,
-                  }
-                : message,
-          );
-        },
-      );
+        created.on("connect_error", () => {
+          if (!created) {
+            return;
+          }
+          created.io.opts.reconnection = false;
+          created.disconnect();
+        });
 
-      created.on(
-        "reaction.updated",
-        (payload: {
-          conversationId: string;
-          messageId: string;
-          reactions: ChatReaction[];
-        }) => {
-          updateMessagesInCache(
-            queryClient,
-            payload.conversationId,
-            (message) =>
-              message.id === payload.messageId
-                ? { ...message, reactions: payload.reactions }
-                : message,
-          );
-        },
-      );
+        created.on("message.new", ({ message }: { message: ChatMessage }) => {
+          appendMessageToCache(queryClient, message);
+          void queryClient.invalidateQueries({
+            queryKey: chatConversationsKey,
+          });
+        });
 
-      created.on(
-        "poll.updated",
-        (payload: {
-          conversationId: string;
-          messageId: string;
-          poll: ChatPoll;
-        }) => {
-          updateMessagesInCache(
-            queryClient,
-            payload.conversationId,
-            (message) =>
-              message.id === payload.messageId
-                ? { ...message, poll: payload.poll }
-                : message,
-          );
-        },
-      );
+        created.on(
+          "message.deleted",
+          (payload: { conversationId: string; messageId: string }) => {
+            updateMessagesInCache(
+              queryClient,
+              payload.conversationId,
+              (message) =>
+                message.id === payload.messageId
+                  ? {
+                      ...message,
+                      deleted: true,
+                      text: null,
+                      location: null,
+                      imageUrls: [],
+                      audioUrl: null,
+                      audioDuration: null,
+                    }
+                  : message,
+            );
+          },
+        );
 
-      created.on(
-        "event.updated",
-        (payload: {
-          conversationId: string;
-          messageId: string;
-          event: ChatEventInfo;
-        }) => {
-          updateMessagesInCache(
-            queryClient,
-            payload.conversationId,
-            (message) =>
-              message.id === payload.messageId
-                ? { ...message, event: payload.event }
-                : message,
-          );
-        },
-      );
+        created.on(
+          "reaction.updated",
+          (payload: {
+            conversationId: string;
+            messageId: string;
+            reactions: ChatReaction[];
+          }) => {
+            updateMessagesInCache(
+              queryClient,
+              payload.conversationId,
+              (message) =>
+                message.id === payload.messageId
+                  ? { ...message, reactions: payload.reactions }
+                  : message,
+            );
+          },
+        );
 
-      created.on("conversation.updated", () => {
-        void queryClient.invalidateQueries({ queryKey: chatConversationsKey });
-      });
+        created.on(
+          "poll.updated",
+          (payload: {
+            conversationId: string;
+            messageId: string;
+            poll: ChatPoll;
+          }) => {
+            updateMessagesInCache(
+              queryClient,
+              payload.conversationId,
+              (message) =>
+                message.id === payload.messageId
+                  ? { ...message, poll: payload.poll }
+                  : message,
+            );
+          },
+        );
 
-      setSocket(created);
-    });
+        created.on(
+          "event.updated",
+          (payload: {
+            conversationId: string;
+            messageId: string;
+            event: ChatEventInfo;
+          }) => {
+            updateMessagesInCache(
+              queryClient,
+              payload.conversationId,
+              (message) =>
+                message.id === payload.messageId
+                  ? { ...message, event: payload.event }
+                  : message,
+            );
+          },
+        );
+
+        created.on("conversation.updated", () => {
+          void queryClient.invalidateQueries({
+            queryKey: chatConversationsKey,
+          });
+        });
+
+        setSocket(created);
+      },
+    );
 
     return () => {
       active = false;

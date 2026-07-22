@@ -1,13 +1,8 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { getToken, isSupported, onMessage } from "firebase/messaging";
 import { type ReactNode, useEffect, useRef } from "react";
 import { useApi } from "@/lib/api-context";
 import { useAuth } from "@/lib/auth";
 import { isAuthBypassEnabled } from "@/lib/constants";
-import {
-  getFirebaseMessaging,
-  registerMessagingServiceWorker,
-} from "@/lib/firebase";
 
 export function PushNotificationsProvider({
   children,
@@ -46,6 +41,12 @@ export function PushNotificationsProvider({
     }
 
     async function setupPush() {
+      const [{ getToken, isSupported, onMessage }, messagingMod] =
+        await Promise.all([
+          import("firebase/messaging"),
+          import("@/lib/firebase-messaging"),
+        ]);
+
       const supported = await isSupported();
       if (!supported || cancelled) {
         return;
@@ -65,8 +66,8 @@ export function PushNotificationsProvider({
         return;
       }
 
-      const registration = await registerMessagingServiceWorker();
-      const messaging = getFirebaseMessaging();
+      const registration = await messagingMod.registerMessagingServiceWorker();
+      const messaging = messagingMod.getFirebaseMessaging();
       if (!registration || !messaging || cancelled) {
         return;
       }
