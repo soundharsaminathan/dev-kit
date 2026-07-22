@@ -21,7 +21,10 @@ export default defineConfig({
     emptyOutDir: true,
     cssCodeSplit: true,
     lib: {
-      entry: resolve(dirname, "src/index.ts"),
+      entry: {
+        index: resolve(dirname, "src/index.ts"),
+        loaders: resolve(dirname, "src/loaders.ts"),
+      },
       formats: ["es"],
     },
     rollupOptions: {

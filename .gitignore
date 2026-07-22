@@ -33,3 +33,8 @@ Thumbs.db
 # Logs
 *.log
 vitest-output.json
+
+# Lighthouse / local perf dumps
+apps/step-up/lighthouse/
+apps/step-up/lighthouse-*.json
+apps/step-up/scripts/lighthouse-matrix.mjs

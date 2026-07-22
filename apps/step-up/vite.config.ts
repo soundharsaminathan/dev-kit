@@ -1,6 +1,6 @@
 import { writeFileSync } from "node:fs";
 import path, { resolve } from "node:path";
-import { TanStackRouterVite } from "@tanstack/router-plugin/vite";
+import { tanstackRouter } from "@tanstack/router-plugin/vite";
 import react from "@vitejs/plugin-react";
 import type { Plugin } from "vite";
 import { defineConfig, loadEnv } from "vite";
@@ -85,9 +85,11 @@ export default defineConfig(({ mode }) => {
       dedupe: ["react", "react-dom"],
     },
     plugins: [
-      TanStackRouterVite({
+      tanstackRouter({
+        target: "react",
         routesDirectory: "./src/routes",
         generatedRouteTree: "./src/routeTree.gen.ts",
+        autoCodeSplitting: true,
       }),
       react(),
       firebaseMessagingSwPlugin(env),

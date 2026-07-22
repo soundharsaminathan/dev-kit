@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 type AnimatedMetricProps = {
   value: number;
@@ -34,9 +34,25 @@ export function AnimatedMetric({
   className,
 }: AnimatedMetricProps) {
   const reducedMotion = usePrefersReducedMotion();
-  const [display, setDisplay] = useState(reducedMotion ? value : 0);
+  const [display, setDisplay] = useState(value);
+  const previousValue = useRef(value);
+  const hasMounted = useRef(false);
 
   useEffect(() => {
+    if (!hasMounted.current) {
+      hasMounted.current = true;
+      previousValue.current = value;
+      setDisplay(value);
+      return;
+    }
+
+    if (previousValue.current === value) {
+      return;
+    }
+
+    const from = previousValue.current;
+    previousValue.current = value;
+
     if (reducedMotion) {
       setDisplay(value);
       return;
@@ -44,11 +60,11 @@ export function AnimatedMetric({
 
     let frameId = 0;
     const start = performance.now();
-    setDisplay(0);
+    const delta = value - from;
 
     const tick = (now: number) => {
       const progress = Math.min((now - start) / durationMs, 1);
-      setDisplay(Math.round(easeOutCubic(progress) * value));
+      setDisplay(Math.round(from + easeOutCubic(progress) * delta));
       if (progress < 1) {
         frameId = requestAnimationFrame(tick);
       }

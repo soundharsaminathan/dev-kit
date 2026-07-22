@@ -21,6 +21,10 @@
       "import": "./src/theme-fonts.ts",
       "default": "./src/theme-fonts.ts"
     },
+    "./fonts/primary": {
+      "import": "./src/theme-fonts-primary.ts",
+      "default": "./src/theme-fonts-primary.ts"
+    },
     "./theme-font-families": {
       "types": "./src/theme-font-families.ts",
       "import": "./src/theme-font-families.ts",

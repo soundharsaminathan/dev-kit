@@ -3,7 +3,7 @@ import lucidePack from "@dev-ui/icons-packs/lucide";
 import { createRouter, RouterProvider } from "@tanstack/react-router";
 import { StrictMode, useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
-import "@dev-ui/tokens/fonts";
+import "@dev-ui/tokens/fonts/primary";
 import "@dev-ui/tokens/scss";
 import "@dev-ui/components/styles";
 import "@/styles/global.scss";
@@ -53,7 +53,11 @@ function AppRouter() {
 
   if (!ready) {
     return (
-      <IconProvider icons={{ library: "lucide" }} initialPack={lucidePack}>
+      <IconProvider
+        icons={{ library: "lucide" }}
+        initialPack={lucidePack}
+        loaders={{}}
+      >
         <DanceLoader />
       </IconProvider>
     );

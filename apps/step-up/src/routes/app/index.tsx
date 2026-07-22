@@ -229,31 +229,33 @@ function AppDashboardPage() {
 
         <div className={staff.section}>
           <p className={staff.sectionTitle}>Needs attention</p>
-          {bookings.isLoading ? (
-            <SkeletonBlock height="5rem" radius="var(--radius-2xl)" />
-          ) : null}
-          {!bookings.isLoading && pending.length === 0 ? (
-            <EmptyState
-              title="All clear"
-              description="No pending bookings to approve."
-              action={
-                <TouchButton variant="primary">
-                  <Link to="/app/bookings/new">Add booking</Link>
-                </TouchButton>
-              }
-            />
-          ) : null}
-          {pending.length > 0 ? (
-            <div className={staff.list}>
-              <ExpandableBentoGrid
-                items={pendingItems}
-                aria-label="Pending booking requests"
+          <div className={staff.attentionBody}>
+            {bookings.isLoading ? (
+              <SkeletonBlock height="14.5rem" radius="var(--radius-2xl)" />
+            ) : null}
+            {!bookings.isLoading && pending.length === 0 ? (
+              <EmptyState
+                title="All clear"
+                description="No pending bookings to approve."
+                action={
+                  <TouchButton variant="primary">
+                    <Link to="/app/bookings/new">Add booking</Link>
+                  </TouchButton>
+                }
               />
-              <TouchButton variant="quiet" fullWidth>
-                <Link to="/app/bookings">Open bookings</Link>
-              </TouchButton>
-            </div>
-          ) : null}
+            ) : null}
+            {pending.length > 0 ? (
+              <div className={staff.list}>
+                <ExpandableBentoGrid
+                  items={pendingItems}
+                  aria-label="Pending booking requests"
+                />
+                <TouchButton variant="quiet" fullWidth>
+                  <Link to="/app/bookings">Open bookings</Link>
+                </TouchButton>
+              </div>
+            ) : null}
+          </div>
         </div>
 
         <div className={staff.section}>
