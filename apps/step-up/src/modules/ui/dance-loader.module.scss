@@ -27,6 +27,7 @@
   object-fit: contain;
   object-position: center;
   pointer-events: none;
+  transform: translateY(-10%) scale(1.2);
 }
 
 .caption {
@@ -51,17 +52,13 @@
   font-weight: 500;
   line-height: 1.3;
   letter-spacing: -0.03em;
-  color: color-mix(in srgb, var(--color-fg, #1b2a4a) 58%, transparent);
+  color: var(--color-fg, #1b2a4a);
   text-align: center;
   transform: translateY(-50%);
 }
 
-:global(html[data-theme-mode="dark"]) .caption {
-  color: color-mix(
-    in srgb,
-    var(--color-fg, oklch(0.95 0.01 78)) 58%,
-    transparent
-  );
+.emphasis {
+  color: var(--color-accent, var(--color-primary, #8b9af7));
 }
 
 .cascade {
@@ -89,10 +86,15 @@
   white-space: pre;
 }
 
-.letter {
+.letter,
+.letterEmphasis {
   display: inline-block;
   white-space: pre;
   will-change: opacity, filter, transform;
+}
+
+.letterEmphasis {
+  color: var(--color-accent, var(--color-primary, #8b9af7));
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -100,7 +102,8 @@
     opacity: 0.72;
   }
 
-  .letter {
+  .letter,
+  .letterEmphasis {
     will-change: auto;
   }
 }

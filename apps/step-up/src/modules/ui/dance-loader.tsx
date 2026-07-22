@@ -56,16 +56,32 @@ type DanceLoaderProps = {
   phrases?: readonly string[];
 };
 
+function splitEmphasis(text: string) {
+  const match = text.match(/^(.*\s)(\S+)$/);
+  if (!match) return { lead: "", emphasis: text, splitAt: 0 };
+  return {
+    lead: match[1]!,
+    emphasis: match[2]!,
+    splitAt: match[1]!.length,
+  };
+}
+
 function CascadingCaption({ text }: { text: string }) {
   const reducedMotion = useReducedMotion();
   const skipEnterRef = useRef(true);
+  const { lead, emphasis, splitAt } = splitEmphasis(text);
 
   useLayoutEffect(() => {
     skipEnterRef.current = false;
   }, []);
 
   if (reducedMotion) {
-    return <p className={styles.caption}>{text}</p>;
+    return (
+      <p className={styles.caption}>
+        {lead}
+        <span className={styles.emphasis}>{emphasis}</span>
+      </p>
+    );
   }
 
   return (
@@ -89,7 +105,7 @@ function CascadingCaption({ text }: { text: string }) {
                 key={i}
                 custom={i * CASCADE_STAGGER}
                 variants={CASCADE_LETTER_VARIANTS}
-                className={styles.letter}
+                className={i >= splitAt ? styles.letterEmphasis : styles.letter}
               >
                 {char}
               </motion.span>
