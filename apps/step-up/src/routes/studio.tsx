@@ -70,11 +70,11 @@ function StudioPage() {
               </div>
             ) : null}
             <div className={styles.actions}>
-              <TouchButton variant="primary" fullWidth>
-                <Link to="/login">Sign in to book</Link>
+              <TouchButton as={Link} to="/login" variant="primary" fullWidth>
+                Sign in to book
               </TouchButton>
-              <TouchButton variant="quiet" fullWidth>
-                <Link to="/">Back home</Link>
+              <TouchButton as={Link} to="/" variant="quiet" fullWidth>
+                Back home
               </TouchButton>
             </div>
           </>

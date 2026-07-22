@@ -1,22 +1,24 @@
 import { Button, type ButtonProps } from "@dev-ui/components/button";
-import type { ReactNode } from "react";
+import type { ElementType, ReactNode } from "react";
 import styles from "./touch-button.module.scss";
 
-type TouchButtonProps = ButtonProps & {
+type TouchButtonProps<C extends ElementType = "button"> = ButtonProps<C> & {
   fullWidth?: boolean;
 };
 
-export function TouchButton({
+export function TouchButton<C extends ElementType = "button">({
   className,
   fullWidth,
   size = "lg",
   ...props
-}: TouchButtonProps) {
+}: TouchButtonProps<C>) {
   const classes = [styles.touch, fullWidth ? styles.fullWidth : "", className]
     .filter(Boolean)
     .join(" ");
 
-  return <Button size={size} className={classes} {...props} />;
+  return (
+    <Button size={size} className={classes} {...(props as ButtonProps<C>)} />
+  );
 }
 
 type StickyCtaBarProps = {
