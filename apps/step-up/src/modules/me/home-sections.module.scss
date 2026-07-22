@@ -190,15 +190,15 @@
 .trialCard {
   background: linear-gradient(
     145deg,
-    color-mix(in srgb, var(--color-primary) 88%, var(--color-bg)),
+    color-mix(in srgb, var(--color-primary) 88%, #3d2a1c),
     color-mix(in srgb, var(--color-primary) 55%, #2b2118)
   );
-  color: var(--color-fg-on-primary);
+  color: #fff;
 }
 
 .trialCard .sectionEyebrow,
 .trialCard .timelineMeta {
-  color: color-mix(in srgb, var(--color-fg-on-primary) 82%, transparent);
+  color: rgb(255 255 255 / 0.82);
 }
 
 .trialCta {
@@ -206,8 +206,8 @@
   margin-top: var(--space-1, 0.25rem);
   padding: 0.625rem 1rem;
   border-radius: var(--radius-full, 9999px);
-  background: var(--color-card);
-  color: var(--nav-bar-bg, var(--color-fg));
+  background: #fff;
+  color: #1c1a17;
   font-size: 0.875rem;
   font-weight: 800;
 }
