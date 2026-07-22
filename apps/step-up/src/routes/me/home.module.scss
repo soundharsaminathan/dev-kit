@@ -60,7 +60,7 @@
   min-height: 2.75rem;
   border-radius: var(--radius-xl, 1rem);
   border: 1px solid color-mix(in srgb, var(--color-fg) 12%, transparent);
-  background: var(--card-background, #fff);
+  background: var(--card-background, var(--color-card));
   color: var(--color-fg);
   font: inherit;
   font-weight: 700;

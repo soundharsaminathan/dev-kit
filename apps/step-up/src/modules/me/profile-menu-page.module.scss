@@ -10,7 +10,7 @@
   gap: var(--space-3, 0.75rem);
   padding: var(--space-4, 1rem);
   border-radius: var(--radius-2xl, 1.25rem);
-  background: var(--card-background, #fff);
+  background: var(--card-background, var(--color-card));
   box-shadow: var(--shadow-md, 0 12px 28px rgb(0 0 0 / 8%));
   color: inherit;
   text-decoration: none;
@@ -66,7 +66,7 @@
   display: flex;
   flex-direction: column;
   border-radius: var(--radius-2xl, 1.25rem);
-  background: var(--card-background, #fff);
+  background: var(--card-background, var(--color-card));
   box-shadow: var(--shadow-md, 0 12px 28px rgb(0 0 0 / 6%));
 }
 

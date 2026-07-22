@@ -35,7 +35,7 @@
   width: 10px;
   height: 10px;
   border: 1.5px solid #2563eb;
-  background: #fff;
+  background: var(--color-card);
   border-radius: 2px;
   padding: 0;
   z-index: 2;
@@ -74,7 +74,7 @@
   margin-left: -6px;
   border-radius: 50%;
   border: 1.5px solid #2563eb;
-  background: #fff;
+  background: var(--color-card);
   padding: 0;
   cursor: grab;
   z-index: 2;

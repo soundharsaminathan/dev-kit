@@ -20,8 +20,8 @@
   top: 0;
   align-self: start;
   height: 100dvh;
-  background: var(--card-background, #fff);
-  --color-sidebar: var(--card-background, #fff);
+  background: var(--card-background, var(--color-card));
+  --color-sidebar: var(--card-background, var(--color-card));
   border-inline-end: 1px solid color-mix(in srgb, var(--color-fg) 8%, transparent);
 }
 
@@ -125,7 +125,7 @@
   .content::after {
     content: "";
     flex-shrink: 0;
-    height: calc(6rem + env(safe-area-inset-bottom, 0px));
+    height: calc(4rem + env(safe-area-inset-bottom, 0px));
   }
 }
 

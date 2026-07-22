@@ -211,7 +211,7 @@
   padding-inline: 0.3rem;
   border-radius: 999px;
   background: var(--color-primary);
-  color: var(--color-primary-fg, #fff);
+  color: var(--color-fg-on-primary);
   font-size: 0.7rem;
   font-weight: 700;
 }
@@ -261,7 +261,7 @@
   z-index: 1;
   width: 1.75rem;
   height: 1.75rem;
-  color: var(--color-primary-fg, #fff);
+  color: var(--color-fg-on-primary);
 }
 
 .emptyTitle {
@@ -354,11 +354,11 @@
   flex-shrink: 0;
   background: linear-gradient(
     90deg,
-    color-mix(in srgb, var(--color-fg) 7%, #fff) 0%,
-    color-mix(in srgb, var(--color-fg) 7%, #fff) 40%,
-    color-mix(in srgb, var(--color-fg) 18%, #fff) 50%,
-    color-mix(in srgb, var(--color-fg) 7%, #fff) 60%,
-    color-mix(in srgb, var(--color-fg) 7%, #fff) 100%
+    color-mix(in srgb, var(--color-fg) 7%, var(--color-card)) 0%,
+    color-mix(in srgb, var(--color-fg) 7%, var(--color-card)) 40%,
+    color-mix(in srgb, var(--color-fg) 18%, var(--color-card)) 50%,
+    color-mix(in srgb, var(--color-fg) 7%, var(--color-card)) 60%,
+    color-mix(in srgb, var(--color-fg) 7%, var(--color-card)) 100%
   );
   background-size: 220% 100%;
   animation: conversationSkeletonShimmer 1.35s ease-in-out infinite;
@@ -398,6 +398,6 @@
 
   .listLoading .skeletonFill {
     animation: none;
-    background: color-mix(in srgb, var(--color-fg) 8%, #fff);
+    background: color-mix(in srgb, var(--color-fg) 8%, var(--color-card));
   }
 }

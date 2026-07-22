@@ -1,4 +1,3 @@
-import { Loader } from "@dev-ui/components/loader";
 import { IconProvider } from "@dev-ui/icons";
 import lucidePack from "@dev-ui/icons-packs/lucide";
 import { createRouter, RouterProvider } from "@tanstack/react-router";
@@ -11,6 +10,7 @@ import "@/styles/global.scss";
 import { ApiProvider } from "@/lib/api-context";
 import { AuthProvider, useAuth } from "@/lib/auth";
 import { initSentry } from "@/lib/sentry";
+import { DanceLoader } from "@/modules/ui/dance-loader";
 import { routeTree } from "./routeTree.gen";
 
 initSentry();
@@ -54,11 +54,7 @@ function AppRouter() {
   if (!ready) {
     return (
       <IconProvider icons={{ library: "lucide" }} initialPack={lucidePack}>
-        <div
-          style={{ display: "grid", placeItems: "center", minHeight: "100dvh" }}
-        >
-          <Loader aria-label="Loading" />
-        </div>
+        <DanceLoader />
       </IconProvider>
     );
   }

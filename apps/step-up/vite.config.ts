@@ -65,6 +65,7 @@ export default defineConfig(({ mode }) => {
   return {
     server: {
       port: 5180,
+      open: true,
     },
     optimizeDeps: {
       ...devAppOptimizeDeps,

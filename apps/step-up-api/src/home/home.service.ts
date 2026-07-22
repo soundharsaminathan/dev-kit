@@ -5,7 +5,6 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { UserRole } from "@prisma/client";
-import { BatchesService } from "../batches/batches.service";
 import { MediaService } from "../media/media.service";
 import { PrismaService } from "../prisma/prisma.service";
 import type { DecryptedUser } from "../users/user-crypto.service";
@@ -38,6 +37,29 @@ function styleBadgeFromCategories(danceCategories: unknown): string | null {
     (danceCategories[0] as { name?: string }).name ?? "",
   ).trim();
   return name || null;
+}
+
+const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+function scheduleLabelFrom(schedule: unknown): string | null {
+  if (!schedule || typeof schedule !== "object") return null;
+  const s = schedule as {
+    frequency?: string;
+    weekdays?: number[];
+    startTime?: string;
+    endTime?: string;
+  };
+  if (!s.startTime || !s.endTime) return null;
+  if (s.frequency === "DAILY") {
+    return `Daily · ${s.startTime}–${s.endTime}`;
+  }
+  const days = (s.weekdays ?? [])
+    .map((day) => WEEKDAY_LABELS[day] ?? "")
+    .filter(Boolean)
+    .join(", ");
+  return days
+    ? `${days} · ${s.startTime}–${s.endTime}`
+    : `${s.startTime}–${s.endTime}`;
 }
 
 const WEEKEND_DAYS = new Set([0, 6]);
@@ -89,7 +111,6 @@ export class HomeService {
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(UserCryptoService) private readonly crypto: UserCryptoService,
     @Inject(MediaService) private readonly media: MediaService,
-    @Inject(BatchesService) private readonly batches: BatchesService,
     @Inject(GoalsService) private readonly goals: GoalsService,
     @Inject(AchievementsService)
     private readonly achievements: AchievementsService,
@@ -177,6 +198,10 @@ export class HomeService {
           batch: {
             include: {
               sessions: {
+                where: {
+                  status: "SCHEDULED",
+                  startsAt: { gt: now },
+                },
                 select: {
                   id: true,
                   startsAt: true,
@@ -184,8 +209,10 @@ export class HomeService {
                   status: true,
                 },
                 orderBy: { startsAt: "asc" },
+                take: 1,
               },
               branch: { select: { id: true, name: true } },
+              _count: { select: { sessions: true } },
             },
           },
         },
@@ -296,14 +323,9 @@ export class HomeService {
     }
 
     const progress = enrollments.map((enrollment) => {
-      const sessions = enrollment.batch.sessions;
-      const totalSessions = sessions.length;
+      const totalSessions = enrollment.batch._count.sessions;
       const attendedSessions = attendedByBatch.get(enrollment.batchId) ?? 0;
-      const nextLesson = sessions.find(
-        (session) =>
-          session.status === "SCHEDULED" &&
-          session.startsAt.getTime() > now.getTime(),
-      );
+      const nextLesson = enrollment.batch.sessions[0] ?? null;
       const stats = computeBatchProgress({ totalSessions, attendedSessions });
       const styleBadge = styleBadgeFromCategories(
         enrollment.batch.danceCategories,
@@ -491,29 +513,97 @@ export class HomeService {
       enrollments.find((row) => row.batch.branch?.id)?.batch.branch?.id ??
       null;
 
-    const branch =
-      studioId != null
-        ? await this.prisma.studioBranch.findFirst({
-            where: preferredBranchId
-              ? { id: preferredBranchId, studioId }
-              : { studioId },
-            include: {
-              coverMedia: true,
-              media: {
-                where: { archivedAt: null, kind: "IMAGE" },
-                orderBy: { sortOrder: "asc" },
-                take: 1,
+    const enrolledIds = new Set(enrollments.map((row) => row.batchId));
+    const studentStyles = new Set(
+      (student.styles ?? []).map((style) => style.toLowerCase()),
+    );
+    const studentVibes = student.scheduleVibe ?? [];
+    const preferredBatchBranchId = student.preferredBranchId ?? null;
+    const monthlyPresent = presentSessions.filter(
+      (row) => row.startsAt >= periodStart && row.startsAt < periodEnd,
+    ).length;
+
+    const [branch, trainerLinks, recommendBatches, achievements] =
+      await Promise.all([
+        studioId != null
+          ? this.prisma.studioBranch.findFirst({
+              where: preferredBranchId
+                ? { id: preferredBranchId, studioId }
+                : { studioId },
+              include: {
+                coverMedia: true,
+                media: {
+                  where: { archivedAt: null, kind: "IMAGE" },
+                  orderBy: { sortOrder: "asc" },
+                  take: 1,
+                },
               },
-            },
-            orderBy: { createdAt: "asc" },
-          })
-        : null;
+              orderBy: { createdAt: "asc" },
+            })
+          : Promise.resolve(null),
+        studioId != null
+          ? this.prisma.batchTrainer.findMany({
+              where: {
+                batch: {
+                  studioId,
+                  active: true,
+                  ...(preferredBranchId ? { branchId: preferredBranchId } : {}),
+                },
+              },
+              include: {
+                trainer: true,
+                batch: {
+                  select: {
+                    danceCategories: true,
+                  },
+                },
+              },
+              take: 48,
+            })
+          : Promise.resolve([]),
+        studioId != null
+          ? this.prisma.batch.findMany({
+              where: {
+                studioId,
+                active: true,
+                ...(enrolledIds.size > 0
+                  ? { id: { notIn: [...enrolledIds] } }
+                  : {}),
+              },
+              select: {
+                id: true,
+                name: true,
+                branchId: true,
+                coverImageUrl: true,
+                danceCategories: true,
+                scheduleJson: true,
+                ratingAvg: true,
+                capacity: true,
+                monthlyPlan: { select: { priceMonthly: true } },
+                _count: { select: { enrollments: true } },
+              },
+              orderBy: { name: "asc" },
+              take: 24,
+            })
+          : Promise.resolve([]),
+        this.achievements.listForStudent(resolvedStudentId, studioId, {
+          sessionsCompleted,
+          streak,
+          contestEntries,
+        }),
+      ]);
 
     const coverSource = branch?.coverMedia ?? branch?.media[0] ?? null;
-    const bannerImageUrl = coverSource
-      ? ((await this.media.signReadUrl(coverSource.objectKey)) ??
-        coverSource.objectKey)
-      : null;
+    let bannerImageUrl: string | null = null;
+    if (coverSource?.objectKey) {
+      try {
+        bannerImageUrl =
+          (await this.media.signReadUrl(coverSource.objectKey)) ??
+          coverSource.objectKey;
+      } catch {
+        bannerImageUrl = coverSource.objectKey;
+      }
+    }
 
     const banner = branch
       ? {
@@ -523,28 +613,6 @@ export class HomeService {
           altText: coverSource?.altText ?? coverSource?.caption ?? branch.name,
         }
       : null;
-
-    const trainerLinks =
-      studioId != null
-        ? await this.prisma.batchTrainer.findMany({
-            where: {
-              batch: {
-                studioId,
-                active: true,
-                ...(branch ? { branchId: branch.id } : {}),
-              },
-            },
-            include: {
-              trainer: true,
-              batch: {
-                select: {
-                  danceCategories: true,
-                },
-              },
-            },
-            take: 48,
-          })
-        : [];
 
     const instructorsMap = new Map<
       string,
@@ -568,57 +636,50 @@ export class HomeService {
     }
     const instructors = [...instructorsMap.values()];
 
-    const enrolledIds = new Set(enrollments.map((row) => row.batchId));
-    const studentStyles = new Set(
-      (student.styles ?? []).map((style) => style.toLowerCase()),
-    );
-    const studentVibes = student.scheduleVibe ?? [];
-    const preferredBatchBranchId = student.preferredBranchId ?? null;
-
-    let recommendations: Awaited<ReturnType<BatchesService["listByStudio"]>> =
-      [];
-    if (studioId) {
-      const discover = await this.batches.listByStudio(studioId, {
-        activeOnly: true,
-      });
-      recommendations = discover
-        .filter((batch) => !enrolledIds.has(batch.id))
-        .filter((batch) => {
-          if (studentStyles.size === 0) return true;
-          const badge = batch.styleBadge?.toLowerCase();
-          return badge ? studentStyles.has(badge) : true;
-        })
-        .sort((a, b) => {
-          const aBranch =
-            preferredBatchBranchId && a.branchId === preferredBatchBranchId
-              ? 1
-              : 0;
-          const bBranch =
-            preferredBatchBranchId && b.branchId === preferredBatchBranchId
-              ? 1
-              : 0;
-          if (aBranch !== bBranch) return bBranch - aBranch;
-          return (
-            scheduleVibeScore(b.scheduleJson, studentVibes) -
-            scheduleVibeScore(a.scheduleJson, studentVibes)
-          );
-        })
-        .slice(0, 8);
-    }
-
-    const monthlyPresent = presentSessions.filter(
-      (row) => row.startsAt >= periodStart && row.startsAt < periodEnd,
-    ).length;
-
-    const achievements = await this.achievements.listForStudent(
-      resolvedStudentId,
-      studioId,
-      {
-        sessionsCompleted,
-        streak,
-        contestEntries,
-      },
-    );
+    const recommendations = recommendBatches
+      .map((batch) => {
+        const styleBadge = styleBadgeFromCategories(batch.danceCategories);
+        return {
+          id: batch.id,
+          name: batch.name,
+          branchId: batch.branchId,
+          coverImageUrl: batch.coverImageUrl,
+          styleBadge,
+          scheduleJson: batch.scheduleJson,
+          scheduleLabel: scheduleLabelFrom(batch.scheduleJson),
+          ratingAvg: batch.ratingAvg,
+          capacity: batch.capacity,
+          remainingSeats: Math.max(
+            0,
+            batch.capacity - batch._count.enrollments,
+          ),
+          priceMonthly: batch.monthlyPlan?.priceMonthly ?? null,
+        };
+      })
+      .filter((batch) => {
+        if (studentStyles.size === 0) return true;
+        const badge = batch.styleBadge?.toLowerCase();
+        return badge ? studentStyles.has(badge) : true;
+      })
+      .sort((a, b) => {
+        const aBranch =
+          preferredBatchBranchId && a.branchId === preferredBatchBranchId
+            ? 1
+            : 0;
+        const bBranch =
+          preferredBatchBranchId && b.branchId === preferredBatchBranchId
+            ? 1
+            : 0;
+        if (aBranch !== bBranch) return bBranch - aBranch;
+        return (
+          scheduleVibeScore(b.scheduleJson, studentVibes) -
+          scheduleVibeScore(a.scheduleJson, studentVibes)
+        );
+      })
+      .slice(0, 8)
+      .map(
+        ({ scheduleJson: _scheduleJson, branchId: _branchId, ...rest }) => rest,
+      );
 
     const hasEnrollment = enrollments.length > 0;
 

@@ -1,0 +1,106 @@
+.root {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100dvh;
+  min-height: 100%;
+  overflow: hidden;
+  background: var(--surface-background, var(--color-bg, #f5efe6));
+  color: var(--color-fg, #1b2a4a);
+}
+
+:global(html[data-theme-mode="dark"]) .root {
+  background: var(--surface-background, var(--color-bg, oklch(0.13 0.005 78)));
+  color: var(--color-fg, oklch(0.95 0.01 78));
+}
+
+.dancer {
+  display: block;
+  width: min(100vw, 92dvh);
+  height: min(72dvh, 100vw);
+  max-width: 100%;
+  max-height: 100%;
+  margin: 0 auto;
+  object-fit: contain;
+  object-position: center;
+  pointer-events: none;
+}
+
+.caption {
+  position: absolute;
+  top: 75%;
+  left: 0;
+  right: 0;
+  z-index: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  box-sizing: border-box;
+  width: 100%;
+  margin: 0;
+  padding: 0 var(--space-6, 1.5rem);
+  font-family:
+    "Plus Jakarta Sans",
+    system-ui,
+    -apple-system,
+    sans-serif;
+  font-size: clamp(1.25rem, 4.5vw, 1.75rem);
+  font-weight: 500;
+  line-height: 1.3;
+  letter-spacing: -0.03em;
+  color: color-mix(in srgb, var(--color-fg, #1b2a4a) 58%, transparent);
+  text-align: center;
+  transform: translateY(-50%);
+}
+
+:global(html[data-theme-mode="dark"]) .caption {
+  color: color-mix(
+    in srgb,
+    var(--color-fg, oklch(0.95 0.01 78)) 58%,
+    transparent
+  );
+}
+
+.cascade {
+  position: relative;
+  display: block;
+  width: 100%;
+  overflow: hidden;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.measure {
+  display: block;
+  visibility: hidden;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.cascadeLayer {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  white-space: pre;
+}
+
+.letter {
+  display: inline-block;
+  white-space: pre;
+  will-change: opacity, filter, transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .caption {
+    opacity: 0.72;
+  }
+
+  .letter {
+    will-change: auto;
+  }
+}

@@ -78,12 +78,15 @@
 }
 
 .actionPrimary {
-  background: var(--color-primary, #8b9af7);
-  color: var(--color-primary-fg, #fff);
+  background: var(--btn-primary-background, var(--color-primary));
+  color: var(--btn-primary-foreground, var(--color-fg-on-primary));
 }
 
 .actionPrimary:hover {
-  background: color-mix(in srgb, var(--color-primary, #8b9af7) 88%, black);
+  background: var(
+    --btn-primary-hover-background,
+    color-mix(in srgb, var(--color-primary) 88%, black)
+  );
 }
 
 .actionPrimary:disabled {
