@@ -11,6 +11,8 @@
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-3, 0.75rem);
+  min-width: 0;
+  width: 100%;
 }
 
 .toolbarActions {

@@ -5,18 +5,15 @@ import { TextField } from "@dev-ui/components/text-field";
 import { useOnlineStatus } from "@dev-ui/hooks";
 import { useForm } from "@tanstack/react-form";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { useAuth } from "@/lib/auth";
-import {
-  DEV_USERS,
-  isAuthBypassEnabled,
-  MEMBER_ROLES,
-  STAFF_ROLES,
-  type UserRole,
-} from "@/lib/constants";
+import { DEV_USERS, isAuthBypassEnabled, type UserRole } from "@/lib/constants";
 import { getLastLoginIdentifier } from "@/lib/last-login";
-import { memberHomePathForUser } from "@/lib/onboarding";
-import { safeInternalPath } from "@/lib/require-auth";
+import {
+  homePathForUser,
+  redirectIfAuthenticated,
+  safeInternalPath,
+} from "@/lib/require-auth";
 import { PublicShell } from "@/modules/layout/public-shell";
 import { TouchButton } from "@/modules/ui/touch-button";
 import styles from "./login.module.scss";
@@ -65,6 +62,9 @@ function validatePassword(value: string) {
 export const Route = createFileRoute("/login")({
   validateSearch: (search: Record<string, unknown>): LoginSearch =>
     parseSearch(search),
+  beforeLoad: ({ context, search }) => {
+    redirectIfAuthenticated(context.auth, search.redirect);
+  },
   component: LoginPage,
 });
 
@@ -72,30 +72,19 @@ function LoginPage() {
   const navigate = useNavigate();
   const { redirect: redirectTo, identifier: searchIdentifier } =
     Route.useSearch();
-  const { signIn, signInWithGoogle, loginAsDev, user, loading } = useAuth();
+  const { signIn, signInWithGoogle, loginAsDev, user } = useAuth();
   const online = useOnlineStatus();
   const [error, setError] = useState<string | null>(null);
-  // A session that already exists when the login page opens means the person
-  // came here to switch accounts; don't bounce them back to the old account.
-  const [hadSessionOnOpen] = useState(() => Boolean(user));
 
   const redirectForRole = useCallback(
-    (role: UserRole, authUser = user) => {
+    (_role: UserRole, authUser = user) => {
       const safeRedirect = safeInternalPath(redirectTo);
       if (safeRedirect) {
         void navigate({ to: safeRedirect, replace: true });
         return;
       }
-      if (STAFF_ROLES.includes(role)) {
-        void navigate({ to: "/app", replace: true });
-        return;
-      }
-      if (MEMBER_ROLES.includes(role) && authUser) {
-        void navigate({ to: memberHomePathForUser(authUser), replace: true });
-        return;
-      }
-      if (MEMBER_ROLES.includes(role)) {
-        void navigate({ to: "/me", replace: true });
+      if (authUser) {
+        void navigate({ to: homePathForUser(authUser), replace: true });
         return;
       }
       void navigate({ to: "/", replace: true });
@@ -138,12 +127,6 @@ function LoginPage() {
     const next = DEV_USERS[role];
     redirectForRole(role, next);
   };
-
-  useEffect(() => {
-    if (user && !loading && !hadSessionOnOpen) {
-      redirectForRole(user.role);
-    }
-  }, [user, loading, hadSessionOnOpen, redirectForRole]);
 
   return (
     <PublicShell>

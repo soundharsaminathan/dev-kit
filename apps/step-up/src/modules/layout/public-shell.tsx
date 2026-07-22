@@ -1,6 +1,8 @@
 import { Button } from "@dev-ui/components/button";
 import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
+import { useAuth } from "@/lib/auth";
+import { homePathForUser } from "@/lib/require-auth";
 import styles from "./public-shell.module.scss";
 
 type PublicShellProps = {
@@ -8,6 +10,9 @@ type PublicShellProps = {
 };
 
 export function PublicShell({ children }: PublicShellProps) {
+  const { user, loading } = useAuth();
+  const appHome = user ? homePathForUser(user) : null;
+
   return (
     <div className={styles.shell}>
       <header className={styles.header}>
@@ -18,9 +23,16 @@ export function PublicShell({ children }: PublicShellProps) {
           <Link to="/studio">
             <Button variant="quiet">Studio</Button>
           </Link>
-          <Link to="/login">
-            <Button variant="primary">Sign in</Button>
-          </Link>
+          {!loading &&
+            (appHome ? (
+              <Link to={appHome}>
+                <Button variant="primary">Open app</Button>
+              </Link>
+            ) : (
+              <Link to="/login">
+                <Button variant="primary">Sign in</Button>
+              </Link>
+            ))}
         </nav>
       </header>
       <main className={styles.main}>{children}</main>

@@ -5,11 +5,14 @@ import { TextField } from "@dev-ui/components/text-field";
 import { useOnlineStatus } from "@dev-ui/hooks";
 import { useForm } from "@tanstack/react-form";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { useAuth } from "@/lib/auth";
-import { MEMBER_ROLES, STAFF_ROLES, type UserRole } from "@/lib/constants";
-import { memberHomePathForUser } from "@/lib/onboarding";
-import { safeInternalPath } from "@/lib/require-auth";
+import type { UserRole } from "@/lib/constants";
+import {
+  homePathForUser,
+  redirectIfAuthenticated,
+  safeInternalPath,
+} from "@/lib/require-auth";
 import { PublicShell } from "@/modules/layout/public-shell";
 import { TouchButton } from "@/modules/ui/touch-button";
 import styles from "./login.module.scss";
@@ -61,34 +64,28 @@ function validatePassword(value: string) {
 export const Route = createFileRoute("/register")({
   validateSearch: (search: Record<string, unknown>): RegisterSearch =>
     parseSearch(search),
+  beforeLoad: ({ context, search }) => {
+    redirectIfAuthenticated(context.auth, search.redirect);
+  },
   component: RegisterPage,
 });
 
 function RegisterPage() {
   const navigate = useNavigate();
   const { redirect: redirectTo } = Route.useSearch();
-  const { signUp, signInWithGoogle, user, loading } = useAuth();
+  const { signUp, signInWithGoogle, user } = useAuth();
   const online = useOnlineStatus();
   const [error, setError] = useState<string | null>(null);
-  const [hadSessionOnOpen] = useState(() => Boolean(user));
 
   const redirectForRole = useCallback(
-    (role: UserRole, authUser = user) => {
+    (_role: UserRole, authUser = user) => {
       const safeRedirect = safeInternalPath(redirectTo);
       if (safeRedirect) {
         void navigate({ to: safeRedirect, replace: true });
         return;
       }
-      if (STAFF_ROLES.includes(role)) {
-        void navigate({ to: "/app", replace: true });
-        return;
-      }
-      if (MEMBER_ROLES.includes(role) && authUser) {
-        void navigate({ to: memberHomePathForUser(authUser), replace: true });
-        return;
-      }
-      if (MEMBER_ROLES.includes(role)) {
-        void navigate({ to: "/me/onboarding", replace: true });
+      if (authUser) {
+        void navigate({ to: homePathForUser(authUser), replace: true });
         return;
       }
       void navigate({ to: "/", replace: true });
@@ -130,12 +127,6 @@ function RegisterPage() {
       setError("Google sign in failed");
     }
   };
-
-  useEffect(() => {
-    if (user && !loading && !hadSessionOnOpen) {
-      redirectForRole(user.role, user);
-    }
-  }, [user, loading, hadSessionOnOpen, redirectForRole]);
 
   return (
     <PublicShell>

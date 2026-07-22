@@ -75,7 +75,7 @@ function MeBookingsPage() {
           : "Track trial, open seat, and private requests."
       }
       showBack
-      backTo="/me"
+      backTo="/me/profile"
     >
       <PullToRefresh onRefresh={() => bookings.refetch()}>
         <div className={staff.section}>

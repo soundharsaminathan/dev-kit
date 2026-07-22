@@ -9,11 +9,29 @@
   background: var(--surface-elevated, var(--color-bg));
 }
 
+.hScroll {
+  min-width: 0;
+  max-height: min(70vh, 42rem);
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+
+.monthGrid {
+  display: flex;
+  flex-direction: column;
+  min-width: 100%;
+}
+
 .weekdayRow {
+  position: sticky;
+  top: 0;
+  z-index: 2;
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
   border-bottom: 1px solid color-mix(in srgb, var(--color-fg) 12%, transparent);
-  background: color-mix(in srgb, var(--color-fg) 3%, transparent);
+  background: color-mix(in srgb, var(--color-fg) 3%, var(--surface-elevated, var(--color-bg)));
 }
 
 .weekday {
@@ -106,6 +124,18 @@
 }
 
 @media (max-width: 720px) {
+  .monthGrid {
+    width: max-content;
+    min-width: 100%;
+  }
+
+  .weekdayRow,
+  .grid {
+    grid-template-columns: repeat(7, minmax(4.5rem, 1fr));
+    width: max-content;
+    min-width: 100%;
+  }
+
   .grid {
     grid-auto-rows: minmax(5rem, auto);
   }
