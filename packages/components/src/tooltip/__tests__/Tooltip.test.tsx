@@ -1,6 +1,6 @@
 import "@testing-library/jest-dom/vitest";
 import { setInteractionModality } from "@react-aria/interactions";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Button } from "../../button/Button";
 import { Tooltip, TooltipContent } from "../Tooltip";
@@ -214,5 +214,69 @@ describe("Tooltip", () => {
     fireEvent.keyDown(trigger, { key: "Enter" });
     vi.runAllTimers();
     expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
+  });
+
+  it("clamps portal tooltips inside the viewport near the right edge", () => {
+    const originalInnerWidth = window.innerWidth;
+    Object.defineProperty(window, "innerWidth", {
+      configurable: true,
+      writable: true,
+      value: 320,
+    });
+
+    render(
+      <div style={{ position: "fixed", right: 0, top: 40 }}>
+        <Tooltip delay={0}>
+          <button type="button">Bell</button>
+          <TooltipContent portal placement="bottom">
+            Notifications
+          </TooltipContent>
+        </Tooltip>
+      </div>,
+    );
+
+    const trigger = screen.getByRole("button", { name: "Bell" });
+    trigger.getBoundingClientRect = () =>
+      ({
+        x: 280,
+        y: 40,
+        top: 40,
+        left: 280,
+        bottom: 72,
+        right: 312,
+        width: 32,
+        height: 32,
+        toJSON() {
+          return {};
+        },
+      }) as DOMRect;
+
+    fireEvent.pointerEnter(trigger, { pointerType: "mouse" });
+    vi.runAllTimers();
+
+    const tooltip = screen.getByRole("tooltip");
+    Object.defineProperty(tooltip, "offsetWidth", {
+      configurable: true,
+      value: 120,
+    });
+    Object.defineProperty(tooltip, "offsetHeight", {
+      configurable: true,
+      value: 32,
+    });
+
+    act(() => {
+      window.dispatchEvent(new Event("resize"));
+    });
+
+    expect(Number.parseFloat(tooltip.style.left)).toBeLessThanOrEqual(
+      320 - 8 - 120,
+    );
+    expect(Number.parseFloat(tooltip.style.left)).toBeGreaterThanOrEqual(8);
+
+    Object.defineProperty(window, "innerWidth", {
+      configurable: true,
+      writable: true,
+      value: originalInnerWidth,
+    });
   });
 });

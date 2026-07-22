@@ -29,6 +29,7 @@ import type {
 import { useTouchTooltipTriggerProps } from "./use-touch-tooltip-trigger";
 
 const TOOLTIP_GAP = 8;
+const VIEWPORT_PADDING = 8;
 
 const TooltipContext = createContext<TooltipContextValue | null>(null);
 
@@ -38,6 +39,10 @@ function useTooltipContext(component: string): TooltipContextValue {
     throw new Error(`${component} must be used within Tooltip`);
   }
   return context;
+}
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(Math.max(value, min), max);
 }
 
 function getTriggerChild(children: ReactNode, contentDisplayName: string) {
@@ -54,43 +59,93 @@ function getTriggerChild(children: ReactNode, contentDisplayName: string) {
   return found;
 }
 
-function getPortalStyle(placement: Placement, rect: DOMRect): CSSProperties {
-  const centerX = rect.left + rect.width / 2;
-  const centerY = rect.top + rect.height / 2;
+function getClampedOrigin(
+  preferredLeft: number,
+  preferredTop: number,
+  width: number,
+  height: number,
+): { left: number; top: number } {
+  const maxLeft = Math.max(
+    VIEWPORT_PADDING,
+    window.innerWidth - VIEWPORT_PADDING - width,
+  );
+  const maxTop = Math.max(
+    VIEWPORT_PADDING,
+    window.innerHeight - VIEWPORT_PADDING - height,
+  );
+
+  return {
+    left: clamp(preferredLeft, VIEWPORT_PADDING, maxLeft),
+    top: clamp(preferredTop, VIEWPORT_PADDING, maxTop),
+  };
+}
+
+function getPortalStyle(
+  placement: Placement,
+  triggerRect: DOMRect,
+  tooltipSize: { width: number; height: number },
+): CSSProperties {
+  const { width, height } = tooltipSize;
+  const centerX = triggerRect.left + triggerRect.width / 2;
+  const centerY = triggerRect.top + triggerRect.height / 2;
+
+  let preferredLeft: number;
+  let preferredTop: number;
 
   if (placement === "right" || placement.startsWith("right")) {
-    return {
-      position: "fixed",
-      top: centerY,
-      left: rect.right + TOOLTIP_GAP,
-      transform: "translateY(-50%)",
-    };
+    preferredLeft = triggerRect.right + TOOLTIP_GAP;
+    preferredTop = centerY - height / 2;
+  } else if (placement === "left" || placement.startsWith("left")) {
+    preferredLeft = triggerRect.left - TOOLTIP_GAP - width;
+    preferredTop = centerY - height / 2;
+  } else if (placement === "top" || placement.startsWith("top")) {
+    preferredLeft = centerX - width / 2;
+    preferredTop = triggerRect.top - TOOLTIP_GAP - height;
+  } else {
+    preferredLeft = centerX - width / 2;
+    preferredTop = triggerRect.bottom + TOOLTIP_GAP;
   }
 
-  if (placement === "left" || placement.startsWith("left")) {
-    return {
-      position: "fixed",
-      top: centerY,
-      left: rect.left - TOOLTIP_GAP,
-      transform: "translate(-100%, -50%)",
-    };
-  }
-
-  if (placement === "top" || placement.startsWith("top")) {
-    return {
-      position: "fixed",
-      top: rect.top - TOOLTIP_GAP,
-      left: centerX,
-      transform: "translate(-50%, -100%)",
-    };
-  }
+  const { left, top } = getClampedOrigin(
+    preferredLeft,
+    preferredTop,
+    width,
+    height,
+  );
 
   return {
     position: "fixed",
-    top: rect.bottom + TOOLTIP_GAP,
-    left: centerX,
-    transform: "translateX(-50%)",
+    top,
+    left,
+    transform: "none",
   };
+}
+
+function syncInlineViewportShift(tooltip: HTMLElement) {
+  tooltip.style.setProperty("--tooltip-shift-x", "0px");
+  tooltip.style.setProperty("--tooltip-shift-y", "0px");
+
+  const rect = tooltip.getBoundingClientRect();
+  const maxRight = window.innerWidth - VIEWPORT_PADDING;
+  const maxBottom = window.innerHeight - VIEWPORT_PADDING;
+
+  let shiftX = 0;
+  let shiftY = 0;
+
+  if (rect.left < VIEWPORT_PADDING) {
+    shiftX = VIEWPORT_PADDING - rect.left;
+  } else if (rect.right > maxRight) {
+    shiftX = maxRight - rect.right;
+  }
+
+  if (rect.top < VIEWPORT_PADDING) {
+    shiftY = VIEWPORT_PADDING - rect.top;
+  } else if (rect.bottom > maxBottom) {
+    shiftY = maxBottom - rect.bottom;
+  }
+
+  tooltip.style.setProperty("--tooltip-shift-x", `${shiftX}px`);
+  tooltip.style.setProperty("--tooltip-shift-y", `${shiftY}px`);
 }
 
 function Tooltip({
@@ -225,6 +280,32 @@ function TooltipContent({
   }, [state.isOpen, fullWidth, portal, triggerRef]);
 
   useLayoutEffect(() => {
+    if (!state.isOpen || portal) {
+      return;
+    }
+
+    const tooltip = tooltipRef.current;
+    if (!tooltip) {
+      return;
+    }
+
+    const syncShift = () => {
+      syncInlineViewportShift(tooltip);
+    };
+
+    syncShift();
+    window.addEventListener("scroll", syncShift, true);
+    window.addEventListener("resize", syncShift);
+
+    return () => {
+      window.removeEventListener("scroll", syncShift, true);
+      window.removeEventListener("resize", syncShift);
+      tooltip.style.removeProperty("--tooltip-shift-x");
+      tooltip.style.removeProperty("--tooltip-shift-y");
+    };
+  }, [state.isOpen, portal, placement]);
+
+  useLayoutEffect(() => {
     if (!state.isOpen || !portal) {
       setPortalStyle(undefined);
       return;
@@ -232,12 +313,20 @@ function TooltipContent({
 
     const syncPosition = () => {
       const trigger = triggerRef.current;
+      const tooltip = tooltipRef.current;
       if (!trigger) {
         return;
       }
-      setPortalStyle(
-        getPortalStyle(placement, trigger.getBoundingClientRect()),
-      );
+
+      const triggerRect = trigger.getBoundingClientRect();
+      const tooltipSize = tooltip
+        ? {
+            width: tooltip.offsetWidth,
+            height: tooltip.offsetHeight,
+          }
+        : { width: 0, height: 0 };
+
+      setPortalStyle(getPortalStyle(placement, triggerRect, tooltipSize));
     };
 
     syncPosition();
@@ -251,10 +340,6 @@ function TooltipContent({
   }, [state.isOpen, portal, placement, triggerRef]);
 
   if (!state.isOpen) {
-    return null;
-  }
-
-  if (portal && !portalStyle) {
     return null;
   }
 

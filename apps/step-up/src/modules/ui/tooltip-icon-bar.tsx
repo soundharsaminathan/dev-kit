@@ -17,10 +17,16 @@ import {
 import { createPortal } from "react-dom";
 import styles from "./tooltip-icon-bar.module.scss";
 
+const VIEWPORT_PADDING = 8;
+
 type TooltipCoords = {
   clipPath: string;
   translateX: number;
 };
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(Math.max(value, min), max);
+}
 
 type PortalBox = {
   left: number;
@@ -228,10 +234,20 @@ export function TooltipIconBar({
 
       const clipLeft = (labelLeft / totalWidth) * 100;
       const clipRight = 100 - ((labelLeft + labelWidth) / totalWidth) * 100;
+      const preferredTranslateX = anchorCenter - labelCenter;
+      const viewportLeft = VIEWPORT_PADDING - rootRect.left - labelLeft;
+      const viewportRight =
+        window.innerWidth -
+        VIEWPORT_PADDING -
+        rootRect.left -
+        labelLeft -
+        labelWidth;
+      const minTranslateX = Math.min(viewportLeft, viewportRight);
+      const maxTranslateX = Math.max(viewportLeft, viewportRight);
 
       return {
         clipPath: `inset(0 ${clipRight}% 0 ${clipLeft}% round var(--radius-md, 0.5rem))`,
-        translateX: anchorCenter - labelCenter,
+        translateX: clamp(preferredTranslateX, minTranslateX, maxTranslateX),
       };
     },
     [],
