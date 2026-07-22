@@ -20,14 +20,14 @@ function LandingPage() {
           or step into class as a student or parent.
         </p>
         <div className={styles.actions}>
-          <TouchButton variant="primary" fullWidth>
-            <Link to="/register">Join as a student</Link>
+          <TouchButton as={Link} to="/register" variant="primary" fullWidth>
+            Join as a student
           </TouchButton>
-          <TouchButton variant="default" fullWidth>
-            <Link to="/login">Sign in</Link>
+          <TouchButton as={Link} to="/login" variant="default" fullWidth>
+            Sign in
           </TouchButton>
-          <TouchButton variant="quiet" fullWidth>
-            <Link to="/studio">Explore the studio</Link>
+          <TouchButton as={Link} to="/studio" variant="quiet" fullWidth>
+            Explore the studio
           </TouchButton>
         </div>
       </section>
