@@ -118,6 +118,7 @@
         object-fit: contain;
         object-position: center;
         pointer-events: none;
+        transform: translateY(-10%) scale(1.2);
       }
 
       #boot-splash .caption {
@@ -142,13 +143,21 @@
         font-weight: 500;
         line-height: 1.3;
         letter-spacing: -0.03em;
-        color: rgb(27 42 74 / 58%);
+        color: #1b2a4a;
         text-align: center;
         transform: translateY(-50%);
       }
 
+      #boot-splash .caption .emphasis {
+        color: #8b9af7;
+      }
+
       html[data-theme-mode="dark"] #boot-splash .caption {
-        color: oklch(0.95 0.01 78 / 58%);
+        color: oklch(0.95 0.01 78);
+      }
+
+      html[data-theme-mode="dark"] #boot-splash .caption .emphasis {
+        color: #a8b4ff;
       }
 
       @media (prefers-reduced-motion: reduce) {
@@ -162,7 +171,9 @@
     <div id="root">
       <div id="boot-splash" role="status" aria-live="polite" aria-label="Loading">
         <img class="dancer" src="/loader.gif" alt="" />
-        <p class="caption" id="boot-splash-caption">Stretching it out…</p>
+        <p class="caption" id="boot-splash-caption">
+          Stretching it <span class="emphasis">out…</span>
+        </p>
       </div>
     </div>
     <script>
@@ -178,11 +189,25 @@
         var el = document.getElementById("boot-splash-caption");
         if (!el) return;
         var last = -1;
+        function paint(text) {
+          var match = text.match(/^(.*\s)(\S+)$/);
+          if (!match) {
+            el.textContent = text;
+            return;
+          }
+          el.replaceChildren(
+            document.createTextNode(match[1]),
+            Object.assign(document.createElement("span"), {
+              className: "emphasis",
+              textContent: match[2],
+            }),
+          );
+        }
         function tick() {
           var i = Math.floor(Date.now() / 1600) % phrases.length;
           if (i === last) return;
           last = i;
-          el.textContent = phrases[i];
+          paint(phrases[i]);
         }
         tick();
         setInterval(tick, 100);
