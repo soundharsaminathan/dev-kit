@@ -6,14 +6,24 @@ FROM node:24-alpine AS deps
 WORKDIR /app
 RUN corepack enable && corepack prepare pnpm@11.6.0 --activate
 COPY package.json ./
-RUN printf '%s\n' 'packages:' "  - '.'" 'dangerouslyAllowAllBuilds: true' > pnpm-workspace.yaml \
+# pnpm 11 defaults minimumReleaseAge=1440; without these, install/exec hangs on
+# "Verifying lockfile against supply-chain policies".
+RUN printf '%s\n' \
+    'packages:' \
+    "  - '.'" \
+    'dangerouslyAllowAllBuilds: true' \
+    'minimumReleaseAge: 0' \
+    'trustLockfile: true' \
+    > pnpm-workspace.yaml \
   && pnpm install --no-frozen-lockfile
 
 FROM node:24-alpine AS builder
 WORKDIR /app
 RUN corepack enable && corepack prepare pnpm@11.6.0 --activate
-COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/pnpm-lock.yaml ./pnpm-lock.yaml
+COPY --from=deps /app/pnpm-workspace.yaml ./pnpm-workspace.yaml
 RUN pnpm exec prisma generate
 RUN pnpm exec nest build
 
