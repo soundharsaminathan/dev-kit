@@ -22,7 +22,7 @@ export const Route = createFileRoute("/posts/$id")({
 function PostDetailPage() {
   const { id } = Route.useParams();
   const api = useApi();
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
   const queryClient = useQueryClient();
   const [comment, setComment] = useState("");
 
@@ -68,6 +68,10 @@ function PostDetailPage() {
     },
   });
 
+  if (loading) {
+    return null;
+  }
+
   if (!user) {
     return (
       <PublicShell>
@@ -82,150 +86,148 @@ function PostDetailPage() {
   }
 
   return (
-    <PublicShell>
-      <section className="page-narrow stack">
-        <ApiState
-          isLoading={postQuery.isLoading}
-          isError={postQuery.isError}
-          error={postQuery.error}
-          data={postQuery.data}
-          emptyTitle="Post not found"
-          emptyDescription="This post is unavailable."
-        >
-          {(post) => {
-            const images =
-              post.imageUrls.length > 0
-                ? post.imageUrls
-                : (post.repostOf?.imageUrls ?? []);
+    <section className="page-narrow stack">
+      <ApiState
+        isLoading={postQuery.isLoading}
+        isError={postQuery.isError}
+        error={postQuery.error}
+        data={postQuery.data}
+        emptyTitle="Post not found"
+        emptyDescription="This post is unavailable."
+      >
+        {(post) => {
+          const images =
+            post.imageUrls.length > 0
+              ? post.imageUrls
+              : (post.repostOf?.imageUrls ?? []);
 
-            return (
-              <>
-                <div className={styles.header}>
-                  <Link
-                    to="/users/$id"
-                    params={{ id: post.author.id }}
-                    className={styles.author}
-                  >
-                    <Avatar size="sm">
-                      {post.author.photoUrl ? (
-                        <AvatarImage
-                          src={post.author.photoUrl}
-                          alt={post.author.name}
-                        />
-                      ) : null}
-                      <AvatarFallback>
-                        {post.author.name.slice(0, 1)}
-                      </AvatarFallback>
-                    </Avatar>
-                    <span>{post.author.name}</span>
-                  </Link>
-                  {post.repostOfId ? (
-                    <Text slot="description">Repost</Text>
-                  ) : null}
-                </div>
+          return (
+            <>
+              <div className={styles.header}>
+                <Link
+                  to="/users/$id"
+                  params={{ id: post.author.id }}
+                  className={styles.author}
+                >
+                  <Avatar size="sm">
+                    {post.author.photoUrl ? (
+                      <AvatarImage
+                        src={post.author.photoUrl}
+                        alt={post.author.name}
+                      />
+                    ) : null}
+                    <AvatarFallback>
+                      {post.author.name.slice(0, 1)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span>{post.author.name}</span>
+                </Link>
+                {post.repostOfId ? (
+                  <Text slot="description">Repost</Text>
+                ) : null}
+              </div>
 
-                <div className={styles.gallery}>
-                  {images.map((src) => (
-                    <img key={src} src={src} alt="" className={styles.image} />
-                  ))}
-                </div>
+              <div className={styles.gallery}>
+                {images.map((src) => (
+                  <img key={src} src={src} alt="" className={styles.image} />
+                ))}
+              </div>
 
-                {post.caption ? <Text>{post.caption}</Text> : null}
+              {post.caption ? <Text>{post.caption}</Text> : null}
 
-                <div className={styles.actions}>
-                  <Button
-                    variant="quiet"
-                    size="sm"
-                    isPending={likeMutation.isPending}
-                    onClick={() => likeMutation.mutate(post.likedByMe)}
-                  >
-                    <Icon name="heart" />
-                    {post._count.likes}
-                  </Button>
-                  <Button
-                    variant="quiet"
-                    size="sm"
-                    isPending={repostMutation.isPending}
-                    onClick={() => repostMutation.mutate()}
-                  >
-                    <Icon name="refresh" />
-                    {post._count.reposts}
-                  </Button>
-                  <Button
-                    variant="quiet"
-                    size="sm"
-                    isIconOnly
-                    aria-label="Share"
-                    onClick={() => {
-                      void sharePost(post.id);
-                    }}
-                  >
-                    <Icon name="share" />
-                  </Button>
-                </div>
+              <div className={styles.actions}>
+                <Button
+                  variant="quiet"
+                  size="sm"
+                  isPending={likeMutation.isPending}
+                  onClick={() => likeMutation.mutate(post.likedByMe)}
+                >
+                  <Icon name="heart" />
+                  {post._count.likes}
+                </Button>
+                <Button
+                  variant="quiet"
+                  size="sm"
+                  isPending={repostMutation.isPending}
+                  onClick={() => repostMutation.mutate()}
+                >
+                  <Icon name="refresh" />
+                  {post._count.reposts}
+                </Button>
+                <Button
+                  variant="quiet"
+                  size="sm"
+                  isIconOnly
+                  aria-label="Share"
+                  onClick={() => {
+                    void sharePost(post.id);
+                  }}
+                >
+                  <Icon name="share" />
+                </Button>
+              </div>
 
-                <div className="stack">
-                  <Text>
-                    <strong>{post._count.comments}</strong> comments
-                  </Text>
-                  <ApiState
-                    isLoading={commentsQuery.isLoading}
-                    isError={commentsQuery.isError}
-                    error={commentsQuery.error}
-                    data={commentsQuery.data}
-                    emptyTitle="No comments"
-                    emptyDescription="Be the first to comment."
-                    allowEmpty
-                    variant="compact"
-                  >
-                    {(comments) => (
-                      <div className={styles.comments}>
-                        {comments.map((item) => (
-                          <div key={item.id} className={styles.comment}>
-                            <Avatar size="sm">
-                              {item.author.photoUrl ? (
-                                <AvatarImage
-                                  src={item.author.photoUrl}
-                                  alt={item.author.name}
-                                />
-                              ) : null}
-                              <AvatarFallback>
-                                {item.author.name.slice(0, 1)}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div>
-                              <Text>
-                                <strong>{item.author.name}</strong> {item.body}
-                              </Text>
-                            </div>
+              <div className="stack">
+                <Text>
+                  <strong>{post._count.comments}</strong> comments
+                </Text>
+                <ApiState
+                  isLoading={commentsQuery.isLoading}
+                  isError={commentsQuery.isError}
+                  error={commentsQuery.error}
+                  data={commentsQuery.data}
+                  emptyTitle="No comments"
+                  emptyDescription="Be the first to comment."
+                  allowEmpty
+                  variant="compact"
+                >
+                  {(comments) => (
+                    <div className={styles.comments}>
+                      {comments.map((item) => (
+                        <div key={item.id} className={styles.comment}>
+                          <Avatar size="sm">
+                            {item.author.photoUrl ? (
+                              <AvatarImage
+                                src={item.author.photoUrl}
+                                alt={item.author.name}
+                              />
+                            ) : null}
+                            <AvatarFallback>
+                              {item.author.name.slice(0, 1)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <Text>
+                              <strong>{item.author.name}</strong> {item.body}
+                            </Text>
                           </div>
-                        ))}
-                      </div>
-                    )}
-                  </ApiState>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </ApiState>
 
-                  <Field>
-                    <Label>Add a comment</Label>
-                    <TextArea
-                      value={comment}
-                      onChange={(event) => setComment(event.target.value)}
-                      rows={2}
-                    />
-                  </Field>
-                  <Button
-                    variant="primary"
-                    isDisabled={!comment.trim()}
-                    isPending={commentMutation.isPending}
-                    onClick={() => commentMutation.mutate(comment.trim())}
-                  >
-                    Comment
-                  </Button>
-                </div>
-              </>
-            );
-          }}
-        </ApiState>
-      </section>
-    </PublicShell>
+                <Field>
+                  <Label>Add a comment</Label>
+                  <TextArea
+                    value={comment}
+                    onChange={(event) => setComment(event.target.value)}
+                    rows={2}
+                  />
+                </Field>
+                <Button
+                  variant="primary"
+                  isDisabled={!comment.trim()}
+                  isPending={commentMutation.isPending}
+                  onClick={() => commentMutation.mutate(comment.trim())}
+                >
+                  Comment
+                </Button>
+              </div>
+            </>
+          );
+        }}
+      </ApiState>
+    </section>
   );
 }

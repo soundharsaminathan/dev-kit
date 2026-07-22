@@ -1,6 +1,7 @@
 import { redirect } from "@tanstack/react-router";
 import type { AuthContextValue } from "@/lib/auth";
-import type { UserRole } from "@/lib/constants";
+import { MEMBER_ROLES, STAFF_ROLES, type UserRole } from "@/lib/constants";
+import { memberHomePathForUser } from "@/lib/onboarding";
 
 export type RouterAuthContext = {
   auth: AuthContextValue;
@@ -51,4 +52,35 @@ export function safeInternalPath(path: string | undefined): string | null {
     return null;
   }
   return path;
+}
+
+export function homePathForUser(user: NonNullable<AuthContextValue["user"]>) {
+  if (STAFF_ROLES.includes(user.role)) {
+    return "/app" as const;
+  }
+  if (MEMBER_ROLES.includes(user.role)) {
+    return memberHomePathForUser(user);
+  }
+  return "/" as const;
+}
+
+/** Bounce signed-in users away from /login and /register. */
+export function redirectIfAuthenticated(
+  auth: AuthContextValue,
+  redirectTo?: string,
+): void {
+  const user = auth.user;
+  if (!user) {
+    return;
+  }
+
+  const safeRedirect = safeInternalPath(redirectTo);
+  if (safeRedirect) {
+    throw redirect({ to: safeRedirect, replace: true });
+  }
+
+  throw redirect({
+    to: homePathForUser(user),
+    replace: true,
+  });
 }

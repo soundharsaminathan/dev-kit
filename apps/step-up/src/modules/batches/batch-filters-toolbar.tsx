@@ -1,11 +1,6 @@
-import { Button } from "@dev-ui/components/button";
-import { Menu, MenuContent, MenuItem } from "@dev-ui/components/menu";
 import { SearchField } from "@dev-ui/components/search-field";
-import type { ReactNode } from "react";
-import { StyleIcon } from "@/modules/styles/style-icon";
+import { FilterChipRow } from "@/modules/ui/filter-chip-row";
 import styles from "./batch-filters-toolbar.module.scss";
-
-type SelectionKey = string | number;
 
 export type BatchStyleChip = {
   id: string;
@@ -24,68 +19,17 @@ export type BatchFiltersToolbarProps = {
   onSearchChange: (search: string) => void;
 };
 
-const STATUS_OPTIONS = [
+const STATUS_CHIPS = [
   { id: "ALL", label: "All statuses" },
   { id: "ACTIVE", label: "Active" },
   { id: "INACTIVE", label: "Inactive" },
 ];
 
-const CATEGORY_OPTIONS = [
+const CATEGORY_CHIPS = [
   { id: "ALL", label: "All ages" },
   { id: "KIDS", label: "Kids" },
   { id: "ADULTS", label: "Adults" },
 ];
-
-function firstKey(keys: "all" | Set<SelectionKey>): string | null {
-  if (keys === "all") return null;
-  const [key] = keys;
-  return key == null ? null : String(key);
-}
-
-function FilterMenu({
-  label,
-  filled,
-  selectedKey,
-  options,
-  onSelect,
-}: {
-  label: string;
-  filled: boolean;
-  selectedKey: string;
-  options: { id: string; label: string; children?: ReactNode }[];
-  onSelect: (id: string) => void;
-}) {
-  return (
-    <Menu className={styles.menu}>
-      <Button
-        variant="quiet"
-        size="sm"
-        className={styles.trigger}
-        data-filled={filled || undefined}
-        aria-label={label}
-      >
-        <span className={styles.triggerLabel}>
-          {label}
-          {filled ? <span className={styles.dot} aria-hidden /> : null}
-        </span>
-      </Button>
-      <MenuContent
-        selectionMode="single"
-        selectedKeys={new Set([selectedKey])}
-        onSelectionChange={(keys) => {
-          const next = firstKey(keys);
-          if (next != null) onSelect(next);
-        }}
-      >
-        {options.map((option) => (
-          <MenuItem key={option.id} id={option.id} textValue={option.label}>
-            {option.children ?? option.label}
-          </MenuItem>
-        ))}
-      </MenuContent>
-    </Menu>
-  );
-}
 
 export function BatchFiltersToolbar({
   status,
@@ -98,18 +42,9 @@ export function BatchFiltersToolbar({
   onStyleChange,
   onSearchChange,
 }: BatchFiltersToolbarProps) {
-  const styleOptions = [
+  const styleChipRow = [
     { id: "all", label: "All styles" },
-    ...styleChips.map((chip) => ({
-      id: chip.id,
-      label: chip.label,
-      children: (
-        <span className={styles.styleItem}>
-          <StyleIcon style={chip.label} size="xs" />
-          {chip.label}
-        </span>
-      ),
-    })),
+    ...styleChips.map((chip) => ({ id: chip.id, label: chip.label })),
   ];
 
   return (
@@ -122,28 +57,22 @@ export function BatchFiltersToolbar({
         className={styles.search}
       />
 
-      <div className={styles.toolbar} role="toolbar" aria-label="Batch filters">
-        <FilterMenu
-          label="Status"
-          filled={status !== "ALL"}
-          selectedKey={status}
-          options={STATUS_OPTIONS}
-          onSelect={onStatusChange}
+      <div className={styles.chips} role="toolbar" aria-label="Batch filters">
+        <FilterChipRow
+          chips={STATUS_CHIPS}
+          selected={[status]}
+          onToggle={onStatusChange}
         />
-        <FilterMenu
-          label="Age"
-          filled={category !== "ALL"}
-          selectedKey={category}
-          options={CATEGORY_OPTIONS}
-          onSelect={onCategoryChange}
+        <FilterChipRow
+          chips={CATEGORY_CHIPS}
+          selected={[category]}
+          onToggle={onCategoryChange}
         />
         {styleChips.length > 0 ? (
-          <FilterMenu
-            label="Style"
-            filled={Boolean(style)}
-            selectedKey={style ?? "all"}
-            options={styleOptions}
-            onSelect={(id) => onStyleChange(id === "all" ? null : id)}
+          <FilterChipRow
+            chips={styleChipRow}
+            selected={[style ?? "all"]}
+            onToggle={(id) => onStyleChange(id === "all" ? null : id)}
           />
         ) : null}
       </div>

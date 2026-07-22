@@ -9,15 +9,37 @@
   background: var(--surface-elevated, var(--color-bg));
 }
 
+.hScroll {
+  min-width: 0;
+  max-height: min(70vh, 42rem);
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+
+.weekGrid {
+  display: flex;
+  flex-direction: column;
+  min-width: 100%;
+}
+
 .header {
+  position: sticky;
+  top: 0;
+  z-index: 3;
   display: grid;
   grid-template-columns: 3.5rem repeat(7, minmax(0, 1fr));
   border-bottom: 1px solid color-mix(in srgb, var(--color-fg) 12%, transparent);
-  background: color-mix(in srgb, var(--color-fg) 3%, transparent);
+  background: color-mix(in srgb, var(--color-fg) 3%, var(--surface-elevated, var(--color-bg)));
 }
 
 .gutter {
+  position: sticky;
+  left: 0;
+  z-index: 4;
   border-right: 1px solid color-mix(in srgb, var(--color-fg) 10%, transparent);
+  background: color-mix(in srgb, var(--color-fg) 3%, var(--surface-elevated, var(--color-bg)));
 }
 
 .dayHeader {
@@ -42,14 +64,16 @@
 .body {
   display: grid;
   grid-template-columns: 3.5rem repeat(7, minmax(0, 1fr));
-  max-height: min(70vh, 42rem);
-  overflow: auto;
 }
 
 .hours {
+  position: sticky;
+  left: 0;
+  z-index: 2;
   display: grid;
   grid-template-rows: repeat(24, 3rem);
   border-right: 1px solid color-mix(in srgb, var(--color-fg) 10%, transparent);
+  background: var(--surface-elevated, var(--color-bg));
 }
 
 .hourLabel {
@@ -90,13 +114,16 @@
 }
 
 @media (max-width: 720px) {
+  .weekGrid {
+    width: max-content;
+    min-width: 100%;
+  }
+
   .header,
   .body {
     grid-template-columns: 2.5rem repeat(7, minmax(4.5rem, 1fr));
-  }
-
-  .body {
-    overflow-x: auto;
+    width: max-content;
+    min-width: 100%;
   }
 
   .dayLabel {
