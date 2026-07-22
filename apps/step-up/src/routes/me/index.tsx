@@ -19,9 +19,9 @@ import type { HomePayload } from "@/modules/me/home-types";
 import { useActiveStudentContext } from "@/modules/me/use-active-student-context";
 import { InstallAppBar } from "@/modules/pwa/install-app-bar";
 import { BloomMenu } from "@/modules/ui/bloom-menu";
+import { DanceLoader } from "@/modules/ui/dance-loader";
 import { HScrollRow } from "@/modules/ui/h-scroll-row";
 import { PullToRefresh } from "@/modules/ui/pull-to-refresh";
-import { SkeletonBlock } from "@/modules/ui/skeleton-block";
 import { EmptyState, ErrorState } from "@/modules/ui/states";
 import { TouchButton } from "@/modules/ui/touch-button";
 import styles from "./home.module.scss";
@@ -38,7 +38,7 @@ const GOAL_BLOOM_ITEMS = [4, 8, 12, 16].map((value) => ({
 function MeHomePage() {
   const api = useApi();
   const queryClient = useQueryClient();
-  const { studentId } = useActiveStudentContext();
+  const { studentId, loading: studentLoading } = useActiveStudentContext();
   const [installBarVisible, setInstallBarVisible] = useState(false);
 
   const homeQueryKey = ["home", studentId] as const;
@@ -57,6 +57,9 @@ function MeHomePage() {
     enabled: Boolean(studentId),
     staleTime: 30_000,
   });
+
+  const waitingForHome =
+    studentLoading || (Boolean(studentId) && homeQuery.isLoading);
 
   const goalMutation = useMutation({
     mutationFn: (target: number) => {
@@ -114,6 +117,10 @@ function MeHomePage() {
     goalMutation.mutate(target);
   }
 
+  if (waitingForHome) {
+    return <DanceLoader />;
+  }
+
   return (
     <section className="screen">
       <PullToRefresh
@@ -123,20 +130,6 @@ function MeHomePage() {
       >
         <div className={styles.root}>
           <InstallAppBar onVisibleChange={setInstallBarVisible} />
-
-          {homeQuery.isLoading ? (
-            <>
-              <SkeletonBlock height="18rem" radius="0" />
-              <SkeletonBlock
-                height="10rem"
-                radius="var(--radius-2xl, 1.25rem)"
-              />
-              <SkeletonBlock
-                height="6rem"
-                radius="var(--radius-2xl, 1.25rem)"
-              />
-            </>
-          ) : null}
 
           {homeQuery.isError ? (
             <ErrorState

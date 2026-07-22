@@ -10,6 +10,14 @@ body,
   height: 100%;
 }
 
+html[data-theme-mode="light"] {
+  color-scheme: light;
+}
+
+html[data-theme-mode="dark"] {
+  color-scheme: dark;
+}
+
 html[data-theme][data-theme-mode="light"] {
   --surface-background: color-mix(
     in oklch,
@@ -21,14 +29,17 @@ html[data-theme][data-theme-mode="light"] {
   --color-sidebar: #fff;
 }
 
+html[data-theme][data-theme-mode="dark"] {
+  --surface-background: var(--color-bg);
+  --card-background: var(--color-card);
+  --color-sidebar: var(--color-card);
+}
+
 html[data-theme="step-up-soft"][data-theme-mode="light"] {
   --surface-background: #f8f4ec;
   --color-card: #fff;
   --card-background: #fff;
   --color-sidebar: #fff;
-}
-
-[data-theme="step-up-soft"] {
   --tag-mint-bg: #e9f2e4;
   --tag-mint-fg: #3d6b2f;
   --tag-lilac-bg: #f7e9dc;
@@ -39,6 +50,20 @@ html[data-theme="step-up-soft"][data-theme-mode="light"] {
     color-mix(in srgb, var(--color-primary) 62%, #f2e3d3) 100%
   );
   --nav-bar-bg: #1c1a17;
+}
+
+html[data-theme="step-up-soft"][data-theme-mode="dark"] {
+  --surface-background: var(--color-bg);
+  --tag-mint-bg: color-mix(in srgb, var(--color-success) 22%, var(--color-card));
+  --tag-mint-fg: color-mix(in srgb, var(--color-success) 72%, var(--color-fg));
+  --tag-lilac-bg: color-mix(in srgb, var(--color-warning) 22%, var(--color-card));
+  --tag-lilac-fg: color-mix(in srgb, var(--color-warning) 72%, var(--color-fg));
+  --hero-gradient: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--color-primary) 78%, var(--color-bg)) 0%,
+    color-mix(in srgb, var(--color-primary) 42%, var(--color-card)) 100%
+  );
+  --nav-bar-bg: var(--neutral-200);
 }
 
 body {
@@ -65,6 +90,7 @@ p {
 
 button {
   font: inherit;
+  color: inherit;
 }
 
 img {

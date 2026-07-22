@@ -1,3 +1,4 @@
+import { useIsMobile } from "@dev-ui/hooks";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
@@ -33,6 +34,16 @@ const VIEW_CHIPS = [
   { id: "bento", label: "Grid" },
   { id: "cards", label: "List" },
 ] as const;
+
+function availableViews(isMobile: boolean): TrainerViewMode[] {
+  return isMobile ? ["stack", "cards"] : ["bento", "cards"];
+}
+
+function coerceView(view: TrainerViewMode, isMobile: boolean): TrainerViewMode {
+  const allowed = availableViews(isMobile);
+  if (allowed.includes(view)) return view;
+  return allowed[0] ?? "cards";
+}
 
 type TrainersExploreVariant = "app" | "me";
 
@@ -107,15 +118,23 @@ export function TrainersExplorePage({
   variant = "app",
 }: TrainersExplorePageProps) {
   const isStaff = variant === "app";
+  const isMobile = useIsMobile();
   const storageKey = VIEW_STORAGE_KEYS[variant];
-  const defaultView: TrainerViewMode = "stack";
+  const defaultView: TrainerViewMode = isMobile ? "stack" : "bento";
+  const viewChips = VIEW_CHIPS.filter((chip) =>
+    availableViews(isMobile).includes(chip.id),
+  );
 
   const query = useStudioTrainers();
   const { toggleFollow, isPendingFor } = useFollowMutations();
   const [view, setView] = useState<TrainerViewMode>(() =>
-    readStoredView(storageKey, defaultView),
+    coerceView(readStoredView(storageKey, defaultView), isMobile),
   );
   const [styleFilter, setStyleFilter] = useState<string | null>(null);
+
+  useEffect(() => {
+    setView((current) => coerceView(current, isMobile));
+  }, [isMobile]);
 
   useEffect(() => {
     window.localStorage.setItem(storageKey, view);
@@ -220,7 +239,7 @@ export function TrainersExplorePage({
               ) : null}
               <div className={styles.toolbarRow}>
                 <ul className={styles.viewToggle}>
-                  {VIEW_CHIPS.map((chip) => {
+                  {viewChips.map((chip) => {
                     const active = view === chip.id;
                     return (
                       <li key={chip.id}>
@@ -232,7 +251,7 @@ export function TrainersExplorePage({
                               : styles.viewChip
                           }
                           aria-pressed={active}
-                          onClick={() => setView(chip.id as TrainerViewMode)}
+                          onClick={() => setView(chip.id)}
                         >
                           {chip.label}
                         </button>

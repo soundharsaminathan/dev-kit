@@ -63,7 +63,7 @@
   min-width: 0;
   padding: 0.55rem 0.75rem;
   border-radius: 1.25rem;
-  background-color: #ffffff;
+  background-color: var(--color-card);
   box-shadow:
     0 1px 2px color-mix(in srgb, var(--color-fg) 8%, transparent),
     0 2px 8px color-mix(in srgb, var(--color-fg) 6%, transparent);
@@ -71,7 +71,7 @@
   overflow: hidden;
 
   .row[data-mine] & {
-    background-color: #ffffff;
+    background-color: var(--color-card);
     border-end-start-radius: 1.25rem;
     border-end-end-radius: 0.35rem;
   }
@@ -88,11 +88,11 @@
 
   &[data-flush] .text {
     padding: 0.45rem 0.7rem 0.15rem;
-    background-color: #ffffff;
+    background-color: var(--color-card);
   }
 
   .row[data-mine] &[data-flush] .text {
-    background-color: #ffffff;
+    background-color: var(--color-card);
   }
 
   &[data-flush] .time {

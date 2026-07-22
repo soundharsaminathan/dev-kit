@@ -154,11 +154,11 @@
   flex-shrink: 0;
   background: linear-gradient(
     90deg,
-    color-mix(in srgb, var(--color-fg) 7%, #fff) 0%,
-    color-mix(in srgb, var(--color-fg) 7%, #fff) 40%,
-    color-mix(in srgb, var(--color-fg) 18%, #fff) 50%,
-    color-mix(in srgb, var(--color-fg) 7%, #fff) 60%,
-    color-mix(in srgb, var(--color-fg) 7%, #fff) 100%
+    color-mix(in srgb, var(--color-fg) 7%, var(--color-card)) 0%,
+    color-mix(in srgb, var(--color-fg) 7%, var(--color-card)) 40%,
+    color-mix(in srgb, var(--color-fg) 18%, var(--color-card)) 50%,
+    color-mix(in srgb, var(--color-fg) 7%, var(--color-card)) 60%,
+    color-mix(in srgb, var(--color-fg) 7%, var(--color-card)) 100%
   );
   background-size: 220% 100%;
   animation: chatSkeletonShimmer 1.35s ease-in-out infinite;
@@ -177,7 +177,7 @@
 @media (prefers-reduced-motion: reduce) {
   .listLoading .skeletonFill {
     animation: none;
-    background: color-mix(in srgb, var(--color-fg) 8%, #fff);
+    background: color-mix(in srgb, var(--color-fg) 8%, var(--color-card));
   }
 }
 
@@ -207,7 +207,7 @@
   span {
     padding: 0.2rem 0.75rem;
     border-radius: 999px;
-    background: #fff;
+    background: var(--color-card);
     box-shadow: 0 1px 2px color-mix(in srgb, var(--color-fg) 10%, transparent);
     font-size: 0.75rem;
     color: color-mix(in srgb, var(--color-fg) 60%, transparent);

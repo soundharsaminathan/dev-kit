@@ -3,7 +3,7 @@
   flex-direction: column;
   gap: 16px;
   padding: 12px;
-  background: #fff;
+  background: var(--color-card);
   border: 1px solid #e5e7eb;
   border-radius: 12px;
   max-height: 100%;
@@ -61,7 +61,7 @@
   border: 1px solid #d1d5db;
   border-radius: 8px;
   padding: 2px;
-  background: #fff;
+  background: var(--color-card);
 }
 
 .row2 {

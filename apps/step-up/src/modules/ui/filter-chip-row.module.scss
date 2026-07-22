@@ -34,6 +34,7 @@
   font: inherit;
   font-size: 0.75rem;
   font-weight: 500;
+  white-space: nowrap;
   cursor: pointer;
   transition:
     background-color var(--motion-fast, 150ms) ease,
@@ -53,7 +54,7 @@
 
 .chipActive {
   background: var(--color-primary);
-  color: var(--color-primary-fg, #fff);
+  color: var(--color-fg-on-primary);
   font-weight: 600;
 }
 

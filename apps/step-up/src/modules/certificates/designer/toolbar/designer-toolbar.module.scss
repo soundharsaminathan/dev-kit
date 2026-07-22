@@ -56,7 +56,7 @@
   cursor: pointer;
 
   &:hover:not(:disabled) {
-    background: #fff;
+    background: var(--color-card);
     border-color: #c5ccd6;
   }
 
@@ -79,12 +79,12 @@
   padding: 1px;
   border: 1px solid #c5ccd6;
   border-radius: 4px;
-  background: #fff;
+  background: var(--color-card);
 }
 
 .textBtn {
   border: 1px solid #c5ccd6;
-  background: #fff;
+  background: var(--color-card);
   border-radius: 4px;
   padding: 4px 8px;
   font: inherit;
@@ -105,7 +105,7 @@
   height: 28px;
   border: 1px solid #c5ccd6;
   border-radius: 4px;
-  background: #fff;
+  background: var(--color-card);
   font: inherit;
   font-size: 12px;
   color: #1f2937;
@@ -139,7 +139,7 @@
   cursor: pointer;
 
   &:hover {
-    background: #fff;
+    background: var(--color-card);
     border-color: #c5ccd6;
   }
 }
