@@ -167,6 +167,18 @@ jobs:
 
       - uses: ./.github/actions/setup
 
+      - name: Create migrate smoke database
+        run: |
+          PGPASSWORD=postgres psql -h localhost -U postgres -c "CREATE DATABASE step_up_migrate;"
+
+      - name: Migration smoke
+        working-directory: apps/step-up-api
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/step_up_migrate?schema=public
+        run: |
+          pnpm exec prisma generate
+          pnpm exec nx run step-up-api:test:migrations
+
       - name: Generate Prisma client, migrate, and seed
         working-directory: apps/step-up-api
         run: |

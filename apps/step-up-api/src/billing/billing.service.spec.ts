@@ -1,4 +1,8 @@
-import { ForbiddenException, NotFoundException } from "@nestjs/common";
+import {
+  BadRequestException,
+  ForbiddenException,
+  NotFoundException,
+} from "@nestjs/common";
 import {
   InvoiceStatus,
   PaymentMethod,
@@ -170,5 +174,161 @@ describe("BillingService.getTrainerAnalytics", () => {
     expect(result.trainerId).toBe("trainer-1");
     expect(result.invoiceCount).toBe(0);
     expect(result.byBatch).toEqual([]);
+  });
+});
+
+describe("BillingService.listForStudent", () => {
+  const prisma = {
+    invoice: { findMany: vi.fn() },
+    familyMember: { findUnique: vi.fn() },
+    parentChild: { findUnique: vi.fn() },
+  };
+  const crypto = {
+    decryptUser: vi.fn((user: { name?: string }) => ({
+      ...user,
+      name: user.name ?? "Decrypted",
+    })),
+  };
+  let service: BillingService;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    service = new BillingService(prisma as never, crypto as never);
+  });
+
+  it("allows a student to list their own invoices", async () => {
+    prisma.invoice.findMany.mockResolvedValue([{ id: "inv-1" }]);
+    await expect(
+      service.listForStudent(
+        makeUser({ id: "student-1", role: UserRole.STUDENT }),
+        "student-1",
+      ),
+    ).resolves.toEqual([{ id: "inv-1" }]);
+  });
+
+  it("rejects a student listing another student's invoices", async () => {
+    prisma.familyMember.findUnique.mockResolvedValue(null);
+    prisma.parentChild.findUnique.mockResolvedValue(null);
+
+    await expect(
+      service.listForStudent(
+        makeUser({ id: "student-1", role: UserRole.STUDENT }),
+        "student-2",
+      ),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    expect(prisma.invoice.findMany).not.toHaveBeenCalled();
+  });
+
+  it("allows a linked parent to list a child's invoices", async () => {
+    prisma.parentChild.findUnique.mockResolvedValue({
+      parentUserId: "parent-1",
+      childUserId: "student-1",
+    });
+    prisma.familyMember.findUnique.mockResolvedValue(null);
+    prisma.invoice.findMany.mockResolvedValue([{ id: "inv-1" }]);
+
+    await expect(
+      service.listForStudent(
+        makeUser({ id: "parent-1", role: UserRole.PARENT }),
+        "student-1",
+      ),
+    ).resolves.toEqual([{ id: "inv-1" }]);
+  });
+});
+
+describe("BillingService.markPaid", () => {
+  const prisma = {
+    invoice: {
+      findUniqueOrThrow: vi.fn(),
+      update: vi.fn(),
+    },
+  };
+  const crypto = {
+    decryptUser: vi.fn((user: { name?: string }) => user),
+  };
+  let service: BillingService;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    service = new BillingService(prisma as never, crypto as never);
+  });
+
+  it("marks a pending invoice paid with method and fee", async () => {
+    prisma.invoice.findUniqueOrThrow.mockResolvedValue({
+      id: "inv-1",
+      studioId: "studio-1",
+      amount: 2000,
+      status: InvoiceStatus.PENDING,
+      platformFeePercent: 5,
+    });
+    prisma.invoice.update.mockResolvedValue({
+      id: "inv-1",
+      status: InvoiceStatus.PAID,
+      paymentMethod: PaymentMethod.CASH,
+      paidAt: new Date("2026-07-20T12:00:00.000Z"),
+    });
+
+    const result = await service.markPaid(
+      makeUser({ role: UserRole.OWNER }),
+      "inv-1",
+      PaymentMethod.CASH,
+    );
+
+    expect(prisma.invoice.update).toHaveBeenCalledWith({
+      where: { id: "inv-1" },
+      data: expect.objectContaining({
+        status: InvoiceStatus.PAID,
+        paymentMethod: PaymentMethod.CASH,
+        paidAt: expect.any(Date),
+      }),
+    });
+    expect(result.platformFeeComputed).toBe(100);
+  });
+
+  it("rejects trainers marking invoices paid", async () => {
+    await expect(
+      service.markPaid(
+        makeUser({ id: "trainer-1", role: UserRole.TRAINER }),
+        "inv-1",
+        PaymentMethod.CASH,
+      ),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    expect(prisma.invoice.findUniqueOrThrow).not.toHaveBeenCalled();
+  });
+
+  it("rejects already-paid invoices", async () => {
+    prisma.invoice.findUniqueOrThrow.mockResolvedValue({
+      id: "inv-1",
+      studioId: "studio-1",
+      amount: 2000,
+      status: InvoiceStatus.PAID,
+      platformFeePercent: 5,
+    });
+
+    await expect(
+      service.markPaid(
+        makeUser({ role: UserRole.STAFF }),
+        "inv-1",
+        PaymentMethod.UPI_MANUAL,
+      ),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it("rejects marking invoices for another studio", async () => {
+    prisma.invoice.findUniqueOrThrow.mockResolvedValue({
+      id: "inv-1",
+      studioId: "studio-other",
+      amount: 2000,
+      status: InvoiceStatus.PENDING,
+      platformFeePercent: 5,
+    });
+
+    await expect(
+      service.markPaid(
+        makeUser({ role: UserRole.OWNER, studioId: "studio-1" }),
+        "inv-1",
+        PaymentMethod.CASH,
+      ),
+    ).rejects.toBeInstanceOf(ForbiddenException);
   });
 });

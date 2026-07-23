@@ -67,4 +67,46 @@ describe("JobsService.runDaily", () => {
 
     vi.useRealTimers();
   });
+
+  it("marks pending invoices overdue and emits PAYMENT_OVERDUE notifications", async () => {
+    const now = new Date("2026-07-20T12:00:00.000Z");
+    vi.useFakeTimers();
+    vi.setSystemTime(now);
+
+    prisma.membership.updateMany.mockResolvedValue({ count: 0 });
+    prisma.membership.findMany.mockResolvedValue([]);
+    prisma.invoice.updateMany.mockResolvedValue({ count: 2 });
+    prisma.invoice.findMany.mockResolvedValue([
+      { id: "inv-1", studentId: "student-1", student: { id: "student-1" } },
+      { id: "inv-2", studentId: "student-2", student: { id: "student-2" } },
+    ]);
+    notifications.create.mockResolvedValue({ id: "notif-1" });
+
+    const result = await service.runDaily();
+
+    expect(prisma.invoice.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: { status: "OVERDUE" },
+      }),
+    );
+    expect(notifications.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: "student-1",
+        type: NotificationType.PAYMENT_OVERDUE,
+        dedupeKey: "PAYMENT_OVERDUE:inv-1:2026-07-20",
+        meta: { invoiceId: "inv-1" },
+      }),
+    );
+    expect(notifications.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: "student-2",
+        type: NotificationType.PAYMENT_OVERDUE,
+        dedupeKey: "PAYMENT_OVERDUE:inv-2:2026-07-20",
+      }),
+    );
+    expect(result.overdueInvoices).toBe(2);
+    expect(result.overdueNotifications).toBe(2);
+
+    vi.useRealTimers();
+  });
 });

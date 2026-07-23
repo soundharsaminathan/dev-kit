@@ -304,4 +304,187 @@ describe("BookingsService.confirmPayment", () => {
       } as never),
     ).rejects.toThrow(/not awaiting payment/);
   });
+
+  it("returns existing PENDING booking without updating", async () => {
+    const booking = {
+      id: "bk-1",
+      studentId: "student-1",
+      status: "PENDING",
+      type: "TRIAL",
+      batchId: null,
+      paymentHoldExpiresAt: null,
+    };
+    tx.booking.findUnique.mockResolvedValue(booking);
+
+    await expect(
+      service.confirmPayment("bk-1", {
+        id: "student-1",
+        role: "STUDENT",
+      } as never),
+    ).resolves.toEqual(booking);
+    expect(tx.booking.update).not.toHaveBeenCalled();
+  });
+});
+
+describe("BookingsService.abandonPayment", () => {
+  const tx = {
+    booking: {
+      findUnique: vi.fn(),
+      update: vi.fn(),
+    },
+  };
+
+  const prisma = {
+    booking: {
+      findUnique: vi.fn(),
+    },
+    familyMember: { findUnique: vi.fn() },
+    parentChild: { findUnique: vi.fn() },
+    $transaction: vi.fn(async (fn: (client: typeof tx) => unknown) => fn(tx)),
+  };
+
+  const memberships = { findActiveForBatch: vi.fn() };
+  const crypto = { decryptUser: (user: unknown) => user };
+  const scheduleConflicts = {
+    assertNoConflicts: vi.fn(),
+    assertStudentAvailableForBatch: vi.fn(),
+  };
+
+  let service: BookingsService;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    prisma.$transaction.mockImplementation(
+      async (fn: (client: typeof tx) => unknown) => fn(tx),
+    );
+    service = new BookingsService(
+      prisma as never,
+      memberships as never,
+      crypto as never,
+      scheduleConflicts as never,
+    );
+  });
+
+  it("cancels an awaiting-payment hold", async () => {
+    const booking = {
+      id: "bk-1",
+      studentId: "student-1",
+      status: "AWAITING_PAYMENT",
+      paymentHoldExpiresAt: new Date(Date.now() + 60_000),
+    };
+    tx.booking.findUnique.mockResolvedValue(booking);
+    tx.booking.update.mockResolvedValue({
+      ...booking,
+      status: "CANCELLED",
+      paymentHoldExpiresAt: null,
+    });
+
+    await service.abandonPayment("bk-1", {
+      id: "student-1",
+      role: "STUDENT",
+    } as never);
+
+    expect(tx.booking.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "bk-1" },
+        data: expect.objectContaining({
+          status: "CANCELLED",
+          paymentHoldExpiresAt: null,
+        }),
+      }),
+    );
+  });
+
+  it("is a no-op when booking is not awaiting payment", async () => {
+    const booking = {
+      id: "bk-1",
+      studentId: "student-1",
+      status: "PENDING",
+      paymentHoldExpiresAt: null,
+    };
+    tx.booking.findUnique.mockResolvedValue(booking);
+
+    await expect(
+      service.abandonPayment("bk-1", {
+        id: "student-1",
+        role: "STUDENT",
+      } as never),
+    ).resolves.toEqual(booking);
+    expect(tx.booking.update).not.toHaveBeenCalled();
+  });
+});
+
+describe("BookingsService.create overdue invoice freeze", () => {
+  const tx = {
+    $queryRaw: vi.fn().mockResolvedValue([{ id: "batch-1" }]),
+    batch: { findUnique: vi.fn() },
+    booking: {
+      findFirst: vi.fn(),
+      findMany: vi.fn().mockResolvedValue([]),
+      create: vi.fn(),
+      update: vi.fn(),
+      updateMany: vi.fn().mockResolvedValue({ count: 0 }),
+    },
+    batchEnrollment: {
+      findMany: vi.fn().mockResolvedValue([]),
+      findFirst: vi.fn().mockResolvedValue(null),
+      count: vi.fn().mockResolvedValue(0),
+    },
+  };
+
+  const prisma = {
+    invoice: { findFirst: vi.fn() },
+    batch: { findUnique: vi.fn() },
+    booking: {
+      findFirst: vi.fn(),
+      findUnique: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+    },
+    session: { findUnique: vi.fn() },
+    membership: { findFirst: vi.fn() },
+    $transaction: vi.fn(async (fn: (client: typeof tx) => unknown) => fn(tx)),
+  };
+
+  const memberships = {
+    findActiveForBatch: vi.fn(),
+  };
+
+  const crypto = {
+    decryptUser: (user: unknown) => user,
+  };
+
+  const scheduleConflicts = {
+    assertNoConflicts: vi.fn().mockResolvedValue(undefined),
+    assertStudentAvailableForBatch: vi.fn().mockResolvedValue(undefined),
+  };
+
+  let service: BookingsService;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    prisma.$transaction.mockImplementation(
+      async (fn: (client: typeof tx) => unknown) => fn(tx),
+    );
+    service = new BookingsService(
+      prisma as never,
+      memberships as never,
+      crypto as never,
+      scheduleConflicts as never,
+    );
+  });
+
+  it("rejects create when the student has an overdue invoice", async () => {
+    prisma.invoice.findFirst.mockResolvedValue({ id: "inv-overdue" });
+
+    await expect(
+      service.create({
+        studioId: "studio-1",
+        studentId: "student-1",
+        type: "OPEN_SEAT",
+        batchId: "batch-1",
+      }),
+    ).rejects.toThrow(/overdue invoice/);
+    expect(tx.booking.create).not.toHaveBeenCalled();
+  });
 });

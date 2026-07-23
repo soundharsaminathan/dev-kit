@@ -77,7 +77,8 @@ export class BillingService {
     }));
   }
 
-  listForStudent(studentId: string) {
+  async listForStudent(actor: DecryptedUser, studentId: string) {
+    await this.assertCanAccessStudentInvoices(actor, studentId);
     return this.prisma.invoice.findMany({
       where: { studentId },
       orderBy: { id: "desc" },
@@ -337,10 +338,26 @@ export class BillingService {
     };
   }
 
-  async markPaid(id: string, paymentMethod: PaymentMethod) {
+  async markPaid(
+    actor: DecryptedUser,
+    id: string,
+    paymentMethod: PaymentMethod,
+  ) {
+    if (actor.role !== UserRole.OWNER && actor.role !== UserRole.STAFF) {
+      throw new ForbiddenException("Only studio admins can mark invoices paid");
+    }
+
     const invoice = await this.prisma.invoice.findUniqueOrThrow({
       where: { id },
     });
+
+    if (actor.studioId !== invoice.studioId) {
+      throw new ForbiddenException("Cannot mark invoices for another studio");
+    }
+
+    if (invoice.status === InvoiceStatus.PAID) {
+      throw new BadRequestException("Invoice is already paid");
+    }
 
     const amount = Number(invoice.amount);
     const platformFee = computePlatformFee(amount, invoice.platformFeePercent);
@@ -377,6 +394,43 @@ export class BillingService {
         platformFeePercent: data.platformFeePercent,
       },
     });
+  }
+
+  private async assertCanAccessStudentInvoices(
+    actor: DecryptedUser,
+    studentId: string,
+  ) {
+    const staffRoles: UserRole[] = [
+      UserRole.OWNER,
+      UserRole.STAFF,
+      UserRole.TRAINER,
+    ];
+    if (staffRoles.includes(actor.role) || actor.id === studentId) {
+      return;
+    }
+
+    const [familyLink, parentLink] = await Promise.all([
+      this.prisma.familyMember.findUnique({
+        where: {
+          ownerUserId_memberUserId: {
+            ownerUserId: actor.id,
+            memberUserId: studentId,
+          },
+        },
+      }),
+      this.prisma.parentChild.findUnique({
+        where: {
+          parentUserId_childUserId: {
+            parentUserId: actor.id,
+            childUserId: studentId,
+          },
+        },
+      }),
+    ]);
+
+    if (!familyLink && !parentLink) {
+      throw new ForbiddenException("Not allowed to view these invoices");
+    }
   }
 
   private resolveTrainerScope(actor: DecryptedUser, trainerId: string): string {

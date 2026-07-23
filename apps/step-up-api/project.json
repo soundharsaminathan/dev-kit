@@ -27,6 +27,18 @@
         "script": "test"
       }
     },
+    "test:ci": {
+      "executor": "nx:run-script",
+      "options": {
+        "script": "test"
+      }
+    },
+    "test:migrations": {
+      "executor": "nx:run-script",
+      "options": {
+        "script": "test:migrations"
+      }
+    },
     "prisma:generate": {
       "executor": "nx:run-script",
       "options": {
