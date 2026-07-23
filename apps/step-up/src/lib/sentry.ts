@@ -22,10 +22,6 @@ export function initSentry(router: AnyRouter) {
         maskAllText: true,
         blockAllMedia: true,
       }),
-      Sentry.feedbackIntegration({
-        colorScheme: "system",
-        showBranding: false,
-      }),
       Sentry.consoleLoggingIntegration({
         levels: ["warn", "error"],
       }),
