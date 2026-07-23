@@ -15,6 +15,7 @@ import {
   PrismaClient,
   ProfileVisibility,
   SessionStatus,
+  SessionType,
   SubscriptionKind,
   UserRole,
 } from "@prisma/client";
@@ -78,6 +79,30 @@ function utcAt(base: Date, dayOffset: number, hour: number, minute = 0): Date {
   d.setUTCDate(d.getUTCDate() + dayOffset);
   d.setUTCHours(hour, minute, 0, 0);
   return d;
+}
+
+function nextWeekdayOccurrences(
+  weekday: number,
+  count: number,
+  hour: number,
+  minute = 0,
+  from = new Date(),
+): Date[] {
+  const results: Date[] = [];
+  const cursor = new Date(
+    Date.UTC(from.getUTCFullYear(), from.getUTCMonth(), from.getUTCDate()),
+  );
+  while (results.length < count) {
+    if (cursor.getUTCDay() === weekday) {
+      const startsAt = new Date(cursor);
+      startsAt.setUTCHours(hour, minute, 0, 0);
+      if (startsAt.getTime() > from.getTime()) {
+        results.push(new Date(startsAt));
+      }
+    }
+    cursor.setUTCDate(cursor.getUTCDate() + 1);
+  }
+  return results;
 }
 
 async function upsertUser(user: SeedUser) {
@@ -927,6 +952,29 @@ async function main() {
       trainerIds: ["trainer-3"],
     },
     {
+      id: "batch-trial-1",
+      name: "Open Trial Class",
+      category: "ADULTS",
+      branchId: mainBranch.id,
+      danceCategories: [
+        {
+          name: "Hip-hop",
+          description: "First-class trial — try a class before you commit.",
+        },
+      ],
+      scheduleJson: { days: ["Sat"], time: "11:00" },
+      capacity: 20,
+      enrollmentMode: EnrollmentMode.SELF_JOIN,
+      creatorId: "trainer-3",
+      active: true,
+      certificationEnabled: false,
+      coverImageUrl:
+        "https://images.unsplash.com/photo-1508700929628-666bc8bd84ea?w=800&q=80",
+      ratingAvg: null,
+      ratingCount: 0,
+      trainerIds: ["trainer-3", "trainer-1"],
+    },
+    {
       id: "batch-inactive-1",
       name: "Summer Intensive 2025 (archived)",
       category: "ADULTS",
@@ -1152,6 +1200,7 @@ async function main() {
     startsAt: Date;
     endsAt: Date;
     status: SessionStatus;
+    type?: SessionType;
   };
 
   const sessions: SessionSeed[] = [
@@ -1237,6 +1286,19 @@ async function main() {
       endsAt: utcAt(weekStart, 5, 11),
       status: SessionStatus.SCHEDULED,
     },
+    // Trial — next 5 Saturdays @ 11:00 UTC
+    ...nextWeekdayOccurrences(6, 5, 11).map((startsAt, index) => {
+      const endsAt = new Date(startsAt);
+      endsAt.setUTCHours(12, 0, 0, 0);
+      return {
+        id: `session-trial-w${index}`,
+        batchId: "batch-trial-1",
+        startsAt,
+        endsAt,
+        status: SessionStatus.SCHEDULED,
+        type: SessionType.TRIAL,
+      };
+    }),
   ];
 
   for (const session of sessions) {
@@ -1247,8 +1309,16 @@ async function main() {
         endsAt: session.endsAt,
         status: session.status,
         batchId: session.batchId,
+        type: session.type ?? SessionType.REGULAR,
       },
-      create: session,
+      create: {
+        id: session.id,
+        batchId: session.batchId,
+        startsAt: session.startsAt,
+        endsAt: session.endsAt,
+        status: session.status,
+        type: session.type ?? SessionType.REGULAR,
+      },
     });
   }
 

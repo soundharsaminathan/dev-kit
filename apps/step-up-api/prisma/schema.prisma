@@ -82,6 +82,11 @@ enum SessionStatus {
   CANCELLED
 }
 
+enum SessionType {
+  REGULAR
+  TRIAL
+}
+
 enum AttendanceStatus {
   PRESENT
   ABSENT
@@ -585,10 +590,13 @@ model Session {
   startsAt DateTime
   endsAt   DateTime
   status   SessionStatus @default(SCHEDULED)
+  type     SessionType   @default(REGULAR)
 
   batch      Batch        @relation(fields: [batchId], references: [id], onDelete: Cascade)
   attendance Attendance[]
   bookings   Booking[]
+
+  @@index([type, startsAt])
 }
 
 model Attendance {

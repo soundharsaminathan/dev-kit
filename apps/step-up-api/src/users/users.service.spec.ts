@@ -155,6 +155,7 @@ describe("UsersService onboarding", () => {
       startsAt: new Date("2026-07-24T10:00:00.000Z"),
       endsAt: new Date("2026-07-24T11:00:00.000Z"),
       status: "SCHEDULED",
+      type: "TRIAL",
       batch: { id: "batch-1", studioId: "studio-seed-1" },
     });
     prisma.batch.findUnique.mockResolvedValue({
@@ -185,6 +186,66 @@ describe("UsersService onboarding", () => {
       }),
     });
     expect(prisma.user.update).toHaveBeenCalled();
+  });
+
+  it("creates a personal trial booking without a session", async () => {
+    const row = makeUser();
+    const completed = makeUser({
+      onboardingCompletedAt: new Date("2026-07-22T00:00:00.000Z"),
+    });
+    prisma.user.findUniqueOrThrow.mockResolvedValue(row);
+    crypto.decryptUser.mockImplementation((user: typeof row) => ({
+      ...user,
+      ...MASTER_PII,
+    }));
+    prisma.booking.findFirst.mockResolvedValue(null);
+    prisma.user.findFirst.mockResolvedValue({ id: "trainer-1" });
+    prisma.booking.create.mockResolvedValue({ id: "booking-personal" });
+    prisma.user.update.mockResolvedValue(completed);
+
+    await service.completeOnboarding("student-1", {
+      personalTrial: true,
+      trainerId: "trainer-1",
+    });
+
+    expect(prisma.session.findUnique).not.toHaveBeenCalled();
+    expect(prisma.booking.create).toHaveBeenCalledWith({
+      data: {
+        studioId: "studio-seed-1",
+        studentId: "student-1",
+        type: "TRIAL",
+        trainerId: "trainer-1",
+        notes: "Personal trial — studio will call to confirm a time",
+        status: "PENDING",
+      },
+    });
+    expect(prisma.user.update).toHaveBeenCalled();
+  });
+
+  it("rejects onboarding trial for a regular session", async () => {
+    const row = makeUser();
+    prisma.user.findUniqueOrThrow.mockResolvedValue(row);
+    crypto.decryptUser.mockImplementation((user: typeof row) => ({
+      ...user,
+      ...MASTER_PII,
+    }));
+    prisma.session.findUnique.mockResolvedValue({
+      id: "session-regular",
+      batchId: "batch-1",
+      startsAt: new Date("2026-07-24T10:00:00.000Z"),
+      endsAt: new Date("2026-07-24T11:00:00.000Z"),
+      status: "SCHEDULED",
+      type: "REGULAR",
+      batch: { id: "batch-1", studioId: "studio-seed-1" },
+    });
+
+    await expect(
+      service.completeOnboarding("student-1", {
+        sessionId: "session-regular",
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(prisma.booking.create).not.toHaveBeenCalled();
+    expect(prisma.user.update).not.toHaveBeenCalled();
   });
 
   it("marks onboarding complete when prefs are present", async () => {

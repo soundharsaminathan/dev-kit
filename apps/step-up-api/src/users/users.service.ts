@@ -16,6 +16,7 @@ import {
   type Gender,
   ProfileVisibility,
   SessionStatus,
+  SessionType,
   UserRole,
 } from "@prisma/client";
 import { MediaService } from "../media/media.service";
@@ -35,6 +36,9 @@ import {
   type UserPii,
   userPiiSelect,
 } from "./user-crypto.service";
+
+export const PERSONAL_TRIAL_NOTES =
+  "Personal trial — studio will call to confirm a time";
 
 @Injectable()
 export class UsersService {
@@ -468,6 +472,7 @@ export class UsersService {
   async completeOnboarding(
     id: string,
     trial?: {
+      personalTrial?: boolean;
       batchId?: string;
       sessionId?: string;
       trainerId?: string;
@@ -505,6 +510,7 @@ export class UsersService {
     }
 
     const hasTrial =
+      Boolean(trial?.personalTrial) ||
       Boolean(trial?.batchId) ||
       Boolean(trial?.sessionId) ||
       Boolean(trial?.trainerId) ||
@@ -526,6 +532,7 @@ export class UsersService {
     studioId: string,
     studentId: string,
     trial: {
+      personalTrial?: boolean;
       batchId?: string;
       sessionId?: string;
       trainerId?: string;
@@ -533,11 +540,59 @@ export class UsersService {
       endsAt?: string;
     },
   ) {
+    const trainerId = trial.trainerId;
+
+    if (trainerId) {
+      const trainer = await this.prisma.user.findFirst({
+        where: {
+          id: trainerId,
+          studioId,
+          role: UserRole.TRAINER,
+        },
+        select: { id: true },
+      });
+      if (!trainer) {
+        throw new BadRequestException("Select a trainer from this studio");
+      }
+    }
+
+    if (trial.personalTrial) {
+      const existingOpen = await this.prisma.booking.findFirst({
+        where: {
+          studioId,
+          studentId,
+          type: BookingType.TRIAL,
+          status: {
+            in: [BookingStatus.PENDING, BookingStatus.CONFIRMED],
+          },
+        },
+        select: { id: true, status: true },
+      });
+      if (existingOpen) {
+        throw new ConflictException(
+          existingOpen.status === BookingStatus.PENDING
+            ? "You already have a booking request waiting for studio approval"
+            : "You already have a confirmed trial booking",
+        );
+      }
+
+      await this.prisma.booking.create({
+        data: {
+          studioId,
+          studentId,
+          type: BookingType.TRIAL,
+          trainerId,
+          notes: PERSONAL_TRIAL_NOTES,
+          status: BookingStatus.PENDING,
+        },
+      });
+      return;
+    }
+
     let batchId = trial.batchId;
     const sessionId = trial.sessionId;
     let startsAt = trial.startsAt;
     let endsAt = trial.endsAt;
-    const trainerId = trial.trainerId;
 
     if (sessionId) {
       const session = await this.prisma.session.findUnique({
@@ -547,9 +602,12 @@ export class UsersService {
       if (
         !session ||
         session.status === SessionStatus.CANCELLED ||
-        session.batch.studioId !== studioId
+        session.batch.studioId !== studioId ||
+        session.type !== SessionType.TRIAL
       ) {
-        throw new BadRequestException("Select a class time from this studio");
+        throw new BadRequestException(
+          "Select a trial class time from this studio",
+        );
       }
       batchId = session.batchId;
       startsAt = session.startsAt.toISOString();
@@ -584,20 +642,6 @@ export class UsersService {
             ? "You already have a booking request waiting for studio approval"
             : "You already have a confirmed booking for this class",
         );
-      }
-    }
-
-    if (trainerId) {
-      const trainer = await this.prisma.user.findFirst({
-        where: {
-          id: trainerId,
-          studioId,
-          role: UserRole.TRAINER,
-        },
-        select: { id: true },
-      });
-      if (!trainer) {
-        throw new BadRequestException("Select a trainer from this studio");
       }
     }
 

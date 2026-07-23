@@ -8,8 +8,8 @@ import {
   Post,
   UseGuards,
 } from "@nestjs/common";
-import { UserRole } from "@prisma/client";
-import { IsDateString, IsString } from "class-validator";
+import { SessionType, UserRole } from "@prisma/client";
+import { IsDateString, IsEnum, IsOptional, IsString } from "class-validator";
 import { AttendanceService } from "../attendance/attendance.service";
 import { AuthGuard } from "../auth/auth.guard";
 import { Roles } from "../auth/roles.decorator";
@@ -25,6 +25,10 @@ class CreateSessionDto {
 
   @IsDateString()
   endsAt!: string;
+
+  @IsOptional()
+  @IsEnum(SessionType)
+  type?: SessionType;
 }
 
 @Controller("sessions")
@@ -39,6 +43,11 @@ export class SessionsController {
   @Get("batch/:batchId")
   listByBatch(@Param("batchId") batchId: string) {
     return this.sessionsService.listByBatch(batchId);
+  }
+
+  @Get("studio/:studioId/trial")
+  listTrialSlots(@Param("studioId") studioId: string) {
+    return this.sessionsService.listTrialSlots(studioId);
   }
 
   @Get(":id")
