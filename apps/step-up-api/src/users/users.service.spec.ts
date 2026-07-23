@@ -231,11 +231,49 @@ describe("UsersService onboarding", () => {
         studentId: "student-1",
         type: "TRIAL",
         trainerId: "trainer-1",
+        startsAt: undefined,
+        endsAt: undefined,
         notes: "Personal trial — studio will call to confirm a time",
         status: "PENDING",
       },
     });
     expect(prisma.user.update).toHaveBeenCalled();
+  });
+
+  it("creates a timed personal trial with preferred startsAt and endsAt", async () => {
+    const row = makeUser();
+    const completed = makeUser({
+      onboardingCompletedAt: new Date("2026-07-22T00:00:00.000Z"),
+    });
+    prisma.user.findUniqueOrThrow.mockResolvedValue(row);
+    crypto.decryptUser.mockImplementation((user: typeof row) => ({
+      ...user,
+      ...MASTER_PII,
+    }));
+    prisma.booking.findFirst.mockResolvedValue(null);
+    prisma.user.findFirst.mockResolvedValue({ id: "trainer-5" });
+    prisma.booking.create.mockResolvedValue({ id: "booking-timed" });
+    prisma.user.update.mockResolvedValue(completed);
+
+    await service.completeOnboarding("student-1", {
+      trainerId: "trainer-5",
+      startsAt: "2026-07-25T15:00:00.000Z",
+      endsAt: "2026-07-25T16:00:00.000Z",
+    });
+
+    expect(prisma.session.findUnique).not.toHaveBeenCalled();
+    expect(prisma.booking.create).toHaveBeenCalledWith({
+      data: {
+        studioId: "studio-seed-1",
+        studentId: "student-1",
+        type: "TRIAL",
+        trainerId: "trainer-5",
+        startsAt: new Date("2026-07-25T15:00:00.000Z"),
+        endsAt: new Date("2026-07-25T16:00:00.000Z"),
+        notes: "Personal trial — preferred time requested",
+        status: "PENDING",
+      },
+    });
   });
 
   it("rejects onboarding trial for a regular session", async () => {

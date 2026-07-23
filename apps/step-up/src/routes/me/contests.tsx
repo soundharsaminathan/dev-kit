@@ -179,7 +179,7 @@ function MeContestsPage() {
       title="Contests"
       subtitle="Browse open contests and register."
       showBack
-      backTo="/me"
+      backTo="/me/profile"
     >
       <PullToRefresh onRefresh={() => contestsQuery.refetch()}>
         <div className={styles.root}>
