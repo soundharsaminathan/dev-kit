@@ -1,0 +1,100 @@
+.stack {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  flex-shrink: 0;
+}
+
+.banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3, 0.75rem);
+  padding: 0.625rem 1rem;
+  padding-inline: max(1rem, env(safe-area-inset-left, 0px))
+    max(1rem, env(safe-area-inset-right, 0px));
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.35;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-fg) 8%, transparent);
+  background: color-mix(
+    in srgb,
+    var(--color-warning, #ff9f0a) 16%,
+    var(--color-bg)
+  );
+  color: var(--color-fg);
+}
+
+.message {
+  min-width: 0;
+  flex: 1;
+}
+
+.feedback {
+  margin: 0;
+  margin-top: 0.2rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  opacity: 0.85;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-shrink: 0;
+}
+
+.action {
+  appearance: none;
+  border: 0;
+  background: color-mix(in srgb, var(--color-fg) 10%, transparent);
+  color: inherit;
+  font: inherit;
+  font-weight: 700;
+  font-size: 0.75rem;
+  padding: 0.35rem 0.65rem;
+  border-radius: var(--radius-lg, 0.75rem);
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    background-color var(--interaction-transition-duration, 220ms)
+      var(--interaction-transition-curve, ease),
+    transform var(--interaction-transition-duration, 220ms)
+      var(--interaction-transition-curve, ease);
+}
+
+.action:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-fg) 16%, transparent);
+}
+
+.action:active:not(:disabled) {
+  transform: scale(var(--interaction-press-scale, 0.98));
+}
+
+.action:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.actionPrimary {
+  background: var(--btn-primary-background, var(--color-primary));
+  color: var(--btn-primary-foreground, var(--color-fg-on-primary));
+}
+
+.actionPrimary:hover:not(:disabled) {
+  background: var(
+    --btn-primary-hover-background,
+    color-mix(in srgb, var(--color-primary) 88%, black)
+  );
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .action {
+    transition-duration: 0ms;
+    transform: none;
+  }
+}

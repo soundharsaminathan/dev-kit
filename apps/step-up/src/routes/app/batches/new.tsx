@@ -1,6 +1,7 @@
 import { Button } from "@dev-ui/components/button";
 import { Checkbox } from "@dev-ui/components/checkbox";
 import { Field, Label } from "@dev-ui/components/field";
+import { FileTrigger } from "@dev-ui/components/file-trigger";
 import {
   Select,
   SelectContent,
@@ -15,6 +16,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useApi } from "@/lib/api-context";
 import { STUDIO_ID } from "@/lib/constants";
+import { uploadBatchCover, validateBatchCover } from "@/modules/batches/upload";
 import { CertificatePreview } from "@/modules/certificates/certificate-preview";
 import {
   type CertificateTemplate,
@@ -49,8 +51,28 @@ const steps = [
   "Trainers",
   "Schedule",
   "Dance categories",
+  "Plans",
   "Certification",
 ] as const;
+
+type CatalogSubscription = {
+  id: string;
+  name: string;
+  kind: "INDIVIDUAL" | "FAMILY";
+  individualAudience?: "ADULT" | "KID" | null;
+  familyPack?: string | null;
+  billingCadence: "MONTHLY" | "QUARTERLY";
+  adultSeats: number;
+  kidSeats: number;
+  price: number | string;
+  active: boolean;
+};
+
+function formatPlanPrice(price: number | string, cadence: string) {
+  const amount = Number(price);
+  const suffix = cadence === "QUARTERLY" ? "/3 mo" : "/mo";
+  return `₹${Number.isFinite(amount) ? amount : price}${suffix}`;
+}
 
 const weekdays = [
   { value: 0, label: "Sun" },
@@ -93,7 +115,9 @@ function NewBatchPage() {
   const today = useMemo(() => toDateInputValue(new Date()), []);
   const [step, setStep] = useState(0);
   const [name, setName] = useState("");
-  const [coverImageUrl, setCoverImageUrl] = useState("");
+  const [coverFile, setCoverFile] = useState<File | null>(null);
+  const [coverPreview, setCoverPreview] = useState<string | null>(null);
+  const [coverError, setCoverError] = useState<string | null>(null);
   const [category, setCategory] = useState<"KIDS" | "ADULTS">("KIDS");
   const [capacity, setCapacity] = useState("12");
   const [enrollmentMode, setEnrollmentMode] = useState<
@@ -115,6 +139,7 @@ function NewBatchPage() {
   const [certificateTemplateId, setCertificateTemplateId] = useState<
     string | null
   >(null);
+  const [subscriptionIds, setSubscriptionIds] = useState<string[]>([]);
 
   const members = useQuery({
     queryKey: ["studio-members", STUDIO_ID],
@@ -130,6 +155,11 @@ function NewBatchPage() {
       api.get<CertificateTemplate[]>(
         `/certificate-templates/studio/${STUDIO_ID}`,
       ),
+  });
+  const subscriptionsQuery = useQuery({
+    queryKey: ["subscriptions", STUDIO_ID],
+    queryFn: () =>
+      api.get<CatalogSubscription[]>(`/subscriptions/studio/${STUDIO_ID}`),
   });
 
   const trainers = useMemo(
@@ -151,6 +181,32 @@ function NewBatchPage() {
   const certificateLayout = selectedTemplate
     ? ensureCertificateDocument(selectedTemplate.layoutJson)
     : createDefaultCertificateDocument();
+  const expectedAudience = category === "KIDS" ? "KID" : "ADULT";
+  const catalog = useMemo(
+    () => (subscriptionsQuery.data ?? []).filter((plan) => plan.active),
+    [subscriptionsQuery.data],
+  );
+  const individualPlans = useMemo(
+    () =>
+      catalog.filter(
+        (plan) =>
+          plan.kind === "INDIVIDUAL" &&
+          plan.individualAudience === expectedAudience,
+      ),
+    [catalog, expectedAudience],
+  );
+  const familyPlans = useMemo(
+    () => catalog.filter((plan) => plan.kind === "FAMILY"),
+    [catalog],
+  );
+  const hasIndividualMonthly = individualPlans.some(
+    (plan) =>
+      plan.billingCadence === "MONTHLY" && subscriptionIds.includes(plan.id),
+  );
+  const hasIndividualQuarterly = individualPlans.some(
+    (plan) =>
+      plan.billingCadence === "QUARTERLY" && subscriptionIds.includes(plan.id),
+  );
 
   useEffect(() => {
     if (!certificateTemplateId && availableTemplates.length > 0) {
@@ -162,6 +218,17 @@ function NewBatchPage() {
       }
     }
   }, [availableTemplates, certificateTemplateId]);
+
+  useEffect(() => {
+    setSubscriptionIds((current) =>
+      current.filter((id) => {
+        const plan = catalog.find((entry) => entry.id === id);
+        if (!plan) return false;
+        if (plan.kind === "FAMILY") return true;
+        return plan.individualAudience === expectedAudience;
+      }),
+    );
+  }, [category, catalog, expectedAudience]);
 
   const stepIsValid = [
     Boolean(name.trim() && branchId && Number(capacity) >= 1),
@@ -178,15 +245,55 @@ function NewBatchPage() {
         (danceCategory) =>
           danceCategory.name.trim() && danceCategory.description.trim(),
       ),
+    hasIndividualMonthly && hasIndividualQuarterly,
     !certificationEnabled || Boolean(certificateTemplateId),
   ];
 
+  function togglePlan(planId: string, selected: boolean) {
+    setSubscriptionIds((current) =>
+      selected
+        ? current.includes(planId)
+          ? current
+          : [...current, planId]
+        : current.filter((id) => id !== planId),
+    );
+  }
+
+  function handleCoverSelect(files: FileList | null) {
+    const file = files?.[0] ?? null;
+    if (!file) return;
+    try {
+      validateBatchCover(file);
+    } catch (error) {
+      setCoverError(error instanceof Error ? error.message : "Invalid image.");
+      return;
+    }
+    setCoverError(null);
+    if (coverPreview?.startsWith("blob:")) {
+      URL.revokeObjectURL(coverPreview);
+    }
+    setCoverFile(file);
+    setCoverPreview(URL.createObjectURL(file));
+  }
+
+  function clearCover() {
+    if (coverPreview?.startsWith("blob:")) {
+      URL.revokeObjectURL(coverPreview);
+    }
+    setCoverFile(null);
+    setCoverPreview(null);
+    setCoverError(null);
+  }
+
   const createBatch = useMutation({
-    mutationFn: () =>
-      api.post<Batch>("/batches", {
+    mutationFn: async () => {
+      const coverImageUrl = coverFile
+        ? await uploadBatchCover(api, coverFile)
+        : undefined;
+      return api.post<Batch>("/batches", {
         studioId: STUDIO_ID,
         name,
-        coverImageUrl: coverImageUrl.trim() || undefined,
+        coverImageUrl,
         category,
         branchId,
         trainerIds,
@@ -209,12 +316,14 @@ function NewBatchPage() {
         },
         capacity: Number(capacity),
         enrollmentMode,
+        subscriptionIds,
         active: true,
         certificationEnabled,
         certificateTemplateId: certificationEnabled
           ? certificateTemplateId
           : null,
-      }),
+      });
+    },
     onSuccess: async () => {
       await queryClient.invalidateQueries({
         queryKey: ["batches", STUDIO_ID],
@@ -261,12 +370,36 @@ function NewBatchPage() {
           {step === 0 && (
             <div className={styles.formGrid}>
               <FormInput label="Batch name" value={name} onChange={setName} />
-              <FormInput
-                label="Cover image URL (optional)"
-                value={coverImageUrl}
-                onChange={setCoverImageUrl}
-                placeholder="https://…"
-              />
+              <div className={`${styles.coverField} ${styles.fullWidth}`}>
+                <span className={styles.coverLabel}>
+                  Cover image (optional)
+                </span>
+                <div className={styles.coverPreview}>
+                  {coverPreview ? (
+                    <img src={coverPreview} alt="Batch cover preview" />
+                  ) : (
+                    <span className={styles.coverEmpty}>No cover selected</span>
+                  )}
+                </div>
+                <div className={styles.coverActions}>
+                  <FileTrigger
+                    accept="image/jpeg,image/png,image/webp,image/gif"
+                    onSelect={handleCoverSelect}
+                  >
+                    <Button variant="default" type="button">
+                      {coverPreview ? "Replace image" : "Upload image"}
+                    </Button>
+                  </FileTrigger>
+                  {coverPreview ? (
+                    <Button variant="quiet" type="button" onClick={clearCover}>
+                      Remove
+                    </Button>
+                  ) : null}
+                </div>
+                {coverError ? (
+                  <p className={styles.coverError}>{coverError}</p>
+                ) : null}
+              </div>
               <Select
                 label="Student group"
                 selectedKey={category}
@@ -532,6 +665,67 @@ function NewBatchPage() {
           )}
 
           {step === 4 && (
+            <div className={styles.choiceList}>
+              <p className={styles.help}>
+                Students buy these plans on the batch screen. Individual 1-month
+                and 3-month plans for{" "}
+                {expectedAudience === "KID" ? "kids" : "adults"} are required.
+                Family packs are optional.
+              </p>
+              <h3 className={styles.planGroupTitle}>
+                Individual · {expectedAudience === "KID" ? "Kid" : "Adult"}
+              </h3>
+              {individualPlans.map((plan) => (
+                <div key={plan.id} className={styles.choice}>
+                  <Checkbox
+                    isSelected={subscriptionIds.includes(plan.id)}
+                    onChange={(selected) => togglePlan(plan.id, selected)}
+                  >
+                    {plan.name}
+                  </Checkbox>
+                  <span>
+                    {plan.billingCadence === "MONTHLY" ? "1 month" : "3 months"}{" "}
+                    · {formatPlanPrice(plan.price, plan.billingCadence)}
+                  </span>
+                </div>
+              ))}
+              {subscriptionsQuery.isLoading && (
+                <p className={styles.help}>Loading plans…</p>
+              )}
+              {!subscriptionsQuery.isLoading &&
+                individualPlans.length === 0 && (
+                  <p className={styles.help}>
+                    No matching Individual plans.{" "}
+                    <Link to="/app/subscriptions/new">
+                      Create subscription plans
+                    </Link>{" "}
+                    first.
+                  </p>
+                )}
+              <h3 className={styles.planGroupTitle}>Family packs (optional)</h3>
+              {familyPlans.map((plan) => (
+                <div key={plan.id} className={styles.choice}>
+                  <Checkbox
+                    isSelected={subscriptionIds.includes(plan.id)}
+                    onChange={(selected) => togglePlan(plan.id, selected)}
+                  >
+                    {plan.name}
+                  </Checkbox>
+                  <span>
+                    {plan.billingCadence === "MONTHLY" ? "1 month" : "3 months"}{" "}
+                    · {formatPlanPrice(plan.price, plan.billingCadence)}
+                  </span>
+                </div>
+              ))}
+              {!hasIndividualMonthly || !hasIndividualQuarterly ? (
+                <p className={styles.error}>
+                  Select both a 1-month and a 3-month Individual plan.
+                </p>
+              ) : null}
+            </div>
+          )}
+
+          {step === 5 && (
             <div className={styles.certification}>
               <div className={styles.certToggle}>
                 <Switch

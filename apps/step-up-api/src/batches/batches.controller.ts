@@ -1,7 +1,9 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
+  ForbiddenException,
   Get,
   Inject,
   Param,
@@ -13,6 +15,7 @@ import {
 import {
   BatchCategory,
   EnrollmentMode,
+  MembershipSeatRole,
   type Prisma,
   UserRole,
 } from "@prisma/client";
@@ -39,6 +42,7 @@ import { CurrentUser } from "../auth/current-user.decorator";
 import { Roles } from "../auth/roles.decorator";
 import { RolesGuard } from "../auth/roles.guard";
 import type { DecryptedUser } from "../users/user-crypto.service";
+import { UsersService } from "../users/users.service";
 import { BatchesService } from "./batches.service";
 
 class DanceCategoryDto {
@@ -112,6 +116,11 @@ class CreateBatchDto {
 
   @IsEnum(EnrollmentMode)
   enrollmentMode!: EnrollmentMode;
+
+  @IsArray()
+  @ArrayMinSize(2)
+  @IsString({ each: true })
+  subscriptionIds!: string[];
 
   @IsOptional()
   @IsBoolean()
@@ -217,11 +226,38 @@ class RateBatchDto {
   rating!: number;
 }
 
+class PurchaseCoveredStudentDto {
+  @IsString()
+  studentId!: string;
+
+  @IsEnum(MembershipSeatRole)
+  seatRole!: MembershipSeatRole;
+
+  @IsOptional()
+  @IsString()
+  batchId?: string;
+}
+
+class PurchaseBatchPlanDto {
+  @IsString()
+  subscriptionId!: string;
+
+  @IsString()
+  purchaserUserId!: string;
+
+  @IsArray()
+  @ArrayMinSize(1)
+  @ValidateNested({ each: true })
+  @Type(() => PurchaseCoveredStudentDto)
+  coveredStudents!: PurchaseCoveredStudentDto[];
+}
+
 @Controller("batches")
 @UseGuards(AuthGuard, RolesGuard)
 export class BatchesController {
   constructor(
     @Inject(BatchesService) private readonly batchesService: BatchesService,
+    @Inject(UsersService) private readonly usersService: UsersService,
   ) {}
 
   @Get("studio/:studioId")
@@ -279,6 +315,23 @@ export class BatchesController {
     return this.batchesService.remove(id);
   }
 
+  @Post(":id/purchase")
+  @Roles(UserRole.STUDENT, UserRole.PARENT, UserRole.OWNER, UserRole.STAFF)
+  async purchase(
+    @Param("id") id: string,
+    @Body() dto: PurchaseBatchPlanDto,
+    @CurrentUser() actor: DecryptedUser,
+  ) {
+    const staffRoles: UserRole[] = [UserRole.OWNER, UserRole.STAFF];
+    if (!staffRoles.includes(actor.role)) {
+      await this.assertPurchaserOwnership(actor, dto.purchaserUserId);
+      for (const covered of dto.coveredStudents) {
+        await this.assertCanCoverStudent(actor, covered.studentId);
+      }
+    }
+    return this.batchesService.purchase(id, dto);
+  }
+
   @Post(":id/enroll")
   @Roles(
     UserRole.OWNER,
@@ -309,5 +362,44 @@ export class BatchesController {
     @CurrentUser() actor: DecryptedUser,
   ) {
     return this.batchesService.rate(id, dto.studentId, dto.rating, actor);
+  }
+
+  private async assertPurchaserOwnership(
+    actor: DecryptedUser,
+    purchaserUserId: string,
+  ) {
+    if (actor.role === UserRole.STUDENT) {
+      if (actor.id !== purchaserUserId) {
+        throw new ForbiddenException(
+          "Students can only purchase for themselves",
+        );
+      }
+      return;
+    }
+    if (actor.role === UserRole.PARENT) {
+      if (actor.id === purchaserUserId) {
+        return;
+      }
+      throw new ForbiddenException(
+        "Parents must be the purchaser on batch purchase",
+      );
+    }
+    throw new BadRequestException("Unexpected role");
+  }
+
+  private async assertCanCoverStudent(actor: DecryptedUser, studentId: string) {
+    if (actor.id === studentId) {
+      return;
+    }
+
+    const linked = await this.usersService.isLinkedFamilyMember(
+      actor.id,
+      studentId,
+    );
+    if (!linked) {
+      throw new ForbiddenException(
+        "Student is not linked to this account as a family member",
+      );
+    }
   }
 }

@@ -45,7 +45,7 @@ function validateConfirmPassword(value: string, newPassword: string) {
 }
 
 export function ChangePasswordPage({
-  backTo = "/me/profile",
+  backTo = "/me/profile/security",
 }: ChangePasswordPageProps) {
   const navigate = useNavigate();
   const { changePassword, hasPasswordProvider } = useAuth();
@@ -120,7 +120,7 @@ export function ChangePasswordPage({
           <Alert variant="success">
             <AlertTitle>Password updated</AlertTitle>
             <AlertDescription>
-              Your new password is saved. Taking you back to profile…
+              Your new password is saved. Taking you back…
             </AlertDescription>
           </Alert>
         ) : null}

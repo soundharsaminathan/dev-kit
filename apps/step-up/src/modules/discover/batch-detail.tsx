@@ -1,5 +1,6 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@dev-ui/components/avatar";
 import { Badge } from "@dev-ui/components/badge";
+import { Checkbox } from "@dev-ui/components/checkbox";
 import {
   Select,
   SelectContent,
@@ -8,13 +9,15 @@ import {
   SelectValue,
 } from "@dev-ui/components/select";
 import { Icon } from "@dev-ui/icons";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useApi } from "@/lib/api-context";
+import { useAuth } from "@/lib/auth";
 import { STUDIO_ID } from "@/lib/constants";
 import { ENTITY_ICONS } from "@/lib/entity-icons";
 import { BatchRatingInput } from "@/modules/discover/batch-rating";
+import type { DiscoverBatchPlan } from "@/modules/discover/types";
 import { useDiscoverBatch } from "@/modules/discover/use-discover";
 import { useActiveStudentContext } from "@/modules/me/use-active-student-context";
 import { AppBottomSheet } from "@/modules/ui/app-bottom-sheet";
@@ -24,6 +27,13 @@ import { SkeletonBlock } from "@/modules/ui/skeleton-block";
 import { ErrorState, SuccessState } from "@/modules/ui/states";
 import { StickyCtaBar, TouchButton } from "@/modules/ui/touch-button";
 import styles from "./batch-detail.module.scss";
+
+type StudioBatch = {
+  id: string;
+  name: string;
+  category: "KIDS" | "ADULTS";
+  active: boolean;
+};
 
 function formatPrice(value: number | string | null | undefined) {
   if (value == null || value === "") return null;
@@ -36,23 +46,66 @@ function formatPrice(value: number | string | null | undefined) {
   }).format(num);
 }
 
+function planPriceLabel(plan: DiscoverBatchPlan) {
+  const amount = formatPrice(plan.price) ?? `₹${plan.price}`;
+  return plan.billingCadence === "QUARTERLY"
+    ? `${amount}/3 mo`
+    : `${amount}/mo`;
+}
+
+function planKindLabel(plan: DiscoverBatchPlan) {
+  if (plan.kind === "INDIVIDUAL") {
+    return `Individual · ${plan.individualAudience === "ADULT" ? "Adult" : "Kid"}`;
+  }
+  return `Family · ${(plan.familyPack ?? "").replaceAll("_", " ").toLowerCase()}`;
+}
+
 export function BatchDetailPage() {
   const { id } = useParams({ strict: false }) as { id: string };
   const api = useApi();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { studentId, loading: studentLoading } = useActiveStudentContext();
+  const {
+    studentId,
+    loading: studentLoading,
+    accounts,
+    children,
+  } = useActiveStudentContext();
   const query = useDiscoverBatch(id, studentId || undefined);
 
   const [bookOpen, setBookOpen] = useState(false);
   const [enrollOpen, setEnrollOpen] = useState(false);
+  const [purchaseOpen, setPurchaseOpen] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState<DiscoverBatchPlan | null>(
+    null,
+  );
+  const [selectedAdultIds, setSelectedAdultIds] = useState<string[]>([]);
+  const [selectedKidIds, setSelectedKidIds] = useState<string[]>([]);
+  const [seatBatchIds, setSeatBatchIds] = useState<Record<string, string>>({});
   const [type, setType] = useState<"TRIAL" | "OPEN_SEAT" | "PRIVATE">("TRIAL");
   const [notes, setNotes] = useState("");
   const [success, setSuccess] = useState(false);
   const [enrollSuccess, setEnrollSuccess] = useState(false);
+  const [purchaseSuccess, setPurchaseSuccess] = useState(false);
 
   const trainerId = query.data?.trainers[0]?.trainer.id;
   const canActForStudent = Boolean(studentId) && !studentLoading;
+
+  const studioBatches = useQuery({
+    queryKey: ["batches", STUDIO_ID, "purchase-picks"],
+    queryFn: () => api.get<StudioBatch[]>(`/batches/studio/${STUDIO_ID}`),
+    enabled: purchaseOpen && selectedPlan?.kind === "FAMILY",
+  });
+
+  const adultCandidates = useMemo(
+    () =>
+      accounts.filter(
+        (account) => account.isSelf || account.kind === "CO_STUDENT",
+      ),
+    [accounts],
+  );
+  const kidCandidates = useMemo(() => children, [children]);
 
   const createBooking = useMutation({
     mutationFn: () => {
@@ -110,6 +163,49 @@ export function BatchDetailPage() {
     },
   });
 
+  const purchase = useMutation({
+    mutationFn: () => {
+      if (!user || !selectedPlan) {
+        throw new Error("Select a plan to continue.");
+      }
+      const coveredStudents = [
+        ...selectedAdultIds.map((studentSeatId) => ({
+          studentId: studentSeatId,
+          seatRole: "ADULT" as const,
+          ...(seatBatchIds[studentSeatId]
+            ? { batchId: seatBatchIds[studentSeatId] }
+            : {}),
+        })),
+        ...selectedKidIds.map((studentSeatId) => ({
+          studentId: studentSeatId,
+          seatRole: "KID" as const,
+          ...(seatBatchIds[studentSeatId]
+            ? { batchId: seatBatchIds[studentSeatId] }
+            : {}),
+        })),
+      ];
+      return api.post(`/batches/${id}/purchase`, {
+        subscriptionId: selectedPlan.id,
+        purchaserUserId: user.id,
+        coveredStudents,
+      });
+    },
+    onSuccess: () => {
+      void Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["batches", id] }),
+        queryClient.invalidateQueries({
+          queryKey: ["batches", "discover", STUDIO_ID],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["memberships", studentId],
+        }),
+      ]);
+      setPurchaseOpen(false);
+      setSelectedPlan(null);
+      setPurchaseSuccess(true);
+    },
+  });
+
   const rateBatch = useMutation({
     mutationFn: (rating: number) =>
       api.post(`/batches/${id}/rate`, { studentId, rating }),
@@ -122,6 +218,29 @@ export function BatchDetailPage() {
       ]);
     },
   });
+
+  function openPurchase(plan: DiscoverBatchPlan) {
+    setSelectedPlan(plan);
+    setSeatBatchIds({});
+    if (plan.kind === "INDIVIDUAL") {
+      if (plan.individualAudience === "ADULT") {
+        setSelectedAdultIds([studentId]);
+        setSelectedKidIds([]);
+      } else {
+        setSelectedAdultIds([]);
+        const defaultKid = children[0]?.id ?? studentId;
+        setSelectedKidIds(defaultKid ? [defaultKid] : []);
+      }
+    } else {
+      setSelectedAdultIds(
+        adultCandidates.slice(0, plan.adultSeats).map((account) => account.id),
+      );
+      setSelectedKidIds(
+        children.slice(0, plan.kidSeats).map((child) => child.id),
+      );
+    }
+    setPurchaseOpen(true);
+  }
 
   if (query.isLoading) {
     return (
@@ -150,6 +269,9 @@ export function BatchDetailPage() {
 
   const batch = query.data;
   const trainer = batch.trainers[0]?.trainer;
+  const plans = (batch.plans ?? []).filter((plan) => plan.active);
+  const hasPlans = plans.length > 0;
+  const batchSeatRole = batch.category === "KIDS" ? "KID" : "ADULT";
   const price = formatPrice(batch.price);
   const isFull = batch.remainingSeats === 0;
   const seatsLabel =
@@ -169,7 +291,24 @@ export function BatchDetailPage() {
     !hasPendingRequest &&
     !hasConfirmedRequest;
 
-  if (enrollSuccess) {
+  const otherSeatRole = batchSeatRole === "KID" ? "ADULT" : "KID";
+  const otherSeatIds =
+    otherSeatRole === "ADULT" ? selectedAdultIds : selectedKidIds;
+  const otherBatches = (studioBatches.data ?? []).filter(
+    (entry) =>
+      entry.active &&
+      entry.id !== id &&
+      entry.category === (otherSeatRole === "KID" ? "KIDS" : "ADULTS"),
+  );
+
+  const seatsValid =
+    selectedPlan != null &&
+    selectedAdultIds.length === selectedPlan.adultSeats &&
+    selectedKidIds.length === selectedPlan.kidSeats &&
+    (selectedPlan.kind !== "FAMILY" ||
+      otherSeatIds.every((seatId) => Boolean(seatBatchIds[seatId])));
+
+  if (enrollSuccess || purchaseSuccess) {
     return (
       <Screen title="Enrolled" showBack backTo="/me/book">
         <SuccessState
@@ -188,7 +327,10 @@ export function BatchDetailPage() {
               <TouchButton
                 variant="quiet"
                 fullWidth
-                onClick={() => setEnrollSuccess(false)}
+                onClick={() => {
+                  setEnrollSuccess(false);
+                  setPurchaseSuccess(false);
+                }}
               >
                 Back to class
               </TouchButton>
@@ -320,8 +462,44 @@ export function BatchDetailPage() {
               {seatsLabel}
             </span>
           ) : null}
-          {price ? <span className={styles.price}>{price}/mo</span> : null}
+          {price ? <span className={styles.price}>from {price}</span> : null}
         </div>
+
+        {hasPlans && !batch.viewerEnrolled ? (
+          <div className={styles.section}>
+            <h2 className={styles.sectionTitle}>Choose a plan</h2>
+            <p className={styles.muted}>
+              Pick a duration to enroll in this class — like buying a product
+              option.
+            </p>
+            <div className={styles.planList}>
+              {plans.map((plan) => (
+                <button
+                  key={plan.id}
+                  type="button"
+                  className={styles.planCard}
+                  disabled={isFull || !canActForStudent}
+                  onClick={() => openPurchase(plan)}
+                >
+                  <div className={styles.planCopy}>
+                    <strong>{plan.name}</strong>
+                    <span className={styles.muted}>{planKindLabel(plan)}</span>
+                  </div>
+                  <div className={styles.planMeta}>
+                    <span className={styles.planPrice}>
+                      {planPriceLabel(plan)}
+                    </span>
+                    <span className={styles.planCadence}>
+                      {plan.billingCadence === "MONTHLY"
+                        ? "1 month"
+                        : "3 months"}
+                    </span>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : null}
 
         {batch.viewerEnrolled ? (
           <div className={styles.ratingSection}>
@@ -446,6 +624,18 @@ export function BatchDetailPage() {
             <TouchButton variant="primary" fullWidth isDisabled>
               Class is full
             </TouchButton>
+          ) : hasPlans ? (
+            <TouchButton
+              variant="primary"
+              fullWidth
+              isDisabled={!canActForStudent}
+              onClick={() => {
+                const first = plans[0];
+                if (first) openPurchase(first);
+              }}
+            >
+              Choose a plan
+            </TouchButton>
           ) : batch.enrollmentMode === "SELF_JOIN" ? (
             <TouchButton
               variant="primary"
@@ -467,6 +657,138 @@ export function BatchDetailPage() {
           )}
         </StickyCtaBar>
       ) : null}
+
+      <AppBottomSheet
+        isOpen={purchaseOpen}
+        onOpenChange={(open) => {
+          setPurchaseOpen(open);
+          if (!open) setSelectedPlan(null);
+        }}
+        title={selectedPlan ? selectedPlan.name : "Choose a plan"}
+      >
+        <div className={styles.bookForm}>
+          {selectedPlan ? (
+            <>
+              <p className={styles.muted}>
+                {planKindLabel(selectedPlan)} · {planPriceLabel(selectedPlan)}
+              </p>
+              {selectedPlan.kind === "FAMILY" ? (
+                <>
+                  {selectedPlan.adultSeats > 0 ? (
+                    <div className={styles.section}>
+                      <h3 className={styles.sectionTitle}>Adult seats</h3>
+                      {adultCandidates.map((account) => (
+                        <Checkbox
+                          key={account.id}
+                          isSelected={selectedAdultIds.includes(account.id)}
+                          onChange={(selected) =>
+                            setSelectedAdultIds((current) =>
+                              selected
+                                ? [...current, account.id].slice(
+                                    0,
+                                    selectedPlan.adultSeats,
+                                  )
+                                : current.filter(
+                                    (entry) => entry !== account.id,
+                                  ),
+                            )
+                          }
+                        >
+                          {account.name}
+                        </Checkbox>
+                      ))}
+                    </div>
+                  ) : null}
+                  {selectedPlan.kidSeats > 0 ? (
+                    <div className={styles.section}>
+                      <h3 className={styles.sectionTitle}>Kid seats</h3>
+                      {kidCandidates.map((child) => (
+                        <Checkbox
+                          key={child.id}
+                          isSelected={selectedKidIds.includes(child.id)}
+                          onChange={(selected) =>
+                            setSelectedKidIds((current) =>
+                              selected
+                                ? [...current, child.id].slice(
+                                    0,
+                                    selectedPlan.kidSeats,
+                                  )
+                                : current.filter((entry) => entry !== child.id),
+                            )
+                          }
+                        >
+                          {child.name}
+                        </Checkbox>
+                      ))}
+                    </div>
+                  ) : null}
+                  {otherSeatIds.length > 0 ? (
+                    <div className={styles.section}>
+                      <h3 className={styles.sectionTitle}>
+                        Other batch for{" "}
+                        {otherSeatRole === "ADULT" ? "adults" : "kids"}
+                      </h3>
+                      {otherSeatIds.map((seatId) => {
+                        const label =
+                          [...adultCandidates, ...kidCandidates].find(
+                            (entry) => entry.id === seatId,
+                          )?.name ?? seatId;
+                        return (
+                          <Select
+                            key={seatId}
+                            label={label}
+                            selectedKey={seatBatchIds[seatId] ?? null}
+                            onSelectionChange={(key) =>
+                              setSeatBatchIds((current) => ({
+                                ...current,
+                                [seatId]: key as string,
+                              }))
+                            }
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {otherBatches.map((entry) => (
+                                <SelectItem key={entry.id} id={entry.id}>
+                                  {entry.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        );
+                      })}
+                    </div>
+                  ) : null}
+                </>
+              ) : (
+                <p className={styles.muted}>
+                  Enrolls the selected student into{" "}
+                  <strong>{batch.name}</strong> for this plan period.
+                </p>
+              )}
+              {purchase.isError ? (
+                <ErrorState
+                  description={
+                    purchase.error instanceof Error
+                      ? purchase.error.message
+                      : "Could not complete purchase."
+                  }
+                />
+              ) : null}
+              <TouchButton
+                variant="primary"
+                fullWidth
+                isDisabled={!canActForStudent || !seatsValid}
+                isPending={purchase.isPending}
+                onClick={() => purchase.mutate()}
+              >
+                Enroll with this plan
+              </TouchButton>
+            </>
+          ) : null}
+        </div>
+      </AppBottomSheet>
 
       <AppBottomSheet
         isOpen={enrollOpen}
@@ -531,10 +853,9 @@ export function BatchDetailPage() {
             label="Notes (optional)"
             value={notes}
             onChange={setNotes}
-            placeholder="Anything the studio should know"
           />
           {!canActForStudent ? (
-            <ErrorState description="Select a student before booking this class." />
+            <ErrorState description="Select a student before booking." />
           ) : null}
           {createBooking.isError ? (
             <ErrorState
@@ -552,7 +873,7 @@ export function BatchDetailPage() {
             isPending={createBooking.isPending}
             onClick={() => createBooking.mutate()}
           >
-            Send request & pay
+            Submit request
           </TouchButton>
         </div>
       </AppBottomSheet>

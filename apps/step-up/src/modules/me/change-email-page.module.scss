@@ -1,0 +1,34 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4, 1rem);
+}
+
+.description {
+  margin: 0;
+  font-size: 0.9375rem;
+  line-height: 1.45;
+  color: color-mix(in srgb, var(--color-fg) 62%, transparent);
+}
+
+.currentEmail {
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.4;
+  color: color-mix(in srgb, var(--color-fg) 72%, transparent);
+
+  strong {
+    font-weight: 600;
+    color: var(--color-fg);
+  }
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4, 1rem);
+  padding: var(--space-4, 1rem);
+  border-radius: var(--radius-2xl, 1.25rem);
+  background: var(--card-background, var(--color-card));
+  box-shadow: var(--shadow-md, 0 12px 28px rgb(0 0 0 / 8%));
+}

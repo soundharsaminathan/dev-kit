@@ -24,6 +24,8 @@ export type AuthContextValue = {
   user: AuthUser | null;
   loading: boolean;
   hasPasswordProvider: boolean;
+  emailVerified: boolean;
+  needsEmailVerification: boolean;
   loginAsDev: (role: UserRole) => void;
   signIn: (identifier: string, password: string) => Promise<AuthUser>;
   signUp: (email: string, password: string, name: string) => Promise<AuthUser>;
@@ -33,6 +35,9 @@ export type AuthContextValue = {
     currentPassword: string,
     newPassword: string,
   ) => Promise<void>;
+  changeEmail: (newEmail: string, currentPassword: string) => Promise<void>;
+  resendEmailVerification: () => Promise<void>;
+  refreshEmailVerification: () => Promise<boolean>;
   signOutUser: () => Promise<void>;
   getIdToken: () => Promise<string | null>;
   updateUser: (patch: Partial<AuthUser>) => void;

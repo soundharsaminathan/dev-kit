@@ -8,6 +8,7 @@ describe("BatchesService branch validation", () => {
     user: { findMany: vi.fn() },
     studioBranch: { findUnique: vi.fn() },
     certificateTemplate: { findUnique: vi.fn() },
+    subscription: { findMany: vi.fn() },
     batch: {
       create: vi.fn(),
       findUnique: vi.fn(),
@@ -35,6 +36,54 @@ describe("BatchesService branch validation", () => {
     invalidate: vi.fn().mockResolvedValue(undefined),
   };
 
+  const media = {
+    signReadUrl: vi.fn(async (url: string | null) => url),
+  };
+
+  const memberships = {
+    purchaseForBatch: vi.fn(),
+  };
+
+  const kidPlans = [
+    {
+      id: "sub-kid-mo",
+      studioId: "studio-1",
+      active: true,
+      kind: "INDIVIDUAL",
+      individualAudience: "KID",
+      billingCadence: BillingCadence.MONTHLY,
+    },
+    {
+      id: "sub-kid-qtr",
+      studioId: "studio-1",
+      active: true,
+      kind: "INDIVIDUAL",
+      individualAudience: "KID",
+      billingCadence: BillingCadence.QUARTERLY,
+    },
+  ];
+
+  const createPayload = {
+    studioId: "studio-1",
+    name: "Kids",
+    category: "KIDS" as const,
+    branchId: "branch-1",
+    trainerIds: ["trainer-1"],
+    danceCategories: [{ name: "Hip-hop", description: "Basics" }],
+    scheduleJson: {
+      frequency: "WEEKLY" as const,
+      weekdays: [1],
+      startDate: "2026-07-20",
+      endDate: "2026-07-27",
+      startTime: "18:00",
+      endTime: "19:00",
+      utcOffsetMinutes: -330,
+    },
+    capacity: 12,
+    enrollmentMode: "STAFF_ONLY" as const,
+    subscriptionIds: ["sub-kid-mo", "sub-kid-qtr"],
+  };
+
   let service: BatchesService;
 
   beforeEach(() => {
@@ -50,6 +99,8 @@ describe("BatchesService branch validation", () => {
       } as never,
       scheduleConflicts as never,
       trialSlotsCache as never,
+      media as never,
+      memberships as never,
     );
     prisma.$transaction.mockImplementation(
       async (callback: (tx: typeof prisma) => unknown) => callback(prisma),
@@ -61,6 +112,7 @@ describe("BatchesService branch validation", () => {
         role: UserRole.TRAINER,
       },
     ]);
+    prisma.subscription.findMany.mockResolvedValue(kidPlans);
   });
 
   it("rejects a branch from another studio", async () => {
@@ -71,23 +123,8 @@ describe("BatchesService branch validation", () => {
 
     await expect(
       service.create("owner-1", {
-        studioId: "studio-1",
-        name: "Kids",
-        category: "KIDS",
+        ...createPayload,
         branchId: "branch-other",
-        trainerIds: ["trainer-1"],
-        danceCategories: [{ name: "Hip-hop", description: "Basics" }],
-        scheduleJson: {
-          frequency: "WEEKLY",
-          weekdays: [1],
-          startDate: "2026-07-20",
-          endDate: "2026-07-27",
-          startTime: "18:00",
-          endTime: "19:00",
-          utcOffsetMinutes: -330,
-        },
-        capacity: 12,
-        enrollmentMode: "STAFF_ONLY",
       }),
     ).rejects.toBeInstanceOf(BadRequestException);
     expect(prisma.batch.create).not.toHaveBeenCalled();
@@ -98,27 +135,12 @@ describe("BatchesService branch validation", () => {
       id: "branch-1",
       studioId: "studio-1",
     });
-    prisma.batch.create.mockResolvedValue({ id: "batch-1" });
-
-    await service.create("owner-1", {
-      studioId: "studio-1",
-      name: "Kids",
-      category: "KIDS",
-      branchId: "branch-1",
-      trainerIds: ["trainer-1"],
-      danceCategories: [{ name: "Hip-hop", description: "Basics" }],
-      scheduleJson: {
-        frequency: "WEEKLY",
-        weekdays: [1],
-        startDate: "2026-07-20",
-        endDate: "2026-07-27",
-        startTime: "18:00",
-        endTime: "19:00",
-        utcOffsetMinutes: -330,
-      },
-      capacity: 12,
-      enrollmentMode: "STAFF_ONLY",
+    prisma.batch.create.mockResolvedValue({
+      id: "batch-1",
+      plans: kidPlans.map((subscription) => ({ subscription })),
     });
+
+    await service.create("owner-1", createPayload);
 
     expect(scheduleConflicts.assertNoConflicts).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -130,9 +152,12 @@ describe("BatchesService branch validation", () => {
     expect(prisma.batch.create.mock.calls[0]?.[0]?.data?.branchId).toBe(
       "branch-1",
     );
-    expect(
-      prisma.batch.create.mock.calls[0]?.[0]?.data?.monthlyPlanId,
-    ).toBeUndefined();
+    expect(prisma.batch.create.mock.calls[0]?.[0]?.data?.plans).toEqual({
+      create: [
+        { subscriptionId: "sub-kid-mo" },
+        { subscriptionId: "sub-kid-qtr" },
+      ],
+    });
   });
 
   it("rejects create when a schedule conflict exists", async () => {
@@ -147,30 +172,11 @@ describe("BatchesService branch validation", () => {
     );
 
     await expect(
-      service.create("owner-1", {
-        studioId: "studio-1",
-        name: "Kids",
-        category: "KIDS",
-        branchId: "branch-1",
-        trainerIds: ["trainer-1"],
-        danceCategories: [{ name: "Hip-hop", description: "Basics" }],
-        scheduleJson: {
-          frequency: "WEEKLY",
-          weekdays: [1],
-          startDate: "2026-07-20",
-          endDate: "2026-07-27",
-          startTime: "18:00",
-          endTime: "19:00",
-          utcOffsetMinutes: -330,
-        },
-        capacity: 12,
-        enrollmentMode: "STAFF_ONLY",
-      }),
+      service.create("owner-1", createPayload),
     ).rejects.toBeInstanceOf(ConflictException);
     expect(prisma.batch.create).not.toHaveBeenCalled();
   });
 });
-
 describe("BatchesService update", () => {
   const prisma = {
     user: { findMany: vi.fn() },
@@ -208,6 +214,12 @@ describe("BatchesService update", () => {
       } as never,
       {
         invalidate: vi.fn().mockResolvedValue(undefined),
+      } as never,
+      {
+        signReadUrl: vi.fn(async (url: string | null) => url),
+      } as never,
+      {
+        purchaseForBatch: vi.fn(),
       } as never,
     );
     prisma.$transaction.mockImplementation(
@@ -311,6 +323,12 @@ describe("BatchesService getRevenue", () => {
       {
         invalidate: vi.fn().mockResolvedValue(undefined),
       } as never,
+      {
+        signReadUrl: vi.fn(async (url: string | null) => url),
+      } as never,
+      {
+        purchaseForBatch: vi.fn(),
+      } as never,
     );
   });
 
@@ -406,6 +424,12 @@ describe("BatchesService rate", () => {
       } as never,
       {
         invalidate: vi.fn().mockResolvedValue(undefined),
+      } as never,
+      {
+        signReadUrl: vi.fn(async (url: string | null) => url),
+      } as never,
+      {
+        purchaseForBatch: vi.fn(),
       } as never,
     );
     prisma.$transaction.mockImplementation(

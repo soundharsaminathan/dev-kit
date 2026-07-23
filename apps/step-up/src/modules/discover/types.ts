@@ -1,3 +1,16 @@
+export type DiscoverBatchPlan = {
+  id: string;
+  name: string;
+  kind: "INDIVIDUAL" | "FAMILY";
+  individualAudience?: "ADULT" | "KID" | null;
+  familyPack?: string | null;
+  billingCadence: "MONTHLY" | "QUARTERLY";
+  adultSeats: number;
+  kidSeats: number;
+  price: number | string;
+  active: boolean;
+};
+
 export type DiscoverBatch = {
   id: string;
   name: string;
@@ -10,6 +23,7 @@ export type DiscoverBatch = {
   remainingSeats?: number | null;
   capacity: number;
   price?: number | string | null;
+  plans?: DiscoverBatchPlan[];
   durationMinutes?: number | null;
   scheduleLabel?: string | null;
   active: boolean;
@@ -52,6 +66,7 @@ export type DiscoverBatch = {
 
 export function discoverCtaLabel(batch: DiscoverBatch) {
   if (batch.remainingSeats === 0) return "Full";
+  if ((batch.plans?.length ?? 0) > 0) return "Enroll";
   if (batch.enrollmentMode === "SELF_JOIN") return "Join";
   return "Book";
 }

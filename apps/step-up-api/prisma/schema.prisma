@@ -477,10 +477,24 @@ model Batch {
   certificateTemplate CertificateTemplate? @relation(fields: [certificateTemplateId], references: [id], onDelete: SetNull)
   trainers            BatchTrainer[]
   enrollments         BatchEnrollment[]
+  plans               BatchPlan[]
   sessions            Session[]
   conversation        Conversation?
   bookings            Booking[]
   ratings             BatchRating[]
+}
+
+model BatchPlan {
+  id             String @id @default(cuid())
+  batchId        String
+  subscriptionId String
+
+  batch        Batch        @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  subscription Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+
+  @@unique([batchId, subscriptionId])
+  @@index([batchId])
+  @@index([subscriptionId])
 }
 
 model BatchRating {
@@ -537,6 +551,7 @@ model Subscription {
   studio      Studio       @relation(fields: [studioId], references: [id], onDelete: Cascade)
   creator     User         @relation("SubscriptionCreator", fields: [creatorId], references: [id])
   memberships Membership[]
+  batchPlans  BatchPlan[]
 }
 
 model Membership {

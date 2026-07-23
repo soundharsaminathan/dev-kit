@@ -36,6 +36,67 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
+function ElementImageField({
+  src,
+  onUploaded,
+  onClear,
+}: {
+  src: string;
+  onUploaded: (src: string) => void;
+  onClear: () => void;
+}) {
+  const api = useApi();
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+
+  async function onFile(files: FileList | null) {
+    const file = files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      onUploaded(await uploadCertificateAsset(api, file));
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : "Upload failed");
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  }
+
+  return (
+    <div className={styles.field}>
+      <span className={styles.fieldLabel}>Image</span>
+      <input
+        ref={fileRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp,image/gif"
+        hidden
+        onChange={(e) => void onFile(e.target.files)}
+      />
+      <button
+        type="button"
+        className={styles.btn}
+        disabled={uploading}
+        onClick={() => fileRef.current?.click()}
+      >
+        {uploading ? "Uploading…" : src ? "Replace image" : "Upload image"}
+      </button>
+      {src ? (
+        <>
+          <div
+            className={styles.bgPreview}
+            style={{ backgroundImage: `url(${src})` }}
+            aria-hidden
+          />
+          <button type="button" className={styles.linkBtn} onClick={onClear}>
+            Remove image
+          </button>
+        </>
+      ) : null}
+    </div>
+  );
+}
+
 function NumberInput({
   value,
   onChange,
@@ -310,13 +371,11 @@ export function PropertyInspector() {
           ) : null}
 
           {selected.type === "image" || selected.type === "signature" ? (
-            <Field label="Image URL / key">
-              <input
-                className={styles.input}
-                value={selected.src}
-                onChange={(e) => updateSelected({ src: e.target.value })}
-              />
-            </Field>
+            <ElementImageField
+              src={selected.src}
+              onUploaded={(src) => updateSelected({ src })}
+              onClear={() => updateSelected({ src: "" })}
+            />
           ) : null}
 
           <button

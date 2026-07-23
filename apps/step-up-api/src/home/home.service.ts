@@ -471,7 +471,9 @@ export class HomeService {
           startsAt: nextSession.startsAt.toISOString(),
           endsAt: nextSession.endsAt.toISOString(),
           branchName: nextSession.batch.branch?.name ?? null,
-          coverImageUrl: nextSession.batch.coverImageUrl,
+          coverImageUrl: await this.media.signReadUrl(
+            nextSession.batch.coverImageUrl,
+          ),
         },
         streak,
         membership,
@@ -648,7 +650,7 @@ export class HomeService {
     }
     const instructors = [...instructorsMap.values()];
 
-    const recommendations = recommendBatches
+    const recommendationRows = recommendBatches
       .map((batch) => {
         const styleBadge = styleBadgeFromCategories(batch.danceCategories);
         return {
@@ -688,10 +690,22 @@ export class HomeService {
           scheduleVibeScore(a.scheduleJson, studentVibes)
         );
       })
-      .slice(0, 8)
-      .map(
-        ({ scheduleJson: _scheduleJson, branchId: _branchId, ...rest }) => rest,
-      );
+      .slice(0, 8);
+
+    const recommendations = await Promise.all(
+      recommendationRows.map(async (row) => {
+        const {
+          scheduleJson: _scheduleJson,
+          branchId: _branchId,
+          coverImageUrl,
+          ...rest
+        } = row;
+        return {
+          ...rest,
+          coverImageUrl: await this.media.signReadUrl(coverImageUrl),
+        };
+      }),
+    );
 
     const hasEnrollment = enrollments.length > 0;
 

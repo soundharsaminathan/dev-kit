@@ -122,6 +122,80 @@
   letter-spacing: -0.02em;
 }
 
+.planList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 0.5rem);
+}
+
+.planCard {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3, 0.75rem);
+  width: 100%;
+  padding: var(--space-3, 0.75rem) var(--space-4, 1rem);
+  border: 1px solid color-mix(in srgb, var(--color-fg) 10%, transparent);
+  border-radius: var(--radius-2xl, 1.25rem);
+  background: var(--color-bg-elevated, var(--color-bg));
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    transform var(--interaction-transition-fast, 120ms) ease,
+    border-color var(--interaction-transition-fast, 120ms) ease,
+    background-color var(--interaction-transition-fast, 120ms) ease;
+
+  &:hover:not(:disabled) {
+    border-color: color-mix(in srgb, var(--color-primary) 40%, transparent);
+    background: color-mix(in srgb, var(--color-primary) 6%, transparent);
+  }
+
+  &:active:not(:disabled) {
+    transform: scale(var(--interaction-press-scale, 0.97));
+  }
+
+  &:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+}
+
+.planCopy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.planMeta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.1rem;
+  flex-shrink: 0;
+}
+
+.planPrice {
+  font-weight: 700;
+  font-size: 0.9375rem;
+}
+
+.planCadence {
+  font-size: 0.75rem;
+  color: color-mix(in srgb, var(--color-fg) 56%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .planCard {
+    transition-duration: 0ms;
+  }
+
+  .planCard:active:not(:disabled) {
+    transform: none;
+  }
+}
+
 .muted {
   color: color-mix(in srgb, var(--color-fg) 62%, transparent);
   font-size: 0.875rem;

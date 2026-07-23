@@ -52,10 +52,6 @@ class UpdateProfileDto {
   name?: string;
 
   @IsOptional()
-  @IsEmail()
-  email?: string;
-
-  @IsOptional()
   @IsString()
   phone?: string;
 

@@ -70,14 +70,18 @@ export class MembershipsService {
 
     this.assertCoveredSeats(subscription, args.coveredStudents);
 
+    const seatsWithBatch = args.coveredStudents.filter((c) => c.batchId);
     if (subscription.kind === SubscriptionKind.FAMILY) {
       await this.assertFamilyBatchPicks(args.coveredStudents);
-      for (const covered of args.coveredStudents) {
-        await this.scheduleConflicts.assertStudentAvailableForBatch(
-          covered.studentId,
-          covered.batchId!,
-        );
-      }
+    } else if (seatsWithBatch.length > 0) {
+      await this.assertBatchPicks(seatsWithBatch);
+    }
+
+    for (const covered of seatsWithBatch) {
+      await this.scheduleConflicts.assertStudentAvailableForBatch(
+        covered.studentId,
+        covered.batchId!,
+      );
     }
 
     const periodStart = getNextPeriodStart();
@@ -104,26 +108,78 @@ export class MembershipsService {
         },
       });
 
-      if (subscription.kind === SubscriptionKind.FAMILY) {
-        for (const covered of args.coveredStudents) {
-          const batchId = covered.batchId!;
-          await tx.batchEnrollment.upsert({
-            where: {
-              batchId_studentId: {
-                batchId,
-                studentId: covered.studentId,
-              },
-            },
-            update: {},
-            create: {
+      for (const covered of seatsWithBatch) {
+        const batchId = covered.batchId!;
+        await tx.batchEnrollment.upsert({
+          where: {
+            batchId_studentId: {
               batchId,
               studentId: covered.studentId,
             },
-          });
-        }
+          },
+          update: {},
+          create: {
+            batchId,
+            studentId: covered.studentId,
+          },
+        });
       }
 
       return membership;
+    });
+  }
+
+  async purchaseForBatch(args: {
+    batchId: string;
+    subscriptionId: string;
+    purchaserUserId: string;
+    coveredStudents: CoveredStudentInput[];
+  }) {
+    const [batch, planLink] = await Promise.all([
+      this.prisma.batch.findUnique({ where: { id: args.batchId } }),
+      this.prisma.batchPlan.findUnique({
+        where: {
+          batchId_subscriptionId: {
+            batchId: args.batchId,
+            subscriptionId: args.subscriptionId,
+          },
+        },
+        include: { subscription: true },
+      }),
+    ]);
+
+    if (!batch?.active) {
+      throw new NotFoundException("Batch not found or inactive");
+    }
+    if (!planLink?.subscription.active) {
+      throw new BadRequestException(
+        "That plan is not available for this batch",
+      );
+    }
+
+    const expectedSeat = seatRoleForBatchCategory(batch.category);
+    const coveredStudents = args.coveredStudents.map((seat) => {
+      if (seat.seatRole === expectedSeat) {
+        return { ...seat, batchId: args.batchId };
+      }
+      return seat;
+    });
+
+    if (planLink.subscription.kind === SubscriptionKind.INDIVIDUAL) {
+      if (
+        coveredStudents.length !== 1 ||
+        coveredStudents[0]?.seatRole !== expectedSeat
+      ) {
+        throw new BadRequestException(
+          `This batch requires a ${expectedSeat} seat for Individual plans`,
+        );
+      }
+    }
+
+    return this.assign({
+      subscriptionId: args.subscriptionId,
+      purchaserUserId: args.purchaserUserId,
+      coveredStudents,
     });
   }
 
@@ -244,8 +300,11 @@ export class MembershipsService {
         );
       }
     }
+    await this.assertBatchPicks(covered);
+  }
 
-    const batchIds = covered.map((c) => c.batchId!);
+  private async assertBatchPicks(covered: CoveredStudentInput[]) {
+    const batchIds = covered.map((c) => c.batchId!).filter(Boolean);
     const batches = await this.prisma.batch.findMany({
       where: { id: { in: batchIds } },
       include: {

@@ -382,7 +382,6 @@ export class UsersService {
     role: UserRole,
     data: {
       name?: string;
-      email?: string;
       phone?: string;
       bio?: string;
       photoUrl?: string;
@@ -418,13 +417,12 @@ export class UsersService {
 
     const piiChanged =
       data.name !== undefined ||
-      data.email !== undefined ||
       data.phone !== undefined ||
       data.bio !== undefined ||
       data.instagramUrl !== undefined;
 
     const pii: UserPii = {
-      email: data.email ?? current.email,
+      email: current.email,
       name: data.name ?? current.name,
       phone: data.phone !== undefined ? data.phone || null : current.phone,
       bio: data.bio !== undefined ? data.bio || null : current.bio,

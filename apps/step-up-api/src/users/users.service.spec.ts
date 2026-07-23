@@ -370,6 +370,33 @@ describe("UsersService onboarding", () => {
     });
   });
 
+  it("keeps the existing email when resealing PII on profile patch", async () => {
+    const row = makeUser();
+    prisma.user.findUniqueOrThrow.mockResolvedValue(row);
+    crypto.decryptUser.mockReturnValue({ ...row, ...MASTER_PII });
+    crypto.sealPii.mockReturnValue({
+      encryptedKey: "key",
+      piiCiphertext: "cipher",
+      piiIv: "iv",
+      emailHash: "hash",
+    });
+    prisma.user.update.mockResolvedValue(row);
+
+    await service.updateProfile("student-1", UserRole.STUDENT, {
+      name: "Alex Updated",
+      phone: "555-0100",
+    });
+
+    expect(crypto.sealPii).toHaveBeenCalledWith(
+      expect.objectContaining({
+        email: MASTER_PII.email,
+        name: "Alex Updated",
+        phone: "555-0100",
+      }),
+      row.encryptedKey,
+    );
+  });
+
   it("rejects an unknown preferred branch", async () => {
     const row = makeUser({ preferredBranchId: null });
     prisma.user.findUniqueOrThrow.mockResolvedValue(row);

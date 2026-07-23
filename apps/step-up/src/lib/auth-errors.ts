@@ -35,6 +35,12 @@ export function mapAuthError(
       return "This account has been disabled.";
     case "auth/missing-email":
       return "Enter your email address.";
+    case "auth/email-already-in-use":
+      return "An account with this email already exists.";
+    case "auth/operation-not-allowed":
+      return "Email changes aren’t enabled for this project yet.";
+    case "auth/invalid-continue-uri":
+      return "Unable to start email change. Try again later.";
     default:
       break;
   }
