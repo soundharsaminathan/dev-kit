@@ -31,7 +31,7 @@
     "typescript": "^6.0.3",
     "vite": "catalog:",
     "vite-plugin-dts": "^4.5.4",
-    "vitest": "^4.1.8"
+    "vitest": "^4.1.10"
   },
   "peerDependencies": {
     "@tanstack/react-query": ">=5",
