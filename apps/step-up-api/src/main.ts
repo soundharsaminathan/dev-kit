@@ -1,12 +1,11 @@
+import "./instrument";
 import { ValidationPipe } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
 import { AppModule } from "./app.module";
 import { RedisIoAdapter } from "./realtime/redis-io.adapter";
-import { captureException, initSentry } from "./sentry";
+import { captureException } from "./sentry";
 
 async function bootstrap() {
-  initSentry();
-
   const app = await NestFactory.create(AppModule);
 
   app.enableCors({

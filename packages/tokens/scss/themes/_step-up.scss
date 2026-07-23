@@ -706,9 +706,9 @@
   --scrollbar-track-background: transparent;
   --scrollbar-track-radius: var(--radius-full);
   --scrollbar-track-shadow: var(--shadow-none);
-  --scrollbar-thumb-background: color-mix(in srgb, var(--color-primary, #0a84ff) 14%, var(--color-bg));
-  --scrollbar-thumb-hover-background: color-mix(in srgb, var(--color-primary, #0a84ff) 22%, var(--color-bg));
-  --scrollbar-thumb-active-background: color-mix(in srgb, var(--color-primary, #0a84ff) 28%, var(--color-bg));
+  --scrollbar-thumb-background: var(--color-neutral);
+  --scrollbar-thumb-hover-background: var(--color-neutral-hover);
+  --scrollbar-thumb-active-background: var(--color-neutral-active);
   --scrollbar-thumb-radius: var(--radius-full);
   --scrollbar-thumb-border-width: 0px;
   --scrollbar-thumb-border-color: transparent;

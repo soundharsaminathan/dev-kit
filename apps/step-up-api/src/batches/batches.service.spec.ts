@@ -1,4 +1,4 @@
-import { BadRequestException } from "@nestjs/common";
+import { BadRequestException, ConflictException } from "@nestjs/common";
 import { BillingCadence, UserRole } from "@prisma/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { BatchesService } from "./batches.service";
@@ -26,15 +26,25 @@ describe("BatchesService branch validation", () => {
     $transaction: vi.fn(),
   };
 
+  const scheduleConflicts = {
+    assertNoConflicts: vi.fn().mockResolvedValue(undefined),
+    assertStudentAvailableForBatch: vi.fn().mockResolvedValue(undefined),
+  };
+
   let service: BatchesService;
 
   beforeEach(() => {
     vi.clearAllMocks();
+    scheduleConflicts.assertNoConflicts.mockResolvedValue(undefined);
+    scheduleConflicts.assertStudentAvailableForBatch.mockResolvedValue(
+      undefined,
+    );
     service = new BatchesService(
       prisma as never,
       {
         decryptUser: (user: unknown) => user,
       } as never,
+      scheduleConflicts as never,
     );
     prisma.$transaction.mockImplementation(
       async (callback: (tx: typeof prisma) => unknown) => callback(prisma),
@@ -105,6 +115,12 @@ describe("BatchesService branch validation", () => {
       enrollmentMode: "STAFF_ONLY",
     });
 
+    expect(scheduleConflicts.assertNoConflicts).toHaveBeenCalledWith(
+      expect.objectContaining({
+        trainerIds: ["trainer-1"],
+        branchId: "branch-1",
+      }),
+    );
     expect(prisma.batch.create).toHaveBeenCalled();
     expect(prisma.batch.create.mock.calls[0]?.[0]?.data?.branchId).toBe(
       "branch-1",
@@ -112,6 +128,41 @@ describe("BatchesService branch validation", () => {
     expect(
       prisma.batch.create.mock.calls[0]?.[0]?.data?.monthlyPlanId,
     ).toBeUndefined();
+  });
+
+  it("rejects create when a schedule conflict exists", async () => {
+    prisma.studioBranch.findUnique.mockResolvedValue({
+      id: "branch-1",
+      studioId: "studio-1",
+    });
+    scheduleConflicts.assertNoConflicts.mockRejectedValue(
+      new ConflictException(
+        "Trainer is already booked at 2026-07-20T12:30:00.000Z",
+      ),
+    );
+
+    await expect(
+      service.create("owner-1", {
+        studioId: "studio-1",
+        name: "Kids",
+        category: "KIDS",
+        branchId: "branch-1",
+        trainerIds: ["trainer-1"],
+        danceCategories: [{ name: "Hip-hop", description: "Basics" }],
+        scheduleJson: {
+          frequency: "WEEKLY",
+          weekdays: [1],
+          startDate: "2026-07-20",
+          endDate: "2026-07-27",
+          startTime: "18:00",
+          endTime: "19:00",
+          utcOffsetMinutes: -330,
+        },
+        capacity: 12,
+        enrollmentMode: "STAFF_ONLY",
+      }),
+    ).rejects.toBeInstanceOf(ConflictException);
+    expect(prisma.batch.create).not.toHaveBeenCalled();
   });
 });
 
@@ -145,6 +196,10 @@ describe("BatchesService update", () => {
       prisma as never,
       {
         decryptUser: (user: unknown) => user,
+      } as never,
+      {
+        assertNoConflicts: vi.fn().mockResolvedValue(undefined),
+        assertStudentAvailableForBatch: vi.fn().mockResolvedValue(undefined),
       } as never,
     );
     prisma.$transaction.mockImplementation(
@@ -241,6 +296,10 @@ describe("BatchesService getRevenue", () => {
       {
         decryptUser: (user: unknown) => user,
       } as never,
+      {
+        assertNoConflicts: vi.fn().mockResolvedValue(undefined),
+        assertStudentAvailableForBatch: vi.fn().mockResolvedValue(undefined),
+      } as never,
     );
   });
 
@@ -329,6 +388,10 @@ describe("BatchesService rate", () => {
       prisma as never,
       {
         decryptUser: (user: unknown) => user,
+      } as never,
+      {
+        assertNoConflicts: vi.fn().mockResolvedValue(undefined),
+        assertStudentAvailableForBatch: vi.fn().mockResolvedValue(undefined),
       } as never,
     );
     prisma.$transaction.mockImplementation(
