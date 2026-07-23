@@ -73,13 +73,22 @@ describe("MembershipsService.assign family packs", () => {
     },
     batch: {
       findMany: vi.fn(),
+      findUnique: vi.fn(),
     },
     membership: {
       create: vi.fn(),
     },
     batchEnrollment: {
       upsert: vi.fn(),
+      findMany: vi.fn().mockResolvedValue([]),
+      findFirst: vi.fn().mockResolvedValue(null),
     },
+    booking: {
+      updateMany: vi.fn().mockResolvedValue({ count: 0 }),
+      findMany: vi.fn().mockResolvedValue([]),
+      findFirst: vi.fn().mockResolvedValue(null),
+    },
+    $queryRaw: vi.fn().mockResolvedValue([{ id: "batch" }]),
     $transaction: vi.fn(),
   };
 
@@ -108,6 +117,10 @@ describe("MembershipsService.assign family packs", () => {
     prisma.$transaction.mockImplementation(
       async (fn: (tx: typeof prisma) => Promise<unknown>) => fn(prisma),
     );
+    prisma.$queryRaw.mockImplementation(async () => [{ id: "batch" }]);
+    prisma.batchEnrollment.findMany.mockResolvedValue([]);
+    prisma.booking.updateMany.mockResolvedValue({ count: 0 });
+    prisma.booking.findMany.mockResolvedValue([]);
   });
 
   it("creates membership and enrolls each seat into its batch", async () => {

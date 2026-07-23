@@ -37,10 +37,16 @@ export type DiscoverBatch = {
   viewerBooking?: {
     id: string;
     type: string;
-    status: "PENDING" | "CONFIRMED" | "CANCELLED" | "COMPLETED";
+    status:
+      | "AWAITING_PAYMENT"
+      | "PENDING"
+      | "CONFIRMED"
+      | "CANCELLED"
+      | "COMPLETED";
     notes?: string | null;
     startsAt?: string | null;
     endsAt?: string | null;
+    paymentHoldExpiresAt?: string | null;
   } | null;
 };
 

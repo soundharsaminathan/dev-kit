@@ -32,6 +32,21 @@
   color: color-mix(in srgb, var(--color-fg) 62%, transparent);
 }
 
+.passwordLabelRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3, 0.75rem);
+}
+
+.forgotLink {
+  flex-shrink: 0;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-primary);
+  text-decoration: none;
+}
+
 .form {
   display: flex;
   flex-direction: column;

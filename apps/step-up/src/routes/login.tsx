@@ -203,7 +203,14 @@ function LoginPage() {
               const err = fieldError(field.state.meta.errors);
               return (
                 <TextField>
-                  <Label data-required="true">Password</Label>
+                  <div className={styles.passwordLabelRow}>
+                    <Label data-required="true">Password</Label>
+                    {!isAuthBypassEnabled() ? (
+                      <Link to="/forgot-password" className={styles.forgotLink}>
+                        Forgot password?
+                      </Link>
+                    ) : null}
+                  </div>
                   <PasswordInput
                     name={field.name}
                     value={field.state.value}

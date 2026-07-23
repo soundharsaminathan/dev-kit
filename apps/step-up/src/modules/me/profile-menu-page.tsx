@@ -23,7 +23,7 @@ type ProfileMenuPageProps = {
 };
 
 export function ProfileMenuPage({ variant = "me" }: ProfileMenuPageProps) {
-  const { user, signOutUser } = useAuth();
+  const { user, signOutUser, hasPasswordProvider } = useAuth();
   const api = useApi();
   const queryClient = useQueryClient();
   const activeStudent = useContext(ActiveStudentContext);
@@ -36,9 +36,14 @@ export function ProfileMenuPage({ variant = "me" }: ProfileMenuPageProps) {
     variant === "app"
       ? "/app/profile/follow-requests"
       : "/me/profile/follow-requests";
+  const changePasswordTo =
+    variant === "app"
+      ? "/app/profile/change-password"
+      : "/me/profile/change-password";
   const [manageOpen, setManageOpen] = useState(false);
   const [newName, setNewName] = useState("");
   const [newKind, setNewKind] = useState<"KID" | "CO_STUDENT">("KID");
+  const showChangePassword = hasPasswordProvider;
 
   const createMutation = useMutation({
     mutationFn: () =>
@@ -135,6 +140,23 @@ export function ProfileMenuPage({ variant = "me" }: ProfileMenuPageProps) {
             </li>
           </ul>
         </section>
+
+        {showChangePassword ? (
+          <section className={styles.section}>
+            <h2 className={styles.sectionTitle}>Account</h2>
+            <ul className={styles.menuCard}>
+              <li>
+                <Link to={changePasswordTo} className={styles.menuRow}>
+                  <span className={styles.menuIcon}>
+                    <Icon name="lock" />
+                  </span>
+                  <span className={styles.menuLabel}>Change password</span>
+                  <Icon name="chevron-right" className={styles.chevron} />
+                </Link>
+              </li>
+            </ul>
+          </section>
+        ) : null}
 
         {sections.map((section) => (
           <section key={section.title} className={styles.section}>

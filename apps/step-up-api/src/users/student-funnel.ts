@@ -165,6 +165,7 @@ function trialSessionIds(bookings: StudentFunnelBookingInput[]): Set<string> {
     if (
       booking.type === BookingType.TRIAL &&
       booking.status !== BookingStatus.CANCELLED &&
+      booking.status !== BookingStatus.AWAITING_PAYMENT &&
       booking.sessionId
     ) {
       ids.add(booking.sessionId);
@@ -198,7 +199,8 @@ function hasTrialRegistration(bookings: StudentFunnelBookingInput[]): boolean {
   return bookings.some(
     (booking) =>
       booking.type === BookingType.TRIAL &&
-      booking.status !== BookingStatus.CANCELLED,
+      booking.status !== BookingStatus.CANCELLED &&
+      booking.status !== BookingStatus.AWAITING_PAYMENT,
   );
 }
 

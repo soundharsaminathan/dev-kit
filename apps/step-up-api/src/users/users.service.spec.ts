@@ -63,8 +63,16 @@ describe("UsersService onboarding", () => {
     },
     booking: {
       findFirst: vi.fn(),
+      findMany: vi.fn().mockResolvedValue([]),
       create: vi.fn(),
+      updateMany: vi.fn().mockResolvedValue({ count: 0 }),
     },
+    batchEnrollment: {
+      findMany: vi.fn().mockResolvedValue([]),
+      findFirst: vi.fn().mockResolvedValue(null),
+    },
+    $queryRaw: vi.fn().mockResolvedValue([{ id: "batch-1" }]),
+    $transaction: vi.fn(async (fn: (tx: unknown) => unknown) => fn(prisma)),
   };
   const crypto = {
     decryptUser: vi.fn(),
@@ -80,6 +88,14 @@ describe("UsersService onboarding", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    prisma.$transaction.mockImplementation(
+      async (fn: (tx: typeof prisma) => unknown) => fn(prisma),
+    );
+    prisma.$queryRaw.mockResolvedValue([{ id: "batch-1" }]);
+    prisma.booking.findMany.mockResolvedValue([]);
+    prisma.booking.updateMany.mockResolvedValue({ count: 0 });
+    prisma.batchEnrollment.findMany.mockResolvedValue([]);
+    prisma.batchEnrollment.findFirst.mockResolvedValue(null);
     service = new UsersService(
       prisma as never,
       crypto as never,
@@ -162,7 +178,6 @@ describe("UsersService onboarding", () => {
       id: "batch-1",
       studioId: "studio-seed-1",
       capacity: 10,
-      _count: { enrollments: 0 },
     });
     prisma.booking.findFirst.mockResolvedValue(null);
     prisma.user.findFirst.mockResolvedValue({ id: "trainer-1" });
@@ -174,6 +189,7 @@ describe("UsersService onboarding", () => {
       trainerId: "trainer-1",
     });
 
+    expect(prisma.$transaction).toHaveBeenCalled();
     expect(prisma.booking.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
         studioId: "studio-seed-1",

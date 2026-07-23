@@ -11,8 +11,10 @@ import {
 import { BookingStatus, BookingType, UserRole } from "@prisma/client";
 import { IsDateString, IsEnum, IsOptional, IsString } from "class-validator";
 import { AuthGuard } from "../auth/auth.guard";
+import { CurrentUser } from "../auth/current-user.decorator";
 import { Roles } from "../auth/roles.decorator";
 import { RolesGuard } from "../auth/roles.guard";
+import type { DecryptedUser } from "../users/user-crypto.service";
 import { BookingsService } from "./bookings.service";
 
 class CreateBookingDto {
@@ -89,6 +91,18 @@ export class BookingsController {
     return this.bookingsService.listForStudio(studioId);
   }
 
+  @Get(":id")
+  @Roles(
+    UserRole.OWNER,
+    UserRole.STAFF,
+    UserRole.TRAINER,
+    UserRole.STUDENT,
+    UserRole.PARENT,
+  )
+  getById(@Param("id") id: string, @CurrentUser() user: DecryptedUser) {
+    return this.bookingsService.getById(id, user);
+  }
+
   @Post()
   @Roles(
     UserRole.OWNER,
@@ -97,8 +111,22 @@ export class BookingsController {
     UserRole.STUDENT,
     UserRole.PARENT,
   )
-  create(@Body() dto: CreateBookingDto) {
-    return this.bookingsService.create(dto);
+  create(@CurrentUser() user: DecryptedUser, @Body() dto: CreateBookingDto) {
+    const requirePayment =
+      user.role === UserRole.STUDENT || user.role === UserRole.PARENT;
+    return this.bookingsService.create(dto, { requirePayment });
+  }
+
+  @Post(":id/confirm-payment")
+  @Roles(UserRole.STUDENT, UserRole.PARENT)
+  confirmPayment(@Param("id") id: string, @CurrentUser() user: DecryptedUser) {
+    return this.bookingsService.confirmPayment(id, user);
+  }
+
+  @Post(":id/abandon-payment")
+  @Roles(UserRole.STUDENT, UserRole.PARENT)
+  abandonPayment(@Param("id") id: string, @CurrentUser() user: DecryptedUser) {
+    return this.bookingsService.abandonPayment(id, user);
   }
 
   @Patch(":id/status")

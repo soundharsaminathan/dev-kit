@@ -105,6 +105,7 @@ enum BookingType {
 }
 
 enum BookingStatus {
+  AWAITING_PAYMENT
   PENDING
   CONFIRMED
   CANCELLED
@@ -615,17 +616,18 @@ model Attendance {
 }
 
 model Booking {
-  id        String        @id @default(cuid())
-  studioId  String
-  studentId String
-  type      BookingType
-  batchId   String?
-  sessionId String?
-  trainerId String?
-  status    BookingStatus @default(PENDING)
-  notes     String?
-  startsAt  DateTime?
-  endsAt    DateTime?
+  id                   String        @id @default(cuid())
+  studioId             String
+  studentId            String
+  type                 BookingType
+  batchId              String?
+  sessionId            String?
+  trainerId            String?
+  status               BookingStatus @default(PENDING)
+  notes                String?
+  startsAt             DateTime?
+  endsAt               DateTime?
+  paymentHoldExpiresAt DateTime?
 
   studio  Studio   @relation(fields: [studioId], references: [id], onDelete: Cascade)
   student User     @relation("StudentBookings", fields: [studentId], references: [id], onDelete: Cascade)
@@ -634,6 +636,7 @@ model Booking {
   trainer User?    @relation("TrainerBookings", fields: [trainerId], references: [id])
 
   @@index([batchId])
+  @@index([status, paymentHoldExpiresAt])
 }
 
 model Notification {

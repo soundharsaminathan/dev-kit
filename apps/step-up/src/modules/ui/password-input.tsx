@@ -17,6 +17,7 @@ type PasswordInputProps = {
   autoComplete?: string;
   isInvalid?: boolean;
   required?: boolean;
+  isDisabled?: boolean;
 };
 
 export function PasswordInput({
@@ -27,12 +28,13 @@ export function PasswordInput({
   autoComplete = "current-password",
   isInvalid,
   required,
+  isDisabled,
 }: PasswordInputProps) {
   const [visible, setVisible] = useState(false);
   const toggleId = useId();
 
   return (
-    <InputGroup isInvalid={isInvalid}>
+    <InputGroup isInvalid={isInvalid} isDisabled={isDisabled}>
       <Input
         id={toggleId}
         name={name}
@@ -45,6 +47,7 @@ export function PasswordInput({
         autoComplete={autoComplete}
         aria-invalid={isInvalid ? true : undefined}
         required={required}
+        disabled={isDisabled}
       />
       <InputGroupAddon>
         <Button
@@ -52,6 +55,7 @@ export function PasswordInput({
           variant="quiet"
           size="sm"
           isIconOnly
+          isDisabled={isDisabled}
           aria-label={visible ? "Hide password" : "Show password"}
           aria-controls={toggleId}
           aria-pressed={visible}

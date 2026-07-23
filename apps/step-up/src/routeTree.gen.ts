@@ -13,6 +13,7 @@ import { Route as StudioRouteImport } from './routes/studio'
 import { Route as RegisterRouteImport } from './routes/register'
 import { Route as MeRouteImport } from './routes/me'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as AppRouteImport } from './routes/app'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as MeIndexRouteImport } from './routes/me/index'
@@ -52,8 +53,10 @@ import { Route as AppBookingsIndexRouteImport } from './routes/app/bookings/inde
 import { Route as AppBatchesIndexRouteImport } from './routes/app/batches/index'
 import { Route as MeProfileFollowRequestsRouteImport } from './routes/me/profile_.follow-requests'
 import { Route as MeProfileEditRouteImport } from './routes/me/profile_.edit'
+import { Route as MeProfileChangePasswordRouteImport } from './routes/me/profile_.change-password'
 import { Route as MeMessagesIdRouteImport } from './routes/me/messages/$id'
 import { Route as MeLocationsIdRouteImport } from './routes/me/locations/$id'
+import { Route as MeCheckoutBookingIdRouteImport } from './routes/me/checkout/$bookingId'
 import { Route as MeBatchesIdRouteImport } from './routes/me/batches/$id'
 import { Route as AppTrainersNewRouteImport } from './routes/app/trainers/new'
 import { Route as AppSubscriptionsNewRouteImport } from './routes/app/subscriptions/new'
@@ -63,6 +66,7 @@ import { Route as AppStudentsImportRouteImport } from './routes/app/students/imp
 import { Route as AppStudentsIdRouteImport } from './routes/app/students/$id'
 import { Route as AppProfileFollowRequestsRouteImport } from './routes/app/profile_.follow-requests'
 import { Route as AppProfileEditRouteImport } from './routes/app/profile_.edit'
+import { Route as AppProfileChangePasswordRouteImport } from './routes/app/profile_.change-password'
 import { Route as AppMessagesIdRouteImport } from './routes/app/messages/$id'
 import { Route as AppLocationsIdRouteImport } from './routes/app/locations/$id'
 import { Route as AppContestsNewRouteImport } from './routes/app/contests/new'
@@ -95,6 +99,11 @@ const MeRoute = MeRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
+  id: '/forgot-password',
+  path: '/forgot-password',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AppRoute = AppRouteImport.update({
@@ -292,6 +301,11 @@ const MeProfileEditRoute = MeProfileEditRouteImport.update({
   path: '/profile/edit',
   getParentRoute: () => MeRoute,
 } as any)
+const MeProfileChangePasswordRoute = MeProfileChangePasswordRouteImport.update({
+  id: '/profile_/change-password',
+  path: '/profile/change-password',
+  getParentRoute: () => MeRoute,
+} as any)
 const MeMessagesIdRoute = MeMessagesIdRouteImport.update({
   id: '/messages/$id',
   path: '/messages/$id',
@@ -300,6 +314,11 @@ const MeMessagesIdRoute = MeMessagesIdRouteImport.update({
 const MeLocationsIdRoute = MeLocationsIdRouteImport.update({
   id: '/locations/$id',
   path: '/locations/$id',
+  getParentRoute: () => MeRoute,
+} as any)
+const MeCheckoutBookingIdRoute = MeCheckoutBookingIdRouteImport.update({
+  id: '/checkout/$bookingId',
+  path: '/checkout/$bookingId',
   getParentRoute: () => MeRoute,
 } as any)
 const MeBatchesIdRoute = MeBatchesIdRouteImport.update({
@@ -348,6 +367,12 @@ const AppProfileEditRoute = AppProfileEditRouteImport.update({
   path: '/profile/edit',
   getParentRoute: () => AppRoute,
 } as any)
+const AppProfileChangePasswordRoute =
+  AppProfileChangePasswordRouteImport.update({
+    id: '/profile_/change-password',
+    path: '/profile/change-password',
+    getParentRoute: () => AppRoute,
+  } as any)
 const AppMessagesIdRoute = AppMessagesIdRouteImport.update({
   id: '/messages/$id',
   path: '/messages/$id',
@@ -417,6 +442,7 @@ const AppLocationsIdEditRoute = AppLocationsIdEditRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/app': typeof AppRouteWithChildren
+  '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
   '/me': typeof MeRouteWithChildren
   '/register': typeof RegisterRoute
@@ -453,6 +479,7 @@ export interface FileRoutesByFullPath {
   '/app/contests/new': typeof AppContestsNewRoute
   '/app/locations/$id': typeof AppLocationsIdRouteWithChildren
   '/app/messages/$id': typeof AppMessagesIdRoute
+  '/app/profile/change-password': typeof AppProfileChangePasswordRoute
   '/app/profile/edit': typeof AppProfileEditRoute
   '/app/profile/follow-requests': typeof AppProfileFollowRequestsRoute
   '/app/students/$id': typeof AppStudentsIdRoute
@@ -462,8 +489,10 @@ export interface FileRoutesByFullPath {
   '/app/subscriptions/new': typeof AppSubscriptionsNewRoute
   '/app/trainers/new': typeof AppTrainersNewRoute
   '/me/batches/$id': typeof MeBatchesIdRoute
+  '/me/checkout/$bookingId': typeof MeCheckoutBookingIdRoute
   '/me/locations/$id': typeof MeLocationsIdRoute
   '/me/messages/$id': typeof MeMessagesIdRoute
+  '/me/profile/change-password': typeof MeProfileChangePasswordRoute
   '/me/profile/edit': typeof MeProfileEditRoute
   '/me/profile/follow-requests': typeof MeProfileFollowRequestsRoute
   '/app/batches/': typeof AppBatchesIndexRoute
@@ -485,6 +514,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
   '/studio': typeof StudioRoute
@@ -520,6 +550,7 @@ export interface FileRoutesByTo {
   '/app/contests/new': typeof AppContestsNewRoute
   '/app/locations/$id': typeof AppLocationsIdRouteWithChildren
   '/app/messages/$id': typeof AppMessagesIdRoute
+  '/app/profile/change-password': typeof AppProfileChangePasswordRoute
   '/app/profile/edit': typeof AppProfileEditRoute
   '/app/profile/follow-requests': typeof AppProfileFollowRequestsRoute
   '/app/students/$id': typeof AppStudentsIdRoute
@@ -529,8 +560,10 @@ export interface FileRoutesByTo {
   '/app/subscriptions/new': typeof AppSubscriptionsNewRoute
   '/app/trainers/new': typeof AppTrainersNewRoute
   '/me/batches/$id': typeof MeBatchesIdRoute
+  '/me/checkout/$bookingId': typeof MeCheckoutBookingIdRoute
   '/me/locations/$id': typeof MeLocationsIdRoute
   '/me/messages/$id': typeof MeMessagesIdRoute
+  '/me/profile/change-password': typeof MeProfileChangePasswordRoute
   '/me/profile/edit': typeof MeProfileEditRoute
   '/me/profile/follow-requests': typeof MeProfileFollowRequestsRoute
   '/app/batches': typeof AppBatchesIndexRoute
@@ -554,6 +587,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/app': typeof AppRouteWithChildren
+  '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
   '/me': typeof MeRouteWithChildren
   '/register': typeof RegisterRoute
@@ -590,6 +624,7 @@ export interface FileRoutesById {
   '/app/contests/new': typeof AppContestsNewRoute
   '/app/locations/$id': typeof AppLocationsIdRouteWithChildren
   '/app/messages/$id': typeof AppMessagesIdRoute
+  '/app/profile_/change-password': typeof AppProfileChangePasswordRoute
   '/app/profile_/edit': typeof AppProfileEditRoute
   '/app/profile_/follow-requests': typeof AppProfileFollowRequestsRoute
   '/app/students/$id': typeof AppStudentsIdRoute
@@ -599,8 +634,10 @@ export interface FileRoutesById {
   '/app/subscriptions/new': typeof AppSubscriptionsNewRoute
   '/app/trainers/new': typeof AppTrainersNewRoute
   '/me/batches/$id': typeof MeBatchesIdRoute
+  '/me/checkout/$bookingId': typeof MeCheckoutBookingIdRoute
   '/me/locations/$id': typeof MeLocationsIdRoute
   '/me/messages/$id': typeof MeMessagesIdRoute
+  '/me/profile_/change-password': typeof MeProfileChangePasswordRoute
   '/me/profile_/edit': typeof MeProfileEditRoute
   '/me/profile_/follow-requests': typeof MeProfileFollowRequestsRoute
   '/app/batches/': typeof AppBatchesIndexRoute
@@ -625,6 +662,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/app'
+    | '/forgot-password'
     | '/login'
     | '/me'
     | '/register'
@@ -661,6 +699,7 @@ export interface FileRouteTypes {
     | '/app/contests/new'
     | '/app/locations/$id'
     | '/app/messages/$id'
+    | '/app/profile/change-password'
     | '/app/profile/edit'
     | '/app/profile/follow-requests'
     | '/app/students/$id'
@@ -670,8 +709,10 @@ export interface FileRouteTypes {
     | '/app/subscriptions/new'
     | '/app/trainers/new'
     | '/me/batches/$id'
+    | '/me/checkout/$bookingId'
     | '/me/locations/$id'
     | '/me/messages/$id'
+    | '/me/profile/change-password'
     | '/me/profile/edit'
     | '/me/profile/follow-requests'
     | '/app/batches/'
@@ -693,6 +734,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/forgot-password'
     | '/login'
     | '/register'
     | '/studio'
@@ -728,6 +770,7 @@ export interface FileRouteTypes {
     | '/app/contests/new'
     | '/app/locations/$id'
     | '/app/messages/$id'
+    | '/app/profile/change-password'
     | '/app/profile/edit'
     | '/app/profile/follow-requests'
     | '/app/students/$id'
@@ -737,8 +780,10 @@ export interface FileRouteTypes {
     | '/app/subscriptions/new'
     | '/app/trainers/new'
     | '/me/batches/$id'
+    | '/me/checkout/$bookingId'
     | '/me/locations/$id'
     | '/me/messages/$id'
+    | '/me/profile/change-password'
     | '/me/profile/edit'
     | '/me/profile/follow-requests'
     | '/app/batches'
@@ -761,6 +806,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/app'
+    | '/forgot-password'
     | '/login'
     | '/me'
     | '/register'
@@ -797,6 +843,7 @@ export interface FileRouteTypes {
     | '/app/contests/new'
     | '/app/locations/$id'
     | '/app/messages/$id'
+    | '/app/profile_/change-password'
     | '/app/profile_/edit'
     | '/app/profile_/follow-requests'
     | '/app/students/$id'
@@ -806,8 +853,10 @@ export interface FileRouteTypes {
     | '/app/subscriptions/new'
     | '/app/trainers/new'
     | '/me/batches/$id'
+    | '/me/checkout/$bookingId'
     | '/me/locations/$id'
     | '/me/messages/$id'
+    | '/me/profile_/change-password'
     | '/me/profile_/edit'
     | '/me/profile_/follow-requests'
     | '/app/batches/'
@@ -831,6 +880,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AppRoute: typeof AppRouteWithChildren
+  ForgotPasswordRoute: typeof ForgotPasswordRoute
   LoginRoute: typeof LoginRoute
   MeRoute: typeof MeRouteWithChildren
   RegisterRoute: typeof RegisterRoute
@@ -868,6 +918,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/forgot-password': {
+      id: '/forgot-password'
+      path: '/forgot-password'
+      fullPath: '/forgot-password'
+      preLoaderRoute: typeof ForgotPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/app': {
@@ -1143,6 +1200,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MeProfileEditRouteImport
       parentRoute: typeof MeRoute
     }
+    '/me/profile_/change-password': {
+      id: '/me/profile_/change-password'
+      path: '/profile/change-password'
+      fullPath: '/me/profile/change-password'
+      preLoaderRoute: typeof MeProfileChangePasswordRouteImport
+      parentRoute: typeof MeRoute
+    }
     '/me/messages/$id': {
       id: '/me/messages/$id'
       path: '/messages/$id'
@@ -1155,6 +1219,13 @@ declare module '@tanstack/react-router' {
       path: '/locations/$id'
       fullPath: '/me/locations/$id'
       preLoaderRoute: typeof MeLocationsIdRouteImport
+      parentRoute: typeof MeRoute
+    }
+    '/me/checkout/$bookingId': {
+      id: '/me/checkout/$bookingId'
+      path: '/checkout/$bookingId'
+      fullPath: '/me/checkout/$bookingId'
+      preLoaderRoute: typeof MeCheckoutBookingIdRouteImport
       parentRoute: typeof MeRoute
     }
     '/me/batches/$id': {
@@ -1218,6 +1289,13 @@ declare module '@tanstack/react-router' {
       path: '/profile/edit'
       fullPath: '/app/profile/edit'
       preLoaderRoute: typeof AppProfileEditRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/profile_/change-password': {
+      id: '/app/profile_/change-password'
+      path: '/profile/change-password'
+      fullPath: '/app/profile/change-password'
+      preLoaderRoute: typeof AppProfileChangePasswordRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/messages/$id': {
@@ -1344,6 +1422,7 @@ interface AppRouteChildren {
   AppContestsNewRoute: typeof AppContestsNewRoute
   AppLocationsIdRoute: typeof AppLocationsIdRouteWithChildren
   AppMessagesIdRoute: typeof AppMessagesIdRoute
+  AppProfileChangePasswordRoute: typeof AppProfileChangePasswordRoute
   AppProfileEditRoute: typeof AppProfileEditRoute
   AppProfileFollowRequestsRoute: typeof AppProfileFollowRequestsRoute
   AppStudentsIdRoute: typeof AppStudentsIdRoute
@@ -1383,6 +1462,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppContestsNewRoute: AppContestsNewRoute,
   AppLocationsIdRoute: AppLocationsIdRouteWithChildren,
   AppMessagesIdRoute: AppMessagesIdRoute,
+  AppProfileChangePasswordRoute: AppProfileChangePasswordRoute,
   AppProfileEditRoute: AppProfileEditRoute,
   AppProfileFollowRequestsRoute: AppProfileFollowRequestsRoute,
   AppStudentsIdRoute: AppStudentsIdRoute,
@@ -1420,8 +1500,10 @@ interface MeRouteChildren {
   MeSubscriptionsRoute: typeof MeSubscriptionsRoute
   MeIndexRoute: typeof MeIndexRoute
   MeBatchesIdRoute: typeof MeBatchesIdRoute
+  MeCheckoutBookingIdRoute: typeof MeCheckoutBookingIdRoute
   MeLocationsIdRoute: typeof MeLocationsIdRoute
   MeMessagesIdRoute: typeof MeMessagesIdRoute
+  MeProfileChangePasswordRoute: typeof MeProfileChangePasswordRoute
   MeProfileEditRoute: typeof MeProfileEditRoute
   MeProfileFollowRequestsRoute: typeof MeProfileFollowRequestsRoute
   MeLocationsIndexRoute: typeof MeLocationsIndexRoute
@@ -1444,8 +1526,10 @@ const MeRouteChildren: MeRouteChildren = {
   MeSubscriptionsRoute: MeSubscriptionsRoute,
   MeIndexRoute: MeIndexRoute,
   MeBatchesIdRoute: MeBatchesIdRoute,
+  MeCheckoutBookingIdRoute: MeCheckoutBookingIdRoute,
   MeLocationsIdRoute: MeLocationsIdRoute,
   MeMessagesIdRoute: MeMessagesIdRoute,
+  MeProfileChangePasswordRoute: MeProfileChangePasswordRoute,
   MeProfileEditRoute: MeProfileEditRoute,
   MeProfileFollowRequestsRoute: MeProfileFollowRequestsRoute,
   MeLocationsIndexRoute: MeLocationsIndexRoute,
@@ -1459,6 +1543,7 @@ const MeRouteWithChildren = MeRoute._addFileChildren(MeRouteChildren)
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AppRoute: AppRouteWithChildren,
+  ForgotPasswordRoute: ForgotPasswordRoute,
   LoginRoute: LoginRoute,
   MeRoute: MeRouteWithChildren,
   RegisterRoute: RegisterRoute,

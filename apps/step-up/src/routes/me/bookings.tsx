@@ -35,6 +35,7 @@ const STATUS_VARIANT: Record<
   CONFIRMED: "success",
   COMPLETED: "info",
   PENDING: "warning",
+  AWAITING_PAYMENT: "info",
   CANCELLED: "danger",
 };
 
@@ -56,11 +57,12 @@ function MeBookingsPage() {
 
   const sortedBookings = useMemo(() => {
     const items = bookings.data ?? [];
-    return [...items].sort((a, b) => {
-      if (a.status === "PENDING" && b.status !== "PENDING") return -1;
-      if (a.status !== "PENDING" && b.status === "PENDING") return 1;
-      return 0;
-    });
+    const rank = (status: string) => {
+      if (status === "AWAITING_PAYMENT") return 0;
+      if (status === "PENDING") return 1;
+      return 2;
+    };
+    return [...items].sort((a, b) => rank(a.status) - rank(b.status));
   }, [bookings.data]);
 
   const filtered = useMemo(() => {
@@ -68,6 +70,9 @@ function MeBookingsPage() {
     return sortedBookings.filter((booking) => booking.status === filter);
   }, [sortedBookings, filter]);
 
+  const awaitingPaymentCount = sortedBookings.filter(
+    (booking) => booking.status === "AWAITING_PAYMENT",
+  ).length;
   const pendingCount = sortedBookings.filter(
     (booking) => booking.status === "PENDING",
   ).length;
@@ -81,9 +86,11 @@ function MeBookingsPage() {
     <Screen
       title="My bookings"
       subtitle={
-        pendingCount > 0
-          ? `${pendingCount} waiting for studio confirmation`
-          : "Track trial, open seat, and private requests."
+        awaitingPaymentCount > 0
+          ? `${awaitingPaymentCount} awaiting payment`
+          : pendingCount > 0
+            ? `${pendingCount} waiting for studio confirmation`
+            : "Track trial, open seat, and private requests."
       }
       showBack
       backTo="/me/profile"
@@ -93,6 +100,7 @@ function MeBookingsPage() {
           <FilterChipRow
             chips={[
               { id: "ALL", label: "All" },
+              { id: "AWAITING_PAYMENT", label: "Pay now" },
               { id: "PENDING", label: "Pending" },
               { id: "CONFIRMED", label: "Confirmed" },
               { id: "CANCELLED", label: "Cancelled" },
@@ -162,6 +170,10 @@ function MeBookingsPage() {
                         {new Date(booking.startsAt).toLocaleString()} –{" "}
                         {new Date(booking.endsAt).toLocaleTimeString()}
                       </p>
+                    ) : booking.status === "AWAITING_PAYMENT" ? (
+                      <p className={staff.rowMeta}>
+                        Complete demo checkout within 30s to keep your seat
+                      </p>
                     ) : booking.status === "PENDING" ? (
                       <p className={staff.rowMeta}>
                         Waiting for the studio to confirm a time
@@ -182,7 +194,22 @@ function MeBookingsPage() {
         }}
         title={selected?.batch?.name ?? selected?.type.replaceAll("_", " ")}
       >
-        {selected?.batch?.id ? (
+        {selected?.status === "AWAITING_PAYMENT" ? (
+          <div className={staff.section}>
+            <p className={staff.rowMeta}>
+              Your seat is held until the payment timer ends. Finish checkout to
+              send the request to the studio.
+            </p>
+            <TouchButton variant="primary" fullWidth>
+              <Link
+                to="/me/checkout/$bookingId"
+                params={{ bookingId: selected.id }}
+              >
+                Continue to payment
+              </Link>
+            </TouchButton>
+          </div>
+        ) : selected?.batch?.id ? (
           <BatchDetailPreview
             batchId={selected.batch.id}
             studentId={studentId}
