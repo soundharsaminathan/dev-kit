@@ -7,16 +7,16 @@ import {
   WebSocketGateway,
   WebSocketServer,
 } from "@nestjs/websockets";
-import { SentryGlobalFilter } from "@sentry/nestjs/setup";
 import type { Server, Socket } from "socket.io";
 import { FirebaseService } from "../auth/firebase.service";
 import { PrismaService } from "../prisma/prisma.service";
+import { sentryExceptionFilters } from "../sentry-nest";
 
 interface SocketData {
   userId?: string;
 }
 
-@UseFilters(SentryGlobalFilter)
+@UseFilters(...sentryExceptionFilters())
 @WebSocketGateway({
   namespace: "/chat",
   cors: { origin: true, credentials: true },

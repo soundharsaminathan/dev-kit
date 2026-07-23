@@ -41,6 +41,14 @@
         "command": "vitest run --config vitest.config.ts"
       },
       "dependsOn": ["tokens:build:tokens", "components:build"]
+    },
+    "test:e2e": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "apps/step-up",
+        "command": "playwright test --config playwright.config.ts"
+      },
+      "dependsOn": ["tokens:build:tokens", "components:build"]
     }
   }
 }

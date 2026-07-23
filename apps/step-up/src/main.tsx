@@ -1,7 +1,7 @@
 import { IconProvider } from "@dev-ui/icons";
 import lucidePack from "@dev-ui/icons-packs/lucide";
 import { createRouter, RouterProvider } from "@tanstack/react-router";
-import { StrictMode, useEffect, useRef, useState } from "react";
+import { StrictMode, useEffect, useRef } from "react";
 import { createRoot } from "react-dom/client";
 import "@dev-ui/tokens/fonts/primary";
 import "@dev-ui/tokens/scss";
@@ -32,40 +32,24 @@ declare module "@tanstack/react-router" {
 
 function AppRouter() {
   const auth = useAuth();
-  const [ready, setReady] = useState(false);
   const userId = auth.user?.id;
   const invalidatedFor = useRef<{ userId: string | undefined } | null>(null);
 
+  // Warm session + home chunks in the background — never block first paint.
   useEffect(() => {
-    if (auth.loading) {
+    if (auth.loading || !auth.user) {
       return;
     }
 
-    let cancelled = false;
-    const user = auth.user;
-
-    async function warmRoleBundle() {
-      if (user) {
-        await preloadSessionProviders();
-        const home = homePathForUser(user);
-        if (home === "/app" || home.startsWith("/me")) {
-          void router.preloadRoute({ to: home });
-        }
-      }
-      if (!cancelled) {
-        setReady(true);
-      }
+    void preloadSessionProviders().catch(() => undefined);
+    const home = homePathForUser(auth.user);
+    if (home === "/app" || home.startsWith("/me")) {
+      void router.preloadRoute({ to: home }).catch(() => undefined);
     }
-
-    void warmRoleBundle();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [auth.loading, userId, auth.user]);
+  }, [auth.loading, auth.user]);
 
   useEffect(() => {
-    if (!ready) {
+    if (auth.loading) {
       return;
     }
     if (invalidatedFor.current && invalidatedFor.current.userId === userId) {
@@ -73,9 +57,9 @@ function AppRouter() {
     }
     invalidatedFor.current = { userId };
     void router.invalidate();
-  }, [userId, ready]);
+  }, [userId, auth.loading]);
 
-  if (!ready) {
+  if (auth.loading) {
     return (
       <IconProvider
         icons={{ library: "lucide" }}

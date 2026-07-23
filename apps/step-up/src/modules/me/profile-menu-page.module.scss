@@ -164,11 +164,17 @@
   display: flex;
   align-items: center;
   gap: var(--space-3, 0.75rem);
+  width: 100%;
   min-height: 3.25rem;
   padding: var(--space-2, 0.5rem) var(--space-2, 0.5rem);
+  border: none;
   border-radius: var(--radius-lg, 0.75rem);
+  background: transparent;
   color: inherit;
+  font: inherit;
+  text-align: start;
   text-decoration: none;
+  cursor: pointer;
   transition:
     background-color var(--motion-fast, 150ms) ease,
     transform var(--motion-fast, 150ms) ease;
@@ -214,12 +220,6 @@
 }
 
 .signOutRow {
-  width: 100%;
-  border: none;
-  background: transparent;
-  cursor: pointer;
-  font: inherit;
-  text-align: start;
   color: var(--color-danger, #e5484d);
 }
 

@@ -1,7 +1,5 @@
 import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
-import { APP_FILTER } from "@nestjs/core";
-import { SentryGlobalFilter, SentryModule } from "@sentry/nestjs/setup";
 import { AttendanceModule } from "./attendance/attendance.module";
 import { AuthModule } from "./auth/auth.module";
 import { BatchesModule } from "./batches/batches.module";
@@ -23,6 +21,7 @@ import { PrismaModule } from "./prisma/prisma.module";
 import { QueueModule } from "./queues/queue.module";
 import { RedisModule } from "./redis/redis.module";
 import { RetentionModule } from "./retention/retention.module";
+import { sentryNestImports, sentryNestProviders } from "./sentry-nest";
 import { SessionsModule } from "./sessions/sessions.module";
 import { SocialModule } from "./social/social.module";
 import { StudiosModule } from "./studios/studios.module";
@@ -32,7 +31,7 @@ import { UsersModule } from "./users/users.module";
 
 @Module({
   imports: [
-    SentryModule.forRoot(),
+    ...sentryNestImports(),
     ConfigModule.forRoot({ isGlobal: true }),
     PrismaModule,
     RedisModule,
@@ -62,11 +61,6 @@ import { UsersModule } from "./users/users.module";
     HealthModule,
     HomeModule,
   ],
-  providers: [
-    {
-      provide: APP_FILTER,
-      useClass: SentryGlobalFilter,
-    },
-  ],
+  providers: [...sentryNestProviders()],
 })
 export class AppModule {}

@@ -158,12 +158,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [emailVerified, setEmailVerified] = useState(() =>
     isAuthBypassEnabled() ? Boolean(readStoredDevUser()) : false,
   );
-  const [loading, setLoading] = useState(() => {
-    if (!isAuthBypassEnabled()) {
-      return true;
-    }
-    return Boolean(readStoredDevUser());
-  });
+  const [loading, setLoading] = useState(() => !isAuthBypassEnabled());
   const syncWaitersRef = useRef(
     new Map<
       string,
@@ -228,10 +223,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setEmailVerified(true);
       const stored = readStoredDevUser();
       if (!stored) {
-        setLoading(false);
         return;
       }
 
+      // Hydrate from localStorage immediately — never block the shell on
+      // /users/me (that race forced DanceLoader + e2e 90s waits).
       let cancelled = false;
       void (async () => {
         try {
@@ -246,15 +242,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setEmailVerified(true);
           localStorage.setItem(STORAGE_KEY, JSON.stringify(mapped));
         } catch {
-          if (!cancelled) {
-            localStorage.removeItem(STORAGE_KEY);
-            setUser(null);
-            setEmailVerified(false);
-          }
-        } finally {
-          if (!cancelled) {
-            setLoading(false);
-          }
+          // Keep the stored bypass session if the API blips.
         }
       })();
 
