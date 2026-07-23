@@ -58,3 +58,151 @@ describe("MembershipsService.renewManual", () => {
     );
   });
 });
+
+describe("MembershipsService.assign family packs", () => {
+  const prisma = {
+    subscription: {
+      findUnique: vi.fn(),
+    },
+    batch: {
+      findMany: vi.fn(),
+    },
+    membership: {
+      create: vi.fn(),
+    },
+    batchEnrollment: {
+      upsert: vi.fn(),
+    },
+    $transaction: vi.fn(),
+  };
+
+  const notifications = {
+    create: vi.fn(),
+  };
+
+  let service: MembershipsService;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    service = new MembershipsService(prisma as never, notifications as never);
+    prisma.$transaction.mockImplementation(
+      async (fn: (tx: typeof prisma) => Promise<unknown>) => fn(prisma),
+    );
+  });
+
+  it("creates membership and enrolls each seat into its batch", async () => {
+    prisma.subscription.findUnique.mockResolvedValue({
+      id: "sub-family",
+      active: true,
+      kind: "FAMILY",
+      individualAudience: null,
+      adultSeats: 1,
+      kidSeats: 1,
+      billingCadence: "MONTHLY",
+    });
+    prisma.batch.findMany.mockResolvedValue([
+      {
+        id: "batch-adult",
+        name: "Adult Hip Hop",
+        active: true,
+        category: "ADULTS",
+        capacity: 20,
+        _count: { enrollments: 2 },
+        enrollments: [],
+      },
+      {
+        id: "batch-kid",
+        name: "Kids Ballet",
+        active: true,
+        category: "KIDS",
+        capacity: 15,
+        _count: { enrollments: 1 },
+        enrollments: [],
+      },
+    ]);
+    prisma.membership.create.mockResolvedValue({
+      id: "mem-family",
+      coveredStudents: [],
+    });
+
+    await service.assign({
+      subscriptionId: "sub-family",
+      purchaserUserId: "owner-1",
+      coveredStudents: [
+        {
+          studentId: "owner-1",
+          seatRole: "ADULT",
+          batchId: "batch-adult",
+        },
+        {
+          studentId: "kid-1",
+          seatRole: "KID",
+          batchId: "batch-kid",
+        },
+      ],
+    });
+
+    expect(prisma.batchEnrollment.upsert).toHaveBeenCalledTimes(2);
+    expect(prisma.batchEnrollment.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        create: { batchId: "batch-adult", studentId: "owner-1" },
+      }),
+    );
+    expect(prisma.batchEnrollment.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        create: { batchId: "batch-kid", studentId: "kid-1" },
+      }),
+    );
+  });
+
+  it("rejects family assign when a seat batch category mismatches", async () => {
+    prisma.subscription.findUnique.mockResolvedValue({
+      id: "sub-family",
+      active: true,
+      kind: "FAMILY",
+      individualAudience: null,
+      adultSeats: 1,
+      kidSeats: 1,
+      billingCadence: "MONTHLY",
+    });
+    prisma.batch.findMany.mockResolvedValue([
+      {
+        id: "batch-adult",
+        name: "Adult Hip Hop",
+        active: true,
+        category: "ADULTS",
+        capacity: 20,
+        _count: { enrollments: 0 },
+        enrollments: [],
+      },
+      {
+        id: "batch-also-adult",
+        name: "Adult Jazz",
+        active: true,
+        category: "ADULTS",
+        capacity: 20,
+        _count: { enrollments: 0 },
+        enrollments: [],
+      },
+    ]);
+
+    await expect(
+      service.assign({
+        subscriptionId: "sub-family",
+        purchaserUserId: "owner-1",
+        coveredStudents: [
+          {
+            studentId: "owner-1",
+            seatRole: "ADULT",
+            batchId: "batch-adult",
+          },
+          {
+            studentId: "kid-1",
+            seatRole: "KID",
+            batchId: "batch-also-adult",
+          },
+        ],
+      }),
+    ).rejects.toThrow(/does not match KID seat/);
+  });
+});

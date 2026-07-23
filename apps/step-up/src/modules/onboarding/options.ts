@@ -1,4 +1,4 @@
-import type { ExperienceLevel } from "@/lib/constants";
+import type { AgeRange, ExperienceLevel, Gender } from "@/lib/constants";
 
 export const EXPERIENCE_LEVELS: Array<{
   id: ExperienceLevel;
@@ -54,14 +54,63 @@ export const SCHEDULE_VIBES: Array<{
   },
 ];
 
+export const GENDERS: Array<{
+  id: Gender;
+  title: string;
+  description: string;
+}> = [
+  {
+    id: "FEMALE",
+    title: "Female",
+    description: "Required for class matching",
+  },
+  {
+    id: "MALE",
+    title: "Male",
+    description: "Required for class matching",
+  },
+];
+
+export const AGE_RANGES: Array<{
+  id: AgeRange;
+  title: string;
+  label: string;
+  description: string;
+}> = [
+  {
+    id: "UNDER_10",
+    title: "Under 10",
+    label: "Toddlers",
+    description: "Little movers finding their feet",
+  },
+  {
+    id: "TEN_TO_TWENTY",
+    title: "10–20",
+    label: "Teens",
+    description: "Youth energy and growing technique",
+  },
+  {
+    id: "TWENTY_TO_FORTY",
+    title: "20–40",
+    label: "Adults",
+    description: "Prime years on the floor",
+  },
+  {
+    id: "FORTY_PLUS",
+    title: "40+",
+    label: "Masters",
+    description: "Experience in every step",
+  },
+];
+
 export const GOAL_PRESETS = [4, 8, 12, 16] as const;
 
 export const ONBOARDING_STEPS = [
   "profile",
-  "styles",
   "level",
   "vibe",
-  "branch",
+  "gender",
+  "age",
   "celebrate",
 ] as const;
 
@@ -83,12 +132,6 @@ export const STEP_META: Record<OnboardingStep, OnboardingStepMeta> = {
     emphasis: "as you",
     subtitle: "A name and photo so coaches recognize you on the floor.",
   },
-  styles: {
-    art: `/onboarding/styles.png?${ART_V}`,
-    title: "Pick your",
-    emphasis: "vibe",
-    subtitle: "What do you want to dance?",
-  },
   level: {
     art: `/onboarding/level.png?${ART_V}`,
     title: "Where are",
@@ -101,11 +144,17 @@ export const STEP_META: Record<OnboardingStep, OnboardingStepMeta> = {
     emphasis: "move",
     subtitle: "Pick the times you love to train.",
   },
-  branch: {
-    art: `/onboarding/branch.png?${ART_V}`,
-    title: "Your home",
-    emphasis: "floor",
-    subtitle: "Choose the studio you’ll visit most.",
+  gender: {
+    art: `/onboarding/level.png?${ART_V}`,
+    title: "Select your",
+    emphasis: "gender",
+    subtitle: "Male or Female — required for class matching.",
+  },
+  age: {
+    art: `/onboarding/vibe.png?${ART_V}`,
+    title: "What’s your",
+    emphasis: "age range",
+    subtitle: "Required — we’ll suggest classes that fit your stage.",
   },
   celebrate: {
     art: `/onboarding/celebrate.png?${ART_V}`,

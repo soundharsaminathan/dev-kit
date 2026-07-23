@@ -60,6 +60,11 @@ enum MembershipSeatRole {
   KID
 }
 
+enum FamilyMemberKind {
+  KID
+  CO_STUDENT
+}
+
 enum InvoiceStatus {
   PENDING
   PAID
@@ -142,6 +147,18 @@ enum ExperienceLevel {
   ADVANCED
 }
 
+enum Gender {
+  FEMALE
+  MALE
+}
+
+enum AgeRange {
+  UNDER_10
+  TEN_TO_TWENTY
+  TWENTY_TO_FORTY
+  FORTY_PLUS
+}
+
 enum FollowRequestStatus {
   PENDING
   ACCEPTED
@@ -222,6 +239,8 @@ model User {
   styles                 String[]
   experienceLevel        ExperienceLevel?
   scheduleVibe           String[]          @default([])
+  gender                 Gender?
+  ageRange               AgeRange?
   preferredBranchId      String?
   onboardingCompletedAt  DateTime?
   profileVisibility      ProfileVisibility @default(PRIVATE)
@@ -234,6 +253,8 @@ model User {
   ownedStudio       Studio?           @relation("StudioOwner")
   parentLinks       ParentChild[]     @relation("Parent")
   childLinks        ParentChild[]     @relation("Child")
+  ownedFamilyMembers FamilyMember[]   @relation("FamilyOwner")
+  familyMemberships  FamilyMember[]   @relation("FamilyMemberUser")
   createdBatches    Batch[]           @relation("BatchCreator")
   trainedBatches    BatchTrainer[]
   batchEnrollments  BatchEnrollment[]
@@ -284,6 +305,20 @@ model ParentChild {
   child  User @relation("Child", fields: [childUserId], references: [id], onDelete: Cascade)
 
   @@unique([parentUserId, childUserId])
+}
+
+model FamilyMember {
+  id           String           @id @default(cuid())
+  ownerUserId  String
+  memberUserId String
+  kind         FamilyMemberKind
+  createdAt    DateTime         @default(now())
+
+  owner  User @relation("FamilyOwner", fields: [ownerUserId], references: [id], onDelete: Cascade)
+  member User @relation("FamilyMemberUser", fields: [memberUserId], references: [id], onDelete: Cascade)
+
+  @@unique([ownerUserId, memberUserId])
+  @@index([ownerUserId])
 }
 
 model Studio {

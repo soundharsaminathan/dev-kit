@@ -1,7 +1,7 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@dev-ui/components/avatar";
 import { FileTrigger } from "@dev-ui/components/file-trigger";
 import { Icon } from "@dev-ui/icons";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { updateProfile } from "firebase/auth";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
@@ -9,22 +9,22 @@ import { useRef, useState } from "react";
 import { useApi } from "@/lib/api-context";
 import { useAuth } from "@/lib/auth";
 import {
+  type AgeRange,
   type ExperienceLevel,
+  type Gender,
   isAuthBypassEnabled,
-  STUDIO_ID,
 } from "@/lib/constants";
-import { DANCE_STYLES, resolveDanceStyle } from "@/lib/dance-styles";
 import { getFirebaseAuth } from "@/lib/firebase";
-import { coverUrl, type StudioBranch } from "@/modules/locations/types";
 import { uploadSocialPhoto } from "@/modules/social/upload";
 import { FormInput } from "@/modules/ui/form-input";
 import { ImageCropSheet } from "@/modules/ui/image-crop-sheet";
-import { SkeletonCardList } from "@/modules/ui/skeleton-block";
 import { SuccessState } from "@/modules/ui/states";
 import { TouchButton } from "@/modules/ui/touch-button";
 import styles from "./onboarding.module.scss";
 import {
+  AGE_RANGES,
   EXPERIENCE_LEVELS,
+  GENDERS,
   GOAL_PRESETS,
   ONBOARDING_STEPS,
   type OnboardingStep,
@@ -35,10 +35,10 @@ import {
 type ProfilePatch = {
   name?: string;
   photoUrl?: string;
-  styles?: string[];
   experienceLevel?: ExperienceLevel;
   scheduleVibe?: string[];
-  preferredBranchId?: string;
+  gender?: Gender;
+  ageRange?: AgeRange;
   onboardingCompletedAt?: string | null;
 };
 
@@ -120,30 +120,19 @@ export function OnboardingWizard() {
     user?.photoUrl ?? null,
   );
   const [pendingCrop, setPendingCrop] = useState<File | null>(null);
-  const [stylesSelected, setStylesSelected] = useState<string[]>(
-    user?.styles ?? [],
-  );
   const [experienceLevel, setExperienceLevel] =
     useState<ExperienceLevel | null>(user?.experienceLevel ?? null);
   const [scheduleVibe, setScheduleVibe] = useState<string[]>(
     user?.scheduleVibe ?? [],
   );
-  const [preferredBranchId, setPreferredBranchId] = useState<string | null>(
-    user?.preferredBranchId ?? null,
+  const [gender, setGender] = useState<Gender | null>(user?.gender ?? null);
+  const [ageRange, setAgeRange] = useState<AgeRange | null>(
+    user?.ageRange ?? null,
   );
   const [goalTarget, setGoalTarget] = useState(8);
   const [error, setError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [completed, setCompleted] = useState(false);
-
-  const selectedStyleLabels = new Set(
-    stylesSelected.map((entry) => resolveDanceStyle(entry).label),
-  );
-
-  const branchesQuery = useQuery({
-    queryKey: ["branches", STUDIO_ID, "onboarding"],
-    queryFn: () => api.get<StudioBranch[]>(`/studios/${STUDIO_ID}/branches`),
-  });
 
   const savePrefs = useMutation({
     mutationFn: (body: ProfilePatch) =>
@@ -152,14 +141,12 @@ export function OnboardingWizard() {
       updateUser({
         ...(saved.name ? { name: saved.name } : {}),
         ...(saved.photoUrl !== undefined ? { photoUrl: saved.photoUrl } : {}),
-        ...(saved.styles ? { styles: saved.styles } : {}),
         ...(saved.experienceLevel !== undefined
           ? { experienceLevel: saved.experienceLevel }
           : {}),
         ...(saved.scheduleVibe ? { scheduleVibe: saved.scheduleVibe } : {}),
-        ...(saved.preferredBranchId !== undefined
-          ? { preferredBranchId: saved.preferredBranchId }
-          : {}),
+        ...(saved.gender !== undefined ? { gender: saved.gender } : {}),
+        ...(saved.ageRange !== undefined ? { ageRange: saved.ageRange } : {}),
       });
     },
   });
@@ -238,16 +225,6 @@ export function OnboardingWizard() {
         return;
       }
 
-      if (step === "styles") {
-        if (stylesSelected.length < 1) {
-          throw new Error("Pick at least one dance style");
-        }
-        updateUser({ styles: stylesSelected });
-        advanceTo(next);
-        persistInBackground({ styles: stylesSelected }, stepIndex);
-        return;
-      }
-
       if (step === "level") {
         if (!experienceLevel) {
           throw new Error("Choose your experience level");
@@ -268,13 +245,23 @@ export function OnboardingWizard() {
         return;
       }
 
-      if (step === "branch") {
-        if (!preferredBranchId) {
-          throw new Error("Choose your preferred studio location");
+      if (step === "gender") {
+        if (!gender) {
+          throw new Error("Choose Male or Female to continue");
         }
-        updateUser({ preferredBranchId });
+        updateUser({ gender });
         advanceTo(next);
-        persistInBackground({ preferredBranchId }, stepIndex);
+        persistInBackground({ gender }, stepIndex);
+        return;
+      }
+
+      if (step === "age") {
+        if (!ageRange) {
+          throw new Error("Choose your age range");
+        }
+        updateUser({ ageRange });
+        advanceTo(next);
+        persistInBackground({ ageRange }, stepIndex);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not continue");
@@ -287,13 +274,9 @@ export function OnboardingWizard() {
       if (!completed) {
         await completeMutation.mutateAsync();
       }
-      const branchId = preferredBranchId ?? undefined;
-      const primaryStyle = stylesSelected[0];
       void navigate({
         to: "/me/book",
         search: {
-          ...(branchId ? { branchId } : {}),
-          ...(primaryStyle ? { style: primaryStyle } : {}),
           ...(intent === "trial" ? { intent: "trial" } : {}),
         },
         replace: true,
@@ -319,20 +302,6 @@ export function OnboardingWizard() {
     } finally {
       setUploading(false);
     }
-  }
-
-  function toggleStyle(label: string) {
-    const next = new Set(selectedStyleLabels);
-    if (next.has(label)) {
-      next.delete(label);
-    } else {
-      next.add(label);
-    }
-    setStylesSelected(
-      DANCE_STYLES.filter((style) => next.has(style.label)).map(
-        (style) => style.label,
-      ),
-    );
   }
 
   function toggleVibe(id: string) {
@@ -422,28 +391,6 @@ export function OnboardingWizard() {
               </>
             ) : null}
 
-            {step === "styles" ? (
-              <div className={styles.styleChips}>
-                {DANCE_STYLES.map((style) => (
-                  <button
-                    key={style.id}
-                    type="button"
-                    className={styles.styleChip}
-                    data-selected={
-                      selectedStyleLabels.has(style.label) ? "true" : undefined
-                    }
-                    aria-pressed={selectedStyleLabels.has(style.label)}
-                    onClick={() => toggleStyle(style.label)}
-                  >
-                    <span className={styles.styleChipEmoji} aria-hidden>
-                      {style.emoji}
-                    </span>
-                    {style.label}
-                  </button>
-                ))}
-              </div>
-            ) : null}
-
             {step === "level" ? (
               <div className={styles.cardGrid}>
                 {EXPERIENCE_LEVELS.map((level) => (
@@ -486,28 +433,41 @@ export function OnboardingWizard() {
               </div>
             ) : null}
 
-            {step === "branch" ? (
-              <div className={styles.branchList}>
-                {branchesQuery.isLoading ? (
-                  <SkeletonCardList count={2} />
-                ) : null}
-                {branchesQuery.data?.map((branch) => (
+            {step === "gender" ? (
+              <div className={styles.cardGrid}>
+                {GENDERS.map((option) => (
                   <button
-                    key={branch.id}
+                    key={option.id}
                     type="button"
-                    className={styles.branchCard}
-                    data-selected={
-                      preferredBranchId === branch.id ? "true" : undefined
-                    }
-                    onClick={() => setPreferredBranchId(branch.id)}
+                    className={styles.choiceCard}
+                    data-selected={gender === option.id ? "true" : undefined}
+                    onClick={() => setGender(option.id)}
                   >
-                    <p className={styles.branchName}>{branch.name}</p>
-                    <p className={styles.branchAddress}>{branch.address}</p>
-                    {coverUrl(branch) ? (
-                      <span className={styles.choiceDescription}>
-                        Tap to make this your home studio
-                      </span>
-                    ) : null}
+                    <p className={styles.choiceTitle}>{option.title}</p>
+                    <p className={styles.choiceDescription}>
+                      {option.description}
+                    </p>
+                  </button>
+                ))}
+              </div>
+            ) : null}
+
+            {step === "age" ? (
+              <div className={styles.cardGrid}>
+                {AGE_RANGES.map((option) => (
+                  <button
+                    key={option.id}
+                    type="button"
+                    className={styles.choiceCard}
+                    data-selected={ageRange === option.id ? "true" : undefined}
+                    onClick={() => setAgeRange(option.id)}
+                  >
+                    <p className={styles.choiceTitle}>
+                      {option.label} · {option.title}
+                    </p>
+                    <p className={styles.choiceDescription}>
+                      {option.description}
+                    </p>
                   </button>
                 ))}
               </div>

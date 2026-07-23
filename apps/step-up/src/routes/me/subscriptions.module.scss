@@ -74,3 +74,31 @@
   flex-direction: column;
   gap: var(--space-2, 0.5rem);
 }
+
+.coveredList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2, 0.5rem);
+}
+
+.coveredChip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.625rem;
+  border-radius: var(--radius-full, 9999px);
+  background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-primary);
+}
+
+.batchPicker {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1, 0.25rem);
+}
+
+.kindPicker {
+  display: flex;
+  gap: var(--space-2, 0.5rem);
+}

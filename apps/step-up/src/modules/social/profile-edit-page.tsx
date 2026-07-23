@@ -19,13 +19,17 @@ import { useState } from "react";
 import { useApi } from "@/lib/api-context";
 import { useAuth } from "@/lib/auth";
 import {
+  type AgeRange,
   type ExperienceLevel,
+  type Gender,
   isAuthBypassEnabled,
   STUDIO_ID,
 } from "@/lib/constants";
 import { getFirebaseAuth } from "@/lib/firebase";
 import {
+  AGE_RANGES,
   EXPERIENCE_LEVELS,
+  GENDERS,
   SCHEDULE_VIBES,
 } from "@/modules/onboarding/options";
 import { InstallAppPanel } from "@/modules/pwa/install-app-panel";
@@ -66,6 +70,8 @@ type ProfileFormValues = {
   styles: string[];
   experienceLevel: ExperienceLevel | "";
   scheduleVibe: string[];
+  gender: Gender | "";
+  ageRange: AgeRange | "";
   preferredBranchId: string;
 };
 
@@ -203,6 +209,8 @@ function ProfileEditForm({ backTo, profile }: ProfileEditFormProps) {
         styles?: string[];
         experienceLevel?: ExperienceLevel | null;
         scheduleVibe?: string[];
+        gender?: Gender | null;
+        ageRange?: AgeRange | null;
         preferredBranchId?: string | null;
       }>("/users/me", {
         name: trimmedName,
@@ -218,6 +226,8 @@ function ProfileEditForm({ backTo, profile }: ProfileEditFormProps) {
           ? {
               experienceLevel: values.experienceLevel || undefined,
               scheduleVibe: values.scheduleVibe,
+              gender: values.gender || undefined,
+              ageRange: values.ageRange || undefined,
               preferredBranchId: values.preferredBranchId || null,
             }
           : {}),
@@ -249,6 +259,8 @@ function ProfileEditForm({ backTo, profile }: ProfileEditFormProps) {
           ? { experienceLevel: saved.experienceLevel }
           : {}),
         ...(saved.scheduleVibe ? { scheduleVibe: saved.scheduleVibe } : {}),
+        ...(saved.gender !== undefined ? { gender: saved.gender } : {}),
+        ...(saved.ageRange !== undefined ? { ageRange: saved.ageRange } : {}),
         ...(saved.preferredBranchId !== undefined
           ? { preferredBranchId: saved.preferredBranchId }
           : {}),
@@ -270,10 +282,22 @@ function ProfileEditForm({ backTo, profile }: ProfileEditFormProps) {
       styles: profile.styles,
       experienceLevel: user?.experienceLevel ?? "",
       scheduleVibe: user?.scheduleVibe ?? [],
+      gender: user?.gender ?? "",
+      ageRange: user?.ageRange ?? "",
       preferredBranchId: user?.preferredBranchId ?? "",
     } satisfies ProfileFormValues,
     onSubmit: async ({ value }) => {
       setSaveMessage(null);
+      if (canEditPrefs) {
+        if (!value.gender) {
+          setSaveMessage("Choose Male or Female to continue.");
+          return;
+        }
+        if (!value.ageRange) {
+          setSaveMessage("Choose an age range to continue.");
+          return;
+        }
+      }
       try {
         await saveMutation.mutateAsync(value);
       } catch (err) {
@@ -613,6 +637,62 @@ function ProfileEditForm({ backTo, profile }: ProfileEditFormProps) {
 
               {canEditPrefs ? (
                 <>
+                  <form.Field name="gender">
+                    {(field) => (
+                      <div className={styles.stylesBlock}>
+                        <div className={styles.stylesHeader}>
+                          <h3 className={styles.stylesTitle}>Gender</h3>
+                          <p className={styles.cardDesc}>Required</p>
+                        </div>
+                        <div className={styles.prefGrid}>
+                          {GENDERS.map((option) => (
+                            <button
+                              key={option.id}
+                              type="button"
+                              className={styles.prefChip}
+                              data-selected={
+                                field.state.value === option.id
+                                  ? "true"
+                                  : undefined
+                              }
+                              onClick={() => field.handleChange(option.id)}
+                            >
+                              {option.title}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </form.Field>
+
+                  <form.Field name="ageRange">
+                    {(field) => (
+                      <div className={styles.stylesBlock}>
+                        <div className={styles.stylesHeader}>
+                          <h3 className={styles.stylesTitle}>Age range</h3>
+                          <p className={styles.cardDesc}>Required</p>
+                        </div>
+                        <div className={styles.prefGrid}>
+                          {AGE_RANGES.map((option) => (
+                            <button
+                              key={option.id}
+                              type="button"
+                              className={styles.prefChip}
+                              data-selected={
+                                field.state.value === option.id
+                                  ? "true"
+                                  : undefined
+                              }
+                              onClick={() => field.handleChange(option.id)}
+                            >
+                              {option.label} · {option.title}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </form.Field>
+
                   <form.Field name="experienceLevel">
                     {(field) => (
                       <div className={styles.stylesBlock}>

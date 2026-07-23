@@ -1,12 +1,21 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@dev-ui/components/avatar";
 import { Icon } from "@dev-ui/icons";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
+import { useContext, useState } from "react";
+import { useApi } from "@/lib/api-context";
 import { useAuth } from "@/lib/auth";
 import {
   getMenuSections,
   type ShellVariant,
 } from "@/modules/layout/nav-config";
+import { ActiveStudentContext } from "@/modules/me/active-student-context";
+import { ChildSwitcher } from "@/modules/me/child-switcher";
+import { AppBottomSheet } from "@/modules/ui/app-bottom-sheet";
+import { FormInput } from "@/modules/ui/form-input";
 import { Screen } from "@/modules/ui/screen";
+import { ErrorState } from "@/modules/ui/states";
+import { TouchButton } from "@/modules/ui/touch-button";
 import styles from "./profile-menu-page.module.scss";
 
 type ProfileMenuPageProps = {
@@ -15,16 +24,83 @@ type ProfileMenuPageProps = {
 
 export function ProfileMenuPage({ variant = "me" }: ProfileMenuPageProps) {
   const { user, signOutUser } = useAuth();
+  const api = useApi();
+  const queryClient = useQueryClient();
+  const activeStudent = useContext(ActiveStudentContext);
+  const familyMembers = activeStudent?.familyMembers ?? [];
+  const isManagingFamily = activeStudent?.isManagingFamily ?? false;
+  const setActiveAccount = activeStudent?.setActiveAccount ?? (() => {});
   const sections = getMenuSections(variant);
   const editTo = variant === "app" ? "/app/profile/edit" : "/me/profile/edit";
   const followRequestsTo =
     variant === "app"
       ? "/app/profile/follow-requests"
       : "/me/profile/follow-requests";
+  const [manageOpen, setManageOpen] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [newKind, setNewKind] = useState<"KID" | "CO_STUDENT">("KID");
+
+  const createMutation = useMutation({
+    mutationFn: () =>
+      api.post<{ id: string }>("/users/me/family-members", {
+        name: newName,
+        kind: newKind,
+      }),
+    onSuccess: async (created: { id: string }) => {
+      await queryClient.invalidateQueries({
+        queryKey: ["users", user?.id, "family-members"],
+      });
+      await queryClient.invalidateQueries({
+        queryKey: ["memberships"],
+      });
+      setActiveAccount(created.id);
+      setNewName("");
+    },
+  });
+
+  const removeMutation = useMutation({
+    mutationFn: (memberUserId: string) =>
+      api.delete(`/users/me/family-members/${memberUserId}`),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: ["users", user?.id, "family-members"],
+      });
+      await queryClient.invalidateQueries({
+        queryKey: ["memberships"],
+      });
+    },
+  });
 
   return (
     <Screen title="Profile">
       <div className={styles.root}>
+        {isManagingFamily ? (
+          <section className={styles.section}>
+            <h2 className={styles.sectionTitle}>Switch account</h2>
+            <ChildSwitcher />
+          </section>
+        ) : null}
+
+        {variant === "me" ? (
+          <section className={styles.section}>
+            <ul className={styles.menuCard}>
+              <li>
+                <button
+                  type="button"
+                  className={styles.menuRow}
+                  onClick={() => setManageOpen(true)}
+                >
+                  <span className={styles.menuIcon}>
+                    <Icon name="users" />
+                  </span>
+                  <span className={styles.menuLabel}>Family & Co-students</span>
+                  <Icon name="chevron-right" className={styles.chevron} />
+                </button>
+              </li>
+            </ul>
+          </section>
+        ) : null}
+
         <Link to={editTo} className={styles.profileCard}>
           <Avatar size="lg">
             {user?.photoUrl ? (
@@ -102,6 +178,77 @@ export function ProfileMenuPage({ variant = "me" }: ProfileMenuPageProps) {
           </ul>
         </section>
       </div>
+
+      <AppBottomSheet
+        isOpen={manageOpen}
+        onOpenChange={setManageOpen}
+        title="Family & Co-students"
+      >
+        <div className={styles.sheetBody}>
+          <FormInput
+            label="Name"
+            value={newName}
+            onChange={setNewName}
+            placeholder="Enter member name"
+          />
+          <div className={styles.kindPicker}>
+            <TouchButton
+              variant={newKind === "KID" ? "primary" : "quiet"}
+              size="sm"
+              onClick={() => setNewKind("KID")}
+            >
+              Kid
+            </TouchButton>
+            <TouchButton
+              variant={newKind === "CO_STUDENT" ? "primary" : "quiet"}
+              size="sm"
+              onClick={() => setNewKind("CO_STUDENT")}
+            >
+              Co-student
+            </TouchButton>
+          </div>
+          <TouchButton
+            variant="primary"
+            fullWidth
+            isDisabled={newName.trim().length === 0}
+            isPending={createMutation.isPending}
+            onClick={() => createMutation.mutate()}
+          >
+            Add member
+          </TouchButton>
+
+          {createMutation.isError ? (
+            <ErrorState
+              description={
+                createMutation.error instanceof Error
+                  ? createMutation.error.message
+                  : "Could not add family member."
+              }
+            />
+          ) : null}
+
+          <div className={styles.memberList}>
+            {familyMembers.map((member) => (
+              <div key={member.id} className={styles.memberRow}>
+                <div>
+                  <p className={styles.memberName}>{member.name}</p>
+                  <p className={styles.memberType}>
+                    {member.kind === "KID" ? "Kid seat" : "Co-student seat"}
+                  </p>
+                </div>
+                <TouchButton
+                  variant="quiet"
+                  size="sm"
+                  isPending={removeMutation.isPending}
+                  onClick={() => removeMutation.mutate(member.id)}
+                >
+                  Remove
+                </TouchButton>
+              </div>
+            ))}
+          </div>
+        </div>
+      </AppBottomSheet>
     </Screen>
   );
 }

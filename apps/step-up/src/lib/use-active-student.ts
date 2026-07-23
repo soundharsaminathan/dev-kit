@@ -3,41 +3,51 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useApi } from "./api-context";
 import { useAuth } from "./auth";
 
-type LinkedChild = {
+export type FamilyMemberKind = "KID" | "CO_STUDENT";
+
+export type FamilyAccount = {
   id: string;
   name: string;
+  kind?: FamilyMemberKind;
+  photoUrl?: string | null;
+  isSelf?: boolean;
 };
 
-type UserDetail = {
+type FamilyMemberDto = {
   id: string;
-  parentLinks?: Array<{
-    child: { id: string; name: string };
-  }>;
+  name: string;
+  kind: FamilyMemberKind;
+  photoUrl: string | null;
+  isDependent: boolean;
 };
 
 type ActiveStudentResult = {
   loading: boolean;
   studentId: string;
-  children: LinkedChild[];
+  accounts: FamilyAccount[];
+  children: Array<{ id: string; name: string }>;
+  familyMembers: FamilyMemberDto[];
   isParent: boolean;
+  isManagingFamily: boolean;
   setActiveChild: (id: string) => void;
+  setActiveAccount: (id: string) => void;
 };
 
-function storageKey(parentId: string) {
-  return `step-up-active-child:${parentId}`;
+function storageKey(ownerId: string) {
+  return `step-up-active-account:${ownerId}`;
 }
 
-function readStoredChild(parentId: string): string | null {
+function readStoredAccount(ownerId: string): string | null {
   try {
-    return localStorage.getItem(storageKey(parentId));
+    return localStorage.getItem(storageKey(ownerId));
   } catch {
     return null;
   }
 }
 
-function writeStoredChild(parentId: string, childId: string) {
+function writeStoredAccount(ownerId: string, accountId: string) {
   try {
-    localStorage.setItem(storageKey(parentId), childId);
+    localStorage.setItem(storageKey(ownerId), accountId);
   } catch {
     // ignore
   }
@@ -46,62 +56,102 @@ function writeStoredChild(parentId: string, childId: string) {
 export function useActiveStudent(): ActiveStudentResult {
   const { user } = useAuth();
   const api = useApi();
+  const canManageFamily = user?.role === "STUDENT" || user?.role === "PARENT";
 
-  const meQuery = useQuery({
-    queryKey: ["users", user?.id, "me"],
-    queryFn: () => api.get<UserDetail>(`/users/${user!.id}`),
-    enabled: user?.role === "PARENT" && Boolean(user?.id),
+  const familyQuery = useQuery({
+    queryKey: ["users", user?.id, "family-members"],
+    queryFn: () => api.get<FamilyMemberDto[]>(`/users/me/family-members`),
+    enabled: canManageFamily && Boolean(user?.id),
     staleTime: 5 * 60 * 1000,
   });
 
-  const children = useMemo<LinkedChild[]>(() => {
-    if (!meQuery.data?.parentLinks) return [];
-    return meQuery.data.parentLinks.map((link) => ({
-      id: link.child.id,
-      name: link.child.name,
-    }));
-  }, [meQuery.data]);
+  const familyMembers = familyQuery.data ?? [];
 
-  const [selectedChildId, setSelectedChildId] = useState<string | null>(() => {
-    if (user?.role !== "PARENT") return null;
-    return readStoredChild(user.id);
-  });
+  const accounts = useMemo<FamilyAccount[]>(() => {
+    if (!user) return [];
+    const me: FamilyAccount = {
+      id: user.id,
+      name: user.name ?? "Me",
+      photoUrl: user.photoUrl ?? null,
+      isSelf: true,
+    };
+    const linked = familyMembers.map((m) => ({
+      id: m.id,
+      name: m.name,
+      kind: m.kind,
+      photoUrl: m.photoUrl,
+      isSelf: false,
+    }));
+    return [me, ...linked];
+  }, [familyMembers, user]);
+
+  const children = useMemo(
+    () =>
+      familyMembers
+        .filter((m) => m.kind === "KID")
+        .map((m) => ({ id: m.id, name: m.name })),
+    [familyMembers],
+  );
+
+  const [selectedAccountId, setSelectedAccountId] = useState<string | null>(
+    () => {
+      if (!user?.id || !canManageFamily) return null;
+      return readStoredAccount(user.id);
+    },
+  );
 
   useEffect(() => {
-    if (user?.role !== "PARENT" || children.length === 0) return;
-    const valid = children.some((c) => c.id === selectedChildId);
-    if (!valid && children[0]) {
-      const first = children[0].id;
-      setSelectedChildId(first);
-      writeStoredChild(user.id, first);
+    if (!user?.id || !canManageFamily || accounts.length === 0) return;
+    const valid = accounts.some((a) => a.id === selectedAccountId);
+    if (!valid) {
+      const next = user.id;
+      setSelectedAccountId(next);
+      writeStoredAccount(user.id, next);
     }
-  }, [children, selectedChildId, user]);
+  }, [accounts, canManageFamily, selectedAccountId, user]);
 
-  const setActiveChild = useCallback(
+  const setActiveAccount = useCallback(
     (id: string) => {
-      setSelectedChildId(id);
-      if (user?.id) writeStoredChild(user.id, id);
+      setSelectedAccountId(id);
+      if (user?.id) writeStoredAccount(user.id, id);
     },
     [user?.id],
   );
 
-  if (user?.role !== "PARENT") {
+  if (!canManageFamily || !user) {
     return {
       loading: false,
       studentId: user?.id ?? "",
+      accounts: user
+        ? [
+            {
+              id: user.id,
+              name: user.name ?? "Me",
+              photoUrl: user.photoUrl ?? null,
+              isSelf: true,
+            },
+          ]
+        : [],
       children: [],
+      familyMembers: [],
       isParent: false,
-      setActiveChild,
+      isManagingFamily: false,
+      setActiveChild: setActiveAccount,
+      setActiveAccount,
     };
   }
 
-  const studentId = selectedChildId ?? children[0]?.id ?? "";
+  const studentId = selectedAccountId ?? user.id;
 
   return {
-    loading: meQuery.isLoading,
+    loading: familyQuery.isLoading,
     studentId,
+    accounts,
     children,
-    isParent: true,
-    setActiveChild,
+    familyMembers,
+    isParent: user.role === "PARENT",
+    isManagingFamily: accounts.length > 1,
+    setActiveChild: setActiveAccount,
+    setActiveAccount,
   };
 }

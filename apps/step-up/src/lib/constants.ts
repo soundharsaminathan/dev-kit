@@ -8,6 +8,14 @@ export type ExperienceLevel =
   | "INTERMEDIATE"
   | "ADVANCED";
 
+export type Gender = "FEMALE" | "MALE";
+
+export type AgeRange =
+  | "UNDER_10"
+  | "TEN_TO_TWENTY"
+  | "TWENTY_TO_FORTY"
+  | "FORTY_PLUS";
+
 export type DevUser = {
   id: string;
   email: string;
@@ -17,6 +25,8 @@ export type DevUser = {
   styles?: string[] | undefined;
   experienceLevel?: ExperienceLevel | null | undefined;
   scheduleVibe?: string[] | undefined;
+  gender?: Gender | null | undefined;
+  ageRange?: AgeRange | null | undefined;
   preferredBranchId?: string | null | undefined;
   onboardingCompletedAt?: string | null | undefined;
   photoUrl?: string | null | undefined;
@@ -53,6 +63,8 @@ export const DEV_USERS: Record<UserRole, DevUser> = {
     styles: ["Hip Hop"],
     experienceLevel: "BEGINNER",
     scheduleVibe: ["weekday_evenings", "weekends"],
+    gender: "FEMALE",
+    ageRange: "TWENTY_TO_FORTY",
     preferredBranchId: "branch-main-1",
     onboardingCompletedAt: "2026-01-01T00:00:00.000Z",
   },
