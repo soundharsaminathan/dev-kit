@@ -127,6 +127,8 @@ export class UsersService {
     studioId: string;
     name: string;
     email: string;
+    gender: Gender;
+    ageRange: AgeRange;
     phone?: string;
     styles?: string[];
   }) {
@@ -140,6 +142,8 @@ export class UsersService {
     studioId: string;
     name: string;
     email: string;
+    gender: Gender;
+    ageRange: AgeRange;
     phone?: string;
     styles?: string[];
   }) {
@@ -153,6 +157,8 @@ export class UsersService {
     studioId: string;
     name: string;
     email: string;
+    gender: Gender;
+    ageRange: AgeRange;
     phone?: string;
     role: typeof UserRole.STUDENT | typeof UserRole.TRAINER;
     styles?: string[];
@@ -183,6 +189,8 @@ export class UsersService {
         ...sealed,
         role: data.role,
         studioId: data.studioId,
+        gender: data.gender,
+        ageRange: data.ageRange,
         styles: data.styles ?? [],
         profileVisibility: isAlwaysPublicRole(data.role)
           ? ProfileVisibility.PUBLIC
@@ -892,7 +900,12 @@ export class UsersService {
 
   async createFamilyMember(
     owner: DecryptedUser,
-    data: { name: string; kind: FamilyMemberKind },
+    data: {
+      name: string;
+      kind: FamilyMemberKind;
+      gender: Gender;
+      ageRange: AgeRange;
+    },
   ) {
     const name = data.name.trim();
     if (!name) {
@@ -919,6 +932,8 @@ export class UsersService {
           ...sealed,
           role: UserRole.STUDENT,
           studioId: owner.studioId,
+          gender: data.gender,
+          ageRange: data.ageRange,
           styles: [],
           profileVisibility: ProfileVisibility.PRIVATE,
           onboardingCompletedAt: new Date(),

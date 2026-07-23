@@ -152,6 +152,12 @@ class CreateStudentDto {
   @IsEmail()
   email!: string;
 
+  @IsEnum(Gender)
+  gender!: Gender;
+
+  @IsEnum(AgeRange)
+  ageRange!: AgeRange;
+
   @IsOptional()
   @IsString()
   phone?: string;
@@ -169,6 +175,12 @@ class CreateTrainerDto {
 
   @IsEmail()
   email!: string;
+
+  @IsEnum(Gender)
+  gender!: Gender;
+
+  @IsEnum(AgeRange)
+  ageRange!: AgeRange;
 
   @IsOptional()
   @IsString()
@@ -209,6 +221,12 @@ class CreateFamilyMemberDto {
 
   @IsEnum(FamilyMemberKind)
   kind!: FamilyMemberKind;
+
+  @IsEnum(Gender)
+  gender!: Gender;
+
+  @IsEnum(AgeRange)
+  ageRange!: AgeRange;
 }
 
 @Controller("users")

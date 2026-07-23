@@ -2,8 +2,10 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useApi } from "@/lib/api-context";
+import type { AgeRange, Gender } from "@/lib/constants";
 import { STUDIO_ID } from "@/lib/constants";
 import { setLastLoginIdentifier } from "@/lib/last-login";
+import { AGE_RANGES, GENDERS } from "@/modules/onboarding/options";
 import { StyleSpreePicker } from "@/modules/styles/style-spree-picker";
 import { FormInput } from "@/modules/ui/form-input";
 import { Screen } from "@/modules/ui/screen";
@@ -50,11 +52,16 @@ export function MemberRegistrationForm({
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [gender, setGender] = useState<Gender | null>(null);
+  const [ageRange, setAgeRange] = useState<AgeRange | null>(null);
   const [styles, setStyles] = useState<string[]>([]);
 
   const stepIsValid = useMemo(
-    () => [Boolean(name.trim() && email.trim()), styles.length > 0],
-    [email, name, styles.length],
+    () => [
+      Boolean(name.trim() && email.trim() && gender && ageRange),
+      styles.length > 0,
+    ],
+    [ageRange, email, gender, name, styles.length],
   );
 
   const createMember = useMutation({
@@ -63,6 +70,8 @@ export function MemberRegistrationForm({
         name: name.trim(),
         email: email.trim(),
         phone: phone.trim() || undefined,
+        gender,
+        ageRange,
         styles,
       }),
     onSuccess: async (created) => {
@@ -124,6 +133,38 @@ export function MemberRegistrationForm({
               value={phone}
               onChange={setPhone}
             />
+            <div className={formStyles.fieldBlock}>
+              <p className={formStyles.fieldLabel}>Gender</p>
+              <div className={formStyles.chipGrid}>
+                {GENDERS.map((option) => (
+                  <button
+                    key={option.id}
+                    type="button"
+                    className={formStyles.chip}
+                    data-selected={gender === option.id ? "true" : undefined}
+                    onClick={() => setGender(option.id)}
+                  >
+                    {option.title}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className={formStyles.fieldBlock}>
+              <p className={formStyles.fieldLabel}>Age range</p>
+              <div className={formStyles.chipGrid}>
+                {AGE_RANGES.map((option) => (
+                  <button
+                    key={option.id}
+                    type="button"
+                    className={formStyles.chip}
+                    data-selected={ageRange === option.id ? "true" : undefined}
+                    onClick={() => setAgeRange(option.id)}
+                  >
+                    {option.label} · {option.title}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
         ) : (
           <div className={`${staff.softPanel} ${formStyles.stylesPanel}`}>

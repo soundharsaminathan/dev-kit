@@ -523,10 +523,22 @@ describe("UsersService family members", () => {
         studioId: "studio-seed-1",
         role: UserRole.STUDENT,
       } as never,
-      { name: "Sam Kid", kind: FamilyMemberKind.KID },
+      {
+        name: "Sam Kid",
+        kind: FamilyMemberKind.KID,
+        gender: Gender.FEMALE,
+        ageRange: AgeRange.UNDER_10,
+      },
     );
 
-    expect(prisma.user.create).toHaveBeenCalled();
+    expect(prisma.user.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          gender: Gender.FEMALE,
+          ageRange: AgeRange.UNDER_10,
+        }),
+      }),
+    );
     expect(prisma.familyMember.create).toHaveBeenCalledWith({
       data: {
         ownerUserId: "owner-1",

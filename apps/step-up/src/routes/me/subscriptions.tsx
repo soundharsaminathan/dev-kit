@@ -12,9 +12,11 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useApi } from "@/lib/api-context";
 import { useAuth } from "@/lib/auth";
+import type { AgeRange, Gender } from "@/lib/constants";
 import { STUDIO_ID } from "@/lib/constants";
 import type { FamilyMemberKind } from "@/lib/use-active-student";
 import { useActiveStudentContext } from "@/modules/me/use-active-student-context";
+import { AGE_RANGES, GENDERS } from "@/modules/onboarding/options";
 import { AppBottomSheet } from "@/modules/ui/app-bottom-sheet";
 import { FormInput } from "@/modules/ui/form-input";
 import { PullToRefresh } from "@/modules/ui/pull-to-refresh";
@@ -96,6 +98,10 @@ function MeSubscriptionsPage() {
   const [seatBatchIds, setSeatBatchIds] = useState<Record<string, string>>({});
   const [newMemberName, setNewMemberName] = useState("");
   const [newMemberKind, setNewMemberKind] = useState<FamilyMemberKind>("KID");
+  const [newMemberGender, setNewMemberGender] = useState<Gender | null>(null);
+  const [newMemberAgeRange, setNewMemberAgeRange] = useState<AgeRange | null>(
+    null,
+  );
 
   const membershipsQuery = useQuery({
     queryKey: ["memberships", studentId],
@@ -218,6 +224,8 @@ function MeSubscriptionsPage() {
         {
           name: newMemberName,
           kind: newMemberKind,
+          gender: newMemberGender,
+          ageRange: newMemberAgeRange,
         },
       ),
     onSuccess: async (created) => {
@@ -225,6 +233,8 @@ function MeSubscriptionsPage() {
         queryKey: ["users", user?.id, "family-members"],
       });
       setNewMemberName("");
+      setNewMemberGender(null);
+      setNewMemberAgeRange(null);
       if (!enrollTarget) return;
       if (
         created.kind === "CO_STUDENT" &&
@@ -582,10 +592,50 @@ function MeSubscriptionsPage() {
                   Co-student
                 </TouchButton>
               </div>
+              <div className={styles.fieldBlock}>
+                <p className={styles.fieldLabel}>Gender</p>
+                <div className={styles.chipGrid}>
+                  {GENDERS.map((option) => (
+                    <button
+                      key={option.id}
+                      type="button"
+                      className={styles.chip}
+                      data-selected={
+                        newMemberGender === option.id ? "true" : undefined
+                      }
+                      onClick={() => setNewMemberGender(option.id)}
+                    >
+                      {option.title}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className={styles.fieldBlock}>
+                <p className={styles.fieldLabel}>Age range</p>
+                <div className={styles.chipGrid}>
+                  {AGE_RANGES.map((option) => (
+                    <button
+                      key={option.id}
+                      type="button"
+                      className={styles.chip}
+                      data-selected={
+                        newMemberAgeRange === option.id ? "true" : undefined
+                      }
+                      onClick={() => setNewMemberAgeRange(option.id)}
+                    >
+                      {option.label} · {option.title}
+                    </button>
+                  ))}
+                </div>
+              </div>
               <TouchButton
                 variant="quiet"
                 size="sm"
-                isDisabled={newMemberName.trim().length === 0}
+                isDisabled={
+                  newMemberName.trim().length === 0 ||
+                  !newMemberGender ||
+                  !newMemberAgeRange
+                }
                 isPending={createMemberMutation.isPending}
                 onClick={() => createMemberMutation.mutate()}
               >
