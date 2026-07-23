@@ -267,6 +267,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-1, 0.25rem);
+  min-height: 6.25rem;
   padding: var(--space-4, 1rem);
   border-radius: var(--radius-2xl, 1.25rem);
   border: var(--card-border-width, 1px) solid
@@ -277,12 +278,14 @@
 
 .statLabel {
   font-size: 0.75rem;
+  line-height: 1.2;
   font-weight: 600;
   color: color-mix(in srgb, var(--color-fg) 56%, transparent);
 }
 
 .statValue {
   font-size: 1.25rem;
+  line-height: 1.2;
   font-weight: 700;
   letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;

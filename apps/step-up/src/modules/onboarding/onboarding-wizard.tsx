@@ -517,7 +517,8 @@ export function OnboardingWizard() {
               <div className={styles.celebrate}>
                 <SuccessState
                   title="Your floor is ready"
-                  description="Classes will lean into your styles, level, and schedule."
+                  className={styles.celebrateSuccess}
+                  titleClassName={styles.celebrateTitle}
                 />
                 <p className={styles.choiceDescription}>
                   How many sessions do you want this month?

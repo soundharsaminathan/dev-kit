@@ -15,6 +15,7 @@ import {
   safeInternalPath,
 } from "@/lib/require-auth";
 import { PublicShell } from "@/modules/layout/public-shell";
+import { PasswordInput } from "@/modules/ui/password-input";
 import { TouchButton } from "@/modules/ui/touch-button";
 import styles from "./login.module.scss";
 
@@ -203,14 +204,13 @@ function LoginPage() {
               return (
                 <TextField>
                   <Label data-required="true">Password</Label>
-                  <Input
+                  <PasswordInput
                     name={field.name}
-                    type="password"
                     value={field.state.value}
                     onBlur={field.handleBlur}
-                    onChange={(event) => field.handleChange(event.target.value)}
+                    onChange={field.handleChange}
                     autoComplete="current-password"
-                    aria-invalid={Boolean(err)}
+                    isInvalid={Boolean(err)}
                     required
                   />
                   {err ? <FieldError>{err}</FieldError> : null}

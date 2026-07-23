@@ -14,6 +14,7 @@ import {
   safeInternalPath,
 } from "@/lib/require-auth";
 import { PublicShell } from "@/modules/layout/public-shell";
+import { PasswordInput } from "@/modules/ui/password-input";
 import { TouchButton } from "@/modules/ui/touch-button";
 import styles from "./login.module.scss";
 
@@ -25,6 +26,7 @@ type RegisterFormValues = {
   name: string;
   email: string;
   password: string;
+  confirmPassword: string;
 };
 
 function parseSearch(search: Record<string, unknown>): RegisterSearch {
@@ -58,6 +60,12 @@ function validateEmail(value: string) {
 function validatePassword(value: string) {
   if (!value) return "Enter a password";
   if (value.length < 6) return "Password must be at least 6 characters";
+  return undefined;
+}
+
+function validateConfirmPassword(value: string, password: string) {
+  if (!value) return "Confirm your password";
+  if (value !== password) return "Passwords do not match";
   return undefined;
 }
 
@@ -98,6 +106,7 @@ function RegisterPage() {
       name: "",
       email: "",
       password: "",
+      confirmPassword: "",
     } satisfies RegisterFormValues,
     onSubmit: async ({ value }) => {
       setError(null);
@@ -232,14 +241,54 @@ function RegisterPage() {
               return (
                 <TextField>
                   <Label data-required="true">Password</Label>
-                  <Input
+                  <PasswordInput
                     name={field.name}
-                    type="password"
                     value={field.state.value}
                     onBlur={field.handleBlur}
-                    onChange={(event) => field.handleChange(event.target.value)}
+                    onChange={field.handleChange}
                     autoComplete="new-password"
-                    aria-invalid={Boolean(err)}
+                    isInvalid={Boolean(err)}
+                    required
+                  />
+                  {err ? <FieldError>{err}</FieldError> : null}
+                </TextField>
+              );
+            }}
+          </form.Field>
+
+          <form.Field
+            name="confirmPassword"
+            validators={{
+              onChangeListenTo: ["password"],
+              onBlur: ({ value, fieldApi }) =>
+                validateConfirmPassword(
+                  value,
+                  fieldApi.form.getFieldValue("password"),
+                ),
+              onChange: ({ value, fieldApi }) =>
+                validateConfirmPassword(
+                  value,
+                  fieldApi.form.getFieldValue("password"),
+                ),
+              onSubmit: ({ value, fieldApi }) =>
+                validateConfirmPassword(
+                  value,
+                  fieldApi.form.getFieldValue("password"),
+                ),
+            }}
+          >
+            {(field) => {
+              const err = fieldError(field.state.meta.errors);
+              return (
+                <TextField>
+                  <Label data-required="true">Confirm password</Label>
+                  <PasswordInput
+                    name={field.name}
+                    value={field.state.value}
+                    onBlur={field.handleBlur}
+                    onChange={field.handleChange}
+                    autoComplete="new-password"
+                    isInvalid={Boolean(err)}
                     required
                   />
                   {err ? <FieldError>{err}</FieldError> : null}

@@ -62,13 +62,17 @@ export function SuccessState({
   title,
   description,
   action,
+  className,
+  titleClassName,
 }: {
   title: string;
-  description?: string;
-  action?: ReactNode;
+  description?: string | undefined;
+  action?: ReactNode | undefined;
+  className?: string | undefined;
+  titleClassName?: string | undefined;
 }) {
   return (
-    <div className={styles.success}>
+    <div className={[styles.success, className].filter(Boolean).join(" ")}>
       <div className={styles.check} aria-hidden>
         <svg viewBox="0 0 52 52" className={styles.checkSvg}>
           <title>Success</title>
@@ -86,7 +90,13 @@ export function SuccessState({
           />
         </svg>
       </div>
-      <h2 className={styles.successTitle}>{title}</h2>
+      <h2
+        className={[styles.successTitle, titleClassName]
+          .filter(Boolean)
+          .join(" ")}
+      >
+        {title}
+      </h2>
       {description ? <p className={styles.successDesc}>{description}</p> : null}
       {action ? <div className={styles.action}>{action}</div> : null}
     </div>
