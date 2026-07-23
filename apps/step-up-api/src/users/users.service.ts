@@ -19,6 +19,7 @@ import {
   SessionType,
   UserRole,
 } from "@prisma/client";
+import { assertBatchHasSeat, lockBatchRow } from "../batches/batch-capacity";
 import { MediaService } from "../media/media.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { isAlwaysPublicRole } from "../social/visibility";
@@ -562,17 +563,27 @@ export class UsersService {
           studioId,
           studentId,
           type: BookingType.TRIAL,
-          status: {
-            in: [BookingStatus.PENDING, BookingStatus.CONFIRMED],
-          },
+          OR: [
+            {
+              status: {
+                in: [BookingStatus.PENDING, BookingStatus.CONFIRMED],
+              },
+            },
+            {
+              status: BookingStatus.AWAITING_PAYMENT,
+              paymentHoldExpiresAt: { gt: new Date() },
+            },
+          ],
         },
         select: { id: true, status: true },
       });
       if (existingOpen) {
         throw new ConflictException(
-          existingOpen.status === BookingStatus.PENDING
-            ? "You already have a booking request waiting for studio approval"
-            : "You already have a confirmed trial booking",
+          existingOpen.status === BookingStatus.AWAITING_PAYMENT
+            ? "Complete payment for your existing booking hold first"
+            : existingOpen.status === BookingStatus.PENDING
+              ? "You already have a booking request waiting for studio approval"
+              : "You already have a confirmed trial booking",
         );
       }
 
@@ -615,34 +626,75 @@ export class UsersService {
     }
 
     if (batchId) {
-      const batch = await this.prisma.batch.findUnique({
-        where: { id: batchId },
-        include: { _count: { select: { enrollments: true } } },
-      });
-      if (!batch || batch.studioId !== studioId) {
-        throw new BadRequestException("Select a batch from this studio");
-      }
-      if (batch._count.enrollments >= batch.capacity) {
-        throw new BadRequestException("Batch is at capacity");
-      }
+      await this.prisma.$transaction(async (tx) => {
+        await lockBatchRow(tx, batchId!);
+        const batch = await tx.batch.findUnique({
+          where: { id: batchId! },
+          select: { id: true, studioId: true, capacity: true },
+        });
+        if (!batch || batch.studioId !== studioId) {
+          throw new BadRequestException("Select a batch from this studio");
+        }
+        await assertBatchHasSeat(tx, batchId!, batch.capacity, studentId);
 
-      const existingOpen = await this.prisma.booking.findFirst({
-        where: {
-          batchId,
-          studentId,
-          status: {
-            in: [BookingStatus.PENDING, BookingStatus.CONFIRMED],
+        const existingOpen = await tx.booking.findFirst({
+          where: {
+            batchId: batchId!,
+            studentId,
+            OR: [
+              {
+                status: {
+                  in: [BookingStatus.PENDING, BookingStatus.CONFIRMED],
+                },
+              },
+              {
+                status: BookingStatus.AWAITING_PAYMENT,
+                paymentHoldExpiresAt: { gt: new Date() },
+              },
+            ],
           },
-        },
-        select: { id: true, status: true },
+          select: { id: true, status: true },
+        });
+        if (existingOpen) {
+          throw new ConflictException(
+            existingOpen.status === BookingStatus.AWAITING_PAYMENT
+              ? "Complete payment for your existing booking hold first"
+              : existingOpen.status === BookingStatus.PENDING
+                ? "You already have a booking request waiting for studio approval"
+                : "You already have a confirmed booking for this class",
+          );
+        }
+
+        if (startsAt && endsAt) {
+          const start = new Date(startsAt);
+          const end = new Date(endsAt);
+          if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+            throw new BadRequestException("Invalid startsAt or endsAt");
+          }
+          if (end <= start) {
+            throw new BadRequestException("endsAt must be after startsAt");
+          }
+        } else if (startsAt || endsAt) {
+          throw new BadRequestException(
+            "Both startsAt and endsAt are required",
+          );
+        }
+
+        await tx.booking.create({
+          data: {
+            studioId,
+            studentId,
+            type: BookingType.TRIAL,
+            batchId,
+            sessionId,
+            trainerId,
+            startsAt: startsAt ? new Date(startsAt) : undefined,
+            endsAt: endsAt ? new Date(endsAt) : undefined,
+            status: BookingStatus.PENDING,
+          },
+        });
       });
-      if (existingOpen) {
-        throw new ConflictException(
-          existingOpen.status === BookingStatus.PENDING
-            ? "You already have a booking request waiting for studio approval"
-            : "You already have a confirmed booking for this class",
-        );
-      }
+      return;
     }
 
     if (startsAt && endsAt) {

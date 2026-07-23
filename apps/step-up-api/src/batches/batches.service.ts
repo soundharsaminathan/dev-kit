@@ -17,6 +17,11 @@ import { PrismaService } from "../prisma/prisma.service";
 import { TrialSlotsCacheService } from "../sessions/trial-slots-cache.service";
 import type { DecryptedUser } from "../users/user-crypto.service";
 import { UserCryptoService } from "../users/user-crypto.service";
+import {
+  assertBatchHasSeat,
+  countReservedSeatsByBatch,
+  lockBatchRow,
+} from "./batch-capacity";
 
 type BatchSchedule = {
   frequency: "DAILY" | "WEEKLY";
@@ -100,10 +105,11 @@ function shapeDiscoverBatch<
     coverImageUrl?: string | null;
     trainers: { trainer: Record<string, unknown> }[];
   },
->(batch: T) {
+>(batch: T, reservedSeats?: number) {
   const enrollmentCount =
     batch._count?.enrollments ?? batch.enrollments?.length ?? 0;
-  const remainingSeats = Math.max(0, batch.capacity - enrollmentCount);
+  const occupied = reservedSeats ?? enrollmentCount;
+  const remainingSeats = Math.max(0, batch.capacity - occupied);
   const coverImageUrl =
     batch.coverImageUrl ||
     batch.branch?.coverMedia?.objectKey ||
@@ -299,12 +305,20 @@ export class BatchesService {
       orderBy: { name: "asc" },
     });
 
+    const reservedByBatch = await countReservedSeatsByBatch(
+      this.prisma,
+      batches.map((batch) => batch.id),
+    );
+
     const mapped = batches.map((batch) => {
       const trainers = batch.trainers.map((row) => ({
         ...row,
         trainer: this.crypto.decryptUser(row.trainer),
       }));
-      return shapeDiscoverBatch({ ...batch, trainers });
+      return shapeDiscoverBatch(
+        { ...batch, trainers },
+        reservedByBatch.get(batch.id),
+      );
     });
 
     if (filters.style) {
@@ -348,6 +362,7 @@ export class BatchesService {
       notes: string | null;
       startsAt: Date | null;
       endsAt: Date | null;
+      paymentHoldExpiresAt: Date | null;
     } | null = null;
 
     if (options?.studentId) {
@@ -367,9 +382,17 @@ export class BatchesService {
           where: {
             batchId: id,
             studentId: options.studentId,
-            status: {
-              in: [BookingStatus.PENDING, BookingStatus.CONFIRMED],
-            },
+            OR: [
+              {
+                status: {
+                  in: [BookingStatus.PENDING, BookingStatus.CONFIRMED],
+                },
+              },
+              {
+                status: BookingStatus.AWAITING_PAYMENT,
+                paymentHoldExpiresAt: { gt: new Date() },
+              },
+            ],
           },
           orderBy: [{ status: "asc" }, { id: "desc" }],
           select: {
@@ -379,6 +402,7 @@ export class BatchesService {
             notes: true,
             startsAt: true,
             endsAt: true,
+            paymentHoldExpiresAt: true,
           },
         }),
       ]);
@@ -386,12 +410,17 @@ export class BatchesService {
       viewerBooking = openBooking;
     }
 
+    const reservedByBatch = await countReservedSeatsByBatch(this.prisma, [id]);
+
     return {
-      ...shapeDiscoverBatch({
-        ...batch,
-        trainers,
-        enrollments,
-      }),
+      ...shapeDiscoverBatch(
+        {
+          ...batch,
+          trainers,
+          enrollments,
+        },
+        reservedByBatch.get(id),
+      ),
       viewerRating,
       viewerEnrolled,
       viewerBooking,
@@ -742,21 +771,22 @@ export class BatchesService {
       );
     }
 
-    if (batch.enrollments.length >= batch.capacity) {
-      throw new BadRequestException("Batch is at capacity");
-    }
-
     await this.scheduleConflicts.assertStudentAvailableForBatch(
       studentId,
       batchId,
     );
 
-    return this.prisma.batchEnrollment.upsert({
-      where: {
-        batchId_studentId: { batchId, studentId },
-      },
-      update: {},
-      create: { batchId, studentId },
+    return this.prisma.$transaction(async (tx) => {
+      await lockBatchRow(tx, batchId);
+      await assertBatchHasSeat(tx, batchId, batch.capacity, studentId);
+
+      return tx.batchEnrollment.upsert({
+        where: {
+          batchId_studentId: { batchId, studentId },
+        },
+        update: {},
+        create: { batchId, studentId },
+      });
     });
   }
 

@@ -9,7 +9,7 @@ import {
 } from "@dev-ui/components/select";
 import { Icon } from "@dev-ui/icons";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Link, useParams } from "@tanstack/react-router";
+import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { useState } from "react";
 import { useApi } from "@/lib/api-context";
 import { STUDIO_ID } from "@/lib/constants";
@@ -39,6 +39,7 @@ function formatPrice(value: number | string | null | undefined) {
 export function BatchDetailPage() {
   const { id } = useParams({ strict: false }) as { id: string };
   const api = useApi();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { studentId, loading: studentLoading } = useActiveStudentContext();
   const query = useDiscoverBatch(id, studentId || undefined);
@@ -58,7 +59,10 @@ export function BatchDetailPage() {
       if (!studentId) {
         throw new Error("Select a student before booking.");
       }
-      return api.post("/bookings", {
+      return api.post<{
+        id: string;
+        status: string;
+      }>("/bookings", {
         studioId: STUDIO_ID,
         studentId,
         type,
@@ -67,7 +71,7 @@ export function BatchDetailPage() {
         trainerId: type === "PRIVATE" ? trainerId : undefined,
       });
     },
-    onSuccess: () => {
+    onSuccess: (booking) => {
       void Promise.all([
         queryClient.invalidateQueries({
           queryKey: ["bookings", "student", studentId],
@@ -75,8 +79,15 @@ export function BatchDetailPage() {
         queryClient.invalidateQueries({ queryKey: ["batches", id] }),
       ]);
       setBookOpen(false);
-      setSuccess(true);
       setNotes("");
+      if (booking.status === "AWAITING_PAYMENT") {
+        void navigate({
+          to: "/me/checkout/$bookingId",
+          params: { bookingId: booking.id },
+        });
+        return;
+      }
+      setSuccess(true);
     },
   });
 
@@ -148,11 +159,15 @@ export function BatchDetailPage() {
         ? "Class full"
         : `${batch.remainingSeats} seat${batch.remainingSeats === 1 ? "" : "s"} left`;
   const openBooking = batch.viewerBooking;
+  const hasAwaitingPayment = openBooking?.status === "AWAITING_PAYMENT";
   const hasPendingRequest = openBooking?.status === "PENDING";
   const hasConfirmedRequest =
     openBooking?.status === "CONFIRMED" && !batch.viewerEnrolled;
   const showBookingCta =
-    !batch.viewerEnrolled && !hasPendingRequest && !hasConfirmedRequest;
+    !batch.viewerEnrolled &&
+    !hasAwaitingPayment &&
+    !hasPendingRequest &&
+    !hasConfirmedRequest;
 
   if (enrollSuccess) {
     return (
@@ -216,7 +231,12 @@ export function BatchDetailPage() {
         {...(batch.scheduleLabel ? { subtitle: batch.scheduleLabel } : {})}
         showBack
         backTo="/me/book"
-        paddedCta={showBookingCta || hasPendingRequest || hasConfirmedRequest}
+        paddedCta={
+          showBookingCta ||
+          hasAwaitingPayment ||
+          hasPendingRequest ||
+          hasConfirmedRequest
+        }
       >
         <div className={styles.hero}>
           {batch.coverImageUrl ? (
@@ -236,31 +256,45 @@ export function BatchDetailPage() {
           ) : null}
         </div>
 
-        {hasPendingRequest || hasConfirmedRequest ? (
+        {hasAwaitingPayment || hasPendingRequest || hasConfirmedRequest ? (
           <div
             className={styles.requestStatus}
             data-status={openBooking?.status}
           >
             <div>
               <p className={styles.requestEyebrow}>
-                {hasPendingRequest ? "Request pending" : "Request confirmed"}
+                {hasAwaitingPayment
+                  ? "Payment required"
+                  : hasPendingRequest
+                    ? "Request pending"
+                    : "Request confirmed"}
               </p>
               <p className={styles.requestTitle}>
-                {hasPendingRequest
-                  ? "Waiting for studio approval"
-                  : "Your booking is confirmed"}
+                {hasAwaitingPayment
+                  ? "Complete checkout to hold your seat"
+                  : hasPendingRequest
+                    ? "Waiting for studio approval"
+                    : "Your booking is confirmed"}
               </p>
               <p className={styles.muted}>
                 {openBooking?.type.replaceAll("_", " ")}
                 {openBooking?.notes ? ` · ${openBooking.notes}` : ""}
-                {hasPendingRequest
-                  ? ". The studio will confirm your spot — track updates under My bookings."
-                  : ". Check My bookings for the confirmed time."}
+                {hasAwaitingPayment
+                  ? ". Your seat is held for 30 seconds — finish payment before the timer ends."
+                  : hasPendingRequest
+                    ? ". The studio will confirm your spot — track updates under My bookings."
+                    : ". Check My bookings for the confirmed time."}
               </p>
             </div>
             <Badge
               appearance="subtle"
-              variant={hasPendingRequest ? "warning" : "success"}
+              variant={
+                hasAwaitingPayment
+                  ? "info"
+                  : hasPendingRequest
+                    ? "warning"
+                    : "success"
+              }
             >
               {openBooking?.status}
             </Badge>
@@ -389,7 +423,18 @@ export function BatchDetailPage() {
         ) : null}
       </Screen>
 
-      {hasPendingRequest || hasConfirmedRequest ? (
+      {hasAwaitingPayment ? (
+        <StickyCtaBar>
+          <TouchButton variant="primary" fullWidth>
+            <Link
+              to="/me/checkout/$bookingId"
+              params={{ bookingId: openBooking!.id }}
+            >
+              Continue to payment
+            </Link>
+          </TouchButton>
+        </StickyCtaBar>
+      ) : hasPendingRequest || hasConfirmedRequest ? (
         <StickyCtaBar>
           <TouchButton variant="primary" fullWidth>
             <Link to="/me/bookings">View request status</Link>
@@ -507,7 +552,7 @@ export function BatchDetailPage() {
             isPending={createBooking.isPending}
             onClick={() => createBooking.mutate()}
           >
-            Send request
+            Send request & pay
           </TouchButton>
         </div>
       </AppBottomSheet>

@@ -23,10 +23,16 @@ export type AuthUser = DevUser & {
 export type AuthContextValue = {
   user: AuthUser | null;
   loading: boolean;
+  hasPasswordProvider: boolean;
   loginAsDev: (role: UserRole) => void;
   signIn: (identifier: string, password: string) => Promise<AuthUser>;
   signUp: (email: string, password: string, name: string) => Promise<AuthUser>;
   signInWithGoogle: (options?: { asNewStudent?: boolean }) => Promise<AuthUser>;
+  resetPassword: (email: string) => Promise<void>;
+  changePassword: (
+    currentPassword: string,
+    newPassword: string,
+  ) => Promise<void>;
   signOutUser: () => Promise<void>;
   getIdToken: () => Promise<string | null>;
   updateUser: (patch: Partial<AuthUser>) => void;

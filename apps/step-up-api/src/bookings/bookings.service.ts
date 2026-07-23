@@ -4,6 +4,7 @@ import {
   ForbiddenException,
   Inject,
   Injectable,
+  NotFoundException,
 } from "@nestjs/common";
 import {
   BookingStatus,
@@ -11,11 +12,22 @@ import {
   InvoiceStatus,
   MembershipStatus,
   SessionStatus,
+  UserRole,
 } from "@prisma/client";
+import {
+  assertBatchHasSeat,
+  expireStalePaymentHolds,
+  lockBatchRow,
+  paymentHoldExpiresAt,
+} from "../batches/batch-capacity";
 import { ScheduleConflictService } from "../calendar/schedule-conflict.service";
 import { MembershipsService } from "../memberships/memberships.service";
 import { PrismaService } from "../prisma/prisma.service";
-import { UserCryptoService, userPiiSelect } from "../users/user-crypto.service";
+import {
+  type DecryptedUser,
+  UserCryptoService,
+  userPiiSelect,
+} from "../users/user-crypto.service";
 
 export type UpdateBookingStatusInput = {
   status: BookingStatus;
@@ -23,6 +35,10 @@ export type UpdateBookingStatusInput = {
   startsAt?: string;
   endsAt?: string;
   trainerId?: string;
+};
+
+export type CreateBookingOptions = {
+  requirePayment?: boolean;
 };
 
 @Injectable()
@@ -36,7 +52,11 @@ export class BookingsService {
     private readonly scheduleConflicts: ScheduleConflictService,
   ) {}
 
-  listForStudent(studentId: string) {
+  async listForStudent(studentId: string) {
+    await this.prisma.$transaction(async (tx) => {
+      await expireStalePaymentHolds(tx);
+    });
+
     return this.prisma.booking.findMany({
       where: { studentId },
       orderBy: { id: "desc" },
@@ -49,8 +69,15 @@ export class BookingsService {
   }
 
   async listForStudio(studioId: string) {
+    await this.prisma.$transaction(async (tx) => {
+      await expireStalePaymentHolds(tx);
+    });
+
     const bookings = await this.prisma.booking.findMany({
-      where: { studioId },
+      where: {
+        studioId,
+        status: { not: BookingStatus.AWAITING_PAYMENT },
+      },
       orderBy: { id: "desc" },
       include: {
         student: {
@@ -72,17 +99,41 @@ export class BookingsService {
     }));
   }
 
-  async create(data: {
-    studioId: string;
-    studentId: string;
-    type: BookingType;
-    batchId?: string;
-    sessionId?: string;
-    trainerId?: string;
-    notes?: string;
-    startsAt?: string;
-    endsAt?: string;
-  }) {
+  async getById(id: string, actor: DecryptedUser) {
+    await this.prisma.$transaction(async (tx) => {
+      await expireStalePaymentHolds(tx);
+    });
+
+    const booking = await this.prisma.booking.findUnique({
+      where: { id },
+      include: {
+        batch: {
+          select: { id: true, name: true },
+        },
+      },
+    });
+    if (!booking) {
+      throw new NotFoundException("Booking not found");
+    }
+
+    await this.assertCanAccessBooking(booking.studentId, actor);
+    return booking;
+  }
+
+  async create(
+    data: {
+      studioId: string;
+      studentId: string;
+      type: BookingType;
+      batchId?: string;
+      sessionId?: string;
+      trainerId?: string;
+      notes?: string;
+      startsAt?: string;
+      endsAt?: string;
+    },
+    options: CreateBookingOptions = {},
+  ) {
     const overdue = await this.prisma.invoice.findFirst({
       where: {
         studentId: data.studentId,
@@ -96,49 +147,107 @@ export class BookingsService {
       );
     }
 
-    if (data.batchId) {
-      const batch = await this.prisma.batch.findUnique({
-        where: { id: data.batchId },
-        include: {
-          _count: { select: { enrollments: true } },
-        },
-      });
-      if (!batch || batch.studioId !== data.studioId) {
-        throw new BadRequestException("Select a batch from this studio");
-      }
-      if (
-        data.type !== BookingType.PRIVATE &&
-        batch._count.enrollments >= batch.capacity
-      ) {
-        throw new BadRequestException("Batch is at capacity");
-      }
-
-      const existingOpen = await this.prisma.booking.findFirst({
-        where: {
-          batchId: data.batchId,
-          studentId: data.studentId,
-          status: {
-            in: [BookingStatus.PENDING, BookingStatus.CONFIRMED],
-          },
-        },
-        select: { id: true, status: true },
-      });
-      if (existingOpen) {
-        throw new ConflictException(
-          existingOpen.status === BookingStatus.PENDING
-            ? "You already have a booking request waiting for studio approval"
-            : "You already have a confirmed booking for this class",
-        );
-      }
-    }
-
     if (data.startsAt && data.endsAt) {
       this.assertValidRange(data.startsAt, data.endsAt);
     }
 
-    if (data.type === BookingType.TRIAL) {
-      await this.assertBookingScheduleConflicts(data);
-      return this.prisma.booking.create({
+    if (data.type !== BookingType.TRIAL) {
+      const activeMembership = await this.prisma.membership.findFirst({
+        where: {
+          status: MembershipStatus.ACTIVE,
+          periodEnd: { gte: new Date() },
+          coveredStudents: { some: { studentId: data.studentId } },
+        },
+      });
+
+      if (!activeMembership) {
+        throw new BadRequestException(
+          "An active membership is required for this booking",
+        );
+      }
+
+      if (data.sessionId) {
+        const session = await this.prisma.session.findUnique({
+          where: { id: data.sessionId },
+        });
+
+        if (!session) {
+          throw new BadRequestException("Session not found");
+        }
+
+        const covers = await this.memberships.findActiveForBatch(
+          data.studentId,
+          session.batchId,
+        );
+
+        if (!covers) {
+          throw new BadRequestException(
+            "Active membership does not cover this session batch",
+          );
+        }
+      }
+    }
+
+    await this.assertBookingScheduleConflicts(data);
+
+    const requirePayment = options.requirePayment === true;
+    const status = requirePayment
+      ? BookingStatus.AWAITING_PAYMENT
+      : BookingStatus.PENDING;
+    const holdExpiresAt = requirePayment ? paymentHoldExpiresAt() : null;
+
+    return this.prisma.$transaction(async (tx) => {
+      if (data.batchId) {
+        await lockBatchRow(tx, data.batchId);
+        await expireStalePaymentHolds(tx, data.batchId);
+
+        const batch = await tx.batch.findUnique({
+          where: { id: data.batchId },
+          select: { id: true, studioId: true, capacity: true },
+        });
+        if (!batch || batch.studioId !== data.studioId) {
+          throw new BadRequestException("Select a batch from this studio");
+        }
+
+        if (data.type !== BookingType.PRIVATE) {
+          await assertBatchHasSeat(
+            tx,
+            data.batchId,
+            batch.capacity,
+            data.studentId,
+          );
+        }
+
+        const existingOpen = await tx.booking.findFirst({
+          where: {
+            batchId: data.batchId,
+            studentId: data.studentId,
+            OR: [
+              {
+                status: {
+                  in: [BookingStatus.PENDING, BookingStatus.CONFIRMED],
+                },
+              },
+              {
+                status: BookingStatus.AWAITING_PAYMENT,
+                paymentHoldExpiresAt: { gt: new Date() },
+              },
+            ],
+          },
+          select: { id: true, status: true },
+        });
+        if (existingOpen) {
+          throw new ConflictException(
+            existingOpen.status === BookingStatus.AWAITING_PAYMENT
+              ? "Complete payment for your existing booking hold first"
+              : existingOpen.status === BookingStatus.PENDING
+                ? "You already have a booking request waiting for studio approval"
+                : "You already have a confirmed booking for this class",
+          );
+        }
+      }
+
+      return tx.booking.create({
         data: {
           studioId: data.studioId,
           studentId: data.studentId,
@@ -149,61 +258,104 @@ export class BookingsService {
           notes: data.notes,
           startsAt: data.startsAt ? new Date(data.startsAt) : undefined,
           endsAt: data.endsAt ? new Date(data.endsAt) : undefined,
-          status: BookingStatus.PENDING,
+          status,
+          paymentHoldExpiresAt: holdExpiresAt,
+        },
+        include: {
+          batch: { select: { id: true, name: true } },
         },
       });
-    }
-
-    const activeMembership = await this.prisma.membership.findFirst({
-      where: {
-        status: MembershipStatus.ACTIVE,
-        periodEnd: { gte: new Date() },
-        coveredStudents: { some: { studentId: data.studentId } },
-      },
     });
+  }
 
-    if (!activeMembership) {
-      throw new BadRequestException(
-        "An active membership is required for this booking",
-      );
-    }
+  async confirmPayment(id: string, actor: DecryptedUser) {
+    return this.prisma.$transaction(async (tx) => {
+      await expireStalePaymentHolds(tx);
 
-    if (data.sessionId) {
-      const session = await this.prisma.session.findUnique({
-        where: { id: data.sessionId },
-      });
-
-      if (!session) {
-        throw new BadRequestException("Session not found");
+      const booking = await tx.booking.findUnique({ where: { id } });
+      if (!booking) {
+        throw new NotFoundException("Booking not found");
       }
 
-      const covers = await this.memberships.findActiveForBatch(
-        data.studentId,
-        session.batchId,
-      );
+      await this.assertCanAccessBooking(booking.studentId, actor);
 
-      if (!covers) {
+      if (booking.status === BookingStatus.PENDING) {
+        return booking;
+      }
+
+      if (booking.status !== BookingStatus.AWAITING_PAYMENT) {
+        throw new BadRequestException("Booking is not awaiting payment");
+      }
+
+      if (
+        !booking.paymentHoldExpiresAt ||
+        booking.paymentHoldExpiresAt.getTime() <= Date.now()
+      ) {
+        await tx.booking.update({
+          where: { id },
+          data: {
+            status: BookingStatus.CANCELLED,
+            paymentHoldExpiresAt: null,
+          },
+        });
         throw new BadRequestException(
-          "Active membership does not cover this session batch",
+          "Payment window expired. Please book again.",
         );
       }
-    }
 
-    await this.assertBookingScheduleConflicts(data);
+      if (booking.batchId && booking.type !== BookingType.PRIVATE) {
+        await lockBatchRow(tx, booking.batchId);
+        const batch = await tx.batch.findUnique({
+          where: { id: booking.batchId },
+          select: { capacity: true },
+        });
+        if (!batch) {
+          throw new BadRequestException("Batch not found");
+        }
+        await assertBatchHasSeat(
+          tx,
+          booking.batchId,
+          batch.capacity,
+          booking.studentId,
+        );
+      }
 
-    return this.prisma.booking.create({
-      data: {
-        studioId: data.studioId,
-        studentId: data.studentId,
-        type: data.type,
-        batchId: data.batchId,
-        sessionId: data.sessionId,
-        trainerId: data.trainerId,
-        notes: data.notes,
-        startsAt: data.startsAt ? new Date(data.startsAt) : undefined,
-        endsAt: data.endsAt ? new Date(data.endsAt) : undefined,
-        status: BookingStatus.PENDING,
-      },
+      return tx.booking.update({
+        where: { id },
+        data: {
+          status: BookingStatus.PENDING,
+          paymentHoldExpiresAt: null,
+        },
+        include: {
+          batch: { select: { id: true, name: true } },
+        },
+      });
+    });
+  }
+
+  async abandonPayment(id: string, actor: DecryptedUser) {
+    return this.prisma.$transaction(async (tx) => {
+      const booking = await tx.booking.findUnique({ where: { id } });
+      if (!booking) {
+        throw new NotFoundException("Booking not found");
+      }
+
+      await this.assertCanAccessBooking(booking.studentId, actor);
+
+      if (booking.status !== BookingStatus.AWAITING_PAYMENT) {
+        return booking;
+      }
+
+      return tx.booking.update({
+        where: { id },
+        data: {
+          status: BookingStatus.CANCELLED,
+          paymentHoldExpiresAt: null,
+        },
+        include: {
+          batch: { select: { id: true, name: true } },
+        },
+      });
     });
   }
 
@@ -248,6 +400,12 @@ export class BookingsService {
       throw new BadRequestException("Booking not found");
     }
 
+    if (existing.status === BookingStatus.AWAITING_PAYMENT) {
+      throw new BadRequestException(
+        "Cannot review a booking that is still awaiting payment",
+      );
+    }
+
     const nextStatus = status;
     const schedulingTouched =
       sessionId !== undefined ||
@@ -269,6 +427,44 @@ export class BookingsService {
       });
     }
 
+    if (
+      becomingConfirmed &&
+      existing.batchId &&
+      existing.type !== BookingType.PRIVATE
+    ) {
+      return this.prisma.$transaction(async (tx) => {
+        await lockBatchRow(tx, existing.batchId!);
+        const batch = await tx.batch.findUnique({
+          where: { id: existing.batchId! },
+          select: { capacity: true },
+        });
+        if (!batch) {
+          throw new BadRequestException("Batch not found");
+        }
+        await assertBatchHasSeat(
+          tx,
+          existing.batchId!,
+          batch.capacity,
+          existing.studentId,
+        );
+
+        return tx.booking.update({
+          where: { id },
+          data: {
+            status,
+            ...(sessionId !== undefined ? { sessionId } : {}),
+            ...(trainerId !== undefined ? { trainerId } : {}),
+            ...(startsAt && endsAt
+              ? {
+                  startsAt: new Date(startsAt),
+                  endsAt: new Date(endsAt),
+                }
+              : {}),
+          },
+        });
+      });
+    }
+
     return this.prisma.booking.update({
       where: { id },
       data: {
@@ -283,6 +479,43 @@ export class BookingsService {
           : {}),
       },
     });
+  }
+
+  private async assertCanAccessBooking(
+    studentId: string,
+    actor: DecryptedUser,
+  ) {
+    const staffRoles: UserRole[] = [
+      UserRole.OWNER,
+      UserRole.STAFF,
+      UserRole.TRAINER,
+    ];
+    if (staffRoles.includes(actor.role) || actor.id === studentId) {
+      return;
+    }
+
+    const [familyLink, parentLink] = await Promise.all([
+      this.prisma.familyMember.findUnique({
+        where: {
+          ownerUserId_memberUserId: {
+            ownerUserId: actor.id,
+            memberUserId: studentId,
+          },
+        },
+      }),
+      this.prisma.parentChild.findUnique({
+        where: {
+          parentUserId_childUserId: {
+            parentUserId: actor.id,
+            childUserId: studentId,
+          },
+        },
+      }),
+    ]);
+
+    if (!familyLink && !parentLink) {
+      throw new ForbiddenException("Not allowed to access this booking");
+    }
   }
 
   private async assertBookingScheduleConflicts(data: {

@@ -12,6 +12,7 @@ import {
   NotificationType,
   SubscriptionKind,
 } from "@prisma/client";
+import { countOccupiedSeats, lockBatchRow } from "../batches/batch-capacity";
 import { ScheduleConflictService } from "../calendar/schedule-conflict.service";
 import { NotificationsService } from "../notifications/notifications.service";
 import { PrismaService } from "../prisma/prisma.service";
@@ -248,7 +249,6 @@ export class MembershipsService {
     const batches = await this.prisma.batch.findMany({
       where: { id: { in: batchIds } },
       include: {
-        _count: { select: { enrollments: true } },
         enrollments: {
           where: {
             studentId: { in: covered.map((c) => c.studentId) },
@@ -285,14 +285,18 @@ export class MembershipsService {
       }
     }
 
-    for (const [batchId, pending] of pendingByBatch) {
-      const batch = byId.get(batchId)!;
-      if (batch._count.enrollments + pending > batch.capacity) {
-        throw new BadRequestException(
-          `Batch ${batch.name} does not have enough open seats`,
-        );
+    await this.prisma.$transaction(async (tx) => {
+      for (const [batchId, pending] of pendingByBatch) {
+        const batch = byId.get(batchId)!;
+        await lockBatchRow(tx, batchId);
+        const occupied = await countOccupiedSeats(tx, batchId);
+        if (occupied + pending > batch.capacity) {
+          throw new BadRequestException(
+            `Batch ${batch.name} does not have enough open seats`,
+          );
+        }
       }
-    }
+    });
   }
 
   private assertCoveredSeats(

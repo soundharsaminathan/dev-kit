@@ -1,10 +1,14 @@
 import {
   createUserWithEmailAndPassword,
+  EmailAuthProvider,
   type User as FirebaseUser,
   onAuthStateChanged,
+  reauthenticateWithCredential,
+  sendPasswordResetEmail,
   signInWithEmailAndPassword,
   signInWithPopup,
   signOut,
+  updatePassword,
   updateProfile,
 } from "firebase/auth";
 import {
@@ -21,6 +25,7 @@ import {
   type AuthContextValue,
   type AuthUser,
 } from "./auth-context";
+import { mapAuthError } from "./auth-errors";
 import {
   type AgeRange,
   DEV_USERS,
@@ -34,6 +39,15 @@ import {
 } from "./constants";
 import { getFirebaseAuth, googleProvider } from "./firebase";
 import { setLastLoginIdentifier } from "./last-login";
+
+function userHasPasswordProvider(firebaseUser: FirebaseUser | null): boolean {
+  if (!firebaseUser) {
+    return false;
+  }
+  return firebaseUser.providerData.some(
+    (provider) => provider.providerId === "password",
+  );
+}
 
 type SyncedApiUser = {
   id: string;
@@ -137,6 +151,7 @@ async function createBypassStudent(input: {
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(() => readStoredDevUser());
+  const [hasPasswordProvider, setHasPasswordProvider] = useState(false);
   const [loading, setLoading] = useState(() => {
     if (!isAuthBypassEnabled()) {
       return true;
@@ -197,6 +212,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (isAuthBypassEnabled()) {
+      setHasPasswordProvider(false);
       const stored = readStoredDevUser();
       if (!stored) {
         setLoading(false);
@@ -246,6 +262,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           lastSyncedRef.current = null;
           if (!cancelled) {
             setUser(null);
+            setHasPasswordProvider(false);
             setLoading(false);
           }
           return;
@@ -253,17 +270,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         if (!cancelled) {
           setLoading(true);
+          setHasPasswordProvider(userHasPasswordProvider(firebaseUser));
         }
 
         try {
           const synced = await syncFirebaseUser(firebaseUser);
           if (!cancelled) {
             setUser(synced);
+            setHasPasswordProvider(userHasPasswordProvider(firebaseUser));
             settleSyncWaiters(firebaseUser.uid, synced);
           }
         } catch (error) {
           if (!cancelled) {
             setUser(null);
+            setHasPasswordProvider(false);
             settleSyncWaiters(firebaseUser.uid, null, error);
             await signOut(auth).catch(() => undefined);
           }
@@ -423,10 +443,81 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [loginAsDev, waitForSync],
   );
 
+  const resetPassword = useCallback(async (email: string) => {
+    if (isAuthBypassEnabled()) {
+      throw new Error(
+        "Password reset is unavailable while auth bypass is enabled.",
+      );
+    }
+
+    const auth = getFirebaseAuth();
+    if (!auth) {
+      throw new Error("Firebase is not configured");
+    }
+
+    const trimmed = email.trim().toLowerCase();
+    try {
+      await sendPasswordResetEmail(auth, trimmed, {
+        url: `${window.location.origin}/login`,
+        handleCodeInApp: false,
+      });
+    } catch (error) {
+      const code =
+        typeof error === "object" &&
+        error !== null &&
+        "code" in error &&
+        typeof (error as { code: unknown }).code === "string"
+          ? (error as { code: string }).code
+          : null;
+      if (code === "auth/user-not-found") {
+        return;
+      }
+      throw new Error(
+        mapAuthError(error, "Unable to send password reset email."),
+      );
+    }
+  }, []);
+
+  const changePassword = useCallback(
+    async (currentPassword: string, newPassword: string) => {
+      if (isAuthBypassEnabled()) {
+        throw new Error(
+          "Password changes are unavailable while auth bypass is enabled.",
+        );
+      }
+
+      const auth = getFirebaseAuth();
+      const firebaseUser = auth?.currentUser;
+      if (!auth || !firebaseUser?.email) {
+        throw new Error("You need to be signed in to change your password.");
+      }
+
+      if (!userHasPasswordProvider(firebaseUser)) {
+        throw new Error(
+          "This account signs in with Google. Set a password from the forgot-password flow first.",
+        );
+      }
+
+      try {
+        const credential = EmailAuthProvider.credential(
+          firebaseUser.email,
+          currentPassword,
+        );
+        await reauthenticateWithCredential(firebaseUser, credential);
+        await updatePassword(firebaseUser, newPassword);
+        setHasPasswordProvider(true);
+      } catch (error) {
+        throw new Error(mapAuthError(error, "Unable to change password."));
+      }
+    },
+    [],
+  );
+
   const signOutUser = useCallback(async () => {
     if (isAuthBypassEnabled()) {
       localStorage.removeItem(STORAGE_KEY);
       setUser(null);
+      setHasPasswordProvider(false);
       return;
     }
 
@@ -435,6 +526,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await signOut(auth);
     }
     setUser(null);
+    setHasPasswordProvider(false);
   }, []);
 
   const getIdToken = useCallback(async () => {
@@ -476,10 +568,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     () => ({
       user,
       loading,
+      hasPasswordProvider,
       loginAsDev,
       signIn,
       signUp,
       signInWithGoogle,
+      resetPassword,
+      changePassword,
       signOutUser,
       getIdToken,
       updateUser,
@@ -487,10 +582,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [
       user,
       loading,
+      hasPasswordProvider,
       loginAsDev,
       signIn,
       signUp,
       signInWithGoogle,
+      resetPassword,
+      changePassword,
       signOutUser,
       getIdToken,
       updateUser,
