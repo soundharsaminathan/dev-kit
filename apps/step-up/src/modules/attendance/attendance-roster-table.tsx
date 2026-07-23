@@ -97,8 +97,11 @@ export function AttendanceRosterTable({
           <Checkbox
             aria-label="Select all students"
             isSelected={table.getIsAllPageRowsSelected()}
-            isIndeterminate={table.getIsSomePageRowsSelected()}
-            onChange={(value) => table.toggleAllPageRowsSelected(value)}
+            isIndeterminate={
+              table.getIsSomePageRowsSelected() &&
+              !table.getIsAllPageRowsSelected()
+            }
+            onChange={(selected) => table.toggleAllPageRowsSelected(selected)}
           />
         ),
         cell: ({ row }) => (
@@ -106,7 +109,7 @@ export function AttendanceRosterTable({
             aria-label={`Select ${row.original.student.name}`}
             isSelected={row.getIsSelected()}
             isDisabled={!row.getCanSelect()}
-            onChange={(value) => row.toggleSelected(value)}
+            onChange={(selected) => row.toggleSelected(selected)}
           />
         ),
         enableSorting: false,
