@@ -1,3 +1,4 @@
+import { Icon } from "@dev-ui/icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useRef, useState } from "react";
@@ -318,6 +319,12 @@ function MeHomePage() {
               description="Pull to refresh your dance home."
             />
           ) : null}
+
+          <p className={styles.madeWith}>
+            Made with
+            <Icon name="heart" className={styles.madeWithHeart} aria-hidden />
+            love in Chennai
+          </p>
         </div>
       </PullToRefresh>
     </section>
