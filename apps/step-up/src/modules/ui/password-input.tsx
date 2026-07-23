@@ -1,4 +1,5 @@
 import { Button } from "@dev-ui/components/button";
+import { useFieldContext } from "@dev-ui/components/field";
 import { Input } from "@dev-ui/components/input";
 import { InputGroup, InputGroupAddon } from "@dev-ui/components/input-group";
 import { Icon } from "@dev-ui/icons";
@@ -31,12 +32,14 @@ export function PasswordInput({
   isDisabled,
 }: PasswordInputProps) {
   const [visible, setVisible] = useState(false);
-  const toggleId = useId();
+  const field = useFieldContext();
+  const fallbackId = useId();
+  const inputId = field?.inputId ?? fallbackId;
 
   return (
     <InputGroup isInvalid={isInvalid} isDisabled={isDisabled}>
       <Input
-        id={toggleId}
+        id={inputId}
         name={name}
         type={visible ? "text" : "password"}
         value={value}
@@ -57,7 +60,7 @@ export function PasswordInput({
           isIconOnly
           isDisabled={isDisabled}
           aria-label={visible ? "Hide password" : "Show password"}
-          aria-controls={toggleId}
+          aria-controls={inputId}
           aria-pressed={visible}
           onClick={() => setVisible((current) => !current)}
         >

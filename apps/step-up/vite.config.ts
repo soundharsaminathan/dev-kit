@@ -144,10 +144,21 @@ function stepUpManualChunks(id: string) {
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, appRoot, "");
+  const authBypass =
+    process.env.VITE_AUTH_BYPASS === "true" ||
+    process.env.STEP_UP_E2E === "true" ||
+    env.VITE_AUTH_BYPASS === "true";
+
   return {
     server: {
       port: 5180,
-      open: true,
+      open: !(process.env.CI || process.env.STEP_UP_E2E === "true"),
+    },
+    define: {
+      // Guarantee bypass for e2e even if a parent shell has an empty VITE_AUTH_BYPASS.
+      "import.meta.env.VITE_AUTH_BYPASS": JSON.stringify(
+        authBypass ? "true" : "false",
+      ),
     },
     build: {
       rollupOptions: {

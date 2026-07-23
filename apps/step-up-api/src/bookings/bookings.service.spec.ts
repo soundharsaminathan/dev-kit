@@ -185,3 +185,123 @@ describe("BookingsService schedule conflicts", () => {
     expect(tx.booking.create).not.toHaveBeenCalled();
   });
 });
+
+describe("BookingsService.confirmPayment", () => {
+  const tx = {
+    $queryRaw: vi.fn().mockResolvedValue([{ id: "batch-1" }]),
+    batch: { findUnique: vi.fn() },
+    booking: {
+      findUnique: vi.fn(),
+      findFirst: vi.fn().mockResolvedValue(null),
+      findMany: vi.fn().mockResolvedValue([]),
+      update: vi.fn(),
+      updateMany: vi.fn().mockResolvedValue({ count: 0 }),
+    },
+    batchEnrollment: {
+      findMany: vi.fn().mockResolvedValue([]),
+      findFirst: vi.fn().mockResolvedValue(null),
+      count: vi.fn().mockResolvedValue(0),
+    },
+  };
+
+  const prisma = {
+    booking: {
+      findUnique: vi.fn(),
+    },
+    familyMember: { findUnique: vi.fn() },
+    parentChild: { findUnique: vi.fn() },
+    $transaction: vi.fn(async (fn: (client: typeof tx) => unknown) => fn(tx)),
+  };
+
+  const memberships = { findActiveForBatch: vi.fn() };
+  const crypto = { decryptUser: (user: unknown) => user };
+  const scheduleConflicts = {
+    assertNoConflicts: vi.fn(),
+    assertStudentAvailableForBatch: vi.fn(),
+  };
+
+  let service: BookingsService;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    prisma.$transaction.mockImplementation(
+      async (fn: (client: typeof tx) => unknown) => fn(tx),
+    );
+    service = new BookingsService(
+      prisma as never,
+      memberships as never,
+      crypto as never,
+      scheduleConflicts as never,
+    );
+  });
+
+  it("moves AWAITING_PAYMENT to PENDING when hold is valid", async () => {
+    const booking = {
+      id: "bk-1",
+      studentId: "student-1",
+      status: "AWAITING_PAYMENT",
+      type: "TRIAL",
+      batchId: "batch-1",
+      paymentHoldExpiresAt: new Date(Date.now() + 60_000),
+    };
+    tx.booking.findUnique.mockResolvedValue(booking);
+    tx.batch.findUnique.mockResolvedValue({ capacity: 10 });
+    tx.booking.update.mockResolvedValue({
+      ...booking,
+      status: "PENDING",
+      paymentHoldExpiresAt: null,
+    });
+
+    await service.confirmPayment("bk-1", {
+      id: "student-1",
+      role: "STUDENT",
+    } as never);
+
+    expect(tx.booking.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "bk-1" },
+        data: expect.objectContaining({
+          status: "PENDING",
+          paymentHoldExpiresAt: null,
+        }),
+      }),
+    );
+  });
+
+  it("rejects confirm when payment window expired", async () => {
+    tx.booking.findUnique.mockResolvedValue({
+      id: "bk-1",
+      studentId: "student-1",
+      status: "AWAITING_PAYMENT",
+      type: "TRIAL",
+      batchId: "batch-1",
+      paymentHoldExpiresAt: new Date(Date.now() - 1_000),
+    });
+    tx.booking.update.mockResolvedValue({ id: "bk-1", status: "CANCELLED" });
+
+    await expect(
+      service.confirmPayment("bk-1", {
+        id: "student-1",
+        role: "STUDENT",
+      } as never),
+    ).rejects.toThrow(/Payment window expired/);
+  });
+
+  it("rejects confirm when booking is not awaiting payment", async () => {
+    tx.booking.findUnique.mockResolvedValue({
+      id: "bk-1",
+      studentId: "student-1",
+      status: "CONFIRMED",
+      type: "TRIAL",
+      batchId: null,
+      paymentHoldExpiresAt: null,
+    });
+
+    await expect(
+      service.confirmPayment("bk-1", {
+        id: "student-1",
+        role: "STUDENT",
+      } as never),
+    ).rejects.toThrow(/not awaiting payment/);
+  });
+});

@@ -125,3 +125,69 @@ jobs:
             apps/storybook/test-results/
             apps/showcase/test-results/
           retention-days: 7
+
+  step-up-e2e:
+    name: Step Up E2E
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    if: github.event_name == 'merge_group'
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: step_up_e2e
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      AUTH_BYPASS: "true"
+      VITE_AUTH_BYPASS: "true"
+      VITE_API_URL: http://localhost:3199
+      STEP_UP_API_URL: http://localhost:3199
+      STEP_UP_WEB_URL: http://localhost:5199
+      STEP_UP_API_PORT: "3199"
+      STEP_UP_WEB_PORT: "5199"
+      PORT: "3199"
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/step_up_e2e?schema=public
+      SESSION_QR_SECRET: ci-session-qr-secret-0123456789abcdef
+      JOBS_SECRET: ci-jobs-secret-0123456789abcdef0123456789
+      CHAT_MASTER_KEY: 
+      PII_MASTER_KEY: 
+      NODE_ENV: development
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - uses: ./.github/actions/setup
+
+      - name: Generate Prisma client, migrate, and seed
+        working-directory: apps/step-up-api
+        run: |
+          pnpm exec prisma generate
+          pnpm exec prisma migrate deploy
+          pnpm exec prisma db seed
+
+      - name: Install Playwright browser
+        run: pnpm --filter @step-up/web exec playwright install chromium --with-deps
+
+      - name: Run Step Up Playwright E2E
+        run: pnpm exec nx run step-up:test:e2e
+        env:
+          CI: true
+
+      - name: Upload Step Up Playwright report
+        uses: actions/upload-artifact@v7
+        if: always() && !cancelled()
+        with:
+          name: step-up-playwright-report
+          path: |
+            apps/step-up/playwright-report/
+            apps/step-up/test-results/
+          retention-days: 7

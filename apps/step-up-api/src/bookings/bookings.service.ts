@@ -196,76 +196,79 @@ export class BookingsService {
       : BookingStatus.PENDING;
     const holdExpiresAt = requirePayment ? paymentHoldExpiresAt() : null;
 
-    return this.prisma.$transaction(async (tx) => {
-      if (data.batchId) {
-        await lockBatchRow(tx, data.batchId);
-        await expireStalePaymentHolds(tx, data.batchId);
+    return this.prisma.$transaction(
+      async (tx) => {
+        if (data.batchId) {
+          await lockBatchRow(tx, data.batchId);
+          await expireStalePaymentHolds(tx, data.batchId);
 
-        const batch = await tx.batch.findUnique({
-          where: { id: data.batchId },
-          select: { id: true, studioId: true, capacity: true },
-        });
-        if (!batch || batch.studioId !== data.studioId) {
-          throw new BadRequestException("Select a batch from this studio");
-        }
+          const batch = await tx.batch.findUnique({
+            where: { id: data.batchId },
+            select: { id: true, studioId: true, capacity: true },
+          });
+          if (!batch || batch.studioId !== data.studioId) {
+            throw new BadRequestException("Select a batch from this studio");
+          }
 
-        if (data.type !== BookingType.PRIVATE) {
-          await assertBatchHasSeat(
-            tx,
-            data.batchId,
-            batch.capacity,
-            data.studentId,
-          );
-        }
+          if (data.type !== BookingType.PRIVATE) {
+            await assertBatchHasSeat(
+              tx,
+              data.batchId,
+              batch.capacity,
+              data.studentId,
+            );
+          }
 
-        const existingOpen = await tx.booking.findFirst({
-          where: {
-            batchId: data.batchId,
-            studentId: data.studentId,
-            OR: [
-              {
-                status: {
-                  in: [BookingStatus.PENDING, BookingStatus.CONFIRMED],
+          const existingOpen = await tx.booking.findFirst({
+            where: {
+              batchId: data.batchId,
+              studentId: data.studentId,
+              OR: [
+                {
+                  status: {
+                    in: [BookingStatus.PENDING, BookingStatus.CONFIRMED],
+                  },
                 },
-              },
-              {
-                status: BookingStatus.AWAITING_PAYMENT,
-                paymentHoldExpiresAt: { gt: new Date() },
-              },
-            ],
-          },
-          select: { id: true, status: true },
-        });
-        if (existingOpen) {
-          throw new ConflictException(
-            existingOpen.status === BookingStatus.AWAITING_PAYMENT
-              ? "Complete payment for your existing booking hold first"
-              : existingOpen.status === BookingStatus.PENDING
-                ? "You already have a booking request waiting for studio approval"
-                : "You already have a confirmed booking for this class",
-          );
+                {
+                  status: BookingStatus.AWAITING_PAYMENT,
+                  paymentHoldExpiresAt: { gt: new Date() },
+                },
+              ],
+            },
+            select: { id: true, status: true },
+          });
+          if (existingOpen) {
+            throw new ConflictException(
+              existingOpen.status === BookingStatus.AWAITING_PAYMENT
+                ? "Complete payment for your existing booking hold first"
+                : existingOpen.status === BookingStatus.PENDING
+                  ? "You already have a booking request waiting for studio approval"
+                  : "You already have a confirmed booking for this class",
+            );
+          }
         }
-      }
 
-      return tx.booking.create({
-        data: {
-          studioId: data.studioId,
-          studentId: data.studentId,
-          type: data.type,
-          batchId: data.batchId,
-          sessionId: data.sessionId,
-          trainerId: data.trainerId,
-          notes: data.notes,
-          startsAt: data.startsAt ? new Date(data.startsAt) : undefined,
-          endsAt: data.endsAt ? new Date(data.endsAt) : undefined,
-          status,
-          paymentHoldExpiresAt: holdExpiresAt,
-        },
-        include: {
-          batch: { select: { id: true, name: true } },
-        },
-      });
-    });
+        return tx.booking.create({
+          data: {
+            studioId: data.studioId,
+            studentId: data.studentId,
+            type: data.type,
+            batchId: data.batchId,
+            sessionId: data.sessionId,
+            trainerId: data.trainerId,
+            notes: data.notes,
+            startsAt: data.startsAt ? new Date(data.startsAt) : undefined,
+            endsAt: data.endsAt ? new Date(data.endsAt) : undefined,
+            status,
+            paymentHoldExpiresAt: holdExpiresAt,
+          },
+          include: {
+            batch: { select: { id: true, name: true } },
+          },
+        });
+      },
+      { timeout: 20_000 },
+    );
   }
 
   async confirmPayment(id: string, actor: DecryptedUser) {

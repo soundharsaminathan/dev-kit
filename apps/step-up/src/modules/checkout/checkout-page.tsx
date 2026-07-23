@@ -8,6 +8,7 @@ import { SkeletonBlock } from "@/modules/ui/skeleton-block";
 import { ErrorState, SuccessState } from "@/modules/ui/states";
 import { StickyCtaBar, TouchButton } from "@/modules/ui/touch-button";
 import styles from "./checkout-page.module.scss";
+import { formatSeconds, type PayMethod, secondsLeft } from "./checkout-utils";
 
 type CheckoutBooking = {
   id: string;
@@ -17,23 +18,6 @@ type CheckoutBooking = {
   paymentHoldExpiresAt?: string | null;
   batch?: { id: string; name: string } | null;
 };
-
-type PayMethod = "upi" | "card" | "netbanking";
-
-function secondsLeft(expiresAt: string | null | undefined) {
-  if (!expiresAt) return 0;
-  return Math.max(
-    0,
-    Math.ceil((new Date(expiresAt).getTime() - Date.now()) / 1000),
-  );
-}
-
-function formatSeconds(total: number) {
-  const m = Math.floor(total / 60);
-  const s = total % 60;
-  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
-}
-
 export function CheckoutPage() {
   const { bookingId } = useParams({ strict: false }) as { bookingId: string };
   const api = useApi();

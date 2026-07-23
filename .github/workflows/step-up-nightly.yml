@@ -1,0 +1,106 @@
+name: Step Up Nightly
+
+on:
+  schedule:
+    - cron: "0 18 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  checks: write
+
+env:
+  NX_CLOUD_ACCESS_TOKEN: ${{ secrets.NX_CLOUD_ACCESS_TOKEN }}
+  AUTH_BYPASS: "true"
+  VITE_AUTH_BYPASS: "true"
+  VITE_API_URL: http://localhost:3199
+  STEP_UP_API_URL: http://localhost:3199
+  STEP_UP_WEB_URL: http://localhost:5199
+  STEP_UP_API_PORT: "3199"
+  STEP_UP_WEB_PORT: "5199"
+  STEP_UP_E2E_NIGHTLY: "true"
+  PORT: "3199"
+  DATABASE_URL: postgresql://postgres:postgres@localhost:5432/step_up_e2e?schema=public
+  SESSION_QR_SECRET: nightly-session-qr-secret-0123456789abcdef
+  JOBS_SECRET: nightly-jobs-secret-0123456789abcdef01234567
+  CHAT_MASTER_KEY: 
+  PII_MASTER_KEY: 
+  NODE_ENV: development
+
+jobs:
+  nightly:
+    name: Step Up full suite
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: step_up_e2e
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - uses: ./.github/actions/setup
+
+      - name: Generate Prisma client and migrate
+        working-directory: apps/step-up-api
+        run: |
+          pnpm exec prisma generate
+          pnpm exec prisma migrate deploy
+          pnpm exec prisma db seed
+
+      - name: Lint and typecheck (affected step-up)
+        run: |
+          pnpm exec nx run-many -t typecheck --projects=step-up,step-up-api,components,tokens
+        env:
+          CI: true
+
+      - name: Vitest API/service
+        run: pnpm exec nx run step-up-api:test
+        env:
+          CI: true
+
+      - name: Vitest Module/UI
+        run: pnpm exec nx run step-up:test
+        env:
+          CI: true
+
+      - name: Install Playwright browsers
+        run: pnpm --filter @step-up/web exec playwright install chromium webkit --with-deps
+
+      - name: Playwright E2E
+        run: pnpm exec nx run step-up:test:e2e
+        env:
+          CI: true
+          STEP_UP_E2E_NIGHTLY: "true"
+
+      - name: Upload Playwright report
+        uses: actions/upload-artifact@v7
+        if: always() && !cancelled()
+        with:
+          name: step-up-playwright-report
+          path: |
+            apps/step-up/playwright-report/
+            apps/step-up/test-results/
+          retention-days: 14
+
+      - name: Upload coverage
+        uses: actions/upload-artifact@v7
+        if: always() && !cancelled()
+        with:
+          name: step-up-coverage
+          path: coverage/
+          retention-days: 14
+          if-no-files-found: ignore

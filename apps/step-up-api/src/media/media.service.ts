@@ -190,15 +190,20 @@ export class MediaService {
       return value;
     }
 
-    const client = this.assertConfigured();
-    return getSignedUrl(
-      client,
-      new GetObjectCommand({
-        Bucket: this.bucket,
-        Key: key,
-      }),
-      { expiresIn: READ_URL_EXPIRES_SECONDS },
-    );
+    try {
+      const client = this.assertConfigured();
+      return await getSignedUrl(
+        client,
+        new GetObjectCommand({
+          Bucket: this.bucket,
+          Key: key,
+        }),
+        { expiresIn: READ_URL_EXPIRES_SECONDS },
+      );
+    } catch {
+      // Auth/bootstrap must not fail when object storage is misconfigured.
+      return value;
+    }
   }
 
   async signReadUrls(values: string[]): Promise<string[]> {

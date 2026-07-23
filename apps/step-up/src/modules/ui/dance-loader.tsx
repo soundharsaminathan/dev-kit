@@ -150,7 +150,7 @@ function CascadingCaption({ phrase }: { phrase: LoadingPhrase | string }) {
 }
 
 export function DanceLoader({
-  label = "Loading",
+  label = "Loading app",
   caption,
   phrases = LOADING_PHRASES,
 }: DanceLoaderProps) {
@@ -179,6 +179,7 @@ export function DanceLoader({
   return (
     <div
       className={styles.root}
+      data-boot-loader=""
       role="status"
       aria-live="polite"
       aria-label={label}

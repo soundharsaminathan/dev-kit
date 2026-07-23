@@ -1,31 +1,8 @@
-/** @vitest-environment jsdom */
-
-import { IconProvider } from "@dev-ui/icons";
-import lucidePack from "@dev-ui/icons-packs/lucide";
-import "@testing-library/jest-dom/vitest";
-import {
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-  within,
-} from "@testing-library/react";
-import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+import { fireEvent, screen, within } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
+import { renderWithProviders } from "@/test/render";
 import { AttendanceRosterTable } from "./attendance-roster-table";
 import type { AttendanceRosterEntry } from "./types";
-
-beforeAll(() => {
-  class ResizeObserverStub {
-    observe() {}
-    unobserve() {}
-    disconnect() {}
-  }
-  vi.stubGlobal("ResizeObserver", ResizeObserverStub);
-});
-
-afterEach(() => {
-  cleanup();
-});
 
 const roster: AttendanceRosterEntry[] = [
   {
@@ -49,17 +26,18 @@ function renderTable(
 ) {
   const onMarkOne = vi.fn();
   const onMarkSelected = vi.fn();
-  render(
-    <IconProvider icons={{ library: "lucide" }} initialPack={lucidePack}>
-      <AttendanceRosterTable
-        roster={roster}
-        onMarkOne={onMarkOne}
-        onMarkSelected={onMarkSelected}
-        {...props}
-      />
-    </IconProvider>,
+  const onMarkAllUnmarkedPresent = vi.fn();
+  renderWithProviders(
+    <AttendanceRosterTable
+      roster={roster}
+      onMarkOne={onMarkOne}
+      onMarkSelected={onMarkSelected}
+      onMarkAllUnmarkedPresent={onMarkAllUnmarkedPresent}
+      unmarkedCount={1}
+      {...props}
+    />,
   );
-  return { onMarkOne, onMarkSelected };
+  return { onMarkOne, onMarkSelected, onMarkAllUnmarkedPresent };
 }
 
 describe("AttendanceRosterTable selection", () => {
@@ -81,7 +59,6 @@ describe("AttendanceRosterTable selection", () => {
     });
     const control = checkbox.closest("[data-checkbox-control]");
     expect(control).toBeTruthy();
-    // Input is stretched over the control so the visible hit target is the input
     fireEvent.click(within(control as HTMLElement).getByRole("checkbox"));
 
     expect(screen.getByRole("status")).toHaveTextContent("1 selected");
@@ -111,5 +88,56 @@ describe("AttendanceRosterTable selection", () => {
     );
 
     expect(onMarkSelected).toHaveBeenCalledWith(["s1"], "PRESENT");
+  });
+
+  it("marks selected students absent", () => {
+    const { onMarkSelected } = renderTable();
+
+    fireEvent.click(
+      screen.getByRole("checkbox", { name: "Select Ada Lovelace" }),
+    );
+
+    fireEvent.click(
+      within(screen.getByRole("status")).getByRole("button", {
+        name: "Mark absent",
+      }),
+    );
+
+    expect(onMarkSelected).toHaveBeenCalledWith(["s1"], "ABSENT");
+  });
+
+  it("calls mark-all unmarked present", () => {
+    const { onMarkAllUnmarkedPresent } = renderTable();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Mark all unmarked present" }),
+    );
+
+    expect(onMarkAllUnmarkedPresent).toHaveBeenCalledTimes(1);
+  });
+
+  it("disables bulk actions while busy", () => {
+    renderTable({ isBusy: true });
+
+    fireEvent.click(
+      screen.getByRole("checkbox", { name: "Select Ada Lovelace" }),
+    );
+
+    expect(
+      within(screen.getByRole("status")).getByRole("button", {
+        name: "Mark present",
+      }),
+    ).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "Mark all unmarked present" }),
+    ).toBeDisabled();
+  });
+
+  it("renders empty roster without selection chrome", () => {
+    renderTable({ roster: [], unmarkedCount: 0 });
+    expect(
+      screen.getByText("No students match this status filter."),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/selected/i)).toBeNull();
   });
 });
