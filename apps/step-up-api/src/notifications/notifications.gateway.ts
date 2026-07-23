@@ -1,4 +1,4 @@
-import { forwardRef, Inject, Logger } from "@nestjs/common";
+import { forwardRef, Inject, Logger, UseFilters } from "@nestjs/common";
 import {
   ConnectedSocket,
   type OnGatewayConnection,
@@ -6,6 +6,7 @@ import {
   WebSocketGateway,
   WebSocketServer,
 } from "@nestjs/websockets";
+import { SentryGlobalFilter } from "@sentry/nestjs/setup";
 import type { Server, Socket } from "socket.io";
 import { FirebaseService } from "../auth/firebase.service";
 import { NotificationsService } from "./notifications.service";
@@ -14,6 +15,7 @@ interface SocketData {
   userId?: string;
 }
 
+@UseFilters(SentryGlobalFilter)
 @WebSocketGateway({
   namespace: "/notifications",
   cors: { origin: true, credentials: true },

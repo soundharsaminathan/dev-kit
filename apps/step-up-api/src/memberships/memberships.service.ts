@@ -12,6 +12,7 @@ import {
   NotificationType,
   SubscriptionKind,
 } from "@prisma/client";
+import { ScheduleConflictService } from "../calendar/schedule-conflict.service";
 import { NotificationsService } from "../notifications/notifications.service";
 import { PrismaService } from "../prisma/prisma.service";
 import {
@@ -33,6 +34,8 @@ export class MembershipsService {
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(NotificationsService)
     private readonly notifications: NotificationsService,
+    @Inject(ScheduleConflictService)
+    private readonly scheduleConflicts: ScheduleConflictService,
   ) {}
 
   listForStudent(studentId: string) {
@@ -68,6 +71,12 @@ export class MembershipsService {
 
     if (subscription.kind === SubscriptionKind.FAMILY) {
       await this.assertFamilyBatchPicks(args.coveredStudents);
+      for (const covered of args.coveredStudents) {
+        await this.scheduleConflicts.assertStudentAvailableForBatch(
+          covered.studentId,
+          covered.batchId!,
+        );
+      }
     }
 
     const periodStart = getNextPeriodStart();

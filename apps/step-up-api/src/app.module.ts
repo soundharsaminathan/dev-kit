@@ -1,5 +1,7 @@
 import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
+import { APP_FILTER } from "@nestjs/core";
+import { SentryGlobalFilter, SentryModule } from "@sentry/nestjs/setup";
 import { AttendanceModule } from "./attendance/attendance.module";
 import { AuthModule } from "./auth/auth.module";
 import { BatchesModule } from "./batches/batches.module";
@@ -30,6 +32,7 @@ import { UsersModule } from "./users/users.module";
 
 @Module({
   imports: [
+    SentryModule.forRoot(),
     ConfigModule.forRoot({ isGlobal: true }),
     PrismaModule,
     RedisModule,
@@ -58,6 +61,12 @@ import { UsersModule } from "./users/users.module";
     JobsModule,
     HealthModule,
     HomeModule,
+  ],
+  providers: [
+    {
+      provide: APP_FILTER,
+      useClass: SentryGlobalFilter,
+    },
   ],
 })
 export class AppModule {}

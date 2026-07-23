@@ -10,12 +10,10 @@ import "@/styles/global.scss";
 import { ApiProvider } from "@/lib/api-context";
 import { AuthProvider, useAuth } from "@/lib/auth";
 import { homePathForUser } from "@/lib/require-auth";
-import { initSentry } from "@/lib/sentry";
+import { initSentry, Sentry } from "@/lib/sentry";
 import { preloadSessionProviders } from "@/lib/session-gate";
 import { DanceLoader } from "@/modules/ui/dance-loader";
 import { routeTree } from "./routeTree.gen";
-
-initSentry();
 
 const router = createRouter({
   routeTree,
@@ -23,6 +21,8 @@ const router = createRouter({
     auth: undefined!,
   },
 });
+
+initSentry(router);
 
 declare module "@tanstack/react-router" {
   interface Register {
@@ -95,12 +95,31 @@ if (!rootElement) {
   throw new Error("Root element not found");
 }
 
-createRoot(rootElement).render(
+createRoot(rootElement, {
+  onUncaughtError: (error, errorInfo) => {
+    Sentry.captureException(error, {
+      contexts: { react: { componentStack: errorInfo.componentStack } },
+    });
+    console.warn("Uncaught error", error, errorInfo.componentStack);
+  },
+  onCaughtError: (error, errorInfo) => {
+    Sentry.captureException(error, {
+      contexts: { react: { componentStack: errorInfo.componentStack } },
+    });
+  },
+  onRecoverableError: (error, errorInfo) => {
+    Sentry.captureException(error, {
+      contexts: { react: { componentStack: errorInfo.componentStack } },
+    });
+  },
+}).render(
   <StrictMode>
-    <AuthProvider>
-      <ApiProvider>
-        <AppRouter />
-      </ApiProvider>
-    </AuthProvider>
+    <Sentry.ErrorBoundary fallback={<p>Something went wrong.</p>}>
+      <AuthProvider>
+        <ApiProvider>
+          <AppRouter />
+        </ApiProvider>
+      </AuthProvider>
+    </Sentry.ErrorBoundary>
   </StrictMode>,
 );

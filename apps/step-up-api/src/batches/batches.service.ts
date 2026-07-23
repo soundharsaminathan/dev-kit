@@ -12,6 +12,7 @@ import {
   SessionStatus,
   UserRole,
 } from "@prisma/client";
+import { ScheduleConflictService } from "../calendar/schedule-conflict.service";
 import { PrismaService } from "../prisma/prisma.service";
 import type { DecryptedUser } from "../users/user-crypto.service";
 import { UserCryptoService } from "../users/user-crypto.service";
@@ -259,6 +260,8 @@ export class BatchesService {
   constructor(
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(UserCryptoService) private readonly crypto: UserCryptoService,
+    @Inject(ScheduleConflictService)
+    private readonly scheduleConflicts: ScheduleConflictService,
   ) {}
 
   async listByStudio(studioId: string, filters: DiscoverBatchFilters = {}) {
@@ -460,6 +463,12 @@ export class BatchesService {
       }
     }
 
+    await this.scheduleConflicts.assertNoConflicts({
+      intervals: sessions,
+      trainerIds,
+      branchId: data.branchId,
+    });
+
     return this.prisma.batch.create({
       data: {
         studioId: data.studioId,
@@ -589,6 +598,39 @@ export class BatchesService {
       ? buildSessions(data.scheduleJson as unknown as BatchSchedule)
       : undefined;
 
+    const scheduleOrTrainersOrBranchChanged =
+      desiredSessions !== undefined ||
+      trainerIds !== undefined ||
+      data.branchId !== undefined;
+
+    if (scheduleOrTrainersOrBranchChanged) {
+      const intervals =
+        desiredSessions ??
+        (await this.prisma.session.findMany({
+          where: {
+            batchId: id,
+            status: { not: SessionStatus.CANCELLED },
+          },
+          select: { startsAt: true, endsAt: true },
+        }));
+
+      const resolvedTrainerIds =
+        trainerIds ??
+        (
+          await this.prisma.batchTrainer.findMany({
+            where: { batchId: id },
+            select: { trainerId: true },
+          })
+        ).map((row) => row.trainerId);
+
+      await this.scheduleConflicts.assertNoConflicts({
+        intervals,
+        trainerIds: resolvedTrainerIds,
+        branchId: data.branchId ?? batch.branchId,
+        excludeBatchId: id,
+      });
+    }
+
     const {
       trainerIds: _incomingTrainerIds,
       scheduleJson,
@@ -689,6 +731,11 @@ export class BatchesService {
     if (batch.enrollments.length >= batch.capacity) {
       throw new BadRequestException("Batch is at capacity");
     }
+
+    await this.scheduleConflicts.assertStudentAvailableForBatch(
+      studentId,
+      batchId,
+    );
 
     return this.prisma.batchEnrollment.upsert({
       where: {

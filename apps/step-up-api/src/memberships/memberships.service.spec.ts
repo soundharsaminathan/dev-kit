@@ -19,7 +19,14 @@ describe("MembershipsService.renewManual", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    service = new MembershipsService(prisma as never, notifications as never);
+    service = new MembershipsService(
+      prisma as never,
+      notifications as never,
+      {
+        assertNoConflicts: vi.fn().mockResolvedValue(undefined),
+        assertStudentAvailableForBatch: vi.fn().mockResolvedValue(undefined),
+      } as never,
+    );
   });
 
   it("expires the old membership and creates a renewed one", async () => {
@@ -80,11 +87,24 @@ describe("MembershipsService.assign family packs", () => {
     create: vi.fn(),
   };
 
+  const scheduleConflicts = {
+    assertNoConflicts: vi.fn().mockResolvedValue(undefined),
+    assertStudentAvailableForBatch: vi.fn().mockResolvedValue(undefined),
+  };
+
   let service: MembershipsService;
 
   beforeEach(() => {
     vi.clearAllMocks();
-    service = new MembershipsService(prisma as never, notifications as never);
+    scheduleConflicts.assertNoConflicts.mockResolvedValue(undefined);
+    scheduleConflicts.assertStudentAvailableForBatch.mockResolvedValue(
+      undefined,
+    );
+    service = new MembershipsService(
+      prisma as never,
+      notifications as never,
+      scheduleConflicts as never,
+    );
     prisma.$transaction.mockImplementation(
       async (fn: (tx: typeof prisma) => Promise<unknown>) => fn(prisma),
     );
@@ -142,6 +162,12 @@ describe("MembershipsService.assign family packs", () => {
       ],
     });
 
+    expect(
+      scheduleConflicts.assertStudentAvailableForBatch,
+    ).toHaveBeenCalledWith("owner-1", "batch-adult");
+    expect(
+      scheduleConflicts.assertStudentAvailableForBatch,
+    ).toHaveBeenCalledWith("kid-1", "batch-kid");
     expect(prisma.batchEnrollment.upsert).toHaveBeenCalledTimes(2);
     expect(prisma.batchEnrollment.upsert).toHaveBeenCalledWith(
       expect.objectContaining({

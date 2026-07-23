@@ -1,4 +1,4 @@
-import { Inject, Logger } from "@nestjs/common";
+import { Inject, Logger, UseFilters } from "@nestjs/common";
 import {
   ConnectedSocket,
   MessageBody,
@@ -7,6 +7,7 @@ import {
   WebSocketGateway,
   WebSocketServer,
 } from "@nestjs/websockets";
+import { SentryGlobalFilter } from "@sentry/nestjs/setup";
 import type { Server, Socket } from "socket.io";
 import { FirebaseService } from "../auth/firebase.service";
 import { PrismaService } from "../prisma/prisma.service";
@@ -15,6 +16,7 @@ interface SocketData {
   userId?: string;
 }
 
+@UseFilters(SentryGlobalFilter)
 @WebSocketGateway({
   namespace: "/chat",
   cors: { origin: true, credentials: true },

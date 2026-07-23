@@ -10,7 +10,9 @@ import {
   BookingType,
   InvoiceStatus,
   MembershipStatus,
+  SessionStatus,
 } from "@prisma/client";
+import { ScheduleConflictService } from "../calendar/schedule-conflict.service";
 import { MembershipsService } from "../memberships/memberships.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { UserCryptoService, userPiiSelect } from "../users/user-crypto.service";
@@ -30,6 +32,8 @@ export class BookingsService {
     @Inject(MembershipsService)
     private readonly memberships: MembershipsService,
     @Inject(UserCryptoService) private readonly crypto: UserCryptoService,
+    @Inject(ScheduleConflictService)
+    private readonly scheduleConflicts: ScheduleConflictService,
   ) {}
 
   listForStudent(studentId: string) {
@@ -133,6 +137,7 @@ export class BookingsService {
     }
 
     if (data.type === BookingType.TRIAL) {
+      await this.assertBookingScheduleConflicts(data);
       return this.prisma.booking.create({
         data: {
           studioId: data.studioId,
@@ -184,6 +189,8 @@ export class BookingsService {
       }
     }
 
+    await this.assertBookingScheduleConflicts(data);
+
     return this.prisma.booking.create({
       data: {
         studioId: data.studioId,
@@ -218,6 +225,50 @@ export class BookingsService {
       }
     }
 
+    const existing = await this.prisma.booking.findUnique({
+      where: { id },
+      include: {
+        session: {
+          include: {
+            batch: {
+              include: {
+                trainers: { select: { trainerId: true } },
+              },
+            },
+          },
+        },
+        batch: {
+          include: {
+            trainers: { select: { trainerId: true } },
+          },
+        },
+      },
+    });
+    if (!existing) {
+      throw new BadRequestException("Booking not found");
+    }
+
+    const nextStatus = status;
+    const schedulingTouched =
+      sessionId !== undefined ||
+      trainerId !== undefined ||
+      (startsAt !== undefined && endsAt !== undefined);
+    const becomingConfirmed =
+      nextStatus === BookingStatus.CONFIRMED &&
+      existing.status !== BookingStatus.CONFIRMED;
+
+    if (becomingConfirmed || schedulingTouched) {
+      await this.assertBookingScheduleConflicts({
+        studentId: existing.studentId,
+        batchId: existing.batchId ?? undefined,
+        sessionId: sessionId ?? existing.sessionId ?? undefined,
+        trainerId: trainerId ?? existing.trainerId ?? undefined,
+        startsAt: startsAt ?? existing.startsAt?.toISOString(),
+        endsAt: endsAt ?? existing.endsAt?.toISOString(),
+        excludeBookingIds: [id],
+      });
+    }
+
     return this.prisma.booking.update({
       where: { id },
       data: {
@@ -232,6 +283,87 @@ export class BookingsService {
           : {}),
       },
     });
+  }
+
+  private async assertBookingScheduleConflicts(data: {
+    studentId: string;
+    batchId?: string;
+    sessionId?: string;
+    trainerId?: string;
+    startsAt?: string;
+    endsAt?: string;
+    excludeBookingIds?: string[];
+  }) {
+    if (data.sessionId) {
+      const session = await this.prisma.session.findUnique({
+        where: { id: data.sessionId },
+        include: {
+          batch: {
+            include: {
+              trainers: { select: { trainerId: true } },
+            },
+          },
+        },
+      });
+      if (!session || session.status === SessionStatus.CANCELLED) {
+        throw new BadRequestException("Session not found");
+      }
+
+      const trainerIds = [
+        ...new Set([
+          ...(data.trainerId ? [data.trainerId] : []),
+          ...session.batch.trainers.map((trainer) => trainer.trainerId),
+        ]),
+      ];
+
+      await this.scheduleConflicts.assertNoConflicts({
+        intervals: [{ startsAt: session.startsAt, endsAt: session.endsAt }],
+        studentIds: [data.studentId],
+        trainerIds,
+        branchId: session.batch.branchId,
+        excludeSessionIds: [session.id],
+        excludeBookingIds: data.excludeBookingIds,
+      });
+      return;
+    }
+
+    if (data.startsAt && data.endsAt) {
+      const startsAt = new Date(data.startsAt);
+      const endsAt = new Date(data.endsAt);
+      let branchId: string | undefined;
+      const trainerIds = [...(data.trainerId ? [data.trainerId] : [])];
+
+      if (data.batchId) {
+        const batch = await this.prisma.batch.findUnique({
+          where: { id: data.batchId },
+          include: { trainers: { select: { trainerId: true } } },
+        });
+        if (batch) {
+          branchId = batch.branchId;
+          for (const trainer of batch.trainers) {
+            if (!trainerIds.includes(trainer.trainerId)) {
+              trainerIds.push(trainer.trainerId);
+            }
+          }
+        }
+      }
+
+      await this.scheduleConflicts.assertNoConflicts({
+        intervals: [{ startsAt, endsAt }],
+        studentIds: [data.studentId],
+        trainerIds,
+        branchId,
+        excludeBookingIds: data.excludeBookingIds,
+      });
+      return;
+    }
+
+    if (data.batchId) {
+      await this.scheduleConflicts.assertStudentAvailableForBatch(
+        data.studentId,
+        data.batchId,
+      );
+    }
   }
 
   private assertValidRange(startsAt: string, endsAt: string) {
