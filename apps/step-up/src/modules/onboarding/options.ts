@@ -142,12 +142,12 @@ export const STEP_META: Record<OnboardingStep, OnboardingStepMeta> = {
     title: "Pick a",
     emphasis: "trial time",
     subtitle:
-      "Choose a class, or anytime and we'll call to lock in a time that works.",
+      "Choose any date and time that works — we’ll confirm with your trainer.",
   },
   trainer: {
     art: `/onboarding/celebrate.png?${ART_V}`,
     title: "Any",
     emphasis: "trainer",
-    subtitle: "Optional — pick who you want, or skip.",
+    subtitle: "Swipe or tap to pick who you want for the trial — or skip.",
   },
 };

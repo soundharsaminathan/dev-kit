@@ -41,6 +41,9 @@ import {
 export const PERSONAL_TRIAL_NOTES =
   "Personal trial — studio will call to confirm a time";
 
+export const PERSONAL_TRIAL_TIMED_NOTES =
+  "Personal trial — preferred time requested";
+
 @Injectable()
 export class UsersService {
   constructor(
@@ -557,7 +560,32 @@ export class UsersService {
       }
     }
 
-    if (trial.personalTrial) {
+    let batchId = trial.batchId;
+    const sessionId = trial.sessionId;
+    let startsAt = trial.startsAt;
+    let endsAt = trial.endsAt;
+
+    const isPersonalTimed =
+      Boolean(startsAt && endsAt) && !batchId && !sessionId;
+    if (trial.personalTrial || isPersonalTimed) {
+      let start: Date | undefined;
+      let end: Date | undefined;
+      if (startsAt || endsAt) {
+        if (!startsAt || !endsAt) {
+          throw new BadRequestException(
+            "Both startsAt and endsAt are required",
+          );
+        }
+        start = new Date(startsAt);
+        end = new Date(endsAt);
+        if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+          throw new BadRequestException("Invalid startsAt or endsAt");
+        }
+        if (end <= start) {
+          throw new BadRequestException("endsAt must be after startsAt");
+        }
+      }
+
       const existingOpen = await this.prisma.booking.findFirst({
         where: {
           studioId,
@@ -593,17 +621,14 @@ export class UsersService {
           studentId,
           type: BookingType.TRIAL,
           trainerId,
-          notes: PERSONAL_TRIAL_NOTES,
+          startsAt: start,
+          endsAt: end,
+          notes: start ? PERSONAL_TRIAL_TIMED_NOTES : PERSONAL_TRIAL_NOTES,
           status: BookingStatus.PENDING,
         },
       });
       return;
     }
-
-    let batchId = trial.batchId;
-    const sessionId = trial.sessionId;
-    let startsAt = trial.startsAt;
-    let endsAt = trial.endsAt;
 
     if (sessionId) {
       const session = await this.prisma.session.findUnique({

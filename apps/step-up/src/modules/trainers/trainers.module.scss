@@ -20,6 +20,33 @@
   gap: var(--space-3, 0.75rem);
   padding: var(--space-3, 0.75rem);
   width: 100%;
+  border-radius: var(--radius-2xl, 1.25rem);
+  border: 1px solid transparent;
+  transition:
+    border-color var(--interaction-transition-fast, 120ms) ease,
+    background-color var(--interaction-transition-fast, 120ms) ease;
+}
+
+.cardRow[data-selected="true"] {
+  border-color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 12%, var(--color-card, var(--color-bg)));
+}
+
+.cardSelectHint {
+  flex-shrink: 0;
+  align-self: center;
+  padding: var(--space-2, 0.5rem) var(--space-3, 0.75rem);
+  border-radius: var(--radius-full);
+  border: 1px solid color-mix(in srgb, var(--color-fg) 12%, transparent);
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: color-mix(in srgb, var(--color-fg) 62%, transparent);
+}
+
+.cardSelectHint[data-selected="true"] {
+  border-color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 16%, transparent);
+  color: var(--color-primary);
 }
 
 .cardHit {
@@ -375,6 +402,45 @@
   box-shadow: var(--card-shadow, var(--shadow-sm, 0 1px 3px rgb(0 0 0 / 6%)));
   overflow: hidden;
   flex-shrink: 0;
+  transition: border-color var(--interaction-transition-fast, 120ms) ease;
+}
+
+.stackCard[data-compact="true"] {
+  height: 18rem;
+}
+
+.stackCard[data-selected="true"] {
+  border-color: var(--color-primary);
+  box-shadow:
+    var(--card-shadow, var(--shadow-sm, 0 1px 3px rgb(0 0 0 / 6%))),
+    0 0 0 2px color-mix(in srgb, var(--color-primary) 35%, transparent);
+}
+
+.stackSelectBtn {
+  min-height: 2.5rem;
+  padding: var(--space-2, 0.5rem) var(--space-4, 1rem);
+  border-radius: var(--radius-full);
+  border: 1px solid color-mix(in srgb, var(--color-fg) 12%, transparent);
+  background: var(--color-card, var(--color-bg));
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--color-fg);
+  cursor: pointer;
+  transition:
+    transform var(--interaction-transition-fast, 120ms) ease,
+    border-color var(--interaction-transition-fast, 120ms) ease,
+    background-color var(--interaction-transition-fast, 120ms) ease,
+    color var(--interaction-transition-fast, 120ms) ease;
+}
+
+.stackSelectBtn:active {
+  transform: scale(var(--interaction-press-scale, 0.97));
+}
+
+.stackSelectBtn[data-selected="true"] {
+  border-color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 16%, var(--color-card, var(--color-bg)));
+  color: var(--color-primary);
 }
 
 .stackCardPhoto {
@@ -500,13 +566,15 @@
   .bentoMoreBtn,
   .bentoCloseBtn,
   .stackOpenBtn,
+  .stackSelectBtn,
   .stackDot {
     transition-duration: 0ms;
   }
 
   .bentoMoreBtn:active,
   .bentoCloseBtn:active,
-  .stackOpenBtn:active {
+  .stackOpenBtn:active,
+  .stackSelectBtn:active {
     transform: none;
   }
 }

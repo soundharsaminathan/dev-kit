@@ -36,7 +36,7 @@ function MeInvoicesPage() {
       title="Invoices"
       subtitle="Payment status for your membership."
       showBack
-      backTo="/me"
+      backTo="/me/profile"
     >
       <PullToRefresh onRefresh={() => query.refetch()}>
         {query.isLoading ? <SkeletonCardList count={3} /> : null}

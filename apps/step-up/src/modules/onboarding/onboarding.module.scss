@@ -12,6 +12,16 @@
   margin-inline: auto;
 }
 
+.root[data-step="trainer"] {
+  max-width: 36rem;
+}
+
+.root[data-step="trialTime"] .art,
+.root[data-step="trainer"] .art {
+  height: min(32vw, 9rem);
+  min-height: 4.5rem;
+}
+
 .art {
   display: flex;
   flex-shrink: 1;
@@ -284,6 +294,34 @@
   flex-direction: column;
   gap: var(--space-1);
   min-width: 0;
+}
+
+.timeForm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  flex: 1;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  min-height: 0;
+  -webkit-overflow-scrolling: touch;
+}
+
+.timeRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+}
+
+.trainerPicker {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  flex: 1;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  min-height: 0;
+  -webkit-overflow-scrolling: touch;
 }
 
 .footerSkip {

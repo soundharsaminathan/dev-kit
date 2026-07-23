@@ -1,5 +1,5 @@
 import { Icon } from "@dev-ui/icons";
-import { useRouter } from "@tanstack/react-router";
+import { useCanGoBack, useRouter } from "@tanstack/react-router";
 import { type ReactNode, type UIEvent, useEffect, useState } from "react";
 import styles from "./screen.module.scss";
 
@@ -29,6 +29,7 @@ export function Screen({
   paddedCta = false,
 }: ScreenProps) {
   const router = useRouter();
+  const canGoBack = useCanGoBack();
   const [compact, setCompact] = useState(false);
 
   useEffect(() => {
@@ -48,11 +49,13 @@ export function Screen({
       onBack();
       return;
     }
-    if (backTo) {
-      void router.navigate({ to: backTo });
+    if (canGoBack) {
+      router.history.back();
       return;
     }
-    router.history.back();
+    if (backTo) {
+      void router.navigate({ to: backTo });
+    }
   }
 
   const screenClass = [

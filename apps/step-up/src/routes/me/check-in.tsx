@@ -88,7 +88,7 @@ function MeCheckInPage() {
 
   if (succeeded) {
     return (
-      <Screen title="Checked in" showBack backTo="/me">
+      <Screen title="Checked in" showBack backTo="/me/profile">
         <SuccessState
           title="You're checked in"
           description="Your attendance was recorded. Have a great class."
@@ -116,7 +116,7 @@ function MeCheckInPage() {
       title="Check in"
       subtitle="Scan the studio QR code to mark attendance."
       showBack
-      backTo="/me"
+      backTo="/me/profile"
       paddedCta
     >
       <div className={styles.form}>

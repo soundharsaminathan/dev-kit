@@ -289,7 +289,7 @@ function MeSubscriptionsPage() {
       title="Subscriptions"
       subtitle="Membership status and renewal dates."
       showBack
-      backTo="/me"
+      backTo="/me/profile"
     >
       <PullToRefresh onRefresh={refetchAll}>
         {membershipsQuery.isLoading ? <SkeletonCardList count={2} /> : null}

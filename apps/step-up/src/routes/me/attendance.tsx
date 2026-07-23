@@ -85,7 +85,7 @@ function MeAttendancePage() {
       title="Attendance"
       subtitle="Your recent class attendance."
       showBack
-      backTo="/me"
+      backTo="/me/profile"
     >
       <PullToRefresh onRefresh={refresh}>
         {isLoading ? <SkeletonCardList count={3} /> : null}

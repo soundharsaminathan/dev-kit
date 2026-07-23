@@ -1,5 +1,6 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@dev-ui/components/avatar";
 import { FileTrigger } from "@dev-ui/components/file-trigger";
+import { useIsMobile } from "@dev-ui/hooks";
 import { Icon } from "@dev-ui/icons";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
@@ -17,6 +18,8 @@ import {
 } from "@/lib/constants";
 import { getFirebaseAuth } from "@/lib/firebase";
 import { uploadSocialPhoto } from "@/modules/social/upload";
+import { TrainerCardsView } from "@/modules/trainers/trainer-cards-view";
+import { TrainerStackView } from "@/modules/trainers/trainer-stack-view";
 import type { StudioTrainer } from "@/modules/trainers/types";
 import { FormInput } from "@/modules/ui/form-input";
 import { ImageCropSheet } from "@/modules/ui/image-crop-sheet";
@@ -40,23 +43,13 @@ type ProfilePatch = {
   onboardingCompletedAt?: string | null;
 };
 
-type TrialSlot = {
-  sessionId: string;
-  batchId: string;
-  batchName: string;
-  styleBadge: string | null;
+type SelectedTrialWindow = {
   startsAt: string;
   endsAt: string;
 };
 
-type SelectedTrial =
-  | { kind: "personal" }
-  | { kind: "session"; slot: TrialSlot };
-
 type CompleteOnboardingBody = {
   personalTrial?: boolean;
-  batchId?: string;
-  sessionId?: string;
   trainerId?: string;
   startsAt?: string;
   endsAt?: string;
@@ -65,6 +58,7 @@ type CompleteOnboardingBody = {
 const RING_SIZE = 68;
 const RING_RADIUS = 30;
 const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
+const DEFAULT_TRIAL_HOURS = 1;
 
 function initials(name: string) {
   return name
@@ -75,16 +69,39 @@ function initials(name: string) {
     .join("");
 }
 
-function formatSlotWhen(startsAt: string) {
-  const start = new Date(startsAt);
-  if (Number.isNaN(start.getTime())) return startsAt;
-  return new Intl.DateTimeFormat(undefined, {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(start);
+function pad(n: number) {
+  return String(n).padStart(2, "0");
+}
+
+function toLocalDateValue(date: Date) {
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+function toLocalTimeValue(date: Date) {
+  return `${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+function defaultTrialWindow() {
+  const start = new Date();
+  start.setMinutes(0, 0, 0);
+  start.setHours(start.getHours() + 1);
+  if (start.getHours() < 10) {
+    start.setHours(15, 0, 0, 0);
+  }
+  const end = new Date(start);
+  end.setHours(end.getHours() + DEFAULT_TRIAL_HOURS);
+  return {
+    date: toLocalDateValue(start),
+    startTime: toLocalTimeValue(start),
+    endTime: toLocalTimeValue(end),
+  };
+}
+
+function combineLocalDateTime(date: string, time: string) {
+  if (!date || !time) return null;
+  const value = new Date(`${date}T${time}`);
+  if (Number.isNaN(value.getTime())) return null;
+  return value;
 }
 
 function CircularNext({
@@ -138,11 +155,13 @@ export function OnboardingWizard() {
   const api = useApi();
   const navigate = useNavigate();
   const { user, updateUser } = useAuth();
+  const isMobile = useIsMobile();
   const reducedMotion = useReducedMotion();
   const [stepIndex, setStepIndex] = useState(0);
   const step = ONBOARDING_STEPS[stepIndex] ?? "profile";
   const meta = STEP_META[step];
   const saveGeneration = useRef(0);
+  const defaults = useMemo(() => defaultTrialWindow(), []);
 
   const [name, setName] = useState(
     user?.name && user.name !== "New User" ? user.name : "",
@@ -158,21 +177,17 @@ export function OnboardingWizard() {
   const [ageRange, setAgeRange] = useState<AgeRange | null>(
     user?.ageRange ?? null,
   );
-  const [selectedTrial, setSelectedTrial] = useState<SelectedTrial | null>(
-    null,
-  );
+  const [trialDate, setTrialDate] = useState(defaults.date);
+  const [trialStartTime, setTrialStartTime] = useState(defaults.startTime);
+  const [trialEndTime, setTrialEndTime] = useState(defaults.endTime);
+  const [selectedTrial, setSelectedTrial] =
+    useState<SelectedTrialWindow | null>(null);
   const [selectedTrainerId, setSelectedTrainerId] = useState<string | null>(
     null,
   );
   const [error, setError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [completed, setCompleted] = useState(false);
-
-  const slotsQuery = useQuery({
-    queryKey: ["onboarding", "trial-slots", STUDIO_ID],
-    queryFn: () => api.get<TrialSlot[]>(`/sessions/studio/${STUDIO_ID}/trial`),
-    enabled: step === "trialTime" || step === "trainer",
-  });
 
   const trainersQuery = useQuery({
     queryKey: ["onboarding", "trainers", STUDIO_ID],
@@ -181,7 +196,6 @@ export function OnboardingWizard() {
     enabled: step === "trainer",
   });
 
-  const trialSlots = useMemo(() => slotsQuery.data ?? [], [slotsQuery.data]);
   const trainers = useMemo(
     () => trainersQuery.data ?? [],
     [trainersQuery.data],
@@ -248,6 +262,34 @@ export function OnboardingWizard() {
       });
   }
 
+  function resolveTrialWindow(): SelectedTrialWindow | null {
+    const start = combineLocalDateTime(trialDate, trialStartTime);
+    const end = combineLocalDateTime(trialDate, trialEndTime);
+    if (!start || !end) return null;
+    if (end <= start) {
+      const nextDayEnd = new Date(end);
+      nextDayEnd.setDate(nextDayEnd.getDate() + 1);
+      if (nextDayEnd <= start) return null;
+      return {
+        startsAt: start.toISOString(),
+        endsAt: nextDayEnd.toISOString(),
+      };
+    }
+    return {
+      startsAt: start.toISOString(),
+      endsAt: end.toISOString(),
+    };
+  }
+
+  function handleStartTimeChange(value: string) {
+    setTrialStartTime(value);
+    const start = combineLocalDateTime(trialDate, value);
+    if (!start) return;
+    const end = new Date(start);
+    end.setHours(end.getHours() + DEFAULT_TRIAL_HOURS);
+    setTrialEndTime(toLocalTimeValue(end));
+  }
+
   function goNext() {
     setError(null);
     const next = ONBOARDING_STEPS[stepIndex + 1];
@@ -298,6 +340,14 @@ export function OnboardingWizard() {
 
       if (step === "trialTime") {
         if (!next) return;
+        const window = resolveTrialWindow();
+        if (!window) {
+          throw new Error("Pick a valid date and time range");
+        }
+        if (new Date(window.startsAt).getTime() < Date.now()) {
+          throw new Error("Choose a time in the future");
+        }
+        setSelectedTrial(window);
         advanceTo(next);
         return;
       }
@@ -322,18 +372,21 @@ export function OnboardingWizard() {
     try {
       if (!completed) {
         const body: CompleteOnboardingBody = {};
-        if (trial?.kind === "personal") {
-          body.personalTrial = true;
-        } else if (trial?.kind === "session") {
-          body.sessionId = trial.slot.sessionId;
-          body.batchId = trial.slot.batchId;
-          body.startsAt = trial.slot.startsAt;
-          body.endsAt = trial.slot.endsAt;
+        if (trial) {
+          body.startsAt = trial.startsAt;
+          body.endsAt = trial.endsAt;
         }
         if (trainerId) {
           body.trainerId = trainerId;
         }
-        await completeMutation.mutateAsync(body);
+        if (trial || trainerId) {
+          if (!trial && trainerId) {
+            body.personalTrial = true;
+          }
+          await completeMutation.mutateAsync(body);
+        } else {
+          await completeMutation.mutateAsync({});
+        }
       }
       const booked = Boolean(trial || trainerId);
       if (booked) {
@@ -372,9 +425,10 @@ export function OnboardingWizard() {
   const isOptionalStep = step === "trialTime" || step === "trainer";
   const isLast = step === "trainer";
   const ringProgress = (stepIndex + 1) / ONBOARDING_STEPS.length;
+  const minDate = toLocalDateValue(new Date());
 
   return (
-    <div className={styles.root}>
+    <div className={styles.root} data-step={step}>
       <div className={styles.art}>
         <img
           key={meta.art}
@@ -506,66 +560,37 @@ export function OnboardingWizard() {
             ) : null}
 
             {step === "trialTime" ? (
-              <div className={styles.cardGrid}>
-                <button
-                  type="button"
-                  className={styles.choiceCard}
-                  data-selected={
-                    selectedTrial?.kind === "personal" ? "true" : undefined
-                  }
-                  onClick={() =>
-                    setSelectedTrial((current) =>
-                      current?.kind === "personal"
-                        ? null
-                        : { kind: "personal" },
-                    )
-                  }
-                >
-                  <p className={styles.choiceTitle}>Anytime — we'll call you</p>
-                  <p className={styles.choiceDescription}>
-                    Personal trial · pick a time later with the studio
-                  </p>
-                </button>
-                {slotsQuery.isLoading ? (
-                  <p className={styles.choiceDescription}>Loading times…</p>
-                ) : null}
-                {slotsQuery.isError ? (
-                  <p className={styles.error}>Could not load class times.</p>
-                ) : null}
-                {trialSlots.map((slot) => (
-                  <button
-                    key={slot.sessionId}
-                    type="button"
-                    className={styles.choiceCard}
-                    data-selected={
-                      selectedTrial?.kind === "session" &&
-                      selectedTrial.slot.sessionId === slot.sessionId
-                        ? "true"
-                        : undefined
-                    }
-                    onClick={() =>
-                      setSelectedTrial((current) =>
-                        current?.kind === "session" &&
-                        current.slot.sessionId === slot.sessionId
-                          ? null
-                          : { kind: "session", slot },
-                      )
-                    }
-                  >
-                    <p className={styles.choiceTitle}>
-                      {formatSlotWhen(slot.startsAt)}
-                    </p>
-                    <p className={styles.choiceDescription}>
-                      {slot.batchName}
-                      {slot.styleBadge ? ` · ${slot.styleBadge}` : ""}
-                    </p>
-                  </button>
-                ))}
+              <div className={styles.timeForm}>
+                <FormInput
+                  label="Date"
+                  type="date"
+                  value={trialDate}
+                  min={minDate}
+                  onChange={setTrialDate}
+                />
+                <div className={styles.timeRow}>
+                  <FormInput
+                    label="Starts"
+                    type="time"
+                    value={trialStartTime}
+                    onChange={handleStartTimeChange}
+                  />
+                  <FormInput
+                    label="Ends"
+                    type="time"
+                    value={trialEndTime}
+                    onChange={setTrialEndTime}
+                  />
+                </div>
+                <p className={styles.choiceDescription}>
+                  Example: 25 Jul · 3:00–4:00 PM with your preferred trainer
+                  next.
+                </p>
               </div>
             ) : null}
 
             {step === "trainer" ? (
-              <div className={styles.cardGrid}>
+              <div className={styles.trainerPicker}>
                 {trainersQuery.isLoading ? (
                   <p className={styles.choiceDescription}>Loading trainers…</p>
                 ) : null}
@@ -579,39 +604,24 @@ export function OnboardingWizard() {
                     No trainers listed yet — skip to finish.
                   </p>
                 ) : null}
-                {trainers.map((trainer) => (
-                  <button
-                    key={trainer.id}
-                    type="button"
-                    className={styles.trainerCard}
-                    data-selected={
-                      selectedTrainerId === trainer.id ? "true" : undefined
-                    }
-                    onClick={() =>
-                      setSelectedTrainerId((current) =>
-                        current === trainer.id ? null : trainer.id,
-                      )
-                    }
-                  >
-                    <Avatar size="md" className={styles.trainerAvatar}>
-                      {trainer.photoUrl ? (
-                        <AvatarImage
-                          src={trainer.photoUrl}
-                          alt={trainer.name}
-                        />
-                      ) : null}
-                      <AvatarFallback>
-                        {initials(trainer.name || "T")}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className={styles.trainerCopy}>
-                      <p className={styles.choiceTitle}>{trainer.name}</p>
-                      <p className={styles.choiceDescription}>
-                        {trainer.styles.slice(0, 3).join(" · ") || "Trainer"}
-                      </p>
-                    </div>
-                  </button>
-                ))}
+                {trainers.length > 0 ? (
+                  isMobile ? (
+                    <TrainerStackView
+                      trainers={trainers}
+                      selectionMode
+                      compact
+                      selectedId={selectedTrainerId}
+                      onSelect={setSelectedTrainerId}
+                    />
+                  ) : (
+                    <TrainerCardsView
+                      trainers={trainers}
+                      selectionMode
+                      selectedId={selectedTrainerId}
+                      onSelect={setSelectedTrainerId}
+                    />
+                  )
+                ) : null}
               </div>
             ) : null}
           </motion.div>

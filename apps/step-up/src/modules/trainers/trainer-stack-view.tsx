@@ -22,6 +22,10 @@ type TrainerStackViewProps = {
   trainers: StudioTrainer[];
   isFollowPending?: ((trainerId: string) => boolean) | undefined;
   onToggleFollow?: ((trainer: StudioTrainer) => void) | undefined;
+  selectionMode?: boolean;
+  selectedId?: string | null;
+  onSelect?: ((trainerId: string) => void) | undefined;
+  compact?: boolean;
 };
 
 const DRAG_BUFFER = 60;
@@ -36,7 +40,11 @@ type StackCardProps = {
   gap: number;
   reducedMotion: boolean;
   followPending?: boolean | undefined;
+  selected?: boolean;
+  selectionMode?: boolean;
+  compact?: boolean;
   onOpen: () => void;
+  onSelect?: (() => void) | undefined;
   onToggleFollow?: (() => void) | undefined;
 };
 
@@ -48,7 +56,11 @@ function StackCard({
   gap,
   reducedMotion,
   followPending,
+  selected,
+  selectionMode,
+  compact,
   onOpen,
+  onSelect,
   onToggleFollow,
 }: StackCardProps) {
   const center = -(index * (cardWidth + gap));
@@ -84,6 +96,8 @@ function StackCard({
         minWidth: cardWidth,
       }}
       className={styles.stackCard}
+      data-compact={compact ? "true" : undefined}
+      data-selected={selected ? "true" : undefined}
     >
       <div
         className={styles.stackCardPhoto}
@@ -99,13 +113,15 @@ function StackCard({
 
       <div className={styles.stackCardContent}>
         <h2 className={styles.stackName}>{trainer.name}</h2>
-        <div className={styles.stackFollowCounts}>
-          <FollowCounts
-            followerCount={trainer.followerCount}
-            followingCount={trainer.followingCount}
-            compact
-          />
-        </div>
+        {!selectionMode ? (
+          <div className={styles.stackFollowCounts}>
+            <FollowCounts
+              followerCount={trainer.followerCount}
+              followingCount={trainer.followingCount}
+              compact
+            />
+          </div>
+        ) : null}
         {trainer.styles.length > 0 ? (
           <StyleList
             styles={trainer.styles}
@@ -115,7 +131,19 @@ function StackCard({
         ) : (
           <p className={styles.stackEmpty}>No styles listed yet</p>
         )}
-        {!trainer.isOwnProfile && onToggleFollow ? (
+        {selectionMode && onSelect ? (
+          <div className={styles.stackFollowAction}>
+            <button
+              type="button"
+              className={styles.stackSelectBtn}
+              data-selected={selected ? "true" : undefined}
+              onClick={onSelect}
+            >
+              {selected ? "Selected" : "Select"}
+            </button>
+          </div>
+        ) : null}
+        {!selectionMode && !trainer.isOwnProfile && onToggleFollow ? (
           <div className={styles.stackFollowAction}>
             <FollowButton
               isFollowing={trainer.isFollowing}
@@ -128,14 +156,16 @@ function StackCard({
         ) : null}
       </div>
 
-      <button
-        type="button"
-        className={styles.stackOpenBtn}
-        aria-label={`Open ${trainer.name}'s profile`}
-        onClick={onOpen}
-      >
-        <Icon name="arrow-up-right" aria-hidden />
-      </button>
+      {selectionMode ? null : (
+        <button
+          type="button"
+          className={styles.stackOpenBtn}
+          aria-label={`Open ${trainer.name}'s profile`}
+          onClick={onOpen}
+        >
+          <Icon name="arrow-up-right" aria-hidden />
+        </button>
+      )}
     </motion.article>
   );
 }
@@ -144,6 +174,10 @@ export function TrainerStackView({
   trainers,
   isFollowPending,
   onToggleFollow,
+  selectionMode = false,
+  selectedId = null,
+  onSelect,
+  compact = false,
 }: TrainerStackViewProps) {
   const navigate = useNavigate();
   const reducedMotion = useReducedMotion() ?? false;
@@ -155,13 +189,13 @@ export function TrainerStackView({
       const width = window.innerWidth;
       if (width < 640) {
         setDimensions({
-          cardWidth: Math.min(width - 64, 300),
+          cardWidth: Math.min(width - 64, compact ? 280 : 300),
           gap: 40,
         });
       } else {
         setDimensions({
-          cardWidth: 320,
-          gap: 200,
+          cardWidth: compact ? 280 : 320,
+          gap: compact ? 48 : 200,
         });
       }
     };
@@ -169,11 +203,17 @@ export function TrainerStackView({
     updateDimensions();
     window.addEventListener("resize", updateDimensions);
     return () => window.removeEventListener("resize", updateDimensions);
-  }, []);
+  }, [compact]);
 
   useEffect(() => {
     setIndex((current) => Math.min(current, Math.max(trainers.length - 1, 0)));
   }, [trainers]);
+
+  useEffect(() => {
+    if (!selectionMode || !onSelect) return;
+    const trainer = trainers[index];
+    if (trainer) onSelect(trainer.id);
+  }, [index, onSelect, selectionMode, trainers]);
 
   const { cardWidth, gap } = dimensions;
   const x = useMotionValue(-(index * (cardWidth + gap)));
@@ -207,7 +247,10 @@ export function TrainerStackView({
   }
 
   return (
-    <div className={styles.stackRoot}>
+    <div
+      className={styles.stackRoot}
+      data-compact={compact ? "true" : undefined}
+    >
       <div className={styles.stackViewport} style={{ width: cardWidth + 40 }}>
         <motion.div
           className={styles.stackTrack}
@@ -237,7 +280,18 @@ export function TrainerStackView({
               gap={gap}
               reducedMotion={reducedMotion}
               followPending={isFollowPending?.(trainer.id)}
+              selected={selectedId === trainer.id}
+              selectionMode={selectionMode}
+              compact={compact}
               onOpen={() => openTrainer(trainer.id)}
+              onSelect={
+                onSelect
+                  ? () => {
+                      setIndex(trainerIndex);
+                      onSelect(trainer.id);
+                    }
+                  : undefined
+              }
               onToggleFollow={
                 onToggleFollow ? () => onToggleFollow(trainer) : undefined
               }
