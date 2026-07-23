@@ -48,8 +48,6 @@ type Batch = {
   enrollmentMode: "STAFF_ONLY" | "SELF_JOIN";
   active: boolean;
   branchId: string;
-  monthlyPlanId: string | null;
-  fullBatchPlanId: string | null;
   branch?: {
     id: string;
     name: string;
@@ -162,12 +160,7 @@ function EditBatchPage() {
               <EditBatchForm key={batch.id} batch={batch} />
             </TabPanel>
             <TabPanel id="billing">
-              <BatchBilling
-                key={`${batch.id}-${batch.monthlyPlanId}-${batch.fullBatchPlanId}`}
-                batchId={batch.id}
-                monthlyPlanId={batch.monthlyPlanId}
-                fullBatchPlanId={batch.fullBatchPlanId}
-              />
+              <BatchBilling />
             </TabPanel>
             <TabPanel id="chat">
               <BatchChat batchId={batch.id} />

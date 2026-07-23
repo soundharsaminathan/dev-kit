@@ -15,8 +15,8 @@ import { HealthModule } from "./health/health.module";
 import { HomeModule } from "./home/home.module";
 import { JobsModule } from "./jobs/jobs.module";
 import { MediaModule } from "./media/media.module";
+import { MembershipsModule } from "./memberships/memberships.module";
 import { NotificationsModule } from "./notifications/notifications.module";
-import { PlansModule } from "./plans/plans.module";
 import { PrismaModule } from "./prisma/prisma.module";
 import { QueueModule } from "./queues/queue.module";
 import { RedisModule } from "./redis/redis.module";
@@ -43,8 +43,8 @@ import { UsersModule } from "./users/users.module";
     BatchesModule,
     CertificatesModule,
     ContestsModule,
-    PlansModule,
     SubscriptionsModule,
+    MembershipsModule,
     SessionsModule,
     AttendanceModule,
     BookingsModule,

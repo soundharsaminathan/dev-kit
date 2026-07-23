@@ -32,7 +32,6 @@ import {
   Matches,
   Max,
   Min,
-  ValidateIf,
   ValidateNested,
 } from "class-validator";
 import { AuthGuard } from "../auth/auth.guard";
@@ -87,16 +86,6 @@ class CreateBatchDto {
 
   @IsEnum(BatchCategory)
   category!: BatchCategory;
-
-  @IsOptional()
-  @ValidateIf((_, value) => value !== null && value !== undefined)
-  @IsString()
-  monthlyPlanId?: string | null;
-
-  @IsOptional()
-  @ValidateIf((_, value) => value !== null && value !== undefined)
-  @IsString()
-  fullBatchPlanId?: string | null;
 
   @IsString()
   branchId!: string;
@@ -154,16 +143,6 @@ class UpdateBatchDto {
   @IsOptional()
   @IsString()
   name?: string;
-
-  @IsOptional()
-  @ValidateIf((_, value) => value !== null && value !== undefined)
-  @IsString()
-  monthlyPlanId?: string | null;
-
-  @IsOptional()
-  @ValidateIf((_, value) => value !== null && value !== undefined)
-  @IsString()
-  fullBatchPlanId?: string | null;
 
   @IsOptional()
   @IsString()

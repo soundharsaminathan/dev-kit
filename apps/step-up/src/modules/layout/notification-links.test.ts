@@ -41,4 +41,13 @@ describe("resolveNotificationDestination", () => {
       ),
     ).toEqual({ to: "/app/messages/$id", params: { id: "c-1" } });
   });
+
+  it("routes subscription lifecycle notifications", () => {
+    expect(
+      resolveNotificationDestination("SUBSCRIPTION_EXPIRING", {}, "me"),
+    ).toEqual({ to: "/me/subscriptions" });
+    expect(resolveNotificationDestination("RENEWED", {}, "app")).toEqual({
+      to: "/app/subscriptions",
+    });
+  });
 });

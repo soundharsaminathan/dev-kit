@@ -1,5 +1,5 @@
 import { Inject, Injectable } from "@nestjs/common";
-import { AttendanceStatus, SubscriptionStatus } from "@prisma/client";
+import { AttendanceStatus, MembershipStatus } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import { UserCryptoService } from "../users/user-crypto.service";
 
@@ -16,13 +16,10 @@ export class RetentionService {
       include: {
         student: {
           include: {
-            subscriptions: {
-              where: {
-                status: {
-                  in: [SubscriptionStatus.ACTIVE, SubscriptionStatus.EXPIRED],
-                },
+            membershipSeats: {
+              include: {
+                membership: true,
               },
-              orderBy: { periodEnd: "desc" },
             },
             bookings: { where: { session: { batchId } } },
           },
@@ -30,20 +27,40 @@ export class RetentionService {
       },
     });
 
-    const students = enrollments.map((enrollment) => enrollment.student);
+    const students = enrollments.map((enrollment) => {
+      const memberships = enrollment.student.membershipSeats
+        .map((seat) => seat.membership)
+        .filter((membership) =>
+          [
+            MembershipStatus.ACTIVE,
+            MembershipStatus.DUE,
+            MembershipStatus.EXPIRED,
+          ].includes(membership.status),
+        )
+        .sort(
+          (a, b) =>
+            new Date(b.periodEnd).getTime() - new Date(a.periodEnd).getTime(),
+        );
+
+      return {
+        ...enrollment.student,
+        memberships,
+      };
+    });
+
     const renewedCount = students.filter((student) =>
-      student.subscriptions.some(
-        (subscription, index) =>
-          index > 0 && subscription.status === SubscriptionStatus.ACTIVE,
+      student.memberships.some(
+        (membership, index) =>
+          index > 0 && membership.status === MembershipStatus.ACTIVE,
       ),
     ).length;
 
     const atRiskCount = students.filter((student) => {
-      const latest = student.subscriptions[0];
+      const latest = student.memberships[0];
       return (
         !latest ||
-        latest.status === SubscriptionStatus.EXPIRED ||
-        latest.status === SubscriptionStatus.DUE
+        latest.status === MembershipStatus.EXPIRED ||
+        latest.status === MembershipStatus.DUE
       );
     }).length;
 

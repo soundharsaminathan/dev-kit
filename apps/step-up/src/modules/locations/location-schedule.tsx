@@ -72,11 +72,6 @@ function nextOccurrence(schedule: unknown, now: Date): number {
   return Number.POSITIVE_INFINITY;
 }
 
-function planLabel(plan: NonNullable<BranchLandingBatch["monthlyPlan"]>) {
-  const suffix = plan.billingCadence === "FULL_BATCH" ? "" : "/mo";
-  return `${plan.name} · ₹${plan.priceMonthly}${suffix}`;
-}
-
 function BatchMedia({
   name,
   coverImageUrl,
@@ -148,10 +143,6 @@ export function LocationSchedule({
       batch.ratingAvg != null && batch.ratingCount > 0
         ? `${batch.ratingAvg.toFixed(1)}★ (${batch.ratingCount})`
         : null;
-    const plans = [batch.monthlyPlan, batch.fullBatchPlan].filter(
-      (plan): plan is NonNullable<BranchLandingBatch["monthlyPlan"]> =>
-        plan != null,
-    );
 
     return {
       id: batch.id,
@@ -179,16 +170,6 @@ export function LocationSchedule({
               {batch.enrollmentCount} of {batch.capacity} filled
             </p>
           </div>
-          {plans.length > 0 ? (
-            <div className={styles.block}>
-              <p className={styles.blockLabel}>Plans</p>
-              {plans.map((plan) => (
-                <p key={plan.id} className={styles.blockValue}>
-                  {planLabel(plan)}
-                </p>
-              ))}
-            </div>
-          ) : null}
         </div>
       ),
     };

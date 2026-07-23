@@ -69,7 +69,7 @@ export function BatchDetailPreview({
 
   const batch = query.data;
   const trainer = batch.trainers[0]?.trainer;
-  const price = formatPrice(batch.priceMonthly ?? batch.plan?.priceMonthly);
+  const price = formatPrice(batch.price);
   const isFull = batch.remainingSeats === 0;
   const seatsLabel =
     batch.remainingSeats == null

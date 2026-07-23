@@ -21,7 +21,7 @@ export type BatchCardData = {
   ratingCount?: number | null;
   remainingSeats?: number | null;
   capacity?: number | null;
-  priceMonthly?: number | string | null;
+  price?: number | string | null;
   durationMinutes?: number | null;
   scheduleLabel?: string | null;
   trainers?: BatchCardTrainer[];
@@ -50,7 +50,7 @@ export function BatchCard({
   ctaLabel,
   detailTo = "/me/batches/$id",
 }: BatchCardProps) {
-  const price = formatPrice(batch.priceMonthly);
+  const price = formatPrice(batch.price);
   const trainers = batch.trainers ?? [];
 
   return (

@@ -78,7 +78,12 @@ const appLinks: NavLinkItem[] = [
     icon: "map-pin",
     section: "Ops",
   },
-  { to: "/app/plans", label: "Plans", icon: "clipboard", section: "Ops" },
+  {
+    to: "/app/subscriptions",
+    label: "Subscriptions",
+    icon: "clipboard",
+    section: "Ops",
+  },
   {
     to: "/app/calendar",
     label: "Calendar",
@@ -198,8 +203,8 @@ const memberLinks: NavLinkItem[] = [
     section: "Activity",
   },
   {
-    to: "/me/plans",
-    label: "Plans",
+    to: "/me/subscriptions",
+    label: "Subscriptions",
     icon: "clipboard",
     section: "Account",
   },

@@ -20,8 +20,8 @@ import { Route as AppIndexRouteImport } from './routes/app/index'
 import { Route as UsersIdRouteImport } from './routes/users.$id'
 import { Route as TrainersIdRouteImport } from './routes/trainers.$id'
 import { Route as PostsIdRouteImport } from './routes/posts.$id'
+import { Route as MeSubscriptionsRouteImport } from './routes/me/subscriptions'
 import { Route as MeProfileRouteImport } from './routes/me/profile'
-import { Route as MePlansRouteImport } from './routes/me/plans'
 import { Route as MeOnboardingRouteImport } from './routes/me/onboarding'
 import { Route as MeInvoicesRouteImport } from './routes/me/invoices'
 import { Route as MeFeedRouteImport } from './routes/me/feed'
@@ -42,8 +42,8 @@ import { Route as MeTrainersIndexRouteImport } from './routes/me/trainers/index'
 import { Route as MeMessagesIndexRouteImport } from './routes/me/messages/index'
 import { Route as MeLocationsIndexRouteImport } from './routes/me/locations/index'
 import { Route as AppTrainersIndexRouteImport } from './routes/app/trainers/index'
+import { Route as AppSubscriptionsIndexRouteImport } from './routes/app/subscriptions/index'
 import { Route as AppStudentsIndexRouteImport } from './routes/app/students/index'
-import { Route as AppPlansIndexRouteImport } from './routes/app/plans/index'
 import { Route as AppMessagesIndexRouteImport } from './routes/app/messages/index'
 import { Route as AppLocationsIndexRouteImport } from './routes/app/locations/index'
 import { Route as AppContestsIndexRouteImport } from './routes/app/contests/index'
@@ -56,13 +56,13 @@ import { Route as MeMessagesIdRouteImport } from './routes/me/messages/$id'
 import { Route as MeLocationsIdRouteImport } from './routes/me/locations/$id'
 import { Route as MeBatchesIdRouteImport } from './routes/me/batches/$id'
 import { Route as AppTrainersNewRouteImport } from './routes/app/trainers/new'
+import { Route as AppSubscriptionsNewRouteImport } from './routes/app/subscriptions/new'
+import { Route as AppSubscriptionsIdRouteImport } from './routes/app/subscriptions/$id'
 import { Route as AppStudentsNewRouteImport } from './routes/app/students/new'
 import { Route as AppStudentsImportRouteImport } from './routes/app/students/import'
 import { Route as AppStudentsIdRouteImport } from './routes/app/students/$id'
 import { Route as AppProfileFollowRequestsRouteImport } from './routes/app/profile_.follow-requests'
 import { Route as AppProfileEditRouteImport } from './routes/app/profile_.edit'
-import { Route as AppPlansNewRouteImport } from './routes/app/plans/new'
-import { Route as AppPlansIdRouteImport } from './routes/app/plans/$id'
 import { Route as AppMessagesIdRouteImport } from './routes/app/messages/$id'
 import { Route as AppLocationsIdRouteImport } from './routes/app/locations/$id'
 import { Route as AppContestsNewRouteImport } from './routes/app/contests/new'
@@ -132,14 +132,14 @@ const PostsIdRoute = PostsIdRouteImport.update({
   path: '/posts/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MeSubscriptionsRoute = MeSubscriptionsRouteImport.update({
+  id: '/subscriptions',
+  path: '/subscriptions',
+  getParentRoute: () => MeRoute,
+} as any)
 const MeProfileRoute = MeProfileRouteImport.update({
   id: '/profile',
   path: '/profile',
-  getParentRoute: () => MeRoute,
-} as any)
-const MePlansRoute = MePlansRouteImport.update({
-  id: '/plans',
-  path: '/plans',
   getParentRoute: () => MeRoute,
 } as any)
 const MeOnboardingRoute = MeOnboardingRouteImport.update({
@@ -242,14 +242,14 @@ const AppTrainersIndexRoute = AppTrainersIndexRouteImport.update({
   path: '/trainers/',
   getParentRoute: () => AppRoute,
 } as any)
+const AppSubscriptionsIndexRoute = AppSubscriptionsIndexRouteImport.update({
+  id: '/subscriptions/',
+  path: '/subscriptions/',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppStudentsIndexRoute = AppStudentsIndexRouteImport.update({
   id: '/students/',
   path: '/students/',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppPlansIndexRoute = AppPlansIndexRouteImport.update({
-  id: '/plans/',
-  path: '/plans/',
   getParentRoute: () => AppRoute,
 } as any)
 const AppMessagesIndexRoute = AppMessagesIndexRouteImport.update({
@@ -312,6 +312,16 @@ const AppTrainersNewRoute = AppTrainersNewRouteImport.update({
   path: '/trainers/new',
   getParentRoute: () => AppRoute,
 } as any)
+const AppSubscriptionsNewRoute = AppSubscriptionsNewRouteImport.update({
+  id: '/subscriptions/new',
+  path: '/subscriptions/new',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSubscriptionsIdRoute = AppSubscriptionsIdRouteImport.update({
+  id: '/subscriptions/$id',
+  path: '/subscriptions/$id',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppStudentsNewRoute = AppStudentsNewRouteImport.update({
   id: '/students/new',
   path: '/students/new',
@@ -336,16 +346,6 @@ const AppProfileFollowRequestsRoute =
 const AppProfileEditRoute = AppProfileEditRouteImport.update({
   id: '/profile_/edit',
   path: '/profile/edit',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppPlansNewRoute = AppPlansNewRouteImport.update({
-  id: '/plans/new',
-  path: '/plans/new',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppPlansIdRoute = AppPlansIdRouteImport.update({
-  id: '/plans/$id',
-  path: '/plans/$id',
   getParentRoute: () => AppRoute,
 } as any)
 const AppMessagesIdRoute = AppMessagesIdRouteImport.update({
@@ -437,8 +437,8 @@ export interface FileRoutesByFullPath {
   '/me/feed': typeof MeFeedRoute
   '/me/invoices': typeof MeInvoicesRoute
   '/me/onboarding': typeof MeOnboardingRoute
-  '/me/plans': typeof MePlansRoute
   '/me/profile': typeof MeProfileRoute
+  '/me/subscriptions': typeof MeSubscriptionsRoute
   '/posts/$id': typeof PostsIdRoute
   '/trainers/$id': typeof TrainersIdRoute
   '/users/$id': typeof UsersIdRoute
@@ -453,13 +453,13 @@ export interface FileRoutesByFullPath {
   '/app/contests/new': typeof AppContestsNewRoute
   '/app/locations/$id': typeof AppLocationsIdRouteWithChildren
   '/app/messages/$id': typeof AppMessagesIdRoute
-  '/app/plans/$id': typeof AppPlansIdRoute
-  '/app/plans/new': typeof AppPlansNewRoute
   '/app/profile/edit': typeof AppProfileEditRoute
   '/app/profile/follow-requests': typeof AppProfileFollowRequestsRoute
   '/app/students/$id': typeof AppStudentsIdRoute
   '/app/students/import': typeof AppStudentsImportRoute
   '/app/students/new': typeof AppStudentsNewRoute
+  '/app/subscriptions/$id': typeof AppSubscriptionsIdRoute
+  '/app/subscriptions/new': typeof AppSubscriptionsNewRoute
   '/app/trainers/new': typeof AppTrainersNewRoute
   '/me/batches/$id': typeof MeBatchesIdRoute
   '/me/locations/$id': typeof MeLocationsIdRoute
@@ -472,8 +472,8 @@ export interface FileRoutesByFullPath {
   '/app/contests/': typeof AppContestsIndexRoute
   '/app/locations/': typeof AppLocationsIndexRoute
   '/app/messages/': typeof AppMessagesIndexRoute
-  '/app/plans/': typeof AppPlansIndexRoute
   '/app/students/': typeof AppStudentsIndexRoute
+  '/app/subscriptions/': typeof AppSubscriptionsIndexRoute
   '/app/trainers/': typeof AppTrainersIndexRoute
   '/me/locations/': typeof MeLocationsIndexRoute
   '/me/messages/': typeof MeMessagesIndexRoute
@@ -504,8 +504,8 @@ export interface FileRoutesByTo {
   '/me/feed': typeof MeFeedRoute
   '/me/invoices': typeof MeInvoicesRoute
   '/me/onboarding': typeof MeOnboardingRoute
-  '/me/plans': typeof MePlansRoute
   '/me/profile': typeof MeProfileRoute
+  '/me/subscriptions': typeof MeSubscriptionsRoute
   '/posts/$id': typeof PostsIdRoute
   '/trainers/$id': typeof TrainersIdRoute
   '/users/$id': typeof UsersIdRoute
@@ -520,13 +520,13 @@ export interface FileRoutesByTo {
   '/app/contests/new': typeof AppContestsNewRoute
   '/app/locations/$id': typeof AppLocationsIdRouteWithChildren
   '/app/messages/$id': typeof AppMessagesIdRoute
-  '/app/plans/$id': typeof AppPlansIdRoute
-  '/app/plans/new': typeof AppPlansNewRoute
   '/app/profile/edit': typeof AppProfileEditRoute
   '/app/profile/follow-requests': typeof AppProfileFollowRequestsRoute
   '/app/students/$id': typeof AppStudentsIdRoute
   '/app/students/import': typeof AppStudentsImportRoute
   '/app/students/new': typeof AppStudentsNewRoute
+  '/app/subscriptions/$id': typeof AppSubscriptionsIdRoute
+  '/app/subscriptions/new': typeof AppSubscriptionsNewRoute
   '/app/trainers/new': typeof AppTrainersNewRoute
   '/me/batches/$id': typeof MeBatchesIdRoute
   '/me/locations/$id': typeof MeLocationsIdRoute
@@ -539,8 +539,8 @@ export interface FileRoutesByTo {
   '/app/contests': typeof AppContestsIndexRoute
   '/app/locations': typeof AppLocationsIndexRoute
   '/app/messages': typeof AppMessagesIndexRoute
-  '/app/plans': typeof AppPlansIndexRoute
   '/app/students': typeof AppStudentsIndexRoute
+  '/app/subscriptions': typeof AppSubscriptionsIndexRoute
   '/app/trainers': typeof AppTrainersIndexRoute
   '/me/locations': typeof MeLocationsIndexRoute
   '/me/messages': typeof MeMessagesIndexRoute
@@ -574,8 +574,8 @@ export interface FileRoutesById {
   '/me/feed': typeof MeFeedRoute
   '/me/invoices': typeof MeInvoicesRoute
   '/me/onboarding': typeof MeOnboardingRoute
-  '/me/plans': typeof MePlansRoute
   '/me/profile': typeof MeProfileRoute
+  '/me/subscriptions': typeof MeSubscriptionsRoute
   '/posts/$id': typeof PostsIdRoute
   '/trainers/$id': typeof TrainersIdRoute
   '/users/$id': typeof UsersIdRoute
@@ -590,13 +590,13 @@ export interface FileRoutesById {
   '/app/contests/new': typeof AppContestsNewRoute
   '/app/locations/$id': typeof AppLocationsIdRouteWithChildren
   '/app/messages/$id': typeof AppMessagesIdRoute
-  '/app/plans/$id': typeof AppPlansIdRoute
-  '/app/plans/new': typeof AppPlansNewRoute
   '/app/profile_/edit': typeof AppProfileEditRoute
   '/app/profile_/follow-requests': typeof AppProfileFollowRequestsRoute
   '/app/students/$id': typeof AppStudentsIdRoute
   '/app/students/import': typeof AppStudentsImportRoute
   '/app/students/new': typeof AppStudentsNewRoute
+  '/app/subscriptions/$id': typeof AppSubscriptionsIdRoute
+  '/app/subscriptions/new': typeof AppSubscriptionsNewRoute
   '/app/trainers/new': typeof AppTrainersNewRoute
   '/me/batches/$id': typeof MeBatchesIdRoute
   '/me/locations/$id': typeof MeLocationsIdRoute
@@ -609,8 +609,8 @@ export interface FileRoutesById {
   '/app/contests/': typeof AppContestsIndexRoute
   '/app/locations/': typeof AppLocationsIndexRoute
   '/app/messages/': typeof AppMessagesIndexRoute
-  '/app/plans/': typeof AppPlansIndexRoute
   '/app/students/': typeof AppStudentsIndexRoute
+  '/app/subscriptions/': typeof AppSubscriptionsIndexRoute
   '/app/trainers/': typeof AppTrainersIndexRoute
   '/me/locations/': typeof MeLocationsIndexRoute
   '/me/messages/': typeof MeMessagesIndexRoute
@@ -645,8 +645,8 @@ export interface FileRouteTypes {
     | '/me/feed'
     | '/me/invoices'
     | '/me/onboarding'
-    | '/me/plans'
     | '/me/profile'
+    | '/me/subscriptions'
     | '/posts/$id'
     | '/trainers/$id'
     | '/users/$id'
@@ -661,13 +661,13 @@ export interface FileRouteTypes {
     | '/app/contests/new'
     | '/app/locations/$id'
     | '/app/messages/$id'
-    | '/app/plans/$id'
-    | '/app/plans/new'
     | '/app/profile/edit'
     | '/app/profile/follow-requests'
     | '/app/students/$id'
     | '/app/students/import'
     | '/app/students/new'
+    | '/app/subscriptions/$id'
+    | '/app/subscriptions/new'
     | '/app/trainers/new'
     | '/me/batches/$id'
     | '/me/locations/$id'
@@ -680,8 +680,8 @@ export interface FileRouteTypes {
     | '/app/contests/'
     | '/app/locations/'
     | '/app/messages/'
-    | '/app/plans/'
     | '/app/students/'
+    | '/app/subscriptions/'
     | '/app/trainers/'
     | '/me/locations/'
     | '/me/messages/'
@@ -712,8 +712,8 @@ export interface FileRouteTypes {
     | '/me/feed'
     | '/me/invoices'
     | '/me/onboarding'
-    | '/me/plans'
     | '/me/profile'
+    | '/me/subscriptions'
     | '/posts/$id'
     | '/trainers/$id'
     | '/users/$id'
@@ -728,13 +728,13 @@ export interface FileRouteTypes {
     | '/app/contests/new'
     | '/app/locations/$id'
     | '/app/messages/$id'
-    | '/app/plans/$id'
-    | '/app/plans/new'
     | '/app/profile/edit'
     | '/app/profile/follow-requests'
     | '/app/students/$id'
     | '/app/students/import'
     | '/app/students/new'
+    | '/app/subscriptions/$id'
+    | '/app/subscriptions/new'
     | '/app/trainers/new'
     | '/me/batches/$id'
     | '/me/locations/$id'
@@ -747,8 +747,8 @@ export interface FileRouteTypes {
     | '/app/contests'
     | '/app/locations'
     | '/app/messages'
-    | '/app/plans'
     | '/app/students'
+    | '/app/subscriptions'
     | '/app/trainers'
     | '/me/locations'
     | '/me/messages'
@@ -781,8 +781,8 @@ export interface FileRouteTypes {
     | '/me/feed'
     | '/me/invoices'
     | '/me/onboarding'
-    | '/me/plans'
     | '/me/profile'
+    | '/me/subscriptions'
     | '/posts/$id'
     | '/trainers/$id'
     | '/users/$id'
@@ -797,13 +797,13 @@ export interface FileRouteTypes {
     | '/app/contests/new'
     | '/app/locations/$id'
     | '/app/messages/$id'
-    | '/app/plans/$id'
-    | '/app/plans/new'
     | '/app/profile_/edit'
     | '/app/profile_/follow-requests'
     | '/app/students/$id'
     | '/app/students/import'
     | '/app/students/new'
+    | '/app/subscriptions/$id'
+    | '/app/subscriptions/new'
     | '/app/trainers/new'
     | '/me/batches/$id'
     | '/me/locations/$id'
@@ -816,8 +816,8 @@ export interface FileRouteTypes {
     | '/app/contests/'
     | '/app/locations/'
     | '/app/messages/'
-    | '/app/plans/'
     | '/app/students/'
+    | '/app/subscriptions/'
     | '/app/trainers/'
     | '/me/locations/'
     | '/me/messages/'
@@ -919,18 +919,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PostsIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/me/subscriptions': {
+      id: '/me/subscriptions'
+      path: '/subscriptions'
+      fullPath: '/me/subscriptions'
+      preLoaderRoute: typeof MeSubscriptionsRouteImport
+      parentRoute: typeof MeRoute
+    }
     '/me/profile': {
       id: '/me/profile'
       path: '/profile'
       fullPath: '/me/profile'
       preLoaderRoute: typeof MeProfileRouteImport
-      parentRoute: typeof MeRoute
-    }
-    '/me/plans': {
-      id: '/me/plans'
-      path: '/plans'
-      fullPath: '/me/plans'
-      preLoaderRoute: typeof MePlansRouteImport
       parentRoute: typeof MeRoute
     }
     '/me/onboarding': {
@@ -1073,18 +1073,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppTrainersIndexRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/subscriptions/': {
+      id: '/app/subscriptions/'
+      path: '/subscriptions'
+      fullPath: '/app/subscriptions/'
+      preLoaderRoute: typeof AppSubscriptionsIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/students/': {
       id: '/app/students/'
       path: '/students'
       fullPath: '/app/students/'
       preLoaderRoute: typeof AppStudentsIndexRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/plans/': {
-      id: '/app/plans/'
-      path: '/plans'
-      fullPath: '/app/plans/'
-      preLoaderRoute: typeof AppPlansIndexRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/messages/': {
@@ -1171,6 +1171,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppTrainersNewRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/subscriptions/new': {
+      id: '/app/subscriptions/new'
+      path: '/subscriptions/new'
+      fullPath: '/app/subscriptions/new'
+      preLoaderRoute: typeof AppSubscriptionsNewRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/subscriptions/$id': {
+      id: '/app/subscriptions/$id'
+      path: '/subscriptions/$id'
+      fullPath: '/app/subscriptions/$id'
+      preLoaderRoute: typeof AppSubscriptionsIdRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/students/new': {
       id: '/app/students/new'
       path: '/students/new'
@@ -1204,20 +1218,6 @@ declare module '@tanstack/react-router' {
       path: '/profile/edit'
       fullPath: '/app/profile/edit'
       preLoaderRoute: typeof AppProfileEditRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/plans/new': {
-      id: '/app/plans/new'
-      path: '/plans/new'
-      fullPath: '/app/plans/new'
-      preLoaderRoute: typeof AppPlansNewRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/plans/$id': {
-      id: '/app/plans/$id'
-      path: '/plans/$id'
-      fullPath: '/app/plans/$id'
-      preLoaderRoute: typeof AppPlansIdRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/messages/$id': {
@@ -1344,13 +1344,13 @@ interface AppRouteChildren {
   AppContestsNewRoute: typeof AppContestsNewRoute
   AppLocationsIdRoute: typeof AppLocationsIdRouteWithChildren
   AppMessagesIdRoute: typeof AppMessagesIdRoute
-  AppPlansIdRoute: typeof AppPlansIdRoute
-  AppPlansNewRoute: typeof AppPlansNewRoute
   AppProfileEditRoute: typeof AppProfileEditRoute
   AppProfileFollowRequestsRoute: typeof AppProfileFollowRequestsRoute
   AppStudentsIdRoute: typeof AppStudentsIdRoute
   AppStudentsImportRoute: typeof AppStudentsImportRoute
   AppStudentsNewRoute: typeof AppStudentsNewRoute
+  AppSubscriptionsIdRoute: typeof AppSubscriptionsIdRoute
+  AppSubscriptionsNewRoute: typeof AppSubscriptionsNewRoute
   AppTrainersNewRoute: typeof AppTrainersNewRoute
   AppBatchesIndexRoute: typeof AppBatchesIndexRoute
   AppBookingsIndexRoute: typeof AppBookingsIndexRoute
@@ -1358,8 +1358,8 @@ interface AppRouteChildren {
   AppContestsIndexRoute: typeof AppContestsIndexRoute
   AppLocationsIndexRoute: typeof AppLocationsIndexRoute
   AppMessagesIndexRoute: typeof AppMessagesIndexRoute
-  AppPlansIndexRoute: typeof AppPlansIndexRoute
   AppStudentsIndexRoute: typeof AppStudentsIndexRoute
+  AppSubscriptionsIndexRoute: typeof AppSubscriptionsIndexRoute
   AppTrainersIndexRoute: typeof AppTrainersIndexRoute
   AppLocationsIdClassesRoute: typeof AppLocationsIdClassesRoute
   AppSessionsIdAttendanceRoute: typeof AppSessionsIdAttendanceRoute
@@ -1383,13 +1383,13 @@ const AppRouteChildren: AppRouteChildren = {
   AppContestsNewRoute: AppContestsNewRoute,
   AppLocationsIdRoute: AppLocationsIdRouteWithChildren,
   AppMessagesIdRoute: AppMessagesIdRoute,
-  AppPlansIdRoute: AppPlansIdRoute,
-  AppPlansNewRoute: AppPlansNewRoute,
   AppProfileEditRoute: AppProfileEditRoute,
   AppProfileFollowRequestsRoute: AppProfileFollowRequestsRoute,
   AppStudentsIdRoute: AppStudentsIdRoute,
   AppStudentsImportRoute: AppStudentsImportRoute,
   AppStudentsNewRoute: AppStudentsNewRoute,
+  AppSubscriptionsIdRoute: AppSubscriptionsIdRoute,
+  AppSubscriptionsNewRoute: AppSubscriptionsNewRoute,
   AppTrainersNewRoute: AppTrainersNewRoute,
   AppBatchesIndexRoute: AppBatchesIndexRoute,
   AppBookingsIndexRoute: AppBookingsIndexRoute,
@@ -1397,8 +1397,8 @@ const AppRouteChildren: AppRouteChildren = {
   AppContestsIndexRoute: AppContestsIndexRoute,
   AppLocationsIndexRoute: AppLocationsIndexRoute,
   AppMessagesIndexRoute: AppMessagesIndexRoute,
-  AppPlansIndexRoute: AppPlansIndexRoute,
   AppStudentsIndexRoute: AppStudentsIndexRoute,
+  AppSubscriptionsIndexRoute: AppSubscriptionsIndexRoute,
   AppTrainersIndexRoute: AppTrainersIndexRoute,
   AppLocationsIdClassesRoute: AppLocationsIdClassesRoute,
   AppSessionsIdAttendanceRoute: AppSessionsIdAttendanceRoute,
@@ -1416,8 +1416,8 @@ interface MeRouteChildren {
   MeFeedRoute: typeof MeFeedRoute
   MeInvoicesRoute: typeof MeInvoicesRoute
   MeOnboardingRoute: typeof MeOnboardingRoute
-  MePlansRoute: typeof MePlansRoute
   MeProfileRoute: typeof MeProfileRoute
+  MeSubscriptionsRoute: typeof MeSubscriptionsRoute
   MeIndexRoute: typeof MeIndexRoute
   MeBatchesIdRoute: typeof MeBatchesIdRoute
   MeLocationsIdRoute: typeof MeLocationsIdRoute
@@ -1440,8 +1440,8 @@ const MeRouteChildren: MeRouteChildren = {
   MeFeedRoute: MeFeedRoute,
   MeInvoicesRoute: MeInvoicesRoute,
   MeOnboardingRoute: MeOnboardingRoute,
-  MePlansRoute: MePlansRoute,
   MeProfileRoute: MeProfileRoute,
+  MeSubscriptionsRoute: MeSubscriptionsRoute,
   MeIndexRoute: MeIndexRoute,
   MeBatchesIdRoute: MeBatchesIdRoute,
   MeLocationsIdRoute: MeLocationsIdRoute,

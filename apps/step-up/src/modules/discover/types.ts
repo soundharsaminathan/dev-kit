@@ -9,7 +9,7 @@ export type DiscoverBatch = {
   ratingCount?: number | null;
   remainingSeats?: number | null;
   capacity: number;
-  priceMonthly?: number | string | null;
+  price?: number | string | null;
   durationMinutes?: number | null;
   scheduleLabel?: string | null;
   active: boolean;
@@ -25,11 +25,6 @@ export type DiscoverBatch = {
     name: string;
     address?: string | null;
     photos?: string[];
-  } | null;
-  plan?: {
-    id: string;
-    name: string;
-    priceMonthly?: number | string | null;
   } | null;
   danceCategories?: Array<{ name: string; description: string }>;
   sessions?: Array<{
@@ -66,7 +61,7 @@ export function toBatchCardData(batch: DiscoverBatch) {
     ratingCount: batch.ratingCount ?? null,
     remainingSeats: batch.remainingSeats ?? null,
     capacity: batch.capacity,
-    priceMonthly: batch.priceMonthly ?? batch.plan?.priceMonthly ?? null,
+    price: batch.price ?? null,
     durationMinutes: batch.durationMinutes ?? null,
     scheduleLabel: batch.scheduleLabel ?? null,
     trainers: batch.trainers.slice(0, 5).map((entry) => ({

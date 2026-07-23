@@ -51,10 +51,10 @@ export function resolveDeepLink(input: {
       const batchId = stringMeta("batchId");
       return batchId ? `/me/batches/${batchId}` : "/me/attendance";
     }
-    case "PLAN_EXPIRING":
+    case "SUBSCRIPTION_EXPIRING":
     case "RENEWED":
     case "NOT_RENEWED":
-      return "/me/plans";
+      return "/me/subscriptions";
     case "PAYMENT_OVERDUE":
       return "/me/invoices";
     case "CHAT_MESSAGE": {
@@ -69,7 +69,7 @@ export function resolveDeepLink(input: {
 export function isPriorityToastType(type: string) {
   return (
     type === "PAYMENT_OVERDUE" ||
-    type === "PLAN_EXPIRING" ||
+    type === "SUBSCRIPTION_EXPIRING" ||
     type === "NOT_RENEWED" ||
     type === "MISSED_SESSION"
   );

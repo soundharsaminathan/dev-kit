@@ -612,7 +612,7 @@ export function RecommendedRow({
         styleBadge: batch.styleBadge,
         ratingAvg: batch.ratingAvg,
         remainingSeats: batch.remainingSeats,
-        priceMonthly: batch.priceMonthly,
+        price: batch.price,
         scheduleLabel: batch.scheduleLabel,
         trainers: (batch.trainers ?? [])
           .map((row) => row.trainer)

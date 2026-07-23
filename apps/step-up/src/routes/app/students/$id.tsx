@@ -29,17 +29,17 @@ type StudentStudioProfile = {
     active: boolean;
     category: "KIDS" | "ADULTS";
   }>;
-  subscriptions: Array<{
+  memberships: Array<{
     id: string;
     status: "ACTIVE" | "DUE" | "EXPIRED";
     periodStart: string;
     periodEnd: string;
-    creditsRemaining?: number | null;
-    plan: {
+    subscription: {
       id: string;
       name: string;
-      type: string;
-      priceMonthly: number | string;
+      kind: string;
+      billingCadence: "MONTHLY" | "QUARTERLY";
+      price: number | string;
     };
   }>;
   attendance: {
@@ -76,8 +76,8 @@ function formatDate(value: string) {
   });
 }
 
-function subscriptionStatusLabel(
-  status: StudentStudioProfile["subscriptions"][number]["status"],
+function membershipStatusLabel(
+  status: StudentStudioProfile["memberships"][number]["status"],
 ) {
   switch (status) {
     case "ACTIVE":
@@ -246,40 +246,40 @@ function StudentDetailPage() {
 
             <section className={staff.section}>
               <h2 className={staff.sectionTitle}>Subscriptions</h2>
-              {query.data.subscriptions.length === 0 ? (
+              {query.data.memberships.length === 0 ? (
                 <EmptyState
                   title="No subscriptions"
-                  description="Assign a plan to start billing this student."
+                  description="Assign a subscription to start billing this student."
                 />
               ) : (
                 <div className={staff.list}>
-                  {query.data.subscriptions.map((subscription) => (
-                    <div key={subscription.id} className={staff.attentionCard}>
+                  {query.data.memberships.map((membership) => (
+                    <div key={membership.id} className={staff.attentionCard}>
                       <div className={staff.attentionTop}>
                         <span className={staff.attentionTitle}>
-                          {subscription.plan.name}
+                          {membership.subscription.name}
                         </span>
                         <Badge
                           variant={
-                            subscription.status === "ACTIVE"
+                            membership.status === "ACTIVE"
                               ? "success"
-                              : subscription.status === "DUE"
+                              : membership.status === "DUE"
                                 ? "danger"
                                 : "neutral"
                           }
                         >
-                          {subscriptionStatusLabel(subscription.status)}
+                          {membershipStatusLabel(membership.status)}
                         </Badge>
                       </div>
                       <p className={staff.attentionMeta}>
-                        {formatDate(subscription.periodStart)} –{" "}
-                        {formatDate(subscription.periodEnd)}
+                        {formatDate(membership.periodStart)} –{" "}
+                        {formatDate(membership.periodEnd)}
                       </p>
                       <p className={staff.attentionMeta}>
-                        {formatInr(Number(subscription.plan.priceMonthly))}/mo
-                        {subscription.creditsRemaining != null
-                          ? ` · ${subscription.creditsRemaining} credits left`
-                          : ""}
+                        {formatInr(Number(membership.subscription.price))}
+                        {membership.subscription.billingCadence === "QUARTERLY"
+                          ? "/qtr"
+                          : "/mo"}
                       </p>
                     </div>
                   ))}

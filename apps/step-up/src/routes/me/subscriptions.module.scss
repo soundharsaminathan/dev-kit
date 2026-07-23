@@ -1,0 +1,76 @@
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 0.5rem);
+}
+
+.row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 0.5rem);
+  padding: var(--space-4, 1rem);
+  border-radius: var(--radius-2xl, 1.25rem);
+  background: color-mix(in srgb, var(--color-fg) 4%, transparent);
+}
+
+.rowTop {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3, 0.75rem);
+}
+
+.rowTitle {
+  margin: 0;
+  font-size: 1.0625rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.rowType {
+  margin: 0.125rem 0 0;
+  font-size: 0.8125rem;
+  color: color-mix(in srgb, var(--color-fg) 56%, transparent);
+}
+
+.rowMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2, 0.5rem) var(--space-4, 1rem);
+  font-size: 0.875rem;
+  color: color-mix(in srgb, var(--color-fg) 68%, transparent);
+}
+
+.price {
+  font-weight: 600;
+  color: var(--color-fg);
+}
+
+.sectionLabel {
+  margin: var(--space-2, 0.5rem) 0 0;
+  padding-inline: var(--space-1, 0.25rem);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--color-fg) 48%, transparent);
+}
+
+.sheetBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4, 1rem);
+}
+
+.sheetDesc {
+  margin: 0;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  color: color-mix(in srgb, var(--color-fg) 72%, transparent);
+}
+
+.seatBlock {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 0.5rem);
+}

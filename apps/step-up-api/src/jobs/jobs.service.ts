@@ -1,8 +1,8 @@
 import { Inject, Injectable } from "@nestjs/common";
 import {
   InvoiceStatus,
+  MembershipStatus,
   NotificationType,
-  SubscriptionStatus,
 } from "@prisma/client";
 import { NotificationsService } from "../notifications/notifications.service";
 import { PrismaService } from "../prisma/prisma.service";
@@ -23,78 +23,83 @@ export class JobsService {
     const now = new Date();
     const today = dayKey(now);
 
-    const dueUpdated = await this.prisma.subscription.updateMany({
+    const dueUpdated = await this.prisma.membership.updateMany({
       where: {
-        status: SubscriptionStatus.ACTIVE,
+        status: MembershipStatus.ACTIVE,
         periodEnd: { lt: now },
       },
-      data: { status: SubscriptionStatus.DUE },
+      data: { status: MembershipStatus.DUE },
     });
 
     const expireCutoff = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000);
-    const subscriptionsToExpire = await this.prisma.subscription.findMany({
+    const membershipsToExpire = await this.prisma.membership.findMany({
       where: {
-        status: SubscriptionStatus.DUE,
+        status: MembershipStatus.DUE,
         periodEnd: { lt: expireCutoff },
       },
-      include: { plan: true },
+      include: { subscription: true },
     });
 
-    for (const subscription of subscriptionsToExpire) {
+    for (const membership of membershipsToExpire) {
       await this.notifications.create({
-        userId: subscription.studentId,
+        userId: membership.purchaserUserId,
         type: NotificationType.NOT_RENEWED,
-        planName: subscription.plan.name,
-        dedupeKey: `NOT_RENEWED:${subscription.id}`,
-        meta: { subscriptionId: subscription.id, planId: subscription.planId },
-        entityType: "subscription",
-        entityId: subscription.id,
+        planName: membership.subscription.name,
+        dedupeKey: `NOT_RENEWED:${membership.id}`,
+        meta: {
+          membershipId: membership.id,
+          subscriptionId: membership.subscriptionId,
+        },
+        entityType: "membership",
+        entityId: membership.id,
       });
     }
 
-    const expiredUpdated = await this.prisma.subscription.updateMany({
+    const expiredUpdated = await this.prisma.membership.updateMany({
       where: {
         id: {
-          in: subscriptionsToExpire.map((subscription) => subscription.id),
+          in: membershipsToExpire.map((membership) => membership.id),
         },
       },
       data: {
-        status: SubscriptionStatus.EXPIRED,
-        creditsRemaining: 0,
+        status: MembershipStatus.EXPIRED,
       },
     });
 
     const overdueInvoices = await this.prisma.invoice.updateMany({
       where: {
         status: InvoiceStatus.PENDING,
-        subscription: {
-          status: { in: [SubscriptionStatus.DUE, SubscriptionStatus.EXPIRED] },
+        membership: {
+          status: { in: [MembershipStatus.DUE, MembershipStatus.EXPIRED] },
         },
       },
       data: { status: InvoiceStatus.OVERDUE },
     });
 
-    const expiringSoon = await this.prisma.subscription.findMany({
+    const expiringSoon = await this.prisma.membership.findMany({
       where: {
-        status: SubscriptionStatus.ACTIVE,
+        status: MembershipStatus.ACTIVE,
         periodEnd: {
           lte: new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000),
           gte: now,
         },
       },
-      include: { student: true, plan: true },
+      include: { subscription: true },
     });
 
-    for (const subscription of expiringSoon) {
+    for (const membership of expiringSoon) {
       await this.notifications.create({
-        userId: subscription.studentId,
-        type: NotificationType.PLAN_EXPIRING,
-        planName: subscription.plan.name,
-        periodEnd: subscription.periodEnd.toISOString().slice(0, 10),
-        dedupeKey: `PLAN_EXPIRING:${subscription.id}:${today}`,
-        meta: { subscriptionId: subscription.id },
-        entityType: "subscription",
-        entityId: subscription.id,
+        userId: membership.purchaserUserId,
+        type: NotificationType.SUBSCRIPTION_EXPIRING,
+        planName: membership.subscription.name,
+        periodEnd: membership.periodEnd.toISOString().slice(0, 10),
+        dedupeKey: `SUBSCRIPTION_EXPIRING:${membership.id}:${today}`,
+        meta: {
+          membershipId: membership.id,
+          subscriptionId: membership.subscriptionId,
+        },
+        entityType: "membership",
+        entityId: membership.id,
       });
     }
 
@@ -115,9 +120,9 @@ export class JobsService {
     }
 
     return {
-      dueSubscriptions: dueUpdated.count,
-      expiredSubscriptions: expiredUpdated.count,
-      notRenewedNotifications: subscriptionsToExpire.length,
+      dueMemberships: dueUpdated.count,
+      expiredMemberships: expiredUpdated.count,
+      notRenewedNotifications: membershipsToExpire.length,
       overdueInvoices: overdueInvoices.count,
       expiringNotifications: expiringSoon.length,
       overdueNotifications: overdueStudents.length,

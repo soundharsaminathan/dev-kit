@@ -11,10 +11,10 @@ export type HomeNextClass = {
 export type HomeMembership = {
   id: string;
   status: string;
-  creditsRemaining: number | null;
   periodEnd: string;
-  planName: string | null;
-  priceMonthly: number | string | null;
+  subscriptionName: string | null;
+  price: number | string | null;
+  billingCadence: "MONTHLY" | "QUARTERLY" | string | null;
   needsRenewal: boolean;
 };
 
@@ -64,7 +64,7 @@ export type HomeRecommendation = {
   ratingCount?: number | null;
   remainingSeats?: number | null;
   capacity?: number | null;
-  priceMonthly?: number | string | null;
+  price?: number | string | null;
   durationMinutes?: number | null;
   scheduleLabel?: string | null;
   trainers?: Array<{

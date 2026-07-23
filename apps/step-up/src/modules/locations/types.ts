@@ -84,18 +84,19 @@ export type BranchLandingBatch = {
   ratingCount: number;
   capacity: number;
   enrollmentCount: number;
-  monthlyPlan: {
-    id: string;
-    name: string;
-    priceMonthly: number | string;
-    billingCadence: string;
-  } | null;
-  fullBatchPlan: {
-    id: string;
-    name: string;
-    priceMonthly: number | string;
-    billingCadence: string;
-  } | null;
+};
+
+export type BranchLandingSubscription = {
+  id: string;
+  name: string;
+  kind: string;
+  individualAudience?: string | null;
+  familyPack?: string | null;
+  billingCadence: string;
+  adultSeats: number;
+  kidSeats: number;
+  price: number | string;
+  active: boolean;
 };
 
 export type BranchLandingTrainer = {
@@ -110,6 +111,7 @@ export type BranchLanding = StudioBranch & {
   ratingAvg: number | null;
   ratingCount: number;
   batches: BranchLandingBatch[];
+  subscriptions?: BranchLandingSubscription[];
   trainers: BranchLandingTrainer[];
 };
 

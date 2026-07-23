@@ -11,8 +11,8 @@ import {
   type User,
   UserRole,
 } from "@prisma/client";
+import { computePlatformFee } from "../memberships/membership-helpers";
 import { PrismaService } from "../prisma/prisma.service";
-import { computePlatformFee } from "../subscriptions/subscription-helpers";
 import {
   type DecryptedUser,
   UserCryptoService,
@@ -67,7 +67,7 @@ export class BillingService {
   async listByStudio(studioId: string) {
     const invoices = await this.prisma.invoice.findMany({
       where: { studioId },
-      include: { student: true, subscription: true },
+      include: { student: true, membership: true },
       orderBy: { id: "desc" },
     });
 
@@ -364,14 +364,14 @@ export class BillingService {
     studentId: string;
     studioId: string;
     amount: number;
-    subscriptionId?: string;
+    membershipId?: string;
     platformFeePercent: number;
   }) {
     return this.prisma.invoice.create({
       data: {
         studentId: data.studentId,
         studioId: data.studioId,
-        subscriptionId: data.subscriptionId,
+        membershipId: data.membershipId,
         amount: data.amount,
         status: InvoiceStatus.PENDING,
         platformFeePercent: data.platformFeePercent,
