@@ -1,11 +1,11 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@dev-ui/components/avatar";
 import { FileTrigger } from "@dev-ui/components/file-trigger";
 import { Icon } from "@dev-ui/icons";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { updateProfile } from "firebase/auth";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useApi } from "@/lib/api-context";
 import { useAuth } from "@/lib/auth";
 import {
@@ -13,22 +13,22 @@ import {
   type ExperienceLevel,
   type Gender,
   isAuthBypassEnabled,
+  STUDIO_ID,
 } from "@/lib/constants";
 import { getFirebaseAuth } from "@/lib/firebase";
+import type { DiscoverBatch } from "@/modules/discover/types";
 import { uploadSocialPhoto } from "@/modules/social/upload";
+import type { StudioTrainer } from "@/modules/trainers/types";
 import { FormInput } from "@/modules/ui/form-input";
 import { ImageCropSheet } from "@/modules/ui/image-crop-sheet";
-import { SuccessState } from "@/modules/ui/states";
 import { TouchButton } from "@/modules/ui/touch-button";
 import styles from "./onboarding.module.scss";
 import {
   AGE_RANGES,
   EXPERIENCE_LEVELS,
   GENDERS,
-  GOAL_PRESETS,
   ONBOARDING_STEPS,
   type OnboardingStep,
-  SCHEDULE_VIBES,
   STEP_META,
 } from "./options";
 
@@ -36,10 +36,33 @@ type ProfilePatch = {
   name?: string;
   photoUrl?: string;
   experienceLevel?: ExperienceLevel;
-  scheduleVibe?: string[];
   gender?: Gender;
   ageRange?: AgeRange;
   onboardingCompletedAt?: string | null;
+};
+
+type BatchSession = {
+  id: string;
+  startsAt: string;
+  endsAt: string;
+  status?: string;
+};
+
+type TrialSlot = {
+  sessionId: string;
+  batchId: string;
+  batchName: string;
+  styleBadge: string | null;
+  startsAt: string;
+  endsAt: string;
+};
+
+type CompleteOnboardingBody = {
+  batchId?: string;
+  sessionId?: string;
+  trainerId?: string;
+  startsAt?: string;
+  endsAt?: string;
 };
 
 const RING_SIZE = 68;
@@ -53,6 +76,18 @@ function initials(name: string) {
     .slice(0, 2)
     .map((part) => part[0]?.toUpperCase() ?? "")
     .join("");
+}
+
+function formatSlotWhen(startsAt: string) {
+  const start = new Date(startsAt);
+  if (Number.isNaN(start.getTime())) return startsAt;
+  return new Intl.DateTimeFormat(undefined, {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(start);
 }
 
 function CircularNext({
@@ -122,17 +157,69 @@ export function OnboardingWizard() {
   const [pendingCrop, setPendingCrop] = useState<File | null>(null);
   const [experienceLevel, setExperienceLevel] =
     useState<ExperienceLevel | null>(user?.experienceLevel ?? null);
-  const [scheduleVibe, setScheduleVibe] = useState<string[]>(
-    user?.scheduleVibe ?? [],
-  );
   const [gender, setGender] = useState<Gender | null>(user?.gender ?? null);
   const [ageRange, setAgeRange] = useState<AgeRange | null>(
     user?.ageRange ?? null,
   );
-  const [goalTarget, setGoalTarget] = useState(8);
+  const [selectedSlot, setSelectedSlot] = useState<TrialSlot | null>(null);
+  const [selectedTrainerId, setSelectedTrainerId] = useState<string | null>(
+    null,
+  );
   const [error, setError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [completed, setCompleted] = useState(false);
+
+  const slotsQuery = useQuery({
+    queryKey: ["onboarding", "trial-slots", STUDIO_ID],
+    queryFn: async (): Promise<TrialSlot[]> => {
+      const batches = await api.get<DiscoverBatch[]>(
+        `/batches/studio/${STUDIO_ID}?activeOnly=true`,
+      );
+      const now = Date.now();
+      const horizon = now + 14 * 24 * 60 * 60 * 1000;
+      const nested = await Promise.all(
+        batches.map(async (batch) => {
+          const sessions = await api.get<BatchSession[]>(
+            `/sessions/batch/${batch.id}`,
+          );
+          return sessions
+            .filter((session) => {
+              if (session.status === "CANCELLED") return false;
+              const start = new Date(session.startsAt).getTime();
+              return start >= now && start <= horizon;
+            })
+            .map((session) => ({
+              sessionId: session.id,
+              batchId: batch.id,
+              batchName: batch.name,
+              styleBadge: batch.styleBadge ?? null,
+              startsAt: session.startsAt,
+              endsAt: session.endsAt,
+            }));
+        }),
+      );
+      return nested
+        .flat()
+        .sort(
+          (a, b) =>
+            new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime(),
+        );
+    },
+    enabled: step === "trialTime" || step === "trainer",
+  });
+
+  const trainersQuery = useQuery({
+    queryKey: ["onboarding", "trainers", STUDIO_ID],
+    queryFn: () =>
+      api.get<StudioTrainer[]>(`/users/studio/${STUDIO_ID}/trainers`),
+    enabled: step === "trainer",
+  });
+
+  const trialSlots = useMemo(() => slotsQuery.data ?? [], [slotsQuery.data]);
+  const trainers = useMemo(
+    () => trainersQuery.data ?? [],
+    [trainersQuery.data],
+  );
 
   const savePrefs = useMutation({
     mutationFn: (body: ProfilePatch) =>
@@ -144,7 +231,6 @@ export function OnboardingWizard() {
         ...(saved.experienceLevel !== undefined
           ? { experienceLevel: saved.experienceLevel }
           : {}),
-        ...(saved.scheduleVibe ? { scheduleVibe: saved.scheduleVibe } : {}),
         ...(saved.gender !== undefined ? { gender: saved.gender } : {}),
         ...(saved.ageRange !== undefined ? { ageRange: saved.ageRange } : {}),
       });
@@ -152,10 +238,8 @@ export function OnboardingWizard() {
   });
 
   const completeMutation = useMutation({
-    mutationFn: async () => {
-      await api.put("/goals/me", { target: goalTarget });
-      return api.post<ProfilePatch>("/users/me/onboarding/complete");
-    },
+    mutationFn: (body: CompleteOnboardingBody = {}) =>
+      api.post<ProfilePatch>("/users/me/onboarding/complete", body),
     onSuccess: (saved) => {
       updateUser({
         onboardingCompletedAt: saved.onboardingCompletedAt
@@ -201,22 +285,32 @@ export function OnboardingWizard() {
   function goNext() {
     setError(null);
     const next = ONBOARDING_STEPS[stepIndex + 1];
-    if (!next) return;
 
     try {
       if (step === "profile") {
+        if (!next) return;
         const trimmed = name.trim();
         if (!trimmed) {
           throw new Error("Add your name to continue");
         }
+        if (!gender) {
+          throw new Error("Choose Male or Female to continue");
+        }
+        if (!ageRange) {
+          throw new Error("Choose your age range");
+        }
         updateUser({
           name: trimmed,
+          gender,
+          ageRange,
           ...(photoKey ? { photoUrl: photoKey } : {}),
         });
         advanceTo(next);
         persistInBackground(
           {
             name: trimmed,
+            gender,
+            ageRange,
             ...(photoKey ? { photoUrl: photoKey } : {}),
           },
           stepIndex,
@@ -226,6 +320,7 @@ export function OnboardingWizard() {
       }
 
       if (step === "level") {
+        if (!next) return;
         if (!experienceLevel) {
           throw new Error("Choose your experience level");
         }
@@ -235,52 +330,53 @@ export function OnboardingWizard() {
         return;
       }
 
-      if (step === "vibe") {
-        if (scheduleVibe.length < 1) {
-          throw new Error("Pick at least one schedule vibe");
-        }
-        updateUser({ scheduleVibe });
+      if (step === "trialTime") {
+        if (!next) return;
         advanceTo(next);
-        persistInBackground({ scheduleVibe }, stepIndex);
         return;
       }
 
-      if (step === "gender") {
-        if (!gender) {
-          throw new Error("Choose Male or Female to continue");
-        }
-        updateUser({ gender });
-        advanceTo(next);
-        persistInBackground({ gender }, stepIndex);
-        return;
-      }
-
-      if (step === "age") {
-        if (!ageRange) {
-          throw new Error("Choose your age range");
-        }
-        updateUser({ ageRange });
-        advanceTo(next);
-        persistInBackground({ ageRange }, stepIndex);
+      if (step === "trainer") {
+        void finishAndGo();
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not continue");
     }
   }
 
-  async function finishAndGo(intent: "trial" | "discover") {
+  async function finishAndGo(options?: {
+    clearSlot?: boolean;
+    clearTrainer?: boolean;
+  }) {
     setError(null);
+    const slot = options?.clearSlot ? null : selectedSlot;
+    const trainerId = options?.clearTrainer ? null : selectedTrainerId;
+    if (options?.clearSlot) setSelectedSlot(null);
+    if (options?.clearTrainer) setSelectedTrainerId(null);
     try {
       if (!completed) {
-        await completeMutation.mutateAsync();
+        const body: CompleteOnboardingBody = {};
+        if (slot) {
+          body.sessionId = slot.sessionId;
+          body.batchId = slot.batchId;
+          body.startsAt = slot.startsAt;
+          body.endsAt = slot.endsAt;
+        }
+        if (trainerId) {
+          body.trainerId = trainerId;
+        }
+        await completeMutation.mutateAsync(body);
       }
-      void navigate({
-        to: "/me/book",
-        search: {
-          ...(intent === "trial" ? { intent: "trial" } : {}),
-        },
-        replace: true,
-      });
+      const booked = Boolean(slot || trainerId);
+      if (booked) {
+        void navigate({ to: "/me", replace: true });
+      } else {
+        void navigate({
+          to: "/me/book",
+          search: { intent: "trial" },
+          replace: true,
+        });
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not finish setup");
     }
@@ -304,16 +400,9 @@ export function OnboardingWizard() {
     }
   }
 
-  function toggleVibe(id: string) {
-    setScheduleVibe((current) =>
-      current.includes(id)
-        ? current.filter((entry) => entry !== id)
-        : [...current, id],
-    );
-  }
-
   const finishing = completeMutation.isPending;
-  const isLast = step === "celebrate";
+  const isOptionalStep = step === "trialTime" || step === "trainer";
+  const isLast = step === "trainer";
   const ringProgress = (stepIndex + 1) / ONBOARDING_STEPS.length;
 
   return (
@@ -361,7 +450,7 @@ export function OnboardingWizard() {
             }}
           >
             {step === "profile" ? (
-              <>
+              <div className={styles.profileScroll}>
                 <div className={styles.avatarRow}>
                   <Avatar size="lg" className={styles.avatar}>
                     {photoPreview ? (
@@ -388,7 +477,43 @@ export function OnboardingWizard() {
                   onChange={setName}
                   autoComplete="name"
                 />
-              </>
+                <div className={styles.profileSection}>
+                  <p className={styles.sectionLabel}>Gender</p>
+                  <div className={styles.chipRow}>
+                    {GENDERS.map((option) => (
+                      <button
+                        key={option.id}
+                        type="button"
+                        className={styles.styleChip}
+                        data-selected={
+                          gender === option.id ? "true" : undefined
+                        }
+                        onClick={() => setGender(option.id)}
+                      >
+                        {option.title}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className={styles.profileSection}>
+                  <p className={styles.sectionLabel}>Age range</p>
+                  <div className={styles.chipRow}>
+                    {AGE_RANGES.map((option) => (
+                      <button
+                        key={option.id}
+                        type="button"
+                        className={styles.styleChip}
+                        data-selected={
+                          ageRange === option.id ? "true" : undefined
+                        }
+                        onClick={() => setAgeRange(option.id)}
+                      >
+                        {option.label} · {option.title}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
             ) : null}
 
             {step === "level" ? (
@@ -412,108 +537,97 @@ export function OnboardingWizard() {
               </div>
             ) : null}
 
-            {step === "vibe" ? (
+            {step === "trialTime" ? (
               <div className={styles.cardGrid}>
-                {SCHEDULE_VIBES.map((vibe) => (
+                {slotsQuery.isLoading ? (
+                  <p className={styles.choiceDescription}>Loading times…</p>
+                ) : null}
+                {slotsQuery.isError ? (
+                  <p className={styles.error}>Could not load class times.</p>
+                ) : null}
+                {!slotsQuery.isLoading &&
+                !slotsQuery.isError &&
+                trialSlots.length === 0 ? (
+                  <p className={styles.choiceDescription}>
+                    No upcoming classes yet — skip and explore later.
+                  </p>
+                ) : null}
+                {trialSlots.map((slot) => (
                   <button
-                    key={vibe.id}
+                    key={slot.sessionId}
                     type="button"
                     className={styles.choiceCard}
                     data-selected={
-                      scheduleVibe.includes(vibe.id) ? "true" : undefined
+                      selectedSlot?.sessionId === slot.sessionId
+                        ? "true"
+                        : undefined
                     }
-                    onClick={() => toggleVibe(vibe.id)}
-                  >
-                    <p className={styles.choiceTitle}>{vibe.label}</p>
-                    <p className={styles.choiceDescription}>
-                      {vibe.description}
-                    </p>
-                  </button>
-                ))}
-              </div>
-            ) : null}
-
-            {step === "gender" ? (
-              <div className={styles.cardGrid}>
-                {GENDERS.map((option) => (
-                  <button
-                    key={option.id}
-                    type="button"
-                    className={styles.choiceCard}
-                    data-selected={gender === option.id ? "true" : undefined}
-                    onClick={() => setGender(option.id)}
-                  >
-                    <p className={styles.choiceTitle}>{option.title}</p>
-                    <p className={styles.choiceDescription}>
-                      {option.description}
-                    </p>
-                  </button>
-                ))}
-              </div>
-            ) : null}
-
-            {step === "age" ? (
-              <div className={styles.cardGrid}>
-                {AGE_RANGES.map((option) => (
-                  <button
-                    key={option.id}
-                    type="button"
-                    className={styles.choiceCard}
-                    data-selected={ageRange === option.id ? "true" : undefined}
-                    onClick={() => setAgeRange(option.id)}
+                    onClick={() =>
+                      setSelectedSlot((current) =>
+                        current?.sessionId === slot.sessionId ? null : slot,
+                      )
+                    }
                   >
                     <p className={styles.choiceTitle}>
-                      {option.label} · {option.title}
+                      {formatSlotWhen(slot.startsAt)}
                     </p>
                     <p className={styles.choiceDescription}>
-                      {option.description}
+                      {slot.batchName}
+                      {slot.styleBadge ? ` · ${slot.styleBadge}` : ""}
                     </p>
                   </button>
                 ))}
               </div>
             ) : null}
 
-            {step === "celebrate" ? (
-              <div className={styles.celebrate}>
-                <SuccessState
-                  title="Your floor is ready"
-                  className={styles.celebrateSuccess}
-                  titleClassName={styles.celebrateTitle}
-                />
-                <p className={styles.choiceDescription}>
-                  How many sessions do you want this month?
-                </p>
-                <div className={styles.goalGrid}>
-                  {GOAL_PRESETS.map((value) => (
-                    <button
-                      key={value}
-                      type="button"
-                      className={styles.goalChip}
-                      data-selected={goalTarget === value ? "true" : undefined}
-                      onClick={() => setGoalTarget(value)}
-                    >
-                      {value}
-                    </button>
-                  ))}
-                </div>
-                <div className={styles.exitActions}>
-                  <TouchButton
-                    variant="primary"
-                    fullWidth
-                    isPending={finishing}
-                    onClick={() => void finishAndGo("trial")}
+            {step === "trainer" ? (
+              <div className={styles.cardGrid}>
+                {trainersQuery.isLoading ? (
+                  <p className={styles.choiceDescription}>Loading trainers…</p>
+                ) : null}
+                {trainersQuery.isError ? (
+                  <p className={styles.error}>Could not load trainers.</p>
+                ) : null}
+                {!trainersQuery.isLoading &&
+                !trainersQuery.isError &&
+                trainers.length === 0 ? (
+                  <p className={styles.choiceDescription}>
+                    No trainers listed yet — skip to finish.
+                  </p>
+                ) : null}
+                {trainers.map((trainer) => (
+                  <button
+                    key={trainer.id}
+                    type="button"
+                    className={styles.trainerCard}
+                    data-selected={
+                      selectedTrainerId === trainer.id ? "true" : undefined
+                    }
+                    onClick={() =>
+                      setSelectedTrainerId((current) =>
+                        current === trainer.id ? null : trainer.id,
+                      )
+                    }
                   >
-                    Book a free trial
-                  </TouchButton>
-                  <TouchButton
-                    variant="default"
-                    fullWidth
-                    isPending={finishing}
-                    onClick={() => void finishAndGo("discover")}
-                  >
-                    Explore classes
-                  </TouchButton>
-                </div>
+                    <Avatar size="md" className={styles.trainerAvatar}>
+                      {trainer.photoUrl ? (
+                        <AvatarImage
+                          src={trainer.photoUrl}
+                          alt={trainer.name}
+                        />
+                      ) : null}
+                      <AvatarFallback>
+                        {initials(trainer.name || "T")}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className={styles.trainerCopy}>
+                      <p className={styles.choiceTitle}>{trainer.name}</p>
+                      <p className={styles.choiceDescription}>
+                        {trainer.styles.slice(0, 3).join(" · ") || "Trainer"}
+                      </p>
+                    </div>
+                  </button>
+                ))}
               </div>
             ) : null}
           </motion.div>
@@ -522,28 +636,46 @@ export function OnboardingWizard() {
         {error ? <p className={styles.error}>{error}</p> : null}
       </div>
 
-      {!isLast ? (
-        <div className={styles.footer}>
-          <div className={styles.footerBack}>
-            {stepIndex > 0 ? (
-              <TouchButton
-                variant="quiet"
-                onClick={() =>
-                  setStepIndex((current) => Math.max(0, current - 1))
-                }
-              >
-                Back
-              </TouchButton>
-            ) : null}
-          </div>
-          <CircularNext
-            progress={ringProgress}
-            disabled={uploading}
-            onPress={goNext}
-          />
-          <span className={styles.footerSpacer} aria-hidden />
+      <div className={styles.footer}>
+        <div className={styles.footerBack}>
+          {stepIndex > 0 ? (
+            <TouchButton
+              variant="quiet"
+              onClick={() =>
+                setStepIndex((current) => Math.max(0, current - 1))
+              }
+            >
+              Back
+            </TouchButton>
+          ) : null}
         </div>
-      ) : null}
+        <CircularNext
+          progress={ringProgress}
+          disabled={uploading || finishing}
+          onPress={goNext}
+        />
+        <div className={styles.footerSkip}>
+          {isOptionalStep ? (
+            <TouchButton
+              variant="quiet"
+              isPending={finishing && isLast}
+              onClick={() => {
+                if (isLast) {
+                  void finishAndGo({ clearTrainer: true });
+                  return;
+                }
+                setSelectedSlot(null);
+                const next = ONBOARDING_STEPS[stepIndex + 1];
+                if (next) advanceTo(next);
+              }}
+            >
+              Skip
+            </TouchButton>
+          ) : (
+            <span className={styles.footerSpacer} aria-hidden />
+          )}
+        </div>
+      </div>
 
       <ImageCropSheet
         file={pendingCrop}

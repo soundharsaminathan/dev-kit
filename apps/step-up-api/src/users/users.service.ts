@@ -9,10 +9,13 @@ import {
 import {
   type AgeRange,
   AttendanceStatus,
+  BookingStatus,
+  BookingType,
   type ExperienceLevel,
   FamilyMemberKind,
   type Gender,
   ProfileVisibility,
+  SessionStatus,
   UserRole,
 } from "@prisma/client";
 import { MediaService } from "../media/media.service";
@@ -462,7 +465,16 @@ export class UsersService {
     return this.presentUser(updated);
   }
 
-  async completeOnboarding(id: string) {
+  async completeOnboarding(
+    id: string,
+    trial?: {
+      batchId?: string;
+      sessionId?: string;
+      trainerId?: string;
+      startsAt?: string;
+      endsAt?: string;
+    },
+  ) {
     const existing = await this.prisma.user.findUniqueOrThrow({
       where: { id },
     });
@@ -474,9 +486,6 @@ export class UsersService {
     }
     if (!current.experienceLevel) {
       missing.push("experienceLevel");
-    }
-    if ((current.scheduleVibe ?? []).length < 1) {
-      missing.push("scheduleVibe");
     }
     if (!current.gender) {
       missing.push("gender");
@@ -495,12 +504,129 @@ export class UsersService {
       return this.presentUser(existing);
     }
 
+    const hasTrial =
+      Boolean(trial?.batchId) ||
+      Boolean(trial?.sessionId) ||
+      Boolean(trial?.trainerId) ||
+      Boolean(trial?.startsAt && trial?.endsAt);
+
+    if (hasTrial && current.studioId) {
+      await this.createOnboardingTrial(current.studioId, id, trial ?? {});
+    }
+
     const updated = await this.prisma.user.update({
       where: { id },
       data: { onboardingCompletedAt: new Date() },
     });
 
     return this.presentUser(updated);
+  }
+
+  private async createOnboardingTrial(
+    studioId: string,
+    studentId: string,
+    trial: {
+      batchId?: string;
+      sessionId?: string;
+      trainerId?: string;
+      startsAt?: string;
+      endsAt?: string;
+    },
+  ) {
+    let batchId = trial.batchId;
+    const sessionId = trial.sessionId;
+    let startsAt = trial.startsAt;
+    let endsAt = trial.endsAt;
+    const trainerId = trial.trainerId;
+
+    if (sessionId) {
+      const session = await this.prisma.session.findUnique({
+        where: { id: sessionId },
+        include: { batch: { select: { id: true, studioId: true } } },
+      });
+      if (
+        !session ||
+        session.status === SessionStatus.CANCELLED ||
+        session.batch.studioId !== studioId
+      ) {
+        throw new BadRequestException("Select a class time from this studio");
+      }
+      batchId = session.batchId;
+      startsAt = session.startsAt.toISOString();
+      endsAt = session.endsAt.toISOString();
+    }
+
+    if (batchId) {
+      const batch = await this.prisma.batch.findUnique({
+        where: { id: batchId },
+        include: { _count: { select: { enrollments: true } } },
+      });
+      if (!batch || batch.studioId !== studioId) {
+        throw new BadRequestException("Select a batch from this studio");
+      }
+      if (batch._count.enrollments >= batch.capacity) {
+        throw new BadRequestException("Batch is at capacity");
+      }
+
+      const existingOpen = await this.prisma.booking.findFirst({
+        where: {
+          batchId,
+          studentId,
+          status: {
+            in: [BookingStatus.PENDING, BookingStatus.CONFIRMED],
+          },
+        },
+        select: { id: true, status: true },
+      });
+      if (existingOpen) {
+        throw new ConflictException(
+          existingOpen.status === BookingStatus.PENDING
+            ? "You already have a booking request waiting for studio approval"
+            : "You already have a confirmed booking for this class",
+        );
+      }
+    }
+
+    if (trainerId) {
+      const trainer = await this.prisma.user.findFirst({
+        where: {
+          id: trainerId,
+          studioId,
+          role: UserRole.TRAINER,
+        },
+        select: { id: true },
+      });
+      if (!trainer) {
+        throw new BadRequestException("Select a trainer from this studio");
+      }
+    }
+
+    if (startsAt && endsAt) {
+      const start = new Date(startsAt);
+      const end = new Date(endsAt);
+      if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+        throw new BadRequestException("Invalid startsAt or endsAt");
+      }
+      if (end <= start) {
+        throw new BadRequestException("endsAt must be after startsAt");
+      }
+    } else if (startsAt || endsAt) {
+      throw new BadRequestException("Both startsAt and endsAt are required");
+    }
+
+    await this.prisma.booking.create({
+      data: {
+        studioId,
+        studentId,
+        type: BookingType.TRIAL,
+        batchId,
+        sessionId,
+        trainerId,
+        startsAt: startsAt ? new Date(startsAt) : undefined,
+        endsAt: endsAt ? new Date(endsAt) : undefined,
+        status: BookingStatus.PENDING,
+      },
+    });
   }
 
   async getStudentFunnel(

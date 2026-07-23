@@ -216,6 +216,80 @@
   height: 5.5rem;
 }
 
+.profileScroll {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  flex: 1;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  min-height: 0;
+  -webkit-overflow-scrolling: touch;
+}
+
+.profileSection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.sectionLabel {
+  margin: 0;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--color-fg) 55%, transparent);
+}
+
+.chipRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.trainerCard {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid color-mix(in srgb, var(--color-fg) 10%, transparent);
+  border-radius: var(--radius-2xl);
+  background: var(--color-card, var(--color-bg));
+  color: var(--color-fg);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    transform var(--interaction-transition-fast, 120ms) ease,
+    border-color var(--interaction-transition-fast, 120ms) ease,
+    background-color var(--interaction-transition-fast, 120ms) ease;
+}
+
+.trainerCard:active {
+  transform: scale(var(--interaction-press-scale, 0.97));
+}
+
+.trainerCard[data-selected="true"] {
+  border-color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 12%, var(--color-card, var(--color-bg)));
+}
+
+.trainerAvatar {
+  flex-shrink: 0;
+}
+
+.trainerCopy {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.footerSkip {
+  justify-self: end;
+}
+
 .branchList {
   display: flex;
   flex-direction: column;
@@ -358,58 +432,10 @@
   color: var(--color-danger, #e03131);
 }
 
-.celebrate {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-  align-items: stretch;
-  flex: 1;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  min-height: 0;
-  -webkit-overflow-scrolling: touch;
-}
-
-.celebrateTitle {
-  font-size: 1.25rem;
-}
-
-.celebrateSuccess {
-  padding: var(--space-3) var(--space-2);
-  gap: var(--space-2);
-}
-
-.goalGrid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: var(--space-2);
-}
-
-.goalChip {
-  padding: var(--space-3) var(--space-2);
-  border-radius: var(--radius-xl);
-  border: 1px solid color-mix(in srgb, var(--color-fg) 12%, transparent);
-  background: var(--color-card, var(--color-bg));
-  color: var(--color-fg);
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.goalChip[data-selected="true"] {
-  border-color: var(--color-primary);
-  background: color-mix(in srgb, var(--color-primary) 14%, var(--color-card, var(--color-bg)));
-  color: var(--color-primary);
-}
-
-.exitActions {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-}
-
 @media (prefers-reduced-motion: reduce) {
   .choiceCard,
   .branchCard,
+  .trainerCard,
   .circularNext,
   .progressDot,
   .progressRingValue,
