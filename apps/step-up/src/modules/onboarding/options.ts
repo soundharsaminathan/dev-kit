@@ -108,10 +108,8 @@ export const GOAL_PRESETS = [4, 8, 12, 16] as const;
 export const ONBOARDING_STEPS = [
   "profile",
   "level",
-  "vibe",
-  "gender",
-  "age",
-  "celebrate",
+  "trialTime",
+  "trainer",
 ] as const;
 
 export type OnboardingStep = (typeof ONBOARDING_STEPS)[number];
@@ -130,7 +128,8 @@ export const STEP_META: Record<OnboardingStep, OnboardingStepMeta> = {
     art: `/onboarding/profile.png?${ART_V}`,
     title: "Show up",
     emphasis: "as you",
-    subtitle: "A name and photo so coaches recognize you on the floor.",
+    subtitle:
+      "Name, photo, and a bit about you so coaches know who’s on the floor.",
   },
   level: {
     art: `/onboarding/level.png?${ART_V}`,
@@ -138,28 +137,16 @@ export const STEP_META: Record<OnboardingStep, OnboardingStepMeta> = {
     emphasis: "you at",
     subtitle: "We’ll match classes to your comfort zone.",
   },
-  vibe: {
+  trialTime: {
     art: `/onboarding/vibe.png?${ART_V}`,
-    title: "When do you",
-    emphasis: "move",
-    subtitle: "Pick the times you love to train.",
+    title: "Pick a",
+    emphasis: "trial time",
+    subtitle: "Choose any upcoming class — or skip and book later.",
   },
-  gender: {
-    art: `/onboarding/level.png?${ART_V}`,
-    title: "Select your",
-    emphasis: "gender",
-    subtitle: "Male or Female — required for class matching.",
-  },
-  age: {
-    art: `/onboarding/vibe.png?${ART_V}`,
-    title: "What’s your",
-    emphasis: "age range",
-    subtitle: "Required — we’ll suggest classes that fit your stage.",
-  },
-  celebrate: {
+  trainer: {
     art: `/onboarding/celebrate.png?${ART_V}`,
-    title: "You’re",
-    emphasis: "in",
-    subtitle: "Set a monthly goal, then book your free trial.",
+    title: "Any",
+    emphasis: "trainer",
+    subtitle: "Optional — pick who you want, or skip.",
   },
 };

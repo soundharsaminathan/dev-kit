@@ -24,6 +24,7 @@ import {
   ArrayMaxSize,
   ArrayMinSize,
   IsArray,
+  IsDateString,
   IsEmail,
   IsEnum,
   IsNotEmpty,
@@ -106,6 +107,28 @@ class UpdateProfileDto {
   @IsOptional()
   @IsEnum(ProfileVisibility)
   profileVisibility?: ProfileVisibility;
+}
+
+class CompleteOnboardingDto {
+  @IsOptional()
+  @IsString()
+  batchId?: string;
+
+  @IsOptional()
+  @IsString()
+  sessionId?: string;
+
+  @IsOptional()
+  @IsString()
+  trainerId?: string;
+
+  @IsOptional()
+  @IsDateString()
+  startsAt?: string;
+
+  @IsOptional()
+  @IsDateString()
+  endsAt?: string;
 }
 
 class LinkParentChildDto {
@@ -198,8 +221,11 @@ export class UsersController {
 
   @Post("me/onboarding/complete")
   @Roles(UserRole.STUDENT)
-  completeOnboarding(@CurrentUser() user: DecryptedUser) {
-    return this.usersService.completeOnboarding(user.id);
+  completeOnboarding(
+    @CurrentUser() user: DecryptedUser,
+    @Body() dto?: CompleteOnboardingDto,
+  ) {
+    return this.usersService.completeOnboarding(user.id, dto ?? {});
   }
 
   @Get("me/follow-requests")

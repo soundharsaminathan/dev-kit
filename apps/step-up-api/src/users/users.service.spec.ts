@@ -55,6 +55,16 @@ describe("UsersService onboarding", () => {
     studioBranch: {
       findFirst: vi.fn(),
     },
+    session: {
+      findUnique: vi.fn(),
+    },
+    batch: {
+      findUnique: vi.fn(),
+    },
+    booking: {
+      findFirst: vi.fn(),
+      create: vi.fn(),
+    },
   };
   const crypto = {
     decryptUser: vi.fn(),
@@ -103,6 +113,78 @@ describe("UsersService onboarding", () => {
       service.completeOnboarding("student-1"),
     ).rejects.toBeInstanceOf(BadRequestException);
     expect(prisma.user.update).not.toHaveBeenCalled();
+  });
+
+  it("completes onboarding without scheduleVibe", async () => {
+    const row = makeUser({ scheduleVibe: [] });
+    const completed = makeUser({
+      scheduleVibe: [],
+      onboardingCompletedAt: new Date("2026-07-22T00:00:00.000Z"),
+    });
+    prisma.user.findUniqueOrThrow.mockResolvedValue(row);
+    crypto.decryptUser.mockImplementation((user: typeof row) => ({
+      ...user,
+      ...MASTER_PII,
+    }));
+    prisma.user.update.mockResolvedValue(completed);
+
+    const result = await service.completeOnboarding("student-1");
+
+    expect(prisma.user.update).toHaveBeenCalledWith({
+      where: { id: "student-1" },
+      data: { onboardingCompletedAt: expect.any(Date) },
+    });
+    expect(result.onboardingCompletedAt).toEqual(
+      completed.onboardingCompletedAt,
+    );
+  });
+
+  it("creates a trial booking without schedule conflict checks", async () => {
+    const row = makeUser();
+    const completed = makeUser({
+      onboardingCompletedAt: new Date("2026-07-22T00:00:00.000Z"),
+    });
+    prisma.user.findUniqueOrThrow.mockResolvedValue(row);
+    crypto.decryptUser.mockImplementation((user: typeof row) => ({
+      ...user,
+      ...MASTER_PII,
+    }));
+    prisma.session.findUnique.mockResolvedValue({
+      id: "session-1",
+      batchId: "batch-1",
+      startsAt: new Date("2026-07-24T10:00:00.000Z"),
+      endsAt: new Date("2026-07-24T11:00:00.000Z"),
+      status: "SCHEDULED",
+      batch: { id: "batch-1", studioId: "studio-seed-1" },
+    });
+    prisma.batch.findUnique.mockResolvedValue({
+      id: "batch-1",
+      studioId: "studio-seed-1",
+      capacity: 10,
+      _count: { enrollments: 0 },
+    });
+    prisma.booking.findFirst.mockResolvedValue(null);
+    prisma.user.findFirst.mockResolvedValue({ id: "trainer-1" });
+    prisma.booking.create.mockResolvedValue({ id: "booking-1" });
+    prisma.user.update.mockResolvedValue(completed);
+
+    await service.completeOnboarding("student-1", {
+      sessionId: "session-1",
+      trainerId: "trainer-1",
+    });
+
+    expect(prisma.booking.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        studioId: "studio-seed-1",
+        studentId: "student-1",
+        type: "TRIAL",
+        batchId: "batch-1",
+        sessionId: "session-1",
+        trainerId: "trainer-1",
+        status: "PENDING",
+      }),
+    });
+    expect(prisma.user.update).toHaveBeenCalled();
   });
 
   it("marks onboarding complete when prefs are present", async () => {
