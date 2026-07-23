@@ -5,6 +5,7 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import {
+  BatchCategory,
   IndividualAudience,
   MembershipSeatRole,
   MembershipStatus,
@@ -23,6 +24,7 @@ import {
 export type CoveredStudentInput = {
   studentId: string;
   seatRole: MembershipSeatRole;
+  batchId?: string;
 };
 
 @Injectable()
@@ -64,27 +66,54 @@ export class MembershipsService {
 
     this.assertCoveredSeats(subscription, args.coveredStudents);
 
+    if (subscription.kind === SubscriptionKind.FAMILY) {
+      await this.assertFamilyBatchPicks(args.coveredStudents);
+    }
+
     const periodStart = getNextPeriodStart();
     const periodEnd = getPeriodEnd(periodStart, subscription.billingCadence);
 
-    return this.prisma.membership.create({
-      data: {
-        subscriptionId: subscription.id,
-        purchaserUserId: args.purchaserUserId,
-        periodStart,
-        periodEnd,
-        status: MembershipStatus.ACTIVE,
-        coveredStudents: {
-          create: args.coveredStudents.map((c) => ({
-            studentId: c.studentId,
-            seatRole: c.seatRole,
-          })),
+    return this.prisma.$transaction(async (tx) => {
+      const membership = await tx.membership.create({
+        data: {
+          subscriptionId: subscription.id,
+          purchaserUserId: args.purchaserUserId,
+          periodStart,
+          periodEnd,
+          status: MembershipStatus.ACTIVE,
+          coveredStudents: {
+            create: args.coveredStudents.map((c) => ({
+              studentId: c.studentId,
+              seatRole: c.seatRole,
+            })),
+          },
         },
-      },
-      include: {
-        subscription: true,
-        coveredStudents: true,
-      },
+        include: {
+          subscription: true,
+          coveredStudents: true,
+        },
+      });
+
+      if (subscription.kind === SubscriptionKind.FAMILY) {
+        for (const covered of args.coveredStudents) {
+          const batchId = covered.batchId!;
+          await tx.batchEnrollment.upsert({
+            where: {
+              batchId_studentId: {
+                batchId,
+                studentId: covered.studentId,
+              },
+            },
+            update: {},
+            create: {
+              batchId,
+              studentId: covered.studentId,
+            },
+          });
+        }
+      }
+
+      return membership;
     });
   }
 
@@ -195,6 +224,66 @@ export class MembershipsService {
         });
       }) ?? null
     );
+  }
+
+  private async assertFamilyBatchPicks(covered: CoveredStudentInput[]) {
+    for (const seat of covered) {
+      if (!seat.batchId) {
+        throw new BadRequestException(
+          "Each Family Pack seat requires a batch pick",
+        );
+      }
+    }
+
+    const batchIds = covered.map((c) => c.batchId!);
+    const batches = await this.prisma.batch.findMany({
+      where: { id: { in: batchIds } },
+      include: {
+        _count: { select: { enrollments: true } },
+        enrollments: {
+          where: {
+            studentId: { in: covered.map((c) => c.studentId) },
+          },
+        },
+      },
+    });
+    const byId = new Map(batches.map((b) => [b.id, b]));
+
+    const pendingByBatch = new Map<string, number>();
+    for (const seat of covered) {
+      const batch = byId.get(seat.batchId!);
+      if (!batch) {
+        throw new NotFoundException(`Batch ${seat.batchId} not found`);
+      }
+      if (!batch.active) {
+        throw new BadRequestException(`Batch ${batch.name} is not active`);
+      }
+      const expectedCategory =
+        seat.seatRole === MembershipSeatRole.KID
+          ? BatchCategory.KIDS
+          : BatchCategory.ADULTS;
+      if (batch.category !== expectedCategory) {
+        throw new BadRequestException(
+          `Batch ${batch.name} does not match ${seat.seatRole} seat`,
+        );
+      }
+
+      const alreadyEnrolled = batch.enrollments.some(
+        (e) => e.studentId === seat.studentId,
+      );
+      if (!alreadyEnrolled) {
+        pendingByBatch.set(batch.id, (pendingByBatch.get(batch.id) ?? 0) + 1);
+      }
+    }
+
+    for (const [batchId, pending] of pendingByBatch) {
+      const batch = byId.get(batchId)!;
+      if (batch._count.enrollments + pending > batch.capacity) {
+        throw new BadRequestException(
+          `Batch ${batch.name} does not have enough open seats`,
+        );
+      }
+    }
   }
 
   private assertCoveredSeats(

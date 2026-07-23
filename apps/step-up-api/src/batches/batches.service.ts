@@ -641,24 +641,29 @@ export class BatchesService {
     ];
     const isStaff = staffRoles.includes(actor.role);
 
-    if (!isStaff) {
-      if (actor.role === UserRole.STUDENT && actor.id !== studentId) {
-        throw new ForbiddenException("Students can only enroll themselves");
-      }
-      if (actor.role === UserRole.PARENT) {
-        const link = await this.prisma.parentChild.findUnique({
+    if (!isStaff && actor.id !== studentId) {
+      const [familyLink, parentLink] = await Promise.all([
+        this.prisma.familyMember.findUnique({
+          where: {
+            ownerUserId_memberUserId: {
+              ownerUserId: actor.id,
+              memberUserId: studentId,
+            },
+          },
+        }),
+        this.prisma.parentChild.findUnique({
           where: {
             parentUserId_childUserId: {
               parentUserId: actor.id,
               childUserId: studentId,
             },
           },
-        });
-        if (!link) {
-          throw new ForbiddenException(
-            "Student is not linked to this parent account",
-          );
-        }
+        }),
+      ]);
+      if (!familyLink && !parentLink) {
+        throw new ForbiddenException(
+          "Student is not linked to this account as a family member",
+        );
       }
     }
 

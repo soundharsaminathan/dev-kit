@@ -1,5 +1,12 @@
 import { BadRequestException } from "@nestjs/common";
-import { ExperienceLevel, ProfileVisibility, UserRole } from "@prisma/client";
+import {
+  AgeRange,
+  ExperienceLevel,
+  FamilyMemberKind,
+  Gender,
+  ProfileVisibility,
+  UserRole,
+} from "@prisma/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { UsersService } from "./users.service";
 
@@ -26,6 +33,8 @@ function makeUser(overrides: Record<string, unknown> = {}) {
     styles: ["Hip Hop"],
     experienceLevel: ExperienceLevel.BEGINNER,
     scheduleVibe: ["weekends"],
+    gender: Gender.FEMALE,
+    ageRange: AgeRange.TWENTY_TO_FORTY,
     preferredBranchId: "branch-main-1",
     onboardingCompletedAt: null,
     profileVisibility: ProfileVisibility.PRIVATE,
@@ -73,6 +82,8 @@ describe("UsersService onboarding", () => {
       styles: [],
       experienceLevel: null,
       scheduleVibe: [],
+      gender: null,
+      ageRange: null,
       preferredBranchId: null,
     });
     prisma.user.findUniqueOrThrow.mockResolvedValue(row);
@@ -83,6 +94,8 @@ describe("UsersService onboarding", () => {
       styles: [],
       experienceLevel: null,
       scheduleVibe: [],
+      gender: null,
+      ageRange: null,
       preferredBranchId: null,
     });
 
@@ -120,6 +133,8 @@ describe("UsersService onboarding", () => {
       styles: [],
       experienceLevel: null,
       scheduleVibe: [],
+      gender: null,
+      ageRange: null,
       preferredBranchId: null,
     });
     prisma.user.findUniqueOrThrow.mockResolvedValue(row);
@@ -130,6 +145,8 @@ describe("UsersService onboarding", () => {
         styles: ["Hip Hop"],
         experienceLevel: ExperienceLevel.BEGINNER,
         scheduleVibe: ["weekday_evenings"],
+        gender: Gender.FEMALE,
+        ageRange: AgeRange.TEN_TO_TWENTY,
         preferredBranchId: "branch-main-1",
       }),
     );
@@ -138,6 +155,8 @@ describe("UsersService onboarding", () => {
       styles: ["Hip Hop"],
       experienceLevel: ExperienceLevel.BEGINNER,
       scheduleVibe: ["weekday_evenings"],
+      gender: Gender.FEMALE,
+      ageRange: AgeRange.TEN_TO_TWENTY,
       preferredBranchId: "branch-main-1",
     });
 
@@ -147,6 +166,8 @@ describe("UsersService onboarding", () => {
         styles: ["Hip Hop"],
         experienceLevel: ExperienceLevel.BEGINNER,
         scheduleVibe: ["weekday_evenings"],
+        gender: Gender.FEMALE,
+        ageRange: AgeRange.TEN_TO_TWENTY,
         preferredBranchId: "branch-main-1",
       }),
     });
@@ -163,5 +184,184 @@ describe("UsersService onboarding", () => {
         preferredBranchId: "missing-branch",
       }),
     ).rejects.toBeInstanceOf(BadRequestException);
+  });
+});
+
+describe("UsersService family members", () => {
+  const prisma = {
+    user: {
+      create: vi.fn(),
+      delete: vi.fn(),
+    },
+    familyMember: {
+      findMany: vi.fn(),
+      findUnique: vi.fn(),
+      create: vi.fn(),
+      delete: vi.fn(),
+      count: vi.fn(),
+    },
+    parentChild: {
+      findMany: vi.fn(),
+      findUnique: vi.fn(),
+      count: vi.fn(),
+    },
+    membershipCoveredStudent: {
+      count: vi.fn(),
+    },
+    batchEnrollment: {
+      count: vi.fn(),
+    },
+    $transaction: vi.fn(),
+  };
+  const crypto = {
+    decryptUser: vi.fn((user: ReturnType<typeof makeUser>) => ({
+      ...user,
+      email: "dependent@internal.invalid",
+      name: user.id === "kid-1" ? "Kid One" : "Alex Student",
+      phone: null,
+      bio: null,
+      instagramUrl: null,
+    })),
+    sealPii: vi.fn(() => ({
+      encryptedKey: "key",
+      piiCiphertext: "cipher",
+      piiIv: "iv",
+      emailHash: "hash-dep",
+    })),
+    hashEmail: vi.fn(),
+  };
+  const media = {
+    signReadUrl: vi.fn(async (value: string | null) => value),
+    resolveObjectKey: vi.fn((value: string) => value),
+  };
+
+  let service: UsersService;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    service = new UsersService(
+      prisma as never,
+      crypto as never,
+      media as never,
+    );
+  });
+
+  it("lists family members and legacy parent-child kids", async () => {
+    prisma.familyMember.findMany.mockResolvedValue([
+      {
+        memberUserId: "co-1",
+        kind: FamilyMemberKind.CO_STUDENT,
+        member: makeUser({
+          id: "co-1",
+          firebaseUid: "dependent:co-1",
+        }),
+      },
+    ]);
+    prisma.parentChild.findMany.mockResolvedValue([
+      {
+        childUserId: "kid-1",
+        child: makeUser({
+          id: "kid-1",
+          firebaseUid: "fb-kid",
+        }),
+      },
+    ]);
+    crypto.decryptUser.mockImplementation(
+      (user: ReturnType<typeof makeUser>) => ({
+        ...user,
+        email: "x@y.z",
+        name: user.id === "kid-1" ? "Kid One" : "Co Student",
+        phone: null,
+        bio: null,
+        instagramUrl: null,
+      }),
+    );
+
+    const result = await service.listFamilyMembers("owner-1");
+
+    expect(result).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "co-1",
+          kind: FamilyMemberKind.CO_STUDENT,
+          isDependent: true,
+        }),
+        expect.objectContaining({
+          id: "kid-1",
+          kind: FamilyMemberKind.KID,
+          isDependent: false,
+        }),
+      ]),
+    );
+  });
+
+  it("creates a dependent family member", async () => {
+    const created = makeUser({
+      id: "dep-1",
+      firebaseUid: "dependent:abc",
+    });
+    prisma.$transaction.mockImplementation(
+      async (fn: (tx: typeof prisma) => Promise<unknown>) => {
+        prisma.user.create.mockResolvedValue(created);
+        prisma.familyMember.create.mockResolvedValue({
+          ownerUserId: "owner-1",
+          memberUserId: "dep-1",
+          kind: FamilyMemberKind.KID,
+        });
+        return fn(prisma);
+      },
+    );
+    crypto.decryptUser.mockReturnValue({
+      ...created,
+      email: "dependent+abc@internal.invalid",
+      name: "Sam Kid",
+      phone: null,
+      bio: null,
+      instagramUrl: null,
+    });
+
+    const result = await service.createFamilyMember(
+      {
+        id: "owner-1",
+        studioId: "studio-seed-1",
+        role: UserRole.STUDENT,
+      } as never,
+      { name: "Sam Kid", kind: FamilyMemberKind.KID },
+    );
+
+    expect(prisma.user.create).toHaveBeenCalled();
+    expect(prisma.familyMember.create).toHaveBeenCalledWith({
+      data: {
+        ownerUserId: "owner-1",
+        memberUserId: "dep-1",
+        kind: FamilyMemberKind.KID,
+      },
+    });
+    expect(result).toEqual(
+      expect.objectContaining({
+        id: "dep-1",
+        name: "Sam Kid",
+        kind: FamilyMemberKind.KID,
+        isDependent: true,
+      }),
+    );
+  });
+
+  it("unlinks and deletes unused dependent", async () => {
+    prisma.familyMember.findUnique.mockResolvedValue({
+      memberUserId: "dep-1",
+      member: makeUser({ id: "dep-1", firebaseUid: "dependent:abc" }),
+    });
+    prisma.familyMember.delete.mockResolvedValue({});
+    prisma.familyMember.count.mockResolvedValue(0);
+    prisma.parentChild.count.mockResolvedValue(0);
+    prisma.membershipCoveredStudent.count.mockResolvedValue(0);
+    prisma.batchEnrollment.count.mockResolvedValue(0);
+    prisma.user.delete.mockResolvedValue({});
+
+    const result = await service.removeFamilyMember("owner-1", "dep-1");
+
+    expect(prisma.user.delete).toHaveBeenCalledWith({ where: { id: "dep-1" } });
+    expect(result).toEqual({ removed: true, deletedDependent: true });
   });
 });

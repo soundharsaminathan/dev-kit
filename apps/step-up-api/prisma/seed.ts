@@ -93,6 +93,8 @@ async function upsertUser(user: SeedUser) {
       ? {
           experienceLevel: "BEGINNER" as const,
           scheduleVibe: ["weekday_evenings", "weekends"],
+          gender: "FEMALE" as const,
+          ageRange: "TWENTY_TO_FORTY" as const,
           onboardingCompletedAt: new Date(),
         }
       : {};

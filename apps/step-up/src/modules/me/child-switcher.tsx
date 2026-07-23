@@ -6,26 +6,26 @@ export function ChildSwitcher({
 }: {
   tone?: "default" | "onMedia";
 }) {
-  const { children, studentId, setActiveChild, isParent } =
+  const { accounts, studentId, setActiveAccount, isManagingFamily } =
     useActiveStudentContext();
 
-  if (!isParent || children.length <= 1) return null;
+  if (!isManagingFamily) return null;
 
   return (
     <fieldset
       className={styles.switcher}
       data-tone={tone === "onMedia" ? "onMedia" : undefined}
     >
-      {children.map((child) => (
+      {accounts.map((account) => (
         <button
-          key={child.id}
+          key={account.id}
           type="button"
           className={styles.chip}
-          data-selected={child.id === studentId ? "true" : undefined}
-          onClick={() => setActiveChild(child.id)}
-          aria-pressed={child.id === studentId}
+          data-selected={account.id === studentId ? "true" : undefined}
+          onClick={() => setActiveAccount(account.id)}
+          aria-pressed={account.id === studentId}
         >
-          {child.name.split(" ")[0] || child.name}
+          {account.isSelf ? "Me" : account.name.split(" ")[0] || account.name}
         </button>
       ))}
     </fieldset>

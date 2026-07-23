@@ -11,7 +11,14 @@ import {
   Query,
   UseGuards,
 } from "@nestjs/common";
-import { ExperienceLevel, ProfileVisibility, UserRole } from "@prisma/client";
+import {
+  AgeRange,
+  ExperienceLevel,
+  FamilyMemberKind,
+  Gender,
+  ProfileVisibility,
+  UserRole,
+} from "@prisma/client";
 import { Type } from "class-transformer";
 import {
   ArrayMaxSize,
@@ -83,6 +90,14 @@ class UpdateProfileDto {
   @IsArray()
   @IsString({ each: true })
   scheduleVibe?: string[];
+
+  @IsOptional()
+  @IsEnum(Gender)
+  gender?: Gender;
+
+  @IsOptional()
+  @IsEnum(AgeRange)
+  ageRange?: AgeRange;
 
   @IsOptional()
   @IsString()
@@ -159,6 +174,15 @@ class BulkCreateStudentsDto {
   students!: BulkStudentDto[];
 }
 
+class CreateFamilyMemberDto {
+  @IsString()
+  @IsNotEmpty()
+  name!: string;
+
+  @IsEnum(FamilyMemberKind)
+  kind!: FamilyMemberKind;
+}
+
 @Controller("users")
 @UseGuards(AuthGuard, RolesGuard)
 export class UsersController {
@@ -197,6 +221,30 @@ export class UsersController {
     @Param("requestId") requestId: string,
   ) {
     return this.socialService.rejectFollowRequest(user.id, requestId);
+  }
+
+  @Get("me/family-members")
+  @Roles(UserRole.STUDENT, UserRole.PARENT)
+  listFamilyMembers(@CurrentUser() user: DecryptedUser) {
+    return this.usersService.listFamilyMembers(user.id);
+  }
+
+  @Post("me/family-members")
+  @Roles(UserRole.STUDENT, UserRole.PARENT)
+  createFamilyMember(
+    @CurrentUser() user: DecryptedUser,
+    @Body() dto: CreateFamilyMemberDto,
+  ) {
+    return this.usersService.createFamilyMember(user, dto);
+  }
+
+  @Delete("me/family-members/:memberUserId")
+  @Roles(UserRole.STUDENT, UserRole.PARENT)
+  removeFamilyMember(
+    @CurrentUser() user: DecryptedUser,
+    @Param("memberUserId") memberUserId: string,
+  ) {
+    return this.usersService.removeFamilyMember(user.id, memberUserId);
   }
 
   @Post()

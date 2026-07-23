@@ -7,8 +7,11 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import {
+  type AgeRange,
   AttendanceStatus,
   type ExperienceLevel,
+  FamilyMemberKind,
+  type Gender,
   ProfileVisibility,
   UserRole,
 } from "@prisma/client";
@@ -370,6 +373,8 @@ export class UsersService {
       styles?: string[];
       experienceLevel?: ExperienceLevel;
       scheduleVibe?: string[];
+      gender?: Gender;
+      ageRange?: AgeRange;
       preferredBranchId?: string | null;
       profileVisibility?: ProfileVisibility;
     },
@@ -410,7 +415,14 @@ export class UsersService {
           : current.instagramUrl,
     };
 
-    const { profileVisibility, styles, experienceLevel, scheduleVibe } = data;
+    const {
+      profileVisibility,
+      styles,
+      experienceLevel,
+      scheduleVibe,
+      gender,
+      ageRange,
+    } = data;
     const normalizeImage = (value: string | undefined) =>
       value !== undefined
         ? value
@@ -434,6 +446,8 @@ export class UsersService {
         ...(styles !== undefined ? { styles } : {}),
         ...(experienceLevel !== undefined ? { experienceLevel } : {}),
         ...(scheduleVibe !== undefined ? { scheduleVibe } : {}),
+        ...(gender !== undefined ? { gender } : {}),
+        ...(ageRange !== undefined ? { ageRange } : {}),
         ...(data.preferredBranchId !== undefined
           ? { preferredBranchId: data.preferredBranchId || null }
           : {}),
@@ -458,17 +472,17 @@ export class UsersService {
     if (!current.name?.trim() || current.name.trim() === "New User") {
       missing.push("name");
     }
-    if ((current.styles ?? []).length < 1) {
-      missing.push("styles");
-    }
     if (!current.experienceLevel) {
       missing.push("experienceLevel");
     }
     if ((current.scheduleVibe ?? []).length < 1) {
       missing.push("scheduleVibe");
     }
-    if (!current.preferredBranchId) {
-      missing.push("preferredBranchId");
+    if (!current.gender) {
+      missing.push("gender");
+    }
+    if (!current.ageRange) {
+      missing.push("ageRange");
     }
 
     if (missing.length > 0) {
@@ -575,6 +589,180 @@ export class UsersService {
       update: {},
       create: { parentUserId, childUserId },
     });
+  }
+
+  async listFamilyMembers(ownerUserId: string) {
+    const [familyLinks, parentLinks] = await Promise.all([
+      this.prisma.familyMember.findMany({
+        where: { ownerUserId },
+        include: { member: true },
+        orderBy: { createdAt: "asc" },
+      }),
+      this.prisma.parentChild.findMany({
+        where: { parentUserId: ownerUserId },
+        include: { child: true },
+      }),
+    ]);
+
+    const byId = new Map<
+      string,
+      {
+        id: string;
+        name: string;
+        kind: FamilyMemberKind;
+        photoUrl: string | null;
+        isDependent: boolean;
+      }
+    >();
+
+    for (const link of familyLinks) {
+      const presented = await this.presentUser(link.member);
+      byId.set(link.memberUserId, {
+        id: presented.id,
+        name: presented.name,
+        kind: link.kind,
+        photoUrl: presented.photoUrl,
+        isDependent: link.member.firebaseUid.startsWith("dependent:"),
+      });
+    }
+
+    for (const link of parentLinks) {
+      if (byId.has(link.childUserId)) continue;
+      const presented = await this.presentUser(link.child);
+      byId.set(link.childUserId, {
+        id: presented.id,
+        name: presented.name,
+        kind: FamilyMemberKind.KID,
+        photoUrl: presented.photoUrl,
+        isDependent: link.child.firebaseUid.startsWith("dependent:"),
+      });
+    }
+
+    return Array.from(byId.values()).sort((a, b) =>
+      a.name.localeCompare(b.name),
+    );
+  }
+
+  async createFamilyMember(
+    owner: DecryptedUser,
+    data: { name: string; kind: FamilyMemberKind },
+  ) {
+    const name = data.name.trim();
+    if (!name) {
+      throw new BadRequestException("Name is required");
+    }
+    if (!owner.studioId) {
+      throw new BadRequestException("Owner must belong to a studio");
+    }
+
+    const dependentId = randomUUID();
+    const syntheticEmail = `dependent+${dependentId}@internal.invalid`;
+    const sealed = this.crypto.sealPii({
+      email: syntheticEmail,
+      name,
+      phone: null,
+      bio: null,
+      instagramUrl: null,
+    });
+
+    const member = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.user.create({
+        data: {
+          firebaseUid: `dependent:${dependentId}`,
+          ...sealed,
+          role: UserRole.STUDENT,
+          studioId: owner.studioId,
+          styles: [],
+          profileVisibility: ProfileVisibility.PRIVATE,
+          onboardingCompletedAt: new Date(),
+        },
+      });
+
+      await tx.familyMember.create({
+        data: {
+          ownerUserId: owner.id,
+          memberUserId: created.id,
+          kind: data.kind,
+        },
+      });
+
+      return created;
+    });
+
+    const presented = await this.presentUser(member);
+    return {
+      id: presented.id,
+      name: presented.name,
+      kind: data.kind,
+      photoUrl: presented.photoUrl,
+      isDependent: true,
+    };
+  }
+
+  async removeFamilyMember(ownerUserId: string, memberUserId: string) {
+    const link = await this.prisma.familyMember.findUnique({
+      where: {
+        ownerUserId_memberUserId: { ownerUserId, memberUserId },
+      },
+      include: { member: true },
+    });
+
+    if (!link) {
+      throw new NotFoundException("Family member link not found");
+    }
+
+    await this.prisma.familyMember.delete({
+      where: {
+        ownerUserId_memberUserId: { ownerUserId, memberUserId },
+      },
+    });
+
+    const isDependent = link.member.firebaseUid.startsWith("dependent:");
+    if (!isDependent) {
+      return { removed: true, deletedDependent: false };
+    }
+
+    const [otherFamily, otherParent, seats, enrollments] = await Promise.all([
+      this.prisma.familyMember.count({ where: { memberUserId } }),
+      this.prisma.parentChild.count({ where: { childUserId: memberUserId } }),
+      this.prisma.membershipCoveredStudent.count({
+        where: { studentId: memberUserId },
+      }),
+      this.prisma.batchEnrollment.count({
+        where: { studentId: memberUserId },
+      }),
+    ]);
+
+    if (
+      otherFamily === 0 &&
+      otherParent === 0 &&
+      seats === 0 &&
+      enrollments === 0
+    ) {
+      await this.prisma.user.delete({ where: { id: memberUserId } });
+      return { removed: true, deletedDependent: true };
+    }
+
+    return { removed: true, deletedDependent: false };
+  }
+
+  async isLinkedFamilyMember(ownerUserId: string, memberUserId: string) {
+    const [family, parent] = await Promise.all([
+      this.prisma.familyMember.findUnique({
+        where: {
+          ownerUserId_memberUserId: { ownerUserId, memberUserId },
+        },
+      }),
+      this.prisma.parentChild.findUnique({
+        where: {
+          parentUserId_childUserId: {
+            parentUserId: ownerUserId,
+            childUserId: memberUserId,
+          },
+        },
+      }),
+    ]);
+    return Boolean(family || parent);
   }
 }
 

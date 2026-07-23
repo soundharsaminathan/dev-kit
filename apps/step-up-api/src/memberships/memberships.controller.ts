@@ -16,6 +16,7 @@ import {
   ArrayMinSize,
   IsArray,
   IsEnum,
+  IsOptional,
   IsString,
   ValidateNested,
 } from "class-validator";
@@ -25,6 +26,7 @@ import { Roles } from "../auth/roles.decorator";
 import { RolesGuard } from "../auth/roles.guard";
 import { PrismaService } from "../prisma/prisma.service";
 import type { DecryptedUser } from "../users/user-crypto.service";
+import { UsersService } from "../users/users.service";
 import { MembershipsService } from "./memberships.service";
 
 class CoveredStudentDto {
@@ -33,6 +35,10 @@ class CoveredStudentDto {
 
   @IsEnum(MembershipSeatRole)
   seatRole!: MembershipSeatRole;
+
+  @IsOptional()
+  @IsString()
+  batchId?: string;
 }
 
 class AssignMembershipDto {
@@ -80,6 +86,7 @@ export class MembershipsController {
     @Inject(MembershipsService)
     private readonly membershipsService: MembershipsService,
     @Inject(PrismaService) private readonly prisma: PrismaService,
+    @Inject(UsersService) private readonly usersService: UsersService,
   ) {}
 
   @Get("student/:studentId")
@@ -152,33 +159,18 @@ export class MembershipsController {
   }
 
   private async assertCanCoverStudent(actor: DecryptedUser, studentId: string) {
-    if (actor.role === UserRole.STUDENT) {
-      if (actor.id !== studentId) {
-        throw new ForbiddenException(
-          "Students can only cover themselves on Individual subscriptions",
-        );
-      }
+    if (actor.id === studentId) {
       return;
     }
-    if (actor.role === UserRole.PARENT) {
-      if (actor.id === studentId) {
-        return;
-      }
-      const link = await this.prisma.parentChild.findUnique({
-        where: {
-          parentUserId_childUserId: {
-            parentUserId: actor.id,
-            childUserId: studentId,
-          },
-        },
-      });
-      if (!link) {
-        throw new ForbiddenException(
-          "Student is not linked to this parent account",
-        );
-      }
-      return;
+
+    const linked = await this.usersService.isLinkedFamilyMember(
+      actor.id,
+      studentId,
+    );
+    if (!linked) {
+      throw new ForbiddenException(
+        "Student is not linked to this account as a family member",
+      );
     }
-    throw new BadRequestException("Unexpected role");
   }
 }

@@ -49,6 +49,45 @@
   gap: var(--space-2, 0.5rem);
 }
 
+.sheetBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4, 1rem);
+}
+
+.kindPicker {
+  display: flex;
+  gap: var(--space-2, 0.5rem);
+}
+
+.memberList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 0.5rem);
+}
+
+.memberRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3, 0.75rem);
+  padding: var(--space-3, 0.75rem);
+  border-radius: var(--radius-xl, 1rem);
+  background: color-mix(in srgb, var(--color-fg) 4%, transparent);
+}
+
+.memberName {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 700;
+}
+
+.memberType {
+  margin: 0.125rem 0 0;
+  font-size: 0.8125rem;
+  color: color-mix(in srgb, var(--color-fg) 60%, transparent);
+}
+
 .sectionTitle {
   margin: 0;
   padding-inline: var(--space-2, 0.5rem);

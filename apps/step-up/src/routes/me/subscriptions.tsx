@@ -1,13 +1,22 @@
 import { Badge } from "@dev-ui/components/badge";
 import { Checkbox } from "@dev-ui/components/checkbox";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@dev-ui/components/select";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useApi } from "@/lib/api-context";
 import { useAuth } from "@/lib/auth";
 import { STUDIO_ID } from "@/lib/constants";
+import type { FamilyMemberKind } from "@/lib/use-active-student";
 import { useActiveStudentContext } from "@/modules/me/use-active-student-context";
 import { AppBottomSheet } from "@/modules/ui/app-bottom-sheet";
+import { FormInput } from "@/modules/ui/form-input";
 import { PullToRefresh } from "@/modules/ui/pull-to-refresh";
 import { Screen } from "@/modules/ui/screen";
 import { SkeletonCardList } from "@/modules/ui/skeleton-block";
@@ -36,6 +45,13 @@ type Membership = {
   periodEnd: string;
   subscription?: CatalogSubscription;
   coveredStudents?: Array<{ studentId: string; seatRole: SeatRole }>;
+};
+
+type StudioBatch = {
+  id: string;
+  name: string;
+  category: "KIDS" | "ADULTS";
+  active: boolean;
 };
 
 export const Route = createFileRoute("/me/subscriptions")({
@@ -68,7 +84,8 @@ function MeSubscriptionsPage() {
   const { user } = useAuth();
   const api = useApi();
   const queryClient = useQueryClient();
-  const { studentId, children, isParent } = useActiveStudentContext();
+  const { studentId, accounts, children, familyMembers } =
+    useActiveStudentContext();
 
   const [renewTarget, setRenewTarget] = useState<Membership | null>(null);
   const [enrollTarget, setEnrollTarget] = useState<CatalogSubscription | null>(
@@ -76,6 +93,9 @@ function MeSubscriptionsPage() {
   );
   const [selectedAdultIds, setSelectedAdultIds] = useState<string[]>([]);
   const [selectedKidIds, setSelectedKidIds] = useState<string[]>([]);
+  const [seatBatchIds, setSeatBatchIds] = useState<Record<string, string>>({});
+  const [newMemberName, setNewMemberName] = useState("");
+  const [newMemberKind, setNewMemberKind] = useState<FamilyMemberKind>("KID");
 
   const membershipsQuery = useQuery({
     queryKey: ["memberships", studentId],
@@ -90,6 +110,12 @@ function MeSubscriptionsPage() {
     enabled: Boolean(user),
   });
 
+  const batchesQuery = useQuery({
+    queryKey: ["batches", STUDIO_ID],
+    queryFn: () => api.get<StudioBatch[]>(`/batches/studio/${STUDIO_ID}`),
+    enabled: Boolean(user),
+  });
+
   const activeSubscriptionIds = new Set(
     (membershipsQuery.data ?? [])
       .filter((m) => m.status === "ACTIVE")
@@ -101,41 +127,45 @@ function MeSubscriptionsPage() {
   const individual = available.filter((s) => s.kind === "INDIVIDUAL");
   const family = available.filter((s) => s.kind === "FAMILY");
 
-  const adultCandidates = useMemo(() => {
-    if (!user) return [];
-    if (isParent) {
-      return [{ id: user.id, name: user.name ?? "Me (parent)" }];
-    }
-    return [{ id: user.id, name: user.name ?? "Me" }];
-  }, [isParent, user]);
+  const adultCandidates = useMemo(
+    () =>
+      accounts.filter(
+        (account) => account.isSelf || account.kind === "CO_STUDENT",
+      ),
+    [accounts],
+  );
 
-  const kidCandidates = useMemo(() => {
-    if (isParent) return children;
-    return user ? [{ id: user.id, name: user.name ?? "Me" }] : [];
-  }, [children, isParent, user]);
+  const kidCandidates = useMemo(() => children, [children]);
 
   function openEnroll(sub: CatalogSubscription) {
     setEnrollTarget(sub);
+    setSeatBatchIds({});
     if (sub.kind === "INDIVIDUAL") {
       if (sub.individualAudience === "ADULT") {
-        setSelectedAdultIds([user?.id ?? studentId]);
+        setSelectedAdultIds([studentId]);
         setSelectedKidIds([]);
       } else {
         setSelectedAdultIds([]);
-        setSelectedKidIds([studentId]);
+        const defaultKid = children[0]?.id ?? studentId;
+        setSelectedKidIds(defaultKid ? [defaultKid] : []);
       }
       return;
     }
     setSelectedAdultIds(
-      sub.adultSeats > 0 && user ? [user.id].slice(0, sub.adultSeats) : [],
+      adultCandidates.slice(0, sub.adultSeats).map((a) => a.id),
     );
     setSelectedKidIds(children.slice(0, sub.kidSeats).map((c) => c.id));
   }
 
+  const selectedSeatIds = [...selectedAdultIds, ...selectedKidIds];
+  const isFamilyTarget = enrollTarget?.kind === "FAMILY";
+
   const seatsValid =
     enrollTarget != null &&
     selectedAdultIds.length === enrollTarget.adultSeats &&
-    selectedKidIds.length === enrollTarget.kidSeats;
+    selectedKidIds.length === enrollTarget.kidSeats &&
+    (!isFamilyTarget ||
+      selectedSeatIds.every((id) => Boolean(seatBatchIds[id])));
 
   const renewMutation = useMutation({
     mutationFn: () =>
@@ -156,10 +186,12 @@ function MeSubscriptionsPage() {
         ...selectedAdultIds.map((id) => ({
           studentId: id,
           seatRole: "ADULT" as const,
+          ...(isFamilyTarget ? { batchId: seatBatchIds[id] } : {}),
         })),
         ...selectedKidIds.map((id) => ({
           studentId: id,
           seatRole: "KID" as const,
+          ...(isFamilyTarget ? { batchId: seatBatchIds[id] } : {}),
         })),
       ];
       return api.post("/memberships/self/assign", {
@@ -172,7 +204,40 @@ function MeSubscriptionsPage() {
       void queryClient.invalidateQueries({
         queryKey: ["memberships", studentId],
       });
+      void queryClient.invalidateQueries({
+        queryKey: ["users", user?.id, "family-members"],
+      });
       setEnrollTarget(null);
+    },
+  });
+
+  const createMemberMutation = useMutation({
+    mutationFn: () =>
+      api.post<{ id: string; kind: FamilyMemberKind }>(
+        "/users/me/family-members",
+        {
+          name: newMemberName,
+          kind: newMemberKind,
+        },
+      ),
+    onSuccess: async (created) => {
+      await queryClient.invalidateQueries({
+        queryKey: ["users", user?.id, "family-members"],
+      });
+      setNewMemberName("");
+      if (!enrollTarget) return;
+      if (
+        created.kind === "CO_STUDENT" &&
+        selectedAdultIds.length < enrollTarget.adultSeats
+      ) {
+        setSelectedAdultIds((prev) => [...prev, created.id]);
+      }
+      if (
+        created.kind === "KID" &&
+        selectedKidIds.length < enrollTarget.kidSeats
+      ) {
+        setSelectedKidIds((prev) => [...prev, created.id]);
+      }
     },
   });
 
@@ -289,6 +354,25 @@ function MeSubscriptionsPage() {
                     </span>
                   ) : null}
                 </div>
+                {membership.coveredStudents &&
+                membership.coveredStudents.length > 0 ? (
+                  <div className={styles.coveredList}>
+                    {membership.coveredStudents.map((seat) => {
+                      const person =
+                        accounts.find((a) => a.id === seat.studentId) ??
+                        familyMembers.find((m) => m.id === seat.studentId);
+                      return (
+                        <span
+                          key={`${membership.id}-${seat.studentId}`}
+                          className={styles.coveredChip}
+                        >
+                          {person?.name ?? "Member"} ·{" "}
+                          {seat.seatRole === "ADULT" ? "Adult" : "Kid"}
+                        </span>
+                      );
+                    })}
+                  </div>
+                ) : null}
                 {membership.status === "DUE" ||
                 membership.status === "EXPIRED" ? (
                   <div>
@@ -402,7 +486,7 @@ function MeSubscriptionsPage() {
               </p>
               {kidCandidates.length === 0 ? (
                 <p className={styles.sheetDesc}>
-                  Link a child account to fill kid seats.
+                  Add a family member to fill kid seats.
                 </p>
               ) : (
                 kidCandidates.map((person) => (
@@ -429,6 +513,84 @@ function MeSubscriptionsPage() {
                   </Checkbox>
                 ))
               )}
+            </div>
+          ) : null}
+
+          {isFamilyTarget ? (
+            <div className={styles.seatBlock}>
+              <p className={styles.sectionLabel}>Batch for each member</p>
+              {selectedSeatIds.map((seatId) => {
+                const person = accounts.find((a) => a.id === seatId);
+                const isKidSeat = selectedKidIds.includes(seatId);
+                const options = (batchesQuery.data ?? []).filter(
+                  (batch) =>
+                    batch.active &&
+                    batch.category === (isKidSeat ? "KIDS" : "ADULTS"),
+                );
+                return (
+                  <div key={`batch-${seatId}`} className={styles.batchPicker}>
+                    <Select
+                      label={`Batch for ${person?.name ?? "member"}`}
+                      selectedKey={seatBatchIds[seatId] ?? null}
+                      onSelectionChange={(key) => {
+                        if (!key) return;
+                        setSeatBatchIds((prev) => ({
+                          ...prev,
+                          [seatId]: String(key),
+                        }));
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {options.map((batch) => (
+                          <SelectItem key={batch.id} id={batch.id}>
+                            {batch.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                );
+              })}
+            </div>
+          ) : null}
+
+          {isFamilyTarget ? (
+            <div className={styles.seatBlock}>
+              <p className={styles.sectionLabel}>Add family member</p>
+              <FormInput
+                label="Name"
+                value={newMemberName}
+                onChange={setNewMemberName}
+                placeholder="Enter member name"
+              />
+              <div className={styles.kindPicker}>
+                <TouchButton
+                  variant={newMemberKind === "KID" ? "primary" : "quiet"}
+                  size="sm"
+                  onClick={() => setNewMemberKind("KID")}
+                >
+                  Kid
+                </TouchButton>
+                <TouchButton
+                  variant={newMemberKind === "CO_STUDENT" ? "primary" : "quiet"}
+                  size="sm"
+                  onClick={() => setNewMemberKind("CO_STUDENT")}
+                >
+                  Co-student
+                </TouchButton>
+              </div>
+              <TouchButton
+                variant="quiet"
+                size="sm"
+                isDisabled={newMemberName.trim().length === 0}
+                isPending={createMemberMutation.isPending}
+                onClick={() => createMemberMutation.mutate()}
+              >
+                Add member
+              </TouchButton>
             </div>
           ) : null}
 

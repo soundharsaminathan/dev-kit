@@ -1,5 +1,11 @@
 import { createContext } from "react";
-import type { DevUser, ExperienceLevel, UserRole } from "./constants";
+import type {
+  AgeRange,
+  DevUser,
+  ExperienceLevel,
+  Gender,
+  UserRole,
+} from "./constants";
 
 export type AuthUser = DevUser & {
   bio?: string | null | undefined;
@@ -8,6 +14,8 @@ export type AuthUser = DevUser & {
   styles?: string[] | undefined;
   experienceLevel?: ExperienceLevel | null | undefined;
   scheduleVibe?: string[] | undefined;
+  gender?: Gender | null | undefined;
+  ageRange?: AgeRange | null | undefined;
   preferredBranchId?: string | null | undefined;
   onboardingCompletedAt?: string | null | undefined;
 };

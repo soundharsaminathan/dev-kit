@@ -22,9 +22,11 @@ import {
   type AuthUser,
 } from "./auth-context";
 import {
+  type AgeRange,
   DEV_USERS,
   type ExperienceLevel,
   findDevUserByLogin,
+  type Gender,
   isAuthBypassEnabled,
   resolveLoginEmail,
   STUDIO_ID,
@@ -45,6 +47,8 @@ type SyncedApiUser = {
   styles?: string[] | undefined;
   experienceLevel?: ExperienceLevel | null | undefined;
   scheduleVibe?: string[] | undefined;
+  gender?: Gender | null | undefined;
+  ageRange?: AgeRange | null | undefined;
   preferredBranchId?: string | null | undefined;
   onboardingCompletedAt?: string | Date | null | undefined;
 };
@@ -81,6 +85,8 @@ function mapSyncedUser(user: SyncedApiUser): AuthUser {
     styles: user.styles ?? [],
     experienceLevel: user.experienceLevel ?? null,
     scheduleVibe: user.scheduleVibe ?? [],
+    gender: user.gender ?? null,
+    ageRange: user.ageRange ?? null,
     preferredBranchId: user.preferredBranchId ?? null,
     onboardingCompletedAt: user.onboardingCompletedAt
       ? String(user.onboardingCompletedAt)
@@ -123,6 +129,8 @@ async function createBypassStudent(input: {
     styles: synced.styles ?? [],
     experienceLevel: synced.experienceLevel ?? null,
     scheduleVibe: synced.scheduleVibe ?? [],
+    gender: synced.gender ?? null,
+    ageRange: synced.ageRange ?? null,
     preferredBranchId: synced.preferredBranchId ?? null,
   });
 }
