@@ -49,7 +49,7 @@ export class DigestProcessor extends WorkerHost {
           readAt: null,
           deletedAt: null,
           type: {
-            in: ["PLAN_EXPIRING", "PAYMENT_OVERDUE", "NOT_RENEWED"],
+            in: ["SUBSCRIPTION_EXPIRING", "PAYMENT_OVERDUE", "NOT_RENEWED"],
           },
         },
         orderBy: { createdAt: "desc" },

@@ -1,57 +1,87 @@
 import {
-  BadRequestException,
   Body,
   Controller,
-  ForbiddenException,
+  Delete,
   Get,
   Inject,
-  NotFoundException,
   Param,
+  Patch,
   Post,
   UseGuards,
 } from "@nestjs/common";
-import { UserRole } from "@prisma/client";
-import { IsOptional, IsString } from "class-validator";
+import {
+  BillingCadence,
+  FamilyPack,
+  IndividualAudience,
+  SubscriptionKind,
+  UserRole,
+} from "@prisma/client";
+import {
+  IsBoolean,
+  IsEnum,
+  IsNumber,
+  IsOptional,
+  IsString,
+  Min,
+  ValidateIf,
+} from "class-validator";
 import { AuthGuard } from "../auth/auth.guard";
 import { CurrentUser } from "../auth/current-user.decorator";
 import { Roles } from "../auth/roles.decorator";
 import { RolesGuard } from "../auth/roles.guard";
-import { PrismaService } from "../prisma/prisma.service";
 import type { DecryptedUser } from "../users/user-crypto.service";
 import { SubscriptionsService } from "./subscriptions.service";
 
-class AssignPlanDto {
+class CreateSubscriptionDto {
   @IsString()
-  studentId!: string;
+  studioId!: string;
 
   @IsString()
-  planId!: string;
+  name!: string;
 
-  @IsOptional()
-  @IsString()
-  batchId?: string;
-}
+  @IsEnum(SubscriptionKind)
+  kind!: SubscriptionKind;
 
-class RenewSubscriptionDto {
-  @IsString()
-  subscriptionId!: string;
-}
+  @ValidateIf(
+    (o: CreateSubscriptionDto) => o.kind === SubscriptionKind.INDIVIDUAL,
+  )
+  @IsEnum(IndividualAudience)
+  individualAudience?: IndividualAudience;
 
-class SelfAssignDto {
-  @IsString()
-  studentId!: string;
-
-  @IsString()
-  planId!: string;
+  @ValidateIf((o: CreateSubscriptionDto) => o.kind === SubscriptionKind.FAMILY)
+  @IsEnum(FamilyPack)
+  familyPack?: FamilyPack;
 
   @IsOptional()
-  @IsString()
-  batchId?: string;
+  @IsEnum(BillingCadence)
+  billingCadence?: BillingCadence;
+
+  @IsNumber()
+  @Min(0)
+  price!: number;
+
+  @IsOptional()
+  @IsBoolean()
+  active?: boolean;
 }
 
-class SelfRenewDto {
+class UpdateSubscriptionDto {
+  @IsOptional()
   @IsString()
-  subscriptionId!: string;
+  name?: string;
+
+  @IsOptional()
+  @IsEnum(BillingCadence)
+  billingCadence?: BillingCadence;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  price?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  active?: boolean;
 }
 
 @Controller("subscriptions")
@@ -60,88 +90,36 @@ export class SubscriptionsController {
   constructor(
     @Inject(SubscriptionsService)
     private readonly subscriptionsService: SubscriptionsService,
-    @Inject(PrismaService) private readonly prisma: PrismaService,
   ) {}
 
-  @Get("student/:studentId")
-  listForStudent(@Param("studentId") studentId: string) {
-    return this.subscriptionsService.listForStudent(studentId);
+  @Get("studio/:studioId")
+  listByStudio(@Param("studioId") studioId: string) {
+    return this.subscriptionsService.listByStudio(studioId);
   }
 
-  @Post("assign")
+  @Get(":id")
+  getById(@Param("id") id: string) {
+    return this.subscriptionsService.getById(id);
+  }
+
+  @Post()
   @Roles(UserRole.OWNER, UserRole.STAFF)
-  assign(@Body() dto: AssignPlanDto) {
-    return this.subscriptionsService.assignPlan(
-      dto.studentId,
-      dto.planId,
-      dto.batchId,
-    );
+  create(
+    @CurrentUser() user: DecryptedUser,
+    @Body() dto: CreateSubscriptionDto,
+  ) {
+    return this.subscriptionsService.create(user.id, dto);
   }
 
-  @Post("renew")
+  @Patch(":id")
   @Roles(UserRole.OWNER, UserRole.STAFF)
-  renew(@Body() dto: RenewSubscriptionDto) {
-    return this.subscriptionsService.renewManual(dto.subscriptionId);
+  update(@Param("id") id: string, @Body() dto: UpdateSubscriptionDto) {
+    return this.subscriptionsService.update(id, dto);
   }
 
-  @Post("self/assign")
-  @Roles(UserRole.STUDENT, UserRole.PARENT)
-  async selfAssign(
-    @CurrentUser() actor: DecryptedUser,
-    @Body() dto: SelfAssignDto,
-  ) {
-    await this.assertStudentOwnership(actor, dto.studentId);
-    return this.subscriptionsService.assignPlan(
-      dto.studentId,
-      dto.planId,
-      dto.batchId,
-    );
-  }
-
-  @Post("self/renew")
-  @Roles(UserRole.STUDENT, UserRole.PARENT)
-  async selfRenew(
-    @CurrentUser() actor: DecryptedUser,
-    @Body() dto: SelfRenewDto,
-  ) {
-    const subscription = await this.prisma.subscription.findUnique({
-      where: { id: dto.subscriptionId },
-    });
-    if (!subscription) {
-      throw new NotFoundException("Subscription not found");
-    }
-    await this.assertStudentOwnership(actor, subscription.studentId);
-    return this.subscriptionsService.renewManual(dto.subscriptionId);
-  }
-
-  private async assertStudentOwnership(
-    actor: DecryptedUser,
-    studentId: string,
-  ) {
-    if (actor.role === UserRole.STUDENT) {
-      if (actor.id !== studentId) {
-        throw new ForbiddenException(
-          "Students can only manage their own subscriptions",
-        );
-      }
-      return;
-    }
-    if (actor.role === UserRole.PARENT) {
-      const link = await this.prisma.parentChild.findUnique({
-        where: {
-          parentUserId_childUserId: {
-            parentUserId: actor.id,
-            childUserId: studentId,
-          },
-        },
-      });
-      if (!link) {
-        throw new ForbiddenException(
-          "Student is not linked to this parent account",
-        );
-      }
-      return;
-    }
-    throw new BadRequestException("Unexpected role");
+  @Delete(":id")
+  @Roles(UserRole.OWNER, UserRole.STAFF)
+  remove(@Param("id") id: string) {
+    return this.subscriptionsService.remove(id);
   }
 }

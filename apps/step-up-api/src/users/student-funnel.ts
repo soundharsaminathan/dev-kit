@@ -2,8 +2,8 @@ import {
   AttendanceStatus,
   BookingStatus,
   BookingType,
+  MembershipStatus,
   SessionStatus,
-  SubscriptionStatus,
 } from "@prisma/client";
 
 export type StudentFunnelStage =
@@ -51,8 +51,8 @@ export type StudentFunnelAttendanceInput = {
   status: AttendanceStatus;
 };
 
-export type StudentFunnelSubscriptionInput = {
-  status: SubscriptionStatus;
+export type StudentFunnelMembershipInput = {
+  status: MembershipStatus;
 };
 
 export type StudentFunnelStudentInput = {
@@ -61,7 +61,7 @@ export type StudentFunnelStudentInput = {
   enrollments: StudentFunnelEnrollmentInput[];
   bookings: StudentFunnelBookingInput[];
   attendance: StudentFunnelAttendanceInput[];
-  subscriptions: StudentFunnelSubscriptionInput[];
+  memberships: StudentFunnelMembershipInput[];
 };
 
 export type DateRange = {
@@ -141,14 +141,14 @@ function hasActiveBatchEnrollment(
   return enrollments.some((enrollment) => enrollment.batchActive);
 }
 
-function hasCompletedBatchWithoutActivePlan(
+function hasCompletedBatchWithoutActiveMembership(
   enrollments: StudentFunnelEnrollmentInput[],
-  subscriptions: StudentFunnelSubscriptionInput[],
+  memberships: StudentFunnelMembershipInput[],
 ): boolean {
-  const hasActivePlan = subscriptions.some(
-    (subscription) => subscription.status === SubscriptionStatus.ACTIVE,
+  const hasActiveMembership = memberships.some(
+    (membership) => membership.status === MembershipStatus.ACTIVE,
   );
-  if (hasActivePlan) {
+  if (hasActiveMembership) {
     return false;
   }
 
@@ -210,9 +210,9 @@ export function classifyStudentFunnelStage(
   }
 
   if (
-    hasCompletedBatchWithoutActivePlan(
+    hasCompletedBatchWithoutActiveMembership(
       student.enrollments,
-      student.subscriptions,
+      student.memberships,
     )
   ) {
     return "completedWithoutPlan";

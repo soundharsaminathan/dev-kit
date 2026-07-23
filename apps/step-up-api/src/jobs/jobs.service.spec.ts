@@ -1,10 +1,10 @@
-import { NotificationType, PlanType, SubscriptionStatus } from "@prisma/client";
+import { MembershipStatus, NotificationType } from "@prisma/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { JobsService } from "./jobs.service";
 
 describe("JobsService.runDaily", () => {
   const prisma = {
-    subscription: {
+    membership: {
       updateMany: vi.fn(),
       findMany: vi.fn(),
     },
@@ -25,29 +25,28 @@ describe("JobsService.runDaily", () => {
     service = new JobsService(prisma as never, notifications as never);
   });
 
-  it("creates NOT_RENEWED notifications when subscriptions expire", async () => {
+  it("creates NOT_RENEWED notifications when memberships expire", async () => {
     const now = new Date("2026-07-20T12:00:00.000Z");
     vi.useFakeTimers();
     vi.setSystemTime(now);
 
-    const subscription = {
-      id: "sub-due",
-      studentId: "student-1",
-      planId: "plan-1",
-      status: SubscriptionStatus.DUE,
+    const membership = {
+      id: "mem-due",
+      purchaserUserId: "student-1",
+      subscriptionId: "sub-1",
+      status: MembershipStatus.DUE,
       periodEnd: new Date("2026-07-15T23:59:59.999Z"),
-      plan: {
-        id: "plan-1",
+      subscription: {
+        id: "sub-1",
         name: "Adults Unlimited",
-        type: PlanType.UNLIMITED_ADULTS,
       },
     };
 
-    prisma.subscription.updateMany
+    prisma.membership.updateMany
       .mockResolvedValueOnce({ count: 1 })
       .mockResolvedValueOnce({ count: 1 });
-    prisma.subscription.findMany
-      .mockResolvedValueOnce([subscription])
+    prisma.membership.findMany
+      .mockResolvedValueOnce([membership])
       .mockResolvedValueOnce([]);
     prisma.invoice.updateMany.mockResolvedValue({ count: 0 });
     prisma.invoice.findMany.mockResolvedValue([]);
@@ -60,8 +59,8 @@ describe("JobsService.runDaily", () => {
         userId: "student-1",
         type: NotificationType.NOT_RENEWED,
         planName: "Adults Unlimited",
-        dedupeKey: "NOT_RENEWED:sub-due",
-        meta: { subscriptionId: "sub-due", planId: "plan-1" },
+        dedupeKey: "NOT_RENEWED:mem-due",
+        meta: { membershipId: "mem-due", subscriptionId: "sub-1" },
       }),
     );
     expect(result.notRenewedNotifications).toBe(1);

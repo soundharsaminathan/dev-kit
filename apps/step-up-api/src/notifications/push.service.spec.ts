@@ -74,7 +74,7 @@ describe("PushService", () => {
     await service.sendToUser("user-1", {
       title: "Plan renewed",
       body: "Your plan is active.",
-      deepLink: "/me/plans",
+      deepLink: "/me/subscriptions",
       data: { notificationId: "notif-1", type: "RENEWED" },
     });
 
@@ -86,7 +86,7 @@ describe("PushService", () => {
           body: "Your plan is active.",
         },
         webpush: expect.objectContaining({
-          fcmOptions: { link: "/me/plans" },
+          fcmOptions: { link: "/me/subscriptions" },
         }),
       }),
     );

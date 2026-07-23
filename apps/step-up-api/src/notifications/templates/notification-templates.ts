@@ -30,12 +30,12 @@ export function buildNotificationCopy(input: NotificationTemplateInput): {
           input.body ??
           `You were marked absent for ${input.batchName ?? "a class"} on ${input.sessionDate ?? "a recent date"}.`,
       };
-    case "PLAN_EXPIRING":
+    case "SUBSCRIPTION_EXPIRING":
       return {
-        title: input.title ?? "Plan expiring soon",
+        title: input.title ?? "Subscription expiring soon",
         body:
           input.body ??
-          `Your ${input.planName ?? "plan"} expires on ${input.periodEnd ?? "soon"}.`,
+          `Your ${input.planName ?? "subscription"} expires on ${input.periodEnd ?? "soon"}.`,
       };
     case "PAYMENT_OVERDUE":
       return {
@@ -46,17 +46,17 @@ export function buildNotificationCopy(input: NotificationTemplateInput): {
       };
     case "RENEWED":
       return {
-        title: input.title ?? "Plan renewed",
+        title: input.title ?? "Subscription renewed",
         body:
           input.body ??
-          `Your ${input.planName ?? "plan"} is active through ${input.periodEnd ?? "the new period"}.`,
+          `Your ${input.planName ?? "subscription"} is active through ${input.periodEnd ?? "the new period"}.`,
       };
     case "NOT_RENEWED":
       return {
-        title: input.title ?? "Plan not renewed",
+        title: input.title ?? "Subscription not renewed",
         body:
           input.body ??
-          `Your ${input.planName ?? "plan"} has expired. Renew to keep attending classes.`,
+          `Your ${input.planName ?? "subscription"} has expired. Renew to keep attending classes.`,
       };
     case "NEW_FOLLOW":
       return {
@@ -90,17 +90,20 @@ export const NOTIFICATION_TYPE_REGISTRY: Record<
     label: "Missed sessions",
     defaultChannels: ["IN_APP", "PUSH"],
   },
-  PLAN_EXPIRING: {
-    label: "Plan expiring",
+  SUBSCRIPTION_EXPIRING: {
+    label: "Subscription expiring",
     defaultChannels: ["IN_APP", "PUSH", "EMAIL"],
   },
   PAYMENT_OVERDUE: {
     label: "Payment overdue",
     defaultChannels: ["IN_APP", "PUSH", "EMAIL"],
   },
-  RENEWED: { label: "Plan renewed", defaultChannels: ["IN_APP", "PUSH"] },
+  RENEWED: {
+    label: "Subscription renewed",
+    defaultChannels: ["IN_APP", "PUSH"],
+  },
   NOT_RENEWED: {
-    label: "Plan not renewed",
+    label: "Subscription not renewed",
     defaultChannels: ["IN_APP", "PUSH", "EMAIL"],
   },
   NEW_FOLLOW: { label: "New followers", defaultChannels: ["IN_APP", "PUSH"] },

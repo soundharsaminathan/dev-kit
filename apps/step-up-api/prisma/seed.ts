@@ -3,13 +3,19 @@ import { ConfigService } from "@nestjs/config";
 import {
   AttendanceSource,
   AttendanceStatus,
+  BillingCadence,
   BookingStatus,
   BookingType,
   EnrollmentMode,
+  FamilyPack,
+  IndividualAudience,
+  MembershipSeatRole,
+  MembershipStatus,
   type Prisma,
   PrismaClient,
   ProfileVisibility,
   SessionStatus,
+  SubscriptionKind,
   UserRole,
 } from "@prisma/client";
 import { UserCryptoService } from "../src/users/user-crypto.service";
@@ -521,69 +527,229 @@ async function main() {
     },
   });
 
-  const kidsPlan = await prisma.plan.upsert({
-    where: { id: "plan-kids-1" },
-    update: { billingCadence: "MONTHLY" },
-    create: {
-      id: "plan-kids-1",
-      studioId: STUDIO_ID,
-      creatorId: "trainer-1",
-      name: "Kids Monthly 8",
-      type: "FIXED_BATCH",
-      billingCadence: "MONTHLY",
-      classCredits: 8,
-      priceMonthly: 2500,
-      active: true,
-    },
-  });
+  type SubscriptionCatalogSeed = {
+    id: string;
+    name: string;
+    kind: SubscriptionKind;
+    individualAudience: IndividualAudience | null;
+    familyPack: FamilyPack | null;
+    billingCadence: BillingCadence;
+    adultSeats: number;
+    kidSeats: number;
+    price: number;
+  };
 
-  const adultsPlan = await prisma.plan.upsert({
-    where: { id: "plan-adults-1" },
-    update: { billingCadence: "MONTHLY" },
-    create: {
-      id: "plan-adults-1",
-      studioId: STUDIO_ID,
-      creatorId: "trainer-2",
-      name: "Adults Monthly 12",
-      type: "FIXED_BATCH",
-      billingCadence: "MONTHLY",
-      classCredits: 12,
-      priceMonthly: 3500,
-      active: true,
+  const subscriptionCatalog: SubscriptionCatalogSeed[] = [
+    {
+      id: "sub-individual-adult-monthly",
+      name: "Individual Adult Monthly",
+      kind: SubscriptionKind.INDIVIDUAL,
+      individualAudience: IndividualAudience.ADULT,
+      familyPack: null,
+      billingCadence: BillingCadence.MONTHLY,
+      adultSeats: 1,
+      kidSeats: 0,
+      price: 3500,
     },
-  });
+    {
+      id: "sub-individual-adult-quarterly",
+      name: "Individual Adult Quarterly",
+      kind: SubscriptionKind.INDIVIDUAL,
+      individualAudience: IndividualAudience.ADULT,
+      familyPack: null,
+      billingCadence: BillingCadence.QUARTERLY,
+      adultSeats: 1,
+      kidSeats: 0,
+      price: 9000,
+    },
+    {
+      id: "sub-individual-kid-monthly",
+      name: "Individual Kid Monthly",
+      kind: SubscriptionKind.INDIVIDUAL,
+      individualAudience: IndividualAudience.KID,
+      familyPack: null,
+      billingCadence: BillingCadence.MONTHLY,
+      adultSeats: 0,
+      kidSeats: 1,
+      price: 2500,
+    },
+    {
+      id: "sub-individual-kid-quarterly",
+      name: "Individual Kid Quarterly",
+      kind: SubscriptionKind.INDIVIDUAL,
+      individualAudience: IndividualAudience.KID,
+      familyPack: null,
+      billingCadence: BillingCadence.QUARTERLY,
+      adultSeats: 0,
+      kidSeats: 1,
+      price: 6500,
+    },
+    {
+      id: "sub-family-two-kids-monthly",
+      name: "Family Two Kids Monthly",
+      kind: SubscriptionKind.FAMILY,
+      individualAudience: null,
+      familyPack: FamilyPack.TWO_KIDS,
+      billingCadence: BillingCadence.MONTHLY,
+      adultSeats: 0,
+      kidSeats: 2,
+      price: 4000,
+    },
+    {
+      id: "sub-family-two-kids-quarterly",
+      name: "Family Two Kids Quarterly",
+      kind: SubscriptionKind.FAMILY,
+      individualAudience: null,
+      familyPack: FamilyPack.TWO_KIDS,
+      billingCadence: BillingCadence.QUARTERLY,
+      adultSeats: 0,
+      kidSeats: 2,
+      price: 10500,
+    },
+    {
+      id: "sub-family-one-adult-one-kid-monthly",
+      name: "Family One Adult One Kid Monthly",
+      kind: SubscriptionKind.FAMILY,
+      individualAudience: null,
+      familyPack: FamilyPack.ONE_ADULT_ONE_KID,
+      billingCadence: BillingCadence.MONTHLY,
+      adultSeats: 1,
+      kidSeats: 1,
+      price: 4500,
+    },
+    {
+      id: "sub-family-one-adult-one-kid-quarterly",
+      name: "Family One Adult One Kid Quarterly",
+      kind: SubscriptionKind.FAMILY,
+      individualAudience: null,
+      familyPack: FamilyPack.ONE_ADULT_ONE_KID,
+      billingCadence: BillingCadence.QUARTERLY,
+      adultSeats: 1,
+      kidSeats: 1,
+      price: 12000,
+    },
+    {
+      id: "sub-family-two-adults-monthly",
+      name: "Family Two Adults Monthly",
+      kind: SubscriptionKind.FAMILY,
+      individualAudience: null,
+      familyPack: FamilyPack.TWO_ADULTS,
+      billingCadence: BillingCadence.MONTHLY,
+      adultSeats: 2,
+      kidSeats: 0,
+      price: 5500,
+    },
+    {
+      id: "sub-family-two-adults-quarterly",
+      name: "Family Two Adults Quarterly",
+      kind: SubscriptionKind.FAMILY,
+      individualAudience: null,
+      familyPack: FamilyPack.TWO_ADULTS,
+      billingCadence: BillingCadence.QUARTERLY,
+      adultSeats: 2,
+      kidSeats: 0,
+      price: 14500,
+    },
+    {
+      id: "sub-family-one-adult-two-kids-monthly",
+      name: "Family One Adult Two Kids Monthly",
+      kind: SubscriptionKind.FAMILY,
+      individualAudience: null,
+      familyPack: FamilyPack.ONE_ADULT_TWO_KIDS,
+      billingCadence: BillingCadence.MONTHLY,
+      adultSeats: 1,
+      kidSeats: 2,
+      price: 5500,
+    },
+    {
+      id: "sub-family-one-adult-two-kids-quarterly",
+      name: "Family One Adult Two Kids Quarterly",
+      kind: SubscriptionKind.FAMILY,
+      individualAudience: null,
+      familyPack: FamilyPack.ONE_ADULT_TWO_KIDS,
+      billingCadence: BillingCadence.QUARTERLY,
+      adultSeats: 1,
+      kidSeats: 2,
+      price: 14500,
+    },
+    {
+      id: "sub-family-two-adults-one-kid-monthly",
+      name: "Family Two Adults One Kid Monthly",
+      kind: SubscriptionKind.FAMILY,
+      individualAudience: null,
+      familyPack: FamilyPack.TWO_ADULTS_ONE_KID,
+      billingCadence: BillingCadence.MONTHLY,
+      adultSeats: 2,
+      kidSeats: 1,
+      price: 6500,
+    },
+    {
+      id: "sub-family-two-adults-one-kid-quarterly",
+      name: "Family Two Adults One Kid Quarterly",
+      kind: SubscriptionKind.FAMILY,
+      individualAudience: null,
+      familyPack: FamilyPack.TWO_ADULTS_ONE_KID,
+      billingCadence: BillingCadence.QUARTERLY,
+      adultSeats: 2,
+      kidSeats: 1,
+      price: 17000,
+    },
+    {
+      id: "sub-family-two-adults-two-kids-monthly",
+      name: "Family Two Adults Two Kids Monthly",
+      kind: SubscriptionKind.FAMILY,
+      individualAudience: null,
+      familyPack: FamilyPack.TWO_ADULTS_TWO_KIDS,
+      billingCadence: BillingCadence.MONTHLY,
+      adultSeats: 2,
+      kidSeats: 2,
+      price: 7500,
+    },
+    {
+      id: "sub-family-two-adults-two-kids-quarterly",
+      name: "Family Two Adults Two Kids Quarterly",
+      kind: SubscriptionKind.FAMILY,
+      individualAudience: null,
+      familyPack: FamilyPack.TWO_ADULTS_TWO_KIDS,
+      billingCadence: BillingCadence.QUARTERLY,
+      adultSeats: 2,
+      kidSeats: 2,
+      price: 19500,
+    },
+  ];
 
-  const unlimitedAdultsPlan = await prisma.plan.upsert({
-    where: { id: "plan-unlimited-adults-1" },
-    update: { billingCadence: "MONTHLY" },
-    create: {
-      id: "plan-unlimited-adults-1",
-      studioId: STUDIO_ID,
-      creatorId: "trainer-3",
-      name: "Adults Unlimited",
-      type: "UNLIMITED_ADULTS",
-      billingCadence: "MONTHLY",
-      classCredits: null,
-      priceMonthly: 5500,
-      active: true,
-    },
-  });
-
-  const kidsFullBatchPlan = await prisma.plan.upsert({
-    where: { id: "plan-kids-full-1" },
-    update: { billingCadence: "FULL_BATCH" },
-    create: {
-      id: "plan-kids-full-1",
-      studioId: STUDIO_ID,
-      creatorId: "trainer-1",
-      name: "Kids Full Batch",
-      type: "FIXED_BATCH",
-      billingCadence: "FULL_BATCH",
-      classCredits: 24,
-      priceMonthly: 6500,
-      active: true,
-    },
-  });
+  for (const sub of subscriptionCatalog) {
+    await prisma.subscription.upsert({
+      where: { id: sub.id },
+      update: {
+        name: sub.name,
+        kind: sub.kind,
+        individualAudience: sub.individualAudience,
+        familyPack: sub.familyPack,
+        billingCadence: sub.billingCadence,
+        adultSeats: sub.adultSeats,
+        kidSeats: sub.kidSeats,
+        price: sub.price,
+        active: true,
+        studioId: STUDIO_ID,
+        creatorId: owner.id,
+      },
+      create: {
+        id: sub.id,
+        studioId: STUDIO_ID,
+        creatorId: owner.id,
+        name: sub.name,
+        kind: sub.kind,
+        individualAudience: sub.individualAudience,
+        familyPack: sub.familyPack,
+        billingCadence: sub.billingCadence,
+        adultSeats: sub.adultSeats,
+        kidSeats: sub.kidSeats,
+        price: sub.price,
+        active: true,
+      },
+    });
+  }
 
   const mainBranch = await prisma.studioBranch.upsert({
     where: { id: "branch-main-1" },
@@ -656,8 +822,6 @@ async function main() {
     capacity: number;
     enrollmentMode: EnrollmentMode;
     creatorId: string;
-    monthlyPlanId: string | null;
-    fullBatchPlanId: string | null;
     active: boolean;
     certificationEnabled: boolean;
     coverImageUrl: string;
@@ -683,8 +847,6 @@ async function main() {
       capacity: 20,
       enrollmentMode: EnrollmentMode.STAFF_ONLY,
       creatorId: "trainer-1",
-      monthlyPlanId: kidsPlan.id,
-      fullBatchPlanId: kidsFullBatchPlan.id,
       active: true,
       certificationEnabled: true,
       coverImageUrl:
@@ -708,8 +870,6 @@ async function main() {
       capacity: 18,
       enrollmentMode: EnrollmentMode.STAFF_ONLY,
       creatorId: "trainer-1",
-      monthlyPlanId: adultsPlan.id,
-      fullBatchPlanId: null,
       active: true,
       certificationEnabled: false,
       coverImageUrl:
@@ -733,8 +893,6 @@ async function main() {
       capacity: 16,
       enrollmentMode: EnrollmentMode.SELF_JOIN,
       creatorId: "trainer-2",
-      monthlyPlanId: adultsPlan.id,
-      fullBatchPlanId: null,
       active: true,
       certificationEnabled: true,
       coverImageUrl:
@@ -758,8 +916,6 @@ async function main() {
       capacity: 25,
       enrollmentMode: EnrollmentMode.SELF_JOIN,
       creatorId: "trainer-3",
-      monthlyPlanId: adultsPlan.id,
-      fullBatchPlanId: null,
       active: true,
       certificationEnabled: false,
       coverImageUrl:
@@ -786,8 +942,6 @@ async function main() {
       capacity: 20,
       enrollmentMode: EnrollmentMode.STAFF_ONLY,
       creatorId: "trainer-4",
-      monthlyPlanId: null,
-      fullBatchPlanId: null,
       active: false,
       certificationEnabled: true,
       coverImageUrl:
@@ -810,8 +964,6 @@ async function main() {
         scheduleJson: data.scheduleJson,
         capacity: data.capacity,
         enrollmentMode: data.enrollmentMode,
-        monthlyPlanId: data.monthlyPlanId,
-        fullBatchPlanId: data.fullBatchPlanId,
         active: data.active,
         certificationEnabled: data.certificationEnabled,
         certificateTemplateId: data.certificationEnabled
@@ -832,8 +984,6 @@ async function main() {
         capacity: data.capacity,
         enrollmentMode: data.enrollmentMode,
         creatorId: data.creatorId,
-        monthlyPlanId: data.monthlyPlanId,
-        fullBatchPlanId: data.fullBatchPlanId,
         active: data.active,
         certificationEnabled: data.certificationEnabled,
         certificateTemplateId: data.certificationEnabled
@@ -901,83 +1051,96 @@ async function main() {
   await enroll("batch-contemporary-1", contemporaryEnrollees);
   await enroll("batch-beginner-1", beginnerEnrollees);
 
-  const periodStart = new Date();
-  periodStart.setUTCDate(1);
-  periodStart.setUTCHours(0, 0, 0, 0);
-  const periodEnd = new Date(periodStart);
-  periodEnd.setUTCMonth(periodEnd.getUTCMonth() + 1);
+  const now = new Date();
+  const periodStart = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1),
+  );
+  const periodEnd = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1),
+  );
 
-  const subscriptions: Array<{
-    id: string;
-    studentId: string;
-    planId: string;
-    creditsRemaining: number | null;
-  }> = [
-    ...kidsEnrollees.map((studentId, i) => ({
-      id: `sub-${studentId}-kids`,
-      studentId,
-      planId: kidsPlan.id,
-      creditsRemaining: 8 - (i % 3),
-    })),
-    ...adultsEnrollees.map((studentId, i) => ({
-      id: `sub-${studentId}-adults`,
-      studentId,
-      planId: adultsPlan.id,
-      creditsRemaining: 12 - (i % 4),
-    })),
-    ...contemporaryEnrollees.map((studentId) => ({
-      id: `sub-${studentId}-unlimited`,
-      studentId,
-      planId: unlimitedAdultsPlan.id,
-      creditsRemaining: null,
-    })),
-  ];
-
-  // Keep legacy id used elsewhere
-  await prisma.subscription.upsert({
-    where: { id: "sub-student-1" },
+  await prisma.membership.upsert({
+    where: { id: "membership-individual-kid-1" },
     update: {
-      planId: kidsPlan.id,
+      subscriptionId: "sub-individual-kid-monthly",
+      purchaserUserId: "parent-1",
       periodStart,
       periodEnd,
-      status: "ACTIVE",
-      creditsRemaining: 8,
+      status: MembershipStatus.ACTIVE,
     },
     create: {
-      id: "sub-student-1",
-      studentId: "student-1",
-      planId: kidsPlan.id,
+      id: "membership-individual-kid-1",
+      subscriptionId: "sub-individual-kid-monthly",
+      purchaserUserId: "parent-1",
       periodStart,
       periodEnd,
-      status: "ACTIVE",
-      creditsRemaining: 8,
+      status: MembershipStatus.ACTIVE,
     },
   });
 
-  for (const sub of subscriptions) {
-    if (sub.id === "sub-student-1-kids") {
-      continue;
-    }
-    await prisma.subscription.upsert({
-      where: { id: sub.id },
-      update: {
-        planId: sub.planId,
-        periodStart,
-        periodEnd,
-        status: "ACTIVE",
-        creditsRemaining: sub.creditsRemaining,
+  await prisma.membershipCoveredStudent.upsert({
+    where: {
+      membershipId_studentId: {
+        membershipId: "membership-individual-kid-1",
+        studentId: "student-1",
       },
-      create: {
-        id: sub.id,
-        studentId: sub.studentId,
-        planId: sub.planId,
-        periodStart,
-        periodEnd,
-        status: "ACTIVE",
-        creditsRemaining: sub.creditsRemaining,
+    },
+    update: { seatRole: MembershipSeatRole.KID },
+    create: {
+      membershipId: "membership-individual-kid-1",
+      studentId: "student-1",
+      seatRole: MembershipSeatRole.KID,
+    },
+  });
+
+  await prisma.membership.upsert({
+    where: { id: "membership-family-1" },
+    update: {
+      subscriptionId: "sub-family-one-adult-one-kid-monthly",
+      purchaserUserId: "parent-1",
+      periodStart,
+      periodEnd,
+      status: MembershipStatus.ACTIVE,
+    },
+    create: {
+      id: "membership-family-1",
+      subscriptionId: "sub-family-one-adult-one-kid-monthly",
+      purchaserUserId: "parent-1",
+      periodStart,
+      periodEnd,
+      status: MembershipStatus.ACTIVE,
+    },
+  });
+
+  await prisma.membershipCoveredStudent.upsert({
+    where: {
+      membershipId_studentId: {
+        membershipId: "membership-family-1",
+        studentId: "parent-1",
       },
-    });
-  }
+    },
+    update: { seatRole: MembershipSeatRole.ADULT },
+    create: {
+      membershipId: "membership-family-1",
+      studentId: "parent-1",
+      seatRole: MembershipSeatRole.ADULT,
+    },
+  });
+
+  await prisma.membershipCoveredStudent.upsert({
+    where: {
+      membershipId_studentId: {
+        membershipId: "membership-family-1",
+        studentId: "student-1",
+      },
+    },
+    update: { seatRole: MembershipSeatRole.KID },
+    create: {
+      membershipId: "membership-family-1",
+      studentId: "student-1",
+      seatRole: MembershipSeatRole.KID,
+    },
+  });
 
   const weekStart = mondayOfWeek();
 
@@ -1468,6 +1631,9 @@ async function main() {
   );
   console.log(
     "  Batches: kids/adults/contemporary/beginner (active) + archived intensive",
+  );
+  console.log(
+    "  16 subscription catalog rows + sample individual/family memberships",
   );
   console.log(
     "  Sessions + past attendance for kids/adults; pending booking requests",

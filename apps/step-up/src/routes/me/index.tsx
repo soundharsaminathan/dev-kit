@@ -241,7 +241,7 @@ function MeHomePage() {
                   title="Keep your spot warm"
                   subtitle="Renew your plan so you don't miss the next drop-in"
                   ctaLabel="Renew plan"
-                  to="/me/plans"
+                  to="/me/subscriptions"
                 />
               ) : null}
 

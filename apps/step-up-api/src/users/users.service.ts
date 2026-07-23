@@ -260,7 +260,7 @@ export class UsersService {
       throw new NotFoundException("Student not found in this studio");
     }
 
-    const [enrollments, subscriptions, attendanceRecords, invoices] =
+    const [enrollments, memberships, attendanceRecords, invoices] =
       await Promise.all([
         this.prisma.batchEnrollment.findMany({
           where: {
@@ -279,12 +279,18 @@ export class UsersService {
           },
           orderBy: { batch: { name: "asc" } },
         }),
-        this.prisma.subscription.findMany({
+        this.prisma.membership.findMany({
           where: {
-            studentId,
-            plan: { studioId },
+            OR: [
+              { purchaserUserId: studentId },
+              { coveredStudents: { some: { studentId } } },
+            ],
+            subscription: { studioId },
           },
-          include: { plan: true },
+          include: {
+            subscription: true,
+            coveredStudents: true,
+          },
           orderBy: { periodStart: "desc" },
         }),
         this.prisma.attendance.findMany({
@@ -314,7 +320,7 @@ export class UsersService {
     return {
       student: await this.presentUser(student),
       batches: enrollments.map((enrollment) => enrollment.batch),
-      subscriptions,
+      memberships,
       attendance,
       invoices: invoices.map((invoice) => ({
         ...invoice,
@@ -519,9 +525,11 @@ export class UsersService {
             status: true,
           },
         },
-        subscriptions: {
-          where: { plan: { studioId } },
-          select: { status: true },
+        membershipSeats: {
+          where: { membership: { subscription: { studioId } } },
+          select: {
+            membership: { select: { status: true } },
+          },
         },
       },
     });
@@ -542,7 +550,9 @@ export class UsersService {
         })),
         bookings: student.bookings,
         attendance: student.attendanceRecords,
-        subscriptions: student.subscriptions,
+        memberships: student.membershipSeats.map((seat) => ({
+          status: seat.membership.status,
+        })),
       })),
       period,
     );

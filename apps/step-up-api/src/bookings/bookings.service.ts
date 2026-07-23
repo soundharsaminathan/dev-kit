@@ -5,9 +5,14 @@ import {
   Inject,
   Injectable,
 } from "@nestjs/common";
-import { BookingStatus, BookingType, InvoiceStatus } from "@prisma/client";
+import {
+  BookingStatus,
+  BookingType,
+  InvoiceStatus,
+  MembershipStatus,
+} from "@prisma/client";
+import { MembershipsService } from "../memberships/memberships.service";
 import { PrismaService } from "../prisma/prisma.service";
-import { SubscriptionsService } from "../subscriptions/subscriptions.service";
 import { UserCryptoService, userPiiSelect } from "../users/user-crypto.service";
 
 export type UpdateBookingStatusInput = {
@@ -22,8 +27,8 @@ export type UpdateBookingStatusInput = {
 export class BookingsService {
   constructor(
     @Inject(PrismaService) private readonly prisma: PrismaService,
-    @Inject(SubscriptionsService)
-    private readonly subscriptions: SubscriptionsService,
+    @Inject(MembershipsService)
+    private readonly memberships: MembershipsService,
     @Inject(UserCryptoService) private readonly crypto: UserCryptoService,
   ) {}
 
@@ -144,18 +149,17 @@ export class BookingsService {
       });
     }
 
-    const activeSubscription = await this.prisma.subscription.findFirst({
+    const activeMembership = await this.prisma.membership.findFirst({
       where: {
-        studentId: data.studentId,
-        status: "ACTIVE",
+        status: MembershipStatus.ACTIVE,
         periodEnd: { gte: new Date() },
+        coveredStudents: { some: { studentId: data.studentId } },
       },
-      include: { plan: true },
     });
 
-    if (!activeSubscription) {
+    if (!activeMembership) {
       throw new BadRequestException(
-        "An active plan is required for this booking",
+        "An active membership is required for this booking",
       );
     }
 
@@ -168,14 +172,14 @@ export class BookingsService {
         throw new BadRequestException("Session not found");
       }
 
-      const covers = await this.subscriptions.findActiveForBatch(
+      const covers = await this.memberships.findActiveForBatch(
         data.studentId,
         session.batchId,
       );
 
       if (!covers) {
         throw new BadRequestException(
-          "Active subscription does not cover this session batch",
+          "Active membership does not cover this session batch",
         );
       }
     }

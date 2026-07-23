@@ -25,21 +25,39 @@ enum EnrollmentMode {
   SELF_JOIN
 }
 
-enum PlanType {
-  FIXED_BATCH
-  UNLIMITED_KIDS
-  UNLIMITED_ADULTS
+enum SubscriptionKind {
+  INDIVIDUAL
+  FAMILY
+}
+
+enum IndividualAudience {
+  ADULT
+  KID
+}
+
+enum FamilyPack {
+  TWO_KIDS
+  ONE_ADULT_ONE_KID
+  TWO_ADULTS
+  ONE_ADULT_TWO_KIDS
+  TWO_ADULTS_ONE_KID
+  TWO_ADULTS_TWO_KIDS
 }
 
 enum BillingCadence {
   MONTHLY
-  FULL_BATCH
+  QUARTERLY
 }
 
-enum SubscriptionStatus {
+enum MembershipStatus {
   ACTIVE
   DUE
   EXPIRED
+}
+
+enum MembershipSeatRole {
+  ADULT
+  KID
 }
 
 enum InvoiceStatus {
@@ -85,7 +103,7 @@ enum BookingStatus {
 
 enum NotificationType {
   MISSED_SESSION
-  PLAN_EXPIRING
+  SUBSCRIPTION_EXPIRING
   PAYMENT_OVERDUE
   RENEWED
   NOT_RENEWED
@@ -220,9 +238,10 @@ model User {
   trainedBatches    BatchTrainer[]
   batchEnrollments  BatchEnrollment[]
   batchRatings      BatchRating[]
-  createdPlans      Plan[]            @relation("PlanCreator")
-  subscriptions     Subscription[]
-  invoices          Invoice[]
+  createdSubscriptions Subscription[] @relation("SubscriptionCreator")
+  purchasedMemberships Membership[]   @relation("MembershipPurchaser")
+  membershipSeats      MembershipCoveredStudent[]
+  invoices             Invoice[]
   markedAttendance  Attendance[]      @relation("AttendanceMarker")
   attendanceRecords Attendance[]      @relation("StudentAttendance")
   bookings          Booking[]         @relation("StudentBookings")
@@ -280,7 +299,7 @@ model Studio {
   settings             StudioSettings?
   branches             StudioBranch[]
   batches              Batch[]
-  plans                Plan[]
+  subscriptions        Subscription[]
   invoices             Invoice[]
   bookings             Booking[]
   certificateTemplates CertificateTemplate[]
@@ -404,8 +423,6 @@ model Batch {
   capacity              Int
   enrollmentMode        EnrollmentMode
   creatorId             String
-  monthlyPlanId         String?
-  fullBatchPlanId       String?
   active                Boolean        @default(true)
   certificationEnabled  Boolean        @default(false)
   certificateTemplateId String?
@@ -416,8 +433,6 @@ model Batch {
   studio              Studio               @relation(fields: [studioId], references: [id], onDelete: Cascade)
   branch              StudioBranch         @relation(fields: [branchId], references: [id], onDelete: Restrict)
   creator             User                 @relation("BatchCreator", fields: [creatorId], references: [id])
-  monthlyPlan         Plan?                @relation("BatchMonthlyPlan", fields: [monthlyPlanId], references: [id])
-  fullBatchPlan       Plan?                @relation("BatchFullBatchPlan", fields: [fullBatchPlanId], references: [id])
   certificateTemplate CertificateTemplate? @relation(fields: [certificateTemplateId], references: [id], onDelete: SetNull)
   trainers            BatchTrainer[]
   enrollments         BatchEnrollment[]
@@ -464,42 +479,59 @@ model BatchEnrollment {
   @@unique([batchId, studentId])
 }
 
-model Plan {
-  id             String         @id @default(cuid())
-  studioId       String
-  creatorId      String
-  name           String
-  type           PlanType
-  billingCadence BillingCadence @default(MONTHLY)
-  classCredits   Int?
-  priceMonthly   Decimal        @db.Decimal(10, 2)
-  active         Boolean        @default(true)
+model Subscription {
+  id                  String               @id @default(cuid())
+  studioId            String
+  creatorId           String
+  name                String
+  kind                SubscriptionKind
+  individualAudience  IndividualAudience?
+  familyPack          FamilyPack?
+  billingCadence      BillingCadence       @default(MONTHLY)
+  adultSeats          Int
+  kidSeats            Int
+  price               Decimal              @db.Decimal(10, 2)
+  active              Boolean              @default(true)
 
-  studio          Studio         @relation(fields: [studioId], references: [id], onDelete: Cascade)
-  creator         User           @relation("PlanCreator", fields: [creatorId], references: [id])
-  monthlyBatches  Batch[]        @relation("BatchMonthlyPlan")
-  fullBatchBatches Batch[]       @relation("BatchFullBatchPlan")
-  subscriptions   Subscription[]
+  studio      Studio       @relation(fields: [studioId], references: [id], onDelete: Cascade)
+  creator     User         @relation("SubscriptionCreator", fields: [creatorId], references: [id])
+  memberships Membership[]
 }
 
-model Subscription {
-  id               String             @id @default(cuid())
-  studentId        String
-  planId           String
+model Membership {
+  id               String           @id @default(cuid())
+  subscriptionId   String
+  purchaserUserId  String
   periodStart      DateTime
   periodEnd        DateTime
-  status           SubscriptionStatus
-  creditsRemaining Int?
+  status           MembershipStatus
 
-  student  User      @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  plan     Plan      @relation(fields: [planId], references: [id], onDelete: Cascade)
-  invoices Invoice[]
+  subscription    Subscription               @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  purchaser       User                       @relation("MembershipPurchaser", fields: [purchaserUserId], references: [id], onDelete: Cascade)
+  coveredStudents MembershipCoveredStudent[]
+  invoices        Invoice[]
+
+  @@index([purchaserUserId])
+  @@index([subscriptionId, status])
+}
+
+model MembershipCoveredStudent {
+  id           String             @id @default(cuid())
+  membershipId String
+  studentId    String
+  seatRole     MembershipSeatRole
+
+  membership Membership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  student    User       @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([membershipId, studentId])
+  @@index([studentId])
 }
 
 model Invoice {
   id                 String         @id @default(cuid())
   studentId          String
-  subscriptionId     String?
+  membershipId       String?
   amount             Decimal        @db.Decimal(10, 2)
   status             InvoiceStatus
   paymentMethod      PaymentMethod?
@@ -507,9 +539,9 @@ model Invoice {
   platformFeePercent Float
   studioId           String
 
-  student      User          @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  subscription Subscription? @relation(fields: [subscriptionId], references: [id])
-  studio       Studio        @relation(fields: [studioId], references: [id], onDelete: Cascade)
+  student    User        @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  membership Membership? @relation(fields: [membershipId], references: [id])
+  studio     Studio      @relation(fields: [studioId], references: [id], onDelete: Cascade)
 }
 
 model Session {

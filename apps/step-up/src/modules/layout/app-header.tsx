@@ -79,7 +79,7 @@ function notificationIcon(
       return "credit-card";
     case "RENEWED":
       return "badge-check";
-    case "PLAN_EXPIRING":
+    case "SUBSCRIPTION_EXPIRING":
     case "NOT_RENEWED":
       return "alert-circle";
     case "NEW_FOLLOW":

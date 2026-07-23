@@ -14,10 +14,10 @@ type Preference = {
 
 const PREF_LABELS: Record<string, string> = {
   MISSED_SESSION: "Missed sessions",
-  PLAN_EXPIRING: "Plan expiring",
+  SUBSCRIPTION_EXPIRING: "Subscription expiring",
   PAYMENT_OVERDUE: "Payment overdue",
-  RENEWED: "Plan renewed",
-  NOT_RENEWED: "Plan not renewed",
+  RENEWED: "Subscription renewed",
+  NOT_RENEWED: "Subscription not renewed",
   NEW_FOLLOW: "New followers",
   CHAT_MESSAGE: "Chat messages",
 };

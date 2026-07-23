@@ -311,16 +311,29 @@ export class BranchesService {
   async getLanding(id: string, user: DecryptedUser) {
     const branch = await this.getById(id, user);
 
-    const batches = await this.prisma.batch.findMany({
-      where: { branchId: id, active: true },
-      include: {
-        monthlyPlan: true,
-        fullBatchPlan: true,
-        trainers: { include: { trainer: true } },
-        _count: { select: { enrollments: true } },
-      },
-      orderBy: { name: "asc" },
-    });
+    const [batches, subscriptions] = await Promise.all([
+      this.prisma.batch.findMany({
+        where: { branchId: id, active: true },
+        include: {
+          trainers: { include: { trainer: true } },
+          _count: { select: { enrollments: true } },
+        },
+        orderBy: { name: "asc" },
+      }),
+      this.prisma.subscription.findMany({
+        where: { studioId: branch.studioId, active: true },
+        orderBy: [{ kind: "asc" }, { name: "asc" }],
+        select: {
+          id: true,
+          name: true,
+          kind: true,
+          billingCadence: true,
+          price: true,
+          adultSeats: true,
+          kidSeats: true,
+        },
+      }),
+    ]);
 
     const trainerMap = new Map<
       string,
@@ -357,22 +370,6 @@ export class BranchesService {
         ratingCount: batch.ratingCount,
         capacity: batch.capacity,
         enrollmentCount: batch._count.enrollments,
-        monthlyPlan: batch.monthlyPlan
-          ? {
-              id: batch.monthlyPlan.id,
-              name: batch.monthlyPlan.name,
-              priceMonthly: batch.monthlyPlan.priceMonthly,
-              billingCadence: batch.monthlyPlan.billingCadence,
-            }
-          : null,
-        fullBatchPlan: batch.fullBatchPlan
-          ? {
-              id: batch.fullBatchPlan.id,
-              name: batch.fullBatchPlan.name,
-              priceMonthly: batch.fullBatchPlan.priceMonthly,
-              billingCadence: batch.fullBatchPlan.billingCadence,
-            }
-          : null,
       };
     });
 
@@ -391,6 +388,10 @@ export class BranchesService {
       ratingAvg,
       ratingCount,
       batches: presentedBatches,
+      subscriptions: subscriptions.map((subscription) => ({
+        ...subscription,
+        price: Number(subscription.price),
+      })),
       trainers: [...trainerMap.values()],
     };
   }

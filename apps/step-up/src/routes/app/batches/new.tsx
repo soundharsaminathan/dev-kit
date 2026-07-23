@@ -31,14 +31,6 @@ type Batch = {
   name: string;
 };
 
-type Plan = {
-  id: string;
-  name: string;
-  type: "FIXED_BATCH" | "UNLIMITED_KIDS" | "UNLIMITED_ADULTS";
-  billingCadence: "MONTHLY" | "FULL_BATCH";
-  active: boolean;
-};
-
 type StudioMember = {
   id: string;
   name: string;
@@ -56,7 +48,6 @@ const steps = [
   "Basics",
   "Trainers",
   "Schedule",
-  "Billing",
   "Dance categories",
   "Certification",
 ] as const;
@@ -104,8 +95,6 @@ function NewBatchPage() {
   const [name, setName] = useState("");
   const [coverImageUrl, setCoverImageUrl] = useState("");
   const [category, setCategory] = useState<"KIDS" | "ADULTS">("KIDS");
-  const [monthlyPlanId, setMonthlyPlanId] = useState<string | null>(null);
-  const [fullBatchPlanId, setFullBatchPlanId] = useState<string | null>(null);
   const [capacity, setCapacity] = useState("12");
   const [enrollmentMode, setEnrollmentMode] = useState<
     "STAFF_ONLY" | "SELF_JOIN"
@@ -127,10 +116,6 @@ function NewBatchPage() {
     string | null
   >(null);
 
-  const plans = useQuery({
-    queryKey: ["plans", STUDIO_ID],
-    queryFn: () => api.get<Plan[]>(`/plans/studio/${STUDIO_ID}`),
-  });
   const members = useQuery({
     queryKey: ["studio-members", STUDIO_ID],
     queryFn: () => api.get<StudioMember[]>(`/users/studio/${STUDIO_ID}`),
@@ -147,26 +132,6 @@ function NewBatchPage() {
       ),
   });
 
-  const monthlyPlans = useMemo(
-    () =>
-      plans.data?.filter(
-        (plan) =>
-          plan.active &&
-          plan.type === "FIXED_BATCH" &&
-          plan.billingCadence === "MONTHLY",
-      ) ?? [],
-    [plans.data],
-  );
-  const fullBatchPlans = useMemo(
-    () =>
-      plans.data?.filter(
-        (plan) =>
-          plan.active &&
-          plan.type === "FIXED_BATCH" &&
-          plan.billingCadence === "FULL_BATCH",
-      ) ?? [],
-    [plans.data],
-  );
   const trainers = useMemo(
     () => members.data?.filter((member) => member.role === "TRAINER") ?? [],
     [members.data],
@@ -208,7 +173,6 @@ function NewBatchPage() {
         endTime > startTime &&
         (frequency === "DAILY" || selectedWeekdays.length > 0),
     ),
-    Boolean(monthlyPlanId || fullBatchPlanId),
     danceCategories.length > 0 &&
       danceCategories.every(
         (danceCategory) =>
@@ -224,8 +188,6 @@ function NewBatchPage() {
         name,
         coverImageUrl: coverImageUrl.trim() || undefined,
         category,
-        monthlyPlanId,
-        fullBatchPlanId,
         branchId,
         trainerIds,
         danceCategories: danceCategories.map(
@@ -501,79 +463,6 @@ function NewBatchPage() {
           )}
 
           {step === 3 && (
-            <div className={styles.formGrid}>
-              <Select
-                label="Monthly plan (optional)"
-                placeholder={
-                  plans.isLoading ? "Loading plans…" : "Select a monthly plan"
-                }
-                selectedKey={monthlyPlanId ?? "__none__"}
-                onSelectionChange={(key) =>
-                  setMonthlyPlanId(
-                    !key || key === "__none__" ? null : (key as string),
-                  )
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem id="__none__">None</SelectItem>
-                  {monthlyPlans.map((plan) => (
-                    <SelectItem key={plan.id} id={plan.id}>
-                      {plan.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Select
-                label="Full-batch plan (optional)"
-                placeholder={
-                  plans.isLoading
-                    ? "Loading plans…"
-                    : "Select a full-batch plan"
-                }
-                selectedKey={fullBatchPlanId ?? "__none__"}
-                onSelectionChange={(key) =>
-                  setFullBatchPlanId(
-                    !key || key === "__none__" ? null : (key as string),
-                  )
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem id="__none__">None</SelectItem>
-                  {fullBatchPlans.map((plan) => (
-                    <SelectItem key={plan.id} id={plan.id}>
-                      {plan.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <p className={`${styles.help} ${styles.fullWidth}`}>
-                Choose at least one offer. Monthly covers calendar months;
-                full-batch covers the whole schedule ({startDate} → {endDate}).
-              </p>
-              {plans.isError && (
-                <p className={`${styles.error} ${styles.fullWidth}`}>
-                  Plans could not be loaded.
-                </p>
-              )}
-              {plans.isFetched &&
-                monthlyPlans.length === 0 &&
-                fullBatchPlans.length === 0 && (
-                  <p className={`${styles.help} ${styles.fullWidth}`}>
-                    Create a fixed-batch plan with monthly or full-batch billing
-                    before adding this batch.{" "}
-                    <Link to="/app/plans/new">Add a plan</Link>
-                  </p>
-                )}
-            </div>
-          )}
-
-          {step === 4 && (
             <div className={styles.categories}>
               {danceCategories.map((danceCategory, index) => (
                 <div key={danceCategory.id} className={styles.category}>
@@ -642,7 +531,7 @@ function NewBatchPage() {
             </div>
           )}
 
-          {step === 5 && (
+          {step === 4 && (
             <div className={styles.certification}>
               <div className={styles.certToggle}>
                 <Switch

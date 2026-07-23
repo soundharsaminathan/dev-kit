@@ -2,8 +2,8 @@ import {
   AttendanceStatus,
   BookingStatus,
   BookingType,
+  MembershipStatus,
   SessionStatus,
-  SubscriptionStatus,
 } from "@prisma/client";
 import { describe, expect, it } from "vitest";
 import {
@@ -23,7 +23,7 @@ function student(
     enrollments: [],
     bookings: [],
     attendance: [],
-    subscriptions: [],
+    memberships: [],
     ...overrides,
   };
 }
@@ -53,7 +53,7 @@ describe("student-funnel", () => {
     ).toBe("active");
   });
 
-  it("classifies completed batch without active plan", () => {
+  it("classifies completed batch without active membership", () => {
     expect(
       classifyStudentFunnelStage(
         student({
@@ -65,13 +65,13 @@ describe("student-funnel", () => {
               hasCompletedSession: true,
             },
           ],
-          subscriptions: [{ status: SubscriptionStatus.EXPIRED }],
+          memberships: [{ status: MembershipStatus.EXPIRED }],
         }),
       ),
     ).toBe("completedWithoutPlan");
   });
 
-  it("does not treat finished batch as completed when plan is active", () => {
+  it("does not treat finished batch as completed when membership is active", () => {
     expect(
       classifyStudentFunnelStage(
         student({
@@ -83,7 +83,7 @@ describe("student-funnel", () => {
               hasCompletedSession: true,
             },
           ],
-          subscriptions: [{ status: SubscriptionStatus.ACTIVE }],
+          memberships: [{ status: MembershipStatus.ACTIVE }],
           bookings: [
             {
               type: BookingType.TRIAL,

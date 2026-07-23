@@ -29,7 +29,7 @@ import { EmptyState, ErrorState } from "@/modules/ui/states";
 import { TouchButton } from "@/modules/ui/touch-button";
 
 type Batch = { id: string; name: string; active: boolean };
-type Plan = { id: string; name: string; priceMonthly: number };
+type Subscription = { id: string; name: string; price: number };
 type StudioMember = {
   id: string;
   role: "OWNER" | "STAFF" | "TRAINER" | "STUDENT" | "PARENT";
@@ -84,7 +84,7 @@ const STUDENT_FUNNEL_TILES: Array<{
   {
     key: "completedWithoutPlan",
     label: "Completed, no plan",
-    hint: "Finished batch, inactive plan",
+    hint: "Finished batch, inactive membership",
   },
 ];
 
@@ -158,9 +158,10 @@ function AppDashboardPage() {
     enabled: isTrainer,
     staleTime: 5 * 60 * 1000,
   });
-  const plans = useQuery({
-    queryKey: ["plans", STUDIO_ID],
-    queryFn: () => api.get<Plan[]>(`/plans/studio/${STUDIO_ID}`),
+  const subscriptions = useQuery({
+    queryKey: ["subscriptions", STUDIO_ID],
+    queryFn: () =>
+      api.get<Subscription[]>(`/subscriptions/studio/${STUDIO_ID}`),
   });
   const members = useQuery({
     queryKey: ["studio-members", STUDIO_ID],
@@ -207,7 +208,7 @@ function AppDashboardPage() {
     members.data?.filter((member) => member.role === "STUDENT").length ?? null;
   const trainerCount =
     members.data?.filter((member) => member.role === "TRAINER").length ?? null;
-  const planCount = plans.data?.length ?? null;
+  const subscriptionCount = subscriptions.data?.length ?? null;
 
   const pending = useMemo(() => {
     const items = (bookings.data ?? []).filter(
@@ -291,7 +292,7 @@ function AppDashboardPage() {
 
   const anyError =
     batches.isError ||
-    plans.isError ||
+    subscriptions.isError ||
     members.isError ||
     bookings.isError ||
     (!isTrainer && studentFunnel.isError);
@@ -299,7 +300,7 @@ function AppDashboardPage() {
   async function refresh() {
     await Promise.all([
       batches.refetch(),
-      plans.refetch(),
+      subscriptions.refetch(),
       members.refetch(),
       bookings.refetch(),
       ...(!isTrainer ? [studentFunnel.refetch()] : []),
@@ -381,12 +382,12 @@ function AppDashboardPage() {
               loading={members.isLoading}
             />
             <MetricLink
-              to="/app/plans"
+              to="/app/subscriptions"
               icon="clipboard"
-              label="Plans"
-              value={planCount}
+              label="Subscriptions"
+              value={subscriptionCount}
               hint="Memberships"
-              loading={plans.isLoading}
+              loading={subscriptions.isLoading}
             />
           </div>
         )}

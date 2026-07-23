@@ -1,11 +1,10 @@
 import { BadRequestException } from "@nestjs/common";
-import { BillingCadence, PlanType, UserRole } from "@prisma/client";
+import { BillingCadence, UserRole } from "@prisma/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { BatchesService } from "./batches.service";
 
 describe("BatchesService branch validation", () => {
   const prisma = {
-    plan: { findUnique: vi.fn() },
     user: { findMany: vi.fn() },
     studioBranch: { findUnique: vi.fn() },
     certificateTemplate: { findUnique: vi.fn() },
@@ -40,13 +39,6 @@ describe("BatchesService branch validation", () => {
     prisma.$transaction.mockImplementation(
       async (callback: (tx: typeof prisma) => unknown) => callback(prisma),
     );
-    prisma.plan.findUnique.mockResolvedValue({
-      id: "plan-1",
-      studioId: "studio-1",
-      type: PlanType.FIXED_BATCH,
-      billingCadence: BillingCadence.MONTHLY,
-      active: true,
-    });
     prisma.user.findMany.mockResolvedValue([
       {
         id: "trainer-1",
@@ -67,7 +59,6 @@ describe("BatchesService branch validation", () => {
         studioId: "studio-1",
         name: "Kids",
         category: "KIDS",
-        monthlyPlanId: "plan-1",
         branchId: "branch-other",
         trainerIds: ["trainer-1"],
         danceCategories: [{ name: "Hip-hop", description: "Basics" }],
@@ -98,7 +89,6 @@ describe("BatchesService branch validation", () => {
       studioId: "studio-1",
       name: "Kids",
       category: "KIDS",
-      monthlyPlanId: "plan-1",
       branchId: "branch-1",
       trainerIds: ["trainer-1"],
       danceCategories: [{ name: "Hip-hop", description: "Basics" }],
@@ -119,9 +109,9 @@ describe("BatchesService branch validation", () => {
     expect(prisma.batch.create.mock.calls[0]?.[0]?.data?.branchId).toBe(
       "branch-1",
     );
-    expect(prisma.batch.create.mock.calls[0]?.[0]?.data?.monthlyPlanId).toBe(
-      "plan-1",
-    );
+    expect(
+      prisma.batch.create.mock.calls[0]?.[0]?.data?.monthlyPlanId,
+    ).toBeUndefined();
   });
 });
 
@@ -254,38 +244,34 @@ describe("BatchesService getRevenue", () => {
     );
   });
 
-  it("aggregates invoices for enrolled students on linked plans", async () => {
+  it("aggregates membership invoices for enrolled students", async () => {
     prisma.batch.findUnique.mockResolvedValue({
       id: "batch-1",
       studioId: "studio-1",
-      monthlyPlanId: "plan-monthly",
-      fullBatchPlanId: "plan-full",
-      monthlyPlan: {
-        id: "plan-monthly",
-        name: "Monthly",
-        billingCadence: BillingCadence.MONTHLY,
-        priceMonthly: 2500,
-        type: PlanType.FIXED_BATCH,
-      },
-      fullBatchPlan: {
-        id: "plan-full",
-        name: "Full",
-        billingCadence: BillingCadence.FULL_BATCH,
-        priceMonthly: 6500,
-        type: PlanType.FIXED_BATCH,
-      },
       enrollments: [{ studentId: "student-1" }],
     });
     prisma.invoice.findMany.mockResolvedValue([
       {
         amount: 2500,
         status: "PAID",
-        subscription: { planId: "plan-monthly" },
+        membership: {
+          subscription: {
+            id: "sub-monthly",
+            name: "Monthly",
+            billingCadence: BillingCadence.MONTHLY,
+          },
+        },
       },
       {
         amount: 6500,
         status: "PENDING",
-        subscription: { planId: "plan-full" },
+        membership: {
+          subscription: {
+            id: "sub-quarterly",
+            name: "Quarterly",
+            billingCadence: BillingCadence.QUARTERLY,
+          },
+        },
       },
     ]);
 
@@ -298,15 +284,15 @@ describe("BatchesService getRevenue", () => {
       overdue: 0,
       invoiceCount: 2,
     });
-    expect(result.byPlan).toEqual(
+    expect(result.bySubscription).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          planId: "plan-monthly",
+          subscriptionId: "sub-monthly",
           collected: 2500,
           pending: 0,
         }),
         expect.objectContaining({
-          planId: "plan-full",
+          subscriptionId: "sub-quarterly",
           collected: 0,
           pending: 6500,
         }),

@@ -162,7 +162,7 @@ export class HomeService {
     const { periodStart, periodEnd } = monthPeriodBounds(now);
 
     const [
-      subscriptions,
+      membershipRows,
       presentAttendance,
       enrollments,
       upcomingSessions,
@@ -174,9 +174,14 @@ export class HomeService {
       feedPeek,
       goal,
     ] = await Promise.all([
-      this.prisma.subscription.findMany({
-        where: { studentId: resolvedStudentId },
-        include: { plan: true },
+      this.prisma.membership.findMany({
+        where: {
+          OR: [
+            { purchaserUserId: resolvedStudentId },
+            { coveredStudents: { some: { studentId: resolvedStudentId } } },
+          ],
+        },
+        include: { subscription: true },
         orderBy: { periodStart: "desc" },
         take: 5,
       }),
@@ -412,17 +417,20 @@ export class HomeService {
         (session) => session.startsAt.getTime() >= now.getTime(),
       ) ?? null;
 
-    const membership = subscriptions[0]
+    const membership = membershipRows[0]
       ? {
-          id: subscriptions[0].id,
-          status: subscriptions[0].status,
-          creditsRemaining: subscriptions[0].creditsRemaining,
-          periodEnd: subscriptions[0].periodEnd.toISOString(),
-          planName: subscriptions[0].plan?.name ?? null,
-          priceMonthly: subscriptions[0].plan?.priceMonthly ?? null,
+          id: membershipRows[0].id,
+          status: membershipRows[0].status,
+          periodEnd: membershipRows[0].periodEnd.toISOString(),
+          subscriptionName: membershipRows[0].subscription?.name ?? null,
+          price: membershipRows[0].subscription
+            ? Number(membershipRows[0].subscription.price)
+            : null,
+          billingCadence:
+            membershipRows[0].subscription?.billingCadence ?? null,
           needsRenewal:
-            subscriptions[0].status === "DUE" ||
-            subscriptions[0].status === "EXPIRED",
+            membershipRows[0].status === "DUE" ||
+            membershipRows[0].status === "EXPIRED",
         }
       : null;
 
@@ -481,14 +489,14 @@ export class HomeService {
     } else if (enrollments.length > 0 && membership) {
       hero = {
         kind: "membership",
-        title: membership.planName ?? "Membership",
+        title: membership.subscriptionName ?? "Membership",
         subtitle: membership.needsRenewal
           ? "Renew so you don't miss the floor"
-          : `${membership.creditsRemaining ?? "∞"} classes left`,
+          : "Your subscription is active",
         meta: `Expires ${new Date(membership.periodEnd).toLocaleDateString()}`,
         cta: membership.needsRenewal
-          ? { label: "Renew plan", to: "/me/plans" }
-          : { label: "View plan", to: "/me/plans" },
+          ? { label: "Renew subscription", to: "/me/subscriptions" }
+          : { label: "View subscription", to: "/me/subscriptions" },
         membership,
         streak,
       };
@@ -584,7 +592,6 @@ export class HomeService {
                 scheduleJson: true,
                 ratingAvg: true,
                 capacity: true,
-                monthlyPlan: { select: { priceMonthly: true } },
                 _count: { select: { enrollments: true } },
               },
               orderBy: { name: "asc" },
@@ -658,7 +665,7 @@ export class HomeService {
             0,
             batch.capacity - batch._count.enrollments,
           ),
-          priceMonthly: batch.monthlyPlan?.priceMonthly ?? null,
+          price: null,
         };
       })
       .filter((batch) => {
@@ -748,7 +755,7 @@ export class HomeService {
           { label: "Discover", to: "/me/book", icon: "search" },
           { label: "Check in", to: "/me/check-in", icon: "check-circle" },
           { label: "Calendar", to: "/me/calendar", icon: "calendar" },
-          { label: "Membership", to: "/me/plans", icon: "clipboard" },
+          { label: "Membership", to: "/me/subscriptions", icon: "clipboard" },
           { label: "Attendance", to: "/me/attendance", icon: "badge-check" },
           { label: "Messages", to: "/me/messages", icon: "message-square" },
         ],

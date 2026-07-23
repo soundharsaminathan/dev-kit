@@ -6,10 +6,8 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import {
-  BillingCadence,
   BookingStatus,
   EnrollmentMode,
-  PlanType,
   type Prisma,
   SessionStatus,
   UserRole,
@@ -76,11 +74,6 @@ function primaryStyleFrom(danceCategories: unknown): string | null {
   return first?.name?.trim() || null;
 }
 
-const batchPlanInclude = {
-  monthlyPlan: true,
-  fullBatchPlan: true,
-} as const;
-
 const branchCoverInclude = {
   coverMedia: true,
   media: {
@@ -97,8 +90,6 @@ function shapeDiscoverBatch<
     _count?: { enrollments: number };
     scheduleJson: unknown;
     danceCategories: unknown;
-    monthlyPlan?: { priceMonthly?: unknown } | null;
-    fullBatchPlan?: { priceMonthly?: unknown } | null;
     branch?: {
       photos?: string[] | null;
       coverMedia?: { objectKey?: string | null } | null;
@@ -126,10 +117,7 @@ function shapeDiscoverBatch<
     scheduleLabel: scheduleLabelFrom(batch.scheduleJson),
     styleBadge: primaryStyleFrom(batch.danceCategories),
     coverImageUrl,
-    priceMonthly:
-      batch.monthlyPlan?.priceMonthly ??
-      batch.fullBatchPlan?.priceMonthly ??
-      null,
+    price: null as number | null,
   };
 }
 
@@ -297,7 +285,6 @@ export class BatchesService {
       },
       include: {
         enrollments: true,
-        ...batchPlanInclude,
         branch: { include: branchCoverInclude },
         certificateTemplate: true,
         trainers: { include: { trainer: true } },
@@ -329,7 +316,6 @@ export class BatchesService {
       where: { id },
       include: {
         enrollments: { include: { student: true } },
-        ...batchPlanInclude,
         branch: { include: branchCoverInclude },
         certificateTemplate: true,
         sessions: { orderBy: { startsAt: "asc" } },
@@ -412,8 +398,6 @@ export class BatchesService {
       studioId: string;
       name: string;
       category: Prisma.BatchCreateInput["category"];
-      monthlyPlanId?: string | null;
-      fullBatchPlanId?: string | null;
       branchId: string;
       trainerIds: string[];
       danceCategories: { name: string; description: string }[];
@@ -432,48 +416,16 @@ export class BatchesService {
     const sessions = buildSessions(schedule);
     const trainerIds = [...new Set(data.trainerIds)];
     const certificationEnabled = data.certificationEnabled ?? false;
-    const monthlyPlanId = data.monthlyPlanId || null;
-    const fullBatchPlanId = data.fullBatchPlanId || null;
 
-    if (!monthlyPlanId && !fullBatchPlanId) {
-      throw new BadRequestException(
-        "Select at least one monthly or full-batch plan",
-      );
-    }
-
-    const [monthlyPlan, fullBatchPlan, trainers, branch, certificateTemplate] =
-      await Promise.all([
-        monthlyPlanId
-          ? this.prisma.plan.findUnique({ where: { id: monthlyPlanId } })
-          : Promise.resolve(null),
-        fullBatchPlanId
-          ? this.prisma.plan.findUnique({ where: { id: fullBatchPlanId } })
-          : Promise.resolve(null),
-        this.prisma.user.findMany({ where: { id: { in: trainerIds } } }),
-        this.prisma.studioBranch.findUnique({ where: { id: data.branchId } }),
-        certificationEnabled && data.certificateTemplateId
-          ? this.prisma.certificateTemplate.findUnique({
-              where: { id: data.certificateTemplateId },
-            })
-          : Promise.resolve(null),
-      ]);
-
-    if (monthlyPlanId) {
-      this.assertBatchPlanSlot(
-        monthlyPlan,
-        data.studioId,
-        BillingCadence.MONTHLY,
-        "monthly",
-      );
-    }
-    if (fullBatchPlanId) {
-      this.assertBatchPlanSlot(
-        fullBatchPlan,
-        data.studioId,
-        BillingCadence.FULL_BATCH,
-        "full-batch",
-      );
-    }
+    const [trainers, branch, certificateTemplate] = await Promise.all([
+      this.prisma.user.findMany({ where: { id: { in: trainerIds } } }),
+      this.prisma.studioBranch.findUnique({ where: { id: data.branchId } }),
+      certificationEnabled && data.certificateTemplateId
+        ? this.prisma.certificateTemplate.findUnique({
+            where: { id: data.certificateTemplateId },
+          })
+        : Promise.resolve(null),
+    ]);
 
     if (
       trainers.length !== trainerIds.length ||
@@ -519,8 +471,6 @@ export class BatchesService {
         capacity: data.capacity,
         enrollmentMode: data.enrollmentMode,
         creatorId,
-        monthlyPlanId,
-        fullBatchPlanId,
         active: data.active ?? true,
         certificationEnabled,
         certificateTemplateId: certificationEnabled
@@ -537,7 +487,6 @@ export class BatchesService {
         },
       },
       include: {
-        ...batchPlanInclude,
         branch: { include: branchCoverInclude },
         certificateTemplate: true,
         sessions: { orderBy: { startsAt: "asc" } },
@@ -550,8 +499,6 @@ export class BatchesService {
     id: string,
     data: {
       name?: string;
-      monthlyPlanId?: string | null;
-      fullBatchPlanId?: string | null;
       branchId?: string;
       trainerIds?: string[];
       danceCategories?: { name: string; description: string }[];
@@ -577,51 +524,6 @@ export class BatchesService {
       });
       if (!branch || branch.studioId !== batch.studioId) {
         throw new BadRequestException("Select a branch from this studio");
-      }
-    }
-
-    const plansTouched =
-      data.monthlyPlanId !== undefined || data.fullBatchPlanId !== undefined;
-    const nextMonthlyPlanId =
-      data.monthlyPlanId !== undefined
-        ? data.monthlyPlanId || null
-        : batch.monthlyPlanId;
-    const nextFullBatchPlanId =
-      data.fullBatchPlanId !== undefined
-        ? data.fullBatchPlanId || null
-        : batch.fullBatchPlanId;
-
-    if (plansTouched) {
-      if (!nextMonthlyPlanId && !nextFullBatchPlanId) {
-        throw new BadRequestException(
-          "Select at least one monthly or full-batch plan",
-        );
-      }
-
-      const [monthlyPlan, fullBatchPlan] = await Promise.all([
-        nextMonthlyPlanId
-          ? this.prisma.plan.findUnique({ where: { id: nextMonthlyPlanId } })
-          : Promise.resolve(null),
-        nextFullBatchPlanId
-          ? this.prisma.plan.findUnique({ where: { id: nextFullBatchPlanId } })
-          : Promise.resolve(null),
-      ]);
-
-      if (nextMonthlyPlanId) {
-        this.assertBatchPlanSlot(
-          monthlyPlan,
-          batch.studioId,
-          BillingCadence.MONTHLY,
-          "monthly",
-        );
-      }
-      if (nextFullBatchPlanId) {
-        this.assertBatchPlanSlot(
-          fullBatchPlan,
-          batch.studioId,
-          BillingCadence.FULL_BATCH,
-          "full-batch",
-        );
       }
     }
 
@@ -688,11 +590,9 @@ export class BatchesService {
       : undefined;
 
     const {
-      trainerIds: incomingTrainerIds,
+      trainerIds: _incomingTrainerIds,
       scheduleJson,
       danceCategories,
-      monthlyPlanId,
-      fullBatchPlanId,
       ...batchData
     } = data;
 
@@ -712,12 +612,6 @@ export class BatchesService {
         where: { id },
         data: {
           ...batchData,
-          ...(monthlyPlanId !== undefined
-            ? { monthlyPlanId: monthlyPlanId || null }
-            : {}),
-          ...(fullBatchPlanId !== undefined
-            ? { fullBatchPlanId: fullBatchPlanId || null }
-            : {}),
           ...(danceCategories ? { danceCategories } : {}),
           ...(scheduleJson ? { scheduleJson } : {}),
           certificateTemplateId: certificationEnabled
@@ -727,7 +621,6 @@ export class BatchesService {
         },
         include: {
           branch: { include: branchCoverInclude },
-          ...batchPlanInclude,
           certificateTemplate: true,
           sessions: { orderBy: { startsAt: "asc" } },
           trainers: { include: { trainer: true } },
@@ -881,7 +774,6 @@ export class BatchesService {
         },
         include: {
           branch: { include: branchCoverInclude },
-          ...batchPlanInclude,
           certificateTemplate: true,
           sessions: { orderBy: { startsAt: "asc" } },
           trainers: { include: { trainer: true } },
@@ -895,7 +787,6 @@ export class BatchesService {
     const batch = await this.prisma.batch.findUnique({
       where: { id },
       include: {
-        ...batchPlanInclude,
         enrollments: true,
       },
     });
@@ -904,39 +795,9 @@ export class BatchesService {
       throw new NotFoundException("Batch not found");
     }
 
-    const planIds = [batch.monthlyPlanId, batch.fullBatchPlanId].filter(
-      (planId): planId is string => Boolean(planId),
-    );
     const studentIds = batch.enrollments.map(
       (enrollment) => enrollment.studentId,
     );
-
-    type PlanSummary = {
-      id: string;
-      name: string;
-      billingCadence: BillingCadence;
-      priceMonthly: number;
-      type: PlanType;
-    };
-
-    const toPlanSummary = (
-      plan: {
-        id: string;
-        name: string;
-        billingCadence: BillingCadence;
-        priceMonthly: unknown;
-        type: PlanType;
-      } | null,
-    ): PlanSummary | null =>
-      plan
-        ? {
-            id: plan.id,
-            name: plan.name,
-            billingCadence: plan.billingCadence,
-            priceMonthly: Number(plan.priceMonthly),
-            type: plan.type,
-          }
-        : null;
 
     const emptyBucket = () => ({
       collected: 0,
@@ -945,46 +806,58 @@ export class BatchesService {
       invoiceCount: 0,
     });
 
-    const byPlanMap = new Map(
-      planIds.map((planId) => {
-        const plan =
-          batch.monthlyPlanId === planId
-            ? batch.monthlyPlan
-            : batch.fullBatchPlan;
-        return [
-          planId,
-          {
-            planId,
-            billingCadence:
-              plan?.billingCadence ??
-              (batch.monthlyPlanId === planId
-                ? BillingCadence.MONTHLY
-                : BillingCadence.FULL_BATCH),
-            name: plan?.name ?? planId,
-            ...emptyBucket(),
-          },
-        ];
-      }),
-    );
-
     const totals = emptyBucket();
+    const bySubscriptionMap = new Map<
+      string,
+      {
+        subscriptionId: string;
+        name: string;
+        billingCadence: string;
+        collected: number;
+        pending: number;
+        overdue: number;
+        invoiceCount: number;
+      }
+    >();
 
-    if (studentIds.length > 0 && planIds.length > 0) {
+    if (studentIds.length > 0) {
       const invoices = await this.prisma.invoice.findMany({
         where: {
           studioId: batch.studioId,
           studentId: { in: studentIds },
-          subscription: { planId: { in: planIds } },
+          membershipId: { not: null },
         },
         include: {
-          subscription: { select: { planId: true } },
+          membership: {
+            include: {
+              subscription: {
+                select: {
+                  id: true,
+                  name: true,
+                  billingCadence: true,
+                },
+              },
+            },
+          },
         },
       });
 
       for (const invoice of invoices) {
         const amount = Number(invoice.amount);
-        const planId = invoice.subscription?.planId;
-        const bucket = planId ? byPlanMap.get(planId) : undefined;
+        const subscription = invoice.membership?.subscription;
+        const subscriptionId = subscription?.id;
+
+        if (subscriptionId && !bySubscriptionMap.has(subscriptionId)) {
+          bySubscriptionMap.set(subscriptionId, {
+            subscriptionId,
+            name: subscription.name,
+            billingCadence: subscription.billingCadence,
+            ...emptyBucket(),
+          });
+        }
+        const bucket = subscriptionId
+          ? bySubscriptionMap.get(subscriptionId)
+          : undefined;
 
         totals.invoiceCount += 1;
         if (bucket) {
@@ -1011,34 +884,9 @@ export class BatchesService {
     }
 
     return {
-      monthlyPlan: toPlanSummary(batch.monthlyPlan),
-      fullBatchPlan: toPlanSummary(batch.fullBatchPlan),
       enrolledCount: batch.enrollments.length,
       totals,
-      byPlan: [...byPlanMap.values()],
+      bySubscription: [...bySubscriptionMap.values()],
     };
-  }
-
-  private assertBatchPlanSlot(
-    plan: {
-      studioId: string;
-      type: PlanType;
-      billingCadence: BillingCadence;
-      active: boolean;
-    } | null,
-    studioId: string,
-    expectedCadence: BillingCadence,
-    label: string,
-  ) {
-    if (
-      !plan?.active ||
-      plan.studioId !== studioId ||
-      plan.type !== PlanType.FIXED_BATCH ||
-      plan.billingCadence !== expectedCadence
-    ) {
-      throw new BadRequestException(
-        `Select an available fixed-batch ${label} plan`,
-      );
-    }
   }
 }

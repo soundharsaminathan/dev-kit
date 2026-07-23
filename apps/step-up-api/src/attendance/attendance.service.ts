@@ -13,18 +13,17 @@ import {
   NotificationType,
   UserRole,
 } from "@prisma/client";
+import { MembershipsService } from "../memberships/memberships.service";
 import { NotificationsService } from "../notifications/notifications.service";
 import { PrismaService } from "../prisma/prisma.service";
-import { shouldConsumeCredit } from "../subscriptions/subscription-helpers";
-import { SubscriptionsService } from "../subscriptions/subscriptions.service";
 import { UserCryptoService } from "../users/user-crypto.service";
 
 @Injectable()
 export class AttendanceService {
   constructor(
     @Inject(PrismaService) private readonly prisma: PrismaService,
-    @Inject(SubscriptionsService)
-    private readonly subscriptions: SubscriptionsService,
+    @Inject(MembershipsService)
+    private readonly memberships: MembershipsService,
     @Inject(NotificationsService)
     private readonly notifications: NotificationsService,
     @Inject(ConfigService) private readonly config: ConfigService,
@@ -134,16 +133,14 @@ export class AttendanceService {
       throw new BadRequestException("Session not found");
     }
 
-    const subscription = await this.subscriptions.findActiveForBatch(
+    const membership = await this.memberships.findActiveForBatch(
       data.studentId,
       session.batchId,
       session.startsAt,
     );
 
-    if (!subscription) {
-      throw new BadRequestException(
-        "No active subscription covering this batch",
-      );
+    if (!membership) {
+      throw new BadRequestException("No active membership covering this batch");
     }
 
     const attendance = await this.prisma.attendance.upsert({
@@ -161,14 +158,6 @@ export class AttendanceService {
       create: data,
       include: { student: true },
     });
-
-    if (
-      shouldConsumeCredit(subscription.plan.type) &&
-      (data.status === AttendanceStatus.PRESENT ||
-        data.status === AttendanceStatus.ABSENT)
-    ) {
-      await this.subscriptions.consumeCredit(subscription.id);
-    }
 
     if (data.status === AttendanceStatus.ABSENT) {
       await this.notifications.create({
