@@ -222,12 +222,12 @@ function ProfileEditForm({ backTo, profile }: ProfileEditFormProps) {
           ? { instagramUrl: normalizeInstagramUrl(values.instagramUrl) }
           : {}),
         ...(canEditStyles ? { styles: values.styles } : {}),
+        gender: values.gender || undefined,
+        ageRange: values.ageRange || undefined,
         ...(canEditPrefs
           ? {
               experienceLevel: values.experienceLevel || undefined,
               scheduleVibe: values.scheduleVibe,
-              gender: values.gender || undefined,
-              ageRange: values.ageRange || undefined,
               preferredBranchId: values.preferredBranchId || null,
             }
           : {}),
@@ -288,15 +288,13 @@ function ProfileEditForm({ backTo, profile }: ProfileEditFormProps) {
     } satisfies ProfileFormValues,
     onSubmit: async ({ value }) => {
       setSaveMessage(null);
-      if (canEditPrefs) {
-        if (!value.gender) {
-          setSaveMessage("Choose Male or Female to continue.");
-          return;
-        }
-        if (!value.ageRange) {
-          setSaveMessage("Choose an age range to continue.");
-          return;
-        }
+      if (!value.gender) {
+        setSaveMessage("Choose Male or Female to continue.");
+        return;
+      }
+      if (!value.ageRange) {
+        setSaveMessage("Choose an age range to continue.");
+        return;
       }
       try {
         await saveMutation.mutateAsync(value);
@@ -635,64 +633,60 @@ function ProfileEditForm({ backTo, profile }: ProfileEditFormProps) {
                 </form.Field>
               ) : null}
 
+              <form.Field name="gender">
+                {(field) => (
+                  <div className={styles.stylesBlock}>
+                    <div className={styles.stylesHeader}>
+                      <h3 className={styles.stylesTitle}>Gender</h3>
+                      <p className={styles.cardDesc}>Required</p>
+                    </div>
+                    <div className={styles.prefGrid}>
+                      {GENDERS.map((option) => (
+                        <button
+                          key={option.id}
+                          type="button"
+                          className={styles.prefChip}
+                          data-selected={
+                            field.state.value === option.id ? "true" : undefined
+                          }
+                          onClick={() => field.handleChange(option.id)}
+                        >
+                          {option.title}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </form.Field>
+
+              <form.Field name="ageRange">
+                {(field) => (
+                  <div className={styles.stylesBlock}>
+                    <div className={styles.stylesHeader}>
+                      <h3 className={styles.stylesTitle}>Age range</h3>
+                      <p className={styles.cardDesc}>Required</p>
+                    </div>
+                    <div className={styles.prefGrid}>
+                      {AGE_RANGES.map((option) => (
+                        <button
+                          key={option.id}
+                          type="button"
+                          className={styles.prefChip}
+                          data-selected={
+                            field.state.value === option.id ? "true" : undefined
+                          }
+                          onClick={() => field.handleChange(option.id)}
+                        >
+                          {option.label} · {option.title}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </form.Field>
+
               {canEditPrefs ? (
                 <>
-                  <form.Field name="gender">
-                    {(field) => (
-                      <div className={styles.stylesBlock}>
-                        <div className={styles.stylesHeader}>
-                          <h3 className={styles.stylesTitle}>Gender</h3>
-                          <p className={styles.cardDesc}>Required</p>
-                        </div>
-                        <div className={styles.prefGrid}>
-                          {GENDERS.map((option) => (
-                            <button
-                              key={option.id}
-                              type="button"
-                              className={styles.prefChip}
-                              data-selected={
-                                field.state.value === option.id
-                                  ? "true"
-                                  : undefined
-                              }
-                              onClick={() => field.handleChange(option.id)}
-                            >
-                              {option.title}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </form.Field>
-
-                  <form.Field name="ageRange">
-                    {(field) => (
-                      <div className={styles.stylesBlock}>
-                        <div className={styles.stylesHeader}>
-                          <h3 className={styles.stylesTitle}>Age range</h3>
-                          <p className={styles.cardDesc}>Required</p>
-                        </div>
-                        <div className={styles.prefGrid}>
-                          {AGE_RANGES.map((option) => (
-                            <button
-                              key={option.id}
-                              type="button"
-                              className={styles.prefChip}
-                              data-selected={
-                                field.state.value === option.id
-                                  ? "true"
-                                  : undefined
-                              }
-                              onClick={() => field.handleChange(option.id)}
-                            >
-                              {option.label} · {option.title}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </form.Field>
-
                   <form.Field name="experienceLevel">
                     {(field) => (
                       <div className={styles.stylesBlock}>

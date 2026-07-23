@@ -5,12 +5,14 @@ import { Link } from "@tanstack/react-router";
 import { useContext, useState } from "react";
 import { useApi } from "@/lib/api-context";
 import { useAuth } from "@/lib/auth";
+import type { AgeRange, Gender } from "@/lib/constants";
 import {
   getMenuSections,
   type ShellVariant,
 } from "@/modules/layout/nav-config";
 import { ActiveStudentContext } from "@/modules/me/active-student-context";
 import { ChildSwitcher } from "@/modules/me/child-switcher";
+import { AGE_RANGES, GENDERS } from "@/modules/onboarding/options";
 import { AppBottomSheet } from "@/modules/ui/app-bottom-sheet";
 import { FormInput } from "@/modules/ui/form-input";
 import { Screen } from "@/modules/ui/screen";
@@ -43,13 +45,19 @@ export function ProfileMenuPage({ variant = "me" }: ProfileMenuPageProps) {
   const [manageOpen, setManageOpen] = useState(false);
   const [newName, setNewName] = useState("");
   const [newKind, setNewKind] = useState<"KID" | "CO_STUDENT">("KID");
+  const [newGender, setNewGender] = useState<Gender | null>(null);
+  const [newAgeRange, setNewAgeRange] = useState<AgeRange | null>(null);
   const showChangePassword = hasPasswordProvider;
+  const canAddMember =
+    newName.trim().length > 0 && Boolean(newGender) && Boolean(newAgeRange);
 
   const createMutation = useMutation({
     mutationFn: () =>
       api.post<{ id: string }>("/users/me/family-members", {
         name: newName,
         kind: newKind,
+        gender: newGender,
+        ageRange: newAgeRange,
       }),
     onSuccess: async (created: { id: string }) => {
       await queryClient.invalidateQueries({
@@ -60,6 +68,8 @@ export function ProfileMenuPage({ variant = "me" }: ProfileMenuPageProps) {
       });
       setActiveAccount(created.id);
       setNewName("");
+      setNewGender(null);
+      setNewAgeRange(null);
     },
   });
 
@@ -83,26 +93,6 @@ export function ProfileMenuPage({ variant = "me" }: ProfileMenuPageProps) {
           <section className={styles.section}>
             <h2 className={styles.sectionTitle}>Switch account</h2>
             <ChildSwitcher />
-          </section>
-        ) : null}
-
-        {variant === "me" ? (
-          <section className={styles.section}>
-            <ul className={styles.menuCard}>
-              <li>
-                <button
-                  type="button"
-                  className={styles.menuRow}
-                  onClick={() => setManageOpen(true)}
-                >
-                  <span className={styles.menuIcon}>
-                    <Icon name="users" />
-                  </span>
-                  <span className={styles.menuLabel}>Family & Co-students</span>
-                  <Icon name="chevron-right" className={styles.chevron} />
-                </button>
-              </li>
-            </ul>
           </section>
         ) : null}
 
@@ -141,27 +131,25 @@ export function ProfileMenuPage({ variant = "me" }: ProfileMenuPageProps) {
           </ul>
         </section>
 
-        {showChangePassword ? (
-          <section className={styles.section}>
-            <h2 className={styles.sectionTitle}>Account</h2>
-            <ul className={styles.menuCard}>
-              <li>
-                <Link to={changePasswordTo} className={styles.menuRow}>
-                  <span className={styles.menuIcon}>
-                    <Icon name="lock" />
-                  </span>
-                  <span className={styles.menuLabel}>Change password</span>
-                  <Icon name="chevron-right" className={styles.chevron} />
-                </Link>
-              </li>
-            </ul>
-          </section>
-        ) : null}
-
         {sections.map((section) => (
           <section key={section.title} className={styles.section}>
             <h2 className={styles.sectionTitle}>{section.title}</h2>
             <ul className={styles.menuCard}>
+              {variant === "me" && section.title === "Account" ? (
+                <li>
+                  <button
+                    type="button"
+                    className={styles.menuRow}
+                    onClick={() => setManageOpen(true)}
+                  >
+                    <span className={styles.menuIcon}>
+                      <Icon name="users" />
+                    </span>
+                    <span className={styles.menuLabel}>Family</span>
+                    <Icon name="chevron-right" className={styles.chevron} />
+                  </button>
+                </li>
+              ) : null}
               {section.links.map((link) => (
                 <li key={link.to}>
                   <Link
@@ -177,9 +165,38 @@ export function ProfileMenuPage({ variant = "me" }: ProfileMenuPageProps) {
                   </Link>
                 </li>
               ))}
+              {showChangePassword && section.title === "Account" ? (
+                <li>
+                  <Link to={changePasswordTo} className={styles.menuRow}>
+                    <span className={styles.menuIcon}>
+                      <Icon name="lock" />
+                    </span>
+                    <span className={styles.menuLabel}>Change password</span>
+                    <Icon name="chevron-right" className={styles.chevron} />
+                  </Link>
+                </li>
+              ) : null}
             </ul>
           </section>
         ))}
+
+        {showChangePassword &&
+        !sections.some((section) => section.title === "Account") ? (
+          <section className={styles.section}>
+            <h2 className={styles.sectionTitle}>Account</h2>
+            <ul className={styles.menuCard}>
+              <li>
+                <Link to={changePasswordTo} className={styles.menuRow}>
+                  <span className={styles.menuIcon}>
+                    <Icon name="lock" />
+                  </span>
+                  <span className={styles.menuLabel}>Change password</span>
+                  <Icon name="chevron-right" className={styles.chevron} />
+                </Link>
+              </li>
+            </ul>
+          </section>
+        ) : null}
 
         <section className={styles.section}>
           <ul className={styles.menuCard}>
@@ -204,7 +221,7 @@ export function ProfileMenuPage({ variant = "me" }: ProfileMenuPageProps) {
       <AppBottomSheet
         isOpen={manageOpen}
         onOpenChange={setManageOpen}
-        title="Family & Co-students"
+        title="Family"
       >
         <div className={styles.sheetBody}>
           <FormInput
@@ -229,10 +246,42 @@ export function ProfileMenuPage({ variant = "me" }: ProfileMenuPageProps) {
               Co-student
             </TouchButton>
           </div>
+          <div className={styles.fieldBlock}>
+            <p className={styles.fieldLabel}>Gender</p>
+            <div className={styles.chipGrid}>
+              {GENDERS.map((option) => (
+                <button
+                  key={option.id}
+                  type="button"
+                  className={styles.chip}
+                  data-selected={newGender === option.id ? "true" : undefined}
+                  onClick={() => setNewGender(option.id)}
+                >
+                  {option.title}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className={styles.fieldBlock}>
+            <p className={styles.fieldLabel}>Age range</p>
+            <div className={styles.chipGrid}>
+              {AGE_RANGES.map((option) => (
+                <button
+                  key={option.id}
+                  type="button"
+                  className={styles.chip}
+                  data-selected={newAgeRange === option.id ? "true" : undefined}
+                  onClick={() => setNewAgeRange(option.id)}
+                >
+                  {option.label} · {option.title}
+                </button>
+              ))}
+            </div>
+          </div>
           <TouchButton
             variant="primary"
             fullWidth
-            isDisabled={newName.trim().length === 0}
+            isDisabled={!canAddMember}
             isPending={createMutation.isPending}
             onClick={() => createMutation.mutate()}
           >

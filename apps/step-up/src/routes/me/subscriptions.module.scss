@@ -102,3 +102,57 @@
   display: flex;
   gap: var(--space-2, 0.5rem);
 }
+
+.fieldBlock {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 0.5rem);
+}
+
+.fieldLabel {
+  margin: 0;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: color-mix(in srgb, var(--color-fg) 70%, transparent);
+}
+
+.chipGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2, 0.5rem);
+}
+
+.chip {
+  padding: var(--space-2, 0.5rem) var(--space-3, 0.75rem);
+  border-radius: var(--radius-full, 999px);
+  border: 1px solid color-mix(in srgb, var(--color-fg) 12%, transparent);
+  background: var(--color-card, var(--color-bg));
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    transform var(--interaction-transition-fast, 120ms) ease,
+    border-color var(--interaction-transition-fast, 120ms) ease,
+    background-color var(--interaction-transition-fast, 120ms) ease;
+}
+
+.chip:active {
+  transform: scale(var(--interaction-press-scale, 0.97));
+}
+
+.chip[data-selected="true"] {
+  border-color: var(--color-primary);
+  background: color-mix(
+    in srgb,
+    var(--color-primary) 14%,
+    var(--color-card, var(--color-bg))
+  );
+  color: var(--color-primary);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chip {
+    transition: none;
+    transform: none;
+  }
+}
