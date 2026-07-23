@@ -323,10 +323,22 @@ function PaymentsPage() {
               {analyticsQuery.isLoading ? (
                 <>
                   <div className={staff.statGrid}>
-                    <SkeletonBlock height="5rem" radius="var(--radius-2xl)" />
-                    <SkeletonBlock height="5rem" radius="var(--radius-2xl)" />
-                    <SkeletonBlock height="5rem" radius="var(--radius-2xl)" />
-                    <SkeletonBlock height="5rem" radius="var(--radius-2xl)" />
+                    <SkeletonBlock
+                      height="6.25rem"
+                      radius="var(--radius-2xl)"
+                    />
+                    <SkeletonBlock
+                      height="6.25rem"
+                      radius="var(--radius-2xl)"
+                    />
+                    <SkeletonBlock
+                      height="6.25rem"
+                      radius="var(--radius-2xl)"
+                    />
+                    <SkeletonBlock
+                      height="6.25rem"
+                      radius="var(--radius-2xl)"
+                    />
                   </div>
                   <SkeletonCardList count={2} />
                 </>

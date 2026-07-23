@@ -74,7 +74,7 @@ export type OnboardingStepMeta = {
   subtitle: string;
 };
 
-const ART_V = "v2";
+const ART_V = "v3";
 
 export const STEP_META: Record<OnboardingStep, OnboardingStepMeta> = {
   profile: {

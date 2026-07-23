@@ -404,7 +404,7 @@ function AppDashboardPage() {
                 {STUDENT_FUNNEL_TILES.map((tile) => (
                   <SkeletonBlock
                     key={tile.key}
-                    height="5rem"
+                    height="6.25rem"
                     radius="var(--radius-2xl)"
                   />
                 ))}
