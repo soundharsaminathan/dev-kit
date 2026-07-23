@@ -12,6 +12,10 @@
 # Layer 1
 pnpm exec nx run step-up-api:test
 
+# Migration smoke (dedicated Postgres DB; drops public schema)
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/step_up_migrate?schema=public \
+  pnpm exec nx run step-up-api:test:migrations
+
 # Layer 2
 pnpm exec nx run step-up:test
 

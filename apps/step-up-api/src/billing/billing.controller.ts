@@ -56,13 +56,27 @@ export class BillingController {
   }
 
   @Get("student/:studentId")
-  listForStudent(@Param("studentId") studentId: string) {
-    return this.billingService.listForStudent(studentId);
+  @Roles(
+    UserRole.OWNER,
+    UserRole.STAFF,
+    UserRole.TRAINER,
+    UserRole.STUDENT,
+    UserRole.PARENT,
+  )
+  listForStudent(
+    @CurrentUser() user: DecryptedUser,
+    @Param("studentId") studentId: string,
+  ) {
+    return this.billingService.listForStudent(user, studentId);
   }
 
   @Patch(":id/paid")
   @Roles(UserRole.OWNER, UserRole.STAFF)
-  markPaid(@Param("id") id: string, @Body() dto: MarkPaidDto) {
-    return this.billingService.markPaid(id, dto.paymentMethod);
+  markPaid(
+    @CurrentUser() user: DecryptedUser,
+    @Param("id") id: string,
+    @Body() dto: MarkPaidDto,
+  ) {
+    return this.billingService.markPaid(user, id, dto.paymentMethod);
   }
 }

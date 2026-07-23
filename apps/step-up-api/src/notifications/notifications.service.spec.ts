@@ -1,8 +1,9 @@
+import { NotFoundException } from "@nestjs/common";
 import { NotificationType } from "@prisma/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NotificationsService } from "./notifications.service";
 
-describe("NotificationsService.create", () => {
+describe("NotificationsService", () => {
   const commands = {
     create: vi.fn(),
   };
@@ -30,6 +31,8 @@ describe("NotificationsService.create", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    unreadCache.get.mockResolvedValue(0);
+    unreadCache.refresh.mockResolvedValue(0);
     service = new NotificationsService(
       prisma as never,
       unreadCache as never,
@@ -60,5 +63,83 @@ describe("NotificationsService.create", () => {
       }),
     );
     expect(gateway.emitToUser).not.toHaveBeenCalled();
+  });
+
+  it("marks one notification read and decrements unread cache", async () => {
+    prisma.notification.findFirst.mockResolvedValue({
+      id: "notif-1",
+      userId: "user-1",
+      readAt: null,
+      deletedAt: null,
+    });
+    prisma.notification.update.mockResolvedValue({
+      id: "notif-1",
+      userId: "user-1",
+      readAt: new Date("2026-07-20T12:00:00.000Z"),
+    });
+    unreadCache.decrement.mockResolvedValue(undefined);
+    unreadCache.get.mockResolvedValue(3);
+
+    const updated = await service.markReadOne("user-1", "notif-1");
+
+    expect(updated.readAt).toBeTruthy();
+    expect(unreadCache.decrement).toHaveBeenCalledWith("user-1");
+    expect(gateway.emitToUser).toHaveBeenCalledWith(
+      "user-1",
+      "notification.updated",
+      updated,
+    );
+    expect(gateway.emitToUser).toHaveBeenCalledWith(
+      "user-1",
+      "notifications.badge",
+      { unreadCount: 3 },
+    );
+  });
+
+  it("is a no-op when marking an already-read notification", async () => {
+    const existing = {
+      id: "notif-1",
+      userId: "user-1",
+      readAt: new Date("2026-07-19T00:00:00.000Z"),
+      deletedAt: null,
+    };
+    prisma.notification.findFirst.mockResolvedValue(existing);
+
+    await expect(service.markReadOne("user-1", "notif-1")).resolves.toEqual(
+      existing,
+    );
+    expect(prisma.notification.update).not.toHaveBeenCalled();
+    expect(unreadCache.decrement).not.toHaveBeenCalled();
+  });
+
+  it("throws when marking a missing notification", async () => {
+    prisma.notification.findFirst.mockResolvedValue(null);
+    await expect(
+      service.markReadOne("user-1", "missing"),
+    ).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it("marks all unread notifications read and refreshes badge", async () => {
+    prisma.notification.updateMany.mockResolvedValue({ count: 4 });
+    unreadCache.invalidate.mockResolvedValue(undefined);
+    unreadCache.refresh.mockResolvedValue(0);
+
+    await expect(service.markAllRead("user-1")).resolves.toEqual({ count: 4 });
+    expect(unreadCache.invalidate).toHaveBeenCalledWith("user-1");
+    expect(gateway.emitToUser).toHaveBeenCalledWith(
+      "user-1",
+      "notifications.bulk",
+      { action: "mark_all_read", count: 4 },
+    );
+    expect(gateway.emitToUser).toHaveBeenCalledWith(
+      "user-1",
+      "notifications.badge",
+      { unreadCount: 0 },
+    );
+  });
+
+  it("returns unread count from cache", async () => {
+    unreadCache.get.mockResolvedValue(7);
+    await expect(service.unreadCount("user-1")).resolves.toEqual({ count: 7 });
   });
 });
