@@ -6,5 +6,5 @@ export const Route = createFileRoute("/me/profile_/change-password")({
 });
 
 function MeChangePasswordPage() {
-  return <ChangePasswordPage backTo="/me/profile" />;
+  return <ChangePasswordPage backTo="/me/profile/security" />;
 }

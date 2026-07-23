@@ -25,7 +25,7 @@ type ProfileMenuPageProps = {
 };
 
 export function ProfileMenuPage({ variant = "me" }: ProfileMenuPageProps) {
-  const { user, signOutUser, hasPasswordProvider } = useAuth();
+  const { user, signOutUser } = useAuth();
   const api = useApi();
   const queryClient = useQueryClient();
   const activeStudent = useContext(ActiveStudentContext);
@@ -38,16 +38,13 @@ export function ProfileMenuPage({ variant = "me" }: ProfileMenuPageProps) {
     variant === "app"
       ? "/app/profile/follow-requests"
       : "/me/profile/follow-requests";
-  const changePasswordTo =
-    variant === "app"
-      ? "/app/profile/change-password"
-      : "/me/profile/change-password";
+  const securityTo =
+    variant === "app" ? "/app/profile/security" : "/me/profile/security";
   const [manageOpen, setManageOpen] = useState(false);
   const [newName, setNewName] = useState("");
   const [newKind, setNewKind] = useState<"KID" | "CO_STUDENT">("KID");
   const [newGender, setNewGender] = useState<Gender | null>(null);
   const [newAgeRange, setNewAgeRange] = useState<AgeRange | null>(null);
-  const showChangePassword = hasPasswordProvider;
   const canAddMember =
     newName.trim().length > 0 && Boolean(newGender) && Boolean(newAgeRange);
 
@@ -165,38 +162,24 @@ export function ProfileMenuPage({ variant = "me" }: ProfileMenuPageProps) {
                   </Link>
                 </li>
               ))}
-              {showChangePassword && section.title === "Account" ? (
-                <li>
-                  <Link to={changePasswordTo} className={styles.menuRow}>
-                    <span className={styles.menuIcon}>
-                      <Icon name="lock" />
-                    </span>
-                    <span className={styles.menuLabel}>Change password</span>
-                    <Icon name="chevron-right" className={styles.chevron} />
-                  </Link>
-                </li>
-              ) : null}
             </ul>
           </section>
         ))}
 
-        {showChangePassword &&
-        !sections.some((section) => section.title === "Account") ? (
-          <section className={styles.section}>
-            <h2 className={styles.sectionTitle}>Account</h2>
-            <ul className={styles.menuCard}>
-              <li>
-                <Link to={changePasswordTo} className={styles.menuRow}>
-                  <span className={styles.menuIcon}>
-                    <Icon name="lock" />
-                  </span>
-                  <span className={styles.menuLabel}>Change password</span>
-                  <Icon name="chevron-right" className={styles.chevron} />
-                </Link>
-              </li>
-            </ul>
-          </section>
-        ) : null}
+        <section className={styles.section}>
+          <h2 className={styles.sectionTitle}>Security</h2>
+          <ul className={styles.menuCard}>
+            <li>
+              <Link to={securityTo} className={styles.menuRow}>
+                <span className={styles.menuIcon}>
+                  <Icon name="shield" />
+                </span>
+                <span className={styles.menuLabel}>Account security</span>
+                <Icon name="chevron-right" className={styles.chevron} />
+              </Link>
+            </li>
+          </ul>
+        </section>
 
         <section className={styles.section}>
           <ul className={styles.menuCard}>

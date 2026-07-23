@@ -1,6 +1,7 @@
 import { Button } from "@dev-ui/components/button";
 import { Checkbox } from "@dev-ui/components/checkbox";
 import { Field, Label } from "@dev-ui/components/field";
+import { FileTrigger } from "@dev-ui/components/file-trigger";
 import {
   Select,
   SelectContent,
@@ -18,6 +19,7 @@ import { STUDIO_ID } from "@/lib/constants";
 import { BatchBilling } from "@/modules/batches/batch-billing";
 import { BatchRoster } from "@/modules/batches/batch-roster";
 import { BatchTrainers } from "@/modules/batches/batch-trainers";
+import { uploadBatchCover, validateBatchCover } from "@/modules/batches/upload";
 import { BatchChat } from "@/modules/chat/batch-chat";
 import { ApiState } from "@/modules/ui/api-state";
 import { FormInput } from "@/modules/ui/form-input";
@@ -43,6 +45,7 @@ type DanceCategory = {
 type Batch = {
   id: string;
   name: string;
+  coverImageUrl?: string | null;
   category: "KIDS" | "ADULTS";
   capacity: number;
   enrollmentMode: "STAFF_ONLY" | "SELF_JOIN";
@@ -179,6 +182,12 @@ function EditBatchForm({ batch }: { batch: Batch }) {
   const schedule = batch.scheduleJson;
 
   const [name, setName] = useState(batch.name);
+  const [coverFile, setCoverFile] = useState<File | null>(null);
+  const [coverPreview, setCoverPreview] = useState<string | null>(
+    batch.coverImageUrl ?? null,
+  );
+  const [coverError, setCoverError] = useState<string | null>(null);
+  const [removeCover, setRemoveCover] = useState(false);
   const [branchId, setBranchId] = useState(batch.branchId);
   const [capacity, setCapacity] = useState(String(batch.capacity));
   const [enrollmentMode, setEnrollmentMode] = useState(batch.enrollmentMode);
@@ -217,9 +226,17 @@ function EditBatchForm({ batch }: { batch: Batch }) {
     );
 
   const updateBatch = useMutation({
-    mutationFn: () =>
-      api.patch<Batch>(`/batches/${batch.id}`, {
+    mutationFn: async () => {
+      let coverImageUrl: string | null | undefined;
+      if (coverFile) {
+        coverImageUrl = await uploadBatchCover(api, coverFile);
+      } else if (removeCover) {
+        coverImageUrl = null;
+      }
+
+      return api.patch<Batch>(`/batches/${batch.id}`, {
         name,
+        ...(coverImageUrl !== undefined ? { coverImageUrl } : {}),
         branchId,
         capacity: Number(capacity),
         enrollmentMode,
@@ -241,7 +258,8 @@ function EditBatchForm({ batch }: { batch: Batch }) {
             `${startDate}T${startTime}:00`,
           ).getTimezoneOffset(),
         },
-      }),
+      });
+    },
     onSuccess: async () => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["batches", STUDIO_ID] }),
@@ -251,10 +269,66 @@ function EditBatchForm({ batch }: { batch: Batch }) {
     },
   });
 
+  function handleCoverSelect(files: FileList | null) {
+    const file = files?.[0] ?? null;
+    if (!file) return;
+    try {
+      validateBatchCover(file);
+    } catch (error) {
+      setCoverError(error instanceof Error ? error.message : "Invalid image.");
+      return;
+    }
+    setCoverError(null);
+    setRemoveCover(false);
+    if (coverPreview?.startsWith("blob:")) {
+      URL.revokeObjectURL(coverPreview);
+    }
+    setCoverFile(file);
+    setCoverPreview(URL.createObjectURL(file));
+  }
+
+  function clearCover() {
+    if (coverPreview?.startsWith("blob:")) {
+      URL.revokeObjectURL(coverPreview);
+    }
+    setCoverFile(null);
+    setCoverPreview(null);
+    setRemoveCover(true);
+    setCoverError(null);
+  }
+
   return (
     <div className="stack">
       <div className={styles.formGrid}>
         <FormInput label="Name" value={name} onChange={setName} />
+        <div className={`${styles.coverField} ${styles.fullWidth}`}>
+          <span className={styles.coverLabel}>Cover image (optional)</span>
+          <div className={styles.coverPreview}>
+            {coverPreview ? (
+              <img src={coverPreview} alt="Batch cover preview" />
+            ) : (
+              <span className={styles.coverEmpty}>No cover selected</span>
+            )}
+          </div>
+          <div className={styles.coverActions}>
+            <FileTrigger
+              accept="image/jpeg,image/png,image/webp,image/gif"
+              onSelect={handleCoverSelect}
+            >
+              <Button variant="default" type="button">
+                {coverPreview ? "Replace image" : "Upload image"}
+              </Button>
+            </FileTrigger>
+            {coverPreview ? (
+              <Button variant="quiet" type="button" onClick={clearCover}>
+                Remove
+              </Button>
+            ) : null}
+          </div>
+          {coverError ? (
+            <p className={styles.coverError}>{coverError}</p>
+          ) : null}
+        </div>
         <Select label="Category" value={batch.category} isDisabled>
           <SelectTrigger>
             <SelectValue />

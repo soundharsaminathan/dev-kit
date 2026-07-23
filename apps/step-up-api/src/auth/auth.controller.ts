@@ -1,5 +1,6 @@
 import {
   Body,
+  ConflictException,
   Controller,
   ForbiddenException,
   Inject,
@@ -25,6 +26,7 @@ class SyncUserDto {
   @IsString()
   name?: string;
 
+  /** Bypass signup only — production email always comes from the Firebase token. */
   @IsOptional()
   @IsEmail()
   email?: string;
@@ -86,7 +88,10 @@ export class AuthController {
     @Body() dto: SyncUserDto,
   ): Promise<DecryptedUser> {
     const auth = request.auth;
-    const email = dto.email ?? auth.email;
+    // Email is owned by Firebase Auth. Only bypass signup may supply dto.email
+    // (dev tokens synthesize a placeholder address).
+    const email =
+      auth.bypassUserId && dto.email ? dto.email.trim() : auth.email;
     const name = dto.name ?? auth.name ?? "New User";
 
     const existing = await this.prisma.user.findUnique({
@@ -95,6 +100,7 @@ export class AuthController {
 
     if (existing) {
       const current = this.crypto.decryptUser(existing);
+      await this.assertEmailAvailable(email, existing.id);
       const sealed = this.crypto.sealPii(
         {
           email,
@@ -120,6 +126,7 @@ export class AuthController {
       };
     }
 
+    await this.assertEmailAvailable(email);
     const sealed = this.crypto.sealPii({
       email,
       name,
@@ -146,5 +153,19 @@ export class AuthController {
       ...decrypted,
       photoUrl: await this.media.signReadUrl(decrypted.photoUrl),
     };
+  }
+
+  private async assertEmailAvailable(email: string, excludeUserId?: string) {
+    const emailHash = this.crypto.hashEmail(email);
+    const conflict = await this.prisma.user.findFirst({
+      where: {
+        emailHash,
+        ...(excludeUserId ? { id: { not: excludeUserId } } : {}),
+      },
+      select: { id: true },
+    });
+    if (conflict) {
+      throw new ConflictException("A user with this email already exists");
+    }
   }
 }

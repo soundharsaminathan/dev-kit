@@ -4,12 +4,15 @@ import {
   type User as FirebaseUser,
   onAuthStateChanged,
   reauthenticateWithCredential,
+  reload,
+  sendEmailVerification,
   sendPasswordResetEmail,
   signInWithEmailAndPassword,
   signInWithPopup,
   signOut,
   updatePassword,
   updateProfile,
+  verifyBeforeUpdateEmail,
 } from "firebase/auth";
 import {
   type ReactNode,
@@ -152,6 +155,9 @@ async function createBypassStudent(input: {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(() => readStoredDevUser());
   const [hasPasswordProvider, setHasPasswordProvider] = useState(false);
+  const [emailVerified, setEmailVerified] = useState(() =>
+    isAuthBypassEnabled() ? Boolean(readStoredDevUser()) : false,
+  );
   const [loading, setLoading] = useState(() => {
     if (!isAuthBypassEnabled()) {
       return true;
@@ -168,6 +174,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     >(),
   );
   const lastSyncedRef = useRef<{ uid: string; user: AuthUser } | null>(null);
+
+  const needsEmailVerification =
+    !isAuthBypassEnabled() &&
+    Boolean(user) &&
+    hasPasswordProvider &&
+    !emailVerified;
 
   const settleSyncWaiters = useCallback(
     (uid: string, result: AuthUser | null, error?: unknown) => {
@@ -213,6 +225,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (isAuthBypassEnabled()) {
       setHasPasswordProvider(false);
+      setEmailVerified(true);
       const stored = readStoredDevUser();
       if (!stored) {
         setLoading(false);
@@ -230,11 +243,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
           const mapped = mapSyncedUser(me);
           setUser(mapped);
+          setEmailVerified(true);
           localStorage.setItem(STORAGE_KEY, JSON.stringify(mapped));
         } catch {
           if (!cancelled) {
             localStorage.removeItem(STORAGE_KEY);
             setUser(null);
+            setEmailVerified(false);
           }
         } finally {
           if (!cancelled) {
@@ -263,6 +278,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (!cancelled) {
             setUser(null);
             setHasPasswordProvider(false);
+            setEmailVerified(false);
             setLoading(false);
           }
           return;
@@ -271,6 +287,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (!cancelled) {
           setLoading(true);
           setHasPasswordProvider(userHasPasswordProvider(firebaseUser));
+          setEmailVerified(firebaseUser.emailVerified);
         }
 
         try {
@@ -278,12 +295,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (!cancelled) {
             setUser(synced);
             setHasPasswordProvider(userHasPasswordProvider(firebaseUser));
+            setEmailVerified(firebaseUser.emailVerified);
             settleSyncWaiters(firebaseUser.uid, synced);
           }
         } catch (error) {
           if (!cancelled) {
             setUser(null);
             setHasPasswordProvider(false);
+            setEmailVerified(false);
             settleSyncWaiters(firebaseUser.uid, null, error);
             await signOut(auth).catch(() => undefined);
           }
@@ -304,6 +323,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const loginAsDev = useCallback((role: UserRole) => {
     const devUser = DEV_USERS[role];
     setUser(devUser);
+    setEmailVerified(true);
+    setHasPasswordProvider(false);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(devUser));
     setLastLoginIdentifier(devUser.email);
   }, []);
@@ -332,6 +353,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           });
           const mapped = mapSyncedUser(synced);
           setUser(mapped);
+          setEmailVerified(true);
+          setHasPasswordProvider(false);
           localStorage.setItem(STORAGE_KEY, JSON.stringify(mapped));
           setLastLoginIdentifier(identifier);
           return mapped;
@@ -368,6 +391,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           name: name.trim() || "New dancer",
         });
         setUser(created);
+        setEmailVerified(true);
+        setHasPasswordProvider(false);
         localStorage.setItem(STORAGE_KEY, JSON.stringify(created));
         setLastLoginIdentifier(email);
         return created;
@@ -387,6 +412,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (displayName) {
         await updateProfile(credential.user, { displayName });
       }
+      try {
+        await sendEmailVerification(credential.user, {
+          url: `${window.location.origin}/login`,
+          handleCodeInApp: false,
+        });
+      } catch {
+        // Banner still offers resend if this fails.
+      }
+      setEmailVerified(credential.user.emailVerified);
+      setHasPasswordProvider(true);
       const synced = await waitForSync(credential.user.uid);
       setLastLoginIdentifier(email);
       if (displayName && synced.name !== displayName) {
@@ -422,6 +457,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             name: "New dancer",
           });
           setUser(created);
+          setEmailVerified(true);
+          setHasPasswordProvider(false);
           localStorage.setItem(STORAGE_KEY, JSON.stringify(created));
           setLastLoginIdentifier(created.email);
           return created;
@@ -436,6 +473,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       const credential = await signInWithPopup(auth, googleProvider);
+      setEmailVerified(credential.user.emailVerified);
+      setHasPasswordProvider(userHasPasswordProvider(credential.user));
       const synced = await waitForSync(credential.user.uid);
       setLastLoginIdentifier(synced.email);
       return synced;
@@ -513,11 +552,148 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [],
   );
 
+  const changeEmail = useCallback(
+    async (newEmail: string, currentPassword: string) => {
+      if (isAuthBypassEnabled()) {
+        throw new Error(
+          "Email changes are unavailable while auth bypass is enabled.",
+        );
+      }
+
+      const auth = getFirebaseAuth();
+      const firebaseUser = auth?.currentUser;
+      if (!auth || !firebaseUser?.email) {
+        throw new Error("You need to be signed in to change your email.");
+      }
+
+      if (!userHasPasswordProvider(firebaseUser)) {
+        throw new Error(
+          "This account signs in with Google. Email is managed by your Google account.",
+        );
+      }
+
+      const trimmed = newEmail.trim().toLowerCase();
+      if (!trimmed) {
+        throw new Error("Enter a valid email address.");
+      }
+      if (trimmed === firebaseUser.email.trim().toLowerCase()) {
+        throw new Error("That is already your current email.");
+      }
+
+      try {
+        const credential = EmailAuthProvider.credential(
+          firebaseUser.email,
+          currentPassword,
+        );
+        await reauthenticateWithCredential(firebaseUser, credential);
+        await verifyBeforeUpdateEmail(firebaseUser, trimmed, {
+          url: `${window.location.origin}/login`,
+          handleCodeInApp: false,
+        });
+      } catch (error) {
+        throw new Error(mapAuthError(error, "Unable to change email."));
+      }
+    },
+    [],
+  );
+
+  const resendEmailVerification = useCallback(async () => {
+    if (isAuthBypassEnabled()) {
+      return;
+    }
+
+    const auth = getFirebaseAuth();
+    const firebaseUser = auth?.currentUser;
+    if (!auth || !firebaseUser) {
+      throw new Error("You need to be signed in to resend verification.");
+    }
+
+    if (firebaseUser.emailVerified) {
+      setEmailVerified(true);
+      return;
+    }
+
+    try {
+      await sendEmailVerification(firebaseUser, {
+        url: `${window.location.origin}/login`,
+        handleCodeInApp: false,
+      });
+    } catch (error) {
+      throw new Error(
+        mapAuthError(error, "Unable to send verification email."),
+      );
+    }
+  }, []);
+
+  const refreshEmailVerification = useCallback(async () => {
+    if (isAuthBypassEnabled()) {
+      setEmailVerified(true);
+      return true;
+    }
+
+    const auth = getFirebaseAuth();
+    const firebaseUser = auth?.currentUser;
+    if (!auth || !firebaseUser) {
+      setEmailVerified(false);
+      return false;
+    }
+
+    try {
+      const previousEmail = firebaseUser.email?.trim().toLowerCase() ?? "";
+      await reload(firebaseUser);
+      const current = auth.currentUser;
+      const verified = current?.emailVerified ?? false;
+      setEmailVerified(verified);
+      setHasPasswordProvider(userHasPasswordProvider(current));
+      const nextEmail = current?.email?.trim().toLowerCase() ?? "";
+      const emailChanged = Boolean(nextEmail) && nextEmail !== previousEmail;
+      if (verified || emailChanged) {
+        await current?.getIdToken(true);
+      }
+      if (current && emailChanged) {
+        const synced = await syncFirebaseUser(current);
+        setUser(synced);
+        lastSyncedRef.current = { uid: current.uid, user: synced };
+        setLastLoginIdentifier(synced.email);
+      }
+      return verified;
+    } catch (error) {
+      throw new Error(
+        mapAuthError(error, "Unable to check verification status."),
+      );
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!needsEmailVerification) {
+      return;
+    }
+
+    const onVisible = () => {
+      if (document.visibilityState !== "visible") {
+        return;
+      }
+      void refreshEmailVerification().catch(() => undefined);
+    };
+
+    const onFocus = () => {
+      void refreshEmailVerification().catch(() => undefined);
+    };
+
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [needsEmailVerification, refreshEmailVerification]);
+
   const signOutUser = useCallback(async () => {
     if (isAuthBypassEnabled()) {
       localStorage.removeItem(STORAGE_KEY);
       setUser(null);
       setHasPasswordProvider(false);
+      setEmailVerified(false);
       return;
     }
 
@@ -527,6 +703,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     setUser(null);
     setHasPasswordProvider(false);
+    setEmailVerified(false);
   }, []);
 
   const getIdToken = useCallback(async () => {
@@ -569,12 +746,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user,
       loading,
       hasPasswordProvider,
+      emailVerified,
+      needsEmailVerification,
       loginAsDev,
       signIn,
       signUp,
       signInWithGoogle,
       resetPassword,
       changePassword,
+      changeEmail,
+      resendEmailVerification,
+      refreshEmailVerification,
       signOutUser,
       getIdToken,
       updateUser,
@@ -583,12 +765,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user,
       loading,
       hasPasswordProvider,
+      emailVerified,
+      needsEmailVerification,
       loginAsDev,
       signIn,
       signUp,
       signInWithGoogle,
       resetPassword,
       changePassword,
+      changeEmail,
+      resendEmailVerification,
+      refreshEmailVerification,
       signOutUser,
       getIdToken,
       updateUser,

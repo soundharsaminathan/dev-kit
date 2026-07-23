@@ -245,3 +245,102 @@ describe("MembershipsService.assign family packs", () => {
     ).rejects.toThrow(/does not match KID seat/);
   });
 });
+
+describe("MembershipsService.purchaseForBatch", () => {
+  const prisma = {
+    batch: { findUnique: vi.fn(), findMany: vi.fn() },
+    batchPlan: { findUnique: vi.fn() },
+    subscription: { findUnique: vi.fn() },
+    membership: { create: vi.fn() },
+    batchEnrollment: {
+      upsert: vi.fn(),
+      findMany: vi.fn(),
+    },
+    booking: {
+      updateMany: vi.fn(),
+      findMany: vi.fn(),
+    },
+    $transaction: vi.fn(),
+    $queryRaw: vi.fn(),
+  };
+
+  const scheduleConflicts = {
+    assertNoConflicts: vi.fn().mockResolvedValue(undefined),
+    assertStudentAvailableForBatch: vi.fn().mockResolvedValue(undefined),
+  };
+
+  let service: MembershipsService;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    service = new MembershipsService(
+      prisma as never,
+      { create: vi.fn() } as never,
+      scheduleConflicts as never,
+    );
+    prisma.$transaction.mockImplementation(
+      async (fn: (tx: typeof prisma) => Promise<unknown>) => fn(prisma),
+    );
+    prisma.$queryRaw.mockImplementation(async () => [{ id: "batch" }]);
+    prisma.batchEnrollment.findMany.mockResolvedValue([]);
+    prisma.booking.updateMany.mockResolvedValue({ count: 0 });
+    prisma.booking.findMany.mockResolvedValue([]);
+  });
+
+  it("assigns membership and enrolls into the purchased batch", async () => {
+    prisma.batch.findUnique.mockResolvedValue({
+      id: "batch-kid",
+      active: true,
+      category: "KIDS",
+    });
+    prisma.batchPlan.findUnique.mockResolvedValue({
+      batchId: "batch-kid",
+      subscriptionId: "sub-kid-mo",
+      subscription: {
+        id: "sub-kid-mo",
+        active: true,
+        kind: "INDIVIDUAL",
+        individualAudience: "KID",
+        adultSeats: 0,
+        kidSeats: 1,
+        billingCadence: "MONTHLY",
+      },
+    });
+    prisma.subscription.findUnique.mockResolvedValue({
+      id: "sub-kid-mo",
+      active: true,
+      kind: "INDIVIDUAL",
+      individualAudience: "KID",
+      adultSeats: 0,
+      kidSeats: 1,
+      billingCadence: "MONTHLY",
+    });
+    prisma.batch.findMany.mockResolvedValue([
+      {
+        id: "batch-kid",
+        name: "Kids Ballet",
+        active: true,
+        category: "KIDS",
+        capacity: 15,
+        enrollments: [],
+      },
+    ]);
+    prisma.membership.create.mockResolvedValue({
+      id: "mem-1",
+      coveredStudents: [],
+    });
+
+    await service.purchaseForBatch({
+      batchId: "batch-kid",
+      subscriptionId: "sub-kid-mo",
+      purchaserUserId: "parent-1",
+      coveredStudents: [{ studentId: "kid-1", seatRole: "KID" }],
+    });
+
+    expect(prisma.batchEnrollment.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        create: { batchId: "batch-kid", studentId: "kid-1" },
+      }),
+    );
+  });
+});

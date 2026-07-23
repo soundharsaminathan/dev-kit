@@ -6,13 +6,22 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import {
+  BatchCategory,
+  BillingCadence,
   BookingStatus,
   EnrollmentMode,
+  IndividualAudience,
   type Prisma,
   SessionStatus,
+  SubscriptionKind,
   UserRole,
 } from "@prisma/client";
 import { ScheduleConflictService } from "../calendar/schedule-conflict.service";
+import { MediaService } from "../media/media.service";
+import {
+  type CoveredStudentInput,
+  MembershipsService,
+} from "../memberships/memberships.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { TrialSlotsCacheService } from "../sessions/trial-slots-cache.service";
 import type { DecryptedUser } from "../users/user-crypto.service";
@@ -105,7 +114,7 @@ function shapeDiscoverBatch<
     coverImageUrl?: string | null;
     trainers: { trainer: Record<string, unknown> }[];
   },
->(batch: T, reservedSeats?: number) {
+>(batch: T, reservedSeats?: number, price: number | null = null) {
   const enrollmentCount =
     batch._count?.enrollments ?? batch.enrollments?.length ?? 0;
   const occupied = reservedSeats ?? enrollmentCount;
@@ -125,8 +134,46 @@ function shapeDiscoverBatch<
     scheduleLabel: scheduleLabelFrom(batch.scheduleJson),
     styleBadge: primaryStyleFrom(batch.danceCategories),
     coverImageUrl,
-    price: null as number | null,
+    price,
   };
+}
+
+function extractPlans(
+  plans?: Array<{
+    subscription: {
+      id: string;
+      name: string;
+      kind: SubscriptionKind;
+      individualAudience: IndividualAudience | null;
+      familyPack: string | null;
+      billingCadence: BillingCadence;
+      adultSeats: number;
+      kidSeats: number;
+      price: { toString(): string } | number;
+      active: boolean;
+    };
+  }>,
+) {
+  const active = (plans ?? [])
+    .map((row) => row.subscription)
+    .filter((subscription) => subscription.active)
+    .map((subscription) => ({
+      ...subscription,
+      price: Number(subscription.price),
+    }));
+  const prices = active
+    .map((subscription) => subscription.price)
+    .filter((value) => Number.isFinite(value));
+  return {
+    plans: active,
+    price: prices.length > 0 ? Math.min(...prices) : null,
+  };
+}
+
+function audienceForBatchCategory(category: BatchCategory): IndividualAudience {
+  return category === BatchCategory.KIDS
+    ? IndividualAudience.KID
+    : IndividualAudience.ADULT;
 }
 
 function dateTimeFor(date: Date, time: string, utcOffsetMinutes: number): Date {
@@ -271,7 +318,19 @@ export class BatchesService {
     private readonly scheduleConflicts: ScheduleConflictService,
     @Inject(TrialSlotsCacheService)
     private readonly trialSlotsCache: TrialSlotsCacheService,
+    @Inject(MediaService) private readonly media: MediaService,
+    @Inject(MembershipsService)
+    private readonly memberships: MembershipsService,
   ) {}
+
+  private async withSignedCover<T extends { coverImageUrl?: string | null }>(
+    batch: T,
+  ): Promise<T> {
+    return {
+      ...batch,
+      coverImageUrl: await this.media.signReadUrl(batch.coverImageUrl ?? null),
+    };
+  }
 
   async listByStudio(studioId: string, filters: DiscoverBatchFilters = {}) {
     const activeOnly = filters.activeOnly ?? false;
@@ -300,6 +359,7 @@ export class BatchesService {
         branch: { include: branchCoverInclude },
         certificateTemplate: true,
         trainers: { include: { trainer: true } },
+        plans: { include: { subscription: true } },
         _count: { select: { enrollments: true } },
       },
       orderBy: { name: "asc" },
@@ -310,16 +370,22 @@ export class BatchesService {
       batches.map((batch) => batch.id),
     );
 
-    const mapped = batches.map((batch) => {
-      const trainers = batch.trainers.map((row) => ({
-        ...row,
-        trainer: this.crypto.decryptUser(row.trainer),
-      }));
-      return shapeDiscoverBatch(
-        { ...batch, trainers },
-        reservedByBatch.get(batch.id),
-      );
-    });
+    const mapped = await Promise.all(
+      batches.map(async (batch) => {
+        const trainers = batch.trainers.map((row) => ({
+          ...row,
+          trainer: this.crypto.decryptUser(row.trainer),
+        }));
+        const { plans, price } = extractPlans(batch.plans);
+        return this.withSignedCover(
+          shapeDiscoverBatch(
+            { ...batch, trainers, plans },
+            reservedByBatch.get(batch.id),
+            price,
+          ),
+        );
+      }),
+    );
 
     if (filters.style) {
       const style = filters.style.toLowerCase();
@@ -340,6 +406,7 @@ export class BatchesService {
         certificateTemplate: true,
         sessions: { orderBy: { startsAt: "asc" } },
         trainers: { include: { trainer: true } },
+        plans: { include: { subscription: true } },
         _count: { select: { enrollments: true } },
       },
     });
@@ -411,16 +478,21 @@ export class BatchesService {
     }
 
     const reservedByBatch = await countReservedSeatsByBatch(this.prisma, [id]);
+    const { plans, price } = extractPlans(batch.plans);
 
     return {
-      ...shapeDiscoverBatch(
-        {
-          ...batch,
-          trainers,
-          enrollments,
-        },
-        reservedByBatch.get(id),
-      ),
+      ...(await this.withSignedCover(
+        shapeDiscoverBatch(
+          {
+            ...batch,
+            trainers,
+            enrollments,
+            plans,
+          },
+          reservedByBatch.get(id),
+          price,
+        ),
+      )),
       viewerRating,
       viewerEnrolled,
       viewerBooking,
@@ -439,6 +511,7 @@ export class BatchesService {
       scheduleJson: Prisma.InputJsonValue;
       capacity: number;
       enrollmentMode: EnrollmentMode;
+      subscriptionIds: string[];
       active?: boolean;
       certificationEnabled?: boolean;
       certificateTemplateId?: string | null;
@@ -450,17 +523,28 @@ export class BatchesService {
     const schedule = data.scheduleJson as unknown as BatchSchedule;
     const sessions = buildSessions(schedule);
     const trainerIds = [...new Set(data.trainerIds)];
+    const subscriptionIds = [...new Set(data.subscriptionIds)];
     const certificationEnabled = data.certificationEnabled ?? false;
 
-    const [trainers, branch, certificateTemplate] = await Promise.all([
-      this.prisma.user.findMany({ where: { id: { in: trainerIds } } }),
-      this.prisma.studioBranch.findUnique({ where: { id: data.branchId } }),
-      certificationEnabled && data.certificateTemplateId
-        ? this.prisma.certificateTemplate.findUnique({
-            where: { id: data.certificateTemplateId },
-          })
-        : Promise.resolve(null),
-    ]);
+    if (subscriptionIds.length === 0) {
+      throw new BadRequestException(
+        "Attach at least one Individual 1-month and 3-month plan",
+      );
+    }
+
+    const [trainers, branch, certificateTemplate, subscriptions] =
+      await Promise.all([
+        this.prisma.user.findMany({ where: { id: { in: trainerIds } } }),
+        this.prisma.studioBranch.findUnique({ where: { id: data.branchId } }),
+        certificationEnabled && data.certificateTemplateId
+          ? this.prisma.certificateTemplate.findUnique({
+              where: { id: data.certificateTemplateId },
+            })
+          : Promise.resolve(null),
+        this.prisma.subscription.findMany({
+          where: { id: { in: subscriptionIds } },
+        }),
+      ]);
 
     if (
       trainers.length !== trainerIds.length ||
@@ -495,6 +579,13 @@ export class BatchesService {
       }
     }
 
+    this.assertBatchPlanSelection(
+      data.category as BatchCategory,
+      data.studioId,
+      subscriptions,
+      subscriptionIds,
+    );
+
     await this.scheduleConflicts.assertNoConflicts({
       intervals: sessions,
       trainerIds,
@@ -526,16 +617,96 @@ export class BatchesService {
         sessions: {
           create: sessions,
         },
+        plans: {
+          create: subscriptionIds.map((subscriptionId) => ({
+            subscriptionId,
+          })),
+        },
       },
       include: {
         branch: { include: branchCoverInclude },
         certificateTemplate: true,
         sessions: { orderBy: { startsAt: "asc" } },
         trainers: { include: { trainer: true } },
+        plans: { include: { subscription: true } },
       },
     });
     await this.trialSlotsCache.invalidate(data.studioId);
-    return created;
+    const { plans, price } = extractPlans(created.plans);
+    return {
+      ...created,
+      plans,
+      price,
+    };
+  }
+
+  purchase(
+    batchId: string,
+    args: {
+      subscriptionId: string;
+      purchaserUserId: string;
+      coveredStudents: CoveredStudentInput[];
+    },
+  ) {
+    return this.memberships.purchaseForBatch({
+      batchId,
+      subscriptionId: args.subscriptionId,
+      purchaserUserId: args.purchaserUserId,
+      coveredStudents: args.coveredStudents,
+    });
+  }
+
+  private assertBatchPlanSelection(
+    category: BatchCategory,
+    studioId: string,
+    subscriptions: Array<{
+      id: string;
+      studioId: string;
+      active: boolean;
+      kind: SubscriptionKind;
+      individualAudience: IndividualAudience | null;
+      billingCadence: BillingCadence;
+    }>,
+    subscriptionIds: string[],
+  ) {
+    if (subscriptions.length !== subscriptionIds.length) {
+      throw new BadRequestException("One or more plans were not found");
+    }
+    if (
+      subscriptions.some(
+        (subscription) =>
+          subscription.studioId !== studioId || !subscription.active,
+      )
+    ) {
+      throw new BadRequestException(
+        "Select active plans from this studio catalog",
+      );
+    }
+
+    const expectedAudience = audienceForBatchCategory(category);
+    const individuals = subscriptions.filter(
+      (subscription) => subscription.kind === SubscriptionKind.INDIVIDUAL,
+    );
+    for (const subscription of individuals) {
+      if (subscription.individualAudience !== expectedAudience) {
+        throw new BadRequestException(
+          `Individual plans for this batch must target ${expectedAudience}`,
+        );
+      }
+    }
+
+    const hasMonthly = individuals.some(
+      (subscription) => subscription.billingCadence === BillingCadence.MONTHLY,
+    );
+    const hasQuarterly = individuals.some(
+      (subscription) =>
+        subscription.billingCadence === BillingCadence.QUARTERLY,
+    );
+    if (!hasMonthly || !hasQuarterly) {
+      throw new BadRequestException(
+        "Attach Individual 1-month and 3-month plans for this batch",
+      );
+    }
   }
 
   async update(
