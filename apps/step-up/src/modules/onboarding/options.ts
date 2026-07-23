@@ -141,7 +141,8 @@ export const STEP_META: Record<OnboardingStep, OnboardingStepMeta> = {
     art: `/onboarding/vibe.png?${ART_V}`,
     title: "Pick a",
     emphasis: "trial time",
-    subtitle: "Choose any upcoming class — or skip and book later.",
+    subtitle:
+      "Choose a class, or anytime and we'll call to lock in a time that works.",
   },
   trainer: {
     art: `/onboarding/celebrate.png?${ART_V}`,

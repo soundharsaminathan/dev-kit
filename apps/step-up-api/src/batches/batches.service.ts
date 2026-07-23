@@ -14,6 +14,7 @@ import {
 } from "@prisma/client";
 import { ScheduleConflictService } from "../calendar/schedule-conflict.service";
 import { PrismaService } from "../prisma/prisma.service";
+import { TrialSlotsCacheService } from "../sessions/trial-slots-cache.service";
 import type { DecryptedUser } from "../users/user-crypto.service";
 import { UserCryptoService } from "../users/user-crypto.service";
 
@@ -262,6 +263,8 @@ export class BatchesService {
     @Inject(UserCryptoService) private readonly crypto: UserCryptoService,
     @Inject(ScheduleConflictService)
     private readonly scheduleConflicts: ScheduleConflictService,
+    @Inject(TrialSlotsCacheService)
+    private readonly trialSlotsCache: TrialSlotsCacheService,
   ) {}
 
   async listByStudio(studioId: string, filters: DiscoverBatchFilters = {}) {
@@ -469,7 +472,7 @@ export class BatchesService {
       branchId: data.branchId,
     });
 
-    return this.prisma.batch.create({
+    const created = await this.prisma.batch.create({
       data: {
         studioId: data.studioId,
         branchId: data.branchId,
@@ -502,6 +505,8 @@ export class BatchesService {
         trainers: { include: { trainer: true } },
       },
     });
+    await this.trialSlotsCache.invalidate(data.studioId);
+    return created;
   }
 
   async update(
@@ -638,7 +643,7 @@ export class BatchesService {
       ...batchData
     } = data;
 
-    return this.prisma.$transaction(async (tx) => {
+    const updated = await this.prisma.$transaction(async (tx) => {
       if (trainerIds) {
         await tx.batchTrainer.deleteMany({ where: { batchId: id } });
         await tx.batchTrainer.createMany({
@@ -669,10 +674,19 @@ export class BatchesService {
         },
       });
     });
+    if (desiredSessions) {
+      await this.trialSlotsCache.invalidate(batch.studioId);
+    }
+    return updated;
   }
 
-  remove(id: string) {
-    return this.prisma.batch.delete({ where: { id } });
+  async remove(id: string) {
+    const batch = await this.prisma.batch.findUnique({ where: { id } });
+    const deleted = await this.prisma.batch.delete({ where: { id } });
+    if (batch) {
+      await this.trialSlotsCache.invalidate(batch.studioId);
+    }
+    return deleted;
   }
 
   async enroll(batchId: string, studentId: string, actor: DecryptedUser) {

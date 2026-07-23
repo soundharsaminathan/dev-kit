@@ -16,7 +16,6 @@ import {
   STUDIO_ID,
 } from "@/lib/constants";
 import { getFirebaseAuth } from "@/lib/firebase";
-import type { DiscoverBatch } from "@/modules/discover/types";
 import { uploadSocialPhoto } from "@/modules/social/upload";
 import type { StudioTrainer } from "@/modules/trainers/types";
 import { FormInput } from "@/modules/ui/form-input";
@@ -41,13 +40,6 @@ type ProfilePatch = {
   onboardingCompletedAt?: string | null;
 };
 
-type BatchSession = {
-  id: string;
-  startsAt: string;
-  endsAt: string;
-  status?: string;
-};
-
 type TrialSlot = {
   sessionId: string;
   batchId: string;
@@ -57,7 +49,12 @@ type TrialSlot = {
   endsAt: string;
 };
 
+type SelectedTrial =
+  | { kind: "personal" }
+  | { kind: "session"; slot: TrialSlot };
+
 type CompleteOnboardingBody = {
+  personalTrial?: boolean;
   batchId?: string;
   sessionId?: string;
   trainerId?: string;
@@ -161,7 +158,9 @@ export function OnboardingWizard() {
   const [ageRange, setAgeRange] = useState<AgeRange | null>(
     user?.ageRange ?? null,
   );
-  const [selectedSlot, setSelectedSlot] = useState<TrialSlot | null>(null);
+  const [selectedTrial, setSelectedTrial] = useState<SelectedTrial | null>(
+    null,
+  );
   const [selectedTrainerId, setSelectedTrainerId] = useState<string | null>(
     null,
   );
@@ -171,40 +170,7 @@ export function OnboardingWizard() {
 
   const slotsQuery = useQuery({
     queryKey: ["onboarding", "trial-slots", STUDIO_ID],
-    queryFn: async (): Promise<TrialSlot[]> => {
-      const batches = await api.get<DiscoverBatch[]>(
-        `/batches/studio/${STUDIO_ID}?activeOnly=true`,
-      );
-      const now = Date.now();
-      const horizon = now + 14 * 24 * 60 * 60 * 1000;
-      const nested = await Promise.all(
-        batches.map(async (batch) => {
-          const sessions = await api.get<BatchSession[]>(
-            `/sessions/batch/${batch.id}`,
-          );
-          return sessions
-            .filter((session) => {
-              if (session.status === "CANCELLED") return false;
-              const start = new Date(session.startsAt).getTime();
-              return start >= now && start <= horizon;
-            })
-            .map((session) => ({
-              sessionId: session.id,
-              batchId: batch.id,
-              batchName: batch.name,
-              styleBadge: batch.styleBadge ?? null,
-              startsAt: session.startsAt,
-              endsAt: session.endsAt,
-            }));
-        }),
-      );
-      return nested
-        .flat()
-        .sort(
-          (a, b) =>
-            new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime(),
-        );
-    },
+    queryFn: () => api.get<TrialSlot[]>(`/sessions/studio/${STUDIO_ID}/trial`),
     enabled: step === "trialTime" || step === "trainer",
   });
 
@@ -349,25 +315,27 @@ export function OnboardingWizard() {
     clearTrainer?: boolean;
   }) {
     setError(null);
-    const slot = options?.clearSlot ? null : selectedSlot;
+    const trial = options?.clearSlot ? null : selectedTrial;
     const trainerId = options?.clearTrainer ? null : selectedTrainerId;
-    if (options?.clearSlot) setSelectedSlot(null);
+    if (options?.clearSlot) setSelectedTrial(null);
     if (options?.clearTrainer) setSelectedTrainerId(null);
     try {
       if (!completed) {
         const body: CompleteOnboardingBody = {};
-        if (slot) {
-          body.sessionId = slot.sessionId;
-          body.batchId = slot.batchId;
-          body.startsAt = slot.startsAt;
-          body.endsAt = slot.endsAt;
+        if (trial?.kind === "personal") {
+          body.personalTrial = true;
+        } else if (trial?.kind === "session") {
+          body.sessionId = trial.slot.sessionId;
+          body.batchId = trial.slot.batchId;
+          body.startsAt = trial.slot.startsAt;
+          body.endsAt = trial.slot.endsAt;
         }
         if (trainerId) {
           body.trainerId = trainerId;
         }
         await completeMutation.mutateAsync(body);
       }
-      const booked = Boolean(slot || trainerId);
+      const booked = Boolean(trial || trainerId);
       if (booked) {
         void navigate({ to: "/me", replace: true });
       } else {
@@ -539,18 +507,30 @@ export function OnboardingWizard() {
 
             {step === "trialTime" ? (
               <div className={styles.cardGrid}>
+                <button
+                  type="button"
+                  className={styles.choiceCard}
+                  data-selected={
+                    selectedTrial?.kind === "personal" ? "true" : undefined
+                  }
+                  onClick={() =>
+                    setSelectedTrial((current) =>
+                      current?.kind === "personal"
+                        ? null
+                        : { kind: "personal" },
+                    )
+                  }
+                >
+                  <p className={styles.choiceTitle}>Anytime — we'll call you</p>
+                  <p className={styles.choiceDescription}>
+                    Personal trial · pick a time later with the studio
+                  </p>
+                </button>
                 {slotsQuery.isLoading ? (
                   <p className={styles.choiceDescription}>Loading times…</p>
                 ) : null}
                 {slotsQuery.isError ? (
                   <p className={styles.error}>Could not load class times.</p>
-                ) : null}
-                {!slotsQuery.isLoading &&
-                !slotsQuery.isError &&
-                trialSlots.length === 0 ? (
-                  <p className={styles.choiceDescription}>
-                    No upcoming classes yet — skip and explore later.
-                  </p>
                 ) : null}
                 {trialSlots.map((slot) => (
                   <button
@@ -558,13 +538,17 @@ export function OnboardingWizard() {
                     type="button"
                     className={styles.choiceCard}
                     data-selected={
-                      selectedSlot?.sessionId === slot.sessionId
+                      selectedTrial?.kind === "session" &&
+                      selectedTrial.slot.sessionId === slot.sessionId
                         ? "true"
                         : undefined
                     }
                     onClick={() =>
-                      setSelectedSlot((current) =>
-                        current?.sessionId === slot.sessionId ? null : slot,
+                      setSelectedTrial((current) =>
+                        current?.kind === "session" &&
+                        current.slot.sessionId === slot.sessionId
+                          ? null
+                          : { kind: "session", slot },
                       )
                     }
                   >
@@ -664,7 +648,7 @@ export function OnboardingWizard() {
                   void finishAndGo({ clearTrainer: true });
                   return;
                 }
-                setSelectedSlot(null);
+                setSelectedTrial(null);
                 const next = ONBOARDING_STEPS[stepIndex + 1];
                 if (next) advanceTo(next);
               }}

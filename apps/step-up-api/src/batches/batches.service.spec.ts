@@ -31,6 +31,10 @@ describe("BatchesService branch validation", () => {
     assertStudentAvailableForBatch: vi.fn().mockResolvedValue(undefined),
   };
 
+  const trialSlotsCache = {
+    invalidate: vi.fn().mockResolvedValue(undefined),
+  };
+
   let service: BatchesService;
 
   beforeEach(() => {
@@ -45,6 +49,7 @@ describe("BatchesService branch validation", () => {
         decryptUser: (user: unknown) => user,
       } as never,
       scheduleConflicts as never,
+      trialSlotsCache as never,
     );
     prisma.$transaction.mockImplementation(
       async (callback: (tx: typeof prisma) => unknown) => callback(prisma),
@@ -201,6 +206,9 @@ describe("BatchesService update", () => {
         assertNoConflicts: vi.fn().mockResolvedValue(undefined),
         assertStudentAvailableForBatch: vi.fn().mockResolvedValue(undefined),
       } as never,
+      {
+        invalidate: vi.fn().mockResolvedValue(undefined),
+      } as never,
     );
     prisma.$transaction.mockImplementation(
       async (callback: (tx: typeof prisma) => unknown) => callback(prisma),
@@ -300,6 +308,9 @@ describe("BatchesService getRevenue", () => {
         assertNoConflicts: vi.fn().mockResolvedValue(undefined),
         assertStudentAvailableForBatch: vi.fn().mockResolvedValue(undefined),
       } as never,
+      {
+        invalidate: vi.fn().mockResolvedValue(undefined),
+      } as never,
     );
   });
 
@@ -392,6 +403,9 @@ describe("BatchesService rate", () => {
       {
         assertNoConflicts: vi.fn().mockResolvedValue(undefined),
         assertStudentAvailableForBatch: vi.fn().mockResolvedValue(undefined),
+      } as never,
+      {
+        invalidate: vi.fn().mockResolvedValue(undefined),
       } as never,
     );
     prisma.$transaction.mockImplementation(

@@ -24,6 +24,7 @@ import {
   ArrayMaxSize,
   ArrayMinSize,
   IsArray,
+  IsBoolean,
   IsDateString,
   IsEmail,
   IsEnum,
@@ -110,6 +111,10 @@ class UpdateProfileDto {
 }
 
 class CompleteOnboardingDto {
+  @IsOptional()
+  @IsBoolean()
+  personalTrial?: boolean;
+
   @IsOptional()
   @IsString()
   batchId?: string;
