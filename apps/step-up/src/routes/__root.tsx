@@ -7,7 +7,6 @@ import type { RouterAuthContext } from "@/lib/require-auth";
 import { SessionGate } from "@/lib/session-gate";
 import { AppThemeProvider } from "@/lib/theme";
 import { ThemeColorSync } from "@/lib/theme-color";
-import { VerifyEmailBanner } from "@/modules/auth/verify-email-banner";
 import { PwaBanners } from "@/modules/pwa/pwa-banners";
 
 export const Route = createRootRouteWithContext<RouterAuthContext>()({
@@ -24,7 +23,6 @@ function RootLayout() {
             <OverlayProvider>
               <ToastProvider position="bottom-center">
                 <PwaBanners />
-                <VerifyEmailBanner />
                 <Outlet />
               </ToastProvider>
             </OverlayProvider>

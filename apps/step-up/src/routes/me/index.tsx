@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useRef, useState } from "react";
 import { useApi } from "@/lib/api-context";
+import { HomeNotices, useHomeNotices } from "@/modules/me/home-notices";
 import {
   AchievementBadge,
   BatchProgressCard,
@@ -35,37 +36,6 @@ const GOAL_BLOOM_ITEMS = [4, 8, 12, 16].map((value) => ({
   id: String(value),
   label: `${value} sessions`,
 }));
-
-function MeHomeSkeleton() {
-  return (
-    <section className="screen" aria-busy="true" aria-label="Loading home">
-      <div className={styles.root}>
-        <SkeletonBlock
-          height="18.5rem"
-          radius="0"
-          className={styles.skeletonBanner}
-        />
-        <SkeletonBlock height="6.5rem" radius="var(--radius-2xl, 1.25rem)" />
-        <div className={styles.section}>
-          <SkeletonBlock height="0.875rem" width="30%" />
-          <SkeletonBlock height="5rem" radius="var(--radius-xl, 1rem)" />
-        </div>
-        <div className={styles.section}>
-          <SkeletonBlock height="0.875rem" width="40%" />
-          <SkeletonBlock height="7rem" radius="var(--radius-xl, 1rem)" />
-        </div>
-        <div className={styles.section}>
-          <SkeletonBlock height="0.875rem" width="35%" />
-          <div className={styles.skeletonRow}>
-            <SkeletonBlock height="4.5rem" radius="var(--radius-xl, 1rem)" />
-            <SkeletonBlock height="4.5rem" radius="var(--radius-xl, 1rem)" />
-            <SkeletonBlock height="4.5rem" radius="var(--radius-xl, 1rem)" />
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
 
 function MeHomePage() {
   const api = useApi();
@@ -142,6 +112,7 @@ function MeHomePage() {
   const showTrialPromo = data
     ? !(data.hasEnrollment ?? data.progress.length > 0)
     : false;
+  const notices = useHomeNotices({ membership: data?.membership ?? null });
 
   function selectGoalPreset(id: string) {
     const target = Number(id);
@@ -150,7 +121,35 @@ function MeHomePage() {
   }
 
   if (waitingForHome) {
-    return <MeHomeSkeleton />;
+    return (
+      <section className="screen" aria-busy="true" aria-label="Loading home">
+        <div className={styles.root}>
+          <HomeNotices notices={notices} />
+          <SkeletonBlock
+            height="18.5rem"
+            radius="0"
+            className={styles.skeletonBanner}
+          />
+          <SkeletonBlock height="6.5rem" radius="var(--radius-2xl, 1.25rem)" />
+          <div className={styles.section}>
+            <SkeletonBlock height="0.875rem" width="30%" />
+            <SkeletonBlock height="5rem" radius="var(--radius-xl, 1rem)" />
+          </div>
+          <div className={styles.section}>
+            <SkeletonBlock height="0.875rem" width="40%" />
+            <SkeletonBlock height="7rem" radius="var(--radius-xl, 1rem)" />
+          </div>
+          <div className={styles.section}>
+            <SkeletonBlock height="0.875rem" width="35%" />
+            <div className={styles.skeletonRow}>
+              <SkeletonBlock height="4.5rem" radius="var(--radius-xl, 1rem)" />
+              <SkeletonBlock height="4.5rem" radius="var(--radius-xl, 1rem)" />
+              <SkeletonBlock height="4.5rem" radius="var(--radius-xl, 1rem)" />
+            </div>
+          </div>
+        </div>
+      </section>
+    );
   }
 
   return (
@@ -162,6 +161,8 @@ function MeHomePage() {
       >
         <div className={styles.root}>
           <InstallAppBar onVisibleChange={setInstallBarVisible} />
+
+          <HomeNotices notices={notices} />
 
           {homeQuery.isError ? (
             <ErrorState
@@ -189,7 +190,7 @@ function MeHomePage() {
                 greeting={data.greeting}
                 firstName={firstName}
                 cta={bannerCta}
-                flushTop={installBarVisible}
+                flushTop={installBarVisible && notices.length === 0}
               />
 
               {nextClass ? (
@@ -233,17 +234,6 @@ function MeHomePage() {
                   </div>
                   <InstructorsRow instructors={data.instructors} />
                 </section>
-              ) : null}
-
-              {!showTrialPromo &&
-              !nextClass &&
-              data.membership?.needsRenewal ? (
-                <TrialPromoCard
-                  title="Keep your spot warm"
-                  subtitle="Renew your plan so you don't miss the next drop-in"
-                  ctaLabel="Renew plan"
-                  to="/me/subscriptions"
-                />
               ) : null}
 
               {data.hasEnrollment !== false &&
