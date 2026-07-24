@@ -1,4 +1,11 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@dev-ui/components/select";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useApi } from "@/lib/api-context";
@@ -14,6 +21,7 @@ import { StickyCtaBar, TouchButton } from "@/modules/ui/touch-button";
 import formStyles from "./member-registration-form.module.scss";
 
 const STEPS = ["Details", "Dance styles"] as const;
+const NO_BATCH = "__none__";
 
 type MemberRegistrationFormProps = {
   kind: "trainer" | "student";
@@ -32,6 +40,12 @@ type CreatedMember = {
   name: string;
   email: string;
   phone?: string | null;
+};
+
+type StudioBatchOption = {
+  id: string;
+  name: string;
+  active: boolean;
 };
 
 export function MemberRegistrationForm({
@@ -55,6 +69,23 @@ export function MemberRegistrationForm({
   const [gender, setGender] = useState<Gender | null>(null);
   const [ageRange, setAgeRange] = useState<AgeRange | null>(null);
   const [styles, setStyles] = useState<string[]>([]);
+  const [batchId, setBatchId] = useState<string | null>(null);
+
+  const allowBatchEnrollment = kind === "student";
+
+  const batchesQuery = useQuery({
+    queryKey: ["studio-batches", STUDIO_ID, "active"],
+    queryFn: () =>
+      api.get<StudioBatchOption[]>(
+        `/batches/studio/${STUDIO_ID}?activeOnly=true`,
+      ),
+    enabled: allowBatchEnrollment,
+  });
+
+  const activeBatches = useMemo(
+    () => (batchesQuery.data ?? []).filter((batch) => batch.active),
+    [batchesQuery.data],
+  );
 
   const stepIsValid = useMemo(
     () => [
@@ -73,12 +104,20 @@ export function MemberRegistrationForm({
         gender,
         ageRange,
         styles,
+        ...(allowBatchEnrollment && batchId ? { batchId } : {}),
       }),
     onSuccess: async (created) => {
       setLastLoginIdentifier(created.email);
-      await queryClient.invalidateQueries({
-        queryKey: ["studio-members", STUDIO_ID],
-      });
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: ["studio-members", STUDIO_ID],
+        }),
+        queryClient.invalidateQueries({ queryKey: ["student-funnel"] }),
+        queryClient.invalidateQueries({ queryKey: ["student-directory"] }),
+        batchId
+          ? queryClient.invalidateQueries({ queryKey: ["batch", batchId] })
+          : Promise.resolve(),
+      ]);
       await navigate({ to: successTo });
     },
   });
@@ -174,6 +213,48 @@ export function MemberRegistrationForm({
               title={stylesTitle}
               summaryLabel={stylesSummaryLabel}
             />
+            {allowBatchEnrollment ? (
+              <div
+                className={formStyles.batchField}
+                data-testid="optional-batch-enrollment"
+              >
+                <Select
+                  label="Enroll in batch (optional)"
+                  placeholder={
+                    batchesQuery.isLoading
+                      ? "Loading batches…"
+                      : "Don't enroll yet"
+                  }
+                  selectedKey={batchId ?? NO_BATCH}
+                  onSelectionChange={(key) => {
+                    const value = String(key);
+                    setBatchId(value === NO_BATCH ? null : value);
+                  }}
+                >
+                  <SelectTrigger data-testid="optional-batch-select">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem id={NO_BATCH} textValue="Don't enroll yet">
+                      Don't enroll yet
+                    </SelectItem>
+                    {activeBatches.map((batch) => (
+                      <SelectItem
+                        key={batch.id}
+                        id={batch.id}
+                        textValue={batch.name}
+                      >
+                        {batch.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className={formStyles.batchHint}>
+                  Skip this to leave the student in Signed in only. Choosing a
+                  batch makes them Active immediately.
+                </p>
+              </div>
+            ) : null}
           </div>
         )}
 

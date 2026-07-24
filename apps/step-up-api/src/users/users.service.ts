@@ -135,10 +135,62 @@ export class UsersService {
     ageRange: AgeRange;
     phone?: string;
     styles?: string[];
+    batchId?: string;
   }) {
-    return this.createStudioMember({
-      ...data,
+    const student = await this.createStudioMember({
+      studioId: data.studioId,
+      name: data.name,
+      email: data.email,
+      gender: data.gender,
+      ageRange: data.ageRange,
+      phone: data.phone,
+      styles: data.styles,
       role: UserRole.STUDENT,
+    });
+
+    if (data.batchId) {
+      await this.enrollNewStudentInBatch(
+        data.studioId,
+        student.id,
+        data.batchId,
+      );
+    }
+
+    return student;
+  }
+
+  private async enrollNewStudentInBatch(
+    studioId: string,
+    studentId: string,
+    batchId: string,
+  ) {
+    const batch = await this.prisma.batch.findUnique({
+      where: { id: batchId },
+      select: {
+        id: true,
+        studioId: true,
+        active: true,
+        capacity: true,
+      },
+    });
+
+    if (!batch || batch.studioId !== studioId) {
+      throw new BadRequestException("Select a batch from this studio");
+    }
+    if (!batch.active) {
+      throw new BadRequestException("Batch is not active");
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      await lockBatchRow(tx, batchId);
+      await assertBatchHasSeat(tx, batchId, batch.capacity, studentId);
+      await tx.batchEnrollment.upsert({
+        where: {
+          batchId_studentId: { batchId, studentId },
+        },
+        update: {},
+        create: { batchId, studentId },
+      });
     });
   }
 

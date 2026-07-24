@@ -165,6 +165,10 @@ class CreateStudentDto {
   @IsArray()
   @IsString({ each: true })
   styles?: string[];
+
+  @IsOptional()
+  @IsString()
+  batchId?: string;
 }
 
 class CreateTrainerDto {

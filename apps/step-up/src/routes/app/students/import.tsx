@@ -126,9 +126,13 @@ function ImportStudentsPage() {
         students,
       }),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({
-        queryKey: ["studio-members", STUDIO_ID],
-      });
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: ["studio-members", STUDIO_ID],
+        }),
+        queryClient.invalidateQueries({ queryKey: ["student-funnel"] }),
+        queryClient.invalidateQueries({ queryKey: ["student-directory"] }),
+      ]);
       await navigate({ to: "/app/students" });
     },
   });

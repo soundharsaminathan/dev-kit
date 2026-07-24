@@ -16,6 +16,14 @@ if (sentryDisabled()) {
   delete process.env.SENTRY_DSN;
 }
 
+if (process.env.STEP_UP_E2E === "true") {
+  // Same empty-env drop issue as SENTRY_DSN: Playwright cannot reliably clear
+  // REDIS_URL via the process environment, so dotenv would re-apply a remote
+  // Redis and e2e requests 500 when the quota is exhausted. Keep an explicit
+  // empty string so later dotenv/ConfigModule loads do not revive the URL.
+  process.env.REDIS_URL = "";
+}
+
 const dsn = process.env.SENTRY_DSN;
 
 if (dsn) {
