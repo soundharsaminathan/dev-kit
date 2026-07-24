@@ -93,14 +93,16 @@ export class AttendanceService {
 
   async markAllPresent(sessionId: string, markedById: string) {
     const roster = await this.getSessionRoster(sessionId);
-    const unmarked = roster.filter((entry) => !entry.attendance);
+    const targets = roster.filter(
+      (entry) => entry.attendance?.status !== AttendanceStatus.PRESENT,
+    );
 
-    if (unmarked.length === 0) {
+    if (targets.length === 0) {
       return { marked: 0, failed: 0 };
     }
 
     const results = await Promise.allSettled(
-      unmarked.map((entry) =>
+      targets.map((entry) =>
         this.markAttendance({
           sessionId,
           studentId: entry.studentId,

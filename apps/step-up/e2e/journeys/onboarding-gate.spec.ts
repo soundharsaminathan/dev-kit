@@ -1,8 +1,8 @@
 import { authFile, expect, test, waitForAppReady } from "../fixtures";
 import { AUTH_STORAGE_KEY, SEED } from "../fixtures/seed";
 
-test.describe("onboarding gate", () => {
-  test("incomplete student is redirected to onboarding", async ({
+test.describe("onboarding gate @critical", () => {
+  test("incomplete student is redirected to onboarding @critical", async ({
     browser,
   }) => {
     const context = await browser.newContext({

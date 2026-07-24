@@ -20,12 +20,29 @@ const PERMISSION_MATRIX: MatrixRow[] = [
     allowed: [UserRole.OWNER, UserRole.STAFF, UserRole.TRAINER],
   },
   {
-    action: "batches.create",
+    action: "sessions.create / update",
+    allowed: [UserRole.OWNER, UserRole.STAFF, UserRole.TRAINER],
+  },
+  {
+    action: "batches.create / update",
     allowed: [UserRole.OWNER, UserRole.STAFF, UserRole.TRAINER],
   },
   {
     action: "batches.delete",
     allowed: [UserRole.OWNER, UserRole.STAFF],
+  },
+  {
+    action: "batches.enroll (member self / family)",
+    allowed: [
+      UserRole.STUDENT,
+      UserRole.PARENT,
+      UserRole.OWNER,
+      UserRole.STAFF,
+    ],
+  },
+  {
+    action: "bookings.staff.list / manage",
+    allowed: [UserRole.OWNER, UserRole.STAFF, UserRole.TRAINER],
   },
   {
     action: "bookings.confirm-payment / abandon-payment",
@@ -36,8 +53,64 @@ const PERMISSION_MATRIX: MatrixRow[] = [
     allowed: [UserRole.OWNER, UserRole.STAFF],
   },
   {
+    action: "billing.listByStudio",
+    allowed: [UserRole.OWNER, UserRole.STAFF, UserRole.TRAINER],
+  },
+  {
+    action: "subscriptions.catalog.write",
+    allowed: [UserRole.OWNER, UserRole.STAFF],
+  },
+  {
+    action: "memberships.assign",
+    allowed: [UserRole.OWNER, UserRole.STAFF],
+  },
+  {
+    action: "memberships.purchase / renew.self",
+    allowed: [UserRole.STUDENT, UserRole.PARENT],
+  },
+  {
     action: "home.goals",
     allowed: [UserRole.STUDENT, UserRole.PARENT],
+  },
+  {
+    action: "studios.write",
+    allowed: [UserRole.OWNER, UserRole.STAFF],
+  },
+  {
+    action: "studios.transferOwnership",
+    allowed: [UserRole.OWNER],
+  },
+  {
+    action: "retention.dashboard",
+    allowed: [UserRole.OWNER, UserRole.STAFF, UserRole.TRAINER],
+  },
+  {
+    action: "certificates.templates.write",
+    allowed: [UserRole.OWNER, UserRole.STAFF],
+  },
+  {
+    action: "contests.manage",
+    allowed: [UserRole.OWNER, UserRole.STAFF],
+  },
+  {
+    action: "contests.enter",
+    allowed: [UserRole.STUDENT, UserRole.PARENT],
+  },
+  {
+    action: "contests.score",
+    allowed: [UserRole.STAFF, UserRole.TRAINER],
+  },
+  {
+    action: "users.staff.ops",
+    allowed: [UserRole.OWNER, UserRole.STAFF],
+  },
+  {
+    action: "users.roster.read",
+    allowed: [UserRole.OWNER, UserRole.STAFF, UserRole.TRAINER],
+  },
+  {
+    action: "users.family.link",
+    allowed: [UserRole.OWNER, UserRole.STAFF, UserRole.PARENT],
   },
 ];
 

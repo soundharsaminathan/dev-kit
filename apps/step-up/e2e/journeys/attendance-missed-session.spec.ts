@@ -7,8 +7,8 @@ import {
 } from "../fixtures";
 import { SEED } from "../fixtures/seed";
 
-test.describe("attendance missed session", () => {
-  test("trainer marks student absent and student receives MISSED_SESSION", async ({
+test.describe("attendance missed session @critical", () => {
+  test("trainer marks student absent and student receives MISSED_SESSION @critical", async ({
     browser,
   }) => {
     const sessionId = SEED.sessionAttendanceId;

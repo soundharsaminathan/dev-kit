@@ -60,7 +60,8 @@ async function assertSchema(prisma: PrismaClient) {
     WHERE schemaname = 'public'
       AND tablename IN (
         'User', 'Batch', 'Session', 'Attendance',
-        'Notification', 'Invoice', 'Booking'
+        'Notification', 'Invoice', 'Booking',
+        'Membership', 'Subscription', 'BatchEnrollment'
       )
     ORDER BY tablename
   `;
@@ -68,15 +69,43 @@ async function assertSchema(prisma: PrismaClient) {
   for (const name of [
     "Attendance",
     "Batch",
+    "BatchEnrollment",
     "Booking",
     "Invoice",
+    "Membership",
     "Notification",
     "Session",
+    "Subscription",
     "User",
   ]) {
     if (!tableNames.has(name)) {
       throw new Error(`Missing table: ${name}`);
     }
+  }
+
+  const fks = await prisma.$queryRaw<Array<{ count: bigint }>>`
+    SELECT COUNT(*)::bigint AS count
+    FROM information_schema.table_constraints
+    WHERE constraint_schema = 'public'
+      AND constraint_type = 'FOREIGN KEY'
+      AND table_name IN ('Attendance', 'Booking', 'Membership', 'BatchEnrollment')
+  `;
+  if (Number(fks[0]?.count ?? 0) < 4) {
+    throw new Error(
+      "Expected foreign keys on core membership/attendance tables",
+    );
+  }
+
+  const requiredCols = await prisma.$queryRaw<Array<{ column_name: string }>>`
+    SELECT column_name
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'User'
+      AND is_nullable = 'NO'
+      AND column_name IN ('id', 'firebaseUid', 'role', 'emailHash')
+  `;
+  if (requiredCols.length < 4) {
+    throw new Error("User table missing required non-null columns");
   }
 
   const uniqueIndexes = await prisma.$queryRaw<Array<{ indexname: string }>>`

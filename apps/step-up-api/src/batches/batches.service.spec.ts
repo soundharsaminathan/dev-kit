@@ -1,5 +1,9 @@
-import { BadRequestException, ConflictException } from "@nestjs/common";
-import { BillingCadence, UserRole } from "@prisma/client";
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+} from "@nestjs/common";
+import { BillingCadence, EnrollmentMode, UserRole } from "@prisma/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { BatchesService } from "./batches.service";
 
@@ -482,5 +486,90 @@ describe("BatchesService rate", () => {
         },
       }),
     );
+  });
+});
+
+describe("BatchesService.remove and enroll", () => {
+  const prisma = {
+    batch: {
+      findUnique: vi.fn(),
+      delete: vi.fn(),
+    },
+    familyMember: { findUnique: vi.fn() },
+    parentChild: { findUnique: vi.fn() },
+    batchEnrollment: { upsert: vi.fn() },
+    $transaction: vi.fn(),
+    $queryRaw: vi.fn(),
+  };
+
+  const scheduleConflicts = {
+    assertNoConflicts: vi.fn().mockResolvedValue(undefined),
+    assertStudentAvailableForBatch: vi.fn().mockResolvedValue(undefined),
+  };
+
+  const trialSlotsCache = {
+    invalidate: vi.fn().mockResolvedValue(undefined),
+  };
+
+  const media = {
+    signReadUrl: vi.fn(async (url: string | null) => url),
+  };
+
+  const memberships = {
+    purchaseForBatch: vi.fn(),
+  };
+
+  let service: BatchesService;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    service = new BatchesService(
+      prisma as never,
+      { decryptUser: (user: unknown) => user } as never,
+      scheduleConflicts as never,
+      trialSlotsCache as never,
+      media as never,
+      memberships as never,
+    );
+  });
+
+  it("deletes a batch and invalidates trial slots cache", async () => {
+    prisma.batch.findUnique.mockResolvedValue({
+      id: "batch-1",
+      studioId: "studio-1",
+    });
+    prisma.batch.delete.mockResolvedValue({ id: "batch-1" });
+
+    await expect(service.remove("batch-1")).resolves.toEqual({ id: "batch-1" });
+    expect(trialSlotsCache.invalidate).toHaveBeenCalledWith("studio-1");
+  });
+
+  it("rejects enroll when actor is not linked to the student", async () => {
+    prisma.familyMember.findUnique.mockResolvedValue(null);
+    prisma.parentChild.findUnique.mockResolvedValue(null);
+
+    await expect(
+      service.enroll("batch-1", "student-2", {
+        id: "student-1",
+        role: UserRole.STUDENT,
+      } as never),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it("rejects member self-enroll when batch is not SELF_JOIN", async () => {
+    prisma.batch.findUnique.mockResolvedValue({
+      id: "batch-1",
+      active: true,
+      capacity: 10,
+      enrollmentMode: EnrollmentMode.STAFF_ONLY,
+      enrollments: [],
+    });
+
+    await expect(
+      service.enroll("batch-1", "student-1", {
+        id: "student-1",
+        role: UserRole.STUDENT,
+      } as never),
+    ).rejects.toBeInstanceOf(BadRequestException);
   });
 });

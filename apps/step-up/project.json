@@ -49,6 +49,25 @@
         "command": "playwright test --config playwright.config.ts"
       },
       "dependsOn": ["tokens:build:tokens", "components:build"]
+    },
+    "test:e2e:critical": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "apps/step-up",
+        "command": "playwright test --config playwright.config.ts --grep @critical"
+      },
+      "dependsOn": ["tokens:build:tokens", "components:build"]
+    },
+    "test:regression": {
+      "executor": "nx:run-commands",
+      "options": {
+        "commands": [
+          "pnpm exec nx run step-up-api:test",
+          "pnpm exec nx run step-up:test",
+          "pnpm exec nx run step-up:test:e2e:critical"
+        ],
+        "parallel": false
+      }
     }
   }
 }

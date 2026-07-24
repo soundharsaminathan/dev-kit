@@ -344,3 +344,89 @@ describe("MembershipsService.purchaseForBatch", () => {
     );
   });
 });
+
+describe("MembershipsService.findActiveForBatch", () => {
+  const prisma = {
+    batch: { findUnique: vi.fn() },
+    membership: { findMany: vi.fn() },
+  };
+  const notifications = { create: vi.fn() };
+  const scheduleConflicts = {
+    assertNoConflicts: vi.fn(),
+    assertStudentAvailableForBatch: vi.fn(),
+  };
+
+  let service: MembershipsService;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    service = new MembershipsService(
+      prisma as never,
+      notifications as never,
+      scheduleConflicts as never,
+    );
+  });
+
+  it("returns null when batch is missing", async () => {
+    prisma.batch.findUnique.mockResolvedValue(null);
+    await expect(
+      service.findActiveForBatch("student-1", "missing"),
+    ).resolves.toBeNull();
+  });
+
+  it("returns covering active membership for matching seat role", async () => {
+    const at = new Date("2026-07-15T12:00:00.000Z");
+    prisma.batch.findUnique.mockResolvedValue({
+      id: "batch-1",
+      category: "KIDS",
+    });
+    prisma.membership.findMany.mockResolvedValue([
+      {
+        id: "mem-1",
+        status: "ACTIVE",
+        periodStart: new Date("2026-07-01T00:00:00.000Z"),
+        periodEnd: new Date("2026-07-31T23:59:59.999Z"),
+        subscription: { active: true },
+        coveredStudents: [{ studentId: "student-1", seatRole: "KID" }],
+      },
+    ]);
+
+    const membership = await service.findActiveForBatch(
+      "student-1",
+      "batch-1",
+      at,
+    );
+
+    expect(membership?.id).toBe("mem-1");
+  });
+
+  it("skips inactive subscriptions and wrong seat roles", async () => {
+    const at = new Date("2026-07-15T12:00:00.000Z");
+    prisma.batch.findUnique.mockResolvedValue({
+      id: "batch-1",
+      category: "ADULTS",
+    });
+    prisma.membership.findMany.mockResolvedValue([
+      {
+        id: "mem-inactive-sub",
+        status: "ACTIVE",
+        periodStart: new Date("2026-07-01T00:00:00.000Z"),
+        periodEnd: new Date("2026-07-31T23:59:59.999Z"),
+        subscription: { active: false },
+        coveredStudents: [{ studentId: "student-1", seatRole: "ADULT" }],
+      },
+      {
+        id: "mem-wrong-seat",
+        status: "ACTIVE",
+        periodStart: new Date("2026-07-01T00:00:00.000Z"),
+        periodEnd: new Date("2026-07-31T23:59:59.999Z"),
+        subscription: { active: true },
+        coveredStudents: [{ studentId: "student-1", seatRole: "KID" }],
+      },
+    ]);
+
+    await expect(
+      service.findActiveForBatch("student-1", "batch-1", at),
+    ).resolves.toBeNull();
+  });
+});

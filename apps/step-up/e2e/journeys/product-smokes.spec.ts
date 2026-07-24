@@ -7,8 +7,8 @@ import {
 } from "../fixtures";
 import { SEED } from "../fixtures/seed";
 
-test.describe("book trial smoke", () => {
-  test("student can open book flow", async ({ browser }) => {
+test.describe("book trial smoke @critical", () => {
+  test("student can open book flow @critical", async ({ browser }) => {
     const context = await browser.newContext({
       storageState: authFile("STUDENT"),
     });
