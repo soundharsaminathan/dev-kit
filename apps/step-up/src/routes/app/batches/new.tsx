@@ -231,7 +231,7 @@ function NewBatchPage() {
   }, [category, catalog, expectedAudience]);
 
   const stepIsValid = [
-    Boolean(name.trim() && branchId && Number(capacity) >= 1),
+    Boolean(name.trim() && branchId && Number(capacity) >= 1 && coverFile),
     trainerIds.length > 0,
     Boolean(
       startDate &&
@@ -287,9 +287,10 @@ function NewBatchPage() {
 
   const createBatch = useMutation({
     mutationFn: async () => {
-      const coverImageUrl = coverFile
-        ? await uploadBatchCover(api, coverFile)
-        : undefined;
+      if (!coverFile) {
+        throw new Error("A cover image is required.");
+      }
+      const coverImageUrl = await uploadBatchCover(api, coverFile);
       return api.post<Batch>("/batches", {
         studioId: STUDIO_ID,
         name,
@@ -370,36 +371,6 @@ function NewBatchPage() {
           {step === 0 && (
             <div className={styles.formGrid}>
               <FormInput label="Batch name" value={name} onChange={setName} />
-              <div className={`${styles.coverField} ${styles.fullWidth}`}>
-                <span className={styles.coverLabel}>
-                  Cover image (optional)
-                </span>
-                <div className={styles.coverPreview}>
-                  {coverPreview ? (
-                    <img src={coverPreview} alt="Batch cover preview" />
-                  ) : (
-                    <span className={styles.coverEmpty}>No cover selected</span>
-                  )}
-                </div>
-                <div className={styles.coverActions}>
-                  <FileTrigger
-                    accept="image/jpeg,image/png,image/webp,image/gif"
-                    onSelect={handleCoverSelect}
-                  >
-                    <Button variant="default" type="button">
-                      {coverPreview ? "Replace image" : "Upload image"}
-                    </Button>
-                  </FileTrigger>
-                  {coverPreview ? (
-                    <Button variant="quiet" type="button" onClick={clearCover}>
-                      Remove
-                    </Button>
-                  ) : null}
-                </div>
-                {coverError ? (
-                  <p className={styles.coverError}>{coverError}</p>
-                ) : null}
-              </div>
               <Select
                 label="Student group"
                 selectedKey={category}
@@ -473,6 +444,34 @@ function NewBatchPage() {
                   creating this batch.
                 </p>
               )}
+              <div className={`${styles.coverField} ${styles.fullWidth}`}>
+                <span className={styles.coverLabel}>Cover image</span>
+                <div className={styles.coverPreview}>
+                  {coverPreview ? (
+                    <img src={coverPreview} alt="Batch cover preview" />
+                  ) : (
+                    <span className={styles.coverEmpty}>No cover selected</span>
+                  )}
+                </div>
+                <div className={styles.coverActions}>
+                  <FileTrigger
+                    accept="image/jpeg,image/png,image/webp,image/gif"
+                    onSelect={handleCoverSelect}
+                  >
+                    <Button variant="default" type="button">
+                      {coverPreview ? "Replace image" : "Upload image"}
+                    </Button>
+                  </FileTrigger>
+                  {coverPreview ? (
+                    <Button variant="quiet" type="button" onClick={clearCover}>
+                      Remove
+                    </Button>
+                  ) : null}
+                </div>
+                {coverError ? (
+                  <p className={styles.coverError}>{coverError}</p>
+                ) : null}
+              </div>
             </div>
           )}
 
