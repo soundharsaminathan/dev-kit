@@ -465,6 +465,7 @@ model Batch {
   enrollmentMode        EnrollmentMode
   creatorId             String
   active                Boolean        @default(true)
+  isTrial               Boolean        @default(false)
   certificationEnabled  Boolean        @default(false)
   certificateTemplateId String?
   coverImageUrl         String?

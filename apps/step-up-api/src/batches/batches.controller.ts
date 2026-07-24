@@ -118,13 +118,16 @@ class CreateBatchDto {
   enrollmentMode!: EnrollmentMode;
 
   @IsArray()
-  @ArrayMinSize(2)
   @IsString({ each: true })
   subscriptionIds!: string[];
 
   @IsOptional()
   @IsBoolean()
   active?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  isTrial?: boolean;
 
   @IsOptional()
   @IsBoolean()
@@ -188,6 +191,10 @@ class UpdateBatchDto {
   @IsOptional()
   @IsBoolean()
   active?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  isTrial?: boolean;
 
   @IsOptional()
   @IsBoolean()

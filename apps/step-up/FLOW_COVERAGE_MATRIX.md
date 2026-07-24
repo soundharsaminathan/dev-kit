@@ -14,6 +14,7 @@ Product contract for automated testing. Roles use the canonical enum:
 | ID | Module | Flow | Role(s) | Importance | Test layer | Status | Spec / notes |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | A01 | Authentication | Guest → login → role shell | All | Critical | Playwright | Covered | `role-shells.spec.ts` |
+| A01b | Home | Owner dashboard metric + funnel tiles by period | OWNER | Critical | Playwright | Covered | `owner-dashboard-tiles.spec.ts` |
 | A02 | Authentication | Incomplete student → onboarding gate | STUDENT | Critical | Playwright | Covered | `onboarding-gate.spec.ts` |
 | A03 | Onboarding | New student onboarding → dashboard | STUDENT | Critical | Playwright + API | Partial | Gate covered; full wizard still Gap |
 | A04 | Discover | Browse / filter batches | STUDENT, PARENT | Critical | Playwright + UI | Partial | Book smoke + FilterChipRow UI |

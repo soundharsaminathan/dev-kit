@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "Batch" ADD COLUMN "isTrial" BOOLEAN NOT NULL DEFAULT false;
