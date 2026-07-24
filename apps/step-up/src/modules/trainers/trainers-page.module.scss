@@ -4,6 +4,50 @@
   gap: var(--space-3, 0.75rem);
 }
 
+.immersiveScreen {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background: #0f0f10;
+}
+
+@media (max-width: 767px) {
+  .immersiveScreen {
+    position: fixed;
+    inset: 0;
+    bottom: calc(4rem + env(safe-area-inset-bottom, 0px));
+    z-index: 5;
+    height: auto;
+    min-height: 0;
+  }
+}
+
+@media (min-width: 768px) {
+  .immersiveScreen {
+    min-height: calc(100dvh - 2rem);
+    height: calc(100dvh - 2rem);
+    max-width: 28rem;
+    margin-inline: auto;
+    border-radius: var(--radius-2xl, 1.25rem);
+    border: 1px solid rgb(255 255 255 / 0.06);
+    overflow: hidden;
+  }
+}
+
+.immersiveState {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+  padding: var(--space-4, 1rem);
+}
+
 .root[data-has-banner="true"] {
   gap: var(--space-3, 0.75rem);
 }
