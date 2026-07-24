@@ -309,7 +309,7 @@ function AppDashboardPage() {
   }
 
   const bannerBranch = branches.data?.[0] ?? null;
-  const firstName = user?.name.split(" ")[0] || "coach";
+  const firstName = user?.name?.split(" ")[0] || "coach";
 
   const body = (
     <PullToRefresh onRefresh={refresh}>
@@ -356,7 +356,7 @@ function AppDashboardPage() {
             )}
           </div>
         ) : (
-          <div className={staff.metrics}>
+          <div className={staff.metrics} data-testid="owner-metric-tiles">
             <MetricLink
               to="/app/batches"
               icon={ENTITY_ICONS.batch}
@@ -393,7 +393,7 @@ function AppDashboardPage() {
         )}
 
         {!isTrainer ? (
-          <div className={staff.section}>
+          <div className={staff.section} data-testid="student-pipeline">
             <p className={staff.sectionTitle}>Student pipeline</p>
             <FilterChipRow
               chips={STUDENT_FUNNEL_PERIOD_CHIPS}
@@ -412,7 +412,7 @@ function AppDashboardPage() {
               </div>
             ) : null}
             {studentFunnel.data ? (
-              <div className={staff.statGrid}>
+              <div className={staff.statGrid} data-testid="funnel-tiles">
                 {STUDENT_FUNNEL_TILES.map((tile) => (
                   <Link
                     key={tile.key}
@@ -422,6 +422,7 @@ function AppDashboardPage() {
                       period: funnelPeriod,
                     }}
                     className={staff.linkWrap}
+                    data-testid={`funnel-tile-${tile.key}`}
                   >
                     <div className={staff.statTile}>
                       <span className={staff.statLabel}>{tile.label}</span>
@@ -582,7 +583,10 @@ function AppDashboardPage() {
   }
 
   return (
-    <Screen title="Home" subtitle="A calm glance at your studio today.">
+    <Screen
+      title="Home"
+      subtitle={`${greetingFor(new Date())}, ${firstName} — here's your studio`}
+    >
       {body}
     </Screen>
   );

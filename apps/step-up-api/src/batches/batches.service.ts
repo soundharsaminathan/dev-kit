@@ -13,6 +13,7 @@ import {
   IndividualAudience,
   type Prisma,
   SessionStatus,
+  SessionType,
   SubscriptionKind,
   UserRole,
 } from "@prisma/client";
@@ -190,7 +191,10 @@ function dateTimeFor(date: Date, time: string, utcOffsetMinutes: number): Date {
   );
 }
 
-function buildSessions(schedule: BatchSchedule) {
+function buildSessions(
+  schedule: BatchSchedule,
+  sessionType: SessionType = SessionType.REGULAR,
+) {
   const startDate = new Date(`${schedule.startDate}T00:00:00.000Z`);
   const endDate = new Date(`${schedule.endDate}T00:00:00.000Z`);
   const startMinutes =
@@ -223,7 +227,7 @@ function buildSessions(schedule: BatchSchedule) {
     throw new BadRequestException("Select at least one weekday");
   }
 
-  const sessions: { startsAt: Date; endsAt: Date }[] = [];
+  const sessions: { startsAt: Date; endsAt: Date; type: SessionType }[] = [];
   for (let day = 0; day <= totalDays; day += 1) {
     const date = new Date(startDate.getTime() + day * 86_400_000);
     if (schedule.frequency === "DAILY" || weekdays.has(date.getUTCDay())) {
@@ -234,6 +238,7 @@ function buildSessions(schedule: BatchSchedule) {
           schedule.utcOffsetMinutes,
         ),
         endsAt: dateTimeFor(date, schedule.endTime, schedule.utcOffsetMinutes),
+        type: sessionType,
       });
     }
   }
@@ -248,7 +253,7 @@ function buildSessions(schedule: BatchSchedule) {
 async function syncBatchSessions(
   tx: Prisma.TransactionClient,
   batchId: string,
-  desiredSessions: { startsAt: Date; endsAt: Date }[],
+  desiredSessions: { startsAt: Date; endsAt: Date; type: SessionType }[],
 ) {
   const existing = await tx.session.findMany({
     where: { batchId },
@@ -291,6 +296,7 @@ async function syncBatchSessions(
         startsAt: session.startsAt,
         endsAt: session.endsAt,
         status: SessionStatus.SCHEDULED,
+        type: session.type,
       })),
     });
   }
@@ -300,10 +306,18 @@ async function syncBatchSessions(
       (session) =>
         session.startsAt.toISOString() === desired.startsAt.toISOString(),
     );
-    if (match && match.endsAt.getTime() !== desired.endsAt.getTime()) {
+    if (!match) continue;
+    const patch: { endsAt?: Date; type?: SessionType } = {};
+    if (match.endsAt.getTime() !== desired.endsAt.getTime()) {
+      patch.endsAt = desired.endsAt;
+    }
+    if (match.type !== desired.type) {
+      patch.type = desired.type;
+    }
+    if (Object.keys(patch).length > 0) {
       await tx.session.update({
         where: { id: match.id },
-        data: { endsAt: desired.endsAt },
+        data: patch,
       });
     }
   }
@@ -513,6 +527,7 @@ export class BatchesService {
       enrollmentMode: EnrollmentMode;
       subscriptionIds: string[];
       active?: boolean;
+      isTrial?: boolean;
       certificationEnabled?: boolean;
       certificateTemplateId?: string | null;
       coverImageUrl?: string | null;
@@ -520,13 +535,17 @@ export class BatchesService {
       ratingCount?: number;
     },
   ) {
+    const isTrial = data.isTrial ?? false;
+    const sessionType = isTrial ? SessionType.TRIAL : SessionType.REGULAR;
     const schedule = data.scheduleJson as unknown as BatchSchedule;
-    const sessions = buildSessions(schedule);
+    const sessions = buildSessions(schedule, sessionType);
     const trainerIds = [...new Set(data.trainerIds)];
     const subscriptionIds = [...new Set(data.subscriptionIds)];
-    const certificationEnabled = data.certificationEnabled ?? false;
+    const certificationEnabled = isTrial
+      ? false
+      : (data.certificationEnabled ?? false);
 
-    if (subscriptionIds.length === 0) {
+    if (!isTrial && subscriptionIds.length === 0) {
       throw new BadRequestException(
         "Attach at least one Individual 1-month and 3-month plan",
       );
@@ -579,12 +598,14 @@ export class BatchesService {
       }
     }
 
-    this.assertBatchPlanSelection(
-      data.category as BatchCategory,
-      data.studioId,
-      subscriptions,
-      subscriptionIds,
-    );
+    if (!isTrial) {
+      this.assertBatchPlanSelection(
+        data.category as BatchCategory,
+        data.studioId,
+        subscriptions,
+        subscriptionIds,
+      );
+    }
 
     await this.scheduleConflicts.assertNoConflicts({
       intervals: sessions,
@@ -604,6 +625,7 @@ export class BatchesService {
         enrollmentMode: data.enrollmentMode,
         creatorId,
         active: data.active ?? true,
+        isTrial,
         certificationEnabled,
         certificateTemplateId: certificationEnabled
           ? data.certificateTemplateId
@@ -720,6 +742,7 @@ export class BatchesService {
       capacity?: number;
       enrollmentMode?: EnrollmentMode;
       active?: boolean;
+      isTrial?: boolean;
       certificationEnabled?: boolean;
       certificateTemplateId?: string | null;
       coverImageUrl?: string | null;
@@ -772,8 +795,11 @@ export class BatchesService {
       }
     }
 
-    const certificationEnabled =
-      data.certificationEnabled ?? batch.certificationEnabled;
+    const isTrial = data.isTrial ?? batch.isTrial;
+    const sessionType = isTrial ? SessionType.TRIAL : SessionType.REGULAR;
+    const certificationEnabled = isTrial
+      ? false
+      : (data.certificationEnabled ?? batch.certificationEnabled);
     const certificateTemplateId =
       data.certificateTemplateId === undefined
         ? batch.certificateTemplateId
@@ -800,7 +826,10 @@ export class BatchesService {
     }
 
     const desiredSessions = data.scheduleJson
-      ? buildSessions(data.scheduleJson as unknown as BatchSchedule)
+      ? buildSessions(
+          data.scheduleJson as unknown as BatchSchedule,
+          sessionType,
+        )
       : undefined;
 
     const scheduleOrTrainersOrBranchChanged =
@@ -836,6 +865,9 @@ export class BatchesService {
       });
     }
 
+    const trialFlagChanged =
+      data.isTrial !== undefined && data.isTrial !== batch.isTrial;
+
     const {
       trainerIds: _incomingTrainerIds,
       scheduleJson,
@@ -853,12 +885,18 @@ export class BatchesService {
 
       if (desiredSessions) {
         await syncBatchSessions(tx, id, desiredSessions);
+      } else if (trialFlagChanged) {
+        await tx.session.updateMany({
+          where: { batchId: id },
+          data: { type: sessionType },
+        });
       }
 
       return tx.batch.update({
         where: { id },
         data: {
           ...batchData,
+          isTrial,
           ...(danceCategories ? { danceCategories } : {}),
           ...(scheduleJson ? { scheduleJson } : {}),
           certificateTemplateId: certificationEnabled
@@ -874,7 +912,7 @@ export class BatchesService {
         },
       });
     });
-    if (desiredSessions) {
+    if (desiredSessions || trialFlagChanged) {
       await this.trialSlotsCache.invalidate(batch.studioId);
     }
     return updated;

@@ -850,9 +850,10 @@ async function main() {
     enrollmentMode: EnrollmentMode;
     creatorId: string;
     active: boolean;
+    isTrial?: boolean;
     certificationEnabled: boolean;
     coverImageUrl: string;
-    ratingAvg: number;
+    ratingAvg: number | null;
     ratingCount: number;
     trainerIds: string[];
   };
@@ -967,6 +968,7 @@ async function main() {
       enrollmentMode: EnrollmentMode.SELF_JOIN,
       creatorId: "trainer-3",
       active: true,
+      isTrial: true,
       certificationEnabled: false,
       coverImageUrl:
         "https://images.unsplash.com/photo-1508700929628-666bc8bd84ea?w=800&q=80",
@@ -1015,6 +1017,7 @@ async function main() {
         capacity: data.capacity,
         enrollmentMode: data.enrollmentMode,
         active: data.active,
+        isTrial: "isTrial" in data ? Boolean(data.isTrial) : false,
         certificationEnabled: data.certificationEnabled,
         certificateTemplateId: data.certificationEnabled
           ? sampleCertificate.id
@@ -1035,6 +1038,7 @@ async function main() {
         enrollmentMode: data.enrollmentMode,
         creatorId: data.creatorId,
         active: data.active,
+        isTrial: "isTrial" in data ? Boolean(data.isTrial) : false,
         certificationEnabled: data.certificationEnabled,
         certificateTemplateId: data.certificationEnabled
           ? sampleCertificate.id

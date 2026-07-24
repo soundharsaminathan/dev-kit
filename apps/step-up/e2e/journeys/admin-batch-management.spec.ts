@@ -22,6 +22,9 @@ test.describe("admin batch management @critical", () => {
     await expect(
       page.getByRole("heading", { name: /new batch/i }),
     ).toBeVisible();
+    await expect(
+      page.getByRole("checkbox", { name: /trial batch/i }),
+    ).toBeVisible();
 
     await context.close();
   });

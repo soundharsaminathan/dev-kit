@@ -164,6 +164,38 @@ describe("BatchesService branch validation", () => {
     });
   });
 
+  it("creates a trial batch without plans and marks sessions TRIAL", async () => {
+    prisma.studioBranch.findUnique.mockResolvedValue({
+      id: "branch-1",
+      studioId: "studio-1",
+    });
+    prisma.batch.create.mockResolvedValue({
+      id: "batch-trial",
+      isTrial: true,
+      plans: [],
+    });
+
+    await service.create("owner-1", {
+      ...createPayload,
+      isTrial: true,
+      subscriptionIds: [],
+      certificationEnabled: true,
+      certificateTemplateId: "cert-1",
+    });
+
+    const createArg = prisma.batch.create.mock.calls[0]?.[0]?.data;
+    expect(createArg?.isTrial).toBe(true);
+    expect(createArg?.certificationEnabled).toBe(false);
+    expect(createArg?.certificateTemplateId).toBeNull();
+    expect(createArg?.plans).toEqual({ create: [] });
+    expect(createArg?.sessions?.create?.length).toBeGreaterThan(0);
+    expect(
+      createArg?.sessions?.create?.every(
+        (session: { type: string }) => session.type === "TRIAL",
+      ),
+    ).toBe(true);
+  });
+
   it("rejects create when a schedule conflict exists", async () => {
     prisma.studioBranch.findUnique.mockResolvedValue({
       id: "branch-1",

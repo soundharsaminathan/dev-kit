@@ -130,6 +130,7 @@ function NewBatchPage() {
   const [pendingCropFile, setPendingCropFile] = useState<File | null>(null);
   const [category, setCategory] = useState<"KIDS" | "ADULTS">("KIDS");
   const [capacity, setCapacity] = useState("12");
+  const [isTrial, setIsTrial] = useState(false);
   const [enrollmentMode, setEnrollmentMode] = useState<
     "STAFF_ONLY" | "SELF_JOIN"
   >("STAFF_ONLY");
@@ -255,8 +256,8 @@ function NewBatchPage() {
         (danceCategory) =>
           danceCategory.name.trim() && danceCategory.description.trim(),
       ),
-    hasIndividualMonthly && hasIndividualQuarterly,
-    !certificationEnabled || Boolean(certificateTemplateId),
+    isTrial || (hasIndividualMonthly && hasIndividualQuarterly),
+    isTrial || !certificationEnabled || Boolean(certificateTemplateId),
   ];
 
   function togglePlan(planId: string, selected: boolean) {
@@ -340,12 +341,12 @@ function NewBatchPage() {
         },
         capacity: Number(capacity),
         enrollmentMode,
-        subscriptionIds,
+        subscriptionIds: isTrial ? [] : subscriptionIds,
         active: true,
-        certificationEnabled,
-        certificateTemplateId: certificationEnabled
-          ? certificateTemplateId
-          : null,
+        isTrial,
+        certificationEnabled: isTrial ? false : certificationEnabled,
+        certificateTemplateId:
+          isTrial || !certificationEnabled ? null : certificateTemplateId,
       });
     },
     onSuccess: async () => {
@@ -435,6 +436,25 @@ function NewBatchPage() {
                   </SelectItem>
                 </SelectContent>
               </Select>
+              <div className={styles.fullWidth}>
+                <Checkbox
+                  isSelected={isTrial}
+                  onChange={(selected) => {
+                    setIsTrial(selected);
+                    if (selected) {
+                      setEnrollmentMode("SELF_JOIN");
+                      setCertificationEnabled(false);
+                      setSubscriptionIds([]);
+                    }
+                  }}
+                >
+                  Trial batch
+                </Checkbox>
+                <p className={styles.help}>
+                  Trial batches publish open trial slots for onboarding and
+                  discover. Plans and certificates are skipped.
+                </p>
+              </div>
               <div className={styles.fullWidth}>
                 <Select
                   label="Location"
@@ -691,138 +711,164 @@ function NewBatchPage() {
 
           {step === 4 && (
             <div className={styles.choiceList}>
-              <p className={styles.help}>
-                Students buy these plans on the batch screen. Individual 1-month
-                and 3-month plans for{" "}
-                {expectedAudience === "KID" ? "kids" : "adults"} are required.
-                Family packs are optional.
-              </p>
-              <h3 className={styles.planGroupTitle}>
-                Individual · {expectedAudience === "KID" ? "Kid" : "Adult"}
-              </h3>
-              {individualPlans.map((plan) => (
-                <CheckboxControl
-                  key={plan.id}
-                  className={styles.choice}
-                  isSelected={subscriptionIds.includes(plan.id)}
-                  onChange={(selected) => togglePlan(plan.id, selected)}
-                >
-                  <span className={styles.choiceMain}>
-                    <CheckboxIndicator />
-                    <span className={styles.choiceTitle}>{plan.name}</span>
-                  </span>
-                  <span className={styles.choiceMeta}>
-                    {plan.billingCadence === "MONTHLY" ? "1 month" : "3 months"}{" "}
-                    · {formatPlanPrice(plan.price, plan.billingCadence)}
-                  </span>
-                </CheckboxControl>
-              ))}
-              {subscriptionsQuery.isLoading && (
-                <p className={styles.help}>Loading plans…</p>
-              )}
-              {!subscriptionsQuery.isLoading &&
-                individualPlans.length === 0 && (
-                  <p className={styles.help}>
-                    No matching Individual plans.{" "}
-                    <Link to="/app/subscriptions/new">
-                      Create subscription plans
-                    </Link>{" "}
-                    first.
-                  </p>
-                )}
-              <h3 className={styles.planGroupTitle}>Family packs (optional)</h3>
-              {familyPlans.map((plan) => (
-                <CheckboxControl
-                  key={plan.id}
-                  className={styles.choice}
-                  isSelected={subscriptionIds.includes(plan.id)}
-                  onChange={(selected) => togglePlan(plan.id, selected)}
-                >
-                  <span className={styles.choiceMain}>
-                    <CheckboxIndicator />
-                    <span className={styles.choiceTitle}>{plan.name}</span>
-                  </span>
-                  <span className={styles.choiceMeta}>
-                    {plan.billingCadence === "MONTHLY" ? "1 month" : "3 months"}{" "}
-                    · {formatPlanPrice(plan.price, plan.billingCadence)}
-                  </span>
-                </CheckboxControl>
-              ))}
-              {!hasIndividualMonthly || !hasIndividualQuarterly ? (
-                <p className={styles.error}>
-                  Select both a 1-month and a 3-month Individual plan.
+              {isTrial ? (
+                <p className={styles.help}>
+                  Trial batches do not attach membership plans. Students book
+                  trial slots instead of buying a plan.
                 </p>
-              ) : null}
+              ) : (
+                <>
+                  <p className={styles.help}>
+                    Students buy these plans on the batch screen. Individual
+                    1-month and 3-month plans for{" "}
+                    {expectedAudience === "KID" ? "kids" : "adults"} are
+                    required. Family packs are optional.
+                  </p>
+                  <h3 className={styles.planGroupTitle}>
+                    Individual · {expectedAudience === "KID" ? "Kid" : "Adult"}
+                  </h3>
+                  {individualPlans.map((plan) => (
+                    <CheckboxControl
+                      key={plan.id}
+                      className={styles.choice}
+                      isSelected={subscriptionIds.includes(plan.id)}
+                      onChange={(selected) => togglePlan(plan.id, selected)}
+                    >
+                      <span className={styles.choiceMain}>
+                        <CheckboxIndicator />
+                        <span className={styles.choiceTitle}>{plan.name}</span>
+                      </span>
+                      <span className={styles.choiceMeta}>
+                        {plan.billingCadence === "MONTHLY"
+                          ? "1 month"
+                          : "3 months"}{" "}
+                        · {formatPlanPrice(plan.price, plan.billingCadence)}
+                      </span>
+                    </CheckboxControl>
+                  ))}
+                  {subscriptionsQuery.isLoading && (
+                    <p className={styles.help}>Loading plans…</p>
+                  )}
+                  {!subscriptionsQuery.isLoading &&
+                    individualPlans.length === 0 && (
+                      <p className={styles.help}>
+                        No matching Individual plans.{" "}
+                        <Link to="/app/subscriptions/new">
+                          Create subscription plans
+                        </Link>{" "}
+                        first.
+                      </p>
+                    )}
+                  <h3 className={styles.planGroupTitle}>
+                    Family packs (optional)
+                  </h3>
+                  {familyPlans.map((plan) => (
+                    <CheckboxControl
+                      key={plan.id}
+                      className={styles.choice}
+                      isSelected={subscriptionIds.includes(plan.id)}
+                      onChange={(selected) => togglePlan(plan.id, selected)}
+                    >
+                      <span className={styles.choiceMain}>
+                        <CheckboxIndicator />
+                        <span className={styles.choiceTitle}>{plan.name}</span>
+                      </span>
+                      <span className={styles.choiceMeta}>
+                        {plan.billingCadence === "MONTHLY"
+                          ? "1 month"
+                          : "3 months"}{" "}
+                        · {formatPlanPrice(plan.price, plan.billingCadence)}
+                      </span>
+                    </CheckboxControl>
+                  ))}
+                  {!hasIndividualMonthly || !hasIndividualQuarterly ? (
+                    <p className={styles.error}>
+                      Select both a 1-month and a 3-month Individual plan.
+                    </p>
+                  ) : null}
+                </>
+              )}
             </div>
           )}
 
           {step === 5 && (
             <div className={styles.certification}>
-              <div className={styles.certToggle}>
-                <Switch
-                  isSelected={certificationEnabled}
-                  onChange={setCertificationEnabled}
-                >
-                  Issue certificates when students complete this batch
-                </Switch>
+              {isTrial ? (
                 <p className={styles.help}>
-                  Students can receive a completion certificate based on the
-                  template you choose.
+                  Trial batches do not issue completion certificates.
                 </p>
-              </div>
-
-              {certificationEnabled && (
+              ) : (
                 <>
-                  <Select
-                    label="Certificate template"
-                    placeholder={
-                      templates.isLoading
-                        ? "Loading templates…"
-                        : "Select a template"
-                    }
-                    selectedKey={certificateTemplateId}
-                    onSelectionChange={(key) =>
-                      setCertificateTemplateId(key as string)
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {availableTemplates.map((template) => (
-                        <SelectItem key={template.id} id={template.id}>
-                          {template.name}
-                          {template.isSample ? " (sample)" : ""}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-
-                  {templates.isError && (
-                    <p className={styles.error}>
-                      Certificate templates could not be loaded.
-                    </p>
-                  )}
-                  {templates.isFetched && availableTemplates.length === 0 && (
+                  <div className={styles.certToggle}>
+                    <Switch
+                      isSelected={certificationEnabled}
+                      onChange={setCertificationEnabled}
+                    >
+                      Issue certificates when students complete this batch
+                    </Switch>
                     <p className={styles.help}>
-                      No templates yet.{" "}
-                      <Link to="/app/certificates/new">
-                        Create a certificate template
-                      </Link>{" "}
-                      to enable batch certification.
+                      Students can receive a completion certificate based on the
+                      template you choose.
                     </p>
-                  )}
+                  </div>
 
-                  {selectedTemplate && (
-                    <CertificatePreview
-                      layout={certificateLayout}
-                      contextLabel={name.trim() || "Your batch name"}
-                      danceCategories={filledDanceCategories.map(
-                        (item) => item.name,
+                  {certificationEnabled && (
+                    <>
+                      <Select
+                        label="Certificate template"
+                        placeholder={
+                          templates.isLoading
+                            ? "Loading templates…"
+                            : "Select a template"
+                        }
+                        selectedKey={certificateTemplateId}
+                        onSelectionChange={(key) =>
+                          setCertificateTemplateId(key as string)
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {availableTemplates.map((template) => (
+                            <SelectItem key={template.id} id={template.id}>
+                              {template.name}
+                              {template.isSample ? " (sample)" : ""}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+
+                      {templates.isError && (
+                        <p className={styles.error}>
+                          Certificate templates could not be loaded.
+                        </p>
                       )}
-                      trainers={selectedTrainers.map((trainer) => trainer.name)}
-                      footer={`Step Up Dance Studio · ${formatIssuedAt(endDate)}`}
-                    />
+                      {templates.isFetched &&
+                        availableTemplates.length === 0 && (
+                          <p className={styles.help}>
+                            No templates yet.{" "}
+                            <Link to="/app/certificates/new">
+                              Create a certificate template
+                            </Link>{" "}
+                            to enable batch certification.
+                          </p>
+                        )}
+
+                      {selectedTemplate && (
+                        <CertificatePreview
+                          layout={certificateLayout}
+                          contextLabel={name.trim() || "Your batch name"}
+                          danceCategories={filledDanceCategories.map(
+                            (item) => item.name,
+                          )}
+                          trainers={selectedTrainers.map(
+                            (trainer) => trainer.name,
+                          )}
+                          footer={`Step Up Dance Studio · ${formatIssuedAt(endDate)}`}
+                        />
+                      )}
+                    </>
                   )}
                 </>
               )}
@@ -843,7 +889,16 @@ function NewBatchPage() {
                 Back
               </Button>
             )}
-            {step < steps.length - 1 ? (
+            {isTrial && step === 3 ? (
+              <Button
+                variant="primary"
+                onClick={() => createBatch.mutate()}
+                isPending={createBatch.isPending}
+                isDisabled={!stepIsValid[step]}
+              >
+                Create trial batch
+              </Button>
+            ) : step < steps.length - 1 ? (
               <Button
                 variant="primary"
                 onClick={() => setStep(step + 1)}
