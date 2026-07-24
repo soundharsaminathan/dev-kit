@@ -35,29 +35,38 @@ function AppRouter() {
   const userId = auth.user?.id;
   const invalidatedFor = useRef<{ userId: string | undefined } | null>(null);
 
-  // Warm session + home chunks in the background — never block first paint.
-  useEffect(() => {
-    if (auth.loading || !auth.user) {
-      return;
-    }
-
-    void preloadSessionProviders().catch(() => undefined);
-    const home = homePathForUser(auth.user);
-    if (home === "/app" || home.startsWith("/me")) {
-      void router.preloadRoute({ to: home }).catch(() => undefined);
-    }
-  }, [auth.loading, auth.user]);
-
+  // Invalidate for auth changes, then warm home — never race preload with
+  // invalidate (evicts in-flight preload matches → _nonReactive TypeError).
   useEffect(() => {
     if (auth.loading) {
       return;
     }
-    if (invalidatedFor.current && invalidatedFor.current.userId === userId) {
-      return;
-    }
-    invalidatedFor.current = { userId };
-    void router.invalidate();
-  }, [userId, auth.loading]);
+
+    let cancelled = false;
+
+    const run = async () => {
+      const needsInvalidate =
+        !invalidatedFor.current || invalidatedFor.current.userId !== userId;
+      if (needsInvalidate) {
+        invalidatedFor.current = { userId };
+        await router.invalidate();
+      }
+      if (cancelled || !auth.user) {
+        return;
+      }
+
+      void preloadSessionProviders().catch(() => undefined);
+      const home = homePathForUser(auth.user);
+      if (home === "/app" || home.startsWith("/me")) {
+        await router.preloadRoute({ to: home }).catch(() => undefined);
+      }
+    };
+
+    void run();
+    return () => {
+      cancelled = true;
+    };
+  }, [auth.loading, auth.user, userId]);
 
   if (auth.loading) {
     return (
