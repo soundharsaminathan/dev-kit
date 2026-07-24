@@ -294,8 +294,7 @@ function PaymentsPage() {
               <div className={staff.softPanel}>
                 <p className={staff.panelTitle}>Date range</p>
                 <p className={staff.panelDesc}>
-                  Filter collected totals by payment date. Pending and overdue
-                  invoices stay visible.
+                  Filter by payment date. Pending and overdue stay visible.
                 </p>
                 <FilterChipRow
                   chips={[...RANGE_PRESETS]}
@@ -323,22 +322,10 @@ function PaymentsPage() {
               {analyticsQuery.isLoading ? (
                 <>
                   <div className={staff.statGrid}>
-                    <SkeletonBlock
-                      height="6.25rem"
-                      radius="var(--radius-2xl)"
-                    />
-                    <SkeletonBlock
-                      height="6.25rem"
-                      radius="var(--radius-2xl)"
-                    />
-                    <SkeletonBlock
-                      height="6.25rem"
-                      radius="var(--radius-2xl)"
-                    />
-                    <SkeletonBlock
-                      height="6.25rem"
-                      radius="var(--radius-2xl)"
-                    />
+                    <SkeletonBlock height="4.5rem" radius="var(--radius-2xl)" />
+                    <SkeletonBlock height="4.5rem" radius="var(--radius-2xl)" />
+                    <SkeletonBlock height="4.5rem" radius="var(--radius-2xl)" />
+                    <SkeletonBlock height="4.5rem" radius="var(--radius-2xl)" />
                   </div>
                   <SkeletonCardList count={2} />
                 </>

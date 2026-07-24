@@ -13,7 +13,8 @@ import { useApi } from "@/lib/api-context";
 import { STUDIO_ID } from "@/lib/constants";
 import { ApiState } from "@/modules/ui/api-state";
 import { FormInput } from "@/modules/ui/form-input";
-import { PageHeader } from "@/modules/ui/page-header";
+import { Screen } from "@/modules/ui/screen";
+import staff from "@/modules/ui/staff.module.scss";
 
 type SubscriptionKind = "INDIVIDUAL" | "FAMILY";
 type IndividualAudience = "ADULT" | "KID";
@@ -53,17 +54,17 @@ function EditSubscriptionPage() {
   });
 
   return (
-    <section className="page stack">
-      <PageHeader
-        title="Edit subscription"
-        description="Update membership pricing and status."
-        actions={
-          <Button as={Link} to="/app/subscriptions" variant="quiet">
-            Cancel
-          </Button>
-        }
-      />
-
+    <Screen
+      title="Edit subscription"
+      subtitle="Pricing and status"
+      showBack
+      backTo="/app/subscriptions"
+      actions={
+        <Button as={Link} to="/app/subscriptions" variant="quiet" size="sm">
+          Cancel
+        </Button>
+      }
+    >
       <ApiState
         isLoading={query.isLoading}
         isError={query.isError}
@@ -79,7 +80,7 @@ function EditSubscriptionPage() {
           />
         )}
       </ApiState>
-    </section>
+    </Screen>
   );
 }
 
@@ -147,64 +148,66 @@ function EditSubscriptionForm({
   });
 
   return (
-    <div className="stack">
-      <FormInput label="Name" value={name} onChange={setName} />
-      <Select label="Kind" selectedKey={subscription.kind} isDisabled>
-        <SelectTrigger>
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem id="INDIVIDUAL">Individual</SelectItem>
-          <SelectItem id="FAMILY">Family</SelectItem>
-        </SelectContent>
-      </Select>
-      <FormInput
-        label={subscription.kind === "FAMILY" ? "Family pack" : "Audience"}
-        value={kindDetail}
-        onChange={() => undefined}
-        disabled
-      />
-      <Select
-        label="Billing cadence"
-        selectedKey={billingCadence}
-        onSelectionChange={(key) => setBillingCadence(key as BillingCadence)}
-      >
-        <SelectTrigger>
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem id="MONTHLY">Monthly</SelectItem>
-          <SelectItem id="QUARTERLY">Quarterly</SelectItem>
-        </SelectContent>
-      </Select>
-      <FormInput
-        label={priceLabel}
-        type="number"
-        min="0"
-        value={price}
-        onChange={setPrice}
-      />
-      <Select
-        label="Status"
-        selectedKey={active}
-        onSelectionChange={(key) => setActive(key as string)}
-      >
-        <SelectTrigger>
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem id="true">Active</SelectItem>
-          <SelectItem id="false">Inactive</SelectItem>
-        </SelectContent>
-      </Select>
-      <Button
-        variant="primary"
-        onClick={() => updateSubscription.mutate()}
-        isPending={updateSubscription.isPending}
-        isDisabled={!name.trim() || Number(price) < 0}
-      >
-        Save changes
-      </Button>
+    <div className={staff.softPanel}>
+      <div className={staff.sheetStack}>
+        <FormInput label="Name" value={name} onChange={setName} />
+        <Select label="Kind" selectedKey={subscription.kind} isDisabled>
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem id="INDIVIDUAL">Individual</SelectItem>
+            <SelectItem id="FAMILY">Family</SelectItem>
+          </SelectContent>
+        </Select>
+        <FormInput
+          label={subscription.kind === "FAMILY" ? "Family pack" : "Audience"}
+          value={kindDetail}
+          onChange={() => undefined}
+          disabled
+        />
+        <Select
+          label="Billing cadence"
+          selectedKey={billingCadence}
+          onSelectionChange={(key) => setBillingCadence(key as BillingCadence)}
+        >
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem id="MONTHLY">Monthly</SelectItem>
+            <SelectItem id="QUARTERLY">Quarterly</SelectItem>
+          </SelectContent>
+        </Select>
+        <FormInput
+          label={priceLabel}
+          type="number"
+          min="0"
+          value={price}
+          onChange={setPrice}
+        />
+        <Select
+          label="Status"
+          selectedKey={active}
+          onSelectionChange={(key) => setActive(key as string)}
+        >
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem id="true">Active</SelectItem>
+            <SelectItem id="false">Inactive</SelectItem>
+          </SelectContent>
+        </Select>
+        <Button
+          variant="primary"
+          onClick={() => updateSubscription.mutate()}
+          isPending={updateSubscription.isPending}
+          isDisabled={!name.trim() || Number(price) < 0}
+        >
+          Save changes
+        </Button>
+      </div>
     </div>
   );
 }

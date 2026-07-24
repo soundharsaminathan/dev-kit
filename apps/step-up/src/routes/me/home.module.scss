@@ -1,7 +1,7 @@
 .root {
   display: flex;
   flex-direction: column;
-  gap: var(--space-5, 1.25rem);
+  gap: var(--space-4, 1rem);
 }
 
 .skeletonBanner {
@@ -57,7 +57,7 @@
 .goalSheet {
   display: flex;
   flex-direction: column;
-  gap: var(--space-4, 1rem);
+  gap: var(--space-3, 0.75rem);
   padding-block: var(--space-2, 0.5rem);
 }
 

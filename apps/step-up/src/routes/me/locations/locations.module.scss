@@ -3,13 +3,13 @@
 .root {
   display: flex;
   flex-direction: column;
-  gap: var(--space-4, 1rem);
+  gap: var(--space-3, 0.75rem);
 }
 
 .list {
   display: grid;
   grid-template-columns: 1fr;
-  gap: var(--space-4, 1rem);
+  gap: var(--space-3, 0.75rem);
   align-items: start;
 }
 

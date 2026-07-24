@@ -4,7 +4,7 @@
   z-index: 80;
   display: grid;
   place-items: center;
-  padding: var(--space-6, 1.5rem);
+  padding: var(--space-4, 1rem);
   pointer-events: none;
 }
 
@@ -82,7 +82,7 @@
   flex: 1;
   min-height: 0;
   overflow: auto;
-  padding: var(--space-4, 1rem);
+  padding: var(--space-3, 0.75rem);
 }
 
 @media (prefers-reduced-motion: reduce) {

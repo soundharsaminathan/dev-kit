@@ -3,7 +3,7 @@
 .wizard {
   display: grid;
   grid-template-columns: minmax(10rem, 13rem) minmax(0, 1fr);
-  gap: 2rem;
+  gap: var(--space-4, 1rem);
   align-items: start;
 }
 
@@ -61,9 +61,9 @@
 .panel {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
-  min-height: 32rem;
-  padding: clamp(1.25rem, 3vw, 2rem);
+  gap: var(--space-4, 1rem);
+  min-height: 0;
+  padding: var(--space-4, 1rem) var(--space-5, 1.25rem);
   border: 1px solid color-mix(in srgb, var(--color-fg) 10%, transparent);
   border-radius: var(--radius-2xl, 1.5rem);
   background: var(--color-card);
@@ -76,7 +76,7 @@
   gap: 0.35rem;
 
   h2 {
-    font-size: 1.5rem;
+    font-size: 1.25rem;
   }
 }
 
@@ -91,7 +91,7 @@
 .formGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 1.25rem;
+  gap: var(--space-3, 0.75rem);
 }
 
 .fullWidth {

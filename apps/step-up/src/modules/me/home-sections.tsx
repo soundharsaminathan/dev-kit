@@ -1,4 +1,3 @@
-import { Avatar, AvatarFallback, AvatarImage } from "@dev-ui/components/avatar";
 import { Icon, type IconName } from "@dev-ui/icons";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { type ReactNode, useEffect, useMemo, useState } from "react";
@@ -36,15 +35,6 @@ function formatCountdownBadge(ms: number) {
   if (days > 0) return `${days}d · ${hours}h`;
   if (hours > 0) return `${hours}h · ${minutes}m`;
   return `${minutes}m`;
-}
-
-function formatCountdown(ms: number) {
-  if (ms <= 0) return "Starting now";
-  const totalMinutes = Math.floor(ms / 60_000);
-  const hours = Math.floor(totalMinutes / 60);
-  const minutes = totalMinutes % 60;
-  if (hours <= 0) return `Starts in ${minutes}m`;
-  return `Starts in ${hours}h ${minutes}m`;
 }
 
 export function HomeStudioBanner({
@@ -120,122 +110,6 @@ export function HomeStudioBanner({
         </button>
       ) : null}
     </section>
-  );
-}
-
-export function HomeGreeting({
-  greeting,
-  name,
-  studioName,
-  photoUrl,
-  membership,
-}: {
-  greeting: string;
-  name: string;
-  studioName?: string | null;
-  photoUrl?: string | null;
-  membership?: HomeMembership | null;
-}) {
-  const firstName = name.split(" ")[0] || "dancer";
-  return (
-    <div className={styles.sectionEnter} data-delay="0">
-      <div style={{ display: "flex", gap: "0.75rem", alignItems: "center" }}>
-        <Avatar size="lg">
-          {photoUrl ? <AvatarImage src={photoUrl} alt="" /> : null}
-          <AvatarFallback>{firstName.slice(0, 1).toUpperCase()}</AvatarFallback>
-        </Avatar>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <p
-            className={styles.heroEyebrow}
-            style={{ color: "inherit", opacity: 0.55 }}
-          >
-            {studioName ?? "Your studio"}
-          </p>
-          <h1
-            className={styles.heroTitle}
-            style={{ color: "inherit", fontSize: "1.375rem" }}
-          >
-            {greeting}, {firstName}
-          </h1>
-          <p
-            className={styles.heroSubtitle}
-            style={{ color: "inherit", opacity: 0.7 }}
-          >
-            Ready for your next dance session?
-          </p>
-        </div>
-        {membership ? (
-          <span
-            className={styles.communityTag}
-            style={
-              membership.needsRenewal
-                ? {
-                    background:
-                      "color-mix(in srgb, var(--color-warning) 18%, transparent)",
-                    color: "var(--color-warning)",
-                  }
-                : undefined
-            }
-          >
-            {membership.needsRenewal ? "Renew" : "Active"}
-          </span>
-        ) : null}
-      </div>
-    </div>
-  );
-}
-
-export function HomeHeroCard({ hero }: { hero: HomePayload["hero"] }) {
-  const navigate = useNavigate();
-  const [now, setNow] = useState(() => Date.now());
-
-  useEffect(() => {
-    if (hero.kind !== "nextClass" || !hero.nextClass) return;
-    const id = window.setInterval(() => setNow(Date.now()), 30_000);
-    return () => window.clearInterval(id);
-  }, [hero.kind, hero.nextClass]);
-
-  const countdown =
-    hero.nextClass != null
-      ? formatCountdown(new Date(hero.nextClass.startsAt).getTime() - now)
-      : null;
-
-  return (
-    <button
-      type="button"
-      className={`${styles.hero} ${styles.sectionEnter}`}
-      data-delay="1"
-      onClick={() => {
-        if (hero.cta?.to) {
-          void navigate({ to: hero.cta.to as "/me/book" });
-        }
-      }}
-    >
-      <p className={styles.heroEyebrow}>
-        {hero.kind === "nextClass"
-          ? "Next class"
-          : hero.kind === "streak"
-            ? "Streak"
-            : hero.kind === "membership"
-              ? "Membership"
-              : "Get started"}
-      </p>
-      <h2 className={styles.heroTitle}>
-        {hero.kind === "streak" ? (
-          <span className={styles.streakPulse} data-active="true">
-            <Icon name="zap" /> {hero.title}
-          </span>
-        ) : (
-          hero.title
-        )}
-      </h2>
-      <p className={styles.heroSubtitle}>{hero.subtitle}</p>
-      {countdown ? <p className={styles.countdown}>{countdown}</p> : null}
-      {hero.meta ? <p className={styles.heroMeta}>{hero.meta}</p> : null}
-      {hero.cta ? (
-        <span className={styles.heroCta}>{hero.cta.label}</span>
-      ) : null}
-    </button>
   );
 }
 
@@ -413,38 +287,6 @@ export function TodayTimeline({ items }: { items: HomeTimelineItem[] }) {
           </div>
         </div>
       ))}
-    </div>
-  );
-}
-
-export function QuickActionsGrid({
-  primary,
-  items,
-}: {
-  primary: HomePayload["quickActions"]["primary"];
-  items: HomePayload["quickActions"]["items"];
-}) {
-  return (
-    <div
-      className={`${styles.quickGrid} ${styles.sectionEnter}`}
-      data-delay="2"
-    >
-      {items.map((item) => {
-        const isPrimary = item.to === primary.to;
-        return (
-          <Link
-            key={item.to}
-            to={item.to as "/me/book"}
-            className={styles.quickCard}
-            data-primary={isPrimary ? "true" : undefined}
-          >
-            <span className={styles.quickIcon}>
-              <Icon name={item.icon as IconName} />
-            </span>
-            {isPrimary ? primary.label : item.label}
-          </Link>
-        );
-      })}
     </div>
   );
 }

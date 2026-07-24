@@ -1,4 +1,3 @@
-import { Badge } from "@dev-ui/components/badge";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMemo } from "react";
@@ -110,10 +109,7 @@ function StudentsPage() {
                   }
                 >
                   <div className={staff.rowCard}>
-                    <div className={staff.attentionTop}>
-                      <span className={staff.rowTitle}>{student.name}</span>
-                      <Badge appearance="subtle">{student.role}</Badge>
-                    </div>
+                    <span className={staff.rowTitle}>{student.name}</span>
                     <p className={staff.rowMeta}>{student.email}</p>
                     {student.phone ? (
                       <p className={staff.rowMeta}>{student.phone}</p>

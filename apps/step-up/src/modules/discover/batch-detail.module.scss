@@ -1,7 +1,7 @@
 .preview {
   display: flex;
   flex-direction: column;
-  gap: var(--space-4, 1rem);
+  gap: var(--space-3, 0.75rem);
 }
 
 .hero {
@@ -117,7 +117,7 @@
 }
 
 .sectionTitle {
-  font-size: 1rem;
+  font-size: 0.9375rem;
   font-weight: 700;
   letter-spacing: -0.02em;
 }
@@ -162,7 +162,7 @@
   justify-content: space-between;
   gap: var(--space-3, 0.75rem);
   width: 100%;
-  padding: var(--space-4, 1rem);
+  padding: var(--space-3, 0.75rem);
   border: 1px solid color-mix(in srgb, var(--color-fg) 8%, transparent);
   border-radius: var(--radius-2xl, 1.25rem);
   background: var(--color-card, var(--color-bg-elevated, var(--color-bg)));
@@ -298,7 +298,7 @@
 .bookForm {
   display: flex;
   flex-direction: column;
-  gap: var(--space-4, 1rem);
+  gap: var(--space-3, 0.75rem);
 }
 
 .successActions {

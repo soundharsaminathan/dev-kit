@@ -3,20 +3,20 @@
 .root {
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
+  gap: var(--space-3);
   padding-inline: var(--space-4);
 }
 
 .topRow {
   display: grid;
   grid-template-columns: auto 1fr;
-  gap: var(--space-5);
+  gap: var(--space-3);
   align-items: center;
 }
 
 .avatarWrap {
-  width: 5.5rem;
-  height: 5.5rem;
+  width: 4.75rem;
+  height: 4.75rem;
   flex-shrink: 0;
 
   :global([data-avatar]) {
@@ -168,8 +168,8 @@
 
 @media (max-width: 380px) {
   .avatarWrap {
-    width: 4.75rem;
-    height: 4.75rem;
+    width: 4.25rem;
+    height: 4.25rem;
   }
 
   .statValue {

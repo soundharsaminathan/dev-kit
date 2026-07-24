@@ -12,7 +12,8 @@ import { useState } from "react";
 import { useApi } from "@/lib/api-context";
 import { STUDIO_ID } from "@/lib/constants";
 import { FormInput } from "@/modules/ui/form-input";
-import { PageHeader } from "@/modules/ui/page-header";
+import { Screen } from "@/modules/ui/screen";
+import staff from "@/modules/ui/staff.module.scss";
 
 type SubscriptionKind = "INDIVIDUAL" | "FAMILY";
 type IndividualAudience = "ADULT" | "KID";
@@ -70,98 +71,106 @@ function NewSubscriptionPage() {
   });
 
   return (
-    <section className="page stack">
-      <PageHeader
-        title="New subscription"
-        description="Define studio-wide membership pricing and seats."
-        actions={
-          <Button as={Link} to="/app/subscriptions" variant="quiet">
-            Cancel
-          </Button>
-        }
-      />
-
-      <div className="stack">
-        <FormInput label="Name" value={name} onChange={setName} />
-        <Select
-          label="Kind"
-          selectedKey={kind}
-          onSelectionChange={(key) => setKind(key as SubscriptionKind)}
-        >
-          <SelectTrigger>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem id="INDIVIDUAL">Individual</SelectItem>
-            <SelectItem id="FAMILY">Family</SelectItem>
-          </SelectContent>
-        </Select>
-        {kind === "INDIVIDUAL" ? (
+    <Screen
+      title="New subscription"
+      subtitle="Membership pricing and seats"
+      showBack
+      backTo="/app/subscriptions"
+      actions={
+        <Button as={Link} to="/app/subscriptions" variant="quiet" size="sm">
+          Cancel
+        </Button>
+      }
+    >
+      <div className={staff.softPanel}>
+        <div className={staff.sheetStack}>
+          <FormInput label="Name" value={name} onChange={setName} />
           <Select
-            label="Audience"
-            selectedKey={individualAudience}
+            label="Kind"
+            selectedKey={kind}
+            onSelectionChange={(key) => setKind(key as SubscriptionKind)}
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem id="INDIVIDUAL">Individual</SelectItem>
+              <SelectItem id="FAMILY">Family</SelectItem>
+            </SelectContent>
+          </Select>
+          {kind === "INDIVIDUAL" ? (
+            <Select
+              label="Audience"
+              selectedKey={individualAudience}
+              onSelectionChange={(key) =>
+                setIndividualAudience(key as IndividualAudience)
+              }
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem id="ADULT">Adult</SelectItem>
+                <SelectItem id="KID">Kid</SelectItem>
+              </SelectContent>
+            </Select>
+          ) : (
+            <Select
+              label="Family pack"
+              selectedKey={familyPack}
+              onSelectionChange={(key) => setFamilyPack(key as FamilyPack)}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem id="TWO_KIDS">2 kids</SelectItem>
+                <SelectItem id="ONE_ADULT_ONE_KID">1 adult + 1 kid</SelectItem>
+                <SelectItem id="TWO_ADULTS">2 adults</SelectItem>
+                <SelectItem id="ONE_ADULT_TWO_KIDS">
+                  1 adult + 2 kids
+                </SelectItem>
+                <SelectItem id="TWO_ADULTS_ONE_KID">
+                  2 adults + 1 kid
+                </SelectItem>
+                <SelectItem id="TWO_ADULTS_TWO_KIDS">
+                  2 adults + 2 kids
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          )}
+          <Select
+            label="Billing cadence"
+            selectedKey={billingCadence}
             onSelectionChange={(key) =>
-              setIndividualAudience(key as IndividualAudience)
+              setBillingCadence(key as BillingCadence)
             }
           >
             <SelectTrigger>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem id="ADULT">Adult</SelectItem>
-              <SelectItem id="KID">Kid</SelectItem>
+              <SelectItem id="MONTHLY">Monthly</SelectItem>
+              <SelectItem id="QUARTERLY">Quarterly</SelectItem>
             </SelectContent>
           </Select>
-        ) : (
-          <Select
-            label="Family pack"
-            selectedKey={familyPack}
-            onSelectionChange={(key) => setFamilyPack(key as FamilyPack)}
+          <FormInput
+            label={priceLabel}
+            type="number"
+            min="0"
+            value={price}
+            onChange={setPrice}
+          />
+          <Button
+            variant="primary"
+            onClick={() => createSubscription.mutate()}
+            isPending={createSubscription.isPending}
+            isDisabled={!name.trim() || Number(price) < 0}
           >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem id="TWO_KIDS">2 kids</SelectItem>
-              <SelectItem id="ONE_ADULT_ONE_KID">1 adult + 1 kid</SelectItem>
-              <SelectItem id="TWO_ADULTS">2 adults</SelectItem>
-              <SelectItem id="ONE_ADULT_TWO_KIDS">1 adult + 2 kids</SelectItem>
-              <SelectItem id="TWO_ADULTS_ONE_KID">2 adults + 1 kid</SelectItem>
-              <SelectItem id="TWO_ADULTS_TWO_KIDS">
-                2 adults + 2 kids
-              </SelectItem>
-            </SelectContent>
-          </Select>
-        )}
-        <Select
-          label="Billing cadence"
-          selectedKey={billingCadence}
-          onSelectionChange={(key) => setBillingCadence(key as BillingCadence)}
-        >
-          <SelectTrigger>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem id="MONTHLY">Monthly</SelectItem>
-            <SelectItem id="QUARTERLY">Quarterly</SelectItem>
-          </SelectContent>
-        </Select>
-        <FormInput
-          label={priceLabel}
-          type="number"
-          min="0"
-          value={price}
-          onChange={setPrice}
-        />
-        <Button
-          variant="primary"
-          onClick={() => createSubscription.mutate()}
-          isPending={createSubscription.isPending}
-          isDisabled={!name.trim() || Number(price) < 0}
-        >
-          Create subscription
-        </Button>
+            Create subscription
+          </Button>
+        </div>
       </div>
-    </section>
+    </Screen>
   );
 }

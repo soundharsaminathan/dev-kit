@@ -90,7 +90,7 @@ function MeBookingsPage() {
           ? `${awaitingPaymentCount} awaiting payment`
           : pendingCount > 0
             ? `${pendingCount} waiting for studio confirmation`
-            : "Track trial, open seat, and private requests."
+            : undefined
       }
       showBack
       backTo="/me/profile"

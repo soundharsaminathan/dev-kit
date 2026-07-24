@@ -189,7 +189,7 @@ export function TrainerStackView({
       const width = window.innerWidth;
       if (width < 640) {
         setDimensions({
-          cardWidth: Math.min(width - 64, compact ? 280 : 300),
+          cardWidth: Math.min(width - 24, compact ? 280 : 300),
           gap: 40,
         });
       } else {

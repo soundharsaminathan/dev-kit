@@ -1,7 +1,7 @@
 .root {
   display: flex;
   flex-direction: column;
-  gap: var(--space-5, 1.25rem);
+  gap: var(--space-3, 0.75rem);
 }
 
 .section {
@@ -12,7 +12,7 @@
 
 .sectionTitle {
   margin: 0;
-  font-size: 1rem;
+  font-size: 0.9375rem;
   font-weight: 600;
 }
 

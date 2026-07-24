@@ -28,7 +28,7 @@
 .layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(14rem, 18rem);
-  gap: 1.25rem;
+  gap: var(--space-3, 0.75rem);
   align-items: start;
 }
 
@@ -39,21 +39,21 @@
 .side {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: var(--space-3, 0.75rem);
 }
 
 .sideCard {
   display: flex;
   flex-direction: column;
   gap: var(--space-3, 0.75rem);
-  padding: var(--space-4, 1rem);
+  padding: var(--space-3, 0.75rem);
   border-radius: var(--radius-2xl, 1.25rem);
   background: color-mix(in srgb, var(--color-fg) 4%, transparent);
 }
 
 .sideTitle {
   margin: 0;
-  font-size: 1.0625rem;
+  font-size: 0.9375rem;
   font-weight: 700;
   letter-spacing: -0.02em;
 }

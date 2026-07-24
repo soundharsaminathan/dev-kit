@@ -1,14 +1,14 @@
 .root {
   display: flex;
   flex-direction: column;
-  gap: var(--space-5, 1.25rem);
+  gap: var(--space-4, 1rem);
 }
 
 .profileCard {
   display: flex;
   align-items: center;
   gap: var(--space-3, 0.75rem);
-  padding: var(--space-4, 1rem);
+  padding: var(--space-3, 0.75rem);
   border-radius: var(--radius-2xl, 1.25rem);
   background: var(--card-background, var(--color-card));
   box-shadow: var(--shadow-md, 0 12px 28px rgb(0 0 0 / 8%));
@@ -52,7 +52,7 @@
 .sheetBody {
   display: flex;
   flex-direction: column;
-  gap: var(--space-4, 1rem);
+  gap: var(--space-3, 0.75rem);
 }
 
 .kindPicker {
@@ -165,8 +165,8 @@
   align-items: center;
   gap: var(--space-3, 0.75rem);
   width: 100%;
-  min-height: 3.25rem;
-  padding: var(--space-2, 0.5rem) var(--space-2, 0.5rem);
+  min-height: 2.75rem;
+  padding: var(--space-2, 0.5rem);
   border: none;
   border-radius: var(--radius-lg, 0.75rem);
   background: transparent;
@@ -187,8 +187,8 @@
 
 .menuIcon {
   display: flex;
-  width: 2.25rem;
-  height: 2.25rem;
+  width: 2rem;
+  height: 2rem;
   flex-shrink: 0;
   align-items: center;
   justify-content: center;
@@ -198,8 +198,8 @@
 }
 
 .menuIcon :global(svg) {
-  width: 1.125rem;
-  height: 1.125rem;
+  width: 1rem;
+  height: 1rem;
 }
 
 .menuLabel {

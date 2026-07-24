@@ -1,7 +1,7 @@
 .list {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3, 0.75rem);
+  gap: var(--space-2, 0.5rem);
   list-style: none;
   margin: 0;
   padding: 0;
@@ -10,7 +10,7 @@
 .section {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3, 0.75rem);
+  gap: var(--space-2, 0.5rem);
   min-width: 0;
 }
 
@@ -36,7 +36,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-2, 0.5rem);
-  padding: var(--space-4, 1rem);
+  padding: var(--space-3, 0.75rem);
   border-radius: var(--radius-2xl, 1.25rem);
   border: var(--card-border-width, 1px) solid
     var(--card-border-color, color-mix(in srgb, var(--color-fg) 12%, transparent));
@@ -48,7 +48,7 @@
   text-align: start;
   width: 100%;
   cursor: pointer;
-  min-height: 5.5rem;
+  min-height: 4.5rem;
   transition:
     transform var(--motion-fast, 150ms) ease,
     box-shadow var(--motion-normal, 200ms) ease;
@@ -83,7 +83,7 @@
 }
 
 .metricValue {
-  font-size: 1.75rem;
+  font-size: 1.375rem;
   font-weight: 700;
   letter-spacing: -0.03em;
   line-height: 1.1;
@@ -99,7 +99,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-2, 0.5rem);
-  padding: var(--space-4, 1rem);
+  padding: var(--space-3, 0.75rem);
   border-radius: var(--radius-2xl, 1.25rem);
   border: var(--card-border-width, 1px) solid
     var(--card-border-color, color-mix(in srgb, var(--color-fg) 12%, transparent));
@@ -117,8 +117,8 @@
 }
 
 .attentionTitle {
-  font-size: 1rem;
-  font-weight: 700;
+  font-size: 0.9375rem;
+  font-weight: 600;
   letter-spacing: -0.02em;
 }
 
@@ -131,7 +131,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-1, 0.25rem);
-  padding: var(--space-4, 1rem);
+  padding: var(--space-3, 0.75rem);
   width: 100%;
   text-align: start;
 }
@@ -146,8 +146,8 @@
 .trainerAvatar {
   flex-shrink: 0;
   --avatar-radius: var(--radius-lg, 0.75rem);
-  width: 3.25rem;
-  height: 3.25rem;
+  width: 2.75rem;
+  height: 2.75rem;
 }
 
 .rowBody {
@@ -159,8 +159,8 @@
 }
 
 .rowTitle {
-  font-size: 1rem;
-  font-weight: 700;
+  font-size: 0.9375rem;
+  font-weight: 600;
   letter-spacing: -0.02em;
   line-height: 1.25;
 }
@@ -168,7 +168,7 @@
 .rowMeta {
   font-size: 0.8125rem;
   line-height: 1.4;
-  color: color-mix(in srgb, var(--color-fg) 62%, transparent);
+  color: color-mix(in srgb, var(--color-fg) 56%, transparent);
 }
 
 .rowFooter {
@@ -183,15 +183,15 @@
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-2, 0.5rem);
-  margin-top: var(--space-3, 0.75rem);
+  margin-top: var(--space-2, 0.5rem);
 }
 
 .softPanel {
   display: flex;
   flex-direction: column;
-  gap: var(--space-4, 1rem);
+  gap: var(--space-3, 0.75rem);
   min-width: 0;
-  padding: var(--space-4, 1rem);
+  padding: var(--space-3, 0.75rem);
   border-radius: var(--radius-2xl, 1.25rem);
   border: var(--card-border-width, 1px) solid
     var(--card-border-color, color-mix(in srgb, var(--color-fg) 12%, transparent));
@@ -200,20 +200,20 @@
 }
 
 .panelTitle {
-  font-size: 1.0625rem;
+  font-size: 1rem;
   font-weight: 700;
   letter-spacing: -0.02em;
 }
 
 .panelDesc {
-  font-size: 0.875rem;
-  color: color-mix(in srgb, var(--color-fg) 62%, transparent);
+  font-size: 0.8125rem;
+  color: color-mix(in srgb, var(--color-fg) 56%, transparent);
 }
 
 .sheetStack {
   display: flex;
   flex-direction: column;
-  gap: var(--space-4, 1rem);
+  gap: var(--space-3, 0.75rem);
 }
 
 .sheetActions {
@@ -233,8 +233,8 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3, 0.75rem);
-  min-height: 3.25rem;
-  padding: var(--space-3, 0.75rem) var(--space-4, 1rem);
+  min-height: 2.75rem;
+  padding: var(--space-3, 0.75rem);
   border-radius: var(--radius-2xl, 1.25rem);
   border: var(--card-border-width, 1px) solid
     var(--card-border-color, color-mix(in srgb, var(--color-fg) 12%, transparent));
@@ -267,8 +267,8 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-1, 0.25rem);
-  min-height: 6.25rem;
-  padding: var(--space-4, 1rem);
+  min-height: 4.5rem;
+  padding: var(--space-3, 0.75rem);
   border-radius: var(--radius-2xl, 1.25rem);
   border: var(--card-border-width, 1px) solid
     var(--card-border-color, color-mix(in srgb, var(--color-fg) 12%, transparent));
@@ -284,7 +284,7 @@
 }
 
 .statValue {
-  font-size: 1.25rem;
+  font-size: 1.125rem;
   line-height: 1.2;
   font-weight: 700;
   letter-spacing: -0.02em;
@@ -302,8 +302,8 @@
   flex-shrink: 0;
   align-items: center;
   justify-content: center;
-  width: 3.25rem;
-  height: 3.25rem;
+  width: 2.75rem;
+  height: 2.75rem;
   overflow: hidden;
   border-radius: var(--radius-lg, 0.75rem);
   background: color-mix(in srgb, var(--color-primary) 14%, var(--color-muted));
@@ -316,7 +316,7 @@
   justify-content: center;
   width: 100%;
   height: 100%;
-  font-size: 1.25rem;
+  font-size: 1rem;
   font-weight: 700;
   color: var(--color-primary);
 }
