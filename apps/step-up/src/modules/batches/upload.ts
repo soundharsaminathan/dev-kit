@@ -1,6 +1,7 @@
 import type { ApiClient } from "@/lib/api";
 
 export const MAX_BATCH_COVER_BYTES = 5 * 1024 * 1024;
+export const BATCH_COVER_ASPECT = 16 / 9;
 
 const ALLOWED_COVER_TYPES = new Set([
   "image/jpeg",

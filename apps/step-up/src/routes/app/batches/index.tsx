@@ -155,6 +155,7 @@ function BatchesPage() {
                   key={batch.id}
                   batch={toBatchCardData(batch)}
                   detailTo="/app/batches/$id"
+                  ctaLabel="Manage"
                 />
               ))}
             </div>

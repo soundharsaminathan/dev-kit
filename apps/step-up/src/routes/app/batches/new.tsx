@@ -20,7 +20,11 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useApi } from "@/lib/api-context";
 import { STUDIO_ID } from "@/lib/constants";
-import { uploadBatchCover, validateBatchCover } from "@/modules/batches/upload";
+import {
+  BATCH_COVER_ASPECT,
+  uploadBatchCover,
+  validateBatchCover,
+} from "@/modules/batches/upload";
 import { CertificatePreview } from "@/modules/certificates/certificate-preview";
 import {
   type CertificateTemplate,
@@ -29,6 +33,7 @@ import {
 } from "@/modules/certificates/types";
 import type { StudioBranch } from "@/modules/locations/types";
 import { FormInput } from "@/modules/ui/form-input";
+import { ImageCropSheet } from "@/modules/ui/image-crop-sheet";
 import { PageHeader } from "@/modules/ui/page-header";
 import styles from "./new.module.scss";
 
@@ -122,6 +127,7 @@ function NewBatchPage() {
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
   const [coverError, setCoverError] = useState<string | null>(null);
+  const [pendingCropFile, setPendingCropFile] = useState<File | null>(null);
   const [category, setCategory] = useState<"KIDS" | "ADULTS">("KIDS");
   const [capacity, setCapacity] = useState("12");
   const [enrollmentMode, setEnrollmentMode] = useState<
@@ -273,11 +279,24 @@ function NewBatchPage() {
       return;
     }
     setCoverError(null);
+    setPendingCropFile(file);
+  }
+
+  function handleCropDone(file: File) {
+    try {
+      validateBatchCover(file);
+    } catch (error) {
+      setCoverError(error instanceof Error ? error.message : "Invalid image.");
+      setPendingCropFile(null);
+      return;
+    }
     if (coverPreview?.startsWith("blob:")) {
       URL.revokeObjectURL(coverPreview);
     }
     setCoverFile(file);
     setCoverPreview(URL.createObjectURL(file));
+    setPendingCropFile(null);
+    setCoverError(null);
   }
 
   function clearCover() {
@@ -845,6 +864,15 @@ function NewBatchPage() {
           </div>
         </div>
       </div>
+
+      <ImageCropSheet
+        file={pendingCropFile}
+        aspect={BATCH_COVER_ASPECT}
+        cropShape="rect"
+        title="Crop cover image"
+        onCancel={() => setPendingCropFile(null)}
+        onCropDone={handleCropDone}
+      />
     </section>
   );
 }
