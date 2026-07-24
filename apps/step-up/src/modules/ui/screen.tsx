@@ -14,6 +14,7 @@ type ScreenProps = {
   className?: string;
   wide?: boolean;
   paddedCta?: boolean;
+  hideHeaderOnMobile?: boolean;
 };
 
 export function Screen({
@@ -27,6 +28,7 @@ export function Screen({
   className,
   wide = false,
   paddedCta = false,
+  hideHeaderOnMobile = false,
 }: ScreenProps) {
   const router = useRouter();
   const canGoBack = useCanGoBack();
@@ -72,6 +74,7 @@ export function Screen({
       <header
         className={styles.header}
         data-compact={compact ? "true" : undefined}
+        data-hide-mobile={hideHeaderOnMobile ? "true" : undefined}
       >
         <div className={styles.topRow}>
           {showBack ? (

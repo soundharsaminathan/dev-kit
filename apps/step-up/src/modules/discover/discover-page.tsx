@@ -1,15 +1,17 @@
 import { Icon } from "@dev-ui/icons";
 import { useMemo, useState } from "react";
 import { ENTITY_ICONS } from "@/lib/entity-icons";
-import { AppBottomSheet } from "@/modules/ui/app-bottom-sheet";
 import { BatchCard } from "@/modules/ui/batch-card";
 import { FilterChipRow } from "@/modules/ui/filter-chip-row";
-import { FormInput } from "@/modules/ui/form-input";
 import { PullToRefresh } from "@/modules/ui/pull-to-refresh";
 import { Screen } from "@/modules/ui/screen";
 import { BatchCardSkeletonList } from "@/modules/ui/skeleton-block";
 import { EmptyState, ErrorState } from "@/modules/ui/states";
 import { TouchButton } from "@/modules/ui/touch-button";
+import {
+  type DiscoverFiltersDraft,
+  DiscoverFiltersPanel,
+} from "./discover-filters-panel";
 import styles from "./discover-page.module.scss";
 import { discoverCtaLabel, toBatchCardData } from "./types";
 import { useDiscoverBatches } from "./use-discover";
@@ -32,7 +34,6 @@ export function DiscoverPage({
   const [category, setCategory] = useState("ALL");
   const [style, setStyle] = useState<string | undefined>(initialStyle);
   const [search, setSearch] = useState("");
-  const [draftSearch, setDraftSearch] = useState("");
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [branchId] = useState(initialBranchId);
 
@@ -57,7 +58,33 @@ export function DiscoverPage({
     return [...stylesSet].sort().map((name) => ({ id: name, label: name }));
   }, [query.data]);
 
-  const hasExtraFilters = Boolean(style || search || branchId);
+  const quickChips = useMemo(
+    () => [...CATEGORY_CHIPS, ...styleChips],
+    [styleChips],
+  );
+
+  const selectedQuick = useMemo(() => {
+    const ids = [category];
+    if (style) ids.push(style);
+    return ids;
+  }, [category, style]);
+
+  const hasExtraFilters =
+    category !== "ALL" || Boolean(style || search || branchId);
+
+  const filterDraft: DiscoverFiltersDraft = {
+    category,
+    ...(style ? { style } : {}),
+    search,
+  };
+
+  function onQuickToggle(id: string) {
+    if (id === "ALL" || id === "KIDS" || id === "ADULTS") {
+      setCategory(id);
+      return;
+    }
+    setStyle((prev) => (prev === id ? undefined : id));
+  }
 
   return (
     <Screen
@@ -69,33 +96,29 @@ export function DiscoverPage({
             ? "Classes at this location."
             : "Find a class by style, level, or schedule."
       }
+      hideHeaderOnMobile
     >
       <PullToRefresh onRefresh={() => query.refetch()}>
         <div className={styles.root}>
-          <div className={styles.filters}>
-            <FilterChipRow
-              chips={CATEGORY_CHIPS}
-              selected={[category]}
-              onToggle={(id) => setCategory(id)}
-            />
-            <button
-              type="button"
-              className={styles.filterBtn}
-              data-active={hasExtraFilters ? "true" : undefined}
-              aria-label="More filters"
-              onClick={() => setFiltersOpen(true)}
-            >
-              <Icon name="filter" />
-            </button>
-          </div>
-
-          {styleChips.length > 0 ? (
-            <FilterChipRow
-              chips={[{ id: "ALL_STYLES", label: "Any style" }, ...styleChips]}
-              selected={[style ?? "ALL_STYLES"]}
-              onToggle={(id) => setStyle(id === "ALL_STYLES" ? undefined : id)}
-            />
-          ) : null}
+          <FilterChipRow
+            chips={quickChips}
+            selected={selectedQuick}
+            onToggle={onQuickToggle}
+            leading={
+              <button
+                type="button"
+                className={styles.filterBtn}
+                data-active={hasExtraFilters ? "true" : undefined}
+                aria-label="Open filters"
+                onClick={() => setFiltersOpen(true)}
+              >
+                <Icon name="filter" className={styles.filterBtnIcon} />
+                {hasExtraFilters ? (
+                  <span className={styles.filterDot} aria-hidden />
+                ) : null}
+              </button>
+            }
+          />
 
           {query.isLoading ? <BatchCardSkeletonList count={4} /> : null}
 
@@ -148,42 +171,18 @@ export function DiscoverPage({
         </div>
       </PullToRefresh>
 
-      <AppBottomSheet
+      <DiscoverFiltersPanel
         isOpen={filtersOpen}
         onOpenChange={setFiltersOpen}
-        title="Filters"
-      >
-        <div className={styles.filterForm}>
-          <FormInput
-            label="Search"
-            value={draftSearch}
-            onChange={setDraftSearch}
-            placeholder="Class name"
-          />
-          <div className={styles.filterActions}>
-            <TouchButton
-              variant="quiet"
-              onClick={() => {
-                setDraftSearch("");
-                setSearch("");
-                setStyle(undefined);
-                setFiltersOpen(false);
-              }}
-            >
-              Reset
-            </TouchButton>
-            <TouchButton
-              variant="primary"
-              onClick={() => {
-                setSearch(draftSearch.trim());
-                setFiltersOpen(false);
-              }}
-            >
-              Apply
-            </TouchButton>
-          </div>
-        </div>
-      </AppBottomSheet>
+        value={filterDraft}
+        styleOptions={styleChips}
+        {...(branchId != null ? { branchId } : {})}
+        onApply={(next) => {
+          setCategory(next.category);
+          setStyle(next.style);
+          setSearch(next.search);
+        }}
+      />
     </Screen>
   );
 }

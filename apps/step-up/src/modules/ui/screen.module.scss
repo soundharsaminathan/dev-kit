@@ -122,6 +122,12 @@
   }
 }
 
+@media (max-width: 767px) {
+  .header[data-hide-mobile="true"] {
+    display: none;
+  }
+}
+
 @media (min-width: 768px) {
   .header {
     margin-inline: calc(-1 * var(--space-6, 1.5rem));
