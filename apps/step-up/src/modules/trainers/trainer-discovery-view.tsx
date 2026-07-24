@@ -30,17 +30,27 @@ type TrainerDiscoveryViewProps = {
   onOpenListView?: (() => void) | undefined;
 };
 
-const DRAG_X = 72;
-const DRAG_Y = 90;
-const VELOCITY_X = 550;
-const VELOCITY_Y = 700;
+const DRAG_X = 88;
+const DRAG_Y = 100;
+const VELOCITY_X = 480;
+const VELOCITY_Y = 650;
+const EXIT_X = 280;
 
 const SPRING_CARD = {
   type: "spring" as const,
-  stiffness: 320,
-  damping: 34,
-  mass: 0.85,
+  stiffness: 420,
+  damping: 42,
+  mass: 0.65,
 };
+
+const SPRING_SNAP = {
+  type: "spring" as const,
+  stiffness: 520,
+  damping: 44,
+  mass: 0.55,
+};
+
+const EASE_OUT = [0.16, 1, 0.3, 1] as const;
 
 function firstName(name: string) {
   return name.trim().split(/\s+/)[0] ?? name;
@@ -90,20 +100,25 @@ export function TrainerDiscoveryView({
 
   const dragX = useMotionValue(0);
   const dragY = useMotionValue(0);
+  const cardRotate = useTransform(
+    dragX,
+    [-220, 0, 220],
+    reducedMotion ? [0, 0, 0] : [-7, 0, 7],
+  );
   const photoX = useTransform(
     dragX,
     [-200, 0, 200],
-    reducedMotion ? [0, 0, 0] : [-18, 0, 18],
+    reducedMotion ? [0, 0, 0] : [-22, 0, 22],
   );
   const photoY = useTransform(
     dragY,
     [-160, 0, 160],
-    reducedMotion ? [0, 0, 0] : [-10, 0, 10],
+    reducedMotion ? [0, 0, 0] : [-12, 0, 12],
   );
   const photoScale = useTransform(
     dragY,
     [-160, 0],
-    reducedMotion ? [1.06, 1.06] : [1.12, 1.06],
+    reducedMotion ? [1.06, 1.06] : [1.14, 1.06],
   );
 
   useEffect(() => {
@@ -123,10 +138,20 @@ export function TrainerDiscoveryView({
     const node = carouselRef.current;
     if (!node) return;
     const active = node.querySelector<HTMLElement>('[data-active="true"]');
-    active?.scrollIntoView({
+    if (!active) return;
+
+    const nodeRect = node.getBoundingClientRect();
+    const activeRect = active.getBoundingClientRect();
+    const target =
+      node.scrollLeft +
+      (activeRect.left - nodeRect.left) -
+      (node.clientWidth - activeRect.width) / 2;
+    const maxScroll = Math.max(0, node.scrollWidth - node.clientWidth);
+    const left = Math.max(0, Math.min(target, maxScroll));
+
+    node.scrollTo({
+      left,
       behavior: reducedMotion ? "auto" : "smooth",
-      inline: "center",
-      block: "nearest",
     });
   }, [activeTrainerId, reducedMotion]);
   const location = useMemo(
@@ -161,13 +186,21 @@ export function TrainerDiscoveryView({
     void navigate({ to: "/users/$id", params: { id: trainerId } });
   }
 
+  function resetDrag() {
+    dragX.set(0);
+    dragY.set(0);
+  }
+
   function goTo(next: number, direction: number) {
-    if (next < 0 || next >= trainers.length || next === index) return;
+    if (next < 0 || next >= trainers.length || next === index) {
+      resetDrag();
+      return false;
+    }
     setExitDirection(direction);
     setIndex(next);
     setShowHint(false);
-    dragX.set(0);
-    dragY.set(0);
+    resetDrag();
+    return true;
   }
 
   function skipCurrent() {
@@ -185,8 +218,7 @@ export function TrainerDiscoveryView({
 
     if (offset.y < -DRAG_Y || velocity.y < -VELOCITY_Y) {
       if (trainer) openProfile(trainer.id);
-      dragX.set(0);
-      dragY.set(0);
+      resetDrag();
       return;
     }
 
@@ -200,8 +232,7 @@ export function TrainerDiscoveryView({
       return;
     }
 
-    dragX.set(0);
-    dragY.set(0);
+    resetDrag();
   }
 
   if (trainers.length === 0) {
@@ -225,17 +256,18 @@ export function TrainerDiscoveryView({
   return (
     <section className={styles.root} aria-label="Instructor discovery">
       <div className={styles.stage}>
-        <AnimatePresence
-          initial={false}
-          custom={exitDirection}
-          mode="popLayout"
-        >
+        <AnimatePresence initial={false} custom={exitDirection}>
           <motion.article
             key={trainer.id}
             className={styles.card}
             drag={!reducedMotion}
             dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
-            dragElastic={0.18}
+            dragElastic={0.72}
+            dragTransition={{
+              bounceStiffness: SPRING_SNAP.stiffness,
+              bounceDamping: SPRING_SNAP.damping,
+            }}
+            style={reducedMotion ? {} : { rotate: cardRotate }}
             onDrag={(_, info) => {
               dragX.set(info.offset.x);
               dragY.set(info.offset.y);
@@ -247,18 +279,19 @@ export function TrainerDiscoveryView({
                 ? { opacity: 0 }
                 : {
                     opacity: 0,
-                    x: exitDirection >= 0 ? 56 : -56,
-                    scale: 0.98,
+                    x: exitDirection >= 0 ? EXIT_X * 0.45 : -EXIT_X * 0.45,
+                    scale: 0.97,
                   }
             }
             animate={{ opacity: 1, x: 0, y: 0, scale: 1 }}
             exit={
               reducedMotion
-                ? { opacity: 0 }
+                ? { opacity: 0, transition: { duration: 0.16 } }
                 : {
                     opacity: 0,
-                    x: exitDirection >= 0 ? -72 : 72,
-                    scale: 0.97,
+                    x: exitDirection >= 0 ? -EXIT_X : EXIT_X,
+                    scale: 0.96,
+                    transition: { duration: 0.28, ease: EASE_OUT },
                   }
             }
             transition={reducedMotion ? { duration: 0.18 } : SPRING_CARD}

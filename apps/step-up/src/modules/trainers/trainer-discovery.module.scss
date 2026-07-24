@@ -392,24 +392,34 @@
   flex-direction: column;
   gap: var(--space-3, 0.75rem);
   padding-inline: var(--space-3, 0.75rem);
-  padding-bottom: var(--space-2, 0.5rem);
+  padding-bottom: calc(var(--space-2, 0.5rem) + env(safe-area-inset-bottom, 0px));
 }
 
 .carousel {
   display: flex;
-  justify-content: center;
   gap: 0.65rem;
   margin: 0;
-  padding: 0.25rem 0;
+  padding-block: 0.5rem;
+  padding-inline: 0;
   list-style: none;
   overflow-x: auto;
+  overflow-y: hidden;
   scrollbar-width: none;
   -ms-overflow-style: none;
-  scroll-snap-type: x mandatory;
+  scroll-snap-type: x proximity;
+  scroll-padding-inline: var(--space-4, 1rem);
+  -webkit-overflow-scrolling: touch;
 }
 
 .carousel::-webkit-scrollbar {
   display: none;
+}
+
+.carousel::before,
+.carousel::after {
+  content: "";
+  flex: 1 0 var(--space-4, 1rem);
+  min-width: var(--space-4, 1rem);
 }
 
 .avatarItem {
@@ -612,6 +622,221 @@
   }
 }
 
+.skeletonRoot {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--discovery-canvas, #0f0f10);
+}
+
+.skeletonPhoto {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    120deg,
+    rgb(255 255 255 / 0.04) 0%,
+    rgb(255 255 255 / 0.1) 42%,
+    rgb(255 255 255 / 0.04) 100%
+  );
+  background-size: 220% 100%;
+  animation: discoveryShimmer 1.5s ease-in-out infinite;
+}
+
+.skeletonGradient {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    rgb(0 0 0 / 0.28) 0%,
+    rgb(0 0 0 / 0.05) 28%,
+    rgb(0 0 0 / 0.15) 48%,
+    rgb(0 0 0 / 0.72) 78%,
+    rgb(0 0 0 / 0.92) 100%
+  );
+}
+
+.skeletonChrome {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+}
+
+.skeletonTopNav {
+  display: grid;
+  grid-template-columns: 3.5rem 1fr 3.5rem;
+  align-items: center;
+  gap: var(--space-3, 0.75rem);
+  padding-top: calc(var(--space-3, 0.75rem) + env(safe-area-inset-top, 0px));
+  padding-inline: var(--space-4, 1rem);
+}
+
+.skeletonGlass,
+.skeletonAction {
+  display: block;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 999px;
+  border: 1px solid rgb(255 255 255 / 0.14);
+  background: rgb(255 255 255 / 0.1);
+  animation: discoveryPulse 1.5s ease-in-out infinite;
+}
+
+.skeletonAction {
+  width: 3.5rem;
+  height: 3.5rem;
+}
+
+.skeletonProgress {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  min-width: 0;
+  padding-inline: var(--space-2, 0.5rem);
+}
+
+.skeletonSeg {
+  flex: 1;
+  max-width: 2.5rem;
+  height: 0.1875rem;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.28);
+}
+
+.skeletonSeg:first-child {
+  background: rgb(255 255 255 / 0.85);
+}
+
+.skeletonActions {
+  position: absolute;
+  top: 50%;
+  right: var(--space-4, 1rem);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 0.75rem);
+  transform: translateY(-42%);
+}
+
+.skeletonBody {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 0.5rem);
+  padding-inline: var(--space-4, 1rem);
+  padding-bottom: var(--space-3, 0.75rem);
+  max-width: calc(100% - 4.5rem);
+}
+
+.skeletonName,
+.skeletonLine,
+.skeletonChip,
+.skeletonAvatar,
+.skeletonCta {
+  display: block;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    rgb(255 255 255 / 0.08) 0%,
+    rgb(255 255 255 / 0.18) 50%,
+    rgb(255 255 255 / 0.08) 100%
+  );
+  background-size: 200% 100%;
+  animation: discoveryShimmer 1.4s ease-in-out infinite;
+}
+
+.skeletonName {
+  width: min(16rem, 72%);
+  height: 2rem;
+  border-radius: var(--radius-lg, 0.75rem);
+}
+
+.skeletonLine {
+  height: 0.75rem;
+}
+
+.skeletonLine[data-width="sm"] {
+  width: 42%;
+}
+
+.skeletonLine[data-width="md"] {
+  width: 58%;
+}
+
+.skeletonLine[data-width="lg"] {
+  width: 70%;
+}
+
+.skeletonChips {
+  display: flex;
+  gap: 0.4rem;
+  margin-top: 0.15rem;
+}
+
+.skeletonChip {
+  width: 4.5rem;
+  height: 1.6rem;
+}
+
+.skeletonFooter {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 0.75rem);
+  padding-inline: var(--space-3, 0.75rem);
+  padding-bottom: calc(var(--space-2, 0.5rem) + env(safe-area-inset-bottom, 0px));
+}
+
+.skeletonCarousel {
+  display: flex;
+  justify-content: center;
+  gap: 0.65rem;
+  padding-block: 0.5rem;
+}
+
+.skeletonAvatar {
+  width: 3.75rem;
+  height: 3.75rem;
+  flex-shrink: 0;
+  opacity: 0.55;
+  transform: scale(0.92);
+}
+
+.skeletonAvatar[data-active="true"] {
+  opacity: 1;
+  transform: scale(1);
+  box-shadow: 0 0 0 2px rgb(255 255 255 / 0.28);
+}
+
+.skeletonCta {
+  align-self: center;
+  width: min(18rem, 100%);
+  height: 3rem;
+}
+
+@keyframes discoveryShimmer {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: -100% 0;
+  }
+}
+
+@keyframes discoveryPulse {
+  0%,
+  100% {
+    opacity: 0.72;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .progressSeg,
   .glassIcon,
@@ -635,5 +860,28 @@
   .hint {
     animation: none;
     opacity: 0;
+  }
+
+  .skeletonPhoto,
+  .skeletonName,
+  .skeletonLine,
+  .skeletonChip,
+  .skeletonAvatar,
+  .skeletonCta,
+  .skeletonGlass,
+  .skeletonAction {
+    animation: none;
+  }
+
+  .skeletonPhoto {
+    background: rgb(255 255 255 / 0.08);
+  }
+
+  .skeletonName,
+  .skeletonLine,
+  .skeletonChip,
+  .skeletonAvatar,
+  .skeletonCta {
+    background: rgb(255 255 255 / 0.12);
   }
 }

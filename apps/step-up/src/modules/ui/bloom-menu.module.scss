@@ -72,6 +72,16 @@
   box-shadow: none;
 }
 
+.triggerDanger {
+  background: var(--color-danger);
+  color: var(--color-fg-on-danger, #fff);
+  box-shadow: none;
+}
+
+.triggerDanger:active:not(:disabled):not([aria-disabled="true"]) {
+  background: var(--color-danger-active, var(--color-danger));
+}
+
 .trigger:disabled,
 .trigger[aria-disabled="true"] {
   opacity: 0.55;

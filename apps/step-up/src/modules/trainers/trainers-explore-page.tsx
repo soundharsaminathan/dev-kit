@@ -19,6 +19,7 @@ import { EmptyState, ErrorState } from "@/modules/ui/states";
 import { TouchButton } from "@/modules/ui/touch-button";
 import { TrainerBentoView } from "./trainer-bento-view";
 import { TrainerCardsView } from "./trainer-cards-view";
+import { TrainerDiscoverySkeleton } from "./trainer-discovery-skeleton";
 import { TrainerDiscoveryView } from "./trainer-discovery-view";
 import { TrainerStackView } from "./trainer-stack-view";
 import styles from "./trainers-page.module.scss";
@@ -232,7 +233,7 @@ export function TrainersExplorePage({
         className={styles.immersiveScreen}
         aria-label="Instructor discovery"
       >
-        {query.isLoading ? <SkeletonCardList count={2} /> : null}
+        {query.isLoading ? <TrainerDiscoverySkeleton /> : null}
         {query.isError ? (
           <div className={styles.immersiveState}>
             <ErrorState

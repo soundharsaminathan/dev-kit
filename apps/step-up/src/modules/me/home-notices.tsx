@@ -26,6 +26,7 @@ export type HomeNotice = {
 
 type HomeNoticesProps = {
   notices: HomeNotice[];
+  flushHero?: boolean;
 };
 
 function toneIcon(tone: HomeNoticeTone | undefined): IconName {
@@ -34,7 +35,7 @@ function toneIcon(tone: HomeNoticeTone | undefined): IconName {
   return "alert-circle";
 }
 
-export function HomeNotices({ notices }: HomeNoticesProps) {
+export function HomeNotices({ notices, flushHero = false }: HomeNoticesProps) {
   const { toast } = useToastContext("HomeNotices");
   const [busyId, setBusyId] = useState<string | null>(null);
 
@@ -59,10 +60,15 @@ export function HomeNotices({ notices }: HomeNoticesProps) {
   }
 
   return (
-    <section className={styles.stack} aria-label="Account notices">
+    <section
+      className={styles.stack}
+      data-flush-hero={flushHero ? "true" : undefined}
+      aria-label="Alerts"
+    >
       {notices.map((notice) => {
         const tone = notice.tone ?? "warning";
         const icon = notice.icon ?? toneIcon(tone);
+        const menuTone = tone === "info" ? "primary" : "danger";
         const menuItems: BloomMenuItem[] = notice.actions.map(
           ({ id, label, icon: itemIcon }) => ({
             id,
@@ -90,6 +96,7 @@ export function HomeNotices({ notices }: HomeNoticesProps) {
               items={menuItems}
               columns={1}
               size="compact"
+              tone={menuTone}
               triggerLabel={notice.menuLabel ?? "Details"}
               triggerIcon={null}
               panelTitle={notice.title}
@@ -129,7 +136,7 @@ export function useHomeNotices({
     if (needsEmailVerification && user?.email) {
       notices.push({
         id: "verify-email",
-        tone: "warning",
+        tone: "danger",
         icon: "mail",
         title: "Confirm your email",
         summary: user.email,
