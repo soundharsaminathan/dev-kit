@@ -26,9 +26,13 @@ import { isAlwaysPublicRole } from "../social/visibility";
 import {
   batchHasCompletedSession,
   batchHasScheduledSession,
+  classifyStudentFunnelStage,
   countStudentFunnel,
+  isDateInRange,
+  resolveStudentFunnelPeriod,
   type StudentFunnelCounts,
   type StudentFunnelPeriod,
+  type StudentFunnelStage,
 } from "./student-funnel";
 import {
   type DecryptedUser,
@@ -756,15 +760,15 @@ export class UsersService {
     });
   }
 
-  async getStudentFunnel(
-    studioId: string,
-    period: StudentFunnelPeriod = "lifetime",
-  ): Promise<StudentFunnelCounts> {
+  private async loadStudentFunnelRows(studioId: string) {
     const students = await this.prisma.user.findMany({
       where: { studioId, role: UserRole.STUDENT },
       select: {
         id: true,
         createdAt: true,
+        ...userPiiSelect,
+        role: true,
+        photoUrl: true,
         batchEnrollments: {
           where: { batch: { studioId } },
           select: {
@@ -801,11 +805,20 @@ export class UsersService {
       },
     });
 
-    return countStudentFunnel(
-      students.map((student) => ({
+    return students.map((student) => {
+      const {
+        batchEnrollments,
+        bookings,
+        attendanceRecords,
+        membershipSeats,
+        ...user
+      } = student;
+
+      return {
         id: student.id,
         createdAt: student.createdAt,
-        enrollments: student.batchEnrollments.map((enrollment) => ({
+        user,
+        enrollments: batchEnrollments.map((enrollment) => ({
           batchId: enrollment.batch.id,
           batchActive: enrollment.batch.active,
           hasScheduledSession: batchHasScheduledSession(
@@ -815,14 +828,53 @@ export class UsersService {
             enrollment.batch.sessions,
           ),
         })),
-        bookings: student.bookings,
-        attendance: student.attendanceRecords,
-        memberships: student.membershipSeats.map((seat) => ({
+        bookings,
+        attendance: attendanceRecords,
+        memberships: membershipSeats.map((seat) => ({
           status: seat.membership.status,
         })),
-      })),
-      period,
+      };
+    });
+  }
+
+  async getStudentFunnel(
+    studioId: string,
+    period: StudentFunnelPeriod = "lifetime",
+  ): Promise<StudentFunnelCounts> {
+    const students = await this.loadStudentFunnelRows(studioId);
+    return countStudentFunnel(students, period);
+  }
+
+  async listStudentDirectory(
+    studioId: string,
+    options: {
+      stage?: StudentFunnelStage;
+      period?: StudentFunnelPeriod;
+    } = {},
+  ) {
+    const period = options.period ?? "lifetime";
+    const range = resolveStudentFunnelPeriod(period);
+    const students = await this.loadStudentFunnelRows(studioId);
+    const cohort = students.filter((student) =>
+      isDateInRange(student.createdAt, range),
     );
+
+    const presented = await Promise.all(
+      cohort.map(async (student) => {
+        const base = await this.presentUser(student.user);
+        return {
+          ...base,
+          createdAt: student.createdAt.toISOString(),
+          funnelStage: classifyStudentFunnelStage(student),
+        };
+      }),
+    );
+
+    const filtered = options.stage
+      ? presented.filter((student) => student.funnelStage === options.stage)
+      : presented;
+
+    return filtered.sort((a, b) => a.name.localeCompare(b.name));
   }
 
   async linkParentChild(parentUserId: string, childUserId: string) {

@@ -40,8 +40,11 @@ import { RolesGuard } from "../auth/roles.guard";
 import { SocialService } from "../social/social.service";
 import {
   isStudentFunnelPeriod,
+  isStudentFunnelStage,
   STUDENT_FUNNEL_PERIODS,
+  STUDENT_FUNNEL_STAGES,
   type StudentFunnelPeriod,
+  type StudentFunnelStage,
 } from "./student-funnel";
 import type { DecryptedUser } from "./user-crypto.service";
 import { UsersService } from "./users.service";
@@ -347,6 +350,30 @@ export class UsersController {
   @Roles(UserRole.OWNER, UserRole.STAFF)
   listStudents(@Param("studioId") studioId: string, @Query("q") q?: string) {
     return this.usersService.listStudents(studioId, q);
+  }
+
+  @Get("studio/:studioId/student-directory")
+  @Roles(UserRole.OWNER, UserRole.STAFF)
+  listStudentDirectory(
+    @Param("studioId") studioId: string,
+    @Query("stage") stage?: string,
+    @Query("period") period?: string,
+  ) {
+    if (stage !== undefined && !isStudentFunnelStage(stage)) {
+      throw new BadRequestException(
+        `Invalid stage. Expected one of: ${STUDENT_FUNNEL_STAGES.join(", ")}`,
+      );
+    }
+    if (period !== undefined && !isStudentFunnelPeriod(period)) {
+      throw new BadRequestException(
+        `Invalid period. Expected one of: ${STUDENT_FUNNEL_PERIODS.join(", ")}`,
+      );
+    }
+
+    return this.usersService.listStudentDirectory(studioId, {
+      stage: stage as StudentFunnelStage | undefined,
+      period: (period as StudentFunnelPeriod | undefined) ?? "lifetime",
+    });
   }
 
   @Get("studio/:studioId/student-funnel")

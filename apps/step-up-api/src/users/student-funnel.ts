@@ -78,11 +78,27 @@ const EMPTY_COUNTS = {
   completedWithoutPlan: 0,
 } as const;
 
+export const STUDENT_FUNNEL_STAGES: StudentFunnelStage[] = [
+  "active",
+  "signedInOnly",
+  "trialRegistered",
+  "trialAttended",
+  "completedWithoutPlan",
+];
+
 export function isStudentFunnelPeriod(
   value: string | undefined,
 ): value is StudentFunnelPeriod {
   return (
     value !== undefined && (STUDENT_FUNNEL_PERIODS as string[]).includes(value)
+  );
+}
+
+export function isStudentFunnelStage(
+  value: string | undefined,
+): value is StudentFunnelStage {
+  return (
+    value !== undefined && (STUDENT_FUNNEL_STAGES as string[]).includes(value)
   );
 }
 
