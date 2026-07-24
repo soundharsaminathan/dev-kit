@@ -24,14 +24,27 @@
   background: color-mix(in srgb, var(--color-fg) 3%, transparent);
 }
 
+.batchList {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin-inline: calc(-1 * var(--space-4, 1rem));
+  background: var(--card-background, var(--color-card, var(--color-bg)));
+}
+
 .batchRow {
   display: flex;
   flex-direction: row;
-  align-items: center;
+  align-items: flex-start;
   gap: var(--space-3, 0.75rem);
-  padding: var(--space-3, 0.75rem);
-  border-radius: var(--radius-xl, 1rem);
-  background: color-mix(in srgb, var(--color-fg) 3%, transparent);
+  padding: var(--space-3, 0.75rem) var(--space-4, 1rem);
+  border-bottom: 1px solid color-mix(in srgb, var(--color-fg) 10%, transparent);
+  background: transparent;
+  border-radius: 0;
+}
+
+.batchRow:last-child {
+  border-bottom: 0;
 }
 
 .batchBody {
@@ -40,6 +53,17 @@
   gap: var(--space-2, 0.5rem);
   flex: 1;
   min-width: 0;
+  padding-block: 0.15rem;
+}
+
+@media (min-width: 768px) {
+  .batchList {
+    margin-inline: calc(-1 * var(--space-6, 1.5rem));
+  }
+
+  .batchRow {
+    padding-inline: var(--space-6, 1.5rem);
+  }
 }
 
 @keyframes shimmer {

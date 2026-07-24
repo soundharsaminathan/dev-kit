@@ -63,18 +63,21 @@ const BATCH_CARD_KEYS = [
 
 export function BatchCardSkeletonList({ count = 3 }: { count?: number }) {
   return (
-    <div className={styles.list}>
+    <div className={styles.batchList}>
       {BATCH_CARD_KEYS.slice(0, count).map((key) => (
         <div key={key} className={styles.batchRow}>
           <SkeletonBlock
-            height="4.5rem"
-            width="4.5rem"
+            height="7.5rem"
+            width="7.5rem"
             radius="var(--radius-lg, 0.75rem)"
           />
           <div className={styles.batchBody}>
-            <SkeletonBlock height="0.875rem" width="65%" />
-            <SkeletonBlock height="0.75rem" width="45%" />
+            <SkeletonBlock height="0.625rem" width="30%" />
+            <SkeletonBlock height="0.875rem" width="75%" />
+            <SkeletonBlock height="0.75rem" width="40%" />
             <SkeletonBlock height="0.75rem" width="55%" />
+            <SkeletonBlock height="1rem" width="35%" />
+            <SkeletonBlock height="2.25rem" width="100%" radius="999px" />
           </div>
         </div>
       ))}
