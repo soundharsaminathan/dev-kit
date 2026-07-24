@@ -19,6 +19,21 @@ const defaultProps = {
 };
 
 describe("BatchFiltersToolbar", () => {
+  it("updates search when typing in the search box", () => {
+    const onSearchChange = vi.fn();
+    renderWithProviders(
+      <BatchFiltersToolbar {...defaultProps} onSearchChange={onSearchChange} />,
+    );
+
+    fireEvent.change(
+      screen.getByRole("searchbox", { name: "Search batches" }),
+      {
+        target: { value: "hip hop" },
+      },
+    );
+    expect(onSearchChange).toHaveBeenCalledWith("hip hop");
+  });
+
   it("changes status when Active is clicked", () => {
     const onStatusChange = vi.fn();
     renderWithProviders(
