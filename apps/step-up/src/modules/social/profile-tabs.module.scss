@@ -57,10 +57,9 @@
 .batches {
   display: flex;
   flex-direction: column;
-  gap: 0;
-  padding-inline: 0;
+  gap: var(--space-3, 0.75rem);
+  padding-inline: var(--space-4, 1rem);
   padding-bottom: var(--space-6);
-  background: var(--card-background, var(--color-card, var(--color-bg)));
 }
 
 .batchSkeleton {

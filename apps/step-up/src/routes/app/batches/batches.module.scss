@@ -1,16 +1,14 @@
 .list {
   display: flex;
   flex-direction: column;
-  gap: 0;
+  gap: var(--space-3, 0.75rem);
   list-style: none;
   margin: 0;
-  margin-inline: calc(-1 * var(--space-4, 1rem));
   padding: 0;
-  background: var(--card-background, var(--color-card, var(--color-bg)));
 }
 
 @media (min-width: 768px) {
   .list {
-    margin-inline: calc(-1 * var(--space-6, 1.5rem));
+    gap: var(--space-4, 1rem);
   }
 }

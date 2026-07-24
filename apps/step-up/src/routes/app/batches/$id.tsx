@@ -19,10 +19,15 @@ import { STUDIO_ID } from "@/lib/constants";
 import { BatchBilling } from "@/modules/batches/batch-billing";
 import { BatchRoster } from "@/modules/batches/batch-roster";
 import { BatchTrainers } from "@/modules/batches/batch-trainers";
-import { uploadBatchCover, validateBatchCover } from "@/modules/batches/upload";
+import {
+  BATCH_COVER_ASPECT,
+  uploadBatchCover,
+  validateBatchCover,
+} from "@/modules/batches/upload";
 import { BatchChat } from "@/modules/chat/batch-chat";
 import { ApiState } from "@/modules/ui/api-state";
 import { FormInput } from "@/modules/ui/form-input";
+import { ImageCropSheet } from "@/modules/ui/image-crop-sheet";
 import { PageHeader } from "@/modules/ui/page-header";
 import styles from "./new.module.scss";
 
@@ -187,6 +192,7 @@ function EditBatchForm({ batch }: { batch: Batch }) {
     batch.coverImageUrl ?? null,
   );
   const [coverError, setCoverError] = useState<string | null>(null);
+  const [pendingCropFile, setPendingCropFile] = useState<File | null>(null);
   const [removeCover, setRemoveCover] = useState(false);
   const [branchId, setBranchId] = useState(batch.branchId);
   const [capacity, setCapacity] = useState(String(batch.capacity));
@@ -279,12 +285,25 @@ function EditBatchForm({ batch }: { batch: Batch }) {
       return;
     }
     setCoverError(null);
-    setRemoveCover(false);
+    setPendingCropFile(file);
+  }
+
+  function handleCropDone(file: File) {
+    try {
+      validateBatchCover(file);
+    } catch (error) {
+      setCoverError(error instanceof Error ? error.message : "Invalid image.");
+      setPendingCropFile(null);
+      return;
+    }
     if (coverPreview?.startsWith("blob:")) {
       URL.revokeObjectURL(coverPreview);
     }
     setCoverFile(file);
     setCoverPreview(URL.createObjectURL(file));
+    setPendingCropFile(null);
+    setRemoveCover(false);
+    setCoverError(null);
   }
 
   function clearCover() {
@@ -562,6 +581,15 @@ function EditBatchForm({ batch }: { batch: Batch }) {
       >
         Save changes
       </Button>
+
+      <ImageCropSheet
+        file={pendingCropFile}
+        aspect={BATCH_COVER_ASPECT}
+        cropShape="rect"
+        title="Crop cover image"
+        onCancel={() => setPendingCropFile(null)}
+        onCropDone={handleCropDone}
+      />
     </div>
   );
 }
