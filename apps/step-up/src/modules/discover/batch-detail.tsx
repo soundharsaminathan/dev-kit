@@ -8,6 +8,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@dev-ui/components/select";
+import { useIsMobile } from "@dev-ui/hooks";
 import { Icon } from "@dev-ui/icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
@@ -21,6 +22,7 @@ import type { DiscoverBatchPlan } from "@/modules/discover/types";
 import { useDiscoverBatch } from "@/modules/discover/use-discover";
 import { useActiveStudentContext } from "@/modules/me/use-active-student-context";
 import { AppBottomSheet } from "@/modules/ui/app-bottom-sheet";
+import { BloomMenu } from "@/modules/ui/bloom-menu";
 import { FormInput } from "@/modules/ui/form-input";
 import { Screen } from "@/modules/ui/screen";
 import { SkeletonBlock } from "@/modules/ui/skeleton-block";
@@ -53,11 +55,52 @@ function planPriceLabel(plan: DiscoverBatchPlan) {
     : `${amount}/mo`;
 }
 
+function planCadenceLabel(plan: DiscoverBatchPlan) {
+  return plan.billingCadence === "MONTHLY" ? "1 month" : "3 months";
+}
+
+function planAudienceLabel(plan: DiscoverBatchPlan) {
+  if (plan.kind === "INDIVIDUAL") {
+    return plan.individualAudience === "ADULT" ? "Adult" : "Kid";
+  }
+  return "Family";
+}
+
+function planSeatShortLabel(plan: DiscoverBatchPlan) {
+  const parts: string[] = [];
+  if (plan.adultSeats > 0) parts.push(`${plan.adultSeats}A`);
+  if (plan.kidSeats > 0) parts.push(`${plan.kidSeats}K`);
+  return parts.join(" · ") || "Family";
+}
+
+function planSeatA11yLabel(plan: DiscoverBatchPlan) {
+  const parts: string[] = [];
+  if (plan.adultSeats > 0) {
+    parts.push(`${plan.adultSeats} adult${plan.adultSeats === 1 ? "" : "s"}`);
+  }
+  if (plan.kidSeats > 0) {
+    parts.push(`${plan.kidSeats} kid${plan.kidSeats === 1 ? "" : "s"}`);
+  }
+  return parts.join(" + ") || "Family";
+}
+
 function planKindLabel(plan: DiscoverBatchPlan) {
   if (plan.kind === "INDIVIDUAL") {
-    return `Individual · ${plan.individualAudience === "ADULT" ? "Adult" : "Kid"}`;
+    return `Individual · ${planAudienceLabel(plan)}`;
   }
-  return `Family · ${(plan.familyPack ?? "").replaceAll("_", " ").toLowerCase()}`;
+  return `Family · ${planSeatA11yLabel(plan)}`;
+}
+
+function sortPlans(a: DiscoverBatchPlan, b: DiscoverBatchPlan) {
+  const cadenceRank = (plan: DiscoverBatchPlan) =>
+    plan.billingCadence === "MONTHLY" ? 0 : 1;
+  const audienceRank = (plan: DiscoverBatchPlan) =>
+    plan.individualAudience === "ADULT" ? 0 : 1;
+  return (
+    cadenceRank(a) - cadenceRank(b) ||
+    audienceRank(a) - audienceRank(b) ||
+    a.name.localeCompare(b.name)
+  );
 }
 
 export function BatchDetailPage() {
@@ -66,6 +109,7 @@ export function BatchDetailPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const isMobile = useIsMobile();
   const {
     studentId,
     loading: studentLoading,
@@ -270,16 +314,32 @@ export function BatchDetailPage() {
   const batch = query.data;
   const trainer = batch.trainers[0]?.trainer;
   const plans = (batch.plans ?? []).filter((plan) => plan.active);
+  const individualPlans = plans
+    .filter((plan) => plan.kind === "INDIVIDUAL")
+    .slice()
+    .sort(sortPlans);
+  const familyPlans = plans
+    .filter((plan) => plan.kind === "FAMILY")
+    .slice()
+    .sort(sortPlans);
   const hasPlans = plans.length > 0;
   const batchSeatRole = batch.category === "KIDS" ? "KID" : "ADULT";
+  const ageGroupLabel = batch.category === "KIDS" ? "Kids" : "Adults";
   const price = formatPrice(batch.price);
   const isFull = batch.remainingSeats === 0;
+  const plansDisabled = isFull || !canActForStudent;
   const seatsLabel =
     batch.remainingSeats == null
       ? null
       : batch.remainingSeats === 0
         ? "Class full"
         : `${batch.remainingSeats} seat${batch.remainingSeats === 1 ? "" : "s"} left`;
+  const capacityLabel = `${batch.capacity} capacity`;
+  const familyBloomItems = familyPlans.map((plan) => ({
+    id: plan.id,
+    label: `${planSeatShortLabel(plan)} · ${planPriceLabel(plan)}`,
+    icon: "users" as const,
+  }));
   const openBooking = batch.viewerBooking;
   const hasAwaitingPayment = openBooking?.status === "AWAITING_PAYMENT";
   const hasPendingRequest = openBooking?.status === "PENDING";
@@ -468,36 +528,117 @@ export function BatchDetailPage() {
         {hasPlans && !batch.viewerEnrolled ? (
           <div className={styles.section}>
             <h2 className={styles.sectionTitle}>Choose a plan</h2>
-            <p className={styles.muted}>
-              Pick a duration to enroll in this class — like buying a product
-              option.
-            </p>
-            <div className={styles.planList}>
-              {plans.map((plan) => (
-                <button
-                  key={plan.id}
-                  type="button"
-                  className={styles.planCard}
-                  disabled={isFull || !canActForStudent}
-                  onClick={() => openPurchase(plan)}
+            <div className={styles.planFacts}>
+              <span className={styles.planFact}>{ageGroupLabel}</span>
+              <span className={styles.planFact}>{capacityLabel}</span>
+              {batch.durationMinutes ? (
+                <span className={styles.planFact}>
+                  {batch.durationMinutes} min
+                </span>
+              ) : null}
+              {seatsLabel ? (
+                <span
+                  className={styles.planFact}
+                  data-full={isFull ? "true" : undefined}
                 >
-                  <div className={styles.planCopy}>
-                    <strong>{plan.name}</strong>
-                    <span className={styles.muted}>{planKindLabel(plan)}</span>
-                  </div>
-                  <div className={styles.planMeta}>
-                    <span className={styles.planPrice}>
-                      {planPriceLabel(plan)}
-                    </span>
-                    <span className={styles.planCadence}>
-                      {plan.billingCadence === "MONTHLY"
-                        ? "1 month"
-                        : "3 months"}
-                    </span>
-                  </div>
-                </button>
-              ))}
+                  {seatsLabel}
+                </span>
+              ) : null}
             </div>
+            {individualPlans.length > 0 ? (
+              <div className={styles.planList}>
+                {individualPlans.map((plan) => (
+                  <button
+                    key={plan.id}
+                    type="button"
+                    className={styles.planCard}
+                    disabled={plansDisabled}
+                    aria-label={`${planAudienceLabel(plan)}, ${planCadenceLabel(plan)}, ${planPriceLabel(plan)}`}
+                    onClick={() => openPurchase(plan)}
+                  >
+                    <div className={styles.planCopy}>
+                      <span className={styles.planPrice}>
+                        {planPriceLabel(plan)}
+                      </span>
+                      <span className={styles.planChips}>
+                        <span className={styles.planChip}>
+                          {planCadenceLabel(plan)}
+                        </span>
+                        <span className={styles.planChip} data-tone="accent">
+                          {planAudienceLabel(plan)}
+                        </span>
+                      </span>
+                    </div>
+                    <Icon
+                      name="chevron-right"
+                      className={styles.planChevron}
+                      aria-hidden
+                    />
+                  </button>
+                ))}
+              </div>
+            ) : null}
+            {familyPlans.length > 0 ? (
+              isMobile ? (
+                <div className={styles.familyBloom}>
+                  <BloomMenu
+                    items={familyBloomItems}
+                    columns={familyBloomItems.length <= 2 ? 1 : 2}
+                    size="compact"
+                    tone="quiet"
+                    disabled={plansDisabled}
+                    triggerLabel="Family packs"
+                    triggerIcon="users"
+                    panelTitle="Family packs"
+                    description="Cover multiple seats with one subscription."
+                    onSelect={(planId) => {
+                      const plan = familyPlans.find(
+                        (entry) => entry.id === planId,
+                      );
+                      if (plan) openPurchase(plan);
+                    }}
+                  />
+                </div>
+              ) : (
+                <div className={styles.familyDesktop}>
+                  <h3 className={styles.planGroupTitle}>Family packs</h3>
+                  <div className={styles.planList}>
+                    {familyPlans.map((plan) => (
+                      <button
+                        key={plan.id}
+                        type="button"
+                        className={styles.planCard}
+                        disabled={plansDisabled}
+                        aria-label={`${planSeatA11yLabel(plan)}, ${planCadenceLabel(plan)}, ${planPriceLabel(plan)}`}
+                        onClick={() => openPurchase(plan)}
+                      >
+                        <div className={styles.planCopy}>
+                          <span className={styles.planPrice}>
+                            {planPriceLabel(plan)}
+                          </span>
+                          <span className={styles.planChips}>
+                            <span className={styles.planChip}>
+                              {planCadenceLabel(plan)}
+                            </span>
+                            <span
+                              className={styles.planChip}
+                              data-tone="accent"
+                            >
+                              {planSeatShortLabel(plan)}
+                            </span>
+                          </span>
+                        </div>
+                        <Icon
+                          name="chevron-right"
+                          className={styles.planChevron}
+                          aria-hidden
+                        />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )
+            ) : null}
           </div>
         ) : null}
 

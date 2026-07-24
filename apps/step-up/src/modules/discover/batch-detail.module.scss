@@ -122,6 +122,34 @@
   letter-spacing: -0.02em;
 }
 
+.planFacts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2, 0.5rem);
+}
+
+.planFact {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.75rem;
+  padding-inline: 0.65rem;
+  border-radius: var(--radius-full, 999px);
+  background: color-mix(in srgb, var(--color-fg) 6%, transparent);
+  color: color-mix(in srgb, var(--color-fg) 72%, transparent);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.planFact[data-full="true"] {
+  background: color-mix(
+    in srgb,
+    var(--color-danger, #ef4444) 12%,
+    transparent
+  );
+  color: var(--color-danger, #ef4444);
+}
+
 .planList {
   display: flex;
   flex-direction: column;
@@ -134,21 +162,24 @@
   justify-content: space-between;
   gap: var(--space-3, 0.75rem);
   width: 100%;
-  padding: var(--space-3, 0.75rem) var(--space-4, 1rem);
-  border: 1px solid color-mix(in srgb, var(--color-fg) 10%, transparent);
+  padding: var(--space-4, 1rem);
+  border: 1px solid color-mix(in srgb, var(--color-fg) 8%, transparent);
   border-radius: var(--radius-2xl, 1.25rem);
-  background: var(--color-bg-elevated, var(--color-bg));
+  background: var(--color-card, var(--color-bg-elevated, var(--color-bg)));
+  box-shadow: var(--shadow-sm, 0 1px 2px rgb(0 0 0 / 5%));
   color: inherit;
   text-align: left;
   cursor: pointer;
   transition:
     transform var(--interaction-transition-fast, 120ms) ease,
     border-color var(--interaction-transition-fast, 120ms) ease,
-    background-color var(--interaction-transition-fast, 120ms) ease;
+    background-color var(--interaction-transition-fast, 120ms) ease,
+    box-shadow var(--interaction-transition-fast, 120ms) ease;
 
   &:hover:not(:disabled) {
-    border-color: color-mix(in srgb, var(--color-primary) 40%, transparent);
+    border-color: color-mix(in srgb, var(--color-primary) 36%, transparent);
     background: color-mix(in srgb, var(--color-primary) 6%, transparent);
+    box-shadow: var(--shadow-md, 0 4px 12px rgb(0 0 0 / 8%));
   }
 
   &:active:not(:disabled) {
@@ -164,26 +195,68 @@
 .planCopy {
   display: flex;
   flex-direction: column;
-  gap: 0.15rem;
+  gap: var(--space-2, 0.5rem);
   min-width: 0;
 }
 
-.planMeta {
+.planPrice {
+  font-weight: 800;
+  font-size: 1.25rem;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+}
+
+.planChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.planChip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.5rem;
+  padding-inline: 0.55rem;
+  border-radius: var(--radius-full, 999px);
+  background: color-mix(in srgb, var(--color-fg) 6%, transparent);
+  color: color-mix(in srgb, var(--color-fg) 68%, transparent);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  text-transform: none;
+}
+
+.planChip[data-tone="accent"] {
+  background: var(--tag-lilac-bg, color-mix(in srgb, var(--color-primary) 16%, transparent));
+  color: var(--tag-lilac-fg, var(--color-primary));
+}
+
+.planChevron {
+  flex-shrink: 0;
+  width: 1.125rem;
+  height: 1.125rem;
+  color: color-mix(in srgb, var(--color-fg) 40%, transparent);
+}
+
+.familyBloom {
+  display: flex;
+  justify-content: flex-start;
+  padding-top: var(--space-1, 0.25rem);
+}
+
+.familyDesktop {
   display: flex;
   flex-direction: column;
-  align-items: flex-end;
-  gap: 0.1rem;
-  flex-shrink: 0;
+  gap: var(--space-2, 0.5rem);
+  padding-top: var(--space-1, 0.25rem);
 }
 
-.planPrice {
+.planGroupTitle {
+  margin: 0;
+  font-size: 0.8125rem;
   font-weight: 700;
-  font-size: 0.9375rem;
-}
-
-.planCadence {
-  font-size: 0.75rem;
-  color: color-mix(in srgb, var(--color-fg) 56%, transparent);
+  letter-spacing: -0.01em;
+  color: color-mix(in srgb, var(--color-fg) 62%, transparent);
 }
 
 @media (prefers-reduced-motion: reduce) {
