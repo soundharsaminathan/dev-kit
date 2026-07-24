@@ -4,9 +4,9 @@
   box-shadow: var(--elevation-3, 0 16px 40px rgb(0 0 0 / 18%));
 }
 
-.panelFullscreen {
-  width: 100dvw;
-  max-width: none;
+.panel.panelFullscreen {
+  width: calc(100% + 3rem);
+  max-width: calc(100% + 3rem);
   margin-inline-start: -3rem;
   border: none;
   border-radius: 0;

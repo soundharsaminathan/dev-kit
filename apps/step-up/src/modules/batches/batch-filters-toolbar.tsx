@@ -1,3 +1,4 @@
+import { SearchField } from "@dev-ui/components/search-field";
 import { Icon } from "@dev-ui/icons";
 import { useMemo, useState } from "react";
 import { FilterChipRow } from "@/modules/ui/filter-chip-row";
@@ -118,6 +119,14 @@ export function BatchFiltersToolbar({
 
   return (
     <div className={styles.wrap}>
+      <SearchField
+        aria-label="Search batches"
+        placeholder="Search batches"
+        value={search}
+        onChange={onSearchChange}
+        className={styles.search}
+      />
+
       <FilterChipRow
         chips={quickChips}
         selected={selectedQuick}
