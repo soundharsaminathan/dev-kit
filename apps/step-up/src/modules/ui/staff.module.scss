@@ -128,12 +128,33 @@
 }
 
 .rowCard {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: var(--space-1, 0.25rem);
   padding: var(--space-3, 0.75rem);
   width: 100%;
   text-align: start;
+  overflow: hidden;
+}
+
+.newRibbon {
+  position: absolute;
+  top: 0.7rem;
+  right: -1.85rem;
+  width: 6.25rem;
+  padding: 0.2rem 0;
+  background: var(--color-primary);
+  color: var(--color-fg-on-primary, #fff);
+  font-size: 0.625rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  line-height: 1.2;
+  text-align: center;
+  text-transform: uppercase;
+  transform: rotate(45deg);
+  pointer-events: none;
+  box-shadow: var(--shadow-sm, 0 1px 3px rgb(0 0 0 / 12%));
 }
 
 .rowWithAvatar {

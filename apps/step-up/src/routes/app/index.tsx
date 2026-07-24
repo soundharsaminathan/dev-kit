@@ -417,6 +417,10 @@ function AppDashboardPage() {
                   <Link
                     key={tile.key}
                     to="/app/students"
+                    search={{
+                      stage: tile.key,
+                      period: funnelPeriod,
+                    }}
                     className={staff.linkWrap}
                   >
                     <div className={staff.statTile}>
