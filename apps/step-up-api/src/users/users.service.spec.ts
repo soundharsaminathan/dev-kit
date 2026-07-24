@@ -601,3 +601,130 @@ describe("UsersService family members", () => {
     expect(result).toEqual({ removed: true, deletedDependent: true });
   });
 });
+
+describe("UsersService.createStudent", () => {
+  const prisma = {
+    user: {
+      findFirst: vi.fn(),
+      create: vi.fn(),
+    },
+    batch: {
+      findUnique: vi.fn(),
+    },
+    batchEnrollment: {
+      upsert: vi.fn(),
+      findMany: vi.fn().mockResolvedValue([]),
+      findFirst: vi.fn().mockResolvedValue(null),
+    },
+    booking: {
+      findMany: vi.fn().mockResolvedValue([]),
+      findFirst: vi.fn().mockResolvedValue(null),
+      updateMany: vi.fn().mockResolvedValue({ count: 0 }),
+    },
+    $queryRaw: vi.fn().mockResolvedValue([{ id: "batch-1" }]),
+    $transaction: vi.fn(async (fn: (tx: unknown) => unknown) => fn(prisma)),
+  };
+  const crypto = {
+    decryptUser: vi.fn((user: Record<string, unknown>) => ({
+      ...user,
+      email: "new@stepup.dev",
+      name: "New Student",
+      phone: null,
+      bio: null,
+      instagramUrl: null,
+    })),
+    sealPii: vi.fn(() => ({
+      emailHash: "hash",
+      encryptedKey: "key",
+      piiCiphertext: "cipher",
+      piiIv: "iv",
+    })),
+    hashEmail: vi.fn(() => "hash"),
+  };
+  const media = {
+    signReadUrl: vi.fn(async (value: string | null) => value),
+  };
+
+  let service: UsersService;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    prisma.$transaction.mockImplementation(
+      async (fn: (tx: typeof prisma) => unknown) => fn(prisma),
+    );
+    prisma.$queryRaw.mockResolvedValue([{ id: "batch-1" }]);
+    service = new UsersService(
+      prisma as never,
+      crypto as never,
+      media as never,
+    );
+  });
+
+  it("creates a student and optionally enrolls them in a batch", async () => {
+    prisma.user.findFirst.mockResolvedValue(null);
+    prisma.user.create.mockResolvedValue(
+      makeUser({
+        id: "student-new",
+        firebaseUid: "staff-created:abc",
+        role: UserRole.STUDENT,
+      }),
+    );
+    prisma.batch.findUnique.mockResolvedValue({
+      id: "batch-1",
+      studioId: "studio-seed-1",
+      active: true,
+      capacity: 20,
+    });
+    prisma.batchEnrollment.upsert.mockResolvedValue({
+      batchId: "batch-1",
+      studentId: "student-new",
+    });
+
+    const result = await service.createStudent({
+      studioId: "studio-seed-1",
+      name: "New Student",
+      email: "new@stepup.dev",
+      gender: Gender.FEMALE,
+      ageRange: AgeRange.TWENTY_TO_FORTY,
+      styles: ["Hip Hop"],
+      batchId: "batch-1",
+    });
+
+    expect(result.id).toBe("student-new");
+    expect(prisma.batchEnrollment.upsert).toHaveBeenCalledWith({
+      where: {
+        batchId_studentId: { batchId: "batch-1", studentId: "student-new" },
+      },
+      update: {},
+      create: { batchId: "batch-1", studentId: "student-new" },
+    });
+  });
+
+  it("rejects enrollment into a batch from another studio", async () => {
+    prisma.user.findFirst.mockResolvedValue(null);
+    prisma.user.create.mockResolvedValue(
+      makeUser({
+        id: "student-new",
+        firebaseUid: "staff-created:abc",
+        role: UserRole.STUDENT,
+      }),
+    );
+    prisma.batch.findUnique.mockResolvedValue({
+      id: "batch-other",
+      studioId: "studio-other",
+      active: true,
+      capacity: 20,
+    });
+
+    await expect(
+      service.createStudent({
+        studioId: "studio-seed-1",
+        name: "New Student",
+        email: "new@stepup.dev",
+        gender: Gender.FEMALE,
+        ageRange: AgeRange.TWENTY_TO_FORTY,
+        batchId: "batch-other",
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+});

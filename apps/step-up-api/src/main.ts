@@ -21,7 +21,7 @@ async function bootstrap() {
     }),
   );
 
-  const redisIoAdapter = new RedisIoAdapter(app, process.env.REDIS_URL ?? null);
+  const redisIoAdapter = new RedisIoAdapter(app, process.env.REDIS_URL || null);
   await redisIoAdapter.connectToRedis();
   app.useWebSocketAdapter(redisIoAdapter);
 

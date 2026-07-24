@@ -311,9 +311,9 @@ function MeHomePage() {
           ) : null}
 
           <p className={styles.madeWith}>
-            Made with
+            Make with
             <Icon name="heart" className={styles.madeWithHeart} aria-hidden />
-            love in Chennai
+            in Chennai
           </p>
         </div>
       </PullToRefresh>

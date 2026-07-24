@@ -113,6 +113,8 @@ export default defineConfig({
         SENTRY_ENVIRONMENT: "e2e",
         STEP_UP_E2E: "true",
         SENTRY_DSN: "",
+        // E2E disables BullMQ — app .env may still point at a quota-exhausted Redis.
+        REDIS_URL: "",
       },
     },
     {
