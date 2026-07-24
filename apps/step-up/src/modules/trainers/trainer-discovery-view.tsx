@@ -72,13 +72,6 @@ function locationLine(studioName?: string | null, branchName?: string | null) {
   return null;
 }
 
-function styleSummary(stylesList: string[]) {
-  return stylesList
-    .slice(0, 3)
-    .map((style) => danceStyleLabel(style))
-    .join(" · ");
-}
-
 export function TrainerDiscoveryView({
   trainers,
   isFollowPending,
@@ -251,7 +244,6 @@ export function TrainerDiscoveryView({
   const favoriteActive =
     trainer.isFollowing || trainer.followRequestStatus === "PENDING";
   const favoritePending = isFollowPending?.(trainer.id) ?? false;
-  const stylesLine = styleSummary(trainer.styles);
 
   return (
     <section className={styles.root} aria-label="Instructor discovery">
@@ -411,12 +403,6 @@ export function TrainerDiscoveryView({
                     <p className={styles.location}>
                       <Icon name="map-pin" aria-hidden />
                       <span>{location}</span>
-                    </p>
-                  ) : null}
-
-                  {stylesLine ? (
-                    <p className={styles.meta}>
-                      <span className={styles.metaStrong}>{stylesLine}</span>
                     </p>
                   ) : null}
 

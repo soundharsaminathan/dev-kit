@@ -13,6 +13,7 @@ import type { ChatConversation } from "@/modules/chat/types";
 import { AppShell } from "@/modules/layout/app-shell";
 import { PublicShell } from "@/modules/layout/public-shell";
 import { ProfileHeader } from "@/modules/social/profile-header";
+import { ProfileSkeleton } from "@/modules/social/profile-skeleton";
 import { ProfileTabs } from "@/modules/social/profile-tabs";
 import type { SocialProfile } from "@/modules/social/types";
 import { useFollowMutations } from "@/modules/social/use-follow";
@@ -90,52 +91,55 @@ function UserProfilePage() {
   return (
     <AppShell variant={shellVariant}>
       <Screen title={query.data?.name ?? "Profile"} showBack onBack={goBack}>
-        <ApiState
-          isLoading={query.isLoading}
-          isError={query.isError}
-          error={query.error}
-          data={query.data}
-          emptyTitle="Profile not found"
-          emptyDescription="This profile is unavailable."
-        >
-          {(profile) => (
-            <div className={styles.root}>
-              <ProfileHeader
-                profile={profile}
-                followPending={isPendingFor(id)}
-                messagePending={messageMutation.isPending}
-                onFollow={() =>
-                  follow(
-                    id,
-                    profile.profileVisibility === "PRIVATE"
-                      ? "requested"
-                      : "following",
-                  )
-                }
-                onUnfollow={() => unfollow(id)}
-                onMessage={
-                  profile.isOwnProfile
-                    ? undefined
-                    : () => messageMutation.mutate()
-                }
-                onEdit={
-                  profile.isOwnProfile
-                    ? () => {
-                        void navigate({
-                          to:
-                            user.role === "STUDENT" || user.role === "PARENT"
-                              ? "/me/profile/edit"
-                              : "/app/profile",
-                        });
-                      }
-                    : undefined
-                }
-              />
+        {query.isLoading ? <ProfileSkeleton /> : null}
+        {!query.isLoading ? (
+          <ApiState
+            isLoading={false}
+            isError={query.isError}
+            error={query.error}
+            data={query.data}
+            emptyTitle="Profile not found"
+            emptyDescription="This profile is unavailable."
+          >
+            {(profile) => (
+              <div className={styles.root}>
+                <ProfileHeader
+                  profile={profile}
+                  followPending={isPendingFor(id)}
+                  messagePending={messageMutation.isPending}
+                  onFollow={() =>
+                    follow(
+                      id,
+                      profile.profileVisibility === "PRIVATE"
+                        ? "requested"
+                        : "following",
+                    )
+                  }
+                  onUnfollow={() => unfollow(id)}
+                  onMessage={
+                    profile.isOwnProfile
+                      ? undefined
+                      : () => messageMutation.mutate()
+                  }
+                  onEdit={
+                    profile.isOwnProfile
+                      ? () => {
+                          void navigate({
+                            to:
+                              user.role === "STUDENT" || user.role === "PARENT"
+                                ? "/me/profile/edit"
+                                : "/app/profile",
+                          });
+                        }
+                      : undefined
+                  }
+                />
 
-              <ProfileTabs profile={profile} detailTo={batchDetailTo} />
-            </div>
-          )}
-        </ApiState>
+                <ProfileTabs profile={profile} detailTo={batchDetailTo} />
+              </div>
+            )}
+          </ApiState>
+        ) : null}
       </Screen>
     </AppShell>
   );

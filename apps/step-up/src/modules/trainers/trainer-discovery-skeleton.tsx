@@ -36,7 +36,6 @@ export function TrainerDiscoverySkeleton() {
         <div className={styles.skeletonBody}>
           <span className={styles.skeletonName} />
           <span className={styles.skeletonLine} data-width="md" />
-          <span className={styles.skeletonLine} data-width="sm" />
           <span className={styles.skeletonLine} data-width="lg" />
           <div className={styles.skeletonChips}>
             {CHIP_KEYS.map((key) => (
