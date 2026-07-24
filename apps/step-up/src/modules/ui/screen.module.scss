@@ -129,16 +129,16 @@
   }
 
   .title {
-    font-size: 2rem;
-    letter-spacing: -0.03em;
+    font-size: 1.25rem;
+    letter-spacing: -0.02em;
   }
 
   .subtitle {
-    font-size: 0.9375rem;
+    font-size: 0.8125rem;
   }
 
   .body {
-    gap: var(--space-4, 1rem);
+    gap: var(--space-3, 0.75rem);
   }
 }
 

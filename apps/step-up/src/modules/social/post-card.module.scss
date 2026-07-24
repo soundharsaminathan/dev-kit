@@ -3,8 +3,8 @@
 .card {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
-  padding-bottom: 1.25rem;
+  gap: var(--space-2, 0.5rem);
+  padding-bottom: var(--space-3, 0.75rem);
   border-bottom: 1px solid color-mix(in srgb, var(--color-fg) 10%, transparent);
 }
 
@@ -12,7 +12,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.75rem;
+  gap: var(--space-3, 0.75rem);
 }
 
 .author {
@@ -23,14 +23,15 @@
 }
 
 .repostLabel {
-  font-size: 0.85rem;
+  font-size: 0.8125rem;
 }
 
 .media {
   position: relative;
   display: block;
   overflow: hidden;
-  border-radius: var(--radius-md, 0.5rem);
+  margin-inline: calc(-1 * var(--space-4, 1rem));
+  border-radius: 0;
   background: color-mix(in srgb, var(--color-fg) 6%, transparent);
   aspect-ratio: 1;
 }
@@ -62,4 +63,10 @@
   flex-wrap: wrap;
   gap: 0.25rem;
   align-items: center;
+}
+
+@media (min-width: 768px) {
+  .media {
+    margin-inline: calc(-1 * var(--space-6, 1.5rem));
+  }
 }

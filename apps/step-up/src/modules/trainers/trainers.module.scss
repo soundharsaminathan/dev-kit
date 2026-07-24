@@ -3,7 +3,7 @@
 .cardsList {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3, 0.75rem);
+  gap: var(--space-2, 0.5rem);
 }
 
 .cardShell {
@@ -81,8 +81,8 @@
 
 .cardName {
   font-size: 0.9375rem;
-  font-weight: 700;
-  letter-spacing: -0.02em;
+  font-weight: 600;
+  letter-spacing: -0.01em;
   line-height: 1.25;
 }
 
@@ -122,8 +122,8 @@
 .avatarLg {
   flex-shrink: 0;
   --avatar-radius: var(--radius-lg, 0.75rem);
-  width: 3.25rem;
-  height: 3.25rem;
+  width: 2.75rem;
+  height: 2.75rem;
 }
 
 .avatarMd {
@@ -377,7 +377,7 @@
   max-width: 100%;
   overflow: hidden;
   box-sizing: border-box;
-  padding-inline: 1.25rem;
+  padding-inline: 0.75rem;
 }
 
 .stackTrack {
@@ -394,7 +394,7 @@
   position: relative;
   display: grid;
   grid-template-rows: minmax(0, 1fr) auto;
-  height: 26rem;
+  height: 20.5rem;
   border-radius: var(--radius-2xl, 1.25rem);
   border: var(--card-border-width, 1px) solid
     var(--card-border-color, color-mix(in srgb, var(--color-fg) 12%, transparent));
@@ -463,7 +463,7 @@
 }
 
 .stackPhotoFallback {
-  font-size: 3.5rem;
+  font-size: 2.75rem;
   font-weight: 800;
   letter-spacing: -0.04em;
   color: color-mix(in srgb, var(--color-fg) 42%, transparent);
@@ -475,7 +475,7 @@
   justify-content: center;
   gap: var(--space-1, 0.25rem);
   min-height: 0;
-  padding: var(--space-3, 0.75rem) var(--space-4, 1rem);
+  padding: var(--space-2, 0.5rem) var(--space-3, 0.75rem);
   text-align: center;
   background: var(--card-background, var(--color-card, var(--color-bg)));
   border-top: 1px solid

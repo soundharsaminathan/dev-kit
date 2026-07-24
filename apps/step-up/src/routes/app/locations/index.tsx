@@ -144,7 +144,7 @@ function LocationsPage() {
                   footer={
                     <div className={styles.cardActions}>
                       <TouchButton
-                        size="md"
+                        size="sm"
                         variant="default"
                         onClick={() => {
                           void navigate({
@@ -160,8 +160,8 @@ function LocationsPage() {
                         Calendar
                       </TouchButton>
                       <TouchButton
-                        size="md"
-                        variant="default"
+                        size="sm"
+                        variant="quiet"
                         onClick={() => {
                           void navigate({
                             to: "/app/locations/$id/edit",
@@ -172,7 +172,7 @@ function LocationsPage() {
                         Edit
                       </TouchButton>
                       <TouchButton
-                        size="md"
+                        size="sm"
                         variant="quiet"
                         onClick={() => {
                           if (

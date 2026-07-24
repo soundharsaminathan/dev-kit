@@ -1,7 +1,7 @@
 .steps {
   display: flex;
   gap: var(--space-2, 0.5rem);
-  margin-bottom: var(--space-4, 1rem);
+  margin-bottom: var(--space-2, 0.5rem);
 }
 
 .step {
@@ -21,7 +21,7 @@
 }
 
 .stepLabel {
-  margin: 0 0 var(--space-3, 0.75rem);
+  margin: 0 0 var(--space-2, 0.5rem);
   font-size: 0.8125rem;
   font-weight: 600;
   color: color-mix(in srgb, var(--color-fg) 58%, transparent);

@@ -5,7 +5,7 @@
 }
 
 .root[data-has-banner="true"] {
-  gap: var(--space-4, 1rem);
+  gap: var(--space-3, 0.75rem);
 }
 
 .intro {
@@ -13,7 +13,7 @@
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-2, 0.5rem) var(--space-3, 0.75rem);
-  padding: var(--space-3, 0.75rem) var(--space-4, 1rem);
+  padding: var(--space-2, 0.5rem) var(--space-3, 0.75rem);
   border-radius: var(--radius-2xl, 1.25rem);
   background: var(--hero-gradient, var(--color-primary));
   color: var(--color-fg-on-primary);

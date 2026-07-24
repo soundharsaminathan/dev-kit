@@ -1,36 +1,36 @@
 .root {
   display: flex;
   flex-direction: column;
-  gap: var(--space-4, 1rem);
+  gap: var(--space-2, 0.5rem);
 }
 
 .contest {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3, 0.75rem);
-  padding: var(--space-4, 1rem);
+  gap: var(--space-2, 0.5rem);
+  padding: var(--space-3, 0.75rem);
   border-radius: var(--radius-2xl, 1.25rem);
   background: color-mix(in srgb, var(--color-fg) 4%, transparent);
 }
 
 .contestTitle {
   margin: 0;
-  font-size: 1.125rem;
-  font-weight: 700;
-  letter-spacing: -0.02em;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
 }
 
 .contestMeta {
-  margin: 0.25rem 0 0;
+  margin: 0.125rem 0 0;
   font-size: 0.8125rem;
   color: color-mix(in srgb, var(--color-fg) 56%, transparent);
 }
 
 .contestDesc {
   margin: 0;
-  font-size: 0.875rem;
-  line-height: 1.45;
-  color: color-mix(in srgb, var(--color-fg) 72%, transparent);
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  color: color-mix(in srgb, var(--color-fg) 68%, transparent);
 }
 
 .categories {
@@ -69,7 +69,7 @@
 .registerForm {
   display: flex;
   flex-direction: column;
-  gap: var(--space-4, 1rem);
+  gap: var(--space-3, 0.75rem);
 }
 
 .fieldGroup {

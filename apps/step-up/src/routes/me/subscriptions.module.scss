@@ -7,8 +7,8 @@
 .row {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2, 0.5rem);
-  padding: var(--space-4, 1rem);
+  gap: var(--space-1, 0.25rem);
+  padding: var(--space-3, 0.75rem);
   border-radius: var(--radius-2xl, 1.25rem);
   background: color-mix(in srgb, var(--color-fg) 4%, transparent);
 }
@@ -22,9 +22,9 @@
 
 .rowTitle {
   margin: 0;
-  font-size: 1.0625rem;
-  font-weight: 700;
-  letter-spacing: -0.02em;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
 }
 
 .rowType {
@@ -36,9 +36,9 @@
 .rowMeta {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-2, 0.5rem) var(--space-4, 1rem);
-  font-size: 0.875rem;
-  color: color-mix(in srgb, var(--color-fg) 68%, transparent);
+  gap: var(--space-2, 0.5rem) var(--space-3, 0.75rem);
+  font-size: 0.8125rem;
+  color: color-mix(in srgb, var(--color-fg) 56%, transparent);
 }
 
 .price {
@@ -59,13 +59,13 @@
 .sheetBody {
   display: flex;
   flex-direction: column;
-  gap: var(--space-4, 1rem);
+  gap: var(--space-3, 0.75rem);
 }
 
 .sheetDesc {
   margin: 0;
-  font-size: 0.9375rem;
-  line-height: 1.5;
+  font-size: 0.875rem;
+  line-height: 1.45;
   color: color-mix(in srgb, var(--color-fg) 72%, transparent);
 }
 
