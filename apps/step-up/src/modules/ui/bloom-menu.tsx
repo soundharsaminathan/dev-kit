@@ -13,12 +13,16 @@ export type BloomMenuItem = {
 
 export type BloomMenuProps = {
   items: BloomMenuItem[];
-  onSelect?: (id: string) => void;
-  triggerLabel?: string;
-  triggerIcon?: IconName | null;
-  panelTitle?: string;
-  className?: string;
-  columns?: 1 | 2 | 3;
+  onSelect?: ((id: string) => void) | undefined;
+  triggerLabel?: string | undefined;
+  triggerIcon?: IconName | null | undefined;
+  panelTitle?: string | undefined;
+  description?: string | undefined;
+  className?: string | undefined;
+  columns?: 1 | 2 | 3 | undefined;
+  size?: "default" | "compact" | undefined;
+  tone?: "primary" | "quiet" | undefined;
+  disabled?: boolean | undefined;
 };
 
 const EASE_OUT = [0.16, 1, 0.3, 1] as const;
@@ -49,8 +53,12 @@ export function BloomMenu({
   triggerLabel = "Create",
   triggerIcon = "plus",
   panelTitle = "Create",
+  description,
   className,
   columns,
+  size = "default",
+  tone = "primary",
+  disabled = false,
 }: BloomMenuProps) {
   const [open, setOpen] = useState(false);
   const reduce = useReducedMotion();
@@ -82,13 +90,26 @@ export function BloomMenu({
 
   const morph = reduce ? { duration: 0.15 } : SPRING_FOLDER;
   const rootClassName = [styles.root, className].filter(Boolean).join(" ");
+  const triggerClassName = [
+    styles.trigger,
+    size === "compact" ? styles.triggerCompact : null,
+    tone === "quiet" ? styles.triggerQuiet : null,
+  ]
+    .filter(Boolean)
+    .join(" ");
   const rows = Math.ceil(items.length / cols);
   const triggerIconNode =
     triggerIcon == null ? null : <Icon name={triggerIcon} />;
 
   function handleSelect(id: string) {
+    if (disabled) return;
     onSelect?.(id);
     setOpen(false);
+  }
+
+  function openMenu() {
+    if (disabled) return;
+    setOpen(true);
   }
 
   if (isMobile) {
@@ -96,10 +117,12 @@ export function BloomMenu({
       <div className={rootClassName}>
         <button
           type="button"
-          className={styles.trigger}
+          className={triggerClassName}
           aria-haspopup="dialog"
           aria-expanded={open}
-          onClick={() => setOpen(true)}
+          aria-disabled={disabled || undefined}
+          disabled={disabled}
+          onClick={openMenu}
         >
           <span className={styles.triggerLabel}>
             {triggerLabel}
@@ -108,6 +131,9 @@ export function BloomMenu({
         </button>
 
         <AppBottomSheet isOpen={open} onOpenChange={setOpen} title={panelTitle}>
+          {description ? (
+            <p className={styles.description}>{description}</p>
+          ) : null}
           <div className={styles.sheetList}>
             {items.map((item) => (
               <button
@@ -137,7 +163,15 @@ export function BloomMenu({
 
   return (
     <div ref={ref} className={rootClassName}>
-      <div className={styles.spacer} aria-hidden>
+      <div
+        className={[
+          styles.spacer,
+          size === "compact" ? styles.spacerCompact : null,
+        ]
+          .filter(Boolean)
+          .join(" ")}
+        aria-hidden
+      >
         {triggerLabel}
         {triggerIconNode}
       </div>
@@ -160,7 +194,12 @@ export function BloomMenu({
                 transition={{ delay: reduce ? 0 : 0.12, duration: 0.2 }}
               >
                 <div className={styles.header}>
-                  <span className={styles.headerTitle}>{panelTitle}</span>
+                  <div className={styles.headerCopy}>
+                    <span className={styles.headerTitle}>{panelTitle}</span>
+                    {description ? (
+                      <p className={styles.description}>{description}</p>
+                    ) : null}
+                  </div>
                   <button
                     type="button"
                     className={styles.close}
@@ -252,12 +291,14 @@ export function BloomMenu({
               type="button"
               layoutId={layoutId}
               transition={morph}
-              style={{ borderRadius: 16 }}
-              className={styles.trigger}
+              style={{ borderRadius: size === "compact" ? 12 : 16 }}
+              className={triggerClassName}
               aria-haspopup="menu"
               aria-expanded={open}
-              {...(reduce ? {} : { whileTap: { scale: 0.97 } })}
-              onClick={() => setOpen(true)}
+              aria-disabled={disabled || undefined}
+              disabled={disabled}
+              {...(reduce || disabled ? {} : { whileTap: { scale: 0.97 } })}
+              onClick={openMenu}
             >
               <motion.span layout className={styles.triggerLabel}>
                 {triggerLabel}

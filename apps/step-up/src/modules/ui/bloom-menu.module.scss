@@ -56,6 +56,35 @@
   box-shadow: var(--shadow-sm, 0 1px 2px rgb(0 0 0 / 6%));
 }
 
+.triggerCompact {
+  min-height: 2.25rem;
+  padding-block: 0.35rem;
+  padding-inline: 0.75rem;
+  border-radius: var(--radius-lg, 0.75rem);
+  font-size: 0.75rem;
+  box-shadow: none;
+}
+
+.triggerQuiet {
+  background: var(--color-card, var(--color-bg));
+  color: var(--color-fg);
+  border: 1px solid color-mix(in srgb, var(--color-fg) 12%, transparent);
+  box-shadow: none;
+}
+
+.trigger:disabled,
+.trigger[aria-disabled="true"] {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.spacerCompact {
+  min-height: 2.25rem;
+  padding-block: 0.35rem;
+  padding-inline: 0.75rem;
+  font-size: 0.75rem;
+}
+
 .triggerLabel {
   display: inline-flex;
   align-items: center;
@@ -78,17 +107,33 @@
 
 .header {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: var(--space-2, 0.5rem);
   padding: var(--space-3, 0.75rem) var(--space-4, 1rem);
   border-bottom: 1px solid color-mix(in srgb, var(--color-border) 80%, transparent);
 }
 
+.headerCopy {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
 .headerTitle {
   font-size: 0.8125rem;
   font-weight: 600;
   color: color-mix(in srgb, var(--color-fg) 58%, transparent);
+}
+
+.description {
+  margin: 0;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  line-height: 1.4;
+  color: var(--color-fg);
 }
 
 .close {
@@ -208,6 +253,10 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-2, 0.5rem);
+}
+
+.description + .sheetList {
+  margin-top: var(--space-3, 0.75rem);
 }
 
 .sheetItem {
