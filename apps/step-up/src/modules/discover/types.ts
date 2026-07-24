@@ -27,6 +27,7 @@ export type DiscoverBatch = {
   durationMinutes?: number | null;
   scheduleLabel?: string | null;
   active: boolean;
+  isTrial?: boolean;
   trainers: Array<{
     trainer: {
       id: string;

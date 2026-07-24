@@ -769,6 +769,8 @@ export class UsersService {
         ...userPiiSelect,
         role: true,
         photoUrl: true,
+        gender: true,
+        ageRange: true,
         batchEnrollments: {
           where: { batch: { studioId } },
           select: {

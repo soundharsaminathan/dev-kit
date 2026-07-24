@@ -4,78 +4,51 @@ import { Icon } from "@dev-ui/icons";
 import { useEffect, useMemo, useState } from "react";
 import { FormInput } from "@/modules/ui/form-input";
 import { TouchButton } from "@/modules/ui/touch-button";
-import styles from "./batch-filters-panel.module.scss";
+import {
+  AGE_RANGE_OPTIONS,
+  GENDER_OPTIONS,
+  PERIOD_OPTIONS,
+  STAGE_OPTIONS,
+  type StudentFiltersDraft,
+  type StudentFunnelPeriod,
+} from "./student-filter-types";
+import styles from "./student-filters-panel.module.scss";
 
 type FilterSectionId =
   | "suggested"
-  | "status"
-  | "audience"
-  | "trial"
-  | "style"
+  | "stage"
+  | "period"
+  | "ageRange"
+  | "gender"
   | "search";
 
 const SECTIONS: Array<{ id: FilterSectionId; label: string }> = [
   { id: "suggested", label: "Suggested" },
-  { id: "status", label: "Status" },
-  { id: "audience", label: "Audience" },
-  { id: "trial", label: "Trial" },
-  { id: "style", label: "Style" },
+  { id: "stage", label: "Stage" },
+  { id: "period", label: "Period" },
+  { id: "ageRange", label: "Age range" },
+  { id: "gender", label: "Gender" },
   { id: "search", label: "Search" },
 ];
 
-const STATUS_OPTIONS = [
-  { id: "ALL", label: "All statuses" },
-  { id: "ACTIVE", label: "Active" },
-  { id: "INACTIVE", label: "Inactive" },
-];
-
-const AUDIENCE_OPTIONS = [
-  { id: "ALL", label: "All ages" },
-  { id: "KIDS", label: "Kids" },
-  { id: "ADULTS", label: "Adults" },
-];
-
-const TRIAL_OPTIONS = [
-  { id: "ALL", label: "All batches" },
-  { id: "TRIAL", label: "Trial only" },
-  { id: "NON_TRIAL", label: "Non-trial" },
-];
-
-export type BatchFiltersDraft = {
-  status: string;
-  category: string;
-  trial: string;
-  style: string | null;
-  search: string;
-};
-
-type BatchFiltersPanelProps = {
+type StudentFiltersPanelProps = {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  value: BatchFiltersDraft;
-  styleOptions: Array<{ id: string; label: string }>;
-  countMatches: (draft: BatchFiltersDraft) => number;
-  onApply: (next: BatchFiltersDraft) => void;
+  value: StudentFiltersDraft;
+  countMatches: (draft: StudentFiltersDraft) => number;
+  onApply: (next: StudentFiltersDraft) => void;
 };
 
-function withStyle(
-  draft: BatchFiltersDraft,
-  style: string | null,
-): BatchFiltersDraft {
-  return { ...draft, style };
-}
-
-export function BatchFiltersPanel({
+export function StudentFiltersPanel({
   isOpen,
   onOpenChange,
   value,
-  styleOptions,
   countMatches,
   onApply,
-}: BatchFiltersPanelProps) {
+}: StudentFiltersPanelProps) {
   const isMobile = useIsMobile();
   const [section, setSection] = useState<FilterSectionId>("suggested");
-  const [draft, setDraft] = useState<BatchFiltersDraft>(value);
+  const [draft, setDraft] = useState<StudentFiltersDraft>(value);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -90,17 +63,17 @@ export function BatchFiltersPanel({
       : `Show ${resultCount} result${resultCount === 1 ? "" : "s"}`;
 
   const activeCounts = useMemo(() => {
-    const statusActive = draft.status !== "ALL" ? 1 : 0;
-    const audienceActive = draft.category !== "ALL" ? 1 : 0;
-    const trialActive = draft.trial !== "ALL" ? 1 : 0;
-    const styleActive = draft.style ? 1 : 0;
+    const stageActive = draft.stage !== "ALL" ? 1 : 0;
+    const periodActive = draft.period !== "lifetime" ? 1 : 0;
+    const ageActive = draft.ageRange !== "ALL" ? 1 : 0;
+    const genderActive = draft.gender !== "ALL" ? 1 : 0;
     const searchActive = draft.search.trim() ? 1 : 0;
     return {
-      suggested: statusActive + audienceActive + trialActive + styleActive,
-      status: statusActive,
-      audience: audienceActive,
-      trial: trialActive,
-      style: styleActive,
+      suggested: stageActive + periodActive + ageActive + genderActive,
+      stage: stageActive,
+      period: periodActive,
+      ageRange: ageActive,
+      gender: genderActive,
       search: searchActive,
     } satisfies Record<FilterSectionId, number>;
   }, [draft]);
@@ -112,10 +85,10 @@ export function BatchFiltersPanel({
 
   function clearAll() {
     setDraft({
-      status: "ALL",
-      category: "ALL",
-      trial: "ALL",
-      style: null,
+      stage: "ALL",
+      period: "lifetime",
+      ageRange: "ALL",
+      gender: "ALL",
       search: "",
     });
   }
@@ -171,20 +144,19 @@ export function BatchFiltersPanel({
               <div className={styles.section}>
                 <h3 className={styles.sectionTitle}>Suggested</h3>
                 <div className={styles.chipGrid}>
-                  {STATUS_OPTIONS.filter((option) => option.id !== "ALL").map(
+                  {STAGE_OPTIONS.filter((option) => option.id !== "ALL").map(
                     (option) => (
                       <button
                         key={option.id}
                         type="button"
                         className={styles.optionChip}
                         data-active={
-                          draft.status === option.id ? "true" : undefined
+                          draft.stage === option.id ? "true" : undefined
                         }
                         onClick={() =>
                           setDraft((prev) => ({
                             ...prev,
-                            status:
-                              prev.status === option.id ? "ALL" : option.id,
+                            stage: prev.stage === option.id ? "ALL" : option.id,
                           }))
                         }
                       >
@@ -192,77 +164,81 @@ export function BatchFiltersPanel({
                       </button>
                     ),
                   )}
-                  {AUDIENCE_OPTIONS.filter((option) => option.id !== "ALL").map(
-                    (option) => (
-                      <button
-                        key={option.id}
-                        type="button"
-                        className={styles.optionChip}
-                        data-active={
-                          draft.category === option.id ? "true" : undefined
-                        }
-                        onClick={() =>
-                          setDraft((prev) => ({
-                            ...prev,
-                            category:
-                              prev.category === option.id ? "ALL" : option.id,
-                          }))
-                        }
-                      >
-                        {option.label}
-                      </button>
-                    ),
-                  )}
-                  {TRIAL_OPTIONS.filter((option) => option.id !== "ALL").map(
-                    (option) => (
-                      <button
-                        key={option.id}
-                        type="button"
-                        className={styles.optionChip}
-                        data-active={
-                          draft.trial === option.id ? "true" : undefined
-                        }
-                        onClick={() =>
-                          setDraft((prev) => ({
-                            ...prev,
-                            trial: prev.trial === option.id ? "ALL" : option.id,
-                          }))
-                        }
-                      >
-                        {option.label}
-                      </button>
-                    ),
-                  )}
-                  {styleOptions.slice(0, 6).map((option) => (
+                  {PERIOD_OPTIONS.filter(
+                    (option) => option.id !== "lifetime",
+                  ).map((option) => (
                     <button
                       key={option.id}
                       type="button"
                       className={styles.optionChip}
                       data-active={
-                        draft.style === option.id ? "true" : undefined
+                        draft.period === option.id ? "true" : undefined
                       }
                       onClick={() =>
-                        setDraft((prev) =>
-                          withStyle(
-                            prev,
-                            prev.style === option.id ? null : option.id,
-                          ),
-                        )
+                        setDraft((prev) => ({
+                          ...prev,
+                          period:
+                            prev.period === option.id
+                              ? "lifetime"
+                              : (option.id as StudentFunnelPeriod),
+                        }))
                       }
                     >
                       {option.label}
                     </button>
                   ))}
+                  {AGE_RANGE_OPTIONS.filter(
+                    (option) => option.id !== "ALL",
+                  ).map((option) => (
+                    <button
+                      key={option.id}
+                      type="button"
+                      className={styles.optionChip}
+                      data-active={
+                        draft.ageRange === option.id ? "true" : undefined
+                      }
+                      onClick={() =>
+                        setDraft((prev) => ({
+                          ...prev,
+                          ageRange:
+                            prev.ageRange === option.id ? "ALL" : option.id,
+                        }))
+                      }
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                  {GENDER_OPTIONS.filter((option) => option.id !== "ALL").map(
+                    (option) => (
+                      <button
+                        key={option.id}
+                        type="button"
+                        className={styles.optionChip}
+                        data-active={
+                          draft.gender === option.id ? "true" : undefined
+                        }
+                        onClick={() =>
+                          setDraft((prev) => ({
+                            ...prev,
+                            gender:
+                              prev.gender === option.id ? "ALL" : option.id,
+                          }))
+                        }
+                      >
+                        {option.label}
+                      </button>
+                    ),
+                  )}
                 </div>
               </div>
             ) : null}
 
-            {section === "status" ? (
+            {section === "stage" ? (
               <div className={styles.section}>
-                <h3 className={styles.sectionTitle}>Status</h3>
+                <h3 className={styles.sectionTitle}>Stage</h3>
                 <ul className={styles.optionList}>
-                  {STATUS_OPTIONS.map((option) => {
-                    const active = draft.status === option.id;
+                  {STAGE_OPTIONS.map((option) => {
+                    const active = draft.stage === option.id;
                     return (
                       <li key={option.id}>
                         <button
@@ -273,7 +249,7 @@ export function BatchFiltersPanel({
                           onClick={() =>
                             setDraft((prev) => ({
                               ...prev,
-                              status: option.id,
+                              stage: option.id,
                             }))
                           }
                         >
@@ -289,12 +265,12 @@ export function BatchFiltersPanel({
               </div>
             ) : null}
 
-            {section === "audience" ? (
+            {section === "period" ? (
               <div className={styles.section}>
-                <h3 className={styles.sectionTitle}>Audience</h3>
+                <h3 className={styles.sectionTitle}>Period</h3>
                 <ul className={styles.optionList}>
-                  {AUDIENCE_OPTIONS.map((option) => {
-                    const active = draft.category === option.id;
+                  {PERIOD_OPTIONS.map((option) => {
+                    const active = draft.period === option.id;
                     return (
                       <li key={option.id}>
                         <button
@@ -305,7 +281,7 @@ export function BatchFiltersPanel({
                           onClick={() =>
                             setDraft((prev) => ({
                               ...prev,
-                              category: option.id,
+                              period: option.id,
                             }))
                           }
                         >
@@ -321,12 +297,12 @@ export function BatchFiltersPanel({
               </div>
             ) : null}
 
-            {section === "trial" ? (
+            {section === "ageRange" ? (
               <div className={styles.section}>
-                <h3 className={styles.sectionTitle}>Trial</h3>
+                <h3 className={styles.sectionTitle}>Age range</h3>
                 <ul className={styles.optionList}>
-                  {TRIAL_OPTIONS.map((option) => {
-                    const active = draft.trial === option.id;
+                  {AGE_RANGE_OPTIONS.map((option) => {
+                    const active = draft.ageRange === option.id;
                     return (
                       <li key={option.id}>
                         <button
@@ -337,7 +313,7 @@ export function BatchFiltersPanel({
                           onClick={() =>
                             setDraft((prev) => ({
                               ...prev,
-                              trial: option.id,
+                              ageRange: option.id,
                             }))
                           }
                         >
@@ -353,54 +329,35 @@ export function BatchFiltersPanel({
               </div>
             ) : null}
 
-            {section === "style" ? (
+            {section === "gender" ? (
               <div className={styles.section}>
-                <h3 className={styles.sectionTitle}>Style</h3>
-                {styleOptions.length === 0 ? (
-                  <p className={styles.emptyHint}>
-                    Styles appear once batches are loaded.
-                  </p>
-                ) : (
-                  <ul className={styles.optionList}>
-                    <li>
-                      <button
-                        type="button"
-                        className={styles.optionRow}
-                        data-active={!draft.style ? "true" : undefined}
-                        aria-pressed={!draft.style}
-                        onClick={() =>
-                          setDraft((prev) => withStyle(prev, null))
-                        }
-                      >
-                        <span>Any style</span>
-                        {!draft.style ? (
-                          <Icon name="check" className={styles.checkIcon} />
-                        ) : null}
-                      </button>
-                    </li>
-                    {styleOptions.map((option) => {
-                      const active = draft.style === option.id;
-                      return (
-                        <li key={option.id}>
-                          <button
-                            type="button"
-                            className={styles.optionRow}
-                            data-active={active ? "true" : undefined}
-                            aria-pressed={active}
-                            onClick={() =>
-                              setDraft((prev) => withStyle(prev, option.id))
-                            }
-                          >
-                            <span>{option.label}</span>
-                            {active ? (
-                              <Icon name="check" className={styles.checkIcon} />
-                            ) : null}
-                          </button>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                )}
+                <h3 className={styles.sectionTitle}>Gender</h3>
+                <ul className={styles.optionList}>
+                  {GENDER_OPTIONS.map((option) => {
+                    const active = draft.gender === option.id;
+                    return (
+                      <li key={option.id}>
+                        <button
+                          type="button"
+                          className={styles.optionRow}
+                          data-active={active ? "true" : undefined}
+                          aria-pressed={active}
+                          onClick={() =>
+                            setDraft((prev) => ({
+                              ...prev,
+                              gender: option.id,
+                            }))
+                          }
+                        >
+                          <span>{option.label}</span>
+                          {active ? (
+                            <Icon name="check" className={styles.checkIcon} />
+                          ) : null}
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
               </div>
             ) : null}
 
@@ -408,12 +365,12 @@ export function BatchFiltersPanel({
               <div className={styles.section}>
                 <h3 className={styles.sectionTitle}>Search</h3>
                 <FormInput
-                  label="Batch name"
+                  label="Name, email, or phone"
                   value={draft.search}
                   onChange={(search) =>
                     setDraft((prev) => ({ ...prev, search }))
                   }
-                  placeholder="Search batches"
+                  placeholder="Search students"
                 />
               </div>
             ) : null}

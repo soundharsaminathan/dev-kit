@@ -1,4 +1,4 @@
-import { Drawer, DrawerHandle } from "@dev-ui/components/drawer";
+import { Drawer } from "@dev-ui/components/drawer";
 import { useIsMobile } from "@dev-ui/hooks";
 import { Icon } from "@dev-ui/icons";
 import type { ReactNode } from "react";
@@ -35,10 +35,9 @@ export function AppDrawer({
       onOpenChange={onOpenChange}
       className={panelClassName}
     >
-      {!isMobile ? <DrawerHandle /> : null}
       <div className={styles.shell}>
         <div className={styles.header}>
-          <span className={styles.title}>{title ?? "Details"}</span>
+          <h2 className={styles.title}>{title ?? "Details"}</h2>
           <button
             type="button"
             className={styles.close}

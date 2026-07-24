@@ -4,12 +4,11 @@ import { useMemo, useState } from "react";
 import { useApi } from "@/lib/api-context";
 import { useAuth } from "@/lib/auth";
 import { STUDIO_ID } from "@/lib/constants";
-import { BookingReviewPanel } from "@/modules/bookings/booking-review-panel";
+import { BookingDetailDrawer } from "@/modules/bookings/booking-detail-drawer";
 import {
   isBookingForTrainer,
   type StudioBooking,
 } from "@/modules/bookings/types";
-import { AppDrawer } from "@/modules/ui/app-drawer";
 import { FilterChipRow } from "@/modules/ui/filter-chip-row";
 import { PressableCard } from "@/modules/ui/pressable-card";
 import { PullToRefresh } from "@/modules/ui/pull-to-refresh";
@@ -206,34 +205,29 @@ function BookingsPage() {
         </div>
       </PullToRefresh>
 
-      <AppDrawer
+      <BookingDetailDrawer
+        booking={selected}
         isOpen={selected != null}
         onOpenChange={(open) => {
           if (!open) setSelectedId(null);
         }}
-        title={selected?.student?.name ?? selected?.studentId ?? "Request"}
-      >
-        {selected ? (
-          <BookingReviewPanel
-            key={selected.id}
-            booking={selected}
-            isPending={updateStatus.isPending}
-            onConfirm={(times) =>
-              updateStatus.mutate({
-                id: selected.id,
-                status: "CONFIRMED",
-                ...times,
-              })
-            }
-            onDecline={() =>
-              updateStatus.mutate({
-                id: selected.id,
-                status: "CANCELLED",
-              })
-            }
-          />
-        ) : null}
-      </AppDrawer>
+        isPending={updateStatus.isPending}
+        onConfirm={(times) => {
+          if (!selected) return;
+          updateStatus.mutate({
+            id: selected.id,
+            status: "CONFIRMED",
+            ...times,
+          });
+        }}
+        onDecline={() => {
+          if (!selected) return;
+          updateStatus.mutate({
+            id: selected.id,
+            status: "CANCELLED",
+          });
+        }}
+      />
     </Screen>
   );
 }

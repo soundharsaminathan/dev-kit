@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Inject,
   Injectable,
@@ -29,6 +30,7 @@ import type { DecryptedUser } from "../users/user-crypto.service";
 import { UserCryptoService } from "../users/user-crypto.service";
 import {
   assertBatchHasSeat,
+  countOccupiedSeats,
   countReservedSeatsByBatch,
   lockBatchRow,
 } from "./batch-capacity";
@@ -131,6 +133,7 @@ function shapeDiscoverBatch<
     ...batch,
     remainingSeats,
     enrollmentCount,
+    occupiedSeats: occupied,
     durationMinutes: durationMinutesFromSchedule(batch.scheduleJson),
     scheduleLabel: scheduleLabelFrom(batch.scheduleJson),
     styleBadge: primaryStyleFrom(batch.danceCategories),
@@ -876,6 +879,16 @@ export class BatchesService {
     } = data;
 
     const updated = await this.prisma.$transaction(async (tx) => {
+      if (data.capacity !== undefined) {
+        await lockBatchRow(tx, id);
+        const occupied = await countOccupiedSeats(tx, id);
+        if (data.capacity < occupied) {
+          throw new ConflictException(
+            `Capacity cannot be less than occupied seats (${occupied})`,
+          );
+        }
+      }
+
       if (trainerIds) {
         await tx.batchTrainer.deleteMany({ where: { batchId: id } });
         await tx.batchTrainer.createMany({
@@ -919,11 +932,21 @@ export class BatchesService {
   }
 
   async remove(id: string) {
-    const batch = await this.prisma.batch.findUnique({ where: { id } });
-    const deleted = await this.prisma.batch.delete({ where: { id } });
-    if (batch) {
-      await this.trialSlotsCache.invalidate(batch.studioId);
+    const batch = await this.prisma.batch.findUnique({
+      where: { id },
+      include: { _count: { select: { enrollments: true } } },
+    });
+    if (!batch) {
+      throw new NotFoundException("Batch not found");
     }
+    if (batch._count.enrollments > 0) {
+      throw new ConflictException(
+        "Cannot delete a batch that has enrolled students",
+      );
+    }
+
+    const deleted = await this.prisma.batch.delete({ where: { id } });
+    await this.trialSlotsCache.invalidate(batch.studioId);
     return deleted;
   }
 

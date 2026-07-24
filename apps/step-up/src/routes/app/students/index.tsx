@@ -1,11 +1,25 @@
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useApi } from "@/lib/api-context";
 import { STUDIO_ID } from "@/lib/constants";
 import { ENTITY_ICONS } from "@/lib/entity-icons";
+import {
+  AGE_RANGES,
+  applyStudentFilters,
+  type DirectoryStudent,
+  FUNNEL_PERIODS,
+  FUNNEL_STAGES,
+  GENDERS,
+  STAGE_LABELS,
+  type StudentAgeRange,
+  type StudentFiltersDraft,
+  type StudentFunnelPeriod,
+  type StudentFunnelStage,
+  type StudentGender,
+} from "@/modules/students/student-filter-types";
+import { StudentFiltersToolbar } from "@/modules/students/student-filters-toolbar";
 import { BloomMenu } from "@/modules/ui/bloom-menu";
-import { FilterChipRow } from "@/modules/ui/filter-chip-row";
 import { PressableCard } from "@/modules/ui/pressable-card";
 import { PullToRefresh } from "@/modules/ui/pull-to-refresh";
 import { Screen } from "@/modules/ui/screen";
@@ -14,59 +28,12 @@ import staff from "@/modules/ui/staff.module.scss";
 import { EmptyState, ErrorState } from "@/modules/ui/states";
 import { TouchButton } from "@/modules/ui/touch-button";
 
-type StudentFunnelStage =
-  | "active"
-  | "signedInOnly"
-  | "trialRegistered"
-  | "trialAttended"
-  | "completedWithoutPlan";
-
-type StudentFunnelPeriod =
-  | "lifetime"
-  | "this_month"
-  | "last_quarter"
-  | "this_year_half"
-  | "this_year";
-
-type DirectoryStudent = {
-  id: string;
-  name: string;
-  email: string;
-  phone?: string | null;
-  role: string;
-  createdAt: string;
-  funnelStage: StudentFunnelStage;
-};
-
 type StudentsSearch = {
   stage?: StudentFunnelStage;
   period?: StudentFunnelPeriod;
+  ageRange?: StudentAgeRange;
+  gender?: StudentGender;
 };
-
-const STAGE_CHIPS: Array<{ id: string; label: string }> = [
-  { id: "all", label: "All" },
-  { id: "active", label: "Active" },
-  { id: "signedInOnly", label: "Signed in only" },
-  { id: "trialRegistered", label: "Trial registered" },
-  { id: "trialAttended", label: "Trial attended" },
-  { id: "completedWithoutPlan", label: "Completed, no plan" },
-];
-
-const STAGE_LABELS: Record<StudentFunnelStage, string> = {
-  active: "Active",
-  signedInOnly: "Signed in only",
-  trialRegistered: "Trial registered",
-  trialAttended: "Trial attended",
-  completedWithoutPlan: "Completed, no plan",
-};
-
-const PERIOD_CHIPS: Array<{ id: StudentFunnelPeriod; label: string }> = [
-  { id: "lifetime", label: "Lifetime" },
-  { id: "this_month", label: "This month" },
-  { id: "last_quarter", label: "Last quarter" },
-  { id: "this_year_half", label: "This year half" },
-  { id: "this_year", label: "This year" },
-];
 
 const CREATE_ITEMS = [
   { id: "single", label: "Single add", icon: ENTITY_ICONS.student },
@@ -74,22 +41,6 @@ const CREATE_ITEMS = [
 ];
 
 const NEW_USER_DAYS = 14;
-
-const FUNNEL_STAGES = new Set<string>([
-  "active",
-  "signedInOnly",
-  "trialRegistered",
-  "trialAttended",
-  "completedWithoutPlan",
-]);
-
-const FUNNEL_PERIODS = new Set<string>([
-  "lifetime",
-  "this_month",
-  "last_quarter",
-  "this_year_half",
-  "this_year",
-]);
 
 function parseSearch(search: Record<string, unknown>): StudentsSearch {
   const result: StudentsSearch = {};
@@ -99,7 +50,28 @@ function parseSearch(search: Record<string, unknown>): StudentsSearch {
   if (typeof search.period === "string" && FUNNEL_PERIODS.has(search.period)) {
     result.period = search.period as StudentFunnelPeriod;
   }
+  if (typeof search.ageRange === "string" && AGE_RANGES.has(search.ageRange)) {
+    result.ageRange = search.ageRange as StudentAgeRange;
+  }
+  if (typeof search.gender === "string" && GENDERS.has(search.gender)) {
+    result.gender = search.gender as StudentGender;
+  }
   return result;
+}
+
+function toStudentsSearch(input: {
+  stage: string;
+  period: StudentFunnelPeriod;
+  ageRange: string;
+  gender: string;
+}): StudentsSearch {
+  const next: StudentsSearch = {};
+  if (input.stage !== "ALL") next.stage = input.stage as StudentFunnelStage;
+  if (input.period !== "lifetime") next.period = input.period;
+  if (input.ageRange !== "ALL")
+    next.ageRange = input.ageRange as StudentAgeRange;
+  if (input.gender !== "ALL") next.gender = input.gender as StudentGender;
+  return next;
 }
 
 function isNewStudent(createdAt: string, now = Date.now()) {
@@ -117,30 +89,51 @@ export const Route = createFileRoute("/app/students/")({
 function StudentsPage() {
   const api = useApi();
   const navigate = useNavigate({ from: "/app/students/" });
-  const search = Route.useSearch();
-  const stage = search.stage;
-  const period = search.period ?? "lifetime";
-  const selectedStage = stage ?? "all";
+  const searchParams = Route.useSearch();
+  const stage = searchParams.stage ? searchParams.stage : "ALL";
+  const period = searchParams.period ?? "lifetime";
+  const ageRange = searchParams.ageRange ? searchParams.ageRange : "ALL";
+  const gender = searchParams.gender ? searchParams.gender : "ALL";
+  const [search, setSearch] = useState("");
 
   const query = useQuery({
-    queryKey: ["student-directory", STUDIO_ID, stage ?? "all", period],
-    queryFn: () => {
-      const params = new URLSearchParams({ period });
-      if (stage) params.set("stage", stage);
-      return api.get<DirectoryStudent[]>(
-        `/users/studio/${STUDIO_ID}/student-directory?${params.toString()}`,
-      );
-    },
+    queryKey: ["student-directory", STUDIO_ID],
+    queryFn: () =>
+      api.get<DirectoryStudent[]>(
+        `/users/studio/${STUDIO_ID}/student-directory?period=lifetime`,
+      ),
   });
 
-  const students = query.data ?? [];
+  const filtered = useMemo(
+    () =>
+      applyStudentFilters(query.data ?? [], {
+        stage,
+        period,
+        ageRange,
+        gender,
+        search,
+      }),
+    [query.data, stage, period, ageRange, gender, search],
+  );
 
   const subtitle = useMemo(() => {
-    if (stage) {
-      return `${STAGE_LABELS[stage]} · ${students.length} student${students.length === 1 ? "" : "s"}`;
+    if (stage !== "ALL") {
+      return `${STAGE_LABELS[stage as StudentFunnelStage]} · ${filtered.length} student${filtered.length === 1 ? "" : "s"}`;
+    }
+    if (
+      period !== "lifetime" ||
+      ageRange !== "ALL" ||
+      gender !== "ALL" ||
+      search.trim()
+    ) {
+      return `${filtered.length} student${filtered.length === 1 ? "" : "s"}`;
     }
     return "Students registered at your studio.";
-  }, [stage, students.length]);
+  }, [stage, period, ageRange, gender, search, filtered.length]);
+
+  function countMatches(draft: StudentFiltersDraft) {
+    return applyStudentFilters(query.data ?? [], draft).length;
+  }
 
   function handleCreateSelect(id: string) {
     if (id === "bulk") {
@@ -150,33 +143,65 @@ function StudentsPage() {
     void navigate({ to: "/app/students/new" });
   }
 
-  function setStageFilter(id: string) {
+  function setStageFilter(nextStage: string) {
     void navigate({
-      search: (prev) => {
-        if (id === "all") {
-          const next: StudentsSearch = {};
-          if (prev.period) next.period = prev.period;
-          return next;
-        }
-        return {
-          ...(prev.period ? { period: prev.period } : {}),
-          stage: id as StudentFunnelStage,
-        };
-      },
+      search: () =>
+        toStudentsSearch({
+          stage: nextStage,
+          period,
+          ageRange,
+          gender,
+        }),
     });
   }
 
-  function setPeriodFilter(id: string) {
+  function setPeriodFilter(nextPeriod: StudentFunnelPeriod) {
     void navigate({
-      search: (prev) => {
-        const next: StudentsSearch = {
-          period: id as StudentFunnelPeriod,
-        };
-        if (prev.stage) next.stage = prev.stage;
-        return next;
-      },
+      search: () =>
+        toStudentsSearch({
+          stage,
+          period: nextPeriod,
+          ageRange,
+          gender,
+        }),
     });
   }
+
+  function setAgeRangeFilter(nextAgeRange: string) {
+    void navigate({
+      search: () =>
+        toStudentsSearch({
+          stage,
+          period,
+          ageRange: nextAgeRange,
+          gender,
+        }),
+    });
+  }
+
+  function setGenderFilter(nextGender: string) {
+    void navigate({
+      search: () =>
+        toStudentsSearch({
+          stage,
+          period,
+          ageRange,
+          gender: nextGender,
+        }),
+    });
+  }
+
+  function clearFilters() {
+    setSearch("");
+    void navigate({ search: {} });
+  }
+
+  const hasActiveFilters =
+    stage !== "ALL" ||
+    period !== "lifetime" ||
+    ageRange !== "ALL" ||
+    gender !== "ALL" ||
+    Boolean(search.trim());
 
   return (
     <Screen
@@ -193,15 +218,18 @@ function StudentsPage() {
     >
       <PullToRefresh onRefresh={() => query.refetch()}>
         <div className={staff.section}>
-          <FilterChipRow
-            chips={STAGE_CHIPS}
-            selected={[selectedStage]}
-            onToggle={setStageFilter}
-          />
-          <FilterChipRow
-            chips={PERIOD_CHIPS}
-            selected={[period]}
-            onToggle={setPeriodFilter}
+          <StudentFiltersToolbar
+            stage={stage}
+            period={period}
+            ageRange={ageRange}
+            gender={gender}
+            search={search}
+            countMatches={countMatches}
+            onStageChange={setStageFilter}
+            onPeriodChange={setPeriodFilter}
+            onAgeRangeChange={setAgeRangeFilter}
+            onGenderChange={setGenderFilter}
+            onSearchChange={setSearch}
           />
 
           {query.isLoading ? <SkeletonCardList count={4} /> : null}
@@ -221,35 +249,41 @@ function StudentsPage() {
             />
           ) : null}
 
-          {query.isFetched && students.length === 0 ? (
+          {query.data && query.data.length === 0 ? (
             <EmptyState
               icon={ENTITY_ICONS.student}
-              title={stage ? "No students in this filter" : "No students yet"}
-              description={
-                stage
-                  ? "Try another stage or period, or clear the filter."
-                  : "Add a student to get started."
-              }
+              title="No students yet"
+              description="Add a student to get started."
               action={
-                stage ? (
-                  <TouchButton
-                    variant="primary"
-                    onClick={() => setStageFilter("all")}
-                  >
-                    Show all
-                  </TouchButton>
-                ) : (
-                  <TouchButton variant="primary">
-                    <Link to="/app/students/new">Add student</Link>
-                  </TouchButton>
-                )
+                <TouchButton variant="primary">
+                  <Link to="/app/students/new">Add student</Link>
+                </TouchButton>
               }
             />
           ) : null}
 
-          {students.length > 0 ? (
+          {query.data && query.data.length > 0 && filtered.length === 0 ? (
+            <EmptyState
+              icon={ENTITY_ICONS.student}
+              title="No students found"
+              description={
+                hasActiveFilters
+                  ? "Try another filter or clear your search."
+                  : "No students match."
+              }
+              action={
+                hasActiveFilters ? (
+                  <TouchButton variant="primary" onClick={clearFilters}>
+                    Clear filters
+                  </TouchButton>
+                ) : undefined
+              }
+            />
+          ) : null}
+
+          {filtered.length > 0 ? (
             <div className={staff.list}>
-              {students.map((student) => {
+              {filtered.map((student) => {
                 const showNew = isNewStudent(student.createdAt);
                 return (
                   <PressableCard
