@@ -13,6 +13,7 @@ import { BatchCardSkeletonList } from "@/modules/ui/skeleton-block";
 import staff from "@/modules/ui/staff.module.scss";
 import { EmptyState, ErrorState } from "@/modules/ui/states";
 import { TouchButton } from "@/modules/ui/touch-button";
+import styles from "./batches.module.scss";
 
 export const Route = createFileRoute("/app/batches/")({
   component: BatchesPage,
@@ -148,7 +149,7 @@ function BatchesPage() {
           ) : null}
 
           {filtered.length > 0 ? (
-            <div className={staff.list}>
+            <div className={styles.list}>
               {filtered.map((batch) => (
                 <BatchCard
                   key={batch.id}

@@ -57,14 +57,21 @@
 .batches {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
-  padding-inline: var(--space-4);
+  gap: 0;
+  padding-inline: 0;
   padding-bottom: var(--space-6);
+  background: var(--card-background, var(--color-card, var(--color-bg)));
 }
 
 .batchSkeleton {
-  height: 7.5rem;
-  border-radius: var(--radius-2xl);
+  display: flex;
+  flex-direction: row;
+  gap: var(--space-3, 0.75rem);
+  height: auto;
+  min-height: 8.5rem;
+  padding: var(--space-3, 0.75rem) var(--space-4, 1rem);
+  border-radius: 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-fg) 10%, transparent);
   background: linear-gradient(
     90deg,
     color-mix(in srgb, var(--color-fg) 6%, transparent) 0%,

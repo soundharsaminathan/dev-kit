@@ -85,6 +85,7 @@ export function toBatchCardData(batch: DiscoverBatch) {
     price: batch.price ?? null,
     durationMinutes: batch.durationMinutes ?? null,
     scheduleLabel: batch.scheduleLabel ?? null,
+    branchName: batch.branch?.name ?? null,
     trainers: batch.trainers.slice(0, 5).map((entry) => ({
       id: entry.trainer.id,
       name: entry.trainer.name,
