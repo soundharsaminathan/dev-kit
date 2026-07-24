@@ -1,5 +1,9 @@
 import { Button } from "@dev-ui/components/button";
-import { Checkbox } from "@dev-ui/components/checkbox";
+import {
+  Checkbox,
+  CheckboxControl,
+  CheckboxIndicator,
+} from "@dev-ui/components/checkbox";
 import { Field, Label } from "@dev-ui/components/field";
 import { FileTrigger } from "@dev-ui/components/file-trigger";
 import {
@@ -478,21 +482,24 @@ function NewBatchPage() {
           {step === 1 && (
             <div className={styles.choiceList}>
               {trainers.map((trainer) => (
-                <div key={trainer.id} className={styles.choice}>
-                  <Checkbox
-                    isSelected={trainerIds.includes(trainer.id)}
-                    onChange={(selected) =>
-                      setTrainerIds((current) =>
-                        selected
-                          ? [...current, trainer.id]
-                          : current.filter((id) => id !== trainer.id),
-                      )
-                    }
-                  >
-                    {trainer.name}
-                  </Checkbox>
-                  <span>{trainer.email}</span>
-                </div>
+                <CheckboxControl
+                  key={trainer.id}
+                  className={styles.choice}
+                  isSelected={trainerIds.includes(trainer.id)}
+                  onChange={(selected) =>
+                    setTrainerIds((current) =>
+                      selected
+                        ? [...current, trainer.id]
+                        : current.filter((id) => id !== trainer.id),
+                    )
+                  }
+                >
+                  <span className={styles.choiceMain}>
+                    <CheckboxIndicator />
+                    <span className={styles.choiceTitle}>{trainer.name}</span>
+                  </span>
+                  <span className={styles.choiceMeta}>{trainer.email}</span>
+                </CheckboxControl>
               ))}
               {members.isLoading && (
                 <p className={styles.help}>Loading trainers…</p>
@@ -675,18 +682,21 @@ function NewBatchPage() {
                 Individual · {expectedAudience === "KID" ? "Kid" : "Adult"}
               </h3>
               {individualPlans.map((plan) => (
-                <div key={plan.id} className={styles.choice}>
-                  <Checkbox
-                    isSelected={subscriptionIds.includes(plan.id)}
-                    onChange={(selected) => togglePlan(plan.id, selected)}
-                  >
-                    {plan.name}
-                  </Checkbox>
-                  <span>
+                <CheckboxControl
+                  key={plan.id}
+                  className={styles.choice}
+                  isSelected={subscriptionIds.includes(plan.id)}
+                  onChange={(selected) => togglePlan(plan.id, selected)}
+                >
+                  <span className={styles.choiceMain}>
+                    <CheckboxIndicator />
+                    <span className={styles.choiceTitle}>{plan.name}</span>
+                  </span>
+                  <span className={styles.choiceMeta}>
                     {plan.billingCadence === "MONTHLY" ? "1 month" : "3 months"}{" "}
                     · {formatPlanPrice(plan.price, plan.billingCadence)}
                   </span>
-                </div>
+                </CheckboxControl>
               ))}
               {subscriptionsQuery.isLoading && (
                 <p className={styles.help}>Loading plans…</p>
@@ -703,18 +713,21 @@ function NewBatchPage() {
                 )}
               <h3 className={styles.planGroupTitle}>Family packs (optional)</h3>
               {familyPlans.map((plan) => (
-                <div key={plan.id} className={styles.choice}>
-                  <Checkbox
-                    isSelected={subscriptionIds.includes(plan.id)}
-                    onChange={(selected) => togglePlan(plan.id, selected)}
-                  >
-                    {plan.name}
-                  </Checkbox>
-                  <span>
+                <CheckboxControl
+                  key={plan.id}
+                  className={styles.choice}
+                  isSelected={subscriptionIds.includes(plan.id)}
+                  onChange={(selected) => togglePlan(plan.id, selected)}
+                >
+                  <span className={styles.choiceMain}>
+                    <CheckboxIndicator />
+                    <span className={styles.choiceTitle}>{plan.name}</span>
+                  </span>
+                  <span className={styles.choiceMeta}>
                     {plan.billingCadence === "MONTHLY" ? "1 month" : "3 months"}{" "}
                     · {formatPlanPrice(plan.price, plan.billingCadence)}
                   </span>
-                </div>
+                </CheckboxControl>
               ))}
               {!hasIndividualMonthly || !hasIndividualQuarterly ? (
                 <p className={styles.error}>
