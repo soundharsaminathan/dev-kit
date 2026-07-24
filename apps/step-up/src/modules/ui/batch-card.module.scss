@@ -35,23 +35,25 @@
   position: relative;
   align-self: stretch;
   min-height: 11rem;
+  min-width: 0;
   border-radius: var(--radius-lg, 0.75rem);
   background: color-mix(in srgb, var(--color-primary) 14%, var(--color-bg));
   overflow: hidden;
 }
 
 .mediaImg {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
 
 .mediaFallback {
+  position: absolute;
+  inset: 0;
   display: grid;
   place-items: center;
-  width: 100%;
-  height: 100%;
-  min-height: 11rem;
   background:
     radial-gradient(
       circle at 30% 20%,
@@ -285,13 +287,14 @@
 
 @media (min-width: 768px) {
   .card {
-    grid-template-columns: minmax(9rem, 32%) minmax(0, 1fr);
+    grid-template-columns: minmax(8rem, 11rem) minmax(0, 1fr);
     gap: var(--space-4, 1rem);
     padding: var(--space-4, 1rem);
+    align-items: stretch;
   }
 
   .media {
-    min-height: 13rem;
+    min-height: 0;
   }
 
   .name {
