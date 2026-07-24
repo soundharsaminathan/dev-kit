@@ -1,0 +1,288 @@
+.panel {
+  height: 100%;
+  background: var(--color-card, var(--color-bg));
+  box-shadow: var(--elevation-3, 0 16px 40px rgb(0 0 0 / 18%));
+}
+
+.panelFullscreen {
+  width: 100dvw;
+  max-width: none;
+  margin-inline-start: -3rem;
+  border: none;
+  border-radius: 0;
+}
+
+.panelSide {
+  width: min(28rem, calc(100dvw - 3rem));
+}
+
+.shell {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.header {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3, 0.75rem);
+  padding: var(--space-3, 0.75rem) var(--space-4, 1rem);
+  padding-top: calc(var(--space-3, 0.75rem) + env(safe-area-inset-top, 0px));
+  border-bottom: 1px solid color-mix(in srgb, var(--color-border) 80%, transparent);
+}
+
+.title {
+  margin: 0;
+  font-size: 1.0625rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+}
+
+.close {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  margin: -0.25rem;
+  border: 0;
+  border-radius: var(--radius-lg, 0.75rem);
+  background: transparent;
+  color: color-mix(in srgb, var(--color-fg) 58%, transparent);
+  cursor: pointer;
+  transition:
+    color var(--interaction-transition-duration, 150ms)
+      var(--interaction-transition-curve, ease),
+    background-color var(--interaction-transition-duration, 150ms)
+      var(--interaction-transition-curve, ease),
+    transform var(--motion-fast, 150ms) ease;
+}
+
+.close:active {
+  transform: scale(var(--interaction-press-scale, 0.98));
+  background: color-mix(in srgb, var(--color-fg) 6%, transparent);
+}
+
+.columns {
+  display: grid;
+  grid-template-columns: minmax(7.5rem, 32%) 1fr;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.nav {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: auto;
+  background: color-mix(in srgb, var(--color-fg) 4%, var(--color-bg));
+  border-inline-end: 1px solid
+    color-mix(in srgb, var(--color-border) 80%, transparent);
+  scrollbar-width: thin;
+}
+
+.navItem {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2, 0.5rem);
+  width: 100%;
+  min-height: 2.75rem;
+  padding: var(--space-3, 0.75rem) var(--space-3, 0.75rem);
+  border: 0;
+  border-bottom: 1px solid
+    color-mix(in srgb, var(--color-border) 70%, transparent);
+  background: transparent;
+  color: color-mix(in srgb, var(--color-fg) 72%, transparent);
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  text-align: start;
+  cursor: pointer;
+  transition:
+    background-color var(--motion-fast, 150ms) ease,
+    color var(--motion-fast, 150ms) ease;
+}
+
+.navItem[data-active="true"] {
+  background: var(--color-card, var(--color-bg));
+  color: var(--color-primary);
+  font-weight: 700;
+}
+
+.navItem[data-active="true"]::before {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  width: 0.1875rem;
+  background: var(--color-primary);
+}
+
+.navLabel {
+  min-width: 0;
+  line-height: 1.25;
+}
+
+.navCount {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.25rem;
+  height: 1.25rem;
+  padding-inline: 0.35rem;
+  border-radius: var(--radius-full, 9999px);
+  background: color-mix(in srgb, var(--color-primary) 16%, transparent);
+  color: var(--color-primary);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.content {
+  min-height: 0;
+  overflow: auto;
+  background: var(--color-card, var(--color-bg));
+  scrollbar-width: thin;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 0.75rem);
+  padding: var(--space-4, 1rem);
+}
+
+.sectionTitle {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.chipGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2, 0.5rem);
+}
+
+.optionChip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.25rem;
+  padding-inline: var(--space-3, 0.75rem);
+  border: 1px solid color-mix(in srgb, var(--color-fg) 14%, transparent);
+  border-radius: var(--radius-lg, 0.75rem);
+  background: transparent;
+  color: var(--color-fg);
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    background-color var(--motion-fast, 150ms) ease,
+    border-color var(--motion-fast, 150ms) ease,
+    color var(--motion-fast, 150ms) ease,
+    transform var(--motion-fast, 150ms) ease;
+}
+
+.optionChip::before {
+  content: "";
+  position: absolute;
+  inset: calc((2.75rem - 100%) / -2) 0;
+}
+
+.optionChip:active {
+  transform: scale(var(--interaction-press-scale, 0.98));
+}
+
+.optionChip[data-active="true"] {
+  border-color: color-mix(in srgb, var(--color-primary) 55%, transparent);
+  background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+.optionList {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.optionRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2, 0.5rem);
+  width: 100%;
+  min-height: 2.75rem;
+  padding: var(--space-2, 0.5rem) 0;
+  border: 0;
+  border-bottom: 1px solid
+    color-mix(in srgb, var(--color-border) 70%, transparent);
+  background: transparent;
+  color: var(--color-fg);
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-align: start;
+  cursor: pointer;
+  transition: color var(--motion-fast, 150ms) ease;
+}
+
+.optionRow[data-active="true"] {
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+.checkIcon {
+  width: 1.125rem;
+  height: 1.125rem;
+  color: var(--color-primary);
+}
+
+.emptyHint {
+  margin: 0;
+  color: color-mix(in srgb, var(--color-fg) 58%, transparent);
+  font-size: 0.8125rem;
+  line-height: 1.4;
+}
+
+.footer {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  flex-shrink: 0;
+  gap: var(--space-2, 0.5rem);
+  padding: var(--space-3, 0.75rem) var(--space-4, 1rem);
+  padding-bottom: calc(
+    var(--space-3, 0.75rem) + env(safe-area-inset-bottom, 0px)
+  );
+  border-top: 1px solid color-mix(in srgb, var(--color-border) 80%, transparent);
+  background: var(--color-card, var(--color-bg));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .close,
+  .navItem,
+  .optionChip,
+  .optionRow {
+    transition-duration: 0ms;
+  }
+
+  .close:active,
+  .optionChip:active {
+    transform: none;
+  }
+}

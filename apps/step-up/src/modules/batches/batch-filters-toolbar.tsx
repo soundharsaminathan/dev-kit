@@ -1,5 +1,10 @@
-import { SearchField } from "@dev-ui/components/search-field";
+import { Icon } from "@dev-ui/icons";
+import { useMemo, useState } from "react";
 import { FilterChipRow } from "@/modules/ui/filter-chip-row";
+import {
+  type BatchFiltersDraft,
+  BatchFiltersPanel,
+} from "./batch-filters-panel";
 import styles from "./batch-filters-toolbar.module.scss";
 
 export type BatchStyleChip = {
@@ -13,6 +18,7 @@ export type BatchFiltersToolbarProps = {
   style: string | null;
   search: string;
   styleChips: BatchStyleChip[];
+  countMatches: (draft: BatchFiltersDraft) => number;
   onStatusChange: (status: string) => void;
   onCategoryChange: (category: string) => void;
   onStyleChange: (style: string | null) => void;
@@ -20,15 +26,13 @@ export type BatchFiltersToolbarProps = {
 };
 
 const STATUS_CHIPS = [
-  { id: "ALL", label: "All statuses" },
-  { id: "ACTIVE", label: "Active" },
-  { id: "INACTIVE", label: "Inactive" },
+  { id: "status:ACTIVE", label: "Active" },
+  { id: "status:INACTIVE", label: "Inactive" },
 ];
 
 const CATEGORY_CHIPS = [
-  { id: "ALL", label: "All ages" },
-  { id: "KIDS", label: "Kids" },
-  { id: "ADULTS", label: "Adults" },
+  { id: "category:KIDS", label: "Kids" },
+  { id: "category:ADULTS", label: "Adults" },
 ];
 
 export function BatchFiltersToolbar({
@@ -37,45 +41,98 @@ export function BatchFiltersToolbar({
   style,
   search,
   styleChips,
+  countMatches,
   onStatusChange,
   onCategoryChange,
   onStyleChange,
   onSearchChange,
 }: BatchFiltersToolbarProps) {
-  const styleChipRow = [
-    { id: "all", label: "All styles" },
-    ...styleChips.map((chip) => ({ id: chip.id, label: chip.label })),
-  ];
+  const [filtersOpen, setFiltersOpen] = useState(false);
+
+  const quickChips = useMemo(
+    () => [
+      ...STATUS_CHIPS,
+      ...CATEGORY_CHIPS,
+      ...styleChips.map((chip) => ({
+        id: `style:${chip.id}`,
+        label: chip.label,
+      })),
+    ],
+    [styleChips],
+  );
+
+  const selectedQuick = useMemo(() => {
+    const ids: string[] = [];
+    if (status !== "ALL") ids.push(`status:${status}`);
+    if (category !== "ALL") ids.push(`category:${category}`);
+    if (style) ids.push(`style:${style}`);
+    return ids;
+  }, [status, category, style]);
+
+  const hasExtraFilters =
+    status !== "ALL" || category !== "ALL" || Boolean(style || search);
+
+  const filterDraft: BatchFiltersDraft = {
+    status,
+    category,
+    style,
+    search,
+  };
+
+  function onQuickToggle(id: string) {
+    if (id.startsWith("status:")) {
+      const next = id.slice("status:".length);
+      onStatusChange(status === next ? "ALL" : next);
+      return;
+    }
+    if (id.startsWith("category:")) {
+      const next = id.slice("category:".length);
+      onCategoryChange(category === next ? "ALL" : next);
+      return;
+    }
+    if (id.startsWith("style:")) {
+      const next = id.slice("style:".length);
+      onStyleChange(style === next ? null : next);
+    }
+  }
 
   return (
     <div className={styles.wrap}>
-      <SearchField
-        aria-label="Search batches"
-        placeholder="Search"
-        value={search}
-        onChange={onSearchChange}
-        className={styles.search}
+      <FilterChipRow
+        chips={quickChips}
+        selected={selectedQuick}
+        onToggle={onQuickToggle}
+        leading={
+          <button
+            type="button"
+            className={styles.filterBtn}
+            data-active={hasExtraFilters ? "true" : undefined}
+            aria-label="Open filters"
+            aria-haspopup="dialog"
+            aria-expanded={filtersOpen}
+            onClick={() => setFiltersOpen(true)}
+          >
+            <Icon name="filter" className={styles.filterBtnIcon} />
+            {hasExtraFilters ? (
+              <span className={styles.filterDot} aria-hidden />
+            ) : null}
+          </button>
+        }
       />
 
-      <div className={styles.chips} role="toolbar" aria-label="Batch filters">
-        <FilterChipRow
-          chips={STATUS_CHIPS}
-          selected={[status]}
-          onToggle={onStatusChange}
-        />
-        <FilterChipRow
-          chips={CATEGORY_CHIPS}
-          selected={[category]}
-          onToggle={onCategoryChange}
-        />
-        {styleChips.length > 0 ? (
-          <FilterChipRow
-            chips={styleChipRow}
-            selected={[style ?? "all"]}
-            onToggle={(id) => onStyleChange(id === "all" ? null : id)}
-          />
-        ) : null}
-      </div>
+      <BatchFiltersPanel
+        isOpen={filtersOpen}
+        onOpenChange={setFiltersOpen}
+        value={filterDraft}
+        styleOptions={styleChips}
+        countMatches={countMatches}
+        onApply={(next) => {
+          onStatusChange(next.status);
+          onCategoryChange(next.category);
+          onStyleChange(next.style);
+          onSearchChange(next.search);
+        }}
+      />
     </div>
   );
 }

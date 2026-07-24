@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useApi } from "@/lib/api-context";
 import { STUDIO_ID } from "@/lib/constants";
 import { ENTITY_ICONS } from "@/lib/entity-icons";
+import type { BatchFiltersDraft } from "@/modules/batches/batch-filters-panel";
 import { BatchFiltersToolbar } from "@/modules/batches/batch-filters-toolbar";
 import { type DiscoverBatch, toBatchCardData } from "@/modules/discover/types";
 import { BatchCard } from "@/modules/ui/batch-card";
@@ -38,6 +39,29 @@ function matchesSearch(batch: DiscoverBatch, search: string) {
   return haystack.includes(q);
 }
 
+function applyDraft(
+  items: DiscoverBatch[],
+  draft: BatchFiltersDraft,
+): DiscoverBatch[] {
+  let next = items;
+  if (draft.status === "ACTIVE") {
+    next = next.filter((batch) => batch.active);
+  }
+  if (draft.status === "INACTIVE") {
+    next = next.filter((batch) => !batch.active);
+  }
+  if (draft.category !== "ALL") {
+    next = next.filter((batch) => batch.category === draft.category);
+  }
+  if (draft.style) {
+    next = next.filter((batch) => batch.styleBadge === draft.style);
+  }
+  if (draft.search) {
+    next = next.filter((batch) => matchesSearch(batch, draft.search));
+  }
+  return next;
+}
+
 function BatchesPage() {
   const api = useApi();
   const [status, setStatus] = useState("ALL");
@@ -58,21 +82,20 @@ function BatchesPage() {
     return [...stylesSet].sort().map((name) => ({ id: name, label: name }));
   }, [query.data]);
 
-  const filtered = useMemo(() => {
-    let items = query.data ?? [];
-    if (status === "ACTIVE") items = items.filter((batch) => batch.active);
-    if (status === "INACTIVE") items = items.filter((batch) => !batch.active);
-    if (category !== "ALL") {
-      items = items.filter((batch) => batch.category === category);
-    }
-    if (style) {
-      items = items.filter((batch) => batch.styleBadge === style);
-    }
-    if (search) {
-      items = items.filter((batch) => matchesSearch(batch, search));
-    }
-    return items;
-  }, [query.data, status, category, style, search]);
+  const filtered = useMemo(
+    () =>
+      applyDraft(query.data ?? [], {
+        status,
+        category,
+        style,
+        search,
+      }),
+    [query.data, status, category, style, search],
+  );
+
+  function countMatches(draft: BatchFiltersDraft) {
+    return applyDraft(query.data ?? [], draft).length;
+  }
 
   function clearFilters() {
     setStatus("ALL");
@@ -99,6 +122,7 @@ function BatchesPage() {
             style={style}
             search={search}
             styleChips={styleChips}
+            countMatches={countMatches}
             onStatusChange={setStatus}
             onCategoryChange={setCategory}
             onStyleChange={setStyle}

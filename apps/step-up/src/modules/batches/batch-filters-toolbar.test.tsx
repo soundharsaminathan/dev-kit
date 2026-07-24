@@ -3,21 +3,24 @@ import { describe, expect, it, vi } from "vitest";
 import { renderWithProviders } from "@/test/render";
 import { BatchFiltersToolbar } from "./batch-filters-toolbar";
 
+const defaultProps = {
+  status: "ALL",
+  category: "ALL",
+  style: null as string | null,
+  search: "",
+  styleChips: [] as Array<{ id: string; label: string }>,
+  countMatches: () => 0,
+  onStatusChange: vi.fn(),
+  onCategoryChange: vi.fn(),
+  onStyleChange: vi.fn(),
+  onSearchChange: vi.fn(),
+};
+
 describe("BatchFiltersToolbar", () => {
   it("changes status when Active is clicked", () => {
     const onStatusChange = vi.fn();
     renderWithProviders(
-      <BatchFiltersToolbar
-        status="ALL"
-        category="ALL"
-        style={null}
-        search=""
-        styleChips={[]}
-        onStatusChange={onStatusChange}
-        onCategoryChange={vi.fn()}
-        onStyleChange={vi.fn()}
-        onSearchChange={vi.fn()}
-      />,
+      <BatchFiltersToolbar {...defaultProps} onStatusChange={onStatusChange} />,
     );
 
     fireEvent.click(screen.getByRole("button", { name: "Active" }));
@@ -28,19 +31,21 @@ describe("BatchFiltersToolbar", () => {
     const onCategoryChange = vi.fn();
     renderWithProviders(
       <BatchFiltersToolbar
-        status="ALL"
-        category="ALL"
-        style={null}
-        search=""
-        styleChips={[]}
-        onStatusChange={vi.fn()}
+        {...defaultProps}
         onCategoryChange={onCategoryChange}
-        onStyleChange={vi.fn()}
-        onSearchChange={vi.fn()}
       />,
     );
 
     fireEvent.click(screen.getByRole("button", { name: "Kids" }));
     expect(onCategoryChange).toHaveBeenCalledWith("KIDS");
+  });
+
+  it("opens advanced filters from the filter icon", () => {
+    renderWithProviders(<BatchFiltersToolbar {...defaultProps} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Open filters" }));
+    expect(
+      screen.getByRole("heading", { name: "Filters" }),
+    ).toBeInTheDocument();
   });
 });
