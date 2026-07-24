@@ -59,6 +59,10 @@ export class QueueModule {
             connection: {
               url: config.getOrThrow<string>("REDIS_URL"),
               maxRetriesPerRequest: null,
+              connectTimeout: 8_000,
+              enableOfflineQueue: true,
+              retryStrategy: (attempt: number) =>
+                Math.min(attempt * 200, 2_000),
             },
             defaultJobOptions: {
               removeOnComplete: 1000,
