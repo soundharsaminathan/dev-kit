@@ -1,7 +1,7 @@
 import { authFile, expect, test, waitForAppReady } from "../fixtures";
 
-test.describe("role shells", () => {
-  test("trainer lands on staff shell", async ({ browser }) => {
+test.describe("role shells @critical", () => {
+  test("trainer lands on staff shell @critical", async ({ browser }) => {
     const context = await browser.newContext({
       storageState: authFile("TRAINER"),
     });

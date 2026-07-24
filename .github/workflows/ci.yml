@@ -126,6 +126,106 @@ jobs:
             apps/showcase/test-results/
           retention-days: 7
 
+  step-up-regression:
+    name: Step Up regression
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    if: github.event_name == 'pull_request'
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: step_up_e2e
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      AUTH_BYPASS: "true"
+      VITE_AUTH_BYPASS: "true"
+      VITE_API_URL: http://localhost:3199
+      STEP_UP_API_URL: http://localhost:3199
+      STEP_UP_WEB_URL: http://localhost:5199
+      STEP_UP_API_PORT: "3199"
+      STEP_UP_WEB_PORT: "5199"
+      PORT: "3199"
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/step_up_e2e?schema=public
+      SESSION_QR_SECRET: ci-session-qr-secret-0123456789abcdef
+      JOBS_SECRET: ci-jobs-secret-0123456789abcdef0123456789
+      CHAT_MASTER_KEY: 8c6f4a1e9b2d7c30f5a8e14d6b9c2f70a3e5d8b1c4f7a02e6d9b3c8f1a5e7d20
+      PII_MASTER_KEY: a1b2c3d4e5f60718293a4b5c6d7e8f90112233445566778899aabbccddeeff00
+      NODE_ENV: development
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - uses: ./.github/actions/setup
+
+      - name: Detect Step Up changes
+        id: changes
+        run: |
+          if git diff --name-only origin/${{ github.base_ref }}...HEAD | grep -E '^(apps/step-up|apps/step-up-api)/'; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create migrate smoke database
+        if: steps.changes.outputs.run == 'true'
+        run: |
+          PGPASSWORD=postgres psql -h localhost -U postgres -c "CREATE DATABASE step_up_migrate;"
+
+      - name: Migration smoke
+        if: steps.changes.outputs.run == 'true'
+        working-directory: apps/step-up-api
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/step_up_migrate?schema=public
+        run: |
+          pnpm exec prisma generate
+          pnpm exec nx run step-up-api:test:migrations
+
+      - name: Generate Prisma client, migrate, and seed
+        if: steps.changes.outputs.run == 'true'
+        working-directory: apps/step-up-api
+        run: |
+          pnpm exec prisma generate
+          pnpm exec prisma migrate deploy
+          pnpm exec prisma db seed
+
+      - name: Vitest API + UI
+        if: steps.changes.outputs.run == 'true'
+        run: |
+          pnpm exec nx run step-up-api:test
+          pnpm exec nx run step-up:test
+        env:
+          CI: true
+
+      - name: Install Playwright browser
+        if: steps.changes.outputs.run == 'true'
+        run: pnpm --filter @step-up/web exec playwright install chromium --with-deps
+
+      - name: Critical Playwright journeys
+        if: steps.changes.outputs.run == 'true'
+        run: pnpm exec nx run step-up:test:e2e:critical
+        env:
+          CI: true
+
+      - name: Upload Step Up regression report
+        uses: actions/upload-artifact@v7
+        if: always() && steps.changes.outputs.run == 'true' && !cancelled()
+        with:
+          name: step-up-regression-report
+          path: |
+            apps/step-up/playwright-report/
+            apps/step-up/test-results/
+          retention-days: 7
+
   step-up-e2e:
     name: Step Up E2E
     runs-on: ubuntu-latest

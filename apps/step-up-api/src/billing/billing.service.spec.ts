@@ -332,3 +332,43 @@ describe("BillingService.markPaid", () => {
     ).rejects.toBeInstanceOf(ForbiddenException);
   });
 });
+
+describe("BillingService.listByStudio", () => {
+  const prisma = {
+    invoice: { findMany: vi.fn() },
+  };
+  const crypto = {
+    decryptUser: vi.fn((user: { name?: string }) => ({
+      ...user,
+      name: user.name ?? "Decrypted",
+    })),
+  };
+
+  let service: BillingService;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    service = new BillingService(prisma as never, crypto as never);
+  });
+
+  it("returns studio invoices with decrypted students", async () => {
+    prisma.invoice.findMany.mockResolvedValue([
+      {
+        id: "inv-1",
+        studioId: "studio-1",
+        student: { id: "student-1", nameEnc: "x" },
+        membership: { id: "mem-1" },
+      },
+    ]);
+
+    const rows = await service.listByStudio("studio-1");
+
+    expect(prisma.invoice.findMany).toHaveBeenCalledWith({
+      where: { studioId: "studio-1" },
+      include: { student: true, membership: true },
+      orderBy: { id: "desc" },
+    });
+    expect(crypto.decryptUser).toHaveBeenCalled();
+    expect(rows[0]?.student.name).toBe("Decrypted");
+  });
+});

@@ -42,8 +42,8 @@ export default defineConfig({
         ["junit", { outputFile: "test-results/junit-step-up-e2e.xml" }],
       ]
     : "list",
-  timeout: 45_000,
-  expect: { timeout: 10_000 },
+  timeout: 60_000,
+  expect: { timeout: 15_000 },
   use: {
     baseURL: webUrl,
     trace: "on-first-retry",
@@ -68,6 +68,14 @@ export default defineConfig({
     ...(isNightly
       ? [
           {
+            name: "firefox",
+            dependencies: ["setup"],
+            use: {
+              ...devices["Desktop Firefox"],
+            },
+            testIgnore: /auth\.setup\.ts/,
+          },
+          {
             name: "webkit",
             dependencies: ["setup"],
             use: {
@@ -81,7 +89,8 @@ export default defineConfig({
             use: {
               ...devices["Pixel 5"],
             },
-            testMatch: /role-shells|student-home|onboarding-gate/,
+            testMatch:
+              /role-shells|student-home|onboarding-gate|student-attendance/,
           },
         ]
       : []),

@@ -167,7 +167,7 @@ describe("AttendanceService.markAllPresent", () => {
     );
   });
 
-  it("marks only unmarked roster students present", async () => {
+  it("marks unmarked and non-present roster students present", async () => {
     const session = makeSession();
     prisma.session.findUnique.mockResolvedValue({
       ...session,
@@ -182,6 +182,10 @@ describe("AttendanceService.markAllPresent", () => {
             studentId: "s2",
             student: { name: "Grace" },
           },
+          {
+            studentId: "s3",
+            student: { name: "Marie" },
+          },
         ],
       },
       attendance: [
@@ -189,6 +193,12 @@ describe("AttendanceService.markAllPresent", () => {
           id: "a1",
           studentId: "s2",
           status: AttendanceStatus.PRESENT,
+          source: AttendanceSource.TRAINER,
+        },
+        {
+          id: "a2",
+          studentId: "s3",
+          status: AttendanceStatus.ABSENT,
           source: AttendanceSource.TRAINER,
         },
       ],
@@ -205,11 +215,11 @@ describe("AttendanceService.markAllPresent", () => {
       FIXTURE_USERS.trainer.id,
     );
 
-    expect(result).toEqual({ marked: 1, failed: 0 });
-    expect(prisma.attendance.upsert).toHaveBeenCalledTimes(1);
+    expect(result).toEqual({ marked: 2, failed: 0 });
+    expect(prisma.attendance.upsert).toHaveBeenCalledTimes(2);
   });
 
-  it("returns zeros when everyone is already marked", async () => {
+  it("returns zeros when everyone is already present", async () => {
     const session = makeSession();
     prisma.session.findUnique.mockResolvedValue({
       ...session,
@@ -226,7 +236,7 @@ describe("AttendanceService.markAllPresent", () => {
         {
           id: "a1",
           studentId: "s1",
-          status: AttendanceStatus.ABSENT,
+          status: AttendanceStatus.PRESENT,
           source: AttendanceSource.TRAINER,
         },
       ],
@@ -362,5 +372,93 @@ describe("AttendanceService QR", () => {
         UserRole.STUDENT,
       ),
     ).rejects.toBeInstanceOf(UnauthorizedException);
+  });
+});
+
+describe("AttendanceService.getSessionRoster", () => {
+  const prisma = {
+    session: { findUnique: vi.fn() },
+    attendance: { findMany: vi.fn(), upsert: vi.fn() },
+    parentChild: { findUnique: vi.fn() },
+  };
+  const memberships = { findActiveForBatch: vi.fn() };
+  const notifications = createNotificationsMock();
+  const config = { get: vi.fn(() => "test-qr-secret") };
+  const crypto = {
+    decryptUser: (user: { name: string }) => ({ ...user, name: user.name }),
+  };
+
+  let service: AttendanceService;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    service = new AttendanceService(
+      prisma as never,
+      memberships as never,
+      notifications as never,
+      config as never,
+      crypto as never,
+    );
+  });
+
+  it("maps enrollments to roster with attendance", async () => {
+    prisma.session.findUnique.mockResolvedValue({
+      id: "session-1",
+      batch: {
+        enrollments: [
+          { studentId: "s1", student: { name: "Ada" } },
+          { studentId: "s2", student: { name: "Grace" } },
+        ],
+      },
+      attendance: [
+        {
+          id: "a1",
+          studentId: "s1",
+          status: AttendanceStatus.PRESENT,
+          source: AttendanceSource.TRAINER,
+        },
+      ],
+    });
+
+    const roster = await service.getSessionRoster("session-1");
+
+    expect(roster).toEqual([
+      expect.objectContaining({
+        studentId: "s1",
+        attendance: expect.objectContaining({
+          status: AttendanceStatus.PRESENT,
+        }),
+      }),
+      expect.objectContaining({
+        studentId: "s2",
+        attendance: null,
+      }),
+    ]);
+  });
+
+  it("rejects missing session", async () => {
+    prisma.session.findUnique.mockResolvedValue(null);
+    await expect(service.getSessionRoster("missing")).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
+  });
+
+  it("lists attendance rows for a session", async () => {
+    prisma.attendance.findMany.mockResolvedValue([
+      {
+        id: "a1",
+        student: { name: "Ada" },
+        markedBy: { name: "Trainer" },
+      },
+    ]);
+
+    const rows = await service.listBySession("session-1");
+
+    expect(prisma.attendance.findMany).toHaveBeenCalledWith({
+      where: { sessionId: "session-1" },
+      include: { student: true, markedBy: true },
+    });
+    expect(rows[0]?.student).toEqual({ name: "Ada" });
+    expect(rows[0]?.markedBy).toEqual({ name: "Trainer" });
   });
 });

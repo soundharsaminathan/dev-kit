@@ -142,4 +142,118 @@ describe("NotificationsService", () => {
     unreadCache.get.mockResolvedValue(7);
     await expect(service.unreadCount("user-1")).resolves.toEqual({ count: 7 });
   });
+
+  it("lists notifications for a user with cursor pagination", async () => {
+    const rows = Array.from({ length: 21 }, (_, index) => ({
+      id: `notif-${index}`,
+      userId: "user-1",
+      title: `n${index}`,
+    }));
+    prisma.notification.findMany.mockResolvedValue(rows);
+
+    const page = await service.listForUser("user-1", { limit: 20 });
+
+    expect(prisma.notification.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          userId: "user-1",
+          deletedAt: null,
+          status: "ACTIVE",
+        }),
+        take: 21,
+      }),
+    );
+    expect(page.items).toHaveLength(20);
+    expect(page.nextCursor).toBe("notif-19");
+  });
+
+  it("marks unread via patchOne and increments badge", async () => {
+    prisma.notification.findFirst.mockResolvedValue({
+      id: "notif-1",
+      userId: "user-1",
+      readAt: new Date("2026-07-19T00:00:00.000Z"),
+      status: "ACTIVE",
+      deletedAt: null,
+    });
+    prisma.notification.update.mockResolvedValue({
+      id: "notif-1",
+      readAt: null,
+      status: "ACTIVE",
+    });
+    unreadCache.increment.mockResolvedValue(undefined);
+    unreadCache.refresh.mockResolvedValue(2);
+
+    await service.patchOne("user-1", "notif-1", { read: false });
+
+    expect(unreadCache.increment).toHaveBeenCalledWith("user-1");
+    expect(gateway.emitToUser).toHaveBeenCalledWith(
+      "user-1",
+      "notifications.badge",
+      { unreadCount: 2 },
+    );
+  });
+
+  it("archives via patchOne and marks read when unread", async () => {
+    prisma.notification.findFirst.mockResolvedValue({
+      id: "notif-1",
+      userId: "user-1",
+      readAt: null,
+      status: "ACTIVE",
+      deletedAt: null,
+    });
+    prisma.notification.update.mockResolvedValue({
+      id: "notif-1",
+      status: "ARCHIVED",
+      readAt: new Date(),
+    });
+    unreadCache.decrement.mockResolvedValue(undefined);
+    unreadCache.refresh.mockResolvedValue(0);
+
+    await service.patchOne("user-1", "notif-1", { archived: true });
+
+    expect(prisma.notification.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          status: "ARCHIVED",
+          readAt: expect.any(Date),
+        }),
+      }),
+    );
+    expect(unreadCache.decrement).toHaveBeenCalledWith("user-1");
+  });
+
+  it("soft-deletes a notification and decrements unread when unread", async () => {
+    prisma.notification.findFirst.mockResolvedValue({
+      id: "notif-1",
+      userId: "user-1",
+      readAt: null,
+      deletedAt: null,
+    });
+    prisma.notification.update.mockResolvedValue({
+      id: "notif-1",
+      status: "DELETED",
+      deletedAt: new Date(),
+    });
+    unreadCache.decrement.mockResolvedValue(undefined);
+    unreadCache.refresh.mockResolvedValue(0);
+
+    await service.softDelete("user-1", "notif-1");
+
+    expect(prisma.notification.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          status: "DELETED",
+          deletedAt: expect.any(Date),
+        }),
+      }),
+    );
+    expect(unreadCache.decrement).toHaveBeenCalledWith("user-1");
+  });
+
+  it("throws when soft-deleting a missing notification", async () => {
+    prisma.notification.findFirst.mockResolvedValue(null);
+    await expect(
+      service.softDelete("user-1", "missing"),
+    ).rejects.toBeInstanceOf(NotFoundException);
+  });
 });

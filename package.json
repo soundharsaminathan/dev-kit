@@ -24,6 +24,8 @@
     "test:showcase:e2e": "nx run showcase:test:e2e",
     "test:showcase:e2e:update": "nx run showcase:test:e2e:update",
     "test:step-up:e2e": "nx run step-up:test:e2e",
+    "test:step-up:e2e:critical": "nx run step-up:test:e2e:critical",
+    "test:step-up:regression": "nx run step-up:test:regression",
     "affected:e2e": "nx affected -t test:e2e:affected",
     "precommit": "nx affected -t typecheck,test --uncommitted --exclude=storybook,dev-kit"
   },

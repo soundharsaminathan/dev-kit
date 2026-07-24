@@ -1101,6 +1101,30 @@ async function main() {
   await enroll("batch-contemporary-1", contemporaryEnrollees);
   await enroll("batch-beginner-1", beginnerEnrollees);
 
+  // Drop stale enrollments from older seeds so attendance rosters match intent.
+  await prisma.batchEnrollment.deleteMany({
+    where: {
+      OR: [
+        {
+          batchId: "batch-kids-1",
+          studentId: { notIn: [...kidsEnrollees] },
+        },
+        {
+          batchId: "batch-adults-1",
+          studentId: { notIn: [...adultsEnrollees] },
+        },
+        {
+          batchId: "batch-contemporary-1",
+          studentId: { notIn: [...contemporaryEnrollees] },
+        },
+        {
+          batchId: "batch-beginner-1",
+          studentId: { notIn: [...beginnerEnrollees] },
+        },
+      ],
+    },
+  });
+
   const now = new Date();
   const periodStart = new Date(
     Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1),
@@ -1108,6 +1132,89 @@ async function main() {
   const periodEnd = new Date(
     Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1),
   );
+
+  async function ensureIndividualMembership(args: {
+    id: string;
+    studentId: string;
+    subscriptionId: string;
+    seatRole: MembershipSeatRole;
+    purchaserUserId: string;
+  }) {
+    await prisma.membership.upsert({
+      where: { id: args.id },
+      update: {
+        subscriptionId: args.subscriptionId,
+        purchaserUserId: args.purchaserUserId,
+        periodStart,
+        periodEnd,
+        status: MembershipStatus.ACTIVE,
+      },
+      create: {
+        id: args.id,
+        subscriptionId: args.subscriptionId,
+        purchaserUserId: args.purchaserUserId,
+        periodStart,
+        periodEnd,
+        status: MembershipStatus.ACTIVE,
+      },
+    });
+    await prisma.membershipCoveredStudent.upsert({
+      where: {
+        membershipId_studentId: {
+          membershipId: args.id,
+          studentId: args.studentId,
+        },
+      },
+      update: { seatRole: args.seatRole },
+      create: {
+        membershipId: args.id,
+        studentId: args.studentId,
+        seatRole: args.seatRole,
+      },
+    });
+  }
+
+  // Every enrolled student used by attendance journeys needs an active
+  // membership covering their batch category (markAttendance enforces this).
+  for (const studentId of kidsEnrollees) {
+    await ensureIndividualMembership({
+      id: `membership-kid-${studentId}`,
+      studentId,
+      subscriptionId: "sub-individual-kid-monthly",
+      seatRole: MembershipSeatRole.KID,
+      purchaserUserId: "parent-1",
+    });
+  }
+
+  for (const studentId of adultsEnrollees) {
+    await ensureIndividualMembership({
+      id: `membership-adult-${studentId}`,
+      studentId,
+      subscriptionId: "sub-individual-adult-monthly",
+      seatRole: MembershipSeatRole.ADULT,
+      purchaserUserId: studentId,
+    });
+  }
+
+  for (const studentId of contemporaryEnrollees) {
+    await ensureIndividualMembership({
+      id: `membership-contemp-${studentId}`,
+      studentId,
+      subscriptionId: "sub-individual-adult-monthly",
+      seatRole: MembershipSeatRole.ADULT,
+      purchaserUserId: studentId,
+    });
+  }
+
+  for (const studentId of beginnerEnrollees) {
+    await ensureIndividualMembership({
+      id: `membership-beginner-${studentId}`,
+      studentId,
+      subscriptionId: "sub-individual-adult-monthly",
+      seatRole: MembershipSeatRole.ADULT,
+      purchaserUserId: studentId,
+    });
+  }
 
   await prisma.membership.upsert({
     where: { id: "membership-individual-kid-1" },
@@ -1705,7 +1812,7 @@ async function main() {
     "  Batches: kids/adults/contemporary/beginner (active) + archived intensive",
   );
   console.log(
-    "  16 subscription catalog rows + sample individual/family memberships",
+    "  Active memberships for kids/adults/contemporary/beginner enrollees",
   );
   console.log(
     "  Sessions + past attendance for kids/adults; pending booking requests",

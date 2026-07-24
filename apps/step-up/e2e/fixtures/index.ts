@@ -14,9 +14,6 @@ import {
 const dirname = path.dirname(fileURLToPath(import.meta.url));
 const authDir = path.join(dirname, "../.auth");
 
-const LOADER_TEXT =
-  /Stretching it|Finding the|Spotting the|Marking the|Feeling the|Stepping into/;
-
 export function authFile(role: SeedRole) {
   return path.join(authDir, `${role.toLowerCase()}.json`);
 }
@@ -46,19 +43,32 @@ export function writeRoleStorageState(role: SeedRole) {
   fs.writeFileSync(authFile(role), JSON.stringify(state, null, 2));
 }
 
-/** App is ready when the HTML/React boot splash is gone and the shell has content. */
+/**
+ * App is ready when the HTML boot splash / React DanceLoader is gone and the
+ * shell exposes interactive content. Cold Vite route compiles under parallel
+ * workers can keep the shell empty well past the default expect timeout —
+ * wait on that ready signal, not a fixed sleep.
+ */
 export async function waitForAppReady(page: Page) {
-  await expect(page.locator("#boot-splash, [data-boot-loader]")).toHaveCount(0);
-  await expect(page.getByText(LOADER_TEXT)).toHaveCount(0, { timeout: 2_000 });
+  const readyTimeout = 60_000;
+  await expect(page.locator("#boot-splash, [data-boot-loader]")).toHaveCount(
+    0,
+    {
+      timeout: readyTimeout,
+    },
+  );
   await expect
-    .poll(async () => {
-      return (
-        (await page.getByRole("heading").count()) +
-        (await page.getByRole("button").count()) +
-        (await page.getByRole("link").count()) +
-        (await page.getByRole("textbox").count())
-      );
-    })
+    .poll(
+      async () => {
+        return (
+          (await page.getByRole("heading").count()) +
+          (await page.getByRole("button").count()) +
+          (await page.getByRole("link").count()) +
+          (await page.getByRole("textbox").count())
+        );
+      },
+      { timeout: readyTimeout },
+    )
     .toBeGreaterThan(0);
 }
 
