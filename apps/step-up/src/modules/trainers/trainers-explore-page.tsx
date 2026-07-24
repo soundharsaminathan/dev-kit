@@ -19,6 +19,7 @@ import { EmptyState, ErrorState } from "@/modules/ui/states";
 import { TouchButton } from "@/modules/ui/touch-button";
 import { TrainerBentoView } from "./trainer-bento-view";
 import { TrainerCardsView } from "./trainer-cards-view";
+import { TrainerDiscoveryView } from "./trainer-discovery-view";
 import { TrainerStackView } from "./trainer-stack-view";
 import styles from "./trainers-page.module.scss";
 import type { StudioTrainer, TrainerViewMode } from "./types";
@@ -114,6 +115,43 @@ function MemberTrainersBanner({
   );
 }
 
+function MemberTrainerDiscovery({
+  trainers,
+  isFollowPending,
+  onToggleFollow,
+  onOpenListView,
+}: {
+  trainers: StudioTrainer[];
+  isFollowPending: (trainerId: string) => boolean;
+  onToggleFollow: (trainer: StudioTrainer) => void;
+  onOpenListView: () => void;
+}) {
+  const api = useApi();
+  const { studentId } = useActiveStudentContext();
+  const homeQuery = useQuery({
+    queryKey: ["home", studentId],
+    queryFn: () => {
+      const params = new URLSearchParams();
+      if (studentId) params.set("studentId", studentId);
+      const search = params.toString();
+      return api.get<HomePayload>(`/home${search ? `?${search}` : ""}`);
+    },
+    enabled: Boolean(studentId),
+    staleTime: 30_000,
+  });
+
+  return (
+    <TrainerDiscoveryView
+      trainers={trainers}
+      isFollowPending={isFollowPending}
+      onToggleFollow={onToggleFollow}
+      studioName={homeQuery.data?.studio?.name ?? null}
+      branchName={homeQuery.data?.banner?.branchName ?? null}
+      onOpenListView={onOpenListView}
+    />
+  );
+}
+
 export function TrainersExplorePage({
   variant = "app",
 }: TrainersExplorePageProps) {
@@ -131,6 +169,7 @@ export function TrainersExplorePage({
     coerceView(readStoredView(storageKey, defaultView), isMobile),
   );
   const [styleFilter, setStyleFilter] = useState<string | null>(null);
+  const immersiveDiscovery = !isStaff && view === "stack";
 
   useEffect(() => {
     setView((current) => coerceView(current, isMobile));
@@ -184,8 +223,76 @@ export function TrainersExplorePage({
     });
   }
 
-  const showStats = trainers.length > 0;
-  const showMemberBanner = !isStaff;
+  const showStats = trainers.length > 0 && !immersiveDiscovery;
+  const showMemberBanner = !isStaff && !immersiveDiscovery;
+
+  if (immersiveDiscovery) {
+    return (
+      <section
+        className={styles.immersiveScreen}
+        aria-label="Instructor discovery"
+      >
+        {query.isLoading ? <SkeletonCardList count={2} /> : null}
+        {query.isError ? (
+          <div className={styles.immersiveState}>
+            <ErrorState
+              description={
+                query.error instanceof Error
+                  ? query.error.message
+                  : "Could not load instructors."
+              }
+              action={
+                <TouchButton variant="primary" onClick={() => query.refetch()}>
+                  Try again
+                </TouchButton>
+              }
+            />
+          </div>
+        ) : null}
+        {query.isFetched && trainers.length === 0 ? (
+          <div className={styles.immersiveState}>
+            <EmptyState
+              icon={ENTITY_ICONS.trainer}
+              title="No instructors yet"
+              description="Your studio has not published instructor profiles. Browse classes meanwhile."
+              action={
+                <TouchButton variant="primary">
+                  <Link to="/me/book">Discover classes</Link>
+                </TouchButton>
+              }
+            />
+          </div>
+        ) : null}
+        {query.isFetched &&
+        trainers.length > 0 &&
+        filteredTrainers.length === 0 ? (
+          <div className={styles.immersiveState}>
+            <EmptyState
+              icon={ENTITY_ICONS.trainer}
+              title="No instructors for this style"
+              description="Try another style or clear the filter."
+              action={
+                <TouchButton
+                  variant="primary"
+                  onClick={() => setStyleFilter(null)}
+                >
+                  Clear filter
+                </TouchButton>
+              }
+            />
+          </div>
+        ) : null}
+        {filteredTrainers.length > 0 ? (
+          <MemberTrainerDiscovery
+            trainers={filteredTrainers}
+            isFollowPending={isPendingFor}
+            onToggleFollow={handleToggleFollow}
+            onOpenListView={() => setView("cards")}
+          />
+        ) : null}
+      </section>
+    );
+  }
 
   return (
     <section className="screen screen-wide" aria-label="Trainers">
