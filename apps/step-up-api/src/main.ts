@@ -26,8 +26,8 @@ async function bootstrap() {
   app.useWebSocketAdapter(redisIoAdapter);
 
   const port = Number(process.env.PORT ?? 3000);
-  await app.listen(port);
-  console.log(`Step Up API listening on port ${port}`);
+  await app.listen(port, "0.0.0.0");
+  console.log(`Step Up API listening on 0.0.0.0:${port}`);
 }
 
 bootstrap().catch((error) => {

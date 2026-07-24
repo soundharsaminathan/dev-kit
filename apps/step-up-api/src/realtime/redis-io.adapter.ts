@@ -24,7 +24,10 @@ export class RedisIoAdapter extends IoAdapter {
       return;
     }
 
-    const pubClient = createClient({ url: this.redisUrl });
+    const pubClient = createClient({
+      url: this.redisUrl,
+      socket: { connectTimeout: 8_000 },
+    });
     const subClient = pubClient.duplicate();
 
     pubClient.on("error", (error) => {
@@ -34,9 +37,18 @@ export class RedisIoAdapter extends IoAdapter {
       this.logger.warn(`Socket Redis sub error: ${error.message}`);
     });
 
-    await Promise.all([pubClient.connect(), subClient.connect()]);
-    this.adapterConstructor = createAdapter(pubClient, subClient);
-    this.logger.log("Socket.IO Redis adapter connected");
+    try {
+      await Promise.all([pubClient.connect(), subClient.connect()]);
+      this.adapterConstructor = createAdapter(pubClient, subClient);
+      this.logger.log("Socket.IO Redis adapter connected");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.warn(
+        `Socket.IO Redis adapter unavailable (${message}) — using in-memory adapter`,
+      );
+      await Promise.allSettled([pubClient.quit(), subClient.quit()]);
+      this.adapterConstructor = null;
+    }
   }
 
   createIOServer(port: number, options?: ServerOptions) {
