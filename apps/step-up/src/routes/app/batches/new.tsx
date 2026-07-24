@@ -34,7 +34,6 @@ import {
 import type { StudioBranch } from "@/modules/locations/types";
 import { FormInput } from "@/modules/ui/form-input";
 import { ImageCropSheet } from "@/modules/ui/image-crop-sheet";
-import { PageHeader } from "@/modules/ui/page-header";
 import styles from "./new.module.scss";
 
 type Batch = {
@@ -357,20 +356,45 @@ function NewBatchPage() {
     },
   });
 
+  const progressPct = ((step + 1) / steps.length) * 100;
+
   return (
-    <section className="page stack">
-      <PageHeader
-        title="New batch"
-        description="Add a class group for your studio."
-        actions={
+    <section className={`page stack ${styles.create}`}>
+      <header className={styles.hero}>
+        <div className={styles.heroCopy}>
+          <p className={styles.brandMark}>
+            <span className={styles.brandDot} aria-hidden />
+            Step Up · Studio
+          </p>
+          <h1 className={styles.heroTitle}>New batch</h1>
+          <p className={styles.heroDescription}>
+            Shape a class group — cover, trainers, schedule, and plans — in a
+            focused few steps.
+          </p>
+        </div>
+        <div className={styles.heroActions}>
           <Button as={Link} to="/app/batches" variant="quiet">
             Cancel
           </Button>
-        }
-      />
+        </div>
+      </header>
+
+      <div
+        className={styles.progressMeter}
+        role="progressbar"
+        aria-valuemin={1}
+        aria-valuemax={steps.length}
+        aria-valuenow={step + 1}
+        aria-label="Batch creation progress"
+      >
+        <div
+          className={styles.progressFill}
+          style={{ width: `${progressPct}%` }}
+        />
+      </div>
 
       <div className={styles.wizard}>
-        <nav className={styles.steps} aria-label="Batch creation progress">
+        <nav className={styles.steps} aria-label="Batch creation steps">
           {steps.map((label, index) => (
             <div
               key={label}

@@ -1,12 +1,13 @@
 import type { IconName } from "@dev-ui/icons";
 import { Icon } from "@dev-ui/icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useApi } from "@/lib/api-context";
 import { useAuth } from "@/lib/auth";
 import { STUDIO_ID } from "@/lib/constants";
 import { ENTITY_ICONS } from "@/lib/entity-icons";
+import { BookingDetailDrawer } from "@/modules/bookings/booking-detail-drawer";
 import { BookingReviewPanel } from "@/modules/bookings/booking-review-panel";
 import {
   isBookingForTrainer,
@@ -21,6 +22,7 @@ import {
   type ExpandableBentoItem,
 } from "@/modules/ui/expandable-bento-grid";
 import { FilterChipRow } from "@/modules/ui/filter-chip-row";
+import { PressableCard } from "@/modules/ui/pressable-card";
 import { PullToRefresh } from "@/modules/ui/pull-to-refresh";
 import { Screen } from "@/modules/ui/screen";
 import { SkeletonBlock } from "@/modules/ui/skeleton-block";
@@ -134,7 +136,6 @@ function MetricLink({
 
 function AppDashboardPage() {
   const api = useApi();
-  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const isTrainer = user?.role === "TRAINER";
@@ -142,6 +143,9 @@ function AppDashboardPage() {
     useState<StudentFunnelPeriod>("lifetime");
   const [pendingOpen, setPendingOpen] = useState(false);
   const [pendingGridKey, setPendingGridKey] = useState(0);
+  const [selectedBookingId, setSelectedBookingId] = useState<string | null>(
+    null,
+  );
   const batches = useQuery({
     queryKey: ["batches", STUDIO_ID],
     queryFn: () => api.get<Batch[]>(`/batches/studio/${STUDIO_ID}`),
@@ -199,6 +203,7 @@ function AppDashboardPage() {
       });
       void queryClient.invalidateQueries({ queryKey: ["calendar"] });
       setPendingGridKey((key) => key + 1);
+      setSelectedBookingId(null);
     },
   });
 
@@ -227,68 +232,44 @@ function AppDashboardPage() {
           .filter(Boolean)
           .join(" · ");
 
-        if (isTrainer) {
-          return {
-            id: booking.id,
-            title: studentName,
-            subtitle,
-            description: booking.notes
-              ? `${subtitle} · ${booking.notes}`
-              : subtitle,
-            media: (
-              <span className={staff.bentoInitial} aria-hidden>
-                {studentName.slice(0, 1).toUpperCase() || "?"}
-              </span>
-            ),
-            content: (
-              <BookingReviewPanel
-                booking={booking}
-                isPending={updateStatus.isPending}
-                onConfirm={(times) =>
-                  updateStatus.mutate({
-                    id: booking.id,
-                    status: "CONFIRMED",
-                    ...times,
-                  })
-                }
-                onDecline={() =>
-                  updateStatus.mutate({
-                    id: booking.id,
-                    status: "CANCELLED",
-                  })
-                }
-              />
-            ),
-          };
-        }
-
         return {
           id: booking.id,
           title: studentName,
-          subtitle: typeLabel,
+          subtitle,
           description: booking.notes
-            ? `${typeLabel} · ${booking.notes}`
-            : typeLabel,
+            ? `${subtitle} · ${booking.notes}`
+            : subtitle,
           media: (
             <span className={staff.bentoInitial} aria-hidden>
               {studentName.slice(0, 1).toUpperCase() || "?"}
             </span>
           ),
-          actionLabel: "Review",
-          onAction: () => {
-            void navigate({ to: "/app/bookings" });
-          },
-          content: booking.notes ? (
-            <p className={staff.attentionMeta}>{booking.notes}</p>
-          ) : (
-            <p className={staff.attentionMeta}>
-              Tap Review to confirm or decline this request.
-            </p>
+          content: (
+            <BookingReviewPanel
+              booking={booking}
+              isPending={updateStatus.isPending}
+              onConfirm={(times) =>
+                updateStatus.mutate({
+                  id: booking.id,
+                  status: "CONFIRMED",
+                  ...times,
+                })
+              }
+              onDecline={() =>
+                updateStatus.mutate({
+                  id: booking.id,
+                  status: "CANCELLED",
+                })
+              }
+            />
           ),
         };
       }),
-    [isTrainer, navigate, pending, updateStatus.isPending, updateStatus.mutate],
+    [pending, updateStatus.isPending, updateStatus.mutate],
   );
+
+  const selectedBooking =
+    pending.find((booking) => booking.id === selectedBookingId) ?? null;
 
   const anyError =
     batches.isError ||
@@ -458,15 +439,56 @@ function AppDashboardPage() {
                 />
               ) : null}
               {pending.length > 0 ? (
-                <div className={staff.list}>
-                  <ExpandableBentoGrid
-                    items={pendingItems}
+                <>
+                  <ul
+                    className={staff.list}
                     aria-label="Pending booking requests"
-                  />
+                  >
+                    {pending.map((booking) => {
+                      const studentName =
+                        booking.student?.name ?? booking.studentId;
+                      const typeLabel = booking.type.replaceAll("_", " ");
+                      const subtitleParts = [
+                        typeLabel,
+                        booking.batch?.name,
+                      ].filter(Boolean);
+                      if (booking.notes) subtitleParts.push(booking.notes);
+
+                      return (
+                        <li key={booking.id}>
+                          <PressableCard
+                            onClick={() => setSelectedBookingId(booking.id)}
+                          >
+                            <div className={staff.rowCard}>
+                              <div className={staff.rowWithAvatar}>
+                                <span className={staff.listAvatar}>
+                                  <span
+                                    className={staff.bentoInitial}
+                                    aria-hidden
+                                  >
+                                    {studentName.slice(0, 1).toUpperCase() ||
+                                      "?"}
+                                  </span>
+                                </span>
+                                <div className={staff.rowBody}>
+                                  <span className={staff.rowTitle}>
+                                    {studentName}
+                                  </span>
+                                  <span className={staff.rowMeta}>
+                                    {subtitleParts.join(" · ")}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          </PressableCard>
+                        </li>
+                      );
+                    })}
+                  </ul>
                   <TouchButton variant="quiet" fullWidth>
                     <Link to="/app/bookings">Open bookings</Link>
                   </TouchButton>
-                </div>
+                </>
               ) : null}
             </div>
           </div>
@@ -549,7 +571,31 @@ function AppDashboardPage() {
             />
           )}
         </BloomPanel>
-      ) : null}
+      ) : (
+        <BookingDetailDrawer
+          booking={selectedBooking}
+          isOpen={selectedBooking != null}
+          onOpenChange={(open) => {
+            if (!open) setSelectedBookingId(null);
+          }}
+          isPending={updateStatus.isPending}
+          onConfirm={(times) => {
+            if (!selectedBooking) return;
+            updateStatus.mutate({
+              id: selectedBooking.id,
+              status: "CONFIRMED",
+              ...times,
+            });
+          }}
+          onDecline={() => {
+            if (!selectedBooking) return;
+            updateStatus.mutate({
+              id: selectedBooking.id,
+              status: "CANCELLED",
+            });
+          }}
+        />
+      )}
     </PullToRefresh>
   );
 

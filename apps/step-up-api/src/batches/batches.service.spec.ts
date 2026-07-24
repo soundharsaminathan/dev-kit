@@ -226,6 +226,13 @@ describe("BatchesService update", () => {
       deleteMany: vi.fn(),
       createMany: vi.fn(),
     },
+    batchEnrollment: {
+      findMany: vi.fn(),
+    },
+    booking: {
+      updateMany: vi.fn(),
+      findMany: vi.fn(),
+    },
     session: {
       findMany: vi.fn(),
       deleteMany: vi.fn(),
@@ -233,6 +240,7 @@ describe("BatchesService update", () => {
       update: vi.fn(),
     },
     $transaction: vi.fn(),
+    $queryRaw: vi.fn(),
   };
 
   let service: BatchesService;
@@ -269,6 +277,10 @@ describe("BatchesService update", () => {
     });
     prisma.batch.update.mockResolvedValue({ id: "batch-1" });
     prisma.session.findMany.mockResolvedValue([]);
+    prisma.$queryRaw.mockResolvedValue([{ id: "batch-1" }]);
+    prisma.batchEnrollment.findMany.mockResolvedValue([]);
+    prisma.booking.updateMany.mockResolvedValue({ count: 0 });
+    prisma.booking.findMany.mockResolvedValue([]);
   });
 
   it("rejects trainers from another studio", async () => {
@@ -332,6 +344,46 @@ describe("BatchesService update", () => {
         data: expect.objectContaining({
           danceCategories: [{ name: "Jazz", description: "Foundations" }],
         }),
+      }),
+    );
+  });
+
+  it("rejects capacity below occupied seats", async () => {
+    prisma.batchEnrollment.findMany.mockResolvedValue([
+      { studentId: "student-1" },
+      { studentId: "student-2" },
+    ]);
+    prisma.booking.findMany.mockResolvedValue([{ studentId: "student-3" }]);
+
+    await expect(service.update("batch-1", { capacity: 2 })).rejects.toSatisfy(
+      (error: unknown) => {
+        expect(error).toBeInstanceOf(ConflictException);
+        expect((error as ConflictException).message).toContain(
+          "occupied seats (3)",
+        );
+        return true;
+      },
+    );
+    expect(prisma.batch.update).not.toHaveBeenCalled();
+  });
+
+  it("allows capacity equal to occupied seats", async () => {
+    prisma.batchEnrollment.findMany.mockResolvedValue([
+      { studentId: "student-1" },
+      { studentId: "student-2" },
+    ]);
+    prisma.booking.findMany.mockResolvedValue([
+      { studentId: "student-1" },
+      { studentId: "student-2" },
+    ]);
+
+    await expect(service.update("batch-1", { capacity: 2 })).resolves.toEqual({
+      id: "batch-1",
+    });
+    expect(prisma.batch.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "batch-1" },
+        data: expect.objectContaining({ capacity: 2 }),
       }),
     );
   });
@@ -569,11 +621,25 @@ describe("BatchesService.remove and enroll", () => {
     prisma.batch.findUnique.mockResolvedValue({
       id: "batch-1",
       studioId: "studio-1",
+      _count: { enrollments: 0 },
     });
     prisma.batch.delete.mockResolvedValue({ id: "batch-1" });
 
     await expect(service.remove("batch-1")).resolves.toEqual({ id: "batch-1" });
     expect(trialSlotsCache.invalidate).toHaveBeenCalledWith("studio-1");
+  });
+
+  it("rejects delete when the batch has enrolled students", async () => {
+    prisma.batch.findUnique.mockResolvedValue({
+      id: "batch-1",
+      studioId: "studio-1",
+      _count: { enrollments: 2 },
+    });
+
+    await expect(service.remove("batch-1")).rejects.toBeInstanceOf(
+      ConflictException,
+    );
+    expect(prisma.batch.delete).not.toHaveBeenCalled();
   });
 
   it("rejects enroll when actor is not linked to the student", async () => {

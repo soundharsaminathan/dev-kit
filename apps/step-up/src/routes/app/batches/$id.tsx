@@ -54,6 +54,10 @@ type Batch = {
   category: "KIDS" | "ADULTS";
   capacity: number;
   enrollmentMode: "STAFF_ONLY" | "SELF_JOIN";
+  enrollmentCount?: number;
+  occupiedSeats?: number;
+  remainingSeats?: number;
+  enrollments?: unknown[];
   active: boolean;
   branchId: string;
   branch?: {
@@ -73,6 +77,14 @@ type Batch = {
     };
   }[];
 };
+
+function occupiedSeatsForBatch(batch: Batch) {
+  if (typeof batch.occupiedSeats === "number") return batch.occupiedSeats;
+  if (typeof batch.remainingSeats === "number") {
+    return Math.max(0, batch.capacity - batch.remainingSeats);
+  }
+  return batch.enrollmentCount ?? batch.enrollments?.length ?? 0;
+}
 
 type StudioBranch = {
   id: string;
@@ -119,11 +131,28 @@ export const Route = createFileRoute("/app/batches/$id")({
 function EditBatchPage() {
   const { id } = Route.useParams();
   const api = useApi();
+  const navigate = useNavigate({ from: Route.fullPath });
+  const queryClient = useQueryClient();
 
   const query = useQuery({
     queryKey: ["batch", id],
     queryFn: () => api.get<Batch>(`/batches/${id}`),
   });
+
+  const deleteBatch = useMutation({
+    mutationFn: () => api.delete(`/batches/${id}`),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["batches", STUDIO_ID] }),
+        queryClient.removeQueries({ queryKey: ["batch", id] }),
+      ]);
+      await navigate({ to: "/app/batches" });
+    },
+  });
+
+  const audienceCount =
+    query.data?.enrollmentCount ?? query.data?.enrollments?.length ?? 0;
+  const canDelete = Boolean(query.data) && audienceCount === 0;
 
   return (
     <section className="page stack">
@@ -131,11 +160,38 @@ function EditBatchPage() {
         title={query.data?.name ?? "Batch"}
         description="Enroll students, manage instructors, edit details, billing, and chat."
         actions={
-          <Button as={Link} to="/app/batches" variant="quiet">
-            Back
-          </Button>
+          <div className={styles.headerActions}>
+            {canDelete ? (
+              <Button
+                variant="danger"
+                isPending={deleteBatch.isPending}
+                onClick={() => {
+                  if (
+                    window.confirm(
+                      `Delete “${query.data?.name}”? This cannot be undone.`,
+                    )
+                  ) {
+                    deleteBatch.mutate();
+                  }
+                }}
+              >
+                Delete
+              </Button>
+            ) : null}
+            <Button as={Link} to="/app/batches" variant="quiet">
+              Back
+            </Button>
+          </div>
         }
       />
+
+      {deleteBatch.isError ? (
+        <p className={styles.error} role="alert">
+          {deleteBatch.error instanceof Error
+            ? deleteBatch.error.message
+            : "The batch could not be deleted."}
+        </p>
+      ) : null}
 
       <ApiState
         isLoading={query.isLoading}
@@ -216,8 +272,15 @@ function EditBatchForm({ batch }: { batch: Batch }) {
     queryFn: () => api.get<StudioBranch[]>(`/studios/${STUDIO_ID}/branches`),
   });
 
+  const occupiedSeats = occupiedSeatsForBatch(batch);
+  const minCapacity = Math.max(1, occupiedSeats);
+  const capacityValue = Number(capacity);
+  const capacityTooLow =
+    Number.isFinite(capacityValue) && capacityValue < minCapacity;
+
   const isValid =
-    Boolean(name.trim() && branchId && Number(capacity) >= 1) &&
+    Boolean(name.trim() && branchId && capacityValue >= minCapacity) &&
+    !capacityTooLow &&
     Boolean(
       startDate &&
         endDate >= startDate &&
@@ -376,13 +439,27 @@ function EditBatchForm({ batch }: { batch: Batch }) {
             ))}
           </SelectContent>
         </Select>
-        <FormInput
-          label="Capacity"
-          type="number"
-          min="1"
-          value={capacity}
-          onChange={setCapacity}
-        />
+        <div>
+          <FormInput
+            label="Capacity"
+            type="number"
+            min={String(minCapacity)}
+            value={capacity}
+            onChange={setCapacity}
+          />
+          {capacityTooLow ? (
+            <p className={styles.error} role="alert">
+              Capacity cannot be below {occupiedSeats} occupied seat
+              {occupiedSeats === 1 ? "" : "s"} (enrollments and active
+              bookings).
+            </p>
+          ) : occupiedSeats > 0 ? (
+            <p className={styles.help}>
+              {occupiedSeats} seat{occupiedSeats === 1 ? "" : "s"} currently
+              occupied.
+            </p>
+          ) : null}
+        </div>
         <Select
           label="Enrollment"
           value={enrollmentMode}
