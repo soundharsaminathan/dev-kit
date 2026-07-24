@@ -124,12 +124,12 @@ function MeHomePage() {
     return (
       <section className="screen" aria-busy="true" aria-label="Loading home">
         <div className={styles.root}>
-          <HomeNotices notices={notices} />
           <SkeletonBlock
             height="18.5rem"
             radius="0"
             className={styles.skeletonBanner}
           />
+          <HomeNotices notices={notices} flushHero />
           <SkeletonBlock height="6.5rem" radius="var(--radius-2xl, 1.25rem)" />
           <div className={styles.section}>
             <SkeletonBlock height="0.875rem" width="30%" />
@@ -162,8 +162,6 @@ function MeHomePage() {
         <div className={styles.root}>
           <InstallAppBar onVisibleChange={setInstallBarVisible} />
 
-          <HomeNotices notices={notices} />
-
           {homeQuery.isError ? (
             <ErrorState
               description={
@@ -190,8 +188,10 @@ function MeHomePage() {
                 greeting={data.greeting}
                 firstName={firstName}
                 cta={bannerCta}
-                flushTop={installBarVisible && notices.length === 0}
+                flushTop={installBarVisible}
               />
+
+              <HomeNotices notices={notices} flushHero />
 
               {nextClass ? (
                 <UpcomingClassCard
@@ -301,7 +301,9 @@ function MeHomePage() {
                 </HScrollRow>
               </section>
             </>
-          ) : null}
+          ) : (
+            <HomeNotices notices={notices} />
+          )}
 
           {!homeQuery.isLoading && !homeQuery.isError && !data && studentId ? (
             <EmptyState

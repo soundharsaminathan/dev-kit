@@ -64,7 +64,8 @@
 
 @media (max-width: 767px) {
   .bar {
-    bottom: calc(4.25rem);
+    bottom: calc(3.5rem + env(safe-area-inset-bottom, 0px));
+    padding-bottom: var(--space-3, 0.75rem);
   }
 }
 

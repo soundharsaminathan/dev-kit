@@ -21,7 +21,7 @@ export type BloomMenuProps = {
   className?: string | undefined;
   columns?: 1 | 2 | 3 | undefined;
   size?: "default" | "compact" | undefined;
-  tone?: "primary" | "quiet" | undefined;
+  tone?: "primary" | "quiet" | "danger" | undefined;
   disabled?: boolean | undefined;
 };
 
@@ -94,6 +94,7 @@ export function BloomMenu({
     styles.trigger,
     size === "compact" ? styles.triggerCompact : null,
     tone === "quiet" ? styles.triggerQuiet : null,
+    tone === "danger" ? styles.triggerDanger : null,
   ]
     .filter(Boolean)
     .join(" ");
