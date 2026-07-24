@@ -67,8 +67,9 @@ export function BatchCardSkeletonList({ count = 3 }: { count?: number }) {
       {BATCH_CARD_KEYS.slice(0, count).map((key) => (
         <div key={key} className={styles.batchRow}>
           <SkeletonBlock
-            height="11rem"
-            width="38%"
+            className={styles.batchMedia}
+            height="auto"
+            width="100%"
             radius="var(--radius-lg, 0.75rem)"
           />
           <div className={styles.batchBody}>

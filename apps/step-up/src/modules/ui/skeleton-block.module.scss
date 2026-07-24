@@ -34,11 +34,18 @@
 .batchRow {
   display: grid;
   grid-template-columns: minmax(7.5rem, 38%) minmax(0, 1fr);
+  align-items: stretch;
   gap: var(--space-3, 0.75rem);
   padding: var(--space-3, 0.75rem);
   border: 1px solid color-mix(in srgb, var(--color-fg) 10%, transparent);
   border-radius: var(--radius-xl, 1rem);
   background: var(--card-background, var(--color-card, var(--color-bg)));
+}
+
+.batchMedia {
+  align-self: stretch;
+  min-height: 11rem;
+  min-width: 0;
 }
 
 .batchBody {
@@ -60,6 +67,10 @@
     grid-template-columns: minmax(8rem, 11rem) minmax(0, 1fr);
     gap: var(--space-4, 1rem);
     padding: var(--space-4, 1rem);
+  }
+
+  .batchMedia {
+    min-height: 0;
   }
 }
 
