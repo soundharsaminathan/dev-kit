@@ -17,6 +17,7 @@ type FilterChipRowProps = {
   chips: FilterChip[];
   selected: string[];
   onToggle: (id: string) => void;
+  leading?: ReactNode;
   trailing?: ReactNode;
 };
 
@@ -24,6 +25,7 @@ export function FilterChipRow({
   chips,
   selected,
   onToggle,
+  leading,
   trailing,
 }: FilterChipRowProps) {
   const scrollRef = useRef<HTMLUListElement>(null);
@@ -74,6 +76,7 @@ export function FilterChipRow({
       data-can-scroll-left={canScrollLeft ? "true" : undefined}
       data-can-scroll-right={canScrollRight ? "true" : undefined}
     >
+      {leading}
       <div className={styles.scroller}>
         <ul ref={scrollRef} className={styles.scroll}>
           {chips.map((chip) => {
