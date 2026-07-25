@@ -36,10 +36,14 @@ describe("FollowButton", () => {
     expect(onUnfollow).toHaveBeenCalledTimes(1);
   });
 
-  it("disables while pending", () => {
+  it("stays clickable while a follow request is pending", () => {
+    const onFollow = vi.fn();
     renderWithProviders(
-      <FollowButton isFollowing={false} isPending onFollow={vi.fn()} />,
+      <FollowButton isFollowing={false} isPending onFollow={onFollow} />,
     );
-    expect(screen.getByRole("button", { name: "Follow" })).toBeDisabled();
+    const button = screen.getByRole("button", { name: "Follow" });
+    expect(button).not.toBeDisabled();
+    fireEvent.click(button);
+    expect(onFollow).toHaveBeenCalledTimes(1);
   });
 });

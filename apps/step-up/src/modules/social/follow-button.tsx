@@ -26,7 +26,7 @@ export function FollowButton({
   isFollowing,
   followRequestStatus,
   profileVisibility,
-  isPending,
+  isPending: _isPending,
   onFollow,
   onUnfollow,
   size = "sm",
@@ -38,7 +38,6 @@ export function FollowButton({
     followRequestStatus,
     profileVisibility,
   });
-  const pending = Boolean(isPending);
 
   if (isFollowing || isRequested) {
     return (
@@ -46,8 +45,6 @@ export function FollowButton({
         size={size}
         variant="default"
         className={className}
-        isDisabled={pending}
-        aria-busy={pending || undefined}
         aria-pressed={true}
         onClick={(event) => {
           event.stopPropagation();
@@ -65,8 +62,6 @@ export function FollowButton({
       size={size}
       variant="primary"
       className={className}
-      isDisabled={pending}
-      aria-busy={pending || undefined}
       aria-pressed={false}
       onClick={(event) => {
         event.stopPropagation();
