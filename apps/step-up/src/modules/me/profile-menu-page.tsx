@@ -25,7 +25,7 @@ type ProfileMenuPageProps = {
 };
 
 export function ProfileMenuPage({ variant = "me" }: ProfileMenuPageProps) {
-  const { user, signOutUser } = useAuth();
+  const { user, signOutUser, needsEmailVerification } = useAuth();
   const api = useApi();
   const queryClient = useQueryClient();
   const activeStudent = useContext(ActiveStudentContext);
@@ -175,6 +175,13 @@ export function ProfileMenuPage({ variant = "me" }: ProfileMenuPageProps) {
                   <Icon name="shield" />
                 </span>
                 <span className={styles.menuLabel}>Account security</span>
+                {needsEmailVerification ? (
+                  <Icon
+                    name="alert-circle"
+                    className={styles.alertIcon}
+                    aria-label="Email unverified"
+                  />
+                ) : null}
                 <Icon name="chevron-right" className={styles.chevron} />
               </Link>
             </li>
