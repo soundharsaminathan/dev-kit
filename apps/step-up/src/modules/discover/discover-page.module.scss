@@ -4,6 +4,35 @@
   gap: var(--space-3, 0.75rem);
 }
 
+.searchBar {
+  width: 100%;
+  min-width: 0;
+  padding: var(--space-3, 0.75rem);
+  border-radius: var(--radius-2xl, 1.25rem);
+  background: var(--color-primary);
+}
+
+.search {
+  width: 100%;
+  min-width: 0;
+
+  :global([data-search-field-group]) {
+    border-color: transparent;
+    background: var(--color-card, var(--color-bg));
+    box-shadow: var(--shadow-sm, 0 1px 3px rgb(0 0 0 / 8%));
+  }
+
+  :global([data-search-field-group]:focus-within) {
+    border-color: var(--color-border-focus);
+    box-shadow: 0 0 0 2px var(--color-border-focus-muted);
+  }
+}
+
+.filters {
+  width: 100%;
+  min-width: 0;
+}
+
 .filterBtn {
   position: relative;
   flex-shrink: 0;
