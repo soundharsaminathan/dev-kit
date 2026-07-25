@@ -6,6 +6,7 @@
   gap: var(--space-5);
   margin-inline: calc(var(--space-4) * -1);
   padding-bottom: var(--space-8);
+  min-height: calc(100svh - 8rem);
 }
 
 @media (min-width: 768px) {
