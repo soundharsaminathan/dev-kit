@@ -35,6 +35,7 @@ const DRAG_Y = 100;
 const VELOCITY_X = 480;
 const VELOCITY_Y = 650;
 const EXIT_X = 280;
+const PROFILE_EXIT_MS = 240;
 
 const SPRING_CARD = {
   type: "spring" as const,
@@ -89,7 +90,10 @@ export function TrainerDiscoveryView({
   const [menuOpen, setMenuOpen] = useState(false);
   const [exitDirection, setExitDirection] = useState(0);
   const [showHint, setShowHint] = useState(true);
+  const [heartBurst, setHeartBurst] = useState(false);
+  const [profileExit, setProfileExit] = useState(false);
   const carouselRef = useRef<HTMLUListElement>(null);
+  const profileExitTimerRef = useRef<number | undefined>(undefined);
 
   const dragX = useMotionValue(0);
   const dragY = useMotionValue(0);
@@ -113,6 +117,16 @@ export function TrainerDiscoveryView({
     [-160, 0],
     reducedMotion ? [1.06, 1.06] : [1.14, 1.06],
   );
+  const profileCueOpacity = useTransform(
+    dragY,
+    [-DRAG_Y * 1.05, -42, 0],
+    reducedMotion ? [0, 0, 0] : [1, 0.55, 0],
+  );
+  const profileCueY = useTransform(
+    dragY,
+    [-DRAG_Y, 0],
+    reducedMotion ? [0, 0] : [0, 16],
+  );
 
   const index = useMemo(() => {
     if (activeTrainerId) {
@@ -135,6 +149,23 @@ export function TrainerDiscoveryView({
     }
     setActiveTrainerId(trainers[0]?.id ?? null);
   }, [activeTrainerId, trainers]);
+
+  useEffect(() => {
+    setHeartBurst(false);
+    setProfileExit(false);
+    if (profileExitTimerRef.current !== undefined) {
+      window.clearTimeout(profileExitTimerRef.current);
+      profileExitTimerRef.current = undefined;
+    }
+  }, [activeTrainerId]);
+
+  useEffect(() => {
+    return () => {
+      if (profileExitTimerRef.current !== undefined) {
+        window.clearTimeout(profileExitTimerRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     const timer = window.setTimeout(() => setShowHint(false), 3200);
@@ -192,7 +223,19 @@ export function TrainerDiscoveryView({
     void navigate({ to: "/me" });
   }
 
-  function openProfile(trainerId: string) {
+  function openProfile(trainerId: string, options?: { animated?: boolean }) {
+    if (profileExit) return;
+
+    if (options?.animated && !reducedMotion) {
+      resetDrag();
+      setShowHint(false);
+      setProfileExit(true);
+      profileExitTimerRef.current = window.setTimeout(() => {
+        void navigate({ to: "/users/$id", params: { id: trainerId } });
+      }, PROFILE_EXIT_MS);
+      return;
+    }
+
     void navigate({ to: "/users/$id", params: { id: trainerId } });
   }
 
@@ -218,8 +261,8 @@ export function TrainerDiscoveryView({
     const { offset, velocity } = info;
 
     if (offset.y < -DRAG_Y || velocity.y < -VELOCITY_Y) {
-      if (trainer) openProfile(trainer.id);
-      resetDrag();
+      if (trainer) openProfile(trainer.id, { animated: true });
+      else resetDrag();
       return;
     }
 
@@ -260,7 +303,7 @@ export function TrainerDiscoveryView({
           <motion.article
             key={trainer.id}
             className={styles.card}
-            drag={!reducedMotion}
+            drag={!reducedMotion && !profileExit}
             dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
             dragElastic={0.72}
             dragTransition={{
@@ -283,7 +326,13 @@ export function TrainerDiscoveryView({
                     scale: 0.97,
                   }
             }
-            animate={{ opacity: 1, x: 0, y: 0, scale: 1 }}
+            animate={
+              profileExit
+                ? reducedMotion
+                  ? { opacity: 0 }
+                  : { opacity: 0, y: -88, scale: 0.97 }
+                : { opacity: 1, x: 0, y: 0, scale: 1 }
+            }
             exit={
               reducedMotion
                 ? { opacity: 0, transition: { duration: 0.16 } }
@@ -294,7 +343,13 @@ export function TrainerDiscoveryView({
                     transition: { duration: 0.28, ease: EASE_OUT },
                   }
             }
-            transition={reducedMotion ? { duration: 0.18 } : SPRING_CARD}
+            transition={
+              profileExit
+                ? { duration: 0.22, ease: EASE_OUT }
+                : reducedMotion
+                  ? { duration: 0.18 }
+                  : SPRING_CARD
+            }
           >
             <div className={styles.photoWrap}>
               {imageUrl ? (
@@ -321,6 +376,17 @@ export function TrainerDiscoveryView({
             </div>
 
             <div className={styles.chrome}>
+              {!reducedMotion ? (
+                <motion.p
+                  className={styles.profileCue}
+                  style={{ opacity: profileCueOpacity, y: profileCueY }}
+                  aria-hidden
+                >
+                  <Icon name="chevron-up" aria-hidden />
+                  View profile
+                </motion.p>
+              ) : null}
+
               <header className={styles.topNav}>
                 <button
                   type="button"
@@ -369,14 +435,21 @@ export function TrainerDiscoveryView({
                       type="button"
                       className={styles.actionBtn}
                       data-active={favoriteActive ? "true" : undefined}
+                      data-burst={heartBurst ? "true" : undefined}
                       aria-label={
                         favoriteActive
                           ? `Unfavorite ${trainer.name}`
                           : `Favorite ${trainer.name}`
                       }
                       aria-pressed={favoriteActive}
-                      disabled={favoritePending}
-                      onClick={() => onToggleFollow(trainer)}
+                      disabled={favoritePending || profileExit}
+                      onClick={() => {
+                        if (!favoriteActive && !reducedMotion) {
+                          setHeartBurst(true);
+                        }
+                        onToggleFollow(trainer);
+                      }}
+                      onAnimationEnd={() => setHeartBurst(false)}
                     >
                       <Icon name="heart" aria-hidden />
                     </button>
@@ -410,17 +483,34 @@ export function TrainerDiscoveryView({
                       <Icon name="users" aria-hidden />
                       {trainer.followerCount.toLocaleString()} students
                     </span>
-                    {trainer.isFollowing ? (
-                      <span className={styles.status}>
+                    <AnimatePresence mode="wait" initial={false}>
+                      <motion.span
+                        key={trainer.isFollowing ? "following" : "available"}
+                        className={styles.status}
+                        data-following={
+                          trainer.isFollowing ? "true" : undefined
+                        }
+                        initial={
+                          reducedMotion
+                            ? false
+                            : { opacity: 0, y: 5, scale: 0.96 }
+                        }
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        {...(reducedMotion
+                          ? {}
+                          : {
+                              exit: {
+                                opacity: 0,
+                                y: -4,
+                                scale: 0.98,
+                              },
+                            })}
+                        transition={{ duration: 0.18, ease: EASE_OUT }}
+                      >
                         <span className={styles.statusDot} aria-hidden />
-                        Following
-                      </span>
-                    ) : (
-                      <span className={styles.status}>
-                        <span className={styles.statusDot} aria-hidden />
-                        Available
-                      </span>
-                    )}
+                        {trainer.isFollowing ? "Following" : "Available"}
+                      </motion.span>
+                    </AnimatePresence>
                   </p>
 
                   {trainer.styles.length > 0 ? (
@@ -494,8 +584,8 @@ export function TrainerDiscoveryView({
           </motion.article>
         </AnimatePresence>
 
-        {showHint && trainers.length > 1 && !reducedMotion ? (
-          <p className={styles.hint}>Swipe · tap avatars</p>
+        {showHint && trainers.length > 1 && !reducedMotion && !profileExit ? (
+          <p className={styles.hint}>Swipe up · browse avatars</p>
         ) : null}
       </div>
 
