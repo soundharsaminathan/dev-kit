@@ -1,4 +1,4 @@
-import { NotificationType } from "@prisma/client";
+import { NotificationType, Prisma } from "@prisma/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { MembershipsService } from "./memberships.service";
 
@@ -184,11 +184,19 @@ describe("MembershipsService.assign family packs", () => {
     expect(prisma.batchEnrollment.upsert).toHaveBeenCalledTimes(2);
     expect(prisma.batchEnrollment.upsert).toHaveBeenCalledWith(
       expect.objectContaining({
+        update: {
+          isTrial: false,
+          trialSessionIds: Prisma.DbNull,
+        },
         create: { batchId: "batch-adult", studentId: "owner-1" },
       }),
     );
     expect(prisma.batchEnrollment.upsert).toHaveBeenCalledWith(
       expect.objectContaining({
+        update: {
+          isTrial: false,
+          trialSessionIds: Prisma.DbNull,
+        },
         create: { batchId: "batch-kid", studentId: "kid-1" },
       }),
     );
@@ -339,6 +347,10 @@ describe("MembershipsService.purchaseForBatch", () => {
 
     expect(prisma.batchEnrollment.upsert).toHaveBeenCalledWith(
       expect.objectContaining({
+        update: {
+          isTrial: false,
+          trialSessionIds: Prisma.DbNull,
+        },
         create: { batchId: "batch-kid", studentId: "kid-1" },
       }),
     );

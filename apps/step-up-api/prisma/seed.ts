@@ -851,7 +851,6 @@ async function main() {
     enrollmentMode: EnrollmentMode;
     creatorId: string;
     active: boolean;
-    isTrial?: boolean;
     certificationEnabled: boolean;
     coverImageUrl: string;
     ratingAvg: number | null;
@@ -955,13 +954,13 @@ async function main() {
     },
     {
       id: "batch-trial-1",
-      name: "Open Trial Class",
+      name: "Open Beginner Class",
       category: "ADULTS",
       branchId: mainBranch.id,
       danceCategories: [
         {
           name: "Hip-hop",
-          description: "First-class trial — try a class before you commit.",
+          description: "Open beginner class — try sessions before you commit.",
         },
       ],
       scheduleJson: { days: ["Sat"], time: "11:00" },
@@ -969,7 +968,6 @@ async function main() {
       enrollmentMode: EnrollmentMode.SELF_JOIN,
       creatorId: "trainer-3",
       active: true,
-      isTrial: true,
       certificationEnabled: false,
       coverImageUrl:
         "https://images.unsplash.com/photo-1508700929628-666bc8bd84ea?w=800&q=80",
@@ -1018,7 +1016,6 @@ async function main() {
         capacity: data.capacity,
         enrollmentMode: data.enrollmentMode,
         active: data.active,
-        isTrial: "isTrial" in data ? Boolean(data.isTrial) : false,
         certificationEnabled: data.certificationEnabled,
         certificateTemplateId: data.certificationEnabled
           ? sampleCertificate.id
@@ -1039,7 +1036,6 @@ async function main() {
         enrollmentMode: data.enrollmentMode,
         creatorId: data.creatorId,
         active: data.active,
-        isTrial: "isTrial" in data ? Boolean(data.isTrial) : false,
         certificationEnabled: data.certificationEnabled,
         certificateTemplateId: data.certificationEnabled
           ? sampleCertificate.id
@@ -1106,6 +1102,63 @@ async function main() {
   await enroll("batch-contemporary-1", contemporaryEnrollees);
   await enroll("batch-beginner-1", beginnerEnrollees);
 
+  await prisma.batchEnrollment.upsert({
+    where: {
+      batchId_studentId: {
+        batchId: "batch-trial-1",
+        studentId: "student-15",
+      },
+    },
+    update: {
+      isTrial: true,
+      trialSessionIds: ["session-trial-w0", "session-trial-w1"],
+    },
+    create: {
+      batchId: "batch-trial-1",
+      studentId: "student-15",
+      isTrial: true,
+      trialSessionIds: ["session-trial-w0", "session-trial-w1"],
+    },
+  });
+
+  const adultPlanIds = [
+    "sub-individual-adult-monthly",
+    "sub-individual-adult-quarterly",
+  ] as const;
+  const kidPlanIds = [
+    "sub-individual-kid-monthly",
+    "sub-individual-kid-quarterly",
+  ] as const;
+  const batchPlans: Array<{ batchId: string; subscriptionId: string }> = [
+    ...["batch-kids-1"].flatMap((batchId) =>
+      kidPlanIds.map((subscriptionId) => ({ batchId, subscriptionId })),
+    ),
+    ...[
+      "batch-adults-1",
+      "batch-contemporary-1",
+      "batch-beginner-1",
+      "batch-trial-1",
+    ].flatMap((batchId) =>
+      adultPlanIds.map((subscriptionId) => ({ batchId, subscriptionId })),
+    ),
+  ];
+
+  for (const plan of batchPlans) {
+    await prisma.batchPlan.upsert({
+      where: {
+        batchId_subscriptionId: {
+          batchId: plan.batchId,
+          subscriptionId: plan.subscriptionId,
+        },
+      },
+      update: {},
+      create: {
+        batchId: plan.batchId,
+        subscriptionId: plan.subscriptionId,
+      },
+    });
+  }
+
   // Drop stale enrollments from older seeds so attendance rosters match intent.
   await prisma.batchEnrollment.deleteMany({
     where: {
@@ -1125,6 +1178,10 @@ async function main() {
         {
           batchId: "batch-beginner-1",
           studentId: { notIn: [...beginnerEnrollees] },
+        },
+        {
+          batchId: "batch-trial-1",
+          studentId: { notIn: ["student-15"] },
         },
       ],
     },
@@ -1433,7 +1490,7 @@ async function main() {
       endsAt: utcAt(weekStart, 5, 11),
       status: SessionStatus.SCHEDULED,
     },
-    // Trial — next 5 Saturdays @ 11:00 UTC
+    // Open beginner — next 5 Saturdays @ 11:00 UTC
     ...nextWeekdayOccurrences(6, 5, 11).map((startsAt, index) => {
       const endsAt = new Date(startsAt);
       endsAt.setUTCHours(12, 0, 0, 0);
@@ -1443,7 +1500,7 @@ async function main() {
         startsAt,
         endsAt,
         status: SessionStatus.SCHEDULED,
-        type: SessionType.TRIAL,
+        type: SessionType.REGULAR,
       };
     }),
   ];

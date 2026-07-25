@@ -169,6 +169,10 @@ class CreateStudentDto {
   @IsOptional()
   @IsString()
   batchId?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  isTrial?: boolean;
 }
 
 class CreateTrainerDto {

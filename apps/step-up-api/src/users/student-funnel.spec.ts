@@ -28,19 +28,26 @@ function student(
   };
 }
 
+function enrollment(
+  overrides: Partial<StudentFunnelStudentInput["enrollments"][number]> = {},
+): StudentFunnelStudentInput["enrollments"][number] {
+  return {
+    batchId: "batch-1",
+    batchActive: true,
+    isTrial: false,
+    trialSessionIds: [],
+    hasScheduledSession: true,
+    hasCompletedSession: false,
+    ...overrides,
+  };
+}
+
 describe("student-funnel", () => {
   it("classifies active batch enrollment first", () => {
     expect(
       classifyStudentFunnelStage(
         student({
-          enrollments: [
-            {
-              batchId: "batch-1",
-              batchActive: true,
-              hasScheduledSession: true,
-              hasCompletedSession: false,
-            },
-          ],
+          enrollments: [enrollment()],
           bookings: [
             {
               type: BookingType.TRIAL,
@@ -58,12 +65,11 @@ describe("student-funnel", () => {
       classifyStudentFunnelStage(
         student({
           enrollments: [
-            {
-              batchId: "batch-1",
+            enrollment({
               batchActive: false,
               hasScheduledSession: false,
               hasCompletedSession: true,
-            },
+            }),
           ],
           memberships: [{ status: MembershipStatus.EXPIRED }],
         }),
@@ -76,12 +82,11 @@ describe("student-funnel", () => {
       classifyStudentFunnelStage(
         student({
           enrollments: [
-            {
-              batchId: "batch-1",
+            enrollment({
               batchActive: false,
               hasScheduledSession: false,
               hasCompletedSession: true,
-            },
+            }),
           ],
           memberships: [{ status: MembershipStatus.ACTIVE }],
           bookings: [
@@ -134,6 +139,42 @@ describe("student-funnel", () => {
     ).toBe("trialAttended");
   });
 
+  it("classifies trial registered from trial enrollment", () => {
+    expect(
+      classifyStudentFunnelStage(
+        student({
+          enrollments: [
+            enrollment({
+              isTrial: true,
+              trialSessionIds: ["session-trial-1", "session-trial-2"],
+            }),
+          ],
+        }),
+      ),
+    ).toBe("trialRegistered");
+  });
+
+  it("classifies trial attended from present on trialSessionIds", () => {
+    expect(
+      classifyStudentFunnelStage(
+        student({
+          enrollments: [
+            enrollment({
+              isTrial: true,
+              trialSessionIds: ["session-trial-1", "session-trial-2"],
+            }),
+          ],
+          attendance: [
+            {
+              sessionId: "session-trial-1",
+              status: AttendanceStatus.PRESENT,
+            },
+          ],
+        }),
+      ),
+    ).toBe("trialAttended");
+  });
+
   it("classifies trial registered without attendance", () => {
     expect(
       classifyStudentFunnelStage(
@@ -159,14 +200,7 @@ describe("student-funnel", () => {
       countStudentFunnel([
         student({
           id: "a",
-          enrollments: [
-            {
-              batchId: "batch-1",
-              batchActive: true,
-              hasScheduledSession: true,
-              hasCompletedSession: false,
-            },
-          ],
+          enrollments: [enrollment()],
         }),
         student({ id: "b" }),
         student({
@@ -192,12 +226,12 @@ describe("student-funnel", () => {
         student({
           id: "e",
           enrollments: [
-            {
+            enrollment({
               batchId: "batch-old",
               batchActive: false,
               hasScheduledSession: false,
               hasCompletedSession: true,
-            },
+            }),
           ],
         }),
       ]),
@@ -223,14 +257,7 @@ describe("student-funnel", () => {
         student({
           id: "july",
           createdAt: new Date("2026-07-05T00:00:00.000Z"),
-          enrollments: [
-            {
-              batchId: "batch-1",
-              batchActive: true,
-              hasScheduledSession: true,
-              hasCompletedSession: false,
-            },
-          ],
+          enrollments: [enrollment()],
         }),
       ],
       "this_month",

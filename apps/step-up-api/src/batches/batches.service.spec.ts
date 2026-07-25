@@ -164,38 +164,6 @@ describe("BatchesService branch validation", () => {
     });
   });
 
-  it("creates a trial batch without plans and marks sessions TRIAL", async () => {
-    prisma.studioBranch.findUnique.mockResolvedValue({
-      id: "branch-1",
-      studioId: "studio-1",
-    });
-    prisma.batch.create.mockResolvedValue({
-      id: "batch-trial",
-      isTrial: true,
-      plans: [],
-    });
-
-    await service.create("owner-1", {
-      ...createPayload,
-      isTrial: true,
-      subscriptionIds: [],
-      certificationEnabled: true,
-      certificateTemplateId: "cert-1",
-    });
-
-    const createArg = prisma.batch.create.mock.calls[0]?.[0]?.data;
-    expect(createArg?.isTrial).toBe(true);
-    expect(createArg?.certificationEnabled).toBe(false);
-    expect(createArg?.certificateTemplateId).toBeNull();
-    expect(createArg?.plans).toEqual({ create: [] });
-    expect(createArg?.sessions?.create?.length).toBeGreaterThan(0);
-    expect(
-      createArg?.sessions?.create?.every(
-        (session: { type: string }) => session.type === "TRIAL",
-      ),
-    ).toBe(true);
-  });
-
   it("rejects create when a schedule conflict exists", async () => {
     prisma.studioBranch.findUnique.mockResolvedValue({
       id: "branch-1",
@@ -581,7 +549,19 @@ describe("BatchesService.remove and enroll", () => {
     },
     familyMember: { findUnique: vi.fn() },
     parentChild: { findUnique: vi.fn() },
-    batchEnrollment: { upsert: vi.fn() },
+    batchEnrollment: {
+      upsert: vi.fn(),
+      findMany: vi.fn(),
+      findFirst: vi.fn(),
+    },
+    booking: {
+      findMany: vi.fn(),
+      findFirst: vi.fn(),
+      updateMany: vi.fn(),
+    },
+    session: {
+      findMany: vi.fn(),
+    },
     $transaction: vi.fn(),
     $queryRaw: vi.fn(),
   };
@@ -615,6 +595,15 @@ describe("BatchesService.remove and enroll", () => {
       media as never,
       memberships as never,
     );
+    prisma.$transaction.mockImplementation(
+      async (callback: (tx: typeof prisma) => unknown) => callback(prisma),
+    );
+    prisma.$queryRaw.mockResolvedValue([{ id: "batch-1" }]);
+    prisma.batchEnrollment.findMany.mockResolvedValue([]);
+    prisma.batchEnrollment.findFirst.mockResolvedValue(null);
+    prisma.booking.findMany.mockResolvedValue([]);
+    prisma.booking.findFirst.mockResolvedValue(null);
+    prisma.booking.updateMany.mockResolvedValue({ count: 0 });
   });
 
   it("deletes a batch and invalidates trial slots cache", async () => {
@@ -669,5 +658,59 @@ describe("BatchesService.remove and enroll", () => {
         role: UserRole.STUDENT,
       } as never),
     ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it("enrolls student as trial and snapshots next sessions", async () => {
+    prisma.batch.findUnique.mockResolvedValue({
+      id: "batch-1",
+      active: true,
+      capacity: 10,
+      enrollmentMode: EnrollmentMode.SELF_JOIN,
+      enrollments: [],
+    });
+    prisma.session.findMany.mockResolvedValue([
+      { id: "session-1" },
+      { id: "session-2" },
+    ]);
+    prisma.batchEnrollment.upsert.mockResolvedValue({
+      batchId: "batch-1",
+      studentId: "student-1",
+      isTrial: true,
+      trialSessionIds: ["session-1", "session-2"],
+    });
+
+    await service.enroll(
+      "batch-1",
+      "student-1",
+      { id: "student-1", role: UserRole.STUDENT } as never,
+      { isTrial: true },
+    );
+
+    expect(prisma.session.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          batchId: "batch-1",
+          status: "SCHEDULED",
+        }),
+        take: 2,
+        select: { id: true },
+      }),
+    );
+    expect(prisma.batchEnrollment.upsert).toHaveBeenCalledWith({
+      where: {
+        batchId_studentId: { batchId: "batch-1", studentId: "student-1" },
+      },
+      update: {
+        isTrial: true,
+        trialSessionIds: ["session-1", "session-2"],
+        enrolledAt: expect.any(Date),
+      },
+      create: {
+        batchId: "batch-1",
+        studentId: "student-1",
+        isTrial: true,
+        trialSessionIds: ["session-1", "session-2"],
+      },
+    });
   });
 });

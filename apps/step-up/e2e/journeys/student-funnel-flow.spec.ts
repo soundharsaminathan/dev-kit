@@ -174,8 +174,10 @@ async function createEphemeralBatch(label: string) {
             },
             capacity: 12,
             enrollmentMode: "STAFF_ONLY",
-            subscriptionIds: [],
-            isTrial: true,
+            subscriptionIds: [
+              "sub-individual-adult-monthly",
+              "sub-individual-adult-quarterly",
+            ],
             active: true,
           }),
         },
@@ -195,10 +197,17 @@ async function createEphemeralBatch(label: string) {
     : new Error("Could not create ephemeral funnel batch");
 }
 
-async function enrollStudent(batchId: string, studentId: string) {
+async function enrollStudent(
+  batchId: string,
+  studentId: string,
+  options: { isTrial?: boolean } = {},
+) {
   return apiRequest("OWNER", `/batches/${batchId}/enroll`, {
     method: "POST",
-    body: JSON.stringify({ studentId }),
+    body: JSON.stringify({
+      studentId,
+      ...(options.isTrial ? { isTrial: true } : {}),
+    }),
   });
 }
 

@@ -1,5 +1,6 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@dev-ui/components/avatar";
 import { Badge } from "@dev-ui/components/badge";
+import { Checkbox } from "@dev-ui/components/checkbox";
 import { Icon } from "@dev-ui/icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
@@ -20,6 +21,8 @@ import styles from "./batch-roster.module.scss";
 
 export type BatchEnrollmentRow = {
   studentId: string;
+  isTrial?: boolean;
+  trialSessionIds?: string[] | null;
   student: {
     id: string;
     name: string;
@@ -53,6 +56,7 @@ export function BatchRoster({ batchId, capacity, active }: BatchRosterProps) {
   const [selectedStudent, setSelectedStudent] = useState<StudioStudent | null>(
     null,
   );
+  const [isTrial, setIsTrial] = useState(false);
   const [pickerKey, setPickerKey] = useState(0);
 
   const query = useQuery({
@@ -76,9 +80,12 @@ export function BatchRoster({ batchId, capacity, active }: BatchRosterProps) {
   const isFull = seatsLeft <= 0;
 
   const enroll = useMutation({
-    mutationFn: (student: StudioStudent) =>
-      api.post(`/batches/${batchId}/enroll`, { studentId: student.id }),
-    onMutate: async (student) => {
+    mutationFn: (input: { student: StudioStudent; isTrial: boolean }) =>
+      api.post(`/batches/${batchId}/enroll`, {
+        studentId: input.student.id,
+        isTrial: input.isTrial,
+      }),
+    onMutate: async ({ student, isTrial: enrollAsTrial }) => {
       await queryClient.cancelQueries({ queryKey: ["batch", batchId] });
 
       const previous = queryClient.getQueryData<BatchWithEnrollments>([
@@ -102,6 +109,8 @@ export function BatchRoster({ batchId, capacity, active }: BatchRosterProps) {
             enrollments: [
               {
                 studentId: student.id,
+                isTrial: enrollAsTrial,
+                trialSessionIds: enrollAsTrial ? [] : null,
                 student: {
                   id: student.id,
                   name: student.name,
@@ -119,11 +128,12 @@ export function BatchRoster({ batchId, capacity, active }: BatchRosterProps) {
 
       setStudentId(null);
       setSelectedStudent(null);
+      setIsTrial(false);
       setPickerKey((current) => current + 1);
 
       return { previous };
     },
-    onError: (_error, _student, context) => {
+    onError: (_error, _input, context) => {
       if (context?.previous) {
         queryClient.setQueryData(["batch", batchId], context.previous);
       }
@@ -191,12 +201,21 @@ export function BatchRoster({ batchId, capacity, active }: BatchRosterProps) {
             }
             isPending={enroll.isPending}
             onClick={() => {
-              if (selectedStudent) enroll.mutate(selectedStudent);
+              if (selectedStudent) {
+                enroll.mutate({ student: selectedStudent, isTrial });
+              }
             }}
           >
             Enroll
           </TouchButton>
         </div>
+        <Checkbox
+          isSelected={isTrial}
+          isDisabled={!active || isFull}
+          onChange={setIsTrial}
+        >
+          Trial (next 2 sessions)
+        </Checkbox>
         {!active ? (
           <p className={styles.hint}>
             Activate this batch before enrolling students.
@@ -253,7 +272,13 @@ export function BatchRoster({ batchId, capacity, active }: BatchRosterProps) {
                   <div className={styles.body}>
                     <div className={styles.top}>
                       <h3 className={styles.name}>{student.name}</h3>
-                      <Badge appearance="subtle">Enrolled</Badge>
+                      {row.isTrial ? (
+                        <Badge appearance="subtle">
+                          {`Trial · ${row.trialSessionIds?.length ?? 0}/2`}
+                        </Badge>
+                      ) : (
+                        <Badge appearance="subtle">Enrolled</Badge>
+                      )}
                     </div>
 
                     <div className={styles.contacts}>

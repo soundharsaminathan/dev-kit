@@ -120,6 +120,7 @@ export function BatchDetailPage() {
 
   const [bookOpen, setBookOpen] = useState(false);
   const [enrollOpen, setEnrollOpen] = useState(false);
+  const [enrollAsTrial, setEnrollAsTrial] = useState(false);
   const [purchaseOpen, setPurchaseOpen] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<DiscoverBatchPlan | null>(
     null,
@@ -193,7 +194,10 @@ export function BatchDetailPage() {
       if (!studentId) {
         throw new Error("Select a student before joining.");
       }
-      return api.post(`/batches/${id}/enroll`, { studentId });
+      return api.post(`/batches/${id}/enroll`, {
+        studentId,
+        isTrial: enrollAsTrial,
+      });
     },
     onSuccess: () => {
       void Promise.all([
@@ -203,10 +207,15 @@ export function BatchDetailPage() {
         }),
       ]);
       setEnrollOpen(false);
+      setEnrollAsTrial(false);
       setEnrollSuccess(true);
     },
   });
 
+  function openEnroll(asTrial: boolean) {
+    setEnrollAsTrial(asTrial);
+    setEnrollOpen(true);
+  }
   const purchase = useMutation({
     mutationFn: () => {
       if (!user || !selectedPlan) {
@@ -350,6 +359,11 @@ export function BatchDetailPage() {
     !hasAwaitingPayment &&
     !hasPendingRequest &&
     !hasConfirmedRequest;
+  const viewerTrial = batch.viewerEnrollment?.isTrial === true;
+  const trialSessionCount = batch.viewerEnrollment?.trialSessionIds.length ?? 0;
+  const showTrialConvertCta = Boolean(
+    batch.viewerEnrolled && viewerTrial && hasPlans,
+  );
 
   const otherSeatRole = batchSeatRole === "KID" ? "ADULT" : "KID";
   const otherSeatIds =
@@ -435,6 +449,7 @@ export function BatchDetailPage() {
         backTo="/me/book"
         paddedCta={
           showBookingCta ||
+          showTrialConvertCta ||
           hasAwaitingPayment ||
           hasPendingRequest ||
           hasConfirmedRequest
@@ -642,6 +657,19 @@ export function BatchDetailPage() {
           </div>
         ) : null}
 
+        {batch.viewerEnrolled && viewerTrial ? (
+          <div className={styles.requestStatus} data-status="CONFIRMED">
+            <div>
+              <p className={styles.requestEyebrow}>Trial enrollment</p>
+              <p className={styles.requestTitle}>
+                {trialSessionCount === 0
+                  ? "Trial sessions used — choose a plan to continue"
+                  : `Trial covers your next ${trialSessionCount} session${trialSessionCount === 1 ? "" : "s"}`}
+              </p>
+            </div>
+          </div>
+        ) : null}
+
         {batch.viewerEnrolled ? (
           <div className={styles.ratingSection}>
             <div>
@@ -759,6 +787,20 @@ export function BatchDetailPage() {
             <Link to="/me/bookings">View request status</Link>
           </TouchButton>
         </StickyCtaBar>
+      ) : showTrialConvertCta ? (
+        <StickyCtaBar>
+          <TouchButton
+            variant="primary"
+            fullWidth
+            isDisabled={!canActForStudent}
+            onClick={() => {
+              const first = plans[0];
+              if (first) openPurchase(first);
+            }}
+          >
+            Choose a plan
+          </TouchButton>
+        </StickyCtaBar>
       ) : showBookingCta ? (
         <StickyCtaBar>
           {isFull ? (
@@ -766,26 +808,39 @@ export function BatchDetailPage() {
               Class is full
             </TouchButton>
           ) : hasPlans ? (
-            <TouchButton
-              variant="primary"
-              fullWidth
-              isDisabled={!canActForStudent}
-              onClick={() => {
-                const first = plans[0];
-                if (first) openPurchase(first);
-              }}
-            >
-              Choose a plan
-            </TouchButton>
+            <div className={styles.successActions}>
+              <TouchButton
+                variant="primary"
+                fullWidth
+                isDisabled={!canActForStudent}
+                onClick={() => {
+                  const first = plans[0];
+                  if (first) openPurchase(first);
+                }}
+              >
+                Choose a plan
+              </TouchButton>
+              {batch.enrollmentMode === "SELF_JOIN" ? (
+                <TouchButton
+                  variant="quiet"
+                  fullWidth
+                  isDisabled={!canActForStudent}
+                  data-testid="trial-enroll-cta"
+                  onClick={() => openEnroll(true)}
+                >
+                  Try 2 sessions
+                </TouchButton>
+              ) : null}
+            </div>
           ) : batch.enrollmentMode === "SELF_JOIN" ? (
             <TouchButton
               variant="primary"
               fullWidth
               isDisabled={!canActForStudent}
               data-testid="book-class-cta"
-              onClick={() => setEnrollOpen(true)}
+              onClick={() => openEnroll(true)}
             >
-              Join this class
+              Try 2 sessions
             </TouchButton>
           ) : (
             <TouchButton
@@ -935,13 +990,25 @@ export function BatchDetailPage() {
 
       <AppBottomSheet
         isOpen={enrollOpen}
-        onOpenChange={setEnrollOpen}
-        title="Join this class"
+        onOpenChange={(open) => {
+          setEnrollOpen(open);
+          if (!open) setEnrollAsTrial(false);
+        }}
+        title={enrollAsTrial ? "Try 2 sessions" : "Join this class"}
       >
         <div className={styles.bookForm}>
           <p className={styles.muted}>
-            Enroll in <strong>{batch.name}</strong>. You'll have immediate
-            access to all sessions — no studio approval needed.
+            {enrollAsTrial ? (
+              <>
+                Join <strong>{batch.name}</strong> as a trial for the next 2
+                sessions. After that, you&apos;ll need a plan to continue.
+              </>
+            ) : (
+              <>
+                Enroll in <strong>{batch.name}</strong>. You&apos;ll have
+                immediate access to all sessions — no studio approval needed.
+              </>
+            )}
           </p>
           {!canActForStudent ? (
             <ErrorState description="Select a student before joining this class." />
@@ -963,7 +1030,7 @@ export function BatchDetailPage() {
             data-testid="enroll-submit"
             onClick={() => enroll.mutate()}
           >
-            Confirm enrollment
+            {enrollAsTrial ? "Confirm trial" : "Confirm enrollment"}
           </TouchButton>
         </div>
       </AppBottomSheet>
