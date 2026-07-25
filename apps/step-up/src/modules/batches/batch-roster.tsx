@@ -18,6 +18,7 @@ import { PressableCard } from "@/modules/ui/pressable-card";
 import staff from "@/modules/ui/staff.module.scss";
 import { EmptyState, ErrorState } from "@/modules/ui/states";
 import { TouchButton } from "@/modules/ui/touch-button";
+import { upcomingSessions } from "./batch-overview-helpers";
 import styles from "./batch-roster.module.scss";
 
 export type BatchEnrollmentRow = {
@@ -47,6 +48,12 @@ type BatchWithEnrollments = {
   enrollmentCount?: number;
   remainingSeats?: number;
   enrollments: BatchEnrollmentRow[];
+  sessions?: Array<{
+    id: string;
+    startsAt: string;
+    endsAt: string;
+    status?: string;
+  }>;
 };
 
 export type RosterEnrollmentFilter = "all" | "trial" | "enrolled";
@@ -105,6 +112,9 @@ export function BatchRoster({ batchId, capacity, active }: BatchRosterProps) {
   const seatsLeft =
     query.data?.remainingSeats ?? Math.max(0, capacity - seatsTaken);
   const isFull = seatsLeft <= 0;
+  const hasUpcomingSessions =
+    !query.isLoading && upcomingSessions(query.data?.sessions).length > 0;
+  const canEnroll = active && !isFull && hasUpcomingSessions;
 
   const filterChips = useMemo(
     () => [
@@ -229,60 +239,67 @@ export function BatchRoster({ batchId, capacity, active }: BatchRosterProps) {
         </div>
       ) : null}
 
-      <div className={staff.softPanel}>
-        <div className={styles.enrollForm}>
-          <StudentSearchCombobox
-            key={pickerKey}
-            label="Add student"
-            selectedKey={studentId}
-            onSelectionChange={handleSelect}
-            excludeIds={enrolledIds}
-            isDisabled={!active || isFull}
-            placeholder="Search student to enroll"
-          />
-          <TouchButton
-            variant="primary"
-            isDisabled={
-              !active || isFull || (!selectedStudent && !enroll.isPending)
-            }
-            isPending={enroll.isPending}
-            onClick={() => {
-              if (selectedStudent) {
-                enroll.mutate({ student: selectedStudent, isTrial });
-              }
-            }}
-          >
-            Enroll
-          </TouchButton>
+      {!query.isLoading && !hasUpcomingSessions ? (
+        <div className={staff.softPanel}>
+          <p className={styles.hint}>
+            No upcoming sessions — enrollment is closed until this batch has a
+            next class on the schedule.
+          </p>
         </div>
-        <Checkbox
-          isSelected={isTrial}
-          isDisabled={!active || isFull}
-          onChange={setIsTrial}
-        >
-          Trial (next 2 sessions)
-        </Checkbox>
-        {!active ? (
-          <p className={styles.hint}>
-            Activate this batch before enrolling students.
-          </p>
-        ) : null}
-        {active && isFull ? (
-          <p className={styles.hint}>
-            Batch is at capacity. Increase capacity to add more students.
-          </p>
-        ) : null}
-        {enroll.isError ? (
-          <p className={styles.error}>
-            {enroll.error instanceof Error
-              ? enroll.error.message
-              : "Could not enroll student."}
-          </p>
-        ) : null}
-        {selectedStudent ? (
-          <p className={styles.hint}>{selectedStudent.email}</p>
-        ) : null}
-      </div>
+      ) : hasUpcomingSessions ? (
+        <div className={staff.softPanel}>
+          <div className={styles.enrollForm}>
+            <StudentSearchCombobox
+              key={pickerKey}
+              label="Add student"
+              selectedKey={studentId}
+              onSelectionChange={handleSelect}
+              excludeIds={enrolledIds}
+              isDisabled={!canEnroll}
+              placeholder="Search student to enroll"
+            />
+            <TouchButton
+              variant="primary"
+              isDisabled={!canEnroll || (!selectedStudent && !enroll.isPending)}
+              isPending={enroll.isPending}
+              onClick={() => {
+                if (selectedStudent && canEnroll) {
+                  enroll.mutate({ student: selectedStudent, isTrial });
+                }
+              }}
+            >
+              Enroll
+            </TouchButton>
+          </div>
+          <Checkbox
+            isSelected={isTrial}
+            isDisabled={!canEnroll}
+            onChange={setIsTrial}
+          >
+            Trial (next 2 sessions)
+          </Checkbox>
+          {!active ? (
+            <p className={styles.hint}>
+              Activate this batch before enrolling students.
+            </p>
+          ) : null}
+          {active && isFull ? (
+            <p className={styles.hint}>
+              Batch is at capacity. Increase capacity to add more students.
+            </p>
+          ) : null}
+          {enroll.isError ? (
+            <p className={styles.error}>
+              {enroll.error instanceof Error
+                ? enroll.error.message
+                : "Could not enroll student."}
+            </p>
+          ) : null}
+          {selectedStudent ? (
+            <p className={styles.hint}>{selectedStudent.email}</p>
+          ) : null}
+        </div>
+      ) : null}
 
       {enrollments.length === 0 ? (
         <EmptyState
