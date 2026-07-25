@@ -1,3 +1,4 @@
+import { SearchField } from "@dev-ui/components/search-field";
 import { Icon } from "@dev-ui/icons";
 import { useMemo, useState } from "react";
 import { ENTITY_ICONS } from "@/lib/entity-icons";
@@ -100,25 +101,37 @@ export function DiscoverPage({
     >
       <PullToRefresh onRefresh={() => query.refetch()}>
         <div className={styles.root}>
-          <FilterChipRow
-            chips={quickChips}
-            selected={selectedQuick}
-            onToggle={onQuickToggle}
-            leading={
-              <button
-                type="button"
-                className={styles.filterBtn}
-                data-active={hasExtraFilters ? "true" : undefined}
-                aria-label="Open filters"
-                onClick={() => setFiltersOpen(true)}
-              >
-                <Icon name="filter" className={styles.filterBtnIcon} />
-                {hasExtraFilters ? (
-                  <span className={styles.filterDot} aria-hidden />
-                ) : null}
-              </button>
-            }
-          />
+          <div className={styles.searchBar}>
+            <SearchField
+              aria-label="Search classes"
+              placeholder="Search classes"
+              value={search}
+              onChange={setSearch}
+              className={styles.search}
+            />
+          </div>
+
+          <div className={styles.filters}>
+            <FilterChipRow
+              chips={quickChips}
+              selected={selectedQuick}
+              onToggle={onQuickToggle}
+              leading={
+                <button
+                  type="button"
+                  className={styles.filterBtn}
+                  data-active={hasExtraFilters ? "true" : undefined}
+                  aria-label="Open filters"
+                  onClick={() => setFiltersOpen(true)}
+                >
+                  <Icon name="filter" className={styles.filterBtnIcon} />
+                  {hasExtraFilters ? (
+                    <span className={styles.filterDot} aria-hidden />
+                  ) : null}
+                </button>
+              }
+            />
+          </div>
 
           {query.isLoading ? <BatchCardSkeletonList count={4} /> : null}
 
