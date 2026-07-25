@@ -9,7 +9,11 @@ import {
   useReducedMotion,
   useTransform,
 } from "motion/react";
-import { useEffect, useState } from "react";
+import {
+  type PointerEvent as ReactPointerEvent,
+  useEffect,
+  useState,
+} from "react";
 import { ENTITY_ICONS } from "@/lib/entity-icons";
 import { FollowButton } from "@/modules/social/follow-button";
 import { StyleList } from "@/modules/styles/style-list";
@@ -17,6 +21,10 @@ import { EmptyState } from "@/modules/ui/states";
 import { FollowCounts } from "./follow-counts";
 import styles from "./trainers.module.scss";
 import type { StudioTrainer } from "./types";
+
+function stopStackDrag(event: ReactPointerEvent) {
+  event.stopPropagation();
+}
 
 type TrainerStackViewProps = {
   trainers: StudioTrainer[];
@@ -132,7 +140,10 @@ function StackCard({
           <p className={styles.stackEmpty}>No styles listed yet</p>
         )}
         {selectionMode && onSelect ? (
-          <div className={styles.stackFollowAction}>
+          <div
+            className={styles.stackFollowAction}
+            onPointerDown={stopStackDrag}
+          >
             <button
               type="button"
               className={styles.stackSelectBtn}
@@ -144,7 +155,10 @@ function StackCard({
           </div>
         ) : null}
         {!selectionMode && !trainer.isOwnProfile && onToggleFollow ? (
-          <div className={styles.stackFollowAction}>
+          <div
+            className={styles.stackFollowAction}
+            onPointerDown={stopStackDrag}
+          >
             <FollowButton
               isFollowing={trainer.isFollowing}
               followRequestStatus={trainer.followRequestStatus}
@@ -161,6 +175,7 @@ function StackCard({
           type="button"
           className={styles.stackOpenBtn}
           aria-label={`Open ${trainer.name}'s profile`}
+          onPointerDown={stopStackDrag}
           onClick={onOpen}
         >
           <Icon name="arrow-up-right" aria-hidden />
