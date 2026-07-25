@@ -631,6 +631,11 @@
   line-height: 1;
 }
 
+.settingsDrawer {
+  width: min(36rem, calc(100dvw - 3rem));
+  max-width: 100dvw;
+}
+
 .help,
 .error {
   grid-column: 1 / -1;

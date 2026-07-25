@@ -16,6 +16,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { useApi } from "@/lib/api-context";
 import { STUDIO_ID } from "@/lib/constants";
+import { BatchDetailSkeleton } from "@/modules/batches/batch-detail-skeleton";
 import {
   BatchOverview,
   occupiedSeatsForOverview,
@@ -31,7 +32,7 @@ import {
 import { BatchChat } from "@/modules/chat/batch-chat";
 import type { ChatConversation } from "@/modules/chat/types";
 import { ApiState } from "@/modules/ui/api-state";
-import { AppBottomSheet } from "@/modules/ui/app-bottom-sheet";
+import { AppDrawer } from "@/modules/ui/app-drawer";
 import { FormInput } from "@/modules/ui/form-input";
 import { ImageCropSheet } from "@/modules/ui/image-crop-sheet";
 import { PageHeader } from "@/modules/ui/page-header";
@@ -225,81 +226,85 @@ function EditBatchPage() {
         </p>
       ) : null}
 
-      <ApiState
-        isLoading={query.isLoading}
-        isError={query.isError}
-        error={query.error}
-        data={query.data}
-        emptyTitle="Batch not found"
-        emptyDescription="This batch is unavailable."
-      >
-        {(batch) => (
-          <div className="stack">
-            <BatchOverview
-              name={batch.name}
-              coverImageUrl={batch.coverImageUrl}
-              active={batch.active}
-              capacity={batch.capacity}
-              enrollmentMode={batch.enrollmentMode}
-              occupiedSeats={batch.occupiedSeats}
-              remainingSeats={batch.remainingSeats}
-              enrollmentCount={batch.enrollmentCount}
-              enrollments={batch.enrollments}
-              scheduleLabel={batch.scheduleLabel}
-              branchName={batch.branch?.name}
-              sessions={batch.sessions}
-              trainers={batch.trainers.map((row) => ({
-                id: row.trainer.id,
-                name: row.trainer.name,
-                photoUrl: row.trainer.photoUrl ?? null,
-              }))}
-            />
-            <BatchSessionsLane sessions={batch.sessions} />
-            <Tabs defaultSelectedKey="students" aria-label="Batch sections">
-              <TabList>
-                <Tab id="students">Students</Tab>
-                <Tab id="trainers">Trainers</Tab>
-                <Tab id="chat">
-                  <span className={styles.chatTab}>
-                    Chat
-                    {chatUnread > 0 ? (
-                      <span className={styles.tabUnread}>
-                        {chatUnread > 99 ? "99+" : chatUnread}
-                      </span>
-                    ) : null}
-                  </span>
-                </Tab>
-              </TabList>
-              <TabPanel id="students">
-                <BatchRoster
-                  batchId={batch.id}
-                  capacity={batch.capacity}
-                  active={batch.active}
-                />
-              </TabPanel>
-              <TabPanel id="trainers">
-                <BatchTrainers batchId={batch.id} trainers={batch.trainers} />
-              </TabPanel>
-              <TabPanel id="chat">
-                <BatchChat batchId={batch.id} />
-              </TabPanel>
-            </Tabs>
-
-            <AppBottomSheet
-              isOpen={settingsOpen}
-              onOpenChange={setSettingsOpen}
-              title="Batch settings"
-              size="tall"
-            >
-              <EditBatchForm
-                key={batch.id}
-                batch={batch}
-                onSaved={() => setSettingsOpen(false)}
+      {query.isLoading ? (
+        <BatchDetailSkeleton />
+      ) : (
+        <ApiState
+          isLoading={false}
+          isError={query.isError}
+          error={query.error}
+          data={query.data}
+          emptyTitle="Batch not found"
+          emptyDescription="This batch is unavailable."
+        >
+          {(batch) => (
+            <div className="stack">
+              <BatchOverview
+                name={batch.name}
+                coverImageUrl={batch.coverImageUrl}
+                active={batch.active}
+                capacity={batch.capacity}
+                enrollmentMode={batch.enrollmentMode}
+                occupiedSeats={batch.occupiedSeats}
+                remainingSeats={batch.remainingSeats}
+                enrollmentCount={batch.enrollmentCount}
+                enrollments={batch.enrollments}
+                scheduleLabel={batch.scheduleLabel}
+                branchName={batch.branch?.name}
+                sessions={batch.sessions}
+                trainers={batch.trainers.map((row) => ({
+                  id: row.trainer.id,
+                  name: row.trainer.name,
+                  photoUrl: row.trainer.photoUrl ?? null,
+                }))}
               />
-            </AppBottomSheet>
-          </div>
-        )}
-      </ApiState>
+              <BatchSessionsLane sessions={batch.sessions} />
+              <Tabs defaultSelectedKey="students" aria-label="Batch sections">
+                <TabList>
+                  <Tab id="students">Students</Tab>
+                  <Tab id="trainers">Trainers</Tab>
+                  <Tab id="chat">
+                    <span className={styles.chatTab}>
+                      Chat
+                      {chatUnread > 0 ? (
+                        <span className={styles.tabUnread}>
+                          {chatUnread > 99 ? "99+" : chatUnread}
+                        </span>
+                      ) : null}
+                    </span>
+                  </Tab>
+                </TabList>
+                <TabPanel id="students">
+                  <BatchRoster
+                    batchId={batch.id}
+                    capacity={batch.capacity}
+                    active={batch.active}
+                  />
+                </TabPanel>
+                <TabPanel id="trainers">
+                  <BatchTrainers batchId={batch.id} trainers={batch.trainers} />
+                </TabPanel>
+                <TabPanel id="chat">
+                  <BatchChat batchId={batch.id} />
+                </TabPanel>
+              </Tabs>
+
+              <AppDrawer
+                isOpen={settingsOpen}
+                onOpenChange={setSettingsOpen}
+                title="Batch settings"
+                className={styles.settingsDrawer}
+              >
+                <EditBatchForm
+                  key={batch.id}
+                  batch={batch}
+                  onSaved={() => setSettingsOpen(false)}
+                />
+              </AppDrawer>
+            </div>
+          )}
+        </ApiState>
+      )}
     </section>
   );
 }
