@@ -232,9 +232,49 @@
     0 0 0 3px color-mix(in srgb, var(--color-primary) 35%, transparent);
 }
 
+.actionBtn[data-burst="true"] {
+  animation: followBurst 0.46s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.actionBtn[data-burst="true"] svg {
+  animation: heartPop 0.46s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
 .actionBtn svg {
   width: 1.35rem;
   height: 1.35rem;
+}
+
+.profileCue {
+  position: absolute;
+  top: calc(var(--space-3, 0.75rem) + env(safe-area-inset-top, 0px) + 3.35rem);
+  left: 0;
+  right: 0;
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  width: fit-content;
+  margin-inline: auto;
+  padding: 0.4rem 0.8rem;
+  border: 1px solid var(--discovery-glass-border);
+  border-radius: 999px;
+  background: var(--discovery-glass);
+  backdrop-filter: blur(var(--glass-backdrop-blur, 20px));
+  -webkit-backdrop-filter: blur(var(--glass-backdrop-blur, 20px));
+  box-shadow: var(--discovery-shadow);
+  color: var(--discovery-fg);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.profileCue svg {
+  width: 0.95rem;
+  height: 0.95rem;
 }
 
 .body {
@@ -622,6 +662,30 @@
   }
 }
 
+@keyframes heartPop {
+  0% {
+    transform: scale(1);
+  }
+  38% {
+    transform: scale(1.32);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes followBurst {
+  0% {
+    transform: scale(1);
+  }
+  35% {
+    transform: scale(1.12);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
 .skeletonRoot {
   position: relative;
   flex: 1;
@@ -857,9 +921,18 @@
     transform: none;
   }
 
+  .actionBtn[data-burst="true"],
+  .actionBtn[data-burst="true"] svg {
+    animation: none;
+  }
+
   .hint {
     animation: none;
     opacity: 0;
+  }
+
+  .profileCue {
+    display: none;
   }
 
   .skeletonPhoto,
