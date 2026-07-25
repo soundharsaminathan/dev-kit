@@ -9,7 +9,13 @@ import {
   useReducedMotion,
   useTransform,
 } from "motion/react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  type PointerEvent as ReactPointerEvent,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useApi } from "@/lib/api-context";
 import { useAuth } from "@/lib/auth";
 import { MEMBER_ROLES } from "@/lib/constants";
@@ -20,6 +26,10 @@ import { AppBottomSheet } from "@/modules/ui/app-bottom-sheet";
 import { EmptyState } from "@/modules/ui/states";
 import styles from "./trainer-discovery.module.scss";
 import type { StudioTrainer } from "./types";
+
+function stopCardDrag(event: ReactPointerEvent) {
+  event.stopPropagation();
+}
 
 type TrainerDiscoveryViewProps = {
   trainers: StudioTrainer[];
@@ -387,7 +397,7 @@ export function TrainerDiscoveryView({
                 </motion.p>
               ) : null}
 
-              <header className={styles.topNav}>
+              <header className={styles.topNav} onPointerDown={stopCardDrag}>
                 <button
                   type="button"
                   className={styles.glassIcon}
@@ -429,7 +439,7 @@ export function TrainerDiscoveryView({
               </header>
 
               {!trainer.isOwnProfile ? (
-                <div className={styles.actions}>
+                <div className={styles.actions} onPointerDown={stopCardDrag}>
                   {onToggleFollow ? (
                     <button
                       type="button"
@@ -527,7 +537,7 @@ export function TrainerDiscoveryView({
                 </div>
               </div>
 
-              <footer className={styles.footer}>
+              <footer className={styles.footer} onPointerDown={stopCardDrag}>
                 {trainers.length > 1 ? (
                   <ul
                     ref={carouselRef}
