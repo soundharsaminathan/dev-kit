@@ -119,35 +119,39 @@ export function BatchFiltersToolbar({
 
   return (
     <div className={styles.wrap}>
-      <SearchField
-        aria-label="Search batches"
-        placeholder="Search batches"
-        value={search}
-        onChange={onSearchChange}
-        className={styles.search}
-      />
+      <div className={styles.searchBar}>
+        <SearchField
+          aria-label="Search batches"
+          placeholder="Search batches"
+          value={search}
+          onChange={onSearchChange}
+          className={styles.search}
+        />
+      </div>
 
-      <FilterChipRow
-        chips={quickChips}
-        selected={selectedQuick}
-        onToggle={onQuickToggle}
-        leading={
-          <button
-            type="button"
-            className={styles.filterBtn}
-            data-active={hasExtraFilters ? "true" : undefined}
-            aria-label="Open filters"
-            aria-haspopup="dialog"
-            aria-expanded={filtersOpen}
-            onClick={() => setFiltersOpen(true)}
-          >
-            <Icon name="filter" className={styles.filterBtnIcon} />
-            {hasExtraFilters ? (
-              <span className={styles.filterDot} aria-hidden />
-            ) : null}
-          </button>
-        }
-      />
+      <div className={styles.filters}>
+        <FilterChipRow
+          chips={quickChips}
+          selected={selectedQuick}
+          onToggle={onQuickToggle}
+          leading={
+            <button
+              type="button"
+              className={styles.filterBtn}
+              data-active={hasExtraFilters ? "true" : undefined}
+              aria-label="Open filters"
+              aria-haspopup="dialog"
+              aria-expanded={filtersOpen}
+              onClick={() => setFiltersOpen(true)}
+            >
+              <Icon name="filter" className={styles.filterBtnIcon} />
+              {hasExtraFilters ? (
+                <span className={styles.filterDot} aria-hidden />
+              ) : null}
+            </button>
+          }
+        />
+      </div>
 
       <BatchFiltersPanel
         isOpen={filtersOpen}
