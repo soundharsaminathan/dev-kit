@@ -11,12 +11,14 @@ type PullToRefreshProps = {
   onRefresh: () => Promise<unknown> | undefined;
   children: ReactNode;
   disabled?: boolean;
+  className?: string;
 };
 
 export function PullToRefresh({
   onRefresh,
   children,
   disabled,
+  className,
 }: PullToRefreshProps) {
   const startY = useRef(0);
   const [pull, setPull] = useState(0);
@@ -62,10 +64,12 @@ export function PullToRefresh({
     startY.current = 0;
   }
 
+  const rootClass = [styles.root, className].filter(Boolean).join(" ");
+
   return (
     <div
       ref={containerRef}
-      className={styles.root}
+      className={rootClass}
       onTouchStart={onTouchStart}
       onTouchMove={onTouchMove}
       onTouchEnd={onTouchEnd}

@@ -10,6 +10,7 @@ import { BatchCardSkeletonList } from "@/modules/ui/skeleton-block";
 import { EmptyState, ErrorState } from "@/modules/ui/states";
 import { TouchButton } from "@/modules/ui/touch-button";
 import {
+  applyTrialFilter,
   type DiscoverFiltersDraft,
   DiscoverFiltersPanel,
 } from "./discover-filters-panel";
@@ -34,6 +35,9 @@ export function DiscoverPage({
 } = {}) {
   const [category, setCategory] = useState("ALL");
   const [style, setStyle] = useState<string | undefined>(initialStyle);
+  const [trial, setTrial] = useState(
+    initialIntent === "trial" ? "TRIAL" : "ALL",
+  );
   const [search, setSearch] = useState("");
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [branchId] = useState(initialBranchId);
@@ -50,6 +54,11 @@ export function DiscoverPage({
   if (branchId) filters.branchId = branchId;
 
   const query = useDiscoverBatches(filters);
+
+  const batches = useMemo(
+    () => applyTrialFilter(query.data ?? [], trial),
+    [query.data, trial],
+  );
 
   const styleChips = useMemo(() => {
     const stylesSet = new Set<string>();
@@ -71,12 +80,14 @@ export function DiscoverPage({
   }, [category, style]);
 
   const hasExtraFilters =
-    category !== "ALL" || Boolean(style || search || branchId);
+    category !== "ALL" ||
+    trial !== "ALL" ||
+    Boolean(style || search || branchId);
 
   const filterDraft: DiscoverFiltersDraft = {
     category,
+    trial,
     ...(style ? { style } : {}),
-    search,
   };
 
   function onQuickToggle(id: string) {
@@ -85,6 +96,13 @@ export function DiscoverPage({
       return;
     }
     setStyle((prev) => (prev === id ? undefined : id));
+  }
+
+  function clearFilters() {
+    setCategory("ALL");
+    setStyle(undefined);
+    setTrial("ALL");
+    setSearch("");
   }
 
   return (
@@ -98,9 +116,10 @@ export function DiscoverPage({
             : "Find a class by style, level, or schedule."
       }
       hideHeaderOnMobile
+      className={styles.screen ?? ""}
     >
-      <PullToRefresh onRefresh={() => query.refetch()}>
-        <div className={styles.root}>
+      <div className={styles.root}>
+        <div className={styles.toolbar}>
           <div className={styles.searchBar}>
             <SearchField
               aria-label="Search classes"
@@ -132,68 +151,70 @@ export function DiscoverPage({
               }
             />
           </div>
-
-          {query.isLoading ? <BatchCardSkeletonList count={4} /> : null}
-
-          {query.isError ? (
-            <ErrorState
-              description={
-                query.error instanceof Error
-                  ? query.error.message
-                  : "Could not load classes."
-              }
-              action={
-                <TouchButton variant="primary" onClick={() => query.refetch()}>
-                  Try again
-                </TouchButton>
-              }
-            />
-          ) : null}
-
-          {query.data && query.data.length === 0 ? (
-            <EmptyState
-              icon={ENTITY_ICONS.batch}
-              title="No classes found"
-              description="Try another style or clear your filters."
-              action={
-                <TouchButton
-                  variant="primary"
-                  onClick={() => {
-                    setCategory("ALL");
-                    setStyle(undefined);
-                    setSearch("");
-                  }}
-                >
-                  Clear filters
-                </TouchButton>
-              }
-            />
-          ) : null}
-
-          {query.data && query.data.length > 0 ? (
-            <div className={styles.list}>
-              {query.data.map((batch) => (
-                <BatchCard
-                  key={batch.id}
-                  batch={toBatchCardData(batch)}
-                  ctaLabel={discoverCtaLabel(batch)}
-                />
-              ))}
-            </div>
-          ) : null}
         </div>
-      </PullToRefresh>
+
+        <PullToRefresh
+          className={styles.scroller ?? ""}
+          onRefresh={() => query.refetch()}
+        >
+          <div className={styles.list}>
+            {query.isLoading ? <BatchCardSkeletonList count={4} /> : null}
+
+            {query.isError ? (
+              <ErrorState
+                description={
+                  query.error instanceof Error
+                    ? query.error.message
+                    : "Could not load classes."
+                }
+                action={
+                  <TouchButton
+                    variant="primary"
+                    onClick={() => query.refetch()}
+                  >
+                    Try again
+                  </TouchButton>
+                }
+              />
+            ) : null}
+
+            {query.data && batches.length === 0 ? (
+              <EmptyState
+                icon={ENTITY_ICONS.batch}
+                title="No classes found"
+                description="Try another style or clear your filters."
+                action={
+                  <TouchButton variant="primary" onClick={clearFilters}>
+                    Clear filters
+                  </TouchButton>
+                }
+              />
+            ) : null}
+
+            {batches.length > 0
+              ? batches.map((batch) => (
+                  <BatchCard
+                    key={batch.id}
+                    batch={toBatchCardData(batch)}
+                    ctaLabel={discoverCtaLabel(batch)}
+                  />
+                ))
+              : null}
+          </div>
+        </PullToRefresh>
+      </div>
 
       <DiscoverFiltersPanel
         isOpen={filtersOpen}
         onOpenChange={setFiltersOpen}
         value={filterDraft}
         styleOptions={styleChips}
+        search={search}
         {...(branchId != null ? { branchId } : {})}
         onApply={(next) => {
           setCategory(next.category);
+          setTrial(next.trial);
           setStyle(next.style);
-          setSearch(next.search);
         }}
       />
     </Screen>

@@ -112,9 +112,14 @@
 }
 
 .content[data-fill-height="true"] > * {
+  flex-shrink: 0;
+}
+
+.content[data-fill-height="true"] > :last-child {
   flex: 1;
   min-height: 0;
   flex-shrink: 1;
+  overflow: hidden;
 }
 
 @media (max-width: 767px) {

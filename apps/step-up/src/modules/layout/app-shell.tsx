@@ -44,6 +44,10 @@ function isMemberTrainers(pathname: string) {
   return pathname === "/me/trainers" || pathname.startsWith("/me/trainers/");
 }
 
+function isMemberBook(pathname: string) {
+  return pathname === "/me/book" || pathname.startsWith("/me/book/");
+}
+
 function isStaffHome(pathname: string) {
   return pathname === "/app" || pathname === "/app/";
 }
@@ -87,6 +91,8 @@ export function AppShell({ variant, children }: AppShellProps) {
   });
   const { user } = useAuth();
   const collapseSidebar = needsCollapsedSidebar(pathname);
+  const fillHeight =
+    collapseSidebar || (variant === "me" && isMemberBook(pathname));
   const [sidebarOpen, setSidebarOpen] = useState(!collapseSidebar);
   const hideHeader =
     variant === "me" ||
@@ -138,7 +144,7 @@ export function AppShell({ variant, children }: AppShellProps) {
           <div
             className={styles.content}
             data-app-scroll
-            data-fill-height={collapseSidebar ? "true" : undefined}
+            data-fill-height={fillHeight ? "true" : undefined}
           >
             {children}
           </div>
