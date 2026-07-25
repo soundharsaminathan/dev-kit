@@ -133,6 +133,7 @@ export function BookingReviewPanel({
               variant="default"
               fullWidth
               isPending={isPending}
+              data-testid="booking-confirm"
               onClick={() => onConfirm()}
             >
               Confirm without time

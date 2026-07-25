@@ -3,12 +3,13 @@ import {
   authFile,
   expect,
   test,
+  waitForApiResponse,
   waitForAppReady,
 } from "../fixtures";
 import { SEED } from "../fixtures/seed";
 
 test.describe("notification journey @critical", () => {
-  test("student receives MISSED_SESSION and can open notifications shell @critical", async ({
+  test("student opens notifications and marks read through UI @critical", async ({
     browser,
   }) => {
     const sessionId = SEED.sessionAttendanceId;
@@ -33,17 +34,6 @@ test.describe("notification journey @critical", () => {
     );
     expect(missed).toBeTruthy();
 
-    if (missed && !missed.readAt) {
-      await apiRequest("STUDENT", `/notifications/${missed.id}/read`, {
-        method: "PATCH",
-      }).catch(async () => {
-        await apiRequest("STUDENT", `/notifications/${missed.id}`, {
-          method: "PATCH",
-          body: JSON.stringify({ read: true }),
-        });
-      });
-    }
-
     const context = await browser.newContext({
       storageState: authFile("STUDENT"),
     });
@@ -51,12 +41,37 @@ test.describe("notification journey @critical", () => {
     await page.goto("/me");
     await waitForAppReady(page);
 
-    const bell = page.getByRole("button", { name: /notifications/i });
-    if (await bell.count()) {
-      await bell.first().click();
-      await expect(
-        page.getByText(/Notifications|No notifications|caught up/i).first(),
-      ).toBeVisible();
+    const bell = page.getByTestId("notifications-bell");
+    await expect(bell).toBeVisible();
+    await bell.click();
+
+    await expect(
+      page
+        .getByText(/Notifications|No notifications|caught up|Missed/i)
+        .first(),
+    ).toBeVisible();
+
+    const unreadItem = page.locator('[data-unread="true"]').first();
+    const markAll = page.getByTestId("notifications-mark-all-read");
+
+    if ((await unreadItem.count()) > 0) {
+      const [response] = await Promise.all([
+        waitForApiResponse(page, {
+          method: "PATCH",
+          pathIncludes: "/notifications/",
+        }),
+        unreadItem.click(),
+      ]);
+      expect(response.ok()).toBeTruthy();
+    } else if ((await markAll.count()) > 0) {
+      const [response] = await Promise.all([
+        waitForApiResponse(page, {
+          method: "POST",
+          pathIncludes: "/notifications/mark-all-read",
+        }),
+        markAll.click(),
+      ]);
+      expect(response.ok()).toBeTruthy();
     }
 
     await context.close();

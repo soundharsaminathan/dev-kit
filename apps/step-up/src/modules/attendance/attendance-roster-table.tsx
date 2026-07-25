@@ -163,6 +163,7 @@ export function AttendanceRosterTable({
                 size="sm"
                 variant={status === "PRESENT" ? "primary" : "default"}
                 isDisabled={rowPending}
+                data-testid={`mark-present-${row.original.studentId}`}
                 onClick={() => onMarkOne(row.original.studentId, "PRESENT")}
               >
                 Present
@@ -171,6 +172,7 @@ export function AttendanceRosterTable({
                 size="sm"
                 variant={status === "ABSENT" ? "primary" : "default"}
                 isDisabled={rowPending}
+                data-testid={`mark-absent-${row.original.studentId}`}
                 onClick={() => onMarkOne(row.original.studentId, "ABSENT")}
               >
                 Absent
@@ -236,6 +238,7 @@ export function AttendanceRosterTable({
               variant="default"
               size="sm"
               isDisabled={isBusy}
+              data-testid="mark-all-present"
               onClick={onMarkAllUnmarkedPresent}
             >
               Mark all unmarked present
@@ -257,6 +260,7 @@ export function AttendanceRosterTable({
               size="sm"
               variant="primary"
               isDisabled={isBusy}
+              data-testid="bulk-mark-present"
               onClick={() => handleBulk("PRESENT")}
             >
               Mark present
@@ -265,6 +269,7 @@ export function AttendanceRosterTable({
               size="sm"
               variant="default"
               isDisabled={isBusy}
+              data-testid="bulk-mark-absent"
               onClick={() => handleBulk("ABSENT")}
             >
               Mark absent

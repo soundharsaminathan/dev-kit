@@ -117,7 +117,11 @@ function MeAttendancePage() {
         {attendanceQuery.data && attendanceQuery.data.length > 0 ? (
           <div className={styles.list}>
             {attendanceQuery.data.map((record) => (
-              <div key={record.id} className={styles.row}>
+              <div
+                key={record.id}
+                className={styles.row}
+                data-testid={`attendance-row-${record.sessionId}`}
+              >
                 <div className={styles.rowBody}>
                   <p className={styles.rowTitle}>Session</p>
                   <p className={styles.rowMeta}>{record.sessionId}</p>

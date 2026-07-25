@@ -54,7 +54,15 @@
       "executor": "nx:run-commands",
       "options": {
         "cwd": "apps/step-up",
-        "command": "playwright test --config playwright.config.ts --grep @critical"
+        "command": "playwright test --config playwright.config.ts --project=chromium --grep @critical"
+      },
+      "dependsOn": ["tokens:build:tokens", "components:build"]
+    },
+    "test:http": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "apps/step-up",
+        "command": "playwright test --config playwright.config.ts --project=http --grep @http"
       },
       "dependsOn": ["tokens:build:tokens", "components:build"]
     },
@@ -64,6 +72,7 @@
         "commands": [
           "pnpm exec nx run step-up-api:test",
           "pnpm exec nx run step-up:test",
+          "pnpm exec nx run step-up:test:http",
           "pnpm exec nx run step-up:test:e2e:critical"
         ],
         "parallel": false

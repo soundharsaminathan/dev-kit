@@ -25,4 +25,9 @@ describe("checkout-utils", () => {
     expect(formatSeconds(5)).toBe("00:05");
     expect(formatSeconds(0)).toBe("00:00");
   });
+
+  it("formats multi-hour remaining time as total minutes", () => {
+    expect(formatSeconds(3600)).toBe("60:00");
+    expect(formatSeconds(3661)).toBe("61:01");
+  });
 });

@@ -50,4 +50,17 @@ describe("resolveNotificationDestination", () => {
       to: "/app/subscriptions",
     });
   });
+
+  it("routes missed-session notifications to attendance or batch", () => {
+    expect(resolveNotificationDestination("MISSED_SESSION", {}, "me")).toEqual({
+      to: "/me/attendance",
+    });
+    expect(
+      resolveNotificationDestination(
+        "MISSED_SESSION",
+        { batchId: "batch-1" },
+        "me",
+      ),
+    ).toEqual({ to: "/me/batches/$id", params: { id: "batch-1" } });
+  });
 });

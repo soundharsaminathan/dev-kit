@@ -14,6 +14,7 @@ export function ChildSwitcher({
   return (
     <fieldset
       className={styles.switcher}
+      data-testid="child-switcher"
       data-tone={tone === "onMedia" ? "onMedia" : undefined}
     >
       {accounts.map((account) => (
@@ -21,6 +22,7 @@ export function ChildSwitcher({
           key={account.id}
           type="button"
           className={styles.chip}
+          data-testid={`child-switch-${account.id}`}
           data-selected={account.id === studentId ? "true" : undefined}
           onClick={() => setActiveAccount(account.id)}
           aria-pressed={account.id === studentId}

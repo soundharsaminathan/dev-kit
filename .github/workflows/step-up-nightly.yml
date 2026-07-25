@@ -92,6 +92,11 @@ jobs:
       - name: Install Playwright browsers
         run: pnpm --filter @step-up/web exec playwright install chromium firefox webkit --with-deps
 
+      - name: API HTTP integration
+        run: pnpm exec nx run step-up:test:http
+        env:
+          CI: true
+
       - name: Playwright E2E
         run: pnpm exec nx run step-up:test:e2e
         env:

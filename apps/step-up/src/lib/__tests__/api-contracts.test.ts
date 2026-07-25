@@ -8,6 +8,16 @@ import {
 
 const ATTENDANCE_STATUSES: AttendanceStatusValue[] = ["PRESENT", "ABSENT"];
 
+const BOOKING_STATUSES = [
+  "AWAITING_PAYMENT",
+  "PENDING",
+  "CONFIRMED",
+  "CANCELLED",
+  "COMPLETED",
+] as const;
+
+const INVOICE_STATUSES = ["PENDING", "PAID", "OVERDUE"] as const;
+
 const NOTIFICATION_KEYS = [
   "id",
   "type",
@@ -32,6 +42,16 @@ describe("frontend API contract mirrors", () => {
     };
     expect(rosterStatus(present)).toBe("PRESENT");
     expect(rosterStatus({ ...present, attendance: null })).toBe("UNMARKED");
+  });
+
+  it("documents booking status literals used across checkout and staff review", () => {
+    expect(BOOKING_STATUSES).toContain("AWAITING_PAYMENT");
+    expect(BOOKING_STATUSES).toContain("PENDING");
+    expect(BOOKING_STATUSES).toContain("CONFIRMED");
+  });
+
+  it("documents invoice status literals used by mark-paid UI", () => {
+    expect(INVOICE_STATUSES).toEqual(["PENDING", "PAID", "OVERDUE"]);
   });
 
   it("documents notification list keys expected from the API", () => {
