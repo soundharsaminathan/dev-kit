@@ -9,6 +9,7 @@ import {
   EnrollmentMode,
   FamilyPack,
   IndividualAudience,
+  InvoiceStatus,
   MembershipSeatRole,
   MembershipStatus,
   type Prisma,
@@ -1302,6 +1303,41 @@ async function main() {
       seatRole: MembershipSeatRole.KID,
     },
   });
+
+  // Reset to PENDING on every seed so mark-paid e2e/HTTP journeys stay repeatable.
+  for (const invoice of [
+    {
+      id: "invoice-e2e-unpaid-1",
+      amount: 1500,
+    },
+    {
+      id: "invoice-e2e-unpaid-2",
+      amount: 2200,
+    },
+  ] as const) {
+    await prisma.invoice.upsert({
+      where: { id: invoice.id },
+      update: {
+        studentId: "student-1",
+        membershipId: "membership-individual-kid-1",
+        amount: invoice.amount,
+        status: InvoiceStatus.PENDING,
+        paymentMethod: null,
+        paidAt: null,
+        platformFeePercent: 5,
+        studioId: STUDIO_ID,
+      },
+      create: {
+        id: invoice.id,
+        studentId: "student-1",
+        membershipId: "membership-individual-kid-1",
+        amount: invoice.amount,
+        status: InvoiceStatus.PENDING,
+        platformFeePercent: 5,
+        studioId: STUDIO_ID,
+      },
+    });
+  }
 
   const weekStart = mondayOfWeek();
 

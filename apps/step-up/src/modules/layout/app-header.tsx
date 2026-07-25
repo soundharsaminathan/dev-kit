@@ -190,6 +190,7 @@ function NotificationsControl({
           isIconOnly
           aria-label={notificationsLabel}
           aria-expanded={open}
+          data-testid="notifications-bell"
           className={tone === "onMedia" ? styles.onMediaButton : undefined}
           onClick={() => {
             setShowPreferences(false);

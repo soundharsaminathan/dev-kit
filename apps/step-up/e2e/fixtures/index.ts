@@ -153,6 +153,23 @@ export async function gotoAuthed(
   await expect(page).not.toHaveURL(/\/login/);
 }
 
+/** Wait for a matching API response produced by a UI action. */
+export async function waitForApiResponse(
+  page: Page,
+  match: {
+    method?: string;
+    pathIncludes: string;
+  },
+) {
+  return page.waitForResponse((response) => {
+    const url = response.url();
+    const method = response.request().method();
+    if (!url.includes(match.pathIncludes)) return false;
+    if (match.method && method !== match.method) return false;
+    return true;
+  });
+}
+
 export async function apiRequest<T>(
   role: SeedRole,
   pathName: string,

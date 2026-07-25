@@ -782,6 +782,7 @@ export function BatchDetailPage() {
               variant="primary"
               fullWidth
               isDisabled={!canActForStudent}
+              data-testid="book-class-cta"
               onClick={() => setEnrollOpen(true)}
             >
               Join this class
@@ -791,6 +792,7 @@ export function BatchDetailPage() {
               variant="primary"
               fullWidth
               isDisabled={!canActForStudent}
+              data-testid="book-class-cta"
               onClick={() => setBookOpen(true)}
             >
               Book this class
@@ -958,6 +960,7 @@ export function BatchDetailPage() {
             fullWidth
             isDisabled={!canActForStudent}
             isPending={enroll.isPending}
+            data-testid="enroll-submit"
             onClick={() => enroll.mutate()}
           >
             Confirm enrollment
@@ -1012,6 +1015,7 @@ export function BatchDetailPage() {
             fullWidth
             isDisabled={!canActForStudent}
             isPending={createBooking.isPending}
+            data-testid="book-submit"
             onClick={() => createBooking.mutate()}
           >
             Submit request

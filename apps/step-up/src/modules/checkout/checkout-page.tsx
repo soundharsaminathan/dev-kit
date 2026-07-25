@@ -251,6 +251,7 @@ export function CheckoutPage() {
           <TouchButton
             variant="quiet"
             fullWidth
+            data-testid="checkout-abandon"
             onClick={() => {
               void api
                 .post(`/bookings/${bookingId}/abandon-payment`)
@@ -275,6 +276,7 @@ export function CheckoutPage() {
           fullWidth
           isDisabled={remaining <= 0}
           isPending={confirmPayment.isPending}
+          data-testid="checkout-pay"
           onClick={() => confirmPayment.mutate()}
         >
           Pay securely

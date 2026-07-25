@@ -156,6 +156,7 @@ function InvoicesPage() {
                         <TouchButton
                           size="md"
                           variant="primary"
+                          data-testid={`mark-paid-${invoice.id}`}
                           onClick={() => openMarkPaid(invoice.id)}
                         >
                           Mark paid
@@ -222,6 +223,7 @@ function InvoicesPage() {
                 fullWidth
                 isDisabled={!paymentMethod}
                 isPending={markPaid.isPending}
+                data-testid="confirm-mark-paid"
                 onClick={() => {
                   if (!paymentMethod) return;
                   markPaid.mutate({

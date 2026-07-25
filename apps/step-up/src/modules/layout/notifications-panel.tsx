@@ -134,6 +134,7 @@ export function NotificationsPanel({
               type="button"
               className={styles.headerAction}
               aria-label="Mark all as read"
+              data-testid="notifications-mark-all-read"
               onClick={onMarkAllRead}
             >
               <Icon name="check-circle" />

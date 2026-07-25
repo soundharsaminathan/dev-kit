@@ -916,6 +916,7 @@ function NewBatchPage() {
             {isTrial && step === 3 ? (
               <Button
                 variant="primary"
+                data-testid="create-trial-batch"
                 onClick={() => createBatch.mutate()}
                 isPending={createBatch.isPending}
                 isDisabled={!stepIsValid[step]}
@@ -933,6 +934,7 @@ function NewBatchPage() {
             ) : (
               <Button
                 variant="primary"
+                data-testid="create-batch"
                 onClick={() => createBatch.mutate()}
                 isPending={createBatch.isPending}
                 isDisabled={!stepIsValid[step]}

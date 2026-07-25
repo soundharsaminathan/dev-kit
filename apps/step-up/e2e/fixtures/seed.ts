@@ -1,5 +1,9 @@
 export const SEED = {
   sessionAttendanceId: "session-kids-mon",
+  trialBatchId: "batch-trial-1",
+  unpaidInvoiceId: "invoice-e2e-unpaid-1",
+  unpaidInvoiceHttpId: "invoice-e2e-unpaid-2",
+  pendingBookingId: "booking-req-trial-1",
   users: {
     OWNER: {
       id: "owner-1",

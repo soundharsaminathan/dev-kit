@@ -210,6 +210,12 @@ jobs:
         if: steps.changes.outputs.run == 'true'
         run: pnpm --filter @step-up/web exec playwright install chromium --with-deps
 
+      - name: API HTTP integration
+        if: steps.changes.outputs.run == 'true'
+        run: pnpm exec nx run step-up:test:http
+        env:
+          CI: true
+
       - name: Critical Playwright journeys
         if: steps.changes.outputs.run == 'true'
         run: pnpm exec nx run step-up:test:e2e:critical

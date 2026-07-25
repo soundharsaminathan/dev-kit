@@ -1,20 +1,18 @@
 import { authFile, expect, test, waitForAppReady } from "../fixtures";
 
-test.describe("student home smoke @critical", () => {
-  test("student home shell renders interactive content @critical", async ({
-    browser,
-  }) => {
+test.describe("social feed", () => {
+  test("student feed shell loads", async ({ browser }) => {
     const context = await browser.newContext({
       storageState: authFile("STUDENT"),
     });
     const page = await context.newPage();
-    await page.goto("/me");
+    await page.goto("/me/feed", { waitUntil: "domcontentloaded" });
     await waitForAppReady(page);
-    await expect(page).toHaveURL(/\/me\/?$/);
+    await expect(page).toHaveURL(/\/me\/feed/);
     await expect(
       page
         .getByRole("heading")
-        .or(page.getByTestId("notifications-bell"))
+        .or(page.getByText(/feed|post|follow|empty/i))
         .first(),
     ).toBeVisible();
     await context.close();
