@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useRef } from "react";
 import { useApi } from "@/lib/api-context";
 import { STUDIO_ID } from "@/lib/constants";
 import type { StudioTrainer } from "@/modules/trainers/types";
@@ -25,6 +26,7 @@ type UnfollowVariables = {
 type FollowCacheSnapshot = {
   profile: SocialProfile | undefined;
   trainers: StudioTrainer[] | undefined;
+  writeId: number;
 };
 
 function patchTrainerList(
@@ -41,11 +43,26 @@ function patchTrainerList(
 export function useFollowMutations() {
   const api = useApi();
   const queryClient = useQueryClient();
+  const writeIdRef = useRef(0);
+  const inflightRef = useRef(new Set<string>());
+
+  function isLatestWrite(writeId: number | undefined) {
+    return writeId !== undefined && writeId === writeIdRef.current;
+  }
+
+  function releaseInflight(userId: string, writeId: number | undefined) {
+    if (writeId === undefined || isLatestWrite(writeId)) {
+      inflightRef.current.delete(userId);
+    }
+  }
 
   const followMutation = useMutation({
     mutationFn: ({ userId }: FollowVariables) =>
       api.post<FollowMutationResult>(`/users/${userId}/follow`),
     onMutate: async ({ userId, mode }) => {
+      writeIdRef.current += 1;
+      const writeId = writeIdRef.current;
+
       await Promise.all([
         queryClient.cancelQueries({ queryKey: ["profile", userId] }),
         queryClient.cancelQueries({
@@ -59,6 +76,7 @@ export function useFollowMutations() {
           "studio-trainers",
           STUDIO_ID,
         ]),
+        writeId,
       };
 
       queryClient.setQueryData<SocialProfile>(["profile", userId], (current) =>
@@ -75,7 +93,7 @@ export function useFollowMutations() {
       return previous;
     },
     onError: (_error, { userId }, context) => {
-      if (!context) return;
+      if (!context || !isLatestWrite(context.writeId)) return;
       if (context.profile !== undefined) {
         queryClient.setQueryData(["profile", userId], context.profile);
       }
@@ -86,7 +104,8 @@ export function useFollowMutations() {
         );
       }
     },
-    onSuccess: (result, { userId }) => {
+    onSuccess: (result, { userId }, context) => {
+      if (!isLatestWrite(context?.writeId)) return;
       queryClient.setQueryData<SocialProfile>(["profile", userId], (current) =>
         current ? reconcileFollowState(current, result) : current,
       );
@@ -98,11 +117,15 @@ export function useFollowMutations() {
           ),
       );
     },
-    onSettled: (_data, _error, { userId }) => {
-      void queryClient.invalidateQueries({ queryKey: ["profile", userId] });
-      void queryClient.invalidateQueries({
-        queryKey: ["studio-trainers", STUDIO_ID],
-      });
+    onSettled: (_data, error, { userId }, context) => {
+      releaseInflight(userId, context?.writeId);
+      // Skip refetch-on-success: it races rapid toggle and can overwrite newer state.
+      if (error && isLatestWrite(context?.writeId)) {
+        void queryClient.invalidateQueries({ queryKey: ["profile", userId] });
+        void queryClient.invalidateQueries({
+          queryKey: ["studio-trainers", STUDIO_ID],
+        });
+      }
     },
   });
 
@@ -110,6 +133,9 @@ export function useFollowMutations() {
     mutationFn: ({ userId }: UnfollowVariables) =>
       api.delete<FollowMutationResult>(`/users/${userId}/follow`),
     onMutate: async ({ userId }) => {
+      writeIdRef.current += 1;
+      const writeId = writeIdRef.current;
+
       await Promise.all([
         queryClient.cancelQueries({ queryKey: ["profile", userId] }),
         queryClient.cancelQueries({
@@ -123,6 +149,7 @@ export function useFollowMutations() {
           "studio-trainers",
           STUDIO_ID,
         ]),
+        writeId,
       };
 
       queryClient.setQueryData<SocialProfile>(["profile", userId], (current) =>
@@ -136,7 +163,7 @@ export function useFollowMutations() {
       return previous;
     },
     onError: (_error, { userId }, context) => {
-      if (!context) return;
+      if (!context || !isLatestWrite(context.writeId)) return;
       if (context.profile !== undefined) {
         queryClient.setQueryData(["profile", userId], context.profile);
       }
@@ -147,7 +174,8 @@ export function useFollowMutations() {
         );
       }
     },
-    onSuccess: (result, { userId }) => {
+    onSuccess: (result, { userId }, context) => {
+      if (!isLatestWrite(context?.writeId)) return;
       queryClient.setQueryData<SocialProfile>(["profile", userId], (current) =>
         current ? reconcileFollowState(current, result) : current,
       );
@@ -159,16 +187,20 @@ export function useFollowMutations() {
           ),
       );
     },
-    onSettled: (_data, _error, { userId }) => {
-      void queryClient.invalidateQueries({ queryKey: ["profile", userId] });
-      void queryClient.invalidateQueries({
-        queryKey: ["studio-trainers", STUDIO_ID],
-      });
+    onSettled: (_data, error, { userId }, context) => {
+      releaseInflight(userId, context?.writeId);
+      if (error && isLatestWrite(context?.writeId)) {
+        void queryClient.invalidateQueries({ queryKey: ["profile", userId] });
+        void queryClient.invalidateQueries({
+          queryKey: ["studio-trainers", STUDIO_ID],
+        });
+      }
     },
   });
 
   function isPendingFor(userId: string) {
     return (
+      inflightRef.current.has(userId) ||
       (followMutation.isPending &&
         followMutation.variables?.userId === userId) ||
       (unfollowMutation.isPending &&
@@ -177,10 +209,14 @@ export function useFollowMutations() {
   }
 
   function follow(userId: string, mode: FollowOptimisticMode = "following") {
+    if (inflightRef.current.has(userId)) return;
+    inflightRef.current.add(userId);
     followMutation.mutate({ userId, mode });
   }
 
   function unfollow(userId: string) {
+    if (inflightRef.current.has(userId)) return;
+    inflightRef.current.add(userId);
     unfollowMutation.mutate({ userId });
   }
 
@@ -190,6 +226,8 @@ export function useFollowMutations() {
     followRequestStatus: "PENDING" | "ACCEPTED" | "REJECTED" | null;
     profileVisibility?: "PUBLIC" | "PRIVATE";
   }) {
+    if (inflightRef.current.has(input.userId)) return;
+
     if (input.isFollowing || input.followRequestStatus === "PENDING") {
       unfollow(input.userId);
       return;

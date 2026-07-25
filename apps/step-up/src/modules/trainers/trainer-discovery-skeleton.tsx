@@ -2,7 +2,7 @@ import styles from "./trainer-discovery.module.scss";
 
 const AVATAR_KEYS = ["a0", "a1", "a2", "a3", "a4"] as const;
 const CHIP_KEYS = ["c0", "c1", "c2"] as const;
-const ACTION_KEYS = ["x0", "x1", "x2"] as const;
+const ACTION_KEYS = ["x0", "x1"] as const;
 const SEG_KEYS = ["s0", "s1", "s2", "s3"] as const;
 
 export function TrainerDiscoverySkeleton() {
