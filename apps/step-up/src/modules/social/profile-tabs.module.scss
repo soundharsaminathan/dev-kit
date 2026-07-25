@@ -5,6 +5,12 @@
   width: 100%;
 }
 
+.swipeArea {
+  width: 100%;
+  min-height: 12rem;
+  touch-action: pan-y;
+}
+
 .tabList {
   display: grid !important;
   grid-template-columns: repeat(3, minmax(0, 1fr));

@@ -2,6 +2,8 @@ import { Empty, EmptyDescription, EmptyTitle } from "@dev-ui/components/empty";
 import { Tab, TabList, TabPanel, Tabs } from "@dev-ui/components/tabs";
 import { Icon } from "@dev-ui/icons";
 import { useQuery } from "@tanstack/react-query";
+import { motion, type PanInfo, useReducedMotion } from "motion/react";
+import { type TouchEvent, useRef, useState } from "react";
 import { useApi } from "@/lib/api-context";
 import { STUDIO_ID } from "@/lib/constants";
 import { ENTITY_ICONS } from "@/lib/entity-icons";
@@ -15,6 +17,17 @@ import type { SocialProfile } from "./types";
 type ProfileTabsProps = {
   profile: SocialProfile;
   detailTo?: "/me/batches/$id" | "/app/batches/$id";
+};
+
+const TRAINER_TAB_KEYS = ["batches", "posts", "contact"] as const;
+type TrainerTabKey = (typeof TRAINER_TAB_KEYS)[number];
+
+const SWIPE_DRAG = 56;
+const SWIPE_VELOCITY = 450;
+
+type TouchOrigin = {
+  x: number;
+  y: number;
 };
 
 function formatInstagramLabel(url: string) {
@@ -193,11 +206,81 @@ function PostsPanel({ profile }: { profile: SocialProfile }) {
   return <PostGrid posts={profile.posts} />;
 }
 
+function isTrainerTabKey(key: string): key is TrainerTabKey {
+  return (TRAINER_TAB_KEYS as readonly string[]).includes(key);
+}
+
+function nextTabKey(
+  current: TrainerTabKey,
+  direction: -1 | 1,
+): TrainerTabKey | null {
+  const index = TRAINER_TAB_KEYS.indexOf(current);
+  const next = index + direction;
+  if (next < 0 || next >= TRAINER_TAB_KEYS.length) return null;
+  return TRAINER_TAB_KEYS[next] ?? null;
+}
+
+function tabFromSwipe(
+  current: string,
+  offsetX: number,
+  offsetY: number,
+  velocityX = 0,
+): TrainerTabKey | null {
+  if (!isTrainerTabKey(current)) return null;
+
+  const horizontal =
+    Math.abs(offsetX) >= Math.abs(offsetY) ||
+    Math.abs(velocityX) >= SWIPE_VELOCITY;
+  if (!horizontal) return null;
+
+  let direction: -1 | 1 | null = null;
+  if (offsetX < -SWIPE_DRAG || velocityX < -SWIPE_VELOCITY) {
+    direction = 1;
+  } else if (offsetX > SWIPE_DRAG || velocityX > SWIPE_VELOCITY) {
+    direction = -1;
+  }
+  if (!direction) return null;
+  return nextTabKey(current, direction);
+}
+
 export function ProfileTabs({
   profile,
   detailTo = "/me/batches/$id",
 }: ProfileTabsProps) {
   const isTrainer = profile.role === "TRAINER";
+  const reducedMotion = useReducedMotion();
+  const [selectedKey, setSelectedKey] = useState<TrainerTabKey>("batches");
+  const touchOrigin = useRef<TouchOrigin | null>(null);
+
+  function applySwipe(offsetX: number, offsetY: number, velocityX = 0) {
+    const next = tabFromSwipe(selectedKey, offsetX, offsetY, velocityX);
+    if (next) setSelectedKey(next);
+  }
+
+  function handleDragEnd(_: unknown, info: PanInfo) {
+    applySwipe(info.offset.x, info.offset.y, info.velocity.x);
+  }
+
+  function handleTouchStart(event: TouchEvent<HTMLDivElement>) {
+    if (!reducedMotion) return;
+    const touch = event.changedTouches[0];
+    if (!touch) return;
+    touchOrigin.current = { x: touch.clientX, y: touch.clientY };
+  }
+
+  function handleTouchEnd(event: TouchEvent<HTMLDivElement>) {
+    if (!reducedMotion || !touchOrigin.current) return;
+    const touch = event.changedTouches[0];
+    if (!touch) {
+      touchOrigin.current = null;
+      return;
+    }
+    applySwipe(
+      touch.clientX - touchOrigin.current.x,
+      touch.clientY - touchOrigin.current.y,
+    );
+    touchOrigin.current = null;
+  }
 
   if (!profile.canViewContent) {
     return (
@@ -218,7 +301,11 @@ export function ProfileTabs({
 
   return (
     <Tabs
-      defaultSelectedKey="batches"
+      selectedKey={selectedKey}
+      onSelectionChange={(key) => {
+        const next = String(key);
+        if (isTrainerTabKey(next)) setSelectedKey(next);
+      }}
       aria-label="Trainer profile sections"
       className={styles.tabs}
     >
@@ -237,15 +324,26 @@ export function ProfileTabs({
         </Tab>
       </TabList>
 
-      <TabPanel id="batches" className={styles.panel}>
-        <TrainerBatchesPanel trainerId={profile.id} detailTo={detailTo} />
-      </TabPanel>
-      <TabPanel id="posts" className={styles.panel}>
-        <PostsPanel profile={profile} />
-      </TabPanel>
-      <TabPanel id="contact" className={styles.panel}>
-        <ContactPanel profile={profile} />
-      </TabPanel>
+      <motion.div
+        className={styles.swipeArea}
+        drag={reducedMotion ? false : "x"}
+        dragConstraints={{ left: 0, right: 0 }}
+        dragElastic={0.18}
+        dragDirectionLock
+        onDragEnd={handleDragEnd}
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+      >
+        <TabPanel id="batches" className={styles.panel}>
+          <TrainerBatchesPanel trainerId={profile.id} detailTo={detailTo} />
+        </TabPanel>
+        <TabPanel id="posts" className={styles.panel}>
+          <PostsPanel profile={profile} />
+        </TabPanel>
+        <TabPanel id="contact" className={styles.panel}>
+          <ContactPanel profile={profile} />
+        </TabPanel>
+      </motion.div>
     </Tabs>
   );
 }
