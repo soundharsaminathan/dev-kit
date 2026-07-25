@@ -609,6 +609,28 @@
   gap: 0.5rem;
 }
 
+.chatTab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.tabUnread {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.25rem;
+  height: 1.25rem;
+  padding-inline: 0.35rem;
+  border-radius: var(--radius-full, 999px);
+  background: var(--color-primary);
+  color: var(--color-fg-on-primary, #fff);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
 .help,
 .error {
   grid-column: 1 / -1;

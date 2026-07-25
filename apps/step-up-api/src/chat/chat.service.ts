@@ -615,7 +615,20 @@ export class ChatService {
       throw new NotFoundException("Conversation not found");
     }
     this.gateway.joinUsersToConversation([...memberIds], full.id);
-    return this.serializeConversation(full, user.id);
+
+    const membership = full.members.find((member) => member.userId === user.id);
+    const unreadCount = await this.prisma.message.count({
+      where: {
+        conversationId: full.id,
+        deletedAt: null,
+        senderId: { not: user.id },
+        ...(membership?.lastReadAt
+          ? { createdAt: { gt: membership.lastReadAt } }
+          : {}),
+      },
+    });
+
+    return this.serializeConversation(full, user.id, { unreadCount });
   }
 
   async listMessages(

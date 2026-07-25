@@ -16,8 +16,12 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { useApi } from "@/lib/api-context";
 import { STUDIO_ID } from "@/lib/constants";
-import { BatchBilling } from "@/modules/batches/batch-billing";
+import {
+  BatchOverview,
+  occupiedSeatsForOverview,
+} from "@/modules/batches/batch-overview";
 import { BatchRoster } from "@/modules/batches/batch-roster";
+import { BatchSessionsLane } from "@/modules/batches/batch-sessions-lane";
 import { BatchTrainers } from "@/modules/batches/batch-trainers";
 import {
   BATCH_COVER_ASPECT,
@@ -25,7 +29,9 @@ import {
   validateBatchCover,
 } from "@/modules/batches/upload";
 import { BatchChat } from "@/modules/chat/batch-chat";
+import type { ChatConversation } from "@/modules/chat/types";
 import { ApiState } from "@/modules/ui/api-state";
+import { AppBottomSheet } from "@/modules/ui/app-bottom-sheet";
 import { FormInput } from "@/modules/ui/form-input";
 import { ImageCropSheet } from "@/modules/ui/image-crop-sheet";
 import { PageHeader } from "@/modules/ui/page-header";
@@ -57,7 +63,14 @@ type Batch = {
   enrollmentCount?: number;
   occupiedSeats?: number;
   remainingSeats?: number;
-  enrollments?: unknown[];
+  scheduleLabel?: string | null;
+  enrollments?: Array<{ isTrial?: boolean }>;
+  sessions?: Array<{
+    id: string;
+    startsAt: string;
+    endsAt: string;
+    status?: string;
+  }>;
   active: boolean;
   branchId: string;
   branch?: {
@@ -79,11 +92,13 @@ type Batch = {
 };
 
 function occupiedSeatsForBatch(batch: Batch) {
-  if (typeof batch.occupiedSeats === "number") return batch.occupiedSeats;
-  if (typeof batch.remainingSeats === "number") {
-    return Math.max(0, batch.capacity - batch.remainingSeats);
-  }
-  return batch.enrollmentCount ?? batch.enrollments?.length ?? 0;
+  return occupiedSeatsForOverview({
+    occupiedSeats: batch.occupiedSeats,
+    remainingSeats: batch.remainingSeats,
+    capacity: batch.capacity,
+    enrollmentCount: batch.enrollmentCount,
+    enrollmentsLength: batch.enrollments?.length,
+  });
 }
 
 type StudioBranch = {
@@ -133,10 +148,17 @@ function EditBatchPage() {
   const api = useApi();
   const navigate = useNavigate({ from: Route.fullPath });
   const queryClient = useQueryClient();
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const query = useQuery({
     queryKey: ["batch", id],
     queryFn: () => api.get<Batch>(`/batches/${id}`),
+  });
+
+  const chatQuery = useQuery({
+    queryKey: ["batch-conversation", id],
+    queryFn: () =>
+      api.get<ChatConversation>(`/chat/batches/${id}/conversation`),
   });
 
   const deleteBatch = useMutation({
@@ -153,14 +175,24 @@ function EditBatchPage() {
   const audienceCount =
     query.data?.enrollmentCount ?? query.data?.enrollments?.length ?? 0;
   const canDelete = Boolean(query.data) && audienceCount === 0;
+  const chatUnread = chatQuery.data?.unreadCount ?? 0;
 
   return (
     <section className="page stack">
       <PageHeader
         title={query.data?.name ?? "Batch"}
-        description="Enroll students, manage instructors, edit details, billing, and chat."
+        description="Roster, instructors, and class chat."
         actions={
           <div className={styles.headerActions}>
+            {query.data ? (
+              <Button
+                variant="quiet"
+                onClick={() => setSettingsOpen(true)}
+                data-testid="batch-settings"
+              >
+                Settings
+              </Button>
+            ) : null}
             {canDelete ? (
               <Button
                 variant="danger"
@@ -202,43 +234,84 @@ function EditBatchPage() {
         emptyDescription="This batch is unavailable."
       >
         {(batch) => (
-          <Tabs defaultSelectedKey="students" aria-label="Batch sections">
-            <TabList>
-              <Tab id="students">Students</Tab>
-              <Tab id="trainers">Trainers</Tab>
-              <Tab id="details">Details</Tab>
-              <Tab id="billing">Billing</Tab>
-              <Tab id="chat">Chat</Tab>
-            </TabList>
-            <TabPanel id="students">
-              <BatchRoster
-                batchId={batch.id}
-                capacity={batch.capacity}
-                active={batch.active}
+          <div className="stack">
+            <BatchOverview
+              name={batch.name}
+              coverImageUrl={batch.coverImageUrl}
+              active={batch.active}
+              capacity={batch.capacity}
+              enrollmentMode={batch.enrollmentMode}
+              occupiedSeats={batch.occupiedSeats}
+              remainingSeats={batch.remainingSeats}
+              enrollmentCount={batch.enrollmentCount}
+              enrollments={batch.enrollments}
+              scheduleLabel={batch.scheduleLabel}
+              branchName={batch.branch?.name}
+              sessions={batch.sessions}
+              trainers={batch.trainers.map((row) => ({
+                id: row.trainer.id,
+                name: row.trainer.name,
+                photoUrl: row.trainer.photoUrl ?? null,
+              }))}
+            />
+            <BatchSessionsLane sessions={batch.sessions} />
+            <Tabs defaultSelectedKey="students" aria-label="Batch sections">
+              <TabList>
+                <Tab id="students">Students</Tab>
+                <Tab id="trainers">Trainers</Tab>
+                <Tab id="chat">
+                  <span className={styles.chatTab}>
+                    Chat
+                    {chatUnread > 0 ? (
+                      <span className={styles.tabUnread}>
+                        {chatUnread > 99 ? "99+" : chatUnread}
+                      </span>
+                    ) : null}
+                  </span>
+                </Tab>
+              </TabList>
+              <TabPanel id="students">
+                <BatchRoster
+                  batchId={batch.id}
+                  capacity={batch.capacity}
+                  active={batch.active}
+                />
+              </TabPanel>
+              <TabPanel id="trainers">
+                <BatchTrainers batchId={batch.id} trainers={batch.trainers} />
+              </TabPanel>
+              <TabPanel id="chat">
+                <BatchChat batchId={batch.id} />
+              </TabPanel>
+            </Tabs>
+
+            <AppBottomSheet
+              isOpen={settingsOpen}
+              onOpenChange={setSettingsOpen}
+              title="Batch settings"
+              size="tall"
+            >
+              <EditBatchForm
+                key={batch.id}
+                batch={batch}
+                onSaved={() => setSettingsOpen(false)}
               />
-            </TabPanel>
-            <TabPanel id="trainers">
-              <BatchTrainers batchId={batch.id} trainers={batch.trainers} />
-            </TabPanel>
-            <TabPanel id="details">
-              <EditBatchForm key={batch.id} batch={batch} />
-            </TabPanel>
-            <TabPanel id="billing">
-              <BatchBilling />
-            </TabPanel>
-            <TabPanel id="chat">
-              <BatchChat batchId={batch.id} />
-            </TabPanel>
-          </Tabs>
+            </AppBottomSheet>
+          </div>
         )}
       </ApiState>
     </section>
   );
 }
 
-function EditBatchForm({ batch }: { batch: Batch }) {
+function EditBatchForm({
+  batch,
+  onSaved,
+}: {
+  batch: Batch;
+  onSaved?: () => void;
+}) {
   const api = useApi();
-  const navigate = useNavigate({ from: Route.fullPath });
   const queryClient = useQueryClient();
   const schedule = batch.scheduleJson;
 
@@ -334,7 +407,7 @@ function EditBatchForm({ batch }: { batch: Batch }) {
         queryClient.invalidateQueries({ queryKey: ["batches", STUDIO_ID] }),
         queryClient.invalidateQueries({ queryKey: ["batch", batch.id] }),
       ]);
-      await navigate({ to: "/app/batches" });
+      onSaved?.();
     },
   });
 
@@ -641,6 +714,11 @@ function EditBatchForm({ batch }: { batch: Batch }) {
           Add another category
         </Button>
       </section>
+
+      <p className={styles.help}>
+        Membership plans are studio-wide via{" "}
+        <Link to="/app/subscriptions">Subscriptions</Link>, not per batch.
+      </p>
 
       {updateBatch.isError && (
         <p className={styles.error}>

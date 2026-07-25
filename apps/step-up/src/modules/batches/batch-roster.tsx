@@ -13,6 +13,7 @@ import {
   type StudioStudent,
 } from "@/modules/students/student-search-combobox";
 import { StyleList } from "@/modules/styles/style-list";
+import { FilterChipRow } from "@/modules/ui/filter-chip-row";
 import { PressableCard } from "@/modules/ui/pressable-card";
 import staff from "@/modules/ui/staff.module.scss";
 import { EmptyState, ErrorState } from "@/modules/ui/states";
@@ -48,6 +49,21 @@ type BatchWithEnrollments = {
   enrollments: BatchEnrollmentRow[];
 };
 
+export type RosterEnrollmentFilter = "all" | "trial" | "enrolled";
+
+export function filterRosterEnrollments(
+  rows: BatchEnrollmentRow[],
+  filter: RosterEnrollmentFilter,
+) {
+  if (filter === "trial") {
+    return rows.filter((row) => row.isTrial === true);
+  }
+  if (filter === "enrolled") {
+    return rows.filter((row) => row.isTrial !== true);
+  }
+  return rows;
+}
+
 export function BatchRoster({ batchId, capacity, active }: BatchRosterProps) {
   const api = useApi();
   const navigate = useNavigate();
@@ -58,6 +74,8 @@ export function BatchRoster({ batchId, capacity, active }: BatchRosterProps) {
   );
   const [isTrial, setIsTrial] = useState(false);
   const [pickerKey, setPickerKey] = useState(0);
+  const [rosterFilter, setRosterFilter] =
+    useState<RosterEnrollmentFilter>("all");
 
   const query = useQuery({
     queryKey: ["batch", batchId],
@@ -70,6 +88,15 @@ export function BatchRoster({ batchId, capacity, active }: BatchRosterProps) {
       a.student.name.localeCompare(b.student.name),
     );
   }, [query.data?.enrollments]);
+  const trialCount = useMemo(
+    () => enrollments.filter((row) => row.isTrial === true).length,
+    [enrollments],
+  );
+  const memberCount = enrollments.length - trialCount;
+  const filteredEnrollments = useMemo(
+    () => filterRosterEnrollments(enrollments, rosterFilter),
+    [enrollments, rosterFilter],
+  );
   const enrolledIds = useMemo(
     () => enrollments.map((row) => row.studentId),
     [enrollments],
@@ -78,6 +105,15 @@ export function BatchRoster({ batchId, capacity, active }: BatchRosterProps) {
   const seatsLeft =
     query.data?.remainingSeats ?? Math.max(0, capacity - seatsTaken);
   const isFull = seatsLeft <= 0;
+
+  const filterChips = useMemo(
+    () => [
+      { id: "all", label: `All (${enrollments.length})` },
+      { id: "trial", label: `Trial (${trialCount})` },
+      { id: "enrolled", label: `Members (${memberCount})` },
+    ],
+    [enrollments.length, trialCount, memberCount],
+  );
 
   const enroll = useMutation({
     mutationFn: (input: { student: StudioStudent; isTrial: boolean }) =>
@@ -183,6 +219,16 @@ export function BatchRoster({ batchId, capacity, active }: BatchRosterProps) {
         {!active ? <Badge variant="neutral">Inactive</Badge> : null}
       </div>
 
+      {enrollments.length > 0 ? (
+        <div className={styles.filters}>
+          <FilterChipRow
+            chips={filterChips}
+            selected={[rosterFilter]}
+            onToggle={(id) => setRosterFilter(id as RosterEnrollmentFilter)}
+          />
+        </div>
+      ) : null}
+
       <div className={staff.softPanel}>
         <div className={styles.enrollForm}>
           <StudentSearchCombobox
@@ -244,9 +290,21 @@ export function BatchRoster({ batchId, capacity, active }: BatchRosterProps) {
           title="No students enrolled"
           description="Search for a student above to add them to this batch."
         />
+      ) : filteredEnrollments.length === 0 ? (
+        <EmptyState
+          icon={ENTITY_ICONS.student}
+          title={
+            rosterFilter === "trial" ? "No trial students" : "No full members"
+          }
+          description={
+            rosterFilter === "trial"
+              ? "Nobody on a trial seat in this batch right now."
+              : "Everyone currently enrolled is on a trial."
+          }
+        />
       ) : (
         <div className={styles.list}>
-          {enrollments.map((row) => {
+          {filteredEnrollments.map((row) => {
             const student = row.student;
             const initials = student.name.slice(0, 1).toUpperCase();
             const styleList = student.styles ?? [];

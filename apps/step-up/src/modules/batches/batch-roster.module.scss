@@ -11,6 +11,10 @@
   gap: var(--space-2, 0.5rem);
 }
 
+.filters {
+  min-width: 0;
+}
+
 .enrollForm {
   display: flex;
   flex-direction: column;
