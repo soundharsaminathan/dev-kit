@@ -1,3 +1,4 @@
+import { useToastContext } from "@dev-ui/components/toast";
 import { Icon } from "@dev-ui/icons";
 import { useMutation } from "@tanstack/react-query";
 import { useNavigate, useRouter } from "@tanstack/react-router";
@@ -95,6 +96,7 @@ export function TrainerDiscoveryView({
   const { user } = useAuth();
   const navigate = useNavigate();
   const router = useRouter();
+  const { toast } = useToastContext("TrainerDiscoveryView");
   const reducedMotion = useReducedMotion() ?? false;
   const [activeTrainerId, setActiveTrainerId] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -222,6 +224,14 @@ export function TrainerDiscoveryView({
         ? "/me/messages/$id"
         : "/app/messages/$id";
       void navigate({ to, params: { id: conversation.id } });
+    },
+    onError: (error) => {
+      toast({
+        title: "Couldn’t start chat",
+        description:
+          error instanceof Error ? error.message : "Try again in a moment.",
+        variant: "error",
+      });
     },
   });
 
@@ -471,7 +481,7 @@ export function TrainerDiscoveryView({
                     type="button"
                     className={styles.actionBtn}
                     aria-label={`Message ${trainer.name}`}
-                    disabled={messageMutation.isPending}
+                    disabled={messageMutation.isPending || profileExit}
                     onClick={() => messageMutation.mutate(trainer.id)}
                   >
                     <Icon name="message-square" aria-hidden />
