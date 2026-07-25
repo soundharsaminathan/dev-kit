@@ -23,11 +23,15 @@ type UnfollowVariables = {
   userId: string;
 };
 
-type FollowCacheSnapshot = {
-  profile: SocialProfile | undefined;
-  trainers: StudioTrainer[] | undefined;
-  writeId: number;
+type FollowToggleState = {
+  isFollowing: boolean;
+  followRequestStatus: "PENDING" | "ACCEPTED" | "REJECTED" | null;
+  profileVisibility?: "PUBLIC" | "PRIVATE";
 };
+
+type FollowIntent =
+  | { type: "follow"; mode: FollowOptimisticMode }
+  | { type: "unfollow" };
 
 function patchTrainerList(
   trainers: StudioTrainer[] | undefined,
@@ -43,89 +47,115 @@ function patchTrainerList(
 export function useFollowMutations() {
   const api = useApi();
   const queryClient = useQueryClient();
-  const writeIdRef = useRef(0);
+  const intentRef = useRef(new Map<string, FollowIntent>());
   const inflightRef = useRef(new Set<string>());
 
-  function isLatestWrite(writeId: number | undefined) {
-    return writeId !== undefined && writeId === writeIdRef.current;
+  function resolveFollowState(
+    userId: string,
+    fallback: FollowToggleState,
+  ): FollowToggleState {
+    const profile = queryClient.getQueryData<SocialProfile>([
+      "profile",
+      userId,
+    ]);
+    if (profile) {
+      return {
+        isFollowing: profile.isFollowing,
+        followRequestStatus: profile.followRequestStatus,
+        profileVisibility: profile.profileVisibility,
+      };
+    }
+
+    const trainers = queryClient.getQueryData<StudioTrainer[]>([
+      "studio-trainers",
+      STUDIO_ID,
+    ]);
+    const trainer = trainers?.find((item) => item.id === userId);
+    if (trainer) {
+      return {
+        isFollowing: trainer.isFollowing,
+        followRequestStatus: trainer.followRequestStatus,
+        ...(fallback.profileVisibility
+          ? { profileVisibility: fallback.profileVisibility }
+          : {}),
+      };
+    }
+
+    return fallback;
   }
 
-  function releaseInflight(userId: string, writeId: number | undefined) {
-    if (writeId === undefined || isLatestWrite(writeId)) {
-      inflightRef.current.delete(userId);
-    }
+  function applyFollowOptimistic(userId: string, mode: FollowOptimisticMode) {
+    queryClient.setQueryData<SocialProfile>(["profile", userId], (current) =>
+      current ? applyOptimisticFollowToProfile(current, mode) : current,
+    );
+    queryClient.setQueryData<StudioTrainer[]>(
+      ["studio-trainers", STUDIO_ID],
+      (current) =>
+        patchTrainerList(current, userId, (trainer) =>
+          applyOptimisticFollow(trainer, mode),
+        ),
+    );
+  }
+
+  function applyUnfollowOptimistic(userId: string) {
+    queryClient.setQueryData<SocialProfile>(["profile", userId], (current) =>
+      current ? applyOptimisticUnfollowToProfile(current) : current,
+    );
+    queryClient.setQueryData<StudioTrainer[]>(
+      ["studio-trainers", STUDIO_ID],
+      (current) => patchTrainerList(current, userId, applyOptimisticUnfollow),
+    );
+  }
+
+  function reconcileResult(userId: string, result: FollowMutationResult) {
+    queryClient.setQueryData<SocialProfile>(["profile", userId], (current) =>
+      current ? reconcileFollowState(current, result) : current,
+    );
+    queryClient.setQueryData<StudioTrainer[]>(
+      ["studio-trainers", STUDIO_ID],
+      (current) =>
+        patchTrainerList(current, userId, (trainer) =>
+          reconcileFollowState(trainer, result),
+        ),
+    );
+  }
+
+  function hasQueuedIntent(userId: string) {
+    return intentRef.current.has(userId);
+  }
+
+  async function cancelFollowQueries(userId: string) {
+    await Promise.all([
+      queryClient.cancelQueries({ queryKey: ["profile", userId] }),
+      queryClient.cancelQueries({
+        queryKey: ["studio-trainers", STUDIO_ID],
+      }),
+    ]);
+  }
+
+  function resyncFollowQueries(userId: string) {
+    void queryClient.invalidateQueries({ queryKey: ["profile", userId] });
+    void queryClient.invalidateQueries({
+      queryKey: ["studio-trainers", STUDIO_ID],
+    });
   }
 
   const followMutation = useMutation({
     mutationFn: ({ userId }: FollowVariables) =>
       api.post<FollowMutationResult>(`/users/${userId}/follow`),
-    onMutate: async ({ userId, mode }) => {
-      writeIdRef.current += 1;
-      const writeId = writeIdRef.current;
-
-      await Promise.all([
-        queryClient.cancelQueries({ queryKey: ["profile", userId] }),
-        queryClient.cancelQueries({
-          queryKey: ["studio-trainers", STUDIO_ID],
-        }),
-      ]);
-
-      const previous: FollowCacheSnapshot = {
-        profile: queryClient.getQueryData<SocialProfile>(["profile", userId]),
-        trainers: queryClient.getQueryData<StudioTrainer[]>([
-          "studio-trainers",
-          STUDIO_ID,
-        ]),
-        writeId,
-      };
-
-      queryClient.setQueryData<SocialProfile>(["profile", userId], (current) =>
-        current ? applyOptimisticFollowToProfile(current, mode) : current,
-      );
-      queryClient.setQueryData<StudioTrainer[]>(
-        ["studio-trainers", STUDIO_ID],
-        (current) =>
-          patchTrainerList(current, userId, (trainer) =>
-            applyOptimisticFollow(trainer, mode),
-          ),
-      );
-
-      return previous;
+    onMutate: async ({ userId }) => {
+      await cancelFollowQueries(userId);
     },
-    onError: (_error, { userId }, context) => {
-      if (!context || !isLatestWrite(context.writeId)) return;
-      if (context.profile !== undefined) {
-        queryClient.setQueryData(["profile", userId], context.profile);
-      }
-      if (context.trainers !== undefined) {
-        queryClient.setQueryData(
-          ["studio-trainers", STUDIO_ID],
-          context.trainers,
-        );
-      }
+    onSuccess: (result, { userId }) => {
+      if (hasQueuedIntent(userId)) return;
+      reconcileResult(userId, result);
     },
-    onSuccess: (result, { userId }, context) => {
-      if (!isLatestWrite(context?.writeId)) return;
-      queryClient.setQueryData<SocialProfile>(["profile", userId], (current) =>
-        current ? reconcileFollowState(current, result) : current,
-      );
-      queryClient.setQueryData<StudioTrainer[]>(
-        ["studio-trainers", STUDIO_ID],
-        (current) =>
-          patchTrainerList(current, userId, (trainer) =>
-            reconcileFollowState(trainer, result),
-          ),
-      );
-    },
-    onSettled: (_data, error, { userId }, context) => {
-      releaseInflight(userId, context?.writeId);
-      // Skip refetch-on-success: it races rapid toggle and can overwrite newer state.
-      if (error && isLatestWrite(context?.writeId)) {
-        void queryClient.invalidateQueries({ queryKey: ["profile", userId] });
-        void queryClient.invalidateQueries({
-          queryKey: ["studio-trainers", STUDIO_ID],
-        });
+    onSettled: (_data, error, { userId }) => {
+      inflightRef.current.delete(userId);
+      if (error && !hasQueuedIntent(userId)) {
+        resyncFollowQueries(userId);
       }
+      flushFollowIntent(userId);
     },
   });
 
@@ -133,74 +163,45 @@ export function useFollowMutations() {
     mutationFn: ({ userId }: UnfollowVariables) =>
       api.delete<FollowMutationResult>(`/users/${userId}/follow`),
     onMutate: async ({ userId }) => {
-      writeIdRef.current += 1;
-      const writeId = writeIdRef.current;
-
-      await Promise.all([
-        queryClient.cancelQueries({ queryKey: ["profile", userId] }),
-        queryClient.cancelQueries({
-          queryKey: ["studio-trainers", STUDIO_ID],
-        }),
-      ]);
-
-      const previous: FollowCacheSnapshot = {
-        profile: queryClient.getQueryData<SocialProfile>(["profile", userId]),
-        trainers: queryClient.getQueryData<StudioTrainer[]>([
-          "studio-trainers",
-          STUDIO_ID,
-        ]),
-        writeId,
-      };
-
-      queryClient.setQueryData<SocialProfile>(["profile", userId], (current) =>
-        current ? applyOptimisticUnfollowToProfile(current) : current,
-      );
-      queryClient.setQueryData<StudioTrainer[]>(
-        ["studio-trainers", STUDIO_ID],
-        (current) => patchTrainerList(current, userId, applyOptimisticUnfollow),
-      );
-
-      return previous;
+      await cancelFollowQueries(userId);
     },
-    onError: (_error, { userId }, context) => {
-      if (!context || !isLatestWrite(context.writeId)) return;
-      if (context.profile !== undefined) {
-        queryClient.setQueryData(["profile", userId], context.profile);
-      }
-      if (context.trainers !== undefined) {
-        queryClient.setQueryData(
-          ["studio-trainers", STUDIO_ID],
-          context.trainers,
-        );
-      }
+    onSuccess: (result, { userId }) => {
+      if (hasQueuedIntent(userId)) return;
+      reconcileResult(userId, result);
     },
-    onSuccess: (result, { userId }, context) => {
-      if (!isLatestWrite(context?.writeId)) return;
-      queryClient.setQueryData<SocialProfile>(["profile", userId], (current) =>
-        current ? reconcileFollowState(current, result) : current,
-      );
-      queryClient.setQueryData<StudioTrainer[]>(
-        ["studio-trainers", STUDIO_ID],
-        (current) =>
-          patchTrainerList(current, userId, (trainer) =>
-            reconcileFollowState(trainer, result),
-          ),
-      );
-    },
-    onSettled: (_data, error, { userId }, context) => {
-      releaseInflight(userId, context?.writeId);
-      if (error && isLatestWrite(context?.writeId)) {
-        void queryClient.invalidateQueries({ queryKey: ["profile", userId] });
-        void queryClient.invalidateQueries({
-          queryKey: ["studio-trainers", STUDIO_ID],
-        });
+    onSettled: (_data, error, { userId }) => {
+      inflightRef.current.delete(userId);
+      if (error && !hasQueuedIntent(userId)) {
+        resyncFollowQueries(userId);
       }
+      flushFollowIntent(userId);
     },
   });
+
+  function flushFollowIntent(userId: string) {
+    if (inflightRef.current.has(userId)) return;
+    const intent = intentRef.current.get(userId);
+    if (!intent) return;
+
+    intentRef.current.delete(userId);
+    inflightRef.current.add(userId);
+
+    if (intent.type === "follow") {
+      followMutation.mutate({ userId, mode: intent.mode });
+      return;
+    }
+    unfollowMutation.mutate({ userId });
+  }
+
+  function queueFollowIntent(userId: string, intent: FollowIntent) {
+    intentRef.current.set(userId, intent);
+    flushFollowIntent(userId);
+  }
 
   function isPendingFor(userId: string) {
     return (
       inflightRef.current.has(userId) ||
+      intentRef.current.has(userId) ||
       (followMutation.isPending &&
         followMutation.variables?.userId === userId) ||
       (unfollowMutation.isPending &&
@@ -209,15 +210,13 @@ export function useFollowMutations() {
   }
 
   function follow(userId: string, mode: FollowOptimisticMode = "following") {
-    if (inflightRef.current.has(userId)) return;
-    inflightRef.current.add(userId);
-    followMutation.mutate({ userId, mode });
+    applyFollowOptimistic(userId, mode);
+    queueFollowIntent(userId, { type: "follow", mode });
   }
 
   function unfollow(userId: string) {
-    if (inflightRef.current.has(userId)) return;
-    inflightRef.current.add(userId);
-    unfollowMutation.mutate({ userId });
+    applyUnfollowOptimistic(userId);
+    queueFollowIntent(userId, { type: "unfollow" });
   }
 
   function toggleFollow(input: {
@@ -226,15 +225,21 @@ export function useFollowMutations() {
     followRequestStatus: "PENDING" | "ACCEPTED" | "REJECTED" | null;
     profileVisibility?: "PUBLIC" | "PRIVATE";
   }) {
-    if (inflightRef.current.has(input.userId)) return;
+    const state = resolveFollowState(input.userId, {
+      isFollowing: input.isFollowing,
+      followRequestStatus: input.followRequestStatus,
+      ...(input.profileVisibility
+        ? { profileVisibility: input.profileVisibility }
+        : {}),
+    });
 
-    if (input.isFollowing || input.followRequestStatus === "PENDING") {
+    if (state.isFollowing || state.followRequestStatus === "PENDING") {
       unfollow(input.userId);
       return;
     }
 
     const mode: FollowOptimisticMode =
-      input.profileVisibility === "PRIVATE" ? "requested" : "following";
+      state.profileVisibility === "PRIVATE" ? "requested" : "following";
     follow(input.userId, mode);
   }
 

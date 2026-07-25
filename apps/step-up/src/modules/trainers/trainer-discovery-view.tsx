@@ -442,10 +442,12 @@ export function TrainerDiscoveryView({
                           : `Favorite ${trainer.name}`
                       }
                       aria-pressed={favoriteActive}
-                      disabled={favoritePending || profileExit}
+                      aria-busy={favoritePending || undefined}
+                      disabled={profileExit}
                       onClick={() => {
                         if (!favoriteActive && !reducedMotion) {
-                          setHeartBurst(true);
+                          setHeartBurst(false);
+                          requestAnimationFrame(() => setHeartBurst(true));
                         }
                         onToggleFollow(trainer);
                       }}
