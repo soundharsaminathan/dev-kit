@@ -68,6 +68,7 @@ describe("ChatService", () => {
     message: {
       findUnique: vi.fn(),
       create: vi.fn(),
+      count: vi.fn(),
     },
     $transaction: vi.fn((ops: Promise<unknown>[]) => Promise.all(ops)),
   };
@@ -362,6 +363,7 @@ describe("ChatService", () => {
         enrollments: [{ studentId: "student-1" }],
       });
       prisma.user.findMany.mockResolvedValue([{ id: "owner-1" }]);
+      prisma.message.count.mockResolvedValue(0);
     });
 
     it("forbids users outside the batch", async () => {

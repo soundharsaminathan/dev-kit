@@ -502,7 +502,10 @@ export function ChatView({ conversationId, onBack }: ChatViewProps) {
     void api
       .post(`/chat/conversations/${conversationId}/read`)
       .then(() =>
-        queryClient.invalidateQueries({ queryKey: chatConversationsKey }),
+        Promise.all([
+          queryClient.invalidateQueries({ queryKey: chatConversationsKey }),
+          queryClient.invalidateQueries({ queryKey: ["batch-conversation"] }),
+        ]),
       )
       .catch(() => undefined);
   }, [api, queryClient, conversationId, messagesData]);

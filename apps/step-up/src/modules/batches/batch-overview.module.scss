@@ -1,0 +1,248 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 0.75rem);
+  padding: var(--space-3, 0.75rem);
+  border-radius: var(--radius-2xl, 1.25rem);
+  border: var(--card-border-width, 1px) solid
+    var(--card-border-color, color-mix(in srgb, var(--color-fg) 12%, transparent));
+  background: var(--card-background, var(--color-card, var(--color-bg)));
+  box-shadow: var(--card-shadow, var(--shadow-sm, 0 1px 3px rgb(0 0 0 / 6%)));
+}
+
+.identity {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3, 0.75rem);
+  min-width: 0;
+}
+
+.cover {
+  flex-shrink: 0;
+  width: 4.5rem;
+  height: 4.5rem;
+  border-radius: var(--radius-xl, 1rem);
+  overflow: hidden;
+  background: color-mix(in srgb, var(--color-primary) 14%, var(--color-bg));
+}
+
+.coverImg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.coverFallback {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  color: color-mix(in srgb, var(--color-primary) 70%, var(--color-fg));
+}
+
+.coverFallback svg {
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+.copy {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1, 0.25rem);
+  min-width: 0;
+  flex: 1;
+}
+
+.titleRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2, 0.5rem);
+}
+
+.title {
+  margin: 0;
+  font-size: 1.0625rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+}
+
+.meta {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: color-mix(in srgb, var(--color-fg) 62%, transparent);
+  line-height: 1.4;
+}
+
+.fill {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 0.5rem);
+}
+
+.fillLabel {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-2, 0.5rem);
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: color-mix(in srgb, var(--color-fg) 62%, transparent);
+}
+
+.fillValue {
+  font-variant-numeric: tabular-nums;
+  color: var(--color-fg);
+}
+
+.fillTrack {
+  height: 0.5rem;
+  border-radius: var(--radius-full, 999px);
+  background: color-mix(in srgb, var(--color-fg) 8%, transparent);
+  overflow: hidden;
+}
+
+.fillBar {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--color-primary);
+  max-width: 100%;
+  transition: width var(--motion-normal, 200ms) ease;
+}
+
+.fillBar[data-full="true"] {
+  background: var(--color-danger, #e5484d);
+}
+
+.fillBar[data-low="true"] {
+  background: var(--color-warning, #ff9f0a);
+}
+
+.trainers {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2, 0.5rem);
+  min-width: 0;
+}
+
+.trainersLabel {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--color-fg) 52%, transparent);
+}
+
+.trainerNames {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.trainerChip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.5rem;
+  padding-inline: 0.55rem;
+  border-radius: var(--radius-full, 999px);
+  background: color-mix(in srgb, var(--color-fg) 6%, transparent);
+  color: color-mix(in srgb, var(--color-fg) 78%, transparent);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-decoration: none;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: background-color var(--interaction-transition-fast, 120ms) ease;
+
+  &:hover {
+    background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+    color: var(--color-fg);
+  }
+}
+
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2, 0.5rem);
+}
+
+@media (min-width: 640px) {
+  .metrics {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.metric {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+  padding: var(--space-2, 0.5rem) var(--space-3, 0.75rem);
+  border-radius: var(--radius-xl, 1rem);
+  background: color-mix(in srgb, var(--color-fg) 4%, transparent);
+  text-decoration: none;
+  color: inherit;
+}
+
+.metric[data-interactive="true"] {
+  cursor: pointer;
+  transition:
+    transform var(--interaction-transition-fast, 120ms) ease,
+    background-color var(--interaction-transition-fast, 120ms) ease;
+
+  &:hover {
+    background: color-mix(in srgb, var(--color-primary) 8%, transparent);
+  }
+
+  &:active {
+    transform: scale(var(--interaction-press-scale, 0.97));
+  }
+}
+
+.metricLabel {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--color-fg) 52%, transparent);
+}
+
+.metricValue {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.25;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.metricValue[data-tone="danger"] {
+  color: var(--color-danger, #e5484d);
+}
+
+.metricValue[data-tone="muted"] {
+  color: color-mix(in srgb, var(--color-fg) 52%, transparent);
+  font-weight: 600;
+  font-size: 0.8125rem;
+  white-space: normal;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fillBar {
+    transition-duration: 0ms;
+  }
+
+  .metric[data-interactive="true"] {
+    transition-duration: 0ms;
+  }
+
+  .metric[data-interactive="true"]:active {
+    transform: none;
+  }
+}

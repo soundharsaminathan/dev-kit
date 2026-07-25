@@ -5,6 +5,10 @@
   overflow: auto;
 }
 
+.body[data-size="tall"] {
+  max-height: min(92vh, 52rem);
+}
+
 .title {
   margin: 0 0 var(--space-3, 0.75rem);
   padding-inline: var(--space-1, 0.25rem);
