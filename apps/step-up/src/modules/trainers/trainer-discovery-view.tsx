@@ -85,7 +85,7 @@ export function TrainerDiscoveryView({
   const navigate = useNavigate();
   const router = useRouter();
   const reducedMotion = useReducedMotion() ?? false;
-  const [index, setIndex] = useState(0);
+  const [activeTrainerId, setActiveTrainerId] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [exitDirection, setExitDirection] = useState(0);
   const [showHint, setShowHint] = useState(true);
@@ -114,9 +114,27 @@ export function TrainerDiscoveryView({
     reducedMotion ? [1.06, 1.06] : [1.14, 1.06],
   );
 
+  const index = useMemo(() => {
+    if (activeTrainerId) {
+      const matched = trainers.findIndex((item) => item.id === activeTrainerId);
+      if (matched >= 0) return matched;
+    }
+    return 0;
+  }, [activeTrainerId, trainers]);
+
   useEffect(() => {
-    setIndex((current) => Math.min(current, Math.max(trainers.length - 1, 0)));
-  }, [trainers]);
+    if (trainers.length === 0) {
+      setActiveTrainerId(null);
+      return;
+    }
+    if (
+      activeTrainerId &&
+      trainers.some((item) => item.id === activeTrainerId)
+    ) {
+      return;
+    }
+    setActiveTrainerId(trainers[0]?.id ?? null);
+  }, [activeTrainerId, trainers]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => setShowHint(false), 3200);
@@ -124,7 +142,6 @@ export function TrainerDiscoveryView({
   }, []);
 
   const trainer = trainers[index] ?? null;
-  const activeTrainerId = trainer?.id;
 
   useEffect(() => {
     if (!activeTrainerId) return;
@@ -185,25 +202,16 @@ export function TrainerDiscoveryView({
   }
 
   function goTo(next: number, direction: number) {
-    if (next < 0 || next >= trainers.length || next === index) {
+    const nextTrainer = trainers[next];
+    if (!nextTrainer || next === index) {
       resetDrag();
       return false;
     }
     setExitDirection(direction);
-    setIndex(next);
+    setActiveTrainerId(nextTrainer.id);
     setShowHint(false);
     resetDrag();
     return true;
-  }
-
-  function skipCurrent() {
-    if (index < trainers.length - 1) {
-      goTo(index + 1, 1);
-      return;
-    }
-    if (index > 0) {
-      goTo(index - 1, -1);
-    }
   }
 
   function handleDragEnd(_: unknown, info: PanInfo) {
@@ -354,26 +362,26 @@ export function TrainerDiscoveryView({
                 </button>
               </header>
 
-              <div className={styles.actions}>
-                {!trainer.isOwnProfile && onToggleFollow ? (
-                  <button
-                    type="button"
-                    className={styles.actionBtn}
-                    data-active={favoriteActive ? "true" : undefined}
-                    aria-label={
-                      favoriteActive
-                        ? `Unfavorite ${trainer.name}`
-                        : `Favorite ${trainer.name}`
-                    }
-                    aria-pressed={favoriteActive}
-                    disabled={favoritePending}
-                    onClick={() => onToggleFollow(trainer)}
-                  >
-                    <Icon name="heart" aria-hidden />
-                  </button>
-                ) : null}
+              {!trainer.isOwnProfile ? (
+                <div className={styles.actions}>
+                  {onToggleFollow ? (
+                    <button
+                      type="button"
+                      className={styles.actionBtn}
+                      data-active={favoriteActive ? "true" : undefined}
+                      aria-label={
+                        favoriteActive
+                          ? `Unfavorite ${trainer.name}`
+                          : `Favorite ${trainer.name}`
+                      }
+                      aria-pressed={favoriteActive}
+                      disabled={favoritePending}
+                      onClick={() => onToggleFollow(trainer)}
+                    >
+                      <Icon name="heart" aria-hidden />
+                    </button>
+                  ) : null}
 
-                {!trainer.isOwnProfile ? (
                   <button
                     type="button"
                     className={styles.actionBtn}
@@ -383,17 +391,8 @@ export function TrainerDiscoveryView({
                   >
                     <Icon name="message-square" aria-hidden />
                   </button>
-                ) : null}
-
-                <button
-                  type="button"
-                  className={styles.actionBtn}
-                  aria-label={`Skip ${trainer.name}`}
-                  onClick={skipCurrent}
-                >
-                  <Icon name="x" aria-hidden />
-                </button>
-              </div>
+                </div>
+              ) : null}
 
               <div className={styles.body}>
                 <div className={styles.info}>
