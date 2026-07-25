@@ -465,7 +465,6 @@ model Batch {
   enrollmentMode        EnrollmentMode
   creatorId             String
   active                Boolean        @default(true)
-  isTrial               Boolean        @default(false)
   certificationEnabled  Boolean        @default(false)
   certificateTemplateId String?
   coverImageUrl         String?
@@ -525,9 +524,12 @@ model BatchTrainer {
 }
 
 model BatchEnrollment {
-  id        String @id @default(cuid())
-  batchId   String
-  studentId String
+  id              String   @id @default(cuid())
+  batchId         String
+  studentId       String
+  isTrial         Boolean  @default(false)
+  enrolledAt      DateTime @default(now())
+  trialSessionIds Json?
 
   batch   Batch @relation(fields: [batchId], references: [id], onDelete: Cascade)
   student User  @relation(fields: [studentId], references: [id], onDelete: Cascade)

@@ -11,7 +11,7 @@ test.describe("admin batch management @critical", () => {
   test("staff opens create form and sees API-created batch in list @critical", async ({
     browser,
   }) => {
-    const batchName = `E2E Trial ${Date.now()}`;
+    const batchName = `E2E Batch ${Date.now()}`;
     const created = await apiRequest<{ id: string; name: string }>(
       "STAFF",
       "/batches",
@@ -26,7 +26,7 @@ test.describe("admin batch management @critical", () => {
           branchId: "branch-main-1",
           trainerIds: [SEED.users.TRAINER.id],
           danceCategories: [
-            { name: "Hip Hop", description: "E2E created trial batch" },
+            { name: "Hip Hop", description: "E2E created batch" },
           ],
           scheduleJson: {
             frequency: "WEEKLY",
@@ -39,9 +39,11 @@ test.describe("admin batch management @critical", () => {
           },
           capacity: 12,
           enrollmentMode: "SELF_JOIN",
-          subscriptionIds: [],
+          subscriptionIds: [
+            "sub-individual-adult-monthly",
+            "sub-individual-adult-quarterly",
+          ],
           active: true,
-          isTrial: true,
           certificationEnabled: false,
         }),
       },
@@ -57,9 +59,6 @@ test.describe("admin batch management @critical", () => {
     await waitForAppReady(page);
     await expect(
       page.getByRole("heading", { name: /new batch/i }),
-    ).toBeVisible();
-    await expect(
-      page.getByRole("checkbox", { name: /trial batch/i }),
     ).toBeVisible();
 
     await page.goto("/app/batches", { waitUntil: "domcontentloaded" });

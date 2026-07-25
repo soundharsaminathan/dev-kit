@@ -13,6 +13,7 @@ import {
   NotificationType,
   UserRole,
 } from "@prisma/client";
+import { enrollmentAllowsTrialSession } from "../batches/trial-enrollment";
 import { MembershipsService } from "../memberships/memberships.service";
 import { NotificationsService } from "../notifications/notifications.service";
 import { PrismaService } from "../prisma/prisma.service";
@@ -142,7 +143,27 @@ export class AttendanceService {
     );
 
     if (!membership) {
-      throw new BadRequestException("No active membership covering this batch");
+      const enrollment = await this.prisma.batchEnrollment.findUnique({
+        where: {
+          batchId_studentId: {
+            batchId: session.batchId,
+            studentId: data.studentId,
+          },
+        },
+        select: { isTrial: true, trialSessionIds: true },
+      });
+
+      if (enrollmentAllowsTrialSession(enrollment, data.sessionId)) {
+        // Trial enrollment covers this session without a membership.
+      } else if (enrollment?.isTrial) {
+        throw new BadRequestException(
+          "Trial exhausted — purchase a plan to continue",
+        );
+      } else {
+        throw new BadRequestException(
+          "No active membership covering this batch",
+        );
+      }
     }
 
     const attendance = await this.prisma.attendance.upsert({

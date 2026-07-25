@@ -6,19 +6,12 @@ import { FormInput } from "@/modules/ui/form-input";
 import { TouchButton } from "@/modules/ui/touch-button";
 import styles from "./batch-filters-panel.module.scss";
 
-type FilterSectionId =
-  | "suggested"
-  | "status"
-  | "audience"
-  | "trial"
-  | "style"
-  | "search";
+type FilterSectionId = "suggested" | "status" | "audience" | "style" | "search";
 
 const SECTIONS: Array<{ id: FilterSectionId; label: string }> = [
   { id: "suggested", label: "Suggested" },
   { id: "status", label: "Status" },
   { id: "audience", label: "Audience" },
-  { id: "trial", label: "Trial" },
   { id: "style", label: "Style" },
   { id: "search", label: "Search" },
 ];
@@ -35,16 +28,9 @@ const AUDIENCE_OPTIONS = [
   { id: "ADULTS", label: "Adults" },
 ];
 
-const TRIAL_OPTIONS = [
-  { id: "ALL", label: "All batches" },
-  { id: "TRIAL", label: "Trial only" },
-  { id: "NON_TRIAL", label: "Non-trial" },
-];
-
 export type BatchFiltersDraft = {
   status: string;
   category: string;
-  trial: string;
   style: string | null;
   search: string;
 };
@@ -92,14 +78,12 @@ export function BatchFiltersPanel({
   const activeCounts = useMemo(() => {
     const statusActive = draft.status !== "ALL" ? 1 : 0;
     const audienceActive = draft.category !== "ALL" ? 1 : 0;
-    const trialActive = draft.trial !== "ALL" ? 1 : 0;
     const styleActive = draft.style ? 1 : 0;
     const searchActive = draft.search.trim() ? 1 : 0;
     return {
-      suggested: statusActive + audienceActive + trialActive + styleActive,
+      suggested: statusActive + audienceActive + styleActive,
       status: statusActive,
       audience: audienceActive,
-      trial: trialActive,
       style: styleActive,
       search: searchActive,
     } satisfies Record<FilterSectionId, number>;
@@ -114,7 +98,6 @@ export function BatchFiltersPanel({
     setDraft({
       status: "ALL",
       category: "ALL",
-      trial: "ALL",
       style: null,
       search: "",
     });
@@ -213,26 +196,6 @@ export function BatchFiltersPanel({
                       </button>
                     ),
                   )}
-                  {TRIAL_OPTIONS.filter((option) => option.id !== "ALL").map(
-                    (option) => (
-                      <button
-                        key={option.id}
-                        type="button"
-                        className={styles.optionChip}
-                        data-active={
-                          draft.trial === option.id ? "true" : undefined
-                        }
-                        onClick={() =>
-                          setDraft((prev) => ({
-                            ...prev,
-                            trial: prev.trial === option.id ? "ALL" : option.id,
-                          }))
-                        }
-                      >
-                        {option.label}
-                      </button>
-                    ),
-                  )}
                   {styleOptions.slice(0, 6).map((option) => (
                     <button
                       key={option.id}
@@ -306,38 +269,6 @@ export function BatchFiltersPanel({
                             setDraft((prev) => ({
                               ...prev,
                               category: option.id,
-                            }))
-                          }
-                        >
-                          <span>{option.label}</span>
-                          {active ? (
-                            <Icon name="check" className={styles.checkIcon} />
-                          ) : null}
-                        </button>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </div>
-            ) : null}
-
-            {section === "trial" ? (
-              <div className={styles.section}>
-                <h3 className={styles.sectionTitle}>Trial</h3>
-                <ul className={styles.optionList}>
-                  {TRIAL_OPTIONS.map((option) => {
-                    const active = draft.trial === option.id;
-                    return (
-                      <li key={option.id}>
-                        <button
-                          type="button"
-                          className={styles.optionRow}
-                          data-active={active ? "true" : undefined}
-                          aria-pressed={active}
-                          onClick={() =>
-                            setDraft((prev) => ({
-                              ...prev,
-                              trial: option.id,
                             }))
                           }
                         >

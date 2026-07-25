@@ -7,12 +7,11 @@ import styles from "./discover-filters-panel.module.scss";
 import type { DiscoverFilters } from "./use-discover";
 import { useDiscoverBatches } from "./use-discover";
 
-type FilterSectionId = "suggested" | "audience" | "trial" | "style";
+type FilterSectionId = "suggested" | "audience" | "style";
 
 const SECTIONS: Array<{ id: FilterSectionId; label: string }> = [
   { id: "suggested", label: "Suggested" },
   { id: "audience", label: "Audience" },
-  { id: "trial", label: "Trial" },
   { id: "style", label: "Style" },
 ];
 
@@ -22,15 +21,8 @@ const AUDIENCE_OPTIONS = [
   { id: "ADULTS", label: "Adults" },
 ];
 
-const TRIAL_OPTIONS = [
-  { id: "ALL", label: "All classes" },
-  { id: "TRIAL", label: "Trial only" },
-  { id: "NON_TRIAL", label: "Non-trial" },
-];
-
 export type DiscoverFiltersDraft = {
   category: string;
-  trial: string;
   style?: string;
 };
 
@@ -63,19 +55,9 @@ function withStyle(
 ): DiscoverFiltersDraft {
   const next: DiscoverFiltersDraft = {
     category: draft.category,
-    trial: draft.trial,
   };
   if (style) next.style = style;
   return next;
-}
-
-function applyTrialFilter<T extends { isTrial?: boolean }>(
-  items: T[],
-  trial: string,
-): T[] {
-  if (trial === "TRIAL") return items.filter((batch) => Boolean(batch.isTrial));
-  if (trial === "NON_TRIAL") return items.filter((batch) => !batch.isTrial);
-  return items;
 }
 
 export function DiscoverFiltersPanel({
@@ -101,10 +83,7 @@ export function DiscoverFiltersPanel({
     toQueryFilters(isOpen ? draft : value, branchId, search),
   );
 
-  const resultCount = useMemo(() => {
-    if (!previewQuery.data) return undefined;
-    return applyTrialFilter(previewQuery.data, draft.trial).length;
-  }, [previewQuery.data, draft.trial]);
+  const resultCount = previewQuery.data?.length;
 
   const resultLabel =
     resultCount == null
@@ -115,12 +94,10 @@ export function DiscoverFiltersPanel({
 
   const activeCounts = useMemo(() => {
     const styleActive = draft.style ? 1 : 0;
-    const trialActive = draft.trial !== "ALL" ? 1 : 0;
     const audienceActive = draft.category !== "ALL" ? 1 : 0;
     return {
-      suggested: audienceActive + trialActive + styleActive,
+      suggested: audienceActive + styleActive,
       audience: audienceActive,
-      trial: trialActive,
       style: styleActive,
     } satisfies Record<FilterSectionId, number>;
   }, [draft]);
@@ -131,7 +108,7 @@ export function DiscoverFiltersPanel({
   ].join(" ");
 
   function clearAll() {
-    setDraft({ category: "ALL", trial: "ALL" });
+    setDraft({ category: "ALL" });
   }
 
   function applyAndClose() {
@@ -206,26 +183,6 @@ export function DiscoverFiltersPanel({
                       </button>
                     ),
                   )}
-                  {TRIAL_OPTIONS.filter((option) => option.id !== "ALL").map(
-                    (option) => (
-                      <button
-                        key={option.id}
-                        type="button"
-                        className={styles.optionChip}
-                        data-active={
-                          draft.trial === option.id ? "true" : undefined
-                        }
-                        onClick={() =>
-                          setDraft((prev) => ({
-                            ...prev,
-                            trial: prev.trial === option.id ? "ALL" : option.id,
-                          }))
-                        }
-                      >
-                        {option.label}
-                      </button>
-                    ),
-                  )}
                   {styleOptions.slice(0, 6).map((option) => (
                     <button
                       key={option.id}
@@ -267,38 +224,6 @@ export function DiscoverFiltersPanel({
                             setDraft((prev) => ({
                               ...prev,
                               category: option.id,
-                            }))
-                          }
-                        >
-                          <span>{option.label}</span>
-                          {active ? (
-                            <Icon name="check" className={styles.checkIcon} />
-                          ) : null}
-                        </button>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </div>
-            ) : null}
-
-            {section === "trial" ? (
-              <div className={styles.section}>
-                <h3 className={styles.sectionTitle}>Trial</h3>
-                <ul className={styles.optionList}>
-                  {TRIAL_OPTIONS.map((option) => {
-                    const active = draft.trial === option.id;
-                    return (
-                      <li key={option.id}>
-                        <button
-                          type="button"
-                          className={styles.optionRow}
-                          data-active={active ? "true" : undefined}
-                          aria-pressed={active}
-                          onClick={() =>
-                            setDraft((prev) => ({
-                              ...prev,
-                              trial: option.id,
                             }))
                           }
                         >
@@ -377,5 +302,3 @@ export function DiscoverFiltersPanel({
     </Drawer>
   );
 }
-
-export { applyTrialFilter };

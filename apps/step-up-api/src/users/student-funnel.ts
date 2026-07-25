@@ -36,6 +36,8 @@ export type StudentFunnelCounts = Record<StudentFunnelStage, number> & {
 export type StudentFunnelEnrollmentInput = {
   batchId: string;
   batchActive: boolean;
+  isTrial: boolean;
+  trialSessionIds: string[];
   hasScheduledSession: boolean;
   hasCompletedSession: boolean;
 };
@@ -154,7 +156,9 @@ export function isDateInRange(date: Date, range: DateRange): boolean {
 function hasActiveBatchEnrollment(
   enrollments: StudentFunnelEnrollmentInput[],
 ): boolean {
-  return enrollments.some((enrollment) => enrollment.batchActive);
+  return enrollments.some(
+    (enrollment) => enrollment.batchActive && !enrollment.isTrial,
+  );
 }
 
 function hasCompletedBatchWithoutActiveMembership(
@@ -170,12 +174,15 @@ function hasCompletedBatchWithoutActiveMembership(
 
   return enrollments.some(
     (enrollment) =>
-      !enrollment.batchActive ||
-      (!enrollment.hasScheduledSession && enrollment.hasCompletedSession),
+      !enrollment.isTrial &&
+      (!enrollment.batchActive ||
+        (!enrollment.hasScheduledSession && enrollment.hasCompletedSession)),
   );
 }
 
-function trialSessionIds(bookings: StudentFunnelBookingInput[]): Set<string> {
+function trialSessionIdsFromBookings(
+  bookings: StudentFunnelBookingInput[],
+): Set<string> {
   const ids = new Set<string>();
   for (const booking of bookings) {
     if (
@@ -190,7 +197,21 @@ function trialSessionIds(bookings: StudentFunnelBookingInput[]): Set<string> {
   return ids;
 }
 
+function trialSessionIdsFromEnrollments(
+  enrollments: StudentFunnelEnrollmentInput[],
+): Set<string> {
+  const ids = new Set<string>();
+  for (const enrollment of enrollments) {
+    if (!enrollment.isTrial) continue;
+    for (const sessionId of enrollment.trialSessionIds) {
+      ids.add(sessionId);
+    }
+  }
+  return ids;
+}
+
 function hasTrialAttendance(
+  enrollments: StudentFunnelEnrollmentInput[],
   bookings: StudentFunnelBookingInput[],
   attendance: StudentFunnelAttendanceInput[],
 ): boolean {
@@ -203,7 +224,10 @@ function hasTrialAttendance(
     return true;
   }
 
-  const trialSessions = trialSessionIds(bookings);
+  const trialSessions = new Set([
+    ...trialSessionIdsFromBookings(bookings),
+    ...trialSessionIdsFromEnrollments(enrollments),
+  ]);
   return attendance.some(
     (record) =>
       record.status === AttendanceStatus.PRESENT &&
@@ -211,7 +235,13 @@ function hasTrialAttendance(
   );
 }
 
-function hasTrialRegistration(bookings: StudentFunnelBookingInput[]): boolean {
+function hasTrialRegistration(
+  enrollments: StudentFunnelEnrollmentInput[],
+  bookings: StudentFunnelBookingInput[],
+): boolean {
+  if (enrollments.some((enrollment) => enrollment.isTrial)) {
+    return true;
+  }
   return bookings.some(
     (booking) =>
       booking.type === BookingType.TRIAL &&
@@ -236,11 +266,17 @@ export function classifyStudentFunnelStage(
     return "completedWithoutPlan";
   }
 
-  if (hasTrialAttendance(student.bookings, student.attendance)) {
+  if (
+    hasTrialAttendance(
+      student.enrollments,
+      student.bookings,
+      student.attendance,
+    )
+  ) {
     return "trialAttended";
   }
 
-  if (hasTrialRegistration(student.bookings)) {
+  if (hasTrialRegistration(student.enrollments, student.bookings)) {
     return "trialRegistered";
   }
 

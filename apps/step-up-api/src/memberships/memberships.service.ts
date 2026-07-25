@@ -10,6 +10,7 @@ import {
   MembershipSeatRole,
   MembershipStatus,
   NotificationType,
+  Prisma,
   SubscriptionKind,
 } from "@prisma/client";
 import { countOccupiedSeats, lockBatchRow } from "../batches/batch-capacity";
@@ -117,7 +118,10 @@ export class MembershipsService {
               studentId: covered.studentId,
             },
           },
-          update: {},
+          update: {
+            isTrial: false,
+            trialSessionIds: Prisma.DbNull,
+          },
           create: {
             batchId,
             studentId: covered.studentId,

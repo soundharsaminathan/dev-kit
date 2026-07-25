@@ -34,6 +34,10 @@ import {
   countReservedSeatsByBatch,
   lockBatchRow,
 } from "./batch-capacity";
+import {
+  parseTrialSessionIds,
+  resolveNextTrialSessionIds,
+} from "./trial-enrollment";
 
 type BatchSchedule = {
   frequency: "DAILY" | "WEEKLY";
@@ -439,6 +443,10 @@ export class BatchesService {
 
     let viewerRating: number | null = null;
     let viewerEnrolled = false;
+    let viewerEnrollment: {
+      isTrial: boolean;
+      trialSessionIds: string[];
+    } | null = null;
     let viewerBooking: {
       id: string;
       type: string;
@@ -450,9 +458,16 @@ export class BatchesService {
     } | null = null;
 
     if (options?.studentId) {
-      viewerEnrolled = batch.enrollments.some(
-        (enrollment) => enrollment.studentId === options.studentId,
+      const enrollment = batch.enrollments.find(
+        (row) => row.studentId === options.studentId,
       );
+      viewerEnrolled = Boolean(enrollment);
+      if (enrollment) {
+        viewerEnrollment = {
+          isTrial: enrollment.isTrial,
+          trialSessionIds: parseTrialSessionIds(enrollment.trialSessionIds),
+        };
+      }
       const [existingRating, openBooking] = await Promise.all([
         this.prisma.batchRating.findUnique({
           where: {
@@ -512,6 +527,7 @@ export class BatchesService {
       )),
       viewerRating,
       viewerEnrolled,
+      viewerEnrollment,
       viewerBooking,
     };
   }
@@ -530,7 +546,6 @@ export class BatchesService {
       enrollmentMode: EnrollmentMode;
       subscriptionIds: string[];
       active?: boolean;
-      isTrial?: boolean;
       certificationEnabled?: boolean;
       certificateTemplateId?: string | null;
       coverImageUrl?: string | null;
@@ -538,17 +553,13 @@ export class BatchesService {
       ratingCount?: number;
     },
   ) {
-    const isTrial = data.isTrial ?? false;
-    const sessionType = isTrial ? SessionType.TRIAL : SessionType.REGULAR;
     const schedule = data.scheduleJson as unknown as BatchSchedule;
-    const sessions = buildSessions(schedule, sessionType);
+    const sessions = buildSessions(schedule, SessionType.REGULAR);
     const trainerIds = [...new Set(data.trainerIds)];
     const subscriptionIds = [...new Set(data.subscriptionIds)];
-    const certificationEnabled = isTrial
-      ? false
-      : (data.certificationEnabled ?? false);
+    const certificationEnabled = data.certificationEnabled ?? false;
 
-    if (!isTrial && subscriptionIds.length === 0) {
+    if (subscriptionIds.length === 0) {
       throw new BadRequestException(
         "Attach at least one Individual 1-month and 3-month plan",
       );
@@ -601,14 +612,12 @@ export class BatchesService {
       }
     }
 
-    if (!isTrial) {
-      this.assertBatchPlanSelection(
-        data.category as BatchCategory,
-        data.studioId,
-        subscriptions,
-        subscriptionIds,
-      );
-    }
+    this.assertBatchPlanSelection(
+      data.category as BatchCategory,
+      data.studioId,
+      subscriptions,
+      subscriptionIds,
+    );
 
     await this.scheduleConflicts.assertNoConflicts({
       intervals: sessions,
@@ -628,7 +637,6 @@ export class BatchesService {
         enrollmentMode: data.enrollmentMode,
         creatorId,
         active: data.active ?? true,
-        isTrial,
         certificationEnabled,
         certificateTemplateId: certificationEnabled
           ? data.certificateTemplateId
@@ -745,7 +753,6 @@ export class BatchesService {
       capacity?: number;
       enrollmentMode?: EnrollmentMode;
       active?: boolean;
-      isTrial?: boolean;
       certificationEnabled?: boolean;
       certificateTemplateId?: string | null;
       coverImageUrl?: string | null;
@@ -798,11 +805,8 @@ export class BatchesService {
       }
     }
 
-    const isTrial = data.isTrial ?? batch.isTrial;
-    const sessionType = isTrial ? SessionType.TRIAL : SessionType.REGULAR;
-    const certificationEnabled = isTrial
-      ? false
-      : (data.certificationEnabled ?? batch.certificationEnabled);
+    const certificationEnabled =
+      data.certificationEnabled ?? batch.certificationEnabled;
     const certificateTemplateId =
       data.certificateTemplateId === undefined
         ? batch.certificateTemplateId
@@ -831,7 +835,7 @@ export class BatchesService {
     const desiredSessions = data.scheduleJson
       ? buildSessions(
           data.scheduleJson as unknown as BatchSchedule,
-          sessionType,
+          SessionType.REGULAR,
         )
       : undefined;
 
@@ -868,9 +872,6 @@ export class BatchesService {
       });
     }
 
-    const trialFlagChanged =
-      data.isTrial !== undefined && data.isTrial !== batch.isTrial;
-
     const {
       trainerIds: _incomingTrainerIds,
       scheduleJson,
@@ -898,18 +899,12 @@ export class BatchesService {
 
       if (desiredSessions) {
         await syncBatchSessions(tx, id, desiredSessions);
-      } else if (trialFlagChanged) {
-        await tx.session.updateMany({
-          where: { batchId: id },
-          data: { type: sessionType },
-        });
       }
 
       return tx.batch.update({
         where: { id },
         data: {
           ...batchData,
-          isTrial,
           ...(danceCategories ? { danceCategories } : {}),
           ...(scheduleJson ? { scheduleJson } : {}),
           certificateTemplateId: certificationEnabled
@@ -925,7 +920,7 @@ export class BatchesService {
         },
       });
     });
-    if (desiredSessions || trialFlagChanged) {
+    if (desiredSessions) {
       await this.trialSlotsCache.invalidate(batch.studioId);
     }
     return updated;
@@ -950,13 +945,19 @@ export class BatchesService {
     return deleted;
   }
 
-  async enroll(batchId: string, studentId: string, actor: DecryptedUser) {
+  async enroll(
+    batchId: string,
+    studentId: string,
+    actor: DecryptedUser,
+    options: { isTrial?: boolean } = {},
+  ) {
     const staffRoles: UserRole[] = [
       UserRole.OWNER,
       UserRole.STAFF,
       UserRole.TRAINER,
     ];
     const isStaff = staffRoles.includes(actor.role);
+    const isTrial = options.isTrial === true;
 
     if (!isStaff && actor.id !== studentId) {
       const [familyLink, parentLink] = await Promise.all([
@@ -1012,12 +1013,27 @@ export class BatchesService {
       await lockBatchRow(tx, batchId);
       await assertBatchHasSeat(tx, batchId, batch.capacity, studentId);
 
+      const trialSessionIds = isTrial
+        ? await resolveNextTrialSessionIds(tx, batchId)
+        : undefined;
+
       return tx.batchEnrollment.upsert({
         where: {
           batchId_studentId: { batchId, studentId },
         },
-        update: {},
-        create: { batchId, studentId },
+        update: isTrial
+          ? {
+              isTrial: true,
+              trialSessionIds,
+              enrolledAt: new Date(),
+            }
+          : {},
+        create: {
+          batchId,
+          studentId,
+          isTrial,
+          ...(trialSessionIds ? { trialSessionIds } : {}),
+        },
       });
     });
   }

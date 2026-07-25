@@ -2,15 +2,19 @@ import { expect, test } from "@playwright/test";
 import { SEED } from "../fixtures/seed";
 import { expectOk, expectStatus } from "./helpers";
 
+const ADULT_PLAN_IDS = [
+  "sub-individual-adult-monthly",
+  "sub-individual-adult-quarterly",
+];
+
 test.describe("batches HTTP @http", () => {
-  test("staff creates and removes a trial batch @http", async () => {
+  test("staff creates and removes a batch with plans @http", async () => {
     const stamp = Date.now();
-    const name = `HTTP Trial ${stamp}`;
+    const name = `HTTP Batch ${stamp}`;
     // Far-future unique slot avoids seed schedule conflicts on branch-main-1.
     const created = await expectOk<{
       id: string;
       name: string;
-      isTrial: boolean;
     }>("STAFF", "/batches", {
       method: "POST",
       body: JSON.stringify({
@@ -35,9 +39,8 @@ test.describe("batches HTTP @http", () => {
         },
         capacity: 8,
         enrollmentMode: "SELF_JOIN",
-        subscriptionIds: [],
+        subscriptionIds: ADULT_PLAN_IDS,
         active: true,
-        isTrial: true,
         certificationEnabled: false,
       }),
     });
@@ -46,6 +49,22 @@ test.describe("batches HTTP @http", () => {
     expect(created.name).toBe(name);
 
     await expectOk("STAFF", `/batches/${created.id}`, { method: "DELETE" });
+  });
+
+  test("student can trial-enroll into a self-join batch @http", async () => {
+    const enrollment = await expectOk<{
+      isTrial: boolean;
+      trialSessionIds: string[] | null;
+    }>("STUDENT", `/batches/${SEED.trialBatchId}/enroll`, {
+      method: "POST",
+      body: JSON.stringify({
+        studentId: SEED.users.STUDENT.id,
+        isTrial: true,
+      }),
+    });
+    expect(enrollment.isTrial).toBe(true);
+    expect(Array.isArray(enrollment.trialSessionIds)).toBe(true);
+    expect(enrollment.trialSessionIds!.length).toBeGreaterThan(0);
   });
 
   test("student cannot create a batch @http", async () => {
@@ -69,8 +88,7 @@ test.describe("batches HTTP @http", () => {
         },
         capacity: 10,
         enrollmentMode: "SELF_JOIN",
-        subscriptionIds: [],
-        isTrial: true,
+        subscriptionIds: ADULT_PLAN_IDS,
       }),
     });
   });

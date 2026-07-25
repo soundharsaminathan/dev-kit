@@ -65,8 +65,7 @@ export class SessionsService {
 
     const sessions = await this.prisma.session.findMany({
       where: {
-        type: SessionType.TRIAL,
-        status: { not: SessionStatus.CANCELLED },
+        status: SessionStatus.SCHEDULED,
         startsAt: { gte: now, lte: horizon },
         batch: { studioId, active: true },
       },

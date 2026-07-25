@@ -57,6 +57,7 @@ describe("UsersService onboarding", () => {
     },
     session: {
       findUnique: vi.fn(),
+      findMany: vi.fn(),
     },
     batch: {
       findUnique: vi.fn(),
@@ -70,6 +71,7 @@ describe("UsersService onboarding", () => {
     batchEnrollment: {
       findMany: vi.fn().mockResolvedValue([]),
       findFirst: vi.fn().mockResolvedValue(null),
+      upsert: vi.fn(),
     },
     $queryRaw: vi.fn().mockResolvedValue([{ id: "batch-1" }]),
     $transaction: vi.fn(async (fn: (tx: unknown) => unknown) => fn(prisma)),
@@ -96,6 +98,7 @@ describe("UsersService onboarding", () => {
     prisma.booking.updateMany.mockResolvedValue({ count: 0 });
     prisma.batchEnrollment.findMany.mockResolvedValue([]);
     prisma.batchEnrollment.findFirst.mockResolvedValue(null);
+    prisma.session.findMany.mockResolvedValue([]);
     service = new UsersService(
       prisma as never,
       crypto as never,
@@ -155,7 +158,7 @@ describe("UsersService onboarding", () => {
     );
   });
 
-  it("creates a trial booking without schedule conflict checks", async () => {
+  it("trial-enrolls from a selected session during onboarding", async () => {
     const row = makeUser();
     const completed = makeUser({
       onboardingCompletedAt: new Date("2026-07-22T00:00:00.000Z"),
@@ -168,20 +171,28 @@ describe("UsersService onboarding", () => {
     prisma.session.findUnique.mockResolvedValue({
       id: "session-1",
       batchId: "batch-1",
-      startsAt: new Date("2026-07-24T10:00:00.000Z"),
-      endsAt: new Date("2026-07-24T11:00:00.000Z"),
+      startsAt: new Date("2099-07-24T10:00:00.000Z"),
+      endsAt: new Date("2099-07-24T11:00:00.000Z"),
       status: "SCHEDULED",
-      type: "TRIAL",
-      batch: { id: "batch-1", studioId: "studio-seed-1" },
+      type: "REGULAR",
+      batch: { id: "batch-1", studioId: "studio-seed-1", active: true },
     });
     prisma.batch.findUnique.mockResolvedValue({
       id: "batch-1",
       studioId: "studio-seed-1",
+      active: true,
       capacity: 10,
     });
-    prisma.booking.findFirst.mockResolvedValue(null);
+    prisma.session.findMany.mockResolvedValue([
+      { id: "session-1" },
+      { id: "session-2" },
+    ]);
+    prisma.batchEnrollment.upsert.mockResolvedValue({
+      batchId: "batch-1",
+      studentId: "student-1",
+      isTrial: true,
+    });
     prisma.user.findFirst.mockResolvedValue({ id: "trainer-1" });
-    prisma.booking.create.mockResolvedValue({ id: "booking-1" });
     prisma.user.update.mockResolvedValue(completed);
 
     await service.completeOnboarding("student-1", {
@@ -190,17 +201,23 @@ describe("UsersService onboarding", () => {
     });
 
     expect(prisma.$transaction).toHaveBeenCalled();
-    expect(prisma.booking.create).toHaveBeenCalledWith({
-      data: expect.objectContaining({
-        studioId: "studio-seed-1",
-        studentId: "student-1",
-        type: "TRIAL",
+    expect(prisma.batchEnrollment.upsert).toHaveBeenCalledWith({
+      where: {
+        batchId_studentId: { batchId: "batch-1", studentId: "student-1" },
+      },
+      update: {
+        isTrial: true,
+        trialSessionIds: ["session-1", "session-2"],
+        enrolledAt: expect.any(Date),
+      },
+      create: {
         batchId: "batch-1",
-        sessionId: "session-1",
-        trainerId: "trainer-1",
-        status: "PENDING",
-      }),
+        studentId: "student-1",
+        isTrial: true,
+        trialSessionIds: ["session-1", "session-2"],
+      },
     });
+    expect(prisma.booking.create).not.toHaveBeenCalled();
     expect(prisma.user.update).toHaveBeenCalled();
   });
 
@@ -276,8 +293,11 @@ describe("UsersService onboarding", () => {
     });
   });
 
-  it("rejects onboarding trial for a regular session", async () => {
+  it("trial-enrolls from a regular upcoming session during onboarding", async () => {
     const row = makeUser();
+    const completed = makeUser({
+      onboardingCompletedAt: new Date("2026-07-22T00:00:00.000Z"),
+    });
     prisma.user.findUniqueOrThrow.mockResolvedValue(row);
     crypto.decryptUser.mockImplementation((user: typeof row) => ({
       ...user,
@@ -286,20 +306,45 @@ describe("UsersService onboarding", () => {
     prisma.session.findUnique.mockResolvedValue({
       id: "session-regular",
       batchId: "batch-1",
-      startsAt: new Date("2026-07-24T10:00:00.000Z"),
-      endsAt: new Date("2026-07-24T11:00:00.000Z"),
+      startsAt: new Date("2099-07-24T10:00:00.000Z"),
+      endsAt: new Date("2099-07-24T11:00:00.000Z"),
       status: "SCHEDULED",
       type: "REGULAR",
-      batch: { id: "batch-1", studioId: "studio-seed-1" },
+      batch: { id: "batch-1", studioId: "studio-seed-1", active: true },
+    });
+    prisma.batch.findUnique.mockResolvedValue({
+      id: "batch-1",
+      studioId: "studio-seed-1",
+      active: true,
+      capacity: 10,
+    });
+    prisma.session.findMany.mockResolvedValue([
+      { id: "session-regular" },
+      { id: "session-next" },
+    ]);
+    prisma.batchEnrollment.upsert.mockResolvedValue({
+      batchId: "batch-1",
+      studentId: "student-1",
+      isTrial: true,
+    });
+    prisma.user.update.mockResolvedValue(completed);
+
+    await service.completeOnboarding("student-1", {
+      sessionId: "session-regular",
     });
 
-    await expect(
-      service.completeOnboarding("student-1", {
-        sessionId: "session-regular",
+    expect(prisma.batchEnrollment.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        create: expect.objectContaining({
+          batchId: "batch-1",
+          studentId: "student-1",
+          isTrial: true,
+          trialSessionIds: ["session-regular", "session-next"],
+        }),
       }),
-    ).rejects.toBeInstanceOf(BadRequestException);
+    );
     expect(prisma.booking.create).not.toHaveBeenCalled();
-    expect(prisma.user.update).not.toHaveBeenCalled();
+    expect(prisma.user.update).toHaveBeenCalled();
   });
 
   it("marks onboarding complete when prefs are present", async () => {
@@ -696,7 +741,12 @@ describe("UsersService.createStudent", () => {
         batchId_studentId: { batchId: "batch-1", studentId: "student-new" },
       },
       update: {},
-      create: { batchId: "batch-1", studentId: "student-new" },
+      create: {
+        batchId: "batch-1",
+        studentId: "student-new",
+        isTrial: false,
+        trialSessionIds: undefined,
+      },
     });
   });
 

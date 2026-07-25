@@ -53,12 +53,6 @@ function applyDraft(
   if (draft.category !== "ALL") {
     next = next.filter((batch) => batch.category === draft.category);
   }
-  if (draft.trial === "TRIAL") {
-    next = next.filter((batch) => batch.isTrial);
-  }
-  if (draft.trial === "NON_TRIAL") {
-    next = next.filter((batch) => !batch.isTrial);
-  }
   if (draft.style) {
     next = next.filter((batch) => batch.styleBadge === draft.style);
   }
@@ -72,7 +66,6 @@ function BatchesPage() {
   const api = useApi();
   const [status, setStatus] = useState("ALL");
   const [category, setCategory] = useState("ALL");
-  const [trial, setTrial] = useState("ALL");
   const [style, setStyle] = useState<string | null>(null);
   const [search, setSearch] = useState("");
 
@@ -94,11 +87,10 @@ function BatchesPage() {
       applyDraft(query.data ?? [], {
         status,
         category,
-        trial,
         style,
         search,
       }),
-    [query.data, status, category, trial, style, search],
+    [query.data, status, category, style, search],
   );
 
   function countMatches(draft: BatchFiltersDraft) {
@@ -108,7 +100,6 @@ function BatchesPage() {
   function clearFilters() {
     setStatus("ALL");
     setCategory("ALL");
-    setTrial("ALL");
     setStyle(null);
     setSearch("");
   }
@@ -128,14 +119,12 @@ function BatchesPage() {
           <BatchFiltersToolbar
             status={status}
             category={category}
-            trial={trial}
             style={style}
             search={search}
             styleChips={styleChips}
             countMatches={countMatches}
             onStatusChange={setStatus}
             onCategoryChange={setCategory}
-            onTrialChange={setTrial}
             onStyleChange={setStyle}
             onSearchChange={setSearch}
           />

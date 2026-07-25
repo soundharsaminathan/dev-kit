@@ -35,7 +35,7 @@ describe("SessionsService listTrialSlots", () => {
       {
         sessionId: "session-trial-w0",
         batchId: "batch-trial-1",
-        batchName: "Open Trial Class",
+        batchName: "Open Beginner Class",
         styleBadge: "Hip-hop",
         startsAt: "2026-07-25T11:00:00.000Z",
         endsAt: "2026-07-25T12:00:00.000Z",
@@ -50,7 +50,7 @@ describe("SessionsService listTrialSlots", () => {
     expect(trialSlotsCache.set).not.toHaveBeenCalled();
   });
 
-  it("loads TRIAL sessions from db on miss and caches them", async () => {
+  it("loads SCHEDULED sessions from db on miss and caches them", async () => {
     trialSlotsCache.get.mockResolvedValue(null);
     prisma.session.findMany.mockResolvedValue([
       {
@@ -58,12 +58,12 @@ describe("SessionsService listTrialSlots", () => {
         batchId: "batch-trial-1",
         startsAt: new Date("2026-07-25T11:00:00.000Z"),
         endsAt: new Date("2026-07-25T12:00:00.000Z"),
-        type: SessionType.TRIAL,
+        type: SessionType.REGULAR,
         status: SessionStatus.SCHEDULED,
         batch: {
           id: "batch-trial-1",
-          name: "Open Trial Class",
-          danceCategories: [{ name: "Hip-hop", description: "Trial" }],
+          name: "Open Beginner Class",
+          danceCategories: [{ name: "Hip-hop", description: "Open beginner" }],
         },
       },
     ]);
@@ -73,17 +73,19 @@ describe("SessionsService listTrialSlots", () => {
     expect(prisma.session.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({
-          type: SessionType.TRIAL,
-          status: { not: SessionStatus.CANCELLED },
+          status: SessionStatus.SCHEDULED,
           batch: { studioId: "studio-1", active: true },
         }),
       }),
     );
+    expect(
+      prisma.session.findMany.mock.calls[0]?.[0]?.where?.type,
+    ).toBeUndefined();
     expect(result).toEqual([
       {
         sessionId: "session-trial-w0",
         batchId: "batch-trial-1",
-        batchName: "Open Trial Class",
+        batchName: "Open Beginner Class",
         styleBadge: "Hip-hop",
         startsAt: "2026-07-25T11:00:00.000Z",
         endsAt: "2026-07-25T12:00:00.000Z",

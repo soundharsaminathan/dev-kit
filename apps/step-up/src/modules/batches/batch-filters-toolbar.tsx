@@ -16,14 +16,12 @@ export type BatchStyleChip = {
 export type BatchFiltersToolbarProps = {
   status: string;
   category: string;
-  trial: string;
   style: string | null;
   search: string;
   styleChips: BatchStyleChip[];
   countMatches: (draft: BatchFiltersDraft) => number;
   onStatusChange: (status: string) => void;
   onCategoryChange: (category: string) => void;
-  onTrialChange: (trial: string) => void;
   onStyleChange: (style: string | null) => void;
   onSearchChange: (search: string) => void;
 };
@@ -38,22 +36,15 @@ const CATEGORY_CHIPS = [
   { id: "category:ADULTS", label: "Adults" },
 ];
 
-const TRIAL_CHIPS = [
-  { id: "trial:TRIAL", label: "Trial only" },
-  { id: "trial:NON_TRIAL", label: "Non-trial" },
-];
-
 export function BatchFiltersToolbar({
   status,
   category,
-  trial,
   style,
   search,
   styleChips,
   countMatches,
   onStatusChange,
   onCategoryChange,
-  onTrialChange,
   onStyleChange,
   onSearchChange,
 }: BatchFiltersToolbarProps) {
@@ -63,7 +54,6 @@ export function BatchFiltersToolbar({
     () => [
       ...STATUS_CHIPS,
       ...CATEGORY_CHIPS,
-      ...TRIAL_CHIPS,
       ...styleChips.map((chip) => ({
         id: `style:${chip.id}`,
         label: chip.label,
@@ -76,21 +66,16 @@ export function BatchFiltersToolbar({
     const ids: string[] = [];
     if (status !== "ALL") ids.push(`status:${status}`);
     if (category !== "ALL") ids.push(`category:${category}`);
-    if (trial !== "ALL") ids.push(`trial:${trial}`);
     if (style) ids.push(`style:${style}`);
     return ids;
-  }, [status, category, trial, style]);
+  }, [status, category, style]);
 
   const hasExtraFilters =
-    status !== "ALL" ||
-    category !== "ALL" ||
-    trial !== "ALL" ||
-    Boolean(style || search);
+    status !== "ALL" || category !== "ALL" || Boolean(style || search);
 
   const filterDraft: BatchFiltersDraft = {
     status,
     category,
-    trial,
     style,
     search,
   };
@@ -104,11 +89,6 @@ export function BatchFiltersToolbar({
     if (id.startsWith("category:")) {
       const next = id.slice("category:".length);
       onCategoryChange(category === next ? "ALL" : next);
-      return;
-    }
-    if (id.startsWith("trial:")) {
-      const next = id.slice("trial:".length);
-      onTrialChange(trial === next ? "ALL" : next);
       return;
     }
     if (id.startsWith("style:")) {
@@ -162,7 +142,6 @@ export function BatchFiltersToolbar({
         onApply={(next) => {
           onStatusChange(next.status);
           onCategoryChange(next.category);
-          onTrialChange(next.trial);
           onStyleChange(next.style);
           onSearchChange(next.search);
         }}

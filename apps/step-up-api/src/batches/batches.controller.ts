@@ -127,10 +127,6 @@ class CreateBatchDto {
 
   @IsOptional()
   @IsBoolean()
-  isTrial?: boolean;
-
-  @IsOptional()
-  @IsBoolean()
   certificationEnabled?: boolean;
 
   @IsOptional()
@@ -194,10 +190,6 @@ class UpdateBatchDto {
 
   @IsOptional()
   @IsBoolean()
-  isTrial?: boolean;
-
-  @IsOptional()
-  @IsBoolean()
   certificationEnabled?: boolean;
 
   @IsOptional()
@@ -221,6 +213,10 @@ class UpdateBatchDto {
 class EnrollStudentDto {
   @IsString()
   studentId!: string;
+
+  @IsOptional()
+  @IsBoolean()
+  isTrial?: boolean;
 }
 
 class RateBatchDto {
@@ -352,7 +348,9 @@ export class BatchesController {
     @Body() dto: EnrollStudentDto,
     @CurrentUser() actor: DecryptedUser,
   ) {
-    return this.batchesService.enroll(id, dto.studentId, actor);
+    return this.batchesService.enroll(id, dto.studentId, actor, {
+      isTrial: dto.isTrial,
+    });
   }
 
   @Post(":id/rate")

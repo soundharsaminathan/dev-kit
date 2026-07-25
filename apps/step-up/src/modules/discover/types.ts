@@ -27,7 +27,6 @@ export type DiscoverBatch = {
   durationMinutes?: number | null;
   scheduleLabel?: string | null;
   active: boolean;
-  isTrial?: boolean;
   trainers: Array<{
     trainer: {
       id: string;
@@ -49,6 +48,10 @@ export type DiscoverBatch = {
   }>;
   viewerRating?: number | null;
   viewerEnrolled?: boolean;
+  viewerEnrollment?: {
+    isTrial: boolean;
+    trialSessionIds: string[];
+  } | null;
   viewerBooking?: {
     id: string;
     type: string;

@@ -10,7 +10,6 @@ import { BatchCardSkeletonList } from "@/modules/ui/skeleton-block";
 import { EmptyState, ErrorState } from "@/modules/ui/states";
 import { TouchButton } from "@/modules/ui/touch-button";
 import {
-  applyTrialFilter,
   type DiscoverFiltersDraft,
   DiscoverFiltersPanel,
 } from "./discover-filters-panel";
@@ -35,9 +34,6 @@ export function DiscoverPage({
 } = {}) {
   const [category, setCategory] = useState("ALL");
   const [style, setStyle] = useState<string | undefined>(initialStyle);
-  const [trial, setTrial] = useState(
-    initialIntent === "trial" ? "TRIAL" : "ALL",
-  );
   const [search, setSearch] = useState("");
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [branchId] = useState(initialBranchId);
@@ -55,10 +51,7 @@ export function DiscoverPage({
 
   const query = useDiscoverBatches(filters);
 
-  const batches = useMemo(
-    () => applyTrialFilter(query.data ?? [], trial),
-    [query.data, trial],
-  );
+  const batches = query.data ?? [];
 
   const styleChips = useMemo(() => {
     const stylesSet = new Set<string>();
@@ -80,13 +73,10 @@ export function DiscoverPage({
   }, [category, style]);
 
   const hasExtraFilters =
-    category !== "ALL" ||
-    trial !== "ALL" ||
-    Boolean(style || search || branchId);
+    category !== "ALL" || Boolean(style || search || branchId);
 
   const filterDraft: DiscoverFiltersDraft = {
     category,
-    trial,
     ...(style ? { style } : {}),
   };
 
@@ -101,7 +91,6 @@ export function DiscoverPage({
   function clearFilters() {
     setCategory("ALL");
     setStyle(undefined);
-    setTrial("ALL");
     setSearch("");
   }
 
@@ -110,7 +99,7 @@ export function DiscoverPage({
       title="Discover"
       subtitle={
         initialIntent === "trial"
-          ? "Pick a class and book your free trial."
+          ? "Pick a class and try 2 sessions free."
           : branchId
             ? "Classes at this location."
             : "Find a class by style, level, or schedule."
@@ -213,7 +202,6 @@ export function DiscoverPage({
         {...(branchId != null ? { branchId } : {})}
         onApply={(next) => {
           setCategory(next.category);
-          setTrial(next.trial);
           setStyle(next.style);
         }}
       />

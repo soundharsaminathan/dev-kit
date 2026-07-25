@@ -73,7 +73,7 @@ test.describe("discover and book @critical", () => {
     await context.close();
   });
 
-  test("student can join self-enroll trial class through UI @critical", async ({
+  test("student can try self-enroll class through UI @critical", async ({
     browser,
   }) => {
     const context = await browser.newContext({
@@ -85,18 +85,18 @@ test.describe("discover and book @critical", () => {
     });
     await waitForAppReady(page);
 
-    const joinCta = page.getByTestId("book-class-cta");
+    const trialCta = page.getByTestId("trial-enroll-cta");
     // Already enrolled → CTA may be hidden; assert enrolled state instead.
-    if ((await joinCta.count()) === 0) {
+    if ((await trialCta.count()) === 0) {
       await expect(
-        page.getByText(/enrolled|you're in|joined|member/i).first(),
+        page.getByText(/enrolled|you're in|joined|member|trial/i).first(),
       ).toBeVisible();
       await context.close();
       return;
     }
 
-    await expect(joinCta).toHaveText(/join this class/i);
-    await joinCta.click();
+    await expect(trialCta).toHaveText(/try 2 sessions/i);
+    await trialCta.click();
 
     const submit = page.getByTestId("enroll-submit");
     await expect(submit).toBeVisible();
@@ -109,7 +109,9 @@ test.describe("discover and book @critical", () => {
       submit.click(),
     ]);
     expect(response.ok()).toBeTruthy();
-    await expect(page.getByText(/enrolled|joined/i).first()).toBeVisible();
+    await expect(
+      page.getByText(/enrolled|joined|trial/i).first(),
+    ).toBeVisible();
 
     await context.close();
   });
