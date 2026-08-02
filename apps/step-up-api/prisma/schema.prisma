@@ -251,6 +251,7 @@ model User {
   onboardingCompletedAt  DateTime?
   profileVisibility      ProfileVisibility @default(PRIVATE)
   studioId               String?
+  active                 Boolean           @default(true)
   createdAt              DateTime          @default(now())
   updatedAt              DateTime          @updatedAt
 

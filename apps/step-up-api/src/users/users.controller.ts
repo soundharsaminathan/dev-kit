@@ -143,6 +143,21 @@ class LinkParentChildDto {
   childUserId!: string;
 }
 
+class UpdateStudioStudentDto {
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  name?: string;
+
+  @IsOptional()
+  @IsString()
+  phone?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  active?: boolean;
+}
+
 class CreateStudentDto {
   @IsString()
   @IsNotEmpty()
@@ -409,6 +424,16 @@ export class UsersController {
     @Param("studentId") studentId: string,
   ) {
     return this.usersService.getStudentStudioProfile(studioId, studentId);
+  }
+
+  @Patch("studio/:studioId/students/:studentId")
+  @Roles(UserRole.OWNER, UserRole.STAFF)
+  updateStudioStudent(
+    @Param("studioId") studioId: string,
+    @Param("studentId") studentId: string,
+    @Body() dto: UpdateStudioStudentDto,
+  ) {
+    return this.usersService.updateStudioStudent(studioId, studentId, dto);
   }
 
   @Delete("studio/:studioId/students/:studentId")

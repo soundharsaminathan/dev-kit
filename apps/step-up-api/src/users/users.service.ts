@@ -97,12 +97,14 @@ export class UsersService {
       where: {
         studioId,
         role: UserRole.STUDENT,
+        active: true,
       },
       select: {
         id: true,
         ...userPiiSelect,
         role: true,
         photoUrl: true,
+        active: true,
       },
     });
 
@@ -349,6 +351,7 @@ export class UsersService {
         role: true,
         photoUrl: true,
         styles: true,
+        active: true,
       },
     });
 
@@ -356,7 +359,7 @@ export class UsersService {
       throw new NotFoundException("Student not found in this studio");
     }
 
-    const [enrollments, memberships, attendanceRecords, invoices] =
+    const [enrollments, memberships, attendanceRecords, invoices, parentLinks] =
       await Promise.all([
         this.prisma.batchEnrollment.findMany({
           where: {
@@ -401,6 +404,20 @@ export class UsersService {
           orderBy: { id: "desc" },
           take: 20,
         }),
+        this.prisma.parentChild.findMany({
+          where: { childUserId: studentId },
+          include: {
+            parent: {
+              select: {
+                id: true,
+                ...userPiiSelect,
+                role: true,
+                photoUrl: true,
+                active: true,
+              },
+            },
+          },
+        }),
       ]);
 
     const attendance = {
@@ -422,7 +439,52 @@ export class UsersService {
         ...invoice,
         amount: Number(invoice.amount),
       })),
+      parents: await Promise.all(
+        parentLinks.map(async (link) => this.presentUser(link.parent)),
+      ),
     };
+  }
+
+  async updateStudioStudent(
+    studioId: string,
+    studentId: string,
+    data: { name?: string; phone?: string; active?: boolean },
+  ) {
+    const student = await this.prisma.user.findFirst({
+      where: {
+        id: studentId,
+        studioId,
+        role: UserRole.STUDENT,
+      },
+    });
+
+    if (!student) {
+      throw new NotFoundException("Student not found in this studio");
+    }
+
+    if (
+      data.name === undefined &&
+      data.phone === undefined &&
+      data.active === undefined
+    ) {
+      throw new BadRequestException("No student fields to update");
+    }
+
+    if (data.name !== undefined || data.phone !== undefined) {
+      await this.updateProfile(studentId, UserRole.STUDENT, {
+        ...(data.name !== undefined ? { name: data.name } : {}),
+        ...(data.phone !== undefined ? { phone: data.phone } : {}),
+      });
+    }
+
+    if (data.active !== undefined) {
+      await this.prisma.user.update({
+        where: { id: studentId },
+        data: { active: data.active },
+      });
+    }
+
+    return this.getStudentStudioProfile(studioId, studentId);
   }
 
   async deleteStudent(studioId: string, studentId: string) {
@@ -810,6 +872,7 @@ export class UsersService {
         photoUrl: true,
         gender: true,
         ageRange: true,
+        active: true,
         batchEnrollments: {
           where: { batch: { studioId } },
           select: {
@@ -934,6 +997,14 @@ export class UsersService {
 
     if (!parent || !child) {
       throw new NotFoundException("Parent or child user not found");
+    }
+
+    if (parent.role !== UserRole.PARENT) {
+      throw new BadRequestException("Parent user must have the PARENT role");
+    }
+
+    if (child.role !== UserRole.STUDENT) {
+      throw new BadRequestException("Child user must have the STUDENT role");
     }
 
     return this.prisma.parentChild.upsert({

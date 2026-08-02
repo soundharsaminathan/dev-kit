@@ -1,3 +1,4 @@
+import { Badge } from "@dev-ui/components/badge";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
@@ -299,7 +300,12 @@ function StudentsPage() {
                       {showNew ? (
                         <span className={staff.newRibbon}>New</span>
                       ) : null}
-                      <span className={staff.rowTitle}>{student.name}</span>
+                      <div className={staff.attentionTop}>
+                        <span className={staff.rowTitle}>{student.name}</span>
+                        {student.active === false ? (
+                          <Badge variant="neutral">Inactive</Badge>
+                        ) : null}
+                      </div>
                       <p className={staff.rowMeta}>{student.email}</p>
                       {student.phone ? (
                         <p className={staff.rowMeta}>{student.phone}</p>
