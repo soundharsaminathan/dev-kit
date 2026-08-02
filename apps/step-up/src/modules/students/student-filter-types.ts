@@ -27,6 +27,7 @@ export type DirectoryStudent = {
   funnelStage: StudentFunnelStage;
   gender?: StudentGender | null;
   ageRange?: StudentAgeRange | null;
+  active?: boolean;
 };
 
 export type StudentFiltersDraft = {

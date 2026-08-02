@@ -101,6 +101,9 @@ export class FirebaseService {
       if (!user) {
         throw new UnauthorizedException("Bypass user not found");
       }
+      if (!user.active) {
+        throw new UnauthorizedException("This account has been deactivated");
+      }
       const decrypted = this.crypto.decryptUser(user);
       return {
         ...decrypted,
@@ -116,6 +119,10 @@ export class FirebaseService {
       throw new UnauthorizedException(
         "User not found. Call POST /auth/sync first.",
       );
+    }
+
+    if (!user.active) {
+      throw new UnauthorizedException("This account has been deactivated");
     }
 
     const decrypted = this.crypto.decryptUser(user);

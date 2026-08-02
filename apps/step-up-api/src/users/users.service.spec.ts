@@ -783,6 +783,100 @@ describe("UsersService.createStudent", () => {
   });
 });
 
+describe("UsersService.updateStudioStudent", () => {
+  const prisma = {
+    user: {
+      findFirst: vi.fn(),
+      findUniqueOrThrow: vi.fn(),
+      update: vi.fn(),
+    },
+    batchEnrollment: { findMany: vi.fn() },
+    membership: { findMany: vi.fn() },
+    attendance: { findMany: vi.fn() },
+    invoice: { findMany: vi.fn() },
+    parentChild: { findMany: vi.fn() },
+  };
+  const crypto = {
+    decryptUser: vi.fn((user: Record<string, unknown>) => ({
+      ...user,
+      email: "a@b.com",
+      name: "Ada",
+      phone: null,
+      bio: null,
+      instagramUrl: null,
+    })),
+    sealPii: vi.fn(() => ({
+      piiCiphertext: "c",
+      piiIv: "iv",
+    })),
+  };
+  const media = {
+    signReadUrl: vi.fn(async (value: string | null) => value),
+    resolveObjectKey: vi.fn((value: string) => value),
+  };
+
+  let service: UsersService;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    service = new UsersService(
+      prisma as never,
+      crypto as never,
+      media as never,
+    );
+  });
+
+  it("updates active flag for a studio student", async () => {
+    prisma.user.findFirst
+      .mockResolvedValueOnce({
+        id: "student-1",
+        studioId: "studio-seed-1",
+        role: UserRole.STUDENT,
+      })
+      .mockResolvedValueOnce({
+        id: "student-1",
+        role: UserRole.STUDENT,
+        photoUrl: null,
+        styles: [],
+        active: false,
+        encryptedKey: "k",
+        piiCiphertext: "c",
+        piiIv: "iv",
+      });
+    prisma.user.update.mockResolvedValue({ id: "student-1", active: false });
+    prisma.batchEnrollment.findMany.mockResolvedValue([]);
+    prisma.membership.findMany.mockResolvedValue([]);
+    prisma.attendance.findMany.mockResolvedValue([]);
+    prisma.invoice.findMany.mockResolvedValue([]);
+    prisma.parentChild.findMany.mockResolvedValue([]);
+
+    const result = await service.updateStudioStudent(
+      "studio-seed-1",
+      "student-1",
+      { active: false },
+    );
+
+    expect(prisma.user.update).toHaveBeenCalledWith({
+      where: { id: "student-1" },
+      data: { active: false },
+    });
+    expect(result.student.active).toBe(false);
+    expect(result.parents).toEqual([]);
+  });
+
+  it("rejects when no fields are provided", async () => {
+    prisma.user.findFirst.mockResolvedValue({
+      id: "student-1",
+      studioId: "studio-seed-1",
+      role: UserRole.STUDENT,
+    });
+
+    await expect(
+      service.updateStudioStudent("studio-seed-1", "student-1", {}),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+});
+
 describe("UsersService.deleteStudent", () => {
   const prisma = {
     user: {
