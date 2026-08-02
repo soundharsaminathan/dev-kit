@@ -66,6 +66,91 @@ describe("MembershipsService.renewManual", () => {
   });
 });
 
+describe("MembershipsService.requestRenewalInvoice", () => {
+  const prisma = {
+    membership: {
+      findUnique: vi.fn(),
+    },
+    invoice: {
+      findFirst: vi.fn(),
+      create: vi.fn(),
+    },
+    studioSettings: {
+      findUnique: vi.fn(),
+    },
+  };
+
+  const notifications = {
+    create: vi.fn(),
+  };
+
+  let service: MembershipsService;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    service = new MembershipsService(
+      prisma as never,
+      notifications as never,
+      {
+        assertNoConflicts: vi.fn().mockResolvedValue(undefined),
+        assertStudentAvailableForBatch: vi.fn().mockResolvedValue(undefined),
+      } as never,
+    );
+  });
+
+  it("creates a pending invoice for a due membership", async () => {
+    prisma.membership.findUnique.mockResolvedValue({
+      id: "mem-1",
+      purchaserUserId: "user-1",
+      status: "DUE",
+      subscription: { price: 2000 },
+      purchaser: { id: "user-1", studioId: "studio-1" },
+    });
+    prisma.invoice.findFirst.mockResolvedValue(null);
+    prisma.studioSettings.findUnique.mockResolvedValue({
+      platformFeePercent: 5,
+    });
+    prisma.invoice.create.mockResolvedValue({
+      id: "inv-1",
+      status: "PENDING",
+      membershipId: "mem-1",
+    });
+
+    const invoice = await service.requestRenewalInvoice("mem-1");
+
+    expect(prisma.invoice.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        studentId: "user-1",
+        studioId: "studio-1",
+        membershipId: "mem-1",
+        amount: 2000,
+        status: "PENDING",
+        platformFeePercent: 5,
+      }),
+    });
+    expect(invoice.id).toBe("inv-1");
+  });
+
+  it("returns an existing pending renewal invoice", async () => {
+    prisma.membership.findUnique.mockResolvedValue({
+      id: "mem-1",
+      purchaserUserId: "user-1",
+      status: "EXPIRED",
+      subscription: { price: 2000 },
+      purchaser: { id: "user-1", studioId: "studio-1" },
+    });
+    prisma.invoice.findFirst.mockResolvedValue({
+      id: "inv-existing",
+      status: "PENDING",
+    });
+
+    const invoice = await service.requestRenewalInvoice("mem-1");
+
+    expect(invoice.id).toBe("inv-existing");
+    expect(prisma.invoice.create).not.toHaveBeenCalled();
+  });
+});
+
 describe("MembershipsService.assign family packs", () => {
   const prisma = {
     subscription: {

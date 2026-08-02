@@ -465,6 +465,8 @@ describe("UsersService family members", () => {
     user: {
       create: vi.fn(),
       delete: vi.fn(),
+      findUnique: vi.fn(),
+      findFirst: vi.fn(),
     },
     familyMember: {
       findMany: vi.fn(),
@@ -476,6 +478,7 @@ describe("UsersService family members", () => {
     parentChild: {
       findMany: vi.fn(),
       findUnique: vi.fn(),
+      upsert: vi.fn(),
       count: vi.fn(),
     },
     membershipCoveredStudent: {
@@ -501,7 +504,7 @@ describe("UsersService family members", () => {
       piiIv: "iv",
       emailHash: "hash-dep",
     })),
-    hashEmail: vi.fn(),
+    hashEmail: vi.fn(() => "hash-child"),
   };
   const media = {
     signReadUrl: vi.fn(async (value: string | null) => value),
@@ -648,6 +651,59 @@ describe("UsersService family members", () => {
 
     expect(prisma.user.delete).toHaveBeenCalledWith({ where: { id: "dep-1" } });
     expect(result).toEqual({ removed: true, deletedDependent: true });
+  });
+
+  it("links an existing student by email for a parent", async () => {
+    const child = makeUser({
+      id: "student-1",
+      role: UserRole.STUDENT,
+      studioId: "studio-1",
+    });
+    const parentUser = makeUser({
+      id: "parent-1",
+      role: UserRole.PARENT,
+      studioId: "studio-1",
+    });
+    prisma.user.findFirst.mockResolvedValue(child);
+    prisma.user.findUnique
+      .mockResolvedValueOnce(parentUser)
+      .mockResolvedValueOnce(child);
+    prisma.parentChild.upsert.mockResolvedValue({
+      parentUserId: "parent-1",
+      childUserId: "student-1",
+    });
+    crypto.decryptUser.mockReturnValue({
+      ...child,
+      email: "kid@stepup.dev",
+      name: "Kid One",
+      phone: null,
+      bio: null,
+      instagramUrl: null,
+    });
+
+    const result = await service.linkChildByEmail(
+      {
+        id: "parent-1",
+        role: UserRole.PARENT,
+        studioId: "studio-1",
+      } as never,
+      "kid@stepup.dev",
+    );
+
+    expect(crypto.hashEmail).toHaveBeenCalledWith("kid@stepup.dev");
+    expect(prisma.parentChild.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          parentUserId_childUserId: {
+            parentUserId: "parent-1",
+            childUserId: "student-1",
+          },
+        },
+      }),
+    );
+    expect(result).toEqual(
+      expect.objectContaining({ id: "student-1", name: "Kid One" }),
+    );
   });
 });
 

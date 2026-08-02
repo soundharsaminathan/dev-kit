@@ -59,12 +59,16 @@ function EventDetail({
   onClose,
   onOpenAttendance,
   onOpenBookings,
+  onOpenBatch,
+  onCheckIn,
 }: {
   selected: CalendarEvent;
   staffActions: boolean;
   onClose: () => void;
   onOpenAttendance: () => void;
   onOpenBookings: () => void;
+  onOpenBatch: () => void;
+  onCheckIn: () => void;
 }) {
   return (
     <div className={styles.detail}>
@@ -94,6 +98,16 @@ function EventDetail({
       {staffActions && selected.kind === "BOOKING" ? (
         <TouchButton variant="primary" fullWidth onClick={onOpenBookings}>
           Open bookings
+        </TouchButton>
+      ) : null}
+      {!staffActions && selected.kind === "SESSION" && selected.batchId ? (
+        <TouchButton variant="primary" fullWidth onClick={onOpenBatch}>
+          Open class
+        </TouchButton>
+      ) : null}
+      {!staffActions && selected.kind === "SESSION" ? (
+        <TouchButton variant="default" fullWidth onClick={onCheckIn}>
+          Check in
         </TouchButton>
       ) : null}
       <TouchButton variant="quiet" fullWidth onClick={onClose}>
@@ -175,6 +189,19 @@ export function CalendarPage({
           }
         },
         onOpenBookings: openSelected,
+        onOpenBatch: () => {
+          if (selected.batchId) {
+            void navigate({
+              to: "/me/batches/$id",
+              params: { id: selected.batchId },
+            });
+            setSelected(null);
+          }
+        },
+        onCheckIn: () => {
+          void navigate({ to: "/me/check-in" });
+          setSelected(null);
+        },
       }
     : null;
 

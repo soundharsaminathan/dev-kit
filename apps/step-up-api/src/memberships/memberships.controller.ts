@@ -132,7 +132,7 @@ export class MembershipsController {
       throw new NotFoundException("Membership not found");
     }
     await this.assertPurchaserOwnership(actor, membership.purchaserUserId);
-    return this.membershipsService.renewManual(dto.membershipId);
+    return this.membershipsService.requestRenewalInvoice(dto.membershipId);
   }
 
   private async assertPurchaserOwnership(

@@ -45,8 +45,11 @@ export function ProfileMenuPage({ variant = "me" }: ProfileMenuPageProps) {
   const [newKind, setNewKind] = useState<"KID" | "CO_STUDENT">("KID");
   const [newGender, setNewGender] = useState<Gender | null>(null);
   const [newAgeRange, setNewAgeRange] = useState<AgeRange | null>(null);
+  const [linkEmail, setLinkEmail] = useState("");
+  const isParent = user?.role === "PARENT";
   const canAddMember =
     newName.trim().length > 0 && Boolean(newGender) && Boolean(newAgeRange);
+  const canLinkChild = linkEmail.trim().length > 0;
 
   const createMutation = useMutation({
     mutationFn: () =>
@@ -67,6 +70,23 @@ export function ProfileMenuPage({ variant = "me" }: ProfileMenuPageProps) {
       setNewName("");
       setNewGender(null);
       setNewAgeRange(null);
+    },
+  });
+
+  const linkChildMutation = useMutation({
+    mutationFn: () =>
+      api.post<{ id: string }>("/users/me/link-child", {
+        email: linkEmail.trim(),
+      }),
+    onSuccess: async (linked: { id: string }) => {
+      await queryClient.invalidateQueries({
+        queryKey: ["users", user?.id, "family-members"],
+      });
+      await queryClient.invalidateQueries({
+        queryKey: ["memberships"],
+      });
+      setActiveAccount(linked.id);
+      setLinkEmail("");
     },
   });
 
@@ -214,6 +234,38 @@ export function ProfileMenuPage({ variant = "me" }: ProfileMenuPageProps) {
         title="Family"
       >
         <div className={styles.sheetBody}>
+          {isParent ? (
+            <>
+              <p className={styles.fieldLabel}>Link existing student</p>
+              <FormInput
+                label="Student email"
+                type="email"
+                value={linkEmail}
+                onChange={setLinkEmail}
+                placeholder="student@email.com"
+                autoComplete="email"
+              />
+              <TouchButton
+                variant="primary"
+                fullWidth
+                isDisabled={!canLinkChild}
+                isPending={linkChildMutation.isPending}
+                onClick={() => linkChildMutation.mutate()}
+              >
+                Link student
+              </TouchButton>
+              {linkChildMutation.isError ? (
+                <ErrorState
+                  description={
+                    linkChildMutation.error instanceof Error
+                      ? linkChildMutation.error.message
+                      : "Could not link student."
+                  }
+                />
+              ) : null}
+            </>
+          ) : null}
+
           <FormInput
             label="Name"
             value={newName}
