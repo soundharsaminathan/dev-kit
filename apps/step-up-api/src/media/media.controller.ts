@@ -17,6 +17,7 @@ import { MediaService } from "./media.service";
 enum MediaPurpose {
   BRANCH = "branch",
   AVATAR = "avatar",
+  STUDIO_LOGO = "studio-logo",
   POST = "post",
   CHAT = "chat",
   BATCH = "batch",
@@ -58,11 +59,12 @@ export class MediaController {
     if (
       (purpose === MediaPurpose.BRANCH ||
         purpose === MediaPurpose.BATCH ||
-        purpose === MediaPurpose.CERTIFICATE) &&
+        purpose === MediaPurpose.CERTIFICATE ||
+        purpose === MediaPurpose.STUDIO_LOGO) &&
       !BRANCH_ROLES.has(user.role)
     ) {
       throw new BadRequestException(
-        "Only studio staff can upload branch, batch, or certificate assets",
+        "Only studio staff can upload branch, batch, certificate, or studio logo assets",
       );
     }
 

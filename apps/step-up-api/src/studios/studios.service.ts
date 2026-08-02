@@ -1,7 +1,9 @@
 import { Inject, Injectable, NotFoundException } from "@nestjs/common";
+import { Prisma } from "@prisma/client";
 import { MediaService } from "../media/media.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { UserCryptoService } from "../users/user-crypto.service";
+import { parseBrandTheme } from "./brand-theme";
 
 @Injectable()
 export class StudiosService {
@@ -21,6 +23,7 @@ export class StudiosService {
         contact: true,
         photos: true,
         logoUrl: true,
+        brandTheme: true,
       },
     });
 
@@ -73,11 +76,24 @@ export class StudiosService {
       address?: string;
       contact?: string;
       logoUrl?: string | null;
+      brandTheme?: unknown;
     },
   ) {
+    const update: Prisma.StudioUpdateInput = {};
+
+    if (data.name !== undefined) update.name = data.name;
+    if (data.address !== undefined) update.address = data.address;
+    if (data.contact !== undefined) update.contact = data.contact;
+    if (data.logoUrl !== undefined) update.logoUrl = data.logoUrl;
+    if (data.brandTheme !== undefined) {
+      const parsed = parseBrandTheme(data.brandTheme);
+      update.brandTheme =
+        parsed === null ? Prisma.DbNull : (parsed as Prisma.InputJsonValue);
+    }
+
     return this.prisma.studio.update({
       where: { id },
-      data,
+      data: update,
     });
   }
 

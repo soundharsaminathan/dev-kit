@@ -10,7 +10,13 @@ import {
   UseGuards,
 } from "@nestjs/common";
 import { UserRole } from "@prisma/client";
-import { IsNumber, IsOptional, IsString } from "class-validator";
+import {
+  Allow,
+  IsNumber,
+  IsOptional,
+  IsString,
+  ValidateIf,
+} from "class-validator";
 import { AuthGuard } from "../auth/auth.guard";
 import { CurrentUser } from "../auth/current-user.decorator";
 import { Roles } from "../auth/roles.decorator";
@@ -32,8 +38,13 @@ class UpdateStudioDto {
   contact?: string;
 
   @IsOptional()
+  @ValidateIf((_, value) => value !== null)
   @IsString()
   logoUrl?: string | null;
+
+  @IsOptional()
+  @Allow()
+  brandTheme?: unknown;
 }
 
 class UpdateStudioSettingsDto {
@@ -78,7 +89,15 @@ export class StudiosController {
   @Patch(":id")
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(UserRole.OWNER, UserRole.STAFF)
-  updateStudio(@Param("id") id: string, @Body() dto: UpdateStudioDto) {
+  updateStudio(
+    @Param("id") id: string,
+    @CurrentUser() user: DecryptedUser,
+    @Body() dto: UpdateStudioDto,
+  ) {
+    if (dto.brandTheme !== undefined && user.role !== UserRole.OWNER) {
+      throw new ForbiddenException("Only owners can change studio branding");
+    }
+
     return this.studiosService.updateStudio(id, dto);
   }
 

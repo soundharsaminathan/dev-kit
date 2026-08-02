@@ -28,8 +28,12 @@ describe("ThemeEditor", () => {
     expect(
       screen.getByRole("button", { name: /Base style/ }),
     ).toBeInTheDocument();
-    expect(screen.queryByText("Color")).not.toBeInTheDocument();
-    expect(screen.queryByText("Foundation")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Radius factor")).toBeInTheDocument();
+    expect(screen.getByLabelText("accent color")).toBeInTheDocument();
+    expect(screen.getByLabelText("sans font")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Foundation/ }),
+    ).toBeInTheDocument();
   });
 
   it("injects preview CSS when previewThemeId is set", () => {
