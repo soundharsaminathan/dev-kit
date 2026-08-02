@@ -6,12 +6,12 @@ import {
 } from "./batch-capacity";
 
 describe("batch-capacity", () => {
-  it("payment hold lasts 30 seconds", () => {
+  it("payment hold lasts 10 minutes", () => {
     const from = new Date("2026-07-23T10:00:00.000Z");
     expect(paymentHoldExpiresAt(from).getTime() - from.getTime()).toBe(
       PAYMENT_HOLD_MS,
     );
-    expect(PAYMENT_HOLD_MS).toBe(30_000);
+    expect(PAYMENT_HOLD_MS).toBe(600_000);
   });
 
   it("counts unique students across enrollments and open bookings", async () => {

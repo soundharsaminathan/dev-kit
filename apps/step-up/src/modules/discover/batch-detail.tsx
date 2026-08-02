@@ -497,7 +497,7 @@ export function BatchDetailPage() {
                 {openBooking?.type.replaceAll("_", " ")}
                 {openBooking?.notes ? ` · ${openBooking.notes}` : ""}
                 {hasAwaitingPayment
-                  ? ". Your seat is held for 30 seconds — finish payment before the timer ends."
+                  ? ". Your seat is held for 10 minutes — finish payment before the timer ends."
                   : hasPendingRequest
                     ? ". The studio will confirm your spot — track updates under My bookings."
                     : ". Check My bookings for the confirmed time."}

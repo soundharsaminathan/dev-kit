@@ -172,7 +172,7 @@ function MeBookingsPage() {
                       </p>
                     ) : booking.status === "AWAITING_PAYMENT" ? (
                       <p className={staff.rowMeta}>
-                        Complete demo checkout within 30s to keep your seat
+                        Complete checkout within 10 minutes to keep your seat
                       </p>
                     ) : booking.status === "PENDING" ? (
                       <p className={staff.rowMeta}>

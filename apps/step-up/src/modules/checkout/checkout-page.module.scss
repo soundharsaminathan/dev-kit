@@ -107,72 +107,8 @@
   text-align: center;
 }
 
-.methods {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-
-.method {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-3) var(--space-4);
-  border-radius: var(--radius-lg);
-  border: 1px solid var(--color-border);
-  background: var(--color-bg);
-  color: var(--color-fg);
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-  transition:
-    border-color var(--interaction-transition-fast, 120ms) ease,
-    background-color var(--interaction-transition-fast, 120ms) ease,
-    transform var(--interaction-transition-fast, 120ms) ease;
-}
-
-.method:active:not([data-state="disabled"]) {
-  transform: scale(var(--interaction-press-scale));
-}
-
-.method[data-selected="true"] {
-  border-color: color-mix(in srgb, var(--color-primary) 55%, var(--color-border));
-  background: color-mix(in srgb, var(--color-primary) 10%, var(--color-bg));
-}
-
-.methodIcon {
-  display: grid;
-  place-items: center;
-  width: 2.25rem;
-  height: 2.25rem;
-  border-radius: var(--radius-md);
-  background: color-mix(in srgb, var(--color-primary) 14%, transparent);
-  color: var(--color-primary);
-  flex-shrink: 0;
-}
-
-.methodText {
-  display: flex;
-  flex-direction: column;
-  gap: 0.125rem;
-  min-width: 0;
-}
-
-.methodTitle {
-  margin: 0;
-  font-size: var(--font-size-sm);
-  font-weight: 650;
-}
-
-.methodHint {
-  margin: 0;
-  font-size: var(--font-size-xs);
-  color: var(--color-fg-muted);
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .timer,
-  .method {
+  .timer {
     transition-duration: 0ms;
     transform: none;
   }
