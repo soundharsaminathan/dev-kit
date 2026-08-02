@@ -13,7 +13,7 @@ import {
 import { ActiveStudentContext } from "@/modules/me/active-student-context";
 import { ChildSwitcher } from "@/modules/me/child-switcher";
 import { AGE_RANGES, GENDERS } from "@/modules/onboarding/options";
-import { AppBottomSheet } from "@/modules/ui/app-bottom-sheet";
+import { AppSheet } from "@/modules/ui/app-sheet";
 import { FormInput } from "@/modules/ui/form-input";
 import { Screen } from "@/modules/ui/screen";
 import { ErrorState } from "@/modules/ui/states";
@@ -228,11 +228,7 @@ export function ProfileMenuPage({ variant = "me" }: ProfileMenuPageProps) {
         </section>
       </div>
 
-      <AppBottomSheet
-        isOpen={manageOpen}
-        onOpenChange={setManageOpen}
-        title="Family"
-      >
+      <AppSheet isOpen={manageOpen} onOpenChange={setManageOpen} title="Family">
         <div className={styles.sheetBody}>
           {isParent ? (
             <>
@@ -361,7 +357,7 @@ export function ProfileMenuPage({ variant = "me" }: ProfileMenuPageProps) {
             ))}
           </div>
         </div>
-      </AppBottomSheet>
+      </AppSheet>
     </Screen>
   );
 }

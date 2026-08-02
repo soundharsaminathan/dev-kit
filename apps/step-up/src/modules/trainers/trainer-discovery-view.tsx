@@ -23,7 +23,7 @@ import { MEMBER_ROLES } from "@/lib/constants";
 import { danceStyleLabel } from "@/lib/dance-styles";
 import { ENTITY_ICONS } from "@/lib/entity-icons";
 import type { ChatConversation } from "@/modules/chat/types";
-import { AppBottomSheet } from "@/modules/ui/app-bottom-sheet";
+import { AppSheet } from "@/modules/ui/app-sheet";
 import { EmptyState } from "@/modules/ui/states";
 import styles from "./trainer-discovery.module.scss";
 import type { StudioTrainer } from "./types";
@@ -611,7 +611,7 @@ export function TrainerDiscoveryView({
         ) : null}
       </div>
 
-      <AppBottomSheet
+      <AppSheet
         isOpen={menuOpen}
         onOpenChange={setMenuOpen}
         title="Instructors"
@@ -661,7 +661,7 @@ export function TrainerDiscoveryView({
             ) : null}
           </div>
         </div>
-      </AppBottomSheet>
+      </AppSheet>
     </section>
   );
 }

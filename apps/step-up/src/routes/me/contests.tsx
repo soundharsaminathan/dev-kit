@@ -7,7 +7,7 @@ import { useApi } from "@/lib/api-context";
 import { useAuth } from "@/lib/auth";
 import { STUDIO_ID } from "@/lib/constants";
 import type { Contest, ContestCategory } from "@/modules/contests/types";
-import { AppBottomSheet } from "@/modules/ui/app-bottom-sheet";
+import { AppSheet } from "@/modules/ui/app-sheet";
 import { FormInput } from "@/modules/ui/form-input";
 import { PullToRefresh } from "@/modules/ui/pull-to-refresh";
 import { Screen } from "@/modules/ui/screen";
@@ -280,7 +280,7 @@ function MeContestsPage() {
         </div>
       </PullToRefresh>
 
-      <AppBottomSheet
+      <AppSheet
         isOpen={sheetOpen}
         onOpenChange={(open) => {
           if (!open) {
@@ -392,7 +392,7 @@ function MeContestsPage() {
             ) : null}
           </div>
         ) : null}
-      </AppBottomSheet>
+      </AppSheet>
     </Screen>
   );
 }

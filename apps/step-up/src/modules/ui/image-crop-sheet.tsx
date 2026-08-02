@@ -1,7 +1,7 @@
 import { Slider, SliderControl } from "@dev-ui/components/slider";
 import { useEffect, useMemo, useState } from "react";
 import Cropper, { type Area } from "react-easy-crop";
-import { AppBottomSheet } from "./app-bottom-sheet";
+import { AppSheet } from "./app-sheet";
 import styles from "./image-crop-sheet.module.scss";
 import { TouchButton } from "./touch-button";
 
@@ -104,7 +104,7 @@ export function ImageCropSheet({
   const pending = cropping || Boolean(busy);
 
   return (
-    <AppBottomSheet
+    <AppSheet
       isOpen={Boolean(file)}
       onOpenChange={(open) => {
         if (!open && !pending) {
@@ -165,6 +165,6 @@ export function ImageCropSheet({
           </TouchButton>
         </div>
       </div>
-    </AppBottomSheet>
+    </AppSheet>
   );
 }
