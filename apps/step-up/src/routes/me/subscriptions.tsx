@@ -17,7 +17,7 @@ import { STUDIO_ID } from "@/lib/constants";
 import type { FamilyMemberKind } from "@/lib/use-active-student";
 import { useActiveStudentContext } from "@/modules/me/use-active-student-context";
 import { AGE_RANGES, GENDERS } from "@/modules/onboarding/options";
-import { AppBottomSheet } from "@/modules/ui/app-bottom-sheet";
+import { AppSheet } from "@/modules/ui/app-sheet";
 import { FormInput } from "@/modules/ui/form-input";
 import { PullToRefresh } from "@/modules/ui/pull-to-refresh";
 import { Screen } from "@/modules/ui/screen";
@@ -411,7 +411,7 @@ function MeSubscriptionsPage() {
         {renderCatalog(family, "Family")}
       </PullToRefresh>
 
-      <AppBottomSheet
+      <AppSheet
         isOpen={Boolean(renewTarget)}
         onOpenChange={(open) => {
           if (!open) setRenewTarget(null);
@@ -448,9 +448,9 @@ function MeSubscriptionsPage() {
             Request renewal
           </TouchButton>
         </div>
-      </AppBottomSheet>
+      </AppSheet>
 
-      <AppBottomSheet
+      <AppSheet
         isOpen={Boolean(enrollTarget)}
         onOpenChange={(open) => {
           if (!open) setEnrollTarget(null);
@@ -671,7 +671,7 @@ function MeSubscriptionsPage() {
             Confirm subscription
           </TouchButton>
         </div>
-      </AppBottomSheet>
+      </AppSheet>
     </Screen>
   );
 }

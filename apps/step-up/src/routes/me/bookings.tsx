@@ -8,7 +8,7 @@ import {
   BookingWithoutBatchPreview,
 } from "@/modules/discover/batch-detail-preview";
 import { useActiveStudentContext } from "@/modules/me/use-active-student-context";
-import { AppBottomSheet } from "@/modules/ui/app-bottom-sheet";
+import { AppSheet } from "@/modules/ui/app-sheet";
 import { BloomPanel } from "@/modules/ui/bloom-panel";
 import { FilterChipRow } from "@/modules/ui/filter-chip-row";
 import { FormInput } from "@/modules/ui/form-input";
@@ -375,7 +375,7 @@ function MeBookingsPage() {
         ) : null}
       </BloomPanel>
 
-      <AppBottomSheet
+      <AppSheet
         isOpen={rescheduleOpen}
         onOpenChange={(open) => {
           if (!open) setRescheduleOpen(false);
@@ -467,7 +467,7 @@ function MeBookingsPage() {
             Submit request
           </TouchButton>
         </div>
-      </AppBottomSheet>
+      </AppSheet>
     </Screen>
   );
 }
