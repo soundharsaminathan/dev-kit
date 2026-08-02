@@ -1467,7 +1467,7 @@ async function main() {
       endsAt: utcAt(weekStart, 5, 20),
       status: SessionStatus.CANCELLED,
     },
-    // Contemporary
+    // Contemporary — this week (may be past) + rolling future Wed/Fri
     {
       id: "session-contemp-wed",
       batchId: "batch-contemporary-1",
@@ -1482,7 +1482,31 @@ async function main() {
       endsAt: utcAt(weekStart, 4, 19, 30),
       status: SessionStatus.SCHEDULED,
     },
-    // Beginner Saturday
+    ...nextWeekdayOccurrences(3, 4, 18, 30).map((startsAt, index) => {
+      const endsAt = new Date(startsAt);
+      endsAt.setUTCHours(19, 30, 0, 0);
+      return {
+        id: `session-contemp-future-wed-${index}`,
+        batchId: "batch-contemporary-1",
+        startsAt,
+        endsAt,
+        status: SessionStatus.SCHEDULED,
+        type: SessionType.REGULAR,
+      };
+    }),
+    ...nextWeekdayOccurrences(5, 4, 18, 30).map((startsAt, index) => {
+      const endsAt = new Date(startsAt);
+      endsAt.setUTCHours(19, 30, 0, 0);
+      return {
+        id: `session-contemp-future-fri-${index}`,
+        batchId: "batch-contemporary-1",
+        startsAt,
+        endsAt,
+        status: SessionStatus.SCHEDULED,
+        type: SessionType.REGULAR,
+      };
+    }),
+    // Beginner Saturday — this week + rolling future
     {
       id: "session-beginner-sat",
       batchId: "batch-beginner-1",
@@ -1490,6 +1514,18 @@ async function main() {
       endsAt: utcAt(weekStart, 5, 11),
       status: SessionStatus.SCHEDULED,
     },
+    ...nextWeekdayOccurrences(6, 5, 10).map((startsAt, index) => {
+      const endsAt = new Date(startsAt);
+      endsAt.setUTCHours(11, 0, 0, 0);
+      return {
+        id: `session-beginner-future-w${index}`,
+        batchId: "batch-beginner-1",
+        startsAt,
+        endsAt,
+        status: SessionStatus.SCHEDULED,
+        type: SessionType.REGULAR,
+      };
+    }),
     // Open beginner — next 5 Saturdays @ 11:00 UTC
     ...nextWeekdayOccurrences(6, 5, 11).map((startsAt, index) => {
       const endsAt = new Date(startsAt);
@@ -1497,6 +1533,55 @@ async function main() {
       return {
         id: `session-trial-w${index}`,
         batchId: "batch-trial-1",
+        startsAt,
+        endsAt,
+        status: SessionStatus.SCHEDULED,
+        type: SessionType.REGULAR,
+      };
+    }),
+    // Kids / adults — rolling future so staff trial enroll stays available
+    ...nextWeekdayOccurrences(1, 4, 17).map((startsAt, index) => {
+      const endsAt = new Date(startsAt);
+      endsAt.setUTCHours(18, 0, 0, 0);
+      return {
+        id: `session-kids-future-mon-${index}`,
+        batchId: "batch-kids-1",
+        startsAt,
+        endsAt,
+        status: SessionStatus.SCHEDULED,
+        type: SessionType.REGULAR,
+      };
+    }),
+    ...nextWeekdayOccurrences(3, 4, 17).map((startsAt, index) => {
+      const endsAt = new Date(startsAt);
+      endsAt.setUTCHours(18, 0, 0, 0);
+      return {
+        id: `session-kids-future-wed-${index}`,
+        batchId: "batch-kids-1",
+        startsAt,
+        endsAt,
+        status: SessionStatus.SCHEDULED,
+        type: SessionType.REGULAR,
+      };
+    }),
+    ...nextWeekdayOccurrences(2, 4, 19).map((startsAt, index) => {
+      const endsAt = new Date(startsAt);
+      endsAt.setUTCHours(20, 0, 0, 0);
+      return {
+        id: `session-adults-future-tue-${index}`,
+        batchId: "batch-adults-1",
+        startsAt,
+        endsAt,
+        status: SessionStatus.SCHEDULED,
+        type: SessionType.REGULAR,
+      };
+    }),
+    ...nextWeekdayOccurrences(4, 4, 19).map((startsAt, index) => {
+      const endsAt = new Date(startsAt);
+      endsAt.setUTCHours(20, 0, 0, 0);
+      return {
+        id: `session-adults-future-thu-${index}`,
+        batchId: "batch-adults-1",
         startsAt,
         endsAt,
         status: SessionStatus.SCHEDULED,

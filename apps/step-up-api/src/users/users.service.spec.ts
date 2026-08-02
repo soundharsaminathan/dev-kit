@@ -716,6 +716,9 @@ describe("UsersService.createStudent", () => {
     batch: {
       findUnique: vi.fn(),
     },
+    session: {
+      findMany: vi.fn().mockResolvedValue([]),
+    },
     batchEnrollment: {
       upsert: vi.fn(),
       findMany: vi.fn().mockResolvedValue([]),
@@ -836,6 +839,61 @@ describe("UsersService.createStudent", () => {
         batchId: "batch-other",
       }),
     ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it("trial-enrolls a new student with the next 2 upcoming sessions", async () => {
+    prisma.user.findFirst.mockResolvedValue(null);
+    prisma.user.create.mockResolvedValue(
+      makeUser({
+        id: "student-new",
+        firebaseUid: "staff-created:abc",
+        role: UserRole.STUDENT,
+      }),
+    );
+    prisma.batch.findUnique.mockResolvedValue({
+      id: "batch-1",
+      studioId: "studio-seed-1",
+      active: true,
+      capacity: 20,
+    });
+    prisma.session.findMany.mockResolvedValue([
+      { id: "session-1" },
+      { id: "session-2" },
+    ]);
+    prisma.batchEnrollment.upsert.mockResolvedValue({
+      batchId: "batch-1",
+      studentId: "student-new",
+      isTrial: true,
+      trialSessionIds: ["session-1", "session-2"],
+    });
+
+    await service.createStudent({
+      studioId: "studio-seed-1",
+      name: "New Student",
+      email: "new@stepup.dev",
+      gender: Gender.FEMALE,
+      ageRange: AgeRange.TWENTY_TO_FORTY,
+      styles: ["Hip Hop"],
+      batchId: "batch-1",
+      isTrial: true,
+    });
+
+    expect(prisma.batchEnrollment.upsert).toHaveBeenCalledWith({
+      where: {
+        batchId_studentId: { batchId: "batch-1", studentId: "student-new" },
+      },
+      update: {
+        isTrial: true,
+        trialSessionIds: ["session-1", "session-2"],
+        enrolledAt: expect.any(Date),
+      },
+      create: {
+        batchId: "batch-1",
+        studentId: "student-new",
+        isTrial: true,
+        trialSessionIds: ["session-1", "session-2"],
+      },
+    });
   });
 });
 
