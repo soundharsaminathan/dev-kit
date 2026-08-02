@@ -255,6 +255,7 @@ describe("BookingsService.confirmPayment", () => {
       type: "TRIAL",
       batchId: "batch-1",
       paymentHoldExpiresAt: new Date(Date.now() + 60_000),
+      studio: { settings: null },
     };
     tx.booking.findUnique.mockResolvedValue(booking);
     tx.batch.findUnique.mockResolvedValue({ capacity: 10 });
@@ -347,6 +348,7 @@ describe("BookingsService.confirmPayment", () => {
       batchId: null,
       paymentHoldExpiresAt: new Date(Date.now() + 60_000),
       razorpayOrderId: "order_1",
+      studio: { settings: null },
     });
 
     await expect(
@@ -368,6 +370,7 @@ describe("BookingsService.confirmPayment", () => {
       batchId: null,
       paymentHoldExpiresAt: new Date(Date.now() + 60_000),
       razorpayOrderId: "order_1",
+      studio: { settings: null },
     });
 
     await expect(
@@ -393,6 +396,7 @@ describe("BookingsService.confirmPayment", () => {
       batchId: null,
       paymentHoldExpiresAt: new Date(Date.now() + 60_000),
       razorpayOrderId: "order_1",
+      studio: { settings: null },
     });
 
     await expect(
@@ -419,6 +423,7 @@ describe("BookingsService.confirmPayment", () => {
       batchId: null,
       paymentHoldExpiresAt: new Date(Date.now() + 60_000),
       razorpayOrderId: "order_1",
+      studio: { settings: null },
     };
     tx.booking.findUnique.mockResolvedValue(booking);
     tx.booking.update.mockResolvedValue({
@@ -499,6 +504,7 @@ describe("BookingsService.createPaymentOrder", () => {
       status: "AWAITING_PAYMENT",
       paymentHoldExpiresAt: new Date(Date.now() + 60_000),
       razorpayOrderId: null,
+      studio: { settings: null },
     });
 
     await expect(
@@ -512,12 +518,14 @@ describe("BookingsService.createPaymentOrder", () => {
 
   it("returns existing order when already created", async () => {
     razorpay.isEnabled.mockReturnValue(true);
+    razorpay.keyId.mockReturnValue("rzp_test_key");
     prisma.booking.findUnique.mockResolvedValue({
       id: "bk-1",
       studentId: "student-1",
       status: "AWAITING_PAYMENT",
       paymentHoldExpiresAt: new Date(Date.now() + 60_000),
       razorpayOrderId: "order_existing",
+      studio: { settings: null },
     });
 
     await expect(
@@ -537,12 +545,14 @@ describe("BookingsService.createPaymentOrder", () => {
 
   it("creates and persists a new Razorpay order", async () => {
     razorpay.isEnabled.mockReturnValue(true);
+    razorpay.keyId.mockReturnValue("rzp_test_key");
     prisma.booking.findUnique.mockResolvedValue({
       id: "bk-1",
       studentId: "student-1",
       status: "AWAITING_PAYMENT",
       paymentHoldExpiresAt: new Date(Date.now() + 60_000),
       razorpayOrderId: null,
+      studio: { settings: null },
     });
     razorpay.createOrder.mockResolvedValue({
       orderId: "order_new",
@@ -567,6 +577,47 @@ describe("BookingsService.createPaymentOrder", () => {
       where: { id: "bk-1" },
       data: { razorpayOrderId: "order_new" },
     });
+  });
+
+  it("passes studio settings into Razorpay when configured", async () => {
+    const settings = {
+      razorpayKeyId: "rzp_studio",
+      razorpayKeySecret: "cipher",
+      razorpaySecretIv: "iv",
+    };
+    razorpay.isEnabled.mockReturnValue(true);
+    razorpay.keyId.mockReturnValue("rzp_studio");
+    prisma.booking.findUnique.mockResolvedValue({
+      id: "bk-1",
+      studentId: "student-1",
+      status: "AWAITING_PAYMENT",
+      paymentHoldExpiresAt: new Date(Date.now() + 60_000),
+      razorpayOrderId: null,
+      studio: { settings },
+    });
+    razorpay.createOrder.mockResolvedValue({
+      orderId: "order_studio",
+      amount: 100,
+      currency: "INR",
+    });
+    prisma.booking.update.mockResolvedValue({ id: "bk-1" });
+
+    await expect(
+      service.createPaymentOrder("bk-1", {
+        id: "student-1",
+        role: "STUDENT",
+      } as never),
+    ).resolves.toMatchObject({
+      mode: "razorpay",
+      keyId: "rzp_studio",
+      orderId: "order_studio",
+    });
+    expect(razorpay.isEnabled).toHaveBeenCalledWith(settings);
+    expect(razorpay.keyId).toHaveBeenCalledWith(settings);
+    expect(razorpay.createOrder).toHaveBeenCalledWith(
+      expect.objectContaining({ receipt: "bk-1" }),
+      settings,
+    );
   });
 });
 

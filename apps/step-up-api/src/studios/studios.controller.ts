@@ -30,6 +30,10 @@ class UpdateStudioDto {
   @IsOptional()
   @IsString()
   contact?: string;
+
+  @IsOptional()
+  @IsString()
+  logoUrl?: string | null;
 }
 
 class UpdateStudioSettingsDto {
@@ -44,6 +48,14 @@ class UpdateStudioSettingsDto {
   @IsOptional()
   @IsNumber()
   platformFeePercent?: number;
+
+  @IsOptional()
+  @IsString()
+  razorpayKeyId?: string | null;
+
+  @IsOptional()
+  @IsString()
+  razorpayKeySecret?: string | null;
 }
 
 @Controller("studios")
@@ -82,6 +94,13 @@ export class StudiosController {
       throw new ForbiddenException(
         "Only owners can change platform fee percent",
       );
+    }
+
+    if (
+      user.role !== UserRole.OWNER &&
+      (dto.razorpayKeyId !== undefined || dto.razorpayKeySecret !== undefined)
+    ) {
+      throw new ForbiddenException("Only owners can change Razorpay keys");
     }
 
     return this.studiosService.updateSettings(id, dto);

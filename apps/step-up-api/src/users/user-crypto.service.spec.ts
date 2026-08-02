@@ -113,4 +113,14 @@ describe("UserCryptoService", () => {
       InternalServerErrorException,
     );
   });
+
+  it("round-trips studio secrets through encrypt/decrypt", () => {
+    const service = makeService();
+    const secret = "rzp_test_secret_value";
+    const sealed = service.encryptStudioSecret(secret);
+    expect(sealed.ciphertext).not.toContain(secret);
+    expect(service.decryptStudioSecret(sealed.ciphertext, sealed.iv)).toBe(
+      secret,
+    );
+  });
 });

@@ -297,7 +297,12 @@ export class BookingsService {
       await expireStalePaymentHolds(tx);
     });
 
-    const booking = await this.prisma.booking.findUnique({ where: { id } });
+    const booking = await this.prisma.booking.findUnique({
+      where: { id },
+      include: {
+        studio: { include: { settings: true } },
+      },
+    });
     if (!booking) {
       throw new NotFoundException("Booking not found");
     }
@@ -305,12 +310,13 @@ export class BookingsService {
     await this.assertCanAccessBooking(booking.studentId, actor);
     this.assertAwaitingPaymentHold(booking);
 
-    if (!this.razorpay.isEnabled()) {
+    const settings = booking.studio.settings;
+    if (!this.razorpay.isEnabled(settings)) {
       return { mode: "demo" };
     }
 
     const amount = this.razorpay.bookingAmountPaise();
-    const keyId = this.razorpay.keyId();
+    const keyId = this.razorpay.keyId(settings);
 
     if (booking.razorpayOrderId) {
       return {
@@ -322,11 +328,14 @@ export class BookingsService {
       };
     }
 
-    const order = await this.razorpay.createOrder({
-      receipt: booking.id,
-      amountPaise: amount,
-      notes: { bookingId: booking.id },
-    });
+    const order = await this.razorpay.createOrder(
+      {
+        receipt: booking.id,
+        amountPaise: amount,
+        notes: { bookingId: booking.id },
+      },
+      settings,
+    );
 
     await this.prisma.booking.update({
       where: { id },
@@ -350,7 +359,12 @@ export class BookingsService {
     return this.prisma.$transaction(async (tx) => {
       await expireStalePaymentHolds(tx);
 
-      const booking = await tx.booking.findUnique({ where: { id } });
+      const booking = await tx.booking.findUnique({
+        where: { id },
+        include: {
+          studio: { include: { settings: true } },
+        },
+      });
       if (!booking) {
         throw new NotFoundException("Booking not found");
       }
@@ -381,7 +395,8 @@ export class BookingsService {
         );
       }
 
-      const razorpayEnabled = this.razorpay.isEnabled();
+      const settings = booking.studio.settings;
+      const razorpayEnabled = this.razorpay.isEnabled(settings);
       let razorpayPaymentId: string | undefined;
 
       if (razorpayEnabled) {
@@ -401,11 +416,14 @@ export class BookingsService {
           );
         }
 
-        const valid = this.razorpay.verifyPaymentSignature({
-          orderId,
-          paymentId,
-          signature,
-        });
+        const valid = this.razorpay.verifyPaymentSignature(
+          {
+            orderId,
+            paymentId,
+            signature,
+          },
+          settings,
+        );
         if (!valid) {
           throw new BadRequestException("Invalid Razorpay payment signature");
         }

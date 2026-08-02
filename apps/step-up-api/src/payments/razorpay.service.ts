@@ -8,6 +8,7 @@ import {
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import Razorpay from "razorpay";
+import { UserCryptoService } from "../users/user-crypto.service";
 
 export type CreateRazorpayOrderInput = {
   receipt: string;
@@ -27,20 +28,62 @@ export type VerifyPaymentSignatureInput = {
   signature: string;
 };
 
+export type RazorpayKeys = {
+  keyId: string;
+  keySecret: string;
+};
+
+export type StudioRazorpaySettings = {
+  razorpayKeyId: string | null;
+  razorpayKeySecret: string | null;
+  razorpaySecretIv: string | null;
+} | null;
+
 @Injectable()
 export class RazorpayService {
-  private client: Razorpay | null = null;
+  constructor(
+    @Inject(ConfigService) private readonly config: ConfigService,
+    @Inject(UserCryptoService) private readonly crypto: UserCryptoService,
+  ) {}
 
-  constructor(@Inject(ConfigService) private readonly config: ConfigService) {}
-
-  isEnabled(): boolean {
-    const keyId = this.keyId();
-    const keySecret = this.keySecret();
-    return Boolean(keyId && keySecret);
+  isEnabled(settings?: StudioRazorpaySettings): boolean {
+    return Boolean(this.resolveKeys(settings));
   }
 
-  keyId(): string {
-    return (this.config.get<string>("RAZORPAY_KEY_ID") ?? "").trim();
+  keyId(settings?: StudioRazorpaySettings): string {
+    return this.resolveKeys(settings)?.keyId ?? "";
+  }
+
+  resolveKeys(settings?: StudioRazorpaySettings): RazorpayKeys | null {
+    if (
+      settings?.razorpayKeyId?.trim() &&
+      settings.razorpayKeySecret &&
+      settings.razorpaySecretIv
+    ) {
+      try {
+        const keySecret = this.crypto.decryptStudioSecret(
+          settings.razorpayKeySecret,
+          settings.razorpaySecretIv,
+        );
+        if (keySecret.trim()) {
+          return {
+            keyId: settings.razorpayKeyId.trim(),
+            keySecret: keySecret.trim(),
+          };
+        }
+      } catch {
+        // Fall through to env keys when studio secret cannot be decrypted.
+      }
+    }
+
+    const keyId = (this.config.get<string>("RAZORPAY_KEY_ID") ?? "").trim();
+    const keySecret = (
+      this.config.get<string>("RAZORPAY_KEY_SECRET") ?? ""
+    ).trim();
+    if (!keyId || !keySecret) {
+      return null;
+    }
+    return { keyId, keySecret };
   }
 
   bookingAmountPaise(): number {
@@ -54,13 +97,22 @@ export class RazorpayService {
 
   async createOrder(
     input: CreateRazorpayOrderInput,
+    settings?: StudioRazorpaySettings,
   ): Promise<CreateRazorpayOrderResult> {
     if (!Number.isFinite(input.amountPaise) || input.amountPaise < 100) {
       throw new BadRequestException("Amount must be at least 100 paise");
     }
 
+    const keys = this.resolveKeys(settings);
+    if (!keys) {
+      throw new BadRequestException("Razorpay is not configured");
+    }
+
     try {
-      const client = this.getClient();
+      const client = new Razorpay({
+        key_id: keys.keyId,
+        key_secret: keys.keySecret,
+      });
       const order = await client.orders.create({
         amount: input.amountPaise,
         currency: "INR",
@@ -94,13 +146,16 @@ export class RazorpayService {
     }
   }
 
-  verifyPaymentSignature(input: VerifyPaymentSignatureInput): boolean {
-    const secret = this.keySecret();
-    if (!secret) {
+  verifyPaymentSignature(
+    input: VerifyPaymentSignatureInput,
+    settings?: StudioRazorpaySettings,
+  ): boolean {
+    const keys = this.resolveKeys(settings);
+    if (!keys) {
       throw new BadRequestException("Razorpay is not configured");
     }
 
-    const expected = createHmac("sha256", secret)
+    const expected = createHmac("sha256", keys.keySecret)
       .update(`${input.orderId}|${input.paymentId}`)
       .digest("hex");
 
@@ -110,23 +165,6 @@ export class RazorpayService {
       return false;
     }
     return timingSafeEqual(expectedBuf, actualBuf);
-  }
-
-  private keySecret(): string {
-    return (this.config.get<string>("RAZORPAY_KEY_SECRET") ?? "").trim();
-  }
-
-  private getClient(): Razorpay {
-    if (!this.isEnabled()) {
-      throw new BadRequestException("Razorpay is not configured");
-    }
-    if (!this.client) {
-      this.client = new Razorpay({
-        key_id: this.keyId(),
-        key_secret: this.keySecret(),
-      });
-    }
-    return this.client;
   }
 }
 

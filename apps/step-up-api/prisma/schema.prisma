@@ -15,6 +15,13 @@ enum UserRole {
   PARENT
 }
 
+enum InviteStatus {
+  PENDING
+  ACCEPTED
+  EXPIRED
+  REVOKED
+}
+
 enum BatchCategory {
   KIDS
   ADULTS
@@ -298,6 +305,7 @@ model User {
   contestCertificatesIssued ContestCertificate[] @relation("ContestCertificateIssuer")
   studentGoals              StudentGoal[]
   studentAchievements       StudentAchievement[]
+  staffInvitesCreated       StaffInvite[]        @relation("StaffInviteCreator")
 
   @@index([studioId, emailHash])
   @@index([preferredBranchId])
@@ -334,6 +342,7 @@ model Studio {
   address String?
   photos  String[]
   contact String?
+  logoUrl String?
   ownerId String   @unique
 
   owner                User                 @relation("StudioOwner", fields: [ownerId], references: [id])
@@ -348,15 +357,40 @@ model Studio {
   contests             Contest[]
   studentGoals         StudentGoal[]
   achievements         Achievement[]
+  staffInvites         StaffInvite[]
 }
 
 model StudioSettings {
-  studioId           String @id
-  graceDays          Int    @default(3)
-  expireAlertDays    Int    @default(7)
-  platformFeePercent Float  @default(5)
+  studioId           String  @id
+  graceDays          Int     @default(3)
+  expireAlertDays    Int     @default(7)
+  platformFeePercent Float   @default(5)
+  razorpayKeyId      String?
+  razorpayKeySecret  String?
+  razorpaySecretIv   String?
 
   studio Studio @relation(fields: [studioId], references: [id], onDelete: Cascade)
+}
+
+model StaffInvite {
+  id          String       @id @default(cuid())
+  studioId    String
+  email       String
+  role        UserRole
+  token       String       @unique
+  expiresAt   DateTime
+  status      InviteStatus @default(PENDING)
+  createdById String
+  acceptedAt  DateTime?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  studio    Studio @relation(fields: [studioId], references: [id], onDelete: Cascade)
+  createdBy User   @relation("StaffInviteCreator", fields: [createdById], references: [id], onDelete: Cascade)
+
+  @@index([studioId, status])
+  @@index([token, status])
+  @@index([email, studioId])
 }
 
 model StudioBranch {

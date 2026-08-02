@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   ConflictException,
   Controller,
@@ -14,6 +15,7 @@ import { IsEmail, IsEnum, IsOptional, IsString } from "class-validator";
 import { MediaService } from "../media/media.service";
 import { PushService } from "../notifications/push.service";
 import { PrismaService } from "../prisma/prisma.service";
+import { StaffInvitesService } from "../staff-invites/staff-invites.service";
 import {
   type DecryptedUser,
   UserCryptoService,
@@ -49,6 +51,11 @@ class BypassLoginDto {
   email!: string;
 }
 
+class AcceptInviteDto {
+  @IsString()
+  token!: string;
+}
+
 @Controller("auth")
 export class AuthController {
   constructor(
@@ -57,6 +64,8 @@ export class AuthController {
     @Inject(MediaService) private readonly media: MediaService,
     @Inject(PushService) private readonly push: PushService,
     @Inject(FirebaseService) private readonly firebase: FirebaseService,
+    @Inject(StaffInvitesService)
+    private readonly staffInvites: StaffInvitesService,
   ) {}
 
   @Post("bypass-login")
@@ -79,6 +88,24 @@ export class AuthController {
       ...decrypted,
       photoUrl: await this.media.signReadUrl(decrypted.photoUrl),
     };
+  }
+
+  @Post("accept-invite")
+  @UseGuards(TokenGuard)
+  async acceptInvite(
+    @Req() request: { auth: VerifiedAuth },
+    @Body() dto: AcceptInviteDto,
+  ): Promise<DecryptedUser> {
+    const auth = request.auth;
+    if (!auth.email) {
+      throw new BadRequestException("Authenticated email is required");
+    }
+
+    return this.staffInvites.acceptInvite(dto.token, {
+      firebaseUid: auth.firebaseUid,
+      email: auth.email,
+      name: auth.name,
+    });
   }
 
   @Post("sync")

@@ -7,6 +7,13 @@ describe("RazorpayService", () => {
   const config = {
     get: vi.fn((key: string) => configValues[key]),
   };
+  const crypto = {
+    decryptStudioSecret: vi.fn((ciphertext: string, _iv: string) => ciphertext),
+    encryptStudioSecret: vi.fn((secret: string) => ({
+      ciphertext: secret,
+      iv: "iv",
+    })),
+  };
 
   let service: RazorpayService;
 
@@ -15,18 +22,35 @@ describe("RazorpayService", () => {
     for (const key of Object.keys(configValues)) {
       delete configValues[key];
     }
-    service = new RazorpayService(config as never);
+    service = new RazorpayService(config as never, crypto as never);
   });
 
   it("is disabled when keys are missing", () => {
     expect(service.isEnabled()).toBe(false);
   });
 
-  it("is enabled when both keys are set", () => {
+  it("is enabled when both env keys are set", () => {
     configValues.RAZORPAY_KEY_ID = "rzp_test_abc";
     configValues.RAZORPAY_KEY_SECRET = "secret";
     expect(service.isEnabled()).toBe(true);
     expect(service.keyId()).toBe("rzp_test_abc");
+  });
+
+  it("prefers studio keys over env", () => {
+    configValues.RAZORPAY_KEY_ID = "rzp_env";
+    configValues.RAZORPAY_KEY_SECRET = "env_secret";
+    crypto.decryptStudioSecret.mockReturnValue("studio_secret");
+
+    const keys = service.resolveKeys({
+      razorpayKeyId: "rzp_studio",
+      razorpayKeySecret: "cipher",
+      razorpaySecretIv: "iv",
+    });
+
+    expect(keys).toEqual({
+      keyId: "rzp_studio",
+      keySecret: "studio_secret",
+    });
   });
 
   it("defaults booking amount to 100 paise", () => {
