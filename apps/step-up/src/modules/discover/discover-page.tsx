@@ -2,6 +2,7 @@ import { SearchField } from "@dev-ui/components/search-field";
 import { Icon } from "@dev-ui/icons";
 import { useMemo, useState } from "react";
 import { ENTITY_ICONS } from "@/lib/entity-icons";
+import { useActiveStudentContext } from "@/modules/me/use-active-student-context";
 import { BatchCard } from "@/modules/ui/batch-card";
 import { FilterChipRow } from "@/modules/ui/filter-chip-row";
 import { PullToRefresh } from "@/modules/ui/pull-to-refresh";
@@ -32,6 +33,7 @@ export function DiscoverPage({
   initialStyle?: string;
   initialIntent?: "trial";
 } = {}) {
+  const { studentId } = useActiveStudentContext();
   const [category, setCategory] = useState("ALL");
   const [style, setStyle] = useState<string | undefined>(initialStyle);
   const [search, setSearch] = useState("");
@@ -43,11 +45,13 @@ export function DiscoverPage({
     style?: string;
     search?: string;
     branchId?: string;
+    studentId?: string;
   } = {};
   if (category !== "ALL") filters.category = category;
   if (style) filters.style = style;
   if (search) filters.search = search;
   if (branchId) filters.branchId = branchId;
+  if (studentId) filters.studentId = studentId;
 
   const query = useDiscoverBatches(filters);
 

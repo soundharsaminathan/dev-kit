@@ -278,6 +278,7 @@ export class BatchesController {
     @Query("branchId") branchId?: string,
     @Query("search") search?: string,
     @Query("activeOnly") activeOnly?: string,
+    @Query("studentId") studentId?: string,
   ) {
     return this.batchesService.listByStudio(studioId, {
       style,
@@ -286,6 +287,7 @@ export class BatchesController {
       branchId,
       search,
       activeOnly: activeOnly === "true" || activeOnly === "1",
+      studentId,
     });
   }
 

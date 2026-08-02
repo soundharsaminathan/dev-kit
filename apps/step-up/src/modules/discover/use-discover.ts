@@ -9,6 +9,7 @@ export type DiscoverFilters = {
   trainerId?: string;
   branchId?: string;
   search?: string;
+  studentId?: string;
 };
 
 function buildQuery(filters: DiscoverFilters) {
@@ -18,6 +19,7 @@ function buildQuery(filters: DiscoverFilters) {
   if (filters.trainerId) params.set("trainerId", filters.trainerId);
   if (filters.branchId) params.set("branchId", filters.branchId);
   if (filters.search) params.set("search", filters.search);
+  if (filters.studentId) params.set("studentId", filters.studentId);
   return params.toString();
 }
 

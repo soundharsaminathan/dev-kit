@@ -69,6 +69,7 @@ export type DiscoverBatch = {
 };
 
 export function discoverCtaLabel(batch: DiscoverBatch) {
+  if (batch.viewerEnrolled) return "Enrolled";
   if (batch.remainingSeats === 0) return "Full";
   if ((batch.plans?.length ?? 0) > 0) return "Enroll";
   if (batch.enrollmentMode === "SELF_JOIN") return "Join";
