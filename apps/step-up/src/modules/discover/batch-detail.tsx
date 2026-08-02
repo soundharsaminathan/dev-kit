@@ -21,7 +21,7 @@ import { BatchRatingInput } from "@/modules/discover/batch-rating";
 import type { DiscoverBatchPlan } from "@/modules/discover/types";
 import { useDiscoverBatch } from "@/modules/discover/use-discover";
 import { useActiveStudentContext } from "@/modules/me/use-active-student-context";
-import { AppBottomSheet } from "@/modules/ui/app-bottom-sheet";
+import { AppSheet } from "@/modules/ui/app-sheet";
 import { BloomMenu } from "@/modules/ui/bloom-menu";
 import { FormInput } from "@/modules/ui/form-input";
 import { Screen } from "@/modules/ui/screen";
@@ -684,6 +684,7 @@ export function BatchDetailPage() {
               value={batch.viewerRating ?? null}
               onChange={(rating) => rateBatch.mutate(rating)}
               isPending={rateBatch.isPending}
+              isError={rateBatch.isError}
             />
             {rateBatch.isError ? (
               <p className={styles.ratingError}>
@@ -856,7 +857,7 @@ export function BatchDetailPage() {
         </StickyCtaBar>
       ) : null}
 
-      <AppBottomSheet
+      <AppSheet
         isOpen={purchaseOpen}
         onOpenChange={(open) => {
           setPurchaseOpen(open);
@@ -986,9 +987,9 @@ export function BatchDetailPage() {
             </>
           ) : null}
         </div>
-      </AppBottomSheet>
+      </AppSheet>
 
-      <AppBottomSheet
+      <AppSheet
         isOpen={enrollOpen}
         onOpenChange={(open) => {
           setEnrollOpen(open);
@@ -1033,9 +1034,9 @@ export function BatchDetailPage() {
             {enrollAsTrial ? "Confirm trial" : "Confirm enrollment"}
           </TouchButton>
         </div>
-      </AppBottomSheet>
+      </AppSheet>
 
-      <AppBottomSheet
+      <AppSheet
         isOpen={bookOpen}
         onOpenChange={setBookOpen}
         title="Confirm booking"
@@ -1088,7 +1089,7 @@ export function BatchDetailPage() {
             Submit request
           </TouchButton>
         </div>
-      </AppBottomSheet>
+      </AppSheet>
     </>
   );
 }
