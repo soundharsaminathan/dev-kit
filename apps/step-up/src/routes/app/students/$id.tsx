@@ -1,6 +1,6 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@dev-ui/components/avatar";
 import { Badge } from "@dev-ui/components/badge";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useApi } from "@/lib/api-context";
 import { STUDIO_ID } from "@/lib/constants";
@@ -106,6 +106,7 @@ function StudentDetailPage() {
   const { id } = Route.useParams();
   const api = useApi();
   const navigate = useNavigate({ from: Route.fullPath });
+  const queryClient = useQueryClient();
 
   const query = useQuery({
     queryKey: ["student-profile", STUDIO_ID, id],
@@ -115,14 +116,67 @@ function StudentDetailPage() {
       ),
   });
 
+  const deleteStudent = useMutation({
+    mutationFn: () => api.delete(`/users/studio/${STUDIO_ID}/students/${id}`),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: ["studio-students-search"],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["student-directory", STUDIO_ID],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["student-funnel"],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["batches", STUDIO_ID],
+        }),
+        queryClient.removeQueries({
+          queryKey: ["student-profile", STUDIO_ID, id],
+        }),
+      ]);
+      await navigate({ to: "/app/students" });
+    },
+  });
+
   return (
     <Screen
       title={query.data?.student.name ?? "Student"}
       subtitle="Enrollment, billing, and attendance."
       showBack
       backTo="/app/students"
+      actions={
+        query.data ? (
+          <TouchButton
+            size="sm"
+            variant="danger"
+            isPending={deleteStudent.isPending}
+            data-testid="delete-student"
+            onClick={() => {
+              if (
+                window.confirm(
+                  `Delete “${query.data.student.name}”? This removes their enrollments, memberships, and attendance. This cannot be undone.`,
+                )
+              ) {
+                deleteStudent.mutate();
+              }
+            }}
+          >
+            Delete
+          </TouchButton>
+        ) : null
+      }
     >
       <PullToRefresh onRefresh={() => query.refetch()}>
+        {deleteStudent.isError ? (
+          <p className={staff.panelDesc} role="alert">
+            {deleteStudent.error instanceof Error
+              ? deleteStudent.error.message
+              : "This student could not be deleted."}
+          </p>
+        ) : null}
+
         {query.isLoading ? (
           <div className={staff.section}>
             <SkeletonBlock height="5rem" radius="var(--radius-2xl)" />

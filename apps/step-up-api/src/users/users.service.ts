@@ -425,6 +425,39 @@ export class UsersService {
     };
   }
 
+  async deleteStudent(studioId: string, studentId: string) {
+    const student = await this.prisma.user.findFirst({
+      where: {
+        id: studentId,
+        studioId,
+        role: UserRole.STUDENT,
+      },
+      select: { id: true },
+    });
+
+    if (!student) {
+      throw new NotFoundException("Student not found in this studio");
+    }
+
+    const markedAttendance = await this.prisma.attendance.count({
+      where: { markedById: studentId },
+    });
+    if (markedAttendance > 0) {
+      throw new ConflictException(
+        "Cannot delete a student who has marked attendance records",
+      );
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.contestEntry.deleteMany({
+        where: { registeredById: studentId },
+      });
+      await tx.user.delete({ where: { id: studentId } });
+    });
+
+    return { deleted: true, id: studentId };
+  }
+
   async findById(id: string) {
     const user = await this.prisma.user.findUniqueOrThrow({
       where: { id },

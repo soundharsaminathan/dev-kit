@@ -411,6 +411,15 @@ export class UsersController {
     return this.usersService.getStudentStudioProfile(studioId, studentId);
   }
 
+  @Delete("studio/:studioId/students/:studentId")
+  @Roles(UserRole.OWNER, UserRole.STAFF)
+  deleteStudent(
+    @Param("studioId") studioId: string,
+    @Param("studentId") studentId: string,
+  ) {
+    return this.usersService.deleteStudent(studioId, studentId);
+  }
+
   @Get("studio/:studioId/trainers")
   listStudioTrainers(
     @CurrentUser() user: DecryptedUser,

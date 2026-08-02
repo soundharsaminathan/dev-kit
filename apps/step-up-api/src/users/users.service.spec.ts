@@ -1,4 +1,8 @@
-import { BadRequestException } from "@nestjs/common";
+import {
+  BadRequestException,
+  ConflictException,
+  NotFoundException,
+} from "@nestjs/common";
 import {
   AgeRange,
   ExperienceLevel,
@@ -776,5 +780,85 @@ describe("UsersService.createStudent", () => {
         batchId: "batch-other",
       }),
     ).rejects.toBeInstanceOf(BadRequestException);
+  });
+});
+
+describe("UsersService.deleteStudent", () => {
+  const prisma = {
+    user: {
+      findFirst: vi.fn(),
+      delete: vi.fn(),
+    },
+    attendance: {
+      count: vi.fn(),
+    },
+    contestEntry: {
+      deleteMany: vi.fn(),
+    },
+    $transaction: vi.fn(async (fn: (tx: unknown) => unknown) => fn(prisma)),
+  };
+  const crypto = {
+    decryptUser: vi.fn((user: Record<string, unknown>) => user),
+  };
+  const media = {
+    signReadUrl: vi.fn(async (value: string | null) => value),
+  };
+
+  let service: UsersService;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    prisma.$transaction.mockImplementation(
+      async (fn: (tx: typeof prisma) => unknown) => fn(prisma),
+    );
+    service = new UsersService(
+      prisma as never,
+      crypto as never,
+      media as never,
+    );
+  });
+
+  it("deletes a studio student and clears contest entries they registered", async () => {
+    prisma.user.findFirst.mockResolvedValue({ id: "student-1" });
+    prisma.attendance.count.mockResolvedValue(0);
+    prisma.contestEntry.deleteMany.mockResolvedValue({ count: 1 });
+    prisma.user.delete.mockResolvedValue({ id: "student-1" });
+
+    const result = await service.deleteStudent("studio-seed-1", "student-1");
+
+    expect(prisma.user.findFirst).toHaveBeenCalledWith({
+      where: {
+        id: "student-1",
+        studioId: "studio-seed-1",
+        role: UserRole.STUDENT,
+      },
+      select: { id: true },
+    });
+    expect(prisma.contestEntry.deleteMany).toHaveBeenCalledWith({
+      where: { registeredById: "student-1" },
+    });
+    expect(prisma.user.delete).toHaveBeenCalledWith({
+      where: { id: "student-1" },
+    });
+    expect(result).toEqual({ deleted: true, id: "student-1" });
+  });
+
+  it("rejects when the student is not in the studio", async () => {
+    prisma.user.findFirst.mockResolvedValue(null);
+
+    await expect(
+      service.deleteStudent("studio-seed-1", "missing"),
+    ).rejects.toBeInstanceOf(NotFoundException);
+    expect(prisma.user.delete).not.toHaveBeenCalled();
+  });
+
+  it("rejects when the student has marked attendance", async () => {
+    prisma.user.findFirst.mockResolvedValue({ id: "student-1" });
+    prisma.attendance.count.mockResolvedValue(2);
+
+    await expect(
+      service.deleteStudent("studio-seed-1", "student-1"),
+    ).rejects.toBeInstanceOf(ConflictException);
+    expect(prisma.user.delete).not.toHaveBeenCalled();
   });
 });
