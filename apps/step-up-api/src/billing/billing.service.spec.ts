@@ -13,6 +13,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { DecryptedUser } from "../users/user-crypto.service";
 import { BillingService } from "./billing.service";
 
+const membershipsStub = {
+  renewFromPaidInvoice: vi.fn().mockResolvedValue(null),
+};
+
 function makeUser(overrides: Partial<DecryptedUser> = {}): DecryptedUser {
   return {
     id: "owner-1",
@@ -51,7 +55,11 @@ describe("BillingService.getTrainerAnalytics", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    service = new BillingService(prisma as never, crypto as never);
+    service = new BillingService(
+      prisma as never,
+      crypto as never,
+      membershipsStub as never,
+    );
   });
 
   it("forces trainers to their own analytics", async () => {
@@ -193,7 +201,11 @@ describe("BillingService.listForStudent", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    service = new BillingService(prisma as never, crypto as never);
+    service = new BillingService(
+      prisma as never,
+      crypto as never,
+      membershipsStub as never,
+    );
   });
 
   it("allows a student to list their own invoices", async () => {
@@ -250,7 +262,12 @@ describe("BillingService.markPaid", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    service = new BillingService(prisma as never, crypto as never);
+    membershipsStub.renewFromPaidInvoice.mockResolvedValue(null);
+    service = new BillingService(
+      prisma as never,
+      crypto as never,
+      membershipsStub as never,
+    );
   });
 
   it("marks a pending invoice paid with method and fee", async () => {
@@ -260,6 +277,7 @@ describe("BillingService.markPaid", () => {
       amount: 2000,
       status: InvoiceStatus.PENDING,
       platformFeePercent: 5,
+      membershipId: null,
     });
     prisma.invoice.update.mockResolvedValue({
       id: "inv-1",
@@ -283,6 +301,32 @@ describe("BillingService.markPaid", () => {
       }),
     });
     expect(result.platformFeeComputed).toBe(100);
+    expect(membershipsStub.renewFromPaidInvoice).not.toHaveBeenCalled();
+  });
+
+  it("renews membership when paying a renewal invoice", async () => {
+    prisma.invoice.findUniqueOrThrow.mockResolvedValue({
+      id: "inv-1",
+      studioId: "studio-1",
+      amount: 2000,
+      status: InvoiceStatus.PENDING,
+      platformFeePercent: 5,
+      membershipId: "mem-1",
+    });
+    prisma.invoice.update.mockResolvedValue({
+      id: "inv-1",
+      status: InvoiceStatus.PAID,
+      paymentMethod: PaymentMethod.CASH,
+      paidAt: new Date("2026-07-20T12:00:00.000Z"),
+    });
+
+    await service.markPaid(
+      makeUser({ role: UserRole.OWNER }),
+      "inv-1",
+      PaymentMethod.CASH,
+    );
+
+    expect(membershipsStub.renewFromPaidInvoice).toHaveBeenCalledWith("mem-1");
   });
 
   it("rejects trainers marking invoices paid", async () => {
@@ -303,6 +347,7 @@ describe("BillingService.markPaid", () => {
       amount: 2000,
       status: InvoiceStatus.PAID,
       platformFeePercent: 5,
+      membershipId: null,
     });
 
     await expect(
@@ -321,6 +366,7 @@ describe("BillingService.markPaid", () => {
       amount: 2000,
       status: InvoiceStatus.PENDING,
       platformFeePercent: 5,
+      membershipId: null,
     });
 
     await expect(
@@ -348,7 +394,11 @@ describe("BillingService.listByStudio", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    service = new BillingService(prisma as never, crypto as never);
+    service = new BillingService(
+      prisma as never,
+      crypto as never,
+      membershipsStub as never,
+    );
   });
 
   it("returns studio invoices with decrypted students", async () => {

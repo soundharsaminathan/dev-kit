@@ -87,6 +87,30 @@ class ConfirmPaymentDto {
   razorpay_signature?: string;
 }
 
+class CancelBookingDto {
+  @IsOptional()
+  @IsString()
+  reason?: string;
+}
+
+class RequestRescheduleDto {
+  @IsOptional()
+  @IsString()
+  sessionId?: string;
+
+  @IsOptional()
+  @IsDateString()
+  startsAt?: string;
+
+  @IsOptional()
+  @IsDateString()
+  endsAt?: string;
+
+  @IsOptional()
+  @IsString()
+  notes?: string;
+}
+
 @Controller("bookings")
 @UseGuards(AuthGuard, RolesGuard)
 export class BookingsController {
@@ -154,6 +178,26 @@ export class BookingsController {
   @Roles(UserRole.STUDENT, UserRole.PARENT)
   abandonPayment(@Param("id") id: string, @CurrentUser() user: DecryptedUser) {
     return this.bookingsService.abandonPayment(id, user);
+  }
+
+  @Post(":id/cancel")
+  @Roles(UserRole.STUDENT, UserRole.PARENT)
+  cancelBooking(
+    @Param("id") id: string,
+    @CurrentUser() user: DecryptedUser,
+    @Body() dto: CancelBookingDto,
+  ) {
+    return this.bookingsService.cancelBooking(id, user, dto?.reason);
+  }
+
+  @Post(":id/request-reschedule")
+  @Roles(UserRole.STUDENT, UserRole.PARENT)
+  requestReschedule(
+    @Param("id") id: string,
+    @CurrentUser() user: DecryptedUser,
+    @Body() dto: RequestRescheduleDto,
+  ) {
+    return this.bookingsService.requestReschedule(id, user, dto ?? {});
   }
 
   @Patch(":id/status")

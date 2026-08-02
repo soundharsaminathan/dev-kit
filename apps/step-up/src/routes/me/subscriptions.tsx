@@ -8,7 +8,7 @@ import {
   SelectValue,
 } from "@dev-ui/components/select";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useApi } from "@/lib/api-context";
 import { useAuth } from "@/lib/auth";
@@ -86,6 +86,7 @@ function MeSubscriptionsPage() {
   const { user } = useAuth();
   const api = useApi();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const { studentId, accounts, children, familyMembers } =
     useActiveStudentContext();
 
@@ -178,11 +179,17 @@ function MeSubscriptionsPage() {
       api.post("/memberships/self/renew", {
         membershipId: renewTarget!.id,
       }),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({
-        queryKey: ["memberships", studentId],
-      });
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: ["memberships", studentId],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["invoices", "student", studentId],
+        }),
+      ]);
       setRenewTarget(null);
+      void navigate({ to: "/me/invoices" });
     },
   });
 
@@ -420,7 +427,8 @@ function MeSubscriptionsPage() {
             {renewTarget?.subscription
               ? ` at ${formatPrice(renewTarget.subscription.price, renewTarget.subscription.billingCadence)}`
               : ""}
-            .
+            . This creates an invoice — pay at the front desk to activate the
+            renewed plan.
           </p>
           {renewMutation.isError ? (
             <ErrorState
@@ -437,7 +445,7 @@ function MeSubscriptionsPage() {
             isPending={renewMutation.isPending}
             onClick={() => renewMutation.mutate()}
           >
-            Confirm renewal
+            Request renewal
           </TouchButton>
         </div>
       </AppBottomSheet>

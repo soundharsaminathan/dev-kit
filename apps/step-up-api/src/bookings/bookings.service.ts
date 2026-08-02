@@ -472,6 +472,149 @@ export class BookingsService {
     });
   }
 
+  async cancelBooking(id: string, actor: DecryptedUser, reason?: string) {
+    const booking = await this.prisma.booking.findUnique({ where: { id } });
+    if (!booking) {
+      throw new NotFoundException("Booking not found");
+    }
+
+    await this.assertCanAccessBooking(booking.studentId, actor);
+
+    if (
+      booking.status !== BookingStatus.PENDING &&
+      booking.status !== BookingStatus.CONFIRMED
+    ) {
+      throw new BadRequestException(
+        "Only pending or confirmed bookings can be cancelled",
+      );
+    }
+
+    const notes =
+      reason?.trim() && reason.trim().length > 0
+        ? [booking.notes, `Cancelled: ${reason.trim()}`]
+            .filter(Boolean)
+            .join("\n")
+        : booking.notes;
+
+    return this.prisma.booking.update({
+      where: { id },
+      data: {
+        status: BookingStatus.CANCELLED,
+        ...(notes !== booking.notes ? { notes } : {}),
+      },
+      include: {
+        batch: { select: { id: true, name: true } },
+      },
+    });
+  }
+
+  async requestReschedule(
+    id: string,
+    actor: DecryptedUser,
+    input: {
+      sessionId?: string;
+      startsAt?: string;
+      endsAt?: string;
+      notes?: string;
+    },
+  ) {
+    const hasSession = Boolean(input.sessionId);
+    const hasRange = Boolean(input.startsAt || input.endsAt);
+
+    if (hasSession === hasRange) {
+      throw new BadRequestException(
+        "Provide either sessionId or both startsAt and endsAt",
+      );
+    }
+
+    if (input.startsAt && input.endsAt) {
+      this.assertValidRange(input.startsAt, input.endsAt);
+    } else if (input.startsAt || input.endsAt) {
+      throw new BadRequestException("Both startsAt and endsAt are required");
+    }
+
+    const existing = await this.prisma.booking.findUnique({
+      where: { id },
+      include: {
+        batch: { select: { id: true, name: true } },
+      },
+    });
+    if (!existing) {
+      throw new NotFoundException("Booking not found");
+    }
+
+    await this.assertCanAccessBooking(existing.studentId, actor);
+
+    if (
+      existing.status !== BookingStatus.PENDING &&
+      existing.status !== BookingStatus.CONFIRMED
+    ) {
+      throw new BadRequestException(
+        "Only pending or confirmed bookings can be rescheduled",
+      );
+    }
+
+    const sessionId = input.sessionId;
+    let startsAt = input.startsAt;
+    let endsAt = input.endsAt;
+
+    if (sessionId) {
+      const session = await this.prisma.session.findUnique({
+        where: { id: sessionId },
+      });
+      if (!session || session.status === SessionStatus.CANCELLED) {
+        throw new BadRequestException("Session not found");
+      }
+      if (existing.batchId && session.batchId !== existing.batchId) {
+        throw new BadRequestException(
+          "Reschedule session must belong to the same class",
+        );
+      }
+      startsAt = session.startsAt.toISOString();
+      endsAt = session.endsAt.toISOString();
+    }
+
+    await this.assertBookingScheduleConflicts({
+      studentId: existing.studentId,
+      batchId: existing.batchId ?? undefined,
+      sessionId,
+      trainerId: existing.trainerId ?? undefined,
+      startsAt,
+      endsAt,
+      excludeBookingIds: [id],
+    });
+
+    const nextStatus =
+      existing.status === BookingStatus.CONFIRMED
+        ? BookingStatus.PENDING
+        : existing.status;
+
+    const notes =
+      input.notes?.trim() && input.notes.trim().length > 0
+        ? [existing.notes, `Reschedule request: ${input.notes.trim()}`]
+            .filter(Boolean)
+            .join("\n")
+        : existing.notes;
+
+    return this.prisma.booking.update({
+      where: { id },
+      data: {
+        status: nextStatus,
+        sessionId: hasSession ? sessionId! : null,
+        ...(startsAt && endsAt
+          ? {
+              startsAt: new Date(startsAt),
+              endsAt: new Date(endsAt),
+            }
+          : {}),
+        ...(notes !== existing.notes ? { notes } : {}),
+      },
+      include: {
+        batch: { select: { id: true, name: true } },
+      },
+    });
+  }
+
   async updateStatus(id: string, input: UpdateBookingStatusInput) {
     const { status, sessionId, startsAt, endsAt, trainerId } = input;
 

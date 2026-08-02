@@ -8,6 +8,7 @@ import {
   BatchCategory,
   BillingCadence,
   IndividualAudience,
+  InvoiceStatus,
   MembershipSeatRole,
   MembershipStatus,
   NotificationType,
@@ -248,6 +249,77 @@ export class MembershipsService {
     });
 
     return renewed;
+  }
+
+  async requestRenewalInvoice(membershipId: string) {
+    const existing = await this.prisma.membership.findUnique({
+      where: { id: membershipId },
+      include: {
+        subscription: true,
+        purchaser: { select: { id: true, studioId: true } },
+      },
+    });
+
+    if (!existing) {
+      throw new NotFoundException("Membership not found");
+    }
+
+    if (
+      existing.status !== MembershipStatus.DUE &&
+      existing.status !== MembershipStatus.EXPIRED
+    ) {
+      throw new BadRequestException(
+        "Only due or expired memberships can request renewal",
+      );
+    }
+
+    if (!existing.purchaser.studioId) {
+      throw new BadRequestException("Purchaser is not assigned to a studio");
+    }
+
+    const pending = await this.prisma.invoice.findFirst({
+      where: {
+        membershipId,
+        status: InvoiceStatus.PENDING,
+      },
+      orderBy: { id: "desc" },
+    });
+    if (pending) {
+      return pending;
+    }
+
+    const settings = await this.prisma.studioSettings.findUnique({
+      where: { studioId: existing.purchaser.studioId },
+      select: { platformFeePercent: true },
+    });
+
+    return this.prisma.invoice.create({
+      data: {
+        studentId: existing.purchaserUserId,
+        studioId: existing.purchaser.studioId,
+        membershipId: existing.id,
+        amount: existing.subscription.price,
+        status: InvoiceStatus.PENDING,
+        platformFeePercent: settings?.platformFeePercent ?? 5,
+      },
+    });
+  }
+
+  async renewFromPaidInvoice(membershipId: string) {
+    const membership = await this.prisma.membership.findUnique({
+      where: { id: membershipId },
+      select: { id: true, status: true },
+    });
+    if (!membership) {
+      return null;
+    }
+    if (
+      membership.status !== MembershipStatus.DUE &&
+      membership.status !== MembershipStatus.EXPIRED
+    ) {
+      return null;
+    }
+    return this.renewManual(membershipId);
   }
 
   async findActiveForBatch(

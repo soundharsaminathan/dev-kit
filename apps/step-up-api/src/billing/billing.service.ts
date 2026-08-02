@@ -12,6 +12,7 @@ import {
   UserRole,
 } from "@prisma/client";
 import { computePlatformFee } from "../memberships/membership-helpers";
+import { MembershipsService } from "../memberships/memberships.service";
 import { PrismaService } from "../prisma/prisma.service";
 import {
   type DecryptedUser,
@@ -62,6 +63,8 @@ export class BillingService {
   constructor(
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(UserCryptoService) private readonly crypto: UserCryptoService,
+    @Inject(MembershipsService)
+    private readonly memberships: MembershipsService,
   ) {}
 
   async listByStudio(studioId: string) {
@@ -362,19 +365,23 @@ export class BillingService {
     const amount = Number(invoice.amount);
     const platformFee = computePlatformFee(amount, invoice.platformFeePercent);
 
-    return this.prisma.invoice
-      .update({
-        where: { id },
-        data: {
-          status: InvoiceStatus.PAID,
-          paymentMethod,
-          paidAt: new Date(),
-        },
-      })
-      .then((result) => ({
-        ...result,
-        platformFeeComputed: platformFee,
-      }));
+    const result = await this.prisma.invoice.update({
+      where: { id },
+      data: {
+        status: InvoiceStatus.PAID,
+        paymentMethod,
+        paidAt: new Date(),
+      },
+    });
+
+    if (invoice.membershipId) {
+      await this.memberships.renewFromPaidInvoice(invoice.membershipId);
+    }
+
+    return {
+      ...result,
+      platformFeeComputed: platformFee,
+    };
   }
 
   createInvoice(data: {

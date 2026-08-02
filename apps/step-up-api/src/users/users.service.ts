@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Inject,
   Injectable,
   NotFoundException,
@@ -1014,6 +1015,36 @@ export class UsersService {
       update: {},
       create: { parentUserId, childUserId },
     });
+  }
+
+  async linkChildByEmail(parent: DecryptedUser, email: string) {
+    if (parent.role !== UserRole.PARENT) {
+      throw new ForbiddenException("Only parents can link a child account");
+    }
+    if (!parent.studioId) {
+      throw new BadRequestException("Parent must belong to a studio");
+    }
+
+    const trimmed = email.trim().toLowerCase();
+    if (!trimmed) {
+      throw new BadRequestException("Email is required");
+    }
+
+    const emailHash = this.crypto.hashEmail(trimmed);
+    const child = await this.prisma.user.findFirst({
+      where: {
+        studioId: parent.studioId,
+        emailHash,
+        role: UserRole.STUDENT,
+      },
+    });
+
+    if (!child) {
+      throw new NotFoundException("No student found with that email");
+    }
+
+    await this.linkParentChild(parent.id, child.id);
+    return this.presentUser(child);
   }
 
   async listFamilyMembers(ownerUserId: string) {

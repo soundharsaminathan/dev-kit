@@ -1,8 +1,10 @@
-import { Module } from "@nestjs/common";
+import { forwardRef, Module } from "@nestjs/common";
+import { MembershipsModule } from "../memberships/memberships.module";
 import { BillingController } from "./billing.controller";
 import { BillingService } from "./billing.service";
 
 @Module({
+  imports: [forwardRef(() => MembershipsModule)],
   controllers: [BillingController],
   providers: [BillingService],
   exports: [BillingService],

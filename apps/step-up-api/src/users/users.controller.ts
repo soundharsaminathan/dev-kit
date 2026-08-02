@@ -143,6 +143,11 @@ class LinkParentChildDto {
   childUserId!: string;
 }
 
+class LinkChildByEmailDto {
+  @IsEmail()
+  email!: string;
+}
+
 class UpdateStudioStudentDto {
   @IsOptional()
   @IsString()
@@ -316,6 +321,15 @@ export class UsersController {
     @Param("memberUserId") memberUserId: string,
   ) {
     return this.usersService.removeFamilyMember(user.id, memberUserId);
+  }
+
+  @Post("me/link-child")
+  @Roles(UserRole.PARENT)
+  linkChildByEmail(
+    @CurrentUser() user: DecryptedUser,
+    @Body() dto: LinkChildByEmailDto,
+  ) {
+    return this.usersService.linkChildByEmail(user, dto.email);
   }
 
   @Post()

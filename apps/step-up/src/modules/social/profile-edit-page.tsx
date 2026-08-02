@@ -64,6 +64,7 @@ const CROP_CONFIG: Record<
 
 type ProfileFormValues = {
   name: string;
+  phone: string;
   bio: string;
   instagramUrl: string;
   isPublic: boolean;
@@ -201,6 +202,7 @@ function ProfileEditForm({ backTo, profile }: ProfileEditFormProps) {
       const trimmedName = values.name.trim();
       const saved = await api.patch<{
         name: string;
+        phone?: string | null;
         bio?: string | null;
         photoUrl?: string | null;
         bannerUrl?: string | null;
@@ -214,6 +216,7 @@ function ProfileEditForm({ backTo, profile }: ProfileEditFormProps) {
         preferredBranchId?: string | null;
       }>("/users/me", {
         name: trimmedName,
+        phone: values.phone.trim() || null,
         bio: values.bio.trim(),
         ...(images.avatar.value ? { photoUrl: images.avatar.value } : {}),
         ...(images.banner.value ? { bannerUrl: images.banner.value } : {}),
@@ -276,6 +279,7 @@ function ProfileEditForm({ backTo, profile }: ProfileEditFormProps) {
   const form = useForm({
     defaultValues: {
       name: profile.name,
+      phone: profile.phone ?? "",
       bio: profile.bio ?? "",
       instagramUrl: profile.instagramUrl ?? "",
       isPublic: profile.profileVisibility === "PUBLIC",
@@ -542,6 +546,26 @@ function ProfileEditForm({ backTo, profile }: ProfileEditFormProps) {
                     </TextField>
                   );
                 }}
+              </form.Field>
+
+              <form.Field name="phone">
+                {(field) => (
+                  <TextField>
+                    <Label>Phone</Label>
+                    <Input
+                      name={field.name}
+                      type="tel"
+                      inputMode="tel"
+                      autoComplete="tel"
+                      value={field.state.value}
+                      onBlur={field.handleBlur}
+                      onChange={(event) =>
+                        field.handleChange(event.target.value)
+                      }
+                      placeholder="+91 98765 43210"
+                    />
+                  </TextField>
+                )}
               </form.Field>
 
               <form.Field
