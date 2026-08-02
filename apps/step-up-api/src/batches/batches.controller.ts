@@ -189,6 +189,12 @@ class UpdateBatchDto {
   active?: boolean;
 
   @IsOptional()
+  @IsArray()
+  @ArrayMinSize(1)
+  @IsString({ each: true })
+  subscriptionIds?: string[];
+
+  @IsOptional()
   @IsBoolean()
   certificationEnabled?: boolean;
 

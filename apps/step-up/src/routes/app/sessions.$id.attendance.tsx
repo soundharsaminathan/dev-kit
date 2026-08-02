@@ -25,6 +25,7 @@ type Session = {
   batchId: string;
   startsAt: string;
   endsAt: string;
+  status?: "SCHEDULED" | "COMPLETED" | "CANCELLED";
   batch?: { name: string };
 };
 
@@ -144,6 +145,18 @@ function SessionAttendancePage() {
     onSuccess: invalidateAttendance,
   });
 
+  const completeSession = useMutation({
+    mutationFn: () => api.patch(`/sessions/${id}/complete`),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["session", id] }),
+        queryClient.invalidateQueries({
+          queryKey: ["batch", sessionQuery.data?.batchId],
+        }),
+      ]);
+    },
+  });
+
   const summary = useMemo(() => {
     const roster = rosterQuery.data ?? [];
     return {
@@ -168,11 +181,17 @@ function SessionAttendancePage() {
   const isBusy =
     markAllPresent.isPending ||
     markAttendance.isPending ||
-    markSelected.isPending;
+    markSelected.isPending ||
+    completeSession.isPending;
 
   const bulkError =
-    markAllPresent.error ?? markSelected.error ?? markAttendance.error;
+    markAllPresent.error ??
+    markSelected.error ??
+    markAttendance.error ??
+    completeSession.error;
   const bulkResult = markSelected.data ?? markAllPresent.data;
+
+  const canComplete = sessionQuery.data?.status === "SCHEDULED";
 
   const qrExpiresLabel = qrQuery.data
     ? formatSessionDateTime(qrQuery.data.expiresAt)
@@ -209,9 +228,29 @@ function SessionAttendancePage() {
         title="Session attendance"
         description={sessionDescription}
         actions={
-          <Button variant="primary" onClick={() => setActiveQrId(QR_ITEM_ID)}>
-            Generate QR
-          </Button>
+          <div className={styles.headerActions}>
+            {canComplete ? (
+              <Button
+                variant="default"
+                isPending={completeSession.isPending}
+                data-testid="complete-session"
+                onClick={() => {
+                  if (
+                    window.confirm(
+                      "Mark this session as completed? Attendance can still be reviewed afterward.",
+                    )
+                  ) {
+                    completeSession.mutate();
+                  }
+                }}
+              >
+                Complete session
+              </Button>
+            ) : null}
+            <Button variant="primary" onClick={() => setActiveQrId(QR_ITEM_ID)}>
+              Generate QR
+            </Button>
+          </div>
         }
       />
 

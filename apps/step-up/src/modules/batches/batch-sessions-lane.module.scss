@@ -17,6 +17,12 @@
   gap: var(--space-2, 0.5rem);
 }
 
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2, 0.5rem);
+}
+
 .title {
   margin: 0;
   font-size: 0.8125rem;
@@ -118,6 +124,18 @@
   width: 1.125rem;
   height: 1.125rem;
   color: color-mix(in srgb, var(--color-fg) 40%, transparent);
+}
+
+.sheetStack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 0.75rem);
+}
+
+.sheetError {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--color-danger, #b91c1c);
 }
 
 @media (prefers-reduced-motion: reduce) {
