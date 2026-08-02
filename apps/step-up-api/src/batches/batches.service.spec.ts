@@ -799,3 +799,98 @@ describe("BatchesService.remove and enroll", () => {
     });
   });
 });
+
+describe("BatchesService.listByStudio viewer enrollment", () => {
+  const prisma = {
+    batch: { findMany: vi.fn() },
+    batchEnrollment: { findMany: vi.fn() },
+    booking: { findMany: vi.fn(), updateMany: vi.fn() },
+  };
+
+  const media = {
+    signReadUrl: vi.fn(async (url: string | null) => url),
+  };
+
+  let service: BatchesService;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    service = new BatchesService(
+      prisma as never,
+      { decryptUser: (user: unknown) => user } as never,
+      {
+        assertNoConflicts: vi.fn(),
+        assertStudentAvailableForBatch: vi.fn(),
+      } as never,
+      { invalidate: vi.fn() } as never,
+      media as never,
+      { purchaseForBatch: vi.fn() } as never,
+    );
+    prisma.batchEnrollment.findMany.mockResolvedValue([]);
+    prisma.booking.findMany.mockResolvedValue([]);
+    prisma.booking.updateMany.mockResolvedValue({ count: 0 });
+  });
+
+  it("marks viewerEnrolled when studentId matches an enrollment", async () => {
+    prisma.batch.findMany.mockResolvedValue([
+      {
+        id: "batch-1",
+        name: "Hip Hop",
+        capacity: 20,
+        scheduleJson: {
+          frequency: "WEEKLY",
+          weekdays: [1],
+          startDate: "2026-01-01",
+          endDate: "2026-12-31",
+          startTime: "18:00",
+          endTime: "19:00",
+          utcOffsetMinutes: 330,
+        },
+        danceCategories: [{ name: "Hip Hop" }],
+        enrollments: [{ studentId: "student-1" }, { studentId: "student-2" }],
+        trainers: [],
+        plans: [],
+        _count: { enrollments: 2 },
+        branch: null,
+        coverImageUrl: null,
+      },
+    ]);
+
+    const rows = await service.listByStudio("studio-1", {
+      studentId: "student-1",
+    });
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({
+      id: "batch-1",
+      viewerEnrolled: true,
+    });
+  });
+
+  it("marks viewerEnrolled false when student is not enrolled", async () => {
+    prisma.batch.findMany.mockResolvedValue([
+      {
+        id: "batch-1",
+        name: "Hip Hop",
+        capacity: 20,
+        scheduleJson: {},
+        danceCategories: [],
+        enrollments: [{ studentId: "student-2" }],
+        trainers: [],
+        plans: [],
+        _count: { enrollments: 1 },
+        branch: null,
+        coverImageUrl: null,
+      },
+    ]);
+
+    const rows = await service.listByStudio("studio-1", {
+      studentId: "student-1",
+    });
+
+    expect(rows[0]).toMatchObject({
+      id: "batch-1",
+      viewerEnrolled: false,
+    });
+  });
+});

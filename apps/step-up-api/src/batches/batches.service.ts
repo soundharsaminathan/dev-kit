@@ -58,6 +58,7 @@ export type DiscoverBatchFilters = {
   branchId?: string;
   search?: string;
   activeOnly?: boolean;
+  studentId?: string;
 };
 
 function durationMinutesFromSchedule(schedule: unknown): number | null {
@@ -398,13 +399,20 @@ export class BatchesService {
           trainer: this.crypto.decryptUser(row.trainer),
         }));
         const { plans, price } = extractPlans(batch.plans);
-        return this.withSignedCover(
+        const shaped = await this.withSignedCover(
           shapeDiscoverBatch(
             { ...batch, trainers, plans },
             reservedByBatch.get(batch.id),
             price,
           ),
         );
+        if (!filters.studentId) return shaped;
+        return {
+          ...shaped,
+          viewerEnrolled: batch.enrollments.some(
+            (row) => row.studentId === filters.studentId,
+          ),
+        };
       }),
     );
 

@@ -285,6 +285,12 @@
   letter-spacing: -0.01em;
 }
 
+.cta[data-tone="muted"] {
+  background: color-mix(in srgb, var(--color-fg) 8%, var(--color-bg));
+  color: var(--color-fg-muted, var(--color-fg));
+  font-weight: 650;
+}
+
 @media (min-width: 768px) {
   .card {
     grid-template-columns: minmax(8rem, 11rem) minmax(0, 1fr);

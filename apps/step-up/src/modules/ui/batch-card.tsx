@@ -210,7 +210,18 @@ export function BatchCard({
           </div>
         ) : null}
 
-        {ctaLabel ? <span className={styles.cta}>{ctaLabel}</span> : null}
+        {ctaLabel ? (
+          <span
+            className={styles.cta}
+            data-tone={
+              ctaLabel === "Enrolled" || ctaLabel === "Full"
+                ? "muted"
+                : undefined
+            }
+          >
+            {ctaLabel}
+          </span>
+        ) : null}
       </div>
     </Link>
   );
