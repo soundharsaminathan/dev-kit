@@ -72,14 +72,19 @@ test.describe("checkout payment @critical", () => {
     const pay = page.getByTestId("checkout-pay");
     await expect(pay).toBeVisible();
 
-    const [response] = await Promise.all([
+    const [orderResponse, confirmResponse] = await Promise.all([
+      waitForApiResponse(page, {
+        method: "POST",
+        pathIncludes: `/bookings/${created.id}/create-payment-order`,
+      }),
       waitForApiResponse(page, {
         method: "POST",
         pathIncludes: `/bookings/${created.id}/confirm-payment`,
       }),
       pay.click(),
     ]);
-    expect(response.ok()).toBeTruthy();
+    expect(orderResponse.ok()).toBeTruthy();
+    expect(confirmResponse.ok()).toBeTruthy();
 
     await expect
       .poll(async () => {

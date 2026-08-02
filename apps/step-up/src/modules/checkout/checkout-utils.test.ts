@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { formatSeconds, secondsLeft } from "./checkout-utils";
+import { formatPaiseAsInr, formatSeconds, secondsLeft } from "./checkout-utils";
 
 describe("checkout-utils", () => {
   beforeEach(() => {
@@ -29,5 +29,10 @@ describe("checkout-utils", () => {
   it("formats multi-hour remaining time as total minutes", () => {
     expect(formatSeconds(3600)).toBe("60:00");
     expect(formatSeconds(3661)).toBe("61:01");
+  });
+
+  it("formats paise as INR", () => {
+    expect(formatPaiseAsInr(100)).toBe("₹1.00");
+    expect(formatPaiseAsInr(1250)).toBe("₹12.50");
   });
 });

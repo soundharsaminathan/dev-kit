@@ -2,6 +2,14 @@ import { ConflictException } from "@nestjs/common";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { BookingsService } from "./bookings.service";
 
+const razorpayDisabled = {
+  isEnabled: vi.fn().mockReturnValue(false),
+  keyId: vi.fn().mockReturnValue(""),
+  bookingAmountPaise: vi.fn().mockReturnValue(100),
+  createOrder: vi.fn(),
+  verifyPaymentSignature: vi.fn(),
+};
+
 describe("BookingsService schedule conflicts", () => {
   const tx = {
     $queryRaw: vi.fn().mockResolvedValue([{ id: "batch-1" }]),
@@ -63,11 +71,13 @@ describe("BookingsService schedule conflicts", () => {
     scheduleConflicts.assertStudentAvailableForBatch.mockResolvedValue(
       undefined,
     );
+    razorpayDisabled.isEnabled.mockReturnValue(false);
     service = new BookingsService(
       prisma as never,
       memberships as never,
       crypto as never,
       scheduleConflicts as never,
+      razorpayDisabled as never,
     );
   });
 
@@ -227,11 +237,13 @@ describe("BookingsService.confirmPayment", () => {
     prisma.$transaction.mockImplementation(
       async (fn: (client: typeof tx) => unknown) => fn(tx),
     );
+    razorpayDisabled.isEnabled.mockReturnValue(false);
     service = new BookingsService(
       prisma as never,
       memberships as never,
       crypto as never,
       scheduleConflicts as never,
+      razorpayDisabled as never,
     );
   });
 
@@ -324,6 +336,238 @@ describe("BookingsService.confirmPayment", () => {
     ).resolves.toEqual(booking);
     expect(tx.booking.update).not.toHaveBeenCalled();
   });
+
+  it("rejects confirm when Razorpay is enabled and signature is missing", async () => {
+    razorpayDisabled.isEnabled.mockReturnValue(true);
+    tx.booking.findUnique.mockResolvedValue({
+      id: "bk-1",
+      studentId: "student-1",
+      status: "AWAITING_PAYMENT",
+      type: "TRIAL",
+      batchId: null,
+      paymentHoldExpiresAt: new Date(Date.now() + 60_000),
+      razorpayOrderId: "order_1",
+    });
+
+    await expect(
+      service.confirmPayment("bk-1", {
+        id: "student-1",
+        role: "STUDENT",
+      } as never),
+    ).rejects.toThrow(/Razorpay payment details are required/);
+  });
+
+  it("rejects confirm when Razorpay signature is invalid", async () => {
+    razorpayDisabled.isEnabled.mockReturnValue(true);
+    razorpayDisabled.verifyPaymentSignature.mockReturnValue(false);
+    tx.booking.findUnique.mockResolvedValue({
+      id: "bk-1",
+      studentId: "student-1",
+      status: "AWAITING_PAYMENT",
+      type: "TRIAL",
+      batchId: null,
+      paymentHoldExpiresAt: new Date(Date.now() + 60_000),
+      razorpayOrderId: "order_1",
+    });
+
+    await expect(
+      service.confirmPayment(
+        "bk-1",
+        { id: "student-1", role: "STUDENT" } as never,
+        {
+          razorpay_order_id: "order_1",
+          razorpay_payment_id: "pay_1",
+          razorpay_signature: "bad",
+        },
+      ),
+    ).rejects.toThrow(/Invalid Razorpay payment signature/);
+  });
+
+  it("rejects confirm when Razorpay order does not match booking", async () => {
+    razorpayDisabled.isEnabled.mockReturnValue(true);
+    tx.booking.findUnique.mockResolvedValue({
+      id: "bk-1",
+      studentId: "student-1",
+      status: "AWAITING_PAYMENT",
+      type: "TRIAL",
+      batchId: null,
+      paymentHoldExpiresAt: new Date(Date.now() + 60_000),
+      razorpayOrderId: "order_1",
+    });
+
+    await expect(
+      service.confirmPayment(
+        "bk-1",
+        { id: "student-1", role: "STUDENT" } as never,
+        {
+          razorpay_order_id: "order_other",
+          razorpay_payment_id: "pay_1",
+          razorpay_signature: "sig",
+        },
+      ),
+    ).rejects.toThrow(/order does not match/);
+  });
+
+  it("confirms payment when Razorpay signature is valid", async () => {
+    razorpayDisabled.isEnabled.mockReturnValue(true);
+    razorpayDisabled.verifyPaymentSignature.mockReturnValue(true);
+    const booking = {
+      id: "bk-1",
+      studentId: "student-1",
+      status: "AWAITING_PAYMENT",
+      type: "TRIAL",
+      batchId: null,
+      paymentHoldExpiresAt: new Date(Date.now() + 60_000),
+      razorpayOrderId: "order_1",
+    };
+    tx.booking.findUnique.mockResolvedValue(booking);
+    tx.booking.update.mockResolvedValue({
+      ...booking,
+      status: "PENDING",
+      paymentHoldExpiresAt: null,
+      razorpayPaymentId: "pay_1",
+    });
+
+    await service.confirmPayment(
+      "bk-1",
+      { id: "student-1", role: "STUDENT" } as never,
+      {
+        razorpay_order_id: "order_1",
+        razorpay_payment_id: "pay_1",
+        razorpay_signature: "good",
+      },
+    );
+
+    expect(tx.booking.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          status: "PENDING",
+          razorpayPaymentId: "pay_1",
+        }),
+      }),
+    );
+  });
+});
+
+describe("BookingsService.createPaymentOrder", () => {
+  const prisma = {
+    booking: {
+      findUnique: vi.fn(),
+      update: vi.fn(),
+    },
+    familyMember: { findUnique: vi.fn() },
+    parentChild: { findUnique: vi.fn() },
+    $transaction: vi.fn(async (fn: (client: unknown) => unknown) =>
+      fn({
+        booking: { updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
+      }),
+    ),
+  };
+
+  const memberships = { findActiveForBatch: vi.fn() };
+  const crypto = { decryptUser: (user: unknown) => user };
+  const scheduleConflicts = {
+    assertNoConflicts: vi.fn(),
+    assertStudentAvailableForBatch: vi.fn(),
+  };
+  const razorpay = {
+    isEnabled: vi.fn(),
+    keyId: vi.fn().mockReturnValue("rzp_test_key"),
+    bookingAmountPaise: vi.fn().mockReturnValue(100),
+    createOrder: vi.fn(),
+    verifyPaymentSignature: vi.fn(),
+  };
+
+  let service: BookingsService;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    service = new BookingsService(
+      prisma as never,
+      memberships as never,
+      crypto as never,
+      scheduleConflicts as never,
+      razorpay as never,
+    );
+  });
+
+  it("returns demo mode when Razorpay is not configured", async () => {
+    razorpay.isEnabled.mockReturnValue(false);
+    prisma.booking.findUnique.mockResolvedValue({
+      id: "bk-1",
+      studentId: "student-1",
+      status: "AWAITING_PAYMENT",
+      paymentHoldExpiresAt: new Date(Date.now() + 60_000),
+      razorpayOrderId: null,
+    });
+
+    await expect(
+      service.createPaymentOrder("bk-1", {
+        id: "student-1",
+        role: "STUDENT",
+      } as never),
+    ).resolves.toEqual({ mode: "demo" });
+    expect(razorpay.createOrder).not.toHaveBeenCalled();
+  });
+
+  it("returns existing order when already created", async () => {
+    razorpay.isEnabled.mockReturnValue(true);
+    prisma.booking.findUnique.mockResolvedValue({
+      id: "bk-1",
+      studentId: "student-1",
+      status: "AWAITING_PAYMENT",
+      paymentHoldExpiresAt: new Date(Date.now() + 60_000),
+      razorpayOrderId: "order_existing",
+    });
+
+    await expect(
+      service.createPaymentOrder("bk-1", {
+        id: "student-1",
+        role: "STUDENT",
+      } as never),
+    ).resolves.toEqual({
+      mode: "razorpay",
+      keyId: "rzp_test_key",
+      orderId: "order_existing",
+      amount: 100,
+      currency: "INR",
+    });
+    expect(razorpay.createOrder).not.toHaveBeenCalled();
+  });
+
+  it("creates and persists a new Razorpay order", async () => {
+    razorpay.isEnabled.mockReturnValue(true);
+    prisma.booking.findUnique.mockResolvedValue({
+      id: "bk-1",
+      studentId: "student-1",
+      status: "AWAITING_PAYMENT",
+      paymentHoldExpiresAt: new Date(Date.now() + 60_000),
+      razorpayOrderId: null,
+    });
+    razorpay.createOrder.mockResolvedValue({
+      orderId: "order_new",
+      amount: 100,
+      currency: "INR",
+    });
+    prisma.booking.update.mockResolvedValue({ id: "bk-1" });
+
+    await expect(
+      service.createPaymentOrder("bk-1", {
+        id: "student-1",
+        role: "STUDENT",
+      } as never),
+    ).resolves.toEqual({
+      mode: "razorpay",
+      keyId: "rzp_test_key",
+      orderId: "order_new",
+      amount: 100,
+      currency: "INR",
+    });
+    expect(prisma.booking.update).toHaveBeenCalledWith({
+      where: { id: "bk-1" },
+      data: { razorpayOrderId: "order_new" },
+    });
+  });
 });
 
 describe("BookingsService.abandonPayment", () => {
@@ -357,11 +601,13 @@ describe("BookingsService.abandonPayment", () => {
     prisma.$transaction.mockImplementation(
       async (fn: (client: typeof tx) => unknown) => fn(tx),
     );
+    razorpayDisabled.isEnabled.mockReturnValue(false);
     service = new BookingsService(
       prisma as never,
       memberships as never,
       crypto as never,
       scheduleConflicts as never,
+      razorpayDisabled as never,
     );
   });
 
@@ -466,11 +712,13 @@ describe("BookingsService.create overdue invoice freeze", () => {
     prisma.$transaction.mockImplementation(
       async (fn: (client: typeof tx) => unknown) => fn(tx),
     );
+    razorpayDisabled.isEnabled.mockReturnValue(false);
     service = new BookingsService(
       prisma as never,
       memberships as never,
       crypto as never,
       scheduleConflicts as never,
+      razorpayDisabled as never,
     );
   });
 

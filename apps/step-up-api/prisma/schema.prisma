@@ -646,6 +646,8 @@ model Booking {
   startsAt             DateTime?
   endsAt               DateTime?
   paymentHoldExpiresAt DateTime?
+  razorpayOrderId      String?       @unique
+  razorpayPaymentId    String?       @unique
 
   studio  Studio   @relation(fields: [studioId], references: [id], onDelete: Cascade)
   student User     @relation("StudentBookings", fields: [studentId], references: [id], onDelete: Cascade)

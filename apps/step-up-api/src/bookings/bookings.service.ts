@@ -22,6 +22,7 @@ import {
 } from "../batches/batch-capacity";
 import { ScheduleConflictService } from "../calendar/schedule-conflict.service";
 import { MembershipsService } from "../memberships/memberships.service";
+import { RazorpayService } from "../payments/razorpay.service";
 import { PrismaService } from "../prisma/prisma.service";
 import {
   type DecryptedUser,
@@ -41,6 +42,22 @@ export type CreateBookingOptions = {
   requirePayment?: boolean;
 };
 
+export type ConfirmPaymentInput = {
+  razorpay_order_id?: string;
+  razorpay_payment_id?: string;
+  razorpay_signature?: string;
+};
+
+export type CreatePaymentOrderResult =
+  | { mode: "demo" }
+  | {
+      mode: "razorpay";
+      keyId: string;
+      orderId: string;
+      amount: number;
+      currency: string;
+    };
+
 @Injectable()
 export class BookingsService {
   constructor(
@@ -50,6 +67,7 @@ export class BookingsService {
     @Inject(UserCryptoService) private readonly crypto: UserCryptoService,
     @Inject(ScheduleConflictService)
     private readonly scheduleConflicts: ScheduleConflictService,
+    @Inject(RazorpayService) private readonly razorpay: RazorpayService,
   ) {}
 
   async listForStudent(studentId: string) {
@@ -271,7 +289,64 @@ export class BookingsService {
     );
   }
 
-  async confirmPayment(id: string, actor: DecryptedUser) {
+  async createPaymentOrder(
+    id: string,
+    actor: DecryptedUser,
+  ): Promise<CreatePaymentOrderResult> {
+    await this.prisma.$transaction(async (tx) => {
+      await expireStalePaymentHolds(tx);
+    });
+
+    const booking = await this.prisma.booking.findUnique({ where: { id } });
+    if (!booking) {
+      throw new NotFoundException("Booking not found");
+    }
+
+    await this.assertCanAccessBooking(booking.studentId, actor);
+    this.assertAwaitingPaymentHold(booking);
+
+    if (!this.razorpay.isEnabled()) {
+      return { mode: "demo" };
+    }
+
+    const amount = this.razorpay.bookingAmountPaise();
+    const keyId = this.razorpay.keyId();
+
+    if (booking.razorpayOrderId) {
+      return {
+        mode: "razorpay",
+        keyId,
+        orderId: booking.razorpayOrderId,
+        amount,
+        currency: "INR",
+      };
+    }
+
+    const order = await this.razorpay.createOrder({
+      receipt: booking.id,
+      amountPaise: amount,
+      notes: { bookingId: booking.id },
+    });
+
+    await this.prisma.booking.update({
+      where: { id },
+      data: { razorpayOrderId: order.orderId },
+    });
+
+    return {
+      mode: "razorpay",
+      keyId,
+      orderId: order.orderId,
+      amount: order.amount,
+      currency: order.currency,
+    };
+  }
+
+  async confirmPayment(
+    id: string,
+    actor: DecryptedUser,
+    payment: ConfirmPaymentInput = {},
+  ) {
     return this.prisma.$transaction(async (tx) => {
       await expireStalePaymentHolds(tx);
 
@@ -306,6 +381,38 @@ export class BookingsService {
         );
       }
 
+      const razorpayEnabled = this.razorpay.isEnabled();
+      let razorpayPaymentId: string | undefined;
+
+      if (razorpayEnabled) {
+        const orderId = payment.razorpay_order_id?.trim();
+        const paymentId = payment.razorpay_payment_id?.trim();
+        const signature = payment.razorpay_signature?.trim();
+
+        if (!orderId || !paymentId || !signature) {
+          throw new BadRequestException(
+            "Razorpay payment details are required",
+          );
+        }
+
+        if (!booking.razorpayOrderId || booking.razorpayOrderId !== orderId) {
+          throw new BadRequestException(
+            "Razorpay order does not match this booking",
+          );
+        }
+
+        const valid = this.razorpay.verifyPaymentSignature({
+          orderId,
+          paymentId,
+          signature,
+        });
+        if (!valid) {
+          throw new BadRequestException("Invalid Razorpay payment signature");
+        }
+
+        razorpayPaymentId = paymentId;
+      }
+
       if (booking.batchId && booking.type !== BookingType.PRIVATE) {
         await lockBatchRow(tx, booking.batchId);
         const batch = await tx.batch.findUnique({
@@ -328,6 +435,7 @@ export class BookingsService {
         data: {
           status: BookingStatus.PENDING,
           paymentHoldExpiresAt: null,
+          ...(razorpayPaymentId ? { razorpayPaymentId } : {}),
         },
         include: {
           batch: { select: { id: true, name: true } },
@@ -354,6 +462,8 @@ export class BookingsService {
         data: {
           status: BookingStatus.CANCELLED,
           paymentHoldExpiresAt: null,
+          razorpayOrderId: null,
+          razorpayPaymentId: null,
         },
         include: {
           batch: { select: { id: true, name: true } },
@@ -482,6 +592,23 @@ export class BookingsService {
           : {}),
       },
     });
+  }
+
+  private assertAwaitingPaymentHold(booking: {
+    status: BookingStatus;
+    paymentHoldExpiresAt: Date | null;
+  }) {
+    if (booking.status !== BookingStatus.AWAITING_PAYMENT) {
+      throw new BadRequestException("Booking is not awaiting payment");
+    }
+    if (
+      !booking.paymentHoldExpiresAt ||
+      booking.paymentHoldExpiresAt.getTime() <= Date.now()
+    ) {
+      throw new BadRequestException(
+        "Payment window expired. Please book again.",
+      );
+    }
   }
 
   private async assertCanAccessBooking(

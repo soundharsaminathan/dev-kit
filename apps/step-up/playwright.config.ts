@@ -120,6 +120,9 @@ export default defineConfig({
         SENTRY_DSN: "",
         // E2E disables BullMQ — app .env may still point at a quota-exhausted Redis.
         REDIS_URL: "",
+        // Keep checkout on the local demo path; real Razorpay keys break CI mocks.
+        RAZORPAY_KEY_ID: "",
+        RAZORPAY_KEY_SECRET: "",
       },
     },
     {

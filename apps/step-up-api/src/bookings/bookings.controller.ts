@@ -73,6 +73,20 @@ class UpdateBookingStatusDto {
   trainerId?: string;
 }
 
+class ConfirmPaymentDto {
+  @IsOptional()
+  @IsString()
+  razorpay_order_id?: string;
+
+  @IsOptional()
+  @IsString()
+  razorpay_payment_id?: string;
+
+  @IsOptional()
+  @IsString()
+  razorpay_signature?: string;
+}
+
 @Controller("bookings")
 @UseGuards(AuthGuard, RolesGuard)
 export class BookingsController {
@@ -117,10 +131,23 @@ export class BookingsController {
     return this.bookingsService.create(dto, { requirePayment });
   }
 
+  @Post(":id/create-payment-order")
+  @Roles(UserRole.STUDENT, UserRole.PARENT)
+  createPaymentOrder(
+    @Param("id") id: string,
+    @CurrentUser() user: DecryptedUser,
+  ) {
+    return this.bookingsService.createPaymentOrder(id, user);
+  }
+
   @Post(":id/confirm-payment")
   @Roles(UserRole.STUDENT, UserRole.PARENT)
-  confirmPayment(@Param("id") id: string, @CurrentUser() user: DecryptedUser) {
-    return this.bookingsService.confirmPayment(id, user);
+  confirmPayment(
+    @Param("id") id: string,
+    @CurrentUser() user: DecryptedUser,
+    @Body() dto: ConfirmPaymentDto,
+  ) {
+    return this.bookingsService.confirmPayment(id, user, dto ?? {});
   }
 
   @Post(":id/abandon-payment")

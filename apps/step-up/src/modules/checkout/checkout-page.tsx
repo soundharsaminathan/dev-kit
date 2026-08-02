@@ -1,4 +1,3 @@
-import { Icon } from "@dev-ui/icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
@@ -8,7 +7,14 @@ import { SkeletonBlock } from "@/modules/ui/skeleton-block";
 import { ErrorState, SuccessState } from "@/modules/ui/states";
 import { StickyCtaBar, TouchButton } from "@/modules/ui/touch-button";
 import styles from "./checkout-page.module.scss";
-import { formatSeconds, type PayMethod, secondsLeft } from "./checkout-utils";
+import {
+  formatPaiseAsInr,
+  formatSeconds,
+  loadRazorpayCheckout,
+  type PaymentOrderResponse,
+  type RazorpaySuccessResponse,
+  secondsLeft,
+} from "./checkout-utils";
 
 type CheckoutBooking = {
   id: string;
@@ -18,15 +24,17 @@ type CheckoutBooking = {
   paymentHoldExpiresAt?: string | null;
   batch?: { id: string; name: string } | null;
 };
+
 export function CheckoutPage() {
   const { bookingId } = useParams({ strict: false }) as { bookingId: string };
   const api = useApi();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [method, setMethod] = useState<PayMethod>("upi");
-  const [remaining, setRemaining] = useState(30);
+  const [remaining, setRemaining] = useState(600);
   const [expired, setExpired] = useState(false);
   const [paid, setPaid] = useState(false);
+  const [amountLabel, setAmountLabel] = useState<string | null>(null);
+  const [payError, setPayError] = useState<string | null>(null);
 
   const bookingQuery = useQuery({
     queryKey: ["bookings", bookingId],
@@ -54,14 +62,75 @@ export function CheckoutPage() {
   }, [expired, paid, bookingId, api, bookingQuery.data?.status]);
 
   const confirmPayment = useMutation({
-    mutationFn: () =>
-      api.post<CheckoutBooking>(`/bookings/${bookingId}/confirm-payment`),
+    mutationFn: (payload?: RazorpaySuccessResponse) =>
+      api.post<CheckoutBooking>(
+        `/bookings/${bookingId}/confirm-payment`,
+        payload ?? {},
+      ),
     onSuccess: async () => {
       setPaid(true);
+      setPayError(null);
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["bookings"] }),
         queryClient.invalidateQueries({ queryKey: ["batches"] }),
       ]);
+    },
+  });
+
+  const startPayment = useMutation({
+    mutationFn: async () => {
+      setPayError(null);
+      const order = await api.post<PaymentOrderResponse>(
+        `/bookings/${bookingId}/create-payment-order`,
+      );
+
+      if (order.mode === "demo") {
+        setAmountLabel("₹0.00 demo");
+        await confirmPayment.mutateAsync(undefined);
+        return;
+      }
+
+      setAmountLabel(formatPaiseAsInr(order.amount));
+      await loadRazorpayCheckout();
+
+      await new Promise<void>((resolve, reject) => {
+        const rzp = new window.Razorpay({
+          key: order.keyId,
+          amount: order.amount,
+          currency: order.currency,
+          name: "Step Up",
+          description: bookingQuery.data?.batch?.name ?? "Booking payment",
+          order_id: order.orderId,
+          handler: (response) => {
+            confirmPayment
+              .mutateAsync(response)
+              .then(() => resolve())
+              .catch((error: unknown) => reject(error));
+          },
+          modal: {
+            ondismiss: () => {
+              reject(new Error("Payment cancelled"));
+            },
+          },
+        });
+        rzp.on("payment.failed", (response) => {
+          reject(
+            new Error(
+              response.error?.description ??
+                response.error?.reason ??
+                "Payment failed",
+            ),
+          );
+        });
+        rzp.open();
+      });
+    },
+    onError: (error: unknown) => {
+      if (error instanceof Error && error.message === "Payment cancelled") {
+        setPayError(null);
+        return;
+      }
+      setPayError(error instanceof Error ? error.message : "Payment failed.");
     },
   });
 
@@ -130,7 +199,7 @@ export function CheckoutPage() {
       <Screen title="Payment expired" showBack backTo="/me/book">
         <ErrorState
           title="Hold expired"
-          description="The 30-second payment window closed and your seat was released. Book again to get a fresh hold."
+          description="The payment window closed and your seat was released. Book again to get a fresh hold."
           action={
             <TouchButton variant="primary" fullWidth>
               {booking.batch?.id ? (
@@ -147,18 +216,19 @@ export function CheckoutPage() {
     );
   }
 
-  const urgent = remaining <= 10;
+  const urgent = remaining <= 60;
+  const isPaying = startPayment.isPending || confirmPayment.isPending;
 
   return (
     <>
       <Screen title="Secure checkout" showBack backTo="/me/book" paddedCta>
         <div className={styles.panel}>
           <div className={styles.brand}>
-            <p className={styles.brandEyebrow}>Payment gateway preview</p>
-            <h2 className={styles.brandTitle}>Razorpay (demo)</h2>
+            <p className={styles.brandEyebrow}>Payment gateway</p>
+            <h2 className={styles.brandTitle}>Razorpay (test)</h2>
             <p className={styles.brandNote}>
-              Live Razorpay checkout is planned. This demo holds your seat for
-              30 seconds — complete payment before the timer runs out.
+              Complete payment before the timer runs out. Your seat is held for
+              10 minutes while checkout is open.
             </p>
           </div>
 
@@ -175,7 +245,7 @@ export function CheckoutPage() {
             </div>
             <div className={styles.row}>
               <p className={styles.label}>Amount</p>
-              <p className={styles.value}>₹0.00 demo</p>
+              <p className={styles.value}>{amountLabel ?? "₹1.00 test"}</p>
             </div>
           </div>
 
@@ -193,53 +263,13 @@ export function CheckoutPage() {
             </p>
           </div>
 
-          <div className={styles.methods}>
-            {(
-              [
-                {
-                  id: "upi" as const,
-                  title: "UPI",
-                  hint: "GPay, PhonePe, Paytm",
-                  icon: "sparkles" as const,
-                },
-                {
-                  id: "card" as const,
-                  title: "Card",
-                  hint: "Visa, Mastercard, RuPay",
-                  icon: "credit-card" as const,
-                },
-                {
-                  id: "netbanking" as const,
-                  title: "Netbanking",
-                  hint: "All major banks",
-                  icon: "building" as const,
-                },
-              ] as const
-            ).map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                className={styles.method}
-                data-selected={method === item.id ? "true" : undefined}
-                onClick={() => setMethod(item.id)}
-              >
-                <span className={styles.methodIcon} aria-hidden>
-                  <Icon name={item.icon} />
-                </span>
-                <span className={styles.methodText}>
-                  <span className={styles.methodTitle}>{item.title}</span>
-                  <span className={styles.methodHint}>{item.hint}</span>
-                </span>
-              </button>
-            ))}
-          </div>
-
-          {confirmPayment.isError ? (
+          {payError || confirmPayment.isError ? (
             <ErrorState
               description={
-                confirmPayment.error instanceof Error
+                payError ??
+                (confirmPayment.error instanceof Error
                   ? confirmPayment.error.message
-                  : "Payment failed."
+                  : "Payment failed.")
               }
             />
           ) : null}
@@ -252,6 +282,7 @@ export function CheckoutPage() {
             variant="quiet"
             fullWidth
             data-testid="checkout-abandon"
+            isDisabled={isPaying}
             onClick={() => {
               void api
                 .post(`/bookings/${bookingId}/abandon-payment`)
@@ -275,9 +306,9 @@ export function CheckoutPage() {
           variant="primary"
           fullWidth
           isDisabled={remaining <= 0}
-          isPending={confirmPayment.isPending}
+          isPending={isPaying}
           data-testid="checkout-pay"
-          onClick={() => confirmPayment.mutate()}
+          onClick={() => startPayment.mutate()}
         >
           Pay securely
         </TouchButton>

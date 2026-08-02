@@ -1,7 +1,7 @@
 import { BadRequestException } from "@nestjs/common";
 import { BookingStatus, BookingType, type Prisma } from "@prisma/client";
 
-export const PAYMENT_HOLD_MS = 30_000;
+export const PAYMENT_HOLD_MS = 600_000;
 
 export const SEAT_HOLDING_BOOKING_STATUSES: BookingStatus[] = [
   BookingStatus.AWAITING_PAYMENT,
@@ -31,6 +31,8 @@ export async function expireStalePaymentHolds(tx: Tx, batchId?: string) {
     data: {
       status: BookingStatus.CANCELLED,
       paymentHoldExpiresAt: null,
+      razorpayOrderId: null,
+      razorpayPaymentId: null,
     },
   });
 }
