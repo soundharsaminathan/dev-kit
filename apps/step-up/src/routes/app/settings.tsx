@@ -1,11 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { useApi } from "@/lib/api-context";
 import { useAuth } from "@/lib/auth";
 import { STUDIO_ID } from "@/lib/constants";
+import { BrandingPanel } from "@/modules/branding/branding-panel";
+import type { StudioBrandThemePayload } from "@/modules/branding/types";
 import { InstallAppPanel } from "@/modules/pwa/install-app-panel";
-import { uploadSocialPhoto } from "@/modules/social/upload";
 import { FormInput } from "@/modules/ui/form-input";
 import { Screen } from "@/modules/ui/screen";
 import { SkeletonBlock } from "@/modules/ui/skeleton-block";
@@ -27,6 +28,7 @@ type Studio = {
   address: string;
   contact: string;
   logoUrl?: string | null;
+  brandTheme?: StudioBrandThemePayload | null;
   settings: StudioSettings | null;
 };
 
@@ -48,7 +50,6 @@ function SettingsPage() {
   const api = useApi();
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const logoInputRef = useRef<HTMLInputElement>(null);
   const isOwner = user?.role === "OWNER";
 
   const studioQuery = useQuery({
@@ -73,7 +74,6 @@ function SettingsPage() {
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<"STAFF" | "TRAINER">("STAFF");
   const [lastInviteUrl, setLastInviteUrl] = useState<string | null>(null);
-  const [logoError, setLogoError] = useState<string | null>(null);
 
   const updateStudio = useMutation({
     mutationFn: () =>
@@ -129,25 +129,6 @@ function SettingsPage() {
     },
   });
 
-  const uploadLogo = useMutation({
-    mutationFn: async (file: File) => {
-      const logoUrl = await uploadSocialPhoto(api, file, "avatar");
-      return api.patch(`/studios/${STUDIO_ID}`, { logoUrl });
-    },
-    onSuccess: () => {
-      setLogoError(null);
-      void queryClient.invalidateQueries({ queryKey: ["studio", STUDIO_ID] });
-      void queryClient.invalidateQueries({
-        queryKey: ["studio-public", STUDIO_ID],
-      });
-    },
-    onError: (error) => {
-      setLogoError(
-        error instanceof Error ? error.message : "Could not upload logo.",
-      );
-    },
-  });
-
   const createInvite = useMutation({
     mutationFn: () =>
       api.post<StaffInvite>("/staff-invites", {
@@ -187,7 +168,7 @@ function SettingsPage() {
     <>
       <Screen
         title="Studio settings"
-        subtitle="Update studio profile, payments, and team invites."
+        subtitle="Update studio profile, branding, payments, and team invites."
         paddedCta
       >
         {studioQuery.isLoading ? (
@@ -248,42 +229,13 @@ function SettingsPage() {
               />
             </div>
 
-            <div className={staff.softPanel}>
-              <p className={staff.panelTitle}>Logo</p>
-              <p className={staff.panelDesc}>Shown on public studio pages</p>
-              {studioQuery.data.logoUrl ? (
-                <img
-                  src={studioQuery.data.logoUrl}
-                  alt={`${studioQuery.data.name} logo`}
-                  style={{
-                    width: "4.5rem",
-                    height: "4.5rem",
-                    objectFit: "cover",
-                    borderRadius: "var(--radius-lg)",
-                  }}
-                />
-              ) : null}
-              <input
-                ref={logoInputRef}
-                type="file"
-                accept="image/jpeg,image/png,image/webp,image/gif"
-                hidden
-                onChange={(event) => {
-                  const file = event.target.files?.[0];
-                  if (file) uploadLogo.mutate(file);
-                  event.target.value = "";
-                }}
+            {isOwner ? (
+              <BrandingPanel
+                studioName={studioQuery.data.name}
+                logoUrl={studioQuery.data.logoUrl ?? null}
+                brandTheme={studioQuery.data.brandTheme ?? null}
               />
-              <TouchButton
-                variant="default"
-                fullWidth
-                isPending={uploadLogo.isPending}
-                onClick={() => logoInputRef.current?.click()}
-              >
-                {studioQuery.data.logoUrl ? "Replace logo" : "Upload logo"}
-              </TouchButton>
-              {logoError ? <ErrorState description={logoError} /> : null}
-            </div>
+            ) : null}
 
             <div className={staff.softPanel}>
               <p className={staff.panelTitle}>Billing settings</p>

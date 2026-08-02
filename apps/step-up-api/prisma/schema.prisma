@@ -337,13 +337,14 @@ model FamilyMember {
 }
 
 model Studio {
-  id      String   @id @default(cuid())
-  name    String
-  address String?
-  photos  String[]
-  contact String?
-  logoUrl String?
-  ownerId String   @unique
+  id         String   @id @default(cuid())
+  name       String
+  address    String?
+  photos     String[]
+  contact    String?
+  logoUrl    String?
+  brandTheme Json?
+  ownerId    String   @unique
 
   owner                User                 @relation("StudioOwner", fields: [ownerId], references: [id])
   members              User[]               @relation("StudioMembers")

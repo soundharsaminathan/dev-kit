@@ -4,7 +4,7 @@ import {
   deepMergeTokenTree,
   type TokenTree,
 } from "../tokens/index.js";
-import type { ResolvedTheme, ThemeDefinition } from "../types.js";
+import type { ResolvedTheme, ThemeDefinition, ThemeFonts } from "../types.js";
 import type { ColorConfig } from "./color-config.js";
 import { DEFAULT_COLOR_CONFIG } from "./color-config.js";
 import { resolveTarget } from "./emit-css.js";
@@ -38,6 +38,7 @@ export interface ThemeDraft {
   extends: string;
   color: ColorConfig;
   radiusFactor?: number;
+  fonts?: ThemeFonts;
   tokenOverrides: DeepPartial<TokenTree>;
 }
 
@@ -92,6 +93,9 @@ export function createThemeDraft(
   if (options.radiusFactor !== undefined) {
     draft.radiusFactor = options.radiusFactor;
   }
+  if (options.fonts !== undefined) {
+    draft.fonts = options.fonts;
+  }
   return draft;
 }
 
@@ -108,6 +112,9 @@ export function themeDraftToDefinition(
   };
   if (draft.radiusFactor !== undefined) {
     definition.radiusFactor = draft.radiusFactor;
+  }
+  if (draft.fonts !== undefined) {
+    definition.fonts = draft.fonts;
   }
   return definition;
 }
@@ -126,6 +133,9 @@ export function definitionToThemeDraft(
   });
   if (definition.radiusFactor !== undefined) {
     draft.radiusFactor = definition.radiusFactor;
+  }
+  if (definition.fonts !== undefined) {
+    draft.fonts = definition.fonts;
   }
   return draft;
 }

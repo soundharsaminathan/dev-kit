@@ -21,7 +21,6 @@ type FunnelStage = keyof Omit<FunnelCounts, "total" | "period">;
 
 const STUDIO_ID = SEED.users.OWNER.studioId;
 const TRIAL_BATCH_ID = "batch-trial-1";
-const ACTIVE_BATCH_ID = "batch-contemporary-1";
 const FUNNEL_STAGES = [
   "active",
   "signedInOnly",
@@ -343,9 +342,10 @@ test.describe("student funnel full flow @critical", () => {
   }) => {
     test.setTimeout(120_000);
 
+    const batch = await createEphemeralBatch("enroll");
     const before = await getFunnel();
     const created = await createOwnerStudent("enroll", {
-      batchId: ACTIVE_BATCH_ID,
+      batchId: batch.id,
     });
 
     expect(await getStudentStage(created.id)).toBe("active");
@@ -379,9 +379,7 @@ test.describe("student funnel full flow @critical", () => {
       .click();
 
     await page.getByTestId("optional-batch-select").click();
-    await page
-      .getByRole("option", { name: /contemporary open floor/i })
-      .click();
+    await page.getByRole("option", { name: batch.name }).click();
 
     const beforeUiCreate = await getFunnel();
     await page.getByRole("button", { name: /create student/i }).click();

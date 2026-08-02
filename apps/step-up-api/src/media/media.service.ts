@@ -34,6 +34,7 @@ const ALLOWED_CHAT_AUDIO_TYPES = new Set([
 
 const MEDIA_FOLDERS = [
   "avatars",
+  "studio-logos",
   "posts",
   "chat",
   "batches",
@@ -46,6 +47,7 @@ const READ_URL_EXPIRES_SECONDS = 60 * 60 * 6;
 export type MediaPurpose =
   | "branch"
   | "avatar"
+  | "studio-logo"
   | "post"
   | "chat"
   | "batch"
@@ -224,15 +226,17 @@ export class MediaService {
     const folder =
       purpose === "avatar"
         ? "avatars"
-        : purpose === "post"
-          ? "posts"
-          : purpose === "chat"
-            ? "chat"
-            : purpose === "batch"
-              ? "batches"
-              : purpose === "certificate"
-                ? "certificates"
-                : "uploads";
+        : purpose === "studio-logo"
+          ? "studio-logos"
+          : purpose === "post"
+            ? "posts"
+            : purpose === "chat"
+              ? "chat"
+              : purpose === "batch"
+                ? "batches"
+                : purpose === "certificate"
+                  ? "certificates"
+                  : "uploads";
     const key = `${folder}/${randomUUID()}-${this.sanitizeFilename(filename)}`;
     const command = new PutObjectCommand({
       Bucket: this.bucket,

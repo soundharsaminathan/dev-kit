@@ -1,5 +1,18 @@
 import { cn } from "@dev-ui/core";
-import { getBuiltInThemeIds } from "@dev-ui/tokens";
+import {
+  COLOR_SEED_KEYS,
+  getBuiltInThemeIds,
+  listEditableTokensByLayer,
+  resolveThemeDraft,
+  setColorSeed,
+  setTokenOverride,
+  type ThemeDraft,
+  type ThemeFonts,
+  TOKEN_LAYER_LABELS,
+  TOKEN_LAYER_ORDER,
+  type TokenLayerKey,
+} from "@dev-ui/tokens";
+import { useMemo } from "react";
 import { Input } from "../input/Input";
 import {
   Select,
@@ -7,14 +20,52 @@ import {
   SelectItem,
   SelectTrigger,
 } from "../select/Select";
+import { TokenLayerPanel } from "./TokenLayerPanel";
 import styles from "./theme-editor.module.scss";
 import type { ThemeEditorPanelProps } from "./theme-editor.types";
+
+const FONT_KEYS = [
+  "sans",
+  "serif",
+  "mono",
+] as const satisfies readonly (keyof ThemeFonts)[];
 
 function ThemeEditorPanel({
   value,
   onChange,
   className,
 }: ThemeEditorPanelProps) {
+  const resolved = useMemo(() => resolveThemeDraft(value), [value]);
+  const tokensByLayer = useMemo(
+    () => listEditableTokensByLayer(value, resolved),
+    [value, resolved],
+  );
+
+  const handleTokenChange = (
+    layer: TokenLayerKey,
+    name: string,
+    nextValue: string | null,
+    category: Parameters<typeof setTokenOverride>[4],
+  ) => {
+    onChange(setTokenOverride(value, layer, name, nextValue, category));
+  };
+
+  const handleFontChange = (key: keyof ThemeFonts, next: string) => {
+    const fonts: ThemeFonts = { ...value.fonts };
+    if (next.trim() === "") {
+      delete fonts[key];
+    } else {
+      fonts[key] = next;
+    }
+    const nextDraft: ThemeDraft = { ...value };
+    if (Object.keys(fonts).length === 0) {
+      delete nextDraft.fonts;
+    } else {
+      nextDraft.fonts = fonts;
+    }
+    onChange(nextDraft);
+  };
+
   return (
     <div className={cn(styles.panel, className)}>
       <div className={styles.section}>
@@ -51,7 +102,82 @@ function ThemeEditorPanel({
               </SelectContent>
             </Select>
           </div>
+
+          <div className={styles.seedBlock}>
+            <span className={styles.seedLabel}>Radius factor</span>
+            <Input
+              aria-label="Radius factor"
+              type="number"
+              min={0.25}
+              max={4}
+              step={0.05}
+              value={String(value.radiusFactor ?? 1)}
+              onChange={(event) => {
+                const next = Number(event.target.value);
+                if (Number.isNaN(next)) return;
+                onChange({ ...value, radiusFactor: next });
+              }}
+            />
+          </div>
         </div>
+      </div>
+
+      <div className={styles.section}>
+        <span className={styles.seedLabel}>Color seeds</span>
+        <div className={styles.metaGrid}>
+          {COLOR_SEED_KEYS.map((seed) => (
+            <div key={seed} className={styles.seedBlock}>
+              <span className={styles.seedLabel}>{seed}</span>
+              <Input
+                aria-label={`${seed} color`}
+                type="color"
+                value={value.color.seeds[seed] ?? "#808080"}
+                onChange={(event) =>
+                  onChange(setColorSeed(value, seed, event.target.value))
+                }
+              />
+              <Input
+                aria-label={`${seed} hex`}
+                value={value.color.seeds[seed] ?? ""}
+                onChange={(event) =>
+                  onChange(setColorSeed(value, seed, event.target.value))
+                }
+              />
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className={styles.section}>
+        <span className={styles.seedLabel}>Fonts</span>
+        <div className={styles.metaGrid}>
+          {FONT_KEYS.map((key) => (
+            <div key={key} className={styles.seedBlock}>
+              <span className={styles.seedLabel}>{key}</span>
+              <Input
+                aria-label={`${key} font`}
+                value={value.fonts?.[key] ?? ""}
+                placeholder="Font stack"
+                onChange={(event) => handleFontChange(key, event.target.value)}
+              />
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className={styles.section}>
+        <span className={styles.seedLabel}>Token layers</span>
+        {TOKEN_LAYER_ORDER.map((layer) => (
+          <TokenLayerPanel
+            key={layer}
+            draft={value}
+            resolved={resolved}
+            layer={layer}
+            label={TOKEN_LAYER_LABELS[layer]}
+            tokenCount={tokensByLayer[layer].length}
+            onTokenChange={handleTokenChange}
+          />
+        ))}
       </div>
     </div>
   );
