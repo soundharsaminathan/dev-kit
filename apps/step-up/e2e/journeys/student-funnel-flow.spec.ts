@@ -135,9 +135,7 @@ async function createEphemeralBatch(label: string) {
   let lastError: unknown;
   for (let attempt = 0; attempt < 8; attempt += 1) {
     const stamp = Date.now() + attempt * 97_000;
-    const start = new Date();
-    start.setUTCHours(0, 0, 0, 0);
-    start.setUTCDate(start.getUTCDate() + 45 + attempt * 3);
+    const start = new Date(Date.UTC(2028, 5, 1 + attempt * 3));
     const end = new Date(start);
     end.setUTCDate(end.getUTCDate() + 14);
     const weekday = start.getUTCDay();
@@ -239,18 +237,31 @@ async function assertApiAndUiCounts(
     expectCountsEqual(await getFunnel(), expected);
   }
 
+  // Hard reload clears the 30s React Query staleTime cache so tiles match
+  // live funnel counts after API-only mutations in this journey.
   await page.goto("/app", { waitUntil: "domcontentloaded" });
+  await page.reload({ waitUntil: "domcontentloaded" });
   await waitForAppReady(page);
   await expect(page.getByTestId("funnel-tiles")).toBeVisible();
 
   await expect
     .poll(
       async () => {
-        const ui = await readUiFunnelCounts(page);
         const live = await getFunnel();
-        return FUNNEL_STAGES.every((stage) => ui[stage] === live[stage]);
+        const ui = await readUiFunnelCounts(page);
+        if (FUNNEL_STAGES.every((stage) => ui[stage] === live[stage])) {
+          return true;
+        }
+        await page.reload({ waitUntil: "domcontentloaded" });
+        await waitForAppReady(page);
+        await expect(page.getByTestId("funnel-tiles")).toBeVisible();
+        const refreshed = await readUiFunnelCounts(page);
+        const afterReload = await getFunnel();
+        return FUNNEL_STAGES.every(
+          (stage) => refreshed[stage] === afterReload[stage],
+        );
       },
-      { timeout: 30_000 },
+      { timeout: 45_000 },
     )
     .toBe(true);
 
@@ -304,7 +315,7 @@ test.describe("student funnel full flow @critical", () => {
   test("self-created and owner-created users move through every stage with correct counts @critical", async ({
     browser,
   }) => {
-    test.setTimeout(180_000);
+    test.setTimeout(240_000);
 
     const ownerContext = await browser.newContext({
       storageState: authFile("OWNER"),

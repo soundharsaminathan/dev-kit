@@ -6,6 +6,7 @@ import {
 } from "@nestjs/common";
 import {
   BatchCategory,
+  BillingCadence,
   IndividualAudience,
   MembershipSeatRole,
   MembershipStatus,
@@ -20,6 +21,7 @@ import { PrismaService } from "../prisma/prisma.service";
 import {
   getNextPeriodStart,
   getPeriodEnd,
+  isMonthlyPlanUnpaid,
   membershipCoversBatch,
   seatRoleForBatchCategory,
 } from "./membership-helpers";
@@ -294,6 +296,63 @@ export class MembershipsService {
         });
       }) ?? null
     );
+  }
+
+  /** Students whose latest monthly membership is unpaid (due/expired or open invoice). */
+  async findMonthlyUnpaidStudentIds(
+    studentIds: string[],
+  ): Promise<Set<string>> {
+    if (studentIds.length === 0) {
+      return new Set();
+    }
+
+    const covers = await this.prisma.membershipCoveredStudent.findMany({
+      where: { studentId: { in: studentIds } },
+      include: {
+        membership: {
+          include: {
+            subscription: { select: { billingCadence: true } },
+            invoices: { select: { status: true } },
+          },
+        },
+      },
+    });
+
+    const sorted = [...covers].sort(
+      (left, right) =>
+        right.membership.periodEnd.getTime() -
+        left.membership.periodEnd.getTime(),
+    );
+
+    const latestMonthlyByStudent = new Map<
+      string,
+      (typeof covers)[number]["membership"]
+    >();
+
+    for (const cover of sorted) {
+      if (
+        cover.membership.subscription.billingCadence !== BillingCadence.MONTHLY
+      ) {
+        continue;
+      }
+      if (!latestMonthlyByStudent.has(cover.studentId)) {
+        latestMonthlyByStudent.set(cover.studentId, cover.membership);
+      }
+    }
+
+    const unpaid = new Set<string>();
+    for (const [studentId, membership] of latestMonthlyByStudent) {
+      if (
+        isMonthlyPlanUnpaid({
+          billingCadence: membership.subscription.billingCadence,
+          membershipStatus: membership.status,
+          invoiceStatuses: membership.invoices.map((invoice) => invoice.status),
+        })
+      ) {
+        unpaid.add(studentId);
+      }
+    }
+    return unpaid;
   }
 
   private async assertFamilyBatchPicks(covered: CoveredStudentInput[]) {

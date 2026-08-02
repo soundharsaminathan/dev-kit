@@ -436,8 +436,12 @@ export class BatchesService {
       ...row,
       trainer: this.crypto.decryptUser(row.trainer),
     }));
+    const monthlyUnpaidIds = await this.memberships.findMonthlyUnpaidStudentIds(
+      batch.enrollments.map((enrollment) => enrollment.studentId),
+    );
     const enrollments = batch.enrollments.map((enrollment) => ({
       ...enrollment,
+      monthlyUnpaid: monthlyUnpaidIds.has(enrollment.studentId),
       student: this.crypto.decryptUser(enrollment.student),
     }));
 

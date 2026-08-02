@@ -2,6 +2,7 @@ export type AttendanceStatusValue = "PRESENT" | "ABSENT";
 
 export type AttendanceRosterEntry = {
   studentId: string;
+  monthlyUnpaid?: boolean;
   student: { name: string };
   attendance: {
     id: string;

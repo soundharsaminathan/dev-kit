@@ -121,9 +121,16 @@ export function AttendanceRosterTable({
         header: "Student",
         cell: ({ row }) => (
           <div className={styles.studentCell}>
-            <span className={styles.studentName}>
-              {row.original.student.name}
-            </span>
+            <div className={styles.studentNameRow}>
+              <span className={styles.studentName}>
+                {row.original.student.name}
+              </span>
+              {row.original.monthlyUnpaid ? (
+                <Badge appearance="subtle" variant="warning">
+                  Not paid
+                </Badge>
+              ) : null}
+            </div>
             <span className={styles.studentDetail}>
               {row.original.attendance
                 ? attendanceSourceLabel(row.original.attendance.source)

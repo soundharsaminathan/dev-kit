@@ -25,6 +25,7 @@ export type BatchEnrollmentRow = {
   studentId: string;
   isTrial?: boolean;
   trialSessionIds?: string[] | null;
+  monthlyUnpaid?: boolean;
   student: {
     id: string;
     name: string;
@@ -347,13 +348,20 @@ export function BatchRoster({ batchId, capacity, active }: BatchRosterProps) {
                   <div className={styles.body}>
                     <div className={styles.top}>
                       <h3 className={styles.name}>{student.name}</h3>
-                      {row.isTrial ? (
-                        <Badge appearance="subtle">
-                          {`Trial · ${row.trialSessionIds?.length ?? 0}/2`}
-                        </Badge>
-                      ) : (
-                        <Badge appearance="subtle">Enrolled</Badge>
-                      )}
+                      <div className={styles.badges}>
+                        {row.isTrial ? (
+                          <Badge appearance="subtle">
+                            {`Trial · ${row.trialSessionIds?.length ?? 0}/2`}
+                          </Badge>
+                        ) : (
+                          <Badge appearance="subtle">Enrolled</Badge>
+                        )}
+                        {row.monthlyUnpaid ? (
+                          <Badge appearance="subtle" variant="warning">
+                            Not paid
+                          </Badge>
+                        ) : null}
+                      </div>
                     </div>
 
                     <div className={styles.contacts}>
