@@ -70,10 +70,15 @@ export class AttendanceService {
       session.attendance.map((record) => [record.studentId, record]),
     );
 
+    const monthlyUnpaidIds = await this.memberships.findMonthlyUnpaidStudentIds(
+      session.batch.enrollments.map((enrollment) => enrollment.studentId),
+    );
+
     const roster = session.batch.enrollments.map((enrollment) => {
       const record = attendanceByStudent.get(enrollment.studentId);
       return {
         studentId: enrollment.studentId,
+        monthlyUnpaid: monthlyUnpaidIds.has(enrollment.studentId),
         student: this.crypto.decryptUser(enrollment.student),
         attendance: record
           ? {

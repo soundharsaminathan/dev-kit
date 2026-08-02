@@ -194,6 +194,7 @@ describe("AttendanceService.markAllPresent", () => {
   };
   const memberships = {
     findActiveForBatch: vi.fn(),
+    findMonthlyUnpaidStudentIds: vi.fn(),
   };
   const notifications = createNotificationsMock();
   const config = {
@@ -207,6 +208,7 @@ describe("AttendanceService.markAllPresent", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    memberships.findMonthlyUnpaidStudentIds.mockResolvedValue(new Set());
     service = new AttendanceService(
       prisma as never,
       memberships as never,
@@ -430,7 +432,10 @@ describe("AttendanceService.getSessionRoster", () => {
     attendance: { findMany: vi.fn(), upsert: vi.fn() },
     parentChild: { findUnique: vi.fn() },
   };
-  const memberships = { findActiveForBatch: vi.fn() };
+  const memberships = {
+    findActiveForBatch: vi.fn(),
+    findMonthlyUnpaidStudentIds: vi.fn(),
+  };
   const notifications = createNotificationsMock();
   const config = { get: vi.fn(() => "test-qr-secret") };
   const crypto = {
@@ -441,6 +446,7 @@ describe("AttendanceService.getSessionRoster", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    memberships.findMonthlyUnpaidStudentIds.mockResolvedValue(new Set(["s2"]));
     service = new AttendanceService(
       prisma as never,
       memberships as never,
@@ -471,15 +477,21 @@ describe("AttendanceService.getSessionRoster", () => {
 
     const roster = await service.getSessionRoster("session-1");
 
+    expect(memberships.findMonthlyUnpaidStudentIds).toHaveBeenCalledWith([
+      "s1",
+      "s2",
+    ]);
     expect(roster).toEqual([
       expect.objectContaining({
         studentId: "s1",
+        monthlyUnpaid: false,
         attendance: expect.objectContaining({
           status: AttendanceStatus.PRESENT,
         }),
       }),
       expect.objectContaining({
         studentId: "s2",
+        monthlyUnpaid: true,
         attendance: null,
       }),
     ]);

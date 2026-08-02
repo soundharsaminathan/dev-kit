@@ -91,6 +91,15 @@
   min-width: 0;
 }
 
+.badges {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-1, 0.25rem);
+  flex-shrink: 0;
+}
+
 .contacts {
   display: flex;
   flex-direction: column;

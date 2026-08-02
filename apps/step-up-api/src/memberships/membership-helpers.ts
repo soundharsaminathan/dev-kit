@@ -3,6 +3,7 @@ import {
   BillingCadence,
   FamilyPack,
   IndividualAudience,
+  InvoiceStatus,
   MembershipSeatRole,
   MembershipStatus,
   SubscriptionKind,
@@ -105,4 +106,29 @@ export function computePlatformFee(
   platformFeePercent: number,
 ): number {
   return Math.round(amount * (platformFeePercent / 100) * 100) / 100;
+}
+
+export type MonthlyPlanPaymentSnapshot = {
+  billingCadence: BillingCadence;
+  membershipStatus: MembershipStatus;
+  invoiceStatuses: InvoiceStatus[];
+};
+
+/** Latest monthly membership is unpaid when due/expired or any invoice is open. */
+export function isMonthlyPlanUnpaid(
+  snapshot: MonthlyPlanPaymentSnapshot,
+): boolean {
+  if (snapshot.billingCadence !== BillingCadence.MONTHLY) {
+    return false;
+  }
+  if (
+    snapshot.membershipStatus === MembershipStatus.DUE ||
+    snapshot.membershipStatus === MembershipStatus.EXPIRED
+  ) {
+    return true;
+  }
+  return snapshot.invoiceStatuses.some(
+    (status) =>
+      status === InvoiceStatus.PENDING || status === InvoiceStatus.OVERDUE,
+  );
 }

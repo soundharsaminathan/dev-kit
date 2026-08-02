@@ -442,3 +442,72 @@ describe("MembershipsService.findActiveForBatch", () => {
     ).resolves.toBeNull();
   });
 });
+
+describe("MembershipsService.findMonthlyUnpaidStudentIds", () => {
+  const prisma = {
+    membershipCoveredStudent: { findMany: vi.fn() },
+  };
+  const notifications = { create: vi.fn() };
+  const scheduleConflicts = {
+    assertNoConflicts: vi.fn(),
+    assertStudentAvailableForBatch: vi.fn(),
+  };
+
+  let service: MembershipsService;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    service = new MembershipsService(
+      prisma as never,
+      notifications as never,
+      scheduleConflicts as never,
+    );
+  });
+
+  it("returns empty set for empty input", async () => {
+    await expect(service.findMonthlyUnpaidStudentIds([])).resolves.toEqual(
+      new Set(),
+    );
+    expect(prisma.membershipCoveredStudent.findMany).not.toHaveBeenCalled();
+  });
+
+  it("flags students with unpaid latest monthly membership", async () => {
+    prisma.membershipCoveredStudent.findMany.mockResolvedValue([
+      {
+        studentId: "s-unpaid",
+        membership: {
+          status: "DUE",
+          periodEnd: new Date("2026-08-01T00:00:00.000Z"),
+          subscription: { billingCadence: "MONTHLY" },
+          invoices: [],
+        },
+      },
+      {
+        studentId: "s-paid",
+        membership: {
+          status: "ACTIVE",
+          periodEnd: new Date("2026-08-01T00:00:00.000Z"),
+          subscription: { billingCadence: "MONTHLY" },
+          invoices: [{ status: "PAID" }],
+        },
+      },
+      {
+        studentId: "s-quarterly",
+        membership: {
+          status: "DUE",
+          periodEnd: new Date("2026-08-01T00:00:00.000Z"),
+          subscription: { billingCadence: "QUARTERLY" },
+          invoices: [],
+        },
+      },
+    ]);
+
+    await expect(
+      service.findMonthlyUnpaidStudentIds([
+        "s-unpaid",
+        "s-paid",
+        "s-quarterly",
+      ]),
+    ).resolves.toEqual(new Set(["s-unpaid"]));
+  });
+});

@@ -3,6 +3,7 @@ import {
   BillingCadence,
   FamilyPack,
   IndividualAudience,
+  InvoiceStatus,
   MembershipSeatRole,
   MembershipStatus,
   SubscriptionKind,
@@ -12,6 +13,7 @@ import {
   computePlatformFee,
   getNextPeriodStart,
   getPeriodEnd,
+  isMonthlyPlanUnpaid,
   membershipCoversBatch,
   seatsForCatalog,
   seatsForFamilyPack,
@@ -88,5 +90,47 @@ describe("membership-helpers", () => {
 
   it("computes platform fee", () => {
     expect(computePlatformFee(1000, 5)).toBe(50);
+  });
+
+  it("flags unpaid monthly plans", () => {
+    expect(
+      isMonthlyPlanUnpaid({
+        billingCadence: BillingCadence.QUARTERLY,
+        membershipStatus: MembershipStatus.DUE,
+        invoiceStatuses: [],
+      }),
+    ).toBe(false);
+
+    expect(
+      isMonthlyPlanUnpaid({
+        billingCadence: BillingCadence.MONTHLY,
+        membershipStatus: MembershipStatus.ACTIVE,
+        invoiceStatuses: [InvoiceStatus.PAID],
+      }),
+    ).toBe(false);
+
+    expect(
+      isMonthlyPlanUnpaid({
+        billingCadence: BillingCadence.MONTHLY,
+        membershipStatus: MembershipStatus.DUE,
+        invoiceStatuses: [],
+      }),
+    ).toBe(true);
+
+    expect(
+      isMonthlyPlanUnpaid({
+        billingCadence: BillingCadence.MONTHLY,
+        membershipStatus: MembershipStatus.ACTIVE,
+        invoiceStatuses: [InvoiceStatus.PENDING],
+      }),
+    ).toBe(true);
+
+    expect(
+      isMonthlyPlanUnpaid({
+        billingCadence: BillingCadence.MONTHLY,
+        membershipStatus: MembershipStatus.ACTIVE,
+        invoiceStatuses: [InvoiceStatus.OVERDUE],
+      }),
+    ).toBe(true);
   });
 });
