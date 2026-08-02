@@ -1,0 +1,118 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 0.75rem);
+  padding: var(--space-3, 0.75rem);
+  border-radius: var(--radius-2xl, 1.25rem);
+  border: var(--card-border-width, 1px) solid
+    var(--card-border-color, color-mix(in srgb, var(--color-fg) 12%, transparent));
+  background: var(--card-background, var(--color-card, var(--color-bg)));
+  box-shadow: var(--card-shadow, var(--shadow-sm, 0 1px 3px rgb(0 0 0 / 6%)));
+}
+
+.header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2, 0.5rem);
+}
+
+.title {
+  margin: 0;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--color-fg) 52%, transparent);
+}
+
+.meta {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: color-mix(in srgb, var(--color-fg) 52%, transparent);
+}
+
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-2, 0.5rem);
+}
+
+.metric {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1, 0.25rem);
+  min-width: 0;
+  padding: var(--space-2, 0.5rem);
+  border-radius: var(--radius-xl, 1rem);
+  background: color-mix(in srgb, var(--color-fg) 4%, transparent);
+}
+
+.metricLabel {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--color-fg) 52%, transparent);
+}
+
+.metricValue {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+.metricValue[data-tone="success"] {
+  color: var(--color-success, #15803d);
+}
+
+.metricValue[data-tone="danger"] {
+  color: var(--color-danger, #b91c1c);
+}
+
+.planList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 0.5rem);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.planRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2, 0.5rem);
+}
+
+.planCopy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  min-width: 0;
+}
+
+.planName {
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.planMeta {
+  font-size: 0.75rem;
+  color: color-mix(in srgb, var(--color-fg) 56%, transparent);
+}
+
+.planCollected {
+  font-size: 0.875rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.empty {
+  margin: 0;
+  font-size: 0.875rem;
+  color: color-mix(in srgb, var(--color-fg) 62%, transparent);
+}

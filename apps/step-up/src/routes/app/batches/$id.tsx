@@ -1,5 +1,9 @@
 import { Button } from "@dev-ui/components/button";
-import { Checkbox } from "@dev-ui/components/checkbox";
+import {
+  Checkbox,
+  CheckboxControl,
+  CheckboxIndicator,
+} from "@dev-ui/components/checkbox";
 import { Field, Label } from "@dev-ui/components/field";
 import { FileTrigger } from "@dev-ui/components/file-trigger";
 import {
@@ -9,11 +13,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@dev-ui/components/select";
+import { Switch } from "@dev-ui/components/switch";
 import { Tab, TabList, TabPanel, Tabs } from "@dev-ui/components/tabs";
 import { TextArea } from "@dev-ui/components/text-area";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useApi } from "@/lib/api-context";
 import { STUDIO_ID } from "@/lib/constants";
 import { BatchDetailSkeleton } from "@/modules/batches/batch-detail-skeleton";
@@ -21,6 +26,7 @@ import {
   BatchOverview,
   occupiedSeatsForOverview,
 } from "@/modules/batches/batch-overview";
+import { BatchRevenue } from "@/modules/batches/batch-revenue";
 import { BatchRoster } from "@/modules/batches/batch-roster";
 import { BatchSessionsLane } from "@/modules/batches/batch-sessions-lane";
 import { BatchTrainers } from "@/modules/batches/batch-trainers";
@@ -29,6 +35,8 @@ import {
   uploadBatchCover,
   validateBatchCover,
 } from "@/modules/batches/upload";
+import { CertificatePreview } from "@/modules/certificates/certificate-preview";
+import type { CertificateTemplate } from "@/modules/certificates/types";
 import { BatchChat } from "@/modules/chat/batch-chat";
 import type { ChatConversation } from "@/modules/chat/types";
 import { ApiState } from "@/modules/ui/api-state";
@@ -54,6 +62,26 @@ type DanceCategory = {
   description: string;
 };
 
+type CatalogSubscription = {
+  id: string;
+  name: string;
+  kind: "INDIVIDUAL" | "FAMILY";
+  individualAudience?: "ADULT" | "KID" | null;
+  billingCadence: "MONTHLY" | "QUARTERLY";
+  price: number | string;
+  active: boolean;
+};
+
+type BatchPlan = {
+  id: string;
+  name: string;
+  kind: "INDIVIDUAL" | "FAMILY";
+  individualAudience?: "ADULT" | "KID" | null;
+  billingCadence: "MONTHLY" | "QUARTERLY";
+  price: number | string;
+  active: boolean;
+};
+
 type Batch = {
   id: string;
   name: string;
@@ -72,6 +100,10 @@ type Batch = {
     endsAt: string;
     status?: string;
   }>;
+  plans?: BatchPlan[];
+  certificationEnabled?: boolean;
+  certificateTemplateId?: string | null;
+  certificateTemplate?: CertificateTemplate | null;
   active: boolean;
   branchId: string;
   branch?: {
@@ -91,6 +123,12 @@ type Batch = {
     };
   }[];
 };
+
+function formatPlanPrice(price: number | string, cadence: string) {
+  const amount = Number(price);
+  const suffix = cadence === "QUARTERLY" ? "/qtr" : "/mo";
+  return `₹${Number.isFinite(amount) ? amount : price}${suffix}`;
+}
 
 function occupiedSeatsForBatch(batch: Batch) {
   return occupiedSeatsForOverview({
@@ -258,7 +296,8 @@ function EditBatchPage() {
                   photoUrl: row.trainer.photoUrl ?? null,
                 }))}
               />
-              <BatchSessionsLane sessions={batch.sessions} />
+              <BatchRevenue batchId={batch.id} />
+              <BatchSessionsLane batchId={batch.id} sessions={batch.sessions} />
               <Tabs defaultSelectedKey="students" aria-label="Batch sections">
                 <TabList>
                   <Tab id="students">Students</Tab>
@@ -344,17 +383,70 @@ function EditBatchForm({
   const [danceCategories, setDanceCategories] = useState(() =>
     danceCategoriesFromBatch(batch.danceCategories),
   );
+  const [subscriptionIds, setSubscriptionIds] = useState(() =>
+    (batch.plans ?? []).map((plan) => plan.id),
+  );
+  const [certificationEnabled, setCertificationEnabled] = useState(
+    batch.certificationEnabled ?? false,
+  );
+  const [certificateTemplateId, setCertificateTemplateId] = useState<
+    string | null
+  >(batch.certificateTemplateId ?? batch.certificateTemplate?.id ?? null);
 
   const branches = useQuery({
     queryKey: ["branches", STUDIO_ID],
     queryFn: () => api.get<StudioBranch[]>(`/studios/${STUDIO_ID}/branches`),
   });
 
+  const subscriptionsQuery = useQuery({
+    queryKey: ["subscriptions", STUDIO_ID],
+    queryFn: () =>
+      api.get<CatalogSubscription[]>(`/subscriptions/studio/${STUDIO_ID}`),
+  });
+
+  const templatesQuery = useQuery({
+    queryKey: ["certificate-templates", STUDIO_ID],
+    queryFn: () =>
+      api.get<CertificateTemplate[]>(
+        `/certificate-templates/studio/${STUDIO_ID}`,
+      ),
+  });
+
+  const expectedAudience = batch.category === "KIDS" ? "KID" : "ADULT";
+  const availablePlans = (subscriptionsQuery.data ?? []).filter(
+    (plan) => plan.active,
+  );
+  const individualPlans = availablePlans.filter(
+    (plan) =>
+      plan.kind === "INDIVIDUAL" &&
+      plan.individualAudience === expectedAudience,
+  );
+  const familyPlans = availablePlans.filter((plan) => plan.kind === "FAMILY");
+  const hasIndividualMonthly = individualPlans.some(
+    (plan) =>
+      plan.billingCadence === "MONTHLY" && subscriptionIds.includes(plan.id),
+  );
+  const hasIndividualQuarterly = individualPlans.some(
+    (plan) =>
+      plan.billingCadence === "QUARTERLY" && subscriptionIds.includes(plan.id),
+  );
+  const availableTemplates = templatesQuery.data ?? [];
+  const selectedTemplate = useMemo(
+    () =>
+      availableTemplates.find(
+        (template) => template.id === certificateTemplateId,
+      ) ?? null,
+    [availableTemplates, certificateTemplateId],
+  );
+
   const occupiedSeats = occupiedSeatsForBatch(batch);
   const minCapacity = Math.max(1, occupiedSeats);
   const capacityValue = Number(capacity);
   const capacityTooLow =
     Number.isFinite(capacityValue) && capacityValue < minCapacity;
+
+  const plansValid = hasIndividualMonthly && hasIndividualQuarterly;
+  const certsValid = !certificationEnabled || Boolean(certificateTemplateId);
 
   const isValid =
     Boolean(name.trim() && branchId && capacityValue >= minCapacity) &&
@@ -370,7 +462,9 @@ function EditBatchForm({
     danceCategories.every(
       (danceCategory) =>
         danceCategory.name.trim() && danceCategory.description.trim(),
-    );
+    ) &&
+    plansValid &&
+    certsValid;
 
   const updateBatch = useMutation({
     mutationFn: async () => {
@@ -388,6 +482,11 @@ function EditBatchForm({
         capacity: Number(capacity),
         enrollmentMode,
         active: active === "true",
+        subscriptionIds,
+        certificationEnabled,
+        certificateTemplateId: certificationEnabled
+          ? certificateTemplateId
+          : null,
         danceCategories: danceCategories.map(
           ({ name: danceName, description }) => ({
             name: danceName,
@@ -411,10 +510,21 @@ function EditBatchForm({
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["batches", STUDIO_ID] }),
         queryClient.invalidateQueries({ queryKey: ["batch", batch.id] }),
+        queryClient.invalidateQueries({
+          queryKey: ["batch-revenue", batch.id],
+        }),
       ]);
       onSaved?.();
     },
   });
+
+  function togglePlan(planId: string, selected: boolean) {
+    setSubscriptionIds((current) =>
+      selected
+        ? [...current, planId]
+        : current.filter((value) => value !== planId),
+    );
+  }
 
   function handleCoverSelect(files: FileList | null) {
     const file = files?.[0] ?? null;
@@ -720,10 +830,120 @@ function EditBatchForm({
         </Button>
       </section>
 
-      <p className={styles.help}>
-        Membership plans are studio-wide via{" "}
-        <Link to="/app/subscriptions">Subscriptions</Link>, not per batch.
-      </p>
+      <section className={styles.choiceList}>
+        <h3>Plans</h3>
+        <p className={styles.help}>
+          Students buy these plans on the batch screen. Individual 1-month and
+          3-month plans for {expectedAudience === "KID" ? "kids" : "adults"} are
+          required. Manage the catalog in{" "}
+          <Link to="/app/subscriptions">Subscriptions</Link>.
+        </p>
+        <h4 className={styles.planGroupTitle}>
+          Individual · {expectedAudience === "KID" ? "Kid" : "Adult"}
+        </h4>
+        {individualPlans.map((plan) => (
+          <CheckboxControl
+            key={plan.id}
+            className={styles.choice}
+            isSelected={subscriptionIds.includes(plan.id)}
+            onChange={(selected) => togglePlan(plan.id, selected)}
+          >
+            <span className={styles.choiceMain}>
+              <CheckboxIndicator />
+              <span className={styles.choiceTitle}>{plan.name}</span>
+            </span>
+            <span className={styles.choiceMeta}>
+              {plan.billingCadence === "MONTHLY" ? "1 month" : "3 months"} ·{" "}
+              {formatPlanPrice(plan.price, plan.billingCadence)}
+            </span>
+          </CheckboxControl>
+        ))}
+        {subscriptionsQuery.isLoading ? (
+          <p className={styles.help}>Loading plans…</p>
+        ) : null}
+        {!subscriptionsQuery.isLoading && individualPlans.length === 0 ? (
+          <p className={styles.help}>
+            No matching Individual plans.{" "}
+            <Link to="/app/subscriptions/new">Create subscription plans</Link>{" "}
+            first.
+          </p>
+        ) : null}
+        <h4 className={styles.planGroupTitle}>Family packs (optional)</h4>
+        {familyPlans.map((plan) => (
+          <CheckboxControl
+            key={plan.id}
+            className={styles.choice}
+            isSelected={subscriptionIds.includes(plan.id)}
+            onChange={(selected) => togglePlan(plan.id, selected)}
+          >
+            <span className={styles.choiceMain}>
+              <CheckboxIndicator />
+              <span className={styles.choiceTitle}>{plan.name}</span>
+            </span>
+            <span className={styles.choiceMeta}>
+              {plan.billingCadence === "MONTHLY" ? "1 month" : "3 months"} ·{" "}
+              {formatPlanPrice(plan.price, plan.billingCadence)}
+            </span>
+          </CheckboxControl>
+        ))}
+        {!plansValid ? (
+          <p className={styles.error}>
+            Select both a 1-month and a 3-month Individual plan.
+          </p>
+        ) : null}
+      </section>
+
+      <section className={styles.certification}>
+        <h3>Certification</h3>
+        <div className={styles.certToggle}>
+          <Switch
+            isSelected={certificationEnabled}
+            onChange={setCertificationEnabled}
+          >
+            Issue certificates when students complete this batch
+          </Switch>
+          <p className={styles.help}>
+            Students can receive a completion certificate based on the template
+            you choose.
+          </p>
+        </div>
+        {certificationEnabled ? (
+          <>
+            <Select
+              label="Certificate template"
+              selectedKey={certificateTemplateId}
+              onSelectionChange={(key) =>
+                setCertificateTemplateId(key as string)
+              }
+              placeholder={
+                templatesQuery.isLoading
+                  ? "Loading templates…"
+                  : "Select a template"
+              }
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {availableTemplates.map((template) => (
+                  <SelectItem key={template.id} id={template.id}>
+                    {template.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {selectedTemplate ? (
+              <CertificatePreview
+                layout={selectedTemplate.layoutJson}
+                contextLabel={name.trim() || batch.name}
+              />
+            ) : null}
+            {!certificateTemplateId ? (
+              <p className={styles.error}>Select a certificate template.</p>
+            ) : null}
+          </>
+        ) : null}
+      </section>
 
       {updateBatch.isError && (
         <p className={styles.error}>
@@ -738,6 +958,7 @@ function EditBatchForm({
         onClick={() => updateBatch.mutate()}
         isPending={updateBatch.isPending}
         isDisabled={!isValid}
+        data-testid="save-batch-settings"
       >
         Save changes
       </Button>

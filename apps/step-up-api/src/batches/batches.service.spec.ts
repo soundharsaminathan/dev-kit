@@ -3,7 +3,14 @@ import {
   ConflictException,
   ForbiddenException,
 } from "@nestjs/common";
-import { BillingCadence, EnrollmentMode, UserRole } from "@prisma/client";
+import {
+  BatchCategory,
+  BillingCadence,
+  EnrollmentMode,
+  IndividualAudience,
+  SubscriptionKind,
+  UserRole,
+} from "@prisma/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { BatchesService } from "./batches.service";
 
@@ -186,11 +193,16 @@ describe("BatchesService update", () => {
     user: { findMany: vi.fn() },
     studioBranch: { findUnique: vi.fn() },
     certificateTemplate: { findUnique: vi.fn() },
+    subscription: { findMany: vi.fn() },
     batch: {
       findUnique: vi.fn(),
       update: vi.fn(),
     },
     batchTrainer: {
+      deleteMany: vi.fn(),
+      createMany: vi.fn(),
+    },
+    batchPlan: {
       deleteMany: vi.fn(),
       createMany: vi.fn(),
     },
@@ -240,10 +252,12 @@ describe("BatchesService update", () => {
     prisma.batch.findUnique.mockResolvedValue({
       id: "batch-1",
       studioId: "studio-1",
+      category: BatchCategory.ADULTS,
+      branchId: "branch-1",
       certificationEnabled: false,
       certificateTemplateId: null,
     });
-    prisma.batch.update.mockResolvedValue({ id: "batch-1" });
+    prisma.batch.update.mockResolvedValue({ id: "batch-1", plans: [] });
     prisma.session.findMany.mockResolvedValue([]);
     prisma.$queryRaw.mockResolvedValue([{ id: "batch-1" }]);
     prisma.batchEnrollment.findMany.mockResolvedValue([]);
@@ -316,6 +330,75 @@ describe("BatchesService update", () => {
     );
   });
 
+  it("replaces linked subscription plans", async () => {
+    prisma.subscription.findMany.mockResolvedValue([
+      {
+        id: "sub-month",
+        studioId: "studio-1",
+        active: true,
+        kind: SubscriptionKind.INDIVIDUAL,
+        individualAudience: IndividualAudience.ADULT,
+        billingCadence: BillingCadence.MONTHLY,
+      },
+      {
+        id: "sub-quarter",
+        studioId: "studio-1",
+        active: true,
+        kind: SubscriptionKind.INDIVIDUAL,
+        individualAudience: IndividualAudience.ADULT,
+        billingCadence: BillingCadence.QUARTERLY,
+      },
+    ]);
+    prisma.batch.update.mockResolvedValue({
+      id: "batch-1",
+      plans: [
+        {
+          subscription: {
+            id: "sub-month",
+            name: "Adult monthly",
+            kind: SubscriptionKind.INDIVIDUAL,
+            individualAudience: IndividualAudience.ADULT,
+            familyPack: null,
+            billingCadence: BillingCadence.MONTHLY,
+            adultSeats: 1,
+            kidSeats: 0,
+            price: 2000,
+            active: true,
+          },
+        },
+        {
+          subscription: {
+            id: "sub-quarter",
+            name: "Adult quarterly",
+            kind: SubscriptionKind.INDIVIDUAL,
+            individualAudience: IndividualAudience.ADULT,
+            familyPack: null,
+            billingCadence: BillingCadence.QUARTERLY,
+            adultSeats: 1,
+            kidSeats: 0,
+            price: 5000,
+            active: true,
+          },
+        },
+      ],
+    });
+
+    const result = await service.update("batch-1", {
+      subscriptionIds: ["sub-month", "sub-quarter"],
+    });
+
+    expect(prisma.batchPlan.deleteMany).toHaveBeenCalledWith({
+      where: { batchId: "batch-1" },
+    });
+    expect(prisma.batchPlan.createMany).toHaveBeenCalledWith({
+      data: [
+        { batchId: "batch-1", subscriptionId: "sub-month" },
+        { batchId: "batch-1", subscriptionId: "sub-quarter" },
+      ],
+    });
+    expect(result.plans).toHaveLength(2);
+  });
+
   it("rejects capacity below occupied seats", async () => {
     prisma.batchEnrollment.findMany.mockResolvedValue([
       { studentId: "student-1" },
@@ -347,6 +430,8 @@ describe("BatchesService update", () => {
 
     await expect(service.update("batch-1", { capacity: 2 })).resolves.toEqual({
       id: "batch-1",
+      plans: [],
+      price: null,
     });
     expect(prisma.batch.update).toHaveBeenCalledWith(
       expect.objectContaining({

@@ -757,6 +757,7 @@ export class BatchesService {
       capacity?: number;
       enrollmentMode?: EnrollmentMode;
       active?: boolean;
+      subscriptionIds?: string[];
       certificationEnabled?: boolean;
       certificateTemplateId?: string | null;
       coverImageUrl?: string | null;
@@ -807,6 +808,28 @@ export class BatchesService {
           "Dance category names and descriptions are required",
         );
       }
+    }
+
+    const subscriptionIds =
+      data.subscriptionIds === undefined
+        ? undefined
+        : [...new Set(data.subscriptionIds)];
+
+    if (subscriptionIds) {
+      if (subscriptionIds.length === 0) {
+        throw new BadRequestException(
+          "Attach at least one Individual 1-month and 3-month plan",
+        );
+      }
+      const subscriptions = await this.prisma.subscription.findMany({
+        where: { id: { in: subscriptionIds } },
+      });
+      this.assertBatchPlanSelection(
+        batch.category,
+        batch.studioId,
+        subscriptions,
+        subscriptionIds,
+      );
     }
 
     const certificationEnabled =
@@ -878,6 +901,7 @@ export class BatchesService {
 
     const {
       trainerIds: _incomingTrainerIds,
+      subscriptionIds: _incomingSubscriptionIds,
       scheduleJson,
       danceCategories,
       ...batchData
@@ -901,6 +925,16 @@ export class BatchesService {
         });
       }
 
+      if (subscriptionIds) {
+        await tx.batchPlan.deleteMany({ where: { batchId: id } });
+        await tx.batchPlan.createMany({
+          data: subscriptionIds.map((subscriptionId) => ({
+            batchId: id,
+            subscriptionId,
+          })),
+        });
+      }
+
       if (desiredSessions) {
         await syncBatchSessions(tx, id, desiredSessions);
       }
@@ -921,11 +955,16 @@ export class BatchesService {
           certificateTemplate: true,
           sessions: { orderBy: { startsAt: "asc" } },
           trainers: { include: { trainer: true } },
+          plans: { include: { subscription: true } },
         },
       });
     });
     if (desiredSessions) {
       await this.trialSlotsCache.invalidate(batch.studioId);
+    }
+    if (updated.plans) {
+      const { plans, price } = extractPlans(updated.plans);
+      return { ...updated, plans, price };
     }
     return updated;
   }
