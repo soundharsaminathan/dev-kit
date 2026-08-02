@@ -1,20 +1,35 @@
 import { Icon } from "@dev-ui/icons";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import styles from "./batch-rating.module.scss";
 
 type BatchRatingInputProps = {
   value: number | null;
   onChange: (rating: number) => void;
   isPending?: boolean;
+  isError?: boolean;
 };
 
 export function BatchRatingInput({
   value,
   onChange,
   isPending = false,
+  isError = false,
 }: BatchRatingInputProps) {
   const [hovered, setHovered] = useState<number | null>(null);
-  const activeValue = hovered ?? value ?? 0;
+  const [optimistic, setOptimistic] = useState<number | null>(null);
+
+  useEffect(() => {
+    setOptimistic(null);
+  }, [value]);
+
+  useEffect(() => {
+    if (isError) {
+      setOptimistic(null);
+    }
+  }, [isError]);
+
+  const committed = optimistic ?? value ?? 0;
+  const activeValue = hovered ?? committed;
 
   return (
     <fieldset className={styles.root} onMouseLeave={() => setHovered(null)}>
@@ -26,7 +41,7 @@ export function BatchRatingInput({
           <button
             key={starValue}
             type="button"
-            aria-pressed={value === starValue}
+            aria-pressed={committed === starValue}
             aria-label={`${starValue} star${starValue === 1 ? "" : "s"}`}
             className={styles.star}
             data-filled={filled || undefined}
@@ -34,7 +49,11 @@ export function BatchRatingInput({
             onMouseEnter={() => setHovered(starValue)}
             onFocus={() => setHovered(starValue)}
             onBlur={() => setHovered(null)}
-            onClick={() => onChange(starValue)}
+            onClick={() => {
+              setOptimistic(starValue);
+              setHovered(null);
+              onChange(starValue);
+            }}
           >
             <Icon name="star" />
           </button>

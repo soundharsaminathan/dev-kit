@@ -103,8 +103,6 @@ export const AGE_RANGES: Array<{
   },
 ];
 
-export const GOAL_PRESETS = [4, 8, 12, 16] as const;
-
 export const ONBOARDING_STEPS = [
   "profile",
   "level",
