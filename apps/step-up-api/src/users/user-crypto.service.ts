@@ -157,4 +157,24 @@ export class UserCryptoService {
     const pii = this.decryptPii(encryptedKey, piiCiphertext, piiIv);
     return { ...rest, ...pii };
   }
+
+  encryptStudioSecret(secret: string): { ciphertext: string; iv: string } {
+    const { iv, data } = this.seal(
+      this.masterKey(),
+      Buffer.from(secret, "utf8"),
+    );
+    return {
+      ciphertext: data.toString("base64"),
+      iv: iv.toString("base64"),
+    };
+  }
+
+  decryptStudioSecret(ciphertext: string, iv: string): string {
+    const plaintext = this.open(
+      this.masterKey(),
+      Buffer.from(iv, "base64"),
+      Buffer.from(ciphertext, "base64"),
+    );
+    return plaintext.toString("utf8");
+  }
 }
