@@ -277,7 +277,12 @@ export class HomeService {
       studioId
         ? this.prisma.studio.findUnique({
             where: { id: studioId },
-            select: { id: true, name: true },
+            select: {
+              id: true,
+              name: true,
+              heroMobileUrl: true,
+              heroDesktopUrl: true,
+            },
           })
         : Promise.resolve(null),
       this.prisma.contestEntryMember.count({
@@ -608,25 +613,48 @@ export class HomeService {
       ]);
 
     const coverSource = branch?.coverMedia ?? branch?.media[0] ?? null;
-    let bannerImageUrl: string | null = null;
+    let branchImageUrl: string | null = null;
     if (coverSource?.objectKey) {
       try {
-        bannerImageUrl =
+        branchImageUrl =
           (await this.media.signReadUrl(coverSource.objectKey)) ??
           coverSource.objectKey;
       } catch {
-        bannerImageUrl = coverSource.objectKey;
+        branchImageUrl = coverSource.objectKey;
       }
     }
 
-    const banner = branch
+    const signHero = async (key: string | null | undefined) => {
+      if (!key) return null;
+      try {
+        return (await this.media.signReadUrl(key)) ?? key;
+      } catch {
+        return key;
+      }
+    };
+
+    const heroMobileUrl = await signHero(studio?.heroMobileUrl);
+    const heroDesktopUrl = await signHero(studio?.heroDesktopUrl);
+    const hasStudioHero = Boolean(heroMobileUrl || heroDesktopUrl);
+
+    const banner = hasStudioHero
       ? {
-          branchId: branch.id,
-          branchName: branch.name,
-          imageUrl: bannerImageUrl,
-          altText: coverSource?.altText ?? coverSource?.caption ?? branch.name,
+          branchId: branch?.id ?? null,
+          branchName: branch?.name ?? null,
+          imageUrl: heroMobileUrl ?? heroDesktopUrl,
+          desktopImageUrl: heroDesktopUrl ?? heroMobileUrl,
+          altText: studio?.name ?? "Studio hero",
         }
-      : null;
+      : branch
+        ? {
+            branchId: branch.id,
+            branchName: branch.name,
+            imageUrl: branchImageUrl,
+            desktopImageUrl: branchImageUrl,
+            altText:
+              coverSource?.altText ?? coverSource?.caption ?? branch.name,
+          }
+        : null;
 
     const instructorsMap = new Map<
       string,

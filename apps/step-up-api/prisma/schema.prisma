@@ -344,7 +344,9 @@ model Studio {
   address    String?
   photos     String[]
   contact    String?
-  logoUrl    String?
+  logoUrl         String?
+  heroMobileUrl   String?
+  heroDesktopUrl  String?
   brandTheme Json?
   ownerId    String   @unique
 

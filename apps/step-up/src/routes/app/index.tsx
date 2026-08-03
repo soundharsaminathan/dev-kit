@@ -633,6 +633,7 @@ function AppDashboardPage() {
                   branchId: bannerBranch.id,
                   branchName: bannerBranch.name,
                   imageUrl: coverUrl(bannerBranch),
+                  desktopImageUrl: coverUrl(bannerBranch),
                   altText:
                     bannerBranch.coverMedia?.altText ?? bannerBranch.name,
                 }

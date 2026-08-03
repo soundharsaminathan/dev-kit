@@ -24,7 +24,7 @@ export function validateSocialPhoto(file: File) {
 export async function uploadSocialPhoto(
   api: ApiClient,
   file: File,
-  purpose: "avatar" | "post" | "chat" | "studio-logo",
+  purpose: "avatar" | "post" | "chat" | "studio-logo" | "studio-hero",
 ) {
   validateSocialPhoto(file);
 

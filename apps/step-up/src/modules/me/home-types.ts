@@ -74,9 +74,10 @@ export type HomeRecommendation = {
 };
 
 export type HomeBanner = {
-  branchId: string;
-  branchName: string;
+  branchId: string | null;
+  branchName: string | null;
   imageUrl: string | null;
+  desktopImageUrl: string | null;
   altText: string | null;
 };
 

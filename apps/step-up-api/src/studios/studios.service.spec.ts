@@ -8,14 +8,27 @@ describe("StudiosService", () => {
     studio: {
       update: vi.fn(),
       findUnique: vi.fn(),
+      delete: vi.fn(),
     },
     studioSettings: {
       findUnique: vi.fn(),
       upsert: vi.fn(),
     },
+    contestCertificate: {
+      deleteMany: vi.fn(),
+    },
+    contest: {
+      deleteMany: vi.fn(),
+    },
+    batch: {
+      deleteMany: vi.fn(),
+    },
     user: {
       findFirst: vi.fn(),
       findUniqueOrThrow: vi.fn(),
+      findMany: vi.fn(),
+      updateMany: vi.fn(),
+      deleteMany: vi.fn(),
     },
     $transaction: vi.fn(),
   };
@@ -240,6 +253,48 @@ describe("StudiosService", () => {
     ).rejects.toBeInstanceOf(ConflictException);
   });
 
+  it("persists hero image urls", async () => {
+    prisma.studio.update.mockResolvedValue({
+      id: "studio-1",
+      heroMobileUrl: "studio-heroes/mobile.jpg",
+      heroDesktopUrl: "studio-heroes/desktop.jpg",
+    });
+
+    await service.updateStudio("studio-1", {
+      heroMobileUrl: "studio-heroes/mobile.jpg",
+      heroDesktopUrl: "studio-heroes/desktop.jpg",
+    });
+
+    expect(prisma.studio.update).toHaveBeenCalledWith({
+      where: { id: "studio-1" },
+      data: {
+        heroMobileUrl: "studio-heroes/mobile.jpg",
+        heroDesktopUrl: "studio-heroes/desktop.jpg",
+      },
+    });
+  });
+
+  it("clears hero images when null is sent", async () => {
+    prisma.studio.update.mockResolvedValue({
+      id: "studio-1",
+      heroMobileUrl: null,
+      heroDesktopUrl: null,
+    });
+
+    await service.updateStudio("studio-1", {
+      heroMobileUrl: null,
+      heroDesktopUrl: null,
+    });
+
+    expect(prisma.studio.update).toHaveBeenCalledWith({
+      where: { id: "studio-1" },
+      data: {
+        heroMobileUrl: null,
+        heroDesktopUrl: null,
+      },
+    });
+  });
+
   it("requires a studio name", async () => {
     await expect(
       service.createStudio({
@@ -247,5 +302,49 @@ describe("StudiosService", () => {
         ownerEmail: "owner@example.com",
       }),
     ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it("deletes a studio after clearing members and restrict blockers", async () => {
+    prisma.studio.findUnique.mockResolvedValue({
+      id: "studio-1",
+      name: "Nova Dance",
+    });
+    prisma.user.findMany.mockResolvedValue([
+      { id: "owner-1" },
+      { id: "staff-1" },
+    ]);
+    prisma.$transaction.mockImplementation(async (fn) => {
+      const tx = {
+        contestCertificate: {
+          deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
+        },
+        contest: { deleteMany: vi.fn().mockResolvedValue({ count: 0 }) },
+        batch: { deleteMany: vi.fn().mockResolvedValue({ count: 0 }) },
+        user: {
+          updateMany: vi.fn().mockResolvedValue({ count: 2 }),
+          deleteMany: vi.fn().mockResolvedValue({ count: 2 }),
+        },
+        studio: { delete: vi.fn().mockResolvedValue({ id: "studio-1" }) },
+      };
+      return fn(tx);
+    });
+
+    const result = await service.deleteStudio("studio-1");
+
+    expect(result).toEqual({
+      deleted: true,
+      id: "studio-1",
+      name: "Nova Dance",
+    });
+    expect(prisma.$transaction).toHaveBeenCalledOnce();
+  });
+
+  it("rejects deleting a missing studio", async () => {
+    prisma.studio.findUnique.mockResolvedValue(null);
+
+    await expect(service.deleteStudio("missing")).rejects.toThrow(
+      /Studio not found/,
+    );
+    expect(prisma.$transaction).not.toHaveBeenCalled();
   });
 });

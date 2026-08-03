@@ -7,6 +7,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useApi } from "@/lib/api-context";
+import { AppSheet } from "@/modules/ui/app-sheet";
 import { Screen } from "@/modules/ui/screen";
 import { SkeletonBlock } from "@/modules/ui/skeleton-block";
 import staff from "@/modules/ui/staff.module.scss";
@@ -30,6 +31,12 @@ type CreateStudioResult = {
   setupHint: string | null;
 };
 
+type DeleteStudioResult = {
+  deleted: true;
+  id: string;
+  name: string;
+};
+
 export const Route = createFileRoute("/admin/")({
   component: AdminStudiosPage,
 });
@@ -45,6 +52,9 @@ function AdminStudiosPage() {
   const [contact, setContact] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
   const [createdHint, setCreatedHint] = useState<string | null>(null);
+  const [studioToDelete, setStudioToDelete] = useState<StudioListItem | null>(
+    null,
+  );
 
   const studiosQuery = useQuery({
     queryKey: ["admin", "studios"],
@@ -83,6 +93,28 @@ function AdminStudiosPage() {
         title: "Couldn’t create studio",
         description:
           error instanceof Error ? error.message : "Could not create studio.",
+        variant: "error",
+      });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (studioId: string) =>
+      api.delete<DeleteStudioResult>(`/studios/${studioId}`),
+    onSuccess: (result) => {
+      setStudioToDelete(null);
+      void queryClient.invalidateQueries({ queryKey: ["admin", "studios"] });
+      toast({
+        title: "Studio deleted",
+        description: `${result.name} and its members were removed.`,
+        variant: "success",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Couldn’t delete studio",
+        description:
+          error instanceof Error ? error.message : "Could not delete studio.",
         variant: "error",
       });
     },
@@ -189,19 +221,77 @@ function AdminStudiosPage() {
         {studiosQuery.data && studiosQuery.data.length > 0 ? (
           <ul className={staff.list}>
             {studiosQuery.data.map((studio) => (
-              <li key={studio.id} className={staff.metricCard}>
-                <p className={staff.metricLabel}>{studio.name}</p>
-                <p>
+              <li key={studio.id} className={staff.attentionCard}>
+                <p className={staff.attentionTitle}>{studio.name}</p>
+                <p className={staff.attentionMeta}>
                   Owner {studio.owner.name} · {studio.owner.email}
                 </p>
-                <p>
+                <p className={staff.attentionMeta}>
                   {studio.memberCount} members · {studio.id}
                 </p>
+                <div className={staff.rowActions}>
+                  <TouchButton
+                    variant="danger"
+                    size="sm"
+                    data-testid={`delete-studio-${studio.id}`}
+                    onClick={() => setStudioToDelete(studio)}
+                  >
+                    Delete
+                  </TouchButton>
+                </div>
               </li>
             ))}
           </ul>
         ) : null}
       </section>
+
+      <AppSheet
+        isOpen={studioToDelete !== null}
+        onOpenChange={(open) => {
+          if (!open && !deleteMutation.isPending) {
+            setStudioToDelete(null);
+          }
+        }}
+        title="Delete studio"
+      >
+        <div className={staff.sheetStack}>
+          <p className={staff.rowMeta}>
+            Delete “{studioToDelete?.name}”? This removes the studio, its
+            batches, bookings, and all member accounts. This cannot be undone.
+          </p>
+          {deleteMutation.isError ? (
+            <ErrorState
+              description={
+                deleteMutation.error instanceof Error
+                  ? deleteMutation.error.message
+                  : "Could not delete studio."
+              }
+            />
+          ) : null}
+          <div className={staff.sheetActions}>
+            <TouchButton
+              variant="default"
+              fullWidth
+              isDisabled={deleteMutation.isPending}
+              onClick={() => setStudioToDelete(null)}
+            >
+              Cancel
+            </TouchButton>
+            <TouchButton
+              variant="danger"
+              fullWidth
+              isPending={deleteMutation.isPending}
+              data-testid="confirm-delete-studio"
+              onClick={() => {
+                if (!studioToDelete) return;
+                deleteMutation.mutate(studioToDelete.id);
+              }}
+            >
+              Delete studio
+            </TouchButton>
+          </div>
+        </div>
+      </AppSheet>
     </Screen>
   );
 }
