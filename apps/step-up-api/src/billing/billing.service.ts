@@ -7,12 +7,19 @@ import {
 } from "@nestjs/common";
 import {
   InvoiceStatus,
+  MembershipSeatRole,
   PaymentMethod,
+  Prisma,
   type User,
   UserRole,
 } from "@prisma/client";
 import { computePlatformFee } from "../memberships/membership-helpers";
-import { MembershipsService } from "../memberships/memberships.service";
+import {
+  type CoveredStudentInput,
+  type InvoicePurchaseMeta,
+  MembershipsService,
+} from "../memberships/memberships.service";
+import { RazorpayService } from "../payments/razorpay.service";
 import { PrismaService } from "../prisma/prisma.service";
 import {
   type DecryptedUser,
@@ -58,6 +65,72 @@ export type TrainerPaymentAnalytics = {
   }>;
 };
 
+export type ConfirmInvoicePaymentInput = {
+  razorpay_order_id?: string;
+  razorpay_payment_id?: string;
+  razorpay_signature?: string;
+};
+
+export type CreateInvoicePaymentOrderResult =
+  | { mode: "demo" }
+  | {
+      mode: "razorpay";
+      keyId: string;
+      orderId: string;
+      amount: number;
+      currency: string;
+    };
+
+function parsePurchaseMeta(value: unknown): InvoicePurchaseMeta | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return null;
+  }
+  const meta = value as Record<string, unknown>;
+  if (
+    typeof meta.batchId !== "string" ||
+    typeof meta.subscriptionId !== "string" ||
+    typeof meta.purchaserUserId !== "string" ||
+    !Array.isArray(meta.coveredStudents)
+  ) {
+    return null;
+  }
+
+  const coveredStudents: CoveredStudentInput[] = [];
+  for (const seat of meta.coveredStudents) {
+    if (!seat || typeof seat !== "object" || Array.isArray(seat)) {
+      return null;
+    }
+    const entry = seat as Record<string, unknown>;
+    if (
+      typeof entry.studentId !== "string" ||
+      (entry.seatRole !== MembershipSeatRole.ADULT &&
+        entry.seatRole !== MembershipSeatRole.KID)
+    ) {
+      return null;
+    }
+    coveredStudents.push({
+      studentId: entry.studentId,
+      seatRole: entry.seatRole,
+      ...(typeof entry.batchId === "string" ? { batchId: entry.batchId } : {}),
+    });
+  }
+
+  return {
+    batchId: meta.batchId,
+    subscriptionId: meta.subscriptionId,
+    purchaserUserId: meta.purchaserUserId,
+    coveredStudents,
+  };
+}
+
+function amountToPaise(amount: Prisma.Decimal | number | string) {
+  const rupees = Number(amount);
+  if (!Number.isFinite(rupees) || rupees <= 0) {
+    return 0;
+  }
+  return Math.round(rupees * 100);
+}
+
 @Injectable()
 export class BillingService {
   constructor(
@@ -65,6 +138,7 @@ export class BillingService {
     @Inject(UserCryptoService) private readonly crypto: UserCryptoService,
     @Inject(MembershipsService)
     private readonly memberships: MembershipsService,
+    @Inject(RazorpayService) private readonly razorpay: RazorpayService,
   ) {}
 
   async listByStudio(studioId: string) {
@@ -464,6 +538,245 @@ export class BillingService {
       membershipId: data.membershipId,
       platformFeePercent: settings?.platformFeePercent ?? 5,
     });
+  }
+
+  async getCheckoutInvoice(id: string, actor: DecryptedUser) {
+    await this.expireStaleCheckoutInvoices();
+
+    const invoice = await this.prisma.invoice.findUnique({
+      where: { id },
+      include: {
+        studio: { select: { id: true, name: true } },
+      },
+    });
+    if (!invoice) {
+      throw new NotFoundException("Invoice not found");
+    }
+
+    await this.assertCanAccessStudentInvoices(actor, invoice.studentId);
+
+    const purchaseMeta = parsePurchaseMeta(invoice.purchaseMeta);
+    let batch: { id: string; name: string } | null = null;
+    if (purchaseMeta?.batchId) {
+      batch = await this.prisma.batch.findUnique({
+        where: { id: purchaseMeta.batchId },
+        select: { id: true, name: true },
+      });
+    }
+
+    return {
+      ...invoice,
+      amount: Number(invoice.amount),
+      batch,
+      purchaseMeta,
+    };
+  }
+
+  async createInvoicePaymentOrder(
+    id: string,
+    actor: DecryptedUser,
+  ): Promise<CreateInvoicePaymentOrderResult> {
+    await this.expireStaleCheckoutInvoices();
+
+    const invoice = await this.prisma.invoice.findUnique({
+      where: { id },
+      include: {
+        studio: { include: { settings: true } },
+      },
+    });
+    if (!invoice) {
+      throw new NotFoundException("Invoice not found");
+    }
+
+    await this.assertCanAccessStudentInvoices(actor, invoice.studentId);
+    this.assertCheckoutHold(invoice);
+
+    const settings = invoice.studio.settings;
+    if (!this.razorpay.isEnabled(settings ?? undefined)) {
+      return { mode: "demo" };
+    }
+
+    const amountPaise = amountToPaise(invoice.amount);
+    if (amountPaise < 100) {
+      throw new BadRequestException("Amount must be at least 100 paise");
+    }
+
+    const keyId = this.razorpay.keyId(settings ?? undefined);
+    if (invoice.razorpayOrderId) {
+      return {
+        mode: "razorpay",
+        keyId,
+        orderId: invoice.razorpayOrderId,
+        amount: amountPaise,
+        currency: "INR",
+      };
+    }
+
+    const order = await this.razorpay.createOrder(
+      {
+        receipt: invoice.id,
+        amountPaise,
+        notes: { invoiceId: invoice.id },
+      },
+      settings ?? undefined,
+    );
+
+    await this.prisma.invoice.update({
+      where: { id },
+      data: { razorpayOrderId: order.orderId },
+    });
+
+    return {
+      mode: "razorpay",
+      keyId,
+      orderId: order.orderId,
+      amount: order.amount,
+      currency: order.currency,
+    };
+  }
+
+  async confirmInvoicePayment(
+    id: string,
+    actor: DecryptedUser,
+    payment: ConfirmInvoicePaymentInput = {},
+  ) {
+    await this.expireStaleCheckoutInvoices();
+
+    const invoice = await this.prisma.invoice.findUnique({
+      where: { id },
+      include: {
+        studio: { include: { settings: true } },
+      },
+    });
+    if (!invoice) {
+      throw new NotFoundException("Invoice not found");
+    }
+
+    await this.assertCanAccessStudentInvoices(actor, invoice.studentId);
+
+    if (invoice.status === InvoiceStatus.PAID) {
+      return {
+        ...invoice,
+        amount: Number(invoice.amount),
+      };
+    }
+
+    this.assertCheckoutHold(invoice);
+
+    const purchaseMeta = parsePurchaseMeta(invoice.purchaseMeta);
+    if (!purchaseMeta) {
+      throw new BadRequestException("Invoice is not a checkout payment");
+    }
+
+    const settings = invoice.studio.settings;
+    const razorpayEnabled = this.razorpay.isEnabled(settings ?? undefined);
+    let razorpayPaymentId: string | undefined;
+
+    if (razorpayEnabled) {
+      const orderId = payment.razorpay_order_id?.trim();
+      const paymentId = payment.razorpay_payment_id?.trim();
+      const signature = payment.razorpay_signature?.trim();
+
+      if (!orderId || !paymentId || !signature) {
+        throw new BadRequestException("Razorpay payment details are required");
+      }
+
+      if (!invoice.razorpayOrderId || invoice.razorpayOrderId !== orderId) {
+        throw new BadRequestException(
+          "Razorpay order does not match this invoice",
+        );
+      }
+
+      const valid = this.razorpay.verifyPaymentSignature(
+        {
+          orderId,
+          paymentId,
+          signature,
+        },
+        settings ?? undefined,
+      );
+      if (!valid) {
+        throw new BadRequestException("Invalid Razorpay payment signature");
+      }
+
+      razorpayPaymentId = paymentId;
+    }
+
+    const membership = await this.memberships.assign({
+      subscriptionId: purchaseMeta.subscriptionId,
+      purchaserUserId: purchaseMeta.purchaserUserId,
+      coveredStudents: purchaseMeta.coveredStudents,
+    });
+
+    const updated = await this.prisma.invoice.update({
+      where: { id },
+      data: {
+        status: InvoiceStatus.PAID,
+        paymentMethod: PaymentMethod.RAZORPAY,
+        paidAt: new Date(),
+        membershipId: membership.id,
+        paymentHoldExpiresAt: null,
+        purchaseMeta: Prisma.DbNull,
+        ...(razorpayPaymentId ? { razorpayPaymentId } : {}),
+      },
+    });
+
+    return {
+      ...updated,
+      amount: Number(updated.amount),
+      membership,
+    };
+  }
+
+  async abandonInvoicePayment(id: string, actor: DecryptedUser) {
+    const invoice = await this.prisma.invoice.findUnique({ where: { id } });
+    if (!invoice) {
+      throw new NotFoundException("Invoice not found");
+    }
+
+    await this.assertCanAccessStudentInvoices(actor, invoice.studentId);
+
+    if (invoice.status !== InvoiceStatus.PENDING) {
+      return invoice;
+    }
+
+    if (!parsePurchaseMeta(invoice.purchaseMeta)) {
+      throw new BadRequestException("Invoice is not a checkout payment");
+    }
+
+    await this.prisma.invoice.delete({ where: { id } });
+    return { id, status: "CANCELLED" as const };
+  }
+
+  private async expireStaleCheckoutInvoices() {
+    await this.prisma.invoice.deleteMany({
+      where: {
+        status: InvoiceStatus.PENDING,
+        paymentHoldExpiresAt: { lte: new Date() },
+        purchaseMeta: { not: Prisma.DbNull },
+      },
+    });
+  }
+
+  private assertCheckoutHold(invoice: {
+    status: InvoiceStatus;
+    paymentHoldExpiresAt: Date | null;
+    purchaseMeta: Prisma.JsonValue | null;
+  }) {
+    if (invoice.status !== InvoiceStatus.PENDING) {
+      throw new BadRequestException("Invoice is not awaiting payment");
+    }
+    if (!parsePurchaseMeta(invoice.purchaseMeta)) {
+      throw new BadRequestException("Invoice is not a checkout payment");
+    }
+    if (
+      !invoice.paymentHoldExpiresAt ||
+      invoice.paymentHoldExpiresAt.getTime() <= Date.now()
+    ) {
+      throw new BadRequestException(
+        "Payment window expired. Please choose a plan again.",
+      );
+    }
   }
 
   private async assertCanAccessStudentInvoices(

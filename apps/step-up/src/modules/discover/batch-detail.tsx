@@ -238,13 +238,16 @@ export function BatchDetailPage() {
             : {}),
         })),
       ];
-      return api.post(`/batches/${id}/purchase`, {
+      return api.post<{
+        id: string;
+        status: string;
+      }>(`/batches/${id}/purchase`, {
         subscriptionId: selectedPlan.id,
         purchaserUserId: user.id,
         coveredStudents,
       });
     },
-    onSuccess: () => {
+    onSuccess: (invoice) => {
       void Promise.all([
         queryClient.invalidateQueries({ queryKey: ["batches", id] }),
         queryClient.invalidateQueries({
@@ -256,6 +259,13 @@ export function BatchDetailPage() {
       ]);
       setPurchaseOpen(false);
       setSelectedPlan(null);
+      if (invoice.status === "PENDING") {
+        void navigate({
+          to: "/me/checkout/invoice/$invoiceId",
+          params: { invoiceId: invoice.id },
+        });
+        return;
+      }
       setPurchaseSuccess(true);
     },
   });
@@ -571,6 +581,7 @@ export function BatchDetailPage() {
                     type="button"
                     className={styles.planCard}
                     disabled={plansDisabled}
+                    data-testid="plan-card"
                     aria-label={`${planAudienceLabel(plan)}, ${planCadenceLabel(plan)}, ${planPriceLabel(plan)}`}
                     onClick={() => openPurchase(plan)}
                   >
@@ -998,6 +1009,7 @@ export function BatchDetailPage() {
                 fullWidth
                 isDisabled={!canActForStudent || !seatsValid}
                 isPending={purchase.isPending}
+                data-testid="purchase-submit"
                 onClick={() => purchase.mutate()}
               >
                 Enroll with this plan
