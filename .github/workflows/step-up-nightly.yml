@@ -66,12 +66,12 @@ jobs:
           pnpm exec prisma generate
           pnpm exec nx run step-up-api:test:migrations
 
-      - name: Generate Prisma client and migrate
+      - name: Generate Prisma client, migrate, and e2e seed
         working-directory: apps/step-up-api
         run: |
           pnpm exec prisma generate
           pnpm exec prisma migrate deploy
-          pnpm exec prisma db seed
+          pnpm prisma:seed:e2e
 
       - name: Lint and typecheck (affected step-up)
         run: |

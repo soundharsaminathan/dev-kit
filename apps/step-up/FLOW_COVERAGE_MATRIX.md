@@ -146,7 +146,7 @@ Product contract for automated testing. Roles use the canonical enum:
 | E04 | Notification userId+dedupeKey unique index | Critical | Migration smoke | Covered |
 | E05 | Membership / Subscription / Session tables | Critical | Migration smoke | Covered |
 | E06 | Re-apply migrations from empty (`--upgrade`) | High | Migration smoke | Covered |
-| E07 | Seed runs after migrate | Critical | CI + seed script | Covered |
+| E07 | E2E seed (`prisma:seed:e2e`) after migrate | Critical | CI + seed-e2e script | Covered |
 | E08 | Foreign-key / required-field assertions | High | Migration smoke | Covered |
 
 ---

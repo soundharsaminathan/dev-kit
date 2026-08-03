@@ -8,7 +8,7 @@ import {
 } from "../fixtures";
 import { SEED } from "../fixtures/seed";
 
-const BATCH_ID = "batch-beginner-1";
+const BATCH_ID = SEED.beginnerBatchId;
 
 async function clearOpenBookings(studentId: string, batchId: string) {
   const existing = await apiRequest<

@@ -15,7 +15,7 @@ test.describe("student attendance @critical", () => {
     await apiRequest("TRAINER", "/attendance/mark", {
       method: "POST",
       body: JSON.stringify({
-        sessionId: "session-kids-past-1",
+        sessionId: SEED.sessionAttendancePastId,
         studentId: SEED.users.STUDENT.id,
         status: "PRESENT",
         source: "TRAINER",

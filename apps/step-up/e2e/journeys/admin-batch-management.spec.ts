@@ -7,11 +7,6 @@ import {
 } from "../fixtures";
 import { SEED } from "../fixtures/seed";
 
-const ADULT_PLAN_IDS = [
-  "sub-individual-adult-monthly",
-  "sub-individual-adult-quarterly",
-];
-
 async function createUniqueBatch(name: string) {
   let lastError: unknown;
   for (let attempt = 0; attempt < 8; attempt += 1) {
@@ -38,7 +33,7 @@ async function createUniqueBatch(name: string) {
             coverImageUrl:
               "https://images.unsplash.com/photo-1518611012118-696072aa579a?w=800&q=80",
             category: "ADULTS",
-            branchId: "branch-main-1",
+            branchId: SEED.branchMainId,
             trainerIds: [SEED.users.TRAINER.id],
             danceCategories: [
               { name: "Hip Hop", description: "E2E created batch" },
@@ -54,7 +49,7 @@ async function createUniqueBatch(name: string) {
             },
             capacity: 12,
             enrollmentMode: "SELF_JOIN",
-            subscriptionIds: ADULT_PLAN_IDS,
+            subscriptionIds: [...SEED.adultPlanIds],
             active: true,
             certificationEnabled: false,
           }),

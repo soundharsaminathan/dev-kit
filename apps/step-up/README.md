@@ -19,6 +19,8 @@ pnpm build:tokens
 cp apps/step-up-api/.env.example apps/step-up-api/.env
 pnpm --filter @step-up/api prisma:migrate
 pnpm --filter @step-up/api prisma:seed
+# For Playwright / HTTP e2e (isolated test studio; can run without demo seed):
+# pnpm --filter @step-up/api prisma:seed:e2e
 pnpm dev:step-up-api
 
 # 3. Web

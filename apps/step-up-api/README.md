@@ -11,6 +11,8 @@ pnpm install
 pnpm prisma:generate
 pnpm prisma:migrate
 pnpm prisma:seed
+# Optional: e2e-only studio (Playwright / HTTP). Does not replace demo seed.
+# pnpm prisma:seed:e2e
 pnpm dev
 ```
 
@@ -18,7 +20,9 @@ pnpm dev
 
 Production uses Firebase ID tokens via `Authorization: Bearer <token>`.
 
-For local development, set `AUTH_BYPASS=true` and use mock tokens:
+For local development, set `AUTH_BYPASS=true` and use mock tokens.
+
+Demo seed (`prisma:seed`):
 
 ```
 Authorization: Bearer dev:OWNER:owner-1
@@ -28,7 +32,7 @@ Authorization: Bearer dev:STUDENT:student-1
 Authorization: Bearer dev:PARENT:parent-1
 ```
 
-Seed data creates users matching these tokens.
+E2E seed (`prisma:seed:e2e`) uses `studio-e2e-1` and `e2e-*` user ids (see `apps/step-up/e2e/fixtures/seed.ts`).
 
 ## Encryption
 
@@ -50,7 +54,8 @@ Generate a key: `node -e "console.log(require('crypto').randomBytes(32).toString
 | `pnpm start:prod` | Run production build |
 | `pnpm prisma:generate` | Generate Prisma client |
 | `pnpm prisma:migrate` | Run migrations |
-| `pnpm prisma:seed` | Seed dev users |
+| `pnpm prisma:seed` | Seed demo/dev studio |
+| `pnpm prisma:seed:e2e` | Seed isolated e2e test studio (`studio-e2e-1`) |
 | `pnpm test` | Run unit tests |
 
 ## Docker

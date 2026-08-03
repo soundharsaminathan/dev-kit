@@ -190,13 +190,13 @@ jobs:
           pnpm exec prisma generate
           pnpm exec nx run step-up-api:test:migrations
 
-      - name: Generate Prisma client, migrate, and seed
+      - name: Generate Prisma client, migrate, and e2e seed
         if: steps.changes.outputs.run == 'true'
         working-directory: apps/step-up-api
         run: |
           pnpm exec prisma generate
           pnpm exec prisma migrate deploy
-          pnpm exec prisma db seed
+          pnpm prisma:seed:e2e
 
       - name: Vitest API + UI
         if: steps.changes.outputs.run == 'true'
@@ -285,12 +285,12 @@ jobs:
           pnpm exec prisma generate
           pnpm exec nx run step-up-api:test:migrations
 
-      - name: Generate Prisma client, migrate, and seed
+      - name: Generate Prisma client, migrate, and e2e seed
         working-directory: apps/step-up-api
         run: |
           pnpm exec prisma generate
           pnpm exec prisma migrate deploy
-          pnpm exec prisma db seed
+          pnpm prisma:seed:e2e
 
       - name: Install Playwright browser
         run: pnpm --filter @step-up/web exec playwright install chromium --with-deps

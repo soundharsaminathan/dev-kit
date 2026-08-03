@@ -52,7 +52,7 @@ DATABASE_URL=... pnpm --filter @step-up/api test:migrations -- --upgrade
 
 - Postgres reachable via `DATABASE_URL`
 - `AUTH_BYPASS=true` and `VITE_AUTH_BYPASS=true`
-- Seed data: `pnpm --filter @step-up/api prisma:seed`
+- E2E test studio: `pnpm --filter @step-up/api prisma:seed:e2e` (isolated `studio-e2e-1`; demo `prisma:seed` is optional and not required for tests)
 - API secrets used by seed/crypto (`PII_MASTER_KEY`, `CHAT_MASTER_KEY`, `SESSION_QR_SECRET`)
 
 Playwright starts the API (`nest build && node dist/main.js`) and Vite app when servers are not already running.
@@ -79,7 +79,7 @@ Tag critical journeys with `@critical` in the test title so PR regression stays 
 | Gate | Workflow | Scope | Target |
 | --- | --- | --- | --- |
 | PR regression | `ci.yml` → `step-up-regression` | API Vitest + UI Vitest + Playwright `@critical` + migration smoke | &lt; 15 min |
-| Merge queue | `ci.yml` → `step-up-e2e` | Full Playwright + migration + seed | &lt; 45 min |
+| Merge queue | `ci.yml` → `step-up-e2e` | Full Playwright + migration + e2e seed | &lt; 45 min |
 | Nightly | `step-up-nightly.yml` | All Vitest + full Playwright matrix (Chromium, Firefox, WebKit, mobile) | Artifacts retained |
 
 ## Definition of Done

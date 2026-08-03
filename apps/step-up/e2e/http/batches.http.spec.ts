@@ -7,18 +7,13 @@ import {
   TestDataCleanup,
 } from "./helpers";
 
-const ADULT_PLAN_IDS = [
-  "sub-individual-adult-monthly",
-  "sub-individual-adult-quarterly",
-];
-
 test.describe("batches HTTP @http", () => {
   test("staff creates and removes a batch with plans @http", async () => {
     const cleanup = new TestDataCleanup();
     const stamp = Date.now();
     const name = `HTTP Batch ${stamp}`;
     try {
-      // Far-future unique slot avoids seed schedule conflicts on branch-main-1.
+      // Far-future unique slot avoids schedule conflicts on the e2e main branch.
       const created = await expectOk<{
         id: string;
         name: string;
@@ -30,7 +25,7 @@ test.describe("batches HTTP @http", () => {
           coverImageUrl:
             "https://images.unsplash.com/photo-1518611012118-696072aa579a?w=800&q=80",
           category: "ADULTS",
-          branchId: "branch-main-1",
+          branchId: SEED.branchMainId,
           trainerIds: [SEED.users.TRAINER.id],
           danceCategories: [
             { name: "Hip Hop", description: "HTTP integration batch" },
@@ -46,7 +41,7 @@ test.describe("batches HTTP @http", () => {
           },
           capacity: 8,
           enrollmentMode: "SELF_JOIN",
-          subscriptionIds: ADULT_PLAN_IDS,
+          subscriptionIds: [...SEED.adultPlanIds],
           active: true,
           certificationEnabled: false,
         }),
@@ -85,7 +80,7 @@ test.describe("batches HTTP @http", () => {
 
       await expectStatus(
         "STUDENT",
-        `/batches/batch-beginner-1/enroll`,
+        `/batches/${SEED.beginnerBatchId}/enroll`,
         409,
         {
           method: "POST",
@@ -108,7 +103,7 @@ test.describe("batches HTTP @http", () => {
         studioId: SEED.users.STUDENT.studioId,
         name: "Forbidden batch",
         category: "ADULTS",
-        branchId: "branch-main-1",
+        branchId: SEED.branchMainId,
         trainerIds: [SEED.users.TRAINER.id],
         danceCategories: [{ name: "Hip Hop", description: "Nope" }],
         scheduleJson: {
@@ -122,7 +117,7 @@ test.describe("batches HTTP @http", () => {
         },
         capacity: 10,
         enrollmentMode: "SELF_JOIN",
-        subscriptionIds: ADULT_PLAN_IDS,
+        subscriptionIds: [...SEED.adultPlanIds],
       }),
     });
   });
