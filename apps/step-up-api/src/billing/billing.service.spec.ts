@@ -120,6 +120,8 @@ describe("BillingService.getTrainerAnalytics", () => {
         paymentMethod: PaymentMethod.UPI_MANUAL,
         paidAt: new Date("2026-07-01T00:00:00.000Z"),
         platformFeePercent: 5,
+        purchaseMeta: null,
+        membership: null,
         student: { id: "student-1", name: "Alex" },
       },
       {
@@ -130,6 +132,8 @@ describe("BillingService.getTrainerAnalytics", () => {
         paymentMethod: null,
         paidAt: null,
         platformFeePercent: 5,
+        purchaseMeta: null,
+        membership: null,
         student: { id: "student-2", name: "Sam" },
       },
       {
@@ -140,6 +144,8 @@ describe("BillingService.getTrainerAnalytics", () => {
         paymentMethod: null,
         paidAt: null,
         platformFeePercent: 5,
+        purchaseMeta: null,
+        membership: null,
         student: { id: "student-1", name: "Alex" },
       },
     ]);
@@ -169,6 +175,94 @@ describe("BillingService.getTrainerAnalytics", () => {
       pending: 1500,
       overdue: 500,
       invoiceCount: 3,
+    });
+    expect(result.pendingPayments).toHaveLength(2);
+    expect(result.pendingPayments[0]?.status).toBe("OVERDUE");
+    expect(result.series.length).toBeGreaterThan(0);
+    expect(result.comparison.netCollectedDeltaPct).toBeNull();
+  });
+
+  it("builds comparison and day series for a bounded range", async () => {
+    prisma.user.findFirst.mockResolvedValue({
+      id: "trainer-1",
+      name: "Lead Trainer",
+      role: UserRole.TRAINER,
+      studioId: "studio-1",
+    });
+    prisma.batchTrainer.findMany.mockResolvedValue([
+      {
+        batch: {
+          id: "batch-1",
+          name: "Kids Hip-Hop",
+          enrollments: [{ studentId: "student-1" }],
+        },
+      },
+    ]);
+    prisma.invoice.findMany.mockResolvedValue([
+      {
+        id: "inv-paid-current",
+        studentId: "student-1",
+        amount: 2000,
+        status: InvoiceStatus.PAID,
+        paymentMethod: PaymentMethod.CASH,
+        paidAt: new Date("2026-07-15T12:00:00.000Z"),
+        platformFeePercent: 5,
+        purchaseMeta: null,
+        membership: null,
+        student: { id: "student-1", name: "Alex" },
+      },
+      {
+        id: "inv-paid-prior",
+        studentId: "student-1",
+        amount: 1000,
+        status: InvoiceStatus.PAID,
+        paymentMethod: PaymentMethod.CASH,
+        paidAt: new Date("2026-06-15T12:00:00.000Z"),
+        platformFeePercent: 5,
+        purchaseMeta: null,
+        membership: null,
+        student: { id: "student-1", name: "Alex" },
+      },
+      {
+        id: "inv-pending",
+        studentId: "student-1",
+        amount: 800,
+        status: InvoiceStatus.PENDING,
+        paymentMethod: null,
+        paidAt: null,
+        platformFeePercent: 5,
+        purchaseMeta: {
+          batchId: "batch-1",
+          subscriptionId: "sub-1",
+          purchaserUserId: "student-1",
+          coveredStudents: [{ studentId: "student-1", seatRole: "ADULT" }],
+        },
+        membership: { periodEnd: new Date("2026-07-20T00:00:00.000Z") },
+        student: { id: "student-1", name: "Alex" },
+      },
+    ]);
+
+    const result = await service.getTrainerAnalytics(
+      makeUser({ id: "trainer-1", role: UserRole.TRAINER }),
+      "trainer-1",
+      "studio-1",
+      {
+        from: "2026-07-01T00:00:00.000Z",
+        to: "2026-07-31T23:59:59.999Z",
+        bucket: "day",
+      },
+    );
+
+    expect(result.totals.collected).toBe(2000);
+    expect(result.comparison.collected).toBe(1000);
+    expect(result.comparison.netCollected).toBe(950);
+    expect(result.comparison.netCollectedDeltaPct).toBe(100);
+    expect(result.series.some((point) => point.collected === 2000)).toBe(true);
+    expect(result.pendingPayments[0]).toMatchObject({
+      invoiceId: "inv-pending",
+      dueDate: "2026-07-20T00:00:00.000Z",
+      batchId: "batch-1",
+      batchName: "Kids Hip-Hop",
     });
   });
 

@@ -71,6 +71,12 @@
       "import": "./dist/card/index.js",
       "default": "./dist/card/index.js"
     },
+    "./chart": {
+      "development": "./src/chart/index.ts",
+      "types": "./dist/chart/index.d.ts",
+      "import": "./dist/chart/index.js",
+      "default": "./dist/chart/index.js"
+    },
     "./alert": {
       "development": "./src/alert/index.ts",
       "types": "./dist/alert/index.d.ts",
@@ -576,7 +582,8 @@
     "@react-types/color": "^3.2.0",
     "@react-types/meter": "^3.5.0",
     "@react-types/shared": "^3.35.0",
-    "motion": "11.15.0"
+    "motion": "11.15.0",
+    "recharts": "^3.10.1"
   },
   "devDependencies": {
     "@dev-ui/icons-packs": "workspace:*",

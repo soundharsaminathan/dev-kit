@@ -70,6 +70,7 @@ test.describe("admin payments @critical", () => {
     await expect(
       page.getByRole("heading", { name: /^payments$/i }),
     ).toBeVisible();
+    await expect(page.getByText(/net earnings/i).first()).toBeVisible();
     await context.close();
   });
 });

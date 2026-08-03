@@ -1,0 +1,351 @@
+@use "@dev-ui/tokens/scss" as *;
+
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 0.75rem);
+  min-width: 0;
+}
+
+.filterBar {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: var(--space-2, 0.5rem);
+  padding: var(--space-2, 0.5rem) 0;
+  background: color-mix(in srgb, var(--color-bg) 92%, transparent);
+  backdrop-filter: blur(8px);
+}
+
+.filterField {
+  min-width: 9rem;
+  flex: 1 1 9rem;
+}
+
+.filterSearch {
+  min-width: 10rem;
+  flex: 1 1 12rem;
+}
+
+.filterActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2, 0.5rem);
+  margin-left: auto;
+}
+
+.customDates {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2, 0.5rem);
+  width: 100%;
+}
+
+.hero {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 0.5rem);
+  padding: var(--space-4, 1rem);
+  border-radius: var(--radius-xl, 1rem);
+  border: 1px solid color-mix(in srgb, var(--color-primary) 22%, transparent);
+  background: color-mix(in srgb, var(--color-primary) 8%, var(--color-card, var(--color-bg)));
+  box-shadow: var(--shadow-sm, 0 1px 3px rgb(0 0 0 / 6%));
+}
+
+.heroLabel {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: color-mix(in srgb, var(--color-fg) 62%, transparent);
+}
+
+.heroValue {
+  font-size: clamp(1.75rem, 4vw, 2.5rem);
+  font-weight: 750;
+  letter-spacing: -0.04em;
+  line-height: 1.05;
+  font-variant-numeric: tabular-nums;
+}
+
+.heroDelta {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  padding: 0.15rem 0.5rem;
+  border-radius: var(--radius-lg, 0.75rem);
+  font-size: 0.75rem;
+  font-weight: 600;
+
+  &[data-tone="up"] {
+    color: var(--success-700, #0f766e);
+    background: color-mix(in srgb, var(--success-500, #14b8a6) 16%, transparent);
+  }
+
+  &[data-tone="down"] {
+    color: var(--danger-700, #be123c);
+    background: color-mix(in srgb, var(--danger-500, #f43f5e) 16%, transparent);
+  }
+
+  &[data-tone="flat"] {
+    color: color-mix(in srgb, var(--color-fg) 62%, transparent);
+    background: color-mix(in srgb, var(--color-fg) 8%, transparent);
+  }
+}
+
+.heroSecondary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3, 0.75rem);
+  font-size: 0.8125rem;
+  color: color-mix(in srgb, var(--color-fg) 62%, transparent);
+}
+
+.heroSecondary strong {
+  color: var(--color-fg);
+  font-variant-numeric: tabular-nums;
+}
+
+.kpiGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2, 0.5rem);
+}
+
+.kpiCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1, 0.25rem);
+  padding: var(--space-3, 0.75rem);
+  border-radius: var(--radius-xl, 1rem);
+  border: 1px solid color-mix(in srgb, var(--color-fg) 10%, transparent);
+  background: var(--color-card, var(--color-bg));
+  min-height: 5.25rem;
+}
+
+.kpiLabel {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2, 0.5rem);
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: color-mix(in srgb, var(--color-fg) 62%, transparent);
+}
+
+.kpiIcon {
+  display: grid;
+  place-items: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: var(--radius-lg, 0.75rem);
+  background: color-mix(in srgb, var(--color-fg) 8%, transparent);
+  color: var(--color-fg);
+
+  &[data-tone="success"] {
+    background: color-mix(in srgb, var(--success-500, #14b8a6) 16%, transparent);
+    color: var(--success-700, #0f766e);
+  }
+
+  &[data-tone="warning"] {
+    background: color-mix(in srgb, var(--warning-500, #f59e0b) 18%, transparent);
+    color: var(--warning-700, #b45309);
+  }
+
+  &[data-tone="danger"] {
+    background: color-mix(in srgb, var(--danger-500, #f43f5e) 16%, transparent);
+    color: var(--danger-700, #be123c);
+  }
+}
+
+.kpiIcon svg {
+  width: 0.875rem;
+  height: 0.875rem;
+}
+
+.kpiValue {
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.15;
+}
+
+.kpiHint {
+  font-size: 0.75rem;
+  color: color-mix(in srgb, var(--color-fg) 52%, transparent);
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 0.5rem);
+  padding: var(--space-3, 0.75rem);
+  border-radius: var(--radius-xl, 1rem);
+  border: 1px solid color-mix(in srgb, var(--color-fg) 10%, transparent);
+  background: var(--color-card, var(--color-bg));
+  box-shadow: var(--shadow-sm, 0 1px 3px rgb(0 0 0 / 5%));
+  min-width: 0;
+}
+
+.panelHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2, 0.5rem);
+}
+
+.panelTitle {
+  margin: 0;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--color-fg) 52%, transparent);
+}
+
+.chart {
+  width: 100%;
+  min-height: 14rem;
+  aspect-ratio: 16 / 9;
+}
+
+.methodList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 0.75rem);
+}
+
+.methodRow {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1, 0.25rem);
+}
+
+.methodMeta {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-2, 0.5rem);
+  font-size: 0.8125rem;
+}
+
+.methodName {
+  font-weight: 600;
+}
+
+.methodAmount {
+  color: color-mix(in srgb, var(--color-fg) 62%, transparent);
+  font-variant-numeric: tabular-nums;
+}
+
+.methodBar {
+  width: 100%;
+
+  &[data-method="CASH"] {
+    --progress-fill-color: var(--success-600, #0d9488);
+  }
+
+  &[data-method="UPI_MANUAL"] {
+    --progress-fill-color: #2563eb;
+  }
+
+  &[data-method="RAZORPAY"] {
+    --progress-fill-color: #7c3aed;
+  }
+}
+
+.batchList,
+.pendingList,
+.recentList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 0.5rem);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.batchRow,
+.pendingRow,
+.recentRow {
+  display: grid;
+  gap: var(--space-1, 0.25rem);
+  padding: var(--space-2, 0.5rem) var(--space-3, 0.75rem);
+  border-radius: var(--radius-lg, 0.75rem);
+  border: 1px solid color-mix(in srgb, var(--color-fg) 8%, transparent);
+  background: transparent;
+  text-align: start;
+  width: 100%;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.batchRow:active,
+.pendingRow:active {
+  transform: scale(var(--interaction-press-scale, 0.98));
+}
+
+.batchTop,
+.pendingTop,
+.recentTop {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2, 0.5rem);
+}
+
+.batchName,
+.pendingName,
+.recentName {
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+
+.batchAmount,
+.pendingAmount,
+.recentAmount {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+.batchMeta,
+.pendingMeta,
+.recentMeta {
+  font-size: 0.75rem;
+  color: color-mix(in srgb, var(--color-fg) 55%, transparent);
+}
+
+.pendingGrid {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr auto auto;
+  gap: var(--space-2, 0.5rem);
+  align-items: center;
+}
+
+.analyticsGrid {
+  display: grid;
+  gap: var(--space-3, 0.75rem);
+}
+
+@media (min-width: 900px) {
+  .kpiGrid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .analyticsGrid {
+    grid-template-columns: 1.4fr 1fr;
+  }
+
+  .pendingGrid {
+    grid-template-columns: 1.4fr 1.2fr 1fr auto auto;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .batchRow:active,
+  .pendingRow:active {
+    transform: none;
+  }
+}
