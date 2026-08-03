@@ -33,6 +33,26 @@ describe("createApiClient auth", () => {
       message: "Unauthorized",
     });
   });
+
+  it("invokes onUnauthorized for upstream 401", async () => {
+    const onUnauthorized = vi.fn();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 401,
+        text: async () => JSON.stringify({ message: "Bypass user not found" }),
+      }),
+    );
+
+    const client = createApiClient(async () => "dev:OWNER:owner-1", {
+      onUnauthorized,
+    });
+    await expect(client.get("/users/me")).rejects.toMatchObject({
+      status: 401,
+    });
+    expect(onUnauthorized).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe("apiRequest", () => {

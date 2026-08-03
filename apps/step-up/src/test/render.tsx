@@ -12,7 +12,7 @@ import {
   type AuthContextValue,
   type AuthUser,
 } from "@/lib/auth-context";
-import { DEV_USERS, type UserRole } from "@/lib/constants";
+import type { UserRole } from "@/lib/constants";
 
 export function createTestQueryClient() {
   return new QueryClient({
@@ -23,21 +23,29 @@ export function createTestQueryClient() {
   });
 }
 
+function fixtureUser(role: UserRole): AuthUser {
+  return {
+    id: `${role.toLowerCase()}-fixture`,
+    email: `${role.toLowerCase()}@example.com`,
+    name: `${role} Fixture`,
+    role,
+    studioId: role === "SYSTEM_ADMIN" ? null : "studio-fixture-1",
+  };
+}
+
 export function createAuthStub(
   overrides: Partial<AuthContextValue> & { role?: UserRole } = {},
 ): AuthContextValue {
   const role = overrides.role ?? "STUDENT";
   const user =
-    overrides.user === undefined
-      ? (DEV_USERS[role] as AuthUser)
-      : overrides.user;
+    overrides.user === undefined ? fixtureUser(role) : overrides.user;
 
   return {
     loading: false,
     emailVerified: true,
     hasPasswordProvider: false,
     needsEmailVerification: false,
-    loginAsDev: () => undefined,
+    loginAsSystemAdmin: async () => user as AuthUser,
     signIn: async () => user as AuthUser,
     signUp: async () => user as AuthUser,
     signInWithGoogle: async () => user as AuthUser,

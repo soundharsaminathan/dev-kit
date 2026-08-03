@@ -1,7 +1,7 @@
 import { isRedirect } from "@tanstack/react-router";
 import { describe, expect, it, vi } from "vitest";
-import type { AuthContextValue } from "@/lib/auth-context";
-import { DEV_USERS } from "@/lib/constants";
+import type { AuthContextValue, AuthUser } from "@/lib/auth-context";
+import { SEED_SYSTEM_ADMIN, type UserRole } from "@/lib/constants";
 import {
   homePathForUser,
   redirectIfAuthenticated,
@@ -11,6 +11,20 @@ import {
   safeInternalPath,
 } from "@/lib/require-auth";
 
+function fixtureUser(
+  role: UserRole,
+  overrides: Partial<AuthUser> = {},
+): AuthUser {
+  return {
+    id: `${role.toLowerCase()}-fixture`,
+    email: `${role.toLowerCase()}@example.com`,
+    name: `${role} Fixture`,
+    role,
+    studioId: role === "SYSTEM_ADMIN" ? null : "studio-fixture-1",
+    ...overrides,
+  };
+}
+
 function authWith(user: AuthContextValue["user"]): AuthContextValue {
   return {
     user,
@@ -18,7 +32,7 @@ function authWith(user: AuthContextValue["user"]): AuthContextValue {
     emailVerified: true,
     hasPasswordProvider: false,
     needsEmailVerification: false,
-    loginAsDev: vi.fn(),
+    loginAsSystemAdmin: vi.fn(async () => SEED_SYSTEM_ADMIN),
     signIn: vi.fn(),
     signUp: vi.fn(),
     signInWithGoogle: vi.fn(),
@@ -38,11 +52,11 @@ describe("requireAuth", () => {
     try {
       requireAuth(authWith(null), {
         roles: ["STUDENT", "PARENT"],
-        fallback: "/app",
+        fallback: "/me",
         pathname: "/me/bookings",
         searchStr: "",
       });
-      expect.fail("expected redirect");
+      expect.unreachable();
     } catch (error) {
       expect(isRedirect(error)).toBe(true);
       if (isRedirect(error)) {
@@ -52,15 +66,15 @@ describe("requireAuth", () => {
     }
   });
 
-  it("redirects wrong role to fallback shell", () => {
+  it("rejects wrong roles toward fallback", () => {
     try {
-      requireAuth(authWith(DEV_USERS.STUDENT), {
-        roles: ["OWNER", "STAFF", "TRAINER"],
+      requireAuth(authWith(fixtureUser("STUDENT")), {
+        roles: ["OWNER", "STAFF"],
         fallback: "/me",
         pathname: "/app",
         searchStr: "",
       });
-      expect.fail("expected redirect");
+      expect.unreachable();
     } catch (error) {
       expect(isRedirect(error)).toBe(true);
       if (isRedirect(error)) {
@@ -69,10 +83,10 @@ describe("requireAuth", () => {
     }
   });
 
-  it("returns the user when role is allowed", () => {
-    const user = requireAuth(authWith(DEV_USERS.TRAINER), {
+  it("returns the user when role matches", () => {
+    const user = requireAuth(authWith(fixtureUser("TRAINER")), {
       roles: ["OWNER", "STAFF", "TRAINER"],
-      fallback: "/me",
+      fallback: "/app",
       pathname: "/app",
       searchStr: "",
     });
@@ -83,26 +97,26 @@ describe("requireAuth", () => {
 describe("requireAdmin", () => {
   it("allows owner and staff", () => {
     expect(
-      requireAdmin(authWith(DEV_USERS.OWNER), {
-        pathname: "/app/settings",
+      requireAdmin(authWith(fixtureUser("OWNER")), {
+        pathname: "/app/students",
         searchStr: "",
       }).role,
     ).toBe("OWNER");
     expect(
-      requireAdmin(authWith(DEV_USERS.STAFF), {
-        pathname: "/app/settings",
+      requireAdmin(authWith(fixtureUser("STAFF")), {
+        pathname: "/app/students",
         searchStr: "",
       }).role,
     ).toBe("STAFF");
   });
 
-  it("redirects trainers to /app", () => {
+  it("bounces trainers to /app", () => {
     try {
-      requireAdmin(authWith(DEV_USERS.TRAINER), {
-        pathname: "/app/settings",
+      requireAdmin(authWith(fixtureUser("TRAINER")), {
+        pathname: "/app/students",
         searchStr: "",
       });
-      expect.fail("expected redirect");
+      expect.unreachable();
     } catch (error) {
       expect(isRedirect(error)).toBe(true);
       if (isRedirect(error)) {
@@ -112,43 +126,40 @@ describe("requireAdmin", () => {
   });
 });
 
-describe("safeInternalPath", () => {
-  it("accepts internal paths and rejects open redirects", () => {
-    expect(safeInternalPath("/me/feed")).toBe("/me/feed");
-    expect(safeInternalPath("//evil.example")).toBeNull();
-    expect(safeInternalPath("https://evil.example")).toBeNull();
-    expect(safeInternalPath(undefined)).toBeNull();
-  });
-});
-
 describe("homePathForUser", () => {
   it("routes staff to /app and members to /me", () => {
-    expect(homePathForUser(DEV_USERS.OWNER)).toBe("/app");
-    expect(homePathForUser(DEV_USERS.STUDENT)).toBe("/me");
+    expect(homePathForUser(fixtureUser("OWNER"))).toBe("/app");
+    expect(
+      homePathForUser(
+        fixtureUser("STUDENT", {
+          onboardingCompletedAt: "2026-01-01T00:00:00.000Z",
+        }),
+      ),
+    ).toBe("/me");
   });
 
   it("routes system admin to /admin", () => {
-    expect(homePathForUser(DEV_USERS.SYSTEM_ADMIN)).toBe("/admin");
+    expect(homePathForUser(SEED_SYSTEM_ADMIN)).toBe("/admin");
   });
 });
 
 describe("requireSystemAdmin", () => {
   it("allows system admin", () => {
     expect(
-      requireSystemAdmin(authWith(DEV_USERS.SYSTEM_ADMIN), {
+      requireSystemAdmin(authWith(SEED_SYSTEM_ADMIN), {
         pathname: "/admin",
         searchStr: "",
       }).role,
     ).toBe("SYSTEM_ADMIN");
   });
 
-  it("redirects owners away from admin", () => {
+  it("bounces others to /", () => {
     try {
-      requireSystemAdmin(authWith(DEV_USERS.OWNER), {
+      requireSystemAdmin(authWith(fixtureUser("OWNER")), {
         pathname: "/admin",
         searchStr: "",
       });
-      expect.fail("expected redirect");
+      expect.unreachable();
     } catch (error) {
       expect(isRedirect(error)).toBe(true);
       if (isRedirect(error)) {
@@ -158,11 +169,17 @@ describe("requireSystemAdmin", () => {
   });
 });
 
-describe("redirectIfAuthenticated", () => {
-  it("bounces signed-in users away from login", () => {
+describe("safeInternalPath / redirectIfAuthenticated", () => {
+  it("rejects open redirects", () => {
+    expect(safeInternalPath("//evil.com")).toBeNull();
+    expect(safeInternalPath("https://evil.com")).toBeNull();
+    expect(safeInternalPath("/app")).toBe("/app");
+  });
+
+  it("redirects signed-in users away from login", () => {
     try {
-      redirectIfAuthenticated(authWith(DEV_USERS.STAFF));
-      expect.fail("expected redirect");
+      redirectIfAuthenticated(authWith(fixtureUser("STAFF")));
+      expect.unreachable();
     } catch (error) {
       expect(isRedirect(error)).toBe(true);
       if (isRedirect(error)) {
