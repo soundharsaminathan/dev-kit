@@ -5,6 +5,13 @@ export const SEED = {
   unpaidInvoiceHttpId: "invoice-e2e-unpaid-2",
   pendingBookingId: "booking-req-trial-1",
   users: {
+    SYSTEM_ADMIN: {
+      id: "system-admin-1",
+      email: "admin@stepup.dev",
+      name: "System Admin",
+      role: "SYSTEM_ADMIN" as const,
+      studioId: null as string | null,
+    },
     OWNER: {
       id: "owner-1",
       email: "owner@stepup.dev",

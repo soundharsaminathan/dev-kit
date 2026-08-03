@@ -13,7 +13,14 @@ import { SEED, type SeedRole } from "./fixtures/seed";
 const dirname = path.dirname(fileURLToPath(import.meta.url));
 const authDir = path.join(dirname, ".auth");
 
-const roles: SeedRole[] = ["OWNER", "STAFF", "TRAINER", "STUDENT", "PARENT"];
+const roles: SeedRole[] = [
+  "SYSTEM_ADMIN",
+  "OWNER",
+  "STAFF",
+  "TRAINER",
+  "STUDENT",
+  "PARENT",
+];
 
 setup("authenticate roles", async ({ request, browser }) => {
   setup.setTimeout(120_000);

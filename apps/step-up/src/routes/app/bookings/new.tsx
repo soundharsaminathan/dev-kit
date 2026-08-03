@@ -9,8 +9,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { useApi } from "@/lib/api-context";
-import { STUDIO_ID } from "@/lib/constants";
 import { ENTITY_ICONS } from "@/lib/entity-icons";
+import { useStudioId } from "@/lib/use-studio-id";
 import {
   StudentSearchCombobox,
   type StudioStudent,
@@ -33,28 +33,29 @@ export const Route = createFileRoute("/app/bookings/new")({
 
 function NewBookingPage() {
   const api = useApi();
+  const studioId = useStudioId();
   const navigate = useNavigate({ from: Route.fullPath });
   const queryClient = useQueryClient();
   const [studentId, setStudentId] = useState<string | null>(null);
   const [type, setType] = useState<BookingType>("TRIAL");
 
   const hasAnyStudentsQuery = useQuery({
-    queryKey: ["studio-students-search", STUDIO_ID, ""],
+    queryKey: ["studio-students-search", studioId, ""],
     queryFn: () =>
-      api.get<StudioStudent[]>(`/users/studio/${STUDIO_ID}/students`),
+      api.get<StudioStudent[]>(`/users/studio/${studioId}/students`),
   });
 
   const createBooking = useMutation({
     mutationFn: () =>
       api.post<Booking>("/bookings", {
-        studioId: STUDIO_ID,
+        studioId,
         studentId,
         type,
         notes: "Created from staff dashboard",
       }),
     onSuccess: async () => {
       await queryClient.invalidateQueries({
-        queryKey: ["bookings", "studio", STUDIO_ID],
+        queryKey: ["bookings", "studio", studioId],
       });
       await navigate({ to: "/app/bookings" });
     },

@@ -11,8 +11,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useApi } from "@/lib/api-context";
 import { useAuth } from "@/lib/auth";
-import { STUDIO_ID } from "@/lib/constants";
 import { ENTITY_ICONS } from "@/lib/entity-icons";
+import { useStudioId } from "@/lib/use-studio-id";
 import { FilterChipRow } from "@/modules/ui/filter-chip-row";
 import { FormInput } from "@/modules/ui/form-input";
 import { PressableCard } from "@/modules/ui/pressable-card";
@@ -148,6 +148,7 @@ function detectPreset(from: string, to: string): RangePreset {
 function PaymentsPage() {
   const { user } = useAuth();
   const api = useApi();
+  const studioId = useStudioId();
   const isTrainer = user?.role === "TRAINER";
   const isStaff = user?.role === "OWNER" || user?.role === "STAFF";
   const [selectedTrainerId, setSelectedTrainerId] = useState<string | null>(
@@ -159,8 +160,8 @@ function PaymentsPage() {
   const rangePreset = detectPreset(fromDate, toDate);
 
   const membersQuery = useQuery({
-    queryKey: ["studio-members", STUDIO_ID],
-    queryFn: () => api.get<StudioMember[]>(`/users/studio/${STUDIO_ID}`),
+    queryKey: ["studio-members", studioId],
+    queryFn: () => api.get<StudioMember[]>(`/users/studio/${studioId}`),
     enabled: isStaff,
   });
 
@@ -179,12 +180,12 @@ function PaymentsPage() {
       "billing",
       "trainer-analytics",
       trainerId,
-      STUDIO_ID,
+      studioId,
       fromDate,
       toDate,
     ],
     queryFn: () => {
-      const params = new URLSearchParams({ studioId: STUDIO_ID });
+      const params = new URLSearchParams({ studioId: studioId });
       if (fromDate) {
         params.set("from", startOfDayIso(fromDate));
       }

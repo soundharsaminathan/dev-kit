@@ -150,6 +150,34 @@ async function upsertUser(user: SeedUser) {
 }
 
 async function main() {
+  const systemAdminSealed = crypto.sealPii({
+    email: "admin@stepup.dev",
+    name: "System Admin",
+    phone: "+91 98000 00000",
+    bio: "Platform administrator.",
+    instagramUrl: null,
+  });
+
+  await prisma.user.upsert({
+    where: { firebaseUid: "dev-system-admin-1" },
+    update: {
+      ...systemAdminSealed,
+      role: UserRole.SYSTEM_ADMIN,
+      studioId: null,
+      styles: [],
+      profileVisibility: ProfileVisibility.PRIVATE,
+    },
+    create: {
+      id: "system-admin-1",
+      firebaseUid: "dev-system-admin-1",
+      ...systemAdminSealed,
+      role: UserRole.SYSTEM_ADMIN,
+      studioId: null,
+      styles: [],
+      profileVisibility: ProfileVisibility.PRIVATE,
+    },
+  });
+
   const ownerSealed = crypto.sealPii({
     email: "owner@stepup.dev",
     name: "Studio Owner",

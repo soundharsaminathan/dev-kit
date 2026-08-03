@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMemo } from "react";
-import { STUDIO_ID } from "@/lib/constants";
+import { useStudioId } from "@/lib/use-studio-id";
 import { CalendarPage } from "@/modules/calendar/calendar-page";
 import type { CalendarViewMode } from "@/modules/calendar/types";
 import { useActiveStudentContext } from "@/modules/me/use-active-student-context";
@@ -27,6 +27,7 @@ export const Route = createFileRoute("/me/calendar")({
 });
 
 function MeCalendarPage() {
+  const studioId = useStudioId();
   const { studentId } = useActiveStudentContext();
   const navigate = useNavigate({ from: "/me/calendar" });
   const search = Route.useSearch();
@@ -37,8 +38,7 @@ function MeCalendarPage() {
       title="Calendar"
       description="Your upcoming classes and confirmed bookings."
       scope={{
-        studioId: STUDIO_ID,
-        studentId,
+        studioId,
       }}
       view={search.view}
       focus={focus}

@@ -1,7 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useApi } from "@/lib/api-context";
-import { STUDIO_ID } from "@/lib/constants";
+import { requireAdmin } from "@/lib/require-auth";
+import { useStudioId } from "@/lib/use-studio-id";
 import { PressableCard } from "@/modules/ui/pressable-card";
 import { PullToRefresh } from "@/modules/ui/pull-to-refresh";
 import { Screen } from "@/modules/ui/screen";
@@ -35,6 +36,12 @@ type Subscription = {
 };
 
 export const Route = createFileRoute("/app/subscriptions/")({
+  beforeLoad: ({ context, location }) => {
+    requireAdmin(context.auth, {
+      pathname: location.pathname,
+      searchStr: location.searchStr,
+    });
+  },
   component: SubscriptionsPage,
 });
 
@@ -78,12 +85,12 @@ function cadenceSuffix(cadence: BillingCadence) {
 
 function SubscriptionsPage() {
   const api = useApi();
+  const studioId = useStudioId();
   const navigate = useNavigate();
 
   const query = useQuery({
-    queryKey: ["subscriptions", STUDIO_ID],
-    queryFn: () =>
-      api.get<Subscription[]>(`/subscriptions/studio/${STUDIO_ID}`),
+    queryKey: ["subscriptions", studioId],
+    queryFn: () => api.get<Subscription[]>(`/subscriptions/studio/${studioId}`),
   });
 
   return (

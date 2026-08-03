@@ -37,6 +37,7 @@ import { AuthGuard } from "../auth/auth.guard";
 import { CurrentUser } from "../auth/current-user.decorator";
 import { Roles } from "../auth/roles.decorator";
 import { RolesGuard } from "../auth/roles.guard";
+import { assertSameStudio } from "../auth/studio-access";
 import { SocialService } from "../social/social.service";
 import {
   isStudentFunnelPeriod,
@@ -379,23 +380,34 @@ export class UsersController {
 
   @Get("studio/:studioId")
   @Roles(UserRole.OWNER, UserRole.STAFF, UserRole.TRAINER)
-  listByStudio(@Param("studioId") studioId: string) {
+  listByStudio(
+    @CurrentUser() user: DecryptedUser,
+    @Param("studioId") studioId: string,
+  ) {
+    assertSameStudio(user, studioId);
     return this.usersService.listByStudio(studioId);
   }
 
   @Get("studio/:studioId/students")
   @Roles(UserRole.OWNER, UserRole.STAFF)
-  listStudents(@Param("studioId") studioId: string, @Query("q") q?: string) {
+  listStudents(
+    @CurrentUser() user: DecryptedUser,
+    @Param("studioId") studioId: string,
+    @Query("q") q?: string,
+  ) {
+    assertSameStudio(user, studioId);
     return this.usersService.listStudents(studioId, q);
   }
 
   @Get("studio/:studioId/student-directory")
   @Roles(UserRole.OWNER, UserRole.STAFF)
   listStudentDirectory(
+    @CurrentUser() user: DecryptedUser,
     @Param("studioId") studioId: string,
     @Query("stage") stage?: string,
     @Query("period") period?: string,
   ) {
+    assertSameStudio(user, studioId);
     if (stage !== undefined && !isStudentFunnelStage(stage)) {
       throw new BadRequestException(
         `Invalid stage. Expected one of: ${STUDENT_FUNNEL_STAGES.join(", ")}`,
@@ -416,9 +428,11 @@ export class UsersController {
   @Get("studio/:studioId/student-funnel")
   @Roles(UserRole.OWNER, UserRole.STAFF)
   getStudentFunnel(
+    @CurrentUser() user: DecryptedUser,
     @Param("studioId") studioId: string,
     @Query("period") period?: string,
   ) {
+    assertSameStudio(user, studioId);
     if (period !== undefined && !isStudentFunnelPeriod(period)) {
       throw new BadRequestException(
         `Invalid period. Expected one of: ${STUDENT_FUNNEL_PERIODS.join(", ")}`,
@@ -434,28 +448,34 @@ export class UsersController {
   @Get("studio/:studioId/students/:studentId")
   @Roles(UserRole.OWNER, UserRole.STAFF, UserRole.TRAINER)
   getStudentStudioProfile(
+    @CurrentUser() user: DecryptedUser,
     @Param("studioId") studioId: string,
     @Param("studentId") studentId: string,
   ) {
+    assertSameStudio(user, studioId);
     return this.usersService.getStudentStudioProfile(studioId, studentId);
   }
 
   @Patch("studio/:studioId/students/:studentId")
   @Roles(UserRole.OWNER, UserRole.STAFF)
   updateStudioStudent(
+    @CurrentUser() user: DecryptedUser,
     @Param("studioId") studioId: string,
     @Param("studentId") studentId: string,
     @Body() dto: UpdateStudioStudentDto,
   ) {
+    assertSameStudio(user, studioId);
     return this.usersService.updateStudioStudent(studioId, studentId, dto);
   }
 
   @Delete("studio/:studioId/students/:studentId")
   @Roles(UserRole.OWNER, UserRole.STAFF)
   deleteStudent(
+    @CurrentUser() user: DecryptedUser,
     @Param("studioId") studioId: string,
     @Param("studentId") studentId: string,
   ) {
+    assertSameStudio(user, studioId);
     return this.usersService.deleteStudent(studioId, studentId);
   }
 
@@ -464,6 +484,7 @@ export class UsersController {
     @CurrentUser() user: DecryptedUser,
     @Param("studioId") studioId: string,
   ) {
+    assertSameStudio(user, studioId);
     return this.socialService.listStudioTrainers(user.id, studioId);
   }
 

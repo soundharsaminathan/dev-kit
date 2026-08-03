@@ -201,6 +201,7 @@ export class BillingService {
     const byPaymentMethod: TrainerPaymentAnalytics["byPaymentMethod"] = {
       [PaymentMethod.CASH]: { count: 0, amount: 0 },
       [PaymentMethod.UPI_MANUAL]: { count: 0, amount: 0 },
+      [PaymentMethod.RAZORPAY]: { count: 0, amount: 0 },
     };
     const batchTotals = new Map<
       string,
@@ -326,6 +327,10 @@ export class BillingService {
         UPI_MANUAL: {
           count: byPaymentMethod.UPI_MANUAL.count,
           amount: roundMoney(byPaymentMethod.UPI_MANUAL.amount),
+        },
+        RAZORPAY: {
+          count: byPaymentMethod.RAZORPAY.count,
+          amount: roundMoney(byPaymentMethod.RAZORPAY.amount),
         },
       },
       byBatch: [...batchTotals.values()].map((batch) => ({
@@ -550,6 +555,7 @@ export class BillingService {
       byPaymentMethod: {
         CASH: { count: 0, amount: 0 },
         UPI_MANUAL: { count: 0, amount: 0 },
+        RAZORPAY: { count: 0, amount: 0 },
       },
       byBatch: [],
       invoices: [],

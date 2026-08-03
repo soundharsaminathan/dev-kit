@@ -12,8 +12,11 @@ import { SessionType, UserRole } from "@prisma/client";
 import { IsDateString, IsEnum, IsOptional, IsString } from "class-validator";
 import { AttendanceService } from "../attendance/attendance.service";
 import { AuthGuard } from "../auth/auth.guard";
+import { CurrentUser } from "../auth/current-user.decorator";
 import { Roles } from "../auth/roles.decorator";
 import { RolesGuard } from "../auth/roles.guard";
+import { assertSameStudio } from "../auth/studio-access";
+import type { DecryptedUser } from "../users/user-crypto.service";
 import { SessionsService } from "./sessions.service";
 
 class CreateSessionDto {
@@ -46,7 +49,11 @@ export class SessionsController {
   }
 
   @Get("studio/:studioId/trial")
-  listTrialSlots(@Param("studioId") studioId: string) {
+  listTrialSlots(
+    @CurrentUser() user: DecryptedUser,
+    @Param("studioId") studioId: string,
+  ) {
+    assertSameStudio(user, studioId);
     return this.sessionsService.listTrialSlots(studioId);
   }
 

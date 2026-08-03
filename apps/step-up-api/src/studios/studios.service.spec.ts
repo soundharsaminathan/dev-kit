@@ -1,5 +1,5 @@
-import { BadRequestException } from "@nestjs/common";
-import { Prisma } from "@prisma/client";
+import { BadRequestException, ConflictException } from "@nestjs/common";
+import { Prisma, UserRole } from "@prisma/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { StudiosService } from "./studios.service";
 
@@ -12,11 +12,28 @@ describe("StudiosService", () => {
     studioSettings: {
       upsert: vi.fn(),
     },
+    user: {
+      findFirst: vi.fn(),
+      findUniqueOrThrow: vi.fn(),
+    },
+    $transaction: vi.fn(),
   };
   const crypto = {
     encryptStudioSecret: vi.fn((secret: string) => ({
       ciphertext: `sealed:${secret}`,
       iv: "iv-1",
+    })),
+    hashEmail: vi.fn((email: string) => `hash:${email}`),
+    sealPii: vi.fn(() => ({
+      encryptedKey: "key",
+      piiCiphertext: "cipher",
+      piiIv: "iv",
+      emailHash: "hash",
+    })),
+    decryptUser: vi.fn((user: { id: string }) => ({
+      id: user.id,
+      email: "owner@example.com",
+      name: "Owner",
     })),
   };
   const media = {
@@ -151,5 +168,64 @@ describe("StudiosService", () => {
       where: { id: "studio-1" },
       data: { brandTheme: Prisma.DbNull },
     });
+  });
+
+  it("creates studio, settings, and owner in a transaction", async () => {
+    prisma.user.findFirst.mockResolvedValue(null);
+    prisma.$transaction.mockImplementation(async (fn) => {
+      const tx = {
+        user: {
+          create: vi.fn().mockResolvedValue({ id: "owner-new" }),
+          update: vi.fn(),
+          findUniqueOrThrow: vi
+            .fn()
+            .mockResolvedValue({ id: "owner-new", email: "x" }),
+        },
+        studio: {
+          create: vi.fn().mockResolvedValue({
+            id: "studio-new",
+            name: "Nova Dance",
+            address: null,
+            contact: null,
+          }),
+        },
+      };
+      return fn(tx);
+    });
+
+    const result = await service.createStudio({
+      name: "Nova Dance",
+      ownerEmail: "owner@example.com",
+      ownerName: "Nova Owner",
+    });
+
+    expect(result.id).toBe("studio-new");
+    expect(result.ownerProvisioned).toBe(true);
+    expect(result.owner.email).toBe("owner@example.com");
+  });
+
+  it("rejects owners who already belong to a studio", async () => {
+    prisma.user.findFirst.mockResolvedValue({
+      id: "owner-1",
+      role: UserRole.STUDENT,
+      studioId: "studio-seed-1",
+      ownedStudio: null,
+    });
+
+    await expect(
+      service.createStudio({
+        name: "Other",
+        ownerEmail: "student@stepup.dev",
+      }),
+    ).rejects.toBeInstanceOf(ConflictException);
+  });
+
+  it("requires a studio name", async () => {
+    await expect(
+      service.createStudio({
+        name: "   ",
+        ownerEmail: "owner@example.com",
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
   });
 });

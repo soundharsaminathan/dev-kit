@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRef } from "react";
 import { useApi } from "@/lib/api-context";
-import { STUDIO_ID } from "@/lib/constants";
+import { useStudioId } from "@/lib/use-studio-id";
 import type { StudioTrainer } from "@/modules/trainers/types";
 import {
   applyOptimisticFollow,
@@ -46,6 +46,7 @@ function patchTrainerList(
 
 export function useFollowMutations() {
   const api = useApi();
+  const studioId = useStudioId();
   const queryClient = useQueryClient();
   const intentRef = useRef(new Map<string, FollowIntent>());
   const inflightRef = useRef(new Set<string>());
@@ -68,7 +69,7 @@ export function useFollowMutations() {
 
     const trainers = queryClient.getQueryData<StudioTrainer[]>([
       "studio-trainers",
-      STUDIO_ID,
+      studioId,
     ]);
     const trainer = trainers?.find((item) => item.id === userId);
     if (trainer) {
@@ -89,7 +90,7 @@ export function useFollowMutations() {
       current ? applyOptimisticFollowToProfile(current, mode) : current,
     );
     queryClient.setQueryData<StudioTrainer[]>(
-      ["studio-trainers", STUDIO_ID],
+      ["studio-trainers", studioId],
       (current) =>
         patchTrainerList(current, userId, (trainer) =>
           applyOptimisticFollow(trainer, mode),
@@ -102,7 +103,7 @@ export function useFollowMutations() {
       current ? applyOptimisticUnfollowToProfile(current) : current,
     );
     queryClient.setQueryData<StudioTrainer[]>(
-      ["studio-trainers", STUDIO_ID],
+      ["studio-trainers", studioId],
       (current) => patchTrainerList(current, userId, applyOptimisticUnfollow),
     );
   }
@@ -112,7 +113,7 @@ export function useFollowMutations() {
       current ? reconcileFollowState(current, result) : current,
     );
     queryClient.setQueryData<StudioTrainer[]>(
-      ["studio-trainers", STUDIO_ID],
+      ["studio-trainers", studioId],
       (current) =>
         patchTrainerList(current, userId, (trainer) =>
           reconcileFollowState(trainer, result),
@@ -128,7 +129,7 @@ export function useFollowMutations() {
     await Promise.all([
       queryClient.cancelQueries({ queryKey: ["profile", userId] }),
       queryClient.cancelQueries({
-        queryKey: ["studio-trainers", STUDIO_ID],
+        queryKey: ["studio-trainers", studioId],
       }),
     ]);
   }
@@ -136,7 +137,7 @@ export function useFollowMutations() {
   function resyncFollowQueries(userId: string) {
     void queryClient.invalidateQueries({ queryKey: ["profile", userId] });
     void queryClient.invalidateQueries({
-      queryKey: ["studio-trainers", STUDIO_ID],
+      queryKey: ["studio-trainers", studioId],
     });
   }
 

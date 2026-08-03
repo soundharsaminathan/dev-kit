@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useApi } from "@/lib/api-context";
-import { STUDIO_ID } from "@/lib/constants";
+import { useStudioId } from "@/lib/use-studio-id";
 import { LocationCard } from "@/modules/locations/location-card";
 import type { StudioBranch } from "@/modules/locations/types";
 import { PullToRefresh } from "@/modules/ui/pull-to-refresh";
@@ -17,11 +17,12 @@ export const Route = createFileRoute("/me/locations/")({
 
 function StudentLocationsPage() {
   const api = useApi();
+  const studioId = useStudioId();
   const navigate = useNavigate();
 
   const query = useQuery({
-    queryKey: ["branches", STUDIO_ID, "me"],
-    queryFn: () => api.get<StudioBranch[]>(`/studios/${STUDIO_ID}/branches`),
+    queryKey: ["branches", studioId, "me"],
+    queryFn: () => api.get<StudioBranch[]>(`/studios/${studioId}/branches`),
   });
 
   return (

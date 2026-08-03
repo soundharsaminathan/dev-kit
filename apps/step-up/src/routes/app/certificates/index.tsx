@@ -1,7 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useApi } from "@/lib/api-context";
-import { STUDIO_ID } from "@/lib/constants";
+import { requireAdmin } from "@/lib/require-auth";
+import { useStudioId } from "@/lib/use-studio-id";
 import { describeLegacyOrDocument } from "@/modules/certificates/migrate-layout";
 import type { CertificateTemplate } from "@/modules/certificates/types";
 import { PressableCard } from "@/modules/ui/pressable-card";
@@ -13,18 +14,25 @@ import { EmptyState, ErrorState } from "@/modules/ui/states";
 import { TouchButton } from "@/modules/ui/touch-button";
 
 export const Route = createFileRoute("/app/certificates/")({
+  beforeLoad: ({ context, location }) => {
+    requireAdmin(context.auth, {
+      pathname: location.pathname,
+      searchStr: location.searchStr,
+    });
+  },
   component: CertificateTemplatesPage,
 });
 
 function CertificateTemplatesPage() {
   const api = useApi();
+  const studioId = useStudioId();
   const navigate = useNavigate();
 
   const query = useQuery({
-    queryKey: ["certificate-templates", STUDIO_ID],
+    queryKey: ["certificate-templates", studioId],
     queryFn: () =>
       api.get<CertificateTemplate[]>(
-        `/certificate-templates/studio/${STUDIO_ID}`,
+        `/certificate-templates/studio/${studioId}`,
       ),
   });
 

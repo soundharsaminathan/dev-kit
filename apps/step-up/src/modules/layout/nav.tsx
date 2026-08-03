@@ -6,6 +6,7 @@ import {
 } from "@dev-ui/components/sidebar";
 import { Icon } from "@dev-ui/icons";
 import { Link } from "@tanstack/react-router";
+import { useAuth } from "@/lib/auth";
 import styles from "./nav.module.scss";
 import {
   getSidebarSections,
@@ -29,7 +30,8 @@ export function NavLink({ to, label, icon, exact }: NavLinkItem) {
 }
 
 export function SidebarNavSections({ variant }: { variant: ShellVariant }) {
-  const sections = getSidebarSections(variant);
+  const { user } = useAuth();
+  const sections = getSidebarSections(variant, user?.role);
 
   return (
     <>

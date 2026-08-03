@@ -2,7 +2,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { useApi } from "@/lib/api-context";
-import { STUDIO_ID } from "@/lib/constants";
+import { useAuth } from "@/lib/auth";
+import { isAdminRole } from "@/lib/constants";
+import { useStudioId } from "@/lib/use-studio-id";
 import { BranchMap } from "@/modules/locations/branch-map";
 import { LocationCard } from "@/modules/locations/location-card";
 import type { MapCoordinates, StudioBranch } from "@/modules/locations/types";
@@ -33,20 +35,23 @@ const emptyForm: CreateForm = {
 
 function LocationsPage() {
   const api = useApi();
+  const studioId = useStudioId();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [formOpen, setFormOpen] = useState(false);
   const [form, setForm] = useState<CreateForm>(emptyForm);
+  const canManage = isAdminRole(user?.role);
 
   const branchesQuery = useQuery({
-    queryKey: ["branches", STUDIO_ID],
-    queryFn: () => api.get<StudioBranch[]>(`/studios/${STUDIO_ID}/branches`),
+    queryKey: ["branches", studioId],
+    queryFn: () => api.get<StudioBranch[]>(`/studios/${studioId}/branches`),
   });
 
   const createBranch = useMutation({
     mutationFn: () =>
       api.post<StudioBranch>("/branches", {
-        studioId: STUDIO_ID,
+        studioId,
         name: form.name.trim(),
         address: form.address.trim(),
         latitude: form.coordinates?.latitude ?? null,
@@ -56,7 +61,7 @@ function LocationsPage() {
       setForm(emptyForm);
       setFormOpen(false);
       await queryClient.invalidateQueries({
-        queryKey: ["branches", STUDIO_ID],
+        queryKey: ["branches", studioId],
       });
       void navigate({
         to: "/app/locations/$id/edit",
@@ -69,7 +74,7 @@ function LocationsPage() {
     mutationFn: (id: string) => api.delete(`/branches/${id}`),
     onSuccess: async () => {
       await queryClient.invalidateQueries({
-        queryKey: ["branches", STUDIO_ID],
+        queryKey: ["branches", studioId],
       });
     },
   });
@@ -83,16 +88,18 @@ function LocationsPage() {
       title="Locations"
       subtitle="Studio branches with galleries, schedules, and booking pages."
       actions={
-        <TouchButton
-          variant="primary"
-          size="md"
-          onClick={() => {
-            setForm(emptyForm);
-            setFormOpen(true);
-          }}
-        >
-          Add
-        </TouchButton>
+        canManage ? (
+          <TouchButton
+            variant="primary"
+            size="md"
+            onClick={() => {
+              setForm(emptyForm);
+              setFormOpen(true);
+            }}
+          >
+            Add
+          </TouchButton>
+        ) : undefined
       }
       wide
     >
@@ -121,14 +128,20 @@ function LocationsPage() {
           {branchesQuery.data && branchesQuery.data.length === 0 ? (
             <EmptyState
               title="No locations yet"
-              description="Add a branch so batches can use a studio location."
+              description={
+                canManage
+                  ? "Add a branch so batches can use a studio location."
+                  : "No studio branches are published yet."
+              }
               action={
-                <TouchButton
-                  variant="primary"
-                  onClick={() => setFormOpen(true)}
-                >
-                  Add location
-                </TouchButton>
+                canManage ? (
+                  <TouchButton
+                    variant="primary"
+                    onClick={() => setFormOpen(true)}
+                  >
+                    Add location
+                  </TouchButton>
+                ) : undefined
               }
             />
           ) : null}
@@ -159,44 +172,48 @@ function LocationsPage() {
                       >
                         Calendar
                       </TouchButton>
-                      <TouchButton
-                        size="sm"
-                        variant="quiet"
-                        onClick={() => {
-                          void navigate({
-                            to: "/app/locations/$id/edit",
-                            params: { id: branch.id },
-                          });
-                        }}
-                      >
-                        Edit
-                      </TouchButton>
-                      <TouchButton
-                        size="sm"
-                        variant="quiet"
-                        onClick={() => {
-                          if (
-                            window.confirm(
-                              `Delete “${branch.name}”? Batches using this location must be moved first.`,
-                            )
-                          ) {
-                            deleteBranch.mutate(branch.id);
-                          }
-                        }}
-                        isPending={
-                          deleteBranch.isPending &&
-                          deleteBranch.variables === branch.id
-                        }
-                      >
-                        Delete
-                      </TouchButton>
-                      {deleteBranch.isError &&
-                      deleteBranch.variables === branch.id ? (
-                        <p className={styles.error}>
-                          {deleteBranch.error instanceof Error
-                            ? deleteBranch.error.message
-                            : "This location could not be deleted."}
-                        </p>
+                      {canManage ? (
+                        <>
+                          <TouchButton
+                            size="sm"
+                            variant="quiet"
+                            onClick={() => {
+                              void navigate({
+                                to: "/app/locations/$id/edit",
+                                params: { id: branch.id },
+                              });
+                            }}
+                          >
+                            Edit
+                          </TouchButton>
+                          <TouchButton
+                            size="sm"
+                            variant="quiet"
+                            onClick={() => {
+                              if (
+                                window.confirm(
+                                  `Delete “${branch.name}”? Batches using this location must be moved first.`,
+                                )
+                              ) {
+                                deleteBranch.mutate(branch.id);
+                              }
+                            }}
+                            isPending={
+                              deleteBranch.isPending &&
+                              deleteBranch.variables === branch.id
+                            }
+                          >
+                            Delete
+                          </TouchButton>
+                          {deleteBranch.isError &&
+                          deleteBranch.variables === branch.id ? (
+                            <p className={styles.error}>
+                              {deleteBranch.error instanceof Error
+                                ? deleteBranch.error.message
+                                : "This location could not be deleted."}
+                            </p>
+                          ) : null}
+                        </>
                       ) : null}
                     </div>
                   }

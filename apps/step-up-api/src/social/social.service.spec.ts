@@ -28,13 +28,21 @@ function makePost(id: string, authorId = "viewer-1") {
   };
 }
 
-function makeViewer(overrides: Partial<{ id: string; name: string }> = {}) {
+function makeViewer(
+  overrides: Partial<{
+    id: string;
+    name: string;
+    studioId: string | null;
+  }> = {},
+) {
   return {
     id: overrides.id ?? "viewer-1",
     name: overrides.name ?? "Alex",
     phone: null,
     role: UserRole.STUDENT,
     profileVisibility: ProfileVisibility.PUBLIC,
+    studioId:
+      overrides.studioId === undefined ? "studio-1" : overrides.studioId,
   };
 }
 
@@ -175,6 +183,7 @@ describe("SocialService.follow notifications", () => {
       id: "trainer-1",
       role: UserRole.TRAINER,
       profileVisibility: ProfileVisibility.PUBLIC,
+      studioId: "studio-1",
     });
     prisma.follow.findUnique.mockResolvedValue(null);
 
@@ -199,6 +208,7 @@ describe("SocialService.follow notifications", () => {
       id: "trainer-1",
       role: UserRole.TRAINER,
       profileVisibility: ProfileVisibility.PUBLIC,
+      studioId: "studio-1",
     });
     prisma.follow.findUnique.mockResolvedValue({
       followerId: "viewer-1",
@@ -216,12 +226,28 @@ describe("SocialService.follow notifications", () => {
       id: "student-2",
       role: UserRole.STUDENT,
       profileVisibility: ProfileVisibility.PRIVATE,
+      studioId: "studio-1",
     });
     prisma.follow.findUnique.mockResolvedValue(null);
 
     const result = await service.follow(makeViewer() as never, "student-2");
 
     expect(result).toEqual({ status: "requested", requestId: "req-1" });
+    expect(notifications.create).not.toHaveBeenCalled();
+  });
+
+  it("rejects cross-studio follows", async () => {
+    prisma.user.findUnique.mockResolvedValue({
+      id: "trainer-other",
+      role: UserRole.TRAINER,
+      profileVisibility: ProfileVisibility.PUBLIC,
+      studioId: "studio-2",
+    });
+    prisma.follow.findUnique.mockResolvedValue(null);
+
+    await expect(
+      service.follow(makeViewer() as never, "trainer-other"),
+    ).rejects.toThrow(/your studio/);
     expect(notifications.create).not.toHaveBeenCalled();
   });
 

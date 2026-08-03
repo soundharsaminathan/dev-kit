@@ -20,6 +20,7 @@ import styles from "./login.module.scss";
 
 type RegisterSearch = {
   redirect?: string;
+  studioId?: string;
 };
 
 type RegisterFormValues = {
@@ -30,10 +31,14 @@ type RegisterFormValues = {
 };
 
 function parseSearch(search: Record<string, unknown>): RegisterSearch {
+  const result: RegisterSearch = {};
   if (typeof search.redirect === "string") {
-    return { redirect: search.redirect };
+    result.redirect = search.redirect;
   }
-  return {};
+  if (typeof search.studioId === "string" && search.studioId.trim()) {
+    result.studioId = search.studioId.trim();
+  }
+  return result;
 }
 
 function fieldError(errors: unknown[]): string | undefined {
@@ -80,7 +85,7 @@ export const Route = createFileRoute("/register")({
 
 function RegisterPage() {
   const navigate = useNavigate();
-  const { redirect: redirectTo } = Route.useSearch();
+  const { redirect: redirectTo, studioId } = Route.useSearch();
   const { signUp, signInWithGoogle, user } = useAuth();
   const online = useOnlineStatus();
   const [error, setError] = useState<string | null>(null);
@@ -115,6 +120,7 @@ function RegisterPage() {
           value.email.trim(),
           value.password,
           value.name.trim(),
+          studioId ? { studioId } : undefined,
         );
         redirectForRole(signedUp.role, signedUp);
       } catch (signUpError) {
@@ -130,7 +136,10 @@ function RegisterPage() {
   const handleGoogleSignIn = async () => {
     setError(null);
     try {
-      const signedIn = await signInWithGoogle({ asNewStudent: true });
+      const signedIn = await signInWithGoogle({
+        asNewStudent: true,
+        ...(studioId ? { studioId } : {}),
+      });
       redirectForRole(signedIn.role, signedIn);
     } catch {
       setError("Google sign in failed");

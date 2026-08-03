@@ -10,7 +10,8 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { useApi } from "@/lib/api-context";
-import { STUDIO_ID } from "@/lib/constants";
+import { requireAdmin } from "@/lib/require-auth";
+import { useStudioId } from "@/lib/use-studio-id";
 import { FormInput } from "@/modules/ui/form-input";
 import { Screen } from "@/modules/ui/screen";
 import staff from "@/modules/ui/staff.module.scss";
@@ -32,11 +33,18 @@ type Subscription = {
 };
 
 export const Route = createFileRoute("/app/subscriptions/new")({
+  beforeLoad: ({ context, location }) => {
+    requireAdmin(context.auth, {
+      pathname: location.pathname,
+      searchStr: location.searchStr,
+    });
+  },
   component: NewSubscriptionPage,
 });
 
 function NewSubscriptionPage() {
   const api = useApi();
+  const studioId = useStudioId();
   const navigate = useNavigate({ from: Route.fullPath });
   const queryClient = useQueryClient();
   const [name, setName] = useState("");
@@ -54,7 +62,7 @@ function NewSubscriptionPage() {
   const createSubscription = useMutation({
     mutationFn: () =>
       api.post<Subscription>("/subscriptions", {
-        studioId: STUDIO_ID,
+        studioId,
         name,
         kind,
         billingCadence,
@@ -64,7 +72,7 @@ function NewSubscriptionPage() {
       }),
     onSuccess: async () => {
       await queryClient.invalidateQueries({
-        queryKey: ["subscriptions", STUDIO_ID],
+        queryKey: ["subscriptions", studioId],
       });
       await navigate({ to: "/app/subscriptions" });
     },

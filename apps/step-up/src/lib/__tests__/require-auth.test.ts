@@ -5,7 +5,9 @@ import { DEV_USERS } from "@/lib/constants";
 import {
   homePathForUser,
   redirectIfAuthenticated,
+  requireAdmin,
   requireAuth,
+  requireSystemAdmin,
   safeInternalPath,
 } from "@/lib/require-auth";
 
@@ -78,6 +80,38 @@ describe("requireAuth", () => {
   });
 });
 
+describe("requireAdmin", () => {
+  it("allows owner and staff", () => {
+    expect(
+      requireAdmin(authWith(DEV_USERS.OWNER), {
+        pathname: "/app/settings",
+        searchStr: "",
+      }).role,
+    ).toBe("OWNER");
+    expect(
+      requireAdmin(authWith(DEV_USERS.STAFF), {
+        pathname: "/app/settings",
+        searchStr: "",
+      }).role,
+    ).toBe("STAFF");
+  });
+
+  it("redirects trainers to /app", () => {
+    try {
+      requireAdmin(authWith(DEV_USERS.TRAINER), {
+        pathname: "/app/settings",
+        searchStr: "",
+      });
+      expect.fail("expected redirect");
+    } catch (error) {
+      expect(isRedirect(error)).toBe(true);
+      if (isRedirect(error)) {
+        expect(error.options.to).toBe("/app");
+      }
+    }
+  });
+});
+
 describe("safeInternalPath", () => {
   it("accepts internal paths and rejects open redirects", () => {
     expect(safeInternalPath("/me/feed")).toBe("/me/feed");
@@ -91,6 +125,36 @@ describe("homePathForUser", () => {
   it("routes staff to /app and members to /me", () => {
     expect(homePathForUser(DEV_USERS.OWNER)).toBe("/app");
     expect(homePathForUser(DEV_USERS.STUDENT)).toBe("/me");
+  });
+
+  it("routes system admin to /admin", () => {
+    expect(homePathForUser(DEV_USERS.SYSTEM_ADMIN)).toBe("/admin");
+  });
+});
+
+describe("requireSystemAdmin", () => {
+  it("allows system admin", () => {
+    expect(
+      requireSystemAdmin(authWith(DEV_USERS.SYSTEM_ADMIN), {
+        pathname: "/admin",
+        searchStr: "",
+      }).role,
+    ).toBe("SYSTEM_ADMIN");
+  });
+
+  it("redirects owners away from admin", () => {
+    try {
+      requireSystemAdmin(authWith(DEV_USERS.OWNER), {
+        pathname: "/admin",
+        searchStr: "",
+      });
+      expect.fail("expected redirect");
+    } catch (error) {
+      expect(isRedirect(error)).toBe(true);
+      if (isRedirect(error)) {
+        expect(error.options.to).toBe("/");
+      }
+    }
   });
 });
 

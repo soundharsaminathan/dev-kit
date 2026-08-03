@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { SEED_STUDIO_ID } from "@/lib/constants";
 import { PublicShell } from "@/modules/layout/public-shell";
 import { TouchButton } from "@/modules/ui/touch-button";
 import styles from "./index.module.scss";
@@ -26,7 +27,13 @@ function LandingPage() {
           <TouchButton as={Link} to="/login" variant="default" fullWidth>
             Sign in
           </TouchButton>
-          <TouchButton as={Link} to="/studio" variant="quiet" fullWidth>
+          <TouchButton
+            as={Link}
+            to="/studio/$studioId"
+            params={{ studioId: SEED_STUDIO_ID } as never}
+            variant="quiet"
+            fullWidth
+          >
             Explore the studio
           </TouchButton>
         </div>

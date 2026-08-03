@@ -7,7 +7,12 @@ import { useForm } from "@tanstack/react-form";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useCallback, useState } from "react";
 import { useAuth } from "@/lib/auth";
-import { DEV_USERS, isAuthBypassEnabled, type UserRole } from "@/lib/constants";
+import {
+  DEV_USERS,
+  isAuthBypassEnabled,
+  SEED_STUDIO_ID,
+  type UserRole,
+} from "@/lib/constants";
 import { getLastLoginIdentifier } from "@/lib/last-login";
 import {
   homePathForUser,
@@ -273,7 +278,11 @@ function LoginPage() {
         <Link to="/register" className={styles.footerLink}>
           New here? Create a student account
         </Link>
-        <Link to="/studio" className={styles.footerLink}>
+        <Link
+          to="/studio/$studioId"
+          params={{ studioId: SEED_STUDIO_ID }}
+          className={styles.footerLink}
+        >
           Browse the public studio page
         </Link>
       </section>

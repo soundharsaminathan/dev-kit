@@ -5,7 +5,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useApi } from "@/lib/api-context";
 import { useAuth } from "@/lib/auth";
-import { STUDIO_ID } from "@/lib/constants";
+import { useStudioId } from "@/lib/use-studio-id";
 import type { Contest, ContestCategory } from "@/modules/contests/types";
 import { AppSheet } from "@/modules/ui/app-sheet";
 import { FormInput } from "@/modules/ui/form-input";
@@ -45,6 +45,7 @@ function formatDate(value: string) {
 
 function MeContestsPage() {
   const api = useApi();
+  const studioId = useStudioId();
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(
@@ -55,13 +56,13 @@ function MeContestsPage() {
   const [justRegistered, setJustRegistered] = useState(false);
 
   const contestsQuery = useQuery({
-    queryKey: ["contests", STUDIO_ID],
-    queryFn: () => api.get<Contest[]>(`/contests/studio/${STUDIO_ID}`),
+    queryKey: ["contests", studioId],
+    queryFn: () => api.get<Contest[]>(`/contests/studio/${studioId}`),
   });
 
   const membersQuery = useQuery({
-    queryKey: ["users", STUDIO_ID],
-    queryFn: () => api.get<StudioMember[]>(`/users/studio/${STUDIO_ID}`),
+    queryKey: ["users", studioId],
+    queryFn: () => api.get<StudioMember[]>(`/users/studio/${studioId}`),
     enabled: user?.role === "STUDENT",
   });
 
@@ -142,7 +143,7 @@ function MeContestsPage() {
       );
     },
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["contests", STUDIO_ID] });
+      void queryClient.invalidateQueries({ queryKey: ["contests", studioId] });
       setTeamName("");
       setSelectedStudentIds([]);
       setSelectedCategoryId(null);

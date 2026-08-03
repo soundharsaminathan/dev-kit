@@ -9,6 +9,7 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { useApi } from "@/lib/api-context";
 import { useAuth } from "@/lib/auth";
+import { SEED_STUDIO_ID } from "@/lib/constants";
 import {
   notificationsListKey,
   notificationsUnreadKey,
@@ -239,6 +240,7 @@ function ProfileControl({ variant }: { variant: ShellVariant }) {
   const [open, setOpen] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
   const profilePath = getProfilePath(variant);
+  const studioId = user?.studioId ?? SEED_STUDIO_ID;
 
   useEffect(() => {
     if (!open || isMobile) return;
@@ -268,7 +270,8 @@ function ProfileControl({ variant }: { variant: ShellVariant }) {
         Profile
       </Link>
       <Link
-        to="/studio"
+        to="/studio/$studioId"
+        params={{ studioId }}
         className={styles.menuLink}
         role="menuitem"
         onClick={() => setOpen(false)}
@@ -339,7 +342,8 @@ function ProfileControl({ variant }: { variant: ShellVariant }) {
 export { NotificationsControl };
 
 export function AppHeader({ variant }: AppHeaderProps) {
-  const headerLinks = getHeaderNavLinks(variant);
+  const { user } = useAuth();
+  const headerLinks = getHeaderNavLinks(variant, user?.role);
   const isMobile = useIsMobile();
 
   return (

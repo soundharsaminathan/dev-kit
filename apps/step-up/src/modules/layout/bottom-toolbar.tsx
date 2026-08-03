@@ -2,6 +2,7 @@ import { useIsMobile } from "@dev-ui/hooks";
 import { Icon } from "@dev-ui/icons";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { motion, type Transition, useReducedMotion } from "motion/react";
+import { useAuth } from "@/lib/auth";
 import {
   TooltipIconBar,
   TooltipIconBarItem,
@@ -86,11 +87,12 @@ function ToolbarLink({
 
 export function BottomToolbar({ variant }: BottomToolbarProps) {
   const isMobile = useIsMobile();
+  const { user } = useAuth();
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
   });
-  const primary = getPrimaryTabs(variant);
-  const moreLinks = getMoreLinks(variant);
+  const primary = getPrimaryTabs(variant, user?.role);
+  const moreLinks = getMoreLinks(variant, user?.role);
   const moreActive = moreLinks.some((link) => isLinkActive(pathname, link));
   const profilePath = variant === "app" ? "/app/profile" : "/me/profile";
   const memberChrome = variant === "me";

@@ -2,7 +2,7 @@ import { Badge } from "@dev-ui/components/badge";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { useApi } from "@/lib/api-context";
-import { STUDIO_ID } from "@/lib/constants";
+import { useStudioId } from "@/lib/use-studio-id";
 import { useActiveStudentContext } from "@/modules/me/use-active-student-context";
 import { PullToRefresh } from "@/modules/ui/pull-to-refresh";
 import { Screen } from "@/modules/ui/screen";
@@ -35,11 +35,12 @@ export const Route = createFileRoute("/me/attendance")({
 
 function MeAttendancePage() {
   const api = useApi();
+  const studioId = useStudioId();
   const { studentId } = useActiveStudentContext();
 
   const batchesQuery = useQuery({
-    queryKey: ["batches", STUDIO_ID],
-    queryFn: () => api.get<Batch[]>(`/batches/studio/${STUDIO_ID}`),
+    queryKey: ["batches", studioId],
+    queryFn: () => api.get<Batch[]>(`/batches/studio/${studioId}`),
   });
 
   const firstBatchId = batchesQuery.data?.[0]?.id;

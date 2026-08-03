@@ -3,7 +3,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useApi } from "@/lib/api-context";
 import { useAuth } from "@/lib/auth";
-import { STUDIO_ID } from "@/lib/constants";
+import { useStudioId } from "@/lib/use-studio-id";
 import { BookingDetailDrawer } from "@/modules/bookings/booking-detail-drawer";
 import {
   isBookingForTrainer,
@@ -32,6 +32,7 @@ function BookingMedia({ name }: { name: string }) {
 
 function BookingsPage() {
   const api = useApi();
+  const studioId = useStudioId();
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const isTrainer = user?.role === "TRAINER";
@@ -39,13 +40,13 @@ function BookingsPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const bookings = useQuery({
-    queryKey: ["bookings", "studio", STUDIO_ID],
-    queryFn: () => api.get<StudioBooking[]>(`/bookings/studio/${STUDIO_ID}`),
+    queryKey: ["bookings", "studio", studioId],
+    queryFn: () => api.get<StudioBooking[]>(`/bookings/studio/${studioId}`),
   });
 
   const invalidateBookings = () => {
     void queryClient.invalidateQueries({
-      queryKey: ["bookings", "studio", STUDIO_ID],
+      queryKey: ["bookings", "studio", studioId],
     });
     void queryClient.invalidateQueries({ queryKey: ["calendar"] });
   };

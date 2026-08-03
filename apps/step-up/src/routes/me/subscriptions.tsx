@@ -13,8 +13,8 @@ import { useMemo, useState } from "react";
 import { useApi } from "@/lib/api-context";
 import { useAuth } from "@/lib/auth";
 import type { AgeRange, Gender } from "@/lib/constants";
-import { STUDIO_ID } from "@/lib/constants";
 import type { FamilyMemberKind } from "@/lib/use-active-student";
+import { useStudioId } from "@/lib/use-studio-id";
 import { useActiveStudentContext } from "@/modules/me/use-active-student-context";
 import { AGE_RANGES, GENDERS } from "@/modules/onboarding/options";
 import { AppSheet } from "@/modules/ui/app-sheet";
@@ -85,6 +85,7 @@ function kindLabel(sub: CatalogSubscription) {
 function MeSubscriptionsPage() {
   const { user } = useAuth();
   const api = useApi();
+  const studioId = useStudioId();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const { studentId, accounts, children, familyMembers } =
@@ -111,15 +112,15 @@ function MeSubscriptionsPage() {
   });
 
   const catalogQuery = useQuery({
-    queryKey: ["subscriptions", STUDIO_ID],
+    queryKey: ["subscriptions", studioId],
     queryFn: () =>
-      api.get<CatalogSubscription[]>(`/subscriptions/studio/${STUDIO_ID}`),
+      api.get<CatalogSubscription[]>(`/subscriptions/studio/${studioId}`),
     enabled: Boolean(user),
   });
 
   const batchesQuery = useQuery({
-    queryKey: ["batches", STUDIO_ID],
-    queryFn: () => api.get<StudioBatch[]>(`/batches/studio/${STUDIO_ID}`),
+    queryKey: ["batches", studioId],
+    queryFn: () => api.get<StudioBatch[]>(`/batches/studio/${studioId}`),
     enabled: Boolean(user),
   });
 

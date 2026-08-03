@@ -1,4 +1,10 @@
 import type { IconName } from "@dev-ui/icons";
+import {
+  ADMIN_ROLES,
+  MEMBER_ROLES,
+  STAFF_ROLES,
+  type UserRole,
+} from "@/lib/constants";
 import { ENTITY_ICONS } from "@/lib/entity-icons";
 
 export type ShellVariant = "app" | "me";
@@ -10,6 +16,8 @@ export type NavLinkItem = {
   exact?: boolean;
   section: string;
   primary?: boolean;
+  /** Defaults to STAFF_ROLES (app) or MEMBER_ROLES (me). */
+  roles?: UserRole[];
 };
 
 export type NavSection = {
@@ -65,6 +73,7 @@ const appLinks: NavLinkItem[] = [
     label: "Students",
     icon: ENTITY_ICONS.student,
     section: "People",
+    roles: ADMIN_ROLES,
   },
   {
     to: "/app/trainers",
@@ -83,6 +92,7 @@ const appLinks: NavLinkItem[] = [
     label: "Subscriptions",
     icon: "clipboard",
     section: "Ops",
+    roles: ADMIN_ROLES,
   },
   {
     to: "/app/calendar",
@@ -96,12 +106,14 @@ const appLinks: NavLinkItem[] = [
     label: "Certificates",
     icon: "badge-check",
     section: "Ops",
+    roles: ADMIN_ROLES,
   },
   {
     to: "/app/invoices",
     label: "Invoices",
     icon: "file-text",
     section: "Money",
+    roles: ADMIN_ROLES,
   },
   {
     to: "/app/payments",
@@ -120,6 +132,7 @@ const appLinks: NavLinkItem[] = [
     label: "Settings",
     icon: "settings",
     section: "Admin",
+    roles: ADMIN_ROLES,
   },
 ];
 
@@ -216,26 +229,35 @@ const memberLinks: NavLinkItem[] = [
   },
 ];
 
-function linksFor(variant: ShellVariant): NavLinkItem[] {
-  return variant === "app" ? appLinks : memberLinks;
+function defaultRolesFor(variant: ShellVariant): UserRole[] {
+  return variant === "app" ? STAFF_ROLES : MEMBER_ROLES;
 }
 
-export function getHeaderNavLinks(variant: ShellVariant): NavLinkItem[] {
+function linkVisibleToRole(
+  link: NavLinkItem,
+  variant: ShellVariant,
+  role: UserRole,
+) {
+  const allowed = link.roles ?? defaultRolesFor(variant);
+  return allowed.includes(role);
+}
+
+function linksFor(variant: ShellVariant, role?: UserRole): NavLinkItem[] {
+  const links = variant === "app" ? appLinks : memberLinks;
+  if (!role) {
+    return links;
+  }
+  return links.filter((link) => linkVisibleToRole(link, variant, role));
+}
+
+export function getHeaderNavLinks(
+  variant: ShellVariant,
+  role?: UserRole,
+): NavLinkItem[] {
   if (variant === "app") {
-    return [
-      {
-        to: "/app/calendar",
-        label: "Calendar",
-        icon: "calendar",
-        section: "Header",
-      },
-      {
-        to: "/app/feed",
-        label: "Feed",
-        icon: "image",
-        section: "Header",
-      },
-    ];
+    return linksFor(variant, role).filter(
+      (link) => link.to === "/app/calendar" || link.to === "/app/feed",
+    );
   }
 
   return [];
@@ -261,20 +283,32 @@ function groupBySection(links: NavLinkItem[]): NavSection[] {
   return sections;
 }
 
-export function getSidebarSections(variant: ShellVariant): NavSection[] {
-  return groupBySection(linksFor(variant));
+export function getSidebarSections(
+  variant: ShellVariant,
+  role?: UserRole,
+): NavSection[] {
+  return groupBySection(linksFor(variant, role));
 }
 
-export function getMenuSections(variant: ShellVariant): NavSection[] {
-  return groupBySection(getMoreLinks(variant));
+export function getMenuSections(
+  variant: ShellVariant,
+  role?: UserRole,
+): NavSection[] {
+  return groupBySection(getMoreLinks(variant, role));
 }
 
-export function getPrimaryTabs(variant: ShellVariant): NavLinkItem[] {
-  return linksFor(variant).filter((link) => link.primary);
+export function getPrimaryTabs(
+  variant: ShellVariant,
+  role?: UserRole,
+): NavLinkItem[] {
+  return linksFor(variant, role).filter((link) => link.primary);
 }
 
-export function getMoreLinks(variant: ShellVariant): NavLinkItem[] {
-  return linksFor(variant).filter((link) => !link.primary);
+export function getMoreLinks(
+  variant: ShellVariant,
+  role?: UserRole,
+): NavLinkItem[] {
+  return linksFor(variant, role).filter((link) => !link.primary);
 }
 
 export function getProfilePath(variant: ShellVariant): string {

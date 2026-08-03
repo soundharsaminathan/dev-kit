@@ -3,7 +3,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useCallback, useState } from "react";
 import { useApi } from "@/lib/api-context";
-import { STUDIO_ID } from "@/lib/constants";
+import { requireAdmin } from "@/lib/require-auth";
+import { useStudioId } from "@/lib/use-studio-id";
 import { CertificateDesigner } from "@/modules/certificates/designer/certificate-designer";
 import { isCertificateDocumentValid } from "@/modules/certificates/designer/document-valid";
 import { ensureCertificateDocument } from "@/modules/certificates/migrate-layout";
@@ -15,6 +16,12 @@ import { ApiState } from "@/modules/ui/api-state";
 import styles from "./edit.module.scss";
 
 export const Route = createFileRoute("/app/certificates/$id")({
+  beforeLoad: ({ context, location }) => {
+    requireAdmin(context.auth, {
+      pathname: location.pathname,
+      searchStr: location.searchStr,
+    });
+  },
   component: EditCertificateTemplatePage,
 });
 
@@ -49,6 +56,7 @@ function EditCertificateTemplateForm({
   template: CertificateTemplate;
 }) {
   const api = useApi();
+  const studioId = useStudioId();
   const navigate = useNavigate({ from: Route.fullPath });
   const queryClient = useQueryClient();
   const initial = ensureCertificateDocument(template.layoutJson);
@@ -70,21 +78,21 @@ function EditCertificateTemplateForm({
       );
       await Promise.all([
         queryClient.invalidateQueries({
-          queryKey: ["certificate-templates", STUDIO_ID],
+          queryKey: ["certificate-templates", studioId],
         }),
         queryClient.invalidateQueries({
           queryKey: ["certificate-template", template.id],
         }),
       ]);
     },
-    [api, queryClient, template.id],
+    [api, queryClient, studioId, template.id],
   );
 
   const deleteTemplate = useMutation({
     mutationFn: () => api.delete(`/certificate-templates/${template.id}`),
     onSuccess: async () => {
       await queryClient.invalidateQueries({
-        queryKey: ["certificate-templates", STUDIO_ID],
+        queryKey: ["certificate-templates", studioId],
       });
       await navigate({ to: "/app/certificates" });
     },

@@ -4,8 +4,8 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useApi } from "@/lib/api-context";
-import { STUDIO_ID } from "@/lib/constants";
 import { ENTITY_ICONS } from "@/lib/entity-icons";
+import { useStudioId } from "@/lib/use-studio-id";
 import { StyleList } from "@/modules/styles/style-list";
 import { FollowCounts } from "@/modules/trainers/follow-counts";
 import type { StudioTrainer } from "@/modules/trainers/types";
@@ -70,6 +70,7 @@ function TrainerMedia({
 
 export function BatchTrainers({ batchId, trainers }: BatchTrainersProps) {
   const api = useApi();
+  const studioId = useStudioId();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const studioTrainers = useStudioTrainers();
@@ -105,7 +106,7 @@ export function BatchTrainers({ batchId, trainers }: BatchTrainersProps) {
     onSuccess: async () => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["batch", batchId] }),
-        queryClient.invalidateQueries({ queryKey: ["batches", STUDIO_ID] }),
+        queryClient.invalidateQueries({ queryKey: ["batches", studioId] }),
       ]);
       setManageOpen(false);
     },

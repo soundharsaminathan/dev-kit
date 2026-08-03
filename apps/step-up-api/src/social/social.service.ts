@@ -25,6 +25,7 @@ import {
   canViewContent,
   effectiveProfileVisibility,
   isAlwaysPublicRole,
+  isSameStudio,
 } from "./visibility";
 
 const FEED_PAGE_SIZE = 20;
@@ -35,6 +36,7 @@ const authorSelect = {
   photoUrl: true,
   role: true,
   profileVisibility: true,
+  studioId: true,
 } as const;
 
 const publicUserSelect = {
@@ -107,26 +109,39 @@ export class SocialService {
   }
 
   async getProfile(viewerId: string, userId: string) {
-    const row = await this.prisma.user.findUnique({
-      where: { id: userId },
-      select: {
-        id: true,
-        ...userPiiSelect,
-        photoUrl: true,
-        bannerUrl: true,
-        coverUrl: true,
-        styles: true,
-        role: true,
-        profileVisibility: true,
-        studioId: true,
-      },
-    });
+    const [viewer, row] = await Promise.all([
+      this.prisma.user.findUnique({
+        where: { id: viewerId },
+        select: { id: true, studioId: true },
+      }),
+      this.prisma.user.findUnique({
+        where: { id: userId },
+        select: {
+          id: true,
+          ...userPiiSelect,
+          photoUrl: true,
+          bannerUrl: true,
+          coverUrl: true,
+          styles: true,
+          role: true,
+          profileVisibility: true,
+          studioId: true,
+        },
+      }),
+    ]);
 
     if (!row) {
       throw new NotFoundException("User not found");
     }
 
     const user = this.crypto.decryptUser(row);
+
+    if (
+      viewerId !== userId &&
+      (!viewer || !isSameStudio(viewer.studioId, user.studioId))
+    ) {
+      throw new ForbiddenException("You can only view profiles in your studio");
+    }
 
     const [followerCount, followingCount, follow, pendingRequest] =
       await Promise.all([
@@ -155,6 +170,7 @@ export class SocialService {
     const isFollowing = Boolean(follow);
     const viewable = await canViewContent({
       viewerId,
+      viewerStudioId: viewer?.studioId,
       author: user,
       isFollowing,
     });
@@ -211,6 +227,10 @@ export class SocialService {
     });
     if (!target) {
       throw new NotFoundException("User not found");
+    }
+
+    if (!isSameStudio(viewer.studioId, target.studioId)) {
+      throw new ForbiddenException("You can only follow people in your studio");
     }
 
     const existing = await this.prisma.follow.findUnique({
@@ -406,20 +426,32 @@ export class SocialService {
     };
   }
 
+  private async viewerStudioId(viewerId: string) {
+    const viewer = await this.prisma.user.findUnique({
+      where: { id: viewerId },
+      select: { studioId: true },
+    });
+    return viewer?.studioId ?? null;
+  }
+
   async listUserPosts(
     viewerId: string,
     userId: string,
     options?: { skipVisibilityCheck?: boolean },
   ) {
     if (!options?.skipVisibilityCheck) {
-      const author = await this.prisma.user.findUnique({
-        where: { id: userId },
-        select: {
-          id: true,
-          role: true,
-          profileVisibility: true,
-        },
-      });
+      const [author, viewerStudioId] = await Promise.all([
+        this.prisma.user.findUnique({
+          where: { id: userId },
+          select: {
+            id: true,
+            role: true,
+            profileVisibility: true,
+            studioId: true,
+          },
+        }),
+        this.viewerStudioId(viewerId),
+      ]);
       if (!author) {
         throw new NotFoundException("User not found");
       }
@@ -433,6 +465,7 @@ export class SocialService {
       });
       const viewable = await canViewContent({
         viewerId,
+        viewerStudioId,
         author,
         isFollowing: Boolean(follow),
       });
@@ -459,16 +492,20 @@ export class SocialService {
       throw new NotFoundException("Post not found");
     }
 
-    const follow = await this.prisma.follow.findUnique({
-      where: {
-        followerId_followingId: {
-          followerId: viewerId,
-          followingId: post.authorId,
+    const [follow, viewerStudioId] = await Promise.all([
+      this.prisma.follow.findUnique({
+        where: {
+          followerId_followingId: {
+            followerId: viewerId,
+            followingId: post.authorId,
+          },
         },
-      },
-    });
+      }),
+      this.viewerStudioId(viewerId),
+    ]);
     const viewable = await canViewContent({
       viewerId,
+      viewerStudioId,
       author: post.author,
       isFollowing: Boolean(follow),
     });
@@ -581,16 +618,20 @@ export class SocialService {
     if (!post) {
       throw new NotFoundException("Post not found");
     }
-    const follow = await this.prisma.follow.findUnique({
-      where: {
-        followerId_followingId: {
-          followerId: viewerId,
-          followingId: post.authorId,
+    const [follow, viewerStudioId] = await Promise.all([
+      this.prisma.follow.findUnique({
+        where: {
+          followerId_followingId: {
+            followerId: viewerId,
+            followingId: post.authorId,
+          },
         },
-      },
-    });
+      }),
+      this.viewerStudioId(viewerId),
+    ]);
     const viewable = await canViewContent({
       viewerId,
+      viewerStudioId,
       author: post.author,
       isFollowing: Boolean(follow),
     });

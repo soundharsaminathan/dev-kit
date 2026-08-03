@@ -11,8 +11,8 @@ import { useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useApi } from "@/lib/api-context";
 import type { AgeRange, Gender } from "@/lib/constants";
-import { STUDIO_ID } from "@/lib/constants";
 import { setLastLoginIdentifier } from "@/lib/last-login";
+import { useStudioId } from "@/lib/use-studio-id";
 import { AGE_RANGES, GENDERS } from "@/modules/onboarding/options";
 import { StyleSpreePicker } from "@/modules/styles/style-spree-picker";
 import { FormInput } from "@/modules/ui/form-input";
@@ -61,6 +61,7 @@ export function MemberRegistrationForm({
   stepSubtitles,
 }: MemberRegistrationFormProps) {
   const api = useApi();
+  const studioId = useStudioId();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [step, setStep] = useState(0);
@@ -76,10 +77,10 @@ export function MemberRegistrationForm({
   const allowBatchEnrollment = kind === "student";
 
   const batchesQuery = useQuery({
-    queryKey: ["studio-batches", STUDIO_ID, "active"],
+    queryKey: ["studio-batches", studioId, "active"],
     queryFn: () =>
       api.get<StudioBatchOption[]>(
-        `/batches/studio/${STUDIO_ID}?activeOnly=true`,
+        `/batches/studio/${studioId}?activeOnly=true`,
       ),
     enabled: allowBatchEnrollment,
   });
@@ -112,10 +113,14 @@ export function MemberRegistrationForm({
       setLastLoginIdentifier(created.email);
       await Promise.all([
         queryClient.invalidateQueries({
-          queryKey: ["studio-members", STUDIO_ID],
+          queryKey: ["studio-members", studioId],
         }),
-        queryClient.invalidateQueries({ queryKey: ["student-funnel"] }),
-        queryClient.invalidateQueries({ queryKey: ["student-directory"] }),
+        queryClient.invalidateQueries({
+          queryKey: ["student-funnel", studioId],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["student-directory", studioId],
+        }),
         batchId
           ? queryClient.invalidateQueries({ queryKey: ["batch", batchId] })
           : Promise.resolve(),

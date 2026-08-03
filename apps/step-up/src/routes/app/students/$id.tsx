@@ -11,8 +11,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useApi } from "@/lib/api-context";
-import { STUDIO_ID } from "@/lib/constants";
 import { ENTITY_ICONS } from "@/lib/entity-icons";
+import { requireAdmin } from "@/lib/require-auth";
+import { useStudioId } from "@/lib/use-studio-id";
 import type { ChatConversation } from "@/modules/chat/types";
 import { AppBottomSheet } from "@/modules/ui/app-bottom-sheet";
 import { AppSheet } from "@/modules/ui/app-sheet";
@@ -108,6 +109,12 @@ type SheetKind =
   | null;
 
 export const Route = createFileRoute("/app/students/$id")({
+  beforeLoad: ({ context, location }) => {
+    requireAdmin(context.auth, {
+      pathname: location.pathname,
+      searchStr: location.searchStr,
+    });
+  },
   component: StudentDetailPage,
 });
 
@@ -160,6 +167,7 @@ function seatRoleForPlan(plan: CatalogSubscription): SeatRole {
 function StudentDetailPage() {
   const { id } = Route.useParams();
   const api = useApi();
+  const studioId = useStudioId();
   const navigate = useNavigate({ from: Route.fullPath });
   const queryClient = useQueryClient();
 
@@ -179,45 +187,43 @@ function StudentDetailPage() {
   const [parentUserId, setParentUserId] = useState<string | null>(null);
 
   const query = useQuery({
-    queryKey: ["student-profile", STUDIO_ID, id],
+    queryKey: ["student-profile", studioId, id],
     queryFn: () =>
-      api.get<StudentStudioProfile>(
-        `/users/studio/${STUDIO_ID}/students/${id}`,
-      ),
+      api.get<StudentStudioProfile>(`/users/studio/${studioId}/students/${id}`),
   });
 
   const catalogQuery = useQuery({
-    queryKey: ["subscriptions", STUDIO_ID],
+    queryKey: ["subscriptions", studioId],
     queryFn: () =>
-      api.get<CatalogSubscription[]>(`/subscriptions/studio/${STUDIO_ID}`),
+      api.get<CatalogSubscription[]>(`/subscriptions/studio/${studioId}`),
     enabled: sheet === "assign",
   });
 
   const membersQuery = useQuery({
-    queryKey: ["studio-members", STUDIO_ID],
-    queryFn: () => api.get<StudioMember[]>(`/users/studio/${STUDIO_ID}`),
+    queryKey: ["studio-members", studioId],
+    queryFn: () => api.get<StudioMember[]>(`/users/studio/${studioId}`),
     enabled: sheet === "link-parent",
   });
 
   async function invalidateStudent() {
     await Promise.all([
       queryClient.invalidateQueries({
-        queryKey: ["student-profile", STUDIO_ID, id],
+        queryKey: ["student-profile", studioId, id],
       }),
       queryClient.invalidateQueries({
-        queryKey: ["studio-students-search"],
+        queryKey: ["studio-students-search", studioId],
       }),
       queryClient.invalidateQueries({
-        queryKey: ["student-directory", STUDIO_ID],
+        queryKey: ["student-directory", studioId],
       }),
       queryClient.invalidateQueries({
-        queryKey: ["student-funnel"],
+        queryKey: ["student-funnel", studioId],
       }),
       queryClient.invalidateQueries({
-        queryKey: ["invoices", STUDIO_ID],
+        queryKey: ["invoices", studioId],
       }),
       queryClient.invalidateQueries({
-        queryKey: ["batches", STUDIO_ID],
+        queryKey: ["batches", studioId],
       }),
     ]);
   }
@@ -269,23 +275,23 @@ function StudentDetailPage() {
   }
 
   const deleteStudent = useMutation({
-    mutationFn: () => api.delete(`/users/studio/${STUDIO_ID}/students/${id}`),
+    mutationFn: () => api.delete(`/users/studio/${studioId}/students/${id}`),
     onSuccess: async () => {
       await Promise.all([
         queryClient.invalidateQueries({
-          queryKey: ["studio-students-search"],
+          queryKey: ["studio-students-search", studioId],
         }),
         queryClient.invalidateQueries({
-          queryKey: ["student-directory", STUDIO_ID],
+          queryKey: ["student-directory", studioId],
         }),
         queryClient.invalidateQueries({
-          queryKey: ["student-funnel"],
+          queryKey: ["student-funnel", studioId],
         }),
         queryClient.invalidateQueries({
-          queryKey: ["batches", STUDIO_ID],
+          queryKey: ["batches", studioId],
         }),
         queryClient.removeQueries({
-          queryKey: ["student-profile", STUDIO_ID, id],
+          queryKey: ["student-profile", studioId, id],
         }),
       ]);
       await navigate({ to: "/app/students" });
@@ -297,7 +303,7 @@ function StudentDetailPage() {
       name?: string;
       phone?: string;
       active?: boolean;
-    }) => api.patch(`/users/studio/${STUDIO_ID}/students/${id}`, payload),
+    }) => api.patch(`/users/studio/${studioId}/students/${id}`, payload),
     onSuccess: async () => {
       await invalidateStudent();
       closeSheet();

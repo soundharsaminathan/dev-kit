@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useApi } from "@/lib/api-context";
-import { STUDIO_ID } from "@/lib/constants";
+import { useStudioId } from "@/lib/use-studio-id";
 import type { DiscoverBatch } from "./types";
 
 export type DiscoverFilters = {
@@ -25,12 +25,13 @@ function buildQuery(filters: DiscoverFilters) {
 
 export function useDiscoverBatches(filters: DiscoverFilters = {}) {
   const api = useApi();
+  const studioId = useStudioId();
   const qs = buildQuery(filters);
 
   return useQuery({
-    queryKey: ["batches", "discover", STUDIO_ID, qs],
+    queryKey: ["batches", "discover", studioId, qs],
     queryFn: () =>
-      api.get<DiscoverBatch[]>(`/batches/studio/${STUDIO_ID}?${qs}`),
+      api.get<DiscoverBatch[]>(`/batches/studio/${studioId}?${qs}`),
   });
 }
 

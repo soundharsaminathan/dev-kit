@@ -3,6 +3,13 @@ import { UserRole } from "@prisma/client";
 export const STUDIO_ID = "studio-seed-1";
 
 export const FIXTURE_USERS = {
+  systemAdmin: {
+    id: "system-admin-1",
+    email: "admin@stepup.dev",
+    name: "System Admin",
+    role: UserRole.SYSTEM_ADMIN,
+    studioId: null as string | null,
+  },
   owner: {
     id: "owner-1",
     email: "owner@stepup.dev",

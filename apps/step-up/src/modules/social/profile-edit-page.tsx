@@ -23,9 +23,9 @@ import {
   type ExperienceLevel,
   type Gender,
   isAuthBypassEnabled,
-  STUDIO_ID,
 } from "@/lib/constants";
 import { getFirebaseAuth } from "@/lib/firebase";
+import { useStudioId } from "@/lib/use-studio-id";
 import {
   AGE_RANGES,
   EXPERIENCE_LEVELS,
@@ -163,6 +163,7 @@ type ProfileEditFormProps = {
 
 function ProfileEditForm({ backTo, profile }: ProfileEditFormProps) {
   const api = useApi();
+  const studioId = useStudioId();
   const { user, updateUser } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -271,7 +272,7 @@ function ProfileEditForm({ backTo, profile }: ProfileEditFormProps) {
       setSaveMessage("Profile saved.");
       await queryClient.invalidateQueries({ queryKey: ["profile", userId] });
       await queryClient.invalidateQueries({
-        queryKey: ["studio-trainers", STUDIO_ID],
+        queryKey: ["studio-trainers", studioId],
       });
     },
   });
@@ -311,10 +312,10 @@ function ProfileEditForm({ backTo, profile }: ProfileEditFormProps) {
   });
 
   const branchesQuery = useQuery({
-    queryKey: ["branches", STUDIO_ID, "profile-edit"],
+    queryKey: ["branches", studioId, "profile-edit"],
     queryFn: () =>
       api.get<Array<{ id: string; name: string; address: string }>>(
-        `/studios/${STUDIO_ID}/branches`,
+        `/studios/${studioId}/branches`,
       ),
     enabled: canEditPrefs,
   });

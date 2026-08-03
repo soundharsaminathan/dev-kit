@@ -3,7 +3,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useApi } from "@/lib/api-context";
 import { useAuth } from "@/lib/auth";
-import { STUDIO_ID } from "@/lib/constants";
+import { requireAdmin } from "@/lib/require-auth";
+import { useStudioId } from "@/lib/use-studio-id";
 import { BrandingPanel } from "@/modules/branding/branding-panel";
 import type { StudioBrandThemePayload } from "@/modules/branding/types";
 import { InstallAppPanel } from "@/modules/pwa/install-app-panel";
@@ -43,23 +44,30 @@ type StaffInvite = {
 };
 
 export const Route = createFileRoute("/app/settings")({
+  beforeLoad: ({ context, location }) => {
+    requireAdmin(context.auth, {
+      pathname: location.pathname,
+      searchStr: location.searchStr,
+    });
+  },
   component: SettingsPage,
 });
 
 function SettingsPage() {
   const api = useApi();
+  const studioId = useStudioId();
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const isOwner = user?.role === "OWNER";
 
   const studioQuery = useQuery({
-    queryKey: ["studio", STUDIO_ID],
-    queryFn: () => api.get<Studio>(`/studios/${STUDIO_ID}`),
+    queryKey: ["studio", studioId],
+    queryFn: () => api.get<Studio>(`/studios/${studioId}`),
   });
 
   const invitesQuery = useQuery({
-    queryKey: ["staff-invites", STUDIO_ID],
-    queryFn: () => api.get<StaffInvite[]>(`/staff-invites/studio/${STUDIO_ID}`),
+    queryKey: ["staff-invites", studioId],
+    queryFn: () => api.get<StaffInvite[]>(`/staff-invites/studio/${studioId}`),
     enabled: user?.role === "OWNER" || user?.role === "STAFF",
   });
 
@@ -77,15 +85,15 @@ function SettingsPage() {
 
   const updateStudio = useMutation({
     mutationFn: () =>
-      api.patch(`/studios/${STUDIO_ID}`, {
+      api.patch(`/studios/${studioId}`, {
         name: name || studioQuery.data?.name,
         address: address || studioQuery.data?.address,
         contact: contact || studioQuery.data?.contact,
       }),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["studio", STUDIO_ID] });
+      void queryClient.invalidateQueries({ queryKey: ["studio", studioId] });
       void queryClient.invalidateQueries({
-        queryKey: ["studio-public", STUDIO_ID],
+        queryKey: ["studio-public", studioId],
       });
     },
   });
@@ -118,13 +126,13 @@ function SettingsPage() {
         }
       }
 
-      return api.patch(`/studios/${STUDIO_ID}/settings`, payload);
+      return api.patch(`/studios/${studioId}/settings`, payload);
     },
     onSuccess: () => {
       setRazorpayKeySecret("");
-      void queryClient.invalidateQueries({ queryKey: ["studio", STUDIO_ID] });
+      void queryClient.invalidateQueries({ queryKey: ["studio", studioId] });
       void queryClient.invalidateQueries({
-        queryKey: ["studio-public", STUDIO_ID],
+        queryKey: ["studio-public", studioId],
       });
     },
   });
@@ -139,7 +147,7 @@ function SettingsPage() {
       setInviteEmail("");
       setLastInviteUrl(invite.inviteUrl ?? null);
       void queryClient.invalidateQueries({
-        queryKey: ["staff-invites", STUDIO_ID],
+        queryKey: ["staff-invites", studioId],
       });
     },
   });
@@ -148,7 +156,7 @@ function SettingsPage() {
     mutationFn: (id: string) => api.post(`/staff-invites/${id}/revoke`, {}),
     onSuccess: () => {
       void queryClient.invalidateQueries({
-        queryKey: ["staff-invites", STUDIO_ID],
+        queryKey: ["staff-invites", studioId],
       });
     },
   });
