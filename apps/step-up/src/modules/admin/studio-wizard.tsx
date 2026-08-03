@@ -1,9 +1,10 @@
+import { Button } from "@dev-ui/components/button";
 import { ThemeEditorPanel } from "@dev-ui/components/theme-editor";
 import { useToastContext } from "@dev-ui/components/toast";
 import { useTheme } from "@dev-ui/core";
 import { type ThemeDraft, themeDraftToDefinition } from "@dev-ui/tokens";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { useApi } from "@/lib/api-context";
 import {
@@ -15,10 +16,6 @@ import { BrandingPanel } from "@/modules/branding/branding-panel";
 import type { StudioBrandThemePayload } from "@/modules/branding/types";
 import type { Studio } from "@/modules/settings/types";
 import { FormInput } from "@/modules/ui/form-input";
-import { Screen } from "@/modules/ui/screen";
-import staff from "@/modules/ui/staff.module.scss";
-import { ErrorState } from "@/modules/ui/states";
-import { StickyCtaBar, TouchButton } from "@/modules/ui/touch-button";
 import { StudioPaymentsFields } from "./studio-payments-fields";
 import styles from "./studio-wizard.module.scss";
 
@@ -224,196 +221,237 @@ export function StudioWizard(props: StudioWizardProps) {
   });
 
   const pending = createMutation.isPending || updateMutation.isPending;
+  const progressPct = ((step + 1) / STEPS.length) * 100;
 
   return (
-    <>
-      <Screen
-        title={isCreate ? "Create studio" : "Edit studio"}
-        subtitle={
-          isCreate
-            ? "Provision a tenant studio with theme and optional payments."
-            : "Update studio details, branding, and payments."
-        }
-        showBack
-        backTo="/admin"
-        paddedCta
+    <section className={`page stack ${styles.create}`}>
+      <header className={styles.hero}>
+        <div className={styles.heroCopy}>
+          <p className={styles.brandMark}>
+            <span className={styles.brandDot} aria-hidden />
+            Step Up · Admin
+          </p>
+          <h1 className={styles.heroTitle}>
+            {isCreate ? "New studio" : "Edit studio"}
+          </h1>
+          <p className={styles.heroDescription}>
+            {isCreate
+              ? "Provision a tenant — details, brand theme, and optional payments — in a focused few steps."
+              : "Update studio details, branding, and payments."}
+          </p>
+        </div>
+        <div className={styles.heroActions}>
+          <Button as={Link} to="/admin" variant="quiet">
+            Cancel
+          </Button>
+        </div>
+      </header>
+
+      <div
+        className={styles.progressMeter}
+        role="progressbar"
+        aria-valuemin={1}
+        aria-valuemax={STEPS.length}
+        aria-valuenow={step + 1}
+        aria-label="Studio setup progress"
       >
-        <div className={styles.steps} aria-hidden>
+        <div
+          className={styles.progressFill}
+          style={{ width: `${progressPct}%` }}
+        />
+      </div>
+
+      <div className={styles.wizard}>
+        <nav className={styles.steps} aria-label="Studio setup steps">
           {STEPS.map((label, index) => (
             <div
               key={label}
-              className={`${styles.step} ${
-                index === step
-                  ? styles.stepActive
-                  : index < step
-                    ? styles.stepComplete
-                    : ""
-              }`}
-            />
+              className={styles.step}
+              data-active={index === step || undefined}
+              data-complete={index < step || undefined}
+            >
+              <span>{index + 1}</span>
+              <strong>{label}</strong>
+            </div>
           ))}
-        </div>
-        <p className={styles.stepLabel}>
-          Step {step + 1} of {STEPS.length} · {STEPS[step]}
-        </p>
+        </nav>
 
-        {formError ? <ErrorState description={formError} /> : null}
+        <div className={styles.panel}>
+          <div className={styles.panelHeader}>
+            <p className={styles.eyebrow}>
+              Step {step + 1} of {STEPS.length}
+            </p>
+            <h2>{STEPS[step]}</h2>
+          </div>
 
-        {step === 0 ? (
-          <section className={staff.section}>
-            <FormInput
-              label="Studio name"
-              value={name}
-              onChange={setName}
-              required
-              autoComplete="organization"
-            />
-            {isCreate ? (
-              <>
+          {step === 0 ? (
+            <div className={styles.formGrid}>
+              <div className={styles.fullWidth}>
                 <FormInput
-                  label="Owner email"
-                  type="email"
-                  value={ownerEmail}
-                  onChange={setOwnerEmail}
+                  label="Studio name"
+                  value={name}
+                  onChange={setName}
                   required
-                  autoComplete="email"
+                  autoComplete="organization"
                 />
+              </div>
+              {isCreate ? (
+                <>
+                  <FormInput
+                    label="Owner email"
+                    type="email"
+                    value={ownerEmail}
+                    onChange={setOwnerEmail}
+                    required
+                    autoComplete="email"
+                  />
+                  <FormInput
+                    label="Owner name"
+                    value={ownerName}
+                    onChange={setOwnerName}
+                    autoComplete="name"
+                  />
+                </>
+              ) : (
+                <p className={styles.ownerMeta}>
+                  Owner {studio?.owner?.name ?? "—"} ·{" "}
+                  {studio?.owner?.email ?? "—"}
+                </p>
+              )}
+              <div className={styles.fullWidth}>
                 <FormInput
-                  label="Owner name"
-                  value={ownerName}
-                  onChange={setOwnerName}
-                  autoComplete="name"
+                  label="Address"
+                  value={address}
+                  onChange={setAddress}
+                  autoComplete="street-address"
                 />
+              </div>
+              <div className={styles.fullWidth}>
+                <FormInput
+                  label="Contact"
+                  value={contact}
+                  onChange={setContact}
+                  autoComplete="tel"
+                />
+              </div>
+            </div>
+          ) : null}
+
+          {step === 1 ? (
+            <div className={styles.themeStep}>
+              <div className={styles.themeCard}>
+                <p className={styles.themeCardTitle}>Theme</p>
+                <p className={styles.themeCardDesc}>
+                  Match the owner branding theme editor. Preview updates live.
+                </p>
+                <div className={styles.themeToolbar}>
+                  <Button
+                    variant="default"
+                    type="button"
+                    onClick={() => setMode(mode === "light" ? "dark" : "light")}
+                  >
+                    Preview {mode === "light" ? "dark" : "light"}
+                  </Button>
+                </div>
+                <ThemeEditorPanel value={draft} onChange={setDraft} />
+              </div>
+              {studio ? (
+                <div className={styles.assetsBlock}>
+                  <BrandingPanel
+                    studioId={studio.id}
+                    studioName={name.trim() || studio.name}
+                    logoUrl={studio.logoUrl}
+                    heroMobileUrl={studio.heroMobileUrl}
+                    heroDesktopUrl={studio.heroDesktopUrl}
+                    brandTheme={studio.brandTheme}
+                    showTheme={false}
+                  />
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+
+          {step === 2 ? (
+            <div className={styles.paymentsStep}>
+              <StudioPaymentsFields
+                className={styles.paymentsCard}
+                titleClassName={styles.paymentsCardTitle}
+                descClassName={styles.paymentsCardDesc}
+                razorpayKeyId={razorpayKeyId}
+                razorpayKeySecret={razorpayKeySecret}
+                savedKeyId={studio?.settings?.razorpayKeyId ?? ""}
+                configured={Boolean(studio?.settings?.razorpayConfigured)}
+                onKeyIdChange={setRazorpayKeyId}
+                onKeySecretChange={setRazorpayKeySecret}
+              />
+            </div>
+          ) : null}
+
+          {formError ? <p className={styles.error}>{formError}</p> : null}
+
+          <div className={styles.actions}>
+            {step > 0 ? (
+              <Button
+                variant="quiet"
+                type="button"
+                isDisabled={pending}
+                onClick={() => setStep(step - 1)}
+              >
+                Back
+              </Button>
+            ) : null}
+            {step < STEPS.length - 1 ? (
+              <Button
+                variant="primary"
+                type="button"
+                data-testid="studio-wizard-next"
+                isDisabled={!stepIsValid[step]}
+                onClick={() => setStep(step + 1)}
+              >
+                Continue
+              </Button>
+            ) : isCreate ? (
+              <>
+                <Button
+                  variant="default"
+                  type="button"
+                  data-testid="studio-wizard-skip-create"
+                  isPending={pending}
+                  isDisabled={!detailsValid}
+                  onClick={() =>
+                    createMutation.mutate({ includePayments: false })
+                  }
+                >
+                  Skip & create
+                </Button>
+                <Button
+                  variant="primary"
+                  type="button"
+                  data-testid="studio-wizard-create"
+                  isPending={pending}
+                  isDisabled={!detailsValid}
+                  onClick={() =>
+                    createMutation.mutate({ includePayments: true })
+                  }
+                >
+                  Create studio
+                </Button>
               </>
             ) : (
-              <p className={styles.ownerMeta}>
-                Owner {studio?.owner?.name ?? "—"} ·{" "}
-                {studio?.owner?.email ?? "—"}
-              </p>
+              <Button
+                variant="primary"
+                type="button"
+                data-testid="studio-wizard-save"
+                isPending={pending}
+                isDisabled={!detailsValid}
+                onClick={() => updateMutation.mutate()}
+              >
+                Save changes
+              </Button>
             )}
-            <FormInput
-              label="Address"
-              value={address}
-              onChange={setAddress}
-              autoComplete="street-address"
-            />
-            <FormInput
-              label="Contact"
-              value={contact}
-              onChange={setContact}
-              autoComplete="tel"
-            />
-          </section>
-        ) : null}
-
-        {step === 1 ? (
-          <section className={`${staff.section} ${styles.themePreview}`}>
-            <div className={staff.softPanel}>
-              <p className={staff.panelTitle}>Theme</p>
-              <p className={staff.panelDesc}>
-                Match the owner branding theme editor. Preview updates live.
-              </p>
-              <div className={styles.steps}>
-                <TouchButton
-                  variant="default"
-                  onClick={() => setMode(mode === "light" ? "dark" : "light")}
-                >
-                  Preview {mode === "light" ? "dark" : "light"}
-                </TouchButton>
-              </div>
-              <ThemeEditorPanel value={draft} onChange={setDraft} />
-            </div>
-            {studio ? (
-              <div className={styles.assetsBlock}>
-                <BrandingPanel
-                  studioId={studio.id}
-                  studioName={name.trim() || studio.name}
-                  logoUrl={studio.logoUrl}
-                  heroMobileUrl={studio.heroMobileUrl}
-                  heroDesktopUrl={studio.heroDesktopUrl}
-                  brandTheme={studio.brandTheme}
-                  showTheme={false}
-                />
-              </div>
-            ) : null}
-          </section>
-        ) : null}
-
-        {step === 2 ? (
-          <StudioPaymentsFields
-            razorpayKeyId={razorpayKeyId}
-            razorpayKeySecret={razorpayKeySecret}
-            savedKeyId={studio?.settings?.razorpayKeyId ?? ""}
-            configured={Boolean(studio?.settings?.razorpayConfigured)}
-            onKeyIdChange={setRazorpayKeyId}
-            onKeySecretChange={setRazorpayKeySecret}
-          />
-        ) : null}
-      </Screen>
-
-      <StickyCtaBar
-        secondary={
-          <TouchButton
-            variant="default"
-            fullWidth
-            isDisabled={pending}
-            onClick={() => {
-              if (step > 0) {
-                setStep(step - 1);
-                return;
-              }
-              void navigate({ to: "/admin" });
-            }}
-          >
-            {step > 0 ? "Back" : "Cancel"}
-          </TouchButton>
-        }
-      >
-        {step < STEPS.length - 1 ? (
-          <TouchButton
-            variant="primary"
-            fullWidth
-            data-testid="studio-wizard-next"
-            isDisabled={!stepIsValid[step]}
-            onClick={() => setStep(step + 1)}
-          >
-            Next
-          </TouchButton>
-        ) : isCreate ? (
-          <>
-            <TouchButton
-              variant="default"
-              fullWidth
-              data-testid="studio-wizard-skip-create"
-              isPending={pending}
-              isDisabled={!detailsValid}
-              onClick={() => createMutation.mutate({ includePayments: false })}
-            >
-              Skip & create
-            </TouchButton>
-            <TouchButton
-              variant="primary"
-              fullWidth
-              data-testid="studio-wizard-create"
-              isPending={pending}
-              isDisabled={!detailsValid}
-              onClick={() => createMutation.mutate({ includePayments: true })}
-            >
-              Create studio
-            </TouchButton>
-          </>
-        ) : (
-          <TouchButton
-            variant="primary"
-            fullWidth
-            data-testid="studio-wizard-save"
-            isPending={pending}
-            isDisabled={!detailsValid}
-            onClick={() => updateMutation.mutate()}
-          >
-            Save changes
-          </TouchButton>
-        )}
-      </StickyCtaBar>
-    </>
+          </div>
+        </div>
+      </div>
+    </section>
   );
 }
