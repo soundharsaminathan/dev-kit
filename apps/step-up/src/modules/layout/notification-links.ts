@@ -74,6 +74,7 @@ export function resolveNotificationDestination(
   }
 
   if (type === "CHAT_MESSAGE") {
+    if (shell === "admin") return null;
     if (m.conversationId) {
       return shell === "me"
         ? { to: "/me/messages/$id", params: { id: m.conversationId } }
@@ -97,6 +98,10 @@ export function resolveNotificationDestination(
       default:
         return null;
     }
+  }
+
+  if (shell === "admin") {
+    return null;
   }
 
   switch (type) {

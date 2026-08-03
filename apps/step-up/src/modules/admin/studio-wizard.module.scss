@@ -1,0 +1,51 @@
+.steps {
+  display: flex;
+  gap: var(--space-2, 0.5rem);
+  margin-bottom: var(--space-2, 0.5rem);
+}
+
+.step {
+  flex: 1;
+  height: 0.25rem;
+  border-radius: var(--radius-full, 9999px);
+  background: color-mix(in srgb, var(--color-fg) 12%, transparent);
+  transition: background-color var(--motion-fast, 150ms) ease;
+}
+
+.stepActive {
+  background: var(--color-primary);
+}
+
+.stepComplete {
+  background: color-mix(in srgb, var(--color-primary) 55%, transparent);
+}
+
+.stepLabel {
+  margin: 0 0 var(--space-2, 0.5rem);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: color-mix(in srgb, var(--color-fg) 58%, transparent);
+}
+
+.ownerMeta {
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.4;
+  color: color-mix(in srgb, var(--color-fg) 62%, transparent);
+}
+
+.themePreview {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 0.75rem);
+}
+
+.assetsBlock {
+  margin-top: var(--space-4, 1rem);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .step {
+    transition: none;
+  }
+}

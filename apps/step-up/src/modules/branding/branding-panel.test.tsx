@@ -58,6 +58,7 @@ vi.mock("@/lib/api-context", () => ({
 
 vi.mock("@/lib/use-studio-id", () => ({
   useStudioId: () => "studio-seed-1",
+  useOptionalStudioId: () => "studio-seed-1",
 }));
 
 vi.mock("@/modules/branding/studio-brand-edit-context", () => ({

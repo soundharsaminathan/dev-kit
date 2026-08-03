@@ -140,18 +140,21 @@ export class StudiosController {
 
   @Patch(":id")
   @UseGuards(AuthGuard, RolesGuard)
-  @Roles(UserRole.OWNER, UserRole.STAFF)
+  @Roles(UserRole.OWNER, UserRole.STAFF, UserRole.SYSTEM_ADMIN)
   updateStudio(
     @Param("id") id: string,
     @CurrentUser() user: DecryptedUser,
     @Body() dto: UpdateStudioDto,
   ) {
-    assertSameStudio(user, id);
+    if (user.role !== UserRole.SYSTEM_ADMIN) {
+      assertSameStudio(user, id);
+    }
     if (
       (dto.brandTheme !== undefined ||
         dto.heroMobileUrl !== undefined ||
         dto.heroDesktopUrl !== undefined) &&
-      user.role !== UserRole.OWNER
+      user.role !== UserRole.OWNER &&
+      user.role !== UserRole.SYSTEM_ADMIN
     ) {
       throw new ForbiddenException("Only owners can change studio branding");
     }
@@ -161,14 +164,20 @@ export class StudiosController {
 
   @Patch(":id/settings")
   @UseGuards(AuthGuard, RolesGuard)
-  @Roles(UserRole.OWNER, UserRole.STAFF)
+  @Roles(UserRole.OWNER, UserRole.STAFF, UserRole.SYSTEM_ADMIN)
   updateSettings(
     @Param("id") id: string,
     @CurrentUser() user: DecryptedUser,
     @Body() dto: UpdateStudioSettingsDto,
   ) {
-    assertSameStudio(user, id);
-    if (user.role !== UserRole.OWNER && dto.platformFeePercent !== undefined) {
+    if (user.role !== UserRole.SYSTEM_ADMIN) {
+      assertSameStudio(user, id);
+    }
+    if (
+      user.role !== UserRole.OWNER &&
+      user.role !== UserRole.SYSTEM_ADMIN &&
+      dto.platformFeePercent !== undefined
+    ) {
       throw new ForbiddenException(
         "Only owners can change platform fee percent",
       );
@@ -176,6 +185,7 @@ export class StudiosController {
 
     if (
       user.role !== UserRole.OWNER &&
+      user.role !== UserRole.SYSTEM_ADMIN &&
       (dto.razorpayKeyId !== undefined || dto.razorpayKeySecret !== undefined)
     ) {
       throw new ForbiddenException("Only owners can change Razorpay keys");

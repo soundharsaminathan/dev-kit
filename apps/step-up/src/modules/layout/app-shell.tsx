@@ -62,7 +62,12 @@ function isTrainersPath(pathname: string) {
 }
 
 function isProfileHubPath(pathname: string) {
-  return pathname === "/app/profile" || pathname.startsWith("/app/profile/");
+  return (
+    pathname === "/app/profile" ||
+    pathname.startsWith("/app/profile/") ||
+    pathname === "/admin/profile" ||
+    pathname.startsWith("/admin/profile/")
+  );
 }
 
 function isMessagesPath(pathname: string) {

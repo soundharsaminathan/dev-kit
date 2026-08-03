@@ -3,11 +3,12 @@ import {
   ADMIN_ROLES,
   MEMBER_ROLES,
   STAFF_ROLES,
+  SYSTEM_ADMIN_ROLES,
   type UserRole,
 } from "@/lib/constants";
 import { ENTITY_ICONS } from "@/lib/entity-icons";
 
-export type ShellVariant = "app" | "me";
+export type ShellVariant = "app" | "me" | "admin";
 
 export type NavLinkItem = {
   to: string;
@@ -16,7 +17,7 @@ export type NavLinkItem = {
   exact?: boolean;
   section: string;
   primary?: boolean;
-  /** Defaults to STAFF_ROLES (app) or MEMBER_ROLES (me). */
+  /** Defaults to STAFF_ROLES (app), MEMBER_ROLES (me), or SYSTEM_ADMIN_ROLES (admin). */
   roles?: UserRole[];
 };
 
@@ -229,8 +230,28 @@ const memberLinks: NavLinkItem[] = [
   },
 ];
 
+const adminLinks: NavLinkItem[] = [
+  {
+    to: "/admin",
+    label: "Studios",
+    icon: "building",
+    exact: true,
+    section: "Platform",
+    primary: true,
+  },
+  {
+    to: "/admin/profile",
+    label: "Profile",
+    icon: "user",
+    section: "Account",
+    primary: true,
+  },
+];
+
 function defaultRolesFor(variant: ShellVariant): UserRole[] {
-  return variant === "app" ? STAFF_ROLES : MEMBER_ROLES;
+  if (variant === "app") return STAFF_ROLES;
+  if (variant === "admin") return SYSTEM_ADMIN_ROLES;
+  return MEMBER_ROLES;
 }
 
 function linkVisibleToRole(
@@ -243,7 +264,12 @@ function linkVisibleToRole(
 }
 
 function linksFor(variant: ShellVariant, role?: UserRole): NavLinkItem[] {
-  const links = variant === "app" ? appLinks : memberLinks;
+  const links =
+    variant === "app"
+      ? appLinks
+      : variant === "admin"
+        ? adminLinks
+        : memberLinks;
   if (!role) {
     return links;
   }
@@ -312,5 +338,7 @@ export function getMoreLinks(
 }
 
 export function getProfilePath(variant: ShellVariant): string {
-  return variant === "app" ? "/app/profile" : "/me/profile";
+  if (variant === "app") return "/app/profile";
+  if (variant === "admin") return "/admin/profile";
+  return "/me/profile";
 }
