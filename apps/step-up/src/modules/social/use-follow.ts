@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRef } from "react";
 import { useApi } from "@/lib/api-context";
-import { useStudioId } from "@/lib/use-studio-id";
+import { useOptionalStudioId } from "@/lib/use-studio-id";
 import type { StudioTrainer } from "@/modules/trainers/types";
 import {
   applyOptimisticFollow,
@@ -46,7 +46,7 @@ function patchTrainerList(
 
 export function useFollowMutations() {
   const api = useApi();
-  const studioId = useStudioId();
+  const studioId = useOptionalStudioId();
   const queryClient = useQueryClient();
   const intentRef = useRef(new Map<string, FollowIntent>());
   const inflightRef = useRef(new Set<string>());

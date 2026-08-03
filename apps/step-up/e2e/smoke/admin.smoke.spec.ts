@@ -139,8 +139,6 @@ test.describe("admin (staff) smoke @smoke", () => {
           kind: "INDIVIDUAL",
           individualAudience: "ADULT",
           billingCadence: "MONTHLY",
-          adultSeats: 1,
-          kidSeats: 0,
           price: 1999,
           active: true,
         }),
