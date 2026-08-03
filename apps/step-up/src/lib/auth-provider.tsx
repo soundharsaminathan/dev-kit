@@ -22,6 +22,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { flushSync } from "react-dom";
 import { apiRequest } from "./api";
 import {
   AuthContext,
@@ -317,14 +318,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, [settleSyncWaiters]);
 
-  const loginAsDev = useCallback((role: UserRole) => {
-    const devUser = DEV_USERS[role];
-    setUser(devUser);
-    setEmailVerified(true);
-    setHasPasswordProvider(false);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(devUser));
-    setLastLoginIdentifier(devUser.email);
+  const commitBypassSession = useCallback((next: AuthUser) => {
+    // Flush so RouterProvider context updates before login navigates —
+    // otherwise /admin beforeLoad still sees the previous role and bounces
+    // SYSTEM_ADMIN to "/" (which never auto-redirects).
+    flushSync(() => {
+      setUser(next);
+      setEmailVerified(true);
+      setHasPasswordProvider(false);
+    });
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
   }, []);
+
+  const loginAsDev = useCallback(
+    (role: UserRole) => {
+      const devUser = DEV_USERS[role];
+      commitBypassSession(devUser);
+      setLastLoginIdentifier(devUser.email);
+    },
+    [commitBypassSession],
+  );
 
   const signIn = useCallback(
     async (identifier: string, _password: string) => {
@@ -349,10 +362,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             body: { email: trimmed },
           });
           const mapped = mapSyncedUser(synced);
-          setUser(mapped);
-          setEmailVerified(true);
-          setHasPasswordProvider(false);
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(mapped));
+          commitBypassSession(mapped);
           setLastLoginIdentifier(identifier);
           return mapped;
         } catch {
@@ -377,7 +387,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLastLoginIdentifier(identifier);
       return synced;
     },
-    [loginAsDev, waitForSync],
+    [commitBypassSession, loginAsDev, waitForSync],
   );
 
   const signUp = useCallback(
@@ -393,10 +403,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           name: name.trim() || "New dancer",
           ...(options?.studioId ? { studioId: options.studioId } : {}),
         });
-        setUser(created);
-        setEmailVerified(true);
-        setHasPasswordProvider(false);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(created));
+        commitBypassSession(created);
         setLastLoginIdentifier(email);
         return created;
       }
@@ -449,7 +456,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       return synced;
     },
-    [waitForSync],
+    [commitBypassSession, waitForSync],
   );
 
   const signInWithGoogle = useCallback(
@@ -461,10 +468,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             name: "New dancer",
             ...(options.studioId ? { studioId: options.studioId } : {}),
           });
-          setUser(created);
-          setEmailVerified(true);
-          setHasPasswordProvider(false);
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(created));
+          commitBypassSession(created);
           setLastLoginIdentifier(created.email);
           return created;
         }
@@ -485,7 +489,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLastLoginIdentifier(synced.email);
       return synced;
     },
-    [loginAsDev, waitForSync],
+    [commitBypassSession, loginAsDev, waitForSync],
   );
 
   const resetPassword = useCallback(async (email: string) => {

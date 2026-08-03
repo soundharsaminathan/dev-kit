@@ -1,10 +1,17 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { SEED_STUDIO_ID } from "@/lib/constants";
+import { homePathForUser } from "@/lib/require-auth";
 import { PublicShell } from "@/modules/layout/public-shell";
 import { TouchButton } from "@/modules/ui/touch-button";
 import styles from "./index.module.scss";
 
 export const Route = createFileRoute("/")({
+  beforeLoad: ({ context }) => {
+    const user = context.auth.user;
+    if (user) {
+      throw redirect({ to: homePathForUser(user), replace: true });
+    }
+  },
   component: LandingPage,
 });
 
