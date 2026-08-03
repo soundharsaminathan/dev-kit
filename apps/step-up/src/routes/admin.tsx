@@ -1,6 +1,6 @@
 import { createFileRoute, Outlet } from "@tanstack/react-router";
 import { requireSystemAdmin } from "@/lib/require-auth";
-import { PublicShell } from "@/modules/layout/public-shell";
+import { AppShell } from "@/modules/layout/app-shell";
 
 export const Route = createFileRoute("/admin")({
   beforeLoad: ({ context, location }) => {
@@ -14,8 +14,8 @@ export const Route = createFileRoute("/admin")({
 
 function AdminLayout() {
   return (
-    <PublicShell>
+    <AppShell variant="admin">
       <Outlet />
-    </PublicShell>
+    </AppShell>
   );
 }

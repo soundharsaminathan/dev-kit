@@ -78,7 +78,7 @@ const PERMISSION_MATRIX: MatrixRow[] = [
   },
   {
     action: "studios.write",
-    allowed: [UserRole.OWNER, UserRole.STAFF],
+    allowed: [UserRole.OWNER, UserRole.STAFF, UserRole.SYSTEM_ADMIN],
   },
   {
     action: "studios.delete",

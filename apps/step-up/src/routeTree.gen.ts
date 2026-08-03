@@ -42,6 +42,7 @@ import { Route as AppPaymentsRouteImport } from './routes/app/payments'
 import { Route as AppInvoicesRouteImport } from './routes/app/invoices'
 import { Route as AppFeedRouteImport } from './routes/app/feed'
 import { Route as AppCalendarRouteImport } from './routes/app/calendar'
+import { Route as AdminProfileRouteImport } from './routes/admin/profile'
 import { Route as MeTrainersIndexRouteImport } from './routes/me/trainers/index'
 import { Route as MeMessagesIndexRouteImport } from './routes/me/messages/index'
 import { Route as MeLocationsIndexRouteImport } from './routes/me/locations/index'
@@ -88,6 +89,8 @@ import { Route as AppCertificatesIdRouteImport } from './routes/app/certificates
 import { Route as AppBookingsNewRouteImport } from './routes/app/bookings/new'
 import { Route as AppBatchesNewRouteImport } from './routes/app/batches/new'
 import { Route as AppBatchesIdRouteImport } from './routes/app/batches/$id'
+import { Route as AdminStudiosNewRouteImport } from './routes/admin/studios/new'
+import { Route as AdminStudiosIdRouteImport } from './routes/admin/studios/$id'
 import { Route as MeLocationsIdClassesRouteImport } from './routes/me/locations/$id_.classes'
 import { Route as MeCheckoutInvoiceInvoiceIdRouteImport } from './routes/me/checkout/invoice.$invoiceId'
 import { Route as AppSessionsIdAttendanceRouteImport } from './routes/app/sessions.$id.attendance'
@@ -258,6 +261,11 @@ const AppCalendarRoute = AppCalendarRouteImport.update({
   id: '/calendar',
   path: '/calendar',
   getParentRoute: () => AppRoute,
+} as any)
+const AdminProfileRoute = AdminProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => AdminRoute,
 } as any)
 const MeTrainersIndexRoute = MeTrainersIndexRouteImport.update({
   id: '/trainers/',
@@ -491,6 +499,16 @@ const AppBatchesIdRoute = AppBatchesIdRouteImport.update({
   path: '/batches/$id',
   getParentRoute: () => AppRoute,
 } as any)
+const AdminStudiosNewRoute = AdminStudiosNewRouteImport.update({
+  id: '/studios/new',
+  path: '/studios/new',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminStudiosIdRoute = AdminStudiosIdRouteImport.update({
+  id: '/studios/$id',
+  path: '/studios/$id',
+  getParentRoute: () => AdminRoute,
+} as any)
 const MeLocationsIdClassesRoute = MeLocationsIdClassesRouteImport.update({
   id: '/locations/$id_/classes',
   path: '/locations/$id/classes',
@@ -527,6 +545,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/me': typeof MeRouteWithChildren
   '/register': typeof RegisterRoute
+  '/admin/profile': typeof AdminProfileRoute
   '/app/calendar': typeof AppCalendarRoute
   '/app/feed': typeof AppFeedRoute
   '/app/invoices': typeof AppInvoicesRoute
@@ -552,6 +571,8 @@ export interface FileRoutesByFullPath {
   '/admin/': typeof AdminIndexRoute
   '/app/': typeof AppIndexRoute
   '/me/': typeof MeIndexRoute
+  '/admin/studios/$id': typeof AdminStudiosIdRoute
+  '/admin/studios/new': typeof AdminStudiosNewRoute
   '/app/batches/$id': typeof AppBatchesIdRoute
   '/app/batches/new': typeof AppBatchesNewRoute
   '/app/bookings/new': typeof AppBookingsNewRoute
@@ -610,6 +631,7 @@ export interface FileRoutesByTo {
   '/join': typeof JoinRoute
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
+  '/admin/profile': typeof AdminProfileRoute
   '/app/calendar': typeof AppCalendarRoute
   '/app/feed': typeof AppFeedRoute
   '/app/invoices': typeof AppInvoicesRoute
@@ -635,6 +657,8 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminIndexRoute
   '/app': typeof AppIndexRoute
   '/me': typeof MeIndexRoute
+  '/admin/studios/$id': typeof AdminStudiosIdRoute
+  '/admin/studios/new': typeof AdminStudiosNewRoute
   '/app/batches/$id': typeof AppBatchesIdRoute
   '/app/batches/new': typeof AppBatchesNewRoute
   '/app/bookings/new': typeof AppBookingsNewRoute
@@ -697,6 +721,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/me': typeof MeRouteWithChildren
   '/register': typeof RegisterRoute
+  '/admin/profile': typeof AdminProfileRoute
   '/app/calendar': typeof AppCalendarRoute
   '/app/feed': typeof AppFeedRoute
   '/app/invoices': typeof AppInvoicesRoute
@@ -722,6 +747,8 @@ export interface FileRoutesById {
   '/admin/': typeof AdminIndexRoute
   '/app/': typeof AppIndexRoute
   '/me/': typeof MeIndexRoute
+  '/admin/studios/$id': typeof AdminStudiosIdRoute
+  '/admin/studios/new': typeof AdminStudiosNewRoute
   '/app/batches/$id': typeof AppBatchesIdRoute
   '/app/batches/new': typeof AppBatchesNewRoute
   '/app/bookings/new': typeof AppBookingsNewRoute
@@ -785,6 +812,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/me'
     | '/register'
+    | '/admin/profile'
     | '/app/calendar'
     | '/app/feed'
     | '/app/invoices'
@@ -810,6 +838,8 @@ export interface FileRouteTypes {
     | '/admin/'
     | '/app/'
     | '/me/'
+    | '/admin/studios/$id'
+    | '/admin/studios/new'
     | '/app/batches/$id'
     | '/app/batches/new'
     | '/app/bookings/new'
@@ -868,6 +898,7 @@ export interface FileRouteTypes {
     | '/join'
     | '/login'
     | '/register'
+    | '/admin/profile'
     | '/app/calendar'
     | '/app/feed'
     | '/app/invoices'
@@ -893,6 +924,8 @@ export interface FileRouteTypes {
     | '/admin'
     | '/app'
     | '/me'
+    | '/admin/studios/$id'
+    | '/admin/studios/new'
     | '/app/batches/$id'
     | '/app/batches/new'
     | '/app/bookings/new'
@@ -954,6 +987,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/me'
     | '/register'
+    | '/admin/profile'
     | '/app/calendar'
     | '/app/feed'
     | '/app/invoices'
@@ -979,6 +1013,8 @@ export interface FileRouteTypes {
     | '/admin/'
     | '/app/'
     | '/me/'
+    | '/admin/studios/$id'
+    | '/admin/studios/new'
     | '/app/batches/$id'
     | '/app/batches/new'
     | '/app/bookings/new'
@@ -1279,6 +1315,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/app/calendar'
       preLoaderRoute: typeof AppCalendarRouteImport
       parentRoute: typeof AppRoute
+    }
+    '/admin/profile': {
+      id: '/admin/profile'
+      path: '/profile'
+      fullPath: '/admin/profile'
+      preLoaderRoute: typeof AdminProfileRouteImport
+      parentRoute: typeof AdminRoute
     }
     '/me/trainers/': {
       id: '/me/trainers/'
@@ -1602,6 +1645,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppBatchesIdRouteImport
       parentRoute: typeof AppRoute
     }
+    '/admin/studios/new': {
+      id: '/admin/studios/new'
+      path: '/studios/new'
+      fullPath: '/admin/studios/new'
+      preLoaderRoute: typeof AdminStudiosNewRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/studios/$id': {
+      id: '/admin/studios/$id'
+      path: '/studios/$id'
+      fullPath: '/admin/studios/$id'
+      preLoaderRoute: typeof AdminStudiosIdRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/me/locations/$id_/classes': {
       id: '/me/locations/$id_/classes'
       path: '/locations/$id/classes'
@@ -1641,11 +1698,17 @@ declare module '@tanstack/react-router' {
 }
 
 interface AdminRouteChildren {
+  AdminProfileRoute: typeof AdminProfileRoute
   AdminIndexRoute: typeof AdminIndexRoute
+  AdminStudiosIdRoute: typeof AdminStudiosIdRoute
+  AdminStudiosNewRoute: typeof AdminStudiosNewRoute
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
+  AdminProfileRoute: AdminProfileRoute,
   AdminIndexRoute: AdminIndexRoute,
+  AdminStudiosIdRoute: AdminStudiosIdRoute,
+  AdminStudiosNewRoute: AdminStudiosNewRoute,
 }
 
 const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)

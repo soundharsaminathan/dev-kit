@@ -11,6 +11,7 @@ import styles from "./bottom-toolbar.module.scss";
 import {
   getMoreLinks,
   getPrimaryTabs,
+  getProfilePath,
   type NavLinkItem,
   type ShellVariant,
 } from "./nav-config";
@@ -94,7 +95,7 @@ export function BottomToolbar({ variant }: BottomToolbarProps) {
   const primary = getPrimaryTabs(variant, user?.role);
   const moreLinks = getMoreLinks(variant, user?.role);
   const moreActive = moreLinks.some((link) => isLinkActive(pathname, link));
-  const profilePath = variant === "app" ? "/app/profile" : "/me/profile";
+  const profilePath = getProfilePath(variant);
   const memberChrome = variant === "me";
 
   return (

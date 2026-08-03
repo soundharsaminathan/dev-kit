@@ -83,6 +83,35 @@ test.describe("role shells @critical", () => {
     await expect(
       page.getByRole("button", { name: "Create studio" }),
     ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Account menu" }),
+    ).toBeVisible();
+    await page.getByRole("button", { name: "Account menu" }).click();
+    await expect(
+      page.getByRole("menuitem", { name: "Sign out" }),
+    ).toBeVisible();
+    await page.getByRole("button", { name: "Account menu" }).click();
+
+    await page.getByRole("button", { name: "Create studio" }).click();
+    await expect(page).toHaveURL(/\/admin\/studios\/new\/?$/);
+    await expect(page.getByText(/Step 1 of 3/)).toBeVisible();
+    await page.getByLabel("Studio name").fill("E2E Admin Studio");
+    await page.getByLabel("Owner email").fill("e2e-new-owner@stepup.dev");
+    await page.getByTestId("studio-wizard-next").click();
+    await expect(page.getByText(/Step 2 of 3/)).toBeVisible();
+    await page.getByTestId("studio-wizard-next").click();
+    await expect(page.getByText(/Step 3 of 3/)).toBeVisible();
+
+    await page.goto("/admin");
+    await waitForAppReady(page);
+    const editButton = page.getByRole("button", { name: "Edit" }).first();
+    await expect(editButton).toBeVisible();
+    await editButton.click();
+    await expect(page).toHaveURL(/\/admin\/studios\/[^/]+\/?$/);
+    await expect(
+      page.getByRole("heading", { name: "Edit studio", exact: true }),
+    ).toBeVisible();
+
     await context.close();
   });
 });

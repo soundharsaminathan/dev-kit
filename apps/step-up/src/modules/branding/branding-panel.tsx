@@ -5,7 +5,7 @@ import { type ThemeDraft, themeDraftToDefinition } from "@dev-ui/tokens";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useApi } from "@/lib/api-context";
-import { useStudioId } from "@/lib/use-studio-id";
+import { useOptionalStudioId } from "@/lib/use-studio-id";
 import { uploadSocialPhoto } from "@/modules/social/upload";
 import staff from "@/modules/ui/staff.module.scss";
 import { ErrorState } from "@/modules/ui/states";
@@ -17,23 +17,29 @@ import type { StudioBrandThemePayload } from "./types";
 
 type BrandingPanelProps = {
   studioName: string;
-  logoUrl?: string | null;
-  heroMobileUrl?: string | null;
-  heroDesktopUrl?: string | null;
-  brandTheme?: StudioBrandThemePayload | null;
+  studioId?: string;
+  logoUrl?: string | null | undefined;
+  heroMobileUrl?: string | null | undefined;
+  heroDesktopUrl?: string | null | undefined;
+  brandTheme?: StudioBrandThemePayload | null | undefined;
+  /** When false, only logo/hero uploads are shown (theme edited elsewhere). */
+  showTheme?: boolean;
 };
 
 type HeroSlot = "heroMobileUrl" | "heroDesktopUrl";
 
 export function BrandingPanel({
   studioName,
+  studioId: studioIdProp,
   logoUrl,
   heroMobileUrl,
   heroDesktopUrl,
   brandTheme,
+  showTheme = true,
 }: BrandingPanelProps) {
   const api = useApi();
-  const studioId = useStudioId();
+  const sessionStudioId = useOptionalStudioId();
+  const studioId = studioIdProp ?? sessionStudioId ?? "";
   const queryClient = useQueryClient();
   const { toast } = useToastContext("BrandingPanel");
   const { setLiveTheme, mode, setMode } = useTheme();
@@ -60,10 +66,12 @@ export function BrandingPanel({
   }, [setEditing]);
 
   useLayoutEffect(() => {
+    if (!showTheme || !studioId) return;
     setLiveTheme(themeDraftToDefinition(draft, `studio-${studioId}`));
-  }, [draft, setLiveTheme]);
+  }, [draft, setLiveTheme, showTheme, studioId]);
 
   const invalidateStudio = () => {
+    if (!studioId) return;
     void queryClient.invalidateQueries({ queryKey: ["studio", studioId] });
     void queryClient.invalidateQueries({
       queryKey: ["studio-public", studioId],
@@ -233,11 +241,19 @@ export function BrandingPanel({
   const heroRemovingSlot =
     removeHero.isPending && removeHero.variables ? removeHero.variables : null;
 
+  if (!studioId) {
+    return (
+      <ErrorState description="No studio selected for branding updates." />
+    );
+  }
+
   return (
     <div className={staff.softPanel}>
       <p className={staff.panelTitle}>Branding</p>
       <p className={staff.panelDesc}>
-        Logo, hero images, and theme apply across the studio app
+        {showTheme
+          ? "Logo, hero images, and theme apply across the studio app"
+          : "Logo and hero images apply across the studio app"}
       </p>
 
       <div className={styles.logoBlock}>
@@ -391,37 +407,41 @@ export function BrandingPanel({
         {heroError ? <ErrorState description={heroError} /> : null}
       </div>
 
-      <div className={styles.modeRow}>
-        <p className={styles.modeLabel}>Preview mode: {mode}</p>
-        <TouchButton
-          variant="default"
-          onClick={() => setMode(mode === "light" ? "dark" : "light")}
-        >
-          Switch to {mode === "light" ? "dark" : "light"}
-        </TouchButton>
-      </div>
+      {showTheme ? (
+        <>
+          <div className={styles.modeRow}>
+            <p className={styles.modeLabel}>Preview mode: {mode}</p>
+            <TouchButton
+              variant="default"
+              onClick={() => setMode(mode === "light" ? "dark" : "light")}
+            >
+              Switch to {mode === "light" ? "dark" : "light"}
+            </TouchButton>
+          </div>
 
-      <ThemeEditorPanel value={draft} onChange={setDraft} />
+          <ThemeEditorPanel value={draft} onChange={setDraft} />
 
-      <div className={styles.themeActions}>
-        <TouchButton
-          variant="primary"
-          fullWidth
-          isPending={saveTheme.isPending}
-          onClick={() => saveTheme.mutate()}
-        >
-          Save theme
-        </TouchButton>
-        <TouchButton
-          variant="default"
-          fullWidth
-          isPending={resetTheme.isPending}
-          onClick={() => resetTheme.mutate()}
-        >
-          Reset to Step Up defaults
-        </TouchButton>
-      </div>
-      {themeError ? <ErrorState description={themeError} /> : null}
+          <div className={styles.themeActions}>
+            <TouchButton
+              variant="primary"
+              fullWidth
+              isPending={saveTheme.isPending}
+              onClick={() => saveTheme.mutate()}
+            >
+              Save theme
+            </TouchButton>
+            <TouchButton
+              variant="default"
+              fullWidth
+              isPending={resetTheme.isPending}
+              onClick={() => resetTheme.mutate()}
+            >
+              Reset to Step Up defaults
+            </TouchButton>
+          </div>
+          {themeError ? <ErrorState description={themeError} /> : null}
+        </>
+      ) : null}
     </div>
   );
 }

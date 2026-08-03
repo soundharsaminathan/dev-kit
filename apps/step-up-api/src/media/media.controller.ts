@@ -43,6 +43,13 @@ const BRANCH_ROLES = new Set<UserRole>([
   UserRole.TRAINER,
 ]);
 
+const STUDIO_BRANDING_ROLES = new Set<UserRole>([
+  UserRole.OWNER,
+  UserRole.STAFF,
+  UserRole.TRAINER,
+  UserRole.SYSTEM_ADMIN,
+]);
+
 @Controller("media")
 @UseGuards(AuthGuard, RolesGuard)
 export class MediaController {
@@ -58,11 +65,18 @@ export class MediaController {
     const purpose = dto.purpose ?? MediaPurpose.BRANCH;
 
     if (
+      purpose === MediaPurpose.STUDIO_LOGO ||
+      purpose === MediaPurpose.STUDIO_HERO
+    ) {
+      if (!STUDIO_BRANDING_ROLES.has(user.role)) {
+        throw new BadRequestException(
+          "Only studio staff or platform admins can upload studio branding assets",
+        );
+      }
+    } else if (
       (purpose === MediaPurpose.BRANCH ||
         purpose === MediaPurpose.BATCH ||
-        purpose === MediaPurpose.CERTIFICATE ||
-        purpose === MediaPurpose.STUDIO_LOGO ||
-        purpose === MediaPurpose.STUDIO_HERO) &&
+        purpose === MediaPurpose.CERTIFICATE) &&
       !BRANCH_ROLES.has(user.role)
     ) {
       throw new BadRequestException(
