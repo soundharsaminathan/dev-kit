@@ -95,7 +95,7 @@ export default defineConfig({
               ...devices["Pixel 5"],
             },
             testMatch:
-              /role-shells|student-home|onboarding-gate|student-attendance/,
+              /role-shells|student-home|onboarding-gate|onboarding-wizard|student-attendance/,
           },
         ]
       : []),
