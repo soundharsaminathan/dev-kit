@@ -160,7 +160,10 @@ Product contract for automated testing. Roles use the canonical enum:
 | --- | --- | --- | --- |
 | PR regression | Pull requests touching Step Up | Vitest API + Vitest UI + Playwright `@critical` | &lt; 15 min |
 | Merge queue | `merge_group` | Full Step Up Playwright + migration smoke | &lt; 45 min |
+| Deployed smoke | After `step-up` branch deploy (Pages + Cloud Run) | Per-role path sweeps + interactive flows against `https://step-up.pages.dev` (`@smoke`), isolated `studio-smoke-1` tenant | &lt; 45 min |
 | Nightly | 18:00 UTC + manual | All Vitest + all Playwright + Chromium/Firefox/WebKit + mobile subset | Full artifacts |
+
+Deployed smoke scripts live under `apps/step-up/e2e/smoke/` and `apps/step-up-api/prisma/{seed,cleanup}-smoke.ts`. Requires GitHub secret `STEP_UP_SMOKE_PASSWORD` plus existing Firebase / DB secrets.
 
 ---
 

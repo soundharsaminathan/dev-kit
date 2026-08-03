@@ -18,6 +18,10 @@ permissions:
   contents: read
   id-token: write
 
+concurrency:
+  group: step-up-deploy-${{ github.ref }}
+  cancel-in-progress: false
+
 env:
   NX_CLOUD_ACCESS_TOKEN: ${{ secrets.NX_CLOUD_ACCESS_TOKEN }}
 
@@ -120,3 +124,64 @@ jobs:
           pnpm --filter @step-up/api exec prisma migrate deploy
         env:
           DATABASE_URL: ${{ secrets.STEP_UP_DATABASE_URL }}
+
+  smoke:
+    name: Deployed smoke suite
+    needs: [deploy-web, deploy-api]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/step-up'
+    timeout-minutes: 45
+    concurrency:
+      group: step-up-smoke
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/setup
+
+      - name: Generate Prisma client
+        run: pnpm --filter @step-up/api prisma:generate
+
+      - name: Install Playwright Chromium
+        working-directory: apps/step-up
+        run: pnpm exec playwright install chromium --with-deps
+
+      - name: Provision smoke Firebase users
+        run: pnpm --filter @step-up/api smoke:provision-users
+        env:
+          FIREBASE_PROJECT_ID: ${{ secrets.STEP_UP_FIREBASE_PROJECT_ID }}
+          FIREBASE_CLIENT_EMAIL: ${{ secrets.STEP_UP_FIREBASE_CLIENT_EMAIL }}
+          FIREBASE_PRIVATE_KEY: ${{ secrets.STEP_UP_FIREBASE_PRIVATE_KEY }}
+          STEP_UP_SMOKE_PASSWORD: ${{ secrets.STEP_UP_SMOKE_PASSWORD }}
+
+      - name: Seed smoke studio
+        run: pnpm --filter @step-up/api prisma:seed:smoke
+        env:
+          DATABASE_URL: ${{ secrets.STEP_UP_DATABASE_URL }}
+          PII_MASTER_KEY: ${{ secrets.STEP_UP_PII_MASTER_KEY }}
+          CHAT_MASTER_KEY: ${{ secrets.STEP_UP_CHAT_MASTER_KEY }}
+
+      - name: Run deployed smoke suite
+        run: pnpm --filter @step-up/web test:smoke
+        env:
+          STEP_UP_WEB_URL: https://step-up.pages.dev
+          STEP_UP_API_URL: ${{ vars.STEP_UP_API_URL }}
+          STEP_UP_SMOKE_PASSWORD: ${{ secrets.STEP_UP_SMOKE_PASSWORD }}
+          STEP_UP_FIREBASE_API_KEY: ${{ secrets.STEP_UP_FIREBASE_API_KEY }}
+          CI: true
+
+      - name: Cleanup smoke data
+        if: always()
+        run: pnpm --filter @step-up/api prisma:cleanup:smoke
+        env:
+          DATABASE_URL: ${{ secrets.STEP_UP_DATABASE_URL }}
+
+      - name: Upload smoke report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: step-up-smoke-report
+          path: |
+            apps/step-up/playwright-report-smoke
+            apps/step-up/test-results/junit-step-up-smoke.xml
+          if-no-files-found: ignore
+          retention-days: 14

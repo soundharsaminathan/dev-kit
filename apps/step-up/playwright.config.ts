@@ -56,6 +56,7 @@ export default defineConfig({
     {
       name: "setup",
       testMatch: /auth\.setup\.ts/,
+      testIgnore: [/e2e\/smoke\//],
     },
     {
       name: "http",
@@ -68,7 +69,7 @@ export default defineConfig({
       use: {
         ...devices["Desktop Chrome"],
       },
-      testIgnore: [/auth\.setup\.ts/, /e2e\/http\//],
+      testIgnore: [/auth\.setup\.ts/, /e2e\/http\//, /e2e\/smoke\//],
     },
     ...(isNightly
       ? [
@@ -78,7 +79,7 @@ export default defineConfig({
             use: {
               ...devices["Desktop Firefox"],
             },
-            testIgnore: [/auth\.setup\.ts/, /e2e\/http\//],
+            testIgnore: [/auth\.setup\.ts/, /e2e\/http\//, /e2e\/smoke\//],
           },
           {
             name: "webkit",
@@ -86,7 +87,7 @@ export default defineConfig({
             use: {
               ...devices["Desktop Safari"],
             },
-            testIgnore: [/auth\.setup\.ts/, /e2e\/http\//],
+            testIgnore: [/auth\.setup\.ts/, /e2e\/http\//, /e2e\/smoke\//],
           },
           {
             name: "mobile-chrome",
