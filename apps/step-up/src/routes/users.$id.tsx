@@ -7,6 +7,7 @@ import {
   useRouter,
 } from "@tanstack/react-router";
 import { useApi } from "@/lib/api-context";
+import type { AuthUser } from "@/lib/auth";
 import { useAuth } from "@/lib/auth";
 import { MEMBER_ROLES } from "@/lib/constants";
 import type { ChatConversation } from "@/modules/chat/types";
@@ -26,9 +27,36 @@ export const Route = createFileRoute("/users/$id")({
 });
 
 function UserProfilePage() {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return null;
+  }
+
+  if (!user) {
+    return <GuestProfileGate />;
+  }
+
+  return <AuthedUserProfile user={user} />;
+}
+
+function GuestProfileGate() {
+  const navigate = useNavigate();
+  return (
+    <PublicShell>
+      <section className="page-narrow stack">
+        <Text>Sign in to view profiles.</Text>
+        <Button variant="primary" onClick={() => navigate({ to: "/login" })}>
+          Sign in
+        </Button>
+      </section>
+    </PublicShell>
+  );
+}
+
+function AuthedUserProfile({ user }: { user: AuthUser }) {
   const { id } = Route.useParams();
   const api = useApi();
-  const { user, loading } = useAuth();
   const navigate = useNavigate();
   const router = useRouter();
   const { follow, unfollow, isPendingFor } = useFollowMutations();
@@ -36,7 +64,6 @@ function UserProfilePage() {
   const query = useQuery({
     queryKey: ["profile", id],
     queryFn: () => api.get<SocialProfile>(`/users/${id}/profile`),
-    enabled: Boolean(user),
   });
 
   const messageMutation = useMutation({
@@ -46,7 +73,6 @@ function UserProfilePage() {
         memberIds: [id],
       }),
     onSuccess: (conversation) => {
-      if (!user) return;
       const to = MEMBER_ROLES.includes(user.role)
         ? "/me/messages/$id"
         : "/app/messages/$id";
@@ -59,29 +85,12 @@ function UserProfilePage() {
       router.history.back();
       return;
     }
-    if (user && MEMBER_ROLES.includes(user.role)) {
+    if (MEMBER_ROLES.includes(user.role)) {
       void navigate({ to: "/me/trainers" });
       return;
     }
     void navigate({ to: "/app/trainers" });
   };
-
-  if (loading) {
-    return null;
-  }
-
-  if (!user) {
-    return (
-      <PublicShell>
-        <section className="page-narrow stack">
-          <Text>Sign in to view profiles.</Text>
-          <Button variant="primary" onClick={() => navigate({ to: "/login" })}>
-            Sign in
-          </Button>
-        </section>
-      </PublicShell>
-    );
-  }
 
   const batchDetailTo = MEMBER_ROLES.includes(user.role)
     ? ("/me/batches/$id" as const)

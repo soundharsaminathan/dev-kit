@@ -53,6 +53,15 @@ function MeCheckInPage() {
     const reader = new BrowserQRCodeReader();
     readerRef.current = reader;
     scannedRef.current = false;
+    let fellBack = false;
+
+    const fallbackToManual = (message: string) => {
+      if (fellBack) return;
+      fellBack = true;
+      BrowserQRCodeReader.releaseAllStreams();
+      setCameraError(message);
+      setMode("manual");
+    };
 
     reader
       .decodeFromConstraints(
@@ -66,12 +75,16 @@ function MeCheckInPage() {
             error &&
             !(error instanceof Error && error.name === "NotFoundException")
           ) {
-            setCameraError("Camera unavailable. Use manual entry below.");
+            fallbackToManual(
+              "Camera unavailable. Paste the token from the studio QR code.",
+            );
           }
         },
       )
       .catch(() => {
-        setCameraError("Could not access camera. Use manual entry below.");
+        fallbackToManual(
+          "Could not access camera. Paste the token from the studio QR code.",
+        );
       });
 
     return () => {
@@ -126,6 +139,7 @@ function MeCheckInPage() {
             className={styles.modeTab}
             data-active={mode === "scan" ? "true" : undefined}
             onClick={() => {
+              setCameraError(null);
               setMode("scan");
               verifyQr.reset();
             }}
@@ -163,14 +177,13 @@ function MeCheckInPage() {
                 Hold your camera up to the QR code at the front desk.
               </p>
             )}
-            {cameraError ? <ErrorState description={cameraError} /> : null}
           </div>
         ) : null}
 
         {mode === "manual" ? (
           <div className={styles.field}>
             <p className={styles.hint}>
-              Paste the token from the studio QR code.
+              {cameraError ?? "Paste the token from the studio QR code."}
             </p>
             <FormInput
               label="Token"

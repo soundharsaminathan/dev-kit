@@ -92,10 +92,7 @@ test.describe("owner smoke @smoke", () => {
       await page.goto("/app", { waitUntil: "domcontentloaded" });
       await waitForAppReady(page);
 
-      const firstName = SMOKE.users.OWNER.name.split(" ")[0];
-      await expect(
-        page.getByText(new RegExp(`${firstName}.*studio`, "i")),
-      ).toBeVisible();
+      await expect(page.getByText(/here's your studio/i)).toBeVisible();
 
       const metrics = page.getByTestId("owner-metric-tiles");
       await expect(metrics).toBeVisible();

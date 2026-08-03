@@ -32,10 +32,17 @@ export async function sweepPath(
     await expect(page).toHaveURL(new RegExp(escaped));
   }
 
+  // Avoid bare "404" — chip labels like "20–40"+"40+" concatenate to "4040".
   const errorCopy = page.getByText(
-    /something went wrong|unexpected error|page not found|404/i,
+    /something went wrong|unexpected error|page not found/i,
   );
-  await expect(errorCopy).toHaveCount(0);
+  const errorCount = await errorCopy.count();
+  if (errorCount > 0) {
+    const matched = (await errorCopy.allTextContents()).join(" | ");
+    throw new Error(
+      `Path sweep found error copy on ${pathName}: ${matched.slice(0, 240)}`,
+    );
+  }
 
   await expect
     .poll(async () => {
