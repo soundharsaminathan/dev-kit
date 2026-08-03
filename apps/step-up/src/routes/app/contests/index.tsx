@@ -3,7 +3,9 @@ import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useApi } from "@/lib/api-context";
-import { STUDIO_ID } from "@/lib/constants";
+import { useAuth } from "@/lib/auth";
+import { isAdminRole } from "@/lib/constants";
+import { useStudioId } from "@/lib/use-studio-id";
 import type { Contest } from "@/modules/contests/types";
 import { FilterChipRow } from "@/modules/ui/filter-chip-row";
 import { PressableCard } from "@/modules/ui/pressable-card";
@@ -39,12 +41,15 @@ function formatDate(value: string) {
 
 function ContestsPage() {
   const api = useApi();
+  const studioId = useStudioId();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [filter, setFilter] = useState("ALL");
+  const canManage = isAdminRole(user?.role);
 
   const query = useQuery({
-    queryKey: ["contests", STUDIO_ID],
-    queryFn: () => api.get<Contest[]>(`/contests/studio/${STUDIO_ID}`),
+    queryKey: ["contests", studioId],
+    queryFn: () => api.get<Contest[]>(`/contests/studio/${studioId}`),
   });
 
   const filtered = useMemo(() => {
@@ -58,9 +63,11 @@ function ContestsPage() {
       title="Contests"
       subtitle="Style and age-category events with judges and certificates."
       actions={
-        <TouchButton variant="primary" size="md">
-          <Link to="/app/contests/new">New</Link>
-        </TouchButton>
+        canManage ? (
+          <TouchButton variant="primary" size="md">
+            <Link to="/app/contests/new">New</Link>
+          </TouchButton>
+        ) : undefined
       }
     >
       <PullToRefresh onRefresh={() => query.refetch()}>

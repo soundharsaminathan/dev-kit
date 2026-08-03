@@ -5,8 +5,8 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useApi } from "@/lib/api-context";
 import { useAuth } from "@/lib/auth";
-import { STUDIO_ID } from "@/lib/constants";
 import { ENTITY_ICONS } from "@/lib/entity-icons";
+import { useStudioId } from "@/lib/use-studio-id";
 import { BookingDetailDrawer } from "@/modules/bookings/booking-detail-drawer";
 import { BookingReviewPanel } from "@/modules/bookings/booking-review-panel";
 import {
@@ -136,6 +136,7 @@ function MetricLink({
 
 function AppDashboardPage() {
   const api = useApi();
+  const studioId = useStudioId();
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const isTrainer = user?.role === "TRAINER";
@@ -147,41 +148,40 @@ function AppDashboardPage() {
     null,
   );
   const batches = useQuery({
-    queryKey: ["batches", STUDIO_ID],
-    queryFn: () => api.get<Batch[]>(`/batches/studio/${STUDIO_ID}`),
+    queryKey: ["batches", studioId],
+    queryFn: () => api.get<Batch[]>(`/batches/studio/${studioId}`),
   });
   const studio = useQuery({
-    queryKey: ["studio", STUDIO_ID],
-    queryFn: () => api.get<Studio>(`/studios/${STUDIO_ID}`),
+    queryKey: ["studio", studioId],
+    queryFn: () => api.get<Studio>(`/studios/${studioId}`),
     enabled: isTrainer,
     staleTime: 5 * 60 * 1000,
   });
   const branches = useQuery({
-    queryKey: ["branches", STUDIO_ID],
-    queryFn: () => api.get<StudioBranch[]>(`/studios/${STUDIO_ID}/branches`),
+    queryKey: ["branches", studioId],
+    queryFn: () => api.get<StudioBranch[]>(`/studios/${studioId}/branches`),
     enabled: isTrainer,
     staleTime: 5 * 60 * 1000,
   });
   const subscriptions = useQuery({
-    queryKey: ["subscriptions", STUDIO_ID],
-    queryFn: () =>
-      api.get<Subscription[]>(`/subscriptions/studio/${STUDIO_ID}`),
+    queryKey: ["subscriptions", studioId],
+    queryFn: () => api.get<Subscription[]>(`/subscriptions/studio/${studioId}`),
   });
   const members = useQuery({
-    queryKey: ["studio-members", STUDIO_ID],
-    queryFn: () => api.get<StudioMember[]>(`/users/studio/${STUDIO_ID}`),
+    queryKey: ["studio-members", studioId],
+    queryFn: () => api.get<StudioMember[]>(`/users/studio/${studioId}`),
   });
   const studentFunnel = useQuery({
-    queryKey: ["student-funnel", STUDIO_ID, funnelPeriod],
+    queryKey: ["student-funnel", studioId, funnelPeriod],
     queryFn: () =>
       api.get<StudentFunnelCounts>(
-        `/users/studio/${STUDIO_ID}/student-funnel?period=${funnelPeriod}`,
+        `/users/studio/${studioId}/student-funnel?period=${funnelPeriod}`,
       ),
     enabled: !isTrainer,
   });
   const bookings = useQuery({
-    queryKey: ["bookings", "studio", STUDIO_ID],
-    queryFn: () => api.get<StudioBooking[]>(`/bookings/studio/${STUDIO_ID}`),
+    queryKey: ["bookings", "studio", studioId],
+    queryFn: () => api.get<StudioBooking[]>(`/bookings/studio/${studioId}`),
   });
 
   const updateStatus = useMutation({
@@ -199,7 +199,7 @@ function AppDashboardPage() {
       }),
     onSuccess: () => {
       void queryClient.invalidateQueries({
-        queryKey: ["bookings", "studio", STUDIO_ID],
+        queryKey: ["bookings", "studio", studioId],
       });
       void queryClient.invalidateQueries({ queryKey: ["calendar"] });
       setPendingGridKey((key) => key + 1);

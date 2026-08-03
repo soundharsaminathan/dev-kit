@@ -153,7 +153,57 @@ export class AuthController {
       };
     }
 
+    const emailHash = this.crypto.hashEmail(email);
+    const provisioned = await this.prisma.user.findFirst({
+      where: {
+        emailHash,
+        firebaseUid: { startsWith: "provisioned:" },
+      },
+    });
+
+    if (provisioned) {
+      const current = this.crypto.decryptUser(provisioned);
+      const sealed = this.crypto.sealPii(
+        {
+          email,
+          name: name || current.name,
+          phone: current.phone,
+          bio: current.bio,
+          instagramUrl: current.instagramUrl,
+        },
+        provisioned.encryptedKey,
+      );
+      const claimed = await this.prisma.user.update({
+        where: { id: provisioned.id },
+        data: {
+          ...sealed,
+          firebaseUid: auth.firebaseUid,
+        },
+      });
+      if (dto.fcmToken) {
+        await this.push.registerToken(claimed.id, dto.fcmToken);
+      }
+      const decrypted = this.crypto.decryptUser(claimed);
+      return {
+        ...decrypted,
+        photoUrl: await this.media.signReadUrl(decrypted.photoUrl),
+      };
+    }
+
     await this.assertEmailAvailable(email);
+
+    let studioId: string | null = null;
+    if (dto.studioId) {
+      const studio = await this.prisma.studio.findUnique({
+        where: { id: dto.studioId },
+        select: { id: true },
+      });
+      if (!studio) {
+        throw new BadRequestException("Studio not found");
+      }
+      studioId = studio.id;
+    }
+
     const sealed = this.crypto.sealPii({
       email,
       name,
@@ -168,7 +218,7 @@ export class AuthController {
         firebaseUid: auth.firebaseUid,
         ...sealed,
         role: UserRole.STUDENT,
-        studioId: dto.studioId,
+        studioId,
         styles: [],
       },
     });

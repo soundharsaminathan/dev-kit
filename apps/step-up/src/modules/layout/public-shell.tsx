@@ -2,6 +2,7 @@ import { Button } from "@dev-ui/components/button";
 import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import { useAuth } from "@/lib/auth";
+import { SEED_STUDIO_ID } from "@/lib/constants";
 import { homePathForUser } from "@/lib/require-auth";
 import styles from "./public-shell.module.scss";
 
@@ -20,7 +21,7 @@ export function PublicShell({ children }: PublicShellProps) {
           Step Up
         </Link>
         <nav className={styles.nav}>
-          <Link to="/studio">
+          <Link to="/studio/$studioId" params={{ studioId: SEED_STUDIO_ID }}>
             <Button variant="quiet">Studio</Button>
           </Link>
           {!loading &&

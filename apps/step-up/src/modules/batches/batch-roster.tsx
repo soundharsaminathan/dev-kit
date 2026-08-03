@@ -6,8 +6,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useApi } from "@/lib/api-context";
-import { STUDIO_ID } from "@/lib/constants";
 import { ENTITY_ICONS } from "@/lib/entity-icons";
+import { useStudioId } from "@/lib/use-studio-id";
 import {
   StudentSearchCombobox,
   type StudioStudent,
@@ -74,6 +74,7 @@ export function filterRosterEnrollments(
 
 export function BatchRoster({ batchId, capacity, active }: BatchRosterProps) {
   const api = useApi();
+  const studioId = useStudioId();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [studentId, setStudentId] = useState<string | null>(null);
@@ -189,10 +190,10 @@ export function BatchRoster({ batchId, capacity, active }: BatchRosterProps) {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["batch", batchId] }),
         queryClient.invalidateQueries({
-          queryKey: ["studio-students-search"],
+          queryKey: ["studio-students-search", studioId],
         }),
         queryClient.invalidateQueries({
-          queryKey: ["student-profile", STUDIO_ID],
+          queryKey: ["student-profile", studioId],
         }),
       ]);
     },

@@ -3,6 +3,8 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useApi } from "@/lib/api-context";
+import { useAuth } from "@/lib/auth";
+import { isAdminRole } from "@/lib/constants";
 import {
   collectTrainerStyleFilters,
   trainerHasStyle,
@@ -156,7 +158,9 @@ function MemberTrainerDiscovery({
 export function TrainersExplorePage({
   variant = "app",
 }: TrainersExplorePageProps) {
+  const { user } = useAuth();
   const isStaff = variant === "app";
+  const canManageTrainers = isStaff && isAdminRole(user?.role);
   const isMobile = useIsMobile();
   const storageKey = VIEW_STORAGE_KEYS[variant];
   const defaultView: TrainerViewMode = isMobile ? "stack" : "bento";
@@ -326,7 +330,7 @@ export function TrainersExplorePage({
                   <strong>{followingCount}</strong> following
                 </p>
               ) : null}
-              {isStaff ? (
+              {canManageTrainers ? (
                 <div className={styles.introAction}>
                   <TouchButton variant="primary" size="md">
                     <Link to="/app/trainers/new">Add</Link>
@@ -393,16 +397,18 @@ export function TrainersExplorePage({
               icon={ENTITY_ICONS.trainer}
               title="No trainers yet"
               description={
-                isStaff
+                canManageTrainers
                   ? "Add a trainer to get started."
-                  : "Your studio has not published trainer profiles. Browse classes meanwhile."
+                  : isStaff
+                    ? "Your studio has not published trainer profiles yet."
+                    : "Your studio has not published trainer profiles. Browse classes meanwhile."
               }
               action={
-                isStaff ? (
+                canManageTrainers ? (
                   <TouchButton variant="primary">
                     <Link to="/app/trainers/new">Add trainer</Link>
                   </TouchButton>
-                ) : (
+                ) : isStaff ? undefined : (
                   <TouchButton variant="primary">
                     <Link to="/me/book">Discover classes</Link>
                   </TouchButton>

@@ -20,7 +20,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useApi } from "@/lib/api-context";
-import { STUDIO_ID } from "@/lib/constants";
+import { useStudioId } from "@/lib/use-studio-id";
 import { BatchDetailSkeleton } from "@/modules/batches/batch-detail-skeleton";
 import {
   BatchOverview,
@@ -185,6 +185,7 @@ export const Route = createFileRoute("/app/batches/$id")({
 function EditBatchPage() {
   const { id } = Route.useParams();
   const api = useApi();
+  const studioId = useStudioId();
   const navigate = useNavigate({ from: Route.fullPath });
   const queryClient = useQueryClient();
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -204,7 +205,7 @@ function EditBatchPage() {
     mutationFn: () => api.delete(`/batches/${id}`),
     onSuccess: async () => {
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["batches", STUDIO_ID] }),
+        queryClient.invalidateQueries({ queryKey: ["batches", studioId] }),
         queryClient.removeQueries({ queryKey: ["batch", id] }),
       ]);
       await navigate({ to: "/app/batches" });
@@ -356,6 +357,7 @@ function EditBatchForm({
   onSaved?: () => void;
 }) {
   const api = useApi();
+  const studioId = useStudioId();
   const queryClient = useQueryClient();
   const schedule = batch.scheduleJson;
 
@@ -394,21 +396,21 @@ function EditBatchForm({
   >(batch.certificateTemplateId ?? batch.certificateTemplate?.id ?? null);
 
   const branches = useQuery({
-    queryKey: ["branches", STUDIO_ID],
-    queryFn: () => api.get<StudioBranch[]>(`/studios/${STUDIO_ID}/branches`),
+    queryKey: ["branches", studioId],
+    queryFn: () => api.get<StudioBranch[]>(`/studios/${studioId}/branches`),
   });
 
   const subscriptionsQuery = useQuery({
-    queryKey: ["subscriptions", STUDIO_ID],
+    queryKey: ["subscriptions", studioId],
     queryFn: () =>
-      api.get<CatalogSubscription[]>(`/subscriptions/studio/${STUDIO_ID}`),
+      api.get<CatalogSubscription[]>(`/subscriptions/studio/${studioId}`),
   });
 
   const templatesQuery = useQuery({
-    queryKey: ["certificate-templates", STUDIO_ID],
+    queryKey: ["certificate-templates", studioId],
     queryFn: () =>
       api.get<CertificateTemplate[]>(
-        `/certificate-templates/studio/${STUDIO_ID}`,
+        `/certificate-templates/studio/${studioId}`,
       ),
   });
 
@@ -508,7 +510,7 @@ function EditBatchForm({
     },
     onSuccess: async () => {
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["batches", STUDIO_ID] }),
+        queryClient.invalidateQueries({ queryKey: ["batches", studioId] }),
         queryClient.invalidateQueries({ queryKey: ["batch", batch.id] }),
         queryClient.invalidateQueries({
           queryKey: ["batch-revenue", batch.id],

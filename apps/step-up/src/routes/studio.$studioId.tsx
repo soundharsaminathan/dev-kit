@@ -2,7 +2,6 @@ import { Badge } from "@dev-ui/components/badge";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { getPublic } from "@/lib/api";
-import { STUDIO_ID } from "@/lib/constants";
 import { PublicShell } from "@/modules/layout/public-shell";
 import { SkeletonBlock } from "@/modules/ui/skeleton-block";
 import { EmptyState, ErrorState } from "@/modules/ui/states";
@@ -17,15 +16,18 @@ type StudioProfile = {
   photos: string[];
 };
 
-export const Route = createFileRoute("/studio")({
+export const Route = createFileRoute("/studio/$studioId")({
   component: StudioPage,
 });
 
 function StudioPage() {
+  const { studioId } = Route.useParams();
   const query = useQuery({
-    queryKey: ["studio-public", STUDIO_ID],
-    queryFn: () => getPublic<StudioProfile>(`/studios/${STUDIO_ID}/public`),
+    queryKey: ["studio-public", studioId],
+    queryFn: () => getPublic<StudioProfile>(`/studios/${studioId}/public`),
   });
+
+  const registerSearch = { redirect: `/studio/${studioId}`, studioId };
 
   return (
     <PublicShell>
@@ -70,7 +72,16 @@ function StudioPage() {
               </div>
             ) : null}
             <div className={styles.actions}>
-              <TouchButton as={Link} to="/login" variant="primary" fullWidth>
+              <TouchButton
+                as={Link}
+                to="/register"
+                search={registerSearch as never}
+                variant="primary"
+                fullWidth
+              >
+                Join this studio
+              </TouchButton>
+              <TouchButton as={Link} to="/login" variant="quiet" fullWidth>
                 Sign in to book
               </TouchButton>
               <TouchButton as={Link} to="/" variant="quiet" fullWidth>

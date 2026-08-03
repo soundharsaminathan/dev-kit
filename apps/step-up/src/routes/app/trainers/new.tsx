@@ -1,7 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { requireAdmin } from "@/lib/require-auth";
 import { MemberRegistrationForm } from "@/modules/members/member-registration-form";
 
 export const Route = createFileRoute("/app/trainers/new")({
+  beforeLoad: ({ context, location }) => {
+    requireAdmin(context.auth, {
+      pathname: location.pathname,
+      searchStr: location.searchStr,
+    });
+  },
   component: NewTrainerPage,
 });
 

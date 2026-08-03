@@ -41,6 +41,7 @@ import { AuthGuard } from "../auth/auth.guard";
 import { CurrentUser } from "../auth/current-user.decorator";
 import { Roles } from "../auth/roles.decorator";
 import { RolesGuard } from "../auth/roles.guard";
+import { assertSameStudio } from "../auth/studio-access";
 import type { DecryptedUser } from "../users/user-crypto.service";
 import { UsersService } from "../users/users.service";
 import { BatchesService } from "./batches.service";
@@ -271,6 +272,7 @@ export class BatchesController {
 
   @Get("studio/:studioId")
   listByStudio(
+    @CurrentUser() user: DecryptedUser,
     @Param("studioId") studioId: string,
     @Query("style") style?: string,
     @Query("category") category?: string,
@@ -280,6 +282,7 @@ export class BatchesController {
     @Query("activeOnly") activeOnly?: string,
     @Query("studentId") studentId?: string,
   ) {
+    assertSameStudio(user, studioId);
     return this.batchesService.listByStudio(studioId, {
       style,
       category,

@@ -12,8 +12,11 @@ import {
 import { UserRole } from "@prisma/client";
 import { IsObject, IsOptional, IsString, MinLength } from "class-validator";
 import { AuthGuard } from "../auth/auth.guard";
+import { CurrentUser } from "../auth/current-user.decorator";
 import { Roles } from "../auth/roles.decorator";
 import { RolesGuard } from "../auth/roles.guard";
+import { assertSameStudio } from "../auth/studio-access";
+import type { DecryptedUser } from "../users/user-crypto.service";
 import { CertificatesService } from "./certificates.service";
 
 class CreateCertificateTemplateDto {
@@ -48,7 +51,11 @@ export class CertificatesController {
   ) {}
 
   @Get("studio/:studioId")
-  listByStudio(@Param("studioId") studioId: string) {
+  listByStudio(
+    @CurrentUser() user: DecryptedUser,
+    @Param("studioId") studioId: string,
+  ) {
+    assertSameStudio(user, studioId);
     return this.certificatesService.listByStudio(studioId);
   }
 
@@ -59,7 +66,11 @@ export class CertificatesController {
 
   @Post()
   @Roles(UserRole.OWNER, UserRole.STAFF)
-  create(@Body() dto: CreateCertificateTemplateDto) {
+  create(
+    @CurrentUser() user: DecryptedUser,
+    @Body() dto: CreateCertificateTemplateDto,
+  ) {
+    assertSameStudio(user, dto.studioId);
     return this.certificatesService.create(dto);
   }
 

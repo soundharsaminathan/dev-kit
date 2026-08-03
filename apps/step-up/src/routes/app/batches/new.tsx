@@ -19,7 +19,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useApi } from "@/lib/api-context";
-import { STUDIO_ID } from "@/lib/constants";
+import { useStudioId } from "@/lib/use-studio-id";
 import {
   BATCH_COVER_ASPECT,
   uploadBatchCover,
@@ -118,6 +118,7 @@ export const Route = createFileRoute("/app/batches/new")({
 
 function NewBatchPage() {
   const api = useApi();
+  const studioId = useStudioId();
   const navigate = useNavigate({ from: Route.fullPath });
   const queryClient = useQueryClient();
   const today = useMemo(() => toDateInputValue(new Date()), []);
@@ -151,24 +152,24 @@ function NewBatchPage() {
   const [subscriptionIds, setSubscriptionIds] = useState<string[]>([]);
 
   const members = useQuery({
-    queryKey: ["studio-members", STUDIO_ID],
-    queryFn: () => api.get<StudioMember[]>(`/users/studio/${STUDIO_ID}`),
+    queryKey: ["studio-members", studioId],
+    queryFn: () => api.get<StudioMember[]>(`/users/studio/${studioId}`),
   });
   const branches = useQuery({
-    queryKey: ["branches", STUDIO_ID],
-    queryFn: () => api.get<StudioBranch[]>(`/studios/${STUDIO_ID}/branches`),
+    queryKey: ["branches", studioId],
+    queryFn: () => api.get<StudioBranch[]>(`/studios/${studioId}/branches`),
   });
   const templates = useQuery({
-    queryKey: ["certificate-templates", STUDIO_ID],
+    queryKey: ["certificate-templates", studioId],
     queryFn: () =>
       api.get<CertificateTemplate[]>(
-        `/certificate-templates/studio/${STUDIO_ID}`,
+        `/certificate-templates/studio/${studioId}`,
       ),
   });
   const subscriptionsQuery = useQuery({
-    queryKey: ["subscriptions", STUDIO_ID],
+    queryKey: ["subscriptions", studioId],
     queryFn: () =>
-      api.get<CatalogSubscription[]>(`/subscriptions/studio/${STUDIO_ID}`),
+      api.get<CatalogSubscription[]>(`/subscriptions/studio/${studioId}`),
   });
 
   const trainers = useMemo(
@@ -314,7 +315,7 @@ function NewBatchPage() {
       }
       const coverImageUrl = await uploadBatchCover(api, coverFile);
       return api.post<Batch>("/batches", {
-        studioId: STUDIO_ID,
+        studioId,
         name,
         coverImageUrl,
         category,
@@ -349,7 +350,7 @@ function NewBatchPage() {
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({
-        queryKey: ["batches", STUDIO_ID],
+        queryKey: ["batches", studioId],
       });
       await navigate({ to: "/app/batches" });
     },

@@ -19,6 +19,7 @@ export function authFile(role: SeedRole) {
 }
 
 export function homePathForRole(role: SeedRole) {
+  if (role === "SYSTEM_ADMIN") return "/admin";
   return role === "STUDENT" || role === "PARENT" ? "/me" : "/app";
 }
 

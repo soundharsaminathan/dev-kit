@@ -20,7 +20,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { useApi } from "@/lib/api-context";
-import { STUDIO_ID } from "@/lib/constants";
+import { requireAdmin } from "@/lib/require-auth";
+import { useStudioId } from "@/lib/use-studio-id";
 import type { CertificateTemplate } from "@/modules/certificates/types";
 import type {
   CategoryDraft,
@@ -57,11 +58,18 @@ function toLocalInputValue(date: Date) {
 }
 
 export const Route = createFileRoute("/app/contests/new")({
+  beforeLoad: ({ context, location }) => {
+    requireAdmin(context.auth, {
+      pathname: location.pathname,
+      searchStr: location.searchStr,
+    });
+  },
   component: NewContestPage,
 });
 
 function NewContestPage() {
   const api = useApi();
+  const studioId = useStudioId();
   const navigate = useNavigate({ from: Route.fullPath });
   const queryClient = useQueryClient();
 
@@ -83,15 +91,15 @@ function NewContestPage() {
   ]);
 
   const members = useQuery({
-    queryKey: ["users", STUDIO_ID],
-    queryFn: () => api.get<StudioMember[]>(`/users/studio/${STUDIO_ID}`),
+    queryKey: ["users", studioId],
+    queryFn: () => api.get<StudioMember[]>(`/users/studio/${studioId}`),
   });
 
   const templates = useQuery({
-    queryKey: ["certificate-templates", STUDIO_ID],
+    queryKey: ["certificate-templates", studioId],
     queryFn: () =>
       api.get<CertificateTemplate[]>(
-        `/certificate-templates/studio/${STUDIO_ID}`,
+        `/certificate-templates/studio/${studioId}`,
       ),
   });
 
@@ -103,7 +111,7 @@ function NewContestPage() {
   const createContest = useMutation({
     mutationFn: () =>
       api.post<{ id: string }>("/contests", {
-        studioId: STUDIO_ID,
+        studioId,
         title: title.trim(),
         description: description.trim() || null,
         startsAt: new Date(startsAt).toISOString(),
@@ -128,7 +136,7 @@ function NewContestPage() {
         })),
       }),
     onSuccess: (contest) => {
-      void queryClient.invalidateQueries({ queryKey: ["contests", STUDIO_ID] });
+      void queryClient.invalidateQueries({ queryKey: ["contests", studioId] });
       void navigate({ to: "/app/contests/$id", params: { id: contest.id } });
     },
   });

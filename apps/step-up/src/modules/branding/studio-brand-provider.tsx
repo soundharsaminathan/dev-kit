@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { type ReactNode, useLayoutEffect } from "react";
 import { useApi } from "@/lib/api-context";
 import { useAuth } from "@/lib/auth";
-import { STUDIO_ID } from "@/lib/constants";
+import { useOptionalStudioId } from "@/lib/use-studio-id";
 import { brandThemeToDefinition } from "./brand-theme";
 import { useStudioBrandEdit } from "./studio-brand-edit-context";
 import type { StudioBrandThemePayload } from "./types";
@@ -15,14 +15,15 @@ type StudioBrandResponse = {
 
 export function StudioBrandProvider({ children }: { children: ReactNode }) {
   const api = useApi();
+  const studioId = useOptionalStudioId();
   const { user } = useAuth();
   const { setLiveTheme } = useTheme();
   const { isEditing } = useStudioBrandEdit();
 
   const studioQuery = useQuery({
-    queryKey: ["studio", STUDIO_ID],
-    queryFn: () => api.get<StudioBrandResponse>(`/studios/${STUDIO_ID}`),
-    enabled: Boolean(user),
+    queryKey: ["studio", studioId],
+    queryFn: () => api.get<StudioBrandResponse>(`/studios/${studioId}`),
+    enabled: Boolean(user && studioId),
   });
 
   const brandTheme = studioQuery.data?.brandTheme ?? null;
@@ -30,13 +31,13 @@ export function StudioBrandProvider({ children }: { children: ReactNode }) {
   useLayoutEffect(() => {
     if (isEditing) return;
 
-    if (brandTheme) {
-      setLiveTheme(brandThemeToDefinition(brandTheme, STUDIO_ID));
+    if (brandTheme && studioId) {
+      setLiveTheme(brandThemeToDefinition(brandTheme, studioId));
       return;
     }
 
     setLiveTheme(null);
-  }, [brandTheme, isEditing, setLiveTheme]);
+  }, [brandTheme, isEditing, setLiveTheme, studioId]);
 
   return children;
 }

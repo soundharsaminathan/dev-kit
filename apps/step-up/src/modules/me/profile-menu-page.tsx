@@ -32,7 +32,7 @@ export function ProfileMenuPage({ variant = "me" }: ProfileMenuPageProps) {
   const familyMembers = activeStudent?.familyMembers ?? [];
   const isManagingFamily = activeStudent?.isManagingFamily ?? false;
   const setActiveAccount = activeStudent?.setActiveAccount ?? (() => {});
-  const sections = getMenuSections(variant);
+  const sections = getMenuSections(variant, user?.role);
   const editTo = variant === "app" ? "/app/profile/edit" : "/me/profile/edit";
   const followRequestsTo =
     variant === "app"

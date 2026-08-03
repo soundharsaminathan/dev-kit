@@ -7,22 +7,47 @@ import {
   Inject,
   Param,
   Patch,
+  Post,
   UseGuards,
 } from "@nestjs/common";
 import { UserRole } from "@prisma/client";
 import {
   Allow,
+  IsEmail,
   IsNumber,
   IsOptional,
   IsString,
+  MinLength,
   ValidateIf,
 } from "class-validator";
 import { AuthGuard } from "../auth/auth.guard";
 import { CurrentUser } from "../auth/current-user.decorator";
 import { Roles } from "../auth/roles.decorator";
 import { RolesGuard } from "../auth/roles.guard";
+import { assertSameStudio } from "../auth/studio-access";
 import type { DecryptedUser } from "../users/user-crypto.service";
 import { StudiosService } from "./studios.service";
+
+class CreateStudioDto {
+  @IsString()
+  @MinLength(1)
+  name!: string;
+
+  @IsOptional()
+  @IsString()
+  address?: string;
+
+  @IsOptional()
+  @IsString()
+  contact?: string;
+
+  @IsEmail()
+  ownerEmail!: string;
+
+  @IsOptional()
+  @IsString()
+  ownerName?: string;
+}
 
 class UpdateStudioDto {
   @IsOptional()
@@ -75,6 +100,20 @@ export class StudiosController {
     @Inject(StudiosService) private readonly studiosService: StudiosService,
   ) {}
 
+  @Get()
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles(UserRole.SYSTEM_ADMIN)
+  listStudios() {
+    return this.studiosService.listStudios();
+  }
+
+  @Post()
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles(UserRole.SYSTEM_ADMIN)
+  createStudio(@Body() dto: CreateStudioDto) {
+    return this.studiosService.createStudio(dto);
+  }
+
   @Get(":id/public")
   getPublicProfile(@Param("id") id: string) {
     return this.studiosService.getPublicProfile(id);
@@ -82,7 +121,10 @@ export class StudiosController {
 
   @Get(":id")
   @UseGuards(AuthGuard, RolesGuard)
-  getStudio(@Param("id") id: string) {
+  getStudio(@Param("id") id: string, @CurrentUser() user: DecryptedUser) {
+    if (user.role !== UserRole.SYSTEM_ADMIN) {
+      assertSameStudio(user, id);
+    }
     return this.studiosService.getStudio(id);
   }
 
@@ -94,6 +136,7 @@ export class StudiosController {
     @CurrentUser() user: DecryptedUser,
     @Body() dto: UpdateStudioDto,
   ) {
+    assertSameStudio(user, id);
     if (dto.brandTheme !== undefined && user.role !== UserRole.OWNER) {
       throw new ForbiddenException("Only owners can change studio branding");
     }
@@ -109,6 +152,7 @@ export class StudiosController {
     @CurrentUser() user: DecryptedUser,
     @Body() dto: UpdateStudioSettingsDto,
   ) {
+    assertSameStudio(user, id);
     if (user.role !== UserRole.OWNER && dto.platformFeePercent !== undefined) {
       throw new ForbiddenException(
         "Only owners can change platform fee percent",
@@ -127,10 +171,10 @@ export class StudiosController {
 
   @Delete(":id")
   @UseGuards(AuthGuard, RolesGuard)
-  @Roles(UserRole.OWNER)
+  @Roles(UserRole.OWNER, UserRole.SYSTEM_ADMIN)
   deleteStudio(@Param("id") id: string, @CurrentUser() user: DecryptedUser) {
-    if (user.role !== UserRole.OWNER) {
-      throw new ForbiddenException("Only owners can delete a studio");
+    if (user.role === UserRole.OWNER) {
+      assertSameStudio(user, id);
     }
 
     return this.studiosService.deleteStudio(id);

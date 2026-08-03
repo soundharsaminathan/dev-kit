@@ -8,6 +8,7 @@ datasource db {
 }
 
 enum UserRole {
+  SYSTEM_ADMIN
   OWNER
   STAFF
   TRAINER
@@ -81,6 +82,7 @@ enum InvoiceStatus {
 enum PaymentMethod {
   CASH
   UPI_MANUAL
+  RAZORPAY
 }
 
 enum SessionStatus {

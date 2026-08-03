@@ -2,8 +2,8 @@ import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useApi } from "@/lib/api-context";
-import { STUDIO_ID } from "@/lib/constants";
 import { ENTITY_ICONS } from "@/lib/entity-icons";
+import { useStudioId } from "@/lib/use-studio-id";
 import type { BatchFiltersDraft } from "@/modules/batches/batch-filters-panel";
 import { BatchFiltersToolbar } from "@/modules/batches/batch-filters-toolbar";
 import { type DiscoverBatch, toBatchCardData } from "@/modules/discover/types";
@@ -64,14 +64,15 @@ function applyDraft(
 
 function BatchesPage() {
   const api = useApi();
+  const studioId = useStudioId();
   const [status, setStatus] = useState("ALL");
   const [category, setCategory] = useState("ALL");
   const [style, setStyle] = useState<string | null>(null);
   const [search, setSearch] = useState("");
 
   const query = useQuery({
-    queryKey: ["batches", STUDIO_ID],
-    queryFn: () => api.get<DiscoverBatch[]>(`/batches/studio/${STUDIO_ID}`),
+    queryKey: ["batches", studioId],
+    queryFn: () => api.get<DiscoverBatch[]>(`/batches/studio/${studioId}`),
   });
 
   const styleChips = useMemo(() => {

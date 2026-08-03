@@ -54,7 +54,7 @@ const PERMISSION_MATRIX: MatrixRow[] = [
   },
   {
     action: "billing.listByStudio",
-    allowed: [UserRole.OWNER, UserRole.STAFF, UserRole.TRAINER],
+    allowed: [UserRole.OWNER, UserRole.STAFF],
   },
   {
     action: "subscriptions.catalog.write",
@@ -73,8 +73,16 @@ const PERMISSION_MATRIX: MatrixRow[] = [
     allowed: [UserRole.STUDENT, UserRole.PARENT],
   },
   {
+    action: "studios.create / listAll",
+    allowed: [UserRole.SYSTEM_ADMIN],
+  },
+  {
     action: "studios.write",
     allowed: [UserRole.OWNER, UserRole.STAFF],
+  },
+  {
+    action: "studios.delete",
+    allowed: [UserRole.OWNER, UserRole.SYSTEM_ADMIN],
   },
   {
     action: "studios.transferOwnership",
@@ -115,6 +123,7 @@ const PERMISSION_MATRIX: MatrixRow[] = [
 ];
 
 const ALL_ROLES = [
+  UserRole.SYSTEM_ADMIN,
   UserRole.OWNER,
   UserRole.STAFF,
   UserRole.TRAINER,

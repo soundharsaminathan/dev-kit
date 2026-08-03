@@ -37,7 +37,6 @@ import {
   type Gender,
   isAuthBypassEnabled,
   resolveLoginEmail,
-  STUDIO_ID,
   type UserRole,
 } from "./constants";
 import { getFirebaseAuth, googleProvider } from "./firebase";
@@ -95,7 +94,7 @@ function mapSyncedUser(user: SyncedApiUser): AuthUser {
     email: user.email,
     name: user.name,
     role: user.role,
-    studioId: user.studioId ?? STUDIO_ID,
+    studioId: user.studioId,
     bio: user.bio ?? null,
     photoUrl: user.photoUrl ?? null,
     instagramUrl: user.instagramUrl ?? null,
@@ -111,7 +110,10 @@ function mapSyncedUser(user: SyncedApiUser): AuthUser {
   };
 }
 
-async function syncFirebaseUser(firebaseUser: FirebaseUser): Promise<AuthUser> {
+async function syncFirebaseUser(
+  firebaseUser: FirebaseUser,
+  options?: { studioId?: string },
+): Promise<AuthUser> {
   const token = await firebaseUser.getIdToken();
   const synced = await apiRequest<SyncedApiUser>("/auth/sync", {
     method: "POST",
@@ -119,7 +121,7 @@ async function syncFirebaseUser(firebaseUser: FirebaseUser): Promise<AuthUser> {
     body: {
       name: firebaseUser.displayName || undefined,
       email: firebaseUser.email || undefined,
-      studioId: STUDIO_ID,
+      ...(options?.studioId ? { studioId: options.studioId } : {}),
     },
   });
   return mapSyncedUser(synced);
@@ -128,6 +130,7 @@ async function syncFirebaseUser(firebaseUser: FirebaseUser): Promise<AuthUser> {
 async function createBypassStudent(input: {
   email: string;
   name: string;
+  studioId?: string;
 }): Promise<AuthUser> {
   const id = `dev-signup-${Date.now()}`;
   const token = `dev:STUDENT:${id}`;
@@ -137,7 +140,7 @@ async function createBypassStudent(input: {
     body: {
       name: input.name.trim() || "New dancer",
       email: input.email.trim().toLowerCase(),
-      studioId: STUDIO_ID,
+      ...(input.studioId ? { studioId: input.studioId } : {}),
     },
   });
   return mapSyncedUser({
@@ -169,6 +172,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     >(),
   );
   const lastSyncedRef = useRef<{ uid: string; user: AuthUser } | null>(null);
+  const pendingStudioIdRef = useRef<string | null>(null);
 
   const needsEmailVerification =
     !isAuthBypassEnabled() &&
@@ -279,7 +283,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
 
         try {
-          const synced = await syncFirebaseUser(firebaseUser);
+          const pendingStudioId = pendingStudioIdRef.current;
+          pendingStudioIdRef.current = null;
+          const synced = await syncFirebaseUser(
+            firebaseUser,
+            pendingStudioId ? { studioId: pendingStudioId } : undefined,
+          );
           if (!cancelled) {
             setUser(synced);
             setHasPasswordProvider(userHasPasswordProvider(firebaseUser));
@@ -372,11 +381,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const signUp = useCallback(
-    async (email: string, password: string, name: string) => {
+    async (
+      email: string,
+      password: string,
+      name: string,
+      options?: { studioId?: string },
+    ) => {
       if (isAuthBypassEnabled()) {
         const created = await createBypassStudent({
           email,
           name: name.trim() || "New dancer",
+          ...(options?.studioId ? { studioId: options.studioId } : {}),
         });
         setUser(created);
         setEmailVerified(true);
@@ -391,6 +406,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw new Error("Firebase is not configured");
       }
 
+      pendingStudioIdRef.current = options?.studioId ?? null;
       const credential = await createUserWithEmailAndPassword(
         auth,
         email.trim(),
@@ -437,12 +453,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const signInWithGoogle = useCallback(
-    async (options?: { asNewStudent?: boolean }) => {
+    async (options?: { asNewStudent?: boolean; studioId?: string }) => {
       if (isAuthBypassEnabled()) {
         if (options?.asNewStudent) {
           const created = await createBypassStudent({
             email: `google-${Date.now()}@stepup.dev`,
             name: "New dancer",
+            ...(options.studioId ? { studioId: options.studioId } : {}),
           });
           setUser(created);
           setEmailVerified(true);
@@ -460,6 +477,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw new Error("Firebase is not configured");
       }
 
+      pendingStudioIdRef.current = options?.studioId ?? null;
       const credential = await signInWithPopup(auth, googleProvider);
       setEmailVerified(credential.user.emailVerified);
       setHasPasswordProvider(userHasPasswordProvider(credential.user));

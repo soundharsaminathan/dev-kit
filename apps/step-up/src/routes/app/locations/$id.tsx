@@ -1,6 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useApi } from "@/lib/api-context";
+import { useAuth } from "@/lib/auth";
+import { isAdminRole } from "@/lib/constants";
 import {
   LocationDetail,
   LocationDetailSkeleton,
@@ -17,7 +19,9 @@ export const Route = createFileRoute("/app/locations/$id")({
 function StaffLocationDetailPage() {
   const { id } = Route.useParams();
   const api = useApi();
+  const { user } = useAuth();
   const navigate = useNavigate();
+  const canManage = isAdminRole(user?.role);
 
   const query = useQuery({
     queryKey: ["branch-landing", id],
@@ -56,17 +60,19 @@ function StaffLocationDetailPage() {
           classesViewAllTo={`/app/locations/${id}/classes`}
           actions={
             <>
-              <TouchButton
-                variant="primary"
-                onClick={() =>
-                  void navigate({
-                    to: "/app/locations/$id/edit",
-                    params: { id },
-                  })
-                }
-              >
-                Edit
-              </TouchButton>
+              {canManage ? (
+                <TouchButton
+                  variant="primary"
+                  onClick={() =>
+                    void navigate({
+                      to: "/app/locations/$id/edit",
+                      params: { id },
+                    })
+                  }
+                >
+                  Edit
+                </TouchButton>
+              ) : null}
               <TouchButton
                 variant="default"
                 onClick={() =>

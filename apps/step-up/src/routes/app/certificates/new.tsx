@@ -3,7 +3,8 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useCallback, useState } from "react";
 import { useApi } from "@/lib/api-context";
-import { STUDIO_ID } from "@/lib/constants";
+import { requireAdmin } from "@/lib/require-auth";
+import { useStudioId } from "@/lib/use-studio-id";
 import { CertificateDesigner } from "@/modules/certificates/designer/certificate-designer";
 import { isCertificateDocumentValid } from "@/modules/certificates/designer/document-valid";
 import {
@@ -14,11 +15,18 @@ import {
 import { PageHeader } from "@/modules/ui/page-header";
 
 export const Route = createFileRoute("/app/certificates/new")({
+  beforeLoad: ({ context, location }) => {
+    requireAdmin(context.auth, {
+      pathname: location.pathname,
+      searchStr: location.searchStr,
+    });
+  },
   component: NewCertificateTemplatePage,
 });
 
 function NewCertificateTemplatePage() {
   const api = useApi();
+  const studioId = useStudioId();
   const navigate = useNavigate({ from: Route.fullPath });
   const queryClient = useQueryClient();
   const [name, setName] = useState("");
@@ -33,13 +41,13 @@ function NewCertificateTemplatePage() {
   const createTemplate = useMutation({
     mutationFn: () =>
       api.post<CertificateTemplate>("/certificate-templates", {
-        studioId: STUDIO_ID,
+        studioId,
         name,
         layoutJson: layout,
       }),
     onSuccess: async () => {
       await queryClient.invalidateQueries({
-        queryKey: ["certificate-templates", STUDIO_ID],
+        queryKey: ["certificate-templates", studioId],
       });
       await navigate({ to: "/app/certificates" });
     },

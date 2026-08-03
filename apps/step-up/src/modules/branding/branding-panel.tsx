@@ -4,7 +4,7 @@ import { type ThemeDraft, themeDraftToDefinition } from "@dev-ui/tokens";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useApi } from "@/lib/api-context";
-import { STUDIO_ID } from "@/lib/constants";
+import { useStudioId } from "@/lib/use-studio-id";
 import { uploadSocialPhoto } from "@/modules/social/upload";
 import staff from "@/modules/ui/staff.module.scss";
 import { ErrorState } from "@/modules/ui/states";
@@ -26,6 +26,7 @@ export function BrandingPanel({
   brandTheme,
 }: BrandingPanelProps) {
   const api = useApi();
+  const studioId = useStudioId();
   const queryClient = useQueryClient();
   const { setLiveTheme, mode, setMode } = useTheme();
   const { setEditing } = useStudioBrandEdit();
@@ -48,20 +49,20 @@ export function BrandingPanel({
   }, [setEditing]);
 
   useLayoutEffect(() => {
-    setLiveTheme(themeDraftToDefinition(draft, `studio-${STUDIO_ID}`));
+    setLiveTheme(themeDraftToDefinition(draft, `studio-${studioId}`));
   }, [draft, setLiveTheme]);
 
   const invalidateStudio = () => {
-    void queryClient.invalidateQueries({ queryKey: ["studio", STUDIO_ID] });
+    void queryClient.invalidateQueries({ queryKey: ["studio", studioId] });
     void queryClient.invalidateQueries({
-      queryKey: ["studio-public", STUDIO_ID],
+      queryKey: ["studio-public", studioId],
     });
   };
 
   const uploadLogo = useMutation({
     mutationFn: async (file: File) => {
       const nextLogoUrl = await uploadSocialPhoto(api, file, "studio-logo");
-      return api.patch(`/studios/${STUDIO_ID}`, { logoUrl: nextLogoUrl });
+      return api.patch(`/studios/${studioId}`, { logoUrl: nextLogoUrl });
     },
     onSuccess: () => {
       setLogoError(null);
@@ -75,7 +76,7 @@ export function BrandingPanel({
   });
 
   const removeLogo = useMutation({
-    mutationFn: () => api.patch(`/studios/${STUDIO_ID}`, { logoUrl: null }),
+    mutationFn: () => api.patch(`/studios/${studioId}`, { logoUrl: null }),
     onSuccess: () => {
       setLogoError(null);
       invalidateStudio();
@@ -89,7 +90,7 @@ export function BrandingPanel({
 
   const saveTheme = useMutation({
     mutationFn: () =>
-      api.patch(`/studios/${STUDIO_ID}`, {
+      api.patch(`/studios/${studioId}`, {
         brandTheme: draftToBrandTheme(draft),
       }),
     onSuccess: () => {
@@ -104,7 +105,7 @@ export function BrandingPanel({
   });
 
   const resetTheme = useMutation({
-    mutationFn: () => api.patch(`/studios/${STUDIO_ID}`, { brandTheme: null }),
+    mutationFn: () => api.patch(`/studios/${studioId}`, { brandTheme: null }),
     onSuccess: () => {
       setThemeError(null);
       setDraft(brandThemeToDraft(null, studioName));

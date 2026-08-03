@@ -14,9 +14,9 @@ import {
   type ExperienceLevel,
   type Gender,
   isAuthBypassEnabled,
-  STUDIO_ID,
 } from "@/lib/constants";
 import { getFirebaseAuth } from "@/lib/firebase";
+import { useStudioId } from "@/lib/use-studio-id";
 import { uploadSocialPhoto } from "@/modules/social/upload";
 import { TrainerCardsView } from "@/modules/trainers/trainer-cards-view";
 import { TrainerStackView } from "@/modules/trainers/trainer-stack-view";
@@ -139,6 +139,7 @@ function CircularNext({
 
 export function OnboardingWizard() {
   const api = useApi();
+  const studioId = useStudioId();
   const navigate = useNavigate();
   const { user, updateUser } = useAuth();
   const isMobile = useIsMobile();
@@ -173,15 +174,15 @@ export function OnboardingWizard() {
   const [completed, setCompleted] = useState(false);
 
   const slotsQuery = useQuery({
-    queryKey: ["onboarding", "trial-slots", STUDIO_ID],
-    queryFn: () => api.get<TrialSlot[]>(`/sessions/studio/${STUDIO_ID}/trial`),
+    queryKey: ["onboarding", "trial-slots", studioId],
+    queryFn: () => api.get<TrialSlot[]>(`/sessions/studio/${studioId}/trial`),
     enabled: step === "trialTime" || step === "trainer",
   });
 
   const trainersQuery = useQuery({
-    queryKey: ["onboarding", "trainers", STUDIO_ID],
+    queryKey: ["onboarding", "trainers", studioId],
     queryFn: () =>
-      api.get<StudioTrainer[]>(`/users/studio/${STUDIO_ID}/trainers`),
+      api.get<StudioTrainer[]>(`/users/studio/${studioId}/trainers`),
     enabled: step === "trainer",
   });
 

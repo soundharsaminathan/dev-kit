@@ -9,8 +9,8 @@ import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { useApi } from "@/lib/api-context";
-import { STUDIO_ID } from "@/lib/constants";
 import { ENTITY_ICONS } from "@/lib/entity-icons";
+import { useStudioId } from "@/lib/use-studio-id";
 import { useStudioTrainers } from "@/modules/trainers/use-trainers";
 import { AnimatedMetric } from "@/modules/ui/animated-metric";
 import { PressableCard } from "@/modules/ui/pressable-card";
@@ -67,6 +67,7 @@ export const Route = createFileRoute("/app/retention")({
 
 function RetentionPage() {
   const api = useApi();
+  const studioId = useStudioId();
   const navigate = useNavigate();
   const [selectedBatchId, setSelectedBatchId] = useState<string | null>(null);
   const [selectedTrainerId, setSelectedTrainerId] = useState<string | null>(
@@ -74,8 +75,8 @@ function RetentionPage() {
   );
 
   const batchesQuery = useQuery({
-    queryKey: ["batches", STUDIO_ID],
-    queryFn: () => api.get<Batch[]>(`/batches/studio/${STUDIO_ID}`),
+    queryKey: ["batches", studioId],
+    queryFn: () => api.get<Batch[]>(`/batches/studio/${studioId}`),
   });
 
   const trainersQuery = useStudioTrainers();
@@ -97,10 +98,10 @@ function RetentionPage() {
   });
 
   const trainerQuery = useQuery({
-    queryKey: ["retention", "trainer", trainerId, STUDIO_ID],
+    queryKey: ["retention", "trainer", trainerId, studioId],
     queryFn: () =>
       api.get<TrainerRetentionStats>(
-        `/retention/trainer/${trainerId}?studioId=${STUDIO_ID}`,
+        `/retention/trainer/${trainerId}?studioId=${studioId}`,
       ),
     enabled: Boolean(trainerId),
   });

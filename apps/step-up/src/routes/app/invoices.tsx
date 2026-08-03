@@ -3,7 +3,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useApi } from "@/lib/api-context";
-import { STUDIO_ID } from "@/lib/constants";
+import { requireAdmin } from "@/lib/require-auth";
+import { useStudioId } from "@/lib/use-studio-id";
 import { AppBottomSheet } from "@/modules/ui/app-bottom-sheet";
 import { FilterChipRow } from "@/modules/ui/filter-chip-row";
 import { PressableCard } from "@/modules/ui/pressable-card";
@@ -23,6 +24,12 @@ type Invoice = {
 };
 
 export const Route = createFileRoute("/app/invoices")({
+  beforeLoad: ({ context, location }) => {
+    requireAdmin(context.auth, {
+      pathname: location.pathname,
+      searchStr: location.searchStr,
+    });
+  },
   component: InvoicesPage,
 });
 
@@ -38,6 +45,7 @@ type PaymentMethod = "CASH" | "UPI_MANUAL";
 
 function InvoicesPage() {
   const api = useApi();
+  const studioId = useStudioId();
   const queryClient = useQueryClient();
   const [filter, setFilter] = useState("ALL");
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -46,8 +54,8 @@ function InvoicesPage() {
   );
 
   const query = useQuery({
-    queryKey: ["invoices", STUDIO_ID],
-    queryFn: () => api.get<Invoice[]>(`/billing/studio/${STUDIO_ID}`),
+    queryKey: ["invoices", studioId],
+    queryFn: () => api.get<Invoice[]>(`/billing/studio/${studioId}`),
   });
 
   const markPaid = useMutation({
@@ -58,7 +66,7 @@ function InvoicesPage() {
     onSuccess: () => {
       setActiveId(null);
       setPaymentMethod(null);
-      void queryClient.invalidateQueries({ queryKey: ["invoices", STUDIO_ID] });
+      void queryClient.invalidateQueries({ queryKey: ["invoices", studioId] });
     },
   });
 

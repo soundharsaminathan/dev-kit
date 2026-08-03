@@ -15,8 +15,8 @@ import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useApi } from "@/lib/api-context";
 import { useAuth } from "@/lib/auth";
-import { STUDIO_ID } from "@/lib/constants";
 import { ENTITY_ICONS } from "@/lib/entity-icons";
+import { useStudioId } from "@/lib/use-studio-id";
 import { BatchRatingInput } from "@/modules/discover/batch-rating";
 import type { DiscoverBatchPlan } from "@/modules/discover/types";
 import { useDiscoverBatch } from "@/modules/discover/use-discover";
@@ -106,6 +106,7 @@ function sortPlans(a: DiscoverBatchPlan, b: DiscoverBatchPlan) {
 export function BatchDetailPage() {
   const { id } = useParams({ strict: false }) as { id: string };
   const api = useApi();
+  const studioId = useStudioId();
   const { user } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -138,8 +139,8 @@ export function BatchDetailPage() {
   const canActForStudent = Boolean(studentId) && !studentLoading;
 
   const studioBatches = useQuery({
-    queryKey: ["batches", STUDIO_ID, "purchase-picks"],
-    queryFn: () => api.get<StudioBatch[]>(`/batches/studio/${STUDIO_ID}`),
+    queryKey: ["batches", studioId, "purchase-picks"],
+    queryFn: () => api.get<StudioBatch[]>(`/batches/studio/${studioId}`),
     enabled: purchaseOpen && selectedPlan?.kind === "FAMILY",
   });
 
@@ -161,7 +162,7 @@ export function BatchDetailPage() {
         id: string;
         status: string;
       }>("/bookings", {
-        studioId: STUDIO_ID,
+        studioId,
         studentId,
         type,
         batchId: id,
@@ -203,7 +204,7 @@ export function BatchDetailPage() {
       void Promise.all([
         queryClient.invalidateQueries({ queryKey: ["batches", id] }),
         queryClient.invalidateQueries({
-          queryKey: ["batches", "discover", STUDIO_ID],
+          queryKey: ["batches", "discover", studioId],
         }),
       ]);
       setEnrollOpen(false);
@@ -247,7 +248,7 @@ export function BatchDetailPage() {
       void Promise.all([
         queryClient.invalidateQueries({ queryKey: ["batches", id] }),
         queryClient.invalidateQueries({
-          queryKey: ["batches", "discover", STUDIO_ID],
+          queryKey: ["batches", "discover", studioId],
         }),
         queryClient.invalidateQueries({
           queryKey: ["memberships", studentId],
@@ -266,7 +267,7 @@ export function BatchDetailPage() {
       void Promise.all([
         queryClient.invalidateQueries({ queryKey: ["batches", id] }),
         queryClient.invalidateQueries({
-          queryKey: ["batches", "discover", STUDIO_ID],
+          queryKey: ["batches", "discover", studioId],
         }),
       ]);
     },

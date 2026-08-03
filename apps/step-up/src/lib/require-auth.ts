@@ -1,6 +1,11 @@
 import { redirect } from "@tanstack/react-router";
 import type { AuthContextValue } from "@/lib/auth";
-import { MEMBER_ROLES, STAFF_ROLES, type UserRole } from "@/lib/constants";
+import {
+  ADMIN_ROLES,
+  MEMBER_ROLES,
+  STAFF_ROLES,
+  type UserRole,
+} from "@/lib/constants";
 import { memberHomePathForUser } from "@/lib/onboarding";
 
 export type RouterAuthContext = {
@@ -23,7 +28,7 @@ export function requireAuth(
   auth: AuthContextValue,
   options: {
     roles: UserRole[];
-    fallback: "/app" | "/me";
+    fallback: "/app" | "/me" | "/";
     pathname: string;
     searchStr: string;
   },
@@ -47,6 +52,19 @@ export function requireAuth(
   return auth.user;
 }
 
+/** OWNER/STAFF studio-admin routes under /app — trainers bounce home. */
+export function requireAdmin(
+  auth: AuthContextValue,
+  options: { pathname: string; searchStr: string },
+) {
+  return requireAuth(auth, {
+    roles: ADMIN_ROLES,
+    fallback: "/app",
+    pathname: options.pathname,
+    searchStr: options.searchStr,
+  });
+}
+
 export function safeInternalPath(path: string | undefined): string | null {
   if (!path?.startsWith("/") || path.startsWith("//")) {
     return null;
@@ -55,6 +73,9 @@ export function safeInternalPath(path: string | undefined): string | null {
 }
 
 export function homePathForUser(user: NonNullable<AuthContextValue["user"]>) {
+  if (user.role === "SYSTEM_ADMIN") {
+    return "/admin" as const;
+  }
   if (STAFF_ROLES.includes(user.role)) {
     return "/app" as const;
   }
@@ -62,6 +83,19 @@ export function homePathForUser(user: NonNullable<AuthContextValue["user"]>) {
     return memberHomePathForUser(user);
   }
   return "/" as const;
+}
+
+/** Platform admin routes under /admin. */
+export function requireSystemAdmin(
+  auth: AuthContextValue,
+  options: { pathname: string; searchStr: string },
+) {
+  return requireAuth(auth, {
+    roles: ["SYSTEM_ADMIN"],
+    fallback: "/",
+    pathname: options.pathname,
+    searchStr: options.searchStr,
+  });
 }
 
 /** Bounce signed-in users away from /login and /register. */

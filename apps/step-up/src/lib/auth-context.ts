@@ -28,8 +28,16 @@ export type AuthContextValue = {
   needsEmailVerification: boolean;
   loginAsDev: (role: UserRole) => void;
   signIn: (identifier: string, password: string) => Promise<AuthUser>;
-  signUp: (email: string, password: string, name: string) => Promise<AuthUser>;
-  signInWithGoogle: (options?: { asNewStudent?: boolean }) => Promise<AuthUser>;
+  signUp: (
+    email: string,
+    password: string,
+    name: string,
+    options?: { studioId?: string },
+  ) => Promise<AuthUser>;
+  signInWithGoogle: (options?: {
+    asNewStudent?: boolean;
+    studioId?: string;
+  }) => Promise<AuthUser>;
   resetPassword: (email: string) => Promise<void>;
   changePassword: (
     currentPassword: string,

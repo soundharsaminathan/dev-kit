@@ -9,7 +9,7 @@ import { Icon } from "@dev-ui/icons";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { useApi } from "@/lib/api-context";
-import { STUDIO_ID } from "@/lib/constants";
+import { useStudioId } from "@/lib/use-studio-id";
 
 export type StudioStudent = {
   id: string;
@@ -48,6 +48,7 @@ export function StudentSearchCombobox({
   placeholder = "Search by name or email",
 }: StudentSearchComboboxProps) {
   const api = useApi();
+  const studioId = useStudioId();
   const [inputValue, setInputValue] = useState("");
   const [selectedName, setSelectedName] = useState<string | null>(null);
   const debouncedSearch = useDebouncedValue(inputValue.trim(), 300);
@@ -55,13 +56,13 @@ export function StudentSearchCombobox({
   const excluded = useMemo(() => new Set(excludeIds ?? []), [excludeIds]);
 
   const studentsQuery = useQuery({
-    queryKey: ["studio-students-search", STUDIO_ID, debouncedSearch],
+    queryKey: ["studio-students-search", studioId, debouncedSearch],
     queryFn: () => {
       const qs = debouncedSearch
         ? `?q=${encodeURIComponent(debouncedSearch)}`
         : "";
       return api.get<StudioStudent[]>(
-        `/users/studio/${STUDIO_ID}/students${qs}`,
+        `/users/studio/${studioId}/students${qs}`,
       );
     },
     placeholderData: (previous) => previous,

@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useApi } from "@/lib/api-context";
+import { requireAdmin } from "@/lib/require-auth";
 import { BranchMap } from "@/modules/locations/branch-map";
 import { MediaManager } from "@/modules/locations/media-manager";
 import {
@@ -19,6 +20,12 @@ import { TouchButton } from "@/modules/ui/touch-button";
 import styles from "./edit.module.scss";
 
 export const Route = createFileRoute("/app/locations/$id/edit")({
+  beforeLoad: ({ context, location }) => {
+    requireAdmin(context.auth, {
+      pathname: location.pathname,
+      searchStr: location.searchStr,
+    });
+  },
   component: LocationEditPage,
 });
 

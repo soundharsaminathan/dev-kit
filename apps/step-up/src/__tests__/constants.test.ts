@@ -3,12 +3,18 @@ import {
   DEV_USERS,
   findDevUserByLogin,
   resolveLoginEmail,
-  STUDIO_ID,
+  SEED_STUDIO_ID,
 } from "@/lib/constants";
 
 describe("step-up constants", () => {
-  it("uses seeded studio id", () => {
-    expect(STUDIO_ID).toBe("studio-seed-1");
+  it("uses seeded studio id for fixtures", () => {
+    expect(SEED_STUDIO_ID).toBe("studio-seed-1");
+    expect(DEV_USERS.OWNER.studioId).toBe(SEED_STUDIO_ID);
+  });
+
+  it("maps system admin without a studio", () => {
+    expect(DEV_USERS.SYSTEM_ADMIN.id).toBe("system-admin-1");
+    expect(DEV_USERS.SYSTEM_ADMIN.studioId).toBeNull();
   });
 
   it("maps dev users to seed ids", () => {
@@ -20,6 +26,7 @@ describe("step-up constants", () => {
     expect(resolveLoginEmail("trainer-1")).toBe("trainer@stepup.dev");
     expect(resolveLoginEmail("TRAINER")).toBe("trainer@stepup.dev");
     expect(resolveLoginEmail("trainer")).toBe("trainer@stepup.dev");
+    expect(resolveLoginEmail("admin")).toBe("admin@stepup.dev");
     expect(resolveLoginEmail("trainer@stepup.dev")).toBe("trainer@stepup.dev");
     expect(resolveLoginEmail("someone@example.com")).toBe(
       "someone@example.com",

@@ -10,8 +10,9 @@ import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useApi } from "@/lib/api-context";
-import { STUDIO_ID } from "@/lib/constants";
 import { ENTITY_ICONS } from "@/lib/entity-icons";
+import { requireAdmin } from "@/lib/require-auth";
+import { useStudioId } from "@/lib/use-studio-id";
 import {
   AGE_RANGES,
   applyStudentFilters,
@@ -88,6 +89,12 @@ function isNewStudent(createdAt: string, now = Date.now()) {
 }
 
 export const Route = createFileRoute("/app/students/")({
+  beforeLoad: ({ context, location }) => {
+    requireAdmin(context.auth, {
+      pathname: location.pathname,
+      searchStr: location.searchStr,
+    });
+  },
   validateSearch: (search: Record<string, unknown>): StudentsSearch =>
     parseSearch(search),
   component: StudentsPage,
@@ -95,6 +102,7 @@ export const Route = createFileRoute("/app/students/")({
 
 function StudentsPage() {
   const api = useApi();
+  const studioId = useStudioId();
   const navigate = useNavigate({ from: "/app/students/" });
   const searchParams = Route.useSearch();
   const stage = searchParams.stage ? searchParams.stage : "ALL";
@@ -104,10 +112,10 @@ function StudentsPage() {
   const [search, setSearch] = useState("");
 
   const query = useQuery({
-    queryKey: ["student-directory", STUDIO_ID],
+    queryKey: ["student-directory", studioId],
     queryFn: () =>
       api.get<DirectoryStudent[]>(
-        `/users/studio/${STUDIO_ID}/student-directory?period=lifetime`,
+        `/users/studio/${studioId}/student-directory?period=lifetime`,
       ),
   });
 

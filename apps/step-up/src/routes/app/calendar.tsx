@@ -3,7 +3,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMemo } from "react";
 import { useApi } from "@/lib/api-context";
 import { useAuth } from "@/lib/auth";
-import { STUDIO_ID } from "@/lib/constants";
+import { useStudioId } from "@/lib/use-studio-id";
 import { CalendarPage } from "@/modules/calendar/calendar-page";
 import type { CalendarViewMode } from "@/modules/calendar/types";
 
@@ -41,6 +41,7 @@ export const Route = createFileRoute("/app/calendar")({
 function AppCalendarPage() {
   const { user } = useAuth();
   const api = useApi();
+  const studioId = useStudioId();
   const navigate = useNavigate({ from: "/app/calendar" });
   const search = Route.useSearch();
   const focus = useMemo(() => new Date(search.focus), [search.focus]);
@@ -49,13 +50,13 @@ function AppCalendarPage() {
   const isStaff = user?.role === "OWNER" || user?.role === "STAFF";
 
   const branchesQuery = useQuery({
-    queryKey: ["branches", STUDIO_ID],
-    queryFn: () => api.get<Branch[]>(`/studios/${STUDIO_ID}/branches`),
+    queryKey: ["branches", studioId],
+    queryFn: () => api.get<Branch[]>(`/studios/${studioId}/branches`),
     enabled: isStaff,
   });
 
   const scope = {
-    studioId: STUDIO_ID,
+    studioId,
     branchId: search.branchId,
     trainerId: isTrainer ? user?.id : undefined,
   };

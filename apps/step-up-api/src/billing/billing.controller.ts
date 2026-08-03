@@ -16,6 +16,7 @@ import { AuthGuard } from "../auth/auth.guard";
 import { CurrentUser } from "../auth/current-user.decorator";
 import { Roles } from "../auth/roles.decorator";
 import { RolesGuard } from "../auth/roles.guard";
+import { assertSameStudio } from "../auth/studio-access";
 import type { DecryptedUser } from "../users/user-crypto.service";
 import { BillingService } from "./billing.service";
 
@@ -49,7 +50,11 @@ export class BillingController {
 
   @Get("studio/:studioId")
   @Roles(UserRole.OWNER, UserRole.STAFF)
-  listByStudio(@Param("studioId") studioId: string) {
+  listByStudio(
+    @CurrentUser() user: DecryptedUser,
+    @Param("studioId") studioId: string,
+  ) {
+    assertSameStudio(user, studioId);
     return this.billingService.listByStudio(studioId);
   }
 
@@ -71,6 +76,8 @@ export class BillingController {
     if (!studioId) {
       throw new BadRequestException("studioId is required");
     }
+
+    assertSameStudio(user, studioId);
 
     return this.billingService.getTrainerAnalytics(user, trainerId, studioId, {
       ...(from !== undefined ? { from } : {}),

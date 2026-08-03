@@ -5,7 +5,8 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { readSheet } from "read-excel-file/browser";
 import { useApi } from "@/lib/api-context";
-import { STUDIO_ID } from "@/lib/constants";
+import { requireAdmin } from "@/lib/require-auth";
+import { useStudioId } from "@/lib/use-studio-id";
 import { Screen } from "@/modules/ui/screen";
 import staff from "@/modules/ui/staff.module.scss";
 import { StickyCtaBar, TouchButton } from "@/modules/ui/touch-button";
@@ -30,6 +31,12 @@ const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MAX_STUDENTS = 500;
 
 export const Route = createFileRoute("/app/students/import")({
+  beforeLoad: ({ context, location }) => {
+    requireAdmin(context.auth, {
+      pathname: location.pathname,
+      searchStr: location.searchStr,
+    });
+  },
   component: ImportStudentsPage,
 });
 
@@ -112,6 +119,7 @@ async function parseStudents(file: File): Promise<ParseResult> {
 
 function ImportStudentsPage() {
   const api = useApi();
+  const studioId = useStudioId();
   const navigate = useNavigate({ from: Route.fullPath });
   const queryClient = useQueryClient();
   const [fileName, setFileName] = useState<string | null>(null);
@@ -128,10 +136,14 @@ function ImportStudentsPage() {
     onSuccess: async () => {
       await Promise.all([
         queryClient.invalidateQueries({
-          queryKey: ["studio-members", STUDIO_ID],
+          queryKey: ["studio-members", studioId],
         }),
-        queryClient.invalidateQueries({ queryKey: ["student-funnel"] }),
-        queryClient.invalidateQueries({ queryKey: ["student-directory"] }),
+        queryClient.invalidateQueries({
+          queryKey: ["student-funnel", studioId],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["student-directory", studioId],
+        }),
       ]);
       await navigate({ to: "/app/students" });
     },
