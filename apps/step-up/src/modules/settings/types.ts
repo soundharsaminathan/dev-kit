@@ -14,6 +14,8 @@ export type Studio = {
   address: string;
   contact: string;
   logoUrl?: string | null;
+  heroMobileUrl?: string | null;
+  heroDesktopUrl?: string | null;
   brandTheme?: StudioBrandThemePayload | null;
   settings: StudioSettings | null;
 };

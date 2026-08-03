@@ -36,6 +36,17 @@ describe("MediaService", () => {
     });
   });
 
+  it("stores studio hero uploads under studio-heroes", async () => {
+    const service = new MediaService(configService());
+    await expect(
+      service.createSignedUploadUrl("hero.jpg", "image/jpeg", "studio-hero"),
+    ).resolves.toMatchObject({
+      contentType: "image/jpeg",
+      publicUrl: expect.stringMatching(/^studio-heroes\//),
+      key: expect.stringMatching(/^studio-heroes\//),
+    });
+  });
+
   it("rejects video outside branch purpose", async () => {
     const service = new MediaService(configService());
     await expect(

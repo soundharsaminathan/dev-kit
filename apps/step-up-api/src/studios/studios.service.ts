@@ -177,6 +177,8 @@ export class StudiosService {
         contact: true,
         photos: true,
         logoUrl: true,
+        heroMobileUrl: true,
+        heroDesktopUrl: true,
         brandTheme: true,
       },
     });
@@ -188,6 +190,8 @@ export class StudiosService {
     return {
       ...studio,
       logoUrl: await this.media.signReadUrl(studio.logoUrl),
+      heroMobileUrl: await this.media.signReadUrl(studio.heroMobileUrl),
+      heroDesktopUrl: await this.media.signReadUrl(studio.heroDesktopUrl),
     };
   }
 
@@ -218,6 +222,8 @@ export class StudiosService {
     return {
       ...studio,
       logoUrl: await this.media.signReadUrl(studio.logoUrl),
+      heroMobileUrl: await this.media.signReadUrl(studio.heroMobileUrl),
+      heroDesktopUrl: await this.media.signReadUrl(studio.heroDesktopUrl),
       settings,
       owner: this.crypto.decryptUser(studio.owner),
     };
@@ -230,6 +236,8 @@ export class StudiosService {
       address?: string;
       contact?: string;
       logoUrl?: string | null;
+      heroMobileUrl?: string | null;
+      heroDesktopUrl?: string | null;
       brandTheme?: unknown;
     },
   ) {
@@ -239,6 +247,12 @@ export class StudiosService {
     if (data.address !== undefined) update.address = data.address;
     if (data.contact !== undefined) update.contact = data.contact;
     if (data.logoUrl !== undefined) update.logoUrl = data.logoUrl;
+    if (data.heroMobileUrl !== undefined) {
+      update.heroMobileUrl = data.heroMobileUrl;
+    }
+    if (data.heroDesktopUrl !== undefined) {
+      update.heroDesktopUrl = data.heroDesktopUrl;
+    }
     if (data.brandTheme !== undefined) {
       const parsed = parseBrandTheme(data.brandTheme);
       update.brandTheme =
@@ -357,8 +371,44 @@ export class StudiosService {
     };
   }
 
-  deleteStudio(id: string) {
-    return this.prisma.studio.delete({ where: { id } });
+  async deleteStudio(id: string) {
+    const studio = await this.prisma.studio.findUnique({
+      where: { id },
+      select: { id: true, name: true },
+    });
+
+    if (!studio) {
+      throw new NotFoundException("Studio not found");
+    }
+
+    const members = await this.prisma.user.findMany({
+      where: { studioId: id },
+      select: { id: true },
+    });
+    const memberIds = members.map((member) => member.id);
+
+    await this.prisma.$transaction(async (tx) => {
+      // Contest certificates Restrict template deletes; clear them first.
+      await tx.contestCertificate.deleteMany({
+        where: { template: { studioId: id } },
+      });
+      await tx.contest.deleteMany({ where: { studioId: id } });
+      // Batches Restrict branch deletes; remove batches before studio cascade.
+      await tx.batch.deleteMany({ where: { studioId: id } });
+
+      await tx.user.updateMany({
+        where: { studioId: id },
+        data: { studioId: null, preferredBranchId: null },
+      });
+
+      await tx.studio.delete({ where: { id } });
+
+      if (memberIds.length > 0) {
+        await tx.user.deleteMany({ where: { id: { in: memberIds } } });
+      }
+    });
+
+    return { deleted: true as const, id: studio.id, name: studio.name };
   }
 
   assertTenantCanManage(

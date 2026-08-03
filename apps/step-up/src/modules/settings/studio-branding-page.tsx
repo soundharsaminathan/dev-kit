@@ -20,7 +20,7 @@ export function StudioBrandingPage() {
   return (
     <Screen
       title="Branding"
-      subtitle="Logo and studio theme."
+      subtitle="Logo, home hero images, and studio theme."
       showBack
       backTo="/app/settings"
     >
@@ -57,6 +57,8 @@ export function StudioBrandingPage() {
         <BrandingPanel
           studioName={studioQuery.data.name}
           logoUrl={studioQuery.data.logoUrl ?? null}
+          heroMobileUrl={studioQuery.data.heroMobileUrl ?? null}
+          heroDesktopUrl={studioQuery.data.heroDesktopUrl ?? null}
           brandTheme={studioQuery.data.brandTheme ?? null}
         />
       ) : null}

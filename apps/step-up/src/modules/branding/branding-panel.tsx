@@ -18,12 +18,18 @@ import type { StudioBrandThemePayload } from "./types";
 type BrandingPanelProps = {
   studioName: string;
   logoUrl?: string | null;
+  heroMobileUrl?: string | null;
+  heroDesktopUrl?: string | null;
   brandTheme?: StudioBrandThemePayload | null;
 };
+
+type HeroSlot = "heroMobileUrl" | "heroDesktopUrl";
 
 export function BrandingPanel({
   studioName,
   logoUrl,
+  heroMobileUrl,
+  heroDesktopUrl,
   brandTheme,
 }: BrandingPanelProps) {
   const api = useApi();
@@ -33,10 +39,13 @@ export function BrandingPanel({
   const { setLiveTheme, mode, setMode } = useTheme();
   const { setEditing } = useStudioBrandEdit();
   const logoInputRef = useRef<HTMLInputElement>(null);
+  const mobileHeroInputRef = useRef<HTMLInputElement>(null);
+  const desktopHeroInputRef = useRef<HTMLInputElement>(null);
   const [draft, setDraft] = useState<ThemeDraft>(() =>
     brandThemeToDraft(brandTheme, studioName),
   );
   const [logoError, setLogoError] = useState<string | null>(null);
+  const [heroError, setHeroError] = useState<string | null>(null);
   const [themeError, setThemeError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -59,6 +68,7 @@ export function BrandingPanel({
     void queryClient.invalidateQueries({
       queryKey: ["studio-public", studioId],
     });
+    void queryClient.invalidateQueries({ queryKey: ["home"] });
   };
 
   const uploadLogo = useMutation({
@@ -104,6 +114,62 @@ export function BrandingPanel({
       setLogoError(description);
       toast({
         title: "Couldn’t remove logo",
+        description,
+        variant: "error",
+      });
+    },
+  });
+
+  const uploadHero = useMutation({
+    mutationFn: async ({ slot, file }: { slot: HeroSlot; file: File }) => {
+      const nextUrl = await uploadSocialPhoto(api, file, "studio-hero");
+      return api.patch(`/studios/${studioId}`, { [slot]: nextUrl });
+    },
+    onSuccess: (_result, variables) => {
+      setHeroError(null);
+      invalidateStudio();
+      toast({
+        title: "Hero image uploaded",
+        description:
+          variables.slot === "heroMobileUrl"
+            ? "Mobile hero updated for the member home screen."
+            : "Desktop hero updated for the member home screen.",
+        variant: "success",
+      });
+    },
+    onError: (error) => {
+      const description =
+        error instanceof Error ? error.message : "Could not upload hero image.";
+      setHeroError(description);
+      toast({
+        title: "Couldn’t upload hero",
+        description,
+        variant: "error",
+      });
+    },
+  });
+
+  const removeHero = useMutation({
+    mutationFn: (slot: HeroSlot) =>
+      api.patch(`/studios/${studioId}`, { [slot]: null }),
+    onSuccess: (_result, slot) => {
+      setHeroError(null);
+      invalidateStudio();
+      toast({
+        title: "Hero image removed",
+        description:
+          slot === "heroMobileUrl"
+            ? "Mobile hero cleared."
+            : "Desktop hero cleared.",
+        variant: "success",
+      });
+    },
+    onError: (error) => {
+      const description =
+        error instanceof Error ? error.message : "Could not remove hero image.";
+      setHeroError(description);
+      toast({
+        title: "Couldn’t remove hero",
         description,
         variant: "error",
       });
@@ -160,11 +226,18 @@ export function BrandingPanel({
     },
   });
 
+  const heroUploadingSlot =
+    uploadHero.isPending && uploadHero.variables
+      ? uploadHero.variables.slot
+      : null;
+  const heroRemovingSlot =
+    removeHero.isPending && removeHero.variables ? removeHero.variables : null;
+
   return (
     <div className={staff.softPanel}>
       <p className={staff.panelTitle}>Branding</p>
       <p className={staff.panelDesc}>
-        Logo and theme apply live across the studio app
+        Logo, hero images, and theme apply across the studio app
       </p>
 
       <div className={styles.logoBlock}>
@@ -207,6 +280,115 @@ export function BrandingPanel({
           ) : null}
         </div>
         {logoError ? <ErrorState description={logoError} /> : null}
+      </div>
+
+      <div className={styles.heroSection}>
+        <p className={styles.heroSectionTitle}>Member home hero</p>
+        <p className={styles.heroSectionDesc}>
+          Shown at the top of the /me home screen. Upload separate crops for
+          phone and desktop when you can.
+        </p>
+
+        <div className={styles.heroGrid}>
+          <div className={styles.heroBlock}>
+            <p className={styles.heroLabel}>Mobile</p>
+            {heroMobileUrl ? (
+              <img
+                src={heroMobileUrl}
+                alt={`${studioName} mobile hero`}
+                className={styles.heroPreview}
+                data-slot="mobile"
+              />
+            ) : (
+              <div className={styles.heroPlaceholder} data-slot="mobile" />
+            )}
+            <input
+              ref={mobileHeroInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/gif"
+              hidden
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                if (file) {
+                  uploadHero.mutate({ slot: "heroMobileUrl", file });
+                }
+                event.target.value = "";
+              }}
+            />
+            <div className={styles.logoActions}>
+              <TouchButton
+                variant="default"
+                fullWidth
+                isPending={heroUploadingSlot === "heroMobileUrl"}
+                data-testid="upload-hero-mobile"
+                onClick={() => mobileHeroInputRef.current?.click()}
+              >
+                {heroMobileUrl ? "Replace mobile" : "Upload mobile"}
+              </TouchButton>
+              {heroMobileUrl ? (
+                <TouchButton
+                  variant="default"
+                  fullWidth
+                  isPending={heroRemovingSlot === "heroMobileUrl"}
+                  data-testid="remove-hero-mobile"
+                  onClick={() => removeHero.mutate("heroMobileUrl")}
+                >
+                  Remove
+                </TouchButton>
+              ) : null}
+            </div>
+          </div>
+
+          <div className={styles.heroBlock}>
+            <p className={styles.heroLabel}>Desktop</p>
+            {heroDesktopUrl ? (
+              <img
+                src={heroDesktopUrl}
+                alt={`${studioName} desktop hero`}
+                className={styles.heroPreview}
+                data-slot="desktop"
+              />
+            ) : (
+              <div className={styles.heroPlaceholder} data-slot="desktop" />
+            )}
+            <input
+              ref={desktopHeroInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/gif"
+              hidden
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                if (file) {
+                  uploadHero.mutate({ slot: "heroDesktopUrl", file });
+                }
+                event.target.value = "";
+              }}
+            />
+            <div className={styles.logoActions}>
+              <TouchButton
+                variant="default"
+                fullWidth
+                isPending={heroUploadingSlot === "heroDesktopUrl"}
+                data-testid="upload-hero-desktop"
+                onClick={() => desktopHeroInputRef.current?.click()}
+              >
+                {heroDesktopUrl ? "Replace desktop" : "Upload desktop"}
+              </TouchButton>
+              {heroDesktopUrl ? (
+                <TouchButton
+                  variant="default"
+                  fullWidth
+                  isPending={heroRemovingSlot === "heroDesktopUrl"}
+                  data-testid="remove-hero-desktop"
+                  onClick={() => removeHero.mutate("heroDesktopUrl")}
+                >
+                  Remove
+                </TouchButton>
+              ) : null}
+            </div>
+          </div>
+        </div>
+        {heroError ? <ErrorState description={heroError} /> : null}
       </div>
 
       <div className={styles.modeRow}>

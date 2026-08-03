@@ -18,6 +18,7 @@ enum MediaPurpose {
   BRANCH = "branch",
   AVATAR = "avatar",
   STUDIO_LOGO = "studio-logo",
+  STUDIO_HERO = "studio-hero",
   POST = "post",
   CHAT = "chat",
   BATCH = "batch",
@@ -60,11 +61,12 @@ export class MediaController {
       (purpose === MediaPurpose.BRANCH ||
         purpose === MediaPurpose.BATCH ||
         purpose === MediaPurpose.CERTIFICATE ||
-        purpose === MediaPurpose.STUDIO_LOGO) &&
+        purpose === MediaPurpose.STUDIO_LOGO ||
+        purpose === MediaPurpose.STUDIO_HERO) &&
       !BRANCH_ROLES.has(user.role)
     ) {
       throw new BadRequestException(
-        "Only studio staff can upload branch, batch, certificate, or studio logo assets",
+        "Only studio staff can upload branch, batch, certificate, or studio branding assets",
       );
     }
 

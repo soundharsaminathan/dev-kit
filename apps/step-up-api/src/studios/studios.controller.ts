@@ -68,6 +68,16 @@ class UpdateStudioDto {
   logoUrl?: string | null;
 
   @IsOptional()
+  @ValidateIf((_, value) => value !== null)
+  @IsString()
+  heroMobileUrl?: string | null;
+
+  @IsOptional()
+  @ValidateIf((_, value) => value !== null)
+  @IsString()
+  heroDesktopUrl?: string | null;
+
+  @IsOptional()
   @Allow()
   brandTheme?: unknown;
 }
@@ -137,7 +147,12 @@ export class StudiosController {
     @Body() dto: UpdateStudioDto,
   ) {
     assertSameStudio(user, id);
-    if (dto.brandTheme !== undefined && user.role !== UserRole.OWNER) {
+    if (
+      (dto.brandTheme !== undefined ||
+        dto.heroMobileUrl !== undefined ||
+        dto.heroDesktopUrl !== undefined) &&
+      user.role !== UserRole.OWNER
+    ) {
       throw new ForbiddenException("Only owners can change studio branding");
     }
 
