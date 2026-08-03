@@ -22,7 +22,7 @@ Product contract for automated testing. Roles use the canonical enum:
 | A06 | Attendance | Student views attendance history | STUDENT, PARENT | Critical | Playwright | Covered | `student-attendance.spec.ts` |
 | A07 | Attendance | Trainer marks attendance → student notified | TRAINER → STUDENT | Critical | Playwright + API | Covered | `attendance-missed-session.spec.ts` |
 | A08 | Attendance | Trainer bulk mark-all-present + exceptions | TRAINER, STAFF | Critical | Playwright + API | Covered | `trainer-bulk-attendance.spec.ts` + API |
-| A09 | Notifications | Open notification → deep link | STUDENT | Critical | Playwright + UI | Partial | Open journey + panel UI tests |
+| A09 | Notifications | Open notification → deep link | STUDENT | Critical | Playwright + UI | Covered | `notification-journey.spec.ts` + panel UI tests |
 | A10 | Membership | Purchase / active / expire / renew → access | STUDENT, STAFF | Critical | API + Playwright | Partial | renew/access API; purchase E2E Partial |
 | A11 | Batches | Create batch → assign trainer → schedule → activate | OWNER, STAFF | Critical | Playwright + API | Covered | `admin-batch-management.spec.ts` |
 | A12 | Billing | View payments / mark paid / invoices | OWNER, STAFF | Critical | Playwright + API | Covered | `admin-payments.spec.ts` + billing API |
@@ -71,6 +71,9 @@ Product contract for automated testing. Roles use the canonical enum:
 | B23 | Notifications | patchOne read/unread/archive | Owner user | High | API | Covered |
 | B24 | Notifications | softDelete | Owner user | High | API | Covered |
 | B25 | Notifications | listForUser pagination | Owner user | High | API | Covered |
+| B25b | Notifications | Preferences / quiet hours / devices | Owner user | High | API + HTTP | Covered |
+| B25c | Notifications | Gateway auth / badge / read_all | System | High | API | Covered |
+| B25d | Notifications | Delivery push skip / enqueue / digest / retention | System | High | API | Covered |
 | B26 | Batches | Create / update / activate | OWNER, STAFF, TRAINER | Critical | API | Covered |
 | B27 | Batches | Delete (OWNER, STAFF) | OWNER, STAFF | Critical | API | Covered |
 | B28 | Batches | Enroll with family/parent gate | STUDENT, PARENT, staff | High | API | Covered |
