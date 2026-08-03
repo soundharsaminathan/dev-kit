@@ -119,25 +119,55 @@ test.describe("bookings HTTP @http", () => {
   });
 
   test("staff can patch booking status @http", async () => {
-    const booking = await expectOk<{ id: string; status: string }>(
-      "STAFF",
-      `/bookings/${SEED.pendingBookingId}`,
-    ).catch(() => null);
-    test.skip(!booking, "Seed pending booking missing");
+    const cleanup = new TestDataCleanup();
+    try {
+      const student = await createHttpStudent(
+        "Booking Status Student",
+        cleanup,
+      );
+      const studentId = student.id;
+      await clearOpenTrialBookings(studentId, TRIAL_BATCH_ID);
 
-    if (booking!.status !== "PENDING") {
-      // Seed resets to PENDING; if a prior run confirmed it, cancel then skip.
-      test.skip(true, `Seed booking is ${booking!.status}; re-seed to reset`);
+      let booking = await expectOk<{ id: string; status: string }>(
+        "STUDENT",
+        "/bookings",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            studioId: SEED.users.STUDENT.studioId,
+            studentId,
+            type: "TRIAL",
+            batchId: TRIAL_BATCH_ID,
+          }),
+        },
+        { userId: studentId },
+      );
+
+      if (booking.status === "AWAITING_PAYMENT") {
+        booking = await expectOk<{ id: string; status: string }>(
+          "STUDENT",
+          `/bookings/${booking.id}/confirm-payment`,
+          { method: "POST" },
+          { userId: studentId },
+        );
+      }
+
+      test.skip(
+        booking.status !== "PENDING",
+        `Expected PENDING booking, got ${booking.status}`,
+      );
+
+      const updated = await expectOk<{ status: string }>(
+        "STAFF",
+        `/bookings/${booking.id}/status`,
+        {
+          method: "PATCH",
+          body: JSON.stringify({ status: "CANCELLED" }),
+        },
+      );
+      expect(updated.status).toBe("CANCELLED");
+    } finally {
+      await cleanup.dispose();
     }
-
-    const updated = await expectOk<{ status: string }>(
-      "STAFF",
-      `/bookings/${booking!.id}/status`,
-      {
-        method: "PATCH",
-        body: JSON.stringify({ status: "CANCELLED" }),
-      },
-    );
-    expect(updated.status).toBe("CANCELLED");
   });
 });

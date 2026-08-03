@@ -21,7 +21,7 @@ type FunnelCounts = {
 type FunnelStage = keyof Omit<FunnelCounts, "total" | "period">;
 
 const STUDIO_ID = SEED.users.OWNER.studioId;
-const TRIAL_BATCH_ID = "batch-trial-1";
+const TRIAL_BATCH_ID = SEED.trialBatchId;
 const FUNNEL_STAGES = [
   "active",
   "signedInOnly",
@@ -153,8 +153,8 @@ async function createEphemeralBatch(label: string) {
             studioId: STUDIO_ID,
             name: `Funnel Temp ${label} ${stamp}`,
             category: "ADULTS",
-            branchId: "branch-east-1",
-            trainerIds: ["trainer-2"],
+            branchId: SEED.branchEastId,
+            trainerIds: [SEED.users.TRAINER_2.id],
             danceCategories: [
               {
                 name: "Hip-hop",
@@ -172,10 +172,7 @@ async function createEphemeralBatch(label: string) {
             },
             capacity: 12,
             enrollmentMode: "STAFF_ONLY",
-            subscriptionIds: [
-              "sub-individual-adult-monthly",
-              "sub-individual-adult-quarterly",
-            ],
+            subscriptionIds: [...SEED.adultPlanIds],
             active: true,
           }),
         },

@@ -10,6 +10,7 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:reset": "prisma migrate reset",
     "prisma:seed": "tsx prisma/seed.ts",
+    "prisma:seed:e2e": "tsx prisma/seed-e2e.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:migrations": "tsx scripts/test-migrations.ts --upgrade"

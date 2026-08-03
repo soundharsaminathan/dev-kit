@@ -10,12 +10,7 @@ import { SEED } from "../fixtures/seed";
 import { TestDataCleanup } from "../fixtures/test-cleanup";
 
 const CONFIRM_BATCH_ID = SEED.trialBatchId;
-const ABANDON_BATCH_ID = "batch-beginner-1";
-
-const ADULT_PLAN_IDS = [
-  "sub-individual-adult-monthly",
-  "sub-individual-adult-quarterly",
-];
+const ABANDON_BATCH_ID = SEED.beginnerBatchId;
 
 async function clearOpenBookings(studentId: string, batchId: string) {
   const existing = await apiRequest<
@@ -97,7 +92,7 @@ async function createPlanBatch() {
           coverImageUrl:
             "https://images.unsplash.com/photo-1535525153412-5a42439a210d?w=800&q=80",
           category: "ADULTS",
-          branchId: "branch-main-1",
+          branchId: SEED.branchMainId,
           trainerIds: [SEED.users.TRAINER.id],
           danceCategories: [
             { name: "Hip Hop", description: "E2E plan checkout class" },
@@ -113,7 +108,7 @@ async function createPlanBatch() {
           },
           capacity: 12,
           enrollmentMode: "STAFF_ONLY",
-          subscriptionIds: ADULT_PLAN_IDS,
+          subscriptionIds: [...SEED.adultPlanIds],
           active: true,
           certificationEnabled: false,
         }),
