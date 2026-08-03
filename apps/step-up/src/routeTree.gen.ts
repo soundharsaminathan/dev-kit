@@ -71,6 +71,11 @@ import { Route as AppSubscriptionsIdImport } from './routes/app/subscriptions/$i
 import { Route as AppStudentsNewImport } from './routes/app/students/new'
 import { Route as AppStudentsImportImport } from './routes/app/students/import'
 import { Route as AppStudentsIdImport } from './routes/app/students/$id'
+import { Route as AppSettingsTeamImport } from './routes/app/settings_.team'
+import { Route as AppSettingsProfileImport } from './routes/app/settings_.profile'
+import { Route as AppSettingsPaymentsImport } from './routes/app/settings_.payments'
+import { Route as AppSettingsBrandingImport } from './routes/app/settings_.branding'
+import { Route as AppSettingsBillingImport } from './routes/app/settings_.billing'
 import { Route as AppProfileSecurityImport } from './routes/app/profile_.security'
 import { Route as AppProfileFollowRequestsImport } from './routes/app/profile_.follow-requests'
 import { Route as AppProfileEditImport } from './routes/app/profile_.edit'
@@ -450,6 +455,36 @@ const AppStudentsImportRoute = AppStudentsImportImport.update({
 const AppStudentsIdRoute = AppStudentsIdImport.update({
   id: '/students/$id',
   path: '/students/$id',
+  getParentRoute: () => AppRoute,
+} as any)
+
+const AppSettingsTeamRoute = AppSettingsTeamImport.update({
+  id: '/settings_/team',
+  path: '/settings/team',
+  getParentRoute: () => AppRoute,
+} as any)
+
+const AppSettingsProfileRoute = AppSettingsProfileImport.update({
+  id: '/settings_/profile',
+  path: '/settings/profile',
+  getParentRoute: () => AppRoute,
+} as any)
+
+const AppSettingsPaymentsRoute = AppSettingsPaymentsImport.update({
+  id: '/settings_/payments',
+  path: '/settings/payments',
+  getParentRoute: () => AppRoute,
+} as any)
+
+const AppSettingsBrandingRoute = AppSettingsBrandingImport.update({
+  id: '/settings_/branding',
+  path: '/settings/branding',
+  getParentRoute: () => AppRoute,
+} as any)
+
+const AppSettingsBillingRoute = AppSettingsBillingImport.update({
+  id: '/settings_/billing',
+  path: '/settings/billing',
   getParentRoute: () => AppRoute,
 } as any)
 
@@ -902,6 +937,41 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppProfileSecurityImport
       parentRoute: typeof AppImport
     }
+    '/app/settings_/billing': {
+      id: '/app/settings_/billing'
+      path: '/settings/billing'
+      fullPath: '/app/settings/billing'
+      preLoaderRoute: typeof AppSettingsBillingImport
+      parentRoute: typeof AppImport
+    }
+    '/app/settings_/branding': {
+      id: '/app/settings_/branding'
+      path: '/settings/branding'
+      fullPath: '/app/settings/branding'
+      preLoaderRoute: typeof AppSettingsBrandingImport
+      parentRoute: typeof AppImport
+    }
+    '/app/settings_/payments': {
+      id: '/app/settings_/payments'
+      path: '/settings/payments'
+      fullPath: '/app/settings/payments'
+      preLoaderRoute: typeof AppSettingsPaymentsImport
+      parentRoute: typeof AppImport
+    }
+    '/app/settings_/profile': {
+      id: '/app/settings_/profile'
+      path: '/settings/profile'
+      fullPath: '/app/settings/profile'
+      preLoaderRoute: typeof AppSettingsProfileImport
+      parentRoute: typeof AppImport
+    }
+    '/app/settings_/team': {
+      id: '/app/settings_/team'
+      path: '/settings/team'
+      fullPath: '/app/settings/team'
+      preLoaderRoute: typeof AppSettingsTeamImport
+      parentRoute: typeof AppImport
+    }
     '/app/students/$id': {
       id: '/app/students/$id'
       path: '/students/$id'
@@ -1176,6 +1246,11 @@ interface AppRouteChildren {
   AppProfileEditRoute: typeof AppProfileEditRoute
   AppProfileFollowRequestsRoute: typeof AppProfileFollowRequestsRoute
   AppProfileSecurityRoute: typeof AppProfileSecurityRoute
+  AppSettingsBillingRoute: typeof AppSettingsBillingRoute
+  AppSettingsBrandingRoute: typeof AppSettingsBrandingRoute
+  AppSettingsPaymentsRoute: typeof AppSettingsPaymentsRoute
+  AppSettingsProfileRoute: typeof AppSettingsProfileRoute
+  AppSettingsTeamRoute: typeof AppSettingsTeamRoute
   AppStudentsIdRoute: typeof AppStudentsIdRoute
   AppStudentsImportRoute: typeof AppStudentsImportRoute
   AppStudentsNewRoute: typeof AppStudentsNewRoute
@@ -1218,6 +1293,11 @@ const AppRouteChildren: AppRouteChildren = {
   AppProfileEditRoute: AppProfileEditRoute,
   AppProfileFollowRequestsRoute: AppProfileFollowRequestsRoute,
   AppProfileSecurityRoute: AppProfileSecurityRoute,
+  AppSettingsBillingRoute: AppSettingsBillingRoute,
+  AppSettingsBrandingRoute: AppSettingsBrandingRoute,
+  AppSettingsPaymentsRoute: AppSettingsPaymentsRoute,
+  AppSettingsProfileRoute: AppSettingsProfileRoute,
+  AppSettingsTeamRoute: AppSettingsTeamRoute,
   AppStudentsIdRoute: AppStudentsIdRoute,
   AppStudentsImportRoute: AppStudentsImportRoute,
   AppStudentsNewRoute: AppStudentsNewRoute,
@@ -1347,6 +1427,11 @@ export interface FileRoutesByFullPath {
   '/app/profile/edit': typeof AppProfileEditRoute
   '/app/profile/follow-requests': typeof AppProfileFollowRequestsRoute
   '/app/profile/security': typeof AppProfileSecurityRoute
+  '/app/settings/billing': typeof AppSettingsBillingRoute
+  '/app/settings/branding': typeof AppSettingsBrandingRoute
+  '/app/settings/payments': typeof AppSettingsPaymentsRoute
+  '/app/settings/profile': typeof AppSettingsProfileRoute
+  '/app/settings/team': typeof AppSettingsTeamRoute
   '/app/students/$id': typeof AppStudentsIdRoute
   '/app/students/import': typeof AppStudentsImportRoute
   '/app/students/new': typeof AppStudentsNewRoute
@@ -1426,6 +1511,11 @@ export interface FileRoutesByTo {
   '/app/profile/edit': typeof AppProfileEditRoute
   '/app/profile/follow-requests': typeof AppProfileFollowRequestsRoute
   '/app/profile/security': typeof AppProfileSecurityRoute
+  '/app/settings/billing': typeof AppSettingsBillingRoute
+  '/app/settings/branding': typeof AppSettingsBrandingRoute
+  '/app/settings/payments': typeof AppSettingsPaymentsRoute
+  '/app/settings/profile': typeof AppSettingsProfileRoute
+  '/app/settings/team': typeof AppSettingsTeamRoute
   '/app/students/$id': typeof AppStudentsIdRoute
   '/app/students/import': typeof AppStudentsImportRoute
   '/app/students/new': typeof AppStudentsNewRoute
@@ -1509,6 +1599,11 @@ export interface FileRoutesById {
   '/app/profile_/edit': typeof AppProfileEditRoute
   '/app/profile_/follow-requests': typeof AppProfileFollowRequestsRoute
   '/app/profile_/security': typeof AppProfileSecurityRoute
+  '/app/settings_/billing': typeof AppSettingsBillingRoute
+  '/app/settings_/branding': typeof AppSettingsBrandingRoute
+  '/app/settings_/payments': typeof AppSettingsPaymentsRoute
+  '/app/settings_/profile': typeof AppSettingsProfileRoute
+  '/app/settings_/team': typeof AppSettingsTeamRoute
   '/app/students/$id': typeof AppStudentsIdRoute
   '/app/students/import': typeof AppStudentsImportRoute
   '/app/students/new': typeof AppStudentsNewRoute
@@ -1593,6 +1688,11 @@ export interface FileRouteTypes {
     | '/app/profile/edit'
     | '/app/profile/follow-requests'
     | '/app/profile/security'
+    | '/app/settings/billing'
+    | '/app/settings/branding'
+    | '/app/settings/payments'
+    | '/app/settings/profile'
+    | '/app/settings/team'
     | '/app/students/$id'
     | '/app/students/import'
     | '/app/students/new'
@@ -1671,6 +1771,11 @@ export interface FileRouteTypes {
     | '/app/profile/edit'
     | '/app/profile/follow-requests'
     | '/app/profile/security'
+    | '/app/settings/billing'
+    | '/app/settings/branding'
+    | '/app/settings/payments'
+    | '/app/settings/profile'
+    | '/app/settings/team'
     | '/app/students/$id'
     | '/app/students/import'
     | '/app/students/new'
@@ -1752,6 +1857,11 @@ export interface FileRouteTypes {
     | '/app/profile_/edit'
     | '/app/profile_/follow-requests'
     | '/app/profile_/security'
+    | '/app/settings_/billing'
+    | '/app/settings_/branding'
+    | '/app/settings_/payments'
+    | '/app/settings_/profile'
+    | '/app/settings_/team'
     | '/app/students/$id'
     | '/app/students/import'
     | '/app/students/new'
@@ -1875,6 +1985,11 @@ export const routeTree = rootRoute
         "/app/profile_/edit",
         "/app/profile_/follow-requests",
         "/app/profile_/security",
+        "/app/settings_/billing",
+        "/app/settings_/branding",
+        "/app/settings_/payments",
+        "/app/settings_/profile",
+        "/app/settings_/team",
         "/app/students/$id",
         "/app/students/import",
         "/app/students/new",
@@ -2090,6 +2205,26 @@ export const routeTree = rootRoute
     },
     "/app/profile_/security": {
       "filePath": "app/profile_.security.tsx",
+      "parent": "/app"
+    },
+    "/app/settings_/billing": {
+      "filePath": "app/settings_.billing.tsx",
+      "parent": "/app"
+    },
+    "/app/settings_/branding": {
+      "filePath": "app/settings_.branding.tsx",
+      "parent": "/app"
+    },
+    "/app/settings_/payments": {
+      "filePath": "app/settings_.payments.tsx",
+      "parent": "/app"
+    },
+    "/app/settings_/profile": {
+      "filePath": "app/settings_.profile.tsx",
+      "parent": "/app"
+    },
+    "/app/settings_/team": {
+      "filePath": "app/settings_.team.tsx",
       "parent": "/app"
     },
     "/app/students/$id": {

@@ -1,13 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { requireAdmin } from "@/lib/require-auth";
-import { SettingsMenuPage } from "@/modules/settings/settings-menu-page";
+import { StudioBillingFormPage } from "@/modules/settings/studio-billing-form-page";
 
-export const Route = createFileRoute("/app/settings")({
+export const Route = createFileRoute("/app/settings_/billing")({
   beforeLoad: ({ context, location }) => {
     requireAdmin(context.auth, {
       pathname: location.pathname,
       searchStr: location.searchStr,
     });
   },
-  component: SettingsMenuPage,
+  component: StudioBillingFormPage,
 });
