@@ -26,6 +26,7 @@ export function StudioPaymentsFormPage() {
   });
 
   const configured = Boolean(studioQuery.data?.settings?.razorpayConfigured);
+  const savedKeyId = studioQuery.data?.settings?.razorpayKeyId?.trim() ?? "";
 
   useEffect(() => {
     if (!savedSecret) return;
@@ -36,6 +37,7 @@ export function StudioPaymentsFormPage() {
   const updateSettings = useMutation({
     mutationFn: async () => {
       const settings = studioQuery.data?.settings;
+      const nextKeyId = razorpayKeyId.trim() || savedKeyId;
       const nextSecret = razorpayKeySecret.trim();
       const payload: {
         graceDays: number;
@@ -48,11 +50,14 @@ export function StudioPaymentsFormPage() {
         expireAlertDays: settings?.expireAlertDays ?? 7,
         platformFeePercent: settings?.platformFeePercent ?? 5,
       };
-      if (razorpayKeyId.trim()) {
-        payload.razorpayKeyId = razorpayKeyId.trim();
+      if (nextKeyId) {
+        payload.razorpayKeyId = nextKeyId;
       }
       if (nextSecret) {
         payload.razorpayKeySecret = nextSecret;
+      }
+      if (nextSecret && !nextKeyId) {
+        throw new Error("Enter the Razorpay key ID together with the secret.");
       }
       await api.patch(`/studios/${studioId}/settings`, payload);
       return { secretUpdated: Boolean(nextSecret) };
@@ -144,11 +149,9 @@ export function StudioPaymentsFormPage() {
             ) : null}
             <FormInput
               label="Razorpay key ID"
-              value={
-                razorpayKeyId || studioQuery.data.settings?.razorpayKeyId || ""
-              }
+              value={razorpayKeyId || savedKeyId}
               onChange={setRazorpayKeyId}
-              placeholder="rzp_live_…"
+              placeholder="rzp_test_… or rzp_live_…"
               autoComplete="off"
             />
             <FormInput
@@ -164,8 +167,8 @@ export function StudioPaymentsFormPage() {
             />
             <p className={staff.panelDesc}>
               {configured && !razorpayKeySecret
-                ? "A secret is already on file. Leave blank to keep it, or paste a new one to replace."
-                : "For security, the secret is never filled back into this field after save."}
+                ? "A secret is already on file. Leave blank to keep it, or paste a new one to replace. Key ID and secret must be a matching pair from the same Razorpay mode (test or live)."
+                : "Paste Key ID and Key Secret from the same Razorpay API Keys page. The secret is never shown again after save."}
             </p>
             {updateSettings.isError ? (
               <ErrorState

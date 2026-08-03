@@ -53,6 +53,38 @@ describe("RazorpayService", () => {
     });
   });
 
+  it("rejects studio keys that cannot be decrypted", () => {
+    crypto.decryptStudioSecret.mockImplementation(() => {
+      throw new Error("bad tag");
+    });
+
+    expect(() =>
+      service.resolveKeys({
+        razorpayKeyId: "rzp_studio",
+        razorpayKeySecret: "cipher",
+        razorpaySecretIv: "iv",
+      }),
+    ).toThrow(/cannot be decrypted/);
+  });
+
+  it("rejects key IDs that are not Razorpay format", async () => {
+    await expect(
+      service.assertValidCredentials({
+        keyId: "not-a-key",
+        keySecret: "secret",
+      }),
+    ).rejects.toThrow(/rzp_test_/);
+  });
+
+  it("rejects secrets that look like key IDs", async () => {
+    await expect(
+      service.assertValidCredentials({
+        keyId: "rzp_test_abc",
+        keySecret: "rzp_test_abc",
+      }),
+    ).rejects.toThrow(/Key secret looks like a key ID/);
+  });
+
   it("defaults booking amount to 100 paise", () => {
     expect(service.bookingAmountPaise()).toBe(100);
     configValues.RAZORPAY_BOOKING_AMOUNT_PAISE = "250";
