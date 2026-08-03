@@ -15,7 +15,7 @@ import {
   DiscoverFiltersPanel,
 } from "./discover-filters-panel";
 import styles from "./discover-page.module.scss";
-import { discoverCtaLabel, toBatchCardData } from "./types";
+import { discoverCtaLabel, isDiscoverCtaMuted, toBatchCardData } from "./types";
 import { useDiscoverBatches } from "./use-discover";
 
 const CATEGORY_CHIPS = [
@@ -185,13 +185,19 @@ export function DiscoverPage({
             ) : null}
 
             {batches.length > 0
-              ? batches.map((batch) => (
-                  <BatchCard
-                    key={batch.id}
-                    batch={toBatchCardData(batch)}
-                    ctaLabel={discoverCtaLabel(batch)}
-                  />
-                ))
+              ? batches.map((batch) => {
+                  const ctaLabel = discoverCtaLabel(batch);
+                  return (
+                    <BatchCard
+                      key={batch.id}
+                      batch={toBatchCardData(batch)}
+                      ctaLabel={ctaLabel}
+                      {...(isDiscoverCtaMuted(ctaLabel)
+                        ? { ctaTone: "muted" as const }
+                        : {})}
+                    />
+                  );
+                })
               : null}
           </div>
         </PullToRefresh>

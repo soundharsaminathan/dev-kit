@@ -388,10 +388,81 @@ export class BatchesService {
       orderBy: { name: "asc" },
     });
 
+    const batchIds = batches.map((batch) => batch.id);
     const reservedByBatch = await countReservedSeatsByBatch(
       this.prisma,
-      batches.map((batch) => batch.id),
+      batchIds,
     );
+
+    const viewerBookingsByBatchId = new Map<
+      string,
+      {
+        id: string;
+        type: string;
+        status: BookingStatus;
+        notes: string | null;
+        startsAt: Date | null;
+        endsAt: Date | null;
+        paymentHoldExpiresAt: Date | null;
+      }
+    >();
+    let viewerActiveTrialBatchId: string | null = null;
+
+    if (filters.studentId && batchIds.length > 0) {
+      const [openBookings, activeTrial] = await Promise.all([
+        this.prisma.booking.findMany({
+          where: {
+            batchId: { in: batchIds },
+            studentId: filters.studentId,
+            OR: [
+              {
+                status: {
+                  in: [BookingStatus.PENDING, BookingStatus.CONFIRMED],
+                },
+              },
+              {
+                status: BookingStatus.AWAITING_PAYMENT,
+                paymentHoldExpiresAt: { gt: new Date() },
+              },
+            ],
+          },
+          orderBy: [{ status: "asc" }, { id: "desc" }],
+          select: {
+            id: true,
+            batchId: true,
+            type: true,
+            status: true,
+            notes: true,
+            startsAt: true,
+            endsAt: true,
+            paymentHoldExpiresAt: true,
+          },
+        }),
+        this.prisma.batchEnrollment.findFirst({
+          where: {
+            studentId: filters.studentId,
+            isTrial: true,
+          },
+          select: { batchId: true },
+        }),
+      ]);
+
+      for (const booking of openBookings) {
+        if (!booking.batchId || viewerBookingsByBatchId.has(booking.batchId)) {
+          continue;
+        }
+        viewerBookingsByBatchId.set(booking.batchId, {
+          id: booking.id,
+          type: booking.type,
+          status: booking.status,
+          notes: booking.notes,
+          startsAt: booking.startsAt,
+          endsAt: booking.endsAt,
+          paymentHoldExpiresAt: booking.paymentHoldExpiresAt,
+        });
+      }
+      viewerActiveTrialBatchId = activeTrial?.batchId ?? null;
+    }
 
     const mapped = await Promise.all(
       batches.map(async (batch) => {
@@ -408,11 +479,22 @@ export class BatchesService {
           ),
         );
         if (!filters.studentId) return shaped;
+        const enrollment = batch.enrollments.find(
+          (row) => row.studentId === filters.studentId,
+        );
         return {
           ...shaped,
-          viewerEnrolled: batch.enrollments.some(
-            (row) => row.studentId === filters.studentId,
-          ),
+          viewerEnrolled: Boolean(enrollment),
+          viewerEnrollment: enrollment
+            ? {
+                isTrial: enrollment.isTrial,
+                trialSessionIds: parseTrialSessionIds(
+                  enrollment.trialSessionIds,
+                ),
+              }
+            : null,
+          viewerActiveTrialBatchId,
+          viewerBooking: viewerBookingsByBatchId.get(batch.id) ?? null,
         };
       }),
     );
