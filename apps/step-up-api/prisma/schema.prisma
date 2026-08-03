@@ -626,19 +626,25 @@ model MembershipCoveredStudent {
 }
 
 model Invoice {
-  id                 String         @id @default(cuid())
-  studentId          String
-  membershipId       String?
-  amount             Decimal        @db.Decimal(10, 2)
-  status             InvoiceStatus
-  paymentMethod      PaymentMethod?
-  paidAt             DateTime?
-  platformFeePercent Float
-  studioId           String
+  id                   String         @id @default(cuid())
+  studentId            String
+  membershipId         String?
+  amount               Decimal        @db.Decimal(10, 2)
+  status               InvoiceStatus
+  paymentMethod        PaymentMethod?
+  paidAt               DateTime?
+  platformFeePercent   Float
+  studioId             String
+  razorpayOrderId      String?        @unique
+  razorpayPaymentId    String?        @unique
+  paymentHoldExpiresAt DateTime?
+  purchaseMeta         Json?
 
   student    User        @relation(fields: [studentId], references: [id], onDelete: Cascade)
   membership Membership? @relation(fields: [membershipId], references: [id])
   studio     Studio      @relation(fields: [studioId], references: [id], onDelete: Cascade)
+
+  @@index([status, paymentHoldExpiresAt])
 }
 
 model Session {

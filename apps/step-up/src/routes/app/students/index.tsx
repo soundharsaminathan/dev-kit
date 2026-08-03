@@ -103,7 +103,7 @@ export const Route = createFileRoute("/app/students/")({
 function StudentsPage() {
   const api = useApi();
   const studioId = useStudioId();
-  const navigate = useNavigate({ from: "/app/students/" });
+  const navigate = useNavigate({ from: Route.fullPath });
   const searchParams = Route.useSearch();
   const stage = searchParams.stage ? searchParams.stage : "ALL";
   const period = searchParams.period ?? "lifetime";

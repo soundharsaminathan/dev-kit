@@ -345,6 +345,8 @@ describe("MembershipsService.purchaseForBatch", () => {
     batchPlan: { findUnique: vi.fn() },
     subscription: { findUnique: vi.fn() },
     membership: { create: vi.fn() },
+    studioSettings: { findUnique: vi.fn() },
+    invoice: { create: vi.fn() },
     batchEnrollment: {
       upsert: vi.fn(),
       findMany: vi.fn(),
@@ -378,13 +380,17 @@ describe("MembershipsService.purchaseForBatch", () => {
     prisma.batchEnrollment.findMany.mockResolvedValue([]);
     prisma.booking.updateMany.mockResolvedValue({ count: 0 });
     prisma.booking.findMany.mockResolvedValue([]);
+    prisma.studioSettings.findUnique.mockResolvedValue({
+      platformFeePercent: 5,
+    });
   });
 
-  it("assigns membership and enrolls into the purchased batch", async () => {
+  it("creates a pending checkout invoice without assigning membership", async () => {
     prisma.batch.findUnique.mockResolvedValue({
       id: "batch-kid",
       active: true,
       category: "KIDS",
+      studioId: "studio-1",
     });
     prisma.batchPlan.findUnique.mockResolvedValue({
       batchId: "batch-kid",
@@ -397,16 +403,8 @@ describe("MembershipsService.purchaseForBatch", () => {
         adultSeats: 0,
         kidSeats: 1,
         billingCadence: "MONTHLY",
+        price: 2500,
       },
-    });
-    prisma.subscription.findUnique.mockResolvedValue({
-      id: "sub-kid-mo",
-      active: true,
-      kind: "INDIVIDUAL",
-      individualAudience: "KID",
-      adultSeats: 0,
-      kidSeats: 1,
-      billingCadence: "MONTHLY",
     });
     prisma.batch.findMany.mockResolvedValue([
       {
@@ -418,27 +416,42 @@ describe("MembershipsService.purchaseForBatch", () => {
         enrollments: [],
       },
     ]);
-    prisma.membership.create.mockResolvedValue({
-      id: "mem-1",
-      coveredStudents: [],
+    prisma.invoice.create.mockResolvedValue({
+      id: "inv-1",
+      status: "PENDING",
+      amount: 2500,
     });
 
-    await service.purchaseForBatch({
+    const invoice = await service.purchaseForBatch({
       batchId: "batch-kid",
       subscriptionId: "sub-kid-mo",
       purchaserUserId: "parent-1",
       coveredStudents: [{ studentId: "kid-1", seatRole: "KID" }],
     });
 
-    expect(prisma.batchEnrollment.upsert).toHaveBeenCalledWith(
-      expect.objectContaining({
-        update: {
-          isTrial: false,
-          trialSessionIds: Prisma.DbNull,
-        },
-        create: { batchId: "batch-kid", studentId: "kid-1" },
-      }),
+    expect(invoice).toEqual(
+      expect.objectContaining({ id: "inv-1", status: "PENDING" }),
     );
+    expect(prisma.invoice.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        studentId: "parent-1",
+        studioId: "studio-1",
+        amount: 2500,
+        status: "PENDING",
+        platformFeePercent: 5,
+        paymentHoldExpiresAt: expect.any(Date),
+        purchaseMeta: {
+          batchId: "batch-kid",
+          subscriptionId: "sub-kid-mo",
+          purchaserUserId: "parent-1",
+          coveredStudents: [
+            { studentId: "kid-1", seatRole: "KID", batchId: "batch-kid" },
+          ],
+        },
+      }),
+    });
+    expect(prisma.membership.create).not.toHaveBeenCalled();
+    expect(prisma.batchEnrollment.upsert).not.toHaveBeenCalled();
   });
 });
 

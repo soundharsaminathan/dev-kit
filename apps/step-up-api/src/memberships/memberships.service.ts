@@ -15,7 +15,11 @@ import {
   Prisma,
   SubscriptionKind,
 } from "@prisma/client";
-import { countOccupiedSeats, lockBatchRow } from "../batches/batch-capacity";
+import {
+  countOccupiedSeats,
+  lockBatchRow,
+  paymentHoldExpiresAt,
+} from "../batches/batch-capacity";
 import { ScheduleConflictService } from "../calendar/schedule-conflict.service";
 import { NotificationsService } from "../notifications/notifications.service";
 import { PrismaService } from "../prisma/prisma.service";
@@ -31,6 +35,13 @@ export type CoveredStudentInput = {
   studentId: string;
   seatRole: MembershipSeatRole;
   batchId?: string;
+};
+
+export type InvoicePurchaseMeta = {
+  batchId: string;
+  subscriptionId: string;
+  purchaserUserId: string;
+  coveredStudents: CoveredStudentInput[];
 };
 
 @Injectable()
@@ -183,10 +194,44 @@ export class MembershipsService {
       }
     }
 
-    return this.assign({
+    this.assertCoveredSeats(planLink.subscription, coveredStudents);
+
+    const seatsWithBatch = coveredStudents.filter((c) => c.batchId);
+    if (planLink.subscription.kind === SubscriptionKind.FAMILY) {
+      await this.assertFamilyBatchPicks(coveredStudents);
+    } else if (seatsWithBatch.length > 0) {
+      await this.assertBatchPicks(seatsWithBatch);
+    }
+
+    for (const covered of seatsWithBatch) {
+      await this.scheduleConflicts.assertStudentAvailableForBatch(
+        covered.studentId,
+        covered.batchId!,
+      );
+    }
+
+    const settings = await this.prisma.studioSettings.findUnique({
+      where: { studioId: batch.studioId },
+      select: { platformFeePercent: true },
+    });
+
+    const purchaseMeta: InvoicePurchaseMeta = {
+      batchId: args.batchId,
       subscriptionId: args.subscriptionId,
       purchaserUserId: args.purchaserUserId,
       coveredStudents,
+    };
+
+    return this.prisma.invoice.create({
+      data: {
+        studentId: args.purchaserUserId,
+        studioId: batch.studioId,
+        amount: planLink.subscription.price,
+        status: InvoiceStatus.PENDING,
+        platformFeePercent: settings?.platformFeePercent ?? 5,
+        paymentHoldExpiresAt: paymentHoldExpiresAt(),
+        purchaseMeta,
+      },
     });
   }
 

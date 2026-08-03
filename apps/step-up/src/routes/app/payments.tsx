@@ -46,6 +46,7 @@ type TrainerPaymentAnalytics = {
   byPaymentMethod: {
     CASH: { count: number; amount: number };
     UPI_MANUAL: { count: number; amount: number };
+    RAZORPAY: { count: number; amount: number };
   };
   byBatch: Array<{
     batchId: string;
@@ -61,7 +62,7 @@ type TrainerPaymentAnalytics = {
     studentName: string;
     amount: number;
     status: "PENDING" | "PAID" | "OVERDUE";
-    paymentMethod: "CASH" | "UPI_MANUAL" | null;
+    paymentMethod: "CASH" | "UPI_MANUAL" | "RAZORPAY" | null;
     paidAt: string | null;
   }>;
 };
@@ -404,6 +405,13 @@ function PaymentsPage() {
                         analyticsQuery.data.byPaymentMethod.UPI_MANUAL.amount,
                       )}
                     </p>
+                    <p className={staff.rowMeta}>
+                      Razorpay:{" "}
+                      {analyticsQuery.data.byPaymentMethod.RAZORPAY.count} ·{" "}
+                      {formatInr(
+                        analyticsQuery.data.byPaymentMethod.RAZORPAY.amount,
+                      )}
+                    </p>
                   </div>
 
                   {analyticsQuery.data.byBatch.length > 0 ? (
@@ -458,7 +466,13 @@ function PaymentsPage() {
                               <p className={staff.rowMeta}>
                                 {formatInr(invoice.amount)}
                                 {invoice.paymentMethod
-                                  ? ` · ${invoice.paymentMethod === "CASH" ? "Cash" : "UPI"}`
+                                  ? ` · ${
+                                      invoice.paymentMethod === "CASH"
+                                        ? "Cash"
+                                        : invoice.paymentMethod === "RAZORPAY"
+                                          ? "Razorpay"
+                                          : "UPI"
+                                    }`
                                   : ""}
                               </p>
                             </div>

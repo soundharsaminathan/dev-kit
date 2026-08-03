@@ -15,6 +15,14 @@ import { BillingService } from "./billing.service";
 
 const membershipsStub = {
   renewFromPaidInvoice: vi.fn().mockResolvedValue(null),
+  assign: vi.fn(),
+};
+
+const razorpayStub = {
+  isEnabled: vi.fn().mockReturnValue(false),
+  keyId: vi.fn().mockReturnValue(""),
+  createOrder: vi.fn(),
+  verifyPaymentSignature: vi.fn().mockReturnValue(false),
 };
 
 function makeUser(overrides: Partial<DecryptedUser> = {}): DecryptedUser {
@@ -59,6 +67,7 @@ describe("BillingService.getTrainerAnalytics", () => {
       prisma as never,
       crypto as never,
       membershipsStub as never,
+      razorpayStub as never,
     );
   });
 
@@ -205,6 +214,7 @@ describe("BillingService.listForStudent", () => {
       prisma as never,
       crypto as never,
       membershipsStub as never,
+      razorpayStub as never,
     );
   });
 
@@ -267,6 +277,7 @@ describe("BillingService.markPaid", () => {
       prisma as never,
       crypto as never,
       membershipsStub as never,
+      razorpayStub as never,
     );
   });
 
@@ -398,6 +409,7 @@ describe("BillingService.listByStudio", () => {
       prisma as never,
       crypto as never,
       membershipsStub as never,
+      razorpayStub as never,
     );
   });
 
@@ -441,6 +453,7 @@ describe("BillingService.createPendingInvoice", () => {
       prisma as never,
       crypto as never,
       membershipsStub as never,
+      razorpayStub as never,
     );
     prisma.user.findFirst.mockResolvedValue({ id: "student-1" });
     prisma.studioSettings.findUnique.mockResolvedValue({
@@ -493,5 +506,204 @@ describe("BillingService.createPendingInvoice", () => {
         amount: 100,
       }),
     ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+});
+
+describe("BillingService invoice checkout", () => {
+  const purchaseMeta = {
+    batchId: "batch-1",
+    subscriptionId: "sub-1",
+    purchaserUserId: "student-1",
+    coveredStudents: [
+      { studentId: "student-1", seatRole: "ADULT", batchId: "batch-1" },
+    ],
+  };
+
+  const prisma = {
+    invoice: {
+      findUnique: vi.fn(),
+      update: vi.fn(),
+      delete: vi.fn(),
+      deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
+    },
+    batch: { findUnique: vi.fn() },
+    familyMember: { findUnique: vi.fn() },
+    parentChild: { findUnique: vi.fn() },
+  };
+  const crypto = {
+    decryptUser: vi.fn((user: { name?: string }) => user),
+  };
+  let service: BillingService;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    razorpayStub.isEnabled.mockReturnValue(false);
+    razorpayStub.verifyPaymentSignature.mockReturnValue(false);
+    membershipsStub.assign.mockResolvedValue({
+      id: "mem-1",
+      coveredStudents: [],
+    });
+    service = new BillingService(
+      prisma as never,
+      crypto as never,
+      membershipsStub as never,
+      razorpayStub as never,
+    );
+  });
+
+  it("returns demo mode when Razorpay is not configured", async () => {
+    prisma.invoice.findUnique.mockResolvedValue({
+      id: "inv-1",
+      studentId: "student-1",
+      status: InvoiceStatus.PENDING,
+      amount: 3500,
+      paymentHoldExpiresAt: new Date(Date.now() + 60_000),
+      purchaseMeta,
+      razorpayOrderId: null,
+      studio: { settings: null },
+    });
+
+    await expect(
+      service.createInvoicePaymentOrder(
+        "inv-1",
+        makeUser({ id: "student-1", role: UserRole.STUDENT }),
+      ),
+    ).resolves.toEqual({ mode: "demo" });
+  });
+
+  it("confirms demo payment and assigns membership", async () => {
+    prisma.invoice.findUnique.mockResolvedValue({
+      id: "inv-1",
+      studentId: "student-1",
+      status: InvoiceStatus.PENDING,
+      amount: 3500,
+      paymentHoldExpiresAt: new Date(Date.now() + 60_000),
+      purchaseMeta,
+      razorpayOrderId: null,
+      studio: { settings: null },
+    });
+    prisma.invoice.update.mockResolvedValue({
+      id: "inv-1",
+      status: InvoiceStatus.PAID,
+      paymentMethod: PaymentMethod.RAZORPAY,
+      amount: 3500,
+      membershipId: "mem-1",
+    });
+
+    const result = await service.confirmInvoicePayment(
+      "inv-1",
+      makeUser({ id: "student-1", role: UserRole.STUDENT }),
+    );
+
+    expect(membershipsStub.assign).toHaveBeenCalledWith({
+      subscriptionId: "sub-1",
+      purchaserUserId: "student-1",
+      coveredStudents: purchaseMeta.coveredStudents,
+    });
+    expect(prisma.invoice.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          status: InvoiceStatus.PAID,
+          paymentMethod: PaymentMethod.RAZORPAY,
+          membershipId: "mem-1",
+        }),
+      }),
+    );
+    expect(result.status).toBe(InvoiceStatus.PAID);
+  });
+
+  it("rejects confirm when Razorpay is enabled and signature is missing", async () => {
+    razorpayStub.isEnabled.mockReturnValue(true);
+    prisma.invoice.findUnique.mockResolvedValue({
+      id: "inv-1",
+      studentId: "student-1",
+      status: InvoiceStatus.PENDING,
+      amount: 3500,
+      paymentHoldExpiresAt: new Date(Date.now() + 60_000),
+      purchaseMeta,
+      razorpayOrderId: "order_1",
+      studio: {
+        settings: {
+          razorpayKeyId: "rzp_test",
+          razorpayKeySecret: "cipher",
+          razorpaySecretIv: "iv",
+        },
+      },
+    });
+
+    await expect(
+      service.confirmInvoicePayment(
+        "inv-1",
+        makeUser({ id: "student-1", role: UserRole.STUDENT }),
+      ),
+    ).rejects.toThrow(/Razorpay payment details are required/);
+  });
+
+  it("creates a Razorpay order for the plan amount in paise", async () => {
+    razorpayStub.isEnabled.mockReturnValue(true);
+    razorpayStub.keyId.mockReturnValue("rzp_test");
+    razorpayStub.createOrder.mockResolvedValue({
+      orderId: "order_new",
+      amount: 350_000,
+      currency: "INR",
+    });
+    prisma.invoice.findUnique.mockResolvedValue({
+      id: "inv-1",
+      studentId: "student-1",
+      status: InvoiceStatus.PENDING,
+      amount: 3500,
+      paymentHoldExpiresAt: new Date(Date.now() + 60_000),
+      purchaseMeta,
+      razorpayOrderId: null,
+      studio: {
+        settings: {
+          razorpayKeyId: "rzp_test",
+          razorpayKeySecret: "cipher",
+          razorpaySecretIv: "iv",
+        },
+      },
+    });
+    prisma.invoice.update.mockResolvedValue({});
+
+    await expect(
+      service.createInvoicePaymentOrder(
+        "inv-1",
+        makeUser({ id: "student-1", role: UserRole.STUDENT }),
+      ),
+    ).resolves.toEqual({
+      mode: "razorpay",
+      keyId: "rzp_test",
+      orderId: "order_new",
+      amount: 350_000,
+      currency: "INR",
+    });
+
+    expect(razorpayStub.createOrder).toHaveBeenCalledWith(
+      expect.objectContaining({
+        receipt: "inv-1",
+        amountPaise: 350_000,
+      }),
+      expect.any(Object),
+    );
+  });
+
+  it("abandons a checkout invoice by deleting it", async () => {
+    prisma.invoice.findUnique.mockResolvedValue({
+      id: "inv-1",
+      studentId: "student-1",
+      status: InvoiceStatus.PENDING,
+      purchaseMeta,
+    });
+    prisma.invoice.delete.mockResolvedValue({});
+
+    await expect(
+      service.abandonInvoicePayment(
+        "inv-1",
+        makeUser({ id: "student-1", role: UserRole.STUDENT }),
+      ),
+    ).resolves.toEqual({ id: "inv-1", status: "CANCELLED" });
+    expect(prisma.invoice.delete).toHaveBeenCalledWith({
+      where: { id: "inv-1" },
+    });
   });
 });

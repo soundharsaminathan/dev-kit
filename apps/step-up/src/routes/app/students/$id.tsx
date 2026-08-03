@@ -68,7 +68,7 @@ type StudentStudioProfile = {
     id: string;
     amount: number;
     status: "PENDING" | "PAID" | "OVERDUE";
-    paymentMethod?: "CASH" | "UPI_MANUAL" | null;
+    paymentMethod?: "CASH" | "UPI_MANUAL" | "RAZORPAY" | null;
     paidAt?: string | null;
   }>;
   parents: Array<{

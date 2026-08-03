@@ -41,6 +41,20 @@ class CreateInvoiceDto {
   membershipId?: string;
 }
 
+class ConfirmInvoicePaymentDto {
+  @IsOptional()
+  @IsString()
+  razorpay_order_id?: string;
+
+  @IsOptional()
+  @IsString()
+  razorpay_payment_id?: string;
+
+  @IsOptional()
+  @IsString()
+  razorpay_signature?: string;
+}
+
 @Controller("billing")
 @UseGuards(AuthGuard, RolesGuard)
 export class BillingController {
@@ -98,6 +112,43 @@ export class BillingController {
     @Param("studentId") studentId: string,
   ) {
     return this.billingService.listForStudent(user, studentId);
+  }
+
+  @Get(":id")
+  @Roles(
+    UserRole.OWNER,
+    UserRole.STAFF,
+    UserRole.TRAINER,
+    UserRole.STUDENT,
+    UserRole.PARENT,
+  )
+  getOne(@CurrentUser() user: DecryptedUser, @Param("id") id: string) {
+    return this.billingService.getCheckoutInvoice(id, user);
+  }
+
+  @Post(":id/create-payment-order")
+  @Roles(UserRole.STUDENT, UserRole.PARENT)
+  createPaymentOrder(
+    @CurrentUser() user: DecryptedUser,
+    @Param("id") id: string,
+  ) {
+    return this.billingService.createInvoicePaymentOrder(id, user);
+  }
+
+  @Post(":id/confirm-payment")
+  @Roles(UserRole.STUDENT, UserRole.PARENT)
+  confirmPayment(
+    @CurrentUser() user: DecryptedUser,
+    @Param("id") id: string,
+    @Body() dto: ConfirmInvoicePaymentDto,
+  ) {
+    return this.billingService.confirmInvoicePayment(id, user, dto);
+  }
+
+  @Post(":id/abandon-payment")
+  @Roles(UserRole.STUDENT, UserRole.PARENT)
+  abandonPayment(@CurrentUser() user: DecryptedUser, @Param("id") id: string) {
+    return this.billingService.abandonInvoicePayment(id, user);
   }
 
   @Patch(":id/paid")
