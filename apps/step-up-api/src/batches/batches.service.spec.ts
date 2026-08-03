@@ -827,7 +827,7 @@ describe("BatchesService.remove and enroll", () => {
 describe("BatchesService.listByStudio viewer enrollment", () => {
   const prisma = {
     batch: { findMany: vi.fn() },
-    batchEnrollment: { findMany: vi.fn() },
+    batchEnrollment: { findMany: vi.fn(), findFirst: vi.fn() },
     booking: { findMany: vi.fn(), updateMany: vi.fn() },
   };
 
@@ -851,6 +851,7 @@ describe("BatchesService.listByStudio viewer enrollment", () => {
       { purchaseForBatch: vi.fn() } as never,
     );
     prisma.batchEnrollment.findMany.mockResolvedValue([]);
+    prisma.batchEnrollment.findFirst.mockResolvedValue(null);
     prisma.booking.findMany.mockResolvedValue([]);
     prisma.booking.updateMany.mockResolvedValue({ count: 0 });
   });
@@ -871,7 +872,18 @@ describe("BatchesService.listByStudio viewer enrollment", () => {
           utcOffsetMinutes: 330,
         },
         danceCategories: [{ name: "Hip Hop" }],
-        enrollments: [{ studentId: "student-1" }, { studentId: "student-2" }],
+        enrollments: [
+          {
+            studentId: "student-1",
+            isTrial: false,
+            trialSessionIds: null,
+          },
+          {
+            studentId: "student-2",
+            isTrial: false,
+            trialSessionIds: null,
+          },
+        ],
         trainers: [],
         plans: [],
         _count: { enrollments: 2 },
@@ -888,6 +900,9 @@ describe("BatchesService.listByStudio viewer enrollment", () => {
     expect(rows[0]).toMatchObject({
       id: "batch-1",
       viewerEnrolled: true,
+      viewerEnrollment: { isTrial: false, trialSessionIds: [] },
+      viewerBooking: null,
+      viewerActiveTrialBatchId: null,
     });
   });
 
@@ -899,7 +914,13 @@ describe("BatchesService.listByStudio viewer enrollment", () => {
         capacity: 20,
         scheduleJson: {},
         danceCategories: [],
-        enrollments: [{ studentId: "student-2" }],
+        enrollments: [
+          {
+            studentId: "student-2",
+            isTrial: false,
+            trialSessionIds: null,
+          },
+        ],
         trainers: [],
         plans: [],
         _count: { enrollments: 1 },
@@ -915,6 +936,94 @@ describe("BatchesService.listByStudio viewer enrollment", () => {
     expect(rows[0]).toMatchObject({
       id: "batch-1",
       viewerEnrolled: false,
+      viewerEnrollment: null,
+      viewerBooking: null,
+    });
+  });
+
+  it("returns trial enrollment and open booking for the viewer", async () => {
+    prisma.batch.findMany.mockResolvedValue([
+      {
+        id: "batch-1",
+        name: "Hip Hop",
+        capacity: 20,
+        scheduleJson: {},
+        danceCategories: [],
+        enrollments: [
+          {
+            studentId: "student-1",
+            isTrial: true,
+            trialSessionIds: ["session-1", "session-2"],
+          },
+        ],
+        trainers: [],
+        plans: [],
+        _count: { enrollments: 1 },
+        branch: null,
+        coverImageUrl: null,
+      },
+      {
+        id: "batch-2",
+        name: "Jazz",
+        capacity: 12,
+        scheduleJson: {},
+        danceCategories: [],
+        enrollments: [],
+        trainers: [],
+        plans: [],
+        _count: { enrollments: 0 },
+        branch: null,
+        coverImageUrl: null,
+      },
+    ]);
+    prisma.batchEnrollment.findFirst.mockResolvedValue({
+      batchId: "batch-1",
+    });
+    prisma.booking.findMany.mockImplementation(
+      async (args: { select?: Record<string, boolean> }) => {
+        // Viewer open-booking query selects type/status; capacity holdings do not.
+        if (args.select?.type) {
+          return [
+            {
+              id: "booking-1",
+              batchId: "batch-2",
+              type: "TRIAL",
+              status: "PENDING",
+              notes: null,
+              startsAt: null,
+              endsAt: null,
+              paymentHoldExpiresAt: null,
+            },
+          ];
+        }
+        return [];
+      },
+    );
+
+    const rows = await service.listByStudio("studio-1", {
+      studentId: "student-1",
+    });
+
+    expect(rows[0]).toMatchObject({
+      id: "batch-1",
+      viewerEnrolled: true,
+      viewerEnrollment: {
+        isTrial: true,
+        trialSessionIds: ["session-1", "session-2"],
+      },
+      viewerBooking: null,
+      viewerActiveTrialBatchId: "batch-1",
+    });
+    expect(rows[1]).toMatchObject({
+      id: "batch-2",
+      viewerEnrolled: false,
+      viewerEnrollment: null,
+      viewerBooking: {
+        id: "booking-1",
+        type: "TRIAL",
+        status: "PENDING",
+      },
+      viewerActiveTrialBatchId: "batch-1",
     });
   });
 });

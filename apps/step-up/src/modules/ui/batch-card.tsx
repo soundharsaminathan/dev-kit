@@ -32,6 +32,7 @@ export type BatchCardData = {
 type BatchCardProps = {
   batch: BatchCardData;
   ctaLabel?: string;
+  ctaTone?: "muted";
   /** Route path template; defaults to member detail. */
   detailTo?: "/me/batches/$id" | "/app/batches/$id";
 };
@@ -90,6 +91,7 @@ function StarRow({ value }: { value: number }) {
 export function BatchCard({
   batch,
   ctaLabel,
+  ctaTone,
   detailTo = "/me/batches/$id",
 }: BatchCardProps) {
   const price = formatPrice(batch.price);
@@ -213,11 +215,7 @@ export function BatchCard({
         {ctaLabel ? (
           <span
             className={styles.cta}
-            data-tone={
-              ctaLabel === "Enrolled" || ctaLabel === "Full"
-                ? "muted"
-                : undefined
-            }
+            data-tone={ctaTone === "muted" ? "muted" : undefined}
           >
             {ctaLabel}
           </span>

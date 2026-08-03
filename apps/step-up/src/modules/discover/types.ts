@@ -69,12 +69,41 @@ export type DiscoverBatch = {
   } | null;
 };
 
+const MUTED_DISCOVER_CTAS = new Set([
+  "Enrolled",
+  "On trial",
+  "Trial requested",
+  "Trial approved",
+  "Request pending",
+  "Booking confirmed",
+  "Full",
+]);
+
 export function discoverCtaLabel(batch: DiscoverBatch) {
-  if (batch.viewerEnrolled) return "Enrolled";
+  if (batch.viewerEnrolled) {
+    return batch.viewerEnrollment?.isTrial ? "On trial" : "Enrolled";
+  }
+
+  const booking = batch.viewerBooking;
+  if (booking) {
+    const isTrial = booking.type === "TRIAL";
+    if (booking.status === "AWAITING_PAYMENT") return "Pay now";
+    if (booking.status === "PENDING") {
+      return isTrial ? "Trial requested" : "Request pending";
+    }
+    if (booking.status === "CONFIRMED") {
+      return isTrial ? "Trial approved" : "Booking confirmed";
+    }
+  }
+
   if (batch.remainingSeats === 0) return "Full";
   if ((batch.plans?.length ?? 0) > 0) return "Enroll";
   if (batch.enrollmentMode === "SELF_JOIN") return "Join";
   return "Book";
+}
+
+export function isDiscoverCtaMuted(label: string) {
+  return MUTED_DISCOVER_CTAS.has(label);
 }
 
 export function toBatchCardData(batch: DiscoverBatch) {
