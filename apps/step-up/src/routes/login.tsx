@@ -10,6 +10,7 @@ import { useAuth } from "@/lib/auth";
 import {
   DEV_USERS,
   isAuthBypassEnabled,
+  SEED_PASSWORD,
   SEED_STUDIO_ID,
   type UserRole,
 } from "@/lib/constants";
@@ -101,7 +102,7 @@ function LoginPage() {
   const form = useForm({
     defaultValues: {
       identifier: suggestedLoginIdentifier(searchIdentifier),
-      password: isAuthBypassEnabled() ? "password" : "",
+      password: isAuthBypassEnabled() ? SEED_PASSWORD : "",
     } satisfies LoginFormValues,
     onSubmit: async ({ value }) => {
       setError(null);

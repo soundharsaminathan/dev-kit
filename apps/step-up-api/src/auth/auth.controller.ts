@@ -157,7 +157,10 @@ export class AuthController {
     const provisioned = await this.prisma.user.findFirst({
       where: {
         emailHash,
-        firebaseUid: { startsWith: "provisioned:" },
+        OR: [
+          { firebaseUid: { startsWith: "provisioned:" } },
+          { firebaseUid: { startsWith: "dev-" } },
+        ],
       },
     });
 

@@ -1,6 +1,9 @@
 /** Seed / e2e fixture studio only — never use in feature UI. Prefer useStudioId(). */
 export const SEED_STUDIO_ID = "studio-seed-1";
 
+/** Shared password for seeded @stepup.dev accounts (Firebase + bypass form default). */
+export const SEED_PASSWORD = "password";
+
 /** @deprecated Use SEED_STUDIO_ID for fixtures or useStudioId() in UI. */
 export const STUDIO_ID = SEED_STUDIO_ID;
 

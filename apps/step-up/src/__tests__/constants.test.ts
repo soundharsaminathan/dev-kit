@@ -3,6 +3,7 @@ import {
   DEV_USERS,
   findDevUserByLogin,
   resolveLoginEmail,
+  SEED_PASSWORD,
   SEED_STUDIO_ID,
 } from "@/lib/constants";
 
@@ -36,5 +37,9 @@ describe("step-up constants", () => {
 
   it("rejects unknown usernames without an @", () => {
     expect(() => resolveLoginEmail("not-a-user")).toThrow(/Unknown username/);
+  });
+
+  it("exports the shared seed password", () => {
+    expect(SEED_PASSWORD).toBe("password");
   });
 });
