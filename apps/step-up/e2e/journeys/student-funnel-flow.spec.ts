@@ -2,6 +2,7 @@ import {
   apiRequest,
   authFile,
   expect,
+  TestDataCleanup,
   test,
   waitForAppReady,
 } from "../fixtures";
@@ -271,6 +272,7 @@ async function advanceThroughFunnel(
   studentId: string,
   origin: string,
   countsBeforeCreate: FunnelCounts,
+  cleanup: TestDataCleanup,
 ) {
   expect(await getStudentStage(studentId)).toBe("signedInOnly");
   let before = countsBeforeCreate;
@@ -293,6 +295,7 @@ async function advanceThroughFunnel(
   // Dedicated batch so we can deactivate it for completedWithoutPlan without
   // touching seed batches other tests rely on.
   const batch = await createEphemeralBatch(origin);
+  cleanup.trackBatch(batch.id);
   await enrollStudent(batch.id, studentId);
   expect(await getStudentStage(studentId)).toBe("active");
   before = after;
@@ -315,91 +318,111 @@ test.describe("student funnel full flow @critical", () => {
     browser,
   }) => {
     test.setTimeout(240_000);
-
+    const cleanup = new TestDataCleanup();
     const ownerContext = await browser.newContext({
       storageState: authFile("OWNER"),
     });
     const page = await ownerContext.newPage();
 
-    const baseline = await getFunnel();
-    await assertApiAndUiCounts(page, baseline);
+    try {
+      const baseline = await getFunnel();
+      await assertApiAndUiCounts(page, baseline);
 
-    let beforeCreate = await getFunnel();
-    const selfStudent = await createSelfStudent("a");
-    await advanceThroughFunnel(selfStudent.id, "self", beforeCreate);
-    await assertApiAndUiCounts(page);
+      let beforeCreate = await getFunnel();
+      const selfStudent = await createSelfStudent("a");
+      cleanup.trackStudent(selfStudent.id);
+      await advanceThroughFunnel(selfStudent.id, "self", beforeCreate, cleanup);
+      await assertApiAndUiCounts(page);
 
-    beforeCreate = await getFunnel();
-    const ownerStudent = await createOwnerStudent("b");
-    await advanceThroughFunnel(ownerStudent.id, "owner", beforeCreate);
-    await assertApiAndUiCounts(page);
-
-    await ownerContext.close();
+      beforeCreate = await getFunnel();
+      const ownerStudent = await createOwnerStudent("b");
+      cleanup.trackStudent(ownerStudent.id);
+      await advanceThroughFunnel(
+        ownerStudent.id,
+        "owner",
+        beforeCreate,
+        cleanup,
+      );
+      await assertApiAndUiCounts(page);
+    } finally {
+      await cleanup.dispose();
+      await ownerContext.close();
+    }
   });
 
   test("owner can optionally enroll a new student into a batch on creation @critical", async ({
     browser,
   }) => {
     test.setTimeout(120_000);
-
-    const batch = await createEphemeralBatch("enroll");
-    const before = await getFunnel();
-    const created = await createOwnerStudent("enroll", {
-      batchId: batch.id,
-    });
-
-    expect(await getStudentStage(created.id)).toBe("active");
-    expectTransition(before, await getFunnel(), null, "active", 1);
-
+    const cleanup = new TestDataCleanup();
     const context = await browser.newContext({
       storageState: authFile("OWNER"),
     });
     const page = await context.newPage();
 
-    await page.goto("/app/students/new", { waitUntil: "domcontentloaded" });
-    await waitForAppReady(page);
-    await expect(
-      page.getByRole("heading", { name: /new student/i }),
-    ).toBeVisible();
+    try {
+      const batch = await createEphemeralBatch("enroll");
+      cleanup.trackBatch(batch.id);
+      const before = await getFunnel();
+      const created = await createOwnerStudent("enroll", {
+        batchId: batch.id,
+      });
+      cleanup.trackStudent(created.id);
 
-    const stamp = Date.now();
-    const name = `UI Enroll ${stamp}`;
-    const email = `funnel-ui-enroll-${stamp}@stepup.dev`;
+      expect(await getStudentStage(created.id)).toBe("active");
+      expectTransition(before, await getFunnel(), null, "active", 1);
 
-    await page.getByLabel(/^name$/i).fill(name);
-    await page.getByLabel(/^email$/i).fill(email);
-    await page.getByRole("button", { name: /^female$/i }).click();
-    await page.getByRole("button", { name: /20–40/i }).click();
-    await page.getByRole("button", { name: /^continue$/i }).click();
+      await page.goto("/app/students/new", { waitUntil: "domcontentloaded" });
+      await waitForAppReady(page);
+      await expect(
+        page.getByRole("heading", { name: /new student/i }),
+      ).toBeVisible();
 
-    await expect(page.getByTestId("optional-batch-enrollment")).toBeVisible();
-    await page
-      .getByRole("button", { name: /hip hop/i })
-      .first()
-      .click();
+      const stamp = Date.now();
+      const name = `UI Enroll ${stamp}`;
+      const email = `funnel-ui-enroll-${stamp}@stepup.dev`;
 
-    await page.getByTestId("optional-batch-select").click();
-    await page.getByRole("option", { name: batch.name }).click();
+      await page.getByLabel(/^name$/i).fill(name);
+      await page.getByLabel(/^email$/i).fill(email);
+      await page.getByRole("button", { name: /^female$/i }).click();
+      await page.getByRole("button", { name: /20–40/i }).click();
+      await page.getByRole("button", { name: /^continue$/i }).click();
 
-    const beforeUiCreate = await getFunnel();
-    await page.getByRole("button", { name: /create student/i }).click();
-    await expect(page).toHaveURL(/\/app\/students\/?$/);
+      await expect(page.getByTestId("optional-batch-enrollment")).toBeVisible();
+      await page
+        .getByRole("button", { name: /hip hop/i })
+        .first()
+        .click();
 
-    await expect
-      .poll(async () => {
-        const matches = await apiRequest<Array<{ id: string; email: string }>>(
-          "OWNER",
-          `/users/studio/${STUDIO_ID}/students?q=${encodeURIComponent(email)}`,
-        );
-        const student = matches.find((row) => row.email === email);
-        if (!student) return "missing";
-        return getStudentStage(student.id);
-      })
-      .toBe("active");
+      await page.getByTestId("optional-batch-select").click();
+      await page.getByRole("option", { name: batch.name }).click();
 
-    expectTransition(beforeUiCreate, await getFunnel(), null, "active", 1);
-    await assertApiAndUiCounts(page);
+      const beforeUiCreate = await getFunnel();
+      await page.getByRole("button", { name: /create student/i }).click();
+      await expect(page).toHaveURL(/\/app\/students\/?$/);
 
-    await context.close();
+      let uiStudentId: string | undefined;
+      await expect
+        .poll(async () => {
+          const matches = await apiRequest<
+            Array<{ id: string; email: string }>
+          >(
+            "OWNER",
+            `/users/studio/${STUDIO_ID}/students?q=${encodeURIComponent(email)}`,
+          );
+          const student = matches.find((row) => row.email === email);
+          if (!student) return "missing";
+          uiStudentId = student.id;
+          return getStudentStage(student.id);
+        })
+        .toBe("active");
+      if (uiStudentId) cleanup.trackStudent(uiStudentId);
+
+      expectTransition(beforeUiCreate, await getFunnel(), null, "active", 1);
+      await assertApiAndUiCounts(page);
+    } finally {
+      await cleanup.dispose();
+      await context.close();
+    }
   });
 });

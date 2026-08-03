@@ -761,6 +761,7 @@ describe("UsersService.createStudent", () => {
       async (fn: (tx: typeof prisma) => unknown) => fn(prisma),
     );
     prisma.$queryRaw.mockResolvedValue([{ id: "batch-1" }]);
+    prisma.batchEnrollment.findFirst.mockResolvedValue(null);
     service = new UsersService(
       prisma as never,
       crypto as never,

@@ -52,6 +52,7 @@ export type DiscoverBatch = {
     isTrial: boolean;
     trialSessionIds: string[];
   } | null;
+  viewerActiveTrialBatchId?: string | null;
   viewerBooking?: {
     id: string;
     type: string;

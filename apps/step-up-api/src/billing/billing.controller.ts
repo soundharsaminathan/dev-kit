@@ -6,11 +6,12 @@ import {
   Inject,
   Param,
   Patch,
+  Post,
   Query,
   UseGuards,
 } from "@nestjs/common";
 import { PaymentMethod, UserRole } from "@prisma/client";
-import { IsEnum } from "class-validator";
+import { IsEnum, IsNumber, IsOptional, IsString, Min } from "class-validator";
 import { AuthGuard } from "../auth/auth.guard";
 import { CurrentUser } from "../auth/current-user.decorator";
 import { Roles } from "../auth/roles.decorator";
@@ -21,6 +22,22 @@ import { BillingService } from "./billing.service";
 class MarkPaidDto {
   @IsEnum(PaymentMethod)
   paymentMethod!: PaymentMethod;
+}
+
+class CreateInvoiceDto {
+  @IsString()
+  studioId!: string;
+
+  @IsString()
+  studentId!: string;
+
+  @IsNumber()
+  @Min(0.01)
+  amount!: number;
+
+  @IsOptional()
+  @IsString()
+  membershipId?: string;
 }
 
 @Controller("billing")
@@ -34,6 +51,12 @@ export class BillingController {
   @Roles(UserRole.OWNER, UserRole.STAFF)
   listByStudio(@Param("studioId") studioId: string) {
     return this.billingService.listByStudio(studioId);
+  }
+
+  @Post()
+  @Roles(UserRole.OWNER, UserRole.STAFF)
+  create(@CurrentUser() user: DecryptedUser, @Body() dto: CreateInvoiceDto) {
+    return this.billingService.createPendingInvoice(user, dto);
   }
 
   @Get("analytics/trainer/:trainerId")

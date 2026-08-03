@@ -8,23 +8,21 @@ import {
 } from "../fixtures";
 import { SEED } from "../fixtures/seed";
 
+async function createPendingInvoice() {
+  return apiRequest<{ id: string; status: string }>("STAFF", "/billing", {
+    method: "POST",
+    body: JSON.stringify({
+      studioId: SEED.users.STAFF.studioId,
+      studentId: SEED.users.STUDENT.id,
+      amount: 1500,
+    }),
+  });
+}
+
 test.describe("admin payments @critical", () => {
   test("staff marks invoice paid through UI @critical", async ({ browser }) => {
-    const invoiceId = SEED.unpaidInvoiceId;
-
-    const invoices = await apiRequest<Array<{ id: string; status: string }>>(
-      "STAFF",
-      `/billing/studio/${SEED.users.STAFF.studioId}`,
-    );
-    const target =
-      invoices.find((invoice) => invoice.id === invoiceId) ??
-      invoices.find((invoice) => invoice.status !== "PAID");
-
-    test.skip(!target, "No unpaid invoice available in this environment");
-    test.skip(
-      target!.status === "PAID",
-      "Seed unpaid invoice already paid — re-seed to reset",
-    );
+    const invoice = await createPendingInvoice();
+    expect(invoice.status).toBe("PENDING");
 
     const context = await browser.newContext({
       storageState: authFile("STAFF"),
@@ -36,13 +34,13 @@ test.describe("admin payments @critical", () => {
       page.getByRole("heading", { name: /^invoices$/i }),
     ).toBeVisible();
 
-    await page.getByTestId(`mark-paid-${target!.id}`).click();
+    await page.getByTestId(`mark-paid-${invoice.id}`).click();
     await page.getByRole("button", { name: /^Cash$/i }).click();
 
     const [response] = await Promise.all([
       waitForApiResponse(page, {
         method: "PATCH",
-        pathIncludes: `/billing/${target!.id}/paid`,
+        pathIncludes: `/billing/${invoice.id}/paid`,
       }),
       page.getByTestId("confirm-mark-paid").click(),
     ]);
@@ -54,7 +52,7 @@ test.describe("admin payments @critical", () => {
           "STAFF",
           `/billing/studio/${SEED.users.STAFF.studioId}`,
         );
-        return latest.find((invoice) => invoice.id === target!.id)?.status;
+        return latest.find((row) => row.id === invoice.id)?.status;
       })
       .toBe("PAID");
 

@@ -422,3 +422,76 @@ describe("BillingService.listByStudio", () => {
     expect(rows[0]?.student.name).toBe("Decrypted");
   });
 });
+
+describe("BillingService.createPendingInvoice", () => {
+  const prisma = {
+    user: { findFirst: vi.fn() },
+    membership: { findFirst: vi.fn() },
+    studioSettings: { findUnique: vi.fn() },
+    invoice: { create: vi.fn() },
+  };
+  const crypto = {
+    decryptUser: vi.fn((user: { name?: string }) => user),
+  };
+  let service: BillingService;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    service = new BillingService(
+      prisma as never,
+      crypto as never,
+      membershipsStub as never,
+    );
+    prisma.user.findFirst.mockResolvedValue({ id: "student-1" });
+    prisma.studioSettings.findUnique.mockResolvedValue({
+      platformFeePercent: 5,
+    });
+    prisma.invoice.create.mockResolvedValue({
+      id: "inv-new",
+      status: InvoiceStatus.PENDING,
+      amount: 1500,
+    });
+  });
+
+  it("creates a pending invoice for a studio student", async () => {
+    const result = await service.createPendingInvoice(
+      makeUser({ role: UserRole.STAFF, studioId: "studio-1" }),
+      {
+        studioId: "studio-1",
+        studentId: "student-1",
+        amount: 1500,
+      },
+    );
+
+    expect(prisma.invoice.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        studentId: "student-1",
+        studioId: "studio-1",
+        amount: 1500,
+        status: InvoiceStatus.PENDING,
+        platformFeePercent: 5,
+      }),
+    });
+    expect(result.id).toBe("inv-new");
+  });
+
+  it("rejects non-positive amounts", async () => {
+    await expect(
+      service.createPendingInvoice(makeUser({ studioId: "studio-1" }), {
+        studioId: "studio-1",
+        studentId: "student-1",
+        amount: 0,
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it("rejects creating invoices for another studio", async () => {
+    await expect(
+      service.createPendingInvoice(makeUser({ studioId: "studio-1" }), {
+        studioId: "studio-other",
+        studentId: "student-1",
+        amount: 100,
+      }),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+});

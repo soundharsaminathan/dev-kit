@@ -1,20 +1,25 @@
 import { expect, test } from "@playwright/test";
 import { SEED } from "../fixtures/seed";
-import { expectOk } from "./helpers";
+import { createHttpStudent, expectOk, TestDataCleanup } from "./helpers";
 
 const TRIAL_BATCH_ID = SEED.trialBatchId;
 
 async function clearOpenTrialBookings(studentId: string, batchId: string) {
   const existing = await expectOk<
     Array<{ id: string; status: string; batchId: string | null }>
-  >("STUDENT", `/bookings/student/${studentId}`);
+  >("STUDENT", `/bookings/student/${studentId}`, undefined, {
+    userId: studentId,
+  });
 
   for (const booking of existing) {
     if (booking.batchId !== batchId) continue;
     if (booking.status === "AWAITING_PAYMENT") {
-      await expectOk("STUDENT", `/bookings/${booking.id}/abandon-payment`, {
-        method: "POST",
-      });
+      await expectOk(
+        "STUDENT",
+        `/bookings/${booking.id}/abandon-payment`,
+        { method: "POST" },
+        { userId: studentId },
+      );
     } else if (booking.status === "PENDING" || booking.status === "CONFIRMED") {
       await expectOk("STAFF", `/bookings/${booking.id}/status`, {
         method: "PATCH",
@@ -28,66 +33,89 @@ test.describe("bookings HTTP @http", () => {
   test.describe.configure({ mode: "serial" });
 
   test("student creates trial booking and can abandon payment @http", async () => {
-    const studentId = SEED.users.STUDENT.id;
-    await clearOpenTrialBookings(studentId, TRIAL_BATCH_ID);
+    const cleanup = new TestDataCleanup();
+    try {
+      const student = await createHttpStudent("Booking Trial Student", cleanup);
+      const studentId = student.id;
+      await clearOpenTrialBookings(studentId, TRIAL_BATCH_ID);
 
-    const created = await expectOk<{
-      id: string;
-      status: string;
-    }>("STUDENT", "/bookings", {
-      method: "POST",
-      body: JSON.stringify({
-        studioId: SEED.users.STUDENT.studioId,
-        studentId,
-        type: "TRIAL",
-        batchId: TRIAL_BATCH_ID,
-      }),
-    });
-
-    expect(created.id).toBeTruthy();
-    expect(["AWAITING_PAYMENT", "PENDING", "CONFIRMED"]).toContain(
-      created.status,
-    );
-
-    if (created.status === "AWAITING_PAYMENT") {
-      const abandoned = await expectOk<{ status: string }>(
+      const created = await expectOk<{
+        id: string;
+        status: string;
+      }>(
         "STUDENT",
-        `/bookings/${created.id}/abandon-payment`,
-        { method: "POST" },
+        "/bookings",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            studioId: SEED.users.STUDENT.studioId,
+            studentId,
+            type: "TRIAL",
+            batchId: TRIAL_BATCH_ID,
+          }),
+        },
+        { userId: studentId },
       );
-      expect(abandoned.status).not.toBe("AWAITING_PAYMENT");
+
+      expect(created.id).toBeTruthy();
+      expect(["AWAITING_PAYMENT", "PENDING", "CONFIRMED"]).toContain(
+        created.status,
+      );
+
+      if (created.status === "AWAITING_PAYMENT") {
+        const abandoned = await expectOk<{ status: string }>(
+          "STUDENT",
+          `/bookings/${created.id}/abandon-payment`,
+          { method: "POST" },
+          { userId: studentId },
+        );
+        expect(abandoned.status).not.toBe("AWAITING_PAYMENT");
+      }
+    } finally {
+      await cleanup.dispose();
     }
   });
 
   test("student confirms awaiting-payment booking @http", async () => {
-    const studentId = SEED.users.STUDENT.id;
-    await clearOpenTrialBookings(studentId, TRIAL_BATCH_ID);
+    const cleanup = new TestDataCleanup();
+    try {
+      const student = await createHttpStudent(
+        "Booking Confirm Student",
+        cleanup,
+      );
+      const studentId = student.id;
+      await clearOpenTrialBookings(studentId, TRIAL_BATCH_ID);
 
-    const created = await expectOk<{ id: string; status: string }>(
-      "STUDENT",
-      "/bookings",
-      {
-        method: "POST",
-        body: JSON.stringify({
-          studioId: SEED.users.STUDENT.studioId,
-          studentId,
-          type: "TRIAL",
-          batchId: TRIAL_BATCH_ID,
-        }),
-      },
-    );
+      const created = await expectOk<{ id: string; status: string }>(
+        "STUDENT",
+        "/bookings",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            studioId: SEED.users.STUDENT.studioId,
+            studentId,
+            type: "TRIAL",
+            batchId: TRIAL_BATCH_ID,
+          }),
+        },
+        { userId: studentId },
+      );
 
-    test.skip(
-      created.status !== "AWAITING_PAYMENT",
-      `Expected AWAITING_PAYMENT, got ${created.status}`,
-    );
+      test.skip(
+        created.status !== "AWAITING_PAYMENT",
+        `Expected AWAITING_PAYMENT, got ${created.status}`,
+      );
 
-    const confirmed = await expectOk<{ status: string }>(
-      "STUDENT",
-      `/bookings/${created.id}/confirm-payment`,
-      { method: "POST" },
-    );
-    expect(confirmed.status).toBe("PENDING");
+      const confirmed = await expectOk<{ status: string }>(
+        "STUDENT",
+        `/bookings/${created.id}/confirm-payment`,
+        { method: "POST" },
+        { userId: studentId },
+      );
+      expect(confirmed.status).toBe("PENDING");
+    } finally {
+      await cleanup.dispose();
+    }
   });
 
   test("staff can patch booking status @http", async () => {

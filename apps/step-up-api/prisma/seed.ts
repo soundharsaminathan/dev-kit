@@ -1188,9 +1188,14 @@ async function main() {
   });
 
   const now = new Date();
-  const periodStart = new Date(
+  // Sessions are anchored to mondayOfWeek(); when "today" is Sunday UTC the
+  // week starts in the prior month, so memberships must cover that Monday.
+  const weekStartForMembership = mondayOfWeek(now);
+  const monthStart = new Date(
     Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1),
   );
+  const periodStart =
+    weekStartForMembership < monthStart ? weekStartForMembership : monthStart;
   const periodEnd = new Date(
     Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1),
   );

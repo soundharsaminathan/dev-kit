@@ -35,6 +35,7 @@ import {
   lockBatchRow,
 } from "./batch-capacity";
 import {
+  assertStudentCanEnrollTrial,
   parseTrialSessionIds,
   resolveNextTrialSessionIds,
 } from "./trial-enrollment";
@@ -459,6 +460,7 @@ export class BatchesService {
       isTrial: boolean;
       trialSessionIds: string[];
     } | null = null;
+    let viewerActiveTrialBatchId: string | null = null;
     let viewerBooking: {
       id: string;
       type: string;
@@ -480,7 +482,7 @@ export class BatchesService {
           trialSessionIds: parseTrialSessionIds(enrollment.trialSessionIds),
         };
       }
-      const [existingRating, openBooking] = await Promise.all([
+      const [existingRating, openBooking, activeTrial] = await Promise.all([
         this.prisma.batchRating.findUnique({
           where: {
             batchId_studentId: {
@@ -516,9 +518,17 @@ export class BatchesService {
             paymentHoldExpiresAt: true,
           },
         }),
+        this.prisma.batchEnrollment.findFirst({
+          where: {
+            studentId: options.studentId,
+            isTrial: true,
+          },
+          select: { batchId: true },
+        }),
       ]);
       viewerRating = existingRating?.rating ?? null;
       viewerBooking = openBooking;
+      viewerActiveTrialBatchId = activeTrial?.batchId ?? null;
     }
 
     const reservedByBatch = await countReservedSeatsByBatch(this.prisma, [id]);
@@ -540,6 +550,7 @@ export class BatchesService {
       viewerRating,
       viewerEnrolled,
       viewerEnrollment,
+      viewerActiveTrialBatchId,
       viewerBooking,
     };
   }
@@ -1063,6 +1074,10 @@ export class BatchesService {
     return this.prisma.$transaction(async (tx) => {
       await lockBatchRow(tx, batchId);
       await assertBatchHasSeat(tx, batchId, batch.capacity, studentId);
+
+      if (isTrial) {
+        await assertStudentCanEnrollTrial(tx, studentId, batchId);
+      }
 
       const trialSessionIds = isTrial
         ? await resolveNextTrialSessionIds(tx, batchId)
