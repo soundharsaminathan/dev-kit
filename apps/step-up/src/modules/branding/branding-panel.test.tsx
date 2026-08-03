@@ -35,7 +35,7 @@ vi.mock("@dev-ui/core", async (importOriginal) => {
 });
 
 vi.mock("@dev-ui/components/theme-editor", () => ({
-  ThemeEditorPanel: ({
+  ThemeColorPanel: ({
     value,
     onChange,
   }: {

@@ -29,7 +29,9 @@ describe("ThemeEditor", () => {
       screen.getByRole("button", { name: /Base style/ }),
     ).toBeInTheDocument();
     expect(screen.getByLabelText("Radius factor")).toBeInTheDocument();
-    expect(screen.getByLabelText("accent color")).toBeInTheDocument();
+    expect(
+      screen.getByRole("radio", { name: /Brand/, checked: true }),
+    ).toBeInTheDocument();
     expect(screen.getByLabelText("sans font")).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: /Foundation/ }),

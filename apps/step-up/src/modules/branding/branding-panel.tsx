@@ -1,4 +1,4 @@
-import { ThemeEditorPanel } from "@dev-ui/components/theme-editor";
+import { ThemeColorPanel } from "@dev-ui/components/theme-editor";
 import { useToastContext } from "@dev-ui/components/toast";
 import { useTheme } from "@dev-ui/core";
 import { type ThemeDraft, themeDraftToDefinition } from "@dev-ui/tokens";
@@ -408,18 +408,32 @@ export function BrandingPanel({
       </div>
 
       {showTheme ? (
-        <>
-          <div className={styles.modeRow}>
-            <p className={styles.modeLabel}>Preview mode: {mode}</p>
-            <TouchButton
-              variant="default"
-              onClick={() => setMode(mode === "light" ? "dark" : "light")}
-            >
-              Switch to {mode === "light" ? "dark" : "light"}
-            </TouchButton>
+        <div className={styles.themeSection}>
+          <div className={styles.themeHeader}>
+            <div>
+              <p className={styles.themeSectionTitle}>Colors</p>
+              <p className={styles.themeSectionDesc}>
+                Pick your palette — buttons, surfaces, and text follow it
+                everywhere.
+              </p>
+            </div>
+            <fieldset className={styles.modeToggle} aria-label="Preview mode">
+              {(["light", "dark"] as const).map((option) => (
+                <button
+                  key={option}
+                  type="button"
+                  className={styles.modeOption}
+                  aria-pressed={mode === option}
+                  data-selected={mode === option ? "true" : undefined}
+                  onClick={() => setMode(option)}
+                >
+                  {option === "light" ? "Light" : "Dark"}
+                </button>
+              ))}
+            </fieldset>
           </div>
 
-          <ThemeEditorPanel value={draft} onChange={setDraft} />
+          <ThemeColorPanel value={draft} onChange={setDraft} />
 
           <div className={styles.themeActions}>
             <TouchButton
@@ -440,7 +454,7 @@ export function BrandingPanel({
             </TouchButton>
           </div>
           {themeError ? <ErrorState description={themeError} /> : null}
-        </>
+        </div>
       ) : null}
     </div>
   );

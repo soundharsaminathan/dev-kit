@@ -1,10 +1,8 @@
 import { cn } from "@dev-ui/core";
 import {
-  COLOR_SEED_KEYS,
   getBuiltInThemeIds,
   listEditableTokensByLayer,
   resolveThemeDraft,
-  setColorSeed,
   setTokenOverride,
   type ThemeDraft,
   type ThemeFonts,
@@ -20,6 +18,7 @@ import {
   SelectItem,
   SelectTrigger,
 } from "../select/Select";
+import { ThemeColorPanel } from "./ThemeColorPanel";
 import { TokenLayerPanel } from "./TokenLayerPanel";
 import styles from "./theme-editor.module.scss";
 import type { ThemeEditorPanelProps } from "./theme-editor.types";
@@ -123,29 +122,8 @@ function ThemeEditorPanel({
       </div>
 
       <div className={styles.section}>
-        <span className={styles.seedLabel}>Color seeds</span>
-        <div className={styles.metaGrid}>
-          {COLOR_SEED_KEYS.map((seed) => (
-            <div key={seed} className={styles.seedBlock}>
-              <span className={styles.seedLabel}>{seed}</span>
-              <Input
-                aria-label={`${seed} color`}
-                type="color"
-                value={value.color.seeds[seed] ?? "#808080"}
-                onChange={(event) =>
-                  onChange(setColorSeed(value, seed, event.target.value))
-                }
-              />
-              <Input
-                aria-label={`${seed} hex`}
-                value={value.color.seeds[seed] ?? ""}
-                onChange={(event) =>
-                  onChange(setColorSeed(value, seed, event.target.value))
-                }
-              />
-            </div>
-          ))}
-        </div>
+        <span className={styles.seedLabel}>Colors</span>
+        <ThemeColorPanel value={value} onChange={onChange} />
       </div>
 
       <div className={styles.section}>
