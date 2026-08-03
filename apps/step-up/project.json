@@ -66,6 +66,13 @@
       },
       "dependsOn": ["tokens:build:tokens", "components:build"]
     },
+    "test:smoke": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "apps/step-up",
+        "command": "playwright test --config playwright.smoke.config.ts"
+      }
+    },
     "test:regression": {
       "executor": "nx:run-commands",
       "options": {
