@@ -1,5 +1,12 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@dev-ui/components/avatar";
 import { Badge } from "@dev-ui/components/badge";
+import {
+  Menu,
+  MenuContent,
+  MenuItem,
+  MenuItemLabel,
+} from "@dev-ui/components/menu";
+import { Icon } from "@dev-ui/icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
@@ -8,7 +15,7 @@ import { STUDIO_ID } from "@/lib/constants";
 import { ENTITY_ICONS } from "@/lib/entity-icons";
 import type { ChatConversation } from "@/modules/chat/types";
 import { AppBottomSheet } from "@/modules/ui/app-bottom-sheet";
-import { BloomMenu } from "@/modules/ui/bloom-menu";
+import { AppSheet } from "@/modules/ui/app-sheet";
 import { FormInput } from "@/modules/ui/form-input";
 import { PressableCard } from "@/modules/ui/pressable-card";
 import { PullToRefresh } from "@/modules/ui/pull-to-refresh";
@@ -96,6 +103,8 @@ type SheetKind =
   | "renew"
   | "mark-paid"
   | "link-parent"
+  | "delete"
+  | "toggle-active"
   | null;
 
 export const Route = createFileRoute("/app/students/$id")({
@@ -251,6 +260,14 @@ function StudentDetailPage() {
     setSheet("link-parent");
   }
 
+  function openDelete() {
+    setSheet("delete");
+  }
+
+  function openToggleActive() {
+    setSheet("toggle-active");
+  }
+
   const deleteStudent = useMutation({
     mutationFn: () => api.delete(`/users/studio/${STUDIO_ID}/students/${id}`),
     onSuccess: async () => {
@@ -387,6 +404,32 @@ function StudentDetailPage() {
     linkParent.error ??
     messageStudent.error;
 
+  function handleAction(actionId: string | number) {
+    if (actionId === "message") {
+      messageStudent.mutate();
+      return;
+    }
+    if (actionId === "edit") {
+      openEdit();
+      return;
+    }
+    if (actionId === "assign") {
+      openAssign();
+      return;
+    }
+    if (actionId === "link-parent") {
+      openLinkParent();
+      return;
+    }
+    if (actionId === "toggle-active") {
+      openToggleActive();
+      return;
+    }
+    if (actionId === "delete") {
+      openDelete();
+    }
+  }
+
   return (
     <Screen
       title={profile?.student.name ?? "Student"}
@@ -396,69 +439,48 @@ function StudentDetailPage() {
       actions={
         profile ? (
           <div className={staff.rowActions}>
-            <BloomMenu
-              size="compact"
-              tone="quiet"
-              triggerLabel="Actions"
-              triggerIcon="more-horizontal"
-              panelTitle="Student actions"
-              columns={2}
-              items={[
-                { id: "message", label: "Message", icon: "message-square" },
-                { id: "edit", label: "Edit profile", icon: "edit" },
-                { id: "assign", label: "Assign plan", icon: "credit-card" },
-                { id: "link-parent", label: "Link parent", icon: "users" },
-                {
-                  id: "toggle-active",
-                  label: profile.student.active ? "Deactivate" : "Reactivate",
-                  icon: profile.student.active ? "user" : "check-circle",
-                },
-                { id: "delete", label: "Delete", icon: "trash" },
-              ]}
-              onSelect={(actionId) => {
-                if (actionId === "message") {
-                  messageStudent.mutate();
-                  return;
-                }
-                if (actionId === "edit") {
-                  openEdit();
-                  return;
-                }
-                if (actionId === "assign") {
-                  openAssign();
-                  return;
-                }
-                if (actionId === "link-parent") {
-                  openLinkParent();
-                  return;
-                }
-                if (actionId === "toggle-active") {
-                  const nextActive = !profile.student.active;
-                  const label = nextActive ? "Reactivate" : "Deactivate";
-                  if (
-                    window.confirm(
-                      `${label} “${profile.student.name}”? ${
-                        nextActive
-                          ? "They will regain access to the member app."
-                          : "They will lose access to the member app. History is kept."
-                      }`,
-                    )
-                  ) {
-                    updateStudent.mutate({ active: nextActive });
+            <Menu>
+              <TouchButton
+                size="sm"
+                variant="quiet"
+                aria-label="Student actions"
+                data-testid="student-actions"
+              >
+                <Icon name="more-horizontal" />
+                Actions
+              </TouchButton>
+              <MenuContent
+                placement="bottom end"
+                onAction={handleAction}
+                aria-label="Student actions"
+              >
+                <MenuItem id="message" textValue="Message">
+                  <MenuItemLabel>Message</MenuItemLabel>
+                </MenuItem>
+                <MenuItem id="edit" textValue="Edit profile">
+                  <MenuItemLabel>Edit profile</MenuItemLabel>
+                </MenuItem>
+                <MenuItem id="assign" textValue="Assign plan">
+                  <MenuItemLabel>Assign plan</MenuItemLabel>
+                </MenuItem>
+                <MenuItem id="link-parent" textValue="Link parent">
+                  <MenuItemLabel>Link parent</MenuItemLabel>
+                </MenuItem>
+                <MenuItem
+                  id="toggle-active"
+                  textValue={
+                    profile.student.active ? "Deactivate" : "Reactivate"
                   }
-                  return;
-                }
-                if (actionId === "delete") {
-                  if (
-                    window.confirm(
-                      `Delete “${profile.student.name}”? This removes their enrollments, memberships, and attendance. This cannot be undone.`,
-                    )
-                  ) {
-                    deleteStudent.mutate();
-                  }
-                }
-              }}
-            />
+                >
+                  <MenuItemLabel>
+                    {profile.student.active ? "Deactivate" : "Reactivate"}
+                  </MenuItemLabel>
+                </MenuItem>
+                <MenuItem id="delete" textValue="Delete" variant="danger">
+                  <MenuItemLabel>Delete</MenuItemLabel>
+                </MenuItem>
+              </MenuContent>
+            </Menu>
           </div>
         ) : null
       }
@@ -1078,6 +1100,98 @@ function StudentDetailPage() {
           </div>
         </div>
       </AppBottomSheet>
+
+      <AppSheet
+        isOpen={sheet === "delete"}
+        onOpenChange={(open) => {
+          if (!open) closeSheet();
+        }}
+        title="Delete student"
+      >
+        <div className={staff.sheetStack}>
+          <p className={staff.rowMeta}>
+            Delete “{profile?.student.name}”? This removes their enrollments,
+            memberships, and attendance. This cannot be undone.
+          </p>
+          {deleteStudent.isError ? (
+            <ErrorState
+              description={
+                deleteStudent.error instanceof Error
+                  ? deleteStudent.error.message
+                  : "Could not delete student."
+              }
+            />
+          ) : null}
+          <div className={staff.sheetActions}>
+            <TouchButton
+              variant="default"
+              fullWidth
+              isDisabled={deleteStudent.isPending}
+              onClick={closeSheet}
+            >
+              Cancel
+            </TouchButton>
+            <TouchButton
+              variant="danger"
+              fullWidth
+              isPending={deleteStudent.isPending}
+              data-testid="confirm-delete-student"
+              onClick={() => deleteStudent.mutate()}
+            >
+              Delete student
+            </TouchButton>
+          </div>
+        </div>
+      </AppSheet>
+
+      <AppSheet
+        isOpen={sheet === "toggle-active"}
+        onOpenChange={(open) => {
+          if (!open) closeSheet();
+        }}
+        title={
+          profile?.student.active ? "Deactivate student" : "Reactivate student"
+        }
+      >
+        <div className={staff.sheetStack}>
+          <p className={staff.rowMeta}>
+            {profile?.student.active
+              ? `Deactivate “${profile.student.name}”? They will lose access to the member app. History is kept.`
+              : `Reactivate “${profile?.student.name}”? They will regain access to the member app.`}
+          </p>
+          {updateStudent.isError ? (
+            <ErrorState
+              description={
+                updateStudent.error instanceof Error
+                  ? updateStudent.error.message
+                  : "Could not update student."
+              }
+            />
+          ) : null}
+          <div className={staff.sheetActions}>
+            <TouchButton
+              variant="default"
+              fullWidth
+              isDisabled={updateStudent.isPending}
+              onClick={closeSheet}
+            >
+              Cancel
+            </TouchButton>
+            <TouchButton
+              variant={profile?.student.active ? "danger" : "primary"}
+              fullWidth
+              isPending={updateStudent.isPending}
+              data-testid="confirm-toggle-student-active"
+              onClick={() => {
+                if (!profile) return;
+                updateStudent.mutate({ active: !profile.student.active });
+              }}
+            >
+              {profile?.student.active ? "Deactivate" : "Reactivate"}
+            </TouchButton>
+          </div>
+        </div>
+      </AppSheet>
     </Screen>
   );
 }
