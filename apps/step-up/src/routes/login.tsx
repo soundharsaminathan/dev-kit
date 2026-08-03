@@ -7,13 +7,8 @@ import { useForm } from "@tanstack/react-form";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useCallback, useState } from "react";
 import { useAuth } from "@/lib/auth";
-import {
-  DEV_USERS,
-  isAuthBypassEnabled,
-  SEED_PASSWORD,
-  SEED_STUDIO_ID,
-  type UserRole,
-} from "@/lib/constants";
+import type { AuthUser } from "@/lib/auth-context";
+import { isAuthBypassEnabled, SEED_PASSWORD } from "@/lib/constants";
 import { getLastLoginIdentifier } from "@/lib/last-login";
 import {
   homePathForUser,
@@ -79,24 +74,20 @@ function LoginPage() {
   const navigate = useNavigate();
   const { redirect: redirectTo, identifier: searchIdentifier } =
     Route.useSearch();
-  const { signIn, signInWithGoogle, loginAsDev, user } = useAuth();
+  const { signIn, signInWithGoogle, loginAsSystemAdmin, user } = useAuth();
   const online = useOnlineStatus();
   const [error, setError] = useState<string | null>(null);
 
-  const redirectForRole = useCallback(
-    (_role: UserRole, authUser = user) => {
+  const redirectAfterSignIn = useCallback(
+    (authUser: AuthUser) => {
       const safeRedirect = safeInternalPath(redirectTo);
       if (safeRedirect) {
         void navigate({ to: safeRedirect, replace: true });
         return;
       }
-      if (authUser) {
-        void navigate({ to: homePathForUser(authUser), replace: true });
-        return;
-      }
-      void navigate({ to: "/", replace: true });
+      void navigate({ to: homePathForUser(authUser), replace: true });
     },
-    [navigate, redirectTo, user],
+    [navigate, redirectTo],
   );
 
   const form = useForm({
@@ -108,7 +99,7 @@ function LoginPage() {
       setError(null);
       try {
         const signedIn = await signIn(value.identifier.trim(), value.password);
-        redirectForRole(signedIn.role, signedIn);
+        redirectAfterSignIn(signedIn);
       } catch (signInError) {
         setError(
           signInError instanceof Error
@@ -123,16 +114,22 @@ function LoginPage() {
     setError(null);
     try {
       const signedIn = await signInWithGoogle();
-      redirectForRole(signedIn.role, signedIn);
+      redirectAfterSignIn(signedIn);
     } catch {
       setError("Google sign in failed");
     }
   };
 
-  const handleDevLogin = (role: UserRole) => {
-    loginAsDev(role);
-    const next = DEV_USERS[role];
-    redirectForRole(role, next);
+  const handleAdminLogin = async () => {
+    setError(null);
+    try {
+      const signedIn = await loginAsSystemAdmin();
+      redirectAfterSignIn(signedIn);
+    } catch (adminError) {
+      setError(
+        adminError instanceof Error ? adminError.message : "Unable to sign in",
+      );
+    }
   };
 
   return (
@@ -246,45 +243,40 @@ function LoginPage() {
             )}
           </form.Subscribe>
 
-          <TouchButton
-            type="button"
-            variant="default"
-            fullWidth
-            isDisabled={!online}
-            onClick={() => void handleGoogleSignIn()}
-          >
-            Continue with Google
-          </TouchButton>
+          {!isAuthBypassEnabled() ? (
+            <TouchButton
+              type="button"
+              variant="default"
+              fullWidth
+              isDisabled={!online}
+              onClick={() => void handleGoogleSignIn()}
+            >
+              Continue with Google
+            </TouchButton>
+          ) : null}
         </form>
 
         {isAuthBypassEnabled() ? (
           <div className={styles.dev}>
-            <p className={styles.devTitle}>Continue as</p>
+            <p className={styles.devTitle}>Local bypass</p>
             <div className={styles.devRoles}>
-              {(Object.keys(DEV_USERS) as UserRole[]).map((role) => (
-                <TouchButton
-                  key={role}
-                  type="button"
-                  variant="quiet"
-                  size="md"
-                  onClick={() => handleDevLogin(role)}
-                >
-                  {role}
-                </TouchButton>
-              ))}
+              <TouchButton
+                type="button"
+                variant="quiet"
+                size="md"
+                onClick={() => void handleAdminLogin()}
+              >
+                Continue as system admin
+              </TouchButton>
             </div>
+            <p className={styles.devHint}>
+              Other accounts are created from /admin. Sign in with that email.
+            </p>
           </div>
         ) : null}
 
         <Link to="/register" className={styles.footerLink}>
           New here? Create a student account
-        </Link>
-        <Link
-          to="/studio/$studioId"
-          params={{ studioId: SEED_STUDIO_ID }}
-          className={styles.footerLink}
-        >
-          Browse the public studio page
         </Link>
       </section>
     </PublicShell>

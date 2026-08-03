@@ -69,6 +69,19 @@ test.describe("role shells @critical", () => {
     await expect(page).toHaveURL(/\/login/);
   });
 
+  test("system admin signs in from login @critical", async ({ page }) => {
+    await page.goto("/login");
+    await waitForAppReady(page);
+    await page
+      .getByRole("button", { name: "Continue as system admin" })
+      .click();
+    await waitForAppReady(page);
+    await expect(page).toHaveURL(/\/admin\/?$/);
+    await expect(
+      page.getByRole("heading", { name: "Studios", exact: true }),
+    ).toBeVisible();
+  });
+
   test("system admin lands on admin studios @critical", async ({ browser }) => {
     const context = await browser.newContext({
       storageState: authFile("SYSTEM_ADMIN"),

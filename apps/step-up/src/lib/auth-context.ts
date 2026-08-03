@@ -1,13 +1,12 @@
 import { createContext } from "react";
-import type {
-  AgeRange,
-  DevUser,
-  ExperienceLevel,
-  Gender,
-  UserRole,
-} from "./constants";
+import type { AgeRange, ExperienceLevel, Gender, UserRole } from "./constants";
 
-export type AuthUser = DevUser & {
+export type AuthUser = {
+  id: string;
+  email: string;
+  name: string;
+  role: UserRole;
+  studioId: string | null;
   bio?: string | null | undefined;
   photoUrl?: string | null | undefined;
   instagramUrl?: string | null | undefined;
@@ -26,7 +25,7 @@ export type AuthContextValue = {
   hasPasswordProvider: boolean;
   emailVerified: boolean;
   needsEmailVerification: boolean;
-  loginAsDev: (role: UserRole) => void;
+  loginAsSystemAdmin: () => Promise<AuthUser>;
   signIn: (identifier: string, password: string) => Promise<AuthUser>;
   signUp: (
     email: string,

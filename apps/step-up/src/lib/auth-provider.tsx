@@ -23,7 +23,7 @@ import {
   useState,
 } from "react";
 import { flushSync } from "react-dom";
-import { apiRequest } from "./api";
+import { ApiError, apiRequest } from "./api";
 import {
   AuthContext,
   type AuthContextValue,
@@ -32,16 +32,17 @@ import {
 import { mapAuthError } from "./auth-errors";
 import {
   type AgeRange,
-  DEV_USERS,
   type ExperienceLevel,
-  findDevUserByLogin,
   type Gender,
   isAuthBypassEnabled,
   resolveLoginEmail,
+  SEED_SYSTEM_ADMIN,
   type UserRole,
 } from "./constants";
 import { getFirebaseAuth, googleProvider } from "./firebase";
 import { setLastLoginIdentifier } from "./last-login";
+
+const AUTH_BOOTSTRAP_TIMEOUT_MS = 12_000;
 
 function userHasPasswordProvider(firebaseUser: FirebaseUser | null): boolean {
   if (!firebaseUser) {
@@ -72,7 +73,7 @@ type SyncedApiUser = {
 
 const STORAGE_KEY = "step-up-dev-user";
 
-function readStoredDevUser(): AuthUser | null {
+function readStoredBypassUser(): AuthUser | null {
   if (!isAuthBypassEnabled()) {
     return null;
   }
@@ -157,10 +158,12 @@ async function createBypassStudent(input: {
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<AuthUser | null>(() => readStoredDevUser());
+  const [user, setUser] = useState<AuthUser | null>(() =>
+    readStoredBypassUser(),
+  );
   const [hasPasswordProvider, setHasPasswordProvider] = useState(false);
   const [emailVerified, setEmailVerified] = useState(() =>
-    isAuthBypassEnabled() ? Boolean(readStoredDevUser()) : false,
+    isAuthBypassEnabled() ? Boolean(readStoredBypassUser()) : false,
   );
   const [loading, setLoading] = useState(() => !isAuthBypassEnabled());
   const syncWaitersRef = useRef(
@@ -226,7 +229,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (isAuthBypassEnabled()) {
       setHasPasswordProvider(false);
       setEmailVerified(true);
-      const stored = readStoredDevUser();
+      setLoading(false);
+      const stored = readStoredBypassUser();
       if (!stored) {
         return;
       }
@@ -246,8 +250,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setUser(mapped);
           setEmailVerified(true);
           localStorage.setItem(STORAGE_KEY, JSON.stringify(mapped));
-        } catch {
-          // Keep the stored bypass session if the API blips.
+        } catch (error) {
+          if (cancelled) {
+            return;
+          }
+          // Drop stale bypass sessions when the account was deleted.
+          if (error instanceof ApiError && error.status === 401) {
+            localStorage.removeItem(STORAGE_KEY);
+            setUser(null);
+            setEmailVerified(false);
+          }
         }
       })();
 
@@ -263,6 +275,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     let cancelled = false;
+    let settled = false;
+    const finishLoading = () => {
+      if (!cancelled && !settled) {
+        settled = true;
+        setLoading(false);
+      }
+    };
+
+    // Firebase can hang (IndexedDB / network). Never leave DanceLoader forever.
+    const bootstrapTimeout = window.setTimeout(() => {
+      finishLoading();
+    }, AUTH_BOOTSTRAP_TIMEOUT_MS);
 
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       void (async () => {
@@ -272,12 +296,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setUser(null);
             setHasPasswordProvider(false);
             setEmailVerified(false);
-            setLoading(false);
+            finishLoading();
           }
           return;
         }
 
         if (!cancelled) {
+          settled = false;
           setLoading(true);
           setHasPasswordProvider(userHasPasswordProvider(firebaseUser));
           setEmailVerified(firebaseUser.emailVerified);
@@ -286,10 +311,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         try {
           const pendingStudioId = pendingStudioIdRef.current;
           pendingStudioIdRef.current = null;
-          const synced = await syncFirebaseUser(
-            firebaseUser,
-            pendingStudioId ? { studioId: pendingStudioId } : undefined,
-          );
+          const synced = await Promise.race([
+            syncFirebaseUser(
+              firebaseUser,
+              pendingStudioId ? { studioId: pendingStudioId } : undefined,
+            ),
+            new Promise<never>((_, reject) => {
+              window.setTimeout(() => {
+                reject(new Error("Account sync timed out"));
+              }, AUTH_BOOTSTRAP_TIMEOUT_MS);
+            }),
+          ]);
           if (!cancelled) {
             setUser(synced);
             setHasPasswordProvider(userHasPasswordProvider(firebaseUser));
@@ -305,15 +337,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             await signOut(auth).catch(() => undefined);
           }
         } finally {
-          if (!cancelled) {
-            setLoading(false);
-          }
+          finishLoading();
         }
       })();
     });
 
     return () => {
       cancelled = true;
+      window.clearTimeout(bootstrapTimeout);
       unsubscribe();
     };
   }, [settleSyncWaiters]);
@@ -330,36 +361,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
   }, []);
 
-  const loginAsDev = useCallback(
-    (role: UserRole) => {
-      const devUser = DEV_USERS[role];
-      commitBypassSession(devUser);
-      setLastLoginIdentifier(devUser.email);
-    },
-    [commitBypassSession],
-  );
+  const loginAsSystemAdmin = useCallback(async () => {
+    try {
+      const synced = await apiRequest<SyncedApiUser>("/auth/bypass-login", {
+        method: "POST",
+        body: { email: SEED_SYSTEM_ADMIN.email },
+      });
+      const mapped = mapSyncedUser(synced);
+      commitBypassSession(mapped);
+      setLastLoginIdentifier(SEED_SYSTEM_ADMIN.email);
+      return mapped;
+    } catch {
+      throw new Error(
+        "System admin is missing. Run pnpm --filter @step-up/api prisma:seed.",
+      );
+    }
+  }, [commitBypassSession]);
 
   const signIn = useCallback(
     async (identifier: string, _password: string) => {
       if (isAuthBypassEnabled()) {
-        const match = findDevUserByLogin(identifier);
-        if (match) {
-          loginAsDev(match.role);
-          setLastLoginIdentifier(identifier);
-          return match;
-        }
-
-        const trimmed = identifier.trim().toLowerCase();
-        if (!trimmed.includes("@")) {
+        let email: string;
+        try {
+          email = resolveLoginEmail(identifier).toLowerCase();
+        } catch {
           throw new Error(
-            `No dev account matches “${identifier.trim()}”. Try owner, staff, trainer, student, parent, or an email you registered with.`,
+            `No account matches “${identifier.trim()}”. Use an email, or admin for the seeded system admin.`,
           );
         }
 
         try {
           const synced = await apiRequest<SyncedApiUser>("/auth/bypass-login", {
             method: "POST",
-            body: { email: trimmed },
+            body: { email },
           });
           const mapped = mapSyncedUser(synced);
           commitBypassSession(mapped);
@@ -367,7 +401,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return mapped;
         } catch {
           throw new Error(
-            `No account found for “${trimmed}”. Register first, or use a seeded role like student.`,
+            `No account found for “${email}”. Create users from /admin, or register as a student.`,
           );
         }
       }
@@ -387,7 +421,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLastLoginIdentifier(identifier);
       return synced;
     },
-    [commitBypassSession, loginAsDev, waitForSync],
+    [commitBypassSession, waitForSync],
   );
 
   const signUp = useCallback(
@@ -472,8 +506,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setLastLoginIdentifier(created.email);
           return created;
         }
-        loginAsDev("STUDENT");
-        return DEV_USERS.STUDENT;
+        throw new Error(
+          "Google sign-in needs Firebase Auth. With bypass enabled, sign in with an account email or Continue as system admin.",
+        );
       }
 
       const auth = getFirebaseAuth();
@@ -489,7 +524,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLastLoginIdentifier(synced.email);
       return synced;
     },
-    [commitBypassSession, loginAsDev, waitForSync],
+    [commitBypassSession, waitForSync],
   );
 
   const resetPassword = useCallback(async (email: string) => {
@@ -758,7 +793,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       hasPasswordProvider,
       emailVerified,
       needsEmailVerification,
-      loginAsDev,
+      loginAsSystemAdmin,
       signIn,
       signUp,
       signInWithGoogle,
@@ -777,7 +812,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       hasPasswordProvider,
       emailVerified,
       needsEmailVerification,
-      loginAsDev,
+      loginAsSystemAdmin,
       signIn,
       signUp,
       signInWithGoogle,

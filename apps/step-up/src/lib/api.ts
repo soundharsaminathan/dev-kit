@@ -62,19 +62,34 @@ export function getPublic<T>(
 async function withAuthToken<T>(
   getToken: () => Promise<string | null>,
   run: (token: string) => Promise<T>,
+  onUnauthorized?: () => void,
 ): Promise<T> {
   const token = await getToken();
   if (!token) {
+    onUnauthorized?.();
     throw new ApiError("Missing auth token", 401);
   }
-  return run(token);
+  try {
+    return await run(token);
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 401) {
+      onUnauthorized?.();
+    }
+    throw error;
+  }
 }
 
-export function createApiClient(getToken: () => Promise<string | null>) {
+export function createApiClient(
+  getToken: () => Promise<string | null>,
+  options?: { onUnauthorized?: () => void },
+) {
+  const onUnauthorized = options?.onUnauthorized;
   return {
     get<T>(path: string, init?: Omit<RequestOptions, "body" | "token">) {
-      return withAuthToken(getToken, (token) =>
-        request<T>(path, { ...init, token }),
+      return withAuthToken(
+        getToken,
+        (token) => request<T>(path, { ...init, token }),
+        onUnauthorized,
       );
     },
     post<T>(
@@ -82,8 +97,10 @@ export function createApiClient(getToken: () => Promise<string | null>) {
       body?: unknown,
       init?: Omit<RequestOptions, "body" | "token">,
     ) {
-      return withAuthToken(getToken, (token) =>
-        request<T>(path, { ...init, method: "POST", body, token }),
+      return withAuthToken(
+        getToken,
+        (token) => request<T>(path, { ...init, method: "POST", body, token }),
+        onUnauthorized,
       );
     },
     patch<T>(
@@ -91,8 +108,10 @@ export function createApiClient(getToken: () => Promise<string | null>) {
       body?: unknown,
       init?: Omit<RequestOptions, "body" | "token">,
     ) {
-      return withAuthToken(getToken, (token) =>
-        request<T>(path, { ...init, method: "PATCH", body, token }),
+      return withAuthToken(
+        getToken,
+        (token) => request<T>(path, { ...init, method: "PATCH", body, token }),
+        onUnauthorized,
       );
     },
     put<T>(
@@ -100,13 +119,17 @@ export function createApiClient(getToken: () => Promise<string | null>) {
       body?: unknown,
       init?: Omit<RequestOptions, "body" | "token">,
     ) {
-      return withAuthToken(getToken, (token) =>
-        request<T>(path, { ...init, method: "PUT", body, token }),
+      return withAuthToken(
+        getToken,
+        (token) => request<T>(path, { ...init, method: "PUT", body, token }),
+        onUnauthorized,
       );
     },
     delete<T>(path: string, init?: Omit<RequestOptions, "body" | "token">) {
-      return withAuthToken(getToken, (token) =>
-        request<T>(path, { ...init, method: "DELETE", token }),
+      return withAuthToken(
+        getToken,
+        (token) => request<T>(path, { ...init, method: "DELETE", token }),
+        onUnauthorized,
       );
     },
   };
