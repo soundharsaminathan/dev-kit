@@ -155,11 +155,13 @@ function MenuContent<T extends CollectionItem>({
     children: getCollectionChild,
   });
 
+  const { onAction: onActionProp, ...restProps } = props;
   const { menuProps: listProps } = useMenu(
     {
       ...menuProps,
-      ...props,
-      onAction: () => {
+      ...restProps,
+      onAction: (key) => {
+        onActionProp?.(key);
         overlayState.close();
       },
     },

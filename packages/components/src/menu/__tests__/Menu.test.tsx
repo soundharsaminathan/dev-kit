@@ -59,6 +59,19 @@ describe("Menu", () => {
     expect(screen.queryByRole("menu")).not.toBeInTheDocument();
   });
 
+  it("calls onAction when an item is selected", () => {
+    const onAction = vi.fn();
+    renderActionsMenu({
+      menuContentProps: { onAction },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Actions" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Edit" }));
+
+    expect(onAction).toHaveBeenCalledWith("edit");
+    expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+  });
+
   it("closes the menu on Escape", () => {
     renderActionsMenu({ defaultOpen: true });
 

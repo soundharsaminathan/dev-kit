@@ -1,4 +1,11 @@
 import { Badge } from "@dev-ui/components/badge";
+import {
+  Menu,
+  MenuContent,
+  MenuItem,
+  MenuItemLabel,
+} from "@dev-ui/components/menu";
+import { Icon } from "@dev-ui/icons";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
@@ -20,7 +27,6 @@ import {
   type StudentGender,
 } from "@/modules/students/student-filter-types";
 import { StudentFiltersToolbar } from "@/modules/students/student-filters-toolbar";
-import { BloomMenu } from "@/modules/ui/bloom-menu";
 import { PressableCard } from "@/modules/ui/pressable-card";
 import { PullToRefresh } from "@/modules/ui/pull-to-refresh";
 import { Screen } from "@/modules/ui/screen";
@@ -37,9 +43,9 @@ type StudentsSearch = {
 };
 
 const CREATE_ITEMS = [
-  { id: "single", label: "Single add", icon: ENTITY_ICONS.student },
-  { id: "bulk", label: "Bulk import", icon: "upload" as const },
-];
+  { id: "single", label: "Single add" },
+  { id: "bulk", label: "Bulk import" },
+] as const;
 
 const NEW_USER_DAYS = 14;
 
@@ -136,7 +142,7 @@ function StudentsPage() {
     return applyStudentFilters(query.data ?? [], draft).length;
   }
 
-  function handleCreateSelect(id: string) {
+  function handleCreateSelect(id: string | number) {
     if (id === "bulk") {
       void navigate({ to: "/app/students/import" });
       return;
@@ -209,12 +215,28 @@ function StudentsPage() {
       title="Students"
       subtitle={subtitle}
       actions={
-        <BloomMenu
-          items={CREATE_ITEMS}
-          triggerLabel="Add student(s)"
-          panelTitle="Add student(s)"
-          onSelect={handleCreateSelect}
-        />
+        <Menu>
+          <TouchButton
+            size="sm"
+            variant="primary"
+            aria-label="Add student(s)"
+            data-testid="add-student-menu"
+          >
+            <Icon name="plus" />
+            Add student(s)
+          </TouchButton>
+          <MenuContent
+            placement="bottom end"
+            onAction={handleCreateSelect}
+            aria-label="Add student(s)"
+          >
+            {CREATE_ITEMS.map((item) => (
+              <MenuItem key={item.id} id={item.id} textValue={item.label}>
+                <MenuItemLabel>{item.label}</MenuItemLabel>
+              </MenuItem>
+            ))}
+          </MenuContent>
+        </Menu>
       }
     >
       <PullToRefresh onRefresh={() => query.refetch()}>
