@@ -74,7 +74,10 @@ setup("authenticate smoke roles", async ({ page, request }) => {
 
     await page.getByLabel(/email or username/i).fill(user.email);
     await page.locator('input[type="password"]').fill(password);
-    await page.getByRole("button", { name: /^sign in$/i }).click();
+    await page
+      .getByRole("main")
+      .getByRole("button", { name: /^sign in$/i })
+      .click();
 
     await expect(page).toHaveURL(new RegExp(home.replace("/", "\\/")), {
       timeout: 60_000,
