@@ -1,4 +1,5 @@
 import { Button } from "@dev-ui/components/button";
+import { Label } from "@dev-ui/components/field";
 import { ThemeEditorPanel } from "@dev-ui/components/theme-editor";
 import { useToastContext } from "@dev-ui/components/toast";
 import { useTheme } from "@dev-ui/core";
@@ -16,6 +17,7 @@ import { BrandingPanel } from "@/modules/branding/branding-panel";
 import type { StudioBrandThemePayload } from "@/modules/branding/types";
 import type { Studio } from "@/modules/settings/types";
 import { FormInput } from "@/modules/ui/form-input";
+import { PasswordInput } from "@/modules/ui/password-input";
 import { StudioPaymentsFields } from "./studio-payments-fields";
 import styles from "./studio-wizard.module.scss";
 
@@ -26,6 +28,7 @@ type CreateStudioResult = {
   name: string;
   owner: { id: string; email: string; name: string };
   ownerProvisioned: boolean;
+  temporaryPassword: string | null;
   setupHint: string | null;
 };
 
@@ -44,6 +47,16 @@ function themesEqual(
   return JSON.stringify(a) === JSON.stringify(b);
 }
 
+function generateTemporaryPassword() {
+  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
+  const bytes = crypto.getRandomValues(new Uint8Array(10));
+  let value = "Su-";
+  for (const byte of bytes) {
+    value += alphabet[byte % alphabet.length];
+  }
+  return value;
+}
+
 export function StudioWizard(props: StudioWizardProps) {
   const api = useApi();
   const navigate = useNavigate();
@@ -59,12 +72,18 @@ export function StudioWizard(props: StudioWizardProps) {
   const [ownerName, setOwnerName] = useState(studio?.owner?.name ?? "");
   const [address, setAddress] = useState(studio?.address ?? "");
   const [contact, setContact] = useState(studio?.contact ?? "");
+  const [temporaryPassword, setTemporaryPassword] = useState(() =>
+    generateTemporaryPassword(),
+  );
   const [draft, setDraft] = useState<ThemeDraft>(() =>
     brandThemeToDraft(studio?.brandTheme, studio?.name ?? "Studio brand"),
   );
   const [razorpayKeyId, setRazorpayKeyId] = useState("");
   const [razorpayKeySecret, setRazorpayKeySecret] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
+  const [createdResult, setCreatedResult] = useState<CreateStudioResult | null>(
+    null,
+  );
 
   const defaultThemePayload = useMemo(
     () =>
@@ -96,15 +115,34 @@ export function StudioWizard(props: StudioWizardProps) {
   }, [setLiveTheme]);
 
   const detailsValid =
-    name.trim().length > 0 && (isCreate ? ownerEmail.trim().length > 0 : true);
+    name.trim().length > 0 &&
+    (isCreate
+      ? ownerEmail.trim().length > 0 && temporaryPassword.trim().length >= 8
+      : true);
 
   const stepIsValid = [detailsValid, true, true] as const;
+
+  async function copyText(label: string, value: string) {
+    try {
+      await navigator.clipboard.writeText(value);
+      toast({
+        title: `${label} copied`,
+        variant: "success",
+      });
+    } catch {
+      toast({
+        title: `Couldn’t copy ${label.toLowerCase()}`,
+        variant: "error",
+      });
+    }
+  }
 
   const createMutation = useMutation({
     mutationFn: async (options: { includePayments: boolean }) => {
       const created = await api.post<CreateStudioResult>("/studios", {
         name: name.trim(),
         ownerEmail: ownerEmail.trim(),
+        temporaryPassword: temporaryPassword.trim(),
         ...(ownerName.trim() ? { ownerName: ownerName.trim() } : {}),
         ...(address.trim() ? { address: address.trim() } : {}),
         ...(contact.trim() ? { contact: contact.trim() } : {}),
@@ -138,6 +176,7 @@ export function StudioWizard(props: StudioWizardProps) {
     },
     onSuccess: (result) => {
       setFormError(null);
+      setCreatedResult(result);
       void queryClient.invalidateQueries({ queryKey: ["admin", "studios"] });
       toast({
         title: "Studio created",
@@ -146,7 +185,6 @@ export function StudioWizard(props: StudioWizardProps) {
           : `${result.name} was provisioned successfully.`,
         variant: "success",
       });
-      void navigate({ to: "/admin" });
     },
     onError: (error) => {
       const message =
@@ -222,6 +260,89 @@ export function StudioWizard(props: StudioWizardProps) {
 
   const pending = createMutation.isPending || updateMutation.isPending;
   const progressPct = ((step + 1) / STEPS.length) * 100;
+
+  if (createdResult) {
+    const passwordToShare =
+      createdResult.temporaryPassword ?? temporaryPassword;
+    return (
+      <section className={`page stack ${styles.create}`}>
+        <header className={styles.hero}>
+          <div className={styles.heroCopy}>
+            <p className={styles.brandMark}>
+              <span className={styles.brandDot} aria-hidden />
+              Step Up · Admin
+            </p>
+            <h1 className={styles.heroTitle}>Studio ready</h1>
+            <p className={styles.heroDescription}>
+              {createdResult.name} is live. Share these credentials with the
+              owner — they’ll change the password on first login.
+            </p>
+          </div>
+        </header>
+
+        <div className={styles.wizard}>
+          <div className={`${styles.panel} ${styles.successPanel}`}>
+            <div className={styles.panelHeader}>
+              <p className={styles.eyebrow}>Owner access</p>
+              <h2>Temporary login</h2>
+            </div>
+            <div className={styles.credentialList}>
+              <div className={styles.credentialRow}>
+                <div>
+                  <p className={styles.credentialLabel}>Email</p>
+                  <p className={styles.credentialValue}>
+                    {createdResult.owner.email}
+                  </p>
+                </div>
+                <Button
+                  variant="quiet"
+                  type="button"
+                  onClick={() =>
+                    void copyText("Email", createdResult.owner.email)
+                  }
+                >
+                  Copy
+                </Button>
+              </div>
+              <div className={styles.credentialRow}>
+                <div>
+                  <p className={styles.credentialLabel}>Temporary password</p>
+                  <p
+                    className={styles.credentialValue}
+                    data-testid="studio-temp-password"
+                  >
+                    {passwordToShare}
+                  </p>
+                </div>
+                <Button
+                  variant="quiet"
+                  type="button"
+                  onClick={() =>
+                    void copyText("Temporary password", passwordToShare)
+                  }
+                >
+                  Copy
+                </Button>
+              </div>
+            </div>
+            <p className={styles.help}>
+              This password is shown once here. The owner must set a new
+              password before using the studio app.
+            </p>
+            <div className={styles.actions}>
+              <Button
+                variant="primary"
+                type="button"
+                onClick={() => void navigate({ to: "/admin" })}
+              >
+                Done
+              </Button>
+            </div>
+          </div>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className={`page stack ${styles.create}`}>
@@ -311,6 +432,31 @@ export function StudioWizard(props: StudioWizardProps) {
                     onChange={setOwnerName}
                     autoComplete="name"
                   />
+                  <div className={`${styles.fullWidth} ${styles.tempPassword}`}>
+                    <Label data-required="true">Temporary password</Label>
+                    <div className={styles.tempPasswordRow}>
+                      <PasswordInput
+                        name="temporaryPassword"
+                        value={temporaryPassword}
+                        onChange={setTemporaryPassword}
+                        autoComplete="new-password"
+                        required
+                      />
+                      <Button
+                        variant="quiet"
+                        type="button"
+                        onClick={() =>
+                          setTemporaryPassword(generateTemporaryPassword())
+                        }
+                      >
+                        Regenerate
+                      </Button>
+                    </div>
+                    <p className={styles.help}>
+                      Shared with the owner once. They must change it on first
+                      login.
+                    </p>
+                  </div>
                 </>
               ) : (
                 <p className={styles.ownerMeta}>

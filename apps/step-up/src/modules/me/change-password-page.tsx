@@ -7,6 +7,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { isAuthBypassEnabled } from "@/lib/constants";
+import { homePathForUser } from "@/lib/require-auth";
 import { PasswordInput } from "@/modules/ui/password-input";
 import { Screen } from "@/modules/ui/screen";
 import { TouchButton } from "@/modules/ui/touch-button";
@@ -27,7 +28,8 @@ function fieldError(errors: unknown[]): string | undefined {
   return typeof first === "string" ? first : undefined;
 }
 
-function validateCurrentPassword(value: string) {
+function validateCurrentPassword(value: string, required: boolean) {
+  if (!required) return undefined;
   if (!value) return "Enter your current password";
   return undefined;
 }
@@ -48,9 +50,10 @@ export function ChangePasswordPage({
   backTo = "/me/profile/security",
 }: ChangePasswordPageProps) {
   const navigate = useNavigate();
-  const { changePassword, hasPasswordProvider } = useAuth();
+  const { changePassword, hasPasswordProvider, user } = useAuth();
   const online = useOnlineStatus();
   const bypass = isAuthBypassEnabled();
+  const forced = Boolean(user?.mustChangePassword);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
@@ -68,6 +71,12 @@ export function ChangePasswordPage({
         setSuccess(true);
         form.reset();
         window.setTimeout(() => {
+          if (forced && user) {
+            void navigate({
+              to: homePathForUser({ ...user, mustChangePassword: false }),
+            });
+            return;
+          }
           void navigate({ to: backTo });
         }, 1200);
       } catch (changeError) {
@@ -80,21 +89,37 @@ export function ChangePasswordPage({
     },
   });
 
-  const unavailable = bypass || !hasPasswordProvider;
+  const unavailable = (!forced && bypass) || (!bypass && !hasPasswordProvider);
 
   return (
-    <Screen title="Change password" showBack backTo={backTo}>
+    <Screen
+      title={forced ? "Set a new password" : "Change password"}
+      showBack={!forced}
+      backTo={backTo}
+    >
       <div className={styles.root}>
         <p className={styles.description}>
-          Confirm your current password, then choose a new one.
+          {forced
+            ? "You’re signing in with a temporary password. Choose a new one to continue."
+            : "Confirm your current password, then choose a new one."}
         </p>
 
-        {bypass ? (
+        {bypass && !forced ? (
           <Alert variant="warning">
             <AlertTitle>Auth bypass is on</AlertTitle>
             <AlertDescription>
               Password changes need Firebase. Turn off auth bypass to update
               your password.
+            </AlertDescription>
+          </Alert>
+        ) : null}
+
+        {bypass && forced ? (
+          <Alert variant="warning">
+            <AlertTitle>Auth bypass is on</AlertTitle>
+            <AlertDescription>
+              Dev mode won’t update Firebase. Submitting clears the first-login
+              password requirement so you can continue.
             </AlertDescription>
           </Alert>
         ) : null}
@@ -120,7 +145,9 @@ export function ChangePasswordPage({
           <Alert variant="success">
             <AlertTitle>Password updated</AlertTitle>
             <AlertDescription>
-              Your new password is saved. Taking you back…
+              {forced
+                ? "Your new password is saved. Taking you in…"
+                : "Your new password is saved. Taking you back…"}
             </AlertDescription>
           </Alert>
         ) : null}
@@ -143,33 +170,39 @@ export function ChangePasswordPage({
             void form.handleSubmit();
           }}
         >
-          <form.Field
-            name="currentPassword"
-            validators={{
-              onBlur: ({ value }) => validateCurrentPassword(value),
-              onSubmit: ({ value }) => validateCurrentPassword(value),
-            }}
-          >
-            {(field) => {
-              const err = fieldError(field.state.meta.errors);
-              return (
-                <TextField>
-                  <Label data-required="true">Current password</Label>
-                  <PasswordInput
-                    name={field.name}
-                    value={field.state.value}
-                    onBlur={field.handleBlur}
-                    onChange={field.handleChange}
-                    autoComplete="current-password"
-                    isInvalid={Boolean(err)}
-                    required
-                    isDisabled={unavailable}
-                  />
-                  {err ? <FieldError>{err}</FieldError> : null}
-                </TextField>
-              );
-            }}
-          </form.Field>
+          {!bypass || !forced ? (
+            <form.Field
+              name="currentPassword"
+              validators={{
+                onBlur: ({ value }) =>
+                  validateCurrentPassword(value, !bypass || !forced),
+                onSubmit: ({ value }) =>
+                  validateCurrentPassword(value, !bypass || !forced),
+              }}
+            >
+              {(field) => {
+                const err = fieldError(field.state.meta.errors);
+                return (
+                  <TextField>
+                    <Label data-required="true">
+                      {forced ? "Temporary password" : "Current password"}
+                    </Label>
+                    <PasswordInput
+                      name={field.name}
+                      value={field.state.value}
+                      onBlur={field.handleBlur}
+                      onChange={field.handleChange}
+                      autoComplete="current-password"
+                      isInvalid={Boolean(err)}
+                      required
+                      isDisabled={unavailable}
+                    />
+                    {err ? <FieldError>{err}</FieldError> : null}
+                  </TextField>
+                );
+              }}
+            </form.Field>
+          ) : null}
 
           <form.Field
             name="newPassword"
@@ -250,7 +283,7 @@ export function ChangePasswordPage({
                 isPending={isSubmitting}
                 isDisabled={!online || unavailable || isSubmitting || success}
               >
-                Update password
+                {forced ? "Save and continue" : "Update password"}
               </TouchButton>
             )}
           </form.Subscribe>

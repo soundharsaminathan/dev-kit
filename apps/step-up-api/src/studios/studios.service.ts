@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { randomBytes, randomUUID } from "node:crypto";
 import {
   BadRequestException,
   ConflictException,
@@ -8,6 +8,7 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { Prisma, UserRole } from "@prisma/client";
+import { FirebaseService } from "../auth/firebase.service";
 import { MediaService } from "../media/media.service";
 import { RazorpayService } from "../payments/razorpay.service";
 import { PrismaService } from "../prisma/prisma.service";
@@ -20,7 +21,20 @@ export type CreateStudioInput = {
   contact?: string;
   ownerEmail: string;
   ownerName?: string;
+  temporaryPassword?: string;
 };
+
+function generateTemporaryPassword() {
+  return `Su-${randomBytes(6).toString("base64url")}`;
+}
+
+function isPlaceholderFirebaseUid(firebaseUid: string) {
+  return (
+    firebaseUid.startsWith("provisioned:") ||
+    firebaseUid.startsWith("staff-created:") ||
+    firebaseUid.startsWith("dev-")
+  );
+}
 
 @Injectable()
 export class StudiosService {
@@ -29,6 +43,7 @@ export class StudiosService {
     @Inject(UserCryptoService) private readonly crypto: UserCryptoService,
     @Inject(MediaService) private readonly media: MediaService,
     @Inject(RazorpayService) private readonly razorpay: RazorpayService,
+    @Inject(FirebaseService) private readonly firebase: FirebaseService,
   ) {}
 
   async listStudios() {
@@ -73,6 +88,13 @@ export class StudiosService {
 
     const ownerName = (data.ownerName?.trim() || "Studio Owner").slice(0, 120);
     const emailHash = this.crypto.hashEmail(ownerEmail);
+    const temporaryPassword =
+      data.temporaryPassword?.trim() || generateTemporaryPassword();
+    if (temporaryPassword.length < 8) {
+      throw new BadRequestException(
+        "Temporary password must be at least 8 characters",
+      );
+    }
 
     const existing = await this.prisma.user.findFirst({
       where: { emailHash },
@@ -95,6 +117,9 @@ export class StudiosService {
       }
     }
 
+    const issueTempPassword =
+      !existing || isPlaceholderFirebaseUid(existing.firebaseUid);
+
     const result = await this.prisma.$transaction(async (tx) => {
       let ownerId: string;
       let ownerProvisioned = false;
@@ -103,7 +128,10 @@ export class StudiosService {
         ownerId = existing.id;
         await tx.user.update({
           where: { id: ownerId },
-          data: { role: UserRole.OWNER },
+          data: {
+            role: UserRole.OWNER,
+            ...(issueTempPassword ? { mustChangePassword: true } : {}),
+          },
         });
       } else {
         const sealed = this.crypto.sealPii({
@@ -119,6 +147,7 @@ export class StudiosService {
             ...sealed,
             role: UserRole.OWNER,
             styles: [],
+            mustChangePassword: true,
           },
         });
         ownerId = owner.id;
@@ -148,7 +177,40 @@ export class StudiosService {
       return { studio, owner, ownerProvisioned };
     });
 
+    if (issueTempPassword) {
+      try {
+        const firebaseUser = await this.firebase.ensureEmailPasswordUser({
+          email: ownerEmail,
+          password: temporaryPassword,
+          displayName: ownerName,
+        });
+        if (firebaseUser) {
+          const conflict = await this.prisma.user.findFirst({
+            where: {
+              firebaseUid: firebaseUser.uid,
+              id: { not: result.owner.id },
+            },
+            select: { id: true },
+          });
+          if (conflict) {
+            throw new ConflictException(
+              "A Firebase account for this email is already linked to another user",
+            );
+          }
+          await this.prisma.user.update({
+            where: { id: result.owner.id },
+            data: { firebaseUid: firebaseUser.uid },
+          });
+        }
+      } catch (error) {
+        if (error instanceof ConflictException) {
+          throw error;
+        }
+      }
+    }
+
     const owner = this.crypto.decryptUser(result.owner);
+    const returnedPassword = issueTempPassword ? temporaryPassword : null;
 
     return {
       id: result.studio.id,
@@ -161,8 +223,9 @@ export class StudiosService {
         name: owner.name,
       },
       ownerProvisioned: result.ownerProvisioned,
-      setupHint: result.ownerProvisioned
-        ? `Owner account created for ${owner.email}. They can sign in once Firebase auth is linked, or use bypass login in development.`
+      temporaryPassword: returnedPassword,
+      setupHint: returnedPassword
+        ? `Share this temporary password with ${owner.email}. They must change it on first login.`
         : null,
     };
   }

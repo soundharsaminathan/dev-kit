@@ -27,6 +27,7 @@ describe("StudiosService", () => {
       findFirst: vi.fn(),
       findUniqueOrThrow: vi.fn(),
       findMany: vi.fn(),
+      update: vi.fn(),
       updateMany: vi.fn(),
       deleteMany: vi.fn(),
     },
@@ -58,6 +59,9 @@ describe("StudiosService", () => {
   const razorpay = {
     assertValidCredentials: vi.fn(async () => undefined),
   };
+  const firebase = {
+    ensureEmailPasswordUser: vi.fn(async () => null),
+  };
 
   let service: StudiosService;
 
@@ -69,6 +73,7 @@ describe("StudiosService", () => {
       crypto as never,
       media as never,
       razorpay as never,
+      firebase as never,
     );
   });
 
@@ -223,18 +228,34 @@ describe("StudiosService", () => {
           }),
         },
       };
-      return fn(tx);
+      const result = await fn(tx);
+      expect(tx.user.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            mustChangePassword: true,
+          }),
+        }),
+      );
+      return result;
     });
 
     const result = await service.createStudio({
       name: "Nova Dance",
       ownerEmail: "owner@example.com",
       ownerName: "Nova Owner",
+      temporaryPassword: "TempPass1",
     });
 
     expect(result.id).toBe("studio-new");
     expect(result.ownerProvisioned).toBe(true);
     expect(result.owner.email).toBe("owner@example.com");
+    expect(result.temporaryPassword).toBe("TempPass1");
+    expect(result.setupHint).toMatch(/temporary password/i);
+    expect(firebase.ensureEmailPasswordUser).toHaveBeenCalledWith({
+      email: "owner@example.com",
+      password: "TempPass1",
+      displayName: "Nova Owner",
+    });
   });
 
   it("rejects owners who already belong to a studio", async () => {

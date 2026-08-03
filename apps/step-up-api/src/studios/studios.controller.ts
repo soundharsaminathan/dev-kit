@@ -47,6 +47,11 @@ class CreateStudioDto {
   @IsOptional()
   @IsString()
   ownerName?: string;
+
+  @IsOptional()
+  @IsString()
+  @MinLength(8)
+  temporaryPassword?: string;
 }
 
 class UpdateStudioDto {

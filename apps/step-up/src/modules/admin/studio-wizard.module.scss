@@ -363,6 +363,63 @@
   color: var(--color-danger, #b42318);
 }
 
+.tempPassword {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.tempPasswordRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+
+  > :first-child {
+    flex: 1 1 12rem;
+    min-width: 0;
+  }
+}
+
+.successPanel {
+  grid-column: 1 / -1;
+  max-width: 36rem;
+}
+
+.credentialList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.credentialRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid color-mix(in srgb, var(--create-accent) 16%, transparent);
+  border-radius: var(--radius-xl, 1rem);
+  background: color-mix(in srgb, var(--create-accent) 6%, transparent);
+}
+
+.credentialLabel {
+  margin: 0 0 0.2rem;
+  color: color-mix(in srgb, var(--color-fg) 58%, transparent);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.credentialValue {
+  margin: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.975rem;
+  font-weight: 600;
+  word-break: break-all;
+}
+
 @media (max-width: 760px) {
   .create {
     margin-inline: calc(-1 * var(--space-3, 0.75rem));
