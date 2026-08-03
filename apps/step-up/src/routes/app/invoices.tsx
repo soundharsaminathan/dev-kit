@@ -6,7 +6,7 @@ import { useMemo, useState } from "react";
 import { useApi } from "@/lib/api-context";
 import { requireAdmin } from "@/lib/require-auth";
 import { useStudioId } from "@/lib/use-studio-id";
-import { AppBottomSheet } from "@/modules/ui/app-bottom-sheet";
+import { AppSheet } from "@/modules/ui/app-sheet";
 import { FilterChipRow } from "@/modules/ui/filter-chip-row";
 import { PressableCard } from "@/modules/ui/pressable-card";
 import { PullToRefresh } from "@/modules/ui/pull-to-refresh";
@@ -196,7 +196,7 @@ function InvoicesPage() {
         </div>
       </PullToRefresh>
 
-      <AppBottomSheet
+      <AppSheet
         isOpen={Boolean(active)}
         onOpenChange={(open) => {
           if (!open) closeSheet();
@@ -262,7 +262,7 @@ function InvoicesPage() {
             </div>
           </div>
         ) : null}
-      </AppBottomSheet>
+      </AppSheet>
     </Screen>
   );
 }

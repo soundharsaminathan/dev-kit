@@ -1081,7 +1081,7 @@ function StudentDetailPage() {
         ) : null}
       </AppBottomSheet>
 
-      <AppBottomSheet
+      <AppSheet
         isOpen={sheet === "mark-paid"}
         onOpenChange={(open) => {
           if (!open) closeSheet();
@@ -1149,7 +1149,7 @@ function StudentDetailPage() {
             </div>
           </div>
         ) : null}
-      </AppBottomSheet>
+      </AppSheet>
 
       <AppBottomSheet
         isOpen={sheet === "link-parent"}
