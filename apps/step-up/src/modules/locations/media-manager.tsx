@@ -6,6 +6,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@dev-ui/components/select";
+import { useToastContext } from "@dev-ui/components/toast";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { useApi } from "@/lib/api-context";
@@ -83,6 +84,7 @@ export function MediaManager({
 }: MediaManagerProps) {
   const api = useApi();
   const queryClient = useQueryClient();
+  const { toast } = useToastContext("MediaManager");
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [preview, setPreview] = useState<"mobile" | "desktop">("mobile");
@@ -110,13 +112,43 @@ export function MediaManager({
       api.patch<StudioBranch>(`/branches/${branchId}/media/reorder`, {
         orderedIds,
       }),
-    onSuccess: () => invalidate(),
+    onSuccess: () => {
+      invalidate();
+      toast({
+        title: "Gallery reordered",
+        description: "Media order updated.",
+        variant: "success",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Couldn’t reorder gallery",
+        description:
+          error instanceof Error ? error.message : "Could not reorder media.",
+        variant: "error",
+      });
+    },
   });
 
   const setCover = useMutation({
     mutationFn: (mediaId: string) =>
       api.patch<StudioBranch>(`/branches/${branchId}/cover`, { mediaId }),
-    onSuccess: () => invalidate(),
+    onSuccess: () => {
+      invalidate();
+      toast({
+        title: "Cover updated",
+        description: "Gallery cover image set.",
+        variant: "success",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Couldn’t set cover",
+        description:
+          error instanceof Error ? error.message : "Could not set cover.",
+        variant: "error",
+      });
+    },
   });
 
   const updateMedia = useMutation({
@@ -127,13 +159,43 @@ export function MediaManager({
       mediaId: string;
       body: Record<string, unknown>;
     }) => api.patch(`/branches/${branchId}/media/${mediaId}`, body),
-    onSuccess: () => invalidate(),
+    onSuccess: () => {
+      invalidate();
+      toast({
+        title: "Media updated",
+        description: "Gallery item saved.",
+        variant: "success",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Couldn’t update media",
+        description:
+          error instanceof Error ? error.message : "Could not update media.",
+        variant: "error",
+      });
+    },
   });
 
   const deleteMedia = useMutation({
     mutationFn: (mediaId: string) =>
       api.delete(`/branches/${branchId}/media/${mediaId}`),
-    onSuccess: () => invalidate(),
+    onSuccess: () => {
+      invalidate();
+      toast({
+        title: "Media deleted",
+        description: "Gallery item removed.",
+        variant: "success",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Couldn’t delete media",
+        description:
+          error instanceof Error ? error.message : "Could not delete media.",
+        variant: "error",
+      });
+    },
   });
 
   async function handleUpload(files: FileList | null) {
@@ -152,8 +214,19 @@ export function MediaManager({
         })),
       });
       await invalidate();
+      toast({
+        title: "Upload complete",
+        description: "Photos and videos added to the gallery.",
+        variant: "success",
+      });
     } catch (error) {
-      setUploadError(error instanceof Error ? error.message : "Upload failed.");
+      const message = error instanceof Error ? error.message : "Upload failed.";
+      setUploadError(message);
+      toast({
+        title: "Couldn’t upload media",
+        description: message,
+        variant: "error",
+      });
     } finally {
       setUploading(false);
     }

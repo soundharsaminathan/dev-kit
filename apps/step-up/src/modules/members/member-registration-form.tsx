@@ -6,6 +6,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@dev-ui/components/select";
+import { useToastContext } from "@dev-ui/components/toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
@@ -64,6 +65,7 @@ export function MemberRegistrationForm({
   const studioId = useStudioId();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { toast } = useToastContext("MemberRegistrationForm");
   const [step, setStep] = useState(0);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -125,7 +127,22 @@ export function MemberRegistrationForm({
           ? queryClient.invalidateQueries({ queryKey: ["batch", batchId] })
           : Promise.resolve(),
       ]);
+      toast({
+        title: `${kind === "trainer" ? "Trainer" : "Student"} created`,
+        description: `${created.name} was added to the studio.`,
+        variant: "success",
+      });
       await navigate({ to: successTo });
+    },
+    onError: (error) => {
+      toast({
+        title: `Couldn’t create ${kind}`,
+        description:
+          error instanceof Error
+            ? error.message
+            : `The ${kind} could not be created.`,
+        variant: "error",
+      });
     },
   });
 

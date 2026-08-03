@@ -1,4 +1,5 @@
 import { Button } from "@dev-ui/components/button";
+import { useToastContext } from "@dev-ui/components/toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useCallback, useState } from "react";
@@ -59,6 +60,7 @@ function EditCertificateTemplateForm({
   const studioId = useStudioId();
   const navigate = useNavigate({ from: Route.fullPath });
   const queryClient = useQueryClient();
+  const { toast } = useToastContext("EditCertificateTemplateForm");
   const initial = ensureCertificateDocument(template.layoutJson);
   const [name, setName] = useState(template.name);
   const [layout, setLayout] = useState<CertificateDocument>(initial);
@@ -69,23 +71,33 @@ function EditCertificateTemplateForm({
 
   const autosave = useCallback(
     async (payload: { name: string; layoutJson: CertificateDocument }) => {
-      await api.patch<CertificateTemplate>(
-        `/certificate-templates/${template.id}`,
-        {
-          name: payload.name,
-          layoutJson: payload.layoutJson,
-        },
-      );
-      await Promise.all([
-        queryClient.invalidateQueries({
-          queryKey: ["certificate-templates", studioId],
-        }),
-        queryClient.invalidateQueries({
-          queryKey: ["certificate-template", template.id],
-        }),
-      ]);
+      try {
+        await api.patch<CertificateTemplate>(
+          `/certificate-templates/${template.id}`,
+          {
+            name: payload.name,
+            layoutJson: payload.layoutJson,
+          },
+        );
+        await Promise.all([
+          queryClient.invalidateQueries({
+            queryKey: ["certificate-templates", studioId],
+          }),
+          queryClient.invalidateQueries({
+            queryKey: ["certificate-template", template.id],
+          }),
+        ]);
+      } catch (error) {
+        toast({
+          title: "Couldn’t save template",
+          description:
+            error instanceof Error ? error.message : "Could not save template.",
+          variant: "error",
+        });
+        throw error;
+      }
     },
-    [api, queryClient, studioId, template.id],
+    [api, queryClient, studioId, template.id, toast],
   );
 
   const deleteTemplate = useMutation({
@@ -94,7 +106,20 @@ function EditCertificateTemplateForm({
       await queryClient.invalidateQueries({
         queryKey: ["certificate-templates", studioId],
       });
+      toast({
+        title: "Template deleted",
+        description: "The certificate template was removed.",
+        variant: "success",
+      });
       await navigate({ to: "/app/certificates" });
+    },
+    onError: (error) => {
+      toast({
+        title: "Couldn’t delete template",
+        description:
+          error instanceof Error ? error.message : "Could not delete template.",
+        variant: "error",
+      });
     },
   });
 

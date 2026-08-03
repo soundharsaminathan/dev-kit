@@ -1,3 +1,4 @@
+import { useToastContext } from "@dev-ui/components/toast";
 import type { IconName } from "@dev-ui/icons";
 import { Icon } from "@dev-ui/icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -138,6 +139,7 @@ function AppDashboardPage() {
   const api = useApi();
   const studioId = useStudioId();
   const queryClient = useQueryClient();
+  const { toast } = useToastContext("AppDashboardPage");
   const { user } = useAuth();
   const isTrainer = user?.role === "TRAINER";
   const [funnelPeriod, setFunnelPeriod] =
@@ -197,13 +199,34 @@ function AppDashboardPage() {
           ? { startsAt: values.startsAt, endsAt: values.endsAt }
           : {}),
       }),
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       void queryClient.invalidateQueries({
         queryKey: ["bookings", "studio", studioId],
       });
       void queryClient.invalidateQueries({ queryKey: ["calendar"] });
       setPendingGridKey((key) => key + 1);
       setSelectedBookingId(null);
+      if (variables.status === "CONFIRMED") {
+        toast({
+          title: "Booking confirmed",
+          description: "The student will be notified.",
+          variant: "success",
+        });
+      } else if (variables.status === "CANCELLED") {
+        toast({
+          title: "Booking declined",
+          description: "The request was cancelled.",
+          variant: "success",
+        });
+      }
+    },
+    onError: (error) => {
+      toast({
+        title: "Couldn’t update booking",
+        description:
+          error instanceof Error ? error.message : "Could not update booking.",
+        variant: "error",
+      });
     },
   });
 

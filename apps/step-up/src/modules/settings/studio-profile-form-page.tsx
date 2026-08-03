@@ -1,3 +1,4 @@
+import { useToastContext } from "@dev-ui/components/toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useApi } from "@/lib/api-context";
@@ -14,6 +15,7 @@ export function StudioProfileFormPage() {
   const api = useApi();
   const studioId = useStudioId();
   const queryClient = useQueryClient();
+  const { toast } = useToastContext("StudioProfileFormPage");
   const [name, setName] = useState("");
   const [address, setAddress] = useState("");
   const [contact, setContact] = useState("");
@@ -34,6 +36,19 @@ export function StudioProfileFormPage() {
       void queryClient.invalidateQueries({ queryKey: ["studio", studioId] });
       void queryClient.invalidateQueries({
         queryKey: ["studio-public", studioId],
+      });
+      toast({
+        title: "Profile saved",
+        description: "Studio profile updated.",
+        variant: "success",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Couldn’t save profile",
+        description:
+          error instanceof Error ? error.message : "Could not save profile.",
+        variant: "error",
       });
     },
   });

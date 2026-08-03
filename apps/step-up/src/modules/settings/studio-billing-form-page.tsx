@@ -1,3 +1,4 @@
+import { useToastContext } from "@dev-ui/components/toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useApi } from "@/lib/api-context";
@@ -16,6 +17,7 @@ export function StudioBillingFormPage() {
   const studioId = useStudioId();
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const { toast } = useToastContext("StudioBillingFormPage");
   const isOwner = user?.role === "OWNER";
   const [graceDays, setGraceDays] = useState("");
   const [expireAlertDays, setExpireAlertDays] = useState("");
@@ -50,6 +52,21 @@ export function StudioBillingFormPage() {
       void queryClient.invalidateQueries({ queryKey: ["studio", studioId] });
       void queryClient.invalidateQueries({
         queryKey: ["studio-public", studioId],
+      });
+      toast({
+        title: "Billing saved",
+        description: "Billing settings updated.",
+        variant: "success",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Couldn’t save billing",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Could not save billing settings.",
+        variant: "error",
       });
     },
   });

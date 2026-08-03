@@ -1,5 +1,6 @@
 import { Button } from "@dev-ui/components/button";
 import { Checkbox } from "@dev-ui/components/checkbox";
+import { useToastContext } from "@dev-ui/components/toast";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
@@ -73,6 +74,7 @@ export function BatchTrainers({ batchId, trainers }: BatchTrainersProps) {
   const studioId = useStudioId();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { toast } = useToastContext("BatchTrainers");
   const studioTrainers = useStudioTrainers();
   const [manageOpen, setManageOpen] = useState(false);
   const [draftIds, setDraftIds] = useState<string[]>([]);
@@ -108,7 +110,22 @@ export function BatchTrainers({ batchId, trainers }: BatchTrainersProps) {
         queryClient.invalidateQueries({ queryKey: ["batch", batchId] }),
         queryClient.invalidateQueries({ queryKey: ["batches", studioId] }),
       ]);
+      toast({
+        title: "Instructors saved",
+        description: "Batch instructors updated.",
+        variant: "success",
+      });
       setManageOpen(false);
+    },
+    onError: (error) => {
+      toast({
+        title: "Couldn’t save instructors",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Could not update instructors.",
+        variant: "error",
+      });
     },
   });
 

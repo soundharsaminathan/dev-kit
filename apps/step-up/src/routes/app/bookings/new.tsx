@@ -5,6 +5,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@dev-ui/components/select";
+import { useToastContext } from "@dev-ui/components/toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
@@ -36,6 +37,7 @@ function NewBookingPage() {
   const studioId = useStudioId();
   const navigate = useNavigate({ from: Route.fullPath });
   const queryClient = useQueryClient();
+  const { toast } = useToastContext("NewBookingPage");
   const [studentId, setStudentId] = useState<string | null>(null);
   const [type, setType] = useState<BookingType>("TRIAL");
 
@@ -57,7 +59,20 @@ function NewBookingPage() {
       await queryClient.invalidateQueries({
         queryKey: ["bookings", "studio", studioId],
       });
+      toast({
+        title: "Booking created",
+        description: "The booking was added.",
+        variant: "success",
+      });
       await navigate({ to: "/app/bookings" });
+    },
+    onError: (error) => {
+      toast({
+        title: "Couldn’t create booking",
+        description:
+          error instanceof Error ? error.message : "Could not create booking.",
+        variant: "error",
+      });
     },
   });
 

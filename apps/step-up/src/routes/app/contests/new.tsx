@@ -16,6 +16,7 @@ import {
 } from "@dev-ui/components/select";
 import { Switch } from "@dev-ui/components/switch";
 import { TextArea } from "@dev-ui/components/text-area";
+import { useToastContext } from "@dev-ui/components/toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
@@ -72,6 +73,7 @@ function NewContestPage() {
   const studioId = useStudioId();
   const navigate = useNavigate({ from: Route.fullPath });
   const queryClient = useQueryClient();
+  const { toast } = useToastContext("NewContestPage");
 
   const startsDefault = new Date();
   startsDefault.setDate(startsDefault.getDate() + 14);
@@ -137,7 +139,20 @@ function NewContestPage() {
       }),
     onSuccess: (contest) => {
       void queryClient.invalidateQueries({ queryKey: ["contests", studioId] });
+      toast({
+        title: "Contest created",
+        description: "The contest is ready to manage.",
+        variant: "success",
+      });
       void navigate({ to: "/app/contests/$id", params: { id: contest.id } });
+    },
+    onError: (error) => {
+      toast({
+        title: "Couldn’t create contest",
+        description:
+          error instanceof Error ? error.message : "Could not create contest.",
+        variant: "error",
+      });
     },
   });
 

@@ -2,6 +2,7 @@ import { Alert, AlertDescription, AlertTitle } from "@dev-ui/components/alert";
 import { Label } from "@dev-ui/components/field";
 import { Input } from "@dev-ui/components/input";
 import { TextField } from "@dev-ui/components/text-field";
+import { useToastContext } from "@dev-ui/components/toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
@@ -36,6 +37,7 @@ export const Route = createFileRoute("/admin/")({
 function AdminStudiosPage() {
   const api = useApi();
   const queryClient = useQueryClient();
+  const { toast } = useToastContext("AdminStudiosPage");
   const [name, setName] = useState("");
   const [ownerEmail, setOwnerEmail] = useState("");
   const [ownerName, setOwnerName] = useState("");
@@ -67,11 +69,22 @@ function AdminStudiosPage() {
       setFormError(null);
       setCreatedHint(result.setupHint);
       void queryClient.invalidateQueries({ queryKey: ["admin", "studios"] });
+      toast({
+        title: "Studio created",
+        description: `${result.name} was provisioned successfully.`,
+        variant: "success",
+      });
     },
     onError: (error) => {
       setFormError(
         error instanceof Error ? error.message : "Could not create studio",
       );
+      toast({
+        title: "Couldn’t create studio",
+        description:
+          error instanceof Error ? error.message : "Could not create studio.",
+        variant: "error",
+      });
     },
   });
 

@@ -6,6 +6,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@dev-ui/components/select";
+import { useToastContext } from "@dev-ui/components/toast";
 import { Icon } from "@dev-ui/icons";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
@@ -57,6 +58,7 @@ export function BatchSessionsLane({
 }: BatchSessionsLaneProps) {
   const api = useApi();
   const queryClient = useQueryClient();
+  const { toast } = useToastContext("BatchSessionsLane");
   const upcoming = upcomingSessions(sessions, new Date(), limit);
   const [sheetOpen, setSheetOpen] = useState(false);
   const defaults = defaultSessionWindow();
@@ -76,7 +78,20 @@ export function BatchSessionsLane({
       }),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["batch", batchId] });
+      toast({
+        title: "Session added",
+        description: "The new session is on the schedule.",
+        variant: "success",
+      });
       setSheetOpen(false);
+    },
+    onError: (error) => {
+      toast({
+        title: "Couldn’t create session",
+        description:
+          error instanceof Error ? error.message : "Could not create session.",
+        variant: "error",
+      });
     },
   });
 

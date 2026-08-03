@@ -1,3 +1,4 @@
+import { useToastContext } from "@dev-ui/components/toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useApi } from "@/lib/api-context";
@@ -14,6 +15,7 @@ export function StudioTeamFormPage() {
   const api = useApi();
   const studioId = useStudioId();
   const queryClient = useQueryClient();
+  const { toast } = useToastContext("StudioTeamFormPage");
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<"STAFF" | "TRAINER">("STAFF");
   const [lastInviteUrl, setLastInviteUrl] = useState<string | null>(null);
@@ -35,6 +37,19 @@ export function StudioTeamFormPage() {
       void queryClient.invalidateQueries({
         queryKey: ["staff-invites", studioId],
       });
+      toast({
+        title: "Invite sent",
+        description: `Invite created for ${invite.email}.`,
+        variant: "success",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Couldn’t send invite",
+        description:
+          error instanceof Error ? error.message : "Could not send invite.",
+        variant: "error",
+      });
     },
   });
 
@@ -43,6 +58,19 @@ export function StudioTeamFormPage() {
     onSuccess: () => {
       void queryClient.invalidateQueries({
         queryKey: ["staff-invites", studioId],
+      });
+      toast({
+        title: "Invite revoked",
+        description: "The pending invite was revoked.",
+        variant: "success",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Couldn’t revoke invite",
+        description:
+          error instanceof Error ? error.message : "Could not revoke invite.",
+        variant: "error",
       });
     },
   });
