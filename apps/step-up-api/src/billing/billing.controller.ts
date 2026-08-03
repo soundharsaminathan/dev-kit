@@ -86,6 +86,7 @@ export class BillingController {
     @Query("studioId") studioId: string,
     @Query("from") from?: string,
     @Query("to") to?: string,
+    @Query("bucket") bucket?: string,
   ) {
     if (!studioId) {
       throw new BadRequestException("studioId is required");
@@ -93,9 +94,21 @@ export class BillingController {
 
     assertSameStudio(user, studioId);
 
+    if (
+      bucket !== undefined &&
+      bucket !== "day" &&
+      bucket !== "week" &&
+      bucket !== "month"
+    ) {
+      throw new BadRequestException("bucket must be day, week, or month");
+    }
+
     return this.billingService.getTrainerAnalytics(user, trainerId, studioId, {
       ...(from !== undefined ? { from } : {}),
       ...(to !== undefined ? { to } : {}),
+      ...(bucket === "day" || bucket === "week" || bucket === "month"
+        ? { bucket }
+        : {}),
     });
   }
 

@@ -1,21 +1,43 @@
 import { Badge } from "@dev-ui/components/badge";
 import {
+  Area,
+  AreaChart,
+  CartesianGrid,
+  type ChartConfig,
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+  XAxis,
+  YAxis,
+} from "@dev-ui/components/chart";
+import {
+  ProgressBar,
+  ProgressBarFill,
+  ProgressBarTrack,
+} from "@dev-ui/components/progress-bar";
+import { SearchField } from "@dev-ui/components/search-field";
+import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from "@dev-ui/components/select";
-import { useQuery } from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
+import { useToastContext } from "@dev-ui/components/toast";
+import type { IconName } from "@dev-ui/icons";
+import { Icon } from "@dev-ui/icons";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useApi } from "@/lib/api-context";
 import { useAuth } from "@/lib/auth";
 import { ENTITY_ICONS } from "@/lib/entity-icons";
 import { useStudioId } from "@/lib/use-studio-id";
+import { CreateInvoiceSheet } from "@/modules/payments/create-invoice-sheet";
+import styles from "@/modules/payments/payments-dashboard.module.scss";
+import { AppSheet } from "@/modules/ui/app-sheet";
 import { FilterChipRow } from "@/modules/ui/filter-chip-row";
 import { FormInput } from "@/modules/ui/form-input";
-import { PressableCard } from "@/modules/ui/pressable-card";
 import { PullToRefresh } from "@/modules/ui/pull-to-refresh";
 import { Screen } from "@/modules/ui/screen";
 import { SkeletonBlock, SkeletonCardList } from "@/modules/ui/skeleton-block";
@@ -28,6 +50,8 @@ type StudioMember = {
   name: string;
   role: "OWNER" | "STAFF" | "TRAINER" | "STUDENT" | "PARENT";
 };
+
+type AnalyticsBucket = "day" | "week" | "month";
 
 type TrainerPaymentAnalytics = {
   trainerId: string;
@@ -43,6 +67,10 @@ type TrainerPaymentAnalytics = {
     platformFees: number;
     netCollected: number;
   };
+  byStatus: Record<
+    "PAID" | "PENDING" | "OVERDUE",
+    { count: number; amount: number }
+  >;
   byPaymentMethod: {
     CASH: { count: number; amount: number };
     UPI_MANUAL: { count: number; amount: number };
@@ -59,21 +87,73 @@ type TrainerPaymentAnalytics = {
   }>;
   invoices: Array<{
     id: string;
+    studentId: string;
     studentName: string;
     amount: number;
     status: "PENDING" | "PAID" | "OVERDUE";
     paymentMethod: "CASH" | "UPI_MANUAL" | "RAZORPAY" | null;
     paidAt: string | null;
   }>;
+  series: Array<{
+    start: string;
+    end: string;
+    collected: number;
+    netCollected: number;
+    invoiceCount: number;
+  }>;
+  comparison: {
+    previousFrom: string | null;
+    previousTo: string | null;
+    collected: number;
+    netCollected: number;
+    netCollectedDelta: number;
+    netCollectedDeltaPct: number | null;
+    collectedDeltaPct: number | null;
+  };
+  pendingPayments: Array<{
+    invoiceId: string;
+    studentId: string;
+    studentName: string;
+    amount: number;
+    status: "PENDING" | "OVERDUE";
+    dueDate: string | null;
+    batchId: string | null;
+    batchName: string | null;
+  }>;
 };
 
-type RangePreset = "all" | "month" | "30d" | "custom";
+type RangePreset = "all" | "7d" | "30d" | "month" | "3m" | "1y" | "custom";
+type PaymentMethodChoice = "CASH" | "UPI_MANUAL";
 
-const RANGE_PRESETS = [
+const TREND_CHIPS = [
+  { id: "7d", label: "7D" },
+  { id: "30d", label: "30D" },
+  { id: "3m", label: "3M" },
+  { id: "1y", label: "1Y" },
+] as const;
+
+const PERIOD_OPTIONS = [
   { id: "all", label: "All time" },
   { id: "month", label: "This month" },
   { id: "30d", label: "Last 30 days" },
+  { id: "7d", label: "Last 7 days" },
+  { id: "3m", label: "Last 3 months" },
+  { id: "1y", label: "Last year" },
+  { id: "custom", label: "Custom" },
 ] as const;
+
+const METHOD_LABELS = {
+  CASH: "Cash",
+  UPI_MANUAL: "UPI",
+  RAZORPAY: "Razorpay",
+} as const;
+
+const revenueChartConfig = {
+  netCollected: {
+    label: "Net earnings",
+    color: "var(--color-primary)",
+  },
+} satisfies ChartConfig;
 
 export const Route = createFileRoute("/app/payments")({
   component: PaymentsPage,
@@ -98,6 +178,12 @@ function daysAgoInput(days: number) {
   return formatDateInput(date);
 }
 
+function monthsAgoInput(months: number) {
+  const date = new Date();
+  date.setMonth(date.getMonth() - months);
+  return formatDateInput(date);
+}
+
 function startOfDayIso(date: string) {
   return new Date(`${date}T00:00:00`).toISOString();
 }
@@ -114,22 +200,40 @@ function formatInr(amount: number) {
   }).format(amount);
 }
 
-function formatRangeLabel(from: string, to: string) {
-  const formatter = new Intl.DateTimeFormat(undefined, {
+function formatCompactInr(amount: number) {
+  return new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+    notation: "compact",
+    maximumFractionDigits: 1,
+  }).format(amount);
+}
+
+function formatDueDate(value: string | null) {
+  if (!value) {
+    return "No due date";
+  }
+  const due = new Date(value);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const dueDay = new Date(due);
+  dueDay.setHours(0, 0, 0, 0);
+  const diffDays = Math.round(
+    (dueDay.getTime() - today.getTime()) / (24 * 60 * 60 * 1000),
+  );
+  if (diffDays === 0) {
+    return "Today";
+  }
+  if (diffDays === 1) {
+    return "Tomorrow";
+  }
+  if (diffDays === -1) {
+    return "Yesterday";
+  }
+  return new Intl.DateTimeFormat(undefined, {
     month: "short",
     day: "numeric",
-    year: "numeric",
-  });
-  if (from && to) {
-    return `${formatter.format(new Date(`${from}T00:00:00`))} – ${formatter.format(new Date(`${to}T00:00:00`))}`;
-  }
-  if (from) {
-    return `From ${formatter.format(new Date(`${from}T00:00:00`))}`;
-  }
-  if (to) {
-    return `Until ${formatter.format(new Date(`${to}T00:00:00`))}`;
-  }
-  return "All time";
+  }).format(due);
 }
 
 function detectPreset(from: string, to: string): RangePreset {
@@ -140,16 +244,75 @@ function detectPreset(from: string, to: string): RangePreset {
   if (from === startOfMonthInput() && to === today) {
     return "month";
   }
+  if (from === daysAgoInput(7) && to === today) {
+    return "7d";
+  }
   if (from === daysAgoInput(30) && to === today) {
     return "30d";
   }
+  if (from === monthsAgoInput(3) && to === today) {
+    return "3m";
+  }
+  if (from === monthsAgoInput(12) && to === today) {
+    return "1y";
+  }
   return "custom";
+}
+
+function bucketForPreset(preset: RangePreset): AnalyticsBucket {
+  if (preset === "7d" || preset === "30d") {
+    return "day";
+  }
+  if (preset === "3m") {
+    return "week";
+  }
+  return "month";
+}
+
+function formatSeriesLabel(start: string, bucket: AnalyticsBucket) {
+  const date = new Date(start);
+  if (bucket === "month") {
+    return new Intl.DateTimeFormat(undefined, {
+      month: "short",
+      year: "2-digit",
+    }).format(date);
+  }
+  return new Intl.DateTimeFormat(undefined, {
+    month: "short",
+    day: "numeric",
+  }).format(date);
+}
+
+function formatDeltaPct(value: number | null) {
+  if (value == null) {
+    return "— vs prior period";
+  }
+  const sign = value > 0 ? "+" : "";
+  return `${sign}${value}% from prior period`;
+}
+
+function downloadCsv(filename: string, rows: string[][]) {
+  const content = rows
+    .map((row) =>
+      row.map((cell) => `"${String(cell).replaceAll('"', '""')}"`).join(","),
+    )
+    .join("\n");
+  const blob = new Blob([content], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  anchor.click();
+  URL.revokeObjectURL(url);
 }
 
 function PaymentsPage() {
   const { user } = useAuth();
   const api = useApi();
   const studioId = useStudioId();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const { toast } = useToastContext("PaymentsPage");
   const isTrainer = user?.role === "TRAINER";
   const isStaff = user?.role === "OWNER" || user?.role === "STAFF";
   const [selectedTrainerId, setSelectedTrainerId] = useState<string | null>(
@@ -157,8 +320,14 @@ function PaymentsPage() {
   );
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
+  const [studentSearch, setStudentSearch] = useState("");
+  const [createOpen, setCreateOpen] = useState(false);
+  const [activePendingId, setActivePendingId] = useState<string | null>(null);
+  const [paymentMethod, setPaymentMethod] =
+    useState<PaymentMethodChoice | null>(null);
 
   const rangePreset = detectPreset(fromDate, toDate);
+  const bucket = bucketForPreset(rangePreset);
 
   const membersQuery = useQuery({
     queryKey: ["studio-members", studioId],
@@ -184,9 +353,10 @@ function PaymentsPage() {
       studioId,
       fromDate,
       toDate,
+      bucket,
     ],
     queryFn: () => {
-      const params = new URLSearchParams({ studioId: studioId });
+      const params = new URLSearchParams({ studioId, bucket });
       if (fromDate) {
         params.set("from", startOfDayIso(fromDate));
       }
@@ -200,7 +370,36 @@ function PaymentsPage() {
     enabled: Boolean(trainerId) && (isTrainer || isStaff),
   });
 
+  const markPaid = useMutation({
+    mutationFn: (payload: { id: string; paymentMethod: PaymentMethodChoice }) =>
+      api.patch(`/billing/${payload.id}/paid`, {
+        paymentMethod: payload.paymentMethod,
+      }),
+    onSuccess: () => {
+      setActivePendingId(null);
+      setPaymentMethod(null);
+      void queryClient.invalidateQueries({
+        queryKey: ["billing", "trainer-analytics"],
+      });
+      void queryClient.invalidateQueries({ queryKey: ["invoices", studioId] });
+      toast({
+        title: "Invoice marked paid",
+        description: "Payment was recorded.",
+        variant: "success",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Couldn’t mark invoice paid",
+        description:
+          error instanceof Error ? error.message : "Please try again.",
+        variant: "error",
+      });
+    },
+  });
+
   function applyPreset(id: string) {
+    const today = formatDateInput(new Date());
     if (id === "all") {
       setFromDate("");
       setToDate("");
@@ -208,12 +407,32 @@ function PaymentsPage() {
     }
     if (id === "month") {
       setFromDate(startOfMonthInput());
-      setToDate(formatDateInput(new Date()));
+      setToDate(today);
+      return;
+    }
+    if (id === "7d") {
+      setFromDate(daysAgoInput(7));
+      setToDate(today);
       return;
     }
     if (id === "30d") {
       setFromDate(daysAgoInput(30));
-      setToDate(formatDateInput(new Date()));
+      setToDate(today);
+      return;
+    }
+    if (id === "3m") {
+      setFromDate(monthsAgoInput(3));
+      setToDate(today);
+      return;
+    }
+    if (id === "1y") {
+      setFromDate(monthsAgoInput(12));
+      setToDate(today);
+      return;
+    }
+    if (id === "custom" && !fromDate && !toDate) {
+      setFromDate(startOfMonthInput());
+      setToDate(today);
     }
   }
 
@@ -221,6 +440,75 @@ function PaymentsPage() {
     await Promise.all([
       isStaff ? membersQuery.refetch() : Promise.resolve(),
       trainerId ? analyticsQuery.refetch() : Promise.resolve(),
+    ]);
+  }
+
+  const data = analyticsQuery.data;
+  const search = studentSearch.trim().toLowerCase();
+
+  const pendingRows = useMemo(() => {
+    const rows = data?.pendingPayments ?? [];
+    if (!search) {
+      return rows;
+    }
+    return rows.filter(
+      (row) =>
+        row.studentName.toLowerCase().includes(search) ||
+        (row.batchName?.toLowerCase().includes(search) ?? false),
+    );
+  }, [data?.pendingPayments, search]);
+
+  const recentPaid = useMemo(() => {
+    const rows =
+      data?.invoices.filter((invoice) => invoice.status === "PAID") ?? [];
+    const filtered = search
+      ? rows.filter((row) => row.studentName.toLowerCase().includes(search))
+      : rows;
+    return filtered.slice(0, 8);
+  }, [data?.invoices, search]);
+
+  const chartData = useMemo(
+    () =>
+      (data?.series ?? []).map((point) => ({
+        ...point,
+        label: formatSeriesLabel(point.start, bucket),
+      })),
+    [data?.series, bucket],
+  );
+
+  const methodTotal =
+    (data?.byPaymentMethod.CASH.amount ?? 0) +
+    (data?.byPaymentMethod.UPI_MANUAL.amount ?? 0) +
+    (data?.byPaymentMethod.RAZORPAY.amount ?? 0);
+
+  const maxBatchCollected = Math.max(
+    1,
+    ...(data?.byBatch.map((batch) => batch.collected) ?? [1]),
+  );
+
+  const activePending =
+    pendingRows.find((row) => row.invoiceId === activePendingId) ?? null;
+
+  function exportCsv() {
+    if (!data) {
+      return;
+    }
+    downloadCsv(`payments-${trainerId ?? "studio"}.csv`, [
+      ["Metric", "Value"],
+      ["Net collected", String(data.totals.netCollected)],
+      ["Collected", String(data.totals.collected)],
+      ["Pending", String(data.totals.pending)],
+      ["Overdue", String(data.totals.overdue)],
+      ["Platform fees", String(data.totals.platformFees)],
+      [],
+      ["Student", "Batch", "Status", "Due", "Amount"],
+      ...data.pendingPayments.map((row) => [
+        row.studentName,
+        row.batchName ?? "",
+        row.status,
+        row.dueDate ?? "",
+        String(row.amount),
+      ]),
     ]);
   }
 
@@ -238,255 +526,571 @@ function PaymentsPage() {
     );
   }
 
+  const deltaPct = data?.comparison.netCollectedDeltaPct ?? null;
+  const deltaTone = deltaPct == null ? "flat" : deltaPct >= 0 ? "up" : "down";
+
   return (
     <Screen
       title="Payments"
       subtitle={
         isTrainer
-          ? "Collected and outstanding payments for your batches."
-          : "Trainer-level payment analytics across the studio."
+          ? "Money in, outstanding balances, and batch performance."
+          : "Studio payment dashboard by trainer."
+      }
+      actions={
+        isStaff ? (
+          <TouchButton
+            variant="primary"
+            size="md"
+            onClick={() => setCreateOpen(true)}
+          >
+            Create invoice
+          </TouchButton>
+        ) : null
       }
     >
       <PullToRefresh onRefresh={refresh}>
-        <div className={staff.section}>
-          {isStaff ? (
-            membersQuery.isLoading ? (
-              <SkeletonBlock height="3rem" />
-            ) : membersQuery.isError ? (
-              <ErrorState
-                description={
-                  membersQuery.error instanceof Error
-                    ? membersQuery.error.message
-                    : "Could not load trainers."
-                }
+        <div className={styles.root}>
+          <div className={styles.filterBar}>
+            {isStaff ? (
+              membersQuery.isLoading ? (
+                <SkeletonBlock height="2.5rem" className={styles.filterField} />
+              ) : trainers.length === 0 ? null : (
+                <div className={styles.filterField}>
+                  <Select
+                    label="Trainer"
+                    placeholder="Select a trainer"
+                    selectedKey={trainerId}
+                    onSelectionChange={(key) =>
+                      setSelectedTrainerId(key as string)
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {trainers.map((trainer) => (
+                        <SelectItem key={trainer.id} id={trainer.id}>
+                          {trainer.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )
+            ) : null}
+
+            <div className={styles.filterField}>
+              <Select
+                label="Period"
+                selectedKey={rangePreset === "custom" ? "custom" : rangePreset}
+                onSelectionChange={(key) => applyPreset(String(key))}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {PERIOD_OPTIONS.map((option) => (
+                    <SelectItem key={option.id} id={option.id}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className={styles.filterSearch}>
+              <SearchField
+                aria-label="Search student"
+                placeholder="Search student…"
+                value={studentSearch}
+                onChange={setStudentSearch}
               />
-            ) : trainers.length === 0 ? (
-              <EmptyState
-                icon={ENTITY_ICONS.trainer}
-                title="No trainers"
-                description="Add a trainer to see payment analytics."
-              />
-            ) : (
-              <div className={staff.softPanel}>
-                <Select
-                  label="Trainer"
-                  placeholder="Select a trainer"
-                  selectedKey={trainerId}
-                  onSelectionChange={(key) =>
-                    setSelectedTrainerId(key as string)
-                  }
+            </div>
+
+            <div className={styles.filterActions}>
+              {isStaff ? (
+                <TouchButton
+                  variant="default"
+                  size="md"
+                  isDisabled={!data}
+                  onClick={exportCsv}
                 >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {trainers.map((trainer) => (
-                      <SelectItem key={trainer.id} id={trainer.id}>
-                        {trainer.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  Export
+                </TouchButton>
+              ) : null}
+              <TouchButton
+                variant="default"
+                size="md"
+                onClick={() => void refresh()}
+              >
+                Refresh
+              </TouchButton>
+            </div>
+
+            {rangePreset === "custom" ? (
+              <div className={styles.customDates}>
+                <FormInput
+                  label="From"
+                  type="date"
+                  value={fromDate}
+                  max={toDate || undefined}
+                  onChange={setFromDate}
+                />
+                <FormInput
+                  label="To"
+                  type="date"
+                  value={toDate}
+                  min={fromDate || undefined}
+                  onChange={setToDate}
+                />
               </div>
-            )
+            ) : null}
+          </div>
+
+          {isStaff && trainers.length === 0 && !membersQuery.isLoading ? (
+            <EmptyState
+              icon={ENTITY_ICONS.trainer}
+              title="No trainers"
+              description="Add a trainer to see payment analytics."
+            />
           ) : null}
 
-          {trainerId ? (
+          {trainerId && analyticsQuery.isLoading ? (
             <>
-              <div className={staff.softPanel}>
-                <p className={staff.panelTitle}>Date range</p>
-                <p className={staff.panelDesc}>
-                  Filter by payment date. Pending and overdue stay visible.
-                </p>
-                <FilterChipRow
-                  chips={[...RANGE_PRESETS]}
-                  selected={[rangePreset === "custom" ? "" : rangePreset]}
-                  onToggle={applyPreset}
-                />
-                <div className={staff.filterGrid}>
-                  <FormInput
-                    label="From"
-                    type="date"
-                    value={fromDate}
-                    max={toDate || undefined}
-                    onChange={setFromDate}
-                  />
-                  <FormInput
-                    label="To"
-                    type="date"
-                    value={toDate}
-                    min={fromDate || undefined}
-                    onChange={setToDate}
-                  />
+              <SkeletonBlock height="9rem" radius="var(--radius-xl)" />
+              <div className={styles.kpiGrid}>
+                <SkeletonBlock height="5.25rem" radius="var(--radius-xl)" />
+                <SkeletonBlock height="5.25rem" radius="var(--radius-xl)" />
+                <SkeletonBlock height="5.25rem" radius="var(--radius-xl)" />
+                <SkeletonBlock height="5.25rem" radius="var(--radius-xl)" />
+              </div>
+              <SkeletonCardList count={2} />
+            </>
+          ) : null}
+
+          {analyticsQuery.isError ? (
+            <ErrorState
+              description={
+                analyticsQuery.error instanceof Error
+                  ? analyticsQuery.error.message
+                  : "Could not load payment analytics."
+              }
+              action={
+                <TouchButton
+                  variant="primary"
+                  onClick={() => analyticsQuery.refetch()}
+                >
+                  Try again
+                </TouchButton>
+              }
+            />
+          ) : null}
+
+          {data ? (
+            <>
+              <section className={styles.hero} aria-label="Net earnings">
+                <span className={styles.heroLabel}>Net earnings</span>
+                <strong className={styles.heroValue}>
+                  {formatInr(data.totals.netCollected)}
+                </strong>
+                <span className={styles.heroDelta} data-tone={deltaTone}>
+                  {formatDeltaPct(deltaPct)}
+                </span>
+                <div className={styles.heroSecondary}>
+                  <span>
+                    Collected{" "}
+                    <strong>{formatInr(data.totals.collected)}</strong>
+                  </span>
+                  <span>
+                    Pending <strong>{formatInr(data.totals.pending)}</strong>
+                  </span>
+                  <span>
+                    Fees <strong>{formatInr(data.totals.platformFees)}</strong>
+                  </span>
                 </div>
+              </section>
+
+              <div className={styles.kpiGrid}>
+                <KpiCard
+                  icon="check"
+                  tone="success"
+                  label="Collected"
+                  value={formatInr(data.totals.collected)}
+                  hint={formatDeltaPct(data.comparison.collectedDeltaPct)}
+                />
+                <KpiCard
+                  icon="clock"
+                  tone="warning"
+                  label="Pending"
+                  value={formatInr(data.totals.pending)}
+                  hint={`${data.byStatus.PENDING.count} invoices`}
+                />
+                <KpiCard
+                  icon="alert-triangle"
+                  tone="danger"
+                  label="Overdue"
+                  value={formatInr(data.totals.overdue)}
+                  hint={
+                    data.byStatus.OVERDUE.count === 0
+                      ? "All clear"
+                      : `${data.byStatus.OVERDUE.count} invoices`
+                  }
+                />
+                <KpiCard
+                  icon="clipboard"
+                  label="Invoices"
+                  value={String(data.invoiceCount)}
+                  hint={`${data.studentCount} students`}
+                />
               </div>
 
-              {analyticsQuery.isLoading ? (
-                <>
-                  <div className={staff.statGrid}>
-                    <SkeletonBlock height="4.5rem" radius="var(--radius-2xl)" />
-                    <SkeletonBlock height="4.5rem" radius="var(--radius-2xl)" />
-                    <SkeletonBlock height="4.5rem" radius="var(--radius-2xl)" />
-                    <SkeletonBlock height="4.5rem" radius="var(--radius-2xl)" />
+              <div className={styles.analyticsGrid}>
+                <section className={styles.panel}>
+                  <div className={styles.panelHead}>
+                    <p className={styles.panelTitle}>Revenue trend</p>
+                    <FilterChipRow
+                      chips={[...TREND_CHIPS]}
+                      selected={[
+                        rangePreset === "7d" ||
+                        rangePreset === "30d" ||
+                        rangePreset === "3m" ||
+                        rangePreset === "1y"
+                          ? rangePreset
+                          : "",
+                      ]}
+                      onToggle={applyPreset}
+                    />
                   </div>
-                  <SkeletonCardList count={2} />
-                </>
-              ) : null}
-
-              {analyticsQuery.isError ? (
-                <ErrorState
-                  description={
-                    analyticsQuery.error instanceof Error
-                      ? analyticsQuery.error.message
-                      : "Could not load payment analytics."
-                  }
-                  action={
-                    <TouchButton
-                      variant="primary"
-                      onClick={() => analyticsQuery.refetch()}
+                  {chartData.length === 0 ? (
+                    <EmptyState
+                      title="No revenue yet"
+                      description="Paid invoices in this range will appear here."
+                    />
+                  ) : (
+                    <ChartContainer
+                      config={revenueChartConfig}
+                      className={styles.chart}
+                      aria-label="Revenue trend chart"
                     >
-                      Try again
-                    </TouchButton>
-                  }
-                />
-              ) : null}
+                      <AreaChart data={chartData} accessibilityLayer>
+                        <CartesianGrid vertical={false} />
+                        <XAxis
+                          dataKey="label"
+                          tickLine={false}
+                          axisLine={false}
+                          minTickGap={24}
+                        />
+                        <YAxis
+                          tickLine={false}
+                          axisLine={false}
+                          width={48}
+                          tickFormatter={(value: number) =>
+                            formatCompactInr(value)
+                          }
+                        />
+                        <ChartTooltip
+                          content={
+                            <ChartTooltipContent
+                              formatter={(value) =>
+                                formatInr(Number(value ?? 0))
+                              }
+                            />
+                          }
+                        />
+                        <Area
+                          type="monotone"
+                          dataKey="netCollected"
+                          stroke="var(--color-netCollected)"
+                          fill="var(--color-netCollected)"
+                          fillOpacity={0.18}
+                          strokeWidth={2}
+                        />
+                      </AreaChart>
+                    </ChartContainer>
+                  )}
+                </section>
 
-              {analyticsQuery.data ? (
-                <>
-                  <div className={staff.statGrid}>
-                    <div className={staff.statTile}>
-                      <span className={staff.statLabel}>Collected</span>
-                      <span className={staff.statValue}>
-                        {formatInr(analyticsQuery.data.totals.collected)}
-                      </span>
-                    </div>
-                    <div className={staff.statTile}>
-                      <span className={staff.statLabel}>Pending</span>
-                      <span className={staff.statValue}>
-                        {formatInr(analyticsQuery.data.totals.pending)}
-                      </span>
-                    </div>
-                    <div className={staff.statTile}>
-                      <span className={staff.statLabel}>Overdue</span>
-                      <span className={staff.statValue}>
-                        {formatInr(analyticsQuery.data.totals.overdue)}
-                      </span>
-                    </div>
-                    <div className={staff.statTile}>
-                      <span className={staff.statLabel}>Net collected</span>
-                      <span className={staff.statValue}>
-                        {formatInr(analyticsQuery.data.totals.netCollected)}
-                      </span>
-                      <span className={staff.rowMeta}>
-                        After{" "}
-                        {formatInr(analyticsQuery.data.totals.platformFees)}{" "}
-                        fees
-                      </span>
-                    </div>
+                <section className={styles.panel}>
+                  <p className={styles.panelTitle}>Payment methods</p>
+                  <div className={styles.methodList}>
+                    {(["CASH", "UPI_MANUAL", "RAZORPAY"] as const).map(
+                      (method) => {
+                        const entry = data.byPaymentMethod[method];
+                        const pct =
+                          methodTotal > 0
+                            ? Math.round((entry.amount / methodTotal) * 100)
+                            : 0;
+                        return (
+                          <div key={method} className={styles.methodRow}>
+                            <div className={styles.methodMeta}>
+                              <span className={styles.methodName}>
+                                {METHOD_LABELS[method]} · {pct}%
+                              </span>
+                              <span className={styles.methodAmount}>
+                                {formatInr(entry.amount)} · {entry.count}
+                              </span>
+                            </div>
+                            <div
+                              className={styles.methodBar}
+                              data-method={method}
+                            >
+                              <ProgressBar
+                                value={pct}
+                                aria-label={`${METHOD_LABELS[method]} share`}
+                              >
+                                <ProgressBarTrack>
+                                  <ProgressBarFill />
+                                </ProgressBarTrack>
+                              </ProgressBar>
+                            </div>
+                          </div>
+                        );
+                      },
+                    )}
                   </div>
+                </section>
+              </div>
 
-                  <div className={staff.softPanel}>
-                    <p className={staff.panelTitle}>Coverage</p>
-                    <p className={staff.panelDesc}>
-                      {analyticsQuery.data.studentCount} students ·{" "}
-                      {analyticsQuery.data.invoiceCount} invoices ·{" "}
-                      {formatRangeLabel(fromDate, toDate)}
-                    </p>
-                    <p className={staff.rowMeta}>
-                      Cash: {analyticsQuery.data.byPaymentMethod.CASH.count} ·{" "}
-                      {formatInr(
-                        analyticsQuery.data.byPaymentMethod.CASH.amount,
-                      )}
-                    </p>
-                    <p className={staff.rowMeta}>
-                      UPI:{" "}
-                      {analyticsQuery.data.byPaymentMethod.UPI_MANUAL.count} ·{" "}
-                      {formatInr(
-                        analyticsQuery.data.byPaymentMethod.UPI_MANUAL.amount,
-                      )}
-                    </p>
-                    <p className={staff.rowMeta}>
-                      Razorpay:{" "}
-                      {analyticsQuery.data.byPaymentMethod.RAZORPAY.count} ·{" "}
-                      {formatInr(
-                        analyticsQuery.data.byPaymentMethod.RAZORPAY.amount,
-                      )}
-                    </p>
-                  </div>
-
-                  {analyticsQuery.data.byBatch.length > 0 ? (
-                    <div className={staff.section}>
-                      <p className={staff.sectionTitle}>By batch</p>
-                      <div className={staff.list}>
-                        {analyticsQuery.data.byBatch.map((batch) => (
-                          <PressableCard key={batch.batchId} asDiv>
-                            <div className={staff.rowCard}>
-                              <span className={staff.rowTitle}>
+              <section className={styles.panel}>
+                <p className={styles.panelTitle}>Batch performance</p>
+                {data.byBatch.length === 0 ? (
+                  <EmptyState
+                    title="No batches"
+                    description="Assign batches to this trainer to see performance."
+                  />
+                ) : (
+                  <ul className={styles.batchList}>
+                    {[...data.byBatch]
+                      .sort((a, b) => b.collected - a.collected)
+                      .map((batch) => (
+                        <li key={batch.batchId}>
+                          <button
+                            type="button"
+                            className={styles.batchRow}
+                            onClick={() =>
+                              void navigate({
+                                to: "/app/batches/$id",
+                                params: { id: batch.batchId },
+                              })
+                            }
+                          >
+                            <div className={styles.batchTop}>
+                              <span className={styles.batchName}>
                                 {batch.batchName}
                               </span>
-                              <p className={staff.rowMeta}>
-                                {batch.studentCount} students ·{" "}
-                                {batch.invoiceCount} invoices
-                              </p>
-                              <p className={staff.rowMeta}>
-                                Collected {formatInr(batch.collected)} · Pending{" "}
-                                {formatInr(batch.pending)} · Overdue{" "}
-                                {formatInr(batch.overdue)}
-                              </p>
+                              <span className={styles.batchAmount}>
+                                {formatCompactInr(batch.collected)}
+                              </span>
                             </div>
-                          </PressableCard>
-                        ))}
-                      </div>
-                    </div>
-                  ) : null}
+                            <ProgressBar
+                              value={Math.round(
+                                (batch.collected / maxBatchCollected) * 100,
+                              )}
+                              aria-label={`${batch.batchName} collected share`}
+                            >
+                              <ProgressBarTrack>
+                                <ProgressBarFill />
+                              </ProgressBarTrack>
+                            </ProgressBar>
+                            <p className={styles.batchMeta}>
+                              {batch.studentCount} students
+                              {batch.pending > 0
+                                ? ` · Pending ${formatInr(batch.pending)}`
+                                : ""}
+                              {batch.overdue > 0
+                                ? ` · Overdue ${formatInr(batch.overdue)}`
+                                : ""}
+                            </p>
+                          </button>
+                        </li>
+                      ))}
+                  </ul>
+                )}
+              </section>
 
-                  {analyticsQuery.data.invoices.length > 0 ? (
-                    <div className={staff.section}>
-                      <p className={staff.sectionTitle}>Invoices</p>
-                      <div className={staff.list}>
-                        {analyticsQuery.data.invoices.map((invoice) => (
-                          <PressableCard key={invoice.id} asDiv>
-                            <div className={staff.rowCard}>
-                              <div className={staff.attentionTop}>
-                                <span className={staff.rowTitle}>
-                                  {invoice.studentName}
-                                </span>
-                                <Badge
-                                  variant={
-                                    invoice.status === "PAID"
-                                      ? "success"
-                                      : invoice.status === "OVERDUE"
-                                        ? "danger"
-                                        : "neutral"
-                                  }
-                                >
-                                  {invoice.status}
-                                </Badge>
-                              </div>
-                              <p className={staff.rowMeta}>
-                                {formatInr(invoice.amount)}
-                                {invoice.paymentMethod
-                                  ? ` · ${
-                                      invoice.paymentMethod === "CASH"
-                                        ? "Cash"
-                                        : invoice.paymentMethod === "RAZORPAY"
-                                          ? "Razorpay"
-                                          : "UPI"
-                                    }`
-                                  : ""}
-                              </p>
-                            </div>
-                          </PressableCard>
-                        ))}
-                      </div>
-                    </div>
-                  ) : null}
-                </>
-              ) : null}
+              <section className={styles.panel}>
+                <p className={styles.panelTitle}>Pending payments</p>
+                {pendingRows.length === 0 ? (
+                  <EmptyState
+                    title="No pending payments"
+                    description="Everything looks collected for this trainer."
+                  />
+                ) : (
+                  <ul className={styles.pendingList}>
+                    {pendingRows.map((row) => (
+                      <li key={row.invoiceId}>
+                        <button
+                          type="button"
+                          className={styles.pendingRow}
+                          onClick={() => {
+                            if (isStaff) {
+                              setPaymentMethod(null);
+                              setActivePendingId(row.invoiceId);
+                              return;
+                            }
+                            void navigate({
+                              to: "/app/students/$id",
+                              params: { id: row.studentId },
+                            });
+                          }}
+                        >
+                          <div className={styles.pendingGrid}>
+                            <span className={styles.pendingName}>
+                              {row.studentName}
+                            </span>
+                            <span className={styles.pendingMeta}>
+                              {row.batchName ?? "Unassigned"}
+                            </span>
+                            <span className={styles.pendingMeta}>
+                              {formatDueDate(row.dueDate)}
+                            </span>
+                            <span className={styles.pendingAmount}>
+                              {formatInr(row.amount)}
+                            </span>
+                            <Badge
+                              variant={
+                                row.status === "OVERDUE" ? "danger" : "neutral"
+                              }
+                            >
+                              {row.status}
+                            </Badge>
+                          </div>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </section>
+
+              <section className={styles.panel}>
+                <p className={styles.panelTitle}>Recent paid</p>
+                {recentPaid.length === 0 ? (
+                  <EmptyState
+                    title="No recent payments"
+                    description="Paid invoices will show up here."
+                  />
+                ) : (
+                  <ul className={styles.recentList}>
+                    {recentPaid.map((invoice) => (
+                      <li key={invoice.id} className={styles.recentRow}>
+                        <div className={styles.recentTop}>
+                          <span className={styles.recentName}>
+                            {invoice.studentName}
+                          </span>
+                          <span className={styles.recentAmount}>
+                            {formatInr(invoice.amount)}
+                          </span>
+                        </div>
+                        <p className={styles.recentMeta}>
+                          {invoice.paymentMethod
+                            ? METHOD_LABELS[invoice.paymentMethod]
+                            : "Paid"}
+                          {invoice.paidAt
+                            ? ` · ${new Intl.DateTimeFormat(undefined, {
+                                month: "short",
+                                day: "numeric",
+                              }).format(new Date(invoice.paidAt))}`
+                            : ""}
+                        </p>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </section>
             </>
           ) : null}
         </div>
       </PullToRefresh>
+
+      {isStaff ? (
+        <CreateInvoiceSheet isOpen={createOpen} onOpenChange={setCreateOpen} />
+      ) : null}
+
+      <AppSheet
+        isOpen={Boolean(activePending)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setActivePendingId(null);
+            setPaymentMethod(null);
+          }
+        }}
+        title={
+          activePending
+            ? `Mark paid · ${activePending.studentName}`
+            : "Mark paid"
+        }
+      >
+        {activePending ? (
+          <div className={staff.sheetStack}>
+            <p className={staff.rowMeta}>
+              {formatInr(activePending.amount)} · {activePending.status}
+              {activePending.batchName ? ` · ${activePending.batchName}` : ""}
+            </p>
+            <div className={staff.sheetActions}>
+              <TouchButton
+                variant={paymentMethod === "CASH" ? "primary" : "default"}
+                fullWidth
+                isDisabled={markPaid.isPending}
+                onClick={() => setPaymentMethod("CASH")}
+              >
+                Cash
+              </TouchButton>
+              <TouchButton
+                variant={paymentMethod === "UPI_MANUAL" ? "primary" : "default"}
+                fullWidth
+                isDisabled={markPaid.isPending}
+                onClick={() => setPaymentMethod("UPI_MANUAL")}
+              >
+                UPI
+              </TouchButton>
+              <TouchButton
+                variant="primary"
+                fullWidth
+                isDisabled={!paymentMethod}
+                isPending={markPaid.isPending}
+                data-testid="confirm-mark-paid"
+                onClick={() => {
+                  if (!paymentMethod) return;
+                  markPaid.mutate({
+                    id: activePending.invoiceId,
+                    paymentMethod,
+                  });
+                }}
+              >
+                Confirm mark as paid
+              </TouchButton>
+            </div>
+          </div>
+        ) : null}
+      </AppSheet>
     </Screen>
+  );
+}
+
+function KpiCard({
+  icon,
+  label,
+  value,
+  hint,
+  tone,
+}: {
+  icon: IconName;
+  label: string;
+  value: string;
+  hint: string;
+  tone?: "success" | "warning" | "danger";
+}) {
+  return (
+    <div className={styles.kpiCard}>
+      <span className={styles.kpiLabel}>
+        <span className={styles.kpiIcon} data-tone={tone} aria-hidden>
+          <Icon name={icon} />
+        </span>
+        {label}
+      </span>
+      <strong className={styles.kpiValue}>{value}</strong>
+      <span className={styles.kpiHint}>{hint}</span>
+    </div>
   );
 }

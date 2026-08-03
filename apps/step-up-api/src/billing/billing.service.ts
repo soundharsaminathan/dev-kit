@@ -26,6 +26,8 @@ import {
   UserCryptoService,
 } from "../users/user-crypto.service";
 
+export type AnalyticsBucket = "day" | "week" | "month";
+
 export type TrainerPaymentAnalytics = {
   trainerId: string;
   trainerName: string;
@@ -62,6 +64,32 @@ export type TrainerPaymentAnalytics = {
     paidAt: string | null;
     platformFee: number;
     batchIds: string[];
+  }>;
+  series: Array<{
+    start: string;
+    end: string;
+    collected: number;
+    netCollected: number;
+    invoiceCount: number;
+  }>;
+  comparison: {
+    previousFrom: string | null;
+    previousTo: string | null;
+    collected: number;
+    netCollected: number;
+    netCollectedDelta: number;
+    netCollectedDeltaPct: number | null;
+    collectedDeltaPct: number | null;
+  };
+  pendingPayments: Array<{
+    invoiceId: string;
+    studentId: string;
+    studentName: string;
+    amount: number;
+    status: "PENDING" | "OVERDUE";
+    dueDate: string | null;
+    batchId: string | null;
+    batchName: string | null;
   }>;
 };
 
@@ -166,7 +194,11 @@ export class BillingService {
     actor: DecryptedUser,
     trainerId: string,
     studioId: string,
-    options: { from?: string; to?: string } = {},
+    options: {
+      from?: string;
+      to?: string;
+      bucket?: AnalyticsBucket;
+    } = {},
   ): Promise<TrainerPaymentAnalytics> {
     const resolvedTrainerId = this.resolveTrainerScope(actor, trainerId);
 
@@ -176,12 +208,16 @@ export class BillingService {
 
     const from = options.from ? new Date(options.from) : null;
     const to = options.to ? new Date(options.to) : null;
+    const bucket: AnalyticsBucket = options.bucket ?? inferBucket(from, to);
 
     if (from && Number.isNaN(from.getTime())) {
       throw new BadRequestException("Invalid from date");
     }
     if (to && Number.isNaN(to.getTime())) {
       throw new BadRequestException("Invalid to date");
+    }
+    if (options.bucket && !isAnalyticsBucket(options.bucket)) {
+      throw new BadRequestException("Invalid bucket");
     }
 
     const trainer = await this.prisma.user.findFirst({
@@ -244,9 +280,13 @@ export class BillingService {
         studioId,
         studentId: { in: studentIds },
       },
-      include: { student: true },
+      include: { student: true, membership: true },
       orderBy: [{ paidAt: "desc" }, { id: "desc" }],
     });
+
+    const batchNameById = new Map(
+      batches.map((batch) => [batch.id, batch.name] as const),
+    );
 
     const filtered = invoices.filter((invoice) => {
       if (!from && !to) {
@@ -364,6 +404,34 @@ export class BillingService {
       },
     );
 
+    const netCollected = roundMoney(collected - platformFees);
+    const series = buildAnalyticsSeries({
+      invoices: invoices.filter(
+        (invoice) =>
+          invoice.status === InvoiceStatus.PAID && invoice.paidAt != null,
+      ),
+      from,
+      to,
+      bucket,
+    });
+    const comparison = buildAnalyticsComparison({
+      invoices,
+      from,
+      to,
+      currentCollected: roundMoney(collected),
+      currentNetCollected: netCollected,
+    });
+    const pendingPayments = buildPendingPayments({
+      invoices: invoices.filter(
+        (invoice) =>
+          invoice.status === InvoiceStatus.PENDING ||
+          invoice.status === InvoiceStatus.OVERDUE,
+      ),
+      studentBatchMap,
+      batchNameById,
+      decryptUser: (user) => this.crypto.decryptUser(user),
+    });
+
     return {
       trainerId: trainer.id,
       trainerName: this.crypto.decryptUser(trainer).name,
@@ -377,7 +445,7 @@ export class BillingService {
         pending: roundMoney(pending),
         overdue: roundMoney(overdue),
         platformFees: roundMoney(platformFees),
-        netCollected: roundMoney(collected - platformFees),
+        netCollected,
       },
       byStatus: {
         PAID: {
@@ -417,6 +485,9 @@ export class BillingService {
         overdue: roundMoney(batch.overdue),
       })),
       invoices: invoiceRows,
+      series,
+      comparison,
+      pendingPayments,
     };
   }
 
@@ -872,10 +943,316 @@ export class BillingService {
       },
       byBatch: [],
       invoices: [],
+      series: [],
+      comparison: {
+        previousFrom: null,
+        previousTo: null,
+        collected: 0,
+        netCollected: 0,
+        netCollectedDelta: 0,
+        netCollectedDeltaPct: null,
+        collectedDeltaPct: null,
+      },
+      pendingPayments: [],
     };
   }
 }
 
 function roundMoney(value: number): number {
   return Math.round(value * 100) / 100;
+}
+
+function isAnalyticsBucket(value: string): value is AnalyticsBucket {
+  return value === "day" || value === "week" || value === "month";
+}
+
+function inferBucket(from: Date | null, to: Date | null): AnalyticsBucket {
+  if (!from || !to) {
+    return "month";
+  }
+  const days = (to.getTime() - from.getTime()) / (24 * 60 * 60 * 1000);
+  if (days <= 45) {
+    return "day";
+  }
+  if (days <= 120) {
+    return "week";
+  }
+  return "month";
+}
+
+function startOfBucket(date: Date, bucket: AnalyticsBucket): Date {
+  if (bucket === "day") {
+    return new Date(
+      Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()),
+    );
+  }
+  if (bucket === "week") {
+    const day = date.getUTCDay();
+    const diff = (day + 6) % 7;
+    return new Date(
+      Date.UTC(
+        date.getUTCFullYear(),
+        date.getUTCMonth(),
+        date.getUTCDate() - diff,
+      ),
+    );
+  }
+  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1));
+}
+
+function endOfBucket(start: Date, bucket: AnalyticsBucket): Date {
+  if (bucket === "day") {
+    return new Date(
+      Date.UTC(
+        start.getUTCFullYear(),
+        start.getUTCMonth(),
+        start.getUTCDate(),
+        23,
+        59,
+        59,
+        999,
+      ),
+    );
+  }
+  if (bucket === "week") {
+    return new Date(
+      Date.UTC(
+        start.getUTCFullYear(),
+        start.getUTCMonth(),
+        start.getUTCDate() + 6,
+        23,
+        59,
+        59,
+        999,
+      ),
+    );
+  }
+  return new Date(
+    Date.UTC(
+      start.getUTCFullYear(),
+      start.getUTCMonth() + 1,
+      0,
+      23,
+      59,
+      59,
+      999,
+    ),
+  );
+}
+
+function nextBucketStart(start: Date, bucket: AnalyticsBucket): Date {
+  if (bucket === "day") {
+    return new Date(
+      Date.UTC(
+        start.getUTCFullYear(),
+        start.getUTCMonth(),
+        start.getUTCDate() + 1,
+      ),
+    );
+  }
+  if (bucket === "week") {
+    return new Date(
+      Date.UTC(
+        start.getUTCFullYear(),
+        start.getUTCMonth(),
+        start.getUTCDate() + 7,
+      ),
+    );
+  }
+  return new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth() + 1, 1));
+}
+
+function buildAnalyticsSeries(input: {
+  invoices: Array<{
+    amount: unknown;
+    platformFeePercent: number;
+    paidAt: Date | null;
+  }>;
+  from: Date | null;
+  to: Date | null;
+  bucket: AnalyticsBucket;
+}): TrainerPaymentAnalytics["series"] {
+  const paid = input.invoices.filter(
+    (
+      invoice,
+    ): invoice is {
+      amount: unknown;
+      platformFeePercent: number;
+      paidAt: Date;
+    } => invoice.paidAt != null,
+  );
+
+  if (paid.length === 0 && (!input.from || !input.to)) {
+    return [];
+  }
+
+  let rangeStart = input.from;
+  let rangeEnd = input.to;
+  if (!rangeStart || !rangeEnd) {
+    const times = paid.map((invoice) => invoice.paidAt.getTime());
+    if (times.length === 0) {
+      return [];
+    }
+    rangeStart = rangeStart ?? new Date(Math.min(...times));
+    rangeEnd = rangeEnd ?? new Date(Math.max(...times));
+  }
+
+  const series: TrainerPaymentAnalytics["series"] = [];
+  let cursor = startOfBucket(rangeStart, input.bucket);
+  const last = startOfBucket(rangeEnd, input.bucket);
+
+  while (cursor.getTime() <= last.getTime()) {
+    const bucketEnd = endOfBucket(cursor, input.bucket);
+    let collected = 0;
+    let platformFees = 0;
+    let invoiceCount = 0;
+
+    for (const invoice of paid) {
+      if (invoice.paidAt < cursor || invoice.paidAt > bucketEnd) {
+        continue;
+      }
+      if (input.from && invoice.paidAt < input.from) {
+        continue;
+      }
+      if (input.to && invoice.paidAt > input.to) {
+        continue;
+      }
+      const amount = Number(invoice.amount);
+      collected += amount;
+      platformFees += computePlatformFee(amount, invoice.platformFeePercent);
+      invoiceCount += 1;
+    }
+
+    series.push({
+      start: cursor.toISOString(),
+      end: bucketEnd.toISOString(),
+      collected: roundMoney(collected),
+      netCollected: roundMoney(collected - platformFees),
+      invoiceCount,
+    });
+    cursor = nextBucketStart(cursor, input.bucket);
+  }
+
+  return series;
+}
+
+function buildAnalyticsComparison(input: {
+  invoices: Array<{
+    status: InvoiceStatus;
+    amount: unknown;
+    platformFeePercent: number;
+    paidAt: Date | null;
+  }>;
+  from: Date | null;
+  to: Date | null;
+  currentCollected: number;
+  currentNetCollected: number;
+}): TrainerPaymentAnalytics["comparison"] {
+  if (!input.from || !input.to) {
+    return {
+      previousFrom: null,
+      previousTo: null,
+      collected: 0,
+      netCollected: 0,
+      netCollectedDelta: input.currentNetCollected,
+      netCollectedDeltaPct: null,
+      collectedDeltaPct: null,
+    };
+  }
+
+  const durationMs = input.to.getTime() - input.from.getTime();
+  const previousTo = new Date(input.from.getTime() - 1);
+  const previousFrom = new Date(previousTo.getTime() - durationMs);
+
+  let collected = 0;
+  let platformFees = 0;
+  for (const invoice of input.invoices) {
+    if (
+      invoice.status !== InvoiceStatus.PAID ||
+      !invoice.paidAt ||
+      invoice.paidAt < previousFrom ||
+      invoice.paidAt > previousTo
+    ) {
+      continue;
+    }
+    const amount = Number(invoice.amount);
+    collected += amount;
+    platformFees += computePlatformFee(amount, invoice.platformFeePercent);
+  }
+
+  const netCollected = roundMoney(collected - platformFees);
+  const collectedRounded = roundMoney(collected);
+  const netCollectedDelta = roundMoney(
+    input.currentNetCollected - netCollected,
+  );
+  const collectedDelta = roundMoney(input.currentCollected - collectedRounded);
+
+  return {
+    previousFrom: previousFrom.toISOString(),
+    previousTo: previousTo.toISOString(),
+    collected: collectedRounded,
+    netCollected,
+    netCollectedDelta,
+    netCollectedDeltaPct:
+      netCollected === 0
+        ? null
+        : roundMoney((netCollectedDelta / netCollected) * 100),
+    collectedDeltaPct:
+      collectedRounded === 0
+        ? null
+        : roundMoney((collectedDelta / collectedRounded) * 100),
+  };
+}
+
+function buildPendingPayments(input: {
+  invoices: Array<{
+    id: string;
+    studentId: string;
+    amount: unknown;
+    status: InvoiceStatus;
+    purchaseMeta: unknown;
+    student: User;
+    membership: { periodEnd: Date } | null;
+  }>;
+  studentBatchMap: Map<string, Set<string>>;
+  batchNameById: Map<string, string>;
+  decryptUser: (user: User) => { name: string };
+}): TrainerPaymentAnalytics["pendingPayments"] {
+  const rows = input.invoices.map((invoice) => {
+    const meta = parsePurchaseMeta(invoice.purchaseMeta);
+    const enrolled = [...(input.studentBatchMap.get(invoice.studentId) ?? [])];
+    const batchId = meta?.batchId ?? enrolled[0] ?? null;
+    const batchName = batchId
+      ? (input.batchNameById.get(batchId) ?? null)
+      : null;
+
+    return {
+      invoiceId: invoice.id,
+      studentId: invoice.studentId,
+      studentName: input.decryptUser(invoice.student).name,
+      amount: Number(invoice.amount),
+      status: invoice.status as "PENDING" | "OVERDUE",
+      dueDate: invoice.membership?.periodEnd?.toISOString() ?? null,
+      batchId,
+      batchName,
+    };
+  });
+
+  rows.sort((a, b) => {
+    if (a.status !== b.status) {
+      return a.status === "OVERDUE" ? -1 : 1;
+    }
+    const aDue = a.dueDate
+      ? new Date(a.dueDate).getTime()
+      : Number.POSITIVE_INFINITY;
+    const bDue = b.dueDate
+      ? new Date(b.dueDate).getTime()
+      : Number.POSITIVE_INFINITY;
+    if (aDue !== bDue) {
+      return aDue - bDue;
+    }
+    return b.amount - a.amount;
+  });
+
+  return rows;
 }
