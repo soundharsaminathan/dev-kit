@@ -1,5 +1,4 @@
 import { FormInput } from "@/modules/ui/form-input";
-import staff from "@/modules/ui/staff.module.scss";
 
 export type StudioPaymentsFieldsProps = {
   razorpayKeyId: string;
@@ -8,6 +7,9 @@ export type StudioPaymentsFieldsProps = {
   configured?: boolean;
   onKeyIdChange: (value: string) => void;
   onKeySecretChange: (value: string) => void;
+  className?: string | undefined;
+  titleClassName?: string | undefined;
+  descClassName?: string | undefined;
 };
 
 export function StudioPaymentsFields({
@@ -17,15 +19,18 @@ export function StudioPaymentsFields({
   configured = false,
   onKeyIdChange,
   onKeySecretChange,
+  className,
+  titleClassName,
+  descClassName,
 }: StudioPaymentsFieldsProps) {
   const secretPlaceholder = configured
     ? "•••••••••••• (saved — enter a new secret to replace)"
     : "Paste Razorpay key secret";
 
   return (
-    <div className={staff.softPanel}>
-      <p className={staff.panelTitle}>Razorpay</p>
-      <p className={staff.panelDesc}>
+    <div className={className}>
+      <p className={titleClassName}>Razorpay</p>
+      <p className={descClassName}>
         {configured
           ? "Studio keys are saved. The secret stays hidden after save."
           : "Optional. Add both key ID and secret to enable live checkout; otherwise the studio runs in demo mode."}
@@ -45,7 +50,7 @@ export function StudioPaymentsFields({
         placeholder={secretPlaceholder}
         autoComplete="new-password"
       />
-      <p className={staff.panelDesc}>
+      <p className={descClassName}>
         {configured && !razorpayKeySecret
           ? "A secret is already on file. Leave blank to keep it, or paste a new one to replace."
           : "Paste Key ID and Key Secret from the same Razorpay API Keys page. The secret is never shown again after save."}
