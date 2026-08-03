@@ -17,6 +17,7 @@ export type AuthUser = {
   ageRange?: AgeRange | null | undefined;
   preferredBranchId?: string | null | undefined;
   onboardingCompletedAt?: string | null | undefined;
+  mustChangePassword?: boolean | undefined;
 };
 
 export type AuthContextValue = {

@@ -261,6 +261,7 @@ model User {
   profileVisibility      ProfileVisibility @default(PRIVATE)
   studioId               String?
   active                 Boolean           @default(true)
+  mustChangePassword     Boolean           @default(false)
   createdAt              DateTime          @default(now())
   updatedAt              DateTime          @updatedAt
 

@@ -141,6 +141,47 @@ describe("homePathForUser", () => {
   it("routes system admin to /admin", () => {
     expect(homePathForUser(SEED_SYSTEM_ADMIN)).toBe("/admin");
   });
+
+  it("sends owners with a temp password to change-password", () => {
+    expect(
+      homePathForUser(fixtureUser("OWNER", { mustChangePassword: true })),
+    ).toBe("/app/profile/change-password");
+  });
+});
+
+describe("requireAuth mustChangePassword", () => {
+  it("redirects owners to change-password until they update it", () => {
+    try {
+      requireAuth(
+        authWith(fixtureUser("OWNER", { mustChangePassword: true })),
+        {
+          roles: ["OWNER", "STAFF", "TRAINER"],
+          fallback: "/me",
+          pathname: "/app",
+          searchStr: "",
+        },
+      );
+      expect.unreachable();
+    } catch (error) {
+      expect(isRedirect(error)).toBe(true);
+      if (isRedirect(error)) {
+        expect(error.options.to).toBe("/app/profile/change-password");
+      }
+    }
+  });
+
+  it("allows the change-password route while the flag is set", () => {
+    const user = requireAuth(
+      authWith(fixtureUser("OWNER", { mustChangePassword: true })),
+      {
+        roles: ["OWNER", "STAFF", "TRAINER"],
+        fallback: "/me",
+        pathname: "/app/profile/change-password",
+        searchStr: "",
+      },
+    );
+    expect(user.mustChangePassword).toBe(true);
+  });
 });
 
 describe("requireSystemAdmin", () => {

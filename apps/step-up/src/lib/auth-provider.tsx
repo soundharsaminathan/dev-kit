@@ -69,6 +69,7 @@ type SyncedApiUser = {
   ageRange?: AgeRange | null | undefined;
   preferredBranchId?: string | null | undefined;
   onboardingCompletedAt?: string | Date | null | undefined;
+  mustChangePassword?: boolean | undefined;
 };
 
 const STORAGE_KEY = "step-up-dev-user";
@@ -109,6 +110,7 @@ function mapSyncedUser(user: SyncedApiUser): AuthUser {
     onboardingCompletedAt: user.onboardingCompletedAt
       ? String(user.onboardingCompletedAt)
       : null,
+    mustChangePassword: Boolean(user.mustChangePassword),
   };
 }
 
@@ -564,10 +566,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const changePassword = useCallback(
     async (currentPassword: string, newPassword: string) => {
-      if (isAuthBypassEnabled()) {
-        throw new Error(
-          "Password changes are unavailable while auth bypass is enabled.",
+      const clearMustChangeFlag = async (token: string) => {
+        const synced = await apiRequest<SyncedApiUser>(
+          "/auth/password-changed",
+          {
+            method: "POST",
+            token,
+          },
         );
+        const mapped = mapSyncedUser(synced);
+        setUser(mapped);
+        if (isAuthBypassEnabled()) {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(mapped));
+        }
+        if (lastSyncedRef.current?.user.id === mapped.id) {
+          lastSyncedRef.current = {
+            uid: lastSyncedRef.current.uid,
+            user: mapped,
+          };
+        }
+      };
+
+      if (isAuthBypassEnabled()) {
+        if (!user?.mustChangePassword) {
+          throw new Error(
+            "Password changes are unavailable while auth bypass is enabled.",
+          );
+        }
+        if (newPassword.length < 6) {
+          throw new Error("Password must be at least 6 characters");
+        }
+        await clearMustChangeFlag(`dev:${user.role}:${user.id}`);
+        return;
       }
 
       const auth = getFirebaseAuth();
@@ -590,11 +620,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await reauthenticateWithCredential(firebaseUser, credential);
         await updatePassword(firebaseUser, newPassword);
         setHasPasswordProvider(true);
+        const token = await firebaseUser.getIdToken();
+        await clearMustChangeFlag(token);
       } catch (error) {
         throw new Error(mapAuthError(error, "Unable to change password."));
       }
     },
-    [],
+    [user],
   );
 
   const changeEmail = useCallback(

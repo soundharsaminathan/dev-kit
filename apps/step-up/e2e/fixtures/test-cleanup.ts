@@ -1,6 +1,9 @@
 import { apiBaseUrl, bearerFor, SEED } from "./seed";
 
-async function bestEffortDelete(role: "OWNER" | "STAFF", pathName: string) {
+async function bestEffortDelete(
+  role: "OWNER" | "STAFF" | "SYSTEM_ADMIN",
+  pathName: string,
+) {
   try {
     await fetch(`${apiBaseUrl()}${pathName}`, {
       method: "DELETE",
@@ -13,10 +16,11 @@ async function bestEffortDelete(role: "OWNER" | "STAFF", pathName: string) {
   }
 }
 
-/** Tracks users/batches created during a test and deletes them afterwards. */
+/** Tracks users/batches/studios created during a test and deletes them afterwards. */
 export class TestDataCleanup {
   private readonly students: string[] = [];
   private readonly batches: string[] = [];
+  private readonly studios: string[] = [];
 
   trackStudent(id: string) {
     this.students.push(id);
@@ -25,6 +29,11 @@ export class TestDataCleanup {
 
   trackBatch(id: string) {
     this.batches.push(id);
+    return id;
+  }
+
+  trackStudio(id: string) {
+    this.studios.push(id);
     return id;
   }
 
@@ -41,6 +50,10 @@ export class TestDataCleanup {
     const batchIds = this.batches.splice(0);
     for (const batchId of batchIds) {
       await bestEffortDelete("STAFF", `/batches/${batchId}`);
+    }
+    const studioIds = this.studios.splice(0);
+    for (const id of studioIds) {
+      await bestEffortDelete("SYSTEM_ADMIN", `/studios/${id}`);
     }
   }
 }

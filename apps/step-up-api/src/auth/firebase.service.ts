@@ -131,4 +131,53 @@ export class FirebaseService {
       photoUrl: await this.media.signReadUrl(decrypted.photoUrl),
     };
   }
+
+  isAuthConfigured(): boolean {
+    this.ensureFirebase();
+    return admin.apps.length > 0;
+  }
+
+  /**
+   * Creates or updates a Firebase Auth email/password user.
+   * Returns null when Firebase Admin is not configured (e.g. local bypass-only).
+   */
+  async ensureEmailPasswordUser(input: {
+    email: string;
+    password: string;
+    displayName: string;
+  }): Promise<{ uid: string } | null> {
+    this.ensureFirebase();
+    if (!admin.apps.length) {
+      return null;
+    }
+
+    const email = input.email.trim().toLowerCase();
+    try {
+      const created = await admin.auth().createUser({
+        email,
+        password: input.password,
+        displayName: input.displayName,
+        emailVerified: true,
+      });
+      return { uid: created.uid };
+    } catch (error) {
+      const code =
+        typeof error === "object" &&
+        error !== null &&
+        "code" in error &&
+        typeof (error as { code: unknown }).code === "string"
+          ? (error as { code: string }).code
+          : null;
+      if (code !== "auth/email-already-exists") {
+        throw error;
+      }
+      const existing = await admin.auth().getUserByEmail(email);
+      await admin.auth().updateUser(existing.uid, {
+        password: input.password,
+        displayName: input.displayName,
+        emailVerified: true,
+      });
+      return { uid: existing.uid };
+    }
+  }
 }

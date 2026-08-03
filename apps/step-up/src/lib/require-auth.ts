@@ -24,6 +24,38 @@ function loginRedirectPath(pathname: string, searchStr: string) {
   return path;
 }
 
+export function changePasswordPathForUser(
+  user: NonNullable<AuthContextValue["user"]>,
+) {
+  if (STAFF_ROLES.includes(user.role)) {
+    return "/app/profile/change-password" as const;
+  }
+  if (MEMBER_ROLES.includes(user.role)) {
+    return "/me/profile/change-password" as const;
+  }
+  return "/app/profile/change-password" as const;
+}
+
+function isChangePasswordPath(pathname: string) {
+  return (
+    pathname === "/app/profile/change-password" ||
+    pathname === "/me/profile/change-password"
+  );
+}
+
+function enforceMustChangePassword(
+  user: NonNullable<AuthContextValue["user"]>,
+  pathname: string,
+) {
+  if (!user.mustChangePassword || isChangePasswordPath(pathname)) {
+    return;
+  }
+  throw redirect({
+    to: changePasswordPathForUser(user),
+    replace: true,
+  });
+}
+
 export function requireAuth(
   auth: AuthContextValue,
   options: {
@@ -49,6 +81,8 @@ export function requireAuth(
     });
   }
 
+  enforceMustChangePassword(auth.user, options.pathname);
+
   return auth.user;
 }
 
@@ -73,6 +107,9 @@ export function safeInternalPath(path: string | undefined): string | null {
 }
 
 export function homePathForUser(user: NonNullable<AuthContextValue["user"]>) {
+  if (user.mustChangePassword) {
+    return changePasswordPathForUser(user);
+  }
   if (user.role === "SYSTEM_ADMIN") {
     return "/admin" as const;
   }
@@ -106,6 +143,13 @@ export function redirectIfAuthenticated(
   const user = auth.user;
   if (!user) {
     return;
+  }
+
+  if (user.mustChangePassword) {
+    throw redirect({
+      to: changePasswordPathForUser(user),
+      replace: true,
+    });
   }
 
   const safeRedirect = safeInternalPath(redirectTo);

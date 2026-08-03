@@ -90,6 +90,23 @@ export class AuthController {
     };
   }
 
+  @Post("password-changed")
+  @UseGuards(TokenGuard)
+  async passwordChanged(
+    @Req() request: { auth: VerifiedAuth },
+  ): Promise<DecryptedUser> {
+    const user = await this.firebase.resolveUser(request.auth);
+    const updated = await this.prisma.user.update({
+      where: { id: user.id },
+      data: { mustChangePassword: false },
+    });
+    const decrypted = this.crypto.decryptUser(updated);
+    return {
+      ...decrypted,
+      photoUrl: await this.media.signReadUrl(decrypted.photoUrl),
+    };
+  }
+
   @Post("accept-invite")
   @UseGuards(TokenGuard)
   async acceptInvite(
