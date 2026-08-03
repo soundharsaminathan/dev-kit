@@ -10,6 +10,10 @@ const setMode = vi.fn();
 const setEditing = vi.fn();
 const patch = vi.fn();
 
+vi.mock("@dev-ui/components/toast", () => ({
+  useToastContext: () => ({ toast: vi.fn() }),
+}));
+
 vi.mock("@dev-ui/core", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@dev-ui/core")>();
   return {

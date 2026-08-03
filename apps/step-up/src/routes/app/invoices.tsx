@@ -1,4 +1,5 @@
 import { Badge } from "@dev-ui/components/badge";
+import { useToastContext } from "@dev-ui/components/toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
@@ -47,6 +48,7 @@ function InvoicesPage() {
   const api = useApi();
   const studioId = useStudioId();
   const queryClient = useQueryClient();
+  const { toast } = useToastContext("InvoicesPage");
   const [filter, setFilter] = useState("ALL");
   const [activeId, setActiveId] = useState<string | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(
@@ -67,6 +69,21 @@ function InvoicesPage() {
       setActiveId(null);
       setPaymentMethod(null);
       void queryClient.invalidateQueries({ queryKey: ["invoices", studioId] });
+      toast({
+        title: "Invoice marked paid",
+        description: "Payment was recorded for this invoice.",
+        variant: "success",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Couldn’t mark invoice paid",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Could not mark invoice paid.",
+        variant: "error",
+      });
     },
   });
 

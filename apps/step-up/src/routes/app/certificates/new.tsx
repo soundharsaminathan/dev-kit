@@ -1,4 +1,5 @@
 import { Button } from "@dev-ui/components/button";
+import { useToastContext } from "@dev-ui/components/toast";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useCallback, useState } from "react";
@@ -29,6 +30,7 @@ function NewCertificateTemplatePage() {
   const studioId = useStudioId();
   const navigate = useNavigate({ from: Route.fullPath });
   const queryClient = useQueryClient();
+  const { toast } = useToastContext("NewCertificateTemplatePage");
   const [name, setName] = useState("");
   const [layout, setLayout] = useState<CertificateDocument>(
     createDefaultCertificateDocument,
@@ -49,7 +51,20 @@ function NewCertificateTemplatePage() {
       await queryClient.invalidateQueries({
         queryKey: ["certificate-templates", studioId],
       });
+      toast({
+        title: "Template created",
+        description: "The certificate template is ready to use.",
+        variant: "success",
+      });
       await navigate({ to: "/app/certificates" });
+    },
+    onError: (error) => {
+      toast({
+        title: "Couldn’t create template",
+        description:
+          error instanceof Error ? error.message : "Could not create template.",
+        variant: "error",
+      });
     },
   });
 

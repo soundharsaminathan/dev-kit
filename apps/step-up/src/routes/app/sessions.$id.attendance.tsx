@@ -1,4 +1,5 @@
 import { Button } from "@dev-ui/components/button";
+import { useToastContext } from "@dev-ui/components/toast";
 import { Icon } from "@dev-ui/icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
@@ -68,6 +69,7 @@ function SessionAttendancePage() {
   const { id } = Route.useParams();
   const api = useApi();
   const queryClient = useQueryClient();
+  const { toast } = useToastContext("SessionAttendancePage");
   const [activeQrId, setActiveQrId] = useState<string | null>(null);
   const qrOpen = activeQrId === QR_ITEM_ID;
 
@@ -103,7 +105,27 @@ function SessionAttendancePage() {
       api.post<{ marked: number; failed: number }>(
         `/attendance/session/${id}/mark-all-present`,
       ),
-    onSuccess: invalidateAttendance,
+    onSuccess: (data) => {
+      invalidateAttendance();
+      toast({
+        title: "All marked present",
+        description:
+          data.failed > 0
+            ? `Marked ${data.marked} students present. ${data.failed} could not be marked.`
+            : "Every student was marked present.",
+        variant: "success",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Couldn’t mark all present",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Could not mark all present.",
+        variant: "error",
+      });
+    },
   });
 
   const markAttendance = useMutation({
@@ -117,7 +139,17 @@ function SessionAttendancePage() {
         status: payload.status,
         source: "TRAINER",
       }),
-    onSuccess: invalidateAttendance,
+    onSuccess: () => {
+      invalidateAttendance();
+    },
+    onError: (error) => {
+      toast({
+        title: "Couldn’t mark attendance",
+        description:
+          error instanceof Error ? error.message : "Could not mark attendance.",
+        variant: "error",
+      });
+    },
   });
 
   const markSelected = useMutation({
@@ -142,7 +174,28 @@ function SessionAttendancePage() {
         status: payload.status,
       };
     },
-    onSuccess: invalidateAttendance,
+    onSuccess: (data) => {
+      invalidateAttendance();
+      const statusLabel = data.status === "PRESENT" ? "present" : "absent";
+      toast({
+        title: "Attendance updated",
+        description:
+          data.failed > 0
+            ? `Marked ${data.marked} students ${statusLabel}. ${data.failed} could not be marked.`
+            : `Selected students were marked ${statusLabel}.`,
+        variant: "success",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Couldn’t mark selected",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Could not mark selected students.",
+        variant: "error",
+      });
+    },
   });
 
   const completeSession = useMutation({
@@ -154,6 +207,21 @@ function SessionAttendancePage() {
           queryKey: ["batch", sessionQuery.data?.batchId],
         }),
       ]);
+      toast({
+        title: "Session completed",
+        description: "This session is marked complete.",
+        variant: "success",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Couldn’t complete session",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Could not complete session.",
+        variant: "error",
+      });
     },
   });
 

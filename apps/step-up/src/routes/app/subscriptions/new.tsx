@@ -6,6 +6,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@dev-ui/components/select";
+import { useToastContext } from "@dev-ui/components/toast";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
@@ -47,6 +48,7 @@ function NewSubscriptionPage() {
   const studioId = useStudioId();
   const navigate = useNavigate({ from: Route.fullPath });
   const queryClient = useQueryClient();
+  const { toast } = useToastContext("NewSubscriptionPage");
   const [name, setName] = useState("");
   const [kind, setKind] = useState<SubscriptionKind>("INDIVIDUAL");
   const [individualAudience, setIndividualAudience] =
@@ -74,7 +76,22 @@ function NewSubscriptionPage() {
       await queryClient.invalidateQueries({
         queryKey: ["subscriptions", studioId],
       });
+      toast({
+        title: "Subscription created",
+        description: "New membership plan added.",
+        variant: "success",
+      });
       await navigate({ to: "/app/subscriptions" });
+    },
+    onError: (error) => {
+      toast({
+        title: "Couldn’t create subscription",
+        description:
+          error instanceof Error
+            ? error.message
+            : "The subscription could not be created.",
+        variant: "error",
+      });
     },
   });
 

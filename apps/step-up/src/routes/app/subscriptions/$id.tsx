@@ -6,6 +6,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@dev-ui/components/select";
+import { useToastContext } from "@dev-ui/components/toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
@@ -100,6 +101,7 @@ function EditSubscriptionForm({
   const studioId = useStudioId();
   const navigate = useNavigate({ from: Route.fullPath });
   const queryClient = useQueryClient();
+  const { toast } = useToastContext("EditSubscriptionForm");
   const [name, setName] = useState(subscription.name);
   const [billingCadence, setBillingCadence] = useState<BillingCadence>(
     subscription.billingCadence ?? "MONTHLY",
@@ -151,7 +153,22 @@ function EditSubscriptionForm({
           queryKey: ["subscription", subscription.id],
         }),
       ]);
+      toast({
+        title: "Subscription saved",
+        description: "Membership plan updated.",
+        variant: "success",
+      });
       await navigate({ to: "/app/subscriptions" });
+    },
+    onError: (error) => {
+      toast({
+        title: "Couldn’t save subscription",
+        description:
+          error instanceof Error
+            ? error.message
+            : "The subscription could not be saved.",
+        variant: "error",
+      });
     },
   });
 

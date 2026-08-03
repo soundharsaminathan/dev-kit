@@ -16,6 +16,7 @@ import {
 import { Switch } from "@dev-ui/components/switch";
 import { Tab, TabList, TabPanel, Tabs } from "@dev-ui/components/tabs";
 import { TextArea } from "@dev-ui/components/text-area";
+import { useToastContext } from "@dev-ui/components/toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
@@ -188,6 +189,7 @@ function EditBatchPage() {
   const studioId = useStudioId();
   const navigate = useNavigate({ from: Route.fullPath });
   const queryClient = useQueryClient();
+  const { toast } = useToastContext("EditBatchPage");
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   const query = useQuery({
@@ -208,7 +210,22 @@ function EditBatchPage() {
         queryClient.invalidateQueries({ queryKey: ["batches", studioId] }),
         queryClient.removeQueries({ queryKey: ["batch", id] }),
       ]);
+      toast({
+        title: "Batch deleted",
+        description: "The batch was removed.",
+        variant: "success",
+      });
       await navigate({ to: "/app/batches" });
+    },
+    onError: (error) => {
+      toast({
+        title: "Couldn’t delete batch",
+        description:
+          error instanceof Error
+            ? error.message
+            : "The batch could not be deleted.",
+        variant: "error",
+      });
     },
   });
 
@@ -359,6 +376,7 @@ function EditBatchForm({
   const api = useApi();
   const studioId = useStudioId();
   const queryClient = useQueryClient();
+  const { toast } = useToastContext("EditBatchForm");
   const schedule = batch.scheduleJson;
 
   const [name, setName] = useState(batch.name);
@@ -516,7 +534,22 @@ function EditBatchForm({
           queryKey: ["batch-revenue", batch.id],
         }),
       ]);
+      toast({
+        title: "Batch saved",
+        description: "Batch settings updated.",
+        variant: "success",
+      });
       onSaved?.();
+    },
+    onError: (error) => {
+      toast({
+        title: "Couldn’t save batch",
+        description:
+          error instanceof Error
+            ? error.message
+            : "The batch could not be updated.",
+        variant: "error",
+      });
     },
   });
 

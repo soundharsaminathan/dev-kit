@@ -1,6 +1,7 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@dev-ui/components/avatar";
 import { Badge } from "@dev-ui/components/badge";
 import { Checkbox } from "@dev-ui/components/checkbox";
+import { useToastContext } from "@dev-ui/components/toast";
 import { Icon } from "@dev-ui/icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
@@ -77,6 +78,7 @@ export function BatchRoster({ batchId, capacity, active }: BatchRosterProps) {
   const studioId = useStudioId();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { toast } = useToastContext("BatchRoster");
   const [studentId, setStudentId] = useState<string | null>(null);
   const [selectedStudent, setSelectedStudent] = useState<StudioStudent | null>(
     null,
@@ -181,10 +183,25 @@ export function BatchRoster({ batchId, capacity, active }: BatchRosterProps) {
 
       return { previous };
     },
-    onError: (_error, _input, context) => {
+    onSuccess: (_data, { isTrial: enrolledAsTrial }) => {
+      toast({
+        title: "Student enrolled",
+        description: enrolledAsTrial
+          ? "They were added on a trial seat."
+          : "They were added to this batch.",
+        variant: "success",
+      });
+    },
+    onError: (error, _input, context) => {
       if (context?.previous) {
         queryClient.setQueryData(["batch", batchId], context.previous);
       }
+      toast({
+        title: "Couldn’t enroll student",
+        description:
+          error instanceof Error ? error.message : "Could not enroll student.",
+        variant: "error",
+      });
     },
     onSettled: async () => {
       await Promise.all([

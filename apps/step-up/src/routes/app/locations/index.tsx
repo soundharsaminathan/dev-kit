@@ -1,3 +1,4 @@
+import { useToastContext } from "@dev-ui/components/toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
@@ -39,6 +40,7 @@ function LocationsPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { toast } = useToastContext("LocationsPage");
   const [formOpen, setFormOpen] = useState(false);
   const [form, setForm] = useState<CreateForm>(emptyForm);
   const canManage = isAdminRole(user?.role);
@@ -63,9 +65,24 @@ function LocationsPage() {
       await queryClient.invalidateQueries({
         queryKey: ["branches", studioId],
       });
+      toast({
+        title: "Location created",
+        description: "Continue editing details and gallery.",
+        variant: "success",
+      });
       void navigate({
         to: "/app/locations/$id/edit",
         params: { id: branch.id },
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Couldn’t create location",
+        description:
+          error instanceof Error
+            ? error.message
+            : "The location could not be created.",
+        variant: "error",
       });
     },
   });
@@ -75,6 +92,21 @@ function LocationsPage() {
     onSuccess: async () => {
       await queryClient.invalidateQueries({
         queryKey: ["branches", studioId],
+      });
+      toast({
+        title: "Location deleted",
+        description: "The branch was removed.",
+        variant: "success",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Couldn’t delete location",
+        description:
+          error instanceof Error
+            ? error.message
+            : "This location could not be deleted.",
+        variant: "error",
       });
     },
   });

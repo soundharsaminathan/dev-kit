@@ -1,3 +1,4 @@
+import { useToastContext } from "@dev-ui/components/toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
@@ -35,6 +36,7 @@ function BookingsPage() {
   const studioId = useStudioId();
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const { toast } = useToastContext("BookingsPage");
   const isTrainer = user?.role === "TRAINER";
   const [filter, setFilter] = useState("ALL");
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -64,9 +66,30 @@ function BookingsPage() {
           ? { startsAt: values.startsAt, endsAt: values.endsAt }
           : {}),
       }),
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       invalidateBookings();
       setSelectedId(null);
+      if (variables.status === "CONFIRMED") {
+        toast({
+          title: "Booking confirmed",
+          description: "The student will be notified.",
+          variant: "success",
+        });
+      } else if (variables.status === "CANCELLED") {
+        toast({
+          title: "Booking declined",
+          description: "The request was cancelled.",
+          variant: "success",
+        });
+      }
+    },
+    onError: (error) => {
+      toast({
+        title: "Couldn’t update booking",
+        description:
+          error instanceof Error ? error.message : "Could not update booking.",
+        variant: "error",
+      });
     },
   });
 

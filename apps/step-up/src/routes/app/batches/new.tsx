@@ -15,6 +15,7 @@ import {
 } from "@dev-ui/components/select";
 import { Switch } from "@dev-ui/components/switch";
 import { TextArea } from "@dev-ui/components/text-area";
+import { useToastContext } from "@dev-ui/components/toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
@@ -121,6 +122,7 @@ function NewBatchPage() {
   const studioId = useStudioId();
   const navigate = useNavigate({ from: Route.fullPath });
   const queryClient = useQueryClient();
+  const { toast } = useToastContext("NewBatchPage");
   const today = useMemo(() => toDateInputValue(new Date()), []);
   const [step, setStep] = useState(0);
   const [name, setName] = useState("");
@@ -352,7 +354,22 @@ function NewBatchPage() {
       await queryClient.invalidateQueries({
         queryKey: ["batches", studioId],
       });
+      toast({
+        title: "Batch created",
+        description: "Your batch is live on the schedule.",
+        variant: "success",
+      });
       await navigate({ to: "/app/batches" });
+    },
+    onError: (error) => {
+      toast({
+        title: "Couldn’t create batch",
+        description:
+          error instanceof Error
+            ? error.message
+            : "The batch could not be created.",
+        variant: "error",
+      });
     },
   });
 

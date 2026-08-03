@@ -1,5 +1,6 @@
 import { Alert, AlertDescription, AlertTitle } from "@dev-ui/components/alert";
 import { FileTrigger } from "@dev-ui/components/file-trigger";
+import { useToastContext } from "@dev-ui/components/toast";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
@@ -122,6 +123,7 @@ function ImportStudentsPage() {
   const studioId = useStudioId();
   const navigate = useNavigate({ from: Route.fullPath });
   const queryClient = useQueryClient();
+  const { toast } = useToastContext("ImportStudentsPage");
   const [fileName, setFileName] = useState<string | null>(null);
   const [students, setStudents] = useState<StudentRow[]>([]);
   const [fileError, setFileError] = useState<string | null>(null);
@@ -145,7 +147,20 @@ function ImportStudentsPage() {
           queryKey: ["student-directory", studioId],
         }),
       ]);
+      toast({
+        title: "Students imported",
+        description: "Spreadsheet import completed.",
+        variant: "success",
+      });
       await navigate({ to: "/app/students" });
+    },
+    onError: (error) => {
+      toast({
+        title: "Couldn’t import students",
+        description:
+          error instanceof Error ? error.message : "Please try again.",
+        variant: "error",
+      });
     },
   });
 

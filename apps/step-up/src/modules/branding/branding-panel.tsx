@@ -1,4 +1,5 @@
 import { ThemeEditorPanel } from "@dev-ui/components/theme-editor";
+import { useToastContext } from "@dev-ui/components/toast";
 import { useTheme } from "@dev-ui/core";
 import { type ThemeDraft, themeDraftToDefinition } from "@dev-ui/tokens";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -28,6 +29,7 @@ export function BrandingPanel({
   const api = useApi();
   const studioId = useStudioId();
   const queryClient = useQueryClient();
+  const { toast } = useToastContext("BrandingPanel");
   const { setLiveTheme, mode, setMode } = useTheme();
   const { setEditing } = useStudioBrandEdit();
   const logoInputRef = useRef<HTMLInputElement>(null);
@@ -67,11 +69,21 @@ export function BrandingPanel({
     onSuccess: () => {
       setLogoError(null);
       invalidateStudio();
+      toast({
+        title: "Logo uploaded",
+        description: "Studio logo updated.",
+        variant: "success",
+      });
     },
     onError: (error) => {
-      setLogoError(
-        error instanceof Error ? error.message : "Could not upload logo.",
-      );
+      const description =
+        error instanceof Error ? error.message : "Could not upload logo.";
+      setLogoError(description);
+      toast({
+        title: "Couldn’t upload logo",
+        description,
+        variant: "error",
+      });
     },
   });
 
@@ -80,11 +92,21 @@ export function BrandingPanel({
     onSuccess: () => {
       setLogoError(null);
       invalidateStudio();
+      toast({
+        title: "Logo removed",
+        description: "Studio logo cleared.",
+        variant: "success",
+      });
     },
     onError: (error) => {
-      setLogoError(
-        error instanceof Error ? error.message : "Could not remove logo.",
-      );
+      const description =
+        error instanceof Error ? error.message : "Could not remove logo.";
+      setLogoError(description);
+      toast({
+        title: "Couldn’t remove logo",
+        description,
+        variant: "error",
+      });
     },
   });
 
@@ -96,11 +118,21 @@ export function BrandingPanel({
     onSuccess: () => {
       setThemeError(null);
       invalidateStudio();
+      toast({
+        title: "Theme saved",
+        description: "Brand theme updated.",
+        variant: "success",
+      });
     },
     onError: (error) => {
-      setThemeError(
-        error instanceof Error ? error.message : "Could not save brand theme.",
-      );
+      const description =
+        error instanceof Error ? error.message : "Could not save brand theme.";
+      setThemeError(description);
+      toast({
+        title: "Couldn’t save theme",
+        description,
+        variant: "error",
+      });
     },
   });
 
@@ -110,11 +142,21 @@ export function BrandingPanel({
       setThemeError(null);
       setDraft(brandThemeToDraft(null, studioName));
       invalidateStudio();
+      toast({
+        title: "Theme reset",
+        description: "Brand theme restored to default.",
+        variant: "success",
+      });
     },
     onError: (error) => {
-      setThemeError(
-        error instanceof Error ? error.message : "Could not reset brand theme.",
-      );
+      const description =
+        error instanceof Error ? error.message : "Could not reset brand theme.";
+      setThemeError(description);
+      toast({
+        title: "Couldn’t reset theme",
+        description,
+        variant: "error",
+      });
     },
   });
 

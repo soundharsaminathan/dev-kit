@@ -6,6 +6,7 @@ import {
   MenuItem,
   MenuItemLabel,
 } from "@dev-ui/components/menu";
+import { useToastContext } from "@dev-ui/components/toast";
 import { Icon } from "@dev-ui/icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
@@ -170,6 +171,7 @@ function StudentDetailPage() {
   const studioId = useStudioId();
   const navigate = useNavigate({ from: Route.fullPath });
   const queryClient = useQueryClient();
+  const { toast } = useToastContext("StudentDetailPage");
 
   const [sheet, setSheet] = useState<SheetKind>(null);
   const [editName, setEditName] = useState("");
@@ -294,7 +296,20 @@ function StudentDetailPage() {
           queryKey: ["student-profile", studioId, id],
         }),
       ]);
+      toast({
+        title: "Student deleted",
+        description: "The student was removed from this studio.",
+        variant: "success",
+      });
       await navigate({ to: "/app/students" });
+    },
+    onError: (error) => {
+      toast({
+        title: "Couldn’t delete student",
+        description:
+          error instanceof Error ? error.message : "Could not delete student.",
+        variant: "error",
+      });
     },
   });
 
@@ -304,9 +319,37 @@ function StudentDetailPage() {
       phone?: string;
       active?: boolean;
     }) => api.patch(`/users/studio/${studioId}/students/${id}`, payload),
-    onSuccess: async () => {
+    onSuccess: async (_data, variables) => {
       await invalidateStudent();
       closeSheet();
+      if (variables.active !== undefined) {
+        toast({
+          title: variables.active
+            ? "Student reactivated"
+            : "Student deactivated",
+          description: variables.active
+            ? "They can access the member app again."
+            : "They no longer have access to the member app.",
+          variant: "success",
+        });
+      } else {
+        toast({
+          title: "Profile saved",
+          description: "Student profile updated.",
+          variant: "success",
+        });
+      }
+    },
+    onError: (error, variables) => {
+      toast({
+        title:
+          variables.active !== undefined
+            ? "Couldn’t update student"
+            : "Couldn’t save profile",
+        description:
+          error instanceof Error ? error.message : "Could not update student.",
+        variant: "error",
+      });
     },
   });
 
@@ -325,6 +368,19 @@ function StudentDetailPage() {
     onSuccess: async () => {
       await invalidateStudent();
       closeSheet();
+      toast({
+        title: "Plan assigned",
+        description: "The subscription is now active for this student.",
+        variant: "success",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Couldn’t assign plan",
+        description:
+          error instanceof Error ? error.message : "Could not assign plan.",
+        variant: "error",
+      });
     },
   });
 
@@ -334,6 +390,19 @@ function StudentDetailPage() {
     onSuccess: async () => {
       await invalidateStudent();
       closeSheet();
+      toast({
+        title: "Plan renewed",
+        description: "A new billing period was started.",
+        variant: "success",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Couldn’t renew plan",
+        description:
+          error instanceof Error ? error.message : "Could not renew plan.",
+        variant: "error",
+      });
     },
   });
 
@@ -348,6 +417,21 @@ function StudentDetailPage() {
     onSuccess: async () => {
       await invalidateStudent();
       closeSheet();
+      toast({
+        title: "Invoice marked paid",
+        description: "Payment was recorded for this invoice.",
+        variant: "success",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Couldn’t mark invoice paid",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Could not mark invoice paid.",
+        variant: "error",
+      });
     },
   });
 
@@ -360,6 +444,19 @@ function StudentDetailPage() {
     onSuccess: async () => {
       await invalidateStudent();
       closeSheet();
+      toast({
+        title: "Parent linked",
+        description: "The parent account is now connected to this student.",
+        variant: "success",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Couldn’t link parent",
+        description:
+          error instanceof Error ? error.message : "Could not link parent.",
+        variant: "error",
+      });
     },
   });
 
@@ -370,9 +467,24 @@ function StudentDetailPage() {
         memberIds: [id],
       }),
     onSuccess: (conversation) => {
+      toast({
+        title: "Conversation opened",
+        description: "You can message this student now.",
+        variant: "success",
+      });
       void navigate({
         to: "/app/messages/$id",
         params: { id: conversation.id },
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Couldn’t start conversation",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Could not start conversation.",
+        variant: "error",
       });
     },
   });

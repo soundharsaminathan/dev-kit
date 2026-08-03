@@ -14,6 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@dev-ui/components/select";
+import { useToastContext } from "@dev-ui/components/toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
@@ -77,6 +78,7 @@ function ContestDetailPage() {
   const api = useApi();
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const { toast } = useToastContext("ContestDetailPage");
   const [placementDrafts, setPlacementDrafts] = useState<
     Record<string, string>
   >({});
@@ -106,6 +108,19 @@ function ContestDetailPage() {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["contests", id] });
       void queryClient.invalidateQueries({ queryKey: ["contests"] });
+      toast({
+        title: "Status updated",
+        description: "Contest status was saved.",
+        variant: "success",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Couldn’t update status",
+        description:
+          error instanceof Error ? error.message : "Could not update status.",
+        variant: "error",
+      });
     },
   });
 
@@ -120,6 +135,19 @@ function ContestDetailPage() {
     onSuccess: () => {
       void queryClient.invalidateQueries({
         queryKey: ["contests", id, "entries"],
+      });
+      toast({
+        title: "Placement saved",
+        description: "Entry placement was updated.",
+        variant: "success",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Couldn’t save placement",
+        description:
+          error instanceof Error ? error.message : "Could not save placement.",
+        variant: "error",
       });
     },
   });
@@ -138,6 +166,19 @@ function ContestDetailPage() {
       void queryClient.invalidateQueries({
         queryKey: ["contests", id, "scores"],
       });
+      toast({
+        title: "Score saved",
+        description: "The judge score was recorded.",
+        variant: "success",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Couldn’t save score",
+        description:
+          error instanceof Error ? error.message : "Could not save score.",
+        variant: "error",
+      });
     },
   });
 
@@ -147,6 +188,21 @@ function ContestDetailPage() {
     onSuccess: () => {
       void queryClient.invalidateQueries({
         queryKey: ["contests", id, "entries"],
+      });
+      toast({
+        title: "Certificate issued",
+        description: "The certificate is now available for this entry.",
+        variant: "success",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Couldn’t issue certificate",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Could not issue certificate.",
+        variant: "error",
       });
     },
   });

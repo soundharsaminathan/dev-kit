@@ -1,3 +1,4 @@
+import { useToastContext } from "@dev-ui/components/toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { useApi } from "@/lib/api-context";
@@ -14,6 +15,7 @@ export function StudioPaymentsFormPage() {
   const api = useApi();
   const studioId = useStudioId();
   const queryClient = useQueryClient();
+  const { toast } = useToastContext("StudioPaymentsFormPage");
   const [razorpayKeyId, setRazorpayKeyId] = useState("");
   const [razorpayKeySecret, setRazorpayKeySecret] = useState("");
   const [savedSecret, setSavedSecret] = useState(false);
@@ -63,6 +65,23 @@ export function StudioPaymentsFormPage() {
       void queryClient.invalidateQueries({ queryKey: ["studio", studioId] });
       void queryClient.invalidateQueries({
         queryKey: ["studio-public", studioId],
+      });
+      toast({
+        title: "Payments saved",
+        description: result.secretUpdated
+          ? "Razorpay secret updated securely."
+          : "Payment settings updated.",
+        variant: "success",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Couldn’t save payments",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Could not save payment settings.",
+        variant: "error",
       });
     },
   });

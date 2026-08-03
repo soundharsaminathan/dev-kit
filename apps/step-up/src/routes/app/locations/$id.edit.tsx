@@ -1,3 +1,4 @@
+import { useToastContext } from "@dev-ui/components/toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
@@ -53,6 +54,7 @@ function LocationEditPage() {
   const api = useApi();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { toast } = useToastContext("LocationEditPage");
 
   const query = useQuery({
     queryKey: ["branch", id, "edit"],
@@ -119,6 +121,18 @@ function LocationEditPage() {
         queryClient.invalidateQueries({ queryKey: ["branch-landing", id] }),
         queryClient.invalidateQueries({ queryKey: ["branches"] }),
       ]);
+      toast({
+        title: "Details saved",
+        description: "Location basics updated.",
+        variant: "success",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Couldn’t save details",
+        description: error instanceof Error ? error.message : "Could not save.",
+        variant: "error",
+      });
     },
   });
 
@@ -131,6 +145,19 @@ function LocationEditPage() {
       await queryClient.invalidateQueries({ queryKey: ["branch", id] });
       await queryClient.invalidateQueries({
         queryKey: ["branch-landing", id],
+      });
+      toast({
+        title: "FAQs saved",
+        description: "Location FAQs updated.",
+        variant: "success",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Couldn’t save FAQs",
+        description:
+          error instanceof Error ? error.message : "Could not save FAQs.",
+        variant: "error",
       });
     },
   });
@@ -150,6 +177,21 @@ function LocationEditPage() {
       await queryClient.invalidateQueries({ queryKey: ["branch", id] });
       await queryClient.invalidateQueries({
         queryKey: ["branch-landing", id],
+      });
+      toast({
+        title: "Testimonials saved",
+        description: "Location testimonials updated.",
+        variant: "success",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Couldn’t save testimonials",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Could not save testimonials.",
+        variant: "error",
       });
     },
   });
