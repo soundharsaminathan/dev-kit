@@ -4,7 +4,6 @@ import {
   Inject,
   Injectable,
   InternalServerErrorException,
-  UnauthorizedException,
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import Razorpay from "razorpay";
@@ -72,7 +71,9 @@ export class RazorpayService {
           };
         }
       } catch {
-        // Fall through to env keys when studio secret cannot be decrypted.
+        throw new BadRequestException(
+          "Stored Razorpay secret cannot be decrypted. Re-save both key ID and secret in Settings → Payments.",
+        );
       }
     }
 
@@ -84,6 +85,47 @@ export class RazorpayService {
       return null;
     }
     return { keyId, keySecret };
+  }
+
+  async assertValidCredentials(keys: RazorpayKeys): Promise<void> {
+    const keyId = keys.keyId.trim();
+    const keySecret = keys.keySecret.trim();
+    if (!keyId || !keySecret) {
+      throw new BadRequestException("Razorpay key ID and secret are required");
+    }
+    if (!keyId.startsWith("rzp_test_") && !keyId.startsWith("rzp_live_")) {
+      throw new BadRequestException(
+        "Razorpay key ID must start with rzp_test_ or rzp_live_",
+      );
+    }
+    if (keySecret.startsWith("rzp_")) {
+      throw new BadRequestException(
+        "Key secret looks like a key ID. Paste the Key Secret from the Razorpay API Keys page.",
+      );
+    }
+
+    try {
+      const client = new Razorpay({
+        key_id: keyId,
+        key_secret: keySecret,
+      });
+      await client.orders.all({ count: 1 });
+    } catch (error) {
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      const status = razorpayErrorStatus(error);
+      if (status === 401 || status === 403) {
+        throw new BadRequestException(
+          "Razorpay key ID and secret do not match. Copy both from the same API Keys page (test or live).",
+        );
+      }
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Could not verify Razorpay credentials";
+      throw new BadRequestException(message);
+    }
   }
 
   bookingAmountPaise(): number {
@@ -126,16 +168,15 @@ export class RazorpayService {
         currency: String(order.currency ?? "INR"),
       };
     } catch (error) {
-      if (
-        error instanceof BadRequestException ||
-        error instanceof UnauthorizedException
-      ) {
+      if (error instanceof BadRequestException) {
         throw error;
       }
 
       const status = razorpayErrorStatus(error);
       if (status === 401 || status === 403) {
-        throw new UnauthorizedException("Razorpay authentication failed");
+        throw new BadRequestException(
+          "Razorpay key ID and secret do not match. Re-save both from the same API Keys page in Settings → Payments.",
+        );
       }
 
       const message =

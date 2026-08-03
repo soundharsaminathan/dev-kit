@@ -10,6 +10,7 @@ describe("StudiosService", () => {
       findUnique: vi.fn(),
     },
     studioSettings: {
+      findUnique: vi.fn(),
       upsert: vi.fn(),
     },
     user: {
@@ -41,15 +42,20 @@ describe("StudiosService", () => {
       url ? `signed:${url}` : null,
     ),
   };
+  const razorpay = {
+    assertValidCredentials: vi.fn(async () => undefined),
+  };
 
   let service: StudiosService;
 
   beforeEach(() => {
     vi.clearAllMocks();
+    prisma.studioSettings.findUnique.mockResolvedValue(null);
     service = new StudiosService(
       prisma as never,
       crypto as never,
       media as never,
+      razorpay as never,
     );
   });
 
@@ -58,21 +64,25 @@ describe("StudiosService", () => {
       graceDays: 3,
       expireAlertDays: 7,
       platformFeePercent: 5,
-      razorpayKeyId: "rzp_studio",
+      razorpayKeyId: "rzp_test_studio",
       razorpayKeySecret: "sealed:secret",
       razorpaySecretIv: "iv-1",
     });
 
     const result = await service.updateSettings("studio-1", {
-      razorpayKeyId: "rzp_studio",
+      razorpayKeyId: "rzp_test_studio",
       razorpayKeySecret: "plain-secret",
     });
 
+    expect(razorpay.assertValidCredentials).toHaveBeenCalledWith({
+      keyId: "rzp_test_studio",
+      keySecret: "plain-secret",
+    });
     expect(crypto.encryptStudioSecret).toHaveBeenCalledWith("plain-secret");
     expect(prisma.studioSettings.upsert).toHaveBeenCalledWith(
       expect.objectContaining({
         update: expect.objectContaining({
-          razorpayKeyId: "rzp_studio",
+          razorpayKeyId: "rzp_test_studio",
           razorpayKeySecret: "sealed:plain-secret",
           razorpaySecretIv: "iv-1",
         }),
@@ -82,10 +92,19 @@ describe("StudiosService", () => {
       graceDays: 3,
       expireAlertDays: 7,
       platformFeePercent: 5,
-      razorpayKeyId: "rzp_studio",
+      razorpayKeyId: "rzp_test_studio",
       razorpayConfigured: true,
     });
     expect(result).not.toHaveProperty("razorpayKeySecret");
+  });
+
+  it("rejects saving a secret without a key ID", async () => {
+    await expect(
+      service.updateSettings("studio-1", {
+        razorpayKeySecret: "plain-secret",
+      }),
+    ).rejects.toThrow(/key ID is required/);
+    expect(prisma.studioSettings.upsert).not.toHaveBeenCalled();
   });
 
   it("clears secret when empty string is sent", async () => {
@@ -93,7 +112,7 @@ describe("StudiosService", () => {
       graceDays: 3,
       expireAlertDays: 7,
       platformFeePercent: 5,
-      razorpayKeyId: "rzp_studio",
+      razorpayKeyId: "rzp_test_studio",
       razorpayKeySecret: null,
       razorpaySecretIv: null,
     });
@@ -102,6 +121,7 @@ describe("StudiosService", () => {
       razorpayKeySecret: "",
     });
 
+    expect(razorpay.assertValidCredentials).not.toHaveBeenCalled();
     expect(crypto.encryptStudioSecret).not.toHaveBeenCalled();
     expect(prisma.studioSettings.upsert).toHaveBeenCalledWith(
       expect.objectContaining({

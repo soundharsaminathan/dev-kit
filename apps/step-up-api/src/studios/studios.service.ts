@@ -9,6 +9,7 @@ import {
 } from "@nestjs/common";
 import { Prisma, UserRole } from "@prisma/client";
 import { MediaService } from "../media/media.service";
+import { RazorpayService } from "../payments/razorpay.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { UserCryptoService } from "../users/user-crypto.service";
 import { parseBrandTheme } from "./brand-theme";
@@ -27,6 +28,7 @@ export class StudiosService {
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(UserCryptoService) private readonly crypto: UserCryptoService,
     @Inject(MediaService) private readonly media: MediaService,
+    @Inject(RazorpayService) private readonly razorpay: RazorpayService,
   ) {}
 
   async listStudios() {
@@ -280,16 +282,60 @@ export class StudiosService {
       update.razorpayKeyId = data.razorpayKeyId?.trim() || null;
     }
 
+    const existing = await this.prisma.studioSettings.findUnique({
+      where: { studioId },
+      select: {
+        razorpayKeyId: true,
+        razorpayKeySecret: true,
+        razorpaySecretIv: true,
+      },
+    });
+
+    let plainSecret: string | null | undefined;
     if (data.razorpayKeySecret !== undefined) {
       const secret = data.razorpayKeySecret?.trim() ?? "";
       if (!secret) {
         update.razorpayKeySecret = null;
         update.razorpaySecretIv = null;
+        plainSecret = null;
       } else {
-        const sealed = this.crypto.encryptStudioSecret(secret);
-        update.razorpayKeySecret = sealed.ciphertext;
-        update.razorpaySecretIv = sealed.iv;
+        plainSecret = secret;
       }
+    }
+
+    const nextKeyId =
+      update.razorpayKeyId !== undefined
+        ? update.razorpayKeyId
+        : (existing?.razorpayKeyId ?? null);
+
+    if (plainSecret) {
+      if (!nextKeyId) {
+        throw new BadRequestException(
+          "Razorpay key ID is required when saving a key secret",
+        );
+      }
+      await this.razorpay.assertValidCredentials({
+        keyId: nextKeyId,
+        keySecret: plainSecret,
+      });
+      const sealed = this.crypto.encryptStudioSecret(plainSecret);
+      update.razorpayKeySecret = sealed.ciphertext;
+      update.razorpaySecretIv = sealed.iv;
+    } else if (
+      data.razorpayKeyId !== undefined &&
+      nextKeyId &&
+      existing?.razorpayKeySecret &&
+      existing.razorpaySecretIv &&
+      plainSecret === undefined
+    ) {
+      const existingSecret = this.crypto.decryptStudioSecret(
+        existing.razorpayKeySecret,
+        existing.razorpaySecretIv,
+      );
+      await this.razorpay.assertValidCredentials({
+        keyId: nextKeyId,
+        keySecret: existingSecret,
+      });
     }
 
     const settings = await this.prisma.studioSettings.upsert({
