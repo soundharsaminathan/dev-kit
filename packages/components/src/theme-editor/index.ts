@@ -1,3 +1,4 @@
+export { ThemeColorPanel } from "./ThemeColorPanel";
 export type { ThemeEditorProps } from "./ThemeEditor";
 export { ThemeEditor } from "./ThemeEditor";
 export { ThemeEditorDrawer } from "./ThemeEditorDrawer";

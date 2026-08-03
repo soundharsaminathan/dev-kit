@@ -1,6 +1,6 @@
 import { Button } from "@dev-ui/components/button";
 import { Label } from "@dev-ui/components/field";
-import { ThemeEditorPanel } from "@dev-ui/components/theme-editor";
+import { ThemeColorPanel } from "@dev-ui/components/theme-editor";
 import { useToastContext } from "@dev-ui/components/toast";
 import { useTheme } from "@dev-ui/core";
 import { type ThemeDraft, themeDraftToDefinition } from "@dev-ui/tokens";
@@ -486,9 +486,9 @@ export function StudioWizard(props: StudioWizardProps) {
           {step === 1 ? (
             <div className={styles.themeStep}>
               <div className={styles.themeCard}>
-                <p className={styles.themeCardTitle}>Theme</p>
+                <p className={styles.themeCardTitle}>Colors</p>
                 <p className={styles.themeCardDesc}>
-                  Match the owner branding theme editor. Preview updates live.
+                  Pick the studio palette. The preview updates live.
                 </p>
                 <div className={styles.themeToolbar}>
                   <Button
@@ -499,7 +499,7 @@ export function StudioWizard(props: StudioWizardProps) {
                     Preview {mode === "light" ? "dark" : "light"}
                   </Button>
                 </div>
-                <ThemeEditorPanel value={draft} onChange={setDraft} />
+                <ThemeColorPanel value={draft} onChange={setDraft} />
               </div>
               {studio ? (
                 <div className={styles.assetsBlock}>

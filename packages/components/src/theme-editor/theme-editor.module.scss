@@ -87,6 +87,209 @@
   gap: var(--space-3);
 }
 
+.colorPanel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  width: 100%;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.slotRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.slot {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  background-color: var(--color-bg);
+  color: var(--color-fg-muted);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-tight);
+  cursor: var(--cursor-interactive);
+  transition:
+    background-color var(--interaction-transition-duration)
+      var(--interaction-transition-curve),
+    border-color var(--interaction-transition-duration)
+      var(--interaction-transition-curve),
+    color var(--interaction-transition-duration)
+      var(--interaction-transition-curve),
+    transform var(--motion-fast) var(--interaction-transition-curve);
+}
+
+.slotInput {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.slot:hover {
+  border-color: var(--color-border-hover);
+  color: var(--color-fg);
+}
+
+.slot[data-selected="true"] {
+  background-color: var(--color-primary);
+  border-color: var(--color-primary);
+  color: var(--color-fg-on-primary);
+}
+
+.slot:active {
+  transform: scale(var(--interaction-press-scale));
+}
+
+.slot:has(.slotInput:focus-visible) {
+  outline: var(--interaction-focus-ring-width) solid
+    var(--interaction-focus-ring-color);
+  outline-offset: var(--interaction-focus-ring-offset);
+}
+
+.slotDot {
+  width: 0.875rem;
+  height: 0.875rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+}
+
+.colorCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  background-color: var(--color-card);
+}
+
+.colorCardHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.colorCardTitle {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold, 600);
+}
+
+.colorCardHint {
+  margin: var(--space-1) 0 0;
+  font-size: var(--font-size-xs);
+  color: var(--color-fg-muted);
+}
+
+.colorValue {
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  background-color: var(--color-field);
+  color: var(--color-fg-muted);
+  font-family: var(--font-mono, monospace);
+  font-size: var(--font-size-xs);
+}
+
+.colorEditor [data-color-slider-output] {
+  display: none;
+}
+
+.presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.preset {
+  width: 1.75rem;
+  height: 1.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  cursor: var(--cursor-interactive);
+  transition: transform var(--motion-fast) var(--interaction-transition-curve);
+}
+
+.preset:hover {
+  transform: scale(var(--interaction-hover-scale));
+}
+
+.preset:active {
+  transform: scale(var(--interaction-press-scale));
+}
+
+.preset[data-selected="true"] {
+  box-shadow:
+    0 0 0 2px var(--color-bg),
+    0 0 0 4px var(--color-fg);
+}
+
+.preset:focus-visible {
+  outline: var(--interaction-focus-ring-width) solid
+    var(--interaction-focus-ring-color);
+  outline-offset: var(--interaction-focus-ring-offset);
+}
+
+.ramps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.ramp {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.rampLabel {
+  width: 2.5rem;
+  font-size: var(--font-size-xs);
+  color: var(--color-fg-muted);
+}
+
+.rampSteps {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.rampStep {
+  flex: 1;
+  height: 1.25rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .slot,
+  .preset {
+    transition-duration: 0ms;
+    transform: none;
+  }
+}
+
 .tokenList {
   display: flex;
   flex-direction: column;
