@@ -2,26 +2,25 @@ import { expect, test } from "@playwright/test";
 import { SEED } from "../fixtures/seed";
 import { expectOk, expectStatus } from "./helpers";
 
+async function createPendingInvoice(amount = 2200) {
+  return expectOk<{ id: string; status: string }>("STAFF", "/billing", {
+    method: "POST",
+    body: JSON.stringify({
+      studioId: SEED.users.STAFF.studioId,
+      studentId: SEED.users.STUDENT.id,
+      amount,
+    }),
+  });
+}
+
 test.describe("billing HTTP @http", () => {
   test("staff marks unpaid invoice paid @http", async () => {
-    const invoices = await expectOk<Array<{ id: string; status: string }>>(
-      "STAFF",
-      `/billing/studio/${SEED.users.STAFF.studioId}`,
-    );
-
-    const target = invoices.find(
-      (invoice) => invoice.id === SEED.unpaidInvoiceHttpId,
-    );
-
-    test.skip(!target, "HTTP unpaid invoice missing — re-seed");
-    test.skip(
-      target!.status === "PAID",
-      "HTTP unpaid invoice already paid — re-seed to reset",
-    );
+    const target = await createPendingInvoice();
+    expect(target.status).toBe("PENDING");
 
     const paid = await expectOk<{ id: string; status: string }>(
       "STAFF",
-      `/billing/${target!.id}/paid`,
+      `/billing/${target.id}/paid`,
       {
         method: "PATCH",
         body: JSON.stringify({ paymentMethod: "CASH" }),
@@ -31,15 +30,11 @@ test.describe("billing HTTP @http", () => {
   });
 
   test("trainer cannot mark invoice paid @http", async () => {
-    await expectStatus(
-      "TRAINER",
-      `/billing/${SEED.unpaidInvoiceHttpId}/paid`,
-      403,
-      {
-        method: "PATCH",
-        body: JSON.stringify({ paymentMethod: "CASH" }),
-      },
-    );
+    const target = await createPendingInvoice(1800);
+    await expectStatus("TRAINER", `/billing/${target.id}/paid`, 403, {
+      method: "PATCH",
+      body: JSON.stringify({ paymentMethod: "CASH" }),
+    });
   });
 
   test("student lists own invoices @http", async () => {

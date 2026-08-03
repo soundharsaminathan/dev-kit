@@ -1,6 +1,11 @@
 import { expect, test } from "@playwright/test";
 import { SEED } from "../fixtures/seed";
-import { expectOk, expectStatus } from "./helpers";
+import {
+  createHttpStudent,
+  expectOk,
+  expectStatus,
+  TestDataCleanup,
+} from "./helpers";
 
 const ADULT_PLAN_IDS = [
   "sub-individual-adult-monthly",
@@ -9,62 +14,91 @@ const ADULT_PLAN_IDS = [
 
 test.describe("batches HTTP @http", () => {
   test("staff creates and removes a batch with plans @http", async () => {
+    const cleanup = new TestDataCleanup();
     const stamp = Date.now();
     const name = `HTTP Batch ${stamp}`;
-    // Far-future unique slot avoids seed schedule conflicts on branch-main-1.
-    const created = await expectOk<{
-      id: string;
-      name: string;
-    }>("STAFF", "/batches", {
-      method: "POST",
-      body: JSON.stringify({
-        studioId: SEED.users.STAFF.studioId,
-        name,
-        coverImageUrl:
-          "https://images.unsplash.com/photo-1518611012118-696072aa579a?w=800&q=80",
-        category: "ADULTS",
-        branchId: "branch-main-1",
-        trainerIds: [SEED.users.TRAINER.id],
-        danceCategories: [
-          { name: "Hip Hop", description: "HTTP integration batch" },
-        ],
-        scheduleJson: {
-          frequency: "WEEKLY",
-          weekdays: [0],
-          startDate: "2027-01-03",
-          endDate: "2027-03-28",
-          startTime: "06:15",
-          endTime: "07:00",
-          utcOffsetMinutes: 0,
-        },
-        capacity: 8,
-        enrollmentMode: "SELF_JOIN",
-        subscriptionIds: ADULT_PLAN_IDS,
-        active: true,
-        certificationEnabled: false,
-      }),
-    });
+    try {
+      // Far-future unique slot avoids seed schedule conflicts on branch-main-1.
+      const created = await expectOk<{
+        id: string;
+        name: string;
+      }>("STAFF", "/batches", {
+        method: "POST",
+        body: JSON.stringify({
+          studioId: SEED.users.STAFF.studioId,
+          name,
+          coverImageUrl:
+            "https://images.unsplash.com/photo-1518611012118-696072aa579a?w=800&q=80",
+          category: "ADULTS",
+          branchId: "branch-main-1",
+          trainerIds: [SEED.users.TRAINER.id],
+          danceCategories: [
+            { name: "Hip Hop", description: "HTTP integration batch" },
+          ],
+          scheduleJson: {
+            frequency: "WEEKLY",
+            weekdays: [0],
+            startDate: "2027-01-03",
+            endDate: "2027-03-28",
+            startTime: "06:15",
+            endTime: "07:00",
+            utcOffsetMinutes: 0,
+          },
+          capacity: 8,
+          enrollmentMode: "SELF_JOIN",
+          subscriptionIds: ADULT_PLAN_IDS,
+          active: true,
+          certificationEnabled: false,
+        }),
+      });
+      cleanup.trackBatch(created.id);
 
-    expect(created.id).toBeTruthy();
-    expect(created.name).toBe(name);
-
-    await expectOk("STAFF", `/batches/${created.id}`, { method: "DELETE" });
+      expect(created.id).toBeTruthy();
+      expect(created.name).toBe(name);
+    } finally {
+      await cleanup.dispose();
+    }
   });
 
   test("student can trial-enroll into a self-join batch @http", async () => {
-    const enrollment = await expectOk<{
-      isTrial: boolean;
-      trialSessionIds: string[] | null;
-    }>("STUDENT", `/batches/${SEED.trialBatchId}/enroll`, {
-      method: "POST",
-      body: JSON.stringify({
-        studentId: SEED.users.STUDENT.id,
-        isTrial: true,
-      }),
-    });
-    expect(enrollment.isTrial).toBe(true);
-    expect(Array.isArray(enrollment.trialSessionIds)).toBe(true);
-    expect(enrollment.trialSessionIds!.length).toBeGreaterThan(0);
+    const cleanup = new TestDataCleanup();
+    try {
+      const student = await createHttpStudent("Trial Enrollee", cleanup);
+      const enrollment = await expectOk<{
+        isTrial: boolean;
+        trialSessionIds: string[] | null;
+      }>(
+        "STUDENT",
+        `/batches/${SEED.trialBatchId}/enroll`,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            studentId: student.id,
+            isTrial: true,
+          }),
+        },
+        { userId: student.id },
+      );
+      expect(enrollment.isTrial).toBe(true);
+      expect(Array.isArray(enrollment.trialSessionIds)).toBe(true);
+      expect(enrollment.trialSessionIds!.length).toBeGreaterThan(0);
+
+      await expectStatus(
+        "STUDENT",
+        `/batches/batch-beginner-1/enroll`,
+        409,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            studentId: student.id,
+            isTrial: true,
+          }),
+        },
+        { userId: student.id },
+      );
+    } finally {
+      await cleanup.dispose();
+    }
   });
 
   test("student cannot create a batch @http", async () => {

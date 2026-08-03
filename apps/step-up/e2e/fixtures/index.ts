@@ -170,6 +170,8 @@ export async function waitForApiResponse(
   });
 }
 
+export { TestDataCleanup } from "./test-cleanup";
+
 export async function apiRequest<T>(
   role: SeedRole,
   pathName: string,

@@ -771,6 +771,7 @@ describe("BatchesService.remove and enroll", () => {
       { isTrial: true },
     );
 
+    expect(prisma.batchEnrollment.findFirst).toHaveBeenCalled();
     expect(prisma.session.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({
@@ -797,6 +798,29 @@ describe("BatchesService.remove and enroll", () => {
         trialSessionIds: ["session-1", "session-2"],
       },
     });
+  });
+
+  it("rejects trial enroll when student already has a trial in another batch", async () => {
+    prisma.batch.findUnique.mockResolvedValue({
+      id: "batch-2",
+      active: true,
+      capacity: 10,
+      enrollmentMode: EnrollmentMode.SELF_JOIN,
+      enrollments: [],
+    });
+    prisma.batchEnrollment.findFirst
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({ batchId: "batch-1", isTrial: true });
+
+    await expect(
+      service.enroll(
+        "batch-2",
+        "student-1",
+        { id: "student-1", role: UserRole.STUDENT } as never,
+        { isTrial: true },
+      ),
+    ).rejects.toBeInstanceOf(ConflictException);
+    expect(prisma.batchEnrollment.upsert).not.toHaveBeenCalled();
   });
 });
 

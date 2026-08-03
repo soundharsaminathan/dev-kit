@@ -1,6 +1,7 @@
-import { BadRequestException } from "@nestjs/common";
+import { BadRequestException, ConflictException } from "@nestjs/common";
 import { describe, expect, it, vi } from "vitest";
 import {
+  assertStudentCanEnrollTrial,
   enrollmentAllowsTrialSession,
   parseTrialSessionIds,
   resolveNextTrialSessionIds,
@@ -57,5 +58,44 @@ describe("trial-enrollment helpers", () => {
         "batch-1",
       ),
     ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it("allows a first trial enrollment", async () => {
+    const findFirst = vi.fn().mockResolvedValue(null);
+    await expect(
+      assertStudentCanEnrollTrial(
+        { batchEnrollment: { findFirst } },
+        "student-1",
+        "batch-1",
+      ),
+    ).resolves.toBeUndefined();
+    expect(findFirst).toHaveBeenCalledTimes(2);
+  });
+
+  it("rejects a second trial in another batch", async () => {
+    const findFirst = vi
+      .fn()
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({ batchId: "batch-other", isTrial: true });
+    await expect(
+      assertStudentCanEnrollTrial(
+        { batchEnrollment: { findFirst } },
+        "student-1",
+        "batch-1",
+      ),
+    ).rejects.toBeInstanceOf(ConflictException);
+  });
+
+  it("rejects trial when already enrolled in the batch", async () => {
+    const findFirst = vi
+      .fn()
+      .mockResolvedValueOnce({ batchId: "batch-1", isTrial: false });
+    await expect(
+      assertStudentCanEnrollTrial(
+        { batchEnrollment: { findFirst } },
+        "student-1",
+        "batch-1",
+      ),
+    ).rejects.toBeInstanceOf(ConflictException);
   });
 });

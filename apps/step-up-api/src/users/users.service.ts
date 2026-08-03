@@ -20,7 +20,10 @@ import {
   UserRole,
 } from "@prisma/client";
 import { assertBatchHasSeat, lockBatchRow } from "../batches/batch-capacity";
-import { resolveNextTrialSessionIds } from "../batches/trial-enrollment";
+import {
+  assertStudentCanEnrollTrial,
+  resolveNextTrialSessionIds,
+} from "../batches/trial-enrollment";
 import { MediaService } from "../media/media.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { isAlwaysPublicRole } from "../social/visibility";
@@ -191,6 +194,9 @@ export class UsersService {
     await this.prisma.$transaction(async (tx) => {
       await lockBatchRow(tx, batchId);
       await assertBatchHasSeat(tx, batchId, batch.capacity, studentId);
+      if (isTrial) {
+        await assertStudentCanEnrollTrial(tx, studentId, batchId);
+      }
       const trialSessionIds = isTrial
         ? await resolveNextTrialSessionIds(tx, batchId)
         : undefined;
@@ -760,6 +766,18 @@ export class UsersService {
         if (end <= start) {
           throw new BadRequestException("endsAt must be after startsAt");
         }
+      }
+
+      const activeTrialEnrollment = await this.prisma.batchEnrollment.findFirst(
+        {
+          where: { studentId, isTrial: true },
+          select: { batchId: true },
+        },
+      );
+      if (activeTrialEnrollment) {
+        throw new ConflictException(
+          "You can only try 2 sessions in one class. You already have an active trial.",
+        );
       }
 
       const existingOpen = await this.prisma.booking.findFirst({

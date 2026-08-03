@@ -364,6 +364,8 @@ export function BatchDetailPage() {
   const showTrialConvertCta = Boolean(
     batch.viewerEnrolled && viewerTrial && hasPlans,
   );
+  const canStartTrial =
+    !batch.viewerActiveTrialBatchId && batch.enrollmentMode === "SELF_JOIN";
 
   const otherSeatRole = batchSeatRole === "KID" ? "ADULT" : "KID";
   const otherSeatIds =
@@ -821,7 +823,7 @@ export function BatchDetailPage() {
               >
                 Choose a plan
               </TouchButton>
-              {batch.enrollmentMode === "SELF_JOIN" ? (
+              {canStartTrial ? (
                 <TouchButton
                   variant="quiet"
                   fullWidth
@@ -832,8 +834,19 @@ export function BatchDetailPage() {
                   Try 2 sessions
                 </TouchButton>
               ) : null}
+              {batch.enrollmentMode === "STAFF_ONLY" ? (
+                <TouchButton
+                  variant="quiet"
+                  fullWidth
+                  isDisabled={!canActForStudent}
+                  data-testid="book-class-cta"
+                  onClick={() => setBookOpen(true)}
+                >
+                  Book this class
+                </TouchButton>
+              ) : null}
             </div>
-          ) : batch.enrollmentMode === "SELF_JOIN" ? (
+          ) : canStartTrial ? (
             <TouchButton
               variant="primary"
               fullWidth
@@ -842,6 +855,10 @@ export function BatchDetailPage() {
               onClick={() => openEnroll(true)}
             >
               Try 2 sessions
+            </TouchButton>
+          ) : batch.enrollmentMode === "SELF_JOIN" ? (
+            <TouchButton variant="primary" fullWidth isDisabled>
+              Trial already used
             </TouchButton>
           ) : (
             <TouchButton
@@ -1001,8 +1018,8 @@ export function BatchDetailPage() {
           <p className={styles.muted}>
             {enrollAsTrial ? (
               <>
-                Join <strong>{batch.name}</strong> as a trial for the next 2
-                sessions. After that, you&apos;ll need a plan to continue.
+                Join <strong>{batch.name}</strong> for a one-time trial of the
+                next 2 sessions. You can only use this once across all classes.
               </>
             ) : (
               <>

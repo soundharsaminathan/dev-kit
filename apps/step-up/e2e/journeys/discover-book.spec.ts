@@ -76,6 +76,9 @@ test.describe("discover and book @critical", () => {
   test("student can try self-enroll class through UI @critical", async ({
     browser,
   }) => {
+    const studentId = SEED.users.STUDENT.id;
+    await clearOpenBookings(studentId, TRIAL_BATCH_ID);
+
     const context = await browser.newContext({
       storageState: authFile("STUDENT"),
     });
@@ -86,11 +89,13 @@ test.describe("discover and book @critical", () => {
     await waitForAppReady(page);
 
     const trialCta = page.getByTestId("trial-enroll-cta");
-    // Already enrolled → CTA may be hidden; assert enrolled state instead.
+    const trialUsed = page.getByRole("button", { name: /trial already used/i });
+    const enrolledCopy = page.getByText(
+      /enrolled|you're in|joined|member|trial enrollment|trial covers/i,
+    );
+    // Wait for either the trial CTA or an already-used / enrolled state.
+    await expect(trialCta.or(trialUsed).or(enrolledCopy.first())).toBeVisible();
     if ((await trialCta.count()) === 0) {
-      await expect(
-        page.getByText(/enrolled|you're in|joined|member|trial/i).first(),
-      ).toBeVisible();
       await context.close();
       return;
     }

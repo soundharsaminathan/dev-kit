@@ -1,4 +1,4 @@
-import { BadRequestException } from "@nestjs/common";
+import { BadRequestException, ConflictException } from "@nestjs/common";
 import { type Prisma, SessionStatus } from "@prisma/client";
 
 export const TRIAL_SESSION_LIMIT = 2;
@@ -11,6 +11,15 @@ export type TrialEnrollmentTx = {
       take: number;
       select: { id: true };
     }) => Promise<Array<{ id: string }>>;
+  };
+};
+
+export type TrialGuardTx = {
+  batchEnrollment: {
+    findFirst: (args: {
+      where: Prisma.BatchEnrollmentWhereInput;
+      select: { batchId: true; isTrial: true };
+    }) => Promise<{ batchId: string; isTrial: boolean } | null>;
   };
 };
 
@@ -51,4 +60,38 @@ export async function resolveNextTrialSessionIds(
   }
 
   return sessions.map((session) => session.id);
+}
+
+/** One student may hold at most one active trial (2 sessions) in a single batch. */
+export async function assertStudentCanEnrollTrial(
+  tx: TrialGuardTx,
+  studentId: string,
+  batchId: string,
+): Promise<void> {
+  const existingInBatch = await tx.batchEnrollment.findFirst({
+    where: { studentId, batchId },
+    select: { batchId: true, isTrial: true },
+  });
+  if (existingInBatch?.isTrial) {
+    throw new ConflictException(
+      "You are already enrolled in a trial for this class",
+    );
+  }
+  if (existingInBatch) {
+    throw new ConflictException("You are already enrolled in this class");
+  }
+
+  const otherTrial = await tx.batchEnrollment.findFirst({
+    where: {
+      studentId,
+      isTrial: true,
+      batchId: { not: batchId },
+    },
+    select: { batchId: true, isTrial: true },
+  });
+  if (otherTrial) {
+    throw new ConflictException(
+      "You can only try 2 sessions in one class. You already have an active trial.",
+    );
+  }
 }

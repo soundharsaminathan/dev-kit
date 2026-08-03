@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { SEED } from "../fixtures/seed";
-import { expectOk, expectStatus } from "./helpers";
+import { expectOk, expectStatus, TestDataCleanup } from "./helpers";
 
 const STUDIO_ID = SEED.users.OWNER.studioId;
 
@@ -17,24 +17,30 @@ test.describe("funnel and authz HTTP @http", () => {
   });
 
   test("owner can create a student @http", async () => {
-    const email = `http-student-${Date.now()}@stepup.dev`;
-    const created = await expectOk<{ id: string; email: string }>(
-      "OWNER",
-      "/users",
-      {
-        method: "POST",
-        body: JSON.stringify({
-          name: "HTTP Student",
-          email,
-          gender: "FEMALE",
-          ageRange: "TWENTY_TO_FORTY",
-          styles: ["Hip Hop"],
-        }),
-      },
-    );
+    const cleanup = new TestDataCleanup();
+    try {
+      const email = `http-student-${Date.now()}@stepup.dev`;
+      const created = await expectOk<{ id: string; email: string }>(
+        "OWNER",
+        "/users",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            name: "HTTP Student",
+            email,
+            gender: "FEMALE",
+            ageRange: "TWENTY_TO_FORTY",
+            styles: ["Hip Hop"],
+          }),
+        },
+      );
+      cleanup.trackStudent(created.id);
 
-    expect(created.id).toBeTruthy();
-    expect(created.email.toLowerCase()).toBe(email);
+      expect(created.id).toBeTruthy();
+      expect(created.email.toLowerCase()).toBe(email);
+    } finally {
+      await cleanup.dispose();
+    }
   });
 
   test("student cannot access staff billing list @http", async () => {
