@@ -152,6 +152,7 @@ Product contract for automated testing. Roles use the canonical enum:
 | E06 | Re-apply migrations from empty (`--upgrade`) | High | Migration smoke | Covered |
 | E07 | E2E seed (`prisma:seed:e2e`) after migrate | Critical | CI + seed-e2e script | Covered |
 | E08 | Foreign-key / required-field assertions | High | Migration smoke | Covered |
+| E09 | Analytics seed (`prisma:seed:analytics`) for Payments / Retention / funnel demos | Medium | Manual QA seed | Covered |
 
 ---
 

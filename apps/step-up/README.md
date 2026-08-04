@@ -21,6 +21,8 @@ pnpm --filter @step-up/api prisma:migrate
 pnpm --filter @step-up/api prisma:seed
 # For Playwright / HTTP e2e (isolated test studio; can run without demo seed):
 # pnpm --filter @step-up/api prisma:seed:e2e
+# For Payments / Retention / funnel demos (rich analytics data):
+# pnpm --filter @step-up/api prisma:seed:analytics
 pnpm dev:step-up-api
 
 # 3. Web
@@ -28,7 +30,7 @@ cp apps/step-up/.env.example apps/step-up/.env
 pnpm dev:step-up
 ```
 
-Open http://localhost:5180 — sign in as `admin@stepup.dev` / `password`, or use **Continue as system admin** when `VITE_AUTH_BYPASS=true`. Create studios (and their users) from `/admin`. For Playwright / HTTP fixtures, run `pnpm --filter @step-up/api prisma:seed:e2e`.
+Open http://localhost:5180 — sign in as `admin@stepup.dev` / `password`, or use **Continue as system admin** when `VITE_AUTH_BYPASS=true`. Create studios (and their users) from `/admin`. For Playwright / HTTP fixtures, run `pnpm --filter @step-up/api prisma:seed:e2e`. For analytics views (Payments, Retention, funnel, batch revenue), run `pnpm --filter @step-up/api prisma:seed:analytics` and sign in as `analytics-owner@stepup.dev`.
 
 Dev auth header: `Authorization: Bearer dev:SYSTEM_ADMIN:system-admin-1`
 
