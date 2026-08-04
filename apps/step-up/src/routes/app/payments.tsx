@@ -1,3 +1,4 @@
+import { Avatar, AvatarFallback, AvatarImage } from "@dev-ui/components/avatar";
 import {
   Area,
   AreaChart,
@@ -28,7 +29,6 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useApi } from "@/lib/api-context";
 import { useAuth } from "@/lib/auth";
-import { ENTITY_ICONS } from "@/lib/entity-icons";
 import { useStudioId } from "@/lib/use-studio-id";
 import styles from "@/modules/payments/payments-dashboard.module.scss";
 import { FilterChipRow } from "@/modules/ui/filter-chip-row";
@@ -39,10 +39,13 @@ import { SkeletonBlock, SkeletonCardList } from "@/modules/ui/skeleton-block";
 import { EmptyState, ErrorState } from "@/modules/ui/states";
 import { TouchButton } from "@/modules/ui/touch-button";
 
+const ALL_TRAINERS_ID = "all";
+
 type StudioMember = {
   id: string;
   name: string;
   role: "OWNER" | "STAFF" | "TRAINER" | "STUDENT" | "PARENT";
+  photoUrl?: string | null;
 };
 
 type AnalyticsBucket = "day" | "week" | "month";
@@ -279,9 +282,8 @@ function PaymentsPage() {
   const navigate = useNavigate();
   const isTrainer = user?.role === "TRAINER";
   const isStaff = user?.role === "OWNER" || user?.role === "STAFF";
-  const [selectedTrainerId, setSelectedTrainerId] = useState<string | null>(
-    null,
-  );
+  const [selectedTrainerId, setSelectedTrainerId] =
+    useState<string>(ALL_TRAINERS_ID);
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
 
@@ -300,9 +302,12 @@ function PaymentsPage() {
     [membersQuery.data],
   );
 
-  const trainerId = isTrainer
-    ? (user?.id ?? null)
-    : (selectedTrainerId ?? trainers[0]?.id ?? null);
+  const trainerId = isTrainer ? (user?.id ?? null) : selectedTrainerId;
+
+  const selectedTrainer =
+    trainerId === ALL_TRAINERS_ID
+      ? null
+      : (trainers.find((trainer) => trainer.id === trainerId) ?? null);
 
   const analyticsQuery = useQuery({
     queryKey: [
@@ -450,23 +455,83 @@ function PaymentsPage() {
             {isStaff ? (
               membersQuery.isLoading ? (
                 <SkeletonBlock height="2.5rem" className={styles.filterField} />
-              ) : trainers.length === 0 ? null : (
+              ) : (
                 <div className={styles.filterField}>
                   <Select
                     label="Trainer"
                     placeholder="Select a trainer"
                     selectedKey={trainerId}
                     onSelectionChange={(key) =>
-                      setSelectedTrainerId(key as string)
+                      setSelectedTrainerId(String(key))
                     }
                   >
                     <SelectTrigger>
-                      <SelectValue />
+                      <span className={styles.trainerSelectValue}>
+                        {trainerId === ALL_TRAINERS_ID ? (
+                          <Avatar
+                            size="sm"
+                            className={styles.trainerSelectAvatar}
+                          >
+                            <AvatarFallback>
+                              <Icon name="users" />
+                            </AvatarFallback>
+                          </Avatar>
+                        ) : selectedTrainer ? (
+                          <Avatar
+                            size="sm"
+                            className={styles.trainerSelectAvatar}
+                          >
+                            {selectedTrainer.photoUrl ? (
+                              <AvatarImage
+                                src={selectedTrainer.photoUrl}
+                                alt={selectedTrainer.name}
+                              />
+                            ) : null}
+                            <AvatarFallback>
+                              {selectedTrainer.name.slice(0, 1).toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                        ) : null}
+                        <SelectValue />
+                      </span>
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem id={ALL_TRAINERS_ID} textValue="All trainers">
+                        <span className={styles.trainerOption}>
+                          <Avatar
+                            size="sm"
+                            className={styles.trainerSelectAvatar}
+                          >
+                            <AvatarFallback>
+                              <Icon name="users" />
+                            </AvatarFallback>
+                          </Avatar>
+                          All trainers
+                        </span>
+                      </SelectItem>
                       {trainers.map((trainer) => (
-                        <SelectItem key={trainer.id} id={trainer.id}>
-                          {trainer.name}
+                        <SelectItem
+                          key={trainer.id}
+                          id={trainer.id}
+                          textValue={trainer.name}
+                        >
+                          <span className={styles.trainerOption}>
+                            <Avatar
+                              size="sm"
+                              className={styles.trainerSelectAvatar}
+                            >
+                              {trainer.photoUrl ? (
+                                <AvatarImage
+                                  src={trainer.photoUrl}
+                                  alt={trainer.name}
+                                />
+                              ) : null}
+                              <AvatarFallback>
+                                {trainer.name.slice(0, 1).toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+                            {trainer.name}
+                          </span>
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -533,14 +598,6 @@ function PaymentsPage() {
               </div>
             ) : null}
           </div>
-
-          {isStaff && trainers.length === 0 && !membersQuery.isLoading ? (
-            <EmptyState
-              icon={ENTITY_ICONS.trainer}
-              title="No trainers"
-              description="Add a trainer to see payment analytics."
-            />
-          ) : null}
 
           {trainerId && analyticsQuery.isLoading ? (
             <>

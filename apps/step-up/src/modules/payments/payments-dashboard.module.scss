@@ -25,6 +25,26 @@
   flex: 1 1 9rem;
 }
 
+.trainerSelectValue,
+.trainerOption {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2, 0.5rem);
+  min-width: 0;
+}
+
+.trainerSelectValue {
+  flex: 1;
+}
+
+.trainerOption {
+  width: 100%;
+}
+
+.trainerSelectAvatar {
+  flex-shrink: 0;
+}
+
 .filterActions {
   display: flex;
   flex-wrap: wrap;
