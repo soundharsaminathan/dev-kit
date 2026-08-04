@@ -191,4 +191,69 @@ describe("Toast", () => {
 
     expect(screen.getAllByRole("alertdialog")).toHaveLength(1);
   });
+
+  it("stacks multiple visible toasts", () => {
+    function MultiToastTrigger() {
+      const { toast } = useToastContext("MultiToastTrigger");
+      return (
+        <Button
+          onClick={() => {
+            toast({ title: "First" });
+            toast({ title: "Second" });
+          }}
+        >
+          Show toasts
+        </Button>
+      );
+    }
+
+    render(
+      <ToastProvider>
+        <MultiToastTrigger />
+      </ToastProvider>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Show toasts" }));
+
+    const region = document.querySelector("[data-toast-region]");
+    expect(region).toHaveAttribute("data-stacked");
+    expect(region).toHaveAttribute("data-count", "2");
+    expect(screen.getAllByRole("alertdialog")).toHaveLength(2);
+  });
+
+  it("auto-dismisses toasts after the default timeout", () => {
+    vi.useFakeTimers();
+
+    render(
+      <ToastProvider>
+        <ToastTrigger title="Saved" />
+      </ToastProvider>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Show toast" }));
+    expect(screen.getByText("Saved")).toBeInTheDocument();
+
+    act(() => {
+      vi.advanceTimersByTime(3000);
+    });
+
+    expect(screen.queryByText("Saved")).not.toBeInTheDocument();
+
+    vi.useRealTimers();
+  });
+
+  it("defaults the region to top-right", () => {
+    render(
+      <ToastProvider>
+        <ToastTrigger title="Saved" />
+      </ToastProvider>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Show toast" }));
+
+    expect(document.querySelector("[data-toast-region]")).toHaveAttribute(
+      "data-position",
+      "top-right",
+    );
+  });
 });
