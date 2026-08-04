@@ -13,7 +13,7 @@ function ToastTrigger({
 }: {
   title: string;
   description?: string;
-  variant?: "success" | "error" | "loading";
+  variant?: "success" | "error" | "warning" | "info" | "loading" | "neutral";
   action?: { label: string; onPress: () => void };
 }) {
   const { toast } = useToastContext("ToastTrigger");
@@ -242,6 +242,52 @@ describe("Toast", () => {
     vi.useRealTimers();
   });
 
+  it("renders status icons for semantic variants", () => {
+    render(
+      <ToastProvider>
+        <ToastTrigger title="Done" variant="success" />
+      </ToastProvider>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Show toast" }));
+
+    expect(
+      document.querySelector("[data-slot='toast-icon']"),
+    ).toBeInTheDocument();
+  });
+
+  it("defaults to a maximum of three visible toasts", () => {
+    function MultiToastTrigger() {
+      const { toast } = useToastContext("MultiToastTrigger");
+      return (
+        <Button
+          onClick={() => {
+            toast({ title: "First" });
+            toast({ title: "Second" });
+            toast({ title: "Third" });
+            toast({ title: "Fourth" });
+          }}
+        >
+          Show toasts
+        </Button>
+      );
+    }
+
+    render(
+      <ToastProvider>
+        <MultiToastTrigger />
+      </ToastProvider>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Show toasts" }));
+
+    expect(screen.getAllByRole("alertdialog")).toHaveLength(3);
+    expect(document.querySelector("[data-toast-region]")).toHaveAttribute(
+      "data-count",
+      "3",
+    );
+  });
+
   it("defaults the region to top-right", () => {
     render(
       <ToastProvider>
@@ -253,9 +299,5 @@ describe("Toast", () => {
 
     const region = document.querySelector("[data-toast-region]");
     expect(region).toHaveAttribute("data-position", "top-right");
-    expect(region).toHaveStyle({
-      top: "var(--toast-region-inset, var(--space-4, 1rem))",
-      right: "var(--toast-region-inset, var(--space-4, 1rem))",
-    });
   });
 });

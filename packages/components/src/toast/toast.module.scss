@@ -1,46 +1,57 @@
 @use "@dev-ui/tokens/scss" as *;
 
 .region {
-  --toast-region-inset: var(--space-4, 1rem);
+  --toast-region-inset-resolved: max(
+    var(--toast-region-inset),
+    env(safe-area-inset-top, 0px),
+    env(safe-area-inset-right, 0px),
+    env(safe-area-inset-bottom, 0px),
+    env(safe-area-inset-left, 0px)
+  );
   position: fixed;
-  z-index: 50;
+  z-index: var(--toast-z-index);
   display: flex;
-  width: min(24rem, calc(100vw - var(--space-8, 2rem)));
-  max-width: 24rem;
+  width: min(var(--toast-max-width), calc(100vw - var(--space-8)));
+  max-width: var(--toast-max-width);
   flex-direction: column;
-  gap: var(--space-2);
+  gap: var(--toast-gap);
   outline: none;
+  pointer-events: none;
+
+  > * {
+    pointer-events: auto;
+  }
 
   &[data-position="bottom-right"] {
-    inset: auto var(--toast-region-inset) var(--toast-region-inset) auto;
+    inset: auto var(--toast-region-inset-resolved) var(--toast-region-inset-resolved) auto;
     flex-direction: column-reverse;
   }
 
   &[data-position="bottom-left"] {
-    inset: auto auto var(--toast-region-inset) var(--toast-region-inset);
+    inset: auto auto var(--toast-region-inset-resolved) var(--toast-region-inset-resolved);
     flex-direction: column-reverse;
   }
 
   &[data-position="bottom-center"] {
-    inset: auto 50% var(--toast-region-inset) auto;
+    inset: auto 50% var(--toast-region-inset-resolved) auto;
     translate: 50% 0;
     flex-direction: column-reverse;
   }
 
   &[data-position="top-right"] {
-    inset: var(--toast-region-inset) var(--toast-region-inset) auto auto;
+    inset: var(--toast-region-inset-resolved) var(--toast-region-inset-resolved) auto auto;
   }
 
   &[data-position="top-left"] {
-    inset: var(--toast-region-inset) auto auto var(--toast-region-inset);
+    inset: var(--toast-region-inset-resolved) auto auto var(--toast-region-inset-resolved);
   }
 
   &[data-position="top-center"] {
-    inset: var(--toast-region-inset) 50% auto auto;
+    inset: var(--toast-region-inset-resolved) 50% auto auto;
     translate: 50% 0;
   }
 
-  &[data-stacked] {
+  &[data-stacked]:not([data-expanded]) {
     display: grid;
     gap: 0;
 
@@ -49,101 +60,120 @@
     }
   }
 
-  @media (min-width: 640px) {
-    &[data-position="bottom-right"] {
-      --toast-region-inset: var(--space-6, 1.5rem);
-    }
+  &[data-stacked][data-expanded] {
+    gap: var(--toast-gap);
+  }
 
-    &[data-position="bottom-left"] {
-      --toast-region-inset: var(--space-6, 1.5rem);
-    }
-
-    &[data-position="bottom-center"] {
-      --toast-region-inset: var(--space-6, 1.5rem);
-    }
-
-    &[data-position="top-right"] {
-      --toast-region-inset: var(--space-6, 1.5rem);
-    }
-
+  @media (max-width: 639px) {
+    &[data-position="top-right"],
     &[data-position="top-left"] {
-      --toast-region-inset: var(--space-6, 1.5rem);
+      inset: var(--toast-region-inset-resolved) 50% auto auto;
+      translate: 50% 0;
     }
+  }
 
-    &[data-position="top-center"] {
-      --toast-region-inset: var(--space-6, 1.5rem);
-    }
+  @media (min-width: 640px) {
+    --toast-region-inset: var(--space-6);
+  }
+}
+
+.shell {
+  width: 100%;
+  transform-origin: top center;
+
+  .region[data-position^="bottom"] & {
+    transform-origin: bottom center;
+  }
+
+  .region[data-stacked]:not([data-expanded]) & {
+    pointer-events: none;
+  }
+
+  .region[data-stacked]:not([data-expanded]) &[data-stack-index="0"] {
+    pointer-events: auto;
+  }
+
+  .region[data-stacked][data-expanded] & {
+    pointer-events: auto;
   }
 }
 
 .toast {
   display: flex;
-  align-items: start;
+  align-items: flex-start;
   gap: var(--space-1);
   width: 100%;
-  padding: var(--space-2);
+  padding: var(--toast-padding);
   overflow: hidden;
   border: 1px solid var(--color-border);
-  border-radius: var(--alert-radius);
+  border-radius: var(--toast-radius);
   background-color: var(--color-card);
   color: var(--color-fg);
-  box-shadow: var(--shadow-lg);
+  box-shadow: var(--toast-shadow);
   outline: none;
+  touch-action: pan-y;
+  transform-origin: inherit;
   transition:
-    transform var(--motion-normal),
-    opacity var(--motion-normal),
-    box-shadow var(--motion-normal);
+    box-shadow var(--motion-normal) var(--interaction-transition-curve, ease),
+    opacity var(--motion-normal);
+
+  &[data-swiping] {
+    transition: none;
+    transform: translate(
+      var(--toast-swipe-x, 0),
+      var(--toast-swipe-y, 0)
+    );
+    opacity: calc(1 - var(--toast-swipe-progress, 0) * 0.4);
+  }
 
   &[data-variant="success"] {
-    border-color: var(--color-border-success);
-    background-color: var(--color-success-muted);
-    color: var(--color-fg-success);
+    border-color: color-mix(in srgb, var(--color-border-success) 70%, var(--color-border));
   }
 
   &[data-variant="error"] {
-    border-color: var(--color-border-danger);
-    background-color: var(--color-danger-muted);
-    color: var(--color-fg-danger);
+    border-color: color-mix(in srgb, var(--color-border-danger) 70%, var(--color-border));
   }
 
   &[data-variant="warning"] {
-    border-color: var(--color-border-warning);
-    background-color: var(--color-warning-muted);
-    color: var(--color-fg-warning);
+    border-color: color-mix(in srgb, var(--color-border-warning) 70%, var(--color-border));
   }
 
   &[data-variant="info"] {
-    border-color: var(--color-border-info);
-    background-color: var(--color-info-muted);
-    color: var(--color-fg-info);
+    border-color: color-mix(in srgb, var(--color-border-info) 70%, var(--color-border));
   }
 
-  .region[data-stacked] & {
-    --toast-stack-scale: calc(1 - (var(--toast-stack-index, 0) * 0.05));
-    z-index: calc(50 - var(--toast-stack-index, 0));
-    pointer-events: none;
-    transform: translateY(var(--toast-stack-y, 0)) scale(var(--toast-stack-scale));
+  &[data-variant="loading"] {
+    border-color: color-mix(in srgb, var(--color-border) 80%, var(--color-fg-muted));
   }
 
-  .region[data-stacked] &[data-stack-index="0"] {
-    pointer-events: auto;
+  .region[data-stacked]:not([data-expanded]) & {
+    box-shadow: var(--shadow-sm);
   }
 
-  .region[data-position^="top"][data-stacked] & {
-    --toast-stack-y: calc(var(--toast-stack-index, 0) * -0.5rem);
-    transform-origin: top center;
+  .region[data-stacked]:not([data-expanded]) &[data-stack-index="0"] {
+    box-shadow: var(--toast-shadow);
   }
 
-  .region[data-position^="bottom"][data-stacked] & {
-    --toast-stack-y: calc(var(--toast-stack-index, 0) * 0.5rem);
-    transform-origin: bottom center;
-  }
-
-  .region[data-stacked] &:not([data-stack-index="0"]) {
+  .region[data-stacked]:not([data-expanded]) &:not([data-stack-index="0"]) {
     .content,
     .close {
       opacity: 0;
     }
+  }
+
+  .region[data-stacked][data-expanded] & {
+    box-shadow: var(--toast-shadow);
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .shell:hover & {
+      box-shadow: var(--shadow-lg);
+    }
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -155,11 +185,11 @@
   display: flex;
   min-width: 0;
   flex: 1 1 auto;
-  min-height: 2rem;
+  min-height: var(--space-8);
   align-items: center;
   justify-content: space-between;
-  gap: var(--space-2);
-  font-size: 0.875rem;
+  gap: var(--toast-gap);
+  font-size: var(--font-size-sm);
   transition: opacity var(--motion-normal);
 
   @media (prefers-reduced-motion: reduce) {
@@ -171,8 +201,8 @@
   display: flex;
   min-width: 0;
   flex: 1 1 auto;
-  align-items: center;
-  gap: var(--space-2);
+  align-items: flex-start;
+  gap: var(--toast-gap);
 }
 
 .message {
@@ -180,35 +210,21 @@
   min-width: 0;
   flex: 1 1 auto;
   flex-direction: column;
-  gap: 0.125rem;
+  gap: var(--space-1);
+  padding-block: var(--space-1);
 }
 
 .title {
-  font-size: 0.875rem;
-  line-height: 1.375;
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-tight);
   font-weight: var(--font-weight-medium);
+  letter-spacing: -0.01em;
 }
 
 .description {
-  font-size: 0.8125rem;
-  line-height: 1.375;
+  font-size: var(--font-size-xs);
+  line-height: var(--line-height-tight);
   color: var(--color-fg-muted);
-
-  .toast[data-variant="success"] & {
-    color: color-mix(in srgb, var(--color-fg-success) 80%, transparent);
-  }
-
-  .toast[data-variant="error"] & {
-    color: color-mix(in srgb, var(--color-fg-danger) 80%, transparent);
-  }
-
-  .toast[data-variant="warning"] & {
-    color: color-mix(in srgb, var(--color-fg-warning) 80%, transparent);
-  }
-
-  .toast[data-variant="info"] & {
-    color: color-mix(in srgb, var(--color-fg-info) 80%, transparent);
-  }
 }
 
 .actions {
@@ -221,7 +237,22 @@
 
 .close {
   flex: 0 0 auto;
-  transition: opacity var(--motion-normal);
+  margin-block-start: calc(var(--space-1) * -1);
+  margin-inline-end: calc(var(--space-1) * -1);
+  opacity: 0.72;
+  transition:
+    opacity var(--interaction-transition-duration)
+      var(--interaction-transition-curve),
+    background-color var(--interaction-transition-duration)
+      var(--interaction-transition-curve);
+
+  &:hover,
+  &:focus-visible,
+  &[data-hovered],
+  &[data-focused] {
+    opacity: 1;
+    background-color: var(--color-muted);
+  }
 
   @media (prefers-reduced-motion: reduce) {
     transition-duration: 0ms;
@@ -230,31 +261,50 @@
 
 .icon {
   display: flex;
-  width: 1rem;
-  height: 1rem;
+  width: var(--toast-icon-size);
+  height: var(--toast-icon-size);
   flex-shrink: 0;
   align-items: center;
   justify-content: center;
+  margin-block-start: var(--space-1);
+  border-radius: var(--radius-lg);
+  background-color: var(--color-muted);
   color: var(--color-fg-muted);
+  font-size: var(--font-size-sm);
 
   .toast[data-variant="success"] & {
+    background-color: var(--color-success-muted);
     color: var(--color-fg-success);
   }
 
   .toast[data-variant="error"] & {
+    background-color: var(--color-danger-muted);
     color: var(--color-fg-danger);
   }
 
   .toast[data-variant="warning"] & {
+    background-color: var(--color-warning-muted);
     color: var(--color-fg-warning);
   }
 
   .toast[data-variant="info"] & {
+    background-color: var(--color-info-muted);
     color: var(--color-fg-info);
+  }
+
+  .toast[data-variant="loading"] & {
+    background-color: var(--color-muted);
+    color: var(--color-fg-muted);
+  }
+
+  .toast[data-variant="neutral"] & {
+    background-color: var(--color-muted);
+    color: var(--color-fg-muted);
   }
 }
 
 .spinner {
-  width: 1rem;
-  height: 1rem;
+  width: var(--font-size-sm);
+  height: var(--font-size-sm);
+  flex-shrink: 0;
 }

@@ -16,18 +16,24 @@ vi.mock("motion/react", () => {
         const {
           layoutId: _layoutId,
           layoutRoot: _layoutRoot,
+          layout: _layout,
           initial: _initial,
           animate: _animate,
           exit: _exit,
           transition: _transition,
+          whileHover: _whileHover,
+          whileTap: _whileTap,
           ...rest
         } = props as ComponentPropsWithoutRef<"div"> & {
-          layoutId?: string;
-          layoutRoot?: boolean;
+          layoutId?: unknown;
+          layoutRoot?: unknown;
+          layout?: unknown;
           initial?: unknown;
           animate?: unknown;
           exit?: unknown;
           transition?: unknown;
+          whileHover?: unknown;
+          whileTap?: unknown;
         };
         return React.createElement(tag, { ...rest, ref }, children);
       },
@@ -41,7 +47,23 @@ vi.mock("motion/react", () => {
     },
     MotionConfig: ({ children }: { children?: ReactNode }) => children,
     useReducedMotion: () => false,
-    AnimatePresence: ({ children }: { children?: ReactNode }) => children,
+    AnimatePresence: ({
+      children,
+      onExitComplete,
+    }: {
+      children?: ReactNode;
+      onExitComplete?: () => void;
+    }) => {
+      const childCount = React.Children.count(children);
+      const prevCountRef = React.useRef(childCount);
+      React.useEffect(() => {
+        if (childCount < prevCountRef.current) {
+          onExitComplete?.();
+        }
+        prevCountRef.current = childCount;
+      }, [childCount, onExitComplete]);
+      return children;
+    },
   };
 });
 

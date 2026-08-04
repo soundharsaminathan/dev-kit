@@ -49,6 +49,55 @@ function ToastDemo({
   );
 }
 
+function StackedToastDemo() {
+  const { toast } = useToastContext("StackedToastDemo");
+
+  return (
+    <Button
+      onClick={() => {
+        toast(
+          {
+            title: "Message sent",
+            description: "Your message was delivered.",
+            variant: "success",
+          },
+          { timeout: 8000 },
+        );
+        toast(
+          {
+            title: "Invite pending",
+            description: "Waiting for a response.",
+            variant: "info",
+          },
+          { timeout: 8000 },
+        );
+        toast(
+          {
+            title: "Storage almost full",
+            description: "Free up space to keep uploading.",
+            variant: "warning",
+            action: {
+              label: "View",
+              onPress: () => undefined,
+            },
+          },
+          { timeout: 8000 },
+        );
+        toast(
+          {
+            title: "Queued behind the stack",
+            description: "Appears when a slot opens.",
+            variant: "neutral",
+          },
+          { timeout: 8000 },
+        );
+      }}
+    >
+      Show stacked toasts
+    </Button>
+  );
+}
+
 const defaultToastArgs: ToastStoryArgs = {
   title: "Files uploaded",
   description: "3 files uploaded successfully.",
@@ -113,16 +162,34 @@ export const ErrorToast: Story = {
     title: "Upload failed",
     description: "Check your connection and try again.",
     variant: "error",
+    showAction: true,
+    actionLabel: "Retry",
+  },
+};
+
+export const Warning: Story = {
+  args: {
+    title: "Unsaved changes",
+    description: "Leaving now will discard your edits.",
+    variant: "warning",
+  },
+};
+
+export const Info: Story = {
+  args: {
+    title: "New feature",
+    description: "Batch chat reactions are available.",
+    variant: "info",
   },
 };
 
 export const WithAction: Story = {
   args: {
-    title: "Update available",
-    description: "Version 2.0 is ready to install.",
-    variant: "info",
+    title: "Item deleted",
+    description: "You can restore it for a short time.",
+    variant: "neutral",
     showAction: true,
-    actionLabel: "Install",
+    actionLabel: "Undo",
   },
 };
 
@@ -141,4 +208,8 @@ export const TopCenter: Story = {
     variant: "warning",
     position: "top-center",
   },
+};
+
+export const Stacked: Story = {
+  render: () => <StackedToastDemo />,
 };
