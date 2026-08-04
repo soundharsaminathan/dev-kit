@@ -10,6 +10,7 @@ const STORIES = {
   withAction: "components-toast--with-action",
   loading: "components-toast--loading",
   topCenter: "components-toast--top-center",
+  stacked: "components-toast--stacked",
 } as const;
 
 async function openToast(page: import("@playwright/test").Page) {
@@ -78,6 +79,22 @@ test.describe("Toast", () => {
         STORIES.topCenter,
         "toast-top-center-open.png",
         openToast,
+      );
+    });
+
+    test("stacked — open", async ({ page }) => {
+      await expectStoryScreenshot(
+        page,
+        STORIES.stacked,
+        "toast-stacked-open.png",
+        async (storyPage) => {
+          await storyPage
+            .getByRole("button", { name: "Show stacked toasts" })
+            .click();
+          await storyPage.locator("[data-toast]").first().waitFor({
+            state: "visible",
+          });
+        },
       );
     });
   });

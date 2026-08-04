@@ -39,6 +39,17 @@
   --btn-primary-disabled-shadow: var(--btn-disabled-shadow);
   --badge-radius: var(--radius-md);
   --alert-radius: var(--radius-lg);
+  --toast-radius: var(--radius-xl);
+  --toast-shadow: var(--shadow-md);
+  --toast-max-width: 26.25rem;
+  --toast-padding: var(--space-3);
+  --toast-gap: var(--space-2);
+  --toast-icon-size: var(--space-8);
+  --toast-stack-offset: var(--space-2);
+  --toast-stack-scale-step: 0.02;
+  --toast-z-index: 50;
+  --toast-region-inset: var(--space-4);
+  --toast-enter-offset: var(--space-5);
   --input-radius: var(--radius-md);
   --input-font-size: var(--font-size-sm);
   --input-line-height: var(--line-height-tight);
