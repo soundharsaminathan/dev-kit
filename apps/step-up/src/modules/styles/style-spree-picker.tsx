@@ -1,7 +1,8 @@
 import { useIsMobile } from "@dev-ui/hooks";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useMemo, useRef, useState } from "react";
-import { DANCE_STYLES, resolveDanceStyle } from "@/lib/dance-styles";
+import { type DanceStyle, resolveDanceStyle } from "@/lib/dance-styles";
+import { useStudioDanceStyles } from "@/lib/use-studio-dance-styles";
 import styles from "./style-spree-picker.module.scss";
 
 type Particle = {
@@ -16,6 +17,7 @@ type StyleSpreePickerProps = {
   onChange: (styles: string[]) => void;
   title?: string;
   summaryLabel?: string;
+  catalog?: DanceStyle[];
 };
 
 function FloatingEmoji({
@@ -76,23 +78,27 @@ export function StyleSpreePicker({
   onChange,
   title = "Dance styles",
   summaryLabel = "styles",
+  catalog: catalogProp,
 }: StyleSpreePickerProps) {
+  const { styles: studioStyles } = useStudioDanceStyles();
+  const catalog = catalogProp ?? studioStyles;
   const [particles, setParticles] = useState<Particle[]>([]);
   const [isPanning, setIsPanning] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const selectedLabels = useMemo(
-    () => new Set(value.map((entry) => resolveDanceStyle(entry).label)),
-    [value],
+    () =>
+      new Set(value.map((entry) => resolveDanceStyle(entry, catalog).label)),
+    [value, catalog],
   );
 
   const rows = useMemo(() => {
-    const result: (typeof DANCE_STYLES)[number][][] = [[], [], []];
-    DANCE_STYLES.forEach((item, index) => {
+    const result: DanceStyle[][] = [[], [], []];
+    catalog.forEach((item, index) => {
       result[index % 3]!.push(item);
     });
     return result;
-  }, []);
+  }, [catalog]);
 
   function spawnParticles(emoji: string) {
     const newParticles: Particle[] = Array.from({ length: 3 }).map(() => ({
@@ -118,9 +124,9 @@ export function StyleSpreePicker({
     }
 
     onChange(
-      DANCE_STYLES.filter((style) => next.has(style.label)).map(
-        (style) => style.label,
-      ),
+      catalog
+        .filter((style) => next.has(style.label))
+        .map((style) => style.label),
     );
   }
 

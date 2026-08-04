@@ -22,6 +22,7 @@ import { useAuth } from "@/lib/auth";
 import { MEMBER_ROLES } from "@/lib/constants";
 import { danceStyleLabel } from "@/lib/dance-styles";
 import { ENTITY_ICONS } from "@/lib/entity-icons";
+import { useStudioDanceStyles } from "@/lib/use-studio-dance-styles";
 import type { ChatConversation } from "@/modules/chat/types";
 import { AppSheet } from "@/modules/ui/app-sheet";
 import { EmptyState } from "@/modules/ui/states";
@@ -97,6 +98,7 @@ export function TrainerDiscoveryView({
   const navigate = useNavigate();
   const router = useRouter();
   const { toast } = useToastContext("TrainerDiscoveryView");
+  const { styles: danceCatalog } = useStudioDanceStyles();
   const reducedMotion = useReducedMotion() ?? false;
   const [activeTrainerId, setActiveTrainerId] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -539,7 +541,7 @@ export function TrainerDiscoveryView({
                     <ul className={styles.chips} aria-label="Dance styles">
                       {trainer.styles.map((style) => (
                         <li key={style} className={styles.chip}>
-                          {danceStyleLabel(style)}
+                          {danceStyleLabel(style, danceCatalog)}
                         </li>
                       ))}
                     </ul>

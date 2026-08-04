@@ -19,10 +19,17 @@ type SettingsLink = {
     | "/app/settings/branding"
     | "/app/settings/billing"
     | "/app/settings/payments"
+    | "/app/settings/styles"
     | "/app/settings/team";
   label: string;
   hint: string;
-  icon: "building" | "palette" | "file-text" | "credit-card" | "users";
+  icon:
+    | "building"
+    | "palette"
+    | "file-text"
+    | "credit-card"
+    | "sparkles"
+    | "users";
   ownerOnly?: boolean;
   adminOnly?: boolean;
 };
@@ -39,6 +46,13 @@ const LINKS: SettingsLink[] = [
     label: "Branding",
     hint: "Logo and theme",
     icon: "palette",
+    ownerOnly: true,
+  },
+  {
+    to: "/app/settings/styles",
+    label: "Dance styles",
+    hint: "Styles offered at this studio",
+    icon: "sparkles",
     ownerOnly: true,
   },
   {

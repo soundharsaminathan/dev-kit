@@ -1,3 +1,4 @@
+import type { DanceStyle } from "@/lib/dance-styles";
 import type { StudioBrandThemePayload } from "@/modules/branding/types";
 
 export type StudioSettings = {
@@ -6,6 +7,7 @@ export type StudioSettings = {
   platformFeePercent: number;
   razorpayKeyId?: string | null;
   razorpayConfigured?: boolean;
+  danceStyles?: DanceStyle[] | null;
 };
 
 export type Studio = {

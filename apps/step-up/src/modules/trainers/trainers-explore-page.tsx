@@ -10,6 +10,7 @@ import {
   trainerHasStyle,
 } from "@/lib/dance-styles";
 import { ENTITY_ICONS } from "@/lib/entity-icons";
+import { useStudioDanceStyles } from "@/lib/use-studio-dance-styles";
 import { HomeStudioBanner } from "@/modules/me/home-sections";
 import type { HomePayload } from "@/modules/me/home-types";
 import { useActiveStudentContext } from "@/modules/me/use-active-student-context";
@@ -169,6 +170,7 @@ export function TrainersExplorePage({
   );
 
   const query = useStudioTrainers();
+  const { styles: danceCatalog } = useStudioDanceStyles();
   const { toggleFollow, isPendingFor } = useFollowMutations();
   const [view, setView] = useState<TrainerViewMode>(() =>
     coerceView(readStoredView(storageKey, defaultView), isMobile),
@@ -189,17 +191,17 @@ export function TrainersExplorePage({
     [query.data],
   );
   const styleFilters = useMemo(
-    () => collectTrainerStyleFilters(trainers),
-    [trainers],
+    () => collectTrainerStyleFilters(trainers, danceCatalog),
+    [trainers, danceCatalog],
   );
   const filteredTrainers = useMemo(() => {
     if (!styleFilter) {
       return trainers;
     }
     return trainers.filter((trainer) =>
-      trainerHasStyle(trainer.styles, styleFilter),
+      trainerHasStyle(trainer.styles, styleFilter, danceCatalog),
     );
-  }, [trainers, styleFilter]);
+  }, [trainers, styleFilter, danceCatalog]);
 
   const followingCount = useMemo(
     () => trainers.filter((trainer) => trainer.isFollowing).length,

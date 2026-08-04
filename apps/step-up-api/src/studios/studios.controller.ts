@@ -107,6 +107,10 @@ class UpdateStudioSettingsDto {
   @IsOptional()
   @IsString()
   razorpayKeySecret?: string | null;
+
+  @IsOptional()
+  @Allow()
+  danceStyles?: unknown;
 }
 
 @Controller("studios")
@@ -194,6 +198,14 @@ export class StudiosController {
       (dto.razorpayKeyId !== undefined || dto.razorpayKeySecret !== undefined)
     ) {
       throw new ForbiddenException("Only owners can change Razorpay keys");
+    }
+
+    if (
+      user.role !== UserRole.OWNER &&
+      user.role !== UserRole.SYSTEM_ADMIN &&
+      dto.danceStyles !== undefined
+    ) {
+      throw new ForbiddenException("Only owners can change dance styles");
     }
 
     return this.studiosService.updateSettings(id, dto);

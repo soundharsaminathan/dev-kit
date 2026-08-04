@@ -1,3 +1,4 @@
+import type { DanceStyle } from "@/lib/dance-styles";
 import { StyleIcon } from "./style-icon";
 import styles from "./styles.module.scss";
 
@@ -7,6 +8,7 @@ type StyleListProps = {
   showLabels?: boolean;
   emptyLabel?: string;
   className?: string | undefined;
+  catalog?: DanceStyle[];
 };
 
 export function StyleList({
@@ -15,6 +17,7 @@ export function StyleList({
   showLabels = false,
   emptyLabel,
   className,
+  catalog,
 }: StyleListProps) {
   if (styleValues.length === 0) {
     return emptyLabel ? <p className={styles.empty}>{emptyLabel}</p> : null;
@@ -35,8 +38,9 @@ export function StyleList({
           style={style}
           size={size}
           showLabel={showLabels}
+          {...(catalog ? { catalog } : {})}
         />
-      ))}
+      ))}{" "}
     </div>
   );
 }

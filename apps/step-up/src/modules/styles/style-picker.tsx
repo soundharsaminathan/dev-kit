@@ -1,15 +1,23 @@
-import { DANCE_STYLES, resolveDanceStyle } from "@/lib/dance-styles";
+import { type DanceStyle, resolveDanceStyle } from "@/lib/dance-styles";
+import { useStudioDanceStyles } from "@/lib/use-studio-dance-styles";
 import { StyleIcon } from "./style-icon";
 import styles from "./styles.module.scss";
 
 type StylePickerProps = {
   value: string[];
   onChange: (styles: string[]) => void;
+  catalog?: DanceStyle[];
 };
 
-export function StylePicker({ value, onChange }: StylePickerProps) {
+export function StylePicker({
+  value,
+  onChange,
+  catalog: catalogProp,
+}: StylePickerProps) {
+  const { styles: studioStyles } = useStudioDanceStyles();
+  const catalog = catalogProp ?? studioStyles;
   const selectedLabels = new Set(
-    value.map((entry) => resolveDanceStyle(entry).label),
+    value.map((entry) => resolveDanceStyle(entry, catalog).label),
   );
 
   function toggle(label: string) {
@@ -20,15 +28,15 @@ export function StylePicker({ value, onChange }: StylePickerProps) {
       next.add(label);
     }
     onChange(
-      DANCE_STYLES.filter((style) => next.has(style.label)).map(
-        (style) => style.label,
-      ),
+      catalog
+        .filter((style) => next.has(style.label))
+        .map((style) => style.label),
     );
   }
 
   return (
     <div className={styles.picker}>
-      {DANCE_STYLES.map((style) => {
+      {catalog.map((style) => {
         const selected = selectedLabels.has(style.label);
         return (
           <button
@@ -42,7 +50,7 @@ export function StylePicker({ value, onChange }: StylePickerProps) {
             aria-pressed={selected}
             onClick={() => toggle(style.label)}
           >
-            <StyleIcon style={style.label} size="md" />
+            <StyleIcon style={style.label} size="md" catalog={catalog} />
             <span className={styles.pickerLabel}>{style.label}</span>
           </button>
         );
