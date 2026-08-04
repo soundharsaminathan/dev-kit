@@ -745,7 +745,7 @@ describe("BatchesService.remove and enroll", () => {
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
-  it("enrolls student as trial and snapshots next sessions", async () => {
+  it("enrolls a self-join student without trial options", async () => {
     prisma.batch.findUnique.mockResolvedValue({
       id: "batch-1",
       active: true,
@@ -753,132 +753,21 @@ describe("BatchesService.remove and enroll", () => {
       enrollmentMode: EnrollmentMode.SELF_JOIN,
       enrollments: [],
     });
-    prisma.session.findMany.mockResolvedValue([
-      { id: "session-1" },
-      { id: "session-2" },
-    ]);
     prisma.batchEnrollment.upsert.mockResolvedValue({
+      id: "enroll-1",
       batchId: "batch-1",
       studentId: "student-1",
-      isTrial: true,
-      trialSessionIds: ["session-1", "session-2"],
-    });
-
-    await service.enroll(
-      "batch-1",
-      "student-1",
-      { id: "student-1", role: UserRole.STUDENT } as never,
-      { isTrial: true },
-    );
-
-    expect(prisma.batchEnrollment.findFirst).toHaveBeenCalled();
-    expect(prisma.session.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: expect.objectContaining({
-          batchId: "batch-1",
-          status: "SCHEDULED",
-        }),
-        take: 2,
-        select: { id: true },
-      }),
-    );
-    expect(prisma.batchEnrollment.upsert).toHaveBeenCalledWith({
-      where: {
-        batchId_studentId: { batchId: "batch-1", studentId: "student-1" },
-      },
-      update: {
-        isTrial: true,
-        trialSessionIds: ["session-1", "session-2"],
-        enrolledAt: expect.any(Date),
-      },
-      create: {
-        batchId: "batch-1",
-        studentId: "student-1",
-        isTrial: true,
-        trialSessionIds: ["session-1", "session-2"],
-      },
-    });
-  });
-
-  it("rejects trial enroll when student already has a trial in another batch", async () => {
-    prisma.batch.findUnique.mockResolvedValue({
-      id: "batch-2",
-      active: true,
-      capacity: 10,
-      enrollmentMode: EnrollmentMode.SELF_JOIN,
-      enrollments: [],
-    });
-    prisma.batchEnrollment.findFirst
-      .mockResolvedValueOnce(null)
-      .mockResolvedValueOnce({ batchId: "batch-1", isTrial: true });
-
-    await expect(
-      service.enroll(
-        "batch-2",
-        "student-1",
-        { id: "student-1", role: UserRole.STUDENT } as never,
-        { isTrial: true },
-      ),
-    ).rejects.toBeInstanceOf(ConflictException);
-    expect(prisma.batchEnrollment.upsert).not.toHaveBeenCalled();
-  });
-
-  it("enrolls trial with a custom session count", async () => {
-    prisma.batch.findUnique.mockResolvedValue({
-      id: "batch-1",
-      active: true,
-      capacity: 10,
-      enrollmentMode: EnrollmentMode.SELF_JOIN,
-      enrollments: [],
-    });
-    prisma.session.findMany.mockResolvedValue([
-      { id: "session-1" },
-      { id: "session-2" },
-      { id: "session-3" },
-    ]);
-    prisma.batchEnrollment.upsert.mockResolvedValue({
-      batchId: "batch-1",
-      studentId: "student-1",
-      isTrial: true,
-      trialSessionIds: ["session-1", "session-2", "session-3"],
-    });
-
-    await service.enroll(
-      "batch-1",
-      "student-1",
-      { id: "owner-1", role: UserRole.OWNER } as never,
-      { isTrial: true, trialSessionCount: 3 },
-    );
-
-    expect(prisma.session.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({ take: 3 }),
-    );
-    expect(prisma.batchEnrollment.upsert).toHaveBeenCalledWith(
-      expect.objectContaining({
-        create: expect.objectContaining({
-          trialSessionIds: ["session-1", "session-2", "session-3"],
-        }),
-      }),
-    );
-  });
-
-  it("rejects trialSessionCount when not a trial enrollment", async () => {
-    prisma.batch.findUnique.mockResolvedValue({
-      id: "batch-1",
-      active: true,
-      capacity: 10,
-      enrollmentMode: EnrollmentMode.SELF_JOIN,
-      enrollments: [],
     });
 
     await expect(
-      service.enroll(
-        "batch-1",
-        "student-1",
-        { id: "owner-1", role: UserRole.OWNER } as never,
-        { isTrial: false, trialSessionCount: 3 },
-      ),
-    ).rejects.toThrow(/trialSessionCount is only valid/);
+      service.enroll("batch-1", "student-1", {
+        id: "student-1",
+        role: UserRole.STUDENT,
+      } as never),
+    ).resolves.toMatchObject({
+      batchId: "batch-1",
+      studentId: "student-1",
+    });
   });
 });
 
@@ -933,13 +822,11 @@ describe("BatchesService.listByStudio viewer enrollment", () => {
         enrollments: [
           {
             studentId: "student-1",
-            isTrial: false,
-            trialSessionIds: null,
+            enrolledAt: new Date("2026-01-01T00:00:00.000Z"),
           },
           {
             studentId: "student-2",
-            isTrial: false,
-            trialSessionIds: null,
+            enrolledAt: new Date("2026-01-01T00:00:00.000Z"),
           },
         ],
         trainers: [],
@@ -958,9 +845,8 @@ describe("BatchesService.listByStudio viewer enrollment", () => {
     expect(rows[0]).toMatchObject({
       id: "batch-1",
       viewerEnrolled: true,
-      viewerEnrollment: { isTrial: false, trialSessionIds: [] },
+      viewerEnrollment: { enrolledAt: expect.any(Date) },
       viewerBooking: null,
-      viewerActiveTrialBatchId: null,
     });
   });
 
@@ -975,8 +861,7 @@ describe("BatchesService.listByStudio viewer enrollment", () => {
         enrollments: [
           {
             studentId: "student-2",
-            isTrial: false,
-            trialSessionIds: null,
+            enrolledAt: new Date("2026-01-01T00:00:00.000Z"),
           },
         ],
         trainers: [],
@@ -999,7 +884,7 @@ describe("BatchesService.listByStudio viewer enrollment", () => {
     });
   });
 
-  it("returns trial enrollment and open booking for the viewer", async () => {
+  it("returns enrollment and open booking for the viewer", async () => {
     prisma.batch.findMany.mockResolvedValue([
       {
         id: "batch-1",
@@ -1010,8 +895,7 @@ describe("BatchesService.listByStudio viewer enrollment", () => {
         enrollments: [
           {
             studentId: "student-1",
-            isTrial: true,
-            trialSessionIds: ["session-1", "session-2"],
+            enrolledAt: new Date("2026-01-01T00:00:00.000Z"),
           },
         ],
         trainers: [],
@@ -1034,9 +918,6 @@ describe("BatchesService.listByStudio viewer enrollment", () => {
         coverImageUrl: null,
       },
     ]);
-    prisma.batchEnrollment.findFirst.mockResolvedValue({
-      batchId: "batch-1",
-    });
     prisma.booking.findMany.mockImplementation(
       async (args: { select?: Record<string, boolean> }) => {
         // Viewer open-booking query selects type/status; capacity holdings do not.
@@ -1066,11 +947,9 @@ describe("BatchesService.listByStudio viewer enrollment", () => {
       id: "batch-1",
       viewerEnrolled: true,
       viewerEnrollment: {
-        isTrial: true,
-        trialSessionIds: ["session-1", "session-2"],
+        enrolledAt: expect.any(Date),
       },
       viewerBooking: null,
-      viewerActiveTrialBatchId: "batch-1",
     });
     expect(rows[1]).toMatchObject({
       id: "batch-2",
@@ -1081,7 +960,6 @@ describe("BatchesService.listByStudio viewer enrollment", () => {
         type: "TRIAL",
         status: "PENDING",
       },
-      viewerActiveTrialBatchId: "batch-1",
     });
   });
 });
@@ -1151,7 +1029,7 @@ describe("BatchesService.switchBatch", () => {
         id: "batch-1",
         studioId: "studio-1",
         category: BatchCategory.KIDS,
-        enrollments: [{ studentId: "student-1", isTrial: false }],
+        enrollments: [{ studentId: "student-1" }],
       })
       .mockResolvedValueOnce({
         id: "batch-2",
@@ -1173,7 +1051,6 @@ describe("BatchesService.switchBatch", () => {
       id: "enroll-2",
       batchId: "batch-2",
       studentId: "student-1",
-      isTrial: false,
     });
 
     await expect(
@@ -1181,7 +1058,6 @@ describe("BatchesService.switchBatch", () => {
     ).resolves.toMatchObject({
       batchId: "batch-2",
       studentId: "student-1",
-      isTrial: false,
     });
 
     expect(
@@ -1198,45 +1074,6 @@ describe("BatchesService.switchBatch", () => {
       data: {
         batchId: "batch-2",
         studentId: "student-1",
-        isTrial: false,
-      },
-    });
-  });
-
-  it("moves a trial student and re-resolves trial sessions", async () => {
-    prisma.batch.findUnique
-      .mockResolvedValueOnce({
-        id: "batch-1",
-        studioId: "studio-1",
-        category: BatchCategory.ADULTS,
-        enrollments: [{ studentId: "student-1", isTrial: true }],
-      })
-      .mockResolvedValueOnce({
-        id: "batch-2",
-        studioId: "studio-1",
-        category: BatchCategory.ADULTS,
-        active: true,
-        capacity: 8,
-        plans: [],
-      });
-    prisma.session.findMany.mockResolvedValue([{ id: "s1" }, { id: "s2" }]);
-    prisma.batchEnrollment.create.mockResolvedValue({
-      id: "enroll-2",
-      batchId: "batch-2",
-      studentId: "student-1",
-      isTrial: true,
-      trialSessionIds: ["s1", "s2"],
-    });
-
-    await service.switchBatch("batch-1", "student-1", "batch-2");
-
-    expect(memberships.findActiveForBatch).not.toHaveBeenCalled();
-    expect(prisma.batchEnrollment.create).toHaveBeenCalledWith({
-      data: {
-        batchId: "batch-2",
-        studentId: "student-1",
-        isTrial: true,
-        trialSessionIds: ["s1", "s2"],
       },
     });
   });
@@ -1247,7 +1084,7 @@ describe("BatchesService.switchBatch", () => {
         id: "batch-1",
         studioId: "studio-1",
         category: BatchCategory.KIDS,
-        enrollments: [{ studentId: "student-1", isTrial: false }],
+        enrollments: [{ studentId: "student-1" }],
       })
       .mockResolvedValueOnce({
         id: "batch-2",
@@ -1300,7 +1137,7 @@ describe("BatchesService.switchBatch", () => {
         id: "batch-1",
         studioId: "studio-1",
         category: BatchCategory.KIDS,
-        enrollments: [{ studentId: "student-1", isTrial: true }],
+        enrollments: [{ studentId: "student-1" }],
       })
       .mockResolvedValueOnce({
         id: "batch-2",
@@ -1322,7 +1159,7 @@ describe("BatchesService.switchBatch", () => {
         id: "batch-1",
         studioId: "studio-1",
         category: BatchCategory.KIDS,
-        enrollments: [{ studentId: "student-1", isTrial: true }],
+        enrollments: [{ studentId: "student-1" }],
       })
       .mockResolvedValueOnce({
         id: "batch-2",
@@ -1347,7 +1184,7 @@ describe("BatchesService.switchBatch", () => {
       id: "batch-1",
       studioId: "studio-1",
       category: BatchCategory.KIDS,
-      enrollments: [{ studentId: "student-1", isTrial: false }],
+      enrollments: [{ studentId: "student-1" }],
     });
     prisma.batchEnrollment.findMany.mockResolvedValue([{ batchId: "batch-1" }]);
     memberships.findActiveForBatch.mockResolvedValue({
@@ -1372,7 +1209,6 @@ describe("BatchesService.switchBatch", () => {
 
     expect(result).toMatchObject({
       studentId: "student-1",
-      isTrial: false,
       subscription: { id: "sub-1", name: "Kids Monthly" },
       targets: [
         {
@@ -1390,7 +1226,7 @@ describe("BatchesService.switchBatch", () => {
       id: "batch-1",
       studioId: "studio-1",
       category: BatchCategory.KIDS,
-      enrollments: [{ studentId: "student-1", isTrial: false }],
+      enrollments: [{ studentId: "student-1" }],
     });
     prisma.batchEnrollment.findMany.mockResolvedValue([{ batchId: "batch-1" }]);
     memberships.findActiveForBatch.mockResolvedValue(null);
@@ -1399,7 +1235,6 @@ describe("BatchesService.switchBatch", () => {
 
     expect(result).toEqual({
       studentId: "student-1",
-      isTrial: false,
       subscription: null,
       reason: "No active subscription covering this batch",
       targets: [],

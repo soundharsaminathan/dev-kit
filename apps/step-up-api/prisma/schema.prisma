@@ -566,12 +566,10 @@ model BatchTrainer {
 }
 
 model BatchEnrollment {
-  id              String   @id @default(cuid())
-  batchId         String
-  studentId       String
-  isTrial         Boolean  @default(false)
-  enrolledAt      DateTime @default(now())
-  trialSessionIds Json?
+  id         String   @id @default(cuid())
+  batchId    String
+  studentId  String
+  enrolledAt DateTime @default(now())
 
   batch   Batch @relation(fields: [batchId], references: [id], onDelete: Cascade)
   student User  @relation(fields: [studentId], references: [id], onDelete: Cascade)

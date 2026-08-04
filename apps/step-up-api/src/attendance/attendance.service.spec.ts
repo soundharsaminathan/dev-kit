@@ -20,7 +20,7 @@ describe("AttendanceService.markAttendance", () => {
     session: { findUnique: vi.fn() },
     attendance: { upsert: vi.fn() },
     parentChild: { findUnique: vi.fn() },
-    batchEnrollment: { findUnique: vi.fn() },
+    booking: { findFirst: vi.fn() },
   };
   const memberships = {
     findActiveForBatch: vi.fn(),
@@ -42,7 +42,7 @@ describe("AttendanceService.markAttendance", () => {
     config.get.mockImplementation((key: string) =>
       key === "SESSION_QR_SECRET" ? "test-qr-secret" : undefined,
     );
-    prisma.batchEnrollment.findUnique.mockResolvedValue(null);
+    prisma.booking.findFirst.mockResolvedValue(null);
     service = new AttendanceService(
       prisma as never,
       memberships as never,
@@ -138,13 +138,14 @@ describe("AttendanceService.markAttendance", () => {
     expect(notifications.create).not.toHaveBeenCalled();
   });
 
-  it("allows markAttendance when trial enrollment covers the session", async () => {
+  it("allows markAttendance when TRIAL booking exists for the session", async () => {
     const session = makeSession();
     prisma.session.findUnique.mockResolvedValue(session);
     memberships.findActiveForBatch.mockResolvedValue(null);
-    prisma.batchEnrollment.findUnique.mockResolvedValue({
-      isTrial: true,
-      trialSessionIds: [session.id, "session-other"],
+    prisma.booking.findFirst.mockResolvedValue({
+      id: "booking-trial",
+      type: "TRIAL",
+      sessionId: session.id,
     });
     prisma.attendance.upsert.mockResolvedValue({
       id: "att-trial",
@@ -164,14 +165,11 @@ describe("AttendanceService.markAttendance", () => {
     expect(notifications.create).not.toHaveBeenCalled();
   });
 
-  it("rejects when trial enrollment does not cover the session", async () => {
+  it("rejects when no TRIAL booking exists for the session", async () => {
     const session = makeSession();
     prisma.session.findUnique.mockResolvedValue(session);
     memberships.findActiveForBatch.mockResolvedValue(null);
-    prisma.batchEnrollment.findUnique.mockResolvedValue({
-      isTrial: true,
-      trialSessionIds: ["session-other-1", "session-other-2"],
-    });
+    prisma.booking.findFirst.mockResolvedValue(null);
 
     await expect(
       service.markAttendance({
@@ -181,7 +179,7 @@ describe("AttendanceService.markAttendance", () => {
         markedById: FIXTURE_USERS.trainer.id,
         source: AttendanceSource.TRAINER,
       }),
-    ).rejects.toThrow(/Trial exhausted/);
+    ).rejects.toThrow(/No active membership/);
     expect(prisma.attendance.upsert).not.toHaveBeenCalled();
   });
 });
@@ -191,6 +189,7 @@ describe("AttendanceService.markAllPresent", () => {
     session: { findUnique: vi.fn() },
     attendance: { upsert: vi.fn() },
     parentChild: { findUnique: vi.fn() },
+    booking: { findMany: vi.fn(), findFirst: vi.fn() },
   };
   const memberships = {
     findActiveForBatch: vi.fn(),
@@ -209,6 +208,8 @@ describe("AttendanceService.markAllPresent", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     memberships.findMonthlyUnpaidStudentIds.mockResolvedValue(new Set());
+    prisma.booking.findMany.mockResolvedValue([]);
+    prisma.booking.findFirst.mockResolvedValue(null);
     service = new AttendanceService(
       prisma as never,
       memberships as never,
@@ -431,6 +432,7 @@ describe("AttendanceService.getSessionRoster", () => {
     session: { findUnique: vi.fn() },
     attendance: { findMany: vi.fn(), upsert: vi.fn() },
     parentChild: { findUnique: vi.fn() },
+    booking: { findMany: vi.fn(), findFirst: vi.fn() },
   };
   const memberships = {
     findActiveForBatch: vi.fn(),
@@ -447,6 +449,8 @@ describe("AttendanceService.getSessionRoster", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     memberships.findMonthlyUnpaidStudentIds.mockResolvedValue(new Set(["s2"]));
+    prisma.booking.findMany.mockResolvedValue([]);
+    prisma.booking.findFirst.mockResolvedValue(null);
     service = new AttendanceService(
       prisma as never,
       memberships as never,
@@ -484,6 +488,7 @@ describe("AttendanceService.getSessionRoster", () => {
     expect(roster).toEqual([
       expect.objectContaining({
         studentId: "s1",
+        isTrial: false,
         monthlyUnpaid: false,
         attendance: expect.objectContaining({
           status: AttendanceStatus.PRESENT,
@@ -491,6 +496,7 @@ describe("AttendanceService.getSessionRoster", () => {
       }),
       expect.objectContaining({
         studentId: "s2",
+        isTrial: false,
         monthlyUnpaid: true,
         attendance: null,
       }),

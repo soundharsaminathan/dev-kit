@@ -34,8 +34,6 @@ function enrollment(
   return {
     batchId: "batch-1",
     batchActive: true,
-    isTrial: false,
-    trialSessionIds: [],
     hasScheduledSession: true,
     hasCompletedSession: false,
     ...overrides,
@@ -139,43 +137,7 @@ describe("student-funnel", () => {
     ).toBe("trialAttended");
   });
 
-  it("classifies trial registered from trial enrollment", () => {
-    expect(
-      classifyStudentFunnelStage(
-        student({
-          enrollments: [
-            enrollment({
-              isTrial: true,
-              trialSessionIds: ["session-trial-1", "session-trial-2"],
-            }),
-          ],
-        }),
-      ),
-    ).toBe("trialRegistered");
-  });
-
-  it("classifies trial attended from present on trialSessionIds", () => {
-    expect(
-      classifyStudentFunnelStage(
-        student({
-          enrollments: [
-            enrollment({
-              isTrial: true,
-              trialSessionIds: ["session-trial-1", "session-trial-2"],
-            }),
-          ],
-          attendance: [
-            {
-              sessionId: "session-trial-1",
-              status: AttendanceStatus.PRESENT,
-            },
-          ],
-        }),
-      ),
-    ).toBe("trialAttended");
-  });
-
-  it("classifies trial registered without attendance", () => {
+  it("classifies trial booked but not attended as signedInOnly", () => {
     expect(
       classifyStudentFunnelStage(
         student({
@@ -188,7 +150,45 @@ describe("student-funnel", () => {
           ],
         }),
       ),
-    ).toBe("trialRegistered");
+    ).toBe("signedInOnly");
+  });
+
+  it("classifies trial attended from present attendance on trial booking", () => {
+    expect(
+      classifyStudentFunnelStage(
+        student({
+          bookings: [
+            {
+              type: BookingType.TRIAL,
+              status: BookingStatus.CONFIRMED,
+              sessionId: "session-trial",
+            },
+          ],
+          attendance: [
+            {
+              sessionId: "session-trial",
+              status: AttendanceStatus.PRESENT,
+            },
+          ],
+        }),
+      ),
+    ).toBe("trialAttended");
+  });
+
+  it("classifies trial booked but not attended as signedInOnly", () => {
+    expect(
+      classifyStudentFunnelStage(
+        student({
+          bookings: [
+            {
+              type: BookingType.TRIAL,
+              status: BookingStatus.PENDING,
+              sessionId: "session-trial",
+            },
+          ],
+        }),
+      ),
+    ).toBe("signedInOnly");
   });
 
   it("classifies signed-in only when nothing else happened", () => {
@@ -238,8 +238,7 @@ describe("student-funnel", () => {
     ).toEqual({
       total: 5,
       active: 1,
-      signedInOnly: 1,
-      trialRegistered: 1,
+      signedInOnly: 2,
       trialAttended: 1,
       completedWithoutPlan: 1,
       period: "lifetime",
@@ -268,7 +267,6 @@ describe("student-funnel", () => {
       total: 1,
       active: 1,
       signedInOnly: 0,
-      trialRegistered: 0,
       trialAttended: 0,
       completedWithoutPlan: 0,
       period: "this_month",

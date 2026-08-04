@@ -7,7 +7,6 @@ import styles from "./batch-overview.module.scss";
 import {
   type BatchOverviewEnrollment,
   type BatchOverviewSession,
-  countTrialEnrollments,
   enrollmentModeLabel,
   fillPercent,
   formatNextSessionLabel,
@@ -20,7 +19,6 @@ export type {
   BatchOverviewSession,
 } from "./batch-overview-helpers";
 export {
-  countTrialEnrollments,
   enrollmentModeLabel,
   fillPercent,
   formatNextSessionLabel,
@@ -77,7 +75,6 @@ export function BatchOverview({
       ? remainingSeats
       : Math.max(0, capacity - occupied);
   const percent = fillPercent(occupied, capacity);
-  const trials = countTrialEnrollments(enrollments);
   const next = nextUpcomingSession(sessions);
   const modeLabel = enrollmentModeLabel(enrollmentMode);
   const isFull = seatsLeft === 0;
@@ -167,10 +164,6 @@ export function BatchOverview({
           >
             {isFull ? "Full" : seatsLeft}
           </span>
-        </div>
-        <div className={styles.metric}>
-          <span className={styles.metricLabel}>Trials</span>
-          <span className={styles.metricValue}>{trials}</span>
         </div>
         {next ? (
           <Link

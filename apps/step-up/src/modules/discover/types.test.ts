@@ -32,29 +32,15 @@ function batch(overrides: Partial<DiscoverBatch> = {}): DiscoverBatch {
 }
 
 describe("discoverCtaLabel", () => {
-  it("shows Enrolled when the viewer is a full member", () => {
+  it("shows Enrolled when the viewer is enrolled", () => {
     expect(
       discoverCtaLabel(
         batch({
           viewerEnrolled: true,
-          viewerEnrollment: { isTrial: false, trialSessionIds: [] },
+          viewerEnrollment: { enrolledAt: "2026-01-01T00:00:00.000Z" },
         }),
       ),
     ).toBe("Enrolled");
-  });
-
-  it("shows On trial when the viewer has a trial enrollment", () => {
-    expect(
-      discoverCtaLabel(
-        batch({
-          viewerEnrolled: true,
-          viewerEnrollment: {
-            isTrial: true,
-            trialSessionIds: ["s1", "s2"],
-          },
-        }),
-      ),
-    ).toBe("On trial");
   });
 
   it("prefers enrollment status over Full", () => {
@@ -62,11 +48,11 @@ describe("discoverCtaLabel", () => {
       discoverCtaLabel(
         batch({
           viewerEnrolled: true,
-          viewerEnrollment: { isTrial: true, trialSessionIds: [] },
+          viewerEnrollment: { enrolledAt: "2026-01-01T00:00:00.000Z" },
           remainingSeats: 0,
         }),
       ),
-    ).toBe("On trial");
+    ).toBe("Enrolled");
   });
 
   it("shows Trial requested for a pending trial booking", () => {
@@ -151,7 +137,6 @@ describe("discoverCtaLabel", () => {
 describe("isDiscoverCtaMuted", () => {
   it("mutes status labels and keeps action labels vivid", () => {
     expect(isDiscoverCtaMuted("Enrolled")).toBe(true);
-    expect(isDiscoverCtaMuted("On trial")).toBe(true);
     expect(isDiscoverCtaMuted("Trial requested")).toBe(true);
     expect(isDiscoverCtaMuted("Trial approved")).toBe(true);
     expect(isDiscoverCtaMuted("Pay now")).toBe(false);

@@ -220,17 +220,6 @@ class UpdateBatchDto {
 class EnrollStudentDto {
   @IsString()
   studentId!: string;
-
-  @IsOptional()
-  @IsBoolean()
-  isTrial?: boolean;
-
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  @Max(20)
-  trialSessionCount?: number;
 }
 
 class SwitchBatchDto {
@@ -386,10 +375,7 @@ export class BatchesController {
     @Body() dto: EnrollStudentDto,
     @CurrentUser() actor: DecryptedUser,
   ) {
-    return this.batchesService.enroll(id, dto.studentId, actor, {
-      isTrial: dto.isTrial,
-      trialSessionCount: dto.trialSessionCount,
-    });
+    return this.batchesService.enroll(id, dto.studentId, actor);
   }
 
   @Post(":id/switch")

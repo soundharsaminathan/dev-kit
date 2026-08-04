@@ -4,7 +4,6 @@ import { SEED } from "../fixtures/seed";
 const FUNNEL_TILES = [
   "active",
   "signedInOnly",
-  "trialRegistered",
   "trialAttended",
   "completedWithoutPlan",
 ] as const;

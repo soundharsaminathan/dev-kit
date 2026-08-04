@@ -43,12 +43,38 @@ async function ensureMissedSessionNotification() {
     "STUDENT",
     "/notifications?limit=20",
   );
-  const missed = list.items.find((item) => item.type === "MISSED_SESSION");
+  let missed = list.items.find((item) => item.type === "MISSED_SESSION");
   expect(missed).toBeTruthy();
+
+  // Soft-deleted rows are excluded from the list; archive/delete tests leave
+  // the deduped row inactive. Rematch ABSENT after a delete recreates active
+  // unread — but an active+read row needs an explicit reopen.
+  if (missed!.status?.toUpperCase() === "ARCHIVED") {
+    await expectOk("STUDENT", `/notifications/${missed!.id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ archived: false, read: false }),
+    });
+  } else if (missed!.readAt) {
+    await expectOk("STUDENT", `/notifications/${missed!.id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ read: false }),
+    });
+  }
+
+  const refreshed = await expectOk<NotificationList>(
+    "STUDENT",
+    "/notifications?limit=20",
+  );
+  missed = refreshed.items.find((item) => item.type === "MISSED_SESSION");
+  expect(missed).toBeTruthy();
+  expect(missed!.readAt).toBeNull();
   return missed!;
 }
 
 test.describe("notifications HTTP @http", () => {
+  // Shared seed student + MISSED_SESSION dedupe — mark-all / archive / unread
+  // assertions must not race under fullyParallel.
+  test.describe.configure({ mode: "serial" });
   test("student receives MISSED_SESSION after trainer marks absent @http", async () => {
     const missed = await ensureMissedSessionNotification();
 
@@ -59,13 +85,6 @@ test.describe("notifications HTTP @http", () => {
 
   test("student lists unread, reads one, and sees unread count drop @http", async () => {
     const missed = await ensureMissedSessionNotification();
-
-    if (missed.readAt) {
-      await expectOk("STUDENT", `/notifications/${missed.id}`, {
-        method: "PATCH",
-        body: JSON.stringify({ read: false }),
-      });
-    }
 
     const unreadBefore = await expectOk<{ count: number }>(
       "STUDENT",

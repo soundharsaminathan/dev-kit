@@ -1,4 +1,3 @@
-import { Checkbox } from "@dev-ui/components/checkbox";
 import {
   Select,
   SelectContent,
@@ -74,7 +73,6 @@ export function MemberRegistrationForm({
   const [ageRange, setAgeRange] = useState<AgeRange | null>(null);
   const [styles, setStyles] = useState<string[]>([]);
   const [batchId, setBatchId] = useState<string | null>(null);
-  const [isTrial, setIsTrial] = useState(false);
 
   const allowBatchEnrollment = kind === "student";
 
@@ -109,7 +107,7 @@ export function MemberRegistrationForm({
         gender,
         ageRange,
         styles,
-        ...(allowBatchEnrollment && batchId ? { batchId, isTrial } : {}),
+        ...(allowBatchEnrollment && batchId ? { batchId } : {}),
       }),
     onSuccess: async (created) => {
       setLastLoginIdentifier(created.email);
@@ -254,7 +252,6 @@ export function MemberRegistrationForm({
                     const value = String(key);
                     const nextBatchId = value === NO_BATCH ? null : value;
                     setBatchId(nextBatchId);
-                    if (!nextBatchId) setIsTrial(false);
                   }}
                 >
                   <SelectTrigger data-testid="optional-batch-select">
@@ -275,15 +272,8 @@ export function MemberRegistrationForm({
                     ))}
                   </SelectContent>
                 </Select>
-                {batchId ? (
-                  <Checkbox isSelected={isTrial} onChange={setIsTrial}>
-                    Enroll as trial (next 2 sessions)
-                  </Checkbox>
-                ) : null}
                 <p className={formStyles.batchHint}>
-                  Skip this to leave the student in Signed in only. A full
-                  enrollment makes them Active; a trial grants the next 2
-                  sessions only.
+                  Skip this to leave the student in Signed in only.
                 </p>
               </div>
             ) : null}

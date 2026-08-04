@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import {
-  countTrialEnrollments,
   enrollmentModeLabel,
   fillPercent,
   nextUpcomingSession,
@@ -30,17 +29,6 @@ describe("batch-overview helpers", () => {
     expect(fillPercent(12, 25)).toBe(48);
     expect(fillPercent(30, 25)).toBe(100);
     expect(fillPercent(0, 0)).toBe(0);
-  });
-
-  it("counts trial enrollments", () => {
-    expect(
-      countTrialEnrollments([
-        { isTrial: true },
-        { isTrial: false },
-        { isTrial: true },
-        {},
-      ]),
-    ).toBe(2);
   });
 
   it("picks the next upcoming session", () => {

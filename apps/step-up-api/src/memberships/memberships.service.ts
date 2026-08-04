@@ -12,7 +12,6 @@ import {
   MembershipSeatRole,
   MembershipStatus,
   NotificationType,
-  Prisma,
   SubscriptionKind,
 } from "@prisma/client";
 import {
@@ -132,10 +131,7 @@ export class MembershipsService {
               studentId: covered.studentId,
             },
           },
-          update: {
-            isTrial: false,
-            trialSessionIds: Prisma.DbNull,
-          },
+          update: {},
           create: {
             batchId,
             studentId: covered.studentId,

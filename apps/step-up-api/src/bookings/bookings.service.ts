@@ -169,7 +169,40 @@ export class BookingsService {
       this.assertValidRange(data.startsAt, data.endsAt);
     }
 
-    if (data.type !== BookingType.TRIAL) {
+    let batchId = data.batchId;
+    const sessionId = data.sessionId;
+    let startsAt = data.startsAt;
+    let endsAt = data.endsAt;
+
+    if (data.type === BookingType.TRIAL) {
+      const isPersonalTimed = Boolean(startsAt && endsAt) && !sessionId;
+      if (!sessionId && !isPersonalTimed) {
+        throw new BadRequestException(
+          "Trial bookings require a sessionId (or a personal startsAt/endsAt)",
+        );
+      }
+      if (sessionId) {
+        const session = await this.prisma.session.findUnique({
+          where: { id: sessionId },
+          include: {
+            batch: { select: { id: true, studioId: true, active: true } },
+          },
+        });
+        if (
+          !session ||
+          session.status === SessionStatus.CANCELLED ||
+          !session.batch.active ||
+          session.batch.studioId !== data.studioId
+        ) {
+          throw new BadRequestException(
+            "Select a trial session from this studio",
+          );
+        }
+        batchId = session.batchId;
+        startsAt = session.startsAt.toISOString();
+        endsAt = session.endsAt.toISOString();
+      }
+    } else {
       const activeMembership = await this.prisma.membership.findFirst({
         where: {
           status: MembershipStatus.ACTIVE,
@@ -184,9 +217,9 @@ export class BookingsService {
         );
       }
 
-      if (data.sessionId) {
+      if (sessionId) {
         const session = await this.prisma.session.findUnique({
-          where: { id: data.sessionId },
+          where: { id: sessionId },
         });
 
         if (!session) {
@@ -203,12 +236,21 @@ export class BookingsService {
             "Active membership does not cover this session batch",
           );
         }
+        batchId = batchId ?? session.batchId;
       }
     }
 
-    await this.assertBookingScheduleConflicts(data);
+    await this.assertBookingScheduleConflicts({
+      ...data,
+      batchId,
+      sessionId,
+      startsAt,
+      endsAt,
+    });
 
-    const requirePayment = options.requirePayment === true;
+    // Trials are free — never put student/parent trial requests on a payment hold.
+    const requirePayment =
+      options.requirePayment === true && data.type !== BookingType.TRIAL;
     const status = requirePayment
       ? BookingStatus.AWAITING_PAYMENT
       : BookingStatus.PENDING;
@@ -216,12 +258,12 @@ export class BookingsService {
 
     return this.prisma.$transaction(
       async (tx) => {
-        if (data.batchId) {
-          await lockBatchRow(tx, data.batchId);
-          await expireStalePaymentHolds(tx, data.batchId);
+        if (batchId && data.type !== BookingType.TRIAL) {
+          await lockBatchRow(tx, batchId);
+          await expireStalePaymentHolds(tx, batchId);
 
           const batch = await tx.batch.findUnique({
-            where: { id: data.batchId },
+            where: { id: batchId },
             select: { id: true, studioId: true, capacity: true },
           });
           if (!batch || batch.studioId !== data.studioId) {
@@ -231,7 +273,7 @@ export class BookingsService {
           if (data.type !== BookingType.PRIVATE) {
             await assertBatchHasSeat(
               tx,
-              data.batchId,
+              batchId,
               batch.capacity,
               data.studentId,
             );
@@ -239,7 +281,7 @@ export class BookingsService {
 
           const existingOpen = await tx.booking.findFirst({
             where: {
-              batchId: data.batchId,
+              batchId,
               studentId: data.studentId,
               OR: [
                 {
@@ -266,17 +308,46 @@ export class BookingsService {
           }
         }
 
+        if (data.type === BookingType.TRIAL && sessionId) {
+          const existingTrial = await tx.booking.findFirst({
+            where: {
+              sessionId,
+              studentId: data.studentId,
+              type: BookingType.TRIAL,
+              OR: [
+                {
+                  status: {
+                    in: [BookingStatus.PENDING, BookingStatus.CONFIRMED],
+                  },
+                },
+                {
+                  status: BookingStatus.AWAITING_PAYMENT,
+                  paymentHoldExpiresAt: { gt: new Date() },
+                },
+              ],
+            },
+            select: { id: true, status: true },
+          });
+          if (existingTrial) {
+            throw new ConflictException(
+              existingTrial.status === BookingStatus.PENDING
+                ? "You already have a trial request for this session"
+                : "You already have a confirmed trial for this session",
+            );
+          }
+        }
+
         return tx.booking.create({
           data: {
             studioId: data.studioId,
             studentId: data.studentId,
             type: data.type,
-            batchId: data.batchId,
-            sessionId: data.sessionId,
+            batchId,
+            sessionId,
             trainerId: data.trainerId,
             notes: data.notes,
-            startsAt: data.startsAt ? new Date(data.startsAt) : undefined,
-            endsAt: data.endsAt ? new Date(data.endsAt) : undefined,
+            startsAt: startsAt ? new Date(startsAt) : undefined,
+            endsAt: endsAt ? new Date(endsAt) : undefined,
             status,
             paymentHoldExpiresAt: holdExpiresAt,
           },
@@ -704,7 +775,8 @@ export class BookingsService {
     if (
       becomingConfirmed &&
       existing.batchId &&
-      existing.type !== BookingType.PRIVATE
+      existing.type !== BookingType.PRIVATE &&
+      existing.type !== BookingType.TRIAL
     ) {
       return this.prisma.$transaction(async (tx) => {
         await lockBatchRow(tx, existing.batchId!);

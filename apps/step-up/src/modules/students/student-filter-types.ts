@@ -3,7 +3,6 @@ import type { AgeRange, Gender } from "@/lib/constants";
 export type StudentFunnelStage =
   | "active"
   | "signedInOnly"
-  | "trialRegistered"
   | "trialAttended"
   | "completedWithoutPlan";
 
@@ -42,7 +41,6 @@ export const STAGE_OPTIONS = [
   { id: "ALL", label: "All stages" },
   { id: "active", label: "Active" },
   { id: "signedInOnly", label: "Signed in only" },
-  { id: "trialRegistered", label: "Trial registered" },
   { id: "trialAttended", label: "Trial attended" },
   { id: "completedWithoutPlan", label: "Completed, no plan" },
 ] as const;
@@ -72,7 +70,6 @@ export const GENDER_OPTIONS = [
 export const STAGE_LABELS: Record<StudentFunnelStage, string> = {
   active: "Active",
   signedInOnly: "Signed in only",
-  trialRegistered: "Trial registered",
   trialAttended: "Trial attended",
   completedWithoutPlan: "Completed, no plan",
 };
@@ -80,7 +77,6 @@ export const STAGE_LABELS: Record<StudentFunnelStage, string> = {
 export const FUNNEL_STAGES = new Set<string>([
   "active",
   "signedInOnly",
-  "trialRegistered",
   "trialAttended",
   "completedWithoutPlan",
 ]);

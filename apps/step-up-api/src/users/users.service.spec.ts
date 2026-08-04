@@ -162,7 +162,7 @@ describe("UsersService onboarding", () => {
     );
   });
 
-  it("trial-enrolls from a selected session during onboarding", async () => {
+  it("creates a trial booking from a selected session during onboarding", async () => {
     const row = makeUser();
     const completed = makeUser({
       onboardingCompletedAt: new Date("2026-07-22T00:00:00.000Z"),
@@ -187,16 +187,8 @@ describe("UsersService onboarding", () => {
       active: true,
       capacity: 10,
     });
-    prisma.session.findMany.mockResolvedValue([
-      { id: "session-1" },
-      { id: "session-2" },
-    ]);
-    prisma.batchEnrollment.upsert.mockResolvedValue({
-      batchId: "batch-1",
-      studentId: "student-1",
-      isTrial: true,
-    });
     prisma.user.findFirst.mockResolvedValue({ id: "trainer-1" });
+    prisma.booking.create.mockResolvedValue({ id: "booking-trial" });
     prisma.user.update.mockResolvedValue(completed);
 
     await service.completeOnboarding("student-1", {
@@ -204,24 +196,17 @@ describe("UsersService onboarding", () => {
       trainerId: "trainer-1",
     });
 
-    expect(prisma.$transaction).toHaveBeenCalled();
-    expect(prisma.batchEnrollment.upsert).toHaveBeenCalledWith({
-      where: {
-        batchId_studentId: { batchId: "batch-1", studentId: "student-1" },
-      },
-      update: {
-        isTrial: true,
-        trialSessionIds: ["session-1", "session-2"],
-        enrolledAt: expect.any(Date),
-      },
-      create: {
-        batchId: "batch-1",
+    expect(prisma.booking.create).toHaveBeenCalledWith({
+      data: {
+        studioId: "studio-seed-1",
         studentId: "student-1",
-        isTrial: true,
-        trialSessionIds: ["session-1", "session-2"],
+        type: "TRIAL",
+        batchId: "batch-1",
+        sessionId: "session-1",
+        trainerId: "trainer-1",
+        status: "PENDING",
       },
     });
-    expect(prisma.booking.create).not.toHaveBeenCalled();
     expect(prisma.user.update).toHaveBeenCalled();
   });
 
@@ -297,7 +282,7 @@ describe("UsersService onboarding", () => {
     });
   });
 
-  it("trial-enrolls from a regular upcoming session during onboarding", async () => {
+  it("creates a trial booking from a regular upcoming session during onboarding", async () => {
     const row = makeUser();
     const completed = makeUser({
       onboardingCompletedAt: new Date("2026-07-22T00:00:00.000Z"),
@@ -322,32 +307,24 @@ describe("UsersService onboarding", () => {
       active: true,
       capacity: 10,
     });
-    prisma.session.findMany.mockResolvedValue([
-      { id: "session-regular" },
-      { id: "session-next" },
-    ]);
-    prisma.batchEnrollment.upsert.mockResolvedValue({
-      batchId: "batch-1",
-      studentId: "student-1",
-      isTrial: true,
-    });
+    prisma.booking.create.mockResolvedValue({ id: "booking-regular" });
     prisma.user.update.mockResolvedValue(completed);
 
     await service.completeOnboarding("student-1", {
       sessionId: "session-regular",
     });
 
-    expect(prisma.batchEnrollment.upsert).toHaveBeenCalledWith(
-      expect.objectContaining({
-        create: expect.objectContaining({
-          batchId: "batch-1",
-          studentId: "student-1",
-          isTrial: true,
-          trialSessionIds: ["session-regular", "session-next"],
-        }),
-      }),
-    );
-    expect(prisma.booking.create).not.toHaveBeenCalled();
+    expect(prisma.booking.create).toHaveBeenCalledWith({
+      data: {
+        studioId: "studio-seed-1",
+        studentId: "student-1",
+        type: "TRIAL",
+        batchId: "batch-1",
+        sessionId: "session-regular",
+        trainerId: undefined,
+        status: "PENDING",
+      },
+    });
     expect(prisma.user.update).toHaveBeenCalled();
   });
 
@@ -808,8 +785,6 @@ describe("UsersService.createStudent", () => {
       create: {
         batchId: "batch-1",
         studentId: "student-new",
-        isTrial: false,
-        trialSessionIds: undefined,
       },
     });
   });
@@ -842,7 +817,7 @@ describe("UsersService.createStudent", () => {
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
-  it("trial-enrolls a new student with the next 2 upcoming sessions", async () => {
+  it("enrolls a new student into a batch", async () => {
     prisma.user.findFirst.mockResolvedValue(null);
     prisma.user.create.mockResolvedValue(
       makeUser({
@@ -857,15 +832,9 @@ describe("UsersService.createStudent", () => {
       active: true,
       capacity: 20,
     });
-    prisma.session.findMany.mockResolvedValue([
-      { id: "session-1" },
-      { id: "session-2" },
-    ]);
     prisma.batchEnrollment.upsert.mockResolvedValue({
       batchId: "batch-1",
       studentId: "student-new",
-      isTrial: true,
-      trialSessionIds: ["session-1", "session-2"],
     });
 
     await service.createStudent({
@@ -876,23 +845,16 @@ describe("UsersService.createStudent", () => {
       ageRange: AgeRange.TWENTY_TO_FORTY,
       styles: ["Hip Hop"],
       batchId: "batch-1",
-      isTrial: true,
     });
 
     expect(prisma.batchEnrollment.upsert).toHaveBeenCalledWith({
       where: {
         batchId_studentId: { batchId: "batch-1", studentId: "student-new" },
       },
-      update: {
-        isTrial: true,
-        trialSessionIds: ["session-1", "session-2"],
-        enrolledAt: expect.any(Date),
-      },
+      update: {},
       create: {
         batchId: "batch-1",
         studentId: "student-new",
-        isTrial: true,
-        trialSessionIds: ["session-1", "session-2"],
       },
     });
   });

@@ -83,7 +83,21 @@ describe("BookingsService schedule conflicts", () => {
 
   it("rejects trial create when the student schedule conflicts", async () => {
     prisma.invoice.findFirst.mockResolvedValue(null);
-    scheduleConflicts.assertStudentAvailableForBatch.mockRejectedValue(
+    prisma.session.findUnique.mockResolvedValue({
+      id: "session-1",
+      batchId: "batch-1",
+      startsAt: new Date("2026-07-20T12:00:00.000Z"),
+      endsAt: new Date("2026-07-20T13:00:00.000Z"),
+      status: "SCHEDULED",
+      batch: {
+        id: "batch-1",
+        studioId: "studio-1",
+        active: true,
+        branchId: "branch-1",
+        trainers: [{ trainerId: "trainer-1" }],
+      },
+    });
+    scheduleConflicts.assertNoConflicts.mockRejectedValue(
       new ConflictException(
         "Student has another class at 2026-07-20T12:30:00.000Z",
       ),
@@ -94,7 +108,7 @@ describe("BookingsService schedule conflicts", () => {
         studioId: "studio-1",
         studentId: "student-1",
         type: "TRIAL",
-        batchId: "batch-1",
+        sessionId: "session-1",
       }),
     ).rejects.toBeInstanceOf(ConflictException);
     expect(tx.booking.create).not.toHaveBeenCalled();
@@ -139,17 +153,26 @@ describe("BookingsService schedule conflicts", () => {
     expect(tx.booking.create).toHaveBeenCalled();
   });
 
-  it("creates a payment hold when requirePayment is set", async () => {
+  it("keeps trial bookings free even when requirePayment is set", async () => {
     prisma.invoice.findFirst.mockResolvedValue(null);
-    tx.batch.findUnique.mockResolvedValue({
-      id: "batch-1",
-      studioId: "studio-1",
-      capacity: 10,
+    prisma.session.findUnique.mockResolvedValue({
+      id: "session-1",
+      batchId: "batch-1",
+      startsAt: new Date("2026-07-20T12:00:00.000Z"),
+      endsAt: new Date("2026-07-20T13:00:00.000Z"),
+      status: "SCHEDULED",
+      batch: {
+        id: "batch-1",
+        studioId: "studio-1",
+        active: true,
+        branchId: "branch-1",
+        trainers: [],
+      },
     });
     tx.booking.findFirst.mockResolvedValue(null);
     tx.booking.create.mockResolvedValue({
       id: "bk-1",
-      status: "AWAITING_PAYMENT",
+      status: "PENDING",
     });
 
     await service.create(
@@ -157,7 +180,7 @@ describe("BookingsService schedule conflicts", () => {
         studioId: "studio-1",
         studentId: "student-1",
         type: "TRIAL",
-        batchId: "batch-1",
+        sessionId: "session-1",
       },
       { requirePayment: true },
     );
@@ -165,8 +188,10 @@ describe("BookingsService schedule conflicts", () => {
     expect(tx.booking.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
-          status: "AWAITING_PAYMENT",
-          paymentHoldExpiresAt: expect.any(Date),
+          status: "PENDING",
+          paymentHoldExpiresAt: null,
+          sessionId: "session-1",
+          batchId: "batch-1",
         }),
       }),
     );
@@ -174,6 +199,7 @@ describe("BookingsService schedule conflicts", () => {
 
   it("rejects create when batch seats are fully reserved", async () => {
     prisma.invoice.findFirst.mockResolvedValue(null);
+    prisma.membership.findFirst.mockResolvedValue({ id: "mem-1" });
     tx.batch.findUnique.mockResolvedValue({
       id: "batch-1",
       studioId: "studio-1",
@@ -188,7 +214,7 @@ describe("BookingsService schedule conflicts", () => {
       service.create({
         studioId: "studio-1",
         studentId: "student-1",
-        type: "TRIAL",
+        type: "OPEN_SEAT",
         batchId: "batch-1",
       }),
     ).rejects.toThrow("Batch is at capacity");

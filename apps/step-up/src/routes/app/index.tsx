@@ -50,7 +50,6 @@ type StudentFunnelCounts = {
   total: number;
   active: number;
   signedInOnly: number;
-  trialRegistered: number;
   trialAttended: number;
   completedWithoutPlan: number;
   period: StudentFunnelPeriod;
@@ -74,11 +73,6 @@ const STUDENT_FUNNEL_TILES: Array<{
 }> = [
   { key: "active", label: "Active", hint: "In an active batch" },
   { key: "signedInOnly", label: "Signed in only", hint: "No trial yet" },
-  {
-    key: "trialRegistered",
-    label: "Trial registered",
-    hint: "Booked, not attended",
-  },
   {
     key: "trialAttended",
     label: "Trial attended",

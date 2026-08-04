@@ -52,17 +52,11 @@ type TrialSlot = {
   endsAt: string;
 };
 
-type SelectedTrial =
-  | { kind: "personal" }
-  | { kind: "session"; slot: TrialSlot };
+type SelectedTrial = { kind: "session"; slot: TrialSlot };
 
 type CompleteOnboardingBody = {
-  personalTrial?: boolean;
-  batchId?: string;
   sessionId?: string;
   trainerId?: string;
-  startsAt?: string;
-  endsAt?: string;
 };
 
 const RING_SIZE = 68;
@@ -327,21 +321,13 @@ export function OnboardingWizard() {
     try {
       if (!completed) {
         const body: CompleteOnboardingBody = {};
-        if (trial?.kind === "personal") {
-          body.personalTrial = true;
-        } else if (trial?.kind === "session") {
+        if (trial?.kind === "session") {
           body.sessionId = trial.slot.sessionId;
-          body.batchId = trial.slot.batchId;
-          body.startsAt = trial.slot.startsAt;
-          body.endsAt = trial.slot.endsAt;
         }
         if (trainerId) {
           body.trainerId = trainerId;
         }
         if (trial || trainerId) {
-          if (!trial && trainerId) {
-            body.personalTrial = true;
-          }
           await completeMutation.mutateAsync(body);
         } else {
           await completeMutation.mutateAsync({});
@@ -519,25 +505,6 @@ export function OnboardingWizard() {
 
             {step === "trialTime" ? (
               <div className={styles.cardGrid}>
-                <button
-                  type="button"
-                  className={styles.choiceCard}
-                  data-selected={
-                    selectedTrial?.kind === "personal" ? "true" : undefined
-                  }
-                  onClick={() =>
-                    setSelectedTrial((current) =>
-                      current?.kind === "personal"
-                        ? null
-                        : { kind: "personal" },
-                    )
-                  }
-                >
-                  <p className={styles.choiceTitle}>Anytime — we'll call you</p>
-                  <p className={styles.choiceDescription}>
-                    Personal trial · pick a time later with the studio
-                  </p>
-                </button>
                 {slotsQuery.isLoading ? (
                   <p className={styles.choiceDescription}>Loading times…</p>
                 ) : null}
@@ -548,8 +515,7 @@ export function OnboardingWizard() {
                 !slotsQuery.isError &&
                 trialSlots.length === 0 ? (
                   <p className={styles.choiceDescription}>
-                    No upcoming class times yet — skip and browse classes, or
-                    ask us to call you.
+                    No upcoming class times yet — skip and browse classes.
                   </p>
                 ) : null}
                 {trialSlots.map((slot) => (
@@ -578,7 +544,6 @@ export function OnboardingWizard() {
                     <p className={styles.choiceDescription}>
                       {slot.batchName}
                       {slot.styleBadge ? ` · ${slot.styleBadge}` : ""}
-                      {" · 2 sessions"}
                     </p>
                   </button>
                 ))}

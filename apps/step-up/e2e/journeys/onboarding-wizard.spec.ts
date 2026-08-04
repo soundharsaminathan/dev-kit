@@ -105,10 +105,7 @@ test.describe("onboarding wizard @critical", () => {
       expect(levelPatch.ok()).toBeTruthy();
 
       await expect(page.getByRole("heading", { name: /Try/i })).toBeVisible();
-      await page
-        .getByRole("button", { name: /Anytime — we'll call you/i })
-        .click();
-      await page.getByRole("button", { name: "Continue" }).click();
+      await page.getByRole("button", { name: /^Skip$/i }).click();
 
       await expect(page.getByRole("heading", { name: /Any/i })).toBeVisible();
       await expect(page.getByRole("button", { name: /^Skip$/i })).toBeVisible();
