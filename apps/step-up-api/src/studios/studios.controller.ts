@@ -126,6 +126,11 @@ export class StudiosController {
     return this.studiosService.listStudios();
   }
 
+  @Get("directory")
+  listDirectory() {
+    return this.studiosService.listDirectory();
+  }
+
   @Post()
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(UserRole.SYSTEM_ADMIN)

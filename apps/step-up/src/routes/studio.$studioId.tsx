@@ -81,7 +81,13 @@ function StudioPage() {
               >
                 Join this studio
               </TouchButton>
-              <TouchButton as={Link} to="/login" variant="quiet" fullWidth>
+              <TouchButton
+                as={Link}
+                to="/login"
+                search={{ studioId } as never}
+                variant="quiet"
+                fullWidth
+              >
                 Sign in to book
               </TouchButton>
               <TouchButton as={Link} to="/" variant="quiet" fullWidth>

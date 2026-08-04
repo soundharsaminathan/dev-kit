@@ -76,6 +76,13 @@ export class StudiosService {
     );
   }
 
+  async listDirectory() {
+    return this.prisma.studio.findMany({
+      orderBy: { name: "asc" },
+      select: { id: true, name: true },
+    });
+  }
+
   async createStudio(data: CreateStudioInput) {
     const name = data.name.trim();
     if (!name) {

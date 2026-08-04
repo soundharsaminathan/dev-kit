@@ -5,7 +5,7 @@ import { TextField } from "@dev-ui/components/text-field";
 import { useOnlineStatus } from "@dev-ui/hooks";
 import { useForm } from "@tanstack/react-form";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import type { UserRole } from "@/lib/constants";
 import {
@@ -15,6 +15,7 @@ import {
 } from "@/lib/require-auth";
 import { PublicShell } from "@/modules/layout/public-shell";
 import { PasswordInput } from "@/modules/ui/password-input";
+import { StudioSelect, useStudioDirectory } from "@/modules/ui/studio-select";
 import { TouchButton } from "@/modules/ui/touch-button";
 import styles from "./login.module.scss";
 
@@ -24,6 +25,7 @@ type RegisterSearch = {
 };
 
 type RegisterFormValues = {
+  studioId: string;
   name: string;
   email: string;
   password: string;
@@ -44,6 +46,11 @@ function parseSearch(search: Record<string, unknown>): RegisterSearch {
 function fieldError(errors: unknown[]): string | undefined {
   const first = errors[0];
   return typeof first === "string" ? first : undefined;
+}
+
+function validateStudioId(value: string) {
+  if (!value.trim()) return "Select your studio";
+  return undefined;
 }
 
 function validateName(value: string) {
@@ -85,10 +92,11 @@ export const Route = createFileRoute("/register")({
 
 function RegisterPage() {
   const navigate = useNavigate();
-  const { redirect: redirectTo, studioId } = Route.useSearch();
+  const { redirect: redirectTo, studioId: searchStudioId } = Route.useSearch();
   const { signUp, signInWithGoogle, user } = useAuth();
   const online = useOnlineStatus();
   const [error, setError] = useState<string | null>(null);
+  const directory = useStudioDirectory();
 
   const redirectForRole = useCallback(
     (_role: UserRole, authUser = user) => {
@@ -108,6 +116,7 @@ function RegisterPage() {
 
   const form = useForm({
     defaultValues: {
+      studioId: searchStudioId ?? "",
       name: "",
       email: "",
       password: "",
@@ -120,7 +129,7 @@ function RegisterPage() {
           value.email.trim(),
           value.password,
           value.name.trim(),
-          studioId ? { studioId } : undefined,
+          { studioId: value.studioId.trim() },
         );
         redirectForRole(signedUp.role, signedUp);
       } catch (signUpError) {
@@ -133,12 +142,25 @@ function RegisterPage() {
     },
   });
 
+  useEffect(() => {
+    if (searchStudioId) return;
+    if (form.getFieldValue("studioId")) return;
+    const first = directory.data?.[0];
+    if (!first) return;
+    form.setFieldValue("studioId", first.id);
+  }, [directory.data, form, searchStudioId]);
+
   const handleGoogleSignIn = async () => {
     setError(null);
+    const studioId = form.getFieldValue("studioId").trim();
+    if (!studioId) {
+      setError("Select your studio");
+      return;
+    }
     try {
       const signedIn = await signInWithGoogle({
         asNewStudent: true,
-        ...(studioId ? { studioId } : {}),
+        studioId,
       });
       redirectForRole(signedIn.role, signedIn);
     } catch {
@@ -182,6 +204,38 @@ function RegisterPage() {
             void form.handleSubmit();
           }}
         >
+          <form.Field
+            name="studioId"
+            validators={{
+              onBlur: ({ value }) => validateStudioId(value),
+              onSubmit: ({ value }) => validateStudioId(value),
+            }}
+          >
+            {(field) => {
+              const err = fieldError(field.state.meta.errors);
+              return (
+                <StudioSelect
+                  selectedKey={field.state.value || null}
+                  onSelectionChange={(studioId) => {
+                    field.handleChange(studioId ?? "");
+                    void navigate({
+                      to: "/register",
+                      search: {
+                        ...(redirectTo ? { redirect: redirectTo } : {}),
+                        ...(studioId ? { studioId } : {}),
+                      },
+                      replace: true,
+                    });
+                  }}
+                  isRequired
+                  isInvalid={Boolean(err)}
+                  errorMessage={err}
+                  data-testid="register-studio-select"
+                />
+              );
+            }}
+          </form.Field>
+
           <form.Field
             name="name"
             validators={{
@@ -331,13 +385,21 @@ function RegisterPage() {
           </TouchButton>
         </form>
 
-        <form.Subscribe selector={(state) => state.values.email}>
-          {(email) => {
+        <form.Subscribe
+          selector={(state) => ({
+            email: state.values.email,
+            studioId: state.values.studioId,
+          })}
+        >
+          {({ email, studioId }) => {
             const trimmed = email.trim();
             return (
               <Link
                 to="/login"
-                search={trimmed ? { identifier: trimmed } : {}}
+                search={{
+                  ...(trimmed ? { identifier: trimmed } : {}),
+                  ...(studioId.trim() ? { studioId: studioId.trim() } : {}),
+                }}
                 className={styles.footerLink}
               >
                 Already have an account? Sign in
