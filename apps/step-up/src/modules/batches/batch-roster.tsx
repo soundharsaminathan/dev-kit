@@ -8,6 +8,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useApi } from "@/lib/api-context";
 import { ENTITY_ICONS } from "@/lib/entity-icons";
+import { formatActiveDuration } from "@/lib/format-active-duration";
 import { useStudioId } from "@/lib/use-studio-id";
 import {
   StudentSearchCombobox,
@@ -32,6 +33,7 @@ export type BatchEnrollmentRow = {
     phone?: string | null;
     photoUrl?: string | null;
     styles?: string[];
+    createdAt?: string;
   };
 };
 
@@ -391,6 +393,7 @@ export function BatchRoster({ batchId, capacity, active }: BatchRosterProps) {
             const student = row.student;
             const initials = student.name.slice(0, 1).toUpperCase();
             const styleList = student.styles ?? [];
+            const activeDuration = formatActiveDuration(student.createdAt);
 
             return (
               <div key={row.studentId} className={styles.row}>
@@ -426,6 +429,10 @@ export function BatchRoster({ batchId, capacity, active }: BatchRosterProps) {
                           ) : null}
                         </div>
                       </div>
+
+                      {activeDuration ? (
+                        <p className={styles.tenure}>{activeDuration}</p>
+                      ) : null}
 
                       <div className={styles.contacts}>
                         <span className={styles.contact}>

@@ -10,6 +10,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { useApi } from "@/lib/api-context";
 import { ENTITY_ICONS } from "@/lib/entity-icons";
+import { formatActiveDuration } from "@/lib/format-active-duration";
 import { useStudioId } from "@/lib/use-studio-id";
 import { useStudioTrainers } from "@/modules/trainers/use-trainers";
 import { AnimatedMetric } from "@/modules/ui/animated-metric";
@@ -26,6 +27,7 @@ type Batch = { id: string; name: string };
 type Absentee = {
   studentId: string;
   studentName: string;
+  createdAt?: string;
   sessionId: string;
   sessionStartsAt: string;
 };
@@ -49,6 +51,7 @@ type TrainerRetentionStats = {
   recentStudents: Array<{
     studentId: string;
     studentName: string;
+    createdAt?: string;
     status: string;
   }>;
 };
@@ -224,26 +227,37 @@ function RetentionPage() {
                 <div className={staff.section}>
                   <p className={staff.sectionTitle}>Recent absences</p>
                   <div className={staff.list}>
-                    {retentionQuery.data.absenteeList.map((absentee) => (
-                      <PressableCard
-                        key={`${absentee.studentId}-${absentee.sessionId}`}
-                        onClick={() =>
-                          void navigate({
-                            to: "/app/students/$id",
-                            params: { id: absentee.studentId },
-                          })
-                        }
-                      >
-                        <div className={staff.rowCard}>
-                          <span className={staff.rowTitle}>
-                            {absentee.studentName}
-                          </span>
-                          <span className={staff.rowMeta}>
-                            Missed {formatSessionDate(absentee.sessionStartsAt)}
-                          </span>
-                        </div>
-                      </PressableCard>
-                    ))}
+                    {retentionQuery.data.absenteeList.map((absentee) => {
+                      const activeDuration = formatActiveDuration(
+                        absentee.createdAt,
+                      );
+                      return (
+                        <PressableCard
+                          key={`${absentee.studentId}-${absentee.sessionId}`}
+                          onClick={() =>
+                            void navigate({
+                              to: "/app/students/$id",
+                              params: { id: absentee.studentId },
+                            })
+                          }
+                        >
+                          <div className={staff.rowCard}>
+                            <span className={staff.rowTitle}>
+                              {absentee.studentName}
+                            </span>
+                            {activeDuration ? (
+                              <span className={staff.rowMeta}>
+                                {activeDuration}
+                              </span>
+                            ) : null}
+                            <span className={staff.rowMeta}>
+                              Missed{" "}
+                              {formatSessionDate(absentee.sessionStartsAt)}
+                            </span>
+                          </div>
+                        </PressableCard>
+                      );
+                    })}
                   </div>
                 </div>
               ) : (
@@ -332,24 +346,36 @@ function RetentionPage() {
 
               {trainerQuery.data.recentStudents.length > 0 ? (
                 <div className={staff.list}>
-                  {trainerQuery.data.recentStudents.map((student) => (
-                    <PressableCard
-                      key={student.studentId}
-                      onClick={() =>
-                        void navigate({
-                          to: "/app/students/$id",
-                          params: { id: student.studentId },
-                        })
-                      }
-                    >
-                      <div className={staff.rowCard}>
-                        <span className={staff.rowTitle}>
-                          {student.studentName}
-                        </span>
-                        <span className={staff.rowMeta}>{student.status}</span>
-                      </div>
-                    </PressableCard>
-                  ))}
+                  {trainerQuery.data.recentStudents.map((student) => {
+                    const activeDuration = formatActiveDuration(
+                      student.createdAt,
+                    );
+                    return (
+                      <PressableCard
+                        key={student.studentId}
+                        onClick={() =>
+                          void navigate({
+                            to: "/app/students/$id",
+                            params: { id: student.studentId },
+                          })
+                        }
+                      >
+                        <div className={staff.rowCard}>
+                          <span className={staff.rowTitle}>
+                            {student.studentName}
+                          </span>
+                          {activeDuration ? (
+                            <span className={staff.rowMeta}>
+                              {activeDuration}
+                            </span>
+                          ) : null}
+                          <span className={staff.rowMeta}>
+                            {student.status}
+                          </span>
+                        </div>
+                      </PressableCard>
+                    );
+                  })}
                 </div>
               ) : null}
             </div>

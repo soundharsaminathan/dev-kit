@@ -5,7 +5,7 @@ export type AttendanceRosterEntry = {
   monthlyUnpaid?: boolean;
   isTrial?: boolean;
   trialBookingStatus?: "PENDING" | "CONFIRMED" | null;
-  student: { name: string };
+  student: { name: string; createdAt?: string };
   attendance: {
     id: string;
     status: AttendanceStatusValue;

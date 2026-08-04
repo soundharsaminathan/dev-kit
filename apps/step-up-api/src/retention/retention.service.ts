@@ -83,12 +83,16 @@ export class RetentionService {
           ? 0
           : Math.round((renewedCount / students.length) * 100),
       atRiskCount,
-      absenteeList: absentees.map((record) => ({
-        studentId: record.studentId,
-        studentName: this.crypto.decryptUser(record.student).name,
-        sessionId: record.sessionId,
-        sessionStartsAt: record.session.startsAt,
-      })),
+      absenteeList: absentees.map((record) => {
+        const student = this.crypto.decryptUser(record.student);
+        return {
+          studentId: record.studentId,
+          studentName: student.name,
+          createdAt: record.student.createdAt.toISOString(),
+          sessionId: record.sessionId,
+          sessionStartsAt: record.session.startsAt,
+        };
+      }),
     };
   }
 
@@ -115,11 +119,15 @@ export class RetentionService {
         bookings.length === 0
           ? 0
           : Math.round((completed.length / bookings.length) * 100),
-      recentStudents: bookings.slice(0, 10).map((booking) => ({
-        studentId: booking.studentId,
-        studentName: this.crypto.decryptUser(booking.student).name,
-        status: booking.status,
-      })),
+      recentStudents: bookings.slice(0, 10).map((booking) => {
+        const student = this.crypto.decryptUser(booking.student);
+        return {
+          studentId: booking.studentId,
+          studentName: student.name,
+          createdAt: booking.student.createdAt.toISOString(),
+          status: booking.status,
+        };
+      }),
     };
   }
 }
