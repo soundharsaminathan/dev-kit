@@ -354,10 +354,7 @@ test.describe("student smoke @smoke", () => {
       expect(levelPatch.ok()).toBeTruthy();
 
       await expect(page.getByRole("heading", { name: /Try/i })).toBeVisible();
-      await page
-        .getByRole("button", { name: /Anytime — we'll call you/i })
-        .click();
-      await page.getByRole("button", { name: "Continue" }).click();
+      await page.getByRole("button", { name: /^Skip$/i }).click();
 
       await expect(page.getByRole("heading", { name: /Any/i })).toBeVisible();
       const [completeResponse] = await Promise.all([
@@ -368,7 +365,7 @@ test.describe("student smoke @smoke", () => {
         page.getByRole("button", { name: "Continue" }).click(),
       ]);
       expect(completeResponse.ok()).toBeTruthy();
-      await expect(page).toHaveURL(/\/me\/?$/);
+      await expect(page).toHaveURL(/\/me\/book/);
     } finally {
       await context.close();
     }
