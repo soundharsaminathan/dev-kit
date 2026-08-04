@@ -32,16 +32,16 @@ export function StudioBillingFormPage() {
     mutationFn: () => {
       const settings = studioQuery.data?.settings;
       const payload: {
-        graceDays: number;
+        graceDays?: number;
         expireAlertDays: number;
         platformFeePercent?: number;
       } = {
-        graceDays: Number(graceDays || (settings?.graceDays ?? 3)),
         expireAlertDays: Number(
           expireAlertDays || (settings?.expireAlertDays ?? 7),
         ),
       };
       if (isOwner) {
+        payload.graceDays = Number(graceDays || (settings?.graceDays ?? 3));
         payload.platformFeePercent = Number(
           platformFeePercent || (settings?.platformFeePercent ?? 5),
         );
@@ -75,7 +75,7 @@ export function StudioBillingFormPage() {
     <>
       <Screen
         title="Billing"
-        subtitle="Grace period, expiry alerts, and platform fee."
+        subtitle="Due days, expiry alerts, and platform fee."
         showBack
         backTo="/app/settings"
         paddedCta
@@ -113,16 +113,18 @@ export function StudioBillingFormPage() {
           <div className={staff.softPanel}>
             <p className={staff.panelTitle}>Billing settings</p>
             <p className={staff.panelDesc}>
-              Grace period, expiry alerts, and platform fee
+              Due days, expiry alerts, and platform fee
             </p>
-            <FormInput
-              label="Grace days"
-              type="number"
-              value={
-                graceDays || String(studioQuery.data.settings?.graceDays ?? 3)
-              }
-              onChange={setGraceDays}
-            />
+            {isOwner ? (
+              <FormInput
+                label="Due days"
+                type="number"
+                value={
+                  graceDays || String(studioQuery.data.settings?.graceDays ?? 3)
+                }
+                onChange={setGraceDays}
+              />
+            ) : null}
             <FormInput
               label="Expire alert days"
               type="number"

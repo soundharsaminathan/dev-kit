@@ -67,7 +67,7 @@ const LINKS: SettingsLink[] = [
   {
     to: "/app/settings/billing",
     label: "Billing",
-    hint: "Grace days, alerts, and fees",
+    hint: "Due days, alerts, and fees",
     icon: "file-text",
   },
   {
