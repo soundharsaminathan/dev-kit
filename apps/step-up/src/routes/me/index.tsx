@@ -125,11 +125,11 @@ function MeHomePage() {
       <section className="screen" aria-busy="true" aria-label="Loading home">
         <div className={styles.root}>
           <SkeletonBlock
-            height="18.5rem"
+            height="14.5rem"
+            width="auto"
             radius="0"
             className={styles.skeletonBanner}
           />
-          <HomeNotices notices={notices} flushHero />
           <SkeletonBlock height="6.5rem" radius="var(--radius-2xl, 1.25rem)" />
           <div className={styles.section}>
             <SkeletonBlock height="0.875rem" width="30%" />
