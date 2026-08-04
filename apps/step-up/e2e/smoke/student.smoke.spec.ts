@@ -36,15 +36,21 @@ const STUDENT_PATHS = [
   "/me/profile/follow-requests",
 ];
 
-async function clearOpenBookings(studentId: string, batchId: string) {
+async function clearOpenBookings(
+  studentId: string,
+  options?: { batchId?: string; asRole?: "STUDENT" | "ONBOARDING" },
+) {
+  const asRole = options?.asRole ?? "STUDENT";
   const existing = await apiRequest<
     Array<{ id: string; status: string; batchId: string | null }>
-  >("STUDENT", `/bookings/student/${studentId}`);
+  >(asRole, `/bookings/student/${studentId}`);
 
   for (const booking of existing) {
-    if (booking.batchId !== batchId) continue;
+    if (options?.batchId !== undefined && booking.batchId !== options.batchId) {
+      continue;
+    }
     if (booking.status === "AWAITING_PAYMENT") {
-      await apiRequest("STUDENT", `/bookings/${booking.id}/abandon-payment`, {
+      await apiRequest(asRole, `/bookings/${booking.id}/abandon-payment`, {
         method: "POST",
       }).catch(() => null);
     } else if (booking.status === "PENDING" || booking.status === "CONFIRMED") {
@@ -150,7 +156,7 @@ test.describe("student smoke @smoke", () => {
     const studentId = SMOKE.users.STUDENT.id;
     const batch = await createBookableBatch();
     cleanup.trackBatch(batch.id);
-    await clearOpenBookings(studentId, batch.id);
+    await clearOpenBookings(studentId, { batchId: batch.id });
 
     const context = await browser.newContext({
       storageState: authFile("STUDENT"),
@@ -306,6 +312,9 @@ test.describe("student smoke @smoke", () => {
 
   test("onboarding student completes wizard @smoke", async ({ browser }) => {
     test.setTimeout(180_000);
+    await clearOpenBookings(SMOKE.users.ONBOARDING.id, {
+      asRole: "ONBOARDING",
+    });
     const context = await browser.newContext({
       storageState: authFile("ONBOARDING"),
     });
@@ -335,7 +344,14 @@ test.describe("student smoke @smoke", () => {
         page.getByRole("heading", { name: /Where are/i }),
       ).toBeVisible();
       await page.getByRole("button", { name: /Brand new/i }).click();
-      await page.getByRole("button", { name: "Continue" }).click();
+      const [levelPatch] = await Promise.all([
+        waitForApiResponse(page, {
+          method: "PATCH",
+          pathIncludes: "/users/me",
+        }),
+        page.getByRole("button", { name: "Continue" }).click(),
+      ]);
+      expect(levelPatch.ok()).toBeTruthy();
 
       await expect(page.getByRole("heading", { name: /Try/i })).toBeVisible();
       await page

@@ -344,6 +344,13 @@ async function main() {
   }
 
   // Reset onboarding user every run so the wizard flow is re-testable.
+  // Clear trial bookings/enrollments left behind when a prior run's cleanup failed.
+  await prisma.booking.deleteMany({
+    where: { studentId: u.ONBOARDING.id },
+  });
+  await prisma.batchEnrollment.deleteMany({
+    where: { studentId: u.ONBOARDING.id },
+  });
   await prisma.user.update({
     where: { id: u.ONBOARDING.id },
     data: {
