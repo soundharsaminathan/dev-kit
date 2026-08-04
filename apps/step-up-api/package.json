@@ -12,6 +12,7 @@
     "prisma:seed": "tsx prisma/seed.ts",
     "prisma:seed:e2e": "tsx prisma/seed-e2e.ts",
     "prisma:seed:smoke": "tsx prisma/seed-smoke.ts",
+    "prisma:seed:analytics": "tsx prisma/seed-analytics.ts",
     "prisma:cleanup:smoke": "tsx prisma/cleanup-smoke.ts",
     "smoke:provision-users": "tsx scripts/provision-smoke-users.ts",
     "test": "vitest run",

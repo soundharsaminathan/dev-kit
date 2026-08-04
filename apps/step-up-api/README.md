@@ -13,6 +13,8 @@ pnpm prisma:migrate
 pnpm prisma:seed
 # Optional: e2e-only studio (Playwright / HTTP). Does not replace admin seed.
 # pnpm prisma:seed:e2e
+# Optional: analytics-rich demo studio (Payments / Retention / funnel).
+# pnpm prisma:seed:analytics
 pnpm dev
 ```
 
@@ -30,6 +32,8 @@ Authorization: Bearer dev:SYSTEM_ADMIN:system-admin-1
 ```
 
 Create studios from `/admin`, or load demo/test data with `prisma:seed:e2e` (`studio-e2e-1`, `e2e-*` users — see `apps/step-up/e2e/fixtures/seed.ts`).
+
+For Payments, Retention, student funnel, and batch revenue demos, run `prisma:seed:analytics` and sign in as `analytics-owner@stepup.dev` (`studio-analytics-1`).
 
 ## Encryption
 
@@ -53,6 +57,8 @@ Generate a key: `node -e "console.log(require('crypto').randomBytes(32).toString
 | `pnpm prisma:migrate` | Run migrations |
 | `pnpm prisma:seed` | Seed system admin only |
 | `pnpm prisma:seed:e2e` | Seed isolated e2e test studio (`studio-e2e-1`) |
+| `pnpm prisma:seed:smoke` | Seed isolated smoke studio (`studio-smoke-1`) |
+| `pnpm prisma:seed:analytics` | Seed analytics demo studio (`studio-analytics-1`) |
 | `pnpm test` | Run unit tests |
 
 ## Docker

@@ -53,6 +53,7 @@ DATABASE_URL=... pnpm --filter @step-up/api test:migrations -- --upgrade
 - Postgres reachable via `DATABASE_URL`
 - `AUTH_BYPASS=true` and `VITE_AUTH_BYPASS=true`
 - E2E test studio: `pnpm --filter @step-up/api prisma:seed:e2e` (isolated `studio-e2e-1`; demo `prisma:seed` is optional and not required for tests)
+- Analytics demo studio (manual QA of Payments / Retention / funnel / batch revenue): `pnpm --filter @step-up/api prisma:seed:analytics` → sign in as `analytics-owner@stepup.dev` (`studio-analytics-1`)
 - API secrets used by seed/crypto (`PII_MASTER_KEY`, `CHAT_MASTER_KEY`, `SESSION_QR_SECRET`)
 
 Playwright starts the API (`nest build && node dist/main.js`) and Vite app when servers are not already running.
