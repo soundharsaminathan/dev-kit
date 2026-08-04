@@ -59,11 +59,12 @@ export function BrandingPanel({
   }, [brandTheme, studioName]);
 
   useEffect(() => {
+    if (!showTheme) return;
     setEditing(true);
     return () => {
       setEditing(false);
     };
-  }, [setEditing]);
+  }, [setEditing, showTheme]);
 
   useLayoutEffect(() => {
     if (!showTheme || !studioId) return;
@@ -77,6 +78,15 @@ export function BrandingPanel({
       queryKey: ["studio-public", studioId],
     });
     void queryClient.invalidateQueries({ queryKey: ["home"] });
+  };
+
+  const cacheBrandTheme = (next: StudioBrandThemePayload | null) => {
+    if (!studioId) return;
+    queryClient.setQueryData(
+      ["studio", studioId],
+      (current: { brandTheme?: StudioBrandThemePayload | null } | undefined) =>
+        current ? { ...current, brandTheme: next } : current,
+    );
   };
 
   const uploadLogo = useMutation({
@@ -191,6 +201,7 @@ export function BrandingPanel({
       }),
     onSuccess: () => {
       setThemeError(null);
+      cacheBrandTheme(draftToBrandTheme(draft));
       invalidateStudio();
       toast({
         title: "Theme saved",
@@ -215,6 +226,7 @@ export function BrandingPanel({
     onSuccess: () => {
       setThemeError(null);
       setDraft(brandThemeToDraft(null, studioName));
+      cacheBrandTheme(null);
       invalidateStudio();
       toast({
         title: "Theme reset",
