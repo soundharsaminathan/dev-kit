@@ -3,6 +3,7 @@
 .backdrop {
   position: fixed;
   inset: 0;
+  z-index: 100;
   background-color: rgb(0 0 0 / var(--modal-backdrop-opacity, 40%));
   backdrop-filter: blur(var(--modal-backdrop-blur, 4px));
 }
