@@ -126,6 +126,13 @@
   min-width: 0;
 }
 
+.tenure {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.35;
+  color: color-mix(in srgb, var(--color-fg) 64%, transparent);
+}
+
 .badges {
   display: flex;
   flex-wrap: wrap;

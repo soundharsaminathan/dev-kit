@@ -13,6 +13,7 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 import { useMemo, useState } from "react";
+import { formatActiveDuration } from "@/lib/format-active-duration";
 import { FilterChipRow } from "@/modules/ui/filter-chip-row";
 import styles from "./attendance-roster-table.module.scss";
 import {
@@ -119,30 +120,38 @@ export function AttendanceRosterTable({
         id: "name",
         accessorFn: (row) => row.student.name,
         header: "Student",
-        cell: ({ row }) => (
-          <div className={styles.studentCell}>
-            <div className={styles.studentNameRow}>
-              <span className={styles.studentName}>
-                {row.original.student.name}
+        cell: ({ row }) => {
+          const activeDuration = formatActiveDuration(
+            row.original.student.createdAt,
+          );
+          return (
+            <div className={styles.studentCell}>
+              <div className={styles.studentNameRow}>
+                <span className={styles.studentName}>
+                  {row.original.student.name}
+                </span>
+                {row.original.isTrial ? (
+                  <Badge appearance="subtle" variant="info">
+                    Trial
+                  </Badge>
+                ) : null}
+                {row.original.monthlyUnpaid ? (
+                  <Badge appearance="subtle" variant="warning">
+                    Not paid
+                  </Badge>
+                ) : null}
+              </div>
+              {activeDuration ? (
+                <span className={styles.studentDetail}>{activeDuration}</span>
+              ) : null}
+              <span className={styles.studentDetail}>
+                {row.original.attendance
+                  ? attendanceSourceLabel(row.original.attendance.source)
+                  : "Not marked yet"}
               </span>
-              {row.original.isTrial ? (
-                <Badge appearance="subtle" variant="info">
-                  Trial
-                </Badge>
-              ) : null}
-              {row.original.monthlyUnpaid ? (
-                <Badge appearance="subtle" variant="warning">
-                  Not paid
-                </Badge>
-              ) : null}
             </div>
-            <span className={styles.studentDetail}>
-              {row.original.attendance
-                ? attendanceSourceLabel(row.original.attendance.source)
-                : "Not marked yet"}
-            </span>
-          </div>
-        ),
+          );
+        },
         sortingFn: "alphanumeric",
       },
       {

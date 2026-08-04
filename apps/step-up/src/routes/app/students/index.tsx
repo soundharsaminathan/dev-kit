@@ -11,6 +11,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useApi } from "@/lib/api-context";
 import { ENTITY_ICONS } from "@/lib/entity-icons";
+import { formatActiveDuration } from "@/lib/format-active-duration";
 import { requireAdmin } from "@/lib/require-auth";
 import { useStudioId } from "@/lib/use-studio-id";
 import {
@@ -316,6 +317,7 @@ function StudentsPage() {
             <div className={staff.list}>
               {filtered.map((student) => {
                 const showNew = isNewStudent(student.createdAt);
+                const activeDuration = formatActiveDuration(student.createdAt);
                 return (
                   <PressableCard
                     key={student.id}
@@ -336,6 +338,9 @@ function StudentsPage() {
                           <Badge variant="neutral">Inactive</Badge>
                         ) : null}
                       </div>
+                      {activeDuration ? (
+                        <p className={staff.rowMeta}>{activeDuration}</p>
+                      ) : null}
                       <p className={staff.rowMeta}>{student.email}</p>
                       {student.phone ? (
                         <p className={staff.rowMeta}>{student.phone}</p>
