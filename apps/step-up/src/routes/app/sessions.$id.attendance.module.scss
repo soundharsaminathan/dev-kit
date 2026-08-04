@@ -92,21 +92,21 @@
 }
 
 .statChip[data-tone="present"][data-active] {
-  background: color-mix(in srgb, var(--color-success) 16%, var(--color-bg));
-  color: color-mix(in srgb, var(--color-success) 55%, var(--color-fg));
+  background: var(--color-success);
+  color: var(--color-fg-on-success);
 }
 
 .statChip[data-tone="present"][data-active] strong {
-  color: var(--color-success);
+  color: var(--color-fg-on-success);
 }
 
 .statChip[data-tone="absent"][data-active] {
-  background: color-mix(in srgb, var(--color-danger) 14%, var(--color-bg));
-  color: color-mix(in srgb, var(--color-danger) 55%, var(--color-fg));
+  background: var(--color-danger);
+  color: var(--color-fg-on-danger);
 }
 
 .statChip[data-tone="absent"][data-active] strong {
-  color: var(--color-danger);
+  color: var(--color-fg-on-danger);
 }
 
 .statChip[data-tone="unmarked"][data-active] {
