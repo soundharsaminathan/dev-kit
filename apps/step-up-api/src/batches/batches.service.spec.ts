@@ -1027,3 +1027,324 @@ describe("BatchesService.listByStudio viewer enrollment", () => {
     });
   });
 });
+
+describe("BatchesService.switchBatch", () => {
+  const prisma = {
+    batch: {
+      findUnique: vi.fn(),
+      findMany: vi.fn(),
+    },
+    batchEnrollment: {
+      findUnique: vi.fn(),
+      findMany: vi.fn(),
+      findFirst: vi.fn(),
+      delete: vi.fn(),
+      create: vi.fn(),
+    },
+    booking: {
+      findMany: vi.fn(),
+      findFirst: vi.fn(),
+      updateMany: vi.fn(),
+    },
+    session: {
+      findMany: vi.fn(),
+    },
+    $transaction: vi.fn(),
+    $queryRaw: vi.fn(),
+  };
+
+  const scheduleConflicts = {
+    assertStudentAvailableForBatch: vi.fn().mockResolvedValue(undefined),
+  };
+
+  const memberships = {
+    findActiveForBatch: vi.fn(),
+    purchaseForBatch: vi.fn(),
+  };
+
+  let service: BatchesService;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    service = new BatchesService(
+      prisma as never,
+      { decryptUser: (user: unknown) => user } as never,
+      scheduleConflicts as never,
+      { invalidate: vi.fn() } as never,
+      { signReadUrl: vi.fn(async (url: string | null) => url) } as never,
+      memberships as never,
+    );
+    prisma.$transaction.mockImplementation(
+      async (callback: (tx: typeof prisma) => unknown) => callback(prisma),
+    );
+    prisma.$queryRaw.mockResolvedValue([{ id: "batch-2" }]);
+    prisma.batchEnrollment.findMany.mockResolvedValue([]);
+    prisma.batchEnrollment.findFirst.mockResolvedValue(null);
+    prisma.batchEnrollment.findUnique.mockResolvedValue(null);
+    prisma.booking.findMany.mockResolvedValue([]);
+    prisma.booking.findFirst.mockResolvedValue(null);
+    prisma.booking.updateMany.mockResolvedValue({ count: 0 });
+    prisma.session.findMany.mockResolvedValue([]);
+  });
+
+  it("moves a paid student when the target offers the same plan", async () => {
+    prisma.batch.findUnique
+      .mockResolvedValueOnce({
+        id: "batch-1",
+        studioId: "studio-1",
+        category: BatchCategory.KIDS,
+        enrollments: [{ studentId: "student-1", isTrial: false }],
+      })
+      .mockResolvedValueOnce({
+        id: "batch-2",
+        studioId: "studio-1",
+        category: BatchCategory.KIDS,
+        active: true,
+        capacity: 10,
+        plans: [{ subscriptionId: "sub-1" }],
+      });
+    memberships.findActiveForBatch.mockResolvedValue({
+      subscriptionId: "sub-1",
+      status: "ACTIVE",
+      periodStart: new Date("2026-01-01"),
+      periodEnd: new Date("2026-12-31"),
+      subscription: { id: "sub-1", name: "Kids Monthly", active: true },
+      coveredStudents: [{ studentId: "student-1", seatRole: "KID" }],
+    });
+    prisma.batchEnrollment.create.mockResolvedValue({
+      id: "enroll-2",
+      batchId: "batch-2",
+      studentId: "student-1",
+      isTrial: false,
+    });
+
+    await expect(
+      service.switchBatch("batch-1", "student-1", "batch-2"),
+    ).resolves.toMatchObject({
+      batchId: "batch-2",
+      studentId: "student-1",
+      isTrial: false,
+    });
+
+    expect(
+      scheduleConflicts.assertStudentAvailableForBatch,
+    ).toHaveBeenCalledWith("student-1", "batch-2", {
+      excludeBatchIds: ["batch-1"],
+    });
+    expect(prisma.batchEnrollment.delete).toHaveBeenCalledWith({
+      where: {
+        batchId_studentId: { batchId: "batch-1", studentId: "student-1" },
+      },
+    });
+    expect(prisma.batchEnrollment.create).toHaveBeenCalledWith({
+      data: {
+        batchId: "batch-2",
+        studentId: "student-1",
+        isTrial: false,
+      },
+    });
+  });
+
+  it("moves a trial student and re-resolves trial sessions", async () => {
+    prisma.batch.findUnique
+      .mockResolvedValueOnce({
+        id: "batch-1",
+        studioId: "studio-1",
+        category: BatchCategory.ADULTS,
+        enrollments: [{ studentId: "student-1", isTrial: true }],
+      })
+      .mockResolvedValueOnce({
+        id: "batch-2",
+        studioId: "studio-1",
+        category: BatchCategory.ADULTS,
+        active: true,
+        capacity: 8,
+        plans: [],
+      });
+    prisma.session.findMany.mockResolvedValue([{ id: "s1" }, { id: "s2" }]);
+    prisma.batchEnrollment.create.mockResolvedValue({
+      id: "enroll-2",
+      batchId: "batch-2",
+      studentId: "student-1",
+      isTrial: true,
+      trialSessionIds: ["s1", "s2"],
+    });
+
+    await service.switchBatch("batch-1", "student-1", "batch-2");
+
+    expect(memberships.findActiveForBatch).not.toHaveBeenCalled();
+    expect(prisma.batchEnrollment.create).toHaveBeenCalledWith({
+      data: {
+        batchId: "batch-2",
+        studentId: "student-1",
+        isTrial: true,
+        trialSessionIds: ["s1", "s2"],
+      },
+    });
+  });
+
+  it("rejects when target does not offer the student's plan", async () => {
+    prisma.batch.findUnique
+      .mockResolvedValueOnce({
+        id: "batch-1",
+        studioId: "studio-1",
+        category: BatchCategory.KIDS,
+        enrollments: [{ studentId: "student-1", isTrial: false }],
+      })
+      .mockResolvedValueOnce({
+        id: "batch-2",
+        studioId: "studio-1",
+        category: BatchCategory.KIDS,
+        active: true,
+        capacity: 10,
+        plans: [{ subscriptionId: "sub-other" }],
+      });
+    memberships.findActiveForBatch.mockResolvedValue({
+      subscriptionId: "sub-1",
+      status: "ACTIVE",
+      periodStart: new Date("2026-01-01"),
+      periodEnd: new Date("2026-12-31"),
+      subscription: { id: "sub-1", name: "Kids Monthly", active: true },
+      coveredStudents: [{ studentId: "student-1", seatRole: "KID" }],
+    });
+
+    await expect(
+      service.switchBatch("batch-1", "student-1", "batch-2"),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(prisma.batchEnrollment.delete).not.toHaveBeenCalled();
+  });
+
+  it("rejects when student is not enrolled in the source batch", async () => {
+    prisma.batch.findUnique
+      .mockResolvedValueOnce({
+        id: "batch-1",
+        studioId: "studio-1",
+        category: BatchCategory.KIDS,
+        enrollments: [],
+      })
+      .mockResolvedValueOnce({
+        id: "batch-2",
+        studioId: "studio-1",
+        category: BatchCategory.KIDS,
+        active: true,
+        capacity: 10,
+        plans: [{ subscriptionId: "sub-1" }],
+      });
+
+    await expect(
+      service.switchBatch("batch-1", "student-1", "batch-2"),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it("rejects inactive target batches", async () => {
+    prisma.batch.findUnique
+      .mockResolvedValueOnce({
+        id: "batch-1",
+        studioId: "studio-1",
+        category: BatchCategory.KIDS,
+        enrollments: [{ studentId: "student-1", isTrial: true }],
+      })
+      .mockResolvedValueOnce({
+        id: "batch-2",
+        studioId: "studio-1",
+        category: BatchCategory.KIDS,
+        active: false,
+        capacity: 10,
+        plans: [],
+      });
+
+    await expect(
+      service.switchBatch("batch-1", "student-1", "batch-2"),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it("rejects when the target batch is full", async () => {
+    prisma.batch.findUnique
+      .mockResolvedValueOnce({
+        id: "batch-1",
+        studioId: "studio-1",
+        category: BatchCategory.KIDS,
+        enrollments: [{ studentId: "student-1", isTrial: true }],
+      })
+      .mockResolvedValueOnce({
+        id: "batch-2",
+        studioId: "studio-1",
+        category: BatchCategory.KIDS,
+        active: true,
+        capacity: 1,
+        plans: [],
+      });
+    prisma.batchEnrollment.findMany.mockResolvedValue([
+      { studentId: "other-student" },
+    ]);
+
+    await expect(
+      service.switchBatch("batch-1", "student-1", "batch-2"),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(prisma.batchEnrollment.delete).not.toHaveBeenCalled();
+  });
+
+  it("lists same-plan targets for paid members", async () => {
+    prisma.batch.findUnique.mockResolvedValue({
+      id: "batch-1",
+      studioId: "studio-1",
+      category: BatchCategory.KIDS,
+      enrollments: [{ studentId: "student-1", isTrial: false }],
+    });
+    prisma.batchEnrollment.findMany.mockResolvedValue([{ batchId: "batch-1" }]);
+    memberships.findActiveForBatch.mockResolvedValue({
+      subscriptionId: "sub-1",
+      status: "ACTIVE",
+      periodStart: new Date("2026-01-01"),
+      periodEnd: new Date("2026-12-31"),
+      subscription: { id: "sub-1", name: "Kids Monthly", active: true },
+      coveredStudents: [{ studentId: "student-1", seatRole: "KID" }],
+    });
+    prisma.batch.findMany.mockResolvedValue([
+      {
+        id: "batch-2",
+        name: "Kids 2",
+        category: BatchCategory.KIDS,
+        capacity: 10,
+        branch: { name: "Main" },
+      },
+    ]);
+
+    const result = await service.listSwitchTargets("batch-1", "student-1");
+
+    expect(result).toMatchObject({
+      studentId: "student-1",
+      isTrial: false,
+      subscription: { id: "sub-1", name: "Kids Monthly" },
+      targets: [
+        {
+          id: "batch-2",
+          name: "Kids 2",
+          remainingSeats: 10,
+          branchName: "Main",
+        },
+      ],
+    });
+  });
+
+  it("returns a reason when paid member has no covering subscription", async () => {
+    prisma.batch.findUnique.mockResolvedValue({
+      id: "batch-1",
+      studioId: "studio-1",
+      category: BatchCategory.KIDS,
+      enrollments: [{ studentId: "student-1", isTrial: false }],
+    });
+    prisma.batchEnrollment.findMany.mockResolvedValue([{ batchId: "batch-1" }]);
+    memberships.findActiveForBatch.mockResolvedValue(null);
+
+    const result = await service.listSwitchTargets("batch-1", "student-1");
+
+    expect(result).toEqual({
+      studentId: "student-1",
+      isTrial: false,
+      subscription: null,
+      reason: "No active subscription covering this batch",
+      targets: [],
+    });
+  });
+});

@@ -20,6 +20,7 @@ import {
 } from "@prisma/client";
 import { ScheduleConflictService } from "../calendar/schedule-conflict.service";
 import { MediaService } from "../media/media.service";
+import { membershipCoversBatch } from "../memberships/membership-helpers";
 import {
   type CoveredStudentInput,
   MembershipsService,
@@ -1178,6 +1179,278 @@ export class BatchesService {
           : {},
         create: {
           batchId,
+          studentId,
+          isTrial,
+          ...(trialSessionIds ? { trialSessionIds } : {}),
+        },
+      });
+    });
+  }
+
+  async listSwitchTargets(fromBatchId: string, studentId: string) {
+    const source = await this.prisma.batch.findUnique({
+      where: { id: fromBatchId },
+      include: {
+        enrollments: {
+          where: { studentId },
+          take: 1,
+        },
+      },
+    });
+
+    if (!source) {
+      throw new NotFoundException("Batch not found");
+    }
+
+    const enrollment = source.enrollments[0];
+    if (!enrollment) {
+      throw new BadRequestException("Student is not enrolled in this batch");
+    }
+
+    const isTrial = enrollment.isTrial === true;
+    const alreadyEnrolled = await this.prisma.batchEnrollment.findMany({
+      where: { studentId },
+      select: { batchId: true },
+    });
+    const excludeIds = new Set([
+      fromBatchId,
+      ...alreadyEnrolled.map((row) => row.batchId),
+    ]);
+
+    if (isTrial) {
+      const candidates = await this.prisma.batch.findMany({
+        where: {
+          studioId: source.studioId,
+          active: true,
+          category: source.category,
+          id: { notIn: [...excludeIds] },
+        },
+        include: {
+          branch: { select: { name: true } },
+        },
+        orderBy: { name: "asc" },
+      });
+
+      const reservedByBatch = await countReservedSeatsByBatch(
+        this.prisma,
+        candidates.map((batch) => batch.id),
+      );
+
+      return {
+        studentId,
+        isTrial: true,
+        subscription: null,
+        targets: candidates
+          .map((batch) => {
+            const occupied = reservedByBatch.get(batch.id) ?? 0;
+            const remainingSeats = Math.max(0, batch.capacity - occupied);
+            return {
+              id: batch.id,
+              name: batch.name,
+              category: batch.category,
+              remainingSeats,
+              branchName: batch.branch.name,
+            };
+          })
+          .filter((batch) => batch.remainingSeats > 0),
+      };
+    }
+
+    const membership = await this.memberships.findActiveForBatch(
+      studentId,
+      fromBatchId,
+    );
+
+    if (!membership) {
+      return {
+        studentId,
+        isTrial: false,
+        subscription: null,
+        reason: "No active subscription covering this batch",
+        targets: [],
+      };
+    }
+
+    const subscriptionId = membership.subscriptionId;
+    const seat = membership.coveredStudents[0];
+    const candidates = await this.prisma.batch.findMany({
+      where: {
+        studioId: source.studioId,
+        active: true,
+        id: { notIn: [...excludeIds] },
+        plans: { some: { subscriptionId } },
+      },
+      include: {
+        branch: { select: { name: true } },
+      },
+      orderBy: { name: "asc" },
+    });
+
+    const reservedByBatch = await countReservedSeatsByBatch(
+      this.prisma,
+      candidates.map((batch) => batch.id),
+    );
+
+    const targets = candidates
+      .filter((batch) =>
+        seat
+          ? membershipCoversBatch({
+              status: membership.status,
+              periodStart: membership.periodStart,
+              periodEnd: membership.periodEnd,
+              seatRole: seat.seatRole,
+              batchCategory: batch.category,
+            })
+          : false,
+      )
+      .map((batch) => {
+        const occupied = reservedByBatch.get(batch.id) ?? 0;
+        const remainingSeats = Math.max(0, batch.capacity - occupied);
+        return {
+          id: batch.id,
+          name: batch.name,
+          category: batch.category,
+          remainingSeats,
+          branchName: batch.branch.name,
+        };
+      })
+      .filter((batch) => batch.remainingSeats > 0);
+
+    return {
+      studentId,
+      isTrial: false,
+      subscription: {
+        id: membership.subscription.id,
+        name: membership.subscription.name,
+      },
+      targets,
+    };
+  }
+
+  async switchBatch(fromBatchId: string, studentId: string, toBatchId: string) {
+    if (fromBatchId === toBatchId) {
+      throw new BadRequestException("Student is already in this batch");
+    }
+
+    const [source, target] = await Promise.all([
+      this.prisma.batch.findUnique({
+        where: { id: fromBatchId },
+        include: {
+          enrollments: {
+            where: { studentId },
+            take: 1,
+          },
+        },
+      }),
+      this.prisma.batch.findUnique({
+        where: { id: toBatchId },
+        include: {
+          plans: { select: { subscriptionId: true } },
+        },
+      }),
+    ]);
+
+    if (!source) {
+      throw new NotFoundException("Batch not found");
+    }
+    if (!target) {
+      throw new NotFoundException("Target batch not found");
+    }
+
+    const enrollment = source.enrollments[0];
+    if (!enrollment) {
+      throw new BadRequestException("Student is not enrolled in this batch");
+    }
+
+    if (!target.active) {
+      throw new BadRequestException("Target batch is not active");
+    }
+
+    if (target.studioId !== source.studioId) {
+      throw new BadRequestException(
+        "Target batch must belong to the same studio",
+      );
+    }
+
+    const existingTarget = await this.prisma.batchEnrollment.findUnique({
+      where: {
+        batchId_studentId: { batchId: toBatchId, studentId },
+      },
+    });
+    if (existingTarget) {
+      throw new BadRequestException(
+        "Student is already enrolled in the target batch",
+      );
+    }
+
+    const isTrial = enrollment.isTrial === true;
+
+    if (isTrial) {
+      if (target.category !== source.category) {
+        throw new BadRequestException(
+          "Trial students can only switch to a batch in the same category",
+        );
+      }
+    } else {
+      const membership = await this.memberships.findActiveForBatch(
+        studentId,
+        fromBatchId,
+      );
+      if (!membership) {
+        throw new BadRequestException(
+          "Student has no active subscription covering this batch",
+        );
+      }
+
+      const seat = membership.coveredStudents[0];
+      if (
+        !seat ||
+        !membershipCoversBatch({
+          status: membership.status,
+          periodStart: membership.periodStart,
+          periodEnd: membership.periodEnd,
+          seatRole: seat.seatRole,
+          batchCategory: target.category,
+        })
+      ) {
+        throw new BadRequestException(
+          "Student subscription does not cover the target batch category",
+        );
+      }
+
+      const hasPlan = target.plans.some(
+        (plan) => plan.subscriptionId === membership.subscriptionId,
+      );
+      if (!hasPlan) {
+        throw new BadRequestException(
+          "Target batch does not offer the student's current subscription plan",
+        );
+      }
+    }
+
+    await this.scheduleConflicts.assertStudentAvailableForBatch(
+      studentId,
+      toBatchId,
+      { excludeBatchIds: [fromBatchId] },
+    );
+
+    return this.prisma.$transaction(async (tx) => {
+      await lockBatchRow(tx, toBatchId);
+      await assertBatchHasSeat(tx, toBatchId, target.capacity, studentId);
+
+      const trialSessionIds = isTrial
+        ? await resolveNextTrialSessionIds(tx, toBatchId)
+        : undefined;
+
+      await tx.batchEnrollment.delete({
+        where: {
+          batchId_studentId: { batchId: fromBatchId, studentId },
+        },
+      });
+
+      return tx.batchEnrollment.create({
+        data: {
+          batchId: toBatchId,
           studentId,
           isTrial,
           ...(trialSessionIds ? { trialSessionIds } : {}),

@@ -51,6 +51,37 @@
   gap: var(--space-2, 0.5rem);
 }
 
+.row {
+  display: flex;
+  align-items: stretch;
+  gap: var(--space-2, 0.5rem);
+  min-width: 0;
+}
+
+.rowMain {
+  flex: 1;
+  min-width: 0;
+}
+
+.switchBtn {
+  flex-shrink: 0;
+  align-self: center;
+}
+
+.targetPick {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  appearance: none;
+  text-align: start;
+}
+
+.targetPick[data-selected="true"] {
+  border-color: color-mix(in srgb, var(--color-accent, var(--color-fg)) 45%, transparent);
+  box-shadow: 0 0 0 1px
+    color-mix(in srgb, var(--color-accent, var(--color-fg)) 35%, transparent);
+}
+
 .card {
   display: flex;
   align-items: flex-start;

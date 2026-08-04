@@ -121,4 +121,92 @@ test.describe("batches HTTP @http", () => {
       }),
     });
   });
+
+  test("trainer switches a trial student to another same-category batch @http", async () => {
+    const cleanup = new TestDataCleanup();
+    const stamp = Date.now();
+    try {
+      const toBatch = await expectOk<{ id: string }>("STAFF", "/batches", {
+        method: "POST",
+        body: JSON.stringify({
+          studioId: SEED.users.STAFF.studioId,
+          name: `Switch To ${stamp}`,
+          category: "ADULTS",
+          branchId: SEED.branchMainId,
+          trainerIds: [SEED.users.TRAINER.id],
+          danceCategories: [{ name: "Hip Hop", description: "Switch to" }],
+          scheduleJson: {
+            frequency: "WEEKLY",
+            weekdays: [0],
+            startDate: "2027-11-07",
+            endDate: "2028-01-30",
+            startTime: "06:25",
+            endTime: "07:10",
+            utcOffsetMinutes: 0,
+          },
+          capacity: 8,
+          enrollmentMode: "STAFF_ONLY",
+          subscriptionIds: [...SEED.adultPlanIds],
+          active: true,
+          certificationEnabled: false,
+        }),
+      });
+      cleanup.trackBatch(toBatch.id);
+
+      const student = await createHttpStudent(`Switch Trial ${stamp}`, cleanup);
+      const fromBatchId = SEED.trialBatchId;
+
+      await expectOk("TRAINER", `/batches/${fromBatchId}/enroll`, {
+        method: "POST",
+        body: JSON.stringify({
+          studentId: student.id,
+          isTrial: true,
+        }),
+      });
+
+      const targets = await expectOk<{
+        isTrial: boolean;
+        targets: Array<{ id: string }>;
+      }>(
+        "TRAINER",
+        `/batches/${fromBatchId}/switch-targets?studentId=${encodeURIComponent(student.id)}`,
+      );
+      expect(targets.isTrial).toBe(true);
+      expect(targets.targets.some((t) => t.id === toBatch.id)).toBe(true);
+
+      const switched = await expectOk<{
+        batchId: string;
+        studentId: string;
+        isTrial: boolean;
+      }>("TRAINER", `/batches/${fromBatchId}/switch`, {
+        method: "POST",
+        body: JSON.stringify({
+          studentId: student.id,
+          toBatchId: toBatch.id,
+        }),
+      });
+      expect(switched).toMatchObject({
+        batchId: toBatch.id,
+        studentId: student.id,
+        isTrial: true,
+      });
+
+      const fromDetail = await expectOk<{
+        enrollments: Array<{ studentId: string }>;
+      }>("TRAINER", `/batches/${fromBatchId}`);
+      expect(
+        fromDetail.enrollments.some((row) => row.studentId === student.id),
+      ).toBe(false);
+
+      const toDetail = await expectOk<{
+        enrollments: Array<{ studentId: string; isTrial?: boolean }>;
+      }>("TRAINER", `/batches/${toBatch.id}`);
+      const enrollment = toDetail.enrollments.find(
+        (row) => row.studentId === student.id,
+      );
+      expect(enrollment?.isTrial).toBe(true);
+    } finally {
+      await cleanup.dispose();
+    }
+  });
 });
