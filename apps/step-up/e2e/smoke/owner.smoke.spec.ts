@@ -62,6 +62,7 @@ const OWNER_PATHS = [
   "/app/settings",
   "/app/settings/profile",
   "/app/settings/branding",
+  "/app/settings/theme",
   "/app/settings/team",
   "/app/settings/payments",
   "/app/settings/billing",

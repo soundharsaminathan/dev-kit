@@ -15,6 +15,7 @@ import {
   publishNotificationBroadcast,
 } from "@/lib/notifications-cache";
 import { useNotificationsSocket } from "@/lib/notifications-socket-provider";
+import { StudioBrandMark } from "@/modules/branding/studio-brand-mark";
 import {
   TooltipIconBar,
   TooltipIconBarItem,
@@ -350,7 +351,11 @@ export function AppHeader({ variant }: AppHeaderProps) {
   return (
     <header className={styles.header}>
       <div className={styles.brand}>
-        <Text className={styles.brandLabel}>Step Up</Text>
+        <StudioBrandMark
+          className={styles.brandMark}
+          labelClassName={styles.brandLabel}
+          logoClassName={styles.brandLogo}
+        />
       </div>
       <TooltipIconBar
         placement="bottom"

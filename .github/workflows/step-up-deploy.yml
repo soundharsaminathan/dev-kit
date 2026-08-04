@@ -193,7 +193,19 @@ jobs:
 
       - name: Cleanup smoke data
         if: always()
-        run: pnpm --filter @step-up/api prisma:cleanup:smoke
+        run: |
+          set -euo pipefail
+          attempts=3
+          for i in $(seq 1 "$attempts"); do
+            if pnpm --filter @step-up/api prisma:cleanup:smoke; then
+              exit 0
+            fi
+            if [ "$i" -eq "$attempts" ]; then
+              exit 1
+            fi
+            echo "Cleanup failed (attempt $i/$attempts); retrying in 15s…"
+            sleep 15
+          done
         env:
           DATABASE_URL: ${{ secrets.STEP_UP_DATABASE_URL }}
 

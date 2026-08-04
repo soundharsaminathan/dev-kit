@@ -522,8 +522,6 @@ export function StudioWizard(props: StudioWizardProps) {
                     logoUrl={studio.logoUrl}
                     heroMobileUrl={studio.heroMobileUrl}
                     heroDesktopUrl={studio.heroDesktopUrl}
-                    brandTheme={studio.brandTheme}
-                    showTheme={false}
                   />
                 </div>
               ) : null}

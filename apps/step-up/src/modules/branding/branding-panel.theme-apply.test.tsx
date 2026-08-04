@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { BrandingPanel } from "./branding-panel";
+import { ThemePanel } from "./theme-panel";
 
 const patch = vi.fn();
 
@@ -71,12 +71,12 @@ function themeCss(): string {
 function renderPanel() {
   return render(
     <Wrapper>
-      <BrandingPanel studioName="Acme Dance" brandTheme={null} />
+      <ThemePanel studioName="Acme Dance" brandTheme={null} />
     </Wrapper>,
   );
 }
 
-describe("BrandingPanel colour changes reach the theme", () => {
+describe("ThemePanel colour changes reach the theme", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     patch.mockResolvedValue({});

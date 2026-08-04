@@ -1,19 +1,15 @@
-import { ThemeColorPanel } from "@dev-ui/components/theme-editor";
 import { useToastContext } from "@dev-ui/components/toast";
-import { useTheme } from "@dev-ui/core";
-import { type ThemeDraft, themeDraftToDefinition } from "@dev-ui/tokens";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { useApi } from "@/lib/api-context";
 import { useOptionalStudioId } from "@/lib/use-studio-id";
 import { uploadSocialPhoto } from "@/modules/social/upload";
+import { ImageCropSheet } from "@/modules/ui/image-crop-sheet";
 import staff from "@/modules/ui/staff.module.scss";
 import { ErrorState } from "@/modules/ui/states";
 import { TouchButton } from "@/modules/ui/touch-button";
-import { brandThemeToDraft, draftToBrandTheme } from "./brand-theme";
+import { BRAND_IMAGE_CROPS, type BrandImageKind } from "./brand-image-crops";
 import styles from "./branding-panel.module.scss";
-import { useStudioBrandEdit } from "./studio-brand-edit-context";
-import type { StudioBrandThemePayload } from "./types";
 
 type BrandingPanelProps = {
   studioName: string;
@@ -21,12 +17,14 @@ type BrandingPanelProps = {
   logoUrl?: string | null | undefined;
   heroMobileUrl?: string | null | undefined;
   heroDesktopUrl?: string | null | undefined;
-  brandTheme?: StudioBrandThemePayload | null | undefined;
-  /** When false, only logo/hero uploads are shown (theme edited elsewhere). */
-  showTheme?: boolean;
 };
 
 type HeroSlot = "heroMobileUrl" | "heroDesktopUrl";
+
+type PendingCrop = {
+  file: File;
+  kind: BrandImageKind;
+};
 
 export function BrandingPanel({
   studioName,
@@ -34,42 +32,18 @@ export function BrandingPanel({
   logoUrl,
   heroMobileUrl,
   heroDesktopUrl,
-  brandTheme,
-  showTheme = true,
 }: BrandingPanelProps) {
   const api = useApi();
   const sessionStudioId = useOptionalStudioId();
   const studioId = studioIdProp ?? sessionStudioId ?? "";
   const queryClient = useQueryClient();
   const { toast } = useToastContext("BrandingPanel");
-  const { setLiveTheme, mode, setMode } = useTheme();
-  const { setEditing } = useStudioBrandEdit();
   const logoInputRef = useRef<HTMLInputElement>(null);
   const mobileHeroInputRef = useRef<HTMLInputElement>(null);
   const desktopHeroInputRef = useRef<HTMLInputElement>(null);
-  const [draft, setDraft] = useState<ThemeDraft>(() =>
-    brandThemeToDraft(brandTheme, studioName),
-  );
   const [logoError, setLogoError] = useState<string | null>(null);
   const [heroError, setHeroError] = useState<string | null>(null);
-  const [themeError, setThemeError] = useState<string | null>(null);
-
-  useEffect(() => {
-    setDraft(brandThemeToDraft(brandTheme, studioName));
-  }, [brandTheme, studioName]);
-
-  useEffect(() => {
-    if (!showTheme) return;
-    setEditing(true);
-    return () => {
-      setEditing(false);
-    };
-  }, [setEditing, showTheme]);
-
-  useLayoutEffect(() => {
-    if (!showTheme || !studioId) return;
-    setLiveTheme(themeDraftToDefinition(draft, `studio-${studioId}`));
-  }, [draft, setLiveTheme, showTheme, studioId]);
+  const [pendingCrop, setPendingCrop] = useState<PendingCrop | null>(null);
 
   const invalidateStudio = () => {
     if (!studioId) return;
@@ -80,15 +54,6 @@ export function BrandingPanel({
     void queryClient.invalidateQueries({ queryKey: ["home"] });
   };
 
-  const cacheBrandTheme = (next: StudioBrandThemePayload | null) => {
-    if (!studioId) return;
-    queryClient.setQueryData(
-      ["studio", studioId],
-      (current: { brandTheme?: StudioBrandThemePayload | null } | undefined) =>
-        current ? { ...current, brandTheme: next } : current,
-    );
-  };
-
   const uploadLogo = useMutation({
     mutationFn: async (file: File) => {
       const nextLogoUrl = await uploadSocialPhoto(api, file, "studio-logo");
@@ -96,6 +61,7 @@ export function BrandingPanel({
     },
     onSuccess: () => {
       setLogoError(null);
+      setPendingCrop(null);
       invalidateStudio();
       toast({
         title: "Logo uploaded",
@@ -145,6 +111,7 @@ export function BrandingPanel({
     },
     onSuccess: (_result, variables) => {
       setHeroError(null);
+      setPendingCrop(null);
       invalidateStudio();
       toast({
         title: "Hero image uploaded",
@@ -194,57 +161,22 @@ export function BrandingPanel({
     },
   });
 
-  const saveTheme = useMutation({
-    mutationFn: () =>
-      api.patch(`/studios/${studioId}`, {
-        brandTheme: draftToBrandTheme(draft),
-      }),
-    onSuccess: () => {
-      setThemeError(null);
-      cacheBrandTheme(draftToBrandTheme(draft));
-      invalidateStudio();
-      toast({
-        title: "Theme saved",
-        description: "Brand theme updated.",
-        variant: "success",
-      });
-    },
-    onError: (error) => {
-      const description =
-        error instanceof Error ? error.message : "Could not save brand theme.";
-      setThemeError(description);
-      toast({
-        title: "Couldn’t save theme",
-        description,
-        variant: "error",
-      });
-    },
-  });
+  function openCrop(kind: BrandImageKind, file: File) {
+    setPendingCrop({ kind, file });
+  }
 
-  const resetTheme = useMutation({
-    mutationFn: () => api.patch(`/studios/${studioId}`, { brandTheme: null }),
-    onSuccess: () => {
-      setThemeError(null);
-      setDraft(brandThemeToDraft(null, studioName));
-      cacheBrandTheme(null);
-      invalidateStudio();
-      toast({
-        title: "Theme reset",
-        description: "Brand theme restored to default.",
-        variant: "success",
-      });
-    },
-    onError: (error) => {
-      const description =
-        error instanceof Error ? error.message : "Could not reset brand theme.";
-      setThemeError(description);
-      toast({
-        title: "Couldn’t reset theme",
-        description,
-        variant: "error",
-      });
-    },
-  });
+  function handleCropDone(file: File) {
+    if (!pendingCrop) return;
+    if (pendingCrop.kind === "logo") {
+      uploadLogo.mutate(file);
+      return;
+    }
+    uploadHero.mutate({
+      slot:
+        pendingCrop.kind === "heroMobile" ? "heroMobileUrl" : "heroDesktopUrl",
+      file,
+    });
+  }
 
   const heroUploadingSlot =
     uploadHero.isPending && uploadHero.variables
@@ -252,6 +184,14 @@ export function BrandingPanel({
       : null;
   const heroRemovingSlot =
     removeHero.isPending && removeHero.variables ? removeHero.variables : null;
+  const cropBusy =
+    uploadLogo.isPending ||
+    (uploadHero.isPending &&
+      pendingCrop != null &&
+      pendingCrop.kind !== "logo");
+  const cropConfig = pendingCrop
+    ? BRAND_IMAGE_CROPS[pendingCrop.kind]
+    : BRAND_IMAGE_CROPS.logo;
 
   if (!studioId) {
     return (
@@ -263,9 +203,8 @@ export function BrandingPanel({
     <div className={staff.softPanel}>
       <p className={staff.panelTitle}>Branding</p>
       <p className={staff.panelDesc}>
-        {showTheme
-          ? "Logo, hero images, and theme apply across the studio app"
-          : "Logo and hero images apply across the studio app"}
+        Logo replaces the Step Up wordmark after login. Hero images fill the
+        member home banner.
       </p>
 
       <div className={styles.logoBlock}>
@@ -276,6 +215,9 @@ export function BrandingPanel({
             className={styles.logoPreview}
           />
         ) : null}
+        <p className={styles.assetHint}>
+          Wordmark crop · {BRAND_IMAGE_CROPS.logo.sizeHint}
+        </p>
         <input
           ref={logoInputRef}
           type="file"
@@ -283,7 +225,7 @@ export function BrandingPanel({
           hidden
           onChange={(event) => {
             const file = event.target.files?.[0];
-            if (file) uploadLogo.mutate(file);
+            if (file) openCrop("logo", file);
             event.target.value = "";
           }}
         />
@@ -313,8 +255,8 @@ export function BrandingPanel({
       <div className={styles.heroSection}>
         <p className={styles.heroSectionTitle}>Member home hero</p>
         <p className={styles.heroSectionDesc}>
-          Shown at the top of the /me home screen. Upload separate crops for
-          phone and desktop when you can.
+          Cropped to match the /me home banner. Upload separate phone and
+          desktop images.
         </p>
 
         <div className={styles.heroGrid}>
@@ -330,6 +272,9 @@ export function BrandingPanel({
             ) : (
               <div className={styles.heroPlaceholder} data-slot="mobile" />
             )}
+            <p className={styles.assetHint}>
+              {BRAND_IMAGE_CROPS.heroMobile.sizeHint}
+            </p>
             <input
               ref={mobileHeroInputRef}
               type="file"
@@ -337,9 +282,7 @@ export function BrandingPanel({
               hidden
               onChange={(event) => {
                 const file = event.target.files?.[0];
-                if (file) {
-                  uploadHero.mutate({ slot: "heroMobileUrl", file });
-                }
+                if (file) openCrop("heroMobile", file);
                 event.target.value = "";
               }}
             />
@@ -379,6 +322,9 @@ export function BrandingPanel({
             ) : (
               <div className={styles.heroPlaceholder} data-slot="desktop" />
             )}
+            <p className={styles.assetHint}>
+              {BRAND_IMAGE_CROPS.heroDesktop.sizeHint}
+            </p>
             <input
               ref={desktopHeroInputRef}
               type="file"
@@ -386,9 +332,7 @@ export function BrandingPanel({
               hidden
               onChange={(event) => {
                 const file = event.target.files?.[0];
-                if (file) {
-                  uploadHero.mutate({ slot: "heroDesktopUrl", file });
-                }
+                if (file) openCrop("heroDesktop", file);
                 event.target.value = "";
               }}
             />
@@ -419,55 +363,17 @@ export function BrandingPanel({
         {heroError ? <ErrorState description={heroError} /> : null}
       </div>
 
-      {showTheme ? (
-        <div className={styles.themeSection}>
-          <div className={styles.themeHeader}>
-            <div>
-              <p className={styles.themeSectionTitle}>Colors</p>
-              <p className={styles.themeSectionDesc}>
-                Pick your palette — buttons, surfaces, and text follow it
-                everywhere.
-              </p>
-            </div>
-            <fieldset className={styles.modeToggle} aria-label="Preview mode">
-              {(["light", "dark"] as const).map((option) => (
-                <button
-                  key={option}
-                  type="button"
-                  className={styles.modeOption}
-                  aria-pressed={mode === option}
-                  data-selected={mode === option ? "true" : undefined}
-                  onClick={() => setMode(option)}
-                >
-                  {option === "light" ? "Light" : "Dark"}
-                </button>
-              ))}
-            </fieldset>
-          </div>
-
-          <ThemeColorPanel value={draft} onChange={setDraft} />
-
-          <div className={styles.themeActions}>
-            <TouchButton
-              variant="primary"
-              fullWidth
-              isPending={saveTheme.isPending}
-              onClick={() => saveTheme.mutate()}
-            >
-              Save theme
-            </TouchButton>
-            <TouchButton
-              variant="default"
-              fullWidth
-              isPending={resetTheme.isPending}
-              onClick={() => resetTheme.mutate()}
-            >
-              Reset to Step Up defaults
-            </TouchButton>
-          </div>
-          {themeError ? <ErrorState description={themeError} /> : null}
-        </div>
-      ) : null}
+      <ImageCropSheet
+        file={pendingCrop?.file ?? null}
+        aspect={cropConfig.aspect}
+        cropShape={cropConfig.cropShape}
+        title={cropConfig.title}
+        busy={cropBusy}
+        onCancel={() => {
+          if (!cropBusy) setPendingCrop(null);
+        }}
+        onCropDone={handleCropDone}
+      />
     </div>
   );
 }

@@ -70,6 +70,7 @@ import { Route as AppSubscriptionsIdRouteImport } from './routes/app/subscriptio
 import { Route as AppStudentsNewRouteImport } from './routes/app/students/new'
 import { Route as AppStudentsImportRouteImport } from './routes/app/students/import'
 import { Route as AppStudentsIdRouteImport } from './routes/app/students/$id'
+import { Route as AppSettingsThemeRouteImport } from './routes/app/settings_.theme'
 import { Route as AppSettingsTeamRouteImport } from './routes/app/settings_.team'
 import { Route as AppSettingsStylesRouteImport } from './routes/app/settings_.styles'
 import { Route as AppSettingsProfileRouteImport } from './routes/app/settings_.profile'
@@ -403,6 +404,11 @@ const AppStudentsIdRoute = AppStudentsIdRouteImport.update({
   path: '/students/$id',
   getParentRoute: () => AppRoute,
 } as any)
+const AppSettingsThemeRoute = AppSettingsThemeRouteImport.update({
+  id: '/settings_/theme',
+  path: '/settings/theme',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppSettingsTeamRoute = AppSettingsTeamRouteImport.update({
   id: '/settings_/team',
   path: '/settings/team',
@@ -599,6 +605,7 @@ export interface FileRoutesByFullPath {
   '/app/settings/profile': typeof AppSettingsProfileRoute
   '/app/settings/styles': typeof AppSettingsStylesRoute
   '/app/settings/team': typeof AppSettingsTeamRoute
+  '/app/settings/theme': typeof AppSettingsThemeRoute
   '/app/students/$id': typeof AppStudentsIdRoute
   '/app/students/import': typeof AppStudentsImportRoute
   '/app/students/new': typeof AppStudentsNewRoute
@@ -686,6 +693,7 @@ export interface FileRoutesByTo {
   '/app/settings/profile': typeof AppSettingsProfileRoute
   '/app/settings/styles': typeof AppSettingsStylesRoute
   '/app/settings/team': typeof AppSettingsTeamRoute
+  '/app/settings/theme': typeof AppSettingsThemeRoute
   '/app/students/$id': typeof AppStudentsIdRoute
   '/app/students/import': typeof AppStudentsImportRoute
   '/app/students/new': typeof AppStudentsNewRoute
@@ -777,6 +785,7 @@ export interface FileRoutesById {
   '/app/settings_/profile': typeof AppSettingsProfileRoute
   '/app/settings_/styles': typeof AppSettingsStylesRoute
   '/app/settings_/team': typeof AppSettingsTeamRoute
+  '/app/settings_/theme': typeof AppSettingsThemeRoute
   '/app/students/$id': typeof AppStudentsIdRoute
   '/app/students/import': typeof AppStudentsImportRoute
   '/app/students/new': typeof AppStudentsNewRoute
@@ -869,6 +878,7 @@ export interface FileRouteTypes {
     | '/app/settings/profile'
     | '/app/settings/styles'
     | '/app/settings/team'
+    | '/app/settings/theme'
     | '/app/students/$id'
     | '/app/students/import'
     | '/app/students/new'
@@ -956,6 +966,7 @@ export interface FileRouteTypes {
     | '/app/settings/profile'
     | '/app/settings/styles'
     | '/app/settings/team'
+    | '/app/settings/theme'
     | '/app/students/$id'
     | '/app/students/import'
     | '/app/students/new'
@@ -1046,6 +1057,7 @@ export interface FileRouteTypes {
     | '/app/settings_/profile'
     | '/app/settings_/styles'
     | '/app/settings_/team'
+    | '/app/settings_/theme'
     | '/app/students/$id'
     | '/app/students/import'
     | '/app/students/new'
@@ -1524,6 +1536,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppStudentsIdRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/settings_/theme': {
+      id: '/app/settings_/theme'
+      path: '/settings/theme'
+      fullPath: '/app/settings/theme'
+      preLoaderRoute: typeof AppSettingsThemeRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/settings_/team': {
       id: '/app/settings_/team'
       path: '/settings/team'
@@ -1773,6 +1792,7 @@ interface AppRouteChildren {
   AppSettingsProfileRoute: typeof AppSettingsProfileRoute
   AppSettingsStylesRoute: typeof AppSettingsStylesRoute
   AppSettingsTeamRoute: typeof AppSettingsTeamRoute
+  AppSettingsThemeRoute: typeof AppSettingsThemeRoute
   AppStudentsIdRoute: typeof AppStudentsIdRoute
   AppStudentsImportRoute: typeof AppStudentsImportRoute
   AppStudentsNewRoute: typeof AppStudentsNewRoute
@@ -1821,6 +1841,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppSettingsProfileRoute: AppSettingsProfileRoute,
   AppSettingsStylesRoute: AppSettingsStylesRoute,
   AppSettingsTeamRoute: AppSettingsTeamRoute,
+  AppSettingsThemeRoute: AppSettingsThemeRoute,
   AppStudentsIdRoute: AppStudentsIdRoute,
   AppStudentsImportRoute: AppStudentsImportRoute,
   AppStudentsNewRoute: AppStudentsNewRoute,
