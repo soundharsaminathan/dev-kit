@@ -17,6 +17,7 @@ export type AssertNoConflictsInput = {
   excludeSessionIds?: string[];
   excludeBookingIds?: string[];
   excludeBatchId?: string;
+  excludeBatchIds?: string[];
 };
 
 @Injectable()
@@ -50,7 +51,10 @@ export class ScheduleConflictService {
       branchId,
       excludeSessionIds: input.excludeSessionIds,
       excludeBookingIds: input.excludeBookingIds,
-      excludeBatchId: input.excludeBatchId,
+      excludeBatchIds: mergeExcludeBatchIds(
+        input.excludeBatchId,
+        input.excludeBatchIds,
+      ),
     });
 
     const conflict = findScheduleConflict(intervals, occupancy, {
@@ -66,7 +70,7 @@ export class ScheduleConflictService {
   async assertStudentAvailableForBatch(
     studentId: string,
     batchId: string,
-    options?: { from?: Date },
+    options?: { from?: Date; excludeBatchIds?: string[] },
   ): Promise<void> {
     const from = options?.from ?? new Date();
     const sessions = await this.prisma.session.findMany({
@@ -83,6 +87,7 @@ export class ScheduleConflictService {
       intervals: sessions,
       studentIds: [studentId],
       excludeBatchId: batchId,
+      excludeBatchIds: options?.excludeBatchIds,
     });
   }
 
@@ -93,7 +98,7 @@ export class ScheduleConflictService {
     branchId?: string;
     excludeSessionIds?: string[];
     excludeBookingIds?: string[];
-    excludeBatchId?: string;
+    excludeBatchIds?: string[];
   }): Promise<OccupancySlot[]> {
     const {
       window,
@@ -102,8 +107,12 @@ export class ScheduleConflictService {
       branchId,
       excludeSessionIds,
       excludeBookingIds,
-      excludeBatchId,
+      excludeBatchIds,
     } = args;
+    const excludeBatchFilter =
+      excludeBatchIds && excludeBatchIds.length > 0
+        ? { batchId: { notIn: excludeBatchIds } }
+        : {};
 
     const sessionPartyFilters: Prisma.SessionWhereInput[] = [];
     if (branchId) {
@@ -125,7 +134,7 @@ export class ScheduleConflictService {
         status: { not: SessionStatus.CANCELLED },
         startsAt: { lt: window.endsAt },
         endsAt: { gt: window.startsAt },
-        ...(excludeBatchId ? { batchId: { not: excludeBatchId } } : {}),
+        ...excludeBatchFilter,
         ...(excludeSessionIds?.length
           ? { id: { notIn: excludeSessionIds } }
           : {}),
@@ -188,9 +197,7 @@ export class ScheduleConflictService {
                   status: { not: SessionStatus.CANCELLED },
                   startsAt: { lt: window.endsAt },
                   endsAt: { gt: window.startsAt },
-                  ...(excludeBatchId
-                    ? { batchId: { not: excludeBatchId } }
-                    : {}),
+                  ...excludeBatchFilter,
                   ...(excludeSessionIds?.length
                     ? { id: { notIn: excludeSessionIds } }
                     : {}),
@@ -276,4 +283,18 @@ export class ScheduleConflictService {
 
     return occupancy;
   }
+}
+
+function mergeExcludeBatchIds(
+  excludeBatchId?: string,
+  excludeBatchIds?: string[],
+): string[] | undefined {
+  const ids = [
+    ...(excludeBatchId ? [excludeBatchId] : []),
+    ...(excludeBatchIds ?? []),
+  ];
+  if (ids.length === 0) {
+    return undefined;
+  }
+  return [...new Set(ids)];
 }

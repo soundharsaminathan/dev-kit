@@ -14,6 +14,7 @@ import {
   type StudioStudent,
 } from "@/modules/students/student-search-combobox";
 import { StyleList } from "@/modules/styles/style-list";
+import { AppSheet } from "@/modules/ui/app-sheet";
 import { FilterChipRow } from "@/modules/ui/filter-chip-row";
 import { PressableCard } from "@/modules/ui/pressable-card";
 import staff from "@/modules/ui/staff.module.scss";
@@ -58,6 +59,22 @@ type BatchWithEnrollments = {
   }>;
 };
 
+type SwitchTarget = {
+  id: string;
+  name: string;
+  category: string;
+  remainingSeats: number;
+  branchName: string;
+};
+
+type SwitchTargetsResponse = {
+  studentId: string;
+  isTrial: boolean;
+  subscription: { id: string; name: string } | null;
+  reason?: string;
+  targets: SwitchTarget[];
+};
+
 export type RosterEnrollmentFilter = "all" | "trial" | "enrolled";
 
 export function filterRosterEnrollments(
@@ -87,10 +104,23 @@ export function BatchRoster({ batchId, capacity, active }: BatchRosterProps) {
   const [pickerKey, setPickerKey] = useState(0);
   const [rosterFilter, setRosterFilter] =
     useState<RosterEnrollmentFilter>("all");
+  const [switchStudent, setSwitchStudent] = useState<BatchEnrollmentRow | null>(
+    null,
+  );
+  const [selectedTargetId, setSelectedTargetId] = useState<string | null>(null);
 
   const query = useQuery({
     queryKey: ["batch", batchId],
     queryFn: () => api.get<BatchWithEnrollments>(`/batches/${batchId}`),
+  });
+
+  const switchTargetsQuery = useQuery({
+    queryKey: ["batch-switch-targets", batchId, switchStudent?.studentId],
+    queryFn: () =>
+      api.get<SwitchTargetsResponse>(
+        `/batches/${batchId}/switch-targets?studentId=${encodeURIComponent(switchStudent!.studentId)}`,
+      ),
+    enabled: switchStudent != null,
   });
 
   const enrollments = useMemo(() => {
@@ -216,9 +246,95 @@ export function BatchRoster({ batchId, capacity, active }: BatchRosterProps) {
     },
   });
 
+  const switchBatch = useMutation({
+    mutationFn: (input: { studentId: string; toBatchId: string }) =>
+      api.post(`/batches/${batchId}/switch`, {
+        studentId: input.studentId,
+        toBatchId: input.toBatchId,
+      }),
+    onMutate: async ({ studentId: movingStudentId, toBatchId }) => {
+      await queryClient.cancelQueries({ queryKey: ["batch", batchId] });
+      const previous = queryClient.getQueryData<BatchWithEnrollments>([
+        "batch",
+        batchId,
+      ]);
+
+      queryClient.setQueryData<BatchWithEnrollments>(
+        ["batch", batchId],
+        (current) => {
+          if (!current) return current;
+          const nextEnrollments = current.enrollments.filter(
+            (row) => row.studentId !== movingStudentId,
+          );
+          const enrollmentCount = nextEnrollments.length;
+          return {
+            ...current,
+            enrollmentCount,
+            remainingSeats: Math.max(0, current.capacity - enrollmentCount),
+            enrollments: nextEnrollments,
+          };
+        },
+      );
+
+      return { previous, toBatchId };
+    },
+    onSuccess: (_data, { toBatchId }) => {
+      const targetName =
+        switchTargetsQuery.data?.targets.find((t) => t.id === toBatchId)
+          ?.name ?? "the new batch";
+      toast({
+        title: "Batch switched",
+        description: `Moved to ${targetName}.`,
+        variant: "success",
+      });
+      setSwitchStudent(null);
+      setSelectedTargetId(null);
+    },
+    onError: (error, _input, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(["batch", batchId], context.previous);
+      }
+      toast({
+        title: "Couldn’t switch batch",
+        description:
+          error instanceof Error ? error.message : "Could not switch batch.",
+        variant: "error",
+      });
+    },
+    onSettled: async (_data, _error, variables, context) => {
+      const invalidate = [
+        queryClient.invalidateQueries({ queryKey: ["batch", batchId] }),
+        queryClient.invalidateQueries({
+          queryKey: ["student-profile", studioId],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["batches", studioId],
+        }),
+      ];
+      if (context?.toBatchId ?? variables.toBatchId) {
+        invalidate.push(
+          queryClient.invalidateQueries({
+            queryKey: ["batch", context?.toBatchId ?? variables.toBatchId],
+          }),
+        );
+      }
+      await Promise.all(invalidate);
+    },
+  });
+
   function handleSelect(student: StudioStudent | null) {
     setSelectedStudent(student);
     setStudentId(student?.id ?? null);
+  }
+
+  function openSwitch(row: BatchEnrollmentRow) {
+    setSwitchStudent(row);
+    setSelectedTargetId(null);
+  }
+
+  function closeSwitch() {
+    setSwitchStudent(null);
+    setSelectedTargetId(null);
   }
 
   if (query.isError) {
@@ -346,71 +462,207 @@ export function BatchRoster({ batchId, capacity, active }: BatchRosterProps) {
             const styleList = student.styles ?? [];
 
             return (
-              <PressableCard
-                key={row.studentId}
-                onClick={() =>
-                  void navigate({
-                    to: "/app/students/$id",
-                    params: { id: row.studentId },
-                  })
-                }
-              >
-                <div className={styles.card}>
-                  <Avatar size="lg" className={styles.avatar}>
-                    {student.photoUrl ? (
-                      <AvatarImage src={student.photoUrl} alt={student.name} />
-                    ) : null}
-                    <AvatarFallback>{initials}</AvatarFallback>
-                  </Avatar>
+              <div key={row.studentId} className={styles.row}>
+                <PressableCard
+                  className={styles.rowMain}
+                  onClick={() =>
+                    void navigate({
+                      to: "/app/students/$id",
+                      params: { id: row.studentId },
+                    })
+                  }
+                >
+                  <div className={styles.card}>
+                    <Avatar size="lg" className={styles.avatar}>
+                      {student.photoUrl ? (
+                        <AvatarImage
+                          src={student.photoUrl}
+                          alt={student.name}
+                        />
+                      ) : null}
+                      <AvatarFallback>{initials}</AvatarFallback>
+                    </Avatar>
 
-                  <div className={styles.body}>
-                    <div className={styles.top}>
-                      <h3 className={styles.name}>{student.name}</h3>
-                      <div className={styles.badges}>
-                        {row.isTrial ? (
-                          <Badge appearance="subtle">
-                            {`Trial · ${row.trialSessionIds?.length ?? 0}/2`}
-                          </Badge>
-                        ) : (
-                          <Badge appearance="subtle">Enrolled</Badge>
-                        )}
-                        {row.monthlyUnpaid ? (
-                          <Badge appearance="subtle" variant="warning">
-                            Not paid
-                          </Badge>
-                        ) : null}
+                    <div className={styles.body}>
+                      <div className={styles.top}>
+                        <h3 className={styles.name}>{student.name}</h3>
+                        <div className={styles.badges}>
+                          {row.isTrial ? (
+                            <Badge appearance="subtle">
+                              {`Trial · ${row.trialSessionIds?.length ?? 0}/2`}
+                            </Badge>
+                          ) : (
+                            <Badge appearance="subtle">Enrolled</Badge>
+                          )}
+                          {row.monthlyUnpaid ? (
+                            <Badge appearance="subtle" variant="warning">
+                              Not paid
+                            </Badge>
+                          ) : null}
+                        </div>
                       </div>
-                    </div>
 
-                    <div className={styles.contacts}>
-                      <span className={styles.contact}>
-                        <Icon name="mail" className={styles.contactIcon} />
-                        <span className={styles.contactText}>
-                          {student.email}
-                        </span>
-                      </span>
-                      {student.phone ? (
+                      <div className={styles.contacts}>
                         <span className={styles.contact}>
-                          <Icon name="user" className={styles.contactIcon} />
+                          <Icon name="mail" className={styles.contactIcon} />
                           <span className={styles.contactText}>
-                            {student.phone}
+                            {student.email}
                           </span>
                         </span>
+                        {student.phone ? (
+                          <span className={styles.contact}>
+                            <Icon name="user" className={styles.contactIcon} />
+                            <span className={styles.contactText}>
+                              {student.phone}
+                            </span>
+                          </span>
+                        ) : null}
+                      </div>
+
+                      {styleList.length > 0 ? (
+                        <StyleList styles={styleList} size="xs" />
                       ) : null}
                     </div>
 
-                    {styleList.length > 0 ? (
-                      <StyleList styles={styleList} size="xs" />
-                    ) : null}
+                    <Icon name="chevron-right" className={styles.chevron} />
                   </div>
+                </PressableCard>
 
-                  <Icon name="chevron-right" className={styles.chevron} />
-                </div>
-              </PressableCard>
+                <TouchButton
+                  size="sm"
+                  variant="default"
+                  className={styles.switchBtn}
+                  data-testid={`switch-batch-${row.studentId}`}
+                  onClick={() => openSwitch(row)}
+                >
+                  Switch
+                </TouchButton>
+              </div>
             );
           })}
         </div>
       )}
+
+      <AppSheet
+        isOpen={switchStudent != null}
+        onOpenChange={(open) => {
+          if (!open) closeSwitch();
+        }}
+        title={
+          switchStudent
+            ? `Switch batch · ${switchStudent.student.name}`
+            : "Switch batch"
+        }
+      >
+        <div className={staff.sheetStack}>
+          {switchTargetsQuery.data?.subscription ? (
+            <p className={staff.rowMeta}>
+              Plan: {switchTargetsQuery.data.subscription.name}
+            </p>
+          ) : null}
+          {switchTargetsQuery.isLoading ? (
+            <p className={staff.rowMeta}>Loading batches…</p>
+          ) : null}
+          {switchTargetsQuery.isError ? (
+            <ErrorState
+              description={
+                switchTargetsQuery.error instanceof Error
+                  ? switchTargetsQuery.error.message
+                  : "Could not load target batches."
+              }
+              action={
+                <TouchButton
+                  variant="primary"
+                  onClick={() => switchTargetsQuery.refetch()}
+                >
+                  Try again
+                </TouchButton>
+              }
+            />
+          ) : null}
+          {switchTargetsQuery.data &&
+          switchTargetsQuery.data.targets.length === 0 ? (
+            <EmptyState
+              title="No eligible batches"
+              description={
+                switchTargetsQuery.data.reason ??
+                (switchTargetsQuery.data.isTrial
+                  ? "No other active batches in this category have open seats."
+                  : "No other batches offer this student’s current plan with open seats.")
+              }
+            />
+          ) : null}
+          {switchTargetsQuery.data &&
+          switchTargetsQuery.data.targets.length > 0 ? (
+            <div className={staff.list}>
+              {switchTargetsQuery.data.targets.map((target) => {
+                const selected = selectedTargetId === target.id;
+                return (
+                  <button
+                    key={target.id}
+                    type="button"
+                    className={`${staff.attentionCard} ${styles.targetPick}`}
+                    data-selected={selected ? "true" : undefined}
+                    data-testid={`switch-target-${target.id}`}
+                    onClick={() => setSelectedTargetId(target.id)}
+                  >
+                    <div className={staff.attentionTop}>
+                      <span className={staff.attentionTitle}>
+                        {target.name}
+                      </span>
+                      <Badge variant={selected ? "success" : "neutral"}>
+                        {selected
+                          ? "Selected"
+                          : `${target.remainingSeats} left`}
+                      </Badge>
+                    </div>
+                    <p className={staff.attentionMeta}>
+                      {target.branchName} ·{" "}
+                      {target.category === "KIDS" ? "Kids" : "Adults"}
+                    </p>
+                  </button>
+                );
+              })}
+            </div>
+          ) : null}
+          {switchBatch.isError ? (
+            <ErrorState
+              description={
+                switchBatch.error instanceof Error
+                  ? switchBatch.error.message
+                  : "Could not switch batch."
+              }
+            />
+          ) : null}
+          <div className={staff.sheetActions}>
+            <TouchButton
+              variant="primary"
+              fullWidth
+              isDisabled={!selectedTargetId || !switchStudent}
+              isPending={switchBatch.isPending}
+              data-testid="confirm-switch-batch"
+              onClick={() => {
+                if (switchStudent && selectedTargetId) {
+                  switchBatch.mutate({
+                    studentId: switchStudent.studentId,
+                    toBatchId: selectedTargetId,
+                  });
+                }
+              }}
+            >
+              Confirm switch
+            </TouchButton>
+            <TouchButton
+              variant="default"
+              fullWidth
+              isDisabled={switchBatch.isPending}
+              onClick={closeSwitch}
+            >
+              Cancel
+            </TouchButton>
+          </div>
+        </div>
+      </AppSheet>
     </div>
   );
 }

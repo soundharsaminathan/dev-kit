@@ -226,6 +226,14 @@ class EnrollStudentDto {
   isTrial?: boolean;
 }
 
+class SwitchBatchDto {
+  @IsString()
+  studentId!: string;
+
+  @IsString()
+  toBatchId!: string;
+}
+
 class RateBatchDto {
   @IsString()
   studentId!: string;
@@ -300,6 +308,18 @@ export class BatchesController {
     return this.batchesService.getRevenue(id);
   }
 
+  @Get(":id/switch-targets")
+  @Roles(UserRole.OWNER, UserRole.STAFF, UserRole.TRAINER)
+  listSwitchTargets(
+    @Param("id") id: string,
+    @Query("studentId") studentId?: string,
+  ) {
+    if (!studentId) {
+      throw new BadRequestException("studentId is required");
+    }
+    return this.batchesService.listSwitchTargets(id, studentId);
+  }
+
   @Get(":id")
   getById(@Param("id") id: string, @Query("studentId") studentId?: string) {
     return this.batchesService.getById(id, { studentId });
@@ -362,6 +382,12 @@ export class BatchesController {
     return this.batchesService.enroll(id, dto.studentId, actor, {
       isTrial: dto.isTrial,
     });
+  }
+
+  @Post(":id/switch")
+  @Roles(UserRole.OWNER, UserRole.STAFF, UserRole.TRAINER)
+  switchBatch(@Param("id") id: string, @Body() dto: SwitchBatchDto) {
+    return this.batchesService.switchBatch(id, dto.studentId, dto.toBatchId);
   }
 
   @Post(":id/rate")

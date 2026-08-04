@@ -71,4 +71,32 @@ describe("ScheduleConflictService", () => {
       }),
     ).resolves.toBeUndefined();
   });
+
+  it("excludes source and target batches when checking student availability", async () => {
+    prisma.session.findMany
+      .mockResolvedValueOnce([
+        {
+          startsAt: new Date("2026-07-20T10:00:00.000Z"),
+          endsAt: new Date("2026-07-20T11:00:00.000Z"),
+        },
+      ])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([]);
+    prisma.booking.findMany.mockResolvedValue([]);
+
+    await expect(
+      service.assertStudentAvailableForBatch("student-1", "batch-2", {
+        excludeBatchIds: ["batch-1"],
+      }),
+    ).resolves.toBeUndefined();
+
+    expect(prisma.session.findMany).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        where: expect.objectContaining({
+          batchId: { notIn: ["batch-2", "batch-1"] },
+        }),
+      }),
+    );
+  });
 });
