@@ -147,29 +147,39 @@ export function StyleSpreePicker({
           onPanEnd={() => setIsPanning(false)}
           className={styles.track}
         >
-          {rows.map((row) => (
-            <div key={row.map((s) => s.id).join("-")} className={styles.row}>
-              {row.map((style) => {
-                const selected = selectedLabels.has(style.label);
-                return (
-                  <motion.button
-                    key={style.id}
-                    type="button"
-                    whileTap={{ scale: 0.95 }}
-                    transition={{ type: "spring", stiffness: 260, damping: 18 }}
-                    onClick={() => toggleStyle(style.label, style.emoji)}
-                    className={`${styles.chip} ${
-                      selected ? styles.chipSelected : ""
-                    }`}
-                    aria-pressed={selected}
-                  >
-                    <span className={styles.chipEmoji}>{style.emoji}</span>
-                    <span>{style.label}</span>
-                  </motion.button>
-                );
-              })}
-            </div>
-          ))}
+          {rows.map((row, rowIndex) => {
+            if (row.length === 0) return null;
+            return (
+              <div
+                key={row.map((s) => s.id).join("-") || `row-${rowIndex}`}
+                className={styles.row}
+              >
+                {row.map((style, styleIndex) => {
+                  const selected = selectedLabels.has(style.label);
+                  return (
+                    <motion.button
+                      key={style.id || `${style.label}-${styleIndex}`}
+                      type="button"
+                      whileTap={{ scale: 0.95 }}
+                      transition={{
+                        type: "spring",
+                        stiffness: 260,
+                        damping: 18,
+                      }}
+                      onClick={() => toggleStyle(style.label, style.emoji)}
+                      className={`${styles.chip} ${
+                        selected ? styles.chipSelected : ""
+                      }`}
+                      aria-pressed={selected}
+                    >
+                      <span className={styles.chipEmoji}>{style.emoji}</span>
+                      <span>{style.label}</span>
+                    </motion.button>
+                  );
+                })}
+              </div>
+            );
+          })}
         </motion.div>
       </motion.div>
 

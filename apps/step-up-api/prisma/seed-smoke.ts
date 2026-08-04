@@ -16,7 +16,6 @@ import {
   MembershipStatus,
   MessageType,
   type Prisma,
-  PrismaClient,
   ProfileVisibility,
   SessionStatus,
   SessionType,
@@ -26,6 +25,7 @@ import {
 import { SAMPLE_CERTIFICATE_LAYOUT } from "../src/certificates/certificate-layout";
 import { ChatCryptoService } from "../src/chat/chat-crypto.service";
 import { UserCryptoService } from "../src/users/user-crypto.service";
+import { createScriptPrismaClient, withDbRetry } from "./script-db";
 
 /**
  * Isolated studio for deployed Playwright smoke against the real DB.
@@ -33,9 +33,9 @@ import { UserCryptoService } from "../src/users/user-crypto.service";
  *   pnpm --filter @step-up/api prisma:seed:smoke
  */
 
-const prisma = new PrismaClient();
 const crypto = new UserCryptoService(new ConfigService());
 const chatCrypto = new ChatCryptoService(new ConfigService());
+let prisma = createScriptPrismaClient();
 
 export const SMOKE = {
   studioId: "studio-smoke-1",
@@ -906,11 +906,16 @@ async function main() {
   );
 }
 
-main()
+withDbRetry("smoke seed", async () => {
+  await prisma.$disconnect().catch(() => undefined);
+  prisma = createScriptPrismaClient();
+  await prisma.$connect();
+  await main();
+})
   .catch((error) => {
     console.error(error);
     process.exitCode = 1;
   })
   .finally(async () => {
-    await prisma.$disconnect();
+    await prisma.$disconnect().catch(() => undefined);
   });

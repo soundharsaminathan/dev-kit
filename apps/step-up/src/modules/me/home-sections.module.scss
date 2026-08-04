@@ -5,6 +5,7 @@
   flex-direction: column;
   justify-content: flex-end;
   gap: var(--space-3, 0.75rem);
+  aspect-ratio: 16 / 9;
   min-height: 14.5rem;
   margin-inline: calc(-1 * var(--space-4, 1rem));
   margin-block-start: calc(-1 * var(--space-3, 0.75rem));
@@ -622,6 +623,7 @@
     margin-inline: calc(-1 * var(--space-6, 1.5rem));
     margin-block-start: calc(-1 * var(--space-4, 1rem));
     padding-inline: var(--space-6, 1.5rem);
+    aspect-ratio: 3 / 1;
     min-height: 16.5rem;
     border-radius: 0 0 var(--radius-2xl, 1.25rem) var(--radius-2xl, 1.25rem);
   }

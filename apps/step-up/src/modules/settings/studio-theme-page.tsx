@@ -1,14 +1,14 @@
 import { useQuery } from "@tanstack/react-query";
 import { useApi } from "@/lib/api-context";
 import { useStudioId } from "@/lib/use-studio-id";
-import { BrandingPanel } from "@/modules/branding/branding-panel";
+import { ThemePanel } from "@/modules/branding/theme-panel";
 import { Screen } from "@/modules/ui/screen";
 import { SkeletonBlock } from "@/modules/ui/skeleton-block";
 import { EmptyState, ErrorState } from "@/modules/ui/states";
 import { TouchButton } from "@/modules/ui/touch-button";
 import type { Studio } from "./types";
 
-export function StudioBrandingPage() {
+export function StudioThemePage() {
   const api = useApi();
   const studioId = useStudioId();
 
@@ -19,8 +19,8 @@ export function StudioBrandingPage() {
 
   return (
     <Screen
-      title="Branding"
-      subtitle="Logo and member home hero images."
+      title="Theme"
+      subtitle="Studio colors for members and staff."
       showBack
       backTo="/app/settings"
     >
@@ -33,7 +33,7 @@ export function StudioBrandingPage() {
           description={
             studioQuery.error instanceof Error
               ? studioQuery.error.message
-              : "Unable to load branding."
+              : "Unable to load theme."
           }
           action={
             <TouchButton
@@ -49,16 +49,14 @@ export function StudioBrandingPage() {
       {studioQuery.isFetched && !studioQuery.data ? (
         <EmptyState
           title="Studio not found"
-          description="Unable to load branding."
+          description="Unable to load theme."
         />
       ) : null}
 
       {studioQuery.data ? (
-        <BrandingPanel
+        <ThemePanel
           studioName={studioQuery.data.name}
-          logoUrl={studioQuery.data.logoUrl ?? null}
-          heroMobileUrl={studioQuery.data.heroMobileUrl ?? null}
-          heroDesktopUrl={studioQuery.data.heroDesktopUrl ?? null}
+          brandTheme={studioQuery.data.brandTheme ?? null}
         />
       ) : null}
     </Screen>

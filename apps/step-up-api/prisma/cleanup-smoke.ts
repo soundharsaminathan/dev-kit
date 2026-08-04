@@ -1,5 +1,5 @@
 import "dotenv/config";
-import { PrismaClient } from "@prisma/client";
+import { createScriptPrismaClient, withDbRetry } from "./script-db";
 
 /**
  * Removes run-created transactional data for the smoke studio while keeping
@@ -8,7 +8,7 @@ import { PrismaClient } from "@prisma/client";
  *   pnpm --filter @step-up/api prisma:cleanup:smoke
  */
 
-const prisma = new PrismaClient();
+let prisma = createScriptPrismaClient();
 
 const STUDIO_ID = "studio-smoke-1";
 const SEED_USER_IDS = [
@@ -304,11 +304,16 @@ async function main() {
   console.log(`Smoke cleanup complete for ${STUDIO_ID}`);
 }
 
-main()
+withDbRetry("smoke cleanup", async () => {
+  await prisma.$disconnect().catch(() => undefined);
+  prisma = createScriptPrismaClient();
+  await prisma.$connect();
+  await main();
+})
   .catch((error) => {
     console.error(error);
     process.exitCode = 1;
   })
   .finally(async () => {
-    await prisma.$disconnect();
+    await prisma.$disconnect().catch(() => undefined);
   });

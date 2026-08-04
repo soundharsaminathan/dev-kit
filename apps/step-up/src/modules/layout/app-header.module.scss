@@ -12,9 +12,24 @@
   min-width: 0;
 }
 
+.brandMark {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
 .brandLabel {
   font-weight: 700;
   letter-spacing: -0.02em;
+}
+
+.brandLogo {
+  display: block;
+  width: auto;
+  max-width: 8rem;
+  height: 1.75rem;
+  object-fit: contain;
+  object-position: left center;
 }
 
 .actions {

@@ -7,10 +7,10 @@ import {
   SidebarProvider,
   useSidebarContext,
 } from "@dev-ui/components/sidebar";
-import { Text } from "@dev-ui/components/text";
 import { useRouterState } from "@tanstack/react-router";
 import { type ReactNode, useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
+import { StudioBrandMark } from "@/modules/branding/studio-brand-mark";
 import { AppHeader } from "@/modules/layout/app-header";
 import { BottomToolbar } from "@/modules/layout/bottom-toolbar";
 import { SidebarNavSections } from "@/modules/layout/nav";
@@ -122,13 +122,11 @@ export function AppShell({ variant, children }: AppShellProps) {
       <div className={styles.sidebarWrap}>
         <Sidebar placement="left">
           <SidebarHeader>
-            <Text
-              slot="label"
-              data-sidebar-label=""
-              className={styles.sidebarTitle}
-            >
-              Step Up
-            </Text>
+            <StudioBrandMark
+              className={styles.sidebarBrand}
+              labelClassName={styles.sidebarTitle}
+              logoClassName={styles.sidebarLogo}
+            />
             <SidebarToggle />
           </SidebarHeader>
           <SidebarContent>

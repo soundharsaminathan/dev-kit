@@ -4,6 +4,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { BrandingPanel } from "./branding-panel";
+import { ThemePanel } from "./theme-panel";
 
 const setLiveTheme = vi.fn();
 const setMode = vi.fn();
@@ -72,6 +73,10 @@ vi.mock("@/modules/social/upload", () => ({
   uploadSocialPhoto: vi.fn(),
 }));
 
+vi.mock("@/modules/ui/image-crop-sheet", () => ({
+  ImageCropSheet: () => null,
+}));
+
 vi.mock("@/modules/ui/touch-button", () => ({
   TouchButton: ({
     children,
@@ -109,39 +114,43 @@ describe("BrandingPanel", () => {
     patch.mockResolvedValue({});
   });
 
-  it("marks branding as editing and previews the live theme", () => {
+  it("shows logo and hero uploads without theme controls", () => {
     render(
       <Wrapper>
-        <BrandingPanel studioName="Acme Dance" brandTheme={null} />
+        <BrandingPanel studioName="Acme Dance" />
+      </Wrapper>,
+    );
+
+    expect(screen.getByRole("button", { name: "Upload logo" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Upload mobile" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Upload desktop" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Save theme" })).toBeNull();
+    expect(setEditing).not.toHaveBeenCalled();
+  });
+});
+
+describe("ThemePanel", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    patch.mockResolvedValue({});
+  });
+
+  it("marks theme as editing and previews the live theme", () => {
+    render(
+      <Wrapper>
+        <ThemePanel studioName="Acme Dance" brandTheme={null} />
       </Wrapper>,
     );
 
     expect(setEditing).toHaveBeenCalledWith(true);
     expect(setLiveTheme).toHaveBeenCalled();
-    expect(screen.getByRole("button", { name: "Upload logo" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Save theme" })).toBeTruthy();
-  });
-
-  it("does not claim brand editing when theme UI is hidden", () => {
-    render(
-      <Wrapper>
-        <BrandingPanel
-          studioName="Acme Dance"
-          brandTheme={null}
-          showTheme={false}
-        />
-      </Wrapper>,
-    );
-
-    expect(setEditing).not.toHaveBeenCalled();
-    expect(setLiveTheme).not.toHaveBeenCalled();
-    expect(screen.queryByRole("button", { name: "Save theme" })).toBeNull();
   });
 
   it("saves the current draft as brandTheme", async () => {
     render(
       <Wrapper>
-        <BrandingPanel studioName="Acme Dance" brandTheme={null} />
+        <ThemePanel studioName="Acme Dance" brandTheme={null} />
       </Wrapper>,
     );
 
@@ -163,7 +172,7 @@ describe("BrandingPanel", () => {
   it("resets brandTheme to null", async () => {
     render(
       <Wrapper>
-        <BrandingPanel
+        <ThemePanel
           studioName="Acme Dance"
           brandTheme={{
             label: "Custom",
