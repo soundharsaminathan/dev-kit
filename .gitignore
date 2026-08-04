@@ -30,6 +30,9 @@ Thumbs.db
 !.env.example
 !**/.env.example
 
+# Local scratch / smoke artifacts
+tmp/
+
 # Logs
 *.log
 vitest-output.json
