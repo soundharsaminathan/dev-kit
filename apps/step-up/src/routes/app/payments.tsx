@@ -2,11 +2,15 @@ import { Avatar, AvatarFallback, AvatarImage } from "@dev-ui/components/avatar";
 import {
   Area,
   AreaChart,
+  Bar,
+  BarChart,
   CartesianGrid,
   type ChartConfig,
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
+  Line,
+  LineChart,
   XAxis,
   YAxis,
 } from "@dev-ui/components/chart";
@@ -22,6 +26,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@dev-ui/components/select";
+import { ToggleButton } from "@dev-ui/components/toggle-button";
+import { ToggleButtonGroup } from "@dev-ui/components/toggle-button-group";
 import type { IconName } from "@dev-ui/icons";
 import { Icon } from "@dev-ui/icons";
 import { useQuery } from "@tanstack/react-query";
@@ -120,12 +126,19 @@ type TrainerPaymentAnalytics = {
 };
 
 type RangePreset = "all" | "7d" | "30d" | "month" | "3m" | "1y" | "custom";
+type ChartType = "bar" | "area" | "line";
 
 const TREND_CHIPS = [
   { id: "7d", label: "7D" },
   { id: "30d", label: "30D" },
   { id: "3m", label: "3M" },
   { id: "1y", label: "1Y" },
+] as const;
+
+const CHART_TYPES = [
+  { id: "bar", label: "Bar", icon: "chart-bar" as const },
+  { id: "area", label: "Area", icon: "activity" as const },
+  { id: "line", label: "Line", icon: "chart-line" as const },
 ] as const;
 
 const PERIOD_OPTIONS = [
@@ -286,6 +299,7 @@ function PaymentsPage() {
     useState<string>(ALL_TRAINERS_ID);
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
+  const [chartType, setChartType] = useState<ChartType>("bar");
 
   const rangePreset = detectPreset(fromDate, toDate);
   const bucket = bucketForPreset(rangePreset);
@@ -688,10 +702,38 @@ function PaymentsPage() {
                 />
               </div>
 
-              <div className={styles.analyticsGrid}>
-                <section className={styles.panel}>
-                  <div className={styles.panelHead}>
-                    <p className={styles.panelTitle}>Revenue trend</p>
+              <section className={styles.panel} aria-label="Revenue trend">
+                <div className={styles.panelHead}>
+                  <p className={styles.panelTitle}>Revenue trend</p>
+                  <div className={styles.panelControls}>
+                    <ToggleButtonGroup
+                      aria-label="Chart type"
+                      selectionMode="single"
+                      selectedKeys={[chartType]}
+                      disallowEmptySelection
+                      size="sm"
+                      isIconOnly
+                      onSelectionChange={(keys) => {
+                        const next = String([...keys][0] ?? "");
+                        if (
+                          next === "bar" ||
+                          next === "area" ||
+                          next === "line"
+                        ) {
+                          setChartType(next);
+                        }
+                      }}
+                    >
+                      {CHART_TYPES.map((type) => (
+                        <ToggleButton
+                          key={type.id}
+                          id={type.id}
+                          aria-label={type.label}
+                        >
+                          <Icon name={type.icon} />
+                        </ToggleButton>
+                      ))}
+                    </ToggleButtonGroup>
                     <FilterChipRow
                       chips={[...TREND_CHIPS]}
                       selected={[
@@ -705,95 +747,16 @@ function PaymentsPage() {
                       onToggle={applyPreset}
                     />
                   </div>
-                  {chartData.length === 0 ? (
-                    <EmptyState
-                      title="No revenue yet"
-                      description="Paid invoices in this range will appear here."
-                    />
-                  ) : (
-                    <ChartContainer
-                      config={revenueChartConfig}
-                      className={styles.chart}
-                      aria-label="Revenue trend chart"
-                    >
-                      <AreaChart data={chartData} accessibilityLayer>
-                        <CartesianGrid vertical={false} />
-                        <XAxis
-                          dataKey="label"
-                          tickLine={false}
-                          axisLine={false}
-                          minTickGap={24}
-                        />
-                        <YAxis
-                          tickLine={false}
-                          axisLine={false}
-                          width={48}
-                          tickFormatter={(value: number) =>
-                            formatCompactInr(value)
-                          }
-                        />
-                        <ChartTooltip
-                          content={
-                            <ChartTooltipContent
-                              formatter={(value) =>
-                                formatInr(Number(value ?? 0))
-                              }
-                            />
-                          }
-                        />
-                        <Area
-                          type="monotone"
-                          dataKey="netCollected"
-                          stroke="var(--color-netCollected)"
-                          fill="var(--color-netCollected)"
-                          fillOpacity={0.18}
-                          strokeWidth={2}
-                        />
-                      </AreaChart>
-                    </ChartContainer>
-                  )}
-                </section>
-
-                <section className={styles.panel}>
-                  <p className={styles.panelTitle}>Payment methods</p>
-                  <div className={styles.methodList}>
-                    {(["CASH", "UPI_MANUAL", "RAZORPAY"] as const).map(
-                      (method) => {
-                        const entry = data.byPaymentMethod[method];
-                        const pct =
-                          methodTotal > 0
-                            ? Math.round((entry.amount / methodTotal) * 100)
-                            : 0;
-                        return (
-                          <div key={method} className={styles.methodRow}>
-                            <div className={styles.methodMeta}>
-                              <span className={styles.methodName}>
-                                {METHOD_LABELS[method]} · {pct}%
-                              </span>
-                              <span className={styles.methodAmount}>
-                                {formatInr(entry.amount)} · {entry.count}
-                              </span>
-                            </div>
-                            <div
-                              className={styles.methodBar}
-                              data-method={method}
-                            >
-                              <ProgressBar
-                                value={pct}
-                                aria-label={`${METHOD_LABELS[method]} share`}
-                              >
-                                <ProgressBarTrack>
-                                  <ProgressBarFill />
-                                </ProgressBarTrack>
-                              </ProgressBar>
-                            </div>
-                          </div>
-                        );
-                      },
-                    )}
-                  </div>
-                </section>
-              </div>
+                </div>
+                {chartData.length === 0 ? (
+                  <EmptyState
+                    title="No revenue yet"
+                    description="Paid invoices in this range will appear here."
+                  />
+                ) : (
+                  <RevenueChart data={chartData} type={chartType} />
+                )}
+              </section>
 
               <section className={styles.panel}>
                 <p className={styles.panelTitle}>Batch performance</p>
@@ -851,11 +814,138 @@ function PaymentsPage() {
                   </ul>
                 )}
               </section>
+
+              <section className={styles.panel}>
+                <p className={styles.panelTitle}>Payment methods</p>
+                <div className={styles.methodList}>
+                  {(["CASH", "UPI_MANUAL", "RAZORPAY"] as const).map(
+                    (method) => {
+                      const entry = data.byPaymentMethod[method];
+                      const pct =
+                        methodTotal > 0
+                          ? Math.round((entry.amount / methodTotal) * 100)
+                          : 0;
+                      return (
+                        <div key={method} className={styles.methodRow}>
+                          <div className={styles.methodMeta}>
+                            <span className={styles.methodName}>
+                              {METHOD_LABELS[method]} · {pct}%
+                            </span>
+                            <span className={styles.methodAmount}>
+                              {formatInr(entry.amount)} · {entry.count}
+                            </span>
+                          </div>
+                          <div
+                            className={styles.methodBar}
+                            data-method={method}
+                          >
+                            <ProgressBar
+                              value={pct}
+                              aria-label={`${METHOD_LABELS[method]} share`}
+                            >
+                              <ProgressBarTrack>
+                                <ProgressBarFill />
+                              </ProgressBarTrack>
+                            </ProgressBar>
+                          </div>
+                        </div>
+                      );
+                    },
+                  )}
+                </div>
+              </section>
             </>
           ) : null}
         </div>
       </PullToRefresh>
     </Screen>
+  );
+}
+
+function RevenueChartAxes() {
+  return (
+    <>
+      <CartesianGrid vertical={false} />
+      <XAxis
+        dataKey="label"
+        tickLine={false}
+        axisLine={false}
+        minTickGap={24}
+      />
+      <YAxis
+        tickLine={false}
+        axisLine={false}
+        width={48}
+        tickFormatter={(value: number) => formatCompactInr(value)}
+      />
+      <ChartTooltip
+        content={
+          <ChartTooltipContent
+            formatter={(value) => formatInr(Number(value ?? 0))}
+          />
+        }
+      />
+    </>
+  );
+}
+
+function RevenueChart({
+  data,
+  type,
+}: {
+  data: Array<{
+    label: string;
+    netCollected: number;
+    collected: number;
+    invoiceCount: number;
+  }>;
+  type: ChartType;
+}) {
+  const chart =
+    type === "bar" ? (
+      <BarChart data={data} accessibilityLayer>
+        <RevenueChartAxes />
+        <Bar
+          dataKey="netCollected"
+          fill="var(--color-netCollected)"
+          radius={[6, 6, 0, 0]}
+          maxBarSize={48}
+        />
+      </BarChart>
+    ) : type === "area" ? (
+      <AreaChart data={data} accessibilityLayer>
+        <RevenueChartAxes />
+        <Area
+          type="monotone"
+          dataKey="netCollected"
+          stroke="var(--color-netCollected)"
+          fill="var(--color-netCollected)"
+          fillOpacity={0.18}
+          strokeWidth={2}
+        />
+      </AreaChart>
+    ) : (
+      <LineChart data={data} accessibilityLayer>
+        <RevenueChartAxes />
+        <Line
+          type="monotone"
+          dataKey="netCollected"
+          stroke="var(--color-netCollected)"
+          strokeWidth={2}
+          dot={false}
+          activeDot={{ r: 4 }}
+        />
+      </LineChart>
+    );
+
+  return (
+    <ChartContainer
+      config={revenueChartConfig}
+      className={styles.chart}
+      aria-label="Revenue trend chart"
+    >
+      {chart}
+    </ChartContainer>
   );
 }
 
