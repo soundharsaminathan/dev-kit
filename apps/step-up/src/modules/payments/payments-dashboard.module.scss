@@ -211,6 +211,15 @@
   gap: var(--space-2, 0.5rem);
 }
 
+.panelControls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2, 0.5rem);
+  margin-left: auto;
+}
+
 .panelTitle {
   margin: 0;
   font-size: 0.8125rem;
@@ -222,8 +231,9 @@
 
 .chart {
   width: 100%;
-  min-height: 14rem;
-  aspect-ratio: 16 / 9;
+  min-height: 16rem;
+  aspect-ratio: 21 / 9;
+  max-height: 22rem;
 }
 
 .methodList {
@@ -319,18 +329,20 @@
   color: color-mix(in srgb, var(--color-fg) 55%, transparent);
 }
 
-.analyticsGrid {
-  display: grid;
-  gap: var(--space-3, 0.75rem);
-}
-
 @media (min-width: 900px) {
   .kpiGrid {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
-  .analyticsGrid {
-    grid-template-columns: 1.4fr 1fr;
+  .chart {
+    min-height: 18rem;
+    max-height: 24rem;
+  }
+
+  .methodList {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--space-4, 1rem);
   }
 }
 
