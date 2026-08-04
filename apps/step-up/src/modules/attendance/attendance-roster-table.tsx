@@ -54,18 +54,10 @@ function StatusBadge({
   status: AttendanceStatusValue | "UNMARKED";
 }) {
   if (status === "PRESENT") {
-    return (
-      <Badge appearance="subtle" variant="success">
-        Present
-      </Badge>
-    );
+    return <Badge variant="success">Present</Badge>;
   }
   if (status === "ABSENT") {
-    return (
-      <Badge appearance="subtle" variant="danger">
-        Absent
-      </Badge>
-    );
+    return <Badge variant="danger">Absent</Badge>;
   }
   return (
     <Badge appearance="subtle" variant="warning">

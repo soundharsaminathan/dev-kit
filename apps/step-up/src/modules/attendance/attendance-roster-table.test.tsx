@@ -141,3 +141,55 @@ describe("AttendanceRosterTable selection", () => {
     expect(screen.queryByText(/selected/i)).toBeNull();
   });
 });
+
+describe("AttendanceRosterTable status filters", () => {
+  it("filters roster by Present / Unmarked / Absent chips", () => {
+    const absentRoster: AttendanceRosterEntry[] = [
+      ...roster,
+      {
+        studentId: "s3",
+        student: { name: "Kathleen McNulty" },
+        attendance: {
+          id: "a2",
+          status: "ABSENT",
+          source: "DESK",
+        },
+      },
+    ];
+    renderTable({ roster: absentRoster, unmarkedCount: 1 });
+
+    expect(screen.getByText("Ada Lovelace")).toBeInTheDocument();
+    expect(screen.getByText("Grace Hopper")).toBeInTheDocument();
+    expect(screen.getByText("Kathleen McNulty")).toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Present", pressed: false }),
+    );
+    expect(screen.queryByText("Ada Lovelace")).toBeNull();
+    expect(screen.getByText("Grace Hopper")).toBeInTheDocument();
+    expect(screen.queryByText("Kathleen McNulty")).toBeNull();
+    expect(screen.getByText(/Showing 1 of 3/)).toBeInTheDocument();
+    expect(screen.getByText(/filter: Present/)).toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Unmarked", pressed: false }),
+    );
+    expect(screen.getByText("Ada Lovelace")).toBeInTheDocument();
+    expect(screen.queryByText("Grace Hopper")).toBeNull();
+    expect(screen.queryByText("Kathleen McNulty")).toBeNull();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Absent", pressed: false }),
+    );
+    expect(screen.queryByText("Ada Lovelace")).toBeNull();
+    expect(screen.queryByText("Grace Hopper")).toBeNull();
+    expect(screen.getByText("Kathleen McNulty")).toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "All", pressed: false }),
+    );
+    expect(screen.getByText("Ada Lovelace")).toBeInTheDocument();
+    expect(screen.getByText("Grace Hopper")).toBeInTheDocument();
+    expect(screen.getByText("Kathleen McNulty")).toBeInTheDocument();
+  });
+});
