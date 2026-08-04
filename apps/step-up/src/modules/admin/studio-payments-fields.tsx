@@ -1,4 +1,16 @@
 import { FormInput } from "@/modules/ui/form-input";
+import styles from "./studio-payments-fields.module.scss";
+
+const API_KEY_FIELD = {
+  autoComplete: "off",
+  autoCorrect: "off",
+  autoCapitalize: "off",
+  spellCheck: false,
+  "data-1p-ignore": true,
+  "data-lpignore": "true",
+  "data-bwignore": true,
+  "data-form-type": "other",
+} as const;
 
 export type StudioPaymentsFieldsProps = {
   razorpayKeyId: string;
@@ -37,18 +49,21 @@ export function StudioPaymentsFields({
       </p>
       <FormInput
         label="Razorpay key ID"
+        name="razorpayKeyId"
         value={razorpayKeyId || savedKeyId}
         onChange={onKeyIdChange}
         placeholder="rzp_test_… or rzp_live_…"
-        autoComplete="off"
+        {...API_KEY_FIELD}
       />
       <FormInput
         label="Razorpay key secret"
-        type="password"
+        name="razorpayKeySecret"
+        type="text"
         value={razorpayKeySecret}
         onChange={onKeySecretChange}
         placeholder={secretPlaceholder}
-        autoComplete="new-password"
+        className={styles.secret}
+        {...API_KEY_FIELD}
       />
       <p className={descClassName}>
         {configured && !razorpayKeySecret

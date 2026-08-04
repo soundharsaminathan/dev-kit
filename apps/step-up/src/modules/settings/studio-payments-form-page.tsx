@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { useApi } from "@/lib/api-context";
 import { useStudioId } from "@/lib/use-studio-id";
-import { FormInput } from "@/modules/ui/form-input";
+import { StudioPaymentsFields } from "@/modules/admin/studio-payments-fields";
 import { Screen } from "@/modules/ui/screen";
 import { SkeletonBlock } from "@/modules/ui/skeleton-block";
 import staff from "@/modules/ui/staff.module.scss";
@@ -91,10 +91,6 @@ export function StudioPaymentsFormPage() {
     },
   });
 
-  const secretPlaceholder = configured
-    ? "•••••••••••• (saved — enter a new secret to replace)"
-    : "Paste Razorpay key secret";
-
   return (
     <>
       <Screen
@@ -135,41 +131,31 @@ export function StudioPaymentsFormPage() {
 
         {studioQuery.data ? (
           <div className={staff.softPanel}>
-            <p className={staff.panelTitle}>Razorpay</p>
-            <p className={staff.panelDesc}>
-              {configured
-                ? "Studio keys are saved. The secret stays hidden after save."
-                : "Add both key ID and secret to enable live checkout (otherwise demo mode)."}
-            </p>
             {savedSecret ? (
               <SuccessState
                 title="Secret saved"
                 description="Stored securely. The field stays empty on purpose — it is never shown again."
               />
             ) : null}
-            <FormInput
-              label="Razorpay key ID"
-              value={razorpayKeyId || savedKeyId}
-              onChange={setRazorpayKeyId}
-              placeholder="rzp_test_… or rzp_live_…"
-              autoComplete="off"
-            />
-            <FormInput
-              label="Razorpay key secret"
-              type="password"
-              value={razorpayKeySecret}
-              onChange={(value) => {
+            <StudioPaymentsFields
+              titleClassName={staff.panelTitle}
+              descClassName={staff.panelDesc}
+              razorpayKeyId={razorpayKeyId}
+              razorpayKeySecret={razorpayKeySecret}
+              savedKeyId={savedKeyId}
+              configured={configured}
+              onKeyIdChange={setRazorpayKeyId}
+              onKeySecretChange={(value) => {
                 setSavedSecret(false);
                 setRazorpayKeySecret(value);
               }}
-              placeholder={secretPlaceholder}
-              autoComplete="new-password"
             />
-            <p className={staff.panelDesc}>
-              {configured && !razorpayKeySecret
-                ? "A secret is already on file. Leave blank to keep it, or paste a new one to replace. Key ID and secret must be a matching pair from the same Razorpay mode (test or live)."
-                : "Paste Key ID and Key Secret from the same Razorpay API Keys page. The secret is never shown again after save."}
-            </p>
+            {configured && !razorpayKeySecret ? (
+              <p className={staff.panelDesc}>
+                Key ID and secret must be a matching pair from the same Razorpay
+                mode (test or live).
+              </p>
+            ) : null}
             {updateSettings.isError ? (
               <ErrorState
                 description={
