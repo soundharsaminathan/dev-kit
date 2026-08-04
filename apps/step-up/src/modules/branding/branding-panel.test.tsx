@@ -122,6 +122,22 @@ describe("BrandingPanel", () => {
     expect(screen.getByRole("button", { name: "Save theme" })).toBeTruthy();
   });
 
+  it("does not claim brand editing when theme UI is hidden", () => {
+    render(
+      <Wrapper>
+        <BrandingPanel
+          studioName="Acme Dance"
+          brandTheme={null}
+          showTheme={false}
+        />
+      </Wrapper>,
+    );
+
+    expect(setEditing).not.toHaveBeenCalled();
+    expect(setLiveTheme).not.toHaveBeenCalled();
+    expect(screen.queryByRole("button", { name: "Save theme" })).toBeNull();
+  });
+
   it("saves the current draft as brandTheme", async () => {
     render(
       <Wrapper>

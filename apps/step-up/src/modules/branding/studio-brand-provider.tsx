@@ -30,14 +30,16 @@ export function StudioBrandProvider({ children }: { children: ReactNode }) {
 
   useLayoutEffect(() => {
     if (isEditing) return;
+    if (!studioId) return;
+    if (!studioQuery.isSuccess) return;
 
-    if (brandTheme && studioId) {
+    if (brandTheme) {
       setLiveTheme(brandThemeToDefinition(brandTheme, studioId));
       return;
     }
 
     setLiveTheme(null);
-  }, [brandTheme, isEditing, setLiveTheme, studioId]);
+  }, [brandTheme, isEditing, setLiveTheme, studioId, studioQuery.isSuccess]);
 
   return children;
 }

@@ -14,6 +14,7 @@ import {
   draftToBrandTheme,
 } from "@/modules/branding/brand-theme";
 import { BrandingPanel } from "@/modules/branding/branding-panel";
+import { useStudioBrandEdit } from "@/modules/branding/studio-brand-edit-context";
 import type { StudioBrandThemePayload } from "@/modules/branding/types";
 import type { Studio } from "@/modules/settings/types";
 import { FormInput } from "@/modules/ui/form-input";
@@ -63,6 +64,7 @@ export function StudioWizard(props: StudioWizardProps) {
   const queryClient = useQueryClient();
   const { toast } = useToastContext("StudioWizard");
   const { setLiveTheme, mode, setMode } = useTheme();
+  const { setEditing } = useStudioBrandEdit();
   const isCreate = props.mode === "create";
   const studio = props.mode === "edit" ? props.studio : null;
 
@@ -101,19 +103,19 @@ export function StudioWizard(props: StudioWizardProps) {
     setDraft(brandThemeToDraft(studio.brandTheme, studio.name));
   }, [studio]);
 
+  useEffect(() => {
+    setEditing(true);
+    return () => {
+      setEditing(false);
+    };
+  }, [setEditing]);
+
   const previewThemeId = studio?.id ? `studio-${studio.id}` : "studio-preview";
 
   useLayoutEffect(() => {
     if (step !== 1) return;
     setLiveTheme(themeDraftToDefinition(draft, previewThemeId));
   }, [draft, previewThemeId, setLiveTheme, step]);
-
-  useEffect(() => {
-    return () => {
-      setLiveTheme(null);
-    };
-  }, [setLiveTheme]);
-
   const detailsValid =
     name.trim().length > 0 &&
     (isCreate
@@ -232,6 +234,17 @@ export function StudioWizard(props: StudioWizardProps) {
     onSuccess: () => {
       setFormError(null);
       setRazorpayKeySecret("");
+      const nextBrandTheme = draftToBrandTheme(draft);
+      if (studio?.id) {
+        queryClient.setQueryData(
+          ["studio", studio.id],
+          (
+            current:
+              | { brandTheme?: StudioBrandThemePayload | null }
+              | undefined,
+          ) => (current ? { ...current, brandTheme: nextBrandTheme } : current),
+        );
+      }
       void queryClient.invalidateQueries({ queryKey: ["admin", "studios"] });
       void queryClient.invalidateQueries({
         queryKey: ["admin", "studio", studio?.id],
