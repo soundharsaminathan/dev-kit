@@ -1,4 +1,3 @@
-import { Badge } from "@dev-ui/components/badge";
 import {
   Area,
   AreaChart,
@@ -15,7 +14,6 @@ import {
   ProgressBarFill,
   ProgressBarTrack,
 } from "@dev-ui/components/progress-bar";
-import { SearchField } from "@dev-ui/components/search-field";
 import {
   Select,
   SelectContent,
@@ -23,25 +21,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@dev-ui/components/select";
-import { useToastContext } from "@dev-ui/components/toast";
 import type { IconName } from "@dev-ui/icons";
 import { Icon } from "@dev-ui/icons";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useApi } from "@/lib/api-context";
 import { useAuth } from "@/lib/auth";
 import { ENTITY_ICONS } from "@/lib/entity-icons";
 import { useStudioId } from "@/lib/use-studio-id";
-import { CreateInvoiceSheet } from "@/modules/payments/create-invoice-sheet";
 import styles from "@/modules/payments/payments-dashboard.module.scss";
-import { AppSheet } from "@/modules/ui/app-sheet";
 import { FilterChipRow } from "@/modules/ui/filter-chip-row";
 import { FormInput } from "@/modules/ui/form-input";
 import { PullToRefresh } from "@/modules/ui/pull-to-refresh";
 import { Screen } from "@/modules/ui/screen";
 import { SkeletonBlock, SkeletonCardList } from "@/modules/ui/skeleton-block";
-import staff from "@/modules/ui/staff.module.scss";
 import { EmptyState, ErrorState } from "@/modules/ui/states";
 import { TouchButton } from "@/modules/ui/touch-button";
 
@@ -123,7 +117,6 @@ type TrainerPaymentAnalytics = {
 };
 
 type RangePreset = "all" | "7d" | "30d" | "month" | "3m" | "1y" | "custom";
-type PaymentMethodChoice = "CASH" | "UPI_MANUAL";
 
 const TREND_CHIPS = [
   { id: "7d", label: "7D" },
@@ -209,33 +202,6 @@ function formatCompactInr(amount: number) {
   }).format(amount);
 }
 
-function formatDueDate(value: string | null) {
-  if (!value) {
-    return "No due date";
-  }
-  const due = new Date(value);
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const dueDay = new Date(due);
-  dueDay.setHours(0, 0, 0, 0);
-  const diffDays = Math.round(
-    (dueDay.getTime() - today.getTime()) / (24 * 60 * 60 * 1000),
-  );
-  if (diffDays === 0) {
-    return "Today";
-  }
-  if (diffDays === 1) {
-    return "Tomorrow";
-  }
-  if (diffDays === -1) {
-    return "Yesterday";
-  }
-  return new Intl.DateTimeFormat(undefined, {
-    month: "short",
-    day: "numeric",
-  }).format(due);
-}
-
 function detectPreset(from: string, to: string): RangePreset {
   if (!from && !to) {
     return "all";
@@ -311,8 +277,6 @@ function PaymentsPage() {
   const api = useApi();
   const studioId = useStudioId();
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
-  const { toast } = useToastContext("PaymentsPage");
   const isTrainer = user?.role === "TRAINER";
   const isStaff = user?.role === "OWNER" || user?.role === "STAFF";
   const [selectedTrainerId, setSelectedTrainerId] = useState<string | null>(
@@ -320,11 +284,6 @@ function PaymentsPage() {
   );
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
-  const [studentSearch, setStudentSearch] = useState("");
-  const [createOpen, setCreateOpen] = useState(false);
-  const [activePendingId, setActivePendingId] = useState<string | null>(null);
-  const [paymentMethod, setPaymentMethod] =
-    useState<PaymentMethodChoice | null>(null);
 
   const rangePreset = detectPreset(fromDate, toDate);
   const bucket = bucketForPreset(rangePreset);
@@ -368,34 +327,6 @@ function PaymentsPage() {
       );
     },
     enabled: Boolean(trainerId) && (isTrainer || isStaff),
-  });
-
-  const markPaid = useMutation({
-    mutationFn: (payload: { id: string; paymentMethod: PaymentMethodChoice }) =>
-      api.patch(`/billing/${payload.id}/paid`, {
-        paymentMethod: payload.paymentMethod,
-      }),
-    onSuccess: () => {
-      setActivePendingId(null);
-      setPaymentMethod(null);
-      void queryClient.invalidateQueries({
-        queryKey: ["billing", "trainer-analytics"],
-      });
-      void queryClient.invalidateQueries({ queryKey: ["invoices", studioId] });
-      toast({
-        title: "Invoice marked paid",
-        description: "Payment was recorded.",
-        variant: "success",
-      });
-    },
-    onError: (error) => {
-      toast({
-        title: "Couldn’t mark invoice paid",
-        description:
-          error instanceof Error ? error.message : "Please try again.",
-        variant: "error",
-      });
-    },
   });
 
   function applyPreset(id: string) {
@@ -444,28 +375,6 @@ function PaymentsPage() {
   }
 
   const data = analyticsQuery.data;
-  const search = studentSearch.trim().toLowerCase();
-
-  const pendingRows = useMemo(() => {
-    const rows = data?.pendingPayments ?? [];
-    if (!search) {
-      return rows;
-    }
-    return rows.filter(
-      (row) =>
-        row.studentName.toLowerCase().includes(search) ||
-        (row.batchName?.toLowerCase().includes(search) ?? false),
-    );
-  }, [data?.pendingPayments, search]);
-
-  const recentPaid = useMemo(() => {
-    const rows =
-      data?.invoices.filter((invoice) => invoice.status === "PAID") ?? [];
-    const filtered = search
-      ? rows.filter((row) => row.studentName.toLowerCase().includes(search))
-      : rows;
-    return filtered.slice(0, 8);
-  }, [data?.invoices, search]);
 
   const chartData = useMemo(
     () =>
@@ -485,9 +394,6 @@ function PaymentsPage() {
     1,
     ...(data?.byBatch.map((batch) => batch.collected) ?? [1]),
   );
-
-  const activePending =
-    pendingRows.find((row) => row.invoiceId === activePendingId) ?? null;
 
   function exportCsv() {
     if (!data) {
@@ -536,17 +442,6 @@ function PaymentsPage() {
         isTrainer
           ? "Money in, outstanding balances, and batch performance."
           : "Studio payment dashboard by trainer."
-      }
-      actions={
-        isStaff ? (
-          <TouchButton
-            variant="primary"
-            size="md"
-            onClick={() => setCreateOpen(true)}
-          >
-            Create invoice
-          </TouchButton>
-        ) : null
       }
     >
       <PullToRefresh onRefresh={refresh}>
@@ -597,15 +492,6 @@ function PaymentsPage() {
                   ))}
                 </SelectContent>
               </Select>
-            </div>
-
-            <div className={styles.filterSearch}>
-              <SearchField
-                aria-label="Search student"
-                placeholder="Search student…"
-                value={studentSearch}
-                onChange={setStudentSearch}
-              />
             </div>
 
             <div className={styles.filterActions}>
@@ -908,162 +794,10 @@ function PaymentsPage() {
                   </ul>
                 )}
               </section>
-
-              <section className={styles.panel}>
-                <p className={styles.panelTitle}>Pending payments</p>
-                {pendingRows.length === 0 ? (
-                  <EmptyState
-                    title="No pending payments"
-                    description="Everything looks collected for this trainer."
-                  />
-                ) : (
-                  <ul className={styles.pendingList}>
-                    {pendingRows.map((row) => (
-                      <li key={row.invoiceId}>
-                        <button
-                          type="button"
-                          className={styles.pendingRow}
-                          onClick={() => {
-                            if (isStaff) {
-                              setPaymentMethod(null);
-                              setActivePendingId(row.invoiceId);
-                              return;
-                            }
-                            void navigate({
-                              to: "/app/students/$id",
-                              params: { id: row.studentId },
-                            });
-                          }}
-                        >
-                          <div className={styles.pendingGrid}>
-                            <span className={styles.pendingName}>
-                              {row.studentName}
-                            </span>
-                            <span className={styles.pendingMeta}>
-                              {row.batchName ?? "Unassigned"}
-                            </span>
-                            <span className={styles.pendingMeta}>
-                              {formatDueDate(row.dueDate)}
-                            </span>
-                            <span className={styles.pendingAmount}>
-                              {formatInr(row.amount)}
-                            </span>
-                            <Badge
-                              variant={
-                                row.status === "OVERDUE" ? "danger" : "neutral"
-                              }
-                            >
-                              {row.status}
-                            </Badge>
-                          </div>
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </section>
-
-              <section className={styles.panel}>
-                <p className={styles.panelTitle}>Recent paid</p>
-                {recentPaid.length === 0 ? (
-                  <EmptyState
-                    title="No recent payments"
-                    description="Paid invoices will show up here."
-                  />
-                ) : (
-                  <ul className={styles.recentList}>
-                    {recentPaid.map((invoice) => (
-                      <li key={invoice.id} className={styles.recentRow}>
-                        <div className={styles.recentTop}>
-                          <span className={styles.recentName}>
-                            {invoice.studentName}
-                          </span>
-                          <span className={styles.recentAmount}>
-                            {formatInr(invoice.amount)}
-                          </span>
-                        </div>
-                        <p className={styles.recentMeta}>
-                          {invoice.paymentMethod
-                            ? METHOD_LABELS[invoice.paymentMethod]
-                            : "Paid"}
-                          {invoice.paidAt
-                            ? ` · ${new Intl.DateTimeFormat(undefined, {
-                                month: "short",
-                                day: "numeric",
-                              }).format(new Date(invoice.paidAt))}`
-                            : ""}
-                        </p>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </section>
             </>
           ) : null}
         </div>
       </PullToRefresh>
-
-      {isStaff ? (
-        <CreateInvoiceSheet isOpen={createOpen} onOpenChange={setCreateOpen} />
-      ) : null}
-
-      <AppSheet
-        isOpen={Boolean(activePending)}
-        onOpenChange={(open) => {
-          if (!open) {
-            setActivePendingId(null);
-            setPaymentMethod(null);
-          }
-        }}
-        title={
-          activePending
-            ? `Mark paid · ${activePending.studentName}`
-            : "Mark paid"
-        }
-      >
-        {activePending ? (
-          <div className={staff.sheetStack}>
-            <p className={staff.rowMeta}>
-              {formatInr(activePending.amount)} · {activePending.status}
-              {activePending.batchName ? ` · ${activePending.batchName}` : ""}
-            </p>
-            <div className={staff.sheetActions}>
-              <TouchButton
-                variant={paymentMethod === "CASH" ? "primary" : "default"}
-                fullWidth
-                isDisabled={markPaid.isPending}
-                onClick={() => setPaymentMethod("CASH")}
-              >
-                Cash
-              </TouchButton>
-              <TouchButton
-                variant={paymentMethod === "UPI_MANUAL" ? "primary" : "default"}
-                fullWidth
-                isDisabled={markPaid.isPending}
-                onClick={() => setPaymentMethod("UPI_MANUAL")}
-              >
-                UPI
-              </TouchButton>
-              <TouchButton
-                variant="primary"
-                fullWidth
-                isDisabled={!paymentMethod}
-                isPending={markPaid.isPending}
-                data-testid="confirm-mark-paid"
-                onClick={() => {
-                  if (!paymentMethod) return;
-                  markPaid.mutate({
-                    id: activePending.invoiceId,
-                    paymentMethod,
-                  });
-                }}
-              >
-                Confirm mark as paid
-              </TouchButton>
-            </div>
-          </div>
-        ) : null}
-      </AppSheet>
     </Screen>
   );
 }

@@ -1,7 +1,11 @@
 import { BadRequestException, ConflictException } from "@nestjs/common";
 import { type Prisma, SessionStatus } from "@prisma/client";
 
+/** Default trial length when callers omit an explicit count (student self-enroll). */
 export const TRIAL_SESSION_LIMIT = 2;
+
+/** Upper bound for staff-chosen trial session counts. */
+export const MAX_TRIAL_SESSION_COUNT = 20;
 
 export type TrialEnrollmentTx = {
   session: {
@@ -91,7 +95,7 @@ export async function assertStudentCanEnrollTrial(
   });
   if (otherTrial) {
     throw new ConflictException(
-      "You can only try 2 sessions in one class. You already have an active trial.",
+      "You already have an active trial in another class.",
     );
   }
 }

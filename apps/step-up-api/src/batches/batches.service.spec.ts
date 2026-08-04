@@ -822,6 +822,64 @@ describe("BatchesService.remove and enroll", () => {
     ).rejects.toBeInstanceOf(ConflictException);
     expect(prisma.batchEnrollment.upsert).not.toHaveBeenCalled();
   });
+
+  it("enrolls trial with a custom session count", async () => {
+    prisma.batch.findUnique.mockResolvedValue({
+      id: "batch-1",
+      active: true,
+      capacity: 10,
+      enrollmentMode: EnrollmentMode.SELF_JOIN,
+      enrollments: [],
+    });
+    prisma.session.findMany.mockResolvedValue([
+      { id: "session-1" },
+      { id: "session-2" },
+      { id: "session-3" },
+    ]);
+    prisma.batchEnrollment.upsert.mockResolvedValue({
+      batchId: "batch-1",
+      studentId: "student-1",
+      isTrial: true,
+      trialSessionIds: ["session-1", "session-2", "session-3"],
+    });
+
+    await service.enroll(
+      "batch-1",
+      "student-1",
+      { id: "owner-1", role: UserRole.OWNER } as never,
+      { isTrial: true, trialSessionCount: 3 },
+    );
+
+    expect(prisma.session.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ take: 3 }),
+    );
+    expect(prisma.batchEnrollment.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        create: expect.objectContaining({
+          trialSessionIds: ["session-1", "session-2", "session-3"],
+        }),
+      }),
+    );
+  });
+
+  it("rejects trialSessionCount when not a trial enrollment", async () => {
+    prisma.batch.findUnique.mockResolvedValue({
+      id: "batch-1",
+      active: true,
+      capacity: 10,
+      enrollmentMode: EnrollmentMode.SELF_JOIN,
+      enrollments: [],
+    });
+
+    await expect(
+      service.enroll(
+        "batch-1",
+        "student-1",
+        { id: "owner-1", role: UserRole.OWNER } as never,
+        { isTrial: false, trialSessionCount: 3 },
+      ),
+    ).rejects.toThrow(/trialSessionCount is only valid/);
+  });
 });
 
 describe("BatchesService.listByStudio viewer enrollment", () => {

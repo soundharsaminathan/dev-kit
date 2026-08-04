@@ -37,8 +37,10 @@ import {
 } from "./batch-capacity";
 import {
   assertStudentCanEnrollTrial,
+  MAX_TRIAL_SESSION_COUNT,
   parseTrialSessionIds,
   resolveNextTrialSessionIds,
+  TRIAL_SESSION_LIMIT,
 } from "./trial-enrollment";
 
 type BatchSchedule = {
@@ -1094,7 +1096,7 @@ export class BatchesService {
     batchId: string,
     studentId: string,
     actor: DecryptedUser,
-    options: { isTrial?: boolean } = {},
+    options: { isTrial?: boolean; trialSessionCount?: number } = {},
   ) {
     const staffRoles: UserRole[] = [
       UserRole.OWNER,
@@ -1103,6 +1105,24 @@ export class BatchesService {
     ];
     const isStaff = staffRoles.includes(actor.role);
     const isTrial = options.isTrial === true;
+    let trialSessionCount: number | undefined;
+    if (options.trialSessionCount != null) {
+      if (!isTrial) {
+        throw new BadRequestException(
+          "trialSessionCount is only valid for trial enrollments",
+        );
+      }
+      if (
+        !Number.isInteger(options.trialSessionCount) ||
+        options.trialSessionCount < 1 ||
+        options.trialSessionCount > MAX_TRIAL_SESSION_COUNT
+      ) {
+        throw new BadRequestException(
+          `trialSessionCount must be between 1 and ${MAX_TRIAL_SESSION_COUNT}`,
+        );
+      }
+      trialSessionCount = options.trialSessionCount;
+    }
 
     if (!isStaff && actor.id !== studentId) {
       const [familyLink, parentLink] = await Promise.all([
@@ -1163,7 +1183,11 @@ export class BatchesService {
       }
 
       const trialSessionIds = isTrial
-        ? await resolveNextTrialSessionIds(tx, batchId)
+        ? await resolveNextTrialSessionIds(
+            tx,
+            batchId,
+            trialSessionCount ?? TRIAL_SESSION_LIMIT,
+          )
         : undefined;
 
       return tx.batchEnrollment.upsert({

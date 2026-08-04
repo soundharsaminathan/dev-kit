@@ -1,6 +1,19 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@dev-ui/components/avatar";
 import { Badge } from "@dev-ui/components/badge";
-import { Checkbox } from "@dev-ui/components/checkbox";
+import { Label } from "@dev-ui/components/field";
+import {
+  Menu,
+  MenuContent,
+  MenuItem,
+  MenuItemLabel,
+} from "@dev-ui/components/menu";
+import {
+  NumberField,
+  NumberFieldDecrement,
+  NumberFieldGroup,
+  NumberFieldIncrement,
+  NumberFieldInput,
+} from "@dev-ui/components/number-field";
 import { useToastContext } from "@dev-ui/components/toast";
 import { Icon } from "@dev-ui/icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -22,6 +35,9 @@ import { EmptyState, ErrorState } from "@/modules/ui/states";
 import { TouchButton } from "@/modules/ui/touch-button";
 import { upcomingSessions } from "./batch-overview-helpers";
 import styles from "./batch-roster.module.scss";
+
+export const DEFAULT_TRIAL_SESSION_COUNT = 2;
+export const MAX_TRIAL_SESSION_COUNT = 20;
 
 export type BatchEnrollmentRow = {
   studentId: string;
@@ -100,8 +116,12 @@ export function BatchRoster({ batchId, capacity, active }: BatchRosterProps) {
   const [selectedStudent, setSelectedStudent] = useState<StudioStudent | null>(
     null,
   );
-  const [isTrial, setIsTrial] = useState(false);
   const [pickerKey, setPickerKey] = useState(0);
+  const [trialSheetOpen, setTrialSheetOpen] = useState(false);
+  const [trialStudent, setTrialStudent] = useState<StudioStudent | null>(null);
+  const [trialSessionCount, setTrialSessionCount] = useState(
+    DEFAULT_TRIAL_SESSION_COUNT,
+  );
   const [rosterFilter, setRosterFilter] =
     useState<RosterEnrollmentFilter>("all");
   const [switchStudent, setSwitchStudent] = useState<BatchEnrollmentRow | null>(
@@ -160,12 +180,23 @@ export function BatchRoster({ batchId, capacity, active }: BatchRosterProps) {
   );
 
   const enroll = useMutation({
-    mutationFn: (input: { student: StudioStudent; isTrial: boolean }) =>
+    mutationFn: (input: {
+      student: StudioStudent;
+      isTrial: boolean;
+      trialSessionCount?: number;
+    }) =>
       api.post(`/batches/${batchId}/enroll`, {
         studentId: input.student.id,
         isTrial: input.isTrial,
+        ...(input.isTrial && input.trialSessionCount != null
+          ? { trialSessionCount: input.trialSessionCount }
+          : {}),
       }),
-    onMutate: async ({ student, isTrial: enrollAsTrial }) => {
+    onMutate: async ({
+      student,
+      isTrial: enrollAsTrial,
+      trialSessionCount: count,
+    }) => {
       await queryClient.cancelQueries({ queryKey: ["batch", batchId] });
 
       const previous = queryClient.getQueryData<BatchWithEnrollments>([
@@ -190,7 +221,12 @@ export function BatchRoster({ batchId, capacity, active }: BatchRosterProps) {
               {
                 studentId: student.id,
                 isTrial: enrollAsTrial,
-                trialSessionIds: enrollAsTrial ? [] : null,
+                trialSessionIds: enrollAsTrial
+                  ? Array.from(
+                      { length: count ?? DEFAULT_TRIAL_SESSION_COUNT },
+                      (_, index) => `pending-${index}`,
+                    )
+                  : null,
                 student: {
                   id: student.id,
                   name: student.name,
@@ -208,16 +244,21 @@ export function BatchRoster({ batchId, capacity, active }: BatchRosterProps) {
 
       setStudentId(null);
       setSelectedStudent(null);
-      setIsTrial(false);
+      setTrialSheetOpen(false);
+      setTrialStudent(null);
+      setTrialSessionCount(DEFAULT_TRIAL_SESSION_COUNT);
       setPickerKey((current) => current + 1);
 
       return { previous };
     },
-    onSuccess: (_data, { isTrial: enrolledAsTrial }) => {
+    onSuccess: (
+      _data,
+      { isTrial: enrolledAsTrial, trialSessionCount: count },
+    ) => {
       toast({
         title: "Student enrolled",
         description: enrolledAsTrial
-          ? "They were added on a trial seat."
+          ? `They were added on a trial seat (${count ?? DEFAULT_TRIAL_SESSION_COUNT} sessions).`
           : "They were added to this batch.",
         variant: "success",
       });
@@ -245,6 +286,38 @@ export function BatchRoster({ batchId, capacity, active }: BatchRosterProps) {
       ]);
     },
   });
+
+  function closeTrialSheet() {
+    setTrialSheetOpen(false);
+    setTrialStudent(null);
+    setTrialSessionCount(DEFAULT_TRIAL_SESSION_COUNT);
+  }
+
+  function handleEnrollAction(actionId: string | number) {
+    if (!selectedStudent || !canEnroll) return;
+    if (actionId === "enroll") {
+      enroll.mutate({ student: selectedStudent, isTrial: false });
+      return;
+    }
+    if (actionId === "trial") {
+      setTrialStudent(selectedStudent);
+      setTrialSessionCount(DEFAULT_TRIAL_SESSION_COUNT);
+      setTrialSheetOpen(true);
+    }
+  }
+
+  function confirmTrialEnroll() {
+    if (!trialStudent || !canEnroll) return;
+    const count = Math.min(
+      MAX_TRIAL_SESSION_COUNT,
+      Math.max(1, Math.floor(trialSessionCount) || DEFAULT_TRIAL_SESSION_COUNT),
+    );
+    enroll.mutate({
+      student: trialStudent,
+      isTrial: true,
+      trialSessionCount: count,
+    });
+  }
 
   const switchBatch = useMutation({
     mutationFn: (input: { studentId: string; toBatchId: string }) =>
@@ -393,26 +466,32 @@ export function BatchRoster({ batchId, capacity, active }: BatchRosterProps) {
               isDisabled={!canEnroll}
               placeholder="Search student to enroll"
             />
-            <TouchButton
-              variant="primary"
-              isDisabled={!canEnroll || (!selectedStudent && !enroll.isPending)}
-              isPending={enroll.isPending}
-              onClick={() => {
-                if (selectedStudent && canEnroll) {
-                  enroll.mutate({ student: selectedStudent, isTrial });
+            <Menu>
+              <TouchButton
+                variant="primary"
+                isDisabled={
+                  !canEnroll || (!selectedStudent && !enroll.isPending)
                 }
-              }}
-            >
-              Enroll
-            </TouchButton>
+                isPending={enroll.isPending}
+                data-testid="enroll-menu"
+              >
+                Enroll
+                <Icon name="chevron-down" />
+              </TouchButton>
+              <MenuContent
+                placement="bottom end"
+                onAction={handleEnrollAction}
+                aria-label="Enrollment options"
+              >
+                <MenuItem id="enroll" textValue="Enroll">
+                  <MenuItemLabel>Enroll</MenuItemLabel>
+                </MenuItem>
+                <MenuItem id="trial" textValue="Trial Enroll">
+                  <MenuItemLabel>Trial Enroll</MenuItemLabel>
+                </MenuItem>
+              </MenuContent>
+            </Menu>
           </div>
-          <Checkbox
-            isSelected={isTrial}
-            isDisabled={!canEnroll}
-            onChange={setIsTrial}
-          >
-            Trial (next 2 sessions)
-          </Checkbox>
           {!active ? (
             <p className={styles.hint}>
               Activate this batch before enrolling students.
@@ -489,7 +568,7 @@ export function BatchRoster({ batchId, capacity, active }: BatchRosterProps) {
                         <div className={styles.badges}>
                           {row.isTrial ? (
                             <Badge appearance="subtle">
-                              {`Trial · ${row.trialSessionIds?.length ?? 0}/2`}
+                              {`Trial · ${row.trialSessionIds?.length ?? 0} sessions`}
                             </Badge>
                           ) : (
                             <Badge appearance="subtle">Enrolled</Badge>
@@ -657,6 +736,61 @@ export function BatchRoster({ batchId, capacity, active }: BatchRosterProps) {
               fullWidth
               isDisabled={switchBatch.isPending}
               onClick={closeSwitch}
+            >
+              Cancel
+            </TouchButton>
+          </div>
+        </div>
+      </AppSheet>
+
+      <AppSheet
+        isOpen={trialSheetOpen}
+        onOpenChange={(open) => {
+          if (!open) closeTrialSheet();
+        }}
+        title="Trial Enroll"
+      >
+        <div className={staff.sheetStack}>
+          <p className={styles.hint}>
+            {trialStudent
+              ? `How many upcoming sessions should ${trialStudent.name} get on trial?`
+              : "How many upcoming sessions should this trial cover?"}
+          </p>
+          <NumberField
+            value={trialSessionCount}
+            onChange={(value) =>
+              setTrialSessionCount(
+                typeof value === "number" && Number.isFinite(value)
+                  ? value
+                  : DEFAULT_TRIAL_SESSION_COUNT,
+              )
+            }
+            minValue={1}
+            maxValue={MAX_TRIAL_SESSION_COUNT}
+          >
+            <Label>Trial sessions</Label>
+            <NumberFieldGroup>
+              <NumberFieldDecrement />
+              <NumberFieldInput />
+              <NumberFieldIncrement />
+            </NumberFieldGroup>
+          </NumberField>
+          <div className={staff.sheetActions}>
+            <TouchButton
+              variant="primary"
+              fullWidth
+              isDisabled={!trialStudent || !canEnroll}
+              isPending={enroll.isPending}
+              data-testid="confirm-trial-enroll"
+              onClick={confirmTrialEnroll}
+            >
+              Confirm trial
+            </TouchButton>
+            <TouchButton
+              variant="default"
+              fullWidth
+              isDisabled={enroll.isPending}
+              onClick={closeTrialSheet}
             >
               Cancel
             </TouchButton>
