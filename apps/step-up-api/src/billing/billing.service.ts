@@ -220,33 +220,57 @@ export class BillingService {
       throw new BadRequestException("Invalid bucket");
     }
 
-    const trainer = await this.prisma.user.findFirst({
-      where: {
-        id: resolvedTrainerId,
-        studioId,
-        role: UserRole.TRAINER,
-      },
-    });
+    const allTrainers = resolvedTrainerId === "all";
+    let scopeTrainerId = resolvedTrainerId;
+    let scopeTrainerName = "All trainers";
+    let batches: Array<{
+      id: string;
+      name: string;
+      enrollments: Array<{ studentId: string }>;
+    }>;
 
-    if (!trainer) {
-      throw new NotFoundException("Trainer not found in this studio");
-    }
+    if (allTrainers) {
+      batches = await this.prisma.batch.findMany({
+        where: { studioId },
+        select: {
+          id: true,
+          name: true,
+          enrollments: { select: { studentId: true } },
+        },
+      });
+    } else {
+      const trainer = await this.prisma.user.findFirst({
+        where: {
+          id: resolvedTrainerId,
+          studioId,
+          role: UserRole.TRAINER,
+        },
+      });
 
-    const batchLinks = await this.prisma.batchTrainer.findMany({
-      where: {
-        trainerId: resolvedTrainerId,
-        batch: { studioId },
-      },
-      include: {
-        batch: {
-          include: {
-            enrollments: true,
+      if (!trainer) {
+        throw new NotFoundException("Trainer not found in this studio");
+      }
+
+      scopeTrainerId = trainer.id;
+      scopeTrainerName = this.crypto.decryptUser(trainer).name;
+
+      const batchLinks = await this.prisma.batchTrainer.findMany({
+        where: {
+          trainerId: resolvedTrainerId,
+          batch: { studioId },
+        },
+        include: {
+          batch: {
+            include: {
+              enrollments: true,
+            },
           },
         },
-      },
-    });
+      });
 
-    const batches = batchLinks.map((link) => link.batch);
+      batches = batchLinks.map((link) => link.batch);
+    }
+
     const studentBatchMap = new Map<string, Set<string>>();
 
     for (const batch of batches) {
@@ -270,7 +294,13 @@ export class BillingService {
 
     if (studentIds.length === 0) {
       return {
-        ...this.emptyAnalytics(trainer, studioId, from, to, 0),
+        ...this.emptyAnalytics(
+          { id: scopeTrainerId, name: scopeTrainerName },
+          studioId,
+          from,
+          to,
+          0,
+        ),
         byBatch: emptyBatchRows,
       };
     }
@@ -433,8 +463,8 @@ export class BillingService {
     });
 
     return {
-      trainerId: trainer.id,
-      trainerName: this.crypto.decryptUser(trainer).name,
+      trainerId: scopeTrainerId,
+      trainerName: scopeTrainerName,
       studioId,
       from: from?.toISOString() ?? null,
       to: to?.toISOString() ?? null,
@@ -910,7 +940,7 @@ export class BillingService {
   }
 
   private emptyAnalytics(
-    trainer: User,
+    trainer: { id: string; name: string },
     studioId: string,
     from: Date | null,
     to: Date | null,
@@ -918,7 +948,7 @@ export class BillingService {
   ): TrainerPaymentAnalytics {
     return {
       trainerId: trainer.id,
-      trainerName: this.crypto.decryptUser(trainer).name,
+      trainerName: trainer.name,
       studioId,
       from: from?.toISOString() ?? null,
       to: to?.toISOString() ?? null,

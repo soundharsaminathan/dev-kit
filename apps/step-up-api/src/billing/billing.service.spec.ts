@@ -48,6 +48,7 @@ function makeUser(overrides: Partial<DecryptedUser> = {}): DecryptedUser {
 describe("BillingService.getTrainerAnalytics", () => {
   const prisma = {
     user: { findFirst: vi.fn() },
+    batch: { findMany: vi.fn() },
     batchTrainer: { findMany: vi.fn() },
     invoice: { findMany: vi.fn() },
   };
@@ -93,6 +94,68 @@ describe("BillingService.getTrainerAnalytics", () => {
     await expect(
       service.getTrainerAnalytics(makeUser(), "trainer-1", "studio-1"),
     ).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it("aggregates studio-wide analytics for all trainers", async () => {
+    prisma.batch.findMany.mockResolvedValue([
+      {
+        id: "batch-1",
+        name: "Kids Hip-Hop",
+        enrollments: [{ studentId: "student-1" }],
+      },
+      {
+        id: "batch-2",
+        name: "Adult Contemporary",
+        enrollments: [{ studentId: "student-2" }],
+      },
+    ]);
+    prisma.invoice.findMany.mockResolvedValue([
+      {
+        id: "inv-1",
+        studentId: "student-1",
+        amount: 2000,
+        status: InvoiceStatus.PAID,
+        paymentMethod: PaymentMethod.CASH,
+        paidAt: new Date("2026-07-01T00:00:00.000Z"),
+        platformFeePercent: 5,
+        purchaseMeta: null,
+        membership: null,
+        student: { id: "student-1", name: "Alex" },
+      },
+      {
+        id: "inv-2",
+        studentId: "student-2",
+        amount: 3000,
+        status: InvoiceStatus.PENDING,
+        paymentMethod: null,
+        paidAt: null,
+        platformFeePercent: 5,
+        purchaseMeta: null,
+        membership: null,
+        student: { id: "student-2", name: "Sam" },
+      },
+    ]);
+
+    const result = await service.getTrainerAnalytics(
+      makeUser(),
+      "all",
+      "studio-1",
+    );
+
+    expect(prisma.user.findFirst).not.toHaveBeenCalled();
+    expect(prisma.batchTrainer.findMany).not.toHaveBeenCalled();
+    expect(result.trainerId).toBe("all");
+    expect(result.trainerName).toBe("All trainers");
+    expect(result.studentCount).toBe(2);
+    expect(result.invoiceCount).toBe(2);
+    expect(result.totals).toEqual({
+      collected: 2000,
+      pending: 3000,
+      overdue: 0,
+      platformFees: 100,
+      netCollected: 1900,
+    });
+    expect(result.byBatch).toHaveLength(2);
   });
 
   it("aggregates invoices for students in the trainer's batches", async () => {
