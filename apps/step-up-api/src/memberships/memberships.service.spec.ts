@@ -447,6 +447,142 @@ describe("MembershipsService.purchaseForBatch", () => {
     expect(prisma.membership.create).not.toHaveBeenCalled();
     expect(prisma.batchEnrollment.upsert).not.toHaveBeenCalled();
   });
+
+  it("rejects family packs on batch purchase", async () => {
+    prisma.batch.findUnique.mockResolvedValue({
+      id: "batch-kid",
+      active: true,
+      category: "KIDS",
+      studioId: "studio-1",
+    });
+    prisma.batchPlan.findUnique.mockResolvedValue({
+      batchId: "batch-kid",
+      subscriptionId: "sub-fam",
+      subscription: {
+        id: "sub-fam",
+        active: true,
+        kind: "FAMILY",
+        individualAudience: null,
+        adultSeats: 1,
+        kidSeats: 1,
+        billingCadence: "MONTHLY",
+        price: 5000,
+      },
+    });
+
+    await expect(
+      service.purchaseForBatch({
+        batchId: "batch-kid",
+        subscriptionId: "sub-fam",
+        purchaserUserId: "parent-1",
+        coveredStudents: [
+          { studentId: "adult-1", seatRole: "ADULT", batchId: "batch-adult" },
+          { studentId: "kid-1", seatRole: "KID" },
+        ],
+      }),
+    ).rejects.toThrow(/studio-wide/i);
+  });
+});
+
+describe("MembershipsService.purchaseFamily", () => {
+  const prisma = {
+    batch: { findMany: vi.fn() },
+    subscription: { findUnique: vi.fn() },
+    studioSettings: { findUnique: vi.fn() },
+    invoice: { create: vi.fn() },
+    batchEnrollment: { findMany: vi.fn() },
+    booking: {
+      updateMany: vi.fn(),
+      findMany: vi.fn(),
+    },
+    $transaction: vi.fn(),
+    $queryRaw: vi.fn(),
+  };
+
+  const scheduleConflicts = {
+    assertNoConflicts: vi.fn().mockResolvedValue(undefined),
+    assertStudentAvailableForBatch: vi.fn().mockResolvedValue(undefined),
+  };
+
+  let service: MembershipsService;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    service = new MembershipsService(
+      prisma as never,
+      { create: vi.fn() } as never,
+      scheduleConflicts as never,
+    );
+    prisma.$transaction.mockImplementation(
+      async (fn: (tx: typeof prisma) => Promise<unknown>) => fn(prisma),
+    );
+    prisma.$queryRaw.mockImplementation(async () => [{ id: "batch" }]);
+    prisma.batchEnrollment.findMany.mockResolvedValue([]);
+    prisma.booking.updateMany.mockResolvedValue({ count: 0 });
+    prisma.booking.findMany.mockResolvedValue([]);
+    prisma.studioSettings.findUnique.mockResolvedValue({
+      platformFeePercent: 5,
+    });
+  });
+
+  it("creates a pending family invoice without BatchPlan", async () => {
+    prisma.subscription.findUnique.mockResolvedValue({
+      id: "sub-fam",
+      studioId: "studio-1",
+      active: true,
+      kind: "FAMILY",
+      adultSeats: 1,
+      kidSeats: 1,
+      price: 5000,
+    });
+    prisma.batch.findMany.mockResolvedValue([
+      {
+        id: "batch-adult",
+        name: "Adult Jazz",
+        active: true,
+        category: "ADULTS",
+        capacity: 12,
+        enrollments: [],
+      },
+      {
+        id: "batch-kid",
+        name: "Kids Ballet",
+        active: true,
+        category: "KIDS",
+        capacity: 15,
+        enrollments: [],
+      },
+    ]);
+    prisma.invoice.create.mockResolvedValue({
+      id: "inv-fam",
+      status: "PENDING",
+      amount: 5000,
+    });
+
+    const invoice = await service.purchaseFamily({
+      studioId: "studio-1",
+      subscriptionId: "sub-fam",
+      purchaserUserId: "parent-1",
+      coveredStudents: [
+        { studentId: "adult-1", seatRole: "ADULT", batchId: "batch-adult" },
+        { studentId: "kid-1", seatRole: "KID", batchId: "batch-kid" },
+      ],
+    });
+
+    expect(invoice.id).toBe("inv-fam");
+    expect(prisma.invoice.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        studentId: "parent-1",
+        studioId: "studio-1",
+        amount: 5000,
+        status: "PENDING",
+        purchaseMeta: expect.objectContaining({
+          subscriptionId: "sub-fam",
+          purchaserUserId: "parent-1",
+        }),
+      }),
+    });
+  });
 });
 
 describe("MembershipsService.findActiveForBatch", () => {

@@ -441,7 +441,6 @@ function EditBatchForm({
       plan.kind === "INDIVIDUAL" &&
       plan.individualAudience === expectedAudience,
   );
-  const familyPlans = availablePlans.filter((plan) => plan.kind === "FAMILY");
   const hasIndividualMonthly = individualPlans.some(
     (plan) =>
       plan.billingCadence === "MONTHLY" && subscriptionIds.includes(plan.id),
@@ -870,8 +869,8 @@ function EditBatchForm({
         <p className={styles.help}>
           Students buy these plans on the batch screen. Individual 1-month and
           3-month plans for {expectedAudience === "KID" ? "kids" : "adults"} are
-          required. Manage the catalog in{" "}
-          <Link to="/app/subscriptions">Subscriptions</Link>.
+          required. Family packs are studio-wide (Invoices). Manage the catalog
+          in <Link to="/app/subscriptions">Subscriptions</Link>.
         </p>
         <h4 className={styles.planGroupTitle}>
           Individual · {expectedAudience === "KID" ? "Kid" : "Adult"}
@@ -903,24 +902,6 @@ function EditBatchForm({
             first.
           </p>
         ) : null}
-        <h4 className={styles.planGroupTitle}>Family packs (optional)</h4>
-        {familyPlans.map((plan) => (
-          <CheckboxControl
-            key={plan.id}
-            className={styles.choice}
-            isSelected={subscriptionIds.includes(plan.id)}
-            onChange={(selected) => togglePlan(plan.id, selected)}
-          >
-            <span className={styles.choiceMain}>
-              <CheckboxIndicator />
-              <span className={styles.choiceTitle}>{plan.name}</span>
-            </span>
-            <span className={styles.choiceMeta}>
-              {plan.billingCadence === "MONTHLY" ? "1 month" : "3 months"} ·{" "}
-              {formatPlanPrice(plan.price, plan.billingCadence)}
-            </span>
-          </CheckboxControl>
-        ))}
         {!plansValid ? (
           <p className={styles.error}>
             Select both a 1-month and a 3-month Individual plan.

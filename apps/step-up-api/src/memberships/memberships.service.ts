@@ -37,7 +37,7 @@ export type CoveredStudentInput = {
 };
 
 export type InvoicePurchaseMeta = {
-  batchId: string;
+  batchId?: string;
   subscriptionId: string;
   purchaserUserId: string;
   coveredStudents: CoveredStudentInput[];
@@ -171,6 +171,12 @@ export class MembershipsService {
       );
     }
 
+    if (planLink.subscription.kind === SubscriptionKind.FAMILY) {
+      throw new BadRequestException(
+        "Family packs are studio-wide. Use family purchase instead of batch purchase.",
+      );
+    }
+
     const expectedSeat = seatRoleForBatchCategory(batch.category);
     const coveredStudents = args.coveredStudents.map((seat) => {
       if (seat.seatRole === expectedSeat) {
@@ -179,23 +185,19 @@ export class MembershipsService {
       return seat;
     });
 
-    if (planLink.subscription.kind === SubscriptionKind.INDIVIDUAL) {
-      if (
-        coveredStudents.length !== 1 ||
-        coveredStudents[0]?.seatRole !== expectedSeat
-      ) {
-        throw new BadRequestException(
-          `This batch requires a ${expectedSeat} seat for Individual plans`,
-        );
-      }
+    if (
+      coveredStudents.length !== 1 ||
+      coveredStudents[0]?.seatRole !== expectedSeat
+    ) {
+      throw new BadRequestException(
+        `This batch requires a ${expectedSeat} seat for Individual plans`,
+      );
     }
 
     this.assertCoveredSeats(planLink.subscription, coveredStudents);
 
     const seatsWithBatch = coveredStudents.filter((c) => c.batchId);
-    if (planLink.subscription.kind === SubscriptionKind.FAMILY) {
-      await this.assertFamilyBatchPicks(coveredStudents);
-    } else if (seatsWithBatch.length > 0) {
+    if (seatsWithBatch.length > 0) {
       await this.assertBatchPicks(seatsWithBatch);
     }
 
@@ -223,6 +225,64 @@ export class MembershipsService {
         studentId: args.purchaserUserId,
         studioId: batch.studioId,
         amount: planLink.subscription.price,
+        status: InvoiceStatus.PENDING,
+        platformFeePercent: settings?.platformFeePercent ?? 5,
+        paymentHoldExpiresAt: paymentHoldExpiresAt(),
+        purchaseMeta,
+      },
+    });
+  }
+
+  async purchaseFamily(args: {
+    studioId: string;
+    subscriptionId: string;
+    purchaserUserId: string;
+    coveredStudents: CoveredStudentInput[];
+  }) {
+    const subscription = await this.prisma.subscription.findUnique({
+      where: { id: args.subscriptionId },
+    });
+
+    if (!subscription?.active) {
+      throw new NotFoundException("Subscription not found or inactive");
+    }
+    if (subscription.studioId !== args.studioId) {
+      throw new BadRequestException("Plan is not from this studio");
+    }
+    if (subscription.kind !== SubscriptionKind.FAMILY) {
+      throw new BadRequestException(
+        "Only Family packs can use family purchase",
+      );
+    }
+
+    this.assertCoveredSeats(subscription, args.coveredStudents);
+    await this.assertFamilyBatchPicks(args.coveredStudents);
+
+    for (const covered of args.coveredStudents) {
+      await this.scheduleConflicts.assertStudentAvailableForBatch(
+        covered.studentId,
+        covered.batchId!,
+      );
+    }
+
+    const settings = await this.prisma.studioSettings.findUnique({
+      where: { studioId: args.studioId },
+      select: { platformFeePercent: true },
+    });
+
+    const firstBatchId = args.coveredStudents.find((c) => c.batchId)?.batchId;
+    const purchaseMeta: InvoicePurchaseMeta = {
+      ...(firstBatchId ? { batchId: firstBatchId } : {}),
+      subscriptionId: args.subscriptionId,
+      purchaserUserId: args.purchaserUserId,
+      coveredStudents: args.coveredStudents,
+    };
+
+    return this.prisma.invoice.create({
+      data: {
+        studentId: args.purchaserUserId,
+        studioId: args.studioId,
+        amount: subscription.price,
         status: InvoiceStatus.PENDING,
         platformFeePercent: settings?.platformFeePercent ?? 5,
         paymentHoldExpiresAt: paymentHoldExpiresAt(),

@@ -207,10 +207,6 @@ function NewBatchPage() {
       ),
     [catalog, expectedAudience],
   );
-  const familyPlans = useMemo(
-    () => catalog.filter((plan) => plan.kind === "FAMILY"),
-    [catalog],
-  );
   const hasIndividualMonthly = individualPlans.some(
     (plan) =>
       plan.billingCadence === "MONTHLY" && subscriptionIds.includes(plan.id),
@@ -236,8 +232,10 @@ function NewBatchPage() {
       current.filter((id) => {
         const plan = catalog.find((entry) => entry.id === id);
         if (!plan) return false;
-        if (plan.kind === "FAMILY") return true;
-        return plan.individualAudience === expectedAudience;
+        return (
+          plan.kind === "INDIVIDUAL" &&
+          plan.individualAudience === expectedAudience
+        );
       }),
     );
   }, [category, catalog, expectedAudience]);
@@ -737,7 +735,7 @@ function NewBatchPage() {
                 Students buy these plans on the batch screen. Individual 1-month
                 and 3-month plans for{" "}
                 {expectedAudience === "KID" ? "kids" : "adults"} are required.
-                Family packs are optional.
+                Family packs are sold studio-wide from Invoices, not per batch.
               </p>
               <h3 className={styles.planGroupTitle}>
                 Individual · {expectedAudience === "KID" ? "Kid" : "Adult"}
@@ -772,24 +770,6 @@ function NewBatchPage() {
                     first.
                   </p>
                 )}
-              <h3 className={styles.planGroupTitle}>Family packs (optional)</h3>
-              {familyPlans.map((plan) => (
-                <CheckboxControl
-                  key={plan.id}
-                  className={styles.choice}
-                  isSelected={subscriptionIds.includes(plan.id)}
-                  onChange={(selected) => togglePlan(plan.id, selected)}
-                >
-                  <span className={styles.choiceMain}>
-                    <CheckboxIndicator />
-                    <span className={styles.choiceTitle}>{plan.name}</span>
-                  </span>
-                  <span className={styles.choiceMeta}>
-                    {plan.billingCadence === "MONTHLY" ? "1 month" : "3 months"}{" "}
-                    · {formatPlanPrice(plan.price, plan.billingCadence)}
-                  </span>
-                </CheckboxControl>
-              ))}
               {!hasIndividualMonthly || !hasIndividualQuarterly ? (
                 <p className={styles.error}>
                   Select both a 1-month and a 3-month Individual plan.

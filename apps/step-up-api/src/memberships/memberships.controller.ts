@@ -79,6 +79,23 @@ class SelfRenewDto {
   membershipId!: string;
 }
 
+class FamilyPurchaseDto {
+  @IsString()
+  studioId!: string;
+
+  @IsString()
+  subscriptionId!: string;
+
+  @IsString()
+  purchaserUserId!: string;
+
+  @IsArray()
+  @ArrayMinSize(1)
+  @ValidateNested({ each: true })
+  @Type(() => CoveredStudentDto)
+  coveredStudents!: CoveredStudentDto[];
+}
+
 @Controller("memberships")
 @UseGuards(AuthGuard, RolesGuard)
 export class MembershipsController {
@@ -133,6 +150,22 @@ export class MembershipsController {
     }
     await this.assertPurchaserOwnership(actor, membership.purchaserUserId);
     return this.membershipsService.requestRenewalInvoice(dto.membershipId);
+  }
+
+  @Post("family-purchase")
+  @Roles(UserRole.STUDENT, UserRole.PARENT, UserRole.OWNER, UserRole.STAFF)
+  async familyPurchase(
+    @CurrentUser() actor: DecryptedUser,
+    @Body() dto: FamilyPurchaseDto,
+  ) {
+    const staffRoles: UserRole[] = [UserRole.OWNER, UserRole.STAFF];
+    if (!staffRoles.includes(actor.role)) {
+      await this.assertPurchaserOwnership(actor, dto.purchaserUserId);
+      for (const covered of dto.coveredStudents) {
+        await this.assertCanCoverStudent(actor, covered.studentId);
+      }
+    }
+    return this.membershipsService.purchaseFamily(dto);
   }
 
   private async assertPurchaserOwnership(

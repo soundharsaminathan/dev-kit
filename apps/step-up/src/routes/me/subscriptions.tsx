@@ -208,13 +208,33 @@ function MeSubscriptionsPage() {
           ...(isFamilyTarget ? { batchId: seatBatchIds[id] } : {}),
         })),
       ];
+      if (isFamilyTarget) {
+        return api.post<{ id: string; status: string }>(
+          "/memberships/family-purchase",
+          {
+            studioId,
+            subscriptionId: enrollTarget!.id,
+            purchaserUserId: user!.id,
+            coveredStudents,
+          },
+        );
+      }
       return api.post("/memberships/self/assign", {
         subscriptionId: enrollTarget!.id,
         purchaserUserId: user!.id,
         coveredStudents,
       });
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
+      const wasFamily = isFamilyTarget;
+      const invoiceId =
+        result &&
+        typeof result === "object" &&
+        "id" in result &&
+        "status" in result &&
+        result.status === "PENDING"
+          ? String(result.id)
+          : null;
       void queryClient.invalidateQueries({
         queryKey: ["memberships", studentId],
       });
@@ -222,6 +242,12 @@ function MeSubscriptionsPage() {
         queryKey: ["users", user?.id, "family-members"],
       });
       setEnrollTarget(null);
+      if (wasFamily && invoiceId) {
+        void navigate({
+          to: "/me/checkout/invoice/$invoiceId",
+          params: { invoiceId },
+        });
+      }
     },
   });
 
@@ -669,7 +695,7 @@ function MeSubscriptionsPage() {
             isPending={assignMutation.isPending}
             onClick={() => assignMutation.mutate()}
           >
-            Confirm subscription
+            {isFamilyTarget ? "Continue to payment" : "Confirm subscription"}
           </TouchButton>
         </div>
       </AppSheet>

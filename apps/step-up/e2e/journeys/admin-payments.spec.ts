@@ -33,6 +33,7 @@ test.describe("admin payments @critical", () => {
     await expect(
       page.getByRole("heading", { name: /^invoices$/i }),
     ).toBeVisible();
+    await expect(page.getByTestId("sell-family-pack")).toBeVisible();
 
     await page.getByTestId(`mark-paid-${invoice.id}`).click();
     await page.getByRole("button", { name: /^Cash$/i }).click();
@@ -55,6 +56,25 @@ test.describe("admin payments @critical", () => {
         return latest.find((row) => row.id === invoice.id)?.status;
       })
       .toBe("PAID");
+
+    await context.close();
+  });
+
+  test("staff can open sell family pack wizard @critical", async ({
+    browser,
+  }) => {
+    const context = await browser.newContext({
+      storageState: authFile("STAFF"),
+    });
+    const page = await context.newPage();
+    await page.goto("/app/invoices", { waitUntil: "domcontentloaded" });
+    await waitForAppReady(page);
+
+    await page.getByTestId("sell-family-pack").click();
+    await expect(
+      page.getByRole("heading", { name: /family pack · seats/i }),
+    ).toBeVisible();
+    await expect(page.getByText(/step 1 of 3/i)).toBeVisible();
 
     await context.close();
   });
