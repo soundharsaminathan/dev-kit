@@ -85,6 +85,7 @@ describe("StudiosService", () => {
       razorpayKeyId: "rzp_test_studio",
       razorpayKeySecret: "sealed:secret",
       razorpaySecretIv: "iv-1",
+      danceStyles: null,
     });
 
     const result = await service.updateSettings("studio-1", {
@@ -112,6 +113,7 @@ describe("StudiosService", () => {
       platformFeePercent: 5,
       razorpayKeyId: "rzp_test_studio",
       razorpayConfigured: true,
+      danceStyles: null,
     });
     expect(result).not.toHaveProperty("razorpayKeySecret");
   });
@@ -133,6 +135,7 @@ describe("StudiosService", () => {
       razorpayKeyId: "rzp_test_studio",
       razorpayKeySecret: null,
       razorpaySecretIv: null,
+      danceStyles: null,
     });
 
     const result = await service.updateSettings("studio-1", {
@@ -150,6 +153,64 @@ describe("StudiosService", () => {
       }),
     );
     expect(result.razorpayConfigured).toBe(false);
+  });
+
+  it("persists validated danceStyles and clears to defaults with null", async () => {
+    const danceStyles = [
+      {
+        id: "hip-hop",
+        label: "Hip Hop",
+        abbrev: "HH",
+        color: "#E4572E",
+        emoji: "🎤",
+      },
+    ];
+    prisma.studioSettings.upsert.mockResolvedValue({
+      graceDays: 3,
+      expireAlertDays: 7,
+      platformFeePercent: 5,
+      razorpayKeyId: null,
+      razorpayKeySecret: null,
+      razorpaySecretIv: null,
+      danceStyles,
+    });
+
+    const saved = await service.updateSettings("studio-1", { danceStyles });
+    expect(prisma.studioSettings.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        update: expect.objectContaining({ danceStyles }),
+      }),
+    );
+    expect(saved.danceStyles).toEqual(danceStyles);
+
+    prisma.studioSettings.upsert.mockResolvedValue({
+      graceDays: 3,
+      expireAlertDays: 7,
+      platformFeePercent: 5,
+      razorpayKeyId: null,
+      razorpayKeySecret: null,
+      razorpaySecretIv: null,
+      danceStyles: null,
+    });
+
+    const cleared = await service.updateSettings("studio-1", {
+      danceStyles: null,
+    });
+    expect(prisma.studioSettings.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        update: expect.objectContaining({ danceStyles: Prisma.DbNull }),
+      }),
+    );
+    expect(cleared.danceStyles).toBeNull();
+  });
+
+  it("rejects invalid danceStyles", async () => {
+    await expect(
+      service.updateSettings("studio-1", {
+        danceStyles: [{ id: "bad", label: "Bad" }],
+      }),
+    ).rejects.toThrow(BadRequestException);
+    expect(prisma.studioSettings.upsert).not.toHaveBeenCalled();
   });
 
   it("persists validated brandTheme and clears logo", async () => {

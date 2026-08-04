@@ -6,94 +6,14 @@ export type DanceStyle = {
   emoji: string;
 };
 
-export const DANCE_STYLES: DanceStyle[] = [
-  {
-    id: "hip-hop",
-    label: "Hip Hop",
-    abbrev: "HH",
-    color: "#E4572E",
-    emoji: "🎤",
-  },
-  {
-    id: "contemporary",
-    label: "Contemporary",
-    abbrev: "CO",
-    color: "#6C63FF",
-    emoji: "💫",
-  },
-  {
-    id: "freestyle",
-    label: "Freestyle",
-    abbrev: "FS",
-    color: "#FF6B6B",
-    emoji: "✨",
-  },
-  {
-    id: "breaking",
-    label: "Breaking",
-    abbrev: "BR",
-    color: "#2D3436",
-    emoji: "🤸",
-  },
-  {
-    id: "lyrical",
-    label: "Lyrical",
-    abbrev: "LY",
-    color: "#A29BFE",
-    emoji: "🎭",
-  },
-  { id: "house", label: "House", abbrev: "HO", color: "#00B894", emoji: "🎧" },
-  {
-    id: "locking",
-    label: "Locking",
-    abbrev: "LO",
-    color: "#E1A100",
-    emoji: "🔒",
-  },
-  {
-    id: "bollywood",
-    label: "Bollywood",
-    abbrev: "BO",
-    color: "#E84393",
-    emoji: "🎬",
-  },
-  {
-    id: "commercial",
-    label: "Commercial",
-    abbrev: "CM",
-    color: "#0984E3",
-    emoji: "💃",
-  },
-  { id: "jazz", label: "Jazz", abbrev: "JZ", color: "#E17055", emoji: "🎷" },
-  {
-    id: "popping",
-    label: "Popping",
-    abbrev: "PO",
-    color: "#6C5CE7",
-    emoji: "⚡",
-  },
-  {
-    id: "afrobeats",
-    label: "Afrobeats",
-    abbrev: "AF",
-    color: "#00CEC9",
-    emoji: "🥁",
-  },
-  {
-    id: "ballet",
-    label: "Ballet",
-    abbrev: "BA",
-    color: "#FD79A8",
-    emoji: "🩰",
-  },
-];
-
-const styleByKey = new Map<string, DanceStyle>();
-
-for (const style of DANCE_STYLES) {
-  styleByKey.set(style.id, style);
-  styleByKey.set(style.label.toLowerCase(), style);
-  styleByKey.set(style.id.replace(/-/g, " "), style);
+function buildStyleIndex(catalog: DanceStyle[]) {
+  const styleByKey = new Map<string, DanceStyle>();
+  for (const style of catalog) {
+    styleByKey.set(style.id, style);
+    styleByKey.set(style.label.toLowerCase(), style);
+    styleByKey.set(style.id.replace(/-/g, " "), style);
+  }
+  return styleByKey;
 }
 
 function hashString(value: string) {
@@ -127,14 +47,28 @@ function fallbackColor(label: string) {
   return palette[hashString(label) % palette.length]!;
 }
 
-export function resolveDanceStyle(value: string): DanceStyle {
-  const normalized = value.trim();
-  const known =
-    styleByKey.get(normalized.toLowerCase()) ??
-    styleByKey.get(normalized.toLowerCase().replace(/\s+/g, "-"));
+export function slugifyDanceStyleId(label: string) {
+  return label
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 64);
+}
 
-  if (known) {
-    return known;
+export function resolveDanceStyle(
+  value: string,
+  catalog?: DanceStyle[] | null,
+): DanceStyle {
+  const normalized = value.trim();
+  if (catalog && catalog.length > 0) {
+    const index = buildStyleIndex(catalog);
+    const known =
+      index.get(normalized.toLowerCase()) ??
+      index.get(normalized.toLowerCase().replace(/\s+/g, "-"));
+    if (known) {
+      return known;
+    }
   }
 
   return {
@@ -146,33 +80,62 @@ export function resolveDanceStyle(value: string): DanceStyle {
   };
 }
 
-export function danceStyleLabel(value: string) {
-  return resolveDanceStyle(value).label;
+export function danceStyleLabel(value: string, catalog?: DanceStyle[] | null) {
+  return resolveDanceStyle(value, catalog).label;
 }
 
-export function trainerHasStyle(trainerStyles: string[], styleLabel: string) {
-  const target = resolveDanceStyle(styleLabel);
+export function trainerHasStyle(
+  trainerStyles: string[],
+  styleLabel: string,
+  catalog?: DanceStyle[] | null,
+) {
+  const target = resolveDanceStyle(styleLabel, catalog);
   return trainerStyles.some((stored) => {
-    const resolved = resolveDanceStyle(stored);
+    const resolved = resolveDanceStyle(stored, catalog);
     return resolved.id === target.id || resolved.label === target.label;
   });
 }
 
 export function collectTrainerStyleFilters(
   trainers: Array<{ styles: string[] }>,
+  catalog?: DanceStyle[] | null,
 ) {
-  const labels = new Set<string>();
+  if (catalog && catalog.length > 0) {
+    const labels = new Set<string>();
+    for (const trainer of trainers) {
+      for (const style of trainer.styles) {
+        labels.add(resolveDanceStyle(style, catalog).label);
+      }
+    }
+
+    return catalog
+      .filter((style) => labels.has(style.label))
+      .map((style) => ({
+        id: style.label,
+        label: style.label,
+        style,
+      }));
+  }
+
+  const byLabel = new Map<string, DanceStyle>();
   for (const trainer of trainers) {
     for (const style of trainer.styles) {
-      labels.add(resolveDanceStyle(style).label);
+      const resolved = resolveDanceStyle(style);
+      if (!byLabel.has(resolved.label)) {
+        byLabel.set(resolved.label, resolved);
+      }
     }
   }
 
-  return DANCE_STYLES.filter((style) => labels.has(style.label)).map(
-    (style) => ({
-      id: style.label,
-      label: style.label,
-      style,
-    }),
-  );
+  return [...byLabel.values()].map((style) => ({
+    id: style.label,
+    label: style.label,
+    style,
+  }));
+}
+
+export function effectiveDanceStyles(
+  stored: DanceStyle[] | null | undefined,
+): DanceStyle[] {
+  return stored ?? [];
 }

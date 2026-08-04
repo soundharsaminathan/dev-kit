@@ -1,5 +1,6 @@
 import type { CSSProperties } from "react";
-import { resolveDanceStyle } from "@/lib/dance-styles";
+import { type DanceStyle, resolveDanceStyle } from "@/lib/dance-styles";
+import { useStudioDanceStyles } from "@/lib/use-studio-dance-styles";
 import styles from "./styles.module.scss";
 
 type StyleIconProps = {
@@ -7,6 +8,7 @@ type StyleIconProps = {
   size?: "xs" | "sm" | "md" | "lg";
   showLabel?: boolean;
   className?: string;
+  catalog?: DanceStyle[];
 };
 
 export function StyleIcon({
@@ -14,8 +16,11 @@ export function StyleIcon({
   size = "md",
   showLabel = false,
   className,
+  catalog: catalogProp,
 }: StyleIconProps) {
-  const resolved = resolveDanceStyle(style);
+  const { styles: studioStyles } = useStudioDanceStyles();
+  const catalog = catalogProp ?? studioStyles;
+  const resolved = resolveDanceStyle(style, catalog);
   const sizeClass =
     size === "xs"
       ? styles.iconXs

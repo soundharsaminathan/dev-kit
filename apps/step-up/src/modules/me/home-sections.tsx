@@ -2,6 +2,7 @@ import { Icon, type IconName } from "@dev-ui/icons";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { resolveDanceStyle } from "@/lib/dance-styles";
+import { useStudioDanceStyles } from "@/lib/use-studio-dance-styles";
 import { NotificationsControl } from "@/modules/layout/app-header";
 import { AnimatedMetric } from "@/modules/ui/animated-metric";
 import { HScrollRow } from "@/modules/ui/h-scroll-row";
@@ -203,6 +204,8 @@ export function InstructorsRow({
 }: {
   instructors: HomeInstructor[];
 }) {
+  const { styles: danceCatalog } = useStudioDanceStyles();
+
   if (instructors.length === 0) return null;
 
   return (
@@ -210,7 +213,7 @@ export function InstructorsRow({
       {instructors.map((instructor, index) => {
         const firstName = instructor.name.split(" ")[0] || instructor.name;
         const danceStyle = instructor.styleBadge
-          ? resolveDanceStyle(instructor.styleBadge)
+          ? resolveDanceStyle(instructor.styleBadge, danceCatalog)
           : null;
         const fallbackEmoji =
           danceStyle?.emoji ?? (index % 2 === 0 ? "🕺" : "💃");

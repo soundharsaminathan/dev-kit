@@ -14,6 +14,7 @@ import { RazorpayService } from "../payments/razorpay.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { UserCryptoService } from "../users/user-crypto.service";
 import { parseBrandTheme } from "./brand-theme";
+import { parseDanceStyles } from "./dance-styles";
 
 export type CreateStudioInput = {
   name: string;
@@ -279,6 +280,7 @@ export class StudiosService {
               studio.settings.razorpayKeySecret &&
               studio.settings.razorpaySecretIv,
           ),
+          danceStyles: studio.settings.danceStyles ?? null,
         }
       : null;
 
@@ -336,6 +338,7 @@ export class StudiosService {
       platformFeePercent?: number;
       razorpayKeyId?: string | null;
       razorpayKeySecret?: string | null;
+      danceStyles?: unknown;
     },
   ) {
     const update: {
@@ -345,6 +348,7 @@ export class StudiosService {
       razorpayKeyId?: string | null;
       razorpayKeySecret?: string | null;
       razorpaySecretIv?: string | null;
+      danceStyles?: Prisma.InputJsonValue | typeof Prisma.DbNull;
     } = {};
 
     if (data.graceDays !== undefined) update.graceDays = data.graceDays;
@@ -357,6 +361,12 @@ export class StudiosService {
 
     if (data.razorpayKeyId !== undefined) {
       update.razorpayKeyId = data.razorpayKeyId?.trim() || null;
+    }
+
+    if (data.danceStyles !== undefined) {
+      const parsed = parseDanceStyles(data.danceStyles);
+      update.danceStyles =
+        parsed === null ? Prisma.DbNull : (parsed as Prisma.InputJsonValue);
     }
 
     const existing = await this.prisma.studioSettings.findUnique({
@@ -431,6 +441,7 @@ export class StudiosService {
           settings.razorpayKeySecret &&
           settings.razorpaySecretIv,
       ),
+      danceStyles: settings.danceStyles ?? null,
     };
   }
 
