@@ -35,7 +35,7 @@ async function createIncompleteStudent(label: string) {
 }
 
 test.describe("onboarding wizard @critical", () => {
-  test("new student completes every step and lands on dashboard @critical", async ({
+  test("new student completes every step and lands on discover @critical", async ({
     browser,
   }) => {
     test.setTimeout(120_000);
@@ -119,7 +119,7 @@ test.describe("onboarding wizard @critical", () => {
       ]);
       expect(completeResponse.ok()).toBeTruthy();
 
-      await expect(page).toHaveURL(/\/me\/?$/);
+      await expect(page).toHaveURL(/\/me\/book/);
       await waitForAppReady(page);
 
       await page.goto("/me/onboarding");
