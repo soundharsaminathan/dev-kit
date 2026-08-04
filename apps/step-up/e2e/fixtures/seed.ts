@@ -13,6 +13,7 @@ export const SEED = {
   kidsBatchId: "e2e-batch-kids-1",
   beginnerBatchId: "e2e-batch-beginner-1",
   trialBatchId: "e2e-batch-trial-1",
+  trialSessionId: "e2e-session-trial-w0",
   sessionAttendanceId: "e2e-session-kids-mon",
   sessionAttendancePastId: "e2e-session-kids-past-1",
   users: {

@@ -14,7 +14,6 @@ import { sweepPath, sweepPaths } from "./route-sweep";
 const FUNNEL_TILES = [
   "active",
   "signedInOnly",
-  "trialRegistered",
   "trialAttended",
   "completedWithoutPlan",
 ] as const;

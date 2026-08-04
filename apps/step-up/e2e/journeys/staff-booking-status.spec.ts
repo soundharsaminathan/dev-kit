@@ -8,15 +8,15 @@ import {
 } from "../fixtures";
 import { SEED } from "../fixtures/seed";
 
-const BATCH_ID = SEED.beginnerBatchId;
+const SESSION_ID = SEED.trialSessionId;
 
-async function clearOpenBookings(studentId: string, batchId: string) {
+async function clearOpenBookings(studentId: string, sessionId: string) {
   const existing = await apiRequest<
-    Array<{ id: string; status: string; batchId: string | null }>
+    Array<{ id: string; status: string; sessionId: string | null }>
   >("STUDENT", `/bookings/student/${studentId}`);
 
   for (const booking of existing) {
-    if (booking.batchId !== batchId) continue;
+    if (booking.sessionId !== sessionId) continue;
     if (booking.status === "AWAITING_PAYMENT") {
       await apiRequest("STUDENT", `/bookings/${booking.id}/abandon-payment`, {
         method: "POST",
@@ -36,7 +36,7 @@ test.describe("staff booking status @critical", () => {
   }) => {
     const studentId = SEED.users.STUDENT.id;
     const notes = `E2E staff confirm ${Date.now()}`;
-    await clearOpenBookings(studentId, BATCH_ID);
+    await clearOpenBookings(studentId, SESSION_ID);
 
     let booking = await apiRequest<{ id: string; status: string }>(
       "STUDENT",
@@ -47,7 +47,7 @@ test.describe("staff booking status @critical", () => {
           studioId: SEED.users.STUDENT.studioId,
           studentId,
           type: "TRIAL",
-          batchId: BATCH_ID,
+          sessionId: SEED.trialSessionId,
           notes,
         }),
       },

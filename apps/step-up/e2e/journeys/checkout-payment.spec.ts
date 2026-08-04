@@ -9,8 +9,8 @@ import {
 import { SEED } from "../fixtures/seed";
 import { TestDataCleanup } from "../fixtures/test-cleanup";
 
-const CONFIRM_BATCH_ID = SEED.trialBatchId;
-const ABANDON_BATCH_ID = SEED.beginnerBatchId;
+const CONFIRM_BATCH_ID = SEED.kidsBatchId;
+const ABANDON_BATCH_ID = SEED.kidsBatchId;
 
 async function clearOpenBookings(studentId: string, batchId: string) {
   const existing = await apiRequest<
@@ -61,7 +61,7 @@ async function createAwaitingPaymentBooking(batchId: string) {
       body: JSON.stringify({
         studioId: SEED.users.STUDENT.studioId,
         studentId,
-        type: "TRIAL",
+        type: "OPEN_SEAT",
         batchId,
       }),
     },
@@ -71,13 +71,18 @@ async function createAwaitingPaymentBooking(batchId: string) {
 
 async function createPlanBatch() {
   let lastError: unknown;
-  for (let attempt = 0; attempt < 8; attempt += 1) {
-    const stamp = Date.now() + attempt * 97_000;
-    const start = new Date(Date.UTC(2028, 6, 4 + attempt * 7));
+  for (let attempt = 0; attempt < 12; attempt += 1) {
+    const stamp =
+      Date.now() + attempt * 131_071 + Math.floor(Math.random() * 10_000);
+    // Far-future unique windows so parallel workers rarely share trainer slots.
+    const start = new Date(
+      Date.UTC(2031, (attempt * 3) % 12, 1 + (attempt % 20)),
+    );
     const end = new Date(start);
-    end.setUTCDate(end.getUTCDate() + 90);
-    const hour = String(10 + ((stamp + attempt) % 6)).padStart(2, "0");
-    const minute = String((stamp + attempt * 17) % 60).padStart(2, "0");
+    end.setUTCDate(end.getUTCDate() + 60);
+    const weekday = (stamp + attempt) % 7;
+    const hour = String(8 + ((stamp + attempt * 3) % 10)).padStart(2, "0");
+    const minute = String((stamp + attempt * 19) % 60).padStart(2, "0");
     const endMinute = String((Number(minute) + 45) % 60).padStart(2, "0");
     const endHour = String(
       Number(hour) + (Number(minute) + 45 >= 60 ? 1 : 0),
@@ -99,7 +104,7 @@ async function createPlanBatch() {
           ],
           scheduleJson: {
             frequency: "WEEKLY",
-            weekdays: [start.getUTCDay()],
+            weekdays: [weekday],
             startDate: start.toISOString().slice(0, 10),
             endDate: end.toISOString().slice(0, 10),
             startTime: `${hour}:${minute}`,

@@ -223,14 +223,41 @@ async function main() {
     },
   });
 
+  const e2eDanceStyles = [
+    {
+      id: "hip-hop",
+      label: "Hip Hop",
+      abbrev: "HH",
+      color: "#E4572E",
+      emoji: "🕺",
+    },
+    {
+      id: "ballet",
+      label: "Ballet",
+      abbrev: "BA",
+      color: "#6C63FF",
+      emoji: "🩰",
+    },
+    {
+      id: "contemporary",
+      label: "Contemporary",
+      abbrev: "CO",
+      color: "#00B894",
+      emoji: "💃",
+    },
+  ];
+
   await prisma.studioSettings.upsert({
     where: { studioId },
-    update: {},
+    update: {
+      danceStyles: e2eDanceStyles,
+    },
     create: {
       studioId,
       graceDays: 3,
       expireAlertDays: 7,
       platformFeePercent: 5,
+      danceStyles: e2eDanceStyles,
     },
   });
 

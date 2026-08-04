@@ -45,10 +45,23 @@ async function seedMissedSession() {
     (item) => item.type === "MISSED_SESSION",
   );
   expect(missed).toBeTruthy();
+
+  // Dedupe keeps one MISSED_SESSION per session+student and does not clear
+  // readAt on rematch — reopen so later assertions see an unread row.
+  if (missed!.readAt) {
+    await apiRequest("STUDENT", `/notifications/${missed!.id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ read: false }),
+    });
+    return { ...missed!, readAt: null };
+  }
+
   return missed!;
 }
 
 test.describe("notification journey @critical", () => {
+  // Shared seed student + MISSED_SESSION dedupe key — must not interleave.
+  test.describe.configure({ mode: "serial" });
   test("student opens notifications and marks read through UI @critical", async ({
     browser,
   }) => {
@@ -102,13 +115,6 @@ test.describe("notification journey @critical", () => {
   }) => {
     const missed = await seedMissedSession();
     const batchId = missed.meta?.batchId ?? SEED.kidsBatchId;
-
-    if (missed.readAt) {
-      await apiRequest("STUDENT", `/notifications/${missed.id}`, {
-        method: "PATCH",
-        body: JSON.stringify({ read: false }),
-      });
-    }
 
     const context = await browser.newContext({
       storageState: authFile("STUDENT"),

@@ -10,14 +10,21 @@ import { ConfigService } from "@nestjs/config";
 import {
   AttendanceSource,
   AttendanceStatus,
+  BookingStatus,
+  BookingType,
   NotificationType,
+  SessionStatus,
   UserRole,
 } from "@prisma/client";
-import { enrollmentAllowsTrialSession } from "../batches/trial-enrollment";
 import { MembershipsService } from "../memberships/memberships.service";
 import { NotificationsService } from "../notifications/notifications.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { UserCryptoService } from "../users/user-crypto.service";
+
+const OPEN_TRIAL_STATUSES: BookingStatus[] = [
+  BookingStatus.PENDING,
+  BookingStatus.CONFIRMED,
+];
 
 @Injectable()
 export class AttendanceService {
@@ -66,18 +73,50 @@ export class AttendanceService {
       throw new BadRequestException("Session not found");
     }
 
+    const trialBookings = await this.prisma.booking.findMany({
+      where: {
+        sessionId,
+        type: BookingType.TRIAL,
+        status: { in: OPEN_TRIAL_STATUSES },
+      },
+      include: { student: true },
+    });
+
     const attendanceByStudent = new Map(
       session.attendance.map((record) => [record.studentId, record]),
+    );
+
+    const enrolledIds = new Set(
+      session.batch.enrollments.map((enrollment) => enrollment.studentId),
+    );
+    const trialByStudent = new Map(
+      trialBookings.map((booking) => [booking.studentId, booking]),
     );
 
     const monthlyUnpaidIds = await this.memberships.findMonthlyUnpaidStudentIds(
       session.batch.enrollments.map((enrollment) => enrollment.studentId),
     );
 
-    const roster = session.batch.enrollments.map((enrollment) => {
+    const roster: Array<{
+      studentId: string;
+      isTrial: boolean;
+      trialBookingStatus: BookingStatus | null;
+      monthlyUnpaid: boolean;
+      student: ReturnType<UserCryptoService["decryptUser"]>;
+      attendance: {
+        id: string;
+        status: AttendanceStatus;
+        source: AttendanceSource;
+      } | null;
+    }> = [];
+
+    for (const enrollment of session.batch.enrollments) {
       const record = attendanceByStudent.get(enrollment.studentId);
-      return {
+      const trial = trialByStudent.get(enrollment.studentId);
+      roster.push({
         studentId: enrollment.studentId,
+        isTrial: Boolean(trial),
+        trialBookingStatus: trial?.status ?? null,
         monthlyUnpaid: monthlyUnpaidIds.has(enrollment.studentId),
         student: this.crypto.decryptUser(enrollment.student),
         attendance: record
@@ -87,14 +126,192 @@ export class AttendanceService {
               source: record.source,
             }
           : null,
-      };
+      });
+    }
+
+    for (const booking of trialBookings) {
+      if (enrolledIds.has(booking.studentId)) continue;
+      const record = attendanceByStudent.get(booking.studentId);
+      roster.push({
+        studentId: booking.studentId,
+        isTrial: true,
+        trialBookingStatus: booking.status,
+        monthlyUnpaid: false,
+        student: this.crypto.decryptUser(booking.student),
+        attendance: record
+          ? {
+              id: record.id,
+              status: record.status,
+              source: record.source,
+            }
+          : null,
+      });
+    }
+
+    for (const record of session.attendance) {
+      if (roster.some((entry) => entry.studentId === record.studentId)) {
+        continue;
+      }
+      const student = await this.prisma.user.findUnique({
+        where: { id: record.studentId },
+      });
+      if (!student) continue;
+      roster.push({
+        studentId: record.studentId,
+        isTrial: true,
+        trialBookingStatus: null,
+        monthlyUnpaid: false,
+        student: this.crypto.decryptUser(student),
+        attendance: {
+          id: record.id,
+          status: record.status,
+          source: record.source,
+        },
+      });
+    }
+
+    roster.sort((left, right) => {
+      if (left.isTrial !== right.isTrial) {
+        return left.isTrial ? -1 : 1;
+      }
+      return left.student.name.localeCompare(right.student.name);
     });
 
-    roster.sort((left, right) =>
-      left.student.name.localeCompare(right.student.name),
+    return roster;
+  }
+
+  async listTrialCandidates(sessionId: string, query?: string) {
+    const session = await this.prisma.session.findUnique({
+      where: { id: sessionId },
+      include: { batch: { select: { studioId: true } } },
+    });
+    if (!session) {
+      throw new BadRequestException("Session not found");
+    }
+
+    const studioId = session.batch.studioId;
+    const students = await this.prisma.user.findMany({
+      where: { studioId, role: UserRole.STUDENT, active: true },
+    });
+
+    const trialBookings = await this.prisma.booking.findMany({
+      where: {
+        sessionId,
+        type: BookingType.TRIAL,
+        status: { in: OPEN_TRIAL_STATUSES },
+      },
+      select: { studentId: true, status: true },
+    });
+    const priorityByStudent = new Map(
+      trialBookings.map((booking) => [booking.studentId, booking.status]),
     );
 
-    return roster;
+    const roster = await this.getSessionRoster(sessionId);
+    const onRoster = new Set(roster.map((entry) => entry.studentId));
+
+    const needle = query?.trim().toLowerCase() ?? "";
+    const mapped = students
+      .map((student) => {
+        const decrypted = this.crypto.decryptUser(student);
+        const bookingStatus = priorityByStudent.get(student.id);
+        const priority =
+          bookingStatus === BookingStatus.CONFIRMED
+            ? 0
+            : bookingStatus === BookingStatus.PENDING
+              ? 1
+              : 2;
+        return {
+          id: decrypted.id,
+          name: decrypted.name,
+          email: decrypted.email,
+          phone: decrypted.phone,
+          priority,
+          trialBookingStatus: bookingStatus ?? null,
+          alreadyOnRoster: onRoster.has(student.id),
+        };
+      })
+      .filter((student) => {
+        if (!needle) return true;
+        const haystack =
+          `${student.name} ${student.email ?? ""} ${student.phone ?? ""}`.toLowerCase();
+        return haystack.includes(needle);
+      })
+      .sort((left, right) => {
+        if (left.priority !== right.priority) {
+          return left.priority - right.priority;
+        }
+        return left.name.localeCompare(right.name);
+      })
+      .slice(0, 50);
+
+    return mapped;
+  }
+
+  async addTrialToSession(sessionId: string, studentId: string) {
+    const session = await this.prisma.session.findUnique({
+      where: { id: sessionId },
+      include: {
+        batch: { select: { id: true, studioId: true, active: true } },
+      },
+    });
+    if (!session) {
+      throw new BadRequestException("Session not found");
+    }
+    if (session.status === SessionStatus.CANCELLED) {
+      throw new BadRequestException(
+        "Cannot add a trial to a cancelled session",
+      );
+    }
+    if (!session.batch.active) {
+      throw new BadRequestException("Batch is not active");
+    }
+
+    const student = await this.prisma.user.findFirst({
+      where: {
+        id: studentId,
+        studioId: session.batch.studioId,
+        role: UserRole.STUDENT,
+      },
+    });
+    if (!student) {
+      throw new BadRequestException("Student not found in this studio");
+    }
+
+    const existing = await this.prisma.booking.findFirst({
+      where: {
+        sessionId,
+        studentId,
+        type: BookingType.TRIAL,
+        status: { in: OPEN_TRIAL_STATUSES },
+      },
+    });
+
+    if (existing) {
+      if (existing.status === BookingStatus.PENDING) {
+        await this.prisma.booking.update({
+          where: { id: existing.id },
+          data: { status: BookingStatus.CONFIRMED },
+        });
+      }
+    } else {
+      await this.prisma.booking.create({
+        data: {
+          studioId: session.batch.studioId,
+          studentId,
+          type: BookingType.TRIAL,
+          batchId: session.batchId,
+          sessionId,
+          status: BookingStatus.CONFIRMED,
+        },
+      });
+    }
+
+    const roster = await this.getSessionRoster(sessionId);
+    const entry = roster.find((row) => row.studentId === studentId);
+    if (!entry) {
+      throw new BadRequestException("Failed to add trial student to roster");
+    }
+    return entry;
   }
 
   async markAllPresent(sessionId: string, markedById: string) {
@@ -148,25 +365,24 @@ export class AttendanceService {
     );
 
     if (!membership) {
-      const enrollment = await this.prisma.batchEnrollment.findUnique({
+      const trialBooking = await this.prisma.booking.findFirst({
         where: {
-          batchId_studentId: {
-            batchId: session.batchId,
-            studentId: data.studentId,
+          sessionId: data.sessionId,
+          studentId: data.studentId,
+          type: BookingType.TRIAL,
+          status: {
+            in: [
+              BookingStatus.PENDING,
+              BookingStatus.CONFIRMED,
+              BookingStatus.COMPLETED,
+            ],
           },
         },
-        select: { isTrial: true, trialSessionIds: true },
+        select: { id: true },
       });
-
-      if (enrollmentAllowsTrialSession(enrollment, data.sessionId)) {
-        // Trial enrollment covers this session without a membership.
-      } else if (enrollment?.isTrial) {
+      if (!trialBooking) {
         throw new BadRequestException(
-          "Trial exhausted — purchase a plan to continue",
-        );
-      } else {
-        throw new BadRequestException(
-          "No active membership covering this batch",
+          "No active membership or trial booking for this session",
         );
       }
     }

@@ -5,6 +5,7 @@ import {
   Inject,
   Param,
   Post,
+  Query,
   UseGuards,
 } from "@nestjs/common";
 import { AttendanceSource, AttendanceStatus, UserRole } from "@prisma/client";
@@ -39,6 +40,11 @@ class VerifyQrDto {
   studentId?: string;
 }
 
+class AddTrialDto {
+  @IsString()
+  studentId!: string;
+}
+
 @Controller("attendance")
 @UseGuards(AuthGuard, RolesGuard)
 export class AttendanceController {
@@ -56,6 +62,21 @@ export class AttendanceController {
   @Roles(UserRole.OWNER, UserRole.STAFF, UserRole.TRAINER)
   sessionRoster(@Param("sessionId") sessionId: string) {
     return this.attendanceService.getSessionRoster(sessionId);
+  }
+
+  @Get("session/:sessionId/trial-candidates")
+  @Roles(UserRole.OWNER, UserRole.STAFF, UserRole.TRAINER)
+  trialCandidates(
+    @Param("sessionId") sessionId: string,
+    @Query("q") q?: string,
+  ) {
+    return this.attendanceService.listTrialCandidates(sessionId, q);
+  }
+
+  @Post("session/:sessionId/add-trial")
+  @Roles(UserRole.OWNER, UserRole.STAFF, UserRole.TRAINER)
+  addTrial(@Param("sessionId") sessionId: string, @Body() dto: AddTrialDto) {
+    return this.attendanceService.addTrialToSession(sessionId, dto.studentId);
   }
 
   @Post("session/:sessionId/mark-all-present")

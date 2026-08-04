@@ -94,7 +94,7 @@ type Batch = {
   occupiedSeats?: number;
   remainingSeats?: number;
   scheduleLabel?: string | null;
-  enrollments?: Array<{ isTrial?: boolean }>;
+  enrollments?: Array<{ enrolledAt?: string }>;
   sessions?: Array<{
     id: string;
     startsAt: string;

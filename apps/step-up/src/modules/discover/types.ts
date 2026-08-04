@@ -49,10 +49,8 @@ export type DiscoverBatch = {
   viewerRating?: number | null;
   viewerEnrolled?: boolean;
   viewerEnrollment?: {
-    isTrial: boolean;
-    trialSessionIds: string[];
+    enrolledAt: string;
   } | null;
-  viewerActiveTrialBatchId?: string | null;
   viewerBooking?: {
     id: string;
     type: string;
@@ -71,7 +69,6 @@ export type DiscoverBatch = {
 
 const MUTED_DISCOVER_CTAS = new Set([
   "Enrolled",
-  "On trial",
   "Trial requested",
   "Trial approved",
   "Request pending",
@@ -81,7 +78,7 @@ const MUTED_DISCOVER_CTAS = new Set([
 
 export function discoverCtaLabel(batch: DiscoverBatch) {
   if (batch.viewerEnrolled) {
-    return batch.viewerEnrollment?.isTrial ? "On trial" : "Enrolled";
+    return "Enrolled";
   }
 
   const booking = batch.viewerBooking;

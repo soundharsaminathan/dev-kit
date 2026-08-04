@@ -53,7 +53,7 @@ export async function countOccupiedSeats(
     tx.booking.findMany({
       where: {
         batchId,
-        type: { not: BookingType.PRIVATE },
+        type: { notIn: [BookingType.PRIVATE, BookingType.TRIAL] },
         OR: [
           {
             status: {
@@ -92,7 +92,7 @@ export async function assertBatchHasSeat(
       where: {
         batchId,
         studentId,
-        type: { not: BookingType.PRIVATE },
+        type: { notIn: [BookingType.PRIVATE, BookingType.TRIAL] },
         OR: [
           {
             status: {
@@ -135,7 +135,7 @@ export async function countReservedSeatsByBatch(
     tx.booking.findMany({
       where: {
         batchId: { in: batchIds },
-        type: { not: BookingType.PRIVATE },
+        type: { notIn: [BookingType.PRIVATE, BookingType.TRIAL] },
         OR: [
           {
             status: {

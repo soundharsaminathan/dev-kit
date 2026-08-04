@@ -35,13 +35,6 @@ import {
   countReservedSeatsByBatch,
   lockBatchRow,
 } from "./batch-capacity";
-import {
-  assertStudentCanEnrollTrial,
-  MAX_TRIAL_SESSION_COUNT,
-  parseTrialSessionIds,
-  resolveNextTrialSessionIds,
-  TRIAL_SESSION_LIMIT,
-} from "./trial-enrollment";
 
 type BatchSchedule = {
   frequency: "DAILY" | "WEEKLY";
@@ -409,46 +402,36 @@ export class BatchesService {
         paymentHoldExpiresAt: Date | null;
       }
     >();
-    let viewerActiveTrialBatchId: string | null = null;
 
     if (filters.studentId && batchIds.length > 0) {
-      const [openBookings, activeTrial] = await Promise.all([
-        this.prisma.booking.findMany({
-          where: {
-            batchId: { in: batchIds },
-            studentId: filters.studentId,
-            OR: [
-              {
-                status: {
-                  in: [BookingStatus.PENDING, BookingStatus.CONFIRMED],
-                },
+      const openBookings = await this.prisma.booking.findMany({
+        where: {
+          batchId: { in: batchIds },
+          studentId: filters.studentId,
+          OR: [
+            {
+              status: {
+                in: [BookingStatus.PENDING, BookingStatus.CONFIRMED],
               },
-              {
-                status: BookingStatus.AWAITING_PAYMENT,
-                paymentHoldExpiresAt: { gt: new Date() },
-              },
-            ],
-          },
-          orderBy: [{ status: "asc" }, { id: "desc" }],
-          select: {
-            id: true,
-            batchId: true,
-            type: true,
-            status: true,
-            notes: true,
-            startsAt: true,
-            endsAt: true,
-            paymentHoldExpiresAt: true,
-          },
-        }),
-        this.prisma.batchEnrollment.findFirst({
-          where: {
-            studentId: filters.studentId,
-            isTrial: true,
-          },
-          select: { batchId: true },
-        }),
-      ]);
+            },
+            {
+              status: BookingStatus.AWAITING_PAYMENT,
+              paymentHoldExpiresAt: { gt: new Date() },
+            },
+          ],
+        },
+        orderBy: [{ status: "asc" }, { id: "desc" }],
+        select: {
+          id: true,
+          batchId: true,
+          type: true,
+          status: true,
+          notes: true,
+          startsAt: true,
+          endsAt: true,
+          paymentHoldExpiresAt: true,
+        },
+      });
 
       for (const booking of openBookings) {
         if (!booking.batchId || viewerBookingsByBatchId.has(booking.batchId)) {
@@ -464,7 +447,6 @@ export class BatchesService {
           paymentHoldExpiresAt: booking.paymentHoldExpiresAt,
         });
       }
-      viewerActiveTrialBatchId = activeTrial?.batchId ?? null;
     }
 
     const mapped = await Promise.all(
@@ -489,14 +471,8 @@ export class BatchesService {
           ...shaped,
           viewerEnrolled: Boolean(enrollment),
           viewerEnrollment: enrollment
-            ? {
-                isTrial: enrollment.isTrial,
-                trialSessionIds: parseTrialSessionIds(
-                  enrollment.trialSessionIds,
-                ),
-              }
+            ? { enrolledAt: enrollment.enrolledAt }
             : null,
-          viewerActiveTrialBatchId,
           viewerBooking: viewerBookingsByBatchId.get(batch.id) ?? null,
         };
       }),
@@ -541,11 +517,7 @@ export class BatchesService {
 
     let viewerRating: number | null = null;
     let viewerEnrolled = false;
-    let viewerEnrollment: {
-      isTrial: boolean;
-      trialSessionIds: string[];
-    } | null = null;
-    let viewerActiveTrialBatchId: string | null = null;
+    let viewerEnrollment: { enrolledAt: Date } | null = null;
     let viewerBooking: {
       id: string;
       type: string;
@@ -562,12 +534,9 @@ export class BatchesService {
       );
       viewerEnrolled = Boolean(enrollment);
       if (enrollment) {
-        viewerEnrollment = {
-          isTrial: enrollment.isTrial,
-          trialSessionIds: parseTrialSessionIds(enrollment.trialSessionIds),
-        };
+        viewerEnrollment = { enrolledAt: enrollment.enrolledAt };
       }
-      const [existingRating, openBooking, activeTrial] = await Promise.all([
+      const [existingRating, openBooking] = await Promise.all([
         this.prisma.batchRating.findUnique({
           where: {
             batchId_studentId: {
@@ -603,17 +572,9 @@ export class BatchesService {
             paymentHoldExpiresAt: true,
           },
         }),
-        this.prisma.batchEnrollment.findFirst({
-          where: {
-            studentId: options.studentId,
-            isTrial: true,
-          },
-          select: { batchId: true },
-        }),
       ]);
       viewerRating = existingRating?.rating ?? null;
       viewerBooking = openBooking;
-      viewerActiveTrialBatchId = activeTrial?.batchId ?? null;
     }
 
     const reservedByBatch = await countReservedSeatsByBatch(this.prisma, [id]);
@@ -635,7 +596,6 @@ export class BatchesService {
       viewerRating,
       viewerEnrolled,
       viewerEnrollment,
-      viewerActiveTrialBatchId,
       viewerBooking,
     };
   }
@@ -1092,37 +1052,13 @@ export class BatchesService {
     return deleted;
   }
 
-  async enroll(
-    batchId: string,
-    studentId: string,
-    actor: DecryptedUser,
-    options: { isTrial?: boolean; trialSessionCount?: number } = {},
-  ) {
+  async enroll(batchId: string, studentId: string, actor: DecryptedUser) {
     const staffRoles: UserRole[] = [
       UserRole.OWNER,
       UserRole.STAFF,
       UserRole.TRAINER,
     ];
     const isStaff = staffRoles.includes(actor.role);
-    const isTrial = options.isTrial === true;
-    let trialSessionCount: number | undefined;
-    if (options.trialSessionCount != null) {
-      if (!isTrial) {
-        throw new BadRequestException(
-          "trialSessionCount is only valid for trial enrollments",
-        );
-      }
-      if (
-        !Number.isInteger(options.trialSessionCount) ||
-        options.trialSessionCount < 1 ||
-        options.trialSessionCount > MAX_TRIAL_SESSION_COUNT
-      ) {
-        throw new BadRequestException(
-          `trialSessionCount must be between 1 and ${MAX_TRIAL_SESSION_COUNT}`,
-        );
-      }
-      trialSessionCount = options.trialSessionCount;
-    }
 
     if (!isStaff && actor.id !== studentId) {
       const [familyLink, parentLink] = await Promise.all([
@@ -1178,34 +1114,14 @@ export class BatchesService {
       await lockBatchRow(tx, batchId);
       await assertBatchHasSeat(tx, batchId, batch.capacity, studentId);
 
-      if (isTrial) {
-        await assertStudentCanEnrollTrial(tx, studentId, batchId);
-      }
-
-      const trialSessionIds = isTrial
-        ? await resolveNextTrialSessionIds(
-            tx,
-            batchId,
-            trialSessionCount ?? TRIAL_SESSION_LIMIT,
-          )
-        : undefined;
-
       return tx.batchEnrollment.upsert({
         where: {
           batchId_studentId: { batchId, studentId },
         },
-        update: isTrial
-          ? {
-              isTrial: true,
-              trialSessionIds,
-              enrolledAt: new Date(),
-            }
-          : {},
+        update: {},
         create: {
           batchId,
           studentId,
-          isTrial,
-          ...(trialSessionIds ? { trialSessionIds } : {}),
         },
       });
     });
@@ -1231,7 +1147,6 @@ export class BatchesService {
       throw new BadRequestException("Student is not enrolled in this batch");
     }
 
-    const isTrial = enrollment.isTrial === true;
     const alreadyEnrolled = await this.prisma.batchEnrollment.findMany({
       where: { studentId },
       select: { batchId: true },
@@ -1241,45 +1156,6 @@ export class BatchesService {
       ...alreadyEnrolled.map((row) => row.batchId),
     ]);
 
-    if (isTrial) {
-      const candidates = await this.prisma.batch.findMany({
-        where: {
-          studioId: source.studioId,
-          active: true,
-          category: source.category,
-          id: { notIn: [...excludeIds] },
-        },
-        include: {
-          branch: { select: { name: true } },
-        },
-        orderBy: { name: "asc" },
-      });
-
-      const reservedByBatch = await countReservedSeatsByBatch(
-        this.prisma,
-        candidates.map((batch) => batch.id),
-      );
-
-      return {
-        studentId,
-        isTrial: true,
-        subscription: null,
-        targets: candidates
-          .map((batch) => {
-            const occupied = reservedByBatch.get(batch.id) ?? 0;
-            const remainingSeats = Math.max(0, batch.capacity - occupied);
-            return {
-              id: batch.id,
-              name: batch.name,
-              category: batch.category,
-              remainingSeats,
-              branchName: batch.branch.name,
-            };
-          })
-          .filter((batch) => batch.remainingSeats > 0),
-      };
-    }
-
     const membership = await this.memberships.findActiveForBatch(
       studentId,
       fromBatchId,
@@ -1288,7 +1164,6 @@ export class BatchesService {
     if (!membership) {
       return {
         studentId,
-        isTrial: false,
         subscription: null,
         reason: "No active subscription covering this batch",
         targets: [],
@@ -1342,7 +1217,6 @@ export class BatchesService {
 
     return {
       studentId,
-      isTrial: false,
       subscription: {
         id: membership.subscription.id,
         name: membership.subscription.name,
@@ -1407,49 +1281,39 @@ export class BatchesService {
       );
     }
 
-    const isTrial = enrollment.isTrial === true;
-
-    if (isTrial) {
-      if (target.category !== source.category) {
-        throw new BadRequestException(
-          "Trial students can only switch to a batch in the same category",
-        );
-      }
-    } else {
-      const membership = await this.memberships.findActiveForBatch(
-        studentId,
-        fromBatchId,
+    const membership = await this.memberships.findActiveForBatch(
+      studentId,
+      fromBatchId,
+    );
+    if (!membership) {
+      throw new BadRequestException(
+        "Student has no active subscription covering this batch",
       );
-      if (!membership) {
-        throw new BadRequestException(
-          "Student has no active subscription covering this batch",
-        );
-      }
+    }
 
-      const seat = membership.coveredStudents[0];
-      if (
-        !seat ||
-        !membershipCoversBatch({
-          status: membership.status,
-          periodStart: membership.periodStart,
-          periodEnd: membership.periodEnd,
-          seatRole: seat.seatRole,
-          batchCategory: target.category,
-        })
-      ) {
-        throw new BadRequestException(
-          "Student subscription does not cover the target batch category",
-        );
-      }
-
-      const hasPlan = target.plans.some(
-        (plan) => plan.subscriptionId === membership.subscriptionId,
+    const seat = membership.coveredStudents[0];
+    if (
+      !seat ||
+      !membershipCoversBatch({
+        status: membership.status,
+        periodStart: membership.periodStart,
+        periodEnd: membership.periodEnd,
+        seatRole: seat.seatRole,
+        batchCategory: target.category,
+      })
+    ) {
+      throw new BadRequestException(
+        "Student subscription does not cover the target batch category",
       );
-      if (!hasPlan) {
-        throw new BadRequestException(
-          "Target batch does not offer the student's current subscription plan",
-        );
-      }
+    }
+
+    const hasPlan = target.plans.some(
+      (plan) => plan.subscriptionId === membership.subscriptionId,
+    );
+    if (!hasPlan) {
+      throw new BadRequestException(
+        "Target batch does not offer the student's current subscription plan",
+      );
     }
 
     await this.scheduleConflicts.assertStudentAvailableForBatch(
@@ -1462,10 +1326,6 @@ export class BatchesService {
       await lockBatchRow(tx, toBatchId);
       await assertBatchHasSeat(tx, toBatchId, target.capacity, studentId);
 
-      const trialSessionIds = isTrial
-        ? await resolveNextTrialSessionIds(tx, toBatchId)
-        : undefined;
-
       await tx.batchEnrollment.delete({
         where: {
           batchId_studentId: { batchId: fromBatchId, studentId },
@@ -1476,8 +1336,6 @@ export class BatchesService {
         data: {
           batchId: toBatchId,
           studentId,
-          isTrial,
-          ...(trialSessionIds ? { trialSessionIds } : {}),
         },
       });
     });

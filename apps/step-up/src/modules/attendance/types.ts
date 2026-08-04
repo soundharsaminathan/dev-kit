@@ -3,6 +3,8 @@ export type AttendanceStatusValue = "PRESENT" | "ABSENT";
 export type AttendanceRosterEntry = {
   studentId: string;
   monthlyUnpaid?: boolean;
+  isTrial?: boolean;
+  trialBookingStatus?: "PENDING" | "CONFIRMED" | null;
   student: { name: string };
   attendance: {
     id: string;

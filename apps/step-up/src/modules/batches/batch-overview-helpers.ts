@@ -6,7 +6,7 @@ export type BatchOverviewSession = {
 };
 
 export type BatchOverviewEnrollment = {
-  isTrial?: boolean;
+  enrolledAt?: string;
 };
 
 export function occupiedSeatsForOverview(input: {
@@ -26,12 +26,6 @@ export function occupiedSeatsForOverview(input: {
 export function fillPercent(occupied: number, capacity: number) {
   if (capacity <= 0) return 0;
   return Math.min(100, Math.round((occupied / capacity) * 100));
-}
-
-export function countTrialEnrollments(
-  enrollments: BatchOverviewEnrollment[] | undefined,
-) {
-  return (enrollments ?? []).filter((row) => row.isTrial === true).length;
 }
 
 export function nextUpcomingSession(

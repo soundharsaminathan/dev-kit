@@ -6,28 +6,39 @@ import {
   waitForApiResponse,
   waitForAppReady,
 } from "../fixtures";
-import { SEED } from "../fixtures/seed";
+import { AUTH_STORAGE_KEY, SEED } from "../fixtures/seed";
 import { TestDataCleanup } from "../fixtures/test-cleanup";
 
-/** E2E trial batch — self-join for Try 2 sessions CTA. */
+/** E2E trial batch — self-join for Request trial CTA. */
 const TRIAL_BATCH_ID = SEED.trialBatchId;
 
 async function clearOpenBookings(studentId: string, batchId: string) {
   const existing = await apiRequest<
-    Array<{ id: string; status: string; batchId: string | null }>
+    Array<{
+      id: string;
+      status: string;
+      batchId: string | null;
+      sessionId: string | null;
+    }>
   >("STUDENT", `/bookings/student/${studentId}`);
 
   for (const booking of existing) {
-    if (booking.batchId !== batchId) continue;
+    const matchesBatch = booking.batchId === batchId;
+    const matchesSession = booking.sessionId === SEED.trialSessionId;
+    if (!matchesBatch && !matchesSession) continue;
     if (booking.status === "AWAITING_PAYMENT") {
       await apiRequest("STUDENT", `/bookings/${booking.id}/abandon-payment`, {
         method: "POST",
       });
-    } else if (booking.status === "PENDING" || booking.status === "CONFIRMED") {
+    } else if (
+      booking.status === "PENDING" ||
+      booking.status === "CONFIRMED" ||
+      booking.status === "COMPLETED"
+    ) {
       await apiRequest("STAFF", `/bookings/${booking.id}/status`, {
         method: "PATCH",
         body: JSON.stringify({ status: "CANCELLED" }),
-      });
+      }).catch(() => null);
     }
   }
 }
@@ -139,52 +150,89 @@ test.describe("discover and book @critical", () => {
     }
   });
 
-  test("student can try self-enroll class through UI @critical", async ({
+  test("student can request a trial session through UI @critical", async ({
     browser,
   }) => {
-    const studentId = SEED.users.STUDENT.id;
-    await clearOpenBookings(studentId, TRIAL_BATCH_ID);
+    const cleanup = new TestDataCleanup();
+    const stamp = Date.now();
+    const student = await apiRequest<{ id: string }>("OWNER", "/users", {
+      method: "POST",
+      body: JSON.stringify({
+        name: `Trial Request ${stamp}`,
+        email: `trial-request-${stamp}@stepup.dev`,
+        gender: "FEMALE",
+        ageRange: "TWENTY_TO_FORTY",
+        styles: ["Hip Hop"],
+      }),
+    });
+    cleanup.trackStudent(student.id);
+    await clearOpenBookings(student.id, TRIAL_BATCH_ID);
 
     const context = await browser.newContext({
       storageState: authFile("STUDENT"),
     });
+    // Impersonate the fresh student via storage override after auth setup.
     const page = await context.newPage();
-    await page.goto(`/me/batches/${TRIAL_BATCH_ID}`, {
-      waitUntil: "domcontentloaded",
-    });
-    await waitForAppReady(page);
-
-    const trialCta = page.getByTestId("trial-enroll-cta");
-    const trialUsed = page.getByRole("button", { name: /trial already used/i });
-    const enrolledCopy = page.getByText(
-      /enrolled|you're in|joined|member|trial enrollment|trial covers/i,
+    await page.goto("/login");
+    await page.evaluate(
+      ({ key, value }) => {
+        localStorage.setItem(key, JSON.stringify(value));
+      },
+      {
+        key: AUTH_STORAGE_KEY,
+        value: {
+          id: student.id,
+          email: `trial-request-${stamp}@stepup.dev`,
+          name: `Trial Request ${stamp}`,
+          role: "STUDENT",
+          studioId: SEED.studioId,
+          styles: ["Hip Hop"],
+          experienceLevel: "BEGINNER",
+          gender: "FEMALE",
+          ageRange: "TWENTY_TO_FORTY",
+          onboardingCompletedAt: "2026-01-01T00:00:00.000Z",
+        },
+      },
     );
-    // Wait for either the trial CTA or an already-used / enrolled state.
-    await expect(trialCta.or(trialUsed).or(enrolledCopy.first())).toBeVisible();
-    if ((await trialCta.count()) === 0) {
+
+    try {
+      await page.goto(`/me/batches/${TRIAL_BATCH_ID}`, {
+        waitUntil: "domcontentloaded",
+      });
+      await waitForAppReady(page);
+
+      const trialCta = page.getByTestId("trial-booking-cta");
+      await expect(trialCta).toBeVisible();
+      await expect(trialCta).toHaveText(/request trial/i);
+      await trialCta.click();
+
+      const sessionSelect = page.getByTestId("trial-session-select");
+      await expect(sessionSelect).toBeVisible();
+      await sessionSelect.click();
+      await page.getByRole("option").first().click();
+
+      const submit = page.getByTestId("book-submit");
+      await expect(submit).toBeEnabled();
+
+      const [response] = await Promise.all([
+        waitForApiResponse(page, {
+          method: "POST",
+          pathIncludes: "/bookings",
+        }),
+        submit.click(),
+      ]);
+      expect(response.ok()).toBeTruthy();
+      await expect(
+        page
+          .getByText(
+            /trial requested|requested|pending|submitted|request sent/i,
+          )
+          .first(),
+      ).toBeVisible();
+    } finally {
       await context.close();
-      return;
+      await cleanup.dispose();
     }
-
-    await expect(trialCta).toHaveText(/try 2 sessions/i);
-    await trialCta.click();
-
-    const submit = page.getByTestId("enroll-submit");
-    await expect(submit).toBeVisible();
-
-    const [response] = await Promise.all([
-      waitForApiResponse(page, {
-        method: "POST",
-        pathIncludes: `/batches/${TRIAL_BATCH_ID}/enroll`,
-      }),
-      submit.click(),
-    ]);
-    expect(response.ok()).toBeTruthy();
-    await expect(
-      page.getByText(/enrolled|joined|trial/i).first(),
-    ).toBeVisible();
-
-    await context.close();
   });
 
   test("student can browse book page and filter UI", async ({ browser }) => {

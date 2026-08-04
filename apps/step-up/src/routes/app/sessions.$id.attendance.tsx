@@ -1,4 +1,6 @@
+import { Badge } from "@dev-ui/components/badge";
 import { Button } from "@dev-ui/components/button";
+import { Drawer } from "@dev-ui/components/drawer";
 import { useToastContext } from "@dev-ui/components/toast";
 import { Icon } from "@dev-ui/icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -6,6 +8,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import QRCode from "qrcode";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useApi } from "@/lib/api-context";
+import { useStudioId } from "@/lib/use-studio-id";
 import { AttendanceRosterTable } from "@/modules/attendance/attendance-roster-table";
 import type {
   AttendanceRosterEntry,
@@ -17,6 +20,7 @@ import {
   type ExpandableBentoItem,
 } from "@/modules/ui/expandable-bento-grid";
 import { PageHeader } from "@/modules/ui/page-header";
+import { TouchButton } from "@/modules/ui/touch-button";
 import styles from "./sessions.$id.attendance.module.scss";
 
 const QR_ITEM_ID = "check-in-qr";
@@ -28,6 +32,23 @@ type Session = {
   endsAt: string;
   status?: "SCHEDULED" | "COMPLETED" | "CANCELLED";
   batch?: { name: string };
+};
+
+type TrialCandidate = {
+  id: string;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  priority: boolean;
+  trialBookingStatus: "PENDING" | "CONFIRMED" | null;
+  alreadyOnRoster: boolean;
+};
+
+type NewStudentForm = {
+  name: string;
+  email: string;
+  gender: "MALE" | "FEMALE" | "OTHER";
+  ageRange: "0-5" | "6-12" | "13-17" | "18+";
 };
 
 function formatSessionDateTime(value: string) {
@@ -43,6 +64,337 @@ function formatSessionDateTime(value: string) {
 export const Route = createFileRoute("/app/sessions/$id/attendance")({
   component: SessionAttendancePage,
 });
+
+function AddTrialUserSheet({
+  sessionId,
+  isOpen,
+  onClose,
+  onSuccess,
+}: {
+  sessionId: string;
+  isOpen: boolean;
+  onClose: () => void;
+  onSuccess: () => void;
+}) {
+  const api = useApi();
+  const studioId = useStudioId();
+  const { toast } = useToastContext("AddTrialUserSheet");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [newStudent, setNewStudent] = useState<NewStudentForm>({
+    name: "",
+    email: "",
+    gender: "MALE",
+    ageRange: "18+",
+  });
+
+  const searchQuery$ = useQuery({
+    queryKey: ["trial-candidates", sessionId, searchQuery],
+    queryFn: () =>
+      api.get<TrialCandidate[]>(
+        `/attendance/session/${sessionId}/trial-candidates?q=${encodeURIComponent(searchQuery)}`,
+      ),
+    enabled: isOpen && searchQuery.length > 0,
+  });
+
+  const addTrialMutation = useMutation({
+    mutationFn: (studentId: string) =>
+      api.post<AttendanceRosterEntry>(
+        `/attendance/session/${sessionId}/add-trial`,
+        { studentId },
+      ),
+    onSuccess: () => {
+      toast({
+        title: "Trial user added",
+        description: "The student has been added to the roster.",
+        variant: "success",
+      });
+      onSuccess();
+      onClose();
+      setSearchQuery("");
+    },
+    onError: (error) => {
+      toast({
+        title: "Failed to add trial user",
+        description:
+          error instanceof Error ? error.message : "Could not add trial user.",
+        variant: "error",
+      });
+    },
+  });
+
+  const createStudentMutation = useMutation({
+    mutationFn: async (data: NewStudentForm) => {
+      const student = await api.post<{ id: string }>(
+        `/users/studio/${studioId}/students`,
+        data,
+      );
+      return student.id;
+    },
+    onSuccess: (studentId) => {
+      addTrialMutation.mutate(studentId);
+      setShowCreateForm(false);
+      setNewStudent({
+        name: "",
+        email: "",
+        gender: "MALE",
+        ageRange: "18+",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Failed to create student",
+        description:
+          error instanceof Error ? error.message : "Could not create student.",
+        variant: "error",
+      });
+    },
+  });
+
+  function handleAddCandidate(candidateId: string) {
+    addTrialMutation.mutate(candidateId);
+  }
+
+  function handleCreateSubmit() {
+    if (!newStudent.name.trim()) {
+      toast({
+        title: "Name required",
+        description: "Please enter a student name.",
+        variant: "error",
+      });
+      return;
+    }
+    createStudentMutation.mutate(newStudent);
+  }
+
+  const candidates = searchQuery$.data ?? [];
+  const isSearching = searchQuery$.isLoading;
+  const hasSearched = searchQuery.length > 0;
+
+  return (
+    <Drawer isOpen={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <div className={styles.trialSheet}>
+        <div className={styles.trialSheetHeader}>
+          <h2 className={styles.trialSheetTitle}>Add trial user</h2>
+          <button
+            type="button"
+            className={styles.trialSheetClose}
+            onClick={onClose}
+            aria-label="Close"
+          >
+            <Icon name="x" />
+          </button>
+        </div>
+
+        <div className={styles.trialSheetBody}>
+          {!showCreateForm ? (
+            <>
+              <div className={styles.trialFormField}>
+                <label htmlFor="trial-search" className={styles.trialFormLabel}>
+                  Search students
+                </label>
+                <input
+                  id="trial-search"
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search by name, email, or phone"
+                  data-testid="add-trial-search"
+                  disabled={addTrialMutation.isPending}
+                  className={styles.trialFormInput}
+                />
+              </div>
+
+              <div className={styles.trialCandidatesList}>
+                {isSearching ? (
+                  <div className={styles.trialSearchState}>
+                    <Icon name="loader" className={styles.trialSpinner} />
+                    <span>Searching...</span>
+                  </div>
+                ) : hasSearched && candidates.length === 0 ? (
+                  <div className={styles.trialSearchState}>
+                    <span>No students found</span>
+                  </div>
+                ) : hasSearched ? (
+                  candidates.map((candidate) => (
+                    <div
+                      key={candidate.id}
+                      className={styles.trialCandidate}
+                      data-testid={`add-trial-candidate-${candidate.id}`}
+                    >
+                      <div className={styles.trialCandidateInfo}>
+                        <div className={styles.trialCandidateName}>
+                          {candidate.name}
+                          {candidate.priority ? (
+                            <Badge appearance="subtle" variant="info">
+                              Priority
+                            </Badge>
+                          ) : null}
+                          {candidate.trialBookingStatus === "CONFIRMED" ? (
+                            <Badge appearance="subtle" variant="success">
+                              Confirmed
+                            </Badge>
+                          ) : candidate.trialBookingStatus === "PENDING" ? (
+                            <Badge appearance="subtle" variant="warning">
+                              Pending
+                            </Badge>
+                          ) : null}
+                        </div>
+                        <div className={styles.trialCandidateDetail}>
+                          {[candidate.email, candidate.phone]
+                            .filter(Boolean)
+                            .join(" · ")}
+                        </div>
+                      </div>
+                      <TouchButton
+                        size="sm"
+                        variant="primary"
+                        isDisabled={
+                          candidate.alreadyOnRoster ||
+                          addTrialMutation.isPending
+                        }
+                        onClick={() => handleAddCandidate(candidate.id)}
+                      >
+                        {candidate.alreadyOnRoster ? "On roster" : "Add"}
+                      </TouchButton>
+                    </div>
+                  ))
+                ) : (
+                  <div className={styles.trialSearchState}>
+                    <span>Start typing to search students</span>
+                  </div>
+                )}
+              </div>
+
+              <div className={styles.trialSheetDivider}>
+                <span>or</span>
+              </div>
+
+              <TouchButton
+                fullWidth
+                variant="default"
+                onClick={() => setShowCreateForm(true)}
+                data-testid="add-trial-create"
+                isDisabled={addTrialMutation.isPending}
+              >
+                <Icon name="plus" />
+                Create new student
+              </TouchButton>
+            </>
+          ) : (
+            <div className={styles.trialCreateForm}>
+              <div className={styles.trialFormField}>
+                <label htmlFor="student-name" className={styles.trialFormLabel}>
+                  Name <span className={styles.trialFormRequired}>*</span>
+                </label>
+                <input
+                  id="student-name"
+                  type="text"
+                  value={newStudent.name}
+                  onChange={(e) =>
+                    setNewStudent({ ...newStudent, name: e.target.value })
+                  }
+                  placeholder="Student name"
+                  required
+                  className={styles.trialFormInput}
+                />
+              </div>
+              <div className={styles.trialFormField}>
+                <label
+                  htmlFor="student-email"
+                  className={styles.trialFormLabel}
+                >
+                  Email
+                </label>
+                <input
+                  id="student-email"
+                  type="email"
+                  value={newStudent.email}
+                  onChange={(e) =>
+                    setNewStudent({ ...newStudent, email: e.target.value })
+                  }
+                  placeholder="email@example.com"
+                  className={styles.trialFormInput}
+                />
+              </div>
+              <div className={styles.trialFormRow}>
+                <div className={styles.trialFormField}>
+                  <label
+                    htmlFor="student-gender"
+                    className={styles.trialFormLabel}
+                  >
+                    Gender
+                  </label>
+                  <select
+                    id="student-gender"
+                    value={newStudent.gender}
+                    onChange={(e) =>
+                      setNewStudent({
+                        ...newStudent,
+                        gender: e.target.value as NewStudentForm["gender"],
+                      })
+                    }
+                    className={styles.trialFormSelect}
+                  >
+                    <option value="MALE">Male</option>
+                    <option value="FEMALE">Female</option>
+                    <option value="OTHER">Other</option>
+                  </select>
+                </div>
+                <div className={styles.trialFormField}>
+                  <label
+                    htmlFor="student-age"
+                    className={styles.trialFormLabel}
+                  >
+                    Age range
+                  </label>
+                  <select
+                    id="student-age"
+                    value={newStudent.ageRange}
+                    onChange={(e) =>
+                      setNewStudent({
+                        ...newStudent,
+                        ageRange: e.target.value as NewStudentForm["ageRange"],
+                      })
+                    }
+                    className={styles.trialFormSelect}
+                  >
+                    <option value="0-5">0-5</option>
+                    <option value="6-12">6-12</option>
+                    <option value="13-17">13-17</option>
+                    <option value="18+">18+</option>
+                  </select>
+                </div>
+              </div>
+              <div className={styles.trialCreateActions}>
+                <TouchButton
+                  variant="default"
+                  onClick={() => setShowCreateForm(false)}
+                  isDisabled={
+                    createStudentMutation.isPending ||
+                    addTrialMutation.isPending
+                  }
+                >
+                  Cancel
+                </TouchButton>
+                <TouchButton
+                  variant="primary"
+                  onClick={handleCreateSubmit}
+                  isPending={
+                    createStudentMutation.isPending ||
+                    addTrialMutation.isPending
+                  }
+                >
+                  Create & add
+                </TouchButton>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </Drawer>
+  );
+}
 
 function QrCanvas({ token }: { token: string }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -71,6 +423,7 @@ function SessionAttendancePage() {
   const queryClient = useQueryClient();
   const { toast } = useToastContext("SessionAttendancePage");
   const [activeQrId, setActiveQrId] = useState<string | null>(null);
+  const [isTrialSheetOpen, setIsTrialSheetOpen] = useState(false);
   const qrOpen = activeQrId === QR_ITEM_ID;
 
   const sessionQuery = useQuery({
@@ -315,6 +668,14 @@ function SessionAttendancePage() {
                 Complete session
               </Button>
             ) : null}
+            <Button
+              variant="default"
+              onClick={() => setIsTrialSheetOpen(true)}
+              data-testid="add-trial-user"
+            >
+              <Icon name="plus" />
+              Add trial user
+            </Button>
             <Button variant="primary" onClick={() => setActiveQrId(QR_ITEM_ID)}>
               Generate QR
             </Button>
@@ -422,6 +783,15 @@ function SessionAttendancePage() {
           </>
         )}
       </ApiState>
+
+      <AddTrialUserSheet
+        sessionId={id}
+        isOpen={isTrialSheetOpen}
+        onClose={() => setIsTrialSheetOpen(false)}
+        onSuccess={() => {
+          invalidateAttendance();
+        }}
+      />
     </section>
   );
 }

@@ -125,6 +125,11 @@ export function AttendanceRosterTable({
               <span className={styles.studentName}>
                 {row.original.student.name}
               </span>
+              {row.original.isTrial ? (
+                <Badge appearance="subtle" variant="info">
+                  Trial
+                </Badge>
+              ) : null}
               {row.original.monthlyUnpaid ? (
                 <Badge appearance="subtle" variant="warning">
                   Not paid

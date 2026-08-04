@@ -55,13 +55,13 @@ test.describe("batches HTTP @http", () => {
     }
   });
 
-  test("student can trial-enroll into a self-join batch @http", async () => {
+  test("student can enroll into a self-join batch @http", async () => {
     const cleanup = new TestDataCleanup();
     try {
       const student = await createHttpStudent("Trial Enrollee", cleanup);
       const enrollment = await expectOk<{
-        isTrial: boolean;
-        trialSessionIds: string[] | null;
+        batchId: string;
+        studentId: string;
       }>(
         "STUDENT",
         `/batches/${SEED.trialBatchId}/enroll`,
@@ -69,28 +69,12 @@ test.describe("batches HTTP @http", () => {
           method: "POST",
           body: JSON.stringify({
             studentId: student.id,
-            isTrial: true,
           }),
         },
         { userId: student.id },
       );
-      expect(enrollment.isTrial).toBe(true);
-      expect(Array.isArray(enrollment.trialSessionIds)).toBe(true);
-      expect(enrollment.trialSessionIds!.length).toBeGreaterThan(0);
-
-      await expectStatus(
-        "STUDENT",
-        `/batches/${SEED.beginnerBatchId}/enroll`,
-        409,
-        {
-          method: "POST",
-          body: JSON.stringify({
-            studentId: student.id,
-            isTrial: true,
-          }),
-        },
-        { userId: student.id },
-      );
+      expect(enrollment.batchId).toBe(SEED.trialBatchId);
+      expect(enrollment.studentId).toBe(student.id);
     } finally {
       await cleanup.dispose();
     }
@@ -122,89 +106,113 @@ test.describe("batches HTTP @http", () => {
     });
   });
 
-  test("trainer switches a trial student to another same-category batch @http", async () => {
+  test("trainer switches a student to another same-category batch @http", async () => {
     const cleanup = new TestDataCleanup();
-    const stamp = Date.now();
+    const studentId = SEED.users.STUDENT.id;
+    const fromBatchId = SEED.kidsBatchId;
+    let toBatchId: string | undefined;
+
     try {
-      const toBatch = await expectOk<{ id: string }>("STAFF", "/batches", {
-        method: "POST",
-        body: JSON.stringify({
-          studioId: SEED.users.STAFF.studioId,
-          name: `Switch To ${stamp}`,
-          category: "ADULTS",
-          branchId: SEED.branchMainId,
-          trainerIds: [SEED.users.TRAINER.id],
-          danceCategories: [{ name: "Hip Hop", description: "Switch to" }],
-          scheduleJson: {
-            frequency: "WEEKLY",
-            weekdays: [0],
-            startDate: "2027-11-07",
-            endDate: "2028-01-30",
-            startTime: "06:25",
-            endTime: "07:10",
-            utcOffsetMinutes: 0,
-          },
-          capacity: 8,
-          enrollmentMode: "STAFF_ONLY",
-          subscriptionIds: [...SEED.adultPlanIds],
-          active: true,
-          certificationEnabled: false,
-        }),
-      });
-      cleanup.trackBatch(toBatch.id);
-
-      const student = await createHttpStudent(`Switch Trial ${stamp}`, cleanup);
-      const fromBatchId = SEED.trialBatchId;
-
-      await expectOk("TRAINER", `/batches/${fromBatchId}/enroll`, {
-        method: "POST",
-        body: JSON.stringify({
-          studentId: student.id,
-          isTrial: true,
-        }),
-      });
+      let lastError: unknown;
+      for (let attempt = 0; attempt < 8; attempt += 1) {
+        const stamp = Date.now() + attempt * 97_000;
+        const hour = String(5 + ((stamp + attempt) % 8)).padStart(2, "0");
+        const minute = String((stamp + attempt * 11) % 60).padStart(2, "0");
+        const endMinute = String((Number(minute) + 45) % 60).padStart(2, "0");
+        const endHour = String(
+          Number(hour) + (Number(minute) + 45 >= 60 ? 1 : 0),
+        ).padStart(2, "0");
+        try {
+          const toBatch = await expectOk<{ id: string }>("STAFF", "/batches", {
+            method: "POST",
+            body: JSON.stringify({
+              studioId: SEED.users.STAFF.studioId,
+              name: `Switch To ${stamp}`,
+              category: "KIDS",
+              branchId: SEED.branchEastId,
+              trainerIds: [SEED.users.TRAINER_2.id],
+              danceCategories: [{ name: "Hip Hop", description: "Switch to" }],
+              scheduleJson: {
+                frequency: "WEEKLY",
+                weekdays: [(attempt + 2) % 7],
+                startDate: "2028-02-01",
+                endDate: "2028-05-30",
+                startTime: `${hour}:${minute}`,
+                endTime: `${endHour}:${endMinute}`,
+                utcOffsetMinutes: 0,
+              },
+              capacity: 8,
+              enrollmentMode: "STAFF_ONLY",
+              subscriptionIds: [...SEED.kidPlanIds],
+              active: true,
+              certificationEnabled: false,
+            }),
+          });
+          toBatchId = toBatch.id;
+          cleanup.trackBatch(toBatch.id);
+          lastError = undefined;
+          break;
+        } catch (error) {
+          lastError = error;
+          if (
+            !String(error).includes("409") &&
+            !String(error).includes("Conflict")
+          ) {
+            throw error;
+          }
+        }
+      }
+      if (!toBatchId) {
+        throw lastError instanceof Error
+          ? lastError
+          : new Error("Could not create switch target batch");
+      }
 
       const targets = await expectOk<{
-        isTrial: boolean;
         targets: Array<{ id: string }>;
       }>(
         "TRAINER",
-        `/batches/${fromBatchId}/switch-targets?studentId=${encodeURIComponent(student.id)}`,
+        `/batches/${fromBatchId}/switch-targets?studentId=${encodeURIComponent(studentId)}`,
       );
-      expect(targets.isTrial).toBe(true);
-      expect(targets.targets.some((t) => t.id === toBatch.id)).toBe(true);
+      expect(targets.targets.some((t) => t.id === toBatchId)).toBe(true);
 
       const switched = await expectOk<{
         batchId: string;
         studentId: string;
-        isTrial: boolean;
       }>("TRAINER", `/batches/${fromBatchId}/switch`, {
         method: "POST",
         body: JSON.stringify({
-          studentId: student.id,
-          toBatchId: toBatch.id,
+          studentId,
+          toBatchId,
         }),
       });
       expect(switched).toMatchObject({
-        batchId: toBatch.id,
-        studentId: student.id,
-        isTrial: true,
+        batchId: toBatchId,
+        studentId,
       });
 
       const fromDetail = await expectOk<{
         enrollments: Array<{ studentId: string }>;
       }>("TRAINER", `/batches/${fromBatchId}`);
       expect(
-        fromDetail.enrollments.some((row) => row.studentId === student.id),
+        fromDetail.enrollments.some((row) => row.studentId === studentId),
       ).toBe(false);
 
       const toDetail = await expectOk<{
-        enrollments: Array<{ studentId: string; isTrial?: boolean }>;
-      }>("TRAINER", `/batches/${toBatch.id}`);
-      const enrollment = toDetail.enrollments.find(
-        (row) => row.studentId === student.id,
-      );
-      expect(enrollment?.isTrial).toBe(true);
+        enrollments: Array<{ studentId: string }>;
+      }>("TRAINER", `/batches/${toBatchId}`);
+      expect(
+        toDetail.enrollments.some((row) => row.studentId === studentId),
+      ).toBe(true);
+
+      // Restore seed enrollment so later tests still see the student on kids.
+      await expectOk("TRAINER", `/batches/${toBatchId}/switch`, {
+        method: "POST",
+        body: JSON.stringify({
+          studentId,
+          toBatchId: fromBatchId,
+        }),
+      });
     } finally {
       await cleanup.dispose();
     }

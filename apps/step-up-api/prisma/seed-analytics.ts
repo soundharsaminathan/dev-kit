@@ -212,24 +212,15 @@ async function upsertStudent(opts: {
   return id;
 }
 
-async function enroll(
-  batchId: string,
-  studentId: string,
-  options: { isTrial?: boolean; trialSessionIds?: string[] } = {},
-) {
+async function enroll(batchId: string, studentId: string) {
   await prisma.batchEnrollment.upsert({
     where: {
       batchId_studentId: { batchId, studentId },
     },
-    update: {
-      isTrial: options.isTrial ?? false,
-      trialSessionIds: options.trialSessionIds ?? undefined,
-    },
+    update: {},
     create: {
       batchId,
       studentId,
-      isTrial: options.isTrial ?? false,
-      trialSessionIds: options.trialSessionIds ?? undefined,
     },
   });
 }
@@ -917,7 +908,7 @@ async function main() {
     });
   }
 
-  // --- trialRegistered (5) ---
+  // --- trialRegistered bookings (count as signedInOnly; no attendance yet) ---
   for (let i = 0; i < 5; i++) {
     const studentId = await upsertStudent({
       index: i + 1,
@@ -947,29 +938,22 @@ async function main() {
     });
     const trialSession =
       i % 2 === 0 ? sessionIds.trialPast1 : sessionIds.trialPast2;
-    if (i < 3) {
-      await upsertBooking({
-        id: `analytics-booking-trialatt-${i + 1}`,
-        studentId,
-        type: BookingType.TRIAL,
-        status: BookingStatus.COMPLETED,
-        batchId: ANALYTICS.trialBatchId,
-        sessionId: trialSession,
-        trainerId: i % 2 === 0 ? u.TRAINER.id : u.TRAINER_2.id,
-        notes: "Analytics trial completed",
-      });
-    } else {
-      await enroll(ANALYTICS.trialBatchId, studentId, {
-        isTrial: true,
-        trialSessionIds: [trialSession],
-      });
-      await upsertAttendance({
-        sessionId: trialSession,
-        studentId,
-        status: AttendanceStatus.PRESENT,
-        markedById: u.TRAINER.id,
-      });
-    }
+    await upsertBooking({
+      id: `analytics-booking-trialatt-${i + 1}`,
+      studentId,
+      type: BookingType.TRIAL,
+      status: BookingStatus.COMPLETED,
+      batchId: ANALYTICS.trialBatchId,
+      sessionId: trialSession,
+      trainerId: i % 2 === 0 ? u.TRAINER.id : u.TRAINER_2.id,
+      notes: "Analytics trial completed",
+    });
+    await upsertAttendance({
+      sessionId: trialSession,
+      studentId,
+      status: AttendanceStatus.PRESENT,
+      markedById: u.TRAINER.id,
+    });
   }
 
   // --- completedWithoutPlan (5) ---
@@ -1217,7 +1201,7 @@ async function main() {
   console.log(`Analytics demo studio ready: ${studioId}`);
   console.log(`  owner login: ${u.OWNER.email}`);
   console.log(
-    `  funnel: signedInOnly=6 trialRegistered=5 trialAttended=5 completedWithoutPlan=5 active=14`,
+    `  funnel: signedInOnly=11 trialAttended=5 completedWithoutPlan=5 active=14`,
   );
   console.log(
     `  batches: ${ANALYTICS.kidsBatchId}, ${ANALYTICS.beginnerBatchId}, ${ANALYTICS.trialBatchId}, ${ANALYTICS.completedBatchId}`,
