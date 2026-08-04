@@ -72,6 +72,23 @@ describe("trial-enrollment helpers", () => {
     expect(findFirst).toHaveBeenCalledTimes(2);
   });
 
+  it("resolves a custom trial session count", async () => {
+    const findMany = vi
+      .fn()
+      .mockResolvedValue([{ id: "s1" }, { id: "s2" }, { id: "s3" }]);
+    const ids = await resolveNextTrialSessionIds(
+      { session: { findMany } },
+      "batch-1",
+      3,
+    );
+    expect(ids).toEqual(["s1", "s2", "s3"]);
+    expect(findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        take: 3,
+      }),
+    );
+  });
+
   it("rejects a second trial in another batch", async () => {
     const findFirst = vi
       .fn()

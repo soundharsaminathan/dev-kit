@@ -25,11 +25,6 @@
   flex: 1 1 9rem;
 }
 
-.filterSearch {
-  min-width: 10rem;
-  flex: 1 1 12rem;
-}
-
 .filterActions {
   display: flex;
   flex-wrap: wrap;
@@ -255,9 +250,7 @@
   }
 }
 
-.batchList,
-.pendingList,
-.recentList {
+.batchList {
   display: flex;
   flex-direction: column;
   gap: var(--space-2, 0.5rem);
@@ -266,9 +259,7 @@
   padding: 0;
 }
 
-.batchRow,
-.pendingRow,
-.recentRow {
+.batchRow {
   display: grid;
   gap: var(--space-1, 0.25rem);
   padding: var(--space-2, 0.5rem) var(--space-3, 0.75rem);
@@ -282,46 +273,30 @@
   cursor: pointer;
 }
 
-.batchRow:active,
-.pendingRow:active {
+.batchRow:active {
   transform: scale(var(--interaction-press-scale, 0.98));
 }
 
-.batchTop,
-.pendingTop,
-.recentTop {
+.batchTop {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   gap: var(--space-2, 0.5rem);
 }
 
-.batchName,
-.pendingName,
-.recentName {
+.batchName {
   font-size: 0.9375rem;
   font-weight: 600;
 }
 
-.batchAmount,
-.pendingAmount,
-.recentAmount {
+.batchAmount {
   font-variant-numeric: tabular-nums;
   font-weight: 700;
 }
 
-.batchMeta,
-.pendingMeta,
-.recentMeta {
+.batchMeta {
   font-size: 0.75rem;
   color: color-mix(in srgb, var(--color-fg) 55%, transparent);
-}
-
-.pendingGrid {
-  display: grid;
-  grid-template-columns: 1.2fr 1fr auto auto;
-  gap: var(--space-2, 0.5rem);
-  align-items: center;
 }
 
 .analyticsGrid {
@@ -337,15 +312,10 @@
   .analyticsGrid {
     grid-template-columns: 1.4fr 1fr;
   }
-
-  .pendingGrid {
-    grid-template-columns: 1.4fr 1.2fr 1fr auto auto;
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .batchRow:active,
-  .pendingRow:active {
+  .batchRow:active {
     transform: none;
   }
 }

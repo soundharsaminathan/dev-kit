@@ -21,6 +21,10 @@
   gap: var(--space-3, 0.75rem);
 }
 
+.enrollForm :global([data-menu]) {
+  flex-shrink: 0;
+}
+
 @media (min-width: 40rem) {
   .enrollForm {
     flex-direction: row;

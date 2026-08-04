@@ -224,6 +224,13 @@ class EnrollStudentDto {
   @IsOptional()
   @IsBoolean()
   isTrial?: boolean;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(20)
+  trialSessionCount?: number;
 }
 
 class SwitchBatchDto {
@@ -381,6 +388,7 @@ export class BatchesController {
   ) {
     return this.batchesService.enroll(id, dto.studentId, actor, {
       isTrial: dto.isTrial,
+      trialSessionCount: dto.trialSessionCount,
     });
   }
 
