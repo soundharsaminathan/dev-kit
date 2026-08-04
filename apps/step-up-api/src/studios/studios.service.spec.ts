@@ -8,6 +8,7 @@ describe("StudiosService", () => {
     studio: {
       update: vi.fn(),
       findUnique: vi.fn(),
+      findMany: vi.fn(),
       delete: vi.fn(),
     },
     studioSettings: {
@@ -75,6 +76,22 @@ describe("StudiosService", () => {
       razorpay as never,
       firebase as never,
     );
+  });
+
+  it("lists public studio directory entries", async () => {
+    prisma.studio.findMany.mockResolvedValue([
+      { id: "studio-2", name: "Beta" },
+      { id: "studio-1", name: "Alpha" },
+    ]);
+
+    await expect(service.listDirectory()).resolves.toEqual([
+      { id: "studio-2", name: "Beta" },
+      { id: "studio-1", name: "Alpha" },
+    ]);
+    expect(prisma.studio.findMany).toHaveBeenCalledWith({
+      orderBy: { name: "asc" },
+      select: { id: true, name: true },
+    });
   });
 
   it("encrypts razorpay secret and never returns it", async () => {

@@ -5,7 +5,7 @@ import { TextField } from "@dev-ui/components/text-field";
 import { useOnlineStatus } from "@dev-ui/hooks";
 import { useForm } from "@tanstack/react-form";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import type { AuthUser } from "@/lib/auth-context";
 import { isAuthBypassEnabled, SEED_PASSWORD } from "@/lib/constants";
@@ -17,15 +17,18 @@ import {
 } from "@/lib/require-auth";
 import { PublicShell } from "@/modules/layout/public-shell";
 import { PasswordInput } from "@/modules/ui/password-input";
+import { StudioSelect, useStudioDirectory } from "@/modules/ui/studio-select";
 import { TouchButton } from "@/modules/ui/touch-button";
 import styles from "./login.module.scss";
 
 type LoginSearch = {
   redirect?: string;
   identifier?: string;
+  studioId?: string;
 };
 
 type LoginFormValues = {
+  studioId: string;
   identifier: string;
   password: string;
 };
@@ -37,6 +40,9 @@ function parseSearch(search: Record<string, unknown>): LoginSearch {
   }
   if (typeof search.identifier === "string" && search.identifier.trim()) {
     next.identifier = search.identifier.trim();
+  }
+  if (typeof search.studioId === "string" && search.studioId.trim()) {
+    next.studioId = search.studioId.trim();
   }
   return next;
 }
@@ -72,11 +78,15 @@ export const Route = createFileRoute("/login")({
 
 function LoginPage() {
   const navigate = useNavigate();
-  const { redirect: redirectTo, identifier: searchIdentifier } =
-    Route.useSearch();
-  const { signIn, signInWithGoogle, loginAsSystemAdmin, user } = useAuth();
+  const {
+    redirect: redirectTo,
+    identifier: searchIdentifier,
+    studioId: searchStudioId,
+  } = Route.useSearch();
+  const { signIn, signInWithGoogle, loginAsSystemAdmin } = useAuth();
   const online = useOnlineStatus();
   const [error, setError] = useState<string | null>(null);
+  const directory = useStudioDirectory();
 
   const redirectAfterSignIn = useCallback(
     (authUser: AuthUser) => {
@@ -92,6 +102,7 @@ function LoginPage() {
 
   const form = useForm({
     defaultValues: {
+      studioId: searchStudioId ?? "",
       identifier: suggestedLoginIdentifier(searchIdentifier),
       password: isAuthBypassEnabled() ? SEED_PASSWORD : "",
     } satisfies LoginFormValues,
@@ -109,6 +120,14 @@ function LoginPage() {
       }
     },
   });
+
+  useEffect(() => {
+    if (searchStudioId) return;
+    if (form.getFieldValue("studioId")) return;
+    const first = directory.data?.[0];
+    if (!first) return;
+    form.setFieldValue("studioId", first.id);
+  }, [directory.data, form, searchStudioId]);
 
   const handleGoogleSignIn = async () => {
     setError(null);
@@ -167,6 +186,29 @@ function LoginPage() {
             void form.handleSubmit();
           }}
         >
+          <form.Field name="studioId">
+            {(field) => (
+              <StudioSelect
+                selectedKey={field.state.value || null}
+                onSelectionChange={(studioId) => {
+                  field.handleChange(studioId ?? "");
+                  void navigate({
+                    to: "/login",
+                    search: {
+                      ...(redirectTo ? { redirect: redirectTo } : {}),
+                      ...(searchIdentifier
+                        ? { identifier: searchIdentifier }
+                        : {}),
+                      ...(studioId ? { studioId } : {}),
+                    },
+                    replace: true,
+                  });
+                }}
+                data-testid="login-studio-select"
+              />
+            )}
+          </form.Field>
+
           <form.Field
             name="identifier"
             validators={{
@@ -275,9 +317,19 @@ function LoginPage() {
           </div>
         ) : null}
 
-        <Link to="/register" className={styles.footerLink}>
-          New here? Create a student account
-        </Link>
+        <form.Subscribe selector={(state) => state.values.studioId}>
+          {(studioId) => (
+            <Link
+              to="/register"
+              search={{
+                ...(studioId.trim() ? { studioId: studioId.trim() } : {}),
+              }}
+              className={styles.footerLink}
+            >
+              New here? Create a student account
+            </Link>
+          )}
+        </form.Subscribe>
       </section>
     </PublicShell>
   );

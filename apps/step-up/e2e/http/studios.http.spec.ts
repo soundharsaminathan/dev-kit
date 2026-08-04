@@ -1,7 +1,27 @@
 import { expect, test } from "@playwright/test";
+import { apiBaseUrl } from "../fixtures/seed";
 import { expectOk, httpJson, TestDataCleanup } from "./helpers";
 
 test.describe("studios HTTP @http", () => {
+  test("public directory lists studio id and name @http", async () => {
+    const response = await fetch(`${apiBaseUrl()}/studios/directory`);
+    expect(response.ok).toBeTruthy();
+    const data = (await response.json()) as Array<{
+      id: string;
+      name: string;
+    }>;
+    expect(Array.isArray(data)).toBe(true);
+    expect(data.length).toBeGreaterThan(0);
+    expect(data[0]).toEqual(
+      expect.objectContaining({
+        id: expect.any(String),
+        name: expect.any(String),
+      }),
+    );
+    expect(data[0]).not.toHaveProperty("owner");
+    expect(data[0]).not.toHaveProperty("memberCount");
+  });
+
   test("admin creates studio with temp password and owner must change it @http", async () => {
     const cleanup = new TestDataCleanup();
     const stamp = Date.now();
