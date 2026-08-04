@@ -5,8 +5,16 @@
 }
 
 .skeletonBanner {
+  align-self: stretch;
+  width: auto;
   margin-inline: calc(-1 * var(--space-4, 1rem));
   margin-block-start: calc(-1 * var(--space-3, 0.75rem));
+}
+
+@media (min-width: 768px) {
+  .skeletonBanner {
+    margin-inline: calc(-1 * var(--space-6, 1.5rem));
+  }
 }
 
 .skeletonRow {
