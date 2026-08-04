@@ -7,6 +7,10 @@ import {
 import { NotificationsService } from "../notifications/notifications.service";
 import { PrismaService } from "../prisma/prisma.service";
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+const DEFAULT_GRACE_DAYS = 3;
+const DEFAULT_EXPIRE_ALERT_DAYS = 7;
+
 function dayKey(date: Date) {
   return date.toISOString().slice(0, 10);
 }
@@ -31,13 +35,28 @@ export class JobsService {
       data: { status: MembershipStatus.DUE },
     });
 
-    const expireCutoff = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000);
-    const membershipsToExpire = await this.prisma.membership.findMany({
-      where: {
-        status: MembershipStatus.DUE,
-        periodEnd: { lt: expireCutoff },
+    const studioSettings = await this.prisma.studioSettings.findMany({
+      select: {
+        studioId: true,
+        graceDays: true,
+        expireAlertDays: true,
       },
+    });
+    const settingsByStudio = new Map(
+      studioSettings.map((row) => [row.studioId, row]),
+    );
+
+    const dueMemberships = await this.prisma.membership.findMany({
+      where: { status: MembershipStatus.DUE },
       include: { subscription: true },
+    });
+
+    const membershipsToExpire = dueMemberships.filter((membership) => {
+      const graceDays =
+        settingsByStudio.get(membership.subscription.studioId)?.graceDays ??
+        DEFAULT_GRACE_DAYS;
+      const expireCutoff = new Date(now.getTime() - graceDays * DAY_MS);
+      return membership.periodEnd < expireCutoff;
     });
 
     for (const membership of membershipsToExpire) {
@@ -76,15 +95,20 @@ export class JobsService {
       data: { status: InvoiceStatus.OVERDUE },
     });
 
-    const expiringSoon = await this.prisma.membership.findMany({
+    const activeMemberships = await this.prisma.membership.findMany({
       where: {
         status: MembershipStatus.ACTIVE,
-        periodEnd: {
-          lte: new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000),
-          gte: now,
-        },
+        periodEnd: { gte: now },
       },
       include: { subscription: true },
+    });
+
+    const expiringSoon = activeMemberships.filter((membership) => {
+      const expireAlertDays =
+        settingsByStudio.get(membership.subscription.studioId)
+          ?.expireAlertDays ?? DEFAULT_EXPIRE_ALERT_DAYS;
+      const alertCutoff = new Date(now.getTime() + expireAlertDays * DAY_MS);
+      return membership.periodEnd <= alertCutoff;
     });
 
     for (const membership of expiringSoon) {

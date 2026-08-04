@@ -190,6 +190,14 @@ export class StudiosController {
     if (
       user.role !== UserRole.OWNER &&
       user.role !== UserRole.SYSTEM_ADMIN &&
+      dto.graceDays !== undefined
+    ) {
+      throw new ForbiddenException("Only owners can change due days");
+    }
+
+    if (
+      user.role !== UserRole.OWNER &&
+      user.role !== UserRole.SYSTEM_ADMIN &&
       dto.platformFeePercent !== undefined
     ) {
       throw new ForbiddenException(

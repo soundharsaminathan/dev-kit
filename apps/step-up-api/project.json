@@ -25,19 +25,22 @@
       "executor": "nx:run-script",
       "options": {
         "script": "test"
-      }
+      },
+      "dependsOn": ["prisma:generate"]
     },
     "test:ci": {
       "executor": "nx:run-script",
       "options": {
         "script": "test"
-      }
+      },
+      "dependsOn": ["prisma:generate"]
     },
     "test:migrations": {
       "executor": "nx:run-script",
       "options": {
         "script": "test:migrations"
-      }
+      },
+      "dependsOn": ["prisma:generate"]
     },
     "prisma:generate": {
       "executor": "nx:run-script",

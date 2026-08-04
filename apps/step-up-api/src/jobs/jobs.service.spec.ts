@@ -12,6 +12,9 @@ describe("JobsService.runDaily", () => {
       updateMany: vi.fn(),
       findMany: vi.fn(),
     },
+    studioSettings: {
+      findMany: vi.fn(),
+    },
   };
 
   const notifications = {
@@ -22,6 +25,7 @@ describe("JobsService.runDaily", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    prisma.studioSettings.findMany.mockResolvedValue([]);
     service = new JobsService(prisma as never, notifications as never);
   });
 
@@ -39,6 +43,7 @@ describe("JobsService.runDaily", () => {
       subscription: {
         id: "sub-1",
         name: "Adults Unlimited",
+        studioId: "studio-1",
       },
     };
 
@@ -64,6 +69,70 @@ describe("JobsService.runDaily", () => {
       }),
     );
     expect(result.notRenewedNotifications).toBe(1);
+
+    vi.useRealTimers();
+  });
+
+  it("uses each studio's due days before expiring memberships", async () => {
+    const now = new Date("2026-07-20T12:00:00.000Z");
+    vi.useFakeTimers();
+    vi.setSystemTime(now);
+
+    const shortGrace = {
+      id: "mem-short",
+      purchaserUserId: "student-1",
+      subscriptionId: "sub-1",
+      status: MembershipStatus.DUE,
+      periodEnd: new Date("2026-07-17T23:59:59.999Z"),
+      subscription: {
+        id: "sub-1",
+        name: "Short Grace Plan",
+        studioId: "studio-short",
+      },
+    };
+    const longGrace = {
+      id: "mem-long",
+      purchaserUserId: "student-2",
+      subscriptionId: "sub-2",
+      status: MembershipStatus.DUE,
+      periodEnd: new Date("2026-07-17T23:59:59.999Z"),
+      subscription: {
+        id: "sub-2",
+        name: "Long Grace Plan",
+        studioId: "studio-long",
+      },
+    };
+
+    prisma.studioSettings.findMany.mockResolvedValue([
+      { studioId: "studio-short", graceDays: 2, expireAlertDays: 7 },
+      { studioId: "studio-long", graceDays: 5, expireAlertDays: 7 },
+    ]);
+    prisma.membership.updateMany
+      .mockResolvedValueOnce({ count: 0 })
+      .mockResolvedValueOnce({ count: 1 });
+    prisma.membership.findMany
+      .mockResolvedValueOnce([shortGrace, longGrace])
+      .mockResolvedValueOnce([]);
+    prisma.invoice.updateMany.mockResolvedValue({ count: 0 });
+    prisma.invoice.findMany.mockResolvedValue([]);
+    notifications.create.mockResolvedValue({ id: "notif-1" });
+
+    const result = await service.runDaily();
+
+    expect(notifications.create).toHaveBeenCalledTimes(1);
+    expect(notifications.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        dedupeKey: "NOT_RENEWED:mem-short",
+      }),
+    );
+    expect(prisma.membership.updateMany).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        where: { id: { in: ["mem-short"] } },
+        data: { status: MembershipStatus.EXPIRED },
+      }),
+    );
+    expect(result.expiredMemberships).toBe(1);
 
     vi.useRealTimers();
   });
