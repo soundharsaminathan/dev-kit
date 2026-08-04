@@ -251,9 +251,11 @@ describe("Toast", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Show toast" }));
 
-    expect(document.querySelector("[data-toast-region]")).toHaveAttribute(
-      "data-position",
-      "top-right",
-    );
+    const region = document.querySelector("[data-toast-region]");
+    expect(region).toHaveAttribute("data-position", "top-right");
+    expect(region).toHaveStyle({
+      top: "var(--toast-region-inset, var(--space-4, 1rem))",
+      right: "var(--toast-region-inset, var(--space-4, 1rem))",
+    });
   });
 });

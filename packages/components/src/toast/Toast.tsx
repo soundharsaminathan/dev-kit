@@ -70,6 +70,53 @@ function createToastQueue<T = ToastContentValue>(
 const DEFAULT_TOAST_TIMEOUT = 3000;
 const DEFAULT_MAX_VISIBLE_TOASTS = 5;
 
+const TOAST_REGION_INSET = "var(--toast-region-inset, var(--space-4, 1rem))";
+
+const TOAST_POSITION_STYLE: Record<ToastPosition, CSSProperties> = {
+  "top-right": {
+    top: TOAST_REGION_INSET,
+    right: TOAST_REGION_INSET,
+    bottom: "auto",
+    left: "auto",
+    translate: "none",
+  },
+  "top-left": {
+    top: TOAST_REGION_INSET,
+    left: TOAST_REGION_INSET,
+    bottom: "auto",
+    right: "auto",
+    translate: "none",
+  },
+  "top-center": {
+    top: TOAST_REGION_INSET,
+    right: "50%",
+    bottom: "auto",
+    left: "auto",
+    translate: "50% 0",
+  },
+  "bottom-right": {
+    right: TOAST_REGION_INSET,
+    bottom: TOAST_REGION_INSET,
+    top: "auto",
+    left: "auto",
+    translate: "none",
+  },
+  "bottom-left": {
+    left: TOAST_REGION_INSET,
+    bottom: TOAST_REGION_INSET,
+    top: "auto",
+    right: "auto",
+    translate: "none",
+  },
+  "bottom-center": {
+    right: "50%",
+    bottom: TOAST_REGION_INSET,
+    top: "auto",
+    left: "auto",
+    translate: "50% 0",
+  },
+};
+
 function ToastProviderInner({
   children,
   position = "top-right",
@@ -255,6 +302,7 @@ function ToastRegion({
         data-position={position}
         data-count={toastCount}
         {...(isStacked ? { "data-stacked": "" } : {})}
+        style={TOAST_POSITION_STYLE[position]}
         className={cn(styles.region, className)}
       >
         {state.visibleToasts.map((item, index) => (

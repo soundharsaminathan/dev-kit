@@ -1,49 +1,42 @@
 @use "@dev-ui/tokens/scss" as *;
 
 .region {
+  --toast-region-inset: var(--space-4, 1rem);
   position: fixed;
   z-index: 50;
   display: flex;
-  width: min(24rem, calc(100vw - var(--space-8)));
+  width: min(24rem, calc(100vw - var(--space-8, 2rem)));
   max-width: 24rem;
   flex-direction: column;
   gap: var(--space-2);
   outline: none;
 
   &[data-position="bottom-right"] {
-    right: var(--space-4);
-    bottom: var(--space-4);
+    inset: auto var(--toast-region-inset) var(--toast-region-inset) auto;
     flex-direction: column-reverse;
   }
 
   &[data-position="bottom-left"] {
-    bottom: var(--space-4);
-    left: var(--space-4);
+    inset: auto auto var(--toast-region-inset) var(--toast-region-inset);
     flex-direction: column-reverse;
   }
 
   &[data-position="bottom-center"] {
-    right: 50%;
-    bottom: var(--space-4);
-    left: auto;
+    inset: auto 50% var(--toast-region-inset) auto;
     translate: 50% 0;
     flex-direction: column-reverse;
   }
 
   &[data-position="top-right"] {
-    top: var(--space-4);
-    right: var(--space-4);
+    inset: var(--toast-region-inset) var(--toast-region-inset) auto auto;
   }
 
   &[data-position="top-left"] {
-    top: var(--space-4);
-    left: var(--space-4);
+    inset: var(--toast-region-inset) auto auto var(--toast-region-inset);
   }
 
   &[data-position="top-center"] {
-    top: var(--space-4);
-    right: 50%;
-    left: auto;
+    inset: var(--toast-region-inset) 50% auto auto;
     translate: 50% 0;
   }
 
@@ -57,26 +50,28 @@
   }
 
   @media (min-width: 640px) {
-    &[data-position="bottom-right"],
-    &[data-position="bottom-left"],
+    &[data-position="bottom-right"] {
+      --toast-region-inset: var(--space-6, 1.5rem);
+    }
+
+    &[data-position="bottom-left"] {
+      --toast-region-inset: var(--space-6, 1.5rem);
+    }
+
     &[data-position="bottom-center"] {
-      bottom: var(--space-6);
+      --toast-region-inset: var(--space-6, 1.5rem);
     }
 
-    &[data-position="top-right"],
-    &[data-position="top-left"],
-    &[data-position="top-center"] {
-      top: var(--space-6);
-    }
-
-    &[data-position="bottom-right"],
     &[data-position="top-right"] {
-      right: var(--space-6);
+      --toast-region-inset: var(--space-6, 1.5rem);
     }
 
-    &[data-position="bottom-left"],
     &[data-position="top-left"] {
-      left: var(--space-6);
+      --toast-region-inset: var(--space-6, 1.5rem);
+    }
+
+    &[data-position="top-center"] {
+      --toast-region-inset: var(--space-6, 1.5rem);
     }
   }
 }
