@@ -1,6 +1,5 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@dev-ui/components/avatar";
 import { Badge } from "@dev-ui/components/badge";
-import { Checkbox } from "@dev-ui/components/checkbox";
 import {
   Select,
   SelectContent,
@@ -8,11 +7,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@dev-ui/components/select";
-import { useIsMobile } from "@dev-ui/hooks";
 import { Icon } from "@dev-ui/icons";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useApi } from "@/lib/api-context";
 import { useAuth } from "@/lib/auth";
 import { ENTITY_ICONS } from "@/lib/entity-icons";
@@ -22,20 +20,12 @@ import type { DiscoverBatchPlan } from "@/modules/discover/types";
 import { useDiscoverBatch } from "@/modules/discover/use-discover";
 import { useActiveStudentContext } from "@/modules/me/use-active-student-context";
 import { AppSheet } from "@/modules/ui/app-sheet";
-import { BloomMenu } from "@/modules/ui/bloom-menu";
 import { FormInput } from "@/modules/ui/form-input";
 import { Screen } from "@/modules/ui/screen";
 import { SkeletonBlock } from "@/modules/ui/skeleton-block";
 import { ErrorState, SuccessState } from "@/modules/ui/states";
 import { StickyCtaBar, TouchButton } from "@/modules/ui/touch-button";
 import styles from "./batch-detail.module.scss";
-
-type StudioBatch = {
-  id: string;
-  name: string;
-  category: "KIDS" | "ADULTS";
-  active: boolean;
-};
 
 function formatPrice(value: number | string | null | undefined) {
   if (value == null || value === "") return null;
@@ -60,35 +50,11 @@ function planCadenceLabel(plan: DiscoverBatchPlan) {
 }
 
 function planAudienceLabel(plan: DiscoverBatchPlan) {
-  if (plan.kind === "INDIVIDUAL") {
-    return plan.individualAudience === "ADULT" ? "Adult" : "Kid";
-  }
-  return "Family";
-}
-
-function planSeatShortLabel(plan: DiscoverBatchPlan) {
-  const parts: string[] = [];
-  if (plan.adultSeats > 0) parts.push(`${plan.adultSeats}A`);
-  if (plan.kidSeats > 0) parts.push(`${plan.kidSeats}K`);
-  return parts.join(" · ") || "Family";
-}
-
-function planSeatA11yLabel(plan: DiscoverBatchPlan) {
-  const parts: string[] = [];
-  if (plan.adultSeats > 0) {
-    parts.push(`${plan.adultSeats} adult${plan.adultSeats === 1 ? "" : "s"}`);
-  }
-  if (plan.kidSeats > 0) {
-    parts.push(`${plan.kidSeats} kid${plan.kidSeats === 1 ? "" : "s"}`);
-  }
-  return parts.join(" + ") || "Family";
+  return plan.individualAudience === "ADULT" ? "Adult" : "Kid";
 }
 
 function planKindLabel(plan: DiscoverBatchPlan) {
-  if (plan.kind === "INDIVIDUAL") {
-    return `Individual · ${planAudienceLabel(plan)}`;
-  }
-  return `Family · ${planSeatA11yLabel(plan)}`;
+  return `Individual · ${planAudienceLabel(plan)}`;
 }
 
 function sortPlans(a: DiscoverBatchPlan, b: DiscoverBatchPlan) {
@@ -110,11 +76,9 @@ export function BatchDetailPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const isMobile = useIsMobile();
   const {
     studentId,
     loading: studentLoading,
-    accounts,
     children,
   } = useActiveStudentContext();
   const query = useDiscoverBatch(id, studentId || undefined);
@@ -126,7 +90,6 @@ export function BatchDetailPage() {
   );
   const [selectedAdultIds, setSelectedAdultIds] = useState<string[]>([]);
   const [selectedKidIds, setSelectedKidIds] = useState<string[]>([]);
-  const [seatBatchIds, setSeatBatchIds] = useState<Record<string, string>>({});
   const [type, setType] = useState<"TRIAL" | "OPEN_SEAT" | "PRIVATE">("TRIAL");
   const [notes, setNotes] = useState("");
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(
@@ -137,21 +100,6 @@ export function BatchDetailPage() {
 
   const trainerId = query.data?.trainers[0]?.trainer.id;
   const canActForStudent = Boolean(studentId) && !studentLoading;
-
-  const studioBatches = useQuery({
-    queryKey: ["batches", studioId, "purchase-picks"],
-    queryFn: () => api.get<StudioBatch[]>(`/batches/studio/${studioId}`),
-    enabled: purchaseOpen && selectedPlan?.kind === "FAMILY",
-  });
-
-  const adultCandidates = useMemo(
-    () =>
-      accounts.filter(
-        (account) => account.isSelf || account.kind === "CO_STUDENT",
-      ),
-    [accounts],
-  );
-  const kidCandidates = useMemo(() => children, [children]);
 
   const createBooking = useMutation({
     mutationFn: () => {
@@ -204,16 +152,10 @@ export function BatchDetailPage() {
         ...selectedAdultIds.map((studentSeatId) => ({
           studentId: studentSeatId,
           seatRole: "ADULT" as const,
-          ...(seatBatchIds[studentSeatId]
-            ? { batchId: seatBatchIds[studentSeatId] }
-            : {}),
         })),
         ...selectedKidIds.map((studentSeatId) => ({
           studentId: studentSeatId,
           seatRole: "KID" as const,
-          ...(seatBatchIds[studentSeatId]
-            ? { batchId: seatBatchIds[studentSeatId] }
-            : {}),
         })),
       ];
       return api.post<{
@@ -262,24 +204,15 @@ export function BatchDetailPage() {
   });
 
   function openPurchase(plan: DiscoverBatchPlan) {
+    if (plan.kind !== "INDIVIDUAL") return;
     setSelectedPlan(plan);
-    setSeatBatchIds({});
-    if (plan.kind === "INDIVIDUAL") {
-      if (plan.individualAudience === "ADULT") {
-        setSelectedAdultIds([studentId]);
-        setSelectedKidIds([]);
-      } else {
-        setSelectedAdultIds([]);
-        const defaultKid = children[0]?.id ?? studentId;
-        setSelectedKidIds(defaultKid ? [defaultKid] : []);
-      }
+    if (plan.individualAudience === "ADULT") {
+      setSelectedAdultIds([studentId]);
+      setSelectedKidIds([]);
     } else {
-      setSelectedAdultIds(
-        adultCandidates.slice(0, plan.adultSeats).map((account) => account.id),
-      );
-      setSelectedKidIds(
-        children.slice(0, plan.kidSeats).map((child) => child.id),
-      );
+      setSelectedAdultIds([]);
+      const defaultKid = children[0]?.id ?? studentId;
+      setSelectedKidIds(defaultKid ? [defaultKid] : []);
     }
     setPurchaseOpen(true);
   }
@@ -311,17 +244,11 @@ export function BatchDetailPage() {
 
   const batch = query.data;
   const trainer = batch.trainers[0]?.trainer;
-  const plans = (batch.plans ?? []).filter((plan) => plan.active);
-  const individualPlans = plans
-    .filter((plan) => plan.kind === "INDIVIDUAL")
-    .slice()
-    .sort(sortPlans);
-  const familyPlans = plans
-    .filter((plan) => plan.kind === "FAMILY")
-    .slice()
-    .sort(sortPlans);
-  const hasPlans = plans.length > 0;
-  const batchSeatRole = batch.category === "KIDS" ? "KID" : "ADULT";
+  const plans = (batch.plans ?? []).filter(
+    (plan) => plan.active && plan.kind === "INDIVIDUAL",
+  );
+  const individualPlans = plans.slice().sort(sortPlans);
+  const hasPlans = individualPlans.length > 0;
   const ageGroupLabel = batch.category === "KIDS" ? "Kids" : "Adults";
   const price = formatPrice(batch.price);
   const isFull = batch.remainingSeats === 0;
@@ -333,11 +260,6 @@ export function BatchDetailPage() {
         ? "Class full"
         : `${batch.remainingSeats} seat${batch.remainingSeats === 1 ? "" : "s"} left`;
   const capacityLabel = `${batch.capacity} capacity`;
-  const familyBloomItems = familyPlans.map((plan) => ({
-    id: plan.id,
-    label: `${planSeatShortLabel(plan)} · ${planPriceLabel(plan)}`,
-    icon: "users" as const,
-  }));
   const openBooking = batch.viewerBooking;
   const hasAwaitingPayment = openBooking?.status === "AWAITING_PAYMENT";
   const hasPendingRequest = openBooking?.status === "PENDING";
@@ -350,22 +272,10 @@ export function BatchDetailPage() {
     !hasConfirmedRequest;
   const showTrialConvertCta = false;
 
-  const otherSeatRole = batchSeatRole === "KID" ? "ADULT" : "KID";
-  const otherSeatIds =
-    otherSeatRole === "ADULT" ? selectedAdultIds : selectedKidIds;
-  const otherBatches = (studioBatches.data ?? []).filter(
-    (entry) =>
-      entry.active &&
-      entry.id !== id &&
-      entry.category === (otherSeatRole === "KID" ? "KIDS" : "ADULTS"),
-  );
-
   const seatsValid =
     selectedPlan != null &&
     selectedAdultIds.length === selectedPlan.adultSeats &&
-    selectedKidIds.length === selectedPlan.kidSeats &&
-    (selectedPlan.kind !== "FAMILY" ||
-      otherSeatIds.every((seatId) => Boolean(seatBatchIds[seatId])));
+    selectedKidIds.length === selectedPlan.kidSeats;
 
   if (purchaseSuccess) {
     return (
@@ -577,67 +487,6 @@ export function BatchDetailPage() {
                   </button>
                 ))}
               </div>
-            ) : null}
-            {familyPlans.length > 0 ? (
-              isMobile ? (
-                <div className={styles.familyBloom}>
-                  <BloomMenu
-                    items={familyBloomItems}
-                    columns={familyBloomItems.length <= 2 ? 1 : 2}
-                    size="compact"
-                    tone="quiet"
-                    disabled={plansDisabled}
-                    triggerLabel="Family packs"
-                    triggerIcon="users"
-                    panelTitle="Family packs"
-                    description="Cover multiple seats with one subscription."
-                    onSelect={(planId) => {
-                      const plan = familyPlans.find(
-                        (entry) => entry.id === planId,
-                      );
-                      if (plan) openPurchase(plan);
-                    }}
-                  />
-                </div>
-              ) : (
-                <div className={styles.familyDesktop}>
-                  <h3 className={styles.planGroupTitle}>Family packs</h3>
-                  <div className={styles.planList}>
-                    {familyPlans.map((plan) => (
-                      <button
-                        key={plan.id}
-                        type="button"
-                        className={styles.planCard}
-                        disabled={plansDisabled}
-                        aria-label={`${planSeatA11yLabel(plan)}, ${planCadenceLabel(plan)}, ${planPriceLabel(plan)}`}
-                        onClick={() => openPurchase(plan)}
-                      >
-                        <div className={styles.planCopy}>
-                          <span className={styles.planPrice}>
-                            {planPriceLabel(plan)}
-                          </span>
-                          <span className={styles.planChips}>
-                            <span className={styles.planChip}>
-                              {planCadenceLabel(plan)}
-                            </span>
-                            <span
-                              className={styles.planChip}
-                              data-tone="accent"
-                            >
-                              {planSeatShortLabel(plan)}
-                            </span>
-                          </span>
-                        </div>
-                        <Icon
-                          name="chevron-right"
-                          className={styles.planChevron}
-                          aria-hidden
-                        />
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )
             ) : null}
           </div>
         ) : null}
@@ -865,101 +714,10 @@ export function BatchDetailPage() {
               <p className={styles.muted}>
                 {planKindLabel(selectedPlan)} · {planPriceLabel(selectedPlan)}
               </p>
-              {selectedPlan.kind === "FAMILY" ? (
-                <>
-                  {selectedPlan.adultSeats > 0 ? (
-                    <div className={styles.section}>
-                      <h3 className={styles.sectionTitle}>Adult seats</h3>
-                      {adultCandidates.map((account) => (
-                        <Checkbox
-                          key={account.id}
-                          isSelected={selectedAdultIds.includes(account.id)}
-                          onChange={(selected) =>
-                            setSelectedAdultIds((current) =>
-                              selected
-                                ? [...current, account.id].slice(
-                                    0,
-                                    selectedPlan.adultSeats,
-                                  )
-                                : current.filter(
-                                    (entry) => entry !== account.id,
-                                  ),
-                            )
-                          }
-                        >
-                          {account.name}
-                        </Checkbox>
-                      ))}
-                    </div>
-                  ) : null}
-                  {selectedPlan.kidSeats > 0 ? (
-                    <div className={styles.section}>
-                      <h3 className={styles.sectionTitle}>Kid seats</h3>
-                      {kidCandidates.map((child) => (
-                        <Checkbox
-                          key={child.id}
-                          isSelected={selectedKidIds.includes(child.id)}
-                          onChange={(selected) =>
-                            setSelectedKidIds((current) =>
-                              selected
-                                ? [...current, child.id].slice(
-                                    0,
-                                    selectedPlan.kidSeats,
-                                  )
-                                : current.filter((entry) => entry !== child.id),
-                            )
-                          }
-                        >
-                          {child.name}
-                        </Checkbox>
-                      ))}
-                    </div>
-                  ) : null}
-                  {otherSeatIds.length > 0 ? (
-                    <div className={styles.section}>
-                      <h3 className={styles.sectionTitle}>
-                        Other batch for{" "}
-                        {otherSeatRole === "ADULT" ? "adults" : "kids"}
-                      </h3>
-                      {otherSeatIds.map((seatId) => {
-                        const label =
-                          [...adultCandidates, ...kidCandidates].find(
-                            (entry) => entry.id === seatId,
-                          )?.name ?? seatId;
-                        return (
-                          <Select
-                            key={seatId}
-                            label={label}
-                            selectedKey={seatBatchIds[seatId] ?? null}
-                            onSelectionChange={(key) =>
-                              setSeatBatchIds((current) => ({
-                                ...current,
-                                [seatId]: key as string,
-                              }))
-                            }
-                          >
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {otherBatches.map((entry) => (
-                                <SelectItem key={entry.id} id={entry.id}>
-                                  {entry.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        );
-                      })}
-                    </div>
-                  ) : null}
-                </>
-              ) : (
-                <p className={styles.muted}>
-                  Enrolls the selected student into{" "}
-                  <strong>{batch.name}</strong> for this plan period.
-                </p>
-              )}
+              <p className={styles.muted}>
+                Enrolls the selected student into <strong>{batch.name}</strong>{" "}
+                for this plan period.
+              </p>
               {purchase.isError ? (
                 <ErrorState
                   description={

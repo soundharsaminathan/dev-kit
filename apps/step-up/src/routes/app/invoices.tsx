@@ -6,6 +6,7 @@ import { useMemo, useState } from "react";
 import { useApi } from "@/lib/api-context";
 import { requireAdmin } from "@/lib/require-auth";
 import { useStudioId } from "@/lib/use-studio-id";
+import { FamilyCheckoutSheet } from "@/modules/payments/family-checkout-sheet";
 import { AppSheet } from "@/modules/ui/app-sheet";
 import { FilterChipRow } from "@/modules/ui/filter-chip-row";
 import { PressableCard } from "@/modules/ui/pressable-card";
@@ -16,12 +17,30 @@ import staff from "@/modules/ui/staff.module.scss";
 import { EmptyState, ErrorState } from "@/modules/ui/states";
 import { TouchButton } from "@/modules/ui/touch-button";
 
+type CoveredSeat = {
+  studentId: string;
+  seatRole: "ADULT" | "KID";
+  batchId?: string;
+};
+
 type Invoice = {
   id: string;
   studentId: string;
   amount: number;
   status: "PENDING" | "PAID" | "OVERDUE";
+  kind: "FAMILY" | "INDIVIDUAL";
   student?: { name: string };
+  familySummary?: {
+    planName: string | null;
+    adultCount: number | null;
+    kidCount: number | null;
+    coveredStudents: CoveredSeat[] | null;
+  } | null;
+  purchaseMeta?: {
+    subscriptionId: string;
+    purchaserUserId: string;
+    coveredStudents: CoveredSeat[];
+  } | null;
 };
 
 export const Route = createFileRoute("/app/invoices")({
@@ -43,14 +62,18 @@ function formatPrice(amount: number) {
 }
 
 type PaymentMethod = "CASH" | "UPI_MANUAL";
+type StatusFilter = "ALL" | "PENDING" | "OVERDUE" | "PAID";
 
 function InvoicesPage() {
   const api = useApi();
   const studioId = useStudioId();
   const queryClient = useQueryClient();
   const { toast } = useToastContext("InvoicesPage");
-  const [filter, setFilter] = useState("ALL");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL");
+  const [familyOnly, setFamilyOnly] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [familyOpenId, setFamilyOpenId] = useState<string | null>(null);
+  const [sellFamilyOpen, setSellFamilyOpen] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(
     null,
   );
@@ -67,6 +90,7 @@ function InvoicesPage() {
       }),
     onSuccess: () => {
       setActiveId(null);
+      setFamilyOpenId(null);
       setPaymentMethod(null);
       void queryClient.invalidateQueries({ queryKey: ["invoices", studioId] });
       toast({
@@ -88,22 +112,39 @@ function InvoicesPage() {
   });
 
   const filtered = useMemo(() => {
-    const items = query.data ?? [];
-    if (filter === "ALL") return items;
-    return items.filter((invoice) => invoice.status === filter);
-  }, [query.data, filter]);
+    let items = query.data ?? [];
+    if (familyOnly) {
+      items = items.filter((invoice) => invoice.kind === "FAMILY");
+    }
+    if (statusFilter !== "ALL") {
+      items = items.filter((invoice) => invoice.status === statusFilter);
+    }
+    return items;
+  }, [query.data, familyOnly, statusFilter]);
 
   const active =
     (query.data ?? []).find((invoice) => invoice.id === activeId) ?? null;
+  const familyInvoice =
+    (query.data ?? []).find((invoice) => invoice.id === familyOpenId) ?? null;
 
-  function closeSheet() {
+  function closeMarkPaid() {
     setActiveId(null);
+    setPaymentMethod(null);
+  }
+
+  function closeFamilyOpen() {
+    setFamilyOpenId(null);
     setPaymentMethod(null);
   }
 
   function openMarkPaid(id: string) {
     setPaymentMethod(null);
     setActiveId(id);
+  }
+
+  function openFamily(id: string) {
+    setPaymentMethod(null);
+    setFamilyOpenId(id);
   }
 
   const methodLabel =
@@ -114,7 +155,10 @@ function InvoicesPage() {
         : null;
 
   return (
-    <Screen title="Invoices" subtitle="Record cash and UPI payments.">
+    <Screen
+      title="Invoices"
+      subtitle="Collect individual payments or sell family packs."
+    >
       <PullToRefresh onRefresh={() => query.refetch()}>
         <div className={staff.section}>
           <FilterChipRow
@@ -123,10 +167,32 @@ function InvoicesPage() {
               { id: "PENDING", label: "Pending" },
               { id: "OVERDUE", label: "Overdue" },
               { id: "PAID", label: "Paid" },
+              { id: "FAMILY", label: "Family" },
             ]}
-            selected={[filter]}
-            onToggle={(id) => setFilter(id)}
+            selected={
+              familyOnly
+                ? ["FAMILY", ...(statusFilter !== "ALL" ? [statusFilter] : [])]
+                : [statusFilter]
+            }
+            onToggle={(id) => {
+              if (id === "FAMILY") {
+                setFamilyOnly((current) => !current);
+                return;
+              }
+              setStatusFilter((current) =>
+                current === id ? "ALL" : (id as StatusFilter),
+              );
+            }}
           />
+
+          <TouchButton
+            variant="primary"
+            fullWidth
+            data-testid="sell-family-pack"
+            onClick={() => setSellFamilyOpen(true)}
+          >
+            Sell family pack
+          </TouchButton>
 
           {query.isLoading ? <SkeletonCardList count={4} /> : null}
 
@@ -147,50 +213,90 @@ function InvoicesPage() {
 
           {query.data && filtered.length === 0 ? (
             <EmptyState
-              title="No invoices"
-              description="Invoices appear when subscriptions bill."
+              title={familyOnly ? "No family invoices" : "No invoices"}
+              description={
+                familyOnly
+                  ? "Sell a family pack or wait for a member family checkout."
+                  : "Invoices appear when subscriptions bill."
+              }
             />
           ) : null}
 
           {filtered.length > 0 ? (
             <div className={staff.list}>
-              {filtered.map((invoice) => (
-                <PressableCard key={invoice.id} asDiv>
-                  <div className={staff.rowCard}>
-                    <div className={staff.attentionTop}>
-                      <span className={staff.rowTitle}>
-                        {invoice.student?.name ?? invoice.studentId}
-                      </span>
-                      <Badge
-                        variant={
-                          invoice.status === "PAID"
-                            ? "success"
-                            : invoice.status === "OVERDUE"
-                              ? "danger"
-                              : "neutral"
-                        }
-                      >
-                        {invoice.status}
-                      </Badge>
-                    </div>
-                    <p className={staff.rowMeta}>
-                      {formatPrice(invoice.amount)}
-                    </p>
-                    {invoice.status !== "PAID" ? (
-                      <div className={staff.rowActions}>
-                        <TouchButton
-                          size="md"
-                          variant="primary"
-                          data-testid={`mark-paid-${invoice.id}`}
-                          onClick={() => openMarkPaid(invoice.id)}
+              {filtered.map((invoice) => {
+                const isFamily = invoice.kind === "FAMILY";
+                const unpaid = invoice.status !== "PAID";
+                return (
+                  <PressableCard key={invoice.id} asDiv>
+                    <div className={staff.rowCard}>
+                      <div className={staff.attentionTop}>
+                        <span className={staff.rowTitle}>
+                          {invoice.student?.name ?? invoice.studentId}
+                        </span>
+                        <Badge
+                          variant={
+                            invoice.status === "PAID"
+                              ? "success"
+                              : invoice.status === "OVERDUE"
+                                ? "danger"
+                                : "neutral"
+                          }
                         >
-                          Mark paid
-                        </TouchButton>
+                          {invoice.status}
+                        </Badge>
                       </div>
-                    ) : null}
-                  </div>
-                </PressableCard>
-              ))}
+                      <p className={staff.rowMeta}>
+                        {formatPrice(invoice.amount)}
+                        {" · "}
+                        {isFamily ? "Family" : "Individual"}
+                        {isFamily && invoice.familySummary?.planName
+                          ? ` · ${invoice.familySummary.planName}`
+                          : ""}
+                      </p>
+                      {isFamily &&
+                      invoice.familySummary &&
+                      (invoice.familySummary.adultCount != null ||
+                        invoice.familySummary.kidCount != null) ? (
+                        <p className={staff.rowMeta}>
+                          {invoice.familySummary.adultCount ?? 0} adult
+                          {(invoice.familySummary.adultCount ?? 0) === 1
+                            ? ""
+                            : "s"}
+                          {" · "}
+                          {invoice.familySummary.kidCount ?? 0} kid
+                          {(invoice.familySummary.kidCount ?? 0) === 1
+                            ? ""
+                            : "s"}
+                        </p>
+                      ) : null}
+                      {unpaid ? (
+                        <div className={staff.rowActions}>
+                          {isFamily ? (
+                            <TouchButton
+                              size="md"
+                              variant="primary"
+                              data-testid={`open-family-${invoice.id}`}
+                              onClick={() => openFamily(invoice.id)}
+                            >
+                              Open family
+                            </TouchButton>
+                          ) : (
+                            <TouchButton
+                              size="md"
+                              variant="primary"
+                              data-testid={`mark-paid-${invoice.id}`}
+                              onClick={() => openMarkPaid(invoice.id)}
+                            >
+                              Mark paid
+                            </TouchButton>
+                          )}
+                        </div>
+                      ) : null}
+                    </div>
+                  </PressableCard>
+                );
+              })}
             </div>
           ) : null}
         </div>
@@ -199,7 +305,7 @@ function InvoicesPage() {
       <AppSheet
         isOpen={Boolean(active)}
         onOpenChange={(open) => {
-          if (!open) closeSheet();
+          if (!open) closeMarkPaid();
         }}
         title={
           active
@@ -263,6 +369,110 @@ function InvoicesPage() {
           </div>
         ) : null}
       </AppSheet>
+
+      <AppSheet
+        isOpen={Boolean(familyInvoice)}
+        onOpenChange={(open) => {
+          if (!open) closeFamilyOpen();
+        }}
+        title={
+          familyInvoice
+            ? `Family · ${familyInvoice.student?.name ?? "Checkout"}`
+            : "Family"
+        }
+        size="tall"
+      >
+        {familyInvoice ? (
+          <div className={staff.sheetStack}>
+            <p className={staff.rowMeta}>
+              {formatPrice(familyInvoice.amount)} · {familyInvoice.status}
+              {familyInvoice.familySummary?.planName
+                ? ` · ${familyInvoice.familySummary.planName}`
+                : ""}
+            </p>
+            {familyInvoice.purchaseMeta?.coveredStudents?.length ? (
+              <>
+                <p className={staff.sectionTitle}>Seats</p>
+                <div className={staff.list}>
+                  {familyInvoice.purchaseMeta.coveredStudents.map((seat) => (
+                    <div
+                      key={`${seat.studentId}-${seat.seatRole}`}
+                      className={staff.rowCard}
+                    >
+                      <p className={staff.rowTitle}>
+                        {seat.seatRole === "ADULT" ? "Adult" : "Kid"}
+                      </p>
+                      <p className={staff.rowMeta}>
+                        {seat.studentId}
+                        {seat.batchId ? ` · batch ${seat.batchId}` : ""}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <p className={staff.rowMeta}>
+                {familyInvoice.familySummary
+                  ? `${familyInvoice.familySummary.adultCount ?? 0} adults · ${familyInvoice.familySummary.kidCount ?? 0} kids`
+                  : "Family pack payment"}
+              </p>
+            )}
+            <p className={staff.rowMeta}>
+              {paymentMethod
+                ? `Confirm recording ${formatPrice(familyInvoice.amount)} as ${methodLabel}. Membership activates on confirm.`
+                : "Choose how payment was received, then confirm."}
+            </p>
+            {markPaid.isError ? (
+              <ErrorState
+                description={
+                  markPaid.error instanceof Error
+                    ? markPaid.error.message
+                    : "Could not mark invoice paid."
+                }
+              />
+            ) : null}
+            <div className={staff.sheetActions}>
+              <TouchButton
+                variant={paymentMethod === "CASH" ? "primary" : "default"}
+                fullWidth
+                isDisabled={markPaid.isPending}
+                onClick={() => setPaymentMethod("CASH")}
+              >
+                Cash
+              </TouchButton>
+              <TouchButton
+                variant={paymentMethod === "UPI_MANUAL" ? "primary" : "default"}
+                fullWidth
+                isDisabled={markPaid.isPending}
+                onClick={() => setPaymentMethod("UPI_MANUAL")}
+              >
+                UPI
+              </TouchButton>
+              <TouchButton
+                variant="primary"
+                fullWidth
+                isDisabled={!paymentMethod}
+                isPending={markPaid.isPending}
+                data-testid="confirm-open-family-paid"
+                onClick={() => {
+                  if (!paymentMethod) return;
+                  markPaid.mutate({
+                    id: familyInvoice.id,
+                    paymentMethod,
+                  });
+                }}
+              >
+                Confirm payment
+              </TouchButton>
+            </div>
+          </div>
+        ) : null}
+      </AppSheet>
+
+      <FamilyCheckoutSheet
+        isOpen={sellFamilyOpen}
+        onOpenChange={setSellFamilyOpen}
+      />
     </Screen>
   );
 }

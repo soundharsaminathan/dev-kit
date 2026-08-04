@@ -785,6 +785,15 @@ export class BatchesService {
     }
 
     const expectedAudience = audienceForBatchCategory(category);
+    const familyPlans = subscriptions.filter(
+      (subscription) => subscription.kind === SubscriptionKind.FAMILY,
+    );
+    if (familyPlans.length > 0) {
+      throw new BadRequestException(
+        "Family packs are studio-wide; do not attach them to a batch",
+      );
+    }
+
     const individuals = subscriptions.filter(
       (subscription) => subscription.kind === SubscriptionKind.INDIVIDUAL,
     );

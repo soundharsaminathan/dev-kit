@@ -480,6 +480,7 @@ describe("BillingService.markPaid", () => {
       status: InvoiceStatus.PENDING,
       platformFeePercent: 5,
       membershipId: "mem-1",
+      purchaseMeta: null,
     });
     prisma.invoice.update.mockResolvedValue({
       id: "inv-1",
@@ -495,6 +496,53 @@ describe("BillingService.markPaid", () => {
     );
 
     expect(membershipsStub.renewFromPaidInvoice).toHaveBeenCalledWith("mem-1");
+  });
+
+  it("assigns membership from purchaseMeta when marking paid", async () => {
+    membershipsStub.assign.mockResolvedValue({ id: "mem-new" });
+    prisma.invoice.findUniqueOrThrow.mockResolvedValue({
+      id: "inv-1",
+      studioId: "studio-1",
+      amount: 4000,
+      status: InvoiceStatus.PENDING,
+      platformFeePercent: 5,
+      membershipId: null,
+      purchaseMeta: {
+        subscriptionId: "sub-fam",
+        purchaserUserId: "parent-1",
+        coveredStudents: [
+          { studentId: "adult-1", seatRole: "ADULT", batchId: "b1" },
+          { studentId: "kid-1", seatRole: "KID", batchId: "b2" },
+        ],
+      },
+    });
+    prisma.invoice.update.mockResolvedValue({
+      id: "inv-1",
+      status: InvoiceStatus.PAID,
+      paymentMethod: PaymentMethod.CASH,
+    });
+
+    await service.markPaid(
+      makeUser({ role: UserRole.OWNER }),
+      "inv-1",
+      PaymentMethod.CASH,
+    );
+
+    expect(membershipsStub.assign).toHaveBeenCalledWith({
+      subscriptionId: "sub-fam",
+      purchaserUserId: "parent-1",
+      coveredStudents: [
+        { studentId: "adult-1", seatRole: "ADULT", batchId: "b1" },
+        { studentId: "kid-1", seatRole: "KID", batchId: "b2" },
+      ],
+    });
+    expect(prisma.invoice.update).toHaveBeenCalledWith({
+      where: { id: "inv-1" },
+      data: expect.objectContaining({
+        status: InvoiceStatus.PAID,
+        membershipId: "mem-new",
+      }),
+    });
   });
 
   it("rejects trainers marking invoices paid", async () => {
@@ -550,6 +598,7 @@ describe("BillingService.markPaid", () => {
 describe("BillingService.listByStudio", () => {
   const prisma = {
     invoice: { findMany: vi.fn() },
+    subscription: { findMany: vi.fn() },
   };
   const crypto = {
     decryptUser: vi.fn((user: { name?: string }) => ({
@@ -568,6 +617,7 @@ describe("BillingService.listByStudio", () => {
       membershipsStub as never,
       razorpayStub as never,
     );
+    prisma.subscription.findMany.mockResolvedValue([]);
   });
 
   it("returns studio invoices with decrypted students", async () => {
@@ -575,8 +625,10 @@ describe("BillingService.listByStudio", () => {
       {
         id: "inv-1",
         studioId: "studio-1",
+        amount: 1500,
         student: { id: "student-1", nameEnc: "x" },
-        membership: { id: "mem-1" },
+        membership: { id: "mem-1", subscription: { kind: "INDIVIDUAL" } },
+        purchaseMeta: null,
       },
     ]);
 
@@ -584,11 +636,44 @@ describe("BillingService.listByStudio", () => {
 
     expect(prisma.invoice.findMany).toHaveBeenCalledWith({
       where: { studioId: "studio-1" },
-      include: { student: true, membership: true },
+      include: {
+        student: true,
+        membership: { include: { subscription: true } },
+      },
       orderBy: { id: "desc" },
     });
     expect(crypto.decryptUser).toHaveBeenCalled();
     expect(rows[0]?.student.name).toBe("Decrypted");
+    expect(rows[0]?.kind).toBe("INDIVIDUAL");
+  });
+
+  it("marks family checkout invoices via purchaseMeta", async () => {
+    prisma.invoice.findMany.mockResolvedValue([
+      {
+        id: "inv-fam",
+        studioId: "studio-1",
+        amount: 5000,
+        student: { id: "parent-1", nameEnc: "x" },
+        membership: null,
+        purchaseMeta: {
+          subscriptionId: "sub-fam",
+          purchaserUserId: "parent-1",
+          coveredStudents: [
+            { studentId: "adult-1", seatRole: "ADULT", batchId: "b1" },
+            { studentId: "kid-1", seatRole: "KID", batchId: "b2" },
+          ],
+        },
+      },
+    ]);
+    prisma.subscription.findMany.mockResolvedValue([
+      { id: "sub-fam", kind: "FAMILY", name: "Family Duo" },
+    ]);
+
+    const rows = await service.listByStudio("studio-1");
+    expect(rows[0]?.kind).toBe("FAMILY");
+    expect(rows[0]?.familySummary?.planName).toBe("Family Duo");
+    expect(rows[0]?.familySummary?.adultCount).toBe(1);
+    expect(rows[0]?.familySummary?.kidCount).toBe(1);
   });
 });
 

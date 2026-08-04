@@ -10,8 +10,18 @@ import {
   Query,
   UseGuards,
 } from "@nestjs/common";
-import { PaymentMethod, UserRole } from "@prisma/client";
-import { IsEnum, IsNumber, IsOptional, IsString, Min } from "class-validator";
+import { MembershipSeatRole, PaymentMethod, UserRole } from "@prisma/client";
+import { Type } from "class-transformer";
+import {
+  ArrayMinSize,
+  IsArray,
+  IsEnum,
+  IsNumber,
+  IsOptional,
+  IsString,
+  Min,
+  ValidateNested,
+} from "class-validator";
 import { AuthGuard } from "../auth/auth.guard";
 import { CurrentUser } from "../auth/current-user.decorator";
 import { Roles } from "../auth/roles.decorator";
@@ -55,6 +65,37 @@ class ConfirmInvoicePaymentDto {
   razorpay_signature?: string;
 }
 
+class FamilyCoveredStudentDto {
+  @IsString()
+  studentId!: string;
+
+  @IsEnum(MembershipSeatRole)
+  seatRole!: MembershipSeatRole;
+
+  @IsString()
+  batchId!: string;
+}
+
+class FamilyCheckoutDto {
+  @IsString()
+  studioId!: string;
+
+  @IsString()
+  purchaserUserId!: string;
+
+  @IsString()
+  subscriptionId!: string;
+
+  @IsArray()
+  @ArrayMinSize(1)
+  @ValidateNested({ each: true })
+  @Type(() => FamilyCoveredStudentDto)
+  coveredStudents!: FamilyCoveredStudentDto[];
+
+  @IsEnum(PaymentMethod)
+  paymentMethod!: PaymentMethod;
+}
+
 @Controller("billing")
 @UseGuards(AuthGuard, RolesGuard)
 export class BillingController {
@@ -76,6 +117,16 @@ export class BillingController {
   @Roles(UserRole.OWNER, UserRole.STAFF)
   create(@CurrentUser() user: DecryptedUser, @Body() dto: CreateInvoiceDto) {
     return this.billingService.createPendingInvoice(user, dto);
+  }
+
+  @Post("family-checkout")
+  @Roles(UserRole.OWNER, UserRole.STAFF)
+  familyCheckout(
+    @CurrentUser() user: DecryptedUser,
+    @Body() dto: FamilyCheckoutDto,
+  ) {
+    assertSameStudio(user, dto.studioId);
+    return this.billingService.familyCheckout(user, dto);
   }
 
   @Get("analytics/trainer/:trainerId")

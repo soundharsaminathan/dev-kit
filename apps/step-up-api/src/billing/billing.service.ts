@@ -115,7 +115,6 @@ function parsePurchaseMeta(value: unknown): InvoicePurchaseMeta | null {
   }
   const meta = value as Record<string, unknown>;
   if (
-    typeof meta.batchId !== "string" ||
     typeof meta.subscriptionId !== "string" ||
     typeof meta.purchaserUserId !== "string" ||
     !Array.isArray(meta.coveredStudents)
@@ -144,7 +143,7 @@ function parsePurchaseMeta(value: unknown): InvoicePurchaseMeta | null {
   }
 
   return {
-    batchId: meta.batchId,
+    ...(typeof meta.batchId === "string" ? { batchId: meta.batchId } : {}),
     subscriptionId: meta.subscriptionId,
     purchaserUserId: meta.purchaserUserId,
     coveredStudents,
@@ -172,14 +171,70 @@ export class BillingService {
   async listByStudio(studioId: string) {
     const invoices = await this.prisma.invoice.findMany({
       where: { studioId },
-      include: { student: true, membership: true },
+      include: {
+        student: true,
+        membership: { include: { subscription: true } },
+      },
       orderBy: { id: "desc" },
     });
 
-    return invoices.map((invoice) => ({
-      ...invoice,
-      student: this.crypto.decryptUser(invoice.student),
-    }));
+    const purchaseSubIds = new Set<string>();
+    for (const invoice of invoices) {
+      if (invoice.membership?.subscription) continue;
+      const meta = parsePurchaseMeta(invoice.purchaseMeta);
+      if (meta) purchaseSubIds.add(meta.subscriptionId);
+    }
+
+    const purchaseSubs =
+      purchaseSubIds.size > 0
+        ? await this.prisma.subscription.findMany({
+            where: { id: { in: [...purchaseSubIds] } },
+            select: { id: true, kind: true, name: true },
+          })
+        : [];
+    const purchaseSubById = new Map(purchaseSubs.map((s) => [s.id, s]));
+
+    return invoices.map((invoice) => {
+      const purchaseMeta = parsePurchaseMeta(invoice.purchaseMeta);
+      const membershipKind = invoice.membership?.subscription?.kind;
+      const purchaseSub = purchaseMeta
+        ? purchaseSubById.get(purchaseMeta.subscriptionId)
+        : undefined;
+      const kind =
+        membershipKind === "FAMILY" || purchaseSub?.kind === "FAMILY"
+          ? ("FAMILY" as const)
+          : ("INDIVIDUAL" as const);
+
+      const adultCount =
+        purchaseMeta?.coveredStudents.filter((s) => s.seatRole === "ADULT")
+          .length ??
+        invoice.membership?.subscription?.adultSeats ??
+        null;
+      const kidCount =
+        purchaseMeta?.coveredStudents.filter((s) => s.seatRole === "KID")
+          .length ??
+        invoice.membership?.subscription?.kidSeats ??
+        null;
+      const planName =
+        invoice.membership?.subscription?.name ?? purchaseSub?.name ?? null;
+
+      return {
+        ...invoice,
+        amount: Number(invoice.amount),
+        student: this.crypto.decryptUser(invoice.student),
+        kind,
+        purchaseMeta,
+        familySummary:
+          kind === "FAMILY"
+            ? {
+                planName,
+                adultCount,
+                kidCount,
+                coveredStudents: purchaseMeta?.coveredStudents ?? null,
+              }
+            : null,
+      };
+    });
   }
 
   async listForStudent(actor: DecryptedUser, studentId: string) {
@@ -544,6 +599,17 @@ export class BillingService {
 
     const amount = Number(invoice.amount);
     const platformFee = computePlatformFee(amount, invoice.platformFeePercent);
+    const purchaseMeta = parsePurchaseMeta(invoice.purchaseMeta);
+
+    let membershipId = invoice.membershipId;
+    if (!membershipId && purchaseMeta) {
+      const membership = await this.memberships.assign({
+        subscriptionId: purchaseMeta.subscriptionId,
+        purchaserUserId: purchaseMeta.purchaserUserId,
+        coveredStudents: purchaseMeta.coveredStudents,
+      });
+      membershipId = membership.id;
+    }
 
     const result = await this.prisma.invoice.update({
       where: { id },
@@ -551,6 +617,8 @@ export class BillingService {
         status: InvoiceStatus.PAID,
         paymentMethod,
         paidAt: new Date(),
+        ...(membershipId ? { membershipId } : {}),
+        ...(purchaseMeta ? { purchaseMeta: Prisma.DbNull } : {}),
       },
     });
 
@@ -561,6 +629,80 @@ export class BillingService {
     return {
       ...result,
       platformFeeComputed: platformFee,
+    };
+  }
+
+  async familyCheckout(
+    actor: DecryptedUser,
+    data: {
+      studioId: string;
+      purchaserUserId: string;
+      subscriptionId: string;
+      coveredStudents: CoveredStudentInput[];
+      paymentMethod: PaymentMethod;
+    },
+  ) {
+    if (actor.role !== UserRole.OWNER && actor.role !== UserRole.STAFF) {
+      throw new ForbiddenException(
+        "Only studio admins can complete family checkout",
+      );
+    }
+    if (actor.studioId !== data.studioId) {
+      throw new ForbiddenException("Cannot checkout for another studio");
+    }
+    if (
+      data.paymentMethod !== PaymentMethod.CASH &&
+      data.paymentMethod !== PaymentMethod.UPI_MANUAL
+    ) {
+      throw new BadRequestException(
+        "Family desk checkout supports cash or UPI only",
+      );
+    }
+
+    const subscription = await this.prisma.subscription.findUnique({
+      where: { id: data.subscriptionId },
+    });
+    if (!subscription?.active) {
+      throw new NotFoundException("Subscription not found or inactive");
+    }
+    if (subscription.studioId !== data.studioId) {
+      throw new BadRequestException("Plan is not from this studio");
+    }
+    if (subscription.kind !== "FAMILY") {
+      throw new BadRequestException(
+        "Only Family packs can use family checkout",
+      );
+    }
+
+    const membership = await this.memberships.assign({
+      subscriptionId: data.subscriptionId,
+      purchaserUserId: data.purchaserUserId,
+      coveredStudents: data.coveredStudents,
+    });
+
+    const settings = await this.prisma.studioSettings.findUnique({
+      where: { studioId: data.studioId },
+      select: { platformFeePercent: true },
+    });
+
+    const invoice = await this.prisma.invoice.create({
+      data: {
+        studentId: data.purchaserUserId,
+        studioId: data.studioId,
+        membershipId: membership.id,
+        amount: subscription.price,
+        status: InvoiceStatus.PAID,
+        paymentMethod: data.paymentMethod,
+        paidAt: new Date(),
+        platformFeePercent: settings?.platformFeePercent ?? 5,
+      },
+    });
+
+    return {
+      ...invoice,
+      amount: Number(invoice.amount),
+      kind: "FAMILY" as const,
+      membership,
     };
   }
 
