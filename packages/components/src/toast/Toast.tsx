@@ -12,6 +12,7 @@ import {
 } from "@react-stately/toast";
 import type { DOMAttributes } from "@react-types/shared";
 import {
+  type CSSProperties,
   createContext,
   type ReactNode,
   useCallback,
@@ -66,19 +67,32 @@ function createToastQueue<T = ToastContentValue>(
   return new ToastQueue<T>(options);
 }
 
+const DEFAULT_TOAST_TIMEOUT = 3000;
+const DEFAULT_MAX_VISIBLE_TOASTS = 5;
+
 function ToastProviderInner({
   children,
-  position = "bottom-right",
+  position = "top-right",
+  timeout = DEFAULT_TOAST_TIMEOUT,
   state,
 }: {
   children: ReactNode;
   position: ToastPosition;
+  timeout?: number;
   state: ReturnType<typeof useToastState<ToastContentValue>>;
 }) {
   const toast = useCallback(
-    (content: ToastContentValue, options?: Parameters<typeof state.add>[1]) =>
-      state.add(content, options),
-    [state],
+    (content: ToastContentValue, options?: Parameters<typeof state.add>[1]) => {
+      const resolvedTimeout =
+        options?.timeout ??
+        (content.variant === "loading" ? undefined : timeout);
+
+      return state.add(content, {
+        ...options,
+        ...(resolvedTimeout !== undefined ? { timeout: resolvedTimeout } : {}),
+      });
+    },
+    [state, timeout],
   );
 
   const value = useMemo(
@@ -100,22 +114,24 @@ function ToastProviderInner({
 
 function ToastProviderWithState({
   children,
-  position = "bottom-right",
-  maxVisibleToasts,
+  position = "top-right",
+  timeout = DEFAULT_TOAST_TIMEOUT,
+  maxVisibleToasts = DEFAULT_MAX_VISIBLE_TOASTS,
   wrapUpdate,
 }: {
   children: ReactNode;
   position?: ToastPosition;
+  timeout?: number;
   maxVisibleToasts?: number;
   wrapUpdate?: ToastStateProps["wrapUpdate"];
 }) {
   const state = useToastState<ToastContentValue>({
-    ...(maxVisibleToasts !== undefined ? { maxVisibleToasts } : {}),
+    maxVisibleToasts,
     ...(wrapUpdate !== undefined ? { wrapUpdate } : {}),
   });
 
   return (
-    <ToastProviderInner position={position} state={state}>
+    <ToastProviderInner position={position} timeout={timeout} state={state}>
       {children}
     </ToastProviderInner>
   );
@@ -123,13 +139,14 @@ function ToastProviderWithState({
 
 function ToastProviderWithQueue({
   children,
-  position = "bottom-right",
+  position = "top-right",
+  timeout = DEFAULT_TOAST_TIMEOUT,
   queue,
 }: ToastProviderProps & { queue: ToastQueue<ToastContentValue> }) {
   const state = useToastQueue(queue);
 
   return (
-    <ToastProviderInner position={position} state={state}>
+    <ToastProviderInner position={position} timeout={timeout} state={state}>
       {children}
     </ToastProviderInner>
   );
@@ -138,13 +155,18 @@ function ToastProviderWithQueue({
 function ToastProvider({
   children,
   queue,
-  position = "bottom-right",
-  maxVisibleToasts,
+  position = "top-right",
+  timeout = DEFAULT_TOAST_TIMEOUT,
+  maxVisibleToasts = DEFAULT_MAX_VISIBLE_TOASTS,
   wrapUpdate,
 }: ToastProviderProps) {
   if (queue) {
     return (
-      <ToastProviderWithQueue queue={queue} position={position}>
+      <ToastProviderWithQueue
+        queue={queue}
+        position={position}
+        timeout={timeout}
+      >
         {children}
       </ToastProviderWithQueue>
     );
@@ -153,7 +175,8 @@ function ToastProvider({
   return (
     <ToastProviderWithState
       position={position}
-      {...(maxVisibleToasts !== undefined ? { maxVisibleToasts } : {})}
+      timeout={timeout}
+      maxVisibleToasts={maxVisibleToasts}
       {...(wrapUpdate !== undefined ? { wrapUpdate } : {})}
     >
       {children}
@@ -163,13 +186,15 @@ function ToastProvider({
 
 function DefaultToastItem({
   item,
+  stackIndex,
 }: {
   item: Parameters<typeof Toast>[0]["toast"];
+  stackIndex: number;
 }) {
   const variant = resolveVariant(undefined, item.content);
 
   return (
-    <Toast toast={item} variant={variant}>
+    <Toast toast={item} variant={variant} stackIndex={stackIndex}>
       <ToastContent>
         <div className={styles.body}>
           {variant === "loading" ? (
@@ -214,8 +239,10 @@ function ToastRegion({
     state,
     ref,
   );
+  const toastCount = state.visibleToasts.length;
+  const isStacked = toastCount > 1;
 
-  if (state.visibleToasts.length === 0) {
+  if (toastCount === 0) {
     return null;
   }
 
@@ -226,17 +253,30 @@ function ToastRegion({
         ref={ref}
         data-toast-region=""
         data-position={position}
+        data-count={toastCount}
+        {...(isStacked ? { "data-stacked": "" } : {})}
         className={cn(styles.region, className)}
       >
-        {state.visibleToasts.map((item) => (
-          <DefaultToastItem key={item.key} item={item} />
+        {state.visibleToasts.map((item, index) => (
+          <DefaultToastItem key={item.key} item={item} stackIndex={index} />
         ))}
       </div>
     </OverlayContainer>
   );
 }
 
-function Toast({ toast, variant, className, children, ...props }: ToastProps) {
+function Toast({
+  toast,
+  variant,
+  className,
+  children,
+  stackIndex,
+  style,
+  ...props
+}: ToastProps & {
+  stackIndex?: number;
+  style?: CSSProperties;
+}) {
   const { state } = useToastContext("Toast");
   const ref = useRef<HTMLDivElement>(null);
   const resolvedVariant = resolveVariant(variant, toast.content);
@@ -265,6 +305,17 @@ function Toast({ toast, variant, className, children, ...props }: ToastProps) {
         ref={ref}
         data-toast=""
         data-variant={resolvedVariant}
+        {...(stackIndex !== undefined
+          ? { "data-stack-index": String(stackIndex) }
+          : {})}
+        style={
+          stackIndex !== undefined
+            ? {
+                ...style,
+                ["--toast-stack-index" as string]: stackIndex,
+              }
+            : style
+        }
         className={cn(styles.toast, className)}
       >
         {children}

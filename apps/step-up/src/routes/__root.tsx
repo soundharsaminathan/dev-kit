@@ -21,7 +21,7 @@ function RootLayout() {
         <SessionGate>
           <PwaInstallProvider>
             <OverlayProvider>
-              <ToastProvider position="bottom-center">
+              <ToastProvider position="top-right" timeout={3000}>
                 <PwaBanners />
                 <Outlet />
               </ToastProvider>

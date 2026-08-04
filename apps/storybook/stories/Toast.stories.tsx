@@ -53,8 +53,8 @@ const defaultToastArgs: ToastStoryArgs = {
   title: "Files uploaded",
   description: "3 files uploaded successfully.",
   variant: "neutral",
-  position: "bottom-right",
-  timeout: 5000,
+  position: "top-right",
+  timeout: 3000,
   showAction: false,
   actionLabel: "Install",
 };
