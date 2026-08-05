@@ -176,7 +176,7 @@ describe("ThemePanel", () => {
           studioName="Acme Dance"
           brandTheme={{
             label: "Custom",
-            extends: "step-up",
+            extends: "step-up-soft",
             color: {
               algorithm: "oklch",
               seeds: { neutral: "#8e8e93", accent: "#0a84ff" },

@@ -103,6 +103,7 @@ describe("ThemePanel colour changes reach the theme", () => {
     const after = themeCss();
     expect(after).not.toBe(before);
     expect(after).toContain("--color-accent");
+    expect(after).toMatch(/--color-primary:\s*var\(--accent-500\)/);
     expect(screen.getByText(NEW_BRAND.toUpperCase())).toBeInTheDocument();
   });
 
@@ -117,7 +118,7 @@ describe("ThemePanel colour changes reach the theme", () => {
     expect(themeCss()).not.toBe(before);
   });
 
-  it("persists the picked colour through save", async () => {
+  it("persists the soft base and picked Brand colour through save", async () => {
     renderPanel();
 
     fireEvent.click(screen.getByRole("button", { name: `Use ${NEW_BRAND}` }));
@@ -128,6 +129,7 @@ describe("ThemePanel colour changes reach the theme", () => {
         "/studios/studio-seed-1",
         expect.objectContaining({
           brandTheme: expect.objectContaining({
+            extends: "step-up-soft",
             color: expect.objectContaining({
               seeds: expect.objectContaining({ accent: NEW_BRAND }),
             }),
