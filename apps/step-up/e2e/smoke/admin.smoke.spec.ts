@@ -22,7 +22,6 @@ const STAFF_PATHS = [
   "/app/trainers",
   "/app/trainers/new",
   "/app/bookings",
-  "/app/bookings/new",
   `/app/sessions/${SMOKE.sessionAttendanceId}/attendance`,
   "/app/calendar",
   "/app/payments",
@@ -165,7 +164,7 @@ test.describe("admin (staff) smoke @smoke", () => {
     }
   });
 
-  test("staff student import and booking pages load @smoke", async ({
+  test("staff student import and create pages load @smoke", async ({
     browser,
   }) => {
     const context = await browser.newContext({
@@ -174,7 +173,6 @@ test.describe("admin (staff) smoke @smoke", () => {
     const page = await context.newPage();
     try {
       await sweepPath(page, "/app/students/import");
-      await sweepPath(page, "/app/bookings/new");
       await sweepPath(page, "/app/students/new");
     } finally {
       await context.close();

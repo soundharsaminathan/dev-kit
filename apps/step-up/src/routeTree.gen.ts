@@ -90,7 +90,6 @@ import { Route as AppContestsNewRouteImport } from './routes/app/contests/new'
 import { Route as AppContestsIdRouteImport } from './routes/app/contests/$id'
 import { Route as AppCertificatesNewRouteImport } from './routes/app/certificates/new'
 import { Route as AppCertificatesIdRouteImport } from './routes/app/certificates/$id'
-import { Route as AppBookingsNewRouteImport } from './routes/app/bookings/new'
 import { Route as AppBatchesNewRouteImport } from './routes/app/batches/new'
 import { Route as AppBatchesIdRouteImport } from './routes/app/batches/$id'
 import { Route as AdminStudiosNewRouteImport } from './routes/admin/studios/new'
@@ -508,11 +507,6 @@ const AppCertificatesIdRoute = AppCertificatesIdRouteImport.update({
   path: '/certificates/$id',
   getParentRoute: () => AppRoute,
 } as any)
-const AppBookingsNewRoute = AppBookingsNewRouteImport.update({
-  id: '/bookings/new',
-  path: '/bookings/new',
-  getParentRoute: () => AppRoute,
-} as any)
 const AppBatchesNewRoute = AppBatchesNewRouteImport.update({
   id: '/batches/new',
   path: '/batches/new',
@@ -600,7 +594,6 @@ export interface FileRoutesByFullPath {
   '/admin/studios/new': typeof AdminStudiosNewRoute
   '/app/batches/$id': typeof AppBatchesIdRoute
   '/app/batches/new': typeof AppBatchesNewRoute
-  '/app/bookings/new': typeof AppBookingsNewRoute
   '/app/certificates/$id': typeof AppCertificatesIdRoute
   '/app/certificates/new': typeof AppCertificatesNewRoute
   '/app/contests/$id': typeof AppContestsIdRoute
@@ -690,7 +683,6 @@ export interface FileRoutesByTo {
   '/admin/studios/new': typeof AdminStudiosNewRoute
   '/app/batches/$id': typeof AppBatchesIdRoute
   '/app/batches/new': typeof AppBatchesNewRoute
-  '/app/bookings/new': typeof AppBookingsNewRoute
   '/app/certificates/$id': typeof AppCertificatesIdRoute
   '/app/certificates/new': typeof AppCertificatesNewRoute
   '/app/contests/$id': typeof AppContestsIdRoute
@@ -784,7 +776,6 @@ export interface FileRoutesById {
   '/admin/studios/new': typeof AdminStudiosNewRoute
   '/app/batches/$id': typeof AppBatchesIdRoute
   '/app/batches/new': typeof AppBatchesNewRoute
-  '/app/bookings/new': typeof AppBookingsNewRoute
   '/app/certificates/$id': typeof AppCertificatesIdRoute
   '/app/certificates/new': typeof AppCertificatesNewRoute
   '/app/contests/$id': typeof AppContestsIdRoute
@@ -879,7 +870,6 @@ export interface FileRouteTypes {
     | '/admin/studios/new'
     | '/app/batches/$id'
     | '/app/batches/new'
-    | '/app/bookings/new'
     | '/app/certificates/$id'
     | '/app/certificates/new'
     | '/app/contests/$id'
@@ -969,7 +959,6 @@ export interface FileRouteTypes {
     | '/admin/studios/new'
     | '/app/batches/$id'
     | '/app/batches/new'
-    | '/app/bookings/new'
     | '/app/certificates/$id'
     | '/app/certificates/new'
     | '/app/contests/$id'
@@ -1062,7 +1051,6 @@ export interface FileRouteTypes {
     | '/admin/studios/new'
     | '/app/batches/$id'
     | '/app/batches/new'
-    | '/app/bookings/new'
     | '/app/certificates/$id'
     | '/app/certificates/new'
     | '/app/contests/$id'
@@ -1700,13 +1688,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppCertificatesIdRouteImport
       parentRoute: typeof AppRoute
     }
-    '/app/bookings/new': {
-      id: '/app/bookings/new'
-      path: '/bookings/new'
-      fullPath: '/app/bookings/new'
-      preLoaderRoute: typeof AppBookingsNewRouteImport
-      parentRoute: typeof AppRoute
-    }
     '/app/batches/new': {
       id: '/app/batches/new'
       path: '/batches/new'
@@ -1812,7 +1793,6 @@ interface AppRouteChildren {
   AppIndexRoute: typeof AppIndexRoute
   AppBatchesIdRoute: typeof AppBatchesIdRoute
   AppBatchesNewRoute: typeof AppBatchesNewRoute
-  AppBookingsNewRoute: typeof AppBookingsNewRoute
   AppCertificatesIdRoute: typeof AppCertificatesIdRoute
   AppCertificatesNewRoute: typeof AppCertificatesNewRoute
   AppContestsIdRoute: typeof AppContestsIdRoute
@@ -1862,7 +1842,6 @@ const AppRouteChildren: AppRouteChildren = {
   AppIndexRoute: AppIndexRoute,
   AppBatchesIdRoute: AppBatchesIdRoute,
   AppBatchesNewRoute: AppBatchesNewRoute,
-  AppBookingsNewRoute: AppBookingsNewRoute,
   AppCertificatesIdRoute: AppCertificatesIdRoute,
   AppCertificatesNewRoute: AppCertificatesNewRoute,
   AppContestsIdRoute: AppContestsIdRoute,

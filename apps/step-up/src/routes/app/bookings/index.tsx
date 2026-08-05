@@ -1,6 +1,6 @@
 import { useToastContext } from "@dev-ui/components/toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useApi } from "@/lib/api-context";
 import { useAuth } from "@/lib/auth";
@@ -131,13 +131,6 @@ function BookingsPage() {
             ? "Review requests for your batches."
             : "Review trial, open seat, and private requests."
       }
-      actions={
-        !isTrainer ? (
-          <TouchButton variant="primary" size="md">
-            <Link to="/app/bookings/new">Add</Link>
-          </TouchButton>
-        ) : undefined
-      }
     >
       <PullToRefresh onRefresh={() => bookings.refetch()}>
         <div className={staff.section}>
@@ -178,14 +171,7 @@ function BookingsPage() {
               description={
                 isTrainer
                   ? "Pending requests for your batches will appear here."
-                  : "Bookings created for this studio will appear here."
-              }
-              action={
-                !isTrainer ? (
-                  <TouchButton variant="primary">
-                    <Link to="/app/bookings/new">Add booking</Link>
-                  </TouchButton>
-                ) : undefined
+                  : "Student booking requests for this studio will appear here."
               }
             />
           ) : null}

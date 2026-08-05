@@ -147,17 +147,9 @@ export class BookingsController {
   }
 
   @Post()
-  @Roles(
-    UserRole.OWNER,
-    UserRole.STAFF,
-    UserRole.TRAINER,
-    UserRole.STUDENT,
-    UserRole.PARENT,
-  )
-  create(@CurrentUser() user: DecryptedUser, @Body() dto: CreateBookingDto) {
-    const requirePayment =
-      user.role === UserRole.STUDENT || user.role === UserRole.PARENT;
-    return this.bookingsService.create(dto, { requirePayment });
+  @Roles(UserRole.STUDENT, UserRole.PARENT)
+  create(@Body() dto: CreateBookingDto) {
+    return this.bookingsService.create(dto, { requirePayment: true });
   }
 
   @Post(":id/create-payment-order")
