@@ -131,6 +131,16 @@
   line-height: 1.45;
 }
 
+.futureNotice {
+  margin: 0;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-md, 0.5rem);
+  background: color-mix(in srgb, var(--color-warning, #ff9f0a) 14%, var(--color-bg));
+  color: color-mix(in srgb, var(--color-warning, #ff9f0a) 72%, var(--color-fg));
+  font-size: 0.875rem;
+  line-height: 1.4;
+}
+
 .trialSheet {
   display: flex;
   flex-direction: column;

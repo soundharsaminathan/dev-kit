@@ -133,6 +133,26 @@ describe("AttendanceRosterTable selection", () => {
     ).toBeDisabled();
   });
 
+  it("disables marking actions when markingDisabled", () => {
+    const { onMarkOne, onMarkAllUnmarkedPresent } = renderTable({
+      markingDisabled: true,
+    });
+
+    expect(screen.getByTestId("mark-present-s1")).toBeDisabled();
+    expect(screen.getByTestId("mark-absent-s1")).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "Mark all unmarked present" }),
+    ).toBeDisabled();
+
+    fireEvent.click(screen.getByTestId("mark-present-s1"));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Mark all unmarked present" }),
+    );
+
+    expect(onMarkOne).not.toHaveBeenCalled();
+    expect(onMarkAllUnmarkedPresent).not.toHaveBeenCalled();
+  });
+
   it("renders empty roster without selection chrome", () => {
     renderTable({ roster: [], unmarkedCount: 0 });
     expect(

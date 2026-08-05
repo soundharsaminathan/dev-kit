@@ -121,6 +121,48 @@ describe("AttendanceService.markAttendance", () => {
     expect(notifications.create).not.toHaveBeenCalled();
   });
 
+  it("rejects marking attendance before the session starts", async () => {
+    const session = makeSession({
+      startsAt: new Date(Date.now() + 60 * 60 * 1000),
+    });
+    prisma.session.findUnique.mockResolvedValue(session);
+
+    await expect(
+      service.markAttendance({
+        sessionId: session.id,
+        studentId: FIXTURE_USERS.student.id,
+        status: AttendanceStatus.PRESENT,
+        markedById: FIXTURE_USERS.trainer.id,
+        source: AttendanceSource.TRAINER,
+      }),
+    ).rejects.toThrow(/before the session starts/);
+    expect(prisma.attendance.upsert).not.toHaveBeenCalled();
+    expect(memberships.findActiveForBatch).not.toHaveBeenCalled();
+  });
+
+  it("allows marking attendance within the early window", async () => {
+    const session = makeSession({
+      startsAt: new Date(Date.now() + 10 * 60 * 1000),
+    });
+    prisma.session.findUnique.mockResolvedValue(session);
+    memberships.findActiveForBatch.mockResolvedValue({ id: "mem-1" });
+    prisma.attendance.upsert.mockResolvedValue({
+      id: "att-early",
+      status: AttendanceStatus.PRESENT,
+      student: FIXTURE_USERS.student,
+    });
+
+    await service.markAttendance({
+      sessionId: session.id,
+      studentId: FIXTURE_USERS.student.id,
+      status: AttendanceStatus.PRESENT,
+      markedById: FIXTURE_USERS.trainer.id,
+      source: AttendanceSource.TRAINER,
+    });
+
+    expect(prisma.attendance.upsert).toHaveBeenCalled();
+  });
+
   it("rejects when student has no active membership for the batch", async () => {
     prisma.session.findUnique.mockResolvedValue(makeSession());
     memberships.findActiveForBatch.mockResolvedValue(null);

@@ -26,6 +26,9 @@ const OPEN_TRIAL_STATUSES: BookingStatus[] = [
   BookingStatus.CONFIRMED,
 ];
 
+/** Matches QR check-in: attendance can be marked from 15 minutes before start. */
+const ATTENDANCE_EARLY_WINDOW_MS = 15 * 60 * 1000;
+
 @Injectable()
 export class AttendanceService {
   constructor(
@@ -315,6 +318,15 @@ export class AttendanceService {
   }
 
   async markAllPresent(sessionId: string, markedById: string) {
+    const session = await this.prisma.session.findUnique({
+      where: { id: sessionId },
+      select: { id: true, startsAt: true },
+    });
+    if (!session) {
+      throw new BadRequestException("Session not found");
+    }
+    this.assertAttendanceWindowOpen(session.startsAt);
+
     const roster = await this.getSessionRoster(sessionId);
     const targets = roster.filter(
       (entry) => entry.attendance?.status !== AttendanceStatus.PRESENT,
@@ -357,6 +369,8 @@ export class AttendanceService {
     if (!session) {
       throw new BadRequestException("Session not found");
     }
+
+    this.assertAttendanceWindowOpen(session.startsAt);
 
     const membership = await this.memberships.findActiveForBatch(
       data.studentId,
@@ -437,7 +451,8 @@ export class AttendanceService {
       throw new BadRequestException("Session not found");
     }
 
-    const windowStartMs = session.startsAt.getTime() - 15 * 60 * 1000;
+    const windowStartMs =
+      session.startsAt.getTime() - ATTENDANCE_EARLY_WINDOW_MS;
     const expiresAtMs = session.endsAt.getTime();
     const payload = `${sessionId}|${windowStartMs}|${expiresAtMs}`;
     const signature = createHmac("sha256", secret)
@@ -448,6 +463,15 @@ export class AttendanceService {
       token: Buffer.from(`${payload}|${signature}`).toString("base64url"),
       expiresAt: session.endsAt.toISOString(),
     };
+  }
+
+  private assertAttendanceWindowOpen(startsAt: Date) {
+    const opensAt = startsAt.getTime() - ATTENDANCE_EARLY_WINDOW_MS;
+    if (Date.now() < opensAt) {
+      throw new BadRequestException(
+        "Cannot mark attendance before the session starts",
+      );
+    }
   }
 
   async verifyQrAndMark(

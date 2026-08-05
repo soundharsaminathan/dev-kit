@@ -1,6 +1,5 @@
 import { Badge } from "@dev-ui/components/badge";
 import { Button } from "@dev-ui/components/button";
-import { Checkbox } from "@dev-ui/components/checkbox";
 import { Icon } from "@dev-ui/icons";
 import {
   type ColumnDef,
@@ -8,11 +7,12 @@ import {
   getCoreRowModel,
   getFilteredRowModel,
   getSortedRowModel,
+  type Row,
   type RowSelectionState,
   type SortingState,
   useReactTable,
 } from "@tanstack/react-table";
-import { useMemo, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { formatActiveDuration } from "@/lib/format-active-duration";
 import { FilterChipRow } from "@/modules/ui/filter-chip-row";
 import styles from "./attendance-roster-table.module.scss";
@@ -31,21 +31,33 @@ const STATUS_ORDER: Record<"PRESENT" | "ABSENT" | "UNMARKED", number> = {
   ABSENT: 2,
 };
 
-const STATUS_FILTER_CHIPS = [
+const STATUS_FILTER_CHIPS: { id: string; label: string }[] = [
   { id: "all", label: "All" },
   { id: "UNMARKED", label: "Unmarked" },
   { id: "PRESENT", label: "Present" },
   { id: "ABSENT", label: "Absent" },
-] as const;
+];
+
+const getCoreModel = getCoreRowModel<AttendanceRosterEntry>();
+const getSortedModel = getSortedRowModel<AttendanceRosterEntry>();
+const getFilteredModel = getFilteredRowModel<AttendanceRosterEntry>();
 
 type AttendanceRosterTableProps = {
   roster: AttendanceRosterEntry[];
   isBusy?: boolean | undefined;
   pendingStudentId?: string | null | undefined;
+  markingDisabled?: boolean | undefined;
   onMarkOne: (studentId: string, status: AttendanceStatusValue) => void;
   onMarkSelected: (studentIds: string[], status: AttendanceStatusValue) => void;
   onMarkAllUnmarkedPresent?: (() => void) | undefined;
   unmarkedCount?: number | undefined;
+};
+
+type RosterTableMeta = {
+  markingDisabled: boolean;
+  actionsLocked: boolean;
+  pendingStudentId: string | null;
+  onMarkOne: (studentId: string, status: AttendanceStatusValue) => void;
 };
 
 function StatusBadge({
@@ -66,10 +78,103 @@ function StatusBadge({
   );
 }
 
+function SelectCheckbox({
+  "aria-label": ariaLabel,
+  isSelected,
+  isIndeterminate = false,
+  isDisabled = false,
+  onChange,
+}: {
+  "aria-label": string;
+  isSelected: boolean;
+  isIndeterminate?: boolean;
+  isDisabled?: boolean;
+  onChange: (selected: boolean) => void;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (inputRef.current) {
+      inputRef.current.indeterminate = isIndeterminate;
+    }
+  }, [isIndeterminate]);
+
+  return (
+    <label
+      data-checkbox-control=""
+      className={styles.selectCheck}
+      data-disabled={isDisabled ? "true" : undefined}
+    >
+      <input
+        ref={inputRef}
+        type="checkbox"
+        className={styles.selectCheckInput}
+        aria-label={ariaLabel}
+        checked={isSelected}
+        disabled={isDisabled}
+        onChange={(event) => onChange(event.target.checked)}
+      />
+      <span
+        className={styles.selectCheckBox}
+        aria-hidden
+        data-selected={isSelected ? "true" : undefined}
+        data-indeterminate={isIndeterminate ? "true" : undefined}
+        data-disabled={isDisabled ? "true" : undefined}
+      >
+        {isIndeterminate ? (
+          <Icon name="minus" />
+        ) : isSelected ? (
+          <Icon name="check" />
+        ) : null}
+      </span>
+    </label>
+  );
+}
+
+const RosterRow = memo(
+  function RosterRow({
+    row,
+    isSelected,
+    isRowPending,
+    actionsLocked,
+    markingDisabled,
+  }: {
+    row: Row<AttendanceRosterEntry>;
+    isSelected: boolean;
+    isRowPending: boolean;
+    actionsLocked: boolean;
+    markingDisabled: boolean;
+  }) {
+    return (
+      <tr
+        className={styles.tr}
+        data-selected={isSelected ? "" : undefined}
+        data-pending={isRowPending ? "" : undefined}
+        data-actions-locked={actionsLocked ? "" : undefined}
+        data-marking-disabled={markingDisabled ? "" : undefined}
+      >
+        {row.getVisibleCells().map((cell) => (
+          <td key={cell.id} className={styles.td}>
+            {flexRender(cell.column.columnDef.cell, cell.getContext())}
+          </td>
+        ))}
+      </tr>
+    );
+  },
+  (prev, next) =>
+    prev.row.id === next.row.id &&
+    prev.row.original === next.row.original &&
+    prev.isSelected === next.isSelected &&
+    prev.isRowPending === next.isRowPending &&
+    prev.actionsLocked === next.actionsLocked &&
+    prev.markingDisabled === next.markingDisabled,
+);
+
 export function AttendanceRosterTable({
   roster,
   isBusy = false,
   pendingStudentId = null,
+  markingDisabled = false,
   onMarkOne,
   onMarkSelected,
   onMarkAllUnmarkedPresent,
@@ -81,30 +186,51 @@ export function AttendanceRosterTable({
   const [statusFilter, setStatusFilter] =
     useState<AttendanceStatusFilter>("all");
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
+  const actionsLocked = isBusy || markingDisabled;
+
+  const metaRef = useRef<RosterTableMeta>({
+    markingDisabled,
+    actionsLocked,
+    pendingStudentId,
+    onMarkOne,
+  });
+  metaRef.current = {
+    markingDisabled,
+    actionsLocked,
+    pendingStudentId,
+    onMarkOne,
+  };
 
   const columns = useMemo<ColumnDef<AttendanceRosterEntry>[]>(
     () => [
       {
         id: "select",
-        header: ({ table }) => (
-          <Checkbox
-            aria-label="Select all students"
-            isSelected={table.getIsAllPageRowsSelected()}
-            isIndeterminate={
-              table.getIsSomePageRowsSelected() &&
-              !table.getIsAllPageRowsSelected()
-            }
-            onChange={(selected) => table.toggleAllPageRowsSelected(selected)}
-          />
-        ),
-        cell: ({ row }) => (
-          <Checkbox
-            aria-label={`Select ${row.original.student.name}`}
-            isSelected={row.getIsSelected()}
-            isDisabled={!row.getCanSelect()}
-            onChange={(selected) => row.toggleSelected(selected)}
-          />
-        ),
+        header: ({ table }) => {
+          const meta = metaRef.current;
+          return (
+            <SelectCheckbox
+              aria-label="Select all students"
+              isSelected={table.getIsAllPageRowsSelected()}
+              isIndeterminate={
+                table.getIsSomePageRowsSelected() &&
+                !table.getIsAllPageRowsSelected()
+              }
+              isDisabled={meta.markingDisabled}
+              onChange={(selected) => table.toggleAllPageRowsSelected(selected)}
+            />
+          );
+        },
+        cell: ({ row }) => {
+          const meta = metaRef.current;
+          return (
+            <SelectCheckbox
+              aria-label={`Select ${row.original.student.name}`}
+              isSelected={row.getIsSelected()}
+              isDisabled={meta.markingDisabled || !row.getCanSelect()}
+              onChange={(selected) => row.toggleSelected(selected)}
+            />
+          );
+        },
         enableSorting: false,
         size: 44,
       },
@@ -167,26 +293,31 @@ export function AttendanceRosterTable({
         id: "actions",
         header: "Mark",
         cell: ({ row }) => {
-          const status = rosterStatus(row.original);
+          const meta = metaRef.current;
           const rowPending =
-            isBusy || pendingStudentId === row.original.studentId;
+            meta.actionsLocked ||
+            meta.pendingStudentId === row.original.studentId;
           return (
             <div className={styles.rowActions}>
               <Button
                 size="sm"
-                variant={status === "PRESENT" ? "primary" : "default"}
+                variant="default"
+                className={styles.markPresent}
                 isDisabled={rowPending}
                 data-testid={`mark-present-${row.original.studentId}`}
-                onClick={() => onMarkOne(row.original.studentId, "PRESENT")}
+                onClick={() =>
+                  meta.onMarkOne(row.original.studentId, "PRESENT")
+                }
               >
                 Present
               </Button>
               <Button
                 size="sm"
-                variant={status === "ABSENT" ? "primary" : "default"}
+                variant="danger"
+                className={styles.markAbsent}
                 isDisabled={rowPending}
                 data-testid={`mark-absent-${row.original.studentId}`}
-                onClick={() => onMarkOne(row.original.studentId, "ABSENT")}
+                onClick={() => meta.onMarkOne(row.original.studentId, "ABSENT")}
               >
                 Absent
               </Button>
@@ -196,7 +327,12 @@ export function AttendanceRosterTable({
         enableSorting: false,
       },
     ],
-    [isBusy, onMarkOne, pendingStudentId],
+    [],
+  );
+
+  const columnFilters = useMemo(
+    () => [{ id: "status", value: statusFilter }],
+    [statusFilter],
   );
 
   const table = useReactTable({
@@ -205,52 +341,58 @@ export function AttendanceRosterTable({
     state: {
       sorting,
       rowSelection,
-      columnFilters: [
-        {
-          id: "status",
-          value: statusFilter,
-        },
-      ],
+      columnFilters,
     },
     onSortingChange: setSorting,
     onRowSelectionChange: setRowSelection,
-    getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-    enableRowSelection: true,
+    getCoreRowModel: getCoreModel,
+    getSortedRowModel: getSortedModel,
+    getFilteredRowModel: getFilteredModel,
+    enableRowSelection: !markingDisabled,
     getRowId: (row) => row.studentId,
   });
 
-  const selectedIds = table
-    .getSelectedRowModel()
-    .rows.map((row) => row.original.studentId);
-  const selectedCount = selectedIds.length;
+  const selectedCount = useMemo(
+    () => Object.values(rowSelection).reduce((n, on) => (on ? n + 1 : n), 0),
+    [rowSelection],
+  );
   const filteredCount = table.getFilteredRowModel().rows.length;
 
-  function clearSelection() {
+  const clearSelection = useCallback(() => {
     setRowSelection({});
-  }
+  }, []);
 
-  function handleBulk(status: AttendanceStatusValue) {
-    if (selectedIds.length === 0) return;
-    onMarkSelected(selectedIds, status);
-    clearSelection();
-  }
+  const handleBulk = useCallback(
+    (status: AttendanceStatusValue) => {
+      const ids = Object.keys(rowSelection).filter((id) => rowSelection[id]);
+      if (ids.length === 0) return;
+      onMarkSelected(ids, status);
+      setRowSelection({});
+    },
+    [onMarkSelected, rowSelection],
+  );
+
+  const handleFilterToggle = useCallback((id: string) => {
+    setStatusFilter(id as AttendanceStatusFilter);
+  }, []);
+
+  const selectedFilters = useMemo(() => [statusFilter], [statusFilter]);
 
   return (
     <div className={styles.root}>
       <div className={styles.toolbar}>
         <FilterChipRow
-          chips={[...STATUS_FILTER_CHIPS]}
-          selected={[statusFilter]}
-          onToggle={(id) => setStatusFilter(id as AttendanceStatusFilter)}
+          chips={STATUS_FILTER_CHIPS}
+          selected={selectedFilters}
+          onToggle={handleFilterToggle}
         />
         <div className={styles.toolbarActions}>
           {unmarkedCount > 0 && onMarkAllUnmarkedPresent ? (
             <Button
               variant="default"
               size="sm"
-              isDisabled={isBusy}
+              className={styles.markPresent}
+              isDisabled={actionsLocked}
               data-testid="mark-all-present"
               onClick={onMarkAllUnmarkedPresent}
             >
@@ -271,8 +413,9 @@ export function AttendanceRosterTable({
           <div className={styles.selectionActions}>
             <Button
               size="sm"
-              variant="primary"
-              isDisabled={isBusy}
+              variant="default"
+              className={styles.markPresent}
+              isDisabled={actionsLocked}
               data-testid="bulk-mark-present"
               onClick={() => handleBulk("PRESENT")}
             >
@@ -280,8 +423,9 @@ export function AttendanceRosterTable({
             </Button>
             <Button
               size="sm"
-              variant="default"
-              isDisabled={isBusy}
+              variant="danger"
+              className={styles.markAbsent}
+              isDisabled={actionsLocked}
               data-testid="bulk-mark-absent"
               onClick={() => handleBulk("ABSENT")}
             >
@@ -290,7 +434,7 @@ export function AttendanceRosterTable({
             <Button
               size="sm"
               variant="quiet"
-              isDisabled={isBusy}
+              isDisabled={actionsLocked}
               onClick={clearSelection}
             >
               Clear
@@ -373,22 +517,18 @@ export function AttendanceRosterTable({
                 </td>
               </tr>
             ) : (
-              table.getRowModel().rows.map((row) => (
-                <tr
-                  key={row.id}
-                  className={styles.tr}
-                  data-selected={row.getIsSelected() ? "" : undefined}
-                >
-                  {row.getVisibleCells().map((cell) => (
-                    <td key={cell.id} className={styles.td}>
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext(),
-                      )}
-                    </td>
-                  ))}
-                </tr>
-              ))
+              table
+                .getRowModel()
+                .rows.map((row) => (
+                  <RosterRow
+                    key={row.id}
+                    row={row}
+                    isSelected={row.getIsSelected()}
+                    isRowPending={pendingStudentId === row.original.studentId}
+                    actionsLocked={actionsLocked}
+                    markingDisabled={markingDisabled}
+                  />
+                ))
             )}
           </tbody>
         </table>
