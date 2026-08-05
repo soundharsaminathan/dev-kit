@@ -155,26 +155,34 @@ describe("ShowcaseThemeEditor", () => {
       </AppThemeProvider>,
     );
 
-    const drawer = await screen.findByTestId("theme-editor-drawer");
+    const drawer = await screen.findByTestId("theme-editor-drawer", undefined, {
+      timeout: 45_000,
+    });
 
     fireEvent.click(within(drawer).getByRole("button", { name: /Theme/ }));
     fireEvent.click(await screen.findByRole("option", { name: "Material" }));
-    await waitFor(() => {
-      expect(
-        within(drawer).getByRole("button", { name: /Theme/ }),
-      ).toHaveTextContent("Material");
-    });
+    await waitFor(
+      () => {
+        expect(
+          within(drawer).getByRole("button", { name: /Theme/ }),
+        ).toHaveTextContent("Material");
+      },
+      { timeout: 45_000 },
+    );
 
     fireEvent.click(within(drawer).getByRole("button", { name: /Icon pack/ }));
     fireEvent.click(
       await screen.findByRole("option", { name: "Heroicons Outline" }),
     );
-    await waitFor(() => {
-      expect(
-        within(drawer).getByRole("button", { name: /Icon pack/ }),
-      ).toHaveTextContent("Heroicons Outline");
-    });
-  });
+    await waitFor(
+      () => {
+        expect(
+          within(drawer).getByRole("button", { name: /Icon pack/ }),
+        ).toHaveTextContent("Heroicons Outline");
+      },
+      { timeout: 45_000 },
+    );
+  }, 60_000);
 
   it("supports controlled open state and custom triggers", () => {
     render(

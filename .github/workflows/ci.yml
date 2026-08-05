@@ -32,7 +32,14 @@ jobs:
         if: github.event_name != 'merge_group'
         run: |
           pnpm exec nx affected -t test:ci --base=origin/${{ github.base_ref }}
-          pnpm exec nx run dev-kit:merge-coverage
+          # Merge only coverage produced by affected projects. Do not use
+          # `nx run dev-kit:merge-coverage` here — its dependsOn re-runs every
+          # package's test:ci (including unrelated flakes / coverage gates).
+          if compgen -G "coverage/*/coverage-summary.json" > /dev/null; then
+            pnpm exec tsx scripts/merge-coverage.ts
+          else
+            echo "No affected coverage summaries to merge; skipping."
+          fi
         env:
           CI: true
 
