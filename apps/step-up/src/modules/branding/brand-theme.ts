@@ -8,15 +8,26 @@ import {
 } from "@dev-ui/tokens";
 import type { StudioBrandThemePayload } from "./types";
 
+/** App surfaces (`/app`, `/me`) use soft; brand themes must inherit its primary→accent wiring. */
+export const STUDIO_BRAND_THEME_BASE = "step-up-soft";
+
+/**
+ * Older payloads extended `step-up`, where `--color-primary` stays near-black.
+ * Map those onto soft so Brand color changes actually recolor buttons/chrome.
+ */
+export function normalizeBrandThemeBase(extendsId: string): string {
+  return extendsId === "step-up" ? STUDIO_BRAND_THEME_BASE : extendsId;
+}
+
 export function defaultStudioBrandDraft(label = "Studio brand"): ThemeDraft {
-  const base = getBuiltInTheme("step-up");
+  const base = getBuiltInTheme(STUDIO_BRAND_THEME_BASE);
   if (!base) {
-    return createThemeDraft({ label, extends: "step-up" });
+    return createThemeDraft({ label, extends: STUDIO_BRAND_THEME_BASE });
   }
   return {
     ...definitionToThemeDraft(base),
     label,
-    extends: "step-up",
+    extends: STUDIO_BRAND_THEME_BASE,
   };
 }
 
@@ -30,7 +41,7 @@ export function brandThemeToDraft(
 
   const options: Partial<ThemeDraft> & { extends?: string } = {
     label: brandTheme.label,
-    extends: brandTheme.extends,
+    extends: normalizeBrandThemeBase(brandTheme.extends),
     color: brandTheme.color,
     tokenOverrides: brandTheme.tokenOverrides ?? {},
   };
@@ -46,7 +57,7 @@ export function brandThemeToDraft(
 export function draftToBrandTheme(draft: ThemeDraft): StudioBrandThemePayload {
   const payload: StudioBrandThemePayload = {
     label: draft.label.trim() || "Studio brand",
-    extends: draft.extends,
+    extends: normalizeBrandThemeBase(draft.extends),
     color: draft.color,
     tokenOverrides: draft.tokenOverrides ?? {},
   };
