@@ -35,6 +35,7 @@ Product contract for automated testing. Roles use the canonical enum:
 | A18 | Check-in | Student QR check-in | STUDENT, PARENT | High | API | Partial | QR mark covered in API; full UI Gap |
 | A19 | Calendar | View schedule (member / staff) | All | High | Playwright + UI | Partial | EventChip UI; page smoke Planned |
 | A20 | a11y | Login + /me critical axe | Guest, STUDENT | High | Playwright | Covered | `smoke-a11y.spec.ts` |
+| A20b | a11y | Login + /me color contrast | Guest, STUDENT | High | Playwright | Covered | `color-contrast.spec.ts` |
 | A21 | Contests | Staff create / student enter | STAFF, STUDENT | Medium | API | Partial | Service specs exist |
 | A22 | Certificates | Design template / issue | OWNER, STAFF | Medium | UI + API | Partial | Layout + VariablePicker |
 | A23 | Retention | Staff retention dashboard | OWNER, STAFF, TRAINER | Medium | API | Partial | Controller roles covered |
