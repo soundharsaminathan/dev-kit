@@ -1,16 +1,12 @@
 import { useToastContext } from "@dev-ui/components/toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useApi } from "@/lib/api-context";
 import { useAuth } from "@/lib/auth";
 import { isAdminRole } from "@/lib/constants";
 import { useStudioId } from "@/lib/use-studio-id";
-import { BranchMap } from "@/modules/locations/branch-map";
 import { LocationCard } from "@/modules/locations/location-card";
-import type { MapCoordinates, StudioBranch } from "@/modules/locations/types";
-import { AppBottomSheet } from "@/modules/ui/app-bottom-sheet";
-import { FormInput } from "@/modules/ui/form-input";
+import type { StudioBranch } from "@/modules/locations/types";
 import { PullToRefresh } from "@/modules/ui/pull-to-refresh";
 import { Screen } from "@/modules/ui/screen";
 import { SkeletonCardList } from "@/modules/ui/skeleton-block";
@@ -22,18 +18,6 @@ export const Route = createFileRoute("/app/locations/")({
   component: LocationsPage,
 });
 
-type CreateForm = {
-  name: string;
-  address: string;
-  coordinates: MapCoordinates | null;
-};
-
-const emptyForm: CreateForm = {
-  name: "",
-  address: "",
-  coordinates: null,
-};
-
 function LocationsPage() {
   const api = useApi();
   const studioId = useStudioId();
@@ -41,50 +25,11 @@ function LocationsPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { toast } = useToastContext("LocationsPage");
-  const [formOpen, setFormOpen] = useState(false);
-  const [form, setForm] = useState<CreateForm>(emptyForm);
   const canManage = isAdminRole(user?.role);
 
   const branchesQuery = useQuery({
     queryKey: ["branches", studioId],
     queryFn: () => api.get<StudioBranch[]>(`/studios/${studioId}/branches`),
-  });
-
-  const createBranch = useMutation({
-    mutationFn: () =>
-      api.post<StudioBranch>("/branches", {
-        studioId,
-        name: form.name.trim(),
-        address: form.address.trim(),
-        latitude: form.coordinates?.latitude ?? null,
-        longitude: form.coordinates?.longitude ?? null,
-      }),
-    onSuccess: async (branch) => {
-      setForm(emptyForm);
-      setFormOpen(false);
-      await queryClient.invalidateQueries({
-        queryKey: ["branches", studioId],
-      });
-      toast({
-        title: "Location created",
-        description: "Continue editing details and gallery.",
-        variant: "success",
-      });
-      void navigate({
-        to: "/app/locations/$id/edit",
-        params: { id: branch.id },
-      });
-    },
-    onError: (error) => {
-      toast({
-        title: "Couldn’t create location",
-        description:
-          error instanceof Error
-            ? error.message
-            : "The location could not be created.",
-        variant: "error",
-      });
-    },
   });
 
   const deleteBranch = useMutation({
@@ -111,25 +56,14 @@ function LocationsPage() {
     },
   });
 
-  const canSave =
-    Boolean(form.name.trim() && form.address.trim() && form.coordinates) &&
-    !createBranch.isPending;
-
   return (
     <Screen
       title="Locations"
       subtitle="Studio branches with galleries, schedules, and booking pages."
       actions={
         canManage ? (
-          <TouchButton
-            variant="primary"
-            size="md"
-            onClick={() => {
-              setForm(emptyForm);
-              setFormOpen(true);
-            }}
-          >
-            Add
+          <TouchButton variant="primary" size="md">
+            <Link to="/app/locations/new">Add</Link>
           </TouchButton>
         ) : undefined
       }
@@ -167,11 +101,8 @@ function LocationsPage() {
               }
               action={
                 canManage ? (
-                  <TouchButton
-                    variant="primary"
-                    onClick={() => setFormOpen(true)}
-                  >
-                    Add location
+                  <TouchButton variant="primary">
+                    <Link to="/app/locations/new">Add location</Link>
                   </TouchButton>
                 ) : undefined
               }
@@ -255,61 +186,6 @@ function LocationsPage() {
           ) : null}
         </div>
       </PullToRefresh>
-
-      <AppBottomSheet
-        isOpen={formOpen}
-        onOpenChange={(open) => {
-          setFormOpen(open);
-          if (!open) setForm(emptyForm);
-        }}
-        title="New location"
-      >
-        <div className={styles.form}>
-          <FormInput
-            label="Name"
-            placeholder="Main studio"
-            value={form.name}
-            onChange={(name) => setForm((current) => ({ ...current, name }))}
-          />
-          <FormInput
-            label="Address"
-            placeholder="Street, city"
-            value={form.address}
-            onChange={(address) =>
-              setForm((current) => ({ ...current, address }))
-            }
-          />
-          <div className={styles.mapWrap}>
-            <BranchMap
-              value={form.coordinates}
-              onChange={(coordinates) =>
-                setForm((current) => ({ ...current, coordinates }))
-              }
-            />
-          </div>
-          {!form.coordinates ? (
-            <p className={styles.help}>
-              A map pin is required before saving this location.
-            </p>
-          ) : null}
-          {createBranch.isError ? (
-            <p className={styles.error}>
-              {createBranch.error instanceof Error
-                ? createBranch.error.message
-                : "The location could not be created."}
-            </p>
-          ) : null}
-          <TouchButton
-            variant="primary"
-            fullWidth
-            onClick={() => createBranch.mutate()}
-            isPending={createBranch.isPending}
-            isDisabled={!canSave}
-          >
-            Create location
-          </TouchButton>
-        </div>
-      </AppBottomSheet>
     </Screen>
   );
 }

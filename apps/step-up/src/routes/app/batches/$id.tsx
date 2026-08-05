@@ -655,7 +655,11 @@ function EditBatchForm({
           </SelectTrigger>
           <SelectContent>
             {(branches.data ?? []).map((branch) => (
-              <SelectItem key={branch.id} id={branch.id}>
+              <SelectItem
+                key={branch.id}
+                id={branch.id}
+                textValue={`${branch.name} — ${branch.address}`}
+              >
                 {branch.name} — {branch.address}
               </SelectItem>
             ))}
