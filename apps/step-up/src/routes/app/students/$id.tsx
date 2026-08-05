@@ -16,6 +16,10 @@ import { ENTITY_ICONS } from "@/lib/entity-icons";
 import { requireAdmin } from "@/lib/require-auth";
 import { useStudioId } from "@/lib/use-studio-id";
 import type { ChatConversation } from "@/modules/chat/types";
+import {
+  parseDiscountInput,
+  printInvoice,
+} from "@/modules/payments/print-invoice";
 import { AppBottomSheet } from "@/modules/ui/app-bottom-sheet";
 import { AppSheet } from "@/modules/ui/app-sheet";
 import { FormInput } from "@/modules/ui/form-input";
@@ -68,6 +72,8 @@ type StudentStudioProfile = {
   invoices: Array<{
     id: string;
     amount: number;
+    referralDiscount?: number;
+    studioDiscount?: number;
     status: "PENDING" | "PAID" | "OVERDUE";
     paymentMethod?: "CASH" | "UPI_MANUAL" | "RAZORPAY" | null;
     paidAt?: string | null;
@@ -186,6 +192,8 @@ function StudentDetailPage() {
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(
     null,
   );
+  const [referralDiscount, setReferralDiscount] = useState("");
+  const [studioDiscount, setStudioDiscount] = useState("");
   const [parentUserId, setParentUserId] = useState<string | null>(null);
 
   const query = useQuery({
@@ -236,6 +244,8 @@ function StudentDetailPage() {
     setRenewMembershipId(null);
     setMarkPaidInvoiceId(null);
     setPaymentMethod(null);
+    setReferralDiscount("");
+    setStudioDiscount("");
     setParentUserId(null);
   }
 
@@ -260,6 +270,8 @@ function StudentDetailPage() {
   function openMarkPaid(invoiceId: string) {
     setMarkPaidInvoiceId(invoiceId);
     setPaymentMethod(null);
+    setReferralDiscount("");
+    setStudioDiscount("");
     setSheet("mark-paid");
   }
 
@@ -410,16 +422,20 @@ function StudentDetailPage() {
     mutationFn: (payload: {
       invoiceId: string;
       paymentMethod: PaymentMethod;
+      referralDiscount: number;
+      studioDiscount: number;
     }) =>
       api.patch(`/billing/${payload.invoiceId}/paid`, {
         paymentMethod: payload.paymentMethod,
+        referralDiscount: payload.referralDiscount,
+        studioDiscount: payload.studioDiscount,
       }),
     onSuccess: async () => {
       await invalidateStudent();
       closeSheet();
       toast({
         title: "Invoice marked paid",
-        description: "Payment was recorded for this invoice.",
+        description: "Payment recorded. Receipt emailed to the student.",
         variant: "success",
       });
     },
@@ -870,7 +886,29 @@ function StudentDetailPage() {
                             Mark paid
                           </TouchButton>
                         </div>
-                      ) : null}
+                      ) : (
+                        <div className={staff.rowActions}>
+                          <TouchButton
+                            size="sm"
+                            variant="default"
+                            data-testid={`print-invoice-${invoice.id}`}
+                            onClick={() => {
+                              printInvoice({
+                                id: invoice.id,
+                                amount: invoice.amount,
+                                referralDiscount: invoice.referralDiscount,
+                                studioDiscount: invoice.studioDiscount,
+                                status: invoice.status,
+                                paymentMethod: invoice.paymentMethod,
+                                paidAt: invoice.paidAt,
+                                studentName: profile.student.name,
+                              });
+                            }}
+                          >
+                            Print invoice
+                          </TouchButton>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -1097,12 +1135,51 @@ function StudentDetailPage() {
             <p className={staff.rowMeta}>
               {formatInr(markPaidTarget.amount)} · {markPaidTarget.status}
             </p>
+            <FormInput
+              label="Referral discount"
+              type="number"
+              min="0"
+              step="1"
+              inputMode="decimal"
+              data-testid="referral-discount"
+              value={referralDiscount}
+              onChange={setReferralDiscount}
+              placeholder="0"
+            />
+            <FormInput
+              label="Studio discount"
+              type="number"
+              min="0"
+              step="1"
+              inputMode="decimal"
+              data-testid="studio-discount"
+              value={studioDiscount}
+              onChange={setStudioDiscount}
+              placeholder="0"
+            />
             <p className={staff.rowMeta}>
-              {paymentMethod
-                ? `Confirm recording ${formatInr(markPaidTarget.amount)} as ${
+              {(() => {
+                const referral = parseDiscountInput(referralDiscount);
+                const studio = parseDiscountInput(studioDiscount);
+                const net =
+                  Number.isNaN(referral) || Number.isNaN(studio)
+                    ? null
+                    : Math.max(
+                        0,
+                        Math.round(
+                          (markPaidTarget.amount - referral - studio) * 100,
+                        ) / 100,
+                      );
+                if (paymentMethod && net != null) {
+                  return `Confirm recording ${formatInr(net)} as ${
                     paymentMethod === "CASH" ? "cash" : "UPI"
-                  } paid. This cannot be undone from here.`
-                : "Choose how payment was received, then confirm."}
+                  } paid. This cannot be undone from here.`;
+                }
+                if (net != null && net !== markPaidTarget.amount) {
+                  return `Net after discounts: ${formatInr(net)}. Choose how payment was received, then confirm.`;
+                }
+                return "Optional discounts reduce the amount collected. Choose how payment was received, then confirm.";
+              })()}
             </p>
             {markPaid.isError ? (
               <ErrorState
@@ -1138,9 +1215,22 @@ function StudentDetailPage() {
                 data-testid="confirm-mark-paid"
                 onClick={() => {
                   if (!paymentMethod) return;
+                  const referral = parseDiscountInput(referralDiscount);
+                  const studio = parseDiscountInput(studioDiscount);
+                  if (Number.isNaN(referral) || Number.isNaN(studio)) {
+                    toast({
+                      title: "Invalid discount",
+                      description:
+                        "Enter a valid amount of 0 or more for each discount.",
+                      variant: "error",
+                    });
+                    return;
+                  }
                   markPaid.mutate({
                     invoiceId: markPaidTarget.id,
                     paymentMethod,
+                    referralDiscount: referral,
+                    studioDiscount: studio,
                   });
                 }}
               >

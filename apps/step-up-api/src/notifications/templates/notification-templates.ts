@@ -44,6 +44,13 @@ export function buildNotificationCopy(input: NotificationTemplateInput): {
           input.body ??
           "You have an overdue invoice. Bookings are frozen until payment is received.",
       };
+    case "PAYMENT_RECEIVED":
+      return {
+        title: input.title ?? "Payment received",
+        body:
+          input.body ??
+          "Your payment was recorded. A receipt has been sent to your email.",
+      };
     case "RENEWED":
       return {
         title: input.title ?? "Subscription renewed",
@@ -96,6 +103,10 @@ export const NOTIFICATION_TYPE_REGISTRY: Record<
   },
   PAYMENT_OVERDUE: {
     label: "Payment overdue",
+    defaultChannels: ["IN_APP", "PUSH", "EMAIL"],
+  },
+  PAYMENT_RECEIVED: {
+    label: "Payment received",
     defaultChannels: ["IN_APP", "PUSH", "EMAIL"],
   },
   RENEWED: {

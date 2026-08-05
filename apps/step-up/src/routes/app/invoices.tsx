@@ -7,8 +7,13 @@ import { useApi } from "@/lib/api-context";
 import { requireAdmin } from "@/lib/require-auth";
 import { useStudioId } from "@/lib/use-studio-id";
 import { FamilyCheckoutSheet } from "@/modules/payments/family-checkout-sheet";
+import {
+  parseDiscountInput,
+  printInvoice,
+} from "@/modules/payments/print-invoice";
 import { AppSheet } from "@/modules/ui/app-sheet";
 import { FilterChipRow } from "@/modules/ui/filter-chip-row";
+import { FormInput } from "@/modules/ui/form-input";
 import { PressableCard } from "@/modules/ui/pressable-card";
 import { PullToRefresh } from "@/modules/ui/pull-to-refresh";
 import { Screen } from "@/modules/ui/screen";
@@ -27,7 +32,11 @@ type Invoice = {
   id: string;
   studentId: string;
   amount: number;
+  referralDiscount?: number;
+  studioDiscount?: number;
   status: "PENDING" | "PAID" | "OVERDUE";
+  paymentMethod?: "CASH" | "UPI_MANUAL" | "RAZORPAY" | null;
+  paidAt?: string | null;
   kind: "FAMILY" | "INDIVIDUAL";
   student?: { name: string };
   familySummary?: {
@@ -77,6 +86,8 @@ function InvoicesPage() {
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(
     null,
   );
+  const [referralDiscount, setReferralDiscount] = useState("");
+  const [studioDiscount, setStudioDiscount] = useState("");
 
   const query = useQuery({
     queryKey: ["invoices", studioId],
@@ -84,18 +95,27 @@ function InvoicesPage() {
   });
 
   const markPaid = useMutation({
-    mutationFn: (payload: { id: string; paymentMethod: PaymentMethod }) =>
+    mutationFn: (payload: {
+      id: string;
+      paymentMethod: PaymentMethod;
+      referralDiscount: number;
+      studioDiscount: number;
+    }) =>
       api.patch(`/billing/${payload.id}/paid`, {
         paymentMethod: payload.paymentMethod,
+        referralDiscount: payload.referralDiscount,
+        studioDiscount: payload.studioDiscount,
       }),
     onSuccess: () => {
       setActiveId(null);
       setFamilyOpenId(null);
       setPaymentMethod(null);
+      setReferralDiscount("");
+      setStudioDiscount("");
       void queryClient.invalidateQueries({ queryKey: ["invoices", studioId] });
       toast({
         title: "Invoice marked paid",
-        description: "Payment was recorded for this invoice.",
+        description: "Payment recorded. Receipt emailed to the student.",
         variant: "success",
       });
     },
@@ -130,21 +150,56 @@ function InvoicesPage() {
   function closeMarkPaid() {
     setActiveId(null);
     setPaymentMethod(null);
+    setReferralDiscount("");
+    setStudioDiscount("");
   }
 
   function closeFamilyOpen() {
     setFamilyOpenId(null);
     setPaymentMethod(null);
+    setReferralDiscount("");
+    setStudioDiscount("");
   }
 
   function openMarkPaid(id: string) {
     setPaymentMethod(null);
+    setReferralDiscount("");
+    setStudioDiscount("");
     setActiveId(id);
   }
 
   function openFamily(id: string) {
     setPaymentMethod(null);
+    setReferralDiscount("");
+    setStudioDiscount("");
     setFamilyOpenId(id);
+  }
+
+  function submitMarkPaid(invoiceId: string) {
+    if (!paymentMethod) return;
+    const referral = parseDiscountInput(referralDiscount);
+    const studio = parseDiscountInput(studioDiscount);
+    if (Number.isNaN(referral) || Number.isNaN(studio)) {
+      toast({
+        title: "Invalid discount",
+        description: "Enter a valid amount of 0 or more for each discount.",
+        variant: "error",
+      });
+      return;
+    }
+    markPaid.mutate({
+      id: invoiceId,
+      paymentMethod,
+      referralDiscount: referral,
+      studioDiscount: studio,
+    });
+  }
+
+  function netPreview(amount: number) {
+    const referral = parseDiscountInput(referralDiscount);
+    const studio = parseDiscountInput(studioDiscount);
+    if (Number.isNaN(referral) || Number.isNaN(studio)) return null;
+    return Math.max(0, Math.round((amount - referral - studio) * 100) / 100);
   }
 
   const methodLabel =
@@ -292,7 +347,29 @@ function InvoicesPage() {
                             </TouchButton>
                           )}
                         </div>
-                      ) : null}
+                      ) : (
+                        <div className={staff.rowActions}>
+                          <TouchButton
+                            size="md"
+                            variant="default"
+                            data-testid={`print-invoice-${invoice.id}`}
+                            onClick={() => {
+                              printInvoice({
+                                id: invoice.id,
+                                amount: invoice.amount,
+                                referralDiscount: invoice.referralDiscount,
+                                studioDiscount: invoice.studioDiscount,
+                                status: invoice.status,
+                                paymentMethod: invoice.paymentMethod,
+                                paidAt: invoice.paidAt,
+                                studentName: invoice.student?.name,
+                              });
+                            }}
+                          >
+                            Print invoice
+                          </TouchButton>
+                        </div>
+                      )}
                     </div>
                   </PressableCard>
                 );
@@ -318,10 +395,39 @@ function InvoicesPage() {
             <p className={staff.rowMeta}>
               {formatPrice(active.amount)} · {active.status}
             </p>
+            <FormInput
+              label="Referral discount"
+              type="number"
+              min="0"
+              step="1"
+              inputMode="decimal"
+              data-testid="referral-discount"
+              value={referralDiscount}
+              onChange={setReferralDiscount}
+              placeholder="0"
+            />
+            <FormInput
+              label="Studio discount"
+              type="number"
+              min="0"
+              step="1"
+              inputMode="decimal"
+              data-testid="studio-discount"
+              value={studioDiscount}
+              onChange={setStudioDiscount}
+              placeholder="0"
+            />
             <p className={staff.rowMeta}>
-              {paymentMethod
-                ? `Confirm recording ${formatPrice(active.amount)} as ${methodLabel} paid for ${active.student?.name ?? "this student"}. This cannot be undone from here.`
-                : "Choose how payment was received, then confirm."}
+              {(() => {
+                const net = netPreview(active.amount);
+                if (paymentMethod && net != null) {
+                  return `Confirm recording ${formatPrice(net)} as ${methodLabel} paid for ${active.student?.name ?? "this student"}. This cannot be undone from here.`;
+                }
+                if (net != null && net !== active.amount) {
+                  return `Net after discounts: ${formatPrice(net)}. Choose how payment was received, then confirm.`;
+                }
+                return "Optional discounts reduce the amount collected. Choose how payment was received, then confirm.";
+              })()}
             </p>
             {markPaid.isError ? (
               <ErrorState
@@ -355,13 +461,7 @@ function InvoicesPage() {
                 isDisabled={!paymentMethod}
                 isPending={markPaid.isPending}
                 data-testid="confirm-mark-paid"
-                onClick={() => {
-                  if (!paymentMethod) return;
-                  markPaid.mutate({
-                    id: active.id,
-                    paymentMethod,
-                  });
-                }}
+                onClick={() => submitMarkPaid(active.id)}
               >
                 Confirm mark as paid
               </TouchButton>
@@ -417,10 +517,39 @@ function InvoicesPage() {
                   : "Family pack payment"}
               </p>
             )}
+            <FormInput
+              label="Referral discount"
+              type="number"
+              min="0"
+              step="1"
+              inputMode="decimal"
+              data-testid="family-referral-discount"
+              value={referralDiscount}
+              onChange={setReferralDiscount}
+              placeholder="0"
+            />
+            <FormInput
+              label="Studio discount"
+              type="number"
+              min="0"
+              step="1"
+              inputMode="decimal"
+              data-testid="family-studio-discount"
+              value={studioDiscount}
+              onChange={setStudioDiscount}
+              placeholder="0"
+            />
             <p className={staff.rowMeta}>
-              {paymentMethod
-                ? `Confirm recording ${formatPrice(familyInvoice.amount)} as ${methodLabel}. Membership activates on confirm.`
-                : "Choose how payment was received, then confirm."}
+              {(() => {
+                const net = netPreview(familyInvoice.amount);
+                if (paymentMethod && net != null) {
+                  return `Confirm recording ${formatPrice(net)} as ${methodLabel}. Membership activates on confirm.`;
+                }
+                if (net != null && net !== familyInvoice.amount) {
+                  return `Net after discounts: ${formatPrice(net)}. Choose how payment was received, then confirm.`;
+                }
+                return "Optional discounts reduce the amount collected. Choose how payment was received, then confirm.";
+              })()}
             </p>
             {markPaid.isError ? (
               <ErrorState
@@ -454,13 +583,7 @@ function InvoicesPage() {
                 isDisabled={!paymentMethod}
                 isPending={markPaid.isPending}
                 data-testid="confirm-open-family-paid"
-                onClick={() => {
-                  if (!paymentMethod) return;
-                  markPaid.mutate({
-                    id: familyInvoice.id,
-                    paymentMethod,
-                  });
-                }}
+                onClick={() => submitMarkPaid(familyInvoice.id)}
               >
                 Confirm payment
               </TouchButton>

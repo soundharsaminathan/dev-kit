@@ -29,6 +29,32 @@ test.describe("billing HTTP @http", () => {
     expect(paid.status).toBe("PAID");
   });
 
+  test("staff marks invoice paid with discounts @http", async () => {
+    const target = await createPendingInvoice(2000);
+    expect(target.status).toBe("PENDING");
+
+    const paid = await expectOk<{
+      id: string;
+      status: string;
+      amount: number;
+      referralDiscount: number;
+      studioDiscount: number;
+      subtotal: number;
+    }>("STAFF", `/billing/${target.id}/paid`, {
+      method: "PATCH",
+      body: JSON.stringify({
+        paymentMethod: "UPI_MANUAL",
+        referralDiscount: 200,
+        studioDiscount: 100,
+      }),
+    });
+    expect(paid.status).toBe("PAID");
+    expect(paid.subtotal).toBe(2000);
+    expect(paid.referralDiscount).toBe(200);
+    expect(paid.studioDiscount).toBe(100);
+    expect(paid.amount).toBe(1700);
+  });
+
   test("trainer cannot mark invoice paid @http", async () => {
     const target = await createPendingInvoice(1800);
     await expectStatus("TRAINER", `/billing/${target.id}/paid`, 403, {

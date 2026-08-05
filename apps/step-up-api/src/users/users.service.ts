@@ -423,6 +423,8 @@ export class UsersService {
       invoices: invoices.map((invoice) => ({
         ...invoice,
         amount: Number(invoice.amount),
+        referralDiscount: Number(invoice.referralDiscount ?? 0),
+        studioDiscount: Number(invoice.studioDiscount ?? 0),
       })),
       parents: await Promise.all(
         parentLinks.map(async (link) => this.presentUser(link.parent)),

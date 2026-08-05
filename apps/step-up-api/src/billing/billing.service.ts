@@ -3,22 +3,26 @@ import {
   ForbiddenException,
   Inject,
   Injectable,
+  Logger,
   NotFoundException,
 } from "@nestjs/common";
 import {
   InvoiceStatus,
   MembershipSeatRole,
+  NotificationType,
   PaymentMethod,
   Prisma,
   type User,
   UserRole,
 } from "@prisma/client";
+import { EmailService } from "../email/email.service";
 import { computePlatformFee } from "../memberships/membership-helpers";
 import {
   type CoveredStudentInput,
   type InvoicePurchaseMeta,
   MembershipsService,
 } from "../memberships/memberships.service";
+import { NotificationsService } from "../notifications/notifications.service";
 import { RazorpayService } from "../payments/razorpay.service";
 import { PrismaService } from "../prisma/prisma.service";
 import {
@@ -160,12 +164,17 @@ function amountToPaise(amount: Prisma.Decimal | number | string) {
 
 @Injectable()
 export class BillingService {
+  private readonly logger = new Logger(BillingService.name);
+
   constructor(
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(UserCryptoService) private readonly crypto: UserCryptoService,
     @Inject(MembershipsService)
     private readonly memberships: MembershipsService,
     @Inject(RazorpayService) private readonly razorpay: RazorpayService,
+    @Inject(NotificationsService)
+    private readonly notifications: NotificationsService,
+    @Inject(EmailService) private readonly email: EmailService,
   ) {}
 
   async listByStudio(studioId: string) {
@@ -221,6 +230,8 @@ export class BillingService {
       return {
         ...invoice,
         amount: Number(invoice.amount),
+        referralDiscount: Number(invoice.referralDiscount ?? 0),
+        studioDiscount: Number(invoice.studioDiscount ?? 0),
         student: this.crypto.decryptUser(invoice.student),
         kind,
         purchaseMeta,
@@ -579,7 +590,11 @@ export class BillingService {
   async markPaid(
     actor: DecryptedUser,
     id: string,
-    paymentMethod: PaymentMethod,
+    input: {
+      paymentMethod: PaymentMethod;
+      referralDiscount?: number;
+      studioDiscount?: number;
+    },
   ) {
     if (actor.role !== UserRole.OWNER && actor.role !== UserRole.STAFF) {
       throw new ForbiddenException("Only studio admins can mark invoices paid");
@@ -587,6 +602,10 @@ export class BillingService {
 
     const invoice = await this.prisma.invoice.findUniqueOrThrow({
       where: { id },
+      include: {
+        student: true,
+        studio: { select: { id: true, name: true } },
+      },
     });
 
     if (actor.studioId !== invoice.studioId) {
@@ -597,8 +616,26 @@ export class BillingService {
       throw new BadRequestException("Invoice is already paid");
     }
 
-    const amount = Number(invoice.amount);
-    const platformFee = computePlatformFee(amount, invoice.platformFeePercent);
+    const subtotal = Number(invoice.amount);
+    const referralDiscount = roundMoney(input.referralDiscount ?? 0);
+    const studioDiscount = roundMoney(input.studioDiscount ?? 0);
+
+    if (referralDiscount < 0 || studioDiscount < 0) {
+      throw new BadRequestException("Discounts cannot be negative");
+    }
+
+    const totalDiscount = roundMoney(referralDiscount + studioDiscount);
+    if (totalDiscount > subtotal) {
+      throw new BadRequestException(
+        "Discounts cannot exceed the invoice amount",
+      );
+    }
+
+    const amountPaid = roundMoney(subtotal - totalDiscount);
+    const platformFee = computePlatformFee(
+      amountPaid,
+      invoice.platformFeePercent,
+    );
     const purchaseMeta = parsePurchaseMeta(invoice.purchaseMeta);
 
     let membershipId = invoice.membershipId;
@@ -611,12 +648,16 @@ export class BillingService {
       membershipId = membership.id;
     }
 
+    const paidAt = new Date();
     const result = await this.prisma.invoice.update({
       where: { id },
       data: {
         status: InvoiceStatus.PAID,
-        paymentMethod,
-        paidAt: new Date(),
+        paymentMethod: input.paymentMethod,
+        paidAt,
+        amount: amountPaid,
+        referralDiscount,
+        studioDiscount,
         ...(membershipId ? { membershipId } : {}),
         ...(purchaseMeta ? { purchaseMeta: Prisma.DbNull } : {}),
       },
@@ -626,9 +667,56 @@ export class BillingService {
       await this.memberships.renewFromPaidInvoice(invoice.membershipId);
     }
 
+    const student = this.crypto.decryptUser(invoice.student);
+    const amountLabel = formatInr(amountPaid);
+
+    await this.notifications.create({
+      userId: invoice.studentId,
+      type: NotificationType.PAYMENT_RECEIVED,
+      title: "Payment received",
+      body: `Your payment of ${amountLabel} was recorded.`,
+      dedupeKey: `PAYMENT_RECEIVED:${invoice.id}`,
+      meta: {
+        invoiceId: invoice.id,
+        amount: amountPaid,
+        referralDiscount,
+        studioDiscount,
+      },
+      entityType: "invoice",
+      entityId: invoice.id,
+    });
+
+    if (student.email) {
+      try {
+        await this.email.sendPaymentInvoice({
+          to: student.email,
+          studentName: student.name || "there",
+          studioName: invoice.studio.name,
+          invoiceId: invoice.id,
+          subtotal,
+          referralDiscount,
+          studioDiscount,
+          amountPaid,
+          paymentMethod: input.paymentMethod,
+          paidAt,
+        });
+      } catch (error) {
+        this.logger.error(
+          `Failed to email payment invoice ${invoice.id}`,
+          error instanceof Error ? error.stack : String(error),
+        );
+      }
+    }
+
     return {
       ...result,
+      amount: Number(result.amount),
+      referralDiscount: Number(result.referralDiscount),
+      studioDiscount: Number(result.studioDiscount),
+      subtotal,
       platformFeeComputed: platformFee,
+      student: { id: student.id, name: student.name, email: student.email },
+      studio: invoice.studio,
     };
   }
 
@@ -1132,6 +1220,14 @@ export class BillingService {
 
 function roundMoney(value: number): number {
   return Math.round(value * 100) / 100;
+}
+
+function formatInr(amount: number) {
+  return new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+    maximumFractionDigits: 2,
+  }).format(amount);
 }
 
 function isAnalyticsBucket(value: string): value is AnalyticsBucket {

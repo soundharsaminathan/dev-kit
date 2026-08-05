@@ -56,6 +56,7 @@ function notificationIcon(
     case "MISSED_SESSION":
       return "calendar";
     case "PAYMENT_OVERDUE":
+    case "PAYMENT_RECEIVED":
       return "credit-card";
     case "RENEWED":
       return "badge-check";

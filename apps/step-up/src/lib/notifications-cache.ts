@@ -45,6 +45,7 @@ export function publishNotificationBroadcast(
 export function isPriorityToastType(type: string) {
   return (
     type === "PAYMENT_OVERDUE" ||
+    type === "PAYMENT_RECEIVED" ||
     type === "SUBSCRIPTION_EXPIRING" ||
     type === "NOT_RENEWED" ||
     type === "MISSED_SESSION"
