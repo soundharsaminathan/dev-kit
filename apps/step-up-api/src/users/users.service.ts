@@ -92,6 +92,103 @@ export class UsersService {
     );
   }
 
+  async listStudioFamilies(studioId: string) {
+    const memberSelect = {
+      id: true,
+      ...userPiiSelect,
+      role: true,
+      photoUrl: true,
+    };
+
+    const [familyLinks, parentLinks] = await Promise.all([
+      this.prisma.familyMember.findMany({
+        where: { owner: { studioId } },
+        select: {
+          kind: true,
+          owner: { select: memberSelect },
+          member: { select: memberSelect },
+        },
+        orderBy: { createdAt: "asc" },
+      }),
+      this.prisma.parentChild.findMany({
+        where: { parent: { studioId } },
+        select: {
+          parent: { select: memberSelect },
+          child: { select: memberSelect },
+        },
+      }),
+    ]);
+
+    type SelectedMember = EncryptedUserFields & {
+      id: string;
+      role: UserRole;
+      photoUrl: string | null;
+    };
+    type FamilySeatRole = "ADULT" | "KID";
+    type FamilyGroup = {
+      ownerId: string;
+      ownerName: string;
+      ownerRole: UserRole;
+      ownerPhotoUrl: string | null;
+      members: Array<{
+        id: string;
+        name: string;
+        photoUrl: string | null;
+        seatRole: FamilySeatRole;
+      }>;
+    };
+
+    const groups = new Map<string, FamilyGroup>();
+
+    const ensureGroup = async (owner: SelectedMember) => {
+      const existing = groups.get(owner.id);
+      if (existing) return existing;
+      const presented = await this.presentUser(owner);
+      const group: FamilyGroup = {
+        ownerId: presented.id,
+        ownerName: presented.name,
+        ownerRole: owner.role,
+        ownerPhotoUrl: presented.photoUrl,
+        members: [],
+      };
+      groups.set(owner.id, group);
+      return group;
+    };
+
+    const addMember = async (
+      group: FamilyGroup,
+      member: SelectedMember,
+      seatRole: FamilySeatRole,
+    ) => {
+      if (group.members.some((existing) => existing.id === member.id)) return;
+      const presented = await this.presentUser(member);
+      group.members.push({
+        id: presented.id,
+        name: presented.name,
+        photoUrl: presented.photoUrl,
+        seatRole,
+      });
+    };
+
+    for (const link of familyLinks) {
+      const group = await ensureGroup(link.owner);
+      await addMember(
+        group,
+        link.member,
+        link.kind === FamilyMemberKind.KID ? "KID" : "ADULT",
+      );
+    }
+
+    for (const link of parentLinks) {
+      const group = await ensureGroup(link.parent);
+      await addMember(group, link.child, "KID");
+    }
+
+    return Array.from(groups.values()).sort((a, b) =>
+      a.ownerName.localeCompare(b.ownerName),
+    );
+  }
+
   async listStudents(studioId: string, q?: string) {
     const users = await this.prisma.user.findMany({
       where: {

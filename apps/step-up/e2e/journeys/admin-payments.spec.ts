@@ -19,6 +19,23 @@ async function createPendingInvoice() {
   });
 }
 
+async function ensureStudentFamilyMember() {
+  const existing = await apiRequest<Array<{ id: string }>>(
+    "STUDENT",
+    "/users/me/family-members",
+  );
+  if (existing.length > 0) return;
+  await apiRequest("STUDENT", "/users/me/family-members", {
+    method: "POST",
+    body: JSON.stringify({
+      name: "E2E Family Kid",
+      kind: "KID",
+      gender: "FEMALE",
+      ageRange: "UNDER_10",
+    }),
+  });
+}
+
 test.describe("admin payments @critical", () => {
   test("staff marks invoice paid through UI @critical", async ({ browser }) => {
     const invoice = await createPendingInvoice();
@@ -33,7 +50,6 @@ test.describe("admin payments @critical", () => {
     await expect(
       page.getByRole("heading", { name: /^invoices$/i }),
     ).toBeVisible();
-    await expect(page.getByTestId("sell-family-pack")).toBeVisible();
 
     await page.getByTestId(`mark-paid-${invoice.id}`).click();
     await page.getByRole("button", { name: /^Cash$/i }).click();
@@ -70,9 +86,32 @@ test.describe("admin payments @critical", () => {
     await page.goto("/app/invoices", { waitUntil: "domcontentloaded" });
     await waitForAppReady(page);
 
+    await page.getByRole("tab", { name: /^family$/i }).click();
     await page.getByTestId("sell-family-pack").click();
     await expect(
       page.getByRole("heading", { name: /family pack · seats/i }),
+    ).toBeVisible();
+    await expect(page.getByText(/step 1 of 3/i)).toBeVisible();
+
+    await context.close();
+  });
+
+  test("staff opens family pay flow from a family group card @critical", async ({
+    browser,
+  }) => {
+    await ensureStudentFamilyMember();
+
+    const context = await browser.newContext({
+      storageState: authFile("STAFF"),
+    });
+    const page = await context.newPage();
+    await page.goto("/app/invoices", { waitUntil: "domcontentloaded" });
+    await waitForAppReady(page);
+
+    await page.getByRole("tab", { name: /^family$/i }).click();
+    await page.getByTestId(`family-group-${SEED.users.STUDENT.id}`).click();
+    await expect(
+      page.getByRole("heading", { name: /family payment · classes/i }),
     ).toBeVisible();
     await expect(page.getByText(/step 1 of 3/i)).toBeVisible();
 
