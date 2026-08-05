@@ -392,6 +392,7 @@
   color: var(--color-danger, #b91c1c);
 }
 
+.notificationItem[data-type="PAYMENT_RECEIVED"] .notificationIcon,
 .notificationItem[data-type="RENEWED"] .notificationIcon,
 .notificationItem[data-type="NEW_FOLLOW"] .notificationIcon {
   background: color-mix(in srgb, var(--color-success, #16a34a) 14%, transparent);

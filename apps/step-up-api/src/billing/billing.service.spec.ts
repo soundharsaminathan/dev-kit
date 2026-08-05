@@ -25,6 +25,14 @@ const razorpayStub = {
   verifyPaymentSignature: vi.fn().mockReturnValue(false),
 };
 
+const notificationsStub = {
+  create: vi.fn().mockResolvedValue({ id: "notif-1" }),
+};
+
+const emailStub = {
+  sendPaymentInvoice: vi.fn().mockResolvedValue(undefined),
+};
+
 function makeUser(overrides: Partial<DecryptedUser> = {}): DecryptedUser {
   return {
     id: "owner-1",
@@ -69,6 +77,8 @@ describe("BillingService.getTrainerAnalytics", () => {
       crypto as never,
       membershipsStub as never,
       razorpayStub as never,
+      notificationsStub as never,
+      emailStub as never,
     );
   });
 
@@ -372,6 +382,8 @@ describe("BillingService.listForStudent", () => {
       crypto as never,
       membershipsStub as never,
       razorpayStub as never,
+      notificationsStub as never,
+      emailStub as never,
     );
   });
 
@@ -423,41 +435,69 @@ describe("BillingService.markPaid", () => {
     },
   };
   const crypto = {
-    decryptUser: vi.fn((user: { name?: string }) => user),
+    decryptUser: vi.fn(
+      (user: { name?: string; email?: string; id?: string }) => ({
+        id: user.id ?? "student-1",
+        name: user.name ?? "Student",
+        email: user.email ?? "student@example.com",
+      }),
+    ),
   };
   let service: BillingService;
 
-  beforeEach(() => {
-    vi.clearAllMocks();
-    membershipsStub.renewFromPaidInvoice.mockResolvedValue(null);
-    service = new BillingService(
-      prisma as never,
-      crypto as never,
-      membershipsStub as never,
-      razorpayStub as never,
-    );
-  });
-
-  it("marks a pending invoice paid with method and fee", async () => {
-    prisma.invoice.findUniqueOrThrow.mockResolvedValue({
+  function unpaidInvoice(
+    overrides: Record<string, unknown> = {},
+  ): Record<string, unknown> {
+    return {
       id: "inv-1",
+      studentId: "student-1",
       studioId: "studio-1",
       amount: 2000,
       status: InvoiceStatus.PENDING,
       platformFeePercent: 5,
       membershipId: null,
-    });
+      purchaseMeta: null,
+      student: {
+        id: "student-1",
+        name: "Student",
+        email: "student@example.com",
+      },
+      studio: { id: "studio-1", name: "Step Up Studio" },
+      ...overrides,
+    };
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    membershipsStub.renewFromPaidInvoice.mockResolvedValue(null);
+    notificationsStub.create.mockResolvedValue({ id: "notif-1" });
+    emailStub.sendPaymentInvoice.mockResolvedValue(undefined);
+    service = new BillingService(
+      prisma as never,
+      crypto as never,
+      membershipsStub as never,
+      razorpayStub as never,
+      notificationsStub as never,
+      emailStub as never,
+    );
+  });
+
+  it("marks a pending invoice paid with method and fee", async () => {
+    prisma.invoice.findUniqueOrThrow.mockResolvedValue(unpaidInvoice());
     prisma.invoice.update.mockResolvedValue({
       id: "inv-1",
       status: InvoiceStatus.PAID,
       paymentMethod: PaymentMethod.CASH,
       paidAt: new Date("2026-07-20T12:00:00.000Z"),
+      amount: 2000,
+      referralDiscount: 0,
+      studioDiscount: 0,
     });
 
     const result = await service.markPaid(
       makeUser({ role: UserRole.OWNER }),
       "inv-1",
-      PaymentMethod.CASH,
+      { paymentMethod: PaymentMethod.CASH },
     );
 
     expect(prisma.invoice.update).toHaveBeenCalledWith({
@@ -466,67 +506,124 @@ describe("BillingService.markPaid", () => {
         status: InvoiceStatus.PAID,
         paymentMethod: PaymentMethod.CASH,
         paidAt: expect.any(Date),
+        amount: 2000,
+        referralDiscount: 0,
+        studioDiscount: 0,
       }),
     });
     expect(result.platformFeeComputed).toBe(100);
     expect(membershipsStub.renewFromPaidInvoice).not.toHaveBeenCalled();
+    expect(notificationsStub.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: "student-1",
+        type: "PAYMENT_RECEIVED",
+        entityId: "inv-1",
+      }),
+    );
+    expect(emailStub.sendPaymentInvoice).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: "student@example.com",
+        amountPaid: 2000,
+        subtotal: 2000,
+      }),
+    );
   });
 
-  it("renews membership when paying a renewal invoice", async () => {
-    prisma.invoice.findUniqueOrThrow.mockResolvedValue({
-      id: "inv-1",
-      studioId: "studio-1",
-      amount: 2000,
-      status: InvoiceStatus.PENDING,
-      platformFeePercent: 5,
-      membershipId: "mem-1",
-      purchaseMeta: null,
-    });
+  it("applies referral and studio discounts to the paid amount", async () => {
+    prisma.invoice.findUniqueOrThrow.mockResolvedValue(unpaidInvoice());
     prisma.invoice.update.mockResolvedValue({
       id: "inv-1",
       status: InvoiceStatus.PAID,
       paymentMethod: PaymentMethod.CASH,
       paidAt: new Date("2026-07-20T12:00:00.000Z"),
+      amount: 1700,
+      referralDiscount: 200,
+      studioDiscount: 100,
     });
 
-    await service.markPaid(
+    const result = await service.markPaid(
       makeUser({ role: UserRole.OWNER }),
       "inv-1",
-      PaymentMethod.CASH,
+      {
+        paymentMethod: PaymentMethod.CASH,
+        referralDiscount: 200,
+        studioDiscount: 100,
+      },
     );
+
+    expect(prisma.invoice.update).toHaveBeenCalledWith({
+      where: { id: "inv-1" },
+      data: expect.objectContaining({
+        amount: 1700,
+        referralDiscount: 200,
+        studioDiscount: 100,
+      }),
+    });
+    expect(result.platformFeeComputed).toBe(85);
+    expect(result.subtotal).toBe(2000);
+  });
+
+  it("rejects discounts that exceed the invoice amount", async () => {
+    prisma.invoice.findUniqueOrThrow.mockResolvedValue(unpaidInvoice());
+
+    await expect(
+      service.markPaid(makeUser({ role: UserRole.OWNER }), "inv-1", {
+        paymentMethod: PaymentMethod.CASH,
+        referralDiscount: 1500,
+        studioDiscount: 600,
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(prisma.invoice.update).not.toHaveBeenCalled();
+  });
+
+  it("renews membership when paying a renewal invoice", async () => {
+    prisma.invoice.findUniqueOrThrow.mockResolvedValue(
+      unpaidInvoice({ membershipId: "mem-1" }),
+    );
+    prisma.invoice.update.mockResolvedValue({
+      id: "inv-1",
+      status: InvoiceStatus.PAID,
+      paymentMethod: PaymentMethod.CASH,
+      paidAt: new Date("2026-07-20T12:00:00.000Z"),
+      amount: 2000,
+      referralDiscount: 0,
+      studioDiscount: 0,
+    });
+
+    await service.markPaid(makeUser({ role: UserRole.OWNER }), "inv-1", {
+      paymentMethod: PaymentMethod.CASH,
+    });
 
     expect(membershipsStub.renewFromPaidInvoice).toHaveBeenCalledWith("mem-1");
   });
 
   it("assigns membership from purchaseMeta when marking paid", async () => {
     membershipsStub.assign.mockResolvedValue({ id: "mem-new" });
-    prisma.invoice.findUniqueOrThrow.mockResolvedValue({
-      id: "inv-1",
-      studioId: "studio-1",
-      amount: 4000,
-      status: InvoiceStatus.PENDING,
-      platformFeePercent: 5,
-      membershipId: null,
-      purchaseMeta: {
-        subscriptionId: "sub-fam",
-        purchaserUserId: "parent-1",
-        coveredStudents: [
-          { studentId: "adult-1", seatRole: "ADULT", batchId: "b1" },
-          { studentId: "kid-1", seatRole: "KID", batchId: "b2" },
-        ],
-      },
-    });
+    prisma.invoice.findUniqueOrThrow.mockResolvedValue(
+      unpaidInvoice({
+        amount: 4000,
+        purchaseMeta: {
+          subscriptionId: "sub-fam",
+          purchaserUserId: "parent-1",
+          coveredStudents: [
+            { studentId: "adult-1", seatRole: "ADULT", batchId: "b1" },
+            { studentId: "kid-1", seatRole: "KID", batchId: "b2" },
+          ],
+        },
+      }),
+    );
     prisma.invoice.update.mockResolvedValue({
       id: "inv-1",
       status: InvoiceStatus.PAID,
       paymentMethod: PaymentMethod.CASH,
+      amount: 4000,
+      referralDiscount: 0,
+      studioDiscount: 0,
     });
 
-    await service.markPaid(
-      makeUser({ role: UserRole.OWNER }),
-      "inv-1",
-      PaymentMethod.CASH,
-    );
+    await service.markPaid(makeUser({ role: UserRole.OWNER }), "inv-1", {
+      paymentMethod: PaymentMethod.CASH,
+    });
 
     expect(membershipsStub.assign).toHaveBeenCalledWith({
       subscriptionId: "sub-fam",
@@ -550,46 +647,34 @@ describe("BillingService.markPaid", () => {
       service.markPaid(
         makeUser({ id: "trainer-1", role: UserRole.TRAINER }),
         "inv-1",
-        PaymentMethod.CASH,
+        { paymentMethod: PaymentMethod.CASH },
       ),
     ).rejects.toBeInstanceOf(ForbiddenException);
     expect(prisma.invoice.findUniqueOrThrow).not.toHaveBeenCalled();
   });
 
   it("rejects already-paid invoices", async () => {
-    prisma.invoice.findUniqueOrThrow.mockResolvedValue({
-      id: "inv-1",
-      studioId: "studio-1",
-      amount: 2000,
-      status: InvoiceStatus.PAID,
-      platformFeePercent: 5,
-      membershipId: null,
-    });
+    prisma.invoice.findUniqueOrThrow.mockResolvedValue(
+      unpaidInvoice({ status: InvoiceStatus.PAID }),
+    );
 
     await expect(
-      service.markPaid(
-        makeUser({ role: UserRole.STAFF }),
-        "inv-1",
-        PaymentMethod.UPI_MANUAL,
-      ),
+      service.markPaid(makeUser({ role: UserRole.STAFF }), "inv-1", {
+        paymentMethod: PaymentMethod.UPI_MANUAL,
+      }),
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
   it("rejects marking invoices for another studio", async () => {
-    prisma.invoice.findUniqueOrThrow.mockResolvedValue({
-      id: "inv-1",
-      studioId: "studio-other",
-      amount: 2000,
-      status: InvoiceStatus.PENDING,
-      platformFeePercent: 5,
-      membershipId: null,
-    });
+    prisma.invoice.findUniqueOrThrow.mockResolvedValue(
+      unpaidInvoice({ studioId: "studio-other" }),
+    );
 
     await expect(
       service.markPaid(
         makeUser({ role: UserRole.OWNER, studioId: "studio-1" }),
         "inv-1",
-        PaymentMethod.CASH,
+        { paymentMethod: PaymentMethod.CASH },
       ),
     ).rejects.toBeInstanceOf(ForbiddenException);
   });
@@ -616,6 +701,8 @@ describe("BillingService.listByStudio", () => {
       crypto as never,
       membershipsStub as never,
       razorpayStub as never,
+      notificationsStub as never,
+      emailStub as never,
     );
     prisma.subscription.findMany.mockResolvedValue([]);
   });
@@ -696,6 +783,8 @@ describe("BillingService.createPendingInvoice", () => {
       crypto as never,
       membershipsStub as never,
       razorpayStub as never,
+      notificationsStub as never,
+      emailStub as never,
     );
     prisma.user.findFirst.mockResolvedValue({ id: "student-1" });
     prisma.studioSettings.findUnique.mockResolvedValue({
@@ -790,6 +879,8 @@ describe("BillingService invoice checkout", () => {
       crypto as never,
       membershipsStub as never,
       razorpayStub as never,
+      notificationsStub as never,
+      emailStub as never,
     );
   });
 

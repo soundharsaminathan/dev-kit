@@ -56,6 +56,7 @@ export function resolveDeepLink(input: {
     case "NOT_RENEWED":
       return "/me/subscriptions";
     case "PAYMENT_OVERDUE":
+    case "PAYMENT_RECEIVED":
       return "/me/invoices";
     case "CHAT_MESSAGE": {
       const conversationId = stringMeta("conversationId");
@@ -69,6 +70,7 @@ export function resolveDeepLink(input: {
 export function isPriorityToastType(type: string) {
   return (
     type === "PAYMENT_OVERDUE" ||
+    type === "PAYMENT_RECEIVED" ||
     type === "SUBSCRIPTION_EXPIRING" ||
     type === "NOT_RENEWED" ||
     type === "MISSED_SESSION"

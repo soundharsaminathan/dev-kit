@@ -62,12 +62,16 @@ describe("resolveDeepLink", () => {
     expect(resolveDeepLink({ type: "PAYMENT_OVERDUE", meta: {} })).toBe(
       "/me/invoices",
     );
+    expect(resolveDeepLink({ type: "PAYMENT_RECEIVED", meta: {} })).toBe(
+      "/me/invoices",
+    );
   });
 });
 
 describe("isPriorityToastType", () => {
   it("flags high-priority types for foreground toasts", () => {
     expect(isPriorityToastType("PAYMENT_OVERDUE")).toBe(true);
+    expect(isPriorityToastType("PAYMENT_RECEIVED")).toBe(true);
     expect(isPriorityToastType("MISSED_SESSION")).toBe(true);
     expect(isPriorityToastType("RENEWED")).toBe(false);
   });

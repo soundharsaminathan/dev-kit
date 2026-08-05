@@ -4,6 +4,7 @@ export type NotificationType =
   | "MISSED_SESSION"
   | "SUBSCRIPTION_EXPIRING"
   | "PAYMENT_OVERDUE"
+  | "PAYMENT_RECEIVED"
   | "RENEWED"
   | "NOT_RENEWED"
   | "NEW_FOLLOW"
@@ -94,6 +95,7 @@ export function resolveNotificationDestination(
       case "NOT_RENEWED":
         return { to: "/me/subscriptions" };
       case "PAYMENT_OVERDUE":
+      case "PAYMENT_RECEIVED":
         return { to: "/me/invoices" };
       default:
         return null;
@@ -121,6 +123,7 @@ export function resolveNotificationDestination(
     case "NOT_RENEWED":
       return { to: "/app/subscriptions" };
     case "PAYMENT_OVERDUE":
+    case "PAYMENT_RECEIVED":
       return { to: "/app/invoices" };
     default:
       return null;

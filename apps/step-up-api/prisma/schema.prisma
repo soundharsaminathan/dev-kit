@@ -125,6 +125,7 @@ enum NotificationType {
   MISSED_SESSION
   SUBSCRIPTION_EXPIRING
   PAYMENT_OVERDUE
+  PAYMENT_RECEIVED
   RENEWED
   NOT_RENEWED
   NEW_FOLLOW
@@ -632,6 +633,8 @@ model Invoice {
   studentId            String
   membershipId         String?
   amount               Decimal        @db.Decimal(10, 2)
+  referralDiscount     Decimal        @default(0) @db.Decimal(10, 2)
+  studioDiscount       Decimal        @default(0) @db.Decimal(10, 2)
   status               InvoiceStatus
   paymentMethod        PaymentMethod?
   paidAt               DateTime?

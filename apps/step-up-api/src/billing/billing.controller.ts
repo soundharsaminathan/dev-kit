@@ -33,6 +33,16 @@ import { BillingService } from "./billing.service";
 class MarkPaidDto {
   @IsEnum(PaymentMethod)
   paymentMethod!: PaymentMethod;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  referralDiscount?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  studioDiscount?: number;
 }
 
 class CreateInvoiceDto {
@@ -222,6 +232,10 @@ export class BillingController {
     @Param("id") id: string,
     @Body() dto: MarkPaidDto,
   ) {
-    return this.billingService.markPaid(user, id, dto.paymentMethod);
+    return this.billingService.markPaid(user, id, {
+      paymentMethod: dto.paymentMethod,
+      referralDiscount: dto.referralDiscount,
+      studioDiscount: dto.studioDiscount,
+    });
   }
 }
