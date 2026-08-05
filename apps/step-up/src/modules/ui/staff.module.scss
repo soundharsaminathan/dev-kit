@@ -192,6 +192,15 @@
   color: color-mix(in srgb, var(--color-fg) 56%, transparent);
 }
 
+.rowChips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1, 0.25rem);
+  margin-top: var(--space-1, 0.25rem);
+  padding-inline-end: var(--space-6, 1.5rem);
+}
+
 .rowFooter {
   display: flex;
   align-items: center;
