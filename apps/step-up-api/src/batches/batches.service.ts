@@ -20,7 +20,10 @@ import {
 } from "@prisma/client";
 import { ScheduleConflictService } from "../calendar/schedule-conflict.service";
 import { MediaService } from "../media/media.service";
-import { membershipCoversBatch } from "../memberships/membership-helpers";
+import {
+  membershipCoversBatch,
+  seatRoleForBatchCategory,
+} from "../memberships/membership-helpers";
 import {
   type CoveredStudentInput,
   MembershipsService,
@@ -1061,7 +1064,12 @@ export class BatchesService {
     return deleted;
   }
 
-  async enroll(batchId: string, studentId: string, actor: DecryptedUser) {
+  async enroll(
+    batchId: string,
+    studentId: string,
+    actor: DecryptedUser,
+    subscriptionId: string,
+  ) {
     const staffRoles: UserRole[] = [
       UserRole.OWNER,
       UserRole.STAFF,
@@ -1114,12 +1122,24 @@ export class BatchesService {
       );
     }
 
-    await this.scheduleConflicts.assertStudentAvailableForBatch(
-      studentId,
-      batchId,
-    );
+    if (
+      batch.enrollments.some((enrollment) => enrollment.studentId === studentId)
+    ) {
+      throw new BadRequestException(
+        "Student is already enrolled in this batch",
+      );
+    }
 
-    return this.prisma.$transaction(async (tx) => {
+    const seatRole = seatRoleForBatchCategory(batch.category);
+    const invoice = await this.memberships.purchaseForBatch({
+      batchId,
+      subscriptionId,
+      purchaserUserId: studentId,
+      coveredStudents: [{ studentId, seatRole }],
+      paymentHold: false,
+    });
+
+    const enrollment = await this.prisma.$transaction(async (tx) => {
       await lockBatchRow(tx, batchId);
       await assertBatchHasSeat(tx, batchId, batch.capacity, studentId);
 
@@ -1134,6 +1154,14 @@ export class BatchesService {
         },
       });
     });
+
+    return {
+      ...enrollment,
+      invoice: {
+        ...invoice,
+        amount: Number(invoice.amount),
+      },
+    };
   }
 
   async listSwitchTargets(fromBatchId: string, studentId: string) {

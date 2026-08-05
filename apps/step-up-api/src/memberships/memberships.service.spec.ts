@@ -448,6 +448,65 @@ describe("MembershipsService.purchaseForBatch", () => {
     expect(prisma.batchEnrollment.upsert).not.toHaveBeenCalled();
   });
 
+  it("skips checkout hold when paymentHold is false", async () => {
+    prisma.batch.findUnique.mockResolvedValue({
+      id: "batch-kid",
+      active: true,
+      category: "KIDS",
+      studioId: "studio-1",
+    });
+    prisma.studioSettings.findUnique.mockResolvedValue({
+      platformFeePercent: 5,
+    });
+    prisma.batchPlan.findUnique.mockResolvedValue({
+      batchId: "batch-kid",
+      subscriptionId: "sub-kid-mo",
+      subscription: {
+        id: "sub-kid-mo",
+        active: true,
+        kind: "INDIVIDUAL",
+        individualAudience: "KID",
+        adultSeats: 0,
+        kidSeats: 1,
+        billingCadence: "MONTHLY",
+        price: 2500,
+      },
+    });
+    prisma.batch.findMany.mockResolvedValue([
+      {
+        id: "batch-kid",
+        name: "Kids Ballet",
+        active: true,
+        category: "KIDS",
+        capacity: 15,
+        enrollments: [],
+      },
+    ]);
+    prisma.invoice.create.mockResolvedValue({
+      id: "inv-2",
+      status: "PENDING",
+      amount: 2500,
+    });
+
+    await service.purchaseForBatch({
+      batchId: "batch-kid",
+      subscriptionId: "sub-kid-mo",
+      purchaserUserId: "parent-1",
+      coveredStudents: [{ studentId: "kid-1", seatRole: "KID" }],
+      paymentHold: false,
+    });
+
+    expect(prisma.invoice.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        studentId: "parent-1",
+        status: "PENDING",
+        purchaseMeta: expect.any(Object),
+      }),
+    });
+    const createData = prisma.invoice.create.mock.calls[0]?.[0]?.data;
+    expect(createData).not.toHaveProperty("paymentHoldExpiresAt");
+  });
+
   it("rejects family packs on batch purchase", async () => {
     prisma.batch.findUnique.mockResolvedValue({
       id: "batch-kid",

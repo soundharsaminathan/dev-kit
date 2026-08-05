@@ -1,6 +1,13 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@dev-ui/components/avatar";
 import { Badge } from "@dev-ui/components/badge";
 import { Menu } from "@dev-ui/components/menu";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@dev-ui/components/select";
 import { useToastContext } from "@dev-ui/components/toast";
 import { Icon } from "@dev-ui/icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -10,6 +17,7 @@ import { useApi } from "@/lib/api-context";
 import { ENTITY_ICONS } from "@/lib/entity-icons";
 import { formatActiveDuration } from "@/lib/format-active-duration";
 import { useStudioId } from "@/lib/use-studio-id";
+import { formatPrice } from "@/modules/payments/invoice-types";
 import {
   StudentSearchCombobox,
   type StudioStudent,
@@ -37,6 +45,15 @@ export type BatchEnrollmentRow = {
   };
 };
 
+type BatchPlan = {
+  id: string;
+  name: string;
+  price: number;
+  billingCadence: string;
+  kind: "INDIVIDUAL" | "FAMILY";
+  active: boolean;
+};
+
 type BatchRosterProps = {
   batchId: string;
   capacity: number;
@@ -49,6 +66,7 @@ type BatchWithEnrollments = {
   active: boolean;
   enrollmentCount?: number;
   remainingSeats?: number;
+  plans?: BatchPlan[];
   enrollments: BatchEnrollmentRow[];
   sessions?: Array<{
     id: string;
@@ -73,6 +91,13 @@ type SwitchTargetsResponse = {
   targets: SwitchTarget[];
 };
 
+function planLabel(plan: BatchPlan) {
+  const cadence =
+    plan.billingCadence.charAt(0) +
+    plan.billingCadence.slice(1).toLowerCase().replaceAll("_", " ");
+  return `${plan.name} · ${formatPrice(plan.price)} / ${cadence}`;
+}
+
 export function BatchRoster({ batchId, capacity, active }: BatchRosterProps) {
   const api = useApi();
   const studioId = useStudioId();
@@ -83,6 +108,7 @@ export function BatchRoster({ batchId, capacity, active }: BatchRosterProps) {
   const [selectedStudent, setSelectedStudent] = useState<StudioStudent | null>(
     null,
   );
+  const [subscriptionId, setSubscriptionId] = useState<string | null>(null);
   const [pickerKey, setPickerKey] = useState(0);
   const [switchStudent, setSwitchStudent] = useState<BatchEnrollmentRow | null>(
     null,
@@ -113,18 +139,27 @@ export function BatchRoster({ batchId, capacity, active }: BatchRosterProps) {
     () => enrollments.map((row) => row.studentId),
     [enrollments],
   );
+  const plans = useMemo(
+    () =>
+      (query.data?.plans ?? []).filter(
+        (plan) => plan.active && plan.kind === "INDIVIDUAL",
+      ),
+    [query.data?.plans],
+  );
   const seatsTaken = query.data?.enrollmentCount ?? enrollments.length;
   const seatsLeft =
     query.data?.remainingSeats ?? Math.max(0, capacity - seatsTaken);
   const isFull = seatsLeft <= 0;
   const hasUpcomingSessions =
     !query.isLoading && upcomingSessions(query.data?.sessions).length > 0;
-  const canEnroll = active && !isFull && hasUpcomingSessions;
+  const hasPlans = plans.length > 0;
+  const canEnroll = active && !isFull && hasUpcomingSessions && hasPlans;
 
   const enroll = useMutation({
-    mutationFn: (input: { student: StudioStudent }) =>
+    mutationFn: (input: { student: StudioStudent; subscriptionId: string }) =>
       api.post(`/batches/${batchId}/enroll`, {
         studentId: input.student.id,
+        subscriptionId: input.subscriptionId,
       }),
     onMutate: async ({ student }) => {
       await queryClient.cancelQueries({ queryKey: ["batch", batchId] });
@@ -150,6 +185,7 @@ export function BatchRoster({ batchId, capacity, active }: BatchRosterProps) {
             enrollments: [
               {
                 studentId: student.id,
+                monthlyUnpaid: true,
                 student: {
                   id: student.id,
                   name: student.name,
@@ -167,6 +203,7 @@ export function BatchRoster({ batchId, capacity, active }: BatchRosterProps) {
 
       setStudentId(null);
       setSelectedStudent(null);
+      setSubscriptionId(null);
       setPickerKey((current) => current + 1);
 
       return { previous };
@@ -174,7 +211,7 @@ export function BatchRoster({ batchId, capacity, active }: BatchRosterProps) {
     onSuccess: () => {
       toast({
         title: "Student enrolled",
-        description: "They were added to this batch.",
+        description: "Invoice created. Collect payment from Invoices.",
         variant: "success",
       });
     },
@@ -198,13 +235,19 @@ export function BatchRoster({ batchId, capacity, active }: BatchRosterProps) {
         queryClient.invalidateQueries({
           queryKey: ["student-profile", studioId],
         }),
+        queryClient.invalidateQueries({
+          queryKey: ["invoices", studioId],
+        }),
       ]);
     },
   });
 
   function handleEnrollAction() {
-    if (!selectedStudent || !canEnroll) return;
-    enroll.mutate({ student: selectedStudent });
+    if (!selectedStudent || !subscriptionId || !canEnroll) return;
+    enroll.mutate({
+      student: selectedStudent,
+      subscriptionId,
+    });
   }
 
   const switchBatch = useMutation({
@@ -344,11 +387,40 @@ export function BatchRoster({ batchId, capacity, active }: BatchRosterProps) {
               isDisabled={!canEnroll}
               placeholder="Search student to enroll"
             />
+            <Select
+              label="Package"
+              placeholder={
+                hasPlans ? "Select a package" : "No packages on this batch"
+              }
+              value={subscriptionId}
+              onChange={(key) =>
+                setSubscriptionId(key == null ? null : String(key))
+              }
+              isDisabled={!hasPlans || !active || isFull}
+            >
+              <SelectTrigger data-testid="enroll-package">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {plans.map((plan) => (
+                  <SelectItem
+                    key={plan.id}
+                    id={plan.id}
+                    textValue={planLabel(plan)}
+                  >
+                    {planLabel(plan)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <Menu>
               <TouchButton
                 variant="primary"
                 isDisabled={
-                  !canEnroll || (!selectedStudent && !enroll.isPending)
+                  !canEnroll ||
+                  !selectedStudent ||
+                  !subscriptionId ||
+                  enroll.isPending
                 }
                 isPending={enroll.isPending}
                 data-testid="enroll-button"
@@ -358,6 +430,12 @@ export function BatchRoster({ batchId, capacity, active }: BatchRosterProps) {
               </TouchButton>
             </Menu>
           </div>
+          {!hasPlans ? (
+            <p className={styles.hint}>
+              Attach at least one individual package to this batch before
+              enrolling students.
+            </p>
+          ) : null}
           {!active ? (
             <p className={styles.hint}>
               Activate this batch before enrolling students.
@@ -385,7 +463,7 @@ export function BatchRoster({ batchId, capacity, active }: BatchRosterProps) {
         <EmptyState
           icon={ENTITY_ICONS.student}
           title="No students enrolled"
-          description="Search for a student above to add them to this batch."
+          description="Search for a student and pick a package to enroll."
         />
       ) : (
         <div className={styles.list}>
