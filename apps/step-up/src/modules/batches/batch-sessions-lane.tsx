@@ -148,7 +148,9 @@ export function BatchSessionsLane({
                       <span className={styles.action}>
                         {state === "now"
                           ? "Take attendance"
-                          : "Open attendance"}
+                          : state === "upcoming"
+                            ? "View roster"
+                            : "Open attendance"}
                       </span>
                     </div>
                     {state === "now" ? (

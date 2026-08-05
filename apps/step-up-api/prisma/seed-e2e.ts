@@ -602,6 +602,14 @@ async function main() {
   });
 
   const weekStart = mondayOfWeek();
+  const mondayAttendanceStart = utcAt(weekStart, 0, 17);
+  const attendanceStartsAt =
+    mondayAttendanceStart.getTime() > now.getTime()
+      ? new Date(now.getTime() - 30 * 60 * 1000)
+      : mondayAttendanceStart;
+  const attendanceEndsAt = new Date(
+    attendanceStartsAt.getTime() + 60 * 60 * 1000,
+  );
   const sessions: Array<{
     id: string;
     batchId: string;
@@ -620,8 +628,8 @@ async function main() {
     {
       id: E2E.sessionAttendanceId,
       batchId: E2E.kidsBatchId,
-      startsAt: utcAt(weekStart, 0, 17),
-      endsAt: utcAt(weekStart, 0, 18),
+      startsAt: attendanceStartsAt,
+      endsAt: attendanceEndsAt,
       status: SessionStatus.SCHEDULED,
     },
     ...nextWeekdayOccurrences(6, 5, 10).map((startsAt, index) => {

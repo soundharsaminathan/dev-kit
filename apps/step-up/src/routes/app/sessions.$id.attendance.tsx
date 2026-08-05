@@ -6,7 +6,7 @@ import { Icon } from "@dev-ui/icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import QRCode from "qrcode";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useApi } from "@/lib/api-context";
 import { useStudioId } from "@/lib/use-studio-id";
 import { AttendanceRosterTable } from "@/modules/attendance/attendance-roster-table";
@@ -59,6 +59,15 @@ function formatSessionDateTime(value: string) {
     hour: "numeric",
     minute: "2-digit",
   });
+}
+
+/** Matches API + QR: marking opens 15 minutes before session start. */
+const ATTENDANCE_EARLY_WINDOW_MS = 15 * 60 * 1000;
+
+function isAttendanceMarkingOpen(startsAt: string, now = Date.now()) {
+  const starts = new Date(startsAt).getTime();
+  if (!Number.isFinite(starts)) return false;
+  return now >= starts - ATTENDANCE_EARLY_WINDOW_MS;
 }
 
 export const Route = createFileRoute("/app/sessions/$id/attendance")({
@@ -431,6 +440,11 @@ function SessionAttendancePage() {
     queryFn: () => api.get<Session>(`/sessions/${id}`),
   });
 
+  const markingOpen = sessionQuery.data
+    ? isAttendanceMarkingOpen(sessionQuery.data.startsAt)
+    : false;
+  const markingLocked = Boolean(sessionQuery.data) && !markingOpen;
+
   const rosterQuery = useQuery({
     queryKey: ["attendance-roster", id],
     queryFn: () =>
@@ -442,8 +456,8 @@ function SessionAttendancePage() {
     queryKey: ["session-qr", id],
     queryFn: () =>
       api.get<{ token: string; expiresAt: string }>(`/sessions/${id}/qr`),
-    enabled: Boolean(id) && qrOpen,
-    refetchInterval: qrOpen ? 60_000 : false,
+    enabled: Boolean(id) && qrOpen && !markingLocked,
+    refetchInterval: qrOpen && !markingLocked ? 60_000 : false,
   });
 
   function invalidateAttendance() {
@@ -605,6 +619,24 @@ function SessionAttendancePage() {
     markSelected.isPending ||
     completeSession.isPending;
 
+  const handleMarkOne = useCallback(
+    (studentId: string, status: AttendanceStatusValue) => {
+      markAttendance.mutate({ studentId, status });
+    },
+    [markAttendance],
+  );
+
+  const handleMarkSelected = useCallback(
+    (studentIds: string[], status: AttendanceStatusValue) => {
+      markSelected.mutate({ studentIds, status });
+    },
+    [markSelected],
+  );
+
+  const handleMarkAllUnmarkedPresent = useCallback(() => {
+    markAllPresent.mutate();
+  }, [markAllPresent]);
+
   const bulkError =
     markAllPresent.error ??
     markSelected.error ??
@@ -622,7 +654,9 @@ function SessionAttendancePage() {
     id: QR_ITEM_ID,
     title: "Check-in QR",
     subtitle: "Student self check-in",
-    description: `Students scan this code to check in. Valid until ${qrExpiresLabel}.`,
+    description: markingLocked
+      ? `QR opens 15 minutes before class (${formatSessionDateTime(sessionQuery.data?.startsAt ?? "")}).`
+      : `Students scan this code to check in. Valid until ${qrExpiresLabel}.`,
     media: qrQuery.data?.token ? (
       <div className={styles.qrMediaFrame}>
         <QrCanvas token={qrQuery.data.token} />
@@ -634,11 +668,13 @@ function SessionAttendancePage() {
     ),
     content: (
       <p className={styles.qrHint}>
-        {qrQuery.isError
-          ? "QR code unavailable for this session."
-          : qrQuery.isLoading || !qrQuery.data?.token
-            ? "Generating QR code…"
-            : "Display this at the front desk or projector for self check-in."}
+        {markingLocked
+          ? "Check-in QR is unavailable until closer to session start."
+          : qrQuery.isError
+            ? "QR code unavailable for this session."
+            : qrQuery.isLoading || !qrQuery.data?.token
+              ? "Generating QR code…"
+              : "Display this at the front desk or projector for self check-in."}
       </p>
     ),
   };
@@ -650,7 +686,7 @@ function SessionAttendancePage() {
         description={sessionDescription}
         actions={
           <div className={styles.headerActions}>
-            {canComplete ? (
+            {canComplete && markingOpen ? (
               <Button
                 variant="default"
                 isPending={completeSession.isPending}
@@ -676,12 +712,28 @@ function SessionAttendancePage() {
               <Icon name="plus" />
               Add trial user
             </Button>
-            <Button variant="primary" onClick={() => setActiveQrId(QR_ITEM_ID)}>
+            <Button
+              variant="primary"
+              onClick={() => setActiveQrId(QR_ITEM_ID)}
+              isDisabled={markingLocked}
+            >
               Generate QR
             </Button>
           </div>
         }
       />
+
+      {markingLocked && sessionQuery.data ? (
+        <p
+          className={styles.futureNotice}
+          role="status"
+          data-testid="attendance-future-notice"
+        >
+          Attendance opens 15 minutes before this session (
+          {formatSessionDateTime(sessionQuery.data.startsAt)}). You can review
+          the roster now.
+        </p>
+      ) : null}
 
       <div className={styles.qrBento}>
         <ExpandableBentoGrid
@@ -765,19 +817,16 @@ function SessionAttendancePage() {
               <AttendanceRosterTable
                 roster={roster}
                 isBusy={isBusy}
+                markingDisabled={markingLocked}
                 pendingStudentId={
                   markAttendance.isPending
                     ? (markAttendance.variables?.studentId ?? null)
                     : null
                 }
                 unmarkedCount={summary.unmarked}
-                onMarkAllUnmarkedPresent={() => markAllPresent.mutate()}
-                onMarkOne={(studentId, status) =>
-                  markAttendance.mutate({ studentId, status })
-                }
-                onMarkSelected={(studentIds, status) =>
-                  markSelected.mutate({ studentIds, status })
-                }
+                onMarkAllUnmarkedPresent={handleMarkAllUnmarkedPresent}
+                onMarkOne={handleMarkOne}
+                onMarkSelected={handleMarkSelected}
               />
             ) : null}
           </>

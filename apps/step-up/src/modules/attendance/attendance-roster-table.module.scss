@@ -71,8 +71,58 @@
   position: sticky;
   top: 0;
   z-index: 1;
-  background: color-mix(in srgb, var(--color-bg) 92%, transparent);
-  backdrop-filter: blur(8px);
+  background: var(--color-bg);
+}
+
+.selectCheck {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  margin: 0;
+  cursor: pointer;
+}
+
+.selectCheck[data-disabled="true"] {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.selectCheckInput {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: inherit;
+}
+
+.selectCheckBox {
+  display: grid;
+  width: 1rem;
+  height: 1rem;
+  place-content: center;
+  border: 1px solid color-mix(in srgb, var(--color-fg) 28%, transparent);
+  border-radius: var(--radius-sm, 0.25rem);
+  background: transparent;
+  color: transparent;
+  pointer-events: none;
+}
+
+.selectCheckBox svg {
+  width: 0.75rem;
+  height: 0.75rem;
+}
+
+.selectCheckBox[data-selected="true"],
+.selectCheckBox[data-indeterminate="true"] {
+  border-color: transparent;
+  background: var(--color-primary);
+  color: var(--color-fg-on-primary, #fff);
 }
 
 .th {
@@ -188,6 +238,30 @@
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-1, 0.25rem);
+}
+
+.markPresent {
+  background-color: var(--color-success) !important;
+  color: var(--color-fg-on-success) !important;
+  border-color: transparent !important;
+}
+
+.markPresent[data-hovered="true"]:not([data-state="disabled"]):not(
+    [data-pending="true"]
+  ) {
+  background-color: var(--color-success-hover) !important;
+}
+
+.markPresent[data-pressed="true"]:not([data-state="disabled"]):not(
+    [data-pending="true"]
+  ) {
+  background-color: var(--color-success-active) !important;
+}
+
+.markAbsent {
+  background-color: var(--color-danger) !important;
+  color: var(--color-fg-on-danger) !important;
+  border-color: transparent !important;
 }
 
 .emptyCell {
