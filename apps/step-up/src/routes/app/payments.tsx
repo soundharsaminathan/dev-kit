@@ -705,7 +705,21 @@ function PaymentsPage() {
               <section className={styles.panel} aria-label="Revenue trend">
                 <div className={styles.panelHead}>
                   <p className={styles.panelTitle}>Revenue trend</p>
-                  <div className={styles.panelControls}>
+                  <div className={styles.panelTrendFilters}>
+                    <FilterChipRow
+                      chips={[...TREND_CHIPS]}
+                      selected={[
+                        rangePreset === "7d" ||
+                        rangePreset === "30d" ||
+                        rangePreset === "3m" ||
+                        rangePreset === "1y"
+                          ? rangePreset
+                          : "",
+                      ]}
+                      onToggle={applyPreset}
+                    />
+                  </div>
+                  <div className={styles.panelChartSwitcher}>
                     <ToggleButtonGroup
                       aria-label="Chart type"
                       selectionMode="single"
@@ -734,18 +748,6 @@ function PaymentsPage() {
                         </ToggleButton>
                       ))}
                     </ToggleButtonGroup>
-                    <FilterChipRow
-                      chips={[...TREND_CHIPS]}
-                      selected={[
-                        rangePreset === "7d" ||
-                        rangePreset === "30d" ||
-                        rangePreset === "3m" ||
-                        rangePreset === "1y"
-                          ? rangePreset
-                          : "",
-                      ]}
-                      onToggle={applyPreset}
-                    />
                   </div>
                 </div>
                 {chartData.length === 0 ? (

@@ -20,6 +20,11 @@
     stroke: color-mix(in srgb, var(--color-fg) 20%, transparent);
   }
 
+  /* Bar/category hover band — keep translucent so bars stay visible */
+  :global(.recharts-rectangle.recharts-tooltip-cursor) {
+    fill: color-mix(in srgb, var(--color-fg) 8%, transparent);
+  }
+
   :global(.recharts-dot) {
     stroke: transparent;
   }

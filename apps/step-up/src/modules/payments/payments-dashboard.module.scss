@@ -205,23 +205,24 @@
 
 .panelHead {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
-  justify-content: space-between;
   gap: var(--space-2, 0.5rem);
+  min-width: 0;
 }
 
-.panelControls {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: flex-end;
-  gap: var(--space-2, 0.5rem);
-  margin-left: auto;
+.panelTrendFilters {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.panelChartSwitcher {
+  flex-shrink: 0;
 }
 
 .panelTitle {
   margin: 0;
+  flex-shrink: 0;
   font-size: 0.8125rem;
   font-weight: 700;
   letter-spacing: 0.04em;
