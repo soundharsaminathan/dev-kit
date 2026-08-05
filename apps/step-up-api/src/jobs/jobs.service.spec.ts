@@ -21,12 +21,24 @@ describe("JobsService.runDaily", () => {
     create: vi.fn(),
   };
 
+  const memberships = {
+    ensureRenewalInvoice: vi.fn(),
+  };
+
   let service: JobsService;
 
   beforeEach(() => {
     vi.clearAllMocks();
     prisma.studioSettings.findMany.mockResolvedValue([]);
-    service = new JobsService(prisma as never, notifications as never);
+    memberships.ensureRenewalInvoice.mockResolvedValue({
+      invoice: { id: "inv-1" },
+      created: false,
+    });
+    service = new JobsService(
+      prisma as never,
+      notifications as never,
+      memberships as never,
+    );
   });
 
   it("creates NOT_RENEWED notifications when memberships expire", async () => {
@@ -51,6 +63,7 @@ describe("JobsService.runDaily", () => {
       .mockResolvedValueOnce({ count: 1 })
       .mockResolvedValueOnce({ count: 1 });
     prisma.membership.findMany
+      .mockResolvedValueOnce([{ id: "mem-due" }])
       .mockResolvedValueOnce([membership])
       .mockResolvedValueOnce([]);
     prisma.invoice.updateMany.mockResolvedValue({ count: 0 });
@@ -59,6 +72,7 @@ describe("JobsService.runDaily", () => {
 
     const result = await service.runDaily();
 
+    expect(memberships.ensureRenewalInvoice).toHaveBeenCalledWith("mem-due");
     expect(notifications.create).toHaveBeenCalledWith(
       expect.objectContaining({
         userId: "student-1",
@@ -111,6 +125,7 @@ describe("JobsService.runDaily", () => {
       .mockResolvedValueOnce({ count: 0 })
       .mockResolvedValueOnce({ count: 1 });
     prisma.membership.findMany
+      .mockResolvedValueOnce([{ id: "mem-short" }, { id: "mem-long" }])
       .mockResolvedValueOnce([shortGrace, longGrace])
       .mockResolvedValueOnce([]);
     prisma.invoice.updateMany.mockResolvedValue({ count: 0 });
@@ -177,5 +192,38 @@ describe("JobsService.runDaily", () => {
     expect(result.overdueNotifications).toBe(2);
 
     vi.useRealTimers();
+  });
+
+  it("creates renewal invoices for due and expired memberships without an open invoice", async () => {
+    prisma.membership.updateMany.mockResolvedValue({ count: 1 });
+    prisma.membership.findMany
+      .mockResolvedValueOnce([{ id: "mem-due" }, { id: "mem-expired" }])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([]);
+    prisma.invoice.updateMany.mockResolvedValue({ count: 0 });
+    prisma.invoice.findMany.mockResolvedValue([]);
+    memberships.ensureRenewalInvoice
+      .mockResolvedValueOnce({ invoice: { id: "inv-new" }, created: true })
+      .mockResolvedValueOnce({
+        invoice: { id: "inv-existing" },
+        created: false,
+      });
+
+    const result = await service.runDaily();
+
+    expect(prisma.membership.updateMany).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        where: expect.objectContaining({
+          status: MembershipStatus.ACTIVE,
+        }),
+        data: { status: MembershipStatus.DUE },
+      }),
+    );
+    expect(memberships.ensureRenewalInvoice).toHaveBeenCalledWith("mem-due");
+    expect(memberships.ensureRenewalInvoice).toHaveBeenCalledWith(
+      "mem-expired",
+    );
+    expect(result.renewalInvoicesCreated).toBe(1);
   });
 });

@@ -176,18 +176,28 @@ test.describe("owner smoke @smoke", () => {
   });
 
   test("owner marks invoice paid @smoke", async ({ browser }) => {
-    const invoice = await apiRequest<{ id: string; status: string }>(
-      "OWNER",
-      "/billing",
-      {
-        method: "POST",
-        body: JSON.stringify({
-          studioId: SMOKE.studioId,
-          studentId: SMOKE.users.STUDENT.id,
-          amount: 1200,
-        }),
-      },
-    );
+    const cleanup = new SmokeDataCleanup();
+    const student = await apiRequest<{ id: string }>("OWNER", "/users", {
+      method: "POST",
+      body: JSON.stringify({
+        name: `Owner Pay ${Date.now()}`,
+        email: `owner-pay-${Date.now()}@stepup.dev`,
+        gender: "FEMALE",
+        ageRange: "TWENTY_TO_FORTY",
+        styles: ["Hip Hop"],
+      }),
+    });
+    cleanup.trackStudent(student.id);
+    const enrollment = await apiRequest<{
+      invoice: { id: string; status: string };
+    }>("OWNER", `/batches/${SMOKE.beginnerBatchId}/enroll`, {
+      method: "POST",
+      body: JSON.stringify({
+        studentId: student.id,
+        subscriptionId: SMOKE.adultPlanIds[0],
+      }),
+    });
+    const invoice = enrollment.invoice;
     expect(invoice.status).toBe("PENDING");
 
     const context = await browser.newContext({
@@ -209,6 +219,7 @@ test.describe("owner smoke @smoke", () => {
       expect(response.ok()).toBeTruthy();
     } finally {
       await context.close();
+      await cleanup.dispose();
     }
   });
 

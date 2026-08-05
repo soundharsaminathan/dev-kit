@@ -41,39 +41,6 @@ class CoveredStudentDto {
   batchId?: string;
 }
 
-class AssignMembershipDto {
-  @IsString()
-  subscriptionId!: string;
-
-  @IsString()
-  purchaserUserId!: string;
-
-  @IsArray()
-  @ArrayMinSize(1)
-  @ValidateNested({ each: true })
-  @Type(() => CoveredStudentDto)
-  coveredStudents!: CoveredStudentDto[];
-}
-
-class RenewMembershipDto {
-  @IsString()
-  membershipId!: string;
-}
-
-class SelfAssignDto {
-  @IsString()
-  subscriptionId!: string;
-
-  @IsString()
-  purchaserUserId!: string;
-
-  @IsArray()
-  @ArrayMinSize(1)
-  @ValidateNested({ each: true })
-  @Type(() => CoveredStudentDto)
-  coveredStudents!: CoveredStudentDto[];
-}
-
 class SelfRenewDto {
   @IsString()
   membershipId!: string;
@@ -109,31 +76,6 @@ export class MembershipsController {
   @Get("student/:studentId")
   listForStudent(@Param("studentId") studentId: string) {
     return this.membershipsService.listForStudent(studentId);
-  }
-
-  @Post("assign")
-  @Roles(UserRole.OWNER, UserRole.STAFF)
-  assign(@Body() dto: AssignMembershipDto) {
-    return this.membershipsService.assign(dto);
-  }
-
-  @Post("renew")
-  @Roles(UserRole.OWNER, UserRole.STAFF)
-  renew(@Body() dto: RenewMembershipDto) {
-    return this.membershipsService.renewManual(dto.membershipId);
-  }
-
-  @Post("self/assign")
-  @Roles(UserRole.STUDENT, UserRole.PARENT)
-  async selfAssign(
-    @CurrentUser() actor: DecryptedUser,
-    @Body() dto: SelfAssignDto,
-  ) {
-    await this.assertPurchaserOwnership(actor, dto.purchaserUserId);
-    for (const covered of dto.coveredStudents) {
-      await this.assertCanCoverStudent(actor, covered.studentId);
-    }
-    return this.membershipsService.assign(dto);
   }
 
   @Post("self/renew")
@@ -185,7 +127,7 @@ export class MembershipsController {
         return;
       }
       throw new ForbiddenException(
-        "Parents must be the purchaser on self-assign",
+        "Parents must be the purchaser on family purchase",
       );
     }
     throw new BadRequestException("Unexpected role");

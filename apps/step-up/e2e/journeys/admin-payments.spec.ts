@@ -9,14 +9,26 @@ import {
 import { SEED } from "../fixtures/seed";
 
 async function createPendingInvoice() {
-  return apiRequest<{ id: string; status: string }>("STAFF", "/billing", {
+  const student = await apiRequest<{ id: string }>("OWNER", "/users", {
     method: "POST",
     body: JSON.stringify({
-      studioId: SEED.users.STAFF.studioId,
-      studentId: SEED.users.STUDENT.id,
-      amount: 1500,
+      name: `Pay Student ${Date.now()}`,
+      email: `pay-student-${Date.now()}@stepup.dev`,
+      gender: "FEMALE",
+      ageRange: "TWENTY_TO_FORTY",
+      styles: ["Hip Hop"],
     }),
   });
+  const enrollment = await apiRequest<{
+    invoice: { id: string; status: string };
+  }>("STAFF", `/batches/${SEED.beginnerBatchId}/enroll`, {
+    method: "POST",
+    body: JSON.stringify({
+      studentId: student.id,
+      subscriptionId: SEED.adultPlanIds[0],
+    }),
+  });
+  return enrollment.invoice;
 }
 
 async function ensureStudentFamilyMember() {

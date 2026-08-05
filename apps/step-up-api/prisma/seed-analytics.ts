@@ -1166,16 +1166,35 @@ async function main() {
     });
   }
 
-  // Extra paid invoices across the year for yearly payment charts
+  // Extra paid invoices across the year for yearly payment charts —
+  // each linked to a short historical membership (never ad-hoc).
   for (let i = 0; i < 8; i++) {
     const studentId = activeStudentIds[i % activeStudentIds.length];
+    const membershipId = `analytics-mem-series-${i + 1}`;
+    const amount = 3500 + (i % 3) * 500;
+    const paidAt = daysAgo(15 + i * 12);
+    const periodEnd = paidAt;
+    const periodStart = new Date(paidAt);
+    periodStart.setUTCMonth(periodStart.getUTCMonth() - 1);
+
+    await upsertMembership({
+      id: membershipId,
+      subscriptionId: ANALYTICS.adultMonthlyId,
+      purchaserUserId: studentId,
+      studentId,
+      seatRole: MembershipSeatRole.ADULT,
+      status: MembershipStatus.EXPIRED,
+      periodStart,
+      periodEnd,
+    });
     await upsertInvoice({
       id: `analytics-inv-series-${i + 1}`,
       studentId,
-      amount: 3500 + (i % 3) * 500,
+      amount,
       status: InvoiceStatus.PAID,
       paymentMethod: PAYMENT_METHODS[i % PAYMENT_METHODS.length],
-      paidAt: daysAgo(15 + i * 12),
+      paidAt,
+      membershipId,
     });
   }
 

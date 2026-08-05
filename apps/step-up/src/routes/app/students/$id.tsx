@@ -32,7 +32,6 @@ import staff from "@/modules/ui/staff.module.scss";
 import { EmptyState, ErrorState } from "@/modules/ui/states";
 import { TouchButton } from "@/modules/ui/touch-button";
 
-type SeatRole = "ADULT" | "KID";
 type PaymentMethod = "CASH" | "UPI_MANUAL";
 
 type StudentStudioProfile = {
@@ -89,16 +88,6 @@ type StudentStudioProfile = {
   }>;
 };
 
-type CatalogSubscription = {
-  id: string;
-  name: string;
-  kind: "INDIVIDUAL" | "FAMILY";
-  individualAudience?: "ADULT" | "KID" | null;
-  billingCadence: "MONTHLY" | "QUARTERLY";
-  price: number | string;
-  active: boolean;
-};
-
 type StudioMember = {
   id: string;
   name: string;
@@ -108,8 +97,6 @@ type StudioMember = {
 
 type SheetKind =
   | "edit"
-  | "assign"
-  | "renew"
   | "mark-paid"
   | "link-parent"
   | "delete"
@@ -174,10 +161,6 @@ function invoiceStatusVariant(
   }
 }
 
-function seatRoleForPlan(plan: CatalogSubscription): SeatRole {
-  return plan.individualAudience === "KID" ? "KID" : "ADULT";
-}
-
 function StudentDetailPage() {
   const { id } = Route.useParams();
   const api = useApi();
@@ -189,10 +172,6 @@ function StudentDetailPage() {
   const [sheet, setSheet] = useState<SheetKind>(null);
   const [editName, setEditName] = useState("");
   const [editPhone, setEditPhone] = useState("");
-  const [assignPlanId, setAssignPlanId] = useState<string | null>(null);
-  const [renewMembershipId, setRenewMembershipId] = useState<string | null>(
-    null,
-  );
   const [markPaidInvoiceId, setMarkPaidInvoiceId] = useState<string | null>(
     null,
   );
@@ -209,13 +188,6 @@ function StudentDetailPage() {
     queryKey: ["student-profile", studioId, id],
     queryFn: () =>
       api.get<StudentStudioProfile>(`/users/studio/${studioId}/students/${id}`),
-  });
-
-  const catalogQuery = useQuery({
-    queryKey: ["subscriptions", studioId],
-    queryFn: () =>
-      api.get<CatalogSubscription[]>(`/subscriptions/studio/${studioId}`),
-    enabled: sheet === "assign",
   });
 
   const membersQuery = useQuery({
@@ -249,8 +221,6 @@ function StudentDetailPage() {
 
   function closeSheet() {
     setSheet(null);
-    setAssignPlanId(null);
-    setRenewMembershipId(null);
     setMarkPaidInvoiceId(null);
     setPaymentMethod(null);
     setReferralDiscount("");
@@ -265,16 +235,6 @@ function StudentDetailPage() {
     setEditName(student.name);
     setEditPhone(student.phone ?? "");
     setSheet("edit");
-  }
-
-  function openAssign() {
-    setAssignPlanId(null);
-    setSheet("assign");
-  }
-
-  function openRenew(membershipId: string) {
-    setRenewMembershipId(membershipId);
-    setSheet("renew");
   }
 
   function openMarkPaid(invoiceId: string) {
@@ -424,59 +384,6 @@ function StudentDetailPage() {
     },
   });
 
-  const assignPlan = useMutation({
-    mutationFn: (plan: CatalogSubscription) =>
-      api.post("/memberships/assign", {
-        subscriptionId: plan.id,
-        purchaserUserId: id,
-        coveredStudents: [
-          {
-            studentId: id,
-            seatRole: seatRoleForPlan(plan),
-          },
-        ],
-      }),
-    onSuccess: async () => {
-      await invalidateStudent();
-      closeSheet();
-      toast({
-        title: "Plan assigned",
-        description: "The subscription is now active for this student.",
-        variant: "success",
-      });
-    },
-    onError: (error) => {
-      toast({
-        title: "Couldn’t assign plan",
-        description:
-          error instanceof Error ? error.message : "Could not assign plan.",
-        variant: "error",
-      });
-    },
-  });
-
-  const renewPlan = useMutation({
-    mutationFn: (membershipId: string) =>
-      api.post("/memberships/renew", { membershipId }),
-    onSuccess: async () => {
-      await invalidateStudent();
-      closeSheet();
-      toast({
-        title: "Plan renewed",
-        description: "A new billing period was started.",
-        variant: "success",
-      });
-    },
-    onError: (error) => {
-      toast({
-        title: "Couldn’t renew plan",
-        description:
-          error instanceof Error ? error.message : "Could not renew plan.",
-        variant: "error",
-      });
-    },
-  });
-
   const markPaid = useMutation({
     mutationFn: (payload: {
       invoiceId: string;
@@ -565,13 +472,6 @@ function StudentDetailPage() {
   });
 
   const profile = query.data;
-  const individualPlans = useMemo(
-    () =>
-      (catalogQuery.data ?? []).filter(
-        (plan) => plan.active && plan.kind === "INDIVIDUAL",
-      ),
-    [catalogQuery.data],
-  );
   const parentCandidates = useMemo(() => {
     const linked = new Set((profile?.parents ?? []).map((p) => p.id));
     return (membersQuery.data ?? []).filter(
@@ -580,20 +480,14 @@ function StudentDetailPage() {
     );
   }, [membersQuery.data, profile?.parents, id]);
 
-  const renewTarget =
-    profile?.memberships.find((m) => m.id === renewMembershipId) ?? null;
   const markPaidTarget =
     profile?.invoices.find((invoice) => invoice.id === markPaidInvoiceId) ??
     null;
-  const assignTarget =
-    individualPlans.find((plan) => plan.id === assignPlanId) ?? null;
 
   const actionError =
     deleteStudent.error ??
     updateStudent.error ??
     resetPassword.error ??
-    assignPlan.error ??
-    renewPlan.error ??
     markPaid.error ??
     linkParent.error ??
     messageStudent.error;
@@ -605,10 +499,6 @@ function StudentDetailPage() {
     }
     if (actionId === "edit") {
       openEdit();
-      return;
-    }
-    if (actionId === "assign") {
-      openAssign();
       return;
     }
     if (actionId === "link-parent") {
@@ -657,9 +547,6 @@ function StudentDetailPage() {
                 </MenuItem>
                 <MenuItem id="edit" textValue="Edit profile">
                   <MenuItemLabel>Edit profile</MenuItemLabel>
-                </MenuItem>
-                <MenuItem id="assign" textValue="Assign plan">
-                  <MenuItemLabel>Assign plan</MenuItemLabel>
                 </MenuItem>
                 <MenuItem id="link-parent" textValue="Link parent">
                   <MenuItemLabel>Link parent</MenuItemLabel>
@@ -845,24 +732,11 @@ function StudentDetailPage() {
             <section className={staff.section}>
               <div className={staff.attentionTop}>
                 <h2 className={staff.sectionTitle}>Subscriptions</h2>
-                <TouchButton
-                  size="sm"
-                  variant="primary"
-                  data-testid="assign-plan"
-                  onClick={openAssign}
-                >
-                  Assign plan
-                </TouchButton>
               </div>
               {profile.memberships.length === 0 ? (
                 <EmptyState
                   title="No subscriptions"
-                  description="Assign a subscription to start billing this student."
-                  action={
-                    <TouchButton variant="primary" onClick={openAssign}>
-                      Assign plan
-                    </TouchButton>
-                  }
+                  description="Enroll this student in a batch with a linked plan to start billing."
                 />
               ) : (
                 <div className={staff.list}>
@@ -896,16 +770,10 @@ function StudentDetailPage() {
                       </p>
                       {membership.status === "DUE" ||
                       membership.status === "EXPIRED" ? (
-                        <div className={staff.rowActions}>
-                          <TouchButton
-                            size="sm"
-                            variant="primary"
-                            data-testid={`renew-plan-${membership.id}`}
-                            onClick={() => openRenew(membership.id)}
-                          >
-                            Renew
-                          </TouchButton>
-                        </div>
+                        <p className={staff.attentionMeta}>
+                          Collect payment from Invoices when a renewal invoice
+                          is due.
+                        </p>
                       ) : null}
                     </div>
                   ))}
@@ -1075,115 +943,6 @@ function StudentDetailPage() {
             </TouchButton>
           </div>
         </div>
-      </AppBottomSheet>
-
-      <AppBottomSheet
-        isOpen={sheet === "assign"}
-        onOpenChange={(open) => {
-          if (!open) closeSheet();
-        }}
-        title="Assign plan"
-        size="tall"
-      >
-        <div className={staff.sheetStack}>
-          <p className={staff.rowMeta}>
-            Choose an individual plan to assign to {profile?.student.name}.
-          </p>
-          {catalogQuery.isLoading ? <SkeletonCardList count={3} /> : null}
-          {catalogQuery.isError ? (
-            <ErrorState
-              description={
-                catalogQuery.error instanceof Error
-                  ? catalogQuery.error.message
-                  : "Could not load plans."
-              }
-            />
-          ) : null}
-          {individualPlans.length === 0 && !catalogQuery.isLoading ? (
-            <EmptyState
-              title="No individual plans"
-              description="Create an individual subscription offer first."
-            />
-          ) : null}
-          <div className={staff.sheetActions}>
-            {individualPlans.map((plan) => (
-              <TouchButton
-                key={plan.id}
-                variant={assignPlanId === plan.id ? "primary" : "default"}
-                fullWidth
-                isDisabled={assignPlan.isPending}
-                data-testid={`pick-plan-${plan.id}`}
-                onClick={() => setAssignPlanId(plan.id)}
-              >
-                {plan.name} · {formatInr(Number(plan.price))}
-                {plan.billingCadence === "QUARTERLY" ? "/qtr" : "/mo"}
-              </TouchButton>
-            ))}
-            {assignPlan.isError ? (
-              <ErrorState
-                description={
-                  assignPlan.error instanceof Error
-                    ? assignPlan.error.message
-                    : "Could not assign plan."
-                }
-              />
-            ) : null}
-            <TouchButton
-              variant="primary"
-              fullWidth
-              isDisabled={!assignTarget}
-              isPending={assignPlan.isPending}
-              data-testid="confirm-assign-plan"
-              onClick={() => {
-                if (!assignTarget) return;
-                assignPlan.mutate(assignTarget);
-              }}
-            >
-              Confirm assign
-            </TouchButton>
-          </div>
-        </div>
-      </AppBottomSheet>
-
-      <AppBottomSheet
-        isOpen={sheet === "renew"}
-        onOpenChange={(open) => {
-          if (!open) closeSheet();
-        }}
-        title="Renew plan"
-      >
-        {renewTarget ? (
-          <div className={staff.sheetStack}>
-            <p className={staff.rowMeta}>
-              Renew {renewTarget.subscription.name} for{" "}
-              {formatInr(Number(renewTarget.subscription.price))}
-              {renewTarget.subscription.billingCadence === "QUARTERLY"
-                ? "/qtr"
-                : "/mo"}
-              .
-            </p>
-            {renewPlan.isError ? (
-              <ErrorState
-                description={
-                  renewPlan.error instanceof Error
-                    ? renewPlan.error.message
-                    : "Could not renew plan."
-                }
-              />
-            ) : null}
-            <div className={staff.sheetActions}>
-              <TouchButton
-                variant="primary"
-                fullWidth
-                isPending={renewPlan.isPending}
-                data-testid="confirm-renew-plan"
-                onClick={() => renewPlan.mutate(renewTarget.id)}
-              >
-                Confirm renewal
-              </TouchButton>
-            </div>
-          </div>
-        ) : null}
       </AppBottomSheet>
 
       <AppSheet

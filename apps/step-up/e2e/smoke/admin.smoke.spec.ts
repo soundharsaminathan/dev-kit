@@ -93,18 +93,28 @@ test.describe("admin (staff) smoke @smoke", () => {
   });
 
   test("staff marks invoice paid @smoke", async ({ browser }) => {
-    const invoice = await apiRequest<{ id: string; status: string }>(
-      "STAFF",
-      "/billing",
-      {
-        method: "POST",
-        body: JSON.stringify({
-          studioId: SMOKE.studioId,
-          studentId: SMOKE.users.STUDENT.id,
-          amount: 1100,
-        }),
-      },
-    );
+    const cleanup = new SmokeDataCleanup();
+    const student = await apiRequest<{ id: string }>("OWNER", "/users", {
+      method: "POST",
+      body: JSON.stringify({
+        name: `Smoke Pay ${Date.now()}`,
+        email: `smoke-pay-${Date.now()}@stepup.dev`,
+        gender: "FEMALE",
+        ageRange: "TWENTY_TO_FORTY",
+        styles: ["Hip Hop"],
+      }),
+    });
+    cleanup.trackStudent(student.id);
+    const enrollment = await apiRequest<{
+      invoice: { id: string; status: string };
+    }>("STAFF", `/batches/${SMOKE.beginnerBatchId}/enroll`, {
+      method: "POST",
+      body: JSON.stringify({
+        studentId: student.id,
+        subscriptionId: SMOKE.adultPlanIds[0],
+      }),
+    });
+    const invoice = enrollment.invoice;
 
     const context = await browser.newContext({
       storageState: authFile("STAFF"),
@@ -125,6 +135,7 @@ test.describe("admin (staff) smoke @smoke", () => {
       expect(response.ok()).toBeTruthy();
     } finally {
       await context.close();
+      await cleanup.dispose();
     }
   });
 

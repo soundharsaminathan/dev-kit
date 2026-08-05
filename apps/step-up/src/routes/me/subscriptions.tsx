@@ -146,19 +146,9 @@ function MeSubscriptionsPage() {
   const kidCandidates = useMemo(() => children, [children]);
 
   function openEnroll(sub: CatalogSubscription) {
+    if (sub.kind !== "FAMILY") return;
     setEnrollTarget(sub);
     setSeatBatchIds({});
-    if (sub.kind === "INDIVIDUAL") {
-      if (sub.individualAudience === "ADULT") {
-        setSelectedAdultIds([studentId]);
-        setSelectedKidIds([]);
-      } else {
-        setSelectedAdultIds([]);
-        const defaultKid = children[0]?.id ?? studentId;
-        setSelectedKidIds(defaultKid ? [defaultKid] : []);
-      }
-      return;
-    }
     setSelectedAdultIds(
       adultCandidates.slice(0, sub.adultSeats).map((a) => a.id),
     );
@@ -170,10 +160,10 @@ function MeSubscriptionsPage() {
 
   const seatsValid =
     enrollTarget != null &&
+    isFamilyTarget &&
     selectedAdultIds.length === enrollTarget.adultSeats &&
     selectedKidIds.length === enrollTarget.kidSeats &&
-    (!isFamilyTarget ||
-      selectedSeatIds.every((id) => Boolean(seatBatchIds[id])));
+    selectedSeatIds.every((id) => Boolean(seatBatchIds[id]));
 
   const renewMutation = useMutation({
     mutationFn: () =>
@@ -200,33 +190,25 @@ function MeSubscriptionsPage() {
         ...selectedAdultIds.map((id) => ({
           studentId: id,
           seatRole: "ADULT" as const,
-          ...(isFamilyTarget ? { batchId: seatBatchIds[id] } : {}),
+          batchId: seatBatchIds[id],
         })),
         ...selectedKidIds.map((id) => ({
           studentId: id,
           seatRole: "KID" as const,
-          ...(isFamilyTarget ? { batchId: seatBatchIds[id] } : {}),
+          batchId: seatBatchIds[id],
         })),
       ];
-      if (isFamilyTarget) {
-        return api.post<{ id: string; status: string }>(
-          "/memberships/family-purchase",
-          {
-            studioId,
-            subscriptionId: enrollTarget!.id,
-            purchaserUserId: user!.id,
-            coveredStudents,
-          },
-        );
-      }
-      return api.post("/memberships/self/assign", {
-        subscriptionId: enrollTarget!.id,
-        purchaserUserId: user!.id,
-        coveredStudents,
-      });
+      return api.post<{ id: string; status: string }>(
+        "/memberships/family-purchase",
+        {
+          studioId,
+          subscriptionId: enrollTarget!.id,
+          purchaserUserId: user!.id,
+          coveredStudents,
+        },
+      );
     },
     onSuccess: (result) => {
-      const wasFamily = isFamilyTarget;
       const invoiceId =
         result &&
         typeof result === "object" &&
@@ -242,7 +224,7 @@ function MeSubscriptionsPage() {
         queryKey: ["users", user?.id, "family-members"],
       });
       setEnrollTarget(null);
-      if (wasFamily && invoiceId) {
+      if (invoiceId) {
         void navigate({
           to: "/me/checkout/invoice/$invoiceId",
           params: { invoiceId },
@@ -313,9 +295,15 @@ function MeSubscriptionsPage() {
                   <TouchButton
                     variant="primary"
                     size="sm"
-                    onClick={() => openEnroll(sub)}
+                    onClick={() => {
+                      if (sub.kind === "INDIVIDUAL") {
+                        void navigate({ to: "/me/book" });
+                        return;
+                      }
+                      openEnroll(sub);
+                    }}
                   >
-                    Subscribe
+                    {sub.kind === "INDIVIDUAL" ? "Find a class" : "Subscribe"}
                   </TouchButton>
                 </div>
               ) : (
@@ -423,6 +411,7 @@ function MeSubscriptionsPage() {
                     <TouchButton
                       variant="primary"
                       size="sm"
+                      data-testid={`renew-membership-${membership.id}`}
                       onClick={() => setRenewTarget(membership)}
                     >
                       Renew
@@ -470,6 +459,7 @@ function MeSubscriptionsPage() {
             variant="primary"
             fullWidth
             isPending={renewMutation.isPending}
+            data-testid="confirm-renew-subscription"
             onClick={() => renewMutation.mutate()}
           >
             Request renewal
@@ -695,7 +685,7 @@ function MeSubscriptionsPage() {
             isPending={assignMutation.isPending}
             onClick={() => assignMutation.mutate()}
           >
-            {isFamilyTarget ? "Continue to payment" : "Confirm subscription"}
+            Continue to payment
           </TouchButton>
         </div>
       </AppSheet>

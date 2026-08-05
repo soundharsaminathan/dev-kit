@@ -745,7 +745,7 @@ async function main() {
     where: { id: SMOKE.invoicePendingId },
     update: {
       studentId: u.STUDENT.id,
-      amount: 1500,
+      amount: 3500,
       status: InvoiceStatus.PENDING,
       paymentMethod: null,
       paidAt: null,
@@ -753,15 +753,66 @@ async function main() {
       studioId,
       membershipId: null,
       paymentHoldExpiresAt: null,
-      purchaseMeta: null,
+      purchaseMeta: {
+        batchId: SMOKE.beginnerBatchId,
+        subscriptionId: SMOKE.adultMonthlyId,
+        purchaserUserId: u.STUDENT.id,
+        coveredStudents: [
+          {
+            studentId: u.STUDENT.id,
+            seatRole: "ADULT",
+            batchId: SMOKE.beginnerBatchId,
+          },
+        ],
+      },
     },
     create: {
       id: SMOKE.invoicePendingId,
       studentId: u.STUDENT.id,
-      amount: 1500,
+      amount: 3500,
       status: InvoiceStatus.PENDING,
       platformFeePercent: 5,
       studioId,
+      membershipId: null,
+      purchaseMeta: {
+        batchId: SMOKE.beginnerBatchId,
+        subscriptionId: SMOKE.adultMonthlyId,
+        purchaserUserId: u.STUDENT.id,
+        coveredStudents: [
+          {
+            studentId: u.STUDENT.id,
+            seatRole: "ADULT",
+            batchId: SMOKE.beginnerBatchId,
+          },
+        ],
+      },
+    },
+  });
+
+  await prisma.invoice.upsert({
+    where: { id: "smoke-invoice-paid-membership-1" },
+    update: {
+      studentId: u.PARENT.id,
+      amount: 2500,
+      status: InvoiceStatus.PAID,
+      paymentMethod: "CASH",
+      paidAt: new Date(periodStart.getTime() + 24 * 60 * 60 * 1000),
+      platformFeePercent: 5,
+      studioId,
+      membershipId: SMOKE.membershipStudentId,
+      paymentHoldExpiresAt: null,
+      purchaseMeta: null,
+    },
+    create: {
+      id: "smoke-invoice-paid-membership-1",
+      studentId: u.PARENT.id,
+      amount: 2500,
+      status: InvoiceStatus.PAID,
+      paymentMethod: "CASH",
+      paidAt: new Date(periodStart.getTime() + 24 * 60 * 60 * 1000),
+      platformFeePercent: 5,
+      studioId,
+      membershipId: SMOKE.membershipStudentId,
     },
   });
 

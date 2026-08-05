@@ -4,6 +4,7 @@ import {
   MembershipStatus,
   NotificationType,
 } from "@prisma/client";
+import { MembershipsService } from "../memberships/memberships.service";
 import { NotificationsService } from "../notifications/notifications.service";
 import { PrismaService } from "../prisma/prisma.service";
 
@@ -21,6 +22,8 @@ export class JobsService {
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(NotificationsService)
     private readonly notifications: NotificationsService,
+    @Inject(MembershipsService)
+    private readonly memberships: MembershipsService,
   ) {}
 
   async runDaily() {
@@ -34,6 +37,21 @@ export class JobsService {
       },
       data: { status: MembershipStatus.DUE },
     });
+
+    const billableMemberships = await this.prisma.membership.findMany({
+      where: {
+        status: { in: [MembershipStatus.DUE, MembershipStatus.EXPIRED] },
+      },
+      select: { id: true },
+    });
+
+    let renewalInvoicesCreated = 0;
+    for (const membership of billableMemberships) {
+      const result = await this.memberships.ensureRenewalInvoice(membership.id);
+      if (result.created) {
+        renewalInvoicesCreated += 1;
+      }
+    }
 
     const studioSettings = await this.prisma.studioSettings.findMany({
       select: {
@@ -145,6 +163,7 @@ export class JobsService {
 
     return {
       dueMemberships: dueUpdated.count,
+      renewalInvoicesCreated,
       expiredMemberships: expiredUpdated.count,
       notRenewedNotifications: membershipsToExpire.length,
       overdueInvoices: overdueInvoices.count,

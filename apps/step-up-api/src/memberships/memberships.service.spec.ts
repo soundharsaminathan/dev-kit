@@ -1,3 +1,4 @@
+import { BadRequestException } from "@nestjs/common";
 import { NotificationType } from "@prisma/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { MembershipsService } from "./memberships.service";
@@ -99,13 +100,18 @@ describe("MembershipsService.requestRenewalInvoice", () => {
   });
 
   it("creates a pending invoice for a due membership", async () => {
-    prisma.membership.findUnique.mockResolvedValue({
-      id: "mem-1",
-      purchaserUserId: "user-1",
-      status: "DUE",
-      subscription: { price: 2000 },
-      purchaser: { id: "user-1", studioId: "studio-1" },
-    });
+    prisma.membership.findUnique
+      .mockResolvedValueOnce({
+        id: "mem-1",
+        status: "DUE",
+      })
+      .mockResolvedValueOnce({
+        id: "mem-1",
+        purchaserUserId: "user-1",
+        status: "DUE",
+        subscription: { price: 2000 },
+        purchaser: { id: "user-1", studioId: "studio-1" },
+      });
     prisma.invoice.findFirst.mockResolvedValue(null);
     prisma.studioSettings.findUnique.mockResolvedValue({
       platformFeePercent: 5,
@@ -132,13 +138,18 @@ describe("MembershipsService.requestRenewalInvoice", () => {
   });
 
   it("returns an existing pending renewal invoice", async () => {
-    prisma.membership.findUnique.mockResolvedValue({
-      id: "mem-1",
-      purchaserUserId: "user-1",
-      status: "EXPIRED",
-      subscription: { price: 2000 },
-      purchaser: { id: "user-1", studioId: "studio-1" },
-    });
+    prisma.membership.findUnique
+      .mockResolvedValueOnce({
+        id: "mem-1",
+        status: "EXPIRED",
+      })
+      .mockResolvedValueOnce({
+        id: "mem-1",
+        purchaserUserId: "user-1",
+        status: "EXPIRED",
+        subscription: { price: 2000 },
+        purchaser: { id: "user-1", studioId: "studio-1" },
+      });
     prisma.invoice.findFirst.mockResolvedValue({
       id: "inv-existing",
       status: "PENDING",
@@ -147,6 +158,81 @@ describe("MembershipsService.requestRenewalInvoice", () => {
     const invoice = await service.requestRenewalInvoice("mem-1");
 
     expect(invoice.id).toBe("inv-existing");
+    expect(prisma.invoice.create).not.toHaveBeenCalled();
+  });
+
+  it("returns an existing overdue renewal invoice without creating another", async () => {
+    prisma.membership.findUnique.mockResolvedValue({
+      id: "mem-1",
+      purchaserUserId: "user-1",
+      status: "DUE",
+      subscription: { price: 2000 },
+      purchaser: { id: "user-1", studioId: "studio-1" },
+    });
+    prisma.invoice.findFirst.mockResolvedValue({
+      id: "inv-overdue",
+      status: "OVERDUE",
+    });
+
+    const result = await service.ensureRenewalInvoice("mem-1");
+
+    expect(result.created).toBe(false);
+    expect(result.invoice.id).toBe("inv-overdue");
+    expect(prisma.invoice.create).not.toHaveBeenCalled();
+    expect(prisma.invoice.findFirst).toHaveBeenCalledWith({
+      where: {
+        membershipId: "mem-1",
+        status: { in: ["PENDING", "OVERDUE"] },
+      },
+      orderBy: { id: "desc" },
+    });
+  });
+
+  it("ensureRenewalInvoice creates pending invoice at plan price", async () => {
+    prisma.membership.findUnique.mockResolvedValue({
+      id: "mem-1",
+      purchaserUserId: "user-1",
+      status: "EXPIRED",
+      subscription: { price: 3500 },
+      purchaser: { id: "user-1", studioId: "studio-1" },
+    });
+    prisma.invoice.findFirst.mockResolvedValue(null);
+    prisma.studioSettings.findUnique.mockResolvedValue({
+      platformFeePercent: 5,
+    });
+    prisma.invoice.create.mockResolvedValue({
+      id: "inv-new",
+      status: "PENDING",
+      membershipId: "mem-1",
+      amount: 3500,
+    });
+
+    const result = await service.ensureRenewalInvoice("mem-1");
+
+    expect(result.created).toBe(true);
+    expect(prisma.invoice.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        studentId: "user-1",
+        studioId: "studio-1",
+        membershipId: "mem-1",
+        amount: 3500,
+        status: "PENDING",
+      }),
+    });
+    expect(prisma.invoice.create.mock.calls[0]?.[0]?.data).not.toHaveProperty(
+      "purchaseMeta",
+    );
+  });
+
+  it("requestRenewalInvoice rejects active memberships", async () => {
+    prisma.membership.findUnique.mockResolvedValue({
+      id: "mem-1",
+      status: "ACTIVE",
+    });
+
+    await expect(service.requestRenewalInvoice("mem-1")).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
     expect(prisma.invoice.create).not.toHaveBeenCalled();
   });
 });

@@ -45,22 +45,6 @@ class MarkPaidDto {
   studioDiscount?: number;
 }
 
-class CreateInvoiceDto {
-  @IsString()
-  studioId!: string;
-
-  @IsString()
-  studentId!: string;
-
-  @IsNumber()
-  @Min(0.01)
-  amount!: number;
-
-  @IsOptional()
-  @IsString()
-  membershipId?: string;
-}
-
 class ConfirmInvoicePaymentDto {
   @IsOptional()
   @IsString()
@@ -121,12 +105,6 @@ export class BillingController {
   ) {
     assertSameStudio(user, studioId);
     return this.billingService.listByStudio(studioId);
-  }
-
-  @Post()
-  @Roles(UserRole.OWNER, UserRole.STAFF)
-  create(@CurrentUser() user: DecryptedUser, @Body() dto: CreateInvoiceDto) {
-    return this.billingService.createPendingInvoice(user, dto);
   }
 
   @Post("family-checkout")

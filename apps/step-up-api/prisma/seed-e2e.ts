@@ -4,6 +4,7 @@ import {
   BillingCadence,
   EnrollmentMode,
   IndividualAudience,
+  InvoiceStatus,
   MembershipSeatRole,
   MembershipStatus,
   type Prisma,
@@ -39,6 +40,9 @@ export const E2E = {
   sessionAttendanceId: "e2e-session-kids-mon",
   sessionAttendancePastId: "e2e-session-kids-past-1",
   membershipStudentId: "e2e-membership-student-1",
+  membershipStudentDueId: "e2e-membership-student-due-1",
+  invoicePaidMembershipId: "e2e-invoice-paid-membership-1",
+  invoiceRenewalPendingId: "e2e-invoice-renewal-pending-1",
   users: {
     SYSTEM_ADMIN: {
       id: "e2e-system-admin-1",
@@ -598,6 +602,97 @@ async function main() {
       membershipId: E2E.membershipStudentId,
       studentId: u.STUDENT.id,
       seatRole: MembershipSeatRole.KID,
+    },
+  });
+
+  await prisma.invoice.upsert({
+    where: { id: E2E.invoicePaidMembershipId },
+    update: {
+      studentId: u.PARENT.id,
+      amount: 2500,
+      status: InvoiceStatus.PAID,
+      paymentMethod: "CASH",
+      paidAt: new Date(periodStart.getTime() + 24 * 60 * 60 * 1000),
+      platformFeePercent: 5,
+      studioId,
+      membershipId: E2E.membershipStudentId,
+      paymentHoldExpiresAt: null,
+      purchaseMeta: null,
+    },
+    create: {
+      id: E2E.invoicePaidMembershipId,
+      studentId: u.PARENT.id,
+      amount: 2500,
+      status: InvoiceStatus.PAID,
+      paymentMethod: "CASH",
+      paidAt: new Date(periodStart.getTime() + 24 * 60 * 60 * 1000),
+      platformFeePercent: 5,
+      studioId,
+      membershipId: E2E.membershipStudentId,
+    },
+  });
+
+  const duePeriodEnd = new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000);
+  const duePeriodStart = new Date(
+    Date.UTC(duePeriodEnd.getUTCFullYear(), duePeriodEnd.getUTCMonth(), 1),
+  );
+
+  await prisma.membership.upsert({
+    where: { id: E2E.membershipStudentDueId },
+    update: {
+      subscriptionId: E2E.adultMonthlyId,
+      purchaserUserId: u.STUDENT.id,
+      periodStart: duePeriodStart,
+      periodEnd: duePeriodEnd,
+      status: MembershipStatus.DUE,
+    },
+    create: {
+      id: E2E.membershipStudentDueId,
+      subscriptionId: E2E.adultMonthlyId,
+      purchaserUserId: u.STUDENT.id,
+      periodStart: duePeriodStart,
+      periodEnd: duePeriodEnd,
+      status: MembershipStatus.DUE,
+    },
+  });
+
+  await prisma.membershipCoveredStudent.upsert({
+    where: {
+      membershipId_studentId: {
+        membershipId: E2E.membershipStudentDueId,
+        studentId: u.STUDENT.id,
+      },
+    },
+    update: { seatRole: MembershipSeatRole.ADULT },
+    create: {
+      membershipId: E2E.membershipStudentDueId,
+      studentId: u.STUDENT.id,
+      seatRole: MembershipSeatRole.ADULT,
+    },
+  });
+
+  await prisma.invoice.upsert({
+    where: { id: E2E.invoiceRenewalPendingId },
+    update: {
+      studentId: u.STUDENT.id,
+      amount: 3500,
+      status: InvoiceStatus.PENDING,
+      paymentMethod: null,
+      paidAt: null,
+      platformFeePercent: 5,
+      studioId,
+      membershipId: E2E.membershipStudentDueId,
+      paymentHoldExpiresAt: null,
+      purchaseMeta: null,
+    },
+    create: {
+      id: E2E.invoiceRenewalPendingId,
+      studentId: u.STUDENT.id,
+      amount: 3500,
+      status: InvoiceStatus.PENDING,
+      platformFeePercent: 5,
+      studioId,
+      membershipId: E2E.membershipStudentDueId,
     },
   });
 

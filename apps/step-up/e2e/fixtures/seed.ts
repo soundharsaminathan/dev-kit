@@ -2,6 +2,10 @@ export const SEED = {
   studioId: "studio-e2e-1",
   branchMainId: "e2e-branch-main-1",
   branchEastId: "e2e-branch-east-1",
+  membershipStudentId: "e2e-membership-student-1",
+  membershipStudentDueId: "e2e-membership-student-due-1",
+  invoicePaidMembershipId: "e2e-invoice-paid-membership-1",
+  invoiceRenewalPendingId: "e2e-invoice-renewal-pending-1",
   adultPlanIds: [
     "e2e-sub-individual-adult-monthly",
     "e2e-sub-individual-adult-quarterly",
