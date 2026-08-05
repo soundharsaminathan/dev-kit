@@ -1,4 +1,5 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@dev-ui/components/avatar";
+import { useIsMobile } from "@dev-ui/hooks";
 import { Icon } from "@dev-ui/icons";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
@@ -28,11 +29,15 @@ export function ProfileMenuPage({ variant = "me" }: ProfileMenuPageProps) {
   const { user, signOutUser, needsEmailVerification } = useAuth();
   const api = useApi();
   const queryClient = useQueryClient();
+  const isMobile = useIsMobile();
   const activeStudent = useContext(ActiveStudentContext);
   const familyMembers = activeStudent?.familyMembers ?? [];
   const isManagingFamily = activeStudent?.isManagingFamily ?? false;
   const setActiveAccount = activeStudent?.setActiveAccount ?? (() => {});
-  const sections = getMenuSections(variant, user?.role);
+  // Staff/owner desktop already has these destinations in the sidebar.
+  // Keep overflow links on mobile where the sidebar is hidden.
+  const sections =
+    variant === "app" && !isMobile ? [] : getMenuSections(variant, user?.role);
   const editTo = variant === "app" ? "/app/profile/edit" : "/me/profile/edit";
   const followRequestsTo =
     variant === "app"

@@ -89,6 +89,9 @@ describe("UsersService onboarding", () => {
     signReadUrl: vi.fn(async (value: string | null) => value),
     resolveObjectKey: vi.fn((value: string) => value),
   };
+  const firebase = {
+    ensureEmailPasswordUser: vi.fn(async () => null),
+  };
 
   let service: UsersService;
 
@@ -107,6 +110,7 @@ describe("UsersService onboarding", () => {
       prisma as never,
       crypto as never,
       media as never,
+      firebase as never,
     );
   });
 
@@ -487,6 +491,9 @@ describe("UsersService family members", () => {
     signReadUrl: vi.fn(async (value: string | null) => value),
     resolveObjectKey: vi.fn((value: string) => value),
   };
+  const firebase = {
+    ensureEmailPasswordUser: vi.fn(async () => null),
+  };
 
   let service: UsersService;
 
@@ -496,6 +503,7 @@ describe("UsersService family members", () => {
       prisma as never,
       crypto as never,
       media as never,
+      firebase as never,
     );
   });
 
@@ -689,6 +697,10 @@ describe("UsersService.createStudent", () => {
     user: {
       findFirst: vi.fn(),
       create: vi.fn(),
+      update: vi.fn(),
+    },
+    studio: {
+      findUnique: vi.fn(),
     },
     batch: {
       findUnique: vi.fn(),
@@ -729,6 +741,9 @@ describe("UsersService.createStudent", () => {
   const media = {
     signReadUrl: vi.fn(async (value: string | null) => value),
   };
+  const firebase = {
+    ensureEmailPasswordUser: vi.fn(async () => ({ uid: "fb-student-1" })),
+  };
 
   let service: UsersService;
 
@@ -739,22 +754,31 @@ describe("UsersService.createStudent", () => {
     );
     prisma.$queryRaw.mockResolvedValue([{ id: "batch-1" }]);
     prisma.batchEnrollment.findFirst.mockResolvedValue(null);
+    firebase.ensureEmailPasswordUser.mockResolvedValue({
+      uid: "fb-student-1",
+    });
     service = new UsersService(
       prisma as never,
       crypto as never,
       media as never,
+      firebase as never,
     );
   });
 
-  it("creates a student and optionally enrolls them in a batch", async () => {
+  it("creates a student with a shareable temporary password", async () => {
     prisma.user.findFirst.mockResolvedValue(null);
     prisma.user.create.mockResolvedValue(
       makeUser({
         id: "student-new",
         firebaseUid: "staff-created:abc",
         role: UserRole.STUDENT,
+        mustChangePassword: true,
       }),
     );
+    prisma.user.update.mockResolvedValue({
+      id: "student-new",
+      firebaseUid: "fb-student-1",
+    });
     prisma.batch.findUnique.mockResolvedValue({
       id: "batch-1",
       studioId: "studio-seed-1",
@@ -774,9 +798,28 @@ describe("UsersService.createStudent", () => {
       ageRange: AgeRange.TWENTY_TO_FORTY,
       styles: ["Hip Hop"],
       batchId: "batch-1",
+      temporaryPassword: "TempPass1",
     });
 
     expect(result.id).toBe("student-new");
+    expect(result.temporaryPassword).toBe("TempPass1");
+    expect(result.setupHint).toMatch(/temporary password/i);
+    expect(firebase.ensureEmailPasswordUser).toHaveBeenCalledWith({
+      email: "new@stepup.dev",
+      password: "TempPass1",
+      displayName: "New Student",
+    });
+    expect(prisma.user.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          mustChangePassword: true,
+        }),
+      }),
+    );
+    expect(prisma.user.update).toHaveBeenCalledWith({
+      where: { id: "student-new" },
+      data: { firebaseUid: "fb-student-1" },
+    });
     expect(prisma.batchEnrollment.upsert).toHaveBeenCalledWith({
       where: {
         batchId_studentId: { batchId: "batch-1", studentId: "student-new" },
@@ -796,8 +839,13 @@ describe("UsersService.createStudent", () => {
         id: "student-new",
         firebaseUid: "staff-created:abc",
         role: UserRole.STUDENT,
+        mustChangePassword: true,
       }),
     );
+    prisma.user.update.mockResolvedValue({
+      id: "student-new",
+      firebaseUid: "fb-student-1",
+    });
     prisma.batch.findUnique.mockResolvedValue({
       id: "batch-other",
       studioId: "studio-other",
@@ -813,6 +861,7 @@ describe("UsersService.createStudent", () => {
         gender: Gender.FEMALE,
         ageRange: AgeRange.TWENTY_TO_FORTY,
         batchId: "batch-other",
+        temporaryPassword: "TempPass1",
       }),
     ).rejects.toBeInstanceOf(BadRequestException);
   });
@@ -824,8 +873,13 @@ describe("UsersService.createStudent", () => {
         id: "student-new",
         firebaseUid: "staff-created:abc",
         role: UserRole.STUDENT,
+        mustChangePassword: true,
       }),
     );
+    prisma.user.update.mockResolvedValue({
+      id: "student-new",
+      firebaseUid: "fb-student-1",
+    });
     prisma.batch.findUnique.mockResolvedValue({
       id: "batch-1",
       studioId: "studio-seed-1",
@@ -845,6 +899,7 @@ describe("UsersService.createStudent", () => {
       ageRange: AgeRange.TWENTY_TO_FORTY,
       styles: ["Hip Hop"],
       batchId: "batch-1",
+      temporaryPassword: "TempPass1",
     });
 
     expect(prisma.batchEnrollment.upsert).toHaveBeenCalledWith({
@@ -856,6 +911,106 @@ describe("UsersService.createStudent", () => {
         batchId: "batch-1",
         studentId: "student-new",
       },
+    });
+  });
+
+  it("resets a student temporary password", async () => {
+    prisma.user.findFirst
+      .mockResolvedValueOnce(
+        makeUser({
+          id: "student-1",
+          firebaseUid: "fb-student-1",
+          role: UserRole.STUDENT,
+        }),
+      )
+      .mockResolvedValueOnce(null);
+    prisma.user.update.mockResolvedValue({ id: "student-1" });
+
+    const result = await service.resetStudentTemporaryPassword(
+      "studio-seed-1",
+      "student-1",
+      "ResetPass1",
+    );
+
+    expect(result.temporaryPassword).toBe("ResetPass1");
+    expect(result.email).toBe("new@stepup.dev");
+    expect(firebase.ensureEmailPasswordUser).toHaveBeenCalledWith({
+      email: "new@stepup.dev",
+      password: "ResetPass1",
+      displayName: "New Student",
+    });
+    expect(prisma.user.update).toHaveBeenCalledWith({
+      where: { id: "student-1" },
+      data: { mustChangePassword: true },
+    });
+  });
+
+  it("resets a trainer temporary password", async () => {
+    prisma.user.findFirst
+      .mockResolvedValueOnce(
+        makeUser({
+          id: "trainer-1",
+          firebaseUid: "fb-trainer-1",
+          role: UserRole.TRAINER,
+        }),
+      )
+      .mockResolvedValueOnce(null);
+    crypto.decryptUser.mockImplementation((user: Record<string, unknown>) => ({
+      ...user,
+      email: "trainer@stepup.dev",
+      name: "Studio Trainer",
+      phone: null,
+      bio: null,
+      instagramUrl: null,
+    }));
+    prisma.user.update.mockResolvedValue({ id: "trainer-1" });
+
+    const result = await service.resetTrainerTemporaryPassword(
+      "studio-seed-1",
+      "trainer-1",
+      "TrainerPass1",
+    );
+
+    expect(result.temporaryPassword).toBe("TrainerPass1");
+    expect(result.email).toBe("trainer@stepup.dev");
+    expect(firebase.ensureEmailPasswordUser).toHaveBeenCalledWith({
+      email: "trainer@stepup.dev",
+      password: "TrainerPass1",
+      displayName: "Studio Trainer",
+    });
+  });
+
+  it("resets an owner temporary password", async () => {
+    prisma.studio.findUnique.mockResolvedValue({
+      id: "studio-seed-1",
+      owner: makeUser({
+        id: "owner-1",
+        firebaseUid: "fb-owner-1",
+        role: UserRole.OWNER,
+      }),
+    });
+    crypto.decryptUser.mockImplementation((user: Record<string, unknown>) => ({
+      ...user,
+      email: "owner@stepup.dev",
+      name: "Studio Owner",
+      phone: null,
+      bio: null,
+      instagramUrl: null,
+    }));
+    prisma.user.findFirst.mockResolvedValue(null);
+    prisma.user.update.mockResolvedValue({ id: "owner-1" });
+
+    const result = await service.resetOwnerTemporaryPassword(
+      "studio-seed-1",
+      "OwnerPass1",
+    );
+
+    expect(result.temporaryPassword).toBe("OwnerPass1");
+    expect(result.email).toBe("owner@stepup.dev");
+    expect(firebase.ensureEmailPasswordUser).toHaveBeenCalledWith({
+      email: "owner@stepup.dev",
+      password: "OwnerPass1",
+      displayName: "Studio Owner",
     });
   });
 });
@@ -891,6 +1046,9 @@ describe("UsersService.updateStudioStudent", () => {
     signReadUrl: vi.fn(async (value: string | null) => value),
     resolveObjectKey: vi.fn((value: string) => value),
   };
+  const firebase = {
+    ensureEmailPasswordUser: vi.fn(async () => null),
+  };
 
   let service: UsersService;
 
@@ -900,6 +1058,7 @@ describe("UsersService.updateStudioStudent", () => {
       prisma as never,
       crypto as never,
       media as never,
+      firebase as never,
     );
   });
 
@@ -974,6 +1133,9 @@ describe("UsersService.deleteStudent", () => {
   const media = {
     signReadUrl: vi.fn(async (value: string | null) => value),
   };
+  const firebase = {
+    ensureEmailPasswordUser: vi.fn(async () => null),
+  };
 
   let service: UsersService;
 
@@ -986,6 +1148,7 @@ describe("UsersService.deleteStudent", () => {
       prisma as never,
       crypto as never,
       media as never,
+      firebase as never,
     );
   });
 

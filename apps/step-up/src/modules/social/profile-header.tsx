@@ -14,6 +14,7 @@ type ProfileHeaderProps = {
   onUnfollow?: (() => void) | undefined;
   onEdit?: (() => void) | undefined;
   onMessage?: (() => void) | undefined;
+  onResetPassword?: (() => void) | undefined;
 };
 
 function formatCount(value: number) {
@@ -54,6 +55,7 @@ export function ProfileHeader({
   onUnfollow,
   onEdit,
   onMessage,
+  onResetPassword,
 }: ProfileHeaderProps) {
   const instagramHref = profile.instagramUrl
     ? normalizeExternalUrl(profile.instagramUrl)
@@ -158,6 +160,16 @@ export function ProfileHeader({
                 onClick={onMessage}
               >
                 Message
+              </Button>
+            ) : null}
+            {onResetPassword ? (
+              <Button
+                variant="quiet"
+                className={styles.actionSecondary}
+                data-testid="reset-trainer-password"
+                onClick={onResetPassword}
+              >
+                Reset password
               </Button>
             ) : null}
           </>

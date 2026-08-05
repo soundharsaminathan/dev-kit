@@ -113,6 +113,18 @@ const PERMISSION_MATRIX: MatrixRow[] = [
     allowed: [UserRole.OWNER, UserRole.STAFF],
   },
   {
+    action: "users.student.resetPassword",
+    allowed: [UserRole.OWNER, UserRole.STAFF],
+  },
+  {
+    action: "users.trainer.resetPassword",
+    allowed: [UserRole.OWNER, UserRole.STAFF],
+  },
+  {
+    action: "studios.resetOwnerPassword",
+    allowed: [UserRole.SYSTEM_ADMIN],
+  },
+  {
     action: "users.roster.read",
     allowed: [UserRole.OWNER, UserRole.STAFF, UserRole.TRAINER],
   },

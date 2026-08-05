@@ -20,6 +20,7 @@ import { Screen } from "@/modules/ui/screen";
 import staff from "@/modules/ui/staff.module.scss";
 import { StickyCtaBar, TouchButton } from "@/modules/ui/touch-button";
 import formStyles from "./member-registration-form.module.scss";
+import { TemporaryCredentialsPanel } from "./temporary-credentials-panel";
 
 const STEPS = ["Details", "Dance styles"] as const;
 const NO_BATCH = "__none__";
@@ -41,6 +42,8 @@ type CreatedMember = {
   name: string;
   email: string;
   phone?: string | null;
+  temporaryPassword?: string | null;
+  setupHint?: string | null;
 };
 
 type StudioBatchOption = {
@@ -48,6 +51,16 @@ type StudioBatchOption = {
   name: string;
   active: boolean;
 };
+
+function generateTemporaryPassword() {
+  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
+  const bytes = crypto.getRandomValues(new Uint8Array(10));
+  let value = "Su-";
+  for (const byte of bytes) {
+    value += alphabet[byte % alphabet.length];
+  }
+  return value;
+}
 
 export function MemberRegistrationForm({
   kind,
@@ -73,8 +86,16 @@ export function MemberRegistrationForm({
   const [ageRange, setAgeRange] = useState<AgeRange | null>(null);
   const [styles, setStyles] = useState<string[]>([]);
   const [batchId, setBatchId] = useState<string | null>(null);
+  const [temporaryPassword] = useState(() => generateTemporaryPassword());
+  const [createdResult, setCreatedResult] = useState<CreatedMember | null>(
+    null,
+  );
 
   const allowBatchEnrollment = kind === "student";
+  const issueLoginCredentials = true;
+  const kindLabel = kind === "trainer" ? "Trainer" : "Student";
+  const accessLabel = kind === "trainer" ? "Trainer access" : "Student access";
+  const appLabel = kind === "trainer" ? "studio app" : "member app";
 
   const batchesQuery = useQuery({
     queryKey: ["studio-batches", studioId, "active"],
@@ -108,6 +129,9 @@ export function MemberRegistrationForm({
         ageRange,
         styles,
         ...(allowBatchEnrollment && batchId ? { batchId } : {}),
+        ...(issueLoginCredentials
+          ? { temporaryPassword: temporaryPassword.trim() }
+          : {}),
       }),
     onSuccess: async (created) => {
       setLastLoginIdentifier(created.email);
@@ -125,8 +149,19 @@ export function MemberRegistrationForm({
           ? queryClient.invalidateQueries({ queryKey: ["batch", batchId] })
           : Promise.resolve(),
       ]);
+
+      if (issueLoginCredentials && created.temporaryPassword) {
+        setCreatedResult(created);
+        toast({
+          title: `${kindLabel} created`,
+          description: "Share the temporary password shown once below.",
+          variant: "success",
+        });
+        return;
+      }
+
       toast({
-        title: `${kind === "trainer" ? "Trainer" : "Student"} created`,
+        title: `${kindLabel} created`,
         description: `${created.name} was added to the studio.`,
         variant: "success",
       });
@@ -144,12 +179,63 @@ export function MemberRegistrationForm({
     },
   });
 
+  async function copyText(label: string, value: string) {
+    try {
+      await navigator.clipboard.writeText(value);
+      toast({
+        title: `${label} copied`,
+        variant: "success",
+      });
+    } catch {
+      toast({
+        title: `Couldn’t copy ${label.toLowerCase()}`,
+        variant: "error",
+      });
+    }
+  }
+
   function handleBack() {
     if (step > 0) {
       setStep(step - 1);
       return;
     }
     void navigate({ to: backTo });
+  }
+
+  if (createdResult) {
+    const passwordToShare =
+      createdResult.temporaryPassword ?? temporaryPassword;
+    return (
+      <>
+        <Screen
+          title={`${kindLabel} ready`}
+          subtitle="Share these credentials — they’ll change the password on first login."
+          showBack={false}
+          paddedCta
+        >
+          <div className={staff.softPanel}>
+            <TemporaryCredentialsPanel
+              email={createdResult.email}
+              temporaryPassword={passwordToShare}
+              eyebrow={accessLabel}
+              helpText={`This password is shown once here. The ${kind} must set a new password before using the ${appLabel}.`}
+              onCopy={(label, value) => void copyText(label, value)}
+            />
+          </div>
+        </Screen>
+
+        <StickyCtaBar>
+          <TouchButton
+            variant="primary"
+            fullWidth
+            data-testid={`${kind}-credentials-done`}
+            onClick={() => void navigate({ to: successTo })}
+          >
+            Done
+          </TouchButton>
+        </StickyCtaBar>
+      </>
+    );
   }
 
   return (

@@ -299,6 +299,24 @@
   line-height: 1.4;
 }
 
+.ownerReset {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.ownerReset .ownerMeta {
+  grid-column: auto;
+}
+
+.ownerResetPanel {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
 .themeStep,
 .paymentsStep {
   display: flex;
