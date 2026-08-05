@@ -31,8 +31,14 @@ jobs:
       - name: Run affected Vitest (PR)
         if: github.event_name != 'merge_group'
         run: |
-          pnpm exec nx affected -t test:ci --base=origin/${{ github.base_ref }}
-          pnpm exec nx run dev-kit:merge-coverage
+          # Exclude workspace aggregator: its test:ci → merge-coverage dependsOn
+          # forces every package's suite even when only a few apps changed.
+          pnpm exec nx affected -t test:ci --base=origin/${{ github.base_ref }} --exclude=dev-kit
+          if compgen -G "coverage/*/coverage-summary.json" > /dev/null; then
+            pnpm exec tsx scripts/merge-coverage.ts
+          else
+            echo "No affected coverage summaries to merge; skipping."
+          fi
         env:
           CI: true
 
