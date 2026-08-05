@@ -51,7 +51,7 @@ vi.mock("@/modules/branding/studio-brand-edit-context", () => ({
 
 const brandTheme = {
   label: "Coral Studio",
-  extends: "step-up",
+  extends: "step-up-soft",
   color: {
     algorithm: "oklch" as const,
     seeds: { neutral: "#78716c", accent: "#f97316" },

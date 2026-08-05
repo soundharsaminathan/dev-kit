@@ -198,6 +198,22 @@ async function main() {
     null,
   );
 
+  // App "Continue as system admin" bypasses with demo email (prisma/seed.ts),
+  // which CI does not run — keep that identity available alongside e2e fixtures.
+  await upsertUser(
+    {
+      id: "system-admin-1",
+      firebaseUid: "dev-system-admin-1",
+      email: "admin@stepup.dev",
+      name: "System Admin",
+      phone: "+91 98000 00000",
+      role: UserRole.SYSTEM_ADMIN,
+      styles: [],
+      profileVisibility: ProfileVisibility.PRIVATE,
+    },
+    null,
+  );
+
   await upsertUser(
     {
       ...u.OWNER,
@@ -776,7 +792,7 @@ async function main() {
 
   console.log(`E2E test studio ready: ${studioId}`);
   console.log(
-    `  users: ${Object.values(u)
+    `  users: system-admin-1, ${Object.values(u)
       .map((x) => x.id)
       .join(", ")}`,
   );

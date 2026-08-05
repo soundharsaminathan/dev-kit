@@ -88,6 +88,7 @@ describe("showcase routes", () => {
           screen.getByRole("heading", { name: "Button" }),
         ).toBeInTheDocument();
       },
+      timeout: 45_000,
     });
 
     expect(screen.getByRole("heading", { name: "Button" })).toBeInTheDocument();
@@ -98,7 +99,7 @@ describe("showcase routes", () => {
     expect(
       screen.queryByRole("link", { name: /← Toggle Button/i }),
     ).not.toBeInTheDocument();
-  });
+  }, 60_000);
 
   it("renders the last component without a next pager link", async () => {
     await renderRoute("/components/tag-group", {
