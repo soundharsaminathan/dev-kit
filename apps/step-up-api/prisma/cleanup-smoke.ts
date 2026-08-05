@@ -116,13 +116,34 @@ async function main() {
   await prisma.invoice.updateMany({
     where: { id: SEED_IDS.invoicePendingId },
     data: {
+      studentId: "smoke-student-1",
+      amount: 3500,
       status: "PENDING",
       paymentMethod: null,
       paidAt: null,
       razorpayOrderId: null,
       razorpayPaymentId: null,
       paymentHoldExpiresAt: null,
-      purchaseMeta: null,
+      membershipId: null,
+      purchaseMeta: {
+        batchId: "smoke-batch-beginner-1",
+        subscriptionId: "smoke-sub-individual-adult-monthly",
+        purchaserUserId: "smoke-student-1",
+        coveredStudents: [
+          {
+            studentId: "smoke-student-1",
+            seatRole: "ADULT",
+            batchId: "smoke-batch-beginner-1",
+          },
+        ],
+      },
+    },
+  });
+
+  await prisma.membership.updateMany({
+    where: { id: SEED_IDS.membershipStudentId },
+    data: {
+      status: "ACTIVE",
     },
   });
 

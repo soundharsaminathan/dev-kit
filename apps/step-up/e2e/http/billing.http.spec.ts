@@ -1,66 +1,104 @@
 import { expect, test } from "@playwright/test";
 import { SEED } from "../fixtures/seed";
-import { expectOk, expectStatus } from "./helpers";
+import {
+  createHttpStudent,
+  expectOk,
+  expectStatus,
+  TestDataCleanup,
+} from "./helpers";
 
-async function createPendingInvoice(amount = 2200) {
-  return expectOk<{ id: string; status: string }>("STAFF", "/billing", {
+/** Adult monthly plan price from seed-e2e (e2e-sub-individual-adult-monthly). */
+const ADULT_MONTHLY_PRICE = 3500;
+
+async function createPendingInvoiceViaEnroll(cleanup: TestDataCleanup) {
+  const student = await createHttpStudent("Billing Invoice Student", cleanup);
+  const enrollment = await expectOk<{
+    invoice: { id: string; status: string; amount: number };
+  }>("STAFF", `/batches/${SEED.beginnerBatchId}/enroll`, {
     method: "POST",
     body: JSON.stringify({
-      studioId: SEED.users.STAFF.studioId,
-      studentId: SEED.users.STUDENT.id,
-      amount,
+      studentId: student.id,
+      subscriptionId: SEED.adultPlanIds[0],
     }),
   });
+  return enrollment.invoice;
 }
 
 test.describe("billing HTTP @http", () => {
-  test("staff marks unpaid invoice paid @http", async () => {
-    const target = await createPendingInvoice();
-    expect(target.status).toBe("PENDING");
+  test("manual create invoice endpoint is removed @http", async () => {
+    await expectStatus("STAFF", "/billing", 404, {
+      method: "POST",
+      body: JSON.stringify({
+        studioId: SEED.users.STAFF.studioId,
+        studentId: SEED.users.STUDENT.id,
+        amount: 2200,
+      }),
+    });
+  });
 
-    const paid = await expectOk<{ id: string; status: string }>(
-      "STAFF",
-      `/billing/${target.id}/paid`,
-      {
-        method: "PATCH",
-        body: JSON.stringify({ paymentMethod: "CASH" }),
-      },
-    );
-    expect(paid.status).toBe("PAID");
+  test("staff marks unpaid invoice paid @http", async () => {
+    const cleanup = new TestDataCleanup();
+    try {
+      const target = await createPendingInvoiceViaEnroll(cleanup);
+      expect(target.status).toBe("PENDING");
+
+      const paid = await expectOk<{ id: string; status: string }>(
+        "STAFF",
+        `/billing/${target.id}/paid`,
+        {
+          method: "PATCH",
+          body: JSON.stringify({ paymentMethod: "CASH" }),
+        },
+      );
+      expect(paid.status).toBe("PAID");
+    } finally {
+      await cleanup.dispose();
+    }
   });
 
   test("staff marks invoice paid with discounts @http", async () => {
-    const target = await createPendingInvoice(2000);
-    expect(target.status).toBe("PENDING");
+    const cleanup = new TestDataCleanup();
+    try {
+      const target = await createPendingInvoiceViaEnroll(cleanup);
+      expect(target.status).toBe("PENDING");
+      expect(Number(target.amount)).toBe(ADULT_MONTHLY_PRICE);
 
-    const paid = await expectOk<{
-      id: string;
-      status: string;
-      amount: number;
-      referralDiscount: number;
-      studioDiscount: number;
-      subtotal: number;
-    }>("STAFF", `/billing/${target.id}/paid`, {
-      method: "PATCH",
-      body: JSON.stringify({
-        paymentMethod: "UPI_MANUAL",
-        referralDiscount: 200,
-        studioDiscount: 100,
-      }),
-    });
-    expect(paid.status).toBe("PAID");
-    expect(paid.subtotal).toBe(2000);
-    expect(paid.referralDiscount).toBe(200);
-    expect(paid.studioDiscount).toBe(100);
-    expect(paid.amount).toBe(1700);
+      const paid = await expectOk<{
+        id: string;
+        status: string;
+        amount: number;
+        referralDiscount: number;
+        studioDiscount: number;
+        subtotal: number;
+      }>("STAFF", `/billing/${target.id}/paid`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          paymentMethod: "UPI_MANUAL",
+          referralDiscount: 200,
+          studioDiscount: 100,
+        }),
+      });
+      expect(paid.status).toBe("PAID");
+      expect(paid.subtotal).toBe(ADULT_MONTHLY_PRICE);
+      expect(paid.referralDiscount).toBe(200);
+      expect(paid.studioDiscount).toBe(100);
+      expect(paid.amount).toBe(ADULT_MONTHLY_PRICE - 300);
+    } finally {
+      await cleanup.dispose();
+    }
   });
 
   test("trainer cannot mark invoice paid @http", async () => {
-    const target = await createPendingInvoice(1800);
-    await expectStatus("TRAINER", `/billing/${target.id}/paid`, 403, {
-      method: "PATCH",
-      body: JSON.stringify({ paymentMethod: "CASH" }),
-    });
+    const cleanup = new TestDataCleanup();
+    try {
+      const target = await createPendingInvoiceViaEnroll(cleanup);
+      await expectStatus("TRAINER", `/billing/${target.id}/paid`, 403, {
+        method: "PATCH",
+        body: JSON.stringify({ paymentMethod: "CASH" }),
+      });
+    } finally {
+      await cleanup.dispose();
+    }
   });
 
   test("student lists own invoices @http", async () => {

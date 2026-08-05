@@ -358,13 +358,57 @@ export class MembershipsService {
     return renewed;
   }
 
-  async requestRenewalInvoice(membershipId: string) {
+  async ensureRenewalInvoice(membershipId: string) {
     const existing = await this.prisma.membership.findUnique({
       where: { id: membershipId },
       include: {
         subscription: true,
         purchaser: { select: { id: true, studioId: true } },
       },
+    });
+
+    if (!existing) {
+      throw new NotFoundException("Membership not found");
+    }
+
+    if (!existing.purchaser.studioId) {
+      throw new BadRequestException("Purchaser is not assigned to a studio");
+    }
+
+    const open = await this.prisma.invoice.findFirst({
+      where: {
+        membershipId,
+        status: { in: [InvoiceStatus.PENDING, InvoiceStatus.OVERDUE] },
+      },
+      orderBy: { id: "desc" },
+    });
+    if (open) {
+      return { invoice: open, created: false as const };
+    }
+
+    const settings = await this.prisma.studioSettings.findUnique({
+      where: { studioId: existing.purchaser.studioId },
+      select: { platformFeePercent: true },
+    });
+
+    const invoice = await this.prisma.invoice.create({
+      data: {
+        studentId: existing.purchaserUserId,
+        studioId: existing.purchaser.studioId,
+        membershipId: existing.id,
+        amount: existing.subscription.price,
+        status: InvoiceStatus.PENDING,
+        platformFeePercent: settings?.platformFeePercent ?? 5,
+      },
+    });
+
+    return { invoice, created: true as const };
+  }
+
+  async requestRenewalInvoice(membershipId: string) {
+    const existing = await this.prisma.membership.findUnique({
+      where: { id: membershipId },
+      select: { id: true, status: true },
     });
 
     if (!existing) {
@@ -380,36 +424,8 @@ export class MembershipsService {
       );
     }
 
-    if (!existing.purchaser.studioId) {
-      throw new BadRequestException("Purchaser is not assigned to a studio");
-    }
-
-    const pending = await this.prisma.invoice.findFirst({
-      where: {
-        membershipId,
-        status: InvoiceStatus.PENDING,
-      },
-      orderBy: { id: "desc" },
-    });
-    if (pending) {
-      return pending;
-    }
-
-    const settings = await this.prisma.studioSettings.findUnique({
-      where: { studioId: existing.purchaser.studioId },
-      select: { platformFeePercent: true },
-    });
-
-    return this.prisma.invoice.create({
-      data: {
-        studentId: existing.purchaserUserId,
-        studioId: existing.purchaser.studioId,
-        membershipId: existing.id,
-        amount: existing.subscription.price,
-        status: InvoiceStatus.PENDING,
-        platformFeePercent: settings?.platformFeePercent ?? 5,
-      },
-    });
+    const { invoice } = await this.ensureRenewalInvoice(membershipId);
+    return invoice;
   }
 
   async renewFromPaidInvoice(membershipId: string) {
