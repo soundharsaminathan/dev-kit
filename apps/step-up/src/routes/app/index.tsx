@@ -448,11 +448,6 @@ function AppDashboardPage() {
                 <EmptyState
                   title="All clear"
                   description="No pending bookings to approve."
-                  action={
-                    <TouchButton variant="primary">
-                      <Link to="/app/bookings/new">Add booking</Link>
-                    </TouchButton>
-                  }
                 />
               ) : null}
               {pending.length > 0 ? (

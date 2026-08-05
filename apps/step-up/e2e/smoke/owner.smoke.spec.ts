@@ -30,7 +30,6 @@ const OWNER_PATHS = [
   "/app/trainers",
   "/app/trainers/new",
   "/app/bookings",
-  "/app/bookings/new",
   `/app/sessions/${SMOKE.sessionAttendanceId}/attendance`,
   "/app/calendar",
   "/app/payments",

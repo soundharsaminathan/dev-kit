@@ -115,8 +115,11 @@ async function createOwnerStudent(
 }
 
 async function createTrialBooking(studentId: string) {
-  return apiRequest<{ id: string; status: string }>("STAFF", "/bookings", {
+  return apiRequest<{ id: string; status: string }>("STUDENT", "/bookings", {
     method: "POST",
+    headers: {
+      Authorization: `Bearer dev:STUDENT:${studentId}`,
+    },
     body: JSON.stringify({
       studioId: STUDIO_ID,
       studentId,
