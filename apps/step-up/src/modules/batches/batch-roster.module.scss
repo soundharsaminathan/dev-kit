@@ -27,13 +27,9 @@
 
 @media (min-width: 40rem) {
   .enrollForm {
-    flex-direction: row;
-    align-items: flex-end;
-  }
-
-  .enrollForm > :first-child {
-    flex: 1;
-    min-width: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) auto;
+    align-items: end;
   }
 }
 

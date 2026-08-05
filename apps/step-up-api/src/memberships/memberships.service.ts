@@ -148,6 +148,8 @@ export class MembershipsService {
     subscriptionId: string;
     purchaserUserId: string;
     coveredStudents: CoveredStudentInput[];
+    /** When false, invoice stays pending until staff collects (no checkout timer). */
+    paymentHold?: boolean;
   }) {
     const [batch, planLink] = await Promise.all([
       this.prisma.batch.findUnique({ where: { id: args.batchId } }),
@@ -220,6 +222,8 @@ export class MembershipsService {
       coveredStudents,
     };
 
+    const holdPayment = args.paymentHold !== false;
+
     return this.prisma.invoice.create({
       data: {
         studentId: args.purchaserUserId,
@@ -227,7 +231,9 @@ export class MembershipsService {
         amount: planLink.subscription.price,
         status: InvoiceStatus.PENDING,
         platformFeePercent: settings?.platformFeePercent ?? 5,
-        paymentHoldExpiresAt: paymentHoldExpiresAt(),
+        ...(holdPayment
+          ? { paymentHoldExpiresAt: paymentHoldExpiresAt() }
+          : {}),
         purchaseMeta,
       },
     });

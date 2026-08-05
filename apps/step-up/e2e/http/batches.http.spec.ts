@@ -55,13 +55,14 @@ test.describe("batches HTTP @http", () => {
     }
   });
 
-  test("student can enroll into a self-join batch @http", async () => {
+  test("student can enroll into a self-join batch with a package @http", async () => {
     const cleanup = new TestDataCleanup();
     try {
       const student = await createHttpStudent("Trial Enrollee", cleanup);
       const enrollment = await expectOk<{
         batchId: string;
         studentId: string;
+        invoice: { id: string; status: string; amount: number };
       }>(
         "STUDENT",
         `/batches/${SEED.trialBatchId}/enroll`,
@@ -69,12 +70,15 @@ test.describe("batches HTTP @http", () => {
           method: "POST",
           body: JSON.stringify({
             studentId: student.id,
+            subscriptionId: SEED.adultPlanIds[0],
           }),
         },
         { userId: student.id },
       );
       expect(enrollment.batchId).toBe(SEED.trialBatchId);
       expect(enrollment.studentId).toBe(student.id);
+      expect(enrollment.invoice.status).toBe("PENDING");
+      expect(enrollment.invoice.amount).toBeGreaterThan(0);
     } finally {
       await cleanup.dispose();
     }

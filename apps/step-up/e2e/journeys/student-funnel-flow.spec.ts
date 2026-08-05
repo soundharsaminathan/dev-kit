@@ -202,6 +202,7 @@ async function enrollStudent(batchId: string, studentId: string) {
     method: "POST",
     body: JSON.stringify({
       studentId,
+      subscriptionId: SEED.adultPlanIds[0],
     }),
   });
 }

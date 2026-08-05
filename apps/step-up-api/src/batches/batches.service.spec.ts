@@ -721,10 +721,15 @@ describe("BatchesService.remove and enroll", () => {
     prisma.parentChild.findUnique.mockResolvedValue(null);
 
     await expect(
-      service.enroll("batch-1", "student-2", {
-        id: "student-1",
-        role: UserRole.STUDENT,
-      } as never),
+      service.enroll(
+        "batch-1",
+        "student-2",
+        {
+          id: "student-1",
+          role: UserRole.STUDENT,
+        } as never,
+        "sub-1",
+      ),
     ).rejects.toBeInstanceOf(ForbiddenException);
   });
 
@@ -733,25 +738,37 @@ describe("BatchesService.remove and enroll", () => {
       id: "batch-1",
       active: true,
       capacity: 10,
+      category: "ADULTS",
       enrollmentMode: EnrollmentMode.STAFF_ONLY,
       enrollments: [],
     });
 
     await expect(
-      service.enroll("batch-1", "student-1", {
-        id: "student-1",
-        role: UserRole.STUDENT,
-      } as never),
+      service.enroll(
+        "batch-1",
+        "student-1",
+        {
+          id: "student-1",
+          role: UserRole.STUDENT,
+        } as never,
+        "sub-1",
+      ),
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
-  it("enrolls a self-join student without trial options", async () => {
+  it("enrolls with a package and creates a pending invoice", async () => {
     prisma.batch.findUnique.mockResolvedValue({
       id: "batch-1",
       active: true,
       capacity: 10,
+      category: "ADULTS",
       enrollmentMode: EnrollmentMode.SELF_JOIN,
       enrollments: [],
+    });
+    memberships.purchaseForBatch.mockResolvedValue({
+      id: "inv-1",
+      amount: 2000,
+      status: "PENDING",
     });
     prisma.batchEnrollment.upsert.mockResolvedValue({
       id: "enroll-1",
@@ -760,14 +777,48 @@ describe("BatchesService.remove and enroll", () => {
     });
 
     await expect(
-      service.enroll("batch-1", "student-1", {
-        id: "student-1",
-        role: UserRole.STUDENT,
-      } as never),
+      service.enroll(
+        "batch-1",
+        "student-1",
+        {
+          id: "student-1",
+          role: UserRole.STUDENT,
+        } as never,
+        "sub-1",
+      ),
     ).resolves.toMatchObject({
       batchId: "batch-1",
       studentId: "student-1",
+      invoice: { id: "inv-1", amount: 2000 },
     });
+    expect(memberships.purchaseForBatch).toHaveBeenCalledWith({
+      batchId: "batch-1",
+      subscriptionId: "sub-1",
+      purchaserUserId: "student-1",
+      coveredStudents: [{ studentId: "student-1", seatRole: "ADULT" }],
+      paymentHold: false,
+    });
+  });
+
+  it("rejects enroll when student is already enrolled", async () => {
+    prisma.batch.findUnique.mockResolvedValue({
+      id: "batch-1",
+      active: true,
+      capacity: 10,
+      category: "ADULTS",
+      enrollmentMode: EnrollmentMode.STAFF_ONLY,
+      enrollments: [{ studentId: "student-1" }],
+    });
+
+    await expect(
+      service.enroll(
+        "batch-1",
+        "student-1",
+        { id: "staff-1", role: UserRole.STAFF } as never,
+        "sub-1",
+      ),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(memberships.purchaseForBatch).not.toHaveBeenCalled();
   });
 });
 

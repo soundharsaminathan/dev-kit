@@ -220,6 +220,9 @@ class UpdateBatchDto {
 class EnrollStudentDto {
   @IsString()
   studentId!: string;
+
+  @IsString()
+  subscriptionId!: string;
 }
 
 class SwitchBatchDto {
@@ -375,7 +378,12 @@ export class BatchesController {
     @Body() dto: EnrollStudentDto,
     @CurrentUser() actor: DecryptedUser,
   ) {
-    return this.batchesService.enroll(id, dto.studentId, actor);
+    return this.batchesService.enroll(
+      id,
+      dto.studentId,
+      actor,
+      dto.subscriptionId,
+    );
   }
 
   @Post(":id/switch")
