@@ -1,0 +1,35 @@
+.edge {
+  fill: none;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+}
+
+.completed {
+  stroke-dasharray: 8 6;
+  animation: dashFlow 1.6s linear infinite;
+}
+
+.current {
+  stroke: var(--accent);
+  stroke-width: 3;
+  stroke-dasharray: 8 6;
+  animation: dashFlow 1.2s linear infinite;
+}
+
+.upcoming {
+  stroke: color-mix(in oklab, var(--muted-fg) 55%, transparent);
+  stroke-dasharray: 4 8;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .completed,
+  .current {
+    animation: none;
+  }
+}
+
+@keyframes dashFlow {
+  to {
+    stroke-dashoffset: -28;
+  }
+}

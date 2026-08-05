@@ -8,1732 +8,1282 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-import { Route as rootRouteImport } from './routes/__root'
-import { Route as RegisterRouteImport } from './routes/register'
-import { Route as MeRouteImport } from './routes/me'
-import { Route as LoginRouteImport } from './routes/login'
-import { Route as JoinRouteImport } from './routes/join'
-import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
-import { Route as AppRouteImport } from './routes/app'
-import { Route as AdminRouteImport } from './routes/admin'
-import { Route as IndexRouteImport } from './routes/index'
-import { Route as MeIndexRouteImport } from './routes/me/index'
-import { Route as AppIndexRouteImport } from './routes/app/index'
-import { Route as AdminIndexRouteImport } from './routes/admin/index'
-import { Route as UsersIdRouteImport } from './routes/users.$id'
-import { Route as TrainersIdRouteImport } from './routes/trainers.$id'
-import { Route as StudioStudioIdRouteImport } from './routes/studio.$studioId'
-import { Route as PostsIdRouteImport } from './routes/posts.$id'
-import { Route as MeSubscriptionsRouteImport } from './routes/me/subscriptions'
-import { Route as MeProfileRouteImport } from './routes/me/profile'
-import { Route as MeOnboardingRouteImport } from './routes/me/onboarding'
-import { Route as MeInvoicesRouteImport } from './routes/me/invoices'
-import { Route as MeFeedRouteImport } from './routes/me/feed'
-import { Route as MeContestsRouteImport } from './routes/me/contests'
-import { Route as MeCheckInRouteImport } from './routes/me/check-in'
-import { Route as MeCalendarRouteImport } from './routes/me/calendar'
-import { Route as MeBookingsRouteImport } from './routes/me/bookings'
-import { Route as MeBookRouteImport } from './routes/me/book'
-import { Route as MeAttendanceRouteImport } from './routes/me/attendance'
-import { Route as AppSettingsRouteImport } from './routes/app/settings'
-import { Route as AppRetentionRouteImport } from './routes/app/retention'
-import { Route as AppProfileRouteImport } from './routes/app/profile'
-import { Route as AppPaymentsRouteImport } from './routes/app/payments'
-import { Route as AppInvoicesRouteImport } from './routes/app/invoices'
-import { Route as AppFeedRouteImport } from './routes/app/feed'
-import { Route as AppCalendarRouteImport } from './routes/app/calendar'
-import { Route as AdminProfileRouteImport } from './routes/admin/profile'
-import { Route as MeTrainersIndexRouteImport } from './routes/me/trainers/index'
-import { Route as MeMessagesIndexRouteImport } from './routes/me/messages/index'
-import { Route as MeLocationsIndexRouteImport } from './routes/me/locations/index'
-import { Route as AppTrainersIndexRouteImport } from './routes/app/trainers/index'
-import { Route as AppSubscriptionsIndexRouteImport } from './routes/app/subscriptions/index'
-import { Route as AppStudentsIndexRouteImport } from './routes/app/students/index'
-import { Route as AppMessagesIndexRouteImport } from './routes/app/messages/index'
-import { Route as AppLocationsIndexRouteImport } from './routes/app/locations/index'
-import { Route as AppContestsIndexRouteImport } from './routes/app/contests/index'
-import { Route as AppCertificatesIndexRouteImport } from './routes/app/certificates/index'
-import { Route as AppBookingsIndexRouteImport } from './routes/app/bookings/index'
-import { Route as AppBatchesIndexRouteImport } from './routes/app/batches/index'
-import { Route as MeProfileSecurityRouteImport } from './routes/me/profile_.security'
-import { Route as MeProfileFollowRequestsRouteImport } from './routes/me/profile_.follow-requests'
-import { Route as MeProfileEditRouteImport } from './routes/me/profile_.edit'
-import { Route as MeProfileChangePasswordRouteImport } from './routes/me/profile_.change-password'
-import { Route as MeProfileChangeEmailRouteImport } from './routes/me/profile_.change-email'
-import { Route as MeMessagesIdRouteImport } from './routes/me/messages/$id'
-import { Route as MeLocationsIdRouteImport } from './routes/me/locations/$id'
-import { Route as MeCheckoutBookingIdRouteImport } from './routes/me/checkout/$bookingId'
-import { Route as MeBatchesIdRouteImport } from './routes/me/batches/$id'
-import { Route as AppTrainersNewRouteImport } from './routes/app/trainers/new'
-import { Route as AppSubscriptionsNewRouteImport } from './routes/app/subscriptions/new'
-import { Route as AppSubscriptionsIdRouteImport } from './routes/app/subscriptions/$id'
-import { Route as AppStudentsNewRouteImport } from './routes/app/students/new'
-import { Route as AppStudentsImportRouteImport } from './routes/app/students/import'
-import { Route as AppStudentsIdRouteImport } from './routes/app/students/$id'
-import { Route as AppSettingsThemeRouteImport } from './routes/app/settings_.theme'
-import { Route as AppSettingsTeamRouteImport } from './routes/app/settings_.team'
-import { Route as AppSettingsStylesRouteImport } from './routes/app/settings_.styles'
-import { Route as AppSettingsProfileRouteImport } from './routes/app/settings_.profile'
-import { Route as AppSettingsPaymentsRouteImport } from './routes/app/settings_.payments'
-import { Route as AppSettingsBrandingRouteImport } from './routes/app/settings_.branding'
-import { Route as AppSettingsBillingRouteImport } from './routes/app/settings_.billing'
-import { Route as AppProfileSecurityRouteImport } from './routes/app/profile_.security'
-import { Route as AppProfileFollowRequestsRouteImport } from './routes/app/profile_.follow-requests'
-import { Route as AppProfileEditRouteImport } from './routes/app/profile_.edit'
-import { Route as AppProfileChangePasswordRouteImport } from './routes/app/profile_.change-password'
-import { Route as AppProfileChangeEmailRouteImport } from './routes/app/profile_.change-email'
-import { Route as AppMessagesIdRouteImport } from './routes/app/messages/$id'
-import { Route as AppLocationsIdRouteImport } from './routes/app/locations/$id'
-import { Route as AppContestsNewRouteImport } from './routes/app/contests/new'
-import { Route as AppContestsIdRouteImport } from './routes/app/contests/$id'
-import { Route as AppCertificatesNewRouteImport } from './routes/app/certificates/new'
-import { Route as AppCertificatesIdRouteImport } from './routes/app/certificates/$id'
-import { Route as AppBookingsNewRouteImport } from './routes/app/bookings/new'
-import { Route as AppBatchesNewRouteImport } from './routes/app/batches/new'
-import { Route as AppBatchesIdRouteImport } from './routes/app/batches/$id'
-import { Route as AdminStudiosNewRouteImport } from './routes/admin/studios/new'
-import { Route as AdminStudiosIdRouteImport } from './routes/admin/studios/$id'
-import { Route as MeLocationsIdClassesRouteImport } from './routes/me/locations/$id_.classes'
-import { Route as MeCheckoutInvoiceInvoiceIdRouteImport } from './routes/me/checkout/invoice.$invoiceId'
-import { Route as AppSessionsIdAttendanceRouteImport } from './routes/app/sessions.$id.attendance'
-import { Route as AppLocationsIdClassesRouteImport } from './routes/app/locations/$id_.classes'
-import { Route as AppLocationsIdEditRouteImport } from './routes/app/locations/$id.edit'
+// Import Routes
 
-const RegisterRoute = RegisterRouteImport.update({
+import { Route as rootRoute } from './routes/__root'
+import { Route as RegisterImport } from './routes/register'
+import { Route as MeImport } from './routes/me'
+import { Route as LoginImport } from './routes/login'
+import { Route as JoinImport } from './routes/join'
+import { Route as ForgotPasswordImport } from './routes/forgot-password'
+import { Route as AppImport } from './routes/app'
+import { Route as AdminImport } from './routes/admin'
+import { Route as IndexImport } from './routes/index'
+import { Route as MeIndexImport } from './routes/me/index'
+import { Route as AppIndexImport } from './routes/app/index'
+import { Route as AdminIndexImport } from './routes/admin/index'
+import { Route as UsersIdImport } from './routes/users.$id'
+import { Route as TrainersIdImport } from './routes/trainers.$id'
+import { Route as StudioStudioIdImport } from './routes/studio.$studioId'
+import { Route as PostsIdImport } from './routes/posts.$id'
+import { Route as MeSubscriptionsImport } from './routes/me/subscriptions'
+import { Route as MeProfileImport } from './routes/me/profile'
+import { Route as MeOnboardingImport } from './routes/me/onboarding'
+import { Route as MeJourneyImport } from './routes/me/journey'
+import { Route as MeInvoicesImport } from './routes/me/invoices'
+import { Route as MeFeedImport } from './routes/me/feed'
+import { Route as MeContestsImport } from './routes/me/contests'
+import { Route as MeCheckInImport } from './routes/me/check-in'
+import { Route as MeCalendarImport } from './routes/me/calendar'
+import { Route as MeBookingsImport } from './routes/me/bookings'
+import { Route as MeBookImport } from './routes/me/book'
+import { Route as MeAttendanceImport } from './routes/me/attendance'
+import { Route as AppSettingsImport } from './routes/app/settings'
+import { Route as AppRetentionImport } from './routes/app/retention'
+import { Route as AppProfileImport } from './routes/app/profile'
+import { Route as AppPaymentsImport } from './routes/app/payments'
+import { Route as AppInvoicesImport } from './routes/app/invoices'
+import { Route as AppFeedImport } from './routes/app/feed'
+import { Route as AppCalendarImport } from './routes/app/calendar'
+import { Route as AdminProfileImport } from './routes/admin/profile'
+import { Route as MeTrainersIndexImport } from './routes/me/trainers/index'
+import { Route as MeMessagesIndexImport } from './routes/me/messages/index'
+import { Route as MeLocationsIndexImport } from './routes/me/locations/index'
+import { Route as AppTrainersIndexImport } from './routes/app/trainers/index'
+import { Route as AppSubscriptionsIndexImport } from './routes/app/subscriptions/index'
+import { Route as AppStudentsIndexImport } from './routes/app/students/index'
+import { Route as AppMessagesIndexImport } from './routes/app/messages/index'
+import { Route as AppLocationsIndexImport } from './routes/app/locations/index'
+import { Route as AppContestsIndexImport } from './routes/app/contests/index'
+import { Route as AppCertificatesIndexImport } from './routes/app/certificates/index'
+import { Route as AppBookingsIndexImport } from './routes/app/bookings/index'
+import { Route as AppBatchesIndexImport } from './routes/app/batches/index'
+import { Route as MeProfileSecurityImport } from './routes/me/profile_.security'
+import { Route as MeProfileFollowRequestsImport } from './routes/me/profile_.follow-requests'
+import { Route as MeProfileEditImport } from './routes/me/profile_.edit'
+import { Route as MeProfileChangePasswordImport } from './routes/me/profile_.change-password'
+import { Route as MeProfileChangeEmailImport } from './routes/me/profile_.change-email'
+import { Route as MeMessagesIdImport } from './routes/me/messages/$id'
+import { Route as MeLocationsIdImport } from './routes/me/locations/$id'
+import { Route as MeCheckoutBookingIdImport } from './routes/me/checkout/$bookingId'
+import { Route as MeBatchesIdImport } from './routes/me/batches/$id'
+import { Route as AppTrainersNewImport } from './routes/app/trainers/new'
+import { Route as AppSubscriptionsNewImport } from './routes/app/subscriptions/new'
+import { Route as AppSubscriptionsIdImport } from './routes/app/subscriptions/$id'
+import { Route as AppStudentsNewImport } from './routes/app/students/new'
+import { Route as AppStudentsImportImport } from './routes/app/students/import'
+import { Route as AppStudentsIdImport } from './routes/app/students/$id'
+import { Route as AppSettingsThemeImport } from './routes/app/settings_.theme'
+import { Route as AppSettingsTeamImport } from './routes/app/settings_.team'
+import { Route as AppSettingsStylesImport } from './routes/app/settings_.styles'
+import { Route as AppSettingsProfileImport } from './routes/app/settings_.profile'
+import { Route as AppSettingsPaymentsImport } from './routes/app/settings_.payments'
+import { Route as AppSettingsBrandingImport } from './routes/app/settings_.branding'
+import { Route as AppSettingsBillingImport } from './routes/app/settings_.billing'
+import { Route as AppProfileSecurityImport } from './routes/app/profile_.security'
+import { Route as AppProfileFollowRequestsImport } from './routes/app/profile_.follow-requests'
+import { Route as AppProfileEditImport } from './routes/app/profile_.edit'
+import { Route as AppProfileChangePasswordImport } from './routes/app/profile_.change-password'
+import { Route as AppProfileChangeEmailImport } from './routes/app/profile_.change-email'
+import { Route as AppMessagesIdImport } from './routes/app/messages/$id'
+import { Route as AppLocationsIdImport } from './routes/app/locations/$id'
+import { Route as AppContestsNewImport } from './routes/app/contests/new'
+import { Route as AppContestsIdImport } from './routes/app/contests/$id'
+import { Route as AppCertificatesNewImport } from './routes/app/certificates/new'
+import { Route as AppCertificatesIdImport } from './routes/app/certificates/$id'
+import { Route as AppBookingsNewImport } from './routes/app/bookings/new'
+import { Route as AppBatchesNewImport } from './routes/app/batches/new'
+import { Route as AppBatchesIdImport } from './routes/app/batches/$id'
+import { Route as AdminStudiosNewImport } from './routes/admin/studios/new'
+import { Route as AdminStudiosIdImport } from './routes/admin/studios/$id'
+import { Route as MeLocationsIdClassesImport } from './routes/me/locations/$id_.classes'
+import { Route as MeCheckoutInvoiceInvoiceIdImport } from './routes/me/checkout/invoice.$invoiceId'
+import { Route as AppSessionsIdAttendanceImport } from './routes/app/sessions.$id.attendance'
+import { Route as AppLocationsIdClassesImport } from './routes/app/locations/$id_.classes'
+import { Route as AppLocationsIdEditImport } from './routes/app/locations/$id.edit'
+
+// Create/Update Routes
+
+const RegisterRoute = RegisterImport.update({
   id: '/register',
   path: '/register',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => rootRoute,
 } as any)
-const MeRoute = MeRouteImport.update({
+
+const MeRoute = MeImport.update({
   id: '/me',
   path: '/me',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => rootRoute,
 } as any)
-const LoginRoute = LoginRouteImport.update({
+
+const LoginRoute = LoginImport.update({
   id: '/login',
   path: '/login',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => rootRoute,
 } as any)
-const JoinRoute = JoinRouteImport.update({
+
+const JoinRoute = JoinImport.update({
   id: '/join',
   path: '/join',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => rootRoute,
 } as any)
-const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
+
+const ForgotPasswordRoute = ForgotPasswordImport.update({
   id: '/forgot-password',
   path: '/forgot-password',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => rootRoute,
 } as any)
-const AppRoute = AppRouteImport.update({
+
+const AppRoute = AppImport.update({
   id: '/app',
   path: '/app',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => rootRoute,
 } as any)
-const AdminRoute = AdminRouteImport.update({
+
+const AdminRoute = AdminImport.update({
   id: '/admin',
   path: '/admin',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => rootRoute,
 } as any)
-const IndexRoute = IndexRouteImport.update({
+
+const IndexRoute = IndexImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => rootRoute,
 } as any)
-const MeIndexRoute = MeIndexRouteImport.update({
+
+const MeIndexRoute = MeIndexImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => MeRoute,
 } as any)
-const AppIndexRoute = AppIndexRouteImport.update({
+
+const AppIndexRoute = AppIndexImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AppRoute,
 } as any)
-const AdminIndexRoute = AdminIndexRouteImport.update({
+
+const AdminIndexRoute = AdminIndexImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AdminRoute,
 } as any)
-const UsersIdRoute = UsersIdRouteImport.update({
+
+const UsersIdRoute = UsersIdImport.update({
   id: '/users/$id',
   path: '/users/$id',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => rootRoute,
 } as any)
-const TrainersIdRoute = TrainersIdRouteImport.update({
+
+const TrainersIdRoute = TrainersIdImport.update({
   id: '/trainers/$id',
   path: '/trainers/$id',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => rootRoute,
 } as any)
-const StudioStudioIdRoute = StudioStudioIdRouteImport.update({
+
+const StudioStudioIdRoute = StudioStudioIdImport.update({
   id: '/studio/$studioId',
   path: '/studio/$studioId',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => rootRoute,
 } as any)
-const PostsIdRoute = PostsIdRouteImport.update({
+
+const PostsIdRoute = PostsIdImport.update({
   id: '/posts/$id',
   path: '/posts/$id',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => rootRoute,
 } as any)
-const MeSubscriptionsRoute = MeSubscriptionsRouteImport.update({
+
+const MeSubscriptionsRoute = MeSubscriptionsImport.update({
   id: '/subscriptions',
   path: '/subscriptions',
   getParentRoute: () => MeRoute,
 } as any)
-const MeProfileRoute = MeProfileRouteImport.update({
+
+const MeProfileRoute = MeProfileImport.update({
   id: '/profile',
   path: '/profile',
   getParentRoute: () => MeRoute,
 } as any)
-const MeOnboardingRoute = MeOnboardingRouteImport.update({
+
+const MeOnboardingRoute = MeOnboardingImport.update({
   id: '/onboarding',
   path: '/onboarding',
   getParentRoute: () => MeRoute,
 } as any)
-const MeInvoicesRoute = MeInvoicesRouteImport.update({
+
+const MeJourneyRoute = MeJourneyImport.update({
+  id: '/journey',
+  path: '/journey',
+  getParentRoute: () => MeRoute,
+} as any)
+
+const MeInvoicesRoute = MeInvoicesImport.update({
   id: '/invoices',
   path: '/invoices',
   getParentRoute: () => MeRoute,
 } as any)
-const MeFeedRoute = MeFeedRouteImport.update({
+
+const MeFeedRoute = MeFeedImport.update({
   id: '/feed',
   path: '/feed',
   getParentRoute: () => MeRoute,
 } as any)
-const MeContestsRoute = MeContestsRouteImport.update({
+
+const MeContestsRoute = MeContestsImport.update({
   id: '/contests',
   path: '/contests',
   getParentRoute: () => MeRoute,
 } as any)
-const MeCheckInRoute = MeCheckInRouteImport.update({
+
+const MeCheckInRoute = MeCheckInImport.update({
   id: '/check-in',
   path: '/check-in',
   getParentRoute: () => MeRoute,
 } as any)
-const MeCalendarRoute = MeCalendarRouteImport.update({
+
+const MeCalendarRoute = MeCalendarImport.update({
   id: '/calendar',
   path: '/calendar',
   getParentRoute: () => MeRoute,
 } as any)
-const MeBookingsRoute = MeBookingsRouteImport.update({
+
+const MeBookingsRoute = MeBookingsImport.update({
   id: '/bookings',
   path: '/bookings',
   getParentRoute: () => MeRoute,
 } as any)
-const MeBookRoute = MeBookRouteImport.update({
+
+const MeBookRoute = MeBookImport.update({
   id: '/book',
   path: '/book',
   getParentRoute: () => MeRoute,
 } as any)
-const MeAttendanceRoute = MeAttendanceRouteImport.update({
+
+const MeAttendanceRoute = MeAttendanceImport.update({
   id: '/attendance',
   path: '/attendance',
   getParentRoute: () => MeRoute,
 } as any)
-const AppSettingsRoute = AppSettingsRouteImport.update({
+
+const AppSettingsRoute = AppSettingsImport.update({
   id: '/settings',
   path: '/settings',
   getParentRoute: () => AppRoute,
 } as any)
-const AppRetentionRoute = AppRetentionRouteImport.update({
+
+const AppRetentionRoute = AppRetentionImport.update({
   id: '/retention',
   path: '/retention',
   getParentRoute: () => AppRoute,
 } as any)
-const AppProfileRoute = AppProfileRouteImport.update({
+
+const AppProfileRoute = AppProfileImport.update({
   id: '/profile',
   path: '/profile',
   getParentRoute: () => AppRoute,
 } as any)
-const AppPaymentsRoute = AppPaymentsRouteImport.update({
+
+const AppPaymentsRoute = AppPaymentsImport.update({
   id: '/payments',
   path: '/payments',
   getParentRoute: () => AppRoute,
 } as any)
-const AppInvoicesRoute = AppInvoicesRouteImport.update({
+
+const AppInvoicesRoute = AppInvoicesImport.update({
   id: '/invoices',
   path: '/invoices',
   getParentRoute: () => AppRoute,
 } as any)
-const AppFeedRoute = AppFeedRouteImport.update({
+
+const AppFeedRoute = AppFeedImport.update({
   id: '/feed',
   path: '/feed',
   getParentRoute: () => AppRoute,
 } as any)
-const AppCalendarRoute = AppCalendarRouteImport.update({
+
+const AppCalendarRoute = AppCalendarImport.update({
   id: '/calendar',
   path: '/calendar',
   getParentRoute: () => AppRoute,
 } as any)
-const AdminProfileRoute = AdminProfileRouteImport.update({
+
+const AdminProfileRoute = AdminProfileImport.update({
   id: '/profile',
   path: '/profile',
   getParentRoute: () => AdminRoute,
 } as any)
-const MeTrainersIndexRoute = MeTrainersIndexRouteImport.update({
+
+const MeTrainersIndexRoute = MeTrainersIndexImport.update({
   id: '/trainers/',
   path: '/trainers/',
   getParentRoute: () => MeRoute,
 } as any)
-const MeMessagesIndexRoute = MeMessagesIndexRouteImport.update({
+
+const MeMessagesIndexRoute = MeMessagesIndexImport.update({
   id: '/messages/',
   path: '/messages/',
   getParentRoute: () => MeRoute,
 } as any)
-const MeLocationsIndexRoute = MeLocationsIndexRouteImport.update({
+
+const MeLocationsIndexRoute = MeLocationsIndexImport.update({
   id: '/locations/',
   path: '/locations/',
   getParentRoute: () => MeRoute,
 } as any)
-const AppTrainersIndexRoute = AppTrainersIndexRouteImport.update({
+
+const AppTrainersIndexRoute = AppTrainersIndexImport.update({
   id: '/trainers/',
   path: '/trainers/',
   getParentRoute: () => AppRoute,
 } as any)
-const AppSubscriptionsIndexRoute = AppSubscriptionsIndexRouteImport.update({
+
+const AppSubscriptionsIndexRoute = AppSubscriptionsIndexImport.update({
   id: '/subscriptions/',
   path: '/subscriptions/',
   getParentRoute: () => AppRoute,
 } as any)
-const AppStudentsIndexRoute = AppStudentsIndexRouteImport.update({
+
+const AppStudentsIndexRoute = AppStudentsIndexImport.update({
   id: '/students/',
   path: '/students/',
   getParentRoute: () => AppRoute,
 } as any)
-const AppMessagesIndexRoute = AppMessagesIndexRouteImport.update({
+
+const AppMessagesIndexRoute = AppMessagesIndexImport.update({
   id: '/messages/',
   path: '/messages/',
   getParentRoute: () => AppRoute,
 } as any)
-const AppLocationsIndexRoute = AppLocationsIndexRouteImport.update({
+
+const AppLocationsIndexRoute = AppLocationsIndexImport.update({
   id: '/locations/',
   path: '/locations/',
   getParentRoute: () => AppRoute,
 } as any)
-const AppContestsIndexRoute = AppContestsIndexRouteImport.update({
+
+const AppContestsIndexRoute = AppContestsIndexImport.update({
   id: '/contests/',
   path: '/contests/',
   getParentRoute: () => AppRoute,
 } as any)
-const AppCertificatesIndexRoute = AppCertificatesIndexRouteImport.update({
+
+const AppCertificatesIndexRoute = AppCertificatesIndexImport.update({
   id: '/certificates/',
   path: '/certificates/',
   getParentRoute: () => AppRoute,
 } as any)
-const AppBookingsIndexRoute = AppBookingsIndexRouteImport.update({
+
+const AppBookingsIndexRoute = AppBookingsIndexImport.update({
   id: '/bookings/',
   path: '/bookings/',
   getParentRoute: () => AppRoute,
 } as any)
-const AppBatchesIndexRoute = AppBatchesIndexRouteImport.update({
+
+const AppBatchesIndexRoute = AppBatchesIndexImport.update({
   id: '/batches/',
   path: '/batches/',
   getParentRoute: () => AppRoute,
 } as any)
-const MeProfileSecurityRoute = MeProfileSecurityRouteImport.update({
+
+const MeProfileSecurityRoute = MeProfileSecurityImport.update({
   id: '/profile_/security',
   path: '/profile/security',
   getParentRoute: () => MeRoute,
 } as any)
-const MeProfileFollowRequestsRoute = MeProfileFollowRequestsRouteImport.update({
+
+const MeProfileFollowRequestsRoute = MeProfileFollowRequestsImport.update({
   id: '/profile_/follow-requests',
   path: '/profile/follow-requests',
   getParentRoute: () => MeRoute,
 } as any)
-const MeProfileEditRoute = MeProfileEditRouteImport.update({
+
+const MeProfileEditRoute = MeProfileEditImport.update({
   id: '/profile_/edit',
   path: '/profile/edit',
   getParentRoute: () => MeRoute,
 } as any)
-const MeProfileChangePasswordRoute = MeProfileChangePasswordRouteImport.update({
+
+const MeProfileChangePasswordRoute = MeProfileChangePasswordImport.update({
   id: '/profile_/change-password',
   path: '/profile/change-password',
   getParentRoute: () => MeRoute,
 } as any)
-const MeProfileChangeEmailRoute = MeProfileChangeEmailRouteImport.update({
+
+const MeProfileChangeEmailRoute = MeProfileChangeEmailImport.update({
   id: '/profile_/change-email',
   path: '/profile/change-email',
   getParentRoute: () => MeRoute,
 } as any)
-const MeMessagesIdRoute = MeMessagesIdRouteImport.update({
+
+const MeMessagesIdRoute = MeMessagesIdImport.update({
   id: '/messages/$id',
   path: '/messages/$id',
   getParentRoute: () => MeRoute,
 } as any)
-const MeLocationsIdRoute = MeLocationsIdRouteImport.update({
+
+const MeLocationsIdRoute = MeLocationsIdImport.update({
   id: '/locations/$id',
   path: '/locations/$id',
   getParentRoute: () => MeRoute,
 } as any)
-const MeCheckoutBookingIdRoute = MeCheckoutBookingIdRouteImport.update({
+
+const MeCheckoutBookingIdRoute = MeCheckoutBookingIdImport.update({
   id: '/checkout/$bookingId',
   path: '/checkout/$bookingId',
   getParentRoute: () => MeRoute,
 } as any)
-const MeBatchesIdRoute = MeBatchesIdRouteImport.update({
+
+const MeBatchesIdRoute = MeBatchesIdImport.update({
   id: '/batches/$id',
   path: '/batches/$id',
   getParentRoute: () => MeRoute,
 } as any)
-const AppTrainersNewRoute = AppTrainersNewRouteImport.update({
+
+const AppTrainersNewRoute = AppTrainersNewImport.update({
   id: '/trainers/new',
   path: '/trainers/new',
   getParentRoute: () => AppRoute,
 } as any)
-const AppSubscriptionsNewRoute = AppSubscriptionsNewRouteImport.update({
+
+const AppSubscriptionsNewRoute = AppSubscriptionsNewImport.update({
   id: '/subscriptions/new',
   path: '/subscriptions/new',
   getParentRoute: () => AppRoute,
 } as any)
-const AppSubscriptionsIdRoute = AppSubscriptionsIdRouteImport.update({
+
+const AppSubscriptionsIdRoute = AppSubscriptionsIdImport.update({
   id: '/subscriptions/$id',
   path: '/subscriptions/$id',
   getParentRoute: () => AppRoute,
 } as any)
-const AppStudentsNewRoute = AppStudentsNewRouteImport.update({
+
+const AppStudentsNewRoute = AppStudentsNewImport.update({
   id: '/students/new',
   path: '/students/new',
   getParentRoute: () => AppRoute,
 } as any)
-const AppStudentsImportRoute = AppStudentsImportRouteImport.update({
+
+const AppStudentsImportRoute = AppStudentsImportImport.update({
   id: '/students/import',
   path: '/students/import',
   getParentRoute: () => AppRoute,
 } as any)
-const AppStudentsIdRoute = AppStudentsIdRouteImport.update({
+
+const AppStudentsIdRoute = AppStudentsIdImport.update({
   id: '/students/$id',
   path: '/students/$id',
   getParentRoute: () => AppRoute,
 } as any)
-const AppSettingsThemeRoute = AppSettingsThemeRouteImport.update({
+
+const AppSettingsThemeRoute = AppSettingsThemeImport.update({
   id: '/settings_/theme',
   path: '/settings/theme',
   getParentRoute: () => AppRoute,
 } as any)
-const AppSettingsTeamRoute = AppSettingsTeamRouteImport.update({
+
+const AppSettingsTeamRoute = AppSettingsTeamImport.update({
   id: '/settings_/team',
   path: '/settings/team',
   getParentRoute: () => AppRoute,
 } as any)
-const AppSettingsStylesRoute = AppSettingsStylesRouteImport.update({
+
+const AppSettingsStylesRoute = AppSettingsStylesImport.update({
   id: '/settings_/styles',
   path: '/settings/styles',
   getParentRoute: () => AppRoute,
 } as any)
-const AppSettingsProfileRoute = AppSettingsProfileRouteImport.update({
+
+const AppSettingsProfileRoute = AppSettingsProfileImport.update({
   id: '/settings_/profile',
   path: '/settings/profile',
   getParentRoute: () => AppRoute,
 } as any)
-const AppSettingsPaymentsRoute = AppSettingsPaymentsRouteImport.update({
+
+const AppSettingsPaymentsRoute = AppSettingsPaymentsImport.update({
   id: '/settings_/payments',
   path: '/settings/payments',
   getParentRoute: () => AppRoute,
 } as any)
-const AppSettingsBrandingRoute = AppSettingsBrandingRouteImport.update({
+
+const AppSettingsBrandingRoute = AppSettingsBrandingImport.update({
   id: '/settings_/branding',
   path: '/settings/branding',
   getParentRoute: () => AppRoute,
 } as any)
-const AppSettingsBillingRoute = AppSettingsBillingRouteImport.update({
+
+const AppSettingsBillingRoute = AppSettingsBillingImport.update({
   id: '/settings_/billing',
   path: '/settings/billing',
   getParentRoute: () => AppRoute,
 } as any)
-const AppProfileSecurityRoute = AppProfileSecurityRouteImport.update({
+
+const AppProfileSecurityRoute = AppProfileSecurityImport.update({
   id: '/profile_/security',
   path: '/profile/security',
   getParentRoute: () => AppRoute,
 } as any)
-const AppProfileFollowRequestsRoute =
-  AppProfileFollowRequestsRouteImport.update({
-    id: '/profile_/follow-requests',
-    path: '/profile/follow-requests',
-    getParentRoute: () => AppRoute,
-  } as any)
-const AppProfileEditRoute = AppProfileEditRouteImport.update({
+
+const AppProfileFollowRequestsRoute = AppProfileFollowRequestsImport.update({
+  id: '/profile_/follow-requests',
+  path: '/profile/follow-requests',
+  getParentRoute: () => AppRoute,
+} as any)
+
+const AppProfileEditRoute = AppProfileEditImport.update({
   id: '/profile_/edit',
   path: '/profile/edit',
   getParentRoute: () => AppRoute,
 } as any)
-const AppProfileChangePasswordRoute =
-  AppProfileChangePasswordRouteImport.update({
-    id: '/profile_/change-password',
-    path: '/profile/change-password',
-    getParentRoute: () => AppRoute,
-  } as any)
-const AppProfileChangeEmailRoute = AppProfileChangeEmailRouteImport.update({
+
+const AppProfileChangePasswordRoute = AppProfileChangePasswordImport.update({
+  id: '/profile_/change-password',
+  path: '/profile/change-password',
+  getParentRoute: () => AppRoute,
+} as any)
+
+const AppProfileChangeEmailRoute = AppProfileChangeEmailImport.update({
   id: '/profile_/change-email',
   path: '/profile/change-email',
   getParentRoute: () => AppRoute,
 } as any)
-const AppMessagesIdRoute = AppMessagesIdRouteImport.update({
+
+const AppMessagesIdRoute = AppMessagesIdImport.update({
   id: '/messages/$id',
   path: '/messages/$id',
   getParentRoute: () => AppRoute,
 } as any)
-const AppLocationsIdRoute = AppLocationsIdRouteImport.update({
+
+const AppLocationsIdRoute = AppLocationsIdImport.update({
   id: '/locations/$id',
   path: '/locations/$id',
   getParentRoute: () => AppRoute,
 } as any)
-const AppContestsNewRoute = AppContestsNewRouteImport.update({
+
+const AppContestsNewRoute = AppContestsNewImport.update({
   id: '/contests/new',
   path: '/contests/new',
   getParentRoute: () => AppRoute,
 } as any)
-const AppContestsIdRoute = AppContestsIdRouteImport.update({
+
+const AppContestsIdRoute = AppContestsIdImport.update({
   id: '/contests/$id',
   path: '/contests/$id',
   getParentRoute: () => AppRoute,
 } as any)
-const AppCertificatesNewRoute = AppCertificatesNewRouteImport.update({
+
+const AppCertificatesNewRoute = AppCertificatesNewImport.update({
   id: '/certificates/new',
   path: '/certificates/new',
   getParentRoute: () => AppRoute,
 } as any)
-const AppCertificatesIdRoute = AppCertificatesIdRouteImport.update({
+
+const AppCertificatesIdRoute = AppCertificatesIdImport.update({
   id: '/certificates/$id',
   path: '/certificates/$id',
   getParentRoute: () => AppRoute,
 } as any)
-const AppBookingsNewRoute = AppBookingsNewRouteImport.update({
+
+const AppBookingsNewRoute = AppBookingsNewImport.update({
   id: '/bookings/new',
   path: '/bookings/new',
   getParentRoute: () => AppRoute,
 } as any)
-const AppBatchesNewRoute = AppBatchesNewRouteImport.update({
+
+const AppBatchesNewRoute = AppBatchesNewImport.update({
   id: '/batches/new',
   path: '/batches/new',
   getParentRoute: () => AppRoute,
 } as any)
-const AppBatchesIdRoute = AppBatchesIdRouteImport.update({
+
+const AppBatchesIdRoute = AppBatchesIdImport.update({
   id: '/batches/$id',
   path: '/batches/$id',
   getParentRoute: () => AppRoute,
 } as any)
-const AdminStudiosNewRoute = AdminStudiosNewRouteImport.update({
+
+const AdminStudiosNewRoute = AdminStudiosNewImport.update({
   id: '/studios/new',
   path: '/studios/new',
   getParentRoute: () => AdminRoute,
 } as any)
-const AdminStudiosIdRoute = AdminStudiosIdRouteImport.update({
+
+const AdminStudiosIdRoute = AdminStudiosIdImport.update({
   id: '/studios/$id',
   path: '/studios/$id',
   getParentRoute: () => AdminRoute,
 } as any)
-const MeLocationsIdClassesRoute = MeLocationsIdClassesRouteImport.update({
+
+const MeLocationsIdClassesRoute = MeLocationsIdClassesImport.update({
   id: '/locations/$id_/classes',
   path: '/locations/$id/classes',
   getParentRoute: () => MeRoute,
 } as any)
-const MeCheckoutInvoiceInvoiceIdRoute =
-  MeCheckoutInvoiceInvoiceIdRouteImport.update({
+
+const MeCheckoutInvoiceInvoiceIdRoute = MeCheckoutInvoiceInvoiceIdImport.update(
+  {
     id: '/checkout/invoice/$invoiceId',
     path: '/checkout/invoice/$invoiceId',
     getParentRoute: () => MeRoute,
-  } as any)
-const AppSessionsIdAttendanceRoute = AppSessionsIdAttendanceRouteImport.update({
+  } as any,
+)
+
+const AppSessionsIdAttendanceRoute = AppSessionsIdAttendanceImport.update({
   id: '/sessions/$id/attendance',
   path: '/sessions/$id/attendance',
   getParentRoute: () => AppRoute,
 } as any)
-const AppLocationsIdClassesRoute = AppLocationsIdClassesRouteImport.update({
+
+const AppLocationsIdClassesRoute = AppLocationsIdClassesImport.update({
   id: '/locations/$id_/classes',
   path: '/locations/$id/classes',
   getParentRoute: () => AppRoute,
 } as any)
-const AppLocationsIdEditRoute = AppLocationsIdEditRouteImport.update({
+
+const AppLocationsIdEditRoute = AppLocationsIdEditImport.update({
   id: '/edit',
   path: '/edit',
   getParentRoute: () => AppLocationsIdRoute,
 } as any)
 
-export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
-  '/admin': typeof AdminRouteWithChildren
-  '/app': typeof AppRouteWithChildren
-  '/forgot-password': typeof ForgotPasswordRoute
-  '/join': typeof JoinRoute
-  '/login': typeof LoginRoute
-  '/me': typeof MeRouteWithChildren
-  '/register': typeof RegisterRoute
-  '/admin/profile': typeof AdminProfileRoute
-  '/app/calendar': typeof AppCalendarRoute
-  '/app/feed': typeof AppFeedRoute
-  '/app/invoices': typeof AppInvoicesRoute
-  '/app/payments': typeof AppPaymentsRoute
-  '/app/profile': typeof AppProfileRoute
-  '/app/retention': typeof AppRetentionRoute
-  '/app/settings': typeof AppSettingsRoute
-  '/me/attendance': typeof MeAttendanceRoute
-  '/me/book': typeof MeBookRoute
-  '/me/bookings': typeof MeBookingsRoute
-  '/me/calendar': typeof MeCalendarRoute
-  '/me/check-in': typeof MeCheckInRoute
-  '/me/contests': typeof MeContestsRoute
-  '/me/feed': typeof MeFeedRoute
-  '/me/invoices': typeof MeInvoicesRoute
-  '/me/onboarding': typeof MeOnboardingRoute
-  '/me/profile': typeof MeProfileRoute
-  '/me/subscriptions': typeof MeSubscriptionsRoute
-  '/posts/$id': typeof PostsIdRoute
-  '/studio/$studioId': typeof StudioStudioIdRoute
-  '/trainers/$id': typeof TrainersIdRoute
-  '/users/$id': typeof UsersIdRoute
-  '/admin/': typeof AdminIndexRoute
-  '/app/': typeof AppIndexRoute
-  '/me/': typeof MeIndexRoute
-  '/admin/studios/$id': typeof AdminStudiosIdRoute
-  '/admin/studios/new': typeof AdminStudiosNewRoute
-  '/app/batches/$id': typeof AppBatchesIdRoute
-  '/app/batches/new': typeof AppBatchesNewRoute
-  '/app/bookings/new': typeof AppBookingsNewRoute
-  '/app/certificates/$id': typeof AppCertificatesIdRoute
-  '/app/certificates/new': typeof AppCertificatesNewRoute
-  '/app/contests/$id': typeof AppContestsIdRoute
-  '/app/contests/new': typeof AppContestsNewRoute
-  '/app/locations/$id': typeof AppLocationsIdRouteWithChildren
-  '/app/messages/$id': typeof AppMessagesIdRoute
-  '/app/profile/change-email': typeof AppProfileChangeEmailRoute
-  '/app/profile/change-password': typeof AppProfileChangePasswordRoute
-  '/app/profile/edit': typeof AppProfileEditRoute
-  '/app/profile/follow-requests': typeof AppProfileFollowRequestsRoute
-  '/app/profile/security': typeof AppProfileSecurityRoute
-  '/app/settings/billing': typeof AppSettingsBillingRoute
-  '/app/settings/branding': typeof AppSettingsBrandingRoute
-  '/app/settings/payments': typeof AppSettingsPaymentsRoute
-  '/app/settings/profile': typeof AppSettingsProfileRoute
-  '/app/settings/styles': typeof AppSettingsStylesRoute
-  '/app/settings/team': typeof AppSettingsTeamRoute
-  '/app/settings/theme': typeof AppSettingsThemeRoute
-  '/app/students/$id': typeof AppStudentsIdRoute
-  '/app/students/import': typeof AppStudentsImportRoute
-  '/app/students/new': typeof AppStudentsNewRoute
-  '/app/subscriptions/$id': typeof AppSubscriptionsIdRoute
-  '/app/subscriptions/new': typeof AppSubscriptionsNewRoute
-  '/app/trainers/new': typeof AppTrainersNewRoute
-  '/me/batches/$id': typeof MeBatchesIdRoute
-  '/me/checkout/$bookingId': typeof MeCheckoutBookingIdRoute
-  '/me/locations/$id': typeof MeLocationsIdRoute
-  '/me/messages/$id': typeof MeMessagesIdRoute
-  '/me/profile/change-email': typeof MeProfileChangeEmailRoute
-  '/me/profile/change-password': typeof MeProfileChangePasswordRoute
-  '/me/profile/edit': typeof MeProfileEditRoute
-  '/me/profile/follow-requests': typeof MeProfileFollowRequestsRoute
-  '/me/profile/security': typeof MeProfileSecurityRoute
-  '/app/batches/': typeof AppBatchesIndexRoute
-  '/app/bookings/': typeof AppBookingsIndexRoute
-  '/app/certificates/': typeof AppCertificatesIndexRoute
-  '/app/contests/': typeof AppContestsIndexRoute
-  '/app/locations/': typeof AppLocationsIndexRoute
-  '/app/messages/': typeof AppMessagesIndexRoute
-  '/app/students/': typeof AppStudentsIndexRoute
-  '/app/subscriptions/': typeof AppSubscriptionsIndexRoute
-  '/app/trainers/': typeof AppTrainersIndexRoute
-  '/me/locations/': typeof MeLocationsIndexRoute
-  '/me/messages/': typeof MeMessagesIndexRoute
-  '/me/trainers/': typeof MeTrainersIndexRoute
-  '/app/locations/$id/edit': typeof AppLocationsIdEditRoute
-  '/app/locations/$id/classes': typeof AppLocationsIdClassesRoute
-  '/app/sessions/$id/attendance': typeof AppSessionsIdAttendanceRoute
-  '/me/checkout/invoice/$invoiceId': typeof MeCheckoutInvoiceInvoiceIdRoute
-  '/me/locations/$id/classes': typeof MeLocationsIdClassesRoute
-}
-export interface FileRoutesByTo {
-  '/': typeof IndexRoute
-  '/forgot-password': typeof ForgotPasswordRoute
-  '/join': typeof JoinRoute
-  '/login': typeof LoginRoute
-  '/register': typeof RegisterRoute
-  '/admin/profile': typeof AdminProfileRoute
-  '/app/calendar': typeof AppCalendarRoute
-  '/app/feed': typeof AppFeedRoute
-  '/app/invoices': typeof AppInvoicesRoute
-  '/app/payments': typeof AppPaymentsRoute
-  '/app/profile': typeof AppProfileRoute
-  '/app/retention': typeof AppRetentionRoute
-  '/app/settings': typeof AppSettingsRoute
-  '/me/attendance': typeof MeAttendanceRoute
-  '/me/book': typeof MeBookRoute
-  '/me/bookings': typeof MeBookingsRoute
-  '/me/calendar': typeof MeCalendarRoute
-  '/me/check-in': typeof MeCheckInRoute
-  '/me/contests': typeof MeContestsRoute
-  '/me/feed': typeof MeFeedRoute
-  '/me/invoices': typeof MeInvoicesRoute
-  '/me/onboarding': typeof MeOnboardingRoute
-  '/me/profile': typeof MeProfileRoute
-  '/me/subscriptions': typeof MeSubscriptionsRoute
-  '/posts/$id': typeof PostsIdRoute
-  '/studio/$studioId': typeof StudioStudioIdRoute
-  '/trainers/$id': typeof TrainersIdRoute
-  '/users/$id': typeof UsersIdRoute
-  '/admin': typeof AdminIndexRoute
-  '/app': typeof AppIndexRoute
-  '/me': typeof MeIndexRoute
-  '/admin/studios/$id': typeof AdminStudiosIdRoute
-  '/admin/studios/new': typeof AdminStudiosNewRoute
-  '/app/batches/$id': typeof AppBatchesIdRoute
-  '/app/batches/new': typeof AppBatchesNewRoute
-  '/app/bookings/new': typeof AppBookingsNewRoute
-  '/app/certificates/$id': typeof AppCertificatesIdRoute
-  '/app/certificates/new': typeof AppCertificatesNewRoute
-  '/app/contests/$id': typeof AppContestsIdRoute
-  '/app/contests/new': typeof AppContestsNewRoute
-  '/app/locations/$id': typeof AppLocationsIdRouteWithChildren
-  '/app/messages/$id': typeof AppMessagesIdRoute
-  '/app/profile/change-email': typeof AppProfileChangeEmailRoute
-  '/app/profile/change-password': typeof AppProfileChangePasswordRoute
-  '/app/profile/edit': typeof AppProfileEditRoute
-  '/app/profile/follow-requests': typeof AppProfileFollowRequestsRoute
-  '/app/profile/security': typeof AppProfileSecurityRoute
-  '/app/settings/billing': typeof AppSettingsBillingRoute
-  '/app/settings/branding': typeof AppSettingsBrandingRoute
-  '/app/settings/payments': typeof AppSettingsPaymentsRoute
-  '/app/settings/profile': typeof AppSettingsProfileRoute
-  '/app/settings/styles': typeof AppSettingsStylesRoute
-  '/app/settings/team': typeof AppSettingsTeamRoute
-  '/app/settings/theme': typeof AppSettingsThemeRoute
-  '/app/students/$id': typeof AppStudentsIdRoute
-  '/app/students/import': typeof AppStudentsImportRoute
-  '/app/students/new': typeof AppStudentsNewRoute
-  '/app/subscriptions/$id': typeof AppSubscriptionsIdRoute
-  '/app/subscriptions/new': typeof AppSubscriptionsNewRoute
-  '/app/trainers/new': typeof AppTrainersNewRoute
-  '/me/batches/$id': typeof MeBatchesIdRoute
-  '/me/checkout/$bookingId': typeof MeCheckoutBookingIdRoute
-  '/me/locations/$id': typeof MeLocationsIdRoute
-  '/me/messages/$id': typeof MeMessagesIdRoute
-  '/me/profile/change-email': typeof MeProfileChangeEmailRoute
-  '/me/profile/change-password': typeof MeProfileChangePasswordRoute
-  '/me/profile/edit': typeof MeProfileEditRoute
-  '/me/profile/follow-requests': typeof MeProfileFollowRequestsRoute
-  '/me/profile/security': typeof MeProfileSecurityRoute
-  '/app/batches': typeof AppBatchesIndexRoute
-  '/app/bookings': typeof AppBookingsIndexRoute
-  '/app/certificates': typeof AppCertificatesIndexRoute
-  '/app/contests': typeof AppContestsIndexRoute
-  '/app/locations': typeof AppLocationsIndexRoute
-  '/app/messages': typeof AppMessagesIndexRoute
-  '/app/students': typeof AppStudentsIndexRoute
-  '/app/subscriptions': typeof AppSubscriptionsIndexRoute
-  '/app/trainers': typeof AppTrainersIndexRoute
-  '/me/locations': typeof MeLocationsIndexRoute
-  '/me/messages': typeof MeMessagesIndexRoute
-  '/me/trainers': typeof MeTrainersIndexRoute
-  '/app/locations/$id/edit': typeof AppLocationsIdEditRoute
-  '/app/locations/$id/classes': typeof AppLocationsIdClassesRoute
-  '/app/sessions/$id/attendance': typeof AppSessionsIdAttendanceRoute
-  '/me/checkout/invoice/$invoiceId': typeof MeCheckoutInvoiceInvoiceIdRoute
-  '/me/locations/$id/classes': typeof MeLocationsIdClassesRoute
-}
-export interface FileRoutesById {
-  __root__: typeof rootRouteImport
-  '/': typeof IndexRoute
-  '/admin': typeof AdminRouteWithChildren
-  '/app': typeof AppRouteWithChildren
-  '/forgot-password': typeof ForgotPasswordRoute
-  '/join': typeof JoinRoute
-  '/login': typeof LoginRoute
-  '/me': typeof MeRouteWithChildren
-  '/register': typeof RegisterRoute
-  '/admin/profile': typeof AdminProfileRoute
-  '/app/calendar': typeof AppCalendarRoute
-  '/app/feed': typeof AppFeedRoute
-  '/app/invoices': typeof AppInvoicesRoute
-  '/app/payments': typeof AppPaymentsRoute
-  '/app/profile': typeof AppProfileRoute
-  '/app/retention': typeof AppRetentionRoute
-  '/app/settings': typeof AppSettingsRoute
-  '/me/attendance': typeof MeAttendanceRoute
-  '/me/book': typeof MeBookRoute
-  '/me/bookings': typeof MeBookingsRoute
-  '/me/calendar': typeof MeCalendarRoute
-  '/me/check-in': typeof MeCheckInRoute
-  '/me/contests': typeof MeContestsRoute
-  '/me/feed': typeof MeFeedRoute
-  '/me/invoices': typeof MeInvoicesRoute
-  '/me/onboarding': typeof MeOnboardingRoute
-  '/me/profile': typeof MeProfileRoute
-  '/me/subscriptions': typeof MeSubscriptionsRoute
-  '/posts/$id': typeof PostsIdRoute
-  '/studio/$studioId': typeof StudioStudioIdRoute
-  '/trainers/$id': typeof TrainersIdRoute
-  '/users/$id': typeof UsersIdRoute
-  '/admin/': typeof AdminIndexRoute
-  '/app/': typeof AppIndexRoute
-  '/me/': typeof MeIndexRoute
-  '/admin/studios/$id': typeof AdminStudiosIdRoute
-  '/admin/studios/new': typeof AdminStudiosNewRoute
-  '/app/batches/$id': typeof AppBatchesIdRoute
-  '/app/batches/new': typeof AppBatchesNewRoute
-  '/app/bookings/new': typeof AppBookingsNewRoute
-  '/app/certificates/$id': typeof AppCertificatesIdRoute
-  '/app/certificates/new': typeof AppCertificatesNewRoute
-  '/app/contests/$id': typeof AppContestsIdRoute
-  '/app/contests/new': typeof AppContestsNewRoute
-  '/app/locations/$id': typeof AppLocationsIdRouteWithChildren
-  '/app/messages/$id': typeof AppMessagesIdRoute
-  '/app/profile_/change-email': typeof AppProfileChangeEmailRoute
-  '/app/profile_/change-password': typeof AppProfileChangePasswordRoute
-  '/app/profile_/edit': typeof AppProfileEditRoute
-  '/app/profile_/follow-requests': typeof AppProfileFollowRequestsRoute
-  '/app/profile_/security': typeof AppProfileSecurityRoute
-  '/app/settings_/billing': typeof AppSettingsBillingRoute
-  '/app/settings_/branding': typeof AppSettingsBrandingRoute
-  '/app/settings_/payments': typeof AppSettingsPaymentsRoute
-  '/app/settings_/profile': typeof AppSettingsProfileRoute
-  '/app/settings_/styles': typeof AppSettingsStylesRoute
-  '/app/settings_/team': typeof AppSettingsTeamRoute
-  '/app/settings_/theme': typeof AppSettingsThemeRoute
-  '/app/students/$id': typeof AppStudentsIdRoute
-  '/app/students/import': typeof AppStudentsImportRoute
-  '/app/students/new': typeof AppStudentsNewRoute
-  '/app/subscriptions/$id': typeof AppSubscriptionsIdRoute
-  '/app/subscriptions/new': typeof AppSubscriptionsNewRoute
-  '/app/trainers/new': typeof AppTrainersNewRoute
-  '/me/batches/$id': typeof MeBatchesIdRoute
-  '/me/checkout/$bookingId': typeof MeCheckoutBookingIdRoute
-  '/me/locations/$id': typeof MeLocationsIdRoute
-  '/me/messages/$id': typeof MeMessagesIdRoute
-  '/me/profile_/change-email': typeof MeProfileChangeEmailRoute
-  '/me/profile_/change-password': typeof MeProfileChangePasswordRoute
-  '/me/profile_/edit': typeof MeProfileEditRoute
-  '/me/profile_/follow-requests': typeof MeProfileFollowRequestsRoute
-  '/me/profile_/security': typeof MeProfileSecurityRoute
-  '/app/batches/': typeof AppBatchesIndexRoute
-  '/app/bookings/': typeof AppBookingsIndexRoute
-  '/app/certificates/': typeof AppCertificatesIndexRoute
-  '/app/contests/': typeof AppContestsIndexRoute
-  '/app/locations/': typeof AppLocationsIndexRoute
-  '/app/messages/': typeof AppMessagesIndexRoute
-  '/app/students/': typeof AppStudentsIndexRoute
-  '/app/subscriptions/': typeof AppSubscriptionsIndexRoute
-  '/app/trainers/': typeof AppTrainersIndexRoute
-  '/me/locations/': typeof MeLocationsIndexRoute
-  '/me/messages/': typeof MeMessagesIndexRoute
-  '/me/trainers/': typeof MeTrainersIndexRoute
-  '/app/locations/$id/edit': typeof AppLocationsIdEditRoute
-  '/app/locations/$id_/classes': typeof AppLocationsIdClassesRoute
-  '/app/sessions/$id/attendance': typeof AppSessionsIdAttendanceRoute
-  '/me/checkout/invoice/$invoiceId': typeof MeCheckoutInvoiceInvoiceIdRoute
-  '/me/locations/$id_/classes': typeof MeLocationsIdClassesRoute
-}
-export interface FileRouteTypes {
-  fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths:
-    | '/'
-    | '/admin'
-    | '/app'
-    | '/forgot-password'
-    | '/join'
-    | '/login'
-    | '/me'
-    | '/register'
-    | '/admin/profile'
-    | '/app/calendar'
-    | '/app/feed'
-    | '/app/invoices'
-    | '/app/payments'
-    | '/app/profile'
-    | '/app/retention'
-    | '/app/settings'
-    | '/me/attendance'
-    | '/me/book'
-    | '/me/bookings'
-    | '/me/calendar'
-    | '/me/check-in'
-    | '/me/contests'
-    | '/me/feed'
-    | '/me/invoices'
-    | '/me/onboarding'
-    | '/me/profile'
-    | '/me/subscriptions'
-    | '/posts/$id'
-    | '/studio/$studioId'
-    | '/trainers/$id'
-    | '/users/$id'
-    | '/admin/'
-    | '/app/'
-    | '/me/'
-    | '/admin/studios/$id'
-    | '/admin/studios/new'
-    | '/app/batches/$id'
-    | '/app/batches/new'
-    | '/app/bookings/new'
-    | '/app/certificates/$id'
-    | '/app/certificates/new'
-    | '/app/contests/$id'
-    | '/app/contests/new'
-    | '/app/locations/$id'
-    | '/app/messages/$id'
-    | '/app/profile/change-email'
-    | '/app/profile/change-password'
-    | '/app/profile/edit'
-    | '/app/profile/follow-requests'
-    | '/app/profile/security'
-    | '/app/settings/billing'
-    | '/app/settings/branding'
-    | '/app/settings/payments'
-    | '/app/settings/profile'
-    | '/app/settings/styles'
-    | '/app/settings/team'
-    | '/app/settings/theme'
-    | '/app/students/$id'
-    | '/app/students/import'
-    | '/app/students/new'
-    | '/app/subscriptions/$id'
-    | '/app/subscriptions/new'
-    | '/app/trainers/new'
-    | '/me/batches/$id'
-    | '/me/checkout/$bookingId'
-    | '/me/locations/$id'
-    | '/me/messages/$id'
-    | '/me/profile/change-email'
-    | '/me/profile/change-password'
-    | '/me/profile/edit'
-    | '/me/profile/follow-requests'
-    | '/me/profile/security'
-    | '/app/batches/'
-    | '/app/bookings/'
-    | '/app/certificates/'
-    | '/app/contests/'
-    | '/app/locations/'
-    | '/app/messages/'
-    | '/app/students/'
-    | '/app/subscriptions/'
-    | '/app/trainers/'
-    | '/me/locations/'
-    | '/me/messages/'
-    | '/me/trainers/'
-    | '/app/locations/$id/edit'
-    | '/app/locations/$id/classes'
-    | '/app/sessions/$id/attendance'
-    | '/me/checkout/invoice/$invoiceId'
-    | '/me/locations/$id/classes'
-  fileRoutesByTo: FileRoutesByTo
-  to:
-    | '/'
-    | '/forgot-password'
-    | '/join'
-    | '/login'
-    | '/register'
-    | '/admin/profile'
-    | '/app/calendar'
-    | '/app/feed'
-    | '/app/invoices'
-    | '/app/payments'
-    | '/app/profile'
-    | '/app/retention'
-    | '/app/settings'
-    | '/me/attendance'
-    | '/me/book'
-    | '/me/bookings'
-    | '/me/calendar'
-    | '/me/check-in'
-    | '/me/contests'
-    | '/me/feed'
-    | '/me/invoices'
-    | '/me/onboarding'
-    | '/me/profile'
-    | '/me/subscriptions'
-    | '/posts/$id'
-    | '/studio/$studioId'
-    | '/trainers/$id'
-    | '/users/$id'
-    | '/admin'
-    | '/app'
-    | '/me'
-    | '/admin/studios/$id'
-    | '/admin/studios/new'
-    | '/app/batches/$id'
-    | '/app/batches/new'
-    | '/app/bookings/new'
-    | '/app/certificates/$id'
-    | '/app/certificates/new'
-    | '/app/contests/$id'
-    | '/app/contests/new'
-    | '/app/locations/$id'
-    | '/app/messages/$id'
-    | '/app/profile/change-email'
-    | '/app/profile/change-password'
-    | '/app/profile/edit'
-    | '/app/profile/follow-requests'
-    | '/app/profile/security'
-    | '/app/settings/billing'
-    | '/app/settings/branding'
-    | '/app/settings/payments'
-    | '/app/settings/profile'
-    | '/app/settings/styles'
-    | '/app/settings/team'
-    | '/app/settings/theme'
-    | '/app/students/$id'
-    | '/app/students/import'
-    | '/app/students/new'
-    | '/app/subscriptions/$id'
-    | '/app/subscriptions/new'
-    | '/app/trainers/new'
-    | '/me/batches/$id'
-    | '/me/checkout/$bookingId'
-    | '/me/locations/$id'
-    | '/me/messages/$id'
-    | '/me/profile/change-email'
-    | '/me/profile/change-password'
-    | '/me/profile/edit'
-    | '/me/profile/follow-requests'
-    | '/me/profile/security'
-    | '/app/batches'
-    | '/app/bookings'
-    | '/app/certificates'
-    | '/app/contests'
-    | '/app/locations'
-    | '/app/messages'
-    | '/app/students'
-    | '/app/subscriptions'
-    | '/app/trainers'
-    | '/me/locations'
-    | '/me/messages'
-    | '/me/trainers'
-    | '/app/locations/$id/edit'
-    | '/app/locations/$id/classes'
-    | '/app/sessions/$id/attendance'
-    | '/me/checkout/invoice/$invoiceId'
-    | '/me/locations/$id/classes'
-  id:
-    | '__root__'
-    | '/'
-    | '/admin'
-    | '/app'
-    | '/forgot-password'
-    | '/join'
-    | '/login'
-    | '/me'
-    | '/register'
-    | '/admin/profile'
-    | '/app/calendar'
-    | '/app/feed'
-    | '/app/invoices'
-    | '/app/payments'
-    | '/app/profile'
-    | '/app/retention'
-    | '/app/settings'
-    | '/me/attendance'
-    | '/me/book'
-    | '/me/bookings'
-    | '/me/calendar'
-    | '/me/check-in'
-    | '/me/contests'
-    | '/me/feed'
-    | '/me/invoices'
-    | '/me/onboarding'
-    | '/me/profile'
-    | '/me/subscriptions'
-    | '/posts/$id'
-    | '/studio/$studioId'
-    | '/trainers/$id'
-    | '/users/$id'
-    | '/admin/'
-    | '/app/'
-    | '/me/'
-    | '/admin/studios/$id'
-    | '/admin/studios/new'
-    | '/app/batches/$id'
-    | '/app/batches/new'
-    | '/app/bookings/new'
-    | '/app/certificates/$id'
-    | '/app/certificates/new'
-    | '/app/contests/$id'
-    | '/app/contests/new'
-    | '/app/locations/$id'
-    | '/app/messages/$id'
-    | '/app/profile_/change-email'
-    | '/app/profile_/change-password'
-    | '/app/profile_/edit'
-    | '/app/profile_/follow-requests'
-    | '/app/profile_/security'
-    | '/app/settings_/billing'
-    | '/app/settings_/branding'
-    | '/app/settings_/payments'
-    | '/app/settings_/profile'
-    | '/app/settings_/styles'
-    | '/app/settings_/team'
-    | '/app/settings_/theme'
-    | '/app/students/$id'
-    | '/app/students/import'
-    | '/app/students/new'
-    | '/app/subscriptions/$id'
-    | '/app/subscriptions/new'
-    | '/app/trainers/new'
-    | '/me/batches/$id'
-    | '/me/checkout/$bookingId'
-    | '/me/locations/$id'
-    | '/me/messages/$id'
-    | '/me/profile_/change-email'
-    | '/me/profile_/change-password'
-    | '/me/profile_/edit'
-    | '/me/profile_/follow-requests'
-    | '/me/profile_/security'
-    | '/app/batches/'
-    | '/app/bookings/'
-    | '/app/certificates/'
-    | '/app/contests/'
-    | '/app/locations/'
-    | '/app/messages/'
-    | '/app/students/'
-    | '/app/subscriptions/'
-    | '/app/trainers/'
-    | '/me/locations/'
-    | '/me/messages/'
-    | '/me/trainers/'
-    | '/app/locations/$id/edit'
-    | '/app/locations/$id_/classes'
-    | '/app/sessions/$id/attendance'
-    | '/me/checkout/invoice/$invoiceId'
-    | '/me/locations/$id_/classes'
-  fileRoutesById: FileRoutesById
-}
-export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
-  AdminRoute: typeof AdminRouteWithChildren
-  AppRoute: typeof AppRouteWithChildren
-  ForgotPasswordRoute: typeof ForgotPasswordRoute
-  JoinRoute: typeof JoinRoute
-  LoginRoute: typeof LoginRoute
-  MeRoute: typeof MeRouteWithChildren
-  RegisterRoute: typeof RegisterRoute
-  PostsIdRoute: typeof PostsIdRoute
-  StudioStudioIdRoute: typeof StudioStudioIdRoute
-  TrainersIdRoute: typeof TrainersIdRoute
-  UsersIdRoute: typeof UsersIdRoute
-}
+// Populate the FileRoutesByPath interface
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/register': {
-      id: '/register'
-      path: '/register'
-      fullPath: '/register'
-      preLoaderRoute: typeof RegisterRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/me': {
-      id: '/me'
-      path: '/me'
-      fullPath: '/me'
-      preLoaderRoute: typeof MeRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/login': {
-      id: '/login'
-      path: '/login'
-      fullPath: '/login'
-      preLoaderRoute: typeof LoginRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/join': {
-      id: '/join'
-      path: '/join'
-      fullPath: '/join'
-      preLoaderRoute: typeof JoinRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/forgot-password': {
-      id: '/forgot-password'
-      path: '/forgot-password'
-      fullPath: '/forgot-password'
-      preLoaderRoute: typeof ForgotPasswordRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/app': {
-      id: '/app'
-      path: '/app'
-      fullPath: '/app'
-      preLoaderRoute: typeof AppRouteImport
-      parentRoute: typeof rootRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexImport
+      parentRoute: typeof rootRoute
     }
     '/admin': {
       id: '/admin'
       path: '/admin'
       fullPath: '/admin'
-      preLoaderRoute: typeof AdminRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AdminImport
+      parentRoute: typeof rootRoute
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
+    '/app': {
+      id: '/app'
+      path: '/app'
+      fullPath: '/app'
+      preLoaderRoute: typeof AppImport
+      parentRoute: typeof rootRoute
     }
-    '/me/': {
-      id: '/me/'
-      path: '/'
-      fullPath: '/me/'
-      preLoaderRoute: typeof MeIndexRouteImport
-      parentRoute: typeof MeRoute
+    '/forgot-password': {
+      id: '/forgot-password'
+      path: '/forgot-password'
+      fullPath: '/forgot-password'
+      preLoaderRoute: typeof ForgotPasswordImport
+      parentRoute: typeof rootRoute
     }
-    '/app/': {
-      id: '/app/'
-      path: '/'
-      fullPath: '/app/'
-      preLoaderRoute: typeof AppIndexRouteImport
-      parentRoute: typeof AppRoute
+    '/join': {
+      id: '/join'
+      path: '/join'
+      fullPath: '/join'
+      preLoaderRoute: typeof JoinImport
+      parentRoute: typeof rootRoute
     }
-    '/admin/': {
-      id: '/admin/'
-      path: '/'
-      fullPath: '/admin/'
-      preLoaderRoute: typeof AdminIndexRouteImport
-      parentRoute: typeof AdminRoute
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginImport
+      parentRoute: typeof rootRoute
     }
-    '/users/$id': {
-      id: '/users/$id'
-      path: '/users/$id'
-      fullPath: '/users/$id'
-      preLoaderRoute: typeof UsersIdRouteImport
-      parentRoute: typeof rootRouteImport
+    '/me': {
+      id: '/me'
+      path: '/me'
+      fullPath: '/me'
+      preLoaderRoute: typeof MeImport
+      parentRoute: typeof rootRoute
     }
-    '/trainers/$id': {
-      id: '/trainers/$id'
-      path: '/trainers/$id'
-      fullPath: '/trainers/$id'
-      preLoaderRoute: typeof TrainersIdRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/studio/$studioId': {
-      id: '/studio/$studioId'
-      path: '/studio/$studioId'
-      fullPath: '/studio/$studioId'
-      preLoaderRoute: typeof StudioStudioIdRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/posts/$id': {
-      id: '/posts/$id'
-      path: '/posts/$id'
-      fullPath: '/posts/$id'
-      preLoaderRoute: typeof PostsIdRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/me/subscriptions': {
-      id: '/me/subscriptions'
-      path: '/subscriptions'
-      fullPath: '/me/subscriptions'
-      preLoaderRoute: typeof MeSubscriptionsRouteImport
-      parentRoute: typeof MeRoute
-    }
-    '/me/profile': {
-      id: '/me/profile'
-      path: '/profile'
-      fullPath: '/me/profile'
-      preLoaderRoute: typeof MeProfileRouteImport
-      parentRoute: typeof MeRoute
-    }
-    '/me/onboarding': {
-      id: '/me/onboarding'
-      path: '/onboarding'
-      fullPath: '/me/onboarding'
-      preLoaderRoute: typeof MeOnboardingRouteImport
-      parentRoute: typeof MeRoute
-    }
-    '/me/invoices': {
-      id: '/me/invoices'
-      path: '/invoices'
-      fullPath: '/me/invoices'
-      preLoaderRoute: typeof MeInvoicesRouteImport
-      parentRoute: typeof MeRoute
-    }
-    '/me/feed': {
-      id: '/me/feed'
-      path: '/feed'
-      fullPath: '/me/feed'
-      preLoaderRoute: typeof MeFeedRouteImport
-      parentRoute: typeof MeRoute
-    }
-    '/me/contests': {
-      id: '/me/contests'
-      path: '/contests'
-      fullPath: '/me/contests'
-      preLoaderRoute: typeof MeContestsRouteImport
-      parentRoute: typeof MeRoute
-    }
-    '/me/check-in': {
-      id: '/me/check-in'
-      path: '/check-in'
-      fullPath: '/me/check-in'
-      preLoaderRoute: typeof MeCheckInRouteImport
-      parentRoute: typeof MeRoute
-    }
-    '/me/calendar': {
-      id: '/me/calendar'
-      path: '/calendar'
-      fullPath: '/me/calendar'
-      preLoaderRoute: typeof MeCalendarRouteImport
-      parentRoute: typeof MeRoute
-    }
-    '/me/bookings': {
-      id: '/me/bookings'
-      path: '/bookings'
-      fullPath: '/me/bookings'
-      preLoaderRoute: typeof MeBookingsRouteImport
-      parentRoute: typeof MeRoute
-    }
-    '/me/book': {
-      id: '/me/book'
-      path: '/book'
-      fullPath: '/me/book'
-      preLoaderRoute: typeof MeBookRouteImport
-      parentRoute: typeof MeRoute
-    }
-    '/me/attendance': {
-      id: '/me/attendance'
-      path: '/attendance'
-      fullPath: '/me/attendance'
-      preLoaderRoute: typeof MeAttendanceRouteImport
-      parentRoute: typeof MeRoute
-    }
-    '/app/settings': {
-      id: '/app/settings'
-      path: '/settings'
-      fullPath: '/app/settings'
-      preLoaderRoute: typeof AppSettingsRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/retention': {
-      id: '/app/retention'
-      path: '/retention'
-      fullPath: '/app/retention'
-      preLoaderRoute: typeof AppRetentionRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/profile': {
-      id: '/app/profile'
-      path: '/profile'
-      fullPath: '/app/profile'
-      preLoaderRoute: typeof AppProfileRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/payments': {
-      id: '/app/payments'
-      path: '/payments'
-      fullPath: '/app/payments'
-      preLoaderRoute: typeof AppPaymentsRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/invoices': {
-      id: '/app/invoices'
-      path: '/invoices'
-      fullPath: '/app/invoices'
-      preLoaderRoute: typeof AppInvoicesRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/feed': {
-      id: '/app/feed'
-      path: '/feed'
-      fullPath: '/app/feed'
-      preLoaderRoute: typeof AppFeedRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/calendar': {
-      id: '/app/calendar'
-      path: '/calendar'
-      fullPath: '/app/calendar'
-      preLoaderRoute: typeof AppCalendarRouteImport
-      parentRoute: typeof AppRoute
+    '/register': {
+      id: '/register'
+      path: '/register'
+      fullPath: '/register'
+      preLoaderRoute: typeof RegisterImport
+      parentRoute: typeof rootRoute
     }
     '/admin/profile': {
       id: '/admin/profile'
       path: '/profile'
       fullPath: '/admin/profile'
-      preLoaderRoute: typeof AdminProfileRouteImport
-      parentRoute: typeof AdminRoute
+      preLoaderRoute: typeof AdminProfileImport
+      parentRoute: typeof AdminImport
     }
-    '/me/trainers/': {
-      id: '/me/trainers/'
-      path: '/trainers'
-      fullPath: '/me/trainers/'
-      preLoaderRoute: typeof MeTrainersIndexRouteImport
-      parentRoute: typeof MeRoute
+    '/app/calendar': {
+      id: '/app/calendar'
+      path: '/calendar'
+      fullPath: '/app/calendar'
+      preLoaderRoute: typeof AppCalendarImport
+      parentRoute: typeof AppImport
     }
-    '/me/messages/': {
-      id: '/me/messages/'
-      path: '/messages'
-      fullPath: '/me/messages/'
-      preLoaderRoute: typeof MeMessagesIndexRouteImport
-      parentRoute: typeof MeRoute
+    '/app/feed': {
+      id: '/app/feed'
+      path: '/feed'
+      fullPath: '/app/feed'
+      preLoaderRoute: typeof AppFeedImport
+      parentRoute: typeof AppImport
     }
-    '/me/locations/': {
-      id: '/me/locations/'
-      path: '/locations'
-      fullPath: '/me/locations/'
-      preLoaderRoute: typeof MeLocationsIndexRouteImport
-      parentRoute: typeof MeRoute
+    '/app/invoices': {
+      id: '/app/invoices'
+      path: '/invoices'
+      fullPath: '/app/invoices'
+      preLoaderRoute: typeof AppInvoicesImport
+      parentRoute: typeof AppImport
     }
-    '/app/trainers/': {
-      id: '/app/trainers/'
-      path: '/trainers'
-      fullPath: '/app/trainers/'
-      preLoaderRoute: typeof AppTrainersIndexRouteImport
-      parentRoute: typeof AppRoute
+    '/app/payments': {
+      id: '/app/payments'
+      path: '/payments'
+      fullPath: '/app/payments'
+      preLoaderRoute: typeof AppPaymentsImport
+      parentRoute: typeof AppImport
     }
-    '/app/subscriptions/': {
-      id: '/app/subscriptions/'
-      path: '/subscriptions'
-      fullPath: '/app/subscriptions/'
-      preLoaderRoute: typeof AppSubscriptionsIndexRouteImport
-      parentRoute: typeof AppRoute
+    '/app/profile': {
+      id: '/app/profile'
+      path: '/profile'
+      fullPath: '/app/profile'
+      preLoaderRoute: typeof AppProfileImport
+      parentRoute: typeof AppImport
     }
-    '/app/students/': {
-      id: '/app/students/'
-      path: '/students'
-      fullPath: '/app/students/'
-      preLoaderRoute: typeof AppStudentsIndexRouteImport
-      parentRoute: typeof AppRoute
+    '/app/retention': {
+      id: '/app/retention'
+      path: '/retention'
+      fullPath: '/app/retention'
+      preLoaderRoute: typeof AppRetentionImport
+      parentRoute: typeof AppImport
     }
-    '/app/messages/': {
-      id: '/app/messages/'
-      path: '/messages'
-      fullPath: '/app/messages/'
-      preLoaderRoute: typeof AppMessagesIndexRouteImport
-      parentRoute: typeof AppRoute
+    '/app/settings': {
+      id: '/app/settings'
+      path: '/settings'
+      fullPath: '/app/settings'
+      preLoaderRoute: typeof AppSettingsImport
+      parentRoute: typeof AppImport
     }
-    '/app/locations/': {
-      id: '/app/locations/'
-      path: '/locations'
-      fullPath: '/app/locations/'
-      preLoaderRoute: typeof AppLocationsIndexRouteImport
-      parentRoute: typeof AppRoute
+    '/me/attendance': {
+      id: '/me/attendance'
+      path: '/attendance'
+      fullPath: '/me/attendance'
+      preLoaderRoute: typeof MeAttendanceImport
+      parentRoute: typeof MeImport
     }
-    '/app/contests/': {
-      id: '/app/contests/'
-      path: '/contests'
-      fullPath: '/app/contests/'
-      preLoaderRoute: typeof AppContestsIndexRouteImport
-      parentRoute: typeof AppRoute
+    '/me/book': {
+      id: '/me/book'
+      path: '/book'
+      fullPath: '/me/book'
+      preLoaderRoute: typeof MeBookImport
+      parentRoute: typeof MeImport
     }
-    '/app/certificates/': {
-      id: '/app/certificates/'
-      path: '/certificates'
-      fullPath: '/app/certificates/'
-      preLoaderRoute: typeof AppCertificatesIndexRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/bookings/': {
-      id: '/app/bookings/'
+    '/me/bookings': {
+      id: '/me/bookings'
       path: '/bookings'
-      fullPath: '/app/bookings/'
-      preLoaderRoute: typeof AppBookingsIndexRouteImport
-      parentRoute: typeof AppRoute
+      fullPath: '/me/bookings'
+      preLoaderRoute: typeof MeBookingsImport
+      parentRoute: typeof MeImport
     }
-    '/app/batches/': {
-      id: '/app/batches/'
-      path: '/batches'
-      fullPath: '/app/batches/'
-      preLoaderRoute: typeof AppBatchesIndexRouteImport
-      parentRoute: typeof AppRoute
+    '/me/calendar': {
+      id: '/me/calendar'
+      path: '/calendar'
+      fullPath: '/me/calendar'
+      preLoaderRoute: typeof MeCalendarImport
+      parentRoute: typeof MeImport
     }
-    '/me/profile_/security': {
-      id: '/me/profile_/security'
-      path: '/profile/security'
-      fullPath: '/me/profile/security'
-      preLoaderRoute: typeof MeProfileSecurityRouteImport
-      parentRoute: typeof MeRoute
+    '/me/check-in': {
+      id: '/me/check-in'
+      path: '/check-in'
+      fullPath: '/me/check-in'
+      preLoaderRoute: typeof MeCheckInImport
+      parentRoute: typeof MeImport
     }
-    '/me/profile_/follow-requests': {
-      id: '/me/profile_/follow-requests'
-      path: '/profile/follow-requests'
-      fullPath: '/me/profile/follow-requests'
-      preLoaderRoute: typeof MeProfileFollowRequestsRouteImport
-      parentRoute: typeof MeRoute
+    '/me/contests': {
+      id: '/me/contests'
+      path: '/contests'
+      fullPath: '/me/contests'
+      preLoaderRoute: typeof MeContestsImport
+      parentRoute: typeof MeImport
     }
-    '/me/profile_/edit': {
-      id: '/me/profile_/edit'
-      path: '/profile/edit'
-      fullPath: '/me/profile/edit'
-      preLoaderRoute: typeof MeProfileEditRouteImport
-      parentRoute: typeof MeRoute
+    '/me/feed': {
+      id: '/me/feed'
+      path: '/feed'
+      fullPath: '/me/feed'
+      preLoaderRoute: typeof MeFeedImport
+      parentRoute: typeof MeImport
     }
-    '/me/profile_/change-password': {
-      id: '/me/profile_/change-password'
-      path: '/profile/change-password'
-      fullPath: '/me/profile/change-password'
-      preLoaderRoute: typeof MeProfileChangePasswordRouteImport
-      parentRoute: typeof MeRoute
+    '/me/invoices': {
+      id: '/me/invoices'
+      path: '/invoices'
+      fullPath: '/me/invoices'
+      preLoaderRoute: typeof MeInvoicesImport
+      parentRoute: typeof MeImport
     }
-    '/me/profile_/change-email': {
-      id: '/me/profile_/change-email'
-      path: '/profile/change-email'
-      fullPath: '/me/profile/change-email'
-      preLoaderRoute: typeof MeProfileChangeEmailRouteImport
-      parentRoute: typeof MeRoute
+    '/me/journey': {
+      id: '/me/journey'
+      path: '/journey'
+      fullPath: '/me/journey'
+      preLoaderRoute: typeof MeJourneyImport
+      parentRoute: typeof MeImport
     }
-    '/me/messages/$id': {
-      id: '/me/messages/$id'
-      path: '/messages/$id'
-      fullPath: '/me/messages/$id'
-      preLoaderRoute: typeof MeMessagesIdRouteImport
-      parentRoute: typeof MeRoute
+    '/me/onboarding': {
+      id: '/me/onboarding'
+      path: '/onboarding'
+      fullPath: '/me/onboarding'
+      preLoaderRoute: typeof MeOnboardingImport
+      parentRoute: typeof MeImport
     }
-    '/me/locations/$id': {
-      id: '/me/locations/$id'
-      path: '/locations/$id'
-      fullPath: '/me/locations/$id'
-      preLoaderRoute: typeof MeLocationsIdRouteImport
-      parentRoute: typeof MeRoute
+    '/me/profile': {
+      id: '/me/profile'
+      path: '/profile'
+      fullPath: '/me/profile'
+      preLoaderRoute: typeof MeProfileImport
+      parentRoute: typeof MeImport
     }
-    '/me/checkout/$bookingId': {
-      id: '/me/checkout/$bookingId'
-      path: '/checkout/$bookingId'
-      fullPath: '/me/checkout/$bookingId'
-      preLoaderRoute: typeof MeCheckoutBookingIdRouteImport
-      parentRoute: typeof MeRoute
+    '/me/subscriptions': {
+      id: '/me/subscriptions'
+      path: '/subscriptions'
+      fullPath: '/me/subscriptions'
+      preLoaderRoute: typeof MeSubscriptionsImport
+      parentRoute: typeof MeImport
     }
-    '/me/batches/$id': {
-      id: '/me/batches/$id'
-      path: '/batches/$id'
-      fullPath: '/me/batches/$id'
-      preLoaderRoute: typeof MeBatchesIdRouteImport
-      parentRoute: typeof MeRoute
+    '/posts/$id': {
+      id: '/posts/$id'
+      path: '/posts/$id'
+      fullPath: '/posts/$id'
+      preLoaderRoute: typeof PostsIdImport
+      parentRoute: typeof rootRoute
     }
-    '/app/trainers/new': {
-      id: '/app/trainers/new'
-      path: '/trainers/new'
-      fullPath: '/app/trainers/new'
-      preLoaderRoute: typeof AppTrainersNewRouteImport
-      parentRoute: typeof AppRoute
+    '/studio/$studioId': {
+      id: '/studio/$studioId'
+      path: '/studio/$studioId'
+      fullPath: '/studio/$studioId'
+      preLoaderRoute: typeof StudioStudioIdImport
+      parentRoute: typeof rootRoute
     }
-    '/app/subscriptions/new': {
-      id: '/app/subscriptions/new'
-      path: '/subscriptions/new'
-      fullPath: '/app/subscriptions/new'
-      preLoaderRoute: typeof AppSubscriptionsNewRouteImport
-      parentRoute: typeof AppRoute
+    '/trainers/$id': {
+      id: '/trainers/$id'
+      path: '/trainers/$id'
+      fullPath: '/trainers/$id'
+      preLoaderRoute: typeof TrainersIdImport
+      parentRoute: typeof rootRoute
     }
-    '/app/subscriptions/$id': {
-      id: '/app/subscriptions/$id'
-      path: '/subscriptions/$id'
-      fullPath: '/app/subscriptions/$id'
-      preLoaderRoute: typeof AppSubscriptionsIdRouteImport
-      parentRoute: typeof AppRoute
+    '/users/$id': {
+      id: '/users/$id'
+      path: '/users/$id'
+      fullPath: '/users/$id'
+      preLoaderRoute: typeof UsersIdImport
+      parentRoute: typeof rootRoute
     }
-    '/app/students/new': {
-      id: '/app/students/new'
-      path: '/students/new'
-      fullPath: '/app/students/new'
-      preLoaderRoute: typeof AppStudentsNewRouteImport
-      parentRoute: typeof AppRoute
+    '/admin/': {
+      id: '/admin/'
+      path: '/'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AdminIndexImport
+      parentRoute: typeof AdminImport
     }
-    '/app/students/import': {
-      id: '/app/students/import'
-      path: '/students/import'
-      fullPath: '/app/students/import'
-      preLoaderRoute: typeof AppStudentsImportRouteImport
-      parentRoute: typeof AppRoute
+    '/app/': {
+      id: '/app/'
+      path: '/'
+      fullPath: '/app/'
+      preLoaderRoute: typeof AppIndexImport
+      parentRoute: typeof AppImport
     }
-    '/app/students/$id': {
-      id: '/app/students/$id'
-      path: '/students/$id'
-      fullPath: '/app/students/$id'
-      preLoaderRoute: typeof AppStudentsIdRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/settings_/theme': {
-      id: '/app/settings_/theme'
-      path: '/settings/theme'
-      fullPath: '/app/settings/theme'
-      preLoaderRoute: typeof AppSettingsThemeRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/settings_/team': {
-      id: '/app/settings_/team'
-      path: '/settings/team'
-      fullPath: '/app/settings/team'
-      preLoaderRoute: typeof AppSettingsTeamRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/settings_/styles': {
-      id: '/app/settings_/styles'
-      path: '/settings/styles'
-      fullPath: '/app/settings/styles'
-      preLoaderRoute: typeof AppSettingsStylesRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/settings_/profile': {
-      id: '/app/settings_/profile'
-      path: '/settings/profile'
-      fullPath: '/app/settings/profile'
-      preLoaderRoute: typeof AppSettingsProfileRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/settings_/payments': {
-      id: '/app/settings_/payments'
-      path: '/settings/payments'
-      fullPath: '/app/settings/payments'
-      preLoaderRoute: typeof AppSettingsPaymentsRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/settings_/branding': {
-      id: '/app/settings_/branding'
-      path: '/settings/branding'
-      fullPath: '/app/settings/branding'
-      preLoaderRoute: typeof AppSettingsBrandingRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/settings_/billing': {
-      id: '/app/settings_/billing'
-      path: '/settings/billing'
-      fullPath: '/app/settings/billing'
-      preLoaderRoute: typeof AppSettingsBillingRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/profile_/security': {
-      id: '/app/profile_/security'
-      path: '/profile/security'
-      fullPath: '/app/profile/security'
-      preLoaderRoute: typeof AppProfileSecurityRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/profile_/follow-requests': {
-      id: '/app/profile_/follow-requests'
-      path: '/profile/follow-requests'
-      fullPath: '/app/profile/follow-requests'
-      preLoaderRoute: typeof AppProfileFollowRequestsRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/profile_/edit': {
-      id: '/app/profile_/edit'
-      path: '/profile/edit'
-      fullPath: '/app/profile/edit'
-      preLoaderRoute: typeof AppProfileEditRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/profile_/change-password': {
-      id: '/app/profile_/change-password'
-      path: '/profile/change-password'
-      fullPath: '/app/profile/change-password'
-      preLoaderRoute: typeof AppProfileChangePasswordRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/profile_/change-email': {
-      id: '/app/profile_/change-email'
-      path: '/profile/change-email'
-      fullPath: '/app/profile/change-email'
-      preLoaderRoute: typeof AppProfileChangeEmailRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/messages/$id': {
-      id: '/app/messages/$id'
-      path: '/messages/$id'
-      fullPath: '/app/messages/$id'
-      preLoaderRoute: typeof AppMessagesIdRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/locations/$id': {
-      id: '/app/locations/$id'
-      path: '/locations/$id'
-      fullPath: '/app/locations/$id'
-      preLoaderRoute: typeof AppLocationsIdRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/contests/new': {
-      id: '/app/contests/new'
-      path: '/contests/new'
-      fullPath: '/app/contests/new'
-      preLoaderRoute: typeof AppContestsNewRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/contests/$id': {
-      id: '/app/contests/$id'
-      path: '/contests/$id'
-      fullPath: '/app/contests/$id'
-      preLoaderRoute: typeof AppContestsIdRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/certificates/new': {
-      id: '/app/certificates/new'
-      path: '/certificates/new'
-      fullPath: '/app/certificates/new'
-      preLoaderRoute: typeof AppCertificatesNewRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/certificates/$id': {
-      id: '/app/certificates/$id'
-      path: '/certificates/$id'
-      fullPath: '/app/certificates/$id'
-      preLoaderRoute: typeof AppCertificatesIdRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/bookings/new': {
-      id: '/app/bookings/new'
-      path: '/bookings/new'
-      fullPath: '/app/bookings/new'
-      preLoaderRoute: typeof AppBookingsNewRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/batches/new': {
-      id: '/app/batches/new'
-      path: '/batches/new'
-      fullPath: '/app/batches/new'
-      preLoaderRoute: typeof AppBatchesNewRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/batches/$id': {
-      id: '/app/batches/$id'
-      path: '/batches/$id'
-      fullPath: '/app/batches/$id'
-      preLoaderRoute: typeof AppBatchesIdRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/admin/studios/new': {
-      id: '/admin/studios/new'
-      path: '/studios/new'
-      fullPath: '/admin/studios/new'
-      preLoaderRoute: typeof AdminStudiosNewRouteImport
-      parentRoute: typeof AdminRoute
+    '/me/': {
+      id: '/me/'
+      path: '/'
+      fullPath: '/me/'
+      preLoaderRoute: typeof MeIndexImport
+      parentRoute: typeof MeImport
     }
     '/admin/studios/$id': {
       id: '/admin/studios/$id'
       path: '/studios/$id'
       fullPath: '/admin/studios/$id'
-      preLoaderRoute: typeof AdminStudiosIdRouteImport
-      parentRoute: typeof AdminRoute
+      preLoaderRoute: typeof AdminStudiosIdImport
+      parentRoute: typeof AdminImport
     }
-    '/me/locations/$id_/classes': {
-      id: '/me/locations/$id_/classes'
-      path: '/locations/$id/classes'
-      fullPath: '/me/locations/$id/classes'
-      preLoaderRoute: typeof MeLocationsIdClassesRouteImport
-      parentRoute: typeof MeRoute
+    '/admin/studios/new': {
+      id: '/admin/studios/new'
+      path: '/studios/new'
+      fullPath: '/admin/studios/new'
+      preLoaderRoute: typeof AdminStudiosNewImport
+      parentRoute: typeof AdminImport
     }
-    '/me/checkout/invoice/$invoiceId': {
-      id: '/me/checkout/invoice/$invoiceId'
-      path: '/checkout/invoice/$invoiceId'
-      fullPath: '/me/checkout/invoice/$invoiceId'
-      preLoaderRoute: typeof MeCheckoutInvoiceInvoiceIdRouteImport
-      parentRoute: typeof MeRoute
+    '/app/batches/$id': {
+      id: '/app/batches/$id'
+      path: '/batches/$id'
+      fullPath: '/app/batches/$id'
+      preLoaderRoute: typeof AppBatchesIdImport
+      parentRoute: typeof AppImport
     }
-    '/app/sessions/$id/attendance': {
-      id: '/app/sessions/$id/attendance'
-      path: '/sessions/$id/attendance'
-      fullPath: '/app/sessions/$id/attendance'
-      preLoaderRoute: typeof AppSessionsIdAttendanceRouteImport
-      parentRoute: typeof AppRoute
+    '/app/batches/new': {
+      id: '/app/batches/new'
+      path: '/batches/new'
+      fullPath: '/app/batches/new'
+      preLoaderRoute: typeof AppBatchesNewImport
+      parentRoute: typeof AppImport
     }
-    '/app/locations/$id_/classes': {
-      id: '/app/locations/$id_/classes'
-      path: '/locations/$id/classes'
-      fullPath: '/app/locations/$id/classes'
-      preLoaderRoute: typeof AppLocationsIdClassesRouteImport
-      parentRoute: typeof AppRoute
+    '/app/bookings/new': {
+      id: '/app/bookings/new'
+      path: '/bookings/new'
+      fullPath: '/app/bookings/new'
+      preLoaderRoute: typeof AppBookingsNewImport
+      parentRoute: typeof AppImport
+    }
+    '/app/certificates/$id': {
+      id: '/app/certificates/$id'
+      path: '/certificates/$id'
+      fullPath: '/app/certificates/$id'
+      preLoaderRoute: typeof AppCertificatesIdImport
+      parentRoute: typeof AppImport
+    }
+    '/app/certificates/new': {
+      id: '/app/certificates/new'
+      path: '/certificates/new'
+      fullPath: '/app/certificates/new'
+      preLoaderRoute: typeof AppCertificatesNewImport
+      parentRoute: typeof AppImport
+    }
+    '/app/contests/$id': {
+      id: '/app/contests/$id'
+      path: '/contests/$id'
+      fullPath: '/app/contests/$id'
+      preLoaderRoute: typeof AppContestsIdImport
+      parentRoute: typeof AppImport
+    }
+    '/app/contests/new': {
+      id: '/app/contests/new'
+      path: '/contests/new'
+      fullPath: '/app/contests/new'
+      preLoaderRoute: typeof AppContestsNewImport
+      parentRoute: typeof AppImport
+    }
+    '/app/locations/$id': {
+      id: '/app/locations/$id'
+      path: '/locations/$id'
+      fullPath: '/app/locations/$id'
+      preLoaderRoute: typeof AppLocationsIdImport
+      parentRoute: typeof AppImport
+    }
+    '/app/messages/$id': {
+      id: '/app/messages/$id'
+      path: '/messages/$id'
+      fullPath: '/app/messages/$id'
+      preLoaderRoute: typeof AppMessagesIdImport
+      parentRoute: typeof AppImport
+    }
+    '/app/profile_/change-email': {
+      id: '/app/profile_/change-email'
+      path: '/profile/change-email'
+      fullPath: '/app/profile/change-email'
+      preLoaderRoute: typeof AppProfileChangeEmailImport
+      parentRoute: typeof AppImport
+    }
+    '/app/profile_/change-password': {
+      id: '/app/profile_/change-password'
+      path: '/profile/change-password'
+      fullPath: '/app/profile/change-password'
+      preLoaderRoute: typeof AppProfileChangePasswordImport
+      parentRoute: typeof AppImport
+    }
+    '/app/profile_/edit': {
+      id: '/app/profile_/edit'
+      path: '/profile/edit'
+      fullPath: '/app/profile/edit'
+      preLoaderRoute: typeof AppProfileEditImport
+      parentRoute: typeof AppImport
+    }
+    '/app/profile_/follow-requests': {
+      id: '/app/profile_/follow-requests'
+      path: '/profile/follow-requests'
+      fullPath: '/app/profile/follow-requests'
+      preLoaderRoute: typeof AppProfileFollowRequestsImport
+      parentRoute: typeof AppImport
+    }
+    '/app/profile_/security': {
+      id: '/app/profile_/security'
+      path: '/profile/security'
+      fullPath: '/app/profile/security'
+      preLoaderRoute: typeof AppProfileSecurityImport
+      parentRoute: typeof AppImport
+    }
+    '/app/settings_/billing': {
+      id: '/app/settings_/billing'
+      path: '/settings/billing'
+      fullPath: '/app/settings/billing'
+      preLoaderRoute: typeof AppSettingsBillingImport
+      parentRoute: typeof AppImport
+    }
+    '/app/settings_/branding': {
+      id: '/app/settings_/branding'
+      path: '/settings/branding'
+      fullPath: '/app/settings/branding'
+      preLoaderRoute: typeof AppSettingsBrandingImport
+      parentRoute: typeof AppImport
+    }
+    '/app/settings_/payments': {
+      id: '/app/settings_/payments'
+      path: '/settings/payments'
+      fullPath: '/app/settings/payments'
+      preLoaderRoute: typeof AppSettingsPaymentsImport
+      parentRoute: typeof AppImport
+    }
+    '/app/settings_/profile': {
+      id: '/app/settings_/profile'
+      path: '/settings/profile'
+      fullPath: '/app/settings/profile'
+      preLoaderRoute: typeof AppSettingsProfileImport
+      parentRoute: typeof AppImport
+    }
+    '/app/settings_/styles': {
+      id: '/app/settings_/styles'
+      path: '/settings/styles'
+      fullPath: '/app/settings/styles'
+      preLoaderRoute: typeof AppSettingsStylesImport
+      parentRoute: typeof AppImport
+    }
+    '/app/settings_/team': {
+      id: '/app/settings_/team'
+      path: '/settings/team'
+      fullPath: '/app/settings/team'
+      preLoaderRoute: typeof AppSettingsTeamImport
+      parentRoute: typeof AppImport
+    }
+    '/app/settings_/theme': {
+      id: '/app/settings_/theme'
+      path: '/settings/theme'
+      fullPath: '/app/settings/theme'
+      preLoaderRoute: typeof AppSettingsThemeImport
+      parentRoute: typeof AppImport
+    }
+    '/app/students/$id': {
+      id: '/app/students/$id'
+      path: '/students/$id'
+      fullPath: '/app/students/$id'
+      preLoaderRoute: typeof AppStudentsIdImport
+      parentRoute: typeof AppImport
+    }
+    '/app/students/import': {
+      id: '/app/students/import'
+      path: '/students/import'
+      fullPath: '/app/students/import'
+      preLoaderRoute: typeof AppStudentsImportImport
+      parentRoute: typeof AppImport
+    }
+    '/app/students/new': {
+      id: '/app/students/new'
+      path: '/students/new'
+      fullPath: '/app/students/new'
+      preLoaderRoute: typeof AppStudentsNewImport
+      parentRoute: typeof AppImport
+    }
+    '/app/subscriptions/$id': {
+      id: '/app/subscriptions/$id'
+      path: '/subscriptions/$id'
+      fullPath: '/app/subscriptions/$id'
+      preLoaderRoute: typeof AppSubscriptionsIdImport
+      parentRoute: typeof AppImport
+    }
+    '/app/subscriptions/new': {
+      id: '/app/subscriptions/new'
+      path: '/subscriptions/new'
+      fullPath: '/app/subscriptions/new'
+      preLoaderRoute: typeof AppSubscriptionsNewImport
+      parentRoute: typeof AppImport
+    }
+    '/app/trainers/new': {
+      id: '/app/trainers/new'
+      path: '/trainers/new'
+      fullPath: '/app/trainers/new'
+      preLoaderRoute: typeof AppTrainersNewImport
+      parentRoute: typeof AppImport
+    }
+    '/me/batches/$id': {
+      id: '/me/batches/$id'
+      path: '/batches/$id'
+      fullPath: '/me/batches/$id'
+      preLoaderRoute: typeof MeBatchesIdImport
+      parentRoute: typeof MeImport
+    }
+    '/me/checkout/$bookingId': {
+      id: '/me/checkout/$bookingId'
+      path: '/checkout/$bookingId'
+      fullPath: '/me/checkout/$bookingId'
+      preLoaderRoute: typeof MeCheckoutBookingIdImport
+      parentRoute: typeof MeImport
+    }
+    '/me/locations/$id': {
+      id: '/me/locations/$id'
+      path: '/locations/$id'
+      fullPath: '/me/locations/$id'
+      preLoaderRoute: typeof MeLocationsIdImport
+      parentRoute: typeof MeImport
+    }
+    '/me/messages/$id': {
+      id: '/me/messages/$id'
+      path: '/messages/$id'
+      fullPath: '/me/messages/$id'
+      preLoaderRoute: typeof MeMessagesIdImport
+      parentRoute: typeof MeImport
+    }
+    '/me/profile_/change-email': {
+      id: '/me/profile_/change-email'
+      path: '/profile/change-email'
+      fullPath: '/me/profile/change-email'
+      preLoaderRoute: typeof MeProfileChangeEmailImport
+      parentRoute: typeof MeImport
+    }
+    '/me/profile_/change-password': {
+      id: '/me/profile_/change-password'
+      path: '/profile/change-password'
+      fullPath: '/me/profile/change-password'
+      preLoaderRoute: typeof MeProfileChangePasswordImport
+      parentRoute: typeof MeImport
+    }
+    '/me/profile_/edit': {
+      id: '/me/profile_/edit'
+      path: '/profile/edit'
+      fullPath: '/me/profile/edit'
+      preLoaderRoute: typeof MeProfileEditImport
+      parentRoute: typeof MeImport
+    }
+    '/me/profile_/follow-requests': {
+      id: '/me/profile_/follow-requests'
+      path: '/profile/follow-requests'
+      fullPath: '/me/profile/follow-requests'
+      preLoaderRoute: typeof MeProfileFollowRequestsImport
+      parentRoute: typeof MeImport
+    }
+    '/me/profile_/security': {
+      id: '/me/profile_/security'
+      path: '/profile/security'
+      fullPath: '/me/profile/security'
+      preLoaderRoute: typeof MeProfileSecurityImport
+      parentRoute: typeof MeImport
+    }
+    '/app/batches/': {
+      id: '/app/batches/'
+      path: '/batches'
+      fullPath: '/app/batches'
+      preLoaderRoute: typeof AppBatchesIndexImport
+      parentRoute: typeof AppImport
+    }
+    '/app/bookings/': {
+      id: '/app/bookings/'
+      path: '/bookings'
+      fullPath: '/app/bookings'
+      preLoaderRoute: typeof AppBookingsIndexImport
+      parentRoute: typeof AppImport
+    }
+    '/app/certificates/': {
+      id: '/app/certificates/'
+      path: '/certificates'
+      fullPath: '/app/certificates'
+      preLoaderRoute: typeof AppCertificatesIndexImport
+      parentRoute: typeof AppImport
+    }
+    '/app/contests/': {
+      id: '/app/contests/'
+      path: '/contests'
+      fullPath: '/app/contests'
+      preLoaderRoute: typeof AppContestsIndexImport
+      parentRoute: typeof AppImport
+    }
+    '/app/locations/': {
+      id: '/app/locations/'
+      path: '/locations'
+      fullPath: '/app/locations'
+      preLoaderRoute: typeof AppLocationsIndexImport
+      parentRoute: typeof AppImport
+    }
+    '/app/messages/': {
+      id: '/app/messages/'
+      path: '/messages'
+      fullPath: '/app/messages'
+      preLoaderRoute: typeof AppMessagesIndexImport
+      parentRoute: typeof AppImport
+    }
+    '/app/students/': {
+      id: '/app/students/'
+      path: '/students'
+      fullPath: '/app/students'
+      preLoaderRoute: typeof AppStudentsIndexImport
+      parentRoute: typeof AppImport
+    }
+    '/app/subscriptions/': {
+      id: '/app/subscriptions/'
+      path: '/subscriptions'
+      fullPath: '/app/subscriptions'
+      preLoaderRoute: typeof AppSubscriptionsIndexImport
+      parentRoute: typeof AppImport
+    }
+    '/app/trainers/': {
+      id: '/app/trainers/'
+      path: '/trainers'
+      fullPath: '/app/trainers'
+      preLoaderRoute: typeof AppTrainersIndexImport
+      parentRoute: typeof AppImport
+    }
+    '/me/locations/': {
+      id: '/me/locations/'
+      path: '/locations'
+      fullPath: '/me/locations'
+      preLoaderRoute: typeof MeLocationsIndexImport
+      parentRoute: typeof MeImport
+    }
+    '/me/messages/': {
+      id: '/me/messages/'
+      path: '/messages'
+      fullPath: '/me/messages'
+      preLoaderRoute: typeof MeMessagesIndexImport
+      parentRoute: typeof MeImport
+    }
+    '/me/trainers/': {
+      id: '/me/trainers/'
+      path: '/trainers'
+      fullPath: '/me/trainers'
+      preLoaderRoute: typeof MeTrainersIndexImport
+      parentRoute: typeof MeImport
     }
     '/app/locations/$id/edit': {
       id: '/app/locations/$id/edit'
       path: '/edit'
       fullPath: '/app/locations/$id/edit'
-      preLoaderRoute: typeof AppLocationsIdEditRouteImport
-      parentRoute: typeof AppLocationsIdRoute
+      preLoaderRoute: typeof AppLocationsIdEditImport
+      parentRoute: typeof AppLocationsIdImport
+    }
+    '/app/locations/$id_/classes': {
+      id: '/app/locations/$id_/classes'
+      path: '/locations/$id/classes'
+      fullPath: '/app/locations/$id/classes'
+      preLoaderRoute: typeof AppLocationsIdClassesImport
+      parentRoute: typeof AppImport
+    }
+    '/app/sessions/$id/attendance': {
+      id: '/app/sessions/$id/attendance'
+      path: '/sessions/$id/attendance'
+      fullPath: '/app/sessions/$id/attendance'
+      preLoaderRoute: typeof AppSessionsIdAttendanceImport
+      parentRoute: typeof AppImport
+    }
+    '/me/checkout/invoice/$invoiceId': {
+      id: '/me/checkout/invoice/$invoiceId'
+      path: '/checkout/invoice/$invoiceId'
+      fullPath: '/me/checkout/invoice/$invoiceId'
+      preLoaderRoute: typeof MeCheckoutInvoiceInvoiceIdImport
+      parentRoute: typeof MeImport
+    }
+    '/me/locations/$id_/classes': {
+      id: '/me/locations/$id_/classes'
+      path: '/locations/$id/classes'
+      fullPath: '/me/locations/$id/classes'
+      preLoaderRoute: typeof MeLocationsIdClassesImport
+      parentRoute: typeof MeImport
     }
   }
 }
+
+// Create and export the route tree
 
 interface AdminRouteChildren {
   AdminProfileRoute: typeof AdminProfileRoute
@@ -1872,6 +1422,7 @@ interface MeRouteChildren {
   MeContestsRoute: typeof MeContestsRoute
   MeFeedRoute: typeof MeFeedRoute
   MeInvoicesRoute: typeof MeInvoicesRoute
+  MeJourneyRoute: typeof MeJourneyRoute
   MeOnboardingRoute: typeof MeOnboardingRoute
   MeProfileRoute: typeof MeProfileRoute
   MeSubscriptionsRoute: typeof MeSubscriptionsRoute
@@ -1901,6 +1452,7 @@ const MeRouteChildren: MeRouteChildren = {
   MeContestsRoute: MeContestsRoute,
   MeFeedRoute: MeFeedRoute,
   MeInvoicesRoute: MeInvoicesRoute,
+  MeJourneyRoute: MeJourneyRoute,
   MeOnboardingRoute: MeOnboardingRoute,
   MeProfileRoute: MeProfileRoute,
   MeSubscriptionsRoute: MeSubscriptionsRoute,
@@ -1923,6 +1475,575 @@ const MeRouteChildren: MeRouteChildren = {
 
 const MeRouteWithChildren = MeRoute._addFileChildren(MeRouteChildren)
 
+export interface FileRoutesByFullPath {
+  '/': typeof IndexRoute
+  '/admin': typeof AdminRouteWithChildren
+  '/app': typeof AppRouteWithChildren
+  '/forgot-password': typeof ForgotPasswordRoute
+  '/join': typeof JoinRoute
+  '/login': typeof LoginRoute
+  '/me': typeof MeRouteWithChildren
+  '/register': typeof RegisterRoute
+  '/admin/profile': typeof AdminProfileRoute
+  '/app/calendar': typeof AppCalendarRoute
+  '/app/feed': typeof AppFeedRoute
+  '/app/invoices': typeof AppInvoicesRoute
+  '/app/payments': typeof AppPaymentsRoute
+  '/app/profile': typeof AppProfileRoute
+  '/app/retention': typeof AppRetentionRoute
+  '/app/settings': typeof AppSettingsRoute
+  '/me/attendance': typeof MeAttendanceRoute
+  '/me/book': typeof MeBookRoute
+  '/me/bookings': typeof MeBookingsRoute
+  '/me/calendar': typeof MeCalendarRoute
+  '/me/check-in': typeof MeCheckInRoute
+  '/me/contests': typeof MeContestsRoute
+  '/me/feed': typeof MeFeedRoute
+  '/me/invoices': typeof MeInvoicesRoute
+  '/me/journey': typeof MeJourneyRoute
+  '/me/onboarding': typeof MeOnboardingRoute
+  '/me/profile': typeof MeProfileRoute
+  '/me/subscriptions': typeof MeSubscriptionsRoute
+  '/posts/$id': typeof PostsIdRoute
+  '/studio/$studioId': typeof StudioStudioIdRoute
+  '/trainers/$id': typeof TrainersIdRoute
+  '/users/$id': typeof UsersIdRoute
+  '/admin/': typeof AdminIndexRoute
+  '/app/': typeof AppIndexRoute
+  '/me/': typeof MeIndexRoute
+  '/admin/studios/$id': typeof AdminStudiosIdRoute
+  '/admin/studios/new': typeof AdminStudiosNewRoute
+  '/app/batches/$id': typeof AppBatchesIdRoute
+  '/app/batches/new': typeof AppBatchesNewRoute
+  '/app/bookings/new': typeof AppBookingsNewRoute
+  '/app/certificates/$id': typeof AppCertificatesIdRoute
+  '/app/certificates/new': typeof AppCertificatesNewRoute
+  '/app/contests/$id': typeof AppContestsIdRoute
+  '/app/contests/new': typeof AppContestsNewRoute
+  '/app/locations/$id': typeof AppLocationsIdRouteWithChildren
+  '/app/messages/$id': typeof AppMessagesIdRoute
+  '/app/profile/change-email': typeof AppProfileChangeEmailRoute
+  '/app/profile/change-password': typeof AppProfileChangePasswordRoute
+  '/app/profile/edit': typeof AppProfileEditRoute
+  '/app/profile/follow-requests': typeof AppProfileFollowRequestsRoute
+  '/app/profile/security': typeof AppProfileSecurityRoute
+  '/app/settings/billing': typeof AppSettingsBillingRoute
+  '/app/settings/branding': typeof AppSettingsBrandingRoute
+  '/app/settings/payments': typeof AppSettingsPaymentsRoute
+  '/app/settings/profile': typeof AppSettingsProfileRoute
+  '/app/settings/styles': typeof AppSettingsStylesRoute
+  '/app/settings/team': typeof AppSettingsTeamRoute
+  '/app/settings/theme': typeof AppSettingsThemeRoute
+  '/app/students/$id': typeof AppStudentsIdRoute
+  '/app/students/import': typeof AppStudentsImportRoute
+  '/app/students/new': typeof AppStudentsNewRoute
+  '/app/subscriptions/$id': typeof AppSubscriptionsIdRoute
+  '/app/subscriptions/new': typeof AppSubscriptionsNewRoute
+  '/app/trainers/new': typeof AppTrainersNewRoute
+  '/me/batches/$id': typeof MeBatchesIdRoute
+  '/me/checkout/$bookingId': typeof MeCheckoutBookingIdRoute
+  '/me/locations/$id': typeof MeLocationsIdRoute
+  '/me/messages/$id': typeof MeMessagesIdRoute
+  '/me/profile/change-email': typeof MeProfileChangeEmailRoute
+  '/me/profile/change-password': typeof MeProfileChangePasswordRoute
+  '/me/profile/edit': typeof MeProfileEditRoute
+  '/me/profile/follow-requests': typeof MeProfileFollowRequestsRoute
+  '/me/profile/security': typeof MeProfileSecurityRoute
+  '/app/batches': typeof AppBatchesIndexRoute
+  '/app/bookings': typeof AppBookingsIndexRoute
+  '/app/certificates': typeof AppCertificatesIndexRoute
+  '/app/contests': typeof AppContestsIndexRoute
+  '/app/locations': typeof AppLocationsIndexRoute
+  '/app/messages': typeof AppMessagesIndexRoute
+  '/app/students': typeof AppStudentsIndexRoute
+  '/app/subscriptions': typeof AppSubscriptionsIndexRoute
+  '/app/trainers': typeof AppTrainersIndexRoute
+  '/me/locations': typeof MeLocationsIndexRoute
+  '/me/messages': typeof MeMessagesIndexRoute
+  '/me/trainers': typeof MeTrainersIndexRoute
+  '/app/locations/$id/edit': typeof AppLocationsIdEditRoute
+  '/app/locations/$id/classes': typeof AppLocationsIdClassesRoute
+  '/app/sessions/$id/attendance': typeof AppSessionsIdAttendanceRoute
+  '/me/checkout/invoice/$invoiceId': typeof MeCheckoutInvoiceInvoiceIdRoute
+  '/me/locations/$id/classes': typeof MeLocationsIdClassesRoute
+}
+
+export interface FileRoutesByTo {
+  '/': typeof IndexRoute
+  '/forgot-password': typeof ForgotPasswordRoute
+  '/join': typeof JoinRoute
+  '/login': typeof LoginRoute
+  '/register': typeof RegisterRoute
+  '/admin/profile': typeof AdminProfileRoute
+  '/app/calendar': typeof AppCalendarRoute
+  '/app/feed': typeof AppFeedRoute
+  '/app/invoices': typeof AppInvoicesRoute
+  '/app/payments': typeof AppPaymentsRoute
+  '/app/profile': typeof AppProfileRoute
+  '/app/retention': typeof AppRetentionRoute
+  '/app/settings': typeof AppSettingsRoute
+  '/me/attendance': typeof MeAttendanceRoute
+  '/me/book': typeof MeBookRoute
+  '/me/bookings': typeof MeBookingsRoute
+  '/me/calendar': typeof MeCalendarRoute
+  '/me/check-in': typeof MeCheckInRoute
+  '/me/contests': typeof MeContestsRoute
+  '/me/feed': typeof MeFeedRoute
+  '/me/invoices': typeof MeInvoicesRoute
+  '/me/journey': typeof MeJourneyRoute
+  '/me/onboarding': typeof MeOnboardingRoute
+  '/me/profile': typeof MeProfileRoute
+  '/me/subscriptions': typeof MeSubscriptionsRoute
+  '/posts/$id': typeof PostsIdRoute
+  '/studio/$studioId': typeof StudioStudioIdRoute
+  '/trainers/$id': typeof TrainersIdRoute
+  '/users/$id': typeof UsersIdRoute
+  '/admin': typeof AdminIndexRoute
+  '/app': typeof AppIndexRoute
+  '/me': typeof MeIndexRoute
+  '/admin/studios/$id': typeof AdminStudiosIdRoute
+  '/admin/studios/new': typeof AdminStudiosNewRoute
+  '/app/batches/$id': typeof AppBatchesIdRoute
+  '/app/batches/new': typeof AppBatchesNewRoute
+  '/app/bookings/new': typeof AppBookingsNewRoute
+  '/app/certificates/$id': typeof AppCertificatesIdRoute
+  '/app/certificates/new': typeof AppCertificatesNewRoute
+  '/app/contests/$id': typeof AppContestsIdRoute
+  '/app/contests/new': typeof AppContestsNewRoute
+  '/app/locations/$id': typeof AppLocationsIdRouteWithChildren
+  '/app/messages/$id': typeof AppMessagesIdRoute
+  '/app/profile/change-email': typeof AppProfileChangeEmailRoute
+  '/app/profile/change-password': typeof AppProfileChangePasswordRoute
+  '/app/profile/edit': typeof AppProfileEditRoute
+  '/app/profile/follow-requests': typeof AppProfileFollowRequestsRoute
+  '/app/profile/security': typeof AppProfileSecurityRoute
+  '/app/settings/billing': typeof AppSettingsBillingRoute
+  '/app/settings/branding': typeof AppSettingsBrandingRoute
+  '/app/settings/payments': typeof AppSettingsPaymentsRoute
+  '/app/settings/profile': typeof AppSettingsProfileRoute
+  '/app/settings/styles': typeof AppSettingsStylesRoute
+  '/app/settings/team': typeof AppSettingsTeamRoute
+  '/app/settings/theme': typeof AppSettingsThemeRoute
+  '/app/students/$id': typeof AppStudentsIdRoute
+  '/app/students/import': typeof AppStudentsImportRoute
+  '/app/students/new': typeof AppStudentsNewRoute
+  '/app/subscriptions/$id': typeof AppSubscriptionsIdRoute
+  '/app/subscriptions/new': typeof AppSubscriptionsNewRoute
+  '/app/trainers/new': typeof AppTrainersNewRoute
+  '/me/batches/$id': typeof MeBatchesIdRoute
+  '/me/checkout/$bookingId': typeof MeCheckoutBookingIdRoute
+  '/me/locations/$id': typeof MeLocationsIdRoute
+  '/me/messages/$id': typeof MeMessagesIdRoute
+  '/me/profile/change-email': typeof MeProfileChangeEmailRoute
+  '/me/profile/change-password': typeof MeProfileChangePasswordRoute
+  '/me/profile/edit': typeof MeProfileEditRoute
+  '/me/profile/follow-requests': typeof MeProfileFollowRequestsRoute
+  '/me/profile/security': typeof MeProfileSecurityRoute
+  '/app/batches': typeof AppBatchesIndexRoute
+  '/app/bookings': typeof AppBookingsIndexRoute
+  '/app/certificates': typeof AppCertificatesIndexRoute
+  '/app/contests': typeof AppContestsIndexRoute
+  '/app/locations': typeof AppLocationsIndexRoute
+  '/app/messages': typeof AppMessagesIndexRoute
+  '/app/students': typeof AppStudentsIndexRoute
+  '/app/subscriptions': typeof AppSubscriptionsIndexRoute
+  '/app/trainers': typeof AppTrainersIndexRoute
+  '/me/locations': typeof MeLocationsIndexRoute
+  '/me/messages': typeof MeMessagesIndexRoute
+  '/me/trainers': typeof MeTrainersIndexRoute
+  '/app/locations/$id/edit': typeof AppLocationsIdEditRoute
+  '/app/locations/$id/classes': typeof AppLocationsIdClassesRoute
+  '/app/sessions/$id/attendance': typeof AppSessionsIdAttendanceRoute
+  '/me/checkout/invoice/$invoiceId': typeof MeCheckoutInvoiceInvoiceIdRoute
+  '/me/locations/$id/classes': typeof MeLocationsIdClassesRoute
+}
+
+export interface FileRoutesById {
+  __root__: typeof rootRoute
+  '/': typeof IndexRoute
+  '/admin': typeof AdminRouteWithChildren
+  '/app': typeof AppRouteWithChildren
+  '/forgot-password': typeof ForgotPasswordRoute
+  '/join': typeof JoinRoute
+  '/login': typeof LoginRoute
+  '/me': typeof MeRouteWithChildren
+  '/register': typeof RegisterRoute
+  '/admin/profile': typeof AdminProfileRoute
+  '/app/calendar': typeof AppCalendarRoute
+  '/app/feed': typeof AppFeedRoute
+  '/app/invoices': typeof AppInvoicesRoute
+  '/app/payments': typeof AppPaymentsRoute
+  '/app/profile': typeof AppProfileRoute
+  '/app/retention': typeof AppRetentionRoute
+  '/app/settings': typeof AppSettingsRoute
+  '/me/attendance': typeof MeAttendanceRoute
+  '/me/book': typeof MeBookRoute
+  '/me/bookings': typeof MeBookingsRoute
+  '/me/calendar': typeof MeCalendarRoute
+  '/me/check-in': typeof MeCheckInRoute
+  '/me/contests': typeof MeContestsRoute
+  '/me/feed': typeof MeFeedRoute
+  '/me/invoices': typeof MeInvoicesRoute
+  '/me/journey': typeof MeJourneyRoute
+  '/me/onboarding': typeof MeOnboardingRoute
+  '/me/profile': typeof MeProfileRoute
+  '/me/subscriptions': typeof MeSubscriptionsRoute
+  '/posts/$id': typeof PostsIdRoute
+  '/studio/$studioId': typeof StudioStudioIdRoute
+  '/trainers/$id': typeof TrainersIdRoute
+  '/users/$id': typeof UsersIdRoute
+  '/admin/': typeof AdminIndexRoute
+  '/app/': typeof AppIndexRoute
+  '/me/': typeof MeIndexRoute
+  '/admin/studios/$id': typeof AdminStudiosIdRoute
+  '/admin/studios/new': typeof AdminStudiosNewRoute
+  '/app/batches/$id': typeof AppBatchesIdRoute
+  '/app/batches/new': typeof AppBatchesNewRoute
+  '/app/bookings/new': typeof AppBookingsNewRoute
+  '/app/certificates/$id': typeof AppCertificatesIdRoute
+  '/app/certificates/new': typeof AppCertificatesNewRoute
+  '/app/contests/$id': typeof AppContestsIdRoute
+  '/app/contests/new': typeof AppContestsNewRoute
+  '/app/locations/$id': typeof AppLocationsIdRouteWithChildren
+  '/app/messages/$id': typeof AppMessagesIdRoute
+  '/app/profile_/change-email': typeof AppProfileChangeEmailRoute
+  '/app/profile_/change-password': typeof AppProfileChangePasswordRoute
+  '/app/profile_/edit': typeof AppProfileEditRoute
+  '/app/profile_/follow-requests': typeof AppProfileFollowRequestsRoute
+  '/app/profile_/security': typeof AppProfileSecurityRoute
+  '/app/settings_/billing': typeof AppSettingsBillingRoute
+  '/app/settings_/branding': typeof AppSettingsBrandingRoute
+  '/app/settings_/payments': typeof AppSettingsPaymentsRoute
+  '/app/settings_/profile': typeof AppSettingsProfileRoute
+  '/app/settings_/styles': typeof AppSettingsStylesRoute
+  '/app/settings_/team': typeof AppSettingsTeamRoute
+  '/app/settings_/theme': typeof AppSettingsThemeRoute
+  '/app/students/$id': typeof AppStudentsIdRoute
+  '/app/students/import': typeof AppStudentsImportRoute
+  '/app/students/new': typeof AppStudentsNewRoute
+  '/app/subscriptions/$id': typeof AppSubscriptionsIdRoute
+  '/app/subscriptions/new': typeof AppSubscriptionsNewRoute
+  '/app/trainers/new': typeof AppTrainersNewRoute
+  '/me/batches/$id': typeof MeBatchesIdRoute
+  '/me/checkout/$bookingId': typeof MeCheckoutBookingIdRoute
+  '/me/locations/$id': typeof MeLocationsIdRoute
+  '/me/messages/$id': typeof MeMessagesIdRoute
+  '/me/profile_/change-email': typeof MeProfileChangeEmailRoute
+  '/me/profile_/change-password': typeof MeProfileChangePasswordRoute
+  '/me/profile_/edit': typeof MeProfileEditRoute
+  '/me/profile_/follow-requests': typeof MeProfileFollowRequestsRoute
+  '/me/profile_/security': typeof MeProfileSecurityRoute
+  '/app/batches/': typeof AppBatchesIndexRoute
+  '/app/bookings/': typeof AppBookingsIndexRoute
+  '/app/certificates/': typeof AppCertificatesIndexRoute
+  '/app/contests/': typeof AppContestsIndexRoute
+  '/app/locations/': typeof AppLocationsIndexRoute
+  '/app/messages/': typeof AppMessagesIndexRoute
+  '/app/students/': typeof AppStudentsIndexRoute
+  '/app/subscriptions/': typeof AppSubscriptionsIndexRoute
+  '/app/trainers/': typeof AppTrainersIndexRoute
+  '/me/locations/': typeof MeLocationsIndexRoute
+  '/me/messages/': typeof MeMessagesIndexRoute
+  '/me/trainers/': typeof MeTrainersIndexRoute
+  '/app/locations/$id/edit': typeof AppLocationsIdEditRoute
+  '/app/locations/$id_/classes': typeof AppLocationsIdClassesRoute
+  '/app/sessions/$id/attendance': typeof AppSessionsIdAttendanceRoute
+  '/me/checkout/invoice/$invoiceId': typeof MeCheckoutInvoiceInvoiceIdRoute
+  '/me/locations/$id_/classes': typeof MeLocationsIdClassesRoute
+}
+
+export interface FileRouteTypes {
+  fileRoutesByFullPath: FileRoutesByFullPath
+  fullPaths:
+    | '/'
+    | '/admin'
+    | '/app'
+    | '/forgot-password'
+    | '/join'
+    | '/login'
+    | '/me'
+    | '/register'
+    | '/admin/profile'
+    | '/app/calendar'
+    | '/app/feed'
+    | '/app/invoices'
+    | '/app/payments'
+    | '/app/profile'
+    | '/app/retention'
+    | '/app/settings'
+    | '/me/attendance'
+    | '/me/book'
+    | '/me/bookings'
+    | '/me/calendar'
+    | '/me/check-in'
+    | '/me/contests'
+    | '/me/feed'
+    | '/me/invoices'
+    | '/me/journey'
+    | '/me/onboarding'
+    | '/me/profile'
+    | '/me/subscriptions'
+    | '/posts/$id'
+    | '/studio/$studioId'
+    | '/trainers/$id'
+    | '/users/$id'
+    | '/admin/'
+    | '/app/'
+    | '/me/'
+    | '/admin/studios/$id'
+    | '/admin/studios/new'
+    | '/app/batches/$id'
+    | '/app/batches/new'
+    | '/app/bookings/new'
+    | '/app/certificates/$id'
+    | '/app/certificates/new'
+    | '/app/contests/$id'
+    | '/app/contests/new'
+    | '/app/locations/$id'
+    | '/app/messages/$id'
+    | '/app/profile/change-email'
+    | '/app/profile/change-password'
+    | '/app/profile/edit'
+    | '/app/profile/follow-requests'
+    | '/app/profile/security'
+    | '/app/settings/billing'
+    | '/app/settings/branding'
+    | '/app/settings/payments'
+    | '/app/settings/profile'
+    | '/app/settings/styles'
+    | '/app/settings/team'
+    | '/app/settings/theme'
+    | '/app/students/$id'
+    | '/app/students/import'
+    | '/app/students/new'
+    | '/app/subscriptions/$id'
+    | '/app/subscriptions/new'
+    | '/app/trainers/new'
+    | '/me/batches/$id'
+    | '/me/checkout/$bookingId'
+    | '/me/locations/$id'
+    | '/me/messages/$id'
+    | '/me/profile/change-email'
+    | '/me/profile/change-password'
+    | '/me/profile/edit'
+    | '/me/profile/follow-requests'
+    | '/me/profile/security'
+    | '/app/batches'
+    | '/app/bookings'
+    | '/app/certificates'
+    | '/app/contests'
+    | '/app/locations'
+    | '/app/messages'
+    | '/app/students'
+    | '/app/subscriptions'
+    | '/app/trainers'
+    | '/me/locations'
+    | '/me/messages'
+    | '/me/trainers'
+    | '/app/locations/$id/edit'
+    | '/app/locations/$id/classes'
+    | '/app/sessions/$id/attendance'
+    | '/me/checkout/invoice/$invoiceId'
+    | '/me/locations/$id/classes'
+  fileRoutesByTo: FileRoutesByTo
+  to:
+    | '/'
+    | '/forgot-password'
+    | '/join'
+    | '/login'
+    | '/register'
+    | '/admin/profile'
+    | '/app/calendar'
+    | '/app/feed'
+    | '/app/invoices'
+    | '/app/payments'
+    | '/app/profile'
+    | '/app/retention'
+    | '/app/settings'
+    | '/me/attendance'
+    | '/me/book'
+    | '/me/bookings'
+    | '/me/calendar'
+    | '/me/check-in'
+    | '/me/contests'
+    | '/me/feed'
+    | '/me/invoices'
+    | '/me/journey'
+    | '/me/onboarding'
+    | '/me/profile'
+    | '/me/subscriptions'
+    | '/posts/$id'
+    | '/studio/$studioId'
+    | '/trainers/$id'
+    | '/users/$id'
+    | '/admin'
+    | '/app'
+    | '/me'
+    | '/admin/studios/$id'
+    | '/admin/studios/new'
+    | '/app/batches/$id'
+    | '/app/batches/new'
+    | '/app/bookings/new'
+    | '/app/certificates/$id'
+    | '/app/certificates/new'
+    | '/app/contests/$id'
+    | '/app/contests/new'
+    | '/app/locations/$id'
+    | '/app/messages/$id'
+    | '/app/profile/change-email'
+    | '/app/profile/change-password'
+    | '/app/profile/edit'
+    | '/app/profile/follow-requests'
+    | '/app/profile/security'
+    | '/app/settings/billing'
+    | '/app/settings/branding'
+    | '/app/settings/payments'
+    | '/app/settings/profile'
+    | '/app/settings/styles'
+    | '/app/settings/team'
+    | '/app/settings/theme'
+    | '/app/students/$id'
+    | '/app/students/import'
+    | '/app/students/new'
+    | '/app/subscriptions/$id'
+    | '/app/subscriptions/new'
+    | '/app/trainers/new'
+    | '/me/batches/$id'
+    | '/me/checkout/$bookingId'
+    | '/me/locations/$id'
+    | '/me/messages/$id'
+    | '/me/profile/change-email'
+    | '/me/profile/change-password'
+    | '/me/profile/edit'
+    | '/me/profile/follow-requests'
+    | '/me/profile/security'
+    | '/app/batches'
+    | '/app/bookings'
+    | '/app/certificates'
+    | '/app/contests'
+    | '/app/locations'
+    | '/app/messages'
+    | '/app/students'
+    | '/app/subscriptions'
+    | '/app/trainers'
+    | '/me/locations'
+    | '/me/messages'
+    | '/me/trainers'
+    | '/app/locations/$id/edit'
+    | '/app/locations/$id/classes'
+    | '/app/sessions/$id/attendance'
+    | '/me/checkout/invoice/$invoiceId'
+    | '/me/locations/$id/classes'
+  id:
+    | '__root__'
+    | '/'
+    | '/admin'
+    | '/app'
+    | '/forgot-password'
+    | '/join'
+    | '/login'
+    | '/me'
+    | '/register'
+    | '/admin/profile'
+    | '/app/calendar'
+    | '/app/feed'
+    | '/app/invoices'
+    | '/app/payments'
+    | '/app/profile'
+    | '/app/retention'
+    | '/app/settings'
+    | '/me/attendance'
+    | '/me/book'
+    | '/me/bookings'
+    | '/me/calendar'
+    | '/me/check-in'
+    | '/me/contests'
+    | '/me/feed'
+    | '/me/invoices'
+    | '/me/journey'
+    | '/me/onboarding'
+    | '/me/profile'
+    | '/me/subscriptions'
+    | '/posts/$id'
+    | '/studio/$studioId'
+    | '/trainers/$id'
+    | '/users/$id'
+    | '/admin/'
+    | '/app/'
+    | '/me/'
+    | '/admin/studios/$id'
+    | '/admin/studios/new'
+    | '/app/batches/$id'
+    | '/app/batches/new'
+    | '/app/bookings/new'
+    | '/app/certificates/$id'
+    | '/app/certificates/new'
+    | '/app/contests/$id'
+    | '/app/contests/new'
+    | '/app/locations/$id'
+    | '/app/messages/$id'
+    | '/app/profile_/change-email'
+    | '/app/profile_/change-password'
+    | '/app/profile_/edit'
+    | '/app/profile_/follow-requests'
+    | '/app/profile_/security'
+    | '/app/settings_/billing'
+    | '/app/settings_/branding'
+    | '/app/settings_/payments'
+    | '/app/settings_/profile'
+    | '/app/settings_/styles'
+    | '/app/settings_/team'
+    | '/app/settings_/theme'
+    | '/app/students/$id'
+    | '/app/students/import'
+    | '/app/students/new'
+    | '/app/subscriptions/$id'
+    | '/app/subscriptions/new'
+    | '/app/trainers/new'
+    | '/me/batches/$id'
+    | '/me/checkout/$bookingId'
+    | '/me/locations/$id'
+    | '/me/messages/$id'
+    | '/me/profile_/change-email'
+    | '/me/profile_/change-password'
+    | '/me/profile_/edit'
+    | '/me/profile_/follow-requests'
+    | '/me/profile_/security'
+    | '/app/batches/'
+    | '/app/bookings/'
+    | '/app/certificates/'
+    | '/app/contests/'
+    | '/app/locations/'
+    | '/app/messages/'
+    | '/app/students/'
+    | '/app/subscriptions/'
+    | '/app/trainers/'
+    | '/me/locations/'
+    | '/me/messages/'
+    | '/me/trainers/'
+    | '/app/locations/$id/edit'
+    | '/app/locations/$id_/classes'
+    | '/app/sessions/$id/attendance'
+    | '/me/checkout/invoice/$invoiceId'
+    | '/me/locations/$id_/classes'
+  fileRoutesById: FileRoutesById
+}
+
+export interface RootRouteChildren {
+  IndexRoute: typeof IndexRoute
+  AdminRoute: typeof AdminRouteWithChildren
+  AppRoute: typeof AppRouteWithChildren
+  ForgotPasswordRoute: typeof ForgotPasswordRoute
+  JoinRoute: typeof JoinRoute
+  LoginRoute: typeof LoginRoute
+  MeRoute: typeof MeRouteWithChildren
+  RegisterRoute: typeof RegisterRoute
+  PostsIdRoute: typeof PostsIdRoute
+  StudioStudioIdRoute: typeof StudioStudioIdRoute
+  TrainersIdRoute: typeof TrainersIdRoute
+  UsersIdRoute: typeof UsersIdRoute
+}
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRouteWithChildren,
@@ -1937,6 +2058,465 @@ const rootRouteChildren: RootRouteChildren = {
   TrainersIdRoute: TrainersIdRoute,
   UsersIdRoute: UsersIdRoute,
 }
-export const routeTree = rootRouteImport
+
+export const routeTree = rootRoute
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+/* ROUTE_MANIFEST_START
+{
+  "routes": {
+    "__root__": {
+      "filePath": "__root.tsx",
+      "children": [
+        "/",
+        "/admin",
+        "/app",
+        "/forgot-password",
+        "/join",
+        "/login",
+        "/me",
+        "/register",
+        "/posts/$id",
+        "/studio/$studioId",
+        "/trainers/$id",
+        "/users/$id"
+      ]
+    },
+    "/": {
+      "filePath": "index.tsx"
+    },
+    "/admin": {
+      "filePath": "admin.tsx",
+      "children": [
+        "/admin/profile",
+        "/admin/",
+        "/admin/studios/$id",
+        "/admin/studios/new"
+      ]
+    },
+    "/app": {
+      "filePath": "app.tsx",
+      "children": [
+        "/app/calendar",
+        "/app/feed",
+        "/app/invoices",
+        "/app/payments",
+        "/app/profile",
+        "/app/retention",
+        "/app/settings",
+        "/app/",
+        "/app/batches/$id",
+        "/app/batches/new",
+        "/app/bookings/new",
+        "/app/certificates/$id",
+        "/app/certificates/new",
+        "/app/contests/$id",
+        "/app/contests/new",
+        "/app/locations/$id",
+        "/app/messages/$id",
+        "/app/profile_/change-email",
+        "/app/profile_/change-password",
+        "/app/profile_/edit",
+        "/app/profile_/follow-requests",
+        "/app/profile_/security",
+        "/app/settings_/billing",
+        "/app/settings_/branding",
+        "/app/settings_/payments",
+        "/app/settings_/profile",
+        "/app/settings_/styles",
+        "/app/settings_/team",
+        "/app/settings_/theme",
+        "/app/students/$id",
+        "/app/students/import",
+        "/app/students/new",
+        "/app/subscriptions/$id",
+        "/app/subscriptions/new",
+        "/app/trainers/new",
+        "/app/batches/",
+        "/app/bookings/",
+        "/app/certificates/",
+        "/app/contests/",
+        "/app/locations/",
+        "/app/messages/",
+        "/app/students/",
+        "/app/subscriptions/",
+        "/app/trainers/",
+        "/app/locations/$id_/classes",
+        "/app/sessions/$id/attendance"
+      ]
+    },
+    "/forgot-password": {
+      "filePath": "forgot-password.tsx"
+    },
+    "/join": {
+      "filePath": "join.tsx"
+    },
+    "/login": {
+      "filePath": "login.tsx"
+    },
+    "/me": {
+      "filePath": "me.tsx",
+      "children": [
+        "/me/attendance",
+        "/me/book",
+        "/me/bookings",
+        "/me/calendar",
+        "/me/check-in",
+        "/me/contests",
+        "/me/feed",
+        "/me/invoices",
+        "/me/journey",
+        "/me/onboarding",
+        "/me/profile",
+        "/me/subscriptions",
+        "/me/",
+        "/me/batches/$id",
+        "/me/checkout/$bookingId",
+        "/me/locations/$id",
+        "/me/messages/$id",
+        "/me/profile_/change-email",
+        "/me/profile_/change-password",
+        "/me/profile_/edit",
+        "/me/profile_/follow-requests",
+        "/me/profile_/security",
+        "/me/locations/",
+        "/me/messages/",
+        "/me/trainers/",
+        "/me/checkout/invoice/$invoiceId",
+        "/me/locations/$id_/classes"
+      ]
+    },
+    "/register": {
+      "filePath": "register.tsx"
+    },
+    "/admin/profile": {
+      "filePath": "admin/profile.tsx",
+      "parent": "/admin"
+    },
+    "/app/calendar": {
+      "filePath": "app/calendar.tsx",
+      "parent": "/app"
+    },
+    "/app/feed": {
+      "filePath": "app/feed.tsx",
+      "parent": "/app"
+    },
+    "/app/invoices": {
+      "filePath": "app/invoices.tsx",
+      "parent": "/app"
+    },
+    "/app/payments": {
+      "filePath": "app/payments.tsx",
+      "parent": "/app"
+    },
+    "/app/profile": {
+      "filePath": "app/profile.tsx",
+      "parent": "/app"
+    },
+    "/app/retention": {
+      "filePath": "app/retention.tsx",
+      "parent": "/app"
+    },
+    "/app/settings": {
+      "filePath": "app/settings.tsx",
+      "parent": "/app"
+    },
+    "/me/attendance": {
+      "filePath": "me/attendance.tsx",
+      "parent": "/me"
+    },
+    "/me/book": {
+      "filePath": "me/book.tsx",
+      "parent": "/me"
+    },
+    "/me/bookings": {
+      "filePath": "me/bookings.tsx",
+      "parent": "/me"
+    },
+    "/me/calendar": {
+      "filePath": "me/calendar.tsx",
+      "parent": "/me"
+    },
+    "/me/check-in": {
+      "filePath": "me/check-in.tsx",
+      "parent": "/me"
+    },
+    "/me/contests": {
+      "filePath": "me/contests.tsx",
+      "parent": "/me"
+    },
+    "/me/feed": {
+      "filePath": "me/feed.tsx",
+      "parent": "/me"
+    },
+    "/me/invoices": {
+      "filePath": "me/invoices.tsx",
+      "parent": "/me"
+    },
+    "/me/journey": {
+      "filePath": "me/journey.tsx",
+      "parent": "/me"
+    },
+    "/me/onboarding": {
+      "filePath": "me/onboarding.tsx",
+      "parent": "/me"
+    },
+    "/me/profile": {
+      "filePath": "me/profile.tsx",
+      "parent": "/me"
+    },
+    "/me/subscriptions": {
+      "filePath": "me/subscriptions.tsx",
+      "parent": "/me"
+    },
+    "/posts/$id": {
+      "filePath": "posts.$id.tsx"
+    },
+    "/studio/$studioId": {
+      "filePath": "studio.$studioId.tsx"
+    },
+    "/trainers/$id": {
+      "filePath": "trainers.$id.tsx"
+    },
+    "/users/$id": {
+      "filePath": "users.$id.tsx"
+    },
+    "/admin/": {
+      "filePath": "admin/index.tsx",
+      "parent": "/admin"
+    },
+    "/app/": {
+      "filePath": "app/index.tsx",
+      "parent": "/app"
+    },
+    "/me/": {
+      "filePath": "me/index.tsx",
+      "parent": "/me"
+    },
+    "/admin/studios/$id": {
+      "filePath": "admin/studios/$id.tsx",
+      "parent": "/admin"
+    },
+    "/admin/studios/new": {
+      "filePath": "admin/studios/new.tsx",
+      "parent": "/admin"
+    },
+    "/app/batches/$id": {
+      "filePath": "app/batches/$id.tsx",
+      "parent": "/app"
+    },
+    "/app/batches/new": {
+      "filePath": "app/batches/new.tsx",
+      "parent": "/app"
+    },
+    "/app/bookings/new": {
+      "filePath": "app/bookings/new.tsx",
+      "parent": "/app"
+    },
+    "/app/certificates/$id": {
+      "filePath": "app/certificates/$id.tsx",
+      "parent": "/app"
+    },
+    "/app/certificates/new": {
+      "filePath": "app/certificates/new.tsx",
+      "parent": "/app"
+    },
+    "/app/contests/$id": {
+      "filePath": "app/contests/$id.tsx",
+      "parent": "/app"
+    },
+    "/app/contests/new": {
+      "filePath": "app/contests/new.tsx",
+      "parent": "/app"
+    },
+    "/app/locations/$id": {
+      "filePath": "app/locations/$id.tsx",
+      "parent": "/app",
+      "children": [
+        "/app/locations/$id/edit"
+      ]
+    },
+    "/app/messages/$id": {
+      "filePath": "app/messages/$id.tsx",
+      "parent": "/app"
+    },
+    "/app/profile_/change-email": {
+      "filePath": "app/profile_.change-email.tsx",
+      "parent": "/app"
+    },
+    "/app/profile_/change-password": {
+      "filePath": "app/profile_.change-password.tsx",
+      "parent": "/app"
+    },
+    "/app/profile_/edit": {
+      "filePath": "app/profile_.edit.tsx",
+      "parent": "/app"
+    },
+    "/app/profile_/follow-requests": {
+      "filePath": "app/profile_.follow-requests.tsx",
+      "parent": "/app"
+    },
+    "/app/profile_/security": {
+      "filePath": "app/profile_.security.tsx",
+      "parent": "/app"
+    },
+    "/app/settings_/billing": {
+      "filePath": "app/settings_.billing.tsx",
+      "parent": "/app"
+    },
+    "/app/settings_/branding": {
+      "filePath": "app/settings_.branding.tsx",
+      "parent": "/app"
+    },
+    "/app/settings_/payments": {
+      "filePath": "app/settings_.payments.tsx",
+      "parent": "/app"
+    },
+    "/app/settings_/profile": {
+      "filePath": "app/settings_.profile.tsx",
+      "parent": "/app"
+    },
+    "/app/settings_/styles": {
+      "filePath": "app/settings_.styles.tsx",
+      "parent": "/app"
+    },
+    "/app/settings_/team": {
+      "filePath": "app/settings_.team.tsx",
+      "parent": "/app"
+    },
+    "/app/settings_/theme": {
+      "filePath": "app/settings_.theme.tsx",
+      "parent": "/app"
+    },
+    "/app/students/$id": {
+      "filePath": "app/students/$id.tsx",
+      "parent": "/app"
+    },
+    "/app/students/import": {
+      "filePath": "app/students/import.tsx",
+      "parent": "/app"
+    },
+    "/app/students/new": {
+      "filePath": "app/students/new.tsx",
+      "parent": "/app"
+    },
+    "/app/subscriptions/$id": {
+      "filePath": "app/subscriptions/$id.tsx",
+      "parent": "/app"
+    },
+    "/app/subscriptions/new": {
+      "filePath": "app/subscriptions/new.tsx",
+      "parent": "/app"
+    },
+    "/app/trainers/new": {
+      "filePath": "app/trainers/new.tsx",
+      "parent": "/app"
+    },
+    "/me/batches/$id": {
+      "filePath": "me/batches/$id.tsx",
+      "parent": "/me"
+    },
+    "/me/checkout/$bookingId": {
+      "filePath": "me/checkout/$bookingId.tsx",
+      "parent": "/me"
+    },
+    "/me/locations/$id": {
+      "filePath": "me/locations/$id.tsx",
+      "parent": "/me"
+    },
+    "/me/messages/$id": {
+      "filePath": "me/messages/$id.tsx",
+      "parent": "/me"
+    },
+    "/me/profile_/change-email": {
+      "filePath": "me/profile_.change-email.tsx",
+      "parent": "/me"
+    },
+    "/me/profile_/change-password": {
+      "filePath": "me/profile_.change-password.tsx",
+      "parent": "/me"
+    },
+    "/me/profile_/edit": {
+      "filePath": "me/profile_.edit.tsx",
+      "parent": "/me"
+    },
+    "/me/profile_/follow-requests": {
+      "filePath": "me/profile_.follow-requests.tsx",
+      "parent": "/me"
+    },
+    "/me/profile_/security": {
+      "filePath": "me/profile_.security.tsx",
+      "parent": "/me"
+    },
+    "/app/batches/": {
+      "filePath": "app/batches/index.tsx",
+      "parent": "/app"
+    },
+    "/app/bookings/": {
+      "filePath": "app/bookings/index.tsx",
+      "parent": "/app"
+    },
+    "/app/certificates/": {
+      "filePath": "app/certificates/index.tsx",
+      "parent": "/app"
+    },
+    "/app/contests/": {
+      "filePath": "app/contests/index.tsx",
+      "parent": "/app"
+    },
+    "/app/locations/": {
+      "filePath": "app/locations/index.tsx",
+      "parent": "/app"
+    },
+    "/app/messages/": {
+      "filePath": "app/messages/index.tsx",
+      "parent": "/app"
+    },
+    "/app/students/": {
+      "filePath": "app/students/index.tsx",
+      "parent": "/app"
+    },
+    "/app/subscriptions/": {
+      "filePath": "app/subscriptions/index.tsx",
+      "parent": "/app"
+    },
+    "/app/trainers/": {
+      "filePath": "app/trainers/index.tsx",
+      "parent": "/app"
+    },
+    "/me/locations/": {
+      "filePath": "me/locations/index.tsx",
+      "parent": "/me"
+    },
+    "/me/messages/": {
+      "filePath": "me/messages/index.tsx",
+      "parent": "/me"
+    },
+    "/me/trainers/": {
+      "filePath": "me/trainers/index.tsx",
+      "parent": "/me"
+    },
+    "/app/locations/$id/edit": {
+      "filePath": "app/locations/$id.edit.tsx",
+      "parent": "/app/locations/$id"
+    },
+    "/app/locations/$id_/classes": {
+      "filePath": "app/locations/$id_.classes.tsx",
+      "parent": "/app"
+    },
+    "/app/sessions/$id/attendance": {
+      "filePath": "app/sessions.$id.attendance.tsx",
+      "parent": "/app"
+    },
+    "/me/checkout/invoice/$invoiceId": {
+      "filePath": "me/checkout/invoice.$invoiceId.tsx",
+      "parent": "/me"
+    },
+    "/me/locations/$id_/classes": {
+      "filePath": "me/locations/$id_.classes.tsx",
+      "parent": "/me"
+    }
+  }
+}
+ROUTE_MANIFEST_END */

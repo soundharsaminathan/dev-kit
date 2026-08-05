@@ -1,0 +1,155 @@
+.page {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 28rem;
+  overflow: hidden;
+  background:
+    radial-gradient(
+      120% 80% at 50% -10%,
+      color-mix(in oklab, var(--accent) 18%, transparent),
+      transparent 55%
+    ),
+    var(--background);
+}
+
+.canvasWrap {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+
+.flow {
+  width: 100%;
+  height: 100%;
+}
+
+.flow :global(.react-flow__attribution) {
+  display: none;
+}
+
+.flow :global(.react-flow__minimap) {
+  background: color-mix(in oklab, var(--card-background) 88%, transparent);
+  backdrop-filter: blur(var(--glass-backdrop-blur, 12px));
+  border: 1px solid var(--glass-border, var(--border));
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  box-shadow: var(--card-shadow);
+}
+
+.flow :global(.react-flow__minimap-mask) {
+  fill: color-mix(in oklab, var(--accent) 12%, transparent);
+}
+
+.topOverlays {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  padding-top: max(var(--space-3), env(safe-area-inset-top));
+  pointer-events: none;
+}
+
+.topOverlays > * {
+  pointer-events: auto;
+}
+
+.glassBar {
+  border-radius: var(--radius-2xl);
+  background: color-mix(in oklab, var(--card-background) 82%, transparent);
+  backdrop-filter: blur(var(--glass-backdrop-blur, 12px));
+  border: 1px solid var(--glass-border, var(--border));
+  box-shadow: var(--card-shadow);
+  padding: var(--space-2);
+}
+
+.headerRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding-inline: var(--space-1);
+  margin-bottom: var(--space-2);
+}
+
+.title {
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: -0.02em;
+}
+
+.subtitle {
+  margin: 0;
+  font-size: var(--text-xs);
+  color: var(--muted-fg);
+}
+
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-1);
+}
+
+.statCell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1rem;
+  padding: var(--space-2) var(--space-1);
+  border-radius: var(--radius-xl);
+  background: color-mix(in oklab, var(--muted) 70%, transparent);
+  text-align: center;
+}
+
+.statValue {
+  font-size: var(--text-sm);
+  font-weight: var(--font-weight-bold);
+  line-height: 1.1;
+}
+
+.statLabel {
+  font-size: 0.58rem;
+  color: var(--muted-fg);
+  line-height: 1.15;
+}
+
+.centerHint {
+  position: absolute;
+  bottom: calc(var(--space-4) + env(safe-area-inset-bottom, 0px));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 15;
+  pointer-events: none;
+  font-size: var(--text-xs);
+  color: var(--muted-fg);
+  padding: 0.35rem 0.75rem;
+  border-radius: var(--radius-full);
+  background: color-mix(in oklab, var(--card-background) 85%, transparent);
+  backdrop-filter: blur(8px);
+}
+
+.stateWrap {
+  flex: 1;
+  display: grid;
+  place-items: center;
+  padding: var(--space-6);
+}
+
+@media (min-width: 768px) {
+  .page {
+    max-width: 42rem;
+    margin-inline: auto;
+    border-inline: 1px solid color-mix(in oklab, var(--border) 60%, transparent);
+  }
+
+  .statsGrid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}

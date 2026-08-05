@@ -14,6 +14,7 @@ import { EventsModule } from "./events/events.module";
 import { HealthModule } from "./health/health.module";
 import { HomeModule } from "./home/home.module";
 import { JobsModule } from "./jobs/jobs.module";
+import { JourneyModule } from "./journey/journey.module";
 import { MediaModule } from "./media/media.module";
 import { MembershipsModule } from "./memberships/memberships.module";
 import { NotificationsModule } from "./notifications/notifications.module";
@@ -62,6 +63,7 @@ import { UsersModule } from "./users/users.module";
     JobsModule,
     HealthModule,
     HomeModule,
+    JourneyModule,
   ],
   providers: [...sentryNestProviders()],
 })

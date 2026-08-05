@@ -1,0 +1,36 @@
+.root {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  overflow: hidden;
+}
+
+.particle {
+  position: absolute;
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: var(--radius-full);
+  animation: sprinkle 1.35s ease-out forwards;
+}
+
+@keyframes sprinkle {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 0, 0) scale(0.4);
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(0, 72px, 0) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .particle {
+    animation: none;
+    opacity: 0;
+  }
+}

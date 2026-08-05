@@ -240,7 +240,12 @@ function MeHomePage() {
               (data.hasEnrollment || data.progress.length > 0) ? (
                 <>
                   <section className={styles.section}>
-                    <p className={styles.sectionLabel}>Your dance journey</p>
+                    <div className={styles.sectionHeading}>
+                      <p className={styles.sectionLabel}>Your dance journey</p>
+                      <Link to="/me/journey" className={styles.sectionLink}>
+                        See journey
+                      </Link>
+                    </div>
                     <JourneyStats stats={data.stats} />
                   </section>
 
