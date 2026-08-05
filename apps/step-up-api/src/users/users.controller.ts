@@ -190,6 +190,10 @@ class CreateStudentDto {
   @IsOptional()
   @IsString()
   batchId?: string;
+
+  @IsOptional()
+  @IsString()
+  temporaryPassword?: string;
 }
 
 class CreateTrainerDto {

@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { randomBytes, randomUUID } from "node:crypto";
 import {
   BadRequestException,
   ConflictException,
@@ -19,6 +19,7 @@ import {
   SessionStatus,
   UserRole,
 } from "@prisma/client";
+import { FirebaseService } from "../auth/firebase.service";
 import { assertBatchHasSeat, lockBatchRow } from "../batches/batch-capacity";
 import { MediaService } from "../media/media.service";
 import { PrismaService } from "../prisma/prisma.service";
@@ -48,12 +49,17 @@ export const PERSONAL_TRIAL_NOTES =
 export const PERSONAL_TRIAL_TIMED_NOTES =
   "Personal trial — preferred time requested";
 
+function generateTemporaryPassword() {
+  return `Su-${randomBytes(6).toString("base64url")}`;
+}
+
 @Injectable()
 export class UsersService {
   constructor(
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(UserCryptoService) private readonly crypto: UserCryptoService,
     @Inject(MediaService) private readonly media: MediaService,
+    @Inject(FirebaseService) private readonly firebase: FirebaseService,
   ) {}
 
   private async presentUser<
@@ -235,6 +241,7 @@ export class UsersService {
     phone?: string;
     styles?: string[];
     batchId?: string;
+    temporaryPassword?: string;
   }) {
     const student = await this.createStudioMember({
       studioId: data.studioId,
@@ -245,6 +252,8 @@ export class UsersService {
       phone: data.phone,
       styles: data.styles,
       role: UserRole.STUDENT,
+      issueLoginCredentials: true,
+      temporaryPassword: data.temporaryPassword,
     });
 
     if (data.batchId) {
@@ -320,8 +329,12 @@ export class UsersService {
     phone?: string;
     role: typeof UserRole.STUDENT | typeof UserRole.TRAINER;
     styles?: string[];
+    issueLoginCredentials?: boolean;
+    temporaryPassword?: string;
   }) {
-    const emailHash = this.crypto.hashEmail(data.email);
+    const email = data.email.trim().toLowerCase();
+    const name = data.name.trim();
+    const emailHash = this.crypto.hashEmail(email);
     const existing = await this.prisma.user.findFirst({
       where: {
         studioId: data.studioId,
@@ -333,9 +346,18 @@ export class UsersService {
       throw new ConflictException("A user with this email already exists");
     }
 
+    const temporaryPassword = data.issueLoginCredentials
+      ? data.temporaryPassword?.trim() || generateTemporaryPassword()
+      : null;
+    if (temporaryPassword && temporaryPassword.length < 8) {
+      throw new BadRequestException(
+        "Temporary password must be at least 8 characters",
+      );
+    }
+
     const sealed = this.crypto.sealPii({
-      email: data.email,
-      name: data.name,
+      email,
+      name,
       phone: data.phone ?? null,
       bio: null,
       instagramUrl: null,
@@ -353,15 +375,61 @@ export class UsersService {
         profileVisibility: isAlwaysPublicRole(data.role)
           ? ProfileVisibility.PUBLIC
           : ProfileVisibility.PRIVATE,
+        ...(temporaryPassword ? { mustChangePassword: true } : {}),
       },
       select: {
         id: true,
+        firebaseUid: true,
         ...userPiiSelect,
         role: true,
+        mustChangePassword: true,
       },
     });
 
-    return this.presentUser(user);
+    let firebaseUid = user.firebaseUid;
+    if (temporaryPassword) {
+      try {
+        const firebaseUser = await this.firebase.ensureEmailPasswordUser({
+          email,
+          password: temporaryPassword,
+          displayName: name,
+        });
+        if (firebaseUser) {
+          const conflict = await this.prisma.user.findFirst({
+            where: {
+              firebaseUid: firebaseUser.uid,
+              id: { not: user.id },
+            },
+            select: { id: true },
+          });
+          if (conflict) {
+            throw new ConflictException(
+              "A Firebase account for this email is already linked to another user",
+            );
+          }
+          await this.prisma.user.update({
+            where: { id: user.id },
+            data: { firebaseUid: firebaseUser.uid },
+          });
+          firebaseUid = firebaseUser.uid;
+        }
+      } catch (error) {
+        if (error instanceof ConflictException) {
+          throw error;
+        }
+      }
+    }
+
+    const presented = await this.presentUser({ ...user, firebaseUid });
+    if (!temporaryPassword) {
+      return presented;
+    }
+
+    return {
+      ...presented,
+      temporaryPassword,
+      setupHint: `Share this temporary password with ${presented.email}. They must change it on first login.`,
+    };
   }
 
   async createStudents(

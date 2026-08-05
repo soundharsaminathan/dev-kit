@@ -176,6 +176,7 @@ export class AuthController {
         emailHash,
         OR: [
           { firebaseUid: { startsWith: "provisioned:" } },
+          { firebaseUid: { startsWith: "staff-created:" } },
           { firebaseUid: { startsWith: "dev-" } },
         ],
       },
