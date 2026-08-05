@@ -259,6 +259,17 @@ function NewBatchPage() {
     !certificationEnabled || Boolean(certificateTemplateId),
   ];
 
+  function canNavigateToStep(target: number) {
+    if (target === step) return false;
+    if (target < step) return true;
+    return stepIsValid.slice(0, target).every(Boolean);
+  }
+
+  function goToStep(target: number) {
+    if (!canNavigateToStep(target)) return;
+    setStep(target);
+  }
+
   function togglePlan(planId: string, selected: boolean) {
     setSubscriptionIds((current) =>
       selected
@@ -410,17 +421,25 @@ function NewBatchPage() {
 
       <div className={styles.wizard}>
         <nav className={styles.steps} aria-label="Batch creation steps">
-          {steps.map((label, index) => (
-            <div
-              key={label}
-              className={styles.step}
-              data-active={index === step || undefined}
-              data-complete={index < step || undefined}
-            >
-              <span>{index + 1}</span>
-              <strong>{label}</strong>
-            </div>
-          ))}
+          {steps.map((label, index) => {
+            const isCurrent = index === step;
+            return (
+              <button
+                key={label}
+                type="button"
+                className={styles.step}
+                data-active={isCurrent || undefined}
+                data-complete={index < step || undefined}
+                aria-current={isCurrent ? "step" : undefined}
+                aria-label={`${label}, step ${index + 1} of ${steps.length}`}
+                disabled={!canNavigateToStep(index)}
+                onClick={() => goToStep(index)}
+              >
+                <span aria-hidden>{index + 1}</span>
+                <strong>{label}</strong>
+              </button>
+            );
+          })}
         </nav>
 
         <div className={styles.panel}>
@@ -491,7 +510,11 @@ function NewBatchPage() {
                   </SelectTrigger>
                   <SelectContent>
                     {availableBranches.map((branch) => (
-                      <SelectItem key={branch.id} id={branch.id}>
+                      <SelectItem
+                        key={branch.id}
+                        id={branch.id}
+                        textValue={`${branch.name} — ${branch.address}`}
+                      >
                         {branch.name} — {branch.address}
                       </SelectItem>
                     ))}

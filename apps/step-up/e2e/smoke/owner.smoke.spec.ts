@@ -45,6 +45,7 @@ const OWNER_PATHS = [
   "/app/contests/new",
   `/app/contests/${SMOKE.contestId}`,
   "/app/locations",
+  "/app/locations/new",
   `/app/locations/${SMOKE.branchMainId}`,
   `/app/locations/${SMOKE.branchMainId}/edit`,
   `/app/locations/${SMOKE.branchMainId}/classes`,

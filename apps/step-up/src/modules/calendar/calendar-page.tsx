@@ -260,9 +260,15 @@ export function CalendarPage({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem id="all">All branches</SelectItem>
+                <SelectItem id="all" textValue="All branches">
+                  All branches
+                </SelectItem>
                 {branches.map((branch) => (
-                  <SelectItem key={branch.id} id={branch.id}>
+                  <SelectItem
+                    key={branch.id}
+                    id={branch.id}
+                    textValue={branch.name}
+                  >
                     {branch.name}
                   </SelectItem>
                 ))}

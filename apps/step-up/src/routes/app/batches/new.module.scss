@@ -94,13 +94,22 @@
     grid-template-columns: 2.1rem 1fr;
     align-items: center;
     gap: 0.75rem;
+    width: 100%;
+    margin: 0;
     padding: 0.7rem 0.75rem;
+    border: none;
     border-radius: var(--radius-xl, 1rem);
+    background: transparent;
     color: color-mix(in srgb, var(--color-fg) 55%, transparent);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
     transition:
       color var(--interaction-transition-duration)
         var(--interaction-transition-curve),
       background-color var(--interaction-transition-duration)
+        var(--interaction-transition-curve),
+      transform var(--interaction-transition-duration)
         var(--interaction-transition-curve);
 
     span {
@@ -131,6 +140,20 @@
       letter-spacing: -0.01em;
     }
 
+    &:hover:not(:disabled):not([data-active]) {
+      color: var(--color-fg);
+      background: color-mix(in srgb, var(--create-accent) 8%, transparent);
+    }
+
+    &:active:not(:disabled):not([data-active]) {
+      transform: scale(var(--interaction-press-scale));
+    }
+
+    &:disabled:not([data-active]) {
+      cursor: not-allowed;
+      opacity: 0.55;
+    }
+
     &[data-active] {
       color: var(--color-fg);
       background: color-mix(
@@ -138,6 +161,8 @@
         var(--create-accent) 12%,
         var(--color-card)
       );
+      cursor: default;
+      opacity: 1;
 
       span {
         border-color: var(--create-accent);
@@ -352,13 +377,22 @@
   grid-template-columns: 2rem 1fr;
   align-items: center;
   gap: 0.75rem;
+  width: 100%;
+  margin: 0;
   padding: 0.75rem;
+  border: none;
   border-radius: var(--radius-lg, 0.75rem);
+  background: transparent;
   color: color-mix(in srgb, var(--color-fg) 58%, transparent);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
   transition:
     color var(--interaction-transition-duration)
       var(--interaction-transition-curve),
     background-color var(--interaction-transition-duration)
+      var(--interaction-transition-curve),
+    transform var(--interaction-transition-duration)
       var(--interaction-transition-curve);
 
   span {
@@ -375,9 +409,25 @@
     font-size: 0.875rem;
   }
 
+  &:hover:not(:disabled):not([data-active]) {
+    color: var(--color-fg);
+    background: color-mix(in srgb, var(--color-primary) 8%, transparent);
+  }
+
+  &:active:not(:disabled):not([data-active]) {
+    transform: scale(var(--interaction-press-scale));
+  }
+
+  &:disabled:not([data-active]) {
+    cursor: not-allowed;
+    opacity: 0.55;
+  }
+
   &[data-active] {
     color: var(--color-fg);
     background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+    cursor: default;
+    opacity: 1;
 
     span {
       border-color: var(--color-primary);
@@ -753,5 +803,6 @@
   .choice,
   .progressFill {
     transition-duration: 0ms;
+    transform: none;
   }
 }
