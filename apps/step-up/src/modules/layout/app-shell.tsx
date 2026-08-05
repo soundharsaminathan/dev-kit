@@ -48,6 +48,10 @@ function isMemberBook(pathname: string) {
   return pathname === "/me/book" || pathname.startsWith("/me/book/");
 }
 
+function isMemberJourney(pathname: string) {
+  return pathname === "/me/journey" || pathname.startsWith("/me/journey/");
+}
+
 function isStaffHome(pathname: string) {
   return pathname === "/app" || pathname === "/app/";
 }
@@ -97,7 +101,8 @@ export function AppShell({ variant, children }: AppShellProps) {
   const { user } = useAuth();
   const collapseSidebar = needsCollapsedSidebar(pathname);
   const fillHeight =
-    collapseSidebar || (variant === "me" && isMemberBook(pathname));
+    collapseSidebar ||
+    (variant === "me" && (isMemberBook(pathname) || isMemberJourney(pathname)));
   const [sidebarOpen, setSidebarOpen] = useState(!collapseSidebar);
   const hideHeader =
     variant === "me" ||

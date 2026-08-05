@@ -199,6 +199,12 @@ const memberLinks: NavLinkItem[] = [
     section: "Activity",
   },
   {
+    to: "/me/journey",
+    label: "Journey",
+    icon: "map",
+    section: "Activity",
+  },
+  {
     to: "/me/attendance",
     label: "Attendance",
     icon: "badge-check",
