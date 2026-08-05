@@ -12,6 +12,7 @@ import {
 import {
   type PointerEvent as ReactPointerEvent,
   useEffect,
+  useRef,
   useState,
 } from "react";
 import { ENTITY_ICONS } from "@/lib/entity-icons";
@@ -224,8 +225,17 @@ export function TrainerStackView({
     setIndex((current) => Math.min(current, Math.max(trainers.length - 1, 0)));
   }, [trainers]);
 
+  const selectionIndexRef = useRef<number | null>(null);
   useEffect(() => {
     if (!selectionMode || !onSelect) return;
+    // Sync selection when the user swipes — not on mount / trainers load,
+    // so Continue without a gesture does not silently book the first trainer.
+    if (selectionIndexRef.current === null) {
+      selectionIndexRef.current = index;
+      return;
+    }
+    if (selectionIndexRef.current === index) return;
+    selectionIndexRef.current = index;
     const trainer = trainers[index];
     if (trainer) onSelect(trainer.id);
   }, [index, onSelect, selectionMode, trainers]);

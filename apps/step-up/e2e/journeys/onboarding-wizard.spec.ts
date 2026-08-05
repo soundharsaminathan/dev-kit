@@ -115,7 +115,7 @@ test.describe("onboarding wizard @critical", () => {
           method: "POST",
           pathIncludes: "/users/me/onboarding/complete",
         }),
-        page.getByRole("button", { name: "Continue" }).click(),
+        page.getByRole("button", { name: /^Skip$/i }).click(),
       ]);
       expect(completeResponse.ok()).toBeTruthy();
 

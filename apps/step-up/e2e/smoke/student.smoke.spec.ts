@@ -357,12 +357,14 @@ test.describe("student smoke @smoke", () => {
       await page.getByRole("button", { name: /^Skip$/i }).click();
 
       await expect(page.getByRole("heading", { name: /Any/i })).toBeVisible();
+      await expect(page.getByRole("button", { name: /^Skip$/i })).toBeVisible();
+
       const [completeResponse] = await Promise.all([
         waitForApiResponse(page, {
           method: "POST",
           pathIncludes: "/users/me/onboarding/complete",
         }),
-        page.getByRole("button", { name: "Continue" }).click(),
+        page.getByRole("button", { name: /^Skip$/i }).click(),
       ]);
       expect(completeResponse.ok()).toBeTruthy();
       await expect(page).toHaveURL(/\/me\/book/);

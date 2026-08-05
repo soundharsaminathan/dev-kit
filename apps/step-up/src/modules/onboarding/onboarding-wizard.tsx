@@ -7,6 +7,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { updateProfile } from "firebase/auth";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useMemo, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import { useApi } from "@/lib/api-context";
 import { useAuth } from "@/lib/auth";
 import {
@@ -205,14 +206,6 @@ export function OnboardingWizard() {
   const completeMutation = useMutation({
     mutationFn: (body: CompleteOnboardingBody = {}) =>
       api.post<ProfilePatch>("/users/me/onboarding/complete", body),
-    onSuccess: (saved) => {
-      updateUser({
-        onboardingCompletedAt: saved.onboardingCompletedAt
-          ? String(saved.onboardingCompletedAt)
-          : new Date().toISOString(),
-      });
-      setCompleted(true);
-    },
   });
 
   function advanceTo(next: OnboardingStep) {
@@ -327,17 +320,26 @@ export function OnboardingWizard() {
         if (trainerId) {
           body.trainerId = trainerId;
         }
-        if (trial || trainerId) {
-          await completeMutation.mutateAsync(body);
-        } else {
-          await completeMutation.mutateAsync({});
-        }
+        const saved =
+          trial || trainerId
+            ? await completeMutation.mutateAsync(body)
+            : await completeMutation.mutateAsync({});
+        // Flush auth before navigate so /me/book beforeLoad sees a completed
+        // student (stale incomplete context would bounce back to onboarding).
+        flushSync(() => {
+          updateUser({
+            onboardingCompletedAt: saved.onboardingCompletedAt
+              ? String(saved.onboardingCompletedAt)
+              : new Date().toISOString(),
+          });
+          setCompleted(true);
+        });
       }
-      const booked = Boolean(trial || trainerId);
-      if (booked) {
-        void navigate({ to: "/me", replace: true });
+      // Session booking has a home timeline entry; otherwise open discover.
+      if (trial?.kind === "session") {
+        await navigate({ to: "/me", replace: true });
       } else {
-        void navigate({
+        await navigate({
           to: "/me/book",
           search: { intent: "trial" },
           replace: true,
