@@ -1,6 +1,7 @@
 import { ThemeColorPanel } from "@dev-ui/components/theme-editor";
 import { useToastContext } from "@dev-ui/components/toast";
 import { useTheme } from "@dev-ui/core";
+import { Icon } from "@dev-ui/icons";
 import { type ThemeDraft, themeDraftToDefinition } from "@dev-ui/tokens";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useLayoutEffect, useState } from "react";
@@ -148,11 +149,12 @@ export function ThemePanel({
                 key={option}
                 type="button"
                 className={styles.modeOption}
+                aria-label={option === "light" ? "Light" : "Dark"}
                 aria-pressed={mode === option}
                 data-selected={mode === option ? "true" : undefined}
                 onClick={() => setMode(option)}
               >
-                {option === "light" ? "Light" : "Dark"}
+                <Icon name={option === "light" ? "sun" : "moon"} />
               </button>
             ))}
           </fieldset>

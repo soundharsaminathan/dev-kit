@@ -1,4 +1,4 @@
-import { Badge } from "@dev-ui/components/badge";
+import { Badge, type BadgeVariant } from "@dev-ui/components/badge";
 import {
   Menu,
   MenuContent,
@@ -50,6 +50,13 @@ const CREATE_ITEMS = [
 ] as const;
 
 const NEW_USER_DAYS = 14;
+
+const STAGE_BADGE_VARIANT: Record<StudentFunnelStage, BadgeVariant> = {
+  active: "success",
+  signedInOnly: "info",
+  trialAttended: "accent",
+  completedWithoutPlan: "warning",
+};
 
 function parseSearch(search: Record<string, unknown>): StudentsSearch {
   const result: StudentsSearch = {};
@@ -335,19 +342,33 @@ function StudentsPage() {
                       <div className={staff.attentionTop}>
                         <span className={staff.rowTitle}>{student.name}</span>
                         {student.active === false ? (
-                          <Badge variant="neutral">Inactive</Badge>
+                          <Badge
+                            appearance="subtle"
+                            size="sm"
+                            variant="neutral"
+                          >
+                            Inactive
+                          </Badge>
                         ) : null}
                       </div>
-                      {activeDuration ? (
-                        <p className={staff.rowMeta}>{activeDuration}</p>
-                      ) : null}
-                      <p className={staff.rowMeta}>{student.email}</p>
-                      {student.phone ? (
-                        <p className={staff.rowMeta}>{student.phone}</p>
-                      ) : null}
-                      <p className={staff.rowMeta}>
-                        {STAGE_LABELS[student.funnelStage]}
-                      </p>
+                      <div className={staff.rowChips}>
+                        <Badge
+                          appearance="subtle"
+                          size="sm"
+                          variant={STAGE_BADGE_VARIANT[student.funnelStage]}
+                        >
+                          {STAGE_LABELS[student.funnelStage]}
+                        </Badge>
+                        {activeDuration ? (
+                          <Badge
+                            appearance="subtle"
+                            size="sm"
+                            variant="neutral"
+                          >
+                            {activeDuration}
+                          </Badge>
+                        ) : null}
+                      </div>
                     </div>
                   </PressableCard>
                 );

@@ -51,6 +51,10 @@ vi.mock("@dev-ui/components/theme-editor", () => ({
   ),
 }));
 
+vi.mock("@dev-ui/icons", () => ({
+  Icon: ({ name }: { name: string }) => <span data-icon={name} />,
+}));
+
 vi.mock("@/lib/api-context", () => ({
   useApi: () => ({
     patch,
