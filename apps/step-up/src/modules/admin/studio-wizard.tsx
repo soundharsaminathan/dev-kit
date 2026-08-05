@@ -16,6 +16,7 @@ import {
 import { BrandingPanel } from "@/modules/branding/branding-panel";
 import { useStudioBrandEdit } from "@/modules/branding/studio-brand-edit-context";
 import type { StudioBrandThemePayload } from "@/modules/branding/types";
+import { TemporaryCredentialsPanel } from "@/modules/members/temporary-credentials-panel";
 import type { Studio } from "@/modules/settings/types";
 import { FormInput } from "@/modules/ui/form-input";
 import { PasswordInput } from "@/modules/ui/password-input";
@@ -31,6 +32,14 @@ type CreateStudioResult = {
   ownerProvisioned: boolean;
   temporaryPassword: string | null;
   setupHint: string | null;
+};
+
+type ResetOwnerPasswordResult = {
+  id: string;
+  email: string;
+  name: string;
+  temporaryPassword: string;
+  setupHint: string;
 };
 
 export type StudioWizardStudio = Studio & {
@@ -86,6 +95,8 @@ export function StudioWizard(props: StudioWizardProps) {
   const [createdResult, setCreatedResult] = useState<CreateStudioResult | null>(
     null,
   );
+  const [ownerResetResult, setOwnerResetResult] =
+    useState<ResetOwnerPasswordResult | null>(null);
 
   const defaultThemePayload = useMemo(
     () =>
@@ -271,7 +282,41 @@ export function StudioWizard(props: StudioWizardProps) {
     },
   });
 
-  const pending = createMutation.isPending || updateMutation.isPending;
+  const resetOwnerPassword = useMutation({
+    mutationFn: async () => {
+      if (!studio?.id) {
+        throw new Error("Studio is required");
+      }
+      return api.post<ResetOwnerPasswordResult>(
+        `/studios/${studio.id}/reset-owner-password`,
+        {},
+      );
+    },
+    onSuccess: (result) => {
+      setOwnerResetResult(result);
+      toast({
+        title: "Owner temporary password ready",
+        description: "Share it once — shown only on this screen.",
+        variant: "success",
+      });
+    },
+    onError: (error) => {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Could not reset owner password.";
+      toast({
+        title: "Couldn’t reset owner password",
+        description: message,
+        variant: "error",
+      });
+    },
+  });
+
+  const pending =
+    createMutation.isPending ||
+    updateMutation.isPending ||
+    resetOwnerPassword.isPending;
   const progressPct = ((step + 1) / STEPS.length) * 100;
 
   if (createdResult) {
@@ -472,10 +517,40 @@ export function StudioWizard(props: StudioWizardProps) {
                   </div>
                 </>
               ) : (
-                <p className={styles.ownerMeta}>
-                  Owner {studio?.owner?.name ?? "—"} ·{" "}
-                  {studio?.owner?.email ?? "—"}
-                </p>
+                <div className={`${styles.fullWidth} ${styles.ownerReset}`}>
+                  <p className={styles.ownerMeta}>
+                    Owner {studio?.owner?.name ?? "—"} ·{" "}
+                    {studio?.owner?.email ?? "—"}
+                  </p>
+                  {ownerResetResult ? (
+                    <div className={styles.ownerResetPanel}>
+                      <TemporaryCredentialsPanel
+                        email={ownerResetResult.email}
+                        temporaryPassword={ownerResetResult.temporaryPassword}
+                        eyebrow="Owner access"
+                        helpText="This password is shown once. The owner must set a new password on first login."
+                        onCopy={(label, value) => void copyText(label, value)}
+                      />
+                      <Button
+                        variant="quiet"
+                        type="button"
+                        onClick={() => setOwnerResetResult(null)}
+                      >
+                        Dismiss
+                      </Button>
+                    </div>
+                  ) : (
+                    <Button
+                      variant="default"
+                      type="button"
+                      data-testid="reset-owner-password"
+                      isPending={resetOwnerPassword.isPending}
+                      onClick={() => resetOwnerPassword.mutate()}
+                    >
+                      Reset owner password
+                    </Button>
+                  )}
+                </div>
               )}
               <div className={styles.fullWidth}>
                 <FormInput

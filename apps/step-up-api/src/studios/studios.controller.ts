@@ -26,6 +26,7 @@ import { Roles } from "../auth/roles.decorator";
 import { RolesGuard } from "../auth/roles.guard";
 import { assertSameStudio } from "../auth/studio-access";
 import type { DecryptedUser } from "../users/user-crypto.service";
+import { UsersService } from "../users/users.service";
 import { StudiosService } from "./studios.service";
 
 class CreateStudioDto {
@@ -113,10 +114,18 @@ class UpdateStudioSettingsDto {
   danceStyles?: unknown;
 }
 
+class ResetOwnerPasswordDto {
+  @IsOptional()
+  @IsString()
+  @MinLength(8)
+  temporaryPassword?: string;
+}
+
 @Controller("studios")
 export class StudiosController {
   constructor(
     @Inject(StudiosService) private readonly studiosService: StudiosService,
+    @Inject(UsersService) private readonly usersService: UsersService,
   ) {}
 
   @Get()
@@ -222,6 +231,19 @@ export class StudiosController {
     }
 
     return this.studiosService.updateSettings(id, dto);
+  }
+
+  @Post(":id/reset-owner-password")
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles(UserRole.SYSTEM_ADMIN)
+  resetOwnerPassword(
+    @Param("id") id: string,
+    @Body() dto: ResetOwnerPasswordDto,
+  ) {
+    return this.usersService.resetOwnerTemporaryPassword(
+      id,
+      dto.temporaryPassword,
+    );
   }
 
   @Delete(":id")

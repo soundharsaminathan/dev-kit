@@ -393,6 +393,8 @@ test.describe("student funnel full flow @critical", () => {
       ).toBeEnabled();
       const beforeUiCreate = await getFunnel();
       await page.getByRole("button", { name: /create student/i }).click();
+      await expect(page.getByTestId("temp-password-value")).toBeVisible();
+      await page.getByTestId("student-credentials-done").click();
       await expect(page).toHaveURL(/\/app\/students\/?$/);
 
       let uiStudentId: string | undefined;

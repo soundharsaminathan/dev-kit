@@ -16,6 +16,7 @@ import { ENTITY_ICONS } from "@/lib/entity-icons";
 import { requireAdmin } from "@/lib/require-auth";
 import { useStudioId } from "@/lib/use-studio-id";
 import type { ChatConversation } from "@/modules/chat/types";
+import { TemporaryCredentialsPanel } from "@/modules/members/temporary-credentials-panel";
 import {
   parseDiscountInput,
   printInvoice,
@@ -113,7 +114,13 @@ type SheetKind =
   | "link-parent"
   | "delete"
   | "toggle-active"
+  | "reset-password"
   | null;
+
+type TemporaryCredentials = {
+  email: string;
+  temporaryPassword: string;
+};
 
 export const Route = createFileRoute("/app/students/$id")({
   beforeLoad: ({ context, location }) => {
@@ -195,6 +202,8 @@ function StudentDetailPage() {
   const [referralDiscount, setReferralDiscount] = useState("");
   const [studioDiscount, setStudioDiscount] = useState("");
   const [parentUserId, setParentUserId] = useState<string | null>(null);
+  const [resetCredentials, setResetCredentials] =
+    useState<TemporaryCredentials | null>(null);
 
   const query = useQuery({
     queryKey: ["student-profile", studioId, id],
@@ -247,6 +256,7 @@ function StudentDetailPage() {
     setReferralDiscount("");
     setStudioDiscount("");
     setParentUserId(null);
+    setResetCredentials(null);
   }
 
   function openEdit() {
@@ -286,6 +296,26 @@ function StudentDetailPage() {
 
   function openToggleActive() {
     setSheet("toggle-active");
+  }
+
+  function openResetPassword() {
+    setResetCredentials(null);
+    setSheet("reset-password");
+  }
+
+  async function copyText(label: string, value: string) {
+    try {
+      await navigator.clipboard.writeText(value);
+      toast({
+        title: `${label} copied`,
+        variant: "success",
+      });
+    } catch {
+      toast({
+        title: `Couldn’t copy ${label.toLowerCase()}`,
+        variant: "error",
+      });
+    }
   }
 
   const deleteStudent = useMutation({
@@ -360,6 +390,35 @@ function StudentDetailPage() {
             : "Couldn’t save profile",
         description:
           error instanceof Error ? error.message : "Could not update student.",
+        variant: "error",
+      });
+    },
+  });
+
+  const resetPassword = useMutation({
+    mutationFn: () =>
+      api.post<TemporaryCredentials>(
+        `/users/studio/${studioId}/students/${id}/reset-password`,
+        {},
+      ),
+    onSuccess: (result) => {
+      setResetCredentials({
+        email: result.email,
+        temporaryPassword: result.temporaryPassword,
+      });
+      toast({
+        title: "Temporary password ready",
+        description: "Share it once — shown only on this screen.",
+        variant: "success",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Couldn’t reset password",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Could not generate a temporary password.",
         variant: "error",
       });
     },
@@ -532,6 +591,7 @@ function StudentDetailPage() {
   const actionError =
     deleteStudent.error ??
     updateStudent.error ??
+    resetPassword.error ??
     assignPlan.error ??
     renewPlan.error ??
     markPaid.error ??
@@ -553,6 +613,10 @@ function StudentDetailPage() {
     }
     if (actionId === "link-parent") {
       openLinkParent();
+      return;
+    }
+    if (actionId === "reset-password") {
+      openResetPassword();
       return;
     }
     if (actionId === "toggle-active") {
@@ -599,6 +663,9 @@ function StudentDetailPage() {
                 </MenuItem>
                 <MenuItem id="link-parent" textValue="Link parent">
                   <MenuItemLabel>Link parent</MenuItemLabel>
+                </MenuItem>
+                <MenuItem id="reset-password" textValue="Reset password">
+                  <MenuItemLabel>Reset password</MenuItemLabel>
                 </MenuItem>
                 <MenuItem
                   id="toggle-active"
@@ -1398,6 +1465,76 @@ function StudentDetailPage() {
               {profile?.student.active ? "Deactivate" : "Reactivate"}
             </TouchButton>
           </div>
+        </div>
+      </AppSheet>
+
+      <AppSheet
+        isOpen={sheet === "reset-password"}
+        onOpenChange={(open) => {
+          if (!open) closeSheet();
+        }}
+        title={
+          resetCredentials ? "Temporary password" : "Reset student password"
+        }
+      >
+        <div className={staff.sheetStack}>
+          {resetCredentials ? (
+            <>
+              <TemporaryCredentialsPanel
+                email={resetCredentials.email}
+                temporaryPassword={resetCredentials.temporaryPassword}
+                eyebrow="Student access"
+                helpText="This password is shown once. The student must set a new password on first login."
+                onCopy={(label, value) => void copyText(label, value)}
+              />
+              <div className={staff.sheetActions}>
+                <TouchButton
+                  variant="primary"
+                  fullWidth
+                  data-testid="reset-password-done"
+                  onClick={closeSheet}
+                >
+                  Done
+                </TouchButton>
+              </div>
+            </>
+          ) : (
+            <>
+              <p className={staff.rowMeta}>
+                Generate a new temporary password for “{profile?.student.name}”?
+                Their current password will stop working, and they’ll need to
+                change this one on next login.
+              </p>
+              {resetPassword.isError ? (
+                <ErrorState
+                  description={
+                    resetPassword.error instanceof Error
+                      ? resetPassword.error.message
+                      : "Could not reset password."
+                  }
+                />
+              ) : null}
+              <div className={staff.sheetActions}>
+                <TouchButton
+                  variant="default"
+                  fullWidth
+                  isDisabled={resetPassword.isPending}
+                  onClick={closeSheet}
+                >
+                  Cancel
+                </TouchButton>
+                <TouchButton
+                  variant="primary"
+                  fullWidth
+                  isPending={resetPassword.isPending}
+                  data-testid="confirm-reset-student-password"
+                  onClick={() => resetPassword.mutate()}
+                >
+                  Generate temporary password
+                </TouchButton>
+              </div>
+            </>
+          )}
         </div>
       </AppSheet>
     </Screen>

@@ -53,6 +53,15 @@ function generateTemporaryPassword() {
   return `Su-${randomBytes(6).toString("base64url")}`;
 }
 
+type TemporaryPasswordResult = {
+  id: string;
+  email: string;
+  name: string;
+  firebaseUid: string;
+  temporaryPassword: string;
+  setupHint: string;
+};
+
 @Injectable()
 export class UsersService {
   constructor(
@@ -61,6 +70,76 @@ export class UsersService {
     @Inject(MediaService) private readonly media: MediaService,
     @Inject(FirebaseService) private readonly firebase: FirebaseService,
   ) {}
+
+  private resolveTemporaryPassword(requested?: string) {
+    const temporaryPassword = requested?.trim() || generateTemporaryPassword();
+    if (temporaryPassword.length < 8) {
+      throw new BadRequestException(
+        "Temporary password must be at least 8 characters",
+      );
+    }
+    return temporaryPassword;
+  }
+
+  private async applyTemporaryPassword(input: {
+    userId: string;
+    email: string;
+    name: string;
+    firebaseUid: string;
+    temporaryPassword?: string;
+  }): Promise<TemporaryPasswordResult> {
+    const temporaryPassword = this.resolveTemporaryPassword(
+      input.temporaryPassword,
+    );
+    let firebaseUid = input.firebaseUid;
+
+    await this.prisma.user.update({
+      where: { id: input.userId },
+      data: { mustChangePassword: true },
+    });
+
+    try {
+      const firebaseUser = await this.firebase.ensureEmailPasswordUser({
+        email: input.email,
+        password: temporaryPassword,
+        displayName: input.name,
+      });
+      if (firebaseUser) {
+        const conflict = await this.prisma.user.findFirst({
+          where: {
+            firebaseUid: firebaseUser.uid,
+            id: { not: input.userId },
+          },
+          select: { id: true },
+        });
+        if (conflict) {
+          throw new ConflictException(
+            "A Firebase account for this email is already linked to another user",
+          );
+        }
+        if (firebaseUser.uid !== firebaseUid) {
+          await this.prisma.user.update({
+            where: { id: input.userId },
+            data: { firebaseUid: firebaseUser.uid },
+          });
+          firebaseUid = firebaseUser.uid;
+        }
+      }
+    } catch (error) {
+      if (error instanceof ConflictException) {
+        throw error;
+      }
+    }
+
+    return {
+      id: input.userId,
+      email: input.email,
+      name: input.name,
+      firebaseUid,
+      temporaryPassword,
+      setupHint: `Share this temporary password with ${input.email}. They must change it on first login.`,
+    };
+  }
 
   private async presentUser<
     T extends EncryptedUserFields & {
@@ -313,10 +392,13 @@ export class UsersService {
     ageRange: AgeRange;
     phone?: string;
     styles?: string[];
+    temporaryPassword?: string;
   }) {
     return this.createStudioMember({
       ...data,
       role: UserRole.TRAINER,
+      issueLoginCredentials: true,
+      temporaryPassword: data.temporaryPassword,
     });
   }
 
@@ -347,13 +429,8 @@ export class UsersService {
     }
 
     const temporaryPassword = data.issueLoginCredentials
-      ? data.temporaryPassword?.trim() || generateTemporaryPassword()
+      ? this.resolveTemporaryPassword(data.temporaryPassword)
       : null;
-    if (temporaryPassword && temporaryPassword.length < 8) {
-      throw new BadRequestException(
-        "Temporary password must be at least 8 characters",
-      );
-    }
 
     const sealed = this.crypto.sealPii({
       email,
@@ -386,49 +463,142 @@ export class UsersService {
       },
     });
 
-    let firebaseUid = user.firebaseUid;
-    if (temporaryPassword) {
-      try {
-        const firebaseUser = await this.firebase.ensureEmailPasswordUser({
-          email,
-          password: temporaryPassword,
-          displayName: name,
-        });
-        if (firebaseUser) {
-          const conflict = await this.prisma.user.findFirst({
-            where: {
-              firebaseUid: firebaseUser.uid,
-              id: { not: user.id },
-            },
-            select: { id: true },
-          });
-          if (conflict) {
-            throw new ConflictException(
-              "A Firebase account for this email is already linked to another user",
-            );
-          }
-          await this.prisma.user.update({
-            where: { id: user.id },
-            data: { firebaseUid: firebaseUser.uid },
-          });
-          firebaseUid = firebaseUser.uid;
-        }
-      } catch (error) {
-        if (error instanceof ConflictException) {
-          throw error;
-        }
-      }
+    if (!temporaryPassword) {
+      return this.presentUser(user);
     }
 
-    const presented = await this.presentUser({ ...user, firebaseUid });
-    if (!temporaryPassword) {
-      return presented;
-    }
+    const credentials = await this.applyTemporaryPassword({
+      userId: user.id,
+      email,
+      name,
+      firebaseUid: user.firebaseUid,
+      temporaryPassword,
+    });
+
+    const presented = await this.presentUser({
+      ...user,
+      firebaseUid: credentials.firebaseUid,
+      mustChangePassword: true,
+    });
 
     return {
       ...presented,
+      temporaryPassword: credentials.temporaryPassword,
+      setupHint: credentials.setupHint,
+    };
+  }
+
+  async resetStudentTemporaryPassword(
+    studioId: string,
+    studentId: string,
+    temporaryPassword?: string,
+  ) {
+    return this.resetStudioMemberTemporaryPassword(
+      studioId,
+      studentId,
+      UserRole.STUDENT,
       temporaryPassword,
-      setupHint: `Share this temporary password with ${presented.email}. They must change it on first login.`,
+    );
+  }
+
+  async resetTrainerTemporaryPassword(
+    studioId: string,
+    trainerId: string,
+    temporaryPassword?: string,
+  ) {
+    return this.resetStudioMemberTemporaryPassword(
+      studioId,
+      trainerId,
+      UserRole.TRAINER,
+      temporaryPassword,
+    );
+  }
+
+  private async resetStudioMemberTemporaryPassword(
+    studioId: string,
+    memberId: string,
+    role: typeof UserRole.STUDENT | typeof UserRole.TRAINER,
+    temporaryPassword?: string,
+  ) {
+    const member = await this.prisma.user.findFirst({
+      where: {
+        id: memberId,
+        studioId,
+        role,
+      },
+      select: {
+        id: true,
+        firebaseUid: true,
+        ...userPiiSelect,
+      },
+    });
+
+    if (!member) {
+      throw new NotFoundException(
+        role === UserRole.TRAINER ? "Trainer not found" : "Student not found",
+      );
+    }
+
+    const decrypted = this.crypto.decryptUser(member);
+    const credentials = await this.applyTemporaryPassword({
+      userId: member.id,
+      email: decrypted.email,
+      name: decrypted.name,
+      firebaseUid: member.firebaseUid,
+      temporaryPassword,
+    });
+
+    return {
+      id: credentials.id,
+      email: credentials.email,
+      name: credentials.name,
+      temporaryPassword: credentials.temporaryPassword,
+      setupHint: credentials.setupHint,
+    };
+  }
+
+  async resetOwnerTemporaryPassword(
+    studioId: string,
+    temporaryPassword?: string,
+  ) {
+    const studio = await this.prisma.studio.findUnique({
+      where: { id: studioId },
+      select: {
+        id: true,
+        owner: {
+          select: {
+            id: true,
+            firebaseUid: true,
+            role: true,
+            ...userPiiSelect,
+          },
+        },
+      },
+    });
+
+    if (!studio) {
+      throw new NotFoundException("Studio not found");
+    }
+
+    if (studio.owner.role !== UserRole.OWNER) {
+      throw new BadRequestException("Studio owner record is invalid");
+    }
+
+    const decrypted = this.crypto.decryptUser(studio.owner);
+    const credentials = await this.applyTemporaryPassword({
+      userId: studio.owner.id,
+      email: decrypted.email,
+      name: decrypted.name,
+      firebaseUid: studio.owner.firebaseUid,
+      temporaryPassword,
+    });
+
+    return {
+      id: credentials.id,
+      email: credentials.email,
+      name: credentials.name,
+      temporaryPassword: credentials.temporaryPassword,
+      setupHint: credentials.setupHint,
     };
   }
 

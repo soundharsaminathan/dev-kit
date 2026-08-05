@@ -164,6 +164,12 @@ class UpdateStudioStudentDto {
   active?: boolean;
 }
 
+class ResetTemporaryPasswordDto {
+  @IsOptional()
+  @IsString()
+  temporaryPassword?: string;
+}
+
 class CreateStudentDto {
   @IsString()
   @IsNotEmpty()
@@ -218,6 +224,10 @@ class CreateTrainerDto {
   @IsArray()
   @IsString({ each: true })
   styles?: string[];
+
+  @IsOptional()
+  @IsString()
+  temporaryPassword?: string;
 }
 
 class BulkStudentDto {
@@ -487,6 +497,38 @@ export class UsersController {
   ) {
     assertSameStudio(user, studioId);
     return this.usersService.deleteStudent(studioId, studentId);
+  }
+
+  @Post("studio/:studioId/students/:studentId/reset-password")
+  @Roles(UserRole.OWNER, UserRole.STAFF)
+  resetStudentPassword(
+    @CurrentUser() user: DecryptedUser,
+    @Param("studioId") studioId: string,
+    @Param("studentId") studentId: string,
+    @Body() dto: ResetTemporaryPasswordDto,
+  ) {
+    assertSameStudio(user, studioId);
+    return this.usersService.resetStudentTemporaryPassword(
+      studioId,
+      studentId,
+      dto.temporaryPassword,
+    );
+  }
+
+  @Post("studio/:studioId/trainers/:trainerId/reset-password")
+  @Roles(UserRole.OWNER, UserRole.STAFF)
+  resetTrainerPassword(
+    @CurrentUser() user: DecryptedUser,
+    @Param("studioId") studioId: string,
+    @Param("trainerId") trainerId: string,
+    @Body() dto: ResetTemporaryPasswordDto,
+  ) {
+    assertSameStudio(user, studioId);
+    return this.usersService.resetTrainerTemporaryPassword(
+      studioId,
+      trainerId,
+      dto.temporaryPassword,
+    );
   }
 
   @Get("studio/:studioId/trainers")
