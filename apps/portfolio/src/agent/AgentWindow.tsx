@@ -248,8 +248,8 @@ export function AgentWindow() {
           </button>
         </div>
         <div className={styles.hint}>
-          Enter to send · Shift+Enter for newline · requires GROQ_API_KEY in
-          apps/portfolio/.env
+          Enter to send · Shift+Enter for newline · works offline from portfolio
+          data; set GROQ_API_KEY in apps/portfolio/.env for Groq answers
         </div>
       </form>
     </section>

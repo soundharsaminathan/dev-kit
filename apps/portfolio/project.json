@@ -37,6 +37,15 @@
         "command": "vitest run --config vitest.config.ts --project portfolio"
       },
       "dependsOn": ["tokens:build:tokens", "components:build"]
+    },
+    "test:ci": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "{workspaceRoot}",
+        "command": "vitest run --config vitest.config.ts --project portfolio --reporter=default --reporter=junit --outputFile=test-results/junit-portfolio.xml"
+      },
+      "dependsOn": ["tokens:build:tokens", "components:build"],
+      "outputs": ["{workspaceRoot}/test-results/junit-portfolio.xml"]
     }
   }
 }

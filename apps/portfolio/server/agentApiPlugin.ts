@@ -1,4 +1,5 @@
 import type { Connect, PreviewServer, ViteDevServer } from "vite";
+import { answerFromPortfolio } from "../src/agent/localAnswer";
 import {
   buildPortfolioSystemPrompt,
   type ChatMessage,
@@ -6,6 +7,7 @@ import {
 
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
 const GROQ_MODEL = "llama-3.1-8b-instant";
+const LOCAL_MODEL = "local-portfolio";
 
 type ChatBody = {
   messages?: ChatMessage[];
@@ -43,6 +45,14 @@ function sendJson(
   res.end(JSON.stringify(payload));
 }
 
+function lastUserMessage(messages: ChatMessage[]): string {
+  for (let i = messages.length - 1; i >= 0; i -= 1) {
+    const m = messages[i];
+    if (m?.role === "user") return m.content;
+  }
+  return "";
+}
+
 async function handleAgentChat(
   req: Connect.IncomingMessage,
   res: Connect.ServerResponse,
@@ -58,16 +68,6 @@ async function handleAgentChat(
 
   if (req.method !== "POST") {
     sendJson(res, 405, { error: "Method not allowed" });
-    return;
-  }
-
-  const apiKey = process.env.GROQ_API_KEY?.trim();
-  if (!apiKey) {
-    sendJson(res, 503, {
-      error:
-        "Set GROQ_API_KEY to enable the free agent. Get a key at https://console.groq.com",
-      code: "missing_api_key",
-    });
     return;
   }
 
@@ -91,6 +91,19 @@ async function handleAgentChat(
   if (userMessages.length === 0) {
     sendJson(res, 400, {
       error: "messages must include at least one user turn",
+    });
+    return;
+  }
+
+  const question = lastUserMessage(userMessages);
+  const apiKey = process.env.GROQ_API_KEY?.trim();
+
+  // Free offline path — always works without a key
+  if (!apiKey) {
+    sendJson(res, 200, {
+      reply: answerFromPortfolio(question),
+      model: LOCAL_MODEL,
+      mode: "local",
     });
     return;
   }
@@ -124,24 +137,33 @@ async function handleAgentChat(
     };
 
     if (!groqRes.ok) {
-      sendJson(res, groqRes.status >= 400 ? groqRes.status : 502, {
-        error: data.error?.message ?? "Groq request failed",
-        code: "groq_error",
+      sendJson(res, 200, {
+        reply: `${answerFromPortfolio(question)}\n\n_(Groq unavailable — answered locally.)_`,
+        model: LOCAL_MODEL,
+        mode: "local-fallback",
+        upstreamError: data.error?.message ?? "Groq request failed",
       });
       return;
     }
 
     const reply = data.choices?.[0]?.message?.content?.trim() ?? "";
     if (!reply) {
-      sendJson(res, 502, { error: "Empty response from model", code: "empty" });
+      sendJson(res, 200, {
+        reply: answerFromPortfolio(question),
+        model: LOCAL_MODEL,
+        mode: "local-fallback",
+      });
       return;
     }
 
-    sendJson(res, 200, { reply, model: GROQ_MODEL });
+    sendJson(res, 200, { reply, model: GROQ_MODEL, mode: "groq" });
   } catch (error) {
-    sendJson(res, 502, {
-      error: error instanceof Error ? error.message : "Upstream request failed",
-      code: "upstream",
+    sendJson(res, 200, {
+      reply: `${answerFromPortfolio(question)}\n\n_(Upstream error — answered locally.)_`,
+      model: LOCAL_MODEL,
+      mode: "local-fallback",
+      upstreamError:
+        error instanceof Error ? error.message : "Upstream request failed",
     });
   }
 }
@@ -158,7 +180,7 @@ function attachAgentApi(server: ViteDevServer | PreviewServer) {
   });
 }
 
-/** Vite plugin: POST /api/agent/chat → Groq free-tier Llama */
+/** Vite plugin: POST /api/agent/chat → Groq, with local free fallback */
 export function portfolioAgentApiPlugin() {
   return {
     name: "portfolio-agent-api",

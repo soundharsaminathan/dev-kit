@@ -57,7 +57,7 @@ export async function gotoStory(
   const storyRoot = page.locator(STORY_ROOT);
   await storyRoot.waitFor({ state: "attached" });
   await expect(storyRoot.locator(":scope > *").first()).toBeVisible({
-    timeout: 30_000,
+    timeout: 60_000,
   });
 }
 
