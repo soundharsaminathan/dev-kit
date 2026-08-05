@@ -384,6 +384,16 @@ export class UsersController {
     return this.usersService.listByStudio(studioId);
   }
 
+  @Get("studio/:studioId/families")
+  @Roles(UserRole.OWNER, UserRole.STAFF)
+  listStudioFamilies(
+    @CurrentUser() user: DecryptedUser,
+    @Param("studioId") studioId: string,
+  ) {
+    assertSameStudio(user, studioId);
+    return this.usersService.listStudioFamilies(studioId);
+  }
+
   @Get("studio/:studioId/students")
   @Roles(UserRole.OWNER, UserRole.STAFF)
   listStudents(
