@@ -10,6 +10,21 @@
   justify-content: center;
 }
 
+.brandBlock {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3, 0.75rem);
+}
+
+.brandMark {
+  display: block;
+  width: 4.5rem;
+  height: 4.5rem;
+  object-fit: contain;
+  border-radius: var(--radius-xl, 1rem);
+}
+
 .brand {
   font-size: 0.875rem;
   font-weight: 700;

@@ -22,9 +22,23 @@
 }
 
 .brand {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2, 0.5rem);
   font-size: 1.25rem;
   font-weight: 700;
   letter-spacing: -0.03em;
+  text-decoration: none;
+  color: inherit;
+}
+
+.brandIcon {
+  display: block;
+  width: 1.75rem;
+  height: 1.75rem;
+  object-fit: contain;
+  border-radius: var(--radius-md, 0.5rem);
+  flex-shrink: 0;
 }
 
 .nav {

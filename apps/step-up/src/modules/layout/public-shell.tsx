@@ -2,6 +2,7 @@ import { Button } from "@dev-ui/components/button";
 import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import { useAuth } from "@/lib/auth";
+import { BRAND_ICON_SRC, BRAND_NAME } from "@/lib/brand";
 import { SEED_STUDIO_ID } from "@/lib/constants";
 import { homePathForUser } from "@/lib/require-auth";
 import styles from "./public-shell.module.scss";
@@ -18,7 +19,13 @@ export function PublicShell({ children }: PublicShellProps) {
     <div className={styles.shell}>
       <header className={styles.header}>
         <Link to="/" className={styles.brand}>
-          Step Up
+          <img
+            className={styles.brandIcon}
+            src={BRAND_ICON_SRC}
+            alt=""
+            aria-hidden
+          />
+          <span>{BRAND_NAME}</span>
         </Link>
         <nav className={styles.nav}>
           <Link to="/studio/$studioId" params={{ studioId: SEED_STUDIO_ID }}>

@@ -23,9 +23,11 @@
       name="description"
       content="Dance studio ops — batches, plans, attendance, booking"
     />
-    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="/icons/unicorn.png" type="image/png" />
+    <link rel="icon" href="/favicon-32.png" type="image/png" sizes="32x32" />
     <link rel="icon" href="/favicon.ico" sizes="32x32" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="preload" href="/icons/unicorn.png" as="image" type="image/png" />
     <link rel="preload" href="/loader.gif" as="image" type="image/gif" />
     <link
       rel="preload"
@@ -236,6 +238,112 @@
           animation: none;
         }
       }
+
+      #boot-splash[data-slow-load] {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        box-sizing: border-box;
+        padding: 2rem 1rem;
+        background: #f6f8fa;
+        color: #24292f;
+        text-align: center;
+      }
+
+      html[data-theme-mode="dark"] #boot-splash[data-slow-load] {
+        background: oklch(0.16 0.004 78);
+        color: oklch(0.93 0.01 78);
+      }
+
+      #boot-splash[data-slow-load] .slow-content {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 1rem;
+        width: 100%;
+        max-width: 28rem;
+      }
+
+      #boot-splash[data-slow-load] .slow-mascot {
+        display: block;
+        width: 10rem;
+        height: 10rem;
+        margin-bottom: 0.5rem;
+        object-fit: contain;
+        pointer-events: none;
+      }
+
+      #boot-splash[data-slow-load] .slow-title {
+        margin: 0;
+        font-size: 1.25rem;
+        font-weight: 600;
+        line-height: 1.35;
+        letter-spacing: -0.02em;
+        color: #24292f;
+      }
+
+      html[data-theme-mode="dark"] #boot-splash[data-slow-load] .slow-title {
+        color: oklch(0.95 0.01 78);
+      }
+
+      #boot-splash[data-slow-load] .slow-body {
+        margin: 0;
+        font-size: 0.9375rem;
+        line-height: 1.5;
+        color: #656d76;
+      }
+
+      html[data-theme-mode="dark"] #boot-splash[data-slow-load] .slow-body {
+        color: oklch(0.72 0.01 78);
+      }
+
+      #boot-splash[data-slow-load] .slow-links {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem 0.75rem;
+        margin-top: 0.5rem;
+        font-size: 0.8125rem;
+        line-height: 1.4;
+        color: #656d76;
+      }
+
+      html[data-theme-mode="dark"] #boot-splash[data-slow-load] .slow-links {
+        color: oklch(0.72 0.01 78);
+      }
+
+      #boot-splash[data-slow-load] .slow-link {
+        color: inherit;
+        text-decoration: none;
+        background: none;
+        border: 0;
+        padding: 0;
+        font: inherit;
+        cursor: pointer;
+      }
+
+      #boot-splash[data-slow-load] .slow-link:hover,
+      #boot-splash[data-slow-load] .slow-link:focus-visible {
+        text-decoration: underline;
+        outline: none;
+      }
+
+      #boot-splash[data-slow-load] .slow-sep {
+        color: #8c959f;
+        user-select: none;
+      }
+
+      #boot-splash[data-slow-load] .slow-brand {
+        display: block;
+        width: 2rem;
+        height: 2rem;
+        margin-top: 2rem;
+        object-fit: contain;
+        opacity: 0.55;
+        pointer-events: none;
+      }
     </style>
   </head>
   <body>
@@ -333,7 +441,39 @@
           paint(phrases[i], animate);
         }
         tick();
-        setInterval(tick, 100);
+        var phraseTimer = setInterval(tick, 100);
+
+        var SLOW_LOAD_MS = 8000;
+        window.setTimeout(function () {
+          var splash = document.getElementById("boot-splash");
+          if (!splash || !splash.isConnected) return;
+          window.clearInterval(phraseTimer);
+          splash.setAttribute("data-slow-load", "");
+          splash.setAttribute(
+            "aria-label",
+            "This page is taking too long to load",
+          );
+          splash.innerHTML =
+            '<div class="slow-content">' +
+            '<img class="slow-mascot" src="/icons/unicorn.png" alt="" aria-hidden="true" />' +
+            '<h1 class="slow-title">This page is taking too long to load.</h1>' +
+            '<p class="slow-body">Sorry about that. Please try refreshing and contact us if the problem persists.</p>' +
+            '<nav class="slow-links" aria-label="Helpful links">' +
+            '<button type="button" class="slow-link" id="boot-slow-refresh">Refresh</button>' +
+            '<span class="slow-sep" aria-hidden="true">—</span>' +
+            '<a class="slow-link" href="/login">Sign in</a>' +
+            '<span class="slow-sep" aria-hidden="true">—</span>' +
+            '<a class="slow-link" href="/">Home</a>' +
+            "</nav>" +
+            '<img class="slow-brand" src="/icons/unicorn.png" alt="Step Up" />' +
+            "</div>";
+          var refresh = document.getElementById("boot-slow-refresh");
+          if (refresh) {
+            refresh.addEventListener("click", function () {
+              window.location.reload();
+            });
+          }
+        }, SLOW_LOAD_MS);
       })();
     </script>
     <script type="module" src="/src/main.tsx"></script>
