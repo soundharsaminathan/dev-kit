@@ -1,3 +1,4 @@
+import { createRequire } from "node:module";
 import path from "node:path";
 import { env } from "node:process";
 import { fileURLToPath } from "node:url";
@@ -5,6 +6,9 @@ import { defineConfig, devices } from "@playwright/test";
 import { RESPONSIVE_TAG, VIEWPORTS } from "./e2e/helpers/viewports";
 
 const dirname = path.dirname(fileURLToPath(import.meta.url));
+createRequire(import.meta.url)(
+  path.join(dirname, "../../scripts/resolve-color-env-conflict.cjs"),
+);
 const storybookPort = Number(env.STORYBOOK_PORT ?? 6006);
 const storybookUrl = env.STORYBOOK_URL ?? `http://localhost:${storybookPort}`;
 const isCI = Boolean(env.CI);

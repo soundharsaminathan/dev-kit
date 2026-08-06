@@ -12,6 +12,59 @@ import { TestDataCleanup } from "../fixtures/test-cleanup";
 /** E2E trial batch — self-join for Request trial CTA. */
 const TRIAL_BATCH_ID = SEED.trialBatchId;
 
+/**
+ * Self-signup student with onboarding done — OWNER `/users` students start
+ * with `mustChangePassword` and no `onboardingCompletedAt`, so bypass
+ * impersonation would land on change-password / onboarding instead of the batch.
+ */
+async function createTrialReadyStudent() {
+  const stamp = Date.now();
+  const id = `dev-trial-request-${stamp}`;
+  const email = `trial-request-${stamp}@stepup.dev`;
+  const name = `Trial Request ${stamp}`;
+
+  const student = await apiRequest<{
+    id: string;
+    email: string;
+    name: string;
+    studioId: string | null;
+  }>("OWNER", "/auth/sync", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer dev:STUDENT:${id}`,
+    },
+    body: JSON.stringify({
+      name,
+      email,
+      studioId: SEED.studioId,
+    }),
+  });
+
+  await apiRequest("STUDENT", "/users/me", {
+    method: "PATCH",
+    headers: {
+      Authorization: `Bearer dev:STUDENT:${student.id}`,
+    },
+    body: JSON.stringify({
+      name,
+      gender: "FEMALE",
+      ageRange: "TWENTY_TO_FORTY",
+      experienceLevel: "BEGINNER",
+      styles: ["Hip Hop"],
+    }),
+  });
+
+  await apiRequest("STUDENT", "/users/me/onboarding/complete", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer dev:STUDENT:${student.id}`,
+    },
+    body: JSON.stringify({}),
+  });
+
+  return student;
+}
+
 async function clearOpenBookings(studentId: string, batchId: string) {
   const existing = await apiRequest<
     Array<{
@@ -154,24 +207,11 @@ test.describe("discover and book @critical", () => {
     browser,
   }) => {
     const cleanup = new TestDataCleanup();
-    const stamp = Date.now();
-    const student = await apiRequest<{ id: string }>("OWNER", "/users", {
-      method: "POST",
-      body: JSON.stringify({
-        name: `Trial Request ${stamp}`,
-        email: `trial-request-${stamp}@stepup.dev`,
-        gender: "FEMALE",
-        ageRange: "TWENTY_TO_FORTY",
-        styles: ["Hip Hop"],
-      }),
-    });
+    const student = await createTrialReadyStudent();
     cleanup.trackStudent(student.id);
     await clearOpenBookings(student.id, TRIAL_BATCH_ID);
 
-    const context = await browser.newContext({
-      storageState: authFile("STUDENT"),
-    });
-    // Impersonate the fresh student via storage override after auth setup.
+    const context = await browser.newContext();
     const page = await context.newPage();
     await page.goto("/login");
     await page.evaluate(
@@ -182,15 +222,16 @@ test.describe("discover and book @critical", () => {
         key: AUTH_STORAGE_KEY,
         value: {
           id: student.id,
-          email: `trial-request-${stamp}@stepup.dev`,
-          name: `Trial Request ${stamp}`,
+          email: student.email,
+          name: student.name,
           role: "STUDENT",
-          studioId: SEED.studioId,
+          studioId: student.studioId ?? SEED.studioId,
           styles: ["Hip Hop"],
           experienceLevel: "BEGINNER",
           gender: "FEMALE",
           ageRange: "TWENTY_TO_FORTY",
           onboardingCompletedAt: "2026-01-01T00:00:00.000Z",
+          mustChangePassword: false,
         },
       },
     );
@@ -200,6 +241,7 @@ test.describe("discover and book @critical", () => {
         waitUntil: "domcontentloaded",
       });
       await waitForAppReady(page);
+      await expect(page).toHaveURL(new RegExp(`/me/batches/${TRIAL_BATCH_ID}`));
 
       const trialCta = page.getByTestId("trial-booking-cta");
       await expect(trialCta).toBeVisible();
