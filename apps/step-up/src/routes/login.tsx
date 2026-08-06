@@ -8,6 +8,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import type { AuthUser } from "@/lib/auth-context";
+import { BRAND_ICON_SRC, BRAND_NAME } from "@/lib/brand";
 import { isAuthBypassEnabled, SEED_PASSWORD } from "@/lib/constants";
 import { getLastLoginIdentifier } from "@/lib/last-login";
 import {
@@ -154,12 +155,20 @@ function LoginPage() {
   return (
     <PublicShell>
       <section className={styles.panel}>
-        <div>
-          <p className={styles.brand}>Step Up</p>
-          <h1 className={styles.title}>Welcome back</h1>
-          <p className={styles.subtitle}>
-            Sign in to manage your studio or continue to your classes.
-          </p>
+        <div className={styles.brandBlock}>
+          <img
+            className={styles.brandMark}
+            src={BRAND_ICON_SRC}
+            alt=""
+            aria-hidden
+          />
+          <div>
+            <p className={styles.brand}>{BRAND_NAME}</p>
+            <h1 className={styles.title}>Welcome back</h1>
+            <p className={styles.subtitle}>
+              Sign in to manage your studio or continue to your classes.
+            </p>
+          </div>
         </div>
 
         {error ? (

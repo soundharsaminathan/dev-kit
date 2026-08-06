@@ -1,7 +1,7 @@
 import { IconProvider } from "@dev-ui/icons";
 import lucidePack from "@dev-ui/icons-packs/lucide";
 import { createRouter, RouterProvider } from "@tanstack/react-router";
-import { StrictMode, useEffect, useRef } from "react";
+import { StrictMode, useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import "@dev-ui/tokens/fonts/primary";
 import "@dev-ui/tokens/scss";
@@ -9,10 +9,12 @@ import "@dev-ui/components/styles";
 import "@/styles/global.scss";
 import { ApiProvider } from "@/lib/api-context";
 import { AuthProvider, useAuth } from "@/lib/auth";
+import { SLOW_LOAD_TIMEOUT_MS } from "@/lib/brand";
 import { homePathForUser } from "@/lib/require-auth";
 import { initSentry, Sentry } from "@/lib/sentry";
 import { preloadSessionProviders } from "@/lib/session-gate";
 import { DanceLoader } from "@/modules/ui/dance-loader";
+import { SlowLoadFallback } from "@/modules/ui/slow-load-fallback";
 import { routeTree } from "./routeTree.gen";
 
 const router = createRouter({
@@ -34,6 +36,21 @@ function AppRouter() {
   const auth = useAuth();
   const userId = auth.user?.id;
   const invalidatedFor = useRef<{ userId: string | undefined } | null>(null);
+  const [slowLoad, setSlowLoad] = useState(
+    () => performance.now() >= SLOW_LOAD_TIMEOUT_MS,
+  );
+
+  useEffect(() => {
+    if (!auth.loading) {
+      setSlowLoad(false);
+      return;
+    }
+    const remaining = Math.max(0, SLOW_LOAD_TIMEOUT_MS - performance.now());
+    const id = window.setTimeout(() => {
+      setSlowLoad(true);
+    }, remaining);
+    return () => window.clearTimeout(id);
+  }, [auth.loading]);
 
   // Invalidate for auth changes, then warm home — never race preload with
   // invalidate (evicts in-flight preload matches → _nonReactive TypeError).
@@ -75,7 +92,7 @@ function AppRouter() {
         initialPack={lucidePack}
         loaders={{}}
       >
-        <DanceLoader />
+        {slowLoad ? <SlowLoadFallback /> : <DanceLoader />}
       </IconProvider>
     );
   }

@@ -7,6 +7,7 @@ import { useForm } from "@tanstack/react-form";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
+import { BRAND_ICON_SRC, BRAND_NAME } from "@/lib/brand";
 import type { UserRole } from "@/lib/constants";
 import {
   homePathForUser,
@@ -171,12 +172,20 @@ function RegisterPage() {
   return (
     <PublicShell>
       <section className={styles.panel}>
-        <div>
-          <p className={styles.brand}>Step Up</p>
-          <h1 className={styles.title}>Join the studio</h1>
-          <p className={styles.subtitle}>
-            Create your student account and personalize your dance journey.
-          </p>
+        <div className={styles.brandBlock}>
+          <img
+            className={styles.brandMark}
+            src={BRAND_ICON_SRC}
+            alt=""
+            aria-hidden
+          />
+          <div>
+            <p className={styles.brand}>{BRAND_NAME}</p>
+            <h1 className={styles.title}>Join the studio</h1>
+            <p className={styles.subtitle}>
+              Create your student account and personalize your dance journey.
+            </p>
+          </div>
         </div>
 
         {error ? (
