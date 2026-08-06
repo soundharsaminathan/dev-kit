@@ -1,9 +1,11 @@
 import "dotenv/config";
 import { createScriptPrismaClient, withDbRetry } from "./script-db";
+import { isSmokeLoadId } from "./seed-smoke-load";
 
 /**
  * Removes run-created transactional data for the smoke studio while keeping
- * the structural seed (users, batches, plans, branches, fixed sessions).
+ * the structural seed (users, batches, plans, branches, fixed sessions) and
+ * dense `smoke-load-*` performance fixtures.
  *
  *   pnpm --filter @step-up/api prisma:cleanup:smoke
  */
@@ -37,6 +39,7 @@ const SEED_SESSION_IDS = [
 ] as const;
 const SEED_IDS = {
   invoicePendingId: "smoke-invoice-pending-1",
+  invoicePaidMembershipId: "smoke-invoice-paid-membership-1",
   bookingPendingId: "smoke-booking-pending-1",
   membershipStudentId: "smoke-membership-student-1",
   certificateTemplateId: "smoke-cert-template-1",
@@ -45,36 +48,71 @@ const SEED_IDS = {
   postId: "smoke-post-1",
 } as const;
 
+function isPreservedUserId(id: string) {
+  return (
+    SEED_USER_IDS.includes(id as (typeof SEED_USER_IDS)[number]) ||
+    isSmokeLoadId(id)
+  );
+}
+
+function isPreservedBatchId(id: string) {
+  return (
+    SEED_BATCH_IDS.includes(id as (typeof SEED_BATCH_IDS)[number]) ||
+    isSmokeLoadId(id)
+  );
+}
+
+function isPreservedSessionId(id: string) {
+  return (
+    SEED_SESSION_IDS.includes(id as (typeof SEED_SESSION_IDS)[number]) ||
+    id.startsWith("smoke-session-beginner-w") ||
+    id.startsWith("smoke-session-trial-w") ||
+    isSmokeLoadId(id)
+  );
+}
+
+function isPreservedInvoiceId(id: string) {
+  return (
+    id === SEED_IDS.invoicePendingId ||
+    id === SEED_IDS.invoicePaidMembershipId ||
+    isSmokeLoadId(id)
+  );
+}
+
+function isPreservedBookingId(id: string) {
+  return id === SEED_IDS.bookingPendingId || isSmokeLoadId(id);
+}
+
+function isPreservedMembershipId(id: string) {
+  return id === SEED_IDS.membershipStudentId || isSmokeLoadId(id);
+}
+
+function isPreservedPostId(id: string) {
+  return id === SEED_IDS.postId || isSmokeLoadId(id);
+}
+
 async function main() {
   const studioUsers = await prisma.user.findMany({
     where: { studioId: STUDIO_ID },
     select: { id: true },
   });
   const studioUserIds = studioUsers.map((user) => user.id);
-  const seedUserSet = new Set<string>(SEED_USER_IDS);
-  const ephemeralUserIds = studioUserIds.filter((id) => !seedUserSet.has(id));
+  const ephemeralUserIds = studioUserIds.filter((id) => !isPreservedUserId(id));
 
   const batches = await prisma.batch.findMany({
     where: { studioId: STUDIO_ID },
     select: { id: true },
   });
   const batchIds = batches.map((batch) => batch.id);
-  const seedBatchSet = new Set<string>(SEED_BATCH_IDS);
-  const ephemeralBatchIds = batchIds.filter((id) => !seedBatchSet.has(id));
+  const ephemeralBatchIds = batchIds.filter((id) => !isPreservedBatchId(id));
 
   const sessions = await prisma.session.findMany({
     where: { batchId: { in: batchIds } },
     select: { id: true },
   });
   const sessionIds = sessions.map((session) => session.id);
-  const seedSessionPrefix = "smoke-session-";
   const ephemeralSessionIds = sessionIds.filter(
-    (id) =>
-      !SEED_SESSION_IDS.includes(id as (typeof SEED_SESSION_IDS)[number]) &&
-      !(
-        id.startsWith("smoke-session-beginner-w") ||
-        id.startsWith("smoke-session-trial-w")
-      ),
+    (id) => !isPreservedSessionId(id),
   );
 
   // Notifications for smoke users (any created during the run).
@@ -85,34 +123,59 @@ async function main() {
     where: { userId: { in: studioUserIds } },
   });
 
-  // Attendance created during the run on seed sessions (keep past PRESENT seed).
-  await prisma.attendance.deleteMany({
-    where: {
-      sessionId: { in: sessionIds },
-      NOT: {
-        AND: [
-          { sessionId: "smoke-session-kids-past-1" },
-          { studentId: "smoke-student-1" },
-        ],
-      },
-    },
+  // Attendance created during the run on seed/load sessions.
+  // Keep smoke-load attendance and the past PRESENT seed for Alex.
+  const attendance = await prisma.attendance.findMany({
+    where: { sessionId: { in: sessionIds } },
+    select: { id: true, sessionId: true, studentId: true },
   });
+  const ephemeralAttendanceIds = attendance
+    .filter((row) => {
+      if (
+        row.sessionId === "smoke-session-kids-past-1" &&
+        row.studentId === "smoke-student-1"
+      ) {
+        return false;
+      }
+      if (isSmokeLoadId(row.sessionId) || isSmokeLoadId(row.studentId)) {
+        return false;
+      }
+      return true;
+    })
+    .map((row) => row.id);
+  if (ephemeralAttendanceIds.length > 0) {
+    await prisma.attendance.deleteMany({
+      where: { id: { in: ephemeralAttendanceIds } },
+    });
+  }
 
-  // Bookings except the seed pending booking.
-  await prisma.booking.deleteMany({
-    where: {
-      studioId: STUDIO_ID,
-      id: { not: SEED_IDS.bookingPendingId },
-    },
+  // Bookings except seed pending + smoke-load fixtures.
+  const bookings = await prisma.booking.findMany({
+    where: { studioId: STUDIO_ID },
+    select: { id: true },
   });
+  const ephemeralBookingIds = bookings
+    .map((booking) => booking.id)
+    .filter((id) => !isPreservedBookingId(id));
+  if (ephemeralBookingIds.length > 0) {
+    await prisma.booking.deleteMany({
+      where: { id: { in: ephemeralBookingIds } },
+    });
+  }
 
-  // Invoices except the seed pending invoice — reset seed invoice to PENDING.
-  await prisma.invoice.deleteMany({
-    where: {
-      studioId: STUDIO_ID,
-      id: { not: SEED_IDS.invoicePendingId },
-    },
+  // Invoices except seed + smoke-load fixtures — reset seed pending invoice.
+  const invoices = await prisma.invoice.findMany({
+    where: { studioId: STUDIO_ID },
+    select: { id: true },
   });
+  const ephemeralInvoiceIds = invoices
+    .map((invoice) => invoice.id)
+    .filter((id) => !isPreservedInvoiceId(id));
+  if (ephemeralInvoiceIds.length > 0) {
+    await prisma.invoice.deleteMany({
+      where: { id: { in: ephemeralInvoiceIds } },
+    });
+  }
   await prisma.invoice.updateMany({
     where: { id: SEED_IDS.invoicePendingId },
     data: {
@@ -147,7 +210,7 @@ async function main() {
     },
   });
 
-  // Memberships created during the run (keep seed membership).
+  // Memberships created during the run (keep seed + smoke-load memberships).
   const memberships = await prisma.membership.findMany({
     where: {
       OR: [
@@ -159,7 +222,7 @@ async function main() {
   });
   const membershipIds = memberships
     .map((m) => m.id)
-    .filter((id) => id !== SEED_IDS.membershipStudentId);
+    .filter((id) => !isPreservedMembershipId(id));
   if (membershipIds.length > 0) {
     await prisma.membershipCoveredStudent.deleteMany({
       where: { membershipId: { in: membershipIds } },
@@ -209,7 +272,7 @@ async function main() {
   });
   const conversationIds = conversations.map((c) => c.id);
   const ephemeralConversationIds = conversationIds.filter(
-    (id) => id !== SEED_IDS.conversationId,
+    (id) => id !== SEED_IDS.conversationId && !isSmokeLoadId(id),
   );
   if (ephemeralConversationIds.length > 0) {
     await prisma.messageReaction.deleteMany({
@@ -232,29 +295,25 @@ async function main() {
     },
   });
 
-  // Posts created during the run (keep seed post).
-  await prisma.postComment.deleteMany({
-    where: {
-      post: {
-        authorId: { in: studioUserIds },
-        id: { not: SEED_IDS.postId },
-      },
-    },
+  // Posts created during the run (keep seed + smoke-load posts).
+  const posts = await prisma.post.findMany({
+    where: { authorId: { in: studioUserIds } },
+    select: { id: true },
   });
-  await prisma.postLike.deleteMany({
-    where: {
-      post: {
-        authorId: { in: studioUserIds },
-        id: { not: SEED_IDS.postId },
-      },
-    },
-  });
-  await prisma.post.deleteMany({
-    where: {
-      authorId: { in: studioUserIds },
-      id: { not: SEED_IDS.postId },
-    },
-  });
+  const ephemeralPostIds = posts
+    .map((post) => post.id)
+    .filter((id) => !isPreservedPostId(id));
+  if (ephemeralPostIds.length > 0) {
+    await prisma.postComment.deleteMany({
+      where: { postId: { in: ephemeralPostIds } },
+    });
+    await prisma.postLike.deleteMany({
+      where: { postId: { in: ephemeralPostIds } },
+    });
+    await prisma.post.deleteMany({
+      where: { id: { in: ephemeralPostIds } },
+    });
+  }
 
   // Ephemeral sessions then batches.
   if (ephemeralSessionIds.length > 0) {
@@ -293,7 +352,7 @@ async function main() {
     });
   }
 
-  // Ephemeral students created during the run.
+  // Ephemeral students created during the run (keep smoke-load users).
   if (ephemeralUserIds.length > 0) {
     await prisma.parentChild.deleteMany({
       where: {

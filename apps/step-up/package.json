@@ -12,6 +12,7 @@
     "test:e2e:critical": "playwright test --config playwright.config.ts --project=chromium --grep @critical",
     "test:http": "playwright test --config playwright.config.ts --project=http --grep @http",
     "test:smoke": "playwright test --config playwright.smoke.config.ts",
+    "test:smoke:perf": "playwright test --config playwright.smoke.config.ts --grep @perf",
     "test:gate": "pnpm nx run step-up:test:regression"
   },
   "dependencies": {
