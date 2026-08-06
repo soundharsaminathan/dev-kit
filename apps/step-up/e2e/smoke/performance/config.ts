@@ -45,12 +45,15 @@ export type CriticalRoute = {
 };
 
 /**
- * Critical product surfaces for the smoke performance gate.
- * Authenticated routes use OWNER (full staff shell access).
+ * Critical + high-load product surfaces for the smoke performance gate.
+ * Staff/ops pages use OWNER; member surfaces use STUDENT.
  */
 export const CRITICAL_ROUTES: CriticalRoute[] = [
+  // Public
   { name: "Home", path: "/" },
   { name: "Login", path: "/login" },
+
+  // Staff shell — lists, dashboards, and multi-query surfaces
   { name: "Dashboard", path: "/app", role: "OWNER" },
   { name: "Batch List", path: "/app/batches", role: "OWNER" },
   {
@@ -60,11 +63,37 @@ export const CRITICAL_ROUTES: CriticalRoute[] = [
   },
   { name: "Students", path: "/app/students", role: "OWNER" },
   {
+    name: "Student Details",
+    path: `/app/students/${SMOKE.users.STUDENT.id}`,
+    role: "OWNER",
+  },
+  { name: "Trainers", path: "/app/trainers", role: "OWNER" },
+  { name: "Bookings", path: "/app/bookings", role: "OWNER" },
+  {
     name: "Attendance",
     path: `/app/sessions/${SMOKE.sessionAttendanceId}/attendance`,
     role: "OWNER",
   },
+  { name: "Calendar", path: "/app/calendar", role: "OWNER" },
   { name: "Payments", path: "/app/payments", role: "OWNER" },
+  { name: "Invoices", path: "/app/invoices", role: "OWNER" },
+  { name: "Subscriptions", path: "/app/subscriptions", role: "OWNER" },
+  { name: "Retention", path: "/app/retention", role: "OWNER" },
+  { name: "Locations", path: "/app/locations", role: "OWNER" },
+  {
+    name: "Location Details",
+    path: `/app/locations/${SMOKE.branchMainId}`,
+    role: "OWNER",
+  },
+  { name: "Contests", path: "/app/contests", role: "OWNER" },
+  { name: "Certificates", path: "/app/certificates", role: "OWNER" },
+  { name: "Feed", path: "/app/feed", role: "OWNER" },
+  { name: "Messages", path: "/app/messages", role: "OWNER" },
+  {
+    name: "Message Thread",
+    path: `/app/messages/${SMOKE.conversationId}`,
+    role: "OWNER",
+  },
   {
     name: "Notifications",
     path: "/app",
@@ -72,4 +101,23 @@ export const CRITICAL_ROUTES: CriticalRoute[] = [
     afterNavigate: "open-notifications",
   },
   { name: "Profile", path: "/app/profile", role: "OWNER" },
+  { name: "Settings Billing", path: "/app/settings/billing", role: "OWNER" },
+
+  // Student / member high-load surfaces
+  { name: "Student Home", path: "/me", role: "STUDENT" },
+  { name: "Discover Book", path: "/me/book", role: "STUDENT" },
+  { name: "Student Calendar", path: "/me/calendar", role: "STUDENT" },
+  { name: "Student Feed", path: "/me/feed", role: "STUDENT" },
+  { name: "Student Attendance", path: "/me/attendance", role: "STUDENT" },
+  { name: "Student Messages", path: "/me/messages", role: "STUDENT" },
+  {
+    name: "Student Message Thread",
+    path: `/me/messages/${SMOKE.conversationId}`,
+    role: "STUDENT",
+  },
+  {
+    name: "Student Batch Details",
+    path: `/me/batches/${SMOKE.trialBatchId}`,
+    role: "STUDENT",
+  },
 ];

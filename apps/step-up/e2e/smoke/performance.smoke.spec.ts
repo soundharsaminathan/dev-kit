@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
-import { authFile, expect, test } from "./fixtures";
+import type { Browser, BrowserContext, Page } from "@playwright/test";
+import { authFile, expect, type SmokeRole, test } from "./fixtures";
 import {
   applyBaselineRegressions,
   buildReport,
@@ -41,42 +42,57 @@ function writeReport(pages: PagePerfResult[]) {
   return report;
 }
 
+async function openAuthedPage(
+  browser: Browser,
+  role: SmokeRole,
+): Promise<{ context: BrowserContext; page: Page }> {
+  const statePath = authFile(role);
+  if (!fs.existsSync(statePath)) {
+    throw new Error(`${role} auth state missing — smoke-setup must run first`);
+  }
+  const context = await browser.newContext({
+    storageState: statePath,
+    viewport: PERF_VIEWPORT,
+    reducedMotion: "reduce",
+  });
+  const page = await context.newPage();
+  await preparePerfPage(page);
+  return { context, page };
+}
+
 test.describe("smoke performance @smoke @perf", () => {
   test("critical routes meet smoke performance budgets @smoke @perf", async ({
     browser,
   }) => {
-    // Keep well under the 2-minute suite budget for 10 routes.
-    test.setTimeout(120_000);
+    // ~32 routes; keep sequential and under a few minutes for CI smoke.
+    test.setTimeout(180_000);
 
     const results: PagePerfResult[] = [];
     const guestContext = await browser.newContext({
       viewport: PERF_VIEWPORT,
       reducedMotion: "reduce",
     });
-    const ownerState = authFile("OWNER");
-    if (!fs.existsSync(ownerState)) {
-      throw new Error("OWNER auth state missing — smoke-setup must run first");
-    }
-    const ownerContext = await browser.newContext({
-      storageState: ownerState,
-      viewport: PERF_VIEWPORT,
-      reducedMotion: "reduce",
-    });
-
     const guestPage = await guestContext.newPage();
-    const ownerPage = await ownerContext.newPage();
     await preparePerfPage(guestPage);
-    await preparePerfPage(ownerPage);
+
+    const owner = await openAuthedPage(browser, "OWNER");
+    const student = await openAuthedPage(browser, "STUDENT");
+
+    const pageFor = (role?: SmokeRole): Page => {
+      if (role === "OWNER") return owner.page;
+      if (role === "STUDENT") return student.page;
+      return guestPage;
+    };
 
     try {
       for (const route of CRITICAL_ROUTES) {
-        const page = route.role ? ownerPage : guestPage;
-        const measured = await measureRoute(page, route);
+        const measured = await measureRoute(pageFor(route.role), route);
         results.push(measured);
       }
     } finally {
       await guestContext.close();
-      await ownerContext.close();
+      await owner.context.close();
+      await student.context.close();
     }
 
     const withRegressions = applyBaselineRegressions(results, loadBaseline());
