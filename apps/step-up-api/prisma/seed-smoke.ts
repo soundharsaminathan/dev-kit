@@ -26,6 +26,7 @@ import { SAMPLE_CERTIFICATE_LAYOUT } from "../src/certificates/certificate-layou
 import { ChatCryptoService } from "../src/chat/chat-crypto.service";
 import { UserCryptoService } from "../src/users/user-crypto.service";
 import { createScriptPrismaClient, withDbRetry } from "./script-db";
+import { seedSmokeLoadData } from "./seed-smoke-load";
 
 /**
  * Isolated studio for deployed Playwright smoke against the real DB.
@@ -963,6 +964,22 @@ async function main() {
       });
     }
   }
+
+  await seedSmokeLoadData({
+    prisma,
+    studioId,
+    ownerId: u.OWNER.id,
+    seedTrainerId: u.TRAINER.id,
+    seedStudentId: u.STUDENT.id,
+    branchMainId: SMOKE.branchMainId,
+    branchEastId: SMOKE.branchEastId,
+    adultMonthlyId: SMOKE.adultMonthlyId,
+    kidMonthlyId: SMOKE.kidMonthlyId,
+    kidsBatchId: SMOKE.kidsBatchId,
+    beginnerBatchId: SMOKE.beginnerBatchId,
+    trialBatchId: SMOKE.trialBatchId,
+    sessionAttendancePastId: SMOKE.sessionAttendancePastId,
+  });
 
   console.log(`Smoke test studio ready: ${studioId}`);
   console.log(
