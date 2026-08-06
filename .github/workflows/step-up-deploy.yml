@@ -12,6 +12,20 @@ on:
       - "packages/icons/**"
       - "packages/icons-packs/**"
       - ".github/workflows/step-up-deploy.yml"
+  # Also deploy when a PR into main/step-up is merged (covers missed push
+  # events during Actions outages / racey merges).
+  pull_request:
+    types: [closed]
+    branches: [main, step-up]
+    paths:
+      - "apps/step-up/**"
+      - "apps/step-up-api/**"
+      - "packages/components/**"
+      - "packages/tokens/**"
+      - "packages/core/**"
+      - "packages/icons/**"
+      - "packages/icons-packs/**"
+      - ".github/workflows/step-up-deploy.yml"
   workflow_dispatch:
 
 permissions:
@@ -19,19 +33,64 @@ permissions:
   id-token: write
 
 concurrency:
-  group: step-up-deploy-${{ github.ref }}
+  # Normalize PR-merge + push onto the same deploy lane per target branch.
+  group: step-up-deploy-${{ github.event.pull_request.base.ref || github.ref_name }}
   cancel-in-progress: false
 
 env:
   NX_CLOUD_ACCESS_TOKEN: ${{ secrets.NX_CLOUD_ACCESS_TOKEN }}
 
 jobs:
+  prepare:
+    name: Resolve deploy target
+    runs-on: ubuntu-latest
+    # Skip closed-but-unmerged PRs (rejected / closed without merge).
+    if: github.event_name != 'pull_request' || github.event.pull_request.merged == true
+    outputs:
+      target: ${{ steps.meta.outputs.target }}
+      sha: ${{ steps.meta.outputs.sha }}
+      should_deploy: ${{ steps.meta.outputs.should_deploy }}
+      should_smoke: ${{ steps.meta.outputs.should_smoke }}
+    steps:
+      - id: meta
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            TARGET="${{ github.event.pull_request.base.ref }}"
+            SHA="${{ github.event.pull_request.merge_commit_sha }}"
+          else
+            TARGET="${{ github.ref_name }}"
+            SHA="${{ github.sha }}"
+          fi
+          if [ -z "$SHA" ]; then
+            echo "Missing deploy SHA for event ${{ github.event_name }}" >&2
+            exit 1
+          fi
+          {
+            echo "target=$TARGET"
+            echo "sha=$SHA"
+            if [ "$TARGET" = "main" ] || [ "$TARGET" = "step-up" ]; then
+              echo "should_deploy=true"
+            else
+              echo "should_deploy=false"
+            fi
+            if [ "$TARGET" = "step-up" ]; then
+              echo "should_smoke=true"
+            else
+              echo "should_smoke=false"
+            fi
+          } >> "$GITHUB_OUTPUT"
+          echo "Deploy target=$TARGET sha=$SHA"
+
   test-api:
     name: Step Up API tests
+    needs: [prepare]
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
       - uses: ./.github/actions/setup
       - name: Generate Prisma client
         run: pnpm --filter @step-up/api prisma:generate
@@ -42,10 +101,13 @@ jobs:
 
   test-web:
     name: Step Up web typecheck
+    needs: [prepare]
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
       - uses: ./.github/actions/setup
       - name: Typecheck web
         run: pnpm exec nx run step-up:typecheck
@@ -54,12 +116,14 @@ jobs:
 
   deploy-web:
     name: Deploy Cloudflare Pages
-    needs: [test-web]
+    needs: [prepare, test-web]
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/step-up'
+    if: needs.prepare.outputs.should_deploy == 'true'
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
       - uses: ./.github/actions/setup
       - name: Build Step Up web
         run: pnpm exec nx run step-up:build --skip-nx-cache
@@ -83,12 +147,14 @@ jobs:
 
   deploy-api:
     name: Deploy Cloud Run
-    needs: [test-api]
+    needs: [prepare, test-api]
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/step-up'
+    if: needs.prepare.outputs.should_deploy == 'true'
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
       - uses: ./.github/actions/setup
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
@@ -101,7 +167,7 @@ jobs:
         run: gcloud auth configure-docker ${{ vars.GCP_REGION }}-docker.pkg.dev --quiet
       - name: Build and push image
         run: |
-          IMAGE="${{ vars.GCP_REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/step-up/api:${{ github.sha }}"
+          IMAGE="${{ vars.GCP_REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/step-up/api:${{ needs.prepare.outputs.sha }}"
           docker build -f apps/step-up-api/Dockerfile -t "$IMAGE" apps/step-up-api
           docker push "$IMAGE"
           echo "IMAGE=$IMAGE" >> "$GITHUB_ENV"
@@ -127,15 +193,17 @@ jobs:
 
   smoke:
     name: Deployed smoke suite
-    needs: [deploy-web, deploy-api]
+    needs: [prepare, deploy-web, deploy-api]
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/step-up'
+    if: needs.prepare.outputs.should_smoke == 'true'
     timeout-minutes: 45
     concurrency:
       group: step-up-smoke
       cancel-in-progress: false
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
       - uses: ./.github/actions/setup
 
       - name: Authenticate to Google Cloud
