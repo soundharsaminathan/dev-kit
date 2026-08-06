@@ -24,13 +24,13 @@ Source of truth for coverage: [`FLOW_COVERAGE_MATRIX.md`](./FLOW_COVERAGE_MATRIX
 
 ```bash
 # Layer 1 — API / service
-pnpm exec nx run step-up-api:test
+pnpm nx run step-up-api:test
 
 # Layer 2 — Module / UI
-pnpm exec nx run step-up:test
+pnpm nx run step-up:test
 
 # Layer 3 — full Playwright
-pnpm exec nx run step-up:test:e2e
+pnpm nx run step-up:test:e2e
 # or
 pnpm test:step-up:e2e
 
@@ -42,7 +42,7 @@ pnpm test:step-up:regression
 
 # Migration smoke (dedicated Postgres DB; drops public schema)
 DATABASE_URL=postgresql://postgres:postgres@localhost:5432/step_up_migrate?schema=public \
-  pnpm exec nx run step-up-api:test:migrations
+  pnpm nx run step-up-api:test:migrations
 
 # Migration smoke + second empty-schema re-apply
 DATABASE_URL=... pnpm --filter @step-up/api test:migrations -- --upgrade

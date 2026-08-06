@@ -1,9 +1,13 @@
+import { createRequire } from "node:module";
 import path from "node:path";
 import { env } from "node:process";
 import { fileURLToPath } from "node:url";
 import { defineConfig, devices } from "@playwright/test";
 
 const dirname = path.dirname(fileURLToPath(import.meta.url));
+createRequire(import.meta.url)(
+  path.join(dirname, "../../scripts/resolve-color-env-conflict.cjs"),
+);
 const webUrl = env.STEP_UP_WEB_URL ?? "https://step-up.pages.dev";
 const isCI = Boolean(env.CI);
 

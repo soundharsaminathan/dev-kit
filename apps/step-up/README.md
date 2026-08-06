@@ -68,15 +68,15 @@ Layered gate (not 90% coverage, not every-flow e2e):
 
 | Layer | Command | What it protects |
 |---|---|---|
-| Unit | `pnpm exec nx run step-up:test` / `step-up-api:test` | Pure logic + DTO mirrors |
-| API HTTP | `pnpm exec nx run step-up:test:http` | Mutating endpoints + authz (no browser) |
-| Critical e2e | `pnpm exec nx run step-up:test:e2e:critical` | Click → API → UI for money/trust flows |
-| Full / nightly | `STEP_UP_E2E_NIGHTLY=true pnpm exec nx run step-up:test:e2e` | Secondary shells + multi-browser |
+| Unit | `pnpm nx run step-up:test` / `step-up-api:test` | Pure logic + DTO mirrors |
+| API HTTP | `pnpm nx run step-up:test:http` | Mutating endpoints + authz (no browser) |
+| Critical e2e | `pnpm nx run step-up:test:e2e:critical` | Click → API → UI for money/trust flows |
+| Full / nightly | `STEP_UP_E2E_NIGHTLY=true pnpm nx run step-up:test:e2e` | Secondary shells + multi-browser |
 
 **Agent / PR gate after Step Up changes:**
 
 ```bash
-pnpm exec nx run step-up:test:regression
+pnpm nx run step-up:test:regression
 ```
 
 That runs unit → HTTP → `@critical` Chromium journeys. CI `step-up-regression` uses the same order.

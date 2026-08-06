@@ -1,3 +1,4 @@
+import { createRequire } from "node:module";
 import path from "node:path";
 import { env } from "node:process";
 import { fileURLToPath } from "node:url";
@@ -5,6 +6,9 @@ import { defineConfig, devices } from "@playwright/test";
 
 const dirname = path.dirname(fileURLToPath(import.meta.url));
 const workspaceRoot = path.join(dirname, "../..");
+createRequire(import.meta.url)(
+  path.join(workspaceRoot, "scripts/resolve-color-env-conflict.cjs"),
+);
 
 function portFromUrl(url: string | undefined, fallback: number) {
   if (!url) return fallback;

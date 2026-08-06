@@ -77,10 +77,10 @@
       "executor": "nx:run-commands",
       "options": {
         "commands": [
-          "pnpm exec nx run step-up-api:test",
-          "pnpm exec nx run step-up:test",
-          "pnpm exec nx run step-up:test:http",
-          "pnpm exec nx run step-up:test:e2e:critical"
+          "pnpm nx run step-up-api:test",
+          "pnpm nx run step-up:test",
+          "pnpm nx run step-up:test:http",
+          "pnpm nx run step-up:test:e2e:critical"
         ],
         "parallel": false
       }
