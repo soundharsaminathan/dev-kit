@@ -13,6 +13,7 @@ const isCI = Boolean(env.CI);
  */
 export default defineConfig({
   testDir: path.join(dirname, "e2e/smoke"),
+  testMatch: /.*\.(smoke\.spec|setup)\.ts/,
   fullyParallel: false,
   forbidOnly: isCI,
   retries: isCI ? 2 : 1,
@@ -20,12 +21,20 @@ export default defineConfig({
   reporter: isCI
     ? [
         ["github"],
+        ["list"],
         ["html", { open: "never", outputFolder: "playwright-report-smoke" }],
         ["junit", { outputFile: "test-results/junit-step-up-smoke.xml" }],
+        [path.join(dirname, "e2e/smoke/reporters/performance-reporter.ts")],
       ]
-    : "list",
+    : [
+        ["list"],
+        [path.join(dirname, "e2e/smoke/reporters/performance-reporter.ts")],
+      ],
   timeout: 90_000,
   expect: { timeout: 20_000 },
+  metadata: {
+    perfResultsFile: path.join(dirname, "playwright-results/performance.json"),
+  },
   use: {
     baseURL: webUrl,
     trace: "on-first-retry",
@@ -35,6 +44,9 @@ export default defineConfig({
     timezoneId: "UTC",
     actionTimeout: 20_000,
     navigationTimeout: 60_000,
+    // Deterministic smoke perf measurements
+    viewport: { width: 1280, height: 720 },
+    reducedMotion: "reduce",
   },
   projects: [
     {
@@ -46,6 +58,7 @@ export default defineConfig({
       dependencies: ["smoke-setup"],
       use: {
         ...devices["Desktop Chrome"],
+        viewport: { width: 1280, height: 720 },
       },
       testIgnore: [/auth\.setup\.ts/],
     },

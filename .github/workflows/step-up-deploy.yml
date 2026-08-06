@@ -217,5 +217,6 @@ jobs:
           path: |
             apps/step-up/playwright-report-smoke
             apps/step-up/test-results/junit-step-up-smoke.xml
+            apps/step-up/playwright-results/performance.json
           if-no-files-found: ignore
           retention-days: 14
