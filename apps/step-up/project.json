@@ -42,6 +42,15 @@
       },
       "dependsOn": ["tokens:build:tokens", "components:build"]
     },
+    "test:ci": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "apps/step-up",
+        "command": "vitest run --config vitest.config.ts --reporter=default --reporter=github-actions --reporter=junit --outputFile=../../test-results/junit-step-up.xml"
+      },
+      "dependsOn": ["tokens:build:tokens", "components:build"],
+      "outputs": ["{workspaceRoot}/test-results/junit-step-up.xml"]
+    },
     "test:e2e": {
       "executor": "nx:run-commands",
       "options": {
