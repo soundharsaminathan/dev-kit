@@ -73,6 +73,13 @@
         "command": "playwright test --config playwright.smoke.config.ts"
       }
     },
+    "test:smoke:perf": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "apps/step-up",
+        "command": "playwright test --config playwright.smoke.config.ts --grep @perf"
+      }
+    },
     "test:regression": {
       "executor": "nx:run-commands",
       "options": {

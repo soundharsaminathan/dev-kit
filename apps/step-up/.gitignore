@@ -1,5 +1,6 @@
 playwright-report/
 playwright-report-smoke/
+playwright-results/
 test-results/
 e2e/.auth/
 e2e/smoke/.auth/

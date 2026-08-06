@@ -10,6 +10,8 @@ storybook-static/
 
 # Playwright
 apps/*/playwright-report/
+apps/*/playwright-report-smoke/
+apps/*/playwright-results/
 apps/*/test-results/
 
 test-results/
