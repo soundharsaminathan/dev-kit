@@ -21,7 +21,7 @@ import { UserCryptoService } from "../src/users/user-crypto.service";
  * Dense fixtures layered onto studio-smoke-1 so deployed performance smoke
  * exercises list/analytics pages with real payload weight (not empty shells).
  *
- * IDs use the `smoke-load-` prefix and are preserved by cleanup-smoke.
+ * Stable IDs use the `smoke-load-` prefix and are preserved by cleanup-smoke.
  */
 
 export const SMOKE_LOAD_PREFIX = "smoke-load-";
