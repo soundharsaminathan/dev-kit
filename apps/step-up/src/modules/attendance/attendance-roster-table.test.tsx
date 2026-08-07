@@ -1,12 +1,40 @@
 import { fireEvent, screen, within } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderWithProviders } from "@/test/render";
 import { AttendanceRosterTable } from "./attendance-roster-table";
 import type { AttendanceRosterEntry } from "./types";
 
+const useIsMobileMock = vi.hoisted(() => vi.fn(() => false));
+
+vi.mock("@dev-ui/hooks", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@dev-ui/hooks")>();
+  return {
+    ...actual,
+    useIsMobile: () => useIsMobileMock(),
+  };
+});
+
 const roster: AttendanceRosterEntry[] = [
   {
     studentId: "s1",
+    student: { name: "Ada Lovelace" },
+    attendance: null,
+  },
+  {
+    studentId: "s2",
+    student: { name: "Grace Hopper" },
+    attendance: {
+      id: "a1",
+      status: "PRESENT",
+      source: "TRAINER",
+    },
+  },
+];
+
+const unpaidRoster: AttendanceRosterEntry[] = [
+  {
+    studentId: "s1",
+    monthlyUnpaid: true,
     student: { name: "Ada Lovelace" },
     attendance: null,
   },
@@ -41,6 +69,10 @@ function renderTable(
 }
 
 describe("AttendanceRosterTable selection", () => {
+  beforeEach(() => {
+    useIsMobileMock.mockReturnValue(false);
+  });
+
   it("selects a student when the row checkbox is clicked", () => {
     renderTable();
 
@@ -160,9 +192,65 @@ describe("AttendanceRosterTable selection", () => {
     ).toBeInTheDocument();
     expect(screen.queryByText(/selected/i)).toBeNull();
   });
+
+  it("hides bulk mark controls on mobile and orders Mark before Status", () => {
+    useIsMobileMock.mockReturnValue(true);
+    renderTable();
+
+    expect(
+      screen.queryByRole("checkbox", { name: "Select Ada Lovelace" }),
+    ).toBeNull();
+    expect(
+      screen.queryByRole("button", { name: "Mark all unmarked present" }),
+    ).toBeNull();
+
+    const headers = screen.getAllByRole("columnheader").map((header) =>
+      header.textContent?.replace(/\s+/g, " ").trim(),
+    );
+    expect(headers).toEqual(["Student", "Mark", "Status"]);
+  });
+
+  it("confirms before marking an unpaid student present", () => {
+    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
+    const { onMarkOne } = renderTable({ roster: unpaidRoster });
+
+    fireEvent.click(screen.getByTestId("mark-present-s1"));
+
+    expect(confirmSpy).toHaveBeenCalledWith(
+      expect.stringMatching(/Ada Lovelace.*unpaid/i),
+    );
+    expect(onMarkOne).toHaveBeenCalledWith("s1", "PRESENT");
+    confirmSpy.mockRestore();
+  });
+
+  it("cancels unpaid mark when confirm is dismissed", () => {
+    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(false);
+    const { onMarkOne } = renderTable({ roster: unpaidRoster });
+
+    fireEvent.click(screen.getByTestId("mark-present-s1"));
+
+    expect(confirmSpy).toHaveBeenCalled();
+    expect(onMarkOne).not.toHaveBeenCalled();
+    confirmSpy.mockRestore();
+  });
+
+  it("marks paid students without a confirm dialog", () => {
+    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(false);
+    const { onMarkOne } = renderTable();
+
+    fireEvent.click(screen.getByTestId("mark-present-s1"));
+
+    expect(confirmSpy).not.toHaveBeenCalled();
+    expect(onMarkOne).toHaveBeenCalledWith("s1", "PRESENT");
+    confirmSpy.mockRestore();
+  });
 });
 
 describe("AttendanceRosterTable status filters", () => {
+  beforeEach(() => {
+    useIsMobileMock.mockReturnValue(false);
+  });
+
   it("filters roster by Present / Unmarked / Absent chips", () => {
     const absentRoster: AttendanceRosterEntry[] = [
       ...roster,

@@ -100,7 +100,10 @@ export class MembershipsService {
       );
     }
 
-    const periodStart = getNextPeriodStart();
+    const now = new Date();
+    const periodStart = new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1),
+    );
     const periodEnd = getPeriodEnd(periodStart, subscription.billingCadence);
 
     return this.prisma.$transaction(async (tx) => {
@@ -570,7 +573,11 @@ export class MembershipsService {
     );
   }
 
-  /** Students whose latest monthly membership is unpaid (due/expired or open invoice). */
+  /**
+   * Students who should show as unpaid on roster/attendance:
+   * - latest monthly membership is due/expired or has an open invoice
+   * - or they have a pending/overdue purchase invoice (enrolled before first payment)
+   */
   async findMonthlyUnpaidStudentIds(
     studentIds: string[],
   ): Promise<Set<string>> {
@@ -578,17 +585,45 @@ export class MembershipsService {
       return new Set();
     }
 
-    const covers = await this.prisma.membershipCoveredStudent.findMany({
-      where: { studentId: { in: studentIds } },
-      include: {
-        membership: {
-          include: {
-            subscription: { select: { billingCadence: true } },
-            invoices: { select: { status: true } },
+    const idSet = new Set(studentIds);
+
+    const [covers, openInvoices] = await Promise.all([
+      this.prisma.membershipCoveredStudent.findMany({
+        where: { studentId: { in: studentIds } },
+        include: {
+          membership: {
+            include: {
+              subscription: { select: { billingCadence: true } },
+              invoices: { select: { status: true } },
+            },
           },
         },
-      },
-    });
+      }),
+      this.prisma.invoice.findMany({
+        where: {
+          status: { in: [InvoiceStatus.PENDING, InvoiceStatus.OVERDUE] },
+          OR: [
+            { studentId: { in: studentIds } },
+            {
+              membership: {
+                coveredStudents: {
+                  some: { studentId: { in: studentIds } },
+                },
+              },
+            },
+          ],
+        },
+        select: {
+          studentId: true,
+          purchaseMeta: true,
+          membership: {
+            select: {
+              coveredStudents: { select: { studentId: true } },
+            },
+          },
+        },
+      }),
+    ]);
 
     const sorted = [...covers].sort(
       (left, right) =>
@@ -624,6 +659,26 @@ export class MembershipsService {
         unpaid.add(studentId);
       }
     }
+
+    for (const invoice of openInvoices) {
+      if (idSet.has(invoice.studentId)) {
+        unpaid.add(invoice.studentId);
+      }
+      const meta = invoice.purchaseMeta as InvoicePurchaseMeta | null;
+      if (meta?.coveredStudents) {
+        for (const seat of meta.coveredStudents) {
+          if (idSet.has(seat.studentId)) {
+            unpaid.add(seat.studentId);
+          }
+        }
+      }
+      for (const seat of invoice.membership?.coveredStudents ?? []) {
+        if (idSet.has(seat.studentId)) {
+          unpaid.add(seat.studentId);
+        }
+      }
+    }
+
     return unpaid;
   }
 

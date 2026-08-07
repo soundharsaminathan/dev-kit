@@ -933,6 +933,7 @@ describe("MembershipsService.findActiveForBatch", () => {
 describe("MembershipsService.findMonthlyUnpaidStudentIds", () => {
   const prisma = {
     membershipCoveredStudent: { findMany: vi.fn() },
+    invoice: { findMany: vi.fn() },
   };
   const notifications = { create: vi.fn() };
   const scheduleConflicts = {
@@ -944,6 +945,7 @@ describe("MembershipsService.findMonthlyUnpaidStudentIds", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    prisma.invoice.findMany.mockResolvedValue([]);
     service = new MembershipsService(
       prisma as never,
       notifications as never,
@@ -996,5 +998,24 @@ describe("MembershipsService.findMonthlyUnpaidStudentIds", () => {
         "s-quarterly",
       ]),
     ).resolves.toEqual(new Set(["s-unpaid"]));
+  });
+
+  it("flags enrolled students with pending purchase invoices", async () => {
+    prisma.membershipCoveredStudent.findMany.mockResolvedValue([]);
+    prisma.invoice.findMany.mockResolvedValue([
+      {
+        studentId: "s-pending",
+        purchaseMeta: {
+          subscriptionId: "sub-1",
+          purchaserUserId: "s-pending",
+          coveredStudents: [{ studentId: "s-pending", seatRole: "KID" }],
+        },
+        membership: null,
+      },
+    ]);
+
+    await expect(
+      service.findMonthlyUnpaidStudentIds(["s-pending", "s-other"]),
+    ).resolves.toEqual(new Set(["s-pending"]));
   });
 });

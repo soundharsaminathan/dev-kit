@@ -1,5 +1,6 @@
 import { Badge } from "@dev-ui/components/badge";
 import { Button } from "@dev-ui/components/button";
+import { useIsMobile } from "@dev-ui/hooks";
 import { Icon } from "@dev-ui/icons";
 import {
   type ColumnDef,
@@ -24,6 +25,31 @@ import {
   attendanceStatusLabel,
   rosterStatus,
 } from "./types";
+
+function confirmUnpaidMark(studentName: string, status: AttendanceStatusValue) {
+  const action = status === "PRESENT" ? "present" : "absent";
+  return window.confirm(
+    `${studentName} has an unpaid plan. Mark ${action} anyway?`,
+  );
+}
+
+function confirmUnpaidBulkMark(
+  unpaidNames: string[],
+  status: AttendanceStatusValue,
+  scope: "selected" | "unmarked" = "selected",
+) {
+  if (unpaidNames.length === 0) return true;
+  const action = status === "PRESENT" ? "present" : "absent";
+  const preview =
+    unpaidNames.length <= 3
+      ? unpaidNames.join(", ")
+      : `${unpaidNames.slice(0, 3).join(", ")} +${unpaidNames.length - 3} more`;
+  const who =
+    scope === "unmarked"
+      ? `${unpaidNames.length} unmarked student${unpaidNames.length === 1 ? "" : "s"} have unpaid plans`
+      : `${unpaidNames.length} selected student${unpaidNames.length === 1 ? "" : "s"} have unpaid plans`;
+  return window.confirm(`${who} (${preview}). Mark ${action} anyway?`);
+}
 
 const STATUS_ORDER: Record<"PRESENT" | "ABSENT" | "UNMARKED", number> = {
   UNMARKED: 0,
@@ -58,6 +84,10 @@ type RosterTableMeta = {
   actionsLocked: boolean;
   pendingStudentId: string | null;
   onMarkOne: (studentId: string, status: AttendanceStatusValue) => void;
+  confirmUnpaid: (
+    studentName: string,
+    status: AttendanceStatusValue,
+  ) => boolean;
 };
 
 function StatusBadge({
@@ -180,6 +210,7 @@ export function AttendanceRosterTable({
   onMarkAllUnmarkedPresent,
   unmarkedCount = 0,
 }: AttendanceRosterTableProps) {
+  const isMobile = useIsMobile();
   const [sorting, setSorting] = useState<SortingState>([
     { id: "status", desc: false },
   ]);
@@ -193,142 +224,170 @@ export function AttendanceRosterTable({
     actionsLocked,
     pendingStudentId,
     onMarkOne,
+    confirmUnpaid: confirmUnpaidMark,
   });
   metaRef.current = {
     markingDisabled,
     actionsLocked,
     pendingStudentId,
     onMarkOne,
+    confirmUnpaid: confirmUnpaidMark,
   };
 
-  const columns = useMemo<ColumnDef<AttendanceRosterEntry>[]>(
-    () => [
-      {
-        id: "select",
-        header: ({ table }) => {
-          const meta = metaRef.current;
-          return (
-            <SelectCheckbox
-              aria-label="Select all students"
-              isSelected={table.getIsAllPageRowsSelected()}
-              isIndeterminate={
-                table.getIsSomePageRowsSelected() &&
-                !table.getIsAllPageRowsSelected()
-              }
-              isDisabled={meta.markingDisabled}
-              onChange={(selected) => table.toggleAllPageRowsSelected(selected)}
-            />
-          );
-        },
-        cell: ({ row }) => {
-          const meta = metaRef.current;
-          return (
-            <SelectCheckbox
-              aria-label={`Select ${row.original.student.name}`}
-              isSelected={row.getIsSelected()}
-              isDisabled={meta.markingDisabled || !row.getCanSelect()}
-              onChange={(selected) => row.toggleSelected(selected)}
-            />
-          );
-        },
-        enableSorting: false,
-        size: 44,
-      },
-      {
-        id: "name",
-        accessorFn: (row) => row.student.name,
-        header: "Student",
-        cell: ({ row }) => {
-          const activeDuration = formatActiveDuration(
-            row.original.student.createdAt,
-          );
-          return (
-            <div className={styles.studentCell}>
-              <div className={styles.studentNameRow}>
-                <span className={styles.studentName}>
-                  {row.original.student.name}
-                </span>
-                {row.original.isTrial ? (
-                  <Badge appearance="subtle" variant="info">
-                    Trial
-                  </Badge>
-                ) : null}
-                {row.original.monthlyUnpaid ? (
-                  <Badge appearance="subtle" variant="warning">
-                    Not paid
-                  </Badge>
-                ) : null}
-              </div>
-              {activeDuration ? (
-                <span className={styles.studentDetail}>{activeDuration}</span>
-              ) : null}
-              <span className={styles.studentDetail}>
-                {row.original.attendance
-                  ? attendanceSourceLabel(row.original.attendance.source)
-                  : "Not marked yet"}
-              </span>
-            </div>
-          );
-        },
-        sortingFn: "alphanumeric",
-      },
-      {
-        id: "status",
-        accessorFn: (row) => rosterStatus(row),
-        header: "Status",
-        cell: ({ getValue }) => (
-          <StatusBadge
-            status={getValue<AttendanceStatusValue | "UNMARKED">()}
+  useEffect(() => {
+    if (isMobile) {
+      setRowSelection({});
+    }
+  }, [isMobile]);
+
+  const columns = useMemo<ColumnDef<AttendanceRosterEntry>[]>(() => {
+    const selectColumn: ColumnDef<AttendanceRosterEntry> = {
+      id: "select",
+      header: ({ table }) => {
+        const meta = metaRef.current;
+        return (
+          <SelectCheckbox
+            aria-label="Select all students"
+            isSelected={table.getIsAllPageRowsSelected()}
+            isIndeterminate={
+              table.getIsSomePageRowsSelected() &&
+              !table.getIsAllPageRowsSelected()
+            }
+            isDisabled={meta.markingDisabled}
+            onChange={(selected) => table.toggleAllPageRowsSelected(selected)}
           />
-        ),
-        filterFn: (row, _columnId, filterValue: AttendanceStatusFilter) => {
-          if (!filterValue || filterValue === "all") return true;
-          return rosterStatus(row.original) === filterValue;
-        },
-        sortingFn: (a, b) =>
-          STATUS_ORDER[rosterStatus(a.original)] -
-          STATUS_ORDER[rosterStatus(b.original)],
+        );
       },
-      {
-        id: "actions",
-        header: "Mark",
-        cell: ({ row }) => {
-          const meta = metaRef.current;
-          const rowPending =
-            meta.actionsLocked ||
-            meta.pendingStudentId === row.original.studentId;
-          return (
-            <div className={styles.rowActions}>
-              <Button
-                size="sm"
-                variant="default"
-                className={styles.markPresent}
-                isDisabled={rowPending}
-                data-testid={`mark-present-${row.original.studentId}`}
-                onClick={() =>
-                  meta.onMarkOne(row.original.studentId, "PRESENT")
-                }
-              >
-                Present
-              </Button>
-              <Button
-                size="sm"
-                variant="danger"
-                className={styles.markAbsent}
-                isDisabled={rowPending}
-                data-testid={`mark-absent-${row.original.studentId}`}
-                onClick={() => meta.onMarkOne(row.original.studentId, "ABSENT")}
-              >
-                Absent
-              </Button>
+      cell: ({ row }) => {
+        const meta = metaRef.current;
+        return (
+          <SelectCheckbox
+            aria-label={`Select ${row.original.student.name}`}
+            isSelected={row.getIsSelected()}
+            isDisabled={meta.markingDisabled || !row.getCanSelect()}
+            onChange={(selected) => row.toggleSelected(selected)}
+          />
+        );
+      },
+      enableSorting: false,
+      size: 44,
+    };
+
+    const nameColumn: ColumnDef<AttendanceRosterEntry> = {
+      id: "name",
+      accessorFn: (row) => row.student.name,
+      header: "Student",
+      cell: ({ row }) => {
+        const activeDuration = formatActiveDuration(
+          row.original.student.createdAt,
+        );
+        return (
+          <div className={styles.studentCell}>
+            <div className={styles.studentNameRow}>
+              <span className={styles.studentName}>
+                {row.original.student.name}
+              </span>
+              {row.original.isTrial ? (
+                <Badge appearance="subtle" variant="info">
+                  Trial
+                </Badge>
+              ) : null}
+              {row.original.monthlyUnpaid ? (
+                <Badge appearance="subtle" variant="warning">
+                  Not paid
+                </Badge>
+              ) : null}
             </div>
-          );
-        },
-        enableSorting: false,
+            {activeDuration ? (
+              <span className={styles.studentDetail}>{activeDuration}</span>
+            ) : null}
+            <span className={styles.studentDetail}>
+              {row.original.attendance
+                ? attendanceSourceLabel(row.original.attendance.source)
+                : "Not marked yet"}
+            </span>
+          </div>
+        );
       },
-    ],
-    [],
-  );
+      sortingFn: "alphanumeric",
+    };
+
+    const statusColumn: ColumnDef<AttendanceRosterEntry> = {
+      id: "status",
+      accessorFn: (row) => rosterStatus(row),
+      header: "Status",
+      cell: ({ getValue }) => (
+        <StatusBadge
+          status={getValue<AttendanceStatusValue | "UNMARKED">()}
+        />
+      ),
+      filterFn: (row, _columnId, filterValue: AttendanceStatusFilter) => {
+        if (!filterValue || filterValue === "all") return true;
+        return rosterStatus(row.original) === filterValue;
+      },
+      sortingFn: (a, b) =>
+        STATUS_ORDER[rosterStatus(a.original)] -
+        STATUS_ORDER[rosterStatus(b.original)],
+    };
+
+    const actionsColumn: ColumnDef<AttendanceRosterEntry> = {
+      id: "actions",
+      header: "Mark",
+      cell: ({ row }) => {
+        const meta = metaRef.current;
+        const rowPending =
+          meta.actionsLocked ||
+          meta.pendingStudentId === row.original.studentId;
+        return (
+          <div className={styles.rowActions}>
+            <Button
+              size="sm"
+              variant="default"
+              className={styles.markPresent}
+              isDisabled={rowPending}
+              data-testid={`mark-present-${row.original.studentId}`}
+              onClick={() => {
+                if (
+                  row.original.monthlyUnpaid &&
+                  !meta.confirmUnpaid(row.original.student.name, "PRESENT")
+                ) {
+                  return;
+                }
+                meta.onMarkOne(row.original.studentId, "PRESENT");
+              }}
+            >
+              Present
+            </Button>
+            <Button
+              size="sm"
+              variant="danger"
+              className={styles.markAbsent}
+              isDisabled={rowPending}
+              data-testid={`mark-absent-${row.original.studentId}`}
+              onClick={() => {
+                if (
+                  row.original.monthlyUnpaid &&
+                  !meta.confirmUnpaid(row.original.student.name, "ABSENT")
+                ) {
+                  return;
+                }
+                meta.onMarkOne(row.original.studentId, "ABSENT");
+              }}
+            >
+              Absent
+            </Button>
+          </div>
+        );
+      },
+      enableSorting: false,
+    };
+
+    if (isMobile) {
+      return [nameColumn, actionsColumn, statusColumn];
+    }
+
+    return [selectColumn, nameColumn, statusColumn, actionsColumn];
+  }, [isMobile]);
 
   const columnFilters = useMemo(
     () => [{ id: "status", value: statusFilter }],
@@ -348,7 +407,7 @@ export function AttendanceRosterTable({
     getCoreRowModel: getCoreModel,
     getSortedRowModel: getSortedModel,
     getFilteredRowModel: getFilteredModel,
-    enableRowSelection: !markingDisabled,
+    enableRowSelection: !isMobile && !markingDisabled,
     getRowId: (row) => row.studentId,
   });
 
@@ -366,11 +425,24 @@ export function AttendanceRosterTable({
     (status: AttendanceStatusValue) => {
       const ids = Object.keys(rowSelection).filter((id) => rowSelection[id]);
       if (ids.length === 0) return;
+      const unpaidNames = roster
+        .filter((entry) => ids.includes(entry.studentId) && entry.monthlyUnpaid)
+        .map((entry) => entry.student.name);
+      if (!confirmUnpaidBulkMark(unpaidNames, status)) return;
       onMarkSelected(ids, status);
       setRowSelection({});
     },
-    [onMarkSelected, rowSelection],
+    [onMarkSelected, roster, rowSelection],
   );
+
+  const handleMarkAllUnmarkedPresent = useCallback(() => {
+    if (!onMarkAllUnmarkedPresent) return;
+    const unpaidNames = roster
+      .filter((entry) => !entry.attendance && entry.monthlyUnpaid)
+      .map((entry) => entry.student.name);
+    if (!confirmUnpaidBulkMark(unpaidNames, "PRESENT", "unmarked")) return;
+    onMarkAllUnmarkedPresent();
+  }, [onMarkAllUnmarkedPresent, roster]);
 
   const handleFilterToggle = useCallback((id: string) => {
     setStatusFilter(id as AttendanceStatusFilter);
@@ -379,30 +451,32 @@ export function AttendanceRosterTable({
   const selectedFilters = useMemo(() => [statusFilter], [statusFilter]);
 
   return (
-    <div className={styles.root}>
+    <div className={styles.root} data-mobile={isMobile ? "true" : undefined}>
       <div className={styles.toolbar}>
         <FilterChipRow
           chips={STATUS_FILTER_CHIPS}
           selected={selectedFilters}
           onToggle={handleFilterToggle}
         />
-        <div className={styles.toolbarActions}>
-          {unmarkedCount > 0 && onMarkAllUnmarkedPresent ? (
-            <Button
-              variant="default"
-              size="sm"
-              className={styles.markPresent}
-              isDisabled={actionsLocked}
-              data-testid="mark-all-present"
-              onClick={onMarkAllUnmarkedPresent}
-            >
-              Mark all unmarked present
-            </Button>
-          ) : null}
-        </div>
+        {!isMobile ? (
+          <div className={styles.toolbarActions}>
+            {unmarkedCount > 0 && onMarkAllUnmarkedPresent ? (
+              <Button
+                variant="default"
+                size="sm"
+                className={styles.markPresent}
+                isDisabled={actionsLocked}
+                data-testid="mark-all-present"
+                onClick={handleMarkAllUnmarkedPresent}
+              >
+                Mark all unmarked present
+              </Button>
+            ) : null}
+          </div>
+        ) : null}
       </div>
 
-      {selectedCount > 0 ? (
+      {!isMobile && selectedCount > 0 ? (
         <div className={styles.selectionBar} role="status">
           <span className={styles.selectionLabel}>
             <strong>{selectedCount}</strong> selected
