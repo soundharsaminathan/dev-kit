@@ -147,6 +147,17 @@ describe("homePathForUser", () => {
       homePathForUser(fixtureUser("OWNER", { mustChangePassword: true })),
     ).toBe("/app/profile/change-password");
   });
+
+  it("sends students with a temp password to change-password before onboarding", () => {
+    expect(
+      homePathForUser(
+        fixtureUser("STUDENT", {
+          mustChangePassword: true,
+          onboardingCompletedAt: null,
+        }),
+      ),
+    ).toBe("/me/profile/change-password");
+  });
 });
 
 describe("requireAuth mustChangePassword", () => {
@@ -181,6 +192,47 @@ describe("requireAuth mustChangePassword", () => {
       },
     );
     expect(user.mustChangePassword).toBe(true);
+  });
+
+  it("keeps students on change-password even when onboarding is incomplete", () => {
+    const user = requireAuth(
+      authWith(
+        fixtureUser("STUDENT", {
+          mustChangePassword: true,
+          onboardingCompletedAt: null,
+        }),
+      ),
+      {
+        roles: ["STUDENT", "PARENT"],
+        fallback: "/app",
+        pathname: "/me/profile/change-password",
+        searchStr: "",
+      },
+    );
+    expect(user.mustChangePassword).toBe(true);
+
+    try {
+      requireAuth(
+        authWith(
+          fixtureUser("STUDENT", {
+            mustChangePassword: true,
+            onboardingCompletedAt: null,
+          }),
+        ),
+        {
+          roles: ["STUDENT", "PARENT"],
+          fallback: "/app",
+          pathname: "/me/onboarding",
+          searchStr: "",
+        },
+      );
+      expect.unreachable();
+    } catch (error) {
+      expect(isRedirect(error)).toBe(true);
+      if (isRedirect(error)) {
+        expect(error.options.to).toBe("/me/profile/change-password");
+      }
+    }
   });
 });
 

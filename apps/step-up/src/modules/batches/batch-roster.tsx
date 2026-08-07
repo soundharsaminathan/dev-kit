@@ -609,36 +609,18 @@ export function BatchRoster({ batchId, capacity, active }: BatchRosterProps) {
                     <div className={styles.body}>
                       <div className={styles.top}>
                         <h3 className={styles.name}>{student.name}</h3>
-                        <div className={styles.badges}>
-                          <Badge appearance="subtle">Enrolled</Badge>
-                          {row.monthlyUnpaid ? (
+                        {row.monthlyUnpaid ? (
+                          <div className={styles.badges}>
                             <Badge appearance="subtle" variant="warning">
                               Not paid
                             </Badge>
-                          ) : null}
-                        </div>
+                          </div>
+                        ) : null}
                       </div>
 
                       {activeDuration ? (
                         <p className={styles.tenure}>{activeDuration}</p>
                       ) : null}
-
-                      <div className={styles.contacts}>
-                        <span className={styles.contact}>
-                          <Icon name="mail" className={styles.contactIcon} />
-                          <span className={styles.contactText}>
-                            {student.email}
-                          </span>
-                        </span>
-                        {student.phone ? (
-                          <span className={styles.contact}>
-                            <Icon name="user" className={styles.contactIcon} />
-                            <span className={styles.contactText}>
-                              {student.phone}
-                            </span>
-                          </span>
-                        ) : null}
-                      </div>
 
                       {styleList.length > 0 ? (
                         <StyleList styles={styleList} size="xs" />
