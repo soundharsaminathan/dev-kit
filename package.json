@@ -28,7 +28,7 @@
     "test:step-up:e2e:critical": "pnpm nx run step-up:test:e2e:critical",
     "test:step-up:regression": "pnpm nx run step-up:test:regression",
     "affected:e2e": "pnpm nx affected -t test:e2e:affected",
-    "precommit": "pnpm nx affected -t typecheck --uncommitted --untracked --exclude=storybook,dev-kit"
+    "precommit": "pnpm nx affected -t typecheck --uncommitted --exclude=storybook,dev-kit"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.0",
