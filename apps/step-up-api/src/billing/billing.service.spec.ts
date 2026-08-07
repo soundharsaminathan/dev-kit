@@ -310,7 +310,7 @@ describe("BillingService.getTrainerAnalytics", () => {
           purchaserUserId: "student-1",
           coveredStudents: [{ studentId: "student-1", seatRole: "ADULT" }],
         },
-        membership: { periodEnd: new Date("2026-07-20T00:00:00.000Z") },
+        membership: { periodStart: new Date("2026-07-01T00:00:00.000Z") },
         student: { id: "student-1", name: "Alex" },
       },
     ]);
@@ -333,7 +333,7 @@ describe("BillingService.getTrainerAnalytics", () => {
     expect(result.series.some((point) => point.collected === 2000)).toBe(true);
     expect(result.pendingPayments[0]).toMatchObject({
       invoiceId: "inv-pending",
-      dueDate: "2026-07-20T00:00:00.000Z",
+      dueDate: "2026-07-01T00:00:00.000Z",
       batchId: "batch-1",
       batchName: "Kids Hip-Hop",
     });

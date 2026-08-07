@@ -23,6 +23,7 @@ describe("JobsService.runDaily", () => {
 
   const memberships = {
     ensureRenewalInvoice: vi.fn(),
+    rollEndedActiveToNextDue: vi.fn(),
   };
 
   let service: JobsService;
@@ -32,6 +33,11 @@ describe("JobsService.runDaily", () => {
     prisma.studioSettings.findMany.mockResolvedValue([]);
     memberships.ensureRenewalInvoice.mockResolvedValue({
       invoice: { id: "inv-1" },
+      created: false,
+    });
+    memberships.rollEndedActiveToNextDue.mockResolvedValue({
+      previousId: "mem-old",
+      next: null,
       created: false,
     });
     service = new JobsService(
@@ -51,7 +57,8 @@ describe("JobsService.runDaily", () => {
       purchaserUserId: "student-1",
       subscriptionId: "sub-1",
       status: MembershipStatus.DUE,
-      periodEnd: new Date("2026-07-15T23:59:59.999Z"),
+      periodStart: new Date("2026-07-15T00:00:00.000Z"),
+      periodEnd: new Date("2026-07-31T23:59:59.999Z"),
       subscription: {
         id: "sub-1",
         name: "Adults Unlimited",
@@ -59,13 +66,12 @@ describe("JobsService.runDaily", () => {
       },
     };
 
-    prisma.membership.updateMany
-      .mockResolvedValueOnce({ count: 1 })
-      .mockResolvedValueOnce({ count: 1 });
     prisma.membership.findMany
+      .mockResolvedValueOnce([])
       .mockResolvedValueOnce([{ id: "mem-due" }])
       .mockResolvedValueOnce([membership])
       .mockResolvedValueOnce([]);
+    prisma.membership.updateMany.mockResolvedValue({ count: 1 });
     prisma.invoice.updateMany.mockResolvedValue({ count: 0 });
     prisma.invoice.findMany.mockResolvedValue([]);
     notifications.create.mockResolvedValue({ id: "notif-1" });
@@ -87,7 +93,7 @@ describe("JobsService.runDaily", () => {
     vi.useRealTimers();
   });
 
-  it("uses each studio's due days before expiring memberships", async () => {
+  it("uses each studio's due days from periodStart before expiring memberships", async () => {
     const now = new Date("2026-07-20T12:00:00.000Z");
     vi.useFakeTimers();
     vi.setSystemTime(now);
@@ -97,7 +103,8 @@ describe("JobsService.runDaily", () => {
       purchaserUserId: "student-1",
       subscriptionId: "sub-1",
       status: MembershipStatus.DUE,
-      periodEnd: new Date("2026-07-17T23:59:59.999Z"),
+      periodStart: new Date("2026-07-17T00:00:00.000Z"),
+      periodEnd: new Date("2026-07-31T23:59:59.999Z"),
       subscription: {
         id: "sub-1",
         name: "Short Grace Plan",
@@ -109,7 +116,8 @@ describe("JobsService.runDaily", () => {
       purchaserUserId: "student-2",
       subscriptionId: "sub-2",
       status: MembershipStatus.DUE,
-      periodEnd: new Date("2026-07-17T23:59:59.999Z"),
+      periodStart: new Date("2026-07-17T00:00:00.000Z"),
+      periodEnd: new Date("2026-07-31T23:59:59.999Z"),
       subscription: {
         id: "sub-2",
         name: "Long Grace Plan",
@@ -121,13 +129,12 @@ describe("JobsService.runDaily", () => {
       { studioId: "studio-short", graceDays: 2, expireAlertDays: 7 },
       { studioId: "studio-long", graceDays: 5, expireAlertDays: 7 },
     ]);
-    prisma.membership.updateMany
-      .mockResolvedValueOnce({ count: 0 })
-      .mockResolvedValueOnce({ count: 1 });
     prisma.membership.findMany
+      .mockResolvedValueOnce([])
       .mockResolvedValueOnce([{ id: "mem-short" }, { id: "mem-long" }])
       .mockResolvedValueOnce([shortGrace, longGrace])
       .mockResolvedValueOnce([]);
+    prisma.membership.updateMany.mockResolvedValue({ count: 1 });
     prisma.invoice.updateMany.mockResolvedValue({ count: 0 });
     prisma.invoice.findMany.mockResolvedValue([]);
     notifications.create.mockResolvedValue({ id: "notif-1" });
@@ -140,8 +147,7 @@ describe("JobsService.runDaily", () => {
         dedupeKey: "NOT_RENEWED:mem-short",
       }),
     );
-    expect(prisma.membership.updateMany).toHaveBeenNthCalledWith(
-      2,
+    expect(prisma.membership.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: { in: ["mem-short"] } },
         data: { status: MembershipStatus.EXPIRED },
@@ -157,8 +163,8 @@ describe("JobsService.runDaily", () => {
     vi.useFakeTimers();
     vi.setSystemTime(now);
 
-    prisma.membership.updateMany.mockResolvedValue({ count: 0 });
     prisma.membership.findMany.mockResolvedValue([]);
+    prisma.membership.updateMany.mockResolvedValue({ count: 0 });
     prisma.invoice.updateMany.mockResolvedValue({ count: 2 });
     prisma.invoice.findMany.mockResolvedValue([
       { id: "inv-1", studentId: "student-1", student: { id: "student-1" } },
@@ -194,36 +200,44 @@ describe("JobsService.runDaily", () => {
     vi.useRealTimers();
   });
 
-  it("creates renewal invoices for due and expired memberships without an open invoice", async () => {
-    prisma.membership.updateMany.mockResolvedValue({ count: 1 });
+  it("rolls ended ACTIVE memberships into next-period DUE and invoices them", async () => {
     prisma.membership.findMany
+      .mockResolvedValueOnce([{ id: "mem-ended" }])
       .mockResolvedValueOnce([{ id: "mem-due" }, { id: "mem-expired" }])
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([]);
+    prisma.membership.updateMany.mockResolvedValue({ count: 0 });
     prisma.invoice.updateMany.mockResolvedValue({ count: 0 });
     prisma.invoice.findMany.mockResolvedValue([]);
+    memberships.rollEndedActiveToNextDue.mockResolvedValue({
+      previousId: "mem-ended",
+      next: { id: "mem-sep-due" },
+      created: true,
+    });
     memberships.ensureRenewalInvoice
       .mockResolvedValueOnce({ invoice: { id: "inv-new" }, created: true })
       .mockResolvedValueOnce({
         invoice: { id: "inv-existing" },
         created: false,
+      })
+      .mockResolvedValueOnce({
+        invoice: { id: "inv-sep" },
+        created: true,
       });
 
     const result = await service.runDaily();
 
-    expect(prisma.membership.updateMany).toHaveBeenNthCalledWith(
-      1,
-      expect.objectContaining({
-        where: expect.objectContaining({
-          status: MembershipStatus.ACTIVE,
-        }),
-        data: { status: MembershipStatus.DUE },
-      }),
+    expect(memberships.rollEndedActiveToNextDue).toHaveBeenCalledWith(
+      "mem-ended",
+    );
+    expect(memberships.ensureRenewalInvoice).toHaveBeenCalledWith(
+      "mem-sep-due",
     );
     expect(memberships.ensureRenewalInvoice).toHaveBeenCalledWith("mem-due");
     expect(memberships.ensureRenewalInvoice).toHaveBeenCalledWith(
       "mem-expired",
     );
-    expect(result.renewalInvoicesCreated).toBe(1);
+    expect(result.dueMemberships).toBe(1);
+    expect(result.renewalInvoicesCreated).toBe(2);
   });
 });

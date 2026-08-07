@@ -648,9 +648,11 @@ async function main() {
     },
   });
 
-  const duePeriodEnd = new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000);
   const duePeriodStart = new Date(
-    Date.UTC(duePeriodEnd.getUTCFullYear(), duePeriodEnd.getUTCMonth(), 1),
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1),
+  );
+  const duePeriodEnd = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0, 23, 59, 59, 999),
   );
 
   await prisma.membership.upsert({

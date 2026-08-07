@@ -30,40 +30,146 @@ describe("MembershipsService.renewManual", () => {
     );
   });
 
-  it("expires the old membership and creates a renewed one", async () => {
+  it("activates the due membership in place without advancing the period", async () => {
     prisma.membership.findUnique.mockResolvedValue({
       id: "mem-1",
       subscriptionId: "sub-1",
       purchaserUserId: "user-1",
-      periodEnd: new Date(Date.UTC(2026, 5, 30, 23, 59, 59, 999)),
+      status: "DUE",
+      periodStart: new Date(Date.UTC(2026, 6, 1)),
+      periodEnd: new Date(Date.UTC(2026, 6, 31, 23, 59, 59, 999)),
       subscription: {
         name: "Individual Kid Monthly",
         billingCadence: "MONTHLY",
       },
       coveredStudents: [{ studentId: "student-1", seatRole: "KID" }],
     });
-    prisma.membership.create.mockResolvedValue({
-      id: "mem-2",
+    prisma.membership.update.mockResolvedValue({
+      id: "mem-1",
       subscriptionId: "sub-1",
+      status: "ACTIVE",
+      periodEnd: new Date(Date.UTC(2026, 6, 31, 23, 59, 59, 999)),
     });
 
     await service.renewManual("mem-1");
 
     expect(prisma.membership.update).toHaveBeenCalledWith({
       where: { id: "mem-1" },
-      data: { status: "EXPIRED" },
+      data: { status: "ACTIVE" },
+      include: {
+        subscription: true,
+        coveredStudents: true,
+      },
     });
+    expect(prisma.membership.create).not.toHaveBeenCalled();
     expect(notifications.create).toHaveBeenCalledWith(
       expect.objectContaining({
         userId: "user-1",
         type: NotificationType.RENEWED,
         planName: "Individual Kid Monthly",
         meta: expect.objectContaining({
-          membershipId: "mem-2",
+          membershipId: "mem-1",
           subscriptionId: "sub-1",
         }),
       }),
     );
+  });
+});
+
+describe("MembershipsService.rollEndedActiveToNextDue", () => {
+  const prisma = {
+    membership: {
+      findUnique: vi.fn(),
+      findFirst: vi.fn(),
+      update: vi.fn(),
+      create: vi.fn(),
+    },
+  };
+
+  const notifications = {
+    create: vi.fn(),
+  };
+
+  let service: MembershipsService;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    service = new MembershipsService(
+      prisma as never,
+      notifications as never,
+      {
+        assertNoConflicts: vi.fn().mockResolvedValue(undefined),
+        assertStudentAvailableForBatch: vi.fn().mockResolvedValue(undefined),
+      } as never,
+    );
+  });
+
+  it("expires the ended ACTIVE period and creates the next month as DUE", async () => {
+    prisma.membership.findUnique.mockResolvedValue({
+      id: "mem-aug",
+      subscriptionId: "sub-1",
+      purchaserUserId: "user-1",
+      status: "ACTIVE",
+      periodEnd: new Date(Date.UTC(2026, 6, 31, 23, 59, 59, 999)),
+      subscription: {
+        name: "Adult Monthly",
+        billingCadence: "MONTHLY",
+      },
+      coveredStudents: [{ studentId: "student-1", seatRole: "ADULT" }],
+    });
+    prisma.membership.findFirst.mockResolvedValue(null);
+    prisma.membership.create.mockResolvedValue({
+      id: "mem-sep",
+      status: "DUE",
+      periodStart: new Date(Date.UTC(2026, 7, 1)),
+      periodEnd: new Date(Date.UTC(2026, 7, 31, 23, 59, 59, 999)),
+    });
+
+    const result = await service.rollEndedActiveToNextDue("mem-aug");
+
+    expect(prisma.membership.update).toHaveBeenCalledWith({
+      where: { id: "mem-aug" },
+      data: { status: "EXPIRED" },
+    });
+    expect(prisma.membership.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        subscriptionId: "sub-1",
+        purchaserUserId: "user-1",
+        periodStart: new Date(Date.UTC(2026, 7, 1)),
+        status: "DUE",
+      }),
+      include: {
+        subscription: true,
+        coveredStudents: true,
+      },
+    });
+    expect(result.created).toBe(true);
+    expect(result.next?.id).toBe("mem-sep");
+  });
+
+  it("reuses an existing next-period membership instead of creating another", async () => {
+    prisma.membership.findUnique.mockResolvedValue({
+      id: "mem-aug",
+      subscriptionId: "sub-1",
+      purchaserUserId: "user-1",
+      status: "ACTIVE",
+      periodEnd: new Date(Date.UTC(2026, 6, 31, 23, 59, 59, 999)),
+      subscription: {
+        name: "Adult Monthly",
+        billingCadence: "MONTHLY",
+      },
+      coveredStudents: [{ studentId: "student-1", seatRole: "ADULT" }],
+    });
+    prisma.membership.findFirst.mockResolvedValue({
+      id: "mem-sep-existing",
+      status: "DUE",
+    });
+
+    const result = await service.rollEndedActiveToNextDue("mem-aug");
+
+    expect(prisma.membership.create).not.toHaveBeenCalled();
+    expect(result.created).toBe(false);
+    expect(result.next?.id).toBe("mem-sep-existing");
   });
 });
 
