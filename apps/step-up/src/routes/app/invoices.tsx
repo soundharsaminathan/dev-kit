@@ -536,21 +536,16 @@ function InvoicesPage() {
 
               {refundInvoices.length > 0 ? (
                 <div className={staff.list}>
-                  {refundInvoices.map((invoice) => {
-                    const refundProps = canRefund(invoice)
-                      ? { onRefund: () => setRefundId(invoice.id) }
-                      : {};
-                    return (
-                      <InvoiceCard
-                        key={invoice.id}
-                        invoice={invoice}
-                        collectTestId={`refund-view-${invoice.id}`}
-                        onCollect={() => undefined}
-                        refundMode
-                        {...refundProps}
-                      />
-                    );
-                  })}
+                  {refundInvoices.map((invoice) => (
+                    <InvoiceCard
+                      key={invoice.id}
+                      invoice={invoice}
+                      collectTestId={`refund-view-${invoice.id}`}
+                      onCollect={() => undefined}
+                      refundMode
+                      onRefund={() => setRefundId(invoice.id)}
+                    />
+                  ))}
                 </div>
               ) : null}
             </div>
