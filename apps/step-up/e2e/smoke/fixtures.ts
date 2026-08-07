@@ -280,4 +280,4 @@ export const test = base.extend<Fixtures>({
 });
 
 export type { SmokeRole };
-export { expect, SMOKE };
+export { expect, SMOKE, apiBaseUrl };

@@ -1,9 +1,11 @@
 import {
   apiRequest,
   authFile,
+  bearerFor,
   expect,
   SMOKE,
   SmokeDataCleanup,
+  apiBaseUrl,
   test,
   waitForApiResponse,
   waitForAppReady,
@@ -308,6 +310,72 @@ test.describe("student smoke @smoke", () => {
     } finally {
       await context.close();
     }
+  });
+
+  test("student is denied staff mutations @smoke", async () => {
+    const studentId = SMOKE.users.STUDENT.id;
+    const token = await bearerFor("STUDENT");
+
+    const mark = await fetch(`${apiBaseUrl()}/attendance/mark`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        sessionId: SMOKE.sessionAttendanceId,
+        studentId,
+        status: "PRESENT",
+        source: "TRAINER",
+      }),
+    });
+    expect(mark.status).toBe(403);
+
+    const unenroll = await fetch(
+      `${apiBaseUrl()}/batches/${SMOKE.kidsBatchId}/unenroll`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ studentId }),
+      },
+    );
+    expect(unenroll.status).toBe(403);
+
+    const markPaid = await fetch(
+      `${apiBaseUrl()}/billing/${SMOKE.invoicePendingId}/paid`,
+      {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ paymentMethod: "CASH" }),
+      },
+    );
+    expect(markPaid.status).toBe(403);
+  });
+
+  test("onboarding student cannot self-enroll into STAFF_ONLY kids batch @smoke", async () => {
+    const token = await bearerFor("ONBOARDING");
+    const response = await fetch(
+      `${apiBaseUrl()}/batches/${SMOKE.kidsBatchId}/enroll`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          studentId: SMOKE.users.ONBOARDING.id,
+          subscriptionId: SMOKE.kidPlanIds[0],
+        }),
+      },
+    );
+    expect(response.status).toBe(400);
+    expect(await response.text()).toMatch(/self-enrollment/i);
   });
 
   test("onboarding student completes wizard @smoke", async ({ browser }) => {

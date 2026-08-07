@@ -63,6 +63,16 @@ test.describe("memberships HTTP @http", () => {
     expect(due?.status).toBe("DUE");
   });
 
+  test("self/renew rejects ACTIVE memberships @http", async () => {
+    const result = await expectStatus("STUDENT", "/memberships/self/renew", 400, {
+      method: "POST",
+      body: JSON.stringify({
+        membershipId: SEED.membershipStudentId,
+      }),
+    });
+    expect(result.text).toMatch(/due or expired/i);
+  });
+
   test("family-purchase creates pending invoice with purchaseMeta @http", async () => {
     const cleanup = new TestDataCleanup();
     try {

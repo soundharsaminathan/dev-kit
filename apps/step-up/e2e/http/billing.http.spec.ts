@@ -101,6 +101,42 @@ test.describe("billing HTTP @http", () => {
     }
   });
 
+  test("student cannot mark invoice paid @http", async () => {
+    const cleanup = new TestDataCleanup();
+    try {
+      const target = await createPendingInvoiceViaEnroll(cleanup);
+      await expectStatus("STUDENT", `/billing/${target.id}/paid`, 403, {
+        method: "PATCH",
+        body: JSON.stringify({ paymentMethod: "CASH" }),
+      });
+    } finally {
+      await cleanup.dispose();
+    }
+  });
+
+  test("staff cannot mark an already-paid invoice again @http", async () => {
+    const cleanup = new TestDataCleanup();
+    try {
+      const target = await createPendingInvoiceViaEnroll(cleanup);
+      await expectOk("STAFF", `/billing/${target.id}/paid`, {
+        method: "PATCH",
+        body: JSON.stringify({ paymentMethod: "CASH" }),
+      });
+      const result = await expectStatus(
+        "STAFF",
+        `/billing/${target.id}/paid`,
+        400,
+        {
+          method: "PATCH",
+          body: JSON.stringify({ paymentMethod: "CASH" }),
+        },
+      );
+      expect(result.text).toMatch(/already paid/i);
+    } finally {
+      await cleanup.dispose();
+    }
+  });
+
   test("student lists own invoices @http", async () => {
     const invoices = await expectOk<Array<{ id: string }>>(
       "STUDENT",

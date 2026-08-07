@@ -110,6 +110,75 @@ test.describe("batches HTTP @http", () => {
     });
   });
 
+  test("student cannot self-enroll into STAFF_ONLY kids batch @http", async () => {
+    const cleanup = new TestDataCleanup();
+    try {
+      const student = await createHttpStudent("Staff Only Deny", cleanup);
+      const result = await expectStatus(
+        "STUDENT",
+        `/batches/${SEED.kidsBatchId}/enroll`,
+        400,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            studentId: student.id,
+            subscriptionId: SEED.kidPlanIds[0],
+          }),
+        },
+        { userId: student.id },
+      );
+      expect(result.text).toMatch(/self-enrollment/i);
+    } finally {
+      await cleanup.dispose();
+    }
+  });
+
+  test("staff unenrolls student and they leave the attendance roster @http", async () => {
+    const cleanup = new TestDataCleanup();
+    const sessionId = SEED.sessionAttendanceId;
+    try {
+      const student = await createHttpStudent("HTTP Unenroll", cleanup);
+      await expectOk("STAFF", `/batches/${SEED.kidsBatchId}/enroll`, {
+        method: "POST",
+        body: JSON.stringify({
+          studentId: student.id,
+          subscriptionId: SEED.kidPlanIds[0],
+        }),
+      });
+
+      const before = await expectOk<Array<{ studentId: string }>>(
+        "TRAINER",
+        `/attendance/session/${sessionId}/roster`,
+      );
+      expect(before.some((row) => row.studentId === student.id)).toBe(true);
+
+      await expectOk("STAFF", `/batches/${SEED.kidsBatchId}/unenroll`, {
+        method: "POST",
+        body: JSON.stringify({ studentId: student.id }),
+      });
+
+      const after = await expectOk<Array<{ studentId: string }>>(
+        "TRAINER",
+        `/attendance/session/${sessionId}/roster`,
+      );
+      expect(after.some((row) => row.studentId === student.id)).toBe(false);
+    } finally {
+      await cleanup.dispose();
+    }
+  });
+
+  test("student cannot unenroll from a batch @http", async () => {
+    await expectStatus(
+      "STUDENT",
+      `/batches/${SEED.kidsBatchId}/unenroll`,
+      403,
+      {
+        method: "POST",
+        body: JSON.stringify({ studentId: SEED.users.STUDENT.id }),
+      },
+    );
+  });
+
   test("trainer switches a student to another same-category batch @http", async () => {
     const cleanup = new TestDataCleanup();
     const studentId = SEED.users.STUDENT.id;
