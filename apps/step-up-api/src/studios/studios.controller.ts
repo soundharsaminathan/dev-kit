@@ -205,12 +205,11 @@ export class StudiosController {
     }
 
     if (
-      user.role !== UserRole.OWNER &&
       user.role !== UserRole.SYSTEM_ADMIN &&
       dto.platformFeePercent !== undefined
     ) {
       throw new ForbiddenException(
-        "Only owners can change platform fee percent",
+        "Only system admins can change platform fee percent",
       );
     }
 

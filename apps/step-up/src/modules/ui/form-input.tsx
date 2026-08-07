@@ -7,6 +7,7 @@ type FormInputProps = {
   label: string;
   value: string;
   onChange: (value: string) => void;
+  isDisabled?: boolean;
 } & Omit<InputHTMLAttributes<HTMLInputElement>, "value" | "onChange" | "size">;
 
 export function FormInput({
@@ -14,8 +15,12 @@ export function FormInput({
   value,
   onChange,
   type = "text",
+  disabled,
+  isDisabled,
+  readOnly,
   ...props
 }: FormInputProps) {
+  const resolvedDisabled = Boolean(disabled ?? isDisabled);
   return (
     <TextField>
       <Label>{label}</Label>
@@ -23,6 +28,8 @@ export function FormInput({
         type={type}
         value={value}
         onChange={(event) => onChange(event.target.value)}
+        disabled={resolvedDisabled}
+        readOnly={readOnly}
         {...props}
       />
     </TextField>

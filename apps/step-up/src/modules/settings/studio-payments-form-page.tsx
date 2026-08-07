@@ -42,13 +42,11 @@ export function StudioPaymentsFormPage() {
       const payload: {
         graceDays: number;
         expireAlertDays: number;
-        platformFeePercent: number;
         razorpayKeyId?: string;
         razorpayKeySecret?: string;
       } = {
         graceDays: settings?.graceDays ?? 3,
         expireAlertDays: settings?.expireAlertDays ?? 7,
-        platformFeePercent: settings?.platformFeePercent ?? 5,
       };
       if (nextKeyId) {
         payload.razorpayKeyId = nextKeyId;
