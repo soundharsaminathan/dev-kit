@@ -58,16 +58,11 @@ const STAFF_PATHS = [
   "/app/settings/billing",
 ];
 
-async function ensureStudentFamilyMember() {
-  const existing = await apiRequest<Array<{ id: string }>>(
-    "STUDENT",
-    "/users/me/family-members",
-  );
-  if (existing.length > 0) return;
-  await apiRequest("STUDENT", "/users/me/family-members", {
+async function createSmokeFamilyKid(name: string) {
+  return apiRequest<{ id: string }>("STUDENT", "/users/me/family-members", {
     method: "POST",
     body: JSON.stringify({
-      name: "Smoke Family Kid",
+      name,
       kind: "KID",
       gender: "FEMALE",
       ageRange: "UNDER_10",
@@ -302,30 +297,34 @@ test.describe("admin (staff) smoke @smoke", () => {
     }
   });
 
-  test("staff can open sell family pack wizard @smoke", async ({ browser }) => {
-    const context = await browser.newContext({
-      storageState: authFile("STAFF"),
-    });
-    const page = await context.newPage();
-    try {
-      await page.goto("/app/invoices", { waitUntil: "domcontentloaded" });
-      await waitForAppReady(page);
-
-      await page.getByRole("tab", { name: /^family$/i }).click();
-      await page.getByTestId("sell-family-pack").click();
-      await expect(
-        page.getByRole("heading", { name: /family pack · seats/i }),
-      ).toBeVisible();
-      await expect(page.getByText(/step 1 of 3/i)).toBeVisible();
-    } finally {
-      await context.close();
-    }
-  });
-
-  test("staff opens family pay flow from a family group card @smoke", async ({
+  test("staff combines unpaid family invoices and collects payment @smoke", async ({
     browser,
   }) => {
-    await ensureStudentFamilyMember();
+    const stamp = Date.now();
+    const kidA = await createSmokeFamilyKid(`Smoke Combine A ${stamp}`);
+    const kidB = await createSmokeFamilyKid(`Smoke Combine B ${stamp}`);
+    const enrollA = await apiRequest<{ invoice: { id: string } }>(
+      "STAFF",
+      `/batches/${SMOKE.kidsBatchId}/enroll`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          studentId: kidA.id,
+          subscriptionId: SMOKE.kidPlanIds[0],
+        }),
+      },
+    );
+    const enrollB = await apiRequest<{ invoice: { id: string } }>(
+      "STAFF",
+      `/batches/${SMOKE.kidsBatchId}/enroll`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          studentId: kidB.id,
+          subscriptionId: SMOKE.kidPlanIds[0],
+        }),
+      },
+    );
 
     const context = await browser.newContext({
       storageState: authFile("STAFF"),
@@ -336,11 +335,42 @@ test.describe("admin (staff) smoke @smoke", () => {
       await waitForAppReady(page);
 
       await page.getByRole("tab", { name: /^family$/i }).click();
+      await expect(page.getByTestId("sell-family-pack")).toHaveCount(0);
       await page.getByTestId(`family-group-${SMOKE.users.STUDENT.id}`).click();
       await expect(
-        page.getByRole("heading", { name: /family payment · classes/i }),
+        page.getByRole("heading", { name: /combine ·/i }),
       ).toBeVisible();
-      await expect(page.getByText(/step 1 of 3/i)).toBeVisible();
+
+      await page
+        .getByTestId(`combine-invoice-${enrollA.invoice.id}`)
+        .getByRole("checkbox")
+        .click();
+      await expect(page.getByTestId("confirm-family-combine")).toBeDisabled();
+      await page
+        .getByTestId(`combine-invoice-${enrollB.invoice.id}`)
+        .getByRole("checkbox")
+        .click();
+      await page.getByTestId("family-combine-discount").fill("50");
+
+      const [combineResponse] = await Promise.all([
+        waitForApiResponse(page, {
+          method: "POST",
+          pathIncludes: "/billing/family-combine",
+        }),
+        page.getByTestId("confirm-family-combine").click(),
+      ]);
+      expect(combineResponse.ok()).toBeTruthy();
+      const combined = (await combineResponse.json()) as { id: string };
+
+      await page.getByRole("button", { name: /^Cash$/i }).click();
+      const [paidResponse] = await Promise.all([
+        waitForApiResponse(page, {
+          method: "PATCH",
+          pathIncludes: `/billing/${combined.id}/paid`,
+        }),
+        page.getByTestId("confirm-open-family-paid").click(),
+      ]);
+      expect(paidResponse.ok()).toBeTruthy();
     } finally {
       await context.close();
     }

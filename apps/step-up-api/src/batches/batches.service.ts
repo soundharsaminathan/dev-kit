@@ -14,13 +14,14 @@ import {
   EnrollmentMode,
   IndividualAudience,
   InvoiceStatus,
-  type Prisma,
+  Prisma,
   SessionStatus,
   SessionType,
   SubscriptionKind,
   UserRole,
 } from "@prisma/client";
 import { BillingService } from "../billing/billing.service";
+import { parseCombineMeta } from "../billing/family-combine";
 import { ScheduleConflictService } from "../calendar/schedule-conflict.service";
 import { MediaService } from "../media/media.service";
 import {
@@ -1792,11 +1793,17 @@ export class BatchesService {
     >();
 
     if (studentIds.length > 0) {
+      const studentIdSet = new Set(studentIds);
       const invoices = await this.prisma.invoice.findMany({
         where: {
           studioId: batch.studioId,
-          studentId: { in: studentIds },
-          membershipId: { not: null },
+          OR: [
+            {
+              studentId: { in: studentIds },
+              membershipId: { not: null },
+            },
+            { combineMeta: { not: Prisma.DbNull } },
+          ],
         },
         include: {
           membership: {
@@ -1814,6 +1821,32 @@ export class BatchesService {
       });
 
       for (const invoice of invoices) {
+        const combineMeta = parseCombineMeta(invoice.combineMeta);
+        if (combineMeta) {
+          for (const source of combineMeta.sources) {
+            const matchesBatch =
+              source.batchId === batch.id ||
+              (source.batchId == null && studentIdSet.has(source.studentId));
+            if (!matchesBatch) {
+              continue;
+            }
+            const amount = source.netAmount;
+            totals.invoiceCount += 1;
+            if (invoice.status === InvoiceStatus.PAID) {
+              totals.collected += amount;
+            } else if (invoice.status === InvoiceStatus.PENDING) {
+              totals.pending += amount;
+            } else if (invoice.status === InvoiceStatus.OVERDUE) {
+              totals.overdue += amount;
+            }
+          }
+          continue;
+        }
+
+        if (!studentIdSet.has(invoice.studentId) || !invoice.membershipId) {
+          continue;
+        }
+
         const amount = Number(invoice.amount);
         const subscription = invoice.membership?.subscription;
         const subscriptionId = subscription?.id;
@@ -1835,17 +1868,17 @@ export class BatchesService {
           bucket.invoiceCount += 1;
         }
 
-        if (invoice.status === "PAID") {
+        if (invoice.status === InvoiceStatus.PAID) {
           totals.collected += amount;
           if (bucket) {
             bucket.collected += amount;
           }
-        } else if (invoice.status === "PENDING") {
+        } else if (invoice.status === InvoiceStatus.PENDING) {
           totals.pending += amount;
           if (bucket) {
             bucket.pending += amount;
           }
-        } else if (invoice.status === "OVERDUE") {
+        } else if (invoice.status === InvoiceStatus.OVERDUE) {
           totals.overdue += amount;
           if (bucket) {
             bucket.overdue += amount;

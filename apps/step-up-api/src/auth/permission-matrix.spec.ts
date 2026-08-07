@@ -57,21 +57,12 @@ const PERMISSION_MATRIX: MatrixRow[] = [
     allowed: [UserRole.OWNER, UserRole.STAFF],
   },
   {
-    action: "billing.family-checkout",
+    action: "billing.family-combine",
     allowed: [UserRole.OWNER, UserRole.STAFF],
   },
   {
     action: "subscriptions.catalog.write",
     allowed: [UserRole.OWNER, UserRole.STAFF],
-  },
-  {
-    action: "memberships.family-purchase",
-    allowed: [
-      UserRole.STUDENT,
-      UserRole.PARENT,
-      UserRole.OWNER,
-      UserRole.STAFF,
-    ],
   },
   {
     action: "memberships.self/renew",

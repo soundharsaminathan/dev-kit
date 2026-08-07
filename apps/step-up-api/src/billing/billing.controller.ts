@@ -10,8 +10,7 @@ import {
   Query,
   UseGuards,
 } from "@nestjs/common";
-import { MembershipSeatRole, PaymentMethod, UserRole } from "@prisma/client";
-import { Type } from "class-transformer";
+import { PaymentMethod, UserRole } from "@prisma/client";
 import {
   ArrayMinSize,
   IsArray,
@@ -20,7 +19,6 @@ import {
   IsOptional,
   IsString,
   Min,
-  ValidateNested,
 } from "class-validator";
 import { AuthGuard } from "../auth/auth.guard";
 import { CurrentUser } from "../auth/current-user.decorator";
@@ -70,35 +68,21 @@ class RefundInvoiceDto {
   reason?: string;
 }
 
-class FamilyCoveredStudentDto {
-  @IsString()
-  studentId!: string;
-
-  @IsEnum(MembershipSeatRole)
-  seatRole!: MembershipSeatRole;
-
-  @IsString()
-  batchId!: string;
-}
-
-class FamilyCheckoutDto {
+class FamilyCombineDto {
   @IsString()
   studioId!: string;
 
   @IsString()
   purchaserUserId!: string;
 
-  @IsString()
-  subscriptionId!: string;
-
   @IsArray()
-  @ArrayMinSize(1)
-  @ValidateNested({ each: true })
-  @Type(() => FamilyCoveredStudentDto)
-  coveredStudents!: FamilyCoveredStudentDto[];
+  @ArrayMinSize(2)
+  @IsString({ each: true })
+  invoiceIds!: string[];
 
-  @IsEnum(PaymentMethod)
-  paymentMethod!: PaymentMethod;
+  @IsNumber()
+  @Min(0)
+  familyDiscount!: number;
 }
 
 @Controller("billing")
@@ -118,14 +102,14 @@ export class BillingController {
     return this.billingService.listByStudio(studioId);
   }
 
-  @Post("family-checkout")
+  @Post("family-combine")
   @Roles(UserRole.OWNER, UserRole.STAFF)
-  familyCheckout(
+  familyCombine(
     @CurrentUser() user: DecryptedUser,
-    @Body() dto: FamilyCheckoutDto,
+    @Body() dto: FamilyCombineDto,
   ) {
     assertSameStudio(user, dto.studioId);
-    return this.billingService.familyCheckout(user, dto);
+    return this.billingService.familyCombine(user, dto);
   }
 
   @Get("analytics/trainer/:trainerId")

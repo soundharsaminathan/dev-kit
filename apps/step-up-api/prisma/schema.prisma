@@ -646,6 +646,7 @@ model Invoice {
   amount               Decimal        @db.Decimal(10, 2)
   referralDiscount     Decimal        @default(0) @db.Decimal(10, 2)
   studioDiscount       Decimal        @default(0) @db.Decimal(10, 2)
+  familyDiscount       Decimal        @default(0) @db.Decimal(10, 2)
   refundedAmount       Decimal        @default(0) @db.Decimal(10, 2)
   status               InvoiceStatus
   paymentMethod        PaymentMethod?
@@ -657,6 +658,7 @@ model Invoice {
   razorpayPaymentId    String?        @unique
   paymentHoldExpiresAt DateTime?
   purchaseMeta         Json?
+  combineMeta          Json?
 
   student    User        @relation(fields: [studentId], references: [id], onDelete: Cascade)
   membership Membership? @relation(fields: [membershipId], references: [id])

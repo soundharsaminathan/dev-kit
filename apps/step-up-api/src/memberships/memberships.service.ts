@@ -245,62 +245,15 @@ export class MembershipsService {
     });
   }
 
-  async purchaseFamily(args: {
+  async purchaseFamily(_args: {
     studioId: string;
     subscriptionId: string;
     purchaserUserId: string;
     coveredStudents: CoveredStudentInput[];
-  }) {
-    const subscription = await this.prisma.subscription.findUnique({
-      where: { id: args.subscriptionId },
-    });
-
-    if (!subscription?.active) {
-      throw new NotFoundException("Subscription not found or inactive");
-    }
-    if (subscription.studioId !== args.studioId) {
-      throw new BadRequestException("Plan is not from this studio");
-    }
-    if (subscription.kind !== SubscriptionKind.FAMILY) {
-      throw new BadRequestException(
-        "Only Family packs can use family purchase",
-      );
-    }
-
-    this.assertCoveredSeats(subscription, args.coveredStudents);
-    await this.assertFamilyBatchPicks(args.coveredStudents);
-
-    for (const covered of args.coveredStudents) {
-      await this.scheduleConflicts.assertStudentAvailableForBatch(
-        covered.studentId,
-        covered.batchId!,
-      );
-    }
-
-    const settings = await this.prisma.studioSettings.findUnique({
-      where: { studioId: args.studioId },
-      select: { platformFeePercent: true },
-    });
-
-    const firstBatchId = args.coveredStudents.find((c) => c.batchId)?.batchId;
-    const purchaseMeta: InvoicePurchaseMeta = {
-      ...(firstBatchId ? { batchId: firstBatchId } : {}),
-      subscriptionId: args.subscriptionId,
-      purchaserUserId: args.purchaserUserId,
-      coveredStudents: args.coveredStudents,
-    };
-
-    return this.prisma.invoice.create({
-      data: {
-        studentId: args.purchaserUserId,
-        studioId: args.studioId,
-        amount: subscription.price,
-        status: InvoiceStatus.PENDING,
-        platformFeePercent: settings?.platformFeePercent ?? 5,
-        paymentHoldExpiresAt: paymentHoldExpiresAt(),
-        purchaseMeta,
-      },
-    });
+  }): Promise<never> {
+    throw new BadRequestException(
+      "Family pack purchase was removed. Combine unpaid household invoices from the Invoices family tab instead.",
+    );
   }
 
   /**

@@ -1,0 +1,101 @@
+import { describe, expect, it } from "vitest";
+import {
+  allocateFamilyDiscount,
+  attributionTargetsForInvoice,
+  parseCombineMeta,
+} from "./family-combine";
+
+describe("allocateFamilyDiscount", () => {
+  it("splits proportional with remainder on the last invoice", () => {
+    expect(allocateFamilyDiscount([1000, 2000], 300)).toEqual([100, 200]);
+    expect(allocateFamilyDiscount([100, 100, 100], 10)).toEqual([
+      3.33, 3.33, 3.34,
+    ]);
+  });
+
+  it("rejects discount above subtotal (negative path)", () => {
+    expect(() => allocateFamilyDiscount([100], 150)).toThrow(
+      /cannot exceed/i,
+    );
+  });
+});
+
+describe("parseCombineMeta", () => {
+  it("parses valid sources", () => {
+    const meta = parseCombineMeta({
+      sources: [
+        {
+          invoiceId: "a",
+          studentId: "s1",
+          batchId: "b1",
+          originalAmount: 1000,
+          allocatedDiscount: 100,
+          netAmount: 900,
+        },
+      ],
+    });
+    expect(meta?.sources).toHaveLength(1);
+    expect(meta?.sources[0]?.batchId).toBe("b1");
+  });
+
+  it("returns null for garbage", () => {
+    expect(parseCombineMeta(null)).toBeNull();
+    expect(parseCombineMeta({ sources: [{ invoiceId: 1 }] })).toBeNull();
+  });
+});
+
+describe("attributionTargetsForInvoice", () => {
+  it("credits each combine source batch instead of purchaser enrollments", () => {
+    const studentBatchMap = new Map<string, Set<string>>([
+      ["purchaser", new Set(["adult-batch"])],
+      ["kid", new Set(["kids-batch"])],
+    ]);
+    const targets = attributionTargetsForInvoice({
+      studentId: "purchaser",
+      amount: 2700,
+      status: "PAID",
+      studentBatchMap,
+      combineMeta: {
+        sources: [
+          {
+            invoiceId: "i1",
+            studentId: "purchaser",
+            batchId: "adult-batch",
+            originalAmount: 1000,
+            allocatedDiscount: 100,
+            netAmount: 900,
+          },
+          {
+            invoiceId: "i2",
+            studentId: "kid",
+            batchId: "kids-batch",
+            originalAmount: 2000,
+            allocatedDiscount: 200,
+            netAmount: 1800,
+          },
+        ],
+      },
+    });
+    expect(targets).toEqual([
+      { batchId: "adult-batch", amount: 900, studentId: "purchaser" },
+      { batchId: "kids-batch", amount: 1800, studentId: "kid" },
+    ]);
+  });
+
+  it("falls back to purchaser enrollments without combineMeta", () => {
+    const studentBatchMap = new Map<string, Set<string>>([
+      ["s1", new Set(["b1", "b2"])],
+    ]);
+    const targets = attributionTargetsForInvoice({
+      studentId: "s1",
+      amount: 500,
+      status: "PAID",
+      studentBatchMap,
+      combineMeta: null,
+    });
+    expect(targets).toEqual([
+      { batchId: "b1", amount: 500, studentId: "s1" },
+      { batchId: "b2", amount: 500, studentId: "s1" },
+    ]);
+  });
+});

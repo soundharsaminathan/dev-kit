@@ -4,18 +4,28 @@ export type CoveredSeat = {
   batchId?: string;
 };
 
+export type CombineSource = {
+  invoiceId: string;
+  studentId: string;
+  batchId: string | null;
+  originalAmount: number;
+  allocatedDiscount: number;
+  netAmount: number;
+};
+
 export type Invoice = {
   id: string;
   studentId: string;
   amount: number;
   referralDiscount?: number;
   studioDiscount?: number;
+  familyDiscount?: number;
   refundedAmount?: number;
   status: "PENDING" | "PAID" | "OVERDUE" | "REFUNDED";
   paymentMethod?: "CASH" | "UPI_MANUAL" | "RAZORPAY" | null;
   paidAt?: string | null;
   refundedAt?: string | null;
-  kind: "FAMILY" | "INDIVIDUAL";
+  kind: "FAMILY" | "INDIVIDUAL" | "COMBINED";
   student?: { name: string };
   familySummary?: {
     planName: string | null;
@@ -27,6 +37,9 @@ export type Invoice = {
     subscriptionId: string;
     purchaserUserId: string;
     coveredStudents: CoveredSeat[];
+  } | null;
+  combineMeta?: {
+    sources: CombineSource[];
   } | null;
 };
 
@@ -51,4 +64,29 @@ export function formatPrice(amount: number | string) {
     currency: "INR",
     maximumFractionDigits: 0,
   }).format(Number(amount));
+}
+
+export function allocateFamilyDiscount(
+  amounts: number[],
+  familyDiscount: number,
+): number[] {
+  const subtotal = Math.round(amounts.reduce((sum, n) => sum + n, 0) * 100) / 100;
+  if (amounts.length === 0) return [];
+  if (familyDiscount < 0 || familyDiscount > subtotal) {
+    throw new Error("Invalid family discount");
+  }
+  if (subtotal === 0) return amounts.map(() => 0);
+  const allocated: number[] = [];
+  let remaining = familyDiscount;
+  for (let i = 0; i < amounts.length; i += 1) {
+    if (i === amounts.length - 1) {
+      allocated.push(Math.round(remaining * 100) / 100);
+      break;
+    }
+    const share =
+      Math.round(((familyDiscount * amounts[i]!) / subtotal) * 100) / 100;
+    allocated.push(share);
+    remaining = Math.round((remaining - share) * 100) / 100;
+  }
+  return allocated;
 }
