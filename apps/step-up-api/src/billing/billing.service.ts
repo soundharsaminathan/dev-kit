@@ -1403,7 +1403,7 @@ function buildPendingPayments(input: {
     status: InvoiceStatus;
     purchaseMeta: unknown;
     student: User;
-    membership: { periodEnd: Date } | null;
+    membership: { periodStart: Date } | null;
   }>;
   studentBatchMap: Map<string, Set<string>>;
   batchNameById: Map<string, string>;
@@ -1423,7 +1423,7 @@ function buildPendingPayments(input: {
       studentName: input.decryptUser(invoice.student).name,
       amount: Number(invoice.amount),
       status: invoice.status as "PENDING" | "OVERDUE",
-      dueDate: invoice.membership?.periodEnd?.toISOString() ?? null,
+      dueDate: invoice.membership?.periodStart?.toISOString() ?? null,
       batchId,
       batchName,
     };

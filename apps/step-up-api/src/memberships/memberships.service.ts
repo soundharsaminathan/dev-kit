@@ -297,6 +297,10 @@ export class MembershipsService {
     });
   }
 
+  /**
+   * Prepaid renew-on-pay: activate the current DUE/EXPIRED period in place
+   * (do not advance to the next period).
+   */
   async renewManual(membershipId: string) {
     const existing = await this.prisma.membership.findUnique({
       where: { id: membershipId },
@@ -310,24 +314,108 @@ export class MembershipsService {
       throw new NotFoundException("Membership not found");
     }
 
+    if (
+      existing.status !== MembershipStatus.DUE &&
+      existing.status !== MembershipStatus.EXPIRED
+    ) {
+      throw new BadRequestException(
+        "Only due or expired memberships can be activated",
+      );
+    }
+
+    const renewed = await this.prisma.membership.update({
+      where: { id: membershipId },
+      data: { status: MembershipStatus.ACTIVE },
+      include: {
+        subscription: true,
+        coveredStudents: true,
+      },
+    });
+
+    await this.notifications.create({
+      userId: existing.purchaserUserId,
+      type: NotificationType.RENEWED,
+      planName: existing.subscription.name,
+      periodEnd: existing.periodEnd.toISOString().slice(0, 10),
+      dedupeKey: `RENEWED:${renewed.id}`,
+      meta: {
+        membershipId: renewed.id,
+        subscriptionId: existing.subscriptionId,
+      },
+      entityType: "membership",
+      entityId: renewed.id,
+    });
+
+    return renewed;
+  }
+
+  /**
+   * When an ACTIVE period ends, close it and open the next period as DUE
+   * (prepaid invoice window starts at next periodStart).
+   */
+  async rollEndedActiveToNextDue(membershipId: string) {
+    const existing = await this.prisma.membership.findUnique({
+      where: { id: membershipId },
+      include: {
+        subscription: true,
+        coveredStudents: true,
+      },
+    });
+
+    if (!existing) {
+      throw new NotFoundException("Membership not found");
+    }
+
+    if (existing.status !== MembershipStatus.ACTIVE) {
+      return { previousId: existing.id, next: null as null, created: false };
+    }
+
     const periodStart = getNextPeriodStart(new Date(existing.periodEnd));
     const periodEnd = getPeriodEnd(
       periodStart,
       existing.subscription.billingCadence,
     );
 
+    const alreadyOpen = await this.prisma.membership.findFirst({
+      where: {
+        subscriptionId: existing.subscriptionId,
+        purchaserUserId: existing.purchaserUserId,
+        periodStart,
+        status: {
+          in: [
+            MembershipStatus.DUE,
+            MembershipStatus.EXPIRED,
+            MembershipStatus.ACTIVE,
+          ],
+        },
+        id: { not: existing.id },
+      },
+      include: {
+        subscription: true,
+        coveredStudents: true,
+      },
+    });
+
     await this.prisma.membership.update({
       where: { id: membershipId },
       data: { status: MembershipStatus.EXPIRED },
     });
 
-    const renewed = await this.prisma.membership.create({
+    if (alreadyOpen) {
+      return {
+        previousId: existing.id,
+        next: alreadyOpen,
+        created: false,
+      };
+    }
+
+    const next = await this.prisma.membership.create({
       data: {
         subscriptionId: existing.subscriptionId,
         purchaserUserId: existing.purchaserUserId,
         periodStart,
         periodEnd,
-        status: MembershipStatus.ACTIVE,
+        status: MembershipStatus.DUE,
         coveredStudents: {
           create: existing.coveredStudents.map((c) => ({
             studentId: c.studentId,
@@ -341,21 +429,7 @@ export class MembershipsService {
       },
     });
 
-    await this.notifications.create({
-      userId: existing.purchaserUserId,
-      type: NotificationType.RENEWED,
-      planName: existing.subscription.name,
-      periodEnd: periodEnd.toISOString().slice(0, 10),
-      dedupeKey: `RENEWED:${renewed.id}`,
-      meta: {
-        membershipId: renewed.id,
-        subscriptionId: existing.subscriptionId,
-      },
-      entityType: "membership",
-      entityId: renewed.id,
-    });
-
-    return renewed;
+    return { previousId: existing.id, next, created: true };
   }
 
   async ensureRenewalInvoice(membershipId: string) {

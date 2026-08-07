@@ -30,24 +30,42 @@ export class JobsService {
     const now = new Date();
     const today = dayKey(now);
 
-    const dueUpdated = await this.prisma.membership.updateMany({
+    const endedActive = await this.prisma.membership.findMany({
       where: {
         status: MembershipStatus.ACTIVE,
         periodEnd: { lt: now },
       },
-      data: { status: MembershipStatus.DUE },
+      select: { id: true },
     });
 
-    const billableMemberships = await this.prisma.membership.findMany({
+    let rolledToDue = 0;
+    const billableMembershipIds = new Set<string>();
+
+    for (const membership of endedActive) {
+      const result = await this.memberships.rollEndedActiveToNextDue(
+        membership.id,
+      );
+      if (result.next) {
+        billableMembershipIds.add(result.next.id);
+        if (result.created) {
+          rolledToDue += 1;
+        }
+      }
+    }
+
+    const existingBillable = await this.prisma.membership.findMany({
       where: {
         status: { in: [MembershipStatus.DUE, MembershipStatus.EXPIRED] },
       },
       select: { id: true },
     });
+    for (const membership of existingBillable) {
+      billableMembershipIds.add(membership.id);
+    }
 
     let renewalInvoicesCreated = 0;
-    for (const membership of billableMemberships) {
-      const result = await this.memberships.ensureRenewalInvoice(membership.id);
+    for (const membershipId of billableMembershipIds) {
+      const result = await this.memberships.ensureRenewalInvoice(membershipId);
       if (result.created) {
         renewalInvoicesCreated += 1;
       }
@@ -74,7 +92,7 @@ export class JobsService {
         settingsByStudio.get(membership.subscription.studioId)?.graceDays ??
         DEFAULT_GRACE_DAYS;
       const expireCutoff = new Date(now.getTime() - graceDays * DAY_MS);
-      return membership.periodEnd < expireCutoff;
+      return membership.periodStart < expireCutoff;
     });
 
     for (const membership of membershipsToExpire) {
@@ -162,7 +180,7 @@ export class JobsService {
     }
 
     return {
-      dueMemberships: dueUpdated.count,
+      dueMemberships: rolledToDue,
       renewalInvoicesCreated,
       expiredMemberships: expiredUpdated.count,
       notRenewedNotifications: membershipsToExpire.length,
