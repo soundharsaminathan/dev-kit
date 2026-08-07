@@ -116,4 +116,42 @@ test.describe("bookings HTTP @http", () => {
       await cleanup.dispose();
     }
   });
+
+  test("student cannot patch booking status @http", async () => {
+    const cleanup = new TestDataCleanup();
+    try {
+      const student = await createHttpStudent("Booking Status Deny", cleanup);
+      const studentId = student.id;
+      await clearOpenTrialBookings(studentId, TRIAL_SESSION_ID);
+
+      const created = await expectOk<{ id: string; status: string }>(
+        "STUDENT",
+        "/bookings",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            studioId: SEED.users.STUDENT.studioId,
+            studentId,
+            type: "TRIAL",
+            sessionId: TRIAL_SESSION_ID,
+          }),
+        },
+        { userId: studentId },
+      );
+      expect(created.status).toBe("PENDING");
+
+      await expectStatus(
+        "STUDENT",
+        `/bookings/${created.id}/status`,
+        403,
+        {
+          method: "PATCH",
+          body: JSON.stringify({ status: "CONFIRMED" }),
+        },
+        { userId: studentId },
+      );
+    } finally {
+      await cleanup.dispose();
+    }
+  });
 });

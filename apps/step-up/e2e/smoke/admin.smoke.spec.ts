@@ -1,6 +1,8 @@
 import {
   apiRequest,
+  apiBaseUrl,
   authFile,
+  bearerFor,
   expect,
   SMOKE,
   SmokeDataCleanup,
@@ -106,6 +108,54 @@ test.describe("admin (staff) smoke @smoke", () => {
       });
     } finally {
       await context.close();
+    }
+  });
+
+  test("staff cannot double-mark an invoice paid @smoke", async () => {
+    const cleanup = new SmokeDataCleanup();
+    try {
+      const stamp = Date.now();
+      const student = await apiRequest<{ id: string }>("OWNER", "/users", {
+        method: "POST",
+        body: JSON.stringify({
+          name: `Smoke Paid Twice ${stamp}`,
+          email: `smoke-paid-twice-${stamp}@stepup.dev`,
+          gender: "FEMALE",
+          ageRange: "TWENTY_TO_FORTY",
+          styles: ["Hip Hop"],
+        }),
+      });
+      cleanup.trackStudent(student.id);
+      const enrollment = await apiRequest<{
+        invoice: { id: string; status: string };
+      }>("STAFF", `/batches/${SMOKE.beginnerBatchId}/enroll`, {
+        method: "POST",
+        body: JSON.stringify({
+          studentId: student.id,
+          subscriptionId: SMOKE.adultPlanIds[0],
+        }),
+      });
+      await apiRequest("STAFF", `/billing/${enrollment.invoice.id}/paid`, {
+        method: "PATCH",
+        body: JSON.stringify({ paymentMethod: "CASH" }),
+      });
+
+      const token = await bearerFor("STAFF");
+      const response = await fetch(
+        `${apiBaseUrl()}/billing/${enrollment.invoice.id}/paid`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ paymentMethod: "CASH" }),
+        },
+      );
+      expect(response.status).toBe(400);
+      expect(await response.text()).toMatch(/already paid/i);
+    } finally {
+      await cleanup.dispose();
     }
   });
 

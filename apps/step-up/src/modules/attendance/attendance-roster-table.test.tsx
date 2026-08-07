@@ -244,6 +244,63 @@ describe("AttendanceRosterTable selection", () => {
     expect(onMarkOne).toHaveBeenCalledWith("s1", "PRESENT");
     confirmSpy.mockRestore();
   });
+
+  it("confirms before bulk-marking selected unpaid students", () => {
+    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
+    const { onMarkSelected } = renderTable({ roster: unpaidRoster });
+
+    fireEvent.click(
+      screen.getByRole("checkbox", { name: "Select Ada Lovelace" }),
+    );
+    fireEvent.click(
+      within(screen.getByRole("status")).getByRole("button", {
+        name: "Mark present",
+      }),
+    );
+
+    expect(confirmSpy).toHaveBeenCalledWith(
+      expect.stringMatching(/1 selected student.*unpaid/i),
+    );
+    expect(onMarkSelected).toHaveBeenCalledWith(["s1"], "PRESENT");
+    confirmSpy.mockRestore();
+  });
+
+  it("confirms before mark-all when unmarked unpaid students exist", () => {
+    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
+    const { onMarkAllUnmarkedPresent } = renderTable({
+      roster: unpaidRoster,
+    });
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Mark all unmarked present" }),
+    );
+
+    expect(confirmSpy).toHaveBeenCalledWith(
+      expect.stringMatching(/1 unmarked student.*unpaid/i),
+    );
+    expect(onMarkAllUnmarkedPresent).toHaveBeenCalledTimes(1);
+    confirmSpy.mockRestore();
+  });
+
+  it("cancels mark-all when unpaid bulk confirm is dismissed", () => {
+    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(false);
+    const { onMarkAllUnmarkedPresent } = renderTable({
+      roster: unpaidRoster,
+    });
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Mark all unmarked present" }),
+    );
+
+    expect(confirmSpy).toHaveBeenCalled();
+    expect(onMarkAllUnmarkedPresent).not.toHaveBeenCalled();
+    confirmSpy.mockRestore();
+  });
+
+  it("shows Not paid badge for unpaid roster rows", () => {
+    renderTable({ roster: unpaidRoster });
+    expect(screen.getByText("Not paid")).toBeInTheDocument();
+  });
 });
 
 describe("AttendanceRosterTable status filters", () => {
