@@ -90,18 +90,22 @@ export function printInvoice(invoice: PrintableInvoice) {
     <tr><td>Paid at</td><td>${escapeHtml(paidAt)}</td></tr>
   </table>
   <p class="meta">Invoice ${escapeHtml(invoice.id)} · ${escapeHtml(invoice.status)}</p>
-  <script>window.onload = () => { window.print(); };</script>
+  <script>
+    window.addEventListener("load", () => {
+      window.focus();
+      window.print();
+    });
+  </script>
 </body>
 </html>`;
 
-  const popup = window.open(
-    "",
-    "_blank",
-    "noopener,noreferrer,width=640,height=720",
-  );
+  // Do not pass noopener/noreferrer in features — Chromium returns null and
+  // the receipt window never opens.
+  const popup = window.open("", "_blank", "width=640,height=720");
   if (!popup) {
     return false;
   }
+  popup.opener = null;
   popup.document.open();
   popup.document.write(html);
   popup.document.close();

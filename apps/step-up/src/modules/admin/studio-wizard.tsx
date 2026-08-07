@@ -23,7 +23,7 @@ import { PasswordInput } from "@/modules/ui/password-input";
 import { StudioPaymentsFields } from "./studio-payments-fields";
 import styles from "./studio-wizard.module.scss";
 
-const STEPS = ["Details", "Theme", "Payments"] as const;
+const STEPS = ["Details", "Theme", "Optional Branding", "Payments"] as const;
 
 type CreateStudioResult = {
   id: string;
@@ -137,7 +137,7 @@ export function StudioWizard(props: StudioWizardProps) {
       ? ownerEmail.trim().length > 0 && temporaryPassword.trim().length >= 8
       : true);
 
-  const stepIsValid = [detailsValid, true, true] as const;
+  const stepIsValid = [detailsValid, true, true, true] as const;
 
   async function copyText(label: string, value: string) {
     try {
@@ -278,7 +278,8 @@ export function StudioWizard(props: StudioWizardProps) {
       });
       toast({
         title: "Studio updated",
-        description: "Studio details, theme, and payments were saved.",
+        description:
+          "Studio details, theme, branding, and payments were saved.",
         variant: "success",
       });
       void navigate({ to: "/admin" });
@@ -428,8 +429,8 @@ export function StudioWizard(props: StudioWizardProps) {
           </h1>
           <p className={styles.heroDescription}>
             {isCreate
-              ? "Provision a tenant — details, brand theme, and optional payments — in a focused few steps."
-              : "Update studio details, branding, and payments."}
+              ? "Provision a tenant — details, theme, optional branding, and payments — in a focused few steps."
+              : "Update studio details, theme, branding, and payments."}
           </p>
         </div>
         <div className={styles.heroActions}>
@@ -602,6 +603,11 @@ export function StudioWizard(props: StudioWizardProps) {
                 </div>
                 <ThemeColorPanel value={draft} onChange={setDraft} />
               </div>
+            </div>
+          ) : null}
+
+          {step === 2 ? (
+            <div className={styles.brandingStep}>
               {studio ? (
                 <div className={styles.assetsBlock}>
                   <BrandingPanel
@@ -612,11 +618,20 @@ export function StudioWizard(props: StudioWizardProps) {
                     heroDesktopUrl={studio.heroDesktopUrl}
                   />
                 </div>
-              ) : null}
+              ) : (
+                <div className={styles.themeCard}>
+                  <p className={styles.themeCardTitle}>Optional branding</p>
+                  <p className={styles.themeCardDesc}>
+                    Logo and hero images upload after the studio exists. Skip
+                    for now — you can add them anytime from Edit studio or
+                    Settings → Branding.
+                  </p>
+                </div>
+              )}
             </div>
           ) : null}
 
-          {step === 2 ? (
+          {step === 3 ? (
             <div className={styles.paymentsStep}>
               <StudioPaymentsFields
                 className={styles.paymentsCard}

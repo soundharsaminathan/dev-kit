@@ -843,7 +843,7 @@ function StudentDetailPage() {
                             variant="default"
                             data-testid={`print-invoice-${invoice.id}`}
                             onClick={() => {
-                              printInvoice({
+                              const opened = printInvoice({
                                 id: invoice.id,
                                 amount: invoice.amount,
                                 referralDiscount: invoice.referralDiscount,
@@ -853,6 +853,14 @@ function StudentDetailPage() {
                                 paidAt: invoice.paidAt,
                                 studentName: profile.student.name,
                               });
+                              if (!opened) {
+                                toast({
+                                  title: "Couldn't open print window",
+                                  description:
+                                    "Allow pop-ups for this site, then try again.",
+                                  variant: "error",
+                                });
+                              }
                             }}
                           >
                             Print invoice
