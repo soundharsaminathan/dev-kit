@@ -129,6 +129,46 @@ type LoadDeps = {
   sessionAttendancePastId: string;
 };
 
+async function upsertSmokeLoadUser(
+  prisma: PrismaClient,
+  args: {
+    id: string;
+    sealed: ReturnType<UserCryptoService["sealPii"]>;
+    data: {
+      role: UserRole;
+      styles: string[];
+      profileVisibility: ProfileVisibility;
+      studioId: string;
+      active?: boolean;
+      experienceLevel: string;
+      scheduleVibe?: string[];
+      gender: string;
+      ageRange: string;
+      preferredBranchId?: string;
+      onboardingCompletedAt: Date;
+    };
+  },
+) {
+  // Upsert by primary key. Looking up by firebaseUid then creating with a fixed
+  // id fails with P2002 when a prior seed left the same id under a different uid
+  // (persistent smoke/deploy databases).
+  await prisma.user.upsert({
+    where: { id: args.id },
+    update: {
+      firebaseUid: args.id,
+      ...args.sealed,
+      ...args.data,
+      active: args.data.active ?? true,
+    },
+    create: {
+      id: args.id,
+      firebaseUid: args.id,
+      ...args.sealed,
+      ...args.data,
+    },
+  });
+}
+
 export async function seedSmokeLoadData(deps: LoadDeps) {
   const crypto = new UserCryptoService(new ConfigService());
   const { prisma } = deps;
@@ -152,28 +192,15 @@ export async function seedSmokeLoadData(deps: LoadDeps) {
       bio: null,
       instagramUrl: null,
     });
-    await prisma.user.upsert({
-      where: { firebaseUid: id },
-      update: {
-        ...sealed,
+    await upsertSmokeLoadUser(prisma, {
+      id,
+      sealed,
+      data: {
         role: UserRole.TRAINER,
         styles: [STYLES[n % STYLES.length]!],
         profileVisibility: ProfileVisibility.PUBLIC,
         studioId: deps.studioId,
         active: true,
-        experienceLevel: "INTERMEDIATE",
-        gender: n % 2 === 0 ? "FEMALE" : "MALE",
-        ageRange: "TWENTY_TO_FORTY",
-        onboardingCompletedAt: daysAgo(90),
-      },
-      create: {
-        id,
-        firebaseUid: id,
-        ...sealed,
-        role: UserRole.TRAINER,
-        styles: [STYLES[n % STYLES.length]!],
-        profileVisibility: ProfileVisibility.PUBLIC,
-        studioId: deps.studioId,
         experienceLevel: "INTERMEDIATE",
         gender: n % 2 === 0 ? "FEMALE" : "MALE",
         ageRange: "TWENTY_TO_FORTY",
@@ -191,35 +218,15 @@ export async function seedSmokeLoadData(deps: LoadDeps) {
       bio: null,
       instagramUrl: null,
     });
-    await prisma.user.upsert({
-      where: { firebaseUid: id },
-      update: {
-        ...sealed,
+    await upsertSmokeLoadUser(prisma, {
+      id,
+      sealed,
+      data: {
         role: UserRole.STUDENT,
         styles: [STYLES[n % STYLES.length]!, STYLES[(n + 1) % STYLES.length]!],
         profileVisibility: ProfileVisibility.PUBLIC,
         studioId: deps.studioId,
         active: true,
-        experienceLevel: n % 3 === 0 ? "ADVANCED" : "BEGINNER",
-        scheduleVibe: ["weekday_evenings", "weekends"],
-        gender: n % 2 === 0 ? "FEMALE" : "MALE",
-        ageRange:
-          n % 4 === 0
-            ? "TEN_TO_TWENTY"
-            : n % 4 === 1
-              ? "UNDER_10"
-              : "TWENTY_TO_FORTY",
-        preferredBranchId: n % 2 === 0 ? deps.branchMainId : deps.branchEastId,
-        onboardingCompletedAt: daysAgo(30 + (n % 60)),
-      },
-      create: {
-        id,
-        firebaseUid: id,
-        ...sealed,
-        role: UserRole.STUDENT,
-        styles: [STYLES[n % STYLES.length]!, STYLES[(n + 1) % STYLES.length]!],
-        profileVisibility: ProfileVisibility.PUBLIC,
-        studioId: deps.studioId,
         experienceLevel: n % 3 === 0 ? "ADVANCED" : "BEGINNER",
         scheduleVibe: ["weekday_evenings", "weekends"],
         gender: n % 2 === 0 ? "FEMALE" : "MALE",

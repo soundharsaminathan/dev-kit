@@ -186,8 +186,9 @@ async function upsertUser(user: SeedUser, studioId: string | null) {
       : {};
 
   await prisma.user.upsert({
-    where: { firebaseUid: user.firebaseUid },
+    where: { id: user.id },
     update: {
+      firebaseUid: user.firebaseUid,
       ...sealed,
       styles: user.styles,
       profileVisibility: user.profileVisibility,
