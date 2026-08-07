@@ -26,6 +26,14 @@ import { UserCryptoService } from "../src/users/user-crypto.service";
 
 export const SMOKE_LOAD_PREFIX = "smoke-load-";
 
+/**
+ * Canonical seed batches (`smoke-batch-kids-1`, `smoke-batch-beginner-1`) use
+ * capacity 20. Roster extras must stay under that and leave headroom for smoke
+ * enroll flows (staff/owner mark-invoice-paid).
+ */
+const CANONICAL_BATCH_CAPACITY = 20;
+const CANONICAL_ENROLL_HEADROOM = 2;
+
 export const SMOKE_LOAD = {
   trainerCount: 8,
   studentCount: 100,
@@ -35,8 +43,16 @@ export const SMOKE_LOAD = {
   bookings: 40,
   posts: 30,
   enrollmentsPerBatch: 12,
-  /** Extra roster members on the canonical kids attendance session. */
-  kidsRosterExtras: 24,
+  /**
+   * Extra roster members on the canonical kids attendance session.
+   * Seed student also occupies one kids seat → extras ≤ capacity − 1 − headroom.
+   */
+  kidsRosterExtras: CANONICAL_BATCH_CAPACITY - 1 - CANONICAL_ENROLL_HEADROOM,
+  /**
+   * Extra roster members on the canonical adult beginner batch.
+   * Leave headroom so smoke enroll + mark-paid can add a seat.
+   */
+  beginnerRosterExtras: CANONICAL_BATCH_CAPACITY - CANONICAL_ENROLL_HEADROOM,
 } as const;
 
 const STYLES = [
@@ -315,15 +331,17 @@ export async function seedSmokeLoadData(deps: LoadDeps) {
       enrollmentPairs.push({ batchId, studentId });
     }
   }
-  for (let i = 0; i < SMOKE_LOAD.kidsRosterExtras; i++) {
-    enrollmentPairs.push({
-      batchId: deps.kidsBatchId,
-      studentId: studentIds[i]!,
-    });
-    enrollmentPairs.push({
-      batchId: deps.beginnerBatchId,
-      studentId: studentIds[i + 10]!,
-    });
+
+  const kidsRosterStudentIds = studentIds.slice(0, SMOKE_LOAD.kidsRosterExtras);
+  const beginnerRosterStudentIds = studentIds.slice(
+    10,
+    10 + SMOKE_LOAD.beginnerRosterExtras,
+  );
+  for (const studentId of kidsRosterStudentIds) {
+    enrollmentPairs.push({ batchId: deps.kidsBatchId, studentId });
+  }
+  for (const studentId of beginnerRosterStudentIds) {
+    enrollmentPairs.push({ batchId: deps.beginnerBatchId, studentId });
   }
 
   await mapPool(enrollmentPairs, 16, async ({ batchId, studentId }) => {
@@ -331,6 +349,88 @@ export async function seedSmokeLoadData(deps: LoadDeps) {
       where: { batchId_studentId: { batchId, studentId } },
       update: {},
       create: { batchId, studentId },
+    });
+  });
+
+  // Drop stale smoke-load seats left from prior denser seeds so capacity stays open.
+  await prisma.batchEnrollment.deleteMany({
+    where: {
+      batchId: deps.kidsBatchId,
+      studentId: {
+        startsWith: SMOKE_LOAD_PREFIX,
+        notIn: kidsRosterStudentIds,
+      },
+    },
+  });
+  await prisma.batchEnrollment.deleteMany({
+    where: {
+      batchId: deps.beginnerBatchId,
+      studentId: {
+        startsWith: SMOKE_LOAD_PREFIX,
+        notIn: beginnerRosterStudentIds,
+      },
+    },
+  });
+
+  // Active memberships for canonical roster extras so mark-all-present can succeed.
+  const rosterMembershipPeriodStart = new Date(
+    Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), 1),
+  );
+  const rosterMembershipPeriodEnd = new Date(
+    Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth() + 1, 1),
+  );
+  const rosterMemberships: Array<{
+    id: string;
+    studentId: string;
+    subscriptionId: string;
+    seatRole: MembershipSeatRole;
+  }> = [
+    ...kidsRosterStudentIds.map((studentId, index) => ({
+      id: `${SMOKE_LOAD_PREFIX}membership-kids-roster-${pad(index + 1, 2)}`,
+      studentId,
+      subscriptionId: deps.kidMonthlyId,
+      seatRole: MembershipSeatRole.KID,
+    })),
+    ...beginnerRosterStudentIds.map((studentId, index) => ({
+      id: `${SMOKE_LOAD_PREFIX}membership-adult-roster-${pad(index + 1, 2)}`,
+      studentId,
+      subscriptionId: deps.adultMonthlyId,
+      seatRole: MembershipSeatRole.ADULT,
+    })),
+  ];
+
+  await mapPool(rosterMemberships, 10, async (row) => {
+    await prisma.membership.upsert({
+      where: { id: row.id },
+      update: {
+        subscriptionId: row.subscriptionId,
+        purchaserUserId: row.studentId,
+        periodStart: rosterMembershipPeriodStart,
+        periodEnd: rosterMembershipPeriodEnd,
+        status: MembershipStatus.ACTIVE,
+      },
+      create: {
+        id: row.id,
+        subscriptionId: row.subscriptionId,
+        purchaserUserId: row.studentId,
+        periodStart: rosterMembershipPeriodStart,
+        periodEnd: rosterMembershipPeriodEnd,
+        status: MembershipStatus.ACTIVE,
+      },
+    });
+    await prisma.membershipCoveredStudent.upsert({
+      where: {
+        membershipId_studentId: {
+          membershipId: row.id,
+          studentId: row.studentId,
+        },
+      },
+      update: { seatRole: row.seatRole },
+      create: {
+        membershipId: row.id,
+        studentId: row.studentId,
+        seatRole: row.seatRole,
+      },
     });
   });
 
