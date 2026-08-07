@@ -184,7 +184,12 @@ function AttendanceMarkSwitch({
       >
         Absent
       </button>
-      <Switch size="sm" className={styles.markSwitchControl}>
+      <Switch
+        size="sm"
+        {...(styles.markSwitchControl
+          ? { className: styles.markSwitchControl }
+          : {})}
+      >
         <SwitchControl
           isSelected={isPresent}
           isDisabled={isDisabled}
