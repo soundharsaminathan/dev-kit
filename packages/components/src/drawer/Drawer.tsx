@@ -32,6 +32,8 @@ import type {
 
 const DISMISS_THRESHOLD = 100;
 const EXIT_ANIMATION_MS = 550;
+const SWIPE_IGNORE_SELECTOR =
+  "input, textarea, select, option, button, a, label, [contenteditable]:not([contenteditable='false']), [data-input], [role='textbox'], [role='searchbox'], [role='combobox'], [role='spinbutton']";
 
 const DrawerPlacementContext = createContext<DrawerPlacement>("bottom");
 
@@ -50,6 +52,59 @@ function useDrawerContext(): DrawerContextValue {
     throw new Error("Drawer subcomponents must be used within Drawer");
   }
   return context;
+}
+
+function shouldIgnoreSwipeTarget(target: EventTarget | null) {
+  return target instanceof Element && Boolean(target.closest(SWIPE_IGNORE_SELECTOR));
+}
+
+function allowInteractiveSwipeProps(moveProps: DrawerMoveProps): DrawerMoveProps {
+  const { onPointerDown, onTouchStart, onMouseDown, onKeyDown, ...rest } =
+    moveProps;
+
+  return {
+    ...rest,
+    ...(onPointerDown
+      ? {
+          onPointerDown: (event) => {
+            if (shouldIgnoreSwipeTarget(event.target)) {
+              return;
+            }
+            onPointerDown(event);
+          },
+        }
+      : {}),
+    ...(onTouchStart
+      ? {
+          onTouchStart: (event) => {
+            if (shouldIgnoreSwipeTarget(event.target)) {
+              return;
+            }
+            onTouchStart(event);
+          },
+        }
+      : {}),
+    ...(onMouseDown
+      ? {
+          onMouseDown: (event) => {
+            if (shouldIgnoreSwipeTarget(event.target)) {
+              return;
+            }
+            onMouseDown(event);
+          },
+        }
+      : {}),
+    ...(onKeyDown
+      ? {
+          onKeyDown: (event) => {
+            if (shouldIgnoreSwipeTarget(event.target)) {
+              return;
+            }
+            onKeyDown(event);
+          },
+        }
+      : {}),
+  };
 }
 
 function resolveClassName(
@@ -175,7 +230,7 @@ function useDrawerSwipe({
     },
   });
 
-  return swipeToDismiss ? moveProps : {};
+  return swipeToDismiss ? allowInteractiveSwipeProps(moveProps) : {};
 }
 
 function Drawer({
