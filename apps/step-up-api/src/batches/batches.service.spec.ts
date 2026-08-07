@@ -484,8 +484,11 @@ describe("BatchesService getRevenue", () => {
     });
     prisma.invoice.findMany.mockResolvedValue([
       {
+        studentId: "student-1",
+        membershipId: "mem-1",
         amount: 2500,
         status: "PAID",
+        combineMeta: null,
         membership: {
           subscription: {
             id: "sub-monthly",
@@ -495,8 +498,11 @@ describe("BatchesService getRevenue", () => {
         },
       },
       {
+        studentId: "student-1",
+        membershipId: "mem-2",
         amount: 6500,
         status: "PENDING",
+        combineMeta: null,
         membership: {
           subscription: {
             id: "sub-quarterly",
