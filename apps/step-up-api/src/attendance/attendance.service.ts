@@ -382,25 +382,36 @@ export class AttendanceService {
     );
 
     if (!membership) {
-      const trialBooking = await this.prisma.booking.findFirst({
+      const enrollment = await this.prisma.batchEnrollment.findFirst({
         where: {
-          sessionId: data.sessionId,
+          batchId: session.batchId,
           studentId: data.studentId,
-          type: BookingType.TRIAL,
-          status: {
-            in: [
-              BookingStatus.PENDING,
-              BookingStatus.CONFIRMED,
-              BookingStatus.COMPLETED,
-            ],
-          },
+          ...enrollmentVisibleAtSession(session.startsAt),
         },
         select: { id: true },
       });
-      if (!trialBooking) {
-        throw new BadRequestException(
-          "No active membership or trial booking for this session",
-        );
+
+      if (!enrollment) {
+        const trialBooking = await this.prisma.booking.findFirst({
+          where: {
+            sessionId: data.sessionId,
+            studentId: data.studentId,
+            type: BookingType.TRIAL,
+            status: {
+              in: [
+                BookingStatus.PENDING,
+                BookingStatus.CONFIRMED,
+                BookingStatus.COMPLETED,
+              ],
+            },
+          },
+          select: { id: true },
+        });
+        if (!trialBooking) {
+          throw new BadRequestException(
+            "Student is not enrolled or booked for this session",
+          );
+        }
       }
     }
 

@@ -21,6 +21,7 @@ describe("AttendanceService.markAttendance", () => {
     attendance: { upsert: vi.fn() },
     parentChild: { findUnique: vi.fn() },
     booking: { findFirst: vi.fn() },
+    batchEnrollment: { findFirst: vi.fn() },
   };
   const memberships = {
     findActiveForBatch: vi.fn(),
@@ -43,6 +44,7 @@ describe("AttendanceService.markAttendance", () => {
       key === "SESSION_QR_SECRET" ? "test-qr-secret" : undefined,
     );
     prisma.booking.findFirst.mockResolvedValue(null);
+    prisma.batchEnrollment.findFirst.mockResolvedValue(null);
     service = new AttendanceService(
       prisma as never,
       memberships as never,
@@ -163,9 +165,11 @@ describe("AttendanceService.markAttendance", () => {
     expect(prisma.attendance.upsert).toHaveBeenCalled();
   });
 
-  it("rejects when student has no active membership for the batch", async () => {
+  it("rejects when student has no enrollment, membership, or trial", async () => {
     prisma.session.findUnique.mockResolvedValue(makeSession());
     memberships.findActiveForBatch.mockResolvedValue(null);
+    prisma.batchEnrollment.findFirst.mockResolvedValue(null);
+    prisma.booking.findFirst.mockResolvedValue(null);
 
     await expect(
       service.markAttendance({
@@ -175,15 +179,40 @@ describe("AttendanceService.markAttendance", () => {
         markedById: FIXTURE_USERS.trainer.id,
         source: AttendanceSource.TRAINER,
       }),
-    ).rejects.toThrow(/No active membership/);
+    ).rejects.toThrow(/not enrolled or booked/);
     expect(prisma.attendance.upsert).not.toHaveBeenCalled();
     expect(notifications.create).not.toHaveBeenCalled();
+  });
+
+  it("allows marking enrolled students without an active membership (unpaid)", async () => {
+    const session = makeSession();
+    prisma.session.findUnique.mockResolvedValue(session);
+    memberships.findActiveForBatch.mockResolvedValue(null);
+    prisma.batchEnrollment.findFirst.mockResolvedValue({ id: "enroll-1" });
+    prisma.attendance.upsert.mockResolvedValue({
+      id: "att-unpaid",
+      status: AttendanceStatus.PRESENT,
+      student: FIXTURE_USERS.student,
+    });
+
+    await service.markAttendance({
+      sessionId: session.id,
+      studentId: FIXTURE_USERS.student.id,
+      status: AttendanceStatus.PRESENT,
+      markedById: FIXTURE_USERS.trainer.id,
+      source: AttendanceSource.TRAINER,
+    });
+
+    expect(prisma.batchEnrollment.findFirst).toHaveBeenCalled();
+    expect(prisma.booking.findFirst).not.toHaveBeenCalled();
+    expect(prisma.attendance.upsert).toHaveBeenCalled();
   });
 
   it("allows markAttendance when TRIAL booking exists for the session", async () => {
     const session = makeSession();
     prisma.session.findUnique.mockResolvedValue(session);
     memberships.findActiveForBatch.mockResolvedValue(null);
+    prisma.batchEnrollment.findFirst.mockResolvedValue(null);
     prisma.booking.findFirst.mockResolvedValue({
       id: "booking-trial",
       type: "TRIAL",
@@ -207,10 +236,11 @@ describe("AttendanceService.markAttendance", () => {
     expect(notifications.create).not.toHaveBeenCalled();
   });
 
-  it("rejects when no TRIAL booking exists for the session", async () => {
+  it("rejects when no enrollment or TRIAL booking exists for the session", async () => {
     const session = makeSession();
     prisma.session.findUnique.mockResolvedValue(session);
     memberships.findActiveForBatch.mockResolvedValue(null);
+    prisma.batchEnrollment.findFirst.mockResolvedValue(null);
     prisma.booking.findFirst.mockResolvedValue(null);
 
     await expect(
@@ -221,7 +251,7 @@ describe("AttendanceService.markAttendance", () => {
         markedById: FIXTURE_USERS.trainer.id,
         source: AttendanceSource.TRAINER,
       }),
-    ).rejects.toThrow(/No active membership/);
+    ).rejects.toThrow(/not enrolled or booked/);
     expect(prisma.attendance.upsert).not.toHaveBeenCalled();
   });
 });
@@ -229,7 +259,7 @@ describe("AttendanceService.markAttendance", () => {
 describe("AttendanceService.markAllPresent", () => {
   const prisma = {
     session: { findUnique: vi.fn() },
-    batchEnrollment: { findMany: vi.fn() },
+    batchEnrollment: { findMany: vi.fn(), findFirst: vi.fn() },
     attendance: { upsert: vi.fn() },
     parentChild: { findUnique: vi.fn() },
     booking: { findMany: vi.fn(), findFirst: vi.fn() },
@@ -253,6 +283,7 @@ describe("AttendanceService.markAllPresent", () => {
     memberships.findMonthlyUnpaidStudentIds.mockResolvedValue(new Set());
     prisma.booking.findMany.mockResolvedValue([]);
     prisma.booking.findFirst.mockResolvedValue(null);
+    prisma.batchEnrollment.findFirst.mockResolvedValue(null);
     service = new AttendanceService(
       prisma as never,
       memberships as never,
