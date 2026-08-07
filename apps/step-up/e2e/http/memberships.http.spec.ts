@@ -1,11 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { SEED } from "../fixtures/seed";
-import {
-  createHttpStudent,
-  expectOk,
-  expectStatus,
-  TestDataCleanup,
-} from "./helpers";
+import { expectOk, expectStatus } from "./helpers";
 
 test.describe("memberships HTTP @http", () => {
   test("removed no-invoice shortcuts return 404 @http", async () => {
@@ -73,61 +68,100 @@ test.describe("memberships HTTP @http", () => {
     expect(result.text).toMatch(/due or expired/i);
   });
 
-  test("family-purchase creates pending invoice with purchaseMeta @http", async () => {
-    const cleanup = new TestDataCleanup();
-    try {
-      const adult = await createHttpStudent("Family Adult", cleanup);
-      const kid = await createHttpStudent("Family Kid", cleanup);
+  test("family-purchase is removed; family-combine creates combined invoice @http", async () => {
+    await expectStatus("STAFF", "/memberships/family-purchase", 404, {
+      method: "POST",
+      body: JSON.stringify({
+        studioId: SEED.studioId,
+        subscriptionId: SEED.adultPlanIds[0],
+        purchaserUserId: SEED.users.STUDENT.id,
+        coveredStudents: [],
+      }),
+    });
 
-      const familyPlan = await expectOk<{
-        id: string;
-        price: number;
-      }>("STAFF", "/subscriptions", {
+    const depA = await expectOk<{ id: string }>(
+      "STUDENT",
+      "/users/me/family-members",
+      {
         method: "POST",
         body: JSON.stringify({
-          studioId: SEED.studioId,
-          name: `HTTP Family Duo ${Date.now()}`,
-          kind: "FAMILY",
-          familyPack: "ONE_ADULT_ONE_KID",
-          billingCadence: "MONTHLY",
-          price: 5000,
-          active: true,
+          name: `HTTP Combine A ${Date.now()}`,
+          kind: "KID",
+          gender: "FEMALE",
+          ageRange: "UNDER_10",
         }),
-      });
-
-      const invoice = await expectOk<{
-        id: string;
-        status: string;
-        membershipId: string | null;
-        amount: number;
-        purchaseMeta: unknown;
-      }>("STAFF", "/memberships/family-purchase", {
+      },
+    );
+    const depB = await expectOk<{ id: string }>(
+      "STUDENT",
+      "/users/me/family-members",
+      {
         method: "POST",
         body: JSON.stringify({
-          studioId: SEED.studioId,
-          subscriptionId: familyPlan.id,
-          purchaserUserId: adult.id,
-          coveredStudents: [
-            {
-              studentId: adult.id,
-              seatRole: "ADULT",
-              batchId: SEED.beginnerBatchId,
-            },
-            {
-              studentId: kid.id,
-              seatRole: "KID",
-              batchId: SEED.kidsBatchId,
-            },
-          ],
+          name: `HTTP Combine B ${Date.now()}`,
+          kind: "KID",
+          gender: "FEMALE",
+          ageRange: "UNDER_10",
         }),
-      });
+      },
+    );
 
-      expect(invoice.status).toBe("PENDING");
-      expect(invoice.membershipId).toBeNull();
-      expect(invoice.purchaseMeta).toBeTruthy();
-      expect(Number(invoice.amount)).toBe(5000);
-    } finally {
-      await cleanup.dispose();
-    }
+    const invA = await expectOk<{ invoice: { id: string; amount: number } }>(
+      "STAFF",
+      `/batches/${SEED.kidsBatchId}/enroll`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          studentId: depA.id,
+          subscriptionId: SEED.kidPlanIds[0],
+        }),
+      },
+    );
+    const invB = await expectOk<{ invoice: { id: string; amount: number } }>(
+      "STAFF",
+      `/batches/${SEED.kidsBatchId}/enroll`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          studentId: depB.id,
+          subscriptionId: SEED.kidPlanIds[0],
+        }),
+      },
+    );
+
+    await expectStatus("STAFF", "/billing/family-combine", 400, {
+      method: "POST",
+      body: JSON.stringify({
+        studioId: SEED.studioId,
+        purchaserUserId: SEED.users.STUDENT.id,
+        invoiceIds: [invA.invoice.id, invB.invoice.id],
+        familyDiscount: Number(invA.invoice.amount) + Number(invB.invoice.amount) + 1,
+      }),
+    });
+
+    const combined = await expectOk<{
+      id: string;
+      status: string;
+      amount: number;
+      familyDiscount: number;
+      combineMeta: { sources: unknown[] } | null;
+      kind: string;
+    }>("STAFF", "/billing/family-combine", {
+      method: "POST",
+      body: JSON.stringify({
+        studioId: SEED.studioId,
+        purchaserUserId: SEED.users.STUDENT.id,
+        invoiceIds: [invA.invoice.id, invB.invoice.id],
+        familyDiscount: 100,
+      }),
+    });
+
+    expect(combined.status).toBe("PENDING");
+    expect(combined.kind).toBe("COMBINED");
+    expect(Number(combined.familyDiscount)).toBe(100);
+    expect(combined.combineMeta?.sources).toHaveLength(2);
+    expect(Number(combined.amount)).toBe(
+      Number(invA.invoice.amount) + Number(invB.invoice.amount) - 100,
+    );
   });
 });

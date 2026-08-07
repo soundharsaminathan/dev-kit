@@ -9,8 +9,7 @@ import { useApi } from "@/lib/api-context";
 import { requireAdmin } from "@/lib/require-auth";
 import { useStudioId } from "@/lib/use-studio-id";
 import { CollectPaymentSheet } from "@/modules/payments/collect-payment-sheet";
-import { FamilyCheckoutSheet } from "@/modules/payments/family-checkout-sheet";
-import { FamilyPaySheet } from "@/modules/payments/family-pay-sheet";
+import { FamilyCombineSheet } from "@/modules/payments/family-combine-sheet";
 import {
   formatPrice,
   type Invoice,
@@ -95,9 +94,16 @@ function InvoiceCard({
   const { toast } = useToastContext("InvoiceCard");
   const unpaid = isUnpaid(invoice.status);
   const refundedAmount = invoice.refundedAmount ?? 0;
-  const isFamily = invoice.kind === "FAMILY";
+  const isFamily =
+    invoice.kind === "FAMILY" || invoice.kind === "COMBINED";
   const summary = invoice.familySummary;
-  const metaParts = [isFamily ? "Family pack" : "Individual"];
+  const metaParts = [
+    invoice.kind === "COMBINED"
+      ? "Combined family"
+      : isFamily
+        ? "Family pack"
+        : "Individual",
+  ];
   if (isFamily && summary?.planName) {
     metaParts.push(summary.planName);
   }
@@ -109,6 +115,9 @@ function InvoiceCard({
     metaParts.push(
       `${summary.adultCount ?? 0} adult${(summary.adultCount ?? 0) === 1 ? "" : "s"} · ${summary.kidCount ?? 0} kid${(summary.kidCount ?? 0) === 1 ? "" : "s"}`,
     );
+  }
+  if ((invoice.familyDiscount ?? 0) > 0) {
+    metaParts.push(`Family −${formatPrice(invoice.familyDiscount ?? 0)}`);
   }
   if (refundedAmount > 0) {
     metaParts.push(`Refunded ${formatPrice(refundedAmount)}`);
@@ -176,6 +185,7 @@ function InvoiceCard({
                   amount: invoice.amount,
                   referralDiscount: invoice.referralDiscount,
                   studioDiscount: invoice.studioDiscount,
+                  familyDiscount: invoice.familyDiscount,
                   status: invoice.status,
                   paymentMethod: invoice.paymentMethod,
                   paidAt: invoice.paidAt,
@@ -209,7 +219,6 @@ function InvoicesPage() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [familyOpenId, setFamilyOpenId] = useState<string | null>(null);
   const [payFamily, setPayFamily] = useState<StudioFamily | null>(null);
-  const [sellFamilyOpen, setSellFamilyOpen] = useState(false);
   const [refundId, setRefundId] = useState<string | null>(null);
 
   const invoicesQuery = useQuery({
@@ -248,7 +257,11 @@ function InvoicesPage() {
   const familyInvoices = useMemo(() => {
     const items = (invoicesQuery.data ?? []).filter(
       (invoice) =>
-        invoice.kind === "FAMILY" && invoice.status !== "REFUNDED",
+        (invoice.kind === "COMBINED" ||
+          invoice.kind === "FAMILY" ||
+          (invoice.familyDiscount ?? 0) > 0 ||
+          Boolean(invoice.combineMeta)) &&
+        invoice.status !== "REFUNDED",
     );
     return [
       ...items.filter((invoice) => isUnpaid(invoice.status)),
@@ -284,7 +297,7 @@ function InvoicesPage() {
   return (
     <Screen
       title="Invoices"
-      subtitle="Collect individual payments, family packs, or issue refunds."
+      subtitle="Collect individual payments, combine household invoices, or issue refunds."
     >
       <PullToRefresh
         onRefresh={() =>
@@ -396,7 +409,7 @@ function InvoicesPage() {
               {familiesQuery.data && familiesQuery.data.length === 0 ? (
                 <EmptyState
                   title="No family groups"
-                  description="Families appear when members add family or link children. You can still sell a family pack below."
+                  description="Families appear when members add family or link children. Tap a group to combine unpaid invoices."
                 />
               ) : null}
 
@@ -459,7 +472,7 @@ function InvoicesPage() {
                                   </span>
                                 ))}
                                 <span className={screen.stackLabel}>
-                                  Tap to collect a family payment
+                                  Tap to combine unpaid invoices
                                 </span>
                               </div>
                             </div>
@@ -471,21 +484,12 @@ function InvoicesPage() {
                 </div>
               ) : null}
 
-              <TouchButton
-                variant="default"
-                fullWidth
-                data-testid="sell-family-pack"
-                onClick={() => setSellFamilyOpen(true)}
-              >
-                Sell family pack manually
-              </TouchButton>
-
-              <p className={staff.sectionTitle}>Family invoices</p>
+              <p className={staff.sectionTitle}>Combined family invoices</p>
 
               {invoicesQuery.data && familyInvoices.length === 0 ? (
                 <EmptyState
-                  title="No family invoices"
-                  description="Collect a family payment above to create one."
+                  title="No combined invoices"
+                  description="Tap a family group above to combine unpaid household invoices."
                 />
               ) : null}
 
@@ -580,16 +584,15 @@ function InvoicesPage() {
         }}
       />
 
-      <FamilyPaySheet
+      <FamilyCombineSheet
         family={payFamily}
+        invoices={invoicesQuery.data ?? []}
         onOpenChange={(open) => {
           if (!open) setPayFamily(null);
         }}
-      />
-
-      <FamilyCheckoutSheet
-        isOpen={sellFamilyOpen}
-        onOpenChange={setSellFamilyOpen}
+        onCombined={(invoice) => {
+          setFamilyOpenId(invoice.id);
+        }}
       />
     </Screen>
   );

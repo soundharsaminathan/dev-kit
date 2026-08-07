@@ -45,16 +45,25 @@ describe("printInvoice", () => {
     expect(close).toHaveBeenCalled();
   });
 
-  it("returns false when the browser blocks the print window", () => {
-    vi.spyOn(window, "open").mockReturnValue(null);
+  it("includes family discount on the printed receipt", () => {
+    const write = vi.fn();
+    const popup = {
+      opener: window,
+      document: { open: vi.fn(), write, close: vi.fn() },
+    };
+    vi.spyOn(window, "open").mockReturnValue(popup as unknown as Window);
 
-    expect(
-      printInvoice({
-        id: "inv_blocked",
-        amount: 100,
-        status: "PAID",
-      }),
-    ).toBe(false);
+    printInvoice({
+      id: "inv_fam",
+      amount: 2700,
+      familyDiscount: 300,
+      status: "PAID",
+      studentName: "Ravi",
+    });
+
+    const html = String(write.mock.calls[0]?.[0] ?? "");
+    expect(html).toContain("Family discount");
+    expect(html).toContain("3,000.00");
   });
 });
 

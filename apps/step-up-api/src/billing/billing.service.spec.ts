@@ -259,6 +259,70 @@ describe("BillingService.getTrainerAnalytics", () => {
     expect(result.comparison.netCollectedDeltaPct).toBeNull();
   });
 
+  it("credits combined invoice net amounts to each source batch", async () => {
+    prisma.batch.findMany.mockResolvedValue([
+      {
+        id: "batch-kid-a",
+        name: "Kids A",
+        enrollments: [{ studentId: "kid-1" }],
+      },
+      {
+        id: "batch-kid-b",
+        name: "Kids B",
+        enrollments: [{ studentId: "kid-2" }],
+      },
+    ]);
+    prisma.invoice.findMany.mockResolvedValue([
+      {
+        id: "inv-combined",
+        studentId: "owner-1",
+        amount: 1900,
+        status: InvoiceStatus.PAID,
+        paymentMethod: PaymentMethod.CASH,
+        paidAt: new Date("2026-07-01T00:00:00.000Z"),
+        platformFeePercent: 5,
+        purchaseMeta: null,
+        combineMeta: {
+          sources: [
+            {
+              invoiceId: "inv-a",
+              studentId: "kid-1",
+              batchId: "batch-kid-a",
+              originalAmount: 1000,
+              allocatedDiscount: 50,
+              netAmount: 950,
+            },
+            {
+              invoiceId: "inv-b",
+              studentId: "kid-2",
+              batchId: "batch-kid-b",
+              originalAmount: 1000,
+              allocatedDiscount: 50,
+              netAmount: 950,
+            },
+          ],
+        },
+        membership: null,
+        student: { id: "owner-1", name: "Parent" },
+      },
+    ]);
+
+    const result = await service.getTrainerAnalytics(
+      makeUser(),
+      "all",
+      "studio-1",
+    );
+
+    expect(result.byBatch.find((row) => row.batchId === "batch-kid-a")).toMatchObject({
+      collected: 950,
+      invoiceCount: 1,
+    });
+    expect(result.byBatch.find((row) => row.batchId === "batch-kid-b")).toMatchObject({
+      collected: 950,
+      invoiceCount: 1,
+    });
+  });
+
   it("tracks refunded totals without counting refunds as overdue", async () => {
     prisma.user.findFirst.mockResolvedValue({
       id: "trainer-1",
@@ -1156,5 +1220,161 @@ describe("BillingService invoice checkout", () => {
     expect(prisma.invoice.delete).toHaveBeenCalledWith({
       where: { id: "inv-1" },
     });
+  });
+});
+
+describe("BillingService.familyCombine", () => {
+  const prisma = {
+    invoice: {
+      findMany: vi.fn(),
+      create: vi.fn(),
+      deleteMany: vi.fn(),
+    },
+    batchEnrollment: { findMany: vi.fn() },
+    studioSettings: { findUnique: vi.fn() },
+    familyMember: { findUnique: vi.fn() },
+    parentChild: { findUnique: vi.fn() },
+    $transaction: vi.fn(),
+  };
+  let service: BillingService;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    service = new BillingService(
+      prisma as never,
+      { decryptUser: vi.fn() } as never,
+      membershipsStub as never,
+      razorpayStub as never,
+      notificationsStub as never,
+      emailStub as never,
+    );
+    prisma.$transaction.mockImplementation(
+      async (fn: (tx: typeof prisma) => Promise<unknown>) => fn(prisma),
+    );
+    prisma.studioSettings.findUnique.mockResolvedValue({
+      platformFeePercent: 5,
+    });
+    prisma.batchEnrollment.findMany.mockResolvedValue([
+      { studentId: "kid-1", batchId: "batch-kid" },
+      { studentId: "kid-2", batchId: "batch-kid" },
+    ]);
+    prisma.familyMember.findUnique.mockResolvedValue({ id: "link" });
+    prisma.parentChild.findUnique.mockResolvedValue(null);
+    prisma.invoice.create.mockResolvedValue({
+      id: "inv-combined",
+      studentId: "owner-1",
+      studioId: "studio-1",
+      amount: 1900,
+      familyDiscount: 100,
+      referralDiscount: 0,
+      studioDiscount: 0,
+      status: InvoiceStatus.PENDING,
+      combineMeta: null,
+    });
+    prisma.invoice.deleteMany.mockResolvedValue({ count: 2 });
+  });
+
+  function unpaidSources() {
+    return [
+      {
+        id: "inv-a",
+        studentId: "kid-1",
+        studioId: "studio-1",
+        amount: 1000,
+        status: InvoiceStatus.PENDING,
+        membershipId: "mem-a",
+        purchaseMeta: null,
+        combineMeta: null,
+        membership: null,
+      },
+      {
+        id: "inv-b",
+        studentId: "kid-2",
+        studioId: "studio-1",
+        amount: 1000,
+        status: InvoiceStatus.PENDING,
+        membershipId: "mem-b",
+        purchaseMeta: null,
+        combineMeta: null,
+        membership: null,
+      },
+    ];
+  }
+
+  it("creates a combined invoice with combineMeta and deletes sources", async () => {
+    prisma.invoice.findMany.mockResolvedValue(unpaidSources());
+
+    const result = await service.familyCombine(makeUser(), {
+      studioId: "studio-1",
+      purchaserUserId: "owner-1",
+      invoiceIds: ["inv-a", "inv-b"],
+      familyDiscount: 100,
+    });
+
+    expect(result.kind).toBe("COMBINED");
+    expect(result.familyDiscount).toBe(100);
+    expect(result.amount).toBe(1900);
+    expect(result.combineMeta?.sources).toHaveLength(2);
+    expect(result.combineMeta?.sources[0]).toMatchObject({
+      invoiceId: "inv-a",
+      studentId: "kid-1",
+      batchId: "batch-kid",
+      originalAmount: 1000,
+      allocatedDiscount: 50,
+      netAmount: 950,
+    });
+    expect(prisma.invoice.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        studentId: "owner-1",
+        amount: 1900,
+        familyDiscount: 100,
+        status: InvoiceStatus.PENDING,
+        combineMeta: expect.objectContaining({
+          sources: expect.any(Array),
+        }),
+      }),
+    });
+    expect(prisma.invoice.deleteMany).toHaveBeenCalledWith({
+      where: { id: { in: ["inv-a", "inv-b"] }, studioId: "studio-1" },
+    });
+  });
+
+  it("rejects family discount above the selected total", async () => {
+    prisma.invoice.findMany.mockResolvedValue(unpaidSources());
+
+    await expect(
+      service.familyCombine(makeUser(), {
+        studioId: "studio-1",
+        purchaserUserId: "owner-1",
+        invoiceIds: ["inv-a", "inv-b"],
+        familyDiscount: 5000,
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it("rejects invoices outside the family", async () => {
+    prisma.invoice.findMany.mockResolvedValue(unpaidSources());
+    prisma.familyMember.findUnique.mockResolvedValue(null);
+    prisma.parentChild.findUnique.mockResolvedValue(null);
+
+    await expect(
+      service.familyCombine(makeUser(), {
+        studioId: "studio-1",
+        purchaserUserId: "owner-1",
+        invoiceIds: ["inv-a", "inv-b"],
+        familyDiscount: 0,
+      }),
+    ).rejects.toThrow(/family/i);
+  });
+
+  it("rejects fewer than two invoices", async () => {
+    await expect(
+      service.familyCombine(makeUser(), {
+        studioId: "studio-1",
+        purchaserUserId: "owner-1",
+        invoiceIds: ["inv-a"],
+        familyDiscount: 0,
+      }),
+    ).rejects.toThrow(/at least two/i);
   });
 });

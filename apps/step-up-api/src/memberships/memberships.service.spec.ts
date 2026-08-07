@@ -784,63 +784,18 @@ describe("MembershipsService.purchaseFamily", () => {
     });
   });
 
-  it("creates a pending family invoice without BatchPlan", async () => {
-    prisma.subscription.findUnique.mockResolvedValue({
-      id: "sub-fam",
-      studioId: "studio-1",
-      active: true,
-      kind: "FAMILY",
-      adultSeats: 1,
-      kidSeats: 1,
-      price: 5000,
-    });
-    prisma.batch.findMany.mockResolvedValue([
-      {
-        id: "batch-adult",
-        name: "Adult Jazz",
-        active: true,
-        category: "ADULTS",
-        capacity: 12,
-        enrollments: [],
-      },
-      {
-        id: "batch-kid",
-        name: "Kids Ballet",
-        active: true,
-        category: "KIDS",
-        capacity: 15,
-        enrollments: [],
-      },
-    ]);
-    prisma.invoice.create.mockResolvedValue({
-      id: "inv-fam",
-      status: "PENDING",
-      amount: 5000,
-    });
-
-    const invoice = await service.purchaseFamily({
-      studioId: "studio-1",
-      subscriptionId: "sub-fam",
-      purchaserUserId: "parent-1",
-      coveredStudents: [
-        { studentId: "adult-1", seatRole: "ADULT", batchId: "batch-adult" },
-        { studentId: "kid-1", seatRole: "KID", batchId: "batch-kid" },
-      ],
-    });
-
-    expect(invoice.id).toBe("inv-fam");
-    expect(prisma.invoice.create).toHaveBeenCalledWith({
-      data: expect.objectContaining({
-        studentId: "parent-1",
+  it("rejects family pack purchase (removed flow)", async () => {
+    await expect(
+      service.purchaseFamily({
         studioId: "studio-1",
-        amount: 5000,
-        status: "PENDING",
-        purchaseMeta: expect.objectContaining({
-          subscriptionId: "sub-fam",
-          purchaserUserId: "parent-1",
-        }),
+        subscriptionId: "sub-fam",
+        purchaserUserId: "adult-1",
+        coveredStudents: [
+          { studentId: "adult-1", seatRole: "ADULT", batchId: "batch-adult" },
+          { studentId: "kid-1", seatRole: "KID", batchId: "batch-kid" },
+        ],
       }),
-    });
+    ).rejects.toThrow(/removed/i);
   });
 });
 

@@ -29,6 +29,13 @@ import {
   type DecryptedUser,
   UserCryptoService,
 } from "../users/user-crypto.service";
+import {
+  allocateFamilyDiscount,
+  attributionTargetsForInvoice,
+  type InvoiceCombineMeta,
+  parseCombineMeta,
+} from "./family-combine";
+import { ACTIVE_ENROLLMENT_WHERE } from "../batches/enrollment-status";
 
 export type AnalyticsBucket = "day" | "week" | "month";
 
@@ -207,12 +214,14 @@ export class BillingService {
 
     return invoices.map((invoice) => {
       const purchaseMeta = parsePurchaseMeta(invoice.purchaseMeta);
+      const combineMeta = parseCombineMeta(invoice.combineMeta);
       const membershipKind = invoice.membership?.subscription?.kind;
       const purchaseSub = purchaseMeta
         ? purchaseSubById.get(purchaseMeta.subscriptionId)
         : undefined;
-      const kind =
-        membershipKind === "FAMILY" || purchaseSub?.kind === "FAMILY"
+      const kind = combineMeta
+        ? ("COMBINED" as const)
+        : membershipKind === "FAMILY" || purchaseSub?.kind === "FAMILY"
           ? ("FAMILY" as const)
           : ("INDIVIDUAL" as const);
 
@@ -234,10 +243,12 @@ export class BillingService {
         amount: Number(invoice.amount),
         referralDiscount: Number(invoice.referralDiscount ?? 0),
         studioDiscount: Number(invoice.studioDiscount ?? 0),
+        familyDiscount: Number(invoice.familyDiscount ?? 0),
         refundedAmount: Number(invoice.refundedAmount ?? 0),
         student: this.crypto.decryptUser(invoice.student),
         kind,
         purchaseMeta,
+        combineMeta,
         familySummary:
           kind === "FAMILY"
             ? {
@@ -246,7 +257,18 @@ export class BillingService {
                 kidCount,
                 coveredStudents: purchaseMeta?.coveredStudents ?? null,
               }
-            : null,
+            : combineMeta
+              ? {
+                  planName: "Combined family payment",
+                  adultCount: null,
+                  kidCount: null,
+                  coveredStudents: combineMeta.sources.map((source) => ({
+                    studentId: source.studentId,
+                    seatRole: "ADULT" as const,
+                    batchId: source.batchId ?? undefined,
+                  })),
+                }
+              : null,
       };
     });
   }
@@ -378,7 +400,10 @@ export class BillingService {
     const invoices = await this.prisma.invoice.findMany({
       where: {
         studioId,
-        studentId: { in: studentIds },
+        OR: [
+          { studentId: { in: studentIds } },
+          { combineMeta: { not: Prisma.DbNull } },
+        ],
       },
       include: { student: true, membership: true },
       orderBy: [{ paidAt: "desc" }, { id: "desc" }],
@@ -460,7 +485,7 @@ export class BillingService {
     let refunded = 0;
     let platformFees = 0;
 
-    const invoiceRows: TrainerPaymentAnalytics["invoices"] = filtered.map(
+    const mappedRows = filtered.map(
       (invoice) => {
         const amount = Number(invoice.amount);
         const refundedAmount = Number(invoice.refundedAmount ?? 0);
@@ -470,7 +495,30 @@ export class BillingService {
           invoice.platformFeePercent,
         );
         const student = this.crypto.decryptUser(invoice.student);
-        const batchIds = [...(studentBatchMap.get(invoice.studentId) ?? [])];
+        const combineMeta = parseCombineMeta(invoice.combineMeta);
+        const attribution = attributionTargetsForInvoice({
+          studentId: invoice.studentId,
+          combineMeta,
+          studentBatchMap,
+          amount,
+          status: invoice.status,
+        }).filter((target) => batchTotals.has(target.batchId));
+
+        if (
+          combineMeta &&
+          attribution.length === 0 &&
+          !studentIds.includes(invoice.studentId)
+        ) {
+          return null;
+        }
+
+        const batchIds = [
+          ...new Set(
+            attribution.length > 0
+              ? attribution.map((target) => target.batchId)
+              : [...(studentBatchMap.get(invoice.studentId) ?? [])],
+          ),
+        ];
 
         byStatus[invoice.status].count += 1;
         byStatus[invoice.status].amount +=
@@ -496,21 +544,35 @@ export class BillingService {
           overdue += amount;
         }
 
-        for (const batchId of batchIds) {
-          const entry = batchTotals.get(batchId);
-          if (!entry || entry.invoiceIds.has(invoice.id)) {
+        const creditScale =
+          invoice.status === InvoiceStatus.PAID && amount > 0
+            ? retained / amount
+            : 1;
+
+        for (const target of attribution.length > 0
+          ? attribution
+          : batchIds.map((batchId) => ({
+              batchId,
+              amount,
+              studentId: invoice.studentId,
+            }))) {
+          const entry = batchTotals.get(target.batchId);
+          if (!entry) {
             continue;
           }
-          entry.invoiceIds.add(invoice.id);
-          if (refundedAmount > 0) {
-            entry.refunded += refundedAmount;
-          }
-          if (invoice.status === InvoiceStatus.PAID) {
-            entry.collected += retained;
-          } else if (invoice.status === InvoiceStatus.PENDING) {
-            entry.pending += amount;
-          } else if (invoice.status === InvoiceStatus.OVERDUE) {
-            entry.overdue += amount;
+          const credited = roundMoney(target.amount * creditScale);
+          if (!entry.invoiceIds.has(`${invoice.id}:${target.batchId}`)) {
+            entry.invoiceIds.add(`${invoice.id}:${target.batchId}`);
+            if (refundedAmount > 0 && !combineMeta) {
+              entry.refunded += refundedAmount;
+            }
+            if (invoice.status === InvoiceStatus.PAID) {
+              entry.collected += credited;
+            } else if (invoice.status === InvoiceStatus.PENDING) {
+              entry.pending += target.amount;
+            } else if (invoice.status === InvoiceStatus.OVERDUE) {
+              entry.overdue += target.amount;
+            }
           }
         }
 
@@ -526,6 +588,10 @@ export class BillingService {
           batchIds,
         };
       },
+    );
+
+    const invoiceRows: TrainerPaymentAnalytics["invoices"] = mappedRows.filter(
+      (row): row is NonNullable<(typeof mappedRows)[number]> => row != null,
     );
 
     const netCollected = roundMoney(collected - platformFees);
@@ -651,6 +717,7 @@ export class BillingService {
     }
 
     const subtotal = Number(invoice.amount);
+    const familyDiscount = Number(invoice.familyDiscount ?? 0);
     const referralDiscount = roundMoney(input.referralDiscount ?? 0);
     const studioDiscount = roundMoney(input.studioDiscount ?? 0);
 
@@ -671,6 +738,7 @@ export class BillingService {
       invoice.platformFeePercent,
     );
     const purchaseMeta = parsePurchaseMeta(invoice.purchaseMeta);
+    const combineMeta = parseCombineMeta(invoice.combineMeta);
 
     let membershipId = invoice.membershipId;
     if (!membershipId && purchaseMeta) {
@@ -680,6 +748,20 @@ export class BillingService {
         coveredStudents: purchaseMeta.coveredStudents,
       });
       membershipId = membership.id;
+    }
+
+    if (combineMeta) {
+      for (const source of combineMeta.sources) {
+        if (source.purchaseMeta) {
+          await this.memberships.assign({
+            subscriptionId: source.purchaseMeta.subscriptionId,
+            purchaserUserId: source.purchaseMeta.purchaserUserId,
+            coveredStudents: source.purchaseMeta.coveredStudents,
+          });
+        } else if (source.membershipId) {
+          await this.memberships.renewFromPaidInvoice(source.membershipId);
+        }
+      }
     }
 
     const paidAt = new Date();
@@ -703,6 +785,9 @@ export class BillingService {
 
     const student = this.crypto.decryptUser(invoice.student);
     const amountLabel = formatInr(amountPaid);
+    const printSubtotal = roundMoney(
+      amountPaid + referralDiscount + studioDiscount + familyDiscount,
+    );
 
     await this.notifications.create({
       userId: invoice.studentId,
@@ -715,6 +800,7 @@ export class BillingService {
         amount: amountPaid,
         referralDiscount,
         studioDiscount,
+        familyDiscount,
       },
       entityType: "invoice",
       entityId: invoice.id,
@@ -727,9 +813,10 @@ export class BillingService {
           studentName: student.name || "there",
           studioName: invoice.studio.name,
           invoiceId: invoice.id,
-          subtotal,
+          subtotal: printSubtotal,
           referralDiscount,
           studioDiscount,
+          familyDiscount,
           amountPaid,
           paymentMethod: input.paymentMethod,
           paidAt,
@@ -747,85 +834,189 @@ export class BillingService {
       amount: Number(result.amount),
       referralDiscount: Number(result.referralDiscount),
       studioDiscount: Number(result.studioDiscount),
-      subtotal,
+      familyDiscount: Number(result.familyDiscount ?? 0),
+      subtotal: printSubtotal,
       platformFeeComputed: platformFee,
       student: { id: student.id, name: student.name, email: student.email },
       studio: invoice.studio,
     };
   }
 
-  async familyCheckout(
+  async familyCombine(
     actor: DecryptedUser,
     data: {
       studioId: string;
       purchaserUserId: string;
-      subscriptionId: string;
-      coveredStudents: CoveredStudentInput[];
-      paymentMethod: PaymentMethod;
+      invoiceIds: string[];
+      familyDiscount: number;
     },
   ) {
     if (actor.role !== UserRole.OWNER && actor.role !== UserRole.STAFF) {
       throw new ForbiddenException(
-        "Only studio admins can complete family checkout",
+        "Only studio admins can combine family invoices",
       );
     }
     if (actor.studioId !== data.studioId) {
-      throw new ForbiddenException("Cannot checkout for another studio");
+      throw new ForbiddenException("Cannot combine invoices for another studio");
     }
-    if (
-      data.paymentMethod !== PaymentMethod.CASH &&
-      data.paymentMethod !== PaymentMethod.UPI_MANUAL
-    ) {
+    if (data.invoiceIds.length < 2) {
+      throw new BadRequestException("Select at least two invoices to combine");
+    }
+
+    const uniqueIds = [...new Set(data.invoiceIds)];
+    if (uniqueIds.length !== data.invoiceIds.length) {
+      throw new BadRequestException("Duplicate invoices in combine request");
+    }
+
+    const familyDiscount = roundMoney(data.familyDiscount);
+    if (familyDiscount < 0) {
+      throw new BadRequestException("Family discount cannot be negative");
+    }
+
+    const sources = await this.prisma.invoice.findMany({
+      where: { id: { in: uniqueIds }, studioId: data.studioId },
+      include: {
+        membership: { include: { subscription: true } },
+      },
+    });
+
+    if (sources.length !== uniqueIds.length) {
+      throw new NotFoundException("One or more invoices were not found");
+    }
+
+    for (const invoice of sources) {
+      if (
+        invoice.status !== InvoiceStatus.PENDING &&
+        invoice.status !== InvoiceStatus.OVERDUE
+      ) {
+        throw new BadRequestException(
+          "Only unpaid invoices can be combined",
+        );
+      }
+      if (parseCombineMeta(invoice.combineMeta)) {
+        throw new BadRequestException(
+          "Already combined invoices cannot be combined again",
+        );
+      }
+      const linked =
+        invoice.studentId === data.purchaserUserId ||
+        (await this.isFamilyLinked(data.purchaserUserId, invoice.studentId));
+      if (!linked) {
+        throw new BadRequestException(
+          "All invoices must belong to this family",
+        );
+      }
+    }
+
+    const amounts = sources.map((invoice) => Number(invoice.amount));
+    const subtotal = roundMoney(amounts.reduce((sum, amount) => sum + amount, 0));
+    if (familyDiscount > subtotal) {
       throw new BadRequestException(
-        "Family desk checkout supports cash or UPI only",
+        "Family discount cannot exceed invoice total",
       );
     }
 
-    const subscription = await this.prisma.subscription.findUnique({
-      where: { id: data.subscriptionId },
-    });
-    if (!subscription?.active) {
-      throw new NotFoundException("Subscription not found or inactive");
-    }
-    if (subscription.studioId !== data.studioId) {
-      throw new BadRequestException("Plan is not from this studio");
-    }
-    if (subscription.kind !== "FAMILY") {
+    let allocated: number[];
+    try {
+      allocated = allocateFamilyDiscount(amounts, familyDiscount);
+    } catch (error) {
       throw new BadRequestException(
-        "Only Family packs can use family checkout",
+        error instanceof Error ? error.message : "Invalid family discount",
       );
     }
 
-    const membership = await this.memberships.assign({
-      subscriptionId: data.subscriptionId,
-      purchaserUserId: data.purchaserUserId,
-      coveredStudents: data.coveredStudents,
+    const studentIds = [...new Set(sources.map((invoice) => invoice.studentId))];
+    const enrollments = await this.prisma.batchEnrollment.findMany({
+      where: {
+        studentId: { in: studentIds },
+        ...ACTIVE_ENROLLMENT_WHERE,
+        batch: { studioId: data.studioId },
+      },
+      select: { studentId: true, batchId: true },
+      orderBy: { enrolledAt: "asc" },
     });
+    const firstEnrollmentByStudent = new Map<string, string>();
+    for (const enrollment of enrollments) {
+      if (!firstEnrollmentByStudent.has(enrollment.studentId)) {
+        firstEnrollmentByStudent.set(enrollment.studentId, enrollment.batchId);
+      }
+    }
 
+    const combineMeta: InvoiceCombineMeta = {
+      sources: sources.map((invoice, index) => {
+        const purchaseMeta = parsePurchaseMeta(invoice.purchaseMeta);
+        const batchId =
+          purchaseMeta?.batchId ??
+          firstEnrollmentByStudent.get(invoice.studentId) ??
+          null;
+        const originalAmount = amounts[index]!;
+        const allocatedDiscount = allocated[index]!;
+        return {
+          invoiceId: invoice.id,
+          studentId: invoice.studentId,
+          batchId,
+          originalAmount,
+          allocatedDiscount,
+          netAmount: roundMoney(originalAmount - allocatedDiscount),
+          membershipId: invoice.membershipId,
+          ...(purchaseMeta ? { purchaseMeta } : {}),
+        };
+      }),
+    };
+
+    const netAmount = roundMoney(subtotal - familyDiscount);
     const settings = await this.prisma.studioSettings.findUnique({
       where: { studioId: data.studioId },
       select: { platformFeePercent: true },
     });
 
-    const invoice = await this.prisma.invoice.create({
-      data: {
-        studentId: data.purchaserUserId,
-        studioId: data.studioId,
-        membershipId: membership.id,
-        amount: subscription.price,
-        status: InvoiceStatus.PAID,
-        paymentMethod: data.paymentMethod,
-        paidAt: new Date(),
-        platformFeePercent: settings?.platformFeePercent ?? 5,
-      },
+    const created = await this.prisma.$transaction(async (tx) => {
+      const invoice = await tx.invoice.create({
+        data: {
+          studentId: data.purchaserUserId,
+          studioId: data.studioId,
+          amount: netAmount,
+          familyDiscount,
+          status: InvoiceStatus.PENDING,
+          platformFeePercent: settings?.platformFeePercent ?? 5,
+          combineMeta,
+        },
+      });
+      await tx.invoice.deleteMany({
+        where: { id: { in: uniqueIds }, studioId: data.studioId },
+      });
+      return invoice;
     });
 
     return {
-      ...invoice,
-      amount: Number(invoice.amount),
-      kind: "FAMILY" as const,
-      membership,
+      ...created,
+      amount: Number(created.amount),
+      familyDiscount: Number(created.familyDiscount),
+      referralDiscount: Number(created.referralDiscount ?? 0),
+      studioDiscount: Number(created.studioDiscount ?? 0),
+      kind: "COMBINED" as const,
+      combineMeta,
+      student: undefined,
     };
+  }
+
+  private async isFamilyLinked(ownerUserId: string, memberUserId: string) {
+    const [family, parent] = await Promise.all([
+      this.prisma.familyMember.findUnique({
+        where: {
+          ownerUserId_memberUserId: { ownerUserId, memberUserId },
+        },
+      }),
+      this.prisma.parentChild.findUnique({
+        where: {
+          parentUserId_childUserId: {
+            parentUserId: ownerUserId,
+            childUserId: memberUserId,
+          },
+        },
+      }),
+    ]);
+    return Boolean(family || parent);
   }
 
   async getCheckoutInvoice(id: string, actor: DecryptedUser) {
@@ -1590,6 +1781,7 @@ function buildPendingPayments(input: {
     amount: unknown;
     status: InvoiceStatus;
     purchaseMeta: unknown;
+    combineMeta?: unknown;
     student: User;
     membership: { periodStart: Date } | null;
   }>;
@@ -1599,8 +1791,13 @@ function buildPendingPayments(input: {
 }): TrainerPaymentAnalytics["pendingPayments"] {
   const rows = input.invoices.map((invoice) => {
     const meta = parsePurchaseMeta(invoice.purchaseMeta);
+    const combineMeta = parseCombineMeta(invoice.combineMeta);
     const enrolled = [...(input.studentBatchMap.get(invoice.studentId) ?? [])];
-    const batchId = meta?.batchId ?? enrolled[0] ?? null;
+    const batchId =
+      combineMeta?.sources.find((source) => source.batchId)?.batchId ??
+      meta?.batchId ??
+      enrolled[0] ??
+      null;
     const batchName = batchId
       ? (input.batchNameById.get(batchId) ?? null)
       : null;

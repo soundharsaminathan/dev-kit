@@ -3,6 +3,7 @@ export type PrintableInvoice = {
   amount: number;
   referralDiscount?: number | undefined;
   studioDiscount?: number | undefined;
+  familyDiscount?: number | undefined;
   status: string;
   paymentMethod?: string | null | undefined;
   paidAt?: string | Date | null | undefined;
@@ -43,9 +44,10 @@ function escapeHtml(value: string) {
 export function printInvoice(invoice: PrintableInvoice) {
   const referral = invoice.referralDiscount ?? 0;
   const studio = invoice.studioDiscount ?? 0;
+  const family = invoice.familyDiscount ?? 0;
   const subtotal =
     invoice.subtotal ??
-    Math.round((invoice.amount + referral + studio) * 100) / 100;
+    Math.round((invoice.amount + referral + studio + family) * 100) / 100;
   const paidAt = invoice.paidAt
     ? new Date(invoice.paidAt).toLocaleString("en-IN", {
         dateStyle: "medium",
@@ -59,6 +61,9 @@ export function printInvoice(invoice: PrintableInvoice) {
       : "",
     studio > 0
       ? `<tr><td>Studio discount</td><td>−${escapeHtml(formatInr(studio))}</td></tr>`
+      : "",
+    family > 0
+      ? `<tr><td>Family discount</td><td>−${escapeHtml(formatInr(family))}</td></tr>`
       : "",
   ].join("");
 
@@ -99,8 +104,6 @@ export function printInvoice(invoice: PrintableInvoice) {
 </body>
 </html>`;
 
-  // Do not pass noopener/noreferrer in features — Chromium returns null and
-  // the receipt window never opens.
   const popup = window.open("", "_blank", "width=640,height=720");
   if (!popup) {
     return false;

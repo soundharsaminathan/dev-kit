@@ -16,6 +16,7 @@ export type PaymentInvoiceEmailInput = {
   subtotal: number;
   referralDiscount: number;
   studioDiscount: number;
+  familyDiscount?: number;
   amountPaid: number;
   paymentMethod: string;
   paidAt: Date;
@@ -88,6 +89,7 @@ export class EmailService {
       timeStyle: "short",
     });
     const methodLabel = formatPaymentMethod(input.paymentMethod);
+    const familyDiscount = input.familyDiscount ?? 0;
     const rows = [
       row("Subtotal", formatInr(input.subtotal)),
       ...(input.referralDiscount > 0
@@ -95,6 +97,9 @@ export class EmailService {
         : []),
       ...(input.studioDiscount > 0
         ? [row("Studio discount", `−${formatInr(input.studioDiscount)}`)]
+        : []),
+      ...(familyDiscount > 0
+        ? [row("Family discount", `−${formatInr(familyDiscount)}`)]
         : []),
       row("Amount paid", formatInr(input.amountPaid), true),
       row("Payment method", methodLabel),

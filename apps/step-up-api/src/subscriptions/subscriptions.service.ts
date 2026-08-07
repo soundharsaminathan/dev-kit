@@ -2,7 +2,6 @@ import { BadRequestException, Inject, Injectable } from "@nestjs/common";
 import {
   BillingCadence,
   type FamilyPack,
-  type IndividualAudience,
   type Prisma,
   SubscriptionKind,
 } from "@prisma/client";
@@ -77,45 +76,28 @@ export class SubscriptionsService {
   }
 
   private resolveSeats(data: CreateSubscriptionInput) {
-    if (data.kind === SubscriptionKind.INDIVIDUAL) {
-      if (!data.individualAudience) {
-        throw new BadRequestException(
-          "individualAudience is required for Individual subscriptions",
-        );
-      }
-      if (data.familyPack) {
-        throw new BadRequestException(
-          "familyPack is not allowed on Individual subscriptions",
-        );
-      }
-      const seats = seatsForCatalog({
-        kind: SubscriptionKind.INDIVIDUAL,
-        individualAudience: data.individualAudience,
-      });
-      return {
-        individualAudience: data.individualAudience,
-        familyPack: null as FamilyPack | null,
-        ...seats,
-      };
-    }
-
-    if (!data.familyPack) {
+    if (data.kind === SubscriptionKind.FAMILY) {
       throw new BadRequestException(
-        "familyPack is required for Family subscriptions",
+        "Family pack plans are no longer created. Combine unpaid household invoices from the Invoices family tab.",
       );
     }
-    if (data.individualAudience) {
+    if (!data.individualAudience) {
       throw new BadRequestException(
-        "individualAudience is not allowed on Family subscriptions",
+        "individualAudience is required for Individual subscriptions",
+      );
+    }
+    if (data.familyPack) {
+      throw new BadRequestException(
+        "familyPack is not allowed on Individual subscriptions",
       );
     }
     const seats = seatsForCatalog({
-      kind: SubscriptionKind.FAMILY,
-      familyPack: data.familyPack,
+      kind: SubscriptionKind.INDIVIDUAL,
+      individualAudience: data.individualAudience,
     });
     return {
-      individualAudience: null as IndividualAudience | null,
-      familyPack: data.familyPack,
+      individualAudience: data.individualAudience,
+      familyPack: null as FamilyPack | null,
       ...seats,
     };
   }
