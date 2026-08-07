@@ -91,6 +91,9 @@ export function StudioWizard(props: StudioWizardProps) {
   );
   const [razorpayKeyId, setRazorpayKeyId] = useState("");
   const [razorpayKeySecret, setRazorpayKeySecret] = useState("");
+  const [platformFeePercent, setPlatformFeePercent] = useState(
+    String(studio?.settings?.platformFeePercent ?? 5),
+  );
   const [formError, setFormError] = useState<string | null>(null);
   const [createdResult, setCreatedResult] = useState<CreateStudioResult | null>(
     null,
@@ -112,6 +115,7 @@ export function StudioWizard(props: StudioWizardProps) {
     setAddress(studio.address ?? "");
     setContact(studio.contact ?? "");
     setDraft(brandThemeToDraft(studio.brandTheme, studio.name));
+    setPlatformFeePercent(String(studio.settings?.platformFeePercent ?? 5));
   }, [studio]);
 
   useEffect(() => {
@@ -174,15 +178,17 @@ export function StudioWizard(props: StudioWizardProps) {
             "Enter the Razorpay key ID together with the secret.",
           );
         }
-        if (nextKeyId || nextSecret) {
-          await api.patch(`/studios/${created.id}/settings`, {
-            graceDays: 3,
-            expireAlertDays: 7,
-            platformFeePercent: 5,
-            ...(nextKeyId ? { razorpayKeyId: nextKeyId } : {}),
-            ...(nextSecret ? { razorpayKeySecret: nextSecret } : {}),
-          });
+        const fee = Number(platformFeePercent);
+        if (!Number.isFinite(fee) || fee < 0 || fee > 100) {
+          throw new Error("Platform fee percent must be between 0 and 100.");
         }
+        await api.patch(`/studios/${created.id}/settings`, {
+          graceDays: 3,
+          expireAlertDays: 7,
+          platformFeePercent: fee,
+          ...(nextKeyId ? { razorpayKeyId: nextKeyId } : {}),
+          ...(nextSecret ? { razorpayKeySecret: nextSecret } : {}),
+        });
       }
 
       return created;
@@ -230,13 +236,20 @@ export function StudioWizard(props: StudioWizardProps) {
         throw new Error("Enter the Razorpay key ID together with the secret.");
       }
 
+      const fee = Number(platformFeePercent);
+      if (!Number.isFinite(fee) || fee < 0 || fee > 100) {
+        throw new Error("Platform fee percent must be between 0 and 100.");
+      }
+
       const paymentsTouched =
-        Boolean(razorpayKeyId.trim()) || Boolean(nextSecret);
+        Boolean(razorpayKeyId.trim()) ||
+        Boolean(nextSecret) ||
+        fee !== (studio.settings?.platformFeePercent ?? 5);
       if (paymentsTouched) {
         await api.patch(`/studios/${studio.id}/settings`, {
           graceDays: studio.settings?.graceDays ?? 3,
           expireAlertDays: studio.settings?.expireAlertDays ?? 7,
-          platformFeePercent: studio.settings?.platformFeePercent ?? 5,
+          platformFeePercent: fee,
           ...(nextKeyId ? { razorpayKeyId: nextKeyId } : {}),
           ...(nextSecret ? { razorpayKeySecret: nextSecret } : {}),
         });
@@ -615,6 +628,8 @@ export function StudioWizard(props: StudioWizardProps) {
                 configured={Boolean(studio?.settings?.razorpayConfigured)}
                 onKeyIdChange={setRazorpayKeyId}
                 onKeySecretChange={setRazorpayKeySecret}
+                platformFeePercent={platformFeePercent}
+                onPlatformFeePercentChange={setPlatformFeePercent}
               />
             </div>
           ) : null}

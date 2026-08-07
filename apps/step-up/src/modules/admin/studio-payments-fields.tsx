@@ -19,6 +19,8 @@ export type StudioPaymentsFieldsProps = {
   configured?: boolean;
   onKeyIdChange: (value: string) => void;
   onKeySecretChange: (value: string) => void;
+  platformFeePercent?: string;
+  onPlatformFeePercentChange?: (value: string) => void;
   className?: string | undefined;
   titleClassName?: string | undefined;
   descClassName?: string | undefined;
@@ -31,6 +33,8 @@ export function StudioPaymentsFields({
   configured = false,
   onKeyIdChange,
   onKeySecretChange,
+  platformFeePercent,
+  onPlatformFeePercentChange,
   className,
   titleClassName,
   descClassName,
@@ -38,9 +42,29 @@ export function StudioPaymentsFields({
   const secretPlaceholder = configured
     ? "•••••••••••• (saved — enter a new secret to replace)"
     : "Paste Razorpay key secret";
+  const showPlatformFee =
+    platformFeePercent !== undefined &&
+    onPlatformFeePercentChange !== undefined;
 
   return (
     <div className={className}>
+      {showPlatformFee ? (
+        <>
+          <p className={titleClassName}>Platform fee</p>
+          <p className={descClassName}>
+            Percentage charged on collected payments for this studio.
+          </p>
+          <FormInput
+            label="Platform fee percent"
+            type="number"
+            min={0}
+            max={100}
+            step="0.1"
+            value={platformFeePercent}
+            onChange={onPlatformFeePercentChange}
+          />
+        </>
+      ) : null}
       <p className={titleClassName}>Razorpay</p>
       <p className={descClassName}>
         {configured

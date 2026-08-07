@@ -21,7 +21,6 @@ export function StudioBillingFormPage() {
   const isOwner = user?.role === "OWNER";
   const [graceDays, setGraceDays] = useState("");
   const [expireAlertDays, setExpireAlertDays] = useState("");
-  const [platformFeePercent, setPlatformFeePercent] = useState("");
 
   const studioQuery = useQuery({
     queryKey: ["studio", studioId],
@@ -34,7 +33,6 @@ export function StudioBillingFormPage() {
       const payload: {
         graceDays?: number;
         expireAlertDays: number;
-        platformFeePercent?: number;
       } = {
         expireAlertDays: Number(
           expireAlertDays || (settings?.expireAlertDays ?? 7),
@@ -42,9 +40,6 @@ export function StudioBillingFormPage() {
       };
       if (isOwner) {
         payload.graceDays = Number(graceDays || (settings?.graceDays ?? 3));
-        payload.platformFeePercent = Number(
-          platformFeePercent || (settings?.platformFeePercent ?? 5),
-        );
       }
       return api.patch(`/studios/${studioId}/settings`, payload);
     },
@@ -134,17 +129,17 @@ export function StudioBillingFormPage() {
               }
               onChange={setExpireAlertDays}
             />
-            {isOwner ? (
-              <FormInput
-                label="Platform fee percent"
-                type="number"
-                value={
-                  platformFeePercent ||
-                  String(studioQuery.data.settings?.platformFeePercent ?? 5)
-                }
-                onChange={setPlatformFeePercent}
-              />
-            ) : null}
+            <FormInput
+              label="Platform fee percent"
+              type="number"
+              value={String(studioQuery.data.settings?.platformFeePercent ?? 5)}
+              onChange={() => undefined}
+              isDisabled
+              readOnly
+            />
+            <p className={staff.panelDesc}>
+              Set by Step Up admin. Contact support to change it.
+            </p>
             {updateSettings.isError ? (
               <ErrorState
                 description={
