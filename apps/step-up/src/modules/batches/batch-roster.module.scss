@@ -63,9 +63,16 @@
   min-width: 0;
 }
 
-.switchBtn {
+.rowActions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1, 0.25rem);
   flex-shrink: 0;
   align-self: center;
+}
+
+.switchBtn {
+  flex-shrink: 0;
 }
 
 .targetPick {

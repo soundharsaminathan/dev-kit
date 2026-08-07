@@ -21,6 +21,7 @@ import {
 } from "@prisma/client";
 import { FirebaseService } from "../auth/firebase.service";
 import { assertBatchHasSeat, lockBatchRow } from "../batches/batch-capacity";
+import { REACTIVATE_ENROLLMENT_DATA } from "../batches/enrollment-status";
 import { MediaService } from "../media/media.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { isAlwaysPublicRole } from "../social/visibility";
@@ -375,10 +376,11 @@ export class UsersService {
         where: {
           batchId_studentId: { batchId, studentId },
         },
-        update: {},
+        update: REACTIVATE_ENROLLMENT_DATA,
         create: {
           batchId,
           studentId,
+          status: "ACTIVE",
         },
       });
     });
@@ -752,7 +754,12 @@ export class UsersService {
 
     return {
       student: await this.presentUser(student),
-      batches: enrollments.map((enrollment) => enrollment.batch),
+      batches: enrollments.map((enrollment) => ({
+        ...enrollment.batch,
+        enrollmentStatus: enrollment.status,
+        enrolledAt: enrollment.enrolledAt,
+        endedAt: enrollment.endedAt,
+      })),
       memberships,
       attendance,
       invoices: invoices.map((invoice) => ({
@@ -1239,6 +1246,7 @@ export class UsersService {
         batchEnrollments: {
           where: { batch: { studioId } },
           select: {
+            status: true,
             batch: {
               select: {
                 id: true,
@@ -1288,6 +1296,7 @@ export class UsersService {
         enrollments: batchEnrollments.map((enrollment) => ({
           batchId: enrollment.batch.id,
           batchActive: enrollment.batch.active,
+          enrollmentActive: enrollment.status === "ACTIVE",
           hasScheduledSession: batchHasScheduledSession(
             enrollment.batch.sessions,
           ),

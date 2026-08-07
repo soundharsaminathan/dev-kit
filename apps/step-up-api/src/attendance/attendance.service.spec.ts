@@ -229,6 +229,7 @@ describe("AttendanceService.markAttendance", () => {
 describe("AttendanceService.markAllPresent", () => {
   const prisma = {
     session: { findUnique: vi.fn() },
+    batchEnrollment: { findMany: vi.fn() },
     attendance: { upsert: vi.fn() },
     parentChild: { findUnique: vi.fn() },
     booking: { findMany: vi.fn(), findFirst: vi.fn() },
@@ -265,22 +266,11 @@ describe("AttendanceService.markAllPresent", () => {
     const session = makeSession();
     prisma.session.findUnique.mockResolvedValue({
       ...session,
+      batchId: session.batchId ?? "batch-1",
+      startsAt: session.startsAt ?? new Date("2026-08-01T10:00:00.000Z"),
       batch: {
         ...session.batch,
-        enrollments: [
-          {
-            studentId: "s1",
-            student: { name: "Ada" },
-          },
-          {
-            studentId: "s2",
-            student: { name: "Grace" },
-          },
-          {
-            studentId: "s3",
-            student: { name: "Marie" },
-          },
-        ],
+        id: "batch-1",
       },
       attendance: [
         {
@@ -297,6 +287,11 @@ describe("AttendanceService.markAllPresent", () => {
         },
       ],
     });
+    prisma.batchEnrollment.findMany.mockResolvedValue([
+      { studentId: "s1", student: { name: "Ada" }, status: "ACTIVE" },
+      { studentId: "s2", student: { name: "Grace" }, status: "ACTIVE" },
+      { studentId: "s3", student: { name: "Marie" }, status: "ACTIVE" },
+    ]);
     memberships.findActiveForBatch.mockResolvedValue({ id: "mem-1" });
     prisma.attendance.upsert.mockResolvedValue({
       id: "att-new",
@@ -317,14 +312,11 @@ describe("AttendanceService.markAllPresent", () => {
     const session = makeSession();
     prisma.session.findUnique.mockResolvedValue({
       ...session,
+      batchId: session.batchId ?? "batch-1",
+      startsAt: session.startsAt ?? new Date("2026-08-01T10:00:00.000Z"),
       batch: {
         ...session.batch,
-        enrollments: [
-          {
-            studentId: "s1",
-            student: { name: "Ada" },
-          },
-        ],
+        id: "batch-1",
       },
       attendance: [
         {
@@ -335,6 +327,9 @@ describe("AttendanceService.markAllPresent", () => {
         },
       ],
     });
+    prisma.batchEnrollment.findMany.mockResolvedValue([
+      { studentId: "s1", student: { name: "Ada" }, status: "ACTIVE" },
+    ]);
 
     await expect(
       service.markAllPresent(session.id, FIXTURE_USERS.trainer.id),
@@ -472,6 +467,7 @@ describe("AttendanceService QR", () => {
 describe("AttendanceService.getSessionRoster", () => {
   const prisma = {
     session: { findUnique: vi.fn() },
+    batchEnrollment: { findMany: vi.fn() },
     attendance: { findMany: vi.fn(), upsert: vi.fn() },
     parentChild: { findUnique: vi.fn() },
     booking: { findMany: vi.fn(), findFirst: vi.fn() },
@@ -505,12 +501,9 @@ describe("AttendanceService.getSessionRoster", () => {
   it("maps enrollments to roster with attendance", async () => {
     prisma.session.findUnique.mockResolvedValue({
       id: "session-1",
-      batch: {
-        enrollments: [
-          { studentId: "s1", student: { name: "Ada" } },
-          { studentId: "s2", student: { name: "Grace" } },
-        ],
-      },
+      batchId: "batch-1",
+      startsAt: new Date("2026-08-01T10:00:00.000Z"),
+      batch: { id: "batch-1" },
       attendance: [
         {
           id: "a1",
@@ -520,6 +513,10 @@ describe("AttendanceService.getSessionRoster", () => {
         },
       ],
     });
+    prisma.batchEnrollment.findMany.mockResolvedValue([
+      { studentId: "s1", student: { name: "Ada" }, status: "ACTIVE" },
+      { studentId: "s2", student: { name: "Grace" }, status: "ACTIVE" },
+    ]);
 
     const roster = await service.getSessionRoster("session-1");
 

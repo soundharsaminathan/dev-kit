@@ -233,6 +233,15 @@ class SwitchBatchDto {
   toBatchId!: string;
 }
 
+class UnenrollStudentDto {
+  @IsString()
+  studentId!: string;
+
+  @IsOptional()
+  @IsBoolean()
+  refund?: boolean;
+}
+
 class RateBatchDto {
   @IsString()
   studentId!: string;
@@ -319,6 +328,18 @@ export class BatchesController {
     return this.batchesService.listSwitchTargets(id, studentId);
   }
 
+  @Get(":id/unenroll-preview")
+  @Roles(UserRole.OWNER, UserRole.STAFF, UserRole.TRAINER)
+  getUnenrollPreview(
+    @Param("id") id: string,
+    @Query("studentId") studentId?: string,
+  ) {
+    if (!studentId) {
+      throw new BadRequestException("studentId is required");
+    }
+    return this.batchesService.getUnenrollPreview(id, studentId);
+  }
+
   @Get(":id")
   getById(@Param("id") id: string, @Query("studentId") studentId?: string) {
     return this.batchesService.getById(id, { studentId });
@@ -390,6 +411,14 @@ export class BatchesController {
   @Roles(UserRole.OWNER, UserRole.STAFF, UserRole.TRAINER)
   switchBatch(@Param("id") id: string, @Body() dto: SwitchBatchDto) {
     return this.batchesService.switchBatch(id, dto.studentId, dto.toBatchId);
+  }
+
+  @Post(":id/unenroll")
+  @Roles(UserRole.OWNER, UserRole.STAFF, UserRole.TRAINER)
+  unenroll(@Param("id") id: string, @Body() dto: UnenrollStudentDto) {
+    return this.batchesService.unenroll(id, dto.studentId, {
+      refund: dto.refund,
+    });
   }
 
   @Post(":id/rate")

@@ -1,5 +1,6 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@dev-ui/components/avatar";
 import { Badge } from "@dev-ui/components/badge";
+import { Checkbox } from "@dev-ui/components/checkbox";
 import { Menu } from "@dev-ui/components/menu";
 import {
   Select,
@@ -91,6 +92,22 @@ type SwitchTargetsResponse = {
   targets: SwitchTarget[];
 };
 
+type UnenrollPreview = {
+  studentId: string;
+  studentName: string;
+  batchId: string;
+  batchName: string;
+  enrolledAt: string;
+  futureBookings: number;
+  pendingInvoice: { id: string; amount: number; status: string } | null;
+  refundableInvoice: {
+    id: string;
+    amount: number;
+    paymentMethod: string | null;
+    paidAt: string | null;
+  } | null;
+};
+
 function planLabel(plan: BatchPlan) {
   const cadence =
     plan.billingCadence.charAt(0) +
@@ -114,6 +131,9 @@ export function BatchRoster({ batchId, capacity, active }: BatchRosterProps) {
     null,
   );
   const [selectedTargetId, setSelectedTargetId] = useState<string | null>(null);
+  const [unenrollStudent, setUnenrollStudent] =
+    useState<BatchEnrollmentRow | null>(null);
+  const [issueRefund, setIssueRefund] = useState(false);
 
   const query = useQuery({
     queryKey: ["batch", batchId],
@@ -127,6 +147,15 @@ export function BatchRoster({ batchId, capacity, active }: BatchRosterProps) {
         `/batches/${batchId}/switch-targets?studentId=${encodeURIComponent(switchStudent!.studentId)}`,
       ),
     enabled: switchStudent != null,
+  });
+
+  const unenrollPreviewQuery = useQuery({
+    queryKey: ["batch-unenroll-preview", batchId, unenrollStudent?.studentId],
+    queryFn: () =>
+      api.get<UnenrollPreview>(
+        `/batches/${batchId}/unenroll-preview?studentId=${encodeURIComponent(unenrollStudent!.studentId)}`,
+      ),
+    enabled: unenrollStudent != null,
   });
 
   const enrollments = useMemo(() => {
@@ -326,6 +355,78 @@ export function BatchRoster({ batchId, capacity, active }: BatchRosterProps) {
     },
   });
 
+  const unenroll = useMutation({
+    mutationFn: (input: { studentId: string; refund: boolean }) =>
+      api.post(`/batches/${batchId}/unenroll`, {
+        studentId: input.studentId,
+        refund: input.refund,
+      }),
+    onMutate: async ({ studentId: leavingStudentId }) => {
+      await queryClient.cancelQueries({ queryKey: ["batch", batchId] });
+      const previous = queryClient.getQueryData<BatchWithEnrollments>([
+        "batch",
+        batchId,
+      ]);
+
+      queryClient.setQueryData<BatchWithEnrollments>(
+        ["batch", batchId],
+        (current) => {
+          if (!current) return current;
+          const nextEnrollments = current.enrollments.filter(
+            (row) => row.studentId !== leavingStudentId,
+          );
+          const enrollmentCount = nextEnrollments.length;
+          return {
+            ...current,
+            enrollmentCount,
+            remainingSeats: Math.max(0, current.capacity - enrollmentCount),
+            enrollments: nextEnrollments,
+          };
+        },
+      );
+
+      return { previous };
+    },
+    onSuccess: (_data, { refund }) => {
+      toast({
+        title: "Student unenrolled",
+        description: refund
+          ? "Removed from this batch and future sessions. Refund recorded."
+          : "Removed from this batch and future sessions. Past attendance is kept.",
+        variant: "success",
+      });
+      setUnenrollStudent(null);
+      setIssueRefund(false);
+    },
+    onError: (error, _input, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(["batch", batchId], context.previous);
+      }
+      toast({
+        title: "Couldn’t unenroll student",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Could not unenroll student.",
+        variant: "error",
+      });
+    },
+    onSettled: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["batch", batchId] }),
+        queryClient.invalidateQueries({
+          queryKey: ["student-profile", studioId],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["batches", studioId],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["invoices", studioId],
+        }),
+      ]);
+    },
+  });
+
   function handleSelect(student: StudioStudent | null) {
     setSelectedStudent(student);
     setStudentId(student?.id ?? null);
@@ -339,6 +440,16 @@ export function BatchRoster({ batchId, capacity, active }: BatchRosterProps) {
   function closeSwitch() {
     setSwitchStudent(null);
     setSelectedTargetId(null);
+  }
+
+  function openUnenroll(row: BatchEnrollmentRow) {
+    setUnenrollStudent(row);
+    setIssueRefund(false);
+  }
+
+  function closeUnenroll() {
+    setUnenrollStudent(null);
+    setIssueRefund(false);
   }
 
   if (query.isError) {
@@ -538,15 +649,26 @@ export function BatchRoster({ batchId, capacity, active }: BatchRosterProps) {
                   </div>
                 </PressableCard>
 
-                <TouchButton
-                  size="sm"
-                  variant="default"
-                  className={styles.switchBtn}
-                  data-testid={`switch-batch-${row.studentId}`}
-                  onClick={() => openSwitch(row)}
-                >
-                  Switch
-                </TouchButton>
+                <div className={styles.rowActions}>
+                  <TouchButton
+                    size="sm"
+                    variant="default"
+                    className={styles.switchBtn}
+                    data-testid={`switch-batch-${row.studentId}`}
+                    onClick={() => openSwitch(row)}
+                  >
+                    Switch
+                  </TouchButton>
+                  <TouchButton
+                    size="sm"
+                    variant="danger"
+                    className={styles.switchBtn}
+                    data-testid={`unenroll-batch-${row.studentId}`}
+                    onClick={() => openUnenroll(row)}
+                  >
+                    Unenroll
+                  </TouchButton>
+                </div>
               </div>
             );
           })}
@@ -665,6 +787,109 @@ export function BatchRoster({ batchId, capacity, active }: BatchRosterProps) {
               fullWidth
               isDisabled={switchBatch.isPending}
               onClick={closeSwitch}
+            >
+              Cancel
+            </TouchButton>
+          </div>
+        </div>
+      </AppSheet>
+
+      <AppSheet
+        isOpen={unenrollStudent != null}
+        onOpenChange={(open) => {
+          if (!open) closeUnenroll();
+        }}
+        title={
+          unenrollStudent
+            ? `Unenroll · ${unenrollStudent.student.name}`
+            : "Unenroll"
+        }
+      >
+        <div className={staff.sheetStack}>
+          <p className={staff.rowMeta}>
+            Removes this student from the batch and cancels future sessions.
+            Past attendance and journey history stay for analytics.
+          </p>
+          {unenrollPreviewQuery.isLoading ? (
+            <p className={staff.rowMeta}>Checking refund options…</p>
+          ) : null}
+          {unenrollPreviewQuery.isError ? (
+            <ErrorState
+              description={
+                unenrollPreviewQuery.error instanceof Error
+                  ? unenrollPreviewQuery.error.message
+                  : "Could not load unenroll details."
+              }
+              action={
+                <TouchButton
+                  variant="primary"
+                  onClick={() => unenrollPreviewQuery.refetch()}
+                >
+                  Try again
+                </TouchButton>
+              }
+            />
+          ) : null}
+          {unenrollPreviewQuery.data?.pendingInvoice ? (
+            <p className={staff.rowMeta}>
+              Pending invoice of{" "}
+              {formatPrice(unenrollPreviewQuery.data.pendingInvoice.amount)}{" "}
+              will be voided.
+            </p>
+          ) : null}
+          {unenrollPreviewQuery.data?.futureBookings ? (
+            <p className={staff.rowMeta}>
+              {unenrollPreviewQuery.data.futureBookings} upcoming booking
+              {unenrollPreviewQuery.data.futureBookings === 1 ? "" : "s"} will
+              be cancelled.
+            </p>
+          ) : null}
+          {unenrollPreviewQuery.data?.refundableInvoice ? (
+            <Checkbox
+              isSelected={issueRefund}
+              onChange={setIssueRefund}
+              data-testid="unenroll-refund-toggle"
+            >
+              Refund latest payment (
+              {formatPrice(unenrollPreviewQuery.data.refundableInvoice.amount)})
+            </Checkbox>
+          ) : unenrollPreviewQuery.data ? (
+            <p className={staff.rowMeta}>
+              No paid invoice available to refund.
+            </p>
+          ) : null}
+          {unenroll.isError ? (
+            <ErrorState
+              description={
+                unenroll.error instanceof Error
+                  ? unenroll.error.message
+                  : "Could not unenroll student."
+              }
+            />
+          ) : null}
+          <div className={staff.sheetActions}>
+            <TouchButton
+              variant="danger"
+              fullWidth
+              isDisabled={!unenrollStudent || unenrollPreviewQuery.isLoading}
+              isPending={unenroll.isPending}
+              data-testid="confirm-unenroll-batch"
+              onClick={() => {
+                if (unenrollStudent) {
+                  unenroll.mutate({
+                    studentId: unenrollStudent.studentId,
+                    refund: issueRefund,
+                  });
+                }
+              }}
+            >
+              {issueRefund ? "Unenroll and refund" : "Confirm unenroll"}
+            </TouchButton>
+            <TouchButton
+              variant="default"
+              fullWidth
+              isDisabled={unenroll.isPending}
+              onClick={closeUnenroll}
             >
               Cancel
             </TouchButton>

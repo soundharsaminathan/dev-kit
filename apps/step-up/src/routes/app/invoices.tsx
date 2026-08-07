@@ -47,6 +47,7 @@ type StudioMember = {
 function statusBadgeVariant(status: Invoice["status"]) {
   if (status === "PAID") return "success" as const;
   if (status === "OVERDUE") return "danger" as const;
+  if (status === "REFUNDED") return "warning" as const;
   return "neutral" as const;
 }
 

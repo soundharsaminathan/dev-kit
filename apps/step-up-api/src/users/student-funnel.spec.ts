@@ -34,6 +34,7 @@ function enrollment(
   return {
     batchId: "batch-1",
     batchActive: true,
+    enrollmentActive: true,
     hasScheduledSession: true,
     hasCompletedSession: false,
     ...overrides,

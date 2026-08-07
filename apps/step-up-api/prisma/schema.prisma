@@ -33,6 +33,11 @@ enum EnrollmentMode {
   SELF_JOIN
 }
 
+enum BatchEnrollmentStatus {
+  ACTIVE
+  ENDED
+}
+
 enum SubscriptionKind {
   INDIVIDUAL
   FAMILY
@@ -77,6 +82,7 @@ enum InvoiceStatus {
   PENDING
   PAID
   OVERDUE
+  REFUNDED
 }
 
 enum PaymentMethod {
@@ -567,15 +573,20 @@ model BatchTrainer {
 }
 
 model BatchEnrollment {
-  id         String   @id @default(cuid())
+  id         String                @id @default(cuid())
   batchId    String
   studentId  String
-  enrolledAt DateTime @default(now())
+  enrolledAt DateTime              @default(now())
+  status     BatchEnrollmentStatus @default(ACTIVE)
+  endedAt    DateTime?
+  endReason  String?
 
   batch   Batch @relation(fields: [batchId], references: [id], onDelete: Cascade)
   student User  @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
   @@unique([batchId, studentId])
+  @@index([batchId, status])
+  @@index([studentId, status])
 }
 
 model Subscription {

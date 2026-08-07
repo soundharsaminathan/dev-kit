@@ -125,7 +125,11 @@ export class ScheduleConflictService {
     }
     if (studentIds.length > 0) {
       sessionPartyFilters.push({
-        batch: { enrollments: { some: { studentId: { in: studentIds } } } },
+        batch: {
+          enrollments: {
+            some: { studentId: { in: studentIds }, status: "ACTIVE" },
+          },
+        },
       });
     }
 
@@ -151,8 +155,8 @@ export class ScheduleConflictService {
             enrollments: {
               where:
                 studentIds.length > 0
-                  ? { studentId: { in: studentIds } }
-                  : undefined,
+                  ? { studentId: { in: studentIds }, status: "ACTIVE" }
+                  : { status: "ACTIVE" },
               select: { studentId: true },
             },
           },

@@ -35,6 +35,7 @@ export type StudentFunnelCounts = Record<StudentFunnelStage, number> & {
 export type StudentFunnelEnrollmentInput = {
   batchId: string;
   batchActive: boolean;
+  enrollmentActive: boolean;
   hasScheduledSession: boolean;
   hasCompletedSession: boolean;
 };
@@ -151,7 +152,9 @@ export function isDateInRange(date: Date, range: DateRange): boolean {
 function hasActiveBatchEnrollment(
   enrollments: StudentFunnelEnrollmentInput[],
 ): boolean {
-  return enrollments.some((enrollment) => enrollment.batchActive);
+  return enrollments.some(
+    (enrollment) => enrollment.enrollmentActive && enrollment.batchActive,
+  );
 }
 
 function hasCompletedBatchWithoutActiveMembership(

@@ -8,16 +8,19 @@ import {
 } from "@nestjs/common";
 import {
   BatchCategory,
+  BatchEnrollmentStatus,
   BillingCadence,
   BookingStatus,
   EnrollmentMode,
   IndividualAudience,
+  InvoiceStatus,
   type Prisma,
   SessionStatus,
   SessionType,
   SubscriptionKind,
   UserRole,
 } from "@prisma/client";
+import { BillingService } from "../billing/billing.service";
 import { ScheduleConflictService } from "../calendar/schedule-conflict.service";
 import { MediaService } from "../media/media.service";
 import {
@@ -38,6 +41,11 @@ import {
   countReservedSeatsByBatch,
   lockBatchRow,
 } from "./batch-capacity";
+import {
+  ACTIVE_ENROLLMENT_WHERE,
+  endEnrollmentData,
+  REACTIVATE_ENROLLMENT_DATA,
+} from "./enrollment-status";
 
 type BatchSchedule = {
   frequency: "DAILY" | "WEEKLY";
@@ -343,6 +351,7 @@ export class BatchesService {
     @Inject(MediaService) private readonly media: MediaService,
     @Inject(MembershipsService)
     private readonly memberships: MembershipsService,
+    @Inject(BillingService) private readonly billing: BillingService,
   ) {}
 
   private async withSignedCover<T extends { coverImageUrl?: string | null }>(
@@ -377,12 +386,14 @@ export class BatchesService {
           : {}),
       },
       include: {
-        enrollments: true,
+        enrollments: { where: ACTIVE_ENROLLMENT_WHERE },
         branch: { include: branchCoverInclude },
         certificateTemplate: true,
         trainers: { include: { trainer: true } },
         plans: { include: { subscription: true } },
-        _count: { select: { enrollments: true } },
+        _count: {
+          select: { enrollments: { where: ACTIVE_ENROLLMENT_WHERE } },
+        },
       },
       orderBy: { name: "asc" },
     });
@@ -495,13 +506,18 @@ export class BatchesService {
     const batch = await this.prisma.batch.findUniqueOrThrow({
       where: { id },
       include: {
-        enrollments: { include: { student: true } },
+        enrollments: {
+          where: ACTIVE_ENROLLMENT_WHERE,
+          include: { student: true },
+        },
         branch: { include: branchCoverInclude },
         certificateTemplate: true,
         sessions: { orderBy: { startsAt: "asc" } },
         trainers: { include: { trainer: true } },
         plans: { include: { subscription: true } },
-        _count: { select: { enrollments: true } },
+        _count: {
+          select: { enrollments: { where: ACTIVE_ENROLLMENT_WHERE } },
+        },
       },
     });
 
@@ -1048,7 +1064,11 @@ export class BatchesService {
   async remove(id: string) {
     const batch = await this.prisma.batch.findUnique({
       where: { id },
-      include: { _count: { select: { enrollments: true } } },
+      include: {
+        _count: {
+          select: { enrollments: { where: ACTIVE_ENROLLMENT_WHERE } },
+        },
+      },
     });
     if (!batch) {
       throw new NotFoundException("Batch not found");
@@ -1105,7 +1125,9 @@ export class BatchesService {
 
     const batch = await this.prisma.batch.findUnique({
       where: { id: batchId },
-      include: { enrollments: true },
+      include: {
+        enrollments: { where: ACTIVE_ENROLLMENT_WHERE },
+      },
     });
 
     if (!batch) {
@@ -1147,10 +1169,11 @@ export class BatchesService {
         where: {
           batchId_studentId: { batchId, studentId },
         },
-        update: {},
+        update: REACTIVATE_ENROLLMENT_DATA,
         create: {
           batchId,
           studentId,
+          status: BatchEnrollmentStatus.ACTIVE,
         },
       });
     });
@@ -1169,7 +1192,7 @@ export class BatchesService {
       where: { id: fromBatchId },
       include: {
         enrollments: {
-          where: { studentId },
+          where: { studentId, ...ACTIVE_ENROLLMENT_WHERE },
           take: 1,
         },
       },
@@ -1185,7 +1208,7 @@ export class BatchesService {
     }
 
     const alreadyEnrolled = await this.prisma.batchEnrollment.findMany({
-      where: { studentId },
+      where: { studentId, ...ACTIVE_ENROLLMENT_WHERE },
       select: { batchId: true },
     });
     const excludeIds = new Set([
@@ -1272,7 +1295,7 @@ export class BatchesService {
         where: { id: fromBatchId },
         include: {
           enrollments: {
-            where: { studentId },
+            where: { studentId, ...ACTIVE_ENROLLMENT_WHERE },
             take: 1,
           },
         },
@@ -1312,7 +1335,10 @@ export class BatchesService {
         batchId_studentId: { batchId: toBatchId, studentId },
       },
     });
-    if (existingTarget) {
+    if (
+      existingTarget &&
+      existingTarget.status === BatchEnrollmentStatus.ACTIVE
+    ) {
       throw new BadRequestException(
         "Student is already enrolled in the target batch",
       );
@@ -1363,18 +1389,262 @@ export class BatchesService {
       await lockBatchRow(tx, toBatchId);
       await assertBatchHasSeat(tx, toBatchId, target.capacity, studentId);
 
-      await tx.batchEnrollment.delete({
+      await tx.batchEnrollment.update({
         where: {
           batchId_studentId: { batchId: fromBatchId, studentId },
         },
+        data: endEnrollmentData("SWITCH"),
       });
 
-      return tx.batchEnrollment.create({
-        data: {
+      return tx.batchEnrollment.upsert({
+        where: {
+          batchId_studentId: { batchId: toBatchId, studentId },
+        },
+        update: REACTIVATE_ENROLLMENT_DATA,
+        create: {
           batchId: toBatchId,
           studentId,
+          status: BatchEnrollmentStatus.ACTIVE,
         },
       });
+    });
+  }
+
+  async getUnenrollPreview(batchId: string, studentId: string) {
+    const enrollment = await this.prisma.batchEnrollment.findFirst({
+      where: { batchId, studentId, ...ACTIVE_ENROLLMENT_WHERE },
+      include: {
+        student: true,
+        batch: { select: { id: true, name: true, studioId: true } },
+      },
+    });
+
+    if (!enrollment) {
+      throw new BadRequestException("Student is not enrolled in this batch");
+    }
+
+    const refundable = await this.findRefundableInvoice(batchId, studentId);
+    const pendingInvoice = await this.findPendingBatchInvoice(
+      batchId,
+      studentId,
+    );
+    const futureBookings = await this.prisma.booking.count({
+      where: {
+        batchId,
+        studentId,
+        status: {
+          in: [
+            BookingStatus.PENDING,
+            BookingStatus.CONFIRMED,
+            BookingStatus.AWAITING_PAYMENT,
+          ],
+        },
+        OR: [
+          { startsAt: { gt: new Date() } },
+          { session: { startsAt: { gt: new Date() } } },
+        ],
+      },
+    });
+
+    return {
+      studentId,
+      studentName: this.crypto.decryptUser(enrollment.student).name,
+      batchId: enrollment.batch.id,
+      batchName: enrollment.batch.name,
+      enrolledAt: enrollment.enrolledAt,
+      futureBookings,
+      pendingInvoice: pendingInvoice
+        ? {
+            id: pendingInvoice.id,
+            amount: Number(pendingInvoice.amount),
+            status: pendingInvoice.status,
+          }
+        : null,
+      refundableInvoice: refundable
+        ? {
+            id: refundable.id,
+            amount: Number(refundable.amount),
+            paymentMethod: refundable.paymentMethod,
+            paidAt: refundable.paidAt,
+          }
+        : null,
+    };
+  }
+
+  async unenroll(
+    batchId: string,
+    studentId: string,
+    options: { refund?: boolean } = {},
+  ) {
+    const enrollment = await this.prisma.batchEnrollment.findFirst({
+      where: { batchId, studentId, ...ACTIVE_ENROLLMENT_WHERE },
+      include: {
+        batch: { select: { id: true, studioId: true, name: true } },
+      },
+    });
+
+    if (!enrollment) {
+      throw new BadRequestException("Student is not enrolled in this batch");
+    }
+
+    const refund = options.refund === true;
+    let refundedInvoice: {
+      id: string;
+      amount: number;
+      status: InvoiceStatus;
+    } | null = null;
+
+    if (refund) {
+      const invoice = await this.findRefundableInvoice(batchId, studentId);
+      if (!invoice) {
+        throw new BadRequestException(
+          "No paid invoice available to refund for this enrollment",
+        );
+      }
+      const result = await this.billing.refundInvoice(invoice.id, {
+        reason: `Unenrolled from batch ${enrollment.batch.name}`,
+      });
+      refundedInvoice = {
+        id: result.id,
+        amount: Number(result.amount),
+        status: result.status,
+      };
+    }
+
+    const now = new Date();
+    const [ended, cancelledBookings, voidedPending] =
+      await this.prisma.$transaction(async (tx) => {
+        const endedEnrollment = await tx.batchEnrollment.update({
+          where: { id: enrollment.id },
+          data: endEnrollmentData("UNENROLL", now),
+        });
+
+        const cancelled = await tx.booking.updateMany({
+          where: {
+            batchId,
+            studentId,
+            status: {
+              in: [
+                BookingStatus.PENDING,
+                BookingStatus.CONFIRMED,
+                BookingStatus.AWAITING_PAYMENT,
+              ],
+            },
+            OR: [
+              { startsAt: { gt: now } },
+              { session: { startsAt: { gt: now } } },
+            ],
+          },
+          data: {
+            status: BookingStatus.CANCELLED,
+            paymentHoldExpiresAt: null,
+          },
+        });
+
+        const pendingIds = await tx.invoice.findMany({
+          where: {
+            status: {
+              in: [InvoiceStatus.PENDING, InvoiceStatus.OVERDUE],
+            },
+            OR: [
+              {
+                studentId,
+                purchaseMeta: {
+                  path: ["batchId"],
+                  equals: batchId,
+                },
+              },
+            ],
+          },
+          select: { id: true },
+        });
+
+        if (pendingIds.length > 0) {
+          await tx.invoice.deleteMany({
+            where: { id: { in: pendingIds.map((row) => row.id) } },
+          });
+        }
+
+        return [endedEnrollment, cancelled.count, pendingIds.length] as const;
+      });
+
+    return {
+      enrollment: ended,
+      cancelledFutureBookings: cancelledBookings,
+      voidedPendingInvoices: voidedPending,
+      refundedInvoice,
+    };
+  }
+
+  private async findPendingBatchInvoice(batchId: string, studentId: string) {
+    return this.prisma.invoice.findFirst({
+      where: {
+        studentId,
+        status: { in: [InvoiceStatus.PENDING, InvoiceStatus.OVERDUE] },
+        purchaseMeta: {
+          path: ["batchId"],
+          equals: batchId,
+        },
+      },
+      orderBy: { id: "desc" },
+    });
+  }
+
+  private async findRefundableInvoice(batchId: string, studentId: string) {
+    const batch = await this.prisma.batch.findUnique({
+      where: { id: batchId },
+      select: {
+        studioId: true,
+        plans: { select: { subscriptionId: true } },
+      },
+    });
+    if (!batch) {
+      return null;
+    }
+
+    const planSubscriptionIds = batch.plans.map((plan) => plan.subscriptionId);
+    if (planSubscriptionIds.length === 0) {
+      return null;
+    }
+
+    const membership = await this.memberships.findActiveForBatch(
+      studentId,
+      batchId,
+    );
+
+    const byMembership = membership
+      ? await this.prisma.invoice.findFirst({
+          where: {
+            status: InvoiceStatus.PAID,
+            membershipId: membership.id,
+            membership: {
+              subscription: {
+                kind: SubscriptionKind.INDIVIDUAL,
+                id: { in: planSubscriptionIds },
+              },
+            },
+          },
+          orderBy: { paidAt: "desc" },
+        })
+      : null;
+
+    if (byMembership) {
+      return byMembership;
+    }
+
+    return this.prisma.invoice.findFirst({
+      where: {
+        status: InvoiceStatus.PAID,
+        studioId: batch.studioId,
+        membership: {
+          subscription: {
+            kind: SubscriptionKind.INDIVIDUAL,
+            id: { in: planSubscriptionIds },
+          },
+          coveredStudents: { some: { studentId } },
+        },
+      },
+      orderBy: { paidAt: "desc" },
     });
   }
 
@@ -1461,7 +1731,9 @@ export class BatchesService {
           certificateTemplate: true,
           sessions: { orderBy: { startsAt: "asc" } },
           trainers: { include: { trainer: true } },
-          _count: { select: { enrollments: true } },
+          _count: {
+            select: { enrollments: { where: ACTIVE_ENROLLMENT_WHERE } },
+          },
         },
       });
     });
@@ -1482,6 +1754,9 @@ export class BatchesService {
     const studentIds = batch.enrollments.map(
       (enrollment) => enrollment.studentId,
     );
+    const enrolledCount = batch.enrollments.filter(
+      (enrollment) => enrollment.status === BatchEnrollmentStatus.ACTIVE,
+    ).length;
 
     const emptyBucket = () => ({
       collected: 0,
@@ -1568,7 +1843,7 @@ export class BatchesService {
     }
 
     return {
-      enrolledCount: batch.enrollments.length,
+      enrolledCount,
       totals,
       bySubscription: [...bySubscriptionMap.values()],
     };

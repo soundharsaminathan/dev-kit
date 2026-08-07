@@ -197,6 +197,7 @@ export class HomeService {
       this.prisma.batchEnrollment.findMany({
         where: {
           studentId: resolvedStudentId,
+          status: "ACTIVE",
           batch: { active: true },
         },
         include: {
@@ -228,7 +229,9 @@ export class HomeService {
           startsAt: { gte: todayStart, lt: weekEnd },
           batch: {
             active: true,
-            enrollments: { some: { studentId: resolvedStudentId } },
+            enrollments: {
+              some: { studentId: resolvedStudentId, status: "ACTIVE" },
+            },
           },
         },
         include: {
@@ -599,7 +602,11 @@ export class HomeService {
                 scheduleJson: true,
                 ratingAvg: true,
                 capacity: true,
-                _count: { select: { enrollments: true } },
+                _count: {
+                  select: {
+                    enrollments: { where: { status: "ACTIVE" } },
+                  },
+                },
               },
               orderBy: { name: "asc" },
               take: 24,

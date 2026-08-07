@@ -407,6 +407,7 @@ export class BillingService {
       [InvoiceStatus.PAID]: { count: 0, amount: 0 },
       [InvoiceStatus.PENDING]: { count: 0, amount: 0 },
       [InvoiceStatus.OVERDUE]: { count: 0, amount: 0 },
+      [InvoiceStatus.REFUNDED]: { count: 0, amount: 0 },
     };
     const byPaymentMethod: TrainerPaymentAnalytics["byPaymentMethod"] = {
       [PaymentMethod.CASH]: { count: 0, amount: 0 },
@@ -555,6 +556,10 @@ export class BillingService {
         OVERDUE: {
           count: byStatus.OVERDUE.count,
           amount: roundMoney(byStatus.OVERDUE.amount),
+        },
+        REFUNDED: {
+          count: byStatus.REFUNDED.count,
+          amount: roundMoney(byStatus.REFUNDED.amount),
         },
       },
       byPaymentMethod: {
@@ -1002,6 +1007,81 @@ export class BillingService {
     return { id, status: "CANCELLED" as const };
   }
 
+  async refundInvoice(id: string, options: { reason?: string } = {}) {
+    const invoice = await this.prisma.invoice.findUnique({
+      where: { id },
+      include: {
+        studio: {
+          select: {
+            id: true,
+            settings: {
+              select: {
+                razorpayKeyId: true,
+                razorpayKeySecret: true,
+                razorpaySecretIv: true,
+              },
+            },
+          },
+        },
+        membership: true,
+      },
+    });
+
+    if (!invoice) {
+      throw new NotFoundException("Invoice not found");
+    }
+
+    if (invoice.status === InvoiceStatus.REFUNDED) {
+      return invoice;
+    }
+
+    if (invoice.status !== InvoiceStatus.PAID) {
+      throw new BadRequestException("Only paid invoices can be refunded");
+    }
+
+    if (
+      invoice.paymentMethod === PaymentMethod.RAZORPAY &&
+      invoice.razorpayPaymentId
+    ) {
+      const amountPaise = Math.round(Number(invoice.amount) * 100);
+      await this.razorpay.createRefund(
+        {
+          paymentId: invoice.razorpayPaymentId,
+          amountPaise,
+          notes: options.reason
+            ? { reason: options.reason.slice(0, 512) }
+            : undefined,
+        },
+        invoice.studio.settings,
+      );
+    }
+
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const refunded = await tx.invoice.update({
+        where: { id },
+        data: { status: InvoiceStatus.REFUNDED },
+      });
+
+      if (invoice.membershipId && invoice.membership) {
+        const otherActiveSeats = await tx.membershipCoveredStudent.count({
+          where: {
+            membershipId: invoice.membershipId,
+          },
+        });
+        if (otherActiveSeats <= 1 && invoice.membership.status === "ACTIVE") {
+          await tx.membership.update({
+            where: { id: invoice.membershipId },
+            data: { status: "EXPIRED" },
+          });
+        }
+      }
+
+      return refunded;
+    });
+
+    return updated;
+  }
+
   private async expireStaleCheckoutInvoices() {
     await this.prisma.invoice.deleteMany({
       where: {
@@ -1118,6 +1198,7 @@ export class BillingService {
         PAID: { count: 0, amount: 0 },
         PENDING: { count: 0, amount: 0 },
         OVERDUE: { count: 0, amount: 0 },
+        REFUNDED: { count: 0, amount: 0 },
       },
       byPaymentMethod: {
         CASH: { count: 0, amount: 0 },

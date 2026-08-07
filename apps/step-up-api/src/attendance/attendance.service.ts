@@ -16,6 +16,7 @@ import {
   SessionStatus,
   UserRole,
 } from "@prisma/client";
+import { enrollmentVisibleAtSession } from "../batches/enrollment-status";
 import { MembershipsService } from "../memberships/memberships.service";
 import { NotificationsService } from "../notifications/notifications.service";
 import { PrismaService } from "../prisma/prisma.service";
@@ -60,14 +61,7 @@ export class AttendanceService {
     const session = await this.prisma.session.findUnique({
       where: { id: sessionId },
       include: {
-        batch: {
-          include: {
-            enrollments: {
-              include: { student: true },
-              orderBy: { studentId: "asc" },
-            },
-          },
-        },
+        batch: true,
         attendance: true,
       },
     });
@@ -75,6 +69,15 @@ export class AttendanceService {
     if (!session) {
       throw new BadRequestException("Session not found");
     }
+
+    const enrollments = await this.prisma.batchEnrollment.findMany({
+      where: {
+        batchId: session.batchId,
+        ...enrollmentVisibleAtSession(session.startsAt),
+      },
+      include: { student: true },
+      orderBy: { studentId: "asc" },
+    });
 
     const trialBookings = await this.prisma.booking.findMany({
       where: {
@@ -90,14 +93,14 @@ export class AttendanceService {
     );
 
     const enrolledIds = new Set(
-      session.batch.enrollments.map((enrollment) => enrollment.studentId),
+      enrollments.map((enrollment) => enrollment.studentId),
     );
     const trialByStudent = new Map(
       trialBookings.map((booking) => [booking.studentId, booking]),
     );
 
     const monthlyUnpaidIds = await this.memberships.findMonthlyUnpaidStudentIds(
-      session.batch.enrollments.map((enrollment) => enrollment.studentId),
+      enrollments.map((enrollment) => enrollment.studentId),
     );
 
     const roster: Array<{
@@ -113,7 +116,7 @@ export class AttendanceService {
       } | null;
     }> = [];
 
-    for (const enrollment of session.batch.enrollments) {
+    for (const enrollment of enrollments) {
       const record = attendanceByStudent.get(enrollment.studentId);
       const trial = trialByStudent.get(enrollment.studentId);
       roster.push({
