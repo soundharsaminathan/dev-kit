@@ -50,7 +50,10 @@ export class CalendarService {
                 ...(query.studentId
                   ? {
                       enrollments: {
-                        some: { studentId: query.studentId },
+                        some: {
+                          studentId: query.studentId,
+                          status: "ACTIVE",
+                        },
                       },
                     }
                   : {}),
@@ -63,7 +66,10 @@ export class CalendarService {
           include: {
             branch: { select: { id: true, name: true } },
             trainers: { select: { trainerId: true } },
-            enrollments: { select: { studentId: true } },
+            enrollments: {
+              where: { status: "ACTIVE" },
+              select: { studentId: true },
+            },
           },
         },
       },

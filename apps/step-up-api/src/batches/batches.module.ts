@@ -1,4 +1,5 @@
-import { Module } from "@nestjs/common";
+import { forwardRef, Module } from "@nestjs/common";
+import { BillingModule } from "../billing/billing.module";
 import { CalendarModule } from "../calendar/calendar.module";
 import { MediaModule } from "../media/media.module";
 import { MembershipsModule } from "../memberships/memberships.module";
@@ -14,6 +15,7 @@ import { BatchesService } from "./batches.service";
     MembershipsModule,
     UsersModule,
     MediaModule,
+    forwardRef(() => BillingModule),
   ],
   controllers: [BatchesController],
   providers: [BatchesService],

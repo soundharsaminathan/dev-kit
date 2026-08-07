@@ -187,6 +187,57 @@ export class RazorpayService {
     }
   }
 
+  async createRefund(
+    input: {
+      paymentId: string;
+      amountPaise: number;
+      notes?: Record<string, string>;
+    },
+    settings?: StudioRazorpaySettings,
+  ): Promise<{ refundId: string; amount: number }> {
+    if (!Number.isFinite(input.amountPaise) || input.amountPaise < 100) {
+      throw new BadRequestException("Refund amount must be at least 100 paise");
+    }
+
+    const keys = this.resolveKeys(settings);
+    if (!keys) {
+      throw new BadRequestException("Razorpay is not configured");
+    }
+
+    try {
+      const client = new Razorpay({
+        key_id: keys.keyId,
+        key_secret: keys.keySecret,
+      });
+      const refund = await client.payments.refund(input.paymentId, {
+        amount: input.amountPaise,
+        notes: input.notes,
+      });
+
+      return {
+        refundId: String(refund.id),
+        amount: Number(refund.amount),
+      };
+    } catch (error) {
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+
+      const status = razorpayErrorStatus(error);
+      if (status === 401 || status === 403) {
+        throw new BadRequestException(
+          "Razorpay key ID and secret do not match. Re-save both from the same API Keys page in Settings → Payments.",
+        );
+      }
+
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Failed to create Razorpay refund";
+      throw new InternalServerErrorException(message);
+    }
+  }
+
   verifyPaymentSignature(
     input: VerifyPaymentSignatureInput,
     settings?: StudioRazorpaySettings,

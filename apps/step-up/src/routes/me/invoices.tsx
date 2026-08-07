@@ -13,7 +13,7 @@ import styles from "./invoices.module.scss";
 type Invoice = {
   id: string;
   amount: number;
-  status: "PENDING" | "PAID" | "OVERDUE";
+  status: "PENDING" | "PAID" | "OVERDUE" | "REFUNDED";
   dueDate: string;
 };
 
@@ -82,7 +82,9 @@ function MeInvoicesPage() {
                         ? "success"
                         : invoice.status === "OVERDUE"
                           ? "danger"
-                          : "neutral"
+                          : invoice.status === "REFUNDED"
+                            ? "warning"
+                            : "neutral"
                     }
                   >
                     {invoice.status}

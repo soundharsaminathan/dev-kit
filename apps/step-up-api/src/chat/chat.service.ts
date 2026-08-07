@@ -352,7 +352,7 @@ export class ChatService {
     const shared = await this.prisma.batchTrainer.findFirst({
       where: {
         trainerId,
-        batch: { enrollments: { some: { studentId } } },
+        batch: { enrollments: { some: { studentId, status: "ACTIVE" } } },
       },
       select: { batchId: true },
     });
@@ -540,7 +540,10 @@ export class ChatService {
       where: { id: batchId },
       include: {
         trainers: { select: { trainerId: true } },
-        enrollments: { select: { studentId: true } },
+        enrollments: {
+          where: { status: "ACTIVE" },
+          select: { studentId: true },
+        },
       },
     });
     if (!batch) {
@@ -1239,7 +1242,10 @@ export class ChatService {
         select: {
           batch: {
             select: {
-              enrollments: { select: { studentId: true } },
+              enrollments: {
+                where: { status: "ACTIVE" },
+                select: { studentId: true },
+              },
             },
           },
         },
@@ -1261,7 +1267,7 @@ export class ChatService {
           select: { id: true },
         }),
         this.prisma.batchEnrollment.findMany({
-          where: { studentId: user.id },
+          where: { studentId: user.id, status: "ACTIVE" },
           select: {
             batch: {
               select: {

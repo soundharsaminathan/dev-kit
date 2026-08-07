@@ -50,6 +50,9 @@ type StudentStudioProfile = {
     name: string;
     active: boolean;
     category: "KIDS" | "ADULTS";
+    enrollmentStatus?: "ACTIVE" | "ENDED";
+    enrolledAt?: string;
+    endedAt?: string | null;
   }>;
   memberships: Array<{
     id: string;
@@ -74,7 +77,7 @@ type StudentStudioProfile = {
     amount: number;
     referralDiscount?: number;
     studioDiscount?: number;
-    status: "PENDING" | "PAID" | "OVERDUE";
+    status: "PENDING" | "PAID" | "OVERDUE" | "REFUNDED";
     paymentMethod?: "CASH" | "UPI_MANUAL" | "RAZORPAY" | null;
     paidAt?: string | null;
   }>;
@@ -715,8 +718,20 @@ function StudentDetailPage() {
                       <div className={staff.rowCard}>
                         <div className={staff.attentionTop}>
                           <span className={staff.rowTitle}>{batch.name}</span>
-                          <Badge variant={batch.active ? "success" : "neutral"}>
-                            {batch.active ? "Active" : "Inactive"}
+                          <Badge
+                            variant={
+                              batch.enrollmentStatus === "ENDED"
+                                ? "neutral"
+                                : batch.active
+                                  ? "success"
+                                  : "neutral"
+                            }
+                          >
+                            {batch.enrollmentStatus === "ENDED"
+                              ? "Unenrolled"
+                              : batch.active
+                                ? "Active"
+                                : "Inactive"}
                           </Badge>
                         </div>
                         <p className={staff.rowMeta}>

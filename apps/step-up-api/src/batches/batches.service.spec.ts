@@ -112,6 +112,7 @@ describe("BatchesService branch validation", () => {
       trialSlotsCache as never,
       media as never,
       memberships as never,
+      { refundInvoice: vi.fn() } as never,
     );
     prisma.$transaction.mockImplementation(
       async (callback: (tx: typeof prisma) => unknown) => callback(prisma),
@@ -245,6 +246,7 @@ describe("BatchesService update", () => {
       {
         purchaseForBatch: vi.fn(),
       } as never,
+      { refundInvoice: vi.fn() } as never,
     );
     prisma.$transaction.mockImplementation(
       async (callback: (tx: typeof prisma) => unknown) => callback(prisma),
@@ -470,6 +472,7 @@ describe("BatchesService getRevenue", () => {
       {
         purchaseForBatch: vi.fn(),
       } as never,
+      { refundInvoice: vi.fn() } as never,
     );
   });
 
@@ -477,7 +480,7 @@ describe("BatchesService getRevenue", () => {
     prisma.batch.findUnique.mockResolvedValue({
       id: "batch-1",
       studioId: "studio-1",
-      enrollments: [{ studentId: "student-1" }],
+      enrollments: [{ studentId: "student-1", status: "ACTIVE" }],
     });
     prisma.invoice.findMany.mockResolvedValue([
       {
@@ -572,6 +575,7 @@ describe("BatchesService rate", () => {
       {
         purchaseForBatch: vi.fn(),
       } as never,
+      { refundInvoice: vi.fn() } as never,
     );
     prisma.$transaction.mockImplementation(
       async (callback: (tx: typeof prisma) => unknown) => callback(prisma),
@@ -679,6 +683,7 @@ describe("BatchesService.remove and enroll", () => {
       trialSlotsCache as never,
       media as never,
       memberships as never,
+      { refundInvoice: vi.fn() } as never,
     );
     prisma.$transaction.mockImplementation(
       async (callback: (tx: typeof prisma) => unknown) => callback(prisma),
@@ -847,6 +852,7 @@ describe("BatchesService.listByStudio viewer enrollment", () => {
       { invalidate: vi.fn() } as never,
       media as never,
       { purchaseForBatch: vi.fn() } as never,
+      { refundInvoice: vi.fn() } as never,
     );
     prisma.batchEnrollment.findMany.mockResolvedValue([]);
     prisma.batchEnrollment.findFirst.mockResolvedValue(null);
@@ -1027,6 +1033,8 @@ describe("BatchesService.switchBatch", () => {
       findFirst: vi.fn(),
       delete: vi.fn(),
       create: vi.fn(),
+      update: vi.fn(),
+      upsert: vi.fn(),
     },
     booking: {
       findMany: vi.fn(),
@@ -1060,6 +1068,7 @@ describe("BatchesService.switchBatch", () => {
       { invalidate: vi.fn() } as never,
       { signReadUrl: vi.fn(async (url: string | null) => url) } as never,
       memberships as never,
+      { refundInvoice: vi.fn() } as never,
     );
     prisma.$transaction.mockImplementation(
       async (callback: (tx: typeof prisma) => unknown) => callback(prisma),
@@ -1098,10 +1107,11 @@ describe("BatchesService.switchBatch", () => {
       subscription: { id: "sub-1", name: "Kids Monthly", active: true },
       coveredStudents: [{ studentId: "student-1", seatRole: "KID" }],
     });
-    prisma.batchEnrollment.create.mockResolvedValue({
+    prisma.batchEnrollment.upsert.mockResolvedValue({
       id: "enroll-2",
       batchId: "batch-2",
       studentId: "student-1",
+      status: "ACTIVE",
     });
 
     await expect(
@@ -1116,16 +1126,25 @@ describe("BatchesService.switchBatch", () => {
     ).toHaveBeenCalledWith("student-1", "batch-2", {
       excludeBatchIds: ["batch-1"],
     });
-    expect(prisma.batchEnrollment.delete).toHaveBeenCalledWith({
+    expect(prisma.batchEnrollment.update).toHaveBeenCalledWith({
       where: {
         batchId_studentId: { batchId: "batch-1", studentId: "student-1" },
       },
+      data: expect.objectContaining({
+        status: "ENDED",
+        endReason: "SWITCH",
+      }),
     });
-    expect(prisma.batchEnrollment.create).toHaveBeenCalledWith({
-      data: {
+    expect(prisma.batchEnrollment.upsert).toHaveBeenCalledWith({
+      where: {
+        batchId_studentId: { batchId: "batch-2", studentId: "student-1" },
+      },
+      update: expect.objectContaining({ status: "ACTIVE" }),
+      create: expect.objectContaining({
         batchId: "batch-2",
         studentId: "student-1",
-      },
+        status: "ACTIVE",
+      }),
     });
   });
 
@@ -1157,7 +1176,7 @@ describe("BatchesService.switchBatch", () => {
     await expect(
       service.switchBatch("batch-1", "student-1", "batch-2"),
     ).rejects.toBeInstanceOf(BadRequestException);
-    expect(prisma.batchEnrollment.delete).not.toHaveBeenCalled();
+    expect(prisma.batchEnrollment.update).not.toHaveBeenCalled();
   });
 
   it("rejects when student is not enrolled in the source batch", async () => {
@@ -1227,7 +1246,7 @@ describe("BatchesService.switchBatch", () => {
     await expect(
       service.switchBatch("batch-1", "student-1", "batch-2"),
     ).rejects.toBeInstanceOf(BadRequestException);
-    expect(prisma.batchEnrollment.delete).not.toHaveBeenCalled();
+    expect(prisma.batchEnrollment.update).not.toHaveBeenCalled();
   });
 
   it("lists same-plan targets for paid members", async () => {
@@ -1290,5 +1309,159 @@ describe("BatchesService.switchBatch", () => {
       reason: "No active subscription covering this batch",
       targets: [],
     });
+  });
+});
+
+describe("BatchesService.unenroll", () => {
+  const prisma = {
+    batch: {
+      findUnique: vi.fn(),
+    },
+    batchEnrollment: {
+      findFirst: vi.fn(),
+      update: vi.fn(),
+    },
+    booking: {
+      updateMany: vi.fn(),
+      count: vi.fn(),
+    },
+    invoice: {
+      findFirst: vi.fn(),
+      findMany: vi.fn(),
+      deleteMany: vi.fn(),
+    },
+    $transaction: vi.fn(),
+  };
+
+  const memberships = {
+    findActiveForBatch: vi.fn(),
+  };
+
+  const billing = {
+    refundInvoice: vi.fn(),
+  };
+
+  let service: BatchesService;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    service = new BatchesService(
+      prisma as never,
+      { decryptUser: (user: { name: string }) => user } as never,
+      {
+        assertNoConflicts: vi.fn(),
+        assertStudentAvailableForBatch: vi.fn(),
+      } as never,
+      { invalidate: vi.fn() } as never,
+      { signReadUrl: vi.fn(async (url: string | null) => url) } as never,
+      memberships as never,
+      billing as never,
+    );
+    prisma.$transaction.mockImplementation(
+      async (callback: (tx: typeof prisma) => unknown) => callback(prisma),
+    );
+    prisma.booking.updateMany.mockResolvedValue({ count: 1 });
+    prisma.invoice.findMany.mockResolvedValue([]);
+    prisma.invoice.deleteMany.mockResolvedValue({ count: 0 });
+  });
+
+  it("soft-ends enrollment and cancels future bookings without refund", async () => {
+    prisma.batchEnrollment.findFirst.mockResolvedValue({
+      id: "enroll-1",
+      batchId: "batch-1",
+      studentId: "student-1",
+      status: "ACTIVE",
+      batch: { id: "batch-1", studioId: "studio-1", name: "Beginner" },
+    });
+    prisma.batchEnrollment.update.mockResolvedValue({
+      id: "enroll-1",
+      status: "ENDED",
+      endReason: "UNENROLL",
+    });
+
+    const result = await service.unenroll("batch-1", "student-1");
+
+    expect(billing.refundInvoice).not.toHaveBeenCalled();
+    expect(prisma.batchEnrollment.update).toHaveBeenCalledWith({
+      where: { id: "enroll-1" },
+      data: expect.objectContaining({
+        status: "ENDED",
+        endReason: "UNENROLL",
+      }),
+    });
+    expect(prisma.booking.updateMany).toHaveBeenCalled();
+    expect(result).toMatchObject({
+      cancelledFutureBookings: 1,
+      voidedPendingInvoices: 0,
+      refundedInvoice: null,
+    });
+  });
+
+  it("refunds when requested and a paid invoice exists", async () => {
+    prisma.batchEnrollment.findFirst.mockResolvedValue({
+      id: "enroll-1",
+      batchId: "batch-1",
+      studentId: "student-1",
+      status: "ACTIVE",
+      batch: { id: "batch-1", studioId: "studio-1", name: "Beginner" },
+    });
+    prisma.batch.findUnique.mockResolvedValue({
+      studioId: "studio-1",
+      plans: [{ subscriptionId: "sub-1" }],
+    });
+    memberships.findActiveForBatch.mockResolvedValue({
+      id: "mem-1",
+      subscriptionId: "sub-1",
+    });
+    prisma.invoice.findFirst.mockResolvedValue({
+      id: "inv-1",
+      amount: 2000,
+      status: "PAID",
+      paymentMethod: "CASH",
+      paidAt: new Date("2026-08-01"),
+    });
+    billing.refundInvoice.mockResolvedValue({
+      id: "inv-1",
+      amount: 2000,
+      status: "REFUNDED",
+    });
+    prisma.batchEnrollment.update.mockResolvedValue({
+      id: "enroll-1",
+      status: "ENDED",
+    });
+
+    const result = await service.unenroll("batch-1", "student-1", {
+      refund: true,
+    });
+
+    expect(billing.refundInvoice).toHaveBeenCalledWith("inv-1", {
+      reason: "Unenrolled from batch Beginner",
+    });
+    expect(result.refundedInvoice).toEqual({
+      id: "inv-1",
+      amount: 2000,
+      status: "REFUNDED",
+    });
+  });
+
+  it("rejects refund when no paid invoice exists", async () => {
+    prisma.batchEnrollment.findFirst.mockResolvedValue({
+      id: "enroll-1",
+      batchId: "batch-1",
+      studentId: "student-1",
+      status: "ACTIVE",
+      batch: { id: "batch-1", studioId: "studio-1", name: "Beginner" },
+    });
+    prisma.batch.findUnique.mockResolvedValue({
+      studioId: "studio-1",
+      plans: [{ subscriptionId: "sub-1" }],
+    });
+    memberships.findActiveForBatch.mockResolvedValue(null);
+    prisma.invoice.findFirst.mockResolvedValue(null);
+
+    await expect(
+      service.unenroll("batch-1", "student-1", { refund: true }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(billing.refundInvoice).not.toHaveBeenCalled();
   });
 });

@@ -12,7 +12,7 @@ export class RetentionService {
 
   async getBatchStats(batchId: string) {
     const enrollments = await this.prisma.batchEnrollment.findMany({
-      where: { batchId },
+      where: { batchId, status: "ACTIVE" },
       include: {
         student: {
           include: {

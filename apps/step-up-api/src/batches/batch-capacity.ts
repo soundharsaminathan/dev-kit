@@ -1,5 +1,6 @@
 import { BadRequestException } from "@nestjs/common";
 import { BookingStatus, BookingType, type Prisma } from "@prisma/client";
+import { ACTIVE_ENROLLMENT_WHERE } from "./enrollment-status";
 
 export const PAYMENT_HOLD_MS = 600_000;
 
@@ -47,7 +48,7 @@ export async function countOccupiedSeats(
   const now = new Date();
   const [enrollments, holdings] = await Promise.all([
     tx.batchEnrollment.findMany({
-      where: { batchId },
+      where: { batchId, ...ACTIVE_ENROLLMENT_WHERE },
       select: { studentId: true },
     }),
     tx.booking.findMany({
@@ -85,7 +86,7 @@ export async function assertBatchHasSeat(
   const occupied = await countOccupiedSeats(tx, batchId);
   const alreadyCounted =
     (await tx.batchEnrollment.findFirst({
-      where: { batchId, studentId },
+      where: { batchId, studentId, ...ACTIVE_ENROLLMENT_WHERE },
       select: { id: true },
     })) != null ||
     (await tx.booking.findFirst({
@@ -129,7 +130,7 @@ export async function countReservedSeatsByBatch(
 
   const [enrollments, holdings] = await Promise.all([
     tx.batchEnrollment.findMany({
-      where: { batchId: { in: batchIds } },
+      where: { batchId: { in: batchIds }, ...ACTIVE_ENROLLMENT_WHERE },
       select: { batchId: true, studentId: true },
     }),
     tx.booking.findMany({

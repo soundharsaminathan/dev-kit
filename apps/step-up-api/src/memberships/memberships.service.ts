@@ -6,6 +6,7 @@ import {
 } from "@nestjs/common";
 import {
   BatchCategory,
+  BatchEnrollmentStatus,
   BillingCadence,
   IndividualAudience,
   InvoiceStatus,
@@ -19,6 +20,7 @@ import {
   lockBatchRow,
   paymentHoldExpiresAt,
 } from "../batches/batch-capacity";
+import { REACTIVATE_ENROLLMENT_DATA } from "../batches/enrollment-status";
 import { ScheduleConflictService } from "../calendar/schedule-conflict.service";
 import { NotificationsService } from "../notifications/notifications.service";
 import { PrismaService } from "../prisma/prisma.service";
@@ -131,10 +133,11 @@ export class MembershipsService {
               studentId: covered.studentId,
             },
           },
-          update: {},
+          update: REACTIVATE_ENROLLMENT_DATA,
           create: {
             batchId,
             studentId: covered.studentId,
+            status: BatchEnrollmentStatus.ACTIVE,
           },
         });
       }

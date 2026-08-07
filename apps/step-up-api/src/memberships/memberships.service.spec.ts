@@ -461,14 +461,22 @@ describe("MembershipsService.assign family packs", () => {
     expect(prisma.batchEnrollment.upsert).toHaveBeenCalledTimes(2);
     expect(prisma.batchEnrollment.upsert).toHaveBeenCalledWith(
       expect.objectContaining({
-        update: {},
-        create: { batchId: "batch-adult", studentId: "owner-1" },
+        update: expect.objectContaining({ status: "ACTIVE" }),
+        create: expect.objectContaining({
+          batchId: "batch-adult",
+          studentId: "owner-1",
+          status: "ACTIVE",
+        }),
       }),
     );
     expect(prisma.batchEnrollment.upsert).toHaveBeenCalledWith(
       expect.objectContaining({
-        update: {},
-        create: { batchId: "batch-kid", studentId: "kid-1" },
+        update: expect.objectContaining({ status: "ACTIVE" }),
+        create: expect.objectContaining({
+          batchId: "batch-kid",
+          studentId: "kid-1",
+          status: "ACTIVE",
+        }),
       }),
     );
   });

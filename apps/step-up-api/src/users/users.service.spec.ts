@@ -824,11 +824,12 @@ describe("UsersService.createStudent", () => {
       where: {
         batchId_studentId: { batchId: "batch-1", studentId: "student-new" },
       },
-      update: {},
-      create: {
+      update: expect.objectContaining({ status: "ACTIVE" }),
+      create: expect.objectContaining({
         batchId: "batch-1",
         studentId: "student-new",
-      },
+        status: "ACTIVE",
+      }),
     });
   });
 
@@ -906,11 +907,12 @@ describe("UsersService.createStudent", () => {
       where: {
         batchId_studentId: { batchId: "batch-1", studentId: "student-new" },
       },
-      update: {},
-      create: {
+      update: expect.objectContaining({ status: "ACTIVE" }),
+      create: expect.objectContaining({
         batchId: "batch-1",
         studentId: "student-new",
-      },
+        status: "ACTIVE",
+      }),
     });
   });
 
