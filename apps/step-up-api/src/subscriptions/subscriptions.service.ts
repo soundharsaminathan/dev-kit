@@ -2,6 +2,7 @@ import { BadRequestException, Inject, Injectable } from "@nestjs/common";
 import {
   BillingCadence,
   type FamilyPack,
+  type IndividualAudience,
   type Prisma,
   SubscriptionKind,
 } from "@prisma/client";
