@@ -383,6 +383,53 @@ describe("Drawer", () => {
     expect(screen.queryByText("Drawer content")).not.toBeInTheDocument();
   });
 
+  it("does not capture pointer events on form inputs", () => {
+    render(
+      <Drawer defaultOpen placement="bottom">
+        <label htmlFor="referral-discount">Referral discount</label>
+        <input id="referral-discount" data-testid="referral-discount" />
+      </Drawer>,
+    );
+
+    const input = screen.getByTestId("referral-discount");
+    const pointerDown = new MouseEvent("pointerdown", {
+      bubbles: true,
+      cancelable: true,
+      button: 0,
+      clientX: 200,
+      clientY: 200,
+    });
+    Object.defineProperty(pointerDown, "pointerId", { value: 1 });
+    Object.defineProperty(pointerDown, "pointerType", { value: "touch" });
+    Object.defineProperty(pointerDown, "pageX", { value: 200 });
+    Object.defineProperty(pointerDown, "pageY", { value: 200 });
+
+    act(() => {
+      input.dispatchEvent(pointerDown);
+    });
+
+    expect(pointerDown.defaultPrevented).toBe(false);
+    expect(getDrawerPanel()).not.toHaveAttribute("data-swiping");
+
+    act(() => {
+      input.focus();
+    });
+    expect(input).toHaveFocus();
+  });
+
+  it("does not dismiss when swiping starts on a form input", () => {
+    render(
+      <Drawer defaultOpen placement="bottom">
+        <input data-testid="studio-discount" />
+      </Drawer>,
+    );
+
+    swipeDrawer("bottom", 120, screen.getByTestId("studio-discount"));
+    finishDrawerExit();
+
+    expect(screen.getByTestId("studio-discount")).toBeInTheDocument();
+  });
+
   it("opens when controlled isOpen becomes true", () => {
     const { rerender } = render(
       <Drawer isOpen={false}>

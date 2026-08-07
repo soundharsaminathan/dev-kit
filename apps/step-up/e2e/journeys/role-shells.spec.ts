@@ -107,15 +107,23 @@ test.describe("role shells @critical", () => {
 
     await page.getByRole("button", { name: "Create studio" }).click();
     await expect(page).toHaveURL(/\/admin\/studios\/new\/?$/);
-    await expect(page.getByText(/Step 1 of 4/)).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "Details", exact: true }),
+    ).toBeVisible();
     await page.getByLabel("Studio name").fill("E2E Admin Studio");
     await page.getByLabel("Owner email").fill("e2e-new-owner@stepup.dev");
     await page.getByTestId("studio-wizard-next").click();
-    await expect(page.getByText(/Step 2 of 4/)).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "Theme", exact: true }),
+    ).toBeVisible();
     await page.getByTestId("studio-wizard-next").click();
-    await expect(page.getByText(/Step 3 of 4/)).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "Optional Branding", exact: true }),
+    ).toBeVisible();
     await page.getByTestId("studio-wizard-next").click();
-    await expect(page.getByText(/Step 4 of 4/)).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "Payments", exact: true }),
+    ).toBeVisible();
 
     await page.goto("/admin");
     await waitForAppReady(page);

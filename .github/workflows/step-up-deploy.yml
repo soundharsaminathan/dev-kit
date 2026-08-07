@@ -140,7 +140,11 @@ jobs:
           if ! npx --yes wrangler@4 pages project list 2>/dev/null | grep -qE '(^|[^a-zA-Z0-9_-])step-up([^a-zA-Z0-9_-]|$)'; then
             npx --yes wrangler@4 pages project create step-up --production-branch=step-up
           fi
-          npx --yes wrangler@4 pages deploy apps/step-up/dist --project-name=step-up
+          # Checkout uses a detached SHA; without --branch wrangler aliases as
+          # "head" and only updates head.step-up.pages.dev — not production.
+          npx --yes wrangler@4 pages deploy apps/step-up/dist \
+            --project-name=step-up \
+            --branch=step-up
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
