@@ -1,4 +1,4 @@
-import type { Edge, Node } from "@xyflow/react";
+import { type Edge, type Node, Position } from "@xyflow/react";
 import type {
   JourneyClusterEvent,
   JourneyEvent,
@@ -153,8 +153,12 @@ export function layoutPathItems(items: JourneyPathItem[]): {
           : "event",
       position: { x: x - size / 2, y },
       data: { item, size },
+      width: size,
+      height: size,
       draggable: false,
       selectable: false,
+      sourcePosition: Position.Bottom,
+      targetPosition: Position.Top,
       style: { width: size, height: size },
     });
 

@@ -18,6 +18,7 @@ import {
 } from "@/modules/payments/invoice-types";
 import screen from "@/modules/payments/invoices-screen.module.scss";
 import { printInvoice } from "@/modules/payments/print-invoice";
+import { RefundInvoiceSheet } from "@/modules/payments/refund-invoice-sheet";
 import {
   StudentSearchCombobox,
   type StudioStudent,
@@ -66,15 +67,34 @@ function familySeatCounts(family: StudioFamily) {
   return { adults, kids };
 }
 
+function isUnpaid(status: Invoice["status"]) {
+  return status === "PENDING" || status === "OVERDUE";
+}
+
+function canRefund(invoice: Invoice) {
+  if (invoice.status === "REFUNDED") return false;
+  if (invoice.status !== "PAID") return false;
+  return (invoice.amount ?? 0) - (invoice.refundedAmount ?? 0) > 0;
+}
+
 type InvoiceCardProps = {
   invoice: Invoice;
   collectTestId: string;
   onCollect: () => void;
+  onRefund?: () => void;
+  refundMode?: boolean;
 };
 
-function InvoiceCard({ invoice, collectTestId, onCollect }: InvoiceCardProps) {
+function InvoiceCard({
+  invoice,
+  collectTestId,
+  onCollect,
+  onRefund,
+  refundMode = false,
+}: InvoiceCardProps) {
   const { toast } = useToastContext("InvoiceCard");
-  const unpaid = invoice.status !== "PAID";
+  const unpaid = isUnpaid(invoice.status);
+  const refundedAmount = invoice.refundedAmount ?? 0;
   const isFamily = invoice.kind === "FAMILY";
   const summary = invoice.familySummary;
   const metaParts = [isFamily ? "Family pack" : "Individual"];
@@ -90,6 +110,9 @@ function InvoiceCard({ invoice, collectTestId, onCollect }: InvoiceCardProps) {
       `${summary.adultCount ?? 0} adult${(summary.adultCount ?? 0) === 1 ? "" : "s"} · ${summary.kidCount ?? 0} kid${(summary.kidCount ?? 0) === 1 ? "" : "s"}`,
     );
   }
+  if (refundedAmount > 0) {
+    metaParts.push(`Refunded ${formatPrice(refundedAmount)}`);
+  }
 
   return (
     <PressableCard asDiv>
@@ -99,13 +122,25 @@ function InvoiceCard({ invoice, collectTestId, onCollect }: InvoiceCardProps) {
             {invoice.student?.name ?? invoice.studentId}
           </span>
           <Badge variant={statusBadgeVariant(invoice.status)}>
-            {invoice.status}
+            {invoice.status === "PAID" && refundedAmount > 0
+              ? "PARTIAL REFUND"
+              : invoice.status}
           </Badge>
         </div>
         <div className={screen.amountRow}>
-          <span className={screen.amount}>{formatPrice(invoice.amount)}</span>
+          <span className={screen.amount}>
+            {refundMode
+              ? formatPrice(refundedAmount || invoice.amount)
+              : formatPrice(invoice.amount)}
+          </span>
           <span className={screen.amountHint}>
-            {unpaid ? "Total due" : "Total paid"}
+            {refundMode
+              ? "Refunded"
+              : unpaid
+                ? "Total due"
+                : invoice.status === "REFUNDED"
+                  ? "Originally paid"
+                  : "Total paid"}
           </span>
         </div>
         <p className={staff.rowMeta}>{metaParts.join(" · ")}</p>
@@ -119,7 +154,18 @@ function InvoiceCard({ invoice, collectTestId, onCollect }: InvoiceCardProps) {
             >
               Collect payment
             </TouchButton>
-          ) : (
+          ) : null}
+          {canRefund(invoice) && onRefund ? (
+            <TouchButton
+              size="md"
+              variant="danger"
+              data-testid={`refund-invoice-${invoice.id}`}
+              onClick={onRefund}
+            >
+              Refund
+            </TouchButton>
+          ) : null}
+          {!unpaid ? (
             <TouchButton
               size="md"
               variant="default"
@@ -146,7 +192,7 @@ function InvoiceCard({ invoice, collectTestId, onCollect }: InvoiceCardProps) {
             >
               Print invoice
             </TouchButton>
-          )}
+          ) : null}
         </div>
       </div>
     </PressableCard>
@@ -164,6 +210,7 @@ function InvoicesPage() {
   const [familyOpenId, setFamilyOpenId] = useState<string | null>(null);
   const [payFamily, setPayFamily] = useState<StudioFamily | null>(null);
   const [sellFamilyOpen, setSellFamilyOpen] = useState(false);
+  const [refundId, setRefundId] = useState<string | null>(null);
 
   const invoicesQuery = useQuery({
     queryKey: ["invoices", studioId],
@@ -184,7 +231,8 @@ function InvoicesPage() {
 
   const individualInvoices = useMemo(() => {
     let items = (invoicesQuery.data ?? []).filter(
-      (invoice) => invoice.kind === "INDIVIDUAL",
+      (invoice) =>
+        invoice.kind === "INDIVIDUAL" && invoice.status !== "REFUNDED",
     );
     if (selectedStudent) {
       items = items.filter(
@@ -199,12 +247,25 @@ function InvoicesPage() {
 
   const familyInvoices = useMemo(() => {
     const items = (invoicesQuery.data ?? []).filter(
-      (invoice) => invoice.kind === "FAMILY",
+      (invoice) =>
+        invoice.kind === "FAMILY" && invoice.status !== "REFUNDED",
     );
     return [
-      ...items.filter((invoice) => invoice.status !== "PAID"),
-      ...items.filter((invoice) => invoice.status === "PAID"),
+      ...items.filter((invoice) => isUnpaid(invoice.status)),
+      ...items.filter((invoice) => !isUnpaid(invoice.status)),
     ];
+  }, [invoicesQuery.data]);
+
+  const refundInvoices = useMemo(() => {
+    const items = (invoicesQuery.data ?? []).filter(
+      (invoice) =>
+        invoice.status === "REFUNDED" || (invoice.refundedAmount ?? 0) > 0,
+    );
+    return [...items].sort((a, b) => {
+      const aAt = a.refundedAt ?? a.paidAt ?? "";
+      const bAt = b.refundedAt ?? b.paidAt ?? "";
+      return bAt.localeCompare(aAt);
+    });
   }, [invoicesQuery.data]);
 
   const activeInvoice =
@@ -213,6 +274,9 @@ function InvoicesPage() {
   const familyInvoice =
     (invoicesQuery.data ?? []).find((invoice) => invoice.id === familyOpenId) ??
     null;
+  const refundInvoice =
+    (invoicesQuery.data ?? []).find((invoice) => invoice.id === refundId) ??
+    null;
 
   const resolveStudentName = (studentId: string) =>
     membersQuery.data?.find((member) => member.id === studentId)?.name;
@@ -220,7 +284,7 @@ function InvoicesPage() {
   return (
     <Screen
       title="Invoices"
-      subtitle="Collect individual payments or family pack payments."
+      subtitle="Collect individual payments, family packs, or issue refunds."
     >
       <PullToRefresh
         onRefresh={() =>
@@ -231,6 +295,7 @@ function InvoicesPage() {
           <TabList>
             <Tab id="individual">Individual</Tab>
             <Tab id="family">Family</Tab>
+            <Tab id="refunds">Refunds</Tab>
           </TabList>
 
           <TabPanel id="individual">
@@ -296,6 +361,7 @@ function InvoicesPage() {
                       invoice={invoice}
                       collectTestId={`mark-paid-${invoice.id}`}
                       onCollect={() => setActiveId(invoice.id)}
+                      onRefund={() => setRefundId(invoice.id)}
                     />
                   ))}
                 </div>
@@ -431,8 +497,60 @@ function InvoicesPage() {
                       invoice={invoice}
                       collectTestId={`open-family-${invoice.id}`}
                       onCollect={() => setFamilyOpenId(invoice.id)}
+                      onRefund={() => setRefundId(invoice.id)}
                     />
                   ))}
+                </div>
+              ) : null}
+            </div>
+          </TabPanel>
+
+          <TabPanel id="refunds">
+            <div className={screen.panel}>
+              {invoicesQuery.isLoading ? <SkeletonCardList count={3} /> : null}
+
+              {invoicesQuery.isError ? (
+                <ErrorState
+                  description={
+                    invoicesQuery.error instanceof Error
+                      ? invoicesQuery.error.message
+                      : "Could not load refunds."
+                  }
+                  action={
+                    <TouchButton
+                      variant="primary"
+                      onClick={() => invoicesQuery.refetch()}
+                    >
+                      Try again
+                    </TouchButton>
+                  }
+                />
+              ) : null}
+
+              {invoicesQuery.data && refundInvoices.length === 0 ? (
+                <EmptyState
+                  title="No refunds"
+                  description="Refunded invoices appear here after a full or partial refund."
+                />
+              ) : null}
+
+              {refundInvoices.length > 0 ? (
+                <div className={staff.list}>
+                  {refundInvoices.map((invoice) => {
+                    const refundProps = canRefund(invoice)
+                      ? { onRefund: () => setRefundId(invoice.id) }
+                      : {};
+                    return (
+                      <InvoiceCard
+                        key={invoice.id}
+                        invoice={invoice}
+                        collectTestId={`refund-view-${invoice.id}`}
+                        onCollect={() => undefined}
+                        refundMode
+                        {...refundProps}
+                      />
+                    );
+                  })}
                 </div>
               ) : null}
             </div>
@@ -456,6 +574,15 @@ function InvoicesPage() {
         confirmTestId="confirm-open-family-paid"
         discountTestIdPrefix="family-"
         resolveStudentName={resolveStudentName}
+      />
+
+      <RefundInvoiceSheet
+        invoice={
+          refundInvoice && canRefund(refundInvoice) ? refundInvoice : null
+        }
+        onOpenChange={(open) => {
+          if (!open) setRefundId(null);
+        }}
       />
 
       <FamilyPaySheet

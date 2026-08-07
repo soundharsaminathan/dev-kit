@@ -646,9 +646,11 @@ model Invoice {
   amount               Decimal        @db.Decimal(10, 2)
   referralDiscount     Decimal        @default(0) @db.Decimal(10, 2)
   studioDiscount       Decimal        @default(0) @db.Decimal(10, 2)
+  refundedAmount       Decimal        @default(0) @db.Decimal(10, 2)
   status               InvoiceStatus
   paymentMethod        PaymentMethod?
   paidAt               DateTime?
+  refundedAt           DateTime?
   platformFeePercent   Float
   studioId             String
   razorpayOrderId      String?        @unique

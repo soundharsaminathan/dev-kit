@@ -240,6 +240,11 @@ class UnenrollStudentDto {
   @IsOptional()
   @IsBoolean()
   refund?: boolean;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0.01)
+  refundAmount?: number;
 }
 
 class RateBatchDto {
@@ -418,6 +423,7 @@ export class BatchesController {
   unenroll(@Param("id") id: string, @Body() dto: UnenrollStudentDto) {
     return this.batchesService.unenroll(id, dto.studentId, {
       refund: dto.refund,
+      refundAmount: dto.refundAmount,
     });
   }
 

@@ -88,6 +88,52 @@ test.describe("admin payments @critical", () => {
     await context.close();
   });
 
+  test("staff issues partial refund through UI @critical", async ({
+    browser,
+  }) => {
+    const invoice = await createPendingInvoice();
+    await apiRequest("STAFF", `/billing/${invoice.id}/paid`, {
+      method: "PATCH",
+      body: JSON.stringify({ paymentMethod: "CASH" }),
+    });
+
+    const context = await browser.newContext({
+      storageState: authFile("STAFF"),
+    });
+    const page = await context.newPage();
+    await page.goto("/app/invoices", { waitUntil: "domcontentloaded" });
+    await waitForAppReady(page);
+
+    await page.getByTestId(`refund-invoice-${invoice.id}`).click();
+    await page.getByTestId("refund-amount-input").fill("250");
+    const [response] = await Promise.all([
+      waitForApiResponse(page, {
+        method: "POST",
+        pathIncludes: `/billing/${invoice.id}/refund`,
+      }),
+      page.getByTestId("confirm-refund-invoice").click(),
+    ]);
+    expect(response.ok()).toBeTruthy();
+
+    await expect
+      .poll(async () => {
+        const latest = await apiRequest<
+          Array<{ id: string; status: string; refundedAmount?: number }>
+        >("STAFF", `/billing/studio/${SEED.users.STAFF.studioId}`);
+        return latest.find((row) => row.id === invoice.id)?.refundedAmount;
+      })
+      .toBe(250);
+
+    await page.getByRole("tab", { name: /^refunds$/i }).click();
+    await expect(
+      page
+        .getByRole("tabpanel", { name: /^refunds$/i })
+        .getByTestId(`print-invoice-${invoice.id}`),
+    ).toBeVisible();
+
+    await context.close();
+  });
+
   test("staff can open sell family pack wizard @critical", async ({
     browser,
   }) => {

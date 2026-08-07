@@ -1423,6 +1423,8 @@ describe("BatchesService.unenroll", () => {
     billing.refundInvoice.mockResolvedValue({
       id: "inv-1",
       amount: 2000,
+      refundedAmount: 2000,
+      thisRefundAmount: 2000,
       status: "REFUNDED",
     });
     prisma.batchEnrollment.update.mockResolvedValue({
@@ -1432,14 +1434,18 @@ describe("BatchesService.unenroll", () => {
 
     const result = await service.unenroll("batch-1", "student-1", {
       refund: true,
+      refundAmount: 1200,
     });
 
     expect(billing.refundInvoice).toHaveBeenCalledWith("inv-1", {
       reason: "Unenrolled from batch Beginner",
+      amount: 1200,
     });
     expect(result.refundedInvoice).toEqual({
       id: "inv-1",
       amount: 2000,
+      refundedAmount: 2000,
+      thisRefundAmount: 2000,
       status: "REFUNDED",
     });
   });

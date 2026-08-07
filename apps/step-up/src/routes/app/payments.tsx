@@ -37,7 +37,6 @@ import { useApi } from "@/lib/api-context";
 import { useAuth } from "@/lib/auth";
 import { useStudioId } from "@/lib/use-studio-id";
 import styles from "@/modules/payments/payments-dashboard.module.scss";
-import { FilterChipRow } from "@/modules/ui/filter-chip-row";
 import { FormInput } from "@/modules/ui/form-input";
 import { PullToRefresh } from "@/modules/ui/pull-to-refresh";
 import { Screen } from "@/modules/ui/screen";
@@ -67,11 +66,12 @@ type TrainerPaymentAnalytics = {
     collected: number;
     pending: number;
     overdue: number;
+    refunded: number;
     platformFees: number;
     netCollected: number;
   };
   byStatus: Record<
-    "PAID" | "PENDING" | "OVERDUE",
+    "PAID" | "PENDING" | "OVERDUE" | "REFUNDED",
     { count: number; amount: number }
   >;
   byPaymentMethod: {
@@ -87,13 +87,14 @@ type TrainerPaymentAnalytics = {
     collected: number;
     pending: number;
     overdue: number;
+    refunded: number;
   }>;
   invoices: Array<{
     id: string;
     studentId: string;
     studentName: string;
     amount: number;
-    status: "PENDING" | "PAID" | "OVERDUE";
+    status: "PENDING" | "PAID" | "OVERDUE" | "REFUNDED";
     paymentMethod: "CASH" | "UPI_MANUAL" | "RAZORPAY" | null;
     paidAt: string | null;
   }>;
@@ -127,13 +128,6 @@ type TrainerPaymentAnalytics = {
 
 type RangePreset = "all" | "7d" | "30d" | "month" | "3m" | "1y" | "custom";
 type ChartType = "bar" | "area" | "line";
-
-const TREND_CHIPS = [
-  { id: "7d", label: "7D" },
-  { id: "30d", label: "30D" },
-  { id: "3m", label: "3M" },
-  { id: "1y", label: "1Y" },
-] as const;
 
 const CHART_TYPES = [
   { id: "bar", label: "Bar", icon: "chart-bar" as const },
@@ -424,6 +418,7 @@ function PaymentsPage() {
       ["Collected", String(data.totals.collected)],
       ["Pending", String(data.totals.pending)],
       ["Overdue", String(data.totals.overdue)],
+      ["Refunded", String(data.totals.refunded)],
       ["Platform fees", String(data.totals.platformFees)],
       [],
       ["Student", "Batch", "Status", "Due", "Amount"],
@@ -663,6 +658,9 @@ function PaymentsPage() {
                     Pending <strong>{formatInr(data.totals.pending)}</strong>
                   </span>
                   <span>
+                    Refunded <strong>{formatInr(data.totals.refunded)}</strong>
+                  </span>
+                  <span>
                     Fees <strong>{formatInr(data.totals.platformFees)}</strong>
                   </span>
                 </div>
@@ -695,30 +693,22 @@ function PaymentsPage() {
                   }
                 />
                 <KpiCard
-                  icon="clipboard"
-                  label="Invoices"
-                  value={String(data.invoiceCount)}
-                  hint={`${data.studentCount} students`}
+                  icon="refresh"
+                  tone="warning"
+                  label="Refunded"
+                  value={formatInr(data.totals.refunded)}
+                  hint={
+                    data.byStatus.REFUNDED.count === 0 &&
+                    data.totals.refunded === 0
+                      ? "No refunds"
+                      : `${data.byStatus.REFUNDED.count} full · partial included`
+                  }
                 />
               </div>
 
               <section className={styles.panel} aria-label="Revenue trend">
                 <div className={styles.panelHead}>
                   <p className={styles.panelTitle}>Revenue trend</p>
-                  <div className={styles.panelTrendFilters}>
-                    <FilterChipRow
-                      chips={[...TREND_CHIPS]}
-                      selected={[
-                        rangePreset === "7d" ||
-                        rangePreset === "30d" ||
-                        rangePreset === "3m" ||
-                        rangePreset === "1y"
-                          ? rangePreset
-                          : "",
-                      ]}
-                      onToggle={applyPreset}
-                    />
-                  </div>
                   <div className={styles.panelChartSwitcher}>
                     <ToggleButtonGroup
                       aria-label="Chart type"
@@ -808,6 +798,9 @@ function PaymentsPage() {
                                 : ""}
                               {batch.overdue > 0
                                 ? ` · Overdue ${formatInr(batch.overdue)}`
+                                : ""}
+                              {batch.refunded > 0
+                                ? ` · Refunded ${formatInr(batch.refunded)}`
                                 : ""}
                             </p>
                           </button>

@@ -206,6 +206,66 @@ test.describe("admin (staff) smoke @smoke", () => {
     }
   });
 
+  test("staff issues partial refund from invoices @smoke", async ({
+    browser,
+  }) => {
+    const cleanup = new SmokeDataCleanup();
+    const student = await apiRequest<{ id: string }>("OWNER", "/users", {
+      method: "POST",
+      body: JSON.stringify({
+        name: `Smoke Refund ${Date.now()}`,
+        email: `smoke-refund-${Date.now()}@stepup.dev`,
+        gender: "FEMALE",
+        ageRange: "TWENTY_TO_FORTY",
+        styles: ["Hip Hop"],
+      }),
+    });
+    cleanup.trackStudent(student.id);
+    const enrollment = await apiRequest<{
+      invoice: { id: string; status: string; amount: number };
+    }>("STAFF", `/batches/${SMOKE.beginnerBatchId}/enroll`, {
+      method: "POST",
+      body: JSON.stringify({
+        studentId: student.id,
+        subscriptionId: SMOKE.adultPlanIds[0],
+      }),
+    });
+    const invoice = enrollment.invoice;
+    await apiRequest("STAFF", `/billing/${invoice.id}/paid`, {
+      method: "PATCH",
+      body: JSON.stringify({ paymentMethod: "CASH" }),
+    });
+
+    const context = await browser.newContext({
+      storageState: authFile("STAFF"),
+    });
+    const page = await context.newPage();
+    try {
+      await page.goto("/app/invoices", { waitUntil: "domcontentloaded" });
+      await waitForAppReady(page);
+      await page.getByTestId(`refund-invoice-${invoice.id}`).click();
+      await page.getByTestId("refund-amount-input").fill("250");
+      const [response] = await Promise.all([
+        waitForApiResponse(page, {
+          method: "POST",
+          pathIncludes: `/billing/${invoice.id}/refund`,
+        }),
+        page.getByTestId("confirm-refund-invoice").click(),
+      ]);
+      expect(response.ok()).toBeTruthy();
+
+      await page.getByRole("tab", { name: /^refunds$/i }).click();
+      await expect(
+        page
+          .getByRole("tabpanel", { name: /^refunds$/i })
+          .getByTestId(`print-invoice-${invoice.id}`),
+      ).toBeVisible();
+    } finally {
+      await context.close();
+      await cleanup.dispose();
+    }
+  });
+
   test("staff creates subscription plan @smoke", async ({ browser }) => {
     const cleanup = new SmokeDataCleanup();
     const stamp = Date.now();

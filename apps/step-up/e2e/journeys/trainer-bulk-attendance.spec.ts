@@ -30,9 +30,6 @@ test.describe("trainer attendance UI @critical", () => {
       storageState: authFile("TRAINER"),
     });
     const page = await context.newPage();
-    page.on("dialog", (dialog) => {
-      void dialog.accept();
-    });
     await page.goto(`/app/sessions/${sessionId}/attendance`, {
       waitUntil: "domcontentloaded",
     });
@@ -111,14 +108,6 @@ test.describe("trainer attendance UI @critical", () => {
       });
       const page = await context.newPage();
       try {
-        const unpaidDialog = new Promise<string>((resolve) => {
-          page.once("dialog", (dialog) => {
-            const message = dialog.message();
-            void dialog.accept();
-            resolve(message);
-          });
-        });
-
         await page.goto(`/app/sessions/${sessionId}/attendance`, {
           waitUntil: "domcontentloaded",
         });
@@ -127,16 +116,19 @@ test.describe("trainer attendance UI @critical", () => {
         await expect(page.getByText("Not paid").first()).toBeVisible();
         const presentBtn = page.getByTestId(`mark-present-${student.id}`);
         await expect(presentBtn).toBeVisible();
+        await presentBtn.click();
 
-        const [response, dialogMessage] = await Promise.all([
+        const confirm = page.getByTestId("confirm-unpaid-mark");
+        await expect(confirm).toBeVisible();
+        await expect(page.getByText(/unpaid/i).first()).toBeVisible();
+
+        const [response] = await Promise.all([
           waitForApiResponse(page, {
             method: "POST",
             pathIncludes: "/attendance/mark",
           }),
-          unpaidDialog,
-          presentBtn.click(),
+          confirm.click(),
         ]);
-        expect(dialogMessage).toMatch(/unpaid/i);
         expect(response.ok()).toBeTruthy();
 
         const rosterAfter = await apiRequest<
@@ -166,9 +158,6 @@ test.describe("trainer attendance UI @critical", () => {
       storageState: authFile("TRAINER"),
     });
     const page = await context.newPage();
-    page.on("dialog", (dialog) => {
-      void dialog.accept();
-    });
     await page.goto(`/app/sessions/${sessionId}/attendance`, {
       waitUntil: "domcontentloaded",
     });
@@ -192,13 +181,16 @@ test.describe("trainer attendance UI @critical", () => {
       return;
     }
 
-    const [response] = await Promise.all([
-      waitForApiResponse(page, {
-        method: "POST",
-        pathIncludes: `/attendance/session/${sessionId}/mark-all-present`,
-      }),
-      markAll.click(),
-    ]);
+    const responsePromise = waitForApiResponse(page, {
+      method: "POST",
+      pathIncludes: `/attendance/session/${sessionId}/mark-all-present`,
+    });
+    await markAll.click();
+    const confirm = page.getByTestId("confirm-unpaid-mark");
+    if (await confirm.isVisible({ timeout: 1500 }).catch(() => false)) {
+      await confirm.click();
+    }
+    const response = await responsePromise;
     expect(response.ok()).toBeTruthy();
 
     const roster = await apiRequest<

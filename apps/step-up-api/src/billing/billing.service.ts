@@ -44,6 +44,7 @@ export type TrainerPaymentAnalytics = {
     collected: number;
     pending: number;
     overdue: number;
+    refunded: number;
     platformFees: number;
     netCollected: number;
   };
@@ -57,6 +58,7 @@ export type TrainerPaymentAnalytics = {
     collected: number;
     pending: number;
     overdue: number;
+    refunded: number;
   }>;
   invoices: Array<{
     id: string;
@@ -232,6 +234,7 @@ export class BillingService {
         amount: Number(invoice.amount),
         referralDiscount: Number(invoice.referralDiscount ?? 0),
         studioDiscount: Number(invoice.studioDiscount ?? 0),
+        refundedAmount: Number(invoice.refundedAmount ?? 0),
         student: this.crypto.decryptUser(invoice.student),
         kind,
         purchaseMeta,
@@ -356,6 +359,7 @@ export class BillingService {
       collected: 0,
       pending: 0,
       overdue: 0,
+      refunded: 0,
     }));
 
     if (studentIds.length === 0) {
@@ -388,16 +392,23 @@ export class BillingService {
       if (!from && !to) {
         return true;
       }
-      if (invoice.status !== InvoiceStatus.PAID) {
+      if (
+        invoice.status === InvoiceStatus.PENDING ||
+        invoice.status === InvoiceStatus.OVERDUE
+      ) {
         return true;
       }
-      if (!invoice.paidAt) {
+      const activityAt =
+        invoice.status === InvoiceStatus.REFUNDED
+          ? (invoice.refundedAt ?? invoice.paidAt)
+          : invoice.paidAt;
+      if (!activityAt) {
         return false;
       }
-      if (from && invoice.paidAt < from) {
+      if (from && activityAt < from) {
         return false;
       }
-      if (to && invoice.paidAt > to) {
+      if (to && activityAt > to) {
         return false;
       }
       return true;
@@ -424,6 +435,7 @@ export class BillingService {
         collected: number;
         pending: number;
         overdue: number;
+        refunded: number;
       }
     >();
 
@@ -438,37 +450,49 @@ export class BillingService {
         collected: 0,
         pending: 0,
         overdue: 0,
+        refunded: 0,
       });
     }
 
     let collected = 0;
     let pending = 0;
     let overdue = 0;
+    let refunded = 0;
     let platformFees = 0;
 
     const invoiceRows: TrainerPaymentAnalytics["invoices"] = filtered.map(
       (invoice) => {
         const amount = Number(invoice.amount);
+        const refundedAmount = Number(invoice.refundedAmount ?? 0);
+        const retained = roundMoney(Math.max(0, amount - refundedAmount));
         const platformFee = computePlatformFee(
-          amount,
+          retained > 0 ? retained : amount,
           invoice.platformFeePercent,
         );
         const student = this.crypto.decryptUser(invoice.student);
         const batchIds = [...(studentBatchMap.get(invoice.studentId) ?? [])];
 
         byStatus[invoice.status].count += 1;
-        byStatus[invoice.status].amount += amount;
+        byStatus[invoice.status].amount +=
+          invoice.status === InvoiceStatus.REFUNDED ? refundedAmount : amount;
+
+        if (refundedAmount > 0) {
+          refunded += refundedAmount;
+        }
 
         if (invoice.status === InvoiceStatus.PAID) {
-          collected += amount;
-          platformFees += platformFee;
+          collected += retained;
+          platformFees += computePlatformFee(
+            retained,
+            invoice.platformFeePercent,
+          );
           if (invoice.paymentMethod) {
             byPaymentMethod[invoice.paymentMethod].count += 1;
-            byPaymentMethod[invoice.paymentMethod].amount += amount;
+            byPaymentMethod[invoice.paymentMethod].amount += retained;
           }
         } else if (invoice.status === InvoiceStatus.PENDING) {
           pending += amount;
-        } else {
+        } else if (invoice.status === InvoiceStatus.OVERDUE) {
           overdue += amount;
         }
 
@@ -478,11 +502,14 @@ export class BillingService {
             continue;
           }
           entry.invoiceIds.add(invoice.id);
+          if (refundedAmount > 0) {
+            entry.refunded += refundedAmount;
+          }
           if (invoice.status === InvoiceStatus.PAID) {
-            entry.collected += amount;
+            entry.collected += retained;
           } else if (invoice.status === InvoiceStatus.PENDING) {
             entry.pending += amount;
-          } else {
+          } else if (invoice.status === InvoiceStatus.OVERDUE) {
             entry.overdue += amount;
           }
         }
@@ -541,6 +568,7 @@ export class BillingService {
         collected: roundMoney(collected),
         pending: roundMoney(pending),
         overdue: roundMoney(overdue),
+        refunded: roundMoney(refunded),
         platformFees: roundMoney(platformFees),
         netCollected,
       },
@@ -584,6 +612,7 @@ export class BillingService {
         collected: roundMoney(batch.collected),
         pending: roundMoney(batch.pending),
         overdue: roundMoney(batch.overdue),
+        refunded: roundMoney(batch.refunded),
       })),
       invoices: invoiceRows,
       series,
@@ -1007,7 +1036,10 @@ export class BillingService {
     return { id, status: "CANCELLED" as const };
   }
 
-  async refundInvoice(id: string, options: { reason?: string } = {}) {
+  async refundInvoice(
+    id: string,
+    options: { amount?: number; reason?: string } = {},
+  ) {
     const invoice = await this.prisma.invoice.findUnique({
       where: { id },
       include: {
@@ -1032,18 +1064,53 @@ export class BillingService {
     }
 
     if (invoice.status === InvoiceStatus.REFUNDED) {
-      return invoice;
+      return {
+        ...invoice,
+        amount: Number(invoice.amount),
+        referralDiscount: Number(invoice.referralDiscount ?? 0),
+        studioDiscount: Number(invoice.studioDiscount ?? 0),
+        refundedAmount: Number(invoice.refundedAmount ?? 0),
+        thisRefundAmount: 0,
+      };
     }
 
     if (invoice.status !== InvoiceStatus.PAID) {
       throw new BadRequestException("Only paid invoices can be refunded");
     }
 
+    const invoiceAmount = roundMoney(Number(invoice.amount));
+    const alreadyRefunded = roundMoney(Number(invoice.refundedAmount ?? 0));
+    const refundable = roundMoney(invoiceAmount - alreadyRefunded);
+
+    if (refundable <= 0) {
+      throw new BadRequestException("Invoice has already been fully refunded");
+    }
+
+    const requestedAmount =
+      options.amount === undefined
+        ? refundable
+        : roundMoney(Number(options.amount));
+
+    if (!Number.isFinite(requestedAmount) || requestedAmount <= 0) {
+      throw new BadRequestException("Refund amount must be greater than 0");
+    }
+
+    if (requestedAmount > refundable) {
+      throw new BadRequestException(
+        `Refund amount cannot exceed ${formatInr(refundable)} remaining`,
+      );
+    }
+
     if (
       invoice.paymentMethod === PaymentMethod.RAZORPAY &&
       invoice.razorpayPaymentId
     ) {
-      const amountPaise = Math.round(Number(invoice.amount) * 100);
+      const amountPaise = Math.round(requestedAmount * 100);
+      if (amountPaise < 100) {
+        throw new BadRequestException(
+          "Razorpay refunds require at least ₹1.00",
+        );
+      }
       await this.razorpay.createRefund(
         {
           paymentId: invoice.razorpayPaymentId,
@@ -1056,13 +1123,25 @@ export class BillingService {
       );
     }
 
+    const nextRefundedAmount = roundMoney(alreadyRefunded + requestedAmount);
+    const fullyRefunded = nextRefundedAmount >= invoiceAmount;
+    const refundedAt = new Date();
+
     const updated = await this.prisma.$transaction(async (tx) => {
       const refunded = await tx.invoice.update({
         where: { id },
-        data: { status: InvoiceStatus.REFUNDED },
+        data: {
+          refundedAmount: nextRefundedAmount,
+          refundedAt,
+          ...(fullyRefunded ? { status: InvoiceStatus.REFUNDED } : {}),
+        },
       });
 
-      if (invoice.membershipId && invoice.membership) {
+      if (
+        fullyRefunded &&
+        invoice.membershipId &&
+        invoice.membership
+      ) {
         const otherActiveSeats = await tx.membershipCoveredStudent.count({
           where: {
             membershipId: invoice.membershipId,
@@ -1079,7 +1158,34 @@ export class BillingService {
       return refunded;
     });
 
-    return updated;
+    return {
+      ...updated,
+      amount: Number(updated.amount),
+      referralDiscount: Number(updated.referralDiscount ?? 0),
+      studioDiscount: Number(updated.studioDiscount ?? 0),
+      refundedAmount: Number(updated.refundedAmount ?? 0),
+      thisRefundAmount: requestedAmount,
+    };
+  }
+
+  async refundInvoiceForStudio(
+    actor: DecryptedUser,
+    id: string,
+    options: { amount?: number; reason?: string } = {},
+  ) {
+    if (actor.role !== UserRole.OWNER && actor.role !== UserRole.STAFF) {
+      throw new ForbiddenException("Only studio admins can refund invoices");
+    }
+
+    const invoice = await this.prisma.invoice.findUnique({ where: { id } });
+    if (!invoice) {
+      throw new NotFoundException("Invoice not found");
+    }
+    if (actor.studioId !== invoice.studioId) {
+      throw new ForbiddenException("Cannot refund invoices for another studio");
+    }
+
+    return this.refundInvoice(id, options);
   }
 
   private async expireStaleCheckoutInvoices() {
@@ -1191,6 +1297,7 @@ export class BillingService {
         collected: 0,
         pending: 0,
         overdue: 0,
+        refunded: 0,
         platformFees: 0,
         netCollected: 0,
       },

@@ -211,13 +211,9 @@
   min-width: 0;
 }
 
-.panelTrendFilters {
-  flex: 1 1 auto;
-  min-width: 0;
-}
-
 .panelChartSwitcher {
   flex-shrink: 0;
+  margin-left: auto;
 }
 
 .panelTitle {

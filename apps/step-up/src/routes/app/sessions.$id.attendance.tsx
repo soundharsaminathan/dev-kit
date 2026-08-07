@@ -15,11 +15,13 @@ import type {
   AttendanceStatusValue,
 } from "@/modules/attendance/types";
 import { ApiState } from "@/modules/ui/api-state";
+import { AppSheet } from "@/modules/ui/app-sheet";
 import {
   ExpandableBentoGrid,
   type ExpandableBentoItem,
 } from "@/modules/ui/expandable-bento-grid";
 import { PageHeader } from "@/modules/ui/page-header";
+import staff from "@/modules/ui/staff.module.scss";
 import { TouchButton } from "@/modules/ui/touch-button";
 import styles from "./sessions.$id.attendance.module.scss";
 
@@ -433,7 +435,10 @@ function SessionAttendancePage() {
   const { toast } = useToastContext("SessionAttendancePage");
   const [activeQrId, setActiveQrId] = useState<string | null>(null);
   const [isTrialSheetOpen, setIsTrialSheetOpen] = useState(false);
+  const [completeConfirmOpen, setCompleteConfirmOpen] = useState(false);
   const qrOpen = activeQrId === QR_ITEM_ID;
+
+  const rosterQueryKey = ["attendance-roster", id] as const;
 
   const sessionQuery = useQuery({
     queryKey: ["session", id],
@@ -446,7 +451,7 @@ function SessionAttendancePage() {
   const markingLocked = Boolean(sessionQuery.data) && !markingOpen;
 
   const rosterQuery = useQuery({
-    queryKey: ["attendance-roster", id],
+    queryKey: rosterQueryKey,
     queryFn: () =>
       api.get<AttendanceRosterEntry[]>(`/attendance/session/${id}/roster`),
     enabled: Boolean(id),
@@ -462,9 +467,29 @@ function SessionAttendancePage() {
 
   function invalidateAttendance() {
     void queryClient.invalidateQueries({
-      queryKey: ["attendance-roster", id],
+      queryKey: rosterQueryKey,
     });
     void queryClient.invalidateQueries({ queryKey: ["attendance", id] });
+  }
+
+  function patchRosterStatus(
+    current: AttendanceRosterEntry[] | undefined,
+    studentIds: string[],
+    status: AttendanceStatusValue,
+  ) {
+    if (!current) return current;
+    const idSet = new Set(studentIds);
+    return current.map((entry) => {
+      if (!idSet.has(entry.studentId)) return entry;
+      return {
+        ...entry,
+        attendance: {
+          id: entry.attendance?.id ?? `optimistic-${entry.studentId}`,
+          status,
+          source: "TRAINER" as const,
+        },
+      };
+    });
   }
 
   const markAllPresent = useMutation({
@@ -472,8 +497,21 @@ function SessionAttendancePage() {
       api.post<{ marked: number; failed: number }>(
         `/attendance/session/${id}/mark-all-present`,
       ),
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: rosterQueryKey });
+      const previous =
+        queryClient.getQueryData<AttendanceRosterEntry[]>(rosterQueryKey);
+      const unmarkedIds =
+        previous
+          ?.filter((entry) => !entry.attendance)
+          .map((entry) => entry.studentId) ?? [];
+      queryClient.setQueryData<AttendanceRosterEntry[]>(
+        rosterQueryKey,
+        (current) => patchRosterStatus(current, unmarkedIds, "PRESENT"),
+      );
+      return { previous };
+    },
     onSuccess: (data) => {
-      invalidateAttendance();
       toast({
         title: "All marked present",
         description:
@@ -483,7 +521,10 @@ function SessionAttendancePage() {
         variant: "success",
       });
     },
-    onError: (error) => {
+    onError: (error, _vars, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(rosterQueryKey, context.previous);
+      }
       toast({
         title: "Couldn’t mark all present",
         description:
@@ -492,6 +533,9 @@ function SessionAttendancePage() {
             : "Could not mark all present.",
         variant: "error",
       });
+    },
+    onSettled: () => {
+      invalidateAttendance();
     },
   });
 
@@ -506,16 +550,30 @@ function SessionAttendancePage() {
         status: payload.status,
         source: "TRAINER",
       }),
-    onSuccess: () => {
-      invalidateAttendance();
+    onMutate: async (payload) => {
+      await queryClient.cancelQueries({ queryKey: rosterQueryKey });
+      const previous =
+        queryClient.getQueryData<AttendanceRosterEntry[]>(rosterQueryKey);
+      queryClient.setQueryData<AttendanceRosterEntry[]>(
+        rosterQueryKey,
+        (current) =>
+          patchRosterStatus(current, [payload.studentId], payload.status),
+      );
+      return { previous };
     },
-    onError: (error) => {
+    onError: (error, _vars, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(rosterQueryKey, context.previous);
+      }
       toast({
         title: "Couldn’t mark attendance",
         description:
           error instanceof Error ? error.message : "Could not mark attendance.",
         variant: "error",
       });
+    },
+    onSettled: () => {
+      invalidateAttendance();
     },
   });
 
@@ -541,8 +599,18 @@ function SessionAttendancePage() {
         status: payload.status,
       };
     },
+    onMutate: async (payload) => {
+      await queryClient.cancelQueries({ queryKey: rosterQueryKey });
+      const previous =
+        queryClient.getQueryData<AttendanceRosterEntry[]>(rosterQueryKey);
+      queryClient.setQueryData<AttendanceRosterEntry[]>(
+        rosterQueryKey,
+        (current) =>
+          patchRosterStatus(current, payload.studentIds, payload.status),
+      );
+      return { previous };
+    },
     onSuccess: (data) => {
-      invalidateAttendance();
       const statusLabel = data.status === "PRESENT" ? "present" : "absent";
       toast({
         title: "Attendance updated",
@@ -553,7 +621,10 @@ function SessionAttendancePage() {
         variant: "success",
       });
     },
-    onError: (error) => {
+    onError: (error, _vars, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(rosterQueryKey, context.previous);
+      }
       toast({
         title: "Couldn’t mark selected",
         description:
@@ -563,11 +634,15 @@ function SessionAttendancePage() {
         variant: "error",
       });
     },
+    onSettled: () => {
+      invalidateAttendance();
+    },
   });
 
   const completeSession = useMutation({
     mutationFn: () => api.patch(`/sessions/${id}/complete`),
     onSuccess: async () => {
+      setCompleteConfirmOpen(false);
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["session", id] }),
         queryClient.invalidateQueries({
@@ -691,15 +766,7 @@ function SessionAttendancePage() {
                 variant="default"
                 isPending={completeSession.isPending}
                 data-testid="complete-session"
-                onClick={() => {
-                  if (
-                    window.confirm(
-                      "Mark this session as completed? Attendance can still be reviewed afterward.",
-                    )
-                  ) {
-                    completeSession.mutate();
-                  }
-                }}
+                onClick={() => setCompleteConfirmOpen(true)}
               >
                 Complete session
               </Button>
@@ -841,6 +908,38 @@ function SessionAttendancePage() {
           invalidateAttendance();
         }}
       />
+
+      <AppSheet
+        isOpen={completeConfirmOpen}
+        onOpenChange={setCompleteConfirmOpen}
+        title="Complete session"
+      >
+        <div className={staff.sheetStack}>
+          <p className={staff.rowMeta}>
+            Mark this session as completed? Attendance can still be reviewed
+            afterward.
+          </p>
+          <div className={staff.sheetActions}>
+            <TouchButton
+              variant="primary"
+              fullWidth
+              isPending={completeSession.isPending}
+              data-testid="confirm-complete-session"
+              onClick={() => completeSession.mutate()}
+            >
+              Complete session
+            </TouchButton>
+            <TouchButton
+              variant="quiet"
+              fullWidth
+              isDisabled={completeSession.isPending}
+              onClick={() => setCompleteConfirmOpen(false)}
+            >
+              Cancel
+            </TouchButton>
+          </div>
+        </div>
+      </AppSheet>
     </section>
   );
 }

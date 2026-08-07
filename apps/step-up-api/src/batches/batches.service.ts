@@ -1464,6 +1464,11 @@ export class BatchesService {
         ? {
             id: refundable.id,
             amount: Number(refundable.amount),
+            refundedAmount: Number(refundable.refundedAmount ?? 0),
+            refundableAmount: roundMoney(
+              Number(refundable.amount) -
+                Number(refundable.refundedAmount ?? 0),
+            ),
             paymentMethod: refundable.paymentMethod,
             paidAt: refundable.paidAt,
           }
@@ -1474,7 +1479,7 @@ export class BatchesService {
   async unenroll(
     batchId: string,
     studentId: string,
-    options: { refund?: boolean } = {},
+    options: { refund?: boolean; refundAmount?: number } = {},
   ) {
     const enrollment = await this.prisma.batchEnrollment.findFirst({
       where: { batchId, studentId, ...ACTIVE_ENROLLMENT_WHERE },
@@ -1491,6 +1496,8 @@ export class BatchesService {
     let refundedInvoice: {
       id: string;
       amount: number;
+      refundedAmount: number;
+      thisRefundAmount: number;
       status: InvoiceStatus;
     } | null = null;
 
@@ -1503,10 +1510,15 @@ export class BatchesService {
       }
       const result = await this.billing.refundInvoice(invoice.id, {
         reason: `Unenrolled from batch ${enrollment.batch.name}`,
+        ...(options.refundAmount !== undefined
+          ? { amount: options.refundAmount }
+          : {}),
       });
       refundedInvoice = {
         id: result.id,
         amount: Number(result.amount),
+        refundedAmount: Number(result.refundedAmount),
+        thisRefundAmount: Number(result.thisRefundAmount),
         status: result.status,
       };
     }
@@ -1848,4 +1860,8 @@ export class BatchesService {
       bySubscription: [...bySubscriptionMap.values()],
     };
   }
+}
+
+function roundMoney(value: number): number {
+  return Math.round(value * 100) / 100;
 }

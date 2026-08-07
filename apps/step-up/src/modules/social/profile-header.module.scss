@@ -1,29 +1,28 @@
 @use "@dev-ui/tokens/scss" as *;
 
 .root {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-areas:
+    "avatar stats"
+    "bio bio"
+    "actions actions";
+  column-gap: var(--space-4);
+  row-gap: var(--space-3);
+  align-items: center;
   padding-inline: var(--space-6);
 }
 
-@media (min-width: 768px) {
-  .root {
-    padding-inline: var(--space-8, 2rem);
-  }
-}
-
-.topRow {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: var(--space-3);
-  align-items: center;
+.aside {
+  display: contents;
 }
 
 .avatarWrap {
-  width: 4.75rem;
-  height: 4.75rem;
+  grid-area: avatar;
+  width: 5.5rem;
+  height: 5.5rem;
   flex-shrink: 0;
+  justify-self: center;
 
   :global([data-avatar]) {
     width: 100%;
@@ -31,12 +30,38 @@
   }
 
   :global([data-avatar-fallback]) {
-    font-size: 1.5rem;
+    font-size: 1.75rem;
     font-weight: 600;
   }
 }
 
+.titleRow {
+  display: none;
+}
+
+.username {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+  color: var(--color-fg);
+}
+
+.lock {
+  width: 1rem;
+  height: 1rem;
+  color: color-mix(in srgb, var(--color-fg) 55%, transparent);
+}
+
+.lockMobile {
+  width: 0.95rem;
+  height: 0.95rem;
+  color: color-mix(in srgb, var(--color-fg) 55%, transparent);
+}
+
 .stats {
+  grid-area: stats;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--space-2);
@@ -66,10 +91,12 @@
   font-size: 0.75rem;
   font-weight: 500;
   line-height: 1.2;
+  text-transform: lowercase;
   color: color-mix(in srgb, var(--color-fg) 65%, transparent);
 }
 
 .bioBlock {
+  grid-area: bio;
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
@@ -88,12 +115,6 @@
   font-weight: 700;
   letter-spacing: -0.01em;
   line-height: 1.3;
-}
-
-.lock {
-  width: 0.95rem;
-  height: 0.95rem;
-  color: color-mix(in srgb, var(--color-fg) 55%, transparent);
 }
 
 .bio {
@@ -157,6 +178,7 @@
 }
 
 .actions {
+  grid-area: actions;
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: var(--space-2);
@@ -178,8 +200,8 @@
 
 @media (max-width: 380px) {
   .avatarWrap {
-    width: 4.25rem;
-    height: 4.25rem;
+    width: 4.75rem;
+    height: 4.75rem;
   }
 
   .statValue {
@@ -188,5 +210,109 @@
 
   .statLabel {
     font-size: 0.6875rem;
+  }
+}
+
+@media (min-width: 768px) {
+  .root {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    gap: clamp(3rem, 8vw, 5.5rem);
+    padding-block: var(--space-6) var(--space-4);
+    padding-inline: var(--space-8);
+  }
+
+  .aside {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-5);
+    min-width: 0;
+    padding-top: var(--space-2);
+  }
+
+  .avatarWrap {
+    width: 9.5rem;
+    height: 9.5rem;
+    margin-inline: var(--space-6);
+
+    :global([data-avatar-fallback]) {
+      font-size: 2.75rem;
+    }
+  }
+
+  .titleRow {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    min-height: 2.5rem;
+  }
+
+  .lockMobile {
+    display: none;
+  }
+
+  .stats {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: var(--space-8);
+    width: auto;
+  }
+
+  .stat {
+    flex-direction: row;
+    align-items: baseline;
+    gap: 0.35rem;
+    text-align: start;
+  }
+
+  .statValue {
+    font-size: 1rem;
+    font-weight: 700;
+  }
+
+  .statLabel {
+    font-size: 1rem;
+    font-weight: 400;
+    color: var(--color-fg);
+  }
+
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    width: auto;
+    max-width: 28rem;
+    gap: var(--space-2);
+  }
+
+  .actionPrimary,
+  .actionSecondary {
+    width: auto;
+    min-width: 7.5rem;
+    flex: 1 1 0;
+    min-height: 2rem;
+  }
+
+  .actions:has(> :nth-child(3)) > :nth-child(3) {
+    flex: 1 1 100%;
+  }
+
+  .bioBlock {
+    gap: var(--space-1);
+  }
+
+  .bio {
+    font-size: 0.9375rem;
+    line-height: 1.5;
+  }
+}
+
+@media (min-width: 1024px) {
+  .avatarWrap {
+    width: 10.5rem;
+    height: 10.5rem;
   }
 }

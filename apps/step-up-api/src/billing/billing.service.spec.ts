@@ -22,6 +22,7 @@ const razorpayStub = {
   isEnabled: vi.fn().mockReturnValue(false),
   keyId: vi.fn().mockReturnValue(""),
   createOrder: vi.fn(),
+  createRefund: vi.fn(),
   verifyPaymentSignature: vi.fn().mockReturnValue(false),
 };
 
@@ -162,6 +163,7 @@ describe("BillingService.getTrainerAnalytics", () => {
       collected: 2000,
       pending: 3000,
       overdue: 0,
+      refunded: 0,
       platformFees: 100,
       netCollected: 1900,
     });
@@ -235,6 +237,7 @@ describe("BillingService.getTrainerAnalytics", () => {
       collected: 2000,
       pending: 1500,
       overdue: 500,
+      refunded: 0,
       platformFees: 100,
       netCollected: 1900,
     });
@@ -247,12 +250,77 @@ describe("BillingService.getTrainerAnalytics", () => {
       collected: 2000,
       pending: 1500,
       overdue: 500,
+      refunded: 0,
       invoiceCount: 3,
     });
     expect(result.pendingPayments).toHaveLength(2);
     expect(result.pendingPayments[0]?.status).toBe("OVERDUE");
     expect(result.series.length).toBeGreaterThan(0);
     expect(result.comparison.netCollectedDeltaPct).toBeNull();
+  });
+
+  it("tracks refunded totals without counting refunds as overdue", async () => {
+    prisma.user.findFirst.mockResolvedValue({
+      id: "trainer-1",
+      name: "Lead Trainer",
+      role: UserRole.TRAINER,
+      studioId: "studio-1",
+    });
+    prisma.batchTrainer.findMany.mockResolvedValue([
+      {
+        batch: {
+          id: "batch-1",
+          name: "Kids Hip-Hop",
+          enrollments: [{ studentId: "student-1" }],
+        },
+      },
+    ]);
+    prisma.invoice.findMany.mockResolvedValue([
+      {
+        id: "inv-paid",
+        studentId: "student-1",
+        amount: 2000,
+        refundedAmount: 500,
+        status: InvoiceStatus.PAID,
+        paymentMethod: PaymentMethod.CASH,
+        paidAt: new Date("2026-07-10T12:00:00.000Z"),
+        refundedAt: new Date("2026-07-20T12:00:00.000Z"),
+        platformFeePercent: 5,
+        purchaseMeta: null,
+        membership: null,
+        student: { id: "student-1", name: "Alex" },
+      },
+      {
+        id: "inv-refunded",
+        studentId: "student-1",
+        amount: 1000,
+        refundedAmount: 1000,
+        status: InvoiceStatus.REFUNDED,
+        paymentMethod: PaymentMethod.CASH,
+        paidAt: new Date("2026-07-05T12:00:00.000Z"),
+        refundedAt: new Date("2026-07-18T12:00:00.000Z"),
+        platformFeePercent: 5,
+        purchaseMeta: null,
+        membership: null,
+        student: { id: "student-1", name: "Alex" },
+      },
+    ]);
+
+    const result = await service.getTrainerAnalytics(
+      makeUser({ id: "trainer-1", role: UserRole.TRAINER }),
+      "trainer-1",
+      "studio-1",
+    );
+
+    expect(result.totals.collected).toBe(1500);
+    expect(result.totals.overdue).toBe(0);
+    expect(result.totals.refunded).toBe(1500);
+    expect(result.byStatus.REFUNDED).toEqual({ count: 1, amount: 1000 });
+    expect(result.byBatch[0]).toMatchObject({
+      collected: 1500,
+      overdue: 0,
+      refunded: 1500,
+    });
   });
 
   it("builds comparison and day series for a bounded range", async () => {
@@ -358,6 +426,132 @@ describe("BillingService.getTrainerAnalytics", () => {
     expect(result.trainerId).toBe("trainer-1");
     expect(result.invoiceCount).toBe(0);
     expect(result.byBatch).toEqual([]);
+  });
+});
+
+describe("BillingService.refundInvoice", () => {
+  const prisma = {
+    invoice: {
+      findUnique: vi.fn(),
+      update: vi.fn(),
+    },
+    membershipCoveredStudent: { count: vi.fn() },
+    membership: { update: vi.fn() },
+    $transaction: vi.fn(),
+  };
+
+  let service: BillingService;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    razorpayStub.createRefund.mockResolvedValue({
+      refundId: "rfnd_1",
+      amount: 50000,
+    });
+    service = new BillingService(
+      prisma as never,
+      { decryptUser: vi.fn() } as never,
+      membershipsStub as never,
+      razorpayStub as never,
+      notificationsStub as never,
+      emailStub as never,
+    );
+    prisma.$transaction.mockImplementation(
+      async (callback: (tx: typeof prisma) => unknown) => callback(prisma),
+    );
+  });
+
+  it("rejects refund amounts above the remaining balance", async () => {
+    prisma.invoice.findUnique.mockResolvedValue({
+      id: "inv-1",
+      amount: 2000,
+      refundedAmount: 500,
+      status: InvoiceStatus.PAID,
+      paymentMethod: PaymentMethod.CASH,
+      razorpayPaymentId: null,
+      membershipId: null,
+      membership: null,
+      studio: { id: "studio-1", settings: null },
+    });
+
+    await expect(
+      service.refundInvoice("inv-1", { amount: 1600 }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it("applies a partial cash refund and keeps the invoice paid", async () => {
+    prisma.invoice.findUnique.mockResolvedValue({
+      id: "inv-1",
+      amount: 2000,
+      refundedAmount: 0,
+      referralDiscount: 0,
+      studioDiscount: 0,
+      status: InvoiceStatus.PAID,
+      paymentMethod: PaymentMethod.CASH,
+      razorpayPaymentId: null,
+      membershipId: null,
+      membership: null,
+      studio: { id: "studio-1", settings: null },
+    });
+    prisma.invoice.update.mockResolvedValue({
+      id: "inv-1",
+      amount: 2000,
+      refundedAmount: 750,
+      referralDiscount: 0,
+      studioDiscount: 0,
+      status: InvoiceStatus.PAID,
+    });
+
+    const result = await service.refundInvoice("inv-1", { amount: 750 });
+
+    expect(prisma.invoice.update).toHaveBeenCalledWith({
+      where: { id: "inv-1" },
+      data: {
+        refundedAmount: 750,
+        refundedAt: expect.any(Date),
+      },
+    });
+    expect(result.status).toBe(InvoiceStatus.PAID);
+    expect(result.refundedAmount).toBe(750);
+    expect(result.thisRefundAmount).toBe(750);
+    expect(razorpayStub.createRefund).not.toHaveBeenCalled();
+  });
+
+  it("marks the invoice refunded when the remaining balance is cleared", async () => {
+    prisma.invoice.findUnique.mockResolvedValue({
+      id: "inv-1",
+      amount: 2000,
+      refundedAmount: 500,
+      referralDiscount: 0,
+      studioDiscount: 0,
+      status: InvoiceStatus.PAID,
+      paymentMethod: PaymentMethod.CASH,
+      razorpayPaymentId: null,
+      membershipId: null,
+      membership: null,
+      studio: { id: "studio-1", settings: null },
+    });
+    prisma.invoice.update.mockResolvedValue({
+      id: "inv-1",
+      amount: 2000,
+      refundedAmount: 2000,
+      referralDiscount: 0,
+      studioDiscount: 0,
+      status: InvoiceStatus.REFUNDED,
+    });
+
+    const result = await service.refundInvoice("inv-1", { amount: 1500 });
+
+    expect(prisma.invoice.update).toHaveBeenCalledWith({
+      where: { id: "inv-1" },
+      data: {
+        refundedAmount: 2000,
+        refundedAt: expect.any(Date),
+        status: InvoiceStatus.REFUNDED,
+      },
+    });
+    expect(result.status).toBe(InvoiceStatus.REFUNDED);
+    expect(result.thisRefundAmount).toBe(1500);
   });
 });
 

@@ -1,5 +1,6 @@
 import { Badge } from "@dev-ui/components/badge";
 import { Button } from "@dev-ui/components/button";
+import { Switch, SwitchControl } from "@dev-ui/components/switch";
 import { useIsMobile } from "@dev-ui/hooks";
 import { Icon } from "@dev-ui/icons";
 import {
@@ -15,7 +16,10 @@ import {
 } from "@tanstack/react-table";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { formatActiveDuration } from "@/lib/format-active-duration";
+import { AppSheet } from "@/modules/ui/app-sheet";
 import { FilterChipRow } from "@/modules/ui/filter-chip-row";
+import staff from "@/modules/ui/staff.module.scss";
+import { TouchButton } from "@/modules/ui/touch-button";
 import styles from "./attendance-roster-table.module.scss";
 import {
   type AttendanceRosterEntry,
@@ -25,31 +29,6 @@ import {
   attendanceStatusLabel,
   rosterStatus,
 } from "./types";
-
-function confirmUnpaidMark(studentName: string, status: AttendanceStatusValue) {
-  const action = status === "PRESENT" ? "present" : "absent";
-  return window.confirm(
-    `${studentName} has an unpaid plan. Mark ${action} anyway?`,
-  );
-}
-
-function confirmUnpaidBulkMark(
-  unpaidNames: string[],
-  status: AttendanceStatusValue,
-  scope: "selected" | "unmarked" = "selected",
-) {
-  if (unpaidNames.length === 0) return true;
-  const action = status === "PRESENT" ? "present" : "absent";
-  const preview =
-    unpaidNames.length <= 3
-      ? unpaidNames.join(", ")
-      : `${unpaidNames.slice(0, 3).join(", ")} +${unpaidNames.length - 3} more`;
-  const who =
-    scope === "unmarked"
-      ? `${unpaidNames.length} unmarked student${unpaidNames.length === 1 ? "" : "s"} have unpaid plans`
-      : `${unpaidNames.length} selected student${unpaidNames.length === 1 ? "" : "s"} have unpaid plans`;
-  return window.confirm(`${who} (${preview}). Mark ${action} anyway?`);
-}
 
 const STATUS_ORDER: Record<"PRESENT" | "ABSENT" | "UNMARKED", number> = {
   UNMARKED: 0,
@@ -83,12 +62,23 @@ type RosterTableMeta = {
   markingDisabled: boolean;
   actionsLocked: boolean;
   pendingStudentId: string | null;
-  onMarkOne: (studentId: string, status: AttendanceStatusValue) => void;
-  confirmUnpaid: (
-    studentName: string,
-    status: AttendanceStatusValue,
-  ) => boolean;
+  requestMarkOne: (studentId: string, status: AttendanceStatusValue) => void;
 };
+
+type PendingConfirm =
+  | {
+      kind: "one";
+      studentId: string;
+      studentName: string;
+      status: AttendanceStatusValue;
+    }
+  | {
+      kind: "bulk";
+      studentIds: string[];
+      unpaidNames: string[];
+      status: AttendanceStatusValue;
+      scope: "selected" | "unmarked";
+    };
 
 function StatusBadge({
   status,
@@ -161,6 +151,64 @@ function SelectCheckbox({
   );
 }
 
+function AttendanceMarkSwitch({
+  studentId,
+  studentName,
+  status,
+  isDisabled,
+  onMark,
+}: {
+  studentId: string;
+  studentName: string;
+  status: AttendanceStatusValue | "UNMARKED";
+  isDisabled: boolean;
+  onMark: (status: AttendanceStatusValue) => void;
+}) {
+  const isPresent = status === "PRESENT";
+  const isAbsent = status === "ABSENT";
+
+  return (
+    <div
+      className={styles.markSwitch}
+      data-status={status === "UNMARKED" ? "unmarked" : status.toLowerCase()}
+    >
+      <button
+        type="button"
+        className={styles.markSwitchSide}
+        data-tone="absent"
+        data-active={isAbsent ? "true" : undefined}
+        data-testid={`mark-absent-${studentId}`}
+        disabled={isDisabled || isAbsent}
+        aria-pressed={isAbsent}
+        onClick={() => onMark("ABSENT")}
+      >
+        Absent
+      </button>
+      <Switch size="sm" className={styles.markSwitchControl}>
+        <SwitchControl
+          isSelected={isPresent}
+          isDisabled={isDisabled}
+          aria-label={`Mark ${studentName} ${isPresent ? "absent" : "present"}`}
+          data-testid={`mark-attendance-${studentId}`}
+          onChange={(selected) => onMark(selected ? "PRESENT" : "ABSENT")}
+        />
+      </Switch>
+      <button
+        type="button"
+        className={styles.markSwitchSide}
+        data-tone="present"
+        data-active={isPresent ? "true" : undefined}
+        data-testid={`mark-present-${studentId}`}
+        disabled={isDisabled || isPresent}
+        aria-pressed={isPresent}
+        onClick={() => onMark("PRESENT")}
+      >
+        Present
+      </button>
+    </div>
+  );
+}
+
 const RosterRow = memo(
   function RosterRow({
     row,
@@ -200,6 +248,33 @@ const RosterRow = memo(
     prev.markingDisabled === next.markingDisabled,
 );
 
+function unpaidConfirmCopy(pending: PendingConfirm) {
+  if (pending.kind === "one") {
+    const action = pending.status === "PRESENT" ? "present" : "absent";
+    return {
+      title: "Unpaid plan",
+      description: `${pending.studentName} has an unpaid plan. Mark ${action} anyway?`,
+      confirmLabel: `Mark ${action}`,
+    };
+  }
+
+  const action = pending.status === "PRESENT" ? "present" : "absent";
+  const preview =
+    pending.unpaidNames.length <= 3
+      ? pending.unpaidNames.join(", ")
+      : `${pending.unpaidNames.slice(0, 3).join(", ")} +${pending.unpaidNames.length - 3} more`;
+  const who =
+    pending.scope === "unmarked"
+      ? `${pending.unpaidNames.length} unmarked student${pending.unpaidNames.length === 1 ? "" : "s"} have unpaid plans`
+      : `${pending.unpaidNames.length} selected student${pending.unpaidNames.length === 1 ? "" : "s"} have unpaid plans`;
+
+  return {
+    title: "Unpaid plans",
+    description: `${who} (${preview}). Mark ${action} anyway?`,
+    confirmLabel: `Mark ${action}`,
+  };
+}
+
 export function AttendanceRosterTable({
   roster,
   isBusy = false,
@@ -217,21 +292,41 @@ export function AttendanceRosterTable({
   const [statusFilter, setStatusFilter] =
     useState<AttendanceStatusFilter>("all");
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
+  const [pendingConfirm, setPendingConfirm] = useState<PendingConfirm | null>(
+    null,
+  );
   const actionsLocked = isBusy || markingDisabled;
+
+  const requestMarkOne = useCallback(
+    (studentId: string, status: AttendanceStatusValue) => {
+      const entry = roster.find((row) => row.studentId === studentId);
+      if (!entry) return;
+      if (rosterStatus(entry) === status) return;
+      if (entry.monthlyUnpaid) {
+        setPendingConfirm({
+          kind: "one",
+          studentId,
+          studentName: entry.student.name,
+          status,
+        });
+        return;
+      }
+      onMarkOne(studentId, status);
+    },
+    [onMarkOne, roster],
+  );
 
   const metaRef = useRef<RosterTableMeta>({
     markingDisabled,
     actionsLocked,
     pendingStudentId,
-    onMarkOne,
-    confirmUnpaid: confirmUnpaidMark,
+    requestMarkOne,
   });
   metaRef.current = {
     markingDisabled,
     actionsLocked,
     pendingStudentId,
-    onMarkOne,
-    confirmUnpaid: confirmUnpaidMark,
+    requestMarkOne,
   };
 
   useEffect(() => {
@@ -338,60 +433,36 @@ export function AttendanceRosterTable({
         const rowPending =
           meta.actionsLocked ||
           meta.pendingStudentId === row.original.studentId;
+        const status = rosterStatus(row.original);
         return (
-          <div className={styles.rowActions}>
-            <Button
-              size="sm"
-              variant="default"
-              className={styles.markPresent}
-              isDisabled={rowPending}
-              data-testid={`mark-present-${row.original.studentId}`}
-              onClick={() => {
-                if (
-                  row.original.monthlyUnpaid &&
-                  !meta.confirmUnpaid(row.original.student.name, "PRESENT")
-                ) {
-                  return;
-                }
-                meta.onMarkOne(row.original.studentId, "PRESENT");
-              }}
-            >
-              Present
-            </Button>
-            <Button
-              size="sm"
-              variant="danger"
-              className={styles.markAbsent}
-              isDisabled={rowPending}
-              data-testid={`mark-absent-${row.original.studentId}`}
-              onClick={() => {
-                if (
-                  row.original.monthlyUnpaid &&
-                  !meta.confirmUnpaid(row.original.student.name, "ABSENT")
-                ) {
-                  return;
-                }
-                meta.onMarkOne(row.original.studentId, "ABSENT");
-              }}
-            >
-              Absent
-            </Button>
-          </div>
+          <AttendanceMarkSwitch
+            studentId={row.original.studentId}
+            studentName={row.original.student.name}
+            status={status}
+            isDisabled={rowPending}
+            onMark={(next) =>
+              meta.requestMarkOne(row.original.studentId, next)
+            }
+          />
         );
       },
       enableSorting: false,
     };
 
-    if (isMobile) {
-      return [nameColumn, actionsColumn, statusColumn];
-    }
-
     return [selectColumn, nameColumn, statusColumn, actionsColumn];
-  }, [isMobile]);
+  }, []);
 
   const columnFilters = useMemo(
     () => [{ id: "status", value: statusFilter }],
     [statusFilter],
+  );
+
+  const columnVisibility = useMemo(
+    () => ({
+      select: !isMobile,
+      status: !isMobile,
+    }),
+    [isMobile],
   );
 
   const table = useReactTable({
@@ -401,6 +472,7 @@ export function AttendanceRosterTable({
       sorting,
       rowSelection,
       columnFilters,
+      columnVisibility,
     },
     onSortingChange: setSorting,
     onRowSelectionChange: setRowSelection,
@@ -416,6 +488,7 @@ export function AttendanceRosterTable({
     [rowSelection],
   );
   const filteredCount = table.getFilteredRowModel().rows.length;
+  const visibleColumnCount = table.getVisibleLeafColumns().length;
 
   const clearSelection = useCallback(() => {
     setRowSelection({});
@@ -428,7 +501,16 @@ export function AttendanceRosterTable({
       const unpaidNames = roster
         .filter((entry) => ids.includes(entry.studentId) && entry.monthlyUnpaid)
         .map((entry) => entry.student.name);
-      if (!confirmUnpaidBulkMark(unpaidNames, status)) return;
+      if (unpaidNames.length > 0) {
+        setPendingConfirm({
+          kind: "bulk",
+          studentIds: ids,
+          unpaidNames,
+          status,
+          scope: "selected",
+        });
+        return;
+      }
       onMarkSelected(ids, status);
       setRowSelection({});
     },
@@ -440,15 +522,47 @@ export function AttendanceRosterTable({
     const unpaidNames = roster
       .filter((entry) => !entry.attendance && entry.monthlyUnpaid)
       .map((entry) => entry.student.name);
-    if (!confirmUnpaidBulkMark(unpaidNames, "PRESENT", "unmarked")) return;
+    if (unpaidNames.length > 0) {
+      setPendingConfirm({
+        kind: "bulk",
+        studentIds: [],
+        unpaidNames,
+        status: "PRESENT",
+        scope: "unmarked",
+      });
+      return;
+    }
     onMarkAllUnmarkedPresent();
   }, [onMarkAllUnmarkedPresent, roster]);
+
+  const closeConfirm = useCallback(() => {
+    setPendingConfirm(null);
+  }, []);
+
+  const confirmPending = useCallback(() => {
+    if (!pendingConfirm) return;
+    if (pendingConfirm.kind === "one") {
+      onMarkOne(pendingConfirm.studentId, pendingConfirm.status);
+    } else if (pendingConfirm.scope === "unmarked") {
+      onMarkAllUnmarkedPresent?.();
+    } else {
+      onMarkSelected(pendingConfirm.studentIds, pendingConfirm.status);
+      setRowSelection({});
+    }
+    setPendingConfirm(null);
+  }, [
+    onMarkAllUnmarkedPresent,
+    onMarkOne,
+    onMarkSelected,
+    pendingConfirm,
+  ]);
 
   const handleFilterToggle = useCallback((id: string) => {
     setStatusFilter(id as AttendanceStatusFilter);
   }, []);
 
   const selectedFilters = useMemo(() => [statusFilter], [statusFilter]);
+  const confirmCopy = pendingConfirm ? unpaidConfirmCopy(pendingConfirm) : null;
 
   return (
     <div className={styles.root} data-mobile={isMobile ? "true" : undefined}>
@@ -586,7 +700,7 @@ export function AttendanceRosterTable({
           <tbody>
             {table.getRowModel().rows.length === 0 ? (
               <tr>
-                <td className={styles.emptyCell} colSpan={columns.length}>
+                <td className={styles.emptyCell} colSpan={visibleColumnCount}>
                   No students match this status filter.
                 </td>
               </tr>
@@ -619,6 +733,33 @@ export function AttendanceRosterTable({
           ? ` · filter: ${attendanceStatusLabel(statusFilter === "UNMARKED" ? "UNMARKED" : statusFilter)}`
           : null}
       </p>
+
+      <AppSheet
+        isOpen={pendingConfirm != null}
+        onOpenChange={(open) => {
+          if (!open) closeConfirm();
+        }}
+        title={confirmCopy?.title}
+      >
+        {confirmCopy ? (
+          <div className={staff.sheetStack}>
+            <p className={staff.rowMeta}>{confirmCopy.description}</p>
+            <div className={staff.sheetActions}>
+              <TouchButton
+                variant="primary"
+                fullWidth
+                data-testid="confirm-unpaid-mark"
+                onClick={confirmPending}
+              >
+                {confirmCopy.confirmLabel}
+              </TouchButton>
+              <TouchButton variant="quiet" fullWidth onClick={closeConfirm}>
+                Cancel
+              </TouchButton>
+            </div>
+          </div>
+        ) : null}
+      </AppSheet>
     </div>
   );
 }

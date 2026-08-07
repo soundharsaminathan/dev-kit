@@ -85,5 +85,9 @@ describe("layout-path", () => {
     expect(graph.nodes[1]?.type).toBe("event");
     expect(graph.nodes[0]?.position.y).toBe(0);
     expect(graph.nodes[1]?.position.y).toBeGreaterThan(0);
+    expect(graph.nodes[0]?.width).toBe(112);
+    expect(graph.nodes[0]?.height).toBe(112);
+    expect(graph.nodes[1]?.width).toBe(72);
+    expect(graph.nodes[1]?.height).toBe(72);
   });
 });

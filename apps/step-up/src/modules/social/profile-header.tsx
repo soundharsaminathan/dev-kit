@@ -60,17 +60,74 @@ export function ProfileHeader({
   const instagramHref = profile.instagramUrl
     ? normalizeExternalUrl(profile.instagramUrl)
     : null;
+  const isPrivateLocked =
+    profile.profileVisibility === "PRIVATE" && !profile.canViewContent;
 
   return (
     <header className={styles.root}>
-      <div className={styles.topRow}>
-        <div className={styles.avatarWrap}>
-          <Avatar size="lg">
-            {profile.photoUrl ? (
-              <AvatarImage src={profile.photoUrl} alt={profile.name} />
-            ) : null}
-            <AvatarFallback>{profile.name.slice(0, 1)}</AvatarFallback>
-          </Avatar>
+      <div className={styles.avatarWrap}>
+        <Avatar size="lg">
+          {profile.photoUrl ? (
+            <AvatarImage src={profile.photoUrl} alt={profile.name} />
+          ) : null}
+          <AvatarFallback>{profile.name.slice(0, 1)}</AvatarFallback>
+        </Avatar>
+      </div>
+
+      <div className={styles.aside}>
+        <div className={styles.titleRow}>
+          <p className={styles.username}>{profile.name}</p>
+          {isPrivateLocked ? (
+            <Icon name="lock" className={styles.lock} aria-hidden />
+          ) : null}
+        </div>
+
+        <div className={styles.actions}>
+          {profile.isOwnProfile ? (
+            onEdit ? (
+              <Button
+                variant="default"
+                className={styles.actionPrimary}
+                onClick={onEdit}
+              >
+                Edit profile
+              </Button>
+            ) : null
+          ) : (
+            <>
+              <FollowButton
+                isFollowing={profile.isFollowing}
+                followRequestStatus={profile.followRequestStatus}
+                profileVisibility={profile.profileVisibility}
+                isPending={followPending}
+                onFollow={onFollow}
+                onUnfollow={onUnfollow}
+                size="md"
+                className={styles.actionPrimary}
+              />
+              {onMessage ? (
+                <Button
+                  variant="default"
+                  className={styles.actionSecondary}
+                  isDisabled={messagePending}
+                  aria-busy={messagePending || undefined}
+                  onClick={onMessage}
+                >
+                  Message
+                </Button>
+              ) : null}
+              {onResetPassword ? (
+                <Button
+                  variant="quiet"
+                  className={styles.actionSecondary}
+                  data-testid="reset-trainer-password"
+                  onClick={onResetPassword}
+                >
+                  Reset password
+                </Button>
+              ) : null}
+            </>
+          )}
         </div>
 
         <dl className={styles.stats}>
@@ -78,102 +135,53 @@ export function ProfileHeader({
             <dd className={styles.statValue}>
               {formatCount(profile.postCount)}
             </dd>
-            <dt className={styles.statLabel}>Posts</dt>
+            <dt className={styles.statLabel}>posts</dt>
           </div>
           <div className={styles.stat}>
             <dd className={styles.statValue}>
               {formatCount(profile.followerCount)}
             </dd>
-            <dt className={styles.statLabel}>Followers</dt>
+            <dt className={styles.statLabel}>followers</dt>
           </div>
           <div className={styles.stat}>
             <dd className={styles.statValue}>
               {formatCount(profile.followingCount)}
             </dd>
-            <dt className={styles.statLabel}>Following</dt>
+            <dt className={styles.statLabel}>following</dt>
           </div>
         </dl>
-      </div>
 
-      <div className={styles.bioBlock}>
-        <div className={styles.nameRow}>
-          <h2 className={styles.name}>{profile.name}</h2>
-          {profile.profileVisibility === "PRIVATE" &&
-          !profile.canViewContent ? (
-            <Icon name="lock" className={styles.lock} aria-hidden />
+        <div className={styles.bioBlock}>
+          <div className={styles.nameRow}>
+            <h1 className={styles.name}>{profile.name}</h1>
+            {isPrivateLocked ? (
+              <Icon name="lock" className={styles.lockMobile} aria-hidden />
+            ) : null}
+          </div>
+
+          {profile.bio ? <p className={styles.bio}>{profile.bio}</p> : null}
+
+          {instagramHref ? (
+            <a
+              className={styles.link}
+              href={instagramHref}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <Icon name="link" className={styles.linkIcon} aria-hidden />
+              <span>{formatInstagramLabel(profile.instagramUrl!)}</span>
+            </a>
+          ) : null}
+
+          {profile.styles.length > 0 ? (
+            <StyleList
+              styles={profile.styles}
+              size="sm"
+              showLabels
+              className={styles.styles}
+            />
           ) : null}
         </div>
-
-        {profile.bio ? <p className={styles.bio}>{profile.bio}</p> : null}
-
-        {instagramHref ? (
-          <a
-            className={styles.link}
-            href={instagramHref}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Icon name="link" className={styles.linkIcon} aria-hidden />
-            <span>{formatInstagramLabel(profile.instagramUrl!)}</span>
-          </a>
-        ) : null}
-
-        {profile.styles.length > 0 ? (
-          <StyleList
-            styles={profile.styles}
-            size="sm"
-            showLabels
-            className={styles.styles}
-          />
-        ) : null}
-      </div>
-
-      <div className={styles.actions}>
-        {profile.isOwnProfile ? (
-          onEdit ? (
-            <Button
-              variant="default"
-              className={styles.actionPrimary}
-              onClick={onEdit}
-            >
-              Edit profile
-            </Button>
-          ) : null
-        ) : (
-          <>
-            <FollowButton
-              isFollowing={profile.isFollowing}
-              followRequestStatus={profile.followRequestStatus}
-              profileVisibility={profile.profileVisibility}
-              isPending={followPending}
-              onFollow={onFollow}
-              onUnfollow={onUnfollow}
-              size="md"
-              className={styles.actionPrimary}
-            />
-            {onMessage ? (
-              <Button
-                variant="default"
-                className={styles.actionSecondary}
-                isDisabled={messagePending}
-                aria-busy={messagePending || undefined}
-                onClick={onMessage}
-              >
-                Message
-              </Button>
-            ) : null}
-            {onResetPassword ? (
-              <Button
-                variant="quiet"
-                className={styles.actionSecondary}
-                data-testid="reset-trainer-password"
-                onClick={onResetPassword}
-              >
-                Reset password
-              </Button>
-            ) : null}
-          </>
-        )}
       </div>
     </header>
   );

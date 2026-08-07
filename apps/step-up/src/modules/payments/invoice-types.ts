@@ -10,9 +10,11 @@ export type Invoice = {
   amount: number;
   referralDiscount?: number;
   studioDiscount?: number;
+  refundedAmount?: number;
   status: "PENDING" | "PAID" | "OVERDUE" | "REFUNDED";
   paymentMethod?: "CASH" | "UPI_MANUAL" | "RAZORPAY" | null;
   paidAt?: string | null;
+  refundedAt?: string | null;
   kind: "FAMILY" | "INDIVIDUAL";
   student?: { name: string };
   familySummary?: {
