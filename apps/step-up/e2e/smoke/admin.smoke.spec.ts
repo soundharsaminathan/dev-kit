@@ -56,6 +56,23 @@ const STAFF_PATHS = [
   "/app/settings/billing",
 ];
 
+async function ensureStudentFamilyMember() {
+  const existing = await apiRequest<Array<{ id: string }>>(
+    "STUDENT",
+    "/users/me/family-members",
+  );
+  if (existing.length > 0) return;
+  await apiRequest("STUDENT", "/users/me/family-members", {
+    method: "POST",
+    body: JSON.stringify({
+      name: "Smoke Family Kid",
+      kind: "KID",
+      gender: "FEMALE",
+      ageRange: "UNDER_10",
+    }),
+  });
+}
+
 test.describe("admin (staff) smoke @smoke", () => {
   test("staff path sweep covers admin shell @smoke", async ({ browser }) => {
     test.setTimeout(300_000);
@@ -172,6 +189,50 @@ test.describe("admin (staff) smoke @smoke", () => {
     } finally {
       await context.close();
       await cleanup.dispose();
+    }
+  });
+
+  test("staff can open sell family pack wizard @smoke", async ({ browser }) => {
+    const context = await browser.newContext({
+      storageState: authFile("STAFF"),
+    });
+    const page = await context.newPage();
+    try {
+      await page.goto("/app/invoices", { waitUntil: "domcontentloaded" });
+      await waitForAppReady(page);
+
+      await page.getByRole("tab", { name: /^family$/i }).click();
+      await page.getByTestId("sell-family-pack").click();
+      await expect(
+        page.getByRole("heading", { name: /family pack · seats/i }),
+      ).toBeVisible();
+      await expect(page.getByText(/step 1 of 3/i)).toBeVisible();
+    } finally {
+      await context.close();
+    }
+  });
+
+  test("staff opens family pay flow from a family group card @smoke", async ({
+    browser,
+  }) => {
+    await ensureStudentFamilyMember();
+
+    const context = await browser.newContext({
+      storageState: authFile("STAFF"),
+    });
+    const page = await context.newPage();
+    try {
+      await page.goto("/app/invoices", { waitUntil: "domcontentloaded" });
+      await waitForAppReady(page);
+
+      await page.getByRole("tab", { name: /^family$/i }).click();
+      await page.getByTestId(`family-group-${SMOKE.users.STUDENT.id}`).click();
+      await expect(
+        page.getByRole("heading", { name: /family payment · classes/i }),
+      ).toBeVisible();
+      await expect(page.getByText(/step 1 of 3/i)).toBeVisible();
+    } finally {
+      await context.close();
     }
   });
 

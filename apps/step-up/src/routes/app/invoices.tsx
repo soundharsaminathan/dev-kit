@@ -1,6 +1,7 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@dev-ui/components/avatar";
 import { Badge } from "@dev-ui/components/badge";
 import { Tab, TabList, TabPanel, Tabs } from "@dev-ui/components/tabs";
+import { useToastContext } from "@dev-ui/components/toast";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
@@ -17,6 +18,10 @@ import {
 } from "@/modules/payments/invoice-types";
 import screen from "@/modules/payments/invoices-screen.module.scss";
 import { printInvoice } from "@/modules/payments/print-invoice";
+import {
+  StudentSearchCombobox,
+  type StudioStudent,
+} from "@/modules/students/student-search-combobox";
 import { FilterChipRow } from "@/modules/ui/filter-chip-row";
 import { PressableCard } from "@/modules/ui/pressable-card";
 import { PullToRefresh } from "@/modules/ui/pull-to-refresh";
@@ -68,6 +73,7 @@ type InvoiceCardProps = {
 };
 
 function InvoiceCard({ invoice, collectTestId, onCollect }: InvoiceCardProps) {
+  const { toast } = useToastContext("InvoiceCard");
   const unpaid = invoice.status !== "PAID";
   const isFamily = invoice.kind === "FAMILY";
   const summary = invoice.familySummary;
@@ -119,7 +125,7 @@ function InvoiceCard({ invoice, collectTestId, onCollect }: InvoiceCardProps) {
               variant="default"
               data-testid={`print-invoice-${invoice.id}`}
               onClick={() => {
-                printInvoice({
+                const opened = printInvoice({
                   id: invoice.id,
                   amount: invoice.amount,
                   referralDiscount: invoice.referralDiscount,
@@ -129,6 +135,13 @@ function InvoiceCard({ invoice, collectTestId, onCollect }: InvoiceCardProps) {
                   paidAt: invoice.paidAt,
                   studentName: invoice.student?.name,
                 });
+                if (!opened) {
+                  toast({
+                    title: "Couldn't open print window",
+                    description: "Allow pop-ups for this site, then try again.",
+                    variant: "error",
+                  });
+                }
               }}
             >
               Print invoice
@@ -144,6 +157,9 @@ function InvoicesPage() {
   const api = useApi();
   const studioId = useStudioId();
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL");
+  const [selectedStudent, setSelectedStudent] = useState<StudioStudent | null>(
+    null,
+  );
   const [activeId, setActiveId] = useState<string | null>(null);
   const [familyOpenId, setFamilyOpenId] = useState<string | null>(null);
   const [payFamily, setPayFamily] = useState<StudioFamily | null>(null);
@@ -170,11 +186,16 @@ function InvoicesPage() {
     let items = (invoicesQuery.data ?? []).filter(
       (invoice) => invoice.kind === "INDIVIDUAL",
     );
+    if (selectedStudent) {
+      items = items.filter(
+        (invoice) => invoice.studentId === selectedStudent.id,
+      );
+    }
     if (statusFilter !== "ALL") {
       items = items.filter((invoice) => invoice.status === statusFilter);
     }
     return items;
-  }, [invoicesQuery.data, statusFilter]);
+  }, [invoicesQuery.data, selectedStudent, statusFilter]);
 
   const familyInvoices = useMemo(() => {
     const items = (invoicesQuery.data ?? []).filter(
@@ -214,6 +235,13 @@ function InvoicesPage() {
 
           <TabPanel id="individual">
             <div className={screen.panel}>
+              <StudentSearchCombobox
+                label="Student"
+                selectedKey={selectedStudent?.id ?? null}
+                onSelectionChange={setSelectedStudent}
+                placeholder="Search student invoices"
+              />
+
               <FilterChipRow
                 chips={[
                   { id: "ALL", label: "All" },
@@ -252,7 +280,11 @@ function InvoicesPage() {
               {invoicesQuery.data && individualInvoices.length === 0 ? (
                 <EmptyState
                   title="No invoices"
-                  description="Individual invoices appear when subscriptions bill."
+                  description={
+                    selectedStudent
+                      ? `No invoices for ${selectedStudent.name} with this filter.`
+                      : "Individual invoices appear when subscriptions bill."
+                  }
                 />
               ) : null}
 

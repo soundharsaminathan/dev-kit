@@ -42,7 +42,7 @@ test.describe("system admin smoke @smoke", () => {
 
       await page.getByRole("button", { name: "Create studio" }).click();
       await expect(page).toHaveURL(/\/admin\/studios\/new\/?$/);
-      await expect(page.getByText(/Step 1 of 3/)).toBeVisible();
+      await expect(page.getByText(/Step 1 of 4/)).toBeVisible();
       // Do not submit — avoid creating real studios in production DB.
     } finally {
       await context.close();

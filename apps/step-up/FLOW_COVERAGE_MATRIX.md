@@ -26,7 +26,7 @@ Product contract for automated testing. Roles use the canonical enum:
 | A09 | Notifications | Open notification → deep link | STUDENT | Critical | Playwright + UI | Covered | `notification-journey.spec.ts` + panel UI tests |
 | A10 | Membership | Purchase / active / expire / renew → access | STUDENT, STAFF | Critical | API + Playwright | Partial | renew/access API; purchase E2E Partial |
 | A11 | Batches | Create batch → assign trainer → schedule → activate | OWNER, STAFF | Critical | Playwright + API | Covered | `admin-batch-management.spec.ts` |
-| A12 | Billing | View payments / mark paid / invoices | OWNER, STAFF | Critical | Playwright + API | Covered | `admin-payments.spec.ts` + billing API |
+| A12 | Billing | View payments / mark paid / invoices / family pack | OWNER, STAFF | Critical | Playwright + API | Covered | `admin-payments.spec.ts` + smoke `admin.smoke.spec.ts` + billing API |
 | A13 | Home | Student home loads | STUDENT | Critical | Playwright | Covered | `student-home.spec.ts` |
 | A14 | Family | Parent home / child context | PARENT | Critical | Playwright + UI | Partial | Parent smoke + ChildSwitcher UI |
 | A15 | Chat | Messages index loads | STUDENT | High | Playwright | Covered | `product-smokes` chat |
