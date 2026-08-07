@@ -2,8 +2,9 @@
   position: relative;
   display: flex;
   flex-direction: column;
+  flex: 1;
   height: 100%;
-  min-height: 28rem;
+  min-height: 0;
   overflow: hidden;
   background:
     radial-gradient(
@@ -17,12 +18,15 @@
 .canvasWrap {
   position: relative;
   flex: 1;
-  min-height: 0;
+  min-height: 18rem;
+  height: 100%;
+  width: 100%;
 }
 
 .flow {
   width: 100%;
   height: 100%;
+  min-height: 18rem;
 }
 
 .flow :global(.react-flow__attribution) {

@@ -59,6 +59,17 @@ class ConfirmInvoicePaymentDto {
   razorpay_signature?: string;
 }
 
+class RefundInvoiceDto {
+  @IsOptional()
+  @IsNumber()
+  @Min(0.01)
+  amount?: number;
+
+  @IsOptional()
+  @IsString()
+  reason?: string;
+}
+
 class FamilyCoveredStudentDto {
   @IsString()
   studentId!: string;
@@ -214,6 +225,19 @@ export class BillingController {
       paymentMethod: dto.paymentMethod,
       referralDiscount: dto.referralDiscount,
       studioDiscount: dto.studioDiscount,
+    });
+  }
+
+  @Post(":id/refund")
+  @Roles(UserRole.OWNER, UserRole.STAFF)
+  refund(
+    @CurrentUser() user: DecryptedUser,
+    @Param("id") id: string,
+    @Body() dto: RefundInvoiceDto,
+  ) {
+    return this.billingService.refundInvoiceForStudio(user, id, {
+      amount: dto.amount,
+      reason: dto.reason,
     });
   }
 }

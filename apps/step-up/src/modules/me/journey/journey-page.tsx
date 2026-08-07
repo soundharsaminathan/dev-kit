@@ -11,22 +11,23 @@ import type { JourneyPayload } from "./journey-types";
 export function JourneyPage() {
   const api = useApi();
   const { studentId, loading: studentLoading } = useActiveStudentContext();
+  const resolvedStudentId = studentId.trim();
 
   const journeyQuery = useQuery({
-    queryKey: ["journey", studentId] as const,
+    queryKey: ["journey", resolvedStudentId] as const,
     queryFn: ({ signal }) => {
       const params = new URLSearchParams();
-      if (studentId) params.set("studentId", studentId);
+      if (resolvedStudentId) params.set("studentId", resolvedStudentId);
       const query = params.toString();
       return api.get<JourneyPayload>(`/journey${query ? `?${query}` : ""}`, {
         signal,
       });
     },
-    enabled: Boolean(studentId),
+    enabled: Boolean(resolvedStudentId),
     staleTime: 30_000,
   });
 
-  if (studentLoading || (studentId && journeyQuery.isLoading)) {
+  if (studentLoading || (resolvedStudentId && journeyQuery.isLoading)) {
     return (
       <div className={styles.page}>
         <div className={styles.stateWrap}>
@@ -55,7 +56,7 @@ export function JourneyPage() {
   }
 
   const data = journeyQuery.data;
-  if (!data || !studentId) {
+  if (!data || !resolvedStudentId) {
     return (
       <div className={styles.page}>
         <div className={styles.stateWrap}>
@@ -84,8 +85,8 @@ export function JourneyPage() {
   }
 
   return (
-    <div className={styles.page}>
-      <JourneyCanvas payload={data} studentId={studentId} />
+    <div className={styles.page} data-testid="journey-page">
+      <JourneyCanvas payload={data} studentId={resolvedStudentId} />
     </div>
   );
 }

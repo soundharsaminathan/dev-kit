@@ -15,13 +15,33 @@ export function ProfileSkeleton() {
       aria-label="Loading profile"
     >
       <header className={styles.header}>
-        <div className={styles.topRow}>
+        <SkeletonBlock
+          className={styles.avatar}
+          height="5.5rem"
+          width="5.5rem"
+          radius="999px"
+        />
+
+        <div className={styles.aside}>
           <SkeletonBlock
-            className={styles.avatar}
-            height="4.75rem"
-            width="4.75rem"
-            radius="999px"
+            className={styles.username}
+            height="1.5rem"
+            width="12rem"
           />
+
+          <div className={styles.actions}>
+            <SkeletonBlock
+              height="2.75rem"
+              width="100%"
+              radius="var(--radius-xl, 1rem)"
+            />
+            <SkeletonBlock
+              height="2.75rem"
+              width="100%"
+              radius="var(--radius-xl, 1rem)"
+            />
+          </div>
+
           <dl className={styles.stats}>
             {STAT_KEYS.map((key) => (
               <div key={key} className={styles.stat}>
@@ -30,35 +50,22 @@ export function ProfileSkeleton() {
               </div>
             ))}
           </dl>
-        </div>
 
-        <div className={styles.bioBlock}>
-          <SkeletonBlock height="0.95rem" width="42%" />
-          <SkeletonBlock height="0.875rem" width="88%" />
-          <SkeletonBlock height="0.875rem" width="64%" />
-          <div className={styles.chips}>
-            {CHIP_KEYS.map((key) => (
-              <SkeletonBlock
-                key={key}
-                height="1.5rem"
-                width="4.5rem"
-                radius="999px"
-              />
-            ))}
+          <div className={styles.bioBlock}>
+            <SkeletonBlock height="0.95rem" width="42%" />
+            <SkeletonBlock height="0.875rem" width="88%" />
+            <SkeletonBlock height="0.875rem" width="64%" />
+            <div className={styles.chips}>
+              {CHIP_KEYS.map((key) => (
+                <SkeletonBlock
+                  key={key}
+                  height="1.5rem"
+                  width="4.5rem"
+                  radius="999px"
+                />
+              ))}
+            </div>
           </div>
-        </div>
-
-        <div className={styles.actions}>
-          <SkeletonBlock
-            height="2.75rem"
-            width="100%"
-            radius="var(--radius-xl, 1rem)"
-          />
-          <SkeletonBlock
-            height="2.75rem"
-            width="100%"
-            radius="var(--radius-xl, 1rem)"
-          />
         </div>
       </header>
 

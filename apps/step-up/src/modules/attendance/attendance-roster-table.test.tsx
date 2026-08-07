@@ -193,7 +193,7 @@ describe("AttendanceRosterTable selection", () => {
     expect(screen.queryByText(/selected/i)).toBeNull();
   });
 
-  it("hides bulk mark controls on mobile and orders Mark before Status", () => {
+  it("hides status and selection on mobile", () => {
     useIsMobileMock.mockReturnValue(true);
     renderTable();
 
@@ -207,46 +207,49 @@ describe("AttendanceRosterTable selection", () => {
     const headers = screen.getAllByRole("columnheader").map((header) =>
       header.textContent?.replace(/\s+/g, " ").trim(),
     );
-    expect(headers).toEqual(["Student", "Mark", "Status"]);
+    expect(headers).toEqual(["Student", "Mark"]);
+    expect(screen.getByTestId("mark-attendance-s1")).toBeInTheDocument();
   });
 
-  it("confirms before marking an unpaid student present", () => {
-    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
+  it("confirms unpaid mark in a modal before marking present", async () => {
     const { onMarkOne } = renderTable({ roster: unpaidRoster });
 
     fireEvent.click(screen.getByTestId("mark-present-s1"));
 
-    expect(confirmSpy).toHaveBeenCalledWith(
-      expect.stringMatching(/Ada Lovelace.*unpaid/i),
-    );
-    expect(onMarkOne).toHaveBeenCalledWith("s1", "PRESENT");
-    confirmSpy.mockRestore();
-  });
-
-  it("cancels unpaid mark when confirm is dismissed", () => {
-    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(false);
-    const { onMarkOne } = renderTable({ roster: unpaidRoster });
-
-    fireEvent.click(screen.getByTestId("mark-present-s1"));
-
-    expect(confirmSpy).toHaveBeenCalled();
     expect(onMarkOne).not.toHaveBeenCalled();
-    confirmSpy.mockRestore();
+    expect(
+      await screen.findByRole("heading", { name: "Unpaid plan" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/Ada Lovelace.*unpaid/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId("confirm-unpaid-mark"));
+
+    expect(onMarkOne).toHaveBeenCalledWith("s1", "PRESENT");
+  });
+
+  it("cancels unpaid mark when modal is dismissed", async () => {
+    const { onMarkOne } = renderTable({ roster: unpaidRoster });
+
+    fireEvent.click(screen.getByTestId("mark-present-s1"));
+    expect(
+      await screen.findByRole("heading", { name: "Unpaid plan" }),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+
+    expect(onMarkOne).not.toHaveBeenCalled();
   });
 
   it("marks paid students without a confirm dialog", () => {
-    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(false);
     const { onMarkOne } = renderTable();
 
     fireEvent.click(screen.getByTestId("mark-present-s1"));
 
-    expect(confirmSpy).not.toHaveBeenCalled();
+    expect(screen.queryByRole("heading", { name: "Unpaid plan" })).toBeNull();
     expect(onMarkOne).toHaveBeenCalledWith("s1", "PRESENT");
-    confirmSpy.mockRestore();
   });
 
-  it("confirms before bulk-marking selected unpaid students", () => {
-    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
+  it("confirms before bulk-marking selected unpaid students", async () => {
     const { onMarkSelected } = renderTable({ roster: unpaidRoster });
 
     fireEvent.click(
@@ -258,15 +261,19 @@ describe("AttendanceRosterTable selection", () => {
       }),
     );
 
-    expect(confirmSpy).toHaveBeenCalledWith(
-      expect.stringMatching(/1 selected student.*unpaid/i),
-    );
+    expect(
+      await screen.findByRole("heading", { name: "Unpaid plans" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/1 selected student.*unpaid/i),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId("confirm-unpaid-mark"));
+
     expect(onMarkSelected).toHaveBeenCalledWith(["s1"], "PRESENT");
-    confirmSpy.mockRestore();
   });
 
-  it("confirms before mark-all when unmarked unpaid students exist", () => {
-    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
+  it("confirms before mark-all when unmarked unpaid students exist", async () => {
     const { onMarkAllUnmarkedPresent } = renderTable({
       roster: unpaidRoster,
     });
@@ -275,15 +282,19 @@ describe("AttendanceRosterTable selection", () => {
       screen.getByRole("button", { name: "Mark all unmarked present" }),
     );
 
-    expect(confirmSpy).toHaveBeenCalledWith(
-      expect.stringMatching(/1 unmarked student.*unpaid/i),
-    );
+    expect(
+      await screen.findByRole("heading", { name: "Unpaid plans" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/1 unmarked student.*unpaid/i),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId("confirm-unpaid-mark"));
+
     expect(onMarkAllUnmarkedPresent).toHaveBeenCalledTimes(1);
-    confirmSpy.mockRestore();
   });
 
-  it("cancels mark-all when unpaid bulk confirm is dismissed", () => {
-    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(false);
+  it("cancels mark-all when unpaid bulk confirm is dismissed", async () => {
     const { onMarkAllUnmarkedPresent } = renderTable({
       roster: unpaidRoster,
     });
@@ -291,10 +302,13 @@ describe("AttendanceRosterTable selection", () => {
     fireEvent.click(
       screen.getByRole("button", { name: "Mark all unmarked present" }),
     );
+    expect(
+      await screen.findByRole("heading", { name: "Unpaid plans" }),
+    ).toBeInTheDocument();
 
-    expect(confirmSpy).toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+
     expect(onMarkAllUnmarkedPresent).not.toHaveBeenCalled();
-    confirmSpy.mockRestore();
   });
 
   it("shows Not paid badge for unpaid roster rows", () => {
@@ -327,32 +341,29 @@ describe("AttendanceRosterTable status filters", () => {
     expect(screen.getByText("Grace Hopper")).toBeInTheDocument();
     expect(screen.getByText("Kathleen McNulty")).toBeInTheDocument();
 
-    fireEvent.click(
-      screen.getByRole("button", { name: "Present", pressed: false }),
-    );
+    const filterChip = (name: string, pressed = false) =>
+      screen
+        .getAllByRole("button", { name, pressed })
+        .find((button) => !button.hasAttribute("data-testid"));
+
+    fireEvent.click(filterChip("Present")!);
     expect(screen.queryByText("Ada Lovelace")).toBeNull();
     expect(screen.getByText("Grace Hopper")).toBeInTheDocument();
     expect(screen.queryByText("Kathleen McNulty")).toBeNull();
     expect(screen.getByText(/Showing 1 of 3/)).toBeInTheDocument();
     expect(screen.getByText(/filter: Present/)).toBeInTheDocument();
 
-    fireEvent.click(
-      screen.getByRole("button", { name: "Unmarked", pressed: false }),
-    );
+    fireEvent.click(filterChip("Unmarked")!);
     expect(screen.getByText("Ada Lovelace")).toBeInTheDocument();
     expect(screen.queryByText("Grace Hopper")).toBeNull();
     expect(screen.queryByText("Kathleen McNulty")).toBeNull();
 
-    fireEvent.click(
-      screen.getByRole("button", { name: "Absent", pressed: false }),
-    );
+    fireEvent.click(filterChip("Absent")!);
     expect(screen.queryByText("Ada Lovelace")).toBeNull();
     expect(screen.queryByText("Grace Hopper")).toBeNull();
     expect(screen.getByText("Kathleen McNulty")).toBeInTheDocument();
 
-    fireEvent.click(
-      screen.getByRole("button", { name: "All", pressed: false }),
-    );
+    fireEvent.click(filterChip("All")!);
     expect(screen.getByText("Ada Lovelace")).toBeInTheDocument();
     expect(screen.getByText("Grace Hopper")).toBeInTheDocument();
     expect(screen.getByText("Kathleen McNulty")).toBeInTheDocument();

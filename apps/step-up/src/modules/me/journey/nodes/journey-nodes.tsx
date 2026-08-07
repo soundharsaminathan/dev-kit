@@ -1,9 +1,28 @@
 import { Icon, type IconName } from "@dev-ui/icons";
-import type { NodeProps } from "@xyflow/react";
+import { Handle, type NodeProps, Position } from "@xyflow/react";
 import { type MouseEvent, memo, type PointerEvent, useRef } from "react";
 import { isClusterEvent } from "../journey-types";
 import type { JourneyNodeData } from "../layout-path";
 import styles from "./nodes.module.scss";
+
+function NodeHandles() {
+  return (
+    <>
+      <Handle
+        type="target"
+        position={Position.Top}
+        className={styles.handle}
+        isConnectable={false}
+      />
+      <Handle
+        type="source"
+        position={Position.Bottom}
+        className={styles.handle}
+        isConnectable={false}
+      />
+    </>
+  );
+}
 
 function formatShortDate(iso: string) {
   return new Date(iso).toLocaleDateString(undefined, {
@@ -91,37 +110,40 @@ function MilestoneNodeView({
   if (isClusterEvent(item)) return null;
 
   return (
-    <button
-      type="button"
-      className={styles.milestone}
-      data-status={item.status}
-      data-newly={item.newlyEarned ? "true" : undefined}
-      aria-label={item.title}
-      {...handlers}
-    >
-      {item.imageUrl || item.certificatePreviewUrl ? (
-        <img
-          className={styles.milestoneMedia}
-          src={item.imageUrl || item.certificatePreviewUrl || undefined}
-          alt=""
-        />
-      ) : null}
-      {item.xp ? <span className={styles.xpChip}>+{item.xp} XP</span> : null}
-      <span className={styles.milestoneIcon}>
-        <Icon name={asIconName(item.icon)} />
-      </span>
-      <span className={styles.milestoneTitle}>{item.title}</span>
-      <span className={styles.milestoneDate}>
-        {formatShortDate(item.occurredAt)}
-      </span>
-      {item.trainer?.photoUrl ? (
-        <img
-          className={styles.trainer}
-          src={item.trainer.photoUrl}
-          alt={item.trainer.name}
-        />
-      ) : null}
-    </button>
+    <div className={styles.nodeShell} style={{ width: data.size, height: data.size }}>
+      <NodeHandles />
+      <button
+        type="button"
+        className={styles.milestone}
+        data-status={item.status}
+        data-newly={item.newlyEarned ? "true" : undefined}
+        aria-label={item.title}
+        {...handlers}
+      >
+        {item.imageUrl || item.certificatePreviewUrl ? (
+          <img
+            className={styles.milestoneMedia}
+            src={item.imageUrl || item.certificatePreviewUrl || undefined}
+            alt=""
+          />
+        ) : null}
+        {item.xp ? <span className={styles.xpChip}>+{item.xp} XP</span> : null}
+        <span className={styles.milestoneIcon}>
+          <Icon name={asIconName(item.icon)} />
+        </span>
+        <span className={styles.milestoneTitle}>{item.title}</span>
+        <span className={styles.milestoneDate}>
+          {formatShortDate(item.occurredAt)}
+        </span>
+        {item.trainer?.photoUrl ? (
+          <img
+            className={styles.trainer}
+            src={item.trainer.photoUrl}
+            alt={item.trainer.name}
+          />
+        ) : null}
+      </button>
+    </div>
   );
 }
 
@@ -142,26 +164,29 @@ function EventNodeView({
   if (isClusterEvent(item)) return null;
 
   return (
-    <button
-      type="button"
-      className={styles.event}
-      data-status={item.status}
-      data-tier={item.tier}
-      aria-label={item.title}
-      {...handlers}
-    >
-      <span className={styles.eventIcon} data-tier={item.tier}>
-        <Icon name={asIconName(item.icon)} />
-      </span>
-      <span className={styles.eventTitle}>{item.title}</span>
-      {item.trainer?.photoUrl && item.tier !== "small" ? (
-        <img
-          className={styles.trainer}
-          src={item.trainer.photoUrl}
-          alt={item.trainer.name}
-        />
-      ) : null}
-    </button>
+    <div className={styles.nodeShell} style={{ width: data.size, height: data.size }}>
+      <NodeHandles />
+      <button
+        type="button"
+        className={styles.event}
+        data-status={item.status}
+        data-tier={item.tier}
+        aria-label={item.title}
+        {...handlers}
+      >
+        <span className={styles.eventIcon} data-tier={item.tier}>
+          <Icon name={asIconName(item.icon)} />
+        </span>
+        <span className={styles.eventTitle}>{item.title}</span>
+        {item.trainer?.photoUrl && item.tier !== "small" ? (
+          <img
+            className={styles.trainer}
+            src={item.trainer.photoUrl}
+            alt={item.trainer.name}
+          />
+        ) : null}
+      </button>
+    </div>
   );
 }
 
@@ -176,16 +201,19 @@ function ClusterNodeView({
   if (!isClusterEvent(item)) return null;
 
   return (
-    <button
-      type="button"
-      className={styles.cluster}
-      data-status={item.status}
-      aria-label={item.title}
-      onClick={() => actions.onExpandCluster?.(item.id)}
-    >
-      <span className={styles.clusterRing}>{item.count}</span>
-      <span className={styles.clusterLabel}>{item.title}</span>
-    </button>
+    <div className={styles.nodeShell} style={{ width: data.size, height: data.size }}>
+      <NodeHandles />
+      <button
+        type="button"
+        className={styles.cluster}
+        data-status={item.status}
+        aria-label={item.title}
+        onClick={() => actions.onExpandCluster?.(item.id)}
+      >
+        <span className={styles.clusterRing}>{item.count}</span>
+        <span className={styles.clusterLabel}>{item.title}</span>
+      </button>
+    </div>
   );
 }
 

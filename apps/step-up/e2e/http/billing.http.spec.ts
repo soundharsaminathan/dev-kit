@@ -137,6 +137,51 @@ test.describe("billing HTTP @http", () => {
     }
   });
 
+  test("staff issues a partial refund on a paid invoice @http", async () => {
+    const cleanup = new TestDataCleanup();
+    try {
+      const target = await createPendingInvoiceViaEnroll(cleanup);
+      await expectOk("STAFF", `/billing/${target.id}/paid`, {
+        method: "PATCH",
+        body: JSON.stringify({ paymentMethod: "CASH" }),
+      });
+
+      const refunded = await expectOk<{
+        id: string;
+        status: string;
+        amount: number;
+        refundedAmount: number;
+        thisRefundAmount: number;
+      }>("STAFF", `/billing/${target.id}/refund`, {
+        method: "POST",
+        body: JSON.stringify({ amount: 500, reason: "Partial month" }),
+      });
+
+      expect(refunded.status).toBe("PAID");
+      expect(refunded.refundedAmount).toBe(500);
+      expect(refunded.thisRefundAmount).toBe(500);
+    } finally {
+      await cleanup.dispose();
+    }
+  });
+
+  test("trainer cannot refund via billing endpoint @http", async () => {
+    const cleanup = new TestDataCleanup();
+    try {
+      const target = await createPendingInvoiceViaEnroll(cleanup);
+      await expectOk("STAFF", `/billing/${target.id}/paid`, {
+        method: "PATCH",
+        body: JSON.stringify({ paymentMethod: "CASH" }),
+      });
+      await expectStatus("TRAINER", `/billing/${target.id}/refund`, 403, {
+        method: "POST",
+        body: JSON.stringify({ amount: 100 }),
+      });
+    } finally {
+      await cleanup.dispose();
+    }
+  });
+
   test("student lists own invoices @http", async () => {
     const invoices = await expectOk<Array<{ id: string }>>(
       "STUDENT",

@@ -23,7 +23,10 @@ import type {
   JourneyPayload,
 } from "./journey-types";
 import { buildJourneyGraph, type JourneyNodeData } from "./layout-path";
-import { createJourneyNodeTypes } from "./nodes/journey-nodes";
+import {
+  createJourneyNodeTypes,
+  type JourneyNodeActions,
+} from "./nodes/journey-nodes";
 import {
   EventDetailSheet,
   QuickActionsSheet,
@@ -41,7 +44,11 @@ function readViewport(studentId: string): Viewport | null {
     if (
       typeof parsed.x === "number" &&
       typeof parsed.y === "number" &&
-      typeof parsed.zoom === "number"
+      typeof parsed.zoom === "number" &&
+      Number.isFinite(parsed.x) &&
+      Number.isFinite(parsed.y) &&
+      Number.isFinite(parsed.zoom) &&
+      parsed.zoom > 0
     ) {
       return parsed;
     }
@@ -66,7 +73,7 @@ type JourneyCanvasInnerProps = {
 
 function JourneyCanvasInner({ payload, studentId }: JourneyCanvasInnerProps) {
   const navigate = useNavigate();
-  const { setCenter, getZoom, setViewport } = useReactFlow();
+  const { setCenter, getZoom, setViewport, fitView } = useReactFlow();
   const [filter, setFilter] = useState<"all" | JourneyFilterTag>("all");
   const [zoom, setZoom] = useState(1);
   const [expandedClusters, setExpandedClusters] = useState<Set<string>>(
@@ -77,6 +84,11 @@ function JourneyCanvasInner({ payload, studentId }: JourneyCanvasInnerProps) {
   const [celebrate, setCelebrate] = useState(false);
   const lastTapRef = useRef(0);
   const itemsByIdRef = useRef<Map<string, JourneyPathItem>>(new Map());
+  const actionsRef = useRef<JourneyNodeActions>({
+    onOpen: () => {},
+    onLongPress: () => {},
+  });
+  const viewportInitializedFor = useRef<string | null>(null);
 
   const filtered = useMemo(
     () => filterJourneyEvents(payload.events, filter),
@@ -114,19 +126,23 @@ function JourneyCanvasInner({ payload, studentId }: JourneyCanvasInnerProps) {
     });
   }, []);
 
+  actionsRef.current = {
+    onOpen: openItem,
+    onLongPress: longPressItem,
+    onExpandCluster: expandCluster,
+  };
+
   const nodeTypes = useMemo(
     () =>
       createJourneyNodeTypes({
-        onOpen: openItem,
-        onLongPress: longPressItem,
-        onExpandCluster: expandCluster,
+        onOpen: (id) => actionsRef.current.onOpen(id),
+        onLongPress: (id) => actionsRef.current.onLongPress(id),
+        onExpandCluster: (id) => actionsRef.current.onExpandCluster?.(id),
       }),
-    [openItem, longPressItem, expandCluster],
+    [],
   );
 
-  const viewportInitializedFor = useRef<string | null>(null);
-
-  useEffect(() => {
+  const applyInitialViewport = useCallback(() => {
     if (viewportInitializedFor.current === studentId) return;
     viewportInitializedFor.current = studentId;
 
@@ -136,6 +152,7 @@ function JourneyCanvasInner({ payload, studentId }: JourneyCanvasInnerProps) {
       setZoom(saved.zoom);
       return;
     }
+
     if (payload.currentEventId) {
       const node = graph.nodes.find((n) => n.id === payload.currentEventId);
       if (node) {
@@ -144,9 +161,31 @@ function JourneyCanvasInner({ payload, studentId }: JourneyCanvasInnerProps) {
           zoom: 1,
           duration: 0,
         });
+        return;
       }
     }
-  }, [studentId, payload.currentEventId, graph.nodes, setCenter, setViewport]);
+
+    void fitView({ padding: 0.3, duration: 0 });
+  }, [
+    fitView,
+    graph.nodes,
+    payload.currentEventId,
+    setCenter,
+    setViewport,
+    studentId,
+  ]);
+
+  useEffect(() => {
+    viewportInitializedFor.current = null;
+  }, [studentId]);
+
+  useEffect(() => {
+    if (graph.nodes.length === 0) return;
+    const frame = requestAnimationFrame(() => {
+      applyInitialViewport();
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [applyInitialViewport, graph.nodes.length, studentId]);
 
   useEffect(() => {
     const hasNew = payload.events.some((event) => event.newlyEarned);
@@ -173,10 +212,11 @@ function JourneyCanvasInner({ payload, studentId }: JourneyCanvasInnerProps) {
   }, [centerCurrent]);
 
   const stats = payload.stats;
+  const savedViewport = readViewport(studentId);
 
   return (
     <>
-      <div className={styles.canvasWrap}>
+      <div className={styles.canvasWrap} data-testid="journey-canvas">
         <ReactFlow
           className={styles.flow}
           nodes={graph.nodes as Node[]}
@@ -191,11 +231,15 @@ function JourneyCanvasInner({ payload, studentId }: JourneyCanvasInnerProps) {
           zoomOnScroll={false}
           panOnScroll={false}
           zoomOnDoubleClick={false}
-          onlyRenderVisibleElements
           minZoom={0.35}
           maxZoom={1.75}
           proOptions={{ hideAttribution: true }}
           onPaneClick={onPaneClick}
+          onInit={() => {
+            requestAnimationFrame(() => {
+              applyInitialViewport();
+            });
+          }}
           onMoveEnd={(_event, viewport) => {
             setZoom(viewport.zoom);
             writeViewport(studentId, viewport);
@@ -203,8 +247,8 @@ function JourneyCanvasInner({ payload, studentId }: JourneyCanvasInnerProps) {
           onMove={(_event, viewport) => {
             setZoom(viewport.zoom);
           }}
-          defaultViewport={readViewport(studentId) ?? { x: 0, y: 40, zoom: 1 }}
-          fitView={!readViewport(studentId)}
+          defaultViewport={savedViewport ?? { x: 0, y: 40, zoom: 1 }}
+          fitView={!savedViewport}
           fitViewOptions={{ padding: 0.3 }}
         >
           <MiniMap

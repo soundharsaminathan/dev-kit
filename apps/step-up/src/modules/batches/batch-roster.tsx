@@ -25,6 +25,7 @@ import {
 } from "@/modules/students/student-search-combobox";
 import { StyleList } from "@/modules/styles/style-list";
 import { AppSheet } from "@/modules/ui/app-sheet";
+import { FormInput } from "@/modules/ui/form-input";
 import { PressableCard } from "@/modules/ui/pressable-card";
 import staff from "@/modules/ui/staff.module.scss";
 import { EmptyState, ErrorState } from "@/modules/ui/states";
@@ -103,6 +104,8 @@ type UnenrollPreview = {
   refundableInvoice: {
     id: string;
     amount: number;
+    refundedAmount: number;
+    refundableAmount: number;
     paymentMethod: string | null;
     paidAt: string | null;
   } | null;
@@ -134,6 +137,10 @@ export function BatchRoster({ batchId, capacity, active }: BatchRosterProps) {
   const [unenrollStudent, setUnenrollStudent] =
     useState<BatchEnrollmentRow | null>(null);
   const [issueRefund, setIssueRefund] = useState(false);
+  const [refundAmount, setRefundAmount] = useState("");
+  const [refundAmountInvoiceId, setRefundAmountInvoiceId] = useState<
+    string | null
+  >(null);
 
   const query = useQuery({
     queryKey: ["batch", batchId],
@@ -356,10 +363,17 @@ export function BatchRoster({ batchId, capacity, active }: BatchRosterProps) {
   });
 
   const unenroll = useMutation({
-    mutationFn: (input: { studentId: string; refund: boolean }) =>
+    mutationFn: (input: {
+      studentId: string;
+      refund: boolean;
+      refundAmount?: number;
+    }) =>
       api.post(`/batches/${batchId}/unenroll`, {
         studentId: input.studentId,
         refund: input.refund,
+        ...(input.refundAmount !== undefined
+          ? { refundAmount: input.refundAmount }
+          : {}),
       }),
     onMutate: async ({ studentId: leavingStudentId }) => {
       await queryClient.cancelQueries({ queryKey: ["batch", batchId] });
@@ -397,6 +411,8 @@ export function BatchRoster({ batchId, capacity, active }: BatchRosterProps) {
       });
       setUnenrollStudent(null);
       setIssueRefund(false);
+      setRefundAmount("");
+      setRefundAmountInvoiceId(null);
     },
     onError: (error, _input, context) => {
       if (context?.previous) {
@@ -423,6 +439,9 @@ export function BatchRoster({ batchId, capacity, active }: BatchRosterProps) {
         queryClient.invalidateQueries({
           queryKey: ["invoices", studioId],
         }),
+        queryClient.invalidateQueries({
+          queryKey: ["billing", "trainer-analytics"],
+        }),
       ]);
     },
   });
@@ -445,11 +464,15 @@ export function BatchRoster({ batchId, capacity, active }: BatchRosterProps) {
   function openUnenroll(row: BatchEnrollmentRow) {
     setUnenrollStudent(row);
     setIssueRefund(false);
+    setRefundAmount("");
+    setRefundAmountInvoiceId(null);
   }
 
   function closeUnenroll() {
     setUnenrollStudent(null);
     setIssueRefund(false);
+    setRefundAmount("");
+    setRefundAmountInvoiceId(null);
   }
 
   if (query.isError) {
@@ -827,14 +850,48 @@ export function BatchRoster({ batchId, capacity, active }: BatchRosterProps) {
             </p>
           ) : null}
           {unenrollPreviewQuery.data?.refundableInvoice ? (
-            <Checkbox
-              isSelected={issueRefund}
-              onChange={setIssueRefund}
-              data-testid="unenroll-refund-toggle"
-            >
-              Refund latest payment (
-              {formatPrice(unenrollPreviewQuery.data.refundableInvoice.amount)})
-            </Checkbox>
+            <>
+              <Checkbox
+                isSelected={issueRefund}
+                onChange={setIssueRefund}
+                data-testid="unenroll-refund-toggle"
+              >
+                Refund payment (
+                {formatPrice(
+                  unenrollPreviewQuery.data.refundableInvoice.refundableAmount,
+                )}{" "}
+                remaining)
+              </Checkbox>
+              {issueRefund ? (
+                <FormInput
+                  label="Refund amount"
+                  type="number"
+                  inputMode="decimal"
+                  min={0.01}
+                  step="0.01"
+                  max={
+                    unenrollPreviewQuery.data.refundableInvoice.refundableAmount
+                  }
+                  value={
+                    refundAmountInvoiceId ===
+                    unenrollPreviewQuery.data.refundableInvoice.id
+                      ? refundAmount
+                      : String(
+                          unenrollPreviewQuery.data.refundableInvoice
+                            .refundableAmount,
+                        )
+                  }
+                  onChange={(value) => {
+                    const invoice =
+                      unenrollPreviewQuery.data?.refundableInvoice;
+                    if (!invoice) return;
+                    setRefundAmountInvoiceId(invoice.id);
+                    setRefundAmount(value);
+                  }}
+                  data-testid="unenroll-refund-amount"
+                />
+              ) : null}
+            </>
           ) : unenrollPreviewQuery.data ? (
             <p className={staff.rowMeta}>
               No paid invoice available to refund.
@@ -857,12 +914,43 @@ export function BatchRoster({ batchId, capacity, active }: BatchRosterProps) {
               isPending={unenroll.isPending}
               data-testid="confirm-unenroll-batch"
               onClick={() => {
-                if (unenrollStudent) {
-                  unenroll.mutate({
-                    studentId: unenrollStudent.studentId,
-                    refund: issueRefund,
-                  });
+                if (!unenrollStudent) return;
+                const refundable =
+                  unenrollPreviewQuery.data?.refundableInvoice ?? null;
+                let parsedRefundAmount: number | undefined;
+                if (issueRefund && refundable) {
+                  const raw =
+                    refundAmountInvoiceId === refundable.id
+                      ? refundAmount
+                      : String(refundable.refundableAmount);
+                  parsedRefundAmount = Number(raw);
+                  if (
+                    !Number.isFinite(parsedRefundAmount) ||
+                    parsedRefundAmount <= 0
+                  ) {
+                    toast({
+                      title: "Invalid refund amount",
+                      description: "Enter a refund amount greater than 0.",
+                      variant: "error",
+                    });
+                    return;
+                  }
+                  if (parsedRefundAmount > refundable.refundableAmount) {
+                    toast({
+                      title: "Refund too high",
+                      description: `Maximum refundable is ${formatPrice(refundable.refundableAmount)}.`,
+                      variant: "error",
+                    });
+                    return;
+                  }
                 }
+                unenroll.mutate({
+                  studentId: unenrollStudent.studentId,
+                  refund: issueRefund,
+                  ...(parsedRefundAmount !== undefined
+                    ? { refundAmount: parsedRefundAmount }
+                    : {}),
+                });
               }}
             >
               {issueRefund ? "Unenroll and refund" : "Confirm unenroll"}
