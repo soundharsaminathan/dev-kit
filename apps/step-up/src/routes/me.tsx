@@ -5,7 +5,10 @@ import {
   useRouterState,
 } from "@tanstack/react-router";
 import { MEMBER_ROLES } from "@/lib/constants";
-import { isStudentOnboardingIncomplete } from "@/lib/onboarding";
+import {
+  isStudentOnboardingIncomplete,
+  shouldRedirectToStudentOnboarding,
+} from "@/lib/onboarding";
 import { requireAuth } from "@/lib/require-auth";
 import { AppShell } from "@/modules/layout/app-shell";
 import { ActiveStudentProvider } from "@/modules/me/active-student-provider";
@@ -21,7 +24,7 @@ export const Route = createFileRoute("/me")({
     });
 
     const onOnboarding = location.pathname.startsWith("/me/onboarding");
-    if (isStudentOnboardingIncomplete(user) && !onOnboarding) {
+    if (shouldRedirectToStudentOnboarding(user, location.pathname)) {
       throw redirect({ to: "/me/onboarding", replace: true });
     }
     if (!isStudentOnboardingIncomplete(user) && onOnboarding) {
