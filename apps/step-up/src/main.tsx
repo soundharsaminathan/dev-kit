@@ -142,7 +142,6 @@ function AppRouter() {
         return;
       }
 
-      void preloadSessionProviders().catch(() => undefined);
       const home = homePathForUser(auth.user);
       if (home === "/app" || home.startsWith("/me")) {
         await router.preloadRoute({ to: home }).catch(() => undefined);
