@@ -210,9 +210,20 @@ function mountApp() {
 const stylesReady = loadAppStyles();
 
 void (async () => {
-  // Public routes already paint a static HTML shell; wait for styles before
-  // React replaces it so the themed LCP paint is not unstyled.
-  // Protected routes need styles for the auth boot loader.
-  await stylesReady.catch(() => undefined);
+  const publicBoot = isPublicBootPath(window.location.pathname);
+  if (publicBoot) {
+    // Static HTML shell already painted the LCP candidate. Mount React
+    // promptly so login/register become interactive; do not block forever on
+    // a slow CSS chunk (that left #boot-public stuck in e2e).
+    void stylesReady.catch(() => undefined);
+  } else {
+    // Protected routes need styles for the auth boot loader — bound the wait.
+    await Promise.race([
+      stylesReady.catch(() => undefined),
+      new Promise<void>((resolve) => {
+        window.setTimeout(resolve, 4_000);
+      }),
+    ]);
+  }
   mountApp();
 })();

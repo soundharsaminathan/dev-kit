@@ -1,18 +1,13 @@
 import { IconProvider } from "@dev-ui/icons";
 import { useRouterState } from "@tanstack/react-router";
-import {
-  type ReactNode,
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  useState,
-} from "react";
+import { type ReactNode, useEffect, useLayoutEffect, useState } from "react";
 import {
   getCachedLucidePack,
   getEmptyLucidePack,
   preloadLucidePack,
 } from "@/lib/deferred-icon-pack";
 import { isSoftThemePath } from "@/lib/theme-path";
+import { AuthBootLoader } from "@/modules/ui/auth-boot-loader";
 
 const STAFF_THEME = "step-up";
 const MEMBER_THEME = "step-up-soft";
@@ -66,11 +61,10 @@ function scheduleIdle(cb: () => void) {
  * Built-in themes already live in SCSS. Avoid pulling colorjs.io + theme JS
  * onto the first paint of public routes; hydrate the full ThemeProvider idle.
  *
- * Protected shells render `<Icon>` immediately after auth. If we paint an
- * IconProvider stub and later swap to AppThemeProvider, React remounts the
- * entire route tree and wipes form/booking state. Commit to one wrapper for
- * the lifetime of this mount: prefer AppThemeProvider when the chunk is
- * already warm; otherwise stay on IconProvider.
+ * Protected routes must not mount the outlet under a temporary IconProvider and
+ * later swap to AppThemeProvider — that remounts forms and also breaks
+ * `useTheme` (admin wizard, branding). Hold a light boot loader until the
+ * theme chunk is ready, then mount children once under AppThemeProvider.
  */
 export function BootThemeProvider({ children }: { children: ReactNode }) {
   const pathname = useRouterState({
@@ -81,7 +75,6 @@ export function BootThemeProvider({ children }: { children: ReactNode }) {
   const [iconPack, setIconPack] = useState(
     () => getCachedLucidePack() ?? getEmptyLucidePack(),
   );
-  const committedIconBoot = useRef(false);
 
   useLayoutEffect(() => {
     applyDocumentTheme(pathname);
@@ -121,18 +114,9 @@ export function BootThemeProvider({ children }: { children: ReactNode }) {
     if (isPublic) {
       return children;
     }
-    committedIconBoot.current = true;
     return (
       <IconProvider icons={{ library: "lucide" }} initialPack={iconPack}>
-        {children}
-      </IconProvider>
-    );
-  }
-
-  if (committedIconBoot.current) {
-    return (
-      <IconProvider icons={{ library: "lucide" }} initialPack={iconPack}>
-        {children}
+        <AuthBootLoader label="Loading app" caption="Warming up the studio…" />
       </IconProvider>
     );
   }

@@ -2,6 +2,10 @@ import { useEffect } from "react";
 
 type DismissMode = "idle" | "interact";
 
+function isAutomatedClient() {
+  return import.meta.env.VITE_AUTH_BYPASS === "true";
+}
+
 /**
  * Keep the static HTML public shell until dismiss so Lighthouse (and users on
  * slow networks) get early FCP/LCP from index.html. React mounts underneath
@@ -10,6 +14,8 @@ type DismissMode = "idle" | "interact";
  * - idle: dismiss on requestIdleCallback (landing)
  * - interact: dismiss on first pointer/keyboard (login/register) so the shell
  *   remains the LCP candidate under mobile simulation
+ *
+ * Bypass/e2e clients dismiss immediately so Playwright can reach the real form.
  */
 export function useDismissBootPublic(mode: DismissMode = "idle") {
   useEffect(() => {
@@ -27,6 +33,14 @@ export function useDismissBootPublic(mode: DismissMode = "idle") {
       document.documentElement.removeAttribute("data-boot-public");
       shell.remove();
     };
+
+    if (isAutomatedClient()) {
+      dismiss();
+      return () => {
+        cancelled = true;
+        document.documentElement.removeAttribute("data-boot-public");
+      };
+    }
 
     if (mode === "interact") {
       const onInteract = () => dismiss();
