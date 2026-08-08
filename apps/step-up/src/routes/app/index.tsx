@@ -659,7 +659,6 @@ function AppDashboardPage() {
 
   return (
     <Screen
-      hero
       title="Home"
       subtitle={`${greetingFor(new Date())}, ${firstName} — here's your studio`}
     >
