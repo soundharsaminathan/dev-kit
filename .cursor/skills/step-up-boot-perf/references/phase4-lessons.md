@@ -43,6 +43,13 @@ Child routes with **late content LCP** (API/images) still regress — do not
    paint pushed `/app` LCP ~8s; fixed with noop ToastContext + sibling host.
 8. **Login IconProvider** — Password `Icon` toggle crashed before idle theme
    hydrate; switched to text toggle.
+9. **Dropped styles barrel without per-chunk CSS** — Removing
+   `@dev-ui/components/styles` was correct for boot weight, but Vite lib
+   mode extracts CSS without linking it from dist JS. Production then
+   shipped unstyled Buttons/Select/Sidebar/Menu (grey native controls,
+   no sidebar collapse transition). Fix: inject per-chunk CSS imports in
+   `emitStylesEntryPlugin` (`scripts/vite/lib-build.ts`); keep the barrel
+   only for Storybook/showcase.
 
 ## Key files (do not casually rewrite)
 

@@ -1,7 +1,10 @@
 /**
- * Single entry for all component styles (CSS modules).
- * Consumers and Storybook can do: import "@dev-ui/components/styles"
- * Add a side-effect import here when you add a new component.
+ * Optional full styles barrel for Storybook/showcase.
+ *
+ * App consumers should NOT import this on the critical path — the components
+ * build injects per-chunk `import "./<name>.css"` so importing a component
+ * pulls only that component's CSS. Add a side-effect import here when you
+ * add a new component so the barrel stays complete for Storybook.
  */
 import "./button/button.module.scss";
 import "./separator/separator.module.scss";
