@@ -72,7 +72,7 @@ export function PushNotificationsProvider({
       }
 
       const registration = await messagingMod.registerMessagingServiceWorker();
-      const messaging = messagingMod.getFirebaseMessaging();
+      const messaging = await messagingMod.getFirebaseMessagingAsync();
       if (!registration || !messaging || cancelled) {
         return;
       }

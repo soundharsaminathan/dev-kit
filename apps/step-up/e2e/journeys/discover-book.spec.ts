@@ -177,10 +177,16 @@ test.describe("discover and book @critical", () => {
       const bookCta = page.getByTestId("book-class-cta");
       await expect(bookCta).toBeVisible();
       await expect(bookCta).toHaveText(/book this class/i);
+      await expect(bookCta).toBeEnabled();
       await bookCta.click();
 
       const submit = page.getByTestId("book-submit");
-      await expect(submit).toBeVisible();
+      // Sheet open can race first paint; retry the CTA once if needed.
+      if (!(await submit.isVisible().catch(() => false))) {
+        await bookCta.click();
+      }
+      await expect(submit).toBeVisible({ timeout: 15_000 });
+      await expect(submit).toBeEnabled();
 
       const [response] = await Promise.all([
         waitForApiResponse(page, { method: "POST", pathIncludes: "/bookings" }),

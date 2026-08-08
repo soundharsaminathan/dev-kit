@@ -20,6 +20,7 @@ export const LIGHTHOUSE_ROUTES: PerfRoute[] = [
   { name: "Student Calendar", path: "/me/calendar", role: "STUDENT" },
   { name: "Student Messages", path: "/me/messages", role: "STUDENT" },
   { name: "Student Profile", path: "/me/profile", role: "STUDENT" },
+  { name: "Student Attendance", path: "/me/attendance", role: "STUDENT" },
 
   { name: "Dashboard", path: "/app", role: "OWNER" },
   { name: "Batches", path: "/app/batches", role: "OWNER" },

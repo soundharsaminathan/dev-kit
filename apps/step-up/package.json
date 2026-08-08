@@ -16,6 +16,10 @@
     "test:lighthouse": "node scripts/run-lighthouse.mjs",
     "test:lighthouse:home": "node scripts/run-lighthouse.mjs http://127.0.0.1:4173/ 3 lighthouse-results/home",
     "test:lighthouse:login": "node scripts/run-lighthouse.mjs http://127.0.0.1:4173/login 3 lighthouse-results/login",
+    "test:lighthouse:auth-setup": "node scripts/setup-lighthouse-auth.mjs",
+    "test:lighthouse:authenticated": "node scripts/run-lighthouse-authenticated.mjs",
+    "test:lighthouse:suite": "node scripts/run-lighthouse-authenticated.mjs --device=both",
+    "analyze:entry": "node scripts/analyze-entry-bundle.mjs",
     "test:gate": "pnpm nx run step-up:test:regression"
   },
   "dependencies": {

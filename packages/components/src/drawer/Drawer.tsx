@@ -55,55 +55,27 @@ function useDrawerContext(): DrawerContextValue {
 }
 
 function shouldIgnoreSwipeTarget(target: EventTarget | null) {
-  return target instanceof Element && Boolean(target.closest(SWIPE_IGNORE_SELECTOR));
+  return (
+    target instanceof Element && Boolean(target.closest(SWIPE_IGNORE_SELECTOR))
+  );
 }
 
-function allowInteractiveSwipeProps(moveProps: DrawerMoveProps): DrawerMoveProps {
-  const { onPointerDown, onTouchStart, onMouseDown, onKeyDown, ...rest } =
-    moveProps;
+function allowInteractiveSwipeProps(
+  moveProps: DrawerMoveProps,
+): DrawerMoveProps {
+  const { onPointerDown, ...rest } = moveProps;
+  if (!onPointerDown) {
+    return rest;
+  }
 
   return {
     ...rest,
-    ...(onPointerDown
-      ? {
-          onPointerDown: (event) => {
-            if (shouldIgnoreSwipeTarget(event.target)) {
-              return;
-            }
-            onPointerDown(event);
-          },
-        }
-      : {}),
-    ...(onTouchStart
-      ? {
-          onTouchStart: (event) => {
-            if (shouldIgnoreSwipeTarget(event.target)) {
-              return;
-            }
-            onTouchStart(event);
-          },
-        }
-      : {}),
-    ...(onMouseDown
-      ? {
-          onMouseDown: (event) => {
-            if (shouldIgnoreSwipeTarget(event.target)) {
-              return;
-            }
-            onMouseDown(event);
-          },
-        }
-      : {}),
-    ...(onKeyDown
-      ? {
-          onKeyDown: (event) => {
-            if (shouldIgnoreSwipeTarget(event.target)) {
-              return;
-            }
-            onKeyDown(event);
-          },
-        }
-      : {}),
+    onPointerDown: (event) => {
+      if (shouldIgnoreSwipeTarget(event.target)) {
+        return;
+      }
+      onPointerDown(event);
+    },
   };
 }
 
@@ -287,11 +259,6 @@ function Drawer({
         });
       });
 
-      const focusTarget = getInitialFocusTarget(panelRef.current);
-      if (focusTarget !== true) {
-        focusTarget.focus();
-      }
-
       return () => {
         if (openFrameRef.current !== undefined) {
           cancelAnimationFrame(openFrameRef.current);
@@ -304,6 +271,28 @@ function Drawer({
       setIsEnding(true);
     }
   }, [state.isOpen]);
+
+  useLayoutEffect(() => {
+    if (!state.isOpen || !isPresent || isStarting) {
+      return;
+    }
+
+    const panel = panelRef.current;
+    if (!panel || panel.contains(document.activeElement)) {
+      return;
+    }
+
+    const focusTarget = getInitialFocusTarget(panel);
+    if (focusTarget !== true) {
+      focusTarget.focus();
+      return;
+    }
+
+    if (!panel.hasAttribute("tabindex")) {
+      panel.tabIndex = -1;
+    }
+    panel.focus();
+  }, [state.isOpen, isPresent, isStarting]);
 
   useEffect(() => {
     if (!isEnding) {

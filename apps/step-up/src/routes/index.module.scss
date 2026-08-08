@@ -11,17 +11,10 @@
 
 .brand {
   font-size: clamp(2.75rem, 12vw, 4rem);
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: -0.05em;
   line-height: 0.95;
-  background: linear-gradient(
-    135deg,
-    var(--color-fg) 0%,
-    color-mix(in srgb, var(--color-primary) 72%, var(--color-fg)) 100%
-  );
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  color: var(--color-fg);
 }
 
 .headline {

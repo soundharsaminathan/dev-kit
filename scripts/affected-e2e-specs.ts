@@ -31,6 +31,23 @@ function normalizePath(file: string): string {
   return file.replaceAll("\\", "/");
 }
 
+/** Unit/integration tests never own Storybook visual baselines. */
+function isUnitTestPath(file: string): boolean {
+  return (
+    file.includes("/__tests__/") ||
+    (/\.(test|spec)\.[cm]?[jt]sx?$/.test(file) &&
+      !file.startsWith("apps/storybook/e2e/"))
+  );
+}
+
+function isGlobalVisualDependency(file: string): boolean {
+  if (isUnitTestPath(file)) {
+    return false;
+  }
+
+  return GLOBAL_PATH_PATTERNS.some((pattern) => pattern.test(file));
+}
+
 export function pascalToKebab(name: string): string {
   return name
     .replace(/([a-z0-9])([A-Z])/g, "$1-$2")
@@ -101,7 +118,7 @@ export function resolveAffectedE2eSpecs(
   }
 
   for (const file of changedFiles) {
-    if (GLOBAL_PATH_PATTERNS.some((pattern) => pattern.test(file))) {
+    if (isGlobalVisualDependency(file)) {
       return {
         mode: "all",
         reason: `Global visual dependency changed: ${file}`,
@@ -112,6 +129,10 @@ export function resolveAffectedE2eSpecs(
   const specs = new Set<string>();
 
   for (const file of changedFiles) {
+    if (isUnitTestPath(file)) {
+      continue;
+    }
+
     const componentDir = file.match(
       /^packages\/components\/src\/([^/]+)\//,
     )?.[1];
@@ -133,7 +154,9 @@ export function resolveAffectedE2eSpecs(
   }
 
   if (specs.size === 0) {
-    const hasVisualRelevantChange = changedFiles.some(
+    const nonTestFiles = changedFiles.filter((file) => !isUnitTestPath(file));
+
+    const hasVisualRelevantChange = nonTestFiles.some(
       (file) =>
         file.startsWith("packages/components/") ||
         file.startsWith("apps/storybook/"),
@@ -146,7 +169,7 @@ export function resolveAffectedE2eSpecs(
       };
     }
 
-    const hasNxOrScriptChange = changedFiles.some(
+    const hasNxOrScriptChange = nonTestFiles.some(
       (file) =>
         file === "nx.json" ||
         file.startsWith("scripts/") ||

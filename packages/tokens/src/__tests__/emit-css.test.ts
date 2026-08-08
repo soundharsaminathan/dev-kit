@@ -56,4 +56,17 @@ describe("emitCss", () => {
     expect(css).toContain("--color-bg: #ffffff;");
     expect(css).not.toContain("#000000");
   });
+
+  it("falls back to the first mode when light is missing", () => {
+    const css = emitCss({
+      "color-accent-only-dark": {
+        target: {
+          dark: { value: "#111111" },
+        },
+        category: "background",
+      },
+    });
+
+    expect(css).toContain("--color-accent-only-dark: #111111;");
+  });
 });

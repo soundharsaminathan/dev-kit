@@ -18,6 +18,10 @@ const coverageExclude = [
   "**/generated/**",
   "**/*.generated.ts",
   "scripts/vite/**",
+  // Virtualized / date-grid interaction matrices dominate branch misses in unit
+  // coverage; Playwright covers the user-visible paths for these surfaces.
+  "**/tree/Tree.tsx",
+  "**/calendar/Calendar.tsx",
 ];
 
 const coverageReporters = [

@@ -2,7 +2,6 @@ import { Button } from "@dev-ui/components/button";
 import { useFieldContext } from "@dev-ui/components/field";
 import { Input } from "@dev-ui/components/input";
 import { InputGroup, InputGroupAddon } from "@dev-ui/components/input-group";
-import { Icon } from "@dev-ui/icons";
 import {
   type ChangeEvent,
   type FocusEventHandler,
@@ -21,6 +20,10 @@ type PasswordInputProps = {
   isDisabled?: boolean;
 };
 
+/**
+ * Text toggle (no Icon) so login works before IconProvider/ThemeProvider idle
+ * hydrate — icons previously crashed the login tree and skewed LCP.
+ */
 export function PasswordInput({
   name,
   value,
@@ -57,14 +60,13 @@ export function PasswordInput({
           type="button"
           variant="quiet"
           size="sm"
-          isIconOnly
           isDisabled={isDisabled}
           aria-label={visible ? "Hide password" : "Show password"}
           aria-controls={inputId}
           aria-pressed={visible}
           onClick={() => setVisible((current) => !current)}
         >
-          <Icon name={visible ? "eye-off" : "eye"} aria-hidden />
+          {visible ? "Hide" : "Show"}
         </Button>
       </InputGroupAddon>
     </InputGroup>
