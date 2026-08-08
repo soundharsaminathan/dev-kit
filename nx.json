@@ -49,18 +49,14 @@
       "cache": true,
       "inputs": ["default", "^production"],
       "outputs": [
-        "{workspaceRoot}/coverage/*",
-        "{workspaceRoot}/coverage/coverage-summary.json",
-        "{workspaceRoot}/test-results"
+        "{workspaceRoot}/coverage/{projectName}",
+        "{workspaceRoot}/test-results/junit-{projectName}.xml"
       ]
     },
     "test:coverage": {
       "cache": true,
       "inputs": ["default", "^production"],
-      "outputs": [
-        "{workspaceRoot}/coverage/*",
-        "{workspaceRoot}/coverage/coverage-summary.json"
-      ]
+      "outputs": ["{workspaceRoot}/coverage/{projectName}"]
     },
     "typecheck": {
       "cache": true,

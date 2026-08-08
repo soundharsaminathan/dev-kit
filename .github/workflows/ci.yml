@@ -48,6 +48,19 @@ jobs:
         env:
           CI: true
 
+      - name: Drop invalid JUnit reports
+        if: always() && !cancelled()
+        run: |
+          # Empty/corrupt reports break dorny/test-reporter (null testsuites).
+          # Shared directory cache races used to restore 0-byte files; skip those.
+          shopt -s nullglob
+          for f in test-results/junit-*.xml; do
+            if [ ! -s "$f" ] || ! grep -q '<testsuites' "$f"; then
+              echo "Removing invalid JUnit report: $f ($(wc -c <"$f") bytes)"
+              rm -f "$f"
+            fi
+          done
+
       - name: Publish test report
         uses: dorny/test-reporter@v3
         if: always() && !cancelled()
@@ -55,6 +68,7 @@ jobs:
           name: Vitest
           path: test-results/junit-*.xml
           reporter: java-junit
+          fail-on-empty: false
 
       - name: Upload coverage report
         uses: actions/upload-artifact@v7
