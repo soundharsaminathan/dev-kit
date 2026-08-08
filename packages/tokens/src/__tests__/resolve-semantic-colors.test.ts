@@ -85,6 +85,22 @@ describe("resolve-semantic-colors", () => {
     expect(colors["dark-only-missing-light"]).toContain("oklch(");
   });
 
+  it("returns undefined for mix targets, which are not yet supported", () => {
+    const colors = resolveSemanticColors(builtInThemes.default, "light", {
+      "test-mix": {
+        target: {
+          mix: {
+            space: "oklch",
+            stops: [{ ref: "neutral-50" }, 50, { value: "transparent" }],
+          },
+        },
+        category: "background",
+      },
+    } satisfies TokenVocabulary);
+
+    expect(colors["test-mix"]).toBeUndefined();
+  });
+
   it("returns undefined for unknown semantic tokens", () => {
     expect(
       getSemanticColor(builtInThemes.default, "light", "not-a-token"),

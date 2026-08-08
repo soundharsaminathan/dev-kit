@@ -2,6 +2,7 @@ import path from "node:path";
 
 export const COVERAGE_PROJECTS = [
   "core",
+  "hooks",
   "components",
   "tokens",
   "icons",
@@ -14,6 +15,7 @@ export type CoverageProject = (typeof COVERAGE_PROJECTS)[number];
 
 export const LIB_COVERAGE_PROJECTS = [
   "core",
+  "hooks",
   "components",
   "tokens",
   "icons",
@@ -45,6 +47,7 @@ export function coverageReportsDir(
 
 export const COVERAGE_INCLUDES: Record<CoverageProject, readonly string[]> = {
   core: ["src/**/*.{ts,tsx}"],
+  hooks: ["src/**/*.{ts,tsx}"],
   components: ["src/**/*.{ts,tsx}"],
   tokens: ["src/**/*.ts"],
   icons: ["src/**/*.{ts,tsx}"],

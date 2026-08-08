@@ -139,6 +139,39 @@ describe("theme-draft", () => {
     ).toBeUndefined();
   });
 
+  it("round-trips fonts through draft and definition conversions", () => {
+    const fonts = { sans: "Inter", mono: "JetBrains Mono" };
+    const draft = createThemeDraft({ label: "Fonted", fonts });
+    expect(draft.fonts).toEqual(fonts);
+
+    const definition = themeDraftToDefinition(draft, "custom-fonts");
+    expect(definition.fonts).toEqual(fonts);
+
+    const roundTripped = definitionToThemeDraft(definition);
+    expect(roundTripped.fonts).toEqual(fonts);
+  });
+
+  it("resolves non-value override targets through resolveTarget", () => {
+    const draft = createThemeDraft();
+    const withRefOverride = {
+      ...draft,
+      tokenOverrides: {
+        ...draft.tokenOverrides,
+        foundation: {
+          "radius-sm": {
+            target: { ref: "accent-500" },
+            category: "foundation" as const,
+          },
+        },
+      },
+    };
+
+    const tokens = listEditableTokensForLayer(withRefOverride, "foundation");
+    const radiusToken = tokens.find((token) => token.name === "radius-sm");
+
+    expect(radiusToken?.overrideValue).toBe("var(--accent-500)");
+  });
+
   it("preserves override categories from resolved tokens", () => {
     const draft = setTokenOverride(
       createThemeDraft(),
