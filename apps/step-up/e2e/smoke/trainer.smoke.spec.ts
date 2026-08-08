@@ -26,11 +26,12 @@ const TRAINER_PATHS = [
   "/app/profile/security",
 ];
 
-/** Seed/unpaid roster rows trigger window.confirm; Playwright dismisses by default. */
-function acceptUnpaidConfirmDialogs(page: Page) {
-  page.on("dialog", (dialog) => {
-    void dialog.accept();
-  });
+/** Seed student has a pending invoice; unpaid rows open AppSheet confirm. */
+async function confirmUnpaidMarkIfShown(page: Page) {
+  const confirm = page.getByTestId("confirm-unpaid-mark");
+  if (await confirm.isVisible({ timeout: 1500 }).catch(() => false)) {
+    await confirm.click();
+  }
 }
 
 test.describe("trainer smoke @smoke", () => {
@@ -90,7 +91,6 @@ test.describe("trainer smoke @smoke", () => {
     });
     const page = await context.newPage();
     try {
-      await acceptUnpaidConfirmDialogs(page);
       await page.goto(`/app/sessions/${sessionId}/attendance`, {
         waitUntil: "domcontentloaded",
       });
@@ -98,13 +98,13 @@ test.describe("trainer smoke @smoke", () => {
 
       const presentBtn = page.getByTestId(`mark-present-${studentId}`);
       await expect(presentBtn).toBeVisible();
-      const [response] = await Promise.all([
-        waitForApiResponse(page, {
-          method: "POST",
-          pathIncludes: "/attendance/mark",
-        }),
-        presentBtn.click(),
-      ]);
+      const responsePromise = waitForApiResponse(page, {
+        method: "POST",
+        pathIncludes: "/attendance/mark",
+      });
+      await presentBtn.click();
+      await confirmUnpaidMarkIfShown(page);
+      const response = await responsePromise;
       expect(response.ok()).toBeTruthy();
 
       const roster = await apiRequest<
@@ -166,14 +166,6 @@ test.describe("trainer smoke @smoke", () => {
     });
     const page = await context.newPage();
     try {
-      const unpaidDialog = new Promise<string>((resolve) => {
-        page.once("dialog", (dialog) => {
-          const message = dialog.message();
-          void dialog.accept();
-          resolve(message);
-        });
-      });
-
       await page.goto(`/app/sessions/${sessionId}/attendance`, {
         waitUntil: "domcontentloaded",
       });
@@ -182,16 +174,19 @@ test.describe("trainer smoke @smoke", () => {
       await expect(page.getByText("Not paid").first()).toBeVisible();
       const presentBtn = page.getByTestId(`mark-present-${student.id}`);
       await expect(presentBtn).toBeVisible();
+      await presentBtn.click();
 
-      const [response, dialogMessage] = await Promise.all([
+      const confirm = page.getByTestId("confirm-unpaid-mark");
+      await expect(confirm).toBeVisible();
+      await expect(page.getByText(/unpaid/i).first()).toBeVisible();
+
+      const [response] = await Promise.all([
         waitForApiResponse(page, {
           method: "POST",
           pathIncludes: "/attendance/mark",
         }),
-        unpaidDialog,
-        presentBtn.click(),
+        confirm.click(),
       ]);
-      expect(dialogMessage).toMatch(/unpaid/i);
       expect(response.ok()).toBeTruthy();
 
       const rosterAfter = await apiRequest<
@@ -286,7 +281,6 @@ test.describe("trainer smoke @smoke", () => {
     });
     const page = await context.newPage();
     try {
-      await acceptUnpaidConfirmDialogs(page);
       await page.goto(`/app/sessions/${sessionId}/attendance`, {
         waitUntil: "domcontentloaded",
       });
@@ -301,13 +295,13 @@ test.describe("trainer smoke @smoke", () => {
         );
         expect(result.failed).toBe(0);
       } else {
-        const [response] = await Promise.all([
-          waitForApiResponse(page, {
-            method: "POST",
-            pathIncludes: `/attendance/session/${sessionId}/mark-all-present`,
-          }),
-          markAll.click(),
-        ]);
+        const responsePromise = waitForApiResponse(page, {
+          method: "POST",
+          pathIncludes: `/attendance/session/${sessionId}/mark-all-present`,
+        });
+        await markAll.click();
+        await confirmUnpaidMarkIfShown(page);
+        const response = await responsePromise;
         expect(response.ok()).toBeTruthy();
       }
     } finally {
