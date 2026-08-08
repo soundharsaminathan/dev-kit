@@ -300,37 +300,41 @@ test.describe("admin (staff) smoke @smoke", () => {
   test("staff combines unpaid family invoices and collects payment @smoke", async ({
     browser,
   }) => {
+    const cleanup = new SmokeDataCleanup();
     const stamp = Date.now();
     const kidA = await createSmokeFamilyKid(`Smoke Combine A ${stamp}`);
     const kidB = await createSmokeFamilyKid(`Smoke Combine B ${stamp}`);
-    const enrollA = await apiRequest<{ invoice: { id: string } }>(
-      "STAFF",
-      `/batches/${SMOKE.kidsBatchId}/enroll`,
-      {
-        method: "POST",
-        body: JSON.stringify({
-          studentId: kidA.id,
-          subscriptionId: SMOKE.kidPlanIds[0],
-        }),
-      },
-    );
-    const enrollB = await apiRequest<{ invoice: { id: string } }>(
-      "STAFF",
-      `/batches/${SMOKE.kidsBatchId}/enroll`,
-      {
-        method: "POST",
-        body: JSON.stringify({
-          studentId: kidB.id,
-          subscriptionId: SMOKE.kidPlanIds[0],
-        }),
-      },
-    );
+    cleanup.trackStudent(kidA.id);
+    cleanup.trackStudent(kidB.id);
 
     const context = await browser.newContext({
       storageState: authFile("STAFF"),
     });
     const page = await context.newPage();
     try {
+      const enrollA = await apiRequest<{ invoice: { id: string } }>(
+        "STAFF",
+        `/batches/${SMOKE.kidsBatchId}/enroll`,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            studentId: kidA.id,
+            subscriptionId: SMOKE.kidPlanIds[0],
+          }),
+        },
+      );
+      const enrollB = await apiRequest<{ invoice: { id: string } }>(
+        "STAFF",
+        `/batches/${SMOKE.kidsBatchId}/enroll`,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            studentId: kidB.id,
+            subscriptionId: SMOKE.kidPlanIds[0],
+          }),
+        },
+      );
+
       await page.goto("/app/invoices", { waitUntil: "domcontentloaded" });
       await waitForAppReady(page);
 
@@ -373,6 +377,7 @@ test.describe("admin (staff) smoke @smoke", () => {
       expect(paidResponse.ok()).toBeTruthy();
     } finally {
       await context.close();
+      await cleanup.dispose();
     }
   });
 

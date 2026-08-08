@@ -29,10 +29,10 @@ export const SMOKE_LOAD_PREFIX = "smoke-load-";
 /**
  * Canonical seed batches (`smoke-batch-kids-1`, `smoke-batch-beginner-1`) use
  * capacity 20. Roster extras must stay under that and leave headroom for smoke
- * enroll flows (staff/owner mark-invoice-paid).
+ * enroll flows (family-combine, unpaid mark, mark-paid, retries).
  */
 const CANONICAL_BATCH_CAPACITY = 20;
-const CANONICAL_ENROLL_HEADROOM = 2;
+const CANONICAL_ENROLL_HEADROOM = 6;
 
 export const SMOKE_LOAD = {
   trainerCount: 8,
@@ -359,23 +359,19 @@ export async function seedSmokeLoadData(deps: LoadDeps) {
     });
   });
 
-  // Drop stale smoke-load seats left from prior denser seeds so capacity stays open.
+  // Keep only seed + intended load seats on canonical batches so smoke enroll
+  // headroom survives leftover family-combine / unpaid-mark students.
+  const kidsKeepIds = [deps.seedStudentId, ...kidsRosterStudentIds];
   await prisma.batchEnrollment.deleteMany({
     where: {
       batchId: deps.kidsBatchId,
-      studentId: {
-        startsWith: SMOKE_LOAD_PREFIX,
-        notIn: kidsRosterStudentIds,
-      },
+      studentId: { notIn: kidsKeepIds },
     },
   });
   await prisma.batchEnrollment.deleteMany({
     where: {
       batchId: deps.beginnerBatchId,
-      studentId: {
-        startsWith: SMOKE_LOAD_PREFIX,
-        notIn: beginnerRosterStudentIds,
-      },
+      studentId: { notIn: beginnerRosterStudentIds },
     },
   });
 
