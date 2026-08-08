@@ -3,25 +3,18 @@ import type { IconName } from "@dev-ui/icons";
 import { Icon } from "@dev-ui/icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { lazy, Suspense, useMemo, useState } from "react";
 import { useApi } from "@/lib/api-context";
 import { useAuth } from "@/lib/auth";
 import { ENTITY_ICONS } from "@/lib/entity-icons";
 import { useStudioId } from "@/lib/use-studio-id";
-import { BookingDetailDrawer } from "@/modules/bookings/booking-detail-drawer";
-import { BookingReviewPanel } from "@/modules/bookings/booking-review-panel";
 import {
   isBookingForTrainer,
   type StudioBooking,
 } from "@/modules/bookings/types";
 import { coverUrl, type StudioBranch } from "@/modules/locations/types";
-import { HomeStudioBanner } from "@/modules/me/home-sections";
 import { AnimatedMetric } from "@/modules/ui/animated-metric";
-import { BloomPanel } from "@/modules/ui/bloom-panel";
-import {
-  ExpandableBentoGrid,
-  type ExpandableBentoItem,
-} from "@/modules/ui/expandable-bento-grid";
+import type { ExpandableBentoItem } from "@/modules/ui/expandable-bento-grid";
 import { FilterChipRow } from "@/modules/ui/filter-chip-row";
 import { PressableCard } from "@/modules/ui/pressable-card";
 import { PullToRefresh } from "@/modules/ui/pull-to-refresh";
@@ -30,6 +23,33 @@ import { SkeletonBlock } from "@/modules/ui/skeleton-block";
 import staff from "@/modules/ui/staff.module.scss";
 import { EmptyState, ErrorState } from "@/modules/ui/states";
 import { TouchButton } from "@/modules/ui/touch-button";
+
+/** Trainer banner + member home-sections — not needed for OWNER first paint. */
+const HomeStudioBanner = lazy(() =>
+  import("@/modules/me/home-sections").then((m) => ({
+    default: m.HomeStudioBanner,
+  })),
+);
+/** Trainer pending sheet — pulls motion/bento off the OWNER path. */
+const BloomPanel = lazy(() =>
+  import("@/modules/ui/bloom-panel").then((m) => ({ default: m.BloomPanel })),
+);
+const ExpandableBentoGrid = lazy(() =>
+  import("@/modules/ui/expandable-bento-grid").then((m) => ({
+    default: m.ExpandableBentoGrid,
+  })),
+);
+/** Booking review UI (drawer/forms) — load when a request is opened. */
+const BookingDetailDrawer = lazy(() =>
+  import("@/modules/bookings/booking-detail-drawer").then((m) => ({
+    default: m.BookingDetailDrawer,
+  })),
+);
+const BookingReviewPanel = lazy(() =>
+  import("@/modules/bookings/booking-review-panel").then((m) => ({
+    default: m.BookingReviewPanel,
+  })),
+);
 
 type Batch = { id: string; name: string; active: boolean };
 type Subscription = { id: string; name: string; price: number };
@@ -561,52 +581,58 @@ function AppDashboardPage() {
       </div>
 
       {isTrainer ? (
-        <BloomPanel
-          isOpen={pendingOpen}
-          onOpenChange={setPendingOpen}
-          title={
-            pending.length > 0
-              ? `${pending.length} pending request${pending.length === 1 ? "" : "s"}`
-              : "Pending requests"
-          }
-        >
-          {pending.length === 0 ? (
-            <EmptyState
-              title="All clear"
-              description="No pending requests for your batches right now."
-            />
-          ) : (
-            <ExpandableBentoGrid
-              key={pendingGridKey}
-              items={pendingItems}
-              aria-label="Pending requests for your batches"
-            />
-          )}
-        </BloomPanel>
+        <Suspense fallback={null}>
+          <BloomPanel
+            isOpen={pendingOpen}
+            onOpenChange={setPendingOpen}
+            title={
+              pending.length > 0
+                ? `${pending.length} pending request${pending.length === 1 ? "" : "s"}`
+                : "Pending requests"
+            }
+          >
+            {pending.length === 0 ? (
+              <EmptyState
+                title="All clear"
+                description="No pending requests for your batches right now."
+              />
+            ) : (
+              <Suspense fallback={<SkeletonBlock height="12rem" />}>
+                <ExpandableBentoGrid
+                  key={pendingGridKey}
+                  items={pendingItems}
+                  aria-label="Pending requests for your batches"
+                />
+              </Suspense>
+            )}
+          </BloomPanel>
+        </Suspense>
       ) : (
-        <BookingDetailDrawer
-          booking={selectedBooking}
-          isOpen={selectedBooking != null}
-          onOpenChange={(open) => {
-            if (!open) setSelectedBookingId(null);
-          }}
-          isPending={updateStatus.isPending}
-          onConfirm={(times) => {
-            if (!selectedBooking) return;
-            updateStatus.mutate({
-              id: selectedBooking.id,
-              status: "CONFIRMED",
-              ...times,
-            });
-          }}
-          onDecline={() => {
-            if (!selectedBooking) return;
-            updateStatus.mutate({
-              id: selectedBooking.id,
-              status: "CANCELLED",
-            });
-          }}
-        />
+        <Suspense fallback={null}>
+          <BookingDetailDrawer
+            booking={selectedBooking}
+            isOpen={selectedBooking != null}
+            onOpenChange={(open) => {
+              if (!open) setSelectedBookingId(null);
+            }}
+            isPending={updateStatus.isPending}
+            onConfirm={(times) => {
+              if (!selectedBooking) return;
+              updateStatus.mutate({
+                id: selectedBooking.id,
+                status: "CONFIRMED",
+                ...times,
+              });
+            }}
+            onDecline={() => {
+              if (!selectedBooking) return;
+              updateStatus.mutate({
+                id: selectedBooking.id,
+                status: "CANCELLED",
+              });
+            }}
+          />
+        </Suspense>
       )}
     </PullToRefresh>
   );
@@ -614,28 +640,32 @@ function AppDashboardPage() {
   if (isTrainer) {
     return (
       <section className="screen" aria-label="Home">
-        <HomeStudioBanner
-          variant="app"
-          banner={
-            bannerBranch
-              ? {
-                  branchId: bannerBranch.id,
-                  branchName: bannerBranch.name,
-                  imageUrl: coverUrl(bannerBranch),
-                  desktopImageUrl: coverUrl(bannerBranch),
-                  altText:
-                    bannerBranch.coverMedia?.altText ?? bannerBranch.name,
-                }
-              : null
-          }
-          studioName={studio.data?.name ?? null}
-          title={`${greetingFor(new Date())}, ${firstName} — let's teach`}
-          cta={{
-            label: "View your schedule",
-            to: "/app/calendar",
-            icon: "calendar",
-          }}
-        />
+        <Suspense
+          fallback={<SkeletonBlock height="12rem" radius="var(--radius-2xl)" />}
+        >
+          <HomeStudioBanner
+            variant="app"
+            banner={
+              bannerBranch
+                ? {
+                    branchId: bannerBranch.id,
+                    branchName: bannerBranch.name,
+                    imageUrl: coverUrl(bannerBranch),
+                    desktopImageUrl: coverUrl(bannerBranch),
+                    altText:
+                      bannerBranch.coverMedia?.altText ?? bannerBranch.name,
+                  }
+                : null
+            }
+            studioName={studio.data?.name ?? null}
+            title={`${greetingFor(new Date())}, ${firstName} — let's teach`}
+            cta={{
+              label: "View your schedule",
+              to: "/app/calendar",
+              icon: "calendar",
+            }}
+          />
+        </Suspense>
         {body}
       </section>
     );
