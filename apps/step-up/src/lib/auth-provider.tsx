@@ -62,6 +62,13 @@ type SyncedApiUser = {
 };
 
 const STORAGE_KEY = "step-up-dev-user";
+/** Last successful Firebase→API sync — hydrates protected shell before /auth/sync. */
+const SESSION_CACHE_KEY = "step-up-session-user";
+
+type SessionCache = {
+  uid: string;
+  user: AuthUser;
+};
 
 function readStoredBypassUser(): AuthUser | null {
   if (!isAuthBypassEnabled()) {
@@ -77,6 +84,44 @@ function readStoredBypassUser(): AuthUser | null {
     return JSON.parse(raw) as AuthUser;
   } catch {
     return null;
+  }
+}
+
+function readSessionCache(): SessionCache | null {
+  if (typeof window === "undefined" || isAuthBypassEnabled()) {
+    return null;
+  }
+  try {
+    const raw = localStorage.getItem(SESSION_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as SessionCache;
+    if (
+      !parsed?.uid ||
+      !parsed?.user?.id ||
+      !parsed?.user?.role ||
+      !parsed?.user?.email
+    ) {
+      return null;
+    }
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function writeSessionCache(uid: string, user: AuthUser) {
+  try {
+    localStorage.setItem(SESSION_CACHE_KEY, JSON.stringify({ uid, user }));
+  } catch {
+    // quota / private mode
+  }
+}
+
+function clearSessionCache() {
+  try {
+    localStorage.removeItem(SESSION_CACHE_KEY);
+  } catch {
+    // ignore
   }
 }
 
@@ -275,6 +320,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }, AUTH_BOOTSTRAP_TIMEOUT_MS);
 
     void (async () => {
+      // Public routes: defer Firebase parse/eval until idle so /login TBT
+      // is not dominated by Auth SDK. Sign-in handlers still await loadFirebase().
+      const path = window.location.pathname;
+      const isPublic =
+        path === "/" ||
+        path === "" ||
+        path.startsWith("/login") ||
+        path.startsWith("/register") ||
+        path.startsWith("/forgot-password") ||
+        path.startsWith("/join") ||
+        path.startsWith("/studio/");
+      if (isPublic) {
+        await new Promise<void>((resolve) => {
+          if (typeof requestIdleCallback === "function") {
+            requestIdleCallback(() => resolve(), { timeout: 2_500 });
+          } else {
+            window.setTimeout(() => resolve(), 1);
+          }
+        });
+      }
+      if (cancelled) {
+        return;
+      }
+
       const [{ auth }, { onAuthStateChanged, signOut }] = await Promise.all([
         loadFirebase(),
         import("firebase/auth"),
@@ -291,6 +360,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         void (async () => {
           if (!firebaseUser) {
             lastSyncedRef.current = null;
+            clearSessionCache();
             if (!cancelled) {
               setUser(null);
               setHasPasswordProvider(false);
@@ -300,11 +370,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             return;
           }
 
+          // Firebase has verified the session. Hydrate the last synced profile
+          // so the protected shell can paint while /auth/sync revalidates —
+          // never show protected routes without a Firebase user.
+          const cached = readSessionCache();
+          const cacheHit = cached?.uid === firebaseUser.uid;
+
           if (!cancelled) {
-            settled = false;
-            setLoading(true);
             setHasPasswordProvider(userHasPasswordProvider(firebaseUser));
             setEmailVerified(firebaseUser.emailVerified);
+            if (cacheHit) {
+              setUser(cached.user);
+              lastSyncedRef.current = {
+                uid: firebaseUser.uid,
+                user: cached.user,
+              };
+              finishLoading();
+            } else {
+              settled = false;
+              setLoading(true);
+            }
           }
 
           try {
@@ -322,6 +407,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               }),
             ]);
             if (!cancelled) {
+              writeSessionCache(firebaseUser.uid, synced);
               setUser(synced);
               setHasPasswordProvider(userHasPasswordProvider(firebaseUser));
               setEmailVerified(firebaseUser.emailVerified);
@@ -329,6 +415,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             }
           } catch (error) {
             if (!cancelled) {
+              clearSessionCache();
               setUser(null);
               setHasPasswordProvider(false);
               setEmailVerified(false);
@@ -787,6 +874,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOutUser = useCallback(async () => {
     if (isAuthBypassEnabled()) {
       localStorage.removeItem(STORAGE_KEY);
+      clearSessionCache();
       setUser(null);
       setHasPasswordProvider(false);
       setEmailVerified(false);
@@ -798,6 +886,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { signOut } = await import("firebase/auth");
       await signOut(auth);
     }
+    clearSessionCache();
     setUser(null);
     setHasPasswordProvider(false);
     setEmailVerified(false);
@@ -827,6 +916,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const next = { ...current, ...patch };
       if (isAuthBypassEnabled()) {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      } else {
+        const cached = readSessionCache();
+        if (cached?.user.id === current.id) {
+          writeSessionCache(cached.uid, next);
+        }
       }
       if (lastSyncedRef.current?.user.id === current.id) {
         lastSyncedRef.current = {

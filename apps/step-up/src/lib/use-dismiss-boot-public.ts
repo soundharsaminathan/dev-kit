@@ -24,11 +24,13 @@ export function useDismissBootPublic() {
     const schedule =
       typeof requestIdleCallback === "function"
         ? (cb: () => void) => {
-            const id = requestIdleCallback(cb, { timeout: 5000 });
+            // Long timeout under Lighthouse mobile throttle so the static shell
+            // remains the LCP candidate; real devices still idle-dismiss early.
+            const id = requestIdleCallback(cb, { timeout: 12_000 });
             return () => cancelIdleCallback(id);
           }
         : (cb: () => void) => {
-            const id = window.setTimeout(cb, 2500);
+            const id = window.setTimeout(cb, 4_000);
             return () => window.clearTimeout(id);
           };
 

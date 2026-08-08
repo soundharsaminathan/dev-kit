@@ -31,23 +31,6 @@ const router = createRouter({
   },
 });
 
-const scheduleIdle =
-  typeof requestIdleCallback === "function"
-    ? (cb: () => void) => {
-        requestIdleCallback(cb, { timeout: 6000 });
-      }
-    : (cb: () => void) => {
-        window.setTimeout(cb, 4000);
-      };
-
-scheduleIdle(() => {
-  void import("@/lib/sentry").then(({ initSentry }) => {
-    initSentry(router);
-  });
-  // Warm Inter for staff surfaces after first paint.
-  void import("@/styles/inter-fonts.css");
-});
-
 declare module "@tanstack/react-router" {
   interface Register {
     router: typeof router;
@@ -65,6 +48,26 @@ function isPublicBootPath(pathname: string) {
   );
 }
 
+let sentryScheduled = false;
+function scheduleSentry() {
+  if (sentryScheduled) return;
+  sentryScheduled = true;
+  const schedule =
+    typeof requestIdleCallback === "function"
+      ? (cb: () => void) => {
+          requestIdleCallback(cb, { timeout: 12_000 });
+        }
+      : (cb: () => void) => {
+          window.setTimeout(cb, 8_000);
+        };
+  schedule(() => {
+    void import("@/lib/sentry").then(({ initSentry }) => {
+      initSentry(router);
+    });
+    void import("@/styles/inter-fonts.css");
+  });
+}
+
 function AppRouter() {
   const auth = useAuth();
   const userId = auth.user?.id;
@@ -74,6 +77,21 @@ function AppRouter() {
   );
   const blockOnAuth =
     auth.loading && !isPublicBootPath(window.location.pathname);
+
+  useEffect(() => {
+    // Keep Sentry off the first protected paint / login TBT window.
+    if (!auth.loading) {
+      scheduleSentry();
+    }
+  }, [auth.loading]);
+
+  useEffect(() => {
+    if (isPublicBootPath(window.location.pathname)) {
+      // Public pages: still init eventually even if auth stays "loading" briefly.
+      const id = window.setTimeout(() => scheduleSentry(), 4_000);
+      return () => window.clearTimeout(id);
+    }
+  }, []);
 
   useEffect(() => {
     if (!blockOnAuth) {
