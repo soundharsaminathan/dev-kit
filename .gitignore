@@ -18,7 +18,10 @@ test-results/
 
 # IDE
 .idea/
-.cursor/
+# Ignore local Cursor state; keep shared project skills versioned.
+.cursor/*
+!.cursor/skills/
+!.cursor/skills/**
 *.swp
 *.swo
 
