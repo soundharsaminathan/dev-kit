@@ -1,6 +1,12 @@
 import { IconProvider } from "@dev-ui/icons";
 import { useRouterState } from "@tanstack/react-router";
-import { type ReactNode, useEffect, useLayoutEffect, useState } from "react";
+import {
+  type ReactNode,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import {
   getCachedLucidePack,
   getEmptyLucidePack,
@@ -60,11 +66,11 @@ function scheduleIdle(cb: () => void) {
  * Built-in themes already live in SCSS. Avoid pulling colorjs.io + theme JS
  * onto the first paint of public routes; hydrate the full ThemeProvider idle.
  *
- * Protected shells render `<Icon>` immediately after auth (AppShell, metrics).
- * Session-cache auth can finish before idle theme hydrate — without a boot
- * IconProvider that crashed /app + /me and left LCP on the auth loader.
- * Pathname is read from the router so login → /app switches out of the idle
- * public path.
+ * Protected shells render `<Icon>` immediately after auth. If we paint an
+ * IconProvider stub and later swap to AppThemeProvider, React remounts the
+ * entire route tree and wipes form/booking state. Commit to one wrapper for
+ * the lifetime of this mount: prefer AppThemeProvider when the chunk is
+ * already warm; otherwise stay on IconProvider.
  */
 export function BootThemeProvider({ children }: { children: ReactNode }) {
   const pathname = useRouterState({
@@ -75,6 +81,7 @@ export function BootThemeProvider({ children }: { children: ReactNode }) {
   const [iconPack, setIconPack] = useState(
     () => getCachedLucidePack() ?? getEmptyLucidePack(),
   );
+  const committedIconBoot = useRef(false);
 
   useLayoutEffect(() => {
     applyDocumentTheme(pathname);
@@ -114,6 +121,15 @@ export function BootThemeProvider({ children }: { children: ReactNode }) {
     if (isPublic) {
       return children;
     }
+    committedIconBoot.current = true;
+    return (
+      <IconProvider icons={{ library: "lucide" }} initialPack={iconPack}>
+        {children}
+      </IconProvider>
+    );
+  }
+
+  if (committedIconBoot.current) {
     return (
       <IconProvider icons={{ library: "lucide" }} initialPack={iconPack}>
         {children}

@@ -2,10 +2,10 @@ import {
   apiRequest,
   authFile,
   expect,
+  TestDataCleanup,
   test,
   waitForApiResponse,
   waitForAppReady,
-  TestDataCleanup,
 } from "../fixtures";
 import { SEED } from "../fixtures/seed";
 
@@ -41,13 +41,17 @@ test.describe("trainer attendance UI @critical", () => {
     const presentBtn = page.getByTestId(`mark-present-${studentId}`);
     await expect(presentBtn).toBeVisible();
 
-    const [response] = await Promise.all([
-      waitForApiResponse(page, {
-        method: "POST",
-        pathIncludes: "/attendance/mark",
-      }),
-      presentBtn.click(),
-    ]);
+    const responsePromise = waitForApiResponse(page, {
+      method: "POST",
+      pathIncludes: "/attendance/mark",
+    });
+    await presentBtn.click();
+    // Seed student often has a DUE membership — confirm unpaid interstitial.
+    const confirm = page.getByTestId("confirm-unpaid-mark");
+    if (await confirm.isVisible({ timeout: 2_000 }).catch(() => false)) {
+      await confirm.click();
+    }
+    const response = await responsePromise;
     expect(response.ok()).toBeTruthy();
 
     const roster = await apiRequest<

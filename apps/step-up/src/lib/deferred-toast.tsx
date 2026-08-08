@@ -1,14 +1,28 @@
+import type {
+  ToastContent,
+  ToastOptions,
+} from "@dev-ui/components/toast/toast.types";
 import {
   ToastContext,
   type ToastContextValue,
 } from "@dev-ui/components/toast/toast-context";
 import { useRouterState } from "@tanstack/react-router";
-import { type ReactNode, useEffect, useMemo, useState } from "react";
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 type ToastModule = typeof import("@dev-ui/components/toast");
+type SharedToastQueue = ReturnType<ToastModule["createToastQueue"]>;
 
 let toastModule: ToastModule | null = null;
 let toastPromise: Promise<ToastModule> | null = null;
+let sharedQueue: SharedToastQueue | null = null;
 
 function loadToastModule() {
   toastPromise ??= import("@dev-ui/components/toast").then((mod) => {
@@ -16,6 +30,11 @@ function loadToastModule() {
     return mod;
   });
   return toastPromise;
+}
+
+function getSharedQueue(mod: ToastModule): SharedToastQueue {
+  sharedQueue ??= mod.createToastQueue({ maxVisibleToasts: 3 });
+  return sharedQueue;
 }
 
 function isPublicBootPath(pathname: string) {
@@ -38,22 +57,19 @@ function scheduleIdle(cb: () => void) {
   return () => window.clearTimeout(id);
 }
 
-const NOOP_TOAST: ToastContextValue = {
-  // Protected shells call useToastContext during render; only `.toast()` is used
-  // before the real provider mounts. Avoid blocking first paint on motion/toast.
-  toast: () => "deferred-toast",
-  position: "top-right",
-  // state is unused on the /app|/me first-paint path
-  state: null as unknown as ToastContextValue["state"],
+type PendingToast = {
+  content: ToastContent;
+  options?: ToastOptions | undefined;
 };
 
 /**
  * Toast (and motion/react) are not required for public first paint. Idle-load
  * on public routes.
  *
- * Protected routes call `useToastContext` during render. Provide a noop context
- * until the real ToastProvider mounts so AuthBootLoader is not held open for
- * the toast/motion chunk (that delayed /app LCP to ~8s under mobile throttle).
+ * Protected routes call `useToastContext` during render. Keep a stable
+ * ToastContext.Provider around the app tree so swapping in the real
+ * ToastProvider never remounts route state (forms, booking success, etc.).
+ * The visual host mounts as a sibling once the chunk loads.
  */
 export function DeferredToastProvider({
   children,
@@ -75,7 +91,10 @@ export function DeferredToastProvider({
   });
   const isPublic = isPublicBootPath(pathname);
   const [mod, setMod] = useState<ToastModule | null>(() => toastModule);
-  const noopValue = useMemo(() => NOOP_TOAST, []);
+  const pendingRef = useRef<PendingToast[]>([]);
+  const queueRef = useRef<SharedToastQueue | null>(
+    toastModule ? getSharedQueue(toastModule) : null,
+  );
 
   useEffect(() => {
     if (toastModule && !mod) {
@@ -102,21 +121,74 @@ export function DeferredToastProvider({
     });
   }, [mod, isPublic]);
 
-  if (!mod) {
-    if (isPublic) {
-      return children;
+  useLayoutEffect(() => {
+    if (!mod) {
+      return;
     }
-    return (
-      <ToastContext.Provider value={noopValue}>
-        {children}
-      </ToastContext.Provider>
-    );
-  }
+    const queue = getSharedQueue(mod);
+    queueRef.current = queue;
+    const pending = pendingRef.current;
+    if (pending.length === 0) {
+      return;
+    }
+    pendingRef.current = [];
+    for (const item of pending) {
+      const resolvedTimeout =
+        item.options?.timeout ??
+        (item.content.variant === "loading" ? undefined : timeout);
+      queue.add(item.content, {
+        ...item.options,
+        ...(resolvedTimeout !== undefined ? { timeout: resolvedTimeout } : {}),
+      });
+    }
+  }, [mod, timeout]);
+
+  const toast = useCallback(
+    (content: ToastContent, options?: ToastOptions) => {
+      const queue = queueRef.current;
+      if (queue) {
+        const resolvedTimeout =
+          options?.timeout ??
+          (content.variant === "loading" ? undefined : timeout);
+        return queue.add(content, {
+          ...options,
+          ...(resolvedTimeout !== undefined
+            ? { timeout: resolvedTimeout }
+            : {}),
+        });
+      }
+      pendingRef.current.push({ content, options });
+      return "deferred-toast";
+    },
+    [timeout],
+  );
+
+  const value = useMemo<ToastContextValue>(
+    () => ({
+      toast,
+      position,
+      // Region reads state from the sibling ToastProvider host.
+      state: null as unknown as ToastContextValue["state"],
+    }),
+    [position, toast],
+  );
+
+  const queue = mod ? getSharedQueue(mod) : null;
 
   return (
-    <mod.ToastProvider position={position} timeout={timeout}>
+    <ToastContext.Provider value={value}>
       {children}
-    </mod.ToastProvider>
+      {mod && queue ? (
+        <mod.ToastProvider
+          // createToastQueue default generic erases to unknown across the dynamic import.
+          queue={queue as never}
+          position={position}
+          timeout={timeout}
+        >
+          {null}
+        </mod.ToastProvider>
+      ) : null}
+    </ToastContext.Provider>
   );
 }
 

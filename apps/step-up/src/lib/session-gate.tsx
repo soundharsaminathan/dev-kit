@@ -1,4 +1,4 @@
-import { type ReactNode, useEffect, useSyncExternalStore } from "react";
+import { type ReactNode, useEffect, useRef, useSyncExternalStore } from "react";
 import { useAuth } from "@/lib/auth";
 
 type SessionModule = typeof import("./session-providers");
@@ -40,6 +40,14 @@ export function preloadSessionProviders() {
   return sessionPromise;
 }
 
+/**
+ * Sockets/push are not required for shell LCP — defer past first paint.
+ *
+ * Once the authenticated outlet has painted without SessionProviders, do not
+ * wrap it later: inserting providers remounts the route tree and wipes local
+ * UI state (registration forms, booking success, attendance confirms).
+ * Side-effect hosts still mount as a sibling so push/sockets can connect.
+ */
 export function SessionGate({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const loaded = useSyncExternalStore(
@@ -47,12 +55,12 @@ export function SessionGate({ children }: { children: ReactNode }) {
     getSnapshot,
     getServerSnapshot,
   );
+  const committedBare = useRef(false);
 
   useEffect(() => {
     if (!user || sessionModule) {
       return;
     }
-    // Sockets/push are not required for shell LCP — defer past first paint.
     const enable = () => {
       void preloadSessionProviders();
     };
@@ -64,7 +72,20 @@ export function SessionGate({ children }: { children: ReactNode }) {
     return () => window.clearTimeout(id);
   }, [user]);
 
+  if (user && !loaded) {
+    committedBare.current = true;
+    return children;
+  }
+
   if (user && loaded) {
+    if (committedBare.current) {
+      return (
+        <>
+          <loaded.SessionProviders>{null}</loaded.SessionProviders>
+          {children}
+        </>
+      );
+    }
     return <loaded.SessionProviders>{children}</loaded.SessionProviders>;
   }
 
