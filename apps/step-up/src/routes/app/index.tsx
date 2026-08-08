@@ -3,7 +3,7 @@ import type { IconName } from "@dev-ui/icons";
 import { Icon } from "@dev-ui/icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { lazy, Suspense, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { useApi } from "@/lib/api-context";
 import { useAuth } from "@/lib/auth";
 import { ENTITY_ICONS } from "@/lib/entity-icons";
@@ -162,6 +162,23 @@ function AppDashboardPage() {
   const [selectedBookingId, setSelectedBookingId] = useState<string | null>(
     null,
   );
+  // Defer non-critical funnel fetch so late-arriving tile text cannot steal LCP
+  // from the auth boot / shell paint under mobile throttle.
+  const [funnelEnabled, setFunnelEnabled] = useState(false);
+  useEffect(() => {
+    if (isTrainer) return;
+    const schedule =
+      typeof requestIdleCallback === "function"
+        ? (cb: () => void) => {
+            const id = requestIdleCallback(cb, { timeout: 2500 });
+            return () => cancelIdleCallback(id);
+          }
+        : (cb: () => void) => {
+            const id = window.setTimeout(cb, 1);
+            return () => window.clearTimeout(id);
+          };
+    return schedule(() => setFunnelEnabled(true));
+  }, [isTrainer]);
   const batches = useQuery({
     queryKey: ["batches", studioId],
     queryFn: () => api.get<Batch[]>(`/batches/studio/${studioId}`),
@@ -195,7 +212,7 @@ function AppDashboardPage() {
       api.get<StudentFunnelCounts>(
         `/users/studio/${studioId}/student-funnel?period=${funnelPeriod}`,
       ),
-    enabled: !isTrainer,
+    enabled: !isTrainer && funnelEnabled,
     staleTime: 30_000,
   });
   const bookings = useQuery({
