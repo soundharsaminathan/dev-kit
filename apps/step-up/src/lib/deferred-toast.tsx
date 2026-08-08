@@ -1,3 +1,4 @@
+import { useRouterState } from "@tanstack/react-router";
 import { type ReactNode, useEffect, useState } from "react";
 
 type ToastModule = typeof import("@dev-ui/components/toast");
@@ -37,11 +38,9 @@ function scheduleIdle(cb: () => void) {
  * Toast (and motion/react) are not required for public first paint. Idle-load
  * on public routes.
  *
- * Protected routes call `useToastContext` during render (dashboard, home
- * notices). Session-cache auth finishes before idle toast hydrate, which
- * crashed /app and /me. Protected paths therefore load toast immediately and
- * hold the tree until the provider is ready (overlapped with AuthBootLoader
- * via preloadToast).
+ * Protected routes call `useToastContext` during render. Pathname is reactive
+ * so a login → /app transition loads toast immediately instead of staying on
+ * the public idle path.
  */
 export function DeferredToastProvider({
   children,
@@ -58,12 +57,17 @@ export function DeferredToastProvider({
     | "bottom-center";
   timeout?: number;
 }) {
+  const pathname = useRouterState({
+    select: (state) => state.location.pathname,
+  });
+  const isPublic = isPublicBootPath(pathname);
   const [mod, setMod] = useState<ToastModule | null>(() => toastModule);
-  const [isPublic] = useState(() =>
-    typeof window === "undefined"
-      ? true
-      : isPublicBootPath(window.location.pathname),
-  );
+
+  useEffect(() => {
+    if (toastModule && !mod) {
+      setMod(toastModule);
+    }
+  }, [mod]);
 
   useEffect(() => {
     if (mod) {
@@ -88,7 +92,6 @@ export function DeferredToastProvider({
     if (isPublic) {
       return children;
     }
-    // Keep AuthBootLoader-era blank brief; provider mounts as soon as chunk lands.
     return null;
   }
 

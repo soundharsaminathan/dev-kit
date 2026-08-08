@@ -80,9 +80,13 @@ function AppRouter() {
   const [protectedProvidersReady, setProtectedProvidersReady] = useState(() =>
     isPublicBootPath(window.location.pathname),
   );
-  const blockOnAuth =
-    auth.loading && !isPublicBootPath(window.location.pathname);
-  const blockOnProviders = Boolean(auth.user) && !protectedProvidersReady;
+  const onPublicPath = isPublicBootPath(window.location.pathname);
+  const blockOnAuth = auth.loading && !onPublicPath;
+  // Never unmount RouterProvider on public paths (e.g. /login): that cancels
+  // post-login navigation to /app|/me. Only hold the boot loader on protected
+  // URLs until theme+toast are ready.
+  const blockOnProviders =
+    Boolean(auth.user) && !protectedProvidersReady && !onPublicPath;
   const blockShell = blockOnAuth || blockOnProviders;
 
   useEffect(() => {
@@ -122,7 +126,11 @@ function AppRouter() {
       return;
     }
     let cancelled = false;
-    setProtectedProvidersReady(false);
+    // Warm providers for the upcoming protected shell; do not flip ready→false
+    // on public paths or login navigation will unmount the router.
+    if (!isPublicBootPath(window.location.pathname)) {
+      setProtectedProvidersReady(false);
+    }
     void Promise.all([preloadAppTheme(), preloadToast()])
       .then(() => {
         if (!cancelled) {

@@ -1,4 +1,5 @@
 import { IconProvider } from "@dev-ui/icons";
+import { useRouterState } from "@tanstack/react-router";
 import { type ReactNode, useEffect, useLayoutEffect, useState } from "react";
 import {
   getCachedLucidePack,
@@ -60,28 +61,24 @@ function scheduleIdle(cb: () => void) {
  * onto the first paint of public routes; hydrate the full ThemeProvider idle.
  *
  * Protected shells render `<Icon>` immediately after auth (AppShell, metrics).
- * Phase 3 dropped the boot IconProvider assuming auth waited long enough for
- * idle theme hydrate — session-cache auth finishes first and crashed /app + /me
- * with "useIcons must be used within an IconProvider", leaving LCP on the
- * auth boot loader. Protected paths therefore:
- *   1) start theme load immediately (not idle)
- *   2) wrap with IconProvider until AppThemeProvider mounts
- * Public/login keep the idle path and skip IconProvider (text password toggle).
+ * Session-cache auth can finish before idle theme hydrate — without a boot
+ * IconProvider that crashed /app + /me and left LCP on the auth loader.
+ * Pathname is read from the router so login → /app switches out of the idle
+ * public path.
  */
 export function BootThemeProvider({ children }: { children: ReactNode }) {
+  const pathname = useRouterState({
+    select: (state) => state.location.pathname,
+  });
+  const isPublic = isPublicBootPath(pathname);
   const [mod, setMod] = useState<ThemeModule | null>(() => themeModule);
   const [iconPack, setIconPack] = useState(
     () => getCachedLucidePack() ?? getEmptyLucidePack(),
   );
-  const [isPublic] = useState(() =>
-    typeof window === "undefined"
-      ? true
-      : isPublicBootPath(window.location.pathname),
-  );
 
   useLayoutEffect(() => {
-    applyDocumentTheme(window.location.pathname);
-  }, []);
+    applyDocumentTheme(pathname);
+  }, [pathname]);
 
   useEffect(() => {
     if (mod) {
