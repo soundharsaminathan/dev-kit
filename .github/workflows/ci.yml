@@ -10,6 +10,12 @@ permissions:
   checks: write
   pull-requests: write
 
+# One CI run per PR (or ref). Newer pushes cancel in-flight runs so they
+# do not pile up and fight for runners / Nx Cloud.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 env:
   NX_CLOUD_ACCESS_TOKEN: ${{ secrets.NX_CLOUD_ACCESS_TOKEN }}
 
