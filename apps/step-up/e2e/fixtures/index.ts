@@ -52,12 +52,11 @@ export function writeRoleStorageState(role: SeedRole) {
  */
 export async function waitForAppReady(page: Page) {
   const readyTimeout = 60_000;
-  await expect(page.locator("#boot-splash, [data-boot-loader]")).toHaveCount(
-    0,
-    {
-      timeout: readyTimeout,
-    },
-  );
+  await expect(
+    page.locator("#boot-splash, [data-boot-loader], #boot-public"),
+  ).toHaveCount(0, {
+    timeout: readyTimeout,
+  });
   await expect
     .poll(
       async () => {

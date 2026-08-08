@@ -6,8 +6,8 @@ type AuthBootLoaderProps = {
 };
 
 /**
- * Auth-gate loader without motion/react — keeps the critical path free of
- * animation libraries while HTML #boot-splash covers the pre-JS window.
+ * Auth-gate loader without motion/react or the 88KB GIF — CSS mark keeps the
+ * critical path light while HTML #boot-splash covers the pre-JS window.
  */
 export function AuthBootLoader({
   label = "Loading app",
@@ -21,7 +21,10 @@ export function AuthBootLoader({
       aria-live="polite"
       aria-label={label}
     >
-      <img className={styles.dancer} src="/loader.gif" alt="" aria-hidden />
+      <div className={styles.mark} aria-hidden>
+        <span className={styles.markPulse} />
+        <span className={styles.markCore} />
+      </div>
       <p className={styles.caption}>{caption}</p>
     </div>
   );

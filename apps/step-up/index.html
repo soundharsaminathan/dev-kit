@@ -27,10 +27,16 @@
     <link rel="icon" href="/favicon-32.png" type="image/png" sizes="32x32" />
     <link rel="icon" href="/favicon.ico" sizes="32x32" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-    <link rel="preload" href="/loader.gif" as="image" type="image/gif" />
     <link
       rel="preload"
       href="/fonts/plus-jakarta-sans-latin-500.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <link
+      rel="preload"
+      href="/fonts/plus-jakarta-sans-latin-700.woff2"
       as="font"
       type="font/woff2"
       crossorigin
@@ -48,9 +54,18 @@
                 : "light";
           document.documentElement.setAttribute("data-theme-mode", mode);
           var theme = localStorage.getItem("dev-ui-theme");
-          if (theme) {
-            document.documentElement.setAttribute("data-theme", theme);
+          if (!theme) {
+            var path = location.pathname || "/";
+            var soft =
+              path === "/me" ||
+              path.indexOf("/me/") === 0 ||
+              path === "/app" ||
+              path.indexOf("/app/") === 0 ||
+              path === "/users" ||
+              path.indexOf("/users/") === 0;
+            theme = soft ? "step-up-soft" : "step-up";
           }
+          document.documentElement.setAttribute("data-theme", theme);
         } catch (e) {}
       })();
     </script>
@@ -61,6 +76,28 @@
         font-weight: 500;
         font-display: swap;
         src: url("/fonts/plus-jakarta-sans-latin-500.woff2") format("woff2");
+        unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6,
+          U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122,
+          U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+      }
+
+      @font-face {
+        font-family: "Plus Jakarta Sans";
+        font-style: normal;
+        font-weight: 600;
+        font-display: swap;
+        src: url("/fonts/plus-jakarta-sans-latin-600.woff2") format("woff2");
+        unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6,
+          U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122,
+          U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+      }
+
+      @font-face {
+        font-family: "Plus Jakarta Sans";
+        font-style: normal;
+        font-weight: 700;
+        font-display: swap;
+        src: url("/fonts/plus-jakarta-sans-latin-700.woff2") format("woff2");
         unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6,
           U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122,
           U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
@@ -110,16 +147,52 @@
       }
 
       #boot-splash .dancer {
-        display: block;
-        width: min(100vw, 92dvh);
-        height: min(72dvh, 100vw);
-        max-width: 100%;
-        max-height: 100%;
-        margin: 0 auto;
-        object-fit: contain;
-        object-position: center;
-        pointer-events: none;
-        transform: translateY(-10%) scale(1.2);
+        display: none;
+      }
+
+      #boot-splash .mark {
+        position: relative;
+        width: min(42vw, 11rem);
+        height: min(42vw, 11rem);
+        margin: 0 auto 4.5rem;
+      }
+
+      #boot-splash .mark-pulse,
+      #boot-splash .mark-core {
+        position: absolute;
+        inset: 0;
+        border-radius: 50%;
+      }
+
+      #boot-splash .mark-pulse {
+        border: 2px solid color-mix(in srgb, #ee8a55 55%, transparent);
+        animation: boot-pulse 1.6s ease-out infinite;
+      }
+
+      #boot-splash .mark-core {
+        inset: 22%;
+        background: radial-gradient(
+          circle at 35% 30%,
+          color-mix(in srgb, #ee8a55 88%, #fff) 0%,
+          #ee8a55 45%,
+          color-mix(in srgb, #ee8a55 70%, #1b2a4a) 100%
+        );
+        box-shadow: 0 12px 40px color-mix(in srgb, #ee8a55 35%, transparent);
+      }
+
+      @keyframes boot-pulse {
+        0% {
+          transform: scale(0.72);
+          opacity: 0.85;
+        }
+        70% {
+          transform: scale(1.08);
+          opacity: 0;
+        }
+        100% {
+          transform: scale(1.08);
+          opacity: 0;
+        }
       }
 
       #boot-splash .caption {
@@ -228,8 +301,9 @@
       }
 
       @media (prefers-reduced-motion: reduce) {
-        #boot-splash .dancer {
-          display: none;
+        #boot-splash .mark-pulse {
+          animation: none;
+          opacity: 0.35;
         }
 
         #boot-splash .cascade-layer[data-state="enter"] .letter,
@@ -343,6 +417,141 @@
         opacity: 0.55;
         pointer-events: none;
       }
+
+      /* Static public shells — paint LCP text before JS. */
+      #boot-public {
+        position: fixed;
+        inset: 0;
+        z-index: 70;
+        min-height: 100%;
+        display: flex;
+        flex-direction: column;
+        background: #f5efe6;
+        color: #1c1a17;
+        font-family:
+          "Plus Jakarta Sans",
+          system-ui,
+          -apple-system,
+          sans-serif;
+      }
+
+      html[data-theme-mode="dark"] #boot-public {
+        background: oklch(0.13 0.005 78);
+        color: oklch(0.95 0.01 78);
+      }
+
+      #boot-public .shell-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        min-height: 3.5rem;
+        padding: 0.75rem 1rem;
+        border-bottom: 1px solid rgb(28 26 23 / 8%);
+      }
+
+      #boot-public .shell-brand {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 1.25rem;
+        font-weight: 700;
+        letter-spacing: -0.03em;
+        text-decoration: none;
+        color: inherit;
+      }
+
+      #boot-public .shell-brand img {
+        width: 1.75rem;
+        height: 1.75rem;
+        border-radius: 0.5rem;
+        object-fit: contain;
+      }
+
+      #boot-public .shell-main {
+        flex: 1;
+        width: 100%;
+        max-width: 28rem;
+        margin: 0 auto;
+        padding: 2rem 1rem 2.5rem;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: 1.5rem;
+        box-sizing: border-box;
+      }
+
+      #boot-public .hero-brand {
+        margin: 0;
+        font-size: clamp(2.75rem, 12vw, 4rem);
+        font-weight: 700;
+        letter-spacing: -0.05em;
+        line-height: 0.95;
+        color: #1c1a17;
+      }
+
+      html[data-theme-mode="dark"] #boot-public .hero-brand {
+        color: oklch(0.95 0.01 78);
+      }
+
+      #boot-public .hero-headline {
+        margin: 0;
+        font-size: 1.25rem;
+        font-weight: 600;
+        letter-spacing: -0.02em;
+        line-height: 1.35;
+        color: rgb(28 26 23 / 88%);
+      }
+
+      html[data-theme-mode="dark"] #boot-public .hero-headline {
+        color: oklch(0.88 0.01 78);
+      }
+
+      #boot-public .hero-support {
+        margin: 0;
+        font-size: 1rem;
+        line-height: 1.55;
+        color: rgb(28 26 23 / 62%);
+      }
+
+      html[data-theme-mode="dark"] #boot-public .hero-support {
+        color: oklch(0.72 0.01 78);
+      }
+
+      #boot-public .login-title {
+        margin: 0;
+        font-size: 1.75rem;
+        font-weight: 700;
+        letter-spacing: -0.03em;
+        line-height: 1.15;
+        color: inherit;
+      }
+
+      #boot-public .login-subtitle {
+        margin: 0;
+        font-size: 0.9375rem;
+        line-height: 1.45;
+        color: rgb(28 26 23 / 62%);
+      }
+
+      html[data-theme-mode="dark"] #boot-public .login-subtitle {
+        color: oklch(0.72 0.01 78);
+      }
+
+      #boot-public .shell-footer {
+        padding: 1.5rem 1rem;
+        text-align: center;
+        color: rgb(28 26 23 / 56%);
+        font-size: 0.875rem;
+      }
+
+      html[data-theme-mode="dark"] #boot-public .shell-footer {
+        color: oklch(0.72 0.01 78);
+      }
+
+      html[data-boot-public] #root {
+        visibility: hidden;
+      }
     </style>
   </head>
   <body>
@@ -354,12 +563,79 @@
         aria-live="polite"
         aria-label="Loading app"
       >
-        <img class="dancer" src="/loader.gif" alt="" />
+        <div class="mark" aria-hidden="true">
+          <span class="mark-pulse"></span>
+          <span class="mark-core"></span>
+        </div>
         <p class="caption" id="boot-splash-caption" aria-hidden="true"></p>
       </div>
     </div>
     <script>
       (function () {
+        var path = location.pathname || "/";
+        var root = document.getElementById("root");
+        if (!root) return;
+
+        function publicShell(inner) {
+          return (
+            '<div id="boot-public">' +
+            '<header class="shell-header">' +
+            '<a class="shell-brand" href="/">' +
+            '<img src="/icons/unicorn.png" alt="" />' +
+            "<span>Step Up</span>" +
+            "</a>" +
+            "</header>" +
+            '<main class="shell-main">' +
+            inner +
+            "</main>" +
+            '<footer class="shell-footer">Step Up Dance Studio — move with confidence.</footer>' +
+            "</div>"
+          );
+        }
+
+        function mountPublic(inner) {
+          // Keep the shell outside #root so React createRoot does not destroy
+          // the early LCP element when the app mounts.
+          var shellHtml = publicShell(inner);
+          var wrap = document.createElement("div");
+          wrap.innerHTML = shellHtml;
+          var shell = wrap.firstChild;
+          document.body.insertBefore(shell, root);
+          root.innerHTML = "";
+        }
+
+        // Public routes: paint real LCP text in HTML before the module graph.
+        if (path === "/" || path === "") {
+          mountPublic(
+            '<h1 class="hero-brand">Step Up</h1>' +
+              '<p class="hero-headline">Dance studio operations, beautifully simple.</p>' +
+              '<p class="hero-support">Run batches, plans, attendance, and bookings from one calm workspace — or step into class as a student or parent.</p>',
+          );
+          return;
+        }
+
+        if (path === "/login" || path.indexOf("/login") === 0) {
+          mountPublic(
+            '<p class="login-eyebrow" style="margin:0;font-size:0.875rem;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#ee8a55">Step Up</p>' +
+              '<h1 class="login-title">Welcome back</h1>' +
+              '<p class="login-subtitle">Sign in to manage your studio or continue to your classes.</p>',
+          );
+          return;
+        }
+
+        if (
+          path.indexOf("/register") === 0 ||
+          path.indexOf("/forgot-password") === 0 ||
+          path.indexOf("/join") === 0 ||
+          path.indexOf("/studio/") === 0
+        ) {
+          mountPublic(
+            '<h1 class="login-title">Step Up</h1>' +
+              '<p class="login-subtitle">Loading…</p>',
+          );
+          return;
+        }
+
         var phrases = [
           { lead: "Stretching it ", keyword: "out…" },
           { lead: "Finding the ", keyword: "groove…" },

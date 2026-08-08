@@ -14,7 +14,6 @@ import { Icon } from "@dev-ui/icons";
 import { useForm } from "@tanstack/react-form";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
-import { updateProfile } from "firebase/auth";
 import { useState } from "react";
 import { useApi } from "@/lib/api-context";
 import { useAuth } from "@/lib/auth";
@@ -24,7 +23,7 @@ import {
   type Gender,
   isAuthBypassEnabled,
 } from "@/lib/constants";
-import { getFirebaseAuth } from "@/lib/firebase";
+import { getFirebaseAuthAsync } from "@/lib/firebase";
 import { useStudioId } from "@/lib/use-studio-id";
 import {
   AGE_RANGES,
@@ -239,13 +238,14 @@ function ProfileEditForm({ backTo, profile }: ProfileEditFormProps) {
       });
 
       if (!isAuthBypassEnabled()) {
-        const auth = getFirebaseAuth();
+        const auth = await getFirebaseAuthAsync();
         const firebaseUser = auth?.currentUser;
         if (
           firebaseUser &&
           trimmedName &&
           trimmedName !== firebaseUser.displayName
         ) {
+          const { updateProfile } = await import("firebase/auth");
           await updateProfile(firebaseUser, { displayName: trimmedName });
         }
       }

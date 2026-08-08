@@ -1,13 +1,17 @@
 import { OverlayProvider } from "@dev-ui/components/popover";
-import { ToastProvider } from "@dev-ui/components/toast";
 import { createRootRouteWithContext, Outlet } from "@tanstack/react-router";
+import { lazy, Suspense } from "react";
+import { BootThemeProvider } from "@/lib/boot-theme-provider";
+import { DeferredToastProvider } from "@/lib/deferred-toast";
 import { PwaInstallProvider } from "@/lib/pwa-install";
 import { QueryProvider } from "@/lib/query";
 import type { RouterAuthContext } from "@/lib/require-auth";
 import { SessionGate } from "@/lib/session-gate";
-import { AppThemeProvider } from "@/lib/theme";
 import { ThemeColorSync } from "@/lib/theme-color";
-import { PwaBanners } from "@/modules/pwa/pwa-banners";
+
+const PwaBanners = lazy(() =>
+  import("@/modules/pwa/pwa-banners").then((m) => ({ default: m.PwaBanners })),
+);
 
 export const Route = createRootRouteWithContext<RouterAuthContext>()({
   component: RootLayout,
@@ -15,20 +19,22 @@ export const Route = createRootRouteWithContext<RouterAuthContext>()({
 
 function RootLayout() {
   return (
-    <AppThemeProvider>
+    <BootThemeProvider>
       <ThemeColorSync />
       <QueryProvider>
         <SessionGate>
           <PwaInstallProvider>
             <OverlayProvider>
-              <ToastProvider position="top-right" timeout={3000}>
-                <PwaBanners />
+              <DeferredToastProvider position="top-right" timeout={3000}>
+                <Suspense fallback={null}>
+                  <PwaBanners />
+                </Suspense>
                 <Outlet />
-              </ToastProvider>
+              </DeferredToastProvider>
             </OverlayProvider>
           </PwaInstallProvider>
         </SessionGate>
       </QueryProvider>
-    </AppThemeProvider>
+    </BootThemeProvider>
   );
 }

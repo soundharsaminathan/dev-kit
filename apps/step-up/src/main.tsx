@@ -1,12 +1,9 @@
-import { IconProvider } from "@dev-ui/icons";
-import lucidePack from "@dev-ui/icons-packs/lucide";
 import { createRouter, RouterProvider } from "@tanstack/react-router";
 import { StrictMode, useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
-import "@dev-ui/tokens/fonts/critical";
-import "@dev-ui/tokens/scss";
-import "@dev-ui/components/styles";
-import "@/styles/global.scss";
+// Critical fonts are declared in index.html (Plus Jakarta Sans).
+// Token/global CSS is loaded asynchronously so the static public shell in
+// index.html can paint without waiting on the stylesheet link.
 import { ApiProvider } from "@/lib/api-context";
 import { AuthProvider, useAuth } from "@/lib/auth";
 import { SLOW_LOAD_TIMEOUT_MS } from "@/lib/brand";
@@ -20,6 +17,13 @@ import { AuthBootLoader } from "@/modules/ui/auth-boot-loader";
 import { SlowLoadFallback } from "@/modules/ui/slow-load-fallback";
 import { routeTree } from "./routeTree.gen";
 
+function loadAppStyles() {
+  return Promise.all([
+    import("@/styles/tokens.scss"),
+    import("@/styles/global.scss"),
+  ]);
+}
+
 const router = createRouter({
   routeTree,
   context: {
@@ -27,12 +31,21 @@ const router = createRouter({
   },
 });
 
-void (typeof requestIdleCallback === "function"
-  ? requestIdleCallback
-  : (cb: () => void) => window.setTimeout(cb, 2500))(() => {
+const scheduleIdle =
+  typeof requestIdleCallback === "function"
+    ? (cb: () => void) => {
+        requestIdleCallback(cb, { timeout: 6000 });
+      }
+    : (cb: () => void) => {
+        window.setTimeout(cb, 4000);
+      };
+
+scheduleIdle(() => {
   void import("@/lib/sentry").then(({ initSentry }) => {
     initSentry(router);
   });
+  // Warm Inter for staff surfaces after first paint.
+  void import("@/styles/inter-fonts.css");
 });
 
 declare module "@tanstack/react-router" {
@@ -108,15 +121,7 @@ function AppRouter() {
   }, [auth.loading, auth.user, userId]);
 
   if (blockOnAuth) {
-    return (
-      <IconProvider
-        icons={{ library: "lucide" }}
-        initialPack={lucidePack}
-        loaders={{}}
-      >
-        {slowLoad ? <SlowLoadFallback /> : <AuthBootLoader />}
-      </IconProvider>
-    );
+    return slowLoad ? <SlowLoadFallback /> : <AuthBootLoader />;
   }
 
   return <RouterProvider router={router} context={{ auth }} />;
@@ -126,25 +131,45 @@ const rootElement = document.getElementById("root");
 if (!rootElement) {
   throw new Error("Root element not found");
 }
+const appRoot = rootElement;
 
-createRoot(rootElement, {
-  onUncaughtError: (error, errorInfo) => {
-    reportRootError(error, errorInfo);
-  },
-  onCaughtError: (error, errorInfo) => {
-    reportRootError(error, errorInfo);
-  },
-  onRecoverableError: (error, errorInfo) => {
-    reportRootError(error, errorInfo);
-  },
-}).render(
-  <StrictMode>
-    <AppErrorBoundary>
-      <AuthProvider>
-        <ApiProvider>
-          <AppRouter />
-        </ApiProvider>
-      </AuthProvider>
-    </AppErrorBoundary>
-  </StrictMode>,
-);
+function toErrorInfo(errorInfo: {
+  componentStack?: string | null | undefined;
+}): { componentStack: string | null } {
+  return { componentStack: errorInfo.componentStack ?? null };
+}
+
+function mountApp() {
+  createRoot(appRoot, {
+    onUncaughtError: (error, errorInfo) => {
+      reportRootError(error, toErrorInfo(errorInfo));
+    },
+    onCaughtError: (error, errorInfo) => {
+      reportRootError(error, toErrorInfo(errorInfo));
+    },
+    onRecoverableError: (error, errorInfo) => {
+      reportRootError(error, toErrorInfo(errorInfo));
+    },
+  }).render(
+    <StrictMode>
+      <AppErrorBoundary>
+        <AuthProvider>
+          <ApiProvider>
+            <AppRouter />
+          </ApiProvider>
+        </AuthProvider>
+      </AppErrorBoundary>
+    </StrictMode>,
+  );
+}
+
+// Kick styles immediately (async chunk — not a render-blocking <link> in <head>).
+const stylesReady = loadAppStyles();
+
+void (async () => {
+  // Public routes already paint a static HTML shell; wait for styles before
+  // React replaces it so the themed LCP paint is not unstyled.
+  // Protected routes need styles for the auth boot loader.
+  await stylesReady.catch(() => undefined);
+  mountApp();
+})();

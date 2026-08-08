@@ -1,19 +1,4 @@
-import {
-  createUserWithEmailAndPassword,
-  EmailAuthProvider,
-  type User as FirebaseUser,
-  onAuthStateChanged,
-  reauthenticateWithCredential,
-  reload,
-  sendEmailVerification,
-  sendPasswordResetEmail,
-  signInWithEmailAndPassword,
-  signInWithPopup,
-  signOut,
-  updatePassword,
-  updateProfile,
-  verifyBeforeUpdateEmail,
-} from "firebase/auth";
+import type { User as FirebaseUser } from "firebase/auth";
 import {
   type ReactNode,
   useCallback,
@@ -39,7 +24,11 @@ import {
   SEED_SYSTEM_ADMIN,
   type UserRole,
 } from "./constants";
-import { getFirebaseAuth, googleProvider } from "./firebase";
+import {
+  getFirebaseAuthAsync,
+  getGoogleProviderAsync,
+  loadFirebase,
+} from "./firebase";
 import { setLastLoginIdentifier } from "./last-login";
 
 const AUTH_BOOTSTRAP_TIMEOUT_MS = 12_000;
@@ -270,14 +259,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       };
     }
 
-    const auth = getFirebaseAuth();
-    if (!auth) {
-      setLoading(false);
-      return;
-    }
-
     let cancelled = false;
     let settled = false;
+    let unsubscribe: (() => void) | undefined;
     const finishLoading = () => {
       if (!cancelled && !settled) {
         settled = true;
@@ -290,64 +274,78 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       finishLoading();
     }, AUTH_BOOTSTRAP_TIMEOUT_MS);
 
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
-      void (async () => {
-        if (!firebaseUser) {
-          lastSyncedRef.current = null;
-          if (!cancelled) {
-            setUser(null);
-            setHasPasswordProvider(false);
-            setEmailVerified(false);
-            finishLoading();
+    void (async () => {
+      const [{ auth }, { onAuthStateChanged, signOut }] = await Promise.all([
+        loadFirebase(),
+        import("firebase/auth"),
+      ]);
+      if (cancelled) {
+        return;
+      }
+      if (!auth) {
+        finishLoading();
+        return;
+      }
+
+      unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+        void (async () => {
+          if (!firebaseUser) {
+            lastSyncedRef.current = null;
+            if (!cancelled) {
+              setUser(null);
+              setHasPasswordProvider(false);
+              setEmailVerified(false);
+              finishLoading();
+            }
+            return;
           }
-          return;
-        }
 
-        if (!cancelled) {
-          settled = false;
-          setLoading(true);
-          setHasPasswordProvider(userHasPasswordProvider(firebaseUser));
-          setEmailVerified(firebaseUser.emailVerified);
-        }
-
-        try {
-          const pendingStudioId = pendingStudioIdRef.current;
-          pendingStudioIdRef.current = null;
-          const synced = await Promise.race([
-            syncFirebaseUser(
-              firebaseUser,
-              pendingStudioId ? { studioId: pendingStudioId } : undefined,
-            ),
-            new Promise<never>((_, reject) => {
-              window.setTimeout(() => {
-                reject(new Error("Account sync timed out"));
-              }, AUTH_BOOTSTRAP_TIMEOUT_MS);
-            }),
-          ]);
           if (!cancelled) {
-            setUser(synced);
+            settled = false;
+            setLoading(true);
             setHasPasswordProvider(userHasPasswordProvider(firebaseUser));
             setEmailVerified(firebaseUser.emailVerified);
-            settleSyncWaiters(firebaseUser.uid, synced);
           }
-        } catch (error) {
-          if (!cancelled) {
-            setUser(null);
-            setHasPasswordProvider(false);
-            setEmailVerified(false);
-            settleSyncWaiters(firebaseUser.uid, null, error);
-            await signOut(auth).catch(() => undefined);
+
+          try {
+            const pendingStudioId = pendingStudioIdRef.current;
+            pendingStudioIdRef.current = null;
+            const synced = await Promise.race([
+              syncFirebaseUser(
+                firebaseUser,
+                pendingStudioId ? { studioId: pendingStudioId } : undefined,
+              ),
+              new Promise<never>((_, reject) => {
+                window.setTimeout(() => {
+                  reject(new Error("Account sync timed out"));
+                }, AUTH_BOOTSTRAP_TIMEOUT_MS);
+              }),
+            ]);
+            if (!cancelled) {
+              setUser(synced);
+              setHasPasswordProvider(userHasPasswordProvider(firebaseUser));
+              setEmailVerified(firebaseUser.emailVerified);
+              settleSyncWaiters(firebaseUser.uid, synced);
+            }
+          } catch (error) {
+            if (!cancelled) {
+              setUser(null);
+              setHasPasswordProvider(false);
+              setEmailVerified(false);
+              settleSyncWaiters(firebaseUser.uid, null, error);
+              await signOut(auth).catch(() => undefined);
+            }
+          } finally {
+            finishLoading();
           }
-        } finally {
-          finishLoading();
-        }
-      })();
-    });
+        })();
+      });
+    })();
 
     return () => {
       cancelled = true;
       window.clearTimeout(bootstrapTimeout);
-      unsubscribe();
+      unsubscribe?.();
     };
   }, [settleSyncWaiters]);
 
@@ -408,11 +406,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       }
 
-      const auth = getFirebaseAuth();
+      const auth = await getFirebaseAuthAsync();
       if (!auth) {
         throw new Error("Firebase is not configured");
       }
 
+      const { signInWithEmailAndPassword } = await import("firebase/auth");
       const email = resolveLoginEmail(identifier);
       const credential = await signInWithEmailAndPassword(
         auth,
@@ -444,11 +443,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return created;
       }
 
-      const auth = getFirebaseAuth();
+      const auth = await getFirebaseAuthAsync();
       if (!auth) {
         throw new Error("Firebase is not configured");
       }
 
+      const {
+        createUserWithEmailAndPassword,
+        sendEmailVerification,
+        updateProfile,
+      } = await import("firebase/auth");
       pendingStudioIdRef.current = options?.studioId ?? null;
       const credential = await createUserWithEmailAndPassword(
         auth,
@@ -513,11 +517,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         );
       }
 
-      const auth = getFirebaseAuth();
+      const auth = await getFirebaseAuthAsync();
       if (!auth) {
         throw new Error("Firebase is not configured");
       }
 
+      const googleProvider = await getGoogleProviderAsync();
+      const { signInWithPopup } = await import("firebase/auth");
       pendingStudioIdRef.current = options?.studioId ?? null;
       const credential = await signInWithPopup(auth, googleProvider);
       setEmailVerified(credential.user.emailVerified);
@@ -536,11 +542,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       );
     }
 
-    const auth = getFirebaseAuth();
+    const auth = await getFirebaseAuthAsync();
     if (!auth) {
       throw new Error("Firebase is not configured");
     }
 
+    const { sendPasswordResetEmail } = await import("firebase/auth");
     const trimmed = email.trim().toLowerCase();
     try {
       await sendPasswordResetEmail(auth, trimmed, {
@@ -600,7 +607,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      const auth = getFirebaseAuth();
+      const auth = await getFirebaseAuthAsync();
       const firebaseUser = auth?.currentUser;
       if (!auth || !firebaseUser?.email) {
         throw new Error("You need to be signed in to change your password.");
@@ -613,6 +620,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       try {
+        const {
+          EmailAuthProvider,
+          reauthenticateWithCredential,
+          updatePassword,
+        } = await import("firebase/auth");
         const credential = EmailAuthProvider.credential(
           firebaseUser.email,
           currentPassword,
@@ -637,7 +649,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         );
       }
 
-      const auth = getFirebaseAuth();
+      const auth = await getFirebaseAuthAsync();
       const firebaseUser = auth?.currentUser;
       if (!auth || !firebaseUser?.email) {
         throw new Error("You need to be signed in to change your email.");
@@ -658,6 +670,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       try {
+        const {
+          EmailAuthProvider,
+          reauthenticateWithCredential,
+          verifyBeforeUpdateEmail,
+        } = await import("firebase/auth");
         const credential = EmailAuthProvider.credential(
           firebaseUser.email,
           currentPassword,
@@ -679,7 +696,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    const auth = getFirebaseAuth();
+    const auth = await getFirebaseAuthAsync();
     const firebaseUser = auth?.currentUser;
     if (!auth || !firebaseUser) {
       throw new Error("You need to be signed in to resend verification.");
@@ -691,6 +708,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     try {
+      const { sendEmailVerification } = await import("firebase/auth");
       await sendEmailVerification(firebaseUser, {
         url: `${window.location.origin}/login`,
         handleCodeInApp: false,
@@ -708,7 +726,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return true;
     }
 
-    const auth = getFirebaseAuth();
+    const auth = await getFirebaseAuthAsync();
     const firebaseUser = auth?.currentUser;
     if (!auth || !firebaseUser) {
       setEmailVerified(false);
@@ -716,6 +734,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     try {
+      const { reload } = await import("firebase/auth");
       const previousEmail = firebaseUser.email?.trim().toLowerCase() ?? "";
       await reload(firebaseUser);
       const current = auth.currentUser;
@@ -774,8 +793,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    const auth = getFirebaseAuth();
+    const auth = await getFirebaseAuthAsync();
     if (auth) {
+      const { signOut } = await import("firebase/auth");
       await signOut(auth);
     }
     setUser(null);
@@ -791,7 +811,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return `dev:${user.role}:${user.id}`;
     }
 
-    const auth = getFirebaseAuth();
+    const auth = await getFirebaseAuthAsync();
     if (!auth?.currentUser) {
       return null;
     }

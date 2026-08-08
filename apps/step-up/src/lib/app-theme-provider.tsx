@@ -1,7 +1,11 @@
 import { ThemeProvider, useTheme } from "@dev-ui/core";
-import lucidePack from "@dev-ui/icons-packs/lucide";
 import { useRouterState } from "@tanstack/react-router";
-import { type ReactNode, useLayoutEffect } from "react";
+import { type ReactNode, useEffect, useLayoutEffect, useState } from "react";
+import {
+  getCachedLucidePack,
+  getEmptyLucidePack,
+  preloadLucidePack,
+} from "@/lib/deferred-icon-pack";
 import { isSoftThemePath } from "@/lib/theme-path";
 import { StudioBrandEditProvider } from "@/modules/branding/studio-brand-edit-context";
 
@@ -28,12 +32,40 @@ function EnsureSurfaceTheme({ children }: { children: ReactNode }) {
 }
 
 export function AppThemeProvider({ children }: { children: ReactNode }) {
+  const [iconPack, setIconPack] = useState(
+    () => getCachedLucidePack() ?? getEmptyLucidePack(),
+  );
+
+  useEffect(() => {
+    if (getCachedLucidePack()) {
+      return;
+    }
+    const schedule =
+      typeof requestIdleCallback === "function"
+        ? (cb: () => void) => {
+            const id = requestIdleCallback(() => cb(), { timeout: 2000 });
+            return () => cancelIdleCallback(id);
+          }
+        : (cb: () => void) => {
+            const id = window.setTimeout(cb, 1);
+            return () => window.clearTimeout(id);
+          };
+
+    return schedule(() => {
+      void preloadLucidePack().then((pack) => {
+        setIconPack(pack);
+      });
+    });
+  }, []);
+
   return (
     <ThemeProvider
       defaultTheme={STAFF_THEME}
       icons={{ library: "lucide" }}
-      initialIconPack={lucidePack}
-      iconLoaders={{}}
+      initialIconPack={iconPack}
+      iconLoaders={{
+        lucide: () => preloadLucidePack().then((pack) => ({ default: pack })),
+      }}
     >
       <StudioBrandEditProvider>
         <EnsureSurfaceTheme>{children}</EnsureSurfaceTheme>

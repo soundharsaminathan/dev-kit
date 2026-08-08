@@ -61,7 +61,7 @@ setup("authenticate roles", async ({ request, browser }) => {
         timeout: 60_000,
       });
       await page
-        .locator("#boot-splash, [data-boot-loader]")
+        .locator("#boot-splash, [data-boot-loader], #boot-public")
         .waitFor({ state: "detached", timeout: 60_000 })
         .catch(() => undefined);
     } catch {
