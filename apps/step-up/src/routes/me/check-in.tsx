@@ -1,6 +1,5 @@
 import { useMutation } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { BrowserQRCodeReader } from "@zxing/browser";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useApi } from "@/lib/api-context";
 import { useActiveStudentContext } from "@/modules/me/use-active-student-context";
@@ -15,6 +14,7 @@ export const Route = createFileRoute("/me/check-in")({
 });
 
 type Mode = "scan" | "manual";
+type ZXingBrowser = typeof import("@zxing/browser");
 
 function MeCheckInPage() {
   const api = useApi();
@@ -25,7 +25,10 @@ function MeCheckInPage() {
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [succeeded, setSucceeded] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const readerRef = useRef<BrowserQRCodeReader | null>(null);
+  const readerRef = useRef<InstanceType<
+    ZXingBrowser["BrowserQRCodeReader"]
+  > | null>(null);
+  const zxingRef = useRef<ZXingBrowser | null>(null);
   const scannedRef = useRef(false);
 
   const verifyQr = useMutation({
@@ -50,45 +53,54 @@ function MeCheckInPage() {
     if (mode !== "scan") return;
     if (!videoRef.current) return;
 
-    const reader = new BrowserQRCodeReader();
-    readerRef.current = reader;
-    scannedRef.current = false;
+    let cancelled = false;
     let fellBack = false;
+    const video = videoRef.current;
 
     const fallbackToManual = (message: string) => {
-      if (fellBack) return;
+      if (fellBack || cancelled) return;
       fellBack = true;
-      BrowserQRCodeReader.releaseAllStreams();
+      zxingRef.current?.BrowserQRCodeReader.releaseAllStreams();
       setCameraError(message);
       setMode("manual");
     };
 
-    reader
-      .decodeFromConstraints(
-        { video: { facingMode: "environment" } },
-        videoRef.current,
-        (result, error) => {
-          if (result && !scannedRef.current) {
-            handleToken(result.getText());
-          }
-          if (
-            error &&
-            !(error instanceof Error && error.name === "NotFoundException")
-          ) {
-            fallbackToManual(
-              "Camera unavailable. Paste the token from the studio QR code.",
-            );
-          }
-        },
-      )
-      .catch(() => {
+    void (async () => {
+      try {
+        const zxing = await import("@zxing/browser");
+        if (cancelled) return;
+        zxingRef.current = zxing;
+        const reader = new zxing.BrowserQRCodeReader();
+        readerRef.current = reader;
+        scannedRef.current = false;
+
+        await reader.decodeFromConstraints(
+          { video: { facingMode: "environment" } },
+          video,
+          (result, error) => {
+            if (result && !scannedRef.current) {
+              handleToken(result.getText());
+            }
+            if (
+              error &&
+              !(error instanceof Error && error.name === "NotFoundException")
+            ) {
+              fallbackToManual(
+                "Camera unavailable. Paste the token from the studio QR code.",
+              );
+            }
+          },
+        );
+      } catch {
         fallbackToManual(
           "Could not access camera. Paste the token from the studio QR code.",
         );
-      });
+      }
+    })();
 
     return () => {
-      BrowserQRCodeReader.releaseAllStreams();
+      cancelled = true;
+      zxingRef.current?.BrowserQRCodeReader.releaseAllStreams();
     };
   }, [mode, handleToken]);
 
@@ -153,7 +165,7 @@ function MeCheckInPage() {
             onClick={() => {
               setMode("manual");
               verifyQr.reset();
-              BrowserQRCodeReader.releaseAllStreams();
+              zxingRef.current?.BrowserQRCodeReader.releaseAllStreams();
             }}
           >
             Enter manually

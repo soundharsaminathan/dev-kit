@@ -3,7 +3,7 @@ import lucidePack from "@dev-ui/icons-packs/lucide";
 import { createRouter, RouterProvider } from "@tanstack/react-router";
 import { StrictMode, useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
-import "@dev-ui/tokens/fonts/primary";
+import "@dev-ui/tokens/fonts/critical";
 import "@dev-ui/tokens/scss";
 import "@dev-ui/components/styles";
 import "@/styles/global.scss";
@@ -11,9 +11,12 @@ import { ApiProvider } from "@/lib/api-context";
 import { AuthProvider, useAuth } from "@/lib/auth";
 import { SLOW_LOAD_TIMEOUT_MS } from "@/lib/brand";
 import { homePathForUser } from "@/lib/require-auth";
-import { initSentry, Sentry } from "@/lib/sentry";
 import { preloadSessionProviders } from "@/lib/session-gate";
-import { DanceLoader } from "@/modules/ui/dance-loader";
+import {
+  AppErrorBoundary,
+  reportRootError,
+} from "@/modules/ui/app-error-boundary";
+import { AuthBootLoader } from "@/modules/ui/auth-boot-loader";
 import { SlowLoadFallback } from "@/modules/ui/slow-load-fallback";
 import { routeTree } from "./routeTree.gen";
 
@@ -24,12 +27,29 @@ const router = createRouter({
   },
 });
 
-initSentry(router);
+void (typeof requestIdleCallback === "function"
+  ? requestIdleCallback
+  : (cb: () => void) => window.setTimeout(cb, 2500))(() => {
+  void import("@/lib/sentry").then(({ initSentry }) => {
+    initSentry(router);
+  });
+});
 
 declare module "@tanstack/react-router" {
   interface Register {
     router: typeof router;
   }
+}
+
+function isPublicBootPath(pathname: string) {
+  if (pathname === "/" || pathname === "") return true;
+  return (
+    pathname.startsWith("/login") ||
+    pathname.startsWith("/register") ||
+    pathname.startsWith("/forgot-password") ||
+    pathname.startsWith("/join") ||
+    pathname.startsWith("/studio/")
+  );
 }
 
 function AppRouter() {
@@ -39,9 +59,11 @@ function AppRouter() {
   const [slowLoad, setSlowLoad] = useState(
     () => performance.now() >= SLOW_LOAD_TIMEOUT_MS,
   );
+  const blockOnAuth =
+    auth.loading && !isPublicBootPath(window.location.pathname);
 
   useEffect(() => {
-    if (!auth.loading) {
+    if (!blockOnAuth) {
       setSlowLoad(false);
       return;
     }
@@ -50,7 +72,7 @@ function AppRouter() {
       setSlowLoad(true);
     }, remaining);
     return () => window.clearTimeout(id);
-  }, [auth.loading]);
+  }, [blockOnAuth]);
 
   // Invalidate for auth changes, then warm home — never race preload with
   // invalidate (evicts in-flight preload matches → _nonReactive TypeError).
@@ -85,14 +107,14 @@ function AppRouter() {
     };
   }, [auth.loading, auth.user, userId]);
 
-  if (auth.loading) {
+  if (blockOnAuth) {
     return (
       <IconProvider
         icons={{ library: "lucide" }}
         initialPack={lucidePack}
         loaders={{}}
       >
-        {slowLoad ? <SlowLoadFallback /> : <DanceLoader />}
+        {slowLoad ? <SlowLoadFallback /> : <AuthBootLoader />}
       </IconProvider>
     );
   }
@@ -107,29 +129,22 @@ if (!rootElement) {
 
 createRoot(rootElement, {
   onUncaughtError: (error, errorInfo) => {
-    Sentry.captureException(error, {
-      contexts: { react: { componentStack: errorInfo.componentStack } },
-    });
-    console.warn("Uncaught error", error, errorInfo.componentStack);
+    reportRootError(error, errorInfo);
   },
   onCaughtError: (error, errorInfo) => {
-    Sentry.captureException(error, {
-      contexts: { react: { componentStack: errorInfo.componentStack } },
-    });
+    reportRootError(error, errorInfo);
   },
   onRecoverableError: (error, errorInfo) => {
-    Sentry.captureException(error, {
-      contexts: { react: { componentStack: errorInfo.componentStack } },
-    });
+    reportRootError(error, errorInfo);
   },
 }).render(
   <StrictMode>
-    <Sentry.ErrorBoundary fallback={<p>Something went wrong.</p>}>
+    <AppErrorBoundary>
       <AuthProvider>
         <ApiProvider>
           <AppRouter />
         </ApiProvider>
       </AuthProvider>
-    </Sentry.ErrorBoundary>
+    </AppErrorBoundary>
   </StrictMode>,
 );

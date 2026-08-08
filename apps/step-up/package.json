@@ -13,6 +13,9 @@
     "test:http": "playwright test --config playwright.config.ts --project=http --grep @http",
     "test:smoke": "playwright test --config playwright.smoke.config.ts",
     "test:smoke:perf": "playwright test --config playwright.smoke.config.ts --grep @perf",
+    "test:lighthouse": "node scripts/run-lighthouse.mjs",
+    "test:lighthouse:home": "node scripts/run-lighthouse.mjs http://127.0.0.1:4173/ 3 lighthouse-results/home",
+    "test:lighthouse:login": "node scripts/run-lighthouse.mjs http://127.0.0.1:4173/login 3 lighthouse-results/login",
     "test:gate": "pnpm nx run step-up:test:regression"
   },
   "dependencies": {
@@ -62,6 +65,7 @@
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.0",
     "jsdom": "^29.1.1",
+    "lighthouse": "13.4.1",
     "sass": "^1.101.0",
     "typescript": "^6.0.3",
     "vite": "catalog:",
