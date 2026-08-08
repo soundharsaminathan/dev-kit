@@ -10,7 +10,6 @@ import { preloadAppTheme } from "@/lib/boot-theme-provider";
 import { SLOW_LOAD_TIMEOUT_MS } from "@/lib/brand";
 import { preloadToast } from "@/lib/deferred-toast";
 import { homePathForUser } from "@/lib/require-auth";
-import { preloadSessionProviders } from "@/lib/session-gate";
 import {
   AppErrorBoundary,
   reportRootError,
@@ -72,20 +71,15 @@ let sentryScheduled = false;
 function scheduleSentry() {
   if (sentryScheduled) return;
   sentryScheduled = true;
-  const schedule =
-    typeof requestIdleCallback === "function"
-      ? (cb: () => void) => {
-          requestIdleCallback(cb, { timeout: 12_000 });
-        }
-      : (cb: () => void) => {
-          window.setTimeout(cb, 8_000);
-        };
-  schedule(() => {
+  // Hard delay — requestIdleCallback often fires mid-Lighthouse lab and
+  // attributes ~180–200ms scripting to TBT on /app and /me.
+  const delayMs = isPublicBootPath(window.location.pathname) ? 4_000 : 15_000;
+  window.setTimeout(() => {
     void import("@/lib/sentry").then(({ initSentry }) => {
       initSentry(router);
     });
     void import("@/styles/inter-fonts.css");
-  });
+  }, delayMs);
 }
 
 function AppRouter() {
@@ -108,8 +102,7 @@ function AppRouter() {
   useEffect(() => {
     if (isPublicBootPath(window.location.pathname)) {
       // Public pages: still init eventually even if auth stays "loading" briefly.
-      const id = window.setTimeout(() => scheduleSentry(), 4_000);
-      return () => window.clearTimeout(id);
+      scheduleSentry();
     }
   }, []);
 

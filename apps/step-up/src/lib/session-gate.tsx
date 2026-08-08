@@ -1,4 +1,4 @@
-import { type ReactNode, useSyncExternalStore } from "react";
+import { type ReactNode, useEffect, useSyncExternalStore } from "react";
 import { useAuth } from "@/lib/auth";
 
 type SessionModule = typeof import("./session-providers");
@@ -48,9 +48,21 @@ export function SessionGate({ children }: { children: ReactNode }) {
     getServerSnapshot,
   );
 
-  if (user && !loaded) {
-    void preloadSessionProviders();
-  }
+  useEffect(() => {
+    if (!user || sessionModule) {
+      return;
+    }
+    // Sockets/push are not required for shell LCP — defer past first paint.
+    const enable = () => {
+      void preloadSessionProviders();
+    };
+    if (typeof requestIdleCallback === "function") {
+      const id = requestIdleCallback(enable, { timeout: 4_000 });
+      return () => cancelIdleCallback(id);
+    }
+    const id = window.setTimeout(enable, 1_500);
+    return () => window.clearTimeout(id);
+  }, [user]);
 
   if (user && loaded) {
     return <loaded.SessionProviders>{children}</loaded.SessionProviders>;
