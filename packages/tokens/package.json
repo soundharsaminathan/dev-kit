@@ -25,6 +25,10 @@
       "import": "./src/theme-fonts-primary.ts",
       "default": "./src/theme-fonts-primary.ts"
     },
+    "./fonts/critical": {
+      "import": "./src/theme-fonts-critical.ts",
+      "default": "./src/theme-fonts-critical.ts"
+    },
     "./theme-font-families": {
       "types": "./src/theme-font-families.ts",
       "import": "./src/theme-font-families.ts",

@@ -78,65 +78,21 @@ self.addEventListener("notificationclick", (event) => {
 function stepUpManualChunks(id: string) {
   const normalized = id.replace(/\\/g, "/");
 
-  if (normalized.includes("node_modules")) {
-    if (
-      normalized.includes("/firebase/") ||
-      normalized.includes("/@firebase/")
-    ) {
-      return "vendor-firebase";
-    }
-    if (normalized.includes("/socket.io")) {
-      return "vendor-socket";
-    }
-    if (normalized.includes("/@tiptap/")) {
-      return "vendor-tiptap";
-    }
-    if (normalized.includes("/@zxing/")) {
-      return "vendor-zxing";
-    }
-    if (normalized.includes("/read-excel-file")) {
-      return "vendor-excel";
-    }
-    if (
-      normalized.includes("/leaflet") ||
-      normalized.includes("/react-leaflet")
-    ) {
-      return "vendor-maps";
-    }
-    if (
-      normalized.includes("/motion/") ||
-      normalized.includes("/framer-motion")
-    ) {
-      return "vendor-motion";
-    }
-    if (normalized.includes("/@tanstack/")) {
-      return "vendor-tanstack";
-    }
-    if (
-      normalized.includes("/react-dom") ||
-      normalized.includes("/react/") ||
-      normalized.includes("/scheduler/")
-    ) {
-      return "vendor-react";
-    }
+  if (!normalized.includes("/node_modules/")) {
     return;
   }
 
-  if (!normalized.includes("/apps/step-up/src/")) {
-    return;
+  // Isolate only libs loaded via dynamic import() on rare routes.
+  // Avoid chunking TipTap/Leaflet/React — named vendor chunks were being
+  // statically imported by the entry and modulepreloaded on every page.
+  if (normalized.includes("/node_modules/@zxing/")) {
+    return "vendor-zxing";
   }
-
-  if (normalized.includes("/src/modules/certificates/")) {
-    return "role-staff-certificates";
+  if (normalized.includes("/node_modules/read-excel-file")) {
+    return "vendor-excel";
   }
-  if (normalized.includes("/src/modules/discover/")) {
-    return "role-member-discover";
-  }
-  if (normalized.includes("/src/modules/onboarding/")) {
-    return "role-member-onboarding";
-  }
-  if (normalized.includes("/src/modules/me/")) {
-    return "role-member-shell";
+  if (normalized.includes("/node_modules/socket.io")) {
+    return "vendor-socket";
   }
 
   return;
