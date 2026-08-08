@@ -49,7 +49,9 @@ Child routes with **late content LCP** (API/images) still regress — do not
    shipped unstyled Buttons/Select/Sidebar/Menu (grey native controls,
    no sidebar collapse transition). Fix: inject per-chunk CSS imports in
    `emitStylesEntryPlugin` (`scripts/vite/lib-build.ts`); keep the barrel
-   only for Storybook/showcase.
+   only for Storybook/showcase. Node/Playwright imports of dist (showcase
+   visual registry) need `scripts/css-noop-loader.mjs` registered in
+   `apps/showcase/playwright.config.ts`.
 
 ## Key files (do not casually rewrite)
 
