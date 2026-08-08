@@ -60,6 +60,18 @@ export function HomeStudioBanner({
   const navigate = useNavigate();
   const headline =
     title ?? `${greeting ?? "Hey"}, ${firstName ?? "dancer"} — let's dance`;
+  // Defer banner image so a late /home image cannot become LCP under throttle.
+  const [showImage, setShowImage] = useState(false);
+  useEffect(() => {
+    const enable = () => setShowImage(true);
+    if (typeof requestIdleCallback === "function") {
+      const id = requestIdleCallback(enable, { timeout: 2500 });
+      return () => cancelIdleCallback(id);
+    }
+    const id = window.setTimeout(enable, 1200);
+    return () => window.clearTimeout(id);
+  }, []);
+  const mediaBanner = showImage ? banner : null;
 
   return (
     <section
@@ -68,19 +80,19 @@ export function HomeStudioBanner({
       data-flush-top={flushTop ? "true" : undefined}
     >
       <div className={styles.studioBannerMedia}>
-        {banner?.imageUrl || banner?.desktopImageUrl ? (
+        {mediaBanner?.imageUrl || mediaBanner?.desktopImageUrl ? (
           <picture>
-            {banner.desktopImageUrl &&
-            banner.desktopImageUrl !== banner.imageUrl ? (
+            {mediaBanner.desktopImageUrl &&
+            mediaBanner.desktopImageUrl !== mediaBanner.imageUrl ? (
               <source
                 media="(min-width: 768px)"
-                srcSet={banner.desktopImageUrl}
+                srcSet={mediaBanner.desktopImageUrl}
               />
             ) : null}
             <img
               className={styles.studioBannerImage}
-              src={banner.imageUrl ?? banner.desktopImageUrl ?? ""}
-              alt={banner.altText ?? banner.branchName ?? ""}
+              src={mediaBanner.imageUrl ?? mediaBanner.desktopImageUrl ?? ""}
+              alt={mediaBanner.altText ?? mediaBanner.branchName ?? ""}
               loading="eager"
               decoding="async"
             />

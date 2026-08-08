@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useRef, useState } from "react";
 import { useApi } from "@/lib/api-context";
+import { useAuth } from "@/lib/auth";
 import { HomeNotices, useHomeNotices } from "@/modules/me/home-notices";
 import {
   AchievementBadge,
@@ -39,6 +40,7 @@ const GOAL_BLOOM_ITEMS = [4, 8, 12, 16].map((value) => ({
 
 function MeHomePage() {
   const api = useApi();
+  const { user } = useAuth();
   const queryClient = useQueryClient();
   const { studentId, loading: studentLoading } = useActiveStudentContext();
   const [installBarVisible, setInstallBarVisible] = useState(false);
@@ -106,7 +108,7 @@ function MeHomePage() {
   });
 
   const data = homeQuery.data;
-  const firstName = data?.student.name.split(" ")[0] || "dancer";
+  const authFirstName = user?.name?.split(" ")[0] || "dancer";
   const bannerCta = data?.hero.cta ?? null;
   const nextClass = data?.nextClass ?? data?.hero.nextClass ?? null;
   const showTrialPromo = data
@@ -120,16 +122,23 @@ function MeHomePage() {
     goalMutation.mutate(target);
   }
 
+  // Keep the banner headline stable from session auth so /home hydration cannot
+  // rewrite the LCP text ~8s later under mobile throttle.
+  const banner = (
+    <HomeStudioBanner
+      banner={data?.banner ?? null}
+      studioName={data?.studio?.name ?? null}
+      title={`Hey, ${authFirstName} — let's dance`}
+      cta={bannerCta}
+      flushTop={installBarVisible}
+    />
+  );
+
   if (waitingForHome) {
     return (
       <section className="screen" aria-busy="true" aria-label="Loading home">
         <div className={styles.root}>
-          <SkeletonBlock
-            height="14.5rem"
-            width="auto"
-            radius="0"
-            className={styles.skeletonBanner}
-          />
+          {banner}
           <SkeletonBlock height="6.5rem" radius="var(--radius-2xl, 1.25rem)" />
           <div className={styles.section}>
             <SkeletonBlock height="0.875rem" width="30%" />
@@ -180,17 +189,10 @@ function MeHomePage() {
             />
           ) : null}
 
+          {banner}
+
           {data ? (
             <>
-              <HomeStudioBanner
-                banner={data.banner}
-                studioName={data.studio?.name ?? null}
-                greeting={data.greeting}
-                firstName={firstName}
-                cta={bannerCta}
-                flushTop={installBarVisible}
-              />
-
               <HomeNotices notices={notices} flushHero />
 
               {nextClass ? (

@@ -23,4 +23,5 @@ export type {
   ToastTitleProps,
   ToastVariant,
 } from "./toast.types";
-export { useToastContext } from "./toast-context";
+export type { ToastContextValue } from "./toast-context";
+export { ToastContext, useToastContext } from "./toast-context";

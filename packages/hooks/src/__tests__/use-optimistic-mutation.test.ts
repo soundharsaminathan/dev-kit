@@ -145,4 +145,66 @@ describe("useOptimisticMutation", () => {
     expect(onSuccess).toHaveBeenCalledTimes(1);
     expect(onSuccess.mock.calls[0]?.[0]).toBe(3);
   });
+
+  it("calls onError without rolling back when onRollback is omitted", async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false },
+        mutations: { retry: false },
+      },
+    });
+    const onError = vi.fn();
+
+    const { result } = renderHook(
+      () =>
+        useOptimisticMutation({
+          mutationFn: async () => {
+            throw new Error("failed");
+          },
+          onOptimistic: () => ({ snapshotted: true }),
+          onError,
+        }),
+      { wrapper: createWrapper(queryClient) },
+    );
+
+    await act(async () => {
+      result.current.mutate(undefined);
+    });
+
+    await waitFor(() => {
+      expect(result.current.isError).toBe(true);
+    });
+
+    expect(onError).toHaveBeenCalledTimes(1);
+  });
+
+  it("runs onSettled after the mutation resolves", async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false },
+        mutations: { retry: false },
+      },
+    });
+    const onSettled = vi.fn();
+
+    const { result } = renderHook(
+      () =>
+        useOptimisticMutation({
+          mutationFn: async () => "done",
+          onOptimistic: () => ({ snapshotted: true }),
+          onSettled,
+        }),
+      { wrapper: createWrapper(queryClient) },
+    );
+
+    await act(async () => {
+      result.current.mutate(undefined);
+    });
+
+    await waitFor(() => {
+      expect(result.current.isSuccess).toBe(true);
+    });
+
+    expect(onSettled).toHaveBeenCalledTimes(1);
+  });
 });

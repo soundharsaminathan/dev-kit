@@ -1,19 +1,4 @@
-import {
-  createUserWithEmailAndPassword,
-  EmailAuthProvider,
-  type User as FirebaseUser,
-  onAuthStateChanged,
-  reauthenticateWithCredential,
-  reload,
-  sendEmailVerification,
-  sendPasswordResetEmail,
-  signInWithEmailAndPassword,
-  signInWithPopup,
-  signOut,
-  updatePassword,
-  updateProfile,
-  verifyBeforeUpdateEmail,
-} from "firebase/auth";
+import type { User as FirebaseUser } from "firebase/auth";
 import {
   type ReactNode,
   useCallback,
@@ -39,7 +24,11 @@ import {
   SEED_SYSTEM_ADMIN,
   type UserRole,
 } from "./constants";
-import { getFirebaseAuth, googleProvider } from "./firebase";
+import {
+  getFirebaseAuthAsync,
+  getGoogleProviderAsync,
+  loadFirebase,
+} from "./firebase";
 import { setLastLoginIdentifier } from "./last-login";
 
 const AUTH_BOOTSTRAP_TIMEOUT_MS = 12_000;
@@ -73,6 +62,13 @@ type SyncedApiUser = {
 };
 
 const STORAGE_KEY = "step-up-dev-user";
+/** Last successful Firebase→API sync — hydrates protected shell before /auth/sync. */
+const SESSION_CACHE_KEY = "step-up-session-user";
+
+type SessionCache = {
+  uid: string;
+  user: AuthUser;
+};
 
 function readStoredBypassUser(): AuthUser | null {
   if (!isAuthBypassEnabled()) {
@@ -88,6 +84,44 @@ function readStoredBypassUser(): AuthUser | null {
     return JSON.parse(raw) as AuthUser;
   } catch {
     return null;
+  }
+}
+
+function readSessionCache(): SessionCache | null {
+  if (typeof window === "undefined" || isAuthBypassEnabled()) {
+    return null;
+  }
+  try {
+    const raw = localStorage.getItem(SESSION_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as SessionCache;
+    if (
+      !parsed?.uid ||
+      !parsed?.user?.id ||
+      !parsed?.user?.role ||
+      !parsed?.user?.email
+    ) {
+      return null;
+    }
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function writeSessionCache(uid: string, user: AuthUser) {
+  try {
+    localStorage.setItem(SESSION_CACHE_KEY, JSON.stringify({ uid, user }));
+  } catch {
+    // quota / private mode
+  }
+}
+
+function clearSessionCache() {
+  try {
+    localStorage.removeItem(SESSION_CACHE_KEY);
+  } catch {
+    // ignore
   }
 }
 
@@ -270,14 +304,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       };
     }
 
-    const auth = getFirebaseAuth();
-    if (!auth) {
-      setLoading(false);
-      return;
-    }
-
     let cancelled = false;
     let settled = false;
+    let unsubscribe: (() => void) | undefined;
     const finishLoading = () => {
       if (!cancelled && !settled) {
         settled = true;
@@ -290,64 +319,120 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       finishLoading();
     }, AUTH_BOOTSTRAP_TIMEOUT_MS);
 
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
-      void (async () => {
-        if (!firebaseUser) {
-          lastSyncedRef.current = null;
-          if (!cancelled) {
-            setUser(null);
-            setHasPasswordProvider(false);
-            setEmailVerified(false);
-            finishLoading();
+    void (async () => {
+      // Public routes: defer Firebase parse/eval until idle so /login TBT
+      // is not dominated by Auth SDK. Sign-in handlers still await loadFirebase().
+      const path = window.location.pathname;
+      const isPublic =
+        path === "/" ||
+        path === "" ||
+        path.startsWith("/login") ||
+        path.startsWith("/register") ||
+        path.startsWith("/forgot-password") ||
+        path.startsWith("/join") ||
+        path.startsWith("/studio/");
+      if (isPublic) {
+        await new Promise<void>((resolve) => {
+          if (typeof requestIdleCallback === "function") {
+            requestIdleCallback(() => resolve(), { timeout: 2_500 });
+          } else {
+            window.setTimeout(() => resolve(), 1);
           }
-          return;
-        }
+        });
+      }
+      if (cancelled) {
+        return;
+      }
 
-        if (!cancelled) {
-          settled = false;
-          setLoading(true);
-          setHasPasswordProvider(userHasPasswordProvider(firebaseUser));
-          setEmailVerified(firebaseUser.emailVerified);
-        }
+      const [{ auth }, { onAuthStateChanged, signOut }] = await Promise.all([
+        loadFirebase(),
+        import("firebase/auth"),
+      ]);
+      if (cancelled) {
+        return;
+      }
+      if (!auth) {
+        finishLoading();
+        return;
+      }
 
-        try {
-          const pendingStudioId = pendingStudioIdRef.current;
-          pendingStudioIdRef.current = null;
-          const synced = await Promise.race([
-            syncFirebaseUser(
-              firebaseUser,
-              pendingStudioId ? { studioId: pendingStudioId } : undefined,
-            ),
-            new Promise<never>((_, reject) => {
-              window.setTimeout(() => {
-                reject(new Error("Account sync timed out"));
-              }, AUTH_BOOTSTRAP_TIMEOUT_MS);
-            }),
-          ]);
+      unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+        void (async () => {
+          if (!firebaseUser) {
+            lastSyncedRef.current = null;
+            clearSessionCache();
+            if (!cancelled) {
+              setUser(null);
+              setHasPasswordProvider(false);
+              setEmailVerified(false);
+              finishLoading();
+            }
+            return;
+          }
+
+          // Firebase has verified the session. Hydrate the last synced profile
+          // so the protected shell can paint while /auth/sync revalidates —
+          // never show protected routes without a Firebase user.
+          const cached = readSessionCache();
+          const cacheHit = cached?.uid === firebaseUser.uid;
+
           if (!cancelled) {
-            setUser(synced);
             setHasPasswordProvider(userHasPasswordProvider(firebaseUser));
             setEmailVerified(firebaseUser.emailVerified);
-            settleSyncWaiters(firebaseUser.uid, synced);
+            if (cacheHit) {
+              setUser(cached.user);
+              lastSyncedRef.current = {
+                uid: firebaseUser.uid,
+                user: cached.user,
+              };
+              finishLoading();
+            } else {
+              settled = false;
+              setLoading(true);
+            }
           }
-        } catch (error) {
-          if (!cancelled) {
-            setUser(null);
-            setHasPasswordProvider(false);
-            setEmailVerified(false);
-            settleSyncWaiters(firebaseUser.uid, null, error);
-            await signOut(auth).catch(() => undefined);
+
+          try {
+            const pendingStudioId = pendingStudioIdRef.current;
+            pendingStudioIdRef.current = null;
+            const synced = await Promise.race([
+              syncFirebaseUser(
+                firebaseUser,
+                pendingStudioId ? { studioId: pendingStudioId } : undefined,
+              ),
+              new Promise<never>((_, reject) => {
+                window.setTimeout(() => {
+                  reject(new Error("Account sync timed out"));
+                }, AUTH_BOOTSTRAP_TIMEOUT_MS);
+              }),
+            ]);
+            if (!cancelled) {
+              writeSessionCache(firebaseUser.uid, synced);
+              setUser(synced);
+              setHasPasswordProvider(userHasPasswordProvider(firebaseUser));
+              setEmailVerified(firebaseUser.emailVerified);
+              settleSyncWaiters(firebaseUser.uid, synced);
+            }
+          } catch (error) {
+            if (!cancelled) {
+              clearSessionCache();
+              setUser(null);
+              setHasPasswordProvider(false);
+              setEmailVerified(false);
+              settleSyncWaiters(firebaseUser.uid, null, error);
+              await signOut(auth).catch(() => undefined);
+            }
+          } finally {
+            finishLoading();
           }
-        } finally {
-          finishLoading();
-        }
-      })();
-    });
+        })();
+      });
+    })();
 
     return () => {
       cancelled = true;
       window.clearTimeout(bootstrapTimeout);
-      unsubscribe();
+      unsubscribe?.();
     };
   }, [settleSyncWaiters]);
 
@@ -408,11 +493,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       }
 
-      const auth = getFirebaseAuth();
+      const auth = await getFirebaseAuthAsync();
       if (!auth) {
         throw new Error("Firebase is not configured");
       }
 
+      const { signInWithEmailAndPassword } = await import("firebase/auth");
       const email = resolveLoginEmail(identifier);
       const credential = await signInWithEmailAndPassword(
         auth,
@@ -444,11 +530,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return created;
       }
 
-      const auth = getFirebaseAuth();
+      const auth = await getFirebaseAuthAsync();
       if (!auth) {
         throw new Error("Firebase is not configured");
       }
 
+      const {
+        createUserWithEmailAndPassword,
+        sendEmailVerification,
+        updateProfile,
+      } = await import("firebase/auth");
       pendingStudioIdRef.current = options?.studioId ?? null;
       const credential = await createUserWithEmailAndPassword(
         auth,
@@ -513,11 +604,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         );
       }
 
-      const auth = getFirebaseAuth();
+      const auth = await getFirebaseAuthAsync();
       if (!auth) {
         throw new Error("Firebase is not configured");
       }
 
+      const googleProvider = await getGoogleProviderAsync();
+      const { signInWithPopup } = await import("firebase/auth");
       pendingStudioIdRef.current = options?.studioId ?? null;
       const credential = await signInWithPopup(auth, googleProvider);
       setEmailVerified(credential.user.emailVerified);
@@ -536,11 +629,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       );
     }
 
-    const auth = getFirebaseAuth();
+    const auth = await getFirebaseAuthAsync();
     if (!auth) {
       throw new Error("Firebase is not configured");
     }
 
+    const { sendPasswordResetEmail } = await import("firebase/auth");
     const trimmed = email.trim().toLowerCase();
     try {
       await sendPasswordResetEmail(auth, trimmed, {
@@ -600,7 +694,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      const auth = getFirebaseAuth();
+      const auth = await getFirebaseAuthAsync();
       const firebaseUser = auth?.currentUser;
       if (!auth || !firebaseUser?.email) {
         throw new Error("You need to be signed in to change your password.");
@@ -613,6 +707,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       try {
+        const {
+          EmailAuthProvider,
+          reauthenticateWithCredential,
+          updatePassword,
+        } = await import("firebase/auth");
         const credential = EmailAuthProvider.credential(
           firebaseUser.email,
           currentPassword,
@@ -637,7 +736,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         );
       }
 
-      const auth = getFirebaseAuth();
+      const auth = await getFirebaseAuthAsync();
       const firebaseUser = auth?.currentUser;
       if (!auth || !firebaseUser?.email) {
         throw new Error("You need to be signed in to change your email.");
@@ -658,6 +757,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       try {
+        const {
+          EmailAuthProvider,
+          reauthenticateWithCredential,
+          verifyBeforeUpdateEmail,
+        } = await import("firebase/auth");
         const credential = EmailAuthProvider.credential(
           firebaseUser.email,
           currentPassword,
@@ -679,7 +783,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    const auth = getFirebaseAuth();
+    const auth = await getFirebaseAuthAsync();
     const firebaseUser = auth?.currentUser;
     if (!auth || !firebaseUser) {
       throw new Error("You need to be signed in to resend verification.");
@@ -691,6 +795,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     try {
+      const { sendEmailVerification } = await import("firebase/auth");
       await sendEmailVerification(firebaseUser, {
         url: `${window.location.origin}/login`,
         handleCodeInApp: false,
@@ -708,7 +813,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return true;
     }
 
-    const auth = getFirebaseAuth();
+    const auth = await getFirebaseAuthAsync();
     const firebaseUser = auth?.currentUser;
     if (!auth || !firebaseUser) {
       setEmailVerified(false);
@@ -716,6 +821,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     try {
+      const { reload } = await import("firebase/auth");
       const previousEmail = firebaseUser.email?.trim().toLowerCase() ?? "";
       await reload(firebaseUser);
       const current = auth.currentUser;
@@ -768,16 +874,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOutUser = useCallback(async () => {
     if (isAuthBypassEnabled()) {
       localStorage.removeItem(STORAGE_KEY);
+      clearSessionCache();
       setUser(null);
       setHasPasswordProvider(false);
       setEmailVerified(false);
       return;
     }
 
-    const auth = getFirebaseAuth();
+    const auth = await getFirebaseAuthAsync();
     if (auth) {
+      const { signOut } = await import("firebase/auth");
       await signOut(auth);
     }
+    clearSessionCache();
     setUser(null);
     setHasPasswordProvider(false);
     setEmailVerified(false);
@@ -791,7 +900,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return `dev:${user.role}:${user.id}`;
     }
 
-    const auth = getFirebaseAuth();
+    const auth = await getFirebaseAuthAsync();
     if (!auth?.currentUser) {
       return null;
     }
@@ -807,6 +916,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const next = { ...current, ...patch };
       if (isAuthBypassEnabled()) {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      } else {
+        const cached = readSessionCache();
+        if (cached?.user.id === current.id) {
+          writeSessionCache(cached.uid, next);
+        }
       }
       if (lastSyncedRef.current?.user.id === current.id) {
         lastSyncedRef.current = {

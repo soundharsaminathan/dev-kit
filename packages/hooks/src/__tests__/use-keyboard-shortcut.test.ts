@@ -145,6 +145,25 @@ describe("useKeyboardShortcut", () => {
     expect(onPress).not.toHaveBeenCalled();
   });
 
+  it("allows non-input targets when ignoreInputFocus is true", () => {
+    const onPress = vi.fn();
+    renderHook(() =>
+      useKeyboardShortcut({
+        key: "k",
+        metaKey: true,
+        ignoreInputFocus: true,
+        onPress,
+      }),
+    );
+
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    fireEvent.keyDown(container, { key: "k", metaKey: true, bubbles: true });
+    document.body.removeChild(container);
+
+    expect(onPress).toHaveBeenCalledTimes(1);
+  });
+
   it("skips contenteditable targets when ignoreInputFocus is true", () => {
     const onPress = vi.fn();
     renderHook(() =>

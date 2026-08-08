@@ -365,6 +365,12 @@
       "import": "./dist/toast/index.js",
       "default": "./dist/toast/index.js"
     },
+    "./toast/toast-context": {
+      "development": "./src/toast/toast-context.ts",
+      "types": "./dist/toast/toast-context.d.ts",
+      "import": "./dist/toast/toast-context.js",
+      "default": "./dist/toast/toast-context.js"
+    },
     "./toast/toast.types": {
       "development": "./src/toast/toast.types.ts",
       "types": "./dist/toast/toast.types.d.ts"

@@ -133,7 +133,7 @@ test.describe("batches HTTP @http", () => {
     }
   });
 
-  test("staff unenrolls student and they leave the attendance roster @http", async () => {
+  test("staff unenrolls student from active batch while past roster retains them @http", async () => {
     const cleanup = new TestDataCleanup();
     const sessionId = SEED.sessionAttendanceId;
     try {
@@ -157,11 +157,21 @@ test.describe("batches HTTP @http", () => {
         body: JSON.stringify({ studentId: student.id }),
       });
 
+      // Seed attendance session is already in progress/past, so ENDED enrollments
+      // remain on that roster (endedAt > session.startsAt). Active batch membership
+      // is cleared instead.
       const after = await expectOk<Array<{ studentId: string }>>(
         "TRAINER",
         `/attendance/session/${sessionId}/roster`,
       );
-      expect(after.some((row) => row.studentId === student.id)).toBe(false);
+      expect(after.some((row) => row.studentId === student.id)).toBe(true);
+
+      const batch = await expectOk<{
+        enrollments: Array<{ studentId: string }>;
+      }>("STAFF", `/batches/${SEED.kidsBatchId}`);
+      expect(
+        batch.enrollments.some((row) => row.studentId === student.id),
+      ).toBe(false);
     } finally {
       await cleanup.dispose();
     }

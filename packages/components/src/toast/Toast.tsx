@@ -132,20 +132,15 @@ function useToastSwipe({
 
   const { moveProps } = useMove({
     onMoveStart() {
-      if (!enabled) {
-        return;
-      }
       const panel = panelRef.current;
       if (panel) {
         panel.dataset.swiping = "true";
       }
     },
     onMove({ deltaX, deltaY }) {
-      if (!enabled) {
-        return;
-      }
       deltaRef.current = { x: deltaX, y: deltaY };
       const panel = panelRef.current;
+      /* v8 ignore next -- swipe props only attach while the toast panel is mounted */
       if (!panel) {
         return;
       }
@@ -156,10 +151,8 @@ function useToastSwipe({
       panel.style.setProperty("--toast-swipe-progress", String(progress));
     },
     onMoveEnd() {
-      if (!enabled) {
-        return;
-      }
       const panel = panelRef.current;
+      /* v8 ignore next -- swipe props only attach while the toast panel is mounted */
       if (!panel) {
         return;
       }

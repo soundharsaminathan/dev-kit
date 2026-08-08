@@ -30,6 +30,51 @@
   transform: translateY(-10%) scale(1.2);
 }
 
+.mark {
+  position: relative;
+  width: min(42vw, 11rem);
+  height: min(42vw, 11rem);
+  margin: 0 auto 4.5rem;
+}
+
+.markPulse,
+.markCore {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+}
+
+.markPulse {
+  border: 2px solid color-mix(in srgb, #ee8a55 55%, transparent);
+  animation: boot-pulse 1.6s ease-out infinite;
+}
+
+.markCore {
+  inset: 22%;
+  background: radial-gradient(
+    circle at 35% 30%,
+    color-mix(in srgb, #ee8a55 88%, #fff) 0%,
+    #ee8a55 45%,
+    color-mix(in srgb, #ee8a55 70%, #1b2a4a) 100%
+  );
+  box-shadow: 0 12px 40px color-mix(in srgb, #ee8a55 35%, transparent);
+}
+
+@keyframes boot-pulse {
+  0% {
+    transform: scale(0.72);
+    opacity: 0.85;
+  }
+  70% {
+    transform: scale(1.08);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1.08);
+    opacity: 0;
+  }
+}
+
 .caption {
   position: absolute;
   top: 75%;
@@ -55,6 +100,12 @@
   color: var(--color-fg, #1c1a17);
   text-align: center;
   transform: translateY(-50%);
+}
+
+.caption[data-me-greeting] {
+  font-weight: 800;
+  max-width: 22rem;
+  margin-inline: auto;
 }
 
 .emphasis {
@@ -111,6 +162,11 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .markPulse {
+    animation: none;
+    opacity: 0.35;
+  }
+
   .caption {
     opacity: 0.72;
   }

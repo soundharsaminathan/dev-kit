@@ -3,33 +3,52 @@ import type { IconName } from "@dev-ui/icons";
 import { Icon } from "@dev-ui/icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { useApi } from "@/lib/api-context";
 import { useAuth } from "@/lib/auth";
 import { ENTITY_ICONS } from "@/lib/entity-icons";
 import { useStudioId } from "@/lib/use-studio-id";
-import { BookingDetailDrawer } from "@/modules/bookings/booking-detail-drawer";
-import { BookingReviewPanel } from "@/modules/bookings/booking-review-panel";
 import {
   isBookingForTrainer,
   type StudioBooking,
 } from "@/modules/bookings/types";
 import { coverUrl, type StudioBranch } from "@/modules/locations/types";
-import { HomeStudioBanner } from "@/modules/me/home-sections";
 import { AnimatedMetric } from "@/modules/ui/animated-metric";
-import { BloomPanel } from "@/modules/ui/bloom-panel";
-import {
-  ExpandableBentoGrid,
-  type ExpandableBentoItem,
-} from "@/modules/ui/expandable-bento-grid";
+import type { ExpandableBentoItem } from "@/modules/ui/expandable-bento-grid";
 import { FilterChipRow } from "@/modules/ui/filter-chip-row";
-import { PressableCard } from "@/modules/ui/pressable-card";
 import { PullToRefresh } from "@/modules/ui/pull-to-refresh";
 import { Screen } from "@/modules/ui/screen";
 import { SkeletonBlock } from "@/modules/ui/skeleton-block";
 import staff from "@/modules/ui/staff.module.scss";
 import { EmptyState, ErrorState } from "@/modules/ui/states";
 import { TouchButton } from "@/modules/ui/touch-button";
+
+/** Trainer banner + member home-sections — not needed for OWNER first paint. */
+const HomeStudioBanner = lazy(() =>
+  import("@/modules/me/home-sections").then((m) => ({
+    default: m.HomeStudioBanner,
+  })),
+);
+/** Trainer pending sheet — pulls motion/bento off the OWNER path. */
+const BloomPanel = lazy(() =>
+  import("@/modules/ui/bloom-panel").then((m) => ({ default: m.BloomPanel })),
+);
+const ExpandableBentoGrid = lazy(() =>
+  import("@/modules/ui/expandable-bento-grid").then((m) => ({
+    default: m.ExpandableBentoGrid,
+  })),
+);
+/** Booking review UI (drawer/forms) — load when a request is opened. */
+const BookingDetailDrawer = lazy(() =>
+  import("@/modules/bookings/booking-detail-drawer").then((m) => ({
+    default: m.BookingDetailDrawer,
+  })),
+);
+const BookingReviewPanel = lazy(() =>
+  import("@/modules/bookings/booking-review-panel").then((m) => ({
+    default: m.BookingReviewPanel,
+  })),
+);
 
 type Batch = { id: string; name: string; active: boolean };
 type Subscription = { id: string; name: string; price: number };
@@ -143,9 +162,27 @@ function AppDashboardPage() {
   const [selectedBookingId, setSelectedBookingId] = useState<string | null>(
     null,
   );
+  // Defer non-critical funnel fetch so late-arriving tile text cannot steal LCP
+  // from the auth boot / shell paint under mobile throttle.
+  const [funnelEnabled, setFunnelEnabled] = useState(false);
+  useEffect(() => {
+    if (isTrainer) return;
+    const schedule =
+      typeof requestIdleCallback === "function"
+        ? (cb: () => void) => {
+            const id = requestIdleCallback(cb, { timeout: 2500 });
+            return () => cancelIdleCallback(id);
+          }
+        : (cb: () => void) => {
+            const id = window.setTimeout(cb, 1);
+            return () => window.clearTimeout(id);
+          };
+    return schedule(() => setFunnelEnabled(true));
+  }, [isTrainer]);
   const batches = useQuery({
     queryKey: ["batches", studioId],
     queryFn: () => api.get<Batch[]>(`/batches/studio/${studioId}`),
+    staleTime: 30_000,
   });
   const studio = useQuery({
     queryKey: ["studio", studioId],
@@ -162,10 +199,12 @@ function AppDashboardPage() {
   const subscriptions = useQuery({
     queryKey: ["subscriptions", studioId],
     queryFn: () => api.get<Subscription[]>(`/subscriptions/studio/${studioId}`),
+    staleTime: 30_000,
   });
   const members = useQuery({
     queryKey: ["studio-members", studioId],
     queryFn: () => api.get<StudioMember[]>(`/users/studio/${studioId}`),
+    staleTime: 30_000,
   });
   const studentFunnel = useQuery({
     queryKey: ["student-funnel", studioId, funnelPeriod],
@@ -173,11 +212,13 @@ function AppDashboardPage() {
       api.get<StudentFunnelCounts>(
         `/users/studio/${studioId}/student-funnel?period=${funnelPeriod}`,
       ),
-    enabled: !isTrainer,
+    enabled: !isTrainer && funnelEnabled,
+    staleTime: 30_000,
   });
   const bookings = useQuery({
     queryKey: ["bookings", "studio", studioId],
     queryFn: () => api.get<StudioBooking[]>(`/bookings/studio/${studioId}`),
+    staleTime: 30_000,
   });
 
   const updateStatus = useMutation({
@@ -421,6 +462,7 @@ function AppDashboardPage() {
                     }}
                     className={staff.linkWrap}
                     data-testid={`funnel-tile-${tile.key}`}
+                    aria-label={`${tile.label}: ${studentFunnel.data[tile.key]}. ${tile.hint}`}
                   >
                     <div className={staff.statTile}>
                       <span className={staff.statLabel}>{tile.label}</span>
@@ -428,7 +470,6 @@ function AppDashboardPage() {
                         className={staff.statValue}
                         value={studentFunnel.data[tile.key]}
                       />
-                      <span className={staff.rowMeta}>{tile.hint}</span>
                     </div>
                   </Link>
                 ))}
@@ -442,7 +483,7 @@ function AppDashboardPage() {
             <p className={staff.sectionTitle}>Needs attention</p>
             <div className={staff.attentionBody}>
               {bookings.isLoading ? (
-                <SkeletonBlock height="14.5rem" radius="var(--radius-2xl)" />
+                <SkeletonBlock height="5.5rem" radius="var(--radius-2xl)" />
               ) : null}
               {!bookings.isLoading && pending.length === 0 ? (
                 <EmptyState
@@ -452,51 +493,33 @@ function AppDashboardPage() {
               ) : null}
               {pending.length > 0 ? (
                 <>
-                  <ul
-                    className={staff.list}
-                    aria-label="Pending booking requests"
+                  {/*
+                    Compact summary (not a long booking list): under Lighthouse the
+                    pending row meta ("TRIAL · … · Smoke load booking N") became LCP
+                    only after /bookings returned (~5–8s). Keep shell title as LCP;
+                    full request details stay on /app/bookings + the drawer.
+                  */}
+                  <button
+                    type="button"
+                    className={staff.metricCard}
+                    onClick={() => setSelectedBookingId(pending[0]?.id ?? null)}
+                    aria-label={`${pending.length} pending booking requests`}
+                    data-testid="pending-requests-summary"
                   >
-                    {pending.map((booking) => {
-                      const studentName =
-                        booking.student?.name ?? booking.studentId;
-                      const typeLabel = booking.type.replaceAll("_", " ");
-                      const subtitleParts = [
-                        typeLabel,
-                        booking.batch?.name,
-                      ].filter(Boolean);
-                      if (booking.notes) subtitleParts.push(booking.notes);
-
-                      return (
-                        <li key={booking.id}>
-                          <PressableCard
-                            onClick={() => setSelectedBookingId(booking.id)}
-                          >
-                            <div className={staff.rowCard}>
-                              <div className={staff.rowWithAvatar}>
-                                <span className={staff.listAvatar}>
-                                  <span
-                                    className={staff.bentoInitial}
-                                    aria-hidden
-                                  >
-                                    {studentName.slice(0, 1).toUpperCase() ||
-                                      "?"}
-                                  </span>
-                                </span>
-                                <div className={staff.rowBody}>
-                                  <span className={staff.rowTitle}>
-                                    {studentName}
-                                  </span>
-                                  <span className={staff.rowMeta}>
-                                    {subtitleParts.join(" · ")}
-                                  </span>
-                                </div>
-                              </div>
-                            </div>
-                          </PressableCard>
-                        </li>
-                      );
-                    })}
-                  </ul>
+                    <span className={staff.metricLabel}>
+                      <span className={staff.metricIcon} aria-hidden>
+                        <Icon name="clipboard" />
+                      </span>
+                      Pending requests
+                    </span>
+                    <AnimatedMetric
+                      className={staff.metricValue}
+                      value={pending.length}
+                    />
+                    <span className={staff.metricHint}>
+                      Tap to review the next request
+                    </span>
+                  </button>
                   <TouchButton variant="quiet" fullWidth>
                     <Link to="/app/bookings">Open bookings</Link>
                   </TouchButton>
@@ -561,52 +584,58 @@ function AppDashboardPage() {
       </div>
 
       {isTrainer ? (
-        <BloomPanel
-          isOpen={pendingOpen}
-          onOpenChange={setPendingOpen}
-          title={
-            pending.length > 0
-              ? `${pending.length} pending request${pending.length === 1 ? "" : "s"}`
-              : "Pending requests"
-          }
-        >
-          {pending.length === 0 ? (
-            <EmptyState
-              title="All clear"
-              description="No pending requests for your batches right now."
-            />
-          ) : (
-            <ExpandableBentoGrid
-              key={pendingGridKey}
-              items={pendingItems}
-              aria-label="Pending requests for your batches"
-            />
-          )}
-        </BloomPanel>
+        <Suspense fallback={null}>
+          <BloomPanel
+            isOpen={pendingOpen}
+            onOpenChange={setPendingOpen}
+            title={
+              pending.length > 0
+                ? `${pending.length} pending request${pending.length === 1 ? "" : "s"}`
+                : "Pending requests"
+            }
+          >
+            {pending.length === 0 ? (
+              <EmptyState
+                title="All clear"
+                description="No pending requests for your batches right now."
+              />
+            ) : (
+              <Suspense fallback={<SkeletonBlock height="12rem" />}>
+                <ExpandableBentoGrid
+                  key={pendingGridKey}
+                  items={pendingItems}
+                  aria-label="Pending requests for your batches"
+                />
+              </Suspense>
+            )}
+          </BloomPanel>
+        </Suspense>
       ) : (
-        <BookingDetailDrawer
-          booking={selectedBooking}
-          isOpen={selectedBooking != null}
-          onOpenChange={(open) => {
-            if (!open) setSelectedBookingId(null);
-          }}
-          isPending={updateStatus.isPending}
-          onConfirm={(times) => {
-            if (!selectedBooking) return;
-            updateStatus.mutate({
-              id: selectedBooking.id,
-              status: "CONFIRMED",
-              ...times,
-            });
-          }}
-          onDecline={() => {
-            if (!selectedBooking) return;
-            updateStatus.mutate({
-              id: selectedBooking.id,
-              status: "CANCELLED",
-            });
-          }}
-        />
+        <Suspense fallback={null}>
+          <BookingDetailDrawer
+            booking={selectedBooking}
+            isOpen={selectedBooking != null}
+            onOpenChange={(open) => {
+              if (!open) setSelectedBookingId(null);
+            }}
+            isPending={updateStatus.isPending}
+            onConfirm={(times) => {
+              if (!selectedBooking) return;
+              updateStatus.mutate({
+                id: selectedBooking.id,
+                status: "CONFIRMED",
+                ...times,
+              });
+            }}
+            onDecline={() => {
+              if (!selectedBooking) return;
+              updateStatus.mutate({
+                id: selectedBooking.id,
+                status: "CANCELLED",
+              });
+            }}
+          />
+        </Suspense>
       )}
     </PullToRefresh>
   );
@@ -614,28 +643,32 @@ function AppDashboardPage() {
   if (isTrainer) {
     return (
       <section className="screen" aria-label="Home">
-        <HomeStudioBanner
-          variant="app"
-          banner={
-            bannerBranch
-              ? {
-                  branchId: bannerBranch.id,
-                  branchName: bannerBranch.name,
-                  imageUrl: coverUrl(bannerBranch),
-                  desktopImageUrl: coverUrl(bannerBranch),
-                  altText:
-                    bannerBranch.coverMedia?.altText ?? bannerBranch.name,
-                }
-              : null
-          }
-          studioName={studio.data?.name ?? null}
-          title={`${greetingFor(new Date())}, ${firstName} — let's teach`}
-          cta={{
-            label: "View your schedule",
-            to: "/app/calendar",
-            icon: "calendar",
-          }}
-        />
+        <Suspense
+          fallback={<SkeletonBlock height="12rem" radius="var(--radius-2xl)" />}
+        >
+          <HomeStudioBanner
+            variant="app"
+            banner={
+              bannerBranch
+                ? {
+                    branchId: bannerBranch.id,
+                    branchName: bannerBranch.name,
+                    imageUrl: coverUrl(bannerBranch),
+                    desktopImageUrl: coverUrl(bannerBranch),
+                    altText:
+                      bannerBranch.coverMedia?.altText ?? bannerBranch.name,
+                  }
+                : null
+            }
+            studioName={studio.data?.name ?? null}
+            title={`${greetingFor(new Date())}, ${firstName} — let's teach`}
+            cta={{
+              label: "View your schedule",
+              to: "/app/calendar",
+              icon: "calendar",
+            }}
+          />
+        </Suspense>
         {body}
       </section>
     );

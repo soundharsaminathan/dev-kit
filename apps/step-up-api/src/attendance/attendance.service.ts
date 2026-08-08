@@ -331,9 +331,16 @@ export class AttendanceService {
     this.assertAttendanceWindowOpen(session.startsAt);
 
     const roster = await this.getSessionRoster(sessionId);
-    const targets = roster.filter(
-      (entry) => entry.attendance?.status !== AttendanceStatus.PRESENT,
-    );
+    const targets = roster.filter((entry) => {
+      if (entry.attendance?.status === AttendanceStatus.PRESENT) {
+        return false;
+      }
+      // Attendance-only orphans (no enrollment, no open trial) cannot be marked.
+      if (entry.isTrial && entry.trialBookingStatus == null) {
+        return false;
+      }
+      return true;
+    });
 
     if (targets.length === 0) {
       return { marked: 0, failed: 0 };

@@ -59,12 +59,17 @@ test.describe("memberships HTTP @http", () => {
   });
 
   test("self/renew rejects ACTIVE memberships @http", async () => {
-    const result = await expectStatus("STUDENT", "/memberships/self/renew", 400, {
-      method: "POST",
-      body: JSON.stringify({
-        membershipId: SEED.membershipStudentId,
-      }),
-    });
+    const result = await expectStatus(
+      "PARENT",
+      "/memberships/self/renew",
+      400,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          membershipId: SEED.membershipStudentId,
+        }),
+      },
+    );
     expect(result.text).toMatch(/due or expired/i);
   });
 
@@ -135,7 +140,8 @@ test.describe("memberships HTTP @http", () => {
         studioId: SEED.studioId,
         purchaserUserId: SEED.users.STUDENT.id,
         invoiceIds: [invA.invoice.id, invB.invoice.id],
-        familyDiscount: Number(invA.invoice.amount) + Number(invB.invoice.amount) + 1,
+        familyDiscount:
+          Number(invA.invoice.amount) + Number(invB.invoice.amount) + 1,
       }),
     });
 

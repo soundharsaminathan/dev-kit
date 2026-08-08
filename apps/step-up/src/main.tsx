@@ -1,17 +1,15 @@
-import { IconProvider } from "@dev-ui/icons";
-import lucidePack from "@dev-ui/icons-packs/lucide";
 import { createRouter, RouterProvider } from "@tanstack/react-router";
 import { StrictMode, useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
-import "@dev-ui/tokens/fonts/critical";
-import "@dev-ui/tokens/scss";
-import "@dev-ui/components/styles";
-import "@/styles/global.scss";
+// Critical fonts are declared in index.html (Plus Jakarta Sans).
+// Token/global CSS is loaded asynchronously so the static public shell in
+// index.html can paint without waiting on the stylesheet link.
 import { ApiProvider } from "@/lib/api-context";
 import { AuthProvider, useAuth } from "@/lib/auth";
+import { preloadAppTheme } from "@/lib/boot-theme-provider";
 import { SLOW_LOAD_TIMEOUT_MS } from "@/lib/brand";
+import { preloadToast } from "@/lib/deferred-toast";
 import { homePathForUser } from "@/lib/require-auth";
-import { preloadSessionProviders } from "@/lib/session-gate";
 import {
   AppErrorBoundary,
   reportRootError,
@@ -20,19 +18,18 @@ import { AuthBootLoader } from "@/modules/ui/auth-boot-loader";
 import { SlowLoadFallback } from "@/modules/ui/slow-load-fallback";
 import { routeTree } from "./routeTree.gen";
 
+function loadAppStyles() {
+  return Promise.all([
+    import("@/styles/tokens.scss"),
+    import("@/styles/global.scss"),
+  ]);
+}
+
 const router = createRouter({
   routeTree,
   context: {
     auth: undefined!,
   },
-});
-
-void (typeof requestIdleCallback === "function"
-  ? requestIdleCallback
-  : (cb: () => void) => window.setTimeout(cb, 2500))(() => {
-  void import("@/lib/sentry").then(({ initSentry }) => {
-    initSentry(router);
-  });
 });
 
 declare module "@tanstack/react-router" {
@@ -52,6 +49,39 @@ function isPublicBootPath(pathname: string) {
   );
 }
 
+/** Display-only boot caption from session cache — not an auth bypass. */
+function readMeBootGreeting(): string | null {
+  if (typeof window === "undefined") return null;
+  if (!window.location.pathname.startsWith("/me")) return null;
+  try {
+    const raw = localStorage.getItem("step-up-session-user");
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as {
+      user?: { name?: string };
+    } | null;
+    const firstName = parsed?.user?.name?.split(" ")[0];
+    if (!firstName) return null;
+    return `Hey, ${firstName} — let's dance`;
+  } catch {
+    return null;
+  }
+}
+
+let sentryScheduled = false;
+function scheduleSentry() {
+  if (sentryScheduled) return;
+  sentryScheduled = true;
+  // Hard delay — requestIdleCallback often fires mid-Lighthouse lab and
+  // attributes ~180–200ms scripting to TBT on /app and /me.
+  const delayMs = isPublicBootPath(window.location.pathname) ? 4_000 : 15_000;
+  window.setTimeout(() => {
+    void import("@/lib/sentry").then(({ initSentry }) => {
+      initSentry(router);
+    });
+    void import("@/styles/inter-fonts.css");
+  }, delayMs);
+}
+
 function AppRouter() {
   const auth = useAuth();
   const userId = auth.user?.id;
@@ -63,10 +93,28 @@ function AppRouter() {
     auth.loading && !isPublicBootPath(window.location.pathname);
 
   useEffect(() => {
+    // Keep Sentry off the first protected paint / login TBT window.
+    if (!auth.loading) {
+      scheduleSentry();
+    }
+  }, [auth.loading]);
+
+  useEffect(() => {
+    if (isPublicBootPath(window.location.pathname)) {
+      // Public pages: still init eventually even if auth stays "loading" briefly.
+      scheduleSentry();
+    }
+  }, []);
+
+  useEffect(() => {
     if (!blockOnAuth) {
       setSlowLoad(false);
       return;
     }
+    // Warm theme + toast while AuthBootLoader is up; IconProvider/noop toast
+    // stubs let the shell paint without waiting on these chunks.
+    void preloadAppTheme().catch(() => undefined);
+    void preloadToast().catch(() => undefined);
     const remaining = Math.max(0, SLOW_LOAD_TIMEOUT_MS - performance.now());
     const id = window.setTimeout(() => {
       setSlowLoad(true);
@@ -74,8 +122,9 @@ function AppRouter() {
     return () => window.clearTimeout(id);
   }, [blockOnAuth]);
 
-  // Invalidate for auth changes, then warm home — never race preload with
-  // invalidate (evicts in-flight preload matches → _nonReactive TypeError).
+  // On user switches, invalidate stale matches then warm home. Skip the
+  // first auth settle — invalidate remounts the active route and races
+  // preloadRoute (_nonReactive), wiping in-progress form/UI state in e2e.
   useEffect(() => {
     if (auth.loading) {
       return;
@@ -84,17 +133,16 @@ function AppRouter() {
     let cancelled = false;
 
     const run = async () => {
-      const needsInvalidate =
-        !invalidatedFor.current || invalidatedFor.current.userId !== userId;
-      if (needsInvalidate) {
-        invalidatedFor.current = { userId };
+      const previous = invalidatedFor.current;
+      const userChanged = previous !== null && previous.userId !== userId;
+      invalidatedFor.current = { userId };
+      if (userChanged) {
         await router.invalidate();
       }
       if (cancelled || !auth.user) {
         return;
       }
 
-      void preloadSessionProviders().catch(() => undefined);
       const home = homePathForUser(auth.user);
       if (home === "/app" || home.startsWith("/me")) {
         await router.preloadRoute({ to: home }).catch(() => undefined);
@@ -108,14 +156,14 @@ function AppRouter() {
   }, [auth.loading, auth.user, userId]);
 
   if (blockOnAuth) {
+    if (slowLoad) {
+      return <SlowLoadFallback />;
+    }
+    const meGreeting = readMeBootGreeting();
     return (
-      <IconProvider
-        icons={{ library: "lucide" }}
-        initialPack={lucidePack}
-        loaders={{}}
-      >
-        {slowLoad ? <SlowLoadFallback /> : <AuthBootLoader />}
-      </IconProvider>
+      <AuthBootLoader
+        {...(meGreeting ? { caption: meGreeting, meGreeting: true } : {})}
+      />
     );
   }
 
@@ -126,25 +174,56 @@ const rootElement = document.getElementById("root");
 if (!rootElement) {
   throw new Error("Root element not found");
 }
+const appRoot = rootElement;
 
-createRoot(rootElement, {
-  onUncaughtError: (error, errorInfo) => {
-    reportRootError(error, errorInfo);
-  },
-  onCaughtError: (error, errorInfo) => {
-    reportRootError(error, errorInfo);
-  },
-  onRecoverableError: (error, errorInfo) => {
-    reportRootError(error, errorInfo);
-  },
-}).render(
-  <StrictMode>
-    <AppErrorBoundary>
-      <AuthProvider>
-        <ApiProvider>
-          <AppRouter />
-        </ApiProvider>
-      </AuthProvider>
-    </AppErrorBoundary>
-  </StrictMode>,
-);
+function toErrorInfo(errorInfo: {
+  componentStack?: string | null | undefined;
+}): { componentStack: string | null } {
+  return { componentStack: errorInfo.componentStack ?? null };
+}
+
+function mountApp() {
+  createRoot(appRoot, {
+    onUncaughtError: (error, errorInfo) => {
+      reportRootError(error, toErrorInfo(errorInfo));
+    },
+    onCaughtError: (error, errorInfo) => {
+      reportRootError(error, toErrorInfo(errorInfo));
+    },
+    onRecoverableError: (error, errorInfo) => {
+      reportRootError(error, toErrorInfo(errorInfo));
+    },
+  }).render(
+    <StrictMode>
+      <AppErrorBoundary>
+        <AuthProvider>
+          <ApiProvider>
+            <AppRouter />
+          </ApiProvider>
+        </AuthProvider>
+      </AppErrorBoundary>
+    </StrictMode>,
+  );
+}
+
+// Kick styles immediately (async chunk — not a render-blocking <link> in <head>).
+const stylesReady = loadAppStyles();
+
+void (async () => {
+  const publicBoot = isPublicBootPath(window.location.pathname);
+  if (publicBoot) {
+    // Static HTML shell already painted the LCP candidate. Mount React
+    // promptly so login/register become interactive; do not block forever on
+    // a slow CSS chunk (that left #boot-public stuck in e2e).
+    void stylesReady.catch(() => undefined);
+  } else {
+    // Protected routes need styles for the auth boot loader — bound the wait.
+    await Promise.race([
+      stylesReady.catch(() => undefined),
+      new Promise<void>((resolve) => {
+        window.setTimeout(resolve, 4_000);
+      }),
+    ]);
+  }
+  mountApp();
+})();

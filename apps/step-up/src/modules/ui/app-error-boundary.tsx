@@ -13,11 +13,12 @@ function reportError(error: unknown, errorInfo?: ErrorInfo) {
   console.warn("Uncaught error", error, errorInfo?.componentStack);
   void import("@/lib/sentry")
     .then(({ Sentry }) => {
+      const stack = errorInfo?.componentStack ?? null;
       Sentry.captureException(error, {
         contexts: errorInfo
-          ? { react: { componentStack: errorInfo.componentStack } }
+          ? { react: { componentStack: stack ?? undefined } }
           : undefined,
-      });
+      } as Parameters<typeof Sentry.captureException>[1]);
     })
     .catch(() => undefined);
 }
@@ -41,6 +42,9 @@ export class AppErrorBoundary extends Component<Props, State> {
   }
 }
 
-export function reportRootError(error: unknown, errorInfo: ErrorInfo) {
+export function reportRootError(
+  error: unknown,
+  errorInfo: { componentStack: string | null },
+) {
   reportError(error, errorInfo);
 }

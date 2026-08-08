@@ -4,7 +4,6 @@ import { useIsMobile } from "@dev-ui/hooks";
 import { Icon } from "@dev-ui/icons";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
-import { updateProfile } from "firebase/auth";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
@@ -16,7 +15,7 @@ import {
   type Gender,
   isAuthBypassEnabled,
 } from "@/lib/constants";
-import { getFirebaseAuth } from "@/lib/firebase";
+import { getFirebaseAuthAsync } from "@/lib/firebase";
 import { useStudioId } from "@/lib/use-studio-id";
 import { uploadSocialPhoto } from "@/modules/social/upload";
 import { TrainerCardsView } from "@/modules/trainers/trainer-cards-view";
@@ -227,9 +226,10 @@ export function OnboardingWizard() {
         if (generation !== saveGeneration.current) return;
         const displayName = extras?.syncFirebaseName;
         if (!displayName || isAuthBypassEnabled()) return;
-        const auth = getFirebaseAuth();
+        const auth = await getFirebaseAuthAsync();
         const firebaseUser = auth?.currentUser;
         if (firebaseUser && displayName !== firebaseUser.displayName) {
+          const { updateProfile } = await import("firebase/auth");
           await updateProfile(firebaseUser, { displayName });
         }
       })

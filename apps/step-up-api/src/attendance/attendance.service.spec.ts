@@ -263,6 +263,7 @@ describe("AttendanceService.markAllPresent", () => {
     attendance: { upsert: vi.fn() },
     parentChild: { findUnique: vi.fn() },
     booking: { findMany: vi.fn(), findFirst: vi.fn() },
+    user: { findUnique: vi.fn() },
   };
   const memberships = {
     findActiveForBatch: vi.fn(),
@@ -366,6 +367,45 @@ describe("AttendanceService.markAllPresent", () => {
       service.markAllPresent(session.id, FIXTURE_USERS.trainer.id),
     ).resolves.toEqual({ marked: 0, failed: 0 });
     expect(prisma.attendance.upsert).not.toHaveBeenCalled();
+  });
+
+  it("skips attendance-only orphans that cannot be marked", async () => {
+    const session = makeSession();
+    prisma.session.findUnique.mockResolvedValue({
+      ...session,
+      batchId: session.batchId ?? "batch-1",
+      startsAt: session.startsAt ?? new Date("2026-08-01T10:00:00.000Z"),
+      batch: {
+        ...session.batch,
+        id: "batch-1",
+      },
+      attendance: [
+        {
+          id: "a-orphan",
+          studentId: "orphan-1",
+          status: AttendanceStatus.ABSENT,
+          source: AttendanceSource.TRAINER,
+        },
+      ],
+    });
+    prisma.batchEnrollment.findMany.mockResolvedValue([
+      { studentId: "s1", student: { name: "Ada" }, status: "ACTIVE" },
+    ]);
+    prisma.user.findUnique.mockResolvedValue({ name: "Orphan" });
+    memberships.findActiveForBatch.mockResolvedValue({ id: "mem-1" });
+    prisma.attendance.upsert.mockResolvedValue({
+      id: "att-new",
+      status: AttendanceStatus.PRESENT,
+      student: { name: "Ada" },
+    });
+
+    const result = await service.markAllPresent(
+      session.id,
+      FIXTURE_USERS.trainer.id,
+    );
+
+    expect(result).toEqual({ marked: 1, failed: 0 });
+    expect(prisma.attendance.upsert).toHaveBeenCalledTimes(1);
   });
 });
 
