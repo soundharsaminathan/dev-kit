@@ -1,13 +1,19 @@
-import { createRequire } from "node:module";
+import { createRequire, register } from "node:module";
 import path from "node:path";
 import { env } from "node:process";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { defineConfig, devices } from "@playwright/test";
 
 const dirname = path.dirname(fileURLToPath(import.meta.url));
 const workspaceRoot = path.join(dirname, "../..");
 createRequire(import.meta.url)(
   path.join(workspaceRoot, "scripts/resolve-color-env-conflict.cjs"),
+);
+// Dist component JS side-effect-imports CSS for bundlers; Node/Playwright
+// needs a noop when e2e imports the showcase registry (playgrounds → components).
+register(
+  pathToFileURL(path.join(workspaceRoot, "scripts/css-noop-loader.mjs")).href,
+  import.meta.url,
 );
 const showcasePort = Number(env.SHOWCASE_PORT ?? 5173);
 const showcaseUrl = env.SHOWCASE_URL ?? `http://localhost:${showcasePort}`;
