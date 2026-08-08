@@ -15,8 +15,6 @@ type ScreenProps = {
   wide?: boolean;
   paddedCta?: boolean;
   hideHeaderOnMobile?: boolean;
-  /** Larger title/subtitle for shell LCP (staff home). */
-  hero?: boolean;
 };
 
 export function Screen({
@@ -31,7 +29,6 @@ export function Screen({
   wide = false,
   paddedCta = false,
   hideHeaderOnMobile = false,
-  hero = false,
 }: ScreenProps) {
   const router = useRouter();
   const canGoBack = useCanGoBack();
@@ -91,15 +88,11 @@ export function Screen({
             </button>
           ) : null}
           <div className={styles.titleBlock}>
-            <h1 className={hero ? styles.titleHero : styles.title}>{title}</h1>
+            <h1 className={styles.title}>{title}</h1>
           </div>
           {actions ? <div className={styles.actions}>{actions}</div> : null}
         </div>
-        {subtitle ? (
-          <p className={hero ? styles.subtitleHero : styles.subtitle}>
-            {subtitle}
-          </p>
-        ) : null}
+        {subtitle ? <p className={styles.subtitle}>{subtitle}</p> : null}
       </header>
       <div className={styles.body}>{children}</div>
     </section>
