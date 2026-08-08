@@ -53,19 +53,10 @@
                 ? "dark"
                 : "light";
           document.documentElement.setAttribute("data-theme-mode", mode);
-          var theme = localStorage.getItem("dev-ui-theme");
-          if (!theme) {
-            var path = location.pathname || "/";
-            var soft =
-              path === "/me" ||
-              path.indexOf("/me/") === 0 ||
-              path === "/app" ||
-              path.indexOf("/app/") === 0 ||
-              path === "/users" ||
-              path.indexOf("/users/") === 0;
-            theme = soft ? "step-up-soft" : "step-up";
-          }
-          document.documentElement.setAttribute("data-theme", theme);
+          document.documentElement.setAttribute("data-theme", "step-up-soft");
+          try {
+            localStorage.setItem("dev-ui-theme", "step-up-soft");
+          } catch (storageError) {}
         } catch (e) {}
       })();
     </script>

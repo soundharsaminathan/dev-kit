@@ -98,9 +98,6 @@ test.describe("admin (staff) smoke @smoke", () => {
       await sweepPath(page, "/app/settings/branding", {
         denyRedirect: /\/app\/settings\/?$/,
       });
-      await sweepPath(page, "/app/settings/theme", {
-        denyRedirect: /\/app\/settings\/?$/,
-      });
     } finally {
       await context.close();
     }

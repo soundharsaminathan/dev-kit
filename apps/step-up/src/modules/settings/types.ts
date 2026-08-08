@@ -1,5 +1,4 @@
 import type { DanceStyle } from "@/lib/dance-styles";
-import type { StudioBrandThemePayload } from "@/modules/branding/types";
 
 export type StudioSettings = {
   graceDays: number;
@@ -18,7 +17,6 @@ export type Studio = {
   logoUrl?: string | null;
   heroMobileUrl?: string | null;
   heroDesktopUrl?: string | null;
-  brandTheme?: StudioBrandThemePayload | null;
   settings: StudioSettings | null;
 };
 

@@ -355,7 +355,6 @@ model Studio {
   logoUrl         String?
   heroMobileUrl   String?
   heroDesktopUrl  String?
-  brandTheme Json?
   ownerId    String   @unique
 
   owner                User                 @relation("StudioOwner", fields: [ownerId], references: [id])

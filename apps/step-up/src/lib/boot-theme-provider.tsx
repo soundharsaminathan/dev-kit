@@ -6,16 +6,12 @@ import {
   getEmptyLucidePack,
   preloadLucidePack,
 } from "@/lib/deferred-icon-pack";
-import { isSoftThemePath } from "@/lib/theme-path";
+import { APP_THEME } from "@/lib/app-theme";
 import { AuthBootLoader } from "@/modules/ui/auth-boot-loader";
 
-const STAFF_THEME = "step-up";
-const MEMBER_THEME = "step-up-soft";
-
-function applyDocumentTheme(pathname: string) {
-  const theme = isSoftThemePath(pathname) ? MEMBER_THEME : STAFF_THEME;
+function applyDocumentTheme() {
   const root = document.documentElement;
-  root.setAttribute("data-theme", theme);
+  root.setAttribute("data-theme", APP_THEME);
   if (!root.getAttribute("data-theme-mode")) {
     const prefersDark = window.matchMedia(
       "(prefers-color-scheme: dark)",
@@ -63,8 +59,8 @@ function scheduleIdle(cb: () => void) {
  *
  * Protected routes must not mount the outlet under a temporary IconProvider and
  * later swap to AppThemeProvider — that remounts forms and also breaks
- * `useTheme` (admin wizard, branding). Hold a light boot loader until the
- * theme chunk is ready, then mount children once under AppThemeProvider.
+ * `useTheme`. Hold a light boot loader until the theme chunk is ready, then
+ * mount children once under AppThemeProvider.
  */
 export function BootThemeProvider({ children }: { children: ReactNode }) {
   const pathname = useRouterState({
@@ -77,8 +73,8 @@ export function BootThemeProvider({ children }: { children: ReactNode }) {
   );
 
   useLayoutEffect(() => {
-    applyDocumentTheme(pathname);
-  }, [pathname]);
+    applyDocumentTheme();
+  }, []);
 
   useEffect(() => {
     if (mod) {

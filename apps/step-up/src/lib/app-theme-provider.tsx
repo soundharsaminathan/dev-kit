@@ -1,32 +1,22 @@
 import { ThemeProvider, useTheme } from "@dev-ui/core";
-import { useRouterState } from "@tanstack/react-router";
 import { type ReactNode, useEffect, useLayoutEffect, useState } from "react";
+import { APP_THEME } from "@/lib/app-theme";
 import {
   getCachedLucidePack,
   getEmptyLucidePack,
   preloadLucidePack,
 } from "@/lib/deferred-icon-pack";
-import { isSoftThemePath } from "@/lib/theme-path";
-import { StudioBrandEditProvider } from "@/modules/branding/studio-brand-edit-context";
 
-const STAFF_THEME = "step-up";
-const MEMBER_THEME = "step-up-soft";
+export { APP_THEME };
 
-function themeForPathname(pathname: string) {
-  return isSoftThemePath(pathname) ? MEMBER_THEME : STAFF_THEME;
-}
-
-function EnsureSurfaceTheme({ children }: { children: ReactNode }) {
-  const { theme, setTheme, liveTheme } = useTheme();
-  const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const desired = themeForPathname(pathname);
+function EnsureAppTheme({ children }: { children: ReactNode }) {
+  const { theme, setTheme } = useTheme();
 
   useLayoutEffect(() => {
-    if (liveTheme) return;
-    if (theme !== desired) {
-      setTheme(desired);
+    if (theme !== APP_THEME) {
+      setTheme(APP_THEME);
     }
-  }, [theme, desired, setTheme, liveTheme]);
+  }, [theme, setTheme]);
 
   return children;
 }
@@ -60,16 +50,14 @@ export function AppThemeProvider({ children }: { children: ReactNode }) {
 
   return (
     <ThemeProvider
-      defaultTheme={STAFF_THEME}
+      defaultTheme={APP_THEME}
       icons={{ library: "lucide" }}
       initialIconPack={iconPack}
       iconLoaders={{
         lucide: () => preloadLucidePack().then((pack) => ({ default: pack })),
       }}
     >
-      <StudioBrandEditProvider>
-        <EnsureSurfaceTheme>{children}</EnsureSurfaceTheme>
-      </StudioBrandEditProvider>
+      <EnsureAppTheme>{children}</EnsureAppTheme>
     </ThemeProvider>
   );
 }

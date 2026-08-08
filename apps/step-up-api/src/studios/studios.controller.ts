@@ -82,10 +82,6 @@ class UpdateStudioDto {
   @ValidateIf((_, value) => value !== null)
   @IsString()
   heroDesktopUrl?: string | null;
-
-  @IsOptional()
-  @Allow()
-  brandTheme?: unknown;
 }
 
 class UpdateStudioSettingsDto {
@@ -173,9 +169,9 @@ export class StudiosController {
       assertSameStudio(user, id);
     }
     if (
-      (dto.brandTheme !== undefined ||
-        dto.heroMobileUrl !== undefined ||
-        dto.heroDesktopUrl !== undefined) &&
+      (dto.heroMobileUrl !== undefined ||
+        dto.heroDesktopUrl !== undefined ||
+        dto.logoUrl !== undefined) &&
       user.role !== UserRole.OWNER &&
       user.role !== UserRole.SYSTEM_ADMIN
     ) {

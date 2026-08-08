@@ -1,21 +1,11 @@
 import { Button } from "@dev-ui/components/button";
 import { Label } from "@dev-ui/components/field";
-import { ThemeColorPanel } from "@dev-ui/components/theme-editor";
 import { useToastContext } from "@dev-ui/components/toast";
-import { useTheme } from "@dev-ui/core";
-import { type ThemeDraft, themeDraftToDefinition } from "@dev-ui/tokens";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useLayoutEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useApi } from "@/lib/api-context";
-import {
-  brandThemeToDraft,
-  defaultStudioBrandDraft,
-  draftToBrandTheme,
-} from "@/modules/branding/brand-theme";
 import { BrandingPanel } from "@/modules/branding/branding-panel";
-import { useStudioBrandEdit } from "@/modules/branding/studio-brand-edit-context";
-import type { StudioBrandThemePayload } from "@/modules/branding/types";
 import { TemporaryCredentialsPanel } from "@/modules/members/temporary-credentials-panel";
 import type { Studio } from "@/modules/settings/types";
 import { FormInput } from "@/modules/ui/form-input";
@@ -23,7 +13,7 @@ import { PasswordInput } from "@/modules/ui/password-input";
 import { StudioPaymentsFields } from "./studio-payments-fields";
 import styles from "./studio-wizard.module.scss";
 
-const STEPS = ["Details", "Theme", "Optional Branding", "Payments"] as const;
+const STEPS = ["Details", "Optional Branding", "Payments"] as const;
 
 type CreateStudioResult = {
   id: string;
@@ -50,13 +40,6 @@ type StudioWizardProps =
   | { mode: "create" }
   | { mode: "edit"; studio: StudioWizardStudio };
 
-function themesEqual(
-  a: StudioBrandThemePayload,
-  b: StudioBrandThemePayload,
-): boolean {
-  return JSON.stringify(a) === JSON.stringify(b);
-}
-
 function generateTemporaryPassword() {
   const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
   const bytes = crypto.getRandomValues(new Uint8Array(10));
@@ -72,8 +55,6 @@ export function StudioWizard(props: StudioWizardProps) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { toast } = useToastContext("StudioWizard");
-  const { setLiveTheme, mode, setMode } = useTheme();
-  const { setEditing } = useStudioBrandEdit();
   const isCreate = props.mode === "create";
   const studio = props.mode === "edit" ? props.studio : null;
 
@@ -85,9 +66,6 @@ export function StudioWizard(props: StudioWizardProps) {
   const [contact, setContact] = useState(studio?.contact ?? "");
   const [temporaryPassword, setTemporaryPassword] = useState(() =>
     generateTemporaryPassword(),
-  );
-  const [draft, setDraft] = useState<ThemeDraft>(() =>
-    brandThemeToDraft(studio?.brandTheme, studio?.name ?? "Studio brand"),
   );
   const [razorpayKeyId, setRazorpayKeyId] = useState("");
   const [razorpayKeySecret, setRazorpayKeySecret] = useState("");
@@ -101,12 +79,6 @@ export function StudioWizard(props: StudioWizardProps) {
   const [ownerResetResult, setOwnerResetResult] =
     useState<ResetOwnerPasswordResult | null>(null);
 
-  const defaultThemePayload = useMemo(
-    () =>
-      draftToBrandTheme(defaultStudioBrandDraft(name.trim() || "Studio brand")),
-    [name],
-  );
-
   useEffect(() => {
     if (!studio) return;
     setName(studio.name);
@@ -114,30 +86,16 @@ export function StudioWizard(props: StudioWizardProps) {
     setOwnerName(studio.owner?.name ?? "");
     setAddress(studio.address ?? "");
     setContact(studio.contact ?? "");
-    setDraft(brandThemeToDraft(studio.brandTheme, studio.name));
     setPlatformFeePercent(String(studio.settings?.platformFeePercent ?? 5));
   }, [studio]);
 
-  useEffect(() => {
-    setEditing(true);
-    return () => {
-      setEditing(false);
-    };
-  }, [setEditing]);
-
-  const previewThemeId = studio?.id ? `studio-${studio.id}` : "studio-preview";
-
-  useLayoutEffect(() => {
-    if (step !== 1) return;
-    setLiveTheme(themeDraftToDefinition(draft, previewThemeId));
-  }, [draft, previewThemeId, setLiveTheme, step]);
   const detailsValid =
     name.trim().length > 0 &&
     (isCreate
       ? ownerEmail.trim().length > 0 && temporaryPassword.trim().length >= 8
       : true);
 
-  const stepIsValid = [detailsValid, true, true, true] as const;
+  const stepIsValid = [detailsValid, true, true] as const;
 
   async function copyText(label: string, value: string) {
     try {
@@ -164,11 +122,6 @@ export function StudioWizard(props: StudioWizardProps) {
         ...(address.trim() ? { address: address.trim() } : {}),
         ...(contact.trim() ? { contact: contact.trim() } : {}),
       });
-
-      const brandTheme = draftToBrandTheme(draft);
-      if (!themesEqual(brandTheme, defaultThemePayload)) {
-        await api.patch(`/studios/${created.id}`, { brandTheme });
-      }
 
       if (options.includePayments) {
         const nextKeyId = razorpayKeyId.trim();
@@ -227,7 +180,6 @@ export function StudioWizard(props: StudioWizardProps) {
         name: name.trim(),
         address: address.trim(),
         contact: contact.trim(),
-        brandTheme: draftToBrandTheme(draft),
       });
 
       const nextKeyId = razorpayKeyId.trim() || studio.settings?.razorpayKeyId;
@@ -258,17 +210,6 @@ export function StudioWizard(props: StudioWizardProps) {
     onSuccess: () => {
       setFormError(null);
       setRazorpayKeySecret("");
-      const nextBrandTheme = draftToBrandTheme(draft);
-      if (studio?.id) {
-        queryClient.setQueryData(
-          ["studio", studio.id],
-          (
-            current:
-              | { brandTheme?: StudioBrandThemePayload | null }
-              | undefined,
-          ) => (current ? { ...current, brandTheme: nextBrandTheme } : current),
-        );
-      }
       void queryClient.invalidateQueries({ queryKey: ["admin", "studios"] });
       void queryClient.invalidateQueries({
         queryKey: ["admin", "studio", studio?.id],
@@ -278,8 +219,7 @@ export function StudioWizard(props: StudioWizardProps) {
       });
       toast({
         title: "Studio updated",
-        description:
-          "Studio details, theme, branding, and payments were saved.",
+        description: "Studio details, branding, and payments were saved.",
         variant: "success",
       });
       void navigate({ to: "/admin" });
@@ -320,7 +260,7 @@ export function StudioWizard(props: StudioWizardProps) {
           ? error.message
           : "Could not reset owner password.";
       toast({
-        title: "Couldn’t reset owner password",
+        title: "Couldn’t reset password",
         description: message,
         variant: "error",
       });
@@ -429,8 +369,8 @@ export function StudioWizard(props: StudioWizardProps) {
           </h1>
           <p className={styles.heroDescription}>
             {isCreate
-              ? "Provision a tenant — details, theme, optional branding, and payments — in a focused few steps."
-              : "Update studio details, theme, branding, and payments."}
+              ? "Provision a tenant — details, optional branding, and payments — in a focused few steps."
+              : "Update studio details, branding, and payments."}
           </p>
         </div>
         <div className={styles.heroActions}>
@@ -586,27 +526,6 @@ export function StudioWizard(props: StudioWizardProps) {
           ) : null}
 
           {step === 1 ? (
-            <div className={styles.themeStep}>
-              <div className={styles.themeCard}>
-                <p className={styles.themeCardTitle}>Colors</p>
-                <p className={styles.themeCardDesc}>
-                  Pick the studio palette. The preview updates live.
-                </p>
-                <div className={styles.themeToolbar}>
-                  <Button
-                    variant="default"
-                    type="button"
-                    onClick={() => setMode(mode === "light" ? "dark" : "light")}
-                  >
-                    Preview {mode === "light" ? "dark" : "light"}
-                  </Button>
-                </div>
-                <ThemeColorPanel value={draft} onChange={setDraft} />
-              </div>
-            </div>
-          ) : null}
-
-          {step === 2 ? (
             <div className={styles.brandingStep}>
               {studio ? (
                 <div className={styles.assetsBlock}>
@@ -631,7 +550,7 @@ export function StudioWizard(props: StudioWizardProps) {
             </div>
           ) : null}
 
-          {step === 3 ? (
+          {step === 2 ? (
             <div className={styles.paymentsStep}>
               <StudioPaymentsFields
                 className={styles.paymentsCard}

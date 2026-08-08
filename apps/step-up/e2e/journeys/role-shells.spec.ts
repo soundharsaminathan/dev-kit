@@ -114,10 +114,6 @@ test.describe("role shells @critical", () => {
     await page.getByLabel("Owner email").fill("e2e-new-owner@stepup.dev");
     await page.getByTestId("studio-wizard-next").click();
     await expect(
-      page.getByRole("heading", { name: "Theme", exact: true }),
-    ).toBeVisible();
-    await page.getByTestId("studio-wizard-next").click();
-    await expect(
       page.getByRole("heading", { name: "Optional Branding", exact: true }),
     ).toBeVisible();
     await page.getByTestId("studio-wizard-next").click();

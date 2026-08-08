@@ -13,7 +13,6 @@ import { MediaService } from "../media/media.service";
 import { RazorpayService } from "../payments/razorpay.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { UserCryptoService } from "../users/user-crypto.service";
-import { parseBrandTheme } from "./brand-theme";
 import { parseDanceStyles } from "./dance-styles";
 
 export type CreateStudioInput = {
@@ -250,7 +249,6 @@ export class StudiosService {
         logoUrl: true,
         heroMobileUrl: true,
         heroDesktopUrl: true,
-        brandTheme: true,
       },
     });
 
@@ -310,7 +308,6 @@ export class StudiosService {
       logoUrl?: string | null;
       heroMobileUrl?: string | null;
       heroDesktopUrl?: string | null;
-      brandTheme?: unknown;
     },
   ) {
     const update: Prisma.StudioUpdateInput = {};
@@ -324,11 +321,6 @@ export class StudiosService {
     }
     if (data.heroDesktopUrl !== undefined) {
       update.heroDesktopUrl = data.heroDesktopUrl;
-    }
-    if (data.brandTheme !== undefined) {
-      const parsed = parseBrandTheme(data.brandTheme);
-      update.brandTheme =
-        parsed === null ? Prisma.DbNull : (parsed as Prisma.InputJsonValue);
     }
 
     return this.prisma.studio.update({

@@ -17,7 +17,6 @@ type SettingsLink = {
   to:
     | "/app/settings/profile"
     | "/app/settings/branding"
-    | "/app/settings/theme"
     | "/app/settings/billing"
     | "/app/settings/payments"
     | "/app/settings/styles"
@@ -27,7 +26,6 @@ type SettingsLink = {
   icon:
     | "building"
     | "image"
-    | "palette"
     | "file-text"
     | "credit-card"
     | "sparkles"
@@ -48,13 +46,6 @@ const LINKS: SettingsLink[] = [
     label: "Branding",
     hint: "Logo and home hero images",
     icon: "image",
-    ownerOnly: true,
-  },
-  {
-    to: "/app/settings/theme",
-    label: "Theme",
-    hint: "Studio colors",
-    icon: "palette",
     ownerOnly: true,
   },
   {
