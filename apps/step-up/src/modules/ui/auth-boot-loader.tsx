@@ -3,6 +3,8 @@ import styles from "./dance-loader.module.scss";
 type AuthBootLoaderProps = {
   label?: string;
   caption?: string;
+  /** Match /me banner title so React auth-gate does not shrink the early LCP. */
+  meGreeting?: boolean;
 };
 
 /**
@@ -12,6 +14,7 @@ type AuthBootLoaderProps = {
 export function AuthBootLoader({
   label = "Loading app",
   caption = "Finding the groove…",
+  meGreeting = false,
 }: AuthBootLoaderProps) {
   return (
     <div
@@ -25,7 +28,12 @@ export function AuthBootLoader({
         <span className={styles.markPulse} />
         <span className={styles.markCore} />
       </div>
-      <p className={styles.caption}>{caption}</p>
+      <p
+        className={styles.caption}
+        data-me-greeting={meGreeting ? "" : undefined}
+      >
+        {caption}
+      </p>
     </div>
   );
 }

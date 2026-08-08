@@ -50,6 +50,24 @@ function isPublicBootPath(pathname: string) {
   );
 }
 
+/** Display-only boot caption from session cache — not an auth bypass. */
+function readMeBootGreeting(): string | null {
+  if (typeof window === "undefined") return null;
+  if (!window.location.pathname.startsWith("/me")) return null;
+  try {
+    const raw = localStorage.getItem("step-up-session-user");
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as {
+      user?: { name?: string };
+    } | null;
+    const firstName = parsed?.user?.name?.split(" ")[0];
+    if (!firstName) return null;
+    return `Hey, ${firstName} — let's dance`;
+  } catch {
+    return null;
+  }
+}
+
 let sentryScheduled = false;
 function scheduleSentry() {
   if (sentryScheduled) return;
@@ -145,7 +163,15 @@ function AppRouter() {
   }, [auth.loading, auth.user, userId]);
 
   if (blockOnAuth) {
-    return slowLoad ? <SlowLoadFallback /> : <AuthBootLoader />;
+    if (slowLoad) {
+      return <SlowLoadFallback />;
+    }
+    const meGreeting = readMeBootGreeting();
+    return (
+      <AuthBootLoader
+        {...(meGreeting ? { caption: meGreeting, meGreeting: true } : {})}
+      />
+    );
   }
 
   return <RouterProvider router={router} context={{ auth }} />;

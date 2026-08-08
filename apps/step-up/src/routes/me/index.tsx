@@ -109,7 +109,6 @@ function MeHomePage() {
 
   const data = homeQuery.data;
   const authFirstName = user?.name?.split(" ")[0] || "dancer";
-  const firstName = data?.student.name.split(" ")[0] || authFirstName;
   const bannerCta = data?.hero.cta ?? null;
   const nextClass = data?.nextClass ?? data?.hero.nextClass ?? null;
   const showTrialPromo = data
@@ -123,14 +122,13 @@ function MeHomePage() {
     goalMutation.mutate(target);
   }
 
-  // Paint the banner title from the session user immediately so /me LCP is not
-  // blocked on /home. Image/CTA hydrate when the payload arrives.
+  // Keep the banner headline stable from session auth so /home hydration cannot
+  // rewrite the LCP text ~8s later under mobile throttle.
   const banner = (
     <HomeStudioBanner
       banner={data?.banner ?? null}
       studioName={data?.studio?.name ?? null}
-      {...(data?.greeting ? { greeting: data.greeting } : {})}
-      firstName={firstName}
+      title={`Hey, ${authFirstName} — let's dance`}
       cta={bannerCta}
       flushTop={installBarVisible}
     />

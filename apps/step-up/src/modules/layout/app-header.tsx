@@ -56,19 +56,30 @@ function NotificationsControl({
   const { connected } = useNotificationsSocket();
   const [open, setOpen] = useState(false);
   const [showPreferences, setShowPreferences] = useState(false);
+  const [notificationsReady, setNotificationsReady] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const enable = () => setNotificationsReady(true);
+    if (typeof requestIdleCallback === "function") {
+      const id = requestIdleCallback(enable, { timeout: 1800 });
+      return () => cancelIdleCallback(id);
+    }
+    const id = window.setTimeout(enable, 400);
+    return () => window.clearTimeout(id);
+  }, []);
 
   const query = useQuery({
     queryKey: notificationsListKey(user?.id),
     queryFn: () => api.get<NotificationsPage>("/notifications?limit=40"),
-    enabled: Boolean(user),
+    enabled: Boolean(user) && notificationsReady,
     refetchInterval: connected ? false : 30_000,
   });
 
   const unreadQuery = useQuery({
     queryKey: notificationsUnreadKey(user?.id),
     queryFn: () => api.get<{ count: number }>("/notifications/unread-count"),
-    enabled: Boolean(user),
+    enabled: Boolean(user) && notificationsReady,
     refetchInterval: connected ? false : 30_000,
   });
 

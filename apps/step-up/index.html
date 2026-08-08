@@ -222,6 +222,13 @@
         transform: translateY(-50%);
       }
 
+      /* Match /me banner title weight/size so late H1 paint does not steal LCP. */
+      #boot-splash .caption[data-me-greeting] {
+        font-weight: 800;
+        max-width: 22rem;
+        margin-inline: auto;
+      }
+
       html[data-theme-mode="dark"] #boot-splash .caption {
         color: oklch(0.95 0.01 78);
       }
@@ -649,8 +656,35 @@
         // Static full caption (no per-letter cascade): cascading letters made
         // LCP a single glyph first, then the full phrase ~1s later under mobile
         // throttle. Paint the complete line immediately for a stable early LCP.
-        var first = phrases[1];
-        el.textContent = first.lead + first.keyword;
+        //
+        // /me: paint the session greeting at banner weight so LCP lands here
+        // instead of waiting for Firebase → shell → banner H1 (~8s throttle).
+        // This is display-only — protected UI still waits on Firebase auth.
+        var meGreeting = null;
+        if (path.indexOf("/me") === 0) {
+          try {
+            var cached = JSON.parse(
+              localStorage.getItem("step-up-session-user") || "null",
+            );
+            var firstName =
+              cached &&
+              cached.user &&
+              typeof cached.user.name === "string" &&
+              cached.user.name.split(" ")[0];
+            if (firstName) {
+              meGreeting = "Hey, " + firstName + " — let's dance";
+            }
+          } catch (e) {
+            meGreeting = null;
+          }
+        }
+        if (meGreeting) {
+          el.textContent = meGreeting;
+          el.setAttribute("data-me-greeting", "");
+        } else {
+          var first = phrases[1];
+          el.textContent = first.lead + first.keyword;
+        }
 
         var SLOW_LOAD_MS = 8000;
         window.setTimeout(function () {

@@ -102,6 +102,12 @@
   transform: translateY(-50%);
 }
 
+.caption[data-me-greeting] {
+  font-weight: 800;
+  max-width: 22rem;
+  margin-inline: auto;
+}
+
 .emphasis {
   color: #ee8a55;
 }
