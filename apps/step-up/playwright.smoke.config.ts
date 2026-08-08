@@ -50,7 +50,8 @@ export default defineConfig({
     navigationTimeout: 60_000,
     // Deterministic smoke perf measurements
     viewport: { width: 1280, height: 720 },
-    reducedMotion: "reduce",
+    // Runtime context option; not in @playwright/test 1.60 UseOptions typings.
+    ...({ reducedMotion: "reduce" } as object),
   },
   projects: [
     {
