@@ -644,85 +644,18 @@
           { lead: "Feeling the ", keyword: "rhythm…" },
           { lead: "Stepping into ", keyword: "it…" },
         ];
-        var CYCLE_MS = 2200;
-        var STAGGER = 0.025;
         var el = document.getElementById("boot-splash-caption");
         if (!el) return;
-        var reduce =
-          window.matchMedia &&
-          window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-        var last = -1;
-        var cascade = document.createElement("span");
-        cascade.className = "cascade";
-        var measure = document.createElement("span");
-        measure.className = "measure";
-        measure.setAttribute("aria-hidden", "true");
-        cascade.appendChild(measure);
-        el.appendChild(cascade);
-
-        function letterNodes(phrase) {
-          var text = phrase.lead + phrase.keyword;
-          var splitAt = phrase.lead.length;
-          var nodes = [];
-          for (var k = 0; k < text.length; k++) {
-            var ch = text.charAt(k);
-            var span = document.createElement("span");
-            if (/\s/.test(ch)) {
-              span.className = "letter space";
-              span.textContent = "\u00A0";
-            } else {
-              span.className =
-                k >= splitAt ? "letter brand" : "letter";
-              span.textContent = ch;
-            }
-            span.style.animationDelay = k * STAGGER + "s";
-            nodes.push(span);
-          }
-          return nodes;
-        }
-
-        function paint(phrase, animate) {
-          var text = phrase.lead + phrase.keyword;
-          measure.textContent = text;
-          var incoming = document.createElement("span");
-          incoming.className = "cascade-layer";
-          incoming.setAttribute(
-            "data-state",
-            animate && !reduce ? "enter" : "idle",
-          );
-          var letters = letterNodes(phrase);
-          for (var i = 0; i < letters.length; i++) {
-            incoming.appendChild(letters[i]);
-          }
-
-          var outgoing = cascade.querySelector(".cascade-layer");
-          if (outgoing && animate && !reduce) {
-            outgoing.setAttribute("data-state", "exit");
-            var exitMs = 180 + text.length * STAGGER * 500;
-            window.setTimeout(function () {
-              if (outgoing.parentNode) outgoing.parentNode.removeChild(outgoing);
-            }, exitMs);
-          } else if (outgoing) {
-            outgoing.parentNode.removeChild(outgoing);
-          }
-          cascade.appendChild(incoming);
-        }
-
-        function tick() {
-          var i = Math.floor(Date.now() / CYCLE_MS) % phrases.length;
-          if (i === last) return;
-          var animate = last !== -1;
-          last = i;
-          paint(phrases[i], animate);
-        }
-        tick();
-        var phraseTimer = setInterval(tick, 100);
+        // Static full caption (no per-letter cascade): cascading letters made
+        // LCP a single glyph first, then the full phrase ~1s later under mobile
+        // throttle. Paint the complete line immediately for a stable early LCP.
+        var first = phrases[1];
+        el.textContent = first.lead + first.keyword;
 
         var SLOW_LOAD_MS = 8000;
         window.setTimeout(function () {
           var splash = document.getElementById("boot-splash");
           if (!splash || !splash.isConnected) return;
-          window.clearInterval(phraseTimer);
           splash.setAttribute("data-slow-load", "");
           splash.setAttribute(
             "aria-label",
