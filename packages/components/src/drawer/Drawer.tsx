@@ -259,11 +259,6 @@ function Drawer({
         });
       });
 
-      const focusTarget = getInitialFocusTarget(panelRef.current);
-      if (focusTarget !== true) {
-        focusTarget.focus();
-      }
-
       return () => {
         if (openFrameRef.current !== undefined) {
           cancelAnimationFrame(openFrameRef.current);
@@ -276,6 +271,28 @@ function Drawer({
       setIsEnding(true);
     }
   }, [state.isOpen]);
+
+  useLayoutEffect(() => {
+    if (!state.isOpen || !isPresent || isStarting) {
+      return;
+    }
+
+    const panel = panelRef.current;
+    if (!panel || panel.contains(document.activeElement)) {
+      return;
+    }
+
+    const focusTarget = getInitialFocusTarget(panel);
+    if (focusTarget !== true) {
+      focusTarget.focus();
+      return;
+    }
+
+    if (!panel.hasAttribute("tabindex")) {
+      panel.tabIndex = -1;
+    }
+    panel.focus();
+  }, [state.isOpen, isPresent, isStarting]);
 
   useEffect(() => {
     if (!isEnding) {

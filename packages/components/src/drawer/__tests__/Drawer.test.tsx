@@ -571,6 +571,49 @@ describe("Drawer", () => {
     });
   });
 
+  it("focuses the drawer panel when opened without a nested dialog", async () => {
+    function ControlledDrawer() {
+      const [open, setOpen] = useState(false);
+
+      return (
+        <>
+          <button type="button" onClick={() => setOpen(true)}>
+            Open drawer
+          </button>
+          <Drawer isOpen={open} onOpenChange={setOpen} isDismissable={false}>
+            <p>Drawer content</p>
+          </Drawer>
+        </>
+      );
+    }
+
+    render(<ControlledDrawer />);
+    fireEvent.click(screen.getByRole("button", { name: "Open drawer" }));
+
+    await waitFor(() => {
+      expect(getDrawerPanel()).toHaveFocus();
+    });
+  });
+
+  it("does not steal focus when the drawer already contains focus", async () => {
+    render(
+      <Drawer defaultOpen isDismissable={false}>
+        <button type="button">Inside action</button>
+      </Drawer>,
+    );
+
+    const action = screen.getByRole("button", { name: "Inside action" });
+    act(() => {
+      action.focus();
+    });
+
+    await waitFor(() => {
+      expect(action).toHaveFocus();
+    });
+
+    expect(action).toHaveFocus();
+  });
+
   it("opens from a parent-controlled trigger", () => {
     function ControlledDrawer() {
       const [open, setOpen] = useState(false);
