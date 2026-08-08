@@ -79,7 +79,7 @@ export const Route = createFileRoute("/login")({
 });
 
 function LoginPage() {
-  useDismissBootPublic();
+  useDismissBootPublic("interact");
   const navigate = useNavigate();
   const {
     redirect: redirectTo,
