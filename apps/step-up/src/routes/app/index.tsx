@@ -445,6 +445,7 @@ function AppDashboardPage() {
                     }}
                     className={staff.linkWrap}
                     data-testid={`funnel-tile-${tile.key}`}
+                    aria-label={`${tile.label}: ${studentFunnel.data[tile.key]}. ${tile.hint}`}
                   >
                     <div className={staff.statTile}>
                       <span className={staff.statLabel}>{tile.label}</span>
@@ -452,7 +453,6 @@ function AppDashboardPage() {
                         className={staff.statValue}
                         value={studentFunnel.data[tile.key]}
                       />
-                      <span className={staff.rowMeta}>{tile.hint}</span>
                     </div>
                   </Link>
                 ))}
