@@ -695,6 +695,47 @@ describe("Drawer", () => {
     expect(screen.queryByText("Drawer content")).not.toBeInTheDocument();
   });
 
+  it("ignores swipe gestures that start on interactive children", () => {
+    const onOpenChange = vi.fn();
+    render(
+      <Drawer defaultOpen placement="bottom" onOpenChange={onOpenChange}>
+        <button type="button">Inside action</button>
+      </Drawer>,
+    );
+
+    const action = screen.getByRole("button", { name: "Inside action" });
+    act(() => {
+      fireEvent.pointerDown(action, {
+        pointerId: 1,
+        button: 0,
+        pointerType: "touch",
+        pageX: 200,
+        pageY: 200,
+        clientX: 200,
+        clientY: 200,
+      });
+      fireEvent.pointerMove(window, {
+        pointerId: 1,
+        pointerType: "touch",
+        pageX: 200,
+        pageY: 360,
+        clientX: 200,
+        clientY: 360,
+      });
+      fireEvent.pointerUp(window, {
+        pointerId: 1,
+        pointerType: "touch",
+        pageX: 200,
+        pageY: 360,
+        clientX: 200,
+        clientY: 360,
+      });
+    });
+
+    expect(getDrawerPanel()).toBeTruthy();
+    expect(onOpenChange).not.toHaveBeenCalled();
+  });
+
   it("throws when DrawerHandle is used outside Drawer", () => {
     const consoleError = vi
       .spyOn(console, "error")

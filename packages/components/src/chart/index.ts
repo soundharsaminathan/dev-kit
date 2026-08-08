@@ -13,6 +13,7 @@ export {
   ChartContainer,
   ChartLegend,
   ChartLegendContent,
+  ChartProvider,
   ChartTooltip,
   ChartTooltipContent,
 } from "./Chart";

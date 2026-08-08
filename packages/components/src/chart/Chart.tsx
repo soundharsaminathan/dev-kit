@@ -3,6 +3,7 @@ import {
   type ComponentProps,
   type CSSProperties,
   createContext,
+  type ReactNode,
   useContext,
   useId,
   useMemo,
@@ -32,6 +33,22 @@ function useChart(component: string) {
     throw new Error(`${component} must be used within ChartContainer`);
   }
   return context;
+}
+
+/** Provides chart config without mounting a ResponsiveContainer (tests / custom layouts). */
+function ChartProvider({
+  config,
+  children,
+}: {
+  config: ChartConfig;
+  children: ReactNode;
+}) {
+  const contextValue = useMemo(() => ({ config }), [config]);
+  return (
+    <ChartContext.Provider value={contextValue}>
+      {children}
+    </ChartContext.Provider>
+  );
 }
 
 function resolveColor(
@@ -71,11 +88,10 @@ function ChartContainer({
 }: ChartContainerProps) {
   const uniqueId = useId().replace(/:/g, "");
   const chartId = `chart-${id ?? uniqueId}`;
-  const contextValue = useMemo(() => ({ config }), [config]);
   const colorStyle = useMemo(() => chartColorVars(config), [config]);
 
   return (
-    <ChartContext.Provider value={contextValue}>
+    <ChartProvider config={config}>
       <div
         data-chart={chartId}
         className={cn(styles.container, className)}
@@ -86,7 +102,7 @@ function ChartContainer({
           {children}
         </ResponsiveContainer>
       </div>
-    </ChartContext.Provider>
+    </ChartProvider>
   );
 }
 
@@ -233,6 +249,7 @@ export {
   ChartContainer,
   ChartLegend,
   ChartLegendContent,
+  ChartProvider,
   ChartTooltip,
   ChartTooltipContent,
 };

@@ -300,4 +300,107 @@ describe("Toast", () => {
     const region = document.querySelector("[data-toast-region]");
     expect(region).toHaveAttribute("data-position", "top-right");
   });
+
+  it("supports bottom stacking and wrapUpdate", () => {
+    const wrapUpdate = vi.fn((fn: () => void) => fn());
+
+    function MultiToastTrigger() {
+      const { toast } = useToastContext("MultiToastTrigger");
+      return (
+        <Button
+          onClick={() => {
+            toast({ title: "First", variant: "warning" });
+            toast({ title: "Second", variant: "info" });
+          }}
+        >
+          Show toasts
+        </Button>
+      );
+    }
+
+    render(
+      <ToastProvider
+        position="bottom-left"
+        wrapUpdate={wrapUpdate}
+        timeout={10_000}
+      >
+        <MultiToastTrigger />
+      </ToastProvider>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Show toasts" }));
+
+    const region = document.querySelector("[data-toast-region]");
+    expect(region).toHaveAttribute("data-position", "bottom-left");
+    expect(region).toHaveAttribute("data-stacked");
+    expect(wrapUpdate).toHaveBeenCalled();
+    expect(document.querySelector('[data-variant="warning"]')).toBeTruthy();
+    expect(document.querySelector('[data-variant="info"]')).toBeTruthy();
+  });
+
+  it("closes the region after the last toast exits", () => {
+    vi.useFakeTimers();
+
+    render(
+      <ToastProvider timeout={100}>
+        <ToastTrigger title="Temporary" />
+      </ToastProvider>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Show toast" }));
+    expect(document.querySelector("[data-toast-region]")).toBeInTheDocument();
+
+    act(() => {
+      vi.advanceTimersByTime(500);
+    });
+
+    expect(
+      document.querySelector("[data-toast-region]"),
+    ).not.toBeInTheDocument();
+
+    vi.useRealTimers();
+  });
+
+  it("throws when toast parts are rendered outside Toast", async () => {
+    const { ToastContent } = await import("../index");
+    expect(() => render(<ToastContent>Orphan</ToastContent>)).toThrow(
+      /must be used within Toast/,
+    );
+  });
+
+  it("accepts a custom ToastRegion aria-label and expands on focus", async () => {
+    const { ToastRegion } = await import("../index");
+
+    function WithLabeledRegion() {
+      const { toast } = useToastContext("WithLabeledRegion");
+      return (
+        <>
+          <Button
+            onClick={() => {
+              toast({ title: "Alpha" });
+              toast({ title: "Beta" });
+            }}
+          >
+            Show toasts
+          </Button>
+          <ToastRegion aria-label="Notifications" />
+        </>
+      );
+    }
+
+    render(
+      <ToastProvider>
+        <WithLabeledRegion />
+      </ToastProvider>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Show toasts" }));
+
+    const labeled = screen.getByLabelText("Notifications");
+    expect(labeled).toBeInTheDocument();
+    labeled.focus();
+    fireEvent.focusIn(labeled);
+    // stacked + focus-within should expand the labeled region when supported
+    expect(labeled.getAttribute("data-stacked")).toBe("");
+  });
 });
