@@ -1,24 +1,24 @@
 /**
- * Authenticated Lighthouse runs using smoke auth storage state.
+ * Authenticated Lighthouse runs using Firebase-seeded Chrome profiles.
  *
  * Requires:
- *   STEP_UP_SMOKE_PASSWORD
+ *   STEP_UP_SMOKE_PASSWORD (for setup if chrome profiles missing)
  *   STEP_UP_WEB_URL (or --base-url)
- *   Optional: existing e2e/smoke/.auth/{role}.json from smoke auth setup
  *
  * Usage:
- *   node scripts/run-lighthouse-authenticated.mjs [--base-url=http://127.0.0.1:4173] [--runs=3]
- *
- * Soft thresholds only — prints warnings, does not exit non-zero for budgets.
+ *   node scripts/run-lighthouse-authenticated.mjs \
+ *     [--base-url=http://127.0.0.1:4173] [--runs=3] [--device=mobile|desktop|both]
+ *     [--only-authed] [--only-public]
  */
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { chromium } from "@playwright/test";
+import { spawnSync } from "node:child_process";
 import { runLighthouseUrl } from "./run-lighthouse.mjs";
 
 const dirname = path.dirname(fileURLToPath(import.meta.url));
 const authDir = path.join(dirname, "../e2e/smoke/.auth");
+const profilesDir = path.join(authDir, "chrome-profiles");
 
 /** Keep in sync with e2e/performance/routes.ts */
 const LIGHTHOUSE_ROUTES = [
@@ -60,14 +60,17 @@ function arg(name, fallback) {
   return hit ? hit.slice(prefix.length) : fallback;
 }
 
-function authFile(role) {
-  return path.join(authDir, `${role.toLowerCase()}.json`);
+function profileDir(role) {
+  return path.join(profilesDir, role.toLowerCase());
 }
 
-function formatRow(route, median) {
+function formatRow(route, median, device) {
   return {
     route: route.path,
     name: route.name,
+    device,
+    role: route.role ?? null,
+    public: Boolean(route.public),
     fcpMs: median.fcpMs,
     lcpMs: median.lcpMs,
     tbtMs: median.tbtMs,
@@ -77,133 +80,193 @@ function formatRow(route, median) {
   };
 }
 
-function warnBudgets(row) {
+function warnBudgets(row, soft = PERF_SOFT_FAIL) {
   const warnings = [];
-  if (row.fcpMs != null && row.fcpMs > PERF_SOFT_FAIL.fcpMs) {
-    warnings.push(`FCP ${Math.round(row.fcpMs)}ms > soft ${PERF_SOFT_FAIL.fcpMs}ms`);
+  if (row.fcpMs != null && row.fcpMs > soft.fcpMs) {
+    warnings.push(`FCP ${Math.round(row.fcpMs)}ms > soft ${soft.fcpMs}ms`);
   }
-  if (row.lcpMs != null && row.lcpMs > PERF_SOFT_FAIL.lcpMs) {
-    warnings.push(`LCP ${Math.round(row.lcpMs)}ms > soft ${PERF_SOFT_FAIL.lcpMs}ms`);
+  if (row.lcpMs != null && row.lcpMs > soft.lcpMs) {
+    warnings.push(`LCP ${Math.round(row.lcpMs)}ms > soft ${soft.lcpMs}ms`);
   }
-  if (row.tbtMs != null && row.tbtMs > PERF_SOFT_FAIL.tbtMs) {
-    warnings.push(`TBT ${Math.round(row.tbtMs)}ms > soft ${PERF_SOFT_FAIL.tbtMs}ms`);
+  if (row.tbtMs != null && row.tbtMs > soft.tbtMs) {
+    warnings.push(`TBT ${Math.round(row.tbtMs)}ms > soft ${soft.tbtMs}ms`);
   }
-  if (row.cls != null && row.cls > PERF_SOFT_FAIL.cls) {
-    warnings.push(`CLS ${row.cls.toFixed(3)} > soft ${PERF_SOFT_FAIL.cls}`);
+  if (row.cls != null && row.cls > soft.cls) {
+    warnings.push(`CLS ${row.cls.toFixed(3)} > soft ${soft.cls}`);
   }
   if (
     row.performanceScore != null &&
-    row.performanceScore < PERF_SOFT_FAIL.performanceScore
+    row.performanceScore < soft.performanceScore
   ) {
     warnings.push(
-      `perf ${Math.round(row.performanceScore * 100)} < soft ${Math.round(PERF_SOFT_FAIL.performanceScore * 100)}`,
+      `perf ${Math.round(row.performanceScore * 100)} < soft ${Math.round(soft.performanceScore * 100)}`,
     );
   }
   return warnings;
+}
+
+function ensureAuthProfiles(baseUrl) {
+  const rolesNeeded = ["STUDENT", "OWNER"];
+  const missing = rolesNeeded.filter((role) => !fs.existsSync(profileDir(role)));
+  if (!missing.length) return true;
+
+  if (!process.env.STEP_UP_SMOKE_PASSWORD) {
+    console.log(`\n[auth] Missing Chrome profiles for: ${missing.join(", ")}.`);
+    console.log(
+      "[auth] Set STEP_UP_SMOKE_PASSWORD and re-run, or run scripts/setup-lighthouse-auth.mjs first.",
+    );
+    return false;
+  }
+
+  console.log(`\n[auth] Creating Chrome profiles for ${missing.join(", ")}…`);
+  const result = spawnSync(
+    process.execPath,
+    [
+      path.join(dirname, "setup-lighthouse-auth.mjs"),
+      `--base-url=${baseUrl}`,
+    ],
+    {
+      stdio: "inherit",
+      env: process.env,
+    },
+  );
+  if (result.status !== 0) {
+    console.error("[auth] setup-lighthouse-auth.mjs failed");
+    return false;
+  }
+  return rolesNeeded.every((role) => fs.existsSync(profileDir(role)));
+}
+
+function printTable(table) {
+  console.log("\n=== Summary table ===\n");
+  console.log(
+    [
+      "Route".padEnd(22),
+      "Dev".padEnd(8),
+      "FCP".padStart(7),
+      "LCP".padStart(7),
+      "TBT".padStart(7),
+      "CLS".padStart(7),
+      "SI".padStart(7),
+      "Perf".padStart(6),
+    ].join(" "),
+  );
+  for (const row of table) {
+    if (row.error) {
+      console.log(
+        `${row.route.padEnd(22)} ${(row.device ?? "").padEnd(8)} ERROR ${row.error}`,
+      );
+      continue;
+    }
+    console.log(
+      [
+        row.route.padEnd(22),
+        (row.device ?? "").padEnd(8),
+        row.fcpMs == null
+          ? "—".padStart(7)
+          : `${(row.fcpMs / 1000).toFixed(2)}s`.padStart(7),
+        row.lcpMs == null
+          ? "—".padStart(7)
+          : `${(row.lcpMs / 1000).toFixed(2)}s`.padStart(7),
+        row.tbtMs == null
+          ? "—".padStart(7)
+          : `${Math.round(row.tbtMs)}ms`.padStart(7),
+        row.cls == null ? "—".padStart(7) : row.cls.toFixed(3).padStart(7),
+        row.speedIndexMs == null
+          ? "—".padStart(7)
+          : `${(row.speedIndexMs / 1000).toFixed(2)}s`.padStart(7),
+        row.performanceScore == null
+          ? "—".padStart(6)
+          : String(Math.round(row.performanceScore * 100)).padStart(6),
+      ].join(" "),
+    );
+    const soft = row.public ? PERF_TARGETS : PERF_SOFT_FAIL;
+    for (const w of warnBudgets(row, soft)) {
+      console.log(`  ! ${row.public ? "target" : "soft"}: ${w}`);
+    }
+  }
 }
 
 const baseUrl = (
   arg("base-url", process.env.STEP_UP_WEB_URL ?? "http://127.0.0.1:4173")
 ).replace(/\/$/, "");
 const runs = Math.max(1, Number(arg("runs", "3")));
+const deviceArg = arg("device", "mobile");
+const devices =
+  deviceArg === "both"
+    ? ["mobile", "desktop"]
+    : deviceArg === "desktop"
+      ? ["desktop"]
+      : ["mobile"];
 const outRoot = arg("out-dir", "lighthouse-results/authenticated");
+const onlyAuthed = process.argv.includes("--only-authed");
+const onlyPublic = process.argv.includes("--only-public");
 
-const publicRoutes = LIGHTHOUSE_ROUTES.filter((r) => r.public);
-const authedRoutes = LIGHTHOUSE_ROUTES.filter((r) => !r.public);
+const publicRoutes = onlyAuthed
+  ? []
+  : LIGHTHOUSE_ROUTES.filter((r) => r.public);
+const authedRoutes = onlyPublic
+  ? []
+  : LIGHTHOUSE_ROUTES.filter((r) => !r.public);
 
 const table = [];
 
-console.log("\n=== Public routes ===\n");
-for (const route of publicRoutes) {
-  const url = `${baseUrl}${route.path}`;
-  const outDir = path.join(outRoot, route.name.replace(/\s+/g, "-").toLowerCase());
-  console.log(`\n${route.name}  ${url}`);
-  const summary = await runLighthouseUrl(url, runs, outDir);
-  table.push(formatRow(route, summary.median));
-}
-
-const rolesNeeded = [...new Set(authedRoutes.map((r) => r.role).filter(Boolean))];
-const missingAuth = rolesNeeded.filter((role) => !fs.existsSync(authFile(role)));
-
-if (missingAuth.length) {
-  console.log(
-    `\n[auth] Missing smoke storage for: ${missingAuth.join(", ")}.`,
-  );
-  console.log(
-    "[auth] Run smoke auth setup against a deployed/preview host with STEP_UP_SMOKE_PASSWORD first.",
-  );
-  console.log(
-    "[auth] Skipping authenticated Lighthouse routes for this run.\n",
-  );
-} else {
-  console.log("\n=== Authenticated routes (smoke storage state) ===\n");
-
-  for (const route of authedRoutes) {
-    const role = route.role;
-    if (!role) continue;
-    const statePath = authFile(role);
-    const origin = new URL(baseUrl).origin;
-
-    // Serve authed pages through a Playwright browser context that already has
-    // Firebase/session cookies, then point Lighthouse at the same origin after
-    // a warm navigation that leaves storage intact via chrome user-data is hard.
-    // Practical approach: open the route with Playwright to confirm auth works,
-    // then run Lighthouse with an extra header cookie dump when available.
-    const browser = await chromium.launch({
-      headless: true,
-      executablePath: process.env.CHROME_PATH || undefined,
-    });
-    try {
-      const context = await browser.newContext({
-        storageState: statePath,
-        baseURL: baseUrl,
-      });
-      const page = await context.newPage();
-      const response = await page.goto(route.path, {
-        waitUntil: "domcontentloaded",
-        timeout: 60_000,
-      });
-      const finalUrl = page.url();
-      const ok =
-        response?.ok() &&
-        !finalUrl.includes("/login") &&
-        finalUrl.includes(route.path.split("?")[0]);
-      console.log(
-        `${route.name}: auth probe ${ok ? "ok" : "FAILED"} → ${finalUrl}`,
+for (const device of devices) {
+  if (publicRoutes.length) {
+    console.log(`\n=== Public routes (${device}) ===\n`);
+    for (const route of publicRoutes) {
+      const url = `${baseUrl}${route.path}`;
+      const outDir = path.join(
+        outRoot,
+        device,
+        route.name.replace(/\s+/g, "-").toLowerCase(),
       );
-      await context.close();
-
-      if (!ok) {
-        table.push({
-          route: route.path,
-          name: route.name,
-          error: `auth probe failed (${finalUrl})`,
-        });
-        continue;
-      }
-    } finally {
-      await browser.close();
+      console.log(`\n${route.name}  ${url}`);
+      const summary = await runLighthouseUrl(url, runs, outDir, {
+        formFactor: device,
+      });
+      table.push(formatRow(route, summary.median, device));
     }
+  }
 
-    // Lighthouse itself cannot easily reuse Playwright storageState against a
-    // SPA Firebase session. Record the probe and run Lighthouse against the
-    // URL for network/CPU cost of the shell; treat auth correctness separately.
-    const url = `${baseUrl}${route.path}`;
-    const outDir = path.join(
-      outRoot,
-      route.name.replace(/\s+/g, "-").toLowerCase(),
-    );
-    console.log(`\n${route.name}  ${url}  (role=${role})`);
-    console.log(
-      "Note: Lighthouse cold load may redirect to /login without Firebase IDB; prefer Playwright smoke perf for authed TTI.",
-    );
-    const summary = await runLighthouseUrl(url, runs, outDir);
-    table.push({
-      ...formatRow(route, summary.median),
-      role,
-      authNote:
-        "Cold Lighthouse may be unauthenticated; use Playwright smoke @perf for session metrics.",
-    });
+  if (authedRoutes.length) {
+    const ok = ensureAuthProfiles(baseUrl);
+    if (!ok) {
+      console.log("\n[auth] Skipping authenticated Lighthouse routes.\n");
+    } else {
+      console.log(
+        `\n=== Authenticated routes (${device}, Firebase Chrome profiles) ===\n`,
+      );
+      for (const route of authedRoutes) {
+        const role = route.role;
+        if (!role) continue;
+        const authProfile = profileDir(role);
+        const url = `${baseUrl}${route.path}`;
+        const outDir = path.join(
+          outRoot,
+          device,
+          route.name.replace(/\s+/g, "-").toLowerCase(),
+        );
+        console.log(`\n${route.name}  ${url}  (role=${role})`);
+        const summary = await runLighthouseUrl(url, runs, outDir, {
+          formFactor: device,
+          authProfileDir: authProfile,
+          expectedPathPrefix: route.path,
+        });
+        const authFailed = summary.runsDetail?.some((r) => r.authFailed);
+        if (authFailed) {
+          table.push({
+            route: route.path,
+            name: route.name,
+            device,
+            role,
+            error: "auth redirect (profile missing Firebase session)",
+          });
+          continue;
+        }
+        table.push(formatRow(route, summary.median, device));
+      }
+    }
   }
 }
 
@@ -211,6 +274,7 @@ fs.mkdirSync(outRoot, { recursive: true });
 const report = {
   generatedAt: new Date().toISOString(),
   baseUrl,
+  devices,
   targets: PERF_TARGETS,
   softFail: PERF_SOFT_FAIL,
   rows: table,
@@ -220,41 +284,5 @@ fs.writeFileSync(
   JSON.stringify(report, null, 2),
 );
 
-console.log("\n=== Summary table ===\n");
-console.log(
-  [
-    "Route".padEnd(22),
-    "FCP".padStart(7),
-    "LCP".padStart(7),
-    "TBT".padStart(7),
-    "CLS".padStart(7),
-    "SI".padStart(7),
-    "Perf".padStart(6),
-  ].join(" "),
-);
-for (const row of table) {
-  if (row.error) {
-    console.log(`${row.route.padEnd(22)} ERROR ${row.error}`);
-    continue;
-  }
-  console.log(
-    [
-      row.route.padEnd(22),
-      row.fcpMs == null ? "—".padStart(7) : `${(row.fcpMs / 1000).toFixed(2)}s`.padStart(7),
-      row.lcpMs == null ? "—".padStart(7) : `${(row.lcpMs / 1000).toFixed(2)}s`.padStart(7),
-      row.tbtMs == null ? "—".padStart(7) : `${Math.round(row.tbtMs)}ms`.padStart(7),
-      row.cls == null ? "—".padStart(7) : row.cls.toFixed(3).padStart(7),
-      row.speedIndexMs == null
-        ? "—".padStart(7)
-        : `${(row.speedIndexMs / 1000).toFixed(2)}s`.padStart(7),
-      row.performanceScore == null
-        ? "—".padStart(6)
-        : String(Math.round(row.performanceScore * 100)).padStart(6),
-    ].join(" "),
-  );
-  for (const w of warnBudgets(row)) {
-    console.log(`  ! soft: ${w}`);
-  }
-}
-
+printTable(table);
 console.log(`\nWrote ${path.join(outRoot, "table.json")}`);
