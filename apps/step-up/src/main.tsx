@@ -77,17 +77,8 @@ function AppRouter() {
   const [slowLoad, setSlowLoad] = useState(
     () => performance.now() >= SLOW_LOAD_TIMEOUT_MS,
   );
-  const [protectedProvidersReady, setProtectedProvidersReady] = useState(() =>
-    isPublicBootPath(window.location.pathname),
-  );
-  const onPublicPath = isPublicBootPath(window.location.pathname);
-  const blockOnAuth = auth.loading && !onPublicPath;
-  // Never unmount RouterProvider on public paths (e.g. /login): that cancels
-  // post-login navigation to /app|/me. Only hold the boot loader on protected
-  // URLs until theme+toast are ready.
-  const blockOnProviders =
-    Boolean(auth.user) && !protectedProvidersReady && !onPublicPath;
-  const blockShell = blockOnAuth || blockOnProviders;
+  const blockOnAuth =
+    auth.loading && !isPublicBootPath(window.location.pathname);
 
   useEffect(() => {
     // Keep Sentry off the first protected paint / login TBT window.
@@ -105,12 +96,12 @@ function AppRouter() {
   }, []);
 
   useEffect(() => {
-    if (!blockShell) {
+    if (!blockOnAuth) {
       setSlowLoad(false);
       return;
     }
-    // Overlap theme/IconProvider + ToastProvider hydrate with Firebase auth so
-    // /app and /me do not mount shells before required providers are ready.
+    // Warm theme + toast while AuthBootLoader is up; IconProvider/noop toast
+    // stubs let the shell paint without waiting on these chunks.
     void preloadAppTheme().catch(() => undefined);
     void preloadToast().catch(() => undefined);
     const remaining = Math.max(0, SLOW_LOAD_TIMEOUT_MS - performance.now());
@@ -118,40 +109,12 @@ function AppRouter() {
       setSlowLoad(true);
     }, remaining);
     return () => window.clearTimeout(id);
-  }, [blockShell]);
-
-  useEffect(() => {
-    if (!auth.user) {
-      setProtectedProvidersReady(true);
-      return;
-    }
-    let cancelled = false;
-    // Warm providers for the upcoming protected shell; do not flip ready→false
-    // on public paths or login navigation will unmount the router.
-    if (!isPublicBootPath(window.location.pathname)) {
-      setProtectedProvidersReady(false);
-    }
-    void Promise.all([preloadAppTheme(), preloadToast()])
-      .then(() => {
-        if (!cancelled) {
-          setProtectedProvidersReady(true);
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          // Fail open — DeferredToastProvider/BootThemeProvider still self-heal.
-          setProtectedProvidersReady(true);
-        }
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [auth.user, userId]);
+  }, [blockOnAuth]);
 
   // Invalidate for auth changes, then warm home — never race preload with
   // invalidate (evicts in-flight preload matches → _nonReactive TypeError).
   useEffect(() => {
-    if (auth.loading || !protectedProvidersReady) {
+    if (auth.loading) {
       return;
     }
 
@@ -179,9 +142,9 @@ function AppRouter() {
     return () => {
       cancelled = true;
     };
-  }, [auth.loading, auth.user, userId, protectedProvidersReady]);
+  }, [auth.loading, auth.user, userId]);
 
-  if (blockShell) {
+  if (blockOnAuth) {
     return slowLoad ? <SlowLoadFallback /> : <AuthBootLoader />;
   }
 

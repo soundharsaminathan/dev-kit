@@ -1,5 +1,9 @@
+import {
+  ToastContext,
+  type ToastContextValue,
+} from "@dev-ui/components/toast/toast-context";
 import { useRouterState } from "@tanstack/react-router";
-import { type ReactNode, useEffect, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
 
 type ToastModule = typeof import("@dev-ui/components/toast");
 
@@ -34,13 +38,22 @@ function scheduleIdle(cb: () => void) {
   return () => window.clearTimeout(id);
 }
 
+const NOOP_TOAST: ToastContextValue = {
+  // Protected shells call useToastContext during render; only `.toast()` is used
+  // before the real provider mounts. Avoid blocking first paint on motion/toast.
+  toast: () => "deferred-toast",
+  position: "top-right",
+  // state is unused on the /app|/me first-paint path
+  state: null as unknown as ToastContextValue["state"],
+};
+
 /**
  * Toast (and motion/react) are not required for public first paint. Idle-load
  * on public routes.
  *
- * Protected routes call `useToastContext` during render. Pathname is reactive
- * so a login → /app transition loads toast immediately instead of staying on
- * the public idle path.
+ * Protected routes call `useToastContext` during render. Provide a noop context
+ * until the real ToastProvider mounts so AuthBootLoader is not held open for
+ * the toast/motion chunk (that delayed /app LCP to ~8s under mobile throttle).
  */
 export function DeferredToastProvider({
   children,
@@ -62,6 +75,7 @@ export function DeferredToastProvider({
   });
   const isPublic = isPublicBootPath(pathname);
   const [mod, setMod] = useState<ToastModule | null>(() => toastModule);
+  const noopValue = useMemo(() => NOOP_TOAST, []);
 
   useEffect(() => {
     if (toastModule && !mod) {
@@ -92,7 +106,11 @@ export function DeferredToastProvider({
     if (isPublic) {
       return children;
     }
-    return null;
+    return (
+      <ToastContext.Provider value={noopValue}>
+        {children}
+      </ToastContext.Provider>
+    );
   }
 
   return (
