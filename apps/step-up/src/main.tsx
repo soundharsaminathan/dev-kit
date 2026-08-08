@@ -122,8 +122,9 @@ function AppRouter() {
     return () => window.clearTimeout(id);
   }, [blockOnAuth]);
 
-  // Invalidate for auth changes, then warm home — never race preload with
-  // invalidate (evicts in-flight preload matches → _nonReactive TypeError).
+  // On user switches, invalidate stale matches then warm home. Skip the
+  // first auth settle — invalidate remounts the active route and races
+  // preloadRoute (_nonReactive), wiping in-progress form/UI state in e2e.
   useEffect(() => {
     if (auth.loading) {
       return;
@@ -132,10 +133,10 @@ function AppRouter() {
     let cancelled = false;
 
     const run = async () => {
-      const needsInvalidate =
-        !invalidatedFor.current || invalidatedFor.current.userId !== userId;
-      if (needsInvalidate) {
-        invalidatedFor.current = { userId };
+      const previous = invalidatedFor.current;
+      const userChanged = previous !== null && previous.userId !== userId;
+      invalidatedFor.current = { userId };
+      if (userChanged) {
         await router.invalidate();
       }
       if (cancelled || !auth.user) {
