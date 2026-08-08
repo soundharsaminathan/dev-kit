@@ -71,9 +71,20 @@
   transition: font-size var(--motion-normal, 200ms) ease;
 }
 
+.titleHero {
+  font-size: 1.75rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+}
+
 .header[data-compact="true"] .title {
   font-size: 1rem;
   letter-spacing: -0.02em;
+}
+
+.header[data-compact="true"] .titleHero {
+  font-size: 1.25rem;
 }
 
 .subtitle {
@@ -81,6 +92,14 @@
   font-size: 0.75rem;
   line-height: 1.35;
   color: color-mix(in srgb, var(--color-fg) 62%, transparent);
+}
+
+.subtitleHero {
+  margin-top: 0.25rem;
+  font-size: 1rem;
+  line-height: 1.35;
+  color: color-mix(in srgb, var(--color-fg) 68%, transparent);
+  max-width: 36rem;
 }
 
 .header[data-compact="true"] .subtitle {

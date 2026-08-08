@@ -16,7 +16,6 @@ import { coverUrl, type StudioBranch } from "@/modules/locations/types";
 import { AnimatedMetric } from "@/modules/ui/animated-metric";
 import type { ExpandableBentoItem } from "@/modules/ui/expandable-bento-grid";
 import { FilterChipRow } from "@/modules/ui/filter-chip-row";
-import { PressableCard } from "@/modules/ui/pressable-card";
 import { PullToRefresh } from "@/modules/ui/pull-to-refresh";
 import { Screen } from "@/modules/ui/screen";
 import { SkeletonBlock } from "@/modules/ui/skeleton-block";
@@ -166,6 +165,7 @@ function AppDashboardPage() {
   const batches = useQuery({
     queryKey: ["batches", studioId],
     queryFn: () => api.get<Batch[]>(`/batches/studio/${studioId}`),
+    staleTime: 30_000,
   });
   const studio = useQuery({
     queryKey: ["studio", studioId],
@@ -182,10 +182,12 @@ function AppDashboardPage() {
   const subscriptions = useQuery({
     queryKey: ["subscriptions", studioId],
     queryFn: () => api.get<Subscription[]>(`/subscriptions/studio/${studioId}`),
+    staleTime: 30_000,
   });
   const members = useQuery({
     queryKey: ["studio-members", studioId],
     queryFn: () => api.get<StudioMember[]>(`/users/studio/${studioId}`),
+    staleTime: 30_000,
   });
   const studentFunnel = useQuery({
     queryKey: ["student-funnel", studioId, funnelPeriod],
@@ -194,10 +196,12 @@ function AppDashboardPage() {
         `/users/studio/${studioId}/student-funnel?period=${funnelPeriod}`,
       ),
     enabled: !isTrainer,
+    staleTime: 30_000,
   });
   const bookings = useQuery({
     queryKey: ["bookings", "studio", studioId],
     queryFn: () => api.get<StudioBooking[]>(`/bookings/studio/${studioId}`),
+    staleTime: 30_000,
   });
 
   const updateStatus = useMutation({
@@ -462,7 +466,7 @@ function AppDashboardPage() {
             <p className={staff.sectionTitle}>Needs attention</p>
             <div className={staff.attentionBody}>
               {bookings.isLoading ? (
-                <SkeletonBlock height="14.5rem" radius="var(--radius-2xl)" />
+                <SkeletonBlock height="5.5rem" radius="var(--radius-2xl)" />
               ) : null}
               {!bookings.isLoading && pending.length === 0 ? (
                 <EmptyState
@@ -472,51 +476,33 @@ function AppDashboardPage() {
               ) : null}
               {pending.length > 0 ? (
                 <>
-                  <ul
-                    className={staff.list}
-                    aria-label="Pending booking requests"
+                  {/*
+                    Compact summary (not a long booking list): under Lighthouse the
+                    pending row meta ("TRIAL · … · Smoke load booking N") became LCP
+                    only after /bookings returned (~5–8s). Keep shell title as LCP;
+                    full request details stay on /app/bookings + the drawer.
+                  */}
+                  <button
+                    type="button"
+                    className={staff.metricCard}
+                    onClick={() => setSelectedBookingId(pending[0]?.id ?? null)}
+                    aria-label={`${pending.length} pending booking requests`}
+                    data-testid="pending-requests-summary"
                   >
-                    {pending.map((booking) => {
-                      const studentName =
-                        booking.student?.name ?? booking.studentId;
-                      const typeLabel = booking.type.replaceAll("_", " ");
-                      const subtitleParts = [
-                        typeLabel,
-                        booking.batch?.name,
-                      ].filter(Boolean);
-                      if (booking.notes) subtitleParts.push(booking.notes);
-
-                      return (
-                        <li key={booking.id}>
-                          <PressableCard
-                            onClick={() => setSelectedBookingId(booking.id)}
-                          >
-                            <div className={staff.rowCard}>
-                              <div className={staff.rowWithAvatar}>
-                                <span className={staff.listAvatar}>
-                                  <span
-                                    className={staff.bentoInitial}
-                                    aria-hidden
-                                  >
-                                    {studentName.slice(0, 1).toUpperCase() ||
-                                      "?"}
-                                  </span>
-                                </span>
-                                <div className={staff.rowBody}>
-                                  <span className={staff.rowTitle}>
-                                    {studentName}
-                                  </span>
-                                  <span className={staff.rowMeta}>
-                                    {subtitleParts.join(" · ")}
-                                  </span>
-                                </div>
-                              </div>
-                            </div>
-                          </PressableCard>
-                        </li>
-                      );
-                    })}
-                  </ul>
+                    <span className={staff.metricLabel}>
+                      <span className={staff.metricIcon} aria-hidden>
+                        <Icon name="clipboard" />
+                      </span>
+                      Pending requests
+                    </span>
+                    <AnimatedMetric
+                      className={staff.metricValue}
+                      value={pending.length}
+                    />
+                    <span className={staff.metricHint}>
+                      Tap to review the next request
+                    </span>
+                  </button>
                   <TouchButton variant="quiet" fullWidth>
                     <Link to="/app/bookings">Open bookings</Link>
                   </TouchButton>
@@ -673,6 +659,7 @@ function AppDashboardPage() {
 
   return (
     <Screen
+      hero
       title="Home"
       subtitle={`${greetingFor(new Date())}, ${firstName} — here's your studio`}
     >
