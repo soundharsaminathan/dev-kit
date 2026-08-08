@@ -8,7 +8,6 @@ import {
 } from "@/lib/deferred-icon-pack";
 import { isSoftThemePath } from "@/lib/theme-path";
 import { StudioBrandEditProvider } from "@/modules/branding/studio-brand-edit-context";
-import { StudioBrandProvider } from "@/modules/branding/studio-brand-provider";
 
 const STAFF_THEME = "step-up";
 const MEMBER_THEME = "step-up-soft";
@@ -69,9 +68,7 @@ export function AppThemeProvider({ children }: { children: ReactNode }) {
       }}
     >
       <StudioBrandEditProvider>
-        <EnsureSurfaceTheme>
-          <StudioBrandProvider>{children}</StudioBrandProvider>
-        </EnsureSurfaceTheme>
+        <EnsureSurfaceTheme>{children}</EnsureSurfaceTheme>
       </StudioBrandEditProvider>
     </ThemeProvider>
   );
