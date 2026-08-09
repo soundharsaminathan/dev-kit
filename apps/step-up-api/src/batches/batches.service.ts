@@ -1815,7 +1815,11 @@ export class BatchesService {
     });
   }
 
-  async getRevenue(id: string) {
+  async getRevenue(
+    id: string,
+    options: { period?: "all" | "month" } = {},
+  ) {
+    const period = options.period ?? "all";
     const batch = await this.prisma.batch.findUnique({
       where: { id },
       include: {
@@ -1854,6 +1858,9 @@ export class BatchesService {
         invoiceCount: number;
       }
     >();
+
+    const monthRange =
+      period === "month" ? currentCalendarMonthRange(new Date()) : null;
 
     if (studentIds.length > 0) {
       const studentIdSet = new Set(studentIds);
@@ -1901,6 +1908,13 @@ export class BatchesService {
       }
 
       for (const invoice of invoices) {
+        if (
+          monthRange &&
+          !invoiceMatchesRevenuePeriod(invoice, monthRange)
+        ) {
+          continue;
+        }
+
         const combineMeta = parseCombineMeta(invoice.combineMeta);
         if (combineMeta) {
           for (const source of combineMeta.sources) {
@@ -1992,11 +2006,47 @@ export class BatchesService {
     }
 
     return {
+      period,
+      from: monthRange?.from.toISOString() ?? null,
+      to: monthRange?.to.toISOString() ?? null,
       enrolledCount,
       totals,
       bySubscription: [...bySubscriptionMap.values()],
     };
   }
+}
+
+function currentCalendarMonthRange(now: Date) {
+  const from = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+  const to = new Date(
+    now.getFullYear(),
+    now.getMonth() + 1,
+    0,
+    23,
+    59,
+    59,
+    999,
+  );
+  return { from, to };
+}
+
+function invoiceMatchesRevenuePeriod(
+  invoice: {
+    status: InvoiceStatus;
+    paidAt: Date | null;
+  },
+  range: { from: Date; to: Date },
+) {
+  if (
+    invoice.status === InvoiceStatus.PENDING ||
+    invoice.status === InvoiceStatus.OVERDUE
+  ) {
+    return true;
+  }
+  if (invoice.status !== InvoiceStatus.PAID || !invoice.paidAt) {
+    return false;
+  }
+  return invoice.paidAt >= range.from && invoice.paidAt <= range.to;
 }
 
 function roundMoney(value: number): number {

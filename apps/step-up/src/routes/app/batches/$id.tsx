@@ -531,6 +531,7 @@ function EditBatchForm({
         queryClient.invalidateQueries({ queryKey: ["batch", batch.id] }),
         queryClient.invalidateQueries({
           queryKey: ["batch-revenue", batch.id],
+          exact: false,
         }),
       ]);
       toast({

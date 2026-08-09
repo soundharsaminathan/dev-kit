@@ -492,6 +492,7 @@ describe("BatchesService getRevenue", () => {
         membershipId: "mem-1",
         amount: 2500,
         status: "PAID",
+        paidAt: new Date("2026-07-01T12:00:00.000Z"),
         combineMeta: null,
         purchaseMeta: {
           batchId: "batch-1",
@@ -514,6 +515,7 @@ describe("BatchesService getRevenue", () => {
         membershipId: "mem-2",
         amount: 6500,
         status: "PENDING",
+        paidAt: null,
         combineMeta: null,
         purchaseMeta: {
           batchId: "batch-1",
@@ -535,6 +537,7 @@ describe("BatchesService getRevenue", () => {
 
     const result = await service.getRevenue("batch-1");
 
+    expect(result.period).toBe("all");
     expect(result.enrolledCount).toBe(1);
     expect(result.totals).toEqual({
       collected: 2500,
@@ -556,6 +559,104 @@ describe("BatchesService getRevenue", () => {
         }),
       ]),
     );
+  });
+
+  it("month period counts only paid invoices paid this month", async () => {
+    const now = new Date();
+    const thisMonthPaid = new Date(now.getFullYear(), now.getMonth(), 10, 12);
+    const lastMonthPaid = new Date(now.getFullYear(), now.getMonth() - 1, 10, 12);
+
+    prisma.batch.findUnique.mockResolvedValue({
+      id: "batch-1",
+      studioId: "studio-1",
+      enrollments: [{ studentId: "student-1", status: "ACTIVE" }],
+    });
+    prisma.batchEnrollment.findMany.mockResolvedValue([
+      { studentId: "student-1", batchId: "batch-1" },
+    ]);
+    prisma.invoice.findMany.mockResolvedValue([
+      {
+        studentId: "student-1",
+        membershipId: "mem-current",
+        amount: 2500,
+        status: "PAID",
+        paidAt: thisMonthPaid,
+        combineMeta: null,
+        purchaseMeta: {
+          batchId: "batch-1",
+          subscriptionId: "sub-monthly",
+          purchaserUserId: "student-1",
+          coveredStudents: [
+            { studentId: "student-1", seatRole: "KID", batchId: "batch-1" },
+          ],
+        },
+        membership: {
+          subscription: {
+            id: "sub-monthly",
+            name: "Monthly",
+            billingCadence: BillingCadence.MONTHLY,
+          },
+        },
+      },
+      {
+        studentId: "student-1",
+        membershipId: "mem-prior",
+        amount: 2500,
+        status: "PAID",
+        paidAt: lastMonthPaid,
+        combineMeta: null,
+        purchaseMeta: {
+          batchId: "batch-1",
+          subscriptionId: "sub-monthly",
+          purchaserUserId: "student-1",
+          coveredStudents: [
+            { studentId: "student-1", seatRole: "KID", batchId: "batch-1" },
+          ],
+        },
+        membership: {
+          subscription: {
+            id: "sub-monthly",
+            name: "Monthly",
+            billingCadence: BillingCadence.MONTHLY,
+          },
+        },
+      },
+      {
+        studentId: "student-1",
+        membershipId: "mem-pending",
+        amount: 1000,
+        status: "PENDING",
+        paidAt: null,
+        combineMeta: null,
+        purchaseMeta: {
+          batchId: "batch-1",
+          subscriptionId: "sub-monthly",
+          purchaserUserId: "student-1",
+          coveredStudents: [
+            { studentId: "student-1", seatRole: "KID", batchId: "batch-1" },
+          ],
+        },
+        membership: {
+          subscription: {
+            id: "sub-monthly",
+            name: "Monthly",
+            billingCadence: BillingCadence.MONTHLY,
+          },
+        },
+      },
+    ]);
+
+    const result = await service.getRevenue("batch-1", { period: "month" });
+
+    expect(result.period).toBe("month");
+    expect(result.from).toBeTruthy();
+    expect(result.to).toBeTruthy();
+    expect(result.totals).toEqual({
+      collected: 2500,
+      pending: 1000,
+      overdue: 0,
+      invoiceCount: 2,
+    });
   });
 
   it("does not count another batch's payments for shared students (negative path)", async () => {

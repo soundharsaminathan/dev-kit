@@ -311,13 +311,16 @@ test.describe("owner smoke @smoke", () => {
         totals: { collected: number };
       };
       expect(revenue.totals.collected).toBe(0);
-      await expect(page.getByLabel("Batch revenue")).toBeVisible();
+      const revenueSection = page.getByLabel("Batch revenue");
+      await expect(revenueSection).toBeVisible();
       await expect(
-        page.getByLabel("Batch revenue").getByText("Collected"),
+        revenueSection.getByRole("radio", { name: "This month" }),
       ).toBeVisible();
       await expect(
-        page.getByLabel("Batch revenue").getByText("₹0"),
+        revenueSection.getByRole("radio", { name: "Overall" }),
       ).toBeVisible();
+      await expect(revenueSection.getByText("Collected")).toBeVisible();
+      await expect(revenueSection.getByText("₹0")).toBeVisible();
     } finally {
       await context.close();
       await cleanup.dispose();

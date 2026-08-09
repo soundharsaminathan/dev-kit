@@ -321,8 +321,13 @@ export class BatchesController {
 
   @Get(":id/revenue")
   @Roles(UserRole.OWNER, UserRole.STAFF, UserRole.TRAINER)
-  getRevenue(@Param("id") id: string) {
-    return this.batchesService.getRevenue(id);
+  getRevenue(@Param("id") id: string, @Query("period") period?: string) {
+    if (period != null && period !== "all" && period !== "month") {
+      throw new BadRequestException('period must be "all" or "month"');
+    }
+    return this.batchesService.getRevenue(id, {
+      period: period === "month" ? "month" : "all",
+    });
   }
 
   @Get(":id/switch-targets")
