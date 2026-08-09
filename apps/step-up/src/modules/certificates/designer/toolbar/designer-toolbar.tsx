@@ -1,3 +1,4 @@
+import { useToastContext } from "@dev-ui/components/toast";
 import {
   AlignCenter,
   AlignLeft,
@@ -111,6 +112,7 @@ function RibbonGroup({
 
 export function DesignerToolbar() {
   const api = useApi();
+  const { toast } = useToastContext("DesignerToolbar");
   const { state, dispatch, selected, updateSelected } = useDesigner();
   const fileRef = useRef<HTMLInputElement>(null);
   const uploadKind = useRef<"image" | "signature" | "background">("image");
@@ -189,7 +191,12 @@ export function DesignerToolbar() {
         dispatch({ type: "ADD_ELEMENT", element: el });
       }
     } catch (error) {
-      window.alert(error instanceof Error ? error.message : "Upload failed");
+      toast({
+        title: "Upload failed",
+        description:
+          error instanceof Error ? error.message : "Could not upload asset.",
+        variant: "error",
+      });
     } finally {
       if (fileRef.current) fileRef.current.value = "";
     }
@@ -197,7 +204,11 @@ export function DesignerToolbar() {
 
   function insertVariable(key: CertificateVariableKey) {
     if (!textSelected) {
-      window.alert("Select a text element, then insert a variable.");
+      toast({
+        title: "Select a text element",
+        description: "Click a text box, then insert a variable.",
+        variant: "info",
+      });
       return;
     }
     const content: TipTapDoc = {

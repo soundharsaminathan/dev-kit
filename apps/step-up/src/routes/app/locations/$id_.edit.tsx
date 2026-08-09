@@ -21,7 +21,7 @@ import { ErrorState } from "@/modules/ui/states";
 import { TouchButton } from "@/modules/ui/touch-button";
 import styles from "./edit.module.scss";
 
-export const Route = createFileRoute("/app/locations/$id/edit")({
+export const Route = createFileRoute("/app/locations/$id_/edit")({
   beforeLoad: ({ context, location }) => {
     requireAdmin(context.auth, {
       pathname: location.pathname,

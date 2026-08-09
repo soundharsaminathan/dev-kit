@@ -6,6 +6,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@dev-ui/components/select";
+import { useToastContext } from "@dev-ui/components/toast";
 import type { ReactNode } from "react";
 import { useRef, useState } from "react";
 import { useApi } from "@/lib/api-context";
@@ -46,6 +47,7 @@ function ElementImageField({
   onClear: () => void;
 }) {
   const api = useApi();
+  const { toast } = useToastContext("ElementImageField");
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
 
@@ -56,7 +58,12 @@ function ElementImageField({
     try {
       onUploaded(await uploadCertificateAsset(api, file));
     } catch (error) {
-      window.alert(error instanceof Error ? error.message : "Upload failed");
+      toast({
+        title: "Upload failed",
+        description:
+          error instanceof Error ? error.message : "Could not upload image.",
+        variant: "error",
+      });
     } finally {
       setUploading(false);
       if (fileRef.current) fileRef.current.value = "";
@@ -125,6 +132,7 @@ function NumberInput({
 
 export function PropertyInspector() {
   const api = useApi();
+  const { toast } = useToastContext("PropertyInspector");
   const {
     state,
     selected,
@@ -152,7 +160,14 @@ export function PropertyInspector() {
         },
       });
     } catch (error) {
-      window.alert(error instanceof Error ? error.message : "Upload failed");
+      toast({
+        title: "Upload failed",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Could not upload background.",
+        variant: "error",
+      });
     } finally {
       setUploadingBg(false);
       if (bgFileRef.current) bgFileRef.current.value = "";
