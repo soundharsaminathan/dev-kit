@@ -10,6 +10,8 @@ import {
   Select,
   SelectContent,
   SelectItem,
+  SelectItemDescription,
+  SelectItemLabel,
   SelectTrigger,
   SelectValue,
 } from "@dev-ui/components/select";
@@ -513,9 +515,12 @@ function NewBatchPage() {
                       <SelectItem
                         key={branch.id}
                         id={branch.id}
-                        textValue={`${branch.name} — ${branch.address}`}
+                        textValue={branch.name}
                       >
-                        {branch.name} — {branch.address}
+                        <SelectItemLabel>{branch.name}</SelectItemLabel>
+                        <SelectItemDescription>
+                          {branch.address}
+                        </SelectItemDescription>
                       </SelectItem>
                     ))}
                   </SelectContent>

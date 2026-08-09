@@ -2,6 +2,8 @@ export {
   Select,
   SelectContent,
   SelectItem,
+  SelectItemDescription,
+  SelectItemLabel,
   SelectSection,
   SelectSectionHeader,
   SelectTrigger,

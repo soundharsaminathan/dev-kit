@@ -14,9 +14,12 @@ import { useApi } from "@/lib/api-context";
 import { requireAdmin } from "@/lib/require-auth";
 import { useStudioId } from "@/lib/use-studio-id";
 import { ApiState } from "@/modules/ui/api-state";
+import { AppSheet } from "@/modules/ui/app-sheet";
 import { FormInput } from "@/modules/ui/form-input";
 import { Screen } from "@/modules/ui/screen";
 import staff from "@/modules/ui/staff.module.scss";
+import { ErrorState } from "@/modules/ui/states";
+import { TouchButton } from "@/modules/ui/touch-button";
 
 type SubscriptionKind = "INDIVIDUAL" | "FAMILY";
 type IndividualAudience = "ADULT" | "KID";
@@ -40,6 +43,9 @@ type Subscription = {
   adultSeats: number;
   kidSeats: number;
   active: boolean;
+  membershipCount?: number;
+  batchPlanCount?: number;
+  canDelete?: boolean;
 };
 
 export const Route = createFileRoute("/app/subscriptions/$id")({
@@ -108,6 +114,7 @@ function EditSubscriptionForm({
   );
   const [price, setPrice] = useState(String(subscription.price));
   const [active, setActive] = useState(subscription.active ? "true" : "false");
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   const priceLabel =
     billingCadence === "QUARTERLY" ? "Price (₹/qtr)" : "Price (₹/mo)";
@@ -135,6 +142,11 @@ function EditSubscriptionForm({
               return "Family";
           }
         })();
+
+  const membershipCount = subscription.membershipCount ?? 0;
+  const batchPlanCount = subscription.batchPlanCount ?? 0;
+  const canDelete =
+    subscription.canDelete ?? (membershipCount === 0 && batchPlanCount === 0);
 
   const updateSubscription = useMutation({
     mutationFn: () =>
@@ -172,67 +184,155 @@ function EditSubscriptionForm({
     },
   });
 
+  const deleteSubscription = useMutation({
+    mutationFn: () => api.delete(`/subscriptions/${subscription.id}`),
+    onSuccess: async () => {
+      setDeleteOpen(false);
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: ["subscriptions", studioId],
+        }),
+        queryClient.removeQueries({
+          queryKey: ["subscription", subscription.id],
+        }),
+      ]);
+      toast({
+        title: "Plan deleted",
+        description: "The unused membership plan was removed.",
+        variant: "success",
+      });
+      await navigate({ to: "/app/subscriptions" });
+    },
+  });
+
+  const inUseHint =
+    membershipCount > 0
+      ? "This plan has memberships, so it can’t be deleted. Deactivate it instead."
+      : batchPlanCount > 0
+        ? "This plan is attached to batches. Remove it from those batches first, or deactivate it."
+        : null;
+
   return (
-    <div className={staff.softPanel}>
-      <div className={staff.sheetStack}>
-        <FormInput label="Name" value={name} onChange={setName} />
-        <Select label="Kind" selectedKey={subscription.kind} isDisabled>
-          <SelectTrigger>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem id="INDIVIDUAL">Individual</SelectItem>
-            <SelectItem id="FAMILY">Family</SelectItem>
-          </SelectContent>
-        </Select>
-        <FormInput
-          label={subscription.kind === "FAMILY" ? "Family pack" : "Audience"}
-          value={kindDetail}
-          onChange={() => undefined}
-          disabled
-        />
-        <Select
-          label="Billing cadence"
-          selectedKey={billingCadence}
-          onSelectionChange={(key) => setBillingCadence(key as BillingCadence)}
-        >
-          <SelectTrigger>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem id="MONTHLY">Monthly</SelectItem>
-            <SelectItem id="QUARTERLY">Quarterly</SelectItem>
-          </SelectContent>
-        </Select>
-        <FormInput
-          label={priceLabel}
-          type="number"
-          min="0"
-          value={price}
-          onChange={setPrice}
-        />
-        <Select
-          label="Status"
-          selectedKey={active}
-          onSelectionChange={(key) => setActive(key as string)}
-        >
-          <SelectTrigger>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem id="true">Active</SelectItem>
-            <SelectItem id="false">Inactive</SelectItem>
-          </SelectContent>
-        </Select>
-        <Button
-          variant="primary"
-          onClick={() => updateSubscription.mutate()}
-          isPending={updateSubscription.isPending}
-          isDisabled={!name.trim() || Number(price) < 0}
-        >
-          Save changes
-        </Button>
+    <>
+      <div className={staff.softPanel}>
+        <div className={staff.sheetStack}>
+          <FormInput label="Name" value={name} onChange={setName} />
+          <Select label="Kind" selectedKey={subscription.kind} isDisabled>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem id="INDIVIDUAL">Individual</SelectItem>
+              <SelectItem id="FAMILY">Family</SelectItem>
+            </SelectContent>
+          </Select>
+          <FormInput
+            label={subscription.kind === "FAMILY" ? "Family pack" : "Audience"}
+            value={kindDetail}
+            onChange={() => undefined}
+            disabled
+          />
+          <Select
+            label="Billing cadence"
+            selectedKey={billingCadence}
+            onSelectionChange={(key) =>
+              setBillingCadence(key as BillingCadence)
+            }
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem id="MONTHLY">Monthly</SelectItem>
+              <SelectItem id="QUARTERLY">Quarterly</SelectItem>
+            </SelectContent>
+          </Select>
+          <FormInput
+            label={priceLabel}
+            type="number"
+            min="0"
+            value={price}
+            onChange={setPrice}
+          />
+          <Select
+            label="Status"
+            selectedKey={active}
+            onSelectionChange={(key) => setActive(key as string)}
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem id="true">Active</SelectItem>
+              <SelectItem id="false">Inactive</SelectItem>
+            </SelectContent>
+          </Select>
+          <Button
+            variant="primary"
+            onClick={() => updateSubscription.mutate()}
+            isPending={updateSubscription.isPending}
+            isDisabled={!name.trim() || Number(price) < 0}
+          >
+            Save changes
+          </Button>
+          {canDelete ? (
+            <Button
+              variant="danger"
+              data-testid="delete-subscription"
+              onClick={() => setDeleteOpen(true)}
+            >
+              Delete plan
+            </Button>
+          ) : (
+            <p className={staff.panelDesc}>{inUseHint}</p>
+          )}
+        </div>
       </div>
-    </div>
+
+      <AppSheet
+        isOpen={deleteOpen}
+        onOpenChange={(open) => {
+          if (!open && !deleteSubscription.isPending) {
+            setDeleteOpen(false);
+          }
+        }}
+        title="Delete plan"
+      >
+        <div className={staff.sheetStack}>
+          <p className={staff.rowMeta}>
+            Delete “{subscription.name}”? Only unused plans can be removed. This
+            cannot be undone.
+          </p>
+          {deleteSubscription.isError ? (
+            <ErrorState
+              description={
+                deleteSubscription.error instanceof Error
+                  ? deleteSubscription.error.message
+                  : "This plan could not be deleted."
+              }
+            />
+          ) : null}
+          <div className={staff.sheetActions}>
+            <TouchButton
+              variant="default"
+              fullWidth
+              isDisabled={deleteSubscription.isPending}
+              onClick={() => setDeleteOpen(false)}
+            >
+              Cancel
+            </TouchButton>
+            <TouchButton
+              variant="danger"
+              fullWidth
+              isPending={deleteSubscription.isPending}
+              data-testid="confirm-delete-subscription"
+              onClick={() => deleteSubscription.mutate()}
+            >
+              Delete plan
+            </TouchButton>
+          </div>
+        </div>
+      </AppSheet>
+    </>
   );
 }

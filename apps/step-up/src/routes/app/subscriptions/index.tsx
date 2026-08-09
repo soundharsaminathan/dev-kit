@@ -33,6 +33,9 @@ type Subscription = {
   adultSeats: number;
   kidSeats: number;
   active: boolean;
+  membershipCount?: number;
+  batchPlanCount?: number;
+  canDelete?: boolean;
 };
 
 export const Route = createFileRoute("/app/subscriptions/")({
@@ -163,6 +166,11 @@ function SubscriptionsPage() {
                         ? "Quarterly"
                         : "Monthly"}
                       {subscription.active ? "" : " · Inactive"}
+                      {subscription.canDelete === true
+                        ? " · Unused"
+                        : subscription.canDelete === false
+                          ? " · In use"
+                          : ""}
                     </p>
                   </div>
                 </PressableCard>

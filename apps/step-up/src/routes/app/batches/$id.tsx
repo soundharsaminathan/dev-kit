@@ -10,6 +10,8 @@ import {
   Select,
   SelectContent,
   SelectItem,
+  SelectItemDescription,
+  SelectItemLabel,
   SelectTrigger,
   SelectValue,
 } from "@dev-ui/components/select";
@@ -40,9 +42,13 @@ import type { CertificateTemplate } from "@/modules/certificates/types";
 import { BatchChatButton } from "@/modules/chat/batch-chat-button";
 import { ApiState } from "@/modules/ui/api-state";
 import { AppDrawer } from "@/modules/ui/app-drawer";
+import { AppSheet } from "@/modules/ui/app-sheet";
 import { FormInput } from "@/modules/ui/form-input";
 import { ImageCropSheet } from "@/modules/ui/image-crop-sheet";
 import { PageHeader } from "@/modules/ui/page-header";
+import staff from "@/modules/ui/staff.module.scss";
+import { ErrorState } from "@/modules/ui/states";
+import { TouchButton } from "@/modules/ui/touch-button";
 import styles from "./new.module.scss";
 
 type BatchSchedule = {
@@ -191,6 +197,7 @@ function EditBatchPage() {
   const queryClient = useQueryClient();
   const { toast } = useToastContext("EditBatchPage");
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   const query = useQuery({
     queryKey: ["batch", id],
@@ -200,6 +207,7 @@ function EditBatchPage() {
   const deleteBatch = useMutation({
     mutationFn: () => api.delete(`/batches/${id}`),
     onSuccess: async () => {
+      setDeleteOpen(false);
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["batches", studioId] }),
         queryClient.removeQueries({ queryKey: ["batch", id] }),
@@ -210,16 +218,6 @@ function EditBatchPage() {
         variant: "success",
       });
       await navigate({ to: "/app/batches" });
-    },
-    onError: (error: unknown) => {
-      toast({
-        title: "Couldn’t delete batch",
-        description:
-          error instanceof Error
-            ? error.message
-            : "The batch could not be deleted.",
-        variant: "error",
-      });
     },
   });
 
@@ -254,16 +252,8 @@ function EditBatchPage() {
             {canDelete ? (
               <Button
                 variant="danger"
-                isPending={deleteBatch.isPending}
-                onClick={() => {
-                  if (
-                    window.confirm(
-                      `Delete “${query.data?.name}”? This cannot be undone.`,
-                    )
-                  ) {
-                    deleteBatch.mutate();
-                  }
-                }}
+                data-testid="delete-batch"
+                onClick={() => setDeleteOpen(true)}
               >
                 Delete
               </Button>
@@ -274,14 +264,6 @@ function EditBatchPage() {
           </div>
         }
       />
-
-      {deleteBatch.isError ? (
-        <p className={styles.error} role="alert">
-          {deleteBatch.error instanceof Error
-            ? deleteBatch.error.message
-            : "The batch could not be deleted."}
-        </p>
-      ) : null}
 
       {query.isLoading ? (
         <BatchDetailSkeleton />
@@ -340,6 +322,50 @@ function EditBatchPage() {
           )}
         </ApiState>
       )}
+
+      <AppSheet
+        isOpen={deleteOpen}
+        onOpenChange={(open) => {
+          if (!open && !deleteBatch.isPending) {
+            setDeleteOpen(false);
+          }
+        }}
+        title="Delete batch"
+      >
+        <div className={staff.sheetStack}>
+          <p className={staff.rowMeta}>
+            Delete “{query.data?.name}”? This cannot be undone.
+          </p>
+          {deleteBatch.isError ? (
+            <ErrorState
+              description={
+                deleteBatch.error instanceof Error
+                  ? deleteBatch.error.message
+                  : "The batch could not be deleted."
+              }
+            />
+          ) : null}
+          <div className={staff.sheetActions}>
+            <TouchButton
+              variant="default"
+              fullWidth
+              isDisabled={deleteBatch.isPending}
+              onClick={() => setDeleteOpen(false)}
+            >
+              Cancel
+            </TouchButton>
+            <TouchButton
+              variant="danger"
+              fullWidth
+              isPending={deleteBatch.isPending}
+              data-testid="confirm-delete-batch"
+              onClick={() => deleteBatch.mutate()}
+            >
+              Delete batch
+            </TouchButton>
+          </div>
+        </div>
+      </AppSheet>
     </section>
   );
 }
@@ -638,9 +664,10 @@ function EditBatchForm({
               <SelectItem
                 key={branch.id}
                 id={branch.id}
-                textValue={`${branch.name} — ${branch.address}`}
+                textValue={branch.name}
               >
-                {branch.name} — {branch.address}
+                <SelectItemLabel>{branch.name}</SelectItemLabel>
+                <SelectItemDescription>{branch.address}</SelectItemDescription>
               </SelectItem>
             ))}
           </SelectContent>
