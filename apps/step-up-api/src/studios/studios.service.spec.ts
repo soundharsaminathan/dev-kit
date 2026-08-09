@@ -394,30 +394,29 @@ describe("StudiosService", () => {
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
-  it("deletes a studio after clearing members and restrict blockers", async () => {
+  it("deletes a studio after clearing members, linked orphans, and blockers", async () => {
     prisma.studio.findUnique.mockResolvedValue({
       id: "studio-1",
       name: "Nova Dance",
     });
-    prisma.user.findMany.mockResolvedValue([
-      { id: "owner-1" },
-      { id: "staff-1" },
-    ]);
-    prisma.$transaction.mockImplementation(async (fn) => {
-      const tx = {
-        contestCertificate: {
-          deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
-        },
-        contest: { deleteMany: vi.fn().mockResolvedValue({ count: 0 }) },
-        batch: { deleteMany: vi.fn().mockResolvedValue({ count: 0 }) },
-        user: {
-          updateMany: vi.fn().mockResolvedValue({ count: 2 }),
-          deleteMany: vi.fn().mockResolvedValue({ count: 2 }),
-        },
-        studio: { delete: vi.fn().mockResolvedValue({ id: "studio-1" }) },
-      };
-      return fn(tx);
-    });
+    prisma.user.findMany
+      .mockResolvedValueOnce([{ id: "owner-1" }, { id: "staff-1" }])
+      .mockResolvedValueOnce([{ id: "orphan-student-1" }]);
+
+    const tx = {
+      contestCertificate: {
+        deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
+      },
+      contest: { deleteMany: vi.fn().mockResolvedValue({ count: 0 }) },
+      batch: { deleteMany: vi.fn().mockResolvedValue({ count: 0 }) },
+      contestEntry: { deleteMany: vi.fn().mockResolvedValue({ count: 0 }) },
+      user: {
+        updateMany: vi.fn().mockResolvedValue({ count: 2 }),
+        deleteMany: vi.fn().mockResolvedValue({ count: 3 }),
+      },
+      studio: { delete: vi.fn().mockResolvedValue({ id: "studio-1" }) },
+    };
+    prisma.$transaction.mockImplementation(async (fn) => fn(tx));
 
     const result = await service.deleteStudio("studio-1");
 
@@ -425,6 +424,29 @@ describe("StudiosService", () => {
       deleted: true,
       id: "studio-1",
       name: "Nova Dance",
+    });
+    expect(prisma.user.findMany).toHaveBeenCalledTimes(2);
+    expect(tx.contestEntry.deleteMany).toHaveBeenCalledWith({
+      where: {
+        registeredById: {
+          in: expect.arrayContaining([
+            "owner-1",
+            "staff-1",
+            "orphan-student-1",
+          ]),
+        },
+      },
+    });
+    expect(tx.user.deleteMany).toHaveBeenCalledWith({
+      where: {
+        id: {
+          in: expect.arrayContaining([
+            "owner-1",
+            "staff-1",
+            "orphan-student-1",
+          ]),
+        },
+      },
     });
     expect(prisma.$transaction).toHaveBeenCalledOnce();
   });

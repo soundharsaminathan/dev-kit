@@ -463,11 +463,62 @@ export class StudiosService {
       throw new NotFoundException("Studio not found");
     }
 
-    const members = await this.prisma.user.findMany({
-      where: { studioId: id },
-      select: { id: true },
-    });
-    const memberIds = members.map((member) => member.id);
+    // Collect before cascading studio data away — null-studio students only
+    // show up through bookings/enrollments/etc. while those rows still exist.
+    const [members, linkedOrphans] = await Promise.all([
+      this.prisma.user.findMany({
+        where: { studioId: id },
+        select: { id: true },
+      }),
+      this.prisma.user.findMany({
+        where: {
+          studioId: null,
+          role: UserRole.STUDENT,
+          OR: [
+            { bookings: { some: { studioId: id } } },
+            { batchEnrollments: { some: { batch: { studioId: id } } } },
+            { invoices: { some: { studioId: id } } },
+            { studentGoals: { some: { studioId: id } } },
+            {
+              membershipSeats: {
+                some: { membership: { subscription: { studioId: id } } },
+              },
+            },
+            {
+              purchasedMemberships: {
+                some: { subscription: { studioId: id } },
+              },
+            },
+            { preferredBranch: { studioId: id } },
+            {
+              attendanceRecords: {
+                some: { session: { batch: { studioId: id } } },
+              },
+            },
+            {
+              contestEntryMemberships: {
+                some: {
+                  entry: { category: { contest: { studioId: id } } },
+                },
+              },
+            },
+            {
+              contestEntriesRegistered: {
+                some: { category: { contest: { studioId: id } } },
+              },
+            },
+          ],
+        },
+        select: { id: true },
+      }),
+    ]);
+
+    const userIds = [
+      ...new Set([
+        ...members.map((member) => member.id),
+        ...linkedOrphans.map((user) => user.id),
+      ]),
+    ];
 
     await this.prisma.$transaction(async (tx) => {
       // Contest certificates Restrict template deletes; clear them first.
@@ -478,6 +529,13 @@ export class StudiosService {
       // Batches Restrict branch deletes; remove batches before studio cascade.
       await tx.batch.deleteMany({ where: { studioId: id } });
 
+      if (userIds.length > 0) {
+        // registeredById has no onDelete; clear before wiping users.
+        await tx.contestEntry.deleteMany({
+          where: { registeredById: { in: userIds } },
+        });
+      }
+
       await tx.user.updateMany({
         where: { studioId: id },
         data: { studioId: null, preferredBranchId: null },
@@ -485,8 +543,8 @@ export class StudiosService {
 
       await tx.studio.delete({ where: { id } });
 
-      if (memberIds.length > 0) {
-        await tx.user.deleteMany({ where: { id: { in: memberIds } } });
+      if (userIds.length > 0) {
+        await tx.user.deleteMany({ where: { id: { in: userIds } } });
       }
     });
 
