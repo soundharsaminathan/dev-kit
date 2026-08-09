@@ -27,6 +27,8 @@ import {
 import {
   allocateFamilyDiscount,
   attributionTargetsForInvoice,
+  batchIdsForInvoiceDisplay,
+  batchLabelForInvoice,
   type InvoiceCombineMeta,
   parseCombineMeta,
   parsePurchaseMeta,
@@ -152,20 +154,72 @@ export class BillingService {
     });
 
     const purchaseSubIds = new Set<string>();
+    const studentIds = new Set<string>();
     for (const invoice of invoices) {
+      studentIds.add(invoice.studentId);
+      const combineMeta = parseCombineMeta(invoice.combineMeta);
+      for (const source of combineMeta?.sources ?? []) {
+        studentIds.add(source.studentId);
+      }
       if (invoice.membership?.subscription) continue;
       const meta = parsePurchaseMeta(invoice.purchaseMeta);
       if (meta) purchaseSubIds.add(meta.subscriptionId);
     }
 
-    const purchaseSubs =
+    const [purchaseSubs, enrollments] = await Promise.all([
       purchaseSubIds.size > 0
-        ? await this.prisma.subscription.findMany({
+        ? this.prisma.subscription.findMany({
             where: { id: { in: [...purchaseSubIds] } },
             select: { id: true, kind: true, name: true },
           })
-        : [];
+        : Promise.resolve(
+            [] as Array<{ id: string; kind: string; name: string }>,
+          ),
+      studentIds.size > 0
+        ? this.prisma.batchEnrollment.findMany({
+            where: {
+              studentId: { in: [...studentIds] },
+              batch: { studioId },
+              ...ACTIVE_ENROLLMENT_WHERE,
+            },
+            select: { studentId: true, batchId: true },
+          })
+        : Promise.resolve(
+            [] as Array<{ studentId: string; batchId: string }>,
+          ),
+    ]);
     const purchaseSubById = new Map(purchaseSubs.map((s) => [s.id, s]));
+    const studentBatchMap = new Map<string, Set<string>>();
+    for (const enrollment of enrollments) {
+      const batchIds = studentBatchMap.get(enrollment.studentId) ?? new Set();
+      batchIds.add(enrollment.batchId);
+      studentBatchMap.set(enrollment.studentId, batchIds);
+    }
+
+    const batchIdsToResolve = new Set<string>();
+    for (const invoice of invoices) {
+      const purchaseMeta = parsePurchaseMeta(invoice.purchaseMeta);
+      const combineMeta = parseCombineMeta(invoice.combineMeta);
+      for (const batchId of batchIdsForInvoiceDisplay({
+        studentId: invoice.studentId,
+        purchaseMeta,
+        combineMeta,
+        studentBatchMap,
+      })) {
+        batchIdsToResolve.add(batchId);
+      }
+    }
+
+    const batches =
+      batchIdsToResolve.size > 0
+        ? await this.prisma.batch.findMany({
+            where: { id: { in: [...batchIdsToResolve] }, studioId },
+            select: { id: true, name: true },
+          })
+        : [];
+    const batchNameById = new Map(
+      batches.map((batch) => [batch.id, batch.name] as const),
+    );
 
     return invoices.map((invoice) => {
       const purchaseMeta = parsePurchaseMeta(invoice.purchaseMeta);
@@ -192,6 +246,13 @@ export class BillingService {
         null;
       const planName =
         invoice.membership?.subscription?.name ?? purchaseSub?.name ?? null;
+      const { batchId, batchName } = batchLabelForInvoice({
+        studentId: invoice.studentId,
+        purchaseMeta,
+        combineMeta,
+        studentBatchMap,
+        batchNameById,
+      });
 
       return {
         ...invoice,
@@ -204,6 +265,8 @@ export class BillingService {
         kind,
         purchaseMeta,
         combineMeta,
+        batchId,
+        batchName,
         familySummary:
           kind === "FAMILY"
             ? {
@@ -230,9 +293,76 @@ export class BillingService {
 
   async listForStudent(actor: DecryptedUser, studentId: string) {
     await this.assertCanAccessStudentInvoices(actor, studentId);
-    return this.prisma.invoice.findMany({
+    const invoices = await this.prisma.invoice.findMany({
       where: { studentId },
+      include: {
+        membership: { select: { periodStart: true } },
+      },
       orderBy: { id: "desc" },
+    });
+
+    const studioId = actor.studioId;
+    const enrollments = studioId
+      ? await this.prisma.batchEnrollment.findMany({
+          where: {
+            studentId,
+            batch: { studioId },
+            ...ACTIVE_ENROLLMENT_WHERE,
+          },
+          select: { studentId: true, batchId: true },
+        })
+      : [];
+    const studentBatchMap = new Map<string, Set<string>>([
+      [studentId, new Set(enrollments.map((row) => row.batchId))],
+    ]);
+
+    const batchIdsToResolve = new Set<string>();
+    for (const invoice of invoices) {
+      const purchaseMeta = parsePurchaseMeta(invoice.purchaseMeta);
+      const combineMeta = parseCombineMeta(invoice.combineMeta);
+      for (const batchId of batchIdsForInvoiceDisplay({
+        studentId: invoice.studentId,
+        purchaseMeta,
+        combineMeta,
+        studentBatchMap,
+      })) {
+        batchIdsToResolve.add(batchId);
+      }
+    }
+
+    const batches =
+      batchIdsToResolve.size > 0
+        ? await this.prisma.batch.findMany({
+            where: {
+              id: { in: [...batchIdsToResolve] },
+              ...(studioId ? { studioId } : {}),
+            },
+            select: { id: true, name: true },
+          })
+        : [];
+    const batchNameById = new Map(
+      batches.map((batch) => [batch.id, batch.name] as const),
+    );
+
+    return invoices.map((invoice) => {
+      const purchaseMeta = parsePurchaseMeta(invoice.purchaseMeta);
+      const combineMeta = parseCombineMeta(invoice.combineMeta);
+      const { batchId, batchName } = batchLabelForInvoice({
+        studentId: invoice.studentId,
+        purchaseMeta,
+        combineMeta,
+        studentBatchMap,
+        batchNameById,
+      });
+      return {
+        ...invoice,
+        amount: Number(invoice.amount),
+        dueDate: invoice.membership?.periodStart?.toISOString() ?? null,
+        batchId,
+        batchName,
+        purchaseMeta,
+        combineMeta,
+      };
     });
   }
 

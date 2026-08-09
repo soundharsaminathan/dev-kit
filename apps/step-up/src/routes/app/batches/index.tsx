@@ -53,9 +53,6 @@ function applyDraft(
   if (draft.category !== "ALL") {
     next = next.filter((batch) => batch.category === draft.category);
   }
-  if (draft.style) {
-    next = next.filter((batch) => batch.styleBadge === draft.style);
-  }
   if (draft.search) {
     next = next.filter((batch) => matchesSearch(batch, draft.search));
   }
@@ -67,7 +64,6 @@ function BatchesPage() {
   const studioId = useStudioId();
   const [status, setStatus] = useState("ALL");
   const [category, setCategory] = useState("ALL");
-  const [style, setStyle] = useState<string | null>(null);
   const [search, setSearch] = useState("");
 
   const query = useQuery({
@@ -75,23 +71,14 @@ function BatchesPage() {
     queryFn: () => api.get<DiscoverBatch[]>(`/batches/studio/${studioId}`),
   });
 
-  const styleChips = useMemo(() => {
-    const stylesSet = new Set<string>();
-    for (const batch of query.data ?? []) {
-      if (batch.styleBadge) stylesSet.add(batch.styleBadge);
-    }
-    return [...stylesSet].sort().map((name) => ({ id: name, label: name }));
-  }, [query.data]);
-
   const filtered = useMemo(
     () =>
       applyDraft(query.data ?? [], {
         status,
         category,
-        style,
         search,
       }),
-    [query.data, status, category, style, search],
+    [query.data, status, category, search],
   );
 
   function countMatches(draft: BatchFiltersDraft) {
@@ -101,7 +88,6 @@ function BatchesPage() {
   function clearFilters() {
     setStatus("ALL");
     setCategory("ALL");
-    setStyle(null);
     setSearch("");
   }
 
@@ -120,13 +106,10 @@ function BatchesPage() {
           <BatchFiltersToolbar
             status={status}
             category={category}
-            style={style}
             search={search}
-            styleChips={styleChips}
             countMatches={countMatches}
             onStatusChange={setStatus}
             onCategoryChange={setCategory}
-            onStyleChange={setStyle}
             onSearchChange={setSearch}
           />
 

@@ -6,13 +6,10 @@ import { BatchFiltersToolbar } from "./batch-filters-toolbar";
 const defaultProps = {
   status: "ALL",
   category: "ALL",
-  style: null as string | null,
   search: "",
-  styleChips: [] as Array<{ id: string; label: string }>,
   countMatches: () => 0,
   onStatusChange: vi.fn(),
   onCategoryChange: vi.fn(),
-  onStyleChange: vi.fn(),
   onSearchChange: vi.fn(),
 };
 

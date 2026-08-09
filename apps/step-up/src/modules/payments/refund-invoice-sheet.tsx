@@ -114,11 +114,16 @@ export function RefundInvoiceSheet({
       {invoice ? (
         <div className={staff.sheetStack}>
           <p className={staff.rowMeta}>
-            Paid {formatPrice(invoice.amount)}
-            {(invoice.refundedAmount ?? 0) > 0
-              ? ` · already refunded ${formatPrice(invoice.refundedAmount ?? 0)}`
-              : ""}
-            {` · up to ${formatPrice(maxRefund)} remaining`}
+            {[
+              invoice.batchName,
+              `Paid ${formatPrice(invoice.amount)}`,
+              (invoice.refundedAmount ?? 0) > 0
+                ? `already refunded ${formatPrice(invoice.refundedAmount ?? 0)}`
+                : null,
+              `up to ${formatPrice(maxRefund)} remaining`,
+            ]
+              .filter(Boolean)
+              .join(" · ")}
           </p>
           <FormInput
             label="Refund amount"

@@ -1,4 +1,5 @@
 import { Badge } from "@dev-ui/components/badge";
+import { Checkbox } from "@dev-ui/components/checkbox";
 import { useToastContext } from "@dev-ui/components/toast";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
@@ -177,7 +178,13 @@ export function CollectPaymentSheet({
         <div className={staff.sheetStack}>
           <InvoiceBill
             heading={invoice.student?.name ?? "Invoice"}
-            meta={`${isFamily ? "Family pack" : "Individual"} · Invoice ${invoice.id.slice(-6).toUpperCase()}`}
+            meta={[
+              isFamily ? "Family pack" : "Individual",
+              invoice.batchName,
+              `Invoice ${invoice.id.slice(-6).toUpperCase()}`,
+            ]
+              .filter(Boolean)
+              .join(" · ")}
             badge={
               <Badge
                 variant={invoice.status === "OVERDUE" ? "danger" : "neutral"}
@@ -226,22 +233,24 @@ export function CollectPaymentSheet({
             />
           ) : null}
           <div className={staff.sheetActions}>
-            <TouchButton
-              variant={paymentMethod === "CASH" ? "primary" : "default"}
-              fullWidth
+            <Checkbox
+              isSelected={paymentMethod === "CASH"}
               isDisabled={markPaid.isPending}
-              onClick={() => setPaymentMethod("CASH")}
+              onChange={(selected) =>
+                setPaymentMethod(selected ? "CASH" : null)
+              }
             >
               Cash
-            </TouchButton>
-            <TouchButton
-              variant={paymentMethod === "UPI_MANUAL" ? "primary" : "default"}
-              fullWidth
+            </Checkbox>
+            <Checkbox
+              isSelected={paymentMethod === "UPI_MANUAL"}
               isDisabled={markPaid.isPending}
-              onClick={() => setPaymentMethod("UPI_MANUAL")}
+              onChange={(selected) =>
+                setPaymentMethod(selected ? "UPI_MANUAL" : null)
+              }
             >
               UPI
-            </TouchButton>
+            </Checkbox>
             <TouchButton
               variant="primary"
               fullWidth

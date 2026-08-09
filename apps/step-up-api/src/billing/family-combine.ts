@@ -20,6 +20,10 @@ export type CombineSource = {
   purchaseMeta?: InvoicePurchaseMeta | null;
 };
 
+export type InvoiceCombineMeta = {
+  sources: CombineSource[];
+};
+
 export function parsePurchaseMeta(value: unknown): InvoicePurchaseMeta | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     return null;
@@ -89,9 +93,56 @@ export function batchIdsForInvoiceAttribution(args: {
   return [];
 }
 
-export type InvoiceCombineMeta = {
-  sources: CombineSource[];
-};
+/** Batch ids to show on invoice cards (primary meta, seats, combine sources, or single enrollment). */
+export function batchIdsForInvoiceDisplay(args: {
+  studentId: string;
+  purchaseMeta?: InvoicePurchaseMeta | null;
+  combineMeta?: InvoiceCombineMeta | null;
+  studentBatchMap: Map<string, Set<string>>;
+}): string[] {
+  if (args.combineMeta?.sources.length) {
+    const fromSources = [
+      ...new Set(
+        args.combineMeta.sources.flatMap((source) => {
+          if (source.batchId) {
+            return [source.batchId];
+          }
+          return batchIdsForInvoiceAttribution({
+            studentId: source.studentId,
+            purchaseMeta: source.purchaseMeta ?? null,
+            studentBatchMap: args.studentBatchMap,
+          });
+        }),
+      ),
+    ];
+    if (fromSources.length > 0) {
+      return fromSources;
+    }
+  }
+
+  return batchIdsForInvoiceAttribution({
+    studentId: args.studentId,
+    purchaseMeta: args.purchaseMeta ?? null,
+    studentBatchMap: args.studentBatchMap,
+  });
+}
+
+export function batchLabelForInvoice(args: {
+  studentId: string;
+  purchaseMeta?: InvoicePurchaseMeta | null;
+  combineMeta?: InvoiceCombineMeta | null;
+  studentBatchMap: Map<string, Set<string>>;
+  batchNameById: Map<string, string>;
+}): { batchId: string | null; batchName: string | null } {
+  const batchIds = batchIdsForInvoiceDisplay(args);
+  const names = batchIds
+    .map((batchId) => args.batchNameById.get(batchId))
+    .filter((name): name is string => Boolean(name));
+  return {
+    batchId: batchIds[0] ?? null,
+    batchName: names.length > 0 ? names.join(" · ") : null,
+  };
+}
 
 export function roundMoney(value: number) {
   return Math.round(value * 100) / 100;

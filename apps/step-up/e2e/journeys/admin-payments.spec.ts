@@ -72,7 +72,7 @@ test.describe("admin payments @critical", () => {
     ).toBeVisible();
 
     await page.getByTestId(`mark-paid-${invoice.id}`).click();
-    await page.getByRole("button", { name: /^Cash$/i }).click();
+    await page.getByRole("checkbox", { name: /^Cash$/i }).click();
 
     const [response] = await Promise.all([
       waitForApiResponse(page, {
@@ -189,7 +189,7 @@ test.describe("admin payments @critical", () => {
     expect(combineResponse.ok()).toBeTruthy();
     const combined = (await combineResponse.json()) as { id: string };
 
-    await page.getByRole("button", { name: /^Cash$/i }).click();
+    await page.getByRole("checkbox", { name: /^Cash$/i }).click();
     const [paidResponse] = await Promise.all([
       waitForApiResponse(page, {
         method: "PATCH",

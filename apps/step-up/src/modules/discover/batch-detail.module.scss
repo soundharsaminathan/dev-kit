@@ -110,6 +110,118 @@
   font-weight: 600;
 }
 
+.locationCard {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3, 0.75rem);
+  padding: var(--space-2, 0.5rem);
+  padding-inline-end: var(--space-3, 0.75rem);
+  border-radius: var(--radius-2xl, 1.25rem);
+  background: var(--color-card, var(--color-bg-elevated, var(--color-bg)));
+  border: 1px solid color-mix(in srgb, var(--color-fg) 8%, transparent);
+  box-shadow: var(--shadow-sm, 0 1px 3px rgb(0 0 0 / 6%));
+  color: inherit;
+  text-decoration: none;
+  transition:
+    transform var(--interaction-transition-fast, 120ms) ease,
+    border-color var(--interaction-transition-fast, 120ms) ease,
+    box-shadow var(--interaction-transition-fast, 120ms) ease,
+    background-color var(--interaction-transition-fast, 120ms) ease;
+
+  &:not([data-static=""]):hover {
+    border-color: color-mix(in srgb, var(--color-primary) 36%, transparent);
+    background: color-mix(in srgb, var(--color-primary) 6%, transparent);
+    box-shadow: var(--shadow-md, 0 4px 12px rgb(0 0 0 / 8%));
+  }
+
+  &:not([data-static=""]):active {
+    transform: scale(var(--interaction-press-scale, 0.97));
+  }
+}
+
+.locationMedia {
+  flex-shrink: 0;
+  width: 4.25rem;
+  height: 4.25rem;
+  border-radius: var(--radius-xl, 1rem);
+  overflow: hidden;
+  background: color-mix(in srgb, var(--color-primary) 14%, var(--color-bg));
+}
+
+.locationImg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.locationFallback {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  background:
+    radial-gradient(
+      circle at 30% 20%,
+      color-mix(in srgb, var(--color-primary) 36%, transparent),
+      transparent 60%
+    ),
+    linear-gradient(
+      160deg,
+      color-mix(in srgb, var(--color-primary) 22%, var(--color-bg)),
+      var(--color-bg)
+    );
+}
+
+.locationFallbackIcon {
+  width: 1.35rem;
+  height: 1.35rem;
+  color: color-mix(in srgb, var(--color-primary) 75%, var(--color-fg));
+}
+
+.locationCopy {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.locationLabel {
+  margin: 0;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--color-fg) 48%, transparent);
+}
+
+.locationName {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+}
+
+.locationAddress {
+  margin: 0.15rem 0 0;
+  font-size: 0.8125rem;
+  line-height: 1.35;
+  color: color-mix(in srgb, var(--color-fg) 58%, transparent);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.locationChevron {
+  flex-shrink: 0;
+  width: 1.125rem;
+  height: 1.125rem;
+  color: color-mix(in srgb, var(--color-fg) 36%, transparent);
+}
+
 .section {
   display: flex;
   flex-direction: column;
@@ -260,11 +372,13 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .planCard {
+  .planCard,
+  .locationCard {
     transition-duration: 0ms;
   }
 
-  .planCard:active:not(:disabled) {
+  .planCard:active:not(:disabled),
+  .locationCard:not([data-static=""]):active {
     transform: none;
   }
 }

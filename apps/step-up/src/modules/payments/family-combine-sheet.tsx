@@ -187,7 +187,13 @@ export function FamilyCombineSheet({
                       </span>
                     </div>
                     <p className={staff.rowMeta}>
-                      {invoice.status} · {invoice.id.slice(-6).toUpperCase()}
+                      {[
+                        invoice.batchName,
+                        invoice.status,
+                        invoice.id.slice(-6).toUpperCase(),
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
                     </p>
                     <Checkbox
                       isSelected={checked}

@@ -4,11 +4,13 @@ import { expectOk, expectStatus } from "./helpers";
 
 test.describe("sessions schedule HTTP @http", () => {
   test("trainer can create, reschedule, and cancel a session @http", async () => {
+    // Quiet UTC hour + unique far-future day avoids collisions with seeded
+    // weekly sessions and leftovers from prior timed-out creates.
+    const dayOffset = 50 + Math.floor(Math.random() * 40);
     const start = new Date();
-    start.setUTCDate(start.getUTCDate() + 14);
-    start.setUTCHours(15, 0, 0, 0);
-    const end = new Date(start);
-    end.setUTCHours(16, 0, 0, 0);
+    start.setUTCDate(start.getUTCDate() + dayOffset);
+    start.setUTCHours(2, Math.floor(Math.random() * 50), Math.floor(Math.random() * 50), 0);
+    const end = new Date(start.getTime() + 60 * 60 * 1000);
 
     const created = await expectOk<{
       id: string;
@@ -25,32 +27,37 @@ test.describe("sessions schedule HTTP @http", () => {
     });
     expect(created.status).toBe("SCHEDULED");
 
-    const movedStart = new Date(start);
-    movedStart.setUTCHours(17, 0, 0, 0);
-    const movedEnd = new Date(movedStart);
-    movedEnd.setUTCHours(18, 0, 0, 0);
+    try {
+      const movedStart = new Date(start.getTime() + 15 * 60 * 1000);
+      const movedEnd = new Date(movedStart.getTime() + 60 * 60 * 1000);
 
-    const updated = await expectOk<{ startsAt: string; endsAt: string }>(
-      "TRAINER",
-      `/sessions/${created.id}`,
-      {
-        method: "PATCH",
-        body: JSON.stringify({
-          startsAt: movedStart.toISOString(),
-          endsAt: movedEnd.toISOString(),
-        }),
-      },
-    );
-    expect(new Date(updated.startsAt).toISOString()).toBe(
-      movedStart.toISOString(),
-    );
+      const updated = await expectOk<{ startsAt: string; endsAt: string }>(
+        "TRAINER",
+        `/sessions/${created.id}`,
+        {
+          method: "PATCH",
+          body: JSON.stringify({
+            startsAt: movedStart.toISOString(),
+            endsAt: movedEnd.toISOString(),
+          }),
+        },
+      );
+      expect(new Date(updated.startsAt).toISOString()).toBe(
+        movedStart.toISOString(),
+      );
 
-    const cancelled = await expectOk<{ status: string }>(
-      "TRAINER",
-      `/sessions/${created.id}`,
-      { method: "DELETE" },
-    );
-    expect(cancelled.status).toBe("CANCELLED");
+      const cancelled = await expectOk<{ status: string }>(
+        "TRAINER",
+        `/sessions/${created.id}`,
+        { method: "DELETE" },
+      );
+      expect(cancelled.status).toBe("CANCELLED");
+    } catch (error) {
+      await expectOk("TRAINER", `/sessions/${created.id}`, {
+        method: "DELETE",
+      }).catch(() => undefined);
+      throw error;
+    }
   });
 
   test("student cannot reschedule or delete sessions @http", async () => {

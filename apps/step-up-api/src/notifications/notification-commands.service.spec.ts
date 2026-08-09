@@ -87,26 +87,41 @@ describe("NotificationCommandsService.create", () => {
     expect(unreadCache.increment).toHaveBeenCalledWith("student-1");
   });
 
-  it("returns existing notification for the same dedupeKey (no duplicate)", async () => {
+  it("refreshes MISSED_SESSION rows on dedupe hit and re-opens unread", async () => {
     const existing = {
       id: "notif-existing",
       userId: "student-1",
       type: NotificationType.MISSED_SESSION,
       status: "ACTIVE",
       deletedAt: null,
+      readAt: new Date("2026-07-19T00:00:00.000Z"),
+      actorId: null,
+      entityType: "session",
+      entityId: "session-1",
+    };
+    const refreshed = {
+      ...existing,
       readAt: null,
+      title: "Missed session",
+      body: "Absent",
     };
     prisma.notification.findUnique.mockResolvedValue(existing);
+    prisma.notification.update.mockResolvedValue(refreshed);
+    outbox.append.mockResolvedValue(undefined);
+    unreadCache.increment.mockResolvedValue(1);
 
     const result = await service.create({
       userId: "student-1",
       type: NotificationType.MISSED_SESSION,
+      batchName: "Kids Hip-Hop",
+      sessionDate: "2026-07-20",
       dedupeKey: "MISSED_SESSION:session-1:student-1",
     });
 
-    expect(result).toEqual(existing);
+    expect(result.readAt).toBeNull();
+    expect(prisma.notification.update).toHaveBeenCalled();
     expect(prisma.notification.create).not.toHaveBeenCalled();
-    expect(unreadCache.increment).not.toHaveBeenCalled();
+    expect(unreadCache.increment).toHaveBeenCalledWith("student-1");
   });
 
   it("refreshes CHAT_MESSAGE rows on dedupe hit and re-opens unread", async () => {
@@ -150,14 +165,18 @@ describe("NotificationCommandsService.create", () => {
   });
 
   it("returns existing row when create races with P2002 unique violation", async () => {
+    const existing = {
+      id: "notif-race",
+      userId: "student-1",
+      type: NotificationType.PAYMENT_OVERDUE,
+      status: "ACTIVE",
+      deletedAt: null,
+      readAt: null,
+    };
     prisma.notification.findUnique
       .mockResolvedValueOnce(null)
-      .mockResolvedValueOnce({
-        id: "notif-race",
-        userId: "student-1",
-        type: NotificationType.PAYMENT_OVERDUE,
-      });
-    prisma.$transaction.mockRejectedValue({ code: "P2002" });
+      .mockResolvedValueOnce(existing);
+    prisma.$transaction.mockRejectedValueOnce({ code: "P2002" });
 
     const result = await service.create({
       userId: "student-1",
@@ -165,7 +184,52 @@ describe("NotificationCommandsService.create", () => {
       dedupeKey: "PAYMENT_OVERDUE:inv-1:2026-07-20",
     });
 
-    expect(result.id).toBe("notif-race");
+    expect(result).toEqual(existing);
     expect(prisma.notification.findUnique).toHaveBeenCalledTimes(2);
+    expect(prisma.notification.update).not.toHaveBeenCalled();
+  });
+
+  it("reactivates soft-deleted row when create races with P2002", async () => {
+    const existing = {
+      id: "notif-deleted",
+      userId: "student-1",
+      type: NotificationType.MISSED_SESSION,
+      status: "ACTIVE",
+      deletedAt: new Date("2026-07-19T00:00:00.000Z"),
+      readAt: new Date("2026-07-19T00:00:00.000Z"),
+      actorId: null,
+      entityType: "session",
+      entityId: "session-1",
+    };
+    const refreshed = {
+      ...existing,
+      deletedAt: null,
+      readAt: null,
+      title: "Missed session",
+      body: "Absent",
+    };
+    prisma.notification.findUnique
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(existing);
+    prisma.$transaction
+      .mockRejectedValueOnce({ code: "P2002" })
+      .mockImplementationOnce(
+        async (fn: (tx: typeof prisma) => unknown) => fn(prisma),
+      );
+    prisma.notification.update.mockResolvedValue(refreshed);
+    outbox.append.mockResolvedValue(undefined);
+    unreadCache.increment.mockResolvedValue(1);
+
+    const result = await service.create({
+      userId: "student-1",
+      type: NotificationType.MISSED_SESSION,
+      batchName: "Kids Hip-Hop",
+      sessionDate: "2026-07-20",
+      dedupeKey: "MISSED_SESSION:session-1:student-1",
+    });
+
+    expect(result).toEqual(refreshed);
+    expect(prisma.notification.update).toHaveBeenCalled();
+    expect(unreadCache.increment).toHaveBeenCalledWith("student-1");
   });
 });

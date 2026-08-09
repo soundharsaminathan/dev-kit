@@ -718,6 +718,8 @@ describe("BillingService.listForStudent", () => {
     invoice: { findMany: vi.fn() },
     familyMember: { findUnique: vi.fn() },
     parentChild: { findUnique: vi.fn() },
+    batchEnrollment: { findMany: vi.fn() },
+    batch: { findMany: vi.fn() },
   };
   const crypto = {
     decryptUser: vi.fn((user: { name?: string }) => ({
@@ -737,16 +739,34 @@ describe("BillingService.listForStudent", () => {
       notificationsStub as never,
       emailStub as never,
     );
+    prisma.batchEnrollment.findMany.mockResolvedValue([]);
+    prisma.batch.findMany.mockResolvedValue([]);
   });
 
   it("allows a student to list their own invoices", async () => {
-    prisma.invoice.findMany.mockResolvedValue([{ id: "inv-1" }]);
+    prisma.invoice.findMany.mockResolvedValue([
+      {
+        id: "inv-1",
+        studentId: "student-1",
+        amount: 1500,
+        purchaseMeta: null,
+        combineMeta: null,
+        membership: null,
+      },
+    ]);
     await expect(
       service.listForStudent(
         makeUser({ id: "student-1", role: UserRole.STUDENT }),
         "student-1",
       ),
-    ).resolves.toEqual([{ id: "inv-1" }]);
+    ).resolves.toEqual([
+      expect.objectContaining({
+        id: "inv-1",
+        amount: 1500,
+        batchName: null,
+        dueDate: null,
+      }),
+    ]);
   });
 
   it("rejects a student listing another student's invoices", async () => {
@@ -768,14 +788,39 @@ describe("BillingService.listForStudent", () => {
       childUserId: "student-1",
     });
     prisma.familyMember.findUnique.mockResolvedValue(null);
-    prisma.invoice.findMany.mockResolvedValue([{ id: "inv-1" }]);
+    prisma.invoice.findMany.mockResolvedValue([
+      {
+        id: "inv-1",
+        studentId: "student-1",
+        amount: 1500,
+        purchaseMeta: {
+          batchId: "batch-1",
+          subscriptionId: "sub-1",
+          purchaserUserId: "student-1",
+          coveredStudents: [
+            { studentId: "student-1", seatRole: "ADULT", batchId: "batch-1" },
+          ],
+        },
+        combineMeta: null,
+        membership: { periodStart: new Date("2026-07-01T00:00:00.000Z") },
+      },
+    ]);
+    prisma.batch.findMany.mockResolvedValue([
+      { id: "batch-1", name: "Kids Hip-Hop" },
+    ]);
 
     await expect(
       service.listForStudent(
         makeUser({ id: "parent-1", role: UserRole.PARENT }),
         "student-1",
       ),
-    ).resolves.toEqual([{ id: "inv-1" }]);
+    ).resolves.toEqual([
+      expect.objectContaining({
+        id: "inv-1",
+        batchName: "Kids Hip-Hop",
+        dueDate: "2026-07-01T00:00:00.000Z",
+      }),
+    ]);
   });
 });
 
@@ -1036,6 +1081,8 @@ describe("BillingService.listByStudio", () => {
   const prisma = {
     invoice: { findMany: vi.fn() },
     subscription: { findMany: vi.fn() },
+    batchEnrollment: { findMany: vi.fn() },
+    batch: { findMany: vi.fn() },
   };
   const crypto = {
     decryptUser: vi.fn((user: { name?: string }) => ({
@@ -1057,6 +1104,8 @@ describe("BillingService.listByStudio", () => {
       emailStub as never,
     );
     prisma.subscription.findMany.mockResolvedValue([]);
+    prisma.batchEnrollment.findMany.mockResolvedValue([]);
+    prisma.batch.findMany.mockResolvedValue([]);
   });
 
   it("returns studio invoices with decrypted students", async () => {
@@ -1064,6 +1113,7 @@ describe("BillingService.listByStudio", () => {
       {
         id: "inv-1",
         studioId: "studio-1",
+        studentId: "student-1",
         amount: 1500,
         student: { id: "student-1", nameEnc: "x" },
         membership: { id: "mem-1", subscription: { kind: "INDIVIDUAL" } },
@@ -1084,6 +1134,7 @@ describe("BillingService.listByStudio", () => {
     expect(crypto.decryptUser).toHaveBeenCalled();
     expect(rows[0]?.student.name).toBe("Decrypted");
     expect(rows[0]?.kind).toBe("INDIVIDUAL");
+    expect(rows[0]?.batchName).toBeNull();
   });
 
   it("marks family checkout invoices via purchaseMeta", async () => {
@@ -1091,6 +1142,7 @@ describe("BillingService.listByStudio", () => {
       {
         id: "inv-fam",
         studioId: "studio-1",
+        studentId: "parent-1",
         amount: 5000,
         student: { id: "parent-1", nameEnc: "x" },
         membership: null,
@@ -1107,12 +1159,48 @@ describe("BillingService.listByStudio", () => {
     prisma.subscription.findMany.mockResolvedValue([
       { id: "sub-fam", kind: "FAMILY", name: "Family Duo" },
     ]);
+    prisma.batch.findMany.mockResolvedValue([
+      { id: "b1", name: "Adult Hip-Hop" },
+      { id: "b2", name: "Kids Ballet" },
+    ]);
 
     const rows = await service.listByStudio("studio-1");
     expect(rows[0]?.kind).toBe("FAMILY");
     expect(rows[0]?.familySummary?.planName).toBe("Family Duo");
     expect(rows[0]?.familySummary?.adultCount).toBe(1);
     expect(rows[0]?.familySummary?.kidCount).toBe(1);
+    expect(rows[0]?.batchName).toBe("Adult Hip-Hop · Kids Ballet");
+  });
+
+  it("attaches batchName from purchaseMeta.batchId", async () => {
+    prisma.invoice.findMany.mockResolvedValue([
+      {
+        id: "inv-1",
+        studioId: "studio-1",
+        studentId: "student-1",
+        amount: 1500,
+        student: { id: "student-1", nameEnc: "x" },
+        membership: null,
+        purchaseMeta: {
+          batchId: "batch-1",
+          subscriptionId: "sub-1",
+          purchaserUserId: "student-1",
+          coveredStudents: [
+            { studentId: "student-1", seatRole: "ADULT", batchId: "batch-1" },
+          ],
+        },
+      },
+    ]);
+    prisma.subscription.findMany.mockResolvedValue([
+      { id: "sub-1", kind: "INDIVIDUAL", name: "Adult Monthly" },
+    ]);
+    prisma.batch.findMany.mockResolvedValue([
+      { id: "batch-1", name: "Beginner Hip-Hop" },
+    ]);
+
+    const rows = await service.listByStudio("studio-1");
+    expect(rows[0]?.batchId).toBe("batch-1");
+    expect(rows[0]?.batchName).toBe("Beginner Hip-Hop");
   });
 });
 

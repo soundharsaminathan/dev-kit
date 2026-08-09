@@ -111,6 +111,9 @@ function InvoiceCard({
         ? "Family pack"
         : "Individual",
   ];
+  if (invoice.batchName) {
+    metaParts.push(invoice.batchName);
+  }
   if (isFamily && summary?.planName) {
     metaParts.push(summary.planName);
   }
@@ -196,6 +199,7 @@ function InvoiceCard({
                   status: invoice.status,
                   paymentMethod: invoice.paymentMethod,
                   paidAt: invoice.paidAt,
+                  billMonth: invoice.membership?.periodStart,
                   studentName: invoice.student?.name,
                   studioName: studio?.name,
                   studioLogoUrl: studio?.logoUrl,

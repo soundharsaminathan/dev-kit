@@ -39,6 +39,7 @@ export type DiscoverBatch = {
     name: string;
     address?: string | null;
     photos?: string[];
+    coverImageUrl?: string | null;
   } | null;
   danceCategories?: Array<{ name: string; description: string }>;
   sessions?: Array<{

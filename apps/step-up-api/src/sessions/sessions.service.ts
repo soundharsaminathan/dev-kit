@@ -167,14 +167,14 @@ export class SessionsService {
     });
 
     await this.trialSlotsCache.invalidate(batch.studioId);
-    await this.announceScheduleChange(actor, {
+    void this.announceScheduleChange(actor, {
       action: "added",
       sessionId: session.id,
       batchId: batch.id,
       batchName: batch.name,
       startsAt,
       endsAt,
-    });
+    }).catch(() => undefined);
     return session;
   }
 
@@ -218,7 +218,7 @@ export class SessionsService {
     });
 
     await this.trialSlotsCache.invalidate(existing.batch.studioId);
-    await this.announceScheduleChange(actor, {
+    void this.announceScheduleChange(actor, {
       action: "changed",
       sessionId: session.id,
       batchId: existing.batch.id,
@@ -227,7 +227,7 @@ export class SessionsService {
       endsAt,
       previousStartsAt,
       previousEndsAt,
-    });
+    }).catch(() => undefined);
     return session;
   }
 
@@ -254,14 +254,14 @@ export class SessionsService {
     });
 
     await this.trialSlotsCache.invalidate(existing.batch.studioId);
-    await this.announceScheduleChange(actor, {
+    void this.announceScheduleChange(actor, {
       action: "cancelled",
       sessionId: session.id,
       batchId: existing.batch.id,
       batchName: existing.batch.name,
       startsAt: existing.startsAt,
       endsAt: existing.endsAt,
-    });
+    }).catch(() => undefined);
     return session;
   }
 
@@ -337,9 +337,10 @@ export class SessionsService {
     });
 
     const stamp = Date.now();
-    await Promise.all(
-      enrollments.map((enrollment) =>
-        this.notifications.create({
+    try {
+      // Sequential creates avoid Prisma pool contention under parallel e2e load.
+      for (const enrollment of enrollments) {
+        await this.notifications.create({
           userId: enrollment.studentId,
           type: copy.type,
           title: copy.title,
@@ -356,9 +357,11 @@ export class SessionsService {
           actorId: actor.id,
           entityType: "session",
           entityId: input.sessionId,
-        }),
-      ),
-    );
+        });
+      }
+    } catch {
+      // Notifications are best-effort; schedule mutation already succeeded.
+    }
 
     try {
       await this.chat.postBatchSessionCard(actor, input.batchId, {

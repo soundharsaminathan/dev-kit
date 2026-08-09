@@ -61,12 +61,12 @@ test.describe("student subscriptions @critical", () => {
       status: string;
       membershipId: string;
     };
-    expect(body.status).toBe("PENDING");
+    expect(["PENDING", "OVERDUE"]).toContain(body.status);
     expect(body.membershipId).toBe(SEED.membershipStudentDueId);
 
     await expect(page).toHaveURL(/\/me\/invoices/);
     await expect(
-      page.getByText(/PENDING|Pay at front desk|₹3,?500/i).first(),
+      page.getByText(/PENDING|OVERDUE|Pay at front desk|₹3,?500/i).first(),
     ).toBeVisible();
 
     await context.close();

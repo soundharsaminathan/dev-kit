@@ -7,6 +7,8 @@ export type PrintableInvoice = {
   status: string;
   paymentMethod?: string | null | undefined;
   paidAt?: string | Date | null | undefined;
+  /** Billing period month; falls back to paidAt when omitted. */
+  billMonth?: string | Date | null | undefined;
   studentName?: string | null | undefined;
   studioName?: string | null | undefined;
   studioLogoUrl?: string | null | undefined;
@@ -14,6 +16,33 @@ export type PrintableInvoice = {
   studioAddress?: string | null | undefined;
   subtotal?: number | undefined;
 };
+
+export function formatBillMonth(value: string | Date): string {
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return "Unknown";
+  return date
+    .toLocaleString("en-IN", { month: "long", year: "numeric" })
+    .replace(/\s+/g, "");
+}
+
+export function invoiceFileName(invoice: {
+  studentName?: string | null | undefined;
+  billMonth?: string | Date | null | undefined;
+  paidAt?: string | Date | null | undefined;
+}): string {
+  const rawName = invoice.studentName?.trim() || "invoice";
+  const username = rawName
+    .replace(/\s+/g, "_")
+    .replace(/[^\w.-]+/g, "")
+    .replace(/_+/g, "_")
+    .replace(/^_|_$/g, "");
+  const monthSource = invoice.billMonth ?? invoice.paidAt ?? new Date();
+  const billMonth =
+    monthSource instanceof Date || typeof monthSource === "string"
+      ? formatBillMonth(monthSource)
+      : formatBillMonth(new Date());
+  return `${username || "invoice"}_${billMonth}`;
+}
 
 function formatInr(amount: number) {
   return new Intl.NumberFormat("en-IN", {
@@ -86,11 +115,13 @@ export function printInvoice(invoice: PrintableInvoice) {
     ? `<p class="gst">GSTIN: ${escapeHtml(gstNumber)}</p>`
     : "";
 
+  const fileName = invoiceFileName(invoice);
+
   const html = `<!doctype html>
 <html>
 <head>
   <meta charset="utf-8" />
-  <title>Invoice ${escapeHtml(invoice.id)}</title>
+  <title>${escapeHtml(fileName)}</title>
   <style>
     * { box-sizing: border-box; }
     body {

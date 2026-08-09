@@ -1,5 +1,6 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@dev-ui/components/avatar";
 import { Badge } from "@dev-ui/components/badge";
+import { Checkbox } from "@dev-ui/components/checkbox";
 import {
   Menu,
   MenuContent,
@@ -83,6 +84,11 @@ type StudentStudioProfile = {
     status: "PENDING" | "PAID" | "OVERDUE" | "REFUNDED";
     paymentMethod?: "CASH" | "UPI_MANUAL" | "RAZORPAY" | null;
     paidAt?: string | null;
+    batchId?: string | null;
+    batchName?: string | null;
+    membership?: {
+      periodStart?: string | null;
+    } | null;
   }>;
   parents: Array<{
     id: string;
@@ -891,13 +897,22 @@ function StudentDetailPage() {
                       </div>
                       {invoice.paidAt ? (
                         <p className={staff.attentionMeta}>
-                          Paid {formatDate(invoice.paidAt)}
-                          {invoice.paymentMethod
-                            ? ` · ${invoice.paymentMethod.replace("_", " ")}`
-                            : ""}
+                          {[
+                            invoice.batchName,
+                            `Paid ${formatDate(invoice.paidAt)}`,
+                            invoice.paymentMethod
+                              ? invoice.paymentMethod.replace("_", " ")
+                              : null,
+                          ]
+                            .filter(Boolean)
+                            .join(" · ")}
                         </p>
                       ) : (
-                        <p className={staff.attentionMeta}>Not paid yet</p>
+                        <p className={staff.attentionMeta}>
+                          {[invoice.batchName, "Not paid yet"]
+                            .filter(Boolean)
+                            .join(" · ")}
+                        </p>
                       )}
                       {invoice.status !== "PAID" ? (
                         <div className={staff.rowActions}>
@@ -925,6 +940,7 @@ function StudentDetailPage() {
                                 status: invoice.status,
                                 paymentMethod: invoice.paymentMethod,
                                 paidAt: invoice.paidAt,
+                                billMonth: invoice.membership?.periodStart,
                                 studentName: profile.student.name,
                                 studioName: studioQuery.data?.name,
                                 studioLogoUrl: studioQuery.data?.logoUrl,
@@ -1121,22 +1137,24 @@ function StudentDetailPage() {
               />
             ) : null}
             <div className={staff.sheetActions}>
-              <TouchButton
-                variant={paymentMethod === "CASH" ? "primary" : "default"}
-                fullWidth
+              <Checkbox
+                isSelected={paymentMethod === "CASH"}
                 isDisabled={markPaid.isPending}
-                onClick={() => setPaymentMethod("CASH")}
+                onChange={(selected) =>
+                  setPaymentMethod(selected ? "CASH" : null)
+                }
               >
                 Cash
-              </TouchButton>
-              <TouchButton
-                variant={paymentMethod === "UPI_MANUAL" ? "primary" : "default"}
-                fullWidth
+              </Checkbox>
+              <Checkbox
+                isSelected={paymentMethod === "UPI_MANUAL"}
                 isDisabled={markPaid.isPending}
-                onClick={() => setPaymentMethod("UPI_MANUAL")}
+                onChange={(selected) =>
+                  setPaymentMethod(selected ? "UPI_MANUAL" : null)
+                }
               >
                 UPI
-              </TouchButton>
+              </Checkbox>
               <TouchButton
                 variant="primary"
                 fullWidth

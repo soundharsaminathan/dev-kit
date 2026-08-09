@@ -58,6 +58,17 @@ describe("Avatar", () => {
     );
   });
 
+  it("merges className without dropping root styles", () => {
+    render(
+      <Avatar size="sm" className="chat-avatar">
+        <AvatarFallback>AB</AvatarFallback>
+      </Avatar>,
+    );
+    const root = screen.getByText("AB").closest("[data-avatar]");
+    expect(root).toHaveClass("chat-avatar");
+    expect(root?.className.split(/\s+/).length).toBeGreaterThan(1);
+  });
+
   it("shows image and hides fallback when image loads", async () => {
     mockSuccessfulImageLoad();
     render(

@@ -632,10 +632,40 @@ export function BatchDetailPage() {
         {batch.branch ? (
           <div className={styles.section}>
             <h2 className={styles.sectionTitle}>Location</h2>
-            <p>{batch.branch.name}</p>
-            {batch.branch.address ? (
-              <p className={styles.muted}>{batch.branch.address}</p>
-            ) : null}
+            <Link
+              to="/me/locations/$id"
+              params={{ id: batch.branch.id }}
+              className={styles.locationCard}
+            >
+              <div className={styles.locationMedia} aria-hidden>
+                {batch.branch.coverImageUrl || batch.branch.photos?.[0] ? (
+                  <img
+                    src={
+                      batch.branch.coverImageUrl ?? batch.branch.photos?.[0] ?? ""
+                    }
+                    alt=""
+                    className={styles.locationImg}
+                    loading="lazy"
+                  />
+                ) : (
+                  <span className={styles.locationFallback}>
+                    <Icon name="map-pin" className={styles.locationFallbackIcon} />
+                  </span>
+                )}
+              </div>
+              <div className={styles.locationCopy}>
+                <p className={styles.locationLabel}>Studio</p>
+                <p className={styles.locationName}>{batch.branch.name}</p>
+                {batch.branch.address ? (
+                  <p className={styles.locationAddress}>{batch.branch.address}</p>
+                ) : null}
+              </div>
+              <Icon
+                name="chevron-right"
+                className={styles.locationChevron}
+                aria-hidden
+              />
+            </Link>
           </div>
         ) : null}
 

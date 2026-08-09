@@ -207,7 +207,7 @@ test.describe("owner smoke @smoke", () => {
       await page.goto("/app/invoices", { waitUntil: "domcontentloaded" });
       await waitForAppReady(page);
       await page.getByTestId(`mark-paid-${invoice.id}`).click();
-      await page.getByRole("button", { name: /^Cash$/i }).click();
+      await page.getByRole("checkbox", { name: /^Cash$/i }).click();
       const [response] = await Promise.all([
         waitForApiResponse(page, {
           method: "PATCH",

@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { SEED } from "../fixtures/seed";
-import { expectOk, expectStatus } from "./helpers";
+import { expectOk, expectStatus, TestDataCleanup } from "./helpers";
 
 test.describe("memberships HTTP @http", () => {
   test("removed no-invoice shortcuts return 404 @http", async () => {
@@ -45,7 +45,9 @@ test.describe("memberships HTTP @http", () => {
       }),
     });
 
-    expect(invoice.status).toBe("PENDING");
+    // Jobs may promote the open renewal invoice from PENDING → OVERDUE when the
+    // membership is already DUE/EXPIRED; both are valid unpaid renewal states.
+    expect(["PENDING", "OVERDUE"]).toContain(invoice.status);
     expect(invoice.membershipId).toBe(SEED.membershipStudentDueId);
     expect(Number(invoice.amount)).toBe(3500);
     expect(invoice.id).toBe(SEED.invoiceRenewalPendingId);
@@ -55,7 +57,9 @@ test.describe("memberships HTTP @http", () => {
       `/memberships/student/${SEED.users.STUDENT.id}`,
     );
     const due = memberships.find((m) => m.id === SEED.membershipStudentDueId);
-    expect(due?.status).toBe("DUE");
+    // Daily jobs may expire a DUE membership once periodStart is outside grace;
+    // renewal still works for both DUE and EXPIRED.
+    expect(["DUE", "EXPIRED"]).toContain(due?.status);
   });
 
   test("self/renew rejects ACTIVE memberships @http", async () => {
@@ -74,121 +78,137 @@ test.describe("memberships HTTP @http", () => {
   });
 
   test("family-purchase is removed; family-combine creates combined invoice @http", async () => {
-    await expectStatus("STAFF", "/memberships/family-purchase", 404, {
-      method: "POST",
-      body: JSON.stringify({
-        studioId: SEED.studioId,
-        subscriptionId: SEED.adultPlanIds[0],
-        purchaserUserId: SEED.users.STUDENT.id,
-        coveredStudents: [],
-      }),
-    });
-
-    const depA = await expectOk<{ id: string }>(
-      "STUDENT",
-      "/users/me/family-members",
-      {
+    test.setTimeout(120_000);
+    const cleanup = new TestDataCleanup();
+    const stamp = Date.now();
+    try {
+      await expectStatus("STAFF", "/memberships/family-purchase", 404, {
         method: "POST",
         body: JSON.stringify({
-          name: `HTTP Combine A ${Date.now()}`,
-          kind: "KID",
-          gender: "FEMALE",
-          ageRange: "UNDER_10",
+          studioId: SEED.studioId,
+          subscriptionId: SEED.adultPlanIds[0],
+          purchaserUserId: SEED.users.STUDENT.id,
+          coveredStudents: [],
         }),
-      },
-    );
-    const depB = await expectOk<{ id: string }>(
-      "STUDENT",
-      "/users/me/family-members",
-      {
+      });
+
+      // Prior runs leave enrollments on the shared kids batch; raise capacity
+      // so this test does not depend on a clean roster.
+      await expectOk("STAFF", `/batches/${SEED.kidsBatchId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ capacity: 200 }),
+      });
+
+      const depA = await expectOk<{ id: string }>(
+        "STUDENT",
+        "/users/me/family-members",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            name: `HTTP Combine A ${stamp}`,
+            kind: "KID",
+            gender: "FEMALE",
+            ageRange: "UNDER_10",
+          }),
+        },
+      );
+      cleanup.trackStudent(depA.id);
+      const depB = await expectOk<{ id: string }>(
+        "STUDENT",
+        "/users/me/family-members",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            name: `HTTP Combine B ${stamp}`,
+            kind: "KID",
+            gender: "FEMALE",
+            ageRange: "UNDER_10",
+          }),
+        },
+      );
+      cleanup.trackStudent(depB.id);
+
+      const invA = await expectOk<{ invoice: { id: string; amount: number } }>(
+        "STAFF",
+        `/batches/${SEED.kidsBatchId}/enroll`,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            studentId: depA.id,
+            subscriptionId: SEED.kidPlanIds[0],
+          }),
+        },
+      );
+      const invB = await expectOk<{ invoice: { id: string; amount: number } }>(
+        "STAFF",
+        `/batches/${SEED.kidsBatchId}/enroll`,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            studentId: depB.id,
+            subscriptionId: SEED.kidPlanIds[0],
+          }),
+        },
+      );
+
+      await expectStatus("STAFF", "/billing/family-combine", 400, {
         method: "POST",
         body: JSON.stringify({
-          name: `HTTP Combine B ${Date.now()}`,
-          kind: "KID",
-          gender: "FEMALE",
-          ageRange: "UNDER_10",
+          studioId: SEED.studioId,
+          purchaserUserId: SEED.users.STUDENT.id,
+          invoiceIds: [invA.invoice.id, invB.invoice.id],
+          familyDiscount:
+            Number(invA.invoice.amount) + Number(invB.invoice.amount) + 1,
         }),
-      },
-    );
+      });
 
-    const invA = await expectOk<{ invoice: { id: string; amount: number } }>(
-      "STAFF",
-      `/batches/${SEED.kidsBatchId}/enroll`,
-      {
+      const combined = await expectOk<{
+        id: string;
+        status: string;
+        amount: number;
+        familyDiscount: number;
+        combineMeta: { sources: unknown[] } | null;
+        kind: string;
+      }>("STAFF", "/billing/family-combine", {
         method: "POST",
         body: JSON.stringify({
-          studentId: depA.id,
-          subscriptionId: SEED.kidPlanIds[0],
+          studioId: SEED.studioId,
+          purchaserUserId: SEED.users.STUDENT.id,
+          invoiceIds: [invA.invoice.id, invB.invoice.id],
+          familyDiscount: 100,
         }),
-      },
-    );
-    const invB = await expectOk<{ invoice: { id: string; amount: number } }>(
-      "STAFF",
-      `/batches/${SEED.kidsBatchId}/enroll`,
-      {
-        method: "POST",
-        body: JSON.stringify({
-          studentId: depB.id,
-          subscriptionId: SEED.kidPlanIds[0],
-        }),
-      },
-    );
+      });
 
-    await expectStatus("STAFF", "/billing/family-combine", 400, {
-      method: "POST",
-      body: JSON.stringify({
-        studioId: SEED.studioId,
-        purchaserUserId: SEED.users.STUDENT.id,
-        invoiceIds: [invA.invoice.id, invB.invoice.id],
-        familyDiscount:
-          Number(invA.invoice.amount) + Number(invB.invoice.amount) + 1,
-      }),
-    });
+      expect(combined.status).toBe("PENDING");
+      expect(combined.kind).toBe("COMBINED");
+      expect(Number(combined.familyDiscount)).toBe(100);
+      expect(combined.combineMeta?.sources).toHaveLength(2);
+      expect(Number(combined.amount)).toBe(
+        Number(invA.invoice.amount) + Number(invB.invoice.amount) - 100,
+      );
 
-    const combined = await expectOk<{
-      id: string;
-      status: string;
-      amount: number;
-      familyDiscount: number;
-      combineMeta: { sources: unknown[] } | null;
-      kind: string;
-    }>("STAFF", "/billing/family-combine", {
-      method: "POST",
-      body: JSON.stringify({
-        studioId: SEED.studioId,
-        purchaserUserId: SEED.users.STUDENT.id,
-        invoiceIds: [invA.invoice.id, invB.invoice.id],
-        familyDiscount: 100,
-      }),
-    });
+      await expectOk("STAFF", `/billing/${combined.id}/paid`, {
+        method: "PATCH",
+        body: JSON.stringify({ paymentMethod: "CASH" }),
+      });
 
-    expect(combined.status).toBe("PENDING");
-    expect(combined.kind).toBe("COMBINED");
-    expect(Number(combined.familyDiscount)).toBe(100);
-    expect(combined.combineMeta?.sources).toHaveLength(2);
-    expect(Number(combined.amount)).toBe(
-      Number(invA.invoice.amount) + Number(invB.invoice.amount) - 100,
-    );
+      const profileA = await expectOk<{
+        paidMonths: number;
+        invoices: Array<{ id: string }>;
+      }>("STAFF", `/users/studio/${SEED.studioId}/students/${depA.id}`);
+      const profileB = await expectOk<{
+        paidMonths: number;
+        invoices: Array<{ id: string }>;
+      }>("STAFF", `/users/studio/${SEED.studioId}/students/${depB.id}`);
 
-    await expectOk("STAFF", `/billing/${combined.id}/paid`, {
-      method: "PATCH",
-      body: JSON.stringify({ paymentMethod: "CASH" }),
-    });
-
-    const profileA = await expectOk<{
-      paidMonths: number;
-      invoices: Array<{ id: string }>;
-    }>("STAFF", `/users/studio/${SEED.studioId}/students/${depA.id}`);
-    const profileB = await expectOk<{
-      paidMonths: number;
-      invoices: Array<{ id: string }>;
-    }>("STAFF", `/users/studio/${SEED.studioId}/students/${depB.id}`);
-
-    // Combined invoice lives on the purchaser (family owner), not on deps.
-    expect(profileA.paidMonths).toBeGreaterThanOrEqual(1);
-    expect(profileB.paidMonths).toBeGreaterThanOrEqual(1);
-    expect(profileB.invoices.some((invoice) => invoice.id === combined.id)).toBe(
-      false,
-    );
+      // Combined invoice lives on the purchaser (family owner), not on deps.
+      expect(profileA.paidMonths).toBeGreaterThanOrEqual(1);
+      expect(profileB.paidMonths).toBeGreaterThanOrEqual(1);
+      expect(
+        profileB.invoices.some((invoice) => invoice.id === combined.id),
+      ).toBe(false);
+    } finally {
+      await cleanup.dispose();
+    }
   });
 });

@@ -32,7 +32,7 @@ import { StudentFiltersToolbar } from "@/modules/students/student-filters-toolba
 import { PressableCard } from "@/modules/ui/pressable-card";
 import { PullToRefresh } from "@/modules/ui/pull-to-refresh";
 import { Screen } from "@/modules/ui/screen";
-import { SkeletonCardList } from "@/modules/ui/skeleton-block";
+import { SkeletonRowList } from "@/modules/ui/skeleton-block";
 import staff from "@/modules/ui/staff.module.scss";
 import { EmptyState, ErrorState } from "@/modules/ui/states";
 import { TouchButton } from "@/modules/ui/touch-button";
@@ -264,7 +264,9 @@ function StudentsPage() {
             onSearchChange={setSearch}
           />
 
-          {query.isLoading ? <SkeletonCardList count={4} /> : null}
+          {query.isLoading ? (
+            <SkeletonRowList count={4} label="Loading students" />
+          ) : null}
 
           {query.isError ? (
             <ErrorState

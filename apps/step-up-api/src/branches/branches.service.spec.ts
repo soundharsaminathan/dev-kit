@@ -48,6 +48,9 @@ describe("BranchesService", () => {
     batch: {
       findMany: vi.fn(),
     },
+    subscription: {
+      findMany: vi.fn(),
+    },
     branchFaq: {
       deleteMany: vi.fn(),
       createMany: vi.fn(),
@@ -72,10 +75,12 @@ describe("BranchesService", () => {
       }
       return null;
     }),
-    signReadUrl: vi.fn(
-      async (value: string | null | undefined) => value ?? null,
+    signReadUrl: vi.fn(async (value: string | null | undefined) =>
+      value ? `signed:${value}` : null,
     ),
-    signReadUrls: vi.fn(async (values: string[]) => values),
+    signReadUrls: vi.fn(async (values: string[]) =>
+      values.map((value) => `signed:${value}`),
+    ),
   };
 
   const crypto = {
@@ -266,5 +271,64 @@ describe("BranchesService", () => {
     await expect(
       service.reorderMedia("branch-1", makeUser(), ["a"]),
     ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it("signs trainer photo and batch cover urls on landing", async () => {
+    prisma.studioBranch.findUnique.mockResolvedValue({
+      id: "branch-1",
+      studioId: "studio-1",
+      name: "Main",
+      address: "123 Main St",
+      latitude: 12.97,
+      longitude: 77.59,
+      description: null,
+      coverMediaId: null,
+      amenities: [],
+      openingHours: null,
+      pricingBlurb: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      coverMedia: null,
+      media: [],
+      faqs: [],
+      testimonials: [],
+      _count: { batches: 1 },
+    });
+    prisma.batch.findMany.mockResolvedValue([
+      {
+        id: "batch-1",
+        name: "Hip Hop",
+        category: "ADULTS",
+        scheduleJson: {},
+        coverImageUrl: "batches/cover.jpg",
+        ratingAvg: 5,
+        ratingCount: 2,
+        capacity: 20,
+        _count: { enrollments: 4 },
+        trainers: [
+          {
+            trainer: {
+              id: "trainer-1",
+              name: "Alex",
+              photoUrl: "avatars/alex.jpg",
+              bio: "Lead instructor",
+              styles: ["Hip Hop"],
+            },
+          },
+        ],
+      },
+    ]);
+    prisma.subscription.findMany.mockResolvedValue([]);
+
+    const landing = await service.getLanding("branch-1", makeUser());
+
+    expect(landing.batches[0]?.coverImageUrl).toBe("signed:batches/cover.jpg");
+    expect(landing.trainers[0]).toMatchObject({
+      id: "trainer-1",
+      name: "Alex",
+      photoUrl: "signed:avatars/alex.jpg",
+    });
+    expect(media.signReadUrl).toHaveBeenCalledWith("avatars/alex.jpg");
+    expect(media.signReadUrl).toHaveBeenCalledWith("batches/cover.jpg");
   });
 });

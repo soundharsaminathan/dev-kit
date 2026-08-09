@@ -1,4 +1,3 @@
-import { Badge } from "@dev-ui/components/badge";
 import { Button } from "@dev-ui/components/button";
 import { Drawer } from "@dev-ui/components/drawer";
 import { useToastContext } from "@dev-ui/components/toast";
@@ -10,6 +9,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useApi } from "@/lib/api-context";
 import { useStudioId } from "@/lib/use-studio-id";
 import { AttendanceRosterTable } from "@/modules/attendance/attendance-roster-table";
+import {
+  type TrialCandidate,
+  TrialCandidateCombobox,
+} from "@/modules/attendance/trial-candidate-combobox";
 import type {
   AttendanceRosterEntry,
   AttendanceStatusValue,
@@ -35,16 +38,6 @@ type Session = {
   endsAt: string;
   status?: "SCHEDULED" | "COMPLETED" | "CANCELLED";
   batch?: { name: string };
-};
-
-type TrialCandidate = {
-  id: string;
-  name: string;
-  email: string | null;
-  phone: string | null;
-  priority: boolean;
-  trialBookingStatus: "PENDING" | "CONFIRMED" | null;
-  alreadyOnRoster: boolean;
 };
 
 type NewStudentForm = {
@@ -91,22 +84,15 @@ function AddTrialUserSheet({
   const api = useApi();
   const studioId = useStudioId();
   const { toast } = useToastContext("AddTrialUserSheet");
-  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCandidate, setSelectedCandidate] =
+    useState<TrialCandidate | null>(null);
+  const [pickerKey, setPickerKey] = useState(0);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [newStudent, setNewStudent] = useState<NewStudentForm>({
     name: "",
     email: "",
     gender: "MALE",
     ageRange: "18+",
-  });
-
-  const searchQuery$ = useQuery({
-    queryKey: ["trial-candidates", sessionId, searchQuery],
-    queryFn: () =>
-      api.get<TrialCandidate[]>(
-        `/attendance/session/${sessionId}/trial-candidates?q=${encodeURIComponent(searchQuery)}`,
-      ),
-    enabled: isOpen && searchQuery.length > 0,
   });
 
   const addTrialMutation = useMutation({
@@ -123,7 +109,8 @@ function AddTrialUserSheet({
       });
       onSuccess();
       onClose();
-      setSearchQuery("");
+      setSelectedCandidate(null);
+      setPickerKey((key) => key + 1);
     },
     onError: (error) => {
       toast({
@@ -163,10 +150,6 @@ function AddTrialUserSheet({
     },
   });
 
-  function handleAddCandidate(candidateId: string) {
-    addTrialMutation.mutate(candidateId);
-  }
-
   function handleCreateSubmit() {
     if (!newStudent.name.trim()) {
       toast({
@@ -178,10 +161,6 @@ function AddTrialUserSheet({
     }
     createStudentMutation.mutate(newStudent);
   }
-
-  const candidates = searchQuery$.data ?? [];
-  const isSearching = searchQuery$.isLoading;
-  const hasSearched = searchQuery.length > 0;
 
   return (
     <Drawer isOpen={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -201,82 +180,28 @@ function AddTrialUserSheet({
         <div className={styles.trialSheetBody}>
           {!showCreateForm ? (
             <>
-              <div className={styles.trialFormField}>
-                <label htmlFor="trial-search" className={styles.trialFormLabel}>
-                  Search students
-                </label>
-                <input
-                  id="trial-search"
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search by name, email, or phone"
-                  data-testid="add-trial-search"
-                  disabled={addTrialMutation.isPending}
-                  className={styles.trialFormInput}
-                />
-              </div>
+              <TrialCandidateCombobox
+                key={pickerKey}
+                sessionId={sessionId}
+                selectedKey={selectedCandidate?.id ?? null}
+                onSelectionChange={setSelectedCandidate}
+                isDisabled={addTrialMutation.isPending}
+                isOpen={isOpen}
+              />
 
-              <div className={styles.trialCandidatesList}>
-                {isSearching ? (
-                  <div className={styles.trialSearchState}>
-                    <Icon name="loader" className={styles.trialSpinner} />
-                    <span>Searching...</span>
-                  </div>
-                ) : hasSearched && candidates.length === 0 ? (
-                  <div className={styles.trialSearchState}>
-                    <span>No students found</span>
-                  </div>
-                ) : hasSearched ? (
-                  candidates.map((candidate) => (
-                    <div
-                      key={candidate.id}
-                      className={styles.trialCandidate}
-                      data-testid={`add-trial-candidate-${candidate.id}`}
-                    >
-                      <div className={styles.trialCandidateInfo}>
-                        <div className={styles.trialCandidateName}>
-                          {candidate.name}
-                          {candidate.priority ? (
-                            <Badge appearance="subtle" variant="info">
-                              Priority
-                            </Badge>
-                          ) : null}
-                          {candidate.trialBookingStatus === "CONFIRMED" ? (
-                            <Badge appearance="subtle" variant="success">
-                              Confirmed
-                            </Badge>
-                          ) : candidate.trialBookingStatus === "PENDING" ? (
-                            <Badge appearance="subtle" variant="warning">
-                              Pending
-                            </Badge>
-                          ) : null}
-                        </div>
-                        <div className={styles.trialCandidateDetail}>
-                          {[candidate.email, candidate.phone]
-                            .filter(Boolean)
-                            .join(" · ")}
-                        </div>
-                      </div>
-                      <TouchButton
-                        size="sm"
-                        variant="primary"
-                        isDisabled={
-                          candidate.alreadyOnRoster ||
-                          addTrialMutation.isPending
-                        }
-                        onClick={() => handleAddCandidate(candidate.id)}
-                      >
-                        {candidate.alreadyOnRoster ? "On roster" : "Add"}
-                      </TouchButton>
-                    </div>
-                  ))
-                ) : (
-                  <div className={styles.trialSearchState}>
-                    <span>Start typing to search students</span>
-                  </div>
-                )}
-              </div>
+              <TouchButton
+                fullWidth
+                variant="primary"
+                data-testid="add-trial-confirm"
+                isDisabled={!selectedCandidate || addTrialMutation.isPending}
+                isPending={addTrialMutation.isPending}
+                onClick={() => {
+                  if (!selectedCandidate) return;
+                  addTrialMutation.mutate(selectedCandidate.id);
+                }}
+              >
+                Add to roster
+              </TouchButton>
 
               <div className={styles.trialSheetDivider}>
                 <span>or</span>

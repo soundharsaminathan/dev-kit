@@ -1,5 +1,29 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { parseDiscountInput, printInvoice } from "./print-invoice";
+import {
+  invoiceFileName,
+  parseDiscountInput,
+  printInvoice,
+} from "./print-invoice";
+
+describe("invoiceFileName", () => {
+  it("formats username_BillMonth from student name and bill month", () => {
+    expect(
+      invoiceFileName({
+        studentName: "Asha Kumar",
+        billMonth: "2026-08-01T00:00:00.000Z",
+      }),
+    ).toBe("Asha_Kumar_August2026");
+  });
+
+  it("falls back to paidAt when bill month is missing", () => {
+    expect(
+      invoiceFileName({
+        studentName: "Ravi",
+        paidAt: "2026-07-15T10:00:00.000Z",
+      }),
+    ).toBe("Ravi_July2026");
+  });
+});
 
 describe("printInvoice", () => {
   afterEach(() => {
@@ -26,6 +50,7 @@ describe("printInvoice", () => {
       status: "PAID",
       paymentMethod: "CASH",
       paidAt: "2026-08-01T10:00:00.000Z",
+      billMonth: "2026-08-01T00:00:00.000Z",
       studentName: "Asha",
       studioName: "Rhythm Studio",
       studioLogoUrl: "https://cdn.example/logo.png",
@@ -43,6 +68,7 @@ describe("printInvoice", () => {
     expect(open).toHaveBeenCalled();
     expect(write).toHaveBeenCalledTimes(1);
     const html = String(write.mock.calls[0]?.[0] ?? "");
+    expect(html).toContain("<title>Asha_August2026</title>");
     expect(html).toContain("Asha");
     expect(html).toContain("Rhythm Studio");
     expect(html).toContain("https://cdn.example/logo.png");

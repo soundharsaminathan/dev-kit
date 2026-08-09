@@ -8,21 +8,13 @@ import {
 } from "./batch-filters-panel";
 import styles from "./batch-filters-toolbar.module.scss";
 
-export type BatchStyleChip = {
-  id: string;
-  label: string;
-};
-
 export type BatchFiltersToolbarProps = {
   status: string;
   category: string;
-  style: string | null;
   search: string;
-  styleChips: BatchStyleChip[];
   countMatches: (draft: BatchFiltersDraft) => number;
   onStatusChange: (status: string) => void;
   onCategoryChange: (category: string) => void;
-  onStyleChange: (style: string | null) => void;
   onSearchChange: (search: string) => void;
 };
 
@@ -39,44 +31,28 @@ const CATEGORY_CHIPS = [
 export function BatchFiltersToolbar({
   status,
   category,
-  style,
   search,
-  styleChips,
   countMatches,
   onStatusChange,
   onCategoryChange,
-  onStyleChange,
   onSearchChange,
 }: BatchFiltersToolbarProps) {
   const [filtersOpen, setFiltersOpen] = useState(false);
 
-  const quickChips = useMemo(
-    () => [
-      ...STATUS_CHIPS,
-      ...CATEGORY_CHIPS,
-      ...styleChips.map((chip) => ({
-        id: `style:${chip.id}`,
-        label: chip.label,
-      })),
-    ],
-    [styleChips],
-  );
+  const quickChips = useMemo(() => [...STATUS_CHIPS, ...CATEGORY_CHIPS], []);
 
   const selectedQuick = useMemo(() => {
     const ids: string[] = [];
     if (status !== "ALL") ids.push(`status:${status}`);
     if (category !== "ALL") ids.push(`category:${category}`);
-    if (style) ids.push(`style:${style}`);
     return ids;
-  }, [status, category, style]);
+  }, [status, category]);
 
-  const hasExtraFilters =
-    status !== "ALL" || category !== "ALL" || Boolean(style || search);
+  const hasExtraFilters = status !== "ALL" || category !== "ALL" || Boolean(search);
 
   const filterDraft: BatchFiltersDraft = {
     status,
     category,
-    style,
     search,
   };
 
@@ -89,11 +65,6 @@ export function BatchFiltersToolbar({
     if (id.startsWith("category:")) {
       const next = id.slice("category:".length);
       onCategoryChange(category === next ? "ALL" : next);
-      return;
-    }
-    if (id.startsWith("style:")) {
-      const next = id.slice("style:".length);
-      onStyleChange(style === next ? null : next);
     }
   }
 
@@ -137,12 +108,10 @@ export function BatchFiltersToolbar({
         isOpen={filtersOpen}
         onOpenChange={setFiltersOpen}
         value={filterDraft}
-        styleOptions={styleChips}
         countMatches={countMatches}
         onApply={(next) => {
           onStatusChange(next.status);
           onCategoryChange(next.category);
-          onStyleChange(next.style);
           onSearchChange(next.search);
         }}
       />

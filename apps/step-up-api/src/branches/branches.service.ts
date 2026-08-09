@@ -346,32 +346,41 @@ export class BranchesService {
       }
     >();
 
-    const presentedBatches = batches.map((batch) => {
-      for (const row of batch.trainers) {
-        const trainer = this.crypto.decryptUser(row.trainer);
-        if (!trainerMap.has(trainer.id)) {
-          trainerMap.set(trainer.id, {
-            id: trainer.id,
-            name: trainer.name,
-            photoUrl: trainer.photoUrl,
-            bio: trainer.bio,
-            styles: trainer.styles,
-          });
+    const presentedBatches = await Promise.all(
+      batches.map(async (batch) => {
+        for (const row of batch.trainers) {
+          const trainer = this.crypto.decryptUser(row.trainer);
+          if (!trainerMap.has(trainer.id)) {
+            trainerMap.set(trainer.id, {
+              id: trainer.id,
+              name: trainer.name,
+              photoUrl: trainer.photoUrl,
+              bio: trainer.bio,
+              styles: trainer.styles,
+            });
+          }
         }
-      }
 
-      return {
-        id: batch.id,
-        name: batch.name,
-        category: batch.category,
-        scheduleJson: batch.scheduleJson,
-        coverImageUrl: batch.coverImageUrl,
-        ratingAvg: batch.ratingAvg,
-        ratingCount: batch.ratingCount,
-        capacity: batch.capacity,
-        enrollmentCount: batch._count.enrollments,
-      };
-    });
+        return {
+          id: batch.id,
+          name: batch.name,
+          category: batch.category,
+          scheduleJson: batch.scheduleJson,
+          coverImageUrl: await this.media.signReadUrl(batch.coverImageUrl),
+          ratingAvg: batch.ratingAvg,
+          ratingCount: batch.ratingCount,
+          capacity: batch.capacity,
+          enrollmentCount: batch._count.enrollments,
+        };
+      }),
+    );
+
+    const trainers = await Promise.all(
+      [...trainerMap.values()].map(async (trainer) => ({
+        ...trainer,
+        photoUrl: await this.media.signReadUrl(trainer.photoUrl),
+      })),
+    );
 
     const ratings = batches.filter((b) => b.ratingCount > 0);
     const ratingAvg =
@@ -392,7 +401,7 @@ export class BranchesService {
         ...subscription,
         price: Number(subscription.price),
       })),
-      trainers: [...trainerMap.values()],
+      trainers,
     };
   }
 

@@ -25,8 +25,12 @@ import { assertBatchHasSeat, lockBatchRow } from "../batches/batch-capacity";
 import { REACTIVATE_ENROLLMENT_DATA } from "../batches/enrollment-status";
 import {
   accumulatePaidMonths,
+  batchIdsForInvoiceDisplay,
+  batchLabelForInvoice,
   paidMonthsInvoiceSelect,
   paidMonthsInvoiceWhere,
+  parseCombineMeta,
+  parsePurchaseMeta,
 } from "../billing/family-combine";
 import { MediaService } from "../media/media.service";
 import { PrismaService } from "../prisma/prisma.service";
@@ -747,6 +751,9 @@ export class UsersService {
         where: { studentId, studioId },
         orderBy: { id: "desc" },
         take: 20,
+        include: {
+          membership: { select: { periodStart: true } },
+        },
       }),
       this.prisma.parentChild.findMany({
         where: { childUserId: studentId },
@@ -795,6 +802,46 @@ export class UsersService {
         onlyStudentIds: new Set([studentId]),
       }).get(studentId) ?? 0;
 
+    const studentBatchMap = new Map<string, Set<string>>([
+      [
+        studentId,
+        new Set(
+          enrollments
+            .filter((enrollment) => enrollment.status === "ACTIVE")
+            .map((enrollment) => enrollment.batch.id),
+        ),
+      ],
+    ]);
+    const batchNameById = new Map(
+      enrollments.map(
+        (enrollment) =>
+          [enrollment.batch.id, enrollment.batch.name] as const,
+      ),
+    );
+    const batchIdsToResolve = new Set<string>();
+    for (const invoice of invoices) {
+      for (const batchId of batchIdsForInvoiceDisplay({
+        studentId: invoice.studentId,
+        purchaseMeta: parsePurchaseMeta(invoice.purchaseMeta),
+        combineMeta: parseCombineMeta(invoice.combineMeta),
+        studentBatchMap,
+      })) {
+        batchIdsToResolve.add(batchId);
+      }
+    }
+    const missingBatchIds = [...batchIdsToResolve].filter(
+      (batchId) => !batchNameById.has(batchId),
+    );
+    if (missingBatchIds.length > 0) {
+      const extraBatches = await this.prisma.batch.findMany({
+        where: { id: { in: missingBatchIds }, studioId },
+        select: { id: true, name: true },
+      });
+      for (const batch of extraBatches) {
+        batchNameById.set(batch.id, batch.name);
+      }
+    }
+
     return {
       student: await this.presentUser(student),
       paidMonths,
@@ -806,12 +853,25 @@ export class UsersService {
       })),
       memberships,
       attendance,
-      invoices: invoices.map((invoice) => ({
-        ...invoice,
-        amount: Number(invoice.amount),
-        referralDiscount: Number(invoice.referralDiscount ?? 0),
-        studioDiscount: Number(invoice.studioDiscount ?? 0),
-      })),
+      invoices: invoices.map((invoice) => {
+        const purchaseMeta = parsePurchaseMeta(invoice.purchaseMeta);
+        const combineMeta = parseCombineMeta(invoice.combineMeta);
+        const { batchId, batchName } = batchLabelForInvoice({
+          studentId: invoice.studentId,
+          purchaseMeta,
+          combineMeta,
+          studentBatchMap,
+          batchNameById,
+        });
+        return {
+          ...invoice,
+          amount: Number(invoice.amount),
+          referralDiscount: Number(invoice.referralDiscount ?? 0),
+          studioDiscount: Number(invoice.studioDiscount ?? 0),
+          batchId,
+          batchName,
+        };
+      }),
       parents: await Promise.all(
         parentLinks.map(async (link) => this.presentUser(link.parent)),
       ),

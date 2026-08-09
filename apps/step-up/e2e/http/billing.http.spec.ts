@@ -208,6 +208,21 @@ test.describe("billing HTTP @http", () => {
     expect(Array.isArray(invoices)).toBe(true);
   });
 
+  test("studio invoice list includes batchName @http", async () => {
+    const cleanup = new TestDataCleanup();
+    try {
+      const target = await createPendingInvoiceViaEnroll(cleanup);
+      const invoices = await expectOk<
+        Array<{ id: string; batchId: string | null; batchName: string | null }>
+      >("STAFF", `/billing/studio/${SEED.users.STAFF.studioId}`);
+      const row = invoices.find((invoice) => invoice.id === target.id);
+      expect(row?.batchId).toBe(SEED.beginnerBatchId);
+      expect(row?.batchName).toBe("E2E Adult Beginner");
+    } finally {
+      await cleanup.dispose();
+    }
+  });
+
   test("batch revenue ignores payments attributed to another batch for shared students @http", async () => {
     const cleanup = new TestDataCleanup();
     const stamp = Date.now();

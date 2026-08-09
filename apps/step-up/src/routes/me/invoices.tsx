@@ -14,7 +14,8 @@ type Invoice = {
   id: string;
   amount: number;
   status: "PENDING" | "PAID" | "OVERDUE" | "REFUNDED";
-  dueDate: string;
+  dueDate: string | null;
+  batchName?: string | null;
 };
 
 export const Route = createFileRoute("/me/invoices")({
@@ -72,8 +73,13 @@ function MeInvoicesPage() {
                 <div className={styles.rowTop}>
                   <div>
                     <p className={styles.amount}>₹{invoice.amount}</p>
+                    {invoice.batchName ? (
+                      <p className={styles.due}>{invoice.batchName}</p>
+                    ) : null}
                     <p className={styles.due}>
-                      Due {new Date(invoice.dueDate).toLocaleDateString()}
+                      {invoice.dueDate
+                        ? `Due ${new Date(invoice.dueDate).toLocaleDateString()}`
+                        : "No due date"}
                     </p>
                   </div>
                   <Badge

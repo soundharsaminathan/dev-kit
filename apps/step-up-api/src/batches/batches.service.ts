@@ -361,12 +361,65 @@ export class BatchesService {
     @Inject(BillingService) private readonly billing: BillingService,
   ) {}
 
-  private async withSignedCover<T extends { coverImageUrl?: string | null }>(
-    batch: T,
-  ): Promise<T> {
+  private async withSignedCover<
+    T extends {
+      coverImageUrl?: string | null;
+      trainers?: Array<{
+        trainer: { photoUrl?: string | null } & Record<string, unknown>;
+      }>;
+      branch?: {
+        photos?: string[] | null;
+        coverMedia?: { objectKey?: string | null } | null;
+        media?: Array<{ objectKey?: string | null }> | null;
+      } | null;
+    },
+  >(batch: T): Promise<T> {
+    const coverImageUrl = await this.media.signReadUrl(
+      batch.coverImageUrl ?? null,
+    );
+
+    const trainers = batch.trainers
+      ? await Promise.all(
+          batch.trainers.map(async (row) => ({
+            ...row,
+            trainer: {
+              ...row.trainer,
+              photoUrl: await this.media.signReadUrl(
+                row.trainer.photoUrl ?? null,
+              ),
+            },
+          })),
+        )
+      : undefined;
+
+    const sourceBranch = batch.branch;
+    let branch: (NonNullable<T["branch"]> & {
+      coverImageUrl?: string | null;
+    }) | null | undefined = sourceBranch;
+    if (sourceBranch) {
+      const branchCoverKey =
+        sourceBranch.coverMedia?.objectKey ||
+        sourceBranch.media?.[0]?.objectKey ||
+        sourceBranch.photos?.[0] ||
+        null;
+      const [branchCoverImageUrl, photos] = await Promise.all([
+        this.media.signReadUrl(branchCoverKey),
+        sourceBranch.photos?.length
+          ? this.media.signReadUrls(sourceBranch.photos)
+          : Promise.resolve(sourceBranch.photos ?? null),
+      ]);
+      branch = {
+        ...sourceBranch,
+        photos,
+        coverImageUrl: branchCoverImageUrl,
+      };
+    }
+
     return {
       ...batch,
-      coverImageUrl: await this.media.signReadUrl(batch.coverImageUrl ?? null),
+      coverImageUrl,
+      ...(trainers ? { trainers } : {}),
+      ...(sourceBranch !== undefined ? { branch } : {}),
     };
   }
 

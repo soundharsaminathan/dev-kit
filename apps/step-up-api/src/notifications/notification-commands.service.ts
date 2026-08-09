@@ -3,6 +3,7 @@ import {
   NotificationChannel,
   NotificationStatus,
   NotificationType,
+  type Notification,
   type Prisma,
 } from "@prisma/client";
 import { OutboxService } from "../events/outbox.service";
@@ -42,7 +43,59 @@ export class NotificationCommandsService {
     private readonly unreadCache: UnreadCacheService,
   ) {}
 
-  async create(input: CreateNotificationInput) {
+  private async refreshExisting(
+    existing: Notification,
+    input: CreateNotificationInput,
+    copy: { title: string; body: string },
+    deepLink: string | null,
+  ): Promise<Notification> {
+    const isActive =
+      existing.status === NotificationStatus.ACTIVE &&
+      existing.deletedAt == null;
+    const shouldRefresh =
+      !isActive ||
+      existing.type === NotificationType.CHAT_MESSAGE ||
+      existing.type === NotificationType.MISSED_SESSION;
+
+    if (!shouldRefresh) {
+      return existing;
+    }
+
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const row = await tx.notification.update({
+        where: { id: existing.id },
+        data: {
+          title: copy.title,
+          body: copy.body,
+          meta: input.meta,
+          deepLink,
+          status: NotificationStatus.ACTIVE,
+          archivedAt: null,
+          deletedAt: null,
+          readAt: null,
+          actorId: input.actorId ?? existing.actorId,
+          entityType: input.entityType ?? existing.entityType,
+          entityId: input.entityId ?? existing.entityId,
+        },
+      });
+      await this.outbox.append(tx, OUTBOX_EVENT_NOTIFICATION_CREATED, {
+        notificationId: row.id,
+        userId: row.userId,
+        type: row.type,
+        refreshed: true,
+        reactivated: !isActive,
+      });
+      return row;
+    });
+
+    const wasCountedUnread = isActive && existing.readAt == null;
+    if (!wasCountedUnread) {
+      await this.unreadCache.increment(input.userId);
+    }
+    return updated;
+  }
+
+  async create(input: CreateNotificationInput): Promise<Notification> {
     const copy = buildNotificationCopy(input);
     const deepLink = resolveDeepLink({
       type: input.type,
@@ -60,48 +113,7 @@ export class NotificationCommandsService {
         },
       });
       if (existing) {
-        const isActive =
-          existing.status === NotificationStatus.ACTIVE &&
-          existing.deletedAt == null;
-        const shouldRefresh =
-          !isActive || existing.type === NotificationType.CHAT_MESSAGE;
-
-        if (!shouldRefresh) {
-          return existing;
-        }
-
-        const updated = await this.prisma.$transaction(async (tx) => {
-          const row = await tx.notification.update({
-            where: { id: existing.id },
-            data: {
-              title: copy.title,
-              body: copy.body,
-              meta: input.meta,
-              deepLink,
-              status: NotificationStatus.ACTIVE,
-              archivedAt: null,
-              deletedAt: null,
-              readAt: null,
-              actorId: input.actorId ?? existing.actorId,
-              entityType: input.entityType ?? existing.entityType,
-              entityId: input.entityId ?? existing.entityId,
-            },
-          });
-          await this.outbox.append(tx, OUTBOX_EVENT_NOTIFICATION_CREATED, {
-            notificationId: row.id,
-            userId: row.userId,
-            type: row.type,
-            refreshed: true,
-            reactivated: !isActive,
-          });
-          return row;
-        });
-
-        const wasCountedUnread = isActive && existing.readAt == null;
-        if (!wasCountedUnread) {
-          await this.unreadCache.increment(input.userId);
-        }
-        return updated;
+        return this.refreshExisting(existing, input, copy, deepLink);
       }
     }
 
@@ -158,7 +170,7 @@ export class NotificationCommandsService {
           },
         });
         if (existing) {
-          return existing;
+          return this.refreshExisting(existing, input, copy, deepLink);
         }
       }
       throw error;

@@ -4,6 +4,7 @@ import {
   accumulatePaidMonths,
   allocateFamilyDiscount,
   attributionTargetsForInvoice,
+  batchLabelForInvoice,
   monthsForBillingCadence,
   parseCombineMeta,
 } from "./family-combine";
@@ -20,6 +21,52 @@ describe("allocateFamilyDiscount", () => {
     expect(() => allocateFamilyDiscount([100], 150)).toThrow(
       /cannot exceed/i,
     );
+  });
+});
+
+describe("batchLabelForInvoice", () => {
+  it("joins unique batch names for multi-seat family invoices", () => {
+    const label = batchLabelForInvoice({
+      studentId: "parent-1",
+      purchaseMeta: {
+        subscriptionId: "sub-1",
+        purchaserUserId: "parent-1",
+        coveredStudents: [
+          { studentId: "adult-1", seatRole: "ADULT", batchId: "b1" },
+          { studentId: "kid-1", seatRole: "KID", batchId: "b2" },
+        ],
+      },
+      studentBatchMap: new Map(),
+      batchNameById: new Map([
+        ["b1", "Adult Hip-Hop"],
+        ["b2", "Kids Ballet"],
+      ]),
+    });
+    expect(label).toEqual({
+      batchId: "b1",
+      batchName: "Adult Hip-Hop · Kids Ballet",
+    });
+  });
+
+  it("uses combine source batch ids", () => {
+    const label = batchLabelForInvoice({
+      studentId: "parent-1",
+      combineMeta: {
+        sources: [
+          {
+            invoiceId: "a",
+            studentId: "s1",
+            batchId: "b1",
+            originalAmount: 1000,
+            allocatedDiscount: 0,
+            netAmount: 1000,
+          },
+        ],
+      },
+      studentBatchMap: new Map(),
+      batchNameById: new Map([["b1", "Beginner"]]),
+    });
+    expect(label.batchName).toBe("Beginner");
   });
 });
 

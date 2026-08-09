@@ -56,15 +56,22 @@ export function LocationCard({
           </div>
         </div>
         <div className={styles.body}>
-          <p className={styles.meta}>
-            {mediaCount > 0 ? `${mediaCount} media` : "No gallery yet"}
-            {typeof branch._count?.batches === "number"
-              ? ` · ${branch._count.batches} class${branch._count.batches === 1 ? "" : "es"}`
-              : null}
-            {ratingAvg != null && ratingCount
-              ? ` · ${ratingAvg.toFixed(1)}★ (${ratingCount})`
-              : null}
-          </p>
+          <div className={styles.meta}>
+            <span className={styles.metaChip}>
+              {mediaCount > 0 ? `${mediaCount} photos` : "No gallery"}
+            </span>
+            {typeof branch._count?.batches === "number" ? (
+              <span className={styles.metaChip}>
+                {branch._count.batches} class
+                {branch._count.batches === 1 ? "" : "es"}
+              </span>
+            ) : null}
+            {ratingAvg != null && ratingCount ? (
+              <span className={styles.metaChip} data-tone="accent">
+                {ratingAvg.toFixed(1)}★ · {ratingCount}
+              </span>
+            ) : null}
+          </div>
           {branch.description ? (
             <p className={styles.description}>{branch.description}</p>
           ) : null}

@@ -198,7 +198,9 @@ describe("SessionsService schedule mutations", () => {
       endsAt: "2026-08-10T11:00:00.000Z",
     });
 
-    expect(notifications.create).toHaveBeenCalledTimes(2);
+    await vi.waitFor(() => {
+      expect(notifications.create).toHaveBeenCalledTimes(2);
+    });
     expect(notifications.create).toHaveBeenCalledWith(
       expect.objectContaining({
         userId: "student-1",
@@ -209,14 +211,49 @@ describe("SessionsService schedule mutations", () => {
         }),
       }),
     );
-    expect(chat.postBatchSessionCard).toHaveBeenCalledWith(
-      actor,
-      "batch-1",
-      expect.objectContaining({
-        title: "New class session",
+    await vi.waitFor(() => {
+      expect(chat.postBatchSessionCard).toHaveBeenCalledWith(
+        actor,
+        "batch-1",
+        expect.objectContaining({
+          title: "New class session",
+          startsAt: "2026-08-10T10:00:00.000Z",
+        }),
+      );
+    });
+  });
+
+  it("still creates a session when notification fan-out fails", async () => {
+    prisma.batch.findUnique.mockResolvedValue({
+      id: "batch-1",
+      name: "Kids Hip-hop",
+      studioId: "studio-1",
+      branchId: "branch-1",
+      trainers: [{ trainerId: "trainer-1" }],
+    });
+    prisma.session.create.mockResolvedValue({
+      id: "session-1",
+      batchId: "batch-1",
+      startsAt: new Date("2026-08-10T10:00:00.000Z"),
+      endsAt: new Date("2026-08-10T11:00:00.000Z"),
+      status: SessionStatus.SCHEDULED,
+      type: SessionType.REGULAR,
+    });
+    prisma.batchEnrollment.findMany.mockResolvedValue([
+      { studentId: "student-1" },
+    ]);
+    notifications.create.mockRejectedValueOnce(new Error("transaction timeout"));
+
+    await expect(
+      service.create(actor as never, {
+        batchId: "batch-1",
         startsAt: "2026-08-10T10:00:00.000Z",
+        endsAt: "2026-08-10T11:00:00.000Z",
       }),
-    );
+    ).resolves.toMatchObject({ id: "session-1" });
+    await vi.waitFor(() => {
+      expect(chat.postBatchSessionCard).toHaveBeenCalled();
+    });
   });
 
   it("rejects updating a completed session", async () => {
@@ -272,17 +309,21 @@ describe("SessionsService schedule mutations", () => {
       where: { id: "session-1" },
       data: { status: SessionStatus.CANCELLED },
     });
-    expect(notifications.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        userId: "student-1",
-        type: "SESSION_CANCELLED",
-      }),
-    );
-    expect(chat.postBatchSessionCard).toHaveBeenCalledWith(
-      actor,
-      "batch-1",
-      expect.objectContaining({ title: "Session cancelled" }),
-    );
+    await vi.waitFor(() => {
+      expect(notifications.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId: "student-1",
+          type: "SESSION_CANCELLED",
+        }),
+      );
+    });
+    await vi.waitFor(() => {
+      expect(chat.postBatchSessionCard).toHaveBeenCalledWith(
+        actor,
+        "batch-1",
+        expect.objectContaining({ title: "Session cancelled" }),
+      );
+    });
   });
 
   it("rejects deleting a completed session", async () => {

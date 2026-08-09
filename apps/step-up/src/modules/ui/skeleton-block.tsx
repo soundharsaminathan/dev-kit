@@ -92,3 +92,41 @@ export function BatchCardSkeletonList({ count = 3 }: { count?: number }) {
     </div>
   );
 }
+
+const SKELETON_ROW_KEYS = [
+  { id: "srow-0", title: "58%", meta: "42%" },
+  { id: "srow-1", title: "72%", meta: "36%" },
+  { id: "srow-2", title: "48%", meta: "40%" },
+  { id: "srow-3", title: "64%", meta: "34%" },
+  { id: "srow-4", title: "54%", meta: "44%" },
+  { id: "srow-5", title: "68%", meta: "38%" },
+  { id: "srow-6", title: "50%", meta: "41%" },
+  { id: "srow-7", title: "62%", meta: "35%" },
+] as const;
+
+export function SkeletonRowList({
+  count = 4,
+  label = "Loading list",
+}: {
+  count?: number;
+  label?: string;
+}) {
+  return (
+    <div className={styles.rowList} role="status" aria-label={label}>
+      {SKELETON_ROW_KEYS.slice(0, count).map((row) => (
+        <div key={row.id} className={styles.rowCard}>
+          <SkeletonBlock
+            className={styles.rowAvatar}
+            height="2.75rem"
+            width="2.75rem"
+            radius="var(--radius-lg, 0.75rem)"
+          />
+          <div className={styles.rowBody}>
+            <SkeletonBlock height="0.9375rem" width={row.title} />
+            <SkeletonBlock height="0.8125rem" width={row.meta} />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}

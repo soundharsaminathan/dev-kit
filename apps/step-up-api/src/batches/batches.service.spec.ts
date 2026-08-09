@@ -1058,7 +1058,12 @@ describe("BatchesService.listByStudio viewer enrollment", () => {
   };
 
   const media = {
-    signReadUrl: vi.fn(async (url: string | null) => url),
+    signReadUrl: vi.fn(async (url: string | null) =>
+      url ? `signed:${url}` : null,
+    ),
+    signReadUrls: vi.fn(async (urls: string[]) =>
+      urls.map((url) => `signed:${url}`),
+    ),
   };
 
   let service: BatchesService;
@@ -1081,6 +1086,50 @@ describe("BatchesService.listByStudio viewer enrollment", () => {
     prisma.batchEnrollment.findFirst.mockResolvedValue(null);
     prisma.booking.findMany.mockResolvedValue([]);
     prisma.booking.updateMany.mockResolvedValue({ count: 0 });
+  });
+
+  it("signs trainer photo and branch cover urls for discover cards", async () => {
+    prisma.batch.findMany.mockResolvedValue([
+      {
+        id: "batch-1",
+        name: "Hip Hop",
+        capacity: 20,
+        scheduleJson: {},
+        danceCategories: [],
+        enrollments: [],
+        trainers: [
+          {
+            trainer: {
+              id: "trainer-1",
+              name: "Alex",
+              photoUrl: "avatars/alex.jpg",
+            },
+          },
+        ],
+        plans: [],
+        _count: { enrollments: 0 },
+        branch: {
+          id: "branch-1",
+          name: "Downtown",
+          address: "1 Main St",
+          photos: ["uploads/downtown.jpg"],
+          coverMedia: { objectKey: "uploads/downtown-cover.jpg" },
+          media: [],
+        },
+        coverImageUrl: "batches/cover.jpg",
+      },
+    ]);
+
+    const rows = await service.listByStudio("studio-1");
+
+    expect(rows[0]?.coverImageUrl).toBe("signed:batches/cover.jpg");
+    expect(rows[0]?.trainers[0]?.trainer.photoUrl).toBe(
+      "signed:avatars/alex.jpg",
+    );
+    expect(rows[0]?.branch).toMatchObject({
+      coverImageUrl: "signed:uploads/downtown-cover.jpg",
+      photos: ["signed:uploads/downtown.jpg"],
+    });
   });
 
   it("marks viewerEnrolled when studentId matches an enrollment", async () => {

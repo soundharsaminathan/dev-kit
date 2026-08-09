@@ -648,12 +648,10 @@ async function main() {
     },
   });
 
-  const duePeriodStart = new Date(
-    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1),
-  );
-  const duePeriodEnd = new Date(
-    Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0, 23, 59, 59, 999),
-  );
+  // Keep periodStart inside the studio grace window so daily jobs leave this
+  // membership DUE (periodStart older than graceDays → EXPIRED).
+  const duePeriodStart = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+  const duePeriodEnd = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
 
   await prisma.membership.upsert({
     where: { id: E2E.membershipStudentDueId },

@@ -26,7 +26,12 @@ export type Invoice = {
   paidAt?: string | null;
   refundedAt?: string | null;
   kind: "FAMILY" | "INDIVIDUAL" | "COMBINED";
+  batchId?: string | null;
+  batchName?: string | null;
   student?: { name: string };
+  membership?: {
+    periodStart?: string | null;
+  } | null;
   familySummary?: {
     planName: string | null;
     adultCount: number | null;

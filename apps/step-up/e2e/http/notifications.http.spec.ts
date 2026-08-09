@@ -18,6 +18,24 @@ type NotificationList = {
   nextCursor?: string | null;
 };
 
+async function sleep(ms: number) {
+  await new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function findMissedSessionNotification() {
+  const list = await expectOk<NotificationList>(
+    "STUDENT",
+    "/notifications?limit=50",
+  );
+  return (
+    list.items.find(
+      (item) =>
+        item.type === "MISSED_SESSION" &&
+        item.meta?.sessionId === SEED.sessionAttendanceId,
+    ) ?? null
+  );
+}
+
 async function ensureMissedSessionNotification() {
   await expectOk("TRAINER", "/attendance/mark", {
     method: "POST",
@@ -29,45 +47,46 @@ async function ensureMissedSessionNotification() {
     }),
   }).catch(() => undefined);
 
-  await expectOk("TRAINER", "/attendance/mark", {
-    method: "POST",
-    body: JSON.stringify({
-      sessionId: SEED.sessionAttendanceId,
-      studentId: SEED.users.STUDENT.id,
-      status: "ABSENT",
-      source: "TRAINER",
-    }),
-  });
-
-  const list = await expectOk<NotificationList>(
-    "STUDENT",
-    "/notifications?limit=20",
-  );
-  let missed = list.items.find((item) => item.type === "MISSED_SESSION");
-  expect(missed).toBeTruthy();
-
-  // Soft-deleted rows are excluded from the list; archive/delete tests leave
-  // the deduped row inactive. Rematch ABSENT after a delete recreates active
-  // unread — but an active+read row needs an explicit reopen.
-  if (missed!.status?.toUpperCase() === "ARCHIVED") {
-    await expectOk("STUDENT", `/notifications/${missed!.id}`, {
-      method: "PATCH",
-      body: JSON.stringify({ archived: false, read: false }),
-    });
-  } else if (missed!.readAt) {
-    await expectOk("STUDENT", `/notifications/${missed!.id}`, {
-      method: "PATCH",
-      body: JSON.stringify({ read: false }),
-    });
+  let missed: NotificationItem | null = null;
+  let lastError: unknown;
+  for (let attempt = 0; attempt < 6; attempt += 1) {
+    try {
+      await expectOk("TRAINER", "/attendance/mark", {
+        method: "POST",
+        body: JSON.stringify({
+          sessionId: SEED.sessionAttendanceId,
+          studentId: SEED.users.STUDENT.id,
+          status: "ABSENT",
+          source: "TRAINER",
+        }),
+      });
+      missed = await findMissedSessionNotification();
+      if (missed) break;
+    } catch (error) {
+      lastError = error;
+    }
+    await sleep(300 * (attempt + 1));
   }
 
-  const refreshed = await expectOk<NotificationList>(
-    "STUDENT",
-    "/notifications?limit=20",
-  );
-  missed = refreshed.items.find((item) => item.type === "MISSED_SESSION");
+  expect(
+    missed,
+    lastError instanceof Error
+      ? `MISSED_SESSION missing after ABSENT mark: ${lastError.message}`
+      : "MISSED_SESSION missing after ABSENT mark",
+  ).toBeTruthy();
+
+  // Force active + unread — rematch ABSENT refreshes the deduped row, but
+  // archive/delete/mark-all-read from earlier serial cases can still leave
+  // stale client expectations if list pagination hides it.
+  await expectOk("STUDENT", `/notifications/${missed!.id}`, {
+    method: "PATCH",
+    body: JSON.stringify({ archived: false, read: false }),
+  });
+
+  missed = await findMissedSessionNotification();
   expect(missed).toBeTruthy();
   expect(missed!.readAt).toBeNull();
+  expect(missed!.status?.toUpperCase() ?? "ACTIVE").toBe("ACTIVE");
   return missed!;
 }
 
@@ -94,7 +113,7 @@ test.describe("notifications HTTP @http", () => {
 
     const unreadOnly = await expectOk<NotificationList>(
       "STUDENT",
-      "/notifications?unreadOnly=true&limit=20",
+      "/notifications?unreadOnly=true&limit=50",
     );
     expect(unreadOnly.items.every((item) => item.readAt === null)).toBeTruthy();
     expect(unreadOnly.items.some((item) => item.id === missed.id)).toBeTruthy();
