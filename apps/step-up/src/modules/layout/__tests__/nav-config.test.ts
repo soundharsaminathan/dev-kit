@@ -48,3 +48,17 @@ describe("app nav role filtering", () => {
     expect(more).not.toContain("/app/students");
   });
 });
+
+describe("member nav", () => {
+  it("keeps trainers out of primary tabs", () => {
+    const primary = getPrimaryTabs("me").map((link) => link.to);
+    const more = getMoreLinks("me").map((link) => link.to);
+    expect(primary).toEqual([
+      "/me",
+      "/me/book",
+      "/me/messages",
+      "/me/profile",
+    ]);
+    expect(more).toContain("/me/trainers");
+  });
+});

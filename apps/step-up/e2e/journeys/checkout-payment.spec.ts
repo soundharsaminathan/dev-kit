@@ -223,32 +223,35 @@ test.describe("checkout payment @critical", () => {
     await context.close();
   });
 
-  test("student pays for a plan through UI @critical", async ({ browser }) => {
+  test("student pays for a plan inside batch and batch revenue updates @critical", async ({
+    browser,
+  }) => {
+    test.setTimeout(180_000);
     const studentId = SEED.users.STUDENT.id;
     const cleanup = new TestDataCleanup();
     await clearPendingCheckoutInvoices(studentId);
     const batch = await createPlanBatch();
     cleanup.trackBatch(batch.id);
 
-    const context = await browser.newContext({
+    const studentContext = await browser.newContext({
       storageState: authFile("STUDENT"),
     });
-    const page = await context.newPage();
     try {
-      await page.goto(`/me/batches/${batch.id}`, {
+      const studentPage = await studentContext.newPage();
+      await studentPage.goto(`/me/batches/${batch.id}`, {
         waitUntil: "domcontentloaded",
       });
-      await waitForAppReady(page);
+      await waitForAppReady(studentPage);
 
-      const planCard = page.getByTestId("plan-card").first();
+      const planCard = studentPage.getByTestId("plan-card").first();
       await expect(planCard).toBeVisible();
       await planCard.click();
 
-      const submit = page.getByTestId("purchase-submit");
+      const submit = studentPage.getByTestId("purchase-submit");
       await expect(submit).toBeVisible();
 
       const [purchaseResponse] = await Promise.all([
-        waitForApiResponse(page, {
+        waitForApiResponse(studentPage, {
           method: "POST",
           pathIncludes: `/batches/${batch.id}/purchase`,
         }),
@@ -258,21 +261,23 @@ test.describe("checkout payment @critical", () => {
       const invoice = (await purchaseResponse.json()) as {
         id: string;
         status: string;
+        amount: number;
       };
       expect(invoice.status).toBe("PENDING");
+      expect(Number(invoice.amount)).toBeGreaterThan(0);
 
-      await expect(page).toHaveURL(
+      await expect(studentPage).toHaveURL(
         new RegExp(`/me/checkout/invoice/${invoice.id}`),
       );
-      const pay = page.getByTestId("checkout-pay");
+      const pay = studentPage.getByTestId("checkout-pay");
       await expect(pay).toBeVisible();
 
       const [orderResponse, confirmResponse] = await Promise.all([
-        waitForApiResponse(page, {
+        waitForApiResponse(studentPage, {
           method: "POST",
           pathIncludes: `/billing/${invoice.id}/create-payment-order`,
         }),
-        waitForApiResponse(page, {
+        waitForApiResponse(studentPage, {
           method: "POST",
           pathIncludes: `/billing/${invoice.id}/confirm-payment`,
         }),
@@ -281,17 +286,67 @@ test.describe("checkout payment @critical", () => {
       expect(orderResponse.ok()).toBeTruthy();
       expect(confirmResponse.ok()).toBeTruthy();
 
+      let paidAmount = 0;
       await expect
         .poll(async () => {
-          const paid = await apiRequest<{ status: string }>(
+          const current = await apiRequest<{ status: string; amount: number }>(
             "STUDENT",
             `/billing/${invoice.id}`,
           );
-          return paid.status;
+          paidAmount = Number(current.amount);
+          return current.status;
         })
         .toBe("PAID");
+
+      await expect
+        .poll(async () => {
+          const revenue = await apiRequest<{
+            totals: { collected: number; invoiceCount: number };
+          }>("OWNER", `/batches/${batch.id}/revenue`);
+          return revenue.totals.collected;
+        })
+        .toBe(paidAmount);
+
+      await studentContext.close();
+
+      const ownerContext = await browser.newContext({
+        storageState: authFile("OWNER"),
+      });
+      try {
+        const ownerPage = await ownerContext.newPage();
+        const [revenueResponse] = await Promise.all([
+          waitForApiResponse(ownerPage, {
+            method: "GET",
+            pathIncludes: `/batches/${batch.id}/revenue`,
+          }),
+          ownerPage.goto(`/app/batches/${batch.id}`, {
+            waitUntil: "domcontentloaded",
+          }),
+        ]);
+        await waitForAppReady(ownerPage);
+        expect(revenueResponse.ok()).toBeTruthy();
+        const revenue = (await revenueResponse.json()) as {
+          totals: { collected: number; invoiceCount: number };
+        };
+        expect(revenue.totals.collected).toBe(paidAmount);
+        expect(revenue.totals.invoiceCount).toBeGreaterThanOrEqual(1);
+
+        const revenueSection = ownerPage.getByLabel("Batch revenue");
+        await expect(revenueSection).toBeVisible();
+        await expect(revenueSection.getByText("Collected")).toBeVisible();
+        const formatted = new Intl.NumberFormat("en-IN", {
+          style: "currency",
+          currency: "INR",
+          maximumFractionDigits: 0,
+        }).format(paidAmount);
+        await expect(
+          revenueSection.locator('[data-tone="success"]'),
+        ).toHaveText(formatted);
+      } finally {
+        await ownerContext.close();
+      }
     } finally {
-      await context.close();
+      await studentContext.close().catch(() => undefined);
       await cleanup.dispose();
     }
   });

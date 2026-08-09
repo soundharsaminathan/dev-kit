@@ -223,6 +223,96 @@ test.describe("billing HTTP @http", () => {
     }
   });
 
+  test("student batch purchase payment is counted in batch revenue @http", async () => {
+    const cleanup = new TestDataCleanup();
+    const stamp = Date.now();
+    try {
+      const student = await createHttpStudent(
+        "Batch Purchase Revenue Student",
+        cleanup,
+      );
+      const batch = await expectOk<{ id: string }>("STAFF", "/batches", {
+        method: "POST",
+        body: JSON.stringify({
+          studioId: SEED.users.STAFF.studioId,
+          name: `HTTP Student Pay Rev ${stamp}`,
+          coverImageUrl:
+            "https://images.unsplash.com/photo-1518611012118-696072aa579a?w=800&q=80",
+          category: "ADULTS",
+          branchId: SEED.branchMainId,
+          trainerIds: [SEED.users.TRAINER.id],
+          danceCategories: [
+            { name: "Hip Hop", description: "Student purchase revenue" },
+          ],
+          scheduleJson: {
+            frequency: "WEEKLY",
+            weekdays: [stamp % 7],
+            startDate: "2028-01-03",
+            endDate: "2028-03-27",
+            startTime: `${String(6 + (stamp % 8)).padStart(2, "0")}:${String(stamp % 60).padStart(2, "0")}`,
+            endTime: `${String(7 + (stamp % 8)).padStart(2, "0")}:${String(stamp % 60).padStart(2, "0")}`,
+            utcOffsetMinutes: 0,
+          },
+          capacity: 8,
+          enrollmentMode: "SELF_JOIN",
+          subscriptionIds: [...SEED.adultPlanIds],
+          active: true,
+          certificationEnabled: false,
+        }),
+      });
+      cleanup.trackBatch(batch.id);
+
+      const before = await expectOk<{
+        totals: { collected: number; invoiceCount: number };
+      }>("STAFF", `/batches/${batch.id}/revenue`);
+      expect(before.totals.collected).toBe(0);
+
+      const invoice = await expectOk<{
+        id: string;
+        status: string;
+        amount: number;
+      }>(
+        "STUDENT",
+        `/batches/${batch.id}/purchase`,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            subscriptionId: SEED.adultPlanIds[0],
+            purchaserUserId: student.id,
+            coveredStudents: [
+              { studentId: student.id, seatRole: "ADULT" },
+            ],
+          }),
+        },
+        { userId: student.id },
+      );
+      expect(invoice.status).toBe("PENDING");
+      expect(Number(invoice.amount)).toBe(ADULT_MONTHLY_PRICE);
+
+      await expectOk(
+        "STUDENT",
+        `/billing/${invoice.id}/create-payment-order`,
+        { method: "POST", body: "{}" },
+        { userId: student.id },
+      );
+      const paid = await expectOk<{ status: string; amount: number }>(
+        "STUDENT",
+        `/billing/${invoice.id}/confirm-payment`,
+        { method: "POST", body: "{}" },
+        { userId: student.id },
+      );
+      expect(paid.status).toBe("PAID");
+
+      const after = await expectOk<{
+        totals: { collected: number; invoiceCount: number };
+      }>("STAFF", `/batches/${batch.id}/revenue`);
+      expect(after.totals.collected).toBe(Number(invoice.amount));
+      expect(after.totals.invoiceCount).toBeGreaterThanOrEqual(1);
+    } finally {
+      await cleanup.dispose();
+    }
+  });
+
   test("batch revenue ignores payments attributed to another batch for shared students @http", async () => {
     const cleanup = new TestDataCleanup();
     const stamp = Date.now();
@@ -246,11 +336,11 @@ test.describe("billing HTTP @http", () => {
           ],
           scheduleJson: {
             frequency: "WEEKLY",
-            weekdays: [0],
-            startDate: "2027-04-04",
-            endDate: "2027-06-27",
-            startTime: "05:15",
-            endTime: "06:00",
+            weekdays: [(stamp + 3) % 7],
+            startDate: "2028-04-03",
+            endDate: "2028-06-26",
+            startTime: `${String(8 + (stamp % 6)).padStart(2, "0")}:${String((stamp * 7) % 60).padStart(2, "0")}`,
+            endTime: `${String(9 + (stamp % 6)).padStart(2, "0")}:${String((stamp * 7) % 60).padStart(2, "0")}`,
             utcOffsetMinutes: 0,
           },
           capacity: 8,

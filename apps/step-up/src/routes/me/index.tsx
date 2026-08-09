@@ -195,6 +195,18 @@ function MeHomePage() {
             <>
               <HomeNotices notices={notices} flushHero />
 
+              {data.instructors?.length ? (
+                <section className={styles.section}>
+                  <div className={styles.sectionHeading}>
+                    <p className={styles.sectionLabel}>Top instructors</p>
+                    <Link to="/me/trainers" className={styles.sectionLink}>
+                      See all
+                    </Link>
+                  </div>
+                  <InstructorsRow instructors={data.instructors} />
+                </section>
+              ) : null}
+
               {nextClass ? (
                 <UpcomingClassCard
                   nextClass={nextClass}
@@ -223,18 +235,6 @@ function MeHomePage() {
                       <BatchProgressCard key={item.batchId} item={item} />
                     ))}
                   </HScrollRow>
-                </section>
-              ) : null}
-
-              {data.instructors?.length ? (
-                <section className={styles.section}>
-                  <div className={styles.sectionHeading}>
-                    <p className={styles.sectionLabel}>Top instructors</p>
-                    <Link to="/me/trainers" className={styles.sectionLink}>
-                      See all
-                    </Link>
-                  </div>
-                  <InstructorsRow instructors={data.instructors} />
                 </section>
               ) : null}
 

@@ -1037,6 +1037,10 @@ describe("BillingService.markPaid", () => {
         membershipId: "mem-new",
       }),
     });
+    const updateData = prisma.invoice.update.mock.calls[0]?.[0]?.data as {
+      purchaseMeta?: unknown;
+    };
+    expect(updateData.purchaseMeta).toBeUndefined();
   });
 
   it("rejects trainers marking invoices paid", async () => {
@@ -1306,6 +1310,10 @@ describe("BillingService invoice checkout", () => {
         }),
       }),
     );
+    const updateData = prisma.invoice.update.mock.calls[0]?.[0]?.data as {
+      purchaseMeta?: unknown;
+    };
+    expect(updateData.purchaseMeta).toBeUndefined();
     expect(result.status).toBe(InvoiceStatus.PAID);
   });
 

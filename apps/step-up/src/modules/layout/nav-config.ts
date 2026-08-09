@@ -158,7 +158,6 @@ const memberLinks: NavLinkItem[] = [
     label: "Trainers",
     icon: ENTITY_ICONS.trainer,
     section: "Activity",
-    primary: true,
   },
   {
     to: "/me/messages",

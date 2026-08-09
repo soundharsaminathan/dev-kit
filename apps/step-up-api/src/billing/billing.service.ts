@@ -851,7 +851,6 @@ export class BillingService {
         referralDiscount,
         studioDiscount,
         ...(membershipId ? { membershipId } : {}),
-        ...(purchaseMeta ? { purchaseMeta: Prisma.DbNull } : {}),
       },
     });
 
@@ -1271,7 +1270,6 @@ export class BillingService {
         paidAt: new Date(),
         membershipId: membership.id,
         paymentHoldExpiresAt: null,
-        purchaseMeta: Prisma.DbNull,
         ...(razorpayPaymentId ? { razorpayPaymentId } : {}),
       },
     });
