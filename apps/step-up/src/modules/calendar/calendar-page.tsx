@@ -25,13 +25,8 @@ import {
   formatMonthLabel,
   formatTime,
   rangeForView,
-  type UnscheduledBooking,
 } from "./types";
-import { UnscheduledList } from "./unscheduled-list";
-import {
-  useCalendarEvents,
-  useUnscheduledBookings,
-} from "./use-calendar-events";
+import { useCalendarEvents } from "./use-calendar-events";
 import { WeekView } from "./week-view";
 
 export type BranchOption = {
@@ -136,7 +131,6 @@ export function CalendarPage({
   const range = useMemo(() => rangeForView(focus, view), [focus, view]);
 
   const eventsQuery = useCalendarEvents(scope, range.from, range.to);
-  const unscheduledQuery = useUnscheduledBookings(scope);
 
   const rangeLabel =
     view === "week"
@@ -153,12 +147,6 @@ export function CalendarPage({
 
   const handleSelectEvent = (event: CalendarEvent) => {
     setSelected(event);
-  };
-
-  const handleUnscheduled = (_item: UnscheduledBooking) => {
-    if (staffActions) {
-      void navigate({ to: "/app/bookings" });
-    }
   };
 
   const openSelected = () => {
@@ -278,7 +266,10 @@ export function CalendarPage({
         ) : null}
       </div>
 
-      <div className={styles.layout}>
+      <div
+        className={styles.layout}
+        data-has-side={!isMobile && selected ? "true" : undefined}
+      >
         <div className={styles.main}>
           {eventsQuery.isLoading ? (
             <SkeletonBlock height="18rem" radius="var(--radius-2xl)" />
@@ -323,22 +314,14 @@ export function CalendarPage({
           ) : null}
         </div>
 
-        <aside
-          className={styles.side}
-          data-mobile-sheet={isMobile ? "true" : undefined}
-        >
-          {!isMobile && selected && detailProps ? (
+        {!isMobile && selected && detailProps ? (
+          <aside className={styles.side}>
             <div className={styles.sideCard}>
               <p className={styles.sideTitle}>{selected.title}</p>
               <EventDetail {...detailProps} />
             </div>
-          ) : null}
-
-          <UnscheduledList
-            items={unscheduledQuery.data ?? []}
-            onSelect={handleUnscheduled}
-          />
-        </aside>
+          </aside>
+        ) : null}
       </div>
 
       {isMobile ? (

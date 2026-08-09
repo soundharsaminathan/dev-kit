@@ -39,7 +39,7 @@ export function RefundInvoiceSheet({
 
   if (invoiceId !== lastInvoiceId) {
     setLastInvoiceId(invoiceId);
-    setAmount(invoice ? String(refundableAmount(invoice)) : "");
+    setAmount("");
     setReason("");
   }
 
@@ -129,6 +129,7 @@ export function RefundInvoiceSheet({
             max={maxRefund}
             value={amount}
             onChange={setAmount}
+            placeholder={`Up to ${formatPrice(maxRefund)}`}
             data-testid="refund-amount-input"
           />
           <FormInput

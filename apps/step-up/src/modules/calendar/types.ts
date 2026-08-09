@@ -18,17 +18,6 @@ export type CalendarEvent = {
   sessionId?: string;
 };
 
-export type UnscheduledBooking = {
-  id: string;
-  kind: "BOOKING";
-  title: string;
-  status: string;
-  studentId: string;
-  bookingType: BookingType;
-  trainerId: string | null;
-  studioId: string;
-};
-
 export type CalendarViewMode = "week" | "month";
 
 export type CalendarScope = {

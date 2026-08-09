@@ -7,10 +7,23 @@
   "exports": {
     "./scss": {
       "types": "./scss.d.ts",
+      "sass": "./scss/index.scss",
+      "style": "./scss/index.scss",
       "import": "./scss/index.scss",
       "default": "./scss/index.scss"
     },
-    "./scss/*": "./scss/*",
+    "./scss/step-up-critical": {
+      "sass": "./scss/step-up-critical.scss",
+      "style": "./scss/step-up-critical.scss",
+      "import": "./scss/step-up-critical.scss",
+      "default": "./scss/step-up-critical.scss"
+    },
+    "./scss/*": {
+      "sass": "./scss/*",
+      "style": "./scss/*",
+      "import": "./scss/*",
+      "default": "./scss/*"
+    },
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./src/index.ts",

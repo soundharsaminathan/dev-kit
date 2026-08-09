@@ -236,6 +236,7 @@ test.describe("admin (staff) smoke @smoke", () => {
       await page.goto("/app/invoices", { waitUntil: "domcontentloaded" });
       await waitForAppReady(page);
       await page.getByTestId(`refund-invoice-${invoice.id}`).click();
+      await expect(page.getByTestId("refund-amount-input")).toHaveValue("");
       await page.getByTestId("refund-amount-input").fill("250");
       const [response] = await Promise.all([
         waitForApiResponse(page, {
@@ -252,6 +253,62 @@ test.describe("admin (staff) smoke @smoke", () => {
           .getByRole("tabpanel", { name: /^refunds$/i })
           .getByTestId(`print-invoice-${invoice.id}`),
       ).toBeVisible();
+    } finally {
+      await context.close();
+      await cleanup.dispose();
+    }
+  });
+
+  test("staff refund amount above bill is blocked @smoke", async ({
+    browser,
+  }) => {
+    const cleanup = new SmokeDataCleanup();
+    const student = await apiRequest<{ id: string }>("OWNER", "/users", {
+      method: "POST",
+      body: JSON.stringify({
+        name: `Smoke Refund Cap ${Date.now()}`,
+        email: `smoke-refund-cap-${Date.now()}@stepup.dev`,
+        gender: "FEMALE",
+        ageRange: "TWENTY_TO_FORTY",
+        styles: ["Hip Hop"],
+      }),
+    });
+    cleanup.trackStudent(student.id);
+    const enrollment = await apiRequest<{
+      invoice: { id: string; status: string; amount: number };
+    }>("STAFF", `/batches/${SMOKE.beginnerBatchId}/enroll`, {
+      method: "POST",
+      body: JSON.stringify({
+        studentId: student.id,
+        subscriptionId: SMOKE.adultPlanIds[0],
+      }),
+    });
+    const invoice = enrollment.invoice;
+    await apiRequest("STAFF", `/billing/${invoice.id}/paid`, {
+      method: "PATCH",
+      body: JSON.stringify({ paymentMethod: "CASH" }),
+    });
+
+    const context = await browser.newContext({
+      storageState: authFile("STAFF"),
+    });
+    const page = await context.newPage();
+    try {
+      await page.goto("/app/invoices", { waitUntil: "domcontentloaded" });
+      await waitForAppReady(page);
+      await page.getByTestId(`refund-invoice-${invoice.id}`).click();
+      await page
+        .getByTestId("refund-amount-input")
+        .fill(String(invoice.amount + 1));
+      await page.getByTestId("confirm-refund-invoice").click();
+      await expect(page.getByText("Refund too high")).toBeVisible();
+
+      const latest = await apiRequest<
+        Array<{ id: string; refundedAmount?: number }>
+      >("STAFF", `/billing/studio/${SMOKE.studioId}`);
+      expect(
+        latest.find((row) => row.id === invoice.id)?.refundedAmount ?? 0,
+      ).toBe(0);
     } finally {
       await context.close();
       await cleanup.dispose();

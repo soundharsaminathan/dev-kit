@@ -148,6 +148,42 @@
   color: color-mix(in srgb, var(--color-fg) 62%, transparent);
 }
 
+.kpiInfoWrap {
+  margin-left: auto;
+}
+
+.kpiInfo {
+  display: inline-grid;
+  place-items: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-full, 999px);
+  background: transparent;
+  color: color-mix(in srgb, var(--color-fg) 45%, transparent);
+  cursor: help;
+
+  &:hover,
+  &:focus-visible {
+    color: var(--color-fg);
+    outline: none;
+  }
+
+  &:focus-visible {
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary) 45%, transparent);
+  }
+}
+
+.kpiInfo svg {
+  width: 0.875rem;
+  height: 0.875rem;
+}
+
+.kpiTooltip {
+  text-align: left;
+}
+
 .kpiIcon {
   display: grid;
   place-items: center;

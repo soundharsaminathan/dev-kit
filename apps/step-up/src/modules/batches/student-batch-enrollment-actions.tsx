@@ -420,10 +420,7 @@ export function StudentBatchEnrollmentActions({
                     refundAmountInvoiceId ===
                     unenrollPreviewQuery.data.refundableInvoice.id
                       ? refundAmount
-                      : String(
-                          unenrollPreviewQuery.data.refundableInvoice
-                            .refundableAmount,
-                        )
+                      : ""
                   }
                   onChange={(value) => {
                     const invoice =
@@ -432,6 +429,10 @@ export function StudentBatchEnrollmentActions({
                     setRefundAmountInvoiceId(invoice.id);
                     setRefundAmount(value);
                   }}
+                  placeholder={`Up to ${formatPrice(
+                    unenrollPreviewQuery.data.refundableInvoice
+                      .refundableAmount,
+                  )}`}
                   data-testid="unenroll-refund-amount"
                 />
               ) : null}
@@ -461,11 +462,20 @@ export function StudentBatchEnrollmentActions({
                 const refundable =
                   unenrollPreviewQuery.data?.refundableInvoice ?? null;
                 let parsedRefundAmount: number | undefined;
-                if (issueRefund && refundable) {
+                if (issueRefund) {
+                  if (!refundable) {
+                    toast({
+                      title: "No refundable invoice",
+                      description:
+                        "No paid invoice is available to refund for this enrollment.",
+                      variant: "error",
+                    });
+                    return;
+                  }
                   const raw =
                     refundAmountInvoiceId === refundable.id
                       ? refundAmount
-                      : String(refundable.refundableAmount);
+                      : "";
                   parsedRefundAmount = Number(raw);
                   if (
                     !Number.isFinite(parsedRefundAmount) ||

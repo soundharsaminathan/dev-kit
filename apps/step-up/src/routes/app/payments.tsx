@@ -28,6 +28,7 @@ import {
 } from "@dev-ui/components/select";
 import { ToggleButton } from "@dev-ui/components/toggle-button";
 import { ToggleButtonGroup } from "@dev-ui/components/toggle-button-group";
+import { Tooltip, TooltipContent } from "@dev-ui/components/tooltip";
 import type { IconName } from "@dev-ui/icons";
 import { Icon } from "@dev-ui/icons";
 import { useQuery } from "@tanstack/react-query";
@@ -671,6 +672,7 @@ function PaymentsPage() {
                   icon="check"
                   tone="success"
                   label="Collected"
+                  description="Money received from paid invoices, after any refunds."
                   value={formatInr(data.totals.collected)}
                   hint={formatDeltaPct(data.comparison.collectedDeltaPct)}
                 />
@@ -678,6 +680,7 @@ function PaymentsPage() {
                   icon="clock"
                   tone="warning"
                   label="Pending"
+                  description="Unpaid invoices that are not past their due date yet."
                   value={formatInr(data.totals.pending)}
                   hint={`${data.byStatus.PENDING.count} invoices`}
                 />
@@ -685,6 +688,7 @@ function PaymentsPage() {
                   icon="alert-triangle"
                   tone="danger"
                   label="Overdue"
+                  description="Unpaid invoices that are past their due date."
                   value={formatInr(data.totals.overdue)}
                   hint={
                     data.byStatus.OVERDUE.count === 0
@@ -696,6 +700,7 @@ function PaymentsPage() {
                   icon="refresh"
                   tone="warning"
                   label="Refunded"
+                  description="Full and partial refunds issued on paid invoices."
                   value={formatInr(data.totals.refunded)}
                   hint={
                     data.byStatus.REFUNDED.count === 0 &&
@@ -947,12 +952,14 @@ function RevenueChart({
 function KpiCard({
   icon,
   label,
+  description,
   value,
   hint,
   tone,
 }: {
   icon: IconName;
   label: string;
+  description: string;
   value: string;
   hint: string;
   tone?: "success" | "warning" | "danger";
@@ -964,6 +971,26 @@ function KpiCard({
           <Icon name={icon} />
         </span>
         {label}
+        <Tooltip
+          delay={200}
+          touchBehavior="toggle"
+          className={styles.kpiInfoWrap}
+        >
+          <button
+            type="button"
+            className={styles.kpiInfo}
+            aria-label={`What is ${label}?`}
+          >
+            <Icon name="help-circle" />
+          </button>
+          <TooltipContent
+            portal
+            placement="top"
+            className={styles.kpiTooltip}
+          >
+            {description}
+          </TooltipContent>
+        </Tooltip>
       </span>
       <strong className={styles.kpiValue}>{value}</strong>
       <span className={styles.kpiHint}>{hint}</span>

@@ -165,6 +165,24 @@ test.describe("billing HTTP @http", () => {
     }
   });
 
+  test("staff refund above remaining balance is rejected @http", async () => {
+    const cleanup = new TestDataCleanup();
+    try {
+      const target = await createPendingInvoiceViaEnroll(cleanup);
+      await expectOk("STAFF", `/billing/${target.id}/paid`, {
+        method: "PATCH",
+        body: JSON.stringify({ paymentMethod: "CASH" }),
+      });
+
+      await expectStatus("STAFF", `/billing/${target.id}/refund`, 400, {
+        method: "POST",
+        body: JSON.stringify({ amount: target.amount + 1 }),
+      });
+    } finally {
+      await cleanup.dispose();
+    }
+  });
+
   test("trainer cannot refund via billing endpoint @http", async () => {
     const cleanup = new TestDataCleanup();
     try {

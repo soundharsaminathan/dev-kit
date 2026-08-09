@@ -27,9 +27,13 @@
 
 .layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(14rem, 18rem);
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-3, 0.75rem);
   align-items: start;
+}
+
+.layout[data-has-side="true"] {
+  grid-template-columns: minmax(0, 1fr) minmax(14rem, 18rem);
 }
 
 .main {
@@ -75,18 +79,8 @@
   opacity: 0.8;
 }
 
-@media (max-width: 767px) {
-  .layout {
-    grid-template-columns: 1fr;
-  }
-
-  .side[data-mobile-sheet="true"] .sideCard {
-    display: none;
-  }
-}
-
-@media (min-width: 768px) and (max-width: 960px) {
-  .layout {
+@media (max-width: 960px) {
+  .layout[data-has-side="true"] {
     grid-template-columns: 1fr;
   }
 }
