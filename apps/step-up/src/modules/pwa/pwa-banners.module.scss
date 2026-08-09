@@ -28,8 +28,8 @@
 }
 
 .online {
-  background: #dcfce7;
-  color: #14532d;
+  background: #238636;
+  color: #ffffff;
   font-size: 0.6875rem;
   font-weight: 500;
   padding-block: 0.4rem;
@@ -80,15 +80,12 @@
 }
 
 .actionPrimary {
-  background: var(--btn-primary-background, var(--color-primary));
-  color: var(--btn-primary-foreground, var(--color-fg-on-primary));
+  background: #238636;
+  color: #ffffff;
 }
 
 .actionPrimary:hover {
-  background: var(
-    --btn-primary-hover-background,
-    color-mix(in srgb, var(--color-primary) 88%, black)
-  );
+  background: color-mix(in srgb, #238636 88%, black);
 }
 
 @media (prefers-reduced-motion: reduce) {
