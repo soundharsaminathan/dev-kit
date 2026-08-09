@@ -45,12 +45,19 @@ export function collapseWindow(intervals: TimeInterval[]): TimeInterval | null {
   return { startsAt, endsAt };
 }
 
-export function formatConflictInstant(date: Date): string {
-  return date.toISOString();
+export function formatConflictInstant(date: Date, timeZone?: string): string {
+  return date.toLocaleString("en-IN", {
+    dateStyle: "medium",
+    timeStyle: "short",
+    ...(timeZone ? { timeZone } : {}),
+  });
 }
 
-export function conflictMessage(conflict: ScheduleConflict): string {
-  const when = formatConflictInstant(conflict.interval.startsAt);
+export function conflictMessage(
+  conflict: ScheduleConflict,
+  timeZone?: string,
+): string {
+  const when = formatConflictInstant(conflict.interval.startsAt, timeZone);
   if (conflict.party === "trainer") {
     return `Trainer is already booked at ${when}`;
   }

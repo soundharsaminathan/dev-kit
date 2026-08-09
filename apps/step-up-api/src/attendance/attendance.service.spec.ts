@@ -264,6 +264,7 @@ describe("AttendanceService.markAllPresent", () => {
     parentChild: { findUnique: vi.fn() },
     booking: { findMany: vi.fn(), findFirst: vi.fn() },
     user: { findUnique: vi.fn() },
+    invoice: { findMany: vi.fn() },
   };
   const memberships = {
     findActiveForBatch: vi.fn(),
@@ -285,6 +286,7 @@ describe("AttendanceService.markAllPresent", () => {
     prisma.booking.findMany.mockResolvedValue([]);
     prisma.booking.findFirst.mockResolvedValue(null);
     prisma.batchEnrollment.findFirst.mockResolvedValue(null);
+    prisma.invoice.findMany.mockResolvedValue([]);
     service = new AttendanceService(
       prisma as never,
       memberships as never,
@@ -542,6 +544,8 @@ describe("AttendanceService.getSessionRoster", () => {
     attendance: { findMany: vi.fn(), upsert: vi.fn() },
     parentChild: { findUnique: vi.fn() },
     booking: { findMany: vi.fn(), findFirst: vi.fn() },
+    invoice: { findMany: vi.fn() },
+    user: { findUnique: vi.fn() },
   };
   const memberships = {
     findActiveForBatch: vi.fn(),
@@ -560,6 +564,7 @@ describe("AttendanceService.getSessionRoster", () => {
     memberships.findMonthlyUnpaidStudentIds.mockResolvedValue(new Set(["s2"]));
     prisma.booking.findMany.mockResolvedValue([]);
     prisma.booking.findFirst.mockResolvedValue(null);
+    prisma.invoice.findMany.mockResolvedValue([]);
     service = new AttendanceService(
       prisma as never,
       memberships as never,
@@ -574,7 +579,7 @@ describe("AttendanceService.getSessionRoster", () => {
       id: "session-1",
       batchId: "batch-1",
       startsAt: new Date("2026-08-01T10:00:00.000Z"),
-      batch: { id: "batch-1" },
+      batch: { id: "batch-1", studioId: "studio-1" },
       attendance: [
         {
           id: "a1",
@@ -588,6 +593,20 @@ describe("AttendanceService.getSessionRoster", () => {
       { studentId: "s1", student: { name: "Ada" }, status: "ACTIVE" },
       { studentId: "s2", student: { name: "Grace" }, status: "ACTIVE" },
     ]);
+    prisma.invoice.findMany.mockResolvedValue([
+      {
+        studentId: "s1",
+        membership: {
+          subscription: { billingCadence: "MONTHLY" },
+        },
+      },
+      {
+        studentId: "s1",
+        membership: {
+          subscription: { billingCadence: "QUARTERLY" },
+        },
+      },
+    ]);
 
     const roster = await service.getSessionRoster("session-1");
 
@@ -595,11 +614,20 @@ describe("AttendanceService.getSessionRoster", () => {
       "s1",
       "s2",
     ]);
+    expect(prisma.invoice.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          studioId: "studio-1",
+          studentId: { in: ["s1", "s2"] },
+        }),
+      }),
+    );
     expect(roster).toEqual([
       expect.objectContaining({
         studentId: "s1",
         isTrial: false,
         monthlyUnpaid: false,
+        paidMonths: 4,
         attendance: expect.objectContaining({
           status: AttendanceStatus.PRESENT,
         }),
@@ -608,6 +636,7 @@ describe("AttendanceService.getSessionRoster", () => {
         studentId: "s2",
         isTrial: false,
         monthlyUnpaid: true,
+        paidMonths: 0,
         attendance: null,
       }),
     ]);

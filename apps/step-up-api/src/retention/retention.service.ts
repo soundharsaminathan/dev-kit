@@ -1,5 +1,10 @@
 import { Inject, Injectable } from "@nestjs/common";
-import { AttendanceStatus, MembershipStatus } from "@prisma/client";
+import {
+  AttendanceStatus,
+  BillingCadence,
+  InvoiceStatus,
+  MembershipStatus,
+} from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import { UserCryptoService } from "../users/user-crypto.service";
 
@@ -10,7 +15,50 @@ export class RetentionService {
     @Inject(UserCryptoService) private readonly crypto: UserCryptoService,
   ) {}
 
+  private async paidMonthsByStudentIds(
+    studioId: string,
+    studentIds: string[],
+  ): Promise<Map<string, number>> {
+    const paidMonthsByStudent = new Map<string, number>();
+    if (studentIds.length === 0) return paidMonthsByStudent;
+
+    const paidInvoices = await this.prisma.invoice.findMany({
+      where: {
+        studioId,
+        studentId: { in: studentIds },
+        status: InvoiceStatus.PAID,
+      },
+      select: {
+        studentId: true,
+        membership: {
+          select: {
+            subscription: { select: { billingCadence: true } },
+          },
+        },
+      },
+    });
+
+    for (const invoice of paidInvoices) {
+      const months =
+        invoice.membership?.subscription.billingCadence ===
+        BillingCadence.QUARTERLY
+          ? 3
+          : 1;
+      paidMonthsByStudent.set(
+        invoice.studentId,
+        (paidMonthsByStudent.get(invoice.studentId) ?? 0) + months,
+      );
+    }
+
+    return paidMonthsByStudent;
+  }
+
   async getBatchStats(batchId: string) {
+    const batch = await this.prisma.batch.findUnique({
+      where: { id: batchId },
+      select: { studioId: true },
+    });
+
     const enrollments = await this.prisma.batchEnrollment.findMany({
       where: { batchId, status: "ACTIVE" },
       include: {
@@ -74,6 +122,13 @@ export class RetentionService {
       take: 50,
     });
 
+    const absenteeStudentIds = [
+      ...new Set(absentees.map((record) => record.studentId)),
+    ];
+    const paidMonthsByStudent = batch
+      ? await this.paidMonthsByStudentIds(batch.studioId, absenteeStudentIds)
+      : new Map<string, number>();
+
     return {
       batchId,
       enrolledCount: students.length,
@@ -88,7 +143,7 @@ export class RetentionService {
         return {
           studentId: record.studentId,
           studentName: student.name,
-          createdAt: record.student.createdAt.toISOString(),
+          paidMonths: paidMonthsByStudent.get(record.studentId) ?? 0,
           sessionId: record.sessionId,
           sessionStartsAt: record.session.startsAt,
         };
@@ -109,6 +164,12 @@ export class RetentionService {
       (booking) => booking.status === "CANCELLED",
     );
 
+    const recent = bookings.slice(0, 10);
+    const paidMonthsByStudent = await this.paidMonthsByStudentIds(
+      studioId,
+      [...new Set(recent.map((booking) => booking.studentId))],
+    );
+
     return {
       trainerId,
       studioId,
@@ -119,12 +180,12 @@ export class RetentionService {
         bookings.length === 0
           ? 0
           : Math.round((completed.length / bookings.length) * 100),
-      recentStudents: bookings.slice(0, 10).map((booking) => {
+      recentStudents: recent.map((booking) => {
         const student = this.crypto.decryptUser(booking.student);
         return {
           studentId: booking.studentId,
           studentName: student.name,
-          createdAt: booking.student.createdAt.toISOString(),
+          paidMonths: paidMonthsByStudent.get(booking.studentId) ?? 0,
           status: booking.status,
         };
       }),

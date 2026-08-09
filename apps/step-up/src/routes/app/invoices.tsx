@@ -81,11 +81,13 @@ type InvoiceCardProps = {
   invoice: Invoice;
   collectTestId: string;
   onCollect: () => void;
-  onRefund?: () => void;
-  refundMode?: boolean;
-  studio?: Pick<Studio, "name" | "address" | "logoUrl"> & {
-    settings?: Pick<NonNullable<Studio["settings"]>, "gstNumber"> | null;
-  };
+  onRefund?: (() => void) | undefined;
+  refundMode?: boolean | undefined;
+  studio?:
+    | (Pick<Studio, "name" | "address" | "logoUrl"> & {
+        settings?: Pick<NonNullable<Studio["settings"]>, "gstNumber"> | null;
+      })
+    | undefined;
 };
 
 function InvoiceCard({

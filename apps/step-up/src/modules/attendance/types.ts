@@ -3,9 +3,10 @@ export type AttendanceStatusValue = "PRESENT" | "ABSENT";
 export type AttendanceRosterEntry = {
   studentId: string;
   monthlyUnpaid?: boolean;
+  paidMonths?: number;
   isTrial?: boolean;
   trialBookingStatus?: "PENDING" | "CONFIRMED" | null;
-  student: { name: string; createdAt?: string };
+  student: { name: string };
   attendance: {
     id: string;
     status: AttendanceStatusValue;

@@ -15,6 +15,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useApi } from "@/lib/api-context";
 import { ENTITY_ICONS } from "@/lib/entity-icons";
+import { formatPaidMonths } from "@/lib/format-paid-months";
 import { useStudioId } from "@/lib/use-studio-id";
 import { formatPrice } from "@/modules/payments/invoice-types";
 import {
@@ -42,10 +43,6 @@ export type BatchEnrollmentRow = {
     createdAt?: string;
   };
 };
-
-function formatPaidMonths(months: number) {
-  return `${months} ${months === 1 ? "month" : "months"}`;
-}
 
 type BatchPlan = {
   id: string;

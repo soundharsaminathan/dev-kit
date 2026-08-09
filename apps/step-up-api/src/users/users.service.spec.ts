@@ -448,11 +448,13 @@ describe("UsersService family members", () => {
       delete: vi.fn(),
       findUnique: vi.fn(),
       findFirst: vi.fn(),
+      findMany: vi.fn(),
     },
     familyMember: {
       findMany: vi.fn(),
       findUnique: vi.fn(),
       create: vi.fn(),
+      upsert: vi.fn(),
       delete: vi.fn(),
       count: vi.fn(),
     },
@@ -689,6 +691,83 @@ describe("UsersService family members", () => {
     expect(result).toEqual(
       expect.objectContaining({ id: "student-1", name: "Kid One" }),
     );
+  });
+
+  it("links selected studio users into one family under a parent owner", async () => {
+    const anchor = {
+      id: "student-1",
+      role: UserRole.STUDENT,
+      studioId: "studio-1",
+    };
+    const sibling = {
+      id: "student-2",
+      role: UserRole.STUDENT,
+      studioId: "studio-1",
+    };
+    const parent = {
+      id: "parent-1",
+      role: UserRole.PARENT,
+      studioId: "studio-1",
+    };
+    prisma.user.findMany.mockResolvedValue([anchor, sibling, parent]);
+    prisma.$transaction.mockImplementation(async (fn) =>
+      fn({
+        parentChild: { upsert: prisma.parentChild.upsert },
+        familyMember: { upsert: prisma.familyMember.upsert },
+      }),
+    );
+    prisma.parentChild.upsert.mockResolvedValue({});
+    prisma.familyMember.upsert.mockResolvedValue({});
+    prisma.familyMember.findMany.mockResolvedValue([]);
+    prisma.parentChild.findMany.mockResolvedValue([]);
+
+    await service.linkStudioFamily("studio-1", {
+      anchorUserId: "student-1",
+      memberUserIds: ["student-2", "parent-1"],
+    });
+
+    expect(prisma.parentChild.upsert).toHaveBeenCalledTimes(2);
+    expect(prisma.familyMember.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        create: expect.objectContaining({
+          ownerUserId: "parent-1",
+          memberUserId: "student-1",
+          kind: FamilyMemberKind.KID,
+        }),
+      }),
+    );
+    expect(prisma.familyMember.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        create: expect.objectContaining({
+          ownerUserId: "parent-1",
+          memberUserId: "student-2",
+          kind: FamilyMemberKind.KID,
+        }),
+      }),
+    );
+  });
+
+  it("rejects staff accounts when linking a studio family", async () => {
+    prisma.user.findMany.mockResolvedValue([
+      { id: "student-1", role: UserRole.STUDENT, studioId: "studio-1" },
+      { id: "staff-1", role: UserRole.STAFF, studioId: "studio-1" },
+    ]);
+
+    await expect(
+      service.linkStudioFamily("studio-1", {
+        anchorUserId: "student-1",
+        memberUserIds: ["staff-1"],
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it("rejects empty family member selection", async () => {
+    await expect(
+      service.linkStudioFamily("studio-1", {
+        anchorUserId: "student-1",
+        memberUserIds: ["student-1"],
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
   });
 });
 
@@ -1029,6 +1108,7 @@ describe("UsersService.updateStudioStudent", () => {
     attendance: { findMany: vi.fn() },
     invoice: { findMany: vi.fn() },
     parentChild: { findMany: vi.fn() },
+    familyMember: { findMany: vi.fn() },
   };
   const crypto = {
     decryptUser: vi.fn((user: Record<string, unknown>) => ({
@@ -1087,6 +1167,7 @@ describe("UsersService.updateStudioStudent", () => {
     prisma.attendance.findMany.mockResolvedValue([]);
     prisma.invoice.findMany.mockResolvedValue([]);
     prisma.parentChild.findMany.mockResolvedValue([]);
+    prisma.familyMember.findMany.mockResolvedValue([]);
 
     const result = await service.updateStudioStudent(
       "studio-seed-1",
@@ -1100,6 +1181,7 @@ describe("UsersService.updateStudioStudent", () => {
     });
     expect(result.student.active).toBe(false);
     expect(result.parents).toEqual([]);
+    expect(result.family).toEqual([]);
   });
 
   it("rejects when no fields are provided", async () => {

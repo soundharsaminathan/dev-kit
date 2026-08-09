@@ -5,12 +5,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@dev-ui/components/select";
+import { Icon } from "@dev-ui/icons";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { useApi } from "@/lib/api-context";
 import { ENTITY_ICONS } from "@/lib/entity-icons";
-import { formatActiveDuration } from "@/lib/format-active-duration";
+import { formatPaidMonths } from "@/lib/format-paid-months";
 import { useStudioId } from "@/lib/use-studio-id";
 import { useStudioTrainers } from "@/modules/trainers/use-trainers";
 import { AnimatedMetric } from "@/modules/ui/animated-metric";
@@ -27,7 +28,7 @@ type Batch = { id: string; name: string };
 type Absentee = {
   studentId: string;
   studentName: string;
-  createdAt?: string;
+  paidMonths?: number;
   sessionId: string;
   sessionStartsAt: string;
 };
@@ -51,7 +52,7 @@ type TrainerRetentionStats = {
   recentStudents: Array<{
     studentId: string;
     studentName: string;
-    createdAt?: string;
+    paidMonths?: number;
     status: string;
   }>;
 };
@@ -228,9 +229,6 @@ function RetentionPage() {
                   <p className={staff.sectionTitle}>Recent absences</p>
                   <div className={staff.list}>
                     {retentionQuery.data.absenteeList.map((absentee) => {
-                      const activeDuration = formatActiveDuration(
-                        absentee.createdAt,
-                      );
                       return (
                         <PressableCard
                           key={`${absentee.studentId}-${absentee.sessionId}`}
@@ -245,11 +243,16 @@ function RetentionPage() {
                             <span className={staff.rowTitle}>
                               {absentee.studentName}
                             </span>
-                            {activeDuration ? (
-                              <span className={staff.rowMeta}>
-                                {activeDuration}
-                              </span>
-                            ) : null}
+                            <span
+                              className={staff.metaWithIcon}
+                              data-testid={`paid-months-${absentee.studentId}`}
+                            >
+                              <Icon
+                                name="wallet"
+                                className={staff.metaWithIconIcon}
+                              />
+                              {formatPaidMonths(absentee.paidMonths ?? 0)}
+                            </span>
                             <span className={staff.rowMeta}>
                               Missed{" "}
                               {formatSessionDate(absentee.sessionStartsAt)}
@@ -347,9 +350,6 @@ function RetentionPage() {
               {trainerQuery.data.recentStudents.length > 0 ? (
                 <div className={staff.list}>
                   {trainerQuery.data.recentStudents.map((student) => {
-                    const activeDuration = formatActiveDuration(
-                      student.createdAt,
-                    );
                     return (
                       <PressableCard
                         key={student.studentId}
@@ -364,11 +364,16 @@ function RetentionPage() {
                           <span className={staff.rowTitle}>
                             {student.studentName}
                           </span>
-                          {activeDuration ? (
-                            <span className={staff.rowMeta}>
-                              {activeDuration}
-                            </span>
-                          ) : null}
+                          <span
+                            className={staff.metaWithIcon}
+                            data-testid={`paid-months-${student.studentId}`}
+                          >
+                            <Icon
+                              name="wallet"
+                              className={staff.metaWithIconIcon}
+                            />
+                            {formatPaidMonths(student.paidMonths ?? 0)}
+                          </span>
                           <span className={staff.rowMeta}>
                             {student.status}
                           </span>

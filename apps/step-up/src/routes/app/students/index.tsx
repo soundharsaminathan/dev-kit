@@ -11,6 +11,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useApi } from "@/lib/api-context";
 import { ENTITY_ICONS } from "@/lib/entity-icons";
+import { formatPaidMonths } from "@/lib/format-paid-months";
 import { requireAdmin } from "@/lib/require-auth";
 import { useStudioId } from "@/lib/use-studio-id";
 import {
@@ -49,10 +50,6 @@ const CREATE_ITEMS = [
 ] as const;
 
 const NEW_USER_DAYS = 14;
-
-function formatPaidMonths(months: number) {
-  return `${months} ${months === 1 ? "month" : "months"}`;
-}
 
 function parseSearch(search: Record<string, unknown>): StudentsSearch {
   const result: StudentsSearch = {};

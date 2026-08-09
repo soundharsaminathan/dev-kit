@@ -138,6 +138,16 @@ describe("AttendanceRosterTable selection", () => {
     expect(onMarkSelected).toHaveBeenCalledWith(["s1"], "ABSENT");
   });
 
+  it("marks unmarked student present or absent in one click", () => {
+    const { onMarkOne } = renderTable();
+
+    fireEvent.click(screen.getByTestId("mark-present-s1"));
+    expect(onMarkOne).toHaveBeenCalledWith("s1", "PRESENT");
+
+    fireEvent.click(screen.getByTestId("mark-absent-s1"));
+    expect(onMarkOne).toHaveBeenCalledWith("s1", "ABSENT");
+  });
+
   it("calls mark-all unmarked present", () => {
     const { onMarkAllUnmarkedPresent } = renderTable();
 

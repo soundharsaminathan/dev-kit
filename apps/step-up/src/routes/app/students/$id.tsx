@@ -13,6 +13,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useApi } from "@/lib/api-context";
 import { ENTITY_ICONS } from "@/lib/entity-icons";
+import { formatPaidMonths } from "@/lib/format-paid-months";
 import { requireAdmin } from "@/lib/require-auth";
 import { useStudioId } from "@/lib/use-studio-id";
 import { StudentBatchEnrollmentActions } from "@/modules/batches/student-batch-enrollment-actions";
@@ -91,6 +92,15 @@ type StudentStudioProfile = {
     photoUrl?: string | null;
     role: string;
   }>;
+  family: Array<{
+    id: string;
+    name: string;
+    email: string;
+    phone?: string | null;
+    photoUrl?: string | null;
+    role: string;
+    relation: "PARENT" | "KID" | "CO_STUDENT" | "FAMILY";
+  }>;
 };
 
 type StudioMember = {
@@ -103,11 +113,26 @@ type StudioMember = {
 type SheetKind =
   | "edit"
   | "mark-paid"
-  | "link-parent"
+  | "link-family"
   | "delete"
   | "toggle-active"
   | "reset-password"
   | null;
+
+function familyRelationLabel(
+  relation: StudentStudioProfile["family"][number]["relation"],
+) {
+  switch (relation) {
+    case "PARENT":
+      return "Parent";
+    case "KID":
+      return "Kid";
+    case "CO_STUDENT":
+      return "Family";
+    case "FAMILY":
+      return "Family";
+  }
+}
 
 type TemporaryCredentials = {
   email: string;
@@ -138,10 +163,6 @@ function formatDate(value: string) {
     day: "numeric",
     year: "numeric",
   });
-}
-
-function formatPaidMonths(months: number) {
-  return `${months} ${months === 1 ? "month" : "months"}`;
 }
 
 function membershipStatusLabel(
@@ -189,7 +210,8 @@ function StudentDetailPage() {
   );
   const [referralDiscount, setReferralDiscount] = useState("");
   const [studioDiscount, setStudioDiscount] = useState("");
-  const [parentUserId, setParentUserId] = useState<string | null>(null);
+  const [familyMemberIds, setFamilyMemberIds] = useState<string[]>([]);
+  const [familySearch, setFamilySearch] = useState("");
   const [resetCredentials, setResetCredentials] =
     useState<TemporaryCredentials | null>(null);
 
@@ -207,7 +229,7 @@ function StudentDetailPage() {
   const membersQuery = useQuery({
     queryKey: ["studio-members", studioId],
     queryFn: () => api.get<StudioMember[]>(`/users/studio/${studioId}`),
-    enabled: sheet === "link-parent",
+    enabled: sheet === "link-family",
   });
 
   async function invalidateStudent() {
@@ -239,7 +261,8 @@ function StudentDetailPage() {
     setPaymentMethod(null);
     setReferralDiscount("");
     setStudioDiscount("");
-    setParentUserId(null);
+    setFamilyMemberIds([]);
+    setFamilySearch("");
     setResetCredentials(null);
   }
 
@@ -259,9 +282,18 @@ function StudentDetailPage() {
     setSheet("mark-paid");
   }
 
-  function openLinkParent() {
-    setParentUserId(null);
-    setSheet("link-parent");
+  function openLinkFamily() {
+    setFamilyMemberIds([]);
+    setFamilySearch("");
+    setSheet("link-family");
+  }
+
+  function toggleFamilyMember(memberId: string) {
+    setFamilyMemberIds((current) =>
+      current.includes(memberId)
+        ? current.filter((id) => id !== memberId)
+        : [...current, memberId],
+    );
   }
 
   function openDelete() {
@@ -431,26 +463,29 @@ function StudentDetailPage() {
     },
   });
 
-  const linkParent = useMutation({
-    mutationFn: (parentId: string) =>
-      api.post("/users/parent-child", {
-        parentUserId: parentId,
-        childUserId: id,
+  const linkFamily = useMutation({
+    mutationFn: (memberUserIds: string[]) =>
+      api.post(`/users/studio/${studioId}/families/link`, {
+        anchorUserId: id,
+        memberUserIds,
       }),
     onSuccess: async () => {
       await invalidateStudent();
+      await queryClient.invalidateQueries({
+        queryKey: ["studio-families", studioId],
+      });
       closeSheet();
       toast({
-        title: "Parent linked",
-        description: "The parent account is now connected to this student.",
+        title: "Family linked",
+        description: "Selected accounts are now one family with this student.",
         variant: "success",
       });
     },
     onError: (error) => {
       toast({
-        title: "Couldn’t link parent",
+        title: "Couldn’t link family",
         description:
-          error instanceof Error ? error.message : "Could not link parent.",
+          error instanceof Error ? error.message : "Could not link family.",
         variant: "error",
       });
     },
@@ -486,13 +521,26 @@ function StudentDetailPage() {
   });
 
   const profile = query.data;
-  const parentCandidates = useMemo(() => {
-    const linked = new Set((profile?.parents ?? []).map((p) => p.id));
-    return (membersQuery.data ?? []).filter(
-      (member) =>
-        member.role === "PARENT" && member.id !== id && !linked.has(member.id),
-    );
-  }, [membersQuery.data, profile?.parents, id]);
+  const family = useMemo(() => {
+    if (profile?.family) return profile.family;
+    return (profile?.parents ?? []).map((member) => ({
+      ...member,
+      relation: "PARENT" as const,
+    }));
+  }, [profile?.family, profile?.parents]);
+  const familyCandidates = useMemo(() => {
+    const linked = new Set(family.map((member) => member.id));
+    const queryText = familySearch.trim().toLowerCase();
+    return (membersQuery.data ?? []).filter((member) => {
+      if (member.id === id || linked.has(member.id)) return false;
+      if (member.role !== "STUDENT" && member.role !== "PARENT") return false;
+      if (!queryText) return true;
+      return (
+        member.name.toLowerCase().includes(queryText) ||
+        member.email.toLowerCase().includes(queryText)
+      );
+    });
+  }, [membersQuery.data, family, familySearch, id]);
 
   const markPaidTarget =
     profile?.invoices.find((invoice) => invoice.id === markPaidInvoiceId) ??
@@ -503,7 +551,7 @@ function StudentDetailPage() {
     updateStudent.error ??
     resetPassword.error ??
     markPaid.error ??
-    linkParent.error ??
+    linkFamily.error ??
     messageStudent.error;
 
   function handleAction(actionId: string | number) {
@@ -515,8 +563,8 @@ function StudentDetailPage() {
       openEdit();
       return;
     }
-    if (actionId === "link-parent") {
-      openLinkParent();
+    if (actionId === "link-family") {
+      openLinkFamily();
       return;
     }
     if (actionId === "reset-password") {
@@ -562,8 +610,8 @@ function StudentDetailPage() {
                 <MenuItem id="edit" textValue="Edit profile">
                   <MenuItemLabel>Edit profile</MenuItemLabel>
                 </MenuItem>
-                <MenuItem id="link-parent" textValue="Link parent">
-                  <MenuItemLabel>Link parent</MenuItemLabel>
+                <MenuItem id="link-family" textValue="Link Family">
+                  <MenuItemLabel>Link Family</MenuItemLabel>
                 </MenuItem>
                 <MenuItem id="reset-password" textValue="Reset password">
                   <MenuItemLabel>Reset password</MenuItemLabel>
@@ -906,39 +954,41 @@ function StudentDetailPage() {
 
             <section className={staff.section}>
               <div className={staff.attentionTop}>
-                <h2 className={staff.sectionTitle}>Parents</h2>
+                <h2 className={staff.sectionTitle}>Family</h2>
                 <TouchButton
                   size="sm"
                   variant="default"
-                  data-testid="link-parent"
-                  onClick={openLinkParent}
+                  data-testid="link-family"
+                  onClick={openLinkFamily}
                 >
-                  Link parent
+                  Link Family
                 </TouchButton>
               </div>
-              {profile.parents.length === 0 ? (
+              {family.length === 0 ? (
                 <EmptyState
-                  title="No linked parents"
-                  description="Link a parent account so they can manage this student."
+                  title="No linked family"
+                  description="Search studio users and add them as one family with this student."
                   action={
-                    <TouchButton variant="primary" onClick={openLinkParent}>
-                      Link parent
+                    <TouchButton variant="primary" onClick={openLinkFamily}>
+                      Link Family
                     </TouchButton>
                   }
                 />
               ) : (
                 <div className={staff.list}>
-                  {profile.parents.map((parent) => (
-                    <div key={parent.id} className={staff.attentionCard}>
+                  {family.map((member) => (
+                    <div key={member.id} className={staff.attentionCard}>
                       <div className={staff.attentionTop}>
                         <span className={staff.attentionTitle}>
-                          {parent.name}
+                          {member.name}
                         </span>
-                        <Badge appearance="subtle">Parent</Badge>
+                        <Badge appearance="subtle">
+                          {familyRelationLabel(member.relation)}
+                        </Badge>
                       </div>
-                      <p className={staff.attentionMeta}>{parent.email}</p>
-                      {parent.phone ? (
-                        <p className={staff.attentionMeta}>{parent.phone}</p>
+                      <p className={staff.attentionMeta}>{member.email}</p>
+                      {member.phone ? (
+                        <p className={staff.attentionMeta}>{member.phone}</p>
                       ) : null}
                     </div>
                   ))}
@@ -1122,18 +1172,25 @@ function StudentDetailPage() {
       </AppSheet>
 
       <AppBottomSheet
-        isOpen={sheet === "link-parent"}
+        isOpen={sheet === "link-family"}
         onOpenChange={(open) => {
           if (!open) closeSheet();
         }}
-        title="Link parent"
+        title="Link Family"
         size="tall"
       >
         <div className={staff.sheetStack}>
           <p className={staff.rowMeta}>
-            Choose a parent account in this studio to link with{" "}
-            {profile?.student.name}.
+            Search students and parents in this studio, then add them as one
+            family with {profile?.student.name}.
           </p>
+          <FormInput
+            label="Search users"
+            value={familySearch}
+            onChange={setFamilySearch}
+            placeholder="Name or email"
+            data-testid="family-search"
+          />
           {membersQuery.isLoading ? <SkeletonCardList count={3} /> : null}
           {membersQuery.isError ? (
             <ErrorState
@@ -1144,46 +1201,56 @@ function StudentDetailPage() {
               }
             />
           ) : null}
-          {parentCandidates.length === 0 && !membersQuery.isLoading ? (
+          {familyCandidates.length === 0 && !membersQuery.isLoading ? (
             <EmptyState
-              title="No parents available"
-              description="Create a parent account in this studio first, or all parents are already linked."
+              title="No users found"
+              description={
+                familySearch.trim()
+                  ? "Try a different name or email."
+                  : "Create student or parent accounts first, or everyone is already linked."
+              }
             />
           ) : null}
           <div className={staff.sheetActions}>
-            {parentCandidates.map((parent) => (
-              <TouchButton
-                key={parent.id}
-                variant={parentUserId === parent.id ? "primary" : "default"}
-                fullWidth
-                isDisabled={linkParent.isPending}
-                data-testid={`pick-parent-${parent.id}`}
-                onClick={() => setParentUserId(parent.id)}
-              >
-                {parent.name} · {parent.email}
-              </TouchButton>
-            ))}
-            {linkParent.isError ? (
+            {familyCandidates.map((member) => {
+              const selected = familyMemberIds.includes(member.id);
+              return (
+                <TouchButton
+                  key={member.id}
+                  variant={selected ? "primary" : "default"}
+                  fullWidth
+                  isDisabled={linkFamily.isPending}
+                  data-testid={`pick-family-${member.id}`}
+                  onClick={() => toggleFamilyMember(member.id)}
+                >
+                  {member.name} · {member.email}
+                  {member.role === "PARENT" ? " · Parent" : ""}
+                </TouchButton>
+              );
+            })}
+            {linkFamily.isError ? (
               <ErrorState
                 description={
-                  linkParent.error instanceof Error
-                    ? linkParent.error.message
-                    : "Could not link parent."
+                  linkFamily.error instanceof Error
+                    ? linkFamily.error.message
+                    : "Could not link family."
                 }
               />
             ) : null}
             <TouchButton
               variant="primary"
               fullWidth
-              isDisabled={!parentUserId}
-              isPending={linkParent.isPending}
-              data-testid="confirm-link-parent"
+              isDisabled={familyMemberIds.length === 0}
+              isPending={linkFamily.isPending}
+              data-testid="confirm-link-family"
               onClick={() => {
-                if (!parentUserId) return;
-                linkParent.mutate(parentUserId);
+                if (familyMemberIds.length === 0) return;
+                linkFamily.mutate(familyMemberIds);
               }}
             >
-              Confirm link
+              {familyMemberIds.length > 0
+                ? `Link ${familyMemberIds.length} as family`
+                : "Link Family"}
             </TouchButton>
           </div>
         </div>

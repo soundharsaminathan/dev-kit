@@ -10,8 +10,10 @@ import { ConfigService } from "@nestjs/config";
 import {
   AttendanceSource,
   AttendanceStatus,
+  BillingCadence,
   BookingStatus,
   BookingType,
+  InvoiceStatus,
   NotificationType,
   SessionStatus,
   UserRole,
@@ -108,6 +110,7 @@ export class AttendanceService {
       isTrial: boolean;
       trialBookingStatus: BookingStatus | null;
       monthlyUnpaid: boolean;
+      paidMonths: number;
       student: ReturnType<UserCryptoService["decryptUser"]>;
       attendance: {
         id: string;
@@ -124,6 +127,7 @@ export class AttendanceService {
         isTrial: Boolean(trial),
         trialBookingStatus: trial?.status ?? null,
         monthlyUnpaid: monthlyUnpaidIds.has(enrollment.studentId),
+        paidMonths: 0,
         student: this.crypto.decryptUser(enrollment.student),
         attendance: record
           ? {
@@ -143,6 +147,7 @@ export class AttendanceService {
         isTrial: true,
         trialBookingStatus: booking.status,
         monthlyUnpaid: false,
+        paidMonths: 0,
         student: this.crypto.decryptUser(booking.student),
         attendance: record
           ? {
@@ -167,6 +172,7 @@ export class AttendanceService {
         isTrial: true,
         trialBookingStatus: null,
         monthlyUnpaid: false,
+        paidMonths: 0,
         student: this.crypto.decryptUser(student),
         attendance: {
           id: record.id,
@@ -174,6 +180,41 @@ export class AttendanceService {
           source: record.source,
         },
       });
+    }
+
+    const rosterStudentIds = roster.map((entry) => entry.studentId);
+    const paidInvoices =
+      rosterStudentIds.length === 0
+        ? []
+        : await this.prisma.invoice.findMany({
+            where: {
+              studioId: session.batch.studioId,
+              studentId: { in: rosterStudentIds },
+              status: InvoiceStatus.PAID,
+            },
+            select: {
+              studentId: true,
+              membership: {
+                select: {
+                  subscription: { select: { billingCadence: true } },
+                },
+              },
+            },
+          });
+    const paidMonthsByStudent = new Map<string, number>();
+    for (const invoice of paidInvoices) {
+      const months =
+        invoice.membership?.subscription.billingCadence ===
+        BillingCadence.QUARTERLY
+          ? 3
+          : 1;
+      paidMonthsByStudent.set(
+        invoice.studentId,
+        (paidMonthsByStudent.get(invoice.studentId) ?? 0) + months,
+      );
+    }
+    for (const entry of roster) {
+      entry.paidMonths = paidMonthsByStudent.get(entry.studentId) ?? 0;
     }
 
     roster.sort((left, right) => {

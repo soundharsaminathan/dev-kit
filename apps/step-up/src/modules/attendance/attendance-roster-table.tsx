@@ -1,6 +1,5 @@
 import { Badge } from "@dev-ui/components/badge";
 import { Button } from "@dev-ui/components/button";
-import { Switch, SwitchControl } from "@dev-ui/components/switch";
 import { useIsMobile } from "@dev-ui/hooks";
 import { Icon } from "@dev-ui/icons";
 import {
@@ -15,7 +14,7 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { formatActiveDuration } from "@/lib/format-active-duration";
+import { formatPaidMonths } from "@/lib/format-paid-months";
 import { AppSheet } from "@/modules/ui/app-sheet";
 import { FilterChipRow } from "@/modules/ui/filter-chip-row";
 import staff from "@/modules/ui/staff.module.scss";
@@ -151,7 +150,7 @@ function SelectCheckbox({
   );
 }
 
-function AttendanceMarkSwitch({
+function AttendanceMarkPills({
   studentId,
   studentName,
   status,
@@ -169,46 +168,35 @@ function AttendanceMarkSwitch({
 
   return (
     <div
-      className={styles.markSwitch}
+      className={styles.markPills}
+      role="group"
+      aria-label={`Mark attendance for ${studentName}`}
       data-status={status === "UNMARKED" ? "unmarked" : status.toLowerCase()}
+      data-testid={`mark-attendance-${studentId}`}
     >
       <button
         type="button"
-        className={styles.markSwitchSide}
-        data-tone="absent"
-        data-active={isAbsent ? "true" : undefined}
-        data-testid={`mark-absent-${studentId}`}
-        disabled={isDisabled || isAbsent}
-        aria-pressed={isAbsent}
-        onClick={() => onMark("ABSENT")}
-      >
-        Absent
-      </button>
-      <Switch
-        size="sm"
-        {...(styles.markSwitchControl
-          ? { className: styles.markSwitchControl }
-          : {})}
-      >
-        <SwitchControl
-          isSelected={isPresent}
-          isDisabled={isDisabled}
-          aria-label={`Mark ${studentName} ${isPresent ? "absent" : "present"}`}
-          data-testid={`mark-attendance-${studentId}`}
-          onChange={(selected) => onMark(selected ? "PRESENT" : "ABSENT")}
-        />
-      </Switch>
-      <button
-        type="button"
-        className={styles.markSwitchSide}
+        className={styles.markPill}
         data-tone="present"
         data-active={isPresent ? "true" : undefined}
         data-testid={`mark-present-${studentId}`}
-        disabled={isDisabled || isPresent}
+        disabled={isDisabled}
         aria-pressed={isPresent}
         onClick={() => onMark("PRESENT")}
       >
         Present
+      </button>
+      <button
+        type="button"
+        className={styles.markPill}
+        data-tone="absent"
+        data-active={isAbsent ? "true" : undefined}
+        data-testid={`mark-absent-${studentId}`}
+        disabled={isDisabled}
+        aria-pressed={isAbsent}
+        onClick={() => onMark("ABSENT")}
+      >
+        Absent
       </button>
     </div>
   );
@@ -378,9 +366,6 @@ export function AttendanceRosterTable({
       accessorFn: (row) => row.student.name,
       header: "Student",
       cell: ({ row }) => {
-        const activeDuration = formatActiveDuration(
-          row.original.student.createdAt,
-        );
         return (
           <div className={styles.studentCell}>
             <div className={styles.studentNameRow}>
@@ -398,9 +383,13 @@ export function AttendanceRosterTable({
                 </Badge>
               ) : null}
             </div>
-            {activeDuration ? (
-              <span className={styles.studentDetail}>{activeDuration}</span>
-            ) : null}
+            <span
+              className={staff.metaWithIcon}
+              data-testid={`paid-months-${row.original.studentId}`}
+            >
+              <Icon name="wallet" className={staff.metaWithIconIcon} />
+              {formatPaidMonths(row.original.paidMonths ?? 0)}
+            </span>
             <span className={styles.studentDetail}>
               {row.original.attendance
                 ? attendanceSourceLabel(row.original.attendance.source)
@@ -440,7 +429,7 @@ export function AttendanceRosterTable({
           meta.pendingStudentId === row.original.studentId;
         const status = rosterStatus(row.original);
         return (
-          <AttendanceMarkSwitch
+          <AttendanceMarkPills
             studentId={row.original.studentId}
             studentName={row.original.student.name}
             status={status}

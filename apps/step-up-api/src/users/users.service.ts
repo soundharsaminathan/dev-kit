@@ -683,12 +683,22 @@ export class UsersService {
       throw new NotFoundException("Student not found in this studio");
     }
 
+    const familyUserSelect = {
+      id: true,
+      ...userPiiSelect,
+      role: true,
+      photoUrl: true,
+      active: true,
+    };
+
     const [
       enrollments,
       memberships,
       attendanceRecords,
       invoices,
       parentLinks,
+      ownedFamilyLinks,
+      membershipFamilyLinks,
       paidInvoices,
     ] = await Promise.all([
       this.prisma.batchEnrollment.findMany({
@@ -738,15 +748,27 @@ export class UsersService {
         where: { childUserId: studentId },
         include: {
           parent: {
-            select: {
-              id: true,
-              ...userPiiSelect,
-              role: true,
-              photoUrl: true,
-              active: true,
-            },
+            select: familyUserSelect,
           },
         },
+      }),
+      this.prisma.familyMember.findMany({
+        where: { ownerUserId: studentId },
+        include: {
+          member: {
+            select: familyUserSelect,
+          },
+        },
+        orderBy: { createdAt: "asc" },
+      }),
+      this.prisma.familyMember.findMany({
+        where: { memberUserId: studentId },
+        include: {
+          owner: {
+            select: familyUserSelect,
+          },
+        },
+        orderBy: { createdAt: "asc" },
       }),
       this.prisma.invoice.findMany({
         where: {
@@ -803,7 +825,99 @@ export class UsersService {
       parents: await Promise.all(
         parentLinks.map(async (link) => this.presentUser(link.parent)),
       ),
+      family: await this.presentStudentFamily({
+        parentLinks,
+        ownedFamilyLinks,
+        membershipFamilyLinks,
+      }),
     };
+  }
+
+  private async presentStudentFamily(args: {
+    parentLinks: Array<{
+      parent: EncryptedUserFields & {
+        id: string;
+        role: UserRole;
+        photoUrl: string | null;
+        active: boolean;
+      };
+    }>;
+    ownedFamilyLinks: Array<{
+      kind: FamilyMemberKind;
+      member: EncryptedUserFields & {
+        id: string;
+        role: UserRole;
+        photoUrl: string | null;
+        active: boolean;
+      };
+    }>;
+    membershipFamilyLinks: Array<{
+      owner: EncryptedUserFields & {
+        id: string;
+        role: UserRole;
+        photoUrl: string | null;
+        active: boolean;
+      };
+    }>;
+  }) {
+    type FamilyRelation = "PARENT" | "KID" | "CO_STUDENT" | "FAMILY";
+    const byId = new Map<
+      string,
+      {
+        id: string;
+        name: string;
+        email: string;
+        phone: string | null;
+        photoUrl: string | null;
+        role: UserRole;
+        relation: FamilyRelation;
+      }
+    >();
+
+    for (const link of args.parentLinks) {
+      const presented = await this.presentUser(link.parent);
+      byId.set(presented.id, {
+        id: presented.id,
+        name: presented.name,
+        email: presented.email,
+        phone: presented.phone,
+        photoUrl: presented.photoUrl,
+        role: link.parent.role,
+        relation: "PARENT",
+      });
+    }
+
+    for (const link of args.ownedFamilyLinks) {
+      if (byId.has(link.member.id)) continue;
+      const presented = await this.presentUser(link.member);
+      byId.set(presented.id, {
+        id: presented.id,
+        name: presented.name,
+        email: presented.email,
+        phone: presented.phone,
+        photoUrl: presented.photoUrl,
+        role: link.member.role,
+        relation: link.kind === FamilyMemberKind.KID ? "KID" : "CO_STUDENT",
+      });
+    }
+
+    for (const link of args.membershipFamilyLinks) {
+      if (byId.has(link.owner.id)) continue;
+      const presented = await this.presentUser(link.owner);
+      byId.set(presented.id, {
+        id: presented.id,
+        name: presented.name,
+        email: presented.email,
+        phone: presented.phone,
+        photoUrl: presented.photoUrl,
+        role: link.owner.role,
+        relation: link.owner.role === UserRole.PARENT ? "PARENT" : "FAMILY",
+      });
+    }
+
+    return Array.from(byId.values()).sort((a, b) =>
+      a.name.localeCompare(b.name),
+    );
   }
 
   async updateStudioStudent(
@@ -1416,6 +1530,98 @@ export class UsersService {
       : presented;
 
     return filtered.sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  async linkStudioFamily(
+    studioId: string,
+    data: { anchorUserId: string; memberUserIds: string[] },
+  ) {
+    const memberUserIds = [
+      ...new Set(
+        data.memberUserIds.filter((id) => id && id !== data.anchorUserId),
+      ),
+    ];
+    if (memberUserIds.length === 0) {
+      throw new BadRequestException("Select at least one family member");
+    }
+
+    const allIds = [data.anchorUserId, ...memberUserIds];
+    const users = await this.prisma.user.findMany({
+      where: { id: { in: allIds }, studioId },
+      select: {
+        id: true,
+        role: true,
+        studioId: true,
+      },
+    });
+
+    if (users.length !== allIds.length) {
+      throw new NotFoundException(
+        "One or more users were not found in this studio",
+      );
+    }
+
+    for (const user of users) {
+      if (user.role !== UserRole.STUDENT && user.role !== UserRole.PARENT) {
+        throw new BadRequestException(
+          "Only student and parent accounts can be linked into a family",
+        );
+      }
+    }
+
+    const parentOwner = users.find((user) => user.role === UserRole.PARENT);
+    const ownerId = parentOwner?.id ?? data.anchorUserId;
+    const owner = users.find((user) => user.id === ownerId);
+    if (!owner) {
+      throw new NotFoundException("Family owner not found in this studio");
+    }
+
+    const others = users.filter((user) => user.id !== ownerId);
+
+    await this.prisma.$transaction(async (tx) => {
+      for (const member of others) {
+        if (
+          owner.role === UserRole.PARENT &&
+          member.role === UserRole.STUDENT
+        ) {
+          await tx.parentChild.upsert({
+            where: {
+              parentUserId_childUserId: {
+                parentUserId: ownerId,
+                childUserId: member.id,
+              },
+            },
+            update: {},
+            create: {
+              parentUserId: ownerId,
+              childUserId: member.id,
+            },
+          });
+        }
+
+        const kind =
+          owner.role === UserRole.PARENT && member.role === UserRole.STUDENT
+            ? FamilyMemberKind.KID
+            : FamilyMemberKind.CO_STUDENT;
+
+        await tx.familyMember.upsert({
+          where: {
+            ownerUserId_memberUserId: {
+              ownerUserId: ownerId,
+              memberUserId: member.id,
+            },
+          },
+          update: { kind },
+          create: {
+            ownerUserId: ownerId,
+            memberUserId: member.id,
+            kind,
+          },
+        });
+      }
+    });
+
+    return this.listFamilyMembers(ownerId);
   }
 
   async linkParentChild(parentUserId: string, childUserId: string) {

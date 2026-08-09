@@ -3,6 +3,7 @@ import {
   collapseWindow,
   conflictMessage,
   findScheduleConflict,
+  formatConflictInstant,
   intervalsOverlap,
   type OccupancySlot,
   type TimeInterval,
@@ -59,6 +60,17 @@ describe("collapseWindow", () => {
   });
 });
 
+describe("formatConflictInstant", () => {
+  it("formats in the requested local timezone", () => {
+    expect(
+      formatConflictInstant(
+        new Date("2026-07-20T10:00:00.000Z"),
+        "Asia/Kolkata",
+      ),
+    ).toBe("20 Jul 2026, 3:30 pm");
+  });
+});
+
 describe("findScheduleConflict", () => {
   const proposed = [
     interval("2026-07-20T10:00:00.000Z", "2026-07-20T11:00:00.000Z"),
@@ -71,7 +83,9 @@ describe("findScheduleConflict", () => {
       branchId: "branch-1",
     });
     expect(conflict?.party).toBe("branch");
-    expect(conflictMessage(conflict!)).toContain("Branch already has a class");
+    expect(conflictMessage(conflict!, "Asia/Kolkata")).toBe(
+      "Branch already has a class at 20 Jul 2026, 3:30 pm",
+    );
   });
 
   it("reports trainer conflicts", () => {

@@ -144,6 +144,18 @@ class LinkParentChildDto {
   childUserId!: string;
 }
 
+class LinkStudioFamilyDto {
+  @IsString()
+  @IsNotEmpty()
+  anchorUserId!: string;
+
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayMaxSize(20)
+  @IsString({ each: true })
+  memberUserIds!: string[];
+}
+
 class LinkChildByEmailDto {
   @IsEmail()
   email!: string;
@@ -406,6 +418,17 @@ export class UsersController {
   ) {
     assertSameStudio(user, studioId);
     return this.usersService.listStudioFamilies(studioId);
+  }
+
+  @Post("studio/:studioId/families/link")
+  @Roles(UserRole.OWNER, UserRole.STAFF)
+  linkStudioFamily(
+    @CurrentUser() user: DecryptedUser,
+    @Param("studioId") studioId: string,
+    @Body() dto: LinkStudioFamilyDto,
+  ) {
+    assertSameStudio(user, studioId);
+    return this.usersService.linkStudioFamily(studioId, dto);
   }
 
   @Get("studio/:studioId/students")
