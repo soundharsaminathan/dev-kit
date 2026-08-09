@@ -10,6 +10,7 @@ import { Input } from "@dev-ui/components/input";
 import { Switch } from "@dev-ui/components/switch";
 import { TextArea } from "@dev-ui/components/text-area";
 import { TextField } from "@dev-ui/components/text-field";
+import { useToastContext } from "@dev-ui/components/toast";
 import { Icon } from "@dev-ui/icons";
 import { useForm } from "@tanstack/react-form";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -166,6 +167,7 @@ function ProfileEditForm({ backTo, profile }: ProfileEditFormProps) {
   const { user, updateUser } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { toast } = useToastContext("ProfileEditForm");
   const userId = user?.id ?? profile.id;
 
   const [images, setImages] = useState<
@@ -269,7 +271,11 @@ function ProfileEditForm({ backTo, profile }: ProfileEditFormProps) {
           ? { preferredBranchId: saved.preferredBranchId }
           : {}),
       });
-      setSaveMessage("Profile saved.");
+      toast({
+        title: "Profile saved",
+        description: "Your profile has been updated.",
+        variant: "success",
+      });
       await queryClient.invalidateQueries({ queryKey: ["profile", userId] });
       await queryClient.invalidateQueries({
         queryKey: ["studio-trainers", studioId],
@@ -855,11 +861,7 @@ function ProfileEditForm({ backTo, profile }: ProfileEditFormProps) {
 
           {saveMessage ? (
             <p
-              className={`${styles.message} ${
-                saveMutation.isError || saveMessage !== "Profile saved."
-                  ? styles.messageError
-                  : styles.messageSuccess
-              }`}
+              className={`${styles.message} ${styles.messageError}`}
               role="status"
             >
               {saveMessage}
