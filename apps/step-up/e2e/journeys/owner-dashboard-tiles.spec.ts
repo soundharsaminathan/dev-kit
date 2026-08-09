@@ -31,6 +31,12 @@ test.describe("owner dashboard tiles @critical", () => {
     for (const label of ["Batches", "Students", "Trainers", "Subscriptions"]) {
       await expect(metrics.getByText(label, { exact: true })).toBeVisible();
     }
+
+    const currentBatches = page.getByTestId("home-current-batches");
+    await expect(currentBatches).toBeVisible();
+    await expect(
+      currentBatches.getByText("Current batches", { exact: true }),
+    ).toBeVisible();
     await expect
       .poll(async () => metrics.locator("strong").count())
       .toBeGreaterThanOrEqual(4);

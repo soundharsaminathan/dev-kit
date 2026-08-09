@@ -8,7 +8,6 @@ import {
 } from "@nestjs/common";
 import {
   InvoiceStatus,
-  MembershipSeatRole,
   NotificationType,
   PaymentMethod,
   Prisma,
@@ -17,11 +16,7 @@ import {
 } from "@prisma/client";
 import { EmailService } from "../email/email.service";
 import { computePlatformFee } from "../memberships/membership-helpers";
-import {
-  type CoveredStudentInput,
-  type InvoicePurchaseMeta,
-  MembershipsService,
-} from "../memberships/memberships.service";
+import { MembershipsService } from "../memberships/memberships.service";
 import { NotificationsService } from "../notifications/notifications.service";
 import { RazorpayService } from "../payments/razorpay.service";
 import { PrismaService } from "../prisma/prisma.service";
@@ -34,6 +29,7 @@ import {
   attributionTargetsForInvoice,
   type InvoiceCombineMeta,
   parseCombineMeta,
+  parsePurchaseMeta,
 } from "./family-combine";
 import { ACTIVE_ENROLLMENT_WHERE } from "../batches/enrollment-status";
 
@@ -121,47 +117,6 @@ export type CreateInvoicePaymentOrderResult =
       amount: number;
       currency: string;
     };
-
-function parsePurchaseMeta(value: unknown): InvoicePurchaseMeta | null {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
-    return null;
-  }
-  const meta = value as Record<string, unknown>;
-  if (
-    typeof meta.subscriptionId !== "string" ||
-    typeof meta.purchaserUserId !== "string" ||
-    !Array.isArray(meta.coveredStudents)
-  ) {
-    return null;
-  }
-
-  const coveredStudents: CoveredStudentInput[] = [];
-  for (const seat of meta.coveredStudents) {
-    if (!seat || typeof seat !== "object" || Array.isArray(seat)) {
-      return null;
-    }
-    const entry = seat as Record<string, unknown>;
-    if (
-      typeof entry.studentId !== "string" ||
-      (entry.seatRole !== MembershipSeatRole.ADULT &&
-        entry.seatRole !== MembershipSeatRole.KID)
-    ) {
-      return null;
-    }
-    coveredStudents.push({
-      studentId: entry.studentId,
-      seatRole: entry.seatRole,
-      ...(typeof entry.batchId === "string" ? { batchId: entry.batchId } : {}),
-    });
-  }
-
-  return {
-    ...(typeof meta.batchId === "string" ? { batchId: meta.batchId } : {}),
-    subscriptionId: meta.subscriptionId,
-    purchaserUserId: meta.purchaserUserId,
-    coveredStudents,
-  };
-}
 
 function amountToPaise(amount: Prisma.Decimal | number | string) {
   const rupees = Number(amount);
@@ -496,16 +451,17 @@ export class BillingService {
         );
         const student = this.crypto.decryptUser(invoice.student);
         const combineMeta = parseCombineMeta(invoice.combineMeta);
+        const purchaseMeta = parsePurchaseMeta(invoice.purchaseMeta);
         const attribution = attributionTargetsForInvoice({
           studentId: invoice.studentId,
           combineMeta,
+          purchaseMeta,
           studentBatchMap,
           amount,
           status: invoice.status,
         }).filter((target) => batchTotals.has(target.batchId));
 
         if (
-          combineMeta &&
           attribution.length === 0 &&
           !studentIds.includes(invoice.studentId)
         ) {
@@ -513,11 +469,7 @@ export class BillingService {
         }
 
         const batchIds = [
-          ...new Set(
-            attribution.length > 0
-              ? attribution.map((target) => target.batchId)
-              : [...(studentBatchMap.get(invoice.studentId) ?? [])],
-          ),
+          ...new Set(attribution.map((target) => target.batchId)),
         ];
 
         byStatus[invoice.status].count += 1;
@@ -549,13 +501,7 @@ export class BillingService {
             ? retained / amount
             : 1;
 
-        for (const target of attribution.length > 0
-          ? attribution
-          : batchIds.map((batchId) => ({
-              batchId,
-              amount,
-              studentId: invoice.studentId,
-            }))) {
+        for (const target of attribution) {
           const entry = batchTotals.get(target.batchId);
           if (!entry) {
             continue;

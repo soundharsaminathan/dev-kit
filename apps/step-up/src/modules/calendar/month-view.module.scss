@@ -3,6 +3,8 @@
 .root {
   display: flex;
   flex-direction: column;
+  flex: 1;
+  min-height: 0;
   border: 1px solid color-mix(in srgb, var(--color-fg) 12%, transparent);
   border-radius: var(--radius-md, 0.5rem);
   overflow: hidden;
@@ -10,8 +12,9 @@
 }
 
 .hScroll {
+  flex: 1;
   min-width: 0;
-  max-height: min(70vh, 42rem);
+  min-height: 0;
   overflow: auto;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;

@@ -21,7 +21,10 @@ import {
   UserRole,
 } from "@prisma/client";
 import { BillingService } from "../billing/billing.service";
-import { parseCombineMeta } from "../billing/family-combine";
+import {
+  parseCombineMeta,
+  parsePurchaseMeta,
+} from "../billing/family-combine";
 import { ScheduleConflictService } from "../calendar/schedule-conflict.service";
 import { MediaService } from "../media/media.service";
 import {
@@ -1854,40 +1857,56 @@ export class BatchesService {
 
     if (studentIds.length > 0) {
       const studentIdSet = new Set(studentIds);
-      const invoices = await this.prisma.invoice.findMany({
-        where: {
-          studioId: batch.studioId,
-          OR: [
-            {
-              studentId: { in: studentIds },
-              membershipId: { not: null },
-            },
-            { combineMeta: { not: Prisma.DbNull } },
-          ],
-        },
-        include: {
-          membership: {
-            include: {
-              subscription: {
-                select: {
-                  id: true,
-                  name: true,
-                  billingCadence: true,
+      const [invoices, studioEnrollments] = await Promise.all([
+        this.prisma.invoice.findMany({
+          where: {
+            studioId: batch.studioId,
+            OR: [
+              {
+                studentId: { in: studentIds },
+                membershipId: { not: null },
+              },
+              { combineMeta: { not: Prisma.DbNull } },
+            ],
+          },
+          include: {
+            membership: {
+              include: {
+                subscription: {
+                  select: {
+                    id: true,
+                    name: true,
+                    billingCadence: true,
+                  },
                 },
               },
             },
           },
-        },
-      });
+        }),
+        this.prisma.batchEnrollment.findMany({
+          where: {
+            studentId: { in: studentIds },
+            status: BatchEnrollmentStatus.ACTIVE,
+            batch: { studioId: batch.studioId },
+          },
+          select: { studentId: true, batchId: true },
+        }),
+      ]);
+
+      const studentBatchMap = new Map<string, Set<string>>();
+      for (const enrollment of studioEnrollments) {
+        const set = studentBatchMap.get(enrollment.studentId) ?? new Set();
+        set.add(enrollment.batchId);
+        studentBatchMap.set(enrollment.studentId, set);
+      }
 
       for (const invoice of invoices) {
         const combineMeta = parseCombineMeta(invoice.combineMeta);
         if (combineMeta) {
           for (const source of combineMeta.sources) {
-            const matchesBatch =
-              source.batchId === batch.id ||
-              (source.batchId == null && studentIdSet.has(source.studentId));
-            if (!matchesBatch) {
+            const sourceBatchId =
+              source.batchId ?? source.purchaseMeta?.batchId ?? null;
+            if (sourceBatchId !== batch.id) {
               continue;
             }
             const amount = source.netAmount;
@@ -1903,8 +1922,33 @@ export class BatchesService {
           continue;
         }
 
-        if (!studentIdSet.has(invoice.studentId) || !invoice.membershipId) {
+        if (!invoice.membershipId) {
           continue;
+        }
+
+        const purchaseMeta = parsePurchaseMeta(invoice.purchaseMeta);
+        const invoiceBatchId =
+          purchaseMeta?.batchId ??
+          purchaseMeta?.coveredStudents.find(
+            (seat) =>
+              seat.studentId === invoice.studentId &&
+              typeof seat.batchId === "string",
+          )?.batchId ??
+          null;
+
+        // Attribute by invoice batch, not "student is enrolled somewhere".
+        // Missing meta + multi-batch students would otherwise double-count.
+        if (invoiceBatchId) {
+          if (invoiceBatchId !== batch.id) {
+            continue;
+          }
+        } else if (!studentIdSet.has(invoice.studentId)) {
+          continue;
+        } else {
+          const enrolledBatches = studentBatchMap.get(invoice.studentId);
+          if (!enrolledBatches || enrolledBatches.size !== 1) {
+            continue;
+          }
         }
 
         const amount = Number(invoice.amount);

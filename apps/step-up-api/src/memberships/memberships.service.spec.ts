@@ -298,11 +298,24 @@ describe("MembershipsService.requestRenewalInvoice", () => {
     prisma.membership.findUnique.mockResolvedValue({
       id: "mem-1",
       purchaserUserId: "user-1",
+      subscriptionId: "sub-1",
       status: "EXPIRED",
       subscription: { price: 3500 },
+      coveredStudents: [{ studentId: "user-1", seatRole: "ADULT" }],
       purchaser: { id: "user-1", studioId: "studio-1" },
     });
-    prisma.invoice.findFirst.mockResolvedValue(null);
+    prisma.invoice.findFirst
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({
+        purchaseMeta: {
+          batchId: "batch-1",
+          subscriptionId: "sub-1",
+          purchaserUserId: "user-1",
+          coveredStudents: [
+            { studentId: "user-1", seatRole: "ADULT", batchId: "batch-1" },
+          ],
+        },
+      });
     prisma.studioSettings.findUnique.mockResolvedValue({
       platformFeePercent: 5,
     });
@@ -323,11 +336,16 @@ describe("MembershipsService.requestRenewalInvoice", () => {
         membershipId: "mem-1",
         amount: 3500,
         status: "PENDING",
+        purchaseMeta: {
+          batchId: "batch-1",
+          subscriptionId: "sub-1",
+          purchaserUserId: "user-1",
+          coveredStudents: [
+            { studentId: "user-1", seatRole: "ADULT", batchId: "batch-1" },
+          ],
+        },
       }),
     });
-    expect(prisma.invoice.create.mock.calls[0]?.[0]?.data).not.toHaveProperty(
-      "purchaseMeta",
-    );
   });
 
   it("requestRenewalInvoice rejects active memberships", async () => {

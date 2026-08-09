@@ -448,6 +448,7 @@ describe("BatchesService getRevenue", () => {
   const prisma = {
     batch: { findUnique: vi.fn() },
     invoice: { findMany: vi.fn() },
+    batchEnrollment: { findMany: vi.fn() },
   };
 
   let service: BatchesService;
@@ -482,6 +483,9 @@ describe("BatchesService getRevenue", () => {
       studioId: "studio-1",
       enrollments: [{ studentId: "student-1", status: "ACTIVE" }],
     });
+    prisma.batchEnrollment.findMany.mockResolvedValue([
+      { studentId: "student-1", batchId: "batch-1" },
+    ]);
     prisma.invoice.findMany.mockResolvedValue([
       {
         studentId: "student-1",
@@ -489,6 +493,14 @@ describe("BatchesService getRevenue", () => {
         amount: 2500,
         status: "PAID",
         combineMeta: null,
+        purchaseMeta: {
+          batchId: "batch-1",
+          subscriptionId: "sub-monthly",
+          purchaserUserId: "student-1",
+          coveredStudents: [
+            { studentId: "student-1", seatRole: "KID", batchId: "batch-1" },
+          ],
+        },
         membership: {
           subscription: {
             id: "sub-monthly",
@@ -503,6 +515,14 @@ describe("BatchesService getRevenue", () => {
         amount: 6500,
         status: "PENDING",
         combineMeta: null,
+        purchaseMeta: {
+          batchId: "batch-1",
+          subscriptionId: "sub-quarterly",
+          purchaserUserId: "student-1",
+          coveredStudents: [
+            { studentId: "student-1", seatRole: "KID", batchId: "batch-1" },
+          ],
+        },
         membership: {
           subscription: {
             id: "sub-quarterly",
@@ -536,6 +556,102 @@ describe("BatchesService getRevenue", () => {
         }),
       ]),
     );
+  });
+
+  it("does not count another batch's payments for shared students (negative path)", async () => {
+    prisma.batch.findUnique.mockResolvedValue({
+      id: "batch-2",
+      studioId: "studio-1",
+      enrollments: [
+        { studentId: "s1", status: "ACTIVE" },
+        { studentId: "s2", status: "ACTIVE" },
+      ],
+    });
+    prisma.batchEnrollment.findMany.mockResolvedValue([
+      { studentId: "s1", batchId: "batch-1" },
+      { studentId: "s1", batchId: "batch-2" },
+      { studentId: "s2", batchId: "batch-1" },
+      { studentId: "s2", batchId: "batch-2" },
+    ]);
+    prisma.invoice.findMany.mockResolvedValue([
+      {
+        studentId: "s1",
+        membershipId: "mem-s1",
+        amount: 1000,
+        status: "PAID",
+        combineMeta: null,
+        purchaseMeta: {
+          batchId: "batch-1",
+          subscriptionId: "sub-1",
+          purchaserUserId: "s1",
+          coveredStudents: [
+            { studentId: "s1", seatRole: "KID", batchId: "batch-1" },
+          ],
+        },
+        membership: {
+          subscription: {
+            id: "sub-1",
+            name: "Monthly",
+            billingCadence: BillingCadence.MONTHLY,
+          },
+        },
+      },
+      {
+        studentId: "s2",
+        membershipId: "mem-s2",
+        amount: 1000,
+        status: "PAID",
+        combineMeta: null,
+        purchaseMeta: {
+          batchId: "batch-1",
+          subscriptionId: "sub-1",
+          purchaserUserId: "s2",
+          coveredStudents: [
+            { studentId: "s2", seatRole: "KID", batchId: "batch-1" },
+          ],
+        },
+        membership: {
+          subscription: {
+            id: "sub-1",
+            name: "Monthly",
+            billingCadence: BillingCadence.MONTHLY,
+          },
+        },
+      },
+      {
+        studentId: "s3",
+        membershipId: "mem-s3",
+        amount: 1000,
+        status: "PAID",
+        combineMeta: null,
+        purchaseMeta: {
+          batchId: "batch-1",
+          subscriptionId: "sub-1",
+          purchaserUserId: "s3",
+          coveredStudents: [
+            { studentId: "s3", seatRole: "KID", batchId: "batch-1" },
+          ],
+        },
+        membership: {
+          subscription: {
+            id: "sub-1",
+            name: "Monthly",
+            billingCadence: BillingCadence.MONTHLY,
+          },
+        },
+      },
+    ]);
+
+    const result = await service.getRevenue("batch-2");
+
+    expect(result.enrolledCount).toBe(2);
+    expect(result.totals).toEqual({
+      collected: 0,
+      pending: 0,
+      overdue: 0,
+      invoiceCount: 0,
+    });
+    expect(result.bySubscription).toEqual([]);
   });
 });
 

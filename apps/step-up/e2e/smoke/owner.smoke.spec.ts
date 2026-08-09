@@ -222,6 +222,108 @@ test.describe("owner smoke @smoke", () => {
     }
   });
 
+  test("shared student batch1 payment does not inflate batch2 revenue @smoke", async ({
+    browser,
+  }) => {
+    const cleanup = new SmokeDataCleanup();
+    const stamp = Date.now();
+    const student = await apiRequest<{ id: string }>("OWNER", "/users", {
+      method: "POST",
+      body: JSON.stringify({
+        name: `Owner Shared Rev ${stamp}`,
+        email: `owner-shared-rev-${stamp}@stepup.dev`,
+        gender: "FEMALE",
+        ageRange: "TWENTY_TO_FORTY",
+        styles: ["Hip Hop"],
+      }),
+    });
+    cleanup.trackStudent(student.id);
+
+    const batch2 = await apiRequest<{ id: string }>("OWNER", "/batches", {
+      method: "POST",
+      body: JSON.stringify({
+        studioId: SMOKE.studioId,
+        name: `Smoke Rev Batch ${stamp}`,
+        coverImageUrl:
+          "https://images.unsplash.com/photo-1518611012118-696072aa579a?w=800&q=80",
+        category: "ADULTS",
+        branchId: SMOKE.branchMainId,
+        trainerIds: [SMOKE.users.TRAINER.id],
+        danceCategories: [
+          { name: "Hip Hop", description: "Shared revenue isolation" },
+        ],
+        scheduleJson: {
+          frequency: "WEEKLY",
+          weekdays: [0],
+          startDate: "2027-05-02",
+          endDate: "2027-07-25",
+          startTime: "05:45",
+          endTime: "06:30",
+          utcOffsetMinutes: 0,
+        },
+        capacity: 8,
+        enrollmentMode: "SELF_JOIN",
+        subscriptionIds: [...SMOKE.adultPlanIds],
+        active: true,
+        certificationEnabled: false,
+      }),
+    });
+    cleanup.trackBatch(batch2.id);
+
+    const batch1Enroll = await apiRequest<{
+      invoice: { id: string; amount: number };
+    }>("OWNER", `/batches/${SMOKE.beginnerBatchId}/enroll`, {
+      method: "POST",
+      body: JSON.stringify({
+        studentId: student.id,
+        subscriptionId: SMOKE.adultPlanIds[0],
+      }),
+    });
+    await apiRequest("OWNER", `/billing/${batch1Enroll.invoice.id}/paid`, {
+      method: "PATCH",
+      body: JSON.stringify({ paymentMethod: "CASH" }),
+    });
+    await apiRequest("OWNER", `/batches/${batch2.id}/enroll`, {
+      method: "POST",
+      body: JSON.stringify({
+        studentId: student.id,
+        subscriptionId: SMOKE.adultPlanIds[0],
+      }),
+    });
+
+    const context = await browser.newContext({
+      storageState: authFile("OWNER"),
+    });
+    const page = await context.newPage();
+    try {
+      const [revenueResponse] = await Promise.all([
+        waitForApiResponse(page, {
+          method: "GET",
+          pathIncludes: `/batches/${batch2.id}/revenue`,
+        }),
+        page.goto(`/app/batches/${batch2.id}`, {
+          waitUntil: "domcontentloaded",
+        }),
+      ]);
+      await waitForAppReady(page);
+      expect(revenueResponse.ok()).toBeTruthy();
+      const revenue = (await revenueResponse.json()) as {
+        totals: { collected: number };
+      };
+      expect(revenue.totals.collected).toBe(0);
+      await expect(page.getByLabel("Batch revenue")).toBeVisible();
+      await expect(
+        page.getByLabel("Batch revenue").getByText("Collected"),
+      ).toBeVisible();
+      await expect(
+        page.getByLabel("Batch revenue").getByText("₹0"),
+      ).toBeVisible();
+    } finally {
+      await context.close();
+      await cleanup.dispose();
+    }
+  });
+
   test("owner settings profile loads @smoke", async ({ browser }) => {
     const context = await browser.newContext({
       storageState: authFile("OWNER"),

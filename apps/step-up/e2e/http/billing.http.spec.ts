@@ -207,4 +207,83 @@ test.describe("billing HTTP @http", () => {
     );
     expect(Array.isArray(invoices)).toBe(true);
   });
+
+  test("batch revenue ignores payments attributed to another batch for shared students @http", async () => {
+    const cleanup = new TestDataCleanup();
+    const stamp = Date.now();
+    try {
+      const student = await createHttpStudent(
+        "Shared Batch Revenue Student",
+        cleanup,
+      );
+      const batch2 = await expectOk<{ id: string }>("STAFF", "/batches", {
+        method: "POST",
+        body: JSON.stringify({
+          studioId: SEED.users.STAFF.studioId,
+          name: `HTTP Revenue Batch ${stamp}`,
+          coverImageUrl:
+            "https://images.unsplash.com/photo-1518611012118-696072aa579a?w=800&q=80",
+          category: "ADULTS",
+          branchId: SEED.branchMainId,
+          trainerIds: [SEED.users.TRAINER.id],
+          danceCategories: [
+            { name: "Hip Hop", description: "Revenue isolation batch" },
+          ],
+          scheduleJson: {
+            frequency: "WEEKLY",
+            weekdays: [0],
+            startDate: "2027-04-04",
+            endDate: "2027-06-27",
+            startTime: "05:15",
+            endTime: "06:00",
+            utcOffsetMinutes: 0,
+          },
+          capacity: 8,
+          enrollmentMode: "SELF_JOIN",
+          subscriptionIds: [...SEED.adultPlanIds],
+          active: true,
+          certificationEnabled: false,
+        }),
+      });
+      cleanup.trackBatch(batch2.id);
+
+      const batch1Enroll = await expectOk<{
+        invoice: { id: string; amount: number; status: string };
+      }>("STAFF", `/batches/${SEED.beginnerBatchId}/enroll`, {
+        method: "POST",
+        body: JSON.stringify({
+          studentId: student.id,
+          subscriptionId: SEED.adultPlanIds[0],
+        }),
+      });
+      expect(batch1Enroll.invoice.status).toBe("PENDING");
+
+      await expectOk("STAFF", `/billing/${batch1Enroll.invoice.id}/paid`, {
+        method: "PATCH",
+        body: JSON.stringify({ paymentMethod: "CASH" }),
+      });
+
+      await expectOk("STAFF", `/batches/${batch2.id}/enroll`, {
+        method: "POST",
+        body: JSON.stringify({
+          studentId: student.id,
+          subscriptionId: SEED.adultPlanIds[0],
+        }),
+      });
+
+      const batch1Revenue = await expectOk<{
+        totals: { collected: number; invoiceCount: number };
+      }>("STAFF", `/batches/${SEED.beginnerBatchId}/revenue`);
+      const batch2Revenue = await expectOk<{
+        totals: { collected: number; invoiceCount: number };
+      }>("STAFF", `/batches/${batch2.id}/revenue`);
+
+      expect(batch1Revenue.totals.collected).toBeGreaterThanOrEqual(
+        Number(batch1Enroll.invoice.amount),
+      );
+      expect(batch2Revenue.totals.collected).toBe(0);
+    } finally {
+      await cleanup.dispose();
+    }
+  });
 });

@@ -82,7 +82,7 @@ describe("attributionTargetsForInvoice", () => {
     ]);
   });
 
-  it("falls back to purchaser enrollments without combineMeta", () => {
+  it("credits purchaseMeta.batchId instead of all enrollments", () => {
     const studentBatchMap = new Map<string, Set<string>>([
       ["s1", new Set(["b1", "b2"])],
     ]);
@@ -92,10 +92,47 @@ describe("attributionTargetsForInvoice", () => {
       status: "PAID",
       studentBatchMap,
       combineMeta: null,
+      purchaseMeta: {
+        batchId: "b1",
+        subscriptionId: "sub-1",
+        purchaserUserId: "s1",
+        coveredStudents: [{ studentId: "s1", seatRole: "KID", batchId: "b1" }],
+      },
     });
     expect(targets).toEqual([
       { batchId: "b1", amount: 500, studentId: "s1" },
-      { batchId: "b2", amount: 500, studentId: "s1" },
+    ]);
+  });
+
+  it("does not fan out to every enrollment without batch metadata (negative path)", () => {
+    const studentBatchMap = new Map<string, Set<string>>([
+      ["s1", new Set(["b1", "b2"])],
+    ]);
+    const targets = attributionTargetsForInvoice({
+      studentId: "s1",
+      amount: 500,
+      status: "PAID",
+      studentBatchMap,
+      combineMeta: null,
+      purchaseMeta: null,
+    });
+    expect(targets).toEqual([]);
+  });
+
+  it("falls back to a single unambiguous enrollment without purchaseMeta", () => {
+    const studentBatchMap = new Map<string, Set<string>>([
+      ["s1", new Set(["b1"])],
+    ]);
+    const targets = attributionTargetsForInvoice({
+      studentId: "s1",
+      amount: 500,
+      status: "PAID",
+      studentBatchMap,
+      combineMeta: null,
+      purchaseMeta: null,
+    });
+    expect(targets).toEqual([
+      { batchId: "b1", amount: 500, studentId: "s1" },
     ]);
   });
 });

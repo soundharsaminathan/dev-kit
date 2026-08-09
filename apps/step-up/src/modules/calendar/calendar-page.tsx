@@ -256,6 +256,7 @@ export function CalendarPage({
       title={title}
       subtitle={description}
       wide
+      className={styles.screen ?? ""}
       actions={
         <div className={styles.viewToggle}>
           <TouchButton
@@ -275,122 +276,124 @@ export function CalendarPage({
         </div>
       }
     >
-      <div className={styles.navRow}>
-        <div className={styles.navButtons}>
-          <TouchButton size="sm" variant="quiet" onClick={goPrev}>
-            Previous
-          </TouchButton>
-          <TouchButton
-            size="sm"
-            variant="default"
-            onClick={() => onFocusChange(new Date())}
-          >
-            Today
-          </TouchButton>
-          <TouchButton size="sm" variant="quiet" onClick={goNext}>
-            Next
-          </TouchButton>
-        </div>
-        <Text className={styles.rangeLabel}>{rangeLabel}</Text>
-        {branches && onBranchChange ? (
-          <div className={styles.branchSelect}>
-            <Select
-              aria-label="Branch"
-              selectedKey={selectedBranchId ?? "all"}
-              onSelectionChange={(key) => {
-                const value = String(key);
-                onBranchChange(value === "all" ? null : value);
-              }}
+      <div className={styles.root}>
+        <div className={styles.navRow}>
+          <div className={styles.navButtons}>
+            <TouchButton size="sm" variant="quiet" onClick={goPrev}>
+              Previous
+            </TouchButton>
+            <TouchButton
+              size="sm"
+              variant="default"
+              onClick={() => onFocusChange(new Date())}
             >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem id="all" textValue="All branches">
-                  All branches
-                </SelectItem>
-                {branches.map((branch) => (
-                  <SelectItem
-                    key={branch.id}
-                    id={branch.id}
-                    textValue={branch.name}
-                  >
-                    {branch.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              Today
+            </TouchButton>
+            <TouchButton size="sm" variant="quiet" onClick={goNext}>
+              Next
+            </TouchButton>
           </div>
-        ) : null}
-      </div>
-
-      <div
-        className={styles.layout}
-        data-has-side={!isMobile && selected ? "true" : undefined}
-      >
-        <div className={styles.main}>
-          {eventsQuery.isLoading ? <CalendarSkeleton view={view} /> : null}
-
-          {eventsQuery.isError ? (
-            <ErrorState
-              description={
-                eventsQuery.error instanceof Error
-                  ? eventsQuery.error.message
-                  : "Could not load calendar."
-              }
-              action={
-                <TouchButton
-                  variant="primary"
-                  onClick={() => eventsQuery.refetch()}
-                >
-                  Try again
-                </TouchButton>
-              }
-            />
-          ) : null}
-
-          {!eventsQuery.isLoading && !eventsQuery.isError ? (
-            view === "week" ? (
-              <WeekView
-                focus={focus}
-                events={eventsQuery.data ?? []}
-                onSelectEvent={handleSelectEvent}
-              />
-            ) : (
-              <MonthView
-                focus={focus}
-                events={eventsQuery.data ?? []}
-                onSelectEvent={handleSelectEvent}
-                onSelectDay={(day) => {
-                  onFocusChange(day);
-                  onViewChange("week");
+          <Text className={styles.rangeLabel}>{rangeLabel}</Text>
+          {branches && onBranchChange ? (
+            <div className={styles.branchSelect}>
+              <Select
+                aria-label="Branch"
+                selectedKey={selectedBranchId ?? "all"}
+                onSelectionChange={(key) => {
+                  const value = String(key);
+                  onBranchChange(value === "all" ? null : value);
                 }}
-              />
-            )
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem id="all" textValue="All branches">
+                    All branches
+                  </SelectItem>
+                  {branches.map((branch) => (
+                    <SelectItem
+                      key={branch.id}
+                      id={branch.id}
+                      textValue={branch.name}
+                    >
+                      {branch.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           ) : null}
         </div>
 
-        {!isMobile && selected && detailProps ? (
-          <aside className={styles.side}>
-            <div className={styles.sideCard}>
-              <p className={styles.sideTitle}>{selected.title}</p>
-              <EventDetail {...detailProps} />
-            </div>
-          </aside>
+        <div
+          className={styles.layout}
+          data-has-side={!isMobile && selected ? "true" : undefined}
+        >
+          <div className={styles.main}>
+            {eventsQuery.isLoading ? <CalendarSkeleton view={view} /> : null}
+
+            {eventsQuery.isError ? (
+              <ErrorState
+                description={
+                  eventsQuery.error instanceof Error
+                    ? eventsQuery.error.message
+                    : "Could not load calendar."
+                }
+                action={
+                  <TouchButton
+                    variant="primary"
+                    onClick={() => eventsQuery.refetch()}
+                  >
+                    Try again
+                  </TouchButton>
+                }
+              />
+            ) : null}
+
+            {!eventsQuery.isLoading && !eventsQuery.isError ? (
+              view === "week" ? (
+                <WeekView
+                  focus={focus}
+                  events={eventsQuery.data ?? []}
+                  onSelectEvent={handleSelectEvent}
+                />
+              ) : (
+                <MonthView
+                  focus={focus}
+                  events={eventsQuery.data ?? []}
+                  onSelectEvent={handleSelectEvent}
+                  onSelectDay={(day) => {
+                    onFocusChange(day);
+                    onViewChange("week");
+                  }}
+                />
+              )
+            ) : null}
+          </div>
+
+          {!isMobile && selected && detailProps ? (
+            <aside className={styles.side}>
+              <div className={styles.sideCard}>
+                <p className={styles.sideTitle}>{selected.title}</p>
+                <EventDetail {...detailProps} />
+              </div>
+            </aside>
+          ) : null}
+        </div>
+
+        {isMobile ? (
+          <AppBottomSheet
+            isOpen={Boolean(selected)}
+            onOpenChange={(open) => {
+              if (!open) setSelected(null);
+            }}
+            title={selected?.title ?? "Event"}
+          >
+            {selected && detailProps ? <EventDetail {...detailProps} /> : null}
+          </AppBottomSheet>
         ) : null}
       </div>
-
-      {isMobile ? (
-        <AppBottomSheet
-          isOpen={Boolean(selected)}
-          onOpenChange={(open) => {
-            if (!open) setSelected(null);
-          }}
-          title={selected?.title ?? "Event"}
-        >
-          {selected && detailProps ? <EventDetail {...detailProps} /> : null}
-        </AppBottomSheet>
-      ) : null}
     </Screen>
   );
 }

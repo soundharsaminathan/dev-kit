@@ -1,4 +1,8 @@
-import type { InvoicePurchaseMeta } from "../memberships/memberships.service";
+import { MembershipSeatRole } from "@prisma/client";
+import type {
+  CoveredStudentInput,
+  InvoicePurchaseMeta,
+} from "../memberships/memberships.service";
 
 export type CombineSource = {
   invoiceId: string;
@@ -10,6 +14,75 @@ export type CombineSource = {
   membershipId?: string | null;
   purchaseMeta?: InvoicePurchaseMeta | null;
 };
+
+export function parsePurchaseMeta(value: unknown): InvoicePurchaseMeta | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return null;
+  }
+  const meta = value as Record<string, unknown>;
+  if (
+    typeof meta.subscriptionId !== "string" ||
+    typeof meta.purchaserUserId !== "string" ||
+    !Array.isArray(meta.coveredStudents)
+  ) {
+    return null;
+  }
+
+  const coveredStudents: CoveredStudentInput[] = [];
+  for (const seat of meta.coveredStudents) {
+    if (!seat || typeof seat !== "object" || Array.isArray(seat)) {
+      return null;
+    }
+    const entry = seat as Record<string, unknown>;
+    if (
+      typeof entry.studentId !== "string" ||
+      (entry.seatRole !== MembershipSeatRole.ADULT &&
+        entry.seatRole !== MembershipSeatRole.KID)
+    ) {
+      return null;
+    }
+    coveredStudents.push({
+      studentId: entry.studentId,
+      seatRole: entry.seatRole,
+      ...(typeof entry.batchId === "string" ? { batchId: entry.batchId } : {}),
+    });
+  }
+
+  return {
+    ...(typeof meta.batchId === "string" ? { batchId: meta.batchId } : {}),
+    subscriptionId: meta.subscriptionId,
+    purchaserUserId: meta.purchaserUserId,
+    coveredStudents,
+  };
+}
+
+/** Prefer invoice batch metadata; only fall back to a single unambiguous enrollment. */
+export function batchIdsForInvoiceAttribution(args: {
+  studentId: string;
+  purchaseMeta?: InvoicePurchaseMeta | null;
+  studentBatchMap: Map<string, Set<string>>;
+}): string[] {
+  if (args.purchaseMeta?.batchId) {
+    return [args.purchaseMeta.batchId];
+  }
+
+  const fromSeats = [
+    ...new Set(
+      (args.purchaseMeta?.coveredStudents ?? [])
+        .map((seat) => seat.batchId)
+        .filter((batchId): batchId is string => typeof batchId === "string"),
+    ),
+  ];
+  if (fromSeats.length > 0) {
+    return fromSeats;
+  }
+
+  const enrolled = [...(args.studentBatchMap.get(args.studentId) ?? [])];
+  if (enrolled.length === 1) {
+    return enrolled;
+  }
+  return [];
+}
 
 export type InvoiceCombineMeta = {
   sources: CombineSource[];
@@ -103,6 +176,7 @@ export function parseCombineMeta(value: unknown): InvoiceCombineMeta | null {
 export function attributionTargetsForInvoice(args: {
   studentId: string;
   combineMeta: InvoiceCombineMeta | null;
+  purchaseMeta?: InvoicePurchaseMeta | null;
   studentBatchMap: Map<string, Set<string>>;
   amount: number;
   status: string;
@@ -115,13 +189,14 @@ export function attributionTargetsForInvoice(args: {
       studentId: string;
     }> = [];
     for (const source of meta.sources) {
-      const credit =
-        args.status === "PENDING" || args.status === "OVERDUE"
-          ? source.netAmount
-          : source.netAmount;
+      const credit = source.netAmount;
       const batchIds = source.batchId
         ? [source.batchId]
-        : [...(args.studentBatchMap.get(source.studentId) ?? [])];
+        : batchIdsForInvoiceAttribution({
+            studentId: source.studentId,
+            purchaseMeta: source.purchaseMeta ?? null,
+            studentBatchMap: args.studentBatchMap,
+          });
       for (const batchId of batchIds) {
         targets.push({
           batchId,
@@ -133,7 +208,11 @@ export function attributionTargetsForInvoice(args: {
     return targets;
   }
 
-  const batchIds = [...(args.studentBatchMap.get(args.studentId) ?? [])];
+  const batchIds = batchIdsForInvoiceAttribution({
+    studentId: args.studentId,
+    purchaseMeta: args.purchaseMeta ?? null,
+    studentBatchMap: args.studentBatchMap,
+  });
   return batchIds.map((batchId) => ({
     batchId,
     amount: args.amount,

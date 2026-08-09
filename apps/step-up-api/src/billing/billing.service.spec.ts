@@ -387,6 +387,100 @@ describe("BillingService.getTrainerAnalytics", () => {
     });
   });
 
+  it("does not credit batch2 when shared students paid for batch1 (negative path)", async () => {
+    prisma.batch.findMany.mockResolvedValue([
+      {
+        id: "batch-1",
+        name: "Batch 1",
+        enrollments: [
+          { studentId: "s1" },
+          { studentId: "s2" },
+          { studentId: "s3" },
+        ],
+      },
+      {
+        id: "batch-2",
+        name: "Batch 2",
+        enrollments: [{ studentId: "s1" }, { studentId: "s2" }],
+      },
+    ]);
+    prisma.invoice.findMany.mockResolvedValue([
+      {
+        id: "inv-s1",
+        studentId: "s1",
+        amount: 1000,
+        status: InvoiceStatus.PAID,
+        paymentMethod: PaymentMethod.CASH,
+        paidAt: new Date("2026-07-01T00:00:00.000Z"),
+        platformFeePercent: 5,
+        purchaseMeta: {
+          batchId: "batch-1",
+          subscriptionId: "sub-1",
+          purchaserUserId: "s1",
+          coveredStudents: [
+            { studentId: "s1", seatRole: "KID", batchId: "batch-1" },
+          ],
+        },
+        membership: null,
+        student: { id: "s1", name: "S1" },
+      },
+      {
+        id: "inv-s2",
+        studentId: "s2",
+        amount: 1000,
+        status: InvoiceStatus.PAID,
+        paymentMethod: PaymentMethod.CASH,
+        paidAt: new Date("2026-07-01T00:00:00.000Z"),
+        platformFeePercent: 5,
+        purchaseMeta: {
+          batchId: "batch-1",
+          subscriptionId: "sub-1",
+          purchaserUserId: "s2",
+          coveredStudents: [
+            { studentId: "s2", seatRole: "KID", batchId: "batch-1" },
+          ],
+        },
+        membership: null,
+        student: { id: "s2", name: "S2" },
+      },
+      {
+        id: "inv-s3",
+        studentId: "s3",
+        amount: 1000,
+        status: InvoiceStatus.PAID,
+        paymentMethod: PaymentMethod.CASH,
+        paidAt: new Date("2026-07-01T00:00:00.000Z"),
+        platformFeePercent: 5,
+        purchaseMeta: {
+          batchId: "batch-1",
+          subscriptionId: "sub-1",
+          purchaserUserId: "s3",
+          coveredStudents: [
+            { studentId: "s3", seatRole: "KID", batchId: "batch-1" },
+          ],
+        },
+        membership: null,
+        student: { id: "s3", name: "S3" },
+      },
+    ]);
+
+    const result = await service.getTrainerAnalytics(
+      makeUser(),
+      "all",
+      "studio-1",
+    );
+
+    expect(result.totals.collected).toBe(3000);
+    expect(result.byBatch.find((row) => row.batchId === "batch-1")).toMatchObject({
+      collected: 3000,
+      invoiceCount: 3,
+    });
+    expect(result.byBatch.find((row) => row.batchId === "batch-2")).toMatchObject({
+      collected: 0,
+      invoiceCount: 0,
+    });
+  });
+
   it("builds comparison and day series for a bounded range", async () => {
     prisma.user.findFirst.mockResolvedValue({
       id: "trainer-1",

@@ -13,6 +13,7 @@ import {
   MembershipSeatRole,
   MembershipStatus,
   NotificationType,
+  Prisma,
   SubscriptionKind,
 } from "@prisma/client";
 import {
@@ -21,6 +22,7 @@ import {
   paymentHoldExpiresAt,
 } from "../batches/batch-capacity";
 import { REACTIVATE_ENROLLMENT_DATA } from "../batches/enrollment-status";
+import { parsePurchaseMeta } from "../billing/family-combine";
 import { ScheduleConflictService } from "../calendar/schedule-conflict.service";
 import { NotificationsService } from "../notifications/notifications.service";
 import { PrismaService } from "../prisma/prisma.service";
@@ -396,6 +398,7 @@ export class MembershipsService {
       where: { id: membershipId },
       include: {
         subscription: true,
+        coveredStudents: true,
         purchaser: { select: { id: true, studioId: true } },
       },
     });
@@ -424,6 +427,42 @@ export class MembershipsService {
       select: { platformFeePercent: true },
     });
 
+    const priorWithMeta = await this.prisma.invoice.findFirst({
+      where: {
+        studioId: existing.purchaser.studioId,
+        studentId: existing.purchaserUserId,
+        purchaseMeta: { not: Prisma.DbNull },
+        membership: {
+          subscriptionId: existing.subscriptionId,
+          purchaserUserId: existing.purchaserUserId,
+        },
+      },
+      orderBy: { id: "desc" },
+      select: { purchaseMeta: true },
+    });
+    const priorMeta = parsePurchaseMeta(priorWithMeta?.purchaseMeta);
+    const purchaseMeta: InvoicePurchaseMeta | null = priorMeta
+      ? {
+          ...(priorMeta.batchId ? { batchId: priorMeta.batchId } : {}),
+          subscriptionId: existing.subscriptionId,
+          purchaserUserId: existing.purchaserUserId,
+          coveredStudents: existing.coveredStudents.map((seat) => {
+            const priorSeat = priorMeta.coveredStudents.find(
+              (entry) => entry.studentId === seat.studentId,
+            );
+            return {
+              studentId: seat.studentId,
+              seatRole: seat.seatRole,
+              ...(priorSeat?.batchId
+                ? { batchId: priorSeat.batchId }
+                : priorMeta.batchId
+                  ? { batchId: priorMeta.batchId }
+                  : {}),
+            };
+          }),
+        }
+      : null;
+
     const invoice = await this.prisma.invoice.create({
       data: {
         studentId: existing.purchaserUserId,
@@ -432,6 +471,7 @@ export class MembershipsService {
         amount: existing.subscription.price,
         status: InvoiceStatus.PENDING,
         platformFeePercent: settings?.platformFeePercent ?? 5,
+        ...(purchaseMeta ? { purchaseMeta } : {}),
       },
     });
 

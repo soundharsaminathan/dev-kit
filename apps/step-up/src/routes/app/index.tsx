@@ -12,6 +12,8 @@ import {
   isBookingForTrainer,
   type StudioBooking,
 } from "@/modules/bookings/types";
+import type { DiscoverBatch } from "@/modules/discover/types";
+import { HomeCurrentBatches } from "@/modules/home/home-current-batches";
 import { coverUrl, type StudioBranch } from "@/modules/locations/types";
 import { AnimatedMetric } from "@/modules/ui/animated-metric";
 import type { ExpandableBentoItem } from "@/modules/ui/expandable-bento-grid";
@@ -50,7 +52,6 @@ const BookingReviewPanel = lazy(() =>
   })),
 );
 
-type Batch = { id: string; name: string; active: boolean };
 type Subscription = { id: string; name: string; price: number };
 type StudioMember = {
   id: string;
@@ -180,8 +181,22 @@ function AppDashboardPage() {
     return schedule(() => setFunnelEnabled(true));
   }, [isTrainer]);
   const batches = useQuery({
-    queryKey: ["batches", studioId],
-    queryFn: () => api.get<Batch[]>(`/batches/studio/${studioId}`),
+    queryKey: [
+      "batches",
+      "home",
+      studioId,
+      isTrainer ? (user?.id ?? "trainer") : "studio",
+    ],
+    queryFn: () => {
+      const params = new URLSearchParams({ activeOnly: "true" });
+      if (isTrainer && user?.id) {
+        params.set("trainerId", user.id);
+      }
+      return api.get<DiscoverBatch[]>(
+        `/batches/studio/${studioId}?${params.toString()}`,
+      );
+    },
+    enabled: Boolean(studioId) && (!isTrainer || Boolean(user?.id)),
     staleTime: 30_000,
   });
   const studio = useQuery({
@@ -265,8 +280,8 @@ function AppDashboardPage() {
     },
   });
 
-  const activeBatches =
-    batches.data?.filter((batch) => batch.active).length ?? null;
+  const currentBatches = batches.data ?? [];
+  const activeBatches = batches.data != null ? currentBatches.length : null;
   const studentCount =
     members.data?.filter((member) => member.role === "STUDENT").length ?? null;
   const trainerCount =
@@ -365,70 +380,88 @@ function AppDashboardPage() {
         ) : null}
 
         {isTrainer ? (
-          <div className={staff.section}>
-            <p className={staff.sectionTitle}>Your batches</p>
-            {bookings.isLoading ? (
-              <SkeletonBlock height="5.5rem" radius="var(--radius-2xl)" />
-            ) : (
-              <button
-                type="button"
-                className={staff.metricCard}
-                onClick={() => setPendingOpen(true)}
-                aria-label={`${pending.length} pending requests for your batches`}
-              >
-                <span className={staff.metricLabel}>
-                  <span className={staff.metricIcon} aria-hidden>
-                    <Icon name="clipboard" />
-                  </span>
-                  Pending requests
-                </span>
-                <AnimatedMetric
-                  className={staff.metricValue}
-                  value={pending.length}
-                />
-                <span className={staff.metricHint}>
-                  {pending.length === 0
-                    ? "No requests waiting on your batches"
-                    : "Tap to review and approve"}
-                </span>
-              </button>
-            )}
-          </div>
-        ) : (
-          <div className={staff.metrics} data-testid="owner-metric-tiles">
-            <MetricLink
-              to="/app/batches"
-              icon={ENTITY_ICONS.batch}
-              label="Batches"
-              value={activeBatches}
-              hint="Active classes"
+          <>
+            <HomeCurrentBatches
+              title="Your batches"
+              batches={currentBatches}
               loading={batches.isLoading}
+              emptyTitle="No batches yet"
+              emptyDescription="Batches you’re assigned to will show up here."
             />
-            <MetricLink
-              to="/app/students"
-              icon={ENTITY_ICONS.student}
-              label="Students"
-              value={studentCount}
-              hint="All registered"
-              loading={members.isLoading}
+            <div className={staff.section}>
+              <p className={staff.sectionTitle}>Needs attention</p>
+              {bookings.isLoading ? (
+                <SkeletonBlock height="5.5rem" radius="var(--radius-2xl)" />
+              ) : (
+                <button
+                  type="button"
+                  className={staff.metricCard}
+                  onClick={() => setPendingOpen(true)}
+                  aria-label={`${pending.length} pending requests for your batches`}
+                >
+                  <span className={staff.metricLabel}>
+                    <span className={staff.metricIcon} aria-hidden>
+                      <Icon name="clipboard" />
+                    </span>
+                    Pending requests
+                  </span>
+                  <AnimatedMetric
+                    className={staff.metricValue}
+                    value={pending.length}
+                  />
+                  <span className={staff.metricHint}>
+                    {pending.length === 0
+                      ? "No requests waiting on your batches"
+                      : "Tap to review and approve"}
+                  </span>
+                </button>
+              )}
+            </div>
+          </>
+        ) : (
+          <>
+            <div className={staff.metrics} data-testid="owner-metric-tiles">
+              <MetricLink
+                to="/app/batches"
+                icon={ENTITY_ICONS.batch}
+                label="Batches"
+                value={activeBatches}
+                hint="Active classes"
+                loading={batches.isLoading}
+              />
+              <MetricLink
+                to="/app/students"
+                icon={ENTITY_ICONS.student}
+                label="Students"
+                value={studentCount}
+                hint="All registered"
+                loading={members.isLoading}
+              />
+              <MetricLink
+                to="/app/trainers"
+                icon={ENTITY_ICONS.trainer}
+                label="Trainers"
+                value={trainerCount}
+                hint="Teaching team"
+                loading={members.isLoading}
+              />
+              <MetricLink
+                to="/app/subscriptions"
+                icon="clipboard"
+                label="Subscriptions"
+                value={subscriptionCount}
+                hint="Memberships"
+                loading={subscriptions.isLoading}
+              />
+            </div>
+            <HomeCurrentBatches
+              title="Current batches"
+              batches={currentBatches}
+              loading={batches.isLoading}
+              emptyTitle="No active batches"
+              emptyDescription="Create a batch to start filling classes."
             />
-            <MetricLink
-              to="/app/trainers"
-              icon={ENTITY_ICONS.trainer}
-              label="Trainers"
-              value={trainerCount}
-              hint="Teaching team"
-              loading={members.isLoading}
-            />
-            <MetricLink
-              to="/app/subscriptions"
-              icon="clipboard"
-              label="Subscriptions"
-              value={subscriptionCount}
-              hint="Memberships"
-              loading={subscriptions.isLoading}
-            />
-          </div>
+          </>
         )}
 
         {!isTrainer ? (

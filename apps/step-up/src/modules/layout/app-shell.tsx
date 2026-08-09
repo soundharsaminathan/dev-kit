@@ -8,7 +8,13 @@ import {
   useSidebarContext,
 } from "@dev-ui/components/sidebar";
 import { useRouterState } from "@tanstack/react-router";
-import { type ReactNode, useEffect, useState } from "react";
+import {
+  type ReactNode,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import { useAuth } from "@/lib/auth";
 import { StudioBrandMark } from "@/modules/branding/studio-brand-mark";
 import { AppHeader } from "@/modules/layout/app-header";
@@ -50,6 +56,15 @@ function isMemberBook(pathname: string) {
 
 function isMemberJourney(pathname: string) {
   return pathname === "/me/journey" || pathname.startsWith("/me/journey/");
+}
+
+function isCalendarPath(pathname: string) {
+  return (
+    pathname === "/me/calendar" ||
+    pathname.startsWith("/me/calendar/") ||
+    pathname === "/app/calendar" ||
+    pathname.startsWith("/app/calendar/")
+  );
 }
 
 function isStaffHome(pathname: string) {
@@ -99,9 +114,11 @@ export function AppShell({ variant, children }: AppShellProps) {
     select: (state) => state.location.pathname,
   });
   const { user } = useAuth();
+  const scrollRef = useRef<HTMLDivElement>(null);
   const collapseSidebar = needsCollapsedSidebar(pathname);
   const fillHeight =
     collapseSidebar ||
+    isCalendarPath(pathname) ||
     (variant === "me" && (isMemberBook(pathname) || isMemberJourney(pathname)));
   const [sidebarOpen, setSidebarOpen] = useState(!collapseSidebar);
   const hideHeader =
@@ -117,6 +134,15 @@ export function AppShell({ variant, children }: AppShellProps) {
   useEffect(() => {
     setSidebarOpen(!collapseSidebar);
   }, [collapseSidebar]);
+
+  useLayoutEffect(() => {
+    const el = scrollRef.current;
+    if (el) {
+      el.scrollTop = 0;
+      el.scrollLeft = 0;
+    }
+    window.scrollTo(0, 0);
+  }, [pathname]);
 
   return (
     <SidebarProvider
@@ -150,6 +176,7 @@ export function AppShell({ variant, children }: AppShellProps) {
         ) : null}
         <main className={styles.main}>
           <div
+            ref={scrollRef}
             className={styles.content}
             data-app-scroll
             data-fill-height={fillHeight ? "true" : undefined}
