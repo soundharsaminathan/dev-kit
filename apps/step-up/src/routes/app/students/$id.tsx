@@ -22,6 +22,7 @@ import {
   parseDiscountInput,
   printInvoice,
 } from "@/modules/payments/print-invoice";
+import type { Studio } from "@/modules/settings/types";
 import { AppBottomSheet } from "@/modules/ui/app-bottom-sheet";
 import { AppSheet } from "@/modules/ui/app-sheet";
 import { FormInput } from "@/modules/ui/form-input";
@@ -196,6 +197,11 @@ function StudentDetailPage() {
     queryKey: ["student-profile", studioId, id],
     queryFn: () =>
       api.get<StudentStudioProfile>(`/users/studio/${studioId}/students/${id}`),
+  });
+
+  const studioQuery = useQuery({
+    queryKey: ["studio", studioId],
+    queryFn: () => api.get<Studio>(`/studios/${studioId}`),
   });
 
   const membersQuery = useQuery({
@@ -872,6 +878,11 @@ function StudentDetailPage() {
                                 paymentMethod: invoice.paymentMethod,
                                 paidAt: invoice.paidAt,
                                 studentName: profile.student.name,
+                                studioName: studioQuery.data?.name,
+                                studioLogoUrl: studioQuery.data?.logoUrl,
+                                studioAddress: studioQuery.data?.address,
+                                gstNumber:
+                                  studioQuery.data?.settings?.gstNumber,
                               });
                               if (!opened) {
                                 toast({

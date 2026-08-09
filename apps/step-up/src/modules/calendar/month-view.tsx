@@ -60,6 +60,11 @@ export function MonthView({
                   <button
                     type="button"
                     className={styles.dayButton}
+                    aria-label={day.toLocaleDateString(undefined, {
+                      weekday: "long",
+                      month: "long",
+                      day: "numeric",
+                    })}
                     onClick={() => onSelectDay?.(day)}
                   >
                     <span className={styles.dayNumber}>{day.getDate()}</span>

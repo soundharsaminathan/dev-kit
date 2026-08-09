@@ -3,10 +3,12 @@
 .chip {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  align-items: stretch;
   gap: 0.1rem;
   width: 100%;
+  max-width: 100%;
   min-width: 0;
+  height: 100%;
   padding: 0.25rem 0.4rem;
   border: none;
   border-radius: var(--radius-sm, 0.35rem);
@@ -30,24 +32,35 @@
 .compact {
   flex-direction: row;
   align-items: center;
+  height: auto;
   gap: 0.35rem;
   padding: 0.15rem 0.35rem;
 }
 
 .time {
+  flex-shrink: 0;
   font-size: 0.7rem;
   opacity: 0.85;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .title {
+  display: block;
+  min-width: 0;
+  width: 100%;
   font-size: 0.75rem;
   font-weight: 600;
   line-height: 1.2;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  max-width: 100%;
+}
+
+.compact .title {
+  flex: 1 1 0;
+  width: auto;
 }
 
 .session {

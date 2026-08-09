@@ -18,6 +18,7 @@ export function StudioPaymentsFormPage() {
   const { toast } = useToastContext("StudioPaymentsFormPage");
   const [razorpayKeyId, setRazorpayKeyId] = useState("");
   const [razorpayKeySecret, setRazorpayKeySecret] = useState("");
+  const [gstNumber, setGstNumber] = useState("");
   const [savedSecret, setSavedSecret] = useState(false);
 
   const studioQuery = useQuery({
@@ -27,6 +28,11 @@ export function StudioPaymentsFormPage() {
 
   const configured = Boolean(studioQuery.data?.settings?.razorpayConfigured);
   const savedKeyId = studioQuery.data?.settings?.razorpayKeyId?.trim() ?? "";
+
+  useEffect(() => {
+    if (!studioQuery.data) return;
+    setGstNumber(studioQuery.data.settings?.gstNumber ?? "");
+  }, [studioQuery.data]);
 
   useEffect(() => {
     if (!savedSecret) return;
@@ -44,9 +50,11 @@ export function StudioPaymentsFormPage() {
         expireAlertDays: number;
         razorpayKeyId?: string;
         razorpayKeySecret?: string;
+        gstNumber: string | null;
       } = {
         graceDays: settings?.graceDays ?? 3,
         expireAlertDays: settings?.expireAlertDays ?? 7,
+        gstNumber: gstNumber.trim() || null,
       };
       if (nextKeyId) {
         payload.razorpayKeyId = nextKeyId;
@@ -93,7 +101,7 @@ export function StudioPaymentsFormPage() {
     <>
       <Screen
         title="Payments"
-        subtitle="Configure Razorpay for student checkout."
+        subtitle="Configure GST and Razorpay for student checkout."
         showBack
         backTo="/app/settings"
         paddedCta
@@ -147,6 +155,8 @@ export function StudioPaymentsFormPage() {
                 setSavedSecret(false);
                 setRazorpayKeySecret(value);
               }}
+              gstNumber={gstNumber}
+              onGstNumberChange={setGstNumber}
             />
             {configured && !razorpayKeySecret ? (
               <p className={staff.panelDesc}>

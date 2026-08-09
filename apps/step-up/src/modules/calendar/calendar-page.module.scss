@@ -40,6 +40,101 @@
   min-width: 0;
 }
 
+.skeletonRoot {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid color-mix(in srgb, var(--color-fg) 12%, transparent);
+  border-radius: var(--radius-md, 0.5rem);
+  overflow: hidden;
+  background: var(--surface-elevated, var(--color-bg));
+}
+
+.skeletonWeekdays {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  border-bottom: 1px solid color-mix(in srgb, var(--color-fg) 12%, transparent);
+  background: color-mix(in srgb, var(--color-fg) 3%, var(--surface-elevated, var(--color-bg)));
+}
+
+.skeletonWeekday {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.55rem 0.35rem;
+}
+
+.skeletonMonthGrid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  grid-auto-rows: minmax(6.5rem, auto);
+}
+
+.skeletonCell {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.35rem;
+  padding: 0.35rem;
+  border-right: 1px solid color-mix(in srgb, var(--color-fg) 8%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--color-fg) 8%, transparent);
+  min-width: 0;
+
+  &:nth-child(7n) {
+    border-right: none;
+  }
+}
+
+.skeletonWeekHeader {
+  display: grid;
+  grid-template-columns: 3.5rem repeat(7, minmax(0, 1fr));
+  border-bottom: 1px solid color-mix(in srgb, var(--color-fg) 12%, transparent);
+  background: color-mix(in srgb, var(--color-fg) 3%, var(--surface-elevated, var(--color-bg)));
+}
+
+.skeletonWeekGutter {
+  border-right: 1px solid color-mix(in srgb, var(--color-fg) 10%, transparent);
+}
+
+.skeletonWeekDayHeader {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.65rem 0.4rem;
+  border-right: 1px solid color-mix(in srgb, var(--color-fg) 8%, transparent);
+
+  &:last-child {
+    border-right: none;
+  }
+}
+
+.skeletonWeekBody {
+  display: grid;
+  grid-template-columns: 3.5rem repeat(7, minmax(0, 1fr));
+  min-height: 22rem;
+}
+
+.skeletonWeekHours {
+  border-right: 1px solid color-mix(in srgb, var(--color-fg) 10%, transparent);
+}
+
+.skeletonWeekColumn {
+  border-right: 1px solid color-mix(in srgb, var(--color-fg) 8%, transparent);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.5rem 0.35rem;
+
+  &:last-child {
+    border-right: none;
+  }
+}
+
+@media (max-width: 720px) {
+  .skeletonMonthGrid {
+    grid-auto-rows: minmax(5rem, auto);
+  }
+}
+
 .side {
   display: flex;
   flex-direction: column;

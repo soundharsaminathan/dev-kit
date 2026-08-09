@@ -18,6 +18,7 @@ import {
 import screen from "@/modules/payments/invoices-screen.module.scss";
 import { printInvoice } from "@/modules/payments/print-invoice";
 import { RefundInvoiceSheet } from "@/modules/payments/refund-invoice-sheet";
+import type { Studio } from "@/modules/settings/types";
 import {
   StudentSearchCombobox,
   type StudioStudent,
@@ -82,6 +83,9 @@ type InvoiceCardProps = {
   onCollect: () => void;
   onRefund?: () => void;
   refundMode?: boolean;
+  studio?: Pick<Studio, "name" | "address" | "logoUrl"> & {
+    settings?: Pick<NonNullable<Studio["settings"]>, "gstNumber"> | null;
+  };
 };
 
 function InvoiceCard({
@@ -90,6 +94,7 @@ function InvoiceCard({
   onCollect,
   onRefund,
   refundMode = false,
+  studio,
 }: InvoiceCardProps) {
   const { toast } = useToastContext("InvoiceCard");
   const unpaid = isUnpaid(invoice.status);
@@ -190,6 +195,10 @@ function InvoiceCard({
                   paymentMethod: invoice.paymentMethod,
                   paidAt: invoice.paidAt,
                   studentName: invoice.student?.name,
+                  studioName: studio?.name,
+                  studioLogoUrl: studio?.logoUrl,
+                  studioAddress: studio?.address,
+                  gstNumber: studio?.settings?.gstNumber,
                 });
                 if (!opened) {
                   toast({
@@ -224,6 +233,11 @@ function InvoicesPage() {
   const invoicesQuery = useQuery({
     queryKey: ["invoices", studioId],
     queryFn: () => api.get<Invoice[]>(`/billing/studio/${studioId}`),
+  });
+
+  const studioQuery = useQuery({
+    queryKey: ["studio", studioId],
+    queryFn: () => api.get<Studio>(`/studios/${studioId}`),
   });
 
   const familiesQuery = useQuery({
@@ -372,6 +386,7 @@ function InvoicesPage() {
                     <InvoiceCard
                       key={invoice.id}
                       invoice={invoice}
+                      studio={studioQuery.data}
                       collectTestId={`mark-paid-${invoice.id}`}
                       onCollect={() => setActiveId(invoice.id)}
                       onRefund={() => setRefundId(invoice.id)}
@@ -499,6 +514,7 @@ function InvoicesPage() {
                     <InvoiceCard
                       key={invoice.id}
                       invoice={invoice}
+                      studio={studioQuery.data}
                       collectTestId={`open-family-${invoice.id}`}
                       onCollect={() => setFamilyOpenId(invoice.id)}
                       onRefund={() => setRefundId(invoice.id)}
@@ -544,6 +560,7 @@ function InvoicesPage() {
                     <InvoiceCard
                       key={invoice.id}
                       invoice={invoice}
+                      studio={studioQuery.data}
                       collectTestId={`refund-view-${invoice.id}`}
                       onCollect={() => undefined}
                       refundMode

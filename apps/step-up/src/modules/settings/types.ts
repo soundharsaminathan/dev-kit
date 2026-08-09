@@ -7,6 +7,7 @@ export type StudioSettings = {
   razorpayKeyId?: string | null;
   razorpayConfigured?: boolean;
   danceStyles?: DanceStyle[] | null;
+  gstNumber?: string | null;
 };
 
 export type Studio = {

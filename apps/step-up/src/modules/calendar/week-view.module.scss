@@ -109,6 +109,8 @@
   position: absolute;
   left: 0.15rem;
   right: 0.15rem;
+  min-width: 0;
+  overflow: hidden;
   pointer-events: auto;
   z-index: 1;
 }

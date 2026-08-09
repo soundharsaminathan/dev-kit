@@ -29,6 +29,64 @@ import {
 import { useCalendarEvents } from "./use-calendar-events";
 import { WeekView } from "./week-view";
 
+const MONTH_CELL_KEYS = Array.from(
+  { length: 42 },
+  (_, i) => `cal-month-cell-${i}`,
+);
+const WEEKDAY_KEYS = Array.from({ length: 7 }, (_, i) => `cal-weekday-${i}`);
+const WEEK_DAY_KEYS = Array.from({ length: 7 }, (_, i) => `cal-week-day-${i}`);
+const WEEK_SLOT_KEYS = Array.from({ length: 4 }, (_, i) => `cal-week-slot-${i}`);
+
+function CalendarSkeleton({ view }: { view: CalendarViewMode }) {
+  if (view === "week") {
+    return (
+      <div className={styles.skeletonRoot} aria-hidden>
+        <div className={styles.skeletonWeekHeader}>
+          <div className={styles.skeletonWeekGutter} />
+          {WEEK_DAY_KEYS.map((key) => (
+            <div key={key} className={styles.skeletonWeekDayHeader}>
+              <SkeletonBlock height="0.75rem" width="2.5rem" radius="999px" />
+            </div>
+          ))}
+        </div>
+        <div className={styles.skeletonWeekBody}>
+          <div className={styles.skeletonWeekHours} />
+          {WEEK_DAY_KEYS.map((dayKey) => (
+            <div key={dayKey} className={styles.skeletonWeekColumn}>
+              {WEEK_SLOT_KEYS.map((slotKey) => (
+                <SkeletonBlock
+                  key={`${dayKey}-${slotKey}`}
+                  height="2.5rem"
+                  radius="var(--radius-sm, 0.35rem)"
+                />
+              ))}
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className={styles.skeletonRoot} aria-hidden>
+      <div className={styles.skeletonWeekdays}>
+        {WEEKDAY_KEYS.map((key) => (
+          <div key={key} className={styles.skeletonWeekday}>
+            <SkeletonBlock height="0.65rem" width="1.75rem" radius="999px" />
+          </div>
+        ))}
+      </div>
+      <div className={styles.skeletonMonthGrid}>
+        {MONTH_CELL_KEYS.map((key) => (
+          <div key={key} className={styles.skeletonCell}>
+            <SkeletonBlock height="1rem" width="1.25rem" radius="999px" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export type BranchOption = {
   id: string;
   name: string;
@@ -271,9 +329,7 @@ export function CalendarPage({
         data-has-side={!isMobile && selected ? "true" : undefined}
       >
         <div className={styles.main}>
-          {eventsQuery.isLoading ? (
-            <SkeletonBlock height="18rem" radius="var(--radius-2xl)" />
-          ) : null}
+          {eventsQuery.isLoading ? <CalendarSkeleton view={view} /> : null}
 
           {eventsQuery.isError ? (
             <ErrorState

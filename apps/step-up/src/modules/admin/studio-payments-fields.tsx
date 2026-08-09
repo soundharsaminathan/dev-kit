@@ -19,6 +19,8 @@ export type StudioPaymentsFieldsProps = {
   configured?: boolean;
   onKeyIdChange: (value: string) => void;
   onKeySecretChange: (value: string) => void;
+  gstNumber?: string;
+  onGstNumberChange?: (value: string) => void;
   platformFeePercent?: string;
   onPlatformFeePercentChange?: (value: string) => void;
   className?: string | undefined;
@@ -33,6 +35,8 @@ export function StudioPaymentsFields({
   configured = false,
   onKeyIdChange,
   onKeySecretChange,
+  gstNumber,
+  onGstNumberChange,
   platformFeePercent,
   onPlatformFeePercentChange,
   className,
@@ -45,6 +49,8 @@ export function StudioPaymentsFields({
   const showPlatformFee =
     platformFeePercent !== undefined &&
     onPlatformFeePercentChange !== undefined;
+  const showGst =
+    gstNumber !== undefined && onGstNumberChange !== undefined;
 
   return (
     <div className={className}>
@@ -62,6 +68,26 @@ export function StudioPaymentsFields({
             step="0.1"
             value={platformFeePercent}
             onChange={onPlatformFeePercentChange}
+          />
+        </>
+      ) : null}
+      {showGst ? (
+        <>
+          <p className={titleClassName}>Tax details</p>
+          <p className={descClassName}>
+            Shown on printed payment receipts when set.
+          </p>
+          <FormInput
+            label="GSTIN"
+            name="gstNumber"
+            value={gstNumber}
+            onChange={onGstNumberChange}
+            placeholder="22AAAAA0000A1Z5"
+            maxLength={20}
+            autoComplete="off"
+            autoCorrect="off"
+            autoCapitalize="characters"
+            spellCheck={false}
           />
         </>
       ) : null}

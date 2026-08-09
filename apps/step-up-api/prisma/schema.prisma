@@ -381,6 +381,7 @@ model StudioSettings {
   razorpayKeySecret  String?
   razorpaySecretIv   String?
   danceStyles        Json?
+  gstNumber          String?
 
   studio Studio @relation(fields: [studioId], references: [id], onDelete: Cascade)
 }

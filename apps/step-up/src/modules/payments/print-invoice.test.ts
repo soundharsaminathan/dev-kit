@@ -27,6 +27,10 @@ describe("printInvoice", () => {
       paymentMethod: "CASH",
       paidAt: "2026-08-01T10:00:00.000Z",
       studentName: "Asha",
+      studioName: "Rhythm Studio",
+      studioLogoUrl: "https://cdn.example/logo.png",
+      studioAddress: "12 MG Road",
+      gstNumber: "22AAAAA0000A1Z5",
     });
 
     expect(opened).toBe(true);
@@ -40,6 +44,10 @@ describe("printInvoice", () => {
     expect(write).toHaveBeenCalledTimes(1);
     const html = String(write.mock.calls[0]?.[0] ?? "");
     expect(html).toContain("Asha");
+    expect(html).toContain("Rhythm Studio");
+    expect(html).toContain("https://cdn.example/logo.png");
+    expect(html).toContain("GSTIN: 22AAAAA0000A1Z5");
+    expect(html).toContain("12 MG Road");
     expect(html).toContain("Amount paid");
     expect(html).toContain("window.print()");
     expect(close).toHaveBeenCalled();

@@ -286,6 +286,7 @@ export class StudiosService {
               studio.settings.razorpaySecretIv,
           ),
           danceStyles: studio.settings.danceStyles ?? null,
+          gstNumber: studio.settings.gstNumber ?? null,
         }
       : null;
 
@@ -337,6 +338,7 @@ export class StudiosService {
       platformFeePercent?: number;
       razorpayKeyId?: string | null;
       razorpayKeySecret?: string | null;
+      gstNumber?: string | null;
       danceStyles?: unknown;
     },
   ) {
@@ -347,6 +349,7 @@ export class StudiosService {
       razorpayKeyId?: string | null;
       razorpayKeySecret?: string | null;
       razorpaySecretIv?: string | null;
+      gstNumber?: string | null;
       danceStyles?: Prisma.InputJsonValue | typeof Prisma.DbNull;
     } = {};
 
@@ -360,6 +363,11 @@ export class StudiosService {
 
     if (data.razorpayKeyId !== undefined) {
       update.razorpayKeyId = data.razorpayKeyId?.trim() || null;
+    }
+
+    if (data.gstNumber !== undefined) {
+      const trimmed = data.gstNumber?.trim().toUpperCase() ?? "";
+      update.gstNumber = trimmed || null;
     }
 
     if (data.danceStyles !== undefined) {
@@ -441,6 +449,7 @@ export class StudiosService {
           settings.razorpaySecretIv,
       ),
       danceStyles: settings.danceStyles ?? null,
+      gstNumber: settings.gstNumber ?? null,
     };
   }
 

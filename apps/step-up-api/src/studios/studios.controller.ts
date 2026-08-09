@@ -17,6 +17,7 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  MaxLength,
   MinLength,
   ValidateIf,
 } from "class-validator";
@@ -104,6 +105,12 @@ class UpdateStudioSettingsDto {
   @IsOptional()
   @IsString()
   razorpayKeySecret?: string | null;
+
+  @IsOptional()
+  @ValidateIf((_, value) => value !== null)
+  @IsString()
+  @MaxLength(20)
+  gstNumber?: string | null;
 
   @IsOptional()
   @Allow()
@@ -215,6 +222,14 @@ export class StudiosController {
       (dto.razorpayKeyId !== undefined || dto.razorpayKeySecret !== undefined)
     ) {
       throw new ForbiddenException("Only owners can change Razorpay keys");
+    }
+
+    if (
+      user.role !== UserRole.OWNER &&
+      user.role !== UserRole.SYSTEM_ADMIN &&
+      dto.gstNumber !== undefined
+    ) {
+      throw new ForbiddenException("Only owners can change GST number");
     }
 
     if (

@@ -103,6 +103,7 @@ describe("StudiosService", () => {
       razorpayKeySecret: "sealed:secret",
       razorpaySecretIv: "iv-1",
       danceStyles: null,
+      gstNumber: null,
     });
 
     const result = await service.updateSettings("studio-1", {
@@ -131,6 +132,7 @@ describe("StudiosService", () => {
       razorpayKeyId: "rzp_test_studio",
       razorpayConfigured: true,
       danceStyles: null,
+      gstNumber: null,
     });
     expect(result).not.toHaveProperty("razorpayKeySecret");
   });
@@ -153,6 +155,7 @@ describe("StudiosService", () => {
       razorpayKeySecret: null,
       razorpaySecretIv: null,
       danceStyles: null,
+      gstNumber: null,
     });
 
     const result = await service.updateSettings("studio-1", {
@@ -190,6 +193,7 @@ describe("StudiosService", () => {
       razorpayKeySecret: null,
       razorpaySecretIv: null,
       danceStyles,
+      gstNumber: null,
     });
 
     const saved = await service.updateSettings("studio-1", { danceStyles });
@@ -208,6 +212,7 @@ describe("StudiosService", () => {
       razorpayKeySecret: null,
       razorpaySecretIv: null,
       danceStyles: null,
+      gstNumber: null,
     });
 
     const cleared = await service.updateSettings("studio-1", {
@@ -228,6 +233,30 @@ describe("StudiosService", () => {
       }),
     ).rejects.toThrow(BadRequestException);
     expect(prisma.studioSettings.upsert).not.toHaveBeenCalled();
+  });
+
+  it("normalizes and persists gstNumber", async () => {
+    prisma.studioSettings.upsert.mockResolvedValue({
+      graceDays: 3,
+      expireAlertDays: 7,
+      platformFeePercent: 5,
+      razorpayKeyId: null,
+      razorpayKeySecret: null,
+      razorpaySecretIv: null,
+      danceStyles: null,
+      gstNumber: "22AAAAA0000A1Z5",
+    });
+
+    const saved = await service.updateSettings("studio-1", {
+      gstNumber: " 22aaaaa0000a1z5 ",
+    });
+
+    expect(prisma.studioSettings.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        update: expect.objectContaining({ gstNumber: "22AAAAA0000A1Z5" }),
+      }),
+    );
+    expect(saved.gstNumber).toBe("22AAAAA0000A1Z5");
   });
 
   it("clears logo", async () => {
