@@ -2,6 +2,9 @@ import type { ShellVariant } from "./nav-config";
 
 export type NotificationType =
   | "MISSED_SESSION"
+  | "SESSION_ADDED"
+  | "SESSION_CHANGED"
+  | "SESSION_CANCELLED"
   | "SUBSCRIPTION_EXPIRING"
   | "PAYMENT_OVERDUE"
   | "PAYMENT_RECEIVED"
@@ -25,6 +28,7 @@ export type NotificationDestination =
   | { to: "/me/subscriptions" }
   | { to: "/me/invoices" }
   | { to: "/me/attendance" }
+  | { to: "/me/calendar" }
   | { to: "/me/messages" }
   | { to: "/me/messages/$id"; params: { id: string } }
   | { to: "/app/messages" }
@@ -90,6 +94,12 @@ export function resolveNotificationDestination(
         return m.batchId
           ? { to: "/me/batches/$id", params: { id: m.batchId } }
           : { to: "/me/attendance" };
+      case "SESSION_ADDED":
+      case "SESSION_CHANGED":
+      case "SESSION_CANCELLED":
+        return m.batchId
+          ? { to: "/me/batches/$id", params: { id: m.batchId } }
+          : { to: "/me/calendar" };
       case "SUBSCRIPTION_EXPIRING":
       case "RENEWED":
       case "NOT_RENEWED":
@@ -108,12 +118,19 @@ export function resolveNotificationDestination(
 
   switch (type) {
     case "MISSED_SESSION":
+    case "SESSION_ADDED":
+    case "SESSION_CHANGED":
       if (m.sessionId) {
         return {
           to: "/app/sessions/$id/attendance",
           params: { id: m.sessionId },
         };
       }
+      if (m.batchId) {
+        return { to: "/app/batches/$id", params: { id: m.batchId } };
+      }
+      return { to: "/app/calendar" };
+    case "SESSION_CANCELLED":
       if (m.batchId) {
         return { to: "/app/batches/$id", params: { id: m.batchId } };
       }

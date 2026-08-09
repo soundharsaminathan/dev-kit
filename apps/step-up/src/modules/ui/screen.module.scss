@@ -63,12 +63,29 @@
   min-width: 0;
 }
 
+.titleRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1, 0.25rem);
+  min-width: 0;
+}
+
 .title {
   font-size: 1.0625rem;
   font-weight: 700;
   letter-spacing: -0.02em;
   line-height: 1.2;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   transition: font-size var(--motion-normal, 200ms) ease;
+}
+
+.titleEnd {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
 }
 
 .header[data-compact="true"] .title {

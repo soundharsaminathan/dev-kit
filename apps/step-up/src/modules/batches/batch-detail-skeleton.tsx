@@ -3,7 +3,7 @@ import styles from "./batch-detail-skeleton.module.scss";
 
 const METRIC_KEYS = ["m0", "m1", "m2", "m3"] as const;
 const SESSION_KEYS = ["s0", "s1", "s2"] as const;
-const TAB_KEYS = ["t0", "t1", "t2"] as const;
+const TAB_KEYS = ["t0", "t1"] as const;
 const ROW_KEYS = ["r0", "r1", "r2", "r3"] as const;
 
 export function BatchDetailSkeleton() {

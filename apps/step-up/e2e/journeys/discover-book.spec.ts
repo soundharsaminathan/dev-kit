@@ -1,3 +1,4 @@
+import type { Page } from "@playwright/test";
 import {
   apiRequest,
   authFile,
@@ -96,6 +97,22 @@ async function clearOpenBookings(studentId: string, batchId: string) {
   }
 }
 
+async function clickJoinOption(
+  page: Page,
+  testId: "book-class-cta" | "trial-booking-cta" | "choose-plan-cta",
+) {
+  const option = page.getByTestId(testId);
+  if (await option.isVisible().catch(() => false)) {
+    await option.click();
+    return;
+  }
+  const tryIt = page.getByTestId("try-it-cta");
+  await expect(tryIt).toBeVisible();
+  await tryIt.click();
+  await expect(option).toBeVisible();
+  await option.click();
+}
+
 /** Ephemeral STAFF_ONLY batch — avoids dirty enrollments on shared seed batches. */
 async function createBookableBatch() {
   let lastError: unknown;
@@ -174,16 +191,12 @@ test.describe("discover and book @critical", () => {
       });
       await waitForAppReady(page);
 
-      const bookCta = page.getByTestId("book-class-cta");
-      await expect(bookCta).toBeVisible();
-      await expect(bookCta).toHaveText(/book this class/i);
-      await expect(bookCta).toBeEnabled();
-      await bookCta.click();
+      await clickJoinOption(page, "book-class-cta");
 
       const submit = page.getByTestId("book-submit");
       // Sheet open can race first paint; retry the CTA once if needed.
       if (!(await submit.isVisible().catch(() => false))) {
-        await bookCta.click();
+        await clickJoinOption(page, "book-class-cta");
       }
       await expect(submit).toBeVisible({ timeout: 15_000 });
       await expect(submit).toBeEnabled();
@@ -249,10 +262,7 @@ test.describe("discover and book @critical", () => {
       await waitForAppReady(page);
       await expect(page).toHaveURL(new RegExp(`/me/batches/${TRIAL_BATCH_ID}`));
 
-      const trialCta = page.getByTestId("trial-booking-cta");
-      await expect(trialCta).toBeVisible();
-      await expect(trialCta).toHaveText(/request trial/i);
-      await trialCta.click();
+      await clickJoinOption(page, "trial-booking-cta");
 
       const sessionSelect = page.getByTestId("trial-session-select");
       await expect(sessionSelect).toBeVisible();

@@ -6,6 +6,15 @@ describe("SessionsService listTrialSlots", () => {
   const prisma = {
     session: {
       findMany: vi.fn(),
+      findUnique: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+    },
+    batch: {
+      findUnique: vi.fn(),
+    },
+    batchEnrollment: {
+      findMany: vi.fn().mockResolvedValue([]),
     },
   };
 
@@ -19,14 +28,25 @@ describe("SessionsService listTrialSlots", () => {
     invalidate: vi.fn().mockResolvedValue(undefined),
   };
 
+  const notifications = {
+    create: vi.fn().mockResolvedValue({ id: "notif-1" }),
+  };
+
+  const chat = {
+    postBatchSessionCard: vi.fn().mockResolvedValue({ id: "msg-1" }),
+  };
+
   let service: SessionsService;
 
   beforeEach(() => {
     vi.clearAllMocks();
+    prisma.batchEnrollment.findMany.mockResolvedValue([]);
     service = new SessionsService(
       prisma as never,
       scheduleConflicts as never,
       trialSlotsCache as never,
+      notifications as never,
+      chat as never,
     );
   });
 
@@ -95,5 +115,188 @@ describe("SessionsService listTrialSlots", () => {
       "studio-1",
       JSON.stringify(result),
     );
+  });
+});
+
+describe("SessionsService schedule mutations", () => {
+  const prisma = {
+    session: {
+      findMany: vi.fn(),
+      findUnique: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+    },
+    batch: {
+      findUnique: vi.fn(),
+    },
+    batchEnrollment: {
+      findMany: vi.fn(),
+    },
+  };
+
+  const scheduleConflicts = {
+    assertNoConflicts: vi.fn().mockResolvedValue(undefined),
+  };
+
+  const trialSlotsCache = {
+    get: vi.fn(),
+    set: vi.fn().mockResolvedValue(undefined),
+    invalidate: vi.fn().mockResolvedValue(undefined),
+  };
+
+  const notifications = {
+    create: vi.fn().mockResolvedValue({ id: "notif-1" }),
+  };
+
+  const chat = {
+    postBatchSessionCard: vi.fn().mockResolvedValue({ id: "msg-1" }),
+  };
+
+  const actor = {
+    id: "owner-1",
+    role: "OWNER",
+    studioId: "studio-1",
+  };
+
+  let service: SessionsService;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    service = new SessionsService(
+      prisma as never,
+      scheduleConflicts as never,
+      trialSlotsCache as never,
+      notifications as never,
+      chat as never,
+    );
+  });
+
+  it("notifies enrolled students and posts a chat card when creating", async () => {
+    prisma.batch.findUnique.mockResolvedValue({
+      id: "batch-1",
+      name: "Kids Hip-hop",
+      studioId: "studio-1",
+      branchId: "branch-1",
+      trainers: [{ trainerId: "trainer-1" }],
+    });
+    prisma.session.create.mockResolvedValue({
+      id: "session-1",
+      batchId: "batch-1",
+      startsAt: new Date("2026-08-10T10:00:00.000Z"),
+      endsAt: new Date("2026-08-10T11:00:00.000Z"),
+      status: SessionStatus.SCHEDULED,
+      type: SessionType.REGULAR,
+    });
+    prisma.batchEnrollment.findMany.mockResolvedValue([
+      { studentId: "student-1" },
+      { studentId: "student-2" },
+    ]);
+
+    await service.create(actor as never, {
+      batchId: "batch-1",
+      startsAt: "2026-08-10T10:00:00.000Z",
+      endsAt: "2026-08-10T11:00:00.000Z",
+    });
+
+    expect(notifications.create).toHaveBeenCalledTimes(2);
+    expect(notifications.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: "student-1",
+        type: "SESSION_ADDED",
+        meta: expect.objectContaining({
+          sessionId: "session-1",
+          batchId: "batch-1",
+        }),
+      }),
+    );
+    expect(chat.postBatchSessionCard).toHaveBeenCalledWith(
+      actor,
+      "batch-1",
+      expect.objectContaining({
+        title: "New class session",
+        startsAt: "2026-08-10T10:00:00.000Z",
+      }),
+    );
+  });
+
+  it("rejects updating a completed session", async () => {
+    prisma.session.findUnique.mockResolvedValue({
+      id: "session-1",
+      status: SessionStatus.COMPLETED,
+      startsAt: new Date("2026-08-10T10:00:00.000Z"),
+      endsAt: new Date("2026-08-10T11:00:00.000Z"),
+      batch: {
+        id: "batch-1",
+        name: "Kids Hip-hop",
+        studioId: "studio-1",
+        branchId: "branch-1",
+        trainers: [],
+      },
+    });
+
+    await expect(
+      service.updateSchedule(actor as never, "session-1", {
+        startsAt: "2026-08-11T10:00:00.000Z",
+        endsAt: "2026-08-11T11:00:00.000Z",
+      }),
+    ).rejects.toThrow(/Only scheduled sessions/);
+    expect(prisma.session.update).not.toHaveBeenCalled();
+    expect(notifications.create).not.toHaveBeenCalled();
+  });
+
+  it("cancels a scheduled session and notifies students", async () => {
+    prisma.session.findUnique.mockResolvedValue({
+      id: "session-1",
+      status: SessionStatus.SCHEDULED,
+      startsAt: new Date("2026-08-10T10:00:00.000Z"),
+      endsAt: new Date("2026-08-10T11:00:00.000Z"),
+      batch: {
+        id: "batch-1",
+        name: "Kids Hip-hop",
+        studioId: "studio-1",
+      },
+    });
+    prisma.session.update.mockResolvedValue({
+      id: "session-1",
+      status: SessionStatus.CANCELLED,
+      startsAt: new Date("2026-08-10T10:00:00.000Z"),
+      endsAt: new Date("2026-08-10T11:00:00.000Z"),
+    });
+    prisma.batchEnrollment.findMany.mockResolvedValue([
+      { studentId: "student-1" },
+    ]);
+
+    await service.cancel(actor as never, "session-1");
+
+    expect(prisma.session.update).toHaveBeenCalledWith({
+      where: { id: "session-1" },
+      data: { status: SessionStatus.CANCELLED },
+    });
+    expect(notifications.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: "student-1",
+        type: "SESSION_CANCELLED",
+      }),
+    );
+    expect(chat.postBatchSessionCard).toHaveBeenCalledWith(
+      actor,
+      "batch-1",
+      expect.objectContaining({ title: "Session cancelled" }),
+    );
+  });
+
+  it("rejects deleting a completed session", async () => {
+    prisma.session.findUnique.mockResolvedValue({
+      id: "session-1",
+      status: SessionStatus.COMPLETED,
+      startsAt: new Date("2026-08-10T10:00:00.000Z"),
+      endsAt: new Date("2026-08-10T11:00:00.000Z"),
+      batch: { id: "batch-1", name: "Kids", studioId: "studio-1" },
+    });
+
+    await expect(service.cancel(actor as never, "session-1")).rejects.toThrow(
+      /cannot be deleted/,
+    );
+    expect(notifications.create).not.toHaveBeenCalled();
   });
 });

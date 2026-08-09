@@ -14,6 +14,9 @@ type Preference = {
 
 const PREF_LABELS: Record<string, string> = {
   MISSED_SESSION: "Missed sessions",
+  SESSION_ADDED: "New sessions",
+  SESSION_CHANGED: "Session schedule changes",
+  SESSION_CANCELLED: "Cancelled sessions",
   SUBSCRIPTION_EXPIRING: "Subscription expiring",
   PAYMENT_OVERDUE: "Payment overdue",
   PAYMENT_RECEIVED: "Payment received",

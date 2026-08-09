@@ -308,6 +308,13 @@
   width: min(20rem, 100%);
 }
 
+.joinOptions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 0.5rem);
+  width: 100%;
+}
+
 .ratingSection {
   display: flex;
   flex-direction: column;

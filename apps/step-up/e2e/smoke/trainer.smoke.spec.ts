@@ -274,6 +274,79 @@ test.describe("trainer smoke @smoke", () => {
     }
   });
 
+  test("trainer can change and delete session from attendance @smoke", async ({
+    browser,
+  }) => {
+    const start = new Date();
+    start.setDate(start.getDate() + 21);
+    start.setHours(10, 0, 0, 0);
+    const end = new Date(start);
+    end.setHours(11, 0, 0, 0);
+
+    const session = await apiRequest<{ id: string; batchId: string }>(
+      "TRAINER",
+      "/sessions",
+      {
+        method: "POST",
+        body: JSON.stringify({
+          batchId: SMOKE.kidsBatchId,
+          startsAt: start.toISOString(),
+          endsAt: end.toISOString(),
+          type: "REGULAR",
+        }),
+      },
+    );
+
+    const context = await browser.newContext({
+      storageState: authFile("TRAINER"),
+    });
+    const page = await context.newPage();
+    try {
+      await page.goto(`/app/sessions/${session.id}/attendance`, {
+        waitUntil: "domcontentloaded",
+      });
+      await waitForAppReady(page);
+
+      await page.getByTestId("attendance-session-actions").click();
+      await page.getByRole("menuitem", { name: "Change date/time" }).click();
+
+      const nextStart = new Date(start);
+      nextStart.setHours(12, 0, 0, 0);
+      const nextEnd = new Date(nextStart);
+      nextEnd.setHours(13, 0, 0, 0);
+      const toLocal = (value: Date) => {
+        const year = value.getFullYear();
+        const month = String(value.getMonth() + 1).padStart(2, "0");
+        const day = String(value.getDate()).padStart(2, "0");
+        const hours = String(value.getHours()).padStart(2, "0");
+        const minutes = String(value.getMinutes()).padStart(2, "0");
+        return `${year}-${month}-${day}T${hours}:${minutes}`;
+      };
+
+      await page.getByTestId("session-change-starts-at").fill(toLocal(nextStart));
+      await page.getByTestId("session-change-ends-at").fill(toLocal(nextEnd));
+
+      const patchPromise = waitForApiResponse(page, {
+        method: "PATCH",
+        pathIncludes: `/sessions/${session.id}`,
+      });
+      await page.getByTestId("confirm-change-session").click();
+      expect((await patchPromise).ok()).toBeTruthy();
+
+      await page.getByTestId("attendance-session-actions").click();
+      await page.getByRole("menuitem", { name: "Delete session" }).click();
+      const deletePromise = waitForApiResponse(page, {
+        method: "DELETE",
+        pathIncludes: `/sessions/${session.id}`,
+      });
+      await page.getByTestId("confirm-delete-session").click();
+      expect((await deletePromise).ok()).toBeTruthy();
+      await expect(page).toHaveURL(new RegExp(`/app/batches/${session.batchId}`));
+    } finally {
+      await context.close();
+    }
+  });
+
   test("trainer mark-all-present @smoke", async ({ browser }) => {
     const sessionId = SMOKE.sessionAttendanceId;
     const context = await browser.newContext({

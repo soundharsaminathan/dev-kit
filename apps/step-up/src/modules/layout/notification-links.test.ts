@@ -63,4 +63,21 @@ describe("resolveNotificationDestination", () => {
       ),
     ).toEqual({ to: "/me/batches/$id", params: { id: "batch-1" } });
   });
+
+  it("routes session schedule notifications to the batch", () => {
+    expect(
+      resolveNotificationDestination(
+        "SESSION_CHANGED",
+        { batchId: "batch-1", sessionId: "session-1" },
+        "me",
+      ),
+    ).toEqual({ to: "/me/batches/$id", params: { id: "batch-1" } });
+    expect(
+      resolveNotificationDestination(
+        "SESSION_CANCELLED",
+        { batchId: "batch-1" },
+        "app",
+      ),
+    ).toEqual({ to: "/app/batches/$id", params: { id: "batch-1" } });
+  });
 });

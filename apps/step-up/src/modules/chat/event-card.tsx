@@ -36,20 +36,42 @@ function formatEventWhen(startsAt: string, endsAt: string | null) {
   return `${dateText} · ${timeText} – ${endTime}`;
 }
 
+function sessionCardKind(title: string) {
+  const normalized = title.trim().toLowerCase();
+  if (normalized.includes("cancelled") || normalized.includes("canceled")) {
+    return "cancelled" as const;
+  }
+  if (normalized.includes("rescheduled") || normalized.includes("changed")) {
+    return "changed" as const;
+  }
+  if (normalized.includes("new class") || normalized.startsWith("new ")) {
+    return "added" as const;
+  }
+  return "event" as const;
+}
+
+const EYEBROW: Record<ReturnType<typeof sessionCardKind>, string> = {
+  event: "Event",
+  added: "New session",
+  changed: "Rescheduled",
+  cancelled: "Cancelled",
+};
+
 export function EventCard({
   event,
   currentUserId,
   onRsvp,
   rsvpPending,
 }: EventCardProps) {
+  const kind = sessionCardKind(event.title);
   const myStatus = (Object.keys(event.rsvps) as ChatRsvpStatus[]).find(
     (status) => event.rsvps[status].includes(currentUserId),
   );
 
   return (
-    <div className={styles.event}>
+    <div className={styles.event} data-kind={kind}>
       <div className={styles.eventTop}>
-        <span className={styles.eventEyebrow}>Event</span>
+        <span className={styles.eventEyebrow}>{EYEBROW[kind]}</span>
         <p className={styles.eventTitle}>{event.title}</p>
         <p className={styles.eventWhen}>
           {formatEventWhen(event.startsAt, event.endsAt)}
@@ -62,25 +84,27 @@ export function EventCard({
         ) : null}
       </div>
 
-      <fieldset className={styles.rsvp}>
-        {(Object.keys(RSVP_LABELS) as ChatRsvpStatus[]).map((status) => (
-          <button
-            key={status}
-            type="button"
-            className={styles.rsvpOption}
-            data-active={myStatus === status || undefined}
-            disabled={rsvpPending}
-            onClick={() => onRsvp(status)}
-          >
-            {RSVP_LABELS[status]}
-            {event.rsvps[status].length > 0 ? (
-              <span className={styles.rsvpCount}>
-                {event.rsvps[status].length}
-              </span>
-            ) : null}
-          </button>
-        ))}
-      </fieldset>
+      {kind === "cancelled" ? null : (
+        <fieldset className={styles.rsvp}>
+          {(Object.keys(RSVP_LABELS) as ChatRsvpStatus[]).map((status) => (
+            <button
+              key={status}
+              type="button"
+              className={styles.rsvpOption}
+              data-active={myStatus === status || undefined}
+              disabled={rsvpPending}
+              onClick={() => onRsvp(status)}
+            >
+              {RSVP_LABELS[status]}
+              {event.rsvps[status].length > 0 ? (
+                <span className={styles.rsvpCount}>
+                  {event.rsvps[status].length}
+                </span>
+              ) : null}
+            </button>
+          ))}
+        </fieldset>
+      )}
     </div>
   );
 }

@@ -54,6 +54,9 @@ function notificationIcon(
   | "bell" {
   switch (type) {
     case "MISSED_SESSION":
+    case "SESSION_ADDED":
+    case "SESSION_CHANGED":
+    case "SESSION_CANCELLED":
       return "calendar";
     case "PAYMENT_OVERDUE":
     case "PAYMENT_RECEIVED":

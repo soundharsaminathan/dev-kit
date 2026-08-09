@@ -6,6 +6,7 @@ import styles from "./screen.module.scss";
 type ScreenProps = {
   title: string;
   subtitle?: string | undefined;
+  titleEnd?: ReactNode;
   actions?: ReactNode;
   children: ReactNode;
   backTo?: string;
@@ -20,6 +21,7 @@ type ScreenProps = {
 export function Screen({
   title,
   subtitle,
+  titleEnd,
   actions,
   children,
   backTo,
@@ -88,7 +90,12 @@ export function Screen({
             </button>
           ) : null}
           <div className={styles.titleBlock}>
-            <h1 className={styles.title}>{title}</h1>
+            <div className={styles.titleRow}>
+              <h1 className={styles.title}>{title}</h1>
+              {titleEnd ? (
+                <div className={styles.titleEnd}>{titleEnd}</div>
+              ) : null}
+            </div>
           </div>
           {actions ? <div className={styles.actions}>{actions}</div> : null}
         </div>

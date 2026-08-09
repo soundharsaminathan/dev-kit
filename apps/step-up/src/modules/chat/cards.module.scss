@@ -146,6 +146,14 @@
   gap: 0.7rem;
   width: min(100%, 268px);
   padding-block: 0.1rem;
+
+  &[data-kind="cancelled"] .eventTop {
+    border-inline-start-color: color-mix(in srgb, var(--color-fg) 35%, transparent);
+  }
+
+  &[data-kind="changed"] .eventTop {
+    border-inline-start-color: color-mix(in srgb, var(--color-warning, #d97706) 80%, var(--color-primary));
+  }
 }
 
 .eventTop {

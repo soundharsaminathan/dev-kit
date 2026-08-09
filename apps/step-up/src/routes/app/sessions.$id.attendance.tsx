@@ -4,7 +4,7 @@ import { Drawer } from "@dev-ui/components/drawer";
 import { useToastContext } from "@dev-ui/components/toast";
 import { Icon } from "@dev-ui/icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import QRCode from "qrcode";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useApi } from "@/lib/api-context";
@@ -14,6 +14,7 @@ import type {
   AttendanceRosterEntry,
   AttendanceStatusValue,
 } from "@/modules/attendance/types";
+import { SessionScheduleActions } from "@/modules/sessions/session-schedule-actions";
 import { ApiState } from "@/modules/ui/api-state";
 import { AppSheet } from "@/modules/ui/app-sheet";
 import {
@@ -431,6 +432,7 @@ function QrCanvas({ token }: { token: string }) {
 function SessionAttendancePage() {
   const { id } = Route.useParams();
   const api = useApi();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { toast } = useToastContext("SessionAttendancePage");
   const [activeQrId, setActiveQrId] = useState<string | null>(null);
@@ -761,6 +763,29 @@ function SessionAttendancePage() {
         description={sessionDescription}
         actions={
           <div className={styles.headerActions}>
+            {sessionQuery.data ? (
+              <SessionScheduleActions
+                menuTestId="attendance-session-actions"
+                session={{
+                  id: sessionQuery.data.id,
+                  batchId: sessionQuery.data.batchId,
+                  startsAt: sessionQuery.data.startsAt,
+                  endsAt: sessionQuery.data.endsAt,
+                  status: sessionQuery.data.status,
+                }}
+                onChanged={() => {
+                  void sessionQuery.refetch();
+                }}
+                onDeleted={() => {
+                  const batchId = sessionQuery.data?.batchId;
+                  if (!batchId) return;
+                  void navigate({
+                    to: "/app/batches/$id",
+                    params: { id: batchId },
+                  });
+                }}
+              />
+            ) : null}
             {canComplete && markingOpen ? (
               <Button
                 variant="default"

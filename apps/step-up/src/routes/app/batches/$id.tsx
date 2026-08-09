@@ -38,8 +38,7 @@ import {
 } from "@/modules/batches/upload";
 import { CertificatePreview } from "@/modules/certificates/certificate-preview";
 import type { CertificateTemplate } from "@/modules/certificates/types";
-import { BatchChat } from "@/modules/chat/batch-chat";
-import type { ChatConversation } from "@/modules/chat/types";
+import { BatchChatButton } from "@/modules/chat/batch-chat-button";
 import { ApiState } from "@/modules/ui/api-state";
 import { AppDrawer } from "@/modules/ui/app-drawer";
 import { FormInput } from "@/modules/ui/form-input";
@@ -197,12 +196,6 @@ function EditBatchPage() {
     queryFn: () => api.get<Batch>(`/batches/${id}`),
   });
 
-  const chatQuery = useQuery({
-    queryKey: ["batch-conversation", id],
-    queryFn: () =>
-      api.get<ChatConversation>(`/chat/batches/${id}/conversation`),
-  });
-
   const deleteBatch = useMutation({
     mutationFn: () => api.delete(`/batches/${id}`),
     onSuccess: async () => {
@@ -232,13 +225,20 @@ function EditBatchPage() {
   const audienceCount =
     query.data?.enrollmentCount ?? query.data?.enrollments?.length ?? 0;
   const canDelete = Boolean(query.data) && audienceCount === 0;
-  const chatUnread = chatQuery.data?.unreadCount ?? 0;
 
   return (
     <section className="page stack">
       <PageHeader
         title={query.data?.name ?? "Batch"}
-        description="Roster, instructors, and class chat."
+        titleEnd={
+          query.data ? (
+            <BatchChatButton
+              batchId={query.data.id}
+              messagesTo="/app/messages/$id"
+            />
+          ) : null
+        }
+        description="Roster, instructors, and sessions."
         actions={
           <div className={styles.headerActions}>
             {query.data ? (
@@ -320,16 +320,6 @@ function EditBatchPage() {
                 <TabList>
                   <Tab id="students">Students</Tab>
                   <Tab id="trainers">Trainers</Tab>
-                  <Tab id="chat">
-                    <span className={styles.chatTab}>
-                      Chat
-                      {chatUnread > 0 ? (
-                        <span className={styles.tabUnread}>
-                          {chatUnread > 99 ? "99+" : chatUnread}
-                        </span>
-                      ) : null}
-                    </span>
-                  </Tab>
                 </TabList>
                 <TabPanel id="students">
                   <BatchRoster
@@ -340,9 +330,6 @@ function EditBatchPage() {
                 </TabPanel>
                 <TabPanel id="trainers">
                   <BatchTrainers batchId={batch.id} trainers={batch.trainers} />
-                </TabPanel>
-                <TabPanel id="chat">
-                  <BatchChat batchId={batch.id} />
                 </TabPanel>
               </Tabs>
 

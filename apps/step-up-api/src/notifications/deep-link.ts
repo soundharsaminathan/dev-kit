@@ -51,6 +51,12 @@ export function resolveDeepLink(input: {
       const batchId = stringMeta("batchId");
       return batchId ? `/me/batches/${batchId}` : "/me/attendance";
     }
+    case "SESSION_ADDED":
+    case "SESSION_CHANGED":
+    case "SESSION_CANCELLED": {
+      const batchId = stringMeta("batchId");
+      return batchId ? `/me/batches/${batchId}` : "/me/calendar";
+    }
     case "SUBSCRIPTION_EXPIRING":
     case "RENEWED":
     case "NOT_RENEWED":
@@ -73,6 +79,9 @@ export function isPriorityToastType(type: string) {
     type === "PAYMENT_RECEIVED" ||
     type === "SUBSCRIPTION_EXPIRING" ||
     type === "NOT_RENEWED" ||
-    type === "MISSED_SESSION"
+    type === "MISSED_SESSION" ||
+    type === "SESSION_ADDED" ||
+    type === "SESSION_CHANGED" ||
+    type === "SESSION_CANCELLED"
   );
 }

@@ -535,7 +535,7 @@ export class ChatService {
     return this.serializeConversation(conversation, user.id);
   }
 
-  async getBatchConversation(user: DecryptedUser, batchId: string) {
+  private async ensureBatchConversation(batchId: string) {
     const batch = await this.prisma.batch.findUnique({
       where: { id: batchId },
       include: {
@@ -567,13 +567,9 @@ export class ChatService {
       ...batch.enrollments.map((enrollment) => enrollment.studentId),
     ]);
 
-    if (!memberIds.has(user.id)) {
-      throw new ForbiddenException("You are not part of this batch");
-    }
-
     let conversation = await this.prisma.conversation.findUnique({
       where: { batchId },
-      select: { id: true },
+      select: { id: true, encryptedKey: true },
     });
     if (!conversation) {
       conversation = await this.prisma.conversation.create({
@@ -583,7 +579,7 @@ export class ChatService {
           batchId,
           encryptedKey: this.crypto.generateWrappedKey(),
         },
-        select: { id: true },
+        select: { id: true, encryptedKey: true },
       });
     }
 
@@ -610,14 +606,31 @@ export class ChatService {
       }),
     ]);
 
+    this.gateway.joinUsersToConversation([...memberIds], conversation.id);
+
+    return {
+      batch,
+      conversationId: conversation.id,
+      encryptedKey: conversation.encryptedKey,
+      memberIds,
+      adminIds,
+    };
+  }
+
+  async getBatchConversation(user: DecryptedUser, batchId: string) {
+    const ensured = await this.ensureBatchConversation(batchId);
+
+    if (!ensured.memberIds.has(user.id)) {
+      throw new ForbiddenException("You are not part of this batch");
+    }
+
     const full = await this.prisma.conversation.findUnique({
-      where: { id: conversation.id },
+      where: { id: ensured.conversationId },
       include: conversationInclude,
     });
     if (!full) {
       throw new NotFoundException("Conversation not found");
     }
-    this.gateway.joinUsersToConversation([...memberIds], full.id);
 
     const membership = full.members.find((member) => member.userId === user.id);
     const unreadCount = await this.prisma.message.count({
@@ -632,6 +645,61 @@ export class ChatService {
     });
 
     return this.serializeConversation(full, user.id, { unreadCount });
+  }
+
+  /**
+   * Posts a schedule card into the batch chat (add / change / cancel).
+   * Caller must already be a batch admin (owner, staff, or trainer).
+   */
+  async postBatchSessionCard(
+    actor: DecryptedUser,
+    batchId: string,
+    input: CreateEventInput,
+  ) {
+    const ensured = await this.ensureBatchConversation(batchId);
+    if (!ensured.adminIds.has(actor.id)) {
+      throw new ForbiddenException("Only batch staff can post session cards");
+    }
+
+    const startsAt = new Date(input.startsAt);
+    if (Number.isNaN(startsAt.getTime())) {
+      throw new BadRequestException("Invalid event date");
+    }
+
+    const message = await this.prisma.message.create({
+      data: {
+        conversationId: ensured.conversationId,
+        senderId: actor.id,
+        type: MessageType.EVENT,
+        event: {
+          create: {
+            title: input.title.trim(),
+            description: input.description?.trim() || null,
+            startsAt,
+            endsAt: input.endsAt ? new Date(input.endsAt) : null,
+            locationLabel: input.locationLabel?.trim() || null,
+            latitude: input.latitude ?? null,
+            longitude: input.longitude ?? null,
+          },
+        },
+      },
+      include: messageInclude,
+    });
+
+    await this.prisma.conversation.update({
+      where: { id: ensured.conversationId },
+      data: { lastMessageAt: message.createdAt },
+    });
+
+    const serialized = await this.serializeMessage(
+      message,
+      ensured.encryptedKey,
+    );
+    this.gateway.emitToConversation(ensured.conversationId, "message.new", {
+      conversationId: ensured.conversationId,
+      message: serialized,
+    });
+    return serialized;
   }
 
   async listMessages(

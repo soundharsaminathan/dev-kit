@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Inject,
   Param,
@@ -32,6 +33,14 @@ class CreateSessionDto {
   @IsOptional()
   @IsEnum(SessionType)
   type?: SessionType;
+}
+
+class UpdateSessionScheduleDto {
+  @IsDateString()
+  startsAt!: string;
+
+  @IsDateString()
+  endsAt!: string;
 }
 
 @Controller("sessions")
@@ -70,13 +79,29 @@ export class SessionsController {
 
   @Post()
   @Roles(UserRole.OWNER, UserRole.STAFF, UserRole.TRAINER)
-  create(@Body() dto: CreateSessionDto) {
-    return this.sessionsService.create(dto);
+  create(@CurrentUser() user: DecryptedUser, @Body() dto: CreateSessionDto) {
+    return this.sessionsService.create(user, dto);
   }
 
   @Patch(":id/complete")
   @Roles(UserRole.OWNER, UserRole.STAFF, UserRole.TRAINER)
   complete(@Param("id") id: string) {
     return this.sessionsService.complete(id);
+  }
+
+  @Patch(":id")
+  @Roles(UserRole.OWNER, UserRole.STAFF, UserRole.TRAINER)
+  updateSchedule(
+    @CurrentUser() user: DecryptedUser,
+    @Param("id") id: string,
+    @Body() dto: UpdateSessionScheduleDto,
+  ) {
+    return this.sessionsService.updateSchedule(user, id, dto);
+  }
+
+  @Delete(":id")
+  @Roles(UserRole.OWNER, UserRole.STAFF, UserRole.TRAINER)
+  cancel(@CurrentUser() user: DecryptedUser, @Param("id") id: string) {
+    return this.sessionsService.cancel(user, id);
   }
 }

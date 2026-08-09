@@ -171,7 +171,13 @@ test.describe("student smoke @smoke", () => {
       await waitForAppReady(page);
 
       const bookCta = page.getByTestId("book-class-cta");
-      await expect(bookCta).toBeVisible();
+      const tryIt = page.getByTestId("try-it-cta");
+      if (await tryIt.isVisible().catch(() => false)) {
+        await tryIt.click();
+        await expect(bookCta).toBeVisible();
+      } else {
+        await expect(bookCta).toBeVisible();
+      }
       await bookCta.click();
 
       const submit = page.getByTestId("book-submit");
@@ -356,6 +362,33 @@ test.describe("student smoke @smoke", () => {
       },
     );
     expect(markPaid.status).toBe(403);
+
+    const reschedule = await fetch(
+      `${apiBaseUrl()}/sessions/${SMOKE.sessionAttendanceId}`,
+      {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          startsAt: new Date().toISOString(),
+          endsAt: new Date(Date.now() + 3_600_000).toISOString(),
+        }),
+      },
+    );
+    expect(reschedule.status).toBe(403);
+
+    const deleteSession = await fetch(
+      `${apiBaseUrl()}/sessions/${SMOKE.sessionAttendanceId}`,
+      {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      },
+    );
+    expect(deleteSession.status).toBe(403);
   });
 
   test("onboarding student cannot self-enroll into STAFF_ONLY kids batch @smoke", async () => {

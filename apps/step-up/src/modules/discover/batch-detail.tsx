@@ -7,6 +7,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@dev-ui/components/select";
+import { useIsMobile } from "@dev-ui/hooks";
 import { Icon } from "@dev-ui/icons";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
@@ -15,6 +16,7 @@ import { useApi } from "@/lib/api-context";
 import { useAuth } from "@/lib/auth";
 import { ENTITY_ICONS } from "@/lib/entity-icons";
 import { useStudioId } from "@/lib/use-studio-id";
+import { BatchChatButton } from "@/modules/chat/batch-chat-button";
 import { BatchRatingInput } from "@/modules/discover/batch-rating";
 import type { DiscoverBatchPlan } from "@/modules/discover/types";
 import { useDiscoverBatch } from "@/modules/discover/use-discover";
@@ -69,6 +71,71 @@ function sortPlans(a: DiscoverBatchPlan, b: DiscoverBatchPlan) {
   );
 }
 
+type BatchJoinOptionsProps = {
+  showChoosePlan: boolean;
+  showTrial: boolean;
+  showBookClass: boolean;
+  isFull: boolean;
+  canActForStudent: boolean;
+  onChoosePlan: () => void;
+  onTrial: () => void;
+  onBookClass: () => void;
+};
+
+function BatchJoinOptions({
+  showChoosePlan,
+  showTrial,
+  showBookClass,
+  isFull,
+  canActForStudent,
+  onChoosePlan,
+  onTrial,
+  onBookClass,
+}: BatchJoinOptionsProps) {
+  return (
+    <div className={styles.joinOptions}>
+      {showChoosePlan ? (
+        <TouchButton
+          variant="primary"
+          fullWidth
+          isDisabled={!canActForStudent || isFull}
+          data-testid="choose-plan-cta"
+          onClick={onChoosePlan}
+        >
+          {isFull ? "Class is full" : "Choose a plan"}
+        </TouchButton>
+      ) : null}
+      {!showChoosePlan && isFull ? (
+        <TouchButton variant="primary" fullWidth isDisabled>
+          Class is full
+        </TouchButton>
+      ) : null}
+      {showTrial ? (
+        <TouchButton
+          variant={showChoosePlan || showBookClass ? "quiet" : "primary"}
+          fullWidth
+          isDisabled={!canActForStudent}
+          data-testid="trial-booking-cta"
+          onClick={onTrial}
+        >
+          Request trial
+        </TouchButton>
+      ) : null}
+      {showBookClass ? (
+        <TouchButton
+          variant={showChoosePlan || showTrial ? "quiet" : "primary"}
+          fullWidth
+          isDisabled={!canActForStudent || isFull}
+          data-testid="book-class-cta"
+          onClick={onBookClass}
+        >
+          Book this class
+        </TouchButton>
+      ) : null}
+    </div>
+  );
+}
+
 export function BatchDetailPage() {
   const { id } = useParams({ strict: false }) as { id: string };
   const api = useApi();
@@ -76,6 +143,7 @@ export function BatchDetailPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const isMobile = useIsMobile();
   const {
     studentId,
     loading: studentLoading,
@@ -84,6 +152,7 @@ export function BatchDetailPage() {
   const query = useDiscoverBatch(id, studentId || undefined);
 
   const [bookOpen, setBookOpen] = useState(false);
+  const [tryItOpen, setTryItOpen] = useState(false);
   const [purchaseOpen, setPurchaseOpen] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<DiscoverBatchPlan | null>(
     null,
@@ -271,6 +340,24 @@ export function BatchDetailPage() {
     !hasPendingRequest &&
     !hasConfirmedRequest;
   const showTrialConvertCta = false;
+  const showChoosePlan = showBookingCta && hasPlans;
+  const showBookClass =
+    showBookingCta &&
+    ((!hasPlans && !isFull) ||
+      (hasPlans && batch.enrollmentMode === "STAFF_ONLY"));
+  const showTrial = showBookingCta && (hasPlans || isFull);
+  const showFullNotice = showBookingCta && !showChoosePlan && isFull;
+  const joinOptionCount =
+    Number(showChoosePlan) +
+    Number(showFullNotice) +
+    Number(showTrial) +
+    Number(showBookClass);
+  const hasMultipleJoinOptions = joinOptionCount > 1;
+  const useTryItSheet = isMobile && hasMultipleJoinOptions;
+  const showBatchChat =
+    Boolean(batch.viewerEnrolled) &&
+    Boolean(user?.id) &&
+    user?.id === studentId;
 
   const seatsValid =
     selectedPlan != null &&
@@ -341,6 +428,14 @@ export function BatchDetailPage() {
         {...(batch.scheduleLabel ? { subtitle: batch.scheduleLabel } : {})}
         showBack
         backTo="/me/book"
+        titleEnd={
+          showBatchChat ? (
+            <BatchChatButton
+              batchId={batch.id}
+              messagesTo="/me/messages/$id"
+            />
+          ) : null
+        }
         paddedCta={
           showBookingCta ||
           showTrialConvertCta ||
@@ -625,79 +720,68 @@ export function BatchDetailPage() {
         </StickyCtaBar>
       ) : showBookingCta ? (
         <StickyCtaBar>
-          {hasPlans ? (
-            <div className={styles.successActions}>
-              <TouchButton
-                variant="primary"
-                fullWidth
-                isDisabled={!canActForStudent || isFull}
-                onClick={() => {
-                  const first = plans[0];
-                  if (first) openPurchase(first);
-                }}
-              >
-                {isFull ? "Class is full" : "Choose a plan"}
-              </TouchButton>
-              <TouchButton
-                variant="quiet"
-                fullWidth
-                isDisabled={!canActForStudent}
-                data-testid="trial-booking-cta"
-                onClick={() => {
-                  setType("TRIAL");
-                  setBookOpen(true);
-                }}
-              >
-                Request trial
-              </TouchButton>
-              {batch.enrollmentMode === "STAFF_ONLY" ? (
-                <TouchButton
-                  variant="quiet"
-                  fullWidth
-                  isDisabled={!canActForStudent || isFull}
-                  data-testid="book-class-cta"
-                  onClick={() => {
-                    setType("OPEN_SEAT");
-                    setBookOpen(true);
-                  }}
-                >
-                  Book this class
-                </TouchButton>
-              ) : null}
-            </div>
-          ) : isFull ? (
-            <div className={styles.successActions}>
-              <TouchButton variant="primary" fullWidth isDisabled>
-                Class is full
-              </TouchButton>
-              <TouchButton
-                variant="quiet"
-                fullWidth
-                isDisabled={!canActForStudent}
-                data-testid="trial-booking-cta"
-                onClick={() => {
-                  setType("TRIAL");
-                  setBookOpen(true);
-                }}
-              >
-                Request trial
-              </TouchButton>
-            </div>
-          ) : (
+          {useTryItSheet ? (
             <TouchButton
               variant="primary"
               fullWidth
-              isDisabled={!canActForStudent}
-              data-testid="book-class-cta"
-              onClick={() => {
+              data-testid="try-it-cta"
+              onClick={() => setTryItOpen(true)}
+            >
+              Try It
+            </TouchButton>
+          ) : (
+            <BatchJoinOptions
+              showChoosePlan={showChoosePlan}
+              showTrial={showTrial}
+              showBookClass={showBookClass}
+              isFull={isFull}
+              canActForStudent={canActForStudent}
+              onChoosePlan={() => {
+                const first = plans[0];
+                if (first) openPurchase(first);
+              }}
+              onTrial={() => {
+                setType("TRIAL");
+                setBookOpen(true);
+              }}
+              onBookClass={() => {
                 setType("OPEN_SEAT");
                 setBookOpen(true);
               }}
-            >
-              Book this class
-            </TouchButton>
+            />
           )}
         </StickyCtaBar>
+      ) : null}
+
+      {useTryItSheet ? (
+        <AppSheet
+          isOpen={tryItOpen}
+          onOpenChange={setTryItOpen}
+          title="Try It"
+        >
+          <BatchJoinOptions
+            showChoosePlan={showChoosePlan}
+            showTrial={showTrial}
+            showBookClass={showBookClass}
+            isFull={isFull}
+            canActForStudent={canActForStudent}
+            onChoosePlan={() => {
+              setTryItOpen(false);
+              const first = plans[0];
+              if (first) openPurchase(first);
+            }}
+            onTrial={() => {
+              setTryItOpen(false);
+              setType("TRIAL");
+              setBookOpen(true);
+            }}
+            onBookClass={() => {
+              setTryItOpen(false);
+              setType("OPEN_SEAT");
+              setBookOpen(true);
+            }}
+          />
+        </AppSheet>
       ) : null}
 
       <AppSheet

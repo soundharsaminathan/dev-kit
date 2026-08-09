@@ -30,6 +30,33 @@ export function buildNotificationCopy(input: NotificationTemplateInput): {
           input.body ??
           `You were marked absent for ${input.batchName ?? "a class"} on ${input.sessionDate ?? "a recent date"}.`,
       };
+    case "SESSION_ADDED":
+      return {
+        title: input.title ?? "New class session",
+        body:
+          input.body ??
+          `${input.batchName ?? "Your class"} added a session${
+            input.sessionDate ? ` on ${input.sessionDate}` : ""
+          }.`,
+      };
+    case "SESSION_CHANGED":
+      return {
+        title: input.title ?? "Session rescheduled",
+        body:
+          input.body ??
+          `${input.batchName ?? "Your class"} changed the session time${
+            input.sessionDate ? ` (${input.sessionDate})` : ""
+          }.`,
+      };
+    case "SESSION_CANCELLED":
+      return {
+        title: input.title ?? "Session cancelled",
+        body:
+          input.body ??
+          `${input.batchName ?? "Your class"} cancelled a session${
+            input.sessionDate ? ` on ${input.sessionDate}` : ""
+          }.`,
+      };
     case "SUBSCRIPTION_EXPIRING":
       return {
         title: input.title ?? "Subscription expiring soon",
@@ -95,6 +122,18 @@ export const NOTIFICATION_TYPE_REGISTRY: Record<
 > = {
   MISSED_SESSION: {
     label: "Missed sessions",
+    defaultChannels: ["IN_APP", "PUSH"],
+  },
+  SESSION_ADDED: {
+    label: "New sessions",
+    defaultChannels: ["IN_APP", "PUSH"],
+  },
+  SESSION_CHANGED: {
+    label: "Session schedule changes",
+    defaultChannels: ["IN_APP", "PUSH"],
+  },
+  SESSION_CANCELLED: {
+    label: "Cancelled sessions",
     defaultChannels: ["IN_APP", "PUSH"],
   },
   SUBSCRIPTION_EXPIRING: {

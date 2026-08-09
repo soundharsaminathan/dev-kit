@@ -9,6 +9,7 @@ import { Text } from "@dev-ui/components/text";
 import { useIsMobile } from "@dev-ui/hooks";
 import { useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
+import { SessionScheduleActions } from "@/modules/sessions/session-schedule-actions";
 import { AppBottomSheet } from "@/modules/ui/app-bottom-sheet";
 import { Screen } from "@/modules/ui/screen";
 import { SkeletonBlock } from "@/modules/ui/skeleton-block";
@@ -114,6 +115,7 @@ function EventDetail({
   onOpenBookings,
   onOpenBatch,
   onCheckIn,
+  onSessionDeleted,
 }: {
   selected: CalendarEvent;
   staffActions: boolean;
@@ -122,7 +124,16 @@ function EventDetail({
   onOpenBookings: () => void;
   onOpenBatch: () => void;
   onCheckIn: () => void;
+  onSessionDeleted: () => void;
 }) {
+  const canManageSession =
+    staffActions &&
+    selected.kind === "SESSION" &&
+    Boolean(selected.sessionId) &&
+    Boolean(selected.batchId) &&
+    selected.status !== "COMPLETED" &&
+    selected.status !== "CANCELLED";
+
   return (
     <div className={styles.detail}>
       <p className={styles.detailKind}>
@@ -143,7 +154,29 @@ function EventDetail({
       {selected.bookingType ? (
         <Text className={styles.meta}>{selected.bookingType}</Text>
       ) : null}
-      {staffActions && selected.kind === "SESSION" && selected.sessionId ? (
+      {canManageSession && selected.sessionId && selected.batchId ? (
+        <SessionScheduleActions
+          showAttendance
+          menuTestId="calendar-session-actions"
+          session={{
+            id: selected.sessionId,
+            batchId: selected.batchId,
+            startsAt: selected.startsAt,
+            endsAt: selected.endsAt,
+            status: selected.status as
+              | "SCHEDULED"
+              | "COMPLETED"
+              | "CANCELLED",
+          }}
+          onAttendance={onOpenAttendance}
+          onChanged={onClose}
+          onDeleted={onSessionDeleted}
+        />
+      ) : null}
+      {staffActions &&
+      selected.kind === "SESSION" &&
+      selected.sessionId &&
+      !canManageSession ? (
         <TouchButton variant="primary" fullWidth onClick={onOpenAttendance}>
           Attendance
         </TouchButton>
@@ -247,6 +280,10 @@ export function CalendarPage({
         onCheckIn: () => {
           void navigate({ to: "/me/check-in" });
           setSelected(null);
+        },
+        onSessionDeleted: () => {
+          setSelected(null);
+          void eventsQuery.refetch();
         },
       }
     : null;

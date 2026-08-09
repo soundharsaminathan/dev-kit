@@ -9,5 +9,6 @@ import { ChatCryptoService } from "./chat-crypto.service";
   imports: [NotificationsModule],
   controllers: [ChatController],
   providers: [ChatService, ChatCryptoService, ChatGateway],
+  exports: [ChatService],
 })
 export class ChatModule {}

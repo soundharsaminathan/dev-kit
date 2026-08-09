@@ -48,6 +48,9 @@ export function isPriorityToastType(type: string) {
     type === "PAYMENT_RECEIVED" ||
     type === "SUBSCRIPTION_EXPIRING" ||
     type === "NOT_RENEWED" ||
-    type === "MISSED_SESSION"
+    type === "MISSED_SESSION" ||
+    type === "SESSION_ADDED" ||
+    type === "SESSION_CHANGED" ||
+    type === "SESSION_CANCELLED"
   );
 }

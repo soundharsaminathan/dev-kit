@@ -4,7 +4,7 @@ import {
   Inject,
   Injectable,
 } from "@nestjs/common";
-import { UserRole } from "@prisma/client";
+import { SessionStatus, UserRole } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import type { DecryptedUser } from "../users/user-crypto.service";
 import {
@@ -34,6 +34,7 @@ export class CalendarService {
 
     const sessions = await this.prisma.session.findMany({
       where: {
+        status: { not: SessionStatus.CANCELLED },
         startsAt: { lt: query.to },
         endsAt: { gt: query.from },
         ...(query.studioId ||
