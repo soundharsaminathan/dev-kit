@@ -10,11 +10,13 @@ import {
 import {
   type AgeRange,
   AttendanceStatus,
+  BillingCadence,
   BookingStatus,
   BookingType,
   type ExperienceLevel,
   FamilyMemberKind,
   type Gender,
+  InvoiceStatus,
   ProfileVisibility,
   SessionStatus,
   UserRole,
@@ -681,66 +683,86 @@ export class UsersService {
       throw new NotFoundException("Student not found in this studio");
     }
 
-    const [enrollments, memberships, attendanceRecords, invoices, parentLinks] =
-      await Promise.all([
-        this.prisma.batchEnrollment.findMany({
-          where: {
-            studentId,
-            batch: { studioId },
-          },
-          include: {
-            batch: {
-              select: {
-                id: true,
-                name: true,
-                active: true,
-                category: true,
-              },
+    const [
+      enrollments,
+      memberships,
+      attendanceRecords,
+      invoices,
+      parentLinks,
+      paidInvoices,
+    ] = await Promise.all([
+      this.prisma.batchEnrollment.findMany({
+        where: {
+          studentId,
+          batch: { studioId },
+        },
+        include: {
+          batch: {
+            select: {
+              id: true,
+              name: true,
+              active: true,
+              category: true,
             },
           },
-          orderBy: { batch: { name: "asc" } },
-        }),
-        this.prisma.membership.findMany({
-          where: {
-            OR: [
-              { purchaserUserId: studentId },
-              { coveredStudents: { some: { studentId } } },
-            ],
-            subscription: { studioId },
-          },
-          include: {
-            subscription: true,
-            coveredStudents: true,
-          },
-          orderBy: { periodStart: "desc" },
-        }),
-        this.prisma.attendance.findMany({
-          where: {
-            studentId,
-            session: { batch: { studioId } },
-          },
-          select: { status: true },
-        }),
-        this.prisma.invoice.findMany({
-          where: { studentId, studioId },
-          orderBy: { id: "desc" },
-          take: 20,
-        }),
-        this.prisma.parentChild.findMany({
-          where: { childUserId: studentId },
-          include: {
-            parent: {
-              select: {
-                id: true,
-                ...userPiiSelect,
-                role: true,
-                photoUrl: true,
-                active: true,
-              },
+        },
+        orderBy: { batch: { name: "asc" } },
+      }),
+      this.prisma.membership.findMany({
+        where: {
+          OR: [
+            { purchaserUserId: studentId },
+            { coveredStudents: { some: { studentId } } },
+          ],
+          subscription: { studioId },
+        },
+        include: {
+          subscription: true,
+          coveredStudents: true,
+        },
+        orderBy: { periodStart: "desc" },
+      }),
+      this.prisma.attendance.findMany({
+        where: {
+          studentId,
+          session: { batch: { studioId } },
+        },
+        select: { status: true },
+      }),
+      this.prisma.invoice.findMany({
+        where: { studentId, studioId },
+        orderBy: { id: "desc" },
+        take: 20,
+      }),
+      this.prisma.parentChild.findMany({
+        where: { childUserId: studentId },
+        include: {
+          parent: {
+            select: {
+              id: true,
+              ...userPiiSelect,
+              role: true,
+              photoUrl: true,
+              active: true,
             },
           },
-        }),
-      ]);
+        },
+      }),
+      this.prisma.invoice.findMany({
+        where: {
+          studioId,
+          studentId,
+          status: InvoiceStatus.PAID,
+        },
+        select: {
+          membership: {
+            select: {
+              subscription: { select: { billingCadence: true } },
+            },
+          },
+        },
+      }),
+    ]);
 
     const attendance = {
       total: attendanceRecords.length,
@@ -752,8 +774,18 @@ export class UsersService {
       ).length,
     };
 
+    const paidMonths = paidInvoices.reduce((total, invoice) => {
+      const months =
+        invoice.membership?.subscription.billingCadence ===
+        BillingCadence.QUARTERLY
+          ? 3
+          : 1;
+      return total + months;
+    }, 0);
+
     return {
       student: await this.presentUser(student),
+      paidMonths,
       batches: enrollments.map((enrollment) => ({
         ...enrollment.batch,
         enrollmentStatus: enrollment.status,
@@ -1335,6 +1367,38 @@ export class UsersService {
       isDateInRange(student.createdAt, range),
     );
 
+    const paidInvoices =
+      cohort.length === 0
+        ? []
+        : await this.prisma.invoice.findMany({
+            where: {
+              studioId,
+              studentId: { in: cohort.map((student) => student.id) },
+              status: InvoiceStatus.PAID,
+            },
+            select: {
+              studentId: true,
+              membership: {
+                select: {
+                  subscription: { select: { billingCadence: true } },
+                },
+              },
+            },
+          });
+
+    const paidMonthsByStudent = new Map<string, number>();
+    for (const invoice of paidInvoices) {
+      const months =
+        invoice.membership?.subscription.billingCadence ===
+        BillingCadence.QUARTERLY
+          ? 3
+          : 1;
+      paidMonthsByStudent.set(
+        invoice.studentId,
+        (paidMonthsByStudent.get(invoice.studentId) ?? 0) + months,
+      );
+    }
+
     const presented = await Promise.all(
       cohort.map(async (student) => {
         const base = await this.presentUser(student.user);
@@ -1342,6 +1406,7 @@ export class UsersService {
           ...base,
           createdAt: student.createdAt.toISOString(),
           funnelStage: classifyStudentFunnelStage(student),
+          paidMonths: paidMonthsByStudent.get(student.id) ?? 0,
         };
       }),
     );

@@ -192,6 +192,21 @@
   color: color-mix(in srgb, var(--color-fg) 56%, transparent);
 }
 
+.metaWithIcon {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1, 0.25rem);
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  color: color-mix(in srgb, var(--color-fg) 62%, transparent);
+}
+
+.metaWithIconIcon {
+  width: 0.875rem;
+  height: 0.875rem;
+  flex-shrink: 0;
+}
+
 .rowChips {
   display: flex;
   flex-wrap: wrap;

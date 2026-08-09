@@ -526,12 +526,45 @@ export class BatchesService {
       ...row,
       trainer: this.crypto.decryptUser(row.trainer),
     }));
-    const monthlyUnpaidIds = await this.memberships.findMonthlyUnpaidStudentIds(
-      batch.enrollments.map((enrollment) => enrollment.studentId),
+    const enrollmentStudentIds = batch.enrollments.map(
+      (enrollment) => enrollment.studentId,
     );
+    const monthlyUnpaidIds =
+      await this.memberships.findMonthlyUnpaidStudentIds(enrollmentStudentIds);
+    const paidInvoices =
+      enrollmentStudentIds.length === 0
+        ? []
+        : await this.prisma.invoice.findMany({
+            where: {
+              studioId: batch.studioId,
+              studentId: { in: enrollmentStudentIds },
+              status: InvoiceStatus.PAID,
+            },
+            select: {
+              studentId: true,
+              membership: {
+                select: {
+                  subscription: { select: { billingCadence: true } },
+                },
+              },
+            },
+          });
+    const paidMonthsByStudent = new Map<string, number>();
+    for (const invoice of paidInvoices) {
+      const months =
+        invoice.membership?.subscription.billingCadence ===
+        BillingCadence.QUARTERLY
+          ? 3
+          : 1;
+      paidMonthsByStudent.set(
+        invoice.studentId,
+        (paidMonthsByStudent.get(invoice.studentId) ?? 0) + months,
+      );
+    }
     const enrollments = batch.enrollments.map((enrollment) => ({
       ...enrollment,
       monthlyUnpaid: monthlyUnpaidIds.has(enrollment.studentId),
+      paidMonths: paidMonthsByStudent.get(enrollment.studentId) ?? 0,
       student: this.crypto.decryptUser(enrollment.student),
     }));
 

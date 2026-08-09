@@ -1,6 +1,5 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@dev-ui/components/avatar";
 import { Badge } from "@dev-ui/components/badge";
-import { Checkbox } from "@dev-ui/components/checkbox";
 import { Menu } from "@dev-ui/components/menu";
 import {
   Select,
@@ -16,16 +15,12 @@ import { useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useApi } from "@/lib/api-context";
 import { ENTITY_ICONS } from "@/lib/entity-icons";
-import { formatActiveDuration } from "@/lib/format-active-duration";
 import { useStudioId } from "@/lib/use-studio-id";
 import { formatPrice } from "@/modules/payments/invoice-types";
 import {
   StudentSearchCombobox,
   type StudioStudent,
 } from "@/modules/students/student-search-combobox";
-import { StyleList } from "@/modules/styles/style-list";
-import { AppSheet } from "@/modules/ui/app-sheet";
-import { FormInput } from "@/modules/ui/form-input";
 import { PressableCard } from "@/modules/ui/pressable-card";
 import staff from "@/modules/ui/staff.module.scss";
 import { EmptyState, ErrorState } from "@/modules/ui/states";
@@ -36,6 +31,7 @@ import styles from "./batch-roster.module.scss";
 export type BatchEnrollmentRow = {
   studentId: string;
   monthlyUnpaid?: boolean;
+  paidMonths?: number;
   student: {
     id: string;
     name: string;
@@ -46,6 +42,10 @@ export type BatchEnrollmentRow = {
     createdAt?: string;
   };
 };
+
+function formatPaidMonths(months: number) {
+  return `${months} ${months === 1 ? "month" : "months"}`;
+}
 
 type BatchPlan = {
   id: string;
@@ -78,39 +78,6 @@ type BatchWithEnrollments = {
   }>;
 };
 
-type SwitchTarget = {
-  id: string;
-  name: string;
-  category: string;
-  remainingSeats: number;
-  branchName: string;
-};
-
-type SwitchTargetsResponse = {
-  studentId: string;
-  subscription: { id: string; name: string } | null;
-  reason?: string;
-  targets: SwitchTarget[];
-};
-
-type UnenrollPreview = {
-  studentId: string;
-  studentName: string;
-  batchId: string;
-  batchName: string;
-  enrolledAt: string;
-  futureBookings: number;
-  pendingInvoice: { id: string; amount: number; status: string } | null;
-  refundableInvoice: {
-    id: string;
-    amount: number;
-    refundedAmount: number;
-    refundableAmount: number;
-    paymentMethod: string | null;
-    paidAt: string | null;
-  } | null;
-};
-
 function planLabel(plan: BatchPlan) {
   const cadence =
     plan.billingCadence.charAt(0) +
@@ -130,39 +97,10 @@ export function BatchRoster({ batchId, capacity, active }: BatchRosterProps) {
   );
   const [subscriptionId, setSubscriptionId] = useState<string | null>(null);
   const [pickerKey, setPickerKey] = useState(0);
-  const [switchStudent, setSwitchStudent] = useState<BatchEnrollmentRow | null>(
-    null,
-  );
-  const [selectedTargetId, setSelectedTargetId] = useState<string | null>(null);
-  const [unenrollStudent, setUnenrollStudent] =
-    useState<BatchEnrollmentRow | null>(null);
-  const [issueRefund, setIssueRefund] = useState(false);
-  const [refundAmount, setRefundAmount] = useState("");
-  const [refundAmountInvoiceId, setRefundAmountInvoiceId] = useState<
-    string | null
-  >(null);
 
   const query = useQuery({
     queryKey: ["batch", batchId],
     queryFn: () => api.get<BatchWithEnrollments>(`/batches/${batchId}`),
-  });
-
-  const switchTargetsQuery = useQuery({
-    queryKey: ["batch-switch-targets", batchId, switchStudent?.studentId],
-    queryFn: () =>
-      api.get<SwitchTargetsResponse>(
-        `/batches/${batchId}/switch-targets?studentId=${encodeURIComponent(switchStudent!.studentId)}`,
-      ),
-    enabled: switchStudent != null,
-  });
-
-  const unenrollPreviewQuery = useQuery({
-    queryKey: ["batch-unenroll-preview", batchId, unenrollStudent?.studentId],
-    queryFn: () =>
-      api.get<UnenrollPreview>(
-        `/batches/${batchId}/unenroll-preview?studentId=${encodeURIComponent(unenrollStudent!.studentId)}`,
-      ),
-    enabled: unenrollStudent != null,
   });
 
   const enrollments = useMemo(() => {
@@ -286,193 +224,9 @@ export function BatchRoster({ batchId, capacity, active }: BatchRosterProps) {
     });
   }
 
-  const switchBatch = useMutation({
-    mutationFn: (input: { studentId: string; toBatchId: string }) =>
-      api.post(`/batches/${batchId}/switch`, {
-        studentId: input.studentId,
-        toBatchId: input.toBatchId,
-      }),
-    onMutate: async ({ studentId: movingStudentId, toBatchId }) => {
-      await queryClient.cancelQueries({ queryKey: ["batch", batchId] });
-      const previous = queryClient.getQueryData<BatchWithEnrollments>([
-        "batch",
-        batchId,
-      ]);
-
-      queryClient.setQueryData<BatchWithEnrollments>(
-        ["batch", batchId],
-        (current) => {
-          if (!current) return current;
-          const nextEnrollments = current.enrollments.filter(
-            (row) => row.studentId !== movingStudentId,
-          );
-          const enrollmentCount = nextEnrollments.length;
-          return {
-            ...current,
-            enrollmentCount,
-            remainingSeats: Math.max(0, current.capacity - enrollmentCount),
-            enrollments: nextEnrollments,
-          };
-        },
-      );
-
-      return { previous, toBatchId };
-    },
-    onSuccess: (_data, { toBatchId }) => {
-      const targetName =
-        switchTargetsQuery.data?.targets.find((t) => t.id === toBatchId)
-          ?.name ?? "the new batch";
-      toast({
-        title: "Batch switched",
-        description: `Moved to ${targetName}.`,
-        variant: "success",
-      });
-      setSwitchStudent(null);
-      setSelectedTargetId(null);
-    },
-    onError: (error, _input, context) => {
-      if (context?.previous) {
-        queryClient.setQueryData(["batch", batchId], context.previous);
-      }
-      toast({
-        title: "Couldn’t switch batch",
-        description:
-          error instanceof Error ? error.message : "Could not switch batch.",
-        variant: "error",
-      });
-    },
-    onSettled: async (_data, _error, variables, context) => {
-      const invalidate = [
-        queryClient.invalidateQueries({ queryKey: ["batch", batchId] }),
-        queryClient.invalidateQueries({
-          queryKey: ["student-profile", studioId],
-        }),
-        queryClient.invalidateQueries({
-          queryKey: ["batches", studioId],
-        }),
-      ];
-      if (context?.toBatchId ?? variables.toBatchId) {
-        invalidate.push(
-          queryClient.invalidateQueries({
-            queryKey: ["batch", context?.toBatchId ?? variables.toBatchId],
-          }),
-        );
-      }
-      await Promise.all(invalidate);
-    },
-  });
-
-  const unenroll = useMutation({
-    mutationFn: (input: {
-      studentId: string;
-      refund: boolean;
-      refundAmount?: number;
-    }) =>
-      api.post(`/batches/${batchId}/unenroll`, {
-        studentId: input.studentId,
-        refund: input.refund,
-        ...(input.refundAmount !== undefined
-          ? { refundAmount: input.refundAmount }
-          : {}),
-      }),
-    onMutate: async ({ studentId: leavingStudentId }) => {
-      await queryClient.cancelQueries({ queryKey: ["batch", batchId] });
-      const previous = queryClient.getQueryData<BatchWithEnrollments>([
-        "batch",
-        batchId,
-      ]);
-
-      queryClient.setQueryData<BatchWithEnrollments>(
-        ["batch", batchId],
-        (current) => {
-          if (!current) return current;
-          const nextEnrollments = current.enrollments.filter(
-            (row) => row.studentId !== leavingStudentId,
-          );
-          const enrollmentCount = nextEnrollments.length;
-          return {
-            ...current,
-            enrollmentCount,
-            remainingSeats: Math.max(0, current.capacity - enrollmentCount),
-            enrollments: nextEnrollments,
-          };
-        },
-      );
-
-      return { previous };
-    },
-    onSuccess: (_data, { refund }) => {
-      toast({
-        title: "Student unenrolled",
-        description: refund
-          ? "Removed from this batch and future sessions. Refund recorded."
-          : "Removed from this batch and future sessions. Past attendance is kept.",
-        variant: "success",
-      });
-      setUnenrollStudent(null);
-      setIssueRefund(false);
-      setRefundAmount("");
-      setRefundAmountInvoiceId(null);
-    },
-    onError: (error, _input, context) => {
-      if (context?.previous) {
-        queryClient.setQueryData(["batch", batchId], context.previous);
-      }
-      toast({
-        title: "Couldn’t unenroll student",
-        description:
-          error instanceof Error
-            ? error.message
-            : "Could not unenroll student.",
-        variant: "error",
-      });
-    },
-    onSettled: async () => {
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["batch", batchId] }),
-        queryClient.invalidateQueries({
-          queryKey: ["student-profile", studioId],
-        }),
-        queryClient.invalidateQueries({
-          queryKey: ["batches", studioId],
-        }),
-        queryClient.invalidateQueries({
-          queryKey: ["invoices", studioId],
-        }),
-        queryClient.invalidateQueries({
-          queryKey: ["billing", "trainer-analytics"],
-        }),
-      ]);
-    },
-  });
-
   function handleSelect(student: StudioStudent | null) {
     setSelectedStudent(student);
     setStudentId(student?.id ?? null);
-  }
-
-  function openSwitch(row: BatchEnrollmentRow) {
-    setSwitchStudent(row);
-    setSelectedTargetId(null);
-  }
-
-  function closeSwitch() {
-    setSwitchStudent(null);
-    setSelectedTargetId(null);
-  }
-
-  function openUnenroll(row: BatchEnrollmentRow) {
-    setUnenrollStudent(row);
-    setIssueRefund(false);
-    setRefundAmount("");
-    setRefundAmountInvoiceId(null);
-  }
-
-  function closeUnenroll() {
-    setUnenrollStudent(null);
-    setIssueRefund(false);
-    setRefundAmount("");
-    setRefundAmountInvoiceId(null);
   }
 
   if (query.isError) {
@@ -604,368 +358,50 @@ export function BatchRoster({ batchId, capacity, active }: BatchRosterProps) {
           {enrollments.map((row) => {
             const student = row.student;
             const initials = student.name.slice(0, 1).toUpperCase();
-            const styleList = student.styles ?? [];
-            const activeDuration = formatActiveDuration(student.createdAt);
+            const paidMonths = row.paidMonths ?? 0;
 
             return (
-              <div key={row.studentId} className={styles.row}>
-                <PressableCard
-                  className={styles.rowMain}
-                  onClick={() =>
-                    void navigate({
-                      to: "/app/students/$id",
-                      params: { id: row.studentId },
-                    })
-                  }
-                >
-                  <div className={styles.card}>
-                    <Avatar size="lg" className={styles.avatar}>
-                      {student.photoUrl ? (
-                        <AvatarImage
-                          src={student.photoUrl}
-                          alt={student.name}
-                        />
-                      ) : null}
-                      <AvatarFallback>{initials}</AvatarFallback>
-                    </Avatar>
+              <PressableCard
+                key={row.studentId}
+                onClick={() =>
+                  void navigate({
+                    to: "/app/students/$id",
+                    params: { id: row.studentId },
+                  })
+                }
+              >
+                <div className={styles.card}>
+                  <Avatar size="lg" className={styles.avatar}>
+                    {student.photoUrl ? (
+                      <AvatarImage
+                        src={student.photoUrl}
+                        alt={student.name}
+                      />
+                    ) : null}
+                    <AvatarFallback>{initials}</AvatarFallback>
+                  </Avatar>
 
-                    <div className={styles.body}>
-                      <div className={styles.top}>
-                        <h3 className={styles.name}>{student.name}</h3>
-                        {row.monthlyUnpaid ? (
-                          <div className={styles.badges}>
-                            <Badge appearance="subtle" variant="warning">
-                              Not paid
-                            </Badge>
-                          </div>
-                        ) : null}
-                      </div>
-
-                      {activeDuration ? (
-                        <p className={styles.tenure}>{activeDuration}</p>
-                      ) : null}
-
-                      {styleList.length > 0 ? (
-                        <StyleList styles={styleList} size="xs" />
-                      ) : null}
+                  <div className={styles.body}>
+                    <div className={styles.top}>
+                      <h3 className={styles.name}>{student.name}</h3>
                     </div>
 
-                    <Icon name="chevron-right" className={styles.chevron} />
+                    <p
+                      className={styles.tenure}
+                      data-testid={`paid-months-${row.studentId}`}
+                    >
+                      <Icon name="wallet" className={styles.tenureIcon} />
+                      {formatPaidMonths(paidMonths)}
+                    </p>
                   </div>
-                </PressableCard>
 
-                <div className={styles.rowActions}>
-                  <TouchButton
-                    size="sm"
-                    variant="default"
-                    className={styles.switchBtn}
-                    data-testid={`switch-batch-${row.studentId}`}
-                    onClick={() => openSwitch(row)}
-                  >
-                    Switch
-                  </TouchButton>
-                  <TouchButton
-                    size="sm"
-                    variant="danger"
-                    className={styles.switchBtn}
-                    data-testid={`unenroll-batch-${row.studentId}`}
-                    onClick={() => openUnenroll(row)}
-                  >
-                    Unenroll
-                  </TouchButton>
+                  <Icon name="chevron-right" className={styles.chevron} />
                 </div>
-              </div>
+              </PressableCard>
             );
           })}
         </div>
       )}
-
-      <AppSheet
-        isOpen={switchStudent != null}
-        onOpenChange={(open) => {
-          if (!open) closeSwitch();
-        }}
-        title={
-          switchStudent
-            ? `Switch batch · ${switchStudent.student.name}`
-            : "Switch batch"
-        }
-      >
-        <div className={staff.sheetStack}>
-          {switchTargetsQuery.data?.subscription ? (
-            <p className={staff.rowMeta}>
-              Plan: {switchTargetsQuery.data.subscription.name}
-            </p>
-          ) : null}
-          {switchTargetsQuery.isLoading ? (
-            <p className={staff.rowMeta}>Loading batches…</p>
-          ) : null}
-          {switchTargetsQuery.isError ? (
-            <ErrorState
-              description={
-                switchTargetsQuery.error instanceof Error
-                  ? switchTargetsQuery.error.message
-                  : "Could not load target batches."
-              }
-              action={
-                <TouchButton
-                  variant="primary"
-                  onClick={() => switchTargetsQuery.refetch()}
-                >
-                  Try again
-                </TouchButton>
-              }
-            />
-          ) : null}
-          {switchTargetsQuery.data &&
-          switchTargetsQuery.data.targets.length === 0 ? (
-            <EmptyState
-              title="No eligible batches"
-              description={
-                switchTargetsQuery.data.reason ??
-                "No other batches offer this student’s current plan with open seats."
-              }
-            />
-          ) : null}
-          {switchTargetsQuery.data &&
-          switchTargetsQuery.data.targets.length > 0 ? (
-            <div className={staff.list}>
-              {switchTargetsQuery.data.targets.map((target) => {
-                const selected = selectedTargetId === target.id;
-                return (
-                  <button
-                    key={target.id}
-                    type="button"
-                    className={`${staff.attentionCard} ${styles.targetPick}`}
-                    data-selected={selected ? "true" : undefined}
-                    data-testid={`switch-target-${target.id}`}
-                    onClick={() => setSelectedTargetId(target.id)}
-                  >
-                    <div className={staff.attentionTop}>
-                      <span className={staff.attentionTitle}>
-                        {target.name}
-                      </span>
-                      <Badge variant={selected ? "success" : "neutral"}>
-                        {selected
-                          ? "Selected"
-                          : `${target.remainingSeats} left`}
-                      </Badge>
-                    </div>
-                    <p className={staff.attentionMeta}>
-                      {target.branchName} ·{" "}
-                      {target.category === "KIDS" ? "Kids" : "Adults"}
-                    </p>
-                  </button>
-                );
-              })}
-            </div>
-          ) : null}
-          {switchBatch.isError ? (
-            <ErrorState
-              description={
-                switchBatch.error instanceof Error
-                  ? switchBatch.error.message
-                  : "Could not switch batch."
-              }
-            />
-          ) : null}
-          <div className={staff.sheetActions}>
-            <TouchButton
-              variant="primary"
-              fullWidth
-              isDisabled={!selectedTargetId || !switchStudent}
-              isPending={switchBatch.isPending}
-              data-testid="confirm-switch-batch"
-              onClick={() => {
-                if (switchStudent && selectedTargetId) {
-                  switchBatch.mutate({
-                    studentId: switchStudent.studentId,
-                    toBatchId: selectedTargetId,
-                  });
-                }
-              }}
-            >
-              Confirm switch
-            </TouchButton>
-            <TouchButton
-              variant="default"
-              fullWidth
-              isDisabled={switchBatch.isPending}
-              onClick={closeSwitch}
-            >
-              Cancel
-            </TouchButton>
-          </div>
-        </div>
-      </AppSheet>
-
-      <AppSheet
-        isOpen={unenrollStudent != null}
-        onOpenChange={(open) => {
-          if (!open) closeUnenroll();
-        }}
-        title={
-          unenrollStudent
-            ? `Unenroll · ${unenrollStudent.student.name}`
-            : "Unenroll"
-        }
-      >
-        <div className={staff.sheetStack}>
-          <p className={staff.rowMeta}>
-            Removes this student from the batch and cancels future sessions.
-            Past attendance and journey history stay for analytics.
-          </p>
-          {unenrollPreviewQuery.isLoading ? (
-            <p className={staff.rowMeta}>Checking refund options…</p>
-          ) : null}
-          {unenrollPreviewQuery.isError ? (
-            <ErrorState
-              description={
-                unenrollPreviewQuery.error instanceof Error
-                  ? unenrollPreviewQuery.error.message
-                  : "Could not load unenroll details."
-              }
-              action={
-                <TouchButton
-                  variant="primary"
-                  onClick={() => unenrollPreviewQuery.refetch()}
-                >
-                  Try again
-                </TouchButton>
-              }
-            />
-          ) : null}
-          {unenrollPreviewQuery.data?.pendingInvoice ? (
-            <p className={staff.rowMeta}>
-              Pending invoice of{" "}
-              {formatPrice(unenrollPreviewQuery.data.pendingInvoice.amount)}{" "}
-              will be voided.
-            </p>
-          ) : null}
-          {unenrollPreviewQuery.data?.futureBookings ? (
-            <p className={staff.rowMeta}>
-              {unenrollPreviewQuery.data.futureBookings} upcoming booking
-              {unenrollPreviewQuery.data.futureBookings === 1 ? "" : "s"} will
-              be cancelled.
-            </p>
-          ) : null}
-          {unenrollPreviewQuery.data?.refundableInvoice ? (
-            <>
-              <Checkbox
-                isSelected={issueRefund}
-                onChange={setIssueRefund}
-                data-testid="unenroll-refund-toggle"
-              >
-                Refund payment (
-                {formatPrice(
-                  unenrollPreviewQuery.data.refundableInvoice.refundableAmount,
-                )}{" "}
-                remaining)
-              </Checkbox>
-              {issueRefund ? (
-                <FormInput
-                  label="Refund amount"
-                  type="number"
-                  inputMode="decimal"
-                  min={0.01}
-                  step="0.01"
-                  max={
-                    unenrollPreviewQuery.data.refundableInvoice.refundableAmount
-                  }
-                  value={
-                    refundAmountInvoiceId ===
-                    unenrollPreviewQuery.data.refundableInvoice.id
-                      ? refundAmount
-                      : String(
-                          unenrollPreviewQuery.data.refundableInvoice
-                            .refundableAmount,
-                        )
-                  }
-                  onChange={(value) => {
-                    const invoice =
-                      unenrollPreviewQuery.data?.refundableInvoice;
-                    if (!invoice) return;
-                    setRefundAmountInvoiceId(invoice.id);
-                    setRefundAmount(value);
-                  }}
-                  data-testid="unenroll-refund-amount"
-                />
-              ) : null}
-            </>
-          ) : unenrollPreviewQuery.data ? (
-            <p className={staff.rowMeta}>
-              No paid invoice available to refund.
-            </p>
-          ) : null}
-          {unenroll.isError ? (
-            <ErrorState
-              description={
-                unenroll.error instanceof Error
-                  ? unenroll.error.message
-                  : "Could not unenroll student."
-              }
-            />
-          ) : null}
-          <div className={staff.sheetActions}>
-            <TouchButton
-              variant="danger"
-              fullWidth
-              isDisabled={!unenrollStudent || unenrollPreviewQuery.isLoading}
-              isPending={unenroll.isPending}
-              data-testid="confirm-unenroll-batch"
-              onClick={() => {
-                if (!unenrollStudent) return;
-                const refundable =
-                  unenrollPreviewQuery.data?.refundableInvoice ?? null;
-                let parsedRefundAmount: number | undefined;
-                if (issueRefund && refundable) {
-                  const raw =
-                    refundAmountInvoiceId === refundable.id
-                      ? refundAmount
-                      : String(refundable.refundableAmount);
-                  parsedRefundAmount = Number(raw);
-                  if (
-                    !Number.isFinite(parsedRefundAmount) ||
-                    parsedRefundAmount <= 0
-                  ) {
-                    toast({
-                      title: "Invalid refund amount",
-                      description: "Enter a refund amount greater than 0.",
-                      variant: "error",
-                    });
-                    return;
-                  }
-                  if (parsedRefundAmount > refundable.refundableAmount) {
-                    toast({
-                      title: "Refund too high",
-                      description: `Maximum refundable is ${formatPrice(refundable.refundableAmount)}.`,
-                      variant: "error",
-                    });
-                    return;
-                  }
-                }
-                unenroll.mutate({
-                  studentId: unenrollStudent.studentId,
-                  refund: issueRefund,
-                  ...(parsedRefundAmount !== undefined
-                    ? { refundAmount: parsedRefundAmount }
-                    : {}),
-                });
-              }}
-            >
-              {issueRefund ? "Unenroll and refund" : "Confirm unenroll"}
-            </TouchButton>
-            <TouchButton
-              variant="default"
-              fullWidth
-              isDisabled={unenroll.isPending}
-              onClick={closeUnenroll}
-            >
-              Cancel
-            </TouchButton>
-          </div>
-        </div>
-      </AppSheet>
     </div>
   );
 }

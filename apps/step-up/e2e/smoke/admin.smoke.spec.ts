@@ -258,6 +258,72 @@ test.describe("admin (staff) smoke @smoke", () => {
     }
   });
 
+  test("staff unenrolls student from profile batches @smoke", async ({
+    browser,
+  }) => {
+    const cleanup = new SmokeDataCleanup();
+    const stamp = Date.now();
+    const student = await apiRequest<{ id: string }>("OWNER", "/users", {
+      method: "POST",
+      body: JSON.stringify({
+        name: `Smoke Unenroll ${stamp}`,
+        email: `smoke-unenroll-${stamp}@stepup.dev`,
+        gender: "FEMALE",
+        ageRange: "TWENTY_TO_FORTY",
+        styles: ["Hip Hop"],
+      }),
+    });
+    cleanup.trackStudent(student.id);
+    await apiRequest("STAFF", `/batches/${SMOKE.beginnerBatchId}/enroll`, {
+      method: "POST",
+      body: JSON.stringify({
+        studentId: student.id,
+        subscriptionId: SMOKE.adultPlanIds[0],
+      }),
+    });
+
+    const context = await browser.newContext({
+      storageState: authFile("STAFF"),
+    });
+    const page = await context.newPage();
+    try {
+      await page.goto(`/app/students/${student.id}`, {
+        waitUntil: "domcontentloaded",
+      });
+      await waitForAppReady(page);
+
+      await expect(
+        page.getByTestId(`unenroll-batch-${SMOKE.beginnerBatchId}`),
+      ).toBeVisible();
+      await expect(
+        page.getByTestId(`switch-batch-${SMOKE.beginnerBatchId}`),
+      ).toBeVisible();
+
+      await page
+        .getByTestId(`unenroll-batch-${SMOKE.beginnerBatchId}`)
+        .click();
+      const [response] = await Promise.all([
+        waitForApiResponse(page, {
+          method: "POST",
+          pathIncludes: `/batches/${SMOKE.beginnerBatchId}/unenroll`,
+        }),
+        page.getByTestId("confirm-unenroll-batch").click(),
+      ]);
+      expect(response.ok()).toBeTruthy();
+
+      await expect(page.getByText("Unenrolled").first()).toBeVisible();
+      await expect(
+        page.getByTestId(`unenroll-batch-${SMOKE.beginnerBatchId}`),
+      ).toHaveCount(0);
+      await expect(
+        page.getByTestId(`switch-batch-${SMOKE.beginnerBatchId}`),
+      ).toHaveCount(0);
+    } finally {
+      await context.close();
+      await cleanup.dispose();
+    }
+  });
+
   test("staff creates subscription plan @smoke", async ({ browser }) => {
     const cleanup = new SmokeDataCleanup();
     const stamp = Date.now();

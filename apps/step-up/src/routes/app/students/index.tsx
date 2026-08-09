@@ -1,4 +1,4 @@
-import { Badge, type BadgeVariant } from "@dev-ui/components/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@dev-ui/components/avatar";
 import {
   Menu,
   MenuContent,
@@ -11,7 +11,6 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useApi } from "@/lib/api-context";
 import { ENTITY_ICONS } from "@/lib/entity-icons";
-import { formatActiveDuration } from "@/lib/format-active-duration";
 import { requireAdmin } from "@/lib/require-auth";
 import { useStudioId } from "@/lib/use-studio-id";
 import {
@@ -51,12 +50,9 @@ const CREATE_ITEMS = [
 
 const NEW_USER_DAYS = 14;
 
-const STAGE_BADGE_VARIANT: Record<StudentFunnelStage, BadgeVariant> = {
-  active: "success",
-  signedInOnly: "info",
-  trialAttended: "accent",
-  completedWithoutPlan: "warning",
-};
+function formatPaidMonths(months: number) {
+  return `${months} ${months === 1 ? "month" : "months"}`;
+}
 
 function parseSearch(search: Record<string, unknown>): StudentsSearch {
   const result: StudentsSearch = {};
@@ -324,7 +320,6 @@ function StudentsPage() {
             <div className={staff.list}>
               {filtered.map((student) => {
                 const showNew = isNewStudent(student.createdAt);
-                const activeDuration = formatActiveDuration(student.createdAt);
                 return (
                   <PressableCard
                     key={student.id}
@@ -339,35 +334,31 @@ function StudentsPage() {
                       {showNew ? (
                         <span className={staff.newRibbon}>New</span>
                       ) : null}
-                      <div className={staff.attentionTop}>
-                        <span className={staff.rowTitle}>{student.name}</span>
-                        {student.active === false ? (
-                          <Badge
-                            appearance="subtle"
-                            size="sm"
-                            variant="neutral"
+                      <div className={staff.rowWithAvatar}>
+                        <Avatar size="md" className={staff.trainerAvatar}>
+                          {student.photoUrl ? (
+                            <AvatarImage
+                              src={student.photoUrl}
+                              alt={student.name}
+                            />
+                          ) : null}
+                          <AvatarFallback>
+                            {student.name.slice(0, 1).toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className={staff.rowBody}>
+                          <span className={staff.rowTitle}>{student.name}</span>
+                          <span
+                            className={staff.metaWithIcon}
+                            data-testid={`paid-months-${student.id}`}
                           >
-                            Inactive
-                          </Badge>
-                        ) : null}
-                      </div>
-                      <div className={staff.rowChips}>
-                        <Badge
-                          appearance="subtle"
-                          size="sm"
-                          variant={STAGE_BADGE_VARIANT[student.funnelStage]}
-                        >
-                          {STAGE_LABELS[student.funnelStage]}
-                        </Badge>
-                        {activeDuration ? (
-                          <Badge
-                            appearance="subtle"
-                            size="sm"
-                            variant="neutral"
-                          >
-                            {activeDuration}
-                          </Badge>
-                        ) : null}
+                            <Icon
+                              name="wallet"
+                              className={staff.metaWithIconIcon}
+                            />
+                            {formatPaidMonths(student.paidMonths ?? 0)}
+                          </span>
+                        </div>
                       </div>
                     </div>
                   </PressableCard>

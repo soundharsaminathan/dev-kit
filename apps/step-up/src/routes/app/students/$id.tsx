@@ -15,6 +15,7 @@ import { useApi } from "@/lib/api-context";
 import { ENTITY_ICONS } from "@/lib/entity-icons";
 import { requireAdmin } from "@/lib/require-auth";
 import { useStudioId } from "@/lib/use-studio-id";
+import { StudentBatchEnrollmentActions } from "@/modules/batches/student-batch-enrollment-actions";
 import type { ChatConversation } from "@/modules/chat/types";
 import { TemporaryCredentialsPanel } from "@/modules/members/temporary-credentials-panel";
 import {
@@ -24,7 +25,6 @@ import {
 import { AppBottomSheet } from "@/modules/ui/app-bottom-sheet";
 import { AppSheet } from "@/modules/ui/app-sheet";
 import { FormInput } from "@/modules/ui/form-input";
-import { PressableCard } from "@/modules/ui/pressable-card";
 import { PullToRefresh } from "@/modules/ui/pull-to-refresh";
 import { Screen } from "@/modules/ui/screen";
 import { SkeletonBlock, SkeletonCardList } from "@/modules/ui/skeleton-block";
@@ -45,6 +45,7 @@ type StudentStudioProfile = {
     styles: string[];
     active: boolean;
   };
+  paidMonths?: number;
   batches: Array<{
     id: string;
     name: string;
@@ -136,6 +137,10 @@ function formatDate(value: string) {
     day: "numeric",
     year: "numeric",
   });
+}
+
+function formatPaidMonths(months: number) {
+  return `${months} ${months === 1 ? "month" : "months"}`;
 }
 
 function membershipStatusLabel(
@@ -631,13 +636,14 @@ function StudentDetailPage() {
                     <span className={staff.rowTitle}>
                       {profile.student.name}
                     </span>
-                    <Badge
-                      appearance="subtle"
-                      variant={profile.student.active ? "success" : "neutral"}
-                    >
-                      {profile.student.active ? "Student" : "Inactive"}
-                    </Badge>
                   </div>
+                  <span
+                    className={staff.metaWithIcon}
+                    data-testid="student-paid-months"
+                  >
+                    <Icon name="wallet" className={staff.metaWithIconIcon} />
+                    {formatPaidMonths(profile.paidMonths ?? 0)}
+                  </span>
                   <p className={staff.rowMeta}>{profile.student.email}</p>
                   {profile.student.phone ? (
                     <p className={staff.rowMeta}>{profile.student.phone}</p>
@@ -705,41 +711,55 @@ function StudentDetailPage() {
                 />
               ) : (
                 <div className={staff.list}>
-                  {profile.batches.map((batch) => (
-                    <PressableCard
-                      key={batch.id}
-                      onClick={() =>
-                        void navigate({
-                          to: "/app/batches/$id",
-                          params: { id: batch.id },
-                        })
-                      }
-                    >
-                      <div className={staff.rowCard}>
+                  {profile.batches.map((batch) => {
+                    const isActiveEnrollment =
+                      batch.enrollmentStatus !== "ENDED";
+                    return (
+                      <div key={batch.id} className={staff.attentionCard}>
                         <div className={staff.attentionTop}>
-                          <span className={staff.rowTitle}>{batch.name}</span>
-                          <Badge
-                            variant={
-                              batch.enrollmentStatus === "ENDED"
-                                ? "neutral"
-                                : batch.active
-                                  ? "success"
-                                  : "neutral"
-                            }
-                          >
-                            {batch.enrollmentStatus === "ENDED"
-                              ? "Unenrolled"
-                              : batch.active
-                                ? "Active"
-                                : "Inactive"}
-                          </Badge>
+                          <span className={staff.attentionTitle}>
+                            {batch.name}
+                          </span>
+                          {batch.enrollmentStatus === "ENDED" ? (
+                            <Badge variant="neutral">Unenrolled</Badge>
+                          ) : null}
                         </div>
-                        <p className={staff.rowMeta}>
+                        <p className={staff.attentionMeta}>
                           {batch.category === "KIDS" ? "Kids" : "Adults"}
                         </p>
+                        {isActiveEnrollment ? (
+                          <StudentBatchEnrollmentActions
+                            studentId={profile.student.id}
+                            studentName={profile.student.name}
+                            batchId={batch.id}
+                            batchName={batch.name}
+                            onOpenBatch={() =>
+                              void navigate({
+                                to: "/app/batches/$id",
+                                params: { id: batch.id },
+                              })
+                            }
+                          />
+                        ) : (
+                          <div className={staff.rowActions}>
+                            <TouchButton
+                              size="sm"
+                              variant="default"
+                              data-testid={`open-batch-${batch.id}`}
+                              onClick={() =>
+                                void navigate({
+                                  to: "/app/batches/$id",
+                                  params: { id: batch.id },
+                                })
+                              }
+                            >
+                              Open
+                            </TouchButton>
+                          </div>
+                        )}
                       </div>
-                    </PressableCard>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </section>

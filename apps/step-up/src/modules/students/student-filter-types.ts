@@ -21,9 +21,11 @@ export type DirectoryStudent = {
   name: string;
   email: string;
   phone?: string | null;
+  photoUrl?: string | null;
   role: string;
   createdAt: string;
   funnelStage: StudentFunnelStage;
+  paidMonths?: number;
   gender?: StudentGender | null;
   ageRange?: StudentAgeRange | null;
   active?: boolean;
