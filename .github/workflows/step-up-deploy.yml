@@ -116,9 +116,16 @@ jobs:
 
   deploy-web:
     name: Deploy Cloudflare Pages
-    needs: [prepare, test-web]
+    needs: [prepare, test-web, test-api]
     runs-on: ubuntu-latest
-    if: needs.prepare.outputs.should_deploy == 'true'
+    # Explicit result checks: a job-level `if` replaces the default
+    # success() gate, so failed needs would otherwise still deploy.
+    if: >-
+      always() &&
+      needs.prepare.result == 'success' &&
+      needs.prepare.outputs.should_deploy == 'true' &&
+      needs.test-web.result == 'success' &&
+      needs.test-api.result == 'success'
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v6
@@ -151,9 +158,14 @@ jobs:
 
   deploy-api:
     name: Deploy Cloud Run
-    needs: [prepare, test-api]
+    needs: [prepare, test-web, test-api]
     runs-on: ubuntu-latest
-    if: needs.prepare.outputs.should_deploy == 'true'
+    if: >-
+      always() &&
+      needs.prepare.result == 'success' &&
+      needs.prepare.outputs.should_deploy == 'true' &&
+      needs.test-web.result == 'success' &&
+      needs.test-api.result == 'success'
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v6
@@ -199,7 +211,12 @@ jobs:
     name: Deployed smoke suite
     needs: [prepare, deploy-web, deploy-api]
     runs-on: ubuntu-latest
-    if: needs.prepare.outputs.should_smoke == 'true'
+    if: >-
+      always() &&
+      needs.prepare.result == 'success' &&
+      needs.prepare.outputs.should_smoke == 'true' &&
+      needs.deploy-web.result == 'success' &&
+      needs.deploy-api.result == 'success'
     timeout-minutes: 45
     concurrency:
       group: step-up-smoke
