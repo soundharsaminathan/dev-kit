@@ -204,7 +204,7 @@ export function BatchRoster({ batchId, capacity, active }: BatchRosterProps) {
         variant: "success",
       });
     },
-    onError: (error, _input, context) => {
+    onError: (error: unknown, _input, context) => {
       if (context?.previous) {
         queryClient.setQueryData(["batch", batchId], context.previous);
       }

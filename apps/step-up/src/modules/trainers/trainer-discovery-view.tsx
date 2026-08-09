@@ -227,7 +227,7 @@ export function TrainerDiscoveryView({
         : "/app/messages/$id";
       void navigate({ to, params: { id: conversation.id } });
     },
-    onError: (error) => {
+    onError: (error: unknown) => {
       toast({
         title: "Couldn’t start chat",
         description:

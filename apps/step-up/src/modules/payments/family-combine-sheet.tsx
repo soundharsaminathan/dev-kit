@@ -125,7 +125,7 @@ export function FamilyCombineSheet({
       onOpenChange(false);
       onCombined(invoice);
     },
-    onError: (error) => {
+    onError: (error: unknown) => {
       toast({
         title: "Couldn’t combine invoices",
         description:

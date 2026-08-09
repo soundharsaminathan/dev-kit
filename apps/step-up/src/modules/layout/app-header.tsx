@@ -107,7 +107,7 @@ function NotificationsControl({
       });
       return { previousList, previousUnread };
     },
-    onError: (_error, _id, context) => {
+    onError: (_error: unknown, _id, context) => {
       if (context?.previousList) {
         queryClient.setQueryData(
           notificationsListKey(user?.id),

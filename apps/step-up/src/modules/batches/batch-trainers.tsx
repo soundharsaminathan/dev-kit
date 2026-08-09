@@ -117,7 +117,7 @@ export function BatchTrainers({ batchId, trainers }: BatchTrainersProps) {
       });
       setManageOpen(false);
     },
-    onError: (error) => {
+    onError: (error: unknown) => {
       toast({
         title: "Couldn’t save instructors",
         description:

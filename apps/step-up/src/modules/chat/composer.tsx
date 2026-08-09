@@ -281,7 +281,7 @@ export function Composer({
       afterSend(message);
       resetComposer();
     },
-    onError: (err) => {
+    onError: (err: unknown) => {
       setError(err instanceof Error ? err.message : "Could not create poll.");
     },
   });
@@ -302,7 +302,7 @@ export function Composer({
       afterSend(message);
       resetComposer();
     },
-    onError: (err) => {
+    onError: (err: unknown) => {
       setError(err instanceof Error ? err.message : "Could not create event.");
     },
   });

@@ -58,7 +58,7 @@ function NewCertificateTemplatePage() {
       });
       await navigate({ to: "/app/certificates" });
     },
-    onError: (error) => {
+    onError: (error: unknown) => {
       toast({
         title: "Couldn’t create template",
         description:

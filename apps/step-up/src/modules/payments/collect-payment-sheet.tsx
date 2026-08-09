@@ -73,7 +73,7 @@ export function CollectPaymentSheet({
       });
       onOpenChange(false);
     },
-    onError: (error) => {
+    onError: (error: unknown) => {
       toast({
         title: "Couldn’t record payment",
         description:

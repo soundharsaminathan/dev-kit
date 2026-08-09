@@ -167,7 +167,7 @@ export function MemberRegistrationForm({
       });
       await navigate({ to: successTo });
     },
-    onError: (error) => {
+    onError: (error: unknown) => {
       toast({
         title: `Couldn’t create ${kind}`,
         description:

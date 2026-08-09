@@ -80,7 +80,7 @@ function MeHomePage() {
       );
       return { previous, requestId };
     },
-    onError: (_error, _target, context) => {
+    onError: (_error: unknown, _target, context) => {
       if (!context || context.requestId !== goalRequestId.current) return;
       if (context.previous) {
         queryClient.setQueryData(homeQueryKey, context.previous);

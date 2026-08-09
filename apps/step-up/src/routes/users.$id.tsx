@@ -117,7 +117,7 @@ function AuthedUserProfile({ user }: { user: AuthUser }) {
         variant: "success",
       });
     },
-    onError: (error) => {
+    onError: (error: unknown) => {
       toast({
         title: "Couldn’t reset password",
         description:

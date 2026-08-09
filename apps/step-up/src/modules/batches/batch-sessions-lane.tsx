@@ -85,7 +85,7 @@ export function BatchSessionsLane({
       });
       setSheetOpen(false);
     },
-    onError: (error) => {
+    onError: (error: unknown) => {
       toast({
         title: "Couldn’t create session",
         description:

@@ -65,7 +65,7 @@ export function RefundInvoiceSheet({
       });
       onOpenChange(false);
     },
-    onError: (error) => {
+    onError: (error: unknown) => {
       toast({
         title: "Couldn’t refund invoice",
         description:

@@ -83,7 +83,7 @@ function BookingsPage() {
         });
       }
     },
-    onError: (error) => {
+    onError: (error: unknown) => {
       toast({
         title: "Couldn’t update booking",
         description:

@@ -89,7 +89,7 @@ export function SessionScheduleActions({
       });
       onChanged?.();
     },
-    onError: (error) => {
+    onError: (error: unknown) => {
       toast({
         title: "Couldn’t update session",
         description:
@@ -111,7 +111,7 @@ export function SessionScheduleActions({
       });
       onDeleted?.();
     },
-    onError: (error) => {
+    onError: (error: unknown) => {
       toast({
         title: "Couldn’t delete session",
         description:

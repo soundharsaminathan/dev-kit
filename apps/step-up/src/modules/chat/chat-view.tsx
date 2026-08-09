@@ -125,7 +125,7 @@ function useMessageActions(conversationId: string) {
       return snapshot;
     },
     onRollback: (snapshot) => restoreQuerySnapshot(queryClient, snapshot),
-    onError: (error) => {
+    onError: (error: unknown) => {
       toast({
         title: "Reaction failed",
         description:

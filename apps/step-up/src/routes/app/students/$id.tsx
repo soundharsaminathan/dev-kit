@@ -357,7 +357,7 @@ function StudentDetailPage() {
       });
       await navigate({ to: "/app/students" });
     },
-    onError: (error) => {
+    onError: (error: unknown) => {
       toast({
         title: "Couldn’t delete student",
         description:
@@ -394,7 +394,7 @@ function StudentDetailPage() {
         });
       }
     },
-    onError: (error, variables) => {
+    onError: (error: unknown, variables) => {
       toast({
         title:
           variables.active !== undefined
@@ -424,7 +424,7 @@ function StudentDetailPage() {
         variant: "success",
       });
     },
-    onError: (error) => {
+    onError: (error: unknown) => {
       toast({
         title: "Couldn’t reset password",
         description:
@@ -457,7 +457,7 @@ function StudentDetailPage() {
         variant: "success",
       });
     },
-    onError: (error) => {
+    onError: (error: unknown) => {
       toast({
         title: "Couldn’t mark invoice paid",
         description:
@@ -487,7 +487,7 @@ function StudentDetailPage() {
         variant: "success",
       });
     },
-    onError: (error) => {
+    onError: (error: unknown) => {
       toast({
         title: "Couldn’t link family",
         description:
@@ -514,7 +514,7 @@ function StudentDetailPage() {
         params: { id: conversation.id },
       });
     },
-    onError: (error) => {
+    onError: (error: unknown) => {
       toast({
         title: "Couldn’t start conversation",
         description:

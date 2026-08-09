@@ -44,7 +44,7 @@ function LocationsPage() {
         variant: "success",
       });
     },
-    onError: (error) => {
+    onError: (error: unknown) => {
       toast({
         title: "Couldn’t delete location",
         description:

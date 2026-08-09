@@ -9,6 +9,7 @@ import { BrandingPanel } from "@/modules/branding/branding-panel";
 import { TemporaryCredentialsPanel } from "@/modules/members/temporary-credentials-panel";
 import type { Studio } from "@/modules/settings/types";
 import { FormInput } from "@/modules/ui/form-input";
+import { FormTextArea } from "@/modules/ui/form-text-area";
 import { PasswordInput } from "@/modules/ui/password-input";
 import { StudioPaymentsFields } from "./studio-payments-fields";
 import styles from "./studio-wizard.module.scss";
@@ -158,7 +159,7 @@ export function StudioWizard(props: StudioWizardProps) {
         variant: "success",
       });
     },
-    onError: (error) => {
+    onError: (error: unknown) => {
       const message =
         error instanceof Error ? error.message : "Could not create studio.";
       setFormError(message);
@@ -224,7 +225,7 @@ export function StudioWizard(props: StudioWizardProps) {
       });
       void navigate({ to: "/admin" });
     },
-    onError: (error) => {
+    onError: (error: unknown) => {
       const message =
         error instanceof Error ? error.message : "Could not update studio.";
       setFormError(message);
@@ -254,7 +255,7 @@ export function StudioWizard(props: StudioWizardProps) {
         variant: "success",
       });
     },
-    onError: (error) => {
+    onError: (error: unknown) => {
       const message =
         error instanceof Error
           ? error.message
@@ -507,7 +508,7 @@ export function StudioWizard(props: StudioWizardProps) {
                 </div>
               )}
               <div className={styles.fullWidth}>
-                <FormInput
+                <FormTextArea
                   label="Address"
                   value={address}
                   onChange={setAddress}

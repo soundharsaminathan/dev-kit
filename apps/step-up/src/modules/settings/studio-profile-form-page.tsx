@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useApi } from "@/lib/api-context";
 import { useStudioId } from "@/lib/use-studio-id";
 import { FormInput } from "@/modules/ui/form-input";
+import { FormTextArea } from "@/modules/ui/form-text-area";
 import { Screen } from "@/modules/ui/screen";
 import { SkeletonBlock } from "@/modules/ui/skeleton-block";
 import staff from "@/modules/ui/staff.module.scss";
@@ -43,7 +44,7 @@ export function StudioProfileFormPage() {
         variant: "success",
       });
     },
-    onError: (error) => {
+    onError: (error: unknown) => {
       toast({
         title: "Couldn’t save profile",
         description:
@@ -100,10 +101,11 @@ export function StudioProfileFormPage() {
               value={name || studioQuery.data.name}
               onChange={setName}
             />
-            <FormInput
+            <FormTextArea
               label="Address"
               value={address || studioQuery.data.address}
               onChange={setAddress}
+              autoComplete="street-address"
             />
             <FormInput
               label="Contact"

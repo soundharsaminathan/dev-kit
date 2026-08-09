@@ -128,7 +128,7 @@ export function StudentBatchEnrollmentActions({
       });
       closeSwitch();
     },
-    onError: (error) => {
+    onError: (error: unknown) => {
       toast({
         title: "Couldn’t switch batch",
         description:
@@ -169,7 +169,7 @@ export function StudentBatchEnrollmentActions({
       });
       closeUnenroll();
     },
-    onError: (error) => {
+    onError: (error: unknown) => {
       toast({
         title: "Couldn’t unenroll student",
         description:

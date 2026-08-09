@@ -55,7 +55,7 @@ function AdminStudiosPage() {
         variant: "success",
       });
     },
-    onError: (error) => {
+    onError: (error: unknown) => {
       toast({
         title: "Couldn’t delete studio",
         description:

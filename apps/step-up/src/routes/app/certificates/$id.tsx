@@ -113,7 +113,7 @@ function EditCertificateTemplateForm({
       });
       await navigate({ to: "/app/certificates" });
     },
-    onError: (error) => {
+    onError: (error: unknown) => {
       toast({
         title: "Couldn’t delete template",
         description:

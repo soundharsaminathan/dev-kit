@@ -120,7 +120,7 @@ export function MediaManager({
         variant: "success",
       });
     },
-    onError: (error) => {
+    onError: (error: unknown) => {
       toast({
         title: "Couldn’t reorder gallery",
         description:
@@ -141,7 +141,7 @@ export function MediaManager({
         variant: "success",
       });
     },
-    onError: (error) => {
+    onError: (error: unknown) => {
       toast({
         title: "Couldn’t set cover",
         description:
@@ -167,7 +167,7 @@ export function MediaManager({
         variant: "success",
       });
     },
-    onError: (error) => {
+    onError: (error: unknown) => {
       toast({
         title: "Couldn’t update media",
         description:
@@ -188,7 +188,7 @@ export function MediaManager({
         variant: "success",
       });
     },
-    onError: (error) => {
+    onError: (error: unknown) => {
       toast({
         title: "Couldn’t delete media",
         description:

@@ -112,7 +112,7 @@ function AddTrialUserSheet({
       setSelectedCandidate(null);
       setPickerKey((key) => key + 1);
     },
-    onError: (error) => {
+    onError: (error: unknown) => {
       toast({
         title: "Failed to add trial user",
         description:
@@ -140,7 +140,7 @@ function AddTrialUserSheet({
         ageRange: "18+",
       });
     },
-    onError: (error) => {
+    onError: (error: unknown) => {
       toast({
         title: "Failed to create student",
         description:
@@ -448,7 +448,7 @@ function SessionAttendancePage() {
         variant: "success",
       });
     },
-    onError: (error, _vars, context) => {
+    onError: (error: unknown, _vars, context) => {
       if (context?.previous) {
         queryClient.setQueryData(rosterQueryKey, context.previous);
       }
@@ -488,7 +488,7 @@ function SessionAttendancePage() {
       );
       return { previous };
     },
-    onError: (error, _vars, context) => {
+    onError: (error: unknown, _vars, context) => {
       if (context?.previous) {
         queryClient.setQueryData(rosterQueryKey, context.previous);
       }
@@ -548,7 +548,7 @@ function SessionAttendancePage() {
         variant: "success",
       });
     },
-    onError: (error, _vars, context) => {
+    onError: (error: unknown, _vars, context) => {
       if (context?.previous) {
         queryClient.setQueryData(rosterQueryKey, context.previous);
       }
@@ -582,7 +582,7 @@ function SessionAttendancePage() {
         variant: "success",
       });
     },
-    onError: (error) => {
+    onError: (error: unknown) => {
       toast({
         title: "Couldn’t complete session",
         description:

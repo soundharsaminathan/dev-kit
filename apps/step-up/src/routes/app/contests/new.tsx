@@ -146,7 +146,7 @@ function NewContestPage() {
       });
       void navigate({ to: "/app/contests/$id", params: { id: contest.id } });
     },
-    onError: (error) => {
+    onError: (error: unknown) => {
       toast({
         title: "Couldn’t create contest",
         description:

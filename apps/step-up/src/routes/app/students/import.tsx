@@ -154,7 +154,7 @@ function ImportStudentsPage() {
       });
       await navigate({ to: "/app/students" });
     },
-    onError: (error) => {
+    onError: (error: unknown) => {
       toast({
         title: "Couldn’t import students",
         description:

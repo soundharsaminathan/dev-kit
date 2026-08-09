@@ -38,7 +38,7 @@ export function BatchChatButton({
     onSuccess: (conversation) => {
       void navigate({ to: messagesTo, params: { id: conversation.id } });
     },
-    onError: (error) => {
+    onError: (error: unknown) => {
       toast({
         title: "Couldn’t open chat",
         description:

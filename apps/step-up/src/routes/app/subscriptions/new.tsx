@@ -73,7 +73,7 @@ function NewSubscriptionPage() {
       });
       await navigate({ to: "/app/subscriptions" });
     },
-    onError: (error) => {
+    onError: (error: unknown) => {
       toast({
         title: "Couldn’t create subscription",
         description:

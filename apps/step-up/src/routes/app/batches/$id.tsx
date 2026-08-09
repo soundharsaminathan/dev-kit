@@ -14,7 +14,6 @@ import {
   SelectValue,
 } from "@dev-ui/components/select";
 import { Switch } from "@dev-ui/components/switch";
-import { Tab, TabList, TabPanel, Tabs } from "@dev-ui/components/tabs";
 import { TextArea } from "@dev-ui/components/text-area";
 import { useToastContext } from "@dev-ui/components/toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -113,15 +112,17 @@ type Batch = {
   } | null;
   scheduleJson: BatchSchedule;
   danceCategories: { name: string; description: string }[];
-  trainers: {
-    trainerId: string;
-    trainer: {
-      id: string;
-      name: string;
-      email: string;
-      photoUrl?: string | null;
-    };
-  }[];
+  trainers: BatchTrainerAssignment[];
+};
+
+type BatchTrainerAssignment = {
+  trainerId: string;
+  trainer: {
+    id: string;
+    name: string;
+    email: string;
+    photoUrl?: string | null;
+  };
 };
 
 function formatPlanPrice(price: number | string, cadence: string) {
@@ -210,7 +211,7 @@ function EditBatchPage() {
       });
       await navigate({ to: "/app/batches" });
     },
-    onError: (error) => {
+    onError: (error: unknown) => {
       toast({
         title: "Couldn’t delete batch",
         description:
@@ -308,30 +309,20 @@ function EditBatchPage() {
                 scheduleLabel={batch.scheduleLabel}
                 branchName={batch.branch?.name}
                 sessions={batch.sessions}
-                trainers={batch.trainers.map((row) => ({
+                trainers={batch.trainers.map((row: BatchTrainerAssignment) => ({
                   id: row.trainer.id,
                   name: row.trainer.name,
                   photoUrl: row.trainer.photoUrl ?? null,
                 }))}
               />
               <BatchRevenue batchId={batch.id} />
+              <BatchTrainers batchId={batch.id} trainers={batch.trainers} />
               <BatchSessionsLane batchId={batch.id} sessions={batch.sessions} />
-              <Tabs defaultSelectedKey="students" aria-label="Batch sections">
-                <TabList>
-                  <Tab id="students">Students</Tab>
-                  <Tab id="trainers">Trainers</Tab>
-                </TabList>
-                <TabPanel id="students">
-                  <BatchRoster
-                    batchId={batch.id}
-                    capacity={batch.capacity}
-                    active={batch.active}
-                  />
-                </TabPanel>
-                <TabPanel id="trainers">
-                  <BatchTrainers batchId={batch.id} trainers={batch.trainers} />
-                </TabPanel>
-              </Tabs>
+              <BatchRoster
+                batchId={batch.id}
+                capacity={batch.capacity}
+                active={batch.active}
+              />
 
               <AppDrawer
                 isOpen={settingsOpen}
@@ -420,9 +411,9 @@ function EditBatchForm({
   });
 
   const expectedAudience = batch.category === "KIDS" ? "KID" : "ADULT";
-  const availablePlans = (subscriptionsQuery.data ?? []).filter(
-    (plan) => plan.active,
-  );
+  const subscriptionCatalog: CatalogSubscription[] =
+    subscriptionsQuery.data ?? [];
+  const availablePlans = subscriptionCatalog.filter((plan) => plan.active);
   const individualPlans = availablePlans.filter(
     (plan) =>
       plan.kind === "INDIVIDUAL" &&
@@ -436,7 +427,8 @@ function EditBatchForm({
     (plan) =>
       plan.billingCadence === "QUARTERLY" && subscriptionIds.includes(plan.id),
   );
-  const availableTemplates = templatesQuery.data ?? [];
+  const availableTemplates: CertificateTemplate[] = templatesQuery.data ?? [];
+  const branchOptions: StudioBranch[] = branches.data ?? [];
   const selectedTemplate = useMemo(
     () =>
       availableTemplates.find(
@@ -528,7 +520,7 @@ function EditBatchForm({
       });
       onSaved?.();
     },
-    onError: (error) => {
+    onError: (error: unknown) => {
       toast({
         title: "Couldn’t save batch",
         description:
@@ -642,7 +634,7 @@ function EditBatchForm({
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {(branches.data ?? []).map((branch) => (
+            {branchOptions.map((branch) => (
               <SelectItem
                 key={branch.id}
                 id={branch.id}

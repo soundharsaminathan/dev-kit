@@ -14,6 +14,7 @@ import {
   WEEKDAY_LABELS,
 } from "@/modules/locations/types";
 import { FormInput } from "@/modules/ui/form-input";
+import { FormTextArea } from "@/modules/ui/form-text-area";
 import { Screen } from "@/modules/ui/screen";
 import { SkeletonBlock } from "@/modules/ui/skeleton-block";
 import { ErrorState } from "@/modules/ui/states";
@@ -127,7 +128,7 @@ function LocationEditPage() {
         variant: "success",
       });
     },
-    onError: (error) => {
+    onError: (error: unknown) => {
       toast({
         title: "Couldn’t save details",
         description: error instanceof Error ? error.message : "Could not save.",
@@ -152,7 +153,7 @@ function LocationEditPage() {
         variant: "success",
       });
     },
-    onError: (error) => {
+    onError: (error: unknown) => {
       toast({
         title: "Couldn’t save FAQs",
         description:
@@ -184,7 +185,7 @@ function LocationEditPage() {
         variant: "success",
       });
     },
-    onError: (error) => {
+    onError: (error: unknown) => {
       toast({
         title: "Couldn’t save testimonials",
         description:
@@ -230,7 +231,12 @@ function LocationEditPage() {
         <section className={styles.section}>
           <h2 className={styles.heading}>Basics</h2>
           <FormInput label="Name" value={name} onChange={setName} />
-          <FormInput label="Address" value={address} onChange={setAddress} />
+          <FormTextArea
+            label="Address"
+            value={address}
+            onChange={setAddress}
+            autoComplete="street-address"
+          />
           <FormInput
             label="Description"
             value={description}

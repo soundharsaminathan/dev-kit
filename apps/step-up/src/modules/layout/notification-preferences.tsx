@@ -80,7 +80,7 @@ export function NotificationPreferencesPanel() {
       queryClient.setQueryData(queryKey, next);
       return { previous };
     },
-    onError: (_error, _next, context) => {
+    onError: (_error: unknown, _next, context) => {
       if (context?.previous) {
         queryClient.setQueryData(queryKey, context.previous);
       }

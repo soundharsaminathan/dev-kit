@@ -370,7 +370,7 @@ function NewBatchPage() {
       });
       await navigate({ to: "/app/batches" });
     },
-    onError: (error) => {
+    onError: (error: unknown) => {
       toast({
         title: "Couldn’t create batch",
         description:

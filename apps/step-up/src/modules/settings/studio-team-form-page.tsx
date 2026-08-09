@@ -43,7 +43,7 @@ export function StudioTeamFormPage() {
         variant: "success",
       });
     },
-    onError: (error) => {
+    onError: (error: unknown) => {
       toast({
         title: "Couldn’t send invite",
         description:
@@ -65,7 +65,7 @@ export function StudioTeamFormPage() {
         variant: "success",
       });
     },
-    onError: (error) => {
+    onError: (error: unknown) => {
       toast({
         title: "Couldn’t revoke invite",
         description:

@@ -114,7 +114,7 @@ function ContestDetailPage() {
         variant: "success",
       });
     },
-    onError: (error) => {
+    onError: (error: unknown) => {
       toast({
         title: "Couldn’t update status",
         description:
@@ -142,7 +142,7 @@ function ContestDetailPage() {
         variant: "success",
       });
     },
-    onError: (error) => {
+    onError: (error: unknown) => {
       toast({
         title: "Couldn’t save placement",
         description:
@@ -172,7 +172,7 @@ function ContestDetailPage() {
         variant: "success",
       });
     },
-    onError: (error) => {
+    onError: (error: unknown) => {
       toast({
         title: "Couldn’t save score",
         description:
@@ -195,7 +195,7 @@ function ContestDetailPage() {
         variant: "success",
       });
     },
-    onError: (error) => {
+    onError: (error: unknown) => {
       toast({
         title: "Couldn’t issue certificate",
         description:

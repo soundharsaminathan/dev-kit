@@ -8,6 +8,7 @@ import { useStudioId } from "@/lib/use-studio-id";
 import { BranchMap } from "@/modules/locations/branch-map";
 import type { MapCoordinates, StudioBranch } from "@/modules/locations/types";
 import { FormInput } from "@/modules/ui/form-input";
+import { FormTextArea } from "@/modules/ui/form-text-area";
 import { Screen } from "@/modules/ui/screen";
 import { TouchButton } from "@/modules/ui/touch-button";
 import styles from "./new.module.scss";
@@ -65,7 +66,7 @@ function NewLocationPage() {
         params: { id: branch.id },
       });
     },
-    onError: (error) => {
+    onError: (error: unknown) => {
       toast({
         title: "Couldn’t create location",
         description:
@@ -96,13 +97,14 @@ function NewLocationPage() {
           value={form.name}
           onChange={(name) => setForm((current) => ({ ...current, name }))}
         />
-        <FormInput
+        <FormTextArea
           label="Address"
           placeholder="Street, city"
           value={form.address}
           onChange={(address) =>
             setForm((current) => ({ ...current, address }))
           }
+          autoComplete="street-address"
         />
         <div className={styles.mapWrap}>
           <BranchMap

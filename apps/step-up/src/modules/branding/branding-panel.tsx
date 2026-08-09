@@ -69,7 +69,7 @@ export function BrandingPanel({
         variant: "success",
       });
     },
-    onError: (error) => {
+    onError: (error: unknown) => {
       const description =
         error instanceof Error ? error.message : "Could not upload logo.";
       setLogoError(description);
@@ -92,7 +92,7 @@ export function BrandingPanel({
         variant: "success",
       });
     },
-    onError: (error) => {
+    onError: (error: unknown) => {
       const description =
         error instanceof Error ? error.message : "Could not remove logo.";
       setLogoError(description);
@@ -122,7 +122,7 @@ export function BrandingPanel({
         variant: "success",
       });
     },
-    onError: (error) => {
+    onError: (error: unknown) => {
       const description =
         error instanceof Error ? error.message : "Could not upload hero image.";
       setHeroError(description);
@@ -149,7 +149,7 @@ export function BrandingPanel({
         variant: "success",
       });
     },
-    onError: (error) => {
+    onError: (error: unknown) => {
       const description =
         error instanceof Error ? error.message : "Could not remove hero image.";
       setHeroError(description);

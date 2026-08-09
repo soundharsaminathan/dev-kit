@@ -78,7 +78,7 @@ export function StudioDanceStylesFormPage() {
         variant: "success",
       });
     },
-    onError: (error) => {
+    onError: (error: unknown) => {
       toast({
         title: "Couldn’t save dance styles",
         description:
