@@ -839,12 +839,20 @@ function NewBatchPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {availableTemplates.map((template) => (
-                        <SelectItem key={template.id} id={template.id}>
-                          {template.name}
-                          {template.isSample ? " (sample)" : ""}
-                        </SelectItem>
-                      ))}
+                      {availableTemplates.map((template) => {
+                        const label = template.isSample
+                          ? `${template.name} (sample)`
+                          : template.name;
+                        return (
+                          <SelectItem
+                            key={template.id}
+                            id={template.id}
+                            textValue={label}
+                          >
+                            {label}
+                          </SelectItem>
+                        );
+                      })}
                     </SelectContent>
                   </Select>
 

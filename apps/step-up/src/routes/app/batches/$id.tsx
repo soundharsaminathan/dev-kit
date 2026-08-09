@@ -953,7 +953,11 @@ function EditBatchForm({
               </SelectTrigger>
               <SelectContent>
                 {availableTemplates.map((template) => (
-                  <SelectItem key={template.id} id={template.id}>
+                  <SelectItem
+                    key={template.id}
+                    id={template.id}
+                    textValue={template.name}
+                  >
                     {template.name}
                   </SelectItem>
                 ))}
