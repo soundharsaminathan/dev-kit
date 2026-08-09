@@ -291,57 +291,72 @@ function LocationEditPage() {
           <h2 className={styles.heading}>Opening hours</h2>
           <div className={styles.hours}>
             {(hours.days ?? []).map((day, index) => (
-              <div key={day.day} className={styles.hoursRow}>
-                <span className={styles.dayLabel}>
-                  {WEEKDAY_LABELS[day.day]}
-                </span>
-                <label className={styles.closed}>
-                  <input
-                    type="checkbox"
-                    checked={Boolean(day.closed)}
-                    onChange={(event) => {
-                      const closed = event.target.checked;
-                      setHours((current) => ({
-                        ...current,
-                        days: (current.days ?? []).map((item, i) =>
-                          i === index ? { ...item, closed } : item,
-                        ),
-                      }));
-                    }}
-                  />
-                  Closed
-                </label>
+              <div
+                key={day.day}
+                className={styles.hoursRow}
+                data-closed={day.closed ? "true" : undefined}
+              >
+                <div className={styles.hoursMeta}>
+                  <span className={styles.dayLabel}>
+                    {WEEKDAY_LABELS[day.day]}
+                  </span>
+                  <label className={styles.closed}>
+                    <input
+                      type="checkbox"
+                      checked={Boolean(day.closed)}
+                      onChange={(event) => {
+                        const closed = event.target.checked;
+                        setHours((current) => ({
+                          ...current,
+                          days: (current.days ?? []).map((item, i) =>
+                            i === index ? { ...item, closed } : item,
+                          ),
+                        }));
+                      }}
+                    />
+                    Closed
+                  </label>
+                </div>
                 {!day.closed ? (
-                  <>
-                    <input
-                      className={styles.time}
-                      type="time"
-                      value={day.open ?? "09:00"}
-                      onChange={(event) => {
-                        const open = event.target.value;
-                        setHours((current) => ({
-                          ...current,
-                          days: (current.days ?? []).map((item, i) =>
-                            i === index ? { ...item, open } : item,
-                          ),
-                        }));
-                      }}
-                    />
-                    <input
-                      className={styles.time}
-                      type="time"
-                      value={day.close ?? "21:00"}
-                      onChange={(event) => {
-                        const close = event.target.value;
-                        setHours((current) => ({
-                          ...current,
-                          days: (current.days ?? []).map((item, i) =>
-                            i === index ? { ...item, close } : item,
-                          ),
-                        }));
-                      }}
-                    />
-                  </>
+                  <div className={styles.hoursTimes}>
+                    <label className={styles.timeField}>
+                      <span className={styles.timeLabel}>Opens</span>
+                      <input
+                        className={styles.time}
+                        type="time"
+                        value={day.open ?? "09:00"}
+                        onChange={(event) => {
+                          const open = event.target.value;
+                          setHours((current) => ({
+                            ...current,
+                            days: (current.days ?? []).map((item, i) =>
+                              i === index ? { ...item, open } : item,
+                            ),
+                          }));
+                        }}
+                      />
+                    </label>
+                    <span className={styles.timeSep} aria-hidden="true">
+                      –
+                    </span>
+                    <label className={styles.timeField}>
+                      <span className={styles.timeLabel}>Closes</span>
+                      <input
+                        className={styles.time}
+                        type="time"
+                        value={day.close ?? "21:00"}
+                        onChange={(event) => {
+                          const close = event.target.value;
+                          setHours((current) => ({
+                            ...current,
+                            days: (current.days ?? []).map((item, i) =>
+                              i === index ? { ...item, close } : item,
+                            ),
+                          }));
+                        }}
+                      />
+                    </label>
+                  </div>
                 ) : null}
               </div>
             ))}

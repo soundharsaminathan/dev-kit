@@ -54,9 +54,25 @@
 
 .hoursRow {
   display: grid;
-  grid-template-columns: 6.5rem auto auto auto;
-  gap: var(--space-2, 0.5rem);
+  grid-template-columns: minmax(7rem, 10rem) minmax(0, 1fr);
+  gap: var(--space-3, 0.75rem) var(--space-4, 1rem);
   align-items: center;
+  padding: var(--space-3, 0.75rem);
+  border-radius: var(--radius-xl, 1rem);
+  border: 1px solid color-mix(in srgb, var(--color-fg) 10%, transparent);
+  background: color-mix(in srgb, var(--color-fg) 3%, transparent);
+}
+
+.hoursRow[data-closed="true"] {
+  opacity: 0.72;
+}
+
+.hoursMeta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3, 0.75rem);
+  min-width: 0;
 }
 
 .dayLabel {
@@ -69,15 +85,51 @@
   align-items: center;
   gap: 0.35rem;
   font-size: 0.8125rem;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.hoursTimes {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: var(--space-2, 0.5rem);
+  align-items: end;
+  min-width: 0;
+}
+
+.timeField {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.timeLabel {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--color-fg) 62%, transparent);
+}
+
+.timeSep {
+  display: none;
+  padding-bottom: 0.55rem;
+  color: color-mix(in srgb, var(--color-fg) 45%, transparent);
+  font-weight: 600;
 }
 
 .time {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
   border: 1px solid color-mix(in srgb, var(--color-fg) 14%, transparent);
-  background: transparent;
+  background: var(--color-bg, transparent);
   color: inherit;
   border-radius: var(--radius-md, 0.5rem);
-  padding: 0.35rem 0.5rem;
+  padding: 0.5rem 0.6rem;
   font: inherit;
+  font-variant-numeric: tabular-nums;
 }
 
 .stack {
@@ -101,12 +153,36 @@
   font-size: 0.875rem;
 }
 
+@media (min-width: 641px) {
+  .timeSep {
+    display: inline;
+  }
+
+  .timeLabel {
+    display: none;
+  }
+
+  .hoursTimes {
+    align-items: center;
+  }
+}
+
 @media (max-width: 640px) {
   .hoursRow {
+    grid-template-columns: 1fr;
+    gap: var(--space-3, 0.75rem);
+  }
+
+  .hoursMeta {
+    width: 100%;
+  }
+
+  .hoursTimes {
+    width: 100%;
     grid-template-columns: 1fr 1fr;
   }
 
-  .dayLabel {
-    grid-column: 1 / -1;
+  .time {
+    min-height: 2.75rem;
   }
 }
