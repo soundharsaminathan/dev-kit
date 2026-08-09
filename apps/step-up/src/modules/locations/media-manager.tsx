@@ -10,7 +10,10 @@ import { useToastContext } from "@dev-ui/components/toast";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { useApi } from "@/lib/api-context";
+import { AppSheet } from "@/modules/ui/app-sheet";
 import { FormInput } from "@/modules/ui/form-input";
+import staff from "@/modules/ui/staff.module.scss";
+import { ErrorState } from "@/modules/ui/states";
 import { TouchButton } from "@/modules/ui/touch-button";
 import styles from "./media-manager.module.scss";
 import {
@@ -89,6 +92,7 @@ export function MediaManager({
   const [uploading, setUploading] = useState(false);
   const [preview, setPreview] = useState<"mobile" | "desktop">("mobile");
   const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [mediaToDelete, setMediaToDelete] = useState<BranchMedia | null>(null);
 
   const active = useMemo(
     () => media.filter((item) => !item.archivedAt),
@@ -181,19 +185,12 @@ export function MediaManager({
     mutationFn: (mediaId: string) =>
       api.delete(`/branches/${branchId}/media/${mediaId}`),
     onSuccess: () => {
+      setMediaToDelete(null);
       invalidate();
       toast({
         title: "Media deleted",
         description: "Gallery item removed.",
         variant: "success",
-      });
-    },
-    onError: (error: unknown) => {
-      toast({
-        title: "Couldn’t delete media",
-        description:
-          error instanceof Error ? error.message : "Could not delete media.",
-        variant: "error",
       });
     },
   });
@@ -372,12 +369,9 @@ export function MediaManager({
               </TouchButton>
               <TouchButton
                 size="sm"
-                variant="quiet"
-                onClick={() => {
-                  if (window.confirm("Delete this media item?")) {
-                    deleteMedia.mutate(item.id);
-                  }
-                }}
+                variant="danger"
+                data-testid={`delete-media-${item.id}`}
+                onClick={() => setMediaToDelete(item)}
               >
                 Delete
               </TouchButton>
@@ -392,6 +386,55 @@ export function MediaManager({
           reorder.
         </p>
       ) : null}
+
+      <AppSheet
+        isOpen={mediaToDelete !== null}
+        onOpenChange={(open) => {
+          if (!open && !deleteMedia.isPending) {
+            setMediaToDelete(null);
+          }
+        }}
+        title="Delete media"
+      >
+        <div className={staff.sheetStack}>
+          <p className={staff.rowMeta}>
+            Delete this media item
+            {mediaToDelete?.caption ? ` (“${mediaToDelete.caption}”)` : ""}?
+            This cannot be undone.
+          </p>
+          {deleteMedia.isError ? (
+            <ErrorState
+              description={
+                deleteMedia.error instanceof Error
+                  ? deleteMedia.error.message
+                  : "Could not delete media."
+              }
+            />
+          ) : null}
+          <div className={staff.sheetActions}>
+            <TouchButton
+              variant="default"
+              fullWidth
+              isDisabled={deleteMedia.isPending}
+              onClick={() => setMediaToDelete(null)}
+            >
+              Cancel
+            </TouchButton>
+            <TouchButton
+              variant="danger"
+              fullWidth
+              isPending={deleteMedia.isPending}
+              data-testid="confirm-delete-media"
+              onClick={() => {
+                if (!mediaToDelete) return;
+                deleteMedia.mutate(mediaToDelete.id);
+              }}
+            >
+              Delete media
+            </TouchButton>
+          </div>
+        </div>
+      </AppSheet>
     </section>
   );
 }
