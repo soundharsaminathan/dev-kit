@@ -375,6 +375,15 @@ test.describe("admin (staff) smoke @smoke", () => {
       await expect(
         page.getByTestId(`switch-batch-${SMOKE.beginnerBatchId}`),
       ).toHaveCount(0);
+
+      await page.goto(`/app/batches/${SMOKE.beginnerBatchId}`, {
+        waitUntil: "domcontentloaded",
+      });
+      await waitForAppReady(page);
+      await page.getByTestId("roster-tab-inactive").click();
+      await expect(
+        page.getByTestId(`inactive-reason-${student.id}`),
+      ).toHaveText("Unenrolled");
     } finally {
       await context.close();
       await cleanup.dispose();

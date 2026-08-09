@@ -992,3 +992,60 @@ describe("MembershipsService.findMonthlyUnpaidStudentIds", () => {
     ).resolves.toEqual(new Set(["s-pending"]));
   });
 });
+
+describe("MembershipsService.findStudentIdsWithActiveMonthForBatch", () => {
+  const prisma = {
+    membershipCoveredStudent: { findMany: vi.fn() },
+  };
+  const notifications = { create: vi.fn() };
+  const scheduleConflicts = {
+    assertNoConflicts: vi.fn(),
+    assertStudentAvailableForBatch: vi.fn(),
+  };
+
+  let service: MembershipsService;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    service = new MembershipsService(
+      prisma as never,
+      notifications as never,
+      scheduleConflicts as never,
+    );
+  });
+
+  it("returns empty set for empty student ids", async () => {
+    await expect(
+      service.findStudentIdsWithActiveMonthForBatch([], "KIDS"),
+    ).resolves.toEqual(new Set());
+    expect(prisma.membershipCoveredStudent.findMany).not.toHaveBeenCalled();
+  });
+
+  it("returns students whose seat role covers the batch category", async () => {
+    const at = new Date("2026-07-15T12:00:00.000Z");
+    prisma.membershipCoveredStudent.findMany.mockResolvedValue([
+      {
+        studentId: "s-kid",
+        seatRole: "KID",
+        membership: {
+          status: "ACTIVE",
+          periodStart: new Date("2026-07-01T00:00:00.000Z"),
+          periodEnd: new Date("2026-07-31T23:59:59.999Z"),
+        },
+      },
+    ]);
+
+    await expect(
+      service.findStudentIdsWithActiveMonthForBatch(["s-kid", "s-other"], "KIDS", at),
+    ).resolves.toEqual(new Set(["s-kid"]));
+
+    expect(prisma.membershipCoveredStudent.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          studentId: { in: ["s-kid", "s-other"] },
+          seatRole: "KID",
+        }),
+      }),
+    );
+  });
+});

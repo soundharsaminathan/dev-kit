@@ -566,6 +566,59 @@ export class MembershipsService {
     );
   }
 
+  /** Student ids with an ACTIVE membership period that covers `batchCategory`. */
+  async findStudentIdsWithActiveMonthForBatch(
+    studentIds: string[],
+    batchCategory: BatchCategory,
+    at = new Date(),
+  ): Promise<Set<string>> {
+    if (studentIds.length === 0) {
+      return new Set();
+    }
+
+    const seatRole = seatRoleForBatchCategory(batchCategory);
+    const covers = await this.prisma.membershipCoveredStudent.findMany({
+      where: {
+        studentId: { in: studentIds },
+        seatRole,
+        membership: {
+          status: MembershipStatus.ACTIVE,
+          periodStart: { lte: at },
+          periodEnd: { gte: at },
+          subscription: { active: true },
+        },
+      },
+      select: {
+        studentId: true,
+        seatRole: true,
+        membership: {
+          select: {
+            status: true,
+            periodStart: true,
+            periodEnd: true,
+          },
+        },
+      },
+    });
+
+    const result = new Set<string>();
+    for (const cover of covers) {
+      if (
+        membershipCoversBatch({
+          status: cover.membership.status,
+          periodStart: cover.membership.periodStart,
+          periodEnd: cover.membership.periodEnd,
+          seatRole: cover.seatRole,
+          batchCategory,
+          at,
+        })
+      ) {
+        result.add(cover.studentId);
+      }
+    }
+    return result;
+  }
+
   /**
    * Students who should show as unpaid on roster/attendance:
    * - latest monthly membership is due/expired or has an open invoice

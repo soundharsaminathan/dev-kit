@@ -3,7 +3,43 @@ import { ToggleButtonGroup } from "@dev-ui/components/toggle-button-group";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { useApi } from "@/lib/api-context";
+import { SkeletonBlock } from "@/modules/ui/skeleton-block";
 import styles from "./batch-revenue.module.scss";
+
+const REVENUE_METRIC_KEYS = ["collected", "pending", "overdue"] as const;
+const REVENUE_PLAN_KEYS = ["plan-0", "plan-1"] as const;
+
+function BatchRevenueSkeleton() {
+  return (
+    <div
+      className={styles.skeleton}
+      role="status"
+      aria-busy="true"
+      aria-label="Loading revenue"
+    >
+      <SkeletonBlock height="0.75rem" width="45%" />
+      <div className={styles.metrics}>
+        {REVENUE_METRIC_KEYS.map((key) => (
+          <div key={key} className={styles.metric}>
+            <SkeletonBlock height="0.6875rem" width="55%" />
+            <SkeletonBlock height="1rem" width="70%" />
+          </div>
+        ))}
+      </div>
+      <ul className={styles.planList}>
+        {REVENUE_PLAN_KEYS.map((key) => (
+          <li key={key} className={styles.planRow}>
+            <div className={styles.planCopy}>
+              <SkeletonBlock height="0.875rem" width="55%" />
+              <SkeletonBlock height="0.75rem" width="40%" />
+            </div>
+            <SkeletonBlock height="0.875rem" width="4rem" />
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
 
 type RevenuePeriod = "month" | "all";
 
@@ -72,9 +108,7 @@ export function BatchRevenue({ batchId }: BatchRevenueProps) {
         </ToggleButtonGroup>
       </div>
 
-      {query.isLoading ? (
-        <p className={styles.empty}>Loading revenue…</p>
-      ) : null}
+      {query.isLoading ? <BatchRevenueSkeleton /> : null}
 
       {query.isError || (!query.isLoading && !query.data) ? (
         <p className={styles.empty} role="alert">

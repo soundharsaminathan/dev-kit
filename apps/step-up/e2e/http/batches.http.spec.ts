@@ -168,13 +168,53 @@ test.describe("batches HTTP @http", () => {
 
       const batch = await expectOk<{
         enrollments: Array<{ studentId: string }>;
+        inactiveEnrollments: Array<{
+          studentId: string;
+          inactiveReason: string;
+        }>;
       }>("STAFF", `/batches/${SEED.kidsBatchId}`);
       expect(
         batch.enrollments.some((row) => row.studentId === student.id),
       ).toBe(false);
+      expect(
+        batch.inactiveEnrollments.some(
+          (row) =>
+            row.studentId === student.id && row.inactiveReason === "UNENROLLED",
+        ),
+      ).toBe(true);
     } finally {
       await cleanup.dispose();
     }
+  });
+
+  test("kids batch seed exposes inactive moved and unenrolled roster rows @http", async () => {
+    const batch = await expectOk<{
+      enrollments: Array<{ studentId: string }>;
+      inactiveEnrollments: Array<{
+        studentId: string;
+        inactiveReason: string;
+      }>;
+    }>("STAFF", `/batches/${SEED.kidsBatchId}`);
+
+    expect(
+      batch.enrollments.some(
+        (row) => row.studentId === SEED.users.STUDENT.id,
+      ),
+    ).toBe(true);
+    expect(
+      batch.inactiveEnrollments.some(
+        (row) =>
+          row.studentId === SEED.users.STUDENT_UNENROLLED.id &&
+          row.inactiveReason === "UNENROLLED",
+      ),
+    ).toBe(true);
+    expect(
+      batch.inactiveEnrollments.some(
+        (row) =>
+          row.studentId === SEED.users.STUDENT_MOVED.id &&
+          row.inactiveReason === "MOVED",
+      ),
+    ).toBe(true);
   });
 
   test("student cannot unenroll from a batch @http", async () => {
@@ -302,10 +342,20 @@ test.describe("batches HTTP @http", () => {
 
         const fromDetail = await expectOk<{
           enrollments: Array<{ studentId: string }>;
+          inactiveEnrollments: Array<{
+            studentId: string;
+            inactiveReason: string;
+          }>;
         }>("TRAINER", `/batches/${fromBatchId}`);
         expect(
           fromDetail.enrollments.some((row) => row.studentId === studentId),
         ).toBe(false);
+        expect(
+          fromDetail.inactiveEnrollments.some(
+            (row) =>
+              row.studentId === studentId && row.inactiveReason === "MOVED",
+          ),
+        ).toBe(true);
 
         const toDetail = await expectOk<{
           enrollments: Array<{ studentId: string }>;

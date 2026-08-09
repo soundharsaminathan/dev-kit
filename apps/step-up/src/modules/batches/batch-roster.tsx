@@ -8,6 +8,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@dev-ui/components/select";
+import { Tab, TabList, TabPanel, Tabs } from "@dev-ui/components/tabs";
 import { useToastContext } from "@dev-ui/components/toast";
 import { Icon } from "@dev-ui/icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -44,6 +45,12 @@ export type BatchEnrollmentRow = {
   };
 };
 
+export type InactiveEnrollmentRow = BatchEnrollmentRow & {
+  endReason?: string | null;
+  endedAt?: string | null;
+  inactiveReason: "MOVED" | "UNENROLLED";
+};
+
 type BatchPlan = {
   id: string;
   name: string;
@@ -67,6 +74,7 @@ type BatchWithEnrollments = {
   remainingSeats?: number;
   plans?: BatchPlan[];
   enrollments: BatchEnrollmentRow[];
+  inactiveEnrollments?: InactiveEnrollmentRow[];
   sessions?: Array<{
     id: string;
     startsAt: string;
@@ -80,6 +88,10 @@ function planLabel(plan: BatchPlan) {
     plan.billingCadence.charAt(0) +
     plan.billingCadence.slice(1).toLowerCase().replaceAll("_", " ");
   return `${plan.name} · ${formatPrice(plan.price)} / ${cadence}`;
+}
+
+function inactiveChipLabel(reason: InactiveEnrollmentRow["inactiveReason"]) {
+  return reason === "MOVED" ? "Moved" : "Unenrolled";
 }
 
 export function BatchRoster({ batchId, capacity, active }: BatchRosterProps) {
@@ -106,6 +118,12 @@ export function BatchRoster({ batchId, capacity, active }: BatchRosterProps) {
       a.student.name.localeCompare(b.student.name),
     );
   }, [query.data?.enrollments]);
+  const inactiveEnrollments = useMemo(() => {
+    const rows = query.data?.inactiveEnrollments ?? [];
+    return [...rows].sort((a, b) =>
+      a.student.name.localeCompare(b.student.name),
+    );
+  }, [query.data?.inactiveEnrollments]);
   const enrolledIds = useMemo(
     () => enrollments.map((row) => row.studentId),
     [enrollments],
@@ -226,6 +244,13 @@ export function BatchRoster({ batchId, capacity, active }: BatchRosterProps) {
     setStudentId(student?.id ?? null);
   }
 
+  function openStudent(id: string) {
+    void navigate({
+      to: "/app/students/$id",
+      params: { id },
+    });
+  }
+
   if (query.isError) {
     return (
       <ErrorState
@@ -253,152 +278,220 @@ export function BatchRoster({ batchId, capacity, active }: BatchRosterProps) {
         {!active ? <Badge variant="neutral">Inactive</Badge> : null}
       </div>
 
-      {!query.isLoading && !hasUpcomingSessions ? (
-        <div className={staff.softPanel}>
-          <p className={styles.hint}>
-            No upcoming sessions — enrollment is closed until this batch has a
-            next class on the schedule.
-          </p>
-        </div>
-      ) : hasUpcomingSessions ? (
-        <div className={staff.softPanel}>
-          <div className={styles.enrollForm}>
-            <StudentSearchCombobox
-              key={pickerKey}
-              label="Add student"
-              selectedKey={studentId}
-              onSelectionChange={handleSelect}
-              excludeIds={enrolledIds}
-              isDisabled={!canEnroll}
-              placeholder="Search student to enroll"
-            />
-            <Select
-              label="Package"
-              placeholder={
-                hasPlans ? "Select a package" : "No packages on this batch"
-              }
-              value={subscriptionId}
-              onChange={(key) =>
-                setSubscriptionId(key == null ? null : String(key))
-              }
-              isDisabled={!hasPlans || !active || isFull}
-            >
-              <SelectTrigger data-testid="enroll-package">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {plans.map((plan) => (
-                  <SelectItem
-                    key={plan.id}
-                    id={plan.id}
-                    textValue={planLabel(plan)}
+      <Tabs defaultSelectedKey="active" aria-label="Student roster">
+        <TabList>
+          <Tab id="active" data-testid="roster-tab-active">
+            Active
+          </Tab>
+          <Tab id="inactive" data-testid="roster-tab-inactive">
+            Inactive
+          </Tab>
+        </TabList>
+
+        <TabPanel id="active">
+          <div className={styles.panel}>
+            {!query.isLoading && !hasUpcomingSessions ? (
+              <div className={staff.softPanel}>
+                <p className={styles.hint}>
+                  No upcoming sessions — enrollment is closed until this batch
+                  has a next class on the schedule.
+                </p>
+              </div>
+            ) : hasUpcomingSessions ? (
+              <div className={staff.softPanel}>
+                <div className={styles.enrollForm}>
+                  <StudentSearchCombobox
+                    key={pickerKey}
+                    label="Add student"
+                    selectedKey={studentId}
+                    onSelectionChange={handleSelect}
+                    excludeIds={enrolledIds}
+                    isDisabled={!canEnroll}
+                    placeholder="Search student to enroll"
+                  />
+                  <Select
+                    label="Package"
+                    placeholder={
+                      hasPlans
+                        ? "Select a package"
+                        : "No packages on this batch"
+                    }
+                    value={subscriptionId}
+                    onChange={(key) =>
+                      setSubscriptionId(key == null ? null : String(key))
+                    }
+                    isDisabled={!hasPlans || !active || isFull}
                   >
-                    {planLabel(plan)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Menu>
-              <TouchButton
-                variant="primary"
-                isDisabled={
-                  !canEnroll ||
-                  !selectedStudent ||
-                  !subscriptionId ||
-                  enroll.isPending
-                }
-                isPending={enroll.isPending}
-                data-testid="enroll-button"
-                onClick={handleEnrollAction}
-              >
-                Enroll
-              </TouchButton>
-            </Menu>
-          </div>
-          {!hasPlans ? (
-            <p className={styles.hint}>
-              Attach at least one individual package to this batch before
-              enrolling students.
-            </p>
-          ) : null}
-          {!active ? (
-            <p className={styles.hint}>
-              Activate this batch before enrolling students.
-            </p>
-          ) : null}
-          {active && isFull ? (
-            <p className={styles.hint}>
-              Batch is at capacity. Increase capacity to add more students.
-            </p>
-          ) : null}
-          {enroll.isError ? (
-            <p className={styles.error}>
-              {enroll.error instanceof Error
-                ? enroll.error.message
-                : "Could not enroll student."}
-            </p>
-          ) : null}
-          {selectedStudent ? (
-            <p className={styles.hint}>{selectedStudent.email}</p>
-          ) : null}
-        </div>
-      ) : null}
-
-      {enrollments.length === 0 ? (
-        <EmptyState
-          icon={ENTITY_ICONS.student}
-          title="No students enrolled"
-          description="Search for a student and pick a package to enroll."
-        />
-      ) : (
-        <div className={styles.list}>
-          {enrollments.map((row) => {
-            const student = row.student;
-            const initials = student.name.slice(0, 1).toUpperCase();
-            const paidMonths = row.paidMonths ?? 0;
-
-            return (
-              <PressableCard
-                key={row.studentId}
-                onClick={() =>
-                  void navigate({
-                    to: "/app/students/$id",
-                    params: { id: row.studentId },
-                  })
-                }
-              >
-                <div className={styles.card}>
-                  <Avatar size="lg" className={styles.avatar}>
-                    {student.photoUrl ? (
-                      <AvatarImage
-                        src={student.photoUrl}
-                        alt={student.name}
-                      />
-                    ) : null}
-                    <AvatarFallback>{initials}</AvatarFallback>
-                  </Avatar>
-
-                  <div className={styles.body}>
-                    <div className={styles.top}>
-                      <h3 className={styles.name}>{student.name}</h3>
-                    </div>
-
-                    <p
-                      className={styles.tenure}
-                      data-testid={`paid-months-${row.studentId}`}
+                    <SelectTrigger data-testid="enroll-package">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {plans.map((plan) => (
+                        <SelectItem
+                          key={plan.id}
+                          id={plan.id}
+                          textValue={planLabel(plan)}
+                        >
+                          {planLabel(plan)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Menu>
+                    <TouchButton
+                      variant="primary"
+                      isDisabled={
+                        !canEnroll ||
+                        !selectedStudent ||
+                        !subscriptionId ||
+                        enroll.isPending
+                      }
+                      isPending={enroll.isPending}
+                      data-testid="enroll-button"
+                      onClick={handleEnrollAction}
                     >
-                      <Icon name="wallet" className={styles.tenureIcon} />
-                      {formatPaidMonths(paidMonths)}
-                    </p>
-                  </div>
-
-                  <Icon name="chevron-right" className={styles.chevron} />
+                      Enroll
+                    </TouchButton>
+                  </Menu>
                 </div>
-              </PressableCard>
-            );
-          })}
-        </div>
-      )}
+                {!hasPlans ? (
+                  <p className={styles.hint}>
+                    Attach at least one individual package to this batch before
+                    enrolling students.
+                  </p>
+                ) : null}
+                {!active ? (
+                  <p className={styles.hint}>
+                    Activate this batch before enrolling students.
+                  </p>
+                ) : null}
+                {active && isFull ? (
+                  <p className={styles.hint}>
+                    Batch is at capacity. Increase capacity to add more
+                    students.
+                  </p>
+                ) : null}
+                {enroll.isError ? (
+                  <p className={styles.error}>
+                    {enroll.error instanceof Error
+                      ? enroll.error.message
+                      : "Could not enroll student."}
+                  </p>
+                ) : null}
+                {selectedStudent ? (
+                  <p className={styles.hint}>{selectedStudent.email}</p>
+                ) : null}
+              </div>
+            ) : null}
+
+            {enrollments.length === 0 ? (
+              <EmptyState
+                icon={ENTITY_ICONS.student}
+                title="No students enrolled"
+                description="Search for a student and pick a package to enroll."
+              />
+            ) : (
+              <div className={styles.list}>
+                {enrollments.map((row) => {
+                  const student = row.student;
+                  const initials = student.name.slice(0, 1).toUpperCase();
+                  const paidMonths = row.paidMonths ?? 0;
+
+                  return (
+                    <PressableCard
+                      key={row.studentId}
+                      onClick={() => openStudent(row.studentId)}
+                    >
+                      <div className={styles.card}>
+                        <Avatar size="lg" className={styles.avatar}>
+                          {student.photoUrl ? (
+                            <AvatarImage
+                              src={student.photoUrl}
+                              alt={student.name}
+                            />
+                          ) : null}
+                          <AvatarFallback>{initials}</AvatarFallback>
+                        </Avatar>
+
+                        <div className={styles.body}>
+                          <div className={styles.top}>
+                            <h3 className={styles.name}>{student.name}</h3>
+                          </div>
+
+                          <p
+                            className={styles.tenure}
+                            data-testid={`paid-months-${row.studentId}`}
+                          >
+                            <Icon name="wallet" className={styles.tenureIcon} />
+                            {formatPaidMonths(paidMonths)}
+                          </p>
+                        </div>
+
+                        <Icon name="chevron-right" className={styles.chevron} />
+                      </div>
+                    </PressableCard>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </TabPanel>
+
+        <TabPanel id="inactive">
+          <div className={styles.panel}>
+            {inactiveEnrollments.length === 0 ? (
+              <EmptyState
+                icon={ENTITY_ICONS.student}
+                title="No inactive students"
+                description="Students who move or unenroll stay here while their membership month is still active."
+              />
+            ) : (
+              <div className={styles.list}>
+                {inactiveEnrollments.map((row) => {
+                  const student = row.student;
+                  const initials = student.name.slice(0, 1).toUpperCase();
+                  const chip = inactiveChipLabel(row.inactiveReason);
+
+                  return (
+                    <PressableCard
+                      key={row.studentId}
+                      onClick={() => openStudent(row.studentId)}
+                    >
+                      <div className={styles.card}>
+                        <Avatar size="lg" className={styles.avatar}>
+                          {student.photoUrl ? (
+                            <AvatarImage
+                              src={student.photoUrl}
+                              alt={student.name}
+                            />
+                          ) : null}
+                          <AvatarFallback>{initials}</AvatarFallback>
+                        </Avatar>
+
+                        <div className={styles.body}>
+                          <div className={styles.top}>
+                            <h3 className={styles.name}>{student.name}</h3>
+                            <div className={styles.badges}>
+                              <Badge
+                                variant="neutral"
+                                data-testid={`inactive-reason-${row.studentId}`}
+                              >
+                                {chip}
+                              </Badge>
+                            </div>
+                          </div>
+                        </div>
+
+                        <Icon name="chevron-right" className={styles.chevron} />
+                      </div>
+                    </PressableCard>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </TabPanel>
+      </Tabs>
     </div>
   );
 }

@@ -1865,3 +1865,212 @@ describe("BatchesService.unenroll", () => {
     expect(billing.refundInvoice).not.toHaveBeenCalled();
   });
 });
+
+describe("BatchesService.getById roster split", () => {
+  const prisma = {
+    batch: { findUniqueOrThrow: vi.fn() },
+    batchEnrollment: { findMany: vi.fn() },
+    batchRating: { findUnique: vi.fn() },
+    booking: {
+      findMany: vi.fn(),
+      findFirst: vi.fn(),
+      updateMany: vi.fn(),
+    },
+    invoice: { findMany: vi.fn() },
+  };
+
+  const memberships = {
+    findStudentIdsWithActiveMonthForBatch: vi.fn(),
+    findMonthlyUnpaidStudentIds: vi.fn(),
+  };
+
+  const media = {
+    signReadUrl: vi.fn(async (url: string | null) => url),
+  };
+
+  let service: BatchesService;
+
+  const student = (id: string, name: string) => ({
+    id,
+    name,
+    email: `${id}@example.com`,
+    phone: null,
+    photoUrl: null,
+  });
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    service = new BatchesService(
+      prisma as never,
+      { decryptUser: (user: unknown) => user } as never,
+      {
+        assertNoConflicts: vi.fn(),
+        assertStudentAvailableForBatch: vi.fn(),
+      } as never,
+      { invalidate: vi.fn() } as never,
+      media as never,
+      memberships as never,
+      { refundInvoice: vi.fn() } as never,
+    );
+    prisma.booking.updateMany.mockResolvedValue({ count: 0 });
+    prisma.booking.findMany.mockResolvedValue([]);
+    prisma.booking.findFirst.mockResolvedValue(null);
+    prisma.batchRating.findUnique.mockResolvedValue(null);
+    prisma.invoice.findMany.mockResolvedValue([]);
+    memberships.findMonthlyUnpaidStudentIds.mockResolvedValue(new Set());
+  });
+
+  it("splits active/inactive by membership month and maps end reasons", async () => {
+    prisma.batch.findUniqueOrThrow.mockResolvedValue({
+      id: "batch-1",
+      studioId: "studio-1",
+      category: "KIDS",
+      capacity: 10,
+      scheduleJson: {
+        frequency: "WEEKLY",
+        weekdays: [1],
+        startDate: "2026-01-01",
+        endDate: "2026-12-31",
+        startTime: "10:00",
+        endTime: "11:00",
+        utcOffsetMinutes: 0,
+      },
+      danceCategories: [{ name: "Hip Hop" }],
+      coverImageUrl: null,
+      branch: null,
+      certificateTemplate: null,
+      sessions: [],
+      trainers: [],
+      plans: [],
+      enrollments: [
+        {
+          id: "en-active",
+          batchId: "batch-1",
+          studentId: "s-active",
+          status: "ACTIVE",
+          enrolledAt: new Date("2026-01-01"),
+          endedAt: null,
+          endReason: null,
+          student: student("s-active", "Active Kid"),
+        },
+        {
+          id: "en-no-month",
+          batchId: "batch-1",
+          studentId: "s-no-month",
+          status: "ACTIVE",
+          enrolledAt: new Date("2026-01-01"),
+          endedAt: null,
+          endReason: null,
+          student: student("s-no-month", "No Month"),
+        },
+        {
+          id: "en-moved",
+          batchId: "batch-1",
+          studentId: "s-moved",
+          status: "ENDED",
+          enrolledAt: new Date("2026-01-01"),
+          endedAt: new Date("2026-08-01"),
+          endReason: "SWITCH",
+          student: student("s-moved", "Moved Kid"),
+        },
+        {
+          id: "en-unenrolled",
+          batchId: "batch-1",
+          studentId: "s-unenrolled",
+          status: "ENDED",
+          enrolledAt: new Date("2026-01-01"),
+          endedAt: new Date("2026-08-02"),
+          endReason: "UNENROLL",
+          student: student("s-unenrolled", "Unenrolled Kid"),
+        },
+        {
+          id: "en-ended-old",
+          batchId: "batch-1",
+          studentId: "s-ended-old",
+          status: "ENDED",
+          enrolledAt: new Date("2026-01-01"),
+          endedAt: new Date("2026-06-01"),
+          endReason: "UNENROLL",
+          student: student("s-ended-old", "Old Ended"),
+        },
+      ],
+      _count: { enrollments: 2 },
+    });
+    memberships.findStudentIdsWithActiveMonthForBatch.mockResolvedValue(
+      new Set(["s-active", "s-moved", "s-unenrolled"]),
+    );
+    prisma.batchEnrollment.findMany.mockResolvedValue([
+      { batchId: "batch-1", studentId: "s-active" },
+      { batchId: "batch-1", studentId: "s-no-month" },
+    ]);
+
+    const result = await service.getById("batch-1");
+
+    expect(
+      result.enrollments.map((row: { studentId: string }) => row.studentId),
+    ).toEqual(["s-active"]);
+    expect(
+      result.inactiveEnrollments.map(
+        (row: { studentId: string; inactiveReason: string }) => ({
+          studentId: row.studentId,
+          inactiveReason: row.inactiveReason,
+        }),
+      ),
+    ).toEqual([
+      { studentId: "s-moved", inactiveReason: "MOVED" },
+      { studentId: "s-unenrolled", inactiveReason: "UNENROLLED" },
+    ]);
+    expect(result.enrollmentCount).toBe(2);
+    expect(result.occupiedSeats).toBe(2);
+    expect(
+      memberships.findStudentIdsWithActiveMonthForBatch,
+    ).toHaveBeenCalledWith(
+      ["s-active", "s-no-month", "s-moved", "s-unenrolled", "s-ended-old"],
+      "KIDS",
+    );
+  });
+
+  it("treats viewerEnrolled as ACTIVE-only even without active month", async () => {
+    prisma.batch.findUniqueOrThrow.mockResolvedValue({
+      id: "batch-1",
+      studioId: "studio-1",
+      category: "KIDS",
+      capacity: 10,
+      scheduleJson: {},
+      danceCategories: [],
+      coverImageUrl: null,
+      branch: null,
+      certificateTemplate: null,
+      sessions: [],
+      trainers: [],
+      plans: [],
+      enrollments: [
+        {
+          id: "en-1",
+          batchId: "batch-1",
+          studentId: "s-no-month",
+          status: "ACTIVE",
+          enrolledAt: new Date("2026-01-01"),
+          endedAt: null,
+          endReason: null,
+          student: student("s-no-month", "No Month"),
+        },
+      ],
+      _count: { enrollments: 1 },
+    });
+    memberships.findStudentIdsWithActiveMonthForBatch.mockResolvedValue(
+      new Set(),
+    );
+    prisma.batchEnrollment.findMany.mockResolvedValue([
+      { batchId: "batch-1", studentId: "s-no-month" },
+    ]);
+
+    const result = await service.getById("batch-1", {
+      studentId: "s-no-month",
+    });
+
+    expect(result.enrollments).toEqual([]);
+    expect(result.inactiveEnrollments).toEqual([]);
+    expect(result.viewerEnrolled).toBe(true);
+  });
+});

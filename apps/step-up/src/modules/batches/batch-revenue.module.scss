@@ -117,3 +117,9 @@
   font-size: 0.875rem;
   color: color-mix(in srgb, var(--color-fg) 62%, transparent);
 }
+
+.skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 0.75rem);
+}

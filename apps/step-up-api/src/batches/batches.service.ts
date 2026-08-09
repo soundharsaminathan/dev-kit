@@ -51,6 +51,7 @@ import {
 import {
   ACTIVE_ENROLLMENT_WHERE,
   endEnrollmentData,
+  inactiveReasonFromEndReason,
   REACTIVATE_ENROLLMENT_DATA,
 } from "./enrollment-status";
 
@@ -567,7 +568,6 @@ export class BatchesService {
       where: { id },
       include: {
         enrollments: {
-          where: ACTIVE_ENROLLMENT_WHERE,
           include: { student: true },
         },
         branch: { include: branchCoverInclude },
@@ -585,28 +585,48 @@ export class BatchesService {
       ...row,
       trainer: this.crypto.decryptUser(row.trainer),
     }));
-    const enrollmentStudentIds = batch.enrollments.map(
+    const allStudentIds = batch.enrollments.map(
+      (enrollment) => enrollment.studentId,
+    );
+    const activeMonthIds =
+      await this.memberships.findStudentIdsWithActiveMonthForBatch(
+        allStudentIds,
+        batch.category,
+      );
+    const activeEnrollmentsRaw = batch.enrollments.filter(
+      (enrollment) =>
+        enrollment.status === BatchEnrollmentStatus.ACTIVE &&
+        activeMonthIds.has(enrollment.studentId),
+    );
+    const inactiveEnrollmentsRaw = batch.enrollments.filter(
+      (enrollment) =>
+        enrollment.status === BatchEnrollmentStatus.ENDED &&
+        activeMonthIds.has(enrollment.studentId),
+    );
+    const activeStudentIds = activeEnrollmentsRaw.map(
       (enrollment) => enrollment.studentId,
     );
     const monthlyUnpaidIds =
-      await this.memberships.findMonthlyUnpaidStudentIds(enrollmentStudentIds);
+      await this.memberships.findMonthlyUnpaidStudentIds(activeStudentIds);
     const paidInvoices =
-      enrollmentStudentIds.length === 0
+      activeStudentIds.length === 0
         ? []
         : await this.prisma.invoice.findMany({
-            where: paidMonthsInvoiceWhere(
-              batch.studioId,
-              enrollmentStudentIds,
-            ),
+            where: paidMonthsInvoiceWhere(batch.studioId, activeStudentIds),
             select: paidMonthsInvoiceSelect,
           });
     const paidMonthsByStudent = accumulatePaidMonths(paidInvoices, {
-      onlyStudentIds: new Set(enrollmentStudentIds),
+      onlyStudentIds: new Set(activeStudentIds),
     });
-    const enrollments = batch.enrollments.map((enrollment) => ({
+    const enrollments = activeEnrollmentsRaw.map((enrollment) => ({
       ...enrollment,
       monthlyUnpaid: monthlyUnpaidIds.has(enrollment.studentId),
       paidMonths: paidMonthsByStudent.get(enrollment.studentId) ?? 0,
+      student: this.crypto.decryptUser(enrollment.student),
+    }));
+    const inactiveEnrollments = inactiveEnrollmentsRaw.map((enrollment) => ({
+      ...enrollment,
+      inactiveReason: inactiveReasonFromEndReason(enrollment.endReason),
       student: this.crypto.decryptUser(enrollment.student),
     }));
 
@@ -625,7 +645,9 @@ export class BatchesService {
 
     if (options?.studentId) {
       const enrollment = batch.enrollments.find(
-        (row) => row.studentId === options.studentId,
+        (row) =>
+          row.studentId === options.studentId &&
+          row.status === BatchEnrollmentStatus.ACTIVE,
       );
       viewerEnrolled = Boolean(enrollment);
       if (enrollment) {
@@ -688,6 +710,7 @@ export class BatchesService {
           price,
         ),
       )),
+      inactiveEnrollments,
       viewerRating,
       viewerEnrolled,
       viewerEnrollment,

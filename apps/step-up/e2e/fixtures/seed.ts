@@ -4,6 +4,8 @@ export const SEED = {
   branchEastId: "e2e-branch-east-1",
   membershipStudentId: "e2e-membership-student-1",
   membershipStudentDueId: "e2e-membership-student-due-1",
+  membershipUnenrolledId: "e2e-membership-unenrolled-1",
+  membershipMovedId: "e2e-membership-moved-1",
   invoicePaidMembershipId: "e2e-invoice-paid-membership-1",
   invoiceRenewalPendingId: "e2e-invoice-renewal-pending-1",
   adultPlanIds: [
@@ -69,6 +71,20 @@ export const SEED = {
       ageRange: "TWENTY_TO_FORTY" as const,
       preferredBranchId: "e2e-branch-main-1",
       onboardingCompletedAt: "2026-01-01T00:00:00.000Z",
+    },
+    STUDENT_UNENROLLED: {
+      id: "e2e-student-unenrolled-1",
+      email: "e2e-student-unenrolled@stepup.dev",
+      name: "Unenrolled Kid",
+      role: "STUDENT" as const,
+      studioId: "studio-e2e-1",
+    },
+    STUDENT_MOVED: {
+      id: "e2e-student-moved-1",
+      email: "e2e-student-moved@stepup.dev",
+      name: "Moved Kid",
+      role: "STUDENT" as const,
+      studioId: "studio-e2e-1",
     },
     PARENT: {
       id: "e2e-parent-1",

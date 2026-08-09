@@ -2,6 +2,8 @@ import { SkeletonBlock } from "@/modules/ui/skeleton-block";
 import styles from "./batch-detail-skeleton.module.scss";
 
 const METRIC_KEYS = ["m0", "m1", "m2", "m3"] as const;
+const REVENUE_METRIC_KEYS = ["rm0", "rm1", "rm2"] as const;
+const REVENUE_PLAN_KEYS = ["rp0", "rp1"] as const;
 const SESSION_KEYS = ["s0", "s1", "s2"] as const;
 const TAB_KEYS = ["t0", "t1"] as const;
 const ROW_KEYS = ["r0", "r1", "r2", "r3"] as const;
@@ -68,6 +70,37 @@ export function BatchDetailSkeleton() {
             <div key={key} className={styles.metric}>
               <SkeletonBlock height="0.6875rem" width="45%" />
               <SkeletonBlock height="1rem" width="30%" />
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className={styles.card}>
+        <div className={styles.sectionHeader}>
+          <SkeletonBlock height="0.8125rem" width="5rem" />
+          <SkeletonBlock
+            height="1.75rem"
+            width="9.5rem"
+            radius="var(--radius-full, 999px)"
+          />
+        </div>
+        <SkeletonBlock height="0.75rem" width="45%" />
+        <div className={styles.revenueMetrics}>
+          {REVENUE_METRIC_KEYS.map((key) => (
+            <div key={key} className={styles.metric}>
+              <SkeletonBlock height="0.6875rem" width="55%" />
+              <SkeletonBlock height="1rem" width="70%" />
+            </div>
+          ))}
+        </div>
+        <div className={styles.revenuePlans}>
+          {REVENUE_PLAN_KEYS.map((key) => (
+            <div key={key} className={styles.revenuePlanRow}>
+              <div className={styles.sessionCopy}>
+                <SkeletonBlock height="0.875rem" width="55%" />
+                <SkeletonBlock height="0.75rem" width="40%" />
+              </div>
+              <SkeletonBlock height="0.875rem" width="4rem" />
             </div>
           ))}
         </div>

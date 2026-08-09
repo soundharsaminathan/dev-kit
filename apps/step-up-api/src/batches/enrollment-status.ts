@@ -10,6 +10,14 @@ export const REACTIVATE_ENROLLMENT_DATA = {
   endReason: null,
 } satisfies Prisma.BatchEnrollmentUpdateInput;
 
+export type InactiveEnrollmentReason = "MOVED" | "UNENROLLED";
+
+export function inactiveReasonFromEndReason(
+  endReason: string | null | undefined,
+): InactiveEnrollmentReason {
+  return endReason === "SWITCH" ? "MOVED" : "UNENROLLED";
+}
+
 export function endEnrollmentData(reason: string, at = new Date()) {
   return {
     status: BatchEnrollmentStatus.ENDED,

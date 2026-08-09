@@ -66,16 +66,19 @@
 .titleRow {
   display: flex;
   align-items: center;
-  gap: var(--space-1, 0.25rem);
+  justify-content: space-between;
+  gap: var(--space-2, 0.5rem);
+  width: 100%;
   min-width: 0;
 }
 
 .title {
+  flex: 1;
+  min-width: 0;
   font-size: 1.0625rem;
   font-weight: 700;
   letter-spacing: -0.02em;
   line-height: 1.2;
-  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -86,6 +89,7 @@
   display: inline-flex;
   align-items: center;
   flex-shrink: 0;
+  margin-inline-start: auto;
 }
 
 .header[data-compact="true"] .title {

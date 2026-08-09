@@ -1,6 +1,7 @@
 import "dotenv/config";
 import { ConfigService } from "@nestjs/config";
 import {
+  BatchEnrollmentStatus,
   BillingCadence,
   EnrollmentMode,
   IndividualAudience,
@@ -41,6 +42,8 @@ export const E2E = {
   sessionAttendancePastId: "e2e-session-kids-past-1",
   membershipStudentId: "e2e-membership-student-1",
   membershipStudentDueId: "e2e-membership-student-due-1",
+  membershipUnenrolledId: "e2e-membership-unenrolled-1",
+  membershipMovedId: "e2e-membership-moved-1",
   invoicePaidMembershipId: "e2e-invoice-paid-membership-1",
   invoiceRenewalPendingId: "e2e-invoice-renewal-pending-1",
   users: {
@@ -79,6 +82,18 @@ export const E2E = {
       firebaseUid: "e2e-student-1",
       email: "e2e-student@stepup.dev",
       name: "Alex Student",
+    },
+    STUDENT_UNENROLLED: {
+      id: "e2e-student-unenrolled-1",
+      firebaseUid: "e2e-student-unenrolled-1",
+      email: "e2e-student-unenrolled@stepup.dev",
+      name: "Unenrolled Kid",
+    },
+    STUDENT_MOVED: {
+      id: "e2e-student-moved-1",
+      firebaseUid: "e2e-student-moved-1",
+      email: "e2e-student-moved@stepup.dev",
+      name: "Moved Kid",
     },
     PARENT: {
       id: "e2e-parent-1",
@@ -354,6 +369,20 @@ async function main() {
       styles: ["Hip Hop"],
       profileVisibility: ProfileVisibility.PUBLIC,
     },
+    {
+      ...u.STUDENT_UNENROLLED,
+      phone: "+91 98000 90007",
+      role: UserRole.STUDENT,
+      styles: ["Hip Hop"],
+      profileVisibility: ProfileVisibility.PUBLIC,
+    },
+    {
+      ...u.STUDENT_MOVED,
+      phone: "+91 98000 90008",
+      role: UserRole.STUDENT,
+      styles: ["Hip Hop"],
+      profileVisibility: ProfileVisibility.PUBLIC,
+    },
   ];
 
   for (const user of studioUsers) {
@@ -569,7 +598,11 @@ async function main() {
         studentId: u.STUDENT.id,
       },
     },
-    update: {},
+    update: {
+      status: BatchEnrollmentStatus.ACTIVE,
+      endedAt: null,
+      endReason: null,
+    },
     create: {
       batchId: E2E.kidsBatchId,
       studentId: u.STUDENT.id,
@@ -586,6 +619,7 @@ async function main() {
   const periodEnd = new Date(
     Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1),
   );
+  const endedAt = new Date(now.getTime() - 60_000);
 
   await prisma.membership.upsert({
     where: { id: E2E.membershipStudentId },
@@ -620,6 +654,76 @@ async function main() {
       seatRole: MembershipSeatRole.KID,
     },
   });
+
+  const inactiveRoster = [
+    {
+      user: u.STUDENT_UNENROLLED,
+      membershipId: E2E.membershipUnenrolledId,
+      endReason: "UNENROLL",
+    },
+    {
+      user: u.STUDENT_MOVED,
+      membershipId: E2E.membershipMovedId,
+      endReason: "SWITCH",
+    },
+  ] as const;
+
+  for (const row of inactiveRoster) {
+    await prisma.batchEnrollment.upsert({
+      where: {
+        batchId_studentId: {
+          batchId: E2E.kidsBatchId,
+          studentId: row.user.id,
+        },
+      },
+      update: {
+        status: BatchEnrollmentStatus.ENDED,
+        endedAt,
+        endReason: row.endReason,
+      },
+      create: {
+        batchId: E2E.kidsBatchId,
+        studentId: row.user.id,
+        status: BatchEnrollmentStatus.ENDED,
+        endedAt,
+        endReason: row.endReason,
+      },
+    });
+
+    await prisma.membership.upsert({
+      where: { id: row.membershipId },
+      update: {
+        subscriptionId: E2E.kidMonthlyId,
+        purchaserUserId: row.user.id,
+        periodStart,
+        periodEnd,
+        status: MembershipStatus.ACTIVE,
+      },
+      create: {
+        id: row.membershipId,
+        subscriptionId: E2E.kidMonthlyId,
+        purchaserUserId: row.user.id,
+        periodStart,
+        periodEnd,
+        status: MembershipStatus.ACTIVE,
+      },
+    });
+
+    await prisma.membershipCoveredStudent.upsert({
+      where: {
+        membershipId_studentId: {
+          membershipId: row.membershipId,
+          studentId: row.user.id,
+        },
+      },
+      update: { seatRole: MembershipSeatRole.KID },
+      create: {
+        membershipId: row.membershipId,
+        studentId: row.user.id,
+        seatRole: MembershipSeatRole.KID,
+      },
+    });
+  }
 
   await prisma.invoice.upsert({
     where: { id: E2E.invoicePaidMembershipId },

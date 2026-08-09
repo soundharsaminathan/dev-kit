@@ -3,6 +3,7 @@ import { ConfigService } from "@nestjs/config";
 import {
   AttendanceSource,
   AttendanceStatus,
+  BatchEnrollmentStatus,
   BillingCadence,
   BookingStatus,
   BookingType,
@@ -52,6 +53,8 @@ export const SMOKE = {
   sessionAttendanceId: "smoke-session-kids-mon",
   sessionAttendancePastId: "smoke-session-kids-past-1",
   membershipStudentId: "smoke-membership-student-1",
+  membershipUnenrolledId: "smoke-membership-unenrolled-1",
+  membershipMovedId: "smoke-membership-moved-1",
   invoicePendingId: "smoke-invoice-pending-1",
   bookingPendingId: "smoke-booking-pending-1",
   certificateTemplateId: "smoke-cert-template-1",
@@ -88,6 +91,18 @@ export const SMOKE = {
       firebaseUid: "smoke-student-1",
       email: "smoke-student@stepup.dev",
       name: "Smoke Alex Student",
+    },
+    STUDENT_UNENROLLED: {
+      id: "smoke-student-unenrolled-1",
+      firebaseUid: "smoke-student-unenrolled-1",
+      email: "smoke-student-unenrolled@stepup.dev",
+      name: "Smoke Unenrolled Kid",
+    },
+    STUDENT_MOVED: {
+      id: "smoke-student-moved-1",
+      firebaseUid: "smoke-student-moved-1",
+      email: "smoke-student-moved@stepup.dev",
+      name: "Smoke Moved Kid",
     },
     PARENT: {
       id: "smoke-parent-1",
@@ -327,6 +342,20 @@ async function main() {
     {
       ...u.STUDENT,
       phone: "+91 97000 90006",
+      role: UserRole.STUDENT,
+      styles: ["Hip Hop"],
+      profileVisibility: ProfileVisibility.PUBLIC,
+    },
+    {
+      ...u.STUDENT_UNENROLLED,
+      phone: "+91 97000 90008",
+      role: UserRole.STUDENT,
+      styles: ["Hip Hop"],
+      profileVisibility: ProfileVisibility.PUBLIC,
+    },
+    {
+      ...u.STUDENT_MOVED,
+      phone: "+91 97000 90009",
       role: UserRole.STUDENT,
       styles: ["Hip Hop"],
       profileVisibility: ProfileVisibility.PUBLIC,
@@ -592,7 +621,11 @@ async function main() {
         studentId: u.STUDENT.id,
       },
     },
-    update: {},
+    update: {
+      status: BatchEnrollmentStatus.ACTIVE,
+      endedAt: null,
+      endReason: null,
+    },
     create: {
       batchId: SMOKE.kidsBatchId,
       studentId: u.STUDENT.id,
@@ -609,6 +642,7 @@ async function main() {
   const periodEnd = new Date(
     Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1),
   );
+  const endedAt = new Date(now.getTime() - 60_000);
 
   await prisma.membership.upsert({
     where: { id: SMOKE.membershipStudentId },
@@ -643,6 +677,76 @@ async function main() {
       seatRole: MembershipSeatRole.KID,
     },
   });
+
+  const inactiveRoster = [
+    {
+      user: u.STUDENT_UNENROLLED,
+      membershipId: SMOKE.membershipUnenrolledId,
+      endReason: "UNENROLL",
+    },
+    {
+      user: u.STUDENT_MOVED,
+      membershipId: SMOKE.membershipMovedId,
+      endReason: "SWITCH",
+    },
+  ] as const;
+
+  for (const row of inactiveRoster) {
+    await prisma.batchEnrollment.upsert({
+      where: {
+        batchId_studentId: {
+          batchId: SMOKE.kidsBatchId,
+          studentId: row.user.id,
+        },
+      },
+      update: {
+        status: BatchEnrollmentStatus.ENDED,
+        endedAt,
+        endReason: row.endReason,
+      },
+      create: {
+        batchId: SMOKE.kidsBatchId,
+        studentId: row.user.id,
+        status: BatchEnrollmentStatus.ENDED,
+        endedAt,
+        endReason: row.endReason,
+      },
+    });
+
+    await prisma.membership.upsert({
+      where: { id: row.membershipId },
+      update: {
+        subscriptionId: SMOKE.kidMonthlyId,
+        purchaserUserId: row.user.id,
+        periodStart,
+        periodEnd,
+        status: MembershipStatus.ACTIVE,
+      },
+      create: {
+        id: row.membershipId,
+        subscriptionId: SMOKE.kidMonthlyId,
+        purchaserUserId: row.user.id,
+        periodStart,
+        periodEnd,
+        status: MembershipStatus.ACTIVE,
+      },
+    });
+
+    await prisma.membershipCoveredStudent.upsert({
+      where: {
+        membershipId_studentId: {
+          membershipId: row.membershipId,
+          studentId: row.user.id,
+        },
+      },
+      update: { seatRole: MembershipSeatRole.KID },
+      create: {
+        membershipId: row.membershipId,
+        studentId: row.user.id,
+        seatRole: MembershipSeatRole.KID,
+      },
+    });
+  }
 
   const weekStart = mondayOfWeek();
   const mondayAttendanceStart = utcAt(weekStart, 0, 17);

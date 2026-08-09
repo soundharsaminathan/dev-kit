@@ -28,8 +28,11 @@
 }
 
 .online {
-  background: color-mix(in srgb, var(--color-success, #34c759) 16%, var(--color-bg));
-  color: var(--color-fg);
+  background: #dcfce7;
+  color: #14532d;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  padding-block: 0.4rem;
 }
 
 .update {
