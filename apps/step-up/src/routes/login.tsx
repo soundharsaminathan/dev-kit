@@ -16,7 +16,6 @@ import {
   redirectIfAuthenticated,
   safeInternalPath,
 } from "@/lib/require-auth";
-import { useDismissBootPublic } from "@/lib/use-dismiss-boot-public";
 import { PublicShell } from "@/modules/layout/public-shell";
 import { PasswordInput } from "@/modules/ui/password-input";
 import { StudioSelect, useStudioDirectory } from "@/modules/ui/studio-select";
@@ -79,7 +78,6 @@ export const Route = createFileRoute("/login")({
 });
 
 function LoginPage() {
-  useDismissBootPublic("interact");
   const navigate = useNavigate();
   const {
     redirect: redirectTo,
@@ -155,7 +153,7 @@ function LoginPage() {
   };
 
   return (
-    <PublicShell>
+    <PublicShell bootDismiss="interact">
       <section className={styles.panel}>
         <div className={styles.brandBlock}>
           <img

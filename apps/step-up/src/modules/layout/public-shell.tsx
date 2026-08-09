@@ -5,13 +5,20 @@ import { useAuth } from "@/lib/auth";
 import { BRAND_ICON_SRC, BRAND_NAME } from "@/lib/brand";
 import { SEED_STUDIO_ID } from "@/lib/constants";
 import { homePathForUser } from "@/lib/require-auth";
+import { useDismissBootPublic } from "@/lib/use-dismiss-boot-public";
 import styles from "./public-shell.module.scss";
 
 type PublicShellProps = {
   children: ReactNode;
+  /** Login keeps the static shell until first input for LCP; others idle-dismiss. */
+  bootDismiss?: "idle" | "interact";
 };
 
-export function PublicShell({ children }: PublicShellProps) {
+export function PublicShell({
+  children,
+  bootDismiss = "idle",
+}: PublicShellProps) {
+  useDismissBootPublic(bootDismiss);
   const { user, loading } = useAuth();
   const appHome = user ? homePathForUser(user) : null;
 

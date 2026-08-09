@@ -1,7 +1,6 @@
 import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { SEED_STUDIO_ID } from "@/lib/constants";
 import { homePathForUser } from "@/lib/require-auth";
-import { useDismissBootPublic } from "@/lib/use-dismiss-boot-public";
 import { PublicShell } from "@/modules/layout/public-shell";
 import { TouchButton } from "@/modules/ui/touch-button";
 import styles from "./index.module.scss";
@@ -17,8 +16,6 @@ export const Route = createFileRoute("/")({
 });
 
 function LandingPage() {
-  useDismissBootPublic();
-
   return (
     <PublicShell>
       <section className={styles.hero}>
