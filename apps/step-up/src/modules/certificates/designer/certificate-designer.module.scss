@@ -146,25 +146,6 @@
   overflow: auto;
 }
 
-.inspectorToggle {
-  border: 1px solid #d1d5db;
-  background: var(--color-card);
-  border-radius: 10px;
-  padding: 12px;
-  font: inherit;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.inspectorSheet {
-  max-height: 50vh;
-  overflow: auto;
-}
-
-.root[data-mobile="true"] .workspace {
-  grid-template-columns: 1fr;
-}
-
 .root[data-compact="true"] {
   gap: 8px;
 }

@@ -1,5 +1,6 @@
 import { Button } from "@dev-ui/components/button";
 import { useToastContext } from "@dev-ui/components/toast";
+import { useIsMobile } from "@dev-ui/hooks";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useCallback, useState } from "react";
@@ -58,6 +59,7 @@ function EditCertificateTemplateForm({
 }) {
   const api = useApi();
   const studioId = useStudioId();
+  const isMobile = useIsMobile();
   const navigate = useNavigate({ from: Route.fullPath });
   const queryClient = useQueryClient();
   const { toast } = useToastContext("EditCertificateTemplateForm");
@@ -131,24 +133,31 @@ function EditCertificateTemplateForm({
         <Button as={Link} to="/app/certificates" variant="quiet" size="sm">
           Back
         </Button>
-        <div className={styles.chromeActions}>
-          {!template.isSample ? (
+        {!isMobile ? (
+          <div className={styles.chromeActions}>
+            {!template.isSample ? (
+              <Button
+                variant="danger"
+                size="sm"
+                onClick={() => deleteTemplate.mutate()}
+                isPending={deleteTemplate.isPending}
+              >
+                Delete
+              </Button>
+            ) : null}
             <Button
-              variant="danger"
+              as={Link}
+              to="/app/certificates"
+              variant="primary"
               size="sm"
-              onClick={() => deleteTemplate.mutate()}
-              isPending={deleteTemplate.isPending}
             >
-              Delete
+              Done
             </Button>
-          ) : null}
-          <Button as={Link} to="/app/certificates" variant="primary" size="sm">
-            Done
-          </Button>
-        </div>
+          </div>
+        ) : null}
       </div>
 
-      {deleteTemplate.isError ? (
+      {!isMobile && deleteTemplate.isError ? (
         <p role="alert">{(deleteTemplate.error as Error).message}</p>
       ) : null}
 

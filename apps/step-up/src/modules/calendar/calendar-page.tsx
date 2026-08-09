@@ -36,33 +36,77 @@ const MONTH_CELL_KEYS = Array.from(
 );
 const WEEKDAY_KEYS = Array.from({ length: 7 }, (_, i) => `cal-weekday-${i}`);
 const WEEK_DAY_KEYS = Array.from({ length: 7 }, (_, i) => `cal-week-day-${i}`);
-const WEEK_SLOT_KEYS = Array.from({ length: 4 }, (_, i) => `cal-week-slot-${i}`);
+const WEEK_HOUR_KEYS = Array.from({ length: 24 }, (_, i) => `cal-week-hour-${i}`);
+const WEEK_EVENT_PLACEHOLDERS = [
+  { day: 0, top: "12%", height: "8%" },
+  { day: 1, top: "28%", height: "6%" },
+  { day: 2, top: "18%", height: "10%" },
+  { day: 3, top: "42%", height: "7%" },
+  { day: 4, top: "22%", height: "9%" },
+  { day: 5, top: "55%", height: "6%" },
+  { day: 6, top: "35%", height: "8%" },
+] as const;
 
 function CalendarSkeleton({ view }: { view: CalendarViewMode }) {
   if (view === "week") {
     return (
       <div className={styles.skeletonRoot} aria-hidden>
-        <div className={styles.skeletonWeekHeader}>
-          <div className={styles.skeletonWeekGutter} />
-          {WEEK_DAY_KEYS.map((key) => (
-            <div key={key} className={styles.skeletonWeekDayHeader}>
-              <SkeletonBlock height="0.75rem" width="2.5rem" radius="999px" />
-            </div>
-          ))}
-        </div>
-        <div className={styles.skeletonWeekBody}>
-          <div className={styles.skeletonWeekHours} />
-          {WEEK_DAY_KEYS.map((dayKey) => (
-            <div key={dayKey} className={styles.skeletonWeekColumn}>
-              {WEEK_SLOT_KEYS.map((slotKey) => (
-                <SkeletonBlock
-                  key={`${dayKey}-${slotKey}`}
-                  height="2.5rem"
-                  radius="var(--radius-sm, 0.35rem)"
-                />
+        <div className={styles.skeletonWeekScroll}>
+          <div className={styles.skeletonWeekGrid}>
+            <div className={styles.skeletonWeekHeader}>
+              <div className={styles.skeletonWeekGutter} />
+              {WEEK_DAY_KEYS.map((key) => (
+                <div key={key} className={styles.skeletonWeekDayHeader}>
+                  <SkeletonBlock
+                    height="0.8rem"
+                    width="2.75rem"
+                    radius="999px"
+                  />
+                </div>
               ))}
             </div>
-          ))}
+            <div className={styles.skeletonWeekBody}>
+              <div className={styles.skeletonWeekHours}>
+                {WEEK_HOUR_KEYS.map((key, index) => (
+                  <div key={key} className={styles.skeletonWeekHourLabel}>
+                    {index === 0 ? null : (
+                      <SkeletonBlock
+                        height="0.55rem"
+                        width="1.5rem"
+                        radius="999px"
+                      />
+                    )}
+                  </div>
+                ))}
+              </div>
+              {WEEK_DAY_KEYS.map((dayKey, dayIndex) => {
+                const event = WEEK_EVENT_PLACEHOLDERS[dayIndex];
+                return (
+                  <div key={dayKey} className={styles.skeletonWeekColumn}>
+                    {WEEK_HOUR_KEYS.map((hourKey) => (
+                      <div
+                        key={`${dayKey}-${hourKey}`}
+                        className={styles.skeletonWeekHourSlot}
+                      />
+                    ))}
+                    {event ? (
+                      <div className={styles.skeletonWeekEvents}>
+                        <div
+                          className={styles.skeletonWeekEvent}
+                          style={{ top: event.top, height: event.height }}
+                        >
+                          <SkeletonBlock
+                            height="100%"
+                            radius="var(--radius-sm, 0.35rem)"
+                          />
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         </div>
       </div>
     );

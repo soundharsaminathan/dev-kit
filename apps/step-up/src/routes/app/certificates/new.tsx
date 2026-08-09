@@ -1,5 +1,6 @@
 import { Button } from "@dev-ui/components/button";
 import { useToastContext } from "@dev-ui/components/toast";
+import { useIsMobile } from "@dev-ui/hooks";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useCallback, useState } from "react";
@@ -28,6 +29,7 @@ export const Route = createFileRoute("/app/certificates/new")({
 function NewCertificateTemplatePage() {
   const api = useApi();
   const studioId = useStudioId();
+  const isMobile = useIsMobile();
   const navigate = useNavigate({ from: Route.fullPath });
   const queryClient = useQueryClient();
   const { toast } = useToastContext("NewCertificateTemplatePage");
@@ -75,7 +77,11 @@ function NewCertificateTemplatePage() {
     <section className="page stack">
       <PageHeader
         title="New certificate template"
-        description="Design a reusable certificate for batches and contests."
+        description={
+          isMobile
+            ? "Certificate editing needs a desktop screen."
+            : "Design a reusable certificate for batches and contests."
+        }
         actions={
           <Button as={Link} to="/app/certificates" variant="quiet">
             Cancel
@@ -90,18 +96,20 @@ function NewCertificateTemplatePage() {
         onDocumentChange={onDocumentChange}
       />
 
-      {createTemplate.isError ? (
+      {!isMobile && createTemplate.isError ? (
         <p role="alert">{(createTemplate.error as Error).message}</p>
       ) : null}
 
-      <Button
-        variant="primary"
-        onClick={() => createTemplate.mutate()}
-        isPending={createTemplate.isPending}
-        isDisabled={!canSubmit}
-      >
-        Create template
-      </Button>
+      {!isMobile ? (
+        <Button
+          variant="primary"
+          onClick={() => createTemplate.mutate()}
+          isPending={createTemplate.isPending}
+          isDisabled={!canSubmit}
+        >
+          Create template
+        </Button>
+      ) : null}
     </section>
   );
 }

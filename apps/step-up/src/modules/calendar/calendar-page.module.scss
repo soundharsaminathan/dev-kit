@@ -119,7 +119,27 @@
   }
 }
 
+.skeletonWeekScroll {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scroll-padding-bottom: var(--space-4, 1rem);
+}
+
+.skeletonWeekGrid {
+  display: flex;
+  flex-direction: column;
+  min-width: 100%;
+}
+
 .skeletonWeekHeader {
+  position: sticky;
+  top: 0;
+  z-index: 3;
   display: grid;
   grid-template-columns: 3.5rem repeat(7, minmax(0, 1fr));
   border-bottom: 1px solid color-mix(in srgb, var(--color-fg) 12%, transparent);
@@ -127,7 +147,11 @@
 }
 
 .skeletonWeekGutter {
+  position: sticky;
+  left: 0;
+  z-index: 4;
   border-right: 1px solid color-mix(in srgb, var(--color-fg) 10%, transparent);
+  background: color-mix(in srgb, var(--color-fg) 3%, var(--surface-elevated, var(--color-bg)));
 }
 
 .skeletonWeekDayHeader {
@@ -145,28 +169,77 @@
 .skeletonWeekBody {
   display: grid;
   grid-template-columns: 3.5rem repeat(7, minmax(0, 1fr));
-  min-height: 22rem;
+  padding-bottom: var(--space-3, 0.75rem);
 }
 
 .skeletonWeekHours {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  display: grid;
+  grid-template-rows: repeat(24, 3rem);
   border-right: 1px solid color-mix(in srgb, var(--color-fg) 10%, transparent);
+  background: var(--surface-elevated, var(--color-bg));
+}
+
+.skeletonWeekHourLabel {
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  padding: 0.15rem 0.35rem 0 0;
+  transform: translateY(-0.45rem);
 }
 
 .skeletonWeekColumn {
+  position: relative;
+  display: grid;
+  grid-template-rows: repeat(24, 3rem);
   border-right: 1px solid color-mix(in srgb, var(--color-fg) 8%, transparent);
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  padding: 0.5rem 0.35rem;
 
   &:last-child {
     border-right: none;
   }
 }
 
+.skeletonWeekHourSlot {
+  border-bottom: 1px solid color-mix(in srgb, var(--color-fg) 6%, transparent);
+}
+
+.skeletonWeekEvents {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.skeletonWeekEvent {
+  position: absolute;
+  left: 0.15rem;
+  right: 0.15rem;
+  min-width: 0;
+  overflow: hidden;
+}
+
 @media (max-width: 720px) {
   .skeletonMonthGrid {
     grid-auto-rows: minmax(5rem, auto);
+  }
+
+  .skeletonWeekGrid {
+    width: max-content;
+    min-width: 100%;
+  }
+
+  .skeletonWeekHeader,
+  .skeletonWeekBody {
+    grid-template-columns: 2.5rem repeat(7, minmax(4.5rem, 1fr));
+    width: max-content;
+    min-width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeletonWeekHourLabel {
+    transform: none;
   }
 }
 

@@ -1,5 +1,8 @@
+import { Button } from "@dev-ui/components/button";
 import { useIsMobile } from "@dev-ui/hooks";
+import { Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
+import { EmptyState } from "@/modules/ui/states";
 import type { CertificateDocument } from "../schema";
 import { CanvasStage } from "./canvas/canvas-stage";
 import styles from "./certificate-designer.module.scss";
@@ -89,8 +92,6 @@ function DesignerInner({
   autosaveEnabled?: boolean;
   compactChrome?: boolean;
 }) {
-  const isMobile = useIsMobile();
-  const [inspectorOpen, setInspectorOpen] = useState(false);
   const { state, dispatch } = useDesigner();
 
   useDesignerShortcuts();
@@ -115,7 +116,6 @@ function DesignerInner({
   return (
     <div
       className={styles.root}
-      data-mobile={isMobile || undefined}
       data-compact={compactChrome || undefined}
     >
       <div className={styles.nameRow}>
@@ -157,28 +157,26 @@ function DesignerInner({
 
       <div className={styles.workspace}>
         <CanvasStage />
-        {isMobile ? (
-          <>
-            <button
-              type="button"
-              className={styles.inspectorToggle}
-              onClick={() => setInspectorOpen((o) => !o)}
-            >
-              {inspectorOpen ? "Hide properties" : "Properties"}
-            </button>
-            {inspectorOpen ? (
-              <div className={styles.inspectorSheet}>
-                <PropertyInspector />
-              </div>
-            ) : null}
-          </>
-        ) : (
-          <div className={styles.inspectorPane}>
-            <PropertyInspector />
-          </div>
-        )}
+        <div className={styles.inspectorPane}>
+          <PropertyInspector />
+        </div>
       </div>
     </div>
+  );
+}
+
+function DesktopRequiredState() {
+  return (
+    <EmptyState
+      icon="monitor"
+      title="Use a desktop"
+      description="Certificate editing needs a larger screen. Open this page on a computer to continue."
+      action={
+        <Button as={Link} to="/app/certificates" variant="primary">
+          Back to certificates
+        </Button>
+      }
+    />
   );
 }
 
@@ -191,6 +189,12 @@ export function CertificateDesigner({
   autosaveEnabled = false,
   compactChrome = false,
 }: CertificateDesignerProps) {
+  const isMobile = useIsMobile();
+
+  if (isMobile) {
+    return <DesktopRequiredState />;
+  }
+
   return (
     <DesignerProvider document={document} name={name}>
       <DesignerInner
