@@ -1,4 +1,5 @@
 import {
+  AgeRange,
   BatchCategory,
   BillingCadence,
   FamilyPack,
@@ -10,6 +11,7 @@ import {
 } from "@prisma/client";
 import { describe, expect, it } from "vitest";
 import {
+  batchCategoryForAgeRange,
   computePlatformFee,
   getNextPeriodStart,
   getPeriodEnd,
@@ -86,6 +88,23 @@ describe("membership-helpers", () => {
         batchCategory: BatchCategory.ADULTS,
       }),
     ).toBe(false);
+  });
+
+  it("maps age range to batch category", () => {
+    expect(batchCategoryForAgeRange(null)).toBeNull();
+    expect(batchCategoryForAgeRange(undefined)).toBeNull();
+    expect(batchCategoryForAgeRange(AgeRange.UNDER_10)).toBe(
+      BatchCategory.KIDS,
+    );
+    expect(batchCategoryForAgeRange(AgeRange.TEN_TO_TWENTY)).toBe(
+      BatchCategory.KIDS,
+    );
+    expect(batchCategoryForAgeRange(AgeRange.TWENTY_TO_FORTY)).toBe(
+      BatchCategory.ADULTS,
+    );
+    expect(batchCategoryForAgeRange(AgeRange.FORTY_PLUS)).toBe(
+      BatchCategory.ADULTS,
+    );
   });
 
   it("computes platform fee", () => {

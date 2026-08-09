@@ -39,8 +39,11 @@
 }
 
 .profileHint {
+  overflow: hidden;
   font-size: 0.8125rem;
   color: color-mix(in srgb, var(--color-fg) 55%, transparent);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .section {

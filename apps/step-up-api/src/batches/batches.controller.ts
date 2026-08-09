@@ -308,15 +308,19 @@ export class BatchesController {
     @Query("studentId") studentId?: string,
   ) {
     assertSameStudio(user, studioId);
-    return this.batchesService.listByStudio(studioId, {
-      style,
-      category,
-      trainerId,
-      branchId,
-      search,
-      activeOnly: activeOnly === "true" || activeOnly === "1",
-      studentId,
-    });
+    return this.batchesService.listByStudio(
+      studioId,
+      {
+        style,
+        category,
+        trainerId,
+        branchId,
+        search,
+        activeOnly: activeOnly === "true" || activeOnly === "1",
+        studentId,
+      },
+      user,
+    );
   }
 
   @Get(":id/revenue")

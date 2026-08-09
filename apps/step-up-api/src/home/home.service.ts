@@ -5,6 +5,7 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { UserRole } from "@prisma/client";
+import { batchCategoryForAgeRange } from "../memberships/membership-helpers";
 import { MediaService } from "../media/media.service";
 import { PrismaService } from "../prisma/prisma.service";
 import type { DecryptedUser } from "../users/user-crypto.service";
@@ -542,6 +543,7 @@ export class HomeService {
     );
     const studentVibes = student.scheduleVibe ?? [];
     const preferredBatchBranchId = student.preferredBranchId ?? null;
+    const preferredBatchCategory = batchCategoryForAgeRange(student.ageRange);
     const monthlyPresent = presentSessions.filter(
       (row) => row.startsAt >= periodStart && row.startsAt < periodEnd,
     ).length;
@@ -589,6 +591,9 @@ export class HomeService {
               where: {
                 studioId,
                 active: true,
+                ...(preferredBatchCategory
+                  ? { category: preferredBatchCategory }
+                  : {}),
                 ...(enrolledIds.size > 0
                   ? { id: { notIn: [...enrolledIds] } }
                   : {}),

@@ -1,6 +1,7 @@
 import { SearchField } from "@dev-ui/components/search-field";
 import { Icon } from "@dev-ui/icons";
 import { useMemo, useState } from "react";
+import { useAuth } from "@/lib/auth";
 import { ENTITY_ICONS } from "@/lib/entity-icons";
 import { useActiveStudentContext } from "@/modules/me/use-active-student-context";
 import { BatchCard } from "@/modules/ui/batch-card";
@@ -10,6 +11,7 @@ import { Screen } from "@/modules/ui/screen";
 import { BatchCardSkeletonList } from "@/modules/ui/skeleton-block";
 import { EmptyState, ErrorState } from "@/modules/ui/states";
 import { TouchButton } from "@/modules/ui/touch-button";
+import { batchCategoryForAgeRange } from "./batch-category";
 import {
   type DiscoverFiltersDraft,
   DiscoverFiltersPanel,
@@ -22,7 +24,18 @@ const CATEGORY_CHIPS = [
   { id: "ALL", label: "All" },
   { id: "KIDS", label: "Kids" },
   { id: "ADULTS", label: "Adults" },
-];
+] as const;
+
+function categoryChipsForPreferred(
+  preferred: "KIDS" | "ADULTS" | null,
+): Array<{ id: string; label: string }> {
+  if (!preferred) return [...CATEGORY_CHIPS];
+  const other = preferred === "ADULTS" ? "KIDS" : "ADULTS";
+  const byId = Object.fromEntries(
+    CATEGORY_CHIPS.map((chip) => [chip.id, chip]),
+  ) as Record<string, { id: string; label: string }>;
+  return [byId.ALL!, byId[preferred]!, byId[other]!];
+}
 
 export function DiscoverPage({
   initialBranchId,
@@ -33,12 +46,20 @@ export function DiscoverPage({
   initialStyle?: string;
   initialIntent?: "trial";
 } = {}) {
-  const { studentId } = useActiveStudentContext();
+  const { user } = useAuth();
+  const { studentId, accounts } = useActiveStudentContext();
   const [category, setCategory] = useState("ALL");
   const [style, setStyle] = useState<string | undefined>(initialStyle);
   const [search, setSearch] = useState("");
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [branchId] = useState(initialBranchId);
+
+  const preferredCategory = useMemo(() => {
+    const active = accounts.find((account) => account.id === studentId);
+    if (active?.kind === "KID") return "KIDS" as const;
+    if (active && !active.isSelf) return null;
+    return batchCategoryForAgeRange(user?.ageRange);
+  }, [accounts, studentId, user?.ageRange]);
 
   const filters: {
     category?: string;
@@ -51,7 +72,10 @@ export function DiscoverPage({
   if (style) filters.style = style;
   if (search) filters.search = search;
   if (branchId) filters.branchId = branchId;
-  if (studentId) filters.studentId = studentId;
+  // Backend defaults students to themselves; only send when viewing a linked account.
+  if (studentId && user?.id && studentId !== user.id) {
+    filters.studentId = studentId;
+  }
 
   const query = useDiscoverBatches(filters);
 
@@ -66,8 +90,8 @@ export function DiscoverPage({
   }, [query.data]);
 
   const quickChips = useMemo(
-    () => [...CATEGORY_CHIPS, ...styleChips],
-    [styleChips],
+    () => [...categoryChipsForPreferred(preferredCategory), ...styleChips],
+    [preferredCategory, styleChips],
   );
 
   const selectedQuick = useMemo(() => {
@@ -208,6 +232,7 @@ export function DiscoverPage({
         onOpenChange={setFiltersOpen}
         value={filterDraft}
         styleOptions={styleChips}
+        preferredCategory={preferredCategory}
         search={search}
         {...(branchId != null ? { branchId } : {})}
         onApply={(next) => {

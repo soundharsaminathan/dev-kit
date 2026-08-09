@@ -1,4 +1,5 @@
 import {
+  AgeRange,
   BatchCategory,
   BillingCadence,
   FamilyPack,
@@ -81,6 +82,17 @@ export function seatRoleForBatchCategory(
   return category === BatchCategory.KIDS
     ? MembershipSeatRole.KID
     : MembershipSeatRole.ADULT;
+}
+
+/** Maps a student's age range to the batch audience they belong in. */
+export function batchCategoryForAgeRange(
+  ageRange: AgeRange | null | undefined,
+): BatchCategory | null {
+  if (!ageRange) return null;
+  if (ageRange === AgeRange.UNDER_10 || ageRange === AgeRange.TEN_TO_TWENTY) {
+    return BatchCategory.KIDS;
+  }
+  return BatchCategory.ADULTS;
 }
 
 export function membershipCoversBatch(args: {

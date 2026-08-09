@@ -33,9 +33,9 @@ export const Route = createFileRoute("/me/")({
   component: MeHomePage,
 });
 
-const GOAL_BLOOM_ITEMS = [4, 8, 12, 16].map((value) => ({
+const GOAL_BLOOM_ITEMS = [1, 2, 3, 4].map((value) => ({
   id: String(value),
-  label: `${value} sessions`,
+  label: `${value} session${value === 1 ? "" : "s"}`,
 }));
 
 function MeHomePage() {

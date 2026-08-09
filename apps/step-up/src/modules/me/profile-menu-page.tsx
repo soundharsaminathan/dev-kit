@@ -132,7 +132,7 @@ export function ProfileMenuPage({ variant = "me" }: ProfileMenuPageProps) {
               {user?.name ?? "Your profile"}
             </span>
             <span className={styles.profileHint}>
-              View and edit your profile
+              {user?.email ?? "View and edit your profile"}
             </span>
           </span>
           <Icon name="chevron-right" className={styles.chevron} />

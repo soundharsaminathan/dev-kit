@@ -19,7 +19,18 @@ const AUDIENCE_OPTIONS = [
   { id: "ALL", label: "All ages" },
   { id: "KIDS", label: "Kids" },
   { id: "ADULTS", label: "Adults" },
-];
+] as const;
+
+function audienceOptionsForPreferred(
+  preferred: "KIDS" | "ADULTS" | null | undefined,
+): Array<{ id: string; label: string }> {
+  if (!preferred) return [...AUDIENCE_OPTIONS];
+  const other = preferred === "ADULTS" ? "KIDS" : "ADULTS";
+  const byId = Object.fromEntries(
+    AUDIENCE_OPTIONS.map((option) => [option.id, option]),
+  ) as Record<string, { id: string; label: string }>;
+  return [byId.ALL!, byId[preferred]!, byId[other]!];
+}
 
 export type DiscoverFiltersDraft = {
   category: string;
@@ -31,6 +42,7 @@ type DiscoverFiltersPanelProps = {
   onOpenChange: (open: boolean) => void;
   value: DiscoverFiltersDraft;
   styleOptions: Array<{ id: string; label: string }>;
+  preferredCategory?: "KIDS" | "ADULTS" | null;
   branchId?: string;
   search?: string;
   onApply: (next: DiscoverFiltersDraft) => void;
@@ -65,6 +77,7 @@ export function DiscoverFiltersPanel({
   onOpenChange,
   value,
   styleOptions,
+  preferredCategory = null,
   branchId,
   search,
   onApply,
@@ -72,6 +85,10 @@ export function DiscoverFiltersPanel({
   const isMobile = useIsMobile();
   const [section, setSection] = useState<FilterSectionId>("suggested");
   const [draft, setDraft] = useState<DiscoverFiltersDraft>(value);
+  const audienceOptions = useMemo(
+    () => audienceOptionsForPreferred(preferredCategory),
+    [preferredCategory],
+  );
 
   useEffect(() => {
     if (!isOpen) return;
@@ -162,8 +179,9 @@ export function DiscoverFiltersPanel({
               <div className={styles.section}>
                 <h3 className={styles.sectionTitle}>Suggested</h3>
                 <div className={styles.chipGrid}>
-                  {AUDIENCE_OPTIONS.filter((option) => option.id !== "ALL").map(
-                    (option) => (
+                  {audienceOptions
+                    .filter((option) => option.id !== "ALL")
+                    .map((option) => (
                       <button
                         key={option.id}
                         type="button"
@@ -181,8 +199,7 @@ export function DiscoverFiltersPanel({
                       >
                         {option.label}
                       </button>
-                    ),
-                  )}
+                    ))}
                   {styleOptions.slice(0, 6).map((option) => (
                     <button
                       key={option.id}
@@ -211,7 +228,7 @@ export function DiscoverFiltersPanel({
               <div className={styles.section}>
                 <h3 className={styles.sectionTitle}>Audience</h3>
                 <ul className={styles.optionList}>
-                  {AUDIENCE_OPTIONS.map((option) => {
+                  {audienceOptions.map((option) => {
                     const active = draft.category === option.id;
                     return (
                       <li key={option.id}>

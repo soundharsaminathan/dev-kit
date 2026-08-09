@@ -7,6 +7,7 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import {
+  AgeRange,
   BatchCategory,
   BatchEnrollmentStatus,
   BillingCadence,
@@ -31,6 +32,7 @@ import {
 import { ScheduleConflictService } from "../calendar/schedule-conflict.service";
 import { MediaService } from "../media/media.service";
 import {
+  batchCategoryForAgeRange,
   membershipCoversBatch,
   seatRoleForBatchCategory,
 } from "../memberships/membership-helpers";
@@ -424,8 +426,82 @@ export class BatchesService {
     };
   }
 
-  async listByStudio(studioId: string, filters: DiscoverBatchFilters = {}) {
+  /**
+   * Members always view Discover as themselves (or a linked child).
+   * Staff keep an optional studentId for enrollment/booking badges only.
+   */
+  private async resolveDiscoverViewer(
+    actor: DecryptedUser | undefined,
+    studentId?: string,
+  ): Promise<{ studentId: string | null; ageRange: AgeRange | null }> {
+    const loadAgeRange = async (id: string) => {
+      const row = await this.prisma.user.findUnique({
+        where: { id },
+        select: { ageRange: true },
+      });
+      return row?.ageRange ?? null;
+    };
+
+    if (!actor) {
+      if (!studentId) {
+        return { studentId: null, ageRange: null };
+      }
+      return {
+        studentId,
+        ageRange: await loadAgeRange(studentId),
+      };
+    }
+
+    const isMember =
+      actor.role === UserRole.STUDENT || actor.role === UserRole.PARENT;
+
+    if (!isMember) {
+      if (!studentId) {
+        return { studentId: null, ageRange: null };
+      }
+      return {
+        studentId,
+        ageRange: await loadAgeRange(studentId),
+      };
+    }
+
+    const targetId = studentId?.trim() || actor.id;
+    if (targetId === actor.id) {
+      return { studentId: actor.id, ageRange: actor.ageRange };
+    }
+
+    if (actor.role !== UserRole.PARENT) {
+      throw new ForbiddenException("You can only view your own classes");
+    }
+
+    const link = await this.prisma.parentChild.findUnique({
+      where: {
+        parentUserId_childUserId: {
+          parentUserId: actor.id,
+          childUserId: targetId,
+        },
+      },
+    });
+    if (!link) {
+      throw new ForbiddenException("Child not linked to this parent");
+    }
+
+    return {
+      studentId: targetId,
+      ageRange: await loadAgeRange(targetId),
+    };
+  }
+
+  async listByStudio(
+    studioId: string,
+    filters: DiscoverBatchFilters = {},
+    actor?: DecryptedUser,
+  ) {
     const activeOnly = filters.activeOnly ?? false;
+    const viewer = await this.resolveDiscoverViewer(actor, filters.studentId);
+    const viewerStudentId = viewer.studentId;
+    const preferredCategory = batchCategoryForAgeRange(viewer.ageRange);
+
     const batches = await this.prisma.batch.findMany({
       where: {
         studioId,
@@ -478,11 +554,11 @@ export class BatchesService {
       }
     >();
 
-    if (filters.studentId && batchIds.length > 0) {
+    if (viewerStudentId && batchIds.length > 0) {
       const openBookings = await this.prisma.booking.findMany({
         where: {
           batchId: { in: batchIds },
-          studentId: filters.studentId,
+          studentId: viewerStudentId,
           OR: [
             {
               status: {
@@ -538,9 +614,9 @@ export class BatchesService {
             price,
           ),
         );
-        if (!filters.studentId) return shaped;
+        if (!viewerStudentId) return shaped;
         const enrollment = batch.enrollments.find(
-          (row) => row.studentId === filters.studentId,
+          (row) => row.studentId === viewerStudentId,
         );
         return {
           ...shaped,
@@ -553,14 +629,23 @@ export class BatchesService {
       }),
     );
 
-    if (filters.style) {
-      const style = filters.style.toLowerCase();
-      return mapped.filter(
-        (batch) => batch.styleBadge?.toLowerCase() === style,
-      );
+    const styleFilter = filters.style?.toLowerCase();
+    const filtered = styleFilter
+      ? mapped.filter(
+          (batch) => batch.styleBadge?.toLowerCase() === styleFilter,
+        )
+      : mapped;
+
+    if (!preferredCategory || filters.category) {
+      return filtered;
     }
 
-    return mapped;
+    return filtered.slice().sort((a, b) => {
+      const aMatch = a.category === preferredCategory ? 0 : 1;
+      const bMatch = b.category === preferredCategory ? 0 : 1;
+      if (aMatch !== bMatch) return aMatch - bMatch;
+      return a.name.localeCompare(b.name);
+    });
   }
 
   async getById(id: string, options?: { studentId?: string }) {

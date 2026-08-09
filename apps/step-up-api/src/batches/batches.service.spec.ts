@@ -1055,6 +1055,8 @@ describe("BatchesService.listByStudio viewer enrollment", () => {
     batch: { findMany: vi.fn() },
     batchEnrollment: { findMany: vi.fn(), findFirst: vi.fn() },
     booking: { findMany: vi.fn(), updateMany: vi.fn() },
+    user: { findUnique: vi.fn() },
+    parentChild: { findUnique: vi.fn() },
   };
 
   const media = {
@@ -1086,6 +1088,7 @@ describe("BatchesService.listByStudio viewer enrollment", () => {
     prisma.batchEnrollment.findFirst.mockResolvedValue(null);
     prisma.booking.findMany.mockResolvedValue([]);
     prisma.booking.updateMany.mockResolvedValue({ count: 0 });
+    prisma.user.findUnique.mockResolvedValue({ ageRange: null });
   });
 
   it("signs trainer photo and branch cover urls for discover cards", async () => {
@@ -1290,6 +1293,110 @@ describe("BatchesService.listByStudio viewer enrollment", () => {
         status: "PENDING",
       },
     });
+  });
+
+  it("sorts the viewer's age category ahead of other batches", async () => {
+    prisma.user.findUnique.mockResolvedValue({ ageRange: "TWENTY_TO_FORTY" });
+    prisma.batch.findMany.mockResolvedValue([
+      {
+        id: "kids-1",
+        name: "Kids Ballet",
+        category: "KIDS",
+        capacity: 20,
+        scheduleJson: {},
+        danceCategories: [],
+        enrollments: [],
+        trainers: [],
+        plans: [],
+        _count: { enrollments: 0 },
+        branch: null,
+        coverImageUrl: null,
+      },
+      {
+        id: "adults-1",
+        name: "Adult Hip Hop",
+        category: "ADULTS",
+        capacity: 20,
+        scheduleJson: {},
+        danceCategories: [],
+        enrollments: [],
+        trainers: [],
+        plans: [],
+        _count: { enrollments: 0 },
+        branch: null,
+        coverImageUrl: null,
+      },
+      {
+        id: "adults-2",
+        name: "Adult Salsa",
+        category: "ADULTS",
+        capacity: 20,
+        scheduleJson: {},
+        danceCategories: [],
+        enrollments: [],
+        trainers: [],
+        plans: [],
+        _count: { enrollments: 0 },
+        branch: null,
+        coverImageUrl: null,
+      },
+    ]);
+
+    const rows = await service.listByStudio("studio-1", {
+      studentId: "student-1",
+    });
+
+    expect(rows.map((row) => row.id)).toEqual([
+      "adults-1",
+      "adults-2",
+      "kids-1",
+    ]);
+  });
+
+  it("sorts by the authenticated student's age without studentId query", async () => {
+    prisma.batch.findMany.mockResolvedValue([
+      {
+        id: "kids-1",
+        name: "Kids Ballet",
+        category: "KIDS",
+        capacity: 20,
+        scheduleJson: {},
+        danceCategories: [],
+        enrollments: [],
+        trainers: [],
+        plans: [],
+        _count: { enrollments: 0 },
+        branch: null,
+        coverImageUrl: null,
+      },
+      {
+        id: "adults-1",
+        name: "Adult Hip Hop",
+        category: "ADULTS",
+        capacity: 20,
+        scheduleJson: {},
+        danceCategories: [],
+        enrollments: [],
+        trainers: [],
+        plans: [],
+        _count: { enrollments: 0 },
+        branch: null,
+        coverImageUrl: null,
+      },
+    ]);
+
+    const rows = await service.listByStudio(
+      "studio-1",
+      {},
+      {
+        id: "student-1",
+        role: "STUDENT",
+        ageRange: "TWENTY_TO_FORTY",
+      } as never,
+    );
+
+    expect(prisma.user.findUnique).not.toHaveBeenCalled();
+    expect(rows.map((row) => row.id)).toEqual(["adults-1", "kids-1"]);
   });
 });
 
