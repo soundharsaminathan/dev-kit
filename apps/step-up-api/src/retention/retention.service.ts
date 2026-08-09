@@ -1,10 +1,10 @@
 import { Inject, Injectable } from "@nestjs/common";
+import { AttendanceStatus, MembershipStatus } from "@prisma/client";
 import {
-  AttendanceStatus,
-  BillingCadence,
-  InvoiceStatus,
-  MembershipStatus,
-} from "@prisma/client";
+  accumulatePaidMonths,
+  paidMonthsInvoiceSelect,
+  paidMonthsInvoiceWhere,
+} from "../billing/family-combine";
 import { PrismaService } from "../prisma/prisma.service";
 import { UserCryptoService } from "../users/user-crypto.service";
 
@@ -19,38 +19,16 @@ export class RetentionService {
     studioId: string,
     studentIds: string[],
   ): Promise<Map<string, number>> {
-    const paidMonthsByStudent = new Map<string, number>();
-    if (studentIds.length === 0) return paidMonthsByStudent;
+    if (studentIds.length === 0) return new Map();
 
     const paidInvoices = await this.prisma.invoice.findMany({
-      where: {
-        studioId,
-        studentId: { in: studentIds },
-        status: InvoiceStatus.PAID,
-      },
-      select: {
-        studentId: true,
-        membership: {
-          select: {
-            subscription: { select: { billingCadence: true } },
-          },
-        },
-      },
+      where: paidMonthsInvoiceWhere(studioId, studentIds),
+      select: paidMonthsInvoiceSelect,
     });
 
-    for (const invoice of paidInvoices) {
-      const months =
-        invoice.membership?.subscription.billingCadence ===
-        BillingCadence.QUARTERLY
-          ? 3
-          : 1;
-      paidMonthsByStudent.set(
-        invoice.studentId,
-        (paidMonthsByStudent.get(invoice.studentId) ?? 0) + months,
-      );
-    }
-
-    return paidMonthsByStudent;
+    return accumulatePaidMonths(paidInvoices, {
+      onlyStudentIds: new Set(studentIds),
+    });
   }
 
   async getBatchStats(batchId: string) {

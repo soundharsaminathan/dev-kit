@@ -10,7 +10,6 @@ import {
 import {
   type AgeRange,
   AttendanceStatus,
-  BillingCadence,
   BookingStatus,
   BookingType,
   type ExperienceLevel,
@@ -24,6 +23,11 @@ import {
 import { FirebaseService } from "../auth/firebase.service";
 import { assertBatchHasSeat, lockBatchRow } from "../batches/batch-capacity";
 import { REACTIVATE_ENROLLMENT_DATA } from "../batches/enrollment-status";
+import {
+  accumulatePaidMonths,
+  paidMonthsInvoiceSelect,
+  paidMonthsInvoiceWhere,
+} from "../billing/family-combine";
 import { MediaService } from "../media/media.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { isAlwaysPublicRole } from "../social/visibility";
@@ -771,18 +775,8 @@ export class UsersService {
         orderBy: { createdAt: "asc" },
       }),
       this.prisma.invoice.findMany({
-        where: {
-          studioId,
-          studentId,
-          status: InvoiceStatus.PAID,
-        },
-        select: {
-          membership: {
-            select: {
-              subscription: { select: { billingCadence: true } },
-            },
-          },
-        },
+        where: paidMonthsInvoiceWhere(studioId, [studentId]),
+        select: paidMonthsInvoiceSelect,
       }),
     ]);
 
@@ -796,14 +790,10 @@ export class UsersService {
       ).length,
     };
 
-    const paidMonths = paidInvoices.reduce((total, invoice) => {
-      const months =
-        invoice.membership?.subscription.billingCadence ===
-        BillingCadence.QUARTERLY
-          ? 3
-          : 1;
-      return total + months;
-    }, 0);
+    const paidMonths =
+      accumulatePaidMonths(paidInvoices, {
+        onlyStudentIds: new Set([studentId]),
+      }).get(studentId) ?? 0;
 
     return {
       student: await this.presentUser(student),
@@ -1481,37 +1471,18 @@ export class UsersService {
       isDateInRange(student.createdAt, range),
     );
 
+    const cohortIds = cohort.map((student) => student.id);
     const paidInvoices =
-      cohort.length === 0
+      cohortIds.length === 0
         ? []
         : await this.prisma.invoice.findMany({
-            where: {
-              studioId,
-              studentId: { in: cohort.map((student) => student.id) },
-              status: InvoiceStatus.PAID,
-            },
-            select: {
-              studentId: true,
-              membership: {
-                select: {
-                  subscription: { select: { billingCadence: true } },
-                },
-              },
-            },
+            where: paidMonthsInvoiceWhere(studioId, cohortIds),
+            select: paidMonthsInvoiceSelect,
           });
 
-    const paidMonthsByStudent = new Map<string, number>();
-    for (const invoice of paidInvoices) {
-      const months =
-        invoice.membership?.subscription.billingCadence ===
-        BillingCadence.QUARTERLY
-          ? 3
-          : 1;
-      paidMonthsByStudent.set(
-        invoice.studentId,
-        (paidMonthsByStudent.get(invoice.studentId) ?? 0) + months,
-      );
-    }
+    const paidMonthsByStudent = accumulatePaidMonths(paidInvoices, {
+      onlyStudentIds: new Set(cohortIds),
+    });
 
     const presented = await Promise.all(
       cohort.map(async (student) => {

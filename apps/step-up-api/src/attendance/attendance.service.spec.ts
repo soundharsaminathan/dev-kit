@@ -596,12 +596,14 @@ describe("AttendanceService.getSessionRoster", () => {
     prisma.invoice.findMany.mockResolvedValue([
       {
         studentId: "s1",
+        combineMeta: null,
         membership: {
           subscription: { billingCadence: "MONTHLY" },
         },
       },
       {
         studentId: "s1",
+        combineMeta: null,
         membership: {
           subscription: { billingCadence: "QUARTERLY" },
         },
@@ -618,7 +620,9 @@ describe("AttendanceService.getSessionRoster", () => {
       expect.objectContaining({
         where: expect.objectContaining({
           studioId: "studio-1",
-          studentId: { in: ["s1", "s2"] },
+          OR: expect.arrayContaining([
+            { studentId: { in: ["s1", "s2"] } },
+          ]),
         }),
       }),
     );
@@ -640,6 +644,56 @@ describe("AttendanceService.getSessionRoster", () => {
         attendance: null,
       }),
     ]);
+  });
+
+  it("credits paid months to combineMeta source students on the roster", async () => {
+    prisma.session.findUnique.mockResolvedValue({
+      id: "session-1",
+      batchId: "batch-1",
+      startsAt: new Date("2026-08-01T10:00:00.000Z"),
+      batch: { id: "batch-1", studioId: "studio-1" },
+      attendance: [],
+    });
+    prisma.batchEnrollment.findMany.mockResolvedValue([
+      { studentId: "s1", student: { name: "Ada" }, status: "ACTIVE" },
+      { studentId: "s2", student: { name: "Grace" }, status: "ACTIVE" },
+    ]);
+    memberships.findMonthlyUnpaidStudentIds.mockResolvedValue(new Set());
+    prisma.invoice.findMany.mockResolvedValue([
+      {
+        studentId: "s1",
+        combineMeta: {
+          sources: [
+            {
+              invoiceId: "i1",
+              studentId: "s1",
+              batchId: "batch-1",
+              originalAmount: 1000,
+              allocatedDiscount: 100,
+              netAmount: 900,
+            },
+            {
+              invoiceId: "i2",
+              studentId: "s2",
+              batchId: "batch-1",
+              originalAmount: 1000,
+              allocatedDiscount: 100,
+              netAmount: 900,
+            },
+          ],
+        },
+        membership: null,
+      },
+    ]);
+
+    const roster = await service.getSessionRoster("session-1");
+
+    expect(roster).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ studentId: "s1", paidMonths: 1 }),
+        expect.objectContaining({ studentId: "s2", paidMonths: 1 }),
+      ]),
+    );
   });
 
   it("rejects missing session", async () => {

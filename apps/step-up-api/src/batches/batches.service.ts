@@ -22,6 +22,9 @@ import {
 } from "@prisma/client";
 import { BillingService } from "../billing/billing.service";
 import {
+  accumulatePaidMonths,
+  paidMonthsInvoiceSelect,
+  paidMonthsInvoiceWhere,
   parseCombineMeta,
   parsePurchaseMeta,
 } from "../billing/family-combine";
@@ -538,32 +541,15 @@ export class BatchesService {
       enrollmentStudentIds.length === 0
         ? []
         : await this.prisma.invoice.findMany({
-            where: {
-              studioId: batch.studioId,
-              studentId: { in: enrollmentStudentIds },
-              status: InvoiceStatus.PAID,
-            },
-            select: {
-              studentId: true,
-              membership: {
-                select: {
-                  subscription: { select: { billingCadence: true } },
-                },
-              },
-            },
+            where: paidMonthsInvoiceWhere(
+              batch.studioId,
+              enrollmentStudentIds,
+            ),
+            select: paidMonthsInvoiceSelect,
           });
-    const paidMonthsByStudent = new Map<string, number>();
-    for (const invoice of paidInvoices) {
-      const months =
-        invoice.membership?.subscription.billingCadence ===
-        BillingCadence.QUARTERLY
-          ? 3
-          : 1;
-      paidMonthsByStudent.set(
-        invoice.studentId,
-        (paidMonthsByStudent.get(invoice.studentId) ?? 0) + months,
-      );
-    }
+    const paidMonthsByStudent = accumulatePaidMonths(paidInvoices, {
+      onlyStudentIds: new Set(enrollmentStudentIds),
+    });
     const enrollments = batch.enrollments.map((enrollment) => ({
       ...enrollment,
       monthlyUnpaid: monthlyUnpaidIds.has(enrollment.studentId),

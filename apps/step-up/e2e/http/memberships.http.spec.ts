@@ -169,5 +169,26 @@ test.describe("memberships HTTP @http", () => {
     expect(Number(combined.amount)).toBe(
       Number(invA.invoice.amount) + Number(invB.invoice.amount) - 100,
     );
+
+    await expectOk("STAFF", `/billing/${combined.id}/paid`, {
+      method: "PATCH",
+      body: JSON.stringify({ paymentMethod: "CASH" }),
+    });
+
+    const profileA = await expectOk<{
+      paidMonths: number;
+      invoices: Array<{ id: string }>;
+    }>("STAFF", `/users/studio/${SEED.studioId}/students/${depA.id}`);
+    const profileB = await expectOk<{
+      paidMonths: number;
+      invoices: Array<{ id: string }>;
+    }>("STAFF", `/users/studio/${SEED.studioId}/students/${depB.id}`);
+
+    // Combined invoice lives on the purchaser (family owner), not on deps.
+    expect(profileA.paidMonths).toBeGreaterThanOrEqual(1);
+    expect(profileB.paidMonths).toBeGreaterThanOrEqual(1);
+    expect(profileB.invoices.some((invoice) => invoice.id === combined.id)).toBe(
+      false,
+    );
   });
 });

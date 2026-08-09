@@ -1,7 +1,10 @@
+import { BillingCadence } from "@prisma/client";
 import { describe, expect, it } from "vitest";
 import {
+  accumulatePaidMonths,
   allocateFamilyDiscount,
   attributionTargetsForInvoice,
+  monthsForBillingCadence,
   parseCombineMeta,
 } from "./family-combine";
 
@@ -134,5 +137,132 @@ describe("attributionTargetsForInvoice", () => {
     expect(targets).toEqual([
       { batchId: "b1", amount: 500, studentId: "s1" },
     ]);
+  });
+});
+
+describe("accumulatePaidMonths", () => {
+  it("credits each combine source student, not only the purchaser", () => {
+    const months = accumulatePaidMonths([
+      {
+        studentId: "s1",
+        combineMeta: {
+          sources: [
+            {
+              invoiceId: "i1",
+              studentId: "s1",
+              batchId: "b1",
+              originalAmount: 1000,
+              allocatedDiscount: 100,
+              netAmount: 900,
+            },
+            {
+              invoiceId: "i2",
+              studentId: "s2",
+              batchId: "b2",
+              originalAmount: 1000,
+              allocatedDiscount: 100,
+              netAmount: 900,
+            },
+          ],
+        },
+        membership: null,
+      },
+    ]);
+    expect(months.get("s1")).toBe(1);
+    expect(months.get("s2")).toBe(1);
+  });
+
+  it("does not double-count purchaser when they are also a combine source (negative path)", () => {
+    const months = accumulatePaidMonths([
+      {
+        studentId: "s1",
+        combineMeta: {
+          sources: [
+            {
+              invoiceId: "i1",
+              studentId: "s1",
+              batchId: "b1",
+              originalAmount: 1000,
+              allocatedDiscount: 0,
+              netAmount: 1000,
+            },
+            {
+              invoiceId: "i2",
+              studentId: "s2",
+              batchId: "b2",
+              originalAmount: 1000,
+              allocatedDiscount: 0,
+              netAmount: 1000,
+            },
+          ],
+        },
+        membership: {
+          subscription: { billingCadence: BillingCadence.QUARTERLY },
+        },
+      },
+    ]);
+    expect(months.get("s1")).toBe(1);
+    expect(months.get("s2")).toBe(1);
+  });
+
+  it("keeps individual invoice cadence when there is no combineMeta", () => {
+    const months = accumulatePaidMonths([
+      {
+        studentId: "s1",
+        combineMeta: null,
+        membership: {
+          subscription: { billingCadence: BillingCadence.QUARTERLY },
+        },
+      },
+      {
+        studentId: "s2",
+        combineMeta: null,
+        membership: {
+          subscription: { billingCadence: BillingCadence.MONTHLY },
+        },
+      },
+    ]);
+    expect(months.get("s1")).toBe(3);
+    expect(months.get("s2")).toBe(1);
+  });
+
+  it("can scope credits to a single covered student (profile card)", () => {
+    const months = accumulatePaidMonths(
+      [
+        {
+          studentId: "s1",
+          combineMeta: {
+            sources: [
+              {
+                invoiceId: "i1",
+                studentId: "s1",
+                batchId: "b1",
+                originalAmount: 1000,
+                allocatedDiscount: 0,
+                netAmount: 1000,
+              },
+              {
+                invoiceId: "i2",
+                studentId: "s2",
+                batchId: "b2",
+                originalAmount: 1000,
+                allocatedDiscount: 0,
+                netAmount: 1000,
+              },
+            ],
+          },
+        },
+      ],
+      { onlyStudentIds: new Set(["s2"]) },
+    );
+    expect(months.get("s2")).toBe(1);
+    expect(months.has("s1")).toBe(false);
+  });
+});
+
+describe("monthsForBillingCadence", () => {
+  it("maps quarterly to 3 months", () => {
+    expect(monthsForBillingCadence(BillingCadence.QUARTERLY)).toBe(3);
+    expect(monthsForBillingCadence(BillingCadence.MONTHLY)).toBe(1);
   });
 });

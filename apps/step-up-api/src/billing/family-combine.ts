@@ -1,4 +1,9 @@
-import { MembershipSeatRole } from "@prisma/client";
+import {
+  BillingCadence,
+  InvoiceStatus,
+  MembershipSeatRole,
+  Prisma,
+} from "@prisma/client";
 import type {
   CoveredStudentInput,
   InvoicePurchaseMeta,
@@ -218,4 +223,82 @@ export function attributionTargetsForInvoice(args: {
     amount: args.amount,
     studentId: args.studentId,
   }));
+}
+
+export function monthsForBillingCadence(
+  cadence: BillingCadence | string | null | undefined,
+) {
+  return cadence === BillingCadence.QUARTERLY ? 3 : 1;
+}
+
+export type PaidMonthsInvoice = {
+  studentId: string;
+  combineMeta?: unknown;
+  membership?: {
+    subscription?: { billingCadence?: BillingCadence | string | null } | null;
+  } | null;
+};
+
+/** Prisma select for paid-months aggregation (includes family-combine sources). */
+export const paidMonthsInvoiceSelect = {
+  studentId: true,
+  combineMeta: true,
+  membership: {
+    select: {
+      subscription: { select: { billingCadence: true } },
+    },
+  },
+} as const;
+
+/** Load PAID invoices billed to students or covering them via combineMeta.sources. */
+export function paidMonthsInvoiceWhere(
+  studioId: string,
+  studentIds: string[],
+): Prisma.InvoiceWhereInput {
+  return {
+    studioId,
+    status: InvoiceStatus.PAID,
+    OR: [
+      { studentId: { in: studentIds } },
+      { combineMeta: { not: Prisma.DbNull } },
+    ],
+  };
+}
+
+/**
+ * Attribute paid months per student. Combined family invoices credit each
+ * combineMeta source (not only invoice.studentId / the household purchaser).
+ */
+export function accumulatePaidMonths(
+  invoices: PaidMonthsInvoice[],
+  options?: { onlyStudentIds?: ReadonlySet<string> },
+): Map<string, number> {
+  const paidMonthsByStudent = new Map<string, number>();
+  const only = options?.onlyStudentIds;
+
+  const credit = (studentId: string, months: number) => {
+    if (only && !only.has(studentId)) return;
+    paidMonthsByStudent.set(
+      studentId,
+      (paidMonthsByStudent.get(studentId) ?? 0) + months,
+    );
+  };
+
+  for (const invoice of invoices) {
+    const combineMeta = parseCombineMeta(invoice.combineMeta);
+    if (combineMeta && combineMeta.sources.length > 0) {
+      for (const source of combineMeta.sources) {
+        credit(source.studentId, 1);
+      }
+      continue;
+    }
+    credit(
+      invoice.studentId,
+      monthsForBillingCadence(
+        invoice.membership?.subscription?.billingCadence,
+      ),
+    );
+  }
+
+  return paidMonthsByStudent;
 }

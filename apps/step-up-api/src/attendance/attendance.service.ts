@@ -10,15 +10,18 @@ import { ConfigService } from "@nestjs/config";
 import {
   AttendanceSource,
   AttendanceStatus,
-  BillingCadence,
   BookingStatus,
   BookingType,
-  InvoiceStatus,
   NotificationType,
   SessionStatus,
   UserRole,
 } from "@prisma/client";
 import { enrollmentVisibleAtSession } from "../batches/enrollment-status";
+import {
+  accumulatePaidMonths,
+  paidMonthsInvoiceSelect,
+  paidMonthsInvoiceWhere,
+} from "../billing/family-combine";
 import { MembershipsService } from "../memberships/memberships.service";
 import { NotificationsService } from "../notifications/notifications.service";
 import { PrismaService } from "../prisma/prisma.service";
@@ -187,32 +190,15 @@ export class AttendanceService {
       rosterStudentIds.length === 0
         ? []
         : await this.prisma.invoice.findMany({
-            where: {
-              studioId: session.batch.studioId,
-              studentId: { in: rosterStudentIds },
-              status: InvoiceStatus.PAID,
-            },
-            select: {
-              studentId: true,
-              membership: {
-                select: {
-                  subscription: { select: { billingCadence: true } },
-                },
-              },
-            },
+            where: paidMonthsInvoiceWhere(
+              session.batch.studioId,
+              rosterStudentIds,
+            ),
+            select: paidMonthsInvoiceSelect,
           });
-    const paidMonthsByStudent = new Map<string, number>();
-    for (const invoice of paidInvoices) {
-      const months =
-        invoice.membership?.subscription.billingCadence ===
-        BillingCadence.QUARTERLY
-          ? 3
-          : 1;
-      paidMonthsByStudent.set(
-        invoice.studentId,
-        (paidMonthsByStudent.get(invoice.studentId) ?? 0) + months,
-      );
-    }
+    const paidMonthsByStudent = accumulatePaidMonths(paidInvoices, {
+      onlyStudentIds: new Set(rosterStudentIds),
+    });
     for (const entry of roster) {
       entry.paidMonths = paidMonthsByStudent.get(entry.studentId) ?? 0;
     }

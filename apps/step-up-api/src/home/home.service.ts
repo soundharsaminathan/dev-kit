@@ -683,7 +683,12 @@ export class HomeService {
       });
       if (instructorsMap.size >= 8) break;
     }
-    const instructors = [...instructorsMap.values()];
+    const instructors = await Promise.all(
+      [...instructorsMap.values()].map(async (instructor) => ({
+        ...instructor,
+        photoUrl: await this.media.signReadUrl(instructor.photoUrl),
+      })),
+    );
 
     const recommendationRows = recommendBatches
       .map((batch) => {
@@ -748,7 +753,7 @@ export class HomeService {
       student: {
         id: decrypted.id,
         name: decrypted.name,
-        photoUrl: decrypted.photoUrl,
+        photoUrl: await this.media.signReadUrl(decrypted.photoUrl),
         styles: decrypted.styles,
       },
       studio: studio ? { id: studio.id, name: studio.name } : null,
