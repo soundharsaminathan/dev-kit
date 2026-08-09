@@ -138,12 +138,21 @@ test.describe("batches HTTP @http", () => {
     const sessionId = SEED.sessionAttendanceId;
     try {
       const student = await createHttpStudent("HTTP Unenroll", cleanup);
-      await expectOk("STAFF", `/batches/${SEED.kidsBatchId}/enroll`, {
-        method: "POST",
-        body: JSON.stringify({
-          studentId: student.id,
-          subscriptionId: SEED.kidPlanIds[0],
-        }),
+      const enrollment = await expectOk<{ invoice: { id: string } }>(
+        "STAFF",
+        `/batches/${SEED.kidsBatchId}/enroll`,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            studentId: student.id,
+            subscriptionId: SEED.kidPlanIds[0],
+          }),
+        },
+      );
+      // Inactive roster requires a still-active membership month after unenroll.
+      await expectOk("STAFF", `/billing/${enrollment.invoice.id}/paid`, {
+        method: "PATCH",
+        body: JSON.stringify({ paymentMethod: "CASH" }),
       });
 
       const before = await expectOk<Array<{ studentId: string }>>(

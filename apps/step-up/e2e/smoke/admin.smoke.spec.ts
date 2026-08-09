@@ -331,12 +331,21 @@ test.describe("admin (staff) smoke @smoke", () => {
       }),
     });
     cleanup.trackStudent(student.id);
-    await apiRequest("STAFF", `/batches/${SMOKE.beginnerBatchId}/enroll`, {
+    // Inactive roster only includes ENDED enrollments that still have an active
+    // membership month — enroll + mark paid, then unenroll.
+    const enrollment = await apiRequest<{
+      invoice: { id: string; status: string };
+    }>("STAFF", `/batches/${SMOKE.beginnerBatchId}/enroll`, {
       method: "POST",
       body: JSON.stringify({
         studentId: student.id,
         subscriptionId: SMOKE.adultPlanIds[0],
       }),
+    });
+    expect(enrollment.invoice.status).toBe("PENDING");
+    await apiRequest("STAFF", `/billing/${enrollment.invoice.id}/paid`, {
+      method: "PATCH",
+      body: JSON.stringify({ paymentMethod: "CASH" }),
     });
 
     const context = await browser.newContext({
