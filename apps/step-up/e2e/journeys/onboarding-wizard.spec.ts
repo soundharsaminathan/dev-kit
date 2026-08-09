@@ -29,6 +29,7 @@ async function createIncompleteStudent(label: string) {
     body: JSON.stringify({
       name: "New User",
       email,
+      create: true,
       studioId: SEED.studioId,
     }),
   });

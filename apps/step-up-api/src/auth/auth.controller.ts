@@ -11,7 +11,13 @@ import {
   UseGuards,
 } from "@nestjs/common";
 import { UserRole } from "@prisma/client";
-import { IsEmail, IsEnum, IsOptional, IsString } from "class-validator";
+import {
+  IsBoolean,
+  IsEmail,
+  IsEnum,
+  IsOptional,
+  IsString,
+} from "class-validator";
 import { MediaService } from "../media/media.service";
 import { PushService } from "../notifications/push.service";
 import { PrismaService } from "../prisma/prisma.service";
@@ -40,6 +46,11 @@ class SyncUserDto {
   @IsOptional()
   @IsString()
   studioId?: string;
+
+  /** Explicit register only — boot/login sync must not invent accounts. */
+  @IsOptional()
+  @IsBoolean()
+  create?: boolean;
 
   @IsOptional()
   @IsString()
@@ -209,6 +220,12 @@ export class AuthController {
         ...decrypted,
         photoUrl: await this.media.signReadUrl(decrypted.photoUrl),
       };
+    }
+
+    if (!dto.create) {
+      throw new UnauthorizedException(
+        "No account found for this login. Please register.",
+      );
     }
 
     await this.assertEmailAvailable(email);

@@ -86,6 +86,7 @@ async function createSelfStudent(label: string) {
       body: JSON.stringify({
         name: `Self Funnel ${label}`,
         email,
+        create: true,
         studioId: STUDIO_ID,
       }),
     },

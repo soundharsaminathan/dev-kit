@@ -37,6 +37,7 @@ async function createTrialReadyStudent() {
     body: JSON.stringify({
       name,
       email,
+      create: true,
       studioId: SEED.studioId,
     }),
   });

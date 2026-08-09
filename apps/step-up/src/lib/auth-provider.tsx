@@ -150,7 +150,7 @@ function mapSyncedUser(user: SyncedApiUser): AuthUser {
 
 async function syncFirebaseUser(
   firebaseUser: FirebaseUser,
-  options?: { studioId?: string },
+  options?: { studioId?: string; create?: boolean },
 ): Promise<AuthUser> {
   const token = await firebaseUser.getIdToken();
   const synced = await apiRequest<SyncedApiUser>("/auth/sync", {
@@ -159,6 +159,7 @@ async function syncFirebaseUser(
     body: {
       name: firebaseUser.displayName || undefined,
       email: firebaseUser.email || undefined,
+      ...(options?.create ? { create: true } : {}),
       ...(options?.studioId ? { studioId: options.studioId } : {}),
     },
   });
@@ -178,6 +179,7 @@ async function createBypassStudent(input: {
     body: {
       name: input.name.trim() || "New dancer",
       email: input.email.trim().toLowerCase(),
+      create: true,
       ...(input.studioId ? { studioId: input.studioId } : {}),
     },
   });
@@ -212,7 +214,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     >(),
   );
   const lastSyncedRef = useRef<{ uid: string; user: AuthUser } | null>(null);
-  const pendingStudioIdRef = useRef<string | null>(null);
+  const pendingSyncOptionsRef = useRef<{
+    studioId?: string;
+    create?: boolean;
+  } | null>(null);
 
   const needsEmailVerification =
     !isAuthBypassEnabled() &&
@@ -393,12 +398,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
 
           try {
-            const pendingStudioId = pendingStudioIdRef.current;
-            pendingStudioIdRef.current = null;
+            const pendingSync = pendingSyncOptionsRef.current;
+            pendingSyncOptionsRef.current = null;
             const synced = await Promise.race([
               syncFirebaseUser(
                 firebaseUser,
-                pendingStudioId ? { studioId: pendingStudioId } : undefined,
+                pendingSync
+                  ? {
+                      ...(pendingSync.create ? { create: true } : {}),
+                      ...(pendingSync.studioId
+                        ? { studioId: pendingSync.studioId }
+                        : {}),
+                    }
+                  : undefined,
               ),
               new Promise<never>((_, reject) => {
                 window.setTimeout(() => {
@@ -540,7 +552,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         sendEmailVerification,
         updateProfile,
       } = await import("firebase/auth");
-      pendingStudioIdRef.current = options?.studioId ?? null;
+      pendingSyncOptionsRef.current = {
+        create: true,
+        ...(options?.studioId ? { studioId: options.studioId } : {}),
+      };
       const credential = await createUserWithEmailAndPassword(
         auth,
         email.trim(),
@@ -611,7 +626,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       const googleProvider = await getGoogleProviderAsync();
       const { signInWithPopup } = await import("firebase/auth");
-      pendingStudioIdRef.current = options?.studioId ?? null;
+      pendingSyncOptionsRef.current = options?.asNewStudent
+        ? {
+            create: true,
+            ...(options.studioId ? { studioId: options.studioId } : {}),
+          }
+        : null;
       const credential = await signInWithPopup(auth, googleProvider);
       setEmailVerified(credential.user.emailVerified);
       setHasPasswordProvider(userHasPasswordProvider(credential.user));
