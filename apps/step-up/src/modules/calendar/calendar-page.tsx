@@ -219,6 +219,7 @@ export function CalendarPage({
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const [selected, setSelected] = useState<CalendarEvent | null>(null);
+  const [scrollToNowToken, setScrollToNowToken] = useState(0);
   const range = useMemo(() => rangeForView(focus, view), [focus, view]);
 
   const eventsQuery = useCalendarEvents(scope, range.from, range.to);
@@ -322,7 +323,10 @@ export function CalendarPage({
             <TouchButton
               size="sm"
               variant="default"
-              onClick={() => onFocusChange(new Date())}
+              onClick={() => {
+                onFocusChange(new Date());
+                setScrollToNowToken((token) => token + 1);
+              }}
             >
               Today
             </TouchButton>
@@ -393,12 +397,14 @@ export function CalendarPage({
                 <WeekView
                   focus={focus}
                   events={eventsQuery.data ?? []}
+                  scrollToNowToken={scrollToNowToken}
                   onSelectEvent={handleSelectEvent}
                 />
               ) : (
                 <MonthView
                   focus={focus}
                   events={eventsQuery.data ?? []}
+                  scrollToNowToken={scrollToNowToken}
                   onSelectEvent={handleSelectEvent}
                   onSelectDay={(day) => {
                     onFocusChange(day);

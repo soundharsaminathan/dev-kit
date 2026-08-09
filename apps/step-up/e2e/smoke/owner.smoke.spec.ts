@@ -320,7 +320,12 @@ test.describe("owner smoke @smoke", () => {
         revenueSection.getByRole("radio", { name: "Overall" }),
       ).toBeVisible();
       await expect(revenueSection.getByText("Collected")).toBeVisible();
-      await expect(revenueSection.getByText("₹0")).toBeVisible();
+      await expect(
+        revenueSection
+          .getByText("Collected", { exact: true })
+          .locator("..")
+          .getByText("₹0"),
+      ).toBeVisible();
     } finally {
       await context.close();
       await cleanup.dispose();

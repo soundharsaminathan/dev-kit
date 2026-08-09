@@ -104,6 +104,29 @@ describe("Tabs", () => {
     );
   });
 
+  it("forwards data-testid onto tabs", () => {
+    render(
+      <Tabs defaultSelectedKey="one" aria-label="Settings">
+        <TabList>
+          <Tab id="one" data-testid="tab-one">
+            One
+          </Tab>
+          <Tab id="two" data-testid="tab-two">
+            Two
+          </Tab>
+        </TabList>
+        <TabPanel id="one">Panel one</TabPanel>
+        <TabPanel id="two">Panel two</TabPanel>
+      </Tabs>,
+    );
+
+    expect(screen.getByTestId("tab-one")).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    expect(screen.getByTestId("tab-two")).toBeInTheDocument();
+  });
+
   it("reflects hover and focus-visible states on tabs", () => {
     renderTabs();
     const tab = screen.getByRole("tab", { name: "One" });

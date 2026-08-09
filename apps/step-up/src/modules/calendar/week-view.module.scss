@@ -120,6 +120,29 @@
   z-index: 1;
 }
 
+.nowMarker {
+  position: absolute;
+  left: 0;
+  right: 0;
+  z-index: 2;
+  height: 2px;
+  transform: translateY(-1px);
+  background: var(--color-primary);
+  pointer-events: none;
+
+  &::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 50%;
+    width: 0.45rem;
+    height: 0.45rem;
+    border-radius: 999px;
+    background: var(--color-primary);
+    transform: translate(-35%, -50%);
+  }
+}
+
 @media (max-width: 720px) {
   .weekGrid {
     width: max-content;

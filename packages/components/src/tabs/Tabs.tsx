@@ -155,7 +155,14 @@ function TabList({
 }
 TabList.displayName = "TabList";
 
-function Tab({ id, children, className, isDisabled, ref }: TabProps) {
+function Tab({
+  id,
+  children,
+  className,
+  isDisabled,
+  ref,
+  ...props
+}: TabProps) {
   const { state, orientation, layoutId } = useTabsContext("Tab");
   const { variant } = useTabListContext("Tab");
   const tabRef = useRef<HTMLDivElement>(null);
@@ -178,7 +185,7 @@ function Tab({ id, children, className, isDisabled, ref }: TabProps) {
 
   return (
     <div
-      {...mergeProps(tabProps, hoverProps, focusProps)}
+      {...mergeProps(tabProps, hoverProps, focusProps, props)}
       ref={composeRefs(tabRef, ref)}
       data-tab=""
       data-orientation={orientation}
