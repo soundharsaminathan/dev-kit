@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { SEED } from "../fixtures/seed";
+import { apiBaseUrl, bearerFor, SEED } from "../fixtures/seed";
 import {
   createHttpStudent,
   expectOk,
@@ -298,6 +298,176 @@ test.describe("batches HTTP @http", () => {
       });
     } finally {
       await cleanup.dispose();
+    }
+  });
+
+  test("switch-targets default same-plan filter and includeAllPrices override @http", async () => {
+    const cleanup = new TestDataCleanup();
+    const studentId = SEED.users.STUDENT.id;
+    const fromBatchId = SEED.kidsBatchId;
+    const stamp = Date.now();
+    let toBatchId: string | undefined;
+    let monthlyPlanId: string | undefined;
+    let quarterlyPlanId: string | undefined;
+
+    try {
+      const monthly = await expectOk<{ id: string }>("STAFF", "/subscriptions", {
+        method: "POST",
+        body: JSON.stringify({
+          studioId: SEED.users.STAFF.studioId,
+          name: `Premium Kid Monthly ${stamp}`,
+          kind: "INDIVIDUAL",
+          individualAudience: "KID",
+          billingCadence: "MONTHLY",
+          price: 9999,
+          active: true,
+        }),
+      });
+      monthlyPlanId = monthly.id;
+
+      const quarterly = await expectOk<{ id: string }>(
+        "STAFF",
+        "/subscriptions",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            studioId: SEED.users.STAFF.studioId,
+            name: `Premium Kid Quarterly ${stamp}`,
+            kind: "INDIVIDUAL",
+            individualAudience: "KID",
+            billingCadence: "QUARTERLY",
+            price: 24_999,
+            active: true,
+          }),
+        },
+      );
+      quarterlyPlanId = quarterly.id;
+
+      let lastError: unknown;
+      for (let attempt = 0; attempt < 8; attempt += 1) {
+        const hour = String(5 + ((stamp + attempt) % 8)).padStart(2, "0");
+        const minute = String((stamp + attempt * 13) % 60).padStart(2, "0");
+        const endMinute = String((Number(minute) + 45) % 60).padStart(2, "0");
+        const endHour = String(
+          Number(hour) + (Number(minute) + 45 >= 60 ? 1 : 0),
+        ).padStart(2, "0");
+        try {
+          const toBatch = await expectOk<{ id: string }>("STAFF", "/batches", {
+            method: "POST",
+            body: JSON.stringify({
+              studioId: SEED.users.STAFF.studioId,
+              name: `Premium Switch ${stamp}-${attempt}`,
+              category: "KIDS",
+              branchId: SEED.branchEastId,
+              trainerIds: [SEED.users.TRAINER_2.id],
+              danceCategories: [
+                { name: "Hip Hop", description: "Different price switch" },
+              ],
+              scheduleJson: {
+                frequency: "WEEKLY",
+                weekdays: [(attempt + 3) % 7],
+                startDate: "2028-06-01",
+                endDate: "2028-09-30",
+                startTime: `${hour}:${minute}`,
+                endTime: `${endHour}:${endMinute}`,
+                utcOffsetMinutes: 0,
+              },
+              capacity: 8,
+              enrollmentMode: "STAFF_ONLY",
+              subscriptionIds: [monthlyPlanId, quarterlyPlanId],
+              active: true,
+              certificationEnabled: false,
+            }),
+          });
+          toBatchId = toBatch.id;
+          cleanup.trackBatch(toBatch.id);
+          lastError = undefined;
+          break;
+        } catch (error) {
+          lastError = error;
+          if (
+            !String(error).includes("409") &&
+            !String(error).includes("Conflict")
+          ) {
+            throw error;
+          }
+        }
+      }
+      if (!toBatchId) {
+        throw lastError instanceof Error
+          ? lastError
+          : new Error("Could not create different-price switch target");
+      }
+
+      const samePlanTargets = await expectOk<{
+        targets: Array<{ id: string }>;
+      }>(
+        "TRAINER",
+        `/batches/${fromBatchId}/switch-targets?studentId=${encodeURIComponent(studentId)}`,
+      );
+      expect(samePlanTargets.targets.some((t) => t.id === toBatchId)).toBe(
+        false,
+      );
+
+      const allPriceTargets = await expectOk<{
+        includeAllPrices: boolean;
+        targets: Array<{ id: string; price: number | null }>;
+      }>(
+        "TRAINER",
+        `/batches/${fromBatchId}/switch-targets?studentId=${encodeURIComponent(studentId)}&includeAllPrices=true`,
+      );
+      expect(allPriceTargets.includeAllPrices).toBe(true);
+      expect(allPriceTargets.targets.some((t) => t.id === toBatchId)).toBe(
+        true,
+      );
+
+      await expectStatus("TRAINER", `/batches/${fromBatchId}/switch`, 400, {
+        method: "POST",
+        body: JSON.stringify({
+          studentId,
+          toBatchId,
+        }),
+      });
+
+      const switched = await expectOk<{
+        batchId: string;
+        studentId: string;
+      }>("TRAINER", `/batches/${fromBatchId}/switch`, {
+        method: "POST",
+        body: JSON.stringify({
+          studentId,
+          toBatchId,
+          includeAllPrices: true,
+        }),
+      });
+      expect(switched).toMatchObject({
+        batchId: toBatchId,
+        studentId,
+      });
+
+      await expectOk("TRAINER", `/batches/${toBatchId}/switch`, {
+        method: "POST",
+        body: JSON.stringify({
+          studentId,
+          toBatchId: fromBatchId,
+          includeAllPrices: true,
+        }),
+      });
+    } finally {
+      await cleanup.dispose();
+      for (const planId of [monthlyPlanId, quarterlyPlanId]) {
+        if (!planId) continue;
+        try {
+          await fetch(`${apiBaseUrl()}/subscriptions/${planId}`, {
+            method: "DELETE",
+            headers: {
+              Authorization: `Bearer ${bearerFor("STAFF")}`,
+            },
+          });
+        } catch {
+          // ignore cleanup failures
+        }
+      }
     }
   });
 });

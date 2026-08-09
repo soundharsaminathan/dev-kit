@@ -1221,7 +1221,12 @@ export class BatchesService {
     };
   }
 
-  async listSwitchTargets(fromBatchId: string, studentId: string) {
+  async listSwitchTargets(
+    fromBatchId: string,
+    studentId: string,
+    options: { includeAllPrices?: boolean } = {},
+  ) {
+    const includeAllPrices = options.includeAllPrices === true;
     const source = await this.prisma.batch.findUnique({
       where: { id: fromBatchId },
       include: {
@@ -1259,6 +1264,7 @@ export class BatchesService {
       return {
         studentId,
         subscription: null,
+        includeAllPrices,
         reason: "No active subscription covering this batch",
         targets: [],
       };
@@ -1271,10 +1277,19 @@ export class BatchesService {
         studioId: source.studioId,
         active: true,
         id: { notIn: [...excludeIds] },
-        plans: { some: { subscriptionId } },
+        ...(includeAllPrices
+          ? {}
+          : { plans: { some: { subscriptionId } } }),
       },
       include: {
         branch: { select: { name: true } },
+        plans: {
+          include: {
+            subscription: {
+              select: { price: true, active: true },
+            },
+          },
+        },
       },
       orderBy: { name: "asc" },
     });
@@ -1299,18 +1314,24 @@ export class BatchesService {
       .map((batch) => {
         const occupied = reservedByBatch.get(batch.id) ?? 0;
         const remainingSeats = Math.max(0, batch.capacity - occupied);
+        const prices = batch.plans
+          .filter((plan) => plan.subscription.active)
+          .map((plan) => Number(plan.subscription.price))
+          .filter((value) => Number.isFinite(value));
         return {
           id: batch.id,
           name: batch.name,
           category: batch.category,
           remainingSeats,
           branchName: batch.branch.name,
+          price: prices.length > 0 ? Math.min(...prices) : null,
         };
       })
       .filter((batch) => batch.remainingSeats > 0);
 
     return {
       studentId,
+      includeAllPrices,
       subscription: {
         id: membership.subscription.id,
         name: membership.subscription.name,
@@ -1319,7 +1340,12 @@ export class BatchesService {
     };
   }
 
-  async switchBatch(fromBatchId: string, studentId: string, toBatchId: string) {
+  async switchBatch(
+    fromBatchId: string,
+    studentId: string,
+    toBatchId: string,
+    options: { includeAllPrices?: boolean } = {},
+  ) {
     if (fromBatchId === toBatchId) {
       throw new BadRequestException("Student is already in this batch");
     }
@@ -1404,10 +1430,11 @@ export class BatchesService {
       );
     }
 
+    const includeAllPrices = options.includeAllPrices === true;
     const hasPlan = target.plans.some(
       (plan) => plan.subscriptionId === membership.subscriptionId,
     );
-    if (!hasPlan) {
+    if (!hasPlan && !includeAllPrices) {
       throw new BadRequestException(
         "Target batch does not offer the student's current subscription plan",
       );

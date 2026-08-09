@@ -1,5 +1,11 @@
-import { Badge } from "@dev-ui/components/badge";
 import { Checkbox } from "@dev-ui/components/checkbox";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@dev-ui/components/select";
 import { useToastContext } from "@dev-ui/components/toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
@@ -11,7 +17,6 @@ import { FormInput } from "@/modules/ui/form-input";
 import staff from "@/modules/ui/staff.module.scss";
 import { EmptyState, ErrorState } from "@/modules/ui/states";
 import { TouchButton } from "@/modules/ui/touch-button";
-import styles from "./student-batch-enrollment-actions.module.scss";
 
 type SwitchTarget = {
   id: string;
@@ -19,11 +24,13 @@ type SwitchTarget = {
   category: string;
   remainingSeats: number;
   branchName: string;
+  price: number | null;
 };
 
 type SwitchTargetsResponse = {
   studentId: string;
   subscription: { id: string; name: string } | null;
+  includeAllPrices?: boolean;
   reason?: string;
   targets: SwitchTarget[];
 };
@@ -67,6 +74,7 @@ export function StudentBatchEnrollmentActions({
   const { toast } = useToastContext("StudentBatchEnrollmentActions");
   const [switchOpen, setSwitchOpen] = useState(false);
   const [selectedTargetId, setSelectedTargetId] = useState<string | null>(null);
+  const [includeAllPrices, setIncludeAllPrices] = useState(false);
   const [unenrollOpen, setUnenrollOpen] = useState(false);
   const [issueRefund, setIssueRefund] = useState(false);
   const [refundAmount, setRefundAmount] = useState("");
@@ -75,11 +83,21 @@ export function StudentBatchEnrollmentActions({
   >(null);
 
   const switchTargetsQuery = useQuery({
-    queryKey: ["batch-switch-targets", batchId, studentId],
-    queryFn: () =>
-      api.get<SwitchTargetsResponse>(
-        `/batches/${batchId}/switch-targets?studentId=${encodeURIComponent(studentId)}`,
-      ),
+    queryKey: [
+      "batch-switch-targets",
+      batchId,
+      studentId,
+      includeAllPrices,
+    ],
+    queryFn: () => {
+      const params = new URLSearchParams({ studentId });
+      if (includeAllPrices) {
+        params.set("includeAllPrices", "true");
+      }
+      return api.get<SwitchTargetsResponse>(
+        `/batches/${batchId}/switch-targets?${params.toString()}`,
+      );
+    },
     enabled: switchOpen,
   });
 
@@ -97,6 +115,7 @@ export function StudentBatchEnrollmentActions({
       api.post(`/batches/${batchId}/switch`, {
         studentId,
         toBatchId,
+        ...(includeAllPrices ? { includeAllPrices: true } : {}),
       }),
     onSuccess: (_data, toBatchId) => {
       const targetName =
@@ -181,12 +200,23 @@ export function StudentBatchEnrollmentActions({
 
   function openSwitch() {
     setSelectedTargetId(null);
+    setIncludeAllPrices(false);
     setSwitchOpen(true);
   }
 
   function closeSwitch() {
     setSwitchOpen(false);
     setSelectedTargetId(null);
+    setIncludeAllPrices(false);
+  }
+
+  function switchTargetLabel(target: SwitchTarget) {
+    const category = target.category === "KIDS" ? "Kids" : "Adults";
+    const price =
+      includeAllPrices && target.price != null
+        ? ` · ${formatPrice(target.price)}`
+        : "";
+    return `${target.name} · ${target.branchName} · ${category}${price} · ${target.remainingSeats} left`;
   }
 
   function openUnenroll() {
@@ -274,43 +304,49 @@ export function StudentBatchEnrollmentActions({
               title="No eligible batches"
               description={
                 switchTargetsQuery.data.reason ??
-                "No other batches offer this student’s current plan with open seats."
+                (includeAllPrices
+                  ? "No other open batches match this student’s category."
+                  : "No other batches offer this student’s current plan with open seats.")
               }
             />
           ) : null}
           {switchTargetsQuery.data &&
           switchTargetsQuery.data.targets.length > 0 ? (
-            <div className={staff.list}>
-              {switchTargetsQuery.data.targets.map((target) => {
-                const selected = selectedTargetId === target.id;
-                return (
-                  <button
+            <Select
+              aria-label="Target batch"
+              placeholder="Select a batch"
+              selectedKey={selectedTargetId}
+              onSelectionChange={(key) => {
+                setSelectedTargetId(key == null ? null : String(key));
+              }}
+            >
+              <SelectTrigger data-testid="switch-batch-select">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {switchTargetsQuery.data.targets.map((target) => (
+                  <SelectItem
                     key={target.id}
-                    type="button"
-                    className={`${staff.attentionCard} ${styles.targetPick}`}
-                    data-selected={selected ? "true" : undefined}
+                    id={target.id}
+                    textValue={switchTargetLabel(target)}
                     data-testid={`switch-target-${target.id}`}
-                    onClick={() => setSelectedTargetId(target.id)}
                   >
-                    <div className={staff.attentionTop}>
-                      <span className={staff.attentionTitle}>
-                        {target.name}
-                      </span>
-                      <Badge variant={selected ? "success" : "neutral"}>
-                        {selected
-                          ? "Selected"
-                          : `${target.remainingSeats} left`}
-                      </Badge>
-                    </div>
-                    <p className={staff.attentionMeta}>
-                      {target.branchName} ·{" "}
-                      {target.category === "KIDS" ? "Kids" : "Adults"}
-                    </p>
-                  </button>
-                );
-              })}
-            </div>
+                    {switchTargetLabel(target)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           ) : null}
+          <Checkbox
+            isSelected={includeAllPrices}
+            onChange={(checked) => {
+              setIncludeAllPrices(checked);
+              setSelectedTargetId(null);
+            }}
+            data-testid="switch-include-all-prices"
+          >
+            Include all batches irrespective of price
+          </Checkbox>
           {switchBatch.isError ? (
             <ErrorState
               description={
