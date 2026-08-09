@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { ChatCryptoService } from "./chat-crypto.service";
 
 const MASTER_KEY =
-  "";
+  "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
 
 function makeService(masterKey: string | null = MASTER_KEY) {
   const config = {
