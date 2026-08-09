@@ -56,7 +56,7 @@ function MapSizeFix({ useMap }: { useMap: MapModule["useMap"] }) {
 export function LocationCard({ location }: { location: ChatLocation }) {
   const [mapModule, setMapModule] = useState<MapModule | null>(cachedModule);
   const label = location.label || "Shared location";
-  const mapsUrl = `https://www.openstreetmap.org/?mlat=${location.lat}&mlon=${location.lng}#map=16/${location.lat}/${location.lng}`;
+  const mapsUrl = `https://www.google.com/maps?q=${location.lat},${location.lng}`;
 
   useEffect(() => {
     let active = true;

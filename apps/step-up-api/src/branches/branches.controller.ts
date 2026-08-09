@@ -42,6 +42,11 @@ const READ_ROLES = [
 
 const WRITE_ROLES = [UserRole.OWNER, UserRole.STAFF] as const;
 
+class ResolveMapUrlDto {
+  @IsString()
+  url!: string;
+}
+
 class CreateBranchDto {
   @IsString()
   studioId!: string;
@@ -247,6 +252,15 @@ export class BranchesController {
       user,
       includeArchived === "true" || includeArchived === "1",
     );
+  }
+
+  @Post("branches/resolve-map-url")
+  @Roles(...WRITE_ROLES)
+  resolveMapUrl(
+    @CurrentUser() user: DecryptedUser,
+    @Body() dto: ResolveMapUrlDto,
+  ) {
+    return this.branchesService.resolveMapUrl(user, dto.url);
   }
 
   @Post("branches")

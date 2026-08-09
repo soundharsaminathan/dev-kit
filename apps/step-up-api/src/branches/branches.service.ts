@@ -16,6 +16,7 @@ import { MediaService } from "../media/media.service";
 import { PrismaService } from "../prisma/prisma.service";
 import type { DecryptedUser } from "../users/user-crypto.service";
 import { UserCryptoService } from "../users/user-crypto.service";
+import { followMapRedirects } from "./resolve-map-url";
 
 export const MAX_ACTIVE_IMAGES = 24;
 export const MAX_ACTIVE_VIDEOS = 6;
@@ -99,6 +100,25 @@ export class BranchesService {
 
     if (hasLng && (longitude! < -180 || longitude! > 180)) {
       throw new BadRequestException("Longitude must be between -180 and 180");
+    }
+  }
+
+  async resolveMapUrl(user: DecryptedUser, url: string) {
+    this.assertStaff(user);
+    const trimmed = url?.trim() ?? "";
+    if (!trimmed) {
+      throw new BadRequestException("Paste a Google Maps link");
+    }
+
+    try {
+      const resolvedUrl = await followMapRedirects(trimmed);
+      return { url: resolvedUrl };
+    } catch (error) {
+      throw new BadRequestException(
+        error instanceof Error
+          ? error.message
+          : "Could not resolve that map link",
+      );
     }
   }
 

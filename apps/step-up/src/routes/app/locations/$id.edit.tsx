@@ -248,7 +248,17 @@ function LocationEditPage() {
             onChange={setPricingBlurb}
           />
           <div className={styles.mapWrap}>
-            <BranchMap value={coordinates} onChange={setCoordinates} />
+            <BranchMap
+              value={coordinates}
+              onChange={setCoordinates}
+              resolveShortLink={async (url) => {
+                const result = await api.post<{ url: string }>(
+                  "/branches/resolve-map-url",
+                  { url },
+                );
+                return result.url;
+              }}
+            />
           </div>
         </section>
 

@@ -168,5 +168,5 @@ export function coverUrl(branch: Pick<StudioBranch, "coverMedia" | "media">) {
 }
 
 export function mapsUrl(latitude: number, longitude: number) {
-  return `https://www.openstreetmap.org/?mlat=${latitude}&mlon=${longitude}#map=16/${latitude}/${longitude}`;
+  return `https://www.google.com/maps?q=${latitude},${longitude}`;
 }

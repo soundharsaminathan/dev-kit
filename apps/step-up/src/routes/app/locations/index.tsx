@@ -1,15 +1,18 @@
 import { useToastContext } from "@dev-ui/components/toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useState } from "react";
 import { useApi } from "@/lib/api-context";
 import { useAuth } from "@/lib/auth";
 import { isAdminRole } from "@/lib/constants";
 import { useStudioId } from "@/lib/use-studio-id";
 import { LocationCard } from "@/modules/locations/location-card";
 import type { StudioBranch } from "@/modules/locations/types";
+import { AppSheet } from "@/modules/ui/app-sheet";
 import { PullToRefresh } from "@/modules/ui/pull-to-refresh";
 import { Screen } from "@/modules/ui/screen";
 import { SkeletonCardList } from "@/modules/ui/skeleton-block";
+import staff from "@/modules/ui/staff.module.scss";
 import { EmptyState, ErrorState } from "@/modules/ui/states";
 import { TouchButton } from "@/modules/ui/touch-button";
 import styles from "./locations.module.scss";
@@ -26,6 +29,9 @@ function LocationsPage() {
   const queryClient = useQueryClient();
   const { toast } = useToastContext("LocationsPage");
   const canManage = isAdminRole(user?.role);
+  const [branchToDelete, setBranchToDelete] = useState<StudioBranch | null>(
+    null,
+  );
 
   const branchesQuery = useQuery({
     queryKey: ["branches", studioId],
@@ -35,6 +41,7 @@ function LocationsPage() {
   const deleteBranch = useMutation({
     mutationFn: (id: string) => api.delete(`/branches/${id}`),
     onSuccess: async () => {
+      setBranchToDelete(null);
       await queryClient.invalidateQueries({
         queryKey: ["branches", studioId],
       });
@@ -42,16 +49,6 @@ function LocationsPage() {
         title: "Location deleted",
         description: "The branch was removed.",
         variant: "success",
-      });
-    },
-    onError: (error: unknown) => {
-      toast({
-        title: "Couldn’t delete location",
-        description:
-          error instanceof Error
-            ? error.message
-            : "This location could not be deleted.",
-        variant: "error",
       });
     },
   });
@@ -151,31 +148,12 @@ function LocationsPage() {
                           </TouchButton>
                           <TouchButton
                             size="sm"
-                            variant="quiet"
-                            onClick={() => {
-                              if (
-                                window.confirm(
-                                  `Delete “${branch.name}”? Batches using this location must be moved first.`,
-                                )
-                              ) {
-                                deleteBranch.mutate(branch.id);
-                              }
-                            }}
-                            isPending={
-                              deleteBranch.isPending &&
-                              deleteBranch.variables === branch.id
-                            }
+                            variant="danger"
+                            data-testid={`delete-location-${branch.id}`}
+                            onClick={() => setBranchToDelete(branch)}
                           >
                             Delete
                           </TouchButton>
-                          {deleteBranch.isError &&
-                          deleteBranch.variables === branch.id ? (
-                            <p className={styles.error}>
-                              {deleteBranch.error instanceof Error
-                                ? deleteBranch.error.message
-                                : "This location could not be deleted."}
-                            </p>
-                          ) : null}
                         </>
                       ) : null}
                     </div>
@@ -186,6 +164,54 @@ function LocationsPage() {
           ) : null}
         </div>
       </PullToRefresh>
+
+      <AppSheet
+        isOpen={branchToDelete !== null}
+        onOpenChange={(open) => {
+          if (!open && !deleteBranch.isPending) {
+            setBranchToDelete(null);
+          }
+        }}
+        title="Delete location"
+      >
+        <div className={staff.sheetStack}>
+          <p className={staff.rowMeta}>
+            Delete “{branchToDelete?.name}”? Batches using this location must be
+            moved first.
+          </p>
+          {deleteBranch.isError ? (
+            <ErrorState
+              description={
+                deleteBranch.error instanceof Error
+                  ? deleteBranch.error.message
+                  : "This location could not be deleted."
+              }
+            />
+          ) : null}
+          <div className={staff.sheetActions}>
+            <TouchButton
+              variant="default"
+              fullWidth
+              isDisabled={deleteBranch.isPending}
+              onClick={() => setBranchToDelete(null)}
+            >
+              Cancel
+            </TouchButton>
+            <TouchButton
+              variant="danger"
+              fullWidth
+              isPending={deleteBranch.isPending}
+              data-testid="confirm-delete-location"
+              onClick={() => {
+                if (!branchToDelete) return;
+                deleteBranch.mutate(branchToDelete.id);
+              }}
+            >
+              Delete location
+            </TouchButton>
+          </div>
+        </div>
+      </AppSheet>
     </Screen>
   );
 }

@@ -112,11 +112,19 @@ function NewLocationPage() {
             onChange={(coordinates) =>
               setForm((current) => ({ ...current, coordinates }))
             }
+            resolveShortLink={async (url) => {
+              const result = await api.post<{ url: string }>(
+                "/branches/resolve-map-url",
+                { url },
+              );
+              return result.url;
+            }}
           />
         </div>
         {!form.coordinates ? (
           <p className={styles.help}>
-            A map pin is required before saving this location.
+            Paste a Google Maps link or click the map — a pin is required before
+            saving.
           </p>
         ) : null}
         {createBranch.isError ? (
