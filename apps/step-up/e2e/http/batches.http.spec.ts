@@ -206,9 +206,7 @@ test.describe("batches HTTP @http", () => {
     }>("STAFF", `/batches/${SEED.kidsBatchId}`);
 
     expect(
-      batch.enrollments.some(
-        (row) => row.studentId === SEED.users.STUDENT.id,
-      ),
+      batch.enrollments.some((row) => row.studentId === SEED.users.STUDENT.id),
     ).toBe(true);
     expect(
       batch.inactiveEnrollments.some(
@@ -242,8 +240,6 @@ test.describe("batches HTTP @http", () => {
   // switch mutations so they cannot race each other under fullyParallel.
   test.describe("batch switch @http", () => {
     test.describe.configure({ mode: "serial" });
-    // Batch create retries on schedule conflicts; keep headroom above default 60s.
-    test.setTimeout(120_000);
 
     const studentId = SEED.users.STUDENT.id;
     const fromBatchId = SEED.kidsBatchId;
@@ -279,33 +275,37 @@ test.describe("batches HTTP @http", () => {
             Number(hour) + (Number(minute) + 45 >= 60 ? 1 : 0),
           ).padStart(2, "0");
           try {
-            const toBatch = await expectOk<{ id: string }>("STAFF", "/batches", {
-              method: "POST",
-              body: JSON.stringify({
-                studioId: SEED.users.STAFF.studioId,
-                name: `Switch To ${stamp}`,
-                category: "KIDS",
-                branchId: SEED.branchEastId,
-                trainerIds: [SEED.users.TRAINER_2.id],
-                danceCategories: [
-                  { name: "Hip Hop", description: "Switch to" },
-                ],
-                scheduleJson: {
-                  frequency: "WEEKLY",
-                  weekdays: [(attempt + 2) % 7],
-                  startDate: "2028-02-01",
-                  endDate: "2028-05-30",
-                  startTime: `${hour}:${minute}`,
-                  endTime: `${endHour}:${endMinute}`,
-                  utcOffsetMinutes: 0,
-                },
-                capacity: 8,
-                enrollmentMode: "STAFF_ONLY",
-                subscriptionIds: [...SEED.kidPlanIds],
-                active: true,
-                certificationEnabled: false,
-              }),
-            });
+            const toBatch = await expectOk<{ id: string }>(
+              "STAFF",
+              "/batches",
+              {
+                method: "POST",
+                body: JSON.stringify({
+                  studioId: SEED.users.STAFF.studioId,
+                  name: `Switch To ${stamp}`,
+                  category: "KIDS",
+                  branchId: SEED.branchEastId,
+                  trainerIds: [SEED.users.TRAINER_2.id],
+                  danceCategories: [
+                    { name: "Hip Hop", description: "Switch to" },
+                  ],
+                  scheduleJson: {
+                    frequency: "WEEKLY",
+                    weekdays: [(attempt + 2) % 7],
+                    startDate: "2028-02-01",
+                    endDate: "2028-05-30",
+                    startTime: `${hour}:${minute}`,
+                    endTime: `${endHour}:${endMinute}`,
+                    utcOffsetMinutes: 0,
+                  },
+                  capacity: 8,
+                  enrollmentMode: "STAFF_ONLY",
+                  subscriptionIds: [...SEED.kidPlanIds],
+                  active: true,
+                  certificationEnabled: false,
+                }),
+              },
+            );
             toBatchId = toBatch.id;
             cleanup.trackBatch(toBatch.id);
             lastError = undefined;
@@ -431,33 +431,37 @@ test.describe("batches HTTP @http", () => {
             Number(hour) + (Number(minute) + 45 >= 60 ? 1 : 0),
           ).padStart(2, "0");
           try {
-            const toBatch = await expectOk<{ id: string }>("STAFF", "/batches", {
-              method: "POST",
-              body: JSON.stringify({
-                studioId: SEED.users.STAFF.studioId,
-                name: `Premium Switch ${stamp}-${attempt}`,
-                category: "KIDS",
-                branchId: SEED.branchEastId,
-                trainerIds: [SEED.users.TRAINER_2.id],
-                danceCategories: [
-                  { name: "Hip Hop", description: "Different price switch" },
-                ],
-                scheduleJson: {
-                  frequency: "WEEKLY",
-                  weekdays: [(attempt + 3) % 7],
-                  startDate: "2028-06-01",
-                  endDate: "2028-09-30",
-                  startTime: `${hour}:${minute}`,
-                  endTime: `${endHour}:${endMinute}`,
-                  utcOffsetMinutes: 0,
-                },
-                capacity: 8,
-                enrollmentMode: "STAFF_ONLY",
-                subscriptionIds: [monthlyPlanId, quarterlyPlanId],
-                active: true,
-                certificationEnabled: false,
-              }),
-            });
+            const toBatch = await expectOk<{ id: string }>(
+              "STAFF",
+              "/batches",
+              {
+                method: "POST",
+                body: JSON.stringify({
+                  studioId: SEED.users.STAFF.studioId,
+                  name: `Premium Switch ${stamp}-${attempt}`,
+                  category: "KIDS",
+                  branchId: SEED.branchEastId,
+                  trainerIds: [SEED.users.TRAINER_2.id],
+                  danceCategories: [
+                    { name: "Hip Hop", description: "Different price switch" },
+                  ],
+                  scheduleJson: {
+                    frequency: "WEEKLY",
+                    weekdays: [(attempt + 3) % 7],
+                    startDate: "2028-06-01",
+                    endDate: "2028-09-30",
+                    startTime: `${hour}:${minute}`,
+                    endTime: `${endHour}:${endMinute}`,
+                    utcOffsetMinutes: 0,
+                  },
+                  capacity: 8,
+                  enrollmentMode: "STAFF_ONLY",
+                  subscriptionIds: [monthlyPlanId, quarterlyPlanId],
+                  active: true,
+                  certificationEnabled: false,
+                }),
+              },
+            );
             toBatchId = toBatch.id;
             cleanup.trackBatch(toBatch.id);
             lastError = undefined;
