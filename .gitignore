@@ -35,6 +35,14 @@ Thumbs.db
 !.env.example
 !**/.env.example
 
+# Secrets / credentials
+**/service-account*.json
+**/*firebase-admin*.json
+**/*credentials*.json
+**/*secret*.json
+**/*.pem
+**/*.key
+
 # Local scratch / smoke artifacts
 tmp/
 
@@ -46,3 +54,4 @@ vitest-output.json
 apps/step-up/lighthouse/
 apps/step-up/lighthouse-*.json
 apps/step-up/scripts/lighthouse-matrix.mjs
+.git-rewrite/
