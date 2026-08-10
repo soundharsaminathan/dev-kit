@@ -22,22 +22,11 @@
   min-width: 0;
 }
 
-.enrollForm {
+.enrollActions {
   display: flex;
-  flex-direction: column;
-  gap: var(--space-3, 0.75rem);
-}
-
-.enrollForm :global([data-menu]) {
-  flex-shrink: 0;
-}
-
-@media (min-width: 40rem) {
-  .enrollForm {
-    display: grid;
-    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) auto;
-    align-items: end;
-  }
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2, 0.5rem);
 }
 
 .hint {

@@ -5,6 +5,12 @@
   min-width: 0;
 }
 
+.hint {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: color-mix(in srgb, var(--color-fg) 62%, transparent);
+}
+
 .results {
   display: flex;
   flex-direction: column;

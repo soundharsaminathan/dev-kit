@@ -1,7 +1,7 @@
 import { Checkbox } from "@dev-ui/components/checkbox";
 import { Tag, TagGroup, TagList } from "@dev-ui/components/tag-group";
 import { useInfiniteQuery } from "@tanstack/react-query";
-import { type Key, useEffect, useMemo, useState } from "react";
+import { type Key, useEffect, useMemo, useRef, useState } from "react";
 import { useApi } from "@/lib/api-context";
 import { useStudioId } from "@/lib/use-studio-id";
 import { FormInput } from "@/modules/ui/form-input";
@@ -19,8 +19,10 @@ type StudentSearchPage = {
 type StudentSearchMultiselectProps = {
   selectedIds: string[];
   onSelectedIdsChange: (ids: string[]) => void;
+  onSelectedStudentsChange?: (students: StudioStudent[]) => void;
   excludeIds?: Iterable<string>;
   includeParents?: boolean;
+  maxSelected?: number;
   isDisabled?: boolean;
   enabled?: boolean;
   label?: string;
@@ -28,6 +30,7 @@ type StudentSearchMultiselectProps = {
   emptyTitle?: string;
   emptyDescription?: string;
   pageSize?: number;
+  testIdPrefix?: string;
 };
 
 function useDebouncedValue<T>(value: T, delayMs: number) {
@@ -44,8 +47,10 @@ function useDebouncedValue<T>(value: T, delayMs: number) {
 export function StudentSearchMultiselect({
   selectedIds,
   onSelectedIdsChange,
+  onSelectedStudentsChange,
   excludeIds,
   includeParents = false,
+  maxSelected,
   isDisabled,
   enabled = true,
   label = "Search students",
@@ -53,6 +58,7 @@ export function StudentSearchMultiselect({
   emptyTitle = "No students found",
   emptyDescription = "Try a different name or email.",
   pageSize = 20,
+  testIdPrefix = "family",
 }: StudentSearchMultiselectProps) {
   const api = useApi();
   const studioId = useStudioId();
@@ -62,6 +68,8 @@ export function StudentSearchMultiselect({
   >({});
   const debouncedSearch = useDebouncedValue(search.trim(), 300);
   const excluded = useMemo(() => new Set(excludeIds ?? []), [excludeIds]);
+  const atCap =
+    maxSelected != null && selectedIds.length >= maxSelected;
 
   const studentsQuery = useInfiniteQuery({
     queryKey: [
@@ -125,6 +133,13 @@ export function StudentSearchMultiselect({
     [selectedIds, selectedById],
   );
 
+  const onSelectedStudentsChangeRef = useRef(onSelectedStudentsChange);
+  onSelectedStudentsChangeRef.current = onSelectedStudentsChange;
+
+  useEffect(() => {
+    onSelectedStudentsChangeRef.current?.(selectedStudents);
+  }, [selectedStudents]);
+
   function toggleStudent(student: StudioStudent) {
     const selected = selectedIds.includes(student.id);
     if (selected) {
@@ -135,6 +150,7 @@ export function StudentSearchMultiselect({
       });
       return;
     }
+    if (atCap) return;
     onSelectedIdsChange([...selectedIds, student.id]);
     setSelectedById((current) => ({ ...current, [student.id]: student }));
   }
@@ -159,14 +175,11 @@ export function StudentSearchMultiselect({
         onChange={setSearch}
         placeholder={placeholder}
         {...(isDisabled != null ? { isDisabled } : {})}
-        data-testid="family-search"
+        data-testid={`${testIdPrefix}-search`}
       />
 
       {selectedStudents.length > 0 ? (
-        <TagGroup
-          aria-label="Selected family members"
-          onRemove={removeSelected}
-        >
+        <TagGroup aria-label="Selected students" onRemove={removeSelected}>
           <TagList>
             {selectedStudents.map((student) => (
               <Tag key={student.id} id={student.id}>
@@ -176,6 +189,12 @@ export function StudentSearchMultiselect({
             ))}
           </TagList>
         </TagGroup>
+      ) : null}
+
+      {atCap && maxSelected != null ? (
+        <p className={styles.hint}>
+          {selectedIds.length} of {maxSelected} selected
+        </p>
       ) : null}
 
       {studentsQuery.isLoading ? <SkeletonCardList count={3} /> : null}
@@ -203,9 +222,13 @@ export function StudentSearchMultiselect({
       ) : null}
 
       {students.length > 0 ? (
-        <ul className={styles.results} data-testid="family-search-results">
+        <ul
+          className={styles.results}
+          data-testid={`${testIdPrefix}-search-results`}
+        >
           {students.map((student) => {
             const selected = selectedIds.includes(student.id);
+            const rowDisabled = Boolean(isDisabled) || (!selected && atCap);
             const meta = [
               student.email,
               student.role === "PARENT" ? "Parent" : null,
@@ -217,11 +240,11 @@ export function StudentSearchMultiselect({
                 key={student.id}
                 className={styles.resultRow}
                 data-selected={selected ? "true" : undefined}
-                data-testid={`pick-family-${student.id}`}
+                data-testid={`pick-${testIdPrefix}-${student.id}`}
               >
                 <Checkbox
                   isSelected={selected}
-                  {...(isDisabled != null ? { isDisabled } : {})}
+                  isDisabled={rowDisabled}
                   onChange={() => toggleStudent(student)}
                 >
                   {`${student.name} · ${meta}`}
@@ -238,7 +261,7 @@ export function StudentSearchMultiselect({
           fullWidth
           {...(isDisabled != null ? { isDisabled } : {})}
           isPending={studentsQuery.isFetchingNextPage}
-          data-testid="family-search-load-more"
+          data-testid={`${testIdPrefix}-search-load-more`}
           onClick={() => {
             void studentsQuery.fetchNextPage();
           }}
