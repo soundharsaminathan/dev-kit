@@ -28,7 +28,6 @@ type ActiveStudentResult = {
   children: Array<{ id: string; name: string }>;
   familyMembers: FamilyMemberDto[];
   isParent: boolean;
-  isManagingFamily: boolean;
   setActiveChild: (id: string) => void;
   setActiveAccount: (id: string) => void;
 };
@@ -135,13 +134,13 @@ export function useActiveStudent(): ActiveStudentResult {
       children: [],
       familyMembers: [],
       isParent: false,
-      isManagingFamily: false,
       setActiveChild: setActiveAccount,
       setActiveAccount,
     };
   }
 
-  const studentId = selectedAccountId ?? user.id;
+  const isParent = user.role === "PARENT";
+  const studentId = isParent ? (selectedAccountId ?? user.id) : user.id;
 
   return {
     loading: familyQuery.isLoading,
@@ -149,8 +148,7 @@ export function useActiveStudent(): ActiveStudentResult {
     accounts,
     children,
     familyMembers,
-    isParent: user.role === "PARENT",
-    isManagingFamily: accounts.length > 1,
+    isParent,
     setActiveChild: setActiveAccount,
     setActiveAccount,
   };

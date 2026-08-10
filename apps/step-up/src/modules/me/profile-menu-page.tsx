@@ -13,7 +13,6 @@ import {
   type ShellVariant,
 } from "@/modules/layout/nav-config";
 import { ActiveStudentContext } from "@/modules/me/active-student-context";
-import { ChildSwitcher } from "@/modules/me/child-switcher";
 import { AGE_RANGES, GENDERS } from "@/modules/onboarding/options";
 import { AppSheet } from "@/modules/ui/app-sheet";
 import { FormInput } from "@/modules/ui/form-input";
@@ -33,7 +32,6 @@ export function ProfileMenuPage({ variant = "me" }: ProfileMenuPageProps) {
   const isMobile = useIsMobile();
   const activeStudent = useContext(ActiveStudentContext);
   const familyMembers = activeStudent?.familyMembers ?? [];
-  const isManagingFamily = activeStudent?.isManagingFamily ?? false;
   const setActiveAccount = activeStudent?.setActiveAccount ?? (() => {});
   // Staff/owner desktop already has these destinations in the sidebar.
   // Keep overflow links on mobile where the sidebar is hidden.
@@ -112,13 +110,6 @@ export function ProfileMenuPage({ variant = "me" }: ProfileMenuPageProps) {
   return (
     <Screen title="Profile">
       <div className={styles.root}>
-        {isManagingFamily ? (
-          <section className={styles.section}>
-            <h2 className={styles.sectionTitle}>Switch account</h2>
-            <ChildSwitcher />
-          </section>
-        ) : null}
-
         <Link to={editTo} className={styles.profileCard}>
           <Avatar size="lg">
             {user?.photoUrl ? (

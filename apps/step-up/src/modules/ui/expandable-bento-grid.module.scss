@@ -106,8 +106,7 @@
   z-index: 10000;
   display: grid;
   place-items: center;
-  padding: var(--space-4, 1rem);
-  padding-block-start: max(var(--space-4, 1rem), 4rem);
+  padding: 0;
 }
 
 .backdrop {
@@ -118,14 +117,14 @@
 
 .close {
   position: absolute;
-  top: var(--space-3, 0.75rem);
-  right: var(--space-3, 0.75rem);
+  top: calc(var(--space-3, 0.75rem) + env(safe-area-inset-top, 0px));
+  right: calc(var(--space-3, 0.75rem) + env(safe-area-inset-right, 0px));
   z-index: 2;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 2rem;
-  height: 2rem;
+  width: 2.5rem;
+  height: 2.5rem;
   border: none;
   border-radius: 999px;
   background: var(--color-bg);
@@ -139,12 +138,13 @@
   z-index: 1;
   display: flex;
   flex-direction: column;
-  width: min(100%, 28rem);
-  max-height: min(90vh, 40rem);
+  width: 100%;
+  height: 100%;
+  max-height: 100dvh;
   overflow: hidden;
-  border-radius: var(--radius-2xl, 1.5rem);
+  border-radius: 0;
   background: var(--color-card, var(--color-bg));
-  box-shadow: var(--elevation-3, 0 16px 40px rgb(0 0 0 / 18%));
+  box-shadow: none;
 }
 
 .panelMedia {
@@ -152,7 +152,7 @@
   align-items: center;
   justify-content: center;
   width: 100%;
-  height: clamp(16rem, 48vw, 22rem);
+  height: min(52dvh, 22rem);
   flex-shrink: 0;
   overflow: hidden;
   background: color-mix(in srgb, var(--color-primary) 12%, var(--color-muted));
@@ -163,7 +163,7 @@
   > * {
     width: 100%;
     height: 100%;
-    object-fit: contain;
+    object-fit: cover;
   }
 }
 
@@ -222,12 +222,51 @@
 }
 
 .panelBody {
-  padding: 0 var(--space-4, 1rem) var(--space-4, 1rem);
+  flex: 1;
+  min-height: 0;
+  padding: 0 var(--space-4, 1rem)
+    calc(var(--space-4, 1rem) + env(safe-area-inset-bottom, 0px));
   overflow: auto;
   color: color-mix(in srgb, var(--color-fg) 72%, transparent);
   font-size: 0.875rem;
   line-height: 1.5;
   scrollbar-width: thin;
+}
+
+@media (min-width: 768px) {
+  .overlay {
+    place-items: center;
+    padding: var(--space-4, 1rem);
+    padding-block-start: max(var(--space-4, 1rem), 4rem);
+  }
+
+  .close {
+    top: var(--space-3, 0.75rem);
+    right: var(--space-3, 0.75rem);
+    width: 2rem;
+    height: 2rem;
+  }
+
+  .panel {
+    width: min(100%, 28rem);
+    height: auto;
+    max-height: min(90vh, 40rem);
+    border-radius: var(--radius-2xl, 1.5rem);
+    box-shadow: var(--elevation-3, 0 16px 40px rgb(0 0 0 / 18%));
+  }
+
+  .panelMedia {
+    height: clamp(16rem, 48vw, 22rem);
+
+    > * {
+      object-fit: contain;
+    }
+  }
+
+  .panelBody {
+    flex: unset;
+    padding: 0 var(--space-4, 1rem) var(--space-4, 1rem);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

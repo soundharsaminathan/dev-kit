@@ -12,7 +12,6 @@ import {
 import { requireAuth } from "@/lib/require-auth";
 import { AppShell } from "@/modules/layout/app-shell";
 import { ActiveStudentProvider } from "@/modules/me/active-student-provider";
-import { ChildSwitcher } from "@/modules/me/child-switcher";
 
 export const Route = createFileRoute("/me")({
   beforeLoad: ({ context, location }) => {
@@ -35,14 +34,9 @@ export const Route = createFileRoute("/me")({
 });
 
 function MeLayout() {
-  const pathname = useRouterState({
-    select: (state) => state.location.pathname,
+  const isOnboarding = useRouterState({
+    select: (state) => state.location.pathname.startsWith("/me/onboarding"),
   });
-  const isHome = pathname === "/me" || pathname === "/me/";
-  const isTrainers =
-    pathname === "/me/trainers" || pathname.startsWith("/me/trainers/");
-  const isOnboarding = pathname.startsWith("/me/onboarding");
-  const bannerOwnsChildSwitcher = isHome || isTrainers;
 
   if (isOnboarding) {
     return <Outlet />;
@@ -51,7 +45,6 @@ function MeLayout() {
   return (
     <ActiveStudentProvider>
       <AppShell variant="me">
-        {!bannerOwnsChildSwitcher ? <ChildSwitcher /> : null}
         <Outlet />
       </AppShell>
     </ActiveStudentProvider>

@@ -7,7 +7,6 @@ import { NotificationsControl } from "@/modules/layout/app-header";
 import { AnimatedMetric } from "@/modules/ui/animated-metric";
 import { HScrollRow } from "@/modules/ui/h-scroll-row";
 import { TooltipIconBar } from "@/modules/ui/tooltip-icon-bar";
-import { ChildSwitcher } from "./child-switcher";
 import styles from "./home-sections.module.scss";
 import type {
   HomeAchievement,
@@ -103,7 +102,6 @@ export function HomeStudioBanner({
         <div className={styles.studioBannerScrim} aria-hidden />
       </div>
       <div className={styles.studioBannerTop}>
-        {variant === "me" ? <ChildSwitcher tone="onMedia" /> : null}
         <div className={styles.studioBannerActions}>
           <TooltipIconBar placement="bottom">
             <NotificationsControl variant={variant} tone="onMedia" />
