@@ -7,7 +7,7 @@ import { StudioPaymentsFields } from "@/modules/admin/studio-payments-fields";
 import { Screen } from "@/modules/ui/screen";
 import { SkeletonBlock } from "@/modules/ui/skeleton-block";
 import staff from "@/modules/ui/staff.module.scss";
-import { EmptyState, ErrorState, SuccessState } from "@/modules/ui/states";
+import { EmptyState, ErrorState } from "@/modules/ui/states";
 import { StickyCtaBar, TouchButton } from "@/modules/ui/touch-button";
 import type { Studio } from "./types";
 
@@ -19,7 +19,6 @@ export function StudioPaymentsFormPage() {
   const [razorpayKeyId, setRazorpayKeyId] = useState("");
   const [razorpayKeySecret, setRazorpayKeySecret] = useState("");
   const [gstNumber, setGstNumber] = useState("");
-  const [savedSecret, setSavedSecret] = useState(false);
 
   const studioQuery = useQuery({
     queryKey: ["studio", studioId],
@@ -33,12 +32,6 @@ export function StudioPaymentsFormPage() {
     if (!studioQuery.data) return;
     setGstNumber(studioQuery.data.settings?.gstNumber ?? "");
   }, [studioQuery.data]);
-
-  useEffect(() => {
-    if (!savedSecret) return;
-    const id = window.setTimeout(() => setSavedSecret(false), 4000);
-    return () => window.clearTimeout(id);
-  }, [savedSecret]);
 
   const updateSettings = useMutation({
     mutationFn: async () => {
@@ -70,9 +63,6 @@ export function StudioPaymentsFormPage() {
     },
     onSuccess: (result) => {
       setRazorpayKeySecret("");
-      if (result.secretUpdated) {
-        setSavedSecret(true);
-      }
       void queryClient.invalidateQueries({ queryKey: ["studio", studioId] });
       void queryClient.invalidateQueries({
         queryKey: ["studio-public", studioId],
@@ -137,12 +127,6 @@ export function StudioPaymentsFormPage() {
 
         {studioQuery.data ? (
           <div className={staff.softPanel}>
-            {savedSecret ? (
-              <SuccessState
-                title="Secret saved"
-                description="Stored securely. The field stays empty on purpose — it is never shown again."
-              />
-            ) : null}
             <StudioPaymentsFields
               titleClassName={staff.panelTitle}
               descClassName={staff.panelDesc}
@@ -151,10 +135,7 @@ export function StudioPaymentsFormPage() {
               savedKeyId={savedKeyId}
               configured={configured}
               onKeyIdChange={setRazorpayKeyId}
-              onKeySecretChange={(value) => {
-                setSavedSecret(false);
-                setRazorpayKeySecret(value);
-              }}
+              onKeySecretChange={setRazorpayKeySecret}
               gstNumber={gstNumber}
               onGstNumberChange={setGstNumber}
             />
