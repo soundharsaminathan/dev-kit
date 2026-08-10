@@ -44,6 +44,33 @@ function useDebouncedValue<T>(value: T, delayMs: number) {
   return debounced;
 }
 
+function matchesStudentSearch(student: StudioStudent, query: string) {
+  if (!query) return true;
+  const haystack = [student.name, student.email, student.phone]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+  return haystack.includes(query);
+}
+
+function flattenStudents(
+  pages: StudentSearchPage[] | undefined,
+  excluded: Set<string>,
+  selectedIds: Set<string>,
+) {
+  const seen = new Set<string>();
+  const rows: StudioStudent[] = [];
+  for (const page of pages ?? []) {
+    for (const student of page.items) {
+      if (seen.has(student.id)) continue;
+      if (excluded.has(student.id) && !selectedIds.has(student.id)) continue;
+      seen.add(student.id);
+      rows.push(student);
+    }
+  }
+  return rows;
+}
+
 export function StudentSearchMultiselect({
   selectedIds,
   onSelectedIdsChange,
@@ -66,12 +93,40 @@ export function StudentSearchMultiselect({
   const [selectedById, setSelectedById] = useState<
     Record<string, StudioStudent>
   >({});
-  const debouncedSearch = useDebouncedValue(search.trim(), 300);
+  const searchQuery = search.trim();
+  const debouncedSearch = useDebouncedValue(searchQuery, 300);
   const excluded = useMemo(() => new Set(excludeIds ?? []), [excludeIds]);
-  const atCap =
-    maxSelected != null && selectedIds.length >= maxSelected;
+  const selectedIdSet = useMemo(() => new Set(selectedIds), [selectedIds]);
+  const atCap = maxSelected != null && selectedIds.length >= maxSelected;
 
-  const studentsQuery = useInfiniteQuery({
+  const catalogQuery = useInfiniteQuery({
+    queryKey: [
+      "studio-students-search",
+      studioId,
+      "",
+      includeParents,
+      pageSize,
+      "paged",
+    ],
+    queryFn: ({ pageParam }) => {
+      const params = new URLSearchParams();
+      if (pageParam) params.set("cursor", pageParam);
+      params.set("limit", String(pageSize));
+      if (includeParents) params.set("includeParents", "true");
+      return api.get<StudentSearchPage>(
+        `/users/studio/${studioId}/students?${params.toString()}`,
+      );
+    },
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
+    enabled,
+    placeholderData: (previous) => previous,
+  });
+
+  const catalogComplete =
+    catalogQuery.isSuccess && !catalogQuery.hasNextPage;
+
+  const remoteSearchQuery = useInfiniteQuery({
     queryKey: [
       "studio-students-search",
       studioId,
@@ -82,38 +137,39 @@ export function StudentSearchMultiselect({
     ],
     queryFn: ({ pageParam }) => {
       const params = new URLSearchParams();
-      if (debouncedSearch) params.set("q", debouncedSearch);
+      params.set("q", debouncedSearch);
       if (pageParam) params.set("cursor", pageParam);
       params.set("limit", String(pageSize));
       if (includeParents) params.set("includeParents", "true");
-      const qs = params.toString();
       return api.get<StudentSearchPage>(
-        `/users/studio/${studioId}/students?${qs}`,
+        `/users/studio/${studioId}/students?${params.toString()}`,
       );
     },
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
-    enabled,
+    enabled: enabled && !catalogComplete && debouncedSearch.length > 0,
     placeholderData: (previous) => previous,
   });
 
-  const selectedIdSet = useMemo(() => new Set(selectedIds), [selectedIds]);
+  const useRemoteSearch = !catalogComplete && debouncedSearch.length > 0;
+  const activeQuery = useRemoteSearch ? remoteSearchQuery : catalogQuery;
 
   const students = useMemo(() => {
-    const seen = new Set<string>();
-    const rows: StudioStudent[] = [];
-    for (const page of studentsQuery.data?.pages ?? []) {
-      for (const student of page.items) {
-        if (seen.has(student.id)) continue;
-        if (excluded.has(student.id) && !selectedIdSet.has(student.id)) {
-          continue;
-        }
-        seen.add(student.id);
-        rows.push(student);
-      }
-    }
-    return rows;
-  }, [studentsQuery.data?.pages, excluded, selectedIdSet]);
+    const rows = flattenStudents(
+      activeQuery.data?.pages,
+      excluded,
+      selectedIdSet,
+    );
+    if (!catalogComplete) return rows;
+    const query = searchQuery.toLowerCase();
+    return rows.filter((student) => matchesStudentSearch(student, query));
+  }, [
+    activeQuery.data?.pages,
+    catalogComplete,
+    excluded,
+    searchQuery,
+    selectedIdSet,
+  ]);
 
   useEffect(() => {
     if (students.length === 0) return;
@@ -172,6 +228,17 @@ export function StudentSearchMultiselect({
     });
   }
 
+  const isLoading = useRemoteSearch
+    ? remoteSearchQuery.isLoading ||
+      (remoteSearchQuery.isFetching && !remoteSearchQuery.data)
+    : catalogQuery.isLoading;
+  const isError = activeQuery.isError;
+  const error = activeQuery.error;
+  const showLoadMore =
+    !catalogComplete &&
+    activeQuery.hasNextPage &&
+    !(useRemoteSearch && remoteSearchQuery.isLoading);
+
   return (
     <div className={styles.root}>
       <FormInput
@@ -202,26 +269,24 @@ export function StudentSearchMultiselect({
         </p>
       ) : null}
 
-      {studentsQuery.isLoading ? <SkeletonCardList count={3} /> : null}
-      {studentsQuery.isError ? (
+      {isLoading ? <SkeletonCardList count={3} /> : null}
+      {isError ? (
         <ErrorState
           description={
-            studentsQuery.error instanceof Error
-              ? studentsQuery.error.message
-              : "Could not load students."
+            error instanceof Error ? error.message : "Could not load students."
           }
         />
       ) : null}
 
       {enabled &&
-      !studentsQuery.isLoading &&
-      !studentsQuery.isError &&
+      !isLoading &&
+      !isError &&
       students.length === 0 &&
       selectedIds.length === 0 ? (
         <EmptyState
           title={emptyTitle}
           description={
-            debouncedSearch
+            searchQuery
               ? emptyDescription
               : "Create student accounts first, or everyone is already linked."
           }
@@ -262,15 +327,15 @@ export function StudentSearchMultiselect({
         </ul>
       ) : null}
 
-      {studentsQuery.hasNextPage ? (
+      {showLoadMore ? (
         <TouchButton
           variant="default"
           fullWidth
           {...(isDisabled != null ? { isDisabled } : {})}
-          isPending={studentsQuery.isFetchingNextPage}
+          isPending={activeQuery.isFetchingNextPage}
           data-testid={`${testIdPrefix}-search-load-more`}
           onClick={() => {
-            void studentsQuery.fetchNextPage();
+            void activeQuery.fetchNextPage();
           }}
         >
           Load more
