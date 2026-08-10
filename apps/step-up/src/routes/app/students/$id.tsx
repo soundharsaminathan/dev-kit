@@ -25,6 +25,7 @@ import {
   printInvoice,
 } from "@/modules/payments/print-invoice";
 import type { Studio } from "@/modules/settings/types";
+import { StudentSearchMultiselect } from "@/modules/students/student-search-multiselect";
 import { AppBottomSheet } from "@/modules/ui/app-bottom-sheet";
 import { AppSheet } from "@/modules/ui/app-sheet";
 import { FormInput } from "@/modules/ui/form-input";
@@ -107,13 +108,6 @@ type StudentStudioProfile = {
     role: string;
     relation: "PARENT" | "KID" | "CO_STUDENT" | "FAMILY";
   }>;
-};
-
-type StudioMember = {
-  id: string;
-  name: string;
-  email: string;
-  role: string;
 };
 
 type SheetKind =
@@ -217,7 +211,6 @@ function StudentDetailPage() {
   const [referralDiscount, setReferralDiscount] = useState("");
   const [studioDiscount, setStudioDiscount] = useState("");
   const [familyMemberIds, setFamilyMemberIds] = useState<string[]>([]);
-  const [familySearch, setFamilySearch] = useState("");
   const [resetCredentials, setResetCredentials] =
     useState<TemporaryCredentials | null>(null);
 
@@ -232,11 +225,10 @@ function StudentDetailPage() {
     queryFn: () => api.get<Studio>(`/studios/${studioId}`),
   });
 
-  const membersQuery = useQuery({
-    queryKey: ["studio-members", studioId],
-    queryFn: () => api.get<StudioMember[]>(`/users/studio/${studioId}`),
-    enabled: sheet === "link-family",
-  });
+  const linkedFamilyIds = useMemo(() => {
+    const linked = query.data?.family ?? query.data?.parents ?? [];
+    return [id, ...linked.map((member) => member.id)];
+  }, [id, query.data?.family, query.data?.parents]);
 
   async function invalidateStudent() {
     await Promise.all([
@@ -268,7 +260,6 @@ function StudentDetailPage() {
     setReferralDiscount("");
     setStudioDiscount("");
     setFamilyMemberIds([]);
-    setFamilySearch("");
     setResetCredentials(null);
   }
 
@@ -290,16 +281,7 @@ function StudentDetailPage() {
 
   function openLinkFamily() {
     setFamilyMemberIds([]);
-    setFamilySearch("");
     setSheet("link-family");
-  }
-
-  function toggleFamilyMember(memberId: string) {
-    setFamilyMemberIds((current) =>
-      current.includes(memberId)
-        ? current.filter((id) => id !== memberId)
-        : [...current, memberId],
-    );
   }
 
   function openDelete() {
@@ -534,20 +516,6 @@ function StudentDetailPage() {
       relation: "PARENT" as const,
     }));
   }, [profile?.family, profile?.parents]);
-  const familyCandidates = useMemo(() => {
-    const linked = new Set(family.map((member) => member.id));
-    const queryText = familySearch.trim().toLowerCase();
-    return (membersQuery.data ?? []).filter((member) => {
-      if (member.id === id || linked.has(member.id)) return false;
-      if (member.role !== "STUDENT" && member.role !== "PARENT") return false;
-      if (!queryText) return true;
-      return (
-        member.name.toLowerCase().includes(queryText) ||
-        member.email.toLowerCase().includes(queryText)
-      );
-    });
-  }, [membersQuery.data, family, familySearch, id]);
-
   const markPaidTarget =
     profile?.invoices.find((invoice) => invoice.id === markPaidInvoiceId) ??
     null;
@@ -1202,50 +1170,18 @@ function StudentDetailPage() {
             Search students and parents in this studio, then add them as one
             family with {profile?.student.name}.
           </p>
-          <FormInput
-            label="Search users"
-            value={familySearch}
-            onChange={setFamilySearch}
-            placeholder="Name or email"
-            data-testid="family-search"
+          <StudentSearchMultiselect
+            selectedIds={familyMemberIds}
+            onSelectedIdsChange={setFamilyMemberIds}
+            excludeIds={linkedFamilyIds}
+            includeParents
+            enabled={sheet === "link-family"}
+            isDisabled={linkFamily.isPending}
+            label="Search students"
+            emptyTitle="No users found"
+            emptyDescription="Try a different name or email."
           />
-          {membersQuery.isLoading ? <SkeletonCardList count={3} /> : null}
-          {membersQuery.isError ? (
-            <ErrorState
-              description={
-                membersQuery.error instanceof Error
-                  ? membersQuery.error.message
-                  : "Could not load studio members."
-              }
-            />
-          ) : null}
-          {familyCandidates.length === 0 && !membersQuery.isLoading ? (
-            <EmptyState
-              title="No users found"
-              description={
-                familySearch.trim()
-                  ? "Try a different name or email."
-                  : "Create student or parent accounts first, or everyone is already linked."
-              }
-            />
-          ) : null}
           <div className={staff.sheetActions}>
-            {familyCandidates.map((member) => {
-              const selected = familyMemberIds.includes(member.id);
-              return (
-                <TouchButton
-                  key={member.id}
-                  variant={selected ? "primary" : "default"}
-                  fullWidth
-                  isDisabled={linkFamily.isPending}
-                  data-testid={`pick-family-${member.id}`}
-                  onClick={() => toggleFamilyMember(member.id)}
-                >
-                  {member.name} · {member.email}
-                  {member.role === "PARENT" ? " · Parent" : ""}
-                </TouchButton>
-              );
-            })}
             {linkFamily.isError ? (
               <ErrorState
                 description={

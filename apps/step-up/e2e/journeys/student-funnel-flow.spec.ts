@@ -406,13 +406,13 @@ test.describe("student funnel full flow @critical", () => {
       let uiStudentId: string | undefined;
       await expect
         .poll(async () => {
-          const matches = await apiRequest<
-            Array<{ id: string; email: string }>
-          >(
+          const matches = await apiRequest<{
+            items: Array<{ id: string; email: string }>;
+          }>(
             "OWNER",
             `/users/studio/${STUDIO_ID}/students?q=${encodeURIComponent(email)}`,
           );
-          const student = matches.find((row) => row.email === email);
+          const student = matches.items.find((row) => row.email === email);
           if (!student) return "missing";
           uiStudentId = student.id;
           return getStudentStage(student.id);

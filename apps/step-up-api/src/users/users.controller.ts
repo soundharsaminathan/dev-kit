@@ -437,9 +437,19 @@ export class UsersController {
     @CurrentUser() user: DecryptedUser,
     @Param("studioId") studioId: string,
     @Query("q") q?: string,
+    @Query("cursor") cursor?: string,
+    @Query("limit") limit?: string,
+    @Query("includeParents") includeParents?: string,
   ) {
     assertSameStudio(user, studioId);
-    return this.usersService.listStudents(studioId, q);
+    const parsedLimit = limit ? Number(limit) : undefined;
+    return this.usersService.listStudents(studioId, {
+      q,
+      cursor,
+      ...(Number.isFinite(parsedLimit) ? { limit: parsedLimit } : {}),
+      includeParents:
+        includeParents === "true" || includeParents === "1",
+    });
   }
 
   @Get("studio/:studioId/student-directory")

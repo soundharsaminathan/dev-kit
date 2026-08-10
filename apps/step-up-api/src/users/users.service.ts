@@ -285,11 +285,24 @@ export class UsersService {
     );
   }
 
-  async listStudents(studioId: string, q?: string) {
+  async listStudents(
+    studioId: string,
+    options: {
+      q?: string;
+      cursor?: string;
+      limit?: number;
+      includeParents?: boolean;
+    } = {},
+  ) {
+    const limit = Math.min(Math.max(options.limit ?? 50, 1), 50);
+    const roles = options.includeParents
+      ? [UserRole.STUDENT, UserRole.PARENT]
+      : [UserRole.STUDENT];
+
     const users = await this.prisma.user.findMany({
       where: {
         studioId,
-        role: UserRole.STUDENT,
+        role: { in: roles },
         active: true,
       },
       select: {
@@ -306,20 +319,32 @@ export class UsersService {
     );
     presented.sort((a, b) => a.name.localeCompare(b.name));
 
-    const query = q?.trim().toLowerCase();
-    if (!query) {
-      return presented.slice(0, 50);
+    const query = options.q?.trim().toLowerCase();
+    const filtered = query
+      ? presented.filter((user) => {
+          const haystack = [user.name, user.email, user.phone]
+            .filter(Boolean)
+            .join(" ")
+            .toLowerCase();
+          return haystack.includes(query);
+        })
+      : presented;
+
+    let startIndex = 0;
+    if (options.cursor) {
+      const cursorIndex = filtered.findIndex(
+        (user) => user.id === options.cursor,
+      );
+      startIndex = cursorIndex >= 0 ? cursorIndex + 1 : 0;
     }
 
-    return presented
-      .filter((user) => {
-        const haystack = [user.name, user.email, user.phone]
-          .filter(Boolean)
-          .join(" ")
-          .toLowerCase();
-        return haystack.includes(query);
-      })
-      .slice(0, 50);
+    const page = filtered.slice(startIndex, startIndex + limit);
+    const hasMore = startIndex + page.length < filtered.length;
+
+    return {
+      items: page,
+      nextCursor: hasMore ? (page[page.length - 1]?.id ?? null) : null,
+    };
   }
 
   async createStudent(data: {

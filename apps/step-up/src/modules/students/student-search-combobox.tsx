@@ -57,13 +57,14 @@ export function StudentSearchCombobox({
 
   const studentsQuery = useQuery({
     queryKey: ["studio-students-search", studioId, debouncedSearch],
-    queryFn: () => {
+    queryFn: async () => {
       const qs = debouncedSearch
         ? `?q=${encodeURIComponent(debouncedSearch)}`
         : "";
-      return api.get<StudioStudent[]>(
+      const page = await api.get<{ items: StudioStudent[] }>(
         `/users/studio/${studioId}/students${qs}`,
       );
+      return page.items;
     },
     placeholderData: (previous) => previous,
   });

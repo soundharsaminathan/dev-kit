@@ -1,0 +1,39 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 0.75rem);
+  min-width: 0;
+}
+
+.results {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 0.5rem);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 18rem;
+  overflow: auto;
+}
+
+.resultRow {
+  margin: 0;
+  padding: var(--space-3, 0.75rem);
+  border-radius: var(--radius-xl, 1rem);
+  border: 1px solid color-mix(in srgb, var(--color-fg) 12%, transparent);
+  background: var(--color-card, var(--color-bg));
+  transition:
+    background-color var(--interaction-transition-colors, 150ms ease),
+    border-color var(--interaction-transition-colors, 150ms ease);
+}
+
+.resultRow[data-selected="true"] {
+  border-color: color-mix(in srgb, var(--color-primary) 42%, transparent);
+  background: color-mix(in srgb, var(--color-primary) 8%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .resultRow {
+    transition-duration: 0ms;
+  }
+}
