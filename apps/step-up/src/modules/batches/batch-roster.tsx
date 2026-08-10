@@ -1,5 +1,6 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@dev-ui/components/avatar";
 import { Badge } from "@dev-ui/components/badge";
+import { Button } from "@dev-ui/components/button";
 import {
   Select,
   SelectContent,
@@ -315,14 +316,15 @@ export function BatchRoster({ batchId, capacity, active }: BatchRosterProps) {
             ) : hasUpcomingSessions ? (
               <div className={staff.softPanel}>
                 <div className={styles.enrollActions}>
-                  <TouchButton
-                    variant="primary"
+                  <Button
+                    variant="quiet"
+                    size="sm"
                     isDisabled={!canEnroll}
                     data-testid="enroll-open"
                     onClick={openEnrollSheet}
                   >
                     Add student
-                  </TouchButton>
+                  </Button>
                 </div>
                 {!hasPlans ? (
                   <p className={styles.hint}>
