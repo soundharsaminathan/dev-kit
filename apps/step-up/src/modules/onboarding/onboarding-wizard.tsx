@@ -15,6 +15,7 @@ import {
   type Gender,
   isAuthBypassEnabled,
 } from "@/lib/constants";
+import { resolveDisplayName } from "@/lib/display-name";
 import { getFirebaseAuthAsync } from "@/lib/firebase";
 import { useStudioId } from "@/lib/use-studio-id";
 import { uploadSocialPhoto } from "@/modules/social/upload";
@@ -144,7 +145,7 @@ export function OnboardingWizard() {
   const saveGeneration = useRef(0);
 
   const [name, setName] = useState(
-    user?.name && user.name !== "New User" ? user.name : "",
+    () => resolveDisplayName(user?.name, user?.email) ?? "",
   );
   const [photoKey, setPhotoKey] = useState<string | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(
@@ -422,9 +423,18 @@ export function OnboardingWizard() {
                 <div className={styles.avatarRow}>
                   <Avatar size="lg" className={styles.avatar}>
                     {photoPreview ? (
-                      <AvatarImage src={photoPreview} alt={name || "You"} />
+                      <AvatarImage
+                        src={photoPreview}
+                        alt={name || user?.email || "You"}
+                      />
                     ) : null}
-                    <AvatarFallback>{initials(name || "You")}</AvatarFallback>
+                    <AvatarFallback>
+                      {initials(
+                        name ||
+                          resolveDisplayName(null, user?.email) ||
+                          "You",
+                      )}
+                    </AvatarFallback>
                   </Avatar>
                   <FileTrigger
                     accept="image/jpeg,image/png,image/webp"

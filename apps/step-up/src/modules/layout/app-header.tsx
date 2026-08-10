@@ -9,6 +9,7 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { useApi } from "@/lib/api-context";
 import { useAuth } from "@/lib/auth";
+import { avatarLetter, resolveDisplayName } from "@/lib/display-name";
 import {
   notificationsListKey,
   notificationsUnreadKey,
@@ -308,13 +309,20 @@ function ProfileControl({ variant }: { variant: ShellVariant }) {
         >
           <Avatar size="sm">
             {user?.photoUrl ? (
-              <AvatarImage src={user.photoUrl} alt={user.name} />
+              <AvatarImage
+                src={user.photoUrl}
+                alt={resolveDisplayName(user.name, user.email) ?? user.name}
+              />
             ) : null}
             <AvatarFallback>
-              <Icon name="user" />
+              {user
+                ? avatarLetter(user.name, user.email)
+                : <Icon name="user" />}
             </AvatarFallback>
           </Avatar>
-          <span className={styles.profileName}>{user?.name ?? "Account"}</span>
+          <span className={styles.profileName}>
+            {resolveDisplayName(user?.name, user?.email) ?? "Account"}
+          </span>
         </Button>
       </TooltipIconBarItem>
 

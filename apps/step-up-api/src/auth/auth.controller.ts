@@ -29,6 +29,28 @@ import {
 import { FirebaseService, type VerifiedAuth } from "./firebase.service";
 import { TokenGuard } from "./token.guard";
 
+/** Email local-part when Firebase/display name is missing (e.g. jane@x.com → jane). */
+function displayNameFromEmail(email: string): string | undefined {
+  const local = email.split("@")[0]?.trim();
+  return local || undefined;
+}
+
+function resolveSyncName(input: {
+  provided?: string | null;
+  email: string;
+  fallback?: string | null;
+}): string {
+  const provided = input.provided?.trim();
+  if (provided) {
+    return provided;
+  }
+  const existing = input.fallback?.trim();
+  if (existing && existing !== "New User") {
+    return existing;
+  }
+  return displayNameFromEmail(input.email) ?? "New User";
+}
+
 class SyncUserDto {
   @IsOptional()
   @IsString()
@@ -147,7 +169,7 @@ export class AuthController {
     // (dev tokens synthesize a placeholder address).
     const email =
       auth.bypassUserId && dto.email ? dto.email.trim() : auth.email;
-    const name = dto.name ?? auth.name ?? "New User";
+    const providedName = dto.name ?? auth.name;
 
     const existing = await this.prisma.user.findUnique({
       where: { firebaseUid: auth.firebaseUid },
@@ -156,6 +178,11 @@ export class AuthController {
     if (existing) {
       const current = this.crypto.decryptUser(existing);
       await this.assertEmailAvailable(email, existing.id);
+      const name = resolveSyncName({
+        provided: providedName,
+        email,
+        fallback: current.name,
+      });
       const sealed = this.crypto.sealPii(
         {
           email,
@@ -195,10 +222,15 @@ export class AuthController {
 
     if (provisioned) {
       const current = this.crypto.decryptUser(provisioned);
+      const name = resolveSyncName({
+        provided: providedName,
+        email,
+        fallback: current.name,
+      });
       const sealed = this.crypto.sealPii(
         {
           email,
-          name: name || current.name,
+          name,
           phone: current.phone,
           bio: current.bio,
           instagramUrl: current.instagramUrl,
@@ -242,6 +274,7 @@ export class AuthController {
       studioId = studio.id;
     }
 
+    const name = resolveSyncName({ provided: providedName, email });
     const sealed = this.crypto.sealPii({
       email,
       name,

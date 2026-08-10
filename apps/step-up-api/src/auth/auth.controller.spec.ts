@@ -105,6 +105,74 @@ describe("AuthController.sync", () => {
         studioId: "studio-1",
       }),
     });
+    expect(crypto.sealPii).toHaveBeenCalledWith(
+      expect.objectContaining({ name: "Hari" }),
+    );
     expect(result.role).toBe(UserRole.STUDENT);
+  });
+
+  it("defaults new-user display name to the email username", async () => {
+    prisma.user.findUnique.mockResolvedValue(null);
+    prisma.user.findFirst
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(null);
+    prisma.user.create.mockResolvedValue({
+      id: "student-1",
+      role: UserRole.STUDENT,
+      studioId: null,
+    });
+
+    await controller.sync(
+      {
+        auth: {
+          firebaseUid: "firebase-hari",
+          email: "hari.student@stepup.dev",
+        },
+      } as never,
+      { create: true },
+    );
+
+    expect(crypto.sealPii).toHaveBeenCalledWith(
+      expect.objectContaining({ name: "hari.student" }),
+    );
+  });
+
+  it("keeps an existing display name when Firebase has none", async () => {
+    prisma.user.findUnique.mockResolvedValue({
+      id: "student-1",
+      encryptedKey: "key",
+      role: UserRole.STUDENT,
+    });
+    crypto.decryptUser.mockReturnValue({
+      id: "student-1",
+      email: "hari@stepup.dev",
+      name: "Hari",
+      role: UserRole.STUDENT,
+      studioId: null,
+      photoUrl: null,
+      phone: null,
+      bio: null,
+      instagramUrl: null,
+    });
+    prisma.user.findFirst.mockResolvedValue(null);
+    prisma.user.update.mockResolvedValue({
+      id: "student-1",
+      role: UserRole.STUDENT,
+    });
+
+    await controller.sync(
+      {
+        auth: {
+          firebaseUid: "firebase-hari",
+          email: "hari@stepup.dev",
+        },
+      } as never,
+      {},
+    );
+
+    expect(crypto.sealPii).toHaveBeenCalledWith(
+      expect.objectContaining({ name: "Hari" }),
+      "key",
+    );
   });
 });

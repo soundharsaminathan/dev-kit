@@ -7,6 +7,7 @@ import { useContext, useState } from "react";
 import { useApi } from "@/lib/api-context";
 import { useAuth } from "@/lib/auth";
 import type { AgeRange, Gender } from "@/lib/constants";
+import { avatarLetter, resolveDisplayName } from "@/lib/display-name";
 import {
   getMenuSections,
   type ShellVariant,
@@ -121,15 +122,20 @@ export function ProfileMenuPage({ variant = "me" }: ProfileMenuPageProps) {
         <Link to={editTo} className={styles.profileCard}>
           <Avatar size="lg">
             {user?.photoUrl ? (
-              <AvatarImage src={user.photoUrl} alt={user.name} />
+              <AvatarImage
+                src={user.photoUrl}
+                alt={resolveDisplayName(user.name, user.email) ?? user.name}
+              />
             ) : null}
             <AvatarFallback>
-              {user?.name?.slice(0, 1) || <Icon name="user" />}
+              {user
+                ? avatarLetter(user.name, user.email)
+                : <Icon name="user" />}
             </AvatarFallback>
           </Avatar>
           <span className={styles.profileText}>
             <span className={styles.profileName}>
-              {user?.name ?? "Your profile"}
+              {resolveDisplayName(user?.name, user?.email) ?? "Your profile"}
             </span>
             <span className={styles.profileHint}>
               {user?.email ?? "View and edit your profile"}

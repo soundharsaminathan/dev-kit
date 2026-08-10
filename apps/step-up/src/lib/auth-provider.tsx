@@ -24,6 +24,7 @@ import {
   SEED_SYSTEM_ADMIN,
   type UserRole,
 } from "./constants";
+import { resolveDisplayName } from "./display-name";
 import {
   getFirebaseAuthAsync,
   getGoogleProviderAsync,
@@ -150,14 +151,18 @@ function mapSyncedUser(user: SyncedApiUser): AuthUser {
 
 async function syncFirebaseUser(
   firebaseUser: FirebaseUser,
-  options?: { studioId?: string; create?: boolean },
+  options?: { studioId?: string; create?: boolean; name?: string },
 ): Promise<AuthUser> {
   const token = await firebaseUser.getIdToken();
+  const name = resolveDisplayName(
+    options?.name || firebaseUser.displayName,
+    firebaseUser.email,
+  );
   const synced = await apiRequest<SyncedApiUser>("/auth/sync", {
     method: "POST",
     token,
     body: {
-      name: firebaseUser.displayName || undefined,
+      ...(name ? { name } : {}),
       email: firebaseUser.email || undefined,
       ...(options?.create ? { create: true } : {}),
       ...(options?.studioId ? { studioId: options.studioId } : {}),
@@ -217,6 +222,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const pendingSyncOptionsRef = useRef<{
     studioId?: string;
     create?: boolean;
+    name?: string;
   } | null>(null);
 
   const needsEmailVerification =
@@ -409,6 +415,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                       ...(pendingSync.studioId
                         ? { studioId: pendingSync.studioId }
                         : {}),
+                      ...(pendingSync.name ? { name: pendingSync.name } : {}),
                     }
                   : undefined,
               ),
@@ -531,14 +538,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       name: string,
       options?: { studioId?: string },
     ) => {
+      const trimmedEmail = email.trim();
+      const displayName =
+        resolveDisplayName(name, trimmedEmail) ?? "New dancer";
+
       if (isAuthBypassEnabled()) {
         const created = await createBypassStudent({
-          email,
-          name: name.trim() || "New dancer",
+          email: trimmedEmail,
+          name: displayName,
           ...(options?.studioId ? { studioId: options.studioId } : {}),
         });
         commitBypassSession(created);
-        setLastLoginIdentifier(email);
+        setLastLoginIdentifier(trimmedEmail);
         return created;
       }
 
@@ -554,14 +565,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } = await import("firebase/auth");
       pendingSyncOptionsRef.current = {
         create: true,
+        name: displayName,
         ...(options?.studioId ? { studioId: options.studioId } : {}),
       };
       const credential = await createUserWithEmailAndPassword(
         auth,
-        email.trim(),
+        trimmedEmail,
         password,
       );
-      const displayName = name.trim();
       if (displayName) {
         await updateProfile(credential.user, { displayName });
       }
@@ -576,7 +587,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setEmailVerified(credential.user.emailVerified);
       setHasPasswordProvider(true);
       const synced = await waitForSync(credential.user.uid);
-      setLastLoginIdentifier(email);
+      setLastLoginIdentifier(trimmedEmail);
       if (displayName && synced.name !== displayName) {
         try {
           const token = await credential.user.getIdToken();
