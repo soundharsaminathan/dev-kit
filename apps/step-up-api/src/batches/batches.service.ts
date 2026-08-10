@@ -364,11 +364,40 @@ export class BatchesService {
     @Inject(BillingService) private readonly billing: BillingService,
   ) {}
 
+  private async withSignedStudentPhoto<
+    T extends { photoUrl?: string | null } & Record<string, unknown>,
+  >(student: T): Promise<T> {
+    return {
+      ...student,
+      photoUrl: await this.media.signReadUrl(student.photoUrl ?? null),
+    };
+  }
+
+  private async withSignedEnrollments<
+    T extends {
+      student?: ({ photoUrl?: string | null } & Record<string, unknown>) | null;
+    },
+  >(rows: T[]): Promise<T[]> {
+    return Promise.all(
+      rows.map(async (row) => {
+        if (!row.student) return row;
+        return {
+          ...row,
+          student: await this.withSignedStudentPhoto(row.student),
+        };
+      }),
+    );
+  }
+
   private async withSignedCover<
     T extends {
       coverImageUrl?: string | null;
       trainers?: Array<{
         trainer: { photoUrl?: string | null } & Record<string, unknown>;
+      }>;
+      enrollments?: Array<{
+        studentId?: string;
+        student?: ({ photoUrl?: string | null } & Record<string, unknown>) | null;
       }>;
       branch?: {
         photos?: string[] | null;
@@ -393,6 +422,10 @@ export class BatchesService {
             },
           })),
         )
+      : undefined;
+
+    const enrollments = batch.enrollments
+      ? await this.withSignedEnrollments(batch.enrollments)
       : undefined;
 
     const sourceBranch = batch.branch;
@@ -422,8 +455,9 @@ export class BatchesService {
       ...batch,
       coverImageUrl,
       ...(trainers ? { trainers } : {}),
+      ...(enrollments ? { enrollments } : {}),
       ...(sourceBranch !== undefined ? { branch } : {}),
-    };
+    } as T;
   }
 
   /**
@@ -679,9 +713,7 @@ export class BatchesService {
         batch.category,
       );
     const activeEnrollmentsRaw = batch.enrollments.filter(
-      (enrollment) =>
-        enrollment.status === BatchEnrollmentStatus.ACTIVE &&
-        activeMonthIds.has(enrollment.studentId),
+      (enrollment) => enrollment.status === BatchEnrollmentStatus.ACTIVE,
     );
     const inactiveEnrollmentsRaw = batch.enrollments.filter(
       (enrollment) =>
@@ -781,6 +813,8 @@ export class BatchesService {
 
     const reservedByBatch = await countReservedSeatsByBatch(this.prisma, [id]);
     const { plans, price } = extractPlans(batch.plans);
+    const signedInactiveEnrollments =
+      await this.withSignedEnrollments(inactiveEnrollments);
 
     return {
       ...(await this.withSignedCover(
@@ -795,7 +829,7 @@ export class BatchesService {
           price,
         ),
       )),
-      inactiveEnrollments,
+      inactiveEnrollments: signedInactiveEnrollments,
       viewerRating,
       viewerEnrolled,
       viewerEnrollment,

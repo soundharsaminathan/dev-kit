@@ -1992,17 +1992,19 @@ describe("BatchesService.getById roster split", () => {
   };
 
   const media = {
-    signReadUrl: vi.fn(async (url: string | null) => url),
+    signReadUrl: vi.fn(async (url: string | null) =>
+      url ? `signed:${url}` : null,
+    ),
   };
 
   let service: BatchesService;
 
-  const student = (id: string, name: string) => ({
+  const student = (id: string, name: string, photoUrl: string | null = null) => ({
     id,
     name,
     email: `${id}@example.com`,
     phone: null,
-    photoUrl: null,
+    photoUrl,
   });
 
   beforeEach(() => {
@@ -2027,7 +2029,62 @@ describe("BatchesService.getById roster split", () => {
     memberships.findMonthlyUnpaidStudentIds.mockResolvedValue(new Set());
   });
 
-  it("splits active/inactive by membership month and maps end reasons", async () => {
+  it("signs student photo urls on active and inactive roster rows", async () => {
+    prisma.batch.findUniqueOrThrow.mockResolvedValue({
+      id: "batch-1",
+      studioId: "studio-1",
+      category: "KIDS",
+      capacity: 10,
+      scheduleJson: {},
+      danceCategories: [],
+      coverImageUrl: null,
+      branch: null,
+      certificateTemplate: null,
+      sessions: [],
+      trainers: [],
+      plans: [],
+      enrollments: [
+        {
+          id: "en-active",
+          batchId: "batch-1",
+          studentId: "s-active",
+          status: "ACTIVE",
+          enrolledAt: new Date("2026-01-01"),
+          endedAt: null,
+          endReason: null,
+          student: student("s-active", "Active Kid", "avatars/active.jpg"),
+        },
+        {
+          id: "en-moved",
+          batchId: "batch-1",
+          studentId: "s-moved",
+          status: "ENDED",
+          enrolledAt: new Date("2026-01-01"),
+          endedAt: new Date("2026-08-01"),
+          endReason: "SWITCH",
+          student: student("s-moved", "Moved Kid", "avatars/moved.jpg"),
+        },
+      ],
+      _count: { enrollments: 1 },
+    });
+    memberships.findStudentIdsWithActiveMonthForBatch.mockResolvedValue(
+      new Set(["s-active", "s-moved"]),
+    );
+    prisma.batchEnrollment.findMany.mockResolvedValue([
+      { batchId: "batch-1", studentId: "s-active" },
+    ]);
+
+    const result = await service.getById("batch-1");
+
+    expect(result.enrollments[0]?.student.photoUrl).toBe(
+      "signed:avatars/active.jpg",
+    );
+    expect(result.inactiveEnrollments[0]?.student.photoUrl).toBe(
+      "signed:avatars/moved.jpg",
+    );
+  });
+
+  it("lists ACTIVE enrollments even without a month and maps inactive reasons", async () => {
     prisma.batch.findUniqueOrThrow.mockResolvedValue({
       id: "batch-1",
       studioId: "studio-1",
@@ -2111,11 +2168,23 @@ describe("BatchesService.getById roster split", () => {
       { batchId: "batch-1", studentId: "s-no-month" },
     ]);
 
+    memberships.findMonthlyUnpaidStudentIds.mockResolvedValue(
+      new Set(["s-no-month"]),
+    );
+
     const result = await service.getById("batch-1");
 
     expect(
-      result.enrollments.map((row: { studentId: string }) => row.studentId),
-    ).toEqual(["s-active"]);
+      result.enrollments.map(
+        (row: { studentId: string; monthlyUnpaid: boolean }) => ({
+          studentId: row.studentId,
+          monthlyUnpaid: row.monthlyUnpaid,
+        }),
+      ),
+    ).toEqual([
+      { studentId: "s-active", monthlyUnpaid: false },
+      { studentId: "s-no-month", monthlyUnpaid: true },
+    ]);
     expect(
       result.inactiveEnrollments.map(
         (row: { studentId: string; inactiveReason: string }) => ({
@@ -2129,6 +2198,10 @@ describe("BatchesService.getById roster split", () => {
     ]);
     expect(result.enrollmentCount).toBe(2);
     expect(result.occupiedSeats).toBe(2);
+    expect(memberships.findMonthlyUnpaidStudentIds).toHaveBeenCalledWith([
+      "s-active",
+      "s-no-month",
+    ]);
     expect(
       memberships.findStudentIdsWithActiveMonthForBatch,
     ).toHaveBeenCalledWith(
@@ -2137,7 +2210,7 @@ describe("BatchesService.getById roster split", () => {
     );
   });
 
-  it("treats viewerEnrolled as ACTIVE-only even without active month", async () => {
+  it("keeps ACTIVE enrollments on the roster without a covering membership month", async () => {
     prisma.batch.findUniqueOrThrow.mockResolvedValue({
       id: "batch-1",
       studioId: "studio-1",
@@ -2168,6 +2241,9 @@ describe("BatchesService.getById roster split", () => {
     memberships.findStudentIdsWithActiveMonthForBatch.mockResolvedValue(
       new Set(),
     );
+    memberships.findMonthlyUnpaidStudentIds.mockResolvedValue(
+      new Set(["s-no-month"]),
+    );
     prisma.batchEnrollment.findMany.mockResolvedValue([
       { batchId: "batch-1", studentId: "s-no-month" },
     ]);
@@ -2176,8 +2252,16 @@ describe("BatchesService.getById roster split", () => {
       studentId: "s-no-month",
     });
 
-    expect(result.enrollments).toEqual([]);
+    expect(
+      result.enrollments.map(
+        (row: { studentId: string; monthlyUnpaid: boolean }) => ({
+          studentId: row.studentId,
+          monthlyUnpaid: row.monthlyUnpaid,
+        }),
+      ),
+    ).toEqual([{ studentId: "s-no-month", monthlyUnpaid: true }]);
     expect(result.inactiveEnrollments).toEqual([]);
+    expect(result.enrollmentCount).toBe(1);
     expect(result.viewerEnrolled).toBe(true);
   });
 });

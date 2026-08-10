@@ -133,6 +133,41 @@ test.describe("batches HTTP @http", () => {
     }
   });
 
+  test("unpaid staff enroll still appears on batch active roster @http", async () => {
+    const cleanup = new TestDataCleanup();
+    try {
+      const student = await createHttpStudent("HTTP Unpaid Roster", cleanup);
+      const enrollment = await expectOk<{
+        invoice: { id: string; status: string };
+      }>("STAFF", `/batches/${SEED.kidsBatchId}/enroll`, {
+        method: "POST",
+        body: JSON.stringify({
+          studentId: student.id,
+          subscriptionId: SEED.kidPlanIds[0],
+        }),
+      });
+      expect(enrollment.invoice.status).toBe("PENDING");
+
+      const batch = await expectOk<{
+        enrollmentCount: number;
+        enrollments: Array<{ studentId: string; monthlyUnpaid?: boolean }>;
+        inactiveEnrollments: Array<{ studentId: string }>;
+      }>("STAFF", `/batches/${SEED.kidsBatchId}`);
+
+      const row = batch.enrollments.find((item) => item.studentId === student.id);
+      expect(row).toBeTruthy();
+      expect(row?.monthlyUnpaid).toBe(true);
+      expect(
+        batch.inactiveEnrollments.some((item) => item.studentId === student.id),
+      ).toBe(false);
+      expect(batch.enrollmentCount).toBeGreaterThanOrEqual(
+        batch.enrollments.length,
+      );
+    } finally {
+      await cleanup.dispose();
+    }
+  });
+
   test("staff unenrolls student from active batch while past roster retains them @http", async () => {
     const cleanup = new TestDataCleanup();
     const sessionId = SEED.sessionAttendanceId;
