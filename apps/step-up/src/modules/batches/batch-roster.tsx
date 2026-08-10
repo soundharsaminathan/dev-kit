@@ -103,6 +103,10 @@ export function BatchRoster({ batchId, capacity, active }: BatchRosterProps) {
   const [enrollStudentIds, setEnrollStudentIds] = useState<string[]>([]);
   const [enrollStudents, setEnrollStudents] = useState<StudioStudent[]>([]);
   const [subscriptionId, setSubscriptionId] = useState<string | null>(null);
+  const [enrollSheetBaseline, setEnrollSheetBaseline] = useState<{
+    excludeIds: string[];
+    seatsLeft: number;
+  } | null>(null);
 
   const query = useQuery({
     queryKey: ["batch", batchId],
@@ -135,6 +139,8 @@ export function BatchRoster({ batchId, capacity, active }: BatchRosterProps) {
   const seatsTaken = query.data?.enrollmentCount ?? enrollments.length;
   const seatsLeft =
     query.data?.remainingSeats ?? Math.max(0, capacity - seatsTaken);
+  const enrollExcludeIds = enrollSheetBaseline?.excludeIds ?? enrolledIds;
+  const enrollMaxSelected = enrollSheetBaseline?.seatsLeft ?? seatsLeft;
   const isFull = seatsLeft <= 0;
   const hasUpcomingSessions =
     !query.isLoading && upcomingSessions(query.data?.sessions).length > 0;
@@ -244,11 +250,16 @@ export function BatchRoster({ batchId, capacity, active }: BatchRosterProps) {
 
   function openEnrollSheet() {
     resetEnrollDraft();
+    setEnrollSheetBaseline({
+      excludeIds: enrolledIds,
+      seatsLeft,
+    });
     setEnrollOpen(true);
   }
 
   function closeEnrollSheet() {
     setEnrollOpen(false);
+    setEnrollSheetBaseline(null);
     resetEnrollDraft();
   }
 
@@ -473,8 +484,8 @@ export function BatchRoster({ batchId, capacity, active }: BatchRosterProps) {
             selectedIds={enrollStudentIds}
             onSelectedIdsChange={setEnrollStudentIds}
             onSelectedStudentsChange={setEnrollStudents}
-            excludeIds={enrolledIds}
-            maxSelected={seatsLeft}
+            excludeIds={enrollExcludeIds}
+            maxSelected={enrollMaxSelected}
             enabled={enrollOpen}
             isDisabled={enroll.isPending}
             testIdPrefix="enroll-student"

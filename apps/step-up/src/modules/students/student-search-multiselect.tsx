@@ -97,18 +97,23 @@ export function StudentSearchMultiselect({
     placeholderData: (previous) => previous,
   });
 
+  const selectedIdSet = useMemo(() => new Set(selectedIds), [selectedIds]);
+
   const students = useMemo(() => {
     const seen = new Set<string>();
     const rows: StudioStudent[] = [];
     for (const page of studentsQuery.data?.pages ?? []) {
       for (const student of page.items) {
-        if (excluded.has(student.id) || seen.has(student.id)) continue;
+        if (seen.has(student.id)) continue;
+        if (excluded.has(student.id) && !selectedIdSet.has(student.id)) {
+          continue;
+        }
         seen.add(student.id);
         rows.push(student);
       }
     }
     return rows;
-  }, [studentsQuery.data?.pages, excluded]);
+  }, [studentsQuery.data?.pages, excluded, selectedIdSet]);
 
   useEffect(() => {
     if (students.length === 0) return;
@@ -208,9 +213,11 @@ export function StudentSearchMultiselect({
         />
       ) : null}
 
-      {!studentsQuery.isLoading &&
+      {enabled &&
+      !studentsQuery.isLoading &&
       !studentsQuery.isError &&
-      students.length === 0 ? (
+      students.length === 0 &&
+      selectedIds.length === 0 ? (
         <EmptyState
           title={emptyTitle}
           description={
