@@ -1280,3 +1280,105 @@ describe("UsersService.deleteStudent", () => {
     expect(prisma.user.delete).not.toHaveBeenCalled();
   });
 });
+
+describe("UsersService.createStudents", () => {
+  const prisma = {
+    user: {
+      findMany: vi.fn(),
+      createMany: vi.fn(),
+    },
+  };
+  const crypto = {
+    sealPii: vi.fn((pii: { email: string; name: string }) => ({
+      emailHash: `hash:${pii.email}`,
+      encryptedKey: "key",
+      piiCiphertext: "cipher",
+      piiIv: "iv",
+    })),
+    hashEmail: vi.fn((email: string) => `hash:${email}`),
+  };
+  const media = {
+    signReadUrl: vi.fn(async (value: string | null) => value),
+  };
+  const firebase = {
+    ensureEmailPasswordUser: vi.fn(),
+  };
+
+  let service: UsersService;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    service = new UsersService(
+      prisma as never,
+      crypto as never,
+      media as never,
+      firebase as never,
+    );
+  });
+
+  it("creates students with required gender and age range", async () => {
+    prisma.user.findMany.mockResolvedValue([]);
+    prisma.user.createMany.mockResolvedValue({ count: 1 });
+
+    const result = await service.createStudents("studio-seed-1", [
+      {
+        name: "Ada Lovelace",
+        email: "ada@example.com",
+        gender: Gender.FEMALE,
+        ageRange: AgeRange.TWENTY_TO_FORTY,
+      },
+    ]);
+
+    expect(result).toEqual({ created: 1, skipped: 0 });
+    expect(prisma.user.createMany).toHaveBeenCalledWith({
+      data: [
+        expect.objectContaining({
+          role: UserRole.STUDENT,
+          studioId: "studio-seed-1",
+          gender: Gender.FEMALE,
+          ageRange: AgeRange.TWENTY_TO_FORTY,
+          styles: [],
+          profileVisibility: ProfileVisibility.PRIVATE,
+        }),
+      ],
+    });
+    expect(crypto.sealPii).toHaveBeenCalledWith(
+      expect.objectContaining({
+        email: "ada@example.com",
+        name: "Ada Lovelace",
+        phone: null,
+      }),
+    );
+  });
+
+  it("skips emails that already exist in the studio", async () => {
+    prisma.user.findMany.mockResolvedValue([
+      { emailHash: "hash:ada@example.com" },
+    ]);
+
+    const result = await service.createStudents("studio-seed-1", [
+      {
+        name: "Ada Lovelace",
+        email: "ada@example.com",
+        gender: Gender.FEMALE,
+        ageRange: AgeRange.TWENTY_TO_FORTY,
+      },
+      {
+        name: "Alan Turing",
+        email: "alan@example.com",
+        gender: Gender.MALE,
+        ageRange: AgeRange.TEN_TO_TWENTY,
+      },
+    ]);
+
+    expect(result).toEqual({ created: 1, skipped: 1 });
+    expect(prisma.user.createMany).toHaveBeenCalledWith({
+      data: [
+        expect.objectContaining({
+          gender: Gender.MALE,
+          ageRange: AgeRange.TEN_TO_TWENTY,
+        }),
+      ],
+    });
+  });
+});

@@ -15,7 +15,6 @@ import {
   type ExperienceLevel,
   FamilyMemberKind,
   type Gender,
-  InvoiceStatus,
   ProfileVisibility,
   SessionStatus,
   UserRole,
@@ -641,7 +640,12 @@ export class UsersService {
 
   async createStudents(
     studioId: string,
-    students: Array<{ name: string; email: string; phone?: string }>,
+    students: Array<{
+      name: string;
+      email: string;
+      gender: Gender;
+      ageRange: AgeRange;
+    }>,
   ) {
     const uniqueStudents = Array.from(
       new Map(
@@ -650,7 +654,8 @@ export class UsersService {
           {
             name: student.name.trim(),
             email: student.email.trim().toLowerCase(),
-            phone: student.phone?.trim() || undefined,
+            gender: student.gender,
+            ageRange: student.ageRange,
           },
         ]),
       ).values(),
@@ -677,12 +682,14 @@ export class UsersService {
           ...this.crypto.sealPii({
             email: student.email,
             name: student.name,
-            phone: student.phone ?? null,
+            phone: null,
             bio: null,
             instagramUrl: null,
           }),
           role: UserRole.STUDENT,
           studioId,
+          gender: student.gender,
+          ageRange: student.ageRange,
           styles: [],
           profileVisibility: ProfileVisibility.PRIVATE,
         })),
@@ -839,8 +846,7 @@ export class UsersService {
     ]);
     const batchNameById = new Map(
       enrollments.map(
-        (enrollment) =>
-          [enrollment.batch.id, enrollment.batch.name] as const,
+        (enrollment) => [enrollment.batch.id, enrollment.batch.name] as const,
       ),
     );
     const batchIdsToResolve = new Set<string>();

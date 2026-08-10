@@ -250,9 +250,11 @@ class BulkStudentDto {
   @IsEmail()
   email!: string;
 
-  @IsOptional()
-  @IsString()
-  phone?: string;
+  @IsEnum(Gender)
+  gender!: Gender;
+
+  @IsEnum(AgeRange)
+  ageRange!: AgeRange;
 }
 
 class BulkCreateStudentsDto {
@@ -447,8 +449,7 @@ export class UsersController {
       q,
       cursor,
       ...(Number.isFinite(parsedLimit) ? { limit: parsedLimit } : {}),
-      includeParents:
-        includeParents === "true" || includeParents === "1",
+      includeParents: includeParents === "true" || includeParents === "1",
     });
   }
 
