@@ -1,0 +1,42 @@
+@use "@dev-ui/tokens/scss" as *;
+
+.tabs {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4, 1rem);
+  width: 100%;
+}
+
+.tabList {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 0.25rem;
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  padding-bottom: 0.15rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-fg) 10%, transparent);
+}
+
+.tabPanel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4, 1rem);
+  min-width: 0;
+}
+
+.saveRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  padding-top: var(--space-2, 0.5rem);
+  border-top: 1px solid color-mix(in srgb, var(--color-fg) 8%, transparent);
+}
+
+@media (max-width: 760px) {
+  .tabList {
+    gap: 0;
+  }
+}
