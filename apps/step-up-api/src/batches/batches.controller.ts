@@ -45,7 +45,14 @@ import { RolesGuard } from "../auth/roles.guard";
 import { assertSameStudio } from "../auth/studio-access";
 import type { DecryptedUser } from "../users/user-crypto.service";
 import { UsersService } from "../users/users.service";
+import { BatchCommandsService } from "./application/batch.commands";
+import { BatchQueriesService } from "./application/batch.queries";
 import { BatchesService } from "./batches.service";
+import {
+  BatchListQueryDto,
+  BatchRosterQueryDto,
+  toDiscoverFilters,
+} from "./dto/batch-list.dto";
 
 class DanceCategoryDto {
   @IsString()
@@ -304,6 +311,10 @@ class PurchaseBatchPlanDto {
 export class BatchesController {
   constructor(
     @Inject(BatchesService) private readonly batchesService: BatchesService,
+    @Inject(BatchQueriesService)
+    private readonly batchQueries: BatchQueriesService,
+    @Inject(BatchCommandsService)
+    private readonly batchCommands: BatchCommandsService,
     @Inject(UsersService) private readonly usersService: UsersService,
   ) {}
 
@@ -311,28 +322,13 @@ export class BatchesController {
   listByStudio(
     @CurrentUser() user: DecryptedUser,
     @Param("studioId") studioId: string,
-    @Query("style") style?: string,
-    @Query("category") category?: string,
-    @Query("trainerId") trainerId?: string,
-    @Query("branchId") branchId?: string,
-    @Query("search") search?: string,
-    @Query("activeOnly") activeOnly?: string,
-    @Query("studentId") studentId?: string,
+    @Query() query: BatchListQueryDto,
   ) {
     assertSameStudio(user, studioId);
-    return this.batchesService.listByStudio(
-      studioId,
-      {
-        style,
-        category,
-        trainerId,
-        branchId,
-        search,
-        activeOnly: activeOnly === "true" || activeOnly === "1",
-        studentId,
-      },
-      user,
-    );
+    return this.batchQueries.listByStudio(studioId, toDiscoverFilters(query), {
+      cursor: query.cursor,
+      limit: query.limit,
+    });
   }
 
   @Get(":id/revenue")
@@ -373,15 +369,25 @@ export class BatchesController {
     return this.batchesService.getUnenrollPreview(id, studentId);
   }
 
+  @Get(":id/roster")
+  @Roles(UserRole.OWNER, UserRole.STAFF, UserRole.TRAINER)
+  getRoster(@Param("id") id: string, @Query() query: BatchRosterQueryDto) {
+    return this.batchQueries.getRoster(id, {
+      cursor: query.cursor,
+      limit: query.limit,
+      tab: query.tab,
+    });
+  }
+
   @Get(":id")
   getById(@Param("id") id: string, @Query("studentId") studentId?: string) {
-    return this.batchesService.getById(id, { studentId });
+    return this.batchQueries.getHeader(id, { studentId });
   }
 
   @Post()
   @Roles(UserRole.OWNER, UserRole.STAFF, UserRole.TRAINER)
   create(@CurrentUser() user: DecryptedUser, @Body() dto: CreateBatchDto) {
-    return this.batchesService.create(user.id, {
+    return this.batchCommands.create(user.id, {
       ...dto,
       scheduleJson: dto.scheduleJson as unknown as Prisma.InputJsonValue,
     });
@@ -390,7 +396,7 @@ export class BatchesController {
   @Patch(":id")
   @Roles(UserRole.OWNER, UserRole.STAFF, UserRole.TRAINER)
   update(@Param("id") id: string, @Body() dto: UpdateBatchDto) {
-    return this.batchesService.update(id, {
+    return this.batchCommands.update(id, {
       ...dto,
       scheduleJson: dto.scheduleJson as Prisma.InputJsonValue | undefined,
     });
@@ -399,7 +405,7 @@ export class BatchesController {
   @Delete(":id")
   @Roles(UserRole.OWNER, UserRole.STAFF)
   remove(@Param("id") id: string) {
-    return this.batchesService.remove(id);
+    return this.batchCommands.remove(id);
   }
 
   @Post(":id/purchase")
@@ -416,7 +422,7 @@ export class BatchesController {
         await this.assertCanCoverStudent(actor, covered.studentId);
       }
     }
-    return this.batchesService.purchase(id, dto);
+    return this.batchCommands.purchase(id, dto);
   }
 
   @Post(":id/enroll")
@@ -432,7 +438,7 @@ export class BatchesController {
     @Body() dto: EnrollStudentDto,
     @CurrentUser() actor: DecryptedUser,
   ) {
-    return this.batchesService.enroll(
+    return this.batchCommands.enroll(
       id,
       dto.studentId,
       actor,
@@ -447,7 +453,7 @@ export class BatchesController {
     @Body() dto: EnrollStudentsBulkDto,
     @CurrentUser() actor: DecryptedUser,
   ) {
-    return this.batchesService.enrollBulk(
+    return this.batchCommands.enrollBulk(
       id,
       dto.studentIds,
       actor,
@@ -458,7 +464,7 @@ export class BatchesController {
   @Post(":id/switch")
   @Roles(UserRole.OWNER, UserRole.STAFF, UserRole.TRAINER)
   switchBatch(@Param("id") id: string, @Body() dto: SwitchBatchDto) {
-    return this.batchesService.switchBatch(id, dto.studentId, dto.toBatchId, {
+    return this.batchCommands.switchBatch(id, dto.studentId, dto.toBatchId, {
       includeAllPrices: dto.includeAllPrices === true,
     });
   }
@@ -466,7 +472,7 @@ export class BatchesController {
   @Post(":id/unenroll")
   @Roles(UserRole.OWNER, UserRole.STAFF, UserRole.TRAINER)
   unenroll(@Param("id") id: string, @Body() dto: UnenrollStudentDto) {
-    return this.batchesService.unenroll(id, dto.studentId, {
+    return this.batchCommands.unenroll(id, dto.studentId, {
       refund: dto.refund,
       refundAmount: dto.refundAmount,
     });
@@ -485,7 +491,7 @@ export class BatchesController {
     @Body() dto: RateBatchDto,
     @CurrentUser() actor: DecryptedUser,
   ) {
-    return this.batchesService.rate(id, dto.studentId, dto.rating, actor);
+    return this.batchCommands.rate(id, dto.studentId, dto.rating, actor);
   }
 
   private async assertPurchaserOwnership(

@@ -34,6 +34,28 @@ const emailStub = {
   sendPaymentInvoice: vi.fn().mockResolvedValue(undefined),
 };
 
+const usersPresenter = {
+  presentLite: vi.fn(
+    async (user: { id: string; name?: string; photoUrl?: string | null }) => ({
+      id: user.id,
+      name: user.name ?? "Decrypted",
+      photoUrl: user.photoUrl ?? null,
+    }),
+  ),
+  presentLiteMany: vi.fn(
+    async (
+      users: Array<{ id: string; name?: string; photoUrl?: string | null }>,
+    ) =>
+      users.map((user) => ({
+        id: user.id,
+        name: user.name ?? "Decrypted",
+        photoUrl: user.photoUrl ?? null,
+        email: "decrypted@example.com",
+        phone: null as string | null,
+      })),
+  ),
+};
+
 function makeUser(overrides: Partial<DecryptedUser> = {}): DecryptedUser {
   return {
     id: "owner-1",
@@ -76,6 +98,7 @@ describe("BillingService.getTrainerAnalytics", () => {
     service = new BillingService(
       prisma as never,
       crypto as never,
+      usersPresenter as never,
       membershipsStub as never,
       razorpayStub as never,
       notificationsStub as never,
@@ -609,6 +632,7 @@ describe("BillingService.refundInvoice", () => {
     service = new BillingService(
       prisma as never,
       { decryptUser: vi.fn() } as never,
+      usersPresenter as never,
       membershipsStub as never,
       razorpayStub as never,
       notificationsStub as never,
@@ -734,6 +758,7 @@ describe("BillingService.listForStudent", () => {
     service = new BillingService(
       prisma as never,
       crypto as never,
+      usersPresenter as never,
       membershipsStub as never,
       razorpayStub as never,
       notificationsStub as never,
@@ -872,6 +897,7 @@ describe("BillingService.markPaid", () => {
     service = new BillingService(
       prisma as never,
       crypto as never,
+      usersPresenter as never,
       membershipsStub as never,
       razorpayStub as never,
       notificationsStub as never,
@@ -1102,6 +1128,7 @@ describe("BillingService.listByStudio", () => {
     service = new BillingService(
       prisma as never,
       crypto as never,
+      usersPresenter as never,
       membershipsStub as never,
       razorpayStub as never,
       notificationsStub as never,
@@ -1135,7 +1162,7 @@ describe("BillingService.listByStudio", () => {
       },
       orderBy: { id: "desc" },
     });
-    expect(crypto.decryptUser).toHaveBeenCalled();
+    expect(usersPresenter.presentLiteMany).toHaveBeenCalled();
     expect(rows[0]?.student.name).toBe("Decrypted");
     expect(rows[0]?.kind).toBe("INDIVIDUAL");
     expect(rows[0]?.batchName).toBeNull();
@@ -1245,6 +1272,7 @@ describe("BillingService invoice checkout", () => {
     service = new BillingService(
       prisma as never,
       crypto as never,
+      usersPresenter as never,
       membershipsStub as never,
       razorpayStub as never,
       notificationsStub as never,
@@ -1433,6 +1461,7 @@ describe("BillingService.familyCombine", () => {
     service = new BillingService(
       prisma as never,
       { decryptUser: vi.fn() } as never,
+      usersPresenter as never,
       membershipsStub as never,
       razorpayStub as never,
       notificationsStub as never,

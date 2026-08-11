@@ -6,6 +6,7 @@ import {
   expectOk,
   expectStatus,
   TestDataCleanup,
+  unwrapPage,
 } from "./helpers";
 
 const ADULT_MONTHLY_PRICE = REVENUE.ADULT_MONTHLY_PRICE;
@@ -717,13 +718,22 @@ test.describe("Refund revenue impact @http", () => {
       await markPaid(invoice.id);
       await refundInvoice(invoice.id, 200, "Tab test");
 
-      const studioInvoices = await expectOk<
-        Array<{
-          id: string;
-          status: string;
-          refundedAmount?: number;
-        }>
-      >("STAFF", `/billing/studio/${SEED.studioId}`);
+      const studioInvoices = unwrapPage(
+        await expectOk<
+          | Array<{
+              id: string;
+              status: string;
+              refundedAmount?: number;
+            }>
+          | {
+              items: Array<{
+                id: string;
+                status: string;
+                refundedAmount?: number;
+              }>;
+            }
+        >("STAFF", `/billing/studio/${SEED.studioId}?limit=50`),
+      );
       const row = studioInvoices.find((i) => i.id === invoice.id);
       expect(row).toBeDefined();
       expect(row!.status).toBe("PAID");
@@ -747,9 +757,12 @@ test.describe("Refund revenue impact @http", () => {
       await refundInvoice(invoice.id, 300, "First refund");
       await refundInvoice(invoice.id, 400, "Second refund");
 
-      const studioInvoices = await expectOk<
-        Array<{ id: string; refundedAmount: number }>
-      >("STAFF", `/billing/studio/${SEED.studioId}`);
+      const studioInvoices = unwrapPage(
+        await expectOk<
+          | Array<{ id: string; refundedAmount: number }>
+          | { items: Array<{ id: string; refundedAmount: number }> }
+        >("STAFF", `/billing/studio/${SEED.studioId}?limit=50`),
+      );
       const row = studioInvoices.find((i) => i.id === invoice.id);
       expect(row).toBeDefined();
       expect(row!.refundedAmount).toBe(700);
@@ -965,17 +978,21 @@ test.describe("Role-based revenue access @http", () => {
   });
 
   test("owner can view studio invoices @http", async () => {
-    const invoices = await expectOk<Array<{ id: string }>>(
-      "OWNER",
-      `/billing/studio/${SEED.studioId}`,
+    const invoices = unwrapPage(
+      await expectOk<
+        | Array<{ id: string }>
+        | { items: Array<{ id: string }> }
+      >("OWNER", `/billing/studio/${SEED.studioId}`),
     );
     expect(Array.isArray(invoices)).toBe(true);
   });
 
   test("student can list own invoices @http", async () => {
-    const invoices = await expectOk<Array<{ id: string }>>(
-      "STUDENT",
-      `/billing/student/${SEED.users.STUDENT.id}`,
+    const invoices = unwrapPage(
+      await expectOk<
+        | Array<{ id: string }>
+        | { items: Array<{ id: string }> }
+      >("STUDENT", `/billing/student/${SEED.users.STUDENT.id}`),
     );
     expect(Array.isArray(invoices)).toBe(true);
   });
@@ -1291,15 +1308,21 @@ test.describe("Revenue reconciliation @http", () => {
       );
 
       // === Verify student invoice lists ===
-      const studentAInvoices = await expectOk<
-        Array<{ id: string; status: string }>
-      >("STAFF", `/billing/student/${studentA.id}`);
+      const studentAInvoices = unwrapPage(
+        await expectOk<
+          | Array<{ id: string; status: string }>
+          | { items: Array<{ id: string; status: string }> }
+        >("STAFF", `/billing/student/${studentA.id}?limit=50`),
+      );
       const studentAPaid = studentAInvoices.filter((i) => i.status === "PAID");
       expect(studentAPaid.length).toBeGreaterThanOrEqual(1);
 
-      const studentBInvoices = await expectOk<
-        Array<{ id: string; status: string }>
-      >("STAFF", `/billing/student/${studentB.id}`);
+      const studentBInvoices = unwrapPage(
+        await expectOk<
+          | Array<{ id: string; status: string }>
+          | { items: Array<{ id: string; status: string }> }
+        >("STAFF", `/billing/student/${studentB.id}?limit=50`),
+      );
       const studentBPaid = studentBInvoices.filter((i) => i.status === "PAID");
       expect(studentBPaid.length).toBeGreaterThanOrEqual(2);
     } finally {
@@ -1386,9 +1409,18 @@ test.describe("Revenue reconciliation @http", () => {
       );
       await markPaid(invoice.id, "CASH");
 
-      const studioInvoices = await expectOk<
-        Array<{ id: string; status: string; paymentMethod: string | null }>
-      >("STAFF", `/billing/studio/${SEED.studioId}`);
+      const studioInvoices = unwrapPage(
+        await expectOk<
+          | Array<{ id: string; status: string; paymentMethod: string | null }>
+          | {
+              items: Array<{
+                id: string;
+                status: string;
+                paymentMethod: string | null;
+              }>;
+            }
+        >("STAFF", `/billing/studio/${SEED.studioId}?limit=50`),
+      );
       const row = studioInvoices.find((i) => i.id === invoice.id);
       expect(row).toBeDefined();
       expect(row!.status).toBe("PAID");

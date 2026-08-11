@@ -36,13 +36,14 @@ export class JobsSecretGuard implements CanActivate {
 export class JobsController {
   constructor(@Inject(JobsService) private readonly jobsService: JobsService) {}
 
+  /** Enqueues only — worker runs daily/membership jobs off the request path. */
   @Post("daily")
   runDaily() {
-    return this.jobsService.runDaily();
+    return this.jobsService.enqueueDaily();
   }
 
   @Post("notifications/run-scheduled")
   runScheduledNotifications() {
-    return this.jobsService.runDaily();
+    return this.jobsService.enqueueDaily();
   }
 }

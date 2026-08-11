@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useApi } from "@/lib/api-context";
+import { unwrapPage } from "@/lib/api-page";
 import { useStudioId } from "@/lib/use-studio-id";
 import type { DiscoverBatch } from "./types";
 
@@ -30,8 +31,13 @@ export function useDiscoverBatches(filters: DiscoverFilters = {}) {
 
   return useQuery({
     queryKey: ["batches", "discover", studioId, qs],
-    queryFn: () =>
-      api.get<DiscoverBatch[]>(`/batches/studio/${studioId}?${qs}`),
+    queryFn: async () => {
+      const data = await api.get<
+        | DiscoverBatch[]
+        | { items: DiscoverBatch[]; nextCursor: string | null; limit: number }
+      >(`/batches/studio/${studioId}?${qs}`);
+      return unwrapPage(data);
+    },
   });
 }
 

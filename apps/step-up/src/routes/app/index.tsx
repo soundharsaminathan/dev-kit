@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { useApi } from "@/lib/api-context";
+import { unwrapPage } from "@/lib/api-page";
 import { useAuth } from "@/lib/auth";
 import { ENTITY_ICONS } from "@/lib/entity-icons";
 import { useStudioId } from "@/lib/use-studio-id";
@@ -187,14 +188,16 @@ function AppDashboardPage() {
       studioId,
       isTrainer ? (user?.id ?? "trainer") : "studio",
     ],
-    queryFn: () => {
+    queryFn: async () => {
       const params = new URLSearchParams({ activeOnly: "true" });
       if (isTrainer && user?.id) {
         params.set("trainerId", user.id);
       }
-      return api.get<DiscoverBatch[]>(
-        `/batches/studio/${studioId}?${params.toString()}`,
-      );
+      const data = await api.get<
+        | DiscoverBatch[]
+        | { items: DiscoverBatch[]; nextCursor: string | null; limit: number }
+      >(`/batches/studio/${studioId}?${params.toString()}`);
+      return unwrapPage(data);
     },
     enabled: Boolean(studioId) && (!isTrainer || Boolean(user?.id)),
     staleTime: 30_000,

@@ -10,6 +10,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useApi } from "@/lib/api-context";
+import { unwrapPage } from "@/lib/api-page";
 import type { AgeRange, Gender } from "@/lib/constants";
 import { setLastLoginIdentifier } from "@/lib/last-login";
 import { useStudioId } from "@/lib/use-studio-id";
@@ -99,10 +100,17 @@ export function MemberRegistrationForm({
 
   const batchesQuery = useQuery({
     queryKey: ["studio-batches", studioId, "active"],
-    queryFn: () =>
-      api.get<StudioBatchOption[]>(
-        `/batches/studio/${studioId}?activeOnly=true`,
-      ),
+    queryFn: async () => {
+      const data = await api.get<
+        | StudioBatchOption[]
+        | {
+            items: StudioBatchOption[];
+            nextCursor: string | null;
+            limit: number;
+          }
+      >(`/batches/studio/${studioId}?activeOnly=true`);
+      return unwrapPage(data);
+    },
     enabled: allowBatchEnrollment,
   });
 

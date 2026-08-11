@@ -4,8 +4,12 @@
   "private": true,
   "scripts": {
     "dev": "nest start --watch",
+    "dev:api": "nest start --watch",
+    "dev:worker": "nest start --watch --entryFile worker.main",
     "build": "nest build",
     "start:prod": "node dist/main.js",
+    "start:prod:api": "node dist/main.js",
+    "start:prod:worker": "node dist/worker.main.js",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:reset": "prisma migrate reset",

@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useApi } from "@/lib/api-context";
+import { unwrapPage } from "@/lib/api-page";
 import { ENTITY_ICONS } from "@/lib/entity-icons";
 import { useStudioId } from "@/lib/use-studio-id";
 import type { BatchFiltersDraft } from "@/modules/batches/batch-filters-panel";
@@ -68,7 +69,13 @@ function BatchesPage() {
 
   const query = useQuery({
     queryKey: ["batches", studioId],
-    queryFn: () => api.get<DiscoverBatch[]>(`/batches/studio/${studioId}`),
+    queryFn: async () => {
+      const data = await api.get<
+        | DiscoverBatch[]
+        | { items: DiscoverBatch[]; nextCursor: string | null; limit: number }
+      >(`/batches/studio/${studioId}`);
+      return unwrapPage(data);
+    },
   });
 
   const filtered = useMemo(

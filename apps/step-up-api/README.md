@@ -50,9 +50,11 @@ Generate a key: `node -e "console.log(require('crypto').randomBytes(32).toString
 
 | Script | Description |
 |--------|-------------|
-| `pnpm dev` | Start with hot reload |
+| `pnpm dev` / `pnpm dev:api` | API with hot reload |
+| `pnpm dev:worker` | Worker (outbox + BullMQ processors); requires `REDIS_URL` |
 | `pnpm build` | Compile to `dist/` |
-| `pnpm start:prod` | Run production build |
+| `pnpm start:prod:api` | Run API production build |
+| `pnpm start:prod:worker` | Run worker production build |
 | `pnpm prisma:generate` | Generate Prisma client |
 | `pnpm prisma:migrate` | Run migrations |
 | `pnpm prisma:seed` | Seed system admin only |
@@ -61,16 +63,20 @@ Generate a key: `node -e "console.log(require('crypto').randomBytes(32).toString
 | `pnpm prisma:seed:analytics` | Seed analytics demo studio (`studio-analytics-1`) |
 | `pnpm test` | Run unit tests |
 
+See [ARCHITECTURE.md](./ARCHITECTURE.md) for CQRS, outbox, and layering rules.
+
 ## Docker
 
 ```bash
 docker build -t step-up-api .
 docker run -p 8080:8080 --env-file .env step-up-api
+# Worker (same image, different command):
+# docker run --env-file .env step-up-api node dist/worker.main.js
 ```
 
 ## Key endpoints
 
 - `GET /health` — health check
 - `POST /auth/sync` — create/update user from token
-- `POST /jobs/daily` — cron job (requires `x-jobs-secret` header)
+- `POST /jobs/daily` — enqueue daily jobs for the worker (requires `x-jobs-secret` header)
 - Module routes under `/users`, `/studios`, `/batches`, `/plans`, `/subscriptions`, `/sessions`, `/attendance`, `/bookings`, `/billing`, `/notifications`, `/retention`, `/media`

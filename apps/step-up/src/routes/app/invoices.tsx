@@ -8,6 +8,7 @@ import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useApi } from "@/lib/api-context";
+import { unwrapPage } from "@/lib/api-page";
 import { requireAdmin } from "@/lib/require-auth";
 import { useStudioId } from "@/lib/use-studio-id";
 import { CollectPaymentSheet } from "@/modules/payments/collect-payment-sheet";
@@ -252,7 +253,13 @@ function InvoicesPage() {
 
   const invoicesQuery = useQuery({
     queryKey: ["invoices", studioId],
-    queryFn: () => api.get<Invoice[]>(`/billing/studio/${studioId}`),
+    queryFn: async () => {
+      const data = await api.get<
+        | Invoice[]
+        | { items: Invoice[]; nextCursor: string | null; limit: number }
+      >(`/billing/studio/${studioId}`);
+      return unwrapPage(data);
+    },
   });
 
   const studioQuery = useQuery({

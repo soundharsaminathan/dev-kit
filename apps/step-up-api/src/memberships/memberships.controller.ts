@@ -15,9 +15,9 @@ import { AuthGuard } from "../auth/auth.guard";
 import { CurrentUser } from "../auth/current-user.decorator";
 import { Roles } from "../auth/roles.decorator";
 import { RolesGuard } from "../auth/roles.guard";
-import { PrismaService } from "../prisma/prisma.service";
 import type { DecryptedUser } from "../users/user-crypto.service";
-import { MembershipsService } from "./memberships.service";
+import { MembershipCommandsService } from "./application/membership.commands";
+import { MembershipQueriesService } from "./application/membership.queries";
 
 class SelfRenewDto {
   @IsString()
@@ -28,14 +28,15 @@ class SelfRenewDto {
 @UseGuards(AuthGuard, RolesGuard)
 export class MembershipsController {
   constructor(
-    @Inject(MembershipsService)
-    private readonly membershipsService: MembershipsService,
-    @Inject(PrismaService) private readonly prisma: PrismaService,
+    @Inject(MembershipQueriesService)
+    private readonly queries: MembershipQueriesService,
+    @Inject(MembershipCommandsService)
+    private readonly commands: MembershipCommandsService,
   ) {}
 
   @Get("student/:studentId")
   listForStudent(@Param("studentId") studentId: string) {
-    return this.membershipsService.listForStudent(studentId);
+    return this.queries.listForStudent(studentId);
   }
 
   @Post("self/renew")
@@ -44,14 +45,14 @@ export class MembershipsController {
     @CurrentUser() actor: DecryptedUser,
     @Body() dto: SelfRenewDto,
   ) {
-    const membership = await this.prisma.membership.findUnique({
-      where: { id: dto.membershipId },
-    });
-    if (!membership) {
+    const purchaserUserId = await this.queries.getPurchaserUserId(
+      dto.membershipId,
+    );
+    if (!purchaserUserId) {
       throw new NotFoundException("Membership not found");
     }
-    await this.assertPurchaserOwnership(actor, membership.purchaserUserId);
-    return this.membershipsService.requestRenewalInvoice(dto.membershipId);
+    await this.assertPurchaserOwnership(actor, purchaserUserId);
+    return this.commands.requestRenewalInvoice(dto.membershipId);
   }
 
   private async assertPurchaserOwnership(

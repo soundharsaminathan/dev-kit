@@ -3,6 +3,7 @@ import {
   authFile,
   expect,
   test,
+  unwrapPage,
   waitForApiResponse,
   waitForAppReady,
 } from "../fixtures";
@@ -85,9 +86,11 @@ test.describe("admin payments @critical", () => {
 
     await expect
       .poll(async () => {
-        const latest = await apiRequest<Array<{ id: string; status: string }>>(
-          "STAFF",
-          `/billing/studio/${SEED.users.STAFF.studioId}`,
+        const latest = unwrapPage(
+          await apiRequest<
+            | Array<{ id: string; status: string }>
+            | { items: Array<{ id: string; status: string }> }
+          >("STAFF", `/billing/studio/${SEED.users.STAFF.studioId}?limit=50`),
         );
         return latest.find((row) => row.id === invoice.id)?.status;
       })
@@ -127,9 +130,18 @@ test.describe("admin payments @critical", () => {
 
     await expect
       .poll(async () => {
-        const latest = await apiRequest<
-          Array<{ id: string; status: string; refundedAmount?: number }>
-        >("STAFF", `/billing/studio/${SEED.users.STAFF.studioId}`);
+        const latest = unwrapPage(
+          await apiRequest<
+            | Array<{ id: string; status: string; refundedAmount?: number }>
+            | {
+                items: Array<{
+                  id: string;
+                  status: string;
+                  refundedAmount?: number;
+                }>;
+              }
+          >("STAFF", `/billing/studio/${SEED.users.STAFF.studioId}?limit=50`),
+        );
         return latest.find((row) => row.id === invoice.id)?.refundedAmount;
       })
       .toBe(250);
@@ -202,9 +214,11 @@ test.describe("admin payments @critical", () => {
 
     await expect
       .poll(async () => {
-        const latest = await apiRequest<Array<{ id: string; status: string }>>(
-          "STAFF",
-          `/billing/studio/${SEED.users.STAFF.studioId}`,
+        const latest = unwrapPage(
+          await apiRequest<
+            | Array<{ id: string; status: string }>
+            | { items: Array<{ id: string; status: string }> }
+          >("STAFF", `/billing/studio/${SEED.users.STAFF.studioId}?limit=50`),
         );
         return latest.find((row) => row.id === combined.id)?.status;
       })

@@ -2,6 +2,7 @@ import { UnauthorizedException } from "@nestjs/common";
 import { UserRole } from "@prisma/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AuthController } from "./auth.controller";
+import { AuthService } from "./auth.service";
 
 describe("AuthController.sync", () => {
   const prisma = {
@@ -42,10 +43,11 @@ describe("AuthController.sync", () => {
   const staffInvites = {};
 
   let controller: AuthController;
+  let auth: AuthService;
 
   beforeEach(() => {
     vi.clearAllMocks();
-    controller = new AuthController(
+    auth = new AuthService(
       prisma as never,
       crypto as never,
       media as never,
@@ -53,6 +55,7 @@ describe("AuthController.sync", () => {
       firebase as never,
       staffInvites as never,
     );
+    controller = new AuthController(auth);
   });
 
   it("does not create a user on login sync when Firebase has no DB row", async () => {

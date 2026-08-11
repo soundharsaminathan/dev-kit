@@ -10,7 +10,7 @@ import {
   Query,
   UseGuards,
 } from "@nestjs/common";
-import { PaymentMethod, UserRole } from "@prisma/client";
+import { InvoiceStatus, PaymentMethod, UserRole } from "@prisma/client";
 import {
   ArrayMinSize,
   IsArray,
@@ -25,7 +25,10 @@ import { CurrentUser } from "../auth/current-user.decorator";
 import { Roles } from "../auth/roles.decorator";
 import { RolesGuard } from "../auth/roles.guard";
 import { assertSameStudio } from "../auth/studio-access";
+import { PaginationQueryDto } from "../shared/pagination";
 import type { DecryptedUser } from "../users/user-crypto.service";
+import { BillingCommandsService } from "./application/billing.commands";
+import { BillingQueriesService } from "./application/billing.queries";
 import { BillingService } from "./billing.service";
 
 class MarkPaidDto {
@@ -85,11 +88,21 @@ class FamilyCombineDto {
   familyDiscount!: number;
 }
 
+class BillingStudioListQueryDto extends PaginationQueryDto {
+  @IsOptional()
+  @IsEnum(InvoiceStatus)
+  status?: InvoiceStatus;
+}
+
 @Controller("billing")
 @UseGuards(AuthGuard, RolesGuard)
 export class BillingController {
   constructor(
     @Inject(BillingService) private readonly billingService: BillingService,
+    @Inject(BillingQueriesService)
+    private readonly billingQueries: BillingQueriesService,
+    @Inject(BillingCommandsService)
+    private readonly billingCommands: BillingCommandsService,
   ) {}
 
   @Get("studio/:studioId")
@@ -97,9 +110,14 @@ export class BillingController {
   listByStudio(
     @CurrentUser() user: DecryptedUser,
     @Param("studioId") studioId: string,
+    @Query() query: BillingStudioListQueryDto,
   ) {
     assertSameStudio(user, studioId);
-    return this.billingService.listByStudio(studioId);
+    return this.billingQueries.listByStudio(studioId, {
+      cursor: query.cursor,
+      limit: query.limit,
+      status: query.status,
+    });
   }
 
   @Post("family-combine")
@@ -109,7 +127,7 @@ export class BillingController {
     @Body() dto: FamilyCombineDto,
   ) {
     assertSameStudio(user, dto.studioId);
-    return this.billingService.familyCombine(user, dto);
+    return this.billingCommands.familyCombine(user, dto);
   }
 
   @Get("analytics/trainer/:trainerId")
@@ -157,8 +175,12 @@ export class BillingController {
   listForStudent(
     @CurrentUser() user: DecryptedUser,
     @Param("studentId") studentId: string,
+    @Query() query: PaginationQueryDto,
   ) {
-    return this.billingService.listForStudent(user, studentId);
+    return this.billingQueries.listForStudent(user, studentId, {
+      cursor: query.cursor,
+      limit: query.limit,
+    });
   }
 
   @Get(":id")
@@ -179,7 +201,7 @@ export class BillingController {
     @CurrentUser() user: DecryptedUser,
     @Param("id") id: string,
   ) {
-    return this.billingService.createInvoicePaymentOrder(id, user);
+    return this.billingCommands.createPaymentOrder(id, user);
   }
 
   @Post(":id/confirm-payment")
@@ -189,13 +211,13 @@ export class BillingController {
     @Param("id") id: string,
     @Body() dto: ConfirmInvoicePaymentDto,
   ) {
-    return this.billingService.confirmInvoicePayment(id, user, dto);
+    return this.billingCommands.confirmPayment(id, user, dto);
   }
 
   @Post(":id/abandon-payment")
   @Roles(UserRole.STUDENT, UserRole.PARENT)
   abandonPayment(@CurrentUser() user: DecryptedUser, @Param("id") id: string) {
-    return this.billingService.abandonInvoicePayment(id, user);
+    return this.billingCommands.abandonPayment(id, user);
   }
 
   @Patch(":id/paid")
@@ -205,7 +227,7 @@ export class BillingController {
     @Param("id") id: string,
     @Body() dto: MarkPaidDto,
   ) {
-    return this.billingService.markPaid(user, id, {
+    return this.billingCommands.markPaid(user, id, {
       paymentMethod: dto.paymentMethod,
       referralDiscount: dto.referralDiscount,
       studioDiscount: dto.studioDiscount,
@@ -219,7 +241,7 @@ export class BillingController {
     @Param("id") id: string,
     @Body() dto: RefundInvoiceDto,
   ) {
-    return this.billingService.refundInvoiceForStudio(user, id, {
+    return this.billingCommands.refund(user, id, {
       amount: dto.amount,
       reason: dto.reason,
     });

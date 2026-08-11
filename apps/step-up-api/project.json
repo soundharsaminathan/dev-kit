@@ -21,6 +21,22 @@
       "continuous": true,
       "dependsOn": ["prisma:generate"]
     },
+    "dev:api": {
+      "executor": "nx:run-script",
+      "options": {
+        "script": "dev:api"
+      },
+      "continuous": true,
+      "dependsOn": ["prisma:generate"]
+    },
+    "dev:worker": {
+      "executor": "nx:run-script",
+      "options": {
+        "script": "dev:worker"
+      },
+      "continuous": true,
+      "dependsOn": ["prisma:generate"]
+    },
     "test": {
       "executor": "nx:run-script",
       "options": {

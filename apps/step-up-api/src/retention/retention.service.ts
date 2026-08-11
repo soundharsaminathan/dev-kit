@@ -32,10 +32,21 @@ export class RetentionService {
   }
 
   async getBatchStats(batchId: string) {
-    const batch = await this.prisma.batch.findUnique({
-      where: { id: batchId },
-      select: { studioId: true },
-    });
+    const [batch, summary] = await Promise.all([
+      this.prisma.batch.findUnique({
+        where: { id: batchId },
+        select: { studioId: true, capacity: true },
+      }),
+      this.prisma.batchSummary.findUnique({
+        where: { batchId },
+        select: {
+          capacity: true,
+          enrolled: true,
+          reserved: true,
+          availableSeats: true,
+        },
+      }),
+    ]);
 
     const enrollments = await this.prisma.batchEnrollment.findMany({
       where: { batchId, status: "ACTIVE" },
@@ -107,9 +118,15 @@ export class RetentionService {
       ? await this.paidMonthsByStudentIds(batch.studioId, absenteeStudentIds)
       : new Map<string, number>();
 
+    const enrolledCount = summary?.enrolled ?? students.length;
+    const capacity = summary?.capacity ?? batch?.capacity ?? null;
+
     return {
       batchId,
-      enrolledCount: students.length,
+      enrolledCount,
+      capacity,
+      reservedSeats: summary?.reserved ?? null,
+      availableSeats: summary?.availableSeats ?? null,
       renewedCount,
       renewalRatePercent:
         students.length === 0

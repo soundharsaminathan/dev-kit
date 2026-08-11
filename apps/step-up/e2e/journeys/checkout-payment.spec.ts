@@ -3,6 +3,7 @@ import {
   authFile,
   expect,
   test,
+  unwrapPage,
   waitForApiResponse,
   waitForAppReady,
 } from "../fixtures";
@@ -33,14 +34,24 @@ async function clearOpenBookings(studentId: string, batchId: string) {
 }
 
 async function clearPendingCheckoutInvoices(studentId: string) {
-  const invoices = await apiRequest<
-    Array<{
-      id: string;
-      status: string;
-      purchaseMeta?: unknown;
-      paymentHoldExpiresAt?: string | null;
-    }>
-  >("STUDENT", `/billing/student/${studentId}`);
+  const invoices = unwrapPage(
+    await apiRequest<
+      | Array<{
+          id: string;
+          status: string;
+          purchaseMeta?: unknown;
+          paymentHoldExpiresAt?: string | null;
+        }>
+      | {
+          items: Array<{
+            id: string;
+            status: string;
+            purchaseMeta?: unknown;
+            paymentHoldExpiresAt?: string | null;
+          }>;
+        }
+    >("STUDENT", `/billing/student/${studentId}?limit=50`),
+  );
 
   for (const invoice of invoices) {
     if (invoice.status !== "PENDING" || !invoice.purchaseMeta) continue;

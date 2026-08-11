@@ -5,6 +5,7 @@ import {
   expectOk,
   expectStatus,
   TestDataCleanup,
+  unwrapPage,
 } from "./helpers";
 
 /** Adult monthly plan price from seed-e2e (e2e-sub-individual-adult-monthly). */
@@ -201,9 +202,11 @@ test.describe("billing HTTP @http", () => {
   });
 
   test("student lists own invoices @http", async () => {
-    const invoices = await expectOk<Array<{ id: string }>>(
-      "STUDENT",
-      `/billing/student/${SEED.users.STUDENT.id}`,
+    const invoices = unwrapPage(
+      await expectOk<
+        | Array<{ id: string }>
+        | { items: Array<{ id: string }>; nextCursor: string | null }
+      >("STUDENT", `/billing/student/${SEED.users.STUDENT.id}`),
     );
     expect(Array.isArray(invoices)).toBe(true);
   });
@@ -212,9 +215,23 @@ test.describe("billing HTTP @http", () => {
     const cleanup = new TestDataCleanup();
     try {
       const target = await createPendingInvoiceViaEnroll(cleanup);
-      const invoices = await expectOk<
-        Array<{ id: string; batchId: string | null; batchName: string | null }>
-      >("STAFF", `/billing/studio/${SEED.users.STAFF.studioId}`);
+      const invoices = unwrapPage(
+        await expectOk<
+          | Array<{
+              id: string;
+              batchId: string | null;
+              batchName: string | null;
+            }>
+          | {
+              items: Array<{
+                id: string;
+                batchId: string | null;
+                batchName: string | null;
+              }>;
+              nextCursor: string | null;
+            }
+        >("STAFF", `/billing/studio/${SEED.users.STAFF.studioId}?limit=50`),
+      );
       const row = invoices.find((invoice) => invoice.id === target.id);
       expect(row?.batchId).toBe(SEED.beginnerBatchId);
       expect(row?.batchName).toBe("E2E Adult Beginner");

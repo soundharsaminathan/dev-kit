@@ -7,6 +7,7 @@ import {
   SMOKE,
   SmokeDataCleanup,
   test,
+  unwrapPage,
   waitForApiResponse,
   waitForAppReady,
 } from "./fixtures";
@@ -305,9 +306,12 @@ test.describe("admin (staff) smoke @smoke", () => {
       await page.getByTestId("confirm-refund-invoice").click();
       await expect(page.getByText("Refund too high")).toBeVisible();
 
-      const latest = await apiRequest<
-        Array<{ id: string; refundedAmount?: number }>
-      >("STAFF", `/billing/studio/${SMOKE.studioId}`);
+      const latest = unwrapPage(
+        await apiRequest<
+          | Array<{ id: string; refundedAmount?: number }>
+          | { items: Array<{ id: string; refundedAmount?: number }> }
+        >("STAFF", `/billing/studio/${SMOKE.studioId}?limit=50`),
+      );
       expect(
         latest.find((row) => row.id === invoice.id)?.refundedAmount ?? 0,
       ).toBe(0);

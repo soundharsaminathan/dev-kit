@@ -399,6 +399,25 @@ model Studio {
   expenseCategories    ExpenseCategory[]
   expenses             Expense[]
   recurringExpenses    RecurringExpense[]
+  batchSummaries       BatchSummary[]
+  revenueSummaries     StudioRevenueSummary[]
+}
+
+model StudioRevenueSummary {
+  id              String   @id @default(cuid())
+  studioId        String
+  period          String
+  grossRevenue    Decimal  @default(0) @db.Decimal(12, 2)
+  refunds         Decimal  @default(0) @db.Decimal(12, 2)
+  netRevenue      Decimal  @default(0) @db.Decimal(12, 2)
+  paidInvoices    Int      @default(0)
+  pendingInvoices Int      @default(0)
+  updatedAt       DateTime @updatedAt
+
+  studio Studio @relation(fields: [studioId], references: [id], onDelete: Cascade)
+
+  @@unique([studioId, period])
+  @@index([studioId, period])
 }
 
 model StudioSettings {
@@ -561,6 +580,26 @@ model Batch {
   conversation        Conversation?
   bookings            Booking[]
   ratings             BatchRating[]
+  summary             BatchSummary?
+
+  @@index([studioId, active])
+}
+
+model BatchSummary {
+  batchId         String   @id
+  studioId        String
+  capacity        Int
+  enrolled        Int      @default(0)
+  reserved        Int      @default(0)
+  availableSeats  Int      @default(0)
+  trainerCount    Int      @default(0)
+  active          Boolean  @default(true)
+  updatedAt       DateTime @updatedAt
+
+  batch  Batch  @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  studio Studio @relation(fields: [studioId], references: [id], onDelete: Cascade)
+
+  @@index([studioId, active])
 }
 
 model BatchPlan {
@@ -637,6 +676,8 @@ model Subscription {
   creator     User         @relation("SubscriptionCreator", fields: [creatorId], references: [id])
   memberships Membership[]
   batchPlans  BatchPlan[]
+
+  @@index([studioId, active])
 }
 
 model Membership {
@@ -695,6 +736,8 @@ model Invoice {
   studio     Studio      @relation(fields: [studioId], references: [id], onDelete: Cascade)
 
   @@index([status, paymentHoldExpiresAt])
+  @@index([studioId, id])
+  @@index([studentId])
 }
 
 model ExpenseCategory {
@@ -794,6 +837,7 @@ model Session {
   bookings   Booking[]
 
   @@index([type, startsAt])
+  @@index([batchId, startsAt])
 }
 
 model Attendance {
@@ -835,6 +879,9 @@ model Booking {
 
   @@index([batchId])
   @@index([status, paymentHoldExpiresAt])
+  @@index([studentId, status])
+  @@index([trainerId, status])
+  @@index([studioId, status])
 }
 
 model Notification {
@@ -920,9 +967,11 @@ model OutboxEvent {
   payload     Json
   createdAt   DateTime  @default(now())
   publishedAt DateTime?
+  claimedAt   DateTime?
   attempts    Int       @default(0)
 
   @@index([publishedAt, createdAt])
+  @@index([claimedAt])
 }
 
 model Follow {

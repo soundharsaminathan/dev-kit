@@ -16,7 +16,8 @@ import { Roles } from "../auth/roles.decorator";
 import { RolesGuard } from "../auth/roles.guard";
 import { assertSameStudio } from "../auth/studio-access";
 import type { DecryptedUser } from "../users/user-crypto.service";
-import { BookingsService } from "./bookings.service";
+import { BookingCommandsService } from "./application/booking.commands";
+import { BookingQueriesService } from "./application/booking.queries";
 
 class CreateBookingDto {
   @IsString()
@@ -116,12 +117,15 @@ class RequestRescheduleDto {
 @UseGuards(AuthGuard, RolesGuard)
 export class BookingsController {
   constructor(
-    @Inject(BookingsService) private readonly bookingsService: BookingsService,
+    @Inject(BookingQueriesService)
+    private readonly queries: BookingQueriesService,
+    @Inject(BookingCommandsService)
+    private readonly commands: BookingCommandsService,
   ) {}
 
   @Get("student/:studentId")
   listForStudent(@Param("studentId") studentId: string) {
-    return this.bookingsService.listForStudent(studentId);
+    return this.queries.listForStudent(studentId);
   }
 
   @Get("studio/:studioId")
@@ -131,7 +135,7 @@ export class BookingsController {
     @Param("studioId") studioId: string,
   ) {
     assertSameStudio(user, studioId);
-    return this.bookingsService.listForStudio(studioId);
+    return this.queries.listForStudio(studioId);
   }
 
   @Get(":id")
@@ -143,13 +147,13 @@ export class BookingsController {
     UserRole.PARENT,
   )
   getById(@Param("id") id: string, @CurrentUser() user: DecryptedUser) {
-    return this.bookingsService.getById(id, user);
+    return this.queries.getById(id, user);
   }
 
   @Post()
   @Roles(UserRole.STUDENT, UserRole.PARENT)
   create(@Body() dto: CreateBookingDto) {
-    return this.bookingsService.create(dto, { requirePayment: true });
+    return this.commands.create(dto, { requirePayment: true });
   }
 
   @Post(":id/create-payment-order")
@@ -158,7 +162,7 @@ export class BookingsController {
     @Param("id") id: string,
     @CurrentUser() user: DecryptedUser,
   ) {
-    return this.bookingsService.createPaymentOrder(id, user);
+    return this.commands.createPaymentOrder(id, user);
   }
 
   @Post(":id/confirm-payment")
@@ -168,13 +172,13 @@ export class BookingsController {
     @CurrentUser() user: DecryptedUser,
     @Body() dto: ConfirmPaymentDto,
   ) {
-    return this.bookingsService.confirmPayment(id, user, dto ?? {});
+    return this.commands.confirmPayment(id, user, dto ?? {});
   }
 
   @Post(":id/abandon-payment")
   @Roles(UserRole.STUDENT, UserRole.PARENT)
   abandonPayment(@Param("id") id: string, @CurrentUser() user: DecryptedUser) {
-    return this.bookingsService.abandonPayment(id, user);
+    return this.commands.abandonPayment(id, user);
   }
 
   @Post(":id/cancel")
@@ -184,7 +188,7 @@ export class BookingsController {
     @CurrentUser() user: DecryptedUser,
     @Body() dto: CancelBookingDto,
   ) {
-    return this.bookingsService.cancelBooking(id, user, dto?.reason);
+    return this.commands.cancelBooking(id, user, dto?.reason);
   }
 
   @Post(":id/request-reschedule")
@@ -194,12 +198,12 @@ export class BookingsController {
     @CurrentUser() user: DecryptedUser,
     @Body() dto: RequestRescheduleDto,
   ) {
-    return this.bookingsService.requestReschedule(id, user, dto ?? {});
+    return this.commands.requestReschedule(id, user, dto ?? {});
   }
 
   @Patch(":id/status")
   @Roles(UserRole.OWNER, UserRole.STAFF, UserRole.TRAINER)
   updateStatus(@Param("id") id: string, @Body() dto: UpdateBookingStatusDto) {
-    return this.bookingsService.updateStatus(id, dto);
+    return this.commands.updateStatus(id, dto);
   }
 }

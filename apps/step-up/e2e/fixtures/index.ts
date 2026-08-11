@@ -181,6 +181,10 @@ export async function waitForApiResponse(
 
 export { TestDataCleanup } from "./test-cleanup";
 
+export function unwrapPage<T>(data: T[] | { items: T[] }): T[] {
+  return Array.isArray(data) ? data : data.items;
+}
+
 export async function apiRequest<T>(
   role: SeedRole,
   pathName: string,

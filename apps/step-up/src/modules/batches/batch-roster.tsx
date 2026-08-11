@@ -15,6 +15,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useApi } from "@/lib/api-context";
+import { unwrapPage, type Page } from "@/lib/api-page";
 import { ENTITY_ICONS } from "@/lib/entity-icons";
 import { formatPaidMonths } from "@/lib/format-paid-months";
 import { useStudioId } from "@/lib/use-studio-id";
@@ -65,15 +66,13 @@ type BatchRosterProps = {
   active: boolean;
 };
 
-type BatchWithEnrollments = {
+type BatchHeader = {
   id: string;
   capacity: number;
   active: boolean;
   enrollmentCount?: number;
   remainingSeats?: number;
   plans?: BatchPlan[];
-  enrollments: BatchEnrollmentRow[];
-  inactiveEnrollments?: InactiveEnrollmentRow[];
   sessions?: Array<{
     id: string;
     startsAt: string;
@@ -108,42 +107,67 @@ export function BatchRoster({ batchId, capacity, active }: BatchRosterProps) {
     seatsLeft: number;
   } | null>(null);
 
-  const query = useQuery({
+  const headerQuery = useQuery({
     queryKey: ["batch", batchId],
-    queryFn: () => api.get<BatchWithEnrollments>(`/batches/${batchId}`),
+    queryFn: () => api.get<BatchHeader>(`/batches/${batchId}`),
+  });
+
+  const activeRosterQuery = useQuery({
+    queryKey: ["batch", batchId, "roster", "active"],
+    queryFn: async () => {
+      const data = await api.get<Page<BatchEnrollmentRow> | BatchEnrollmentRow[]>(
+        `/batches/${batchId}/roster?tab=active&limit=50`,
+      );
+      return unwrapPage(data);
+    },
+  });
+
+  const inactiveRosterQuery = useQuery({
+    queryKey: ["batch", batchId, "roster", "inactive"],
+    queryFn: async () => {
+      const data = await api.get<
+        Page<InactiveEnrollmentRow> | InactiveEnrollmentRow[]
+      >(`/batches/${batchId}/roster?tab=inactive&limit=50`);
+      return unwrapPage(data);
+    },
   });
 
   const enrollments = useMemo(() => {
-    const rows = query.data?.enrollments ?? [];
+    const rows = activeRosterQuery.data ?? [];
     return [...rows].sort((a, b) =>
       a.student.name.localeCompare(b.student.name),
     );
-  }, [query.data?.enrollments]);
+  }, [activeRosterQuery.data]);
   const inactiveEnrollments = useMemo(() => {
-    const rows = query.data?.inactiveEnrollments ?? [];
+    const rows = inactiveRosterQuery.data ?? [];
     return [...rows].sort((a, b) =>
       a.student.name.localeCompare(b.student.name),
     );
-  }, [query.data?.inactiveEnrollments]);
+  }, [inactiveRosterQuery.data]);
   const enrolledIds = useMemo(
     () => enrollments.map((row) => row.studentId),
     [enrollments],
   );
   const plans = useMemo(
     () =>
-      (query.data?.plans ?? []).filter(
+      (headerQuery.data?.plans ?? []).filter(
         (plan) => plan.active && plan.kind === "INDIVIDUAL",
       ),
-    [query.data?.plans],
+    [headerQuery.data?.plans],
   );
-  const seatsTaken = query.data?.enrollmentCount ?? enrollments.length;
+  const seatsTaken = headerQuery.data?.enrollmentCount ?? enrollments.length;
   const seatsLeft =
-    query.data?.remainingSeats ?? Math.max(0, capacity - seatsTaken);
+    headerQuery.data?.remainingSeats ?? Math.max(0, capacity - seatsTaken);
   const enrollExcludeIds = enrollSheetBaseline?.excludeIds ?? enrolledIds;
   const enrollMaxSelected = enrollSheetBaseline?.seatsLeft ?? seatsLeft;
   const isFull = seatsLeft <= 0;
+  const isLoading =
+    headerQuery.isLoading ||
+    activeRosterQuery.isLoading ||
+    inactiveRosterQuery.isLoading;
   const hasUpcomingSessions =
-    !query.isLoading && upcomingSessions(query.data?.sessions).length > 0;
+    !headerQuery.isLoading &&
+    upcomingSessions(headerQuery.data?.sessions).length > 0;
   const hasPlans = plans.length > 0;
   const canEnroll = active && !isFull && hasUpcomingSessions && hasPlans;
 
@@ -158,51 +182,63 @@ export function BatchRoster({ batchId, capacity, active }: BatchRosterProps) {
       });
     },
     onMutate: async ({ students }) => {
-      await queryClient.cancelQueries({ queryKey: ["batch", batchId] });
+      await Promise.all([
+        queryClient.cancelQueries({ queryKey: ["batch", batchId] }),
+        queryClient.cancelQueries({
+          queryKey: ["batch", batchId, "roster", "active"],
+        }),
+      ]);
 
-      const previous = queryClient.getQueryData<BatchWithEnrollments>([
+      const previousHeader = queryClient.getQueryData<BatchHeader>([
         "batch",
         batchId,
       ]);
+      const previousRoster = queryClient.getQueryData<BatchEnrollmentRow[]>([
+        "batch",
+        batchId,
+        "roster",
+        "active",
+      ]);
 
-      queryClient.setQueryData<BatchWithEnrollments>(
-        ["batch", batchId],
+      queryClient.setQueryData<BatchHeader>(["batch", batchId], (current) => {
+        if (!current) return current;
+        const enrollmentCount =
+          (current.enrollmentCount ?? previousRoster?.length ?? 0) +
+          students.length;
+        return {
+          ...current,
+          enrollmentCount,
+          remainingSeats: Math.max(0, current.capacity - enrollmentCount),
+        };
+      });
+
+      queryClient.setQueryData<BatchEnrollmentRow[]>(
+        ["batch", batchId, "roster", "active"],
         (current) => {
-          if (!current) return current;
-          const existing = new Set(
-            current.enrollments.map((row) => row.studentId),
-          );
+          const existing = new Set((current ?? []).map((row) => row.studentId));
           const additions = students.filter(
             (student) => !existing.has(student.id),
           );
           if (additions.length === 0) return current;
-          const enrollmentCount =
-            (current.enrollmentCount ?? current.enrollments.length) +
-            additions.length;
-          return {
-            ...current,
-            enrollmentCount,
-            remainingSeats: Math.max(0, current.capacity - enrollmentCount),
-            enrollments: [
-              ...additions.map((student) => ({
-                studentId: student.id,
-                monthlyUnpaid: true,
-                student: {
-                  id: student.id,
-                  name: student.name,
-                  email: student.email,
-                  phone: student.phone ?? null,
-                  photoUrl: null,
-                  styles: [],
-                },
-              })),
-              ...current.enrollments,
-            ],
-          };
+          return [
+            ...additions.map((student) => ({
+              studentId: student.id,
+              monthlyUnpaid: true,
+              student: {
+                id: student.id,
+                name: student.name,
+                email: student.email,
+                phone: student.phone ?? null,
+                photoUrl: null,
+                styles: [],
+              },
+            })),
+            ...(current ?? []),
+          ];
         },
       );
 
-      return { previous };
+      return { previousHeader, previousRoster };
     },
     onSuccess: (_data, input) => {
       const count = input.students.length;
@@ -214,8 +250,14 @@ export function BatchRoster({ batchId, capacity, active }: BatchRosterProps) {
       closeEnrollSheet();
     },
     onError: (error: unknown, _input, context) => {
-      if (context?.previous) {
-        queryClient.setQueryData(["batch", batchId], context.previous);
+      if (context?.previousHeader) {
+        queryClient.setQueryData(["batch", batchId], context.previousHeader);
+      }
+      if (context?.previousRoster) {
+        queryClient.setQueryData(
+          ["batch", batchId, "roster", "active"],
+          context.previousRoster,
+        );
       }
       toast({
         title: "Couldn’t enroll students",
@@ -227,6 +269,9 @@ export function BatchRoster({ batchId, capacity, active }: BatchRosterProps) {
     onSettled: async () => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["batch", batchId] }),
+        queryClient.invalidateQueries({
+          queryKey: ["batch", batchId, "roster"],
+        }),
         queryClient.invalidateQueries({
           queryKey: ["studio-students-search", studioId],
         }),
@@ -276,16 +321,22 @@ export function BatchRoster({ batchId, capacity, active }: BatchRosterProps) {
     });
   }
 
-  if (query.isError) {
+  if (headerQuery.isError || activeRosterQuery.isError) {
+    const error = headerQuery.error ?? activeRosterQuery.error;
     return (
       <ErrorState
         description={
-          query.error instanceof Error
-            ? query.error.message
-            : "Could not load students."
+          error instanceof Error ? error.message : "Could not load students."
         }
         action={
-          <TouchButton variant="primary" onClick={() => query.refetch()}>
+          <TouchButton
+            variant="primary"
+            onClick={() => {
+              void headerQuery.refetch();
+              void activeRosterQuery.refetch();
+              void inactiveRosterQuery.refetch();
+            }}
+          >
             Try again
           </TouchButton>
         }
@@ -327,7 +378,7 @@ export function BatchRoster({ batchId, capacity, active }: BatchRosterProps) {
 
         <TabPanel id="active">
           <div className={styles.panel}>
-            {!query.isLoading && !hasUpcomingSessions ? (
+            {!isLoading && !hasUpcomingSessions ? (
               <div className={staff.softPanel}>
                 <p className={styles.hint}>
                   No upcoming sessions — enrollment is closed until this batch

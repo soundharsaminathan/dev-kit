@@ -1,12 +1,17 @@
-import { Inject, Injectable } from "@nestjs/common";
+import { getQueueToken } from "@nestjs/bullmq";
+import { Inject, Injectable, Optional } from "@nestjs/common";
+import { ModuleRef } from "@nestjs/core";
 import {
   InvoiceStatus,
   MembershipStatus,
   NotificationType,
 } from "@prisma/client";
+import type { Queue } from "bullmq";
 import { MembershipsService } from "../memberships/memberships.service";
 import { NotificationsService } from "../notifications/notifications.service";
 import { PrismaService } from "../prisma/prisma.service";
+import { DAILY_JOBS_QUEUE } from "../queues/queue.constants";
+import { OUTBOX_EVENT_DAILY_JOBS_REQUESTED } from "../shared/outbox-events";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const DEFAULT_GRACE_DAYS = 3;
@@ -18,13 +23,61 @@ function dayKey(date: Date) {
 
 @Injectable()
 export class JobsService {
+  private dailyQueue: Queue | null = null;
+
   constructor(
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(NotificationsService)
     private readonly notifications: NotificationsService,
     @Inject(MembershipsService)
     private readonly memberships: MembershipsService,
+    @Optional() @Inject(ModuleRef) private readonly moduleRef?: ModuleRef,
   ) {}
+
+  private getDailyQueue(): Queue | null {
+    if (this.dailyQueue) {
+      return this.dailyQueue;
+    }
+    if (!this.moduleRef) {
+      return null;
+    }
+    try {
+      this.dailyQueue = this.moduleRef.get<Queue>(
+        getQueueToken(DAILY_JOBS_QUEUE),
+        { strict: false },
+      );
+    } catch {
+      this.dailyQueue = null;
+    }
+    return this.dailyQueue;
+  }
+
+  /** Enqueue daily work for the worker (API must not run bulk jobs inline). */
+  async enqueueDaily() {
+    const queue = this.getDailyQueue();
+    if (queue) {
+      const job = await queue.add(
+        "daily",
+        {},
+        {
+          jobId: `daily-jobs:http:${Date.now()}`,
+          attempts: 3,
+          backoff: { type: "exponential", delay: 2000 },
+          removeOnComplete: 50,
+          removeOnFail: 100,
+        },
+      );
+      return { enqueued: true, jobId: job.id ?? null };
+    }
+
+    await this.prisma.outboxEvent.create({
+      data: {
+        type: OUTBOX_EVENT_DAILY_JOBS_REQUESTED,
+        payload: {},
+      },
+    });
+    return { enqueued: true, jobId: null, via: "outbox" as const };
+  }
 
   async runDaily() {
     const now = new Date();

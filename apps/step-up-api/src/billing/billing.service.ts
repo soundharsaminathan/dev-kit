@@ -24,6 +24,7 @@ import {
   type DecryptedUser,
   UserCryptoService,
 } from "../users/user-crypto.service";
+import { UserPresenter } from "../users/user-presenter";
 import {
   allocateFamilyDiscount,
   attributionTargetsForInvoice,
@@ -135,6 +136,7 @@ export class BillingService {
   constructor(
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(UserCryptoService) private readonly crypto: UserCryptoService,
+    @Inject(UserPresenter) private readonly users: UserPresenter,
     @Inject(MembershipsService)
     private readonly memberships: MembershipsService,
     @Inject(RazorpayService) private readonly razorpay: RazorpayService,
@@ -221,7 +223,12 @@ export class BillingService {
       batches.map((batch) => [batch.id, batch.name] as const),
     );
 
-    return invoices.map((invoice) => {
+    const presentedStudents = await this.users.presentLiteMany(
+      invoices.map((invoice) => invoice.student),
+      { email: true, phone: true },
+    );
+
+    return invoices.map((invoice, index) => {
       const purchaseMeta = parsePurchaseMeta(invoice.purchaseMeta);
       const combineMeta = parseCombineMeta(invoice.combineMeta);
       const membershipKind = invoice.membership?.subscription?.kind;
@@ -261,7 +268,7 @@ export class BillingService {
         studioDiscount: Number(invoice.studioDiscount ?? 0),
         familyDiscount: Number(invoice.familyDiscount ?? 0),
         refundedAmount: Number(invoice.refundedAmount ?? 0),
-        student: this.crypto.decryptUser(invoice.student),
+        student: presentedStudents[index],
         kind,
         purchaseMeta,
         combineMeta,
@@ -1484,7 +1491,7 @@ export class BillingService {
     }
   }
 
-  private async assertCanAccessStudentInvoices(
+  async assertCanAccessStudentInvoices(
     actor: DecryptedUser,
     studentId: string,
   ) {

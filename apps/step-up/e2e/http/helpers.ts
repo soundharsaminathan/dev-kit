@@ -4,6 +4,10 @@ import { TestDataCleanup } from "../fixtures/test-cleanup";
 
 export { TestDataCleanup };
 
+export function unwrapPage<T>(data: T[] | { items: T[] }): T[] {
+  return Array.isArray(data) ? data : data.items;
+}
+
 export async function httpJson<T>(
   role: SeedRole,
   pathName: string,

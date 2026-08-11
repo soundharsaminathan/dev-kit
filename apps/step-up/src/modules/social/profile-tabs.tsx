@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { motion, type PanInfo, useReducedMotion } from "motion/react";
 import { type TouchEvent, useRef, useState } from "react";
 import { useApi } from "@/lib/api-context";
+import { unwrapPage } from "@/lib/api-page";
 import { ENTITY_ICONS } from "@/lib/entity-icons";
 import { useStudioId } from "@/lib/use-studio-id";
 import { type DiscoverBatch, toBatchCardData } from "@/modules/discover/types";
@@ -128,13 +129,18 @@ function TrainerBatchesPanel({
   const studioId = useStudioId();
   const query = useQuery({
     queryKey: ["batches", "trainer-profile", studioId, trainerId],
-    queryFn: () =>
-      api.get<DiscoverBatch[]>(
+    queryFn: async () => {
+      const data = await api.get<
+        | DiscoverBatch[]
+        | { items: DiscoverBatch[]; nextCursor: string | null; limit: number }
+      >(
         `/batches/studio/${studioId}?${new URLSearchParams({
           activeOnly: "true",
           trainerId,
         }).toString()}`,
-      ),
+      );
+      return unwrapPage(data);
+    },
   });
 
   if (query.isLoading) {

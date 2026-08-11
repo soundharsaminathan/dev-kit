@@ -2,6 +2,7 @@ import { Badge } from "@dev-ui/components/badge";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { useApi } from "@/lib/api-context";
+import { unwrapPage } from "@/lib/api-page";
 import { useStudioId } from "@/lib/use-studio-id";
 import { useActiveStudentContext } from "@/modules/me/use-active-student-context";
 import { PullToRefresh } from "@/modules/ui/pull-to-refresh";
@@ -40,7 +41,13 @@ function MeAttendancePage() {
 
   const batchesQuery = useQuery({
     queryKey: ["batches", studioId],
-    queryFn: () => api.get<Batch[]>(`/batches/studio/${studioId}`),
+    queryFn: async () => {
+      const data = await api.get<
+        | Batch[]
+        | { items: Batch[]; nextCursor: string | null; limit: number }
+      >(`/batches/studio/${studioId}`);
+      return unwrapPage(data);
+    },
   });
 
   const firstBatchId = batchesQuery.data?.[0]?.id;

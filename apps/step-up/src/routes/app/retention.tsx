@@ -10,6 +10,7 @@ import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { useApi } from "@/lib/api-context";
+import { unwrapPage } from "@/lib/api-page";
 import { ENTITY_ICONS } from "@/lib/entity-icons";
 import { formatPaidMonths } from "@/lib/format-paid-months";
 import { useStudioId } from "@/lib/use-studio-id";
@@ -80,7 +81,13 @@ function RetentionPage() {
 
   const batchesQuery = useQuery({
     queryKey: ["batches", studioId],
-    queryFn: () => api.get<Batch[]>(`/batches/studio/${studioId}`),
+    queryFn: async () => {
+      const data = await api.get<
+        | Batch[]
+        | { items: Batch[]; nextCursor: string | null; limit: number }
+      >(`/batches/studio/${studioId}`);
+      return unwrapPage(data);
+    },
   });
 
   const trainersQuery = useStudioTrainers();

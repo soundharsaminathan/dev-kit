@@ -9,7 +9,7 @@ import { batchCategoryForAgeRange } from "../memberships/membership-helpers";
 import { MediaService } from "../media/media.service";
 import { PrismaService } from "../prisma/prisma.service";
 import type { DecryptedUser } from "../users/user-crypto.service";
-import { UserCryptoService } from "../users/user-crypto.service";
+import { UserPresenter } from "../users/user-presenter";
 import { AchievementsService } from "./achievements.service";
 import { GoalsService } from "./goals.service";
 import {
@@ -110,7 +110,7 @@ function scheduleVibeScore(scheduleJson: unknown, vibes: string[]): number {
 export class HomeService {
   constructor(
     @Inject(PrismaService) private readonly prisma: PrismaService,
-    @Inject(UserCryptoService) private readonly crypto: UserCryptoService,
+    @Inject(UserPresenter) private readonly users: UserPresenter,
     @Inject(MediaService) private readonly media: MediaService,
     @Inject(GoalsService) private readonly goals: GoalsService,
     @Inject(AchievementsService)
@@ -154,7 +154,6 @@ export class HomeService {
       throw new NotFoundException("Student not found");
     }
 
-    const decrypted = this.crypto.decryptUser(student);
     const studioId = student.studioId;
     const now = new Date();
     const todayStart = startOfUtcDay(now);
@@ -607,6 +606,14 @@ export class HomeService {
                 scheduleJson: true,
                 ratingAvg: true,
                 capacity: true,
+                summary: {
+                  select: {
+                    capacity: true,
+                    enrolled: true,
+                    reserved: true,
+                    availableSeats: true,
+                  },
+                },
                 _count: {
                   select: {
                     enrollments: { where: { status: "ACTIVE" } },
@@ -671,33 +678,34 @@ export class HomeService {
     const instructorsMap = new Map<
       string,
       {
-        id: string;
-        name: string;
-        photoUrl: string | null;
+        trainer: (typeof trainerLinks)[number]["trainer"];
         styleBadge: string | null;
       }
     >();
     for (const link of trainerLinks) {
       if (instructorsMap.has(link.trainerId)) continue;
-      const trainer = this.crypto.decryptUser(link.trainer);
       instructorsMap.set(link.trainerId, {
-        id: trainer.id,
-        name: trainer.name,
-        photoUrl: trainer.photoUrl,
+        trainer: link.trainer,
         styleBadge: styleBadgeFromCategories(link.batch.danceCategories),
       });
       if (instructorsMap.size >= 8) break;
     }
-    const instructors = await Promise.all(
-      [...instructorsMap.values()].map(async (instructor) => ({
-        ...instructor,
-        photoUrl: await this.media.signReadUrl(instructor.photoUrl),
-      })),
+    const instructorEntries = [...instructorsMap.values()];
+    const presentedInstructors = await this.users.presentLiteMany(
+      instructorEntries.map((entry) => entry.trainer),
     );
+    const instructors = presentedInstructors.map((instructor, index) => ({
+      ...instructor,
+      styleBadge: instructorEntries[index]?.styleBadge ?? null,
+    }));
 
     const recommendationRows = recommendBatches
       .map((batch) => {
         const styleBadge = styleBadgeFromCategories(batch.danceCategories);
+        const capacity = batch.summary?.capacity ?? batch.capacity;
+        const remainingSeats = batch.summary
+          ? batch.summary.availableSeats
+          : Math.max(0, batch.capacity - batch._count.enrollments);
         return {
           id: batch.id,
           name: batch.name,
@@ -707,11 +715,8 @@ export class HomeService {
           scheduleJson: batch.scheduleJson,
           scheduleLabel: scheduleLabelFrom(batch.scheduleJson),
           ratingAvg: batch.ratingAvg,
-          capacity: batch.capacity,
-          remainingSeats: Math.max(
-            0,
-            batch.capacity - batch._count.enrollments,
-          ),
+          capacity,
+          remainingSeats,
           price: null,
         };
       })
@@ -753,13 +758,12 @@ export class HomeService {
     );
 
     const hasEnrollment = enrollments.length > 0;
+    const presentedStudent = await this.users.presentLite(student);
 
     return {
       student: {
-        id: decrypted.id,
-        name: decrypted.name,
-        photoUrl: await this.media.signReadUrl(decrypted.photoUrl),
-        styles: decrypted.styles,
+        ...presentedStudent,
+        styles: student.styles,
       },
       studio: studio ? { id: studio.id, name: studio.name } : null,
       banner,

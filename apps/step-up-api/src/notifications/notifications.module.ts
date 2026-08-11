@@ -1,5 +1,4 @@
 import { Module } from "@nestjs/common";
-import { EventsModule } from "../events/events.module";
 import { ChatNotificationBridgeService } from "./chat-notification-bridge.service";
 import { NotificationCommandsService } from "./notification-commands.service";
 import { NotificationsController } from "./notifications.controller";
@@ -10,7 +9,6 @@ import { PushService } from "./push.service";
 import { UnreadCacheService } from "./unread-cache.service";
 
 @Module({
-  imports: [EventsModule],
   controllers: [NotificationsController],
   providers: [
     NotificationsService,

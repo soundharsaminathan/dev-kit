@@ -181,6 +181,10 @@ export async function apiRequest<T>(
   return data as T;
 }
 
+export function unwrapPage<T>(data: T[] | { items: T[] }): T[] {
+  return Array.isArray(data) ? data : data.items;
+}
+
 export async function gotoAuthed(
   page: Page,
   role: SmokeRole,
