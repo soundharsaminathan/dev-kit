@@ -1,10 +1,10 @@
-import { Inject, Injectable } from "@nestjs/common";
+import { Inject, Injectable, Logger } from "@nestjs/common";
 import type { InvoiceStatus } from "@prisma/client";
 import { ACTIVE_ENROLLMENT_WHERE } from "../../batches/enrollment-status";
 import { PrismaService } from "../../prisma/prisma.service";
 import { buildPage, type Page } from "../../shared/pagination";
 import type { DecryptedUser } from "../../users/user-crypto.service";
-import { UserCryptoService } from "../../users/user-crypto.service";
+import { UserPresenter } from "../../users/user-presenter";
 import { BillingService } from "../billing.service";
 import {
   batchIdsForInvoiceDisplay,
@@ -16,10 +16,12 @@ import { BillingQuery } from "../persistence/billing.query";
 
 @Injectable()
 export class BillingQueriesService {
+  private readonly logger = new Logger(BillingQueriesService.name);
+
   constructor(
     @Inject(BillingQuery) private readonly query: BillingQuery,
     @Inject(PrismaService) private readonly prisma: PrismaService,
-    @Inject(UserCryptoService) private readonly crypto: UserCryptoService,
+    @Inject(UserPresenter) private readonly users: UserPresenter,
     @Inject(BillingService) private readonly billing: BillingService,
   ) {}
 
@@ -100,7 +102,26 @@ export class BillingQueriesService {
       batches.map((batch) => [batch.id, batch.name] as const),
     );
 
-    const items = rows.map((invoice) => {
+    let presentedStudents: Awaited<
+      ReturnType<UserPresenter["presentLiteMany"]>
+    > = [];
+    try {
+      presentedStudents = await this.users.presentLiteMany(
+        rows.map((invoice) => invoice.student),
+        { email: true, phone: true },
+      );
+    } catch (error) {
+      this.logger.warn(
+        `Invoice list student present failed; falling back to ids: ${String(error)}`,
+      );
+      presentedStudents = rows.map((invoice) => ({
+        id: invoice.studentId,
+        name: invoice.studentId,
+        photoUrl: null,
+      }));
+    }
+
+    const items = rows.map((invoice, index) => {
       const purchaseMeta = parsePurchaseMeta(invoice.purchaseMeta);
       const combineMeta = parseCombineMeta(invoice.combineMeta);
       const membershipKind = invoice.membership?.subscription?.kind;
@@ -133,16 +154,45 @@ export class BillingQueriesService {
         batchNameById,
       });
 
-      const decrypted = this.crypto.decryptUser(invoice.student);
+      const student = presentedStudents[index] ?? {
+        id: invoice.studentId,
+        name: invoice.studentId,
+        photoUrl: null,
+      };
 
       return {
-        ...invoice,
+        id: invoice.id,
+        studentId: invoice.studentId,
+        membershipId: invoice.membershipId,
         amount: Number(invoice.amount),
         referralDiscount: Number(invoice.referralDiscount ?? 0),
         studioDiscount: Number(invoice.studioDiscount ?? 0),
         familyDiscount: Number(invoice.familyDiscount ?? 0),
         refundedAmount: Number(invoice.refundedAmount ?? 0),
-        student: { id: decrypted.id, name: decrypted.name },
+        status: invoice.status,
+        paymentMethod: invoice.paymentMethod,
+        paidAt: invoice.paidAt?.toISOString() ?? null,
+        refundedAt: invoice.refundedAt?.toISOString() ?? null,
+        platformFeePercent: invoice.platformFeePercent,
+        studioId: invoice.studioId,
+        razorpayOrderId: invoice.razorpayOrderId,
+        razorpayPaymentId: invoice.razorpayPaymentId,
+        paymentHoldExpiresAt:
+          invoice.paymentHoldExpiresAt?.toISOString() ?? null,
+        membership: invoice.membership
+          ? {
+              id: invoice.membership.id,
+              periodStart: invoice.membership.periodStart.toISOString(),
+              subscription: invoice.membership.subscription,
+            }
+          : null,
+        student: {
+          id: student.id,
+          name: student.name,
+          photoUrl: student.photoUrl,
+          email: student.email,
+          phone: student.phone,
+        },
         kind,
         purchaseMeta,
         combineMeta,
@@ -240,8 +290,18 @@ export class BillingQueriesService {
         batchNameById,
       });
       return {
-        ...invoice,
+        id: invoice.id,
+        studentId: invoice.studentId,
+        membershipId: invoice.membershipId,
         amount: Number(invoice.amount),
+        referralDiscount: Number(invoice.referralDiscount ?? 0),
+        studioDiscount: Number(invoice.studioDiscount ?? 0),
+        familyDiscount: Number(invoice.familyDiscount ?? 0),
+        refundedAmount: Number(invoice.refundedAmount ?? 0),
+        status: invoice.status,
+        paymentMethod: invoice.paymentMethod,
+        paidAt: invoice.paidAt?.toISOString() ?? null,
+        refundedAt: invoice.refundedAt?.toISOString() ?? null,
         dueDate: invoice.membership?.periodStart?.toISOString() ?? null,
         batchId,
         batchName,

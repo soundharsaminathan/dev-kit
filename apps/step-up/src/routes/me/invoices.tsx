@@ -2,7 +2,7 @@ import { Badge } from "@dev-ui/components/badge";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { useApi } from "@/lib/api-context";
-import { unwrapPage } from "@/lib/api-page";
+import { fetchAllPages } from "@/lib/api-page";
 import { useActiveStudentContext } from "@/modules/me/use-active-student-context";
 import { PullToRefresh } from "@/modules/ui/pull-to-refresh";
 import { Screen } from "@/modules/ui/screen";
@@ -29,13 +29,15 @@ function MeInvoicesPage() {
 
   const query = useQuery({
     queryKey: ["invoices", "student", studentId],
-    queryFn: async () => {
-      const data = await api.get<
-        | Invoice[]
-        | { items: Invoice[]; nextCursor: string | null; limit: number }
-      >(`/billing/student/${studentId}`);
-      return unwrapPage(data);
-    },
+    queryFn: () =>
+      fetchAllPages<Invoice>((cursor) => {
+        const params = new URLSearchParams({ limit: "50" });
+        if (cursor) params.set("cursor", cursor);
+        return api.get<
+          | Invoice[]
+          | { items: Invoice[]; nextCursor: string | null; limit: number }
+        >(`/billing/student/${studentId}?${params.toString()}`);
+      }),
     enabled: Boolean(studentId),
   });
 

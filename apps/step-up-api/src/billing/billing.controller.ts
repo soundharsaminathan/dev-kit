@@ -110,13 +110,13 @@ export class BillingController {
   listByStudio(
     @CurrentUser() user: DecryptedUser,
     @Param("studioId") studioId: string,
-    @Query() query: BillingStudioListQueryDto,
+    @Query() query: BillingStudioListQueryDto = {},
   ) {
     assertSameStudio(user, studioId);
     return this.billingQueries.listByStudio(studioId, {
-      cursor: query.cursor,
-      limit: query.limit,
-      status: query.status,
+      cursor: query?.cursor,
+      limit: query?.limit,
+      status: query?.status,
     });
   }
 

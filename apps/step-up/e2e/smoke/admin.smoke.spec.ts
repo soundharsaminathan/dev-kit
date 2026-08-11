@@ -71,6 +71,15 @@ async function createSmokeFamilyKid(name: string) {
   });
 }
 
+async function openInvoicesAndWaitFor(
+  page: import("@playwright/test").Page,
+  testId: string,
+) {
+  await page.goto("/app/invoices", { waitUntil: "domcontentloaded" });
+  await waitForAppReady(page);
+  await expect(page.getByTestId(testId)).toBeVisible({ timeout: 30_000 });
+}
+
 test.describe("admin (staff) smoke @smoke", () => {
   test("staff path sweep covers admin shell @smoke", async ({ browser }) => {
     test.setTimeout(300_000);
@@ -181,8 +190,7 @@ test.describe("admin (staff) smoke @smoke", () => {
     });
     const page = await context.newPage();
     try {
-      await page.goto("/app/invoices", { waitUntil: "domcontentloaded" });
-      await waitForAppReady(page);
+      await openInvoicesAndWaitFor(page, `mark-paid-${invoice.id}`);
       await page.getByTestId(`mark-paid-${invoice.id}`).click();
       await page.getByRole("checkbox", { name: /^Cash$/i }).click();
       const [response] = await Promise.all([
@@ -234,8 +242,7 @@ test.describe("admin (staff) smoke @smoke", () => {
     });
     const page = await context.newPage();
     try {
-      await page.goto("/app/invoices", { waitUntil: "domcontentloaded" });
-      await waitForAppReady(page);
+      await openInvoicesAndWaitFor(page, `refund-invoice-${invoice.id}`);
       await page.getByTestId(`refund-invoice-${invoice.id}`).click();
       await page.getByRole("menuitem", { name: "Refund" }).click();
       await expect(page.getByTestId("refund-amount-input")).toHaveValue("");
@@ -296,8 +303,7 @@ test.describe("admin (staff) smoke @smoke", () => {
     });
     const page = await context.newPage();
     try {
-      await page.goto("/app/invoices", { waitUntil: "domcontentloaded" });
-      await waitForAppReady(page);
+      await openInvoicesAndWaitFor(page, `refund-invoice-${invoice.id}`);
       await page.getByTestId(`refund-invoice-${invoice.id}`).click();
       await page.getByRole("menuitem", { name: "Refund" }).click();
       await page
@@ -487,6 +493,9 @@ test.describe("admin (staff) smoke @smoke", () => {
         page.getByRole("heading", { name: /combine ·/i }),
       ).toBeVisible();
 
+      await expect(
+        page.getByTestId(`combine-invoice-${enrollA.invoice.id}`),
+      ).toBeVisible({ timeout: 30_000 });
       await page
         .getByTestId(`combine-invoice-${enrollA.invoice.id}`)
         .getByRole("checkbox")

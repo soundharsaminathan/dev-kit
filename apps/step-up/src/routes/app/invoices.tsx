@@ -8,7 +8,7 @@ import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useApi } from "@/lib/api-context";
-import { unwrapPage } from "@/lib/api-page";
+import { fetchAllPages } from "@/lib/api-page";
 import { requireAdmin } from "@/lib/require-auth";
 import { useStudioId } from "@/lib/use-studio-id";
 import { CollectPaymentSheet } from "@/modules/payments/collect-payment-sheet";
@@ -253,13 +253,15 @@ function InvoicesPage() {
 
   const invoicesQuery = useQuery({
     queryKey: ["invoices", studioId],
-    queryFn: async () => {
-      const data = await api.get<
-        | Invoice[]
-        | { items: Invoice[]; nextCursor: string | null; limit: number }
-      >(`/billing/studio/${studioId}`);
-      return unwrapPage(data);
-    },
+    queryFn: () =>
+      fetchAllPages<Invoice>((cursor) => {
+        const params = new URLSearchParams({ limit: "50" });
+        if (cursor) params.set("cursor", cursor);
+        return api.get<
+          | Invoice[]
+          | { items: Invoice[]; nextCursor: string | null; limit: number }
+        >(`/billing/studio/${studioId}?${params.toString()}`);
+      }),
   });
 
   const studioQuery = useQuery({
@@ -280,10 +282,10 @@ function InvoicesPage() {
   });
 
   const individualInvoices = useMemo(() => {
-    let items = (invoicesQuery.data ?? []).filter(
-      (invoice) =>
-        invoice.kind === "INDIVIDUAL" && invoice.status !== "REFUNDED",
-    );
+    let items = (invoicesQuery.data ?? []).filter((invoice) => {
+      const kind = invoice.kind ?? "INDIVIDUAL";
+      return kind === "INDIVIDUAL" && invoice.status !== "REFUNDED";
+    });
     if (selectedStudent) {
       items = items.filter(
         (invoice) => invoice.studentId === selectedStudent.id,

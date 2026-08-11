@@ -6,6 +6,7 @@ import { userPiiSelect } from "../../users/user-crypto.service";
 
 const studentLiteSelect = {
   id: true,
+  photoUrl: true,
   ...userPiiSelect,
 } as const;
 
