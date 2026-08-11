@@ -76,6 +76,24 @@ describe("student-funnel", () => {
     ).toBe("completedWithoutPlan");
   });
 
+  it("classifies unenrolled paid student with completed sessions as completedWithoutPlan", () => {
+    expect(
+      classifyStudentFunnelStage(
+        student({
+          enrollments: [
+            enrollment({
+              batchActive: true,
+              enrollmentActive: false,
+              hasScheduledSession: true,
+              hasCompletedSession: true,
+            }),
+          ],
+          memberships: [{ status: MembershipStatus.EXPIRED }],
+        }),
+      ),
+    ).toBe("completedWithoutPlan");
+  });
+
   it("does not treat finished batch as completed when membership is active", () => {
     expect(
       classifyStudentFunnelStage(

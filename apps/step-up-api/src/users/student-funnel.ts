@@ -171,6 +171,7 @@ function hasCompletedBatchWithoutActiveMembership(
   return enrollments.some(
     (enrollment) =>
       !enrollment.batchActive ||
+      (!enrollment.enrollmentActive && enrollment.hasCompletedSession) ||
       (!enrollment.hasScheduledSession && enrollment.hasCompletedSession),
   );
 }
