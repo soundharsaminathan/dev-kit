@@ -140,7 +140,7 @@ function MetricLink({
         {label}
       </span>
       {loading ? (
-        <SkeletonBlock height="1.75rem" width="3rem" />
+        <SkeletonBlock height="1.5rem" width="3rem" />
       ) : (
         <AnimatedMetric className={staff.metricValue} value={value ?? 0} />
       )}
