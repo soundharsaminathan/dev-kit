@@ -53,6 +53,7 @@ type StackCardProps = {
   selectionMode?: boolean;
   compact?: boolean;
   onOpen: () => void;
+  onNext?: (() => void) | undefined;
   onSelect?: (() => void) | undefined;
   onToggleFollow?: (() => void) | undefined;
 };
@@ -69,6 +70,7 @@ function StackCard({
   selectionMode,
   compact,
   onOpen,
+  onNext,
   onSelect,
   onToggleFollow,
 }: StackCardProps) {
@@ -118,33 +120,34 @@ function StackCard({
             {trainer.name.slice(0, 1).toUpperCase()}
           </span>
         )}
+        <div className={styles.stackPhotoScrim} aria-hidden />
       </div>
 
       <div className={styles.stackCardContent}>
-        <h2 className={styles.stackName}>{trainer.name}</h2>
-        {!selectionMode ? (
-          <div className={styles.stackFollowCounts}>
-            <FollowCounts
-              followerCount={trainer.followerCount}
-              followingCount={trainer.followingCount}
-              compact
+        <div className={styles.stackInfo}>
+          <h2 className={styles.stackName}>{trainer.name}</h2>
+          {!selectionMode ? (
+            <div className={styles.stackFollowCounts}>
+              <FollowCounts
+                followerCount={trainer.followerCount}
+                followingCount={trainer.followingCount}
+                compact
+              />
+            </div>
+          ) : null}
+          {trainer.styles.length > 0 ? (
+            <StyleList
+              styles={trainer.styles}
+              size="xs"
+              className={styles.stackStyleList}
             />
-          </div>
-        ) : null}
-        {trainer.styles.length > 0 ? (
-          <StyleList
-            styles={trainer.styles}
-            size="xs"
-            className={styles.stackStyleList}
-          />
-        ) : (
-          <p className={styles.stackEmpty}>No styles listed yet</p>
-        )}
+          ) : (
+            <p className={styles.stackEmpty}>No styles listed yet</p>
+          )}
+        </div>
+
         {selectionMode && onSelect ? (
-          <div
-            className={styles.stackFollowAction}
-            onPointerDown={stopStackDrag}
-          >
+          <div className={styles.stackActions} onPointerDown={stopStackDrag}>
             <button
               type="button"
               className={styles.stackSelectBtn}
@@ -155,33 +158,41 @@ function StackCard({
             </button>
           </div>
         ) : null}
-        {!selectionMode && !trainer.isOwnProfile && onToggleFollow ? (
-          <div
-            className={styles.stackFollowAction}
-            onPointerDown={stopStackDrag}
-          >
-            <FollowButton
-              isFollowing={trainer.isFollowing}
-              followRequestStatus={trainer.followRequestStatus}
-              isPending={followPending}
-              onFollow={onToggleFollow}
-              onUnfollow={onToggleFollow}
-            />
+
+        {!selectionMode ? (
+          <div className={styles.stackActions} onPointerDown={stopStackDrag}>
+            {onToggleFollow && !trainer.isOwnProfile ? (
+              <FollowButton
+                isFollowing={trainer.isFollowing}
+                followRequestStatus={trainer.followRequestStatus}
+                isPending={followPending}
+                onFollow={onToggleFollow}
+                onUnfollow={onToggleFollow}
+              />
+            ) : null}
+            <div className={styles.stackQuickActions}>
+              {onNext ? (
+                <button
+                  type="button"
+                  className={styles.stackQuickBtn}
+                  aria-label="Skip to next trainer"
+                  onClick={onNext}
+                >
+                  <Icon name="x" aria-hidden />
+                </button>
+              ) : null}
+              <button
+                type="button"
+                className={styles.stackOpenBtn}
+                aria-label={`Open ${trainer.name}'s profile`}
+                onClick={onOpen}
+              >
+                <Icon name="arrow-up-right" aria-hidden />
+              </button>
+            </div>
           </div>
         ) : null}
       </div>
-
-      {selectionMode ? null : (
-        <button
-          type="button"
-          className={styles.stackOpenBtn}
-          aria-label={`Open ${trainer.name}'s profile`}
-          onPointerDown={stopStackDrag}
-          onClick={onOpen}
-        >
-          <Icon name="arrow-up-right" aria-hidden />
-        </button>
-      )}
     </motion.article>
   );
 }
@@ -257,6 +268,10 @@ export function TrainerStackView({
     }
   }
 
+  function goTo(next: number) {
+    setIndex(Math.max(0, Math.min(next, trainers.length - 1)));
+  }
+
   function openTrainer(trainerId: string) {
     void navigate({ to: "/users/$id", params: { id: trainerId } });
   }
@@ -309,6 +324,7 @@ export function TrainerStackView({
               selectionMode={selectionMode}
               compact={compact}
               onOpen={() => openTrainer(trainer.id)}
+              onNext={selectionMode ? undefined : () => goTo(trainerIndex + 1)}
               onSelect={
                 onSelect
                   ? () => {
@@ -326,7 +342,11 @@ export function TrainerStackView({
       </div>
 
       {trainers.length > 1 ? (
-        <div className={styles.stackDots} role="tablist" aria-label="Trainers">
+        <div
+          className={styles.stackProgress}
+          role="tablist"
+          aria-label="Trainers"
+        >
           {trainers.map((trainer, dotIndex) => (
             <button
               key={trainer.id}
@@ -335,8 +355,8 @@ export function TrainerStackView({
               aria-selected={dotIndex === index}
               aria-label={`Show ${trainer.name}`}
               className={[
-                styles.stackDot,
-                dotIndex === index ? styles.stackDotActive : "",
+                styles.stackProgressSeg,
+                dotIndex === index ? styles.stackProgressSegActive : "",
               ]
                 .filter(Boolean)
                 .join(" ")}

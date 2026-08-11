@@ -392,13 +392,13 @@
 
 .stackCard {
   position: relative;
-  display: grid;
-  grid-template-rows: minmax(0, 1fr) auto;
-  height: 20.5rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  height: 26rem;
   border-radius: var(--radius-2xl, 1.25rem);
-  border: var(--card-border-width, 1px) solid
-    var(--card-border-color, color-mix(in srgb, var(--color-fg) 12%, transparent));
-  background: var(--card-background, var(--color-card, var(--color-bg)));
+  border: 1px solid color-mix(in srgb, var(--color-fg) 10%, transparent);
+  background: var(--color-card, var(--color-bg));
   box-shadow: var(--card-shadow, var(--shadow-sm, 0 1px 3px rgb(0 0 0 / 6%)));
   overflow: hidden;
   flex-shrink: 0;
@@ -406,7 +406,7 @@
 }
 
 .stackCard[data-compact="true"] {
-  height: 18rem;
+  height: 21rem;
 }
 
 .stackCard[data-selected="true"] {
@@ -416,15 +416,113 @@
     0 0 0 2px color-mix(in srgb, var(--color-primary) 35%, transparent);
 }
 
+.stackCardPhoto {
+  position: absolute;
+  inset: 0;
+  background-color: color-mix(in srgb, var(--color-fg) 8%, transparent);
+  background-size: cover;
+  background-position: center top;
+  background-repeat: no-repeat;
+}
+
+.stackCardPhoto[data-fallback="true"] {
+  display: grid;
+  place-items: center;
+  background: linear-gradient(
+    160deg,
+    color-mix(in srgb, var(--color-primary) 42%, transparent),
+    color-mix(in srgb, var(--color-fg) 16%, transparent)
+  );
+}
+
+.stackPhotoFallback {
+  font-size: 4.5rem;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  color: color-mix(in srgb, var(--color-fg) 42%, transparent);
+}
+
+.stackPhotoScrim {
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  height: 70%;
+  background: linear-gradient(
+    to top,
+    rgb(0 0 0 / 82%) 0%,
+    rgb(0 0 0 / 45%) 45%,
+    rgb(0 0 0 / 0%) 100%
+  );
+  pointer-events: none;
+}
+
+.stackCardContent {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 0.75rem);
+  padding: var(--space-3, 0.75rem);
+  color: #fff;
+}
+
+.stackInfo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1, 0.25rem);
+}
+
+.stackName {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  line-height: 1.1;
+  text-shadow: 0 1px 12px rgb(0 0 0 / 35%);
+}
+
+.stackFollowCounts .followCountsCompact {
+  color: rgb(255 255 255 / 78%);
+}
+
+.stackFollowCounts .followCountsCompact strong {
+  color: #fff;
+}
+
+.stackStyleList {
+  justify-content: flex-start;
+  margin-block-start: var(--space-1, 0.25rem);
+}
+
+.stackEmpty {
+  margin: 0;
+  font-size: 0.75rem;
+  color: rgb(255 255 255 / 62%);
+}
+
+.stackActions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3, 0.75rem);
+}
+
+.stackQuickActions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2, 0.5rem);
+  margin-inline-start: auto;
+}
+
 .stackSelectBtn {
   min-height: 2.5rem;
   padding: var(--space-2, 0.5rem) var(--space-4, 1rem);
   border-radius: var(--radius-full);
-  border: 1px solid color-mix(in srgb, var(--color-fg) 12%, transparent);
-  background: var(--color-card, var(--color-bg));
+  border: 1px solid rgb(255 255 255 / 28%);
+  background: rgb(255 255 255 / 12%);
+  backdrop-filter: blur(8px);
   font-size: 0.8125rem;
   font-weight: 700;
-  color: var(--color-fg);
+  color: #fff;
   cursor: pointer;
   transition:
     transform var(--interaction-transition-fast, 120ms) ease,
@@ -438,142 +536,84 @@
 }
 
 .stackSelectBtn[data-selected="true"] {
-  border-color: var(--color-primary);
-  background: color-mix(in srgb, var(--color-primary) 16%, var(--color-card, var(--color-bg)));
-  color: var(--color-primary);
+  border-color: transparent;
+  background: var(--color-primary);
+  color: var(--color-fg-on-primary);
 }
 
-.stackCardPhoto {
-  position: relative;
-  min-height: 0;
-  background-color: color-mix(in srgb, var(--color-fg) 8%, transparent);
-  background-size: cover;
-  background-position: center top;
-  background-repeat: no-repeat;
-}
-
-.stackCardPhoto[data-fallback="true"] {
+.stackOpenBtn,
+.stackQuickBtn {
   display: grid;
   place-items: center;
-  background: linear-gradient(
-    160deg,
-    color-mix(in srgb, var(--color-primary) 28%, transparent),
-    color-mix(in srgb, var(--color-fg) 12%, transparent)
-  );
-}
-
-.stackPhotoFallback {
-  font-size: 2.75rem;
-  font-weight: 800;
-  letter-spacing: -0.04em;
-  color: color-mix(in srgb, var(--color-fg) 42%, transparent);
-}
-
-.stackCardContent {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: var(--space-1, 0.25rem);
-  min-height: 0;
-  padding: var(--space-2, 0.5rem) var(--space-3, 0.75rem);
-  text-align: center;
-  background: var(--card-background, var(--color-card, var(--color-bg)));
-  border-top: 1px solid
-    color-mix(in srgb, var(--color-fg) 8%, transparent);
-}
-
-.stackName {
-  margin: 0;
-  font-size: 1rem;
-  font-weight: 700;
-  letter-spacing: -0.03em;
-  line-height: 1.2;
-}
-
-.stackStyleList {
-  justify-content: center;
-}
-
-.stackEmpty,
-.stackCounter {
-  margin: 0;
-  font-size: 0.75rem;
-  color: color-mix(in srgb, var(--color-fg) 58%, transparent);
-}
-
-.stackFollowCounts {
-  display: flex;
-  justify-content: center;
-}
-
-.stackFollowAction {
-  display: flex;
-  justify-content: center;
-  margin-top: var(--space-2, 0.5rem);
-}
-
-.stackOpenBtn {
-  position: absolute;
-  right: var(--space-4, 1rem);
-  bottom: var(--space-4, 1rem);
-  z-index: 1;
-  display: grid;
-  place-items: center;
-  width: 2.5rem;
-  height: 2.5rem;
+  width: 2.75rem;
+  height: 2.75rem;
   padding: 0;
-  border: 0;
+  border: 1px solid rgb(255 255 255 / 24%);
   border-radius: 999px;
-  background: color-mix(in srgb, var(--color-fg) 10%, transparent);
-  color: var(--color-fg);
+  background: rgb(255 255 255 / 14%);
+  backdrop-filter: blur(10px);
+  color: #fff;
   cursor: pointer;
   transition:
     background-color var(--motion-fast, 150ms) ease,
     transform var(--motion-fast, 150ms) ease;
 }
 
-.stackOpenBtn:active {
-  transform: scale(var(--interaction-press-scale, 0.95));
+.stackOpenBtn:active,
+.stackQuickBtn:active {
+  transform: scale(var(--interaction-press-scale, 0.93));
 }
 
 @media (hover: hover) and (pointer: fine) {
-  .stackOpenBtn:hover {
-    background: color-mix(in srgb, var(--color-fg) 16%, transparent);
+  .stackOpenBtn:hover,
+  .stackQuickBtn:hover {
+    background: rgb(255 255 255 / 24%);
   }
 }
 
-.stackDots {
+.stackProgress {
   display: flex;
-  gap: var(--space-2, 0.5rem);
+  gap: 0.3125rem;
+  width: min(100%, 18rem);
+  margin-inline: auto;
 }
 
-.stackDot {
-  width: 0.625rem;
-  height: 0.625rem;
+.stackProgressSeg {
+  flex: 1;
+  height: 0.1875rem;
   padding: 0;
   border: 0;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--color-fg) 24%, transparent);
+  background: color-mix(in srgb, var(--color-fg) 18%, transparent);
   cursor: pointer;
   transition: background-color var(--motion-fast, 150ms) ease;
 }
 
-.stackDotActive {
-  background: color-mix(in srgb, var(--color-fg) 58%, transparent);
+.stackProgressSegActive {
+  background: var(--color-fg);
+}
+
+.stackCounter {
+  margin: 0;
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-fg-muted, var(--color-fg));
 }
 
 @media (prefers-reduced-motion: reduce) {
   .bentoMoreBtn,
   .bentoCloseBtn,
   .stackOpenBtn,
+  .stackQuickBtn,
   .stackSelectBtn,
-  .stackDot {
+  .stackProgressSeg {
     transition-duration: 0ms;
   }
 
   .bentoMoreBtn:active,
   .bentoCloseBtn:active,
   .stackOpenBtn:active,
+  .stackQuickBtn:active,
   .stackSelectBtn:active {
     transform: none;
   }

@@ -17,6 +17,7 @@ import { useActiveStudentContext } from "@/modules/me/use-active-student-context
 import { useFollowMutations } from "@/modules/social/use-follow";
 import { FilterChipRow } from "@/modules/ui/filter-chip-row";
 import { PullToRefresh } from "@/modules/ui/pull-to-refresh";
+import { Screen } from "@/modules/ui/screen";
 import { SkeletonCardList } from "@/modules/ui/skeleton-block";
 import { EmptyState, ErrorState } from "@/modules/ui/states";
 import { TouchButton } from "@/modules/ui/touch-button";
@@ -233,6 +234,62 @@ export function TrainersExplorePage({
   const showStats = trainers.length > 0 && !immersiveDiscovery;
   const showMemberBanner = !isStaff && !immersiveDiscovery;
 
+  const statChips = showStats ? (
+    <div className={styles.pageMeta}>
+      <span className={styles.statChip}>
+        <strong>{trainers.length}</strong>
+        {trainers.length === 1 ? "trainer" : "trainers"}
+      </span>
+      {styleFilters.length > 0 ? (
+        <span className={styles.statChip}>
+          <strong>{styleFilters.length}</strong>
+          {styleFilters.length === 1 ? "style" : "styles"}
+        </span>
+      ) : null}
+      {followingCount > 0 ? (
+        <span className={styles.statChip}>
+          <strong>{followingCount}</strong> following
+        </span>
+      ) : null}
+    </div>
+  ) : null;
+
+  const toolbar =
+    trainers.length > 0 ? (
+      <div className={styles.toolbar}>
+        {styleFilters.length > 0 ? (
+          <FilterChipRow
+            chips={styleChipRow}
+            selected={[styleFilter ?? "all"]}
+            onToggle={(id) => setStyleFilter(id === "all" ? null : id)}
+          />
+        ) : null}
+        <div className={styles.toolbarRow}>
+          <ul className={styles.viewToggle}>
+            {viewChips.map((chip) => {
+              const active = view === chip.id;
+              return (
+                <li key={chip.id}>
+                  <button
+                    type="button"
+                    className={
+                      active
+                        ? `${styles.viewChip} ${styles.viewChipActive}`
+                        : styles.viewChip
+                    }
+                    aria-pressed={active}
+                    onClick={() => setView(chip.id)}
+                  >
+                    {chip.label}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      </div>
+    ) : null;
+
   if (immersiveDiscovery) {
     return (
       <section
@@ -301,90 +358,121 @@ export function TrainersExplorePage({
     );
   }
 
-  return (
-    <section className="screen screen-wide" aria-label="Trainers">
-      <PullToRefresh onRefresh={() => query.refetch()}>
-        <div
-          className={styles.root}
-          data-has-banner={showMemberBanner ? "true" : undefined}
-        >
-          {showMemberBanner ? (
-            <MemberTrainersBanner showDiscoverCta={trainers.length > 0} />
-          ) : null}
+  const pageBody = (
+    <PullToRefresh onRefresh={() => query.refetch()}>
+      <div
+        className={styles.root}
+        data-has-banner={showMemberBanner ? "true" : undefined}
+      >
+        {showMemberBanner ? (
+          <MemberTrainersBanner showDiscoverCta={trainers.length > 0} />
+        ) : null}
 
-          {showStats ? (
-            <div
-              className={styles.intro}
-              data-tone={showMemberBanner ? "quiet" : undefined}
-            >
-              <p className={styles.introStat}>
-                <strong>{trainers.length}</strong>{" "}
-                {trainers.length === 1 ? "trainer" : "trainers"}
-              </p>
-              {styleFilters.length > 0 ? (
-                <p className={styles.introStat}>
-                  <strong>{styleFilters.length}</strong>{" "}
-                  {styleFilters.length === 1 ? "style" : "styles"}
-                </p>
-              ) : null}
-              {followingCount > 0 ? (
-                <p className={styles.introStat}>
-                  <strong>{followingCount}</strong> following
-                </p>
-              ) : null}
-              {canManageTrainers ? (
-                <div className={styles.introAction}>
-                  <TouchButton variant="primary" size="md">
-                    <Link to="/app/trainers/new">Add</Link>
-                  </TouchButton>
-                </div>
-              ) : null}
-            </div>
-          ) : null}
+        {statChips}
 
-          {trainers.length > 0 ? (
-            <div className={styles.toolbar}>
-              {styleFilters.length > 0 ? (
-                <FilterChipRow
-                  chips={styleChipRow}
-                  selected={[styleFilter ?? "all"]}
-                  onToggle={(id) => setStyleFilter(id === "all" ? null : id)}
-                />
-              ) : null}
-              <div className={styles.toolbarRow}>
-                <ul className={styles.viewToggle}>
-                  {viewChips.map((chip) => {
-                    const active = view === chip.id;
-                    return (
-                      <li key={chip.id}>
-                        <button
-                          type="button"
-                          className={
-                            active
-                              ? `${styles.viewChip} ${styles.viewChipActive}`
-                              : styles.viewChip
-                          }
-                          aria-pressed={active}
-                          onClick={() => setView(chip.id)}
-                        >
-                          {chip.label}
-                        </button>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </div>
-            </div>
-          ) : null}
+        {toolbar}
 
-          {query.isLoading ? <SkeletonCardList count={3} /> : null}
+        {query.isLoading ? <SkeletonCardList count={3} /> : null}
 
-          {query.isError ? (
+        {query.isError ? (
+          <ErrorState
+            description={
+              query.error instanceof Error
+                ? query.error.message
+                : "Could not load trainers."
+            }
+            action={
+              <TouchButton variant="primary" onClick={() => query.refetch()}>
+                Try again
+              </TouchButton>
+            }
+          />
+        ) : null}
+
+        {query.isFetched && trainers.length === 0 ? (
+          <EmptyState
+            icon={ENTITY_ICONS.trainer}
+            title="No trainers yet"
+            description={
+              canManageTrainers
+                ? "Add a trainer to get started."
+                : isStaff
+                  ? "Your studio has not published trainer profiles yet."
+                  : "Your studio has not published trainer profiles. Browse classes meanwhile."
+            }
+            action={
+              canManageTrainers ? (
+                <TouchButton variant="primary">
+                  <Link to="/app/trainers/new">Add trainer</Link>
+                </TouchButton>
+              ) : isStaff ? undefined : (
+                <TouchButton variant="primary">
+                  <Link to="/me/book">Discover classes</Link>
+                </TouchButton>
+              )
+            }
+          />
+        ) : null}
+
+        {query.isFetched &&
+        trainers.length > 0 &&
+        filteredTrainers.length === 0 ? (
+          <EmptyState
+            icon={ENTITY_ICONS.trainer}
+            title="No trainers for this style"
+            description="Try another style or clear the filter."
+            action={
+              <TouchButton
+                variant="primary"
+                onClick={() => setStyleFilter(null)}
+              >
+                Clear filter
+              </TouchButton>
+            }
+          />
+        ) : null}
+
+        {filteredTrainers.length > 0 && view === "cards" ? (
+          <TrainerCardsView
+            trainers={filteredTrainers}
+            isFollowPending={isPendingFor}
+            onToggleFollow={handleToggleFollow}
+          />
+        ) : null}
+
+        {filteredTrainers.length > 0 && view === "bento" ? (
+          <TrainerBentoView
+            trainers={filteredTrainers}
+            isFollowPending={isPendingFor}
+            onToggleFollow={handleToggleFollow}
+          />
+        ) : null}
+
+        {filteredTrainers.length > 0 && view === "stack" ? (
+          <TrainerStackView
+            trainers={filteredTrainers}
+            isFollowPending={isPendingFor}
+            onToggleFollow={handleToggleFollow}
+          />
+        ) : null}
+      </div>
+    </PullToRefresh>
+  );
+
+  if (immersiveDiscovery) {
+    return (
+      <section
+        className={styles.immersiveScreen}
+        aria-label="Instructor discovery"
+      >
+        {query.isLoading ? <TrainerDiscoverySkeleton /> : null}
+        {query.isError ? (
+          <div className={styles.immersiveState}>
             <ErrorState
               description={
                 query.error instanceof Error
                   ? query.error.message
-                  : "Could not load trainers."
+                  : "Could not load instructors."
               }
               action={
                 <TouchButton variant="primary" onClick={() => query.refetch()}>
@@ -392,39 +480,29 @@ export function TrainersExplorePage({
                 </TouchButton>
               }
             />
-          ) : null}
-
-          {query.isFetched && trainers.length === 0 ? (
+          </div>
+        ) : null}
+        {query.isFetched && trainers.length === 0 ? (
+          <div className={styles.immersiveState}>
             <EmptyState
               icon={ENTITY_ICONS.trainer}
-              title="No trainers yet"
-              description={
-                canManageTrainers
-                  ? "Add a trainer to get started."
-                  : isStaff
-                    ? "Your studio has not published trainer profiles yet."
-                    : "Your studio has not published trainer profiles. Browse classes meanwhile."
-              }
+              title="No instructors yet"
+              description="Your studio has not published instructor profiles. Browse classes meanwhile."
               action={
-                canManageTrainers ? (
-                  <TouchButton variant="primary">
-                    <Link to="/app/trainers/new">Add trainer</Link>
-                  </TouchButton>
-                ) : isStaff ? undefined : (
-                  <TouchButton variant="primary">
-                    <Link to="/me/book">Discover classes</Link>
-                  </TouchButton>
-                )
+                <TouchButton variant="primary">
+                  <Link to="/me/book">Discover classes</Link>
+                </TouchButton>
               }
             />
-          ) : null}
-
-          {query.isFetched &&
-          trainers.length > 0 &&
-          filteredTrainers.length === 0 ? (
+          </div>
+        ) : null}
+        {query.isFetched &&
+        trainers.length > 0 &&
+        filteredTrainers.length === 0 ? (
+          <div className={styles.immersiveState}>
             <EmptyState
               icon={ENTITY_ICONS.trainer}
-              title="No trainers for this style"
+              title="No instructors for this style"
               description="Try another style or clear the filter."
               action={
                 <TouchButton
@@ -435,33 +513,42 @@ export function TrainersExplorePage({
                 </TouchButton>
               }
             />
-          ) : null}
+          </div>
+        ) : null}
+        {filteredTrainers.length > 0 ? (
+          <MemberTrainerDiscovery
+            trainers={filteredTrainers}
+            isFollowPending={isPendingFor}
+            onToggleFollow={handleToggleFollow}
+            onOpenListView={() => setView("cards")}
+          />
+        ) : null}
+      </section>
+    );
+  }
 
-          {filteredTrainers.length > 0 && view === "cards" ? (
-            <TrainerCardsView
-              trainers={filteredTrainers}
-              isFollowPending={isPendingFor}
-              onToggleFollow={handleToggleFollow}
-            />
-          ) : null}
+  if (isStaff) {
+    return (
+      <Screen
+        title="Trainers"
+        subtitle="Manage your studio's instructor team."
+        wide
+        actions={
+          canManageTrainers ? (
+            <TouchButton variant="primary" size="md">
+              <Link to="/app/trainers/new">Add</Link>
+            </TouchButton>
+          ) : undefined
+        }
+      >
+        {pageBody}
+      </Screen>
+    );
+  }
 
-          {filteredTrainers.length > 0 && view === "bento" ? (
-            <TrainerBentoView
-              trainers={filteredTrainers}
-              isFollowPending={isPendingFor}
-              onToggleFollow={handleToggleFollow}
-            />
-          ) : null}
-
-          {filteredTrainers.length > 0 && view === "stack" ? (
-            <TrainerStackView
-              trainers={filteredTrainers}
-              isFollowPending={isPendingFor}
-              onToggleFollow={handleToggleFollow}
-            />
-          ) : null}
-        </div>
-      </PullToRefresh>
+  return (
+    <section className="screen screen-wide" aria-label="Trainers">
+      {pageBody}
     </section>
   );
 }

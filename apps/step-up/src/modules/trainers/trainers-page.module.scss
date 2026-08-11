@@ -52,58 +52,35 @@
   gap: var(--space-3, 0.75rem);
 }
 
-.intro {
+.pageMeta {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-2, 0.5rem) var(--space-3, 0.75rem);
-  padding: var(--space-2, 0.5rem) var(--space-3, 0.75rem);
-  border-radius: var(--radius-2xl, 1.25rem);
-  background: var(--hero-gradient, var(--color-primary));
-  color: var(--color-fg-on-primary);
-  box-shadow: var(--shadow-sm, 0 1px 2px rgb(0 0 0 / 6%));
+  gap: var(--space-2, 0.5rem);
 }
 
-.intro[data-tone="quiet"] {
-  padding: var(--space-1, 0.25rem) var(--space-1, 0.25rem);
-  border-radius: 0;
-  background: transparent;
-  color: var(--color-fg);
-  box-shadow: none;
-}
-
-.introAction {
-  margin-inline-start: auto;
-}
-
-.introStat {
-  margin: 0;
-  font-size: 0.8125rem;
-  font-weight: 500;
-  letter-spacing: -0.01em;
-  opacity: 0.92;
-}
-
-.intro[data-tone="quiet"] .introStat {
+.statChip {
   display: inline-flex;
   align-items: center;
-  min-height: 2rem;
+  min-height: 1.875rem;
+  gap: 0.3125rem;
   padding-inline: var(--space-3, 0.75rem);
+  border: 1px solid color-mix(in srgb, var(--color-fg) 8%, transparent);
   border-radius: var(--radius-full, 9999px);
-  background: color-mix(in srgb, var(--color-fg) 6%, transparent);
-  opacity: 1;
+  background: color-mix(in srgb, var(--color-fg) 4%, transparent);
+  color: var(--color-fg-muted, var(--color-fg));
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
 }
 
-.introStat strong {
-  font-size: 1rem;
-  font-weight: 800;
-  letter-spacing: -0.03em;
-  opacity: 1;
-}
-
-.intro[data-tone="quiet"] .introStat strong {
+.statChip strong {
   font-size: 0.8125rem;
-  margin-inline-end: 0.2em;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-fg);
 }
 
 .toolbar {
@@ -124,10 +101,12 @@
 .viewToggle {
   display: inline-flex;
   align-items: center;
-  gap: var(--space-1, 0.25rem);
+  gap: 0.1875rem;
   margin: 0;
   margin-inline-start: auto;
-  padding: 0;
+  padding: 0.1875rem;
+  border-radius: var(--radius-full, 9999px);
+  background: color-mix(in srgb, var(--color-fg) 6%, transparent);
   list-style: none;
   flex-shrink: 0;
 }
@@ -139,15 +118,16 @@
   padding-inline: var(--space-3, 0.75rem);
   border: 0;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--color-fg) 6%, transparent);
-  color: var(--color-fg);
+  background: transparent;
+  color: var(--color-fg-muted, var(--color-fg));
   font: inherit;
   font-size: 0.75rem;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
   transition:
     background-color var(--motion-fast, 150ms) ease,
     color var(--motion-fast, 150ms) ease,
+    box-shadow var(--motion-fast, 150ms) ease,
     transform var(--motion-fast, 150ms) ease;
 }
 
@@ -162,9 +142,15 @@
 }
 
 .viewChipActive {
-  background: var(--color-primary);
-  color: var(--color-fg-on-primary);
-  font-weight: 600;
+  background: var(--color-card, var(--color-bg));
+  color: var(--color-fg);
+  box-shadow: var(--shadow-sm, 0 1px 2px rgb(0 0 0 / 8%));
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .viewChip:hover {
+    color: var(--color-fg);
+  }
 }
 
 @media (max-width: 40rem) {
@@ -175,7 +161,10 @@
   .viewToggle {
     width: 100%;
     margin-inline-start: 0;
-    justify-content: flex-end;
+  }
+
+  .viewChip {
+    flex: 1;
   }
 }
 
