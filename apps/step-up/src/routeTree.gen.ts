@@ -52,6 +52,7 @@ import { Route as AppSubscriptionsIndexRouteImport } from './routes/app/subscrip
 import { Route as AppStudentsIndexRouteImport } from './routes/app/students/index'
 import { Route as AppMessagesIndexRouteImport } from './routes/app/messages/index'
 import { Route as AppLocationsIndexRouteImport } from './routes/app/locations/index'
+import { Route as AppExpensesIndexRouteImport } from './routes/app/expenses/index'
 import { Route as AppContestsIndexRouteImport } from './routes/app/contests/index'
 import { Route as AppCertificatesIndexRouteImport } from './routes/app/certificates/index'
 import { Route as AppBookingsIndexRouteImport } from './routes/app/bookings/index'
@@ -85,6 +86,9 @@ import { Route as AppProfileChangeEmailRouteImport } from './routes/app/profile_
 import { Route as AppMessagesIdRouteImport } from './routes/app/messages/$id'
 import { Route as AppLocationsNewRouteImport } from './routes/app/locations/new'
 import { Route as AppLocationsIdRouteImport } from './routes/app/locations/$id'
+import { Route as AppExpensesReportsRouteImport } from './routes/app/expenses/reports'
+import { Route as AppExpensesListRouteImport } from './routes/app/expenses/list'
+import { Route as AppExpensesCategoriesRouteImport } from './routes/app/expenses/categories'
 import { Route as AppContestsNewRouteImport } from './routes/app/contests/new'
 import { Route as AppContestsIdRouteImport } from './routes/app/contests/$id'
 import { Route as AppCertificatesNewRouteImport } from './routes/app/certificates/new'
@@ -314,6 +318,11 @@ const AppLocationsIndexRoute = AppLocationsIndexRouteImport.update({
   path: '/locations/',
   getParentRoute: () => AppRoute,
 } as any)
+const AppExpensesIndexRoute = AppExpensesIndexRouteImport.update({
+  id: '/expenses/',
+  path: '/expenses/',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppContestsIndexRoute = AppContestsIndexRouteImport.update({
   id: '/contests/',
   path: '/contests/',
@@ -481,6 +490,21 @@ const AppLocationsIdRoute = AppLocationsIdRouteImport.update({
   path: '/locations/$id',
   getParentRoute: () => AppRoute,
 } as any)
+const AppExpensesReportsRoute = AppExpensesReportsRouteImport.update({
+  id: '/expenses/reports',
+  path: '/expenses/reports',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppExpensesListRoute = AppExpensesListRouteImport.update({
+  id: '/expenses/list',
+  path: '/expenses/list',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppExpensesCategoriesRoute = AppExpensesCategoriesRouteImport.update({
+  id: '/expenses/categories',
+  path: '/expenses/categories',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppContestsNewRoute = AppContestsNewRouteImport.update({
   id: '/contests/new',
   path: '/contests/new',
@@ -592,6 +616,9 @@ export interface FileRoutesByFullPath {
   '/app/certificates/new': typeof AppCertificatesNewRoute
   '/app/contests/$id': typeof AppContestsIdRoute
   '/app/contests/new': typeof AppContestsNewRoute
+  '/app/expenses/categories': typeof AppExpensesCategoriesRoute
+  '/app/expenses/list': typeof AppExpensesListRoute
+  '/app/expenses/reports': typeof AppExpensesReportsRoute
   '/app/locations/$id': typeof AppLocationsIdRoute
   '/app/locations/new': typeof AppLocationsNewRoute
   '/app/messages/$id': typeof AppMessagesIdRoute
@@ -625,6 +652,7 @@ export interface FileRoutesByFullPath {
   '/app/bookings/': typeof AppBookingsIndexRoute
   '/app/certificates/': typeof AppCertificatesIndexRoute
   '/app/contests/': typeof AppContestsIndexRoute
+  '/app/expenses/': typeof AppExpensesIndexRoute
   '/app/locations/': typeof AppLocationsIndexRoute
   '/app/messages/': typeof AppMessagesIndexRoute
   '/app/students/': typeof AppStudentsIndexRoute
@@ -680,6 +708,9 @@ export interface FileRoutesByTo {
   '/app/certificates/new': typeof AppCertificatesNewRoute
   '/app/contests/$id': typeof AppContestsIdRoute
   '/app/contests/new': typeof AppContestsNewRoute
+  '/app/expenses/categories': typeof AppExpensesCategoriesRoute
+  '/app/expenses/list': typeof AppExpensesListRoute
+  '/app/expenses/reports': typeof AppExpensesReportsRoute
   '/app/locations/$id': typeof AppLocationsIdRoute
   '/app/locations/new': typeof AppLocationsNewRoute
   '/app/messages/$id': typeof AppMessagesIdRoute
@@ -713,6 +744,7 @@ export interface FileRoutesByTo {
   '/app/bookings': typeof AppBookingsIndexRoute
   '/app/certificates': typeof AppCertificatesIndexRoute
   '/app/contests': typeof AppContestsIndexRoute
+  '/app/expenses': typeof AppExpensesIndexRoute
   '/app/locations': typeof AppLocationsIndexRoute
   '/app/messages': typeof AppMessagesIndexRoute
   '/app/students': typeof AppStudentsIndexRoute
@@ -772,6 +804,9 @@ export interface FileRoutesById {
   '/app/certificates/new': typeof AppCertificatesNewRoute
   '/app/contests/$id': typeof AppContestsIdRoute
   '/app/contests/new': typeof AppContestsNewRoute
+  '/app/expenses/categories': typeof AppExpensesCategoriesRoute
+  '/app/expenses/list': typeof AppExpensesListRoute
+  '/app/expenses/reports': typeof AppExpensesReportsRoute
   '/app/locations/$id': typeof AppLocationsIdRoute
   '/app/locations/new': typeof AppLocationsNewRoute
   '/app/messages/$id': typeof AppMessagesIdRoute
@@ -805,6 +840,7 @@ export interface FileRoutesById {
   '/app/bookings/': typeof AppBookingsIndexRoute
   '/app/certificates/': typeof AppCertificatesIndexRoute
   '/app/contests/': typeof AppContestsIndexRoute
+  '/app/expenses/': typeof AppExpensesIndexRoute
   '/app/locations/': typeof AppLocationsIndexRoute
   '/app/messages/': typeof AppMessagesIndexRoute
   '/app/students/': typeof AppStudentsIndexRoute
@@ -865,6 +901,9 @@ export interface FileRouteTypes {
     | '/app/certificates/new'
     | '/app/contests/$id'
     | '/app/contests/new'
+    | '/app/expenses/categories'
+    | '/app/expenses/list'
+    | '/app/expenses/reports'
     | '/app/locations/$id'
     | '/app/locations/new'
     | '/app/messages/$id'
@@ -898,6 +937,7 @@ export interface FileRouteTypes {
     | '/app/bookings/'
     | '/app/certificates/'
     | '/app/contests/'
+    | '/app/expenses/'
     | '/app/locations/'
     | '/app/messages/'
     | '/app/students/'
@@ -953,6 +993,9 @@ export interface FileRouteTypes {
     | '/app/certificates/new'
     | '/app/contests/$id'
     | '/app/contests/new'
+    | '/app/expenses/categories'
+    | '/app/expenses/list'
+    | '/app/expenses/reports'
     | '/app/locations/$id'
     | '/app/locations/new'
     | '/app/messages/$id'
@@ -986,6 +1029,7 @@ export interface FileRouteTypes {
     | '/app/bookings'
     | '/app/certificates'
     | '/app/contests'
+    | '/app/expenses'
     | '/app/locations'
     | '/app/messages'
     | '/app/students'
@@ -1044,6 +1088,9 @@ export interface FileRouteTypes {
     | '/app/certificates/new'
     | '/app/contests/$id'
     | '/app/contests/new'
+    | '/app/expenses/categories'
+    | '/app/expenses/list'
+    | '/app/expenses/reports'
     | '/app/locations/$id'
     | '/app/locations/new'
     | '/app/messages/$id'
@@ -1077,6 +1124,7 @@ export interface FileRouteTypes {
     | '/app/bookings/'
     | '/app/certificates/'
     | '/app/contests/'
+    | '/app/expenses/'
     | '/app/locations/'
     | '/app/messages/'
     | '/app/students/'
@@ -1410,6 +1458,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppLocationsIndexRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/expenses/': {
+      id: '/app/expenses/'
+      path: '/expenses'
+      fullPath: '/app/expenses/'
+      preLoaderRoute: typeof AppExpensesIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/contests/': {
       id: '/app/contests/'
       path: '/contests'
@@ -1641,6 +1696,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppLocationsIdRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/expenses/reports': {
+      id: '/app/expenses/reports'
+      path: '/expenses/reports'
+      fullPath: '/app/expenses/reports'
+      preLoaderRoute: typeof AppExpensesReportsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/expenses/list': {
+      id: '/app/expenses/list'
+      path: '/expenses/list'
+      fullPath: '/app/expenses/list'
+      preLoaderRoute: typeof AppExpensesListRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/expenses/categories': {
+      id: '/app/expenses/categories'
+      path: '/expenses/categories'
+      fullPath: '/app/expenses/categories'
+      preLoaderRoute: typeof AppExpensesCategoriesRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/contests/new': {
       id: '/app/contests/new'
       path: '/contests/new'
@@ -1766,6 +1842,9 @@ interface AppRouteChildren {
   AppCertificatesNewRoute: typeof AppCertificatesNewRoute
   AppContestsIdRoute: typeof AppContestsIdRoute
   AppContestsNewRoute: typeof AppContestsNewRoute
+  AppExpensesCategoriesRoute: typeof AppExpensesCategoriesRoute
+  AppExpensesListRoute: typeof AppExpensesListRoute
+  AppExpensesReportsRoute: typeof AppExpensesReportsRoute
   AppLocationsIdRoute: typeof AppLocationsIdRoute
   AppLocationsNewRoute: typeof AppLocationsNewRoute
   AppMessagesIdRoute: typeof AppMessagesIdRoute
@@ -1790,6 +1869,7 @@ interface AppRouteChildren {
   AppBookingsIndexRoute: typeof AppBookingsIndexRoute
   AppCertificatesIndexRoute: typeof AppCertificatesIndexRoute
   AppContestsIndexRoute: typeof AppContestsIndexRoute
+  AppExpensesIndexRoute: typeof AppExpensesIndexRoute
   AppLocationsIndexRoute: typeof AppLocationsIndexRoute
   AppMessagesIndexRoute: typeof AppMessagesIndexRoute
   AppStudentsIndexRoute: typeof AppStudentsIndexRoute
@@ -1815,6 +1895,9 @@ const AppRouteChildren: AppRouteChildren = {
   AppCertificatesNewRoute: AppCertificatesNewRoute,
   AppContestsIdRoute: AppContestsIdRoute,
   AppContestsNewRoute: AppContestsNewRoute,
+  AppExpensesCategoriesRoute: AppExpensesCategoriesRoute,
+  AppExpensesListRoute: AppExpensesListRoute,
+  AppExpensesReportsRoute: AppExpensesReportsRoute,
   AppLocationsIdRoute: AppLocationsIdRoute,
   AppLocationsNewRoute: AppLocationsNewRoute,
   AppMessagesIdRoute: AppMessagesIdRoute,
@@ -1839,6 +1922,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppBookingsIndexRoute: AppBookingsIndexRoute,
   AppCertificatesIndexRoute: AppCertificatesIndexRoute,
   AppContestsIndexRoute: AppContestsIndexRoute,
+  AppExpensesIndexRoute: AppExpensesIndexRoute,
   AppLocationsIndexRoute: AppLocationsIndexRoute,
   AppMessagesIndexRoute: AppMessagesIndexRoute,
   AppStudentsIndexRoute: AppStudentsIndexRoute,

@@ -11,6 +11,7 @@ import { CertificatesModule } from "./certificates/certificates.module";
 import { ChatModule } from "./chat/chat.module";
 import { ContestsModule } from "./contests/contests.module";
 import { EventsModule } from "./events/events.module";
+import { ExpensesModule } from "./expenses/expenses.module";
 import { HealthModule } from "./health/health.module";
 import { HomeModule } from "./home/home.module";
 import { JobsModule } from "./jobs/jobs.module";
@@ -55,6 +56,7 @@ import { UsersModule } from "./users/users.module";
     BookingsModule,
     CalendarModule,
     BillingModule,
+    ExpensesModule,
     NotificationsModule,
     RetentionModule,
     MediaModule,

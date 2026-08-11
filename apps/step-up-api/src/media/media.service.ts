@@ -32,6 +32,11 @@ const ALLOWED_CHAT_AUDIO_TYPES = new Set([
   "audio/aac",
 ]);
 
+const ALLOWED_RECEIPT_TYPES = new Set([
+  ...ALLOWED_IMAGE_TYPES,
+  "application/pdf",
+]);
+
 const MEDIA_FOLDERS = [
   "avatars",
   "studio-logos",
@@ -40,6 +45,7 @@ const MEDIA_FOLDERS = [
   "chat",
   "batches",
   "certificates",
+  "expense-receipts",
   "uploads",
 ] as const;
 const MAX_FILENAME_LENGTH = 120;
@@ -53,7 +59,8 @@ export type MediaPurpose =
   | "post"
   | "chat"
   | "batch"
-  | "certificate";
+  | "certificate"
+  | "expense-receipt";
 
 @Injectable()
 export class MediaService {
@@ -106,6 +113,12 @@ export class MediaService {
     if (ALLOWED_IMAGE_TYPES.has(contentType)) {
       return;
     }
+    if (
+      purpose === "expense-receipt" &&
+      ALLOWED_RECEIPT_TYPES.has(contentType)
+    ) {
+      return;
+    }
     if (purpose === "branch" && ALLOWED_BRANCH_VIDEO_TYPES.has(contentType)) {
       return;
     }
@@ -120,6 +133,11 @@ export class MediaService {
     if (purpose === "branch") {
       throw new BadRequestException(
         "Branch uploads must be JPEG, PNG, WebP, GIF, MP4, or WebM",
+      );
+    }
+    if (purpose === "expense-receipt") {
+      throw new BadRequestException(
+        "Expense receipts must be JPEG, PNG, WebP, GIF, or PDF",
       );
     }
     throw new BadRequestException(
@@ -240,7 +258,9 @@ export class MediaService {
                   ? "batches"
                   : purpose === "certificate"
                     ? "certificates"
-                    : "uploads";
+                    : purpose === "expense-receipt"
+                      ? "expense-receipts"
+                      : "uploads";
     const key = `${folder}/${randomUUID()}-${this.sanitizeFilename(filename)}`;
     const command = new PutObjectCommand({
       Bucket: this.bucket,

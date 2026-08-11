@@ -1,0 +1,354 @@
+@use "@dev-ui/tokens/scss" as *;
+
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 0.75rem);
+  min-width: 0;
+}
+
+.tabs {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  gap: var(--space-2, 0.5rem);
+  padding: var(--space-1, 0.25rem) 0;
+  background: color-mix(in srgb, var(--color-bg) 92%, transparent);
+  backdrop-filter: blur(8px);
+}
+
+.tab {
+  flex: 1 1 auto;
+  text-align: center;
+  text-decoration: none;
+
+  &[data-active="true"] {
+    font-weight: 700;
+  }
+}
+
+.filterBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: var(--space-2, 0.5rem);
+}
+
+.filterField {
+  min-width: 8rem;
+  flex: 1 1 8rem;
+}
+
+.searchField {
+  flex: 2 1 14rem;
+}
+
+.summaryGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2, 0.5rem);
+}
+
+.summaryCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1, 0.25rem);
+  padding: var(--space-3, 0.75rem);
+  border-radius: var(--radius-xl, 1rem);
+  border: 1px solid color-mix(in srgb, var(--color-fg) 10%, transparent);
+  background: var(--color-card, var(--color-bg));
+  min-width: 0;
+}
+
+.summaryLabel {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: color-mix(in srgb, var(--color-fg) 62%, transparent);
+}
+
+.summaryValue {
+  font-size: 1.25rem;
+  font-weight: 750;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
+}
+
+.summaryDelta {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  padding: 0.15rem 0.5rem;
+  border-radius: var(--radius-lg, 0.75rem);
+  font-size: 0.75rem;
+  font-weight: 600;
+
+  &[data-tone="up"] {
+    color: var(--danger-700, #be123c);
+    background: color-mix(in srgb, var(--danger-500, #f43f5e) 16%, transparent);
+  }
+
+  &[data-tone="down"] {
+    color: var(--success-700, #0f766e);
+    background: color-mix(in srgb, var(--success-500, #14b8a6) 16%, transparent);
+  }
+
+  &[data-tone="flat"] {
+    color: color-mix(in srgb, var(--color-fg) 62%, transparent);
+    background: color-mix(in srgb, var(--color-fg) 8%, transparent);
+  }
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 0.5rem);
+  padding: var(--space-3, 0.75rem);
+  border-radius: var(--radius-xl, 1rem);
+  border: 1px solid color-mix(in srgb, var(--color-fg) 10%, transparent);
+  background: var(--color-card, var(--color-bg));
+  box-shadow: var(--shadow-sm, 0 1px 3px rgb(0 0 0 / 5%));
+  min-width: 0;
+}
+
+.panelTitle {
+  font-size: 0.9375rem;
+  font-weight: 700;
+}
+
+.panelHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2, 0.5rem);
+}
+
+.chartWrap {
+  width: 100%;
+  min-width: 0;
+}
+
+.expenseRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3, 0.75rem);
+  width: 100%;
+  padding: var(--space-2, 0.5rem) 0;
+  border: 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-fg) 8%, transparent);
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+
+  &:last-child {
+    border-bottom: 0;
+  }
+
+  &:focus-visible {
+    outline: 2px solid color-mix(in srgb, var(--color-primary) 45%, transparent);
+    outline-offset: 2px;
+    border-radius: var(--radius-lg, 0.75rem);
+  }
+}
+
+.categoryBadge {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: var(--radius-lg, 0.75rem);
+  background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+  color: var(--color-primary);
+}
+
+.categoryBadge svg {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.expenseBody {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.expenseTitle {
+  font-size: 0.875rem;
+  font-weight: 650;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.expenseMeta {
+  font-size: 0.75rem;
+  color: color-mix(in srgb, var(--color-fg) 52%, transparent);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.expenseAmount {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.categoryList {
+  display: flex;
+  flex-direction: column;
+}
+
+.categoryRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3, 0.75rem);
+  padding: var(--space-2, 0.5rem) 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-fg) 8%, transparent);
+
+  &:last-child {
+    border-bottom: 0;
+  }
+}
+
+.categoryBody {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.categoryName {
+  font-size: 0.875rem;
+  font-weight: 650;
+}
+
+.categoryMeta {
+  font-size: 0.75rem;
+  color: color-mix(in srgb, var(--color-fg) 52%, transparent);
+}
+
+.categoryActions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1, 0.25rem);
+}
+
+.progressMeta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2, 0.5rem);
+  font-size: 0.8125rem;
+}
+
+.progressName {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.progressValue {
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.sheetStack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 0.75rem);
+}
+
+.sheetActions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2, 0.5rem);
+}
+
+.formGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3, 0.75rem);
+}
+
+.formFull {
+  grid-column: 1 / -1;
+}
+
+.receiptBox {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 0.5rem);
+  padding: var(--space-3, 0.75rem);
+  border-radius: var(--radius-xl, 1rem);
+  border: 1px dashed color-mix(in srgb, var(--color-fg) 20%, transparent);
+  background: color-mix(in srgb, var(--color-fg) 3%, transparent);
+}
+
+.receiptThumb {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2, 0.5rem);
+  overflow: hidden;
+}
+
+.receiptThumbImg {
+  flex-shrink: 0;
+  width: 3.5rem;
+  height: 3.5rem;
+  border-radius: var(--radius-lg, 0.75rem);
+  object-fit: cover;
+  background: color-mix(in srgb, var(--color-fg) 8%, transparent);
+}
+
+.receiptThumbName {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.detailRow {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  padding: var(--space-2, 0.5rem) 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-fg) 8%, transparent);
+
+  &:last-child {
+    border-bottom: 0;
+  }
+}
+
+.detailLabel {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: color-mix(in srgb, var(--color-fg) 52%, transparent);
+}
+
+.detailValue {
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+
+.detailAmount {
+  font-size: 1.5rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+}
+
+.loadMore {
+  display: flex;
+  justify-content: center;
+  padding: var(--space-2, 0.5rem) 0;
+}

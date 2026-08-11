@@ -57,6 +57,14 @@ const PERMISSION_MATRIX: MatrixRow[] = [
     allowed: [UserRole.OWNER, UserRole.STAFF],
   },
   {
+    action: "expenses.manage (crud / dashboard / reports / recurring)",
+    allowed: [UserRole.OWNER, UserRole.STAFF],
+  },
+  {
+    action: "expenses.categories.manage",
+    allowed: [UserRole.OWNER, UserRole.STAFF],
+  },
+  {
     action: "billing.family-combine",
     allowed: [UserRole.OWNER, UserRole.STAFF],
   },

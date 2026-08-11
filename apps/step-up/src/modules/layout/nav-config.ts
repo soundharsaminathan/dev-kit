@@ -123,6 +123,13 @@ const appLinks: NavLinkItem[] = [
     section: "Money",
   },
   {
+    to: "/app/expenses",
+    label: "Expenses",
+    icon: "wallet",
+    section: "Money",
+    roles: ADMIN_ROLES,
+  },
+  {
     to: "/app/retention",
     label: "Retention",
     icon: "trending-up",

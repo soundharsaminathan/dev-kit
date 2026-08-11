@@ -91,6 +91,23 @@ enum PaymentMethod {
   RAZORPAY
 }
 
+enum ExpensePaymentMethod {
+  CASH
+  BANK_TRANSFER
+  UPI
+  CARD
+  CHEQUE
+  OTHER
+}
+
+enum ExpenseRecurrenceFrequency {
+  DAILY
+  WEEKLY
+  MONTHLY
+  QUARTERLY
+  YEARLY
+}
+
 enum SessionStatus {
   SCHEDULED
   COMPLETED
@@ -319,6 +336,12 @@ model User {
   studentGoals              StudentGoal[]
   studentAchievements       StudentAchievement[]
   staffInvitesCreated       StaffInvite[]        @relation("StaffInviteCreator")
+  createdExpenses           Expense[]            @relation("ExpenseCreator")
+  updatedExpenses           Expense[]            @relation("ExpenseUpdater")
+  createdRecurringExpenses  RecurringExpense[]   @relation("RecurringExpenseCreator")
+  updatedRecurringExpenses  RecurringExpense[]   @relation("RecurringExpenseUpdater")
+  createdExpenseCategories  ExpenseCategory[]    @relation("ExpenseCategoryCreator")
+  updatedExpenseCategories  ExpenseCategory[]    @relation("ExpenseCategoryUpdater")
 
   @@index([studioId, emailHash])
   @@index([preferredBranchId])
@@ -373,6 +396,9 @@ model Studio {
   studentGoals         StudentGoal[]
   achievements         Achievement[]
   staffInvites         StaffInvite[]
+  expenseCategories    ExpenseCategory[]
+  expenses             Expense[]
+  recurringExpenses    RecurringExpense[]
 }
 
 model StudioSettings {
@@ -433,6 +459,7 @@ model StudioBranch {
   batches           Batch[]
   contests          Contest[]
   preferredByUsers  User[]              @relation("UserPreferredBranch")
+  expenses          Expense[]
 
   @@index([studioId])
 }
@@ -668,6 +695,90 @@ model Invoice {
   studio     Studio      @relation(fields: [studioId], references: [id], onDelete: Cascade)
 
   @@index([status, paymentHoldExpiresAt])
+}
+
+model ExpenseCategory {
+  id         String    @id @default(cuid())
+  studioId   String
+  name       String
+  icon       String?
+  isDefault  Boolean   @default(false)
+  createdById String?
+  updatedById String?
+  archivedAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  studio   Studio    @relation(fields: [studioId], references: [id], onDelete: Cascade)
+  expenses Expense[]
+  recurringExpenses RecurringExpense[]
+  createdBy User?    @relation("ExpenseCategoryCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedBy User?    @relation("ExpenseCategoryUpdater", fields: [updatedById], references: [id], onDelete: SetNull)
+
+  @@unique([studioId, name])
+  @@index([studioId, archivedAt])
+}
+
+model Expense {
+  id                 String                @id @default(cuid())
+  studioId           String
+  branchId           String?
+  amount             Decimal               @db.Decimal(10, 2)
+  expenseDate        DateTime
+  categoryId         String
+  vendor             String?
+  paymentMethod      ExpensePaymentMethod?
+  description        String?
+  notes              String?
+  receiptKey         String?
+  recurringExpenseId String?
+  createdById        String
+  updatedById        String?
+  archivedAt         DateTime?
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
+
+  studio           Studio           @relation(fields: [studioId], references: [id], onDelete: Cascade)
+  branch           StudioBranch?    @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  category         ExpenseCategory  @relation(fields: [categoryId], references: [id])
+  createdBy        User             @relation("ExpenseCreator", fields: [createdById], references: [id])
+  updatedBy        User?            @relation("ExpenseUpdater", fields: [updatedById], references: [id], onDelete: SetNull)
+  recurringExpense RecurringExpense? @relation(fields: [recurringExpenseId], references: [id])
+
+  @@index([studioId, expenseDate])
+  @@index([studioId, categoryId])
+  @@index([studioId, vendor])
+  @@index([studioId, archivedAt])
+}
+
+model RecurringExpense {
+  id             String                    @id @default(cuid())
+  studioId       String
+  categoryId     String
+  amount         Decimal                   @db.Decimal(10, 2)
+  frequency      ExpenseRecurrenceFrequency
+  startDate      DateTime
+  endDate        DateTime?
+  nextOccurrence DateTime
+  vendor         String?
+  paymentMethod  ExpensePaymentMethod?
+  description    String?
+  notes          String?
+  active         Boolean                   @default(true)
+  createdById    String
+  updatedById    String?
+  archivedAt     DateTime?
+  createdAt      DateTime                  @default(now())
+  updatedAt      DateTime                  @updatedAt
+
+  studio    Studio          @relation(fields: [studioId], references: [id], onDelete: Cascade)
+  category  ExpenseCategory @relation(fields: [categoryId], references: [id])
+  createdBy User            @relation("RecurringExpenseCreator", fields: [createdById], references: [id])
+  updatedBy User?           @relation("RecurringExpenseUpdater", fields: [updatedById], references: [id], onDelete: SetNull)
+  expenses  Expense[]
+
+  @@index([studioId, active])
+  @@index([studioId, nextOccurrence])
 }
 
 model Session {

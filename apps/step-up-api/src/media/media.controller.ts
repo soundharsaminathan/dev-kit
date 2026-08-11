@@ -23,6 +23,7 @@ enum MediaPurpose {
   CHAT = "chat",
   BATCH = "batch",
   CERTIFICATE = "certificate",
+  EXPENSE_RECEIPT = "expense-receipt",
 }
 
 class SignedUrlDto {
@@ -50,6 +51,11 @@ const STUDIO_BRANDING_ROLES = new Set<UserRole>([
   UserRole.SYSTEM_ADMIN,
 ]);
 
+const EXPENSE_RECEIPT_ROLES = new Set<UserRole>([
+  UserRole.OWNER,
+  UserRole.STAFF,
+]);
+
 @Controller("media")
 @UseGuards(AuthGuard, RolesGuard)
 export class MediaController {
@@ -64,7 +70,13 @@ export class MediaController {
   ) {
     const purpose = dto.purpose ?? MediaPurpose.BRANCH;
 
-    if (
+    if (purpose === MediaPurpose.EXPENSE_RECEIPT) {
+      if (!EXPENSE_RECEIPT_ROLES.has(user.role)) {
+        throw new BadRequestException(
+          "Only studio owners and staff can upload expense receipts",
+        );
+      }
+    } else if (
       purpose === MediaPurpose.STUDIO_LOGO ||
       purpose === MediaPurpose.STUDIO_HERO
     ) {
