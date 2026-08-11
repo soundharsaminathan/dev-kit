@@ -148,7 +148,32 @@ export class JobsService {
       return membership.periodStart < expireCutoff;
     });
 
+    const expireMembershipIds = membershipsToExpire.map(
+      (membership) => membership.id,
+    );
+    const unpaidInvoicesForExpire =
+      expireMembershipIds.length === 0
+        ? []
+        : await this.prisma.invoice.findMany({
+            where: {
+              membershipId: { in: expireMembershipIds },
+              status: {
+                in: [InvoiceStatus.PENDING, InvoiceStatus.OVERDUE],
+              },
+            },
+            select: { membershipId: true },
+          });
+    const expireCoveredByOverdue = new Set(
+      unpaidInvoicesForExpire
+        .map((row) => row.membershipId)
+        .filter((id): id is string => Boolean(id)),
+    );
+
+    let notRenewedNotifications = 0;
     for (const membership of membershipsToExpire) {
+      if (expireCoveredByOverdue.has(membership.id)) {
+        continue;
+      }
       await this.notifications.create({
         userId: membership.purchaserUserId,
         type: NotificationType.NOT_RENEWED,
@@ -161,12 +186,13 @@ export class JobsService {
         entityType: "membership",
         entityId: membership.id,
       });
+      notRenewedNotifications += 1;
     }
 
     const expiredUpdated = await this.prisma.membership.updateMany({
       where: {
         id: {
-          in: membershipsToExpire.map((membership) => membership.id),
+          in: expireMembershipIds,
         },
       },
       data: {
@@ -236,7 +262,7 @@ export class JobsService {
       dueMemberships: rolledToDue,
       renewalInvoicesCreated,
       expiredMemberships: expiredUpdated.count,
-      notRenewedNotifications: membershipsToExpire.length,
+      notRenewedNotifications,
       overdueInvoices: overdueInvoices.count,
       expiringNotifications: expiringSoon.length,
       overdueNotifications: overdueStudents.length,

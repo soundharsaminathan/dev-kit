@@ -371,8 +371,13 @@ export class MembershipsService {
   /**
    * Prepaid renew-on-pay: activate the current DUE/EXPIRED period in place
    * (do not advance to the next period).
+   * Pass notify:false when billing already emits PAYMENT_RECEIVED for the same pay.
    */
-  async renewManual(membershipId: string) {
+  async renewManual(
+    membershipId: string,
+    options?: { notify?: boolean },
+  ) {
+    const notify = options?.notify !== false;
     const existing = await this.prisma.membership.findUnique({
       where: { id: membershipId },
       include: {
@@ -403,19 +408,21 @@ export class MembershipsService {
       },
     });
 
-    await this.notifications.create({
-      userId: existing.purchaserUserId,
-      type: NotificationType.RENEWED,
-      planName: existing.subscription.name,
-      periodEnd: existing.periodEnd.toISOString().slice(0, 10),
-      dedupeKey: `RENEWED:${renewed.id}`,
-      meta: {
-        membershipId: renewed.id,
-        subscriptionId: existing.subscriptionId,
-      },
-      entityType: "membership",
-      entityId: renewed.id,
-    });
+    if (notify) {
+      await this.notifications.create({
+        userId: existing.purchaserUserId,
+        type: NotificationType.RENEWED,
+        planName: existing.subscription.name,
+        periodEnd: existing.periodEnd.toISOString().slice(0, 10),
+        dedupeKey: `RENEWED:${renewed.id}`,
+        meta: {
+          membershipId: renewed.id,
+          subscriptionId: existing.subscriptionId,
+        },
+        entityType: "membership",
+        entityId: renewed.id,
+      });
+    }
 
     return renewed;
   }
@@ -625,7 +632,7 @@ export class MembershipsService {
     ) {
       return null;
     }
-    return this.renewManual(membershipId);
+    return this.renewManual(membershipId, { notify: false });
   }
 
   async findActiveForBatch(

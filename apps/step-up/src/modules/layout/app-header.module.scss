@@ -582,15 +582,12 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 1rem;
+  gap: 0.75rem;
   width: 100%;
   padding: 0.8rem 0.85rem;
-  border: 0;
   border-radius: var(--radius-xl, 1rem);
   background: color-mix(in srgb, var(--color-fg) 3.5%, transparent);
   color: var(--color-fg);
-  text-align: start;
-  cursor: pointer;
   transition: background-color var(--motion-fast, 150ms) ease;
 }
 
@@ -605,6 +602,13 @@
   min-width: 0;
 }
 
+.prefLabelRow {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  min-width: 0;
+}
+
 .prefLabel {
   font-size: 0.875rem;
   font-weight: 600;
@@ -614,6 +618,63 @@
 .prefHint {
   font-size: 0.75rem;
   color: var(--color-fg-muted);
+}
+
+.prefInfoWrap {
+  flex-shrink: 0;
+}
+
+.prefInfo {
+  display: inline-grid;
+  place-items: center;
+  width: 1.35rem;
+  height: 1.35rem;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-full, 999px);
+  background: transparent;
+  color: color-mix(in srgb, var(--color-fg) 45%, transparent);
+  cursor: help;
+}
+
+.prefInfo:hover,
+.prefInfo:focus-visible {
+  color: var(--color-fg);
+  outline: none;
+}
+
+.prefInfo:focus-visible {
+  box-shadow: 0 0 0 2px
+    color-mix(in srgb, var(--color-primary) 45%, transparent);
+}
+
+.prefInfo svg {
+  width: 0.875rem;
+  height: 0.875rem;
+}
+
+.prefTooltip {
+  max-width: 16rem;
+  text-align: start;
+}
+
+.prefToggle {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  padding: 0.15rem;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.prefToggle:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px
+    color-mix(in srgb, var(--color-primary) 45%, transparent);
 }
 
 .prefSwitch {

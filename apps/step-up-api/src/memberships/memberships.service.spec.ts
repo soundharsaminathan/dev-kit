@@ -74,6 +74,101 @@ describe("MembershipsService.renewManual", () => {
       }),
     );
   });
+
+  it("skips RENEWED when notify is false (invoice-driven renew)", async () => {
+    prisma.membership.findUnique.mockResolvedValue({
+      id: "mem-1",
+      subscriptionId: "sub-1",
+      purchaserUserId: "user-1",
+      status: "DUE",
+      periodStart: new Date(Date.UTC(2026, 6, 1)),
+      periodEnd: new Date(Date.UTC(2026, 6, 31, 23, 59, 59, 999)),
+      subscription: {
+        name: "Individual Kid Monthly",
+        billingCadence: "MONTHLY",
+      },
+      coveredStudents: [{ studentId: "student-1", seatRole: "KID" }],
+    });
+    prisma.membership.update.mockResolvedValue({
+      id: "mem-1",
+      status: "ACTIVE",
+    });
+
+    await service.renewManual("mem-1", { notify: false });
+
+    expect(prisma.membership.update).toHaveBeenCalled();
+    expect(notifications.create).not.toHaveBeenCalled();
+  });
+});
+
+describe("MembershipsService.renewFromPaidInvoice", () => {
+  const prisma = {
+    membership: {
+      findUnique: vi.fn(),
+      update: vi.fn(),
+      create: vi.fn(),
+    },
+  };
+
+  const notifications = {
+    create: vi.fn(),
+  };
+
+  let service: MembershipsService;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    service = new MembershipsService(
+      prisma as never,
+      notifications as never,
+      {
+        assertNoConflicts: vi.fn().mockResolvedValue(undefined),
+        assertStudentAvailableForBatch: vi.fn().mockResolvedValue(undefined),
+      } as never,
+    );
+  });
+
+  it("activates without RENEWED so billing can emit PAYMENT_RECEIVED alone", async () => {
+    prisma.membership.findUnique
+      .mockResolvedValueOnce({
+        id: "mem-1",
+        status: "DUE",
+      })
+      .mockResolvedValueOnce({
+        id: "mem-1",
+        subscriptionId: "sub-1",
+        purchaserUserId: "user-1",
+        status: "DUE",
+        periodStart: new Date(Date.UTC(2026, 6, 1)),
+        periodEnd: new Date(Date.UTC(2026, 6, 31, 23, 59, 59, 999)),
+        subscription: {
+          name: "Adult Monthly",
+          billingCadence: "MONTHLY",
+        },
+        coveredStudents: [],
+      });
+    prisma.membership.update.mockResolvedValue({
+      id: "mem-1",
+      status: "ACTIVE",
+    });
+
+    await service.renewFromPaidInvoice("mem-1");
+
+    expect(notifications.create).not.toHaveBeenCalled();
+  });
+
+  it("returns null for ACTIVE membership without notifying", async () => {
+    prisma.membership.findUnique.mockResolvedValue({
+      id: "mem-1",
+      status: "ACTIVE",
+    });
+
+    const result = await service.renewFromPaidInvoice("mem-1");
+
+    expect(result).toBeNull();
+    expect(prisma.membership.update).not.toHaveBeenCalled();
+    expect(notifications.create).not.toHaveBeenCalled();
+  });
 });
 
 describe("MembershipsService.rollEndedActiveToNextDue", () => {

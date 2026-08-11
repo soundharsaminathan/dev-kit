@@ -57,6 +57,54 @@ test.describe("billing HTTP @http", () => {
     }
   });
 
+  test("mark-paid emits PAYMENT_RECEIVED without RENEWED duplicate @http", async () => {
+    const cleanup = new TestDataCleanup();
+    try {
+      const student = await createHttpStudent(
+        "Billing Notify Student",
+        cleanup,
+      );
+      const enrollment = await expectOk<{
+        invoice: { id: string; status: string };
+      }>("STAFF", `/batches/${SEED.beginnerBatchId}/enroll`, {
+        method: "POST",
+        body: JSON.stringify({
+          studentId: student.id,
+          subscriptionId: SEED.adultPlanIds[0],
+        }),
+      });
+      expect(enrollment.invoice.status).toBe("PENDING");
+
+      await expectOk("STAFF", `/billing/${enrollment.invoice.id}/paid`, {
+        method: "PATCH",
+        body: JSON.stringify({ paymentMethod: "CASH" }),
+      });
+
+      let paymentReceived = false;
+      let renewed = false;
+      for (let attempt = 0; attempt < 8; attempt += 1) {
+        const list = await expectOk<{
+          items: Array<{ type: string; meta?: { invoiceId?: string } }>;
+        }>("STUDENT", "/notifications?limit=50", undefined, {
+          userId: student.id,
+        });
+        paymentReceived = list.items.some(
+          (item) =>
+            item.type === "PAYMENT_RECEIVED" &&
+            item.meta?.invoiceId === enrollment.invoice.id,
+        );
+        renewed = list.items.some((item) => item.type === "RENEWED");
+        if (paymentReceived) break;
+        await new Promise((resolve) => setTimeout(resolve, 250 * (attempt + 1)));
+      }
+
+      expect(paymentReceived).toBe(true);
+      expect(renewed).toBe(false);
+    } finally {
+      await cleanup.dispose();
+    }
+  });
+
   test("staff marks invoice paid with discounts @http", async () => {
     const cleanup = new TestDataCleanup();
     try {

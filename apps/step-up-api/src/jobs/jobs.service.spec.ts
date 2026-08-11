@@ -93,6 +93,57 @@ describe("JobsService.runDaily", () => {
     vi.useRealTimers();
   });
 
+  it("skips NOT_RENEWED when an unpaid invoice will cover the lapse via PAYMENT_OVERDUE", async () => {
+    const now = new Date("2026-07-20T12:00:00.000Z");
+    vi.useFakeTimers();
+    vi.setSystemTime(now);
+
+    const membership = {
+      id: "mem-due",
+      purchaserUserId: "student-1",
+      subscriptionId: "sub-1",
+      status: MembershipStatus.DUE,
+      periodStart: new Date("2026-07-15T00:00:00.000Z"),
+      periodEnd: new Date("2026-07-31T23:59:59.999Z"),
+      subscription: {
+        id: "sub-1",
+        name: "Adults Unlimited",
+        studioId: "studio-1",
+      },
+    };
+
+    prisma.membership.findMany
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{ id: "mem-due" }])
+      .mockResolvedValueOnce([membership])
+      .mockResolvedValueOnce([]);
+    prisma.membership.updateMany.mockResolvedValue({ count: 1 });
+    prisma.invoice.updateMany.mockResolvedValue({ count: 1 });
+    prisma.invoice.findMany
+      .mockResolvedValueOnce([{ membershipId: "mem-due" }])
+      .mockResolvedValueOnce([
+        { id: "inv-1", studentId: "student-1", student: { id: "student-1" } },
+      ]);
+    notifications.create.mockResolvedValue({ id: "notif-1" });
+
+    const result = await service.runDaily();
+
+    expect(notifications.create).toHaveBeenCalledTimes(1);
+    expect(notifications.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: NotificationType.PAYMENT_OVERDUE,
+        dedupeKey: "PAYMENT_OVERDUE:inv-1:2026-07-20",
+      }),
+    );
+    expect(notifications.create).not.toHaveBeenCalledWith(
+      expect.objectContaining({ type: NotificationType.NOT_RENEWED }),
+    );
+    expect(result.notRenewedNotifications).toBe(0);
+    expect(result.overdueNotifications).toBe(1);
+
+    vi.useRealTimers();
+  });
+
   it("uses each studio's due days from periodStart before expiring memberships", async () => {
     const now = new Date("2026-07-20T12:00:00.000Z");
     vi.useFakeTimers();

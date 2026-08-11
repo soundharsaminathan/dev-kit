@@ -1,3 +1,5 @@
+import { Tooltip, TooltipContent } from "@dev-ui/components/tooltip";
+import { Icon } from "@dev-ui/icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useApi } from "@/lib/api-context";
@@ -24,6 +26,26 @@ const PREF_LABELS: Record<string, string> = {
   NOT_RENEWED: "Subscription not renewed",
   NEW_FOLLOW: "New followers",
   CHAT_MESSAGE: "Chat messages",
+};
+
+const PREF_DESCRIPTIONS: Record<string, string> = {
+  MISSED_SESSION:
+    "When a trainer marks you absent for a class you were enrolled in.",
+  SESSION_ADDED: "When a new class is added to a batch you are enrolled in.",
+  SESSION_CHANGED:
+    "When the time, date, or details of an upcoming class change.",
+  SESSION_CANCELLED: "When a scheduled class in your batch is cancelled.",
+  SUBSCRIPTION_EXPIRING:
+    "A heads-up before your membership period ends so you can renew in time.",
+  PAYMENT_OVERDUE:
+    "When an unpaid invoice is past due and bookings may be frozen.",
+  PAYMENT_RECEIVED: "Confirmation when a payment on your invoice is recorded.",
+  RENEWED:
+    "When your membership is activated again after a manual renewal.",
+  NOT_RENEWED:
+    "When your membership expires because it was not renewed in time.",
+  NEW_FOLLOW: "When someone starts following your profile.",
+  CHAT_MESSAGE: "When you receive a new message in chat.",
 };
 
 function preferencesKey(userId: string | undefined) {
@@ -116,39 +138,69 @@ export function NotificationPreferencesPanel() {
       <ul ref={scrollRef} className={styles.prefList} onScroll={updateEdges}>
         {pushPrefs.map((pref) => {
           const enabled = pref.enabled;
+          const label =
+            PREF_LABELS[pref.type] ??
+            pref.type.replaceAll("_", " ").toLowerCase();
+          const description =
+            PREF_DESCRIPTIONS[pref.type] ??
+            `Push notifications for ${label.toLowerCase()}.`;
           return (
             <li key={`${pref.type}-${pref.channel}`}>
-              <button
-                type="button"
+              <div
                 className={styles.prefRow}
                 data-enabled={enabled ? "true" : undefined}
-                aria-pressed={enabled}
-                onClick={() => {
-                  const current =
-                    queryClient.getQueryData<Preference[]>(queryKey) ??
-                    query.data ??
-                    [];
-                  const next = current.map((row) =>
-                    row.type === pref.type && row.channel === pref.channel
-                      ? { ...row, enabled: !row.enabled }
-                      : row,
-                  );
-                  toggle.mutate(next);
-                }}
               >
-                <span className={styles.prefCopy}>
-                  <span className={styles.prefLabel}>
-                    {PREF_LABELS[pref.type] ??
-                      pref.type.replaceAll("_", " ").toLowerCase()}
+                <div className={styles.prefCopy}>
+                  <span className={styles.prefLabelRow}>
+                    <span className={styles.prefLabel}>{label}</span>
+                    <Tooltip
+                      delay={200}
+                      touchBehavior="toggle"
+                      className={styles.prefInfoWrap}
+                    >
+                      <button
+                        type="button"
+                        className={styles.prefInfo}
+                        aria-label={`About ${label}`}
+                      >
+                        <Icon name="help-circle" />
+                      </button>
+                      <TooltipContent
+                        portal
+                        placement="top"
+                        className={styles.prefTooltip}
+                      >
+                        {description}
+                      </TooltipContent>
+                    </Tooltip>
                   </span>
                   <span className={styles.prefHint}>
                     {enabled ? "Push on" : "Push off"}
                   </span>
-                </span>
-                <span className={styles.prefSwitch} aria-hidden>
-                  <span className={styles.prefThumb} />
-                </span>
-              </button>
+                </div>
+                <button
+                  type="button"
+                  className={styles.prefToggle}
+                  aria-pressed={enabled}
+                  aria-label={`${enabled ? "Disable" : "Enable"} ${label} push notifications`}
+                  onClick={() => {
+                    const current =
+                      queryClient.getQueryData<Preference[]>(queryKey) ??
+                      query.data ??
+                      [];
+                    const next = current.map((row) =>
+                      row.type === pref.type && row.channel === pref.channel
+                        ? { ...row, enabled: !row.enabled }
+                        : row,
+                    );
+                    toggle.mutate(next);
+                  }}
+                >
+                  <span className={styles.prefSwitch} aria-hidden>
+                    <span className={styles.prefThumb} />
+                  </span>
+                </button>
+              </div>
             </li>
           );
         })}
