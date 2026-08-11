@@ -32,4 +32,48 @@ describe("batch-capacity", () => {
 
     await expect(countOccupiedSeats(tx as never, "batch-1")).resolves.toBe(3);
   });
+
+  it("rejects when adding students would exceed capacity", async () => {
+    const { assertBatchHasSeats } = await import("./batch-capacity");
+    const tx = {
+      booking: {
+        updateMany: async () => ({ count: 0 }),
+        findMany: async () => [] as { studentId: string }[],
+      },
+      batchEnrollment: {
+        findMany: async (args: {
+          where?: { studentId?: { in?: string[] } };
+        }) => {
+          if (args.where?.studentId?.in) return [];
+          return [{ studentId: "a" }, { studentId: "b" }];
+        },
+      },
+    };
+
+    await expect(
+      assertBatchHasSeats(tx as never, "batch-1", 2, ["c"]),
+    ).rejects.toThrow(/capacity/i);
+  });
+
+  it("allows bulk add when enough seats remain", async () => {
+    const { assertBatchHasSeats } = await import("./batch-capacity");
+    const tx = {
+      booking: {
+        updateMany: async () => ({ count: 0 }),
+        findMany: async () => [] as { studentId: string }[],
+      },
+      batchEnrollment: {
+        findMany: async (args: {
+          where?: { studentId?: { in?: string[] } };
+        }) => {
+          if (args.where?.studentId?.in) return [];
+          return [{ studentId: "a" }];
+        },
+      },
+    };
+
+    await expect(
+      assertBatchHasSeats(tx as never, "batch-1", 3, ["b", "c"]),
+    ).resolves.toBeUndefined();
+  });
 });

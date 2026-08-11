@@ -759,6 +759,81 @@ describe("MembershipsService.purchaseForBatch", () => {
       }),
     ).rejects.toThrow(/studio-wide/i);
   });
+
+  it("creates one pending invoice per student without capacity locking", async () => {
+    prisma.batch.findUnique.mockResolvedValue({
+      id: "batch-kid",
+      active: true,
+      category: "KIDS",
+      studioId: "studio-1",
+    });
+    prisma.batchPlan.findUnique.mockResolvedValue({
+      batchId: "batch-kid",
+      subscriptionId: "sub-kid-mo",
+      subscription: {
+        id: "sub-kid-mo",
+        active: true,
+        kind: "INDIVIDUAL",
+        individualAudience: "KID",
+        adultSeats: 0,
+        kidSeats: 1,
+        billingCadence: "MONTHLY",
+        price: 2500,
+      },
+    });
+    prisma.invoice.create
+      .mockResolvedValueOnce({
+        id: "inv-a",
+        status: "PENDING",
+        amount: 2500,
+        studentId: "kid-1",
+      })
+      .mockResolvedValueOnce({
+        id: "inv-b",
+        status: "PENDING",
+        amount: 2500,
+        studentId: "kid-2",
+      });
+
+    const invoices = await service.purchaseForBatchBulk({
+      batchId: "batch-kid",
+      subscriptionId: "sub-kid-mo",
+      studentIds: ["kid-1", "kid-2"],
+      paymentHold: false,
+    });
+
+    expect(invoices).toHaveLength(2);
+    expect(prisma.invoice.create).toHaveBeenCalledTimes(2);
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+    expect(
+      scheduleConflicts.assertStudentAvailableForBatch,
+    ).toHaveBeenCalledTimes(2);
+    expect(prisma.invoice.create).toHaveBeenNthCalledWith(1, {
+      data: expect.objectContaining({
+        studentId: "kid-1",
+        amount: 2500,
+        status: "PENDING",
+      }),
+    });
+    expect(prisma.invoice.create).toHaveBeenNthCalledWith(2, {
+      data: expect.objectContaining({
+        studentId: "kid-2",
+        amount: 2500,
+        status: "PENDING",
+      }),
+    });
+  });
+
+  it("rejects duplicate students on bulk batch purchase", async () => {
+    await expect(
+      service.purchaseForBatchBulk({
+        batchId: "batch-kid",
+        subscriptionId: "sub-kid-mo",
+        studentIds: ["kid-1", "kid-1"],
+        paymentHold: false,
+      }),
+    ).rejects.toThrow(/duplicate/i);
+  });
 });
 
 describe("MembershipsService.purchaseFamily", () => {

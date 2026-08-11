@@ -411,6 +411,25 @@ test.describe("student smoke @smoke", () => {
     expect(await response.text()).toMatch(/self-enrollment/i);
   });
 
+  test("student cannot call staff bulk enroll @smoke", async () => {
+    const token = await bearerFor("STUDENT");
+    const response = await fetch(
+      `${apiBaseUrl()}/batches/${SMOKE.beginnerBatchId}/enroll-bulk`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          studentIds: [SMOKE.users.STUDENT.id],
+          subscriptionId: SMOKE.adultPlanIds[0],
+        }),
+      },
+    );
+    expect(response.status).toBe(403);
+  });
+
   test("onboarding student completes wizard @smoke", async ({ browser }) => {
     test.setTimeout(180_000);
     await clearOpenBookings(SMOKE.users.ONBOARDING.id, {

@@ -152,12 +152,10 @@ export function BatchRoster({ batchId, capacity, active }: BatchRosterProps) {
       students: StudioStudent[];
       subscriptionId: string;
     }) => {
-      for (const student of input.students) {
-        await api.post(`/batches/${batchId}/enroll`, {
-          studentId: student.id,
-          subscriptionId: input.subscriptionId,
-        });
-      }
+      await api.post(`/batches/${batchId}/enroll-bulk`, {
+        studentIds: input.students.map((student) => student.id),
+        subscriptionId: input.subscriptionId,
+      });
     },
     onMutate: async ({ students }) => {
       await queryClient.cancelQueries({ queryKey: ["batch", batchId] });

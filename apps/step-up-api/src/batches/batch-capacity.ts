@@ -77,41 +77,71 @@ export async function countOccupiedSeats(
   return occupied.size;
 }
 
+function seatHoldingBookingWhere(
+  now = new Date(),
+): Prisma.BookingWhereInput {
+  return {
+    type: { notIn: [BookingType.PRIVATE, BookingType.TRIAL] },
+    OR: [
+      {
+        status: {
+          in: [BookingStatus.PENDING, BookingStatus.CONFIRMED],
+        },
+      },
+      {
+        status: BookingStatus.AWAITING_PAYMENT,
+        paymentHoldExpiresAt: { gt: now },
+      },
+    ],
+  };
+}
+
+export async function assertBatchHasSeats(
+  tx: Tx,
+  batchId: string,
+  capacity: number,
+  studentIds: string[],
+) {
+  const uniqueIds = [...new Set(studentIds)];
+  if (uniqueIds.length === 0) return;
+
+  const occupied = await countOccupiedSeats(tx, batchId);
+  const [enrolled, holdings] = await Promise.all([
+    tx.batchEnrollment.findMany({
+      where: {
+        batchId,
+        studentId: { in: uniqueIds },
+        ...ACTIVE_ENROLLMENT_WHERE,
+      },
+      select: { studentId: true },
+    }),
+    tx.booking.findMany({
+      where: {
+        batchId,
+        studentId: { in: uniqueIds },
+        ...seatHoldingBookingWhere(),
+      },
+      select: { studentId: true },
+    }),
+  ]);
+
+  const alreadyCounted = new Set<string>();
+  for (const row of enrolled) alreadyCounted.add(row.studentId);
+  for (const row of holdings) alreadyCounted.add(row.studentId);
+
+  const needed = uniqueIds.filter((id) => !alreadyCounted.has(id)).length;
+  if (occupied + needed > capacity) {
+    throw new BadRequestException("Batch is at capacity");
+  }
+}
+
 export async function assertBatchHasSeat(
   tx: Tx,
   batchId: string,
   capacity: number,
   studentId: string,
 ) {
-  const occupied = await countOccupiedSeats(tx, batchId);
-  const alreadyCounted =
-    (await tx.batchEnrollment.findFirst({
-      where: { batchId, studentId, ...ACTIVE_ENROLLMENT_WHERE },
-      select: { id: true },
-    })) != null ||
-    (await tx.booking.findFirst({
-      where: {
-        batchId,
-        studentId,
-        type: { notIn: [BookingType.PRIVATE, BookingType.TRIAL] },
-        OR: [
-          {
-            status: {
-              in: [BookingStatus.PENDING, BookingStatus.CONFIRMED],
-            },
-          },
-          {
-            status: BookingStatus.AWAITING_PAYMENT,
-            paymentHoldExpiresAt: { gt: new Date() },
-          },
-        ],
-      },
-      select: { id: true },
-    })) != null;
-
-  if (!alreadyCounted && occupied >= capacity) {
-    throw new BadRequestException("Batch is at capacity");
-  }
+  await assertBatchHasSeats(tx, batchId, capacity, [studentId]);
 }
 
 export function paymentHoldExpiresAt(from = new Date()) {

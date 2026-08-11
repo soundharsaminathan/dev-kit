@@ -247,6 +247,116 @@ export class MembershipsService {
     });
   }
 
+  /**
+   * Staff bulk enroll: validate the plan once, check schedule conflicts for
+   * every student, then create one pending invoice each. Capacity is the
+   * caller's responsibility (typically under a locked batch row).
+   */
+  async purchaseForBatchBulk(args: {
+    batchId: string;
+    subscriptionId: string;
+    studentIds: string[];
+    /** When false, invoices stay pending until staff collects (no checkout timer). */
+    paymentHold?: boolean;
+    tx?: Prisma.TransactionClient;
+  }) {
+    const uniqueIds = [...new Set(args.studentIds)];
+    if (uniqueIds.length === 0) {
+      throw new BadRequestException("At least one student is required");
+    }
+    if (uniqueIds.length !== args.studentIds.length) {
+      throw new BadRequestException("Duplicate students are not allowed");
+    }
+
+    const [batch, planLink] = await Promise.all([
+      this.prisma.batch.findUnique({ where: { id: args.batchId } }),
+      this.prisma.batchPlan.findUnique({
+        where: {
+          batchId_subscriptionId: {
+            batchId: args.batchId,
+            subscriptionId: args.subscriptionId,
+          },
+        },
+        include: { subscription: true },
+      }),
+    ]);
+
+    if (!batch?.active) {
+      throw new NotFoundException("Batch not found or inactive");
+    }
+    if (!planLink?.subscription.active) {
+      throw new BadRequestException(
+        "That plan is not available for this batch",
+      );
+    }
+
+    if (planLink.subscription.kind === SubscriptionKind.FAMILY) {
+      throw new BadRequestException(
+        "Family packs are studio-wide. Use family purchase instead of batch purchase.",
+      );
+    }
+
+    const expectedSeat = seatRoleForBatchCategory(batch.category);
+    this.assertCoveredSeats(planLink.subscription, [
+      {
+        studentId: uniqueIds[0]!,
+        seatRole: expectedSeat,
+        batchId: args.batchId,
+      },
+    ]);
+
+    await Promise.all(
+      uniqueIds.map((studentId) =>
+        this.scheduleConflicts.assertStudentAvailableForBatch(
+          studentId,
+          args.batchId,
+        ),
+      ),
+    );
+
+    const settings = await this.prisma.studioSettings.findUnique({
+      where: { studioId: batch.studioId },
+      select: { platformFeePercent: true },
+    });
+
+    const holdPayment = args.paymentHold !== false;
+    const db = args.tx ?? this.prisma;
+    const invoices = [];
+
+    for (const studentId of uniqueIds) {
+      const coveredStudents: CoveredStudentInput[] = [
+        {
+          studentId,
+          seatRole: expectedSeat,
+          batchId: args.batchId,
+        },
+      ];
+      const purchaseMeta: InvoicePurchaseMeta = {
+        batchId: args.batchId,
+        subscriptionId: args.subscriptionId,
+        purchaserUserId: studentId,
+        coveredStudents,
+      };
+
+      const invoice = await db.invoice.create({
+        data: {
+          studentId,
+          studioId: batch.studioId,
+          amount: planLink.subscription.price,
+          status: InvoiceStatus.PENDING,
+          platformFeePercent: settings?.platformFeePercent ?? 5,
+          ...(holdPayment
+            ? { paymentHoldExpiresAt: paymentHoldExpiresAt() }
+            : {}),
+          purchaseMeta,
+        },
+      });
+      invoices.push(invoice);
+    }
+
+    return invoices;
+  }
+
   async purchaseFamily(_args: {
     studioId: string;
     subscriptionId: string;

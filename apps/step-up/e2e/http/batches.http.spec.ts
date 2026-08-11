@@ -168,6 +168,157 @@ test.describe("batches HTTP @http", () => {
     }
   });
 
+  test("staff bulk enrolls multiple students with pending invoices @http", async () => {
+    const cleanup = new TestDataCleanup();
+    try {
+      const studentA = await createHttpStudent("HTTP Bulk A", cleanup);
+      const studentB = await createHttpStudent("HTTP Bulk B", cleanup);
+
+      const result = await expectOk<{
+        enrollments: Array<{
+          studentId: string;
+          invoice: { id: string; status: string };
+        }>;
+      }>("STAFF", `/batches/${SEED.beginnerBatchId}/enroll-bulk`, {
+        method: "POST",
+        body: JSON.stringify({
+          studentIds: [studentA.id, studentB.id],
+          subscriptionId: SEED.adultPlanIds[0],
+        }),
+      });
+
+      expect(result.enrollments).toHaveLength(2);
+      expect(result.enrollments.map((row) => row.studentId).sort()).toEqual(
+        [studentA.id, studentB.id].sort(),
+      );
+      for (const row of result.enrollments) {
+        expect(row.invoice.status).toBe("PENDING");
+      }
+
+      const batch = await expectOk<{
+        enrollments: Array<{ studentId: string; monthlyUnpaid?: boolean }>;
+      }>("STAFF", `/batches/${SEED.beginnerBatchId}`);
+      expect(
+        batch.enrollments.some((row) => row.studentId === studentA.id),
+      ).toBe(true);
+      expect(
+        batch.enrollments.some((row) => row.studentId === studentB.id),
+      ).toBe(true);
+    } finally {
+      await cleanup.dispose();
+    }
+  });
+
+  test("student cannot call bulk enroll @http", async () => {
+    const cleanup = new TestDataCleanup();
+    try {
+      const student = await createHttpStudent("HTTP Bulk Deny", cleanup);
+      await expectStatus(
+        "STUDENT",
+        `/batches/${SEED.beginnerBatchId}/enroll-bulk`,
+        403,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            studentIds: [student.id],
+            subscriptionId: SEED.adultPlanIds[0],
+          }),
+        },
+        { userId: student.id },
+      );
+    } finally {
+      await cleanup.dispose();
+    }
+  });
+
+  test("bulk enroll rejects when any student is already enrolled @http", async () => {
+    const cleanup = new TestDataCleanup();
+    try {
+      const studentA = await createHttpStudent("HTTP Bulk Dup A", cleanup);
+      const studentB = await createHttpStudent("HTTP Bulk Dup B", cleanup);
+
+      await expectOk("STAFF", `/batches/${SEED.beginnerBatchId}/enroll`, {
+        method: "POST",
+        body: JSON.stringify({
+          studentId: studentA.id,
+          subscriptionId: SEED.adultPlanIds[0],
+        }),
+      });
+
+      const result = await expectStatus(
+        "STAFF",
+        `/batches/${SEED.beginnerBatchId}/enroll-bulk`,
+        400,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            studentIds: [studentA.id, studentB.id],
+            subscriptionId: SEED.adultPlanIds[0],
+          }),
+        },
+      );
+      expect(result.text).toMatch(/already enrolled/i);
+    } finally {
+      await cleanup.dispose();
+    }
+  });
+
+  test("bulk enroll rejects when batch lacks capacity @http", async () => {
+    const cleanup = new TestDataCleanup();
+    const stamp = Date.now();
+    try {
+      const batch = await expectOk<{ id: string }>("STAFF", "/batches", {
+        method: "POST",
+        body: JSON.stringify({
+          studioId: SEED.users.STAFF.studioId,
+          name: `HTTP Bulk Cap ${stamp}`,
+          coverImageUrl:
+            "https://images.unsplash.com/photo-1518611012118-696072aa579a?w=800&q=80",
+          category: "ADULTS",
+          branchId: SEED.branchMainId,
+          trainerIds: [SEED.users.TRAINER.id],
+          danceCategories: [
+            { name: "Hip Hop", description: "Bulk capacity batch" },
+          ],
+          scheduleJson: {
+            frequency: "WEEKLY",
+            weekdays: [1],
+            startDate: "2027-02-01",
+            endDate: "2027-04-30",
+            startTime: "05:00",
+            endTime: "05:45",
+            utcOffsetMinutes: 0,
+          },
+          capacity: 1,
+          enrollmentMode: "STAFF_ONLY",
+          subscriptionIds: [...SEED.adultPlanIds],
+          active: true,
+          certificationEnabled: false,
+        }),
+      });
+      cleanup.trackBatch(batch.id);
+
+      const studentA = await createHttpStudent("HTTP Cap A", cleanup);
+      const studentB = await createHttpStudent("HTTP Cap B", cleanup);
+
+      const result = await expectStatus(
+        "STAFF",
+        `/batches/${batch.id}/enroll-bulk`,
+        400,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            studentIds: [studentA.id, studentB.id],
+            subscriptionId: SEED.adultPlanIds[0],
+          }),
+        },
+      );
+      expect(result.text).toMatch(/capacity/i);
+    } finally {
+      await cleanup.dispose();
+    }
+  });
+
   test("staff unenrolls student from active batch while past roster retains them @http", async () => {
     const cleanup = new TestDataCleanup();
     const sessionId = SEED.sessionAttendanceId;

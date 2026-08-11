@@ -893,6 +893,7 @@ describe("BatchesService.remove and enroll", () => {
 
   const memberships = {
     purchaseForBatch: vi.fn(),
+    purchaseForBatchBulk: vi.fn(),
   };
 
   let service: BatchesService;
@@ -1047,6 +1048,105 @@ describe("BatchesService.remove and enroll", () => {
       ),
     ).rejects.toBeInstanceOf(BadRequestException);
     expect(memberships.purchaseForBatch).not.toHaveBeenCalled();
+  });
+
+  it("bulk enrolls multiple students with one locked capacity check", async () => {
+    prisma.batch.findUnique.mockResolvedValue({
+      id: "batch-1",
+      active: true,
+      capacity: 10,
+      category: "ADULTS",
+      enrollmentMode: EnrollmentMode.STAFF_ONLY,
+      enrollments: [],
+    });
+    memberships.purchaseForBatchBulk.mockResolvedValue([
+      { id: "inv-1", amount: 2000, status: "PENDING" },
+      { id: "inv-2", amount: 2000, status: "PENDING" },
+    ]);
+    prisma.batchEnrollment.upsert
+      .mockResolvedValueOnce({
+        id: "enroll-1",
+        batchId: "batch-1",
+        studentId: "student-1",
+      })
+      .mockResolvedValueOnce({
+        id: "enroll-2",
+        batchId: "batch-1",
+        studentId: "student-2",
+      });
+
+    await expect(
+      service.enrollBulk(
+        "batch-1",
+        ["student-1", "student-2"],
+        { id: "staff-1", role: UserRole.STAFF } as never,
+        "sub-1",
+      ),
+    ).resolves.toMatchObject({
+      enrollments: [
+        {
+          studentId: "student-1",
+          invoice: { id: "inv-1", amount: 2000 },
+        },
+        {
+          studentId: "student-2",
+          invoice: { id: "inv-2", amount: 2000 },
+        },
+      ],
+    });
+    expect(memberships.purchaseForBatchBulk).toHaveBeenCalledWith({
+      batchId: "batch-1",
+      subscriptionId: "sub-1",
+      studentIds: ["student-1", "student-2"],
+      paymentHold: false,
+      tx: prisma,
+    });
+    expect(memberships.purchaseForBatch).not.toHaveBeenCalled();
+  });
+
+  it("rejects bulk enroll for non-staff actors", async () => {
+    await expect(
+      service.enrollBulk(
+        "batch-1",
+        ["student-1", "student-2"],
+        { id: "student-1", role: UserRole.STUDENT } as never,
+        "sub-1",
+      ),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    expect(prisma.batch.findUnique).not.toHaveBeenCalled();
+  });
+
+  it("rejects bulk enroll when any student is already enrolled", async () => {
+    prisma.batch.findUnique.mockResolvedValue({
+      id: "batch-1",
+      active: true,
+      capacity: 10,
+      category: "ADULTS",
+      enrollmentMode: EnrollmentMode.STAFF_ONLY,
+      enrollments: [{ studentId: "student-2" }],
+    });
+
+    await expect(
+      service.enrollBulk(
+        "batch-1",
+        ["student-1", "student-2"],
+        { id: "staff-1", role: UserRole.STAFF } as never,
+        "sub-1",
+      ),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(memberships.purchaseForBatchBulk).not.toHaveBeenCalled();
+  });
+
+  it("rejects bulk enroll with duplicate student ids", async () => {
+    await expect(
+      service.enrollBulk(
+        "batch-1",
+        ["student-1", "student-1"],
+        { id: "staff-1", role: UserRole.STAFF } as never,
+        "sub-1",
+      ),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(prisma.batch.findUnique).not.toHaveBeenCalled();
   });
 });
 

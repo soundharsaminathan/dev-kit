@@ -46,6 +46,7 @@ import type { DecryptedUser } from "../users/user-crypto.service";
 import { UserCryptoService } from "../users/user-crypto.service";
 import {
   assertBatchHasSeat,
+  assertBatchHasSeats,
   countOccupiedSeats,
   countReservedSeatsByBatch,
   lockBatchRow,
@@ -1403,6 +1404,103 @@ export class BatchesService {
         amount: Number(invoice.amount),
       },
     };
+  }
+
+  async enrollBulk(
+    batchId: string,
+    studentIds: string[],
+    actor: DecryptedUser,
+    subscriptionId: string,
+  ) {
+    const staffRoles: UserRole[] = [
+      UserRole.OWNER,
+      UserRole.STAFF,
+      UserRole.TRAINER,
+    ];
+    if (!staffRoles.includes(actor.role)) {
+      throw new ForbiddenException(
+        "Only staff can bulk enroll students into a batch",
+      );
+    }
+
+    const uniqueIds = [...new Set(studentIds)];
+    if (uniqueIds.length === 0) {
+      throw new BadRequestException("At least one student is required");
+    }
+    if (uniqueIds.length !== studentIds.length) {
+      throw new BadRequestException("Duplicate students are not allowed");
+    }
+
+    const batch = await this.prisma.batch.findUnique({
+      where: { id: batchId },
+      include: {
+        enrollments: { where: ACTIVE_ENROLLMENT_WHERE },
+      },
+    });
+
+    if (!batch) {
+      throw new NotFoundException("Batch not found");
+    }
+
+    if (!batch.active) {
+      throw new BadRequestException("Batch is not active");
+    }
+
+    const alreadyEnrolled = uniqueIds.filter((studentId) =>
+      batch.enrollments.some(
+        (enrollment) => enrollment.studentId === studentId,
+      ),
+    );
+    if (alreadyEnrolled.length > 0) {
+      throw new BadRequestException(
+        alreadyEnrolled.length === 1
+          ? "Student is already enrolled in this batch"
+          : "One or more students are already enrolled in this batch",
+      );
+    }
+
+    const results = await this.prisma.$transaction(
+      async (tx) => {
+        await lockBatchRow(tx, batchId);
+        await assertBatchHasSeats(tx, batchId, batch.capacity, uniqueIds);
+
+        const invoices = await this.memberships.purchaseForBatchBulk({
+          batchId,
+          subscriptionId,
+          studentIds: uniqueIds,
+          paymentHold: false,
+          tx,
+        });
+
+        const enrollments = [];
+        for (let i = 0; i < uniqueIds.length; i++) {
+          const studentId = uniqueIds[i]!;
+          const invoice = invoices[i]!;
+          const enrollment = await tx.batchEnrollment.upsert({
+            where: {
+              batchId_studentId: { batchId, studentId },
+            },
+            update: REACTIVATE_ENROLLMENT_DATA,
+            create: {
+              batchId,
+              studentId,
+              status: BatchEnrollmentStatus.ACTIVE,
+            },
+          });
+          enrollments.push({
+            ...enrollment,
+            invoice: {
+              ...invoice,
+              amount: Number(invoice.amount),
+            },
+          });
+        }
+        return enrollments;
+      },
+      { timeout: 30_000 },
+    );
+
+    return { enrollments: results };
   }
 
   async listSwitchTargets(

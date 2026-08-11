@@ -21,6 +21,7 @@ import {
 } from "@prisma/client";
 import { Type } from "class-transformer";
 import {
+  ArrayMaxSize,
   ArrayMinSize,
   IsArray,
   IsBoolean,
@@ -225,6 +226,17 @@ class EnrollStudentDto {
   subscriptionId!: string;
 }
 
+class EnrollStudentsBulkDto {
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayMaxSize(50)
+  @IsString({ each: true })
+  studentIds!: string[];
+
+  @IsString()
+  subscriptionId!: string;
+}
+
 class SwitchBatchDto {
   @IsString()
   studentId!: string;
@@ -423,6 +435,21 @@ export class BatchesController {
     return this.batchesService.enroll(
       id,
       dto.studentId,
+      actor,
+      dto.subscriptionId,
+    );
+  }
+
+  @Post(":id/enroll-bulk")
+  @Roles(UserRole.OWNER, UserRole.STAFF, UserRole.TRAINER)
+  enrollBulk(
+    @Param("id") id: string,
+    @Body() dto: EnrollStudentsBulkDto,
+    @CurrentUser() actor: DecryptedUser,
+  ) {
+    return this.batchesService.enrollBulk(
+      id,
+      dto.studentIds,
       actor,
       dto.subscriptionId,
     );
