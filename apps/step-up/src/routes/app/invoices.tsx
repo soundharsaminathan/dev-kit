@@ -1,7 +1,9 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@dev-ui/components/avatar";
 import { Badge } from "@dev-ui/components/badge";
+import { Menu, MenuContent, MenuItem } from "@dev-ui/components/menu";
 import { Tab, TabList, TabPanel, Tabs } from "@dev-ui/components/tabs";
 import { useToastContext } from "@dev-ui/components/toast";
+import { Icon } from "@dev-ui/icons";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
@@ -74,7 +76,13 @@ function isUnpaid(status: Invoice["status"]) {
 function canRefund(invoice: Invoice) {
   if (invoice.status === "REFUNDED") return false;
   if (invoice.status !== "PAID") return false;
-  return (invoice.amount ?? 0) - (invoice.refundedAmount ?? 0) > 0;
+  if ((invoice.amount ?? 0) - (invoice.refundedAmount ?? 0) <= 0) return false;
+  if (!invoice.paidAt) return false;
+  const paidDate = new Date(invoice.paidAt);
+  const now = new Date();
+  const diffMs = now.getTime() - paidDate.getTime();
+  const diffDays = diffMs / (1000 * 60 * 60 * 24);
+  return diffDays <= 30;
 }
 
 type InvoiceCardProps = {
@@ -101,8 +109,7 @@ function InvoiceCard({
   const { toast } = useToastContext("InvoiceCard");
   const unpaid = isUnpaid(invoice.status);
   const refundedAmount = invoice.refundedAmount ?? 0;
-  const isFamily =
-    invoice.kind === "FAMILY" || invoice.kind === "COMBINED";
+  const isFamily = invoice.kind === "FAMILY" || invoice.kind === "COMBINED";
   const summary = invoice.familySummary;
   const metaParts = [
     invoice.kind === "COMBINED"
@@ -174,15 +181,17 @@ function InvoiceCard({
               Collect payment
             </TouchButton>
           ) : null}
-          {canRefund(invoice) && onRefund ? (
-            <TouchButton
-              size="md"
-              variant="danger"
-              data-testid={`refund-invoice-${invoice.id}`}
-              onClick={onRefund}
-            >
-              Refund
-            </TouchButton>
+          {!unpaid && canRefund(invoice) && onRefund ? (
+            <Menu>
+              <TouchButton size="md" variant="quiet" aria-label="More options">
+                <Icon name="more-vertical" className={staff.actionIcon} />
+              </TouchButton>
+              <MenuContent onAction={onRefund}>
+                <MenuItem id="refund" variant="danger">
+                  Refund
+                </MenuItem>
+              </MenuContent>
+            </Menu>
           ) : null}
           {!unpaid ? (
             <TouchButton
