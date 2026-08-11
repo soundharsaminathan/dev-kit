@@ -298,6 +298,7 @@ test.describe("admin (staff) smoke @smoke", () => {
       await page.goto("/app/invoices", { waitUntil: "domcontentloaded" });
       await waitForAppReady(page);
       await page.getByTestId(`refund-invoice-${invoice.id}`).click();
+      await page.getByRole("menuitem", { name: "Refund" }).click();
       await page
         .getByTestId("refund-amount-input")
         .fill(String(invoice.amount + 1));

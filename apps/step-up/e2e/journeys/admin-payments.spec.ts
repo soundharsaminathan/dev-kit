@@ -113,6 +113,7 @@ test.describe("admin payments @critical", () => {
     await waitForAppReady(page);
 
     await page.getByTestId(`refund-invoice-${invoice.id}`).click();
+    await page.getByRole("menuitem", { name: "Refund" }).click();
     await expect(page.getByTestId("refund-amount-input")).toHaveValue("");
     await page.getByTestId("refund-amount-input").fill("250");
     const [response] = await Promise.all([
