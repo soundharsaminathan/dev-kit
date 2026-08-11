@@ -5,9 +5,20 @@
   inset: 0;
   isolation: isolate;
   z-index: 50;
+  opacity: 1;
+  transition: opacity 500ms cubic-bezier(0.32, 0.72, 0, 1);
   --drawer-bleed: 2.5rem;
   --drawer-inset: 0px;
   --drawer-peek: 24px;
+
+  &[data-ending-style],
+  &[data-starting-style] {
+    opacity: 0;
+  }
+
+  &[data-swiping] {
+    transition-duration: 0ms;
+  }
 }
 
 .backdrop {
@@ -20,19 +31,6 @@
   pointer-events: auto;
   background-color: rgb(0 0 0 / 70%);
   opacity: calc(1 - var(--drawer-swipe-progress, 0));
-  transition: opacity 500ms cubic-bezier(0.32, 0.72, 0, 1);
-
-  &[data-ending-style] {
-    opacity: 0;
-  }
-
-  &[data-starting-style] {
-    opacity: 0;
-  }
-
-  &[data-swiping] {
-    transition-duration: 0ms;
-  }
 }
 
 .viewport {
@@ -315,5 +313,24 @@
 
   &[data-inactive] {
     opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .overlay,
+  .popup,
+  .indent,
+  .indentBackground {
+    transition-duration: 0ms;
+  }
+
+  .popup-top,
+  .popup-bottom,
+  .popup-left,
+  .popup-right {
+    &[data-ending-style],
+    &[data-starting-style] {
+      transform: none;
+    }
   }
 }

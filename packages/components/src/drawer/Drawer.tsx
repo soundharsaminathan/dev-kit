@@ -112,7 +112,8 @@ function getSwipeDelta(
 }
 
 function applySwipeStyle(
-  element: HTMLDivElement,
+  panel: HTMLDivElement,
+  overlay: HTMLDivElement | null,
   placement: DrawerPlacement,
   deltaX: number,
   deltaY: number,
@@ -132,17 +133,32 @@ function applySwipeStyle(
         ? dismissDelta
         : 0;
 
-  element.style.setProperty("--drawer-swipe-movement-x", `${movementX}px`);
-  element.style.setProperty("--drawer-swipe-movement-y", `${movementY}px`);
-  element.style.setProperty("--drawer-swipe-progress", String(progress));
-  element.dataset.swiping = "true";
+  panel.style.setProperty("--drawer-swipe-movement-x", `${movementX}px`);
+  panel.style.setProperty("--drawer-swipe-movement-y", `${movementY}px`);
+  panel.style.setProperty("--drawer-swipe-progress", String(progress));
+  panel.dataset.swiping = "true";
+
+  if (overlay) {
+    overlay.style.setProperty("--drawer-swipe-progress", String(progress));
+    overlay.dataset.swiping = "true";
+  }
 }
 
-function clearSwipeStyle(element: HTMLDivElement) {
-  element.style.removeProperty("--drawer-swipe-movement-x");
-  element.style.removeProperty("--drawer-swipe-movement-y");
-  element.style.removeProperty("--drawer-swipe-progress");
-  delete element.dataset.swiping;
+function clearSwipeStyle(
+  panel: HTMLDivElement,
+  overlay: HTMLDivElement | null,
+  { keepOffset = false }: { keepOffset?: boolean } = {},
+) {
+  if (!keepOffset) {
+    panel.style.removeProperty("--drawer-swipe-movement-x");
+    panel.style.removeProperty("--drawer-swipe-movement-y");
+    panel.style.removeProperty("--drawer-swipe-progress");
+    overlay?.style.removeProperty("--drawer-swipe-progress");
+  }
+  delete panel.dataset.swiping;
+  if (overlay) {
+    delete overlay.dataset.swiping;
+  }
 }
 
 function useDrawerSwipe({
@@ -150,11 +166,13 @@ function useDrawerSwipe({
   swipeToDismiss,
   onDismiss,
   panelRef,
+  overlayRef,
 }: {
   placement: DrawerPlacement;
   swipeToDismiss: boolean;
   onDismiss: () => void;
   panelRef: RefObject<HTMLDivElement | null>;
+  overlayRef: RefObject<HTMLDivElement | null>;
 }): DrawerMoveProps {
   const deltaRef = useRef({ x: 0, y: 0 });
 
@@ -165,8 +183,12 @@ function useDrawerSwipe({
       }
 
       const panel = panelRef.current;
+      const overlay = overlayRef.current;
       if (panel) {
         panel.dataset.swiping = "true";
+      }
+      if (overlay) {
+        overlay.dataset.swiping = "true";
       }
     },
     onMove({ deltaX, deltaY }) {
@@ -180,7 +202,7 @@ function useDrawerSwipe({
       if (!panel) {
         return;
       }
-      applySwipeStyle(panel, placement, deltaX, deltaY);
+      applySwipeStyle(panel, overlayRef.current, placement, deltaX, deltaY);
     },
     onMoveEnd() {
       if (!swipeToDismiss) {
@@ -192,13 +214,17 @@ function useDrawerSwipe({
         return;
       }
 
+      const overlay = overlayRef.current;
       const { x, y } = deltaRef.current;
       const dismissDelta = getSwipeDelta(placement, x, y);
-      clearSwipeStyle(panel);
 
       if (dismissDelta >= DISMISS_THRESHOLD) {
+        clearSwipeStyle(panel, overlay, { keepOffset: true });
         onDismiss();
+        return;
       }
+
+      clearSwipeStyle(panel, overlay);
     },
   });
 
@@ -218,6 +244,7 @@ function Drawer({
   style,
 }: DrawerProps) {
   const panelRef = useRef<HTMLDivElement>(null);
+  const overlayRef = useRef<HTMLDivElement>(null);
   const openFrameRef = useRef<number | undefined>(undefined);
   const state = useOverlayTriggerState({
     ...(isOpen !== undefined ? { isOpen } : {}),
@@ -245,6 +272,7 @@ function Drawer({
     swipeToDismiss,
     onDismiss: state.close,
     panelRef,
+    overlayRef,
   });
 
   useLayoutEffect(() => {
@@ -271,6 +299,17 @@ function Drawer({
       setIsEnding(true);
     }
   }, [state.isOpen]);
+
+  useLayoutEffect(() => {
+    if (!isEnding) {
+      return;
+    }
+
+    const panel = panelRef.current;
+    if (panel) {
+      void panel.getBoundingClientRect();
+    }
+  }, [isEnding]);
 
   useLayoutEffect(() => {
     if (!state.isOpen || !isPresent || isStarting) {
@@ -300,6 +339,7 @@ function Drawer({
     }
 
     const panel = panelRef.current;
+    const overlay = overlayRef.current;
     if (!panel) {
       setIsPresent(false);
       setIsEnding(false);
@@ -312,22 +352,28 @@ function Drawer({
         return;
       }
       finished = true;
+      clearSwipeStyle(panel, overlay);
       setIsPresent(false);
       setIsEnding(false);
     };
 
     const onTransitionEnd = (event: TransitionEvent) => {
-      if (event.target !== panel || event.propertyName !== "transform") {
+      if (event.target === panel && event.propertyName === "transform") {
+        finishExit();
         return;
       }
-      finishExit();
+      if (event.target === overlay && event.propertyName === "opacity") {
+        finishExit();
+      }
     };
 
     panel.addEventListener("transitionend", onTransitionEnd);
+    overlay?.addEventListener("transitionend", onTransitionEnd);
     const timeout = window.setTimeout(finishExit, EXIT_ANIMATION_MS);
 
     return () => {
       panel.removeEventListener("transitionend", onTransitionEnd);
+      overlay?.removeEventListener("transitionend", onTransitionEnd);
       window.clearTimeout(timeout);
     };
   }, [isEnding]);
@@ -340,21 +386,26 @@ function Drawer({
     );
   }
 
+  const openAttr = state.isOpen && !isEnding ? "" : undefined;
+
   return (
     <DrawerContext.Provider value={{ placement, moveProps: swipeProps }}>
       <DrawerPlacementContext.Provider value={placement}>
         <OverlayContainer>
           <Overlay>
-            <div className={styles.overlay}>
+            <div
+              ref={overlayRef}
+              className={styles.overlay}
+              data-starting-style={isStarting ? "" : undefined}
+              data-ending-style={isEnding ? "" : undefined}
+            >
               {isDismissable ? (
                 <button
                   type="button"
                   {...underlayProps}
                   aria-label="Dismiss"
                   className={styles.backdrop}
-                  data-open=""
-                  data-starting-style={isStarting ? "" : undefined}
-                  data-ending-style={isEnding ? "" : undefined}
+                  data-open={openAttr}
                   onClick={() => {
                     state.close();
                   }}
@@ -363,20 +414,18 @@ function Drawer({
                 <div
                   {...underlayProps}
                   className={styles.backdrop}
-                  data-open=""
-                  data-starting-style={isStarting ? "" : undefined}
-                  data-ending-style={isEnding ? "" : undefined}
+                  data-open={openAttr}
                 />
               )}
               <div
                 className={cn(styles.viewport, styles[`viewport-${placement}`])}
-                data-open=""
+                data-open={openAttr}
               >
                 <div
                   {...mergeProps(modalProps, swipeProps)}
                   ref={panelRef}
                   data-drawer=""
-                  data-open=""
+                  data-open={openAttr}
                   data-swipe-disabled={swipeToDismiss ? undefined : ""}
                   data-starting-style={isStarting ? "" : undefined}
                   data-ending-style={isEnding ? "" : undefined}

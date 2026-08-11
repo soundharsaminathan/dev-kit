@@ -26,6 +26,11 @@ function getBackdrop() {
     ?.querySelector('[class*="backdrop"]');
 }
 
+function getOverlay() {
+  const drawer = document.querySelector("[data-drawer]");
+  return drawer?.closest('[class*="overlay"]') as HTMLElement | null;
+}
+
 function getDrawerPanel() {
   return document.querySelector("[data-drawer]") as HTMLElement | null;
 }
@@ -545,8 +550,9 @@ describe("Drawer", () => {
     fireEvent.click(backdrop!);
 
     const panel = getDrawerPanel();
+    const overlay = getOverlay();
     expect(panel).toHaveAttribute("data-ending-style", "");
-    expect(backdrop).toHaveAttribute("data-ending-style", "");
+    expect(overlay).toHaveAttribute("data-ending-style", "");
 
     finishDrawerExit();
 
