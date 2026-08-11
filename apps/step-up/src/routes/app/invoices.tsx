@@ -183,7 +183,12 @@ function InvoiceCard({
           ) : null}
           {!unpaid && canRefund(invoice) && onRefund ? (
             <Menu>
-              <TouchButton size="md" variant="quiet" aria-label="More options">
+              <TouchButton
+                size="md"
+                variant="quiet"
+                aria-label="More options"
+                data-testid={`refund-invoice-${invoice.id}`}
+              >
                 <Icon name="more-vertical" className={staff.actionIcon} />
               </TouchButton>
               <MenuContent onAction={onRefund}>

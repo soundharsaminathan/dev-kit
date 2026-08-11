@@ -1,6 +1,6 @@
 import {
-  apiRequest,
   apiBaseUrl,
+  apiRequest,
   authFile,
   bearerFor,
   expect,
@@ -236,6 +236,7 @@ test.describe("admin (staff) smoke @smoke", () => {
       await page.goto("/app/invoices", { waitUntil: "domcontentloaded" });
       await waitForAppReady(page);
       await page.getByTestId(`refund-invoice-${invoice.id}`).click();
+      await page.getByRole("menuitem", { name: "Refund" }).click();
       await expect(page.getByTestId("refund-amount-input")).toHaveValue("");
       await page.getByTestId("refund-amount-input").fill("250");
       const [response] = await Promise.all([
@@ -365,9 +366,7 @@ test.describe("admin (staff) smoke @smoke", () => {
         page.getByTestId(`switch-batch-${SMOKE.beginnerBatchId}`),
       ).toBeVisible();
 
-      await page
-        .getByTestId(`unenroll-batch-${SMOKE.beginnerBatchId}`)
-        .click();
+      await page.getByTestId(`unenroll-batch-${SMOKE.beginnerBatchId}`).click();
       const [response] = await Promise.all([
         waitForApiResponse(page, {
           method: "POST",
