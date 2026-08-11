@@ -303,6 +303,18 @@ export function BatchRoster({ batchId, capacity, active }: BatchRosterProps) {
         </Badge>
         {isFull ? <Badge variant="danger">Full</Badge> : null}
         {!active ? <Badge variant="neutral">Inactive</Badge> : null}
+        {hasUpcomingSessions ? (
+          <Button
+            variant="quiet"
+            size="sm"
+            isDisabled={!canEnroll}
+            data-testid="enroll-open"
+            onClick={openEnrollSheet}
+            className={styles.enrollInline}
+          >
+            Add student
+          </Button>
+        ) : null}
       </div>
 
       <Tabs defaultSelectedKey="active" aria-label="Student roster">
@@ -326,17 +338,6 @@ export function BatchRoster({ batchId, capacity, active }: BatchRosterProps) {
               </div>
             ) : hasUpcomingSessions ? (
               <div className={staff.softPanel}>
-                <div className={styles.enrollActions}>
-                  <Button
-                    variant="quiet"
-                    size="sm"
-                    isDisabled={!canEnroll}
-                    data-testid="enroll-open"
-                    onClick={openEnrollSheet}
-                  >
-                    Add student
-                  </Button>
-                </div>
                 {!hasPlans ? (
                   <p className={styles.hint}>
                     Attach at least one individual package to this batch before
