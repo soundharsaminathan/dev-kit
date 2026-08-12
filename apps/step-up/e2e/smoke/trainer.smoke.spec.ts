@@ -2,6 +2,7 @@ import type { Page } from "@playwright/test";
 import {
   apiRequest,
   authFile,
+  enrollSeedBatchWithPrepaidInvoice,
   expect,
   SMOKE,
   SmokeDataCleanup,
@@ -123,32 +124,16 @@ test.describe("trainer smoke @smoke", () => {
     const cleanup = new SmokeDataCleanup();
     const sessionId = SMOKE.sessionAttendanceId;
     const stamp = Date.now();
-    const student = await apiRequest<{ id: string; name: string }>(
-      "OWNER",
-      "/users",
+    const { student, invoice } = await enrollSeedBatchWithPrepaidInvoice(
+      cleanup,
+      SMOKE.kidsBatchId,
       {
-        method: "POST",
-        body: JSON.stringify({
-          name: `Smoke Unpaid ${stamp}`,
-          email: `smoke-unpaid-${stamp}@stepup.dev`,
-          gender: "FEMALE",
-          ageRange: "UNDER_10",
-          styles: ["Hip Hop"],
-        }),
+        category: "KIDS",
+        name: `Smoke Unpaid ${stamp}`,
+        ageRange: "UNDER_10",
       },
     );
-    cleanup.trackStudent(student.id);
-
-    const enrollment = await apiRequest<{
-      invoice: { id: string; status: string };
-    }>("STAFF", `/batches/${SMOKE.kidsBatchId}/enroll`, {
-      method: "POST",
-      body: JSON.stringify({
-        studentId: student.id,
-        subscriptionId: SMOKE.kidPlanIds[0],
-      }),
-    });
-    expect(enrollment.invoice.status).toBe("PENDING");
+    expect(invoice.status).toBe("PENDING");
 
     const rosterBefore = await apiRequest<
       Array<{
@@ -211,32 +196,16 @@ test.describe("trainer smoke @smoke", () => {
     const cleanup = new SmokeDataCleanup();
     const sessionId = SMOKE.sessionAttendanceId;
     const stamp = Date.now();
-    const student = await apiRequest<{ id: string; name: string }>(
-      "OWNER",
-      "/users",
+    const { student, invoice } = await enrollSeedBatchWithPrepaidInvoice(
+      cleanup,
+      SMOKE.kidsBatchId,
       {
-        method: "POST",
-        body: JSON.stringify({
-          name: `Smoke After Pay ${stamp}`,
-          email: `smoke-after-pay-${stamp}@stepup.dev`,
-          gender: "FEMALE",
-          ageRange: "UNDER_10",
-          styles: ["Hip Hop"],
-        }),
+        category: "KIDS",
+        name: `Smoke After Pay ${stamp}`,
+        ageRange: "UNDER_10",
       },
     );
-    cleanup.trackStudent(student.id);
-
-    const enrollment = await apiRequest<{
-      invoice: { id: string; status: string };
-    }>("STAFF", `/batches/${SMOKE.kidsBatchId}/enroll`, {
-      method: "POST",
-      body: JSON.stringify({
-        studentId: student.id,
-        subscriptionId: SMOKE.kidPlanIds[0],
-      }),
-    });
-    expect(enrollment.invoice.status).toBe("PENDING");
+    expect(invoice.status).toBe("PENDING");
 
     const context = await browser.newContext({
       storageState: authFile("TRAINER"),
@@ -250,7 +219,7 @@ test.describe("trainer smoke @smoke", () => {
       await expect(page.getByText(student.name)).toBeVisible();
       await expect(page.getByText("Not paid").first()).toBeVisible();
 
-      await apiRequest("STAFF", `/billing/${enrollment.invoice.id}/paid`, {
+      await apiRequest("STAFF", `/billing/${invoice.id}/paid`, {
         method: "PATCH",
         body: JSON.stringify({ paymentMethod: "CASH" }),
       });
@@ -268,6 +237,75 @@ test.describe("trainer smoke @smoke", () => {
       expect(
         roster.find((entry) => entry.studentId === student.id)?.monthlyUnpaid,
       ).toBe(false);
+    } finally {
+      await context.close();
+      await cleanup.dispose();
+    }
+  });
+
+  test("mid-month enrollee marks present without unpaid confirm @smoke", async ({
+    browser,
+  }) => {
+    const cleanup = new SmokeDataCleanup();
+    const sessionId = SMOKE.sessionAttendanceId;
+    const stamp = Date.now();
+    const student = await apiRequest<{ id: string; name: string }>(
+      "OWNER",
+      "/users",
+      {
+        method: "POST",
+        body: JSON.stringify({
+          name: `Smoke Postpaid ${stamp}`,
+          email: `smoke-postpaid-${stamp}@stepup.dev`,
+          gender: "FEMALE",
+          ageRange: "UNDER_10",
+          styles: ["Hip Hop"],
+        }),
+      },
+    );
+    cleanup.trackStudent(student.id);
+
+    const enrollment = await apiRequest<{
+      invoice: { id: string } | null;
+      billingKind?: string;
+    }>("STAFF", `/batches/${SMOKE.kidsBatchId}/enroll`, {
+      method: "POST",
+      body: JSON.stringify({
+        studentId: student.id,
+        subscriptionId: SMOKE.kidPlanIds[0],
+      }),
+    });
+    expect(enrollment.invoice).toBeNull();
+    expect(enrollment.billingKind).toBe("postpaid");
+
+    const roster = await apiRequest<
+      Array<{ studentId: string; monthlyUnpaid?: boolean }>
+    >("TRAINER", `/attendance/session/${sessionId}/roster`);
+    expect(
+      roster.find((row) => row.studentId === student.id)?.monthlyUnpaid,
+    ).toBe(false);
+
+    const context = await browser.newContext({
+      storageState: authFile("TRAINER"),
+    });
+    const page = await context.newPage();
+    try {
+      await page.goto(`/app/sessions/${sessionId}/attendance`, {
+        waitUntil: "domcontentloaded",
+      });
+      await waitForAppReady(page);
+
+      const presentBtn = page.getByTestId(`mark-present-${student.id}`);
+      await expect(presentBtn).toBeVisible();
+      const [response] = await Promise.all([
+        waitForApiResponse(page, {
+          method: "POST",
+          pathIncludes: "/attendance/mark",
+        }),
+        presentBtn.click(),
+      ]);
+      expect(response.ok()).toBeTruthy();
+      await expect(page.getByTestId("confirm-unpaid-mark")).toHaveCount(0);
     } finally {
       await context.close();
       await cleanup.dispose();

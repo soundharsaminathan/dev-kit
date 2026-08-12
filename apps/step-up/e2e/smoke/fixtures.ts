@@ -282,6 +282,107 @@ export class SmokeDataCleanup {
   }
 }
 
+export async function createFutureScheduleBatch(
+  cleanup: SmokeDataCleanup,
+  options: { category?: "ADULTS" | "KIDS" } = {},
+) {
+  const category = options.category ?? "ADULTS";
+  const stamp = Date.now();
+  const hour = String(5 + (stamp % 8)).padStart(2, "0");
+  const minute = String(stamp % 60).padStart(2, "0");
+  const endMinute = String((Number(minute) + 45) % 60).padStart(2, "0");
+  const endHour = String(
+    Number(hour) + (Number(minute) + 45 >= 60 ? 1 : 0),
+  ).padStart(2, "0");
+  const created = await apiRequest<{ id: string }>("STAFF", "/batches", {
+    method: "POST",
+    body: JSON.stringify({
+      studioId: SMOKE.studioId,
+      name: `Smoke Prepaid Batch ${stamp}`,
+      coverImageUrl:
+        "https://images.unsplash.com/photo-1518611012118-696072aa579a?w=800&q=80",
+      category,
+      branchId: SMOKE.branchMainId,
+      trainerIds: [SMOKE.users.TRAINER.id],
+      danceCategories: [{ name: "Hip Hop", description: "Prepaid join batch" }],
+      scheduleJson: {
+        frequency: "WEEKLY",
+        weekdays: [stamp % 7],
+        startDate: "2027-01-03",
+        endDate: "2027-03-28",
+        startTime: `${hour}:${minute}`,
+        endTime: `${endHour}:${endMinute}`,
+        utcOffsetMinutes: 0,
+      },
+      capacity: 8,
+      enrollmentMode: "SELF_JOIN",
+      subscriptionIds:
+        category === "KIDS" ? [...SMOKE.kidPlanIds] : [...SMOKE.adultPlanIds],
+      active: true,
+      certificationEnabled: false,
+    }),
+  });
+  cleanup.trackBatch(created.id);
+  return created;
+}
+
+export async function enrollPrepaid(
+  cleanup: SmokeDataCleanup,
+  options: {
+    category?: "ADULTS" | "KIDS";
+    name?: string;
+    ageRange?: string;
+  } = {},
+) {
+  const category = options.category ?? "ADULTS";
+  const stamp = Date.now();
+  const student = await apiRequest<{ id: string; name: string }>(
+    "OWNER",
+    "/users",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        name: options.name ?? `Smoke Pay ${stamp}`,
+        email: `smoke-pay-${stamp}@stepup.dev`,
+        gender: "FEMALE",
+        ageRange: options.ageRange ?? "TWENTY_TO_FORTY",
+        styles: ["Hip Hop"],
+      }),
+    },
+  );
+  cleanup.trackStudent(student.id);
+  const batch = await createFutureScheduleBatch(cleanup, { category });
+  const planId =
+    category === "KIDS" ? SMOKE.kidPlanIds[0] : SMOKE.adultPlanIds[0];
+  const enrollment = await apiRequest<{
+    invoice: { id: string; status: string; amount: number } | null;
+  }>("STAFF", `/batches/${batch.id}/enroll`, {
+    method: "POST",
+    body: JSON.stringify({
+      studentId: student.id,
+      subscriptionId: planId,
+    }),
+  });
+  expect(enrollment.invoice?.status).toBe("PENDING");
+  return { student, invoice: enrollment.invoice!, batch };
+}
+
+export async function enrollSeedBatchWithPrepaidInvoice(
+  cleanup: SmokeDataCleanup,
+  targetBatchId: string,
+  options: { category?: "ADULTS" | "KIDS"; name?: string; ageRange?: string } = {},
+) {
+  const created = await enrollPrepaid(cleanup, options);
+  await apiRequest("STAFF", `/batches/${created.batch.id}/switch`, {
+    method: "POST",
+    body: JSON.stringify({
+      studentId: created.student.id,
+      toBatchId: targetBatchId,
+    }),
+  });
+  return created;
+}
+
 type Fixtures = {
   asRole: (role: SmokeRole) => Promise<Page>;
 };

@@ -8,28 +8,16 @@ import {
   waitForAppReady,
 } from "../fixtures";
 import { SEED } from "../fixtures/seed";
+import {
+  createPendingInvoiceViaEnroll,
+  enrollSeedBatchWithPrepaidInvoice,
+  TestDataCleanup,
+} from "../http/helpers";
 
 async function createPendingInvoice() {
-  const student = await apiRequest<{ id: string }>("OWNER", "/users", {
-    method: "POST",
-    body: JSON.stringify({
-      name: `Pay Student ${Date.now()}`,
-      email: `pay-student-${Date.now()}@stepup.dev`,
-      gender: "FEMALE",
-      ageRange: "TWENTY_TO_FORTY",
-      styles: ["Hip Hop"],
-    }),
-  });
-  const enrollment = await apiRequest<{
-    invoice: { id: string; status: string };
-  }>("STAFF", `/batches/${SEED.beginnerBatchId}/enroll`, {
-    method: "POST",
-    body: JSON.stringify({
-      studentId: student.id,
-      subscriptionId: SEED.adultPlanIds[0],
-    }),
-  });
-  return enrollment.invoice;
+  const cleanup = new TestDataCleanup();
+  const { invoice } = await createPendingInvoiceViaEnroll(cleanup);
+  return invoice;
 }
 
 async function createFamilyKid(name: string) {
@@ -45,16 +33,13 @@ async function createFamilyKid(name: string) {
 }
 
 async function enrollKidPending(studentId: string) {
-  const enrollment = await apiRequest<{
-    invoice: { id: string; status: string };
-  }>("STAFF", `/batches/${SEED.kidsBatchId}/enroll`, {
-    method: "POST",
-    body: JSON.stringify({
-      studentId,
-      subscriptionId: SEED.kidPlanIds[0],
-    }),
-  });
-  return enrollment.invoice;
+  const cleanup = new TestDataCleanup();
+  const { invoice } = await enrollSeedBatchWithPrepaidInvoice(
+    cleanup,
+    SEED.kidsBatchId,
+    { category: "KIDS", studentId },
+  );
+  return invoice;
 }
 
 test.describe("admin payments @critical", () => {

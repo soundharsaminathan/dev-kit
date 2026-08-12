@@ -244,7 +244,8 @@ export function BatchRoster({ batchId, capacity, active }: BatchRosterProps) {
       const count = input.students.length;
       toast({
         title: count === 1 ? "Student enrolled" : `${count} students enrolled`,
-        description: "Invoice created. Collect payment from Invoices.",
+        description:
+          "They’re on the roster. A prepaid invoice is created when they join on the 1st or before the first session; otherwise the first bill is at month-end.",
         variant: "success",
       });
       closeEnrollSheet();

@@ -1,5 +1,6 @@
 import { Badge } from "@dev-ui/components/badge";
-import { useQuery } from "@tanstack/react-query";
+import { useToastContext } from "@dev-ui/components/toast";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { useApi } from "@/lib/api-context";
 import { fetchAllPages } from "@/lib/api-page";
@@ -17,6 +18,10 @@ type Invoice = {
   status: "PENDING" | "PAID" | "OVERDUE" | "REFUNDED";
   dueDate: string | null;
   batchName?: string | null;
+  chargeType?: "POSTPAID_PRORATED" | "PREPAID_FULL";
+  attendedSessionCount?: number | null;
+  billedSessionCount?: number | null;
+  canConvertToQuarterly?: boolean;
 };
 
 export const Route = createFileRoute("/me/invoices")({
@@ -25,6 +30,8 @@ export const Route = createFileRoute("/me/invoices")({
 
 function MeInvoicesPage() {
   const api = useApi();
+  const queryClient = useQueryClient();
+  const { toast } = useToastContext("MeInvoicesPage");
   const { studentId } = useActiveStudentContext();
 
   const query = useQuery({
@@ -39,6 +46,29 @@ function MeInvoicesPage() {
         >(`/billing/student/${studentId}?${params.toString()}`);
       }),
     enabled: Boolean(studentId),
+  });
+
+  const convertToQuarterly = useMutation({
+    mutationFn: (invoiceId: string) =>
+      api.post(`/billing/${invoiceId}/convert-quarterly`),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: ["invoices", "student", studentId],
+      });
+      toast({
+        title: "Converted to quarterly",
+        description: "Your next invoice now covers three months.",
+        variant: "success",
+      });
+    },
+    onError: (error: unknown) => {
+      toast({
+        title: "Couldn’t convert to quarterly",
+        description:
+          error instanceof Error ? error.message : "Could not convert invoice.",
+        variant: "error",
+      });
+    },
   });
 
   return (
@@ -90,6 +120,13 @@ function MeInvoicesPage() {
                         ? `Due ${new Date(invoice.dueDate).toLocaleDateString()}`
                         : "No due date"}
                     </p>
+                    {invoice.chargeType === "POSTPAID_PRORATED" &&
+                    invoice.billedSessionCount != null ? (
+                      <p className={styles.due}>
+                        {invoice.attendedSessionCount ?? 0} /{" "}
+                        {invoice.billedSessionCount} sessions
+                      </p>
+                    ) : null}
                   </div>
                   <Badge
                     variant={
@@ -110,6 +147,19 @@ function MeInvoicesPage() {
                     <TouchButton variant="quiet" isDisabled>
                       Pay at front desk
                     </TouchButton>
+                    {invoice.canConvertToQuarterly ? (
+                      <TouchButton
+                        variant="quiet"
+                        data-testid={`convert-quarterly-${invoice.id}`}
+                        isPending={
+                          convertToQuarterly.isPending &&
+                          convertToQuarterly.variables === invoice.id
+                        }
+                        onClick={() => convertToQuarterly.mutate(invoice.id)}
+                      >
+                        Convert to quarterly
+                      </TouchButton>
+                    ) : null}
                   </div>
                 ) : null}
               </div>

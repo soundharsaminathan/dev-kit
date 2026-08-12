@@ -4,7 +4,9 @@ import {
   BillingCadence,
   FamilyPack,
   IndividualAudience,
+  InvoiceChargeType,
   InvoiceStatus,
+  MembershipBillingPhase,
   MembershipSeatRole,
   MembershipStatus,
   SubscriptionKind,
@@ -15,8 +17,11 @@ import {
   computePlatformFee,
   getNextPeriodStart,
   getPeriodEnd,
+  invoiceDueDate,
   isMonthlyPlanUnpaid,
+  isPrepaidAtJoin,
   membershipCoversBatch,
+  prorateByAttendance,
   seatsForCatalog,
   seatsForFamilyPack,
 } from "./membership-helpers";
@@ -151,5 +156,86 @@ describe("membership-helpers", () => {
         invoiceStatuses: [InvoiceStatus.OVERDUE],
       }),
     ).toBe(true);
+
+    expect(
+      isMonthlyPlanUnpaid({
+        billingCadence: BillingCadence.MONTHLY,
+        membershipStatus: MembershipStatus.ACTIVE,
+        invoiceStatuses: [],
+        billingPhase: MembershipBillingPhase.FIRST_POSTPAID,
+      }),
+    ).toBe(false);
+
+    expect(
+      isMonthlyPlanUnpaid({
+        billingCadence: BillingCadence.MONTHLY,
+        membershipStatus: MembershipStatus.EXPIRED,
+        invoiceStatuses: [],
+        billingPhase: MembershipBillingPhase.FIRST_POSTPAID,
+      }),
+    ).toBe(false);
+
+    expect(
+      isMonthlyPlanUnpaid({
+        billingCadence: BillingCadence.MONTHLY,
+        membershipStatus: MembershipStatus.ACTIVE,
+        invoiceStatuses: [InvoiceStatus.PENDING],
+        billingPhase: MembershipBillingPhase.FIRST_POSTPAID,
+      }),
+    ).toBe(true);
+  });
+
+  it("treats join on the 1st or at/before the first session as prepaid", () => {
+    const firstSession = new Date(Date.UTC(2026, 7, 4, 10, 0, 0));
+    expect(
+      isPrepaidAtJoin({
+        joinedAt: new Date(Date.UTC(2026, 7, 1, 12, 0, 0)),
+        firstSessionStartsAt: firstSession,
+      }),
+    ).toBe(true);
+    expect(
+      isPrepaidAtJoin({
+        joinedAt: new Date(Date.UTC(2026, 7, 4, 9, 0, 0)),
+        firstSessionStartsAt: firstSession,
+      }),
+    ).toBe(true);
+    expect(
+      isPrepaidAtJoin({
+        joinedAt: new Date(Date.UTC(2026, 7, 15, 12, 0, 0)),
+        firstSessionStartsAt: firstSession,
+      }),
+    ).toBe(false);
+    expect(
+      isPrepaidAtJoin({
+        joinedAt: new Date(Date.UTC(2026, 7, 15, 12, 0, 0)),
+        firstSessionStartsAt: null,
+      }),
+    ).toBe(true);
+  });
+
+  it("prorates the first month from attendance", () => {
+    expect(prorateByAttendance(3500, 5, 10)).toBe(1750);
+    expect(prorateByAttendance(3500, 0, 10)).toBe(0);
+    expect(prorateByAttendance(3500, 3, 0)).toBe(0);
+    expect(prorateByAttendance(1000, 12, 10)).toBe(1000);
+  });
+
+  it("uses period end as due date only for postpaid usage invoices", () => {
+    const start = new Date(Date.UTC(2026, 7, 1));
+    const end = new Date(Date.UTC(2026, 7, 31, 23, 59, 59, 999));
+    expect(
+      invoiceDueDate({
+        chargeType: InvoiceChargeType.PREPAID_FULL,
+        periodStart: start,
+        periodEnd: end,
+      })?.toISOString(),
+    ).toBe(start.toISOString());
+    expect(
+      invoiceDueDate({
+        chargeType: InvoiceChargeType.POSTPAID_PRORATED,
+        periodStart: start,
+        periodEnd: end,
+      })?.toISOString(),
+    ).toBe(end.toISOString());
   });
 });

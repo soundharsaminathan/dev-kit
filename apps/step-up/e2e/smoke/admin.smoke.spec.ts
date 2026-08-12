@@ -3,6 +3,7 @@ import {
   apiRequest,
   authFile,
   bearerFor,
+  enrollPrepaid,
   expect,
   SMOKE,
   SmokeDataCleanup,
@@ -117,34 +118,17 @@ test.describe("admin (staff) smoke @smoke", () => {
     const cleanup = new SmokeDataCleanup();
     try {
       const stamp = Date.now();
-      const student = await apiRequest<{ id: string }>("OWNER", "/users", {
-        method: "POST",
-        body: JSON.stringify({
-          name: `Smoke Paid Twice ${stamp}`,
-          email: `smoke-paid-twice-${stamp}@stepup.dev`,
-          gender: "FEMALE",
-          ageRange: "TWENTY_TO_FORTY",
-          styles: ["Hip Hop"],
-        }),
+      const { invoice } = await enrollPrepaid(cleanup, {
+        name: `Smoke Paid Twice ${stamp}`,
       });
-      cleanup.trackStudent(student.id);
-      const enrollment = await apiRequest<{
-        invoice: { id: string; status: string };
-      }>("STAFF", `/batches/${SMOKE.beginnerBatchId}/enroll`, {
-        method: "POST",
-        body: JSON.stringify({
-          studentId: student.id,
-          subscriptionId: SMOKE.adultPlanIds[0],
-        }),
-      });
-      await apiRequest("STAFF", `/billing/${enrollment.invoice.id}/paid`, {
+      await apiRequest("STAFF", `/billing/${invoice.id}/paid`, {
         method: "PATCH",
         body: JSON.stringify({ paymentMethod: "CASH" }),
       });
 
       const token = await bearerFor("STAFF");
       const response = await fetch(
-        `${apiBaseUrl()}/billing/${enrollment.invoice.id}/paid`,
+        `${apiBaseUrl()}/billing/${invoice.id}/paid`,
         {
           method: "PATCH",
           headers: {
@@ -163,27 +147,9 @@ test.describe("admin (staff) smoke @smoke", () => {
 
   test("staff marks invoice paid @smoke", async ({ browser }) => {
     const cleanup = new SmokeDataCleanup();
-    const student = await apiRequest<{ id: string }>("OWNER", "/users", {
-      method: "POST",
-      body: JSON.stringify({
-        name: `Smoke Pay ${Date.now()}`,
-        email: `smoke-pay-${Date.now()}@stepup.dev`,
-        gender: "FEMALE",
-        ageRange: "TWENTY_TO_FORTY",
-        styles: ["Hip Hop"],
-      }),
+    const { invoice } = await enrollPrepaid(cleanup, {
+      name: `Smoke Pay ${Date.now()}`,
     });
-    cleanup.trackStudent(student.id);
-    const enrollment = await apiRequest<{
-      invoice: { id: string; status: string };
-    }>("STAFF", `/batches/${SMOKE.beginnerBatchId}/enroll`, {
-      method: "POST",
-      body: JSON.stringify({
-        studentId: student.id,
-        subscriptionId: SMOKE.adultPlanIds[0],
-      }),
-    });
-    const invoice = enrollment.invoice;
 
     const context = await browser.newContext({
       storageState: authFile("STAFF"),
@@ -221,27 +187,9 @@ test.describe("admin (staff) smoke @smoke", () => {
     browser,
   }) => {
     const cleanup = new SmokeDataCleanup();
-    const student = await apiRequest<{ id: string }>("OWNER", "/users", {
-      method: "POST",
-      body: JSON.stringify({
-        name: `Smoke Refund ${Date.now()}`,
-        email: `smoke-refund-${Date.now()}@stepup.dev`,
-        gender: "FEMALE",
-        ageRange: "TWENTY_TO_FORTY",
-        styles: ["Hip Hop"],
-      }),
+    const { invoice } = await enrollPrepaid(cleanup, {
+      name: `Smoke Refund ${Date.now()}`,
     });
-    cleanup.trackStudent(student.id);
-    const enrollment = await apiRequest<{
-      invoice: { id: string; status: string; amount: number };
-    }>("STAFF", `/batches/${SMOKE.beginnerBatchId}/enroll`, {
-      method: "POST",
-      body: JSON.stringify({
-        studentId: student.id,
-        subscriptionId: SMOKE.adultPlanIds[0],
-      }),
-    });
-    const invoice = enrollment.invoice;
     await apiRequest("STAFF", `/billing/${invoice.id}/paid`, {
       method: "PATCH",
       body: JSON.stringify({ paymentMethod: "CASH" }),
@@ -282,27 +230,9 @@ test.describe("admin (staff) smoke @smoke", () => {
     browser,
   }) => {
     const cleanup = new SmokeDataCleanup();
-    const student = await apiRequest<{ id: string }>("OWNER", "/users", {
-      method: "POST",
-      body: JSON.stringify({
-        name: `Smoke Refund Cap ${Date.now()}`,
-        email: `smoke-refund-cap-${Date.now()}@stepup.dev`,
-        gender: "FEMALE",
-        ageRange: "TWENTY_TO_FORTY",
-        styles: ["Hip Hop"],
-      }),
+    const { invoice } = await enrollPrepaid(cleanup, {
+      name: `Smoke Refund Cap ${Date.now()}`,
     });
-    cleanup.trackStudent(student.id);
-    const enrollment = await apiRequest<{
-      invoice: { id: string; status: string; amount: number };
-    }>("STAFF", `/batches/${SMOKE.beginnerBatchId}/enroll`, {
-      method: "POST",
-      body: JSON.stringify({
-        studentId: student.id,
-        subscriptionId: SMOKE.adultPlanIds[0],
-      }),
-    });
-    const invoice = enrollment.invoice;
     await apiRequest("STAFF", `/billing/${invoice.id}/paid`, {
       method: "PATCH",
       body: JSON.stringify({ paymentMethod: "CASH" }),
@@ -353,21 +283,12 @@ test.describe("admin (staff) smoke @smoke", () => {
       }),
     });
     cleanup.trackStudent(student.id);
-    // Inactive roster only includes ENDED enrollments that still have an active
-    // membership month — enroll + mark paid, then unenroll.
-    const enrollment = await apiRequest<{
-      invoice: { id: string; status: string };
-    }>("STAFF", `/batches/${SMOKE.beginnerBatchId}/enroll`, {
+    await apiRequest("STAFF", `/batches/${SMOKE.beginnerBatchId}/enroll`, {
       method: "POST",
       body: JSON.stringify({
         studentId: student.id,
         subscriptionId: SMOKE.adultPlanIds[0],
       }),
-    });
-    expect(enrollment.invoice.status).toBe("PENDING");
-    await apiRequest("STAFF", `/billing/${enrollment.invoice.id}/paid`, {
-      method: "PATCH",
-      body: JSON.stringify({ paymentMethod: "CASH" }),
     });
 
     const context = await browser.newContext({

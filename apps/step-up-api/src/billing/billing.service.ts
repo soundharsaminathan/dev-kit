@@ -15,7 +15,7 @@ import {
   UserRole,
 } from "@prisma/client";
 import { EmailService } from "../email/email.service";
-import { computePlatformFee } from "../memberships/membership-helpers";
+import { computePlatformFee, invoiceDueDate } from "../memberships/membership-helpers";
 import { MembershipsService } from "../memberships/memberships.service";
 import { NotificationsService } from "../notifications/notifications.service";
 import { RazorpayService } from "../payments/razorpay.service";
@@ -144,6 +144,26 @@ export class BillingService {
     private readonly notifications: NotificationsService,
     @Inject(EmailService) private readonly email: EmailService,
   ) {}
+
+  async convertToQuarterly(actor: DecryptedUser, invoiceId: string) {
+    const invoice = await this.prisma.invoice.findUnique({
+      where: { id: invoiceId },
+      select: { id: true, studentId: true, studioId: true },
+    });
+    if (!invoice) {
+      throw new NotFoundException("Invoice not found");
+    }
+    await this.assertCanAccessStudentInvoices(actor, invoice.studentId);
+    if (
+      actor.role !== UserRole.OWNER &&
+      actor.role !== UserRole.STAFF &&
+      actor.role !== UserRole.STUDENT &&
+      actor.role !== UserRole.PARENT
+    ) {
+      throw new ForbiddenException("Cannot convert this invoice");
+    }
+    return this.memberships.convertUpcomingInvoiceToQuarterly(invoiceId);
+  }
 
   async listByStudio(studioId: string) {
     const invoices = await this.prisma.invoice.findMany({
@@ -364,7 +384,12 @@ export class BillingService {
       return {
         ...invoice,
         amount: Number(invoice.amount),
-        dueDate: invoice.membership?.periodStart?.toISOString() ?? null,
+        dueDate:
+          invoiceDueDate({
+            chargeType: invoice.chargeType,
+            periodStart: invoice.membership?.periodStart,
+            periodEnd: invoice.membership?.periodEnd,
+          })?.toISOString() ?? null,
         batchId,
         batchName,
         purchaseMeta,
@@ -1864,7 +1889,8 @@ function buildPendingPayments(input: {
     purchaseMeta: unknown;
     combineMeta?: unknown;
     student: User;
-    membership: { periodStart: Date } | null;
+    membership: { periodStart: Date; periodEnd?: Date } | null;
+    chargeType?: import("@prisma/client").InvoiceChargeType;
   }>;
   studentBatchMap: Map<string, Set<string>>;
   batchNameById: Map<string, string>;
@@ -1889,7 +1915,12 @@ function buildPendingPayments(input: {
       studentName: input.decryptUser(invoice.student).name,
       amount: Number(invoice.amount),
       status: invoice.status as "PENDING" | "OVERDUE",
-      dueDate: invoice.membership?.periodStart?.toISOString() ?? null,
+      dueDate:
+        invoiceDueDate({
+          chargeType: invoice.chargeType,
+          periodStart: invoice.membership?.periodStart,
+          periodEnd: invoice.membership?.periodEnd,
+        })?.toISOString() ?? null,
       batchId,
       batchName,
     };

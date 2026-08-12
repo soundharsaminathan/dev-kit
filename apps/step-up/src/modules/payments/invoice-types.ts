@@ -31,7 +31,13 @@ export type Invoice = {
   student?: { name: string };
   membership?: {
     periodStart?: string | null;
+    periodEnd?: string | null;
   } | null;
+  chargeType?: "POSTPAID_PRORATED" | "PREPAID_FULL";
+  attendedSessionCount?: number | null;
+  billedSessionCount?: number | null;
+  canConvertToQuarterly?: boolean;
+  dueDate?: string | null;
   familySummary?: {
     planName: string | null;
     adultCount: number | null;

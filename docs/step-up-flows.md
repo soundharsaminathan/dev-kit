@@ -2,6 +2,8 @@
 
 > **Purpose**: Detailed flow reference for agents working on the Step Up codebase. Covers Payments, Enrollments, and User Lifecycle.
 
+**Billing calendar** (when invoices are created, mid-month proration, switch vs new joiner): [step-up-billing-calendar.md](./step-up-billing-calendar.md)
+
 ---
 
 ## Table of Contents
@@ -17,7 +19,11 @@
 
 ### 1.1 Overview
 
-The payments system revolves around **Invoices** — the atomic billing unit. Invoices are generated automatically by the backend when subscriptions bill, trials convert, or staff create them manually.
+The payments system revolves around **Invoices** — the atomic billing unit. See [step-up-billing-calendar.md](./step-up-billing-calendar.md) for when invoices are created.
+
+- Join on the 1st or before the batch’s first session → prepaid invoice at enroll/checkout
+- Mid-month new joiner → enroll now, usage + next 1st-of-month prepaid at month-end
+- Switch (or unenroll then enroll a different batch the same month) → keep the current invoice
 
 **Invoice Kinds**:
 | Kind | Description | Source |
@@ -280,6 +286,7 @@ Set at batch creation (`/app/batches/new`) or edit (`/app/batches/$id`).
    - Returns eligible target batches (same category, open seats, matching plan by default)
 3. Select target → `POST /batches/:id/switch { studentId, toBatchId, includeAllPrices? }`
 4. On success: invalidates both batches + student profile + batches list
+5. No new invoice this month; next 1st-of-month invoice follows the destination batch (see billing calendar)
 
 ---
 
@@ -325,6 +332,7 @@ Set at batch creation (`/app/batches/new`) or edit (`/app/batches/$id`).
 - Individual plans only (`kind: "INDIVIDUAL"`)
 - Family plans handled studio-wide via Invoices
 - On success: if invoice `PENDING` → redirect to `/me/checkout/invoice/$invoiceId`
+- Mid-month new join: enrolled immediately, no checkout; first bill is at month-end
 - Invalidates: batch, discover batches, memberships
 
 #### B. Book Trial / Open Seat / Private

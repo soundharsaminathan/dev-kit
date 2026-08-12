@@ -8,6 +8,7 @@ import {
   waitForAppReady,
 } from "../fixtures";
 import { SEED } from "../fixtures/seed";
+import { enrollSeedBatchWithPrepaidInvoice } from "../http/helpers";
 
 test.describe("trainer attendance UI @critical", () => {
   test("trainer marks student present through UI @critical", async ({
@@ -73,32 +74,15 @@ test.describe("trainer attendance UI @critical", () => {
     const sessionId = SEED.sessionAttendanceId;
     const stamp = Date.now();
     try {
-      const student = await apiRequest<{ id: string; name: string }>(
-        "OWNER",
-        "/users",
+      const { student, invoice } = await enrollSeedBatchWithPrepaidInvoice(
+        cleanup,
+        SEED.kidsBatchId,
         {
-          method: "POST",
-          body: JSON.stringify({
-            name: `Critical Unpaid ${stamp}`,
-            email: `critical-unpaid-${stamp}@stepup.dev`,
-            gender: "FEMALE",
-            ageRange: "UNDER_10",
-            styles: ["Hip Hop"],
-          }),
+          category: "KIDS",
+          studentName: `Critical Unpaid ${stamp}`,
         },
       );
-      cleanup.trackStudent(student.id);
-
-      const enrollment = await apiRequest<{
-        invoice: { id: string; status: string };
-      }>("STAFF", `/batches/${SEED.kidsBatchId}/enroll`, {
-        method: "POST",
-        body: JSON.stringify({
-          studentId: student.id,
-          subscriptionId: SEED.kidPlanIds[0],
-        }),
-      });
-      expect(enrollment.invoice.status).toBe("PENDING");
+      expect(invoice.status).toBe("PENDING");
 
       const rosterBefore = await apiRequest<
         Array<{ studentId: string; monthlyUnpaid?: boolean }>

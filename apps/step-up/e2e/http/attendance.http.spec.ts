@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 import { SEED } from "../fixtures/seed";
 import {
   createHttpStudent,
+  enrollSeedBatchWithPrepaidInvoice,
   expectOk,
   expectStatus,
   TestDataCleanup,
@@ -44,17 +45,12 @@ test.describe("attendance HTTP @http", () => {
     const cleanup = new TestDataCleanup();
     const sessionId = SEED.sessionAttendanceId;
     try {
-      const student = await createHttpStudent("HTTP Unpaid Roster", cleanup);
-      const enrollment = await expectOk<{
-        invoice: { id: string; status: string };
-      }>("STAFF", `/batches/${SEED.kidsBatchId}/enroll`, {
-        method: "POST",
-        body: JSON.stringify({
-          studentId: student.id,
-          subscriptionId: SEED.kidPlanIds[0],
-        }),
-      });
-      expect(enrollment.invoice.status).toBe("PENDING");
+      const { student, invoice } = await enrollSeedBatchWithPrepaidInvoice(
+        cleanup,
+        SEED.kidsBatchId,
+        { category: "KIDS", studentName: "HTTP Unpaid Roster" },
+      );
+      expect(invoice.status).toBe("PENDING");
 
       const roster = await expectOk<
         Array<{
@@ -87,13 +83,13 @@ test.describe("attendance HTTP @http", () => {
     }
   });
 
-  test("mark-paid clears monthlyUnpaid on attendance roster @http", async () => {
+  test("mid-month enroll is not monthlyUnpaid and mark does not need an invoice @http", async () => {
     const cleanup = new TestDataCleanup();
     const sessionId = SEED.sessionAttendanceId;
     try {
-      const student = await createHttpStudent("HTTP After Pay Roster", cleanup);
+      const student = await createHttpStudent("HTTP Postpaid Roster", cleanup);
       const enrollment = await expectOk<{
-        invoice: { id: string; status: string };
+        invoice: { id: string } | null;
       }>("STAFF", `/batches/${SEED.kidsBatchId}/enroll`, {
         method: "POST",
         body: JSON.stringify({
@@ -101,7 +97,44 @@ test.describe("attendance HTTP @http", () => {
           subscriptionId: SEED.kidPlanIds[0],
         }),
       });
-      expect(enrollment.invoice.status).toBe("PENDING");
+      expect(enrollment.invoice).toBeNull();
+
+      const roster = await expectOk<
+        Array<{ studentId: string; monthlyUnpaid?: boolean }>
+      >("TRAINER", `/attendance/session/${sessionId}/roster`);
+      expect(
+        roster.find((row) => row.studentId === student.id)?.monthlyUnpaid,
+      ).toBe(false);
+
+      const marked = await expectOk<{ status: string }>(
+        "TRAINER",
+        "/attendance/mark",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            sessionId,
+            studentId: student.id,
+            status: "PRESENT",
+            source: "TRAINER",
+          }),
+        },
+      );
+      expect(marked.status).toBe("PRESENT");
+    } finally {
+      await cleanup.dispose();
+    }
+  });
+
+  test("mark-paid clears monthlyUnpaid on attendance roster @http", async () => {
+    const cleanup = new TestDataCleanup();
+    const sessionId = SEED.sessionAttendanceId;
+    try {
+      const { student, invoice } = await enrollSeedBatchWithPrepaidInvoice(
+        cleanup,
+        SEED.kidsBatchId,
+        { category: "KIDS", studentName: "HTTP After Pay Roster" },
+      );
+      expect(invoice.status).toBe("PENDING");
 
       const unpaidRoster = await expectOk<
         Array<{ studentId: string; monthlyUnpaid?: boolean }>
@@ -110,7 +143,7 @@ test.describe("attendance HTTP @http", () => {
         unpaidRoster.find((row) => row.studentId === student.id)?.monthlyUnpaid,
       ).toBe(true);
 
-      await expectOk("STAFF", `/billing/${enrollment.invoice.id}/paid`, {
+      await expectOk("STAFF", `/billing/${invoice.id}/paid`, {
         method: "PATCH",
         body: JSON.stringify({ paymentMethod: "CASH" }),
       });

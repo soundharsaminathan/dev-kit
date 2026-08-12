@@ -1,6 +1,11 @@
 import { expect, test } from "@playwright/test";
 import { SEED } from "../fixtures/seed";
-import { expectOk, expectStatus, TestDataCleanup } from "./helpers";
+import {
+  enrollSeedBatchWithPrepaidInvoice,
+  expectOk,
+  expectStatus,
+  TestDataCleanup,
+} from "./helpers";
 
 test.describe("memberships HTTP @http", () => {
   test("removed no-invoice shortcuts return 404 @http", async () => {
@@ -127,26 +132,22 @@ test.describe("memberships HTTP @http", () => {
       );
       cleanup.trackStudent(depB.id);
 
-      const invA = await expectOk<{ invoice: { id: string; amount: number } }>(
-        "STAFF",
-        `/batches/${SEED.kidsBatchId}/enroll`,
+      const invA = await enrollSeedBatchWithPrepaidInvoice(
+        cleanup,
+        SEED.kidsBatchId,
         {
-          method: "POST",
-          body: JSON.stringify({
-            studentId: depA.id,
-            subscriptionId: SEED.kidPlanIds[0],
-          }),
+          category: "KIDS",
+          studentId: depA.id,
+          planId: SEED.kidPlanIds[0],
         },
       );
-      const invB = await expectOk<{ invoice: { id: string; amount: number } }>(
-        "STAFF",
-        `/batches/${SEED.kidsBatchId}/enroll`,
+      const invB = await enrollSeedBatchWithPrepaidInvoice(
+        cleanup,
+        SEED.kidsBatchId,
         {
-          method: "POST",
-          body: JSON.stringify({
-            studentId: depB.id,
-            subscriptionId: SEED.kidPlanIds[0],
-          }),
+          category: "KIDS",
+          studentId: depB.id,
+          planId: SEED.kidPlanIds[0],
         },
       );
 

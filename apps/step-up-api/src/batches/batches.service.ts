@@ -34,7 +34,6 @@ import { MediaService } from "../media/media.service";
 import {
   batchCategoryForAgeRange,
   membershipCoversBatch,
-  seatRoleForBatchCategory,
 } from "../memberships/membership-helpers";
 import {
   type CoveredStudentInput,
@@ -979,7 +978,7 @@ export class BatchesService {
     };
   }
 
-  purchase(
+  async purchase(
     batchId: string,
     args: {
       subscriptionId: string;
@@ -987,12 +986,43 @@ export class BatchesService {
       coveredStudents: CoveredStudentInput[];
     },
   ) {
-    return this.memberships.purchaseForBatch({
+    const studentId =
+      args.coveredStudents[0]?.studentId ?? args.purchaserUserId;
+    const billing = await this.memberships.beginBatchEnrollment({
       batchId,
       subscriptionId: args.subscriptionId,
-      purchaserUserId: args.purchaserUserId,
-      coveredStudents: args.coveredStudents,
+      studentId,
+      paymentHold: true,
     });
+
+    if (billing.kind !== "prepaid") {
+      const batch = await this.prisma.batch.findUnique({
+        where: { id: batchId },
+      });
+      if (!batch) {
+        throw new NotFoundException("Batch not found");
+      }
+      await this.prisma.$transaction(async (tx) => {
+        await lockBatchRow(tx, batchId);
+        await assertBatchHasSeat(tx, batchId, batch.capacity, studentId);
+        await tx.batchEnrollment.upsert({
+          where: { batchId_studentId: { batchId, studentId } },
+          update: REACTIVATE_ENROLLMENT_DATA,
+          create: {
+            batchId,
+            studentId,
+            status: BatchEnrollmentStatus.ACTIVE,
+          },
+        });
+      });
+      return {
+        billingKind: billing.kind,
+        enrolled: true,
+        invoice: null,
+      };
+    }
+
+    return billing.invoice;
   }
 
   private assertBatchPlanSelection(
@@ -1371,12 +1401,10 @@ export class BatchesService {
       );
     }
 
-    const seatRole = seatRoleForBatchCategory(batch.category);
-    const invoice = await this.memberships.purchaseForBatch({
+    const billing = await this.memberships.beginBatchEnrollment({
       batchId,
       subscriptionId,
-      purchaserUserId: studentId,
-      coveredStudents: [{ studentId, seatRole }],
+      studentId,
       paymentHold: false,
     });
 
@@ -1399,10 +1427,13 @@ export class BatchesService {
 
     return {
       ...enrollment,
-      invoice: {
-        ...invoice,
-        amount: Number(invoice.amount),
-      },
+      billingKind: billing.kind,
+      invoice: billing.invoice
+        ? {
+            ...billing.invoice,
+            amount: Number(billing.invoice.amount),
+          }
+        : null,
     };
   }
 
@@ -1464,18 +1495,14 @@ export class BatchesService {
         await lockBatchRow(tx, batchId);
         await assertBatchHasSeats(tx, batchId, batch.capacity, uniqueIds);
 
-        const invoices = await this.memberships.purchaseForBatchBulk({
-          batchId,
-          subscriptionId,
-          studentIds: uniqueIds,
-          paymentHold: false,
-          tx,
-        });
-
         const enrollments = [];
-        for (let i = 0; i < uniqueIds.length; i++) {
-          const studentId = uniqueIds[i]!;
-          const invoice = invoices[i]!;
+        for (const studentId of uniqueIds) {
+          const billing = await this.memberships.beginBatchEnrollment({
+            batchId,
+            subscriptionId,
+            studentId,
+            paymentHold: false,
+          });
           const enrollment = await tx.batchEnrollment.upsert({
             where: {
               batchId_studentId: { batchId, studentId },
@@ -1489,10 +1516,13 @@ export class BatchesService {
           });
           enrollments.push({
             ...enrollment,
-            invoice: {
-              ...invoice,
-              amount: Number(invoice.amount),
-            },
+            billingKind: billing.kind,
+            invoice: billing.invoice
+              ? {
+                  ...billing.invoice,
+                  amount: Number(billing.invoice.amount),
+                }
+              : null,
           });
         }
         return enrollments;
@@ -1728,7 +1758,7 @@ export class BatchesService {
       { excludeBatchIds: [fromBatchId] },
     );
 
-    return this.prisma.$transaction(async (tx) => {
+    const moved = await this.prisma.$transaction(async (tx) => {
       await lockBatchRow(tx, toBatchId);
       await assertBatchHasSeat(tx, toBatchId, target.capacity, studentId);
 
@@ -1751,6 +1781,8 @@ export class BatchesService {
         },
       });
     });
+    await this.memberships.moveCurrentTrackToBatch(studentId, toBatchId);
+    return moved;
   }
 
   async getUnenrollPreview(batchId: string, studentId: string) {
@@ -1867,8 +1899,8 @@ export class BatchesService {
     }
 
     const now = new Date();
-    const [ended, cancelledBookings, voidedPending] =
-      await this.prisma.$transaction(async (tx) => {
+    const [ended, cancelledBookings] = await this.prisma.$transaction(
+      async (tx) => {
         const endedEnrollment = await tx.batchEnrollment.update({
           where: { id: enrollment.id },
           data: endEnrollmentData("UNENROLL", now),
@@ -1896,37 +1928,14 @@ export class BatchesService {
           },
         });
 
-        const pendingIds = await tx.invoice.findMany({
-          where: {
-            status: {
-              in: [InvoiceStatus.PENDING, InvoiceStatus.OVERDUE],
-            },
-            OR: [
-              {
-                studentId,
-                purchaseMeta: {
-                  path: ["batchId"],
-                  equals: batchId,
-                },
-              },
-            ],
-          },
-          select: { id: true },
-        });
-
-        if (pendingIds.length > 0) {
-          await tx.invoice.deleteMany({
-            where: { id: { in: pendingIds.map((row) => row.id) } },
-          });
-        }
-
-        return [endedEnrollment, cancelled.count, pendingIds.length] as const;
-      });
+        return [endedEnrollment, cancelled.count] as const;
+      },
+    );
 
     return {
       enrollment: ended,
       cancelledFutureBookings: cancelledBookings,
-      voidedPendingInvoices: voidedPending,
+      voidedPendingInvoices: 0,
       refundedInvoice,
     };
   }

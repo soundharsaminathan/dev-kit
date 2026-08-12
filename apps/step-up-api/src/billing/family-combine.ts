@@ -62,6 +62,9 @@ export function parsePurchaseMeta(value: unknown): InvoicePurchaseMeta | null {
     subscriptionId: meta.subscriptionId,
     purchaserUserId: meta.purchaserUserId,
     coveredStudents,
+    ...(meta.firstMonthConvertToQuarterly === true
+      ? { firstMonthConvertToQuarterly: true }
+      : {}),
   };
 }
 

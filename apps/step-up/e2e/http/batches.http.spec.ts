@@ -1,7 +1,9 @@
 import { expect, test } from "@playwright/test";
 import { apiBaseUrl, bearerFor, SEED } from "../fixtures/seed";
 import {
+  createFutureScheduleBatch,
   createHttpStudent,
+  enrollSeedBatchWithPrepaidInvoice,
   expectOk,
   expectStatus,
   TestDataCleanup,
@@ -59,13 +61,14 @@ test.describe("batches HTTP @http", () => {
     const cleanup = new TestDataCleanup();
     try {
       const student = await createHttpStudent("Trial Enrollee", cleanup);
+      const batch = await createFutureScheduleBatch(cleanup);
       const enrollment = await expectOk<{
         batchId: string;
         studentId: string;
-        invoice: { id: string; status: string; amount: number };
+        invoice: { id: string; status: string; amount: number } | null;
       }>(
         "STUDENT",
-        `/batches/${SEED.trialBatchId}/enroll`,
+        `/batches/${batch.id}/enroll`,
         {
           method: "POST",
           body: JSON.stringify({
@@ -75,10 +78,10 @@ test.describe("batches HTTP @http", () => {
         },
         { userId: student.id },
       );
-      expect(enrollment.batchId).toBe(SEED.trialBatchId);
+      expect(enrollment.batchId).toBe(batch.id);
       expect(enrollment.studentId).toBe(student.id);
-      expect(enrollment.invoice.status).toBe("PENDING");
-      expect(enrollment.invoice.amount).toBeGreaterThan(0);
+      expect(enrollment.invoice?.status).toBe("PENDING");
+      expect(enrollment.invoice?.amount).toBeGreaterThan(0);
     } finally {
       await cleanup.dispose();
     }
@@ -133,12 +136,13 @@ test.describe("batches HTTP @http", () => {
     }
   });
 
-  test("unpaid staff enroll still appears on batch active roster @http", async () => {
+  test("mid-month staff enroll seats immediately without an unpaid invoice @http", async () => {
     const cleanup = new TestDataCleanup();
     try {
-      const student = await createHttpStudent("HTTP Unpaid Roster", cleanup);
+      const student = await createHttpStudent("HTTP Mid Month Roster", cleanup);
       const enrollment = await expectOk<{
-        invoice: { id: string; status: string };
+        invoice: { id: string; status: string } | null;
+        billingKind?: string;
       }>("STAFF", `/batches/${SEED.kidsBatchId}/enroll`, {
         method: "POST",
         body: JSON.stringify({
@@ -146,7 +150,8 @@ test.describe("batches HTTP @http", () => {
           subscriptionId: SEED.kidPlanIds[0],
         }),
       });
-      expect(enrollment.invoice.status).toBe("PENDING");
+      expect(enrollment.invoice).toBeNull();
+      expect(enrollment.billingKind).toBe("postpaid");
 
       const batch = await expectOk<{
         enrollmentCount: number;
@@ -156,7 +161,7 @@ test.describe("batches HTTP @http", () => {
 
       const row = batch.enrollments.find((item) => item.studentId === student.id);
       expect(row).toBeTruthy();
-      expect(row?.monthlyUnpaid).toBe(true);
+      expect(row?.monthlyUnpaid).toBe(false);
       expect(
         batch.inactiveEnrollments.some((item) => item.studentId === student.id),
       ).toBe(false);
@@ -168,18 +173,38 @@ test.describe("batches HTTP @http", () => {
     }
   });
 
+  test("prepaid switch onto a seed batch flags monthlyUnpaid @http", async () => {
+    const cleanup = new TestDataCleanup();
+    try {
+      const { student } = await enrollSeedBatchWithPrepaidInvoice(
+        cleanup,
+        SEED.kidsBatchId,
+        { category: "KIDS", studentName: "HTTP Unpaid Switch" },
+      );
+
+      const batch = await expectOk<{
+        enrollments: Array<{ studentId: string; monthlyUnpaid?: boolean }>;
+      }>("STAFF", `/batches/${SEED.kidsBatchId}`);
+      const row = batch.enrollments.find((item) => item.studentId === student.id);
+      expect(row?.monthlyUnpaid).toBe(true);
+    } finally {
+      await cleanup.dispose();
+    }
+  });
+
   test("staff bulk enrolls multiple students with pending invoices @http", async () => {
     const cleanup = new TestDataCleanup();
     try {
       const studentA = await createHttpStudent("HTTP Bulk A", cleanup);
       const studentB = await createHttpStudent("HTTP Bulk B", cleanup);
+      const batch = await createFutureScheduleBatch(cleanup);
 
       const result = await expectOk<{
         enrollments: Array<{
           studentId: string;
-          invoice: { id: string; status: string };
+          invoice: { id: string; status: string } | null;
         }>;
-      }>("STAFF", `/batches/${SEED.beginnerBatchId}/enroll-bulk`, {
+      }>("STAFF", `/batches/${batch.id}/enroll-bulk`, {
         method: "POST",
         body: JSON.stringify({
           studentIds: [studentA.id, studentB.id],
@@ -192,17 +217,17 @@ test.describe("batches HTTP @http", () => {
         [studentA.id, studentB.id].sort(),
       );
       for (const row of result.enrollments) {
-        expect(row.invoice.status).toBe("PENDING");
+        expect(row.invoice?.status).toBe("PENDING");
       }
 
-      const batch = await expectOk<{
+      const detail = await expectOk<{
         enrollments: Array<{ studentId: string; monthlyUnpaid?: boolean }>;
-      }>("STAFF", `/batches/${SEED.beginnerBatchId}`);
+      }>("STAFF", `/batches/${batch.id}`);
       expect(
-        batch.enrollments.some((row) => row.studentId === studentA.id),
+        detail.enrollments.some((row) => row.studentId === studentA.id),
       ).toBe(true);
       expect(
-        batch.enrollments.some((row) => row.studentId === studentB.id),
+        detail.enrollments.some((row) => row.studentId === studentB.id),
       ).toBe(true);
     } finally {
       await cleanup.dispose();
@@ -324,21 +349,12 @@ test.describe("batches HTTP @http", () => {
     const sessionId = SEED.sessionAttendanceId;
     try {
       const student = await createHttpStudent("HTTP Unenroll", cleanup);
-      const enrollment = await expectOk<{ invoice: { id: string } }>(
-        "STAFF",
-        `/batches/${SEED.kidsBatchId}/enroll`,
-        {
-          method: "POST",
-          body: JSON.stringify({
-            studentId: student.id,
-            subscriptionId: SEED.kidPlanIds[0],
-          }),
-        },
-      );
-      // Inactive roster requires a still-active membership month after unenroll.
-      await expectOk("STAFF", `/billing/${enrollment.invoice.id}/paid`, {
-        method: "PATCH",
-        body: JSON.stringify({ paymentMethod: "CASH" }),
+      await expectOk("STAFF", `/batches/${SEED.kidsBatchId}/enroll`, {
+        method: "POST",
+        body: JSON.stringify({
+          studentId: student.id,
+          subscriptionId: SEED.kidPlanIds[0],
+        }),
       });
 
       const before = await expectOk<Array<{ studentId: string }>>(
