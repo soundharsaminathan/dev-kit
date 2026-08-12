@@ -59,7 +59,7 @@ describe("student-funnel", () => {
     ).toBe("active");
   });
 
-  it("classifies completed batch without active membership", () => {
+  it("classifies completed batch without active enrollment", () => {
     expect(
       classifyStudentFunnelStage(
         student({
@@ -73,10 +73,10 @@ describe("student-funnel", () => {
           memberships: [{ status: MembershipStatus.EXPIRED }],
         }),
       ),
-    ).toBe("completedWithoutPlan");
+    ).toBe("leftBatch");
   });
 
-  it("classifies unenrolled paid student with completed sessions as completedWithoutPlan", () => {
+  it("classifies unenrolled paid student as leftBatch even with active membership", () => {
     expect(
       classifyStudentFunnelStage(
         student({
@@ -85,16 +85,16 @@ describe("student-funnel", () => {
               batchActive: true,
               enrollmentActive: false,
               hasScheduledSession: true,
-              hasCompletedSession: true,
+              hasCompletedSession: false,
             }),
           ],
-          memberships: [{ status: MembershipStatus.EXPIRED }],
+          memberships: [{ status: MembershipStatus.ACTIVE }],
         }),
       ),
-    ).toBe("completedWithoutPlan");
+    ).toBe("leftBatch");
   });
 
-  it("does not treat finished batch as completed when membership is active", () => {
+  it("classifies finished batch as leftBatch even when membership is still active", () => {
     expect(
       classifyStudentFunnelStage(
         student({
@@ -115,7 +115,17 @@ describe("student-funnel", () => {
           ],
         }),
       ),
-    ).toBe("trialAttended");
+    ).toBe("leftBatch");
+  });
+
+  it("keeps signedInOnly when student never enrolled", () => {
+    expect(
+      classifyStudentFunnelStage(
+        student({
+          memberships: [{ status: MembershipStatus.ACTIVE }],
+        }),
+      ),
+    ).toBe("signedInOnly");
   });
 
   it("classifies trial attended via completed booking", () => {
@@ -259,7 +269,7 @@ describe("student-funnel", () => {
       active: 1,
       signedInOnly: 2,
       trialAttended: 1,
-      completedWithoutPlan: 1,
+      leftBatch: 1,
       period: "lifetime",
     });
   });
@@ -287,7 +297,7 @@ describe("student-funnel", () => {
       active: 1,
       signedInOnly: 0,
       trialAttended: 0,
-      completedWithoutPlan: 0,
+      leftBatch: 0,
       period: "this_month",
     });
   });

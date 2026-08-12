@@ -328,10 +328,58 @@
 }
 
 .statLabel {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2, 0.5rem);
   font-size: 0.75rem;
   line-height: 1.2;
   font-weight: 600;
   color: color-mix(in srgb, var(--color-fg) 56%, transparent);
+}
+
+.statInfoWrap {
+  margin-left: auto;
+}
+
+.statInfo {
+  display: inline-grid;
+  place-items: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-full, 999px);
+  background: transparent;
+  color: color-mix(in srgb, var(--color-fg) 45%, transparent);
+  cursor: help;
+
+  &:hover,
+  &:focus-visible {
+    color: var(--color-fg);
+    outline: none;
+  }
+
+  &:focus-visible {
+    box-shadow: 0 0 0 2px
+      color-mix(in srgb, var(--color-primary) 45%, transparent);
+  }
+}
+
+.statInfo svg {
+  width: 0.875rem;
+  height: 0.875rem;
+}
+
+.statTooltip {
+  text-align: left;
+}
+
+.statValueLink {
+  display: block;
+  flex: 1;
+  text-decoration: none;
+  color: inherit;
+  min-height: 1.5rem;
 }
 
 .statValue {
@@ -375,7 +423,7 @@
 @media (hover: hover) and (pointer: fine) {
   .metricCard:hover,
   .quickLink:hover,
-  .linkWrap:hover .statTile {
+  .statTile:has(.statValueLink:hover) {
     box-shadow: var(--elevation-2, 0 4px 12px rgb(0 0 0 / 8%));
   }
 }

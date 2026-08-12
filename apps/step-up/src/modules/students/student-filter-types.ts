@@ -4,7 +4,7 @@ export type StudentFunnelStage =
   | "active"
   | "signedInOnly"
   | "trialAttended"
-  | "completedWithoutPlan";
+  | "leftBatch";
 
 export type StudentFunnelPeriod =
   | "lifetime"
@@ -44,7 +44,7 @@ export const STAGE_OPTIONS = [
   { id: "active", label: "Active" },
   { id: "signedInOnly", label: "Signed in only" },
   { id: "trialAttended", label: "Trial attended" },
-  { id: "completedWithoutPlan", label: "Completed, no plan" },
+  { id: "leftBatch", label: "Left batch" },
 ] as const;
 
 export const PERIOD_OPTIONS = [
@@ -73,14 +73,14 @@ export const STAGE_LABELS: Record<StudentFunnelStage, string> = {
   active: "Active",
   signedInOnly: "Signed in only",
   trialAttended: "Trial attended",
-  completedWithoutPlan: "Completed, no plan",
+  leftBatch: "Left batch",
 };
 
 export const FUNNEL_STAGES = new Set<string>([
   "active",
   "signedInOnly",
   "trialAttended",
-  "completedWithoutPlan",
+  "leftBatch",
 ]);
 
 export const FUNNEL_PERIODS = new Set<string>([

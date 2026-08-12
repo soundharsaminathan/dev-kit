@@ -2,15 +2,15 @@ import {
   AttendanceStatus,
   BookingStatus,
   BookingType,
-  MembershipStatus,
   SessionStatus,
 } from "@prisma/client";
+import type { MembershipStatus } from "@prisma/client";
 
 export type StudentFunnelStage =
   | "active"
   | "signedInOnly"
   | "trialAttended"
-  | "completedWithoutPlan";
+  | "leftBatch";
 
 export type StudentFunnelPeriod =
   | "lifetime"
@@ -74,14 +74,14 @@ const EMPTY_COUNTS = {
   active: 0,
   signedInOnly: 0,
   trialAttended: 0,
-  completedWithoutPlan: 0,
+  leftBatch: 0,
 } as const;
 
 export const STUDENT_FUNNEL_STAGES: StudentFunnelStage[] = [
   "active",
   "signedInOnly",
   "trialAttended",
-  "completedWithoutPlan",
+  "leftBatch",
 ];
 
 export function isStudentFunnelPeriod(
@@ -157,21 +157,15 @@ function hasActiveBatchEnrollment(
   );
 }
 
-function hasCompletedBatchWithoutActiveMembership(
+function hasLeftBatch(
   enrollments: StudentFunnelEnrollmentInput[],
-  memberships: StudentFunnelMembershipInput[],
 ): boolean {
-  const hasActiveMembership = memberships.some(
-    (membership) => membership.status === MembershipStatus.ACTIVE,
-  );
-  if (hasActiveMembership) {
-    return false;
-  }
-
+  // Past batch history, not currently enrolled. Membership may still be ACTIVE
+  // after mark-paid + unenroll (inactive roster keeps the paid month).
   return enrollments.some(
     (enrollment) =>
       !enrollment.batchActive ||
-      (!enrollment.enrollmentActive && enrollment.hasCompletedSession) ||
+      !enrollment.enrollmentActive ||
       (!enrollment.hasScheduledSession && enrollment.hasCompletedSession),
   );
 }
@@ -221,13 +215,8 @@ export function classifyStudentFunnelStage(
     return "active";
   }
 
-  if (
-    hasCompletedBatchWithoutActiveMembership(
-      student.enrollments,
-      student.memberships,
-    )
-  ) {
-    return "completedWithoutPlan";
+  if (hasLeftBatch(student.enrollments)) {
+    return "leftBatch";
   }
 
   if (hasTrialAttendance(student.bookings, student.attendance)) {

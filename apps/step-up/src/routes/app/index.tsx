@@ -1,4 +1,5 @@
 import { useToastContext } from "@dev-ui/components/toast";
+import { Tooltip, TooltipContent } from "@dev-ui/components/tooltip";
 import type { IconName } from "@dev-ui/icons";
 import { Icon } from "@dev-ui/icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -72,7 +73,7 @@ type StudentFunnelCounts = {
   active: number;
   signedInOnly: number;
   trialAttended: number;
-  completedWithoutPlan: number;
+  leftBatch: number;
   period: StudentFunnelPeriod;
 };
 
@@ -91,18 +92,34 @@ const STUDENT_FUNNEL_TILES: Array<{
   key: keyof Omit<StudentFunnelCounts, "total" | "period">;
   label: string;
   hint: string;
+  description: string;
 }> = [
-  { key: "active", label: "Active", hint: "In an active batch" },
-  { key: "signedInOnly", label: "Signed in only", hint: "No trial yet" },
+  {
+    key: "active",
+    label: "Active",
+    hint: "In an active batch",
+    description: "Students currently enrolled in an active batch.",
+  },
+  {
+    key: "signedInOnly",
+    label: "Signed in only",
+    hint: "No trial yet",
+    description:
+      "Registered students who have not attended a trial or joined a batch yet.",
+  },
   {
     key: "trialAttended",
     label: "Trial attended",
     hint: "Tried a class",
+    description:
+      "Students who tried a class but are not enrolled in an active batch.",
   },
   {
-    key: "completedWithoutPlan",
-    label: "Completed, no plan",
-    hint: "Finished batch, inactive membership",
+    key: "leftBatch",
+    label: "Left batch",
+    hint: "Left or finished, not enrolled",
+    description:
+      "Students who left or finished a batch and are not enrolled in one now.",
   },
 ];
 
@@ -489,25 +506,46 @@ function AppDashboardPage() {
             {studentFunnel.data ? (
               <div className={staff.statGrid} data-testid="funnel-tiles">
                 {STUDENT_FUNNEL_TILES.map((tile) => (
-                  <Link
-                    key={tile.key}
-                    to="/app/students"
-                    search={{
-                      stage: tile.key,
-                      period: funnelPeriod,
-                    }}
-                    className={staff.linkWrap}
-                    data-testid={`funnel-tile-${tile.key}`}
-                    aria-label={`${tile.label}: ${studentFunnel.data[tile.key]}. ${tile.hint}`}
-                  >
-                    <div className={staff.statTile}>
-                      <span className={staff.statLabel}>{tile.label}</span>
+                  <div key={tile.key} className={staff.statTile}>
+                    <span className={staff.statLabel}>
+                      {tile.label}
+                      <Tooltip
+                        delay={200}
+                        touchBehavior="toggle"
+                        className={staff.statInfoWrap}
+                      >
+                        <button
+                          type="button"
+                          className={staff.statInfo}
+                          aria-label={`What is ${tile.label}?`}
+                        >
+                          <Icon name="help-circle" />
+                        </button>
+                        <TooltipContent
+                          portal
+                          placement="top"
+                          className={staff.statTooltip}
+                        >
+                          {tile.description}
+                        </TooltipContent>
+                      </Tooltip>
+                    </span>
+                    <Link
+                      to="/app/students"
+                      search={{
+                        stage: tile.key,
+                        period: funnelPeriod,
+                      }}
+                      className={staff.statValueLink}
+                      data-testid={`funnel-tile-${tile.key}`}
+                      aria-label={`${tile.label}: ${studentFunnel.data[tile.key]}. ${tile.hint}`}
+                    >
                       <AnimatedMetric
                         className={staff.statValue}
                         value={studentFunnel.data[tile.key]}
                       />
-                    </div>
-                  </Link>
+                    </Link>
+                  </div>
                 ))}
               </div>
             ) : null}

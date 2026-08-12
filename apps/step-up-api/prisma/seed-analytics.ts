@@ -956,7 +956,7 @@ async function main() {
     });
   }
 
-  // --- completedWithoutPlan (5) ---
+  // --- leftBatch (5) ---
   for (let i = 0; i < 5; i++) {
     const studentId = await upsertStudent({
       index: i + 1,
@@ -1220,7 +1220,7 @@ async function main() {
   console.log(`Analytics demo studio ready: ${studioId}`);
   console.log(`  owner login: ${u.OWNER.email}`);
   console.log(
-    `  funnel: signedInOnly=11 trialAttended=5 completedWithoutPlan=5 active=14`,
+    `  funnel: signedInOnly=11 trialAttended=5 leftBatch=5 active=14`,
   );
   console.log(
     `  batches: ${ANALYTICS.kidsBatchId}, ${ANALYTICS.beginnerBatchId}, ${ANALYTICS.trialBatchId}, ${ANALYTICS.completedBatchId}`,

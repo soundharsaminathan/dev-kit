@@ -413,6 +413,17 @@ test.describe("admin (staff) smoke @smoke", () => {
       await expect(
         page.getByTestId(`inactive-reason-${student.id}`),
       ).toHaveText("Unenrolled");
+
+      // Paid month stays ACTIVE after unenroll for inactive roster, but funnel
+      // must still count them as Left batch — not Signed in only.
+      const directory = await apiRequest<
+        Array<{ id: string; funnelStage: string }>
+      >(
+        "OWNER",
+        `/users/studio/${SMOKE.users.OWNER.studioId}/student-directory?period=lifetime`,
+      );
+      const row = directory.find((entry) => entry.id === student.id);
+      expect(row?.funnelStage).toBe("leftBatch");
     } finally {
       await context.close();
       await cleanup.dispose();

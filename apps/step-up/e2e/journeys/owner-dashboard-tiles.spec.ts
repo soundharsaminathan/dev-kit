@@ -5,7 +5,7 @@ const FUNNEL_TILES = [
   "active",
   "signedInOnly",
   "trialAttended",
-  "completedWithoutPlan",
+  "leftBatch",
 ] as const;
 
 test.describe("owner dashboard tiles @critical", () => {

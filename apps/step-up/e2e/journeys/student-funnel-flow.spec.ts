@@ -13,7 +13,7 @@ type FunnelCounts = {
   active: number;
   signedInOnly: number;
   trialAttended: number;
-  completedWithoutPlan: number;
+  leftBatch: number;
   period: string;
 };
 
@@ -24,7 +24,7 @@ const FUNNEL_STAGES = [
   "active",
   "signedInOnly",
   "trialAttended",
-  "completedWithoutPlan",
+  "leftBatch",
 ] as const satisfies FunnelStage[];
 
 async function getFunnel(period = "lifetime") {
@@ -286,7 +286,7 @@ async function advanceThroughFunnel(
   after = await getFunnel();
   expectTransition(before, after, "signedInOnly", "trialAttended");
 
-  // Dedicated batch so we can deactivate it for completedWithoutPlan without
+  // Dedicated batch so we can deactivate it for leftBatch without
   // touching seed batches other tests rely on.
   const batch = await createEphemeralBatch(origin);
   cleanup.trackBatch(batch.id);
@@ -297,10 +297,10 @@ async function advanceThroughFunnel(
   expectTransition(before, after, "trialAttended", "active");
 
   await deactivateBatch(batch.id);
-  expect(await getStudentStage(studentId)).toBe("completedWithoutPlan");
+  expect(await getStudentStage(studentId)).toBe("leftBatch");
   before = after;
   after = await getFunnel();
-  expectTransition(before, after, "active", "completedWithoutPlan");
+  expectTransition(before, after, "active", "leftBatch");
 
   return after;
 }
