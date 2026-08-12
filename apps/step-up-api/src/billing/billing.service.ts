@@ -14,8 +14,12 @@ import {
   type User,
   UserRole,
 } from "@prisma/client";
+import { ACTIVE_ENROLLMENT_WHERE } from "../batches/enrollment-status";
 import { EmailService } from "../email/email.service";
-import { computePlatformFee, invoiceDueDate } from "../memberships/membership-helpers";
+import {
+  computePlatformFee,
+  invoiceDueDate,
+} from "../memberships/membership-helpers";
 import { MembershipsService } from "../memberships/memberships.service";
 import { NotificationsService } from "../notifications/notifications.service";
 import { RazorpayService } from "../payments/razorpay.service";
@@ -34,7 +38,6 @@ import {
   parseCombineMeta,
   parsePurchaseMeta,
 } from "./family-combine";
-import { ACTIVE_ENROLLMENT_WHERE } from "../batches/enrollment-status";
 
 export type AnalyticsBucket = "day" | "week" | "month";
 
@@ -206,9 +209,7 @@ export class BillingService {
             },
             select: { studentId: true, batchId: true },
           })
-        : Promise.resolve(
-            [] as Array<{ studentId: string; batchId: string }>,
-          ),
+        : Promise.resolve([] as Array<{ studentId: string; batchId: string }>),
     ]);
     const purchaseSubById = new Map(purchaseSubs.map((s) => [s.id, s]));
     const studentBatchMap = new Map<string, Set<string>>();
@@ -323,7 +324,7 @@ export class BillingService {
     const invoices = await this.prisma.invoice.findMany({
       where: { studentId },
       include: {
-        membership: { select: { periodStart: true } },
+        membership: { select: { periodStart: true, periodEnd: true } },
       },
       orderBy: { id: "desc" },
     });
@@ -602,101 +603,96 @@ export class BillingService {
     let refunded = 0;
     let platformFees = 0;
 
-    const mappedRows = filtered.map(
-      (invoice) => {
-        const amount = Number(invoice.amount);
-        const refundedAmount = Number(invoice.refundedAmount ?? 0);
-        const retained = roundMoney(Math.max(0, amount - refundedAmount));
-        const platformFee = computePlatformFee(
-          retained > 0 ? retained : amount,
+    const mappedRows = filtered.map((invoice) => {
+      const amount = Number(invoice.amount);
+      const refundedAmount = Number(invoice.refundedAmount ?? 0);
+      const retained = roundMoney(Math.max(0, amount - refundedAmount));
+      const platformFee = computePlatformFee(
+        retained > 0 ? retained : amount,
+        invoice.platformFeePercent,
+      );
+      const student = this.crypto.decryptUser(invoice.student);
+      const combineMeta = parseCombineMeta(invoice.combineMeta);
+      const purchaseMeta = parsePurchaseMeta(invoice.purchaseMeta);
+      const attribution = attributionTargetsForInvoice({
+        studentId: invoice.studentId,
+        combineMeta,
+        purchaseMeta,
+        studentBatchMap,
+        amount,
+        status: invoice.status,
+      }).filter((target) => batchTotals.has(target.batchId));
+
+      if (attribution.length === 0 && !studentIds.includes(invoice.studentId)) {
+        return null;
+      }
+
+      const batchIds = [
+        ...new Set(attribution.map((target) => target.batchId)),
+      ];
+
+      byStatus[invoice.status].count += 1;
+      byStatus[invoice.status].amount +=
+        invoice.status === InvoiceStatus.REFUNDED ? refundedAmount : amount;
+
+      if (refundedAmount > 0) {
+        refunded += refundedAmount;
+      }
+
+      if (invoice.status === InvoiceStatus.PAID) {
+        collected += retained;
+        platformFees += computePlatformFee(
+          retained,
           invoice.platformFeePercent,
         );
-        const student = this.crypto.decryptUser(invoice.student);
-        const combineMeta = parseCombineMeta(invoice.combineMeta);
-        const purchaseMeta = parsePurchaseMeta(invoice.purchaseMeta);
-        const attribution = attributionTargetsForInvoice({
-          studentId: invoice.studentId,
-          combineMeta,
-          purchaseMeta,
-          studentBatchMap,
-          amount,
-          status: invoice.status,
-        }).filter((target) => batchTotals.has(target.batchId));
-
-        if (
-          attribution.length === 0 &&
-          !studentIds.includes(invoice.studentId)
-        ) {
-          return null;
+        if (invoice.paymentMethod) {
+          byPaymentMethod[invoice.paymentMethod].count += 1;
+          byPaymentMethod[invoice.paymentMethod].amount += retained;
         }
+      } else if (invoice.status === InvoiceStatus.PENDING) {
+        pending += amount;
+      } else if (invoice.status === InvoiceStatus.OVERDUE) {
+        overdue += amount;
+      }
 
-        const batchIds = [
-          ...new Set(attribution.map((target) => target.batchId)),
-        ];
+      const creditScale =
+        invoice.status === InvoiceStatus.PAID && amount > 0
+          ? retained / amount
+          : 1;
 
-        byStatus[invoice.status].count += 1;
-        byStatus[invoice.status].amount +=
-          invoice.status === InvoiceStatus.REFUNDED ? refundedAmount : amount;
-
-        if (refundedAmount > 0) {
-          refunded += refundedAmount;
+      for (const target of attribution) {
+        const entry = batchTotals.get(target.batchId);
+        if (!entry) {
+          continue;
         }
-
-        if (invoice.status === InvoiceStatus.PAID) {
-          collected += retained;
-          platformFees += computePlatformFee(
-            retained,
-            invoice.platformFeePercent,
-          );
-          if (invoice.paymentMethod) {
-            byPaymentMethod[invoice.paymentMethod].count += 1;
-            byPaymentMethod[invoice.paymentMethod].amount += retained;
+        const credited = roundMoney(target.amount * creditScale);
+        if (!entry.invoiceIds.has(`${invoice.id}:${target.batchId}`)) {
+          entry.invoiceIds.add(`${invoice.id}:${target.batchId}`);
+          if (refundedAmount > 0 && !combineMeta) {
+            entry.refunded += refundedAmount;
           }
-        } else if (invoice.status === InvoiceStatus.PENDING) {
-          pending += amount;
-        } else if (invoice.status === InvoiceStatus.OVERDUE) {
-          overdue += amount;
-        }
-
-        const creditScale =
-          invoice.status === InvoiceStatus.PAID && amount > 0
-            ? retained / amount
-            : 1;
-
-        for (const target of attribution) {
-          const entry = batchTotals.get(target.batchId);
-          if (!entry) {
-            continue;
-          }
-          const credited = roundMoney(target.amount * creditScale);
-          if (!entry.invoiceIds.has(`${invoice.id}:${target.batchId}`)) {
-            entry.invoiceIds.add(`${invoice.id}:${target.batchId}`);
-            if (refundedAmount > 0 && !combineMeta) {
-              entry.refunded += refundedAmount;
-            }
-            if (invoice.status === InvoiceStatus.PAID) {
-              entry.collected += credited;
-            } else if (invoice.status === InvoiceStatus.PENDING) {
-              entry.pending += target.amount;
-            } else if (invoice.status === InvoiceStatus.OVERDUE) {
-              entry.overdue += target.amount;
-            }
+          if (invoice.status === InvoiceStatus.PAID) {
+            entry.collected += credited;
+          } else if (invoice.status === InvoiceStatus.PENDING) {
+            entry.pending += target.amount;
+          } else if (invoice.status === InvoiceStatus.OVERDUE) {
+            entry.overdue += target.amount;
           }
         }
+      }
 
-        return {
-          id: invoice.id,
-          studentId: invoice.studentId,
-          studentName: student.name,
-          amount,
-          status: invoice.status,
-          paymentMethod: invoice.paymentMethod,
-          paidAt: invoice.paidAt?.toISOString() ?? null,
-          platformFee,
-          batchIds,
-        };
-      },
-    );
+      return {
+        id: invoice.id,
+        studentId: invoice.studentId,
+        studentName: student.name,
+        amount,
+        status: invoice.status,
+        paymentMethod: invoice.paymentMethod,
+        paidAt: invoice.paidAt?.toISOString() ?? null,
+        platformFee,
+        batchIds,
+      };
+    });
 
     const invoiceRows: TrainerPaymentAnalytics["invoices"] = mappedRows.filter(
       (row): row is NonNullable<(typeof mappedRows)[number]> => row != null,
@@ -964,7 +960,9 @@ export class BillingService {
       );
     }
     if (actor.studioId !== data.studioId) {
-      throw new ForbiddenException("Cannot combine invoices for another studio");
+      throw new ForbiddenException(
+        "Cannot combine invoices for another studio",
+      );
     }
     if (data.invoiceIds.length < 2) {
       throw new BadRequestException("Select at least two invoices to combine");
@@ -996,9 +994,7 @@ export class BillingService {
         invoice.status !== InvoiceStatus.PENDING &&
         invoice.status !== InvoiceStatus.OVERDUE
       ) {
-        throw new BadRequestException(
-          "Only unpaid invoices can be combined",
-        );
+        throw new BadRequestException("Only unpaid invoices can be combined");
       }
       if (parseCombineMeta(invoice.combineMeta)) {
         throw new BadRequestException(
@@ -1016,7 +1012,9 @@ export class BillingService {
     }
 
     const amounts = sources.map((invoice) => Number(invoice.amount));
-    const subtotal = roundMoney(amounts.reduce((sum, amount) => sum + amount, 0));
+    const subtotal = roundMoney(
+      amounts.reduce((sum, amount) => sum + amount, 0),
+    );
     if (familyDiscount > subtotal) {
       throw new BadRequestException(
         "Family discount cannot exceed invoice total",
@@ -1032,7 +1030,9 @@ export class BillingService {
       );
     }
 
-    const studentIds = [...new Set(sources.map((invoice) => invoice.studentId))];
+    const studentIds = [
+      ...new Set(sources.map((invoice) => invoice.studentId)),
+    ];
     const enrollments = await this.prisma.batchEnrollment.findMany({
       where: {
         studentId: { in: studentIds },
@@ -1434,11 +1434,7 @@ export class BillingService {
         },
       });
 
-      if (
-        fullyRefunded &&
-        invoice.membershipId &&
-        invoice.membership
-      ) {
+      if (fullyRefunded && invoice.membershipId && invoice.membership) {
         const otherActiveSeats = await tx.membershipCoveredStudent.count({
           where: {
             membershipId: invoice.membershipId,
