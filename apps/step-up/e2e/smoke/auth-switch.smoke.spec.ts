@@ -2,30 +2,62 @@ import type { Page } from "@playwright/test";
 import { expect, SMOKE, test, waitForAppReady } from "./fixtures";
 import { homePathForRole, type SmokeRole, smokePassword } from "./smoke-seed";
 
+/** Wipe Firebase/local session leftovers so the next UI sign-in is clean. */
+async function clearBrowserAuthState(page: Page) {
+  await page.evaluate(async () => {
+    try {
+      localStorage.clear();
+      sessionStorage.clear();
+      const databases = await indexedDB.databases?.();
+      if (databases) {
+        await Promise.all(
+          databases
+            .filter((db) => db.name)
+            .map(
+              (db) =>
+                new Promise<void>((resolve) => {
+                  const req = indexedDB.deleteDatabase(db.name!);
+                  req.onsuccess = () => resolve();
+                  req.onerror = () => resolve();
+                  req.onblocked = () => resolve();
+                }),
+            ),
+        );
+      }
+    } catch {
+      // Best-effort wipe.
+    }
+  });
+}
+
 async function signInAs(page: Page, role: SmokeRole, password: string) {
   const user = SMOKE.users[role];
   const home = homePathForRole(role);
 
   await page.goto("/login", { waitUntil: "domcontentloaded" });
   await waitForAppReady(page);
+  await clearBrowserAuthState(page);
+  await page.goto("/login", { waitUntil: "domcontentloaded" });
+  await waitForAppReady(page);
+
   await page.getByLabel(/email or username/i).fill(user.email);
   await page.locator('input[type="password"]').fill(password);
-  await Promise.all([
-    page.waitForURL(new RegExp(home.replace("/", "\\/")), { timeout: 60_000 }),
-    page
-      .getByRole("main")
-      .getByRole("button", { name: /^sign in$/i })
-      .click(),
-  ]);
+  // Match auth.setup: click then poll URL. Avoid waitForURL({ waitUntil: "load" })
+  // — SPA client navigations often never fire a document load event.
+  await page
+    .getByRole("main")
+    .getByRole("button", { name: /^sign in$/i })
+    .click();
+  await expect(page).toHaveURL(new RegExp(home.replace("/", "\\/")), {
+    timeout: 60_000,
+  });
   await waitForAppReady(page);
 }
 
 async function signOutFromStaffShell(page: Page) {
   await page.getByRole("button", { name: "Account menu" }).click();
-  await Promise.all([
-    page.waitForURL(/\/login/, { timeout: 60_000 }),
-    page.getByRole("menuitem", { name: "Sign out" }).click(),
-  ]);
+  await page.getByRole("menuitem", { name: "Sign out" }).click();
+  await expect(page).toHaveURL(/\/login/, { timeout: 60_000 });
   await waitForAppReady(page);
 }
 

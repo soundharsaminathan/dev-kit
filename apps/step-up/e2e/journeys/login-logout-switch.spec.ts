@@ -10,19 +10,18 @@ async function signInAs(page: Page, role: SeedRole) {
   await waitForAppReady(page);
   await page.getByLabel("Email or username").fill(user.email);
   await page.getByLabel("Password", { exact: true }).fill(BYPASS_PASSWORD);
-  await Promise.all([
-    page.waitForURL(new RegExp(homePathForRole(role).replace("/", "\\/"))),
-    page.getByRole("main").getByRole("button", { name: "Sign in" }).click(),
-  ]);
+  await page.getByRole("main").getByRole("button", { name: "Sign in" }).click();
+  await expect(page).toHaveURL(
+    new RegExp(homePathForRole(role).replace("/", "\\/")),
+    { timeout: 60_000 },
+  );
   await waitForAppReady(page);
 }
 
 async function signOutFromStaffShell(page: Page) {
   await page.getByRole("button", { name: "Account menu" }).click();
-  await Promise.all([
-    page.waitForURL(/\/login/),
-    page.getByRole("menuitem", { name: "Sign out" }).click(),
-  ]);
+  await page.getByRole("menuitem", { name: "Sign out" }).click();
+  await expect(page).toHaveURL(/\/login/, { timeout: 60_000 });
   await waitForAppReady(page);
 }
 
