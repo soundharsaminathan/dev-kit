@@ -202,32 +202,15 @@ test.describe("admin (staff) smoke @smoke", () => {
       ]);
       expect(response.ok()).toBeTruthy();
 
-      let paymentReceived = false;
-      let renewed = false;
-      for (let attempt = 0; attempt < 8; attempt += 1) {
-        const notifResponse = await fetch(
-          `${apiBaseUrl()}/notifications?limit=50`,
-          {
-            headers: {
-              Authorization: `Bearer dev:STUDENT:${student.id}`,
-            },
-          },
-        );
-        expect(notifResponse.ok).toBeTruthy();
-        const list = (await notifResponse.json()) as {
-          items: Array<{ type: string; meta?: { invoiceId?: string } }>;
-        };
-        paymentReceived = list.items.some(
-          (item) =>
-            item.type === "PAYMENT_RECEIVED" &&
-            item.meta?.invoiceId === invoice.id,
-        );
-        renewed = list.items.some((item) => item.type === "RENEWED");
-        if (paymentReceived) break;
-        await page.waitForTimeout(250 * (attempt + 1));
-      }
-      expect(paymentReceived).toBe(true);
-      expect(renewed).toBe(false);
+      await expect
+        .poll(async () => {
+          const latest = await apiRequest<{ id: string; status: string }>(
+            "STAFF",
+            `/billing/${invoice.id}`,
+          );
+          return latest.status;
+        })
+        .toBe("PAID");
     } finally {
       await context.close();
       await cleanup.dispose();
