@@ -537,6 +537,9 @@ export class UsersController {
     @CurrentUser() user: DecryptedUser,
     @Param("studioId") studioId: string,
     @Query("filter") filter?: string,
+    @Query("q") q?: string,
+    @Query("cursor") cursor?: string,
+    @Query("limit") limit?: string,
   ) {
     assertSameStudio(user, studioId);
     if (filter !== undefined && !isLeadDateFilter(filter)) {
@@ -545,8 +548,12 @@ export class UsersController {
       );
     }
 
+    const parsedLimit = limit ? Number(limit) : undefined;
     return this.usersService.listLeads(studioId, {
       filter: (filter as LeadDateFilter | undefined) ?? "all",
+      q,
+      cursor,
+      ...(Number.isFinite(parsedLimit) ? { limit: parsedLimit } : {}),
     });
   }
 

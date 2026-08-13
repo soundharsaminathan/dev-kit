@@ -1,8 +1,9 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@dev-ui/components/avatar";
+import { useLoadMoreOnScroll } from "@dev-ui/hooks";
 import { Icon } from "@dev-ui/icons";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useApi } from "@/lib/api-context";
 import { ENTITY_ICONS } from "@/lib/entity-icons";
 import {
@@ -95,6 +96,8 @@ function averageAttendancePercent(students: BatchAttendanceStudent[]) {
   return Math.round(sum / withClasses.length);
 }
 
+const ATTENDANCE_PAGE_SIZE = 25;
+
 export function BatchAttendanceTab({
   batchId,
   enabled,
@@ -123,6 +126,21 @@ export function BatchAttendanceTab({
   const students = query.data?.students ?? [];
   const sessionCount = query.data?.sessionCount ?? 0;
   const avgPercent = averageAttendancePercent(students);
+  const [visibleCount, setVisibleCount] = useState(ATTENDANCE_PAGE_SIZE);
+  const [windowKey, setWindowKey] = useState(month);
+  if (windowKey !== month) {
+    setWindowKey(month);
+    setVisibleCount(ATTENDANCE_PAGE_SIZE);
+  }
+  const visibleStudents = students.slice(0, visibleCount);
+  const hasMore = visibleCount < students.length;
+  const loadMore = useCallback(() => {
+    setVisibleCount((count) => count + ATTENDANCE_PAGE_SIZE);
+  }, []);
+  const loadMoreRef = useLoadMoreOnScroll({
+    hasMore,
+    onLoadMore: loadMore,
+  });
 
   function openStudent(id: string) {
     void navigate({
@@ -205,7 +223,7 @@ export function BatchAttendanceTab({
           </div>
 
           <div className={styles.list}>
-            {students.map((row) => {
+            {visibleStudents.map((row) => {
               const student = row.student;
               const initials = student.name.slice(0, 1).toUpperCase();
               const eligible = Math.max(0, row.eligibleCount);
@@ -245,7 +263,9 @@ export function BatchAttendanceTab({
                           aria-label={`${present} of ${eligible}`}
                         >
                           <span className={styles.countPresent}>{present}</span>
-                          <span className={styles.countSep} aria-hidden>/</span>
+                          <span className={styles.countSep} aria-hidden>
+                            /
+                          </span>
                           <span className={styles.countTotal}>{eligible}</span>
                         </span>
                       </div>
@@ -288,6 +308,13 @@ export function BatchAttendanceTab({
               );
             })}
           </div>
+          {hasMore ? (
+            <div
+              ref={loadMoreRef}
+              className={styles.loadMore}
+              data-testid="batch-attendance-load-more"
+            />
+          ) : null}
         </>
       ) : null}
     </div>

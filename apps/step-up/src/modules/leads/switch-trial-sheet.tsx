@@ -11,10 +11,10 @@ import {
   defaultSessionDateKey,
   FILTER_LABELS,
   formatTrialWhen,
-  LEAD_DATE_FILTERS,
   type Lead,
   type LeadDateFilter,
   localDateKey,
+  SWITCH_DATE_FILTERS,
   slotMatchesDate,
   type TrialSlot,
   trialHorizonDateKey,
@@ -123,7 +123,7 @@ export function SwitchTrialSheet({
             role="toolbar"
             aria-label="Session date"
           >
-            {LEAD_DATE_FILTERS.map((value) => (
+            {SWITCH_DATE_FILTERS.map((value) => (
               <button
                 key={value}
                 type="button"

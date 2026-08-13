@@ -38,6 +38,7 @@ import { ageRangeFromAge } from "./age-range";
 import {
   type LeadDateFilter,
   type LeadDto,
+  paginateLeads,
   resolveLeadDayRange,
 } from "./leads";
 import {
@@ -1604,8 +1605,13 @@ export class UsersService {
 
   async listLeads(
     studioId: string,
-    options: { filter?: LeadDateFilter } = {},
-  ): Promise<LeadDto[]> {
+    options: {
+      filter?: LeadDateFilter;
+      q?: string;
+      cursor?: string;
+      limit?: number;
+    } = {},
+  ) {
     const filter = options.filter ?? "all";
     const dayRange = resolveLeadDayRange(filter);
 
@@ -1764,7 +1770,7 @@ export class UsersService {
       });
     }
 
-    return leads.sort((a, b) => {
+    leads.sort((a, b) => {
       const aTime = a.trialBooking?.sessionStartsAt
         ? new Date(a.trialBooking.sessionStartsAt).getTime()
         : Number.POSITIVE_INFINITY;
@@ -1773,6 +1779,12 @@ export class UsersService {
         : Number.POSITIVE_INFINITY;
       if (aTime !== bTime) return aTime - bTime;
       return a.name.localeCompare(b.name);
+    });
+
+    return paginateLeads(leads, {
+      q: options.q,
+      cursor: options.cursor,
+      limit: options.limit,
     });
   }
 

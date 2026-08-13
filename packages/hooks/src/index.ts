@@ -9,6 +9,10 @@ export {
   type UseKeyboardShortcutOptions,
   useKeyboardShortcut,
 } from "./use-keyboard-shortcut";
+export {
+  type UseLoadMoreOnScrollOptions,
+  useLoadMoreOnScroll,
+} from "./use-load-more-on-scroll";
 export { useOnlineStatus } from "./use-online-status";
 export {
   type UseOptimisticMutationOptions,

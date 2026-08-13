@@ -1,3 +1,4 @@
+import { SearchField } from "@dev-ui/components/search-field";
 import { Icon } from "@dev-ui/icons";
 import { useMemo, useState } from "react";
 import { FilterChipRow } from "@/modules/ui/filter-chip-row";
@@ -127,6 +128,15 @@ export function StudentFiltersToolbar({
 
   return (
     <div className={styles.wrap}>
+      <div className={styles.searchBar} data-testid="students-search">
+        <SearchField
+          aria-label="Search students"
+          placeholder="Search students"
+          value={search}
+          onChange={onSearchChange}
+        />
+      </div>
+
       <FilterChipRow
         chips={quickChips}
         selected={selectedQuick}

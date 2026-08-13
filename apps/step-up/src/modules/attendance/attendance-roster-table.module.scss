@@ -59,6 +59,10 @@
   box-shadow: var(--card-shadow, var(--shadow-sm, 0 1px 3px rgb(0 0 0 / 6%)));
 }
 
+.loadMore {
+  min-height: 1px;
+}
+
 .table {
   width: 100%;
   min-width: 36rem;

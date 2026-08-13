@@ -2,9 +2,12 @@ import { describe, expect, it } from "vitest";
 import {
   canConfirmTrialSession,
   defaultSessionDateKey,
+  emptyLeadsTitle,
   type LeadTrialBooking,
   localDateKey,
+  matchesLeadSearch,
   phoneTelHref,
+  SWITCH_DATE_FILTERS,
   slotMatchesDate,
 } from "./types";
 
@@ -56,6 +59,8 @@ describe("session date filter", () => {
   it("defaults to today or tomorrow from the trial caller filter", () => {
     expect(defaultSessionDateKey("today", now)).toBe("2026-08-14");
     expect(defaultSessionDateKey("tomorrow", now)).toBe("2026-08-15");
+    expect(defaultSessionDateKey("thisWeek", now)).toBe("2026-08-14");
+    expect(defaultSessionDateKey("nextWeek", now)).toBe("2026-08-17");
     expect(defaultSessionDateKey("all", now)).toBeNull();
   });
 
@@ -72,5 +77,32 @@ describe("session date filter", () => {
   it("formats local calendar keys without UTC drift", () => {
     expect(localDateKey(new Date(2026, 7, 14, 0, 15, 0))).toBe("2026-08-14");
     expect(localDateKey(new Date(2026, 7, 14, 23, 45, 0))).toBe("2026-08-14");
+  });
+});
+
+describe("matchesLeadSearch", () => {
+  it("filters the card list by name or mobile number", () => {
+    const lead = {
+      name: "Asha Rao",
+      phone: "+91 91234 56789",
+    };
+    expect(matchesLeadSearch(lead, "asha")).toBe(true);
+    expect(matchesLeadSearch(lead, "91234")).toBe(true);
+    expect(matchesLeadSearch(lead, "priya")).toBe(false);
+    expect(matchesLeadSearch(lead, "  ")).toBe(true);
+  });
+});
+
+describe("emptyLeadsTitle", () => {
+  it("names the week filters and search empty states", () => {
+    expect(emptyLeadsTitle("thisWeek", false)).toBe("No trials this week");
+    expect(emptyLeadsTitle("nextWeek", false)).toBe("No trials next week");
+    expect(emptyLeadsTitle("all", true)).toBe("No matching leads");
+  });
+});
+
+describe("SWITCH_DATE_FILTERS", () => {
+  it("keeps switch-trial chips on single days", () => {
+    expect([...SWITCH_DATE_FILTERS]).toEqual(["all", "today", "tomorrow"]);
   });
 });

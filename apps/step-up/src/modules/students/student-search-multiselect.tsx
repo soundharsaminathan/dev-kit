@@ -3,14 +3,21 @@ import {
   CheckboxIndicator,
 } from "@dev-ui/components/checkbox";
 import { Tag, TagGroup, TagList } from "@dev-ui/components/tag-group";
+import { useLoadMoreOnScroll } from "@dev-ui/hooks";
 import { useInfiniteQuery } from "@tanstack/react-query";
-import { type Key, useEffect, useMemo, useRef, useState } from "react";
+import {
+  type Key,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useApi } from "@/lib/api-context";
 import { useStudioId } from "@/lib/use-studio-id";
 import { FormInput } from "@/modules/ui/form-input";
 import { SkeletonCardList } from "@/modules/ui/skeleton-block";
 import { EmptyState, ErrorState } from "@/modules/ui/states";
-import { TouchButton } from "@/modules/ui/touch-button";
 import type { StudioStudent } from "./student-search-combobox";
 import styles from "./student-search-multiselect.module.scss";
 
@@ -126,8 +133,7 @@ export function StudentSearchMultiselect({
     placeholderData: (previous) => previous,
   });
 
-  const catalogComplete =
-    catalogQuery.isSuccess && !catalogQuery.hasNextPage;
+  const catalogComplete = catalogQuery.isSuccess && !catalogQuery.hasNextPage;
 
   const remoteSearchQuery = useInfiniteQuery({
     queryKey: [
@@ -241,6 +247,14 @@ export function StudentSearchMultiselect({
     !catalogComplete &&
     activeQuery.hasNextPage &&
     !(useRemoteSearch && remoteSearchQuery.isLoading);
+  const loadMore = useCallback(() => {
+    void activeQuery.fetchNextPage();
+  }, [activeQuery.fetchNextPage]);
+  const loadMoreRef = useLoadMoreOnScroll<HTMLLIElement>({
+    hasMore: Boolean(showLoadMore),
+    isLoading: activeQuery.isFetchingNextPage,
+    onLoadMore: loadMore,
+  });
 
   return (
     <div className={styles.root}>
@@ -331,22 +345,14 @@ export function StudentSearchMultiselect({
               </li>
             );
           })}
+          {showLoadMore ? (
+            <li
+              ref={loadMoreRef}
+              className={styles.loadMore}
+              data-testid={`${testIdPrefix}-search-load-more`}
+            />
+          ) : null}
         </ul>
-      ) : null}
-
-      {showLoadMore ? (
-        <TouchButton
-          variant="default"
-          fullWidth
-          {...(isDisabled != null ? { isDisabled } : {})}
-          isPending={activeQuery.isFetchingNextPage}
-          data-testid={`${testIdPrefix}-search-load-more`}
-          onClick={() => {
-            void activeQuery.fetchNextPage();
-          }}
-        >
-          Load more
-        </TouchButton>
       ) : null}
     </div>
   );

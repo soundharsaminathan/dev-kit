@@ -5,10 +5,11 @@ import {
   MenuItem,
   MenuItemLabel,
 } from "@dev-ui/components/menu";
+import { useLoadMoreOnScroll } from "@dev-ui/hooks";
 import { Icon } from "@dev-ui/icons";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useApi } from "@/lib/api-context";
 import { ENTITY_ICONS } from "@/lib/entity-icons";
 import { formatPaidMonths } from "@/lib/format-paid-months";
@@ -50,6 +51,7 @@ const CREATE_ITEMS = [
 ] as const;
 
 const NEW_USER_DAYS = 14;
+const STUDENT_PAGE_SIZE = 25;
 
 function parseSearch(search: Record<string, unknown>): StudentsSearch {
   const result: StudentsSearch = {};
@@ -131,6 +133,27 @@ function StudentsPage() {
       }),
     [query.data, stage, period, ageRange, gender, search],
   );
+
+  const listWindowKey = `${studioId}:${stage}:${period}:${ageRange}:${gender}:${search}`;
+  const [visibleCount, setVisibleCount] = useState(STUDENT_PAGE_SIZE);
+  const [windowKey, setWindowKey] = useState(listWindowKey);
+  if (windowKey !== listWindowKey) {
+    setWindowKey(listWindowKey);
+    setVisibleCount(STUDENT_PAGE_SIZE);
+  }
+
+  const visible = useMemo(
+    () => filtered.slice(0, visibleCount),
+    [filtered, visibleCount],
+  );
+  const hasMore = visibleCount < filtered.length;
+  const loadMore = useCallback(() => {
+    setVisibleCount((count) => count + STUDENT_PAGE_SIZE);
+  }, []);
+  const loadMoreRef = useLoadMoreOnScroll({
+    hasMore,
+    onLoadMore: loadMore,
+  });
 
   const subtitle = useMemo(() => {
     if (stage !== "ALL") {
@@ -315,9 +338,9 @@ function StudentsPage() {
             />
           ) : null}
 
-          {filtered.length > 0 ? (
+          {visible.length > 0 ? (
             <div className={staff.list}>
-              {filtered.map((student) => {
+              {visible.map((student) => {
                 const showNew = isNewStudent(student.createdAt);
                 return (
                   <PressableCard
@@ -364,6 +387,14 @@ function StudentsPage() {
                 );
               })}
             </div>
+          ) : null}
+
+          {hasMore ? (
+            <div
+              ref={loadMoreRef}
+              className={staff.loadMore}
+              data-testid="students-load-more"
+            />
           ) : null}
         </div>
       </PullToRefresh>

@@ -1,8 +1,14 @@
+import { SearchField } from "@dev-ui/components/search-field";
 import { useToastContext } from "@dev-ui/components/toast";
+import { useLoadMoreOnScroll } from "@dev-ui/hooks";
 import { Icon } from "@dev-ui/icons";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useApi } from "@/lib/api-context";
 import { requireAdmin } from "@/lib/require-auth";
 import { useStudioId } from "@/lib/use-studio-id";
@@ -11,10 +17,14 @@ import styles from "@/modules/leads/leads.module.scss";
 import { QuickAddLeadSheet } from "@/modules/leads/quick-add-lead-sheet";
 import { SwitchTrialSheet } from "@/modules/leads/switch-trial-sheet";
 import {
+  emptyLeadsDescription,
+  emptyLeadsTitle,
   FILTER_LABELS,
   LEAD_DATE_FILTERS,
+  LEAD_PAGE_SIZE,
   type Lead,
   type LeadDateFilter,
+  type LeadPage,
   type LeadSection,
   SECTION_LABELS,
 } from "@/modules/leads/types";
@@ -41,6 +51,17 @@ function parseSearch(search: Record<string, unknown>): LeadsSearch {
   return {};
 }
 
+function useDebouncedValue<T>(value: T, delayMs: number) {
+  const [debounced, setDebounced] = useState(value);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebounced(value), delayMs);
+    return () => window.clearTimeout(timer);
+  }, [value, delayMs]);
+
+  return debounced;
+}
+
 export const Route = createFileRoute("/app/leads/")({
   beforeLoad: ({ context, location }) => {
     requireAdmin(context.auth, {
@@ -63,14 +84,29 @@ function LeadsPage() {
   const filter = searchParams.filter ?? "all";
   const [addOpen, setAddOpen] = useState(false);
   const [switchLead, setSwitchLead] = useState<Lead | null>(null);
+  const [search, setSearch] = useState("");
+  const debouncedSearch = useDebouncedValue(search.trim(), 300);
 
-  const query = useQuery({
-    queryKey: ["studio-leads", studioId, filter],
-    queryFn: () =>
-      api.get<Lead[]>(
-        `/users/studio/${studioId}/leads?filter=${encodeURIComponent(filter)}`,
-      ),
+  const query = useInfiniteQuery({
+    queryKey: ["studio-leads", studioId, filter, debouncedSearch],
+    queryFn: ({ pageParam }) => {
+      const params = new URLSearchParams();
+      params.set("filter", filter);
+      params.set("limit", String(LEAD_PAGE_SIZE));
+      if (debouncedSearch) params.set("q", debouncedSearch);
+      if (pageParam) params.set("cursor", pageParam);
+      return api.get<LeadPage>(
+        `/users/studio/${studioId}/leads?${params.toString()}`,
+      );
+    },
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
   });
+
+  const leads = useMemo(
+    () => query.data?.pages.flatMap((page) => page.items) ?? [],
+    [query.data],
+  );
 
   const confirmSession = useMutation({
     mutationFn: (bookingId: string) =>
@@ -97,7 +133,6 @@ function LeadsPage() {
   });
 
   const grouped = useMemo(() => {
-    const leads = query.data ?? [];
     const map: Record<LeadSection, Lead[]> = {
       new: [],
       trialBooked: [],
@@ -107,22 +142,43 @@ function LeadsPage() {
       map[lead.section].push(lead);
     }
     return map;
-  }, [query.data]);
+  }, [leads]);
 
   const visibleSections = useMemo(() => {
     return SECTION_ORDER.filter((section) => grouped[section].length > 0);
   }, [grouped]);
 
+  const hasSearch = Boolean(search.trim());
+  const { hasNextPage, isFetchingNextPage, fetchNextPage, refetch } = query;
+  const loadMore = useCallback(() => {
+    void fetchNextPage();
+  }, [fetchNextPage]);
+  const loadMoreRef = useLoadMoreOnScroll({
+    hasMore: Boolean(hasNextPage),
+    isLoading: isFetchingNextPage,
+    onLoadMore: loadMore,
+  });
+
   const subtitle = useMemo(() => {
-    const count = query.data?.length ?? 0;
+    const count = leads.length;
+    const more = hasNextPage ? "+" : "";
+    if (hasSearch) {
+      return `${count}${more} matching lead${count === 1 ? "" : "s"}`;
+    }
     if (filter === "today") {
-      return `${count} trial${count === 1 ? "" : "s"} to call today`;
+      return `${count}${more} trial${count === 1 ? "" : "s"} to call today`;
     }
     if (filter === "tomorrow") {
-      return `${count} trial${count === 1 ? "" : "s"} to call tomorrow`;
+      return `${count}${more} trial${count === 1 ? "" : "s"} to call tomorrow`;
+    }
+    if (filter === "thisWeek") {
+      return `${count}${more} trial${count === 1 ? "" : "s"} this week`;
+    }
+    if (filter === "nextWeek") {
+      return `${count}${more} trial${count === 1 ? "" : "s"} next week`;
     }
     return "Call new signups and confirm trial sessions.";
-  }, [filter, query.data?.length]);
+  }, [filter, hasNextPage, hasSearch, leads.length]);
 
   function setFilter(next: LeadDateFilter) {
     void navigate({
@@ -148,8 +204,17 @@ function LeadsPage() {
           </TouchButton>
         }
       >
-        <PullToRefresh onRefresh={() => query.refetch()}>
+        <PullToRefresh onRefresh={() => refetch()}>
           <div className={staff.section}>
+            <div className={styles.searchBar} data-testid="leads-search">
+              <SearchField
+                aria-label="Search leads"
+                placeholder="Search leads"
+                value={search}
+                onChange={setSearch}
+              />
+            </div>
+
             <div
               className={styles.filters}
               role="toolbar"
@@ -191,21 +256,13 @@ function LeadsPage() {
               />
             ) : null}
 
-            {query.data && query.data.length === 0 ? (
+            {query.isSuccess && leads.length === 0 ? (
               <EmptyState
                 icon="smartphone"
-                title={
-                  filter === "all"
-                    ? "No leads yet"
-                    : `No trials ${filter === "today" ? "today" : "tomorrow"}`
-                }
-                description={
-                  filter === "all"
-                    ? "Add a lead quickly when someone calls in."
-                    : "Pick All to see every follow-up."
-                }
+                title={emptyLeadsTitle(filter, hasSearch)}
+                description={emptyLeadsDescription(filter, hasSearch)}
                 action={
-                  filter === "all" ? (
+                  filter === "all" && !hasSearch ? (
                     <TouchButton
                       variant="primary"
                       onClick={() => setAddOpen(true)}
@@ -221,6 +278,7 @@ function LeadsPage() {
               <section key={section} className={staff.section}>
                 <h2 className={staff.sectionTitle}>
                   {SECTION_LABELS[section]} · {grouped[section].length}
+                  {hasNextPage ? "+" : ""}
                 </h2>
                 <ul className={staff.list}>
                   {grouped[section].map((lead) => (
@@ -248,6 +306,18 @@ function LeadsPage() {
                 </ul>
               </section>
             ))}
+
+            {hasNextPage ? (
+              <div
+                ref={loadMoreRef}
+                className={styles.loadMore}
+                data-testid="leads-load-more"
+              >
+                {isFetchingNextPage ? (
+                  <SkeletonRowList count={2} label="Loading more leads" />
+                ) : null}
+              </div>
+            ) : null}
           </div>
         </PullToRefresh>
       </Screen>

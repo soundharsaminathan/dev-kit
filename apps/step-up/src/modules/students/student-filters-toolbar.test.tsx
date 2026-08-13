@@ -75,4 +75,22 @@ describe("StudentFiltersToolbar", () => {
       screen.getByRole("heading", { name: "Filters" }),
     ).toBeInTheDocument();
   });
+
+  it("applies search directly from the toolbar field", () => {
+    const onSearchChange = vi.fn();
+    renderWithProviders(
+      <StudentFiltersToolbar
+        {...defaultProps}
+        onSearchChange={onSearchChange}
+      />,
+    );
+
+    fireEvent.change(
+      screen.getByRole("searchbox", { name: "Search students" }),
+      {
+        target: { value: "asha" },
+      },
+    );
+    expect(onSearchChange).toHaveBeenCalledWith("asha");
+  });
 });

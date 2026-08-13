@@ -1,6 +1,6 @@
 import { Badge } from "@dev-ui/components/badge";
 import { Button } from "@dev-ui/components/button";
-import { useIsMobile } from "@dev-ui/hooks";
+import { useIsMobile, useLoadMoreOnScroll } from "@dev-ui/hooks";
 import { Icon } from "@dev-ui/icons";
 import {
   type ColumnDef,
@@ -41,6 +41,8 @@ const STATUS_FILTER_CHIPS: { id: string; label: string }[] = [
   { id: "PRESENT", label: "Present" },
   { id: "ABSENT", label: "Absent" },
 ];
+
+const ROSTER_PAGE_SIZE = 25;
 
 const getCoreModel = getCoreRowModel<AttendanceRosterEntry>();
 const getSortedModel = getSortedRowModel<AttendanceRosterEntry>();
@@ -286,6 +288,13 @@ export function AttendanceRosterTable({
   const [statusFilter, setStatusFilter] =
     useState<AttendanceStatusFilter>("all");
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
+  const listWindowKey = `${statusFilter}:${sorting[0]?.id ?? ""}:${sorting[0]?.desc ? "desc" : "asc"}`;
+  const [visibleCount, setVisibleCount] = useState(ROSTER_PAGE_SIZE);
+  const [windowKey, setWindowKey] = useState(listWindowKey);
+  if (windowKey !== listWindowKey) {
+    setWindowKey(listWindowKey);
+    setVisibleCount(ROSTER_PAGE_SIZE);
+  }
   const [pendingConfirm, setPendingConfirm] = useState<PendingConfirm | null>(
     null,
   );
@@ -407,9 +416,7 @@ export function AttendanceRosterTable({
       accessorFn: (row) => rosterStatus(row),
       header: "Status",
       cell: ({ getValue }) => (
-        <StatusBadge
-          status={getValue<AttendanceStatusValue | "UNMARKED">()}
-        />
+        <StatusBadge status={getValue<AttendanceStatusValue | "UNMARKED">()} />
       ),
       filterFn: (row, _columnId, filterValue: AttendanceStatusFilter) => {
         if (!filterValue || filterValue === "all") return true;
@@ -435,9 +442,7 @@ export function AttendanceRosterTable({
             studentName={row.original.student.name}
             status={status}
             isDisabled={rowPending}
-            onMark={(next) =>
-              meta.requestMarkOne(row.original.studentId, next)
-            }
+            onMark={(next) => meta.requestMarkOne(row.original.studentId, next)}
           />
         );
       },
@@ -482,7 +487,17 @@ export function AttendanceRosterTable({
     () => Object.values(rowSelection).reduce((n, on) => (on ? n + 1 : n), 0),
     [rowSelection],
   );
-  const filteredCount = table.getFilteredRowModel().rows.length;
+  const filteredRows = table.getRowModel().rows;
+  const filteredCount = filteredRows.length;
+  const visibleRows = filteredRows.slice(0, visibleCount);
+  const hasMore = visibleCount < filteredCount;
+  const loadMore = useCallback(() => {
+    setVisibleCount((count) => count + ROSTER_PAGE_SIZE);
+  }, []);
+  const loadMoreRef = useLoadMoreOnScroll({
+    hasMore,
+    onLoadMore: loadMore,
+  });
   const visibleColumnCount = table.getVisibleLeafColumns().length;
 
   const clearSelection = useCallback(() => {
@@ -545,12 +560,7 @@ export function AttendanceRosterTable({
       setRowSelection({});
     }
     setPendingConfirm(null);
-  }, [
-    onMarkAllUnmarkedPresent,
-    onMarkOne,
-    onMarkSelected,
-    pendingConfirm,
-  ]);
+  }, [onMarkAllUnmarkedPresent, onMarkOne, onMarkSelected, pendingConfirm]);
 
   const handleFilterToggle = useCallback((id: string) => {
     setStatusFilter(id as AttendanceStatusFilter);
@@ -700,22 +710,28 @@ export function AttendanceRosterTable({
                 </td>
               </tr>
             ) : (
-              table
-                .getRowModel()
-                .rows.map((row) => (
-                  <RosterRow
-                    key={row.id}
-                    row={row}
-                    isSelected={row.getIsSelected()}
-                    isRowPending={pendingStudentId === row.original.studentId}
-                    actionsLocked={actionsLocked}
-                    markingDisabled={markingDisabled}
-                  />
-                ))
+              visibleRows.map((row) => (
+                <RosterRow
+                  key={row.id}
+                  row={row}
+                  isSelected={row.getIsSelected()}
+                  isRowPending={pendingStudentId === row.original.studentId}
+                  actionsLocked={actionsLocked}
+                  markingDisabled={markingDisabled}
+                />
+              ))
             )}
           </tbody>
         </table>
       </div>
+
+      {hasMore ? (
+        <div
+          ref={loadMoreRef}
+          className={styles.loadMore}
+          data-testid="attendance-roster-load-more"
+        />
+      ) : null}
 
       <p className={styles.footerMeta}>
         Showing {filteredCount} of {roster.length} · sorted by{" "}

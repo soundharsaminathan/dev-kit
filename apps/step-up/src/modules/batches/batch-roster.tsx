@@ -10,12 +10,19 @@ import {
 } from "@dev-ui/components/select";
 import { Tab, TabList, TabPanel, Tabs } from "@dev-ui/components/tabs";
 import { useToastContext } from "@dev-ui/components/toast";
+import { useLoadMoreOnScroll } from "@dev-ui/hooks";
 import { Icon } from "@dev-ui/icons";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  type InfiniteData,
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useApi } from "@/lib/api-context";
-import { type Page, unwrapPage } from "@/lib/api-page";
+import type { Page } from "@/lib/api-page";
 import { ENTITY_ICONS } from "@/lib/entity-icons";
 import { formatPaidMonths } from "@/lib/format-paid-months";
 import { useStudioId } from "@/lib/use-studio-id";
@@ -93,6 +100,30 @@ function inactiveChipLabel(reason: InactiveEnrollmentRow["inactiveReason"]) {
   return reason === "MOVED" ? "Moved" : "Unenrolled";
 }
 
+const ROSTER_PAGE_SIZE = 25;
+
+function flattenRosterPages<T>(data: InfiniteData<Page<T>> | undefined) {
+  return data?.pages.flatMap((page) => page.items) ?? [];
+}
+
+function prependRosterRows(
+  current: InfiniteData<Page<BatchEnrollmentRow>> | undefined,
+  additions: BatchEnrollmentRow[],
+): InfiniteData<Page<BatchEnrollmentRow>> | undefined {
+  if (!current || additions.length === 0) return current;
+  const [first, ...rest] = current.pages;
+  if (!first) {
+    return {
+      pageParams: current.pageParams,
+      pages: [{ items: additions, nextCursor: null, limit: ROSTER_PAGE_SIZE }],
+    };
+  }
+  return {
+    ...current,
+    pages: [{ ...first, items: [...additions, ...first.items] }, ...rest],
+  };
+}
+
 export function BatchRoster({ batchId, capacity, active }: BatchRosterProps) {
   const api = useApi();
   const studioId = useStudioId();
@@ -116,34 +147,44 @@ export function BatchRoster({ batchId, capacity, active }: BatchRosterProps) {
     queryFn: () => api.get<BatchHeader>(`/batches/${batchId}`),
   });
 
-  const activeRosterQuery = useQuery({
+  const activeRosterQuery = useInfiniteQuery({
     queryKey: ["batch", batchId, "roster", "active"],
-    queryFn: async () => {
-      const data = await api.get<
-        Page<BatchEnrollmentRow> | BatchEnrollmentRow[]
-      >(`/batches/${batchId}/roster?tab=active&limit=50`);
-      return unwrapPage(data);
+    queryFn: ({ pageParam }) => {
+      const params = new URLSearchParams();
+      params.set("tab", "active");
+      params.set("limit", String(ROSTER_PAGE_SIZE));
+      if (pageParam) params.set("cursor", pageParam);
+      return api.get<Page<BatchEnrollmentRow>>(
+        `/batches/${batchId}/roster?${params.toString()}`,
+      );
     },
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
   });
 
-  const inactiveRosterQuery = useQuery({
+  const inactiveRosterQuery = useInfiniteQuery({
     queryKey: ["batch", batchId, "roster", "inactive"],
-    queryFn: async () => {
-      const data = await api.get<
-        Page<InactiveEnrollmentRow> | InactiveEnrollmentRow[]
-      >(`/batches/${batchId}/roster?tab=inactive&limit=50`);
-      return unwrapPage(data);
+    queryFn: ({ pageParam }) => {
+      const params = new URLSearchParams();
+      params.set("tab", "inactive");
+      params.set("limit", String(ROSTER_PAGE_SIZE));
+      if (pageParam) params.set("cursor", pageParam);
+      return api.get<Page<InactiveEnrollmentRow>>(
+        `/batches/${batchId}/roster?${params.toString()}`,
+      );
     },
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
   });
 
   const enrollments = useMemo(() => {
-    const rows = activeRosterQuery.data ?? [];
+    const rows = flattenRosterPages(activeRosterQuery.data);
     return [...rows].sort((a, b) =>
       a.student.name.localeCompare(b.student.name),
     );
   }, [activeRosterQuery.data]);
   const inactiveEnrollments = useMemo(() => {
-    const rows = inactiveRosterQuery.data ?? [];
+    const rows = flattenRosterPages(inactiveRosterQuery.data);
     return [...rows].sort((a, b) =>
       a.student.name.localeCompare(b.student.name),
     );
@@ -175,6 +216,24 @@ export function BatchRoster({ batchId, capacity, active }: BatchRosterProps) {
   const hasPlans = plans.length > 0;
   const canEnroll = active && !isFull && hasUpcomingSessions && hasPlans;
 
+  const loadMoreActive = useCallback(() => {
+    void activeRosterQuery.fetchNextPage();
+  }, [activeRosterQuery.fetchNextPage]);
+  const activeLoadMoreRef = useLoadMoreOnScroll({
+    hasMore: Boolean(activeRosterQuery.hasNextPage),
+    isLoading: activeRosterQuery.isFetchingNextPage,
+    onLoadMore: loadMoreActive,
+  });
+
+  const loadMoreInactive = useCallback(() => {
+    void inactiveRosterQuery.fetchNextPage();
+  }, [inactiveRosterQuery.fetchNextPage]);
+  const inactiveLoadMoreRef = useLoadMoreOnScroll({
+    hasMore: Boolean(inactiveRosterQuery.hasNextPage),
+    isLoading: inactiveRosterQuery.isFetchingNextPage,
+    onLoadMore: loadMoreInactive,
+  });
+
   const enroll = useMutation({
     mutationFn: async (input: {
       students: StudioStudent[];
@@ -197,18 +256,15 @@ export function BatchRoster({ batchId, capacity, active }: BatchRosterProps) {
         "batch",
         batchId,
       ]);
-      const previousRoster = queryClient.getQueryData<BatchEnrollmentRow[]>([
-        "batch",
-        batchId,
-        "roster",
-        "active",
-      ]);
+      const previousRoster = queryClient.getQueryData<
+        InfiniteData<Page<BatchEnrollmentRow>>
+      >(["batch", batchId, "roster", "active"]);
 
       queryClient.setQueryData<BatchHeader>(["batch", batchId], (current) => {
         if (!current) return current;
         const enrollmentCount =
-          (current.enrollmentCount ?? previousRoster?.length ?? 0) +
-          students.length;
+          (current.enrollmentCount ??
+            flattenRosterPages(previousRoster).length) + students.length;
         return {
           ...current,
           enrollmentCount,
@@ -216,16 +272,15 @@ export function BatchRoster({ batchId, capacity, active }: BatchRosterProps) {
         };
       });
 
-      queryClient.setQueryData<BatchEnrollmentRow[]>(
+      queryClient.setQueryData<InfiniteData<Page<BatchEnrollmentRow>>>(
         ["batch", batchId, "roster", "active"],
         (current) => {
-          const existing = new Set((current ?? []).map((row) => row.studentId));
-          const additions = students.filter(
-            (student) => !existing.has(student.id),
+          const existing = new Set(
+            flattenRosterPages(current).map((row) => row.studentId),
           );
-          if (additions.length === 0) return current;
-          return [
-            ...additions.map((student) => ({
+          const additions = students
+            .filter((student) => !existing.has(student.id))
+            .map((student) => ({
               studentId: student.id,
               monthlyUnpaid: true,
               student: {
@@ -236,9 +291,8 @@ export function BatchRoster({ batchId, capacity, active }: BatchRosterProps) {
                 photoUrl: null,
                 styles: [],
               },
-            })),
-            ...(current ?? []),
-          ];
+            }));
+          return prependRosterRows(current, additions);
         },
       );
 
@@ -430,48 +484,63 @@ export function BatchRoster({ batchId, capacity, active }: BatchRosterProps) {
                 description="Add students and pick a package to enroll."
               />
             ) : (
-              <div className={styles.list}>
-                {enrollments.map((row) => {
-                  const student = row.student;
-                  const initials = student.name.slice(0, 1).toUpperCase();
-                  const paidMonths = row.paidMonths ?? 0;
+              <>
+                <div className={styles.list}>
+                  {enrollments.map((row) => {
+                    const student = row.student;
+                    const initials = student.name.slice(0, 1).toUpperCase();
+                    const paidMonths = row.paidMonths ?? 0;
 
-                  return (
-                    <PressableCard
-                      key={row.studentId}
-                      onClick={() => openStudent(row.studentId)}
-                    >
-                      <div className={styles.card}>
-                        <Avatar size="lg" className={styles.avatar}>
-                          {student.photoUrl ? (
-                            <AvatarImage
-                              src={student.photoUrl}
-                              alt={student.name}
-                            />
-                          ) : null}
-                          <AvatarFallback>{initials}</AvatarFallback>
-                        </Avatar>
+                    return (
+                      <PressableCard
+                        key={row.studentId}
+                        onClick={() => openStudent(row.studentId)}
+                      >
+                        <div className={styles.card}>
+                          <Avatar size="lg" className={styles.avatar}>
+                            {student.photoUrl ? (
+                              <AvatarImage
+                                src={student.photoUrl}
+                                alt={student.name}
+                              />
+                            ) : null}
+                            <AvatarFallback>{initials}</AvatarFallback>
+                          </Avatar>
 
-                        <div className={styles.body}>
-                          <div className={styles.top}>
-                            <h3 className={styles.name}>{student.name}</h3>
+                          <div className={styles.body}>
+                            <div className={styles.top}>
+                              <h3 className={styles.name}>{student.name}</h3>
+                            </div>
+
+                            <p
+                              className={styles.tenure}
+                              data-testid={`paid-months-${row.studentId}`}
+                            >
+                              <Icon
+                                name="wallet"
+                                className={styles.tenureIcon}
+                              />
+                              {formatPaidMonths(paidMonths)}
+                            </p>
                           </div>
 
-                          <p
-                            className={styles.tenure}
-                            data-testid={`paid-months-${row.studentId}`}
-                          >
-                            <Icon name="wallet" className={styles.tenureIcon} />
-                            {formatPaidMonths(paidMonths)}
-                          </p>
+                          <Icon
+                            name="chevron-right"
+                            className={styles.chevron}
+                          />
                         </div>
-
-                        <Icon name="chevron-right" className={styles.chevron} />
-                      </div>
-                    </PressableCard>
-                  );
-                })}
-              </div>
+                      </PressableCard>
+                    );
+                  })}
+                </div>
+                {activeRosterQuery.hasNextPage ? (
+                  <div
+                    ref={activeLoadMoreRef}
+                    className={staff.loadMore}
+                    data-testid="batch-roster-active-load-more"
+                  />
+                ) : null}
+              </>
             )}
           </div>
         </TabPanel>
@@ -485,48 +554,60 @@ export function BatchRoster({ batchId, capacity, active }: BatchRosterProps) {
                 description="Students who move or unenroll stay here while their membership month is still active."
               />
             ) : (
-              <div className={styles.list}>
-                {inactiveEnrollments.map((row) => {
-                  const student = row.student;
-                  const initials = student.name.slice(0, 1).toUpperCase();
-                  const chip = inactiveChipLabel(row.inactiveReason);
+              <>
+                <div className={styles.list}>
+                  {inactiveEnrollments.map((row) => {
+                    const student = row.student;
+                    const initials = student.name.slice(0, 1).toUpperCase();
+                    const chip = inactiveChipLabel(row.inactiveReason);
 
-                  return (
-                    <PressableCard
-                      key={row.studentId}
-                      onClick={() => openStudent(row.studentId)}
-                    >
-                      <div className={styles.card}>
-                        <Avatar size="lg" className={styles.avatar}>
-                          {student.photoUrl ? (
-                            <AvatarImage
-                              src={student.photoUrl}
-                              alt={student.name}
-                            />
-                          ) : null}
-                          <AvatarFallback>{initials}</AvatarFallback>
-                        </Avatar>
+                    return (
+                      <PressableCard
+                        key={row.studentId}
+                        onClick={() => openStudent(row.studentId)}
+                      >
+                        <div className={styles.card}>
+                          <Avatar size="lg" className={styles.avatar}>
+                            {student.photoUrl ? (
+                              <AvatarImage
+                                src={student.photoUrl}
+                                alt={student.name}
+                              />
+                            ) : null}
+                            <AvatarFallback>{initials}</AvatarFallback>
+                          </Avatar>
 
-                        <div className={styles.body}>
-                          <div className={styles.top}>
-                            <h3 className={styles.name}>{student.name}</h3>
-                            <div className={styles.badges}>
-                              <Badge
-                                variant="neutral"
-                                data-testid={`inactive-reason-${row.studentId}`}
-                              >
-                                {chip}
-                              </Badge>
+                          <div className={styles.body}>
+                            <div className={styles.top}>
+                              <h3 className={styles.name}>{student.name}</h3>
+                              <div className={styles.badges}>
+                                <Badge
+                                  variant="neutral"
+                                  data-testid={`inactive-reason-${row.studentId}`}
+                                >
+                                  {chip}
+                                </Badge>
+                              </div>
                             </div>
                           </div>
-                        </div>
 
-                        <Icon name="chevron-right" className={styles.chevron} />
-                      </div>
-                    </PressableCard>
-                  );
-                })}
-              </div>
+                          <Icon
+                            name="chevron-right"
+                            className={styles.chevron}
+                          />
+                        </div>
+                      </PressableCard>
+                    );
+                  })}
+                </div>
+                {inactiveRosterQuery.hasNextPage ? (
+                  <div
+                    ref={inactiveLoadMoreRef}
+                    className={staff.loadMore}
+                    data-testid="batch-roster-inactive-load-more"
+                  />
+                ) : null}
+              </>
             )}
           </div>
         </TabPanel>

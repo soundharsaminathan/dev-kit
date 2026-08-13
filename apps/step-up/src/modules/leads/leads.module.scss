@@ -160,6 +160,15 @@
   align-items: center;
 }
 
+.searchBar {
+  width: 100%;
+  min-width: 0;
+}
+
+.loadMore {
+  min-height: 1px;
+}
+
 .filters {
   display: flex;
   flex-wrap: wrap;
