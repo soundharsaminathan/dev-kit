@@ -1,9 +1,9 @@
 import { expect, test } from "@playwright/test";
 import { REVENUE } from "../fixtures/revenue-fixtures";
 import { SEED } from "../fixtures/seed";
+import { enrollPrepaid } from "./billing-fixtures";
 import {
   createHttpStudent,
-  createPendingInvoiceViaEnroll as enrollPrepaid,
   expectOk,
   expectStatus,
   TestDataCleanup,
@@ -17,13 +17,7 @@ const KID_MONTHLY_PRICE = REVENUE.KID_MONTHLY_PRICE;
 // Helpers
 // ---------------------------------------------------------------------------
 
-const SEED_BATCH_IDS = new Set([
-  SEED.beginnerBatchId,
-  SEED.kidsBatchId,
-  SEED.trialBatchId,
-]);
-
-/** Seed batches already ran this month (postpaid). Pass a future batchId to reuse it. */
+/** Seed batch ids are ignored; each case owns a prepaid calendar batch. */
 async function createPendingInvoiceViaEnroll(
   cleanup: TestDataCleanup,
   batchId: string | undefined,
@@ -31,9 +25,8 @@ async function createPendingInvoiceViaEnroll(
   studentName = "Revenue Test Student",
 ) {
   const category = planId.includes("kid") ? "KIDS" : "ADULTS";
-  const reuseId = batchId && !SEED_BATCH_IDS.has(batchId) ? batchId : undefined;
   return enrollPrepaid(cleanup, {
-    batchId: reuseId,
+    batchId,
     planId,
     studentName,
     category,
@@ -328,13 +321,12 @@ test.describe("Trainer-level revenue @http", () => {
       await markPaid(inv1.id);
 
       // Payment in kids batch (Trainer A)
-      const { invoice: inv2, batchId: kidsBatchId } =
-        await createPendingInvoiceViaEnroll(
-          cleanup,
-          SEED.kidsBatchId,
-          SEED.kidPlanIds[0],
-          "Trainer Analytics 2",
-        );
+      const { invoice: inv2 } = await createPendingInvoiceViaEnroll(
+        cleanup,
+        SEED.kidsBatchId,
+        SEED.kidPlanIds[0],
+        "Trainer Analytics 2",
+      );
       await markPaid(inv2.id);
 
       const analytics = await getTrainerAnalytics(SEED.users.TRAINER.id);

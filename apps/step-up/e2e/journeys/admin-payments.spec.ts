@@ -8,43 +8,13 @@ import {
   waitForAppReady,
 } from "../fixtures";
 import { SEED } from "../fixtures/seed";
-import {
-  createPendingInvoiceViaEnroll,
-  enrollSeedBatchWithPrepaidInvoice,
-  TestDataCleanup,
-} from "../http/helpers";
-
-async function createPendingInvoice() {
-  const cleanup = new TestDataCleanup();
-  const { invoice } = await createPendingInvoiceViaEnroll(cleanup);
-  return invoice;
-}
-
-async function createFamilyKid(name: string) {
-  return apiRequest<{ id: string }>("STUDENT", "/users/me/family-members", {
-    method: "POST",
-    body: JSON.stringify({
-      name,
-      kind: "KID",
-      gender: "FEMALE",
-      ageRange: "UNDER_10",
-    }),
-  });
-}
-
-async function enrollKidPending(studentId: string) {
-  const cleanup = new TestDataCleanup();
-  const { invoice } = await enrollSeedBatchWithPrepaidInvoice(
-    cleanup,
-    SEED.kidsBatchId,
-    { category: "KIDS", studentId },
-  );
-  return invoice;
-}
+import { createCalendarBatch, enrollPrepaid } from "../http/billing-fixtures";
+import { TestDataCleanup } from "../http/helpers";
 
 test.describe("admin payments @critical", () => {
   test("staff marks invoice paid through UI @critical", async ({ browser }) => {
-    const invoice = await createPendingInvoice();
+    const cleanup = new TestDataCleanup();
+    const { invoice } = await enrollPrepaid(cleanup);
     expect(invoice.status).toBe("PENDING");
 
     const context = await browser.newContext({
@@ -82,12 +52,14 @@ test.describe("admin payments @critical", () => {
       .toBe("PAID");
 
     await context.close();
+    await cleanup.dispose();
   });
 
   test("staff issues partial refund through UI @critical", async ({
     browser,
   }) => {
-    const invoice = await createPendingInvoice();
+    const cleanup = new TestDataCleanup();
+    const { invoice } = await enrollPrepaid(cleanup);
     await apiRequest("STAFF", `/billing/${invoice.id}/paid`, {
       method: "PATCH",
       body: JSON.stringify({ paymentMethod: "CASH" }),
@@ -139,16 +111,63 @@ test.describe("admin payments @critical", () => {
     ).toBeVisible();
 
     await context.close();
+    await cleanup.dispose();
   });
 
   test("staff combines family invoices then marks paid @critical", async ({
     browser,
   }) => {
+    const cleanup = new TestDataCleanup();
     const stamp = Date.now();
-    const kidA = await createFamilyKid(`Combine A ${stamp}`);
-    const kidB = await createFamilyKid(`Combine B ${stamp}`);
-    const invoiceA = await enrollKidPending(kidA.id);
-    const invoiceB = await enrollKidPending(kidB.id);
+    const kidA = await apiRequest<{ id: string }>(
+      "STUDENT",
+      "/users/me/family-members",
+      {
+        method: "POST",
+        body: JSON.stringify({
+          name: `Combine A ${stamp}`,
+          kind: "KID",
+          gender: "FEMALE",
+          ageRange: "UNDER_10",
+        }),
+      },
+    );
+    cleanup.trackStudent(kidA.id);
+    const kidB = await apiRequest<{ id: string }>(
+      "STUDENT",
+      "/users/me/family-members",
+      {
+        method: "POST",
+        body: JSON.stringify({
+          name: `Combine B ${stamp}`,
+          kind: "KID",
+          gender: "FEMALE",
+          ageRange: "UNDER_10",
+        }),
+      },
+    );
+    cleanup.trackStudent(kidB.id);
+    const kidsBatch = await createCalendarBatch(cleanup, {
+      kind: "prepaid",
+      category: "KIDS",
+      capacity: 8,
+    });
+    const invoiceA = (
+      await enrollPrepaid(cleanup, {
+        category: "KIDS",
+        studentId: kidA.id,
+        batchId: kidsBatch.id,
+        planId: SEED.kidPlanIds[0],
+      })
+    ).invoice;
+    const invoiceB = (
+      await enrollPrepaid(cleanup, {
+        category: "KIDS",
+        studentId: kidB.id,
+        batchId: kidsBatch.id,
+        planId: SEED.kidPlanIds[0],
+      })
+    ).invoice;
     expect(invoiceA.status).toBe("PENDING");
     expect(invoiceB.status).toBe("PENDING");
 
@@ -210,6 +229,7 @@ test.describe("admin payments @critical", () => {
       .toBe("PAID");
 
     await context.close();
+    await cleanup.dispose();
   });
 
   test("staff payments page loads", async ({ browser }) => {

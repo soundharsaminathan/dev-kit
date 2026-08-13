@@ -2,7 +2,9 @@ import type { Page } from "@playwright/test";
 import {
   apiRequest,
   authFile,
-  enrollSeedBatchWithPrepaidInvoice,
+  canJoinPostpaidNow,
+  enrollPostpaid,
+  enrollUnpaidOnPostpaidBatch,
   expect,
   SMOKE,
   SmokeDataCleanup,
@@ -121,16 +123,13 @@ test.describe("trainer smoke @smoke", () => {
   test("trainer confirms unpaid enrollee then marks present @smoke", async ({
     browser,
   }) => {
+    test.skip(!canJoinPostpaidNow(), "UTC 1st is always prepaid-at-join");
     const cleanup = new SmokeDataCleanup();
-    const sessionId = SMOKE.sessionAttendanceId;
     const stamp = Date.now();
-    const { student, invoice } = await enrollSeedBatchWithPrepaidInvoice(
+    const { student, invoice, sessionId } = await enrollUnpaidOnPostpaidBatch(
       cleanup,
-      SMOKE.kidsBatchId,
       {
-        category: "KIDS",
         name: `Smoke Unpaid ${stamp}`,
-        ageRange: "UNDER_10",
       },
     );
     expect(invoice.status).toBe("PENDING");
@@ -193,16 +192,13 @@ test.describe("trainer smoke @smoke", () => {
   test("after mark-paid unpaid badge clears on roster @smoke", async ({
     browser,
   }) => {
+    test.skip(!canJoinPostpaidNow(), "UTC 1st is always prepaid-at-join");
     const cleanup = new SmokeDataCleanup();
-    const sessionId = SMOKE.sessionAttendanceId;
     const stamp = Date.now();
-    const { student, invoice } = await enrollSeedBatchWithPrepaidInvoice(
+    const { student, invoice, sessionId } = await enrollUnpaidOnPostpaidBatch(
       cleanup,
-      SMOKE.kidsBatchId,
       {
-        category: "KIDS",
         name: `Smoke After Pay ${stamp}`,
-        ageRange: "UNDER_10",
       },
     );
     expect(invoice.status).toBe("PENDING");
@@ -246,37 +242,13 @@ test.describe("trainer smoke @smoke", () => {
   test("mid-month enrollee marks present without unpaid confirm @smoke", async ({
     browser,
   }) => {
+    test.skip(!canJoinPostpaidNow(), "UTC 1st is always prepaid-at-join");
     const cleanup = new SmokeDataCleanup();
-    const sessionId = SMOKE.sessionAttendanceId;
     const stamp = Date.now();
-    const student = await apiRequest<{ id: string; name: string }>(
-      "OWNER",
-      "/users",
-      {
-        method: "POST",
-        body: JSON.stringify({
-          name: `Smoke Postpaid ${stamp}`,
-          email: `smoke-postpaid-${stamp}@stepup.dev`,
-          gender: "FEMALE",
-          ageRange: "UNDER_10",
-          styles: ["Hip Hop"],
-        }),
-      },
-    );
-    cleanup.trackStudent(student.id);
-
-    const enrollment = await apiRequest<{
-      invoice: { id: string } | null;
-      billingKind?: string;
-    }>("STAFF", `/batches/${SMOKE.kidsBatchId}/enroll`, {
-      method: "POST",
-      body: JSON.stringify({
-        studentId: student.id,
-        subscriptionId: SMOKE.kidPlanIds[0],
-      }),
+    const { student, sessionId, batchId } = await enrollPostpaid(cleanup, {
+      name: `Smoke Postpaid ${stamp}`,
     });
-    expect(enrollment.invoice).toBeNull();
-    expect(enrollment.billingKind).toBe("postpaid");
+    expect(batchId).toBeTruthy();
 
     const roster = await apiRequest<
       Array<{ studentId: string; monthlyUnpaid?: boolean }>
@@ -361,7 +333,9 @@ test.describe("trainer smoke @smoke", () => {
         return `${year}-${month}-${day}T${hours}:${minutes}`;
       };
 
-      await page.getByTestId("session-change-starts-at").fill(toLocal(nextStart));
+      await page
+        .getByTestId("session-change-starts-at")
+        .fill(toLocal(nextStart));
       await page.getByTestId("session-change-ends-at").fill(toLocal(nextEnd));
 
       const patchPromise = waitForApiResponse(page, {
@@ -379,7 +353,9 @@ test.describe("trainer smoke @smoke", () => {
       });
       await page.getByTestId("confirm-delete-session").click();
       expect((await deletePromise).ok()).toBeTruthy();
-      await expect(page).toHaveURL(new RegExp(`/app/batches/${session.batchId}`));
+      await expect(page).toHaveURL(
+        new RegExp(`/app/batches/${session.batchId}`),
+      );
     } finally {
       await context.close();
     }

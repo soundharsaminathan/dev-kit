@@ -7,7 +7,7 @@ import {
 } from "../fixtures";
 import { SEED } from "../fixtures/seed";
 import { TestDataCleanup } from "../fixtures/test-cleanup";
-import { createPendingInvoiceViaEnroll } from "../http/helpers";
+import { enrollPrepaid } from "../http/billing-fixtures";
 
 const ADULT_MONTHLY_PRICE = 3500;
 const KID_MONTHLY_PRICE = 2500;
@@ -18,7 +18,7 @@ async function enrollAndPay(
   method = "CASH",
   batchId?: string,
 ) {
-  const created = await createPendingInvoiceViaEnroll(cleanup, {
+  const created = await enrollPrepaid(cleanup, {
     batchId,
     planId,
     category: planId.includes("kid") ? "KIDS" : "ADULTS",
@@ -48,11 +48,7 @@ test.describe("Revenue reconciliation E2E @critical", () => {
     const cleanup = new TestDataCleanup();
 
     try {
-      const paidA = await enrollAndPay(
-        cleanup,
-        SEED.adultPlanIds[0],
-        "CASH",
-      );
+      const paidA = await enrollAndPay(cleanup, SEED.adultPlanIds[0], "CASH");
       expect(paidA.invoice.status).toBe("PAID");
       const adultBatchId = paidA.batchId;
 
@@ -64,11 +60,7 @@ test.describe("Revenue reconciliation E2E @critical", () => {
       );
       expect(paidB.invoice.status).toBe("PAID");
 
-      const paidC = await enrollAndPay(
-        cleanup,
-        SEED.kidPlanIds[0],
-        "CASH",
-      );
+      const paidC = await enrollAndPay(cleanup, SEED.kidPlanIds[0], "CASH");
       expect(paidC.invoice.status).toBe("PAID");
       const kidsBatchId = paidC.batchId;
 
@@ -245,7 +237,7 @@ test.describe("Revenue reconciliation E2E @critical", () => {
   test("discounted payment shows correct net amount in batch revenue @critical", async () => {
     const cleanup = new TestDataCleanup();
     try {
-      const created = await createPendingInvoiceViaEnroll(cleanup, {
+      const created = await enrollPrepaid(cleanup, {
         planId: SEED.adultPlanIds[0],
         studentName: "E2E Discount Revenue Student",
       });

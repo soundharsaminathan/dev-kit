@@ -1,8 +1,14 @@
 import { expect, test } from "@playwright/test";
+import { canJoinPostpaidNow } from "../fixtures/billing-calendar";
 import { SEED } from "../fixtures/seed";
 import {
+  enrollPostpaid,
+  enrollUnpaidOnPostpaidBatch,
+  markableSessionId,
+  markPaid,
+} from "./billing-fixtures";
+import {
   createHttpStudent,
-  enrollSeedBatchWithPrepaidInvoice,
   expectOk,
   expectStatus,
   TestDataCleanup,
@@ -42,13 +48,12 @@ test.describe("attendance HTTP @http", () => {
   });
 
   test("roster flags staff-enrolled unpaid student and mark still works @http", async () => {
+    test.skip(!canJoinPostpaidNow(), "UTC 1st is always prepaid-at-join");
     const cleanup = new TestDataCleanup();
-    const sessionId = SEED.sessionAttendanceId;
     try {
-      const { student, invoice } = await enrollSeedBatchWithPrepaidInvoice(
+      const { student, invoice, sessionId } = await enrollUnpaidOnPostpaidBatch(
         cleanup,
-        SEED.kidsBatchId,
-        { category: "KIDS", studentName: "HTTP Unpaid Roster" },
+        { studentName: "HTTP Unpaid Roster" },
       );
       expect(invoice.status).toBe("PENDING");
 
@@ -84,26 +89,20 @@ test.describe("attendance HTTP @http", () => {
   });
 
   test("mid-month enroll is not monthlyUnpaid and mark does not need an invoice @http", async () => {
+    test.skip(!canJoinPostpaidNow(), "UTC 1st is always prepaid-at-join");
     const cleanup = new TestDataCleanup();
-    const sessionId = SEED.sessionAttendanceId;
     try {
-      const student = await createHttpStudent("HTTP Postpaid Roster", cleanup);
-      const enrollment = await expectOk<{
-        invoice: { id: string } | null;
-      }>("STAFF", `/batches/${SEED.kidsBatchId}/enroll`, {
-        method: "POST",
-        body: JSON.stringify({
-          studentId: student.id,
-          subscriptionId: SEED.kidPlanIds[0],
-        }),
+      const enrolled = await enrollPostpaid(cleanup, {
+        studentName: "HTTP Postpaid Roster",
       });
-      expect(enrollment.invoice).toBeNull();
+      const sessionId = markableSessionId(enrolled.sessions);
 
       const roster = await expectOk<
         Array<{ studentId: string; monthlyUnpaid?: boolean }>
       >("TRAINER", `/attendance/session/${sessionId}/roster`);
       expect(
-        roster.find((row) => row.studentId === student.id)?.monthlyUnpaid,
+        roster.find((row) => row.studentId === enrolled.student.id)
+          ?.monthlyUnpaid,
       ).toBe(false);
 
       const marked = await expectOk<{ status: string }>(
@@ -113,7 +112,7 @@ test.describe("attendance HTTP @http", () => {
           method: "POST",
           body: JSON.stringify({
             sessionId,
-            studentId: student.id,
+            studentId: enrolled.student.id,
             status: "PRESENT",
             source: "TRAINER",
           }),
@@ -126,13 +125,12 @@ test.describe("attendance HTTP @http", () => {
   });
 
   test("mark-paid clears monthlyUnpaid on attendance roster @http", async () => {
+    test.skip(!canJoinPostpaidNow(), "UTC 1st is always prepaid-at-join");
     const cleanup = new TestDataCleanup();
-    const sessionId = SEED.sessionAttendanceId;
     try {
-      const { student, invoice } = await enrollSeedBatchWithPrepaidInvoice(
+      const { student, invoice, sessionId } = await enrollUnpaidOnPostpaidBatch(
         cleanup,
-        SEED.kidsBatchId,
-        { category: "KIDS", studentName: "HTTP After Pay Roster" },
+        { studentName: "HTTP After Pay Roster" },
       );
       expect(invoice.status).toBe("PENDING");
 
@@ -143,10 +141,7 @@ test.describe("attendance HTTP @http", () => {
         unpaidRoster.find((row) => row.studentId === student.id)?.monthlyUnpaid,
       ).toBe(true);
 
-      await expectOk("STAFF", `/billing/${invoice.id}/paid`, {
-        method: "PATCH",
-        body: JSON.stringify({ paymentMethod: "CASH" }),
-      });
+      await markPaid(invoice.id);
 
       const paidRoster = await expectOk<
         Array<{ studentId: string; monthlyUnpaid?: boolean }>

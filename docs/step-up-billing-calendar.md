@@ -95,8 +95,21 @@ Staff, bulk, and parent enroll always seat immediately (invoice only when prepai
 
 ## Tests
 
-Do not migrate existing invoice rows. For a case that needs an invoice, **create** one:
+Do not migrate existing invoice rows. Each case **creates its own batches** so prepaid vs postpaid is owned by the fixture, not by seed kids/beginner schedules.
 
-- **Prepaid-at-join**: enroll into a batch whose schedule starts in a **future month** (no sessions this month) → invoice at enroll
-- **Unpaid on a seed batch roster** (sessions already ran this month): enroll a future-schedule batch (invoice now), then **switch** onto the seed batch — switch keeps the invoice
-- **Mid-month / postpaid**: enroll a seed batch that already had a session this month → `invoice: null`, `monthlyUnpaid: false`
+Shared helpers:
+
+- `apps/step-up/e2e/fixtures/billing-calendar.ts` — UTC schedule builders (`prepaidScheduleJson` starts next month; `postpaidScheduleJson` already had a session this month)
+- `apps/step-up/e2e/http/billing-fixtures.ts` — HTTP factories (`enrollPrepaid`, `enrollPostpaid`, `enrollUnpaidOnPostpaidBatch`)
+- Smoke mirrors the same schedules in `apps/step-up/e2e/smoke/fixtures.ts`
+
+| Case | How to build it |
+| --- | --- |
+| Prepaid-at-join | `enrollPrepaid` — staff enroll on a next-month schedule → `PREPAID_FULL` PENDING, seated, `monthlyUnpaid` |
+| Postpaid first month | `enrollPostpaid` — first session this month already started → `invoice: null`, `FIRST_POSTPAID`, not `monthlyUnpaid`. Skip on UTC 1st. |
+| Unpaid + markable session | `enrollUnpaidOnPostpaidBatch` — prepaid on owned A, **switch** onto owned in-progress B (product switch, not seed) |
+| Discover prepaid | `POST /batches/:id/purchase` on a prepaid batch → checkout hold, not seated |
+| Discover postpaid / switch | Same purchase path → enroll now, no invoice |
+| Month-end usage + convert flag | Unit tests on `rollEndedActiveToNextDue` (daily job only enqueues; no HTTP worker) |
+
+Canonical HTTP contract: `apps/step-up/e2e/http/billing-calendar.http.spec.ts`. Seed batches stay for auth, roles, and shared shells — not for join billing.

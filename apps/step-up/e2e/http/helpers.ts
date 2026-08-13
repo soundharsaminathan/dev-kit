@@ -1,4 +1,9 @@
 import { expect } from "@playwright/test";
+import {
+  batchCreateBody,
+  isScheduleConflict,
+  prepaidScheduleJson,
+} from "../fixtures/billing-calendar";
 import { apiBaseUrl, bearerFor, SEED, type SeedRole } from "../fixtures/seed";
 import { TestDataCleanup } from "../fixtures/test-cleanup";
 
@@ -93,9 +98,10 @@ export async function fetchRosterRows(
 export async function createHttpStudent(
   name = "HTTP Student",
   cleanup?: TestDataCleanup,
+  options: { ageRange?: string } = {},
 ) {
   const email = `http-student-${Date.now()}-${Math.random().toString(36).slice(2, 8)}@stepup.dev`;
-  const student = await expectOk<{ id: string; email: string }>(
+  const student = await expectOk<{ id: string; email: string; name: string }>(
     "OWNER",
     "/users",
     {
@@ -104,7 +110,7 @@ export async function createHttpStudent(
         name,
         email,
         gender: "FEMALE",
-        ageRange: "TWENTY_TO_FORTY",
+        ageRange: options.ageRange ?? "TWENTY_TO_FORTY",
         styles: ["Hip Hop"],
       }),
     },
@@ -113,125 +119,47 @@ export async function createHttpStudent(
   return student;
 }
 
-/** Batch with no sessions this month → enroll is prepaid-at-join (invoice now). */
+/** Owned prepaid batch: schedule starts next UTC month (invoice at staff enroll). */
 export async function createFutureScheduleBatch(
   cleanup: TestDataCleanup,
   options: { category?: "ADULTS" | "KIDS"; name?: string } = {},
 ) {
   const category = options.category ?? "ADULTS";
-  const stamp = Date.now();
-  const hour = String(5 + (stamp % 8)).padStart(2, "0");
-  const minute = String(stamp % 60).padStart(2, "0");
-  const endMinute = String((Number(minute) + 45) % 60).padStart(2, "0");
-  const endHour = String(
-    Number(hour) + (Number(minute) + 45 >= 60 ? 1 : 0),
-  ).padStart(2, "0");
-  const created = await expectOk<{ id: string }>("STAFF", "/batches", {
-    method: "POST",
-    body: JSON.stringify({
-      studioId: SEED.users.STAFF.studioId,
-      name: options.name ?? `HTTP Prepaid Batch ${stamp}`,
-      coverImageUrl:
-        "https://images.unsplash.com/photo-1518611012118-696072aa579a?w=800&q=80",
-      category,
-      branchId: SEED.branchMainId,
-      trainerIds: [SEED.users.TRAINER.id],
-      danceCategories: [{ name: "Hip Hop", description: "Prepaid join batch" }],
-      scheduleJson: {
-        frequency: "WEEKLY",
-        weekdays: [stamp % 7],
-        startDate: "2027-01-03",
-        endDate: "2027-03-28",
-        startTime: `${hour}:${minute}`,
-        endTime: `${endHour}:${endMinute}`,
-        utcOffsetMinutes: 0,
-      },
-      capacity: 8,
-      enrollmentMode: "SELF_JOIN",
-      subscriptionIds:
-        category === "KIDS" ? [...SEED.kidPlanIds] : [...SEED.adultPlanIds],
-      active: true,
-      certificationEnabled: false,
-    }),
-  });
-  cleanup.trackBatch(created.id);
-  return created;
-}
+  const trainers = [SEED.users.TRAINER.id, SEED.users.TRAINER_2.id];
+  const branches = [SEED.branchMainId, SEED.branchEastId];
+  let lastError: unknown;
 
-export async function createPendingInvoiceViaEnroll(
-  cleanup: TestDataCleanup,
-  options: {
-    batchId?: string;
-    planId?: string;
-    studentName?: string;
-    studentId?: string;
-    category?: "ADULTS" | "KIDS";
-  } = {},
-) {
-  const category =
-    options.category ?? (options.planId?.includes("kid") ? "KIDS" : "ADULTS");
-  const planId =
-    options.planId ??
-    (category === "KIDS" ? SEED.kidPlanIds[0] : SEED.adultPlanIds[0]);
-  const student = options.studentId
-    ? { id: options.studentId }
-    : await createHttpStudent(
-        options.studentName ?? "Billing Invoice Student",
-        cleanup,
-      );
-  const batchId =
-    options.batchId ??
-    (await createFutureScheduleBatch(cleanup, { category })).id;
-  const enrollment = await expectOk<{
-    invoice: { id: string; status: string; amount: number } | null;
-    billingKind?: string;
-  }>("STAFF", `/batches/${batchId}/enroll`, {
-    method: "POST",
-    body: JSON.stringify({
-      studentId: student.id,
-      subscriptionId: planId,
-    }),
-  });
-  expect(
-    enrollment.invoice,
-    "prepaid-at-join should create an invoice",
-  ).toBeTruthy();
-  expect(enrollment.invoice?.status).toBe("PENDING");
-  return { student, invoice: enrollment.invoice!, batchId };
-}
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    const stamp = Date.now() + attempt * 97_000;
+    try {
+      const created = await expectOk<{ id: string }>("STAFF", "/batches", {
+        method: "POST",
+        body: JSON.stringify(
+          batchCreateBody({
+            studioId: SEED.users.STAFF.studioId,
+            branchId: branches[attempt % branches.length],
+            trainerId: trainers[Math.floor(attempt / 2) % trainers.length],
+            name: options.name ?? `HTTP Prepaid Batch ${stamp}`,
+            category,
+            scheduleJson: prepaidScheduleJson(stamp),
+            subscriptionIds:
+              category === "KIDS" ? SEED.kidPlanIds : SEED.adultPlanIds,
+          }),
+        ),
+      });
+      cleanup.trackBatch(created.id);
+      return created;
+    } catch (error) {
+      lastError = error;
+      if (!isScheduleConflict(error)) {
+        throw error;
+      }
+    }
+  }
 
-/**
- * Seed batches already ran this month (postpaid, no invoice at enroll).
- * Prepaid invoice + seat on the seed roster: enroll a future batch, then switch.
- */
-export async function enrollSeedBatchWithPrepaidInvoice(
-  cleanup: TestDataCleanup,
-  targetBatchId: string,
-  options: {
-    planId?: string;
-    studentName?: string;
-    studentId?: string;
-    category?: "ADULTS" | "KIDS";
-  } = {},
-) {
-  const category =
-    options.category ??
-    (targetBatchId === SEED.kidsBatchId ? "KIDS" : "ADULTS");
-  const created = await createPendingInvoiceViaEnroll(cleanup, {
-    ...options,
-    category,
-    planId:
-      options.planId ??
-      (category === "KIDS" ? SEED.kidPlanIds[0] : SEED.adultPlanIds[0]),
-  });
-  await expectOk("STAFF", `/batches/${created.batchId}/switch`, {
-    method: "POST",
-    body: JSON.stringify({
-      studentId: created.student.id,
-      toBatchId: targetBatchId,
-    }),
-  });
-  return { ...created, batchId: targetBatchId };
+  throw lastError instanceof Error
+    ? lastError
+    : new Error("Could not create prepaid calendar batch");
 }
 
 export async function deleteHttpStudent(studentId: string) {

@@ -1,12 +1,19 @@
 import { expect, test } from "@playwright/test";
+import { canJoinPostpaidNow } from "../fixtures/billing-calendar";
 import { apiBaseUrl, bearerFor, SEED } from "../fixtures/seed";
+import {
+  createCalendarBatch,
+  enrollPostpaid,
+  enrollPrepaid,
+  enrollUnpaidOnPostpaidBatch,
+  fetchRosterRows,
+  markableSessionId,
+} from "./billing-fixtures";
 import {
   createFutureScheduleBatch,
   createHttpStudent,
-  enrollSeedBatchWithPrepaidInvoice,
   expectOk,
   expectStatus,
-  fetchRosterRows,
   TestDataCleanup,
 } from "./helpers";
 
@@ -138,46 +145,38 @@ test.describe("batches HTTP @http", () => {
   });
 
   test("mid-month staff enroll seats immediately without an unpaid invoice @http", async () => {
+    test.skip(!canJoinPostpaidNow(), "UTC 1st is always prepaid-at-join");
     const cleanup = new TestDataCleanup();
     try {
-      const student = await createHttpStudent("HTTP Mid Month Roster", cleanup);
-      const enrollment = await expectOk<{
-        invoice: { id: string; status: string } | null;
-        billingKind?: string;
-      }>("STAFF", `/batches/${SEED.kidsBatchId}/enroll`, {
-        method: "POST",
-        body: JSON.stringify({
-          studentId: student.id,
-          subscriptionId: SEED.kidPlanIds[0],
-        }),
+      const enrolled = await enrollPostpaid(cleanup, {
+        studentName: "HTTP Mid Month Roster",
       });
-      expect(enrollment.invoice).toBeNull();
-      expect(enrollment.billingKind).toBe("postpaid");
+      expect(enrolled.invoice).toBeNull();
+      expect(enrolled.billingKind).toBe("postpaid");
 
-      const active = await fetchRosterRows(SEED.kidsBatchId, "active");
-      const inactive = await fetchRosterRows(SEED.kidsBatchId, "inactive");
-      const row = active.find((item) => item.studentId === student.id);
+      const active = await fetchRosterRows(enrolled.batchId, "active");
+      const inactive = await fetchRosterRows(enrolled.batchId, "inactive");
+      const row = active.find((item) => item.studentId === enrolled.student.id);
       expect(row).toBeTruthy();
       expect(row?.monthlyUnpaid).toBe(false);
-      expect(inactive.some((item) => item.studentId === student.id)).toBe(
-        false,
-      );
+      expect(
+        inactive.some((item) => item.studentId === enrolled.student.id),
+      ).toBe(false);
     } finally {
       await cleanup.dispose();
     }
   });
 
-  test("prepaid switch onto a seed batch flags monthlyUnpaid @http", async () => {
+  test("prepaid switch onto an in-progress batch flags monthlyUnpaid @http", async () => {
+    test.skip(!canJoinPostpaidNow(), "UTC 1st is always prepaid-at-join");
     const cleanup = new TestDataCleanup();
     try {
-      const { student } = await enrollSeedBatchWithPrepaidInvoice(
-        cleanup,
-        SEED.kidsBatchId,
-        { category: "KIDS", studentName: "HTTP Unpaid Switch" },
-      );
+      const unpaid = await enrollUnpaidOnPostpaidBatch(cleanup, {
+        studentName: "HTTP Unpaid Switch",
+      });
 
-      const active = await fetchRosterRows(SEED.kidsBatchId, "active");
-      const row = active.find((item) => item.studentId === student.id);
+      const active = await fetchRosterRows(unpaid.batchId, "active");
+      const row = active.find((item) => item.studentId === unpaid.student.id);
       expect(row?.monthlyUnpaid).toBe(true);
     } finally {
       await cleanup.dispose();
@@ -224,9 +223,10 @@ test.describe("batches HTTP @http", () => {
     const cleanup = new TestDataCleanup();
     try {
       const student = await createHttpStudent("HTTP Bulk Deny", cleanup);
+      const batch = await createCalendarBatch(cleanup, { kind: "prepaid" });
       await expectStatus(
         "STUDENT",
-        `/batches/${SEED.beginnerBatchId}/enroll-bulk`,
+        `/batches/${batch.id}/enroll-bulk`,
         403,
         {
           method: "POST",
@@ -247,18 +247,14 @@ test.describe("batches HTTP @http", () => {
     try {
       const studentA = await createHttpStudent("HTTP Bulk Dup A", cleanup);
       const studentB = await createHttpStudent("HTTP Bulk Dup B", cleanup);
-
-      await expectOk("STAFF", `/batches/${SEED.beginnerBatchId}/enroll`, {
-        method: "POST",
-        body: JSON.stringify({
-          studentId: studentA.id,
-          subscriptionId: SEED.adultPlanIds[0],
-        }),
+      const first = await enrollPrepaid(cleanup, {
+        studentId: studentA.id,
+        studentName: "HTTP Bulk Dup A",
       });
 
       const result = await expectStatus(
         "STAFF",
-        `/batches/${SEED.beginnerBatchId}/enroll-bulk`,
+        `/batches/${first.batchId}/enroll-bulk`,
         400,
         {
           method: "POST",
@@ -331,45 +327,45 @@ test.describe("batches HTTP @http", () => {
   });
 
   test("staff unenrolls student from active batch while past roster retains them @http", async () => {
+    test.skip(!canJoinPostpaidNow(), "UTC 1st is always prepaid-at-join");
     const cleanup = new TestDataCleanup();
-    const sessionId = SEED.sessionAttendanceId;
     try {
-      const student = await createHttpStudent("HTTP Unenroll", cleanup);
-      await expectOk("STAFF", `/batches/${SEED.kidsBatchId}/enroll`, {
-        method: "POST",
-        body: JSON.stringify({
-          studentId: student.id,
-          subscriptionId: SEED.kidPlanIds[0],
-        }),
+      const enrolled = await enrollPostpaid(cleanup, {
+        studentName: "HTTP Unenroll",
       });
+      const sessionId = markableSessionId(enrolled.sessions);
 
       const before = await expectOk<Array<{ studentId: string }>>(
         "TRAINER",
         `/attendance/session/${sessionId}/roster`,
       );
-      expect(before.some((row) => row.studentId === student.id)).toBe(true);
+      expect(before.some((row) => row.studentId === enrolled.student.id)).toBe(
+        true,
+      );
 
-      await expectOk("STAFF", `/batches/${SEED.kidsBatchId}/unenroll`, {
+      await expectOk("STAFF", `/batches/${enrolled.batchId}/unenroll`, {
         method: "POST",
-        body: JSON.stringify({ studentId: student.id }),
+        body: JSON.stringify({ studentId: enrolled.student.id }),
       });
 
-      // Seed attendance session is already in progress/past, so ENDED enrollments
-      // remain on that roster (endedAt > session.startsAt). Active batch membership
-      // is cleared instead.
       const after = await expectOk<Array<{ studentId: string }>>(
         "TRAINER",
         `/attendance/session/${sessionId}/roster`,
       );
-      expect(after.some((row) => row.studentId === student.id)).toBe(true);
+      expect(after.some((row) => row.studentId === enrolled.student.id)).toBe(
+        true,
+      );
 
-      const active = await fetchRosterRows(SEED.kidsBatchId, "active");
-      const inactive = await fetchRosterRows(SEED.kidsBatchId, "inactive");
-      expect(active.some((row) => row.studentId === student.id)).toBe(false);
+      const active = await fetchRosterRows(enrolled.batchId, "active");
+      const inactive = await fetchRosterRows(enrolled.batchId, "inactive");
+      expect(active.some((row) => row.studentId === enrolled.student.id)).toBe(
+        false,
+      );
       expect(
         inactive.some(
           (row) =>
-            row.studentId === student.id && row.inactiveReason === "UNENROLLED",
+            row.studentId === enrolled.student.id &&
+            row.inactiveReason === "UNENROLLED",
         ),
       ).toBe(true);
     } finally {

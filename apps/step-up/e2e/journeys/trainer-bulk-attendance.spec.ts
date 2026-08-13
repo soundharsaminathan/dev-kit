@@ -7,8 +7,9 @@ import {
   waitForApiResponse,
   waitForAppReady,
 } from "../fixtures";
+import { canJoinPostpaidNow } from "../fixtures/billing-calendar";
 import { SEED } from "../fixtures/seed";
-import { enrollSeedBatchWithPrepaidInvoice } from "../http/helpers";
+import { enrollUnpaidOnPostpaidBatch } from "../http/billing-fixtures";
 
 test.describe("trainer attendance UI @critical", () => {
   test("trainer marks student present through UI @critical", async ({
@@ -70,15 +71,13 @@ test.describe("trainer attendance UI @critical", () => {
   test("trainer confirms unpaid enrollee then marks present @critical", async ({
     browser,
   }) => {
+    test.skip(!canJoinPostpaidNow(), "UTC 1st is always prepaid-at-join");
     const cleanup = new TestDataCleanup();
-    const sessionId = SEED.sessionAttendanceId;
     const stamp = Date.now();
     try {
-      const { student, invoice } = await enrollSeedBatchWithPrepaidInvoice(
+      const { student, invoice, sessionId } = await enrollUnpaidOnPostpaidBatch(
         cleanup,
-        SEED.kidsBatchId,
         {
-          category: "KIDS",
           studentName: `Critical Unpaid ${stamp}`,
         },
       );

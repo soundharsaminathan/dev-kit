@@ -88,6 +88,11 @@ Product contract for automated testing. Roles use the canonical enum:
 | B35 | Media | Upload constraints | Authenticated | Medium | API | Covered |
 | B36 | Branches | Location CRUD | OWNER, STAFF | Medium | API | Covered |
 | B37 | Jobs | Retention / notification processors | System | Medium | API | Covered |
+| B38 | Billing calendar | Prepaid-at-join invoice + seat + monthlyUnpaid | STAFF | Critical | HTTP | Covered |
+| B39 | Billing calendar | Postpaid mid-month: no invoice, not monthlyUnpaid | STAFF, TRAINER | Critical | HTTP + Smoke | Covered |
+| B40 | Billing calendar | Switch keeps invoice; same-batch rejoin is new joiner | STAFF | Critical | HTTP | Covered |
+| B41 | Billing calendar | Convert-to-quarterly rejected on prepaid-at-join | STAFF | High | HTTP | Covered |
+| B42 | Billing calendar | Discover prepaid hold vs postpaid enroll-now | STUDENT | Critical | HTTP | Covered |
 
 ---
 

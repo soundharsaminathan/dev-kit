@@ -1,22 +1,17 @@
 import { expect, test } from "@playwright/test";
 import { SEED } from "../fixtures/seed";
 import {
-  createFutureScheduleBatch,
+  ADULT_MONTHLY_PRICE,
+  createCalendarBatch,
+  enrollPrepaid,
+} from "./billing-fixtures";
+import {
   createHttpStudent,
-  createPendingInvoiceViaEnroll as enrollWithPrepaidInvoice,
   expectOk,
   expectStatus,
   TestDataCleanup,
   unwrapPage,
 } from "./helpers";
-
-/** Adult monthly plan price from seed-e2e (e2e-sub-individual-adult-monthly). */
-const ADULT_MONTHLY_PRICE = 3500;
-
-async function createPendingInvoiceViaEnroll(cleanup: TestDataCleanup) {
-  const { invoice } = await enrollWithPrepaidInvoice(cleanup);
-  return invoice;
-}
 
 test.describe("billing HTTP @http", () => {
   test("manual create invoice endpoint is removed @http", async () => {
@@ -33,7 +28,7 @@ test.describe("billing HTTP @http", () => {
   test("staff marks unpaid invoice paid @http", async () => {
     const cleanup = new TestDataCleanup();
     try {
-      const target = await createPendingInvoiceViaEnroll(cleanup);
+      const { invoice: target } = await enrollPrepaid(cleanup);
       expect(target.status).toBe("PENDING");
 
       const paid = await expectOk<{ id: string; status: string }>(
@@ -53,7 +48,7 @@ test.describe("billing HTTP @http", () => {
   test("mark-paid emits PAYMENT_RECEIVED without RENEWED duplicate @http", async () => {
     const cleanup = new TestDataCleanup();
     try {
-      const { student, invoice } = await enrollWithPrepaidInvoice(cleanup);
+      const { student, invoice } = await enrollPrepaid(cleanup);
       expect(invoice.status).toBe("PENDING");
 
       await expectOk("STAFF", `/billing/${invoice.id}/paid`, {
@@ -76,7 +71,9 @@ test.describe("billing HTTP @http", () => {
         );
         renewed = list.items.some((item) => item.type === "RENEWED");
         if (paymentReceived) break;
-        await new Promise((resolve) => setTimeout(resolve, 250 * (attempt + 1)));
+        await new Promise((resolve) =>
+          setTimeout(resolve, 250 * (attempt + 1)),
+        );
       }
 
       expect(paymentReceived).toBe(true);
@@ -89,7 +86,7 @@ test.describe("billing HTTP @http", () => {
   test("staff marks invoice paid with discounts @http", async () => {
     const cleanup = new TestDataCleanup();
     try {
-      const target = await createPendingInvoiceViaEnroll(cleanup);
+      const { invoice: target } = await enrollPrepaid(cleanup);
       expect(target.status).toBe("PENDING");
       expect(Number(target.amount)).toBe(ADULT_MONTHLY_PRICE);
 
@@ -121,7 +118,7 @@ test.describe("billing HTTP @http", () => {
   test("trainer cannot mark invoice paid @http", async () => {
     const cleanup = new TestDataCleanup();
     try {
-      const target = await createPendingInvoiceViaEnroll(cleanup);
+      const { invoice: target } = await enrollPrepaid(cleanup);
       await expectStatus("TRAINER", `/billing/${target.id}/paid`, 403, {
         method: "PATCH",
         body: JSON.stringify({ paymentMethod: "CASH" }),
@@ -134,7 +131,7 @@ test.describe("billing HTTP @http", () => {
   test("student cannot mark invoice paid @http", async () => {
     const cleanup = new TestDataCleanup();
     try {
-      const target = await createPendingInvoiceViaEnroll(cleanup);
+      const { invoice: target } = await enrollPrepaid(cleanup);
       await expectStatus("STUDENT", `/billing/${target.id}/paid`, 403, {
         method: "PATCH",
         body: JSON.stringify({ paymentMethod: "CASH" }),
@@ -147,7 +144,7 @@ test.describe("billing HTTP @http", () => {
   test("staff cannot mark an already-paid invoice again @http", async () => {
     const cleanup = new TestDataCleanup();
     try {
-      const target = await createPendingInvoiceViaEnroll(cleanup);
+      const { invoice: target } = await enrollPrepaid(cleanup);
       await expectOk("STAFF", `/billing/${target.id}/paid`, {
         method: "PATCH",
         body: JSON.stringify({ paymentMethod: "CASH" }),
@@ -170,7 +167,7 @@ test.describe("billing HTTP @http", () => {
   test("staff issues a partial refund on a paid invoice @http", async () => {
     const cleanup = new TestDataCleanup();
     try {
-      const target = await createPendingInvoiceViaEnroll(cleanup);
+      const { invoice: target } = await enrollPrepaid(cleanup);
       await expectOk("STAFF", `/billing/${target.id}/paid`, {
         method: "PATCH",
         body: JSON.stringify({ paymentMethod: "CASH" }),
@@ -198,7 +195,7 @@ test.describe("billing HTTP @http", () => {
   test("staff refund above remaining balance is rejected @http", async () => {
     const cleanup = new TestDataCleanup();
     try {
-      const target = await createPendingInvoiceViaEnroll(cleanup);
+      const { invoice: target } = await enrollPrepaid(cleanup);
       await expectOk("STAFF", `/billing/${target.id}/paid`, {
         method: "PATCH",
         body: JSON.stringify({ paymentMethod: "CASH" }),
@@ -216,7 +213,7 @@ test.describe("billing HTTP @http", () => {
   test("trainer cannot refund via billing endpoint @http", async () => {
     const cleanup = new TestDataCleanup();
     try {
-      const target = await createPendingInvoiceViaEnroll(cleanup);
+      const { invoice: target } = await enrollPrepaid(cleanup);
       await expectOk("STAFF", `/billing/${target.id}/paid`, {
         method: "PATCH",
         body: JSON.stringify({ paymentMethod: "CASH" }),
@@ -243,7 +240,7 @@ test.describe("billing HTTP @http", () => {
   test("studio invoice list includes batchName @http", async () => {
     const cleanup = new TestDataCleanup();
     try {
-      const target = await enrollWithPrepaidInvoice(cleanup);
+      const target = await enrollPrepaid(cleanup);
       const invoices = unwrapPage(
         await expectOk<
           | Array<{
@@ -277,36 +274,10 @@ test.describe("billing HTTP @http", () => {
         "Batch Purchase Revenue Student",
         cleanup,
       );
-      const batch = await expectOk<{ id: string }>("STAFF", "/batches", {
-        method: "POST",
-        body: JSON.stringify({
-          studioId: SEED.users.STAFF.studioId,
-          name: `HTTP Student Pay Rev ${stamp}`,
-          coverImageUrl:
-            "https://images.unsplash.com/photo-1518611012118-696072aa579a?w=800&q=80",
-          category: "ADULTS",
-          branchId: SEED.branchMainId,
-          trainerIds: [SEED.users.TRAINER.id],
-          danceCategories: [
-            { name: "Hip Hop", description: "Student purchase revenue" },
-          ],
-          scheduleJson: {
-            frequency: "WEEKLY",
-            weekdays: [stamp % 7],
-            startDate: "2028-01-03",
-            endDate: "2028-03-27",
-            startTime: `${String(6 + (stamp % 8)).padStart(2, "0")}:${String(stamp % 60).padStart(2, "0")}`,
-            endTime: `${String(7 + (stamp % 8)).padStart(2, "0")}:${String(stamp % 60).padStart(2, "0")}`,
-            utcOffsetMinutes: 0,
-          },
-          capacity: 8,
-          enrollmentMode: "SELF_JOIN",
-          subscriptionIds: [...SEED.adultPlanIds],
-          active: true,
-          certificationEnabled: false,
-        }),
+      const batch = await createCalendarBatch(cleanup, {
+        kind: "prepaid",
+        name: `HTTP Student Pay Rev ${stamp}`,
       });
-      cleanup.trackBatch(batch.id);
 
       const before = await expectOk<{
         totals: { collected: number; invoiceCount: number };
@@ -325,9 +296,7 @@ test.describe("billing HTTP @http", () => {
           body: JSON.stringify({
             subscriptionId: SEED.adultPlanIds[0],
             purchaserUserId: student.id,
-            coveredStudents: [
-              { studentId: student.id, seatRole: "ADULT" },
-            ],
+            coveredStudents: [{ studentId: student.id, seatRole: "ADULT" }],
           }),
         },
         { userId: student.id },
@@ -367,51 +336,16 @@ test.describe("billing HTTP @http", () => {
         "Shared Batch Revenue Student",
         cleanup,
       );
-      const batch1 = await createFutureScheduleBatch(cleanup, {
-        name: `HTTP Revenue Source ${stamp}`,
+      const paid = await enrollPrepaid(cleanup, {
+        studentId: student.id,
+        studentName: "Shared Batch Revenue Student",
       });
-      const batch1Enroll = await expectOk<{
-        invoice: { id: string; amount: number; status: string } | null;
-      }>("STAFF", `/batches/${batch1.id}/enroll`, {
-        method: "POST",
-        body: JSON.stringify({
-          studentId: student.id,
-          subscriptionId: SEED.adultPlanIds[0],
-        }),
+      const batch2 = await createCalendarBatch(cleanup, {
+        kind: "prepaid",
+        name: `HTTP Revenue Batch ${stamp}`,
       });
-      expect(batch1Enroll.invoice?.status).toBe("PENDING");
-      const batch2 = await expectOk<{ id: string }>("STAFF", "/batches", {
-        method: "POST",
-        body: JSON.stringify({
-          studioId: SEED.users.STAFF.studioId,
-          name: `HTTP Revenue Batch ${stamp}`,
-          coverImageUrl:
-            "https://images.unsplash.com/photo-1518611012118-696072aa579a?w=800&q=80",
-          category: "ADULTS",
-          branchId: SEED.branchMainId,
-          trainerIds: [SEED.users.TRAINER.id],
-          danceCategories: [
-            { name: "Hip Hop", description: "Revenue isolation batch" },
-          ],
-          scheduleJson: {
-            frequency: "WEEKLY",
-            weekdays: [(stamp + 3) % 7],
-            startDate: "2028-04-03",
-            endDate: "2028-06-26",
-            startTime: `${String(8 + (stamp % 6)).padStart(2, "0")}:${String((stamp * 7) % 60).padStart(2, "0")}`,
-            endTime: `${String(9 + (stamp % 6)).padStart(2, "0")}:${String((stamp * 7) % 60).padStart(2, "0")}`,
-            utcOffsetMinutes: 0,
-          },
-          capacity: 8,
-          enrollmentMode: "SELF_JOIN",
-          subscriptionIds: [...SEED.adultPlanIds],
-          active: true,
-          certificationEnabled: false,
-        }),
-      });
-      cleanup.trackBatch(batch2.id);
 
-      await expectOk("STAFF", `/billing/${batch1Enroll.invoice!.id}/paid`, {
+      await expectOk("STAFF", `/billing/${paid.invoice.id}/paid`, {
         method: "PATCH",
         body: JSON.stringify({ paymentMethod: "CASH" }),
       });
@@ -426,13 +360,13 @@ test.describe("billing HTTP @http", () => {
 
       const batch1Revenue = await expectOk<{
         totals: { collected: number; invoiceCount: number };
-      }>("STAFF", `/batches/${batch1.id}/revenue`);
+      }>("STAFF", `/batches/${paid.batchId}/revenue`);
       const batch2Revenue = await expectOk<{
         totals: { collected: number; invoiceCount: number };
       }>("STAFF", `/batches/${batch2.id}/revenue`);
 
       expect(batch1Revenue.totals.collected).toBeGreaterThanOrEqual(
-        Number(batch1Enroll.invoice!.amount),
+        Number(paid.invoice.amount),
       );
       expect(batch2Revenue.totals.collected).toBe(0);
     } finally {
