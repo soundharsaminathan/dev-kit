@@ -107,7 +107,7 @@ function ImportStudentsPage() {
       setStudents(result.students);
       if (result.invalidRows.length > 0) {
         setRowWarning(
-          `Skipped row${result.invalidRows.length === 1 ? "" : "s"} ${formatStudentImportRowList(result.invalidRows)} (missing name, invalid email, gender, or age range). Fix those rows and re-upload, or import the ${result.students.length} valid student${result.students.length === 1 ? "" : "s"} below.`,
+          `Skipped row${result.invalidRows.length === 1 ? "" : "s"} ${formatStudentImportRowList(result.invalidRows)} (missing name, invalid email, gender, or age). Fix those rows and re-upload, or import the ${result.students.length} valid student${result.students.length === 1 ? "" : "s"} below.`,
         );
       }
     } catch (error) {
@@ -127,7 +127,7 @@ function ImportStudentsPage() {
     <>
       <Screen
         title="Import students"
-        subtitle='Upload a workbook with "Name", "Email", "Gender", and "Age Range" columns.'
+        subtitle='Upload a workbook with "Name", "Email", "Gender", and "Age" columns.'
         showBack
         backTo="/app/students"
         paddedCta={students.length > 0}
@@ -155,10 +155,10 @@ function ImportStudentsPage() {
 
           <p className={staff.panelDesc}>
             Use the template columns Name, Email, Gender (Female/Male), and Age
-            Range (Under 10, 10–20, 20–40, 40+). Blank rows are ignored.
-            Duplicate emails are skipped. Maximum {STUDENT_IMPORT_MAX} students
-            per import. After fixing rows, choose the file again to refresh the
-            preview.
+            (exact years, 0–120). Age-range labels are assigned automatically
+            from that number. Blank rows are ignored. Duplicate emails are
+            skipped. Maximum {STUDENT_IMPORT_MAX} students per import. After
+            fixing rows, choose the file again to refresh the preview.
           </p>
 
           {fileError ? (
@@ -197,7 +197,7 @@ function ImportStudentsPage() {
                   <div key={student.email} className={staff.attentionCard}>
                     <span className={staff.attentionTitle}>{student.name}</span>
                     <p className={staff.attentionMeta}>
-                      {student.email} · {student.gender} · {student.ageRange}
+                      {student.email} · {student.gender} · {student.age}
                     </p>
                   </div>
                 ))}

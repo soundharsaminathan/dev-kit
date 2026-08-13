@@ -28,9 +28,12 @@ import {
   IsDateString,
   IsEmail,
   IsEnum,
+  IsInt,
   IsNotEmpty,
   IsOptional,
   IsString,
+  Max,
+  Min,
   ValidateNested,
 } from "class-validator";
 import { AuthGuard } from "../auth/auth.guard";
@@ -258,8 +261,11 @@ class BulkStudentDto {
   @IsEnum(Gender)
   gender!: Gender;
 
-  @IsEnum(AgeRange)
-  ageRange!: AgeRange;
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  @Max(120)
+  age!: number;
 }
 
 class BulkCreateStudentsDto {

@@ -1,10 +1,10 @@
-import type { AgeRange, Gender } from "@/lib/constants";
+import type { Gender } from "@/lib/constants";
 
 export type StudentImportRow = {
   name: string;
   email: string;
   gender: Gender;
-  ageRange: AgeRange;
+  age: number;
 };
 
 export type ParseStudentImportResult = {
@@ -13,6 +13,8 @@ export type ParseStudentImportResult = {
 };
 
 export const STUDENT_IMPORT_MAX = 500;
+export const STUDENT_IMPORT_MIN_AGE = 0;
+export const STUDENT_IMPORT_MAX_AGE = 120;
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -21,28 +23,6 @@ const GENDER_ALIASES: Record<string, Gender> = {
   f: "FEMALE",
   male: "MALE",
   m: "MALE",
-};
-
-const AGE_RANGE_ALIASES: Record<string, AgeRange> = {
-  under_10: "UNDER_10",
-  under10: "UNDER_10",
-  "under 10": "UNDER_10",
-  toddlers: "UNDER_10",
-  ten_to_twenty: "TEN_TO_TWENTY",
-  tentotwenty: "TEN_TO_TWENTY",
-  "10 20": "TEN_TO_TWENTY",
-  "10 to 20": "TEN_TO_TWENTY",
-  teens: "TEN_TO_TWENTY",
-  twenty_to_forty: "TWENTY_TO_FORTY",
-  twentytoforty: "TWENTY_TO_FORTY",
-  "20 40": "TWENTY_TO_FORTY",
-  "20 to 40": "TWENTY_TO_FORTY",
-  adults: "TWENTY_TO_FORTY",
-  forty_plus: "FORTY_PLUS",
-  fortyplus: "FORTY_PLUS",
-  "40+": "FORTY_PLUS",
-  "40 plus": "FORTY_PLUS",
-  masters: "FORTY_PLUS",
 };
 
 function cellText(value: unknown) {
@@ -65,32 +45,25 @@ function parseGender(value: unknown): Gender | null {
   return GENDER_ALIASES[key] ?? null;
 }
 
-const AGE_RANGE_VALUES = new Set<AgeRange>([
-  "UNDER_10",
-  "TEN_TO_TWENTY",
-  "TWENTY_TO_FORTY",
-  "FORTY_PLUS",
-]);
-
-function parseAgeRange(value: unknown): AgeRange | null {
-  const raw = cellText(value);
-  if (!raw) return null;
-  const upper = raw.toUpperCase().replace(/[\s-–—]+/g, "_");
-  if (AGE_RANGE_VALUES.has(upper as AgeRange)) {
-    return upper as AgeRange;
+function parseAge(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return Number.isInteger(value) &&
+      value >= STUDENT_IMPORT_MIN_AGE &&
+      value <= STUDENT_IMPORT_MAX_AGE
+      ? value
+      : null;
   }
-  const compact = raw
-    .toLowerCase()
-    .replace(/[+]/g, " plus")
-    .replace(/[\s-–—]+/g, " ")
-    .trim();
-  const underscored = compact.replace(/\s+/g, "_");
-  return (
-    AGE_RANGE_ALIASES[compact] ??
-    AGE_RANGE_ALIASES[underscored] ??
-    AGE_RANGE_ALIASES[compact.replace(/\s+/g, "")] ??
-    null
-  );
+
+  const raw = cellText(value);
+  if (!raw || !/^\d+$/.test(raw)) {
+    return null;
+  }
+
+  const age = Number(raw);
+  if (age < STUDENT_IMPORT_MIN_AGE || age > STUDENT_IMPORT_MAX_AGE) {
+    return null;
+  }
+  return age;
 }
 
 function findColumnIndex(headers: string[], aliases: string[]) {
@@ -126,20 +99,16 @@ export function parseStudentImportRows(
   const nameIndex = findColumnIndex(headers, ["name"]);
   const emailIndex = findColumnIndex(headers, ["email"]);
   const genderIndex = findColumnIndex(headers, ["gender"]);
-  const ageRangeIndex = findColumnIndex(headers, [
-    "age range",
-    "agerange",
-    "age",
-  ]);
+  const ageIndex = findColumnIndex(headers, ["age"]);
 
   if (
     nameIndex === -1 ||
     emailIndex === -1 ||
     genderIndex === -1 ||
-    ageRangeIndex === -1
+    ageIndex === -1
   ) {
     throw new Error(
-      'The first row must contain "Name", "Email", "Gender", and "Age Range" columns.',
+      'The first row must contain "Name", "Email", "Gender", and "Age" columns.',
     );
   }
 
@@ -151,27 +120,27 @@ export function parseStudentImportRows(
     const name = cellText(row?.[nameIndex]);
     const email = cellText(row?.[emailIndex]).toLowerCase();
     const gender = parseGender(row?.[genderIndex]);
-    const ageRange = parseAgeRange(row?.[ageRangeIndex]);
+    const age = parseAge(row?.[ageIndex]);
 
-    if (!name && !email && !gender && !ageRange) {
+    if (!name && !email && !gender && age === null) {
       continue;
     }
 
-    if (!name || !EMAIL_PATTERN.test(email) || !gender || !ageRange) {
+    if (!name || !EMAIL_PATTERN.test(email) || !gender || age === null) {
       invalidRows.push(index + 2);
       continue;
     }
 
     if (!seenEmails.has(email)) {
       seenEmails.add(email);
-      students.push({ name, email, gender, ageRange });
+      students.push({ name, email, gender, age });
     }
   }
 
   if (students.length === 0) {
     if (invalidRows.length > 0) {
       throw new Error(
-        `No valid students found. Fix missing names, invalid emails, gender, or age range in row${invalidRows.length === 1 ? "" : "s"} ${formatStudentImportRowList(invalidRows)}, then re-upload.`,
+        `No valid students found. Fix missing names, invalid emails, gender, or age in row${invalidRows.length === 1 ? "" : "s"} ${formatStudentImportRowList(invalidRows)}, then re-upload.`,
       );
     }
     throw new Error("No valid students were found in the spreadsheet.");

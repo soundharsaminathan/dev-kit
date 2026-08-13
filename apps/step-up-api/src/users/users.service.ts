@@ -34,6 +34,7 @@ import {
 import { MediaService } from "../media/media.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { isAlwaysPublicRole } from "../social/visibility";
+import { ageRangeFromAge } from "./age-range";
 import {
   type LeadDateFilter,
   type LeadDto,
@@ -649,7 +650,7 @@ export class UsersService {
       name: string;
       email: string;
       gender: Gender;
-      ageRange: AgeRange;
+      age: number;
     }>,
   ) {
     const uniqueStudents = Array.from(
@@ -660,7 +661,7 @@ export class UsersService {
             name: student.name.trim(),
             email: student.email.trim().toLowerCase(),
             gender: student.gender,
-            ageRange: student.ageRange,
+            ageRange: ageRangeFromAge(student.age),
           },
         ]),
       ).values(),

@@ -3,7 +3,6 @@ import { canJoinPostpaidNow } from "../fixtures/billing-calendar";
 import { SEED } from "../fixtures/seed";
 import {
   enrollPostpaid,
-  enrollPrepaid,
   enrollUnpaidOnPostpaidBatch,
   markableSessionId,
   markPaid,
@@ -199,32 +198,29 @@ test.describe("attendance HTTP @http", () => {
   test("batch monthly attendance summary stays after unenroll; student denied @http", async () => {
     const cleanup = new TestDataCleanup();
     try {
-      const enrolled = await enrollPrepaid(cleanup, {
-        studentName: "HTTP Month Attendance",
-      });
-      const startsAt = new Date(Date.now() - 30 * 60 * 1000);
-      const endsAt = new Date(startsAt.getTime() + 60 * 60 * 1000);
-      const session = await expectOk<{ id: string; startsAt: string }>(
-        "STAFF",
-        "/sessions",
+      const now = new Date();
+      const month = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`;
+      const student = await createHttpStudent(
+        "HTTP Month Attendance",
+        cleanup,
         {
-          method: "POST",
-          body: JSON.stringify({
-            batchId: enrolled.batchId,
-            startsAt: startsAt.toISOString(),
-            endsAt: endsAt.toISOString(),
-            type: "REGULAR",
-          }),
+          ageRange: "UNDER_10",
         },
       );
-      const monthDate = new Date(session.startsAt);
-      const month = `${monthDate.getUTCFullYear()}-${String(monthDate.getUTCMonth() + 1).padStart(2, "0")}`;
+
+      await expectOk("STAFF", `/batches/${SEED.kidsBatchId}/enroll`, {
+        method: "POST",
+        body: JSON.stringify({
+          studentId: student.id,
+          subscriptionId: SEED.kidPlanIds[0],
+        }),
+      });
 
       await expectOk<{ status: string }>("TRAINER", "/attendance/mark", {
         method: "POST",
         body: JSON.stringify({
-          sessionId: session.id,
-          studentId: enrolled.student.id,
+          sessionId: SEED.sessionAttendanceId,
+          studentId: student.id,
           status: "PRESENT",
           source: "TRAINER",
         }),
@@ -242,38 +238,37 @@ test.describe("attendance HTTP @http", () => {
 
       const summary = await expectOk<Summary>(
         "TRAINER",
-        `/batches/${enrolled.batchId}/attendance?month=${month}`,
+        `/batches/${SEED.kidsBatchId}/attendance?month=${month}`,
       );
       expect(summary.month).toBe(month);
       expect(summary.sessionCount).toBeGreaterThan(0);
+
       const row = summary.students.find(
-        (entry) => entry.studentId === enrolled.student.id,
+        (entry) => entry.studentId === student.id,
       );
       expect(row).toBeTruthy();
+      expect(row!.eligibleCount).toBeGreaterThan(0);
       expect(row!.presentCount).toBeGreaterThanOrEqual(1);
-      expect(row!.eligibleCount).toBeGreaterThanOrEqual(row!.presentCount);
 
-      await expectOk("STAFF", `/batches/${enrolled.batchId}/unenroll`, {
+      await expectOk("STAFF", `/batches/${SEED.kidsBatchId}/unenroll`, {
         method: "POST",
-        body: JSON.stringify({ studentId: enrolled.student.id }),
+        body: JSON.stringify({ studentId: student.id }),
       });
 
       const afterUnenroll = await expectOk<Summary>(
         "STAFF",
-        `/batches/${enrolled.batchId}/attendance?month=${month}`,
+        `/batches/${SEED.kidsBatchId}/attendance?month=${month}`,
       );
       expect(
-        afterUnenroll.students.find(
-          (entry) => entry.studentId === enrolled.student.id,
-        ),
+        afterUnenroll.students.find((entry) => entry.studentId === student.id),
       ).toBeTruthy();
 
       await expectStatus(
         "STUDENT",
-        `/batches/${enrolled.batchId}/attendance?month=${month}`,
+        `/batches/${SEED.kidsBatchId}/attendance?month=${month}`,
         403,
         undefined,
-        { userId: enrolled.student.id },
+        { userId: student.id },
       );
     } finally {
       await cleanup.dispose();

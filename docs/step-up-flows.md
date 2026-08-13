@@ -262,10 +262,10 @@ Set at batch creation (`/app/batches/new`) or edit (`/app/batches/$id`).
 **Route**: `src/routes/app/students/import.tsx`
 
 **Flow**:
-1. Upload `.xlsx` (template: Name, Email, Gender, Age Range)
+1. Upload `.xlsx` (template: Name, Email, Gender, Age)
 2. `read-excel-file` → `parseStudentImportRows()`
 3. Preview valid rows (skips invalid: missing name, bad email, invalid gender/age)
-4. `POST /users/bulk { students[] }` → `BulkImportResult { created, skipped }`
+4. `POST /users/bulk { students[] }` → backend maps exact age to AgeRange → `BulkImportResult { created, skipped }`
 
 #### C. Student Detail Actions (`/app/students/$id`)
 **Route**: `src/routes/app/students/$id.tsx`
@@ -415,7 +415,9 @@ const SYSTEM_ADMIN_ROLES = ["SYSTEM_ADMIN"];             // /admin access
   - Name required
   - Valid email format
   - Gender: "FEMALE" | "MALE"
-  - AgeRange: "UNDER_10" | "TEN_TO_TWENTY" | "TWENTY_TO_FORTY" | "FORTY_PLUS"
+  - Age: exact years (0–120). Backend assigns AgeRange:
+    under 10 → `UNDER_10`, 10–19 → `TEN_TO_TWENTY`,
+    20–39 → `TWENTY_TO_FORTY`, 40+ → `FORTY_PLUS`
 - **Max**: `STUDENT_IMPORT_MAX` per import
 
 #### C. Self-Registration (Public) → `/register`

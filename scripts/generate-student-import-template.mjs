@@ -113,15 +113,15 @@ const strings = [
   "Name",
   "Email",
   "Gender",
-  "Age Range",
+  "Age",
   "Ada Lovelace",
   "ada@example.com",
   "Female",
-  "20-40",
+  "28",
   "Alan Turing",
   "alan@example.com",
   "Male",
-  "10-20",
+  "16",
 ];
 
 const sharedStrings = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>

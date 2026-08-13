@@ -103,9 +103,6 @@ export function isSessionEligibleForEnrollment(
   if (session.status === SessionStatus.CANCELLED) {
     return false;
   }
-  if (session.startsAt < enrollment.enrolledAt) {
-    return false;
-  }
   if (enrollment.status === BatchEnrollmentStatus.ACTIVE) {
     return true;
   }

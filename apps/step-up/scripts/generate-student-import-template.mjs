@@ -104,10 +104,10 @@ function cell(ref, value) {
 }
 
 const rows = [
-  ["Name", "Email", "Phone"],
-  ["Aisha Khan", "aisha.khan@example.com", "+91 98765 43210"],
-  ["Rohan Mehta", "rohan.mehta@example.com", "+91 91234 56789"],
-  ["Priya Sharma", "priya.sharma@example.com", ""],
+  ["Name", "Email", "Gender", "Age"],
+  ["Aisha Khan", "aisha.khan@example.com", "Female", "28"],
+  ["Rohan Mehta", "rohan.mehta@example.com", "Male", "16"],
+  ["Priya Sharma", "priya.sharma@example.com", "Female", "8"],
 ];
 
 const sheetRows = rows

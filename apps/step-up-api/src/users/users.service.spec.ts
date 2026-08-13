@@ -1316,6 +1316,55 @@ describe("UsersService.createStudents", () => {
     );
   });
 
+  it("assigns age-range labels from exact ages", async () => {
+    prisma.user.findMany.mockResolvedValue([]);
+    prisma.user.createMany.mockResolvedValue({ count: 4 });
+
+    await service.createStudents("studio-seed-1", [
+      {
+        name: "Kid",
+        email: "kid@example.com",
+        gender: Gender.FEMALE,
+        age: 8,
+      },
+      {
+        name: "Teen",
+        email: "teen@example.com",
+        gender: Gender.MALE,
+        age: 16,
+      },
+      {
+        name: "Adult",
+        email: "adult@example.com",
+        gender: Gender.FEMALE,
+        age: 28,
+      },
+      {
+        name: "Master",
+        email: "master@example.com",
+        gender: Gender.MALE,
+        age: 45,
+      },
+    ]);
+
+    expect(prisma.user.createMany).toHaveBeenCalledWith({
+      data: [
+        expect.objectContaining({
+          ageRange: AgeRange.UNDER_10,
+        }),
+        expect.objectContaining({
+          ageRange: AgeRange.TEN_TO_TWENTY,
+        }),
+        expect.objectContaining({
+          ageRange: AgeRange.TWENTY_TO_FORTY,
+        }),
+        expect.objectContaining({
+          ageRange: AgeRange.FORTY_PLUS,
+        }),
+      ],
+    });
+  });
+
   it("creates students with required gender and age range", async () => {
     prisma.user.findMany.mockResolvedValue([]);
     prisma.user.createMany.mockResolvedValue({ count: 1 });
@@ -1325,7 +1374,7 @@ describe("UsersService.createStudents", () => {
         name: "Ada Lovelace",
         email: "ada@example.com",
         gender: Gender.FEMALE,
-        ageRange: AgeRange.TWENTY_TO_FORTY,
+        age: 28,
       },
     ]);
 
@@ -1361,13 +1410,13 @@ describe("UsersService.createStudents", () => {
         name: "Ada Lovelace",
         email: "ada@example.com",
         gender: Gender.FEMALE,
-        ageRange: AgeRange.TWENTY_TO_FORTY,
+        age: 28,
       },
       {
         name: "Alan Turing",
         email: "alan@example.com",
         gender: Gender.MALE,
-        ageRange: AgeRange.TEN_TO_TWENTY,
+        age: 16,
       },
     ]);
 
