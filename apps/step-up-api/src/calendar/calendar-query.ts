@@ -183,21 +183,21 @@ export function toSessionEvent(session: SessionForCalendar): CalendarEventDto {
   };
 }
 
+function bookingTypeLabel(type: BookingType): string {
+  if (type === "TRIAL") return "Trial";
+  if (type === "PRIVATE") return "Private";
+  return "Open seat";
+}
+
 export function toBookingEvent(
   booking: BookingForCalendar,
   times: { startsAt: Date; endsAt: Date },
 ): CalendarEventDto {
-  const typeLabel =
-    booking.type === "TRIAL"
-      ? "Trial"
-      : booking.type === "PRIVATE"
-        ? "Private"
-        : "Open seat";
   const batchName = booking.session?.batch.name;
   return {
     id: `booking:${booking.id}`,
     kind: "BOOKING",
-    title: batchName ? `${typeLabel}: ${batchName}` : typeLabel,
+    title: batchName ?? bookingTypeLabel(booking.type),
     startsAt: times.startsAt.toISOString(),
     endsAt: times.endsAt.toISOString(),
     status: booking.status,
@@ -219,10 +219,18 @@ export function buildCalendarEvents(
   const sessionEvents = sessions
     .filter((s) => sessionMatchesScope(s, query))
     .map(toSessionEvent);
+  const listedSessionIds = new Set(
+    sessionEvents
+      .map((event) => event.sessionId)
+      .filter((id): id is string => Boolean(id)),
+  );
 
   const bookingEvents: CalendarEventDto[] = [];
   for (const booking of bookings) {
     if (!bookingMatchesScope(booking, query, true)) continue;
+    if (booking.sessionId && listedSessionIds.has(booking.sessionId)) {
+      continue;
+    }
     const times = resolveBookingTimes(booking);
     if (!times) continue;
     bookingEvents.push(toBookingEvent(booking, times));
@@ -261,16 +269,10 @@ export function buildUnscheduledBookings(
   return bookings
     .filter((b) => bookingMatchesScope(b, scoped, false))
     .map((booking) => {
-      const typeLabel =
-        booking.type === "TRIAL"
-          ? "Trial"
-          : booking.type === "PRIVATE"
-            ? "Private"
-            : "Open seat";
       return {
         id: booking.id,
         kind: "BOOKING" as const,
-        title: typeLabel,
+        title: bookingTypeLabel(booking.type),
         status: booking.status,
         studentId: booking.studentId,
         bookingType: booking.type,
