@@ -333,4 +333,60 @@ describe("Tooltip", () => {
       value: originalInnerWidth,
     });
   });
+
+  it("hides when the trigger scrolls out of view", () => {
+    let observerCallback: IntersectionObserverCallback | undefined;
+    const observe = vi.fn();
+    const disconnect = vi.fn();
+
+    class MockIntersectionObserver {
+      constructor(callback: IntersectionObserverCallback) {
+        observerCallback = callback;
+      }
+      observe = observe;
+      disconnect = disconnect;
+      unobserve = vi.fn();
+      takeRecords = vi.fn(() => []);
+      root = null;
+      rootMargin = "";
+      thresholds = [0];
+    }
+
+    vi.stubGlobal("IntersectionObserver", MockIntersectionObserver);
+
+    try {
+      render(
+        <Tooltip delay={0}>
+          <button type="button">Save</button>
+          <TooltipContent portal>Save file</TooltipContent>
+        </Tooltip>,
+      );
+
+      fireEvent.pointerEnter(screen.getByRole("button", { name: "Save" }), {
+        pointerType: "mouse",
+      });
+      vi.runAllTimers();
+
+      expect(screen.getByRole("tooltip")).toHaveTextContent("Save file");
+      expect(observe).toHaveBeenCalled();
+
+      act(() => {
+        observerCallback?.(
+          [{ isIntersecting: true } as IntersectionObserverEntry],
+          {} as IntersectionObserver,
+        );
+      });
+      expect(screen.getByRole("tooltip")).toBeInTheDocument();
+
+      act(() => {
+        observerCallback?.(
+          [{ isIntersecting: false } as IntersectionObserverEntry],
+          {} as IntersectionObserver,
+        );
+      });
+      expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
 });

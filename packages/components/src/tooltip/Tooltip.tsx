@@ -18,6 +18,7 @@ import {
   type ReactElement,
   type ReactNode,
   useContext,
+  useEffect,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -238,6 +239,26 @@ function Tooltip({
     }),
     [state, triggerProps, tooltipProps, fullWidth, canHover],
   );
+
+  useEffect(() => {
+    if (!state.isOpen) {
+      return;
+    }
+
+    const trigger = triggerRef.current;
+    if (!trigger || typeof IntersectionObserver === "undefined") {
+      return;
+    }
+
+    const observer = new IntersectionObserver((entries) => {
+      if (entries.some((entry) => !entry.isIntersecting)) {
+        state.close(true);
+      }
+    });
+
+    observer.observe(trigger);
+    return () => observer.disconnect();
+  }, [state]);
 
   const renderedTrigger = triggerChild
     ? cloneElement(

@@ -345,7 +345,7 @@ export function TooltipIconBar({
     [delay, revealTooltip],
   );
 
-  function hideTooltip() {
+  const hideTooltip = useCallback(() => {
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
       timeoutRef.current = null;
@@ -354,7 +354,7 @@ export function TooltipIconBar({
     setCoords({ clipPath: "", translateX: 0, arrowX: 0 });
     setIsEntering(true);
     setPortalBox(null);
-  }
+  }, []);
 
   const handleItemEnter = useCallback(
     (index: number) => {
@@ -403,6 +403,26 @@ export function TooltipIconBar({
       window.removeEventListener("resize", handlePositionChange);
     };
   }, [portal, activeIndex, applyCoords, applyPortalBox, calculatePosition]);
+
+  useEffect(() => {
+    if (activeIndex === null) {
+      return;
+    }
+
+    const trigger = itemsRef.current[activeIndex]?.anchorRef.current;
+    if (!trigger || typeof IntersectionObserver === "undefined") {
+      return;
+    }
+
+    const observer = new IntersectionObserver((entries) => {
+      if (entries.some((entry) => !entry.isIntersecting)) {
+        hideTooltip();
+      }
+    });
+
+    observer.observe(trigger);
+    return () => observer.disconnect();
+  }, [activeIndex, hideTooltip]);
 
   if (disabled) {
     const rootProps = ariaLabel
