@@ -45,7 +45,7 @@ const appLinks: NavLinkItem[] = [
   {
     to: "/app/leads",
     label: "Trial caller",
-    icon: "smartphone",
+    icon: "phone-call",
     section: "People",
     primary: true,
     roles: ADMIN_ROLES,

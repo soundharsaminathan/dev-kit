@@ -55,15 +55,18 @@ describe("app nav role filtering", () => {
   });
 
   it("puts trial caller on the app bar and bookings in the profile menu", () => {
-    const primary = getPrimaryTabs("app", "OWNER").map((link) => link.to);
+    const primary = getPrimaryTabs("app", "OWNER");
     const more = getMoreLinks("app", "OWNER").map((link) => link.to);
-    expect(primary).toEqual([
+    expect(primary.map((link) => link.to)).toEqual([
       "/app",
       "/app/batches",
       "/app/leads",
       "/app/messages",
       "/app/profile",
     ]);
+    expect(primary.find((link) => link.to === "/app/leads")?.icon).toBe(
+      "phone-call",
+    );
     expect(more).toContain("/app/bookings");
     expect(more).not.toContain("/app/leads");
   });
