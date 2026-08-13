@@ -2,6 +2,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@dev-ui/components/avatar";
 import { Button } from "@dev-ui/components/button";
 import { SearchField } from "@dev-ui/components/search-field";
 import { Text } from "@dev-ui/components/text";
+import { useIsMobile } from "@dev-ui/hooks";
 import { Icon } from "@dev-ui/icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
@@ -237,6 +238,7 @@ export function ConversationList({
   const api = useApi();
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const isMobile = useIsMobile();
   const currentUserId = user?.id ?? "";
 
   const [view, setView] = useState<View>("list");
@@ -480,6 +482,7 @@ export function ConversationList({
           placement="bottom"
           portal
           className={styles.headerActions ?? ""}
+          disabled={isMobile}
         >
           <TooltipIconBarItem label="New message">
             <Button

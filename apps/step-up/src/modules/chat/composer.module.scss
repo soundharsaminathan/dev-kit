@@ -175,6 +175,39 @@
   gap: 0.125rem;
 }
 
+.tool {
+  transition:
+    background-color var(--interaction-transition-duration, var(--motion-fast))
+      var(--interaction-transition-curve, ease),
+    color var(--interaction-transition-duration, var(--motion-fast))
+      var(--interaction-transition-curve, ease);
+}
+
+.iconBar .tool[data-selected="true"]:not([data-state="disabled"]):not(
+    [data-pending="true"]
+  ),
+.iconBar .tool[data-selected="true"][data-pending="true"] {
+  background-color: color-mix(in srgb, var(--color-primary) 18%, transparent);
+  color: var(--color-primary);
+  border-color: transparent;
+  box-shadow: none;
+
+  &[data-hovered="true"] {
+    background-color: color-mix(in srgb, var(--color-primary) 26%, transparent);
+  }
+}
+
+.iconBar .tool[data-recording="true"]:not([data-state="disabled"]) {
+  background-color: color-mix(in srgb, var(--color-danger) 16%, transparent);
+  color: var(--color-danger);
+  border-color: transparent;
+  box-shadow: none;
+
+  &[data-hovered="true"] {
+    background-color: color-mix(in srgb, var(--color-danger) 24%, transparent);
+  }
+}
+
 .textInput {
   flex: 1;
   min-width: 0;
@@ -228,7 +261,8 @@
 
 @media (prefers-reduced-motion: reduce) {
   .formInput,
-  .textInput {
+  .textInput,
+  .tool {
     transition-duration: 0ms;
   }
 

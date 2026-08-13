@@ -1,4 +1,5 @@
 import { Tooltip, TooltipContent } from "@dev-ui/components/tooltip";
+import { useIsMobile } from "@dev-ui/hooks";
 import type { ReactElement } from "react";
 
 type ChatTooltipProps = {
@@ -7,6 +8,12 @@ type ChatTooltipProps = {
 };
 
 export function ChatTooltip({ label, children }: ChatTooltipProps) {
+  const isMobile = useIsMobile();
+
+  if (isMobile) {
+    return children;
+  }
+
   return (
     <Tooltip delay={300} touchBehavior="longPress">
       {children}

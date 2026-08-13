@@ -1,7 +1,7 @@
 import { Button } from "@dev-ui/components/button";
 import { FileTrigger } from "@dev-ui/components/file-trigger";
 import { Text } from "@dev-ui/components/text";
-import { useOnlineStatus } from "@dev-ui/hooks";
+import { useIsMobile, useOnlineStatus } from "@dev-ui/hooks";
 import { Icon } from "@dev-ui/icons";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
@@ -57,6 +57,7 @@ export function Composer({
   const queryClient = useQueryClient();
   const { socket } = useChatSocket();
   const online = useOnlineStatus();
+  const isMobile = useIsMobile();
 
   const [text, setText] = useState("");
   const [files, setFiles] = useState<File[]>([]);
@@ -690,7 +691,12 @@ export function Composer({
       ) : null}
 
       <div className={styles.inputRow}>
-        <TooltipIconBar placement="top" className={styles.iconBar ?? ""} portal>
+        <TooltipIconBar
+          placement="top"
+          className={styles.iconBar ?? ""}
+          portal
+          disabled={isMobile}
+        >
           <TooltipIconBarItem label="Add photos">
             <FileTrigger
               accept="image/jpeg,image/png,image/webp,image/gif"
@@ -701,7 +707,10 @@ export function Composer({
                 variant="quiet"
                 size="sm"
                 isIconOnly
+                className={styles.tool}
                 aria-label="Add photos"
+                aria-pressed={files.length > 0}
+                data-selected={files.length > 0 ? "true" : undefined}
                 isDisabled={recording || Boolean(voiceDraft)}
               >
                 <Icon name="image" />
@@ -716,8 +725,11 @@ export function Composer({
               variant="quiet"
               size="sm"
               isIconOnly
+              className={styles.tool}
               aria-label={recording ? "Stop recording" : "Record voice note"}
               aria-pressed={recording}
+              data-selected={recording ? "true" : undefined}
+              data-recording={recording ? "true" : undefined}
               isDisabled={Boolean(voiceDraft) && !recording}
               onClick={() => {
                 if (recording) {
@@ -736,7 +748,10 @@ export function Composer({
               variant="quiet"
               size="sm"
               isIconOnly
+              className={styles.tool}
               aria-label="Create poll"
+              aria-pressed={mode === "poll"}
+              data-selected={mode === "poll" ? "true" : undefined}
               isDisabled={recording || Boolean(voiceDraft)}
               onClick={() => setMode(mode === "poll" ? "none" : "poll")}
             >
@@ -749,7 +764,10 @@ export function Composer({
               variant="quiet"
               size="sm"
               isIconOnly
+              className={styles.tool}
               aria-label="Create event"
+              aria-pressed={mode === "event"}
+              data-selected={mode === "event" ? "true" : undefined}
               isDisabled={recording || Boolean(voiceDraft)}
               onClick={() => setMode(mode === "event" ? "none" : "event")}
             >
@@ -762,7 +780,12 @@ export function Composer({
               variant="quiet"
               size="sm"
               isIconOnly
+              className={styles.tool}
               aria-label="Share location"
+              aria-pressed={mode === "location" || locating}
+              data-selected={
+                mode === "location" || locating ? "true" : undefined
+              }
               isPending={locating}
               isDisabled={recording || Boolean(voiceDraft)}
               onClick={pickLocation}
@@ -800,7 +823,12 @@ export function Composer({
           }}
         />
 
-        <TooltipIconBar placement="top" className={styles.sendBar ?? ""} portal>
+        <TooltipIconBar
+          placement="top"
+          className={styles.sendBar ?? ""}
+          portal
+          disabled={isMobile}
+        >
           <TooltipIconBarItem label={online ? "Send" : "Queue send"}>
             <Button
               variant="primary"
