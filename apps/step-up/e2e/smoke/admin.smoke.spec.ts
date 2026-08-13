@@ -372,6 +372,35 @@ test.describe("admin (staff) smoke @smoke", () => {
     }
   });
 
+  test("staff opens batch attendance tab with monthly counts @smoke", async ({
+    browser,
+  }) => {
+    const context = await browser.newContext({
+      storageState: authFile("STAFF"),
+    });
+    const page = await context.newPage();
+    try {
+      await page.goto(`/app/batches/${SMOKE.kidsBatchId}`, {
+        waitUntil: "domcontentloaded",
+      });
+      await waitForAppReady(page);
+
+      await page.getByTestId("roster-tab-attendance").click();
+      await expect(page.getByTestId("batch-attendance-tab")).toBeVisible();
+      await expect(
+        page.getByRole("button", { name: "This month" }),
+      ).toBeVisible();
+
+      const count = page.getByTestId(
+        `attendance-count-${SMOKE.users.STUDENT.id}`,
+      );
+      await expect(count).toBeVisible();
+      await expect(count).toHaveText(/\d+\/\d+/);
+    } finally {
+      await closeSmokeContext(context);
+    }
+  });
+
   test("staff creates subscription plan @smoke", async ({ browser }) => {
     const cleanup = new SmokeDataCleanup();
     const stamp = Date.now();

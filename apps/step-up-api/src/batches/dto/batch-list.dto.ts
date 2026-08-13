@@ -1,5 +1,11 @@
 import { Transform } from "class-transformer";
-import { IsBoolean, IsIn, IsOptional, IsString } from "class-validator";
+import {
+  IsBoolean,
+  IsIn,
+  IsOptional,
+  IsString,
+  Matches,
+} from "class-validator";
 import { PaginationQueryDto } from "../../shared/pagination";
 import type { DiscoverBatchFilters } from "../batches.service";
 
@@ -40,6 +46,13 @@ export class BatchRosterQueryDto extends PaginationQueryDto {
   @IsOptional()
   @IsIn(["active", "inactive"])
   tab?: "active" | "inactive";
+}
+
+export class BatchAttendanceQueryDto {
+  @IsOptional()
+  @IsString()
+  @Matches(/^\d{4}-(0[1-9]|1[0-2])$/)
+  month?: string;
 }
 
 export function toDiscoverFilters(

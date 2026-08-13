@@ -49,6 +49,7 @@ import { BatchCommandsService } from "./application/batch.commands";
 import { BatchQueriesService } from "./application/batch.queries";
 import { BatchesService } from "./batches.service";
 import {
+  BatchAttendanceQueryDto,
   BatchListQueryDto,
   BatchRosterQueryDto,
   toDiscoverFilters,
@@ -57,6 +58,7 @@ import {
 /** Keep DTO classes as values so ValidationPipe can whitelist query params. */
 void BatchListQueryDto;
 void BatchRosterQueryDto;
+void BatchAttendanceQueryDto;
 
 class DanceCategoryDto {
   @IsString()
@@ -381,6 +383,15 @@ export class BatchesController {
       limit: query.limit,
       tab: query.tab,
     });
+  }
+
+  @Get(":id/attendance")
+  @Roles(UserRole.OWNER, UserRole.STAFF, UserRole.TRAINER)
+  getAttendance(
+    @Param("id") id: string,
+    @Query() query: BatchAttendanceQueryDto,
+  ) {
+    return this.batchQueries.getAttendanceSummary(id, { month: query.month });
   }
 
   @Get(":id")

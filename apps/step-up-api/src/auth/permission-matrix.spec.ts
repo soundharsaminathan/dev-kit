@@ -141,6 +141,10 @@ const PERMISSION_MATRIX: MatrixRow[] = [
     allowed: [UserRole.SYSTEM_ADMIN],
   },
   {
+    action: "batches.roster / attendance.summary",
+    allowed: [UserRole.OWNER, UserRole.STAFF, UserRole.TRAINER],
+  },
+  {
     action: "users.roster.read",
     allowed: [UserRole.OWNER, UserRole.STAFF, UserRole.TRAINER],
   },

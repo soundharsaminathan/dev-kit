@@ -1,10 +1,12 @@
-import { Inject, Injectable } from "@nestjs/common";
+import { Inject, Injectable, NotFoundException } from "@nestjs/common";
 import {
-  BillingCadence,
-  BookingStatus,
   BatchEnrollmentStatus,
-  IndividualAudience,
-  SubscriptionKind,
+  type BillingCadence,
+  BookingStatus,
+  type IndividualAudience,
+  SessionStatus,
+  SessionType,
+  type SubscriptionKind,
 } from "@prisma/client";
 import {
   accumulatePaidMonths,
@@ -15,11 +17,15 @@ import { MediaService } from "../../media/media.service";
 import { MembershipsService } from "../../memberships/memberships.service";
 import { PrismaService } from "../../prisma/prisma.service";
 import { buildPage, type Page } from "../../shared/pagination";
+import { userPiiSelect } from "../../users/user-crypto.service";
 import { UserPresenter } from "../../users/user-presenter";
-import type { DiscoverBatchFilters } from "../batches.service";
 import {
-  inactiveReasonFromEndReason,
-} from "../enrollment-status";
+  compareAttendanceRisk,
+  computeAttendanceMonthCounts,
+  parseAttendanceMonthKey,
+} from "../attendance-month";
+import type { DiscoverBatchFilters } from "../batches.service";
+import { inactiveReasonFromEndReason } from "../enrollment-status";
 import { BatchQuery } from "../persistence/batch.query";
 
 type BatchSchedule = {
@@ -297,6 +303,141 @@ export class BatchQueriesService {
     return buildPage(mapped, limit, (row) => row.id as string);
   }
 
+  async getAttendanceSummary(
+    batchId: string,
+    options: { month?: string } = {},
+  ) {
+    const batch = await this.prisma.batch.findUnique({
+      where: { id: batchId },
+      select: { id: true },
+    });
+    if (!batch) {
+      throw new NotFoundException("Batch not found");
+    }
+
+    const { month, periodStart, periodEnd } = parseAttendanceMonthKey(
+      options.month,
+    );
+
+    const [sessions, enrollments] = await Promise.all([
+      this.prisma.session.findMany({
+        where: {
+          batchId,
+          type: SessionType.REGULAR,
+          status: { not: SessionStatus.CANCELLED },
+          startsAt: { gte: periodStart, lt: periodEnd },
+        },
+        select: {
+          id: true,
+          startsAt: true,
+          type: true,
+          status: true,
+        },
+        orderBy: { startsAt: "asc" },
+      }),
+      this.prisma.batchEnrollment.findMany({
+        where: {
+          batchId,
+          enrolledAt: { lt: periodEnd },
+          OR: [
+            { status: BatchEnrollmentStatus.ACTIVE },
+            {
+              status: BatchEnrollmentStatus.ENDED,
+              endedAt: { gt: periodStart },
+            },
+          ],
+        },
+        select: {
+          studentId: true,
+          enrolledAt: true,
+          status: true,
+          endedAt: true,
+          student: {
+            select: {
+              id: true,
+              photoUrl: true,
+              ...userPiiSelect,
+            },
+          },
+        },
+      }),
+    ]);
+
+    const sessionIds = sessions.map((session) => session.id);
+    const marks =
+      sessionIds.length === 0
+        ? []
+        : await this.prisma.attendance.findMany({
+            where: {
+              sessionId: { in: sessionIds },
+              studentId: {
+                in: enrollments.map((row) => row.studentId),
+              },
+            },
+            select: {
+              sessionId: true,
+              studentId: true,
+              status: true,
+            },
+          });
+
+    const counts = computeAttendanceMonthCounts({
+      enrollments,
+      sessions,
+      marks,
+      periodStart,
+      periodEnd,
+    });
+
+    const presentedStudents = await this.users.presentLiteMany(
+      enrollments.map((row) => row.student),
+    );
+    const studentById = new Map(
+      presentedStudents.map((student) => [student.id, student]),
+    );
+    const countsById = new Map(counts.map((row) => [row.studentId, row]));
+
+    const students = enrollments
+      .map((row) => {
+        const student = studentById.get(row.studentId);
+        const count = countsById.get(row.studentId);
+        if (!student || !count) return null;
+        return {
+          studentId: row.studentId,
+          student: {
+            id: student.id,
+            name: student.name,
+            photoUrl: student.photoUrl,
+          },
+          eligibleCount: count.eligibleCount,
+          presentCount: count.presentCount,
+          absentCount: count.absentCount,
+          unmarkedCount: count.unmarkedCount,
+        };
+      })
+      .filter((row): row is NonNullable<typeof row> => row != null)
+      .sort((a, b) =>
+        compareAttendanceRisk(
+          {
+            presentCount: a.presentCount,
+            eligibleCount: a.eligibleCount,
+            name: a.student.name,
+          },
+          {
+            presentCount: b.presentCount,
+            eligibleCount: b.eligibleCount,
+            name: b.student.name,
+          },
+        ),
+      );
+
+    return {
+      month,
+      sessionCount: sessions.length,
+      students,
+    };
+  }
+
   private async shapeCard(
     batch: {
       id: string;
@@ -366,8 +507,7 @@ export class BatchQueriesService {
     options: { includeSessions?: boolean; includeCertificate?: boolean } = {},
   ) {
     const { plans, price } = extractPlans(batch.plans);
-    const enrollmentCount =
-      batch.summary?.enrolled ?? batch._count.enrollments;
+    const enrollmentCount = batch.summary?.enrolled ?? batch._count.enrollments;
     const reserved = batch.summary?.reserved ?? 0;
     const occupied = batch.summary
       ? batch.summary.enrolled + batch.summary.reserved

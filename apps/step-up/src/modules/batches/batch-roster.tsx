@@ -15,7 +15,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useApi } from "@/lib/api-context";
-import { unwrapPage, type Page } from "@/lib/api-page";
+import { type Page, unwrapPage } from "@/lib/api-page";
 import { ENTITY_ICONS } from "@/lib/entity-icons";
 import { formatPaidMonths } from "@/lib/format-paid-months";
 import { useStudioId } from "@/lib/use-studio-id";
@@ -27,6 +27,7 @@ import { PressableCard } from "@/modules/ui/pressable-card";
 import staff from "@/modules/ui/staff.module.scss";
 import { EmptyState, ErrorState } from "@/modules/ui/states";
 import { TouchButton } from "@/modules/ui/touch-button";
+import { BatchAttendanceTab } from "./batch-attendance-tab";
 import { upcomingSessions } from "./batch-overview-helpers";
 import styles from "./batch-roster.module.scss";
 
@@ -99,6 +100,9 @@ export function BatchRoster({ batchId, capacity, active }: BatchRosterProps) {
   const queryClient = useQueryClient();
   const { toast } = useToastContext("BatchRoster");
   const [enrollOpen, setEnrollOpen] = useState(false);
+  const [rosterTab, setRosterTab] = useState<
+    "active" | "inactive" | "attendance"
+  >("active");
   const [enrollStudentIds, setEnrollStudentIds] = useState<string[]>([]);
   const [enrollStudents, setEnrollStudents] = useState<StudioStudent[]>([]);
   const [subscriptionId, setSubscriptionId] = useState<string | null>(null);
@@ -115,9 +119,9 @@ export function BatchRoster({ batchId, capacity, active }: BatchRosterProps) {
   const activeRosterQuery = useQuery({
     queryKey: ["batch", batchId, "roster", "active"],
     queryFn: async () => {
-      const data = await api.get<Page<BatchEnrollmentRow> | BatchEnrollmentRow[]>(
-        `/batches/${batchId}/roster?tab=active&limit=50`,
-      );
+      const data = await api.get<
+        Page<BatchEnrollmentRow> | BatchEnrollmentRow[]
+      >(`/batches/${batchId}/roster?tab=active&limit=50`);
       return unwrapPage(data);
     },
   });
@@ -367,13 +371,24 @@ export function BatchRoster({ batchId, capacity, active }: BatchRosterProps) {
         ) : null}
       </div>
 
-      <Tabs defaultSelectedKey="active" aria-label="Student roster">
+      <Tabs
+        selectedKey={rosterTab}
+        onSelectionChange={(key) => {
+          if (key === "active" || key === "inactive" || key === "attendance") {
+            setRosterTab(key);
+          }
+        }}
+        aria-label="Student roster"
+      >
         <TabList>
           <Tab id="active" data-testid="roster-tab-active">
             Active
           </Tab>
           <Tab id="inactive" data-testid="roster-tab-inactive">
             Inactive
+          </Tab>
+          <Tab id="attendance" data-testid="roster-tab-attendance">
+            Attendance
           </Tab>
         </TabList>
 
@@ -514,6 +529,13 @@ export function BatchRoster({ batchId, capacity, active }: BatchRosterProps) {
               </div>
             )}
           </div>
+        </TabPanel>
+
+        <TabPanel id="attendance">
+          <BatchAttendanceTab
+            batchId={batchId}
+            enabled={rosterTab === "attendance"}
+          />
         </TabPanel>
       </Tabs>
 
