@@ -212,27 +212,30 @@ test.describe("trainer smoke @smoke", () => {
         waitUntil: "domcontentloaded",
       });
       await waitForAppReady(page);
-      await expect(page.getByText(student.name)).toBeVisible();
-      await expect(page.getByText("Not paid").first()).toBeVisible();
+
+      const row = page.getByTestId(`attendance-row-${student.id}`);
+      await expect(row).toBeVisible();
+      await expect(row.getByText("Not paid")).toBeVisible();
 
       await apiRequest("STAFF", `/billing/${invoice.id}/paid`, {
         method: "PATCH",
         body: JSON.stringify({ paymentMethod: "CASH" }),
       });
 
+      await expect
+        .poll(async () => {
+          const latest = await apiRequest<
+            Array<{ studentId: string; monthlyUnpaid?: boolean }>
+          >("TRAINER", `/attendance/session/${sessionId}/roster`);
+          return latest.find((entry) => entry.studentId === student.id)
+            ?.monthlyUnpaid;
+        })
+        .toBe(false);
+
       await page.reload({ waitUntil: "domcontentloaded" });
       await waitForAppReady(page);
-      await expect(page.getByText(student.name)).toBeVisible();
-
-      const row = page.getByRole("row").filter({ hasText: student.name });
+      await expect(row).toBeVisible();
       await expect(row.getByText("Not paid")).toHaveCount(0);
-
-      const roster = await apiRequest<
-        Array<{ studentId: string; monthlyUnpaid?: boolean }>
-      >("TRAINER", `/attendance/session/${sessionId}/roster`);
-      expect(
-        roster.find((entry) => entry.studentId === student.id)?.monthlyUnpaid,
-      ).toBe(false);
     } finally {
       await context.close();
       await cleanup.dispose();

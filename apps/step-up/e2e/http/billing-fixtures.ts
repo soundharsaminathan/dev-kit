@@ -81,11 +81,11 @@ async function resolveStudent(
 }
 
 export async function listBatchSessions(batchId: string) {
-  const header = await expectOk<{ sessions?: BatchSession[] }>(
+  const sessions = await expectOk<BatchSession[]>(
     "STAFF",
-    `/batches/${batchId}`,
+    `/sessions/batch/${batchId}`,
   );
-  return header.sessions ?? [];
+  return Array.isArray(sessions) ? sessions : [];
 }
 
 export async function createCalendarBatch(

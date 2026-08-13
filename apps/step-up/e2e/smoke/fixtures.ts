@@ -462,16 +462,13 @@ export async function enrollPostpaid(
   });
   expect(enrollment.invoice).toBeNull();
   expect(enrollment.billingKind).toBe("postpaid");
-  const header = await apiRequest<{
-    sessions?: Array<{ id: string; startsAt: string }>;
-  }>("STAFF", `/batches/${batch.id}`);
-  const sessions = header.sessions ?? [];
+  const sessions = await listBatchSessions(batch.id);
   return {
     student,
     batch,
     batchId: batch.id,
     sessions,
-    sessionId: markableSessionId(sessions),
+    sessionId: await sessionIdInAttendanceWindow(batch.id, sessions),
   };
 }
 
@@ -488,24 +485,51 @@ export async function enrollUnpaidOnPostpaidBatch(
     kind: "postpaid",
     category: options.category ?? "ADULTS",
   });
-  await apiRequest("STAFF", `/batches/${prepaid.batch.id}/switch`, {
+  await apiRequest("STAFF", `/batches/${prepaid.batchId}/switch`, {
     method: "POST",
     body: JSON.stringify({
       studentId: prepaid.student.id,
       toBatchId: dest.id,
     }),
   });
-  const header = await apiRequest<{
-    sessions?: Array<{ id: string; startsAt: string }>;
-  }>("STAFF", `/batches/${dest.id}`);
-  const sessions = header.sessions ?? [];
+  const sessions = await listBatchSessions(dest.id);
   return {
     ...prepaid,
     batch: dest,
     batchId: dest.id,
     sessions,
-    sessionId: markableSessionId(sessions),
+    sessionId: await sessionIdInAttendanceWindow(dest.id, sessions),
   };
+}
+
+async function listBatchSessions(batchId: string) {
+  const sessions = await apiRequest<Array<{ id: string; startsAt: string }>>(
+    "STAFF",
+    `/sessions/batch/${batchId}`,
+  );
+  return Array.isArray(sessions) ? sessions : [];
+}
+
+async function sessionIdInAttendanceWindow(
+  batchId: string,
+  sessions: Array<{ id: string; startsAt: string }>,
+) {
+  try {
+    return markableSessionId(sessions);
+  } catch {
+    const startsAt = new Date(Date.now() - 2 * 60 * 60 * 1000);
+    const endsAt = new Date(startsAt.getTime() + 45 * 60 * 1000);
+    const created = await apiRequest<{ id: string }>("STAFF", "/sessions", {
+      method: "POST",
+      body: JSON.stringify({
+        batchId,
+        startsAt: startsAt.toISOString(),
+        endsAt: endsAt.toISOString(),
+        type: "REGULAR",
+      }),
+    });
+    return created.id;
+  }
 }
 
 export { canJoinPostpaidNow };

@@ -219,6 +219,7 @@ const RosterRow = memo(
     return (
       <tr
         className={styles.tr}
+        data-testid={`attendance-row-${row.original.studentId}`}
         data-selected={isSelected ? "" : undefined}
         data-pending={isRowPending ? "" : undefined}
         data-actions-locked={actionsLocked ? "" : undefined}
