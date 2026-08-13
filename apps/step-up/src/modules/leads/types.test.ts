@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   canConfirmTrialSession,
+  defaultSessionDateKey,
   type LeadTrialBooking,
+  localDateKey,
   phoneTelHref,
+  slotMatchesDate,
 } from "./types";
 
 function trial(overrides: Partial<LeadTrialBooking> = {}): LeadTrialBooking {
@@ -44,5 +47,30 @@ describe("canConfirmTrialSession", () => {
 
   it("blocks confirm when there is no trial booking", () => {
     expect(canConfirmTrialSession(null)).toBe(false);
+  });
+});
+
+describe("session date filter", () => {
+  const now = new Date(2026, 7, 14, 10, 0, 0);
+
+  it("defaults to today or tomorrow from the trial caller filter", () => {
+    expect(defaultSessionDateKey("today", now)).toBe("2026-08-14");
+    expect(defaultSessionDateKey("tomorrow", now)).toBe("2026-08-15");
+    expect(defaultSessionDateKey("all", now)).toBeNull();
+  });
+
+  it("matches slots on the selected local date and keeps all when unset", () => {
+    const todaySlot = new Date(2026, 7, 14, 18, 30, 0).toISOString();
+    const tomorrowSlot = new Date(2026, 7, 15, 9, 0, 0).toISOString();
+
+    expect(slotMatchesDate(todaySlot, null)).toBe(true);
+    expect(slotMatchesDate(todaySlot, "2026-08-14")).toBe(true);
+    expect(slotMatchesDate(tomorrowSlot, "2026-08-14")).toBe(false);
+    expect(slotMatchesDate("not-a-date", "2026-08-14")).toBe(false);
+  });
+
+  it("formats local calendar keys without UTC drift", () => {
+    expect(localDateKey(new Date(2026, 7, 14, 0, 15, 0))).toBe("2026-08-14");
+    expect(localDateKey(new Date(2026, 7, 14, 23, 45, 0))).toBe("2026-08-14");
   });
 });

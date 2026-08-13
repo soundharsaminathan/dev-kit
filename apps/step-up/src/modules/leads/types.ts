@@ -94,3 +94,38 @@ export function isTrialSoon(startsAt: string | null, filter: LeadDateFilter) {
 
   return start >= todayStart && start <= tomorrowEnd;
 }
+
+export function localDateKey(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+export function addLocalDays(date: Date, days: number) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate() + days);
+}
+
+export function slotDateKey(startsAt: string) {
+  const start = new Date(startsAt);
+  if (Number.isNaN(start.getTime())) return null;
+  return localDateKey(start);
+}
+
+export function defaultSessionDateKey(
+  filter: LeadDateFilter,
+  now: Date = new Date(),
+) {
+  if (filter === "today") return localDateKey(now);
+  if (filter === "tomorrow") return localDateKey(addLocalDays(now, 1));
+  return null;
+}
+
+export function slotMatchesDate(startsAt: string, dateKey: string | null) {
+  if (!dateKey) return true;
+  return slotDateKey(startsAt) === dateKey;
+}
+
+export function trialHorizonDateKey(now: Date = new Date(), days = 35) {
+  return localDateKey(addLocalDays(now, days));
+}

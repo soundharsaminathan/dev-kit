@@ -8,6 +8,8 @@ export type AppDrawerProps = {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   title?: string | undefined;
+  toolbar?: ReactNode;
+  footer?: ReactNode;
   children: ReactNode;
   className?: string | undefined;
 };
@@ -16,6 +18,8 @@ export function AppDrawer({
   isOpen,
   onOpenChange,
   title,
+  toolbar,
+  footer,
   children,
   className,
 }: AppDrawerProps) {
@@ -47,7 +51,9 @@ export function AppDrawer({
             <Icon name="x" />
           </button>
         </div>
+        {toolbar ? <div className={styles.toolbar}>{toolbar}</div> : null}
         <div className={styles.body}>{children}</div>
+        {footer ? <div className={styles.footer}>{footer}</div> : null}
       </div>
     </Drawer>
   );

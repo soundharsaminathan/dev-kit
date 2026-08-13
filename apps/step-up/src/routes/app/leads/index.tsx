@@ -260,6 +260,7 @@ function LeadsPage() {
       <SwitchTrialSheet
         lead={switchLead}
         studioId={studioId}
+        dateFilter={filter}
         onOpenChange={(open) => {
           if (!open) setSwitchLead(null);
         }}

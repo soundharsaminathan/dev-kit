@@ -1,5 +1,6 @@
 .panel {
   height: 100%;
+  max-height: 100dvh;
   background: var(--color-card, var(--color-bg));
   box-shadow: var(--elevation-3, 0 16px 40px rgb(0 0 0 / 18%));
 }
@@ -7,6 +8,8 @@
 .panel.panelFullscreen {
   width: 100dvw;
   max-width: 100dvw;
+  height: 100dvh;
+  max-height: 100dvh;
   border: none;
   border-radius: 0;
 }
@@ -78,6 +81,12 @@
   transform: scale(var(--interaction-press-scale, 0.98));
 }
 
+.toolbar {
+  flex-shrink: 0;
+  padding: var(--space-3, 0.75rem) var(--space-4, 1rem);
+  border-bottom: 1px solid color-mix(in srgb, var(--color-border) 80%, transparent);
+}
+
 .body {
   flex: 1;
   min-height: 0;
@@ -85,6 +94,18 @@
   padding: var(--space-4, 1rem);
   padding-bottom: calc(var(--space-5, 1.25rem) + env(safe-area-inset-bottom, 0px));
   scrollbar-width: thin;
+}
+
+.body:has(+ .footer) {
+  padding-bottom: var(--space-4, 1rem);
+}
+
+.footer {
+  flex-shrink: 0;
+  padding: var(--space-3, 0.75rem) var(--space-4, 1rem);
+  padding-bottom: calc(var(--space-4, 1rem) + env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid color-mix(in srgb, var(--color-border) 80%, transparent);
+  background: var(--color-card, var(--color-bg));
 }
 
 @media (prefers-reduced-motion: reduce) {
