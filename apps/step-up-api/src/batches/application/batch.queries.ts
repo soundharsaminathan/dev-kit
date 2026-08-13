@@ -17,6 +17,7 @@ import { MediaService } from "../../media/media.service";
 import { MembershipsService } from "../../memberships/memberships.service";
 import { PrismaService } from "../../prisma/prisma.service";
 import { buildPage, type Page } from "../../shared/pagination";
+import { matchesPersonSearch } from "../../users/person-search";
 import { userPiiSelect } from "../../users/user-crypto.service";
 import { UserPresenter } from "../../users/user-presenter";
 import {
@@ -242,13 +243,17 @@ export class BatchQueriesService {
       cursor?: string;
       limit?: number;
       tab?: "active" | "inactive";
+      q?: string;
     },
   ): Promise<Page<Record<string, unknown>>> {
+    const query = pagination.q?.trim() ?? "";
     const batch = await this.query.findStudioId(batchId);
-    const { rows, limit, tab } = await this.query.findRoster(
-      batchId,
-      pagination,
-    );
+    const { rows, limit, tab } = await this.query.findRoster(batchId, {
+      cursor: pagination.cursor,
+      limit: pagination.limit,
+      tab: pagination.tab,
+      searchAll: Boolean(query),
+    });
 
     const studentIds = rows.map((row) => row.studentId);
     let monthlyUnpaidIds = new Set<string>();
@@ -300,7 +305,37 @@ export class BatchQueriesService {
       };
     });
 
-    return buildPage(mapped, limit, (row) => row.id as string);
+    const filtered = query
+      ? mapped.filter((row) =>
+          matchesPersonSearch(
+            {
+              name: row.student.name,
+              email: row.student.email,
+              phone: row.student.phone,
+            },
+            query,
+          ),
+        )
+      : mapped;
+
+    if (!query) {
+      return buildPage(filtered, limit, (row) => row.id as string);
+    }
+
+    let startIndex = 0;
+    if (pagination.cursor) {
+      const cursorIndex = filtered.findIndex(
+        (row) => row.id === pagination.cursor,
+      );
+      startIndex = cursorIndex >= 0 ? cursorIndex + 1 : 0;
+    }
+    const page = filtered.slice(startIndex, startIndex + limit);
+    const hasMore = startIndex + page.length < filtered.length;
+    return {
+      items: page,
+      nextCursor: hasMore ? ((page[page.length - 1]?.id as string) ?? null) : null,
+      limit,
+    };
   }
 
   async getAttendanceSummary(

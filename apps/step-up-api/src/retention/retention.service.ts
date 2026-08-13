@@ -138,6 +138,8 @@ export class RetentionService {
         return {
           studentId: record.studentId,
           studentName: student.name,
+          email: student.email,
+          phone: student.phone,
           paidMonths: paidMonthsByStudent.get(record.studentId) ?? 0,
           sessionId: record.sessionId,
           sessionStartsAt: record.session.startsAt,
@@ -180,6 +182,8 @@ export class RetentionService {
         return {
           studentId: booking.studentId,
           studentName: student.name,
+          email: student.email,
+          phone: student.phone,
           paidMonths: paidMonthsByStudent.get(booking.studentId) ?? 0,
           status: booking.status,
         };

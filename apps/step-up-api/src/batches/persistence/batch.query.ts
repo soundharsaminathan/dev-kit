@@ -160,6 +160,7 @@ export class BatchQuery {
       cursor?: string;
       limit?: number;
       tab?: "active" | "inactive";
+      searchAll?: boolean;
     },
   ) {
     const limit = resolvePageLimit(pagination.limit);
@@ -182,10 +183,14 @@ export class BatchQuery {
         student: { select: studentLiteSelect },
       },
       orderBy: [{ enrolledAt: "desc" }, { id: "asc" }],
-      ...(pagination.cursor
-        ? { cursor: { id: pagination.cursor }, skip: 1 }
-        : {}),
-      take: limit + 1,
+      ...(pagination.searchAll
+        ? {}
+        : {
+            ...(pagination.cursor
+              ? { cursor: { id: pagination.cursor }, skip: 1 }
+              : {}),
+            take: limit + 1,
+          }),
     });
 
     return { rows, limit, tab };

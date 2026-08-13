@@ -1,9 +1,11 @@
+import { SearchField } from "@dev-ui/components/search-field";
 import { useToastContext } from "@dev-ui/components/toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useApi } from "@/lib/api-context";
 import { useAuth } from "@/lib/auth";
+import { matchesPersonSearch } from "@/lib/person-search";
 import { useStudioId } from "@/lib/use-studio-id";
 import { BookingDetailDrawer } from "@/modules/bookings/booking-detail-drawer";
 import {
@@ -39,6 +41,7 @@ function BookingsPage() {
   const { toast } = useToastContext("BookingsPage");
   const isTrainer = user?.role === "TRAINER";
   const [filter, setFilter] = useState("ALL");
+  const [search, setSearch] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const bookings = useQuery({
@@ -108,9 +111,22 @@ function BookingsPage() {
   }, [scopedBookings]);
 
   const filtered = useMemo(() => {
-    if (filter === "ALL") return sortedBookings;
-    return sortedBookings.filter((booking) => booking.status === filter);
-  }, [sortedBookings, filter]);
+    const byStatus =
+      filter === "ALL"
+        ? sortedBookings
+        : sortedBookings.filter((booking) => booking.status === filter);
+    if (!search.trim()) return byStatus;
+    return byStatus.filter((booking) =>
+      matchesPersonSearch(
+        {
+          name: booking.student?.name,
+          email: booking.student?.email,
+          phone: booking.student?.phone,
+        },
+        search,
+      ),
+    );
+  }, [sortedBookings, filter, search]);
 
   const pendingCount = sortedBookings.filter(
     (booking) => booking.status === "PENDING",
@@ -134,6 +150,15 @@ function BookingsPage() {
     >
       <PullToRefresh onRefresh={() => bookings.refetch()}>
         <div className={staff.section}>
+          <div data-testid="bookings-search">
+            <SearchField
+              aria-label="Search bookings"
+              placeholder="Search by name, email, or phone"
+              value={search}
+              onChange={setSearch}
+            />
+          </div>
+
           <FilterChipRow
             chips={[
               { id: "ALL", label: "All" },
@@ -167,11 +192,13 @@ function BookingsPage() {
 
           {bookings.data && filtered.length === 0 ? (
             <EmptyState
-              title="No bookings"
+              title={search.trim() ? "No matching bookings" : "No bookings"}
               description={
-                isTrainer
-                  ? "Pending requests for your batches will appear here."
-                  : "Student booking requests for this studio will appear here."
+                search.trim()
+                  ? "Try a different name, email, or phone."
+                  : isTrainer
+                    ? "Pending requests for your batches will appear here."
+                    : "Student booking requests for this studio will appear here."
               }
             />
           ) : null}

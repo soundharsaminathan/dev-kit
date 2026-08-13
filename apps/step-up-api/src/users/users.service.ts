@@ -41,6 +41,7 @@ import {
   paginateLeads,
   resolveLeadDayRange,
 } from "./leads";
+import { matchesPersonSearch } from "./person-search";
 import {
   batchHasCompletedSession,
   batchHasScheduledSession,
@@ -325,15 +326,9 @@ export class UsersService {
     );
     presented.sort((a, b) => a.name.localeCompare(b.name));
 
-    const query = options.q?.trim().toLowerCase();
+    const query = options.q?.trim();
     const filtered = query
-      ? presented.filter((user) => {
-          const haystack = [user.name, user.email, user.phone]
-            .filter(Boolean)
-            .join(" ")
-            .toLowerCase();
-          return haystack.includes(query);
-        })
+      ? presented.filter((user) => matchesPersonSearch(user, query))
       : presented;
 
     let startIndex = 0;

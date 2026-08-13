@@ -1,6 +1,8 @@
 export type ChatUser = {
   id: string;
   name: string;
+  email?: string | null;
+  phone?: string | null;
   photoUrl?: string | null;
   role: string;
 };

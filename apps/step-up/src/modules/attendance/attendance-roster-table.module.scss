@@ -6,6 +6,11 @@
   gap: var(--space-3, 0.75rem);
 }
 
+.searchBar {
+  width: 100%;
+  min-width: 0;
+}
+
 .toolbar {
   display: flex;
   flex-wrap: wrap;

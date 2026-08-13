@@ -1,4 +1,5 @@
 import type { AgeRange, Gender } from "@/lib/constants";
+import { matchesPersonSearch } from "@/lib/person-search";
 
 export type StudentFunnelStage =
   | "active"
@@ -158,13 +159,7 @@ export function matchesStudentSearch(
   student: DirectoryStudent,
   search: string,
 ) {
-  const q = search.trim().toLowerCase();
-  if (!q) return true;
-  const haystack = [student.name, student.email, student.phone]
-    .filter(Boolean)
-    .join(" ")
-    .toLowerCase();
-  return haystack.includes(q);
+  return matchesPersonSearch(student, search);
 }
 
 export function applyStudentFilters(

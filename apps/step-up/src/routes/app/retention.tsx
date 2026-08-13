@@ -1,3 +1,4 @@
+import { SearchField } from "@dev-ui/components/search-field";
 import {
   Select,
   SelectContent,
@@ -8,11 +9,12 @@ import {
 import { Icon } from "@dev-ui/icons";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useApi } from "@/lib/api-context";
 import { unwrapPage } from "@/lib/api-page";
 import { ENTITY_ICONS } from "@/lib/entity-icons";
 import { formatPaidMonths } from "@/lib/format-paid-months";
+import { matchesPersonSearch } from "@/lib/person-search";
 import { useStudioId } from "@/lib/use-studio-id";
 import { useStudioTrainers } from "@/modules/trainers/use-trainers";
 import { AnimatedMetric } from "@/modules/ui/animated-metric";
@@ -29,6 +31,8 @@ type Batch = { id: string; name: string };
 type Absentee = {
   studentId: string;
   studentName: string;
+  email?: string | null;
+  phone?: string | null;
   paidMonths?: number;
   sessionId: string;
   sessionStartsAt: string;
@@ -43,6 +47,15 @@ type BatchRetentionStats = {
   absenteeList: Absentee[];
 };
 
+type RecentStudent = {
+  studentId: string;
+  studentName: string;
+  email?: string | null;
+  phone?: string | null;
+  paidMonths?: number;
+  status: string;
+};
+
 type TrainerRetentionStats = {
   trainerId: string;
   studioId: string;
@@ -50,12 +63,7 @@ type TrainerRetentionStats = {
   completedCount: number;
   cancelledCount: number;
   completionRate: number;
-  recentStudents: Array<{
-    studentId: string;
-    studentName: string;
-    paidMonths?: number;
-    status: string;
-  }>;
+  recentStudents: RecentStudent[];
 };
 
 function formatSessionDate(value: string) {
@@ -78,6 +86,8 @@ function RetentionPage() {
   const [selectedTrainerId, setSelectedTrainerId] = useState<string | null>(
     null,
   );
+  const [absenteeSearch, setAbsenteeSearch] = useState("");
+  const [recentSearch, setRecentSearch] = useState("");
 
   const batchesQuery = useQuery({
     queryKey: ["batches", studioId],
@@ -116,6 +126,36 @@ function RetentionPage() {
       ),
     enabled: Boolean(trainerId),
   });
+
+  const filteredAbsentees = useMemo(() => {
+    const items = retentionQuery.data?.absenteeList ?? [];
+    if (!absenteeSearch.trim()) return items;
+    return items.filter((absentee) =>
+      matchesPersonSearch(
+        {
+          name: absentee.studentName,
+          email: absentee.email,
+          phone: absentee.phone,
+        },
+        absenteeSearch,
+      ),
+    );
+  }, [retentionQuery.data?.absenteeList, absenteeSearch]);
+
+  const filteredRecentStudents = useMemo(() => {
+    const items = trainerQuery.data?.recentStudents ?? [];
+    if (!recentSearch.trim()) return items;
+    return items.filter((student) =>
+      matchesPersonSearch(
+        {
+          name: student.studentName,
+          email: student.email,
+          phone: student.phone,
+        },
+        recentSearch,
+      ),
+    );
+  }, [trainerQuery.data?.recentStudents, recentSearch]);
 
   async function refresh() {
     await Promise.all([
@@ -234,41 +274,56 @@ function RetentionPage() {
               {retentionQuery.data.absenteeList.length > 0 ? (
                 <div className={staff.section}>
                   <p className={staff.sectionTitle}>Recent absences</p>
-                  <div className={staff.list}>
-                    {retentionQuery.data.absenteeList.map((absentee) => {
-                      return (
-                        <PressableCard
-                          key={`${absentee.studentId}-${absentee.sessionId}`}
-                          onClick={() =>
-                            void navigate({
-                              to: "/app/students/$id",
-                              params: { id: absentee.studentId },
-                            })
-                          }
-                        >
-                          <div className={staff.rowCard}>
-                            <span className={staff.rowTitle}>
-                              {absentee.studentName}
-                            </span>
-                            <span
-                              className={staff.metaWithIcon}
-                              data-testid={`paid-months-${absentee.studentId}`}
-                            >
-                              <Icon
-                                name="wallet"
-                                className={staff.metaWithIconIcon}
-                              />
-                              {formatPaidMonths(absentee.paidMonths ?? 0)}
-                            </span>
-                            <span className={staff.rowMeta}>
-                              Missed{" "}
-                              {formatSessionDate(absentee.sessionStartsAt)}
-                            </span>
-                          </div>
-                        </PressableCard>
-                      );
-                    })}
+                  <div data-testid="retention-absentee-search">
+                    <SearchField
+                      aria-label="Search absences"
+                      placeholder="Search by name, email, or phone"
+                      value={absenteeSearch}
+                      onChange={setAbsenteeSearch}
+                    />
                   </div>
+                  {filteredAbsentees.length === 0 ? (
+                    <EmptyState
+                      title="No matching absences"
+                      description="Try a different name, email, or phone."
+                    />
+                  ) : (
+                    <div className={staff.list}>
+                      {filteredAbsentees.map((absentee) => {
+                        return (
+                          <PressableCard
+                            key={`${absentee.studentId}-${absentee.sessionId}`}
+                            onClick={() =>
+                              void navigate({
+                                to: "/app/students/$id",
+                                params: { id: absentee.studentId },
+                              })
+                            }
+                          >
+                            <div className={staff.rowCard}>
+                              <span className={staff.rowTitle}>
+                                {absentee.studentName}
+                              </span>
+                              <span
+                                className={staff.metaWithIcon}
+                                data-testid={`paid-months-${absentee.studentId}`}
+                              >
+                                <Icon
+                                  name="wallet"
+                                  className={staff.metaWithIconIcon}
+                                />
+                                {formatPaidMonths(absentee.paidMonths ?? 0)}
+                              </span>
+                              <span className={staff.rowMeta}>
+                                Missed{" "}
+                                {formatSessionDate(absentee.sessionStartsAt)}
+                              </span>
+                            </div>
+                          </PressableCard>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               ) : (
                 <EmptyState
@@ -355,40 +410,57 @@ function RetentionPage() {
               </div>
 
               {trainerQuery.data.recentStudents.length > 0 ? (
-                <div className={staff.list}>
-                  {trainerQuery.data.recentStudents.map((student) => {
-                    return (
-                      <PressableCard
-                        key={student.studentId}
-                        onClick={() =>
-                          void navigate({
-                            to: "/app/students/$id",
-                            params: { id: student.studentId },
-                          })
-                        }
-                      >
-                        <div className={staff.rowCard}>
-                          <span className={staff.rowTitle}>
-                            {student.studentName}
-                          </span>
-                          <span
-                            className={staff.metaWithIcon}
-                            data-testid={`paid-months-${student.studentId}`}
+                <>
+                  <div data-testid="retention-recent-search">
+                    <SearchField
+                      aria-label="Search recent students"
+                      placeholder="Search by name, email, or phone"
+                      value={recentSearch}
+                      onChange={setRecentSearch}
+                    />
+                  </div>
+                  {filteredRecentStudents.length === 0 ? (
+                    <EmptyState
+                      title="No matching students"
+                      description="Try a different name, email, or phone."
+                    />
+                  ) : (
+                    <div className={staff.list}>
+                      {filteredRecentStudents.map((student) => {
+                        return (
+                          <PressableCard
+                            key={student.studentId}
+                            onClick={() =>
+                              void navigate({
+                                to: "/app/students/$id",
+                                params: { id: student.studentId },
+                              })
+                            }
                           >
-                            <Icon
-                              name="wallet"
-                              className={staff.metaWithIconIcon}
-                            />
-                            {formatPaidMonths(student.paidMonths ?? 0)}
-                          </span>
-                          <span className={staff.rowMeta}>
-                            {student.status}
-                          </span>
-                        </div>
-                      </PressableCard>
-                    );
-                  })}
-                </div>
+                            <div className={staff.rowCard}>
+                              <span className={staff.rowTitle}>
+                                {student.studentName}
+                              </span>
+                              <span
+                                className={staff.metaWithIcon}
+                                data-testid={`paid-months-${student.studentId}`}
+                              >
+                                <Icon
+                                  name="wallet"
+                                  className={staff.metaWithIconIcon}
+                                />
+                                {formatPaidMonths(student.paidMonths ?? 0)}
+                              </span>
+                              <span className={staff.rowMeta}>
+                                {student.status}
+                              </span>
+                            </div>
+                          </PressableCard>
+                        );
+                      })}
+                    </div>
+                  )}
+                </>
               ) : null}
             </div>
           ) : null}

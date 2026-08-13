@@ -1,5 +1,6 @@
 import { Badge } from "@dev-ui/components/badge";
 import { Button } from "@dev-ui/components/button";
+import { SearchField } from "@dev-ui/components/search-field";
 import { useIsMobile, useLoadMoreOnScroll } from "@dev-ui/hooks";
 import { Icon } from "@dev-ui/icons";
 import {
@@ -15,6 +16,7 @@ import {
 } from "@tanstack/react-table";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { formatPaidMonths } from "@/lib/format-paid-months";
+import { matchesPersonSearch } from "@/lib/person-search";
 import { AppSheet } from "@/modules/ui/app-sheet";
 import { FilterChipRow } from "@/modules/ui/filter-chip-row";
 import staff from "@/modules/ui/staff.module.scss";
@@ -287,8 +289,9 @@ export function AttendanceRosterTable({
   ]);
   const [statusFilter, setStatusFilter] =
     useState<AttendanceStatusFilter>("all");
+  const [search, setSearch] = useState("");
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
-  const listWindowKey = `${statusFilter}:${sorting[0]?.id ?? ""}:${sorting[0]?.desc ? "desc" : "asc"}`;
+  const listWindowKey = `${statusFilter}:${search}:${sorting[0]?.id ?? ""}:${sorting[0]?.desc ? "desc" : "asc"}`;
   const [visibleCount, setVisibleCount] = useState(ROSTER_PAGE_SIZE);
   const [windowKey, setWindowKey] = useState(listWindowKey);
   if (windowKey !== listWindowKey) {
@@ -465,8 +468,15 @@ export function AttendanceRosterTable({
     [isMobile],
   );
 
+  const searchableRoster = useMemo(() => {
+    if (!search.trim()) return roster;
+    return roster.filter((entry) =>
+      matchesPersonSearch(entry.student, search),
+    );
+  }, [roster, search]);
+
   const table = useReactTable({
-    data: roster,
+    data: searchableRoster,
     columns,
     state: {
       sorting,
@@ -571,6 +581,14 @@ export function AttendanceRosterTable({
 
   return (
     <div className={styles.root} data-mobile={isMobile ? "true" : undefined}>
+      <div className={styles.searchBar} data-testid="attendance-roster-search">
+        <SearchField
+          aria-label="Search roster"
+          placeholder="Search by name, email, or phone"
+          value={search}
+          onChange={setSearch}
+        />
+      </div>
       <div className={styles.toolbar}>
         <FilterChipRow
           chips={STATUS_FILTER_CHIPS}
@@ -706,7 +724,9 @@ export function AttendanceRosterTable({
             {table.getRowModel().rows.length === 0 ? (
               <tr>
                 <td className={styles.emptyCell} colSpan={visibleColumnCount}>
-                  No students match this status filter.
+                  {search.trim()
+                    ? "No students match this search."
+                    : "No students match this status filter."}
                 </td>
               </tr>
             ) : (

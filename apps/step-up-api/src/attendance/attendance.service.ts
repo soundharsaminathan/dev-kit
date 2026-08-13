@@ -25,6 +25,7 @@ import {
 import { MembershipsService } from "../memberships/memberships.service";
 import { NotificationsService } from "../notifications/notifications.service";
 import { PrismaService } from "../prisma/prisma.service";
+import { matchesPersonSearch } from "../users/person-search";
 import { UserCryptoService } from "../users/user-crypto.service";
 
 const OPEN_TRIAL_STATUSES: BookingStatus[] = [
@@ -265,9 +266,7 @@ export class AttendanceService {
       })
       .filter((student) => {
         if (!needle) return true;
-        const haystack =
-          `${student.name} ${student.email ?? ""} ${student.phone ?? ""}`.toLowerCase();
-        return haystack.includes(needle);
+        return matchesPersonSearch(student, needle);
       })
       .sort((left, right) => {
         if (left.priority !== right.priority) {

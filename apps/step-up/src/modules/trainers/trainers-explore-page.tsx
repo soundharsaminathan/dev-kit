@@ -1,3 +1,4 @@
+import { SearchField } from "@dev-ui/components/search-field";
 import { useIsMobile } from "@dev-ui/hooks";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
@@ -10,6 +11,7 @@ import {
   trainerHasStyle,
 } from "@/lib/dance-styles";
 import { ENTITY_ICONS } from "@/lib/entity-icons";
+import { matchesPersonSearch } from "@/lib/person-search";
 import { useStudioDanceStyles } from "@/lib/use-studio-dance-styles";
 import { HomeStudioBanner } from "@/modules/me/home-sections";
 import type { HomePayload } from "@/modules/me/home-types";
@@ -177,6 +179,7 @@ export function TrainersExplorePage({
     coerceView(readStoredView(storageKey, defaultView), isMobile),
   );
   const [styleFilter, setStyleFilter] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
   const immersiveDiscovery = !isStaff && view === "stack";
 
   useEffect(() => {
@@ -196,13 +199,17 @@ export function TrainersExplorePage({
     [trainers, danceCatalog],
   );
   const filteredTrainers = useMemo(() => {
-    if (!styleFilter) {
-      return trainers;
+    let next = trainers;
+    if (styleFilter) {
+      next = next.filter((trainer) =>
+        trainerHasStyle(trainer.styles, styleFilter, danceCatalog),
+      );
     }
-    return trainers.filter((trainer) =>
-      trainerHasStyle(trainer.styles, styleFilter, danceCatalog),
-    );
-  }, [trainers, styleFilter, danceCatalog]);
+    if (search.trim()) {
+      next = next.filter((trainer) => matchesPersonSearch(trainer, search));
+    }
+    return next;
+  }, [trainers, styleFilter, danceCatalog, search]);
 
   const followingCount = useMemo(
     () => trainers.filter((trainer) => trainer.isFollowing).length,
@@ -257,6 +264,14 @@ export function TrainersExplorePage({
   const toolbar =
     trainers.length > 0 ? (
       <div className={styles.toolbar}>
+        <div className={styles.searchBar} data-testid="trainers-search">
+          <SearchField
+            aria-label="Search trainers"
+            placeholder="Search by name, email, or phone"
+            value={search}
+            onChange={setSearch}
+          />
+        </div>
         {styleFilters.length > 0 ? (
           <FilterChipRow
             chips={styleChipRow}
@@ -333,14 +348,25 @@ export function TrainersExplorePage({
           <div className={styles.immersiveState}>
             <EmptyState
               icon={ENTITY_ICONS.trainer}
-              title="No instructors for this style"
-              description="Try another style or clear the filter."
+              title={
+                search.trim()
+                  ? "No matching instructors"
+                  : "No instructors for this style"
+              }
+              description={
+                search.trim()
+                  ? "Try a different name, email, or phone."
+                  : "Try another style or clear the filter."
+              }
               action={
                 <TouchButton
                   variant="primary"
-                  onClick={() => setStyleFilter(null)}
+                  onClick={() => {
+                    setSearch("");
+                    setStyleFilter(null);
+                  }}
                 >
-                  Clear filter
+                  Clear filters
                 </TouchButton>
               }
             />
@@ -419,14 +445,25 @@ export function TrainersExplorePage({
         filteredTrainers.length === 0 ? (
           <EmptyState
             icon={ENTITY_ICONS.trainer}
-            title="No trainers for this style"
-            description="Try another style or clear the filter."
+            title={
+              search.trim()
+                ? "No matching trainers"
+                : "No trainers for this style"
+            }
+            description={
+              search.trim()
+                ? "Try a different name, email, or phone."
+                : "Try another style or clear the filter."
+            }
             action={
               <TouchButton
                 variant="primary"
-                onClick={() => setStyleFilter(null)}
+                onClick={() => {
+                  setSearch("");
+                  setStyleFilter(null);
+                }}
               >
-                Clear filter
+                Clear filters
               </TouchButton>
             }
           />
@@ -502,14 +539,25 @@ export function TrainersExplorePage({
           <div className={styles.immersiveState}>
             <EmptyState
               icon={ENTITY_ICONS.trainer}
-              title="No instructors for this style"
-              description="Try another style or clear the filter."
+              title={
+                search.trim()
+                  ? "No matching instructors"
+                  : "No instructors for this style"
+              }
+              description={
+                search.trim()
+                  ? "Try a different name, email, or phone."
+                  : "Try another style or clear the filter."
+              }
               action={
                 <TouchButton
                   variant="primary"
-                  onClick={() => setStyleFilter(null)}
+                  onClick={() => {
+                    setSearch("");
+                    setStyleFilter(null);
+                  }}
                 >
-                  Clear filter
+                  Clear filters
                 </TouchButton>
               }
             />

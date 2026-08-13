@@ -11,6 +11,7 @@ import { useAuth } from "@/lib/auth";
 import { chatConversationsKey } from "@/lib/chat-socket";
 import { STAFF_ROLES, type UserRole } from "@/lib/constants";
 import { ENTITY_ICONS } from "@/lib/entity-icons";
+import { matchesPersonSearch } from "@/lib/person-search";
 import { ApiState } from "@/modules/ui/api-state";
 import { SkeletonBlock } from "@/modules/ui/skeleton-block";
 import {
@@ -34,6 +35,14 @@ import {
   conversationDisplayName,
   messagePreview,
 } from "./types";
+
+function matchesContactSearch(contact: ChatUser, query: string) {
+  if (!query.trim()) return true;
+  if (matchesPersonSearch(contact, query)) return true;
+  return contactRoleLabel(contact.role)
+    .toLowerCase()
+    .includes(query.trim().toLowerCase());
+}
 
 const CONVERSATION_SKELETONS = [
   { id: "cs-0", name: "58%", preview: "72%" },
@@ -252,10 +261,7 @@ export function ConversationList({
     ? (contactsQuery.data ?? []).filter(
         (contact) =>
           !dmPartnerIds.has(contact.id) &&
-          (contact.name.toLowerCase().includes(trimmedSearch) ||
-            contactRoleLabel(contact.role)
-              .toLowerCase()
-              .includes(trimmedSearch)),
+          matchesContactSearch(contact, trimmedSearch),
       )
     : [];
 
@@ -311,11 +317,7 @@ export function ConversationList({
         <div className={styles.contactSearch}>
           <SearchField
             aria-label="Search people"
-            placeholder={
-              user?.role && STAFF_ROLES.includes(user.role)
-                ? "Search students"
-                : "Search people"
-            }
+            placeholder="Search by name, email, or phone"
             value={contactSearch}
             onChange={setContactSearch}
           />
@@ -337,14 +339,10 @@ export function ConversationList({
             emptyDescription={emptyContacts.description}
           >
             {(contacts) => {
-              const query = contactSearch.trim().toLowerCase();
+              const query = contactSearch.trim();
               const visible = query
-                ? contacts.filter(
-                    (contact) =>
-                      contact.name.toLowerCase().includes(query) ||
-                      contactRoleLabel(contact.role)
-                        .toLowerCase()
-                        .includes(query),
+                ? contacts.filter((contact) =>
+                    matchesContactSearch(contact, query),
                   )
                 : contacts;
 
@@ -482,7 +480,7 @@ export function ConversationList({
       <div className={styles.toolbar}>
         <SearchField
           aria-label="Search conversations"
-          placeholder="Search"
+          placeholder="Search by name, email, or phone"
           value={search}
           onChange={setSearch}
           {...(styles.search ? { className: styles.search } : {})}

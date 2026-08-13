@@ -1,6 +1,7 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@dev-ui/components/avatar";
 import { Badge } from "@dev-ui/components/badge";
 import { Button } from "@dev-ui/components/button";
+import { SearchField } from "@dev-ui/components/search-field";
 import {
   Select,
   SelectContent,
@@ -20,7 +21,7 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useApi } from "@/lib/api-context";
 import type { Page } from "@/lib/api-page";
 import { ENTITY_ICONS } from "@/lib/entity-icons";
@@ -102,6 +103,17 @@ function inactiveChipLabel(reason: InactiveEnrollmentRow["inactiveReason"]) {
 
 const ROSTER_PAGE_SIZE = 25;
 
+function useDebouncedValue<T>(value: T, delayMs: number) {
+  const [debounced, setDebounced] = useState(value);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebounced(value), delayMs);
+    return () => window.clearTimeout(timer);
+  }, [value, delayMs]);
+
+  return debounced;
+}
+
 function flattenRosterPages<T>(data: InfiniteData<Page<T>> | undefined) {
   return data?.pages.flatMap((page) => page.items) ?? [];
 }
@@ -141,6 +153,8 @@ export function BatchRoster({ batchId, capacity, active }: BatchRosterProps) {
     excludeIds: string[];
     seatsLeft: number;
   } | null>(null);
+  const [search, setSearch] = useState("");
+  const debouncedSearch = useDebouncedValue(search.trim(), 300);
 
   const headerQuery = useQuery({
     queryKey: ["batch", batchId],
@@ -148,11 +162,12 @@ export function BatchRoster({ batchId, capacity, active }: BatchRosterProps) {
   });
 
   const activeRosterQuery = useInfiniteQuery({
-    queryKey: ["batch", batchId, "roster", "active"],
+    queryKey: ["batch", batchId, "roster", "active", debouncedSearch],
     queryFn: ({ pageParam }) => {
       const params = new URLSearchParams();
       params.set("tab", "active");
       params.set("limit", String(ROSTER_PAGE_SIZE));
+      if (debouncedSearch) params.set("q", debouncedSearch);
       if (pageParam) params.set("cursor", pageParam);
       return api.get<Page<BatchEnrollmentRow>>(
         `/batches/${batchId}/roster?${params.toString()}`,
@@ -163,11 +178,12 @@ export function BatchRoster({ batchId, capacity, active }: BatchRosterProps) {
   });
 
   const inactiveRosterQuery = useInfiniteQuery({
-    queryKey: ["batch", batchId, "roster", "inactive"],
+    queryKey: ["batch", batchId, "roster", "inactive", debouncedSearch],
     queryFn: ({ pageParam }) => {
       const params = new URLSearchParams();
       params.set("tab", "inactive");
       params.set("limit", String(ROSTER_PAGE_SIZE));
+      if (debouncedSearch) params.set("q", debouncedSearch);
       if (pageParam) params.set("cursor", pageParam);
       return api.get<Page<InactiveEnrollmentRow>>(
         `/batches/${batchId}/roster?${params.toString()}`,
@@ -477,11 +493,28 @@ export function BatchRoster({ batchId, capacity, active }: BatchRosterProps) {
               </div>
             ) : null}
 
+            <div className={styles.searchBar} data-testid="batch-roster-search">
+              <SearchField
+                aria-label="Search roster"
+                placeholder="Search by name, email, or phone"
+                value={search}
+                onChange={setSearch}
+              />
+            </div>
+
             {enrollments.length === 0 ? (
               <EmptyState
                 icon={ENTITY_ICONS.student}
-                title="No students enrolled"
-                description="Add students and pick a package to enroll."
+                title={
+                  search.trim()
+                    ? "No matching students"
+                    : "No students enrolled"
+                }
+                description={
+                  search.trim()
+                    ? "Try a different name, email, or phone."
+                    : "Add students and pick a package to enroll."
+                }
               />
             ) : (
               <>
@@ -547,11 +580,27 @@ export function BatchRoster({ batchId, capacity, active }: BatchRosterProps) {
 
         <TabPanel id="inactive">
           <div className={styles.panel}>
+            <div className={styles.searchBar} data-testid="batch-roster-inactive-search">
+              <SearchField
+                aria-label="Search inactive roster"
+                placeholder="Search by name, email, or phone"
+                value={search}
+                onChange={setSearch}
+              />
+            </div>
             {inactiveEnrollments.length === 0 ? (
               <EmptyState
                 icon={ENTITY_ICONS.student}
-                title="No inactive students"
-                description="Students who move or unenroll stay here while their membership month is still active."
+                title={
+                  search.trim()
+                    ? "No matching students"
+                    : "No inactive students"
+                }
+                description={
+                  search.trim()
+                    ? "Try a different name, email, or phone."
+                    : "Students who move or unenroll stay here while their membership month is still active."
+                }
               />
             ) : (
               <>

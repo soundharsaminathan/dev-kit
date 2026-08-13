@@ -14,6 +14,7 @@ import {
   useState,
 } from "react";
 import { useApi } from "@/lib/api-context";
+import { matchesPersonSearch } from "@/lib/person-search";
 import { useStudioId } from "@/lib/use-studio-id";
 import { FormInput } from "@/modules/ui/form-input";
 import { SkeletonCardList } from "@/modules/ui/skeleton-block";
@@ -52,15 +53,6 @@ function useDebouncedValue<T>(value: T, delayMs: number) {
   }, [value, delayMs]);
 
   return debounced;
-}
-
-function matchesStudentSearch(student: StudioStudent, query: string) {
-  if (!query) return true;
-  const haystack = [student.name, student.email, student.phone]
-    .filter(Boolean)
-    .join(" ")
-    .toLowerCase();
-  return haystack.includes(query);
 }
 
 function flattenStudents(
@@ -171,7 +163,7 @@ export function StudentSearchMultiselect({
     );
     if (!catalogComplete) return rows;
     const query = searchQuery.toLowerCase();
-    return rows.filter((student) => matchesStudentSearch(student, query));
+    return rows.filter((student) => matchesPersonSearch(student, query));
   }, [
     activeQuery.data?.pages,
     catalogComplete,

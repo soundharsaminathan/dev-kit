@@ -9,7 +9,12 @@ export type StudioBooking = {
   startsAt?: string | null;
   endsAt?: string | null;
   sessionId?: string | null;
-  student?: { id: string; name: string; email: string } | null;
+  student?: {
+    id: string;
+    name: string;
+    email: string;
+    phone?: string | null;
+  } | null;
   batch?: {
     id: string;
     name: string;

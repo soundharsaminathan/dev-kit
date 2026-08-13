@@ -1,4 +1,5 @@
 import type { AgeRange, BookingStatus } from "@prisma/client";
+import { matchesPersonSearch } from "./person-search";
 
 export const LEAD_DATE_FILTERS = [
   "all",
@@ -56,13 +57,7 @@ export function matchesLeadSearch(
   lead: Pick<LeadDto, "name" | "phone">,
   search: string,
 ) {
-  const query = search.trim().toLowerCase();
-  if (!query) return true;
-  const haystack = [lead.name, lead.phone]
-    .filter(Boolean)
-    .join(" ")
-    .toLowerCase();
-  return haystack.includes(query);
+  return matchesPersonSearch(lead, search);
 }
 
 export function paginateLeads(

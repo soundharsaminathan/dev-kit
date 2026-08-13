@@ -18,6 +18,11 @@
   padding-block-start: var(--space-3, 0.75rem);
 }
 
+.searchBar {
+  width: 100%;
+  min-width: 0;
+}
+
 .filters {
   min-width: 0;
 }

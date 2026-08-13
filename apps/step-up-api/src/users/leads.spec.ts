@@ -119,6 +119,7 @@ describe("matchesLeadSearch", () => {
     expect(matchesLeadSearch(row, "")).toBe(true);
     expect(matchesLeadSearch(row, "asha")).toBe(true);
     expect(matchesLeadSearch(row, "91234")).toBe(true);
+    expect(matchesLeadSearch(row, "9123456789")).toBe(true);
     expect(matchesLeadSearch(row, "nope")).toBe(false);
   });
 });

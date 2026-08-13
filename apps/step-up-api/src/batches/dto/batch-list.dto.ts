@@ -46,6 +46,10 @@ export class BatchRosterQueryDto extends PaginationQueryDto {
   @IsOptional()
   @IsIn(["active", "inactive"])
   tab?: "active" | "inactive";
+
+  @IsOptional()
+  @IsString()
+  q?: string;
 }
 
 export class BatchAttendanceQueryDto {

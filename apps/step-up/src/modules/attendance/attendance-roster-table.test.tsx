@@ -378,4 +378,43 @@ describe("AttendanceRosterTable status filters", () => {
     expect(screen.getByText("Grace Hopper")).toBeInTheDocument();
     expect(screen.getByText("Kathleen McNulty")).toBeInTheDocument();
   });
+
+  it("filters roster rows by name, email, or phone", () => {
+    const searchableRoster: AttendanceRosterEntry[] = [
+      {
+        studentId: "s1",
+        student: {
+          name: "Ada Lovelace",
+          email: "ada@example.com",
+          phone: "+91 98765 43210",
+        },
+        attendance: null,
+      },
+      {
+        studentId: "s2",
+        student: {
+          name: "Grace Hopper",
+          email: "grace@example.com",
+          phone: "+91 90000 11111",
+        },
+        attendance: {
+          id: "a1",
+          status: "PRESENT",
+          source: "TRAINER",
+        },
+      },
+    ];
+
+    renderTable({ roster: searchableRoster });
+
+    const search = screen.getByRole("searchbox", { name: "Search roster" });
+    fireEvent.change(search, { target: { value: "9876543210" } });
+
+    expect(screen.getByText("Ada Lovelace")).toBeInTheDocument();
+    expect(screen.queryByText("Grace Hopper")).not.toBeInTheDocument();
+
+    fireEvent.change(search, { target: { value: "grace@example.com" } });
+    expect(screen.getByText("Grace Hopper")).toBeInTheDocument();
+    expect(screen.queryByText("Ada Lovelace")).not.toBeInTheDocument();
+  });
 });

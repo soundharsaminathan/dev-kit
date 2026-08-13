@@ -382,6 +382,7 @@ export class BatchesController {
       cursor: query.cursor,
       limit: query.limit,
       tab: query.tab,
+      q: query.q,
     });
   }
 
