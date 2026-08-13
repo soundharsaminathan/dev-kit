@@ -1,5 +1,6 @@
+import { useToastContext } from "@dev-ui/components/toast";
 import { Icon } from "@dev-ui/icons";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useApi } from "@/lib/api-context";
@@ -55,6 +56,8 @@ export const Route = createFileRoute("/app/leads/")({
 function LeadsPage() {
   const api = useApi();
   const studioId = useStudioId();
+  const queryClient = useQueryClient();
+  const { toast } = useToastContext("LeadsPage");
   const navigate = useNavigate({ from: Route.fullPath });
   const searchParams = Route.useSearch();
   const filter = searchParams.filter ?? "all";
@@ -67,6 +70,30 @@ function LeadsPage() {
       api.get<Lead[]>(
         `/users/studio/${studioId}/leads?filter=${encodeURIComponent(filter)}`,
       ),
+  });
+
+  const confirmSession = useMutation({
+    mutationFn: (bookingId: string) =>
+      api.patch(`/bookings/${bookingId}/status`, { status: "CONFIRMED" }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: ["studio-leads", studioId],
+      });
+      await queryClient.invalidateQueries({
+        queryKey: ["bookings", "studio", studioId],
+      });
+      toast({
+        title: "Session confirmed",
+        variant: "success",
+      });
+    },
+    onError: (error: unknown) => {
+      toast({
+        title: "Couldn’t confirm session",
+        description: error instanceof Error ? error.message : "Try again.",
+        variant: "error",
+      });
+    },
   });
 
   const grouped = useMemo(() => {
@@ -202,7 +229,18 @@ function LeadsPage() {
                         lead={lead}
                         filter={filter}
                         {...(section === "trialBooked"
-                          ? { onSwitchTrial: setSwitchLead }
+                          ? {
+                              onSwitchTrial: setSwitchLead,
+                              onConfirmSession: (next) => {
+                                const bookingId = next.trialBooking?.id;
+                                if (!bookingId) return;
+                                confirmSession.mutate(bookingId);
+                              },
+                              confirmPending:
+                                confirmSession.isPending &&
+                                confirmSession.variables ===
+                                  lead.trialBooking?.id,
+                            }
                           : {})}
                       />
                     </li>

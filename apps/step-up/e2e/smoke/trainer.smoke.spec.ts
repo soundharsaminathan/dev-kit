@@ -75,10 +75,14 @@ test.describe("trainer smoke @smoke", () => {
       await sweepPath(page, "/app/students/import", {
         denyRedirect: /\/app/,
       });
+      await sweepPath(page, "/app/leads", {
+        denyRedirect: /\/app\/?$/,
+      });
       await expect(page.locator('a[href="/app/settings"]')).toHaveCount(0);
       await expect(page.locator('a[href="/app/invoices"]')).toHaveCount(0);
       await expect(page.locator('a[href="/app/payments"]')).toHaveCount(0);
       await expect(page.locator('a[href="/app/expenses"]')).toHaveCount(0);
+      await expect(page.locator('a[href="/app/leads"]')).toHaveCount(0);
 
       await page.goto(`/app/batches/${SMOKE.kidsBatchId}`, {
         waitUntil: "domcontentloaded",

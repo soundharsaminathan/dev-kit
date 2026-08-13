@@ -25,6 +25,7 @@ const STAFF_PATHS = [
   "/app/students/new",
   `/app/students/${SMOKE.users.STUDENT.id}`,
   "/app/students/import",
+  "/app/leads",
   "/app/trainers",
   "/app/trainers/new",
   "/app/bookings",
@@ -85,6 +86,37 @@ async function openInvoicesAndWaitFor(
   await page.goto("/app/invoices", { waitUntil: "domcontentloaded" });
   await waitForAppReady(page);
   await expect(page.getByTestId(testId)).toBeVisible({ timeout: 30_000 });
+}
+
+async function createPendingTrialLead(cleanup: SmokeDataCleanup) {
+  const slots = await apiRequest<Array<{ sessionId: string }>>(
+    "STAFF",
+    `/sessions/studio/${SMOKE.studioId}/trial`,
+  );
+  const sessionId = slots[0]?.sessionId;
+  if (!sessionId) {
+    throw new Error("No upcoming trial session for smoke lead");
+  }
+
+  const stamp = Date.now();
+  const lead = await apiRequest<{
+    id: string;
+    name: string;
+    trialBooking: { id: string; status: string } | null;
+  }>("STAFF", `/users/studio/${SMOKE.studioId}/leads`, {
+    method: "POST",
+    body: JSON.stringify({
+      name: `Smoke Confirm ${stamp}`,
+      phone: `900${String(stamp).slice(-7)}`,
+      ageRange: "TWENTY_TO_FORTY",
+      sessionId,
+    }),
+  });
+  cleanup.trackStudent(lead.id);
+  if (!lead.trialBooking) {
+    throw new Error("Expected a pending trial booking on the smoke lead");
+  }
+  return { ...lead, trialBooking: lead.trialBooking };
 }
 
 test.describe("admin (staff) smoke @smoke", () => {
@@ -202,6 +234,81 @@ test.describe("admin (staff) smoke @smoke", () => {
           return latest.status;
         })
         .toBe("PAID");
+    } finally {
+      await closeSmokeContext(context, cleanup);
+    }
+  });
+
+  test("staff confirms pending trial from trial caller @smoke", async ({
+    browser,
+  }) => {
+    const cleanup = new SmokeDataCleanup();
+    const lead = await createPendingTrialLead(cleanup);
+
+    const context = await browser.newContext({
+      storageState: authFile("STAFF"),
+    });
+    const page = await context.newPage();
+    try {
+      await page.goto("/app/leads", { waitUntil: "domcontentloaded" });
+      await waitForAppReady(page);
+
+      const confirm = page.getByTestId(`lead-confirm-session-${lead.id}`);
+      await expect(confirm).toBeVisible({ timeout: 30_000 });
+
+      const [response] = await Promise.all([
+        waitForApiResponse(page, {
+          method: "PATCH",
+          pathIncludes: `/bookings/${lead.trialBooking.id}/status`,
+        }),
+        confirm.click(),
+      ]);
+      expect(response.ok()).toBeTruthy();
+
+      await expect
+        .poll(async () => {
+          const latest = await apiRequest<{ status: string }>(
+            "STAFF",
+            `/bookings/${lead.trialBooking.id}`,
+          );
+          return latest.status;
+        })
+        .toBe("CONFIRMED");
+
+      await expect(page.getByTestId(`lead-confirmed-${lead.id}`)).toBeVisible();
+      await expect(
+        page.getByTestId(`lead-confirm-session-${lead.id}`),
+      ).toHaveCount(0);
+    } finally {
+      await closeSmokeContext(context, cleanup);
+    }
+  });
+
+  test("already confirmed trial hides confirm on trial caller @smoke", async ({
+    browser,
+  }) => {
+    const cleanup = new SmokeDataCleanup();
+    const lead = await createPendingTrialLead(cleanup);
+    await apiRequest("STAFF", `/bookings/${lead.trialBooking.id}/status`, {
+      method: "PATCH",
+      body: JSON.stringify({ status: "CONFIRMED" }),
+    });
+
+    const context = await browser.newContext({
+      storageState: authFile("STAFF"),
+    });
+    const page = await context.newPage();
+    try {
+      await page.goto("/app/leads", { waitUntil: "domcontentloaded" });
+      await waitForAppReady(page);
+
+      await expect(page.getByText(lead.name).first()).toBeVisible({
+        timeout: 30_000,
+      });
+      await expect(page.getByTestId(`lead-confirmed-${lead.id}`)).toBeVisible();
+      await expect(
+        page.getByTestId(`lead-confirm-session-${lead.id}`),
+      ).toHaveCount(0);
     } finally {
       await closeSmokeContext(context, cleanup);
     }

@@ -75,6 +75,10 @@ export function phoneTelHref(phone: string) {
   return digits ? `tel:${digits}` : null;
 }
 
+export function canConfirmTrialSession(trial: LeadTrialBooking | null) {
+  return Boolean(trial?.sessionId && trial.status === "PENDING");
+}
+
 export function isTrialSoon(startsAt: string | null, filter: LeadDateFilter) {
   if (!startsAt) return false;
   if (filter === "today" || filter === "tomorrow") return true;

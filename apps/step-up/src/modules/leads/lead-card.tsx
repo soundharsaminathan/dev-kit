@@ -5,6 +5,7 @@ import { TouchButton } from "@/modules/ui/touch-button";
 import styles from "./leads.module.scss";
 import {
   ageRangeLabel,
+  canConfirmTrialSession,
   formatTrialWhen,
   isTrialSoon,
   type Lead,
@@ -16,9 +17,17 @@ type LeadCardProps = {
   lead: Lead;
   filter: LeadDateFilter;
   onSwitchTrial?: ((lead: Lead) => void) | undefined;
+  onConfirmSession?: ((lead: Lead) => void) | undefined;
+  confirmPending?: boolean | undefined;
 };
 
-export function LeadCard({ lead, filter, onSwitchTrial }: LeadCardProps) {
+export function LeadCard({
+  lead,
+  filter,
+  onSwitchTrial,
+  onConfirmSession,
+  confirmPending = false,
+}: LeadCardProps) {
   const { toast } = useToastContext("LeadCard");
   const telHref = lead.phone ? phoneTelHref(lead.phone) : null;
   const age = ageRangeLabel(lead.ageRange);
@@ -94,7 +103,17 @@ export function LeadCard({ lead, filter, onSwitchTrial }: LeadCardProps) {
 
       {trial ? (
         <div className={styles.trialBlock}>
-          {soon ? <span className={styles.badge}>Call soon</span> : null}
+          {trial.status === "CONFIRMED" ? (
+            <span
+              className={styles.badge}
+              data-tone="success"
+              data-testid={`lead-confirmed-${lead.id}`}
+            >
+              Confirmed
+            </span>
+          ) : soon ? (
+            <span className={styles.badge}>Call soon</span>
+          ) : null}
           <p className={styles.trialLabel}>Trial session</p>
           <p className={styles.trialWhen}>
             {trial.sessionStartsAt
@@ -104,15 +123,31 @@ export function LeadCard({ lead, filter, onSwitchTrial }: LeadCardProps) {
           {trial.batchName ? (
             <p className={styles.trialBatch}>{trial.batchName}</p>
           ) : null}
-          {onSwitchTrial ? (
-            <TouchButton
-              size="sm"
-              variant="quiet"
-              data-testid={`lead-switch-trial-${lead.id}`}
-              onClick={() => onSwitchTrial(lead)}
-            >
-              {trial.sessionId ? "Switch session" : "Pick session"}
-            </TouchButton>
+          {onSwitchTrial || onConfirmSession ? (
+            <div className={styles.trialActions}>
+              {onConfirmSession && canConfirmTrialSession(trial) ? (
+                <TouchButton
+                  size="sm"
+                  variant="primary"
+                  isPending={confirmPending}
+                  isDisabled={confirmPending}
+                  data-testid={`lead-confirm-session-${lead.id}`}
+                  onClick={() => onConfirmSession(lead)}
+                >
+                  Confirm session
+                </TouchButton>
+              ) : null}
+              {onSwitchTrial ? (
+                <TouchButton
+                  size="sm"
+                  variant="quiet"
+                  data-testid={`lead-switch-trial-${lead.id}`}
+                  onClick={() => onSwitchTrial(lead)}
+                >
+                  {trial.sessionId ? "Switch session" : "Pick session"}
+                </TouchButton>
+              ) : null}
+            </div>
           ) : null}
         </div>
       ) : (

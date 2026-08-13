@@ -2,13 +2,24 @@ import { fireEvent, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { renderWithProviders } from "@/test/render";
 import { LeadCard } from "./lead-card";
-import type { Lead } from "./types";
+import type { Lead, LeadTrialBooking } from "./types";
 
 const toast = vi.hoisted(() => vi.fn());
 
 vi.mock("@dev-ui/components/toast", () => ({
   useToastContext: () => ({ toast }),
 }));
+
+function trial(overrides: Partial<LeadTrialBooking> = {}): LeadTrialBooking {
+  return {
+    id: "bk-1",
+    status: "PENDING",
+    sessionId: "session-1",
+    sessionStartsAt: "2026-08-20T10:00:00.000Z",
+    batchName: "Saturday trial",
+    ...overrides,
+  };
+}
 
 function lead(overrides: Partial<Lead> = {}): Lead {
   return {
@@ -44,9 +55,7 @@ describe("LeadCard call button", () => {
   });
 
   it("disables the call button when the lead has no phone", () => {
-    renderWithProviders(
-      <LeadCard lead={lead({ phone: null })} filter="all" />,
-    );
+    renderWithProviders(<LeadCard lead={lead({ phone: null })} filter="all" />);
 
     expect(
       screen.getByRole("button", { name: "No phone number" }),
@@ -76,5 +85,65 @@ describe("LeadCard call button", () => {
         variant: "success",
       });
     });
+  });
+});
+
+describe("LeadCard confirm session", () => {
+  it("confirms a pending trial with a session", () => {
+    const onConfirmSession = vi.fn();
+    const pending = lead({
+      section: "trialBooked",
+      trialBooking: trial(),
+    });
+
+    renderWithProviders(
+      <LeadCard
+        lead={pending}
+        filter="all"
+        onConfirmSession={onConfirmSession}
+        onSwitchTrial={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByTestId("lead-confirm-session-lead-1"));
+    expect(onConfirmSession).toHaveBeenCalledWith(pending);
+  });
+
+  it("hides confirm when the trial is already confirmed", () => {
+    renderWithProviders(
+      <LeadCard
+        lead={lead({
+          section: "trialBooked",
+          trialBooking: trial({ status: "CONFIRMED" }),
+        })}
+        filter="all"
+        onConfirmSession={vi.fn()}
+        onSwitchTrial={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByTestId("lead-confirm-session-lead-1")).toBeNull();
+    expect(screen.getByTestId("lead-confirmed-lead-1")).toHaveTextContent(
+      "Confirmed",
+    );
+  });
+
+  it("hides confirm when no session is picked yet", () => {
+    renderWithProviders(
+      <LeadCard
+        lead={lead({
+          section: "trialBooked",
+          trialBooking: trial({ sessionId: null, sessionStartsAt: null }),
+        })}
+        filter="all"
+        onConfirmSession={vi.fn()}
+        onSwitchTrial={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByTestId("lead-confirm-session-lead-1")).toBeNull();
+    expect(
+      screen.getByRole("button", { name: "Pick session" }),
+    ).toBeInTheDocument();
   });
 });
