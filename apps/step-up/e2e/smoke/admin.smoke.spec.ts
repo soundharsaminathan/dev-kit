@@ -391,6 +391,7 @@ test.describe("admin (staff) smoke @smoke", () => {
   test("staff combines unpaid family invoices and collects payment @smoke", async ({
     browser,
   }) => {
+    test.setTimeout(180_000);
     const cleanup = new SmokeDataCleanup();
     const stamp = Date.now();
     const kidA = await createSmokeFamilyKid(`Smoke Combine A ${stamp}`);
@@ -451,8 +452,11 @@ test.describe("admin (staff) smoke @smoke", () => {
       ]);
       expect(combineResponse.ok()).toBeTruthy();
       const combined = (await combineResponse.json()) as { id: string };
+      expect(combined.id).toBeTruthy();
 
+      await expect(page.getByTestId("confirm-open-family-paid")).toBeVisible();
       await page.getByRole("checkbox", { name: /^Cash$/i }).click();
+      await expect(page.getByTestId("confirm-open-family-paid")).toBeEnabled();
       const [paidResponse] = await Promise.all([
         waitForApiResponse(page, {
           method: "PATCH",

@@ -26,7 +26,7 @@ import {
   paymentHoldExpiresAt,
 } from "../batches/batch-capacity";
 import { REACTIVATE_ENROLLMENT_DATA } from "../batches/enrollment-status";
-import { parsePurchaseMeta } from "../billing/family-combine";
+import { parseCombineMeta, parsePurchaseMeta } from "../billing/family-combine";
 import { ScheduleConflictService } from "../calendar/schedule-conflict.service";
 import { NotificationsService } from "../notifications/notifications.service";
 import { PrismaService } from "../prisma/prisma.service";
@@ -1297,6 +1297,7 @@ export class MembershipsService {
         select: {
           studentId: true,
           purchaseMeta: true,
+          combineMeta: true,
           membership: {
             select: {
               coveredStudents: { select: { studentId: true } },
@@ -1351,6 +1352,14 @@ export class MembershipsService {
         for (const seat of meta.coveredStudents) {
           if (idSet.has(seat.studentId)) {
             unpaid.add(seat.studentId);
+          }
+        }
+      }
+      const combineMeta = parseCombineMeta(invoice.combineMeta);
+      if (combineMeta) {
+        for (const source of combineMeta.sources) {
+          if (idSet.has(source.studentId)) {
+            unpaid.add(source.studentId);
           }
         }
       }
