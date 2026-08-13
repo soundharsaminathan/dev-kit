@@ -82,6 +82,54 @@ export function computeGst(amount: number, gstPercent: number): number {
   return Math.round(amount * (gstPercent / 100) * 100) / 100;
 }
 
+export type InvoiceMonthSource = Pick<
+  Invoice,
+  "membership" | "dueDate" | "paidAt" | "refundedAt"
+>;
+
+export function utcMonthKey(date: Date = new Date()): string {
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`;
+}
+
+export function recentUtcMonthKeys(count = 12, now = new Date()): string[] {
+  const year = now.getUTCFullYear();
+  const month = now.getUTCMonth();
+  return Array.from({ length: count }, (_, index) => {
+    const date = new Date(Date.UTC(year, month - index, 1));
+    return utcMonthKey(date);
+  });
+}
+
+export function formatInvoiceMonthLabel(key: string): string {
+  const [year, month] = key.split("-").map(Number);
+  if (!year || !month) return key;
+  return new Intl.DateTimeFormat("en-IN", {
+    month: "short",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(new Date(Date.UTC(year, month - 1, 1)));
+}
+
+export function invoiceMonthKey(invoice: InvoiceMonthSource): string | null {
+  const source =
+    invoice.membership?.periodStart ??
+    invoice.dueDate ??
+    invoice.paidAt ??
+    invoice.refundedAt;
+  if (!source) return null;
+  const date = new Date(source);
+  if (Number.isNaN(date.getTime())) return null;
+  return utcMonthKey(date);
+}
+
+export function invoiceMatchesMonth(
+  invoice: InvoiceMonthSource,
+  monthKey: string,
+): boolean {
+  if (monthKey === "ALL") return true;
+  return invoiceMonthKey(invoice) === monthKey;
+}
+
 export function allocateFamilyDiscount(
   amounts: number[],
   familyDiscount: number,

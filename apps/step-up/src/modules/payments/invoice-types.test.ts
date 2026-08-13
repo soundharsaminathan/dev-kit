@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { allocateFamilyDiscount } from "./invoice-types";
+import {
+  allocateFamilyDiscount,
+  formatInvoiceMonthLabel,
+  invoiceMatchesMonth,
+  invoiceMonthKey,
+  recentUtcMonthKeys,
+  utcMonthKey,
+} from "./invoice-types";
 
 describe("allocateFamilyDiscount", () => {
   it("splits proportionally and puts remainder on the last invoice", () => {
@@ -17,5 +24,52 @@ describe("allocateFamilyDiscount", () => {
     expect(() => allocateFamilyDiscount([500, 500], -1)).toThrow(
       /invalid family discount/i,
     );
+  });
+});
+
+describe("invoice month filter", () => {
+  it("keys a billing period from membership.periodStart in UTC", () => {
+    expect(
+      invoiceMonthKey({
+        membership: { periodStart: "2026-08-01T00:00:00.000Z" },
+      }),
+    ).toBe("2026-08");
+  });
+
+  it("falls back to dueDate then paidAt when membership is missing", () => {
+    expect(
+      invoiceMonthKey({
+        dueDate: "2026-07-31T23:59:59.999Z",
+        paidAt: "2026-08-02T10:00:00.000Z",
+      }),
+    ).toBe("2026-07");
+    expect(invoiceMonthKey({ paidAt: "2026-06-15T08:00:00.000Z" })).toBe(
+      "2026-06",
+    );
+  });
+
+  it("returns null when no date is present", () => {
+    expect(invoiceMonthKey({})).toBeNull();
+  });
+
+  it("matches a selected month and treats ALL as unfiltered", () => {
+    const invoice = {
+      membership: { periodStart: "2026-08-01T00:00:00.000Z" },
+    };
+    expect(invoiceMatchesMonth(invoice, "2026-08")).toBe(true);
+    expect(invoiceMatchesMonth(invoice, "2026-07")).toBe(false);
+    expect(invoiceMatchesMonth(invoice, "ALL")).toBe(true);
+    expect(invoiceMatchesMonth({}, "2026-08")).toBe(false);
+  });
+
+  it("lists recent UTC months newest first including the current month", () => {
+    const now = new Date("2026-08-13T18:00:00.000Z");
+    expect(utcMonthKey(now)).toBe("2026-08");
+    expect(recentUtcMonthKeys(3, now)).toEqual([
+      "2026-08",
+      "2026-07",
+      "2026-06",
+    ]);
+    expect(formatInvoiceMonthLabel("2026-08")).toBe("Aug 2026");
   });
 });

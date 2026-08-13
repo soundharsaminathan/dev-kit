@@ -14,9 +14,13 @@ import { useStudioId } from "@/lib/use-studio-id";
 import { CollectPaymentSheet } from "@/modules/payments/collect-payment-sheet";
 import { FamilyCombineSheet } from "@/modules/payments/family-combine-sheet";
 import {
+  formatInvoiceMonthLabel,
   formatPrice,
   type Invoice,
+  invoiceMatchesMonth,
+  recentUtcMonthKeys,
   type StudioFamily,
+  utcMonthKey,
 } from "@/modules/payments/invoice-types";
 import screen from "@/modules/payments/invoices-screen.module.scss";
 import { printInvoice } from "@/modules/payments/print-invoice";
@@ -269,6 +273,17 @@ function InvoicesPage() {
   const queryClient = useQueryClient();
   const { toast } = useToastContext("InvoicesPage");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL");
+  const [monthFilter, setMonthFilter] = useState(() => utcMonthKey());
+  const monthChips = useMemo(() => {
+    const current = utcMonthKey();
+    return [
+      { id: "ALL", label: "All months" },
+      ...recentUtcMonthKeys(12).map((id) => ({
+        id,
+        label: id === current ? "This month" : formatInvoiceMonthLabel(id),
+      })),
+    ];
+  }, []);
   const [selectedStudent, setSelectedStudent] = useState<StudioStudent | null>(
     null,
   );
@@ -342,11 +357,14 @@ function InvoicesPage() {
         (invoice) => invoice.studentId === selectedStudent.id,
       );
     }
+    items = items.filter((invoice) =>
+      invoiceMatchesMonth(invoice, monthFilter),
+    );
     if (statusFilter !== "ALL") {
       items = items.filter((invoice) => invoice.status === statusFilter);
     }
     return items;
-  }, [invoicesQuery.data, selectedStudent, statusFilter]);
+  }, [invoicesQuery.data, selectedStudent, statusFilter, monthFilter]);
 
   const familyInvoices = useMemo(() => {
     const items = (invoicesQuery.data ?? []).filter(
@@ -355,25 +373,27 @@ function InvoicesPage() {
           invoice.kind === "FAMILY" ||
           (invoice.familyDiscount ?? 0) > 0 ||
           Boolean(invoice.combineMeta)) &&
-        invoice.status !== "REFUNDED",
+        invoice.status !== "REFUNDED" &&
+        invoiceMatchesMonth(invoice, monthFilter),
     );
     return [
       ...items.filter((invoice) => isUnpaid(invoice.status)),
       ...items.filter((invoice) => !isUnpaid(invoice.status)),
     ];
-  }, [invoicesQuery.data]);
+  }, [invoicesQuery.data, monthFilter]);
 
   const refundInvoices = useMemo(() => {
     const items = (invoicesQuery.data ?? []).filter(
       (invoice) =>
-        invoice.status === "REFUNDED" || (invoice.refundedAmount ?? 0) > 0,
+        (invoice.status === "REFUNDED" || (invoice.refundedAmount ?? 0) > 0) &&
+        invoiceMatchesMonth(invoice, monthFilter),
     );
     return [...items].sort((a, b) => {
       const aAt = a.refundedAt ?? a.paidAt ?? "";
       const bAt = b.refundedAt ?? b.paidAt ?? "";
       return bAt.localeCompare(aAt);
     });
-  }, [invoicesQuery.data]);
+  }, [invoicesQuery.data, monthFilter]);
 
   const activeInvoice =
     (invoicesQuery.data ?? []).find((invoice) => invoice.id === activeId) ??
@@ -398,6 +418,16 @@ function InvoicesPage() {
           Promise.all([invoicesQuery.refetch(), familiesQuery.refetch()])
         }
       >
+        <div className={screen.filters} data-testid="invoice-month-filter">
+          <FilterChipRow
+            chips={monthChips}
+            selected={[monthFilter]}
+            onToggle={(id) =>
+              setMonthFilter((current) => (current === id ? "ALL" : id))
+            }
+          />
+        </div>
+
         <Tabs defaultSelectedKey="individual" aria-label="Invoice types">
           <TabList>
             <Tab id="individual">Individual</Tab>
@@ -455,7 +485,9 @@ function InvoicesPage() {
                   description={
                     selectedStudent
                       ? `No invoices for ${selectedStudent.name} with this filter.`
-                      : "Individual invoices appear when subscriptions bill."
+                      : monthFilter !== "ALL"
+                        ? `No individual invoices for ${formatInvoiceMonthLabel(monthFilter)}.`
+                        : "Individual invoices appear when subscriptions bill."
                   }
                 />
               ) : null}
@@ -593,7 +625,11 @@ function InvoicesPage() {
               {invoicesQuery.data && familyInvoices.length === 0 ? (
                 <EmptyState
                   title="No combined invoices"
-                  description="Tap a family group above to combine unpaid household invoices."
+                  description={
+                    monthFilter !== "ALL"
+                      ? `No combined invoices for ${formatInvoiceMonthLabel(monthFilter)}.`
+                      : "Tap a family group above to combine unpaid household invoices."
+                  }
                 />
               ) : null}
 
@@ -639,7 +675,11 @@ function InvoicesPage() {
               {invoicesQuery.data && refundInvoices.length === 0 ? (
                 <EmptyState
                   title="No refunds"
-                  description="Refunded invoices appear here after a full or partial refund."
+                  description={
+                    monthFilter !== "ALL"
+                      ? `No refunds for ${formatInvoiceMonthLabel(monthFilter)}.`
+                      : "Refunded invoices appear here after a full or partial refund."
+                  }
                 />
               ) : null}
 

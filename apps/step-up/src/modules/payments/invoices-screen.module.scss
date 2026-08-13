@@ -1,3 +1,8 @@
+.filters {
+  padding-top: var(--space-3, 0.75rem);
+  min-width: 0;
+}
+
 .panel {
   display: flex;
   flex-direction: column;
