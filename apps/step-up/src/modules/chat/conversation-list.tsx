@@ -19,6 +19,13 @@ import {
 } from "@/modules/ui/tooltip-icon-bar";
 import { TouchButton } from "@/modules/ui/touch-button";
 import { ChatTooltip } from "./chat-tooltip";
+import {
+  CONVERSATION_FILTERS,
+  type ConversationFilter,
+  filterConversations,
+  isGroupConversation,
+  isUnreadConversation,
+} from "./conversation-filters";
 import styles from "./conversation-list.module.scss";
 import {
   type ChatConversation,
@@ -90,13 +97,6 @@ type ConversationListProps = {
 };
 
 type View = "list" | "new-dm" | "new-group";
-type ConversationFilter = "all" | "unread" | "group";
-
-const FILTERS: { id: ConversationFilter; label: string }[] = [
-  { id: "all", label: "All" },
-  { id: "unread", label: "Unread" },
-  { id: "group", label: "Group" },
-];
 
 const ROLE_LABELS: Record<string, string> = {
   OWNER: "Owner",
@@ -182,36 +182,6 @@ function FilteredEmpty({ message }: { message: string }) {
   );
 }
 
-function matchesSearch(
-  conversation: ChatConversation,
-  query: string,
-  currentUserId: string,
-) {
-  const trimmed = query.trim().toLowerCase();
-  if (!trimmed) {
-    return true;
-  }
-  const title = conversationDisplayName(conversation, currentUserId);
-  return title.toLowerCase().includes(trimmed);
-}
-
-function filterConversations(
-  conversations: ChatConversation[],
-  filter: ConversationFilter,
-  query: string,
-  currentUserId: string,
-) {
-  return conversations.filter((conversation) => {
-    if (filter === "unread" && conversation.unreadCount <= 0) {
-      return false;
-    }
-    if (filter === "group" && conversation.type !== "GROUP") {
-      return false;
-    }
-    return matchesSearch(conversation, query, currentUserId);
-  });
-}
-
 function timeAgo(value: string | null) {
   if (!value) {
     return "";
@@ -256,8 +226,8 @@ export function ConversationList({
 
   const conversations = conversationsQuery.data ?? [];
   const filterCounts = {
-    unread: conversations.filter((c) => c.unreadCount > 0).length,
-    group: conversations.filter((c) => c.type === "GROUP").length,
+    unread: conversations.filter(isUnreadConversation).length,
+    group: conversations.filter(isGroupConversation).length,
   };
 
   const trimmedSearch = search.trim().toLowerCase();
@@ -517,8 +487,8 @@ export function ConversationList({
           onChange={setSearch}
           {...(styles.search ? { className: styles.search } : {})}
         />
-        <div className={styles.filters} role="tablist" aria-label="Filters">
-          {FILTERS.map((item) => {
+        <nav className={styles.filters} aria-label="Filters">
+          {CONVERSATION_FILTERS.map((item) => {
             const count =
               item.id === "unread"
                 ? filterCounts.unread
@@ -530,9 +500,8 @@ export function ConversationList({
               <button
                 key={item.id}
                 type="button"
-                role="tab"
-                aria-selected={selected}
                 className={styles.filterBadge}
+                aria-pressed={selected}
                 data-selected={selected || undefined}
                 onClick={() => setFilter(item.id)}
               >
@@ -543,7 +512,7 @@ export function ConversationList({
               </button>
             );
           })}
-        </div>
+        </nav>
       </div>
 
       {conversationsQuery.isLoading ? (
@@ -625,7 +594,9 @@ export function ConversationList({
                       ? "No conversations or people match your search."
                       : filter === "unread"
                         ? "No unread conversations."
-                        : "No group conversations."
+                        : filter === "group"
+                          ? "No group conversations."
+                          : "No conversations match."
                   }
                 />
               );
