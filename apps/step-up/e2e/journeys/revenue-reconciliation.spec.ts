@@ -38,6 +38,24 @@ function formatINR(amount: number) {
   }).format(amount);
 }
 
+async function trainerAnalyticsRow(batchId: string) {
+  const trainerIds = [SEED.users.TRAINER.id, SEED.users.TRAINER_2.id];
+  for (const trainerId of trainerIds) {
+    const analytics = await apiRequest<{
+      totals: { collected: number; refunded: number };
+      byBatch: Array<{ batchId: string; collected: number }>;
+    }>(
+      "STAFF",
+      `/billing/analytics/trainer/${trainerId}?studioId=${SEED.studioId}`,
+    );
+    const row = analytics.byBatch.find((entry) => entry.batchId === batchId);
+    if (row) {
+      return { trainerId, analytics, row };
+    }
+  }
+  return { trainerId: null, analytics: null, row: undefined };
+}
+
 test.describe("Revenue reconciliation E2E @critical", () => {
   test.describe.configure({ mode: "serial" });
 
@@ -144,7 +162,9 @@ test.describe("Revenue reconciliation E2E @critical", () => {
     }
   });
 
-  test("refund reduces batch revenue in UI @critical", async ({ browser }) => {
+  test("refund appears in invoices UI; trainer collected drops @critical", async ({
+    browser,
+  }) => {
     const cleanup = new TestDataCleanup();
     try {
       const paid = await enrollAndPay(cleanup, SEED.adultPlanIds[0]);
@@ -154,22 +174,30 @@ test.describe("Revenue reconciliation E2E @critical", () => {
         totals: { collected: number };
       }>("STAFF", `/batches/${paid.batchId}/revenue`);
 
-      // Issue refund
+      const beforeAnalytics = await trainerAnalyticsRow(paid.batchId);
+      expect(beforeAnalytics.row).toBeDefined();
+      const beforeCollected = beforeAnalytics.row!.collected;
+
       const refundAmount = 500;
-      await apiRequest(`STAFF`, `/billing/${invoice.id}/refund`, {
+      await apiRequest("STAFF", `/billing/${invoice.id}/refund`, {
         method: "POST",
         body: JSON.stringify({ amount: refundAmount, reason: "E2E test" }),
       });
 
-      // Verify batch revenue decreased
+      // Batch /revenue collected is gross PAID amount (does not subtract refunds).
       const afterRevenue = await apiRequest<{
         totals: { collected: number };
       }>("STAFF", `/batches/${paid.batchId}/revenue`);
       expect(afterRevenue.totals.collected).toBe(
-        beforeRevenue.totals.collected - refundAmount,
+        beforeRevenue.totals.collected,
       );
 
-      // Verify in UI: staff invoices page shows refund
+      const afterAnalytics = await trainerAnalyticsRow(paid.batchId);
+      expect(afterAnalytics.row).toBeDefined();
+      expect(afterAnalytics.row!.collected).toBe(
+        beforeCollected - refundAmount,
+      );
+
       const context = await browser.newContext({
         storageState: authFile("STAFF"),
       });
@@ -178,7 +206,6 @@ test.describe("Revenue reconciliation E2E @critical", () => {
         await page.goto("/app/invoices", { waitUntil: "domcontentloaded" });
         await waitForAppReady(page);
 
-        // Switch to refunds tab
         await page.getByRole("tab", { name: /^refunds$/i }).click();
         await expect(
           page

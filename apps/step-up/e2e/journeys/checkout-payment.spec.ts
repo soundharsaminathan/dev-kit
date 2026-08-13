@@ -3,12 +3,16 @@ import {
   authFile,
   expect,
   test,
-  unwrapPage,
   waitForApiResponse,
   waitForAppReady,
 } from "../fixtures";
+import {
+  createOnboardedStudent,
+  impersonateStudent,
+} from "../fixtures/onboarded-student";
 import { SEED } from "../fixtures/seed";
 import { TestDataCleanup } from "../fixtures/test-cleanup";
+import { createCalendarBatch } from "../http/billing-fixtures";
 
 const CONFIRM_BATCH_ID = SEED.kidsBatchId;
 const ABANDON_BATCH_ID = SEED.kidsBatchId;
@@ -33,34 +37,6 @@ async function clearOpenBookings(studentId: string, batchId: string) {
   }
 }
 
-async function clearPendingCheckoutInvoices(studentId: string) {
-  const invoices = unwrapPage(
-    await apiRequest<
-      | Array<{
-          id: string;
-          status: string;
-          purchaseMeta?: unknown;
-          paymentHoldExpiresAt?: string | null;
-        }>
-      | {
-          items: Array<{
-            id: string;
-            status: string;
-            purchaseMeta?: unknown;
-            paymentHoldExpiresAt?: string | null;
-          }>;
-        }
-    >("STUDENT", `/billing/student/${studentId}?limit=50`),
-  );
-
-  for (const invoice of invoices) {
-    if (invoice.status !== "PENDING" || !invoice.purchaseMeta) continue;
-    await apiRequest("STUDENT", `/billing/${invoice.id}/abandon-payment`, {
-      method: "POST",
-    }).catch(() => null);
-  }
-}
-
 async function createAwaitingPaymentBooking(batchId: string) {
   const studentId = SEED.users.STUDENT.id;
   await clearOpenBookings(studentId, batchId);
@@ -78,70 +54,6 @@ async function createAwaitingPaymentBooking(batchId: string) {
     },
   );
   return created;
-}
-
-async function createPlanBatch() {
-  let lastError: unknown;
-  for (let attempt = 0; attempt < 12; attempt += 1) {
-    const stamp =
-      Date.now() + attempt * 131_071 + Math.floor(Math.random() * 10_000);
-    // Far-future unique windows so parallel workers rarely share trainer slots.
-    const start = new Date(
-      Date.UTC(2031, (attempt * 3) % 12, 1 + (attempt % 20)),
-    );
-    const end = new Date(start);
-    end.setUTCDate(end.getUTCDate() + 60);
-    const weekday = (stamp + attempt) % 7;
-    const hour = String(8 + ((stamp + attempt * 3) % 10)).padStart(2, "0");
-    const minute = String((stamp + attempt * 19) % 60).padStart(2, "0");
-    const endMinute = String((Number(minute) + 45) % 60).padStart(2, "0");
-    const endHour = String(
-      Number(hour) + (Number(minute) + 45 >= 60 ? 1 : 0),
-    ).padStart(2, "0");
-
-    try {
-      return await apiRequest<{ id: string }>("STAFF", "/batches", {
-        method: "POST",
-        body: JSON.stringify({
-          studioId: SEED.users.STAFF.studioId,
-          name: `E2E Plan Pay ${stamp}`,
-          coverImageUrl:
-            "https://images.unsplash.com/photo-1535525153412-5a42439a210d?w=800&q=80",
-          category: "ADULTS",
-          branchId: SEED.branchMainId,
-          trainerIds: [SEED.users.TRAINER.id],
-          danceCategories: [
-            { name: "Hip Hop", description: "E2E plan checkout class" },
-          ],
-          scheduleJson: {
-            frequency: "WEEKLY",
-            weekdays: [weekday],
-            startDate: start.toISOString().slice(0, 10),
-            endDate: end.toISOString().slice(0, 10),
-            startTime: `${hour}:${minute}`,
-            endTime: `${endHour}:${endMinute}`,
-            utcOffsetMinutes: 0,
-          },
-          capacity: 12,
-          enrollmentMode: "STAFF_ONLY",
-          subscriptionIds: [...SEED.adultPlanIds],
-          active: true,
-          certificationEnabled: false,
-        }),
-      });
-    } catch (error) {
-      lastError = error;
-      if (
-        !String(error).includes("409") &&
-        !String(error).includes("Conflict")
-      ) {
-        throw error;
-      }
-    }
-  }
-  throw lastError instanceof Error
-    ? lastError
-    : new Error("Could not create plan batch");
 }
 
 test.describe("checkout payment @critical", () => {
@@ -238,17 +150,20 @@ test.describe("checkout payment @critical", () => {
     browser,
   }) => {
     test.setTimeout(180_000);
-    const studentId = SEED.users.STUDENT.id;
     const cleanup = new TestDataCleanup();
-    await clearPendingCheckoutInvoices(studentId);
-    const batch = await createPlanBatch();
-    cleanup.trackBatch(batch.id);
-
-    const studentContext = await browser.newContext({
-      storageState: authFile("STUDENT"),
+    // Seed STUDENT already has a current-month track, so purchase is a switch
+    // (no checkout invoice). A new joiner on an owned prepaid batch holds.
+    const student = await createOnboardedStudent("plan-pay", cleanup);
+    const batch = await createCalendarBatch(cleanup, {
+      kind: "prepaid",
+      category: "ADULTS",
+      name: `E2E Plan Pay ${Date.now()}`,
     });
+
+    const studentContext = await browser.newContext();
     try {
       const studentPage = await studentContext.newPage();
+      await impersonateStudent(studentPage, student);
       await studentPage.goto(`/me/batches/${batch.id}`, {
         waitUntil: "domcontentloaded",
       });
@@ -269,16 +184,23 @@ test.describe("checkout payment @critical", () => {
         submit.click(),
       ]);
       expect(purchaseResponse.ok()).toBeTruthy();
-      const invoice = (await purchaseResponse.json()) as {
-        id: string;
-        status: string;
-        amount: number;
+      const body = (await purchaseResponse.json()) as {
+        id?: string;
+        status?: string;
+        amount?: number;
+        billingKind?: string;
+        invoice?: { id: string; status: string; amount?: number } | null;
       };
-      expect(invoice.status).toBe("PENDING");
-      expect(Number(invoice.amount)).toBeGreaterThan(0);
+      const invoice = body.invoice?.id ? body.invoice : body.id ? body : null;
+      expect(
+        invoice?.status,
+        `expected prepaid checkout invoice, got ${JSON.stringify(body)}`,
+      ).toBe("PENDING");
+      expect(Number(invoice?.amount)).toBeGreaterThan(0);
+      const invoiceId = invoice!.id;
 
       await expect(studentPage).toHaveURL(
-        new RegExp(`/me/checkout/invoice/${invoice.id}`),
+        new RegExp(`/me/checkout/invoice/${invoiceId}`),
       );
       const pay = studentPage.getByTestId("checkout-pay");
       await expect(pay).toBeVisible();
@@ -286,11 +208,11 @@ test.describe("checkout payment @critical", () => {
       const [orderResponse, confirmResponse] = await Promise.all([
         waitForApiResponse(studentPage, {
           method: "POST",
-          pathIncludes: `/billing/${invoice.id}/create-payment-order`,
+          pathIncludes: `/billing/${invoiceId}/create-payment-order`,
         }),
         waitForApiResponse(studentPage, {
           method: "POST",
-          pathIncludes: `/billing/${invoice.id}/confirm-payment`,
+          pathIncludes: `/billing/${invoiceId}/confirm-payment`,
         }),
         pay.click(),
       ]);
@@ -301,8 +223,8 @@ test.describe("checkout payment @critical", () => {
       await expect
         .poll(async () => {
           const current = await apiRequest<{ status: string; amount: number }>(
-            "STUDENT",
-            `/billing/${invoice.id}`,
+            "STAFF",
+            `/billing/${invoiceId}`,
           );
           paidAmount = Number(current.amount);
           return current.status;

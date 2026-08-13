@@ -1,4 +1,5 @@
 import {
+  apiRequest,
   authFile,
   expect,
   test,
@@ -35,6 +36,19 @@ test.describe("student subscriptions @critical", () => {
   test("student requests renewal invoice for due membership @critical", async ({
     browser,
   }) => {
+    const memberships = await apiRequest<Array<{ id: string; status: string }>>(
+      "STUDENT",
+      `/memberships/student/${SEED.users.STUDENT.id}`,
+    );
+    const due = memberships.find(
+      (membership) =>
+        membership.status === "DUE" || membership.status === "EXPIRED",
+    );
+    expect(
+      due,
+      "seed student must keep a DUE/EXPIRED membership for renew UI (do not mark the seed renewal invoice paid in HTTP tests)",
+    ).toBeDefined();
+
     const context = await browser.newContext({
       storageState: authFile("STUDENT"),
     });
@@ -42,9 +56,7 @@ test.describe("student subscriptions @critical", () => {
     await page.goto("/me/subscriptions", { waitUntil: "domcontentloaded" });
     await waitForAppReady(page);
 
-    const renewButton = page.getByTestId(
-      `renew-membership-${SEED.membershipStudentDueId}`,
-    );
+    const renewButton = page.getByTestId(`renew-membership-${due!.id}`);
     await expect(renewButton).toBeVisible();
     await renewButton.click();
 
@@ -62,7 +74,7 @@ test.describe("student subscriptions @critical", () => {
       membershipId: string;
     };
     expect(["PENDING", "OVERDUE"]).toContain(body.status);
-    expect(body.membershipId).toBe(SEED.membershipStudentDueId);
+    expect(body.membershipId).toBe(due!.id);
 
     await expect(page).toHaveURL(/\/me\/invoices/);
     await expect(

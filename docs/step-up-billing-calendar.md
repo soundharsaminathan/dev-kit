@@ -113,3 +113,5 @@ Shared helpers:
 | Month-end usage + convert flag | Unit tests on `rollEndedActiveToNextDue` (daily job only enqueues; no HTTP worker) |
 
 Canonical HTTP contract: `apps/step-up/e2e/http/billing-calendar.http.spec.ts`. Seed batches stay for auth, roles, and shared shells — not for join billing.
+
+Do not mark the seed DUE membership (`e2e-membership-student-due-1`) paid. That flips it to ACTIVE and hides the student subscriptions renew button used by `@critical` journeys. DUE → paid → ACTIVE is covered by membership unit tests.

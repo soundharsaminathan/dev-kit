@@ -1530,8 +1530,9 @@ test.describe("Batch purchase → revenue end-to-end @http", () => {
 // =========================================================================
 
 test.describe("Membership renewal revenue @http", () => {
-  test("renewal invoice generation and payment flow @http", async () => {
-    // The seed has a DUE membership with a pending renewal invoice
+  test("renewal invoice generation returns existing pending invoice @http", async () => {
+    // Do not mark the seed DUE renewal paid — that flips the membership to
+    // ACTIVE and hides the student subscriptions renew CTA used by journeys.
     const invoice = await expectOk<{
       id: string;
       status: string;
@@ -1544,24 +1545,19 @@ test.describe("Membership renewal revenue @http", () => {
       }),
     });
 
-    // Should return existing renewal invoice
     expect(["PENDING", "OVERDUE"]).toContain(invoice.status);
     expect(invoice.membershipId).toBe(SEED.membershipStudentDueId);
     expect(Number(invoice.amount)).toBe(ADULT_MONTHLY_PRICE);
+    expect(invoice.id).toBe(SEED.invoiceRenewalPendingId);
 
-    // Mark it paid (staff action for manual renewal)
-    const paid = await markPaid(invoice.id, "CASH");
-    expect(paid.status).toBe("PAID");
-
-    // Verify the renewal was processed
     const memberships = await expectOk<Array<{ id: string; status: string }>>(
       "STUDENT",
       `/memberships/student/${SEED.users.STUDENT.id}`,
     );
-    const renewed = memberships.find(
-      (m) => m.id === SEED.membershipStudentDueId,
+    const due = memberships.find(
+      (membership) => membership.id === SEED.membershipStudentDueId,
     );
-    expect(renewed).toBeDefined();
+    expect(["DUE", "EXPIRED"]).toContain(due?.status);
   });
 });
 
