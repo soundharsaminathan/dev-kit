@@ -230,6 +230,29 @@ describe("ExpensesService", () => {
       ).rejects.toBeInstanceOf(BadRequestException);
     });
 
+    it("accepts ISO datetimes sent by the expense form", async () => {
+      (
+        prisma.expenseCategory.findFirst as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(categoryFixture("cat-rent", "Rent"));
+      const created = expenseFixture();
+      (prisma.expense.create as ReturnType<typeof vi.fn>).mockResolvedValue(
+        created,
+      );
+
+      await service.createExpense("owner-1", "studio-1", {
+        studioId: "studio-1",
+        amount: 1200,
+        expenseDate: "2026-07-15T00:00:00.000Z",
+        categoryId: "cat-rent",
+      });
+
+      expect(prisma.expense.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          expenseDate: new Date("2026-07-15T00:00:00.000Z"),
+        }),
+      });
+    });
+
     it("rejects unknown categories", async () => {
       (
         prisma.expenseCategory.findFirst as ReturnType<typeof vi.fn>
@@ -821,6 +844,37 @@ describe("ExpensesService", () => {
           name: "Rent",
         }),
       ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it("updates an existing category instead of creating another", async () => {
+      (
+        prisma.expenseCategory.findUnique as ReturnType<typeof vi.fn>
+      ).mockResolvedValue({
+        ...categoryFixture("cat-custom", "Props"),
+        isDefault: false,
+      });
+      (
+        prisma.expenseCategory.findFirst as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(null);
+      (
+        prisma.expenseCategory.update as ReturnType<typeof vi.fn>
+      ).mockResolvedValue({
+        ...categoryFixture("cat-custom", "Stage props"),
+        isDefault: false,
+      });
+
+      await service.updateCategory("owner-1", "cat-custom", {
+        name: "Stage props",
+      });
+
+      expect(prisma.expenseCategory.update).toHaveBeenCalledWith({
+        where: { id: "cat-custom" },
+        data: expect.objectContaining({
+          name: "Stage props",
+          updatedById: "owner-1",
+        }),
+      });
+      expect(prisma.expenseCategory.create).not.toHaveBeenCalled();
     });
 
     it("rejects deleting categories that have expenses", async () => {

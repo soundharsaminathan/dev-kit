@@ -218,6 +218,18 @@ export function todayInputValue() {
   return `${now.getFullYear()}-${month}-${day}`;
 }
 
+export function dateInputToApiValue(value: string): string {
+  const trimmed = value.trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+    return trimmed;
+  }
+  const parsed = new Date(trimmed);
+  if (Number.isNaN(parsed.getTime())) {
+    throw new Error("Choose an expense date.");
+  }
+  return parsed.toISOString().slice(0, 10);
+}
+
 export function monthStartInputValue(offsetMonths = 0) {
   const now = new Date();
   const month = String(now.getMonth() + 1 + offsetMonths).padStart(2, "0");

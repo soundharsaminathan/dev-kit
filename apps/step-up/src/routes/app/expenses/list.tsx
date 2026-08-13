@@ -10,6 +10,7 @@ import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useApi } from "@/lib/api-context";
+import { requireAdmin } from "@/lib/require-auth";
 import { useStudioId } from "@/lib/use-studio-id";
 import { ExpenseDetailSheet } from "@/modules/expenses/expense-detail-sheet";
 import { ExpenseFormSheet } from "@/modules/expenses/expense-form-sheet";
@@ -37,6 +38,12 @@ export const Route = createFileRoute("/app/expenses/list")({
   validateSearch: (search: Record<string, unknown>) => ({
     id: typeof search.id === "string" ? search.id : undefined,
   }),
+  beforeLoad: ({ context, location }) => {
+    requireAdmin(context.auth, {
+      pathname: location.pathname,
+      searchStr: location.searchStr,
+    });
+  },
   component: ExpensesListPage,
 });
 
@@ -123,6 +130,7 @@ function ExpensesListPage() {
         <TouchButton
           variant="primary"
           size="md"
+          data-testid="add-expense"
           onClick={() => setCreating(true)}
         >
           Add expense

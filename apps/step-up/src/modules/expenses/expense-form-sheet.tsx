@@ -16,6 +16,7 @@ import { ErrorState } from "@/modules/ui/states";
 import { TouchButton } from "@/modules/ui/touch-button";
 import styles from "./expenses.module.scss";
 import {
+  dateInputToApiValue,
   type Expense,
   type ExpenseCategory,
   type ExpensePaymentMethod,
@@ -112,9 +113,7 @@ export function ExpenseFormSheet({
       }
       const body = {
         amount,
-        expenseDate: new Date(
-          `${form.expenseDate}T00:00:00.000Z`,
-        ).toISOString(),
+        expenseDate: dateInputToApiValue(form.expenseDate),
         categoryId: form.categoryId,
         vendor: form.vendor.trim() || null,
         paymentMethod:
@@ -199,6 +198,7 @@ export function ExpenseFormSheet({
             value={form.amount}
             onChange={(value) => update({ amount: value })}
             placeholder="0"
+            data-testid="expense-amount-input"
           />
           <FormInput
             label="Date"

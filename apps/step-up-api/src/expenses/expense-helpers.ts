@@ -1,7 +1,39 @@
 export type AnalyticsBucket = "day" | "week" | "month";
 
+const DATE_ONLY_PREFIX = /^(\d{4}-\d{2}-\d{2})/;
+
 export function roundMoney(value: number): number {
   return Math.round(value * 100) / 100;
+}
+
+export function parseExpenseDate(value: string): Date | null {
+  const match = DATE_ONLY_PREFIX.exec(value.trim());
+  if (!match) {
+    return null;
+  }
+  const date = new Date(`${match[1]}T00:00:00.000Z`);
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+  return date;
+}
+
+export function endOfExpenseDate(value: string): Date | null {
+  const start = parseExpenseDate(value);
+  if (!start) {
+    return null;
+  }
+  return new Date(
+    Date.UTC(
+      start.getUTCFullYear(),
+      start.getUTCMonth(),
+      start.getUTCDate(),
+      23,
+      59,
+      59,
+      999,
+    ),
+  );
 }
 
 export function startOfBucket(date: Date, bucket: AnalyticsBucket): Date {

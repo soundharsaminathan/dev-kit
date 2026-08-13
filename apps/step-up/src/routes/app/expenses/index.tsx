@@ -26,6 +26,7 @@ import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useApi } from "@/lib/api-context";
+import { requireAdmin } from "@/lib/require-auth";
 import { useStudioId } from "@/lib/use-studio-id";
 import { ExpenseTabs } from "@/modules/expenses/expense-tabs";
 import styles from "@/modules/expenses/expenses.module.scss";
@@ -85,6 +86,12 @@ function formatDelta(pct: number | null) {
 }
 
 export const Route = createFileRoute("/app/expenses/")({
+  beforeLoad: ({ context, location }) => {
+    requireAdmin(context.auth, {
+      pathname: location.pathname,
+      searchStr: location.searchStr,
+    });
+  },
   component: ExpensesDashboardPage,
 });
 

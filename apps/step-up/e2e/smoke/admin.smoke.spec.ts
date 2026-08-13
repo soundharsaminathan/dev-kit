@@ -31,6 +31,10 @@ const STAFF_PATHS = [
   `/app/sessions/${SMOKE.sessionAttendanceId}/attendance`,
   "/app/calendar",
   "/app/payments",
+  "/app/expenses",
+  "/app/expenses/list",
+  "/app/expenses/reports",
+  "/app/expenses/categories",
   "/app/invoices",
   "/app/subscriptions",
   "/app/subscriptions/new",
@@ -496,6 +500,94 @@ test.describe("admin (staff) smoke @smoke", () => {
       );
     } finally {
       await context.close();
+    }
+  });
+
+  test("staff edits an expense category in place @smoke", async ({
+    browser,
+  }) => {
+    const stamp = Date.now();
+    const originalName = `Smoke Props ${stamp}`;
+    const renamed = `Smoke Stage ${stamp}`;
+    const created = await apiRequest<{ id: string }>(
+      "STAFF",
+      "/expense-categories",
+      {
+        method: "POST",
+        body: JSON.stringify({
+          studioId: SMOKE.studioId,
+          name: originalName,
+        }),
+      },
+    );
+
+    const context = await browser.newContext({
+      storageState: authFile("STAFF"),
+    });
+    const page = await context.newPage();
+    try {
+      await page.goto("/app/expenses/categories", {
+        waitUntil: "domcontentloaded",
+      });
+      await waitForAppReady(page);
+      await page.getByTestId(`edit-category-${created.id}`).click();
+      await expect(page.getByTestId("category-name-input")).toHaveValue(
+        originalName,
+      );
+      await page.getByTestId("category-name-input").fill(renamed);
+      const [response] = await Promise.all([
+        waitForApiResponse(page, {
+          method: "PATCH",
+          pathIncludes: `/expense-categories/${created.id}`,
+        }),
+        page.getByTestId("confirm-save-category").click(),
+      ]);
+      expect(response.ok()).toBeTruthy();
+      await expect(page.getByText(renamed)).toBeVisible();
+      await expect(page.getByText(originalName)).toHaveCount(0);
+    } finally {
+      await apiRequest("STAFF", `/expense-categories/${created.id}`, {
+        method: "DELETE",
+      }).catch(() => undefined);
+      await closeSmokeContext(context);
+    }
+  });
+
+  test("staff records an expense and is blocked without a category @smoke", async ({
+    browser,
+  }) => {
+    const context = await browser.newContext({
+      storageState: authFile("STAFF"),
+    });
+    const page = await context.newPage();
+    try {
+      await page.goto("/app/expenses/list", {
+        waitUntil: "domcontentloaded",
+      });
+      await waitForAppReady(page);
+      await page.getByTestId("add-expense").click();
+      await page.getByTestId("expense-amount-input").fill("250");
+      await page.getByTestId("confirm-save-expense").click();
+      await expect(page.getByText(/choose a category/i)).toBeVisible();
+
+      await page.getByLabel("Category").click();
+      await page.getByRole("option", { name: "Rent" }).click();
+      const [response] = await Promise.all([
+        waitForApiResponse(page, {
+          method: "POST",
+          pathIncludes: "/expenses",
+        }),
+        page.getByTestId("confirm-save-expense").click(),
+      ]);
+      expect(response.ok()).toBeTruthy();
+      const created = (await response.json()) as { id?: string };
+      if (created.id) {
+        await apiRequest("STAFF", `/expenses/${created.id}`, {
+          method: "DELETE",
+        }).catch(() => undefined);
+      }
+    } finally {
+      await closeSmokeContext(context);
     }
   });
 });

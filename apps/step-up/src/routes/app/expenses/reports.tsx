@@ -18,6 +18,7 @@ import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useApi } from "@/lib/api-context";
+import { requireAdmin } from "@/lib/require-auth";
 import { useStudioId } from "@/lib/use-studio-id";
 import { ExpenseTabs } from "@/modules/expenses/expense-tabs";
 import styles from "@/modules/expenses/expenses.module.scss";
@@ -51,6 +52,12 @@ function formatMonthLabel(key: string) {
 }
 
 export const Route = createFileRoute("/app/expenses/reports")({
+  beforeLoad: ({ context, location }) => {
+    requireAdmin(context.auth, {
+      pathname: location.pathname,
+      searchStr: location.searchStr,
+    });
+  },
   component: ExpensesReportsPage,
 });
 

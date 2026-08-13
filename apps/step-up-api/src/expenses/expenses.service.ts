@@ -22,7 +22,9 @@ import {
   buildVendorReport,
   computeNextOccurrence,
   deltaPct,
+  endOfExpenseDate,
   inferBucket,
+  parseExpenseDate,
   periodTotals,
   previousPeriodFor,
   roundMoney,
@@ -69,8 +71,16 @@ function iconForCategoryName(name: string): string {
 }
 
 function parseDate(value: string, label: string): Date {
-  const date = new Date(`${value}T00:00:00.000Z`);
-  if (Number.isNaN(date.getTime())) {
+  const date = parseExpenseDate(value);
+  if (!date) {
+    throw new BadRequestException(`${label} must be a valid date`);
+  }
+  return date;
+}
+
+function parseEndDate(value: string, label: string): Date {
+  const date = endOfExpenseDate(value);
+  if (!date) {
     throw new BadRequestException(`${label} must be a valid date`);
   }
   return date;
@@ -336,7 +346,7 @@ export class ExpensesService {
       dateFilter.gte = parseDate(query.from, "from");
     }
     if (query.to) {
-      dateFilter.lte = new Date(`${query.to}T23:59:59.999Z`);
+      dateFilter.lte = parseEndDate(query.to, "to");
     }
     if (query.from || query.to) {
       where.expenseDate = dateFilter;

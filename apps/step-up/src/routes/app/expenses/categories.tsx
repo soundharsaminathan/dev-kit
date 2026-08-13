@@ -2,8 +2,9 @@ import { useToastContext } from "@dev-ui/components/toast";
 import { Icon } from "@dev-ui/icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useApi } from "@/lib/api-context";
+import { requireAdmin } from "@/lib/require-auth";
 import { useStudioId } from "@/lib/use-studio-id";
 import { ExpenseTabs } from "@/modules/expenses/expense-tabs";
 import styles from "@/modules/expenses/expenses.module.scss";
@@ -24,6 +25,12 @@ import { EmptyState, ErrorState } from "@/modules/ui/states";
 import { TouchButton } from "@/modules/ui/touch-button";
 
 export const Route = createFileRoute("/app/expenses/categories")({
+  beforeLoad: ({ context, location }) => {
+    requireAdmin(context.auth, {
+      pathname: location.pathname,
+      searchStr: location.searchStr,
+    });
+  },
   component: ExpensesCategoriesPage,
 });
 
@@ -43,9 +50,15 @@ function CategoryFormSheet({
   const api = useApi();
   const queryClient = useQueryClient();
   const { toast } = useToastContext("CategoryFormSheet");
-  const [name, setName] = useState("");
+  const [name, setName] = useState(category?.name ?? "");
 
   const isEdit = category !== null;
+
+  useEffect(() => {
+    if (isOpen) {
+      setName(category?.name ?? "");
+    }
+  }, [isOpen, category]);
 
   const save = useMutation({
     mutationFn: async () => {
@@ -54,7 +67,7 @@ function CategoryFormSheet({
         throw new Error("Enter a category name.");
       }
       const body = { name: trimmed };
-      if (isEdit) {
+      if (category) {
         return api.patch<ExpenseCategory>(
           `/expense-categories/${category.id}`,
           body,
@@ -105,6 +118,7 @@ function CategoryFormSheet({
           onChange={setName}
           placeholder="e.g. Rent, Utilities, Props"
           autoFocus
+          data-testid="category-name-input"
         />
 
         {save.isError ? (
@@ -302,6 +316,7 @@ function ExpensesCategoriesPage() {
                       <TouchButton
                         size="sm"
                         variant="quiet"
+                        data-testid={`edit-category-${category.id}`}
                         onClick={() => setEditingCategory(category)}
                       >
                         Edit
@@ -397,6 +412,7 @@ function ExpensesCategoriesPage() {
       </PullToRefresh>
 
       <CategoryFormSheet
+        key={editingCategory?.id ?? "new-category"}
         isOpen={creatingCategory || editingCategory !== null}
         onOpenChange={(open) => {
           if (!open) {

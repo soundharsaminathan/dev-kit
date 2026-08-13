@@ -15,6 +15,7 @@ import { ErrorState } from "@/modules/ui/states";
 import { TouchButton } from "@/modules/ui/touch-button";
 import styles from "./expenses.module.scss";
 import {
+  dateInputToApiValue,
   type ExpenseCategory,
   type ExpensePaymentMethod,
   type ExpenseRecurrenceFrequency,
@@ -112,10 +113,8 @@ export function RecurringExpenseFormSheet({
         amount,
         categoryId: form.categoryId,
         frequency: form.frequency,
-        startDate: new Date(`${form.startDate}T00:00:00.000Z`).toISOString(),
-        endDate: form.endDate
-          ? new Date(`${form.endDate}T00:00:00.000Z`).toISOString()
-          : undefined,
+        startDate: dateInputToApiValue(form.startDate),
+        endDate: form.endDate ? dateInputToApiValue(form.endDate) : undefined,
         vendor: form.vendor.trim() || null,
         paymentMethod:
           form.paymentMethod === "none" ? null : form.paymentMethod,

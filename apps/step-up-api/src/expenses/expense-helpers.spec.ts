@@ -10,10 +10,12 @@ import {
   computeNextOccurrence,
   deltaPct,
   type ExpenseSeriesPoint,
+  endOfExpenseDate,
   inferBucket,
   monthKey,
   monthsBetween,
   nextBucketStart,
+  parseExpenseDate,
   periodTotals,
   previousPeriodFor,
   roundMoney,
@@ -25,6 +27,37 @@ describe("roundMoney", () => {
     expect(roundMoney(10.005)).toBe(10.01);
     expect(roundMoney(10)).toBe(10);
     expect(roundMoney(0.1 + 0.2)).toBe(0.3);
+  });
+});
+
+describe("parseExpenseDate", () => {
+  it("parses date-only values as UTC midnight", () => {
+    expect(parseExpenseDate("2026-07-15")?.toISOString()).toBe(
+      "2026-07-15T00:00:00.000Z",
+    );
+  });
+
+  it("parses ISO datetimes from the web form without appending a second time", () => {
+    expect(parseExpenseDate("2026-07-15T00:00:00.000Z")?.toISOString()).toBe(
+      "2026-07-15T00:00:00.000Z",
+    );
+    expect(parseExpenseDate("2026-07-15T18:30:00.000Z")?.toISOString()).toBe(
+      "2026-07-15T00:00:00.000Z",
+    );
+  });
+
+  it("rejects values that are not dates", () => {
+    expect(parseExpenseDate("not-a-date")).toBeNull();
+    expect(parseExpenseDate("")).toBeNull();
+  });
+
+  it("builds an inclusive end-of-day bound from date-only or ISO values", () => {
+    expect(endOfExpenseDate("2026-07-31")?.toISOString()).toBe(
+      "2026-07-31T23:59:59.999Z",
+    );
+    expect(endOfExpenseDate("2026-07-31T00:00:00.000Z")?.toISOString()).toBe(
+      "2026-07-31T23:59:59.999Z",
+    );
   });
 });
 
