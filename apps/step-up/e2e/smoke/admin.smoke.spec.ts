@@ -580,10 +580,17 @@ test.describe("admin (staff) smoke @smoke", () => {
     });
     const page = await context.newPage();
     try {
+      const categoriesLoaded = page.waitForResponse(
+        (response) =>
+          response.request().method() === "GET" &&
+          response.url().includes("/expense-categories/studio/") &&
+          response.ok(),
+      );
       await page.goto("/app/expenses/list", {
         waitUntil: "domcontentloaded",
       });
       await waitForAppReady(page);
+      await categoriesLoaded;
       await page.getByTestId("add-expense").click();
       const sheet = page.getByRole("dialog", { name: /record expense/i });
       await expect(sheet).toBeVisible();

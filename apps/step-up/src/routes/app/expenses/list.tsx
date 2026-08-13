@@ -80,6 +80,7 @@ function ExpensesListPage() {
     queryKey: ["expense-categories", studioId],
     queryFn: () =>
       api.get<ExpenseCategory[]>(`/expense-categories/studio/${studioId}`),
+    enabled: Boolean(studioId),
   });
 
   const expensesQuery = useQuery({
@@ -318,6 +319,7 @@ function ExpensesListPage() {
         }}
         studioId={studioId}
         categories={categories}
+        categoriesPending={categoriesQuery.isPending}
         expense={editing}
         onSaved={() => {
           void refresh();

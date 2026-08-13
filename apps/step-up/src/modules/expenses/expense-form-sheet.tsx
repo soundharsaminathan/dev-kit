@@ -32,6 +32,7 @@ type ExpenseFormSheetProps = {
   onOpenChange: (open: boolean) => void;
   studioId: string;
   categories: ExpenseCategory[];
+  categoriesPending?: boolean;
   expense: Expense | null;
   onSaved?: () => void;
 };
@@ -77,6 +78,7 @@ export function ExpenseFormSheet({
   onOpenChange,
   studioId,
   categories,
+  categoriesPending = false,
   expense,
   onSaved,
 }: ExpenseFormSheetProps) {
@@ -217,12 +219,18 @@ export function ExpenseFormSheet({
           <div className={styles.filterField}>
             <Select
               label="Category"
-              placeholder={categories.length === 0 ? "No categories" : "Choose"}
+              placeholder={
+                categoriesPending
+                  ? "Loading…"
+                  : categories.length === 0
+                    ? "No categories"
+                    : "Choose"
+              }
               selectedKey={form.categoryId || null}
               onSelectionChange={(key) =>
                 update({ categoryId: key == null ? "" : String(key) })
               }
-              isDisabled={categories.length === 0}
+              isDisabled={categoriesPending || categories.length === 0}
               isInvalid={Boolean(categoryError)}
               errorMessage={categoryError}
             >
