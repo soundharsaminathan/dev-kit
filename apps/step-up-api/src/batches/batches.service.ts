@@ -36,6 +36,7 @@ import {
   membershipCoversBatch,
 } from "../memberships/membership-helpers";
 import {
+  type BatchEnrollmentBilling,
   type CoveredStudentInput,
   MembershipsService,
 } from "../memberships/memberships.service";
@@ -1495,7 +1496,7 @@ export class BatchesService {
       );
     }
 
-    const billings = [];
+    const billings: BatchEnrollmentBilling[] = [];
     for (const studentId of uniqueIds) {
       // Bill before the locked seat writes. beginBatchEnrollment uses the
       // root Prisma client; calling it inside $transaction holds one pool
