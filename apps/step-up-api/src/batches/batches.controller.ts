@@ -49,10 +49,14 @@ import { BatchCommandsService } from "./application/batch.commands";
 import { BatchQueriesService } from "./application/batch.queries";
 import { BatchesService } from "./batches.service";
 import {
-  type BatchListQueryDto,
-  type BatchRosterQueryDto,
+  BatchListQueryDto,
+  BatchRosterQueryDto,
   toDiscoverFilters,
 } from "./dto/batch-list.dto";
+
+/** Keep DTO classes as values so ValidationPipe can whitelist query params. */
+void BatchListQueryDto;
+void BatchRosterQueryDto;
 
 class DanceCategoryDto {
   @IsString()
