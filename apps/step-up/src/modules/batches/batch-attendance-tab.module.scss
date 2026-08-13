@@ -118,19 +118,41 @@
 }
 
 .count {
+  display: inline-flex;
+  align-items: baseline;
   flex-shrink: 0;
   font-size: 1.25rem;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
-  letter-spacing: -0.03em;
-  line-height: 1.1;
+  letter-spacing: -0.04em;
+  line-height: 1;
   color: var(--color-fg);
 }
 
+.countPresent {
+  font-size: 1em;
+  font-weight: 800;
+  line-height: 1;
+}
+
 .countSep {
-  margin-inline: 0.05em;
+  display: inline-block;
+  align-self: center;
+  margin-inline: 0.04em 0.02em;
+  font-size: 0.65em;
   font-weight: 600;
-  color: color-mix(in srgb, var(--color-fg) 42%, transparent);
+  line-height: 1;
+  transform: rotate(-18deg);
+  transform-origin: 50% 58%;
+  color: color-mix(in srgb, var(--color-fg) 40%, transparent);
+}
+
+.countTotal {
+  font-size: 0.5em;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  color: color-mix(in srgb, var(--color-fg) 55%, transparent);
 }
 
 .track {

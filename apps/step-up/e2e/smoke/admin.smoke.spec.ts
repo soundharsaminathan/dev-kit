@@ -502,7 +502,7 @@ test.describe("admin (staff) smoke @smoke", () => {
         `attendance-count-${SMOKE.users.STUDENT.id}`,
       );
       await expect(count).toBeVisible();
-      await expect(count).toHaveText(/\d+\/\d+/);
+      await expect(count).toHaveText(/\d+\s*\/\s*\d+/);
     } finally {
       await closeSmokeContext(context);
     }

@@ -242,10 +242,11 @@ export function BatchAttendanceTab({
                           className={styles.count}
                           data-testid={`attendance-count-${row.studentId}`}
                           data-rate={rate}
+                          aria-label={`${present} of ${eligible}`}
                         >
-                          {present}
-                          <span className={styles.countSep}>/</span>
-                          {eligible}
+                          <span className={styles.countPresent}>{present}</span>
+                          <span className={styles.countSep} aria-hidden>/</span>
+                          <span className={styles.countTotal}>{eligible}</span>
                         </span>
                       </div>
 
