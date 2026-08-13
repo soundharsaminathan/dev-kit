@@ -31,6 +31,7 @@ import styles from "./chat-view.module.scss";
 import { Composer } from "./composer";
 import { MessageBubble } from "./message-bubble";
 import { toggleReactionOptimistically } from "./optimistic-reactions";
+import { applyRsvpOptimistically } from "./optimistic-rsvp";
 import { discardPendingSend, retryPendingSend } from "./optimistic-send";
 import {
   type ChatConversation,
@@ -159,7 +160,7 @@ function useMessageActions(conversationId: string) {
     },
   });
 
-  const rsvpMutation = useMutation({
+  const rsvpMutation = useOptimisticMutation({
     mutationFn: ({
       eventId,
       status,
@@ -167,6 +168,38 @@ function useMessageActions(conversationId: string) {
       eventId: string;
       status: ChatRsvpStatus;
     }) => api.post<ChatEventInfo>(`/chat/events/${eventId}/rsvp`, { status }),
+    onOptimistic: async (variables) => {
+      const snapshot = await captureQuerySnapshot<
+        InfiniteData<ChatMessagesPage>
+      >(queryClient, chatMessagesKey(conversationId));
+
+      updateMessagesInCache(queryClient, conversationId, (message) => {
+        if (message.event?.id !== variables.eventId) {
+          return message;
+        }
+        return {
+          ...message,
+          event: applyRsvpOptimistically(
+            message.event,
+            variables.status,
+            currentUserId,
+          ),
+        };
+      });
+
+      return snapshot;
+    },
+    onRollback: (snapshot) => restoreQuerySnapshot(queryClient, snapshot),
+    onError: (error: unknown) => {
+      toast({
+        title: "RSVP failed",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Could not update RSVP. Try again.",
+        variant: "error",
+      });
+    },
     onSuccess: (event) => {
       updateMessagesInCache(queryClient, conversationId, (message) =>
         message.event?.id === event.id ? { ...message, event } : message,
@@ -408,7 +441,6 @@ export function MessageList({
                   rsvpMutation.mutate({ eventId, status })
                 }
                 votePending={voteMutation.isPending}
-                rsvpPending={rsvpMutation.isPending}
               />
             )}
           </div>

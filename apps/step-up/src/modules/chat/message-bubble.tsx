@@ -46,7 +46,6 @@ type MessageBubbleProps = {
   onVote: (pollId: string, optionIds: string[]) => void;
   onRsvp: (eventId: string, status: ChatRsvpStatus) => void;
   votePending?: boolean | undefined;
-  rsvpPending?: boolean | undefined;
 };
 
 function formatTime(value: string) {
@@ -71,7 +70,6 @@ export function MessageBubble({
   onVote,
   onRsvp,
   votePending,
-  rsvpPending,
 }: MessageBubbleProps) {
   const [pickerOpen, setPickerOpen] = useState(false);
   const isMine = message.sender.id === currentUserId;
@@ -182,7 +180,6 @@ export function MessageBubble({
               <EventCard
                 event={message.event}
                 currentUserId={currentUserId}
-                rsvpPending={rsvpPending}
                 onRsvp={(status) => onRsvp(message.event!.id, status)}
               />
             ) : null}

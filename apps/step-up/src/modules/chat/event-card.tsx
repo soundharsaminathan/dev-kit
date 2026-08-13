@@ -5,7 +5,6 @@ type EventCardProps = {
   event: ChatEventInfo;
   currentUserId: string;
   onRsvp: (status: ChatRsvpStatus) => void;
-  rsvpPending?: boolean | undefined;
 };
 
 const RSVP_LABELS: Record<ChatRsvpStatus, string> = {
@@ -61,7 +60,6 @@ export function EventCard({
   event,
   currentUserId,
   onRsvp,
-  rsvpPending,
 }: EventCardProps) {
   const kind = sessionCardKind(event.title);
   const when = formatEventWhen(event.startsAt, event.endsAt);
@@ -94,8 +92,11 @@ export function EventCard({
               type="button"
               className={styles.rsvpOption}
               data-active={myStatus === status || undefined}
-              disabled={rsvpPending}
-              onClick={() => onRsvp(status)}
+              onClick={() => {
+                if (myStatus !== status) {
+                  onRsvp(status);
+                }
+              }}
             >
               {RSVP_LABELS[status]}
               {event.rsvps[status].length > 0 ? (
