@@ -2,7 +2,7 @@ import type { IconCatalog } from "./types";
 
 export const iconCatalog = {
   activity: {
-    lucide: "Activity",
+    "lucide": "Activity",
     "heroicons-outline": "BoltIcon",
     "heroicons-solid": "BoltIcon",
     "phosphor-regular": "PulseIcon",
@@ -17,7 +17,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "monitoring",
   },
   "alert-circle": {
-    lucide: "CircleAlert",
+    "lucide": "CircleAlert",
     "heroicons-outline": "ExclamationCircleIcon",
     "heroicons-solid": "ExclamationCircleIcon",
     "phosphor-regular": "WarningCircleIcon",
@@ -32,7 +32,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "error",
   },
   "alert-octagon": {
-    lucide: "OctagonX",
+    "lucide": "OctagonX",
     "heroicons-outline": "XCircleIcon",
     "heroicons-solid": "XCircleIcon",
     "phosphor-regular": "WarningOctagonIcon",
@@ -47,7 +47,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "report",
   },
   "alert-triangle": {
-    lucide: "TriangleAlert",
+    "lucide": "TriangleAlert",
     "heroicons-outline": "ExclamationTriangleIcon",
     "heroicons-solid": "ExclamationTriangleIcon",
     "phosphor-regular": "WarningIcon",
@@ -62,7 +62,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "warning",
   },
   archive: {
-    lucide: "Archive",
+    "lucide": "Archive",
     "heroicons-outline": "ArchiveBoxIcon",
     "heroicons-solid": "ArchiveBoxIcon",
     "phosphor-regular": "ArchiveIcon",
@@ -77,7 +77,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "archive",
   },
   "arrow-down": {
-    lucide: "ArrowDown",
+    "lucide": "ArrowDown",
     "heroicons-outline": "ArrowDownIcon",
     "heroicons-solid": "ArrowDownIcon",
     "phosphor-regular": "ArrowDownIcon",
@@ -92,7 +92,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "arrow_downward",
   },
   "arrow-left": {
-    lucide: "ArrowLeft",
+    "lucide": "ArrowLeft",
     "heroicons-outline": "ArrowLeftIcon",
     "heroicons-solid": "ArrowLeftIcon",
     "phosphor-regular": "ArrowLeftIcon",
@@ -107,7 +107,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "arrow_back",
   },
   "arrow-right": {
-    lucide: "ArrowRight",
+    "lucide": "ArrowRight",
     "heroicons-outline": "ArrowRightIcon",
     "heroicons-solid": "ArrowRightIcon",
     "phosphor-regular": "ArrowRightIcon",
@@ -122,7 +122,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "arrow_forward",
   },
   "arrow-up": {
-    lucide: "ArrowUp",
+    "lucide": "ArrowUp",
     "heroicons-outline": "ArrowUpIcon",
     "heroicons-solid": "ArrowUpIcon",
     "phosphor-regular": "ArrowUpIcon",
@@ -137,7 +137,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "arrow_upward",
   },
   "arrow-up-right": {
-    lucide: "ArrowUpRight",
+    "lucide": "ArrowUpRight",
     "heroicons-outline": "ArrowUpRightIcon",
     "heroicons-solid": "ArrowUpRightIcon",
     "phosphor-regular": "ArrowUpRightIcon",
@@ -152,7 +152,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "north_east",
   },
   "badge-check": {
-    lucide: "BadgeCheck",
+    "lucide": "BadgeCheck",
     "heroicons-outline": "CheckBadgeIcon",
     "heroicons-solid": "CheckBadgeIcon",
     "phosphor-regular": "SealCheckIcon",
@@ -167,7 +167,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "verified",
   },
   bell: {
-    lucide: "Bell",
+    "lucide": "Bell",
     "heroicons-outline": "BellIcon",
     "heroicons-solid": "BellIcon",
     "phosphor-regular": "BellIcon",
@@ -182,7 +182,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "notifications",
   },
   bluetooth: {
-    lucide: "Bluetooth",
+    "lucide": "Bluetooth",
     "heroicons-outline": "SignalIcon",
     "heroicons-solid": "SignalIcon",
     "phosphor-regular": "BluetoothIcon",
@@ -197,7 +197,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "bluetooth",
   },
   bold: {
-    lucide: "Bold",
+    "lucide": "Bold",
     "heroicons-outline": "BoldIcon",
     "heroicons-solid": "BoldIcon",
     "phosphor-regular": "TextBIcon",
@@ -212,7 +212,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "format_bold",
   },
   "book-open": {
-    lucide: "BookOpen",
+    "lucide": "BookOpen",
     "heroicons-outline": "BookOpenIcon",
     "heroicons-solid": "BookOpenIcon",
     "phosphor-regular": "BookOpenIcon",
@@ -227,7 +227,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "menu_book",
   },
   bookmark: {
-    lucide: "Bookmark",
+    "lucide": "Bookmark",
     "heroicons-outline": "BookmarkIcon",
     "heroicons-solid": "BookmarkIcon",
     "phosphor-regular": "BookmarkIcon",
@@ -242,7 +242,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "bookmark",
   },
   bot: {
-    lucide: "Bot",
+    "lucide": "Bot",
     "heroicons-outline": "CpuChipIcon",
     "heroicons-solid": "CpuChipIcon",
     "phosphor-regular": "RobotIcon",
@@ -257,7 +257,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "smart_toy",
   },
   building: {
-    lucide: "Building2",
+    "lucide": "Building2",
     "heroicons-outline": "BuildingOffice2Icon",
     "heroicons-solid": "BuildingOffice2Icon",
     "phosphor-regular": "BankIcon",
@@ -272,7 +272,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "account_balance",
   },
   calculator: {
-    lucide: "Calculator",
+    "lucide": "Calculator",
     "heroicons-outline": "CalculatorIcon",
     "heroicons-solid": "CalculatorIcon",
     "phosphor-regular": "CalculatorIcon",
@@ -287,7 +287,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "calculate",
   },
   calendar: {
-    lucide: "Calendar",
+    "lucide": "Calendar",
     "heroicons-outline": "CalendarIcon",
     "heroicons-solid": "CalendarIcon",
     "phosphor-regular": "CalendarIcon",
@@ -302,7 +302,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "calendar_today",
   },
   camera: {
-    lucide: "Camera",
+    "lucide": "Camera",
     "heroicons-outline": "CameraIcon",
     "heroicons-solid": "CameraIcon",
     "phosphor-regular": "CameraIcon",
@@ -317,7 +317,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "photo_camera",
   },
   "chart-bar": {
-    lucide: "ChartBar",
+    "lucide": "ChartBar",
     "heroicons-outline": "ChartBarSquareIcon",
     "heroicons-solid": "ChartBarSquareIcon",
     "phosphor-regular": "ChartBarIcon",
@@ -332,7 +332,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "bar_chart",
   },
   "chart-line": {
-    lucide: "ChartLine",
+    "lucide": "ChartLine",
     "heroicons-outline": "ChartBarIcon",
     "heroicons-solid": "ChartBarIcon",
     "phosphor-regular": "ChartLineIcon",
@@ -347,7 +347,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "show_chart",
   },
   "chart-pie": {
-    lucide: "ChartPie",
+    "lucide": "ChartPie",
     "heroicons-outline": "ChartPieIcon",
     "heroicons-solid": "ChartPieIcon",
     "phosphor-regular": "ChartPieIcon",
@@ -362,7 +362,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "pie_chart",
   },
   check: {
-    lucide: "Check",
+    "lucide": "Check",
     "heroicons-outline": "CheckIcon",
     "heroicons-solid": "CheckIcon",
     "phosphor-regular": "CheckIcon",
@@ -377,7 +377,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "check",
   },
   "check-circle": {
-    lucide: "CheckCircle2",
+    "lucide": "CheckCircle2",
     "heroicons-outline": "CheckCircleIcon",
     "heroicons-solid": "CheckCircleIcon",
     "phosphor-regular": "CheckCircleIcon",
@@ -392,7 +392,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "check_circle",
   },
   "chevron-down": {
-    lucide: "ChevronDown",
+    "lucide": "ChevronDown",
     "heroicons-outline": "ChevronDownIcon",
     "heroicons-solid": "ChevronDownIcon",
     "phosphor-regular": "CaretDownIcon",
@@ -407,7 +407,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "expand_more",
   },
   "chevron-left": {
-    lucide: "ChevronLeft",
+    "lucide": "ChevronLeft",
     "heroicons-outline": "ChevronLeftIcon",
     "heroicons-solid": "ChevronLeftIcon",
     "phosphor-regular": "CaretLeftIcon",
@@ -422,7 +422,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "chevron_left",
   },
   "chevron-right": {
-    lucide: "ChevronRight",
+    "lucide": "ChevronRight",
     "heroicons-outline": "ChevronRightIcon",
     "heroicons-solid": "ChevronRightIcon",
     "phosphor-regular": "CaretRightIcon",
@@ -437,7 +437,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "chevron_right",
   },
   "chevron-up": {
-    lucide: "ChevronUp",
+    "lucide": "ChevronUp",
     "heroicons-outline": "ChevronUpIcon",
     "heroicons-solid": "ChevronUpIcon",
     "phosphor-regular": "CaretUpIcon",
@@ -452,7 +452,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "expand_less",
   },
   "chevrons-up-down": {
-    lucide: "ChevronsUpDown",
+    "lucide": "ChevronsUpDown",
     "heroicons-outline": "ChevronUpDownIcon",
     "heroicons-solid": "ChevronUpDownIcon",
     "phosphor-regular": "CaretUpDownIcon",
@@ -467,7 +467,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "unfold_more",
   },
   circle: {
-    lucide: "Circle",
+    "lucide": "Circle",
     "heroicons-outline": "CircleStackIcon",
     "heroicons-solid": "CircleStackIcon",
     "phosphor-regular": "CircleIcon",
@@ -482,7 +482,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "circle",
   },
   "circle-dashed": {
-    lucide: "CircleDashed",
+    "lucide": "CircleDashed",
     "heroicons-outline": "CircleStackIcon",
     "heroicons-solid": "CircleStackIcon",
     "phosphor-regular": "CircleDashedIcon",
@@ -496,8 +496,23 @@ export const iconCatalog = {
     "material-symbols-rounded": "radio_button_unchecked",
     "material-symbols-sharp": "radio_button_unchecked",
   },
+  "circle-user": {
+    "lucide": "CircleUser",
+    "heroicons-outline": "UserCircleIcon",
+    "heroicons-solid": "UserCircleIcon",
+    "phosphor-regular": "UserCircleIcon",
+    "phosphor-fill": "UserCircleIcon",
+    "phosphor-duotone": "UserCircleIcon",
+    "tabler-outline": "IconUserCircle",
+    "tabler-filled": "IconUserCircle",
+    "fluent-outline": "PersonCircleRegular",
+    "fluent-filled": "PersonCircleFilled",
+    "material-symbols-outlined": "account_circle",
+    "material-symbols-rounded": "account_circle",
+    "material-symbols-sharp": "account_circle",
+  },
   clipboard: {
-    lucide: "Clipboard",
+    "lucide": "Clipboard",
     "heroicons-outline": "ClipboardIcon",
     "heroicons-solid": "ClipboardIcon",
     "phosphor-regular": "ClipboardIcon",
@@ -512,7 +527,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "content_paste",
   },
   "clipboard-paste": {
-    lucide: "ClipboardPaste",
+    "lucide": "ClipboardPaste",
     "heroicons-outline": "ClipboardDocumentIcon",
     "heroicons-solid": "ClipboardDocumentIcon",
     "phosphor-regular": "ClipboardTextIcon",
@@ -527,7 +542,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "content_paste",
   },
   clock: {
-    lucide: "Clock",
+    "lucide": "Clock",
     "heroicons-outline": "ClockIcon",
     "heroicons-solid": "ClockIcon",
     "phosphor-regular": "ClockIcon",
@@ -542,7 +557,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "clock",
   },
   cloud: {
-    lucide: "Cloud",
+    "lucide": "Cloud",
     "heroicons-outline": "CloudIcon",
     "heroicons-solid": "CloudIcon",
     "phosphor-regular": "CloudIcon",
@@ -557,7 +572,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "cloud",
   },
   code: {
-    lucide: "Code",
+    "lucide": "Code",
     "heroicons-outline": "CodeBracketIcon",
     "heroicons-solid": "CodeBracketIcon",
     "phosphor-regular": "CodeIcon",
@@ -572,7 +587,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "code",
   },
   copy: {
-    lucide: "Copy",
+    "lucide": "Copy",
     "heroicons-outline": "DocumentDuplicateIcon",
     "heroicons-solid": "DocumentDuplicateIcon",
     "phosphor-regular": "CopyIcon",
@@ -587,7 +602,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "content_copy",
   },
   "credit-card": {
-    lucide: "CreditCard",
+    "lucide": "CreditCard",
     "heroicons-outline": "CreditCardIcon",
     "heroicons-solid": "CreditCardIcon",
     "phosphor-regular": "CreditCardIcon",
@@ -602,7 +617,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "credit_card",
   },
   database: {
-    lucide: "Database",
+    "lucide": "Database",
     "heroicons-outline": "CircleStackIcon",
     "heroicons-solid": "CircleStackIcon",
     "phosphor-regular": "DatabaseIcon",
@@ -617,7 +632,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "database",
   },
   delete: {
-    lucide: "Trash2",
+    "lucide": "Trash2",
     "heroicons-outline": "TrashIcon",
     "heroicons-solid": "TrashIcon",
     "phosphor-regular": "TrashIcon",
@@ -632,7 +647,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "delete",
   },
   download: {
-    lucide: "Download",
+    "lucide": "Download",
     "heroicons-outline": "ArrowDownTrayIcon",
     "heroicons-solid": "ArrowDownTrayIcon",
     "phosphor-regular": "DownloadSimpleIcon",
@@ -647,7 +662,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "download",
   },
   edit: {
-    lucide: "Pencil",
+    "lucide": "Pencil",
     "heroicons-outline": "PencilIcon",
     "heroicons-solid": "PencilIcon",
     "phosphor-regular": "PencilIcon",
@@ -662,7 +677,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "edit",
   },
   "external-link": {
-    lucide: "ExternalLink",
+    "lucide": "ExternalLink",
     "heroicons-outline": "ArrowTopRightOnSquareIcon",
     "heroicons-solid": "ArrowTopRightOnSquareIcon",
     "phosphor-regular": "ArrowSquareOutIcon",
@@ -677,7 +692,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "open_in_new",
   },
   eye: {
-    lucide: "Eye",
+    "lucide": "Eye",
     "heroicons-outline": "EyeIcon",
     "heroicons-solid": "EyeIcon",
     "phosphor-regular": "EyeIcon",
@@ -692,7 +707,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "visibility",
   },
   "eye-off": {
-    lucide: "EyeOff",
+    "lucide": "EyeOff",
     "heroicons-outline": "EyeSlashIcon",
     "heroicons-solid": "EyeSlashIcon",
     "phosphor-regular": "EyeSlashIcon",
@@ -707,7 +722,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "visibility_off",
   },
   file: {
-    lucide: "File",
+    "lucide": "File",
     "heroicons-outline": "DocumentIcon",
     "heroicons-solid": "DocumentIcon",
     "phosphor-regular": "FileIcon",
@@ -722,7 +737,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "draft",
   },
   "file-code": {
-    lucide: "FileCode",
+    "lucide": "FileCode",
     "heroicons-outline": "DocumentTextIcon",
     "heroicons-solid": "DocumentTextIcon",
     "phosphor-regular": "FileCodeIcon",
@@ -737,7 +752,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "code",
   },
   "file-text": {
-    lucide: "FileText",
+    "lucide": "FileText",
     "heroicons-outline": "DocumentTextIcon",
     "heroicons-solid": "DocumentTextIcon",
     "phosphor-regular": "FileTextIcon",
@@ -752,7 +767,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "description",
   },
   filter: {
-    lucide: "ListFilter",
+    "lucide": "ListFilter",
     "heroicons-outline": "FunnelIcon",
     "heroicons-solid": "FunnelIcon",
     "phosphor-regular": "FunnelIcon",
@@ -767,7 +782,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "filter_list",
   },
   folder: {
-    lucide: "Folder",
+    "lucide": "Folder",
     "heroicons-outline": "FolderIcon",
     "heroicons-solid": "FolderIcon",
     "phosphor-regular": "FolderIcon",
@@ -782,7 +797,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "folder",
   },
   "folder-open": {
-    lucide: "FolderOpen",
+    "lucide": "FolderOpen",
     "heroicons-outline": "FolderOpenIcon",
     "heroicons-solid": "FolderOpenIcon",
     "phosphor-regular": "FolderOpenIcon",
@@ -797,7 +812,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "folder_open",
   },
   "folder-plus": {
-    lucide: "FolderPlus",
+    "lucide": "FolderPlus",
     "heroicons-outline": "FolderPlusIcon",
     "heroicons-solid": "FolderPlusIcon",
     "phosphor-regular": "FolderPlusIcon",
@@ -812,7 +827,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "create_new_folder",
   },
   "git-branch": {
-    lucide: "GitBranch",
+    "lucide": "GitBranch",
     "heroicons-outline": "CodeBracketSquareIcon",
     "heroicons-solid": "CodeBracketSquareIcon",
     "phosphor-regular": "GitBranchIcon",
@@ -827,7 +842,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "account_tree",
   },
   globe: {
-    lucide: "Globe",
+    "lucide": "Globe",
     "heroicons-outline": "GlobeAltIcon",
     "heroicons-solid": "GlobeAltIcon",
     "phosphor-regular": "GlobeIcon",
@@ -842,7 +857,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "language",
   },
   "grip-vertical": {
-    lucide: "GripVertical",
+    "lucide": "GripVertical",
     "heroicons-outline": "Bars3Icon",
     "heroicons-solid": "Bars3Icon",
     "phosphor-regular": "DotsSixVerticalIcon",
@@ -857,7 +872,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "drag_indicator",
   },
   heart: {
-    lucide: "Heart",
+    "lucide": "Heart",
     "heroicons-outline": "HeartIcon",
     "heroicons-solid": "HeartIcon",
     "phosphor-regular": "HeartIcon",
@@ -872,7 +887,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "favorite",
   },
   "help-circle": {
-    lucide: "CircleHelp",
+    "lucide": "CircleHelp",
     "heroicons-outline": "QuestionMarkCircleIcon",
     "heroicons-solid": "QuestionMarkCircleIcon",
     "phosphor-regular": "QuestionIcon",
@@ -887,7 +902,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "help",
   },
   home: {
-    lucide: "Home",
+    "lucide": "Home",
     "heroicons-outline": "HomeIcon",
     "heroicons-solid": "HomeIcon",
     "phosphor-regular": "HouseIcon",
@@ -902,7 +917,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "home",
   },
   image: {
-    lucide: "Image",
+    "lucide": "Image",
     "heroicons-outline": "PhotoIcon",
     "heroicons-solid": "PhotoIcon",
     "phosphor-regular": "ImageIcon",
@@ -917,7 +932,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "image",
   },
   inbox: {
-    lucide: "Inbox",
+    "lucide": "Inbox",
     "heroicons-outline": "InboxIcon",
     "heroicons-solid": "InboxIcon",
     "phosphor-regular": "TrayIcon",
@@ -932,7 +947,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "inbox",
   },
   info: {
-    lucide: "Info",
+    "lucide": "Info",
     "heroicons-outline": "InformationCircleIcon",
     "heroicons-solid": "InformationCircleIcon",
     "phosphor-regular": "InfoIcon",
@@ -947,7 +962,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "info",
   },
   italic: {
-    lucide: "Italic",
+    "lucide": "Italic",
     "heroicons-outline": "ItalicIcon",
     "heroicons-solid": "ItalicIcon",
     "phosphor-regular": "TextItalicIcon",
@@ -962,7 +977,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "format_italic",
   },
   keyboard: {
-    lucide: "Keyboard",
+    "lucide": "Keyboard",
     "heroicons-outline": "CommandLineIcon",
     "heroicons-solid": "CommandLineIcon",
     "phosphor-regular": "KeyboardIcon",
@@ -977,7 +992,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "keyboard",
   },
   languages: {
-    lucide: "Languages",
+    "lucide": "Languages",
     "heroicons-outline": "LanguageIcon",
     "heroicons-solid": "LanguageIcon",
     "phosphor-regular": "TranslateIcon",
@@ -992,7 +1007,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "translate",
   },
   layout: {
-    lucide: "Layout",
+    "lucide": "Layout",
     "heroicons-outline": "RectangleGroupIcon",
     "heroicons-solid": "RectangleGroupIcon",
     "phosphor-regular": "LayoutIcon",
@@ -1007,7 +1022,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "dashboard",
   },
   "layout-grid": {
-    lucide: "LayoutGrid",
+    "lucide": "LayoutGrid",
     "heroicons-outline": "Squares2X2Icon",
     "heroicons-solid": "Squares2X2Icon",
     "phosphor-regular": "GridFourIcon",
@@ -1022,7 +1037,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "grid_view",
   },
   "life-buoy": {
-    lucide: "LifeBuoy",
+    "lucide": "LifeBuoy",
     "heroicons-outline": "QuestionMarkCircleIcon",
     "heroicons-solid": "QuestionMarkCircleIcon",
     "phosphor-regular": "LifebuoyIcon",
@@ -1037,7 +1052,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "support",
   },
   lightbulb: {
-    lucide: "Lightbulb",
+    "lucide": "Lightbulb",
     "heroicons-outline": "LightBulbIcon",
     "heroicons-solid": "LightBulbIcon",
     "phosphor-regular": "LightbulbIcon",
@@ -1052,7 +1067,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "lightbulb",
   },
   link: {
-    lucide: "Link",
+    "lucide": "Link",
     "heroicons-outline": "LinkIcon",
     "heroicons-solid": "LinkIcon",
     "phosphor-regular": "LinkIcon",
@@ -1067,7 +1082,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "link",
   },
   list: {
-    lucide: "List",
+    "lucide": "List",
     "heroicons-outline": "ListBulletIcon",
     "heroicons-solid": "ListBulletIcon",
     "phosphor-regular": "ListIcon",
@@ -1082,7 +1097,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "list",
   },
   loader: {
-    lucide: "Loader2",
+    "lucide": "Loader2",
     "heroicons-outline": "ArrowPathIcon",
     "heroicons-solid": "ArrowPathIcon",
     "phosphor-regular": "CircleNotchIcon",
@@ -1097,7 +1112,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "progress_activity",
   },
   lock: {
-    lucide: "Lock",
+    "lucide": "Lock",
     "heroicons-outline": "LockClosedIcon",
     "heroicons-solid": "LockClosedIcon",
     "phosphor-regular": "LockIcon",
@@ -1112,7 +1127,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "lock",
   },
   "log-in": {
-    lucide: "LogIn",
+    "lucide": "LogIn",
     "heroicons-outline": "ArrowLeftOnRectangleIcon",
     "heroicons-solid": "ArrowLeftOnRectangleIcon",
     "phosphor-regular": "SignInIcon",
@@ -1127,7 +1142,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "login",
   },
   "log-out": {
-    lucide: "LogOut",
+    "lucide": "LogOut",
     "heroicons-outline": "ArrowRightOnRectangleIcon",
     "heroicons-solid": "ArrowRightOnRectangleIcon",
     "phosphor-regular": "SignOutIcon",
@@ -1142,7 +1157,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "logout",
   },
   mail: {
-    lucide: "Mail",
+    "lucide": "Mail",
     "heroicons-outline": "EnvelopeIcon",
     "heroicons-solid": "EnvelopeIcon",
     "phosphor-regular": "EnvelopeIcon",
@@ -1157,7 +1172,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "mail",
   },
   map: {
-    lucide: "Map",
+    "lucide": "Map",
     "heroicons-outline": "MapIcon",
     "heroicons-solid": "MapIcon",
     "phosphor-regular": "MapTrifoldIcon",
@@ -1172,7 +1187,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "map",
   },
   "map-pin": {
-    lucide: "MapPin",
+    "lucide": "MapPin",
     "heroicons-outline": "MapPinIcon",
     "heroicons-solid": "MapPinIcon",
     "phosphor-regular": "MapPinIcon",
@@ -1187,7 +1202,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "location_on",
   },
   maximize: {
-    lucide: "Maximize",
+    "lucide": "Maximize",
     "heroicons-outline": "ArrowsPointingOutIcon",
     "heroicons-solid": "ArrowsPointingOutIcon",
     "phosphor-regular": "ArrowsOutIcon",
@@ -1202,7 +1217,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "open_in_full",
   },
   menu: {
-    lucide: "Menu",
+    "lucide": "Menu",
     "heroicons-outline": "Bars3Icon",
     "heroicons-solid": "Bars3Icon",
     "phosphor-regular": "HamburgerIcon",
@@ -1217,7 +1232,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "menu",
   },
   "message-square": {
-    lucide: "MessageSquare",
+    "lucide": "MessageSquare",
     "heroicons-outline": "ChatBubbleLeftIcon",
     "heroicons-solid": "ChatBubbleLeftIcon",
     "phosphor-regular": "ChatCircleIcon",
@@ -1232,7 +1247,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "chat",
   },
   mic: {
-    lucide: "Mic",
+    "lucide": "Mic",
     "heroicons-outline": "MicrophoneIcon",
     "heroicons-solid": "MicrophoneIcon",
     "phosphor-regular": "MicrophoneIcon",
@@ -1247,7 +1262,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "mic",
   },
   minimize: {
-    lucide: "Minimize",
+    "lucide": "Minimize",
     "heroicons-outline": "ArrowsPointingInIcon",
     "heroicons-solid": "ArrowsPointingInIcon",
     "phosphor-regular": "ArrowsInIcon",
@@ -1262,7 +1277,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "close_fullscreen",
   },
   minus: {
-    lucide: "Minus",
+    "lucide": "Minus",
     "heroicons-outline": "MinusIcon",
     "heroicons-solid": "MinusIcon",
     "phosphor-regular": "MinusIcon",
@@ -1277,7 +1292,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "remove",
   },
   monitor: {
-    lucide: "Monitor",
+    "lucide": "Monitor",
     "heroicons-outline": "ComputerDesktopIcon",
     "heroicons-solid": "ComputerDesktopIcon",
     "phosphor-regular": "MonitorIcon",
@@ -1292,7 +1307,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "desktop_windows",
   },
   moon: {
-    lucide: "Moon",
+    "lucide": "Moon",
     "heroicons-outline": "MoonIcon",
     "heroicons-solid": "MoonIcon",
     "phosphor-regular": "MoonIcon",
@@ -1307,7 +1322,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "dark_mode",
   },
   "more-horizontal": {
-    lucide: "MoreHorizontal",
+    "lucide": "MoreHorizontal",
     "heroicons-outline": "EllipsisHorizontalIcon",
     "heroicons-solid": "EllipsisHorizontalIcon",
     "phosphor-regular": "DotsThreeIcon",
@@ -1322,7 +1337,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "more_horiz",
   },
   "more-vertical": {
-    lucide: "MoreVertical",
+    "lucide": "MoreVertical",
     "heroicons-outline": "EllipsisVerticalIcon",
     "heroicons-solid": "EllipsisVerticalIcon",
     "phosphor-regular": "DotsThreeVerticalIcon",
@@ -1337,7 +1352,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "more_vert",
   },
   palette: {
-    lucide: "Palette",
+    "lucide": "Palette",
     "heroicons-outline": "SwatchIcon",
     "heroicons-solid": "SwatchIcon",
     "phosphor-regular": "PaletteIcon",
@@ -1352,7 +1367,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "palette",
   },
   "panel-left": {
-    lucide: "PanelLeft",
+    "lucide": "PanelLeft",
     "heroicons-outline": "Bars3BottomLeftIcon",
     "heroicons-solid": "Bars3BottomLeftIcon",
     "phosphor-regular": "SidebarIcon",
@@ -1367,7 +1382,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "left_panel_open",
   },
   paperclip: {
-    lucide: "Paperclip",
+    "lucide": "Paperclip",
     "heroicons-outline": "PaperClipIcon",
     "heroicons-solid": "PaperClipIcon",
     "phosphor-regular": "PaperclipIcon",
@@ -1382,7 +1397,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "attach_file",
   },
   "pen-square": {
-    lucide: "PenSquare",
+    "lucide": "PenSquare",
     "heroicons-outline": "PencilSquareIcon",
     "heroicons-solid": "PencilSquareIcon",
     "phosphor-regular": "PencilSimpleLineIcon",
@@ -1396,8 +1411,23 @@ export const iconCatalog = {
     "material-symbols-rounded": "edit_square",
     "material-symbols-sharp": "edit_square",
   },
+  "phone-call": {
+    "lucide": "PhoneCall",
+    "heroicons-outline": "PhoneIcon",
+    "heroicons-solid": "PhoneIcon",
+    "phosphor-regular": "PhoneCallIcon",
+    "phosphor-fill": "PhoneCallIcon",
+    "phosphor-duotone": "PhoneCallIcon",
+    "tabler-outline": "IconPhoneCall",
+    "tabler-filled": "IconPhoneCallFilled",
+    "fluent-outline": "CallRegular",
+    "fluent-filled": "CallFilled",
+    "material-symbols-outlined": "phone_in_talk",
+    "material-symbols-rounded": "phone_in_talk",
+    "material-symbols-sharp": "phone_in_talk",
+  },
   pin: {
-    lucide: "Pin",
+    "lucide": "Pin",
     "heroicons-outline": "BookmarkIcon",
     "heroicons-solid": "BookmarkIcon",
     "phosphor-regular": "PushPinIcon",
@@ -1412,7 +1442,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "keep",
   },
   plus: {
-    lucide: "Plus",
+    "lucide": "Plus",
     "heroicons-outline": "PlusIcon",
     "heroicons-solid": "PlusIcon",
     "phosphor-regular": "PlusIcon",
@@ -1427,7 +1457,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "add",
   },
   "plus-square": {
-    lucide: "PlusSquare",
+    "lucide": "PlusSquare",
     "heroicons-outline": "PlusCircleIcon",
     "heroicons-solid": "PlusCircleIcon",
     "phosphor-regular": "PlusSquareIcon",
@@ -1442,7 +1472,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "add_box",
   },
   refresh: {
-    lucide: "RefreshCw",
+    "lucide": "RefreshCw",
     "heroicons-outline": "ArrowPathIcon",
     "heroicons-solid": "ArrowPathIcon",
     "phosphor-regular": "ArrowClockwiseIcon",
@@ -1457,7 +1487,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "refresh",
   },
   "rotate-cw": {
-    lucide: "RotateCw",
+    "lucide": "RotateCw",
     "heroicons-outline": "ArrowPathIcon",
     "heroicons-solid": "ArrowPathIcon",
     "phosphor-regular": "ArrowClockwiseIcon",
@@ -1472,7 +1502,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "rotate_right",
   },
   save: {
-    lucide: "Save",
+    "lucide": "Save",
     "heroicons-outline": "DocumentArrowDownIcon",
     "heroicons-solid": "DocumentArrowDownIcon",
     "phosphor-regular": "FloppyDiskIcon",
@@ -1487,7 +1517,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "save",
   },
   scissors: {
-    lucide: "Scissors",
+    "lucide": "Scissors",
     "heroicons-outline": "ScissorsIcon",
     "heroicons-solid": "ScissorsIcon",
     "phosphor-regular": "ScissorsIcon",
@@ -1502,7 +1532,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "content_cut",
   },
   search: {
-    lucide: "Search",
+    "lucide": "Search",
     "heroicons-outline": "MagnifyingGlassIcon",
     "heroicons-solid": "MagnifyingGlassIcon",
     "phosphor-regular": "MagnifyingGlassIcon",
@@ -1517,7 +1547,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "search",
   },
   send: {
-    lucide: "Send",
+    "lucide": "Send",
     "heroicons-outline": "PaperAirplaneIcon",
     "heroicons-solid": "PaperAirplaneIcon",
     "phosphor-regular": "PaperPlaneTiltIcon",
@@ -1532,7 +1562,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "send",
   },
   server: {
-    lucide: "Server",
+    "lucide": "Server",
     "heroicons-outline": "ServerIcon",
     "heroicons-solid": "ServerIcon",
     "phosphor-regular": "HardDrivesIcon",
@@ -1547,7 +1577,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "dns",
   },
   settings: {
-    lucide: "Settings",
+    "lucide": "Settings",
     "heroicons-outline": "Cog6ToothIcon",
     "heroicons-solid": "Cog6ToothIcon",
     "phosphor-regular": "GearIcon",
@@ -1562,7 +1592,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "settings",
   },
   share: {
-    lucide: "Share",
+    "lucide": "Share",
     "heroicons-outline": "ShareIcon",
     "heroicons-solid": "ShareIcon",
     "phosphor-regular": "ShareIcon",
@@ -1577,7 +1607,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "share",
   },
   shield: {
-    lucide: "Shield",
+    "lucide": "Shield",
     "heroicons-outline": "ShieldCheckIcon",
     "heroicons-solid": "ShieldCheckIcon",
     "phosphor-regular": "ShieldIcon",
@@ -1592,7 +1622,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "shield",
   },
   "shopping-bag": {
-    lucide: "ShoppingBag",
+    "lucide": "ShoppingBag",
     "heroicons-outline": "ShoppingBagIcon",
     "heroicons-solid": "ShoppingBagIcon",
     "phosphor-regular": "ShoppingBagIcon",
@@ -1607,7 +1637,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "shopping_bag",
   },
   "shopping-cart": {
-    lucide: "ShoppingCart",
+    "lucide": "ShoppingCart",
     "heroicons-outline": "ShoppingCartIcon",
     "heroicons-solid": "ShoppingCartIcon",
     "phosphor-regular": "ShoppingCartIcon",
@@ -1622,7 +1652,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "shopping_cart",
   },
   smartphone: {
-    lucide: "Smartphone",
+    "lucide": "Smartphone",
     "heroicons-outline": "DevicePhoneMobileIcon",
     "heroicons-solid": "DevicePhoneMobileIcon",
     "phosphor-regular": "DeviceMobileIcon",
@@ -1637,7 +1667,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "smartphone",
   },
   smile: {
-    lucide: "Smile",
+    "lucide": "Smile",
     "heroicons-outline": "FaceSmileIcon",
     "heroicons-solid": "FaceSmileIcon",
     "phosphor-regular": "SmileyIcon",
@@ -1652,7 +1682,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "sentiment_satisfied",
   },
   sparkles: {
-    lucide: "Sparkles",
+    "lucide": "Sparkles",
     "heroicons-outline": "SparklesIcon",
     "heroicons-solid": "SparklesIcon",
     "phosphor-regular": "SparkleIcon",
@@ -1667,7 +1697,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "auto_awesome",
   },
   star: {
-    lucide: "Star",
+    "lucide": "Star",
     "heroicons-outline": "StarIcon",
     "heroicons-solid": "StarIcon",
     "phosphor-regular": "StarIcon",
@@ -1682,7 +1712,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "star",
   },
   sun: {
-    lucide: "Sun",
+    "lucide": "Sun",
     "heroicons-outline": "SunIcon",
     "heroicons-solid": "SunIcon",
     "phosphor-regular": "SunIcon",
@@ -1697,7 +1727,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "light_mode",
   },
   table: {
-    lucide: "Table",
+    "lucide": "Table",
     "heroicons-outline": "TableCellsIcon",
     "heroicons-solid": "TableCellsIcon",
     "phosphor-regular": "TableIcon",
@@ -1712,7 +1742,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "table",
   },
   tag: {
-    lucide: "Tag",
+    "lucide": "Tag",
     "heroicons-outline": "TagIcon",
     "heroicons-solid": "TagIcon",
     "phosphor-regular": "TagIcon",
@@ -1727,7 +1757,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "sell",
   },
   terminal: {
-    lucide: "Terminal",
+    "lucide": "Terminal",
     "heroicons-outline": "CommandLineIcon",
     "heroicons-solid": "CommandLineIcon",
     "phosphor-regular": "TerminalIcon",
@@ -1742,7 +1772,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "terminal",
   },
   timer: {
-    lucide: "Timer",
+    "lucide": "Timer",
     "heroicons-outline": "ClockIcon",
     "heroicons-solid": "ClockIcon",
     "phosphor-regular": "TimerIcon",
@@ -1757,7 +1787,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "timer",
   },
   trash: {
-    lucide: "Trash",
+    "lucide": "Trash",
     "heroicons-outline": "TrashIcon",
     "heroicons-solid": "TrashIcon",
     "phosphor-regular": "TrashIcon",
@@ -1772,7 +1802,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "delete",
   },
   "trending-up": {
-    lucide: "TrendingUp",
+    "lucide": "TrendingUp",
     "heroicons-outline": "ArrowTrendingUpIcon",
     "heroicons-solid": "ArrowTrendingUpIcon",
     "phosphor-regular": "TrendUpIcon",
@@ -1787,7 +1817,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "trending_up",
   },
   underline: {
-    lucide: "Underline",
+    "lucide": "Underline",
     "heroicons-outline": "UnderlineIcon",
     "heroicons-solid": "UnderlineIcon",
     "phosphor-regular": "TextUnderlineIcon",
@@ -1802,7 +1832,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "format_underlined",
   },
   unlock: {
-    lucide: "Unlock",
+    "lucide": "Unlock",
     "heroicons-outline": "LockOpenIcon",
     "heroicons-solid": "LockOpenIcon",
     "phosphor-regular": "LockOpenIcon",
@@ -1817,7 +1847,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "lock_open",
   },
   upload: {
-    lucide: "Upload",
+    "lucide": "Upload",
     "heroicons-outline": "ArrowUpTrayIcon",
     "heroicons-solid": "ArrowUpTrayIcon",
     "phosphor-regular": "UploadSimpleIcon",
@@ -1832,7 +1862,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "upload",
   },
   user: {
-    lucide: "User",
+    "lucide": "User",
     "heroicons-outline": "UserIcon",
     "heroicons-solid": "UserIcon",
     "phosphor-regular": "UserIcon",
@@ -1847,7 +1877,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "person",
   },
   users: {
-    lucide: "Users",
+    "lucide": "Users",
     "heroicons-outline": "UsersIcon",
     "heroicons-solid": "UsersIcon",
     "phosphor-regular": "UsersIcon",
@@ -1861,23 +1891,8 @@ export const iconCatalog = {
     "material-symbols-rounded": "group",
     "material-symbols-sharp": "group",
   },
-  "circle-user": {
-    lucide: "CircleUser",
-    "heroicons-outline": "UserCircleIcon",
-    "heroicons-solid": "UserCircleIcon",
-    "phosphor-regular": "UserCircleIcon",
-    "phosphor-fill": "UserCircleIcon",
-    "phosphor-duotone": "UserCircleIcon",
-    "tabler-outline": "IconUserCircle",
-    "tabler-filled": "IconUserCircle",
-    "fluent-outline": "PersonCircleRegular",
-    "fluent-filled": "PersonCircleFilled",
-    "material-symbols-outlined": "account_circle",
-    "material-symbols-rounded": "account_circle",
-    "material-symbols-sharp": "account_circle",
-  },
   volume: {
-    lucide: "Volume2",
+    "lucide": "Volume2",
     "heroicons-outline": "SpeakerWaveIcon",
     "heroicons-solid": "SpeakerWaveIcon",
     "phosphor-regular": "SpeakerHighIcon",
@@ -1892,7 +1907,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "volume_up",
   },
   "volume-off": {
-    lucide: "VolumeX",
+    "lucide": "VolumeX",
     "heroicons-outline": "SpeakerXMarkIcon",
     "heroicons-solid": "SpeakerXMarkIcon",
     "phosphor-regular": "SpeakerXIcon",
@@ -1907,7 +1922,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "volume_off",
   },
   wallet: {
-    lucide: "Wallet",
+    "lucide": "Wallet",
     "heroicons-outline": "WalletIcon",
     "heroicons-solid": "WalletIcon",
     "phosphor-regular": "WalletIcon",
@@ -1922,7 +1937,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "account_balance_wallet",
   },
   wand: {
-    lucide: "Wand",
+    "lucide": "Wand",
     "heroicons-outline": "SparklesIcon",
     "heroicons-solid": "SparklesIcon",
     "phosphor-regular": "MagicWandIcon",
@@ -1937,7 +1952,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "auto_fix_high",
   },
   wifi: {
-    lucide: "Wifi",
+    "lucide": "Wifi",
     "heroicons-outline": "WifiIcon",
     "heroicons-solid": "WifiIcon",
     "phosphor-regular": "WifiHighIcon",
@@ -1952,7 +1967,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "wifi",
   },
   x: {
-    lucide: "X",
+    "lucide": "X",
     "heroicons-outline": "XMarkIcon",
     "heroicons-solid": "XMarkIcon",
     "phosphor-regular": "XIcon",
@@ -1967,7 +1982,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "close",
   },
   "x-circle": {
-    lucide: "XCircle",
+    "lucide": "XCircle",
     "heroicons-outline": "XCircleIcon",
     "heroicons-solid": "XCircleIcon",
     "phosphor-regular": "XCircleIcon",
@@ -1982,7 +1997,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "cancel",
   },
   zap: {
-    lucide: "Zap",
+    "lucide": "Zap",
     "heroicons-outline": "BoltIcon",
     "heroicons-solid": "BoltIcon",
     "phosphor-regular": "LightningIcon",
@@ -1997,7 +2012,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "bolt",
   },
   "zoom-in": {
-    lucide: "ZoomIn",
+    "lucide": "ZoomIn",
     "heroicons-outline": "MagnifyingGlassPlusIcon",
     "heroicons-solid": "MagnifyingGlassPlusIcon",
     "phosphor-regular": "MagnifyingGlassPlusIcon",
@@ -2012,7 +2027,7 @@ export const iconCatalog = {
     "material-symbols-sharp": "zoom_in",
   },
   "zoom-out": {
-    lucide: "ZoomOut",
+    "lucide": "ZoomOut",
     "heroicons-outline": "MagnifyingGlassMinusIcon",
     "heroicons-solid": "MagnifyingGlassMinusIcon",
     "phosphor-regular": "MagnifyingGlassMinusIcon",

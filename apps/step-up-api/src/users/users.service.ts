@@ -651,6 +651,7 @@ export class UsersService {
       email: string;
       gender: Gender;
       age: number;
+      phone?: string | null;
     }>,
   ) {
     const uniqueStudents = Array.from(
@@ -662,6 +663,7 @@ export class UsersService {
             email: student.email.trim().toLowerCase(),
             gender: student.gender,
             ageRange: ageRangeFromAge(student.age),
+            phone: student.phone?.trim() || null,
           },
         ]),
       ).values(),
@@ -688,7 +690,7 @@ export class UsersService {
           ...this.crypto.sealPii({
             email: student.email,
             name: student.name,
-            phone: null,
+            phone: student.phone,
             bio: null,
             instagramUrl: null,
           }),

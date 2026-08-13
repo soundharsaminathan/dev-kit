@@ -119,6 +119,7 @@ export const commonIconSeeds = [
   { semantic: "palette", lucide: "Palette", tabler: "IconPalette" },
   { semantic: "monitor", lucide: "Monitor", tabler: "IconDeviceDesktop" },
   { semantic: "smartphone", lucide: "Smartphone", tabler: "IconDeviceMobile" },
+  { semantic: "phone-call", lucide: "PhoneCall", tabler: "IconPhoneCall" },
   { semantic: "terminal", lucide: "Terminal", tabler: "IconTerminal" },
   { semantic: "code", lucide: "Code", tabler: "IconCode" },
   { semantic: "git-branch", lucide: "GitBranch", tabler: "IconGitBranch" },

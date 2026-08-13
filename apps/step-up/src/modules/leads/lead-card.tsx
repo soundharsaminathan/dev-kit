@@ -1,4 +1,5 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@dev-ui/components/avatar";
+import { useToastContext } from "@dev-ui/components/toast";
 import { Icon } from "@dev-ui/icons";
 import { TouchButton } from "@/modules/ui/touch-button";
 import styles from "./leads.module.scss";
@@ -18,6 +19,7 @@ type LeadCardProps = {
 };
 
 export function LeadCard({ lead, filter, onSwitchTrial }: LeadCardProps) {
+  const { toast } = useToastContext("LeadCard");
   const telHref = lead.phone ? phoneTelHref(lead.phone) : null;
   const age = ageRangeLabel(lead.ageRange);
   const trial = lead.trialBooking;
@@ -29,7 +31,20 @@ export function LeadCard({ lead, filter, onSwitchTrial }: LeadCardProps) {
     .map((part) => part[0]?.toUpperCase() ?? "")
     .join("");
 
-  const metaParts = [age, lead.phone].filter(Boolean);
+  async function copyPhone(phone: string) {
+    try {
+      await navigator.clipboard.writeText(phone);
+      toast({
+        title: "Mobile number copied",
+        variant: "success",
+      });
+    } catch {
+      toast({
+        title: "Couldn’t copy mobile number",
+        variant: "error",
+      });
+    }
+  }
 
   return (
     <div className={styles.card} data-soon={soon ? "true" : undefined}>
@@ -39,31 +54,42 @@ export function LeadCard({ lead, filter, onSwitchTrial }: LeadCardProps) {
           <AvatarFallback>{initials || "?"}</AvatarFallback>
         </Avatar>
         <div className={styles.body}>
-          <p className={styles.name}>{lead.name}</p>
-          {metaParts.length > 0 ? (
-            <p className={styles.meta}>{metaParts.join(" · ")}</p>
+          <div className={styles.nameRow}>
+            <p className={styles.name}>{lead.name}</p>
+            {age ? <span className={styles.age}>{age}</span> : null}
+          </div>
+          {lead.phone ? (
+            <button
+              type="button"
+              className={styles.phone}
+              aria-label={`Copy ${lead.phone}`}
+              data-testid={`lead-copy-phone-${lead.id}`}
+              onClick={() => {
+                if (!lead.phone) return;
+                void copyPhone(lead.phone);
+              }}
+            >
+              {lead.phone}
+            </button>
           ) : (
             <p className={styles.meta}>No mobile on file</p>
           )}
         </div>
-        {telHref ? (
-          <a
-            className={styles.callButton}
-            href={telHref}
-            aria-label={`Call ${lead.name}`}
-            data-testid={`lead-call-${lead.id}`}
-          >
-            <Icon name="smartphone" />
-          </a>
-        ) : (
-          <span
-            className={styles.callButton}
-            data-disabled="true"
-            title="No phone number"
-          >
-            <Icon name="smartphone" />
-          </span>
-        )}
+        <TouchButton
+          variant="primary"
+          size="sm"
+          isIconOnly
+          className={styles.callButton}
+          aria-label={telHref ? `Call ${lead.name}` : "No phone number"}
+          data-testid={`lead-call-${lead.id}`}
+          isDisabled={!telHref}
+          onClick={() => {
+            if (!telHref) return;
+            window.location.assign(telHref);
+          }}
+        >
+          <Icon name="phone-call" />
+        </TouchButton>
       </div>
 
       {trial ? (

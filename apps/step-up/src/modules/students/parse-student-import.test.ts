@@ -19,12 +19,14 @@ describe("parseStudentImportRows", () => {
         email: "ada@example.com",
         gender: "FEMALE",
         age: 28,
+        phone: null,
       },
       {
         name: "Alan Turing",
         email: "alan@example.com",
         gender: "MALE",
         age: 16,
+        phone: null,
       },
     ]);
   });
@@ -59,6 +61,49 @@ describe("parseStudentImportRows", () => {
         ["", "bad", "Nope", "Nope"],
       ]),
     ).toThrow(/No valid students found/);
+  });
+
+  it("reads optional mobile numbers from Mobile or Phone columns", () => {
+    const result = parseStudentImportRows([
+      ["Name", "Email", "Gender", "Age", "Mobile"],
+      ["Ada Lovelace", "ada@example.com", "Female", 28, "+91 91234 56789"],
+      ["Alan Turing", "alan@example.com", "Male", 16, 9876543210],
+      ["Grace Hopper", "grace@example.com", "Female", 40, ""],
+    ]);
+
+    expect(result.invalidRows).toEqual([]);
+    expect(result.students).toEqual([
+      {
+        name: "Ada Lovelace",
+        email: "ada@example.com",
+        gender: "FEMALE",
+        age: 28,
+        phone: "+91 91234 56789",
+      },
+      {
+        name: "Alan Turing",
+        email: "alan@example.com",
+        gender: "MALE",
+        age: 16,
+        phone: "9876543210",
+      },
+      {
+        name: "Grace Hopper",
+        email: "grace@example.com",
+        gender: "FEMALE",
+        age: 40,
+        phone: null,
+      },
+    ]);
+  });
+
+  it("imports without a mobile column", () => {
+    const result = parseStudentImportRows([
+      ["Name", "Email", "Gender", "Age"],
+      ["Ada Lovelace", "ada@example.com", "Female", 28],
+    ]);
+
+    expect(result.students[0]?.phone).toBeNull();
   });
 
   it("enforces the import cap", () => {

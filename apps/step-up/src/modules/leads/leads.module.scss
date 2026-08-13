@@ -43,12 +43,50 @@
   min-width: 0;
 }
 
+.nameRow {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2, 0.5rem);
+  min-width: 0;
+}
+
 .name {
   margin: 0;
+  min-width: 0;
   font-size: 0.9375rem;
   font-weight: 600;
   letter-spacing: -0.02em;
   line-height: 1.25;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.age {
+  flex-shrink: 0;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: color-mix(in srgb, var(--color-fg) 58%, transparent);
+}
+
+.phone {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  max-width: 100%;
+  font: inherit;
+  font-size: 0.8125rem;
+  color: color-mix(in srgb, var(--color-fg) 58%, transparent);
+  text-align: start;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.phone:active {
+  color: var(--color-primary);
 }
 
 .meta {
@@ -61,28 +99,10 @@
 }
 
 .callButton {
-  display: grid;
-  place-items: center;
   flex-shrink: 0;
-  width: 2.75rem;
-  height: 2.75rem;
-  border-radius: var(--radius-full, 9999px);
-  border: 1px solid color-mix(in srgb, var(--color-primary) 28%, transparent);
-  background: color-mix(in srgb, var(--color-primary) 12%, transparent);
-  color: var(--color-primary);
-  text-decoration: none;
-  transition:
-    transform var(--interaction-transition-fast, 120ms) ease,
-    background-color var(--interaction-transition-fast, 120ms) ease;
-}
-
-.callButton:active {
-  transform: scale(var(--interaction-press-scale, 0.96));
-}
-
-.callButton[data-disabled="true"] {
-  opacity: 0.4;
-  pointer-events: none;
+  width: 2.75rem !important;
+  min-width: 2.75rem;
+  padding-inline: 0 !important;
 }
 
 .trialBlock {

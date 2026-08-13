@@ -96,6 +96,7 @@ export const iconNames = [
   "panel-left",
   "paperclip",
   "pen-square",
+  "phone-call",
   "pin",
   "plus",
   "plus-square",

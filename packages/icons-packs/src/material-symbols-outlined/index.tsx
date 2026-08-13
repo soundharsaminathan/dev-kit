@@ -2072,6 +2072,28 @@ const PenSquare = ({
   </span>
 );
 
+const PhoneCall = ({
+  className,
+  style,
+  "aria-hidden": ariaHidden = true,
+}: {
+  className?: string;
+  style?: React.CSSProperties;
+  "aria-hidden"?: boolean;
+}) => (
+  <span
+    aria-hidden={ariaHidden}
+    className={
+      className
+        ? `material-symbols-outlined ${className}`
+        : "material-symbols-outlined"
+    }
+    style={{ fontSize: "1.25em", lineHeight: 1, ...style }}
+  >
+    phone_in_talk
+  </span>
+);
+
 const Pin = ({
   className,
   style,
@@ -3071,6 +3093,7 @@ const pack = {
     "panel-left": PanelLeft,
     paperclip: Paperclip,
     "pen-square": PenSquare,
+    "phone-call": PhoneCall,
     pin: Pin,
     plus: Plus,
     "plus-square": PlusSquare,

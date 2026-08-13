@@ -91,6 +91,7 @@ import {
   PaperPlaneTiltIcon,
   PencilIcon,
   PencilSimpleLineIcon,
+  PhoneCallIcon,
   PlusIcon,
   PlusSquareIcon,
   PulseIcon,
@@ -513,6 +514,10 @@ const PenSquare = (
   props: Omit<React.ComponentProps<typeof PencilSimpleLineIcon>, "weight">,
 ) => <PencilSimpleLineIcon weight="fill" {...props} />;
 
+const PhoneCall = (
+  props: Omit<React.ComponentProps<typeof PhoneCallIcon>, "weight">,
+) => <PhoneCallIcon weight="fill" {...props} />;
+
 const Pin = (
   props: Omit<React.ComponentProps<typeof PushPinIcon>, "weight">,
 ) => <PushPinIcon weight="fill" {...props} />;
@@ -774,6 +779,7 @@ const pack = {
     "panel-left": PanelLeft,
     paperclip: Paperclip,
     "pen-square": PenSquare,
+    "phone-call": PhoneCall,
     pin: Pin,
     plus: Plus,
     "plus-square": PlusSquare,

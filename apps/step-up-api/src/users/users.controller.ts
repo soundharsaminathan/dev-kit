@@ -266,6 +266,10 @@ class BulkStudentDto {
   @Min(0)
   @Max(120)
   age!: number;
+
+  @IsOptional()
+  @IsString()
+  phone?: string;
 }
 
 class BulkCreateStudentsDto {

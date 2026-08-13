@@ -107,7 +107,7 @@ function ImportStudentsPage() {
       setStudents(result.students);
       if (result.invalidRows.length > 0) {
         setRowWarning(
-          `Skipped row${result.invalidRows.length === 1 ? "" : "s"} ${formatStudentImportRowList(result.invalidRows)} (missing name, invalid email, gender, or age). Fix those rows and re-upload, or import the ${result.students.length} valid student${result.students.length === 1 ? "" : "s"} below.`,
+          `Skipped row${result.invalidRows.length === 1 ? "" : "s"} ${formatStudentImportRowList(result.invalidRows)} (missing name, invalid email, gender, or age). Mobile is optional. Fix those rows and re-upload, or import the ${result.students.length} valid student${result.students.length === 1 ? "" : "s"} below.`,
         );
       }
     } catch (error) {
@@ -127,7 +127,7 @@ function ImportStudentsPage() {
     <>
       <Screen
         title="Import students"
-        subtitle='Upload a workbook with "Name", "Email", "Gender", and "Age" columns.'
+        subtitle='Upload a workbook with "Name", "Email", "Gender", "Age", and "Mobile" columns.'
         showBack
         backTo="/app/students"
         paddedCta={students.length > 0}
@@ -154,11 +154,12 @@ function ImportStudentsPage() {
           </TouchButton>
 
           <p className={staff.panelDesc}>
-            Use the template columns Name, Email, Gender (Female/Male), and Age
-            (exact years, 0–120). Age-range labels are assigned automatically
-            from that number. Blank rows are ignored. Duplicate emails are
-            skipped. Maximum {STUDENT_IMPORT_MAX} students per import. After
-            fixing rows, choose the file again to refresh the preview.
+            Use the template columns Name, Email, Gender (Female/Male), Age
+            (exact years, 0–120), and Mobile. Age-range labels are assigned
+            automatically from that number. Mobile is optional. Blank rows are
+            ignored. Duplicate emails are skipped. Maximum {STUDENT_IMPORT_MAX}{" "}
+            students per import. After fixing rows, choose the file again to
+            refresh the preview.
           </p>
 
           {fileError ? (
@@ -198,6 +199,7 @@ function ImportStudentsPage() {
                     <span className={staff.attentionTitle}>{student.name}</span>
                     <p className={staff.attentionMeta}>
                       {student.email} · {student.gender} · {student.age}
+                      {student.phone ? ` · ${student.phone}` : ""}
                     </p>
                   </div>
                 ))}

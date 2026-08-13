@@ -1400,6 +1400,29 @@ describe("UsersService.createStudents", () => {
     );
   });
 
+  it("seals an imported mobile number", async () => {
+    prisma.user.findMany.mockResolvedValue([]);
+    prisma.user.createMany.mockResolvedValue({ count: 1 });
+
+    await service.createStudents("studio-seed-1", [
+      {
+        name: "Ada Lovelace",
+        email: "ada@example.com",
+        gender: Gender.FEMALE,
+        age: 28,
+        phone: " +91 91234 56789 ",
+      },
+    ]);
+
+    expect(crypto.sealPii).toHaveBeenCalledWith(
+      expect.objectContaining({
+        email: "ada@example.com",
+        name: "Ada Lovelace",
+        phone: "+91 91234 56789",
+      }),
+    );
+  });
+
   it("skips emails that already exist in the studio", async () => {
     prisma.user.findMany.mockResolvedValue([
       { emailHash: "hash:ada@example.com" },

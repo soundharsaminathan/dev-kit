@@ -5,6 +5,7 @@ export type StudentImportRow = {
   email: string;
   gender: Gender;
   age: number;
+  phone: string | null;
 };
 
 export type ParseStudentImportResult = {
@@ -43,6 +44,14 @@ function parseGender(value: unknown): Gender | null {
     return key.toUpperCase() as Gender;
   }
   return GENDER_ALIASES[key] ?? null;
+}
+
+function parsePhone(value: unknown): string | null {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return String(Math.trunc(value));
+  }
+  const raw = cellText(value);
+  return raw || null;
 }
 
 function parseAge(value: unknown): number | null {
@@ -100,6 +109,13 @@ export function parseStudentImportRows(
   const emailIndex = findColumnIndex(headers, ["email"]);
   const genderIndex = findColumnIndex(headers, ["gender"]);
   const ageIndex = findColumnIndex(headers, ["age"]);
+  const phoneIndex = findColumnIndex(headers, [
+    "mobile",
+    "mobile no",
+    "mobile number",
+    "phone",
+    "phone number",
+  ]);
 
   if (
     nameIndex === -1 ||
@@ -121,8 +137,10 @@ export function parseStudentImportRows(
     const email = cellText(row?.[emailIndex]).toLowerCase();
     const gender = parseGender(row?.[genderIndex]);
     const age = parseAge(row?.[ageIndex]);
+    const phone =
+      phoneIndex === -1 ? null : parsePhone(row?.[phoneIndex]);
 
-    if (!name && !email && !gender && age === null) {
+    if (!name && !email && !gender && age === null && !phone) {
       continue;
     }
 
@@ -133,7 +151,7 @@ export function parseStudentImportRows(
 
     if (!seenEmails.has(email)) {
       seenEmails.add(email);
-      students.push({ name, email, gender, age });
+      students.push({ name, email, gender, age, phone });
     }
   }
 
