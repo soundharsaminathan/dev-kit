@@ -1361,14 +1361,7 @@ export class BillingService {
     }
 
     if (invoice.status === InvoiceStatus.REFUNDED) {
-      return {
-        ...invoice,
-        amount: Number(invoice.amount),
-        referralDiscount: Number(invoice.referralDiscount ?? 0),
-        studioDiscount: Number(invoice.studioDiscount ?? 0),
-        refundedAmount: Number(invoice.refundedAmount ?? 0),
-        thisRefundAmount: 0,
-      };
+      throw new BadRequestException("Invoice has already been fully refunded");
     }
 
     if (invoice.status !== InvoiceStatus.PAID) {

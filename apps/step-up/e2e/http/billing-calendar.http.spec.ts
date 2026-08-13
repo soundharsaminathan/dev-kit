@@ -17,11 +17,11 @@ test.describe("billing calendar HTTP @http", () => {
       const enrollment = await expectOk<{
         invoice: { id: string } | null;
         billingKind?: string;
-      }>("STAFF", `/batches/${SEED.beginnerBatchId}/enroll`, {
+      }>("STAFF", `/batches/${SEED.kidsBatchId}/enroll`, {
         method: "POST",
         body: JSON.stringify({
           studentId: student.id,
-          subscriptionId: SEED.adultPlanIds[0],
+          subscriptionId: SEED.kidPlanIds[0],
         }),
       });
       expect(enrollment.invoice).toBeNull();

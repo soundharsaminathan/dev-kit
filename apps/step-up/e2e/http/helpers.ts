@@ -61,6 +61,35 @@ export async function expectStatus(
   return result;
 }
 
+type RosterRow = {
+  studentId: string;
+  monthlyUnpaid?: boolean;
+  inactiveReason?: string;
+};
+
+/** GET /batches/:id is header-only; roster rows live on /roster. */
+export async function fetchRosterRows(
+  batchId: string,
+  tab: "active" | "inactive" = "active",
+  role: SeedRole = "STAFF",
+): Promise<RosterRow[]> {
+  const rows: RosterRow[] = [];
+  let cursor: string | undefined;
+  do {
+    const params = new URLSearchParams({ tab, limit: "50" });
+    if (cursor) {
+      params.set("cursor", cursor);
+    }
+    const page = await expectOk<{
+      items: RosterRow[];
+      nextCursor: string | null;
+    }>(role, `/batches/${batchId}/roster?${params.toString()}`);
+    rows.push(...unwrapPage(page));
+    cursor = page.nextCursor ?? undefined;
+  } while (cursor);
+  return rows;
+}
+
 export async function createHttpStudent(
   name = "HTTP Student",
   cleanup?: TestDataCleanup,
@@ -140,8 +169,7 @@ export async function createPendingInvoiceViaEnroll(
   } = {},
 ) {
   const category =
-    options.category ??
-    (options.planId?.includes("kid") ? "KIDS" : "ADULTS");
+    options.category ?? (options.planId?.includes("kid") ? "KIDS" : "ADULTS");
   const planId =
     options.planId ??
     (category === "KIDS" ? SEED.kidPlanIds[0] : SEED.adultPlanIds[0]);
@@ -152,7 +180,8 @@ export async function createPendingInvoiceViaEnroll(
         cleanup,
       );
   const batchId =
-    options.batchId ?? (await createFutureScheduleBatch(cleanup, { category })).id;
+    options.batchId ??
+    (await createFutureScheduleBatch(cleanup, { category })).id;
   const enrollment = await expectOk<{
     invoice: { id: string; status: string; amount: number } | null;
     billingKind?: string;

@@ -336,11 +336,15 @@ describe("BillingService.getTrainerAnalytics", () => {
       "studio-1",
     );
 
-    expect(result.byBatch.find((row) => row.batchId === "batch-kid-a")).toMatchObject({
+    expect(
+      result.byBatch.find((row) => row.batchId === "batch-kid-a"),
+    ).toMatchObject({
       collected: 950,
       invoiceCount: 1,
     });
-    expect(result.byBatch.find((row) => row.batchId === "batch-kid-b")).toMatchObject({
+    expect(
+      result.byBatch.find((row) => row.batchId === "batch-kid-b"),
+    ).toMatchObject({
       collected: 950,
       invoiceCount: 1,
     });
@@ -494,11 +498,15 @@ describe("BillingService.getTrainerAnalytics", () => {
     );
 
     expect(result.totals.collected).toBe(3000);
-    expect(result.byBatch.find((row) => row.batchId === "batch-1")).toMatchObject({
+    expect(
+      result.byBatch.find((row) => row.batchId === "batch-1"),
+    ).toMatchObject({
       collected: 3000,
       invoiceCount: 3,
     });
-    expect(result.byBatch.find((row) => row.batchId === "batch-2")).toMatchObject({
+    expect(
+      result.byBatch.find((row) => row.batchId === "batch-2"),
+    ).toMatchObject({
       collected: 0,
       invoiceCount: 0,
     });
@@ -734,6 +742,25 @@ describe("BillingService.refundInvoice", () => {
     });
     expect(result.status).toBe(InvoiceStatus.REFUNDED);
     expect(result.thisRefundAmount).toBe(1500);
+  });
+
+  it("rejects a second refund after the invoice is already REFUNDED", async () => {
+    prisma.invoice.findUnique.mockResolvedValue({
+      id: "inv-1",
+      amount: 2000,
+      refundedAmount: 2000,
+      status: InvoiceStatus.REFUNDED,
+      paymentMethod: PaymentMethod.CASH,
+      razorpayPaymentId: null,
+      membershipId: "mem-1",
+      membership: { id: "mem-1" },
+      studio: { id: "studio-1", settings: null },
+    });
+
+    await expect(
+      service.refundInvoice("inv-1", { amount: 100 }),
+    ).rejects.toThrow(/already been fully refunded/i);
+    expect(prisma.invoice.update).not.toHaveBeenCalled();
   });
 });
 

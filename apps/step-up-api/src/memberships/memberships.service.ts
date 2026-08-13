@@ -433,14 +433,31 @@ export class MembershipsService {
         ],
         paymentHold: args.paymentHold,
       });
+      // Discover checkout keeps the hold-only invoice. Staff/bulk/parent seat
+      // immediately, so the membership (and invoice link) exist before payment.
+      if (args.paymentHold === false) {
+        const membership = await this.startMembershipForEnroll({
+          batchId: args.batchId,
+          subscriptionId: args.subscriptionId,
+          studentId: args.studentId,
+          at: now,
+          billingPhase: MembershipBillingPhase.PREPAID,
+        });
+        const linked = await this.prisma.invoice.update({
+          where: { id: invoice.id },
+          data: { membershipId: membership.id },
+        });
+        return { kind: "prepaid", invoice: linked };
+      }
       return { kind: "prepaid", invoice };
     }
 
-    await this.startFirstPostpaidMembership({
+    await this.startMembershipForEnroll({
       batchId: args.batchId,
       subscriptionId: args.subscriptionId,
       studentId: args.studentId,
       at: now,
+      billingPhase: MembershipBillingPhase.FIRST_POSTPAID,
     });
     return { kind: "postpaid", invoice: null };
   }
@@ -475,7 +492,9 @@ export class MembershipsService {
       throw new BadRequestException("Only an unpaid invoice can be converted");
     }
     if (invoice.chargeType !== InvoiceChargeType.PREPAID_FULL) {
-      throw new BadRequestException("Only the upcoming prepaid invoice can convert to quarterly");
+      throw new BadRequestException(
+        "Only the upcoming prepaid invoice can convert to quarterly",
+      );
     }
     const meta = parsePurchaseMeta(invoice.purchaseMeta);
     if (!meta?.firstMonthConvertToQuarterly) {
@@ -615,11 +634,12 @@ export class MembershipsService {
     });
   }
 
-  private async startFirstPostpaidMembership(args: {
+  private async startMembershipForEnroll(args: {
     batchId: string;
     subscriptionId: string;
     studentId: string;
     at: Date;
+    billingPhase: MembershipBillingPhase;
   }) {
     const subscription = await this.prisma.subscription.findUnique({
       where: { id: args.subscriptionId },
@@ -644,7 +664,7 @@ export class MembershipsService {
         periodStart,
         periodEnd,
         status: MembershipStatus.ACTIVE,
-        billingPhase: MembershipBillingPhase.FIRST_POSTPAID,
+        billingPhase: args.billingPhase,
         batchId: args.batchId,
         coveredStudents: {
           create: {
@@ -809,10 +829,7 @@ export class MembershipsService {
    * (do not advance to the next period).
    * Pass notify:false when billing already emits PAYMENT_RECEIVED for the same pay.
    */
-  async renewManual(
-    membershipId: string,
-    options?: { notify?: boolean },
-  ) {
+  async renewManual(membershipId: string, options?: { notify?: boolean }) {
     const notify = options?.notify !== false;
     const existing = await this.prisma.membership.findUnique({
       where: { id: membershipId },

@@ -773,6 +773,30 @@ async function main() {
       status: SessionStatus.COMPLETED,
     },
     {
+      id: "smoke-session-beginner-past",
+      batchId: SMOKE.beginnerBatchId,
+      startsAt: new Date(
+        Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 2, 10, 0, 0, 0),
+      ),
+      endsAt: new Date(
+        Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 2, 11, 0, 0, 0),
+      ),
+      status: SessionStatus.COMPLETED,
+      type: SessionType.REGULAR,
+    },
+    {
+      id: "smoke-session-trial-past",
+      batchId: SMOKE.trialBatchId,
+      startsAt: new Date(
+        Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 2, 11, 0, 0, 0),
+      ),
+      endsAt: new Date(
+        Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 2, 12, 0, 0, 0),
+      ),
+      status: SessionStatus.COMPLETED,
+      type: SessionType.REGULAR,
+    },
+    {
       id: SMOKE.sessionAttendanceId,
       batchId: SMOKE.kidsBatchId,
       startsAt: attendanceStartsAt,

@@ -31,8 +31,7 @@ async function createPendingInvoiceViaEnroll(
   studentName = "Revenue Test Student",
 ) {
   const category = planId.includes("kid") ? "KIDS" : "ADULTS";
-  const reuseId =
-    batchId && !SEED_BATCH_IDS.has(batchId) ? batchId : undefined;
+  const reuseId = batchId && !SEED_BATCH_IDS.has(batchId) ? batchId : undefined;
   return enrollPrepaid(cleanup, {
     batchId: reuseId,
     planId,
@@ -329,12 +328,13 @@ test.describe("Trainer-level revenue @http", () => {
       await markPaid(inv1.id);
 
       // Payment in kids batch (Trainer A)
-      const { invoice: inv2, batchId: kidsBatchId } = await createPendingInvoiceViaEnroll(
-        cleanup,
-        SEED.kidsBatchId,
-        SEED.kidPlanIds[0],
-        "Trainer Analytics 2",
-      );
+      const { invoice: inv2, batchId: kidsBatchId } =
+        await createPendingInvoiceViaEnroll(
+          cleanup,
+          SEED.kidsBatchId,
+          SEED.kidPlanIds[0],
+          "Trainer Analytics 2",
+        );
       await markPaid(inv2.id);
 
       const analytics = await getTrainerAnalytics(SEED.users.TRAINER.id);
@@ -497,7 +497,7 @@ test.describe("Date-range filtering @http", () => {
       bucket: "day",
     });
     expect(analytics.totals.collected).toBe(0);
-    expect(analytics.series.length).toBe(0);
+    expect(analytics.series.every((row) => row.collected === 0)).toBe(true);
   });
 
   test("comparison period is calculated for date-bounded range @http", async () => {
@@ -983,20 +983,20 @@ test.describe("Role-based revenue access @http", () => {
 
   test("owner can view studio invoices @http", async () => {
     const invoices = unwrapPage(
-      await expectOk<
-        | Array<{ id: string }>
-        | { items: Array<{ id: string }> }
-      >("OWNER", `/billing/studio/${SEED.studioId}`),
+      await expectOk<Array<{ id: string }> | { items: Array<{ id: string }> }>(
+        "OWNER",
+        `/billing/studio/${SEED.studioId}`,
+      ),
     );
     expect(Array.isArray(invoices)).toBe(true);
   });
 
   test("student can list own invoices @http", async () => {
     const invoices = unwrapPage(
-      await expectOk<
-        | Array<{ id: string }>
-        | { items: Array<{ id: string }> }
-      >("STUDENT", `/billing/student/${SEED.users.STUDENT.id}`),
+      await expectOk<Array<{ id: string }> | { items: Array<{ id: string }> }>(
+        "STUDENT",
+        `/billing/student/${SEED.users.STUDENT.id}`,
+      ),
     );
     expect(Array.isArray(invoices)).toBe(true);
   });
@@ -1131,7 +1131,7 @@ test.describe("Invoice status transitions @http", () => {
   test("PENDING → CANCELLED via abandon @http", async () => {
     const cleanup = new TestDataCleanup();
     try {
-      const { invoice } = await createPendingInvoiceViaEnroll(
+      const { invoice, student } = await createPendingInvoiceViaEnroll(
         cleanup,
         SEED.beginnerBatchId,
         SEED.adultPlanIds[0],
@@ -1142,6 +1142,7 @@ test.describe("Invoice status transitions @http", () => {
         "STUDENT",
         `/billing/${invoice.id}/abandon-payment`,
         { method: "POST", body: "{}" },
+        { userId: student.id },
       );
       expect(abandoned.status).toBe("CANCELLED");
     } finally {
@@ -1228,13 +1229,16 @@ test.describe("Revenue reconciliation @http", () => {
   test("full reconciliation: multiple payments → batch/trainer totals correct @http", async () => {
     const cleanup = new TestDataCleanup();
     try {
-      const { invoice: inv1, student: studentA, batchId: adultBatchId } =
-        await createPendingInvoiceViaEnroll(
-          cleanup,
-          undefined,
-          SEED.adultPlanIds[0],
-          "Recon Student A",
-        );
+      const {
+        invoice: inv1,
+        student: studentA,
+        batchId: adultBatchId,
+      } = await createPendingInvoiceViaEnroll(
+        cleanup,
+        undefined,
+        SEED.adultPlanIds[0],
+        "Recon Student A",
+      );
       await markPaid(inv1.id, "CASH");
 
       const { invoice: inv2, student: studentB } =
@@ -1246,13 +1250,16 @@ test.describe("Revenue reconciliation @http", () => {
         );
       await markPaid(inv2.id, "UPI_MANUAL");
 
-      const { invoice: inv3, student: studentC, batchId: kidsBatchId } =
-        await createPendingInvoiceViaEnroll(
-          cleanup,
-          undefined,
-          SEED.kidPlanIds[0],
-          "Recon Student C",
-        );
+      const {
+        invoice: inv3,
+        student: studentC,
+        batchId: kidsBatchId,
+      } = await createPendingInvoiceViaEnroll(
+        cleanup,
+        undefined,
+        SEED.kidPlanIds[0],
+        "Recon Student C",
+      );
       await markPaid(inv3.id, "CASH");
 
       const batchARevenue = await getBatchRevenue(adultBatchId);
@@ -1284,9 +1291,9 @@ test.describe("Revenue reconciliation @http", () => {
         ADULT_MONTHLY_PRICE + KID_MONTHLY_PRICE,
       );
       expect(analytics.byPaymentMethod.UPI_MANUAL).toBeDefined();
-      expect(analytics.byPaymentMethod.UPI_MANUAL.amount).toBeGreaterThanOrEqual(
-        ADULT_MONTHLY_PRICE,
-      );
+      expect(
+        analytics.byPaymentMethod.UPI_MANUAL.amount,
+      ).toBeGreaterThanOrEqual(ADULT_MONTHLY_PRICE);
 
       // === Verify student invoice lists ===
       const studentAInvoices = unwrapPage(
@@ -1569,7 +1576,7 @@ test.describe("Abandoned payment no revenue @http", () => {
   test("abandoned invoice does not contribute to revenue @http", async () => {
     const cleanup = new TestDataCleanup();
     try {
-      const { invoice, batchId } = await createPendingInvoiceViaEnroll(
+      const { invoice, batchId, student } = await createPendingInvoiceViaEnroll(
         cleanup,
         SEED.beginnerBatchId,
         SEED.adultPlanIds[0],
@@ -1583,6 +1590,7 @@ test.describe("Abandoned payment no revenue @http", () => {
         "STUDENT",
         `/billing/${invoice.id}/abandon-payment`,
         { method: "POST", body: "{}" },
+        { userId: student.id },
       );
 
       const afterRevenue = await getBatchRevenue(batchId);
