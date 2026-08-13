@@ -35,6 +35,11 @@ import { MediaService } from "../media/media.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { isAlwaysPublicRole } from "../social/visibility";
 import {
+  type LeadDateFilter,
+  type LeadDto,
+  resolveLeadDayRange,
+} from "./leads";
+import {
   batchHasCompletedSession,
   batchHasScheduledSession,
   classifyStudentFunnelStage,
@@ -1592,6 +1597,301 @@ export class UsersService {
       : presented;
 
     return filtered.sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  async listLeads(
+    studioId: string,
+    options: { filter?: LeadDateFilter } = {},
+  ): Promise<LeadDto[]> {
+    const filter = options.filter ?? "all";
+    const dayRange = resolveLeadDayRange(filter);
+
+    const openTrialStatuses: BookingStatus[] = [
+      BookingStatus.PENDING,
+      BookingStatus.CONFIRMED,
+    ];
+
+    const [students, openTrials] = await Promise.all([
+      this.prisma.user.findMany({
+        where: { studioId, role: UserRole.STUDENT },
+        select: {
+          id: true,
+          createdAt: true,
+          active: true,
+          ageRange: true,
+          photoUrl: true,
+          ...userPiiSelect,
+          batchEnrollments: {
+            where: { batch: { studioId } },
+            select: {
+              status: true,
+              batch: {
+                select: {
+                  id: true,
+                  active: true,
+                  sessions: { select: { status: true } },
+                },
+              },
+            },
+          },
+          bookings: {
+            where: { studioId },
+            select: {
+              type: true,
+              status: true,
+              sessionId: true,
+            },
+          },
+          attendanceRecords: {
+            where: { session: { batch: { studioId } } },
+            select: {
+              sessionId: true,
+              status: true,
+            },
+          },
+          membershipSeats: {
+            where: { membership: { subscription: { studioId } } },
+            select: {
+              membership: { select: { status: true } },
+            },
+          },
+        },
+      }),
+      this.prisma.booking.findMany({
+        where: {
+          studioId,
+          type: BookingType.TRIAL,
+          status: { in: openTrialStatuses },
+        },
+        select: {
+          id: true,
+          studentId: true,
+          status: true,
+          sessionId: true,
+          startsAt: true,
+          session: {
+            select: {
+              startsAt: true,
+              batch: { select: { name: true } },
+            },
+          },
+          batch: { select: { name: true } },
+        },
+        orderBy: [{ startsAt: "asc" }, { id: "desc" }],
+      }),
+    ]);
+
+    const trialByStudent = new Map<string, (typeof openTrials)[number]>();
+    for (const trial of openTrials) {
+      if (!trialByStudent.has(trial.studentId)) {
+        trialByStudent.set(trial.studentId, trial);
+      }
+    }
+
+    const leads: LeadDto[] = [];
+
+    for (const student of students) {
+      const {
+        batchEnrollments,
+        bookings,
+        attendanceRecords,
+        membershipSeats,
+        ...user
+      } = student;
+
+      const funnelInput = {
+        id: student.id,
+        createdAt: student.createdAt,
+        enrollments: batchEnrollments.map((enrollment) => ({
+          batchId: enrollment.batch.id,
+          batchActive: enrollment.batch.active,
+          enrollmentActive: enrollment.status === "ACTIVE",
+          hasScheduledSession: batchHasScheduledSession(
+            enrollment.batch.sessions,
+          ),
+          hasCompletedSession: batchHasCompletedSession(
+            enrollment.batch.sessions,
+          ),
+        })),
+        bookings,
+        attendance: attendanceRecords,
+        memberships: membershipSeats.map((seat) => ({
+          status: seat.membership.status,
+        })),
+      };
+
+      const funnelStage = classifyStudentFunnelStage(funnelInput);
+      const trial = trialByStudent.get(student.id) ?? null;
+      const sessionStartsAt =
+        trial?.session?.startsAt?.toISOString() ??
+        trial?.startsAt?.toISOString() ??
+        null;
+
+      if (dayRange) {
+        if (!sessionStartsAt) continue;
+        const starts = new Date(sessionStartsAt);
+        if (starts < dayRange.start || starts > dayRange.end) continue;
+      } else if (!student.active) {
+        // archived included when filter=all
+      } else if (trial) {
+        // trial booked
+      } else if (funnelStage !== "signedInOnly") {
+        continue;
+      }
+
+      const presented = await this.presentUser(user);
+      leads.push({
+        id: presented.id,
+        name: presented.name,
+        phone: presented.phone ?? null,
+        photoUrl: presented.photoUrl ?? null,
+        ageRange: student.ageRange,
+        createdAt: student.createdAt.toISOString(),
+        active: student.active,
+        section: !student.active ? "archived" : trial ? "trialBooked" : "new",
+        trialBooking: trial
+          ? {
+              id: trial.id,
+              status: trial.status,
+              sessionId: trial.sessionId,
+              sessionStartsAt,
+              batchName: trial.session?.batch.name ?? trial.batch?.name ?? null,
+            }
+          : null,
+      });
+    }
+
+    return leads.sort((a, b) => {
+      const aTime = a.trialBooking?.sessionStartsAt
+        ? new Date(a.trialBooking.sessionStartsAt).getTime()
+        : Number.POSITIVE_INFINITY;
+      const bTime = b.trialBooking?.sessionStartsAt
+        ? new Date(b.trialBooking.sessionStartsAt).getTime()
+        : Number.POSITIVE_INFINITY;
+      if (aTime !== bTime) return aTime - bTime;
+      return a.name.localeCompare(b.name);
+    });
+  }
+
+  async createLead(
+    studioId: string,
+    data: {
+      name: string;
+      phone: string;
+      ageRange: AgeRange;
+      sessionId?: string;
+    },
+  ): Promise<LeadDto> {
+    const name = data.name.trim();
+    const phone = data.phone.trim();
+    if (!name) {
+      throw new BadRequestException("Name is required");
+    }
+    if (!phone) {
+      throw new BadRequestException("Mobile number is required");
+    }
+
+    let session: {
+      id: string;
+      batchId: string;
+      startsAt: Date;
+      endsAt: Date;
+      batch: { id: string; name: string; studioId: string; active: boolean };
+    } | null = null;
+
+    if (data.sessionId) {
+      const found = await this.prisma.session.findUnique({
+        where: { id: data.sessionId },
+        include: {
+          batch: {
+            select: { id: true, name: true, studioId: true, active: true },
+          },
+        },
+      });
+      if (
+        !found ||
+        found.status === SessionStatus.CANCELLED ||
+        !found.batch.active ||
+        found.batch.studioId !== studioId
+      ) {
+        throw new BadRequestException(
+          "Select a trial session from this studio",
+        );
+      }
+      session = found;
+    }
+
+    const leadId = randomUUID();
+    const email = `lead-${leadId}@noreply.stepup.local`;
+    const sealed = this.crypto.sealPii({
+      email,
+      name,
+      phone,
+      bio: null,
+      instagramUrl: null,
+    });
+
+    const user = await this.prisma.user.create({
+      data: {
+        firebaseUid: `staff-created:lead:${leadId}`,
+        ...sealed,
+        role: UserRole.STUDENT,
+        studioId,
+        ageRange: data.ageRange,
+        styles: [],
+        profileVisibility: ProfileVisibility.PRIVATE,
+      },
+      select: {
+        id: true,
+        createdAt: true,
+        active: true,
+        ageRange: true,
+        photoUrl: true,
+        ...userPiiSelect,
+      },
+    });
+
+    let trialBooking: LeadDto["trialBooking"] = null;
+    if (session) {
+      const booking = await this.prisma.booking.create({
+        data: {
+          studioId,
+          studentId: user.id,
+          type: BookingType.TRIAL,
+          batchId: session.batchId,
+          sessionId: session.id,
+          status: BookingStatus.PENDING,
+          startsAt: session.startsAt,
+          endsAt: session.endsAt,
+          notes: "Staff quick-add lead — call to confirm",
+        },
+        select: {
+          id: true,
+          status: true,
+          sessionId: true,
+        },
+      });
+      trialBooking = {
+        id: booking.id,
+        status: booking.status,
+        sessionId: booking.sessionId,
+        sessionStartsAt: session.startsAt.toISOString(),
+        batchName: session.batch.name,
+      };
+    }
+
+    const presented = await this.presentUser(user);
+    return {
+      id: presented.id,
+      name: presented.name,
+      phone: presented.phone ?? null,
+      photoUrl: presented.photoUrl ?? null,
+      ageRange: user.ageRange,
+      createdAt: user.createdAt.toISOString(),
+      active: user.active,
+      section: trialBooking ? "trialBooked" : "new",
+      trialBooking,
+    };
   }
 
   async linkStudioFamily(

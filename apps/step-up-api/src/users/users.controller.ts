@@ -40,6 +40,11 @@ import { RolesGuard } from "../auth/roles.guard";
 import { assertSameStudio } from "../auth/studio-access";
 import { SocialService } from "../social/social.service";
 import {
+  isLeadDateFilter,
+  LEAD_DATE_FILTERS,
+  type LeadDateFilter,
+} from "./leads";
+import {
   isStudentFunnelPeriod,
   isStudentFunnelStage,
   STUDENT_FUNNEL_PERIODS,
@@ -281,6 +286,23 @@ class CreateFamilyMemberDto {
   ageRange!: AgeRange;
 }
 
+class CreateLeadDto {
+  @IsString()
+  @IsNotEmpty()
+  name!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  phone!: string;
+
+  @IsEnum(AgeRange)
+  ageRange!: AgeRange;
+
+  @IsOptional()
+  @IsString()
+  sessionId?: string;
+}
+
 @Controller("users")
 @UseGuards(AuthGuard, RolesGuard)
 export class UsersController {
@@ -497,6 +519,36 @@ export class UsersController {
       studioId,
       (period as StudentFunnelPeriod | undefined) ?? "lifetime",
     );
+  }
+
+  @Get("studio/:studioId/leads")
+  @Roles(UserRole.OWNER, UserRole.STAFF)
+  listLeads(
+    @CurrentUser() user: DecryptedUser,
+    @Param("studioId") studioId: string,
+    @Query("filter") filter?: string,
+  ) {
+    assertSameStudio(user, studioId);
+    if (filter !== undefined && !isLeadDateFilter(filter)) {
+      throw new BadRequestException(
+        `Invalid filter. Expected one of: ${LEAD_DATE_FILTERS.join(", ")}`,
+      );
+    }
+
+    return this.usersService.listLeads(studioId, {
+      filter: (filter as LeadDateFilter | undefined) ?? "all",
+    });
+  }
+
+  @Post("studio/:studioId/leads")
+  @Roles(UserRole.OWNER, UserRole.STAFF)
+  createLead(
+    @CurrentUser() user: DecryptedUser,
+    @Param("studioId") studioId: string,
+    @Body() dto: CreateLeadDto,
+  ) {
+    assertSameStudio(user, studioId);
+    return this.usersService.createLead(studioId, dto);
   }
 
   @Get("studio/:studioId/students/:studentId")

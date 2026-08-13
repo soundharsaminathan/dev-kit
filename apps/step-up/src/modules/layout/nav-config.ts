@@ -77,6 +77,13 @@ const appLinks: NavLinkItem[] = [
     roles: ADMIN_ROLES,
   },
   {
+    to: "/app/leads",
+    label: "Leads",
+    icon: "smartphone",
+    section: "People",
+    roles: ADMIN_ROLES,
+  },
+  {
     to: "/app/trainers",
     label: "Trainers",
     icon: ENTITY_ICONS.trainer,

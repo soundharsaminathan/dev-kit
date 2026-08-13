@@ -713,13 +713,25 @@ export class BookingsService {
       throw new BadRequestException("Both startsAt and endsAt are required");
     }
 
+    let nextSession: {
+      id: string;
+      batchId: string;
+      startsAt: Date;
+      endsAt: Date;
+      batch: { studioId: string; active: boolean };
+    } | null = null;
+
     if (sessionId) {
       const session = await this.prisma.session.findUnique({
         where: { id: sessionId },
+        include: {
+          batch: { select: { studioId: true, active: true } },
+        },
       });
       if (!session) {
         throw new BadRequestException("Session not found");
       }
+      nextSession = session;
     }
 
     const existing = await this.prisma.booking.findUnique({
@@ -751,7 +763,26 @@ export class BookingsService {
       );
     }
 
+    if (
+      nextSession &&
+      existing.type === BookingType.TRIAL &&
+      (!nextSession.batch.active ||
+        nextSession.batch.studioId !== existing.studioId)
+    ) {
+      throw new BadRequestException("Select a trial session from this studio");
+    }
+
     const nextStatus = status;
+    const resolvedStartsAt =
+      startsAt ??
+      (nextSession ? nextSession.startsAt.toISOString() : undefined) ??
+      existing.startsAt?.toISOString();
+    const resolvedEndsAt =
+      endsAt ??
+      (nextSession ? nextSession.endsAt.toISOString() : undefined) ??
+      existing.endsAt?.toISOString();
+    const resolvedBatchId =
+      nextSession?.batchId ?? existing.batchId ?? undefined;
     const schedulingTouched =
       sessionId !== undefined ||
       trainerId !== undefined ||
@@ -763,25 +794,42 @@ export class BookingsService {
     if (becomingConfirmed || schedulingTouched) {
       await this.assertBookingScheduleConflicts({
         studentId: existing.studentId,
-        batchId: existing.batchId ?? undefined,
+        batchId: resolvedBatchId,
         sessionId: sessionId ?? existing.sessionId ?? undefined,
         trainerId: trainerId ?? existing.trainerId ?? undefined,
-        startsAt: startsAt ?? existing.startsAt?.toISOString(),
-        endsAt: endsAt ?? existing.endsAt?.toISOString(),
+        startsAt: resolvedStartsAt,
+        endsAt: resolvedEndsAt,
         excludeBookingIds: [id],
       });
     }
 
+    const schedulePatch = {
+      ...(sessionId !== undefined ? { sessionId } : {}),
+      ...(nextSession
+        ? {
+            batchId: nextSession.batchId,
+            startsAt: nextSession.startsAt,
+            endsAt: nextSession.endsAt,
+          }
+        : startsAt && endsAt
+          ? {
+              startsAt: new Date(startsAt),
+              endsAt: new Date(endsAt),
+            }
+          : {}),
+      ...(trainerId !== undefined ? { trainerId } : {}),
+    };
+
     if (
       becomingConfirmed &&
-      existing.batchId &&
+      resolvedBatchId &&
       existing.type !== BookingType.PRIVATE &&
       existing.type !== BookingType.TRIAL
     ) {
       return this.prisma.$transaction(async (tx) => {
-        await lockBatchRow(tx, existing.batchId!);
+        await lockBatchRow(tx, resolvedBatchId);
         const batch = await tx.batch.findUnique({
-          where: { id: existing.batchId! },
+          where: { id: resolvedBatchId },
           select: { capacity: true },
         });
         if (!batch) {
@@ -789,7 +837,7 @@ export class BookingsService {
         }
         await assertBatchHasSeat(
           tx,
-          existing.batchId!,
+          resolvedBatchId,
           batch.capacity,
           existing.studentId,
         );
@@ -798,14 +846,7 @@ export class BookingsService {
           where: { id },
           data: {
             status,
-            ...(sessionId !== undefined ? { sessionId } : {}),
-            ...(trainerId !== undefined ? { trainerId } : {}),
-            ...(startsAt && endsAt
-              ? {
-                  startsAt: new Date(startsAt),
-                  endsAt: new Date(endsAt),
-                }
-              : {}),
+            ...schedulePatch,
           },
         });
       });
@@ -815,14 +856,7 @@ export class BookingsService {
       where: { id },
       data: {
         status,
-        ...(sessionId !== undefined ? { sessionId } : {}),
-        ...(trainerId !== undefined ? { trainerId } : {}),
-        ...(startsAt && endsAt
-          ? {
-              startsAt: new Date(startsAt),
-              endsAt: new Date(endsAt),
-            }
-          : {}),
+        ...schedulePatch,
       },
     });
   }
