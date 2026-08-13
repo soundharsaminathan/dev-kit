@@ -121,6 +121,7 @@ const appLinks: NavLinkItem[] = [
     label: "Payments",
     icon: "credit-card",
     section: "Money",
+    roles: ADMIN_ROLES,
   },
   {
     to: "/app/expenses",

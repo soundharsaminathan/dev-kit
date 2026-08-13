@@ -54,6 +54,10 @@ import {
   toDiscoverFilters,
 } from "./dto/batch-list.dto";
 
+/** Keep DTO classes as values so ValidationPipe can whitelist query params. */
+void BatchListQueryDto;
+void BatchRosterQueryDto;
+
 class DanceCategoryDto {
   @IsString()
   name!: string;
@@ -332,7 +336,7 @@ export class BatchesController {
   }
 
   @Get(":id/revenue")
-  @Roles(UserRole.OWNER, UserRole.STAFF, UserRole.TRAINER)
+  @Roles(UserRole.OWNER, UserRole.STAFF)
   getRevenue(@Param("id") id: string, @Query("period") period?: string) {
     if (period != null && period !== "all" && period !== "month") {
       throw new BadRequestException('period must be "all" or "month"');

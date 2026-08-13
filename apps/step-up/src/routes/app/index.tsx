@@ -648,9 +648,9 @@ function AppDashboardPage() {
                 Bookings
                 <span className={staff.quickLinkMeta}>All requests</span>
               </Link>
-              <Link to="/app/payments" className={staff.quickLink}>
-                Payments
-                <span className={staff.quickLinkMeta}>Earnings</span>
+              <Link to="/app/messages" className={staff.quickLink}>
+                Messages
+                <span className={staff.quickLinkMeta}>Chat</span>
               </Link>
             </div>
           </div>

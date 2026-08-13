@@ -131,7 +131,7 @@ export class BillingController {
   }
 
   @Get("analytics/trainer/:trainerId")
-  @Roles(UserRole.OWNER, UserRole.STAFF, UserRole.TRAINER)
+  @Roles(UserRole.OWNER, UserRole.STAFF)
   trainerAnalytics(
     @CurrentUser() user: DecryptedUser,
     @Param("trainerId") trainerId: string,

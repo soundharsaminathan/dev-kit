@@ -1546,18 +1546,9 @@ export class BillingService {
     const isStaff =
       actor.role === UserRole.OWNER || actor.role === UserRole.STAFF;
 
-    if (actor.role === UserRole.TRAINER) {
-      if (trainerId !== actor.id) {
-        throw new ForbiddenException(
-          "Trainers can only view their own payment analytics",
-        );
-      }
-      return actor.id;
-    }
-
     if (!isStaff) {
       throw new ForbiddenException(
-        "Only trainers and studio admins can view payment analytics",
+        "Only studio admins can view payment analytics",
       );
     }
 

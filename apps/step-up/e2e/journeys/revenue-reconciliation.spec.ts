@@ -220,19 +220,16 @@ test.describe("Revenue reconciliation E2E @critical", () => {
     }
   });
 
-  test("trainer sees only their batches in analytics @critical", async () => {
-    // Trainer A has both beginner and kids batches
-    const analytics = await apiRequest<{
-      trainerId: string;
-      totals: { collected: number };
-      byBatch: Array<{ batchId: string; collected: number }>;
-    }>(
-      "TRAINER",
-      `/billing/analytics/trainer/${SEED.users.TRAINER.id}?studioId=${SEED.studioId}`,
-    );
-
-    expect(analytics.trainerId).toBe(SEED.users.TRAINER.id);
-    expect(analytics.byBatch.length).toBeGreaterThanOrEqual(1);
+  test("trainer cannot access payment analytics @critical", async () => {
+    await expect(
+      apiRequest(
+        "TRAINER",
+        `/billing/analytics/trainer/${SEED.users.TRAINER.id}?studioId=${SEED.studioId}`,
+      ),
+    ).rejects.toThrow(/403/);
+    await expect(
+      apiRequest("TRAINER", `/batches/${SEED.beginnerBatchId}/revenue`),
+    ).rejects.toThrow(/403/);
   });
 
   test("student cannot access revenue endpoints @critical", async () => {
