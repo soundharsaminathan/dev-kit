@@ -1109,6 +1109,10 @@ describe("BatchesService.remove and enroll", () => {
     });
     expect(memberships.beginBatchEnrollment).toHaveBeenCalledTimes(2);
     expect(memberships.purchaseForBatch).not.toHaveBeenCalled();
+    expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+    expect(
+      memberships.beginBatchEnrollment.mock.invocationCallOrder[0]!,
+    ).toBeLessThan(prisma.$transaction.mock.invocationCallOrder[0]!);
   });
 
   it("rejects bulk enroll for non-staff actors", async () => {

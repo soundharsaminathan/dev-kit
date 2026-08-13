@@ -628,16 +628,18 @@ test.describe("Refund revenue impact @http", () => {
   test("partial refund reduces collected revenue @http", async () => {
     const cleanup = new TestDataCleanup();
     try {
-      const { invoice } = await createPendingInvoiceViaEnroll(
+      const { invoice, batchId } = await createPendingInvoiceViaEnroll(
         cleanup,
-        SEED.beginnerBatchId,
+        undefined,
         SEED.adultPlanIds[0],
         "Partial Refund Student",
       );
       await markPaid(invoice.id);
 
       const before = await getTrainerAnalytics(SEED.users.TRAINER.id);
-      const beforeCollected = before.totals.collected;
+      const beforeRow = before.byBatch.find((row) => row.batchId === batchId);
+      expect(beforeRow).toBeDefined();
+      const beforeCollected = beforeRow!.collected;
 
       const refundAmount = 500;
       const refunded = await refundInvoice(invoice.id, refundAmount, "Test");
@@ -645,8 +647,9 @@ test.describe("Refund revenue impact @http", () => {
       expect(refunded.refundedAmount).toBe(refundAmount);
 
       const after = await getTrainerAnalytics(SEED.users.TRAINER.id);
-      // collected should decrease by refundAmount
-      expect(after.totals.collected).toBe(beforeCollected - refundAmount);
+      const afterRow = after.byBatch.find((row) => row.batchId === batchId);
+      expect(afterRow).toBeDefined();
+      expect(afterRow!.collected).toBe(beforeCollected - refundAmount);
       expect(after.totals.refunded).toBeGreaterThanOrEqual(refundAmount);
     } finally {
       await cleanup.dispose();
@@ -1322,24 +1325,26 @@ test.describe("Revenue reconciliation @http", () => {
   test("reconciliation after refund: revenue adjusts correctly @http", async () => {
     const cleanup = new TestDataCleanup();
     try {
-      const { invoice } = await createPendingInvoiceViaEnroll(
+      const { invoice, batchId } = await createPendingInvoiceViaEnroll(
         cleanup,
-        SEED.beginnerBatchId,
+        undefined,
         SEED.adultPlanIds[0],
         "Recon Refund Student",
       );
       await markPaid(invoice.id);
 
-      // Revenue should include the payment
       const before = await getTrainerAnalytics(SEED.users.TRAINER.id);
-      const beforeCollected = before.totals.collected;
+      const beforeRow = before.byBatch.find((row) => row.batchId === batchId);
+      expect(beforeRow).toBeDefined();
+      const beforeCollected = beforeRow!.collected;
 
-      // Refund half
       const refundAmount = Math.floor(ADULT_MONTHLY_PRICE / 2);
       await refundInvoice(invoice.id, refundAmount, "Half refund");
 
       const after = await getTrainerAnalytics(SEED.users.TRAINER.id);
-      expect(after.totals.collected).toBe(beforeCollected - refundAmount);
+      const afterRow = after.byBatch.find((row) => row.batchId === batchId);
+      expect(afterRow).toBeDefined();
+      expect(afterRow!.collected).toBe(beforeCollected - refundAmount);
       expect(after.totals.refunded).toBeGreaterThanOrEqual(refundAmount);
     } finally {
       await cleanup.dispose();

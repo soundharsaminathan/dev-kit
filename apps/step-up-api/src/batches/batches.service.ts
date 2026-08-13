@@ -7,7 +7,7 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import {
-  AgeRange,
+  type AgeRange,
   BatchCategory,
   BatchEnrollmentStatus,
   BillingCadence,
@@ -397,7 +397,9 @@ export class BatchesService {
       }>;
       enrollments?: Array<{
         studentId?: string;
-        student?: ({ photoUrl?: string | null } & Record<string, unknown>) | null;
+        student?:
+          | ({ photoUrl?: string | null } & Record<string, unknown>)
+          | null;
       }>;
       branch?: {
         photos?: string[] | null;
@@ -429,9 +431,12 @@ export class BatchesService {
       : undefined;
 
     const sourceBranch = batch.branch;
-    let branch: (NonNullable<T["branch"]> & {
-      coverImageUrl?: string | null;
-    }) | null | undefined = sourceBranch;
+    let branch:
+      | (NonNullable<T["branch"]> & {
+          coverImageUrl?: string | null;
+        })
+      | null
+      | undefined = sourceBranch;
     if (sourceBranch) {
       const branchCoverKey =
         sourceBranch.coverMedia?.objectKey ||
@@ -1490,19 +1495,30 @@ export class BatchesService {
       );
     }
 
+    const billings = [];
+    for (const studentId of uniqueIds) {
+      // Bill before the locked seat writes. beginBatchEnrollment uses the
+      // root Prisma client; calling it inside $transaction holds one pool
+      // connection while waiting for another (P2024 under HTTP parallelism).
+      billings.push(
+        await this.memberships.beginBatchEnrollment({
+          batchId,
+          subscriptionId,
+          studentId,
+          paymentHold: false,
+        }),
+      );
+    }
+
     const results = await this.prisma.$transaction(
       async (tx) => {
         await lockBatchRow(tx, batchId);
         await assertBatchHasSeats(tx, batchId, batch.capacity, uniqueIds);
 
         const enrollments = [];
-        for (const studentId of uniqueIds) {
-          const billing = await this.memberships.beginBatchEnrollment({
-            batchId,
-            subscriptionId,
-            studentId,
-            paymentHold: false,
-          });
+        for (let index = 0; index < uniqueIds.length; index += 1) {
+          const studentId = uniqueIds[index]!;
+          const billing = billings[index]!;
           const enrollment = await tx.batchEnrollment.upsert({
             where: {
               batchId_studentId: { batchId, studentId },
@@ -1589,9 +1605,7 @@ export class BatchesService {
         studioId: source.studioId,
         active: true,
         id: { notIn: [...excludeIds] },
-        ...(includeAllPrices
-          ? {}
-          : { plans: { some: { subscriptionId } } }),
+        ...(includeAllPrices ? {} : { plans: { some: { subscriptionId } } }),
       },
       include: {
         branch: { select: { name: true } },
@@ -2103,10 +2117,7 @@ export class BatchesService {
     });
   }
 
-  async getRevenue(
-    id: string,
-    options: { period?: "all" | "month" } = {},
-  ) {
+  async getRevenue(id: string, options: { period?: "all" | "month" } = {}) {
     const period = options.period ?? "all";
     const batch = await this.prisma.batch.findUnique({
       where: { id },
@@ -2196,10 +2207,7 @@ export class BatchesService {
       }
 
       for (const invoice of invoices) {
-        if (
-          monthRange &&
-          !invoiceMatchesRevenuePeriod(invoice, monthRange)
-        ) {
+        if (monthRange && !invoiceMatchesRevenuePeriod(invoice, monthRange)) {
           continue;
         }
 
