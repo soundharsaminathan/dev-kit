@@ -145,7 +145,11 @@ function AppRouter() {
 
       const home = homePathForUser(auth.user);
       if (home === "/app" || home.startsWith("/me")) {
-        await router.preloadRoute({ to: home }).catch(() => undefined);
+        const current = router.state.location.pathname;
+        const alreadyThere = current === home || current.startsWith(`${home}/`);
+        if (!alreadyThere) {
+          await router.preloadRoute({ to: home }).catch(() => undefined);
+        }
       }
     };
 

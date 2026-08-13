@@ -75,6 +75,23 @@ interface MessagePayload {
   } | null;
 }
 
+export function formatMembersJoinedNotice(names: string[]): string {
+  const cleaned = names.map((name) => name.trim()).filter(Boolean);
+  if (cleaned.length === 0) {
+    return "A new member joined the group";
+  }
+  if (cleaned.length === 1) {
+    return `${cleaned[0]} joined the group`;
+  }
+  if (cleaned.length === 2) {
+    return `${cleaned[0]} and ${cleaned[1]} joined the group`;
+  }
+  const rest = cleaned.length - 2;
+  return `${cleaned[0]}, ${cleaned[1]}, and ${rest} ${
+    rest === 1 ? "other" : "others"
+  } joined the group`;
+}
+
 export interface CreateConversationInput {
   type: "DM" | "GROUP";
   memberIds: string[];
@@ -700,6 +717,76 @@ export class ChatService {
       message: serialized,
     });
     return serialized;
+  }
+
+  async postBatchSystemNotice(
+    senderId: string,
+    batchId: string,
+    text: string,
+  ) {
+    const trimmed = text.trim();
+    if (!trimmed) {
+      throw new BadRequestException("Notice is empty");
+    }
+
+    const ensured = await this.ensureBatchConversation(batchId);
+    const encrypted = this.crypto.encryptPayload(ensured.encryptedKey, {
+      text: trimmed,
+    });
+
+    const message = await this.prisma.message.create({
+      data: {
+        conversationId: ensured.conversationId,
+        senderId,
+        type: MessageType.SYSTEM,
+        ciphertext: encrypted.ciphertext,
+        iv: encrypted.iv,
+      },
+      include: messageInclude,
+    });
+
+    await this.prisma.conversation.update({
+      where: { id: ensured.conversationId },
+      data: { lastMessageAt: message.createdAt },
+    });
+
+    const serialized = await this.serializeMessage(
+      message,
+      ensured.encryptedKey,
+    );
+    this.gateway.emitToConversation(ensured.conversationId, "message.new", {
+      conversationId: ensured.conversationId,
+      message: serialized,
+    });
+    return serialized;
+  }
+
+  async announceMembersJoined(
+    senderId: string,
+    batchId: string,
+    studentIds: string[],
+  ) {
+    const uniqueIds = [...new Set(studentIds.filter(Boolean))];
+    if (uniqueIds.length === 0) {
+      return null;
+    }
+
+    const users = await this.prisma.user.findMany({
+      where: { id: { in: uniqueIds } },
+      select: userSelect,
+    });
+    const nameById = new Map(
+      users.map((user) => [user.id, this.userCrypto.decryptUser(user).name]),
+    );
+    const names = uniqueIds
+      .map((id) => nameById.get(id))
+      .filter((name): name is string => Boolean(name?.trim()));
+
+    return this.postBatchSystemNotice(
+      senderId,
+      batchId,
+      formatMembersJoinedNotice(names),
+    );
   }
 
   async listMessages(

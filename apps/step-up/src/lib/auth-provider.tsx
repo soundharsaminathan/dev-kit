@@ -15,6 +15,7 @@ import {
   type AuthUser,
 } from "./auth-context";
 import { mapAuthError } from "./auth-errors";
+import { shouldKeepHydratedSession } from "./auth-session";
 import {
   type AgeRange,
   type ExperienceLevel,
@@ -434,12 +435,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             }
           } catch (error) {
             if (!cancelled) {
-              clearSessionCache();
-              setUser(null);
-              setHasPasswordProvider(false);
-              setEmailVerified(false);
-              settleSyncWaiters(firebaseUser.uid, null, error);
-              await signOut(auth).catch(() => undefined);
+              if (shouldKeepHydratedSession(error, cacheHit) && cached) {
+                settleSyncWaiters(firebaseUser.uid, cached.user);
+              } else {
+                clearSessionCache();
+                setUser(null);
+                setHasPasswordProvider(false);
+                setEmailVerified(false);
+                settleSyncWaiters(firebaseUser.uid, null, error);
+                await signOut(auth).catch(() => undefined);
+              }
             }
           } finally {
             finishLoading();

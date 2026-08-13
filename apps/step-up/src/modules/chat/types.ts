@@ -164,6 +164,8 @@ export function messagePreview(message: ChatMessage | null) {
       return `📅 ${message.event?.title ?? "Event"}`;
     case "LOCATION":
       return "📍 Location";
+    case "SYSTEM":
+      return message.text ?? "Update";
     default:
       return message.text ?? "";
   }

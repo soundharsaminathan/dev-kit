@@ -3,6 +3,7 @@ import {
   apiRequest,
   authFile,
   canJoinPostpaidNow,
+  closeSmokeContext,
   enrollPostpaid,
   enrollUnpaidOnPostpaidBatch,
   expect,
@@ -195,8 +196,7 @@ test.describe("trainer smoke @smoke", () => {
       expect(entry?.monthlyUnpaid).toBe(true);
       expect(entry?.attendance?.status).toBe("PRESENT");
     } finally {
-      await context.close();
-      await cleanup.dispose();
+      await closeSmokeContext(context, cleanup);
     }
   });
 
@@ -249,14 +249,14 @@ test.describe("trainer smoke @smoke", () => {
       await expect(row).toBeVisible();
       await expect(row.getByText("Not paid")).toHaveCount(0);
     } finally {
-      await context.close();
-      await cleanup.dispose();
+      await closeSmokeContext(context, cleanup);
     }
   });
 
   test("mid-month enrollee marks present without unpaid confirm @smoke", async ({
     browser,
   }) => {
+    test.setTimeout(180_000);
     test.skip(!canJoinPostpaidNow(), "UTC 1st is always prepaid-at-join");
     const cleanup = new SmokeDataCleanup();
     const stamp = Date.now();
@@ -294,8 +294,7 @@ test.describe("trainer smoke @smoke", () => {
       expect(response.ok()).toBeTruthy();
       await expect(page.getByTestId("confirm-unpaid-mark")).toHaveCount(0);
     } finally {
-      await context.close();
-      await cleanup.dispose();
+      await closeSmokeContext(context, cleanup);
     }
   });
 

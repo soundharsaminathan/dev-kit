@@ -57,31 +57,40 @@ function hhmm(totalMinutes: number) {
 }
 
 /**
- * Non-overlapping 45-minute slots in 04:00–11:45 UTC so parallel HTTP tests
- * are less likely to hit trainer/branch schedule conflicts.
+ * Non-overlapping 45-minute slots across the UTC day so parallel HTTP tests
+ * and sequential smoke calendar batches are less likely to hit trainer conflicts.
  */
 export function uniqueClockSlot(stamp = Date.now()) {
-  const buckets = Math.floor((8 * 60) / 45);
+  const buckets = Math.floor((24 * 60 - 45) / 45);
   const bucket = Math.abs(stamp + slotSeq++ * 19) % buckets;
-  const startMinutes = 4 * 60 + bucket * 45;
+  const startMinutes = bucket * 45;
   return {
     startTime: hhmm(startMinutes),
     endTime: hhmm(startMinutes + 45),
   };
 }
 
-/** First weekday this month whose session start is already in the past. */
-export function pastWeekdayThisMonth(at = new Date(), startTime = "04:00") {
+/** A weekday this month whose session start is already in the past. */
+export function pastWeekdayThisMonth(
+  at = new Date(),
+  startTime = "04:00",
+  stamp = Date.now(),
+) {
   const [hour, minute] = startTime.split(":").map(Number);
+  const weekdays: number[] = [];
   for (let day = 1; day <= at.getUTCDate(); day += 1) {
     const startsAt = new Date(
       Date.UTC(at.getUTCFullYear(), at.getUTCMonth(), day, hour, minute),
     );
     if (startsAt.getTime() < at.getTime()) {
-      return startsAt.getUTCDay();
+      weekdays.push(startsAt.getUTCDay());
     }
   }
-  return at.getUTCDay();
+  const unique = [...new Set(weekdays)];
+  if (unique.length === 0) {
+    return at.getUTCDay();
+  }
+  return unique[Math.abs(stamp) % unique.length]!;
 }
 
 export function prepaidScheduleJson(stamp = Date.now()): BatchScheduleJson {
@@ -110,7 +119,7 @@ export function postpaidScheduleJson(stamp = Date.now()): BatchScheduleJson {
   const clock = uniqueClockSlot(stamp);
   return {
     frequency: "WEEKLY",
-    weekdays: [pastWeekdayThisMonth(now, clock.startTime)],
+    weekdays: [pastWeekdayThisMonth(now, clock.startTime, stamp)],
     startDate: utcYmd(start),
     endDate: utcYmd(end),
     ...clock,

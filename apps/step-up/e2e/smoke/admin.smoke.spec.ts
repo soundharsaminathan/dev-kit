@@ -3,6 +3,7 @@ import {
   apiRequest,
   authFile,
   bearerFor,
+  closeSmokeContext,
   createCalendarBatch,
   enrollPrepaid,
   expect,
@@ -179,8 +180,7 @@ test.describe("admin (staff) smoke @smoke", () => {
         })
         .toBe("PAID");
     } finally {
-      await context.close();
-      await cleanup.dispose();
+      await closeSmokeContext(context, cleanup);
     }
   });
 
@@ -222,8 +222,7 @@ test.describe("admin (staff) smoke @smoke", () => {
           .getByTestId(`print-invoice-${invoice.id}`),
       ).toBeVisible();
     } finally {
-      await context.close();
-      await cleanup.dispose();
+      await closeSmokeContext(context, cleanup);
     }
   });
 
@@ -263,8 +262,7 @@ test.describe("admin (staff) smoke @smoke", () => {
         latest.find((row) => row.id === invoice.id)?.refundedAmount ?? 0,
       ).toBe(0);
     } finally {
-      await context.close();
-      await cleanup.dispose();
+      await closeSmokeContext(context, cleanup);
     }
   });
 
@@ -347,8 +345,7 @@ test.describe("admin (staff) smoke @smoke", () => {
       const row = directory.find((entry) => entry.id === student.id);
       expect(row?.funnelStage).toBe("leftBatch");
     } finally {
-      await context.close();
-      await cleanup.dispose();
+      await closeSmokeContext(context, cleanup);
     }
   });
 
@@ -383,8 +380,7 @@ test.describe("admin (staff) smoke @smoke", () => {
       await expect(page.getByText(`Smoke Plan ${stamp}`)).toBeVisible();
       await sweepPath(page, `/app/subscriptions/${created.id}`);
     } finally {
-      await context.close();
-      await cleanup.dispose();
+      await closeSmokeContext(context, cleanup);
     }
   });
 
@@ -466,8 +462,7 @@ test.describe("admin (staff) smoke @smoke", () => {
       ]);
       expect(paidResponse.ok()).toBeTruthy();
     } finally {
-      await context.close();
-      await cleanup.dispose();
+      await closeSmokeContext(context, cleanup);
     }
   });
 

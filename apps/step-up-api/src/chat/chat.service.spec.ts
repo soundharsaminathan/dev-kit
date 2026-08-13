@@ -1,7 +1,7 @@
 import { BadRequestException, ForbiddenException } from "@nestjs/common";
 import { UserRole } from "@prisma/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { ChatService } from "./chat.service";
+import { ChatService, formatMembersJoinedNotice } from "./chat.service";
 
 const owner = {
   id: "owner-1",
@@ -45,6 +45,21 @@ function conversationRecord(overrides: Record<string, unknown> = {}) {
     ...overrides,
   };
 }
+
+describe("formatMembersJoinedNotice", () => {
+  it("names one, two, and many joiners", () => {
+    expect(formatMembersJoinedNotice(["Priya"])).toBe("Priya joined the group");
+    expect(formatMembersJoinedNotice(["Priya", "Alex"])).toBe(
+      "Priya and Alex joined the group",
+    );
+    expect(formatMembersJoinedNotice(["Priya", "Alex", "Sam"])).toBe(
+      "Priya, Alex, and 1 other joined the group",
+    );
+    expect(formatMembersJoinedNotice(["Priya", "Alex", "Sam", "Lee"])).toBe(
+      "Priya, Alex, and 2 others joined the group",
+    );
+  });
+});
 
 describe("ChatService", () => {
   const prisma = {
@@ -582,6 +597,149 @@ describe("ChatService", () => {
           messageId: "msg-2",
         }),
       );
+    });
+  });
+
+  describe("batch system notices", () => {
+    function stubBatchConversation() {
+      prisma.batch.findUnique.mockResolvedValue({
+        id: "batch-1",
+        name: "Kids Hip-hop",
+        studioId: "studio-1",
+        trainers: [{ trainerId: "trainer-1" }],
+        enrollments: [{ studentId: "student-1" }],
+      });
+      prisma.conversation.findUnique.mockResolvedValue({
+        id: "conv-batch",
+        encryptedKey: "wrapped",
+      });
+      prisma.conversationMember.deleteMany.mockResolvedValue({ count: 0 });
+      prisma.conversationMember.createMany.mockResolvedValue({ count: 0 });
+      prisma.conversation.update.mockResolvedValue({});
+    }
+
+    it("posts an encrypted SYSTEM notice into the batch chat", async () => {
+      stubBatchConversation();
+      prisma.user.findMany.mockResolvedValue([{ id: "owner-1" }]);
+      prisma.message.create.mockResolvedValue({
+        id: "msg-sys-1",
+        conversationId: "conv-batch",
+        senderId: "owner-1",
+        type: "SYSTEM",
+        ciphertext: "ct",
+        iv: "iv",
+        imageUrls: [],
+        audioUrl: null,
+        audioDuration: null,
+        replyToId: null,
+        deletedAt: null,
+        createdAt: new Date("2026-08-13T10:00:00.000Z"),
+        sender: {
+          id: "owner-1",
+          name: "Owner",
+          photoUrl: null,
+          role: UserRole.OWNER,
+        },
+        replyTo: null,
+        reactions: [],
+        poll: null,
+        event: null,
+      });
+      crypto.decryptPayload.mockReturnValue({
+        text: "Priya joined the group",
+      });
+
+      const result = await service.postBatchSystemNotice(
+        "owner-1",
+        "batch-1",
+        "Priya joined the group",
+      );
+
+      expect(prisma.message.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            conversationId: "conv-batch",
+            senderId: "owner-1",
+            type: "SYSTEM",
+          }),
+        }),
+      );
+      expect(result.type).toBe("SYSTEM");
+      expect(result.text).toBe("Priya joined the group");
+      expect(gateway.emitToConversation).toHaveBeenCalledWith(
+        "conv-batch",
+        "message.new",
+        expect.objectContaining({ conversationId: "conv-batch" }),
+      );
+      expect(chatNotifications.notifyNewMessage).not.toHaveBeenCalled();
+    });
+
+    it("rejects an empty system notice", async () => {
+      await expect(
+        service.postBatchSystemNotice("owner-1", "batch-1", "   "),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(prisma.message.create).not.toHaveBeenCalled();
+    });
+
+    it("announces newly enrolled members by name", async () => {
+      stubBatchConversation();
+      prisma.user.findMany.mockImplementation(
+        async (args: { where?: { id?: { in?: string[] }; role?: unknown } }) => {
+          if (args.where?.id?.in) {
+            return [
+              {
+                id: "student-1",
+                name: "Priya",
+                photoUrl: null,
+                role: UserRole.STUDENT,
+              },
+              {
+                id: "student-2",
+                name: "Alex",
+                photoUrl: null,
+                role: UserRole.STUDENT,
+              },
+            ];
+          }
+          return [{ id: "owner-1" }];
+        },
+      );
+      prisma.message.create.mockResolvedValue({
+        id: "msg-sys-2",
+        conversationId: "conv-batch",
+        senderId: "owner-1",
+        type: "SYSTEM",
+        ciphertext: "ct",
+        iv: "iv",
+        imageUrls: [],
+        audioUrl: null,
+        audioDuration: null,
+        replyToId: null,
+        deletedAt: null,
+        createdAt: new Date("2026-08-13T10:00:00.000Z"),
+        sender: {
+          id: "owner-1",
+          name: "Owner",
+          photoUrl: null,
+          role: UserRole.OWNER,
+        },
+        replyTo: null,
+        reactions: [],
+        poll: null,
+        event: null,
+      });
+      crypto.decryptPayload.mockReturnValue({
+        text: "Priya and Alex joined the group",
+      });
+
+      await service.announceMembersJoined("owner-1", "batch-1", [
+        "student-1",
+        "student-2",
+      ]);
+
+      expect(crypto.encryptPayload).toHaveBeenCalledWith("wrapped", {
+        text: "Priya and Alex joined the group",
+      });
     });
   });
 });

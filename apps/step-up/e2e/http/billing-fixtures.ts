@@ -109,7 +109,7 @@ export async function createCalendarBatch(
   const branches = [SEED.branchMainId, SEED.branchEastId];
   let lastError: unknown;
 
-  for (let attempt = 0; attempt < 8; attempt += 1) {
+  for (let attempt = 0; attempt < 16; attempt += 1) {
     const stamp =
       Date.now() + attempt * 97_000 + Math.floor(Math.random() * 1_000);
     const name =

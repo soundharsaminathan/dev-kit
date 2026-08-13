@@ -30,6 +30,7 @@ import {
   parsePurchaseMeta,
 } from "../billing/family-combine";
 import { ScheduleConflictService } from "../calendar/schedule-conflict.service";
+import { ChatService } from "../chat/chat.service";
 import { MediaService } from "../media/media.service";
 import {
   batchCategoryForAgeRange,
@@ -363,6 +364,7 @@ export class BatchesService {
     @Inject(MembershipsService)
     private readonly memberships: MembershipsService,
     @Inject(BillingService) private readonly billing: BillingService,
+    @Inject(ChatService) private readonly chat: ChatService,
   ) {}
 
   private async withSignedStudentPhoto<
@@ -1021,6 +1023,9 @@ export class BatchesService {
           },
         });
       });
+      void this.chat
+        .announceMembersJoined(args.purchaserUserId, batchId, [studentId])
+        .catch(() => undefined);
       return {
         billingKind: billing.kind,
         enrolled: true,
@@ -1431,6 +1436,10 @@ export class BatchesService {
       });
     });
 
+    void this.chat
+      .announceMembersJoined(actor.id, batchId, [studentId])
+      .catch(() => undefined);
+
     return {
       ...enrollment,
       billingKind: billing.kind,
@@ -1546,6 +1555,10 @@ export class BatchesService {
       },
       { timeout: 30_000 },
     );
+
+    void this.chat
+      .announceMembersJoined(actor.id, batchId, uniqueIds)
+      .catch(() => undefined);
 
     return { enrollments: results };
   }
@@ -1797,6 +1810,9 @@ export class BatchesService {
       });
     });
     await this.memberships.moveCurrentTrackToBatch(studentId, toBatchId);
+    void this.chat
+      .announceMembersJoined(studentId, toBatchId, [studentId])
+      .catch(() => undefined);
     return moved;
   }
 

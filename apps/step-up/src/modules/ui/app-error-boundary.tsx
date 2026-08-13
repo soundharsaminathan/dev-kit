@@ -36,7 +36,7 @@ export class AppErrorBoundary extends Component<Props, State> {
 
   render() {
     if (this.state.hasError) {
-      return this.props.fallback ?? <p>Something went wrong.</p>;
+      return this.props.fallback ?? <h1>Something went wrong.</h1>;
     }
     return this.props.children;
   }

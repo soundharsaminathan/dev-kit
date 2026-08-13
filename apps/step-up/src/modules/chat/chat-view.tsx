@@ -345,7 +345,11 @@ export function MessageList({
             new Date(message.createdAt).toDateString();
         const showSender =
           isGroup &&
-          (!previous || previous.sender.id !== message.sender.id || newDay);
+          message.type !== "SYSTEM" &&
+          (!previous ||
+            previous.type === "SYSTEM" ||
+            previous.sender.id !== message.sender.id ||
+            newDay);
 
         return (
           <div
@@ -358,46 +362,55 @@ export function MessageList({
                 <span>{dayLabel(message.createdAt)}</span>
               </div>
             ) : null}
-            <MessageBubble
-              message={message}
-              currentUserId={currentUserId}
-              showSender={showSender}
-              canDelete={message.sender.id === currentUserId || isAdmin}
-              highlighted={highlightedMessageId === message.id}
-              onToggleReaction={(emoji, active) =>
-                reactionMutation.mutate({
-                  messageId: message.id,
-                  emoji,
-                  active,
-                })
-              }
-              onReply={onReply}
-              onJumpToReply={onJumpToReply}
-              onDelete={(target) => {
-                if (target.clientId && target.sendStatus) {
-                  discardPendingSend(queryClient, target.clientId);
-                  return;
+            {message.type === "SYSTEM" ? (
+              <div
+                className={styles.systemNotice}
+                data-testid="chat-system-notice"
+              >
+                <span>{message.text || "Update"}</span>
+              </div>
+            ) : (
+              <MessageBubble
+                message={message}
+                currentUserId={currentUserId}
+                showSender={showSender}
+                canDelete={message.sender.id === currentUserId || isAdmin}
+                highlighted={highlightedMessageId === message.id}
+                onToggleReaction={(emoji, active) =>
+                  reactionMutation.mutate({
+                    messageId: message.id,
+                    emoji,
+                    active,
+                  })
                 }
-                deleteMutation.mutate(target.id);
-              }}
-              onResend={(target) => {
-                if (target.clientId) {
-                  resendMutation.mutate(target.clientId);
+                onReply={onReply}
+                onJumpToReply={onJumpToReply}
+                onDelete={(target) => {
+                  if (target.clientId && target.sendStatus) {
+                    discardPendingSend(queryClient, target.clientId);
+                    return;
+                  }
+                  deleteMutation.mutate(target.id);
+                }}
+                onResend={(target) => {
+                  if (target.clientId) {
+                    resendMutation.mutate(target.clientId);
+                  }
+                }}
+                resendPending={
+                  resendMutation.isPending &&
+                  resendMutation.variables === message.clientId
                 }
-              }}
-              resendPending={
-                resendMutation.isPending &&
-                resendMutation.variables === message.clientId
-              }
-              onVote={(pollId, optionIds) =>
-                voteMutation.mutate({ pollId, optionIds })
-              }
-              onRsvp={(eventId, status) =>
-                rsvpMutation.mutate({ eventId, status })
-              }
-              votePending={voteMutation.isPending}
-              rsvpPending={rsvpMutation.isPending}
-            />
+                onVote={(pollId, optionIds) =>
+                  voteMutation.mutate({ pollId, optionIds })
+                }
+                onRsvp={(eventId, status) =>
+                  rsvpMutation.mutate({ eventId, status })
+                }
+                votePending={voteMutation.isPending}
+                rsvpPending={rsvpMutation.isPending}
+              />
+            )}
           </div>
         );
       })}

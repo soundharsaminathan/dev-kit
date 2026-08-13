@@ -113,6 +113,7 @@ describe("BatchesService branch validation", () => {
       media as never,
       memberships as never,
       { refundInvoice: vi.fn() } as never,
+      { announceMembersJoined: vi.fn().mockResolvedValue(undefined) } as never,
     );
     prisma.$transaction.mockImplementation(
       async (callback: (tx: typeof prisma) => unknown) => callback(prisma),
@@ -247,6 +248,7 @@ describe("BatchesService update", () => {
         purchaseForBatch: vi.fn(),
       } as never,
       { refundInvoice: vi.fn() } as never,
+      { announceMembersJoined: vi.fn().mockResolvedValue(undefined) } as never,
     );
     prisma.$transaction.mockImplementation(
       async (callback: (tx: typeof prisma) => unknown) => callback(prisma),
@@ -474,6 +476,7 @@ describe("BatchesService getRevenue", () => {
         purchaseForBatch: vi.fn(),
       } as never,
       { refundInvoice: vi.fn() } as never,
+      { announceMembersJoined: vi.fn().mockResolvedValue(undefined) } as never,
     );
   });
 
@@ -804,6 +807,7 @@ describe("BatchesService rate", () => {
         purchaseForBatch: vi.fn(),
       } as never,
       { refundInvoice: vi.fn() } as never,
+      { announceMembersJoined: vi.fn().mockResolvedValue(undefined) } as never,
     );
     prisma.$transaction.mockImplementation(
       async (callback: (tx: typeof prisma) => unknown) => callback(prisma),
@@ -902,6 +906,10 @@ describe("BatchesService.remove and enroll", () => {
     beginBatchEnrollment: vi.fn(),
   };
 
+  const chat = {
+    announceMembersJoined: vi.fn().mockResolvedValue(undefined),
+  };
+
   let service: BatchesService;
 
   beforeEach(() => {
@@ -914,6 +922,7 @@ describe("BatchesService.remove and enroll", () => {
       media as never,
       memberships as never,
       { refundInvoice: vi.fn() } as never,
+      chat as never,
     );
     prisma.$transaction.mockImplementation(
       async (callback: (tx: typeof prisma) => unknown) => callback(prisma),
@@ -1035,6 +1044,13 @@ describe("BatchesService.remove and enroll", () => {
       studentId: "student-1",
       paymentHold: false,
     });
+    await vi.waitFor(() => {
+      expect(chat.announceMembersJoined).toHaveBeenCalledWith(
+        "student-1",
+        "batch-1",
+        ["student-1"],
+      );
+    });
   });
 
   it("rejects enroll when student is already enrolled", async () => {
@@ -1056,6 +1072,7 @@ describe("BatchesService.remove and enroll", () => {
       ),
     ).rejects.toBeInstanceOf(BadRequestException);
     expect(memberships.beginBatchEnrollment).not.toHaveBeenCalled();
+    expect(chat.announceMembersJoined).not.toHaveBeenCalled();
   });
 
   it("bulk enrolls multiple students with one locked capacity check", async () => {
@@ -1113,6 +1130,13 @@ describe("BatchesService.remove and enroll", () => {
     expect(
       memberships.beginBatchEnrollment.mock.invocationCallOrder[0]!,
     ).toBeLessThan(prisma.$transaction.mock.invocationCallOrder[0]!);
+    await vi.waitFor(() => {
+      expect(chat.announceMembersJoined).toHaveBeenCalledWith(
+        "staff-1",
+        "batch-1",
+        ["student-1", "student-2"],
+      );
+    });
   });
 
   it("rejects bulk enroll for non-staff actors", async () => {
@@ -1194,6 +1218,7 @@ describe("BatchesService.listByStudio viewer enrollment", () => {
       media as never,
       { purchaseForBatch: vi.fn() } as never,
       { refundInvoice: vi.fn() } as never,
+      { announceMembersJoined: vi.fn().mockResolvedValue(undefined) } as never,
     );
     prisma.batchEnrollment.findMany.mockResolvedValue([]);
     prisma.batchEnrollment.findFirst.mockResolvedValue(null);
@@ -1544,6 +1569,10 @@ describe("BatchesService.switchBatch", () => {
     moveCurrentTrackToBatch: vi.fn(),
   };
 
+  const chat = {
+    announceMembersJoined: vi.fn().mockResolvedValue(undefined),
+  };
+
   let service: BatchesService;
 
   beforeEach(() => {
@@ -1556,6 +1585,7 @@ describe("BatchesService.switchBatch", () => {
       { signReadUrl: vi.fn(async (url: string | null) => url) } as never,
       memberships as never,
       { refundInvoice: vi.fn() } as never,
+      chat as never,
     );
     prisma.$transaction.mockImplementation(
       async (callback: (tx: typeof prisma) => unknown) => callback(prisma),
@@ -1632,6 +1662,13 @@ describe("BatchesService.switchBatch", () => {
         studentId: "student-1",
         status: "ACTIVE",
       }),
+    });
+    await vi.waitFor(() => {
+      expect(chat.announceMembersJoined).toHaveBeenCalledWith(
+        "student-1",
+        "batch-2",
+        ["student-1"],
+      );
     });
   });
 
@@ -1965,6 +2002,7 @@ describe("BatchesService.unenroll", () => {
       { signReadUrl: vi.fn(async (url: string | null) => url) } as never,
       memberships as never,
       billing as never,
+      { announceMembersJoined: vi.fn().mockResolvedValue(undefined) } as never,
     );
     prisma.$transaction.mockImplementation(
       async (callback: (tx: typeof prisma) => unknown) => callback(prisma),
@@ -2132,6 +2170,7 @@ describe("BatchesService.getById roster split", () => {
       media as never,
       memberships as never,
       { refundInvoice: vi.fn() } as never,
+      { announceMembersJoined: vi.fn().mockResolvedValue(undefined) } as never,
     );
     prisma.booking.updateMany.mockResolvedValue({ count: 0 });
     prisma.booking.findMany.mockResolvedValue([]);

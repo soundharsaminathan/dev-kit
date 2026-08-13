@@ -1,6 +1,7 @@
 import { forwardRef, Module } from "@nestjs/common";
 import { BillingModule } from "../billing/billing.module";
 import { CalendarModule } from "../calendar/calendar.module";
+import { ChatModule } from "../chat/chat.module";
 import { MediaModule } from "../media/media.module";
 import { MembershipsModule } from "../memberships/memberships.module";
 import { SessionsModule } from "../sessions/sessions.module";
@@ -16,6 +17,7 @@ import { BatchRepository } from "./persistence/batch.repository";
   imports: [
     CalendarModule,
     SessionsModule,
+    ChatModule,
     MembershipsModule,
     UsersModule,
     MediaModule,

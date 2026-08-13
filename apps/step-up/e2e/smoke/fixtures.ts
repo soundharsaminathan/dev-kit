@@ -289,6 +289,18 @@ export class SmokeDataCleanup {
   }
 }
 
+export async function closeSmokeContext(
+  context: { close: () => Promise<void> },
+  cleanup?: SmokeDataCleanup,
+) {
+  try {
+    await context.close();
+  } catch {
+    // Timed-out tests already tore the browser down.
+  }
+  await cleanup?.dispose();
+}
+
 export async function createCalendarBatch(
   cleanup: SmokeDataCleanup,
   options: {
@@ -306,8 +318,9 @@ export async function createCalendarBatch(
   }
   const branches = [SMOKE.branchMainId, SMOKE.branchEastId];
   let lastError: unknown;
-  for (let attempt = 0; attempt < 8; attempt += 1) {
-    const stamp = Date.now() + attempt * 97_000;
+  for (let attempt = 0; attempt < 16; attempt += 1) {
+    const stamp =
+      Date.now() + attempt * 97_000 + Math.floor(Math.random() * 1_000);
     try {
       const created = await apiRequest<{ id: string }>("STAFF", "/batches", {
         method: "POST",

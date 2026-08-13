@@ -106,7 +106,9 @@
 
 .list {
   flex: 1;
+  min-width: 0;
   min-height: 0;
+  overflow-x: hidden;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
@@ -196,6 +198,8 @@
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .daySeparator {
@@ -211,6 +215,24 @@
     box-shadow: 0 1px 2px color-mix(in srgb, var(--color-fg) 10%, transparent);
     font-size: 0.75rem;
     color: color-mix(in srgb, var(--color-fg) 60%, transparent);
+  }
+}
+
+.systemNotice {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-block: 0.15rem;
+
+  span {
+    max-width: 28rem;
+    padding: 0.28rem 0.85rem;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--color-fg) 6%, var(--color-card));
+    font-size: 0.75rem;
+    line-height: 1.35;
+    text-align: center;
+    color: color-mix(in srgb, var(--color-fg) 62%, transparent);
   }
 }
 

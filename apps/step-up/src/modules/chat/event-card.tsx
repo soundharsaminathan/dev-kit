@@ -26,14 +26,14 @@ function formatEventWhen(startsAt: string, endsAt: string | null) {
     minute: "2-digit",
   });
   if (!endsAt) {
-    return `${dateText} · ${timeText}`;
+    return { dateText, timeText };
   }
   const end = new Date(endsAt);
   const endTime = end.toLocaleTimeString(undefined, {
     hour: "numeric",
     minute: "2-digit",
   });
-  return `${dateText} · ${timeText} – ${endTime}`;
+  return { dateText, timeText: `${timeText} – ${endTime}` };
 }
 
 function sessionCardKind(title: string) {
@@ -64,6 +64,7 @@ export function EventCard({
   rsvpPending,
 }: EventCardProps) {
   const kind = sessionCardKind(event.title);
+  const when = formatEventWhen(event.startsAt, event.endsAt);
   const myStatus = (Object.keys(event.rsvps) as ChatRsvpStatus[]).find(
     (status) => event.rsvps[status].includes(currentUserId),
   );
@@ -74,7 +75,8 @@ export function EventCard({
         <span className={styles.eventEyebrow}>{EYEBROW[kind]}</span>
         <p className={styles.eventTitle}>{event.title}</p>
         <p className={styles.eventWhen}>
-          {formatEventWhen(event.startsAt, event.endsAt)}
+          <span className={styles.eventDate}>{when.dateText}</span>
+          <span className={styles.eventTime}>{when.timeText}</span>
         </p>
         {event.locationLabel ? (
           <p className={styles.eventWhere}>{event.locationLabel}</p>

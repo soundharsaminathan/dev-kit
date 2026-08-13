@@ -6,7 +6,11 @@ export function useOptionalStudioId(): string | null {
 }
 
 export function useStudioId(): string {
-  const studioId = useOptionalStudioId();
+  const { user } = useAuth();
+  const studioId = user?.studioId ?? null;
+  if (!user) {
+    return "";
+  }
   if (!studioId) {
     throw new Error("No studio on account");
   }

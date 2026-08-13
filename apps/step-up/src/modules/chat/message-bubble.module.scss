@@ -4,6 +4,8 @@
   display: flex;
   align-items: flex-end;
   gap: 0.5rem;
+  min-width: 0;
+  max-width: 100%;
   transition: background-color var(--motion-fast, 120ms) ease;
 
   &[data-mine] {
@@ -27,6 +29,7 @@
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
+  min-width: 0;
   max-width: min(75%, 480px);
 
   .row[data-mine] & {
@@ -45,6 +48,8 @@
   display: flex;
   align-items: center;
   gap: 0.35rem;
+  min-width: 0;
+  max-width: 100%;
 
   .row[data-mine] & {
     flex-direction: row-reverse;
@@ -61,7 +66,7 @@
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
-  width: max-content;
+  width: fit-content;
   max-width: 100%;
   min-width: 0;
   padding: 0.55rem 0.75rem;
@@ -122,7 +127,7 @@
   }
 
   &[data-rich] {
-    min-width: min(100%, 280px);
+    width: 100%;
     padding: 0.7rem 0.85rem 0.55rem;
   }
 

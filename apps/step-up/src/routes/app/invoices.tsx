@@ -278,6 +278,7 @@ function InvoicesPage() {
 
   const invoicesQuery = useQuery({
     queryKey: ["invoices", studioId],
+    enabled: Boolean(studioId),
     queryFn: () =>
       fetchAllPages<Invoice>((cursor) => {
         const params = new URLSearchParams({ limit: "50" });
@@ -291,11 +292,13 @@ function InvoicesPage() {
 
   const studioQuery = useQuery({
     queryKey: ["studio", studioId],
+    enabled: Boolean(studioId),
     queryFn: () => api.get<Studio>(`/studios/${studioId}`),
   });
 
   const familiesQuery = useQuery({
     queryKey: ["studio-families", studioId],
+    enabled: Boolean(studioId),
     queryFn: () =>
       api.get<StudioFamily[]>(`/users/studio/${studioId}/families`),
   });
@@ -313,7 +316,8 @@ function InvoicesPage() {
       void queryClient.invalidateQueries({ queryKey: ["invoices", studioId] });
       toast({
         title: "Converted to quarterly",
-        description: "The upcoming 1st-of-month invoice now uses the 3-month plan.",
+        description:
+          "The upcoming 1st-of-month invoice now uses the 3-month plan.",
         variant: "success",
       });
     },
