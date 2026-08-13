@@ -1,12 +1,12 @@
 import { Inject, Injectable, Logger } from "@nestjs/common";
 import type { InvoiceStatus } from "@prisma/client";
 import { ACTIVE_ENROLLMENT_WHERE } from "../../batches/enrollment-status";
+import { invoiceDueDate } from "../../memberships/membership-helpers";
 import { PrismaService } from "../../prisma/prisma.service";
 import { buildPage, type Page } from "../../shared/pagination";
 import type { DecryptedUser } from "../../users/user-crypto.service";
 import { UserPresenter } from "../../users/user-presenter";
 import { BillingService } from "../billing.service";
-import { invoiceDueDate } from "../../memberships/membership-helpers";
 import {
   batchIdsForInvoiceDisplay,
   batchLabelForInvoice,
@@ -28,7 +28,11 @@ export class BillingQueriesService {
 
   async listByStudio(
     studioId: string,
-    pagination: { cursor?: string; limit?: number; status?: InvoiceStatus } = {},
+    pagination: {
+      cursor?: string;
+      limit?: number;
+      status?: InvoiceStatus;
+    } = {},
   ): Promise<Page<Record<string, unknown>>> {
     const { rows, limit } = await this.query.findStudioInvoices(
       studioId,
@@ -66,9 +70,7 @@ export class BillingQueriesService {
             },
             select: { studentId: true, batchId: true },
           })
-        : Promise.resolve(
-            [] as Array<{ studentId: string; batchId: string }>,
-          ),
+        : Promise.resolve([] as Array<{ studentId: string; batchId: string }>),
     ]);
     const purchaseSubById = new Map(purchaseSubs.map((s) => [s.id, s]));
     const studentBatchMap = new Map<string, Set<string>>();
@@ -175,6 +177,7 @@ export class BillingQueriesService {
         paidAt: invoice.paidAt?.toISOString() ?? null,
         refundedAt: invoice.refundedAt?.toISOString() ?? null,
         platformFeePercent: invoice.platformFeePercent,
+        gstPercent: invoice.gstPercent,
         studioId: invoice.studioId,
         razorpayOrderId: invoice.razorpayOrderId,
         razorpayPaymentId: invoice.razorpayPaymentId,
@@ -187,11 +190,12 @@ export class BillingQueriesService {
           Boolean(purchaseMeta?.firstMonthConvertToQuarterly) &&
           (invoice.status === "PENDING" || invoice.status === "OVERDUE") &&
           invoice.chargeType === "PREPAID_FULL",
-        dueDate: invoiceDueDate({
-          chargeType: invoice.chargeType,
-          periodStart: invoice.membership?.periodStart,
-          periodEnd: invoice.membership?.periodEnd,
-        })?.toISOString() ?? null,
+        dueDate:
+          invoiceDueDate({
+            chargeType: invoice.chargeType,
+            periodStart: invoice.membership?.periodStart,
+            periodEnd: invoice.membership?.periodEnd,
+          })?.toISOString() ?? null,
         membership: invoice.membership
           ? {
               id: invoice.membership.id,
@@ -316,6 +320,7 @@ export class BillingQueriesService {
         paymentMethod: invoice.paymentMethod,
         paidAt: invoice.paidAt?.toISOString() ?? null,
         refundedAt: invoice.refundedAt?.toISOString() ?? null,
+        gstPercent: invoice.gstPercent,
         dueDate:
           invoiceDueDate({
             chargeType: invoice.chargeType,

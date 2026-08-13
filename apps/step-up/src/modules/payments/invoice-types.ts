@@ -21,6 +21,7 @@ export type Invoice = {
   studioDiscount?: number;
   familyDiscount?: number;
   refundedAmount?: number;
+  gstPercent?: number;
   status: "PENDING" | "PAID" | "OVERDUE" | "REFUNDED";
   paymentMethod?: "CASH" | "UPI_MANUAL" | "RAZORPAY" | null;
   paidAt?: string | null;
@@ -77,11 +78,16 @@ export function formatPrice(amount: number | string) {
   }).format(Number(amount));
 }
 
+export function computeGst(amount: number, gstPercent: number): number {
+  return Math.round(amount * (gstPercent / 100) * 100) / 100;
+}
+
 export function allocateFamilyDiscount(
   amounts: number[],
   familyDiscount: number,
 ): number[] {
-  const subtotal = Math.round(amounts.reduce((sum, n) => sum + n, 0) * 100) / 100;
+  const subtotal =
+    Math.round(amounts.reduce((sum, n) => sum + n, 0) * 100) / 100;
   if (amounts.length === 0) return [];
   if (familyDiscount < 0 || familyDiscount > subtotal) {
     throw new Error("Invalid family discount");

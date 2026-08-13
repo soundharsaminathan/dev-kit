@@ -243,6 +243,7 @@ function InvoiceCard({
                   studioLogoUrl: studio?.logoUrl,
                   studioAddress: studio?.address,
                   gstNumber: studio?.settings?.gstNumber,
+                  gstPercent: invoice.gstPercent,
                 });
                 if (!opened) {
                   toast({

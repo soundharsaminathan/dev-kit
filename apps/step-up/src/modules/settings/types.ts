@@ -4,6 +4,7 @@ export type StudioSettings = {
   graceDays: number;
   expireAlertDays: number;
   platformFeePercent: number;
+  gstPercent: number;
   razorpayKeyId?: string | null;
   razorpayConfigured?: boolean;
   danceStyles?: DanceStyle[] | null;

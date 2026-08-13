@@ -17,8 +17,10 @@ import {
 import { ACTIVE_ENROLLMENT_WHERE } from "../batches/enrollment-status";
 import { EmailService } from "../email/email.service";
 import {
+  computeGst,
   computePlatformFee,
   invoiceDueDate,
+  invoiceFeePercents,
 } from "../memberships/membership-helpers";
 import { MembershipsService } from "../memberships/memberships.service";
 import { NotificationsService } from "../notifications/notifications.service";
@@ -841,6 +843,7 @@ export class BillingService {
       amountPaid,
       invoice.platformFeePercent,
     );
+    const gstAmount = computeGst(amountPaid, invoice.gstPercent);
     const purchaseMeta = parsePurchaseMeta(invoice.purchaseMeta);
     const combineMeta = parseCombineMeta(invoice.combineMeta);
 
@@ -923,6 +926,8 @@ export class BillingService {
           referralDiscount,
           studioDiscount,
           familyDiscount,
+          gstPercent: invoice.gstPercent,
+          gstAmount,
           amountPaid,
           paymentMethod: input.paymentMethod,
           paidAt,
@@ -943,6 +948,7 @@ export class BillingService {
       familyDiscount: Number(result.familyDiscount ?? 0),
       subtotal: printSubtotal,
       platformFeeComputed: platformFee,
+      gstComputed: gstAmount,
       student: { id: student.id, name: student.name, email: student.email },
       studio: invoice.studio,
     };
@@ -1077,7 +1083,7 @@ export class BillingService {
     const netAmount = roundMoney(subtotal - familyDiscount);
     const settings = await this.prisma.studioSettings.findUnique({
       where: { studioId: data.studioId },
-      select: { platformFeePercent: true },
+      select: { platformFeePercent: true, gstPercent: true },
     });
 
     const created = await this.prisma.$transaction(async (tx) => {
@@ -1088,7 +1094,7 @@ export class BillingService {
           amount: netAmount,
           familyDiscount,
           status: InvoiceStatus.PENDING,
-          platformFeePercent: settings?.platformFeePercent ?? 5,
+          ...invoiceFeePercents(settings),
           combineMeta,
         },
       });

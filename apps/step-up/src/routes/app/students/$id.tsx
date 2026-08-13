@@ -82,6 +82,7 @@ type StudentStudioProfile = {
     amount: number;
     referralDiscount?: number;
     studioDiscount?: number;
+    gstPercent?: number;
     status: "PENDING" | "PAID" | "OVERDUE" | "REFUNDED";
     paymentMethod?: "CASH" | "UPI_MANUAL" | "RAZORPAY" | null;
     paidAt?: string | null;
@@ -915,6 +916,7 @@ function StudentDetailPage() {
                                 studioAddress: studioQuery.data?.address,
                                 gstNumber:
                                   studioQuery.data?.settings?.gstNumber,
+                                gstPercent: invoice.gstPercent,
                               });
                               if (!opened) {
                                 toast({

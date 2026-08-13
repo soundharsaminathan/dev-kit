@@ -911,6 +911,7 @@ describe("BillingService.markPaid", () => {
       amount: 2000,
       status: InvoiceStatus.PENDING,
       platformFeePercent: 5,
+      gstPercent: 0,
       membershipId: null,
       purchaseMeta: null,
       student: {
@@ -969,6 +970,7 @@ describe("BillingService.markPaid", () => {
       }),
     });
     expect(result.platformFeeComputed).toBe(100);
+    expect(result.gstComputed).toBe(0);
     expect(membershipsStub.renewFromPaidInvoice).not.toHaveBeenCalled();
     expect(notificationsStub.create).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -982,6 +984,35 @@ describe("BillingService.markPaid", () => {
         to: "student@example.com",
         amountPaid: 2000,
         subtotal: 2000,
+      }),
+    );
+  });
+
+  it("computes GST from the snapshotted invoice percent", async () => {
+    prisma.invoice.findUniqueOrThrow.mockResolvedValue(
+      unpaidInvoice({ gstPercent: 18 }),
+    );
+    prisma.invoice.update.mockResolvedValue({
+      id: "inv-1",
+      status: InvoiceStatus.PAID,
+      paymentMethod: PaymentMethod.CASH,
+      paidAt: new Date("2026-07-20T12:00:00.000Z"),
+      amount: 2000,
+      referralDiscount: 0,
+      studioDiscount: 0,
+    });
+
+    const result = await service.markPaid(
+      makeUser({ role: UserRole.OWNER }),
+      "inv-1",
+      { paymentMethod: PaymentMethod.CASH },
+    );
+
+    expect(result.gstComputed).toBe(360);
+    expect(emailStub.sendPaymentInvoice).toHaveBeenCalledWith(
+      expect.objectContaining({
+        gstPercent: 18,
+        gstAmount: 360,
       }),
     );
   });

@@ -12,6 +12,7 @@ import { ErrorState } from "@/modules/ui/states";
 import { TouchButton } from "@/modules/ui/touch-button";
 import { InvoiceBill, type InvoiceBillLine } from "./invoice-bill";
 import {
+  computeGst,
   formatPrice,
   type Invoice,
   type ManualPaymentMethod,
@@ -158,6 +159,13 @@ export function CollectPaymentSheet({
         label: "Studio discount",
         value: `−${formatPrice(studio)}`,
         variant: "discount",
+      });
+    }
+    const gstPercent = invoice.gstPercent ?? 0;
+    if (discountsValid && gstPercent > 0 && totalDue != null) {
+      lines.push({
+        label: `GST (${gstPercent}%)`,
+        value: formatPrice(computeGst(totalDue, gstPercent)),
       });
     }
   }

@@ -17,7 +17,9 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  Max,
   MaxLength,
+  Min,
   MinLength,
   ValidateIf,
 } from "class-validator";
@@ -96,7 +98,15 @@ class UpdateStudioSettingsDto {
 
   @IsOptional()
   @IsNumber()
+  @Min(0)
+  @Max(100)
   platformFeePercent?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Max(100)
+  gstPercent?: number;
 
   @IsOptional()
   @IsString()
@@ -230,6 +240,14 @@ export class StudiosController {
       dto.gstNumber !== undefined
     ) {
       throw new ForbiddenException("Only owners can change GST number");
+    }
+
+    if (
+      user.role !== UserRole.OWNER &&
+      user.role !== UserRole.SYSTEM_ADMIN &&
+      dto.gstPercent !== undefined
+    ) {
+      throw new ForbiddenException("Only owners can change GST percent");
     }
 
     if (

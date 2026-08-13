@@ -279,6 +279,7 @@ export class StudiosService {
           graceDays: studio.settings.graceDays,
           expireAlertDays: studio.settings.expireAlertDays,
           platformFeePercent: studio.settings.platformFeePercent,
+          gstPercent: studio.settings.gstPercent,
           razorpayKeyId: studio.settings.razorpayKeyId,
           razorpayConfigured: Boolean(
             studio.settings.razorpayKeyId &&
@@ -336,6 +337,7 @@ export class StudiosService {
       graceDays?: number;
       expireAlertDays?: number;
       platformFeePercent?: number;
+      gstPercent?: number;
       razorpayKeyId?: string | null;
       razorpayKeySecret?: string | null;
       gstNumber?: string | null;
@@ -346,6 +348,7 @@ export class StudiosService {
       graceDays?: number;
       expireAlertDays?: number;
       platformFeePercent?: number;
+      gstPercent?: number;
       razorpayKeyId?: string | null;
       razorpayKeySecret?: string | null;
       razorpaySecretIv?: string | null;
@@ -359,6 +362,9 @@ export class StudiosService {
     }
     if (data.platformFeePercent !== undefined) {
       update.platformFeePercent = data.platformFeePercent;
+    }
+    if (data.gstPercent !== undefined) {
+      update.gstPercent = data.gstPercent;
     }
 
     if (data.razorpayKeyId !== undefined) {
@@ -442,6 +448,7 @@ export class StudiosService {
       graceDays: settings.graceDays,
       expireAlertDays: settings.expireAlertDays,
       platformFeePercent: settings.platformFeePercent,
+      gstPercent: settings.gstPercent,
       razorpayKeyId: settings.razorpayKeyId,
       razorpayConfigured: Boolean(
         settings.razorpayKeyId &&

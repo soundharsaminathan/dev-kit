@@ -33,6 +33,7 @@ import { PrismaService } from "../prisma/prisma.service";
 import {
   getNextPeriodStart,
   getPeriodEnd,
+  invoiceFeePercents,
   isMonthlyPlanUnpaid,
   isPrepaidAtJoin,
   membershipCoversBatch,
@@ -240,7 +241,7 @@ export class MembershipsService {
 
     const settings = await this.prisma.studioSettings.findUnique({
       where: { studioId: batch.studioId },
-      select: { platformFeePercent: true },
+      select: { platformFeePercent: true, gstPercent: true },
     });
 
     const purchaseMeta: InvoicePurchaseMeta = {
@@ -259,7 +260,7 @@ export class MembershipsService {
         amount: planLink.subscription.price,
         status: InvoiceStatus.PENDING,
         chargeType: InvoiceChargeType.PREPAID_FULL,
-        platformFeePercent: settings?.platformFeePercent ?? 5,
+        ...invoiceFeePercents(settings),
         ...(holdPayment
           ? { paymentHoldExpiresAt: paymentHoldExpiresAt() }
           : {}),
@@ -337,7 +338,7 @@ export class MembershipsService {
 
     const settings = await this.prisma.studioSettings.findUnique({
       where: { studioId: batch.studioId },
-      select: { platformFeePercent: true },
+      select: { platformFeePercent: true, gstPercent: true },
     });
 
     const holdPayment = args.paymentHold !== false;
@@ -366,7 +367,7 @@ export class MembershipsService {
           amount: planLink.subscription.price,
           status: InvoiceStatus.PENDING,
           chargeType: InvoiceChargeType.PREPAID_FULL,
-          platformFeePercent: settings?.platformFeePercent ?? 5,
+          ...invoiceFeePercents(settings),
           ...(holdPayment
             ? { paymentHoldExpiresAt: paymentHoldExpiresAt() }
             : {}),
@@ -796,7 +797,7 @@ export class MembershipsService {
 
     const settings = await this.prisma.studioSettings.findUnique({
       where: { studioId: membership.purchaser.studioId },
-      select: { platformFeePercent: true },
+      select: { platformFeePercent: true, gstPercent: true },
     });
 
     await this.prisma.invoice.create({
@@ -809,7 +810,7 @@ export class MembershipsService {
         chargeType: InvoiceChargeType.POSTPAID_PRORATED,
         attendedSessionCount,
         billedSessionCount,
-        platformFeePercent: settings?.platformFeePercent ?? 5,
+        ...invoiceFeePercents(settings),
         purchaseMeta: {
           batchId: membership.batchId,
           subscriptionId: membership.subscription.id,
@@ -1028,7 +1029,7 @@ export class MembershipsService {
 
     const settings = await this.prisma.studioSettings.findUnique({
       where: { studioId: existing.purchaser.studioId },
-      select: { platformFeePercent: true },
+      select: { platformFeePercent: true, gstPercent: true },
     });
 
     const priorWithMeta = await this.prisma.invoice.findFirst({
@@ -1105,7 +1106,7 @@ export class MembershipsService {
         amount: existing.subscription.price,
         status: InvoiceStatus.PENDING,
         chargeType: InvoiceChargeType.PREPAID_FULL,
-        platformFeePercent: settings?.platformFeePercent ?? 5,
+        ...invoiceFeePercents(settings),
         ...(purchaseMeta ? { purchaseMeta } : {}),
       },
     });

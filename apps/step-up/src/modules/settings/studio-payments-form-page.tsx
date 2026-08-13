@@ -19,6 +19,7 @@ export function StudioPaymentsFormPage() {
   const [razorpayKeyId, setRazorpayKeyId] = useState("");
   const [razorpayKeySecret, setRazorpayKeySecret] = useState("");
   const [gstNumber, setGstNumber] = useState("");
+  const [gstPercent, setGstPercent] = useState("0");
 
   const studioQuery = useQuery({
     queryKey: ["studio", studioId],
@@ -31,6 +32,7 @@ export function StudioPaymentsFormPage() {
   useEffect(() => {
     if (!studioQuery.data) return;
     setGstNumber(studioQuery.data.settings?.gstNumber ?? "");
+    setGstPercent(String(studioQuery.data.settings?.gstPercent ?? 0));
   }, [studioQuery.data]);
 
   const updateSettings = useMutation({
@@ -38,16 +40,22 @@ export function StudioPaymentsFormPage() {
       const settings = studioQuery.data?.settings;
       const nextKeyId = razorpayKeyId.trim() || savedKeyId;
       const nextSecret = razorpayKeySecret.trim();
+      const gst = Number(gstPercent);
+      if (!Number.isFinite(gst) || gst < 0 || gst > 100) {
+        throw new Error("GST percent must be between 0 and 100.");
+      }
       const payload: {
         graceDays: number;
         expireAlertDays: number;
         razorpayKeyId?: string;
         razorpayKeySecret?: string;
         gstNumber: string | null;
+        gstPercent: number;
       } = {
         graceDays: settings?.graceDays ?? 3,
         expireAlertDays: settings?.expireAlertDays ?? 7,
         gstNumber: gstNumber.trim() || null,
+        gstPercent: gst,
       };
       if (nextKeyId) {
         payload.razorpayKeyId = nextKeyId;
@@ -138,6 +146,8 @@ export function StudioPaymentsFormPage() {
               onKeySecretChange={setRazorpayKeySecret}
               gstNumber={gstNumber}
               onGstNumberChange={setGstNumber}
+              gstPercent={gstPercent}
+              onGstPercentChange={setGstPercent}
             />
             {configured && !razorpayKeySecret ? (
               <p className={staff.panelDesc}>

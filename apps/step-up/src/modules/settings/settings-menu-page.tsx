@@ -64,7 +64,7 @@ const LINKS: SettingsLink[] = [
   {
     to: "/app/settings/payments",
     label: "Payments",
-    hint: "Razorpay keys",
+    hint: "GST and Razorpay",
     icon: "credit-card",
     ownerOnly: true,
   },

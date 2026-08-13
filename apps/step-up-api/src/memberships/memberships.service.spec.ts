@@ -564,6 +564,7 @@ describe("MembershipsService.requestRenewalInvoice", () => {
     prisma.invoice.findFirst.mockResolvedValue(null);
     prisma.studioSettings.findUnique.mockResolvedValue({
       platformFeePercent: 5,
+      gstPercent: 18,
     });
     prisma.invoice.create.mockResolvedValue({
       id: "inv-1",
@@ -581,6 +582,7 @@ describe("MembershipsService.requestRenewalInvoice", () => {
         amount: 2000,
         status: "PENDING",
         platformFeePercent: 5,
+        gstPercent: 18,
       }),
     });
     expect(invoice.id).toBe("inv-1");

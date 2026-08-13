@@ -14,6 +14,7 @@ export type PrintableInvoice = {
   studioLogoUrl?: string | null | undefined;
   gstNumber?: string | null | undefined;
   studioAddress?: string | null | undefined;
+  gstPercent?: number | undefined;
   subtotal?: number | undefined;
 };
 
@@ -77,6 +78,11 @@ export function printInvoice(invoice: PrintableInvoice) {
   const referral = invoice.referralDiscount ?? 0;
   const studio = invoice.studioDiscount ?? 0;
   const family = invoice.familyDiscount ?? 0;
+  const gstPercent = invoice.gstPercent ?? 0;
+  const gstAmount =
+    gstPercent > 0
+      ? Math.round(invoice.amount * (gstPercent / 100) * 100) / 100
+      : 0;
   const subtotal =
     invoice.subtotal ??
     Math.round((invoice.amount + referral + studio + family) * 100) / 100;
@@ -101,6 +107,9 @@ export function printInvoice(invoice: PrintableInvoice) {
       : "",
     family > 0
       ? `<tr><td>Family discount</td><td>−${escapeHtml(formatInr(family))}</td></tr>`
+      : "",
+    gstPercent > 0
+      ? `<tr><td>GST (${escapeHtml(String(gstPercent))}%)</td><td>${escapeHtml(formatInr(gstAmount))}</td></tr>`
       : "",
   ].join("");
 

@@ -120,6 +120,25 @@ test.describe("admin (staff) smoke @smoke", () => {
     }
   });
 
+  test("staff cannot change GST percent @smoke", async () => {
+    const token = await bearerFor("STAFF");
+    const response = await fetch(
+      `${apiBaseUrl()}/studios/${SMOKE.studioId}/settings`,
+      {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ gstPercent: 18 }),
+      },
+    );
+    expect(response.status).toBe(403);
+    expect(await response.text()).toMatch(
+      /only owners can change gst percent/i,
+    );
+  });
+
   test("staff cannot double-mark an invoice paid @smoke", async () => {
     const cleanup = new SmokeDataCleanup();
     try {

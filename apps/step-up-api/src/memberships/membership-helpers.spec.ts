@@ -14,10 +14,12 @@ import {
 import { describe, expect, it } from "vitest";
 import {
   batchCategoryForAgeRange,
+  computeGst,
   computePlatformFee,
   getNextPeriodStart,
   getPeriodEnd,
   invoiceDueDate,
+  invoiceFeePercents,
   isMonthlyPlanUnpaid,
   isPrepaidAtJoin,
   membershipCoversBatch,
@@ -114,6 +116,24 @@ describe("membership-helpers", () => {
 
   it("computes platform fee", () => {
     expect(computePlatformFee(1000, 5)).toBe(50);
+  });
+
+  it("computes GST like platform fee", () => {
+    expect(computeGst(1000, 18)).toBe(180);
+    expect(computeGst(1000, 0)).toBe(0);
+  });
+
+  it("snapshots invoice fee percents from studio settings", () => {
+    expect(
+      invoiceFeePercents({ platformFeePercent: 8, gstPercent: 18 }),
+    ).toEqual({
+      platformFeePercent: 8,
+      gstPercent: 18,
+    });
+    expect(invoiceFeePercents(null)).toEqual({
+      platformFeePercent: 5,
+      gstPercent: 0,
+    });
   });
 
   it("flags unpaid monthly plans", () => {

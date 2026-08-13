@@ -21,6 +21,8 @@ export type StudioPaymentsFieldsProps = {
   onKeySecretChange: (value: string) => void;
   gstNumber?: string;
   onGstNumberChange?: (value: string) => void;
+  gstPercent?: string;
+  onGstPercentChange?: (value: string) => void;
   platformFeePercent?: string;
   onPlatformFeePercentChange?: (value: string) => void;
   className?: string | undefined;
@@ -37,6 +39,8 @@ export function StudioPaymentsFields({
   onKeySecretChange,
   gstNumber,
   onGstNumberChange,
+  gstPercent,
+  onGstPercentChange,
   platformFeePercent,
   onPlatformFeePercentChange,
   className,
@@ -49,8 +53,9 @@ export function StudioPaymentsFields({
   const showPlatformFee =
     platformFeePercent !== undefined &&
     onPlatformFeePercentChange !== undefined;
-  const showGst =
-    gstNumber !== undefined && onGstNumberChange !== undefined;
+  const showGst = gstNumber !== undefined && onGstNumberChange !== undefined;
+  const showGstPercent =
+    gstPercent !== undefined && onGstPercentChange !== undefined;
 
   return (
     <div className={className}>
@@ -75,7 +80,8 @@ export function StudioPaymentsFields({
         <>
           <p className={titleClassName}>Tax details</p>
           <p className={descClassName}>
-            Shown on printed payment receipts when set.
+            GSTIN and percent are printed on payment receipts. New invoices use
+            the percent at issue time.
           </p>
           <FormInput
             label="GSTIN"
@@ -89,6 +95,17 @@ export function StudioPaymentsFields({
             autoCapitalize="characters"
             spellCheck={false}
           />
+          {showGstPercent ? (
+            <FormInput
+              label="GST percent"
+              type="number"
+              min={0}
+              max={100}
+              step="0.1"
+              value={gstPercent}
+              onChange={onGstPercentChange}
+            />
+          ) : null}
         </>
       ) : null}
       <p className={titleClassName}>Razorpay</p>

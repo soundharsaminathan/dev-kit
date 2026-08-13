@@ -104,6 +104,7 @@ describe("StudiosService", () => {
       razorpaySecretIv: "iv-1",
       danceStyles: null,
       gstNumber: null,
+      gstPercent: 0,
     });
 
     const result = await service.updateSettings("studio-1", {
@@ -133,6 +134,7 @@ describe("StudiosService", () => {
       razorpayConfigured: true,
       danceStyles: null,
       gstNumber: null,
+      gstPercent: 0,
     });
     expect(result).not.toHaveProperty("razorpayKeySecret");
   });
@@ -156,6 +158,7 @@ describe("StudiosService", () => {
       razorpaySecretIv: null,
       danceStyles: null,
       gstNumber: null,
+      gstPercent: 0,
     });
 
     const result = await service.updateSettings("studio-1", {
@@ -194,6 +197,7 @@ describe("StudiosService", () => {
       razorpaySecretIv: null,
       danceStyles,
       gstNumber: null,
+      gstPercent: 0,
     });
 
     const saved = await service.updateSettings("studio-1", { danceStyles });
@@ -213,6 +217,7 @@ describe("StudiosService", () => {
       razorpaySecretIv: null,
       danceStyles: null,
       gstNumber: null,
+      gstPercent: 0,
     });
 
     const cleared = await service.updateSettings("studio-1", {
@@ -245,6 +250,7 @@ describe("StudiosService", () => {
       razorpaySecretIv: null,
       danceStyles: null,
       gstNumber: "22AAAAA0000A1Z5",
+      gstPercent: 0,
     });
 
     const saved = await service.updateSettings("studio-1", {
@@ -257,6 +263,31 @@ describe("StudiosService", () => {
       }),
     );
     expect(saved.gstNumber).toBe("22AAAAA0000A1Z5");
+  });
+
+  it("persists gstPercent", async () => {
+    prisma.studioSettings.upsert.mockResolvedValue({
+      graceDays: 3,
+      expireAlertDays: 7,
+      platformFeePercent: 5,
+      razorpayKeyId: null,
+      razorpayKeySecret: null,
+      razorpaySecretIv: null,
+      danceStyles: null,
+      gstNumber: null,
+      gstPercent: 18,
+    });
+
+    const saved = await service.updateSettings("studio-1", {
+      gstPercent: 18,
+    });
+
+    expect(prisma.studioSettings.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        update: expect.objectContaining({ gstPercent: 18 }),
+      }),
+    );
+    expect(saved.gstPercent).toBe(18);
   });
 
   it("clears logo", async () => {

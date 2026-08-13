@@ -1,0 +1,5 @@
+-- AlterTable
+ALTER TABLE "StudioSettings" ADD COLUMN "gstPercent" DOUBLE PRECISION NOT NULL DEFAULT 0;
+
+-- AlterTable
+ALTER TABLE "Invoice" ADD COLUMN "gstPercent" DOUBLE PRECISION NOT NULL DEFAULT 0;

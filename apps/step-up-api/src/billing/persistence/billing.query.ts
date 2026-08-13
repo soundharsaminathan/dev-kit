@@ -1,5 +1,5 @@
 import { Inject, Injectable } from "@nestjs/common";
-import { type InvoiceStatus, type Prisma } from "@prisma/client";
+import type { InvoiceStatus, Prisma } from "@prisma/client";
 import { PrismaService } from "../../prisma/prisma.service";
 import { resolvePageLimit } from "../../shared/pagination";
 import { userPiiSelect } from "../../users/user-crypto.service";
@@ -46,6 +46,7 @@ const studioInvoiceSelect = {
   paidAt: true,
   refundedAt: true,
   platformFeePercent: true,
+  gstPercent: true,
   studioId: true,
   razorpayOrderId: true,
   razorpayPaymentId: true,
@@ -73,6 +74,7 @@ const studentInvoiceSelect = {
   paidAt: true,
   refundedAt: true,
   platformFeePercent: true,
+  gstPercent: true,
   studioId: true,
   razorpayOrderId: true,
   razorpayPaymentId: true,

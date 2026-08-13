@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
-import { apiBaseUrl } from "../fixtures/seed";
-import { expectOk, httpJson, TestDataCleanup } from "./helpers";
+import { apiBaseUrl, SEED } from "../fixtures/seed";
+import { expectOk, expectStatus, httpJson, TestDataCleanup } from "./helpers";
 
 test.describe("studios HTTP @http", () => {
   test("public directory lists studio id and name @http", async () => {
@@ -81,6 +81,78 @@ test.describe("studios HTTP @http", () => {
       );
       expect(after.ok).toBeTruthy();
       expect(after.data.mustChangePassword).toBe(false);
+    } finally {
+      await cleanup.dispose();
+    }
+  });
+
+  test("owner can set GST percent and staff cannot @http", async () => {
+    const cleanup = new TestDataCleanup();
+    const stamp = Date.now();
+    const ownerEmail = `http-gst-owner-${stamp}@stepup.dev`;
+    const temporaryPassword = `Su-Gst${stamp.toString(36)}xx`;
+
+    try {
+      const created = await expectOk<{
+        id: string;
+        owner: { id: string };
+      }>("SYSTEM_ADMIN", "/studios", {
+        method: "POST",
+        body: JSON.stringify({
+          name: `HTTP GST Studio ${stamp}`,
+          ownerEmail,
+          ownerName: "GST Owner",
+          temporaryPassword,
+        }),
+      });
+      cleanup.trackStudio(created.id);
+
+      await expectOk(
+        "OWNER",
+        "/auth/password-changed",
+        { method: "POST", body: "{}" },
+        { userId: created.owner.id },
+      );
+
+      const saved = await expectOk<{ gstPercent: number }>(
+        "OWNER",
+        `/studios/${created.id}/settings`,
+        {
+          method: "PATCH",
+          body: JSON.stringify({ gstPercent: 18 }),
+        },
+        { userId: created.owner.id },
+      );
+      expect(saved.gstPercent).toBe(18);
+
+      const studio = await expectOk<{
+        settings: { gstPercent: number };
+      }>("OWNER", `/studios/${created.id}`, undefined, {
+        userId: created.owner.id,
+      });
+      expect(studio.settings.gstPercent).toBe(18);
+
+      const denied = await expectStatus(
+        "STAFF",
+        `/studios/${SEED.studioId}/settings`,
+        403,
+        {
+          method: "PATCH",
+          body: JSON.stringify({ gstPercent: 18 }),
+        },
+      );
+      expect(denied.text).toMatch(/only owners can change gst percent/i);
+
+      await expectStatus(
+        "OWNER",
+        `/studios/${created.id}/settings`,
+        400,
+        {
+          method: "PATCH",
+          body: JSON.stringify({ gstPercent: 101 }),
+        },
+        { userId: created.owner.id },
+      );
     } finally {
       await cleanup.dispose();
     }

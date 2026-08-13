@@ -56,6 +56,7 @@ describe("printInvoice", () => {
       studioLogoUrl: "https://cdn.example/logo.png",
       studioAddress: "12 MG Road",
       gstNumber: "22AAAAA0000A1Z5",
+      gstPercent: 18,
     });
 
     expect(opened).toBe(true);
@@ -73,6 +74,8 @@ describe("printInvoice", () => {
     expect(html).toContain("Rhythm Studio");
     expect(html).toContain("https://cdn.example/logo.png");
     expect(html).toContain("GSTIN: 22AAAAA0000A1Z5");
+    expect(html).toContain("GST (18%)");
+    expect(html).toContain("162.00");
     expect(html).toContain("12 MG Road");
     expect(html).toContain("Amount paid");
     expect(html).toContain("window.print()");
@@ -98,6 +101,7 @@ describe("printInvoice", () => {
     const html = String(write.mock.calls[0]?.[0] ?? "");
     expect(html).toContain("Family discount");
     expect(html).toContain("3,000.00");
+    expect(html).not.toContain("GST (");
   });
 });
 

@@ -115,11 +115,38 @@ export function membershipCoversBatch(args: {
   return args.seatRole === seatRoleForBatchCategory(args.batchCategory);
 }
 
+export function computePercentAmount(amount: number, percent: number): number {
+  return Math.round(amount * (percent / 100) * 100) / 100;
+}
+
 export function computePlatformFee(
   amount: number,
   platformFeePercent: number,
 ): number {
-  return Math.round(amount * (platformFeePercent / 100) * 100) / 100;
+  return computePercentAmount(amount, platformFeePercent);
+}
+
+export function computeGst(amount: number, gstPercent: number): number {
+  return computePercentAmount(amount, gstPercent);
+}
+
+export const DEFAULT_PLATFORM_FEE_PERCENT = 5;
+export const DEFAULT_GST_PERCENT = 0;
+
+export function invoiceFeePercents(
+  settings:
+    | {
+        platformFeePercent?: number | null;
+        gstPercent?: number | null;
+      }
+    | null
+    | undefined,
+) {
+  return {
+    platformFeePercent:
+      settings?.platformFeePercent ?? DEFAULT_PLATFORM_FEE_PERCENT,
+    gstPercent: settings?.gstPercent ?? DEFAULT_GST_PERCENT,
+  };
 }
 
 export function roundMoney(value: number): number {

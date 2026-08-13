@@ -17,6 +17,8 @@ export type PaymentInvoiceEmailInput = {
   referralDiscount: number;
   studioDiscount: number;
   familyDiscount?: number;
+  gstPercent?: number;
+  gstAmount?: number;
   amountPaid: number;
   paymentMethod: string;
   paidAt: Date;
@@ -90,6 +92,8 @@ export class EmailService {
     });
     const methodLabel = formatPaymentMethod(input.paymentMethod);
     const familyDiscount = input.familyDiscount ?? 0;
+    const gstPercent = input.gstPercent ?? 0;
+    const gstAmount = input.gstAmount ?? 0;
     const rows = [
       row("Subtotal", formatInr(input.subtotal)),
       ...(input.referralDiscount > 0
@@ -100,6 +104,9 @@ export class EmailService {
         : []),
       ...(familyDiscount > 0
         ? [row("Family discount", `−${formatInr(familyDiscount)}`)]
+        : []),
+      ...(gstPercent > 0
+        ? [row(`GST (${gstPercent}%)`, formatInr(gstAmount))]
         : []),
       row("Amount paid", formatInr(input.amountPaid), true),
       row("Payment method", methodLabel),

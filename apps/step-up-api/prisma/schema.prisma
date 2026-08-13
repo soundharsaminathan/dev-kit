@@ -435,6 +435,7 @@ model StudioSettings {
   graceDays          Int     @default(3)
   expireAlertDays    Int     @default(7)
   platformFeePercent Float   @default(5)
+  gstPercent         Float   @default(0)
   razorpayKeyId      String?
   razorpayKeySecret  String?
   razorpaySecretIv   String?
@@ -739,6 +740,7 @@ model Invoice {
   paidAt               DateTime?
   refundedAt           DateTime?
   platformFeePercent   Float
+  gstPercent           Float             @default(0)
   studioId             String
   razorpayOrderId      String?            @unique
   razorpayPaymentId    String?            @unique
