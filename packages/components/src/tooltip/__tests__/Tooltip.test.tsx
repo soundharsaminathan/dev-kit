@@ -138,6 +138,60 @@ describe("Tooltip", () => {
     );
   });
 
+  it("renders an arrow by default", () => {
+    render(
+      <Tooltip delay={0}>
+        <button type="button">Save</button>
+        <TooltipContent>Save file</TooltipContent>
+      </Tooltip>,
+    );
+
+    fireEvent.pointerEnter(screen.getByRole("button", { name: "Save" }), {
+      pointerType: "mouse",
+    });
+    vi.runAllTimers();
+
+    expect(
+      screen.getByRole("tooltip").querySelector("[data-overlay-arrow='']"),
+    ).toBeInTheDocument();
+  });
+
+  it("points the arrow toward the trigger", () => {
+    render(
+      <Tooltip delay={0}>
+        <button type="button">Save</button>
+        <TooltipContent placement="top">Save file</TooltipContent>
+      </Tooltip>,
+    );
+
+    fireEvent.pointerEnter(screen.getByRole("button", { name: "Save" }), {
+      pointerType: "mouse",
+    });
+    vi.runAllTimers();
+
+    expect(
+      screen.getByRole("tooltip").querySelector("[data-overlay-arrow='']"),
+    ).toHaveAttribute("data-placement", "top");
+  });
+
+  it("hides the arrow when hideArrow is set", () => {
+    render(
+      <Tooltip delay={0}>
+        <button type="button">Save</button>
+        <TooltipContent hideArrow>Save file</TooltipContent>
+      </Tooltip>,
+    );
+
+    fireEvent.pointerEnter(screen.getByRole("button", { name: "Save" }), {
+      pointerType: "mouse",
+    });
+    vi.runAllTimers();
+
+    expect(
+      screen.getByRole("tooltip").querySelector("[data-overlay-arrow='']"),
+    ).not.toBeInTheDocument();
+  });
+
   it("throws when TooltipContent is rendered outside Tooltip", () => {
     const consoleError = vi
       .spyOn(console, "error")

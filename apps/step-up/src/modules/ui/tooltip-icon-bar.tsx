@@ -1,6 +1,7 @@
 import { useCanHover } from "@dev-ui/hooks";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import {
+  type CSSProperties,
   createContext,
   type ReactElement,
   type ReactNode,
@@ -22,6 +23,7 @@ const VIEWPORT_PADDING = 8;
 type TooltipCoords = {
   clipPath: string;
   translateX: number;
+  arrowX: number;
 };
 
 function clamp(value: number, min: number, max: number) {
@@ -167,6 +169,7 @@ export function TooltipIconBar({
   const [coords, setCoords] = useState<TooltipCoords>({
     clipPath: "",
     translateX: 0,
+    arrowX: 0,
   });
   const [isEntering, setIsEntering] = useState(true);
   const [portalBox, setPortalBox] = useState<PortalBox | null>(null);
@@ -248,6 +251,7 @@ export function TooltipIconBar({
       return {
         clipPath: `inset(0 ${clipRight}% 0 ${clipLeft}% round var(--radius-md, 0.5rem))`,
         translateX: clamp(preferredTranslateX, minTranslateX, maxTranslateX),
+        arrowX: anchorCenter,
       };
     },
     [],
@@ -284,7 +288,8 @@ export function TooltipIconBar({
     setCoords((current) => {
       if (
         current.clipPath === nextCoords.clipPath &&
-        current.translateX === nextCoords.translateX
+        current.translateX === nextCoords.translateX &&
+        current.arrowX === nextCoords.arrowX
       ) {
         return current;
       }
@@ -341,7 +346,7 @@ export function TooltipIconBar({
       timeoutRef.current = null;
     }
     setActiveIndex(null);
-    setCoords({ clipPath: "", translateX: 0 });
+    setCoords({ clipPath: "", translateX: 0, arrowX: 0 });
     setIsEntering(true);
     setPortalBox(null);
   }
@@ -423,39 +428,46 @@ export function TooltipIconBar({
     .filter(Boolean)
     .join(" ");
 
+  const tooltipLayerStyle = {
+    "--tooltip-arrow-x": `${coords.arrowX}px`,
+  } as CSSProperties;
+
   const tooltipContent = (
-    <motion.div
-      className={styles.tooltipPanel}
-      role="tooltip"
-      animate={
-        reducedMotion
-          ? { opacity: 1 }
-          : {
-              clipPath: coords.clipPath,
-              x: coords.translateX,
-            }
-      }
-      transition={
-        reducedMotion
-          ? { duration: 0.12 }
-          : {
-              type: "spring",
-              bounce: 0,
-              duration: isEntering ? 0 : 0.4,
-            }
-      }
-      onUpdate={() => {
-        setIsEntering((current) => (current ? false : current));
-      }}
-    >
-      <div className={styles.labelStrip} aria-hidden={!activeLabel}>
-        {items.map((item) => (
-          <div key={item.id} className={styles.labelSegment}>
-            {item.label}
-          </div>
-        ))}
-      </div>
-    </motion.div>
+    <>
+      <motion.div
+        className={styles.tooltipPanel}
+        role="tooltip"
+        animate={
+          reducedMotion
+            ? { opacity: 1 }
+            : {
+                clipPath: coords.clipPath,
+                x: coords.translateX,
+              }
+        }
+        transition={
+          reducedMotion
+            ? { duration: 0.12 }
+            : {
+                type: "spring",
+                bounce: 0,
+                duration: isEntering ? 0 : 0.4,
+              }
+        }
+        onUpdate={() => {
+          setIsEntering((current) => (current ? false : current));
+        }}
+      >
+        <div className={styles.labelStrip} aria-hidden={!activeLabel}>
+          {items.map((item) => (
+            <div key={item.id} className={styles.labelSegment}>
+              {item.label}
+            </div>
+          ))}
+        </div>
+      </motion.div>
+      <span className={styles.arrow} data-placement={placement} aria-hidden />
+    </>
   );
 
   const tooltipLayer = (
@@ -472,6 +484,7 @@ export function TooltipIconBar({
                 placement === "top"
                   ? portalBox.top
                   : portalBox.top + portalBox.height,
+              ...tooltipLayerStyle,
             }}
           >
             <motion.div
@@ -486,6 +499,7 @@ export function TooltipIconBar({
         ) : (
           <motion.div
             className={tooltipLayerClassName}
+            style={tooltipLayerStyle}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}

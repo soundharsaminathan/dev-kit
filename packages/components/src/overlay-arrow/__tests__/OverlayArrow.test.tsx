@@ -49,6 +49,26 @@ describe("OverlayArrow", () => {
     ).toContain("translateY(-50%)");
   });
 
+  it("centers top and bottom arrows horizontally", () => {
+    const { container } = render(<OverlayArrow placement="top" />);
+    const arrow = container.querySelector(
+      "[data-overlay-arrow='']",
+    ) as HTMLElement;
+
+    expect(arrow.style.left).toBe("50%");
+    expect(arrow.style.top).toBe("100%");
+  });
+
+  it("centers left and right arrows vertically", () => {
+    const { container } = render(<OverlayArrow placement="right" />);
+    const arrow = container.querySelector(
+      "[data-overlay-arrow='']",
+    ) as HTMLElement;
+
+    expect(arrow.style.top).toBe("50%");
+    expect(arrow.style.right).toBe("100%");
+  });
+
   it("merges custom styles", () => {
     const { container } = render(
       <OverlayArrow placement="bottom" style={{ opacity: 0.5 }} />,

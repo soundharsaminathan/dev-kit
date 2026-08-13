@@ -22,6 +22,8 @@
 .content {
   --tooltip-shift-x: 0px;
   --tooltip-shift-y: 0px;
+  --tooltip-arrow-x: 50%;
+  --tooltip-arrow-y: 50%;
 
   position: absolute;
   z-index: 50;
@@ -83,5 +85,27 @@
     right: auto;
     bottom: auto;
     transform: none;
+  }
+
+  .arrow {
+    background-color: var(--color-tooltip);
+    border: none;
+    pointer-events: none;
+
+    &[data-placement="top"] {
+      margin-top: -0.3125rem;
+    }
+
+    &[data-placement="bottom"] {
+      margin-bottom: -0.3125rem;
+    }
+
+    &[data-placement="left"] {
+      margin-left: -0.3125rem;
+    }
+
+    &[data-placement="right"] {
+      margin-right: -0.3125rem;
+    }
   }
 }

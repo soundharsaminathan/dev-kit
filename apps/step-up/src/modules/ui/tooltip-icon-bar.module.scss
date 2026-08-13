@@ -56,6 +56,24 @@
   box-shadow: 0 8px 24px rgb(0 0 0 / 18%);
 }
 
+.arrow {
+  position: absolute;
+  left: var(--tooltip-arrow-x, 50%);
+  width: 0.5rem;
+  height: 0.5rem;
+  background: color-mix(in srgb, var(--color-fg) 92%, transparent);
+  transform: translateX(-50%) rotate(45deg);
+  pointer-events: none;
+}
+
+.tooltipTop .arrow {
+  bottom: -0.25rem;
+}
+
+.tooltipBottom .arrow {
+  top: -0.25rem;
+}
+
 .labelStrip {
   display: inline-flex;
   align-items: center;

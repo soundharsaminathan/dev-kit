@@ -1,7 +1,11 @@
 import { cn, composeRefs } from "@dev-ui/core";
 import { useCanHover } from "@dev-ui/hooks";
 import { useInteractOutside } from "@react-aria/interactions";
-import { OverlayContainer, type Placement } from "@react-aria/overlays";
+import {
+  OverlayContainer,
+  type Placement,
+  type PlacementAxis,
+} from "@react-aria/overlays";
 import { useTooltip, useTooltipTrigger } from "@react-aria/tooltip";
 import { mergeProps } from "@react-aria/utils";
 import { useTooltipTriggerState } from "@react-stately/tooltip";
@@ -20,6 +24,7 @@ import {
   useState,
 } from "react";
 import { findChildByDisplayName } from "../list-box/collection-utils";
+import { OverlayArrow } from "../overlay-arrow";
 import styles from "./tooltip.module.scss";
 import type {
   TooltipContentProps,
@@ -30,6 +35,7 @@ import { useTouchTooltipTriggerProps } from "./use-touch-tooltip-trigger";
 
 const TOOLTIP_GAP = 8;
 const VIEWPORT_PADDING = 8;
+const ARROW_INSET = 8;
 
 const TooltipContext = createContext<TooltipContextValue | null>(null);
 
@@ -119,6 +125,48 @@ function getPortalStyle(
     left,
     transform: "none",
   };
+}
+
+function getPlacementAxis(placement: Placement): PlacementAxis {
+  if (placement === "left" || placement.startsWith("left")) {
+    return "left";
+  }
+  if (placement === "right" || placement.startsWith("right")) {
+    return "right";
+  }
+  if (placement === "top" || placement.startsWith("top")) {
+    return "top";
+  }
+  return "bottom";
+}
+
+function applyArrowOffset(
+  tooltip: HTMLElement,
+  placement: Placement,
+  triggerRect: DOMRect,
+  tooltipBox: { left: number; top: number; width: number; height: number },
+) {
+  const axis = getPlacementAxis(placement);
+  const isVertical = axis === "top" || axis === "bottom";
+  const size = isVertical ? tooltipBox.width : tooltipBox.height;
+  const property = isVertical ? "--tooltip-arrow-x" : "--tooltip-arrow-y";
+
+  if (size <= ARROW_INSET * 2) {
+    tooltip.style.setProperty(property, "50%");
+    return;
+  }
+
+  const triggerCenter = isVertical
+    ? triggerRect.left + triggerRect.width / 2
+    : triggerRect.top + triggerRect.height / 2;
+  const tooltipOrigin = isVertical ? tooltipBox.left : tooltipBox.top;
+  const offset = clamp(
+    triggerCenter - tooltipOrigin,
+    ARROW_INSET,
+    size - ARROW_INSET,
+  );
+
+  tooltip.style.setProperty(property, `${offset}px`);
 }
 
 function syncInlineViewportShift(tooltip: HTMLElement) {
@@ -231,6 +279,7 @@ function TooltipContent({
   className,
   placement = "bottom",
   portal = false,
+  hideArrow = false,
   ref,
   ...props
 }: TooltipContentProps) {
@@ -291,6 +340,15 @@ function TooltipContent({
 
     const syncShift = () => {
       syncInlineViewportShift(tooltip);
+      const trigger = triggerRef.current;
+      if (!hideArrow && trigger) {
+        applyArrowOffset(
+          tooltip,
+          placement,
+          trigger.getBoundingClientRect(),
+          tooltip.getBoundingClientRect(),
+        );
+      }
     };
 
     syncShift();
@@ -302,8 +360,10 @@ function TooltipContent({
       window.removeEventListener("resize", syncShift);
       tooltip.style.removeProperty("--tooltip-shift-x");
       tooltip.style.removeProperty("--tooltip-shift-y");
+      tooltip.style.removeProperty("--tooltip-arrow-x");
+      tooltip.style.removeProperty("--tooltip-arrow-y");
     };
-  }, [state.isOpen, portal, placement]);
+  }, [state.isOpen, portal, placement, hideArrow, triggerRef]);
 
   useLayoutEffect(() => {
     if (!state.isOpen || !portal) {
@@ -326,7 +386,17 @@ function TooltipContent({
           }
         : { width: 0, height: 0 };
 
-      setPortalStyle(getPortalStyle(placement, triggerRect, tooltipSize));
+      const nextStyle = getPortalStyle(placement, triggerRect, tooltipSize);
+      setPortalStyle(nextStyle);
+
+      if (!hideArrow && tooltip && tooltipSize.width > 0) {
+        applyArrowOffset(tooltip, placement, triggerRect, {
+          left: nextStyle.left as number,
+          top: nextStyle.top as number,
+          width: tooltipSize.width,
+          height: tooltipSize.height,
+        });
+      }
     };
 
     syncPosition();
@@ -336,12 +406,17 @@ function TooltipContent({
     return () => {
       window.removeEventListener("scroll", syncPosition, true);
       window.removeEventListener("resize", syncPosition);
+      tooltipRef.current?.style.removeProperty("--tooltip-arrow-x");
+      tooltipRef.current?.style.removeProperty("--tooltip-arrow-y");
     };
-  }, [state.isOpen, portal, placement, triggerRef]);
+  }, [state.isOpen, portal, placement, hideArrow, triggerRef]);
 
   if (!state.isOpen) {
     return null;
   }
+
+  const arrowAxis = getPlacementAxis(placement);
+  const isVerticalArrow = arrowAxis === "top" || arrowAxis === "bottom";
 
   const content = (
     <div
@@ -356,6 +431,18 @@ function TooltipContent({
       style={portal ? portalStyle : undefined}
     >
       {children}
+      {hideArrow ? null : (
+        <OverlayArrow
+          placement={arrowAxis}
+          className={styles.arrow}
+          aria-hidden
+          style={
+            isVerticalArrow
+              ? { left: "var(--tooltip-arrow-x, 50%)" }
+              : { top: "var(--tooltip-arrow-y, 50%)" }
+          }
+        />
+      )}
     </div>
   );
 
