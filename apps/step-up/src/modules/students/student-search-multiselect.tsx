@@ -1,4 +1,7 @@
-import { Checkbox } from "@dev-ui/components/checkbox";
+import {
+  CheckboxControl,
+  CheckboxIndicator,
+} from "@dev-ui/components/checkbox";
 import { Tag, TagGroup, TagList } from "@dev-ui/components/tag-group";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { type Key, useEffect, useMemo, useRef, useState } from "react";
@@ -81,7 +84,7 @@ export function StudentSearchMultiselect({
   isDisabled,
   enabled = true,
   label = "Search students",
-  placeholder = "Name or email",
+  placeholder = "Search students",
   emptyTitle = "No students found",
   emptyDescription = "Try a different name or email.",
   pageSize = 20,
@@ -310,17 +313,21 @@ export function StudentSearchMultiselect({
             return (
               <li
                 key={student.id}
-                className={styles.resultRow}
+                className={styles.resultItem}
                 data-selected={selected ? "true" : undefined}
                 data-testid={`pick-${testIdPrefix}-${student.id}`}
               >
-                <Checkbox
+                <CheckboxControl
+                  className={styles.resultRow}
                   isSelected={selected}
                   isDisabled={rowDisabled}
                   onChange={() => toggleStudent(student)}
                 >
-                  {`${student.name} · ${meta}`}
-                </Checkbox>
+                  <CheckboxIndicator />
+                  <span className={styles.resultLabel}>
+                    {`${student.name} · ${meta}`}
+                  </span>
+                </CheckboxControl>
               </li>
             );
           })}

@@ -541,6 +541,7 @@ export function BatchRoster({ batchId, capacity, active }: BatchRosterProps) {
             isDisabled={enroll.isPending}
             testIdPrefix="enroll-student"
             label="Search students"
+            placeholder="Search students"
             emptyTitle="No students found"
             emptyDescription="Try a different name or email."
           />
