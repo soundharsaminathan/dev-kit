@@ -31,7 +31,14 @@ import styles from "./chat-view.module.scss";
 import { Composer } from "./composer";
 import { MessageBubble } from "./message-bubble";
 import { toggleReactionOptimistically } from "./optimistic-reactions";
-import { applyRsvpOptimistically } from "./optimistic-rsvp";
+import {
+  applyRsvpOptimistically,
+  clearPendingRsvp,
+  getPendingRsvp,
+  isCurrentPendingRsvp,
+  mergeEventWithPendingRsvp,
+  setPendingRsvp,
+} from "./optimistic-rsvp";
 import { discardPendingSend, retryPendingSend } from "./optimistic-send";
 import {
   type ChatConversation,
@@ -160,37 +167,61 @@ function useMessageActions(conversationId: string) {
     },
   });
 
-  const rsvpMutation = useOptimisticMutation({
+  const rsvpTimers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
+  const rsvpBaselines = useRef(new Map<string, ChatEventInfo>());
+
+  const rsvpMutation = useMutation({
     mutationFn: ({
       eventId,
       status,
     }: {
       eventId: string;
       status: ChatRsvpStatus;
+      generation: number;
+      conversationId: string;
     }) => api.post<ChatEventInfo>(`/chat/events/${eventId}/rsvp`, { status }),
-    onOptimistic: async (variables) => {
-      const snapshot = await captureQuerySnapshot<
-        InfiniteData<ChatMessagesPage>
-      >(queryClient, chatMessagesKey(conversationId));
-
-      updateMessagesInCache(queryClient, conversationId, (message) => {
-        if (message.event?.id !== variables.eventId) {
-          return message;
-        }
-        return {
-          ...message,
-          event: applyRsvpOptimistically(
-            message.event,
-            variables.status,
-            currentUserId,
-          ),
-        };
-      });
-
-      return snapshot;
+    onSuccess: (event, variables) => {
+      const current = isCurrentPendingRsvp(
+        variables.eventId,
+        variables.generation,
+      );
+      updateMessagesInCache(
+        queryClient,
+        variables.conversationId,
+        (message) => {
+          if (message.event?.id !== event.id) {
+            return message;
+          }
+          return {
+            ...message,
+            event: current
+              ? event
+              : mergeEventWithPendingRsvp(event, currentUserId),
+          };
+        },
+      );
+      if (current) {
+        clearPendingRsvp(variables.eventId, variables.generation);
+        rsvpBaselines.current.delete(variables.eventId);
+      }
     },
-    onRollback: (snapshot) => restoreQuerySnapshot(queryClient, snapshot),
-    onError: (error: unknown) => {
+    onError: (error: unknown, variables) => {
+      if (!isCurrentPendingRsvp(variables.eventId, variables.generation)) {
+        return;
+      }
+      const baseline = rsvpBaselines.current.get(variables.eventId);
+      if (baseline) {
+        updateMessagesInCache(
+          queryClient,
+          variables.conversationId,
+          (message) =>
+            message.event?.id === variables.eventId
+              ? { ...message, event: baseline }
+              : message,
+        );
+      }
+      clearPendingRsvp(variables.eventId, variables.generation);
+      rsvpBaselines.current.delete(variables.eventId);
       toast({
         title: "RSVP failed",
         description:
@@ -200,12 +231,80 @@ function useMessageActions(conversationId: string) {
         variant: "error",
       });
     },
-    onSuccess: (event) => {
-      updateMessagesInCache(queryClient, conversationId, (message) =>
-        message.event?.id === event.id ? { ...message, event } : message,
-      );
-    },
   });
+
+  function queueRsvp(eventId: string, status: ChatRsvpStatus) {
+    if (!rsvpBaselines.current.has(eventId)) {
+      const data = queryClient.getQueryData<InfiniteData<ChatMessagesPage>>(
+        chatMessagesKey(conversationId),
+      );
+      const current = data?.pages
+        .flatMap((page) => page.messages)
+        .find((message) => message.event?.id === eventId)?.event;
+      if (current) {
+        rsvpBaselines.current.set(eventId, {
+          ...current,
+          rsvps: {
+            GOING: [...(current.rsvps.GOING ?? [])],
+            MAYBE: [...(current.rsvps.MAYBE ?? [])],
+            DECLINED: [...(current.rsvps.DECLINED ?? [])],
+          },
+        });
+      }
+    }
+
+    setPendingRsvp(eventId, status, currentUserId);
+    updateMessagesInCache(queryClient, conversationId, (message) => {
+      if (message.event?.id !== eventId) {
+        return message;
+      }
+      return {
+        ...message,
+        event: applyRsvpOptimistically(message.event, status, currentUserId),
+      };
+    });
+
+    const existing = rsvpTimers.current.get(eventId);
+    if (existing) {
+      clearTimeout(existing);
+    }
+    rsvpTimers.current.set(
+      eventId,
+      setTimeout(() => {
+        rsvpTimers.current.delete(eventId);
+        const pending = getPendingRsvp(eventId);
+        if (!pending) {
+          return;
+        }
+        rsvpMutation.mutate({
+          eventId,
+          status: pending.status,
+          generation: pending.generation,
+          conversationId,
+        });
+      }, 200),
+    );
+  }
+
+  useEffect(() => {
+    const timers = rsvpTimers.current;
+    const mutate = rsvpMutation.mutate;
+    return () => {
+      for (const [eventId, timer] of timers) {
+        clearTimeout(timer);
+        const pending = getPendingRsvp(eventId);
+        if (pending) {
+          mutate({
+            eventId,
+            status: pending.status,
+            generation: pending.generation,
+            conversationId,
+          });
+        }
+      }
+      timers.clear();
+    };
+  }, [conversationId, rsvpMutation.mutate]);
 
   const deleteMutation = useMutation({
     mutationFn: (messageId: string) =>
@@ -227,7 +326,7 @@ function useMessageActions(conversationId: string) {
     },
   });
 
-  return { reactionMutation, voteMutation, rsvpMutation, deleteMutation };
+  return { reactionMutation, voteMutation, queueRsvp, deleteMutation };
 }
 
 function dayLabel(value: string) {
@@ -266,7 +365,7 @@ export function MessageList({
   const queryClient = useQueryClient();
   const currentUserId = user?.id ?? "";
   const messagesQuery = useChatMessages(conversationId);
-  const { reactionMutation, voteMutation, rsvpMutation, deleteMutation } =
+  const { reactionMutation, voteMutation, queueRsvp, deleteMutation } =
     useMessageActions(conversationId);
 
   const resendMutation = useMutation({
@@ -437,9 +536,7 @@ export function MessageList({
                 onVote={(pollId, optionIds) =>
                   voteMutation.mutate({ pollId, optionIds })
                 }
-                onRsvp={(eventId, status) =>
-                  rsvpMutation.mutate({ eventId, status })
-                }
+                onRsvp={(eventId, status) => queueRsvp(eventId, status)}
                 votePending={voteMutation.isPending}
               />
             )}

@@ -11,6 +11,7 @@ import { ChatSocketContext } from "@/lib/chat-socket-context";
 import { getApiBaseUrl } from "@/lib/constants";
 import { useApi } from "@/lib/use-api";
 import { useAuth } from "@/lib/use-auth";
+import { mergeEventWithPendingRsvp } from "@/modules/chat/optimistic-rsvp";
 import {
   bindOutboxFlushDeps,
   flushOutbox,
@@ -146,7 +147,12 @@ export function ChatSocketProvider({ children }: { children: ReactNode }) {
               payload.conversationId,
               (message) =>
                 message.id === payload.messageId
-                  ? { ...message, event: payload.event }
+                  ? {
+                      ...message,
+                      event: userId
+                        ? mergeEventWithPendingRsvp(payload.event, userId)
+                        : payload.event,
+                    }
                   : message,
             );
           },

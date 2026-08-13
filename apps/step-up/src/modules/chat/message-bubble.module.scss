@@ -37,6 +37,13 @@
   }
 }
 
+@media (max-width: 767px) {
+  .content[data-event],
+  .content[data-poll] {
+    max-width: min(calc(75% * 1.15), 480px);
+  }
+}
+
 .senderName {
   font-size: 0.75rem;
   font-weight: 600;

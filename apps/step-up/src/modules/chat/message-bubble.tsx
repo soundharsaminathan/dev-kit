@@ -115,7 +115,11 @@ export function MessageBubble({
         </Avatar>
       ) : null}
 
-      <div className={styles.content}>
+      <div
+        className={styles.content}
+        data-event={message.event ? "true" : undefined}
+        data-poll={message.poll ? "true" : undefined}
+      >
         {!isMine && showSender ? (
           <span className={styles.senderName}>{message.sender.name}</span>
         ) : null}
