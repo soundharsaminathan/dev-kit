@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { SEED } from "../fixtures/seed";
+import { createCalendarBatch, enrollPrepaid } from "./billing-fixtures";
 import { expectOk, expectStatus, TestDataCleanup } from "./helpers";
 
 test.describe("memberships HTTP @http", () => {
@@ -91,11 +92,10 @@ test.describe("memberships HTTP @http", () => {
         }),
       });
 
-      // Prior runs leave enrollments on the shared kids batch; raise capacity
-      // so this test does not depend on a clean roster.
-      await expectOk("STAFF", `/batches/${SEED.kidsBatchId}`, {
-        method: "PATCH",
-        body: JSON.stringify({ capacity: 200 }),
+      const kidsBatch = await createCalendarBatch(cleanup, {
+        kind: "prepaid",
+        category: "KIDS",
+        capacity: 8,
       });
 
       const depA = await expectOk<{ id: string }>(
@@ -127,28 +127,18 @@ test.describe("memberships HTTP @http", () => {
       );
       cleanup.trackStudent(depB.id);
 
-      const invA = await expectOk<{ invoice: { id: string; amount: number } }>(
-        "STAFF",
-        `/batches/${SEED.kidsBatchId}/enroll`,
-        {
-          method: "POST",
-          body: JSON.stringify({
-            studentId: depA.id,
-            subscriptionId: SEED.kidPlanIds[0],
-          }),
-        },
-      );
-      const invB = await expectOk<{ invoice: { id: string; amount: number } }>(
-        "STAFF",
-        `/batches/${SEED.kidsBatchId}/enroll`,
-        {
-          method: "POST",
-          body: JSON.stringify({
-            studentId: depB.id,
-            subscriptionId: SEED.kidPlanIds[0],
-          }),
-        },
-      );
+      const invA = await enrollPrepaid(cleanup, {
+        category: "KIDS",
+        studentId: depA.id,
+        batchId: kidsBatch.id,
+        planId: SEED.kidPlanIds[0],
+      });
+      const invB = await enrollPrepaid(cleanup, {
+        category: "KIDS",
+        studentId: depB.id,
+        batchId: kidsBatch.id,
+        planId: SEED.kidPlanIds[0],
+      });
 
       await expectStatus("STAFF", "/billing/family-combine", 400, {
         method: "POST",

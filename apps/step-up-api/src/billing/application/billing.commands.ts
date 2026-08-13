@@ -25,6 +25,10 @@ export class BillingCommandsService {
     private readonly projections: ProjectionService,
   ) {}
 
+  async convertToQuarterly(actor: DecryptedUser, invoiceId: string) {
+    return this.billing.convertToQuarterly(actor, invoiceId);
+  }
+
   async markPaid(
     actor: DecryptedUser,
     id: string,

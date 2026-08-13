@@ -13,6 +13,8 @@ const studentLiteSelect = {
 const membershipStudioSelect = {
   id: true,
   periodStart: true,
+  periodEnd: true,
+  billingPhase: true,
   subscription: {
     select: {
       id: true,
@@ -20,12 +22,14 @@ const membershipStudioSelect = {
       name: true,
       adultSeats: true,
       kidSeats: true,
+      billingCadence: true,
     },
   },
 } as const;
 
 const membershipStudentSelect = {
   periodStart: true,
+  periodEnd: true,
 } as const;
 
 const studioInvoiceSelect = {
@@ -48,6 +52,9 @@ const studioInvoiceSelect = {
   paymentHoldExpiresAt: true,
   purchaseMeta: true,
   combineMeta: true,
+  chargeType: true,
+  attendedSessionCount: true,
+  billedSessionCount: true,
   student: { select: studentLiteSelect },
   membership: { select: membershipStudioSelect },
 } as const;
@@ -72,6 +79,9 @@ const studentInvoiceSelect = {
   paymentHoldExpiresAt: true,
   purchaseMeta: true,
   combineMeta: true,
+  chargeType: true,
+  attendedSessionCount: true,
+  billedSessionCount: true,
   membership: { select: membershipStudentSelect },
 } as const;
 

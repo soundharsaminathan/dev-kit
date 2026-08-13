@@ -9,11 +9,15 @@ import {
   BatchEnrollmentStatus,
   BillingCadence,
   IndividualAudience,
+  InvoiceChargeType,
   InvoiceStatus,
+  MembershipBillingPhase,
   MembershipSeatRole,
   MembershipStatus,
   NotificationType,
   Prisma,
+  SessionStatus,
+  SessionType,
   SubscriptionKind,
 } from "@prisma/client";
 import {
@@ -30,8 +34,11 @@ import {
   getNextPeriodStart,
   getPeriodEnd,
   isMonthlyPlanUnpaid,
+  isPrepaidAtJoin,
   membershipCoversBatch,
+  prorateByAttendance,
   seatRoleForBatchCategory,
+  utcMonthStart,
 } from "./membership-helpers";
 
 export type CoveredStudentInput = {
@@ -45,6 +52,17 @@ export type InvoicePurchaseMeta = {
   subscriptionId: string;
   purchaserUserId: string;
   coveredStudents: CoveredStudentInput[];
+  firstMonthConvertToQuarterly?: boolean;
+};
+
+export type BatchEnrollmentBilling = {
+  kind: "prepaid" | "postpaid" | "switch";
+  invoice: {
+    id: string;
+    amount: unknown;
+    status: InvoiceStatus;
+    [key: string]: unknown;
+  } | null;
 };
 
 @Injectable()
@@ -116,6 +134,8 @@ export class MembershipsService {
           periodStart,
           periodEnd,
           status: MembershipStatus.ACTIVE,
+          billingPhase: MembershipBillingPhase.PREPAID,
+          batchId: seatsWithBatch[0]?.batchId ?? null,
           coveredStudents: {
             create: args.coveredStudents.map((c) => ({
               studentId: c.studentId,
@@ -238,6 +258,7 @@ export class MembershipsService {
         studioId: batch.studioId,
         amount: planLink.subscription.price,
         status: InvoiceStatus.PENDING,
+        chargeType: InvoiceChargeType.PREPAID_FULL,
         platformFeePercent: settings?.platformFeePercent ?? 5,
         ...(holdPayment
           ? { paymentHoldExpiresAt: paymentHoldExpiresAt() }
@@ -344,6 +365,7 @@ export class MembershipsService {
           studioId: batch.studioId,
           amount: planLink.subscription.price,
           status: InvoiceStatus.PENDING,
+          chargeType: InvoiceChargeType.PREPAID_FULL,
           platformFeePercent: settings?.platformFeePercent ?? 5,
           ...(holdPayment
             ? { paymentHoldExpiresAt: paymentHoldExpiresAt() }
@@ -368,15 +390,446 @@ export class MembershipsService {
     );
   }
 
+  async beginBatchEnrollment(args: {
+    batchId: string;
+    subscriptionId: string;
+    studentId: string;
+    paymentHold?: boolean;
+  }): Promise<BatchEnrollmentBilling> {
+    const now = new Date();
+    const batch = await this.prisma.batch.findUnique({
+      where: { id: args.batchId },
+    });
+    if (!batch?.active) {
+      throw new NotFoundException("Batch not found or inactive");
+    }
+    const seatRole = seatRoleForBatchCategory(batch.category);
+    const track = await this.findCurrentPeriodTrack(args.studentId, now);
+
+    if (track && track.batchId && track.batchId !== args.batchId) {
+      await this.moveTrackToBatch(track.id, args.batchId);
+      return { kind: "switch", invoice: null };
+    }
+
+    if (track && track.batchId === args.batchId) {
+      await this.closeTrackWithoutRenewal(track.id);
+    }
+
+    const firstSessionStartsAt = await this.findFirstSessionStartsAt(
+      args.batchId,
+      now,
+    );
+    if (isPrepaidAtJoin({ joinedAt: now, firstSessionStartsAt })) {
+      const invoice = await this.purchaseForBatch({
+        batchId: args.batchId,
+        subscriptionId: args.subscriptionId,
+        purchaserUserId: args.studentId,
+        coveredStudents: [
+          {
+            studentId: args.studentId,
+            seatRole,
+            batchId: args.batchId,
+          },
+        ],
+        paymentHold: args.paymentHold,
+      });
+      // Discover checkout keeps the hold-only invoice. Staff/bulk/parent seat
+      // immediately, so the membership (and invoice link) exist before payment.
+      if (args.paymentHold === false) {
+        const membership = await this.startMembershipForEnroll({
+          batchId: args.batchId,
+          subscriptionId: args.subscriptionId,
+          studentId: args.studentId,
+          at: now,
+          billingPhase: MembershipBillingPhase.PREPAID,
+        });
+        const linked = await this.prisma.invoice.update({
+          where: { id: invoice.id },
+          data: { membershipId: membership.id },
+        });
+        return { kind: "prepaid", invoice: linked };
+      }
+      return { kind: "prepaid", invoice };
+    }
+
+    await this.startMembershipForEnroll({
+      batchId: args.batchId,
+      subscriptionId: args.subscriptionId,
+      studentId: args.studentId,
+      at: now,
+      billingPhase: MembershipBillingPhase.FIRST_POSTPAID,
+    });
+    return { kind: "postpaid", invoice: null };
+  }
+
+  async moveCurrentTrackToBatch(studentId: string, toBatchId: string) {
+    const track = await this.findCurrentPeriodTrack(studentId, new Date());
+    if (!track) {
+      return;
+    }
+    await this.moveTrackToBatch(track.id, toBatchId);
+  }
+
+  async convertUpcomingInvoiceToQuarterly(invoiceId: string) {
+    const invoice = await this.prisma.invoice.findUnique({
+      where: { id: invoiceId },
+      include: {
+        membership: {
+          include: {
+            subscription: true,
+            coveredStudents: true,
+          },
+        },
+      },
+    });
+    if (!invoice) {
+      throw new NotFoundException("Invoice not found");
+    }
+    if (
+      invoice.status !== InvoiceStatus.PENDING &&
+      invoice.status !== InvoiceStatus.OVERDUE
+    ) {
+      throw new BadRequestException("Only an unpaid invoice can be converted");
+    }
+    if (invoice.chargeType !== InvoiceChargeType.PREPAID_FULL) {
+      throw new BadRequestException(
+        "Only the upcoming prepaid invoice can convert to quarterly",
+      );
+    }
+    const meta = parsePurchaseMeta(invoice.purchaseMeta);
+    if (!meta?.firstMonthConvertToQuarterly) {
+      throw new BadRequestException(
+        "Quarterly convert is only available on the first-month bill",
+      );
+    }
+    const membership = invoice.membership;
+    if (!membership) {
+      throw new BadRequestException("Invoice is not linked to a membership");
+    }
+    if (membership.subscription.billingCadence !== BillingCadence.MONTHLY) {
+      throw new BadRequestException("This invoice is already quarterly");
+    }
+    const batchId = membership.batchId ?? meta.batchId;
+    if (!batchId) {
+      throw new BadRequestException("No batch is linked to this invoice");
+    }
+
+    const quarterly = await this.prisma.batchPlan.findFirst({
+      where: {
+        batchId,
+        subscription: {
+          active: true,
+          kind: SubscriptionKind.INDIVIDUAL,
+          billingCadence: BillingCadence.QUARTERLY,
+          individualAudience: membership.subscription.individualAudience,
+        },
+      },
+      include: { subscription: true },
+    });
+    if (!quarterly) {
+      throw new BadRequestException(
+        "This batch does not have a quarterly plan",
+      );
+    }
+
+    const periodEnd = getPeriodEnd(
+      membership.periodStart,
+      BillingCadence.QUARTERLY,
+    );
+    const nextMeta: InvoicePurchaseMeta = {
+      ...meta,
+      subscriptionId: quarterly.subscriptionId,
+      firstMonthConvertToQuarterly: false,
+    };
+
+    const [updatedMembership, updatedInvoice] = await this.prisma.$transaction([
+      this.prisma.membership.update({
+        where: { id: membership.id },
+        data: {
+          subscriptionId: quarterly.subscriptionId,
+          periodEnd,
+        },
+      }),
+      this.prisma.invoice.update({
+        where: { id: invoice.id },
+        data: {
+          amount: quarterly.subscription.price,
+          purchaseMeta: nextMeta as unknown as Prisma.InputJsonValue,
+        },
+      }),
+    ]);
+
+    return {
+      membership: updatedMembership,
+      invoice: {
+        ...updatedInvoice,
+        amount: Number(updatedInvoice.amount),
+      },
+    };
+  }
+
+  private async findCurrentPeriodTrack(studentId: string, at: Date) {
+    const monthStart = utcMonthStart(at);
+    const monthEnd = getPeriodEnd(monthStart, BillingCadence.MONTHLY);
+    return this.prisma.membership.findFirst({
+      where: {
+        periodStart: { lte: monthEnd },
+        periodEnd: { gte: monthStart },
+        status: {
+          in: [
+            MembershipStatus.ACTIVE,
+            MembershipStatus.DUE,
+            MembershipStatus.EXPIRED,
+          ],
+        },
+        coveredStudents: { some: { studentId } },
+      },
+      orderBy: { periodEnd: "desc" },
+    });
+  }
+
+  private async moveTrackToBatch(membershipId: string, batchId: string) {
+    const membership = await this.prisma.membership.findUnique({
+      where: { id: membershipId },
+      include: { invoices: true, coveredStudents: true },
+    });
+    if (!membership) {
+      return;
+    }
+
+    await this.prisma.membership.update({
+      where: { id: membershipId },
+      data: { batchId },
+    });
+
+    const openInvoices = membership.invoices.filter(
+      (invoice) =>
+        invoice.status === InvoiceStatus.PENDING ||
+        invoice.status === InvoiceStatus.OVERDUE,
+    );
+    for (const invoice of openInvoices) {
+      const meta = parsePurchaseMeta(invoice.purchaseMeta);
+      if (!meta) {
+        continue;
+      }
+      const nextMeta: InvoicePurchaseMeta = {
+        ...meta,
+        batchId,
+        coveredStudents: meta.coveredStudents.map((seat) => ({
+          ...seat,
+          batchId,
+        })),
+      };
+      await this.prisma.invoice.update({
+        where: { id: invoice.id },
+        data: { purchaseMeta: nextMeta as unknown as Prisma.InputJsonValue },
+      });
+    }
+  }
+
+  private async closeTrackWithoutRenewal(membershipId: string) {
+    await this.prisma.membership.update({
+      where: { id: membershipId },
+      data: { status: MembershipStatus.EXPIRED },
+    });
+  }
+
+  private async startMembershipForEnroll(args: {
+    batchId: string;
+    subscriptionId: string;
+    studentId: string;
+    at: Date;
+    billingPhase: MembershipBillingPhase;
+  }) {
+    const subscription = await this.prisma.subscription.findUnique({
+      where: { id: args.subscriptionId },
+    });
+    if (!subscription?.active) {
+      throw new NotFoundException("Subscription not found or inactive");
+    }
+    const batch = await this.prisma.batch.findUnique({
+      where: { id: args.batchId },
+    });
+    if (!batch) {
+      throw new NotFoundException("Batch not found");
+    }
+    const periodStart = utcMonthStart(args.at);
+    const periodEnd = getPeriodEnd(periodStart, subscription.billingCadence);
+    const seatRole = seatRoleForBatchCategory(batch.category);
+
+    return this.prisma.membership.create({
+      data: {
+        subscriptionId: subscription.id,
+        purchaserUserId: args.studentId,
+        periodStart,
+        periodEnd,
+        status: MembershipStatus.ACTIVE,
+        billingPhase: args.billingPhase,
+        batchId: args.batchId,
+        coveredStudents: {
+          create: {
+            studentId: args.studentId,
+            seatRole,
+          },
+        },
+      },
+    });
+  }
+
+  private async findFirstSessionStartsAt(batchId: string, at: Date) {
+    const monthStart = utcMonthStart(at);
+    const monthEnd = getPeriodEnd(monthStart, BillingCadence.MONTHLY);
+    const session = await this.prisma.session.findFirst({
+      where: {
+        batchId,
+        type: SessionType.REGULAR,
+        status: { not: SessionStatus.CANCELLED },
+        startsAt: { gte: monthStart, lte: monthEnd },
+      },
+      orderBy: { startsAt: "asc" },
+      select: { startsAt: true },
+    });
+    return session?.startsAt ?? null;
+  }
+
+  private async isTrackStillEnrolled(membership: {
+    batchId: string | null;
+    coveredStudents: Array<{ studentId: string }>;
+  }) {
+    if (!membership.batchId) {
+      return true;
+    }
+    const studentIds = membership.coveredStudents.map((seat) => seat.studentId);
+    if (studentIds.length === 0) {
+      return false;
+    }
+    const enrollment = await this.prisma.batchEnrollment.findFirst({
+      where: {
+        batchId: membership.batchId,
+        studentId: { in: studentIds },
+        status: BatchEnrollmentStatus.ACTIVE,
+      },
+      select: { id: true },
+    });
+    return Boolean(enrollment);
+  }
+
+  private async voidOpenInvoicesForTrack(membership: {
+    id: string;
+    batchId: string | null;
+    purchaserUserId: string;
+  }) {
+    await this.prisma.invoice.deleteMany({
+      where: {
+        status: { in: [InvoiceStatus.PENDING, InvoiceStatus.OVERDUE] },
+        chargeType: InvoiceChargeType.PREPAID_FULL,
+        OR: [
+          { membershipId: membership.id },
+          ...(membership.batchId
+            ? [
+                {
+                  studentId: membership.purchaserUserId,
+                  purchaseMeta: {
+                    path: ["batchId"],
+                    equals: membership.batchId,
+                  },
+                },
+              ]
+            : []),
+        ],
+      },
+    });
+  }
+
+  private async createUsageInvoiceIfNeeded(membership: {
+    id: string;
+    batchId: string | null;
+    purchaserUserId: string;
+    periodStart: Date;
+    periodEnd: Date;
+    subscription: { id: string; price: unknown };
+    coveredStudents: Array<{ studentId: string; seatRole: MembershipSeatRole }>;
+    purchaser: { studioId: string | null };
+  }) {
+    if (!membership.batchId || !membership.purchaser.studioId) {
+      return;
+    }
+    const studentId = membership.coveredStudents[0]?.studentId;
+    if (!studentId) {
+      return;
+    }
+
+    const existing = await this.prisma.invoice.findFirst({
+      where: {
+        membershipId: membership.id,
+        chargeType: InvoiceChargeType.POSTPAID_PRORATED,
+      },
+    });
+    if (existing) {
+      return;
+    }
+
+    const sessionWhere = {
+      batchId: membership.batchId,
+      type: SessionType.REGULAR,
+      status: { not: SessionStatus.CANCELLED },
+      startsAt: { gte: membership.periodStart, lte: membership.periodEnd },
+    };
+    const [billedSessionCount, attendedSessionCount] = await Promise.all([
+      this.prisma.session.count({ where: sessionWhere }),
+      this.prisma.attendance.count({
+        where: {
+          studentId,
+          status: "PRESENT",
+          session: sessionWhere,
+        },
+      }),
+    ]);
+    const amount = prorateByAttendance(
+      Number(membership.subscription.price),
+      attendedSessionCount,
+      billedSessionCount,
+    );
+    if (amount <= 0) {
+      return;
+    }
+
+    const settings = await this.prisma.studioSettings.findUnique({
+      where: { studioId: membership.purchaser.studioId },
+      select: { platformFeePercent: true },
+    });
+
+    await this.prisma.invoice.create({
+      data: {
+        studentId: membership.purchaserUserId,
+        studioId: membership.purchaser.studioId,
+        membershipId: membership.id,
+        amount,
+        status: InvoiceStatus.PENDING,
+        chargeType: InvoiceChargeType.POSTPAID_PRORATED,
+        attendedSessionCount,
+        billedSessionCount,
+        platformFeePercent: settings?.platformFeePercent ?? 5,
+        purchaseMeta: {
+          batchId: membership.batchId,
+          subscriptionId: membership.subscription.id,
+          purchaserUserId: membership.purchaserUserId,
+          coveredStudents: membership.coveredStudents.map((seat) => ({
+            studentId: seat.studentId,
+            seatRole: seat.seatRole,
+            batchId: membership.batchId ?? undefined,
+          })),
+        } as unknown as Prisma.InputJsonValue,
+      },
+    });
+  }
+
   /**
    * Prepaid renew-on-pay: activate the current DUE/EXPIRED period in place
    * (do not advance to the next period).
    * Pass notify:false when billing already emits PAYMENT_RECEIVED for the same pay.
    */
-  async renewManual(
-    membershipId: string,
-    options?: { notify?: boolean },
-  ) {
+  async renewManual(membershipId: string, options?: { notify?: boolean }) {
     const notify = options?.notify !== false;
     const existing = await this.prisma.membership.findUnique({
       where: { id: membershipId },
@@ -437,6 +890,7 @@ export class MembershipsService {
       include: {
         subscription: true,
         coveredStudents: true,
+        purchaser: { select: { id: true, studioId: true } },
       },
     });
 
@@ -448,36 +902,49 @@ export class MembershipsService {
       return { previousId: existing.id, next: null as null, created: false };
     }
 
+    if (existing.billingPhase === MembershipBillingPhase.FIRST_POSTPAID) {
+      await this.createUsageInvoiceIfNeeded(existing);
+    }
+
+    const stillEnrolled = await this.isTrackStillEnrolled(existing);
+
     const periodStart = getNextPeriodStart(new Date(existing.periodEnd));
     const periodEnd = getPeriodEnd(
       periodStart,
       existing.subscription.billingCadence,
     );
 
-    const alreadyOpen = await this.prisma.membership.findFirst({
-      where: {
-        subscriptionId: existing.subscriptionId,
-        purchaserUserId: existing.purchaserUserId,
-        periodStart,
-        status: {
-          in: [
-            MembershipStatus.DUE,
-            MembershipStatus.EXPIRED,
-            MembershipStatus.ACTIVE,
-          ],
-        },
-        id: { not: existing.id },
-      },
-      include: {
-        subscription: true,
-        coveredStudents: true,
-      },
-    });
+    const alreadyOpen = stillEnrolled
+      ? await this.prisma.membership.findFirst({
+          where: {
+            subscriptionId: existing.subscriptionId,
+            purchaserUserId: existing.purchaserUserId,
+            periodStart,
+            status: {
+              in: [
+                MembershipStatus.DUE,
+                MembershipStatus.EXPIRED,
+                MembershipStatus.ACTIVE,
+              ],
+            },
+            id: { not: existing.id },
+          },
+          include: {
+            subscription: true,
+            coveredStudents: true,
+          },
+        })
+      : null;
 
     await this.prisma.membership.update({
       where: { id: membershipId },
       data: { status: MembershipStatus.EXPIRED },
     });
+
+    if (!stillEnrolled) {
+      await this.voidOpenInvoicesForTrack(existing);
+      return { previousId: existing.id, next: null as null, created: false };
+    }
 
     if (alreadyOpen) {
       return {
@@ -494,6 +961,8 @@ export class MembershipsService {
         periodStart,
         periodEnd,
         status: MembershipStatus.DUE,
+        billingPhase: MembershipBillingPhase.PREPAID,
+        batchId: existing.batchId,
         coveredStudents: {
           create: existing.coveredStudents.map((c) => ({
             studentId: c.studentId,
@@ -507,10 +976,19 @@ export class MembershipsService {
       },
     });
 
+    if (existing.billingPhase === MembershipBillingPhase.FIRST_POSTPAID) {
+      await this.ensureRenewalInvoice(next.id, {
+        firstMonthConvertToQuarterly: true,
+      });
+    }
+
     return { previousId: existing.id, next, created: true };
   }
 
-  async ensureRenewalInvoice(membershipId: string) {
+  async ensureRenewalInvoice(
+    membershipId: string,
+    options: { firstMonthConvertToQuarterly?: boolean } = {},
+  ) {
     const existing = await this.prisma.membership.findUnique({
       where: { id: membershipId },
       include: {
@@ -524,8 +1002,17 @@ export class MembershipsService {
       throw new NotFoundException("Membership not found");
     }
 
+    if (existing.billingPhase === MembershipBillingPhase.FIRST_POSTPAID) {
+      return { invoice: null, created: false as const };
+    }
+
     if (!existing.purchaser.studioId) {
       throw new BadRequestException("Purchaser is not assigned to a studio");
+    }
+
+    const stillEnrolled = await this.isTrackStillEnrolled(existing);
+    if (!stillEnrolled) {
+      return { invoice: null, created: false as const };
     }
 
     const open = await this.prisma.invoice.findFirst({
@@ -561,6 +1048,7 @@ export class MembershipsService {
     const purchaseMeta: InvoicePurchaseMeta | null = priorMeta
       ? {
           ...(priorMeta.batchId ? { batchId: priorMeta.batchId } : {}),
+          ...(existing.batchId ? { batchId: existing.batchId } : {}),
           subscriptionId: existing.subscriptionId,
           purchaserUserId: existing.purchaserUserId,
           coveredStudents: existing.coveredStudents.map((seat) => {
@@ -572,13 +1060,42 @@ export class MembershipsService {
               seatRole: seat.seatRole,
               ...(priorSeat?.batchId
                 ? { batchId: priorSeat.batchId }
-                : priorMeta.batchId
-                  ? { batchId: priorMeta.batchId }
-                  : {}),
+                : existing.batchId
+                  ? { batchId: existing.batchId }
+                  : priorMeta.batchId
+                    ? { batchId: priorMeta.batchId }
+                    : {}),
             };
           }),
+          ...(options.firstMonthConvertToQuarterly
+            ? { firstMonthConvertToQuarterly: true }
+            : {}),
         }
-      : null;
+      : existing.batchId
+        ? {
+            batchId: existing.batchId,
+            subscriptionId: existing.subscriptionId,
+            purchaserUserId: existing.purchaserUserId,
+            coveredStudents: existing.coveredStudents.map((seat) => ({
+              studentId: seat.studentId,
+              seatRole: seat.seatRole,
+              batchId: existing.batchId ?? undefined,
+            })),
+            ...(options.firstMonthConvertToQuarterly
+              ? { firstMonthConvertToQuarterly: true }
+              : {}),
+          }
+        : options.firstMonthConvertToQuarterly
+          ? {
+              subscriptionId: existing.subscriptionId,
+              purchaserUserId: existing.purchaserUserId,
+              coveredStudents: existing.coveredStudents.map((seat) => ({
+                studentId: seat.studentId,
+                seatRole: seat.seatRole,
+              })),
+              firstMonthConvertToQuarterly: true,
+            }
+          : null;
 
     const invoice = await this.prisma.invoice.create({
       data: {
@@ -587,6 +1104,7 @@ export class MembershipsService {
         membershipId: existing.id,
         amount: existing.subscription.price,
         status: InvoiceStatus.PENDING,
+        chargeType: InvoiceChargeType.PREPAID_FULL,
         platformFeePercent: settings?.platformFeePercent ?? 5,
         ...(purchaseMeta ? { purchaseMeta } : {}),
       },
@@ -817,6 +1335,7 @@ export class MembershipsService {
           billingCadence: membership.subscription.billingCadence,
           membershipStatus: membership.status,
           invoiceStatuses: membership.invoices.map((invoice) => invoice.status),
+          billingPhase: membership.billingPhase,
         })
       ) {
         unpaid.add(studentId);

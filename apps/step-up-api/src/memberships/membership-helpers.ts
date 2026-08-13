@@ -4,7 +4,9 @@ import {
   BillingCadence,
   FamilyPack,
   IndividualAudience,
+  InvoiceChargeType,
   InvoiceStatus,
+  MembershipBillingPhase,
   MembershipSeatRole,
   MembershipStatus,
   SubscriptionKind,
@@ -120,10 +122,60 @@ export function computePlatformFee(
   return Math.round(amount * (platformFeePercent / 100) * 100) / 100;
 }
 
+export function roundMoney(value: number): number {
+  return Math.round(value * 100) / 100;
+}
+
+export function utcMonthStart(at: Date = new Date()): Date {
+  return new Date(Date.UTC(at.getUTCFullYear(), at.getUTCMonth(), 1));
+}
+
+export function isUtcFirstOfMonth(at: Date): boolean {
+  return at.getUTCDate() === 1;
+}
+
+/** Prepaid at join when it is the 1st or they have not missed this batch's first session. */
+export function isPrepaidAtJoin(args: {
+  joinedAt: Date;
+  firstSessionStartsAt: Date | null;
+}): boolean {
+  if (isUtcFirstOfMonth(args.joinedAt)) {
+    return true;
+  }
+  if (!args.firstSessionStartsAt) {
+    return true;
+  }
+  return args.joinedAt.getTime() <= args.firstSessionStartsAt.getTime();
+}
+
+export function prorateByAttendance(
+  planPrice: number,
+  attended: number,
+  billedSessions: number,
+): number {
+  if (billedSessions <= 0 || attended <= 0) {
+    return 0;
+  }
+  const capped = Math.min(attended, billedSessions);
+  return roundMoney(planPrice * (capped / billedSessions));
+}
+
+export function invoiceDueDate(args: {
+  chargeType?: InvoiceChargeType | null;
+  periodStart?: Date | null;
+  periodEnd?: Date | null;
+}): Date | null {
+  if (args.chargeType === InvoiceChargeType.POSTPAID_PRORATED) {
+    return args.periodEnd ?? null;
+  }
+  return args.periodStart ?? null;
+}
+
 export type MonthlyPlanPaymentSnapshot = {
   billingCadence: BillingCadence;
   membershipStatus: MembershipStatus;
   invoiceStatuses: InvoiceStatus[];
+  billingPhase?: MembershipBillingPhase;
 };
 
 /** Latest monthly membership is unpaid when due/expired or any invoice is open. */
@@ -132,6 +184,12 @@ export function isMonthlyPlanUnpaid(
 ): boolean {
   if (snapshot.billingCadence !== BillingCadence.MONTHLY) {
     return false;
+  }
+  if (snapshot.billingPhase === MembershipBillingPhase.FIRST_POSTPAID) {
+    return snapshot.invoiceStatuses.some(
+      (status) =>
+        status === InvoiceStatus.PENDING || status === InvoiceStatus.OVERDUE,
+    );
   }
   if (
     snapshot.membershipStatus === MembershipStatus.DUE ||

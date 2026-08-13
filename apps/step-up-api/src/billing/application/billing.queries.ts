@@ -6,6 +6,7 @@ import { buildPage, type Page } from "../../shared/pagination";
 import type { DecryptedUser } from "../../users/user-crypto.service";
 import { UserPresenter } from "../../users/user-presenter";
 import { BillingService } from "../billing.service";
+import { invoiceDueDate } from "../../memberships/membership-helpers";
 import {
   batchIdsForInvoiceDisplay,
   batchLabelForInvoice,
@@ -179,10 +180,23 @@ export class BillingQueriesService {
         razorpayPaymentId: invoice.razorpayPaymentId,
         paymentHoldExpiresAt:
           invoice.paymentHoldExpiresAt?.toISOString() ?? null,
+        chargeType: invoice.chargeType,
+        attendedSessionCount: invoice.attendedSessionCount,
+        billedSessionCount: invoice.billedSessionCount,
+        canConvertToQuarterly:
+          Boolean(purchaseMeta?.firstMonthConvertToQuarterly) &&
+          (invoice.status === "PENDING" || invoice.status === "OVERDUE") &&
+          invoice.chargeType === "PREPAID_FULL",
+        dueDate: invoiceDueDate({
+          chargeType: invoice.chargeType,
+          periodStart: invoice.membership?.periodStart,
+          periodEnd: invoice.membership?.periodEnd,
+        })?.toISOString() ?? null,
         membership: invoice.membership
           ? {
               id: invoice.membership.id,
               periodStart: invoice.membership.periodStart.toISOString(),
+              periodEnd: invoice.membership.periodEnd.toISOString(),
               subscription: invoice.membership.subscription,
             }
           : null,
@@ -302,7 +316,19 @@ export class BillingQueriesService {
         paymentMethod: invoice.paymentMethod,
         paidAt: invoice.paidAt?.toISOString() ?? null,
         refundedAt: invoice.refundedAt?.toISOString() ?? null,
-        dueDate: invoice.membership?.periodStart?.toISOString() ?? null,
+        dueDate:
+          invoiceDueDate({
+            chargeType: invoice.chargeType,
+            periodStart: invoice.membership?.periodStart,
+            periodEnd: invoice.membership?.periodEnd,
+          })?.toISOString() ?? null,
+        chargeType: invoice.chargeType,
+        attendedSessionCount: invoice.attendedSessionCount,
+        billedSessionCount: invoice.billedSessionCount,
+        canConvertToQuarterly:
+          Boolean(purchaseMeta?.firstMonthConvertToQuarterly) &&
+          (invoice.status === "PENDING" || invoice.status === "OVERDUE") &&
+          invoice.chargeType === "PREPAID_FULL",
         batchId,
         batchName,
         purchaseMeta,

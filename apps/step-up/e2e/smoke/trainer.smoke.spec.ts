@@ -2,6 +2,9 @@ import type { Page } from "@playwright/test";
 import {
   apiRequest,
   authFile,
+  canJoinPostpaidNow,
+  enrollPostpaid,
+  enrollUnpaidOnPostpaidBatch,
   expect,
   SMOKE,
   SmokeDataCleanup,
@@ -120,35 +123,16 @@ test.describe("trainer smoke @smoke", () => {
   test("trainer confirms unpaid enrollee then marks present @smoke", async ({
     browser,
   }) => {
+    test.skip(!canJoinPostpaidNow(), "UTC 1st is always prepaid-at-join");
     const cleanup = new SmokeDataCleanup();
-    const sessionId = SMOKE.sessionAttendanceId;
     const stamp = Date.now();
-    const student = await apiRequest<{ id: string; name: string }>(
-      "OWNER",
-      "/users",
+    const { student, invoice, sessionId } = await enrollUnpaidOnPostpaidBatch(
+      cleanup,
       {
-        method: "POST",
-        body: JSON.stringify({
-          name: `Smoke Unpaid ${stamp}`,
-          email: `smoke-unpaid-${stamp}@stepup.dev`,
-          gender: "FEMALE",
-          ageRange: "UNDER_10",
-          styles: ["Hip Hop"],
-        }),
+        name: `Smoke Unpaid ${stamp}`,
       },
     );
-    cleanup.trackStudent(student.id);
-
-    const enrollment = await apiRequest<{
-      invoice: { id: string; status: string };
-    }>("STAFF", `/batches/${SMOKE.kidsBatchId}/enroll`, {
-      method: "POST",
-      body: JSON.stringify({
-        studentId: student.id,
-        subscriptionId: SMOKE.kidPlanIds[0],
-      }),
-    });
-    expect(enrollment.invoice.status).toBe("PENDING");
+    expect(invoice.status).toBe("PENDING");
 
     const rosterBefore = await apiRequest<
       Array<{
@@ -208,35 +192,16 @@ test.describe("trainer smoke @smoke", () => {
   test("after mark-paid unpaid badge clears on roster @smoke", async ({
     browser,
   }) => {
+    test.skip(!canJoinPostpaidNow(), "UTC 1st is always prepaid-at-join");
     const cleanup = new SmokeDataCleanup();
-    const sessionId = SMOKE.sessionAttendanceId;
     const stamp = Date.now();
-    const student = await apiRequest<{ id: string; name: string }>(
-      "OWNER",
-      "/users",
+    const { student, invoice, sessionId } = await enrollUnpaidOnPostpaidBatch(
+      cleanup,
       {
-        method: "POST",
-        body: JSON.stringify({
-          name: `Smoke After Pay ${stamp}`,
-          email: `smoke-after-pay-${stamp}@stepup.dev`,
-          gender: "FEMALE",
-          ageRange: "UNDER_10",
-          styles: ["Hip Hop"],
-        }),
+        name: `Smoke After Pay ${stamp}`,
       },
     );
-    cleanup.trackStudent(student.id);
-
-    const enrollment = await apiRequest<{
-      invoice: { id: string; status: string };
-    }>("STAFF", `/batches/${SMOKE.kidsBatchId}/enroll`, {
-      method: "POST",
-      body: JSON.stringify({
-        studentId: student.id,
-        subscriptionId: SMOKE.kidPlanIds[0],
-      }),
-    });
-    expect(enrollment.invoice.status).toBe("PENDING");
+    expect(invoice.status).toBe("PENDING");
 
     const context = await browser.newContext({
       storageState: authFile("TRAINER"),
@@ -250,7 +215,7 @@ test.describe("trainer smoke @smoke", () => {
       await expect(page.getByText(student.name)).toBeVisible();
       await expect(page.getByText("Not paid").first()).toBeVisible();
 
-      await apiRequest("STAFF", `/billing/${enrollment.invoice.id}/paid`, {
+      await apiRequest("STAFF", `/billing/${invoice.id}/paid`, {
         method: "PATCH",
         body: JSON.stringify({ paymentMethod: "CASH" }),
       });
@@ -268,6 +233,51 @@ test.describe("trainer smoke @smoke", () => {
       expect(
         roster.find((entry) => entry.studentId === student.id)?.monthlyUnpaid,
       ).toBe(false);
+    } finally {
+      await context.close();
+      await cleanup.dispose();
+    }
+  });
+
+  test("mid-month enrollee marks present without unpaid confirm @smoke", async ({
+    browser,
+  }) => {
+    test.skip(!canJoinPostpaidNow(), "UTC 1st is always prepaid-at-join");
+    const cleanup = new SmokeDataCleanup();
+    const stamp = Date.now();
+    const { student, sessionId, batchId } = await enrollPostpaid(cleanup, {
+      name: `Smoke Postpaid ${stamp}`,
+    });
+    expect(batchId).toBeTruthy();
+
+    const roster = await apiRequest<
+      Array<{ studentId: string; monthlyUnpaid?: boolean }>
+    >("TRAINER", `/attendance/session/${sessionId}/roster`);
+    expect(
+      roster.find((row) => row.studentId === student.id)?.monthlyUnpaid,
+    ).toBe(false);
+
+    const context = await browser.newContext({
+      storageState: authFile("TRAINER"),
+    });
+    const page = await context.newPage();
+    try {
+      await page.goto(`/app/sessions/${sessionId}/attendance`, {
+        waitUntil: "domcontentloaded",
+      });
+      await waitForAppReady(page);
+
+      const presentBtn = page.getByTestId(`mark-present-${student.id}`);
+      await expect(presentBtn).toBeVisible();
+      const [response] = await Promise.all([
+        waitForApiResponse(page, {
+          method: "POST",
+          pathIncludes: "/attendance/mark",
+        }),
+        presentBtn.click(),
+      ]);
+      expect(response.ok()).toBeTruthy();
+      await expect(page.getByTestId("confirm-unpaid-mark")).toHaveCount(0);
     } finally {
       await context.close();
       await cleanup.dispose();
@@ -323,7 +333,9 @@ test.describe("trainer smoke @smoke", () => {
         return `${year}-${month}-${day}T${hours}:${minutes}`;
       };
 
-      await page.getByTestId("session-change-starts-at").fill(toLocal(nextStart));
+      await page
+        .getByTestId("session-change-starts-at")
+        .fill(toLocal(nextStart));
       await page.getByTestId("session-change-ends-at").fill(toLocal(nextEnd));
 
       const patchPromise = waitForApiResponse(page, {
@@ -341,7 +353,9 @@ test.describe("trainer smoke @smoke", () => {
       });
       await page.getByTestId("confirm-delete-session").click();
       expect((await deletePromise).ok()).toBeTruthy();
-      await expect(page).toHaveURL(new RegExp(`/app/batches/${session.batchId}`));
+      await expect(page).toHaveURL(
+        new RegExp(`/app/batches/${session.batchId}`),
+      );
     } finally {
       await context.close();
     }

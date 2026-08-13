@@ -228,15 +228,18 @@ export function BatchDetailPage() {
         })),
       ];
       return api.post<{
-        id: string;
-        status: string;
+        id?: string;
+        status?: string;
+        billingKind?: string;
+        enrolled?: boolean;
+        invoice?: { id: string; status: string } | null;
       }>(`/batches/${id}/purchase`, {
         subscriptionId: selectedPlan.id,
         purchaserUserId: user.id,
         coveredStudents,
       });
     },
-    onSuccess: (invoice) => {
+    onSuccess: (result) => {
       void Promise.all([
         queryClient.invalidateQueries({ queryKey: ["batches", id] }),
         queryClient.invalidateQueries({
@@ -248,7 +251,8 @@ export function BatchDetailPage() {
       ]);
       setPurchaseOpen(false);
       setSelectedPlan(null);
-      if (invoice.status === "PENDING") {
+      const invoice = result.invoice ?? (result.id ? result : null);
+      if (invoice && "status" in invoice && invoice.status === "PENDING" && invoice.id) {
         void navigate({
           to: "/me/checkout/invoice/$invoiceId",
           params: { invoiceId: invoice.id },

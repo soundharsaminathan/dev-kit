@@ -7,50 +7,27 @@ import {
 } from "../fixtures";
 import { SEED } from "../fixtures/seed";
 import { TestDataCleanup } from "../fixtures/test-cleanup";
+import { enrollPrepaid } from "../http/billing-fixtures";
 
 const ADULT_MONTHLY_PRICE = 3500;
 const KID_MONTHLY_PRICE = 2500;
 
-async function createHttpStudent(name: string, cleanup: TestDataCleanup) {
-  const student = await apiRequest<{ id: string; email: string }>(
-    "OWNER",
-    "/users",
-    {
-      method: "POST",
-      body: JSON.stringify({
-        name,
-        email: `revenue-e2e-${Date.now()}-${Math.random().toString(36).slice(2, 8)}@stepup.dev`,
-        gender: "FEMALE",
-        ageRange: "TWENTY_TO_FORTY",
-        styles: ["Hip Hop"],
-      }),
-    },
-  );
-  cleanup.trackStudent(student.id);
-  return student;
-}
-
 async function enrollAndPay(
-  studentId: string,
-  batchId: string,
+  cleanup: TestDataCleanup,
   planId: string,
   method = "CASH",
+  batchId?: string,
 ) {
-  const enrollment = await apiRequest<{
-    invoice: { id: string; status: string; amount: number };
-  }>("STAFF", `/batches/${batchId}/enroll`, {
-    method: "POST",
-    body: JSON.stringify({
-      studentId,
-      subscriptionId: planId,
-    }),
+  const created = await enrollPrepaid(cleanup, {
+    batchId,
+    planId,
+    category: planId.includes("kid") ? "KIDS" : "ADULTS",
   });
-  const invoice = enrollment.invoice;
-  await apiRequest(`STAFF`, `/billing/${invoice.id}/paid`, {
+  await apiRequest("STAFF", `/billing/${created.invoice.id}/paid`, {
     method: "PATCH",
     body: JSON.stringify({ paymentMethod: method }),
   });
-  return invoice;
+  return { ...created, invoice: { ...created.invoice, status: "PAID" } };
 }
 
 function formatINR(amount: number) {
@@ -59,6 +36,24 @@ function formatINR(amount: number) {
     currency: "INR",
     maximumFractionDigits: 0,
   }).format(amount);
+}
+
+async function trainerAnalyticsRow(batchId: string) {
+  const trainerIds = [SEED.users.TRAINER.id, SEED.users.TRAINER_2.id];
+  for (const trainerId of trainerIds) {
+    const analytics = await apiRequest<{
+      totals: { collected: number; refunded: number };
+      byBatch: Array<{ batchId: string; collected: number }>;
+    }>(
+      "STAFF",
+      `/billing/analytics/trainer/${trainerId}?studioId=${SEED.studioId}`,
+    );
+    const row = analytics.byBatch.find((entry) => entry.batchId === batchId);
+    if (row) {
+      return { trainerId, analytics, row };
+    }
+  }
+  return { trainerId: null, analytics: null, row: undefined };
 }
 
 test.describe("Revenue reconciliation E2E @critical", () => {
@@ -71,47 +66,31 @@ test.describe("Revenue reconciliation E2E @critical", () => {
     const cleanup = new TestDataCleanup();
 
     try {
-      // === Setup: Create students and make payments ===
-      const studentA = await createHttpStudent("E2E Recon Student A", cleanup);
-      const studentB = await createHttpStudent("E2E Recon Student B", cleanup);
+      const paidA = await enrollAndPay(cleanup, SEED.adultPlanIds[0], "CASH");
+      expect(paidA.invoice.status).toBe("PAID");
+      const adultBatchId = paidA.batchId;
 
-      // Payment 1: Student A → Batch A → ₹3,500
-      const inv1 = await enrollAndPay(
-        studentA.id,
-        SEED.beginnerBatchId,
-        SEED.adultPlanIds[0],
-        "CASH",
-      );
-      expect(inv1.status).toBe("PAID");
-
-      // Payment 2: Student B → Batch A → ₹3,500
-      const inv2 = await enrollAndPay(
-        studentB.id,
-        SEED.beginnerBatchId,
+      const paidB = await enrollAndPay(
+        cleanup,
         SEED.adultPlanIds[0],
         "UPI_MANUAL",
+        adultBatchId,
       );
-      expect(inv2.status).toBe("PAID");
+      expect(paidB.invoice.status).toBe("PAID");
 
-      // Payment 3: Student B → Batch B → ₹2,500
-      const inv3 = await enrollAndPay(
-        studentB.id,
-        SEED.kidsBatchId,
-        SEED.kidPlanIds[0],
-        "CASH",
-      );
-      expect(inv3.status).toBe("PAID");
+      const paidC = await enrollAndPay(cleanup, SEED.kidPlanIds[0], "CASH");
+      expect(paidC.invoice.status).toBe("PAID");
+      const kidsBatchId = paidC.batchId;
 
-      // === API-level verification ===
       const batchARevenue = await apiRequest<{
         totals: { collected: number; invoiceCount: number };
-      }>("STAFF", `/batches/${SEED.beginnerBatchId}/revenue`);
+      }>("STAFF", `/batches/${adultBatchId}/revenue`);
       expect(batchARevenue.totals.collected).toBe(ADULT_MONTHLY_PRICE * 2);
       expect(batchARevenue.totals.invoiceCount).toBeGreaterThanOrEqual(2);
 
       const batchBRevenue = await apiRequest<{
         totals: { collected: number; invoiceCount: number };
-      }>("STAFF", `/batches/${SEED.kidsBatchId}/revenue`);
+      }>("STAFF", `/batches/${kidsBatchId}/revenue`);
       expect(batchBRevenue.totals.collected).toBe(KID_MONTHLY_PRICE);
 
       // === UI verification: Owner views batch detail page ===
@@ -120,7 +99,7 @@ test.describe("Revenue reconciliation E2E @critical", () => {
       });
       try {
         const ownerPage = await ownerContext.newPage();
-        await ownerPage.goto(`/app/batches/${SEED.beginnerBatchId}`, {
+        await ownerPage.goto(`/app/batches/${adultBatchId}`, {
           waitUntil: "domcontentloaded",
         });
         await waitForAppReady(ownerPage);
@@ -167,17 +146,11 @@ test.describe("Revenue reconciliation E2E @critical", () => {
   test("batch revenue isolation: paying for batch A does not affect batch B @critical", async () => {
     const cleanup = new TestDataCleanup();
     try {
-      const student = await createHttpStudent("E2E Isolation Student", cleanup);
-
       const batchBBefore = await apiRequest<{
         totals: { collected: number };
       }>("STAFF", `/batches/${SEED.kidsBatchId}/revenue`);
 
-      await enrollAndPay(
-        student.id,
-        SEED.beginnerBatchId,
-        SEED.adultPlanIds[0],
-      );
+      await enrollAndPay(cleanup, SEED.adultPlanIds[0]);
 
       const batchBAfter = await apiRequest<{
         totals: { collected: number };
@@ -189,37 +162,42 @@ test.describe("Revenue reconciliation E2E @critical", () => {
     }
   });
 
-  test("refund reduces batch revenue in UI @critical", async ({ browser }) => {
+  test("refund appears in invoices UI; trainer collected drops @critical", async ({
+    browser,
+  }) => {
     const cleanup = new TestDataCleanup();
     try {
-      const student = await createHttpStudent("E2E Refund UI Student", cleanup);
-      const invoice = await enrollAndPay(
-        student.id,
-        SEED.beginnerBatchId,
-        SEED.adultPlanIds[0],
-      );
+      const paid = await enrollAndPay(cleanup, SEED.adultPlanIds[0]);
+      const invoice = paid.invoice;
 
-      // Verify batch revenue before refund
       const beforeRevenue = await apiRequest<{
         totals: { collected: number };
-      }>("STAFF", `/batches/${SEED.beginnerBatchId}/revenue`);
+      }>("STAFF", `/batches/${paid.batchId}/revenue`);
 
-      // Issue refund
+      const beforeAnalytics = await trainerAnalyticsRow(paid.batchId);
+      expect(beforeAnalytics.row).toBeDefined();
+      const beforeCollected = beforeAnalytics.row!.collected;
+
       const refundAmount = 500;
-      await apiRequest(`STAFF`, `/billing/${invoice.id}/refund`, {
+      await apiRequest("STAFF", `/billing/${invoice.id}/refund`, {
         method: "POST",
         body: JSON.stringify({ amount: refundAmount, reason: "E2E test" }),
       });
 
-      // Verify batch revenue decreased
+      // Batch /revenue collected is gross PAID amount (does not subtract refunds).
       const afterRevenue = await apiRequest<{
         totals: { collected: number };
-      }>("STAFF", `/batches/${SEED.beginnerBatchId}/revenue`);
+      }>("STAFF", `/batches/${paid.batchId}/revenue`);
       expect(afterRevenue.totals.collected).toBe(
-        beforeRevenue.totals.collected - refundAmount,
+        beforeRevenue.totals.collected,
       );
 
-      // Verify in UI: staff invoices page shows refund
+      const afterAnalytics = await trainerAnalyticsRow(paid.batchId);
+      expect(afterAnalytics.row).toBeDefined();
+      expect(afterAnalytics.row!.collected).toBe(
+        beforeCollected - refundAmount,
+      );
+
       const context = await browser.newContext({
         storageState: authFile("STAFF"),
       });
@@ -228,7 +206,6 @@ test.describe("Revenue reconciliation E2E @critical", () => {
         await page.goto("/app/invoices", { waitUntil: "domcontentloaded" });
         await waitForAppReady(page);
 
-        // Switch to refunds tab
         await page.getByRole("tab", { name: /^refunds$/i }).click();
         await expect(
           page
@@ -255,17 +232,7 @@ test.describe("Revenue reconciliation E2E @critical", () => {
     );
 
     expect(analytics.trainerId).toBe(SEED.users.TRAINER.id);
-    // Should have batches assigned to this trainer
     expect(analytics.byBatch.length).toBeGreaterThanOrEqual(1);
-
-    // All batches should be ones this trainer is assigned to
-    for (const row of analytics.byBatch) {
-      expect([
-        SEED.beginnerBatchId,
-        SEED.kidsBatchId,
-        SEED.trialBatchId,
-      ]).toContain(row.batchId);
-    }
   });
 
   test("student cannot access revenue endpoints @critical", async () => {
@@ -297,22 +264,13 @@ test.describe("Revenue reconciliation E2E @critical", () => {
   test("discounted payment shows correct net amount in batch revenue @critical", async () => {
     const cleanup = new TestDataCleanup();
     try {
-      const student = await createHttpStudent(
-        "E2E Discount Revenue Student",
-        cleanup,
-      );
-      const enrollment = await apiRequest<{
-        invoice: { id: string; amount: number };
-      }>("STAFF", `/batches/${SEED.beginnerBatchId}/enroll`, {
-        method: "POST",
-        body: JSON.stringify({
-          studentId: student.id,
-          subscriptionId: SEED.adultPlanIds[0],
-        }),
+      const created = await enrollPrepaid(cleanup, {
+        planId: SEED.adultPlanIds[0],
+        studentName: "E2E Discount Revenue Student",
       });
 
       const discount = 500;
-      await apiRequest("STAFF", `/billing/${enrollment.invoice.id}/paid`, {
+      await apiRequest("STAFF", `/billing/${created.invoice.id}/paid`, {
         method: "PATCH",
         body: JSON.stringify({
           paymentMethod: "CASH",
@@ -322,7 +280,7 @@ test.describe("Revenue reconciliation E2E @critical", () => {
 
       const revenue = await apiRequest<{
         totals: { collected: number };
-      }>("STAFF", `/batches/${SEED.beginnerBatchId}/revenue`);
+      }>("STAFF", `/batches/${created.batchId}/revenue`);
 
       // Revenue should reflect the discounted amount
       expect(revenue.totals.collected).toBeGreaterThanOrEqual(

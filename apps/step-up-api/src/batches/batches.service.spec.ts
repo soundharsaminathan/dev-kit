@@ -564,7 +564,12 @@ describe("BatchesService getRevenue", () => {
   it("month period counts only paid invoices paid this month", async () => {
     const now = new Date();
     const thisMonthPaid = new Date(now.getFullYear(), now.getMonth(), 10, 12);
-    const lastMonthPaid = new Date(now.getFullYear(), now.getMonth() - 1, 10, 12);
+    const lastMonthPaid = new Date(
+      now.getFullYear(),
+      now.getMonth() - 1,
+      10,
+      12,
+    );
 
     prisma.batch.findUnique.mockResolvedValue({
       id: "batch-1",
@@ -894,6 +899,7 @@ describe("BatchesService.remove and enroll", () => {
   const memberships = {
     purchaseForBatch: vi.fn(),
     purchaseForBatchBulk: vi.fn(),
+    beginBatchEnrollment: vi.fn(),
   };
 
   let service: BatchesService;
@@ -994,10 +1000,13 @@ describe("BatchesService.remove and enroll", () => {
       enrollmentMode: EnrollmentMode.SELF_JOIN,
       enrollments: [],
     });
-    memberships.purchaseForBatch.mockResolvedValue({
-      id: "inv-1",
-      amount: 2000,
-      status: "PENDING",
+    memberships.beginBatchEnrollment.mockResolvedValue({
+      kind: "prepaid",
+      invoice: {
+        id: "inv-1",
+        amount: 2000,
+        status: "PENDING",
+      },
     });
     prisma.batchEnrollment.upsert.mockResolvedValue({
       id: "enroll-1",
@@ -1020,11 +1029,10 @@ describe("BatchesService.remove and enroll", () => {
       studentId: "student-1",
       invoice: { id: "inv-1", amount: 2000 },
     });
-    expect(memberships.purchaseForBatch).toHaveBeenCalledWith({
+    expect(memberships.beginBatchEnrollment).toHaveBeenCalledWith({
       batchId: "batch-1",
       subscriptionId: "sub-1",
-      purchaserUserId: "student-1",
-      coveredStudents: [{ studentId: "student-1", seatRole: "ADULT" }],
+      studentId: "student-1",
       paymentHold: false,
     });
   });
@@ -1047,7 +1055,7 @@ describe("BatchesService.remove and enroll", () => {
         "sub-1",
       ),
     ).rejects.toBeInstanceOf(BadRequestException);
-    expect(memberships.purchaseForBatch).not.toHaveBeenCalled();
+    expect(memberships.beginBatchEnrollment).not.toHaveBeenCalled();
   });
 
   it("bulk enrolls multiple students with one locked capacity check", async () => {
@@ -1059,10 +1067,15 @@ describe("BatchesService.remove and enroll", () => {
       enrollmentMode: EnrollmentMode.STAFF_ONLY,
       enrollments: [],
     });
-    memberships.purchaseForBatchBulk.mockResolvedValue([
-      { id: "inv-1", amount: 2000, status: "PENDING" },
-      { id: "inv-2", amount: 2000, status: "PENDING" },
-    ]);
+    memberships.beginBatchEnrollment
+      .mockResolvedValueOnce({
+        kind: "prepaid",
+        invoice: { id: "inv-1", amount: 2000, status: "PENDING" },
+      })
+      .mockResolvedValueOnce({
+        kind: "prepaid",
+        invoice: { id: "inv-2", amount: 2000, status: "PENDING" },
+      });
     prisma.batchEnrollment.upsert
       .mockResolvedValueOnce({
         id: "enroll-1",
@@ -1094,14 +1107,12 @@ describe("BatchesService.remove and enroll", () => {
         },
       ],
     });
-    expect(memberships.purchaseForBatchBulk).toHaveBeenCalledWith({
-      batchId: "batch-1",
-      subscriptionId: "sub-1",
-      studentIds: ["student-1", "student-2"],
-      paymentHold: false,
-      tx: prisma,
-    });
+    expect(memberships.beginBatchEnrollment).toHaveBeenCalledTimes(2);
     expect(memberships.purchaseForBatch).not.toHaveBeenCalled();
+    expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+    expect(
+      memberships.beginBatchEnrollment.mock.invocationCallOrder[0]!,
+    ).toBeLessThan(prisma.$transaction.mock.invocationCallOrder[0]!);
   });
 
   it("rejects bulk enroll for non-staff actors", async () => {
@@ -1134,7 +1145,7 @@ describe("BatchesService.remove and enroll", () => {
         "sub-1",
       ),
     ).rejects.toBeInstanceOf(BadRequestException);
-    expect(memberships.purchaseForBatchBulk).not.toHaveBeenCalled();
+    expect(memberships.beginBatchEnrollment).not.toHaveBeenCalled();
   });
 
   it("rejects bulk enroll with duplicate student ids", async () => {
@@ -1485,15 +1496,11 @@ describe("BatchesService.listByStudio viewer enrollment", () => {
       },
     ]);
 
-    const rows = await service.listByStudio(
-      "studio-1",
-      {},
-      {
-        id: "student-1",
-        role: "STUDENT",
-        ageRange: "TWENTY_TO_FORTY",
-      } as never,
-    );
+    const rows = await service.listByStudio("studio-1", {}, {
+      id: "student-1",
+      role: "STUDENT",
+      ageRange: "TWENTY_TO_FORTY",
+    } as never);
 
     expect(prisma.user.findUnique).not.toHaveBeenCalled();
     expect(rows.map((row) => row.id)).toEqual(["adults-1", "kids-1"]);
@@ -1534,6 +1541,7 @@ describe("BatchesService.switchBatch", () => {
   const memberships = {
     findActiveForBatch: vi.fn(),
     purchaseForBatch: vi.fn(),
+    moveCurrentTrackToBatch: vi.fn(),
   };
 
   let service: BatchesService;
@@ -2099,7 +2107,11 @@ describe("BatchesService.getById roster split", () => {
 
   let service: BatchesService;
 
-  const student = (id: string, name: string, photoUrl: string | null = null) => ({
+  const student = (
+    id: string,
+    name: string,
+    photoUrl: string | null = null,
+  ) => ({
     id,
     name,
     email: `${id}@example.com`,

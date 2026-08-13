@@ -3,6 +3,13 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { test as base, expect, type Page } from "@playwright/test";
 import {
+  batchCreateBody,
+  canJoinPostpaidNow,
+  isScheduleConflict,
+  markableSessionId,
+  scheduleJsonFor,
+} from "../fixtures/billing-calendar";
+import {
   apiBaseUrl,
   homePathForRole,
   SMOKE,
@@ -281,6 +288,209 @@ export class SmokeDataCleanup {
     }
   }
 }
+
+export async function createCalendarBatch(
+  cleanup: SmokeDataCleanup,
+  options: {
+    kind: "prepaid" | "postpaid";
+    category?: "ADULTS" | "KIDS";
+    name?: string;
+    capacity?: number;
+  },
+) {
+  const category = options.category ?? "ADULTS";
+  if (options.kind === "postpaid" && !canJoinPostpaidNow()) {
+    throw new Error(
+      "UTC 1st is always prepaid-at-join; skip postpaid fixture cases",
+    );
+  }
+  const branches = [SMOKE.branchMainId, SMOKE.branchEastId];
+  let lastError: unknown;
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    const stamp = Date.now() + attempt * 97_000;
+    try {
+      const created = await apiRequest<{ id: string }>("STAFF", "/batches", {
+        method: "POST",
+        body: JSON.stringify(
+          batchCreateBody({
+            studioId: SMOKE.studioId,
+            branchId: branches[attempt % branches.length],
+            trainerId: SMOKE.users.TRAINER.id,
+            name:
+              options.name ??
+              `${options.kind === "prepaid" ? "Prepaid" : "Postpaid"} ${category} ${stamp}`,
+            category,
+            scheduleJson: scheduleJsonFor(options.kind, stamp),
+            subscriptionIds:
+              category === "KIDS" ? SMOKE.kidPlanIds : SMOKE.adultPlanIds,
+            capacity: options.capacity,
+          }),
+        ),
+      });
+      cleanup.trackBatch(created.id);
+      return created;
+    } catch (error) {
+      lastError = error;
+      if (!isScheduleConflict(error)) {
+        throw error;
+      }
+    }
+  }
+  throw lastError instanceof Error
+    ? lastError
+    : new Error(`Could not create ${options.kind} smoke calendar batch`);
+}
+
+export async function createFutureScheduleBatch(
+  cleanup: SmokeDataCleanup,
+  options: { category?: "ADULTS" | "KIDS" } = {},
+) {
+  return createCalendarBatch(cleanup, {
+    kind: "prepaid",
+    category: options.category,
+  });
+}
+
+export async function enrollPrepaid(
+  cleanup: SmokeDataCleanup,
+  options: {
+    category?: "ADULTS" | "KIDS";
+    name?: string;
+    ageRange?: string;
+  } = {},
+) {
+  const category = options.category ?? "ADULTS";
+  const stamp = Date.now();
+  const student = await apiRequest<{ id: string; name: string }>(
+    "OWNER",
+    "/users",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        name: options.name ?? `Smoke Pay ${stamp}`,
+        email: `smoke-pay-${stamp}@stepup.dev`,
+        gender: "FEMALE",
+        ageRange:
+          options.ageRange ??
+          (category === "KIDS" ? "UNDER_10" : "TWENTY_TO_FORTY"),
+        styles: ["Hip Hop"],
+      }),
+    },
+  );
+  cleanup.trackStudent(student.id);
+  const batch = await createCalendarBatch(cleanup, {
+    kind: "prepaid",
+    category,
+  });
+  const planId =
+    category === "KIDS" ? SMOKE.kidPlanIds[0] : SMOKE.adultPlanIds[0];
+  const enrollment = await apiRequest<{
+    invoice: { id: string; status: string; amount: number } | null;
+    billingKind?: string;
+  }>("STAFF", `/batches/${batch.id}/enroll`, {
+    method: "POST",
+    body: JSON.stringify({
+      studentId: student.id,
+      subscriptionId: planId,
+    }),
+  });
+  expect(enrollment.invoice?.status).toBe("PENDING");
+  expect(enrollment.billingKind).toBe("prepaid");
+  return { student, invoice: enrollment.invoice!, batch, batchId: batch.id };
+}
+
+export async function enrollPostpaid(
+  cleanup: SmokeDataCleanup,
+  options: {
+    category?: "ADULTS" | "KIDS";
+    name?: string;
+    ageRange?: string;
+  } = {},
+) {
+  const category = options.category ?? "ADULTS";
+  const stamp = Date.now();
+  const student = await apiRequest<{ id: string; name: string }>(
+    "OWNER",
+    "/users",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        name: options.name ?? `Smoke Postpaid ${stamp}`,
+        email: `smoke-postpaid-${stamp}@stepup.dev`,
+        gender: "FEMALE",
+        ageRange:
+          options.ageRange ??
+          (category === "KIDS" ? "UNDER_10" : "TWENTY_TO_FORTY"),
+        styles: ["Hip Hop"],
+      }),
+    },
+  );
+  cleanup.trackStudent(student.id);
+  const batch = await createCalendarBatch(cleanup, {
+    kind: "postpaid",
+    category,
+  });
+  const planId =
+    category === "KIDS" ? SMOKE.kidPlanIds[0] : SMOKE.adultPlanIds[0];
+  const enrollment = await apiRequest<{
+    invoice: { id: string } | null;
+    billingKind?: string;
+  }>("STAFF", `/batches/${batch.id}/enroll`, {
+    method: "POST",
+    body: JSON.stringify({
+      studentId: student.id,
+      subscriptionId: planId,
+    }),
+  });
+  expect(enrollment.invoice).toBeNull();
+  expect(enrollment.billingKind).toBe("postpaid");
+  const header = await apiRequest<{
+    sessions?: Array<{ id: string; startsAt: string }>;
+  }>("STAFF", `/batches/${batch.id}`);
+  const sessions = header.sessions ?? [];
+  return {
+    student,
+    batch,
+    batchId: batch.id,
+    sessions,
+    sessionId: markableSessionId(sessions),
+  };
+}
+
+export async function enrollUnpaidOnPostpaidBatch(
+  cleanup: SmokeDataCleanup,
+  options: {
+    category?: "ADULTS" | "KIDS";
+    name?: string;
+    ageRange?: string;
+  } = {},
+) {
+  const prepaid = await enrollPrepaid(cleanup, options);
+  const dest = await createCalendarBatch(cleanup, {
+    kind: "postpaid",
+    category: options.category ?? "ADULTS",
+  });
+  await apiRequest("STAFF", `/batches/${prepaid.batch.id}/switch`, {
+    method: "POST",
+    body: JSON.stringify({
+      studentId: prepaid.student.id,
+      toBatchId: dest.id,
+    }),
+  });
+  const header = await apiRequest<{
+    sessions?: Array<{ id: string; startsAt: string }>;
+  }>("STAFF", `/batches/${dest.id}`);
+  const sessions = header.sessions ?? [];
+  return {
+    ...prepaid,
+    batch: dest,
+    batchId: dest.id,
+    sessions,
+    sessionId: markableSessionId(sessions),
+  };
+}
+
+export { canJoinPostpaidNow };
 
 type Fixtures = {
   asRole: (role: SmokeRole) => Promise<Page>;

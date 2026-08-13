@@ -195,6 +195,15 @@ export class BillingController {
     return this.billingService.getCheckoutInvoice(id, user);
   }
 
+  @Post(":id/convert-quarterly")
+  @Roles(UserRole.OWNER, UserRole.STAFF, UserRole.STUDENT, UserRole.PARENT)
+  convertToQuarterly(
+    @CurrentUser() user: DecryptedUser,
+    @Param("id") id: string,
+  ) {
+    return this.billingCommands.convertToQuarterly(user, id);
+  }
+
   @Post(":id/create-payment-order")
   @Roles(UserRole.STUDENT, UserRole.PARENT)
   createPaymentOrder(

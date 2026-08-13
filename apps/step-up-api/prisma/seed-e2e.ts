@@ -841,6 +841,30 @@ async function main() {
       status: SessionStatus.COMPLETED,
     },
     {
+      id: "e2e-session-beginner-past",
+      batchId: E2E.beginnerBatchId,
+      startsAt: new Date(
+        Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 2, 10, 0, 0, 0),
+      ),
+      endsAt: new Date(
+        Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 2, 11, 0, 0, 0),
+      ),
+      status: SessionStatus.COMPLETED,
+      type: SessionType.REGULAR,
+    },
+    {
+      id: "e2e-session-trial-past",
+      batchId: E2E.trialBatchId,
+      startsAt: new Date(
+        Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 2, 11, 0, 0, 0),
+      ),
+      endsAt: new Date(
+        Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 2, 12, 0, 0, 0),
+      ),
+      status: SessionStatus.COMPLETED,
+      type: SessionType.REGULAR,
+    },
+    {
       id: E2E.sessionAttendanceId,
       batchId: E2E.kidsBatchId,
       startsAt: attendanceStartsAt,

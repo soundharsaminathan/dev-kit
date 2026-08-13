@@ -179,6 +179,15 @@ describe("MembershipsService.rollEndedActiveToNextDue", () => {
       update: vi.fn(),
       create: vi.fn(),
     },
+    invoice: {
+      findFirst: vi.fn(),
+      create: vi.fn(),
+      deleteMany: vi.fn(),
+    },
+    session: { count: vi.fn() },
+    attendance: { count: vi.fn() },
+    studioSettings: { findUnique: vi.fn() },
+    batchEnrollment: { findFirst: vi.fn() },
   };
 
   const notifications = {
@@ -266,6 +275,244 @@ describe("MembershipsService.rollEndedActiveToNextDue", () => {
     expect(result.created).toBe(false);
     expect(result.next?.id).toBe("mem-sep-existing");
   });
+
+  it("FIRST_POSTPAID creates usage invoice and next prepaid with convert flag", async () => {
+    const ended = {
+      id: "mem-aug",
+      subscriptionId: "sub-1",
+      purchaserUserId: "user-1",
+      status: "ACTIVE",
+      billingPhase: "FIRST_POSTPAID",
+      batchId: "batch-1",
+      periodStart: new Date(Date.UTC(2026, 6, 1)),
+      periodEnd: new Date(Date.UTC(2026, 6, 31, 23, 59, 59, 999)),
+      subscription: {
+        id: "sub-1",
+        name: "Adult Monthly",
+        billingCadence: "MONTHLY",
+        price: 3500,
+      },
+      coveredStudents: [{ studentId: "student-1", seatRole: "ADULT" }],
+      purchaser: { id: "user-1", studioId: "studio-1" },
+    };
+    const next = {
+      id: "mem-sep",
+      subscriptionId: "sub-1",
+      purchaserUserId: "user-1",
+      status: "DUE",
+      billingPhase: "PREPAID",
+      batchId: "batch-1",
+      periodStart: new Date(Date.UTC(2026, 7, 1)),
+      periodEnd: new Date(Date.UTC(2026, 7, 31, 23, 59, 59, 999)),
+      subscription: ended.subscription,
+      coveredStudents: ended.coveredStudents,
+      purchaser: ended.purchaser,
+    };
+
+    prisma.membership.findUnique.mockImplementation(({ where }) => {
+      if (where.id === "mem-aug") return Promise.resolve(ended);
+      if (where.id === "mem-sep") return Promise.resolve(next);
+      return Promise.resolve(null);
+    });
+    prisma.invoice.findFirst.mockResolvedValue(null);
+    prisma.session.count.mockResolvedValue(10);
+    prisma.attendance.count.mockResolvedValue(5);
+    prisma.studioSettings.findUnique.mockResolvedValue({
+      platformFeePercent: 5,
+    });
+    prisma.batchEnrollment.findFirst.mockResolvedValue({ id: "enr-1" });
+    prisma.membership.findFirst.mockResolvedValue(null);
+    prisma.membership.create.mockResolvedValue(next);
+    prisma.invoice.create.mockResolvedValue({ id: "inv-usage" });
+
+    const result = await service.rollEndedActiveToNextDue("mem-aug");
+
+    expect(prisma.invoice.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        chargeType: "POSTPAID_PRORATED",
+        amount: 1750,
+        attendedSessionCount: 5,
+        billedSessionCount: 10,
+        membershipId: "mem-aug",
+      }),
+    });
+    expect(prisma.membership.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        billingPhase: "PREPAID",
+        status: "DUE",
+        batchId: "batch-1",
+      }),
+      include: {
+        subscription: true,
+        coveredStudents: true,
+      },
+    });
+    expect(prisma.invoice.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        chargeType: "PREPAID_FULL",
+        amount: 3500,
+        membershipId: "mem-sep",
+        purchaseMeta: expect.objectContaining({
+          firstMonthConvertToQuarterly: true,
+        }),
+      }),
+    });
+    expect(result.created).toBe(true);
+  });
+
+  it("FIRST_POSTPAID with zero attendance skips usage invoice", async () => {
+    prisma.membership.findUnique.mockResolvedValue({
+      id: "mem-aug",
+      subscriptionId: "sub-1",
+      purchaserUserId: "user-1",
+      status: "ACTIVE",
+      billingPhase: "FIRST_POSTPAID",
+      batchId: "batch-1",
+      periodStart: new Date(Date.UTC(2026, 6, 1)),
+      periodEnd: new Date(Date.UTC(2026, 6, 31, 23, 59, 59, 999)),
+      subscription: {
+        id: "sub-1",
+        name: "Adult Monthly",
+        billingCadence: "MONTHLY",
+        price: 3500,
+      },
+      coveredStudents: [{ studentId: "student-1", seatRole: "ADULT" }],
+      purchaser: { id: "user-1", studioId: "studio-1" },
+    });
+    prisma.invoice.findFirst.mockResolvedValue(null);
+    prisma.session.count.mockResolvedValue(10);
+    prisma.attendance.count.mockResolvedValue(0);
+    prisma.batchEnrollment.findFirst.mockResolvedValue(null);
+    prisma.invoice.deleteMany.mockResolvedValue({ count: 0 });
+
+    const result = await service.rollEndedActiveToNextDue("mem-aug");
+
+    expect(prisma.invoice.create).not.toHaveBeenCalled();
+    expect(prisma.membership.create).not.toHaveBeenCalled();
+    expect(result.next).toBeNull();
+  });
+});
+
+describe("MembershipsService.convertUpcomingInvoiceToQuarterly", () => {
+  const prisma = {
+    invoice: {
+      findUnique: vi.fn(),
+      update: vi.fn(),
+    },
+    membership: { update: vi.fn() },
+    batchPlan: { findFirst: vi.fn() },
+    $transaction: vi.fn(),
+  };
+  const notifications = { create: vi.fn() };
+  let service: MembershipsService;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    service = new MembershipsService(
+      prisma as never,
+      notifications as never,
+      {
+        assertNoConflicts: vi.fn().mockResolvedValue(undefined),
+        assertStudentAvailableForBatch: vi.fn().mockResolvedValue(undefined),
+      } as never,
+    );
+  });
+
+  it("rejects prepaid-at-join invoices without the convert flag", async () => {
+    prisma.invoice.findUnique.mockResolvedValue({
+      id: "inv-1",
+      status: "PENDING",
+      chargeType: "PREPAID_FULL",
+      purchaseMeta: { batchId: "batch-1", subscriptionId: "sub-m" },
+      membership: {
+        id: "mem-1",
+        batchId: "batch-1",
+        periodStart: new Date(Date.UTC(2026, 7, 1)),
+        subscription: {
+          billingCadence: "MONTHLY",
+          individualAudience: "ADULT",
+        },
+      },
+    });
+
+    await expect(
+      service.convertUpcomingInvoiceToQuarterly("inv-1"),
+    ).rejects.toThrow(/first-month bill/i);
+  });
+
+  it("rejects usage invoices", async () => {
+    prisma.invoice.findUnique.mockResolvedValue({
+      id: "inv-usage",
+      status: "PENDING",
+      chargeType: "POSTPAID_PRORATED",
+      purchaseMeta: { firstMonthConvertToQuarterly: true },
+      membership: {
+        id: "mem-1",
+        subscription: { billingCadence: "MONTHLY" },
+      },
+    });
+
+    await expect(
+      service.convertUpcomingInvoiceToQuarterly("inv-usage"),
+    ).rejects.toThrow(/upcoming prepaid/i);
+  });
+
+  it("converts the unpaid first-month prepaid to the batch quarterly plan", async () => {
+    const invoice = {
+      id: "inv-next",
+      status: "PENDING",
+      chargeType: "PREPAID_FULL",
+      purchaseMeta: {
+        batchId: "batch-1",
+        subscriptionId: "sub-m",
+        firstMonthConvertToQuarterly: true,
+        purchaserUserId: "user-1",
+        coveredStudents: [],
+      },
+      membership: {
+        id: "mem-sep",
+        batchId: "batch-1",
+        periodStart: new Date(Date.UTC(2026, 7, 1)),
+        subscription: {
+          billingCadence: "MONTHLY",
+          individualAudience: "ADULT",
+        },
+      },
+    };
+    prisma.invoice.findUnique.mockResolvedValue(invoice);
+    prisma.batchPlan.findFirst.mockResolvedValue({
+      subscriptionId: "sub-q",
+      subscription: { id: "sub-q", price: 9000 },
+    });
+    prisma.membership.update.mockResolvedValue({ id: "mem-sep" });
+    prisma.invoice.update.mockResolvedValue({
+      ...invoice,
+      amount: 9000,
+    });
+    prisma.$transaction.mockImplementation((ops: unknown[]) =>
+      Promise.all(ops as Promise<unknown>[]),
+    );
+
+    const result = await service.convertUpcomingInvoiceToQuarterly("inv-next");
+
+    expect(prisma.membership.update).toHaveBeenCalledWith({
+      where: { id: "mem-sep" },
+      data: expect.objectContaining({
+        subscriptionId: "sub-q",
+      }),
+    });
+    expect(prisma.invoice.update).toHaveBeenCalledWith({
+      where: { id: "inv-next" },
+      data: expect.objectContaining({
+        amount: 9000,
+        purchaseMeta: expect.objectContaining({
+          subscriptionId: "sub-q",
+          firstMonthConvertToQuarterly: false,
+        }),
+      }),
+    });
+    expect(result.invoice.amount).toBe(9000);
+  });
 });
 
 describe("MembershipsService.requestRenewalInvoice", () => {
@@ -280,6 +527,7 @@ describe("MembershipsService.requestRenewalInvoice", () => {
     studioSettings: {
       findUnique: vi.fn(),
     },
+    batchEnrollment: { findFirst: vi.fn() },
   };
 
   const notifications = {
@@ -399,18 +647,16 @@ describe("MembershipsService.requestRenewalInvoice", () => {
       coveredStudents: [{ studentId: "user-1", seatRole: "ADULT" }],
       purchaser: { id: "user-1", studioId: "studio-1" },
     });
-    prisma.invoice.findFirst
-      .mockResolvedValueOnce(null)
-      .mockResolvedValueOnce({
-        purchaseMeta: {
-          batchId: "batch-1",
-          subscriptionId: "sub-1",
-          purchaserUserId: "user-1",
-          coveredStudents: [
-            { studentId: "user-1", seatRole: "ADULT", batchId: "batch-1" },
-          ],
-        },
-      });
+    prisma.invoice.findFirst.mockResolvedValueOnce(null).mockResolvedValueOnce({
+      purchaseMeta: {
+        batchId: "batch-1",
+        subscriptionId: "sub-1",
+        purchaserUserId: "user-1",
+        coveredStudents: [
+          { studentId: "user-1", seatRole: "ADULT", batchId: "batch-1" },
+        ],
+      },
+    });
     prisma.studioSettings.findUnique.mockResolvedValue({
       platformFeePercent: 5,
     });
@@ -1124,22 +1370,19 @@ describe("MembershipsService.findMonthlyUnpaidStudentIds", () => {
         },
       },
       {
-        studentId: "s-quarterly",
+        studentId: "s-postpaid",
         membership: {
-          status: "DUE",
+          status: "ACTIVE",
           periodEnd: new Date("2026-08-01T00:00:00.000Z"),
-          subscription: { billingCadence: "QUARTERLY" },
+          billingPhase: "FIRST_POSTPAID",
+          subscription: { billingCadence: "MONTHLY" },
           invoices: [],
         },
       },
     ]);
 
     await expect(
-      service.findMonthlyUnpaidStudentIds([
-        "s-unpaid",
-        "s-paid",
-        "s-quarterly",
-      ]),
+      service.findMonthlyUnpaidStudentIds(["s-unpaid", "s-paid", "s-postpaid"]),
     ).resolves.toEqual(new Set(["s-unpaid"]));
   });
 
@@ -1206,7 +1449,11 @@ describe("MembershipsService.findStudentIdsWithActiveMonthForBatch", () => {
     ]);
 
     await expect(
-      service.findStudentIdsWithActiveMonthForBatch(["s-kid", "s-other"], "KIDS", at),
+      service.findStudentIdsWithActiveMonthForBatch(
+        ["s-kid", "s-other"],
+        "KIDS",
+        at,
+      ),
     ).resolves.toEqual(new Set(["s-kid"]));
 
     expect(prisma.membershipCoveredStudent.findMany).toHaveBeenCalledWith(
@@ -1217,5 +1464,166 @@ describe("MembershipsService.findStudentIdsWithActiveMonthForBatch", () => {
         }),
       }),
     );
+  });
+});
+
+describe("MembershipsService.beginBatchEnrollment", () => {
+  const prisma = {
+    batch: { findUnique: vi.fn(), findMany: vi.fn() },
+    batchPlan: { findUnique: vi.fn() },
+    subscription: { findUnique: vi.fn() },
+    membership: { findFirst: vi.fn(), create: vi.fn() },
+    session: { findFirst: vi.fn() },
+    studioSettings: { findUnique: vi.fn() },
+    invoice: { create: vi.fn(), update: vi.fn() },
+    batchEnrollment: { findMany: vi.fn(), upsert: vi.fn() },
+    booking: { updateMany: vi.fn(), findMany: vi.fn() },
+    $transaction: vi.fn(),
+    $queryRaw: vi.fn(),
+  };
+
+  const scheduleConflicts = {
+    assertNoConflicts: vi.fn().mockResolvedValue(undefined),
+    assertStudentAvailableForBatch: vi.fn().mockResolvedValue(undefined),
+  };
+
+  let service: MembershipsService;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    service = new MembershipsService(
+      prisma as never,
+      { create: vi.fn() } as never,
+      scheduleConflicts as never,
+    );
+    prisma.$transaction.mockImplementation(
+      async (fn: (tx: typeof prisma) => Promise<unknown>) => fn(prisma),
+    );
+    prisma.$queryRaw.mockImplementation(async () => [{ id: "batch" }]);
+    prisma.batchEnrollment.findMany.mockResolvedValue([]);
+    prisma.booking.updateMany.mockResolvedValue({ count: 0 });
+    prisma.booking.findMany.mockResolvedValue([]);
+    prisma.studioSettings.findUnique.mockResolvedValue({
+      platformFeePercent: 5,
+    });
+    prisma.membership.findFirst.mockResolvedValue(null);
+    prisma.batch.findUnique.mockResolvedValue({
+      id: "batch-kid",
+      active: true,
+      category: "KIDS",
+      studioId: "studio-1",
+      name: "Kids Ballet",
+      capacity: 15,
+    });
+    prisma.batch.findMany.mockResolvedValue([
+      {
+        id: "batch-kid",
+        name: "Kids Ballet",
+        active: true,
+        category: "KIDS",
+        capacity: 15,
+        enrollments: [],
+      },
+    ]);
+    prisma.batchPlan.findUnique.mockResolvedValue({
+      batchId: "batch-kid",
+      subscriptionId: "sub-kid-mo",
+      subscription: {
+        id: "sub-kid-mo",
+        active: true,
+        kind: "INDIVIDUAL",
+        individualAudience: "KID",
+        adultSeats: 0,
+        kidSeats: 1,
+        billingCadence: "MONTHLY",
+        price: 2500,
+      },
+    });
+    prisma.subscription.findUnique.mockResolvedValue({
+      id: "sub-kid-mo",
+      active: true,
+      billingCadence: "MONTHLY",
+    });
+    prisma.invoice.create.mockResolvedValue({
+      id: "inv-1",
+      status: "PENDING",
+      amount: 2500,
+    });
+    prisma.invoice.update.mockResolvedValue({
+      id: "inv-1",
+      status: "PENDING",
+      amount: 2500,
+      membershipId: "mem-1",
+    });
+    prisma.membership.create.mockResolvedValue({
+      id: "mem-1",
+      status: "ACTIVE",
+      billingPhase: "PREPAID",
+    });
+  });
+
+  it("staff prepaid enroll assigns an ACTIVE membership and links the invoice", async () => {
+    prisma.session.findFirst.mockResolvedValue(null);
+
+    const result = await service.beginBatchEnrollment({
+      batchId: "batch-kid",
+      subscriptionId: "sub-kid-mo",
+      studentId: "kid-1",
+      paymentHold: false,
+    });
+
+    expect(result.kind).toBe("prepaid");
+    expect(prisma.membership.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        status: "ACTIVE",
+        billingPhase: "PREPAID",
+        batchId: "batch-kid",
+        purchaserUserId: "kid-1",
+      }),
+    });
+    expect(prisma.invoice.update).toHaveBeenCalledWith({
+      where: { id: "inv-1" },
+      data: { membershipId: "mem-1" },
+    });
+    expect(result.invoice).toEqual(
+      expect.objectContaining({ id: "inv-1", membershipId: "mem-1" }),
+    );
+  });
+
+  it("discover prepaid checkout does not assign membership until payment", async () => {
+    prisma.session.findFirst.mockResolvedValue(null);
+
+    const result = await service.beginBatchEnrollment({
+      batchId: "batch-kid",
+      subscriptionId: "sub-kid-mo",
+      studentId: "kid-1",
+      paymentHold: true,
+    });
+
+    expect(result.kind).toBe("prepaid");
+    expect(prisma.membership.create).not.toHaveBeenCalled();
+    expect(prisma.invoice.update).not.toHaveBeenCalled();
+  });
+
+  it("joins after the first session this month as postpaid without an invoice", async () => {
+    prisma.session.findFirst.mockResolvedValue({
+      startsAt: new Date(Date.now() - 60 * 60 * 1000),
+    });
+
+    const result = await service.beginBatchEnrollment({
+      batchId: "batch-kid",
+      subscriptionId: "sub-kid-mo",
+      studentId: "kid-1",
+      paymentHold: false,
+    });
+
+    expect(result).toEqual({ kind: "postpaid", invoice: null });
+    expect(prisma.invoice.create).not.toHaveBeenCalled();
+    expect(prisma.membership.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        billingPhase: "FIRST_POSTPAID",
+        status: "ACTIVE",
+      }),
+    });
   });
 });

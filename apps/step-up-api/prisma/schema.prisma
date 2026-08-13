@@ -73,6 +73,16 @@ enum MembershipSeatRole {
   KID
 }
 
+enum MembershipBillingPhase {
+  FIRST_POSTPAID
+  PREPAID
+}
+
+enum InvoiceChargeType {
+  POSTPAID_PRORATED
+  PREPAID_FULL
+}
+
 enum FamilyMemberKind {
   KID
   CO_STUDENT
@@ -581,6 +591,7 @@ model Batch {
   bookings            Booking[]
   ratings             BatchRating[]
   summary             BatchSummary?
+  memberships         Membership[]
 
   @@index([studioId, active])
 }
@@ -681,20 +692,24 @@ model Subscription {
 }
 
 model Membership {
-  id               String           @id @default(cuid())
+  id               String                  @id @default(cuid())
   subscriptionId   String
   purchaserUserId  String
   periodStart      DateTime
   periodEnd        DateTime
   status           MembershipStatus
+  billingPhase     MembershipBillingPhase  @default(PREPAID)
+  batchId          String?
 
   subscription    Subscription               @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
   purchaser       User                       @relation("MembershipPurchaser", fields: [purchaserUserId], references: [id], onDelete: Cascade)
   coveredStudents MembershipCoveredStudent[]
   invoices        Invoice[]
+  batch           Batch?                     @relation(fields: [batchId], references: [id], onDelete: SetNull)
 
   @@index([purchaserUserId])
   @@index([subscriptionId, status])
+  @@index([batchId, status])
 }
 
 model MembershipCoveredStudent {
@@ -711,25 +726,28 @@ model MembershipCoveredStudent {
 }
 
 model Invoice {
-  id                   String         @id @default(cuid())
+  id                   String             @id @default(cuid())
   studentId            String
   membershipId         String?
-  amount               Decimal        @db.Decimal(10, 2)
-  referralDiscount     Decimal        @default(0) @db.Decimal(10, 2)
-  studioDiscount       Decimal        @default(0) @db.Decimal(10, 2)
-  familyDiscount       Decimal        @default(0) @db.Decimal(10, 2)
-  refundedAmount       Decimal        @default(0) @db.Decimal(10, 2)
+  amount               Decimal            @db.Decimal(10, 2)
+  referralDiscount     Decimal            @default(0) @db.Decimal(10, 2)
+  studioDiscount       Decimal            @default(0) @db.Decimal(10, 2)
+  familyDiscount       Decimal            @default(0) @db.Decimal(10, 2)
+  refundedAmount       Decimal            @default(0) @db.Decimal(10, 2)
   status               InvoiceStatus
   paymentMethod        PaymentMethod?
   paidAt               DateTime?
   refundedAt           DateTime?
   platformFeePercent   Float
   studioId             String
-  razorpayOrderId      String?        @unique
-  razorpayPaymentId    String?        @unique
+  razorpayOrderId      String?            @unique
+  razorpayPaymentId    String?            @unique
   paymentHoldExpiresAt DateTime?
   purchaseMeta         Json?
   combineMeta          Json?
+  chargeType           InvoiceChargeType  @default(PREPAID_FULL)
+  attendedSessionCount Int?
+  billedSessionCount   Int?
 
   student    User        @relation(fields: [studentId], references: [id], onDelete: Cascade)
   membership Membership? @relation(fields: [membershipId], references: [id])

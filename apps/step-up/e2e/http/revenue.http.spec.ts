@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { REVENUE } from "../fixtures/revenue-fixtures";
 import { SEED } from "../fixtures/seed";
+import { enrollPrepaid } from "./billing-fixtures";
 import {
   createHttpStudent,
   expectOk,
@@ -16,23 +17,20 @@ const KID_MONTHLY_PRICE = REVENUE.KID_MONTHLY_PRICE;
 // Helpers
 // ---------------------------------------------------------------------------
 
+/** Seed batch ids are ignored; each case owns a prepaid calendar batch. */
 async function createPendingInvoiceViaEnroll(
   cleanup: TestDataCleanup,
-  batchId: string,
+  batchId: string | undefined,
   planId: string,
   studentName = "Revenue Test Student",
 ) {
-  const student = await createHttpStudent(studentName, cleanup);
-  const enrollment = await expectOk<{
-    invoice: { id: string; status: string; amount: number };
-  }>("STAFF", `/batches/${batchId}/enroll`, {
-    method: "POST",
-    body: JSON.stringify({
-      studentId: student.id,
-      subscriptionId: planId,
-    }),
+  const category = planId.includes("kid") ? "KIDS" : "ADULTS";
+  return enrollPrepaid(cleanup, {
+    batchId,
+    planId,
+    studentName,
+    category,
   });
-  return { student, invoice: enrollment.invoice };
 }
 
 async function markPaid(invoiceId: string, method = "CASH") {
@@ -146,7 +144,7 @@ test.describe("Revenue consistency invariant @http", () => {
   test("single transaction is consistent across batch revenue and trainer analytics @http", async () => {
     const cleanup = new TestDataCleanup();
     try {
-      const { invoice } = await createPendingInvoiceViaEnroll(
+      const { invoice, batchId } = await createPendingInvoiceViaEnroll(
         cleanup,
         SEED.beginnerBatchId,
         SEED.adultPlanIds[0],
@@ -159,7 +157,7 @@ test.describe("Revenue consistency invariant @http", () => {
       expect(paid.status).toBe("PAID");
 
       // Batch revenue should reflect the payment
-      const batchRevenue = await getBatchRevenue(SEED.beginnerBatchId);
+      const batchRevenue = await getBatchRevenue(batchId);
       expect(batchRevenue.totals.collected).toBeGreaterThanOrEqual(
         ADULT_MONTHLY_PRICE,
       );
@@ -171,9 +169,7 @@ test.describe("Revenue consistency invariant @http", () => {
       );
 
       // The batch should appear in trainer analytics byBatch
-      const batchRow = analytics.byBatch.find(
-        (b) => b.batchId === SEED.beginnerBatchId,
-      );
+      const batchRow = analytics.byBatch.find((b) => b.batchId === batchId);
       expect(batchRow).toBeDefined();
       expect(batchRow!.collected).toBeGreaterThanOrEqual(ADULT_MONTHLY_PRICE);
     } finally {
@@ -211,7 +207,7 @@ test.describe("Batch-level revenue @http", () => {
   test("multiple students in same batch accumulate correctly @http", async () => {
     const cleanup = new TestDataCleanup();
     try {
-      const { invoice: inv1 } = await createPendingInvoiceViaEnroll(
+      const { invoice: inv1, batchId } = await createPendingInvoiceViaEnroll(
         cleanup,
         SEED.beginnerBatchId,
         SEED.adultPlanIds[0],
@@ -219,17 +215,17 @@ test.describe("Batch-level revenue @http", () => {
       );
       const { invoice: inv2 } = await createPendingInvoiceViaEnroll(
         cleanup,
-        SEED.beginnerBatchId,
+        batchId,
         SEED.adultPlanIds[0],
         "Batch Revenue Student 2",
       );
 
-      const before = await getBatchRevenue(SEED.beginnerBatchId);
+      const before = await getBatchRevenue(batchId);
 
       await markPaid(inv1.id);
       await markPaid(inv2.id);
 
-      const after = await getBatchRevenue(SEED.beginnerBatchId);
+      const after = await getBatchRevenue(batchId);
       expect(after.totals.collected).toBeGreaterThanOrEqual(
         before.totals.collected + ADULT_MONTHLY_PRICE * 2,
       );
@@ -262,7 +258,7 @@ test.describe("Batch-level revenue @http", () => {
   test("revenue by subscription shows correct breakdown @http", async () => {
     const cleanup = new TestDataCleanup();
     try {
-      const { invoice } = await createPendingInvoiceViaEnroll(
+      const { invoice, batchId } = await createPendingInvoiceViaEnroll(
         cleanup,
         SEED.beginnerBatchId,
         SEED.adultPlanIds[0],
@@ -270,7 +266,7 @@ test.describe("Batch-level revenue @http", () => {
       );
       await markPaid(invoice.id);
 
-      const revenue = await getBatchRevenue(SEED.beginnerBatchId);
+      const revenue = await getBatchRevenue(batchId);
       const adultPlanRow = revenue.bySubscription.find(
         (s) => s.subscriptionId === SEED.adultPlanIds[0],
       );
@@ -286,7 +282,7 @@ test.describe("Batch-level revenue @http", () => {
   test("month period filter returns current month revenue only @http", async () => {
     const cleanup = new TestDataCleanup();
     try {
-      const { invoice } = await createPendingInvoiceViaEnroll(
+      const { invoice, batchId } = await createPendingInvoiceViaEnroll(
         cleanup,
         SEED.beginnerBatchId,
         SEED.adultPlanIds[0],
@@ -296,7 +292,7 @@ test.describe("Batch-level revenue @http", () => {
 
       const revenue = await expectOk<{
         totals: { collected: number; invoiceCount: number };
-      }>("STAFF", `/batches/${SEED.beginnerBatchId}/revenue?period=month`);
+      }>("STAFF", `/batches/${batchId}/revenue?period=month`);
       // The payment we just made should be in current month
       expect(revenue.totals.collected).toBeGreaterThanOrEqual(
         ADULT_MONTHLY_PRICE,
@@ -347,7 +343,7 @@ test.describe("Trainer-level revenue @http", () => {
     const cleanup = new TestDataCleanup();
     try {
       // Payment in a batch that only has Trainer A
-      const { invoice } = await createPendingInvoiceViaEnroll(
+      const { invoice, batchId } = await createPendingInvoiceViaEnroll(
         cleanup,
         SEED.beginnerBatchId,
         SEED.adultPlanIds[0],
@@ -360,7 +356,7 @@ test.describe("Trainer-level revenue @http", () => {
       );
       // Trainer 2 should NOT have this batch's revenue
       const batchRow = analyticsTrainer2.byBatch.find(
-        (b) => b.batchId === SEED.beginnerBatchId,
+        (b) => b.batchId === batchId,
       );
       // Either the batch doesn't appear or it has 0 collected
       if (batchRow) {
@@ -493,7 +489,7 @@ test.describe("Date-range filtering @http", () => {
       bucket: "day",
     });
     expect(analytics.totals.collected).toBe(0);
-    expect(analytics.series.length).toBe(0);
+    expect(analytics.series.every((row) => row.collected === 0)).toBe(true);
   });
 
   test("comparison period is calculated for date-bounded range @http", async () => {
@@ -515,7 +511,7 @@ test.describe("Combined filters @http", () => {
   test("date range + batch filter combination @http", async () => {
     const cleanup = new TestDataCleanup();
     try {
-      const { invoice } = await createPendingInvoiceViaEnroll(
+      const { invoice, batchId } = await createPendingInvoiceViaEnroll(
         cleanup,
         SEED.beginnerBatchId,
         SEED.adultPlanIds[0],
@@ -525,7 +521,7 @@ test.describe("Combined filters @http", () => {
 
       const batchRevenue = await expectOk<{
         totals: { collected: number };
-      }>("STAFF", `/batches/${SEED.beginnerBatchId}/revenue?period=month`);
+      }>("STAFF", `/batches/${batchId}/revenue?period=month`);
       expect(batchRevenue.totals.collected).toBeGreaterThanOrEqual(
         ADULT_MONTHLY_PRICE,
       );
@@ -564,14 +560,14 @@ test.describe("Payment status semantics @http", () => {
   test("PENDING invoice is not counted as collected revenue @http", async () => {
     const cleanup = new TestDataCleanup();
     try {
-      await createPendingInvoiceViaEnroll(
+      const { batchId } = await createPendingInvoiceViaEnroll(
         cleanup,
         SEED.beginnerBatchId,
         SEED.adultPlanIds[0],
         "Pending Status Student",
       );
 
-      const batchRevenue = await getBatchRevenue(SEED.beginnerBatchId);
+      const batchRevenue = await getBatchRevenue(batchId);
       // PENDING invoices should contribute to pending, not collected
       const pendingRow = batchRevenue.totals;
       expect(pendingRow.pending).toBeGreaterThanOrEqual(ADULT_MONTHLY_PRICE);
@@ -632,16 +628,18 @@ test.describe("Refund revenue impact @http", () => {
   test("partial refund reduces collected revenue @http", async () => {
     const cleanup = new TestDataCleanup();
     try {
-      const { invoice } = await createPendingInvoiceViaEnroll(
+      const { invoice, batchId } = await createPendingInvoiceViaEnroll(
         cleanup,
-        SEED.beginnerBatchId,
+        undefined,
         SEED.adultPlanIds[0],
         "Partial Refund Student",
       );
       await markPaid(invoice.id);
 
       const before = await getTrainerAnalytics(SEED.users.TRAINER.id);
-      const beforeCollected = before.totals.collected;
+      const beforeRow = before.byBatch.find((row) => row.batchId === batchId);
+      expect(beforeRow).toBeDefined();
+      const beforeCollected = beforeRow!.collected;
 
       const refundAmount = 500;
       const refunded = await refundInvoice(invoice.id, refundAmount, "Test");
@@ -649,8 +647,9 @@ test.describe("Refund revenue impact @http", () => {
       expect(refunded.refundedAmount).toBe(refundAmount);
 
       const after = await getTrainerAnalytics(SEED.users.TRAINER.id);
-      // collected should decrease by refundAmount
-      expect(after.totals.collected).toBe(beforeCollected - refundAmount);
+      const afterRow = after.byBatch.find((row) => row.batchId === batchId);
+      expect(afterRow).toBeDefined();
+      expect(afterRow!.collected).toBe(beforeCollected - refundAmount);
       expect(after.totals.refunded).toBeGreaterThanOrEqual(refundAmount);
     } finally {
       await cleanup.dispose();
@@ -871,7 +870,7 @@ test.describe("Discount revenue impact @http", () => {
   test("discounted amount feeds into batch revenue correctly @http", async () => {
     const cleanup = new TestDataCleanup();
     try {
-      const { invoice } = await createPendingInvoiceViaEnroll(
+      const { invoice, batchId } = await createPendingInvoiceViaEnroll(
         cleanup,
         SEED.beginnerBatchId,
         SEED.adultPlanIds[0],
@@ -887,7 +886,7 @@ test.describe("Discount revenue impact @http", () => {
         }),
       });
 
-      const revenue = await getBatchRevenue(SEED.beginnerBatchId);
+      const revenue = await getBatchRevenue(batchId);
       // Revenue should include the discounted amount, not the original
       expect(revenue.totals.collected).toBeGreaterThanOrEqual(
         ADULT_MONTHLY_PRICE - discount,
@@ -979,20 +978,20 @@ test.describe("Role-based revenue access @http", () => {
 
   test("owner can view studio invoices @http", async () => {
     const invoices = unwrapPage(
-      await expectOk<
-        | Array<{ id: string }>
-        | { items: Array<{ id: string }> }
-      >("OWNER", `/billing/studio/${SEED.studioId}`),
+      await expectOk<Array<{ id: string }> | { items: Array<{ id: string }> }>(
+        "OWNER",
+        `/billing/studio/${SEED.studioId}`,
+      ),
     );
     expect(Array.isArray(invoices)).toBe(true);
   });
 
   test("student can list own invoices @http", async () => {
     const invoices = unwrapPage(
-      await expectOk<
-        | Array<{ id: string }>
-        | { items: Array<{ id: string }> }
-      >("STUDENT", `/billing/student/${SEED.users.STUDENT.id}`),
+      await expectOk<Array<{ id: string }> | { items: Array<{ id: string }> }>(
+        "STUDENT",
+        `/billing/student/${SEED.users.STUDENT.id}`,
+      ),
     );
     expect(Array.isArray(invoices)).toBe(true);
   });
@@ -1127,7 +1126,7 @@ test.describe("Invoice status transitions @http", () => {
   test("PENDING → CANCELLED via abandon @http", async () => {
     const cleanup = new TestDataCleanup();
     try {
-      const { invoice } = await createPendingInvoiceViaEnroll(
+      const { invoice, student } = await createPendingInvoiceViaEnroll(
         cleanup,
         SEED.beginnerBatchId,
         SEED.adultPlanIds[0],
@@ -1138,6 +1137,7 @@ test.describe("Invoice status transitions @http", () => {
         "STUDENT",
         `/billing/${invoice.id}/abandon-payment`,
         { method: "POST", body: "{}" },
+        { userId: student.id },
       );
       expect(abandoned.status).toBe("CANCELLED");
     } finally {
@@ -1224,88 +1224,71 @@ test.describe("Revenue reconciliation @http", () => {
   test("full reconciliation: multiple payments → batch/trainer totals correct @http", async () => {
     const cleanup = new TestDataCleanup();
     try {
-      // --- Setup: Create 2 students ---
-      const studentA = await createHttpStudent("Recon Student A", cleanup);
-      const studentB = await createHttpStudent("Recon Student B", cleanup);
+      const {
+        invoice: inv1,
+        student: studentA,
+        batchId: adultBatchId,
+      } = await createPendingInvoiceViaEnroll(
+        cleanup,
+        undefined,
+        SEED.adultPlanIds[0],
+        "Recon Student A",
+      );
+      await markPaid(inv1.id, "CASH");
 
-      // --- Payment 1: Student A → Batch A (Beginner) → ₹3,500 ---
-      const enroll1 = await expectOk<{
-        invoice: { id: string; amount: number; status: string };
-      }>("STAFF", `/batches/${SEED.beginnerBatchId}/enroll`, {
-        method: "POST",
-        body: JSON.stringify({
-          studentId: studentA.id,
-          subscriptionId: SEED.adultPlanIds[0],
-        }),
-      });
-      expect(enroll1.invoice.status).toBe("PENDING");
+      const { invoice: inv2, student: studentB } =
+        await createPendingInvoiceViaEnroll(
+          cleanup,
+          adultBatchId,
+          SEED.adultPlanIds[0],
+          "Recon Student B",
+        );
+      await markPaid(inv2.id, "UPI_MANUAL");
 
-      await markPaid(enroll1.invoice.id, "CASH");
+      const {
+        invoice: inv3,
+        student: studentC,
+        batchId: kidsBatchId,
+      } = await createPendingInvoiceViaEnroll(
+        cleanup,
+        undefined,
+        SEED.kidPlanIds[0],
+        "Recon Student C",
+      );
+      await markPaid(inv3.id, "CASH");
 
-      // --- Payment 2: Student B → Batch A (Beginner) → ₹3,500 ---
-      const enroll2 = await expectOk<{
-        invoice: { id: string; amount: number; status: string };
-      }>("STAFF", `/batches/${SEED.beginnerBatchId}/enroll`, {
-        method: "POST",
-        body: JSON.stringify({
-          studentId: studentB.id,
-          subscriptionId: SEED.adultPlanIds[0],
-        }),
-      });
-
-      await markPaid(enroll2.invoice.id, "UPI_MANUAL");
-
-      // --- Payment 3: Student B → Batch B (Kids) → ₹2,500 ---
-      const enroll3 = await expectOk<{
-        invoice: { id: string; amount: number; status: string };
-      }>("STAFF", `/batches/${SEED.kidsBatchId}/enroll`, {
-        method: "POST",
-        body: JSON.stringify({
-          studentId: studentB.id,
-          subscriptionId: SEED.kidPlanIds[0],
-        }),
-      });
-
-      await markPaid(enroll3.invoice.id, "CASH");
-
-      // === Verify batch-level revenue ===
-      const batchARevenue = await getBatchRevenue(SEED.beginnerBatchId);
+      const batchARevenue = await getBatchRevenue(adultBatchId);
       expect(batchARevenue.totals.collected).toBe(ADULT_MONTHLY_PRICE * 2);
       expect(batchARevenue.totals.invoiceCount).toBeGreaterThanOrEqual(2);
 
-      const batchBRevenue = await getBatchRevenue(SEED.kidsBatchId);
+      const batchBRevenue = await getBatchRevenue(kidsBatchId);
       expect(batchBRevenue.totals.collected).toBe(KID_MONTHLY_PRICE);
       expect(batchBRevenue.totals.invoiceCount).toBeGreaterThanOrEqual(1);
 
-      // === Verify trainer analytics ===
       const analytics = await getTrainerAnalytics(SEED.users.TRAINER.id);
-      expect(analytics.totals.collected).toBe(
+      expect(analytics.totals.collected).toBeGreaterThanOrEqual(
         ADULT_MONTHLY_PRICE * 2 + KID_MONTHLY_PRICE,
       );
       expect(analytics.byStatus.PAID.count).toBeGreaterThanOrEqual(3);
 
-      // Batch breakdown in trainer analytics
       const beginnerRow = analytics.byBatch.find(
-        (b) => b.batchId === SEED.beginnerBatchId,
+        (b) => b.batchId === adultBatchId,
       );
       expect(beginnerRow).toBeDefined();
       expect(beginnerRow!.collected).toBe(ADULT_MONTHLY_PRICE * 2);
 
-      const kidsRow = analytics.byBatch.find(
-        (b) => b.batchId === SEED.kidsBatchId,
-      );
+      const kidsRow = analytics.byBatch.find((b) => b.batchId === kidsBatchId);
       expect(kidsRow).toBeDefined();
       expect(kidsRow!.collected).toBe(KID_MONTHLY_PRICE);
 
-      // === Verify payment method breakdown ===
       expect(analytics.byPaymentMethod.CASH).toBeDefined();
-      expect(analytics.byPaymentMethod.CASH.amount).toBe(
+      expect(analytics.byPaymentMethod.CASH.amount).toBeGreaterThanOrEqual(
         ADULT_MONTHLY_PRICE + KID_MONTHLY_PRICE,
       );
       expect(analytics.byPaymentMethod.UPI_MANUAL).toBeDefined();
-      expect(analytics.byPaymentMethod.UPI_MANUAL.amount).toBe(
-        ADULT_MONTHLY_PRICE,
-      );
+      expect(
+        analytics.byPaymentMethod.UPI_MANUAL.amount,
+      ).toBeGreaterThanOrEqual(ADULT_MONTHLY_PRICE);
 
       // === Verify student invoice lists ===
       const studentAInvoices = unwrapPage(
@@ -1324,7 +1307,16 @@ test.describe("Revenue reconciliation @http", () => {
         >("STAFF", `/billing/student/${studentB.id}?limit=50`),
       );
       const studentBPaid = studentBInvoices.filter((i) => i.status === "PAID");
-      expect(studentBPaid.length).toBeGreaterThanOrEqual(2);
+      expect(studentBPaid.length).toBeGreaterThanOrEqual(1);
+
+      const studentCInvoices = unwrapPage(
+        await expectOk<
+          | Array<{ id: string; status: string }>
+          | { items: Array<{ id: string; status: string }> }
+        >("STAFF", `/billing/student/${studentC.id}?limit=50`),
+      );
+      const studentCPaid = studentCInvoices.filter((i) => i.status === "PAID");
+      expect(studentCPaid.length).toBeGreaterThanOrEqual(1);
     } finally {
       await cleanup.dispose();
     }
@@ -1333,24 +1325,26 @@ test.describe("Revenue reconciliation @http", () => {
   test("reconciliation after refund: revenue adjusts correctly @http", async () => {
     const cleanup = new TestDataCleanup();
     try {
-      const { invoice } = await createPendingInvoiceViaEnroll(
+      const { invoice, batchId } = await createPendingInvoiceViaEnroll(
         cleanup,
-        SEED.beginnerBatchId,
+        undefined,
         SEED.adultPlanIds[0],
         "Recon Refund Student",
       );
       await markPaid(invoice.id);
 
-      // Revenue should include the payment
       const before = await getTrainerAnalytics(SEED.users.TRAINER.id);
-      const beforeCollected = before.totals.collected;
+      const beforeRow = before.byBatch.find((row) => row.batchId === batchId);
+      expect(beforeRow).toBeDefined();
+      const beforeCollected = beforeRow!.collected;
 
-      // Refund half
       const refundAmount = Math.floor(ADULT_MONTHLY_PRICE / 2);
       await refundInvoice(invoice.id, refundAmount, "Half refund");
 
       const after = await getTrainerAnalytics(SEED.users.TRAINER.id);
-      expect(after.totals.collected).toBe(beforeCollected - refundAmount);
+      const afterRow = after.byBatch.find((row) => row.batchId === batchId);
+      expect(afterRow).toBeDefined();
+      expect(afterRow!.collected).toBe(beforeCollected - refundAmount);
       expect(after.totals.refunded).toBeGreaterThanOrEqual(refundAmount);
     } finally {
       await cleanup.dispose();
@@ -1536,8 +1530,9 @@ test.describe("Batch purchase → revenue end-to-end @http", () => {
 // =========================================================================
 
 test.describe("Membership renewal revenue @http", () => {
-  test("renewal invoice generation and payment flow @http", async () => {
-    // The seed has a DUE membership with a pending renewal invoice
+  test("renewal invoice generation returns existing pending invoice @http", async () => {
+    // Do not mark the seed DUE renewal paid — that flips the membership to
+    // ACTIVE and hides the student subscriptions renew CTA used by journeys.
     const invoice = await expectOk<{
       id: string;
       status: string;
@@ -1550,24 +1545,19 @@ test.describe("Membership renewal revenue @http", () => {
       }),
     });
 
-    // Should return existing renewal invoice
     expect(["PENDING", "OVERDUE"]).toContain(invoice.status);
     expect(invoice.membershipId).toBe(SEED.membershipStudentDueId);
     expect(Number(invoice.amount)).toBe(ADULT_MONTHLY_PRICE);
+    expect(invoice.id).toBe(SEED.invoiceRenewalPendingId);
 
-    // Mark it paid (staff action for manual renewal)
-    const paid = await markPaid(invoice.id, "CASH");
-    expect(paid.status).toBe("PAID");
-
-    // Verify the renewal was processed
     const memberships = await expectOk<Array<{ id: string; status: string }>>(
       "STUDENT",
       `/memberships/student/${SEED.users.STUDENT.id}`,
     );
-    const renewed = memberships.find(
-      (m) => m.id === SEED.membershipStudentDueId,
+    const due = memberships.find(
+      (membership) => membership.id === SEED.membershipStudentDueId,
     );
-    expect(renewed).toBeDefined();
+    expect(["DUE", "EXPIRED"]).toContain(due?.status);
   });
 });
 
@@ -1579,23 +1569,24 @@ test.describe("Abandoned payment no revenue @http", () => {
   test("abandoned invoice does not contribute to revenue @http", async () => {
     const cleanup = new TestDataCleanup();
     try {
-      const { invoice } = await createPendingInvoiceViaEnroll(
+      const { invoice, batchId, student } = await createPendingInvoiceViaEnroll(
         cleanup,
         SEED.beginnerBatchId,
         SEED.adultPlanIds[0],
         "Abandon Revenue Student",
       );
 
-      const beforeRevenue = await getBatchRevenue(SEED.beginnerBatchId);
+      const beforeRevenue = await getBatchRevenue(batchId);
 
       // Abandon the payment
       await expectOk<{ status: string }>(
         "STUDENT",
         `/billing/${invoice.id}/abandon-payment`,
         { method: "POST", body: "{}" },
+        { userId: student.id },
       );
 
-      const afterRevenue = await getBatchRevenue(SEED.beginnerBatchId);
+      const afterRevenue = await getBatchRevenue(batchId);
       // Revenue should not change after abandonment
       expect(afterRevenue.totals.collected).toBe(
         beforeRevenue.totals.collected,

@@ -4,7 +4,7 @@ import { Menu, MenuContent, MenuItem } from "@dev-ui/components/menu";
 import { Tab, TabList, TabPanel, Tabs } from "@dev-ui/components/tabs";
 import { useToastContext } from "@dev-ui/components/toast";
 import { Icon } from "@dev-ui/icons";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useApi } from "@/lib/api-context";
@@ -90,6 +90,8 @@ type InvoiceCardProps = {
   invoice: Invoice;
   collectTestId: string;
   onCollect: () => void;
+  onConvertToQuarterly?: (() => void) | undefined;
+  convertPending?: boolean | undefined;
   onRefund?: (() => void) | undefined;
   refundMode?: boolean | undefined;
   studio?:
@@ -103,6 +105,8 @@ function InvoiceCard({
   invoice,
   collectTestId,
   onCollect,
+  onConvertToQuarterly,
+  convertPending = false,
   onRefund,
   refundMode = false,
   studio,
@@ -121,6 +125,14 @@ function InvoiceCard({
   ];
   if (invoice.batchName) {
     metaParts.push(invoice.batchName);
+  }
+  if (invoice.chargeType === "POSTPAID_PRORATED") {
+    const attended = invoice.attendedSessionCount ?? 0;
+    const billed = invoice.billedSessionCount ?? 0;
+    metaParts.push(`${attended} / ${billed} sessions`);
+  }
+  if (invoice.chargeType === "PREPAID_FULL") {
+    metaParts.push("1st of month");
   }
   if (isFamily && summary?.planName) {
     metaParts.push(summary.planName);
@@ -180,6 +192,17 @@ function InvoiceCard({
               onClick={onCollect}
             >
               Collect payment
+            </TouchButton>
+          ) : null}
+          {unpaid && invoice.canConvertToQuarterly && onConvertToQuarterly ? (
+            <TouchButton
+              size="md"
+              variant="quiet"
+              data-testid={`convert-quarterly-${invoice.id}`}
+              isPending={convertPending}
+              onClick={onConvertToQuarterly}
+            >
+              Convert to quarterly
             </TouchButton>
           ) : null}
           {!unpaid && canRefund(invoice) && onRefund ? (
@@ -242,6 +265,8 @@ function InvoiceCard({
 function InvoicesPage() {
   const api = useApi();
   const studioId = useStudioId();
+  const queryClient = useQueryClient();
+  const { toast } = useToastContext("InvoicesPage");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL");
   const [selectedStudent, setSelectedStudent] = useState<StudioStudent | null>(
     null,
@@ -279,6 +304,27 @@ function InvoicesPage() {
     queryKey: ["studio-members", studioId],
     queryFn: () => api.get<StudioMember[]>(`/users/studio/${studioId}`),
     enabled: Boolean(familyOpenId),
+  });
+
+  const convertToQuarterly = useMutation({
+    mutationFn: (invoiceId: string) =>
+      api.post(`/billing/${invoiceId}/convert-quarterly`),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["invoices", studioId] });
+      toast({
+        title: "Converted to quarterly",
+        description: "The upcoming 1st-of-month invoice now uses the 3-month plan.",
+        variant: "success",
+      });
+    },
+    onError: (error: unknown) => {
+      toast({
+        title: "Couldn’t convert to quarterly",
+        description:
+          error instanceof Error ? error.message : "Could not convert invoice.",
+        variant: "error",
+      });
+    },
   });
 
   const individualInvoices = useMemo(() => {
@@ -418,6 +464,15 @@ function InvoicesPage() {
                       studio={studioQuery.data}
                       collectTestId={`mark-paid-${invoice.id}`}
                       onCollect={() => setActiveId(invoice.id)}
+                      onConvertToQuarterly={
+                        invoice.canConvertToQuarterly
+                          ? () => convertToQuarterly.mutate(invoice.id)
+                          : undefined
+                      }
+                      convertPending={
+                        convertToQuarterly.isPending &&
+                        convertToQuarterly.variables === invoice.id
+                      }
                       onRefund={() => setRefundId(invoice.id)}
                     />
                   ))}
