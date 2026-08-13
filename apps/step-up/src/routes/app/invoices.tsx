@@ -1,6 +1,13 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@dev-ui/components/avatar";
 import { Badge } from "@dev-ui/components/badge";
 import { Menu, MenuContent, MenuItem } from "@dev-ui/components/menu";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@dev-ui/components/select";
 import { Tab, TabList, TabPanel, Tabs } from "@dev-ui/components/tabs";
 import { useToastContext } from "@dev-ui/components/toast";
 import { Icon } from "@dev-ui/icons";
@@ -187,28 +194,66 @@ function InvoiceCard({
           </span>
         </div>
         <p className={staff.rowMeta}>{metaParts.join(" · ")}</p>
-        <div className={staff.rowActions}>
-          {unpaid ? (
-            <TouchButton
-              size="md"
-              variant="primary"
-              data-testid={collectTestId}
-              onClick={onCollect}
-            >
-              Collect payment
-            </TouchButton>
-          ) : null}
-          {unpaid && invoice.canConvertToQuarterly && onConvertToQuarterly ? (
-            <TouchButton
-              size="md"
-              variant="quiet"
-              data-testid={`convert-quarterly-${invoice.id}`}
-              isPending={convertPending}
-              onClick={onConvertToQuarterly}
-            >
-              Convert to quarterly
-            </TouchButton>
-          ) : null}
+        <div className={staff.rowFooter}>
+          <div className={screen.cardActionsStart}>
+            {unpaid ? (
+              <TouchButton
+                size="md"
+                variant="primary"
+                data-testid={collectTestId}
+                onClick={onCollect}
+              >
+                Collect payment
+              </TouchButton>
+            ) : null}
+            {unpaid && invoice.canConvertToQuarterly && onConvertToQuarterly ? (
+              <TouchButton
+                size="md"
+                variant="quiet"
+                data-testid={`convert-quarterly-${invoice.id}`}
+                isPending={convertPending}
+                onClick={onConvertToQuarterly}
+              >
+                Convert to quarterly
+              </TouchButton>
+            ) : null}
+            {!unpaid ? (
+              <TouchButton
+                size="md"
+                variant="default"
+                data-testid={`print-invoice-${invoice.id}`}
+                onClick={() => {
+                  const opened = printInvoice({
+                    id: invoice.id,
+                    amount: invoice.amount,
+                    referralDiscount: invoice.referralDiscount,
+                    studioDiscount: invoice.studioDiscount,
+                    familyDiscount: invoice.familyDiscount,
+                    status: invoice.status,
+                    paymentMethod: invoice.paymentMethod,
+                    paidAt: invoice.paidAt,
+                    billMonth: invoice.membership?.periodStart,
+                    studentName: invoice.student?.name,
+                    studioName: studio?.name,
+                    studioLogoUrl: studio?.logoUrl,
+                    studioAddress: studio?.address,
+                    gstNumber: studio?.settings?.gstNumber,
+                    gstPercent: invoice.gstPercent,
+                  });
+                  if (!opened) {
+                    toast({
+                      title: "Couldn't open print window",
+                      description:
+                        "Allow pop-ups for this site, then try again.",
+                      variant: "error",
+                    });
+                  }
+                }}
+              >
+                Print invoice
+              </TouchButton>
+            ) : null}
+          </div>
           {!unpaid && canRefund(invoice) && onRefund ? (
             <Menu>
               <TouchButton
@@ -226,41 +271,6 @@ function InvoiceCard({
               </MenuContent>
             </Menu>
           ) : null}
-          {!unpaid ? (
-            <TouchButton
-              size="md"
-              variant="default"
-              data-testid={`print-invoice-${invoice.id}`}
-              onClick={() => {
-                const opened = printInvoice({
-                  id: invoice.id,
-                  amount: invoice.amount,
-                  referralDiscount: invoice.referralDiscount,
-                  studioDiscount: invoice.studioDiscount,
-                  familyDiscount: invoice.familyDiscount,
-                  status: invoice.status,
-                  paymentMethod: invoice.paymentMethod,
-                  paidAt: invoice.paidAt,
-                  billMonth: invoice.membership?.periodStart,
-                  studentName: invoice.student?.name,
-                  studioName: studio?.name,
-                  studioLogoUrl: studio?.logoUrl,
-                  studioAddress: studio?.address,
-                  gstNumber: studio?.settings?.gstNumber,
-                  gstPercent: invoice.gstPercent,
-                });
-                if (!opened) {
-                  toast({
-                    title: "Couldn't open print window",
-                    description: "Allow pop-ups for this site, then try again.",
-                    variant: "error",
-                  });
-                }
-              }}
-            >
-              Print invoice
-            </TouchButton>
-          ) : null}
         </div>
       </div>
     </PressableCard>
@@ -274,7 +284,7 @@ function InvoicesPage() {
   const { toast } = useToastContext("InvoicesPage");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL");
   const [monthFilter, setMonthFilter] = useState(() => utcMonthKey());
-  const monthChips = useMemo(() => {
+  const monthOptions = useMemo(() => {
     const current = utcMonthKey();
     return [
       { id: "ALL", label: "All months" },
@@ -418,14 +428,32 @@ function InvoicesPage() {
           Promise.all([invoicesQuery.refetch(), familiesQuery.refetch()])
         }
       >
-        <div className={screen.filters} data-testid="invoice-month-filter">
-          <FilterChipRow
-            chips={monthChips}
-            selected={[monthFilter]}
-            onToggle={(id) =>
-              setMonthFilter((current) => (current === id ? "ALL" : id))
-            }
-          />
+        <div className={screen.filters}>
+          <div className={screen.filterField}>
+            <Select
+              label="Month"
+              selectedKey={monthFilter}
+              onSelectionChange={(key) => {
+                if (key == null) return;
+                setMonthFilter(String(key));
+              }}
+            >
+              <SelectTrigger data-testid="invoice-month-filter">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {monthOptions.map((option) => (
+                  <SelectItem
+                    key={option.id}
+                    id={option.id}
+                    textValue={option.label}
+                  >
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
         <Tabs defaultSelectedKey="individual" aria-label="Invoice types">
