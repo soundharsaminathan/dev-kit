@@ -4,6 +4,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { useApi } from "@/lib/api-context";
+import { useAuth } from "@/lib/auth";
+import { isAdminRole } from "@/lib/constants";
 import { useStudioId } from "@/lib/use-studio-id";
 import { BatchDetailSkeleton } from "@/modules/batches/batch-detail-skeleton";
 import { BatchOverview } from "@/modules/batches/batch-overview";
@@ -63,11 +65,13 @@ export const Route = createFileRoute("/app/batches/$id")({
 function EditBatchPage() {
   const { id } = Route.useParams();
   const api = useApi();
+  const { user } = useAuth();
   const studioId = useStudioId();
   const navigate = useNavigate({ from: Route.fullPath });
   const queryClient = useQueryClient();
   const { toast } = useToastContext("EditBatchPage");
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const canViewPayments = isAdminRole(user?.role);
 
   const query = useQuery({
     queryKey: ["batch", id],
@@ -141,7 +145,7 @@ function EditBatchPage() {
       />
 
       {query.isLoading ? (
-        <BatchDetailSkeleton />
+        <BatchDetailSkeleton showRevenue={canViewPayments} />
       ) : (
         <ApiState
           isLoading={false}
@@ -172,7 +176,7 @@ function EditBatchPage() {
                   photoUrl: row.trainer.photoUrl ?? null,
                 }))}
               />
-              <BatchRevenue batchId={batch.id} />
+              {canViewPayments ? <BatchRevenue batchId={batch.id} /> : null}
               <BatchTrainers batchId={batch.id} trainers={batch.trainers} />
               <BatchSessionsLane batchId={batch.id} sessions={batch.sessions} />
               <BatchRoster

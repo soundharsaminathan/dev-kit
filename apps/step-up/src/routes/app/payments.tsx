@@ -36,6 +36,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useApi } from "@/lib/api-context";
 import { useAuth } from "@/lib/auth";
+import { requireAdmin } from "@/lib/require-auth";
 import { useStudioId } from "@/lib/use-studio-id";
 import styles from "@/modules/payments/payments-dashboard.module.scss";
 import { FormInput } from "@/modules/ui/form-input";
@@ -160,6 +161,12 @@ const revenueChartConfig = {
 } satisfies ChartConfig;
 
 export const Route = createFileRoute("/app/payments")({
+  beforeLoad: ({ context, location }) => {
+    requireAdmin(context.auth, {
+      pathname: location.pathname,
+      searchStr: location.searchStr,
+    });
+  },
   component: PaymentsPage,
 });
 
@@ -983,11 +990,7 @@ function KpiCard({
           >
             <Icon name="help-circle" />
           </button>
-          <TooltipContent
-            portal
-            placement="top"
-            className={styles.kpiTooltip}
-          >
+          <TooltipContent portal placement="top" className={styles.kpiTooltip}>
             {description}
           </TooltipContent>
         </Tooltip>

@@ -53,6 +53,14 @@ const PERMISSION_MATRIX: MatrixRow[] = [
     allowed: [UserRole.OWNER, UserRole.STAFF],
   },
   {
+    action: "billing.trainerAnalytics",
+    allowed: [UserRole.OWNER, UserRole.STAFF],
+  },
+  {
+    action: "batches.revenue",
+    allowed: [UserRole.OWNER, UserRole.STAFF],
+  },
+  {
     action: "billing.listByStudio",
     allowed: [UserRole.OWNER, UserRole.STAFF],
   },

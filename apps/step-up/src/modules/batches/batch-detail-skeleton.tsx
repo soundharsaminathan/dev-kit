@@ -8,7 +8,11 @@ const TRAINER_KEYS = ["tr0", "tr1"] as const;
 const SESSION_KEYS = ["s0", "s1", "s2"] as const;
 const ROW_KEYS = ["r0", "r1", "r2", "r3"] as const;
 
-export function BatchDetailSkeleton() {
+export function BatchDetailSkeleton({
+  showRevenue = true,
+}: {
+  showRevenue?: boolean;
+}) {
   return (
     <div
       className={styles.root}
@@ -75,36 +79,38 @@ export function BatchDetailSkeleton() {
         </div>
       </section>
 
-      <section className={styles.card}>
-        <div className={styles.sectionHeader}>
-          <SkeletonBlock height="0.8125rem" width="5rem" />
-          <SkeletonBlock
-            height="1.75rem"
-            width="9.5rem"
-            radius="var(--radius-full, 999px)"
-          />
-        </div>
-        <SkeletonBlock height="0.75rem" width="45%" />
-        <div className={styles.revenueMetrics}>
-          {REVENUE_METRIC_KEYS.map((key) => (
-            <div key={key} className={styles.metric}>
-              <SkeletonBlock height="0.6875rem" width="55%" />
-              <SkeletonBlock height="1rem" width="70%" />
-            </div>
-          ))}
-        </div>
-        <div className={styles.revenuePlans}>
-          {REVENUE_PLAN_KEYS.map((key) => (
-            <div key={key} className={styles.revenuePlanRow}>
-              <div className={styles.sessionCopy}>
-                <SkeletonBlock height="0.875rem" width="55%" />
-                <SkeletonBlock height="0.75rem" width="40%" />
+      {showRevenue ? (
+        <section className={styles.card}>
+          <div className={styles.sectionHeader}>
+            <SkeletonBlock height="0.8125rem" width="5rem" />
+            <SkeletonBlock
+              height="1.75rem"
+              width="9.5rem"
+              radius="var(--radius-full, 999px)"
+            />
+          </div>
+          <SkeletonBlock height="0.75rem" width="45%" />
+          <div className={styles.revenueMetrics}>
+            {REVENUE_METRIC_KEYS.map((key) => (
+              <div key={key} className={styles.metric}>
+                <SkeletonBlock height="0.6875rem" width="55%" />
+                <SkeletonBlock height="1rem" width="70%" />
               </div>
-              <SkeletonBlock height="0.875rem" width="4rem" />
-            </div>
-          ))}
-        </div>
-      </section>
+            ))}
+          </div>
+          <div className={styles.revenuePlans}>
+            {REVENUE_PLAN_KEYS.map((key) => (
+              <div key={key} className={styles.revenuePlanRow}>
+                <div className={styles.sessionCopy}>
+                  <SkeletonBlock height="0.875rem" width="55%" />
+                  <SkeletonBlock height="0.75rem" width="40%" />
+                </div>
+                <SkeletonBlock height="0.875rem" width="4rem" />
+              </div>
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       <section className={styles.card}>
         <div className={styles.sectionHeader}>

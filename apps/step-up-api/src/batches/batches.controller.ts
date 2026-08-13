@@ -49,8 +49,8 @@ import { BatchCommandsService } from "./application/batch.commands";
 import { BatchQueriesService } from "./application/batch.queries";
 import { BatchesService } from "./batches.service";
 import {
-  BatchListQueryDto,
-  BatchRosterQueryDto,
+  type BatchListQueryDto,
+  type BatchRosterQueryDto,
   toDiscoverFilters,
 } from "./dto/batch-list.dto";
 
@@ -332,7 +332,7 @@ export class BatchesController {
   }
 
   @Get(":id/revenue")
-  @Roles(UserRole.OWNER, UserRole.STAFF, UserRole.TRAINER)
+  @Roles(UserRole.OWNER, UserRole.STAFF)
   getRevenue(@Param("id") id: string, @Query("period") period?: string) {
     if (period != null && period !== "all" && period !== "month") {
       throw new BadRequestException('period must be "all" or "month"');

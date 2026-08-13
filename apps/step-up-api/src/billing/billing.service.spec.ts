@@ -106,7 +106,14 @@ describe("BillingService.getTrainerAnalytics", () => {
     );
   });
 
-  it("forces trainers to their own analytics", async () => {
+  it("rejects trainers from payment analytics", async () => {
+    await expect(
+      service.getTrainerAnalytics(
+        makeUser({ id: "trainer-1", role: UserRole.TRAINER }),
+        "trainer-1",
+        "studio-1",
+      ),
+    ).rejects.toBeInstanceOf(ForbiddenException);
     await expect(
       service.getTrainerAnalytics(
         makeUser({ id: "trainer-1", role: UserRole.TRAINER }),
@@ -249,7 +256,7 @@ describe("BillingService.getTrainerAnalytics", () => {
     ]);
 
     const result = await service.getTrainerAnalytics(
-      makeUser({ id: "trainer-1", role: UserRole.TRAINER }),
+      makeUser({ role: UserRole.STAFF }),
       "trainer-1",
       "studio-1",
     );
@@ -398,7 +405,7 @@ describe("BillingService.getTrainerAnalytics", () => {
     ]);
 
     const result = await service.getTrainerAnalytics(
-      makeUser({ id: "trainer-1", role: UserRole.TRAINER }),
+      makeUser({ role: UserRole.STAFF }),
       "trainer-1",
       "studio-1",
     );
@@ -573,7 +580,7 @@ describe("BillingService.getTrainerAnalytics", () => {
     ]);
 
     const result = await service.getTrainerAnalytics(
-      makeUser({ id: "trainer-1", role: UserRole.TRAINER }),
+      makeUser({ role: UserRole.STAFF }),
       "trainer-1",
       "studio-1",
       {

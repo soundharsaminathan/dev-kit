@@ -902,15 +902,12 @@ test.describe("Discount revenue impact @http", () => {
 // =========================================================================
 
 test.describe("Role-based revenue access @http", () => {
-  test("trainer can view own analytics @http", async () => {
-    const result = await expectOk<{
-      trainerId: string;
-      totals: { collected: number };
-    }>(
+  test("trainer cannot view payment analytics @http", async () => {
+    await expectStatus(
       "TRAINER",
       `/billing/analytics/trainer/${SEED.users.TRAINER.id}?studioId=${SEED.studioId}`,
+      403,
     );
-    expect(result.trainerId).toBe(SEED.users.TRAINER.id);
   });
 
   test("trainer cannot view another trainer analytics @http", async () => {
@@ -996,11 +993,12 @@ test.describe("Role-based revenue access @http", () => {
     expect(Array.isArray(invoices)).toBe(true);
   });
 
-  test("trainer can view batch revenue @http", async () => {
-    const revenue = await expectOk<{
-      totals: { collected: number };
-    }>("TRAINER", `/batches/${SEED.beginnerBatchId}/revenue`);
-    expect(revenue.totals).toBeDefined();
+  test("trainer cannot view batch revenue @http", async () => {
+    await expectStatus(
+      "TRAINER",
+      `/batches/${SEED.beginnerBatchId}/revenue`,
+      403,
+    );
   });
 });
 

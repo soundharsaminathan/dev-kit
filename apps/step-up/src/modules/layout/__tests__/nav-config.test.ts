@@ -15,8 +15,8 @@ describe("app nav role filtering", () => {
   it("hides studio-admin links from trainers", () => {
     const labels = sidebarLabels("TRAINER");
     expect(labels).toContain("Batches");
-    expect(labels).toContain("Payments");
     expect(labels).toContain("Retention");
+    expect(labels).not.toContain("Payments");
     expect(labels).not.toContain("Students");
     expect(labels).not.toContain("Subscriptions");
     expect(labels).not.toContain("Certificates");
@@ -30,6 +30,7 @@ describe("app nav role filtering", () => {
       expect(labels).toContain("Students");
       expect(labels).toContain("Settings");
       expect(labels).toContain("Invoices");
+      expect(labels).toContain("Payments");
       expect(labels).toContain("Certificates");
     }
   });
@@ -46,6 +47,7 @@ describe("app nav role filtering", () => {
     ]);
     expect(more).not.toContain("/app/settings");
     expect(more).not.toContain("/app/students");
+    expect(more).not.toContain("/app/payments");
   });
 });
 
@@ -53,12 +55,7 @@ describe("member nav", () => {
   it("keeps trainers out of primary tabs", () => {
     const primary = getPrimaryTabs("me").map((link) => link.to);
     const more = getMoreLinks("me").map((link) => link.to);
-    expect(primary).toEqual([
-      "/me",
-      "/me/book",
-      "/me/messages",
-      "/me/profile",
-    ]);
+    expect(primary).toEqual(["/me", "/me/book", "/me/messages", "/me/profile"]);
     expect(more).toContain("/me/trainers");
   });
 });

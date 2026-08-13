@@ -15,6 +15,7 @@ test.describe("role shells @critical", () => {
     await expect(page.locator('a[href="/app/settings"]')).toHaveCount(0);
     await expect(page.locator('a[href="/app/students"]')).toHaveCount(0);
     await expect(page.locator('a[href="/app/invoices"]')).toHaveCount(0);
+    await expect(page.locator('a[href="/app/payments"]')).toHaveCount(0);
     await expect(page.locator('a[href="/app/certificates"]')).toHaveCount(0);
     await context.close();
   });
