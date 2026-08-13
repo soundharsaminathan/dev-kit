@@ -1,35 +1,47 @@
-import { Link } from "@tanstack/react-router";
+import { Tab, TabList, Tabs } from "@dev-ui/components/tabs";
+import { useNavigate, useRouterState } from "@tanstack/react-router";
 import styles from "./expenses.module.scss";
 
-const TABS: Array<{
-  to:
-    | "/app/expenses"
-    | "/app/expenses/list"
-    | "/app/expenses/reports"
-    | "/app/expenses/categories";
-  label: string;
-  end?: boolean;
-}> = [
-  { to: "/app/expenses", label: "Dashboard", end: true },
-  { to: "/app/expenses/list", label: "All expenses" },
-  { to: "/app/expenses/reports", label: "Reports" },
-  { to: "/app/expenses/categories", label: "Categories" },
-];
+const TABS = [
+  { id: "dashboard", to: "/app/expenses", label: "Dashboard" },
+  { id: "list", to: "/app/expenses/list", label: "All expenses" },
+  { id: "reports", to: "/app/expenses/reports", label: "Reports" },
+  { id: "categories", to: "/app/expenses/categories", label: "Categories" },
+] as const;
+
+type TabId = (typeof TABS)[number]["id"];
+
+function tabIdFromPath(pathname: string): TabId {
+  if (pathname.startsWith("/app/expenses/list")) return "list";
+  if (pathname.startsWith("/app/expenses/reports")) return "reports";
+  if (pathname.startsWith("/app/expenses/categories")) return "categories";
+  return "dashboard";
+}
 
 export function ExpenseTabs() {
+  const navigate = useNavigate();
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const selectedKey = tabIdFromPath(pathname);
+
   return (
-    <nav className={styles.tabs} aria-label="Expenses sections">
-      {TABS.map((tab) => (
-        <Link
-          key={tab.to}
-          to={tab.to}
-          className={styles.tab}
-          activeOptions={{ exact: tab.end === true }}
-          activeProps={{ "data-active": "true" }}
-        >
-          {tab.label}
-        </Link>
-      ))}
-    </nav>
+    <Tabs
+      selectedKey={selectedKey}
+      onSelectionChange={(key) => {
+        const tab = TABS.find((item) => item.id === key);
+        if (tab && tab.id !== selectedKey) {
+          void navigate({ to: tab.to });
+        }
+      }}
+      aria-label="Expenses sections"
+      className={styles.tabs}
+    >
+      <TabList className={styles.tabList}>
+        {TABS.map((tab) => (
+          <Tab key={tab.id} id={tab.id}>
+            {tab.label}
+          </Tab>
+        ))}
+      </TabList>
+    </Tabs>
   );
 }

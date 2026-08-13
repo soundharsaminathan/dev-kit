@@ -143,13 +143,14 @@ function ExpensesListPage() {
       <PullToRefresh onRefresh={refresh}>
         <div className={styles.root}>
           <div className={styles.filterBar}>
-            <FormInput
-              className={styles.searchField}
-              label="Search"
-              value={search}
-              onChange={setSearch}
-              placeholder="Vendor or description"
-            />
+            <div className={styles.searchField}>
+              <FormInput
+                label="Search"
+                value={search}
+                onChange={setSearch}
+                placeholder="Vendor or description"
+              />
+            </div>
             <div className={styles.filterField}>
               <Select
                 label="Category"
