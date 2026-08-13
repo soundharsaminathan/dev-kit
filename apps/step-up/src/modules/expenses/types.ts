@@ -218,6 +218,24 @@ export function todayInputValue() {
   return `${now.getFullYear()}-${month}-${day}`;
 }
 
+export function validateExpenseDraft(input: {
+  amount: string;
+  expenseDate: string;
+  categoryId: string;
+}): string | null {
+  const amount = Number(input.amount);
+  if (!Number.isFinite(amount) || amount <= 0) {
+    return "Enter an amount greater than zero.";
+  }
+  if (!input.expenseDate) {
+    return "Choose an expense date.";
+  }
+  if (!input.categoryId) {
+    return "Choose a category.";
+  }
+  return null;
+}
+
 export function dateInputToApiValue(value: string): string {
   const trimmed = value.trim();
   if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {

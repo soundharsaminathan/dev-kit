@@ -180,6 +180,7 @@ function Select<T extends CollectionItem>({
         value={{
           triggerRef,
           state,
+          isNonModal: true,
         }}
       >
         <Field

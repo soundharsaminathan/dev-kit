@@ -585,18 +585,22 @@ test.describe("admin (staff) smoke @smoke", () => {
       });
       await waitForAppReady(page);
       await page.getByTestId("add-expense").click();
-      await page.getByTestId("expense-amount-input").fill("250");
-      await page.getByTestId("confirm-save-expense").click();
-      await expect(page.getByText(/choose a category/i)).toBeVisible();
+      const sheet = page.getByRole("dialog", { name: /record expense/i });
+      await expect(sheet).toBeVisible();
+      await sheet.getByTestId("expense-amount-input").fill("250");
+      await sheet.getByTestId("confirm-save-expense").click();
+      await expect(sheet.getByText(/choose a category/i)).toBeVisible();
 
-      await page.getByLabel("Category").click();
-      await page.getByRole("option", { name: "Rent" }).click();
+      const categorySelect = sheet.getByTestId("expense-category-select");
+      await expect(categorySelect).toBeEnabled();
+      await categorySelect.click();
+      await page.getByRole("option", { name: "Rent", exact: true }).click();
       const [response] = await Promise.all([
         waitForApiResponse(page, {
           method: "POST",
           pathIncludes: "/expenses",
         }),
-        page.getByTestId("confirm-save-expense").click(),
+        sheet.getByTestId("confirm-save-expense").click(),
       ]);
       expect(response.ok()).toBeTruthy();
       const created = (await response.json()) as { id?: string };

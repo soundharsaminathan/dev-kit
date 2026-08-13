@@ -48,6 +48,7 @@ describe("Select", () => {
     expect(
       screen.getByRole("option", { name: "Option A" }),
     ).toBeInTheDocument();
+    expect(document.querySelector('[class*="underlay"]')).not.toBeInTheDocument();
   });
 
   it("renders options from the items prop", () => {

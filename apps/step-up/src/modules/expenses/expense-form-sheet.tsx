@@ -23,6 +23,7 @@ import {
   formatPrice,
   PAYMENT_METHOD_OPTIONS,
   todayInputValue,
+  validateExpenseDraft,
 } from "./types";
 import { uploadExpenseReceipt } from "./upload";
 
@@ -101,16 +102,11 @@ export function ExpenseFormSheet({
 
   const save = useMutation({
     mutationFn: async () => {
+      const invalid = validateExpenseDraft(form);
+      if (invalid) {
+        throw new Error(invalid);
+      }
       const amount = Number(form.amount);
-      if (!Number.isFinite(amount) || amount <= 0) {
-        throw new Error("Enter an amount greater than zero.");
-      }
-      if (!form.expenseDate) {
-        throw new Error("Choose an expense date.");
-      }
-      if (!form.categoryId) {
-        throw new Error("Choose a category.");
-      }
       const body = {
         amount,
         expenseDate: dateInputToApiValue(form.expenseDate),
@@ -175,8 +171,20 @@ export function ExpenseFormSheet({
   }
 
   function update(patch: Partial<FormState>) {
+    if (save.isError) {
+      save.reset();
+    }
     setForm((prev) => ({ ...prev, ...patch }));
   }
+
+  const saveError =
+    save.error instanceof Error
+      ? save.error.message
+      : save.isError
+        ? "The expense could not be saved."
+        : null;
+  const categoryError = saveError && !form.categoryId ? saveError : undefined;
+  const bannerError = saveError && form.categoryId ? saveError : null;
 
   return (
     <AppSheet
@@ -215,8 +223,10 @@ export function ExpenseFormSheet({
                 update({ categoryId: key == null ? "" : String(key) })
               }
               isDisabled={categories.length === 0}
+              isInvalid={Boolean(categoryError)}
+              errorMessage={categoryError}
             >
-              <SelectTrigger>
+              <SelectTrigger data-testid="expense-category-select">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -318,15 +328,7 @@ export function ExpenseFormSheet({
           {uploadError ? <p>{uploadError}</p> : null}
         </div>
 
-        {save.isError ? (
-          <ErrorState
-            description={
-              save.error instanceof Error
-                ? save.error.message
-                : "The expense could not be saved."
-            }
-          />
-        ) : null}
+        {bannerError ? <ErrorState description={bannerError} /> : null}
 
         <div className={styles.sheetActions}>
           <TouchButton

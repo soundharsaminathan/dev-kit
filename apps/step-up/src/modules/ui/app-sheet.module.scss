@@ -8,6 +8,7 @@
 
 .body {
   padding-block-end: var(--space-2, 0.5rem);
+  overflow: auto;
 }
 
 .body[data-size="tall"] {
