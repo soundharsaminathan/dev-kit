@@ -106,7 +106,7 @@ function LeadsPage() {
   return (
     <>
       <Screen
-        title="Leads"
+        title="Trial caller"
         subtitle={subtitle}
         actions={
           <TouchButton

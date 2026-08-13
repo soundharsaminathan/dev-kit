@@ -17,6 +17,8 @@ describe("app nav role filtering", () => {
     expect(labels).toContain("Batches");
     expect(labels).toContain("Retention");
     expect(labels).not.toContain("Payments");
+    expect(labels).toContain("Bookings");
+    expect(labels).not.toContain("Trial caller");
     expect(labels).not.toContain("Students");
     expect(labels).not.toContain("Subscriptions");
     expect(labels).not.toContain("Certificates");
@@ -28,6 +30,7 @@ describe("app nav role filtering", () => {
     for (const role of ["OWNER", "STAFF"] as const) {
       const labels = sidebarLabels(role);
       expect(labels).toContain("Students");
+      expect(labels).toContain("Trial caller");
       expect(labels).toContain("Settings");
       expect(labels).toContain("Invoices");
       expect(labels).toContain("Payments");
@@ -41,13 +44,28 @@ describe("app nav role filtering", () => {
     expect(primary).toEqual([
       "/app",
       "/app/batches",
-      "/app/bookings",
       "/app/messages",
       "/app/profile",
     ]);
+    expect(more).toContain("/app/bookings");
+    expect(more).not.toContain("/app/leads");
     expect(more).not.toContain("/app/settings");
     expect(more).not.toContain("/app/students");
     expect(more).not.toContain("/app/payments");
+  });
+
+  it("puts trial caller on the app bar and bookings in the profile menu", () => {
+    const primary = getPrimaryTabs("app", "OWNER").map((link) => link.to);
+    const more = getMoreLinks("app", "OWNER").map((link) => link.to);
+    expect(primary).toEqual([
+      "/app",
+      "/app/batches",
+      "/app/leads",
+      "/app/messages",
+      "/app/profile",
+    ]);
+    expect(more).toContain("/app/bookings");
+    expect(more).not.toContain("/app/leads");
   });
 });
 

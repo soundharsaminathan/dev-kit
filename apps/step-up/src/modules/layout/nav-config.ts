@@ -43,11 +43,12 @@ const appLinks: NavLinkItem[] = [
     primary: true,
   },
   {
-    to: "/app/bookings",
-    label: "Bookings",
-    icon: "book-open",
-    section: "Ops",
+    to: "/app/leads",
+    label: "Trial caller",
+    icon: "smartphone",
+    section: "People",
     primary: true,
+    roles: ADMIN_ROLES,
   },
   {
     to: "/app/messages",
@@ -77,11 +78,10 @@ const appLinks: NavLinkItem[] = [
     roles: ADMIN_ROLES,
   },
   {
-    to: "/app/leads",
-    label: "Leads",
-    icon: "smartphone",
-    section: "People",
-    roles: ADMIN_ROLES,
+    to: "/app/bookings",
+    label: "Bookings",
+    icon: "book-open",
+    section: "Ops",
   },
   {
     to: "/app/trainers",
