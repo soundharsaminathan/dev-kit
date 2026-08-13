@@ -1103,6 +1103,118 @@ describe("BillingService.markPaid", () => {
     expect(updateData.purchaseMeta).toBeUndefined();
   });
 
+  it("renews seated combined sources instead of re-assigning", async () => {
+    prisma.invoice.findUniqueOrThrow.mockResolvedValue(
+      unpaidInvoice({
+        studentId: "owner-1",
+        amount: 4950,
+        familyDiscount: 50,
+        combineMeta: {
+          sources: [
+            {
+              invoiceId: "inv-a",
+              studentId: "kid-1",
+              batchId: "batch-kid",
+              originalAmount: 2500,
+              allocatedDiscount: 25,
+              netAmount: 2475,
+              membershipId: "mem-a",
+              purchaseMeta: {
+                subscriptionId: "sub-kid",
+                purchaserUserId: "kid-1",
+                coveredStudents: [
+                  { studentId: "kid-1", seatRole: "KID", batchId: "batch-kid" },
+                ],
+              },
+            },
+            {
+              invoiceId: "inv-b",
+              studentId: "kid-2",
+              batchId: "batch-kid",
+              originalAmount: 2500,
+              allocatedDiscount: 25,
+              netAmount: 2475,
+              membershipId: "mem-b",
+              purchaseMeta: {
+                subscriptionId: "sub-kid",
+                purchaserUserId: "kid-2",
+                coveredStudents: [
+                  { studentId: "kid-2", seatRole: "KID", batchId: "batch-kid" },
+                ],
+              },
+            },
+          ],
+        },
+      }),
+    );
+    prisma.invoice.update.mockResolvedValue({
+      id: "inv-1",
+      status: InvoiceStatus.PAID,
+      paymentMethod: PaymentMethod.CASH,
+      amount: 4950,
+      referralDiscount: 0,
+      studioDiscount: 0,
+      familyDiscount: 50,
+    });
+
+    await service.markPaid(makeUser({ role: UserRole.STAFF }), "inv-1", {
+      paymentMethod: PaymentMethod.CASH,
+    });
+
+    expect(membershipsStub.assign).not.toHaveBeenCalled();
+    expect(membershipsStub.renewFromPaidInvoice).toHaveBeenCalledWith("mem-a");
+    expect(membershipsStub.renewFromPaidInvoice).toHaveBeenCalledWith("mem-b");
+  });
+
+  it("assigns checkout-hold combined sources that were never seated", async () => {
+    membershipsStub.assign.mockResolvedValue({ id: "mem-hold" });
+    prisma.invoice.findUniqueOrThrow.mockResolvedValue(
+      unpaidInvoice({
+        studentId: "owner-1",
+        combineMeta: {
+          sources: [
+            {
+              invoiceId: "inv-a",
+              studentId: "kid-1",
+              batchId: "batch-kid",
+              originalAmount: 2500,
+              allocatedDiscount: 0,
+              netAmount: 2500,
+              purchaseMeta: {
+                subscriptionId: "sub-kid",
+                purchaserUserId: "kid-1",
+                coveredStudents: [
+                  { studentId: "kid-1", seatRole: "KID", batchId: "batch-kid" },
+                ],
+              },
+            },
+          ],
+        },
+      }),
+    );
+    prisma.invoice.update.mockResolvedValue({
+      id: "inv-1",
+      status: InvoiceStatus.PAID,
+      paymentMethod: PaymentMethod.CASH,
+      amount: 2500,
+      referralDiscount: 0,
+      studioDiscount: 0,
+    });
+
+    await service.markPaid(makeUser({ role: UserRole.STAFF }), "inv-1", {
+      paymentMethod: PaymentMethod.CASH,
+    });
+
+    expect(membershipsStub.assign).toHaveBeenCalledWith({
+      subscriptionId: "sub-kid",
+      purchaserUserId: "kid-1",
+      coveredStudents: [
+        { studentId: "kid-1", seatRole: "KID", batchId: "batch-kid" },
+      ],
+    });
+    expect(membershipsStub.renewFromPaidInvoice).not.toHaveBeenCalled();
+  });
+
   it("rejects trainers marking invoices paid", async () => {
     await expect(
       service.markPaid(

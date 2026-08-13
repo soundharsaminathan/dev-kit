@@ -117,6 +117,8 @@ export function CollectPaymentSheet({
       : null;
 
   const isFamily = invoice?.kind === "FAMILY";
+  const isCombined = invoice?.kind === "COMBINED";
+  const isFamilyBill = isFamily || isCombined;
   const seats =
     invoice?.purchaseMeta?.coveredStudents ??
     invoice?.familySummary?.coveredStudents ??
@@ -124,7 +126,7 @@ export function CollectPaymentSheet({
 
   const lines: InvoiceBillLine[] = [];
   if (invoice) {
-    if (isFamily) {
+    if (isFamilyBill) {
       for (const seat of seats) {
         lines.push({
           id: `seat-${seat.studentId}`,
@@ -136,7 +138,9 @@ export function CollectPaymentSheet({
       }
       lines.push({
         id: "plan",
-        label: invoice.familySummary?.planName ?? "Family pack",
+        label:
+          invoice.familySummary?.planName ??
+          (isCombined ? "Combined family" : "Family pack"),
         value: formatPrice(invoice.amount),
       });
     } else {
@@ -179,7 +183,11 @@ export function CollectPaymentSheet({
           <InvoiceBill
             heading={invoice.student?.name ?? "Invoice"}
             meta={[
-              isFamily ? "Family pack" : "Individual",
+              isFamily
+                ? "Family pack"
+                : isCombined
+                  ? "Combined family"
+                  : "Individual",
               invoice.batchName,
               `Invoice ${invoice.id.slice(-6).toUpperCase()}`,
             ]

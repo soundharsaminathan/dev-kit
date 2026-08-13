@@ -856,14 +856,17 @@ export class BillingService {
 
     if (combineMeta) {
       for (const source of combineMeta.sources) {
-        if (source.purchaseMeta) {
+        // Prepaid-at-join already seated the student (membershipId on the
+        // source invoice). Re-running assign() re-checks schedule conflicts
+        // and can hang/fail collect-payment for combined family invoices.
+        if (source.membershipId) {
+          await this.memberships.renewFromPaidInvoice(source.membershipId);
+        } else if (source.purchaseMeta) {
           await this.memberships.assign({
             subscriptionId: source.purchaseMeta.subscriptionId,
             purchaserUserId: source.purchaseMeta.purchaserUserId,
             coveredStudents: source.purchaseMeta.coveredStudents,
           });
-        } else if (source.membershipId) {
-          await this.memberships.renewFromPaidInvoice(source.membershipId);
         }
       }
     }
@@ -910,8 +913,8 @@ export class BillingService {
     });
 
     if (student.email) {
-      try {
-        await this.email.sendPaymentInvoice({
+      void this.email
+        .sendPaymentInvoice({
           to: student.email,
           studentName: student.name || "there",
           studioName: invoice.studio.name,
@@ -923,13 +926,13 @@ export class BillingService {
           amountPaid,
           paymentMethod: input.paymentMethod,
           paidAt,
+        })
+        .catch((error: unknown) => {
+          this.logger.error(
+            `Failed to email payment invoice ${invoice.id}`,
+            error instanceof Error ? error.stack : String(error),
+          );
         });
-      } catch (error) {
-        this.logger.error(
-          `Failed to email payment invoice ${invoice.id}`,
-          error instanceof Error ? error.stack : String(error),
-        );
-      }
     }
 
     return {

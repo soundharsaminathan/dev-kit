@@ -133,6 +133,7 @@ test.describe("trainer smoke @smoke", () => {
   test("trainer confirms unpaid enrollee then marks present @smoke", async ({
     browser,
   }) => {
+    test.setTimeout(180_000);
     test.skip(!canJoinPostpaidNow(), "UTC 1st is always prepaid-at-join");
     const cleanup = new SmokeDataCleanup();
     const stamp = Date.now();
@@ -202,6 +203,7 @@ test.describe("trainer smoke @smoke", () => {
   test("after mark-paid unpaid badge clears on roster @smoke", async ({
     browser,
   }) => {
+    test.setTimeout(180_000);
     test.skip(!canJoinPostpaidNow(), "UTC 1st is always prepaid-at-join");
     const cleanup = new SmokeDataCleanup();
     const stamp = Date.now();

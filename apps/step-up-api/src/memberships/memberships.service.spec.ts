@@ -1404,6 +1404,41 @@ describe("MembershipsService.findMonthlyUnpaidStudentIds", () => {
       service.findMonthlyUnpaidStudentIds(["s-pending", "s-other"]),
     ).resolves.toEqual(new Set(["s-pending"]));
   });
+
+  it("flags kids listed on a pending combined family invoice", async () => {
+    prisma.membershipCoveredStudent.findMany.mockResolvedValue([]);
+    prisma.invoice.findMany.mockResolvedValue([
+      {
+        studentId: "parent-1",
+        purchaseMeta: null,
+        combineMeta: {
+          sources: [
+            {
+              invoiceId: "inv-a",
+              studentId: "kid-1",
+              batchId: "batch-kid",
+              originalAmount: 2500,
+              allocatedDiscount: 25,
+              netAmount: 2475,
+            },
+            {
+              invoiceId: "inv-b",
+              studentId: "kid-2",
+              batchId: "batch-kid",
+              originalAmount: 2500,
+              allocatedDiscount: 25,
+              netAmount: 2475,
+            },
+          ],
+        },
+        membership: null,
+      },
+    ]);
+
+    await expect(
+      service.findMonthlyUnpaidStudentIds(["kid-1", "kid-2", "s-other"]),
+    ).resolves.toEqual(new Set(["kid-1", "kid-2"]));
+  });
 });
 
 describe("MembershipsService.findStudentIdsWithActiveMonthForBatch", () => {
