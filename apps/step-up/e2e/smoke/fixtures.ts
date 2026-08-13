@@ -314,7 +314,7 @@ export async function createCalendarBatch(
         body: JSON.stringify(
           batchCreateBody({
             studioId: SMOKE.studioId,
-            branchId: branches[attempt % branches.length],
+            branchId: branches[attempt % branches.length] ?? SMOKE.branchMainId,
             trainerId: SMOKE.users.TRAINER.id,
             name:
               options.name ??
@@ -351,39 +351,57 @@ export async function createFutureScheduleBatch(
   });
 }
 
+function isSmokeSeedBatchId(batchId: string): boolean {
+  return (
+    batchId === SMOKE.kidsBatchId ||
+    batchId === SMOKE.beginnerBatchId ||
+    batchId === SMOKE.trialBatchId
+  );
+}
+
 export async function enrollPrepaid(
   cleanup: SmokeDataCleanup,
   options: {
     category?: "ADULTS" | "KIDS";
     name?: string;
     ageRange?: string;
+    studentId?: string;
+    batchId?: string;
+    planId?: string;
   } = {},
 ) {
   const category = options.category ?? "ADULTS";
   const stamp = Date.now();
-  const student = await apiRequest<{ id: string; name: string }>(
-    "OWNER",
-    "/users",
-    {
-      method: "POST",
-      body: JSON.stringify({
-        name: options.name ?? `Smoke Pay ${stamp}`,
-        email: `smoke-pay-${stamp}@stepup.dev`,
-        gender: "FEMALE",
-        ageRange:
-          options.ageRange ??
-          (category === "KIDS" ? "UNDER_10" : "TWENTY_TO_FORTY"),
-        styles: ["Hip Hop"],
-      }),
-    },
-  );
-  cleanup.trackStudent(student.id);
-  const batch = await createCalendarBatch(cleanup, {
-    kind: "prepaid",
-    category,
-  });
+  const student = options.studentId
+    ? { id: options.studentId, name: options.name ?? options.studentId }
+    : await apiRequest<{ id: string; name: string }>("OWNER", "/users", {
+        method: "POST",
+        body: JSON.stringify({
+          name: options.name ?? `Smoke Pay ${stamp}`,
+          email: `smoke-pay-${stamp}@stepup.dev`,
+          gender: "FEMALE",
+          ageRange:
+            options.ageRange ??
+            (category === "KIDS" ? "UNDER_10" : "TWENTY_TO_FORTY"),
+          styles: ["Hip Hop"],
+        }),
+      });
+  if (!options.studentId) {
+    cleanup.trackStudent(student.id);
+  }
+  const ownedBatchId =
+    options.batchId && !isSmokeSeedBatchId(options.batchId)
+      ? options.batchId
+      : undefined;
+  const batch = ownedBatchId
+    ? { id: ownedBatchId }
+    : await createCalendarBatch(cleanup, {
+        kind: "prepaid",
+        category,
+      });
   const planId =
-    category === "KIDS" ? SMOKE.kidPlanIds[0] : SMOKE.adultPlanIds[0];
+    options.planId ??
+    (category === "KIDS" ? SMOKE.kidMonthlyId : SMOKE.adultMonthlyId);
   const enrollment = await apiRequest<{
     invoice: { id: string; status: string; amount: number } | null;
     billingKind?: string;
@@ -431,7 +449,7 @@ export async function enrollPostpaid(
     category,
   });
   const planId =
-    category === "KIDS" ? SMOKE.kidPlanIds[0] : SMOKE.adultPlanIds[0];
+    category === "KIDS" ? SMOKE.kidMonthlyId : SMOKE.adultMonthlyId;
   const enrollment = await apiRequest<{
     invoice: { id: string } | null;
     billingKind?: string;

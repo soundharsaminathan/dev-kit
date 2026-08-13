@@ -3,6 +3,7 @@ import {
   apiRequest,
   authFile,
   bearerFor,
+  createCalendarBatch,
   enrollPrepaid,
   expect,
   SMOKE,
@@ -396,35 +397,27 @@ test.describe("admin (staff) smoke @smoke", () => {
     const kidB = await createSmokeFamilyKid(`Smoke Combine B ${stamp}`);
     cleanup.trackStudent(kidA.id);
     cleanup.trackStudent(kidB.id);
+    const kidsBatch = await createCalendarBatch(cleanup, {
+      kind: "prepaid",
+      category: "KIDS",
+      capacity: 8,
+    });
+    const enrollA = await enrollPrepaid(cleanup, {
+      category: "KIDS",
+      studentId: kidA.id,
+      batchId: kidsBatch.id,
+    });
+    const enrollB = await enrollPrepaid(cleanup, {
+      category: "KIDS",
+      studentId: kidB.id,
+      batchId: kidsBatch.id,
+    });
 
     const context = await browser.newContext({
       storageState: authFile("STAFF"),
     });
     const page = await context.newPage();
     try {
-      const enrollA = await apiRequest<{ invoice: { id: string } }>(
-        "STAFF",
-        `/batches/${SMOKE.kidsBatchId}/enroll`,
-        {
-          method: "POST",
-          body: JSON.stringify({
-            studentId: kidA.id,
-            subscriptionId: SMOKE.kidPlanIds[0],
-          }),
-        },
-      );
-      const enrollB = await apiRequest<{ invoice: { id: string } }>(
-        "STAFF",
-        `/batches/${SMOKE.kidsBatchId}/enroll`,
-        {
-          method: "POST",
-          body: JSON.stringify({
-            studentId: kidB.id,
-            subscriptionId: SMOKE.kidPlanIds[0],
-          }),
-        },
-      );
-
       await page.goto("/app/invoices", { waitUntil: "domcontentloaded" });
       await waitForAppReady(page);
 
