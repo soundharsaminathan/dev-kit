@@ -592,7 +592,7 @@ test.describe("admin (staff) smoke @smoke", () => {
       await waitForAppReady(page);
       await categoriesLoaded;
       await page.getByTestId("add-expense").click();
-      const sheet = page.getByRole("dialog", { name: /record expense/i });
+      const sheet = page.getByTestId("expense-form-sheet");
       await expect(sheet).toBeVisible();
       await sheet.getByTestId("expense-amount-input").fill("250");
       await sheet.getByTestId("confirm-save-expense").click();
@@ -601,7 +601,10 @@ test.describe("admin (staff) smoke @smoke", () => {
       const categorySelect = sheet.getByTestId("expense-category-select");
       await expect(categorySelect).toBeEnabled();
       await categorySelect.click();
-      await page.getByRole("option", { name: "Rent", exact: true }).click();
+      await page
+        .getByRole("listbox")
+        .getByRole("option", { name: "Rent", exact: true })
+        .click();
       const [response] = await Promise.all([
         waitForApiResponse(page, {
           method: "POST",

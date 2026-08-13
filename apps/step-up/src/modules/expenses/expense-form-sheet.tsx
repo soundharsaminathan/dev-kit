@@ -199,7 +199,7 @@ export function ExpenseFormSheet({
       title={isEdit ? "Edit expense" : "Record expense"}
       size="tall"
     >
-      <div className={styles.sheetStack}>
+      <div className={styles.sheetStack} data-testid="expense-form-sheet">
         <div className={styles.formGrid}>
           <FormInput
             className={styles.formFull}

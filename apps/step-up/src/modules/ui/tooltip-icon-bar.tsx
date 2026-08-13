@@ -1,5 +1,10 @@
 import { useCanHover } from "@dev-ui/hooks";
-import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import {
+  AnimatePresence,
+  motion,
+  type MotionStyle,
+  useReducedMotion,
+} from "motion/react";
 import {
   type CSSProperties,
   createContext,
@@ -499,7 +504,7 @@ export function TooltipIconBar({
         ) : (
           <motion.div
             className={tooltipLayerClassName}
-            style={tooltipLayerStyle}
+            style={tooltipLayerStyle as MotionStyle}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
