@@ -144,13 +144,14 @@ function ImportStudentsPage() {
             </TouchButton>
           </FileTrigger>
 
-          <TouchButton variant="quiet" fullWidth>
-            <a
-              href="/templates/student-import-template.xlsx"
-              download="student-import-template.xlsx"
-            >
-              Download template
-            </a>
+          <TouchButton
+            as="a"
+            href="/templates/student-import-template.xlsx"
+            download="student-import-template.xlsx"
+            variant="quiet"
+            fullWidth
+          >
+            Download template
           </TouchButton>
 
           <p className={staff.panelDesc}>
