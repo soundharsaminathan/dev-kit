@@ -2,7 +2,7 @@ import { DateRangePicker } from "@dev-ui/components/date-picker";
 import { SearchField } from "@dev-ui/components/search-field";
 import { Swipeable } from "@dev-ui/components/swipeable";
 import { useToastContext } from "@dev-ui/components/toast";
-import { useCanHover, useLoadMoreOnScroll } from "@dev-ui/hooks";
+import { useIsMobile, useLoadMoreOnScroll } from "@dev-ui/hooks";
 import { Icon } from "@dev-ui/icons";
 import {
   useInfiniteQuery,
@@ -10,6 +10,7 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useApi } from "@/lib/api-context";
 import { requireAdmin } from "@/lib/require-auth";
@@ -46,11 +47,21 @@ import { TouchButton } from "@/modules/ui/touch-button";
 type LeadsSearch = {
   from?: string;
   to?: string;
+  section?: LeadSection;
 };
 
 const SECTION_ORDER: LeadSection[] = ["new", "trialBooked", "archived"];
 
+const EASE_OUT = [0.16, 1, 0.3, 1] as const;
+
+const SECTION_CHIP_LABELS: Record<LeadSection, string> = {
+  new: "New",
+  trialBooked: "Trial booked",
+  archived: "Archived",
+};
+
 function parseSearch(search: Record<string, unknown>): LeadsSearch {
+  const result: LeadsSearch = {};
   if (
     typeof search.from === "string" &&
     typeof search.to === "string" &&
@@ -58,9 +69,17 @@ function parseSearch(search: Record<string, unknown>): LeadsSearch {
     isDateKey(search.to) &&
     search.from <= search.to
   ) {
-    return { from: search.from, to: search.to };
+    result.from = search.from;
+    result.to = search.to;
   }
-  return {};
+  if (
+    search.section === "new" ||
+    search.section === "trialBooked" ||
+    search.section === "archived"
+  ) {
+    result.section = search.section;
+  }
+  return result;
 }
 
 function useDebouncedValue<T>(value: T, delayMs: number) {
@@ -101,11 +120,30 @@ function LeadsPage() {
     [searchParams],
   );
   const activePreset = matchingPreset(range);
-  const canHover = useCanHover();
+  const activeSection = searchParams.section ?? null;
+  const isMobile = useIsMobile();
+  const reduce = useReducedMotion();
   const [addOpen, setAddOpen] = useState(false);
   const [switchLead, setSwitchLead] = useState<Lead | null>(null);
   const [search, setSearch] = useState("");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const debouncedSearch = useDebouncedValue(search.trim(), 300);
+
+  useEffect(() => {
+    if (isMobile) setSelectedIds(new Set());
+  }, [isMobile]);
+
+  const toggleSelect = useCallback((lead: Lead) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(lead.id)) {
+        next.delete(lead.id);
+      } else {
+        next.add(lead.id);
+      }
+      return next;
+    });
+  }, []);
 
   const query = useInfiniteQuery({
     queryKey: ["studio-leads", studioId, range, debouncedSearch],
@@ -164,6 +202,12 @@ function LeadsPage() {
       await queryClient.invalidateQueries({
         queryKey: ["studio-leads", studioId],
       });
+      setSelectedIds((prev) => {
+        if (!prev.has(lead.id)) return prev;
+        const next = new Set(prev);
+        next.delete(lead.id);
+        return next;
+      });
       toast({
         title: `${lead.name} archived`,
         description: "They won't show up in new leads anymore.",
@@ -173,6 +217,40 @@ function LeadsPage() {
     onError: (error: unknown) => {
       toast({
         title: "Couldn’t archive lead",
+        description: error instanceof Error ? error.message : "Try again.",
+        variant: "error",
+      });
+    },
+  });
+
+  const archiveLeads = useMutation({
+    mutationFn: (leads: Lead[]) =>
+      Promise.all(
+        leads.map((lead) =>
+          api.patch(`/users/studio/${studioId}/students/${lead.id}`, {
+            active: false,
+          }),
+        ),
+      ),
+    onSuccess: async (_data, leads) => {
+      await queryClient.invalidateQueries({
+        queryKey: ["studio-leads", studioId],
+      });
+      const ids = new Set(leads.map((lead) => lead.id));
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        for (const id of ids) next.delete(id);
+        return next;
+      });
+      toast({
+        title: `${leads.length} lead${leads.length === 1 ? "" : "s"} archived`,
+        description: "They won't show up in new leads anymore.",
+        variant: "success",
+      });
+    },
+    onError: (error: unknown) => {
+      toast({
+        title: "Couldn’t archive leads",
         description: error instanceof Error ? error.message : "Try again.",
         variant: "error",
       });
@@ -192,8 +270,9 @@ function LeadsPage() {
   }, [leads]);
 
   const visibleSections = useMemo(() => {
-    return SECTION_ORDER.filter((section) => grouped[section].length > 0);
-  }, [grouped]);
+    const sections = activeSection ? [activeSection] : SECTION_ORDER;
+    return sections.filter((section) => grouped[section].length > 0);
+  }, [grouped, activeSection]);
 
   const hasSearch = Boolean(search.trim());
   const { hasNextPage, isFetchingNextPage, fetchNextPage, refetch } = query;
@@ -212,17 +291,41 @@ function LeadsPage() {
     if (hasSearch) {
       return `${count}${more} matching lead${count === 1 ? "" : "s"}`;
     }
+    if (activeSection) {
+      const sectionCount = grouped[activeSection].length;
+      return `${sectionCount}${more} ${SECTION_LABELS[activeSection].toLowerCase()}`;
+    }
     if (range) {
       return `${count}${more} trial${count === 1 ? "" : "s"} · ${rangeLabel(range)}`;
     }
     return "Call new signups and confirm trial sessions.";
-  }, [range, hasNextPage, hasSearch, leads.length]);
+  }, [range, hasNextPage, hasSearch, leads.length, activeSection, grouped]);
 
   function setRange(next: LeadDateRange | null) {
     void navigate({
-      search: next ? { from: next.from, to: next.to } : {},
+      search: {
+        ...(next ? { from: next.from, to: next.to } : {}),
+        ...(activeSection ? { section: activeSection } : {}),
+      },
     });
   }
+
+  function setSection(next: LeadSection | null) {
+    void navigate({
+      search: {
+        ...(next === "archived"
+          ? {}
+          : range
+            ? { from: range.from, to: range.to }
+            : {}),
+        ...(next ? { section: next } : {}),
+      },
+    });
+  }
+
+  const itemTransition = reduce
+    ? { duration: 0 }
+    : { duration: 0.3, ease: EASE_OUT };
 
   return (
     <>
@@ -289,6 +392,70 @@ function LeadsPage() {
               </div>
             </div>
 
+            <div
+              className={styles.quickActions}
+              role="toolbar"
+              aria-label="Filter leads by status"
+            >
+              <button
+                type="button"
+                className={styles.filterChip}
+                data-selected={!activeSection ? "true" : undefined}
+                data-testid="leads-section-all"
+                onClick={() => setSection(null)}
+              >
+                All
+              </button>
+              {SECTION_ORDER.map((section) => (
+                <button
+                  key={section}
+                  type="button"
+                  className={styles.filterChip}
+                  data-selected={activeSection === section ? "true" : undefined}
+                  data-testid={`leads-section-${section}`}
+                  onClick={() => setSection(section)}
+                >
+                  {SECTION_CHIP_LABELS[section]}
+                </button>
+              ))}
+            </div>
+
+            {!isMobile && selectedIds.size > 0 ? (
+              <div
+                className={styles.selectionBar}
+                data-testid="leads-selection-bar"
+              >
+                <span className={styles.selectionCount}>
+                  {selectedIds.size} selected
+                </span>
+                <TouchButton
+                  variant="danger"
+                  size="sm"
+                  isPending={archiveLeads.isPending}
+                  isDisabled={archiveLeads.isPending}
+                  data-testid="leads-archive-selected"
+                  onClick={() => {
+                    const selected = leads.filter((lead) =>
+                      selectedIds.has(lead.id),
+                    );
+                    if (selected.length === 0) return;
+                    archiveLeads.mutate(selected);
+                  }}
+                >
+                  <Icon name="archive" />
+                  Archive
+                </TouchButton>
+                <TouchButton
+                  variant="quiet"
+                  size="sm"
+                  data-testid="leads-clear-selection"
+                  onClick={() => setSelectedIds(new Set())}
+                >
+                  Cancel
+                </TouchButton>
+              </div>
+            ) : null}
+
             {query.isLoading ? (
               <SkeletonRowList count={4} label="Loading leads" />
             ) : null}
@@ -311,13 +478,21 @@ function LeadsPage() {
               />
             ) : null}
 
-            {query.isSuccess && leads.length === 0 ? (
+            {query.isSuccess && visibleSections.length === 0 ? (
               <EmptyState
                 icon="smartphone"
-                title={emptyLeadsTitle(range, hasSearch)}
-                description={emptyLeadsDescription(range, hasSearch)}
+                title={
+                  activeSection
+                    ? `No ${SECTION_LABELS[activeSection].toLowerCase()}`
+                    : emptyLeadsTitle(range, hasSearch)
+                }
+                description={
+                  activeSection
+                    ? "Nothing here yet. Try a different filter."
+                    : emptyLeadsDescription(range, hasSearch)
+                }
                 action={
-                  !range && !hasSearch ? (
+                  !activeSection && !range && !hasSearch ? (
                     <TouchButton
                       variant="primary"
                       onClick={() => setAddOpen(true)}
@@ -336,72 +511,84 @@ function LeadsPage() {
                   {hasNextPage ? "+" : ""}
                 </h2>
                 <ul className={staff.list}>
-                  {grouped[section].map((lead) => {
-                    const card = (
-                      <LeadCard
-                        lead={lead}
-                        range={range}
-                        onViewProfile={() => {
-                          void navigate({
-                            to: "/users/$id",
-                            params: { id: lead.id },
-                          });
-                        }}
-                        onSwitchTrial={setSwitchLead}
-                        {...(section === "trialBooked"
-                          ? {
-                              onConfirmSession: (next) => {
-                                const bookingId = next.trialBooking?.id;
-                                if (!bookingId) return;
-                                confirmSession.mutate(bookingId);
-                              },
-                              confirmPending:
-                                confirmSession.isPending &&
-                                confirmSession.variables ===
-                                  lead.trialBooking?.id,
-                            }
-                          : {})}
-                      />
-                    );
-
-                    if (section === "archived") {
-                      return <li key={lead.id}>{card}</li>;
-                    }
-
-                    const renderArchiveAction = () => (
-                      <TouchButton
-                        variant="danger"
-                        size="sm"
-                        isIconOnly
-                        className={styles.archiveAction}
-                        aria-label={`Archive ${lead.name}`}
-                        data-testid={`lead-archive-${lead.id}`}
-                        isDisabled={
-                          archiveLead.isPending &&
-                          archiveLead.variables?.id === lead.id
-                        }
-                        onClick={() => archiveLead.mutate(lead)}
-                      >
-                        <Icon name="archive" />
-                      </TouchButton>
-                    );
-
-                    return (
-                      <li key={lead.id}>
-                        <Swipeable
-                          direction="horizontal"
-                          ariaLabel={`Actions for ${lead.name}`}
-                          onSwipeLeft={() => archiveLead.mutate(lead)}
-                          rightActions={renderArchiveAction()}
-                          fallbackActions={
-                            canHover ? renderArchiveAction() : undefined
+                  <AnimatePresence initial={false} mode="popLayout">
+                    {grouped[section].map((lead) => {
+                      const canSelect = !isMobile && section !== "archived";
+                      const card = (
+                        <LeadCard
+                          lead={lead}
+                          range={range}
+                          selected={
+                            canSelect ? selectedIds.has(lead.id) : false
                           }
+                          onToggleSelect={canSelect ? toggleSelect : undefined}
+                          onViewProfile={() => {
+                            void navigate({
+                              to: "/users/$id",
+                              params: { id: lead.id },
+                            });
+                          }}
+                          onSwitchTrial={setSwitchLead}
+                          {...(section === "trialBooked"
+                            ? {
+                                onConfirmSession: (next) => {
+                                  const bookingId = next.trialBooking?.id;
+                                  if (!bookingId) return;
+                                  confirmSession.mutate(bookingId);
+                                },
+                                confirmPending:
+                                  confirmSession.isPending &&
+                                  confirmSession.variables ===
+                                    lead.trialBooking?.id,
+                              }
+                            : {})}
+                        />
+                      );
+
+                      const item =
+                        section === "archived" ? (
+                          card
+                        ) : (
+                          <Swipeable
+                            direction="horizontal"
+                            ariaLabel={`Actions for ${lead.name}`}
+                            onSwipeLeft={() => archiveLead.mutate(lead)}
+                            rightActions={
+                              <TouchButton
+                                variant="danger"
+                                size="sm"
+                                isIconOnly
+                                className={styles.archiveAction}
+                                aria-label={`Archive ${lead.name}`}
+                                data-testid={`lead-archive-${lead.id}`}
+                                isDisabled={
+                                  archiveLead.isPending &&
+                                  archiveLead.variables?.id === lead.id
+                                }
+                                onClick={() => archiveLead.mutate(lead)}
+                              >
+                                <Icon name="archive" />
+                              </TouchButton>
+                            }
+                          >
+                            {card}
+                          </Swipeable>
+                        );
+
+                      return (
+                        <motion.li
+                          key={lead.id}
+                          layout
+                          initial={{ opacity: 0, x: 24 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          exit={{ opacity: 0, x: -140 }}
+                          transition={itemTransition}
                         >
-                          {card}
-                        </Swipeable>
-                      </li>
-                    );
-                  })}
+                          {item}
+                        </motion.li>
+                      );
+                    })}
+                  </AnimatePresence>
                 </ul>
               </section>
             ))}

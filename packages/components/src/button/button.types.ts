@@ -5,6 +5,7 @@ export type ButtonVariant =
   | "default"
   | "primary"
   | "quiet"
+  | "outline"
   | "link"
   | "warning"
   | "danger";

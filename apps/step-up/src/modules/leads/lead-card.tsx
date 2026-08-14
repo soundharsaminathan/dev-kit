@@ -1,4 +1,5 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@dev-ui/components/avatar";
+import { CheckboxControl } from "@dev-ui/components/checkbox";
 import { useToastContext } from "@dev-ui/components/toast";
 import { Icon } from "@dev-ui/icons";
 import { TouchButton } from "@/modules/ui/touch-button";
@@ -20,6 +21,8 @@ type LeadCardProps = {
   onSwitchTrial?: ((lead: Lead) => void) | undefined;
   onConfirmSession?: ((lead: Lead) => void) | undefined;
   confirmPending?: boolean | undefined;
+  selected?: boolean | undefined;
+  onToggleSelect?: ((lead: Lead) => void) | undefined;
 };
 
 export function LeadCard({
@@ -29,6 +32,8 @@ export function LeadCard({
   onSwitchTrial,
   onConfirmSession,
   confirmPending = false,
+  selected = false,
+  onToggleSelect,
 }: LeadCardProps) {
   const { toast } = useToastContext("LeadCard");
   const telHref = lead.phone ? phoneTelHref(lead.phone) : null;
@@ -58,8 +63,20 @@ export function LeadCard({
   }
 
   return (
-    <div className={styles.card} data-soon={soon ? "true" : undefined}>
+    <div
+      className={styles.card}
+      data-soon={soon ? "true" : undefined}
+      data-selected={selected ? "true" : undefined}
+    >
       <div className={styles.topRow}>
+        {onToggleSelect ? (
+          <CheckboxControl
+            aria-label={`Select ${lead.name}`}
+            isSelected={selected}
+            onChange={() => onToggleSelect(lead)}
+            className={styles.cardSelect}
+          />
+        ) : null}
         {onViewProfile ? (
           <button
             type="button"
@@ -135,26 +152,27 @@ export function LeadCard({
 
       {trial ? (
         <div className={styles.trialBlock}>
-          {trial.status === "CONFIRMED" ? (
-            <span
-              className={styles.badge}
-              data-tone="success"
-              data-testid={`lead-confirmed-${lead.id}`}
-            >
-              Confirmed
-            </span>
-          ) : soon ? (
-            <span className={styles.badge}>Call soon</span>
-          ) : null}
-          <p className={styles.trialLabel}>Trial session</p>
-          <p className={styles.trialWhen}>
-            {trial.sessionStartsAt
-              ? formatTrialWhen(trial.sessionStartsAt)
-              : "Time to confirm"}
-          </p>
-          {trial.batchName ? (
-            <p className={styles.trialBatch}>{trial.batchName}</p>
-          ) : null}
+          <div className={styles.trialInfo}>
+            {trial.status === "CONFIRMED" ? (
+              <span
+                className={styles.badge}
+                data-tone="success"
+                data-testid={`lead-confirmed-${lead.id}`}
+              >
+                Confirmed
+              </span>
+            ) : soon ? (
+              <span className={styles.badge}>Call soon</span>
+            ) : null}
+            <p className={styles.trialWhen}>
+              {trial.sessionStartsAt
+                ? formatTrialWhen(trial.sessionStartsAt)
+                : "Time to confirm"}
+            </p>
+            {trial.batchName ? (
+              <p className={styles.trialBatch}>{trial.batchName}</p>
+            ) : null}
+          </div>
           {onSwitchTrial || onConfirmSession ? (
             <div className={styles.trialActions}>
               {onConfirmSession && canConfirmTrialSession(trial) ? (
@@ -172,7 +190,7 @@ export function LeadCard({
               {onSwitchTrial ? (
                 <TouchButton
                   size="sm"
-                  variant="quiet"
+                  variant="outline"
                   data-testid={`lead-switch-trial-${lead.id}`}
                   onClick={() => onSwitchTrial(lead)}
                 >
@@ -184,13 +202,15 @@ export function LeadCard({
         </div>
       ) : (
         <div className={styles.trialBlock}>
-          <p className={styles.trialLabel}>No trial yet</p>
-          <p className={styles.trialBatch}>Call to pick a session</p>
+          <div className={styles.trialInfo}>
+            <p className={styles.trialLabel}>No trial yet</p>
+            <p className={styles.trialBatch}>Call to pick a session</p>
+          </div>
           {onSwitchTrial ? (
             <div className={styles.trialActions}>
               <TouchButton
                 size="sm"
-                variant="quiet"
+                variant="outline"
                 data-testid={`lead-pick-session-${lead.id}`}
                 onClick={() => onSwitchTrial(lead)}
               >

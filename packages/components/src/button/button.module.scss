@@ -189,6 +189,22 @@
     }
   }
 
+  &[data-variant="outline"] {
+    background-color: transparent;
+    color: var(--color-fg);
+    border-color: color-mix(in srgb, var(--color-fg) 28%, transparent);
+
+    &[data-hovered="true"]:not([data-state="disabled"]):not([data-pending="true"]) {
+      background-color: color-mix(in oklch, var(--color-inverse) 8%, transparent);
+      border-color: var(--color-fg);
+    }
+
+    &[data-pressed="true"]:not([data-state="disabled"]):not([data-pending="true"]) {
+      background-color: color-mix(in oklch, var(--color-inverse) 16%, transparent);
+      border-color: var(--color-fg);
+    }
+  }
+
   &[data-variant="link"] {
     background-color: transparent;
     color: var(--color-fg);

@@ -189,3 +189,33 @@ describe("LeadCard pick session without a trial", () => {
     expect(screen.queryByTestId("lead-pick-session-lead-1")).toBeNull();
   });
 });
+
+describe("LeadCard selection", () => {
+  it("renders a select checkbox and toggles the selected lead", () => {
+    const onToggleSelect = vi.fn();
+    const selectedLead = lead();
+
+    renderWithProviders(
+      <LeadCard
+        lead={selectedLead}
+        range={null}
+        selected
+        onToggleSelect={onToggleSelect}
+      />,
+    );
+
+    const checkbox = screen.getByRole("checkbox", {
+      name: "Select Asha Rao",
+    });
+    expect(checkbox).toBeChecked();
+
+    fireEvent.click(checkbox);
+    expect(onToggleSelect).toHaveBeenCalledWith(selectedLead);
+  });
+
+  it("hides the checkbox when onToggleSelect is not provided", () => {
+    renderWithProviders(<LeadCard lead={lead()} range={null} />);
+
+    expect(screen.queryByRole("checkbox")).toBeNull();
+  });
+});

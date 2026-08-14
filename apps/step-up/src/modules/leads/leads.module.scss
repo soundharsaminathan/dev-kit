@@ -21,6 +21,40 @@
   );
 }
 
+.card[data-selected="true"] {
+  border-color: color-mix(in srgb, var(--color-primary) 45%, transparent);
+  background: color-mix(
+    in srgb,
+    var(--color-primary) 5%,
+    var(--color-card, var(--color-bg))
+  );
+}
+
+.cardSelect {
+  flex-shrink: 0;
+}
+
+.selectionBar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2, 0.5rem);
+  padding: var(--space-2, 0.5rem) var(--space-3, 0.75rem);
+  border-radius: var(--radius-xl, 1rem);
+  border: 1px solid color-mix(in srgb, var(--color-primary) 35%, transparent);
+  background: color-mix(
+    in srgb,
+    var(--color-primary) 8%,
+    var(--color-card, var(--color-bg))
+  );
+}
+
+.selectionCount {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
 .topRow {
   display: flex;
   align-items: center;
@@ -135,10 +169,19 @@
 
 .trialBlock {
   display: flex;
-  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
   gap: var(--space-2, 0.5rem);
   padding-top: var(--space-2, 0.5rem);
   border-top: 1px solid color-mix(in srgb, var(--color-fg) 10%, transparent);
+}
+
+.trialInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  min-width: 0;
+  flex: 1;
 }
 
 .trialLabel {
@@ -186,6 +229,8 @@
   flex-wrap: wrap;
   gap: var(--space-2, 0.5rem);
   align-items: center;
+  justify-content: flex-end;
+  flex-shrink: 0;
 }
 
 .searchBar {
