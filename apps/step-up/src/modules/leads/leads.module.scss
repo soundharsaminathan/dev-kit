@@ -28,6 +28,25 @@
   width: 100%;
 }
 
+.profileHit {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: var(--space-3, 0.75rem);
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+.profileHit:active .name {
+  color: var(--color-primary);
+}
+
 .avatar {
   flex-shrink: 0;
   --avatar-radius: var(--radius-lg, 0.75rem);

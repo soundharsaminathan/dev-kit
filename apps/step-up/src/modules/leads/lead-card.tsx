@@ -16,6 +16,7 @@ import {
 type LeadCardProps = {
   lead: Lead;
   range: LeadDateRange | null;
+  onViewProfile?: (() => void) | undefined;
   onSwitchTrial?: ((lead: Lead) => void) | undefined;
   onConfirmSession?: ((lead: Lead) => void) | undefined;
   confirmPending?: boolean | undefined;
@@ -24,6 +25,7 @@ type LeadCardProps = {
 export function LeadCard({
   lead,
   range,
+  onViewProfile,
   onSwitchTrial,
   onConfirmSession,
   confirmPending = false,
@@ -58,32 +60,62 @@ export function LeadCard({
   return (
     <div className={styles.card} data-soon={soon ? "true" : undefined}>
       <div className={styles.topRow}>
-        <Avatar className={styles.avatar}>
-          {lead.photoUrl ? <AvatarImage src={lead.photoUrl} alt="" /> : null}
-          <AvatarFallback>{initials || "?"}</AvatarFallback>
-        </Avatar>
-        <div className={styles.body}>
-          <div className={styles.nameRow}>
-            <p className={styles.name}>{lead.name}</p>
-            {age ? <span className={styles.age}>{age}</span> : null}
-          </div>
-          {lead.phone ? (
-            <button
-              type="button"
-              className={styles.phone}
-              aria-label={`Copy ${lead.phone}`}
-              data-testid={`lead-copy-phone-${lead.id}`}
-              onClick={() => {
-                if (!lead.phone) return;
-                void copyPhone(lead.phone);
-              }}
-            >
-              {lead.phone}
-            </button>
-          ) : (
-            <p className={styles.meta}>No mobile on file</p>
-          )}
-        </div>
+        {onViewProfile ? (
+          <button
+            type="button"
+            className={styles.profileHit}
+            aria-label={`View ${lead.name}'s profile`}
+            data-testid={`lead-profile-${lead.id}`}
+            onClick={onViewProfile}
+          >
+            <Avatar className={styles.avatar}>
+              {lead.photoUrl ? (
+                <AvatarImage src={lead.photoUrl} alt="" />
+              ) : null}
+              <AvatarFallback>{initials || "?"}</AvatarFallback>
+            </Avatar>
+            <div className={styles.body}>
+              <div className={styles.nameRow}>
+                <p className={styles.name}>{lead.name}</p>
+                {age ? <span className={styles.age}>{age}</span> : null}
+              </div>
+              <p className={styles.meta}>
+                {lead.phone ? lead.phone : "No mobile on file"}
+              </p>
+            </div>
+          </button>
+        ) : (
+          <>
+            <Avatar className={styles.avatar}>
+              {lead.photoUrl ? (
+                <AvatarImage src={lead.photoUrl} alt="" />
+              ) : null}
+              <AvatarFallback>{initials || "?"}</AvatarFallback>
+            </Avatar>
+            <div className={styles.body}>
+              <div className={styles.nameRow}>
+                <p className={styles.name}>{lead.name}</p>
+                {age ? <span className={styles.age}>{age}</span> : null}
+              </div>
+              {lead.phone ? (
+                <button
+                  type="button"
+                  className={styles.phone}
+                  aria-label={`Copy ${lead.phone}`}
+                  data-testid={`lead-copy-phone-${lead.id}`}
+                  onClick={() => {
+                    if (!lead.phone) return;
+                    void copyPhone(lead.phone);
+                  }}
+                >
+                  {lead.phone}
+                </button>
+              ) : (
+                <p className={styles.meta}>No mobile on file</p>
+              )}
+            </div>
+          </>
+        )}
         <TouchButton
           variant="primary"
           size="sm"

@@ -315,6 +315,12 @@ function LeadsPage() {
                       <LeadCard
                         lead={lead}
                         range={range}
+                        onViewProfile={() => {
+                          void navigate({
+                            to: "/users/$id",
+                            params: { id: lead.id },
+                          });
+                        }}
                         onSwitchTrial={setSwitchLead}
                         {...(section === "trialBooked"
                           ? {

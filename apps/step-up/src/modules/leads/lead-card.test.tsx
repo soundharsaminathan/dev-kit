@@ -36,6 +36,28 @@ function lead(overrides: Partial<Lead> = {}): Lead {
   };
 }
 
+describe("LeadCard profile", () => {
+  it("opens the student profile when the identity area is tapped", () => {
+    const onViewProfile = vi.fn();
+
+    renderWithProviders(
+      <LeadCard lead={lead()} range={null} onViewProfile={onViewProfile} />,
+    );
+
+    fireEvent.click(screen.getByTestId("lead-profile-lead-1"));
+    expect(onViewProfile).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows a plain copy affordance when no profile handler is provided", () => {
+    renderWithProviders(<LeadCard lead={lead()} range={null} />);
+
+    expect(screen.queryByTestId("lead-profile-lead-1")).toBeNull();
+    expect(
+      screen.getByRole("button", { name: "Copy +91 91234 56789" }),
+    ).toBeInTheDocument();
+  });
+});
+
 describe("LeadCard call button", () => {
   afterEach(() => {
     toast.mockClear();
