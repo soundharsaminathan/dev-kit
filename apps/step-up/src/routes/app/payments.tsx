@@ -39,7 +39,6 @@ import { useAuth } from "@/lib/auth";
 import { requireAdmin } from "@/lib/require-auth";
 import { useStudioId } from "@/lib/use-studio-id";
 import styles from "@/modules/payments/payments-dashboard.module.scss";
-import { FormInput } from "@/modules/ui/form-input";
 import { PullToRefresh } from "@/modules/ui/pull-to-refresh";
 import { Screen } from "@/modules/ui/screen";
 import { SkeletonBlock, SkeletonCardList } from "@/modules/ui/skeleton-block";
@@ -128,7 +127,7 @@ type TrainerPaymentAnalytics = {
   }>;
 };
 
-type RangePreset = "all" | "7d" | "30d" | "month" | "3m" | "1y" | "custom";
+type RangePreset = "all" | "7d" | "30d" | "month" | "3m" | "1y";
 type ChartType = "bar" | "area" | "line";
 
 const CHART_TYPES = [
@@ -239,7 +238,7 @@ function detectPreset(from: string, to: string): RangePreset {
   if (from === monthsAgoInput(12) && to === today) {
     return "1y";
   }
-  return "custom";
+  return "all";
 }
 
 function bucketForPreset(preset: RangePreset): AnalyticsBucket {
@@ -381,10 +380,6 @@ function PaymentsPage() {
       setToDate(today);
       return;
     }
-    if (id === "custom" && !fromDate && !toDate) {
-      setFromDate(startOfMonthInput());
-      setToDate(today);
-    }
   }
 
   async function refresh() {
@@ -476,9 +471,11 @@ function PaymentsPage() {
                   <Select
                     label="Trainer"
                     placeholder="Select a trainer"
-                    selectedKey={trainerId}
-                    onSelectionChange={(key) =>
-                      setSelectedTrainerId(String(key))
+                    value={trainerId}
+                    onChange={(key) =>
+                      setSelectedTrainerId(
+                        key == null ? ALL_TRAINERS_ID : String(key),
+                      )
                     }
                   >
                     <SelectTrigger>
@@ -559,8 +556,10 @@ function PaymentsPage() {
             <div className={styles.filterField}>
               <Select
                 label="Period"
-                selectedKey={rangePreset === "custom" ? "custom" : rangePreset}
-                onSelectionChange={(key) => applyPreset(String(key))}
+                value={rangePreset}
+                onChange={(key) =>
+                  applyPreset(key == null ? "all" : String(key))
+                }
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -594,25 +593,6 @@ function PaymentsPage() {
                 Refresh
               </TouchButton>
             </div>
-
-            {rangePreset === "custom" ? (
-              <div className={styles.customDates}>
-                <FormInput
-                  label="From"
-                  type="date"
-                  value={fromDate}
-                  max={toDate || undefined}
-                  onChange={setFromDate}
-                />
-                <FormInput
-                  label="To"
-                  type="date"
-                  value={toDate}
-                  min={fromDate || undefined}
-                  onChange={setToDate}
-                />
-              </div>
-            ) : null}
           </div>
 
           {trainerId && analyticsQuery.isLoading ? (
