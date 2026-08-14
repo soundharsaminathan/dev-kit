@@ -79,3 +79,4 @@ import "./calendar/calendar.module.scss";
 import "./date-field/date-field.module.scss";
 import "./time-field/time-field.module.scss";
 import "./date-picker/date-picker.module.scss";
+import "./swipeable/swipeable.module.scss";

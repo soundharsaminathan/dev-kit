@@ -1,7 +1,8 @@
 import { DateRangePicker } from "@dev-ui/components/date-picker";
 import { SearchField } from "@dev-ui/components/search-field";
+import { Swipeable } from "@dev-ui/components/swipeable";
 import { useToastContext } from "@dev-ui/components/toast";
-import { useLoadMoreOnScroll } from "@dev-ui/hooks";
+import { useCanHover, useLoadMoreOnScroll } from "@dev-ui/hooks";
 import { Icon } from "@dev-ui/icons";
 import {
   useInfiniteQuery,
@@ -100,6 +101,7 @@ function LeadsPage() {
     [searchParams],
   );
   const activePreset = matchingPreset(range);
+  const canHover = useCanHover();
   const [addOpen, setAddOpen] = useState(false);
   const [switchLead, setSwitchLead] = useState<Lead | null>(null);
   const [search, setSearch] = useState("");
@@ -147,6 +149,30 @@ function LeadsPage() {
     onError: (error: unknown) => {
       toast({
         title: "Couldn’t confirm session",
+        description: error instanceof Error ? error.message : "Try again.",
+        variant: "error",
+      });
+    },
+  });
+
+  const archiveLead = useMutation({
+    mutationFn: (lead: Lead) =>
+      api.patch(`/users/studio/${studioId}/students/${lead.id}`, {
+        active: false,
+      }),
+    onSuccess: async (_data, lead) => {
+      await queryClient.invalidateQueries({
+        queryKey: ["studio-leads", studioId],
+      });
+      toast({
+        title: `${lead.name} archived`,
+        description: "They won't show up in new leads anymore.",
+        variant: "success",
+      });
+    },
+    onError: (error: unknown) => {
+      toast({
+        title: "Couldn’t archive lead",
         description: error instanceof Error ? error.message : "Try again.",
         variant: "error",
       });
@@ -310,8 +336,8 @@ function LeadsPage() {
                   {hasNextPage ? "+" : ""}
                 </h2>
                 <ul className={staff.list}>
-                  {grouped[section].map((lead) => (
-                    <li key={lead.id}>
+                  {grouped[section].map((lead) => {
+                    const card = (
                       <LeadCard
                         lead={lead}
                         range={range}
@@ -336,8 +362,46 @@ function LeadsPage() {
                             }
                           : {})}
                       />
-                    </li>
-                  ))}
+                    );
+
+                    if (section === "archived") {
+                      return <li key={lead.id}>{card}</li>;
+                    }
+
+                    const renderArchiveAction = () => (
+                      <TouchButton
+                        variant="danger"
+                        size="sm"
+                        isIconOnly
+                        className={styles.archiveAction}
+                        aria-label={`Archive ${lead.name}`}
+                        data-testid={`lead-archive-${lead.id}`}
+                        isDisabled={
+                          archiveLead.isPending &&
+                          archiveLead.variables?.id === lead.id
+                        }
+                        onClick={() => archiveLead.mutate(lead)}
+                      >
+                        <Icon name="archive" />
+                      </TouchButton>
+                    );
+
+                    return (
+                      <li key={lead.id}>
+                        <Swipeable
+                          direction="horizontal"
+                          ariaLabel={`Actions for ${lead.name}`}
+                          onSwipeLeft={() => archiveLead.mutate(lead)}
+                          rightActions={renderArchiveAction()}
+                          fallbackActions={
+                            canHover ? renderArchiveAction() : undefined
+                          }
+                        >
+                          {card}
+                        </Swipeable>
+                      </li>
+                    );
+                  })}
                 </ul>
               </section>
             ))}

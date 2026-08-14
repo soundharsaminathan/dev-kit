@@ -124,6 +124,15 @@
   padding-inline: 0 !important;
 }
 
+.archiveAction {
+  align-self: stretch;
+  width: 3.5rem !important;
+  min-width: 3.5rem;
+  height: 100%;
+  min-height: 3.5rem;
+  padding-inline: 0 !important;
+}
+
 .trialBlock {
   display: flex;
   flex-direction: column;

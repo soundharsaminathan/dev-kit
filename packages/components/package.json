@@ -483,6 +483,12 @@
       "import": "./dist/virtualizer/index.js",
       "default": "./dist/virtualizer/index.js"
     },
+    "./swipeable": {
+      "development": "./src/swipeable/index.ts",
+      "types": "./dist/swipeable/index.d.ts",
+      "import": "./dist/swipeable/index.js",
+      "default": "./dist/swipeable/index.js"
+    },
     "./button/styles": {
       "development": "./src/styles.ts",
       "import": "./dist/styles.js",
