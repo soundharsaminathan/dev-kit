@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useApi } from "@/lib/api-context";
 import { AppDrawer } from "@/modules/ui/app-drawer";
 import { FormInput } from "@/modules/ui/form-input";
+import { SkeletonRowList } from "@/modules/ui/skeleton-block";
 import { EmptyState, ErrorState } from "@/modules/ui/states";
 import { TouchButton } from "@/modules/ui/touch-button";
 import styles from "./leads.module.scss";
@@ -14,10 +15,9 @@ import {
   type Lead,
   type LeadDateFilter,
   localDateKey,
+  localDayRangeIso,
   SWITCH_DATE_FILTERS,
-  slotMatchesDate,
   type TrialSlot,
-  trialHorizonDateKey,
 } from "./types";
 
 type SwitchTrialSheetProps = {
@@ -60,19 +60,25 @@ export function SwitchTrialSheet({
   }
 
   const minDate = localDateKey(now);
-  const maxDate = trialHorizonDateKey(now);
 
   const slotsQuery = useQuery({
-    queryKey: ["trial-slots", studioId],
-    queryFn: () => api.get<TrialSlot[]>(`/sessions/studio/${studioId}/trial`),
+    queryKey: ["trial-slots", studioId, dateKey ?? "all"],
+    queryFn: () => {
+      const params = new URLSearchParams();
+      if (dateKey) {
+        const { from, to } = localDayRangeIso(dateKey);
+        params.set("from", from);
+        params.set("to", to);
+      }
+      const query = params.toString();
+      return api.get<TrialSlot[]>(
+        `/sessions/studio/${studioId}/trial${query ? `?${query}` : ""}`,
+      );
+    },
     enabled: isOpen,
   });
 
-  const slots = useMemo(() => slotsQuery.data ?? [], [slotsQuery.data]);
-  const visibleSlots = useMemo(
-    () => slots.filter((slot) => slotMatchesDate(slot.startsAt, dateKey)),
-    [dateKey, slots],
-  );
+  const slots = slotsQuery.data ?? [];
 
   const selectedPreset = useMemo(() => {
     if (dateKey === null) return "all";
@@ -141,7 +147,6 @@ export function SwitchTrialSheet({
             type="date"
             value={dateKey ?? ""}
             min={minDate}
-            max={maxDate}
             data-testid="switch-trial-date"
             onChange={(value) => setDateKey(value || null)}
           />
@@ -176,7 +181,7 @@ export function SwitchTrialSheet({
       }
     >
       {slotsQuery.isLoading ? (
-        <p className={styles.slotMeta}>Loading sessions…</p>
+        <SkeletonRowList count={3} label="Loading sessions" />
       ) : null}
 
       {slotsQuery.isError ? (
@@ -197,25 +202,22 @@ export function SwitchTrialSheet({
       {!slotsQuery.isLoading && !slotsQuery.isError && slots.length === 0 ? (
         <EmptyState
           icon="calendar"
-          title="No upcoming sessions"
-          description="Add batch sessions to offer trial times."
+          title={
+            dateKey === null
+              ? "No upcoming sessions"
+              : "No sessions on this date"
+          }
+          description={
+            dateKey === null
+              ? "Add batch sessions to offer trial times."
+              : "Pick another date to see more trial times."
+          }
         />
       ) : null}
 
-      {!slotsQuery.isLoading &&
-      !slotsQuery.isError &&
-      slots.length > 0 &&
-      visibleSlots.length === 0 ? (
-        <EmptyState
-          icon="calendar"
-          title="No sessions on this date"
-          description="Pick another date to see more trial times."
-        />
-      ) : null}
-
-      {visibleSlots.length > 0 ? (
+      {slots.length > 0 ? (
         <div className={styles.slotList}>
-          {visibleSlots.map((slot) => (
+          {slots.map((slot) => (
             <button
               key={slot.sessionId}
               type="button"

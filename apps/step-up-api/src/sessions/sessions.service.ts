@@ -4,11 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
-import {
-  NotificationType,
-  SessionStatus,
-  SessionType,
-} from "@prisma/client";
+import { NotificationType, SessionStatus, SessionType } from "@prisma/client";
 import { ACTIVE_ENROLLMENT_WHERE } from "../batches/enrollment-status";
 import { ScheduleConflictService } from "../calendar/schedule-conflict.service";
 import { ChatService } from "../chat/chat.service";
@@ -73,7 +69,15 @@ export class SessionsService {
     });
   }
 
-  async listTrialSlots(studioId: string): Promise<TrialSlotDto[]> {
+  async listTrialSlots(
+    studioId: string,
+    from?: string,
+    to?: string,
+  ): Promise<TrialSlotDto[]> {
+    if (from || to) {
+      return this.listTrialSlotsForRange(studioId, from, to);
+    }
+
     const cached = await this.trialSlotsCache.get(studioId);
     if (cached !== null) {
       try {
@@ -109,17 +113,66 @@ export class SessionsService {
       },
     });
 
-    const slots: TrialSlotDto[] = sessions.map((session) => ({
+    const slots = sessions.map((session) => this.toTrialSlotDto(session));
+
+    await this.trialSlotsCache.set(studioId, JSON.stringify(slots));
+    return slots;
+  }
+
+  private async listTrialSlotsForRange(
+    studioId: string,
+    from?: string,
+    to?: string,
+  ): Promise<TrialSlotDto[]> {
+    const now = new Date();
+    const fromDate = from ? new Date(from) : null;
+    const toDate = to ? new Date(to) : null;
+    if (toDate && toDate.getTime() <= now.getTime()) {
+      return [];
+    }
+
+    const lower =
+      fromDate && fromDate.getTime() > now.getTime() ? fromDate : now;
+
+    const sessions = await this.prisma.session.findMany({
+      where: {
+        status: SessionStatus.SCHEDULED,
+        startsAt: {
+          gte: lower,
+          ...(toDate ? { lt: toDate } : {}),
+        },
+        batch: { studioId, active: true },
+      },
+      orderBy: { startsAt: "asc" },
+      include: {
+        batch: {
+          select: {
+            id: true,
+            name: true,
+            danceCategories: true,
+          },
+        },
+      },
+    });
+
+    return sessions.map((session) => this.toTrialSlotDto(session));
+  }
+
+  private toTrialSlotDto(session: {
+    id: string;
+    batchId: string;
+    startsAt: Date;
+    endsAt: Date;
+    batch: { id: string; name: string; danceCategories: unknown };
+  }): TrialSlotDto {
+    return {
       sessionId: session.id,
       batchId: session.batchId,
       batchName: session.batch.name,
       styleBadge: styleBadgeFromCategories(session.batch.danceCategories),
       startsAt: session.startsAt.toISOString(),
       endsAt: session.endsAt.toISOString(),
-    }));
-
-    await this.trialSlotsCache.set(studioId, JSON.stringify(slots));
-    return slots;
+    };
   }
 
   getById(id: string) {

@@ -166,8 +166,14 @@ export function slotMatchesDate(startsAt: string, dateKey: string | null) {
   return slotDateKey(startsAt) === dateKey;
 }
 
-export function trialHorizonDateKey(now: Date = new Date(), days = 35) {
-  return localDateKey(addLocalDays(now, days));
+export function localDayRangeIso(dateKey: string) {
+  const [yearStr, monthStr, dayStr] = dateKey.split("-");
+  const year = Number(yearStr);
+  const month = Number(monthStr);
+  const day = Number(dayStr);
+  const start = new Date(year, month - 1, day);
+  const end = new Date(year, month - 1, day + 1);
+  return { from: start.toISOString(), to: end.toISOString() };
 }
 
 export function emptyLeadsDescription(

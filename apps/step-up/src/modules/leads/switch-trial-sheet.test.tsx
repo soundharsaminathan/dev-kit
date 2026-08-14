@@ -102,7 +102,20 @@ describe("SwitchTrialSheet date filter", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    get.mockResolvedValue(slots);
+    get.mockImplementation((url: string) => {
+      const params = new URLSearchParams(url.split("?")[1] ?? "");
+      const from = params.get("from");
+      const to = params.get("to");
+      if (!from || !to) return Promise.resolve(slots);
+      const fromMs = new Date(from).getTime();
+      const toMs = new Date(to).getTime();
+      return Promise.resolve(
+        slots.filter((slot) => {
+          const startsAtMs = new Date(slot.startsAt).getTime();
+          return startsAtMs >= fromMs && startsAtMs < toMs;
+        }),
+      );
+    });
     patch.mockResolvedValue({});
   });
 
@@ -152,22 +165,47 @@ describe("SwitchTrialSheet date filter", () => {
     fireEvent.click(screen.getByTestId("switch-trial-filter-tomorrow"));
 
     expect(screen.getByTestId("switch-trial-date")).toHaveValue(tomorrowKey);
-    expect(
-      screen.getByTestId("switch-trial-slot-session-tomorrow"),
-    ).toBeTruthy();
+    await waitFor(() => {
+      expect(
+        screen.getByTestId("switch-trial-slot-session-tomorrow"),
+      ).toBeTruthy();
+    });
     expect(screen.queryByTestId("switch-trial-slot-session-today")).toBeNull();
 
     fireEvent.change(screen.getByTestId("switch-trial-date"), {
       target: { value: laterKey },
     });
 
-    expect(screen.getByTestId("switch-trial-slot-session-later")).toBeTruthy();
+    await waitFor(() => {
+      expect(
+        screen.getByTestId("switch-trial-slot-session-later"),
+      ).toBeTruthy();
+    });
     expect(
       screen.queryByTestId("switch-trial-slot-session-tomorrow"),
     ).toBeNull();
     expect(screen.getByTestId("switch-trial-filter-today")).not.toHaveAttribute(
       "data-selected",
     );
+  });
+
+  it("lets staff pick any future date with no upper limit", async () => {
+    renderWithProviders(
+      <SwitchTrialSheet
+        lead={lead(isoAt(today))}
+        studioId="studio-1"
+        dateFilter="today"
+        onOpenChange={vi.fn()}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByTestId("switch-trial-slot-session-today"),
+      ).toBeTruthy();
+    });
+
+    expect(screen.getByTestId("switch-trial-date")).not.toHaveAttribute("max");
   });
 
   it("shows an empty state when the selected date has no sessions", async () => {
@@ -190,7 +228,9 @@ describe("SwitchTrialSheet date filter", () => {
       target: { value: emptyKey },
     });
 
-    expect(screen.getByText("No sessions on this date")).toBeTruthy();
+    await waitFor(() => {
+      expect(screen.getByText("No sessions on this date")).toBeTruthy();
+    });
     expect(screen.queryByTestId("switch-trial-slot-session-today")).toBeNull();
   });
 });

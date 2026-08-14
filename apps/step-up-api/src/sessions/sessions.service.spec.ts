@@ -116,6 +116,68 @@ describe("SessionsService listTrialSlots", () => {
       JSON.stringify(result),
     );
   });
+
+  it("queries a specific day range without cache or horizon limit", async () => {
+    trialSlotsCache.get.mockResolvedValue(null);
+    prisma.session.findMany.mockResolvedValue([
+      {
+        id: "session-far-future",
+        batchId: "batch-trial-1",
+        startsAt: new Date("2026-12-25T11:00:00.000Z"),
+        endsAt: new Date("2026-12-25T12:00:00.000Z"),
+        type: SessionType.REGULAR,
+        status: SessionStatus.SCHEDULED,
+        batch: {
+          id: "batch-trial-1",
+          name: "Holiday Class",
+          danceCategories: [{ name: "Hip-hop", description: "Open beginner" }],
+        },
+      },
+    ]);
+
+    const result = await service.listTrialSlots(
+      "studio-1",
+      "2026-12-25T00:00:00.000Z",
+      "2026-12-26T00:00:00.000Z",
+    );
+
+    expect(trialSlotsCache.get).not.toHaveBeenCalled();
+    expect(trialSlotsCache.set).not.toHaveBeenCalled();
+    expect(prisma.session.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          status: SessionStatus.SCHEDULED,
+          startsAt: {
+            gte: new Date("2026-12-25T00:00:00.000Z"),
+            lt: new Date("2026-12-26T00:00:00.000Z"),
+          },
+          batch: { studioId: "studio-1", active: true },
+        }),
+      }),
+    );
+    expect(result).toEqual([
+      {
+        sessionId: "session-far-future",
+        batchId: "batch-trial-1",
+        batchName: "Holiday Class",
+        styleBadge: "Hip-hop",
+        startsAt: "2026-12-25T11:00:00.000Z",
+        endsAt: "2026-12-25T12:00:00.000Z",
+      },
+    ]);
+  });
+
+  it("returns no sessions for a fully past day range", async () => {
+    const result = await service.listTrialSlots(
+      "studio-1",
+      "2020-01-01T00:00:00.000Z",
+      "2020-01-02T00:00:00.000Z",
+    );
+
+    expect(result).toEqual([]);
+    expect(prisma.session.findMany).not.toHaveBeenCalled();
+    expect(trialSlotsCache.get).not.toHaveBeenCalled();
+  });
 });
 
 describe("SessionsService schedule mutations", () => {
@@ -242,7 +304,9 @@ describe("SessionsService schedule mutations", () => {
     prisma.batchEnrollment.findMany.mockResolvedValue([
       { studentId: "student-1" },
     ]);
-    notifications.create.mockRejectedValueOnce(new Error("transaction timeout"));
+    notifications.create.mockRejectedValueOnce(
+      new Error("transaction timeout"),
+    );
 
     await expect(
       service.create(actor as never, {

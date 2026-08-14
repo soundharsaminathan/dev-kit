@@ -7,6 +7,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from "@nestjs/common";
 import { SessionType, UserRole } from "@prisma/client";
@@ -43,6 +44,16 @@ class UpdateSessionScheduleDto {
   endsAt!: string;
 }
 
+class TrialSlotsQueryDto {
+  @IsOptional()
+  @IsDateString()
+  from?: string;
+
+  @IsOptional()
+  @IsDateString()
+  to?: string;
+}
+
 @Controller("sessions")
 @UseGuards(AuthGuard, RolesGuard)
 export class SessionsController {
@@ -61,9 +72,10 @@ export class SessionsController {
   listTrialSlots(
     @CurrentUser() user: DecryptedUser,
     @Param("studioId") studioId: string,
+    @Query() query: TrialSlotsQueryDto,
   ) {
     assertSameStudio(user, studioId);
-    return this.sessionsService.listTrialSlots(studioId);
+    return this.sessionsService.listTrialSlots(studioId, query.from, query.to);
   }
 
   @Get(":id")
