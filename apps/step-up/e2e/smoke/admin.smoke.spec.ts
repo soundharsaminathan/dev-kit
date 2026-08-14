@@ -591,12 +591,19 @@ test.describe("admin (staff) smoke @smoke", () => {
         .getByTestId(`combine-invoice-${enrollA.invoice.id}`)
         .getByRole("checkbox")
         .click();
-      await expect(page.getByTestId("confirm-family-combine")).toBeDisabled();
+      // One invoice selected: single-pay is allowed; combine still needs two.
+      await expect(page.getByTestId("confirm-family-combine")).toBeEnabled();
+      await expect(page.getByTestId("confirm-family-combine")).toContainText(
+        /collect payment/i,
+      );
       await page
         .getByTestId(`combine-invoice-${enrollB.invoice.id}`)
         .getByRole("checkbox")
         .click();
       await page.getByTestId("family-combine-discount").fill("50");
+      await expect(page.getByTestId("confirm-family-combine")).toContainText(
+        /combine/i,
+      );
 
       const [combineResponse] = await Promise.all([
         waitForApiResponse(page, {
