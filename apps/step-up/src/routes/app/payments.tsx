@@ -144,7 +144,6 @@ const PERIOD_OPTIONS = [
   { id: "7d", label: "Last 7 days" },
   { id: "3m", label: "Last 3 months" },
   { id: "1y", label: "Last year" },
-  { id: "custom", label: "Custom" },
 ] as const;
 
 const METHOD_LABELS = {
