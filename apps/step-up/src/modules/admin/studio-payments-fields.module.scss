@@ -1,3 +1,10 @@
+.fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 0.75rem);
+  min-width: 0;
+}
+
 .secret {
   -webkit-text-security: disc;
   text-security: disc;

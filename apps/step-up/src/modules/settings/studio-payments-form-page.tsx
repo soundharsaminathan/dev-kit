@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useApi } from "@/lib/api-context";
 import { useStudioId } from "@/lib/use-studio-id";
 import { StudioPaymentsFields } from "@/modules/admin/studio-payments-fields";
+import paymentsStyles from "@/modules/admin/studio-payments-fields.module.scss";
 import { Screen } from "@/modules/ui/screen";
 import { SkeletonBlock } from "@/modules/ui/skeleton-block";
 import staff from "@/modules/ui/staff.module.scss";
@@ -136,6 +137,7 @@ export function StudioPaymentsFormPage() {
         {studioQuery.data ? (
           <div className={staff.softPanel}>
             <StudioPaymentsFields
+              className={paymentsStyles.fields}
               titleClassName={staff.panelTitle}
               descClassName={staff.panelDesc}
               razorpayKeyId={razorpayKeyId}
