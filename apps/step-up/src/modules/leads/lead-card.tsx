@@ -154,6 +154,18 @@ export function LeadCard({
         <div className={styles.trialBlock}>
           <p className={styles.trialLabel}>No trial yet</p>
           <p className={styles.trialBatch}>Call to pick a session</p>
+          {onSwitchTrial ? (
+            <div className={styles.trialActions}>
+              <TouchButton
+                size="sm"
+                variant="quiet"
+                data-testid={`lead-pick-session-${lead.id}`}
+                onClick={() => onSwitchTrial(lead)}
+              >
+                Pick session
+              </TouchButton>
+            </div>
+          ) : null}
         </div>
       )}
     </div>

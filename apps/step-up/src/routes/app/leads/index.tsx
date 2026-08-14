@@ -315,9 +315,9 @@ function LeadsPage() {
                       <LeadCard
                         lead={lead}
                         range={range}
+                        onSwitchTrial={setSwitchLead}
                         {...(section === "trialBooked"
                           ? {
-                              onSwitchTrial: setSwitchLead,
                               onConfirmSession: (next) => {
                                 const bookingId = next.trialBooking?.id;
                                 if (!bookingId) return;

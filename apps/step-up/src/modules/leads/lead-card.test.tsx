@@ -147,3 +147,23 @@ describe("LeadCard confirm session", () => {
     ).toBeInTheDocument();
   });
 });
+
+describe("LeadCard pick session without a trial", () => {
+  it("offers Pick session for a lead with no trial booking", () => {
+    const onSwitchTrial = vi.fn();
+    const noTrial = lead();
+
+    renderWithProviders(
+      <LeadCard lead={noTrial} range={null} onSwitchTrial={onSwitchTrial} />,
+    );
+
+    fireEvent.click(screen.getByTestId("lead-pick-session-lead-1"));
+    expect(onSwitchTrial).toHaveBeenCalledWith(noTrial);
+  });
+
+  it("hides the action when onSwitchTrial is not provided", () => {
+    renderWithProviders(<LeadCard lead={lead()} range={null} />);
+
+    expect(screen.queryByTestId("lead-pick-session-lead-1")).toBeNull();
+  });
+});

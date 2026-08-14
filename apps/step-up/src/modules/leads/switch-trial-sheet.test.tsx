@@ -7,13 +7,14 @@ import { addLocalDays, type Lead, localDateKey, type TrialSlot } from "./types";
 
 const get = vi.fn();
 const patch = vi.fn();
+const post = vi.fn();
 
 vi.mock("@dev-ui/components/toast", () => ({
   useToastContext: () => ({ toast: vi.fn() }),
 }));
 
 vi.mock("@/lib/api-context", () => ({
-  useApi: () => ({ get, patch }),
+  useApi: () => ({ get, patch, post }),
 }));
 
 vi.mock("@/modules/ui/app-drawer", () => ({
@@ -232,5 +233,77 @@ describe("SwitchTrialSheet date filter", () => {
       expect(screen.getByText("No sessions on this date")).toBeTruthy();
     });
     expect(screen.queryByTestId("switch-trial-slot-session-today")).toBeNull();
+  });
+});
+
+describe("SwitchTrialSheet without a trial booking", () => {
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const todayKey = localDateKey(today);
+  const slots: TrialSlot[] = [
+    slot("session-today", isoAt(today), "Today batch"),
+  ];
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    get.mockResolvedValue(slots);
+    post.mockResolvedValue({});
+  });
+
+  it("books a trial session for a lead with no booking", async () => {
+    const onOpenChange = vi.fn();
+    const noTrial: Lead = {
+      ...lead(isoAt(today)),
+      section: "new",
+      trialBooking: null,
+    };
+
+    renderWithProviders(
+      <SwitchTrialSheet
+        lead={noTrial}
+        studioId="studio-1"
+        defaultDate={todayKey}
+        onOpenChange={onOpenChange}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByTestId("switch-trial-slot-session-today"),
+      ).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByTestId("switch-trial-slot-session-today"));
+    fireEvent.click(screen.getByTestId("switch-trial-confirm"));
+
+    await waitFor(() => {
+      expect(post).toHaveBeenCalledWith("/bookings/staff/trial", {
+        studioId: "studio-1",
+        studentId: "lead-1",
+        sessionId: "session-today",
+      });
+    });
+    await waitFor(() => {
+      expect(onOpenChange).toHaveBeenCalledWith(false);
+    });
+  });
+
+  it("disables save until a session is picked", async () => {
+    renderWithProviders(
+      <SwitchTrialSheet
+        lead={{ ...lead(isoAt(today)), section: "new", trialBooking: null }}
+        studioId="studio-1"
+        defaultDate={todayKey}
+        onOpenChange={vi.fn()}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByTestId("switch-trial-slot-session-today"),
+      ).toBeTruthy();
+    });
+
+    expect(screen.getByTestId("switch-trial-confirm")).toBeDisabled();
   });
 });

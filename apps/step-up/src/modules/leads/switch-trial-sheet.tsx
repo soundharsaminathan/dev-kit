@@ -86,11 +86,15 @@ export function SwitchTrialSheet({
 
   const switchMutation = useMutation({
     mutationFn: (sessionId: string) => {
-      if (!booking) {
-        throw new Error("No trial booking to update");
+      if (booking) {
+        return api.patch(`/bookings/${booking.id}/status`, {
+          status: booking.status,
+          sessionId,
+        });
       }
-      return api.patch(`/bookings/${booking.id}/status`, {
-        status: booking.status,
+      return api.post("/bookings/staff/trial", {
+        studioId,
+        studentId: lead?.id,
         sessionId,
       });
     },
@@ -99,14 +103,14 @@ export function SwitchTrialSheet({
         queryKey: ["studio-leads", studioId],
       });
       toast({
-        title: "Trial session updated",
+        title: booking ? "Trial session updated" : "Trial session booked",
         variant: "success",
       });
       onOpenChange(false);
     },
     onError: (error: unknown) => {
       toast({
-        title: "Couldn’t switch session",
+        title: booking ? "Couldn’t switch session" : "Couldn’t book trial",
         description:
           error instanceof Error ? error.message : "Try another session.",
         variant: "error",
@@ -118,7 +122,13 @@ export function SwitchTrialSheet({
     <AppDrawer
       isOpen={isOpen}
       onOpenChange={onOpenChange}
-      title={lead ? `Switch trial · ${lead.name}` : "Switch trial"}
+      title={
+        lead
+          ? booking
+            ? `Switch trial · ${lead.name}`
+            : `Pick session · ${lead.name}`
+          : "Switch trial"
+      }
       toolbar={
         <div className={styles.dateFilter}>
           <div

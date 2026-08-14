@@ -54,6 +54,17 @@ class CreateBookingDto {
   endsAt?: string;
 }
 
+class CreateStaffTrialBookingDto {
+  @IsString()
+  studioId!: string;
+
+  @IsString()
+  studentId!: string;
+
+  @IsString()
+  sessionId!: string;
+}
+
 class UpdateBookingStatusDto {
   @IsEnum(BookingStatus)
   status!: BookingStatus;
@@ -154,6 +165,17 @@ export class BookingsController {
   @Roles(UserRole.STUDENT, UserRole.PARENT)
   create(@Body() dto: CreateBookingDto) {
     return this.commands.create(dto, { requirePayment: true });
+  }
+
+  @Post("staff/trial")
+  @Roles(UserRole.OWNER, UserRole.STAFF)
+  createStaffTrialBooking(@Body() dto: CreateStaffTrialBookingDto) {
+    return this.commands.create({
+      studioId: dto.studioId,
+      studentId: dto.studentId,
+      type: BookingType.TRIAL,
+      sessionId: dto.sessionId,
+    });
   }
 
   @Post(":id/create-payment-order")
