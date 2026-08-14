@@ -124,7 +124,7 @@ describe("SwitchTrialSheet date filter", () => {
       <SwitchTrialSheet
         lead={lead(isoAt(today))}
         studioId="studio-1"
-        dateFilter="today"
+        defaultDate={todayKey}
         onOpenChange={vi.fn()}
       />,
     );
@@ -151,7 +151,7 @@ describe("SwitchTrialSheet date filter", () => {
       <SwitchTrialSheet
         lead={lead(isoAt(today))}
         studioId="studio-1"
-        dateFilter="today"
+        defaultDate={todayKey}
         onOpenChange={vi.fn()}
       />,
     );
@@ -194,7 +194,7 @@ describe("SwitchTrialSheet date filter", () => {
       <SwitchTrialSheet
         lead={lead(isoAt(today))}
         studioId="studio-1"
-        dateFilter="today"
+        defaultDate={todayKey}
         onOpenChange={vi.fn()}
       />,
     );
@@ -213,7 +213,7 @@ describe("SwitchTrialSheet date filter", () => {
       <SwitchTrialSheet
         lead={lead(isoAt(today))}
         studioId="studio-1"
-        dateFilter="today"
+        defaultDate={todayKey}
         onOpenChange={vi.fn()}
       />,
     );

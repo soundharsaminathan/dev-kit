@@ -43,6 +43,7 @@ import { RolesGuard } from "../auth/roles.guard";
 import { assertSameStudio } from "../auth/studio-access";
 import { SocialService } from "../social/social.service";
 import {
+  isIsoDateKey,
   isLeadDateFilter,
   LEAD_DATE_FILTERS,
   type LeadDateFilter,
@@ -537,6 +538,8 @@ export class UsersController {
     @CurrentUser() user: DecryptedUser,
     @Param("studioId") studioId: string,
     @Query("filter") filter?: string,
+    @Query("from") from?: string,
+    @Query("to") to?: string,
     @Query("q") q?: string,
     @Query("cursor") cursor?: string,
     @Query("limit") limit?: string,
@@ -547,10 +550,25 @@ export class UsersController {
         `Invalid filter. Expected one of: ${LEAD_DATE_FILTERS.join(", ")}`,
       );
     }
+    if (from !== undefined || to !== undefined) {
+      if (
+        !from ||
+        !to ||
+        !isIsoDateKey(from) ||
+        !isIsoDateKey(to) ||
+        from > to
+      ) {
+        throw new BadRequestException(
+          "Invalid date range. Expected from and to as YYYY-MM-DD with from <= to.",
+        );
+      }
+    }
 
     const parsedLimit = limit ? Number(limit) : undefined;
     return this.usersService.listLeads(studioId, {
       filter: (filter as LeadDateFilter | undefined) ?? "all",
+      from,
+      to,
       q,
       cursor,
       ...(Number.isFinite(parsedLimit) ? { limit: parsedLimit } : {}),

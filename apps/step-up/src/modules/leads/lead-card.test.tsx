@@ -46,7 +46,7 @@ describe("LeadCard call button", () => {
     const assign = vi.fn();
     vi.stubGlobal("location", { assign });
 
-    renderWithProviders(<LeadCard lead={lead()} filter="all" />);
+    renderWithProviders(<LeadCard lead={lead()} range={null} />);
 
     const button = screen.getByRole("button", { name: "Call Asha Rao" });
     expect(button).toHaveAttribute("data-variant", "primary");
@@ -55,7 +55,7 @@ describe("LeadCard call button", () => {
   });
 
   it("disables the call button when the lead has no phone", () => {
-    renderWithProviders(<LeadCard lead={lead({ phone: null })} filter="all" />);
+    renderWithProviders(<LeadCard lead={lead({ phone: null })} range={null} />);
 
     expect(
       screen.getByRole("button", { name: "No phone number" }),
@@ -69,7 +69,7 @@ describe("LeadCard call button", () => {
       clipboard: { writeText },
     });
 
-    renderWithProviders(<LeadCard lead={lead()} filter="all" />);
+    renderWithProviders(<LeadCard lead={lead()} range={null} />);
 
     expect(screen.getByText("Asha Rao")).toBeInTheDocument();
     expect(screen.getByText("20–40")).toBeInTheDocument();
@@ -99,7 +99,7 @@ describe("LeadCard confirm session", () => {
     renderWithProviders(
       <LeadCard
         lead={pending}
-        filter="all"
+        range={null}
         onConfirmSession={onConfirmSession}
         onSwitchTrial={vi.fn()}
       />,
@@ -116,7 +116,7 @@ describe("LeadCard confirm session", () => {
           section: "trialBooked",
           trialBooking: trial({ status: "CONFIRMED" }),
         })}
-        filter="all"
+        range={null}
         onConfirmSession={vi.fn()}
         onSwitchTrial={vi.fn()}
       />,
@@ -135,7 +135,7 @@ describe("LeadCard confirm session", () => {
           section: "trialBooked",
           trialBooking: trial({ sessionId: null, sessionStartsAt: null }),
         })}
-        filter="all"
+        range={null}
         onConfirmSession={vi.fn()}
         onSwitchTrial={vi.fn()}
       />,

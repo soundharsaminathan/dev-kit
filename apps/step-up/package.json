@@ -29,6 +29,7 @@
     "@dev-ui/icons": "workspace:*",
     "@dev-ui/icons-packs": "workspace:*",
     "@dev-ui/tokens": "workspace:*",
+    "@internationalized/date": "^3.12.2",
     "@sentry/react": "^9.47.1",
     "@tanstack/react-form": "1.33.2",
     "@tanstack/react-query": "^5.90.2",

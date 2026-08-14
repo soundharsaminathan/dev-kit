@@ -3,10 +3,15 @@ import {
   canConfirmTrialSession,
   defaultSessionDateKey,
   emptyLeadsTitle,
+  isDateKey,
+  isTrialSoon,
+  type LeadDateRange,
   type LeadTrialBooking,
   localDateKey,
   matchesLeadSearch,
+  matchingPreset,
   phoneTelHref,
+  presetRange,
   SWITCH_DATE_FILTERS,
   slotMatchesDate,
 } from "./types";
@@ -95,15 +100,73 @@ describe("matchesLeadSearch", () => {
 });
 
 describe("emptyLeadsTitle", () => {
-  it("names the week filters and search empty states", () => {
-    expect(emptyLeadsTitle("thisWeek", false)).toBe("No trials this week");
-    expect(emptyLeadsTitle("nextWeek", false)).toBe("No trials next week");
-    expect(emptyLeadsTitle("all", true)).toBe("No matching leads");
+  it("names the date range and search empty states", () => {
+    expect(emptyLeadsTitle(null, false)).toBe("No leads yet");
+    expect(emptyLeadsTitle(null, true)).toBe("No matching leads");
+    expect(
+      emptyLeadsTitle({ from: "2026-08-14", to: "2026-08-14" }, false),
+    ).toBe("No trials on this date");
+    expect(
+      emptyLeadsTitle({ from: "2026-08-10", to: "2026-08-16" }, false),
+    ).toBe("No trials in this date range");
   });
 });
 
 describe("SWITCH_DATE_FILTERS", () => {
   it("keeps switch-trial chips on single days", () => {
     expect([...SWITCH_DATE_FILTERS]).toEqual(["all", "today", "tomorrow"]);
+  });
+});
+
+describe("date range helpers", () => {
+  const now = new Date(2026, 7, 14, 10, 0, 0);
+
+  it("validates YYYY-MM-DD keys", () => {
+    expect(isDateKey("2026-08-14")).toBe(true);
+    expect(isDateKey("2026-02-31")).toBe(false);
+    expect(isDateKey("2026-13-01")).toBe(false);
+    expect(isDateKey("bad")).toBe(false);
+  });
+
+  it("computes preset ranges in local time", () => {
+    expect(presetRange("today", now)).toEqual({
+      from: "2026-08-14",
+      to: "2026-08-14",
+    });
+    expect(presetRange("tomorrow", now)).toEqual({
+      from: "2026-08-15",
+      to: "2026-08-15",
+    });
+    expect(presetRange("thisWeek", now)).toEqual({
+      from: "2026-08-10",
+      to: "2026-08-16",
+    });
+    expect(presetRange("nextWeek", now)).toEqual({
+      from: "2026-08-17",
+      to: "2026-08-23",
+    });
+    expect(presetRange("last7", now)).toEqual({
+      from: "2026-08-08",
+      to: "2026-08-14",
+    });
+  });
+
+  it("matches a range back to its preset", () => {
+    const range: LeadDateRange = { from: "2026-08-10", to: "2026-08-16" };
+    expect(matchingPreset(range, now)).toBe("thisWeek");
+    expect(matchingPreset(null, now)).toBeNull();
+    expect(matchingPreset({ from: "2026-08-11", to: "2026-08-16" }, now)).toBe(
+      null,
+    );
+  });
+
+  it("treats any active range as call-soon", () => {
+    const soon = "2026-08-20T10:00:00.000Z";
+    expect(isTrialSoon(soon, { from: "2026-08-16", to: "2026-08-23" })).toBe(
+      true,
+    );
+    expect(isTrialSoon(null, { from: "2026-08-16", to: "2026-08-23" })).toBe(
+      false,
+    );
   });
 });

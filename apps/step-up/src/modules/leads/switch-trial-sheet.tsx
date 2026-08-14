@@ -13,7 +13,6 @@ import {
   FILTER_LABELS,
   formatTrialWhen,
   type Lead,
-  type LeadDateFilter,
   localDateKey,
   localDayRangeIso,
   SWITCH_DATE_FILTERS,
@@ -23,18 +22,18 @@ import {
 type SwitchTrialSheetProps = {
   lead: Lead | null;
   studioId: string;
-  dateFilter?: LeadDateFilter | undefined;
+  defaultDate?: string | null;
   onOpenChange: (open: boolean) => void;
 };
 
-function presetDateKey(value: LeadDateFilter, now: Date) {
+function presetDateKey(value: (typeof SWITCH_DATE_FILTERS)[number], now: Date) {
   return defaultSessionDateKey(value, now);
 }
 
 export function SwitchTrialSheet({
   lead,
   studioId,
-  dateFilter = "all",
+  defaultDate = null,
   onOpenChange,
 }: SwitchTrialSheetProps) {
   const api = useApi();
@@ -46,9 +45,7 @@ export function SwitchTrialSheet({
     booking?.sessionId ?? null,
   );
   const [now, setNow] = useState(() => new Date());
-  const [dateKey, setDateKey] = useState<string | null>(() =>
-    defaultSessionDateKey(dateFilter),
-  );
+  const [dateKey, setDateKey] = useState<string | null>(defaultDate);
   const leadKey = lead?.id ?? null;
   const [lastLeadKey, setLastLeadKey] = useState(leadKey);
   if (leadKey !== lastLeadKey) {
@@ -56,7 +53,7 @@ export function SwitchTrialSheet({
     setLastLeadKey(leadKey);
     setSelectedSessionId(booking?.sessionId ?? null);
     setNow(openedAt);
-    setDateKey(defaultSessionDateKey(dateFilter, openedAt));
+    setDateKey(defaultDate ?? null);
   }
 
   const minDate = localDateKey(now);

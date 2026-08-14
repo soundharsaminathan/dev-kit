@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
+  isIsoDateKey,
   isLeadDateFilter,
   type LeadDto,
   matchesLeadSearch,
   paginateLeads,
+  resolveDateKeyRange,
   resolveLeadDayRange,
   startOfLocalWeek,
 } from "./leads";
@@ -92,6 +94,50 @@ describe("isLeadDateFilter", () => {
     expect(isLeadDateFilter("thisWeek")).toBe(true);
     expect(isLeadDateFilter("nextWeek")).toBe(true);
     expect(isLeadDateFilter("this_week")).toBe(false);
+  });
+});
+
+describe("isIsoDateKey", () => {
+  it("accepts real YYYY-MM-DD keys and rejects malformed ones", () => {
+    expect(isIsoDateKey("2026-08-14")).toBe(true);
+    expect(isIsoDateKey("2026-08-01")).toBe(true);
+    expect(isIsoDateKey("2026-02-28")).toBe(true);
+    expect(isIsoDateKey("2026-13-01")).toBe(false);
+    expect(isIsoDateKey("2026-02-31")).toBe(false);
+    expect(isIsoDateKey("2026/08/14")).toBe(false);
+    expect(isIsoDateKey("not-a-date")).toBe(false);
+    expect(isIsoDateKey("")).toBe(false);
+  });
+});
+
+describe("resolveDateKeyRange", () => {
+  it("returns a local inclusive range for a single day", () => {
+    const range = resolveDateKeyRange("2026-08-14", "2026-08-14");
+    expect(range).not.toBeNull();
+    if (!range) return;
+
+    expect(range.start).toEqual(new Date(2026, 7, 14));
+    expect(range.end.getFullYear()).toBe(2026);
+    expect(range.end.getMonth()).toBe(7);
+    expect(range.end.getDate()).toBe(14);
+    expect(range.end.getHours()).toBe(23);
+    expect(range.end.getMinutes()).toBe(59);
+  });
+
+  it("returns a range across multiple days", () => {
+    const range = resolveDateKeyRange("2026-08-10", "2026-08-16");
+    expect(range).not.toBeNull();
+    if (!range) return;
+
+    expect(range.start).toEqual(new Date(2026, 7, 10));
+    expect(range.end.getDate()).toBe(16);
+    expect(range.end.getHours()).toBe(23);
+  });
+
+  it("returns null for invalid or inverted keys", () => {
+    expect(resolveDateKeyRange("2026-02-31", "2026-08-16")).toBeNull();
+    expect(resolveDateKeyRange("2026-08-16", "2026-08-10")).toBeNull();
+    expect(resolveDateKeyRange("2026-08-16", "bad")).toBeNull();
   });
 });
 

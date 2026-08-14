@@ -9,13 +9,13 @@ import {
   formatTrialWhen,
   isTrialSoon,
   type Lead,
-  type LeadDateFilter,
+  type LeadDateRange,
   phoneTelHref,
 } from "./types";
 
 type LeadCardProps = {
   lead: Lead;
-  filter: LeadDateFilter;
+  range: LeadDateRange | null;
   onSwitchTrial?: ((lead: Lead) => void) | undefined;
   onConfirmSession?: ((lead: Lead) => void) | undefined;
   confirmPending?: boolean | undefined;
@@ -23,7 +23,7 @@ type LeadCardProps = {
 
 export function LeadCard({
   lead,
-  filter,
+  range,
   onSwitchTrial,
   onConfirmSession,
   confirmPending = false,
@@ -32,7 +32,7 @@ export function LeadCard({
   const telHref = lead.phone ? phoneTelHref(lead.phone) : null;
   const age = ageRangeLabel(lead.ageRange);
   const trial = lead.trialBooking;
-  const soon = isTrialSoon(trial?.sessionStartsAt ?? null, filter);
+  const soon = isTrialSoon(trial?.sessionStartsAt ?? null, range);
   const initials = lead.name
     .split(/\s+/)
     .filter(Boolean)

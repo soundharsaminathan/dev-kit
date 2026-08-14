@@ -173,6 +173,9 @@ importers:
       '@dev-ui/tokens':
         specifier: workspace:*
         version: link:../../packages/tokens
+      '@internationalized/date':
+        specifier: ^3.12.2
+        version: 3.12.2
       '@sentry/react':
         specifier: ^9.47.1
         version: 9.47.1(react@19.2.7)
@@ -18799,13 +18802,13 @@ snapshots:
       '@socket.io/component-emitter': 3.1.2
       debug: 4.4.3(supports-color@7.2.0)
       engine.io-client: 6.6.6(supports-color@7.2.0)
-      socket.io-parser: 4.2.7
+      socket.io-parser: 4.2.7(supports-color@7.2.0)
     transitivePeerDependencies:
       - bufferutil
       - supports-color
       - utf-8-validate
 
-  socket.io-parser@4.2.7:
+  socket.io-parser@4.2.7(supports-color@7.2.0):
     dependencies:
       '@socket.io/component-emitter': 3.1.2
       debug: 4.4.3(supports-color@7.2.0)
@@ -18820,7 +18823,7 @@ snapshots:
       debug: 4.4.3(supports-color@7.2.0)
       engine.io: 6.6.9
       socket.io-adapter: 2.5.8
-      socket.io-parser: 4.2.7
+      socket.io-parser: 4.2.7(supports-color@7.2.0)
     transitivePeerDependencies:
       - bufferutil
       - supports-color

@@ -39,6 +39,7 @@ import {
   type LeadDateFilter,
   type LeadDto,
   paginateLeads,
+  resolveDateKeyRange,
   resolveLeadDayRange,
 } from "./leads";
 import { matchesPersonSearch } from "./person-search";
@@ -1602,13 +1603,18 @@ export class UsersService {
     studioId: string,
     options: {
       filter?: LeadDateFilter;
+      from?: string;
+      to?: string;
       q?: string;
       cursor?: string;
       limit?: number;
     } = {},
   ) {
     const filter = options.filter ?? "all";
-    const dayRange = resolveLeadDayRange(filter);
+    const dayRange =
+      options.from && options.to
+        ? resolveDateKeyRange(options.from, options.to)
+        : resolveLeadDayRange(filter);
 
     const openTrialStatuses: BookingStatus[] = [
       BookingStatus.PENDING,

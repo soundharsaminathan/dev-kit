@@ -1,3 +1,4 @@
+import { DateRangePicker } from "@dev-ui/components/date-picker";
 import { SearchField } from "@dev-ui/components/search-field";
 import { useToastContext } from "@dev-ui/components/toast";
 import { useLoadMoreOnScroll } from "@dev-ui/hooks";
@@ -19,13 +20,19 @@ import { SwitchTrialSheet } from "@/modules/leads/switch-trial-sheet";
 import {
   emptyLeadsDescription,
   emptyLeadsTitle,
-  FILTER_LABELS,
-  LEAD_DATE_FILTERS,
+  isDateKey,
   LEAD_PAGE_SIZE,
   type Lead,
-  type LeadDateFilter,
+  type LeadDateRange,
   type LeadPage,
   type LeadSection,
+  leadDateRangeFromValue,
+  leadDateRangeToValue,
+  matchingPreset,
+  presetRange,
+  QUICK_DATE_LABELS,
+  QUICK_DATE_PRESETS,
+  rangeLabel,
   SECTION_LABELS,
 } from "@/modules/leads/types";
 import { PullToRefresh } from "@/modules/ui/pull-to-refresh";
@@ -36,17 +43,21 @@ import { EmptyState, ErrorState } from "@/modules/ui/states";
 import { TouchButton } from "@/modules/ui/touch-button";
 
 type LeadsSearch = {
-  filter?: LeadDateFilter;
+  from?: string;
+  to?: string;
 };
 
 const SECTION_ORDER: LeadSection[] = ["new", "trialBooked", "archived"];
 
 function parseSearch(search: Record<string, unknown>): LeadsSearch {
   if (
-    typeof search.filter === "string" &&
-    (LEAD_DATE_FILTERS as readonly string[]).includes(search.filter)
+    typeof search.from === "string" &&
+    typeof search.to === "string" &&
+    isDateKey(search.from) &&
+    isDateKey(search.to) &&
+    search.from <= search.to
   ) {
-    return { filter: search.filter as LeadDateFilter };
+    return { from: search.from, to: search.to };
   }
   return {};
 }
@@ -81,17 +92,27 @@ function LeadsPage() {
   const { toast } = useToastContext("LeadsPage");
   const navigate = useNavigate({ from: Route.fullPath });
   const searchParams = Route.useSearch();
-  const filter = searchParams.filter ?? "all";
+  const range = useMemo<LeadDateRange | null>(
+    () =>
+      searchParams.from && searchParams.to
+        ? { from: searchParams.from, to: searchParams.to }
+        : null,
+    [searchParams],
+  );
+  const activePreset = matchingPreset(range);
   const [addOpen, setAddOpen] = useState(false);
   const [switchLead, setSwitchLead] = useState<Lead | null>(null);
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebouncedValue(search.trim(), 300);
 
   const query = useInfiniteQuery({
-    queryKey: ["studio-leads", studioId, filter, debouncedSearch],
+    queryKey: ["studio-leads", studioId, range, debouncedSearch],
     queryFn: ({ pageParam }) => {
       const params = new URLSearchParams();
-      params.set("filter", filter);
+      if (range) {
+        params.set("from", range.from);
+        params.set("to", range.to);
+      }
       params.set("limit", String(LEAD_PAGE_SIZE));
       if (debouncedSearch) params.set("q", debouncedSearch);
       if (pageParam) params.set("cursor", pageParam);
@@ -165,24 +186,15 @@ function LeadsPage() {
     if (hasSearch) {
       return `${count}${more} matching lead${count === 1 ? "" : "s"}`;
     }
-    if (filter === "today") {
-      return `${count}${more} trial${count === 1 ? "" : "s"} to call today`;
-    }
-    if (filter === "tomorrow") {
-      return `${count}${more} trial${count === 1 ? "" : "s"} to call tomorrow`;
-    }
-    if (filter === "thisWeek") {
-      return `${count}${more} trial${count === 1 ? "" : "s"} this week`;
-    }
-    if (filter === "nextWeek") {
-      return `${count}${more} trial${count === 1 ? "" : "s"} next week`;
+    if (range) {
+      return `${count}${more} trial${count === 1 ? "" : "s"} · ${rangeLabel(range)}`;
     }
     return "Call new signups and confirm trial sessions.";
-  }, [filter, hasNextPage, hasSearch, leads.length]);
+  }, [range, hasNextPage, hasSearch, leads.length]);
 
-  function setFilter(next: LeadDateFilter) {
+  function setRange(next: LeadDateRange | null) {
     void navigate({
-      search: next === "all" ? {} : { filter: next },
+      search: next ? { from: next.from, to: next.to } : {},
     });
   }
 
@@ -215,23 +227,40 @@ function LeadsPage() {
               />
             </div>
 
-            <div
-              className={styles.filters}
-              role="toolbar"
-              aria-label="Lead filters"
-            >
-              {LEAD_DATE_FILTERS.map((value) => (
+            <div className={styles.rangeBar}>
+              <DateRangePicker
+                aria-label="Lead date range"
+                value={leadDateRangeToValue(range)}
+                onChange={(value) => setRange(leadDateRangeFromValue(value))}
+                className={styles.rangePicker}
+              />
+              <div
+                className={styles.quickActions}
+                role="toolbar"
+                aria-label="Quick date ranges"
+              >
                 <button
-                  key={value}
                   type="button"
                   className={styles.filterChip}
-                  data-selected={filter === value ? "true" : undefined}
-                  data-testid={`leads-filter-${value}`}
-                  onClick={() => setFilter(value)}
+                  data-selected={!range ? "true" : undefined}
+                  data-testid="leads-filter-all"
+                  onClick={() => setRange(null)}
                 >
-                  {FILTER_LABELS[value]}
+                  All
                 </button>
-              ))}
+                {QUICK_DATE_PRESETS.map((preset) => (
+                  <button
+                    key={preset}
+                    type="button"
+                    className={styles.filterChip}
+                    data-selected={activePreset === preset ? "true" : undefined}
+                    data-testid={`leads-filter-${preset}`}
+                    onClick={() => setRange(presetRange(preset))}
+                  >
+                    {QUICK_DATE_LABELS[preset]}
+                  </button>
+                ))}
+              </div>
             </div>
 
             {query.isLoading ? (
@@ -259,10 +288,10 @@ function LeadsPage() {
             {query.isSuccess && leads.length === 0 ? (
               <EmptyState
                 icon="smartphone"
-                title={emptyLeadsTitle(filter, hasSearch)}
-                description={emptyLeadsDescription(filter, hasSearch)}
+                title={emptyLeadsTitle(range, hasSearch)}
+                description={emptyLeadsDescription(range, hasSearch)}
                 action={
-                  filter === "all" && !hasSearch ? (
+                  !range && !hasSearch ? (
                     <TouchButton
                       variant="primary"
                       onClick={() => setAddOpen(true)}
@@ -285,7 +314,7 @@ function LeadsPage() {
                     <li key={lead.id}>
                       <LeadCard
                         lead={lead}
-                        filter={filter}
+                        range={range}
                         {...(section === "trialBooked"
                           ? {
                               onSwitchTrial: setSwitchLead,
@@ -330,7 +359,7 @@ function LeadsPage() {
       <SwitchTrialSheet
         lead={switchLead}
         studioId={studioId}
-        dateFilter={filter}
+        defaultDate={range?.from ?? null}
         onOpenChange={(open) => {
           if (!open) setSwitchLead(null);
         }}

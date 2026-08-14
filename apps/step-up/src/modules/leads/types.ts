@@ -1,3 +1,4 @@
+import { CalendarDate } from "@internationalized/date";
 import type { AgeRange } from "@/lib/constants";
 import { matchesPersonSearch } from "@/lib/person-search";
 
@@ -16,6 +17,29 @@ export const LEAD_PAGE_SIZE = 25;
 export type LeadDateFilter = (typeof LEAD_DATE_FILTERS)[number];
 
 export type SwitchDateFilter = (typeof SWITCH_DATE_FILTERS)[number];
+
+export type LeadDateRange = {
+  from: string;
+  to: string;
+};
+
+export const QUICK_DATE_PRESETS = [
+  "today",
+  "tomorrow",
+  "thisWeek",
+  "nextWeek",
+  "last7",
+] as const;
+
+export type QuickDatePreset = (typeof QUICK_DATE_PRESETS)[number];
+
+export const QUICK_DATE_LABELS: Record<QuickDatePreset, string> = {
+  today: "Today",
+  tomorrow: "Tomorrow",
+  thisWeek: "This week",
+  nextWeek: "Next week",
+  last7: "Last 7 days",
+};
 
 export type LeadSection = "new" | "trialBooked" | "archived";
 
@@ -107,9 +131,12 @@ export function matchesLeadSearch(
   return matchesPersonSearch(lead, search);
 }
 
-export function isTrialSoon(startsAt: string | null, filter: LeadDateFilter) {
+export function isTrialSoon(
+  startsAt: string | null,
+  range: LeadDateRange | null,
+) {
   if (!startsAt) return false;
-  if (filter !== "all") return true;
+  if (range) return true;
 
   const start = new Date(startsAt);
   if (Number.isNaN(start.getTime())) return false;
@@ -176,20 +203,152 @@ export function localDayRangeIso(dateKey: string) {
   return { from: start.toISOString(), to: end.toISOString() };
 }
 
+export function isDateKey(value: string) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) return false;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const date = new Date(year, month - 1, day);
+  return (
+    date.getFullYear() === year &&
+    date.getMonth() === month - 1 &&
+    date.getDate() === day
+  );
+}
+
+export function dateKeyToCalendarDate(dateKey: string): CalendarDate | null {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateKey);
+  if (!match) return null;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const date = new Date(year, month - 1, day);
+  if (
+    date.getFullYear() !== year ||
+    date.getMonth() !== month - 1 ||
+    date.getDate() !== day
+  ) {
+    return null;
+  }
+  return new CalendarDate(year, month, day);
+}
+
+export function dateKeyToString(value: { toString(): string }): string | null {
+  const key = value.toString().slice(0, 10);
+  return isDateKey(key) ? key : null;
+}
+
+export function leadDateRangeToValue(
+  range: LeadDateRange | null,
+): { start: CalendarDate; end: CalendarDate } | null {
+  if (!range) return null;
+  const start = dateKeyToCalendarDate(range.from);
+  const end = dateKeyToCalendarDate(range.to);
+  if (!start || !end) return null;
+  return { start, end };
+}
+
+export function leadDateRangeFromValue(
+  value: {
+    start?: { toString(): string } | null;
+    end?: { toString(): string } | null;
+  } | null,
+): LeadDateRange | null {
+  if (!value?.start || !value.end) return null;
+  const from = dateKeyToString(value.start);
+  const to = dateKeyToString(value.end);
+  if (!from || !to || from > to) return null;
+  return { from, to };
+}
+
+export function presetRange(
+  preset: QuickDatePreset,
+  now: Date = new Date(),
+): LeadDateRange {
+  const todayDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  switch (preset) {
+    case "today":
+      return { from: localDateKey(todayDate), to: localDateKey(todayDate) };
+    case "tomorrow": {
+      const day = addLocalDays(todayDate, 1);
+      return { from: localDateKey(day), to: localDateKey(day) };
+    }
+    case "thisWeek": {
+      const start = startOfLocalWeek(todayDate);
+      return {
+        from: localDateKey(start),
+        to: localDateKey(addLocalDays(start, 6)),
+      };
+    }
+    case "nextWeek": {
+      const start = addLocalDays(startOfLocalWeek(todayDate), 7);
+      return {
+        from: localDateKey(start),
+        to: localDateKey(addLocalDays(start, 6)),
+      };
+    }
+    case "last7":
+      return {
+        from: localDateKey(addLocalDays(todayDate, -6)),
+        to: localDateKey(todayDate),
+      };
+  }
+}
+
+export function matchingPreset(
+  range: LeadDateRange | null,
+  now: Date = new Date(),
+): QuickDatePreset | null {
+  if (!range) return null;
+  for (const preset of QUICK_DATE_PRESETS) {
+    const candidate = presetRange(preset, now);
+    if (candidate.from === range.from && candidate.to === range.to) {
+      return preset;
+    }
+  }
+  return null;
+}
+
+export function formatDateKey(dateKey: string) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateKey);
+  if (!match) return dateKey;
+  const date = new Date(
+    Number(match[1]),
+    Number(match[2]) - 1,
+    Number(match[3]),
+  );
+  return new Intl.DateTimeFormat(undefined, {
+    month: "short",
+    day: "numeric",
+  }).format(date);
+}
+
+export function rangeLabel(
+  range: LeadDateRange,
+  now: Date = new Date(),
+): string {
+  const preset = matchingPreset(range, now);
+  if (preset) return QUICK_DATE_LABELS[preset];
+  if (range.from === range.to) return formatDateKey(range.from);
+  return `${formatDateKey(range.from)} – ${formatDateKey(range.to)}`;
+}
+
 export function emptyLeadsDescription(
-  filter: LeadDateFilter,
+  range: LeadDateRange | null,
   hasSearch: boolean,
 ) {
   if (hasSearch) return "Try another name or clear your search.";
-  if (filter === "all") return "Add a lead quickly when someone calls in.";
-  return "Pick All to see every follow-up.";
+  if (!range) return "Add a lead quickly when someone calls in.";
+  return "Pick All or another date range to see more leads.";
 }
 
-export function emptyLeadsTitle(filter: LeadDateFilter, hasSearch: boolean) {
+export function emptyLeadsTitle(
+  range: LeadDateRange | null,
+  hasSearch: boolean,
+) {
   if (hasSearch) return "No matching leads";
-  if (filter === "all") return "No leads yet";
-  if (filter === "today") return "No trials today";
-  if (filter === "tomorrow") return "No trials tomorrow";
-  if (filter === "thisWeek") return "No trials this week";
-  return "No trials next week";
+  if (!range) return "No leads yet";
+  if (range.from === range.to) return "No trials on this date";
+  return "No trials in this date range";
 }

@@ -44,6 +44,30 @@ export function isLeadDateFilter(value: string): value is LeadDateFilter {
   return (LEAD_DATE_FILTERS as readonly string[]).includes(value);
 }
 
+export function isIsoDateKey(value: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const [year, month, day] = value.split("-").map(Number);
+  const date = new Date(year, month - 1, day);
+  return (
+    date.getFullYear() === year &&
+    date.getMonth() === month - 1 &&
+    date.getDate() === day
+  );
+}
+
+export function resolveDateKeyRange(
+  from: string,
+  to: string,
+): { start: Date; end: Date } | null {
+  if (!isIsoDateKey(from) || !isIsoDateKey(to) || from > to) return null;
+  const [fromYear, fromMonth, fromDay] = from.split("-").map(Number);
+  const [toYear, toMonth, toDay] = to.split("-").map(Number);
+  const start = new Date(fromYear, fromMonth - 1, fromDay);
+  const end = new Date(toYear, toMonth - 1, toDay);
+  end.setHours(23, 59, 59, 999);
+  return { start, end };
+}
+
 export function startOfLocalWeek(now: Date): Date {
   const daysFromMonday = (now.getDay() + 6) % 7;
   return new Date(
