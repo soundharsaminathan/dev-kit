@@ -166,6 +166,9 @@ function ExpensesCategoriesPage() {
     useState<ExpenseCategory | null>(null);
   const [deletingCategory, setDeletingCategory] =
     useState<ExpenseCategory | null>(null);
+  const [inUseCategory, setInUseCategory] = useState<ExpenseCategory | null>(
+    null,
+  );
   const [creatingRecurring, setCreatingRecurring] = useState(false);
   const [editingRecurring, setEditingRecurring] =
     useState<RecurringExpense | null>(null);
@@ -325,7 +328,13 @@ function ExpensesCategoriesPage() {
                         <TouchButton
                           size="sm"
                           variant="quiet"
-                          onClick={() => setDeletingCategory(category)}
+                          onClick={() => {
+                            if ((category._count?.expenses ?? 0) > 0) {
+                              setInUseCategory(category);
+                            } else {
+                              setDeletingCategory(category);
+                            }
+                          }}
                         >
                           Delete
                         </TouchButton>
@@ -467,6 +476,35 @@ function ExpensesCategoriesPage() {
               onClick={() => deleteCategory.mutate()}
             >
               Delete category
+            </TouchButton>
+          </div>
+        </div>
+      </AppSheet>
+
+      <AppSheet
+        isOpen={inUseCategory !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setInUseCategory(null);
+          }
+        }}
+        title="Category already used"
+      >
+        <div className={styles.sheetStack}>
+          <p className={styles.detailValue}>
+            “{inUseCategory?.name}” has {inUseCategory?._count?.expenses ?? 0}{" "}
+            expense
+            {(inUseCategory?._count?.expenses ?? 0) === 1 ? "" : "s"} recorded,
+            so it can’t be deleted. Delete or reassign those expenses before
+            removing this category.
+          </p>
+          <div className={styles.sheetActions}>
+            <TouchButton
+              variant="primary"
+              fullWidth
+              onClick={() => setInUseCategory(null)}
+            >
+              Got it
             </TouchButton>
           </div>
         </div>

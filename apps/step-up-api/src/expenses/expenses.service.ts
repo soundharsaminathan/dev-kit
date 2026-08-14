@@ -247,7 +247,11 @@ export class ExpensesService {
     return this.prisma.expenseCategory.findMany({
       where: { studioId, archivedAt: null },
       orderBy: [{ isDefault: "desc" }, { name: "asc" }],
-      include: { _count: { select: { expenses: true } } },
+      include: {
+        _count: {
+          select: { expenses: { where: { archivedAt: null } } },
+        },
+      },
     });
   }
 
