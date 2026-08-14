@@ -34,10 +34,11 @@ import {
   getNextPeriodStart,
   getPeriodEnd,
   invoiceFeePercents,
+  isAfterUtcDay20,
   isMonthlyPlanUnpaid,
   isPrepaidAtJoin,
   membershipCoversBatch,
-  prorateByAttendance,
+  prorateByRemaining,
   seatRoleForBatchCategory,
   utcMonthStart,
 } from "./membership-helpers";
@@ -453,14 +454,69 @@ export class MembershipsService {
       return { kind: "prepaid", invoice };
     }
 
-    await this.startMembershipForEnroll({
+    const membership = await this.startMembershipForEnroll({
       batchId: args.batchId,
       subscriptionId: args.subscriptionId,
       studentId: args.studentId,
       at: now,
       billingPhase: MembershipBillingPhase.FIRST_POSTPAID,
     });
-    return { kind: "postpaid", invoice: null };
+
+    const subscription = await this.prisma.subscription.findUnique({
+      where: { id: args.subscriptionId },
+    });
+    if (!subscription?.active) {
+      throw new NotFoundException("Subscription not found or inactive");
+    }
+
+    const { billedSessionCount, remainingSessionCount } =
+      await this.countMonthSessions(args.batchId, now);
+    const amount = prorateByRemaining(
+      Number(subscription.price),
+      remainingSessionCount,
+      billedSessionCount,
+    );
+
+    let invoice: BatchEnrollmentBilling["invoice"] = null;
+    if (amount > 0 && remainingSessionCount > 0) {
+      const settings = await this.prisma.studioSettings.findUnique({
+        where: { studioId: batch.studioId },
+        select: { platformFeePercent: true, gstPercent: true },
+      });
+      invoice = await this.prisma.invoice.create({
+        data: {
+          studentId: args.studentId,
+          studioId: batch.studioId,
+          membershipId: membership.id,
+          amount,
+          status: InvoiceStatus.PENDING,
+          chargeType: InvoiceChargeType.PREPAID_PRORATED,
+          attendedSessionCount: remainingSessionCount,
+          billedSessionCount,
+          ...invoiceFeePercents(settings),
+          purchaseMeta: {
+            batchId: args.batchId,
+            subscriptionId: args.subscriptionId,
+            purchaserUserId: args.studentId,
+            coveredStudents: [
+              {
+                studentId: args.studentId,
+                seatRole,
+                batchId: args.batchId,
+              },
+            ],
+          } as unknown as Prisma.InputJsonValue,
+        },
+      });
+    }
+
+    if (isAfterUtcDay20(now) && remainingSessionCount > 0) {
+      await this.createEarlyNextPrepaid(membership.id, {
+        firstMonthConvertToQuarterly: true,
+      });
+    }
+
+    return { kind: "postpaid", invoice };
   }
 
   async moveCurrentTrackToBatch(studentId: string, toBatchId: string) {
@@ -693,6 +749,97 @@ export class MembershipsService {
     return session?.startsAt ?? null;
   }
 
+  private async countMonthSessions(batchId: string, at: Date) {
+    const monthStart = utcMonthStart(at);
+    const monthEnd = getPeriodEnd(monthStart, BillingCadence.MONTHLY);
+    const baseWhere = {
+      batchId,
+      type: SessionType.REGULAR,
+      status: { not: SessionStatus.CANCELLED },
+    };
+    const [billedSessionCount, remainingSessionCount] = await Promise.all([
+      this.prisma.session.count({
+        where: {
+          ...baseWhere,
+          startsAt: { gte: monthStart, lte: monthEnd },
+        },
+      }),
+      this.prisma.session.count({
+        where: {
+          ...baseWhere,
+          startsAt: { gt: at, lte: monthEnd },
+        },
+      }),
+    ]);
+    return { billedSessionCount, remainingSessionCount };
+  }
+
+  /**
+   * After UTC day 20 with remaining sessions: open next-period DUE membership
+   * and its prepaid invoice immediately (daily roll reuses alreadyOpen).
+   */
+  private async createEarlyNextPrepaid(
+    currentMembershipId: string,
+    options: { firstMonthConvertToQuarterly?: boolean } = {},
+  ) {
+    const existing = await this.prisma.membership.findUnique({
+      where: { id: currentMembershipId },
+      include: {
+        subscription: true,
+        coveredStudents: true,
+      },
+    });
+    if (!existing) {
+      return;
+    }
+
+    const periodStart = getNextPeriodStart(new Date(existing.periodEnd));
+    const periodEnd = getPeriodEnd(
+      periodStart,
+      existing.subscription.billingCadence,
+    );
+
+    const alreadyOpen = await this.prisma.membership.findFirst({
+      where: {
+        subscriptionId: existing.subscriptionId,
+        purchaserUserId: existing.purchaserUserId,
+        periodStart,
+        status: {
+          in: [
+            MembershipStatus.DUE,
+            MembershipStatus.EXPIRED,
+            MembershipStatus.ACTIVE,
+          ],
+        },
+        id: { not: existing.id },
+      },
+    });
+    if (alreadyOpen) {
+      await this.ensureRenewalInvoice(alreadyOpen.id, options);
+      return;
+    }
+
+    const next = await this.prisma.membership.create({
+      data: {
+        subscriptionId: existing.subscriptionId,
+        purchaserUserId: existing.purchaserUserId,
+        periodStart,
+        periodEnd,
+        status: MembershipStatus.DUE,
+        billingPhase: MembershipBillingPhase.PREPAID,
+        batchId: existing.batchId,
+        coveredStudents: {
+          create: existing.coveredStudents.map((c) => ({
+            studentId: c.studentId,
+            seatRole: c.seatRole,
+          })),
+        },
+      },
+    });
+
+    await this.ensureRenewalInvoice(next.id, options);
+  }
+
   private async isTrackStillEnrolled(membership: {
     batchId: string | null;
     coveredStudents: Array<{ studentId: string }>;
@@ -723,7 +870,12 @@ export class MembershipsService {
     await this.prisma.invoice.deleteMany({
       where: {
         status: { in: [InvoiceStatus.PENDING, InvoiceStatus.OVERDUE] },
-        chargeType: InvoiceChargeType.PREPAID_FULL,
+        chargeType: {
+          in: [
+            InvoiceChargeType.PREPAID_FULL,
+            InvoiceChargeType.PREPAID_PRORATED,
+          ],
+        },
         OR: [
           { membershipId: membership.id },
           ...(membership.batchId
@@ -738,89 +890,6 @@ export class MembershipsService {
               ]
             : []),
         ],
-      },
-    });
-  }
-
-  private async createUsageInvoiceIfNeeded(membership: {
-    id: string;
-    batchId: string | null;
-    purchaserUserId: string;
-    periodStart: Date;
-    periodEnd: Date;
-    subscription: { id: string; price: unknown };
-    coveredStudents: Array<{ studentId: string; seatRole: MembershipSeatRole }>;
-    purchaser: { studioId: string | null };
-  }) {
-    if (!membership.batchId || !membership.purchaser.studioId) {
-      return;
-    }
-    const studentId = membership.coveredStudents[0]?.studentId;
-    if (!studentId) {
-      return;
-    }
-
-    const existing = await this.prisma.invoice.findFirst({
-      where: {
-        membershipId: membership.id,
-        chargeType: InvoiceChargeType.POSTPAID_PRORATED,
-      },
-    });
-    if (existing) {
-      return;
-    }
-
-    const sessionWhere = {
-      batchId: membership.batchId,
-      type: SessionType.REGULAR,
-      status: { not: SessionStatus.CANCELLED },
-      startsAt: { gte: membership.periodStart, lte: membership.periodEnd },
-    };
-    const [billedSessionCount, attendedSessionCount] = await Promise.all([
-      this.prisma.session.count({ where: sessionWhere }),
-      this.prisma.attendance.count({
-        where: {
-          studentId,
-          status: "PRESENT",
-          session: sessionWhere,
-        },
-      }),
-    ]);
-    const amount = prorateByAttendance(
-      Number(membership.subscription.price),
-      attendedSessionCount,
-      billedSessionCount,
-    );
-    if (amount <= 0) {
-      return;
-    }
-
-    const settings = await this.prisma.studioSettings.findUnique({
-      where: { studioId: membership.purchaser.studioId },
-      select: { platformFeePercent: true, gstPercent: true },
-    });
-
-    await this.prisma.invoice.create({
-      data: {
-        studentId: membership.purchaserUserId,
-        studioId: membership.purchaser.studioId,
-        membershipId: membership.id,
-        amount,
-        status: InvoiceStatus.PENDING,
-        chargeType: InvoiceChargeType.POSTPAID_PRORATED,
-        attendedSessionCount,
-        billedSessionCount,
-        ...invoiceFeePercents(settings),
-        purchaseMeta: {
-          batchId: membership.batchId,
-          subscriptionId: membership.subscription.id,
-          purchaserUserId: membership.purchaserUserId,
-          coveredStudents: membership.coveredStudents.map((seat) => ({
-            studentId: seat.studentId,
-            seatRole: seat.seatRole,
-            batchId: membership.batchId ?? undefined,
-          })),
-        } as unknown as Prisma.InputJsonValue,
       },
     });
   }
@@ -901,10 +970,6 @@ export class MembershipsService {
 
     if (existing.status !== MembershipStatus.ACTIVE) {
       return { previousId: existing.id, next: null as null, created: false };
-    }
-
-    if (existing.billingPhase === MembershipBillingPhase.FIRST_POSTPAID) {
-      await this.createUsageInvoiceIfNeeded(existing);
     }
 
     const stillEnrolled = await this.isTrackStillEnrolled(existing);

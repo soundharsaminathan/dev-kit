@@ -88,13 +88,14 @@ test.describe("attendance HTTP @http", () => {
     }
   });
 
-  test("mid-month enroll is not monthlyUnpaid and mark does not need an invoice @http", async () => {
+  test("mid-month enroll is monthlyUnpaid when remaining-sessions invoice exists @http", async () => {
     test.skip(!canJoinPostpaidNow(), "UTC 1st is always prepaid-at-join");
     const cleanup = new TestDataCleanup();
     try {
       const enrolled = await enrollPostpaid(cleanup, {
         studentName: "HTTP Postpaid Roster",
       });
+      expect(enrolled.invoice).toBeTruthy();
       const sessionId = markableSessionId(enrolled.sessions);
 
       const roster = await expectOk<
@@ -103,7 +104,7 @@ test.describe("attendance HTTP @http", () => {
       expect(
         roster.find((row) => row.studentId === enrolled.student.id)
           ?.monthlyUnpaid,
-      ).toBe(false);
+      ).toBe(true);
 
       const marked = await expectOk<{ status: string }>(
         "TRAINER",

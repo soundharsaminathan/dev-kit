@@ -22,8 +22,10 @@ import {
   invoiceFeePercents,
   isMonthlyPlanUnpaid,
   isPrepaidAtJoin,
+  isAfterUtcDay20,
   membershipCoversBatch,
   prorateByAttendance,
+  prorateByRemaining,
   seatsForCatalog,
   seatsForFamilyPack,
 } from "./membership-helpers";
@@ -238,6 +240,18 @@ describe("membership-helpers", () => {
     expect(prorateByAttendance(3500, 0, 10)).toBe(0);
     expect(prorateByAttendance(3500, 3, 0)).toBe(0);
     expect(prorateByAttendance(1000, 12, 10)).toBe(1000);
+  });
+
+  it("prorates the first month from remaining sessions", () => {
+    expect(prorateByRemaining(3500, 5, 10)).toBe(1750);
+    expect(prorateByRemaining(3500, 0, 10)).toBe(0);
+    expect(prorateByRemaining(3500, 3, 0)).toBe(0);
+    expect(prorateByRemaining(1000, 12, 10)).toBe(1000);
+  });
+
+  it("treats UTC day greater than 20 as after-20th early next prepaid", () => {
+    expect(isAfterUtcDay20(new Date(Date.UTC(2026, 7, 20, 12)))).toBe(false);
+    expect(isAfterUtcDay20(new Date(Date.UTC(2026, 7, 21, 0)))).toBe(true);
   });
 
   it("uses period end as due date only for postpaid usage invoices", () => {

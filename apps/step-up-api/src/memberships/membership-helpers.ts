@@ -187,6 +187,24 @@ export function prorateByAttendance(
   return roundMoney(planPrice * (capped / billedSessions));
 }
 
+/** First partial month: remaining sessions after join / scheduled sessions that month. */
+export function prorateByRemaining(
+  planPrice: number,
+  remainingSessions: number,
+  billedSessions: number,
+): number {
+  if (billedSessions <= 0 || remainingSessions <= 0) {
+    return 0;
+  }
+  const capped = Math.min(remainingSessions, billedSessions);
+  return roundMoney(planPrice * (capped / billedSessions));
+}
+
+/** After the 20th (UTC day ≥ 21): create next-month prepaid at enroll. */
+export function isAfterUtcDay20(at: Date): boolean {
+  return at.getUTCDate() > 20;
+}
+
 export function invoiceDueDate(args: {
   chargeType?: InvoiceChargeType | null;
   periodStart?: Date | null;

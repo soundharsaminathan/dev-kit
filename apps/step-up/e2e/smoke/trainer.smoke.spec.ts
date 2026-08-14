@@ -261,24 +261,28 @@ test.describe("trainer smoke @smoke", () => {
     }
   });
 
-  test("mid-month enrollee marks present without unpaid confirm @smoke", async ({
+  test("mid-month enrollee confirms unpaid then marks present @smoke", async ({
     browser,
   }) => {
     test.setTimeout(180_000);
     test.skip(!canJoinPostpaidNow(), "UTC 1st is always prepaid-at-join");
     const cleanup = new SmokeDataCleanup();
     const stamp = Date.now();
-    const { student, sessionId, batchId } = await enrollPostpaid(cleanup, {
-      name: `Smoke Postpaid ${stamp}`,
-    });
+    const { student, sessionId, batchId, invoice } = await enrollPostpaid(
+      cleanup,
+      {
+        name: `Smoke Postpaid ${stamp}`,
+      },
+    );
     expect(batchId).toBeTruthy();
+    expect(invoice).toBeTruthy();
 
     const roster = await apiRequest<
       Array<{ studentId: string; monthlyUnpaid?: boolean }>
     >("TRAINER", `/attendance/session/${sessionId}/roster`);
     expect(
       roster.find((row) => row.studentId === student.id)?.monthlyUnpaid,
-    ).toBe(false);
+    ).toBe(true);
 
     const context = await browser.newContext({
       storageState: authFile("TRAINER"),
@@ -292,15 +296,17 @@ test.describe("trainer smoke @smoke", () => {
 
       const presentBtn = page.getByTestId(`mark-present-${student.id}`);
       await expect(presentBtn).toBeVisible();
+      await presentBtn.click();
+      const confirm = page.getByTestId("confirm-unpaid-mark");
+      await expect(confirm).toBeVisible();
       const [response] = await Promise.all([
         waitForApiResponse(page, {
           method: "POST",
           pathIncludes: "/attendance/mark",
         }),
-        presentBtn.click(),
+        confirm.click(),
       ]);
       expect(response.ok()).toBeTruthy();
-      await expect(page.getByTestId("confirm-unpaid-mark")).toHaveCount(0);
     } finally {
       await closeSmokeContext(context, cleanup);
     }

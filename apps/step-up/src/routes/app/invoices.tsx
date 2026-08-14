@@ -85,6 +85,47 @@ function isUnpaid(status: Invoice["status"]) {
   return status === "PENDING" || status === "OVERDUE";
 }
 
+function findFamilyForStudent(
+  families: StudioFamily[],
+  studentId: string,
+): StudioFamily | null {
+  return (
+    families.find(
+      (family) =>
+        family.ownerId === studentId ||
+        family.members.some((member) => member.id === studentId),
+    ) ?? null
+  );
+}
+
+function syntheticFamilyFromInvoice(invoice: Invoice): StudioFamily {
+  return {
+    ownerId: invoice.studentId,
+    ownerName: invoice.student?.name ?? "Student",
+    ownerRole: "STUDENT",
+    ownerPhotoUrl: null,
+    members: [],
+  };
+}
+
+/** Household unpaid invoices that can be optionally combined before pay. */
+function householdUnpaidInvoices(
+  invoices: Invoice[],
+  family: StudioFamily,
+): Invoice[] {
+  const memberIds = new Set<string>([
+    family.ownerId,
+    ...family.members.map((member) => member.id),
+  ]);
+  return invoices.filter(
+    (invoice) =>
+      isUnpaid(invoice.status) &&
+      invoice.kind !== "COMBINED" &&
+      !invoice.combineMeta &&
+      memberIds.has(invoice.studentId),
+  );
+}
+
 function canRefund(invoice: Invoice) {
   if (invoice.status === "REFUNDED") return false;
   if (invoice.status !== "PAID") return false;
@@ -141,6 +182,11 @@ function InvoiceCard({
     const attended = invoice.attendedSessionCount ?? 0;
     const billed = invoice.billedSessionCount ?? 0;
     metaParts.push(`${attended} / ${billed} sessions`);
+  }
+  if (invoice.chargeType === "PREPAID_PRORATED") {
+    const remaining = invoice.attendedSessionCount ?? 0;
+    const billed = invoice.billedSessionCount ?? 0;
+    metaParts.push(`${remaining} / ${billed} remaining`);
   }
   if (invoice.chargeType === "PREPAID_FULL") {
     metaParts.push("1st of month");
@@ -300,6 +346,7 @@ function InvoicesPage() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [familyOpenId, setFamilyOpenId] = useState<string | null>(null);
   const [payFamily, setPayFamily] = useState<StudioFamily | null>(null);
+  const [payPreselectedIds, setPayPreselectedIds] = useState<string[]>([]);
   const [refundId, setRefundId] = useState<string | null>(null);
 
   const invoicesQuery = useQuery({
@@ -418,6 +465,21 @@ function InvoicesPage() {
   const resolveStudentName = (studentId: string) =>
     membersQuery.data?.find((member) => member.id === studentId)?.name;
 
+  function openCollect(invoice: Invoice) {
+    const families = familiesQuery.data ?? [];
+    const allInvoices = invoicesQuery.data ?? [];
+    const family =
+      findFamilyForStudent(families, invoice.studentId) ??
+      syntheticFamilyFromInvoice(invoice);
+    const unpaid = householdUnpaidInvoices(allInvoices, family);
+    if (unpaid.length >= 2) {
+      setPayPreselectedIds([invoice.id]);
+      setPayFamily(family);
+      return;
+    }
+    setActiveId(invoice.id);
+  }
+
   return (
     <Screen
       title="Invoices"
@@ -528,7 +590,7 @@ function InvoicesPage() {
                       invoice={invoice}
                       studio={studioQuery.data}
                       collectTestId={`mark-paid-${invoice.id}`}
-                      onCollect={() => setActiveId(invoice.id)}
+                      onCollect={() => openCollect(invoice)}
                       onConvertToQuarterly={
                         invoice.canConvertToQuarterly
                           ? () => convertToQuarterly.mutate(invoice.id)
@@ -585,7 +647,10 @@ function InvoicesPage() {
                       <PressableCard
                         key={family.ownerId}
                         data-testid={`family-group-${family.ownerId}`}
-                        onClick={() => setPayFamily(family)}
+                        onClick={() => {
+                          setPayPreselectedIds([]);
+                          setPayFamily(family);
+                        }}
                       >
                         <div className={staff.rowCard}>
                           <div className={staff.rowWithAvatar}>
@@ -761,11 +826,18 @@ function InvoicesPage() {
       <FamilyCombineSheet
         family={payFamily}
         invoices={invoicesQuery.data ?? []}
+        preselectedInvoiceIds={payPreselectedIds}
         onOpenChange={(open) => {
-          if (!open) setPayFamily(null);
+          if (!open) {
+            setPayFamily(null);
+            setPayPreselectedIds([]);
+          }
         }}
         onCombined={(invoice) => {
           setFamilyOpenId(invoice.id);
+        }}
+        onPaySingle={(invoice) => {
+          setActiveId(invoice.id);
         }}
       />
     </Screen>

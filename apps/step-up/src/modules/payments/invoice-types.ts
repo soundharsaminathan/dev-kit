@@ -34,7 +34,7 @@ export type Invoice = {
     periodStart?: string | null;
     periodEnd?: string | null;
   } | null;
-  chargeType?: "POSTPAID_PRORATED" | "PREPAID_FULL";
+  chargeType?: "POSTPAID_PRORATED" | "PREPAID_PRORATED" | "PREPAID_FULL";
   attendedSessionCount?: number | null;
   billedSessionCount?: number | null;
   canConvertToQuarterly?: boolean;

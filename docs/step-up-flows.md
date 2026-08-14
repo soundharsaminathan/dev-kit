@@ -22,7 +22,7 @@
 The payments system revolves around **Invoices** — the atomic billing unit. See [step-up-billing-calendar.md](./step-up-billing-calendar.md) for when invoices are created.
 
 - Join on the 1st or before the batch’s first session → prepaid invoice at enroll/checkout
-- Mid-month new joiner → enroll now, usage + next 1st-of-month prepaid at month-end
+- Mid-month new joiner (after first session) → remaining-sessions `PREPAID_PRORATED` at enroll when sessions remain; next 1st-of-month prepaid on the 1st (or immediately after UTC day 20)
 - Switch (or unenroll then enroll a different batch the same month) → keep the current invoice
 
 **Invoice Kinds**:
@@ -96,11 +96,12 @@ The payments system revolves around **Invoices** — the atomic billing unit. Se
   familyDiscount: number
 }
 ```
-- Triggered from Family tab → tap family group
-- Filters unpaid individual invoices for family members
+- Triggered from Family tab → tap family group, **or** from Individual / student Collect payment when the household (or same student) has 2+ unpaid invoices
+- Filters unpaid individual invoices for family members (and the student’s own invoices)
+- Pre-selects the opened invoice; staff can pay that one alone or combine with siblings / next-month bill
 - Proportionally allocates discount via `allocateFamilyDiscount()`
 - Creates `COMBINED` invoice; originals get `combineMeta`
-- Minimum 2 invoices required
+- Minimum 2 invoices required to combine; single selection opens CollectPaymentSheet
 
 ---
 

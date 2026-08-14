@@ -234,7 +234,10 @@ export async function enrollPostpaid(
     category,
   });
   expect(enrolled.billingKind).toBe("postpaid");
-  expect(enrolled.invoice).toBeNull();
+  // Remaining sessions this month → PREPAID_PRORATED at enroll; none → null.
+  if (enrolled.invoice) {
+    expect(enrolled.invoice.status).toBe("PENDING");
+  }
   return enrolled;
 }
 

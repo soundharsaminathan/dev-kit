@@ -625,6 +625,67 @@ test.describe("admin (staff) smoke @smoke", () => {
     }
   });
 
+  test("individual collect opens family combine when sibling has unpaid invoice @smoke", async ({
+    browser,
+  }) => {
+    test.setTimeout(180_000);
+    const cleanup = new SmokeDataCleanup();
+    const stamp = Date.now();
+    const kidA = await createSmokeFamilyKid(`Smoke Ind Combine A ${stamp}`);
+    const kidB = await createSmokeFamilyKid(`Smoke Ind Combine B ${stamp}`);
+    cleanup.trackStudent(kidA.id);
+    cleanup.trackStudent(kidB.id);
+    const kidsBatch = await createCalendarBatch(cleanup, {
+      kind: "prepaid",
+      category: "KIDS",
+      capacity: 8,
+    });
+    const enrollA = await enrollPrepaid(cleanup, {
+      category: "KIDS",
+      studentId: kidA.id,
+      batchId: kidsBatch.id,
+    });
+    const enrollB = await enrollPrepaid(cleanup, {
+      category: "KIDS",
+      studentId: kidB.id,
+      batchId: kidsBatch.id,
+    });
+
+    const context = await browser.newContext({
+      storageState: authFile("STAFF"),
+    });
+    const page = await context.newPage();
+    try {
+      await openInvoicesAndWaitFor(page, `mark-paid-${enrollA.invoice.id}`);
+      await page.getByTestId(`mark-paid-${enrollA.invoice.id}`).click();
+
+      await expect(
+        page.getByRole("heading", { name: /combine ·/i }),
+      ).toBeVisible();
+      await expect(
+        page.getByTestId(`combine-invoice-${enrollA.invoice.id}`),
+      ).toBeVisible();
+      await expect(
+        page.getByTestId(`combine-invoice-${enrollB.invoice.id}`),
+      ).toBeVisible();
+
+      // Paying only the opened invoice (optional combine) still works.
+      await page.getByTestId("confirm-family-combine").click();
+      await expect(page.getByTestId("confirm-mark-paid")).toBeVisible();
+      await page.getByRole("checkbox", { name: /^Cash$/i }).click();
+      const [paidResponse] = await Promise.all([
+        waitForApiResponse(page, {
+          method: "PATCH",
+          pathIncludes: `/billing/${enrollA.invoice.id}/paid`,
+        }),
+        page.getByTestId("confirm-mark-paid").click(),
+      ]);
+      expect(paidResponse.ok()).toBeTruthy();
+    } finally {
+      await closeSmokeContext(context, cleanup);
+    }
+  });
+
   test("staff student import and create pages load @smoke", async ({
     browser,
   }) => {

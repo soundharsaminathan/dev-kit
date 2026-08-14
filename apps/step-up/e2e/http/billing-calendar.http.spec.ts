@@ -60,15 +60,28 @@ test.describe("billing calendar HTTP @http", () => {
     }
   });
 
-  test("postpaid mid-month enroll has no invoice and is not monthlyUnpaid @http", async () => {
+  test("mid-month enroll creates PREPAID_PRORATED when sessions remain @http", async () => {
     test.skip(!canJoinPostpaidNow(), "UTC 1st is always prepaid-at-join");
     const cleanup = new TestDataCleanup();
     try {
       const enrolled = await enrollPostpaid(cleanup, {
-        studentName: "Calendar Postpaid Join",
+        studentName: "Calendar Mid-month Join",
       });
-      expect(enrolled.invoice).toBeNull();
       expect(enrolled.billingKind).toBe("postpaid");
+      expect(enrolled.invoice).toBeTruthy();
+      expect(enrolled.invoice?.status).toBe("PENDING");
+
+      const invoice = await expectOk<{
+        chargeType: string;
+        attendedSessionCount: number | null;
+        billedSessionCount: number | null;
+      }>("STAFF", `/billing/${enrolled.invoice!.id}`);
+      expect(invoice.chargeType).toBe("PREPAID_PRORATED");
+      expect(invoice.billedSessionCount).toBeGreaterThan(0);
+      expect(invoice.attendedSessionCount).toBeGreaterThan(0);
+      expect(invoice.attendedSessionCount!).toBeLessThanOrEqual(
+        invoice.billedSessionCount!,
+      );
 
       const memberships = await expectOk<
         Array<{ billingPhase?: string; status: string }>
@@ -81,19 +94,29 @@ test.describe("billing calendar HTTP @http", () => {
       expect(
         active.find((row) => row.studentId === enrolled.student.id)
           ?.monthlyUnpaid,
-      ).toBe(false);
+      ).toBe(true);
     } finally {
       await cleanup.dispose();
     }
   });
 
-  test("postpaid enrollee can be marked present without an unpaid invoice @http", async () => {
+  test("mid-month enrollee is monthlyUnpaid and can still be marked present @http", async () => {
     test.skip(!canJoinPostpaidNow(), "UTC 1st is always prepaid-at-join");
     const cleanup = new TestDataCleanup();
     try {
       const enrolled = await enrollPostpaid(cleanup, {
-        studentName: "Calendar Postpaid Mark",
+        studentName: "Calendar Mid-month Mark",
       });
+      expect(enrolled.invoice).toBeTruthy();
+
+      const roster = await expectOk<
+        Array<{ studentId: string; monthlyUnpaid?: boolean }>
+      >("TRAINER", `/attendance/session/${markableSessionId(enrolled.sessions)}/roster`);
+      expect(
+        roster.find((row) => row.studentId === enrolled.student.id)
+          ?.monthlyUnpaid,
+      ).toBe(true);
+
       const marked = await expectOk<{ status: string }>(
         "TRAINER",
         "/attendance/mark",

@@ -473,13 +473,16 @@ export async function enrollPostpaid(
       subscriptionId: planId,
     }),
   });
-  expect(enrollment.invoice).toBeNull();
   expect(enrollment.billingKind).toBe("postpaid");
+  if (enrollment.invoice) {
+    expect(enrollment.invoice.id).toBeTruthy();
+  }
   const sessions = await listBatchSessions(batch.id);
   return {
     student,
     batch,
     batchId: batch.id,
+    invoice: enrollment.invoice,
     sessions,
     sessionId: await sessionIdInAttendanceWindow(batch.id, sessions),
   };

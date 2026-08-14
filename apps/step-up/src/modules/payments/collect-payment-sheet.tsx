@@ -25,6 +25,7 @@ type CollectPaymentSheetProps = {
   confirmTestId: string;
   discountTestIdPrefix?: string;
   resolveStudentName?: (studentId: string) => string | undefined;
+  onPaid?: () => void;
 };
 
 export function CollectPaymentSheet({
@@ -33,6 +34,7 @@ export function CollectPaymentSheet({
   confirmTestId,
   discountTestIdPrefix = "",
   resolveStudentName,
+  onPaid,
 }: CollectPaymentSheetProps) {
   const api = useApi();
   const studioId = useStudioId();
@@ -73,6 +75,7 @@ export function CollectPaymentSheet({
         variant: "success",
       });
       onOpenChange(false);
+      onPaid?.();
     },
     onError: (error: unknown) => {
       toast({

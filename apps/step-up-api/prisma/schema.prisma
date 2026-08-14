@@ -80,6 +80,7 @@ enum MembershipBillingPhase {
 
 enum InvoiceChargeType {
   POSTPAID_PRORATED
+  PREPAID_PRORATED
   PREPAID_FULL
 }
 

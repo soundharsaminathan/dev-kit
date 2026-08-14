@@ -18,7 +18,7 @@ type Invoice = {
   status: "PENDING" | "PAID" | "OVERDUE" | "REFUNDED";
   dueDate: string | null;
   batchName?: string | null;
-  chargeType?: "POSTPAID_PRORATED" | "PREPAID_FULL";
+  chargeType?: "POSTPAID_PRORATED" | "PREPAID_PRORATED" | "PREPAID_FULL";
   attendedSessionCount?: number | null;
   billedSessionCount?: number | null;
   canConvertToQuarterly?: boolean;
@@ -125,6 +125,13 @@ function MeInvoicesPage() {
                       <p className={styles.due}>
                         {invoice.attendedSessionCount ?? 0} /{" "}
                         {invoice.billedSessionCount} sessions
+                      </p>
+                    ) : null}
+                    {invoice.chargeType === "PREPAID_PRORATED" &&
+                    invoice.billedSessionCount != null ? (
+                      <p className={styles.due}>
+                        {invoice.attendedSessionCount ?? 0} /{" "}
+                        {invoice.billedSessionCount} remaining
                       </p>
                     ) : null}
                   </div>

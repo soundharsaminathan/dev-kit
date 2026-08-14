@@ -1,6 +1,5 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@dev-ui/components/avatar";
 import { Badge } from "@dev-ui/components/badge";
-import { Checkbox } from "@dev-ui/components/checkbox";
 import {
   Menu,
   MenuContent,
@@ -13,6 +12,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useApi } from "@/lib/api-context";
+import { fetchAllPages } from "@/lib/api-page";
 import { ENTITY_ICONS } from "@/lib/entity-icons";
 import { formatPaidMonths } from "@/lib/format-paid-months";
 import { requireAdmin } from "@/lib/require-auth";
@@ -20,10 +20,10 @@ import { useStudioId } from "@/lib/use-studio-id";
 import { StudentBatchEnrollmentActions } from "@/modules/batches/student-batch-enrollment-actions";
 import type { ChatConversation } from "@/modules/chat/types";
 import { TemporaryCredentialsPanel } from "@/modules/members/temporary-credentials-panel";
-import {
-  parseDiscountInput,
-  printInvoice,
-} from "@/modules/payments/print-invoice";
+import { CollectPaymentSheet } from "@/modules/payments/collect-payment-sheet";
+import { FamilyCombineSheet } from "@/modules/payments/family-combine-sheet";
+import type { Invoice, StudioFamily } from "@/modules/payments/invoice-types";
+import { printInvoice } from "@/modules/payments/print-invoice";
 import type { Studio } from "@/modules/settings/types";
 import { StudentSearchMultiselect } from "@/modules/students/student-search-multiselect";
 import { AppBottomSheet } from "@/modules/ui/app-bottom-sheet";
@@ -35,8 +35,6 @@ import { SkeletonBlock, SkeletonCardList } from "@/modules/ui/skeleton-block";
 import staff from "@/modules/ui/staff.module.scss";
 import { EmptyState, ErrorState } from "@/modules/ui/states";
 import { TouchButton } from "@/modules/ui/touch-button";
-
-type PaymentMethod = "CASH" | "UPI_MANUAL";
 
 type StudentStudioProfile = {
   student: {
@@ -113,12 +111,58 @@ type StudentStudioProfile = {
 
 type SheetKind =
   | "edit"
-  | "mark-paid"
   | "link-family"
   | "delete"
   | "toggle-active"
   | "reset-password"
   | null;
+
+function isUnpaidInvoice(status: Invoice["status"]) {
+  return status === "PENDING" || status === "OVERDUE";
+}
+
+function findFamilyForStudent(
+  families: StudioFamily[],
+  studentId: string,
+): StudioFamily | null {
+  return (
+    families.find(
+      (family) =>
+        family.ownerId === studentId ||
+        family.members.some((member) => member.id === studentId),
+    ) ?? null
+  );
+}
+
+function syntheticFamilyFromStudent(
+  studentId: string,
+  studentName: string,
+): StudioFamily {
+  return {
+    ownerId: studentId,
+    ownerName: studentName,
+    ownerRole: "STUDENT",
+    ownerPhotoUrl: null,
+    members: [],
+  };
+}
+
+function householdUnpaidInvoices(
+  invoices: Invoice[],
+  family: StudioFamily,
+): Invoice[] {
+  const memberIds = new Set<string>([
+    family.ownerId,
+    ...family.members.map((member) => member.id),
+  ]);
+  return invoices.filter(
+    (invoice) =>
+      isUnpaidInvoice(invoice.status) &&
+      invoice.kind !== "COMBINED" &&
+      !invoice.combineMeta &&
+      memberIds.has(invoice.studentId),
+  );
+}
 
 function familyRelationLabel(
   relation: StudentStudioProfile["family"][number]["relation"],
@@ -203,14 +247,10 @@ function StudentDetailPage() {
   const [sheet, setSheet] = useState<SheetKind>(null);
   const [editName, setEditName] = useState("");
   const [editPhone, setEditPhone] = useState("");
-  const [markPaidInvoiceId, setMarkPaidInvoiceId] = useState<string | null>(
-    null,
-  );
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(
-    null,
-  );
-  const [referralDiscount, setReferralDiscount] = useState("");
-  const [studioDiscount, setStudioDiscount] = useState("");
+  const [collectInvoiceId, setCollectInvoiceId] = useState<string | null>(null);
+  const [familyOpenId, setFamilyOpenId] = useState<string | null>(null);
+  const [payFamily, setPayFamily] = useState<StudioFamily | null>(null);
+  const [payPreselectedIds, setPayPreselectedIds] = useState<string[]>([]);
   const [familyMemberIds, setFamilyMemberIds] = useState<string[]>([]);
   const [resetCredentials, setResetCredentials] =
     useState<TemporaryCredentials | null>(null);
@@ -224,6 +264,27 @@ function StudentDetailPage() {
   const studioQuery = useQuery({
     queryKey: ["studio", studioId],
     queryFn: () => api.get<Studio>(`/studios/${studioId}`),
+  });
+
+  const invoicesQuery = useQuery({
+    queryKey: ["invoices", studioId],
+    enabled: Boolean(studioId),
+    queryFn: () =>
+      fetchAllPages<Invoice>((cursor) => {
+        const params = new URLSearchParams({ limit: "50" });
+        if (cursor) params.set("cursor", cursor);
+        return api.get<
+          | Invoice[]
+          | { items: Invoice[]; nextCursor: string | null; limit: number }
+        >(`/billing/studio/${studioId}?${params.toString()}`);
+      }),
+  });
+
+  const familiesQuery = useQuery({
+    queryKey: ["studio-families", studioId],
+    enabled: Boolean(studioId),
+    queryFn: () =>
+      api.get<StudioFamily[]>(`/users/studio/${studioId}/families`),
   });
 
   const linkedFamilyIds = useMemo(() => {
@@ -249,6 +310,9 @@ function StudentDetailPage() {
         queryKey: ["invoices", studioId],
       }),
       queryClient.invalidateQueries({
+        queryKey: ["studio-families", studioId],
+      }),
+      queryClient.invalidateQueries({
         queryKey: ["batches", studioId],
       }),
     ]);
@@ -256,10 +320,6 @@ function StudentDetailPage() {
 
   function closeSheet() {
     setSheet(null);
-    setMarkPaidInvoiceId(null);
-    setPaymentMethod(null);
-    setReferralDiscount("");
-    setStudioDiscount("");
     setFamilyMemberIds([]);
     setResetCredentials(null);
   }
@@ -273,11 +333,19 @@ function StudentDetailPage() {
   }
 
   function openMarkPaid(invoiceId: string) {
-    setMarkPaidInvoiceId(invoiceId);
-    setPaymentMethod(null);
-    setReferralDiscount("");
-    setStudioDiscount("");
-    setSheet("mark-paid");
+    const allInvoices = invoicesQuery.data ?? [];
+    const families = familiesQuery.data ?? [];
+    const studentName = query.data?.student.name ?? "Student";
+    const family =
+      findFamilyForStudent(families, id) ??
+      syntheticFamilyFromStudent(id, studentName);
+    const unpaid = householdUnpaidInvoices(allInvoices, family);
+    if (unpaid.length >= 2) {
+      setPayPreselectedIds([invoiceId]);
+      setPayFamily(family);
+      return;
+    }
+    setCollectInvoiceId(invoiceId);
   }
 
   function openLinkFamily() {
@@ -419,39 +487,6 @@ function StudentDetailPage() {
     },
   });
 
-  const markPaid = useMutation({
-    mutationFn: (payload: {
-      invoiceId: string;
-      paymentMethod: PaymentMethod;
-      referralDiscount: number;
-      studioDiscount: number;
-    }) =>
-      api.patch(`/billing/${payload.invoiceId}/paid`, {
-        paymentMethod: payload.paymentMethod,
-        referralDiscount: payload.referralDiscount,
-        studioDiscount: payload.studioDiscount,
-      }),
-    onSuccess: async () => {
-      await invalidateStudent();
-      closeSheet();
-      toast({
-        title: "Invoice marked paid",
-        description: "Payment recorded. Receipt emailed to the student.",
-        variant: "success",
-      });
-    },
-    onError: (error: unknown) => {
-      toast({
-        title: "Couldn’t mark invoice paid",
-        description:
-          error instanceof Error
-            ? error.message
-            : "Could not mark invoice paid.",
-        variant: "error",
-      });
-    },
-  });
-
   const linkFamily = useMutation({
     mutationFn: (memberUserIds: string[]) =>
       api.post(`/users/studio/${studioId}/families/link`, {
@@ -517,15 +552,17 @@ function StudentDetailPage() {
       relation: "PARENT" as const,
     }));
   }, [profile?.family, profile?.parents]);
-  const markPaidTarget =
-    profile?.invoices.find((invoice) => invoice.id === markPaidInvoiceId) ??
-    null;
+
+  const studioInvoices = invoicesQuery.data ?? [];
+  const collectInvoice =
+    studioInvoices.find((invoice) => invoice.id === collectInvoiceId) ?? null;
+  const familyInvoice =
+    studioInvoices.find((invoice) => invoice.id === familyOpenId) ?? null;
 
   const actionError =
     deleteStudent.error ??
     updateStudent.error ??
     resetPassword.error ??
-    markPaid.error ??
     linkFamily.error ??
     messageStudent.error;
 
@@ -1035,129 +1072,47 @@ function StudentDetailPage() {
         </div>
       </AppBottomSheet>
 
-      <AppSheet
-        isOpen={sheet === "mark-paid"}
+      <CollectPaymentSheet
+        invoice={collectInvoice}
         onOpenChange={(open) => {
-          if (!open) closeSheet();
+          if (!open) setCollectInvoiceId(null);
         }}
-        title={
-          markPaidTarget
-            ? `Mark paid · ${profile?.student.name ?? "Invoice"}`
-            : "Mark paid"
-        }
-      >
-        {markPaidTarget ? (
-          <div className={staff.sheetStack}>
-            <p className={staff.rowMeta}>
-              {formatInr(markPaidTarget.amount)} · {markPaidTarget.status}
-            </p>
-            <FormInput
-              label="Referral discount"
-              type="number"
-              min="0"
-              step="1"
-              inputMode="decimal"
-              data-testid="referral-discount"
-              value={referralDiscount}
-              onChange={setReferralDiscount}
-              placeholder="0"
-            />
-            <FormInput
-              label="Studio discount"
-              type="number"
-              min="0"
-              step="1"
-              inputMode="decimal"
-              data-testid="studio-discount"
-              value={studioDiscount}
-              onChange={setStudioDiscount}
-              placeholder="0"
-            />
-            <p className={staff.rowMeta}>
-              {(() => {
-                const referral = parseDiscountInput(referralDiscount);
-                const studio = parseDiscountInput(studioDiscount);
-                const net =
-                  Number.isNaN(referral) || Number.isNaN(studio)
-                    ? null
-                    : Math.max(
-                        0,
-                        Math.round(
-                          (markPaidTarget.amount - referral - studio) * 100,
-                        ) / 100,
-                      );
-                if (paymentMethod && net != null) {
-                  return `Confirm recording ${formatInr(net)} as ${
-                    paymentMethod === "CASH" ? "cash" : "UPI"
-                  } paid. This cannot be undone from here.`;
-                }
-                if (net != null && net !== markPaidTarget.amount) {
-                  return `Net after discounts: ${formatInr(net)}. Choose how payment was received, then confirm.`;
-                }
-                return "Optional discounts reduce the amount collected. Choose how payment was received, then confirm.";
-              })()}
-            </p>
-            {markPaid.isError ? (
-              <ErrorState
-                description={
-                  markPaid.error instanceof Error
-                    ? markPaid.error.message
-                    : "Could not mark invoice paid."
-                }
-              />
-            ) : null}
-            <div className={staff.sheetActions}>
-              <Checkbox
-                isSelected={paymentMethod === "CASH"}
-                isDisabled={markPaid.isPending}
-                onChange={(selected) =>
-                  setPaymentMethod(selected ? "CASH" : null)
-                }
-              >
-                Cash
-              </Checkbox>
-              <Checkbox
-                isSelected={paymentMethod === "UPI_MANUAL"}
-                isDisabled={markPaid.isPending}
-                onChange={(selected) =>
-                  setPaymentMethod(selected ? "UPI_MANUAL" : null)
-                }
-              >
-                UPI
-              </Checkbox>
-              <TouchButton
-                variant="primary"
-                fullWidth
-                isDisabled={!paymentMethod}
-                isPending={markPaid.isPending}
-                data-testid="confirm-mark-paid"
-                onClick={() => {
-                  if (!paymentMethod) return;
-                  const referral = parseDiscountInput(referralDiscount);
-                  const studio = parseDiscountInput(studioDiscount);
-                  if (Number.isNaN(referral) || Number.isNaN(studio)) {
-                    toast({
-                      title: "Invalid discount",
-                      description:
-                        "Enter a valid amount of 0 or more for each discount.",
-                      variant: "error",
-                    });
-                    return;
-                  }
-                  markPaid.mutate({
-                    invoiceId: markPaidTarget.id,
-                    paymentMethod,
-                    referralDiscount: referral,
-                    studioDiscount: studio,
-                  });
-                }}
-              >
-                Confirm mark as paid
-              </TouchButton>
-            </div>
-          </div>
-        ) : null}
-      </AppSheet>
+        confirmTestId="confirm-mark-paid"
+        onPaid={() => {
+          void invalidateStudent();
+        }}
+      />
+
+      <CollectPaymentSheet
+        invoice={familyInvoice}
+        onOpenChange={(open) => {
+          if (!open) setFamilyOpenId(null);
+        }}
+        confirmTestId="confirm-open-family-paid"
+        discountTestIdPrefix="family-"
+        onPaid={() => {
+          void invalidateStudent();
+        }}
+      />
+
+      <FamilyCombineSheet
+        family={payFamily}
+        invoices={studioInvoices}
+        preselectedInvoiceIds={payPreselectedIds}
+        onOpenChange={(open) => {
+          if (!open) {
+            setPayFamily(null);
+            setPayPreselectedIds([]);
+          }
+        }}
+        onCombined={(invoice) => {
+          void invalidateStudent();
+          setFamilyOpenId(invoice.id);
+        }}
+        onPaySingle={(invoice) => {
+          setCollectInvoiceId(invoice.id);
+        }}
+      />
 
       <AppBottomSheet
         isOpen={sheet === "link-family"}

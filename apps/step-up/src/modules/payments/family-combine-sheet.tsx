@@ -22,6 +22,10 @@ type FamilyCombineSheetProps = {
   invoices: Invoice[];
   onOpenChange: (open: boolean) => void;
   onCombined: (invoice: Invoice) => void;
+  /** When set, opens with these invoices checked (e.g. the one staff tapped). */
+  preselectedInvoiceIds?: string[];
+  /** Pay a single selected invoice without combining (optional family discount ignored). */
+  onPaySingle?: (invoice: Invoice) => void;
 };
 
 function isUnpaid(status: Invoice["status"]) {
@@ -33,6 +37,8 @@ export function FamilyCombineSheet({
   invoices,
   onOpenChange,
   onCombined,
+  preselectedInvoiceIds,
+  onPaySingle,
 }: FamilyCombineSheetProps) {
   const api = useApi();
   const studioId = useStudioId();
@@ -43,10 +49,14 @@ export function FamilyCombineSheet({
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [familyDiscount, setFamilyDiscount] = useState("");
   const familyKey = family?.ownerId ?? null;
-  const [lastFamilyKey, setLastFamilyKey] = useState(familyKey);
-  if (familyKey !== lastFamilyKey) {
-    setLastFamilyKey(familyKey);
-    setSelectedIds([]);
+  const preselectKey = (preselectedInvoiceIds ?? []).join(",");
+  const [lastResetKey, setLastResetKey] = useState(
+    () => `${familyKey ?? ""}:${preselectKey}`,
+  );
+  const resetKey = `${familyKey ?? ""}:${preselectKey}`;
+  if (resetKey !== lastResetKey) {
+    setLastResetKey(resetKey);
+    setSelectedIds(preselectedInvoiceIds ?? []);
     setFamilyDiscount("");
   }
 
@@ -100,12 +110,14 @@ export function FamilyCombineSheet({
     ? Math.round((subtotal - discountValue) * 100) / 100
     : null;
 
-  const canConfirm =
+  const canCombine =
     selected.length >= 2 && discountValid && netDue != null && netDue >= 0;
+  const canPaySingle =
+    Boolean(onPaySingle) && selected.length === 1 && discountValid;
 
   const combine = useMutation({
     mutationFn: () => {
-      if (!family || !canConfirm) {
+      if (!family || !canCombine) {
         throw new Error("Select at least two invoices and a valid discount.");
       }
       return api.post<Invoice>("/billing/family-combine", {
@@ -145,6 +157,26 @@ export function FamilyCombineSheet({
     );
   }
 
+  function submit() {
+    if (canPaySingle && selected[0] && onPaySingle) {
+      onOpenChange(false);
+      onPaySingle(selected[0]);
+      return;
+    }
+    if (canCombine) {
+      combine.mutate();
+    }
+  }
+
+  const confirmLabel =
+    canPaySingle && selected[0]
+      ? `Collect payment · ${formatPrice(selected[0].amount)}`
+      : netDue != null && selected.length >= 2
+        ? `Combine · ${formatPrice(netDue)}`
+        : selected.length >= 2
+          ? "Combine invoices"
+          : "Select invoices";
+
   return (
     <AppSheet
       isOpen={isOpen}
@@ -159,8 +191,8 @@ export function FamilyCombineSheet({
       {family ? (
         <div className={staff.sheetStack}>
           <p className={staff.rowMeta}>
-            Check unpaid invoices to merge into one bill. Family discount is
-            split proportionally across the selected invoices.
+            Check unpaid invoices to merge into one bill and keep the family
+            discount. Or pay a single invoice on its own.
           </p>
 
           {unpaid.length === 0 ? (
@@ -191,6 +223,11 @@ export function FamilyCombineSheet({
                         invoice.batchName,
                         invoice.status,
                         invoice.id.slice(-6).toUpperCase(),
+                        invoice.chargeType === "PREPAID_PRORATED" &&
+                        invoice.attendedSessionCount != null &&
+                        invoice.billedSessionCount != null
+                          ? `${invoice.attendedSessionCount} / ${invoice.billedSessionCount} remaining`
+                          : null,
                       ]
                         .filter(Boolean)
                         .join(" · ")}
@@ -217,9 +254,10 @@ export function FamilyCombineSheet({
             value={familyDiscount}
             onChange={setFamilyDiscount}
             placeholder="0"
+            isDisabled={selected.length < 2}
           />
 
-          {allocations.length > 0 ? (
+          {allocations.length > 0 && selected.length >= 2 ? (
             <div className={staff.list}>
               {allocations.map((row) => (
                 <p key={row.invoice.id} className={staff.rowMeta}>
@@ -232,7 +270,9 @@ export function FamilyCombineSheet({
 
           <p className={staff.rowMeta}>
             {selected.length} selected · Subtotal {formatPrice(subtotal)}
-            {netDue != null ? ` · Net ${formatPrice(netDue)}` : ""}
+            {netDue != null && selected.length >= 2
+              ? ` · Net ${formatPrice(netDue)}`
+              : ""}
           </p>
 
           {combine.isError ? (
@@ -249,14 +289,12 @@ export function FamilyCombineSheet({
             <TouchButton
               variant="primary"
               fullWidth
-              isDisabled={!canConfirm}
+              isDisabled={!canCombine && !canPaySingle}
               isPending={combine.isPending}
               data-testid="confirm-family-combine"
-              onClick={() => combine.mutate()}
+              onClick={submit}
             >
-              {netDue != null
-                ? `Combine · ${formatPrice(netDue)}`
-                : "Combine invoices"}
+              {confirmLabel}
             </TouchButton>
           </div>
         </div>

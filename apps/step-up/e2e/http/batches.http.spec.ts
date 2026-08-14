@@ -144,21 +144,22 @@ test.describe("batches HTTP @http", () => {
     }
   });
 
-  test("mid-month staff enroll seats immediately without an unpaid invoice @http", async () => {
+  test("mid-month staff enroll seats immediately with remaining-sessions invoice @http", async () => {
     test.skip(!canJoinPostpaidNow(), "UTC 1st is always prepaid-at-join");
     const cleanup = new TestDataCleanup();
     try {
       const enrolled = await enrollPostpaid(cleanup, {
         studentName: "HTTP Mid Month Roster",
       });
-      expect(enrolled.invoice).toBeNull();
       expect(enrolled.billingKind).toBe("postpaid");
+      expect(enrolled.invoice).toBeTruthy();
+      expect(enrolled.invoice?.status).toBe("PENDING");
 
       const active = await fetchRosterRows(enrolled.batchId, "active");
       const inactive = await fetchRosterRows(enrolled.batchId, "inactive");
       const row = active.find((item) => item.studentId === enrolled.student.id);
       expect(row).toBeTruthy();
-      expect(row?.monthlyUnpaid).toBe(false);
+      expect(row?.monthlyUnpaid).toBe(true);
       expect(
         inactive.some((item) => item.studentId === enrolled.student.id),
       ).toBe(false);
