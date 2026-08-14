@@ -21,6 +21,7 @@ export type CalendarContextValue = {
   prevButtonProps: AriaButtonProps;
   nextButtonProps: AriaButtonProps;
   title: string;
+  gridOffset: number;
 };
 
 export type CalendarProps<T extends DateValue = DateValue> =
@@ -35,6 +36,8 @@ export type RangeCalendarProps<T extends DateValue = DateValue> =
     className?: string | undefined;
     children?: ReactNode | undefined;
     ref?: Ref<HTMLDivElement>;
+    /** Number of months to display side-by-side. Defaults to `1`. */
+    numberOfMonths?: number | undefined;
   };
 
 export type CalendarHeaderProps = HTMLAttributes<HTMLElement> & {
@@ -50,6 +53,7 @@ export type CalendarHeadingProps = HTMLAttributes<HTMLElement> & {
 export type CalendarGridProps = AriaCalendarGridProps & {
   className?: string | undefined;
   children?: ReactNode | undefined;
+  offset?: { months?: number } | undefined;
 };
 
 export type CalendarGridHeaderProps = Omit<
@@ -71,6 +75,7 @@ export type CalendarGridBodyProps = Omit<
 > & {
   className?: string | undefined;
   children?: ReactNode | ((date: CalendarDate) => ReactNode);
+  offset?: { months?: number } | undefined;
 };
 
 export type CalendarCellProps = AriaCalendarCellProps & {

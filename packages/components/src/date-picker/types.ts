@@ -27,6 +27,9 @@ export type DateRangePickerProps<T extends DateValue = DateValue> =
     className?: string | undefined;
     children?: ReactNode | undefined;
     ref?: Ref<HTMLDivElement>;
+    /** Number of months to show in the range calendar. Defaults to `3` on
+     * screens &ge; 1024px, `1` below. */
+    numberOfMonths?: number | undefined;
   };
 
 export type DatePickerTriggerProps = HTMLAttributes<HTMLDivElement> & {
@@ -69,6 +72,7 @@ export type DateRangePickerContextValue = {
   errorMessageProps: HTMLAttributes<HTMLElement>;
   dialogProps: AriaDialogProps;
   calendarProps: AriaRangeCalendarProps<DateValue>;
+  numberOfMonths?: number | undefined;
   isDisabled: boolean;
   isInvalid: boolean;
 };

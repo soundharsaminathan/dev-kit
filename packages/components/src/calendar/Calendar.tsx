@@ -1,13 +1,18 @@
 import { cn, composeRefs } from "@dev-ui/core";
 import { Icon } from "@dev-ui/icons";
-import { createCalendar } from "@internationalized/date";
+import {
+  createCalendar,
+  isSameDay,
+  isSameMonth,
+  today,
+} from "@internationalized/date";
 import {
   useCalendar,
   useCalendarCell,
   useCalendarGrid,
   useRangeCalendar,
 } from "@react-aria/calendar";
-import { useLocale } from "@react-aria/i18n";
+import { useDateFormatter, useLocale } from "@react-aria/i18n";
 import { mergeProps } from "@react-aria/utils";
 import type { RangeCalendarState } from "@react-stately/calendar";
 import {
@@ -64,6 +69,7 @@ function Calendar<T extends import("@internationalized/date").DateValue>({
       prevButtonProps,
       nextButtonProps,
       title,
+      gridOffset: 0,
     }),
     [state, prevButtonProps, nextButtonProps, title],
   );
@@ -108,6 +114,7 @@ function Calendar<T extends import("@internationalized/date").DateValue>({
 function RangeCalendar<T extends import("@internationalized/date").DateValue>({
   children,
   className,
+  numberOfMonths = 1,
   ref,
   ...props
 }: RangeCalendarProps<T>) {
@@ -117,6 +124,10 @@ function RangeCalendar<T extends import("@internationalized/date").DateValue>({
     createCalendar,
     ...props,
     locale,
+    visibleDuration: { months: numberOfMonths },
+    ...(numberOfMonths > 1 && props.selectionAlignment === undefined
+      ? { selectionAlignment: "start" as const }
+      : {}),
   });
   const { calendarProps, prevButtonProps, nextButtonProps, title } =
     useRangeCalendar(props, state, calendarRef);
@@ -128,8 +139,14 @@ function RangeCalendar<T extends import("@internationalized/date").DateValue>({
       prevButtonProps,
       nextButtonProps,
       title,
+      gridOffset: 0,
     }),
     [state, prevButtonProps, nextButtonProps, title],
+  );
+
+  const months = useMemo(
+    () => (numberOfMonths > 1 ? [...new Array(numberOfMonths).keys()] : []),
+    [numberOfMonths],
   );
 
   return (
@@ -161,7 +178,22 @@ function RangeCalendar<T extends import("@internationalized/date").DateValue>({
                 <Icon name="chevron-right" className={styles.chevron} />
               </Button>
             </CalendarHeader>
-            <CalendarGrid />
+            {months.length > 0 ? (
+              <div data-calendar-months="" className={styles.months}>
+                {months.map((index) => (
+                  <div
+                    key={index}
+                    data-calendar-month=""
+                    className={styles.month}
+                  >
+                    <CalendarHeading offset={{ months: index }} />
+                    <CalendarGrid offset={{ months: index }} />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <CalendarGrid />
+            )}
           </>
         )}
       </div>
@@ -211,10 +243,20 @@ CalendarHeader.displayName = "CalendarHeader";
 
 function CalendarHeading({
   className,
-  offset: _offset,
+  offset,
   ...props
 }: CalendarHeadingProps) {
-  const { title } = useCalendarContext("CalendarHeading");
+  const { state, gridOffset, title } = useCalendarContext("CalendarHeading");
+  const isGridHeading = offset?.months !== undefined || gridOffset > 0;
+  const dateFormatter = useDateFormatter({ month: "long", year: "numeric" });
+
+  const heading = isGridHeading
+    ? dateFormatter.format(
+        state.visibleRange.start
+          .add({ months: gridOffset + (offset?.months ?? 0) })
+          .toDate(state.timeZone),
+      )
+    : title;
 
   return (
     <h2
@@ -223,33 +265,52 @@ function CalendarHeading({
       className={cn(styles.heading, className)}
       {...props}
     >
-      {title}
+      {heading}
     </h2>
   );
 }
 CalendarHeading.displayName = "CalendarHeading";
 
-function CalendarGrid({ className, children, ...props }: CalendarGridProps) {
-  const { state } = useCalendarContext("CalendarGrid");
-  const { gridProps, headerProps } = useCalendarGrid(props, state);
+function CalendarGrid({
+  className,
+  children,
+  offset,
+  ...props
+}: CalendarGridProps) {
+  const context = useCalendarContext("CalendarGrid");
+  const { state, gridOffset } = context;
+  const offsetMonths = gridOffset + (offset?.months ?? 0);
+  const startDate = state.visibleRange.start.add({ months: offsetMonths });
+  const endDate = startDate.add({ months: 1 }).subtract({ days: 1 });
+  const { gridProps, headerProps } = useCalendarGrid(
+    { ...props, startDate, endDate },
+    state,
+  );
+
+  const gridContext = useMemo(
+    () => ({ ...context, gridOffset: offsetMonths }),
+    [context, offsetMonths],
+  );
 
   return (
-    <table
-      {...gridProps}
-      data-calendar-grid=""
-      className={cn(styles.grid, className)}
-    >
-      {children ?? (
-        <>
-          <CalendarGridHeader {...headerProps}>
-            {(day) => <CalendarHeaderCell>{day}</CalendarHeaderCell>}
-          </CalendarGridHeader>
-          <CalendarGridBody>
-            {(date) => <CalendarCell date={date} />}
-          </CalendarGridBody>
-        </>
-      )}
-    </table>
+    <CalendarContext.Provider value={gridContext}>
+      <table
+        {...gridProps}
+        data-calendar-grid=""
+        className={cn(styles.grid, className)}
+      >
+        {children ?? (
+          <>
+            <CalendarGridHeader {...headerProps}>
+              {(day) => <CalendarHeaderCell>{day}</CalendarHeaderCell>}
+            </CalendarGridHeader>
+            <CalendarGridBody>
+              {(date) => <CalendarCell date={date} />}
+            </CalendarGridBody>
+          </>
+        )}
+      </table>
+    </CalendarContext.Provider>
   );
 }
 CalendarGrid.displayName = "CalendarGrid";
@@ -315,10 +376,13 @@ CalendarHeaderCell.displayName = "CalendarHeaderCell";
 function CalendarGridBody({
   className,
   children,
+  offset,
   ...props
 }: CalendarGridBodyProps) {
-  const { state } = useCalendarContext("CalendarGridBody");
-  const { weeksInMonth } = useCalendarGrid({}, state);
+  const { state, gridOffset } = useCalendarContext("CalendarGridBody");
+  const offsetMonths = gridOffset + (offset?.months ?? 0);
+  const startDate = state.visibleRange.start.add({ months: offsetMonths });
+  const { weeksInMonth } = useCalendarGrid({ startDate }, state);
 
   return (
     <tbody
@@ -329,7 +393,7 @@ function CalendarGridBody({
       {[...new Array(weeksInMonth).keys()].map((weekIndex) => (
         <tr key={weekIndex}>
           {([0, 1, 2, 3, 4, 5, 6] as const).map((dayOfWeek) => {
-            const date = state.getDatesInWeek(weekIndex)[dayOfWeek];
+            const date = state.getDatesInWeek(weekIndex, startDate)[dayOfWeek];
 
             if (!date) {
               return <td key={`empty-${weekIndex}-${dayOfWeek}`} />;
@@ -362,18 +426,22 @@ function CalendarCell({
   children,
   ...props
 }: CalendarCellProps) {
-  const { state, mode } = useCalendarContext("CalendarCell");
+  const { state, mode, gridOffset } = useCalendarContext("CalendarCell");
   const ref = useRef<HTMLDivElement>(null);
+  const isOutsideMonth = !isSameMonth(
+    date,
+    state.visibleRange.start.add({ months: gridOffset }),
+  );
+  const isToday = isSameDay(date, today(state.timeZone));
   const {
     cellProps,
     buttonProps,
     isSelected,
     isDisabled,
     isUnavailable,
-    isOutsideVisibleRange,
     isInvalid,
     formattedDate,
-  } = useCalendarCell({ date, ...props }, state, ref);
+  } = useCalendarCell({ date, isOutsideMonth, ...props }, state, ref);
 
   const highlightedRange =
     mode === "range" && isRangeCalendarState(state)
@@ -391,9 +459,10 @@ function CalendarCell({
           ref,
           "data-calendar-cell": "",
           "data-selected": isSelected ? "true" : undefined,
+          "data-today": isToday ? "true" : undefined,
           "data-disabled": isDisabled ? "true" : undefined,
           "data-unavailable": isUnavailable ? "true" : undefined,
-          "data-outside-month": isOutsideVisibleRange ? "true" : undefined,
+          "data-outside-month": isOutsideMonth ? "true" : undefined,
           "data-invalid": isInvalid ? "true" : undefined,
           "data-selection-start": isSelectionStart ? "true" : undefined,
           "data-selection-end": isSelectionEnd ? "true" : undefined,

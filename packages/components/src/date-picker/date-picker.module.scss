@@ -94,6 +94,11 @@
   padding: var(--space-3);
 }
 
+.rangePopover {
+  width: auto;
+  max-width: min(calc(100vw - 2 * var(--space-6)), 60rem);
+}
+
 .dialog {
   outline: none;
 }

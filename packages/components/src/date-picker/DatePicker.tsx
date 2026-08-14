@@ -1,4 +1,5 @@
 import { cn } from "@dev-ui/core";
+import { useIsMobile } from "@dev-ui/hooks";
 import { Icon } from "@dev-ui/icons";
 import { createCalendar } from "@internationalized/date";
 import {
@@ -343,6 +344,7 @@ function DateRangePicker<T extends DateValue>({
   className,
   isDisabled,
   isInvalid,
+  numberOfMonths,
   ...props
 }: DateRangePickerProps<T>) {
   const groupRef = useRef<HTMLDivElement>(null);
@@ -395,6 +397,7 @@ function DateRangePicker<T extends DateValue>({
       errorMessageProps,
       dialogProps,
       calendarProps,
+      numberOfMonths,
       isDisabled: Boolean(isDisabled),
       isInvalid: Boolean(isInvalid),
     }),
@@ -409,6 +412,7 @@ function DateRangePicker<T extends DateValue>({
       errorMessageProps,
       dialogProps,
       calendarProps,
+      numberOfMonths,
       isDisabled,
       isInvalid,
     ],
@@ -522,21 +526,28 @@ function DateRangePickerPopover({
   placement = "bottom",
   children,
 }: DatePickerPopoverProps) {
-  const { state, calendarProps } = useDateRangePickerContext(
+  const { state, calendarProps, numberOfMonths } = useDateRangePickerContext(
     "DateRangePickerPopover",
   );
+  const isMobile = useIsMobile(1024);
 
   if (!state.isOpen) {
     return null;
   }
 
+  const months = numberOfMonths ?? (isMobile ? 1 : 3);
+
   return (
     <OverlayContainer>
-      <Popover placement={placement} className={cn(styles.popover, className)}>
+      <Popover
+        placement={placement}
+        className={cn(styles.popover, styles.rangePopover, className)}
+      >
         <DateRangePickerDialog>
           {children ?? (
             <RangeCalendar
               {...(calendarProps as Parameters<typeof RangeCalendar>[0])}
+              numberOfMonths={months}
             />
           )}
         </DateRangePickerDialog>
