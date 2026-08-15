@@ -958,7 +958,10 @@ export class BatchesService {
         ratingAvg: data.ratingAvg ?? null,
         ratingCount: data.ratingCount ?? 0,
         trainers: {
-          create: trainerIds.map((trainerId) => ({ trainerId })),
+          create: trainerIds.map((trainerId, sortOrder) => ({
+            trainerId,
+            sortOrder,
+          })),
         },
         sessions: {
           create: sessions,
@@ -1273,7 +1276,11 @@ export class BatchesService {
       if (trainerIds) {
         await tx.batchTrainer.deleteMany({ where: { batchId: id } });
         await tx.batchTrainer.createMany({
-          data: trainerIds.map((trainerId) => ({ batchId: id, trainerId })),
+          data: trainerIds.map((trainerId, sortOrder) => ({
+            batchId: id,
+            trainerId,
+            sortOrder,
+          })),
         });
       }
 

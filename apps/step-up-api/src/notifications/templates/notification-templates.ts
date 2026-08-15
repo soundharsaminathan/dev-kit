@@ -108,6 +108,13 @@ export function buildNotificationCopy(input: NotificationTemplateInput): {
             ? `${input.unreadCount} new messages`
             : (input.messagePreview ?? "You have a new message")),
       };
+    case "TRAINER_PAYOUT":
+      return {
+        title: input.title ?? "Payslip ready",
+        body:
+          input.body ??
+          "Your payout for last month is ready. Review it in the Payouts tab.",
+      };
     default:
       return {
         title: input.title ?? "Notification",
@@ -158,4 +165,8 @@ export const NOTIFICATION_TYPE_REGISTRY: Record<
   },
   NEW_FOLLOW: { label: "New followers", defaultChannels: ["IN_APP", "PUSH"] },
   CHAT_MESSAGE: { label: "Chat messages", defaultChannels: ["IN_APP", "PUSH"] },
+  TRAINER_PAYOUT: {
+    label: "Trainer payouts",
+    defaultChannels: ["IN_APP"],
+  },
 };

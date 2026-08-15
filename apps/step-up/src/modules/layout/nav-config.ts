@@ -138,6 +138,12 @@ const appLinks: NavLinkItem[] = [
     roles: ADMIN_ROLES,
   },
   {
+    to: "/app/payouts",
+    label: "Payouts",
+    icon: "wallet",
+    section: "Money",
+  },
+  {
     to: "/app/retention",
     label: "Retention",
     icon: "trending-up",

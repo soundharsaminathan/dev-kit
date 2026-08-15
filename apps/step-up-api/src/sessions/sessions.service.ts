@@ -1,16 +1,25 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Inject,
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
-import { NotificationType, SessionStatus, SessionType } from "@prisma/client";
+import {
+  NotificationType,
+  SessionStatus,
+  SessionType,
+  UserRole,
+} from "@prisma/client";
 import { ACTIVE_ENROLLMENT_WHERE } from "../batches/enrollment-status";
 import { ScheduleConflictService } from "../calendar/schedule-conflict.service";
 import { ChatService } from "../chat/chat.service";
 import { NotificationsService } from "../notifications/notifications.service";
 import { PrismaService } from "../prisma/prisma.service";
-import type { DecryptedUser } from "../users/user-crypto.service";
+import {
+  type DecryptedUser,
+  UserCryptoService,
+} from "../users/user-crypto.service";
 import { TrialSlotsCacheService } from "./trial-slots-cache.service";
 
 const TRIAL_HORIZON_DAYS = 35;
@@ -60,6 +69,7 @@ export class SessionsService {
     @Inject(NotificationsService)
     private readonly notifications: NotificationsService,
     @Inject(ChatService) private readonly chat: ChatService,
+    @Inject(UserCryptoService) private readonly crypto: UserCryptoService,
   ) {}
 
   listByBatch(batchId: string) {
@@ -178,7 +188,14 @@ export class SessionsService {
   getById(id: string) {
     return this.prisma.session.findUniqueOrThrow({
       where: { id },
-      include: { attendance: true, batch: true },
+      include: {
+        attendance: true,
+        batch: {
+          include: {
+            trainers: { orderBy: { sortOrder: "asc" } },
+          },
+        },
+      },
     });
   }
 
@@ -318,14 +335,141 @@ export class SessionsService {
     return session;
   }
 
-  async complete(id: string) {
-    const session = await this.prisma.session.update({
+  async complete(
+    actor: DecryptedUser,
+    id: string,
+    data: { trainerId?: string } = {},
+  ) {
+    const session = await this.prisma.session.findUnique({
       where: { id },
-      data: { status: SessionStatus.COMPLETED },
+      include: {
+        batch: {
+          select: {
+            id: true,
+            studioId: true,
+            trainers: {
+              orderBy: { sortOrder: "asc" },
+              select: { trainerId: true },
+            },
+          },
+        },
+      },
+    });
+    if (!session) {
+      throw new NotFoundException("Session not found");
+    }
+    if (session.status !== SessionStatus.SCHEDULED) {
+      throw new BadRequestException("Only scheduled sessions can be completed");
+    }
+
+    const trainerId = await this.resolveCompletingTrainer(
+      actor,
+      session.batch.studioId,
+      session.batch.trainers,
+      data.trainerId,
+    );
+
+    const updated = await this.prisma.session.update({
+      where: { id },
+      data: { status: SessionStatus.COMPLETED, trainerId },
       include: { batch: { select: { studioId: true } } },
     });
-    await this.trialSlotsCache.invalidate(session.batch.studioId);
-    return session;
+    await this.trialSlotsCache.invalidate(updated.batch.studioId);
+    return updated;
+  }
+
+  async listIncompletePast(studioId: string) {
+    const now = new Date();
+    const sessions = await this.prisma.session.findMany({
+      where: {
+        status: SessionStatus.SCHEDULED,
+        endsAt: { lt: now },
+        batch: { studioId },
+      },
+      orderBy: { startsAt: "asc" },
+      include: {
+        batch: {
+          select: {
+            id: true,
+            name: true,
+            trainers: {
+              orderBy: { sortOrder: "asc" },
+              take: 1,
+              select: { trainerId: true },
+            },
+          },
+        },
+      },
+    });
+
+    const trainerIds = [
+      ...new Set(
+        sessions
+          .map((session) => session.batch.trainers[0]?.trainerId)
+          .filter((id): id is string => Boolean(id)),
+      ),
+    ];
+    const trainers =
+      trainerIds.length === 0
+        ? []
+        : await this.prisma.user.findMany({
+            where: { id: { in: trainerIds } },
+          });
+    const names = new Map(
+      trainers.map((trainer) => [
+        trainer.id,
+        this.crypto.decryptUser(trainer).name,
+      ]),
+    );
+
+    return sessions.map((session) => {
+      const firstTrainerId = session.batch.trainers[0]?.trainerId ?? null;
+      return {
+        id: session.id,
+        batchId: session.batch.id,
+        batchName: session.batch.name,
+        startsAt: session.startsAt.toISOString(),
+        endsAt: session.endsAt.toISOString(),
+        firstTrainer: firstTrainerId
+          ? { id: firstTrainerId, name: names.get(firstTrainerId) ?? "Trainer" }
+          : null,
+      };
+    });
+  }
+
+  private async resolveCompletingTrainer(
+    actor: DecryptedUser,
+    studioId: string,
+    batchTrainers: { trainerId: string }[],
+    requestedTrainerId?: string,
+  ): Promise<string> {
+    if (actor.role === UserRole.TRAINER) {
+      const trainer = await this.prisma.user.findFirst({
+        where: { id: actor.id, studioId, role: UserRole.TRAINER },
+        select: { id: true },
+      });
+      if (!trainer) {
+        throw new ForbiddenException("You are not a trainer at this studio");
+      }
+      return actor.id;
+    }
+
+    const firstTrainerId = batchTrainers[0]?.trainerId ?? null;
+    const trainerId = requestedTrainerId ?? firstTrainerId;
+    if (!trainerId) {
+      throw new BadRequestException(
+        "Select a trainer to complete this session",
+      );
+    }
+
+    const trainer = await this.prisma.user.findFirst({
+      where: { id: trainerId, studioId, role: UserRole.TRAINER },
+      select: { id: true },
+    });
+    if (!trainer) {
+      throw new BadRequestException("Trainer must belong to this studio");
+    }
+    return trainer.id;
   }
 
   private assertValidWindow(startsAt: Date, endsAt: Date) {

@@ -1,5 +1,12 @@
 import { Button } from "@dev-ui/components/button";
 import { Drawer } from "@dev-ui/components/drawer";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@dev-ui/components/select";
 import { useToastContext } from "@dev-ui/components/toast";
 import { Icon } from "@dev-ui/icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -7,6 +14,8 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import QRCode from "qrcode";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useApi } from "@/lib/api-context";
+import { ADMIN_ROLES } from "@/lib/constants";
+import { useAuth } from "@/lib/use-auth";
 import { useStudioId } from "@/lib/use-studio-id";
 import { AttendanceRosterTable } from "@/modules/attendance/attendance-roster-table";
 import {
@@ -18,6 +27,7 @@ import type {
   AttendanceStatusValue,
 } from "@/modules/attendance/types";
 import { SessionScheduleActions } from "@/modules/sessions/session-schedule-actions";
+import { useStudioTrainers } from "@/modules/trainers/use-trainers";
 import { ApiState } from "@/modules/ui/api-state";
 import { AppSheet } from "@/modules/ui/app-sheet";
 import {
@@ -37,7 +47,11 @@ type Session = {
   startsAt: string;
   endsAt: string;
   status?: "SCHEDULED" | "COMPLETED" | "CANCELLED";
-  batch?: { name: string };
+  trainerId?: string | null;
+  batch?: {
+    name: string;
+    trainers?: Array<{ trainerId: string; sortOrder: number }>;
+  };
 };
 
 type NewStudentForm = {
@@ -360,6 +374,9 @@ function SessionAttendancePage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { toast } = useToastContext("SessionAttendancePage");
+  const { user } = useAuth();
+  const isAdmin = user ? ADMIN_ROLES.includes(user.role) : false;
+  const trainersQuery = useStudioTrainers();
   const [activeQrId, setActiveQrId] = useState<string | null>(null);
   const [isTrialSheetOpen, setIsTrialSheetOpen] = useState(false);
   const [completeConfirmOpen, setCompleteConfirmOpen] = useState(false);
@@ -371,6 +388,15 @@ function SessionAttendancePage() {
     queryKey: ["session", id],
     queryFn: () => api.get<Session>(`/sessions/${id}`),
   });
+
+  const firstBatchTrainerId =
+    sessionQuery.data?.batch?.trainers?.[0]?.trainerId ?? null;
+  const [selectedTrainerId, setSelectedTrainerId] = useState<string | null>(
+    null,
+  );
+  useEffect(() => {
+    setSelectedTrainerId((current) => current ?? firstBatchTrainerId);
+  }, [firstBatchTrainerId]);
 
   const markingOpen = sessionQuery.data
     ? isAttendanceMarkingOpen(sessionQuery.data.startsAt)
@@ -567,7 +593,13 @@ function SessionAttendancePage() {
   });
 
   const completeSession = useMutation({
-    mutationFn: () => api.patch(`/sessions/${id}/complete`),
+    mutationFn: () =>
+      api.patch(
+        `/sessions/${id}/complete`,
+        isAdmin && selectedTrainerId
+          ? { trainerId: selectedTrainerId }
+          : undefined,
+      ),
     onSuccess: async () => {
       setCompleteConfirmOpen(false);
       await Promise.all([
@@ -610,6 +642,13 @@ function SessionAttendancePage() {
     ? [
         sessionQuery.data.batch?.name,
         formatSessionDateTime(sessionQuery.data.startsAt),
+        sessionQuery.data.status === "COMPLETED" && sessionQuery.data.trainerId
+          ? `Instructor: ${
+              trainersQuery.data?.find(
+                (trainer) => trainer.id === sessionQuery.data?.trainerId,
+              )?.name ?? "Trainer"
+            }`
+          : null,
       ]
         .filter(Boolean)
         .join(" · ")
@@ -868,11 +907,38 @@ function SessionAttendancePage() {
             Mark this session as completed? Attendance can still be reviewed
             afterward.
           </p>
+          {isAdmin ? (
+            <div className={styles.trainerField}>
+              <Select
+                label="Instructor"
+                selectedKey={selectedTrainerId}
+                onSelectionChange={(key) =>
+                  setSelectedTrainerId(key == null ? null : String(key))
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select instructor" />
+                </SelectTrigger>
+                <SelectContent>
+                  {trainersQuery.data?.map((trainer) => (
+                    <SelectItem
+                      key={trainer.id}
+                      id={trainer.id}
+                      textValue={trainer.name}
+                    >
+                      {trainer.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          ) : null}
           <div className={staff.sheetActions}>
             <TouchButton
               variant="primary"
               fullWidth
               isPending={completeSession.isPending}
+              isDisabled={isAdmin && !selectedTrainerId}
               data-testid="confirm-complete-session"
               onClick={() => completeSession.mutate()}
             >

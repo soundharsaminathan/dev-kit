@@ -2,6 +2,294 @@ import { SessionStatus, SessionType } from "@prisma/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { SessionsService } from "./sessions.service";
 
+const baseSchedulePrisma = () => ({
+  session: {
+    findMany: vi.fn(),
+    findUnique: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
+  },
+  batch: {
+    findUnique: vi.fn(),
+  },
+  batchEnrollment: {
+    findMany: vi.fn().mockResolvedValue([]),
+  },
+  user: {
+    findFirst: vi.fn(),
+    findMany: vi.fn(),
+  },
+});
+
+const baseScheduleConflicts = () => ({
+  assertNoConflicts: vi.fn().mockResolvedValue(undefined),
+});
+
+const baseTrialSlotsCache = () => ({
+  get: vi.fn(),
+  set: vi.fn().mockResolvedValue(undefined),
+  invalidate: vi.fn().mockResolvedValue(undefined),
+});
+
+const baseNotifications = () => ({
+  create: vi.fn().mockResolvedValue({ id: "notif-1" }),
+});
+
+const baseChat = () => ({
+  postBatchSessionCard: vi.fn().mockResolvedValue({ id: "msg-1" }),
+});
+
+const baseCrypto = () => ({
+  decryptUser: (user: unknown) => user,
+});
+
+const ownerActor = {
+  id: "owner-1",
+  role: "OWNER",
+  studioId: "studio-1",
+};
+
+const trainerActor = {
+  id: "trainer-1",
+  role: "TRAINER",
+  studioId: "studio-1",
+};
+
+function buildService(
+  prisma: ReturnType<typeof baseSchedulePrisma>,
+  extra: { scheduleConflicts?: unknown; notifications?: unknown } = {},
+) {
+  return new SessionsService(
+    prisma as never,
+    (extra.scheduleConflicts ?? baseScheduleConflicts()) as never,
+    baseTrialSlotsCache() as never,
+    (extra.notifications ?? baseNotifications()) as never,
+    baseChat() as never,
+    baseCrypto() as never,
+  );
+}
+
+describe("SessionsService.complete", () => {
+  it("rejects completing a non-scheduled session", async () => {
+    const prisma = baseSchedulePrisma();
+    prisma.session.findUnique.mockResolvedValue({
+      id: "session-1",
+      status: SessionStatus.COMPLETED,
+      batch: {
+        id: "batch-1",
+        studioId: "studio-1",
+        trainers: [],
+      },
+    });
+    const service = buildService(prisma);
+
+    await expect(
+      service.complete(ownerActor as never, "session-1"),
+    ).rejects.toThrow(/Only scheduled sessions/);
+    expect(prisma.session.update).not.toHaveBeenCalled();
+  });
+
+  it("auto-assigns the trainer themselves for TRAINER actors", async () => {
+    const prisma = baseSchedulePrisma();
+    prisma.session.findUnique.mockResolvedValue({
+      id: "session-1",
+      status: SessionStatus.SCHEDULED,
+      batch: {
+        id: "batch-1",
+        studioId: "studio-1",
+        trainers: [{ trainerId: "trainer-2" }],
+      },
+    });
+    prisma.user.findFirst.mockResolvedValue({ id: "trainer-1" });
+    prisma.session.update.mockResolvedValue({
+      id: "session-1",
+      status: SessionStatus.COMPLETED,
+      trainerId: "trainer-1",
+      batch: { studioId: "studio-1" },
+    });
+    const service = buildService(prisma);
+
+    const result = await service.complete(trainerActor as never, "session-1", {
+      trainerId: "trainer-2",
+    });
+
+    expect(result).toMatchObject({ trainerId: "trainer-1" });
+    expect(prisma.session.update).toHaveBeenCalledWith({
+      where: { id: "session-1" },
+      data: { status: SessionStatus.COMPLETED, trainerId: "trainer-1" },
+      include: { batch: { select: { studioId: true } } },
+    });
+    expect(prisma.user.findFirst).toHaveBeenCalledWith({
+      where: { id: "trainer-1", studioId: "studio-1", role: "TRAINER" },
+      select: { id: true },
+    });
+  });
+
+  it("forbids a TRAINER who is not a trainer at the studio", async () => {
+    const prisma = baseSchedulePrisma();
+    prisma.session.findUnique.mockResolvedValue({
+      id: "session-1",
+      status: SessionStatus.SCHEDULED,
+      batch: {
+        id: "batch-1",
+        studioId: "studio-1",
+        trainers: [{ trainerId: "trainer-2" }],
+      },
+    });
+    prisma.user.findFirst.mockResolvedValue(null);
+    const service = buildService(prisma);
+
+    await expect(
+      service.complete(trainerActor as never, "session-1"),
+    ).rejects.toThrow(/not a trainer/);
+  });
+
+  it("defaults OWNER/STAFF to the first batch trainer when no trainerId given", async () => {
+    const prisma = baseSchedulePrisma();
+    prisma.session.findUnique.mockResolvedValue({
+      id: "session-1",
+      status: SessionStatus.SCHEDULED,
+      batch: {
+        id: "batch-1",
+        studioId: "studio-1",
+        trainers: [{ trainerId: "trainer-2" }],
+      },
+    });
+    prisma.user.findFirst.mockResolvedValue({ id: "trainer-2" });
+    prisma.session.update.mockResolvedValue({
+      id: "session-1",
+      status: SessionStatus.COMPLETED,
+      trainerId: "trainer-2",
+      batch: { studioId: "studio-1" },
+    });
+    const service = buildService(prisma);
+
+    const result = await service.complete(ownerActor as never, "session-1");
+
+    expect(result).toMatchObject({ trainerId: "trainer-2" });
+  });
+
+  it("honors an explicit trainerId from OWNER/STAFF", async () => {
+    const prisma = baseSchedulePrisma();
+    prisma.session.findUnique.mockResolvedValue({
+      id: "session-1",
+      status: SessionStatus.SCHEDULED,
+      batch: {
+        id: "batch-1",
+        studioId: "studio-1",
+        trainers: [{ trainerId: "trainer-2" }],
+      },
+    });
+    prisma.user.findFirst.mockResolvedValue({ id: "trainer-9" });
+    prisma.session.update.mockResolvedValue({
+      id: "session-1",
+      status: SessionStatus.COMPLETED,
+      trainerId: "trainer-9",
+      batch: { studioId: "studio-1" },
+    });
+    const service = buildService(prisma);
+
+    const result = await service.complete(ownerActor as never, "session-1", {
+      trainerId: "trainer-9",
+    });
+
+    expect(result).toMatchObject({ trainerId: "trainer-9" });
+  });
+
+  it("rejects a trainerId that is not a trainer at this studio", async () => {
+    const prisma = baseSchedulePrisma();
+    prisma.session.findUnique.mockResolvedValue({
+      id: "session-1",
+      status: SessionStatus.SCHEDULED,
+      batch: {
+        id: "batch-1",
+        studioId: "studio-1",
+        trainers: [{ trainerId: "trainer-2" }],
+      },
+    });
+    prisma.user.findFirst.mockResolvedValue(null);
+    const service = buildService(prisma);
+
+    await expect(
+      service.complete(ownerActor as never, "session-1", {
+        trainerId: "trainer-99",
+      }),
+    ).rejects.toThrow(/must belong to this studio/);
+  });
+});
+
+describe("SessionsService.listIncompletePast", () => {
+  it("returns overdue scheduled sessions with first-trainer hint", async () => {
+    const prisma = baseSchedulePrisma();
+    const startsAt = new Date("2026-07-15T10:00:00.000Z");
+    const endsAt = new Date("2026-07-15T11:00:00.000Z");
+    prisma.session.findMany.mockResolvedValue([
+      {
+        id: "session-overdue-1",
+        startsAt,
+        endsAt,
+        batch: {
+          id: "batch-1",
+          name: "Kids Hip-hop",
+          trainers: [{ trainerId: "trainer-1" }],
+        },
+      },
+    ]);
+    prisma.user.findMany.mockResolvedValue([
+      {
+        id: "trainer-1",
+        name: "Alex Trainer",
+      },
+    ]);
+    const service = buildService(prisma);
+
+    const result = await service.listIncompletePast("studio-1");
+
+    expect(prisma.session.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          status: SessionStatus.SCHEDULED,
+          endsAt: { lt: expect.any(Date) },
+          batch: { studioId: "studio-1" },
+        }),
+      }),
+    );
+    expect(result).toEqual([
+      {
+        id: "session-overdue-1",
+        batchId: "batch-1",
+        batchName: "Kids Hip-hop",
+        startsAt: startsAt.toISOString(),
+        endsAt: endsAt.toISOString(),
+        firstTrainer: { id: "trainer-1", name: "Alex Trainer" },
+      },
+    ]);
+  });
+
+  it("returns null firstTrainer when the batch has no trainers", async () => {
+    const prisma = baseSchedulePrisma();
+    prisma.session.findMany.mockResolvedValue([
+      {
+        id: "session-overdue-2",
+        startsAt: new Date("2026-07-15T10:00:00.000Z"),
+        endsAt: new Date("2026-07-15T11:00:00.000Z"),
+        batch: {
+          id: "batch-2",
+          name: "No Trainer Batch",
+          trainers: [],
+        },
+      },
+    ]);
+    prisma.user.findMany.mockResolvedValue([]);
+    const service = buildService(prisma);
+
+    const result = await service.listIncompletePast("studio-1");
+
+    expect(result).toEqual([expect.objectContaining({ firstTrainer: null })]);
+    expect(prisma.user.findMany).not.toHaveBeenCalled();
+  });
+});
+
 describe("SessionsService listTrialSlots", () => {
   const prisma = {
     session: {
@@ -36,6 +324,10 @@ describe("SessionsService listTrialSlots", () => {
     postBatchSessionCard: vi.fn().mockResolvedValue({ id: "msg-1" }),
   };
 
+  const crypto = {
+    decryptUser: (user: unknown) => user,
+  };
+
   let service: SessionsService;
 
   beforeEach(() => {
@@ -47,6 +339,7 @@ describe("SessionsService listTrialSlots", () => {
       trialSlotsCache as never,
       notifications as never,
       chat as never,
+      crypto as never,
     );
   });
 
@@ -214,6 +507,10 @@ describe("SessionsService schedule mutations", () => {
     postBatchSessionCard: vi.fn().mockResolvedValue({ id: "msg-1" }),
   };
 
+  const crypto = {
+    decryptUser: (user: unknown) => user,
+  };
+
   const actor = {
     id: "owner-1",
     role: "OWNER",
@@ -230,6 +527,7 @@ describe("SessionsService schedule mutations", () => {
       trialSlotsCache as never,
       notifications as never,
       chat as never,
+      crypto as never,
     );
   });
 

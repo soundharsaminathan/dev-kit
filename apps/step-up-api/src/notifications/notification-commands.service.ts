@@ -1,9 +1,9 @@
 import { Inject, Injectable } from "@nestjs/common";
 import {
+  type Notification,
   NotificationChannel,
   NotificationStatus,
   NotificationType,
-  type Notification,
   type Prisma,
 } from "@prisma/client";
 import { OutboxService } from "../events/outbox.service";

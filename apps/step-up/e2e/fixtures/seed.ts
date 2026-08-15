@@ -22,6 +22,11 @@ export const SEED = {
   trialSessionId: "e2e-session-trial-w0",
   sessionAttendanceId: "e2e-session-kids-mon",
   sessionAttendancePastId: "e2e-session-kids-past-1",
+  sessionIncompletePastId: "e2e-session-kids-incomplete-past-1",
+  payoutTrainer1Id: "e2e-payout-trainer-1",
+  payoutTrainer2Id: "e2e-payout-trainer-2",
+  payoutSessionTrainer1Id: "e2e-session-payout-trainer-1",
+  payoutSessionTrainer2Id: "e2e-session-payout-trainer-2",
   users: {
     SYSTEM_ADMIN: {
       id: "e2e-system-admin-1",

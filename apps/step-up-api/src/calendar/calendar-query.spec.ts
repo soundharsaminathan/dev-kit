@@ -19,6 +19,7 @@ const baseSession = (
   endsAt: new Date("2026-07-20T11:00:00.000Z"),
   status: "SCHEDULED",
   batchId: "b1",
+  trainerId: null,
   batch: {
     name: "Kids Hip-Hop",
     studioId: "studio-1",

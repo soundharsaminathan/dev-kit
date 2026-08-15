@@ -8,12 +8,7 @@ import { SessionsService } from "./sessions.service";
 import { TrialSlotsCacheService } from "./trial-slots-cache.service";
 
 @Module({
-  imports: [
-    AttendanceModule,
-    CalendarModule,
-    ChatModule,
-    NotificationsModule,
-  ],
+  imports: [AttendanceModule, CalendarModule, ChatModule, NotificationsModule],
   controllers: [SessionsController],
   providers: [SessionsService, TrialSlotsCacheService],
   exports: [SessionsService, TrialSlotsCacheService],

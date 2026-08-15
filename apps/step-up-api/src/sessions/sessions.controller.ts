@@ -54,6 +54,12 @@ class TrialSlotsQueryDto {
   to?: string;
 }
 
+class CompleteSessionDto {
+  @IsOptional()
+  @IsString()
+  trainerId?: string;
+}
+
 @Controller("sessions")
 @UseGuards(AuthGuard, RolesGuard)
 export class SessionsController {
@@ -66,6 +72,16 @@ export class SessionsController {
   @Get("batch/:batchId")
   listByBatch(@Param("batchId") batchId: string) {
     return this.sessionsService.listByBatch(batchId);
+  }
+
+  @Get("studio/:studioId/incomplete-past")
+  @Roles(UserRole.OWNER, UserRole.STAFF)
+  incompletePast(
+    @CurrentUser() user: DecryptedUser,
+    @Param("studioId") studioId: string,
+  ) {
+    assertSameStudio(user, studioId);
+    return this.sessionsService.listIncompletePast(studioId);
   }
 
   @Get("studio/:studioId/trial")
@@ -97,8 +113,12 @@ export class SessionsController {
 
   @Patch(":id/complete")
   @Roles(UserRole.OWNER, UserRole.STAFF, UserRole.TRAINER)
-  complete(@Param("id") id: string) {
-    return this.sessionsService.complete(id);
+  complete(
+    @CurrentUser() user: DecryptedUser,
+    @Param("id") id: string,
+    @Body() dto: CompleteSessionDto,
+  ) {
+    return this.sessionsService.complete(user, id, dto);
   }
 
   @Patch(":id")

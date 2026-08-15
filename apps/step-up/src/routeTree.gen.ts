@@ -50,6 +50,7 @@ import { Route as MeLocationsIndexRouteImport } from './routes/me/locations/inde
 import { Route as AppTrainersIndexRouteImport } from './routes/app/trainers/index'
 import { Route as AppSubscriptionsIndexRouteImport } from './routes/app/subscriptions/index'
 import { Route as AppStudentsIndexRouteImport } from './routes/app/students/index'
+import { Route as AppPayoutsIndexRouteImport } from './routes/app/payouts/index'
 import { Route as AppMessagesIndexRouteImport } from './routes/app/messages/index'
 import { Route as AppLocationsIndexRouteImport } from './routes/app/locations/index'
 import { Route as AppLeadsIndexRouteImport } from './routes/app/leads/index'
@@ -84,6 +85,7 @@ import { Route as AppProfileFollowRequestsRouteImport } from './routes/app/profi
 import { Route as AppProfileEditRouteImport } from './routes/app/profile_.edit'
 import { Route as AppProfileChangePasswordRouteImport } from './routes/app/profile_.change-password'
 import { Route as AppProfileChangeEmailRouteImport } from './routes/app/profile_.change-email'
+import { Route as AppPayoutsPayoutIdRouteImport } from './routes/app/payouts/$payoutId'
 import { Route as AppMessagesIdRouteImport } from './routes/app/messages/$id'
 import { Route as AppLocationsNewRouteImport } from './routes/app/locations/new'
 import { Route as AppLocationsIdRouteImport } from './routes/app/locations/$id'
@@ -310,6 +312,11 @@ const AppStudentsIndexRoute = AppStudentsIndexRouteImport.update({
   path: '/students/',
   getParentRoute: () => AppRoute,
 } as any)
+const AppPayoutsIndexRoute = AppPayoutsIndexRouteImport.update({
+  id: '/payouts/',
+  path: '/payouts/',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppMessagesIndexRoute = AppMessagesIndexRouteImport.update({
   id: '/messages/',
   path: '/messages/',
@@ -482,6 +489,11 @@ const AppProfileChangeEmailRoute = AppProfileChangeEmailRouteImport.update({
   path: '/profile/change-email',
   getParentRoute: () => AppRoute,
 } as any)
+const AppPayoutsPayoutIdRoute = AppPayoutsPayoutIdRouteImport.update({
+  id: '/payouts/$payoutId',
+  path: '/payouts/$payoutId',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppMessagesIdRoute = AppMessagesIdRouteImport.update({
   id: '/messages/$id',
   path: '/messages/$id',
@@ -634,6 +646,7 @@ export interface FileRoutesByFullPath {
   '/app/locations/$id': typeof AppLocationsIdRoute
   '/app/locations/new': typeof AppLocationsNewRoute
   '/app/messages/$id': typeof AppMessagesIdRoute
+  '/app/payouts/$payoutId': typeof AppPayoutsPayoutIdRoute
   '/app/profile/change-email': typeof AppProfileChangeEmailRoute
   '/app/profile/change-password': typeof AppProfileChangePasswordRoute
   '/app/profile/edit': typeof AppProfileEditRoute
@@ -668,6 +681,7 @@ export interface FileRoutesByFullPath {
   '/app/leads/': typeof AppLeadsIndexRoute
   '/app/locations/': typeof AppLocationsIndexRoute
   '/app/messages/': typeof AppMessagesIndexRoute
+  '/app/payouts/': typeof AppPayoutsIndexRoute
   '/app/students/': typeof AppStudentsIndexRoute
   '/app/subscriptions/': typeof AppSubscriptionsIndexRoute
   '/app/trainers/': typeof AppTrainersIndexRoute
@@ -728,6 +742,7 @@ export interface FileRoutesByTo {
   '/app/locations/$id': typeof AppLocationsIdRoute
   '/app/locations/new': typeof AppLocationsNewRoute
   '/app/messages/$id': typeof AppMessagesIdRoute
+  '/app/payouts/$payoutId': typeof AppPayoutsPayoutIdRoute
   '/app/profile/change-email': typeof AppProfileChangeEmailRoute
   '/app/profile/change-password': typeof AppProfileChangePasswordRoute
   '/app/profile/edit': typeof AppProfileEditRoute
@@ -762,6 +777,7 @@ export interface FileRoutesByTo {
   '/app/leads': typeof AppLeadsIndexRoute
   '/app/locations': typeof AppLocationsIndexRoute
   '/app/messages': typeof AppMessagesIndexRoute
+  '/app/payouts': typeof AppPayoutsIndexRoute
   '/app/students': typeof AppStudentsIndexRoute
   '/app/subscriptions': typeof AppSubscriptionsIndexRoute
   '/app/trainers': typeof AppTrainersIndexRoute
@@ -826,6 +842,7 @@ export interface FileRoutesById {
   '/app/locations/$id': typeof AppLocationsIdRoute
   '/app/locations/new': typeof AppLocationsNewRoute
   '/app/messages/$id': typeof AppMessagesIdRoute
+  '/app/payouts/$payoutId': typeof AppPayoutsPayoutIdRoute
   '/app/profile_/change-email': typeof AppProfileChangeEmailRoute
   '/app/profile_/change-password': typeof AppProfileChangePasswordRoute
   '/app/profile_/edit': typeof AppProfileEditRoute
@@ -860,6 +877,7 @@ export interface FileRoutesById {
   '/app/leads/': typeof AppLeadsIndexRoute
   '/app/locations/': typeof AppLocationsIndexRoute
   '/app/messages/': typeof AppMessagesIndexRoute
+  '/app/payouts/': typeof AppPayoutsIndexRoute
   '/app/students/': typeof AppStudentsIndexRoute
   '/app/subscriptions/': typeof AppSubscriptionsIndexRoute
   '/app/trainers/': typeof AppTrainersIndexRoute
@@ -925,6 +943,7 @@ export interface FileRouteTypes {
     | '/app/locations/$id'
     | '/app/locations/new'
     | '/app/messages/$id'
+    | '/app/payouts/$payoutId'
     | '/app/profile/change-email'
     | '/app/profile/change-password'
     | '/app/profile/edit'
@@ -959,6 +978,7 @@ export interface FileRouteTypes {
     | '/app/leads/'
     | '/app/locations/'
     | '/app/messages/'
+    | '/app/payouts/'
     | '/app/students/'
     | '/app/subscriptions/'
     | '/app/trainers/'
@@ -1019,6 +1039,7 @@ export interface FileRouteTypes {
     | '/app/locations/$id'
     | '/app/locations/new'
     | '/app/messages/$id'
+    | '/app/payouts/$payoutId'
     | '/app/profile/change-email'
     | '/app/profile/change-password'
     | '/app/profile/edit'
@@ -1053,6 +1074,7 @@ export interface FileRouteTypes {
     | '/app/leads'
     | '/app/locations'
     | '/app/messages'
+    | '/app/payouts'
     | '/app/students'
     | '/app/subscriptions'
     | '/app/trainers'
@@ -1116,6 +1138,7 @@ export interface FileRouteTypes {
     | '/app/locations/$id'
     | '/app/locations/new'
     | '/app/messages/$id'
+    | '/app/payouts/$payoutId'
     | '/app/profile_/change-email'
     | '/app/profile_/change-password'
     | '/app/profile_/edit'
@@ -1150,6 +1173,7 @@ export interface FileRouteTypes {
     | '/app/leads/'
     | '/app/locations/'
     | '/app/messages/'
+    | '/app/payouts/'
     | '/app/students/'
     | '/app/subscriptions/'
     | '/app/trainers/'
@@ -1468,6 +1492,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppStudentsIndexRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/payouts/': {
+      id: '/app/payouts/'
+      path: '/payouts'
+      fullPath: '/app/payouts/'
+      preLoaderRoute: typeof AppPayoutsIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/messages/': {
       id: '/app/messages/'
       path: '/messages'
@@ -1706,6 +1737,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppProfileChangeEmailRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/payouts/$payoutId': {
+      id: '/app/payouts/$payoutId'
+      path: '/payouts/$payoutId'
+      fullPath: '/app/payouts/$payoutId'
+      preLoaderRoute: typeof AppPayoutsPayoutIdRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/messages/$id': {
       id: '/app/messages/$id'
       path: '/messages/$id'
@@ -1886,6 +1924,7 @@ interface AppRouteChildren {
   AppLocationsIdRoute: typeof AppLocationsIdRoute
   AppLocationsNewRoute: typeof AppLocationsNewRoute
   AppMessagesIdRoute: typeof AppMessagesIdRoute
+  AppPayoutsPayoutIdRoute: typeof AppPayoutsPayoutIdRoute
   AppProfileChangeEmailRoute: typeof AppProfileChangeEmailRoute
   AppProfileChangePasswordRoute: typeof AppProfileChangePasswordRoute
   AppProfileEditRoute: typeof AppProfileEditRoute
@@ -1911,6 +1950,7 @@ interface AppRouteChildren {
   AppLeadsIndexRoute: typeof AppLeadsIndexRoute
   AppLocationsIndexRoute: typeof AppLocationsIndexRoute
   AppMessagesIndexRoute: typeof AppMessagesIndexRoute
+  AppPayoutsIndexRoute: typeof AppPayoutsIndexRoute
   AppStudentsIndexRoute: typeof AppStudentsIndexRoute
   AppSubscriptionsIndexRoute: typeof AppSubscriptionsIndexRoute
   AppTrainersIndexRoute: typeof AppTrainersIndexRoute
@@ -1941,6 +1981,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppLocationsIdRoute: AppLocationsIdRoute,
   AppLocationsNewRoute: AppLocationsNewRoute,
   AppMessagesIdRoute: AppMessagesIdRoute,
+  AppPayoutsPayoutIdRoute: AppPayoutsPayoutIdRoute,
   AppProfileChangeEmailRoute: AppProfileChangeEmailRoute,
   AppProfileChangePasswordRoute: AppProfileChangePasswordRoute,
   AppProfileEditRoute: AppProfileEditRoute,
@@ -1966,6 +2007,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppLeadsIndexRoute: AppLeadsIndexRoute,
   AppLocationsIndexRoute: AppLocationsIndexRoute,
   AppMessagesIndexRoute: AppMessagesIndexRoute,
+  AppPayoutsIndexRoute: AppPayoutsIndexRoute,
   AppStudentsIndexRoute: AppStudentsIndexRoute,
   AppSubscriptionsIndexRoute: AppSubscriptionsIndexRoute,
   AppTrainersIndexRoute: AppTrainersIndexRoute,

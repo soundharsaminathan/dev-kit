@@ -319,8 +319,8 @@ describe("BatchesService update", () => {
     });
     expect(prisma.batchTrainer.createMany).toHaveBeenCalledWith({
       data: [
-        { batchId: "batch-1", trainerId: "trainer-1" },
-        { batchId: "batch-1", trainerId: "trainer-2" },
+        { batchId: "batch-1", trainerId: "trainer-1", sortOrder: 0 },
+        { batchId: "batch-1", trainerId: "trainer-2", sortOrder: 1 },
       ],
     });
     expect(prisma.session.createMany).toHaveBeenCalled();

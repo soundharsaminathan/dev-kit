@@ -213,8 +213,8 @@ describe("NotificationCommandsService.create", () => {
       .mockResolvedValueOnce(existing);
     prisma.$transaction
       .mockRejectedValueOnce({ code: "P2002" })
-      .mockImplementationOnce(
-        async (fn: (tx: typeof prisma) => unknown) => fn(prisma),
+      .mockImplementationOnce(async (fn: (tx: typeof prisma) => unknown) =>
+        fn(prisma),
       );
     prisma.notification.update.mockResolvedValue(refreshed);
     outbox.append.mockResolvedValue(undefined);

@@ -33,6 +33,7 @@ export type SessionForCalendar = {
   endsAt: Date;
   status: string;
   batchId: string;
+  trainerId: string | null;
   batch: {
     name: string;
     studioId: string;
@@ -178,7 +179,9 @@ export function toSessionEvent(session: SessionForCalendar): CalendarEventDto {
     batchId: session.batchId,
     branchId: session.batch.branchId,
     branchName: session.batch.branch?.name,
-    trainerIds: session.batch.trainers.map((t) => t.trainerId),
+    trainerIds: session.trainerId
+      ? [session.trainerId]
+      : session.batch.trainers.map((t) => t.trainerId),
     sessionId: session.id,
   };
 }

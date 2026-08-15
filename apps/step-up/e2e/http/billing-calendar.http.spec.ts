@@ -111,7 +111,10 @@ test.describe("billing calendar HTTP @http", () => {
 
       const roster = await expectOk<
         Array<{ studentId: string; monthlyUnpaid?: boolean }>
-      >("TRAINER", `/attendance/session/${markableSessionId(enrolled.sessions)}/roster`);
+      >(
+        "TRAINER",
+        `/attendance/session/${markableSessionId(enrolled.sessions)}/roster`,
+      );
       expect(
         roster.find((row) => row.studentId === enrolled.student.id)
           ?.monthlyUnpaid,

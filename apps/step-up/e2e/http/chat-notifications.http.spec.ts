@@ -73,8 +73,7 @@ async function waitFor<T>(
     }
     await sleep(250 * (attempt + 1));
   }
-  const detail =
-    lastError instanceof Error ? `: ${lastError.message}` : "";
+  const detail = lastError instanceof Error ? `: ${lastError.message}` : "";
   throw new Error(`${label} did not appear${detail}`);
 }
 
@@ -213,7 +212,9 @@ test.describe("batch chat notifications HTTP @http", () => {
           message.event.startsAt === updated.startsAt,
         "cancelled session chat card",
       );
-      expect(cancelledCard.event?.description).toMatch(/cancelled this session/i);
+      expect(cancelledCard.event?.description).toMatch(
+        /cancelled this session/i,
+      );
 
       const cancelledNote = await waitForStudentNotification(
         student.id,

@@ -18,6 +18,7 @@ describe("app nav role filtering", () => {
     expect(labels).toContain("Retention");
     expect(labels).not.toContain("Payments");
     expect(labels).toContain("Bookings");
+    expect(labels).toContain("Payouts");
     expect(labels).not.toContain("Trial caller");
     expect(labels).not.toContain("Students");
     expect(labels).not.toContain("Subscriptions");
@@ -35,6 +36,7 @@ describe("app nav role filtering", () => {
       expect(labels).toContain("Invoices");
       expect(labels).toContain("Payments");
       expect(labels).toContain("Certificates");
+      expect(labels).toContain("Payouts");
     }
   });
 
@@ -48,6 +50,7 @@ describe("app nav role filtering", () => {
       "/app/profile",
     ]);
     expect(more).toContain("/app/bookings");
+    expect(more).toContain("/app/payouts");
     expect(more).not.toContain("/app/leads");
     expect(more).not.toContain("/app/settings");
     expect(more).not.toContain("/app/students");

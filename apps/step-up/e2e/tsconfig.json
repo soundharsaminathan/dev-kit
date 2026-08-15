@@ -1,4 +1,8 @@
 {
   "extends": "../tsconfig.e2e.json",
-  "include": ["./**/*.ts", "../playwright.config.ts", "../playwright.smoke.config.ts"]
+  "include": [
+    "./**/*.ts",
+    "../playwright.config.ts",
+    "../playwright.smoke.config.ts"
+  ]
 }

@@ -1,11 +1,11 @@
 import {
+  apiBaseUrl,
   apiRequest,
   authFile,
   bearerFor,
   expect,
   SMOKE,
   SmokeDataCleanup,
-  apiBaseUrl,
   test,
   waitForApiResponse,
   waitForAppReady,

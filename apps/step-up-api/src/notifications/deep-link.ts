@@ -68,6 +68,8 @@ export function resolveDeepLink(input: {
       const conversationId = stringMeta("conversationId");
       return conversationId ? `/me/messages/${conversationId}` : "/me/messages";
     }
+    case "TRAINER_PAYOUT":
+      return "/app/payouts";
     default:
       return null;
   }
@@ -82,6 +84,7 @@ export function isPriorityToastType(type: string) {
     type === "MISSED_SESSION" ||
     type === "SESSION_ADDED" ||
     type === "SESSION_CHANGED" ||
-    type === "SESSION_CANCELLED"
+    type === "SESSION_CANCELLED" ||
+    type === "TRAINER_PAYOUT"
   );
 }

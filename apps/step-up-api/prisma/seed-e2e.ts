@@ -14,6 +14,7 @@ import {
   SessionStatus,
   SessionType,
   SubscriptionKind,
+  TrainerPayoutStatus,
   UserRole,
 } from "@prisma/client";
 import { UserCryptoService } from "../src/users/user-crypto.service";
@@ -40,6 +41,11 @@ export const E2E = {
   trialBatchId: "e2e-batch-trial-1",
   sessionAttendanceId: "e2e-session-kids-mon",
   sessionAttendancePastId: "e2e-session-kids-past-1",
+  sessionIncompletePastId: "e2e-session-kids-incomplete-past-1",
+  payoutTrainer1Id: "e2e-payout-trainer-1",
+  payoutTrainer2Id: "e2e-payout-trainer-2",
+  payoutSessionTrainer1Id: "e2e-session-payout-trainer-1",
+  payoutSessionTrainer2Id: "e2e-session-payout-trainer-2",
   membershipStudentId: "e2e-membership-student-1",
   membershipStudentDueId: "e2e-membership-student-due-1",
   membershipUnenrolledId: "e2e-membership-unenrolled-1",
@@ -176,7 +182,10 @@ async function upsertUser(user: SeedUser, studioId: string | null) {
       : {};
 
   await prisma.user.upsert({
-    where: { firebaseUid: user.firebaseUid },
+    // Key on id (the dev/auth bypass resolves users by id). firebaseUid is only
+    // set on create so a pre-existing account (e.g. a real Firebase user that
+    // already owns this id) is updated without losing its login identity.
+    where: { id: user.id },
     update: {
       ...sealed,
       styles: user.styles,
@@ -560,8 +569,14 @@ async function main() {
         where: {
           batchId_trainerId: { batchId: batch.id, trainerId },
         },
-        update: {},
-        create: { batchId: batch.id, trainerId },
+        update: {
+          sortOrder: trainerIds.indexOf(trainerId),
+        },
+        create: {
+          batchId: batch.id,
+          trainerId,
+          sortOrder: trainerIds.indexOf(trainerId),
+        },
       });
     }
   }
@@ -737,7 +752,6 @@ async function main() {
       studioId,
       membershipId: E2E.membershipStudentId,
       paymentHoldExpiresAt: null,
-      purchaseMeta: null,
     },
     create: {
       id: E2E.invoicePaidMembershipId,
@@ -803,7 +817,6 @@ async function main() {
       studioId,
       membershipId: E2E.membershipStudentDueId,
       paymentHoldExpiresAt: null,
-      purchaseMeta: null,
     },
     create: {
       id: E2E.invoiceRenewalPendingId,
@@ -817,6 +830,12 @@ async function main() {
   });
 
   const weekStart = mondayOfWeek();
+  const prevMonthStart = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1),
+  );
+  const prevMonthEnd = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 0, 23, 59, 59, 999),
+  );
   const mondayAttendanceStart = utcAt(weekStart, 0, 17);
   const attendanceStartsAt =
     mondayAttendanceStart.getTime() > now.getTime()
@@ -832,6 +851,7 @@ async function main() {
     endsAt: Date;
     status: SessionStatus;
     type?: SessionType;
+    trainerId?: string | null;
   }> = [
     {
       id: E2E.sessionAttendancePastId,
@@ -839,6 +859,33 @@ async function main() {
       startsAt: utcAt(weekStart, -7, 17),
       endsAt: utcAt(weekStart, -7, 18),
       status: SessionStatus.COMPLETED,
+      trainerId: u.TRAINER.id,
+    },
+    {
+      id: E2E.sessionIncompletePastId,
+      batchId: E2E.kidsBatchId,
+      startsAt: utcAt(weekStart, -7, 12),
+      endsAt: utcAt(weekStart, -7, 13),
+      status: SessionStatus.SCHEDULED,
+      type: SessionType.REGULAR,
+    },
+    {
+      id: E2E.payoutSessionTrainer1Id,
+      batchId: E2E.trialBatchId,
+      startsAt: utcAt(prevMonthStart, 4, 10),
+      endsAt: utcAt(prevMonthStart, 4, 11),
+      status: SessionStatus.COMPLETED,
+      type: SessionType.REGULAR,
+      trainerId: u.TRAINER.id,
+    },
+    {
+      id: E2E.payoutSessionTrainer2Id,
+      batchId: E2E.trialBatchId,
+      startsAt: utcAt(prevMonthStart, 6, 10),
+      endsAt: utcAt(prevMonthStart, 6, 11),
+      status: SessionStatus.COMPLETED,
+      type: SessionType.REGULAR,
+      trainerId: u.TRAINER_2.id,
     },
     {
       id: "e2e-session-beginner-past",
@@ -906,6 +953,7 @@ async function main() {
         status: session.status,
         batchId: session.batchId,
         type: session.type ?? SessionType.REGULAR,
+        trainerId: session.trainerId ?? null,
       },
       create: {
         id: session.id,
@@ -914,6 +962,64 @@ async function main() {
         endsAt: session.endsAt,
         status: session.status,
         type: session.type ?? SessionType.REGULAR,
+        trainerId: session.trainerId ?? null,
+      },
+    });
+  }
+
+  const payoutSeeds = [
+    {
+      id: E2E.payoutTrainer1Id,
+      trainerId: u.TRAINER.id,
+      sessionId: E2E.payoutSessionTrainer1Id,
+      sessionCount: 1,
+    },
+    {
+      id: E2E.payoutTrainer2Id,
+      trainerId: u.TRAINER_2.id,
+      sessionId: E2E.payoutSessionTrainer2Id,
+      sessionCount: 1,
+    },
+  ] as const;
+
+  for (const payout of payoutSeeds) {
+    await prisma.trainerPayout.upsert({
+      where: { id: payout.id },
+      update: {
+        trainerId: payout.trainerId,
+        periodStart: prevMonthStart,
+        periodEnd: prevMonthEnd,
+        sessionCount: payout.sessionCount,
+        amount: null,
+        notes: null,
+        status: TrainerPayoutStatus.DRAFT,
+        sentAt: null,
+        paidAt: null,
+      },
+      create: {
+        id: payout.id,
+        studioId,
+        trainerId: payout.trainerId,
+        periodStart: prevMonthStart,
+        periodEnd: prevMonthEnd,
+        sessionCount: payout.sessionCount,
+        amount: null,
+        notes: null,
+        status: TrainerPayoutStatus.DRAFT,
+      },
+    });
+
+    await prisma.trainerPayoutSession.upsert({
+      where: {
+        payoutId_sessionId: {
+          payoutId: payout.id,
+          sessionId: payout.sessionId,
+        },
+      },
+      update: {},
+      create: {
+        payoutId: payout.id,
+        sessionId: payout.sessionId,
       },
     });
   }

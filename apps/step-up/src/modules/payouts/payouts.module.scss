@@ -1,0 +1,124 @@
+.payoutCard {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  width: 100%;
+  text-align: left;
+  padding: 1rem 1.25rem;
+  border-radius: var(--radius-2xl, 1rem);
+  background: var(--color-surface, #fff);
+  border: 1px solid var(--color-border, rgba(0, 0, 0, 0.08));
+  text-decoration: none;
+  color: inherit;
+}
+
+.payoutMeta {
+  color: var(--color-muted, #6b7280);
+  font-size: 0.875rem;
+  line-height: 1.4;
+}
+
+.payoutFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.payoutAmount {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.statusChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  border-radius: 999px;
+  padding: 0.25rem 0.625rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: color-mix(in srgb, var(--color-fg, #111) 8%, transparent);
+  color: var(--color-fg, #111);
+}
+
+.statusChip[data-tone="success"] {
+  background: color-mix(in srgb, var(--color-success, #34c759) 14%, transparent);
+  color: color-mix(in srgb, var(--color-success, #34c759) 72%, var(--color-fg));
+}
+
+.statusChip[data-tone="warning"] {
+  background: color-mix(in srgb, var(--color-warning, #ff9f0a) 14%, transparent);
+  color: color-mix(in srgb, var(--color-warning, #ff9f0a) 72%, var(--color-fg));
+}
+
+.statusChip[data-tone="danger"] {
+  background: color-mix(in srgb, var(--color-danger, #ff3b30) 14%, transparent);
+  color: color-mix(in srgb, var(--color-danger, #ff3b30) 72%, var(--color-fg));
+}
+
+.detailStack {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.sessionRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.75rem 0;
+}
+
+.sessionBody {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  min-width: 0;
+}
+
+.sessionTitle {
+  font-weight: 600;
+}
+
+.sessionMeta {
+  color: var(--color-muted, #6b7280);
+  font-size: 0.875rem;
+  line-height: 1.4;
+}
+
+.statGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.statTile {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.875rem 1rem;
+  border-radius: var(--radius-xl, 0.75rem);
+  background: var(--color-surface, #fff);
+  border: 1px solid var(--color-border, rgba(0, 0, 0, 0.08));
+}
+
+.statLabel {
+  color: var(--color-muted, #6b7280);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.statValue {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.field {
+  min-width: 0;
+}

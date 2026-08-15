@@ -61,6 +61,15 @@ type StudioMember = {
 };
 type Studio = { id: string; name: string };
 
+type IncompletePastSession = {
+  id: string;
+  batchId: string;
+  batchName: string;
+  startsAt: string;
+  endsAt: string;
+  firstTrainer: { id: string; name: string } | null;
+};
+
 type StudentFunnelPeriod =
   | "lifetime"
   | "this_month"
@@ -255,6 +264,15 @@ function AppDashboardPage() {
     queryFn: () => api.get<StudioBooking[]>(`/bookings/studio/${studioId}`),
     staleTime: 30_000,
   });
+  const incompletePast = useQuery({
+    queryKey: ["sessions", "incomplete-past", studioId],
+    queryFn: () =>
+      api.get<IncompletePastSession[]>(
+        `/sessions/studio/${studioId}/incomplete-past`,
+      ),
+    enabled: Boolean(studioId) && !isTrainer,
+    staleTime: 30_000,
+  });
 
   const updateStatus = useMutation({
     mutationFn: (values: {
@@ -378,6 +396,7 @@ function AppDashboardPage() {
       members.refetch(),
       bookings.refetch(),
       ...(!isTrainer ? [studentFunnel.refetch()] : []),
+      ...(!isTrainer ? [incompletePast.refetch()] : []),
       ...(isTrainer ? [studio.refetch(), branches.refetch()] : []),
     ]);
   }
@@ -556,13 +575,16 @@ function AppDashboardPage() {
           <div className={staff.section}>
             <p className={staff.sectionTitle}>Needs attention</p>
             <div className={staff.attentionBody}>
-              {bookings.isLoading ? (
+              {bookings.isLoading || incompletePast.isLoading ? (
                 <SkeletonBlock height="5.5rem" radius="var(--radius-2xl)" />
               ) : null}
-              {!bookings.isLoading && pending.length === 0 ? (
+              {!bookings.isLoading &&
+              !incompletePast.isLoading &&
+              pending.length === 0 &&
+              (incompletePast.data?.length ?? 0) === 0 ? (
                 <EmptyState
                   title="All clear"
-                  description="No pending bookings to approve."
+                  description="No pending bookings or incomplete sessions."
                 />
               ) : null}
               {pending.length > 0 ? (
@@ -598,6 +620,31 @@ function AppDashboardPage() {
                     <Link to="/app/bookings">Open bookings</Link>
                   </TouchButton>
                 </>
+              ) : null}
+              {!incompletePast.isLoading &&
+              (incompletePast.data?.length ?? 0) > 0 ? (
+                <Link
+                  to="/app/sessions/$id/attendance"
+                  params={{ id: incompletePast.data?.[0]?.id ?? "" }}
+                  className={staff.metricCard}
+                  data-testid="overdue-sessions-summary"
+                >
+                  <span className={staff.metricLabel}>
+                    <span className={staff.metricIcon} aria-hidden>
+                      <Icon name="alert-circle" />
+                    </span>
+                    Incomplete sessions
+                  </span>
+                  <AnimatedMetric
+                    className={staff.metricValue}
+                    value={incompletePast.data?.length ?? 0}
+                  />
+                  <span className={staff.metricHint}>
+                    {(incompletePast.data?.length ?? 0) === 1
+                      ? `${incompletePast.data?.[0]?.batchName} needs completion`
+                      : "Past sessions still to complete"}
+                  </span>
+                </Link>
               ) : null}
             </div>
           </div>

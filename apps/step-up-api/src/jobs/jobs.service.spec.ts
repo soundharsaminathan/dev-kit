@@ -15,6 +15,17 @@ describe("JobsService.runDaily", () => {
     studioSettings: {
       findMany: vi.fn(),
     },
+    session: {
+      findMany: vi.fn(),
+    },
+    trainerPayout: {
+      findUnique: vi.fn(),
+      create: vi.fn(),
+    },
+    trainerPayoutSession: {
+      createMany: vi.fn(),
+    },
+    $transaction: vi.fn(),
   };
 
   const notifications = {
@@ -290,5 +301,104 @@ describe("JobsService.runDaily", () => {
     );
     expect(result.dueMemberships).toBe(1);
     expect(result.renewalInvoicesCreated).toBe(2);
+  });
+
+  it("generates DRAFT payouts for completed sessions on the 1st of the month", async () => {
+    const now = new Date("2026-08-01T06:00:00.000Z");
+    vi.useFakeTimers();
+    vi.setSystemTime(now);
+
+    prisma.membership.findMany.mockResolvedValue([]);
+    prisma.membership.updateMany.mockResolvedValue({ count: 0 });
+    prisma.invoice.updateMany.mockResolvedValue({ count: 0 });
+    prisma.invoice.findMany.mockResolvedValue([]);
+    prisma.session.findMany.mockResolvedValue([
+      {
+        id: "session-1",
+        trainerId: "trainer-1",
+        batch: { studioId: "studio-1" },
+      },
+      {
+        id: "session-2",
+        trainerId: "trainer-1",
+        batch: { studioId: "studio-1" },
+      },
+      {
+        id: "session-3",
+        trainerId: "trainer-2",
+        batch: { studioId: "studio-1" },
+      },
+    ]);
+    prisma.trainerPayout.findUnique.mockResolvedValue(null);
+    prisma.$transaction.mockImplementation(async (fn: unknown) =>
+      fn({
+        trainerPayout: {
+          create: vi.fn().mockResolvedValue({ id: "payout-1" }),
+        },
+        trainerPayoutSession: {
+          createMany: vi.fn(),
+        },
+      }),
+    );
+
+    const result = await service.runDaily();
+
+    expect(prisma.session.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          status: "COMPLETED",
+          trainerId: { not: null },
+          endsAt: {
+            gte: new Date("2026-07-01T00:00:00.000Z"),
+            lt: new Date("2026-08-01T00:00:00.000Z"),
+          },
+        }),
+      }),
+    );
+    expect(prisma.trainerPayout.findUnique).toHaveBeenCalledTimes(2);
+    expect(result.payoutsCreated).toBe(2);
+  });
+
+  it("skips payout generation when it is not the 1st of the month", async () => {
+    const now = new Date("2026-07-20T12:00:00.000Z");
+    vi.useFakeTimers();
+    vi.setSystemTime(now);
+
+    prisma.membership.findMany.mockResolvedValue([]);
+    prisma.membership.updateMany.mockResolvedValue({ count: 0 });
+    prisma.invoice.updateMany.mockResolvedValue({ count: 0 });
+    prisma.invoice.findMany.mockResolvedValue([]);
+
+    const result = await service.runDaily();
+
+    expect(result.payoutsSkipped).toBe(true);
+    expect(result.payoutsCreated).toBe(0);
+    expect(prisma.session.findMany).not.toHaveBeenCalled();
+  });
+
+  it("does not create a duplicate payout for an existing studio+trainer+period", async () => {
+    const now = new Date("2026-08-01T06:00:00.000Z");
+    vi.useFakeTimers();
+    vi.setSystemTime(now);
+
+    prisma.membership.findMany.mockResolvedValue([]);
+    prisma.membership.updateMany.mockResolvedValue({ count: 0 });
+    prisma.invoice.updateMany.mockResolvedValue({ count: 0 });
+    prisma.invoice.findMany.mockResolvedValue([]);
+    prisma.session.findMany.mockResolvedValue([
+      {
+        id: "session-1",
+        trainerId: "trainer-1",
+        batch: { studioId: "studio-1" },
+      },
+    ]);
+    prisma.trainerPayout.findUnique.mockResolvedValue({
+      id: "payout-existing",
+    });
+
+    const result = await service.runDaily();
+
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+    expect(result.payoutsCreated).toBe(0);
   });
 });

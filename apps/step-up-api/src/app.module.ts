@@ -19,6 +19,7 @@ import { JourneyModule } from "./journey/journey.module";
 import { MediaModule } from "./media/media.module";
 import { MembershipsModule } from "./memberships/memberships.module";
 import { NotificationsModule } from "./notifications/notifications.module";
+import { PayoutsModule } from "./payouts/payouts.module";
 import { PrismaModule } from "./prisma/prisma.module";
 import { QueueModule } from "./queues/queue.module";
 import { RedisModule } from "./redis/redis.module";
@@ -57,6 +58,7 @@ import { UsersModule } from "./users/users.module";
     CalendarModule,
     BillingModule,
     ExpensesModule,
+    PayoutsModule,
     NotificationsModule,
     RetentionModule,
     MediaModule,

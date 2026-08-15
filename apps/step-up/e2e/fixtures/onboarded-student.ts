@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { apiBaseUrl, AUTH_STORAGE_KEY, SEED } from "./seed";
+import { AUTH_STORAGE_KEY, apiBaseUrl, SEED } from "./seed";
 import type { TestDataCleanup } from "./test-cleanup";
 
 export type OnboardedStudent = {

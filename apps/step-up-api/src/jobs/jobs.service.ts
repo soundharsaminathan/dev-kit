@@ -5,6 +5,8 @@ import {
   InvoiceStatus,
   MembershipStatus,
   NotificationType,
+  SessionStatus,
+  TrainerPayoutStatus,
 } from "@prisma/client";
 import type { Queue } from "bullmq";
 import { MembershipsService } from "../memberships/memberships.service";
@@ -258,6 +260,8 @@ export class JobsService {
       });
     }
 
+    const payouts = await this.generateTrainerPayouts(now);
+
     return {
       dueMemberships: rolledToDue,
       renewalInvoicesCreated,
@@ -266,7 +270,106 @@ export class JobsService {
       overdueInvoices: overdueInvoices.count,
       expiringNotifications: expiringSoon.length,
       overdueNotifications: overdueStudents.length,
+      payoutsSkipped: payouts.skipped,
+      payoutsCreated: payouts.created,
       ranAt: now.toISOString(),
     };
+  }
+
+  private async generateTrainerPayouts(now: Date) {
+    if (now.getUTCDate() !== 1) {
+      return { skipped: true, created: 0 };
+    }
+
+    const periodStart = new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1),
+    );
+    const periodEnd = new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 0, 23, 59, 59, 999),
+    );
+    const nextPeriodStart = new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1),
+    );
+
+    const sessions = await this.prisma.session.findMany({
+      where: {
+        status: SessionStatus.COMPLETED,
+        trainerId: { not: null },
+        endsAt: { gte: periodStart, lt: nextPeriodStart },
+      },
+      select: {
+        id: true,
+        trainerId: true,
+        batch: { select: { studioId: true } },
+      },
+    });
+
+    const groups = new Map<
+      string,
+      { studioId: string; trainerId: string; sessionIds: string[] }
+    >();
+    for (const session of sessions) {
+      if (!session.trainerId) {
+        continue;
+      }
+      const key = `${session.batch.studioId}:${session.trainerId}`;
+      const group = groups.get(key) ?? {
+        studioId: session.batch.studioId,
+        trainerId: session.trainerId,
+        sessionIds: [] as string[],
+      };
+      group.sessionIds.push(session.id);
+      groups.set(key, group);
+    }
+
+    let created = 0;
+    for (const group of groups.values()) {
+      const existing = await this.prisma.trainerPayout.findUnique({
+        where: {
+          studioId_trainerId_periodStart: {
+            studioId: group.studioId,
+            trainerId: group.trainerId,
+            periodStart,
+          },
+        },
+        select: { id: true },
+      });
+      if (existing) {
+        continue;
+      }
+      try {
+        await this.prisma.$transaction(async (tx) => {
+          const payout = await tx.trainerPayout.create({
+            data: {
+              studioId: group.studioId,
+              trainerId: group.trainerId,
+              periodStart,
+              periodEnd,
+              sessionCount: group.sessionIds.length,
+              status: TrainerPayoutStatus.DRAFT,
+            },
+          });
+          await tx.trainerPayoutSession.createMany({
+            data: group.sessionIds.map((sessionId) => ({
+              payoutId: payout.id,
+              sessionId,
+            })),
+            skipDuplicates: true,
+          });
+        });
+        created += 1;
+      } catch (error) {
+        if (
+          typeof error === "object" &&
+          error &&
+          "code" in error &&
+          (error as { code: string }).code === "P2002"
+        ) {
+          continue;
+        }
+        throw error;
+      }
+    }
+    return { skipped: false, created };
   }
 }

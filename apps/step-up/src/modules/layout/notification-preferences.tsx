@@ -40,8 +40,7 @@ const PREF_DESCRIPTIONS: Record<string, string> = {
   PAYMENT_OVERDUE:
     "When an unpaid invoice is past due and bookings may be frozen.",
   PAYMENT_RECEIVED: "Confirmation when a payment on your invoice is recorded.",
-  RENEWED:
-    "When your membership is activated again after a manual renewal.",
+  RENEWED: "When your membership is activated again after a manual renewal.",
   NOT_RENEWED:
     "When your membership expires because it was not renewed in time.",
   NEW_FOLLOW: "When someone starts following your profile.",

@@ -315,9 +315,11 @@ function ProfileControl({ variant }: { variant: ShellVariant }) {
               />
             ) : null}
             <AvatarFallback>
-              {user
-                ? avatarLetter(user.name, user.email)
-                : <Icon name="user" />}
+              {user ? (
+                avatarLetter(user.name, user.email)
+              ) : (
+                <Icon name="user" />
+              )}
             </AvatarFallback>
           </Avatar>
           <span className={styles.profileName}>

@@ -167,6 +167,14 @@ enum NotificationType {
   NOT_RENEWED
   NEW_FOLLOW
   CHAT_MESSAGE
+  TRAINER_PAYOUT
+}
+
+enum TrainerPayoutStatus {
+  DRAFT
+  SENT
+  PAID
+  CANCELLED
 }
 
 enum NotificationChannel {
@@ -355,6 +363,8 @@ model User {
   updatedExpenseCategories  ExpenseCategory[]    @relation("ExpenseCategoryUpdater")
   leadRemarks               LeadRemark[]         @relation("LeadRemarks")
   authoredLeadRemarks       LeadRemark[]         @relation("LeadRemarkAuthor")
+  taughtSessions            Session[]            @relation("SessionTrainer")
+  trainerPayouts            TrainerPayout[]      @relation("TrainerPayoutTrainer")
 
   @@index([studioId, emailHash])
   @@index([preferredBranchId])
@@ -430,6 +440,7 @@ model Studio {
   batchSummaries       BatchSummary[]
   revenueSummaries     StudioRevenueSummary[]
   leadRemarks          LeadRemark[]
+  trainerPayouts       TrainerPayout[]
 }
 
 model StudioRevenueSummary {
@@ -665,11 +676,13 @@ model BatchRating {
 model BatchTrainer {
   batchId   String
   trainerId String
+  sortOrder Int      @default(0)
 
   batch   Batch @relation(fields: [batchId], references: [id], onDelete: Cascade)
   trainer User  @relation(fields: [trainerId], references: [id], onDelete: Cascade)
 
   @@id([batchId, trainerId])
+  @@index([batchId, sortOrder])
 }
 
 model BatchEnrollment {
@@ -864,19 +877,59 @@ model RecurringExpense {
 }
 
 model Session {
-  id       String        @id @default(cuid())
-  batchId  String
-  startsAt DateTime
-  endsAt   DateTime
-  status   SessionStatus @default(SCHEDULED)
-  type     SessionType   @default(REGULAR)
+  id        String        @id @default(cuid())
+  batchId   String
+  startsAt  DateTime
+  endsAt    DateTime
+  status    SessionStatus @default(SCHEDULED)
+  type      SessionType   @default(REGULAR)
+  trainerId String?
 
-  batch      Batch        @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  batch      Batch                 @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  trainer    User?                 @relation("SessionTrainer", fields: [trainerId], references: [id], onDelete: Restrict)
   attendance Attendance[]
   bookings   Booking[]
+  payoutLinks TrainerPayoutSession[]
 
   @@index([type, startsAt])
   @@index([batchId, startsAt])
+  @@index([status, trainerId])
+}
+
+model TrainerPayout {
+  id           String             @id @default(cuid())
+  studioId     String
+  trainerId    String
+  periodStart  DateTime
+  periodEnd    DateTime
+  sessionCount Int
+  amount       Decimal?           @db.Decimal(10, 2)
+  notes        String?
+  status       TrainerPayoutStatus @default(DRAFT)
+  sentAt       DateTime?
+  paidAt       DateTime?
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+
+  studio   Studio                 @relation(fields: [studioId], references: [id], onDelete: Cascade)
+  trainer  User                   @relation("TrainerPayoutTrainer", fields: [trainerId], references: [id], onDelete: Restrict)
+  sessions TrainerPayoutSession[]
+
+  @@unique([studioId, trainerId, periodStart])
+  @@index([studioId, status, periodStart])
+  @@index([trainerId, status])
+}
+
+model TrainerPayoutSession {
+  id        String @id @default(cuid())
+  payoutId  String
+  sessionId String
+
+  payout  TrainerPayout @relation(fields: [payoutId], references: [id], onDelete: Cascade)
+  session Session        @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@unique([payoutId, sessionId])
+  @@index([sessionId])
 }
 
 model Attendance {
