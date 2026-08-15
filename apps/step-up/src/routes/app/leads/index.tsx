@@ -5,6 +5,9 @@ import { useToastContext } from "@dev-ui/components/toast";
 import { useIsMobile, useLoadMoreOnScroll } from "@dev-ui/hooks";
 import { Icon } from "@dev-ui/icons";
 import {
+  type InfiniteData,
+  type QueryClient,
+  type QueryKey,
   useInfiniteQuery,
   useMutation,
   useQueryClient,
@@ -54,12 +57,6 @@ const SECTION_ORDER: LeadSection[] = ["new", "trialBooked", "archived"];
 
 const EASE_OUT = [0.16, 1, 0.3, 1] as const;
 
-const SECTION_CHIP_LABELS: Record<LeadSection, string> = {
-  new: "New",
-  trialBooked: "Trial booked",
-  archived: "Archived",
-};
-
 function parseSearch(search: Record<string, unknown>): LeadsSearch {
   const result: LeadsSearch = {};
   if (
@@ -91,6 +88,49 @@ function useDebouncedValue<T>(value: T, delayMs: number) {
   }, [value, delayMs]);
 
   return debounced;
+}
+
+type LeadPages = InfiniteData<LeadPage, string | undefined>;
+
+type LeadsCacheSnapshot = Array<[QueryKey, LeadPages | undefined]>;
+
+function snapshotLeadsCache(
+  queryClient: QueryClient,
+  studioId: string,
+): LeadsCacheSnapshot {
+  return queryClient.getQueriesData<LeadPages>({
+    queryKey: ["studio-leads", studioId],
+  });
+}
+
+function removeLeadsFromCache(
+  queryClient: QueryClient,
+  studioId: string,
+  ids: ReadonlySet<string>,
+) {
+  queryClient.setQueriesData<LeadPages>(
+    { queryKey: ["studio-leads", studioId] },
+    (current) => {
+      if (!current) return current;
+      const pages = current.pages.map((page) => {
+        const items = page.items.filter((item) => !ids.has(item.id));
+        return items.length === page.items.length ? page : { ...page, items };
+      });
+      const changed = pages.some(
+        (page, index) => page !== current.pages[index],
+      );
+      return changed ? { ...current, pages } : current;
+    },
+  );
+}
+
+function restoreLeadsCache(
+  queryClient: QueryClient,
+  snapshot: LeadsCacheSnapshot,
+) {
+  for (const [key, data] of snapshot) {
+    queryClient.setQueryData(key, data);
+  }
 }
 
 export const Route = createFileRoute("/app/leads/")({
@@ -198,10 +238,23 @@ function LeadsPage() {
       api.patch(`/users/studio/${studioId}/students/${lead.id}`, {
         active: false,
       }),
-    onSuccess: async (_data, lead) => {
-      await queryClient.invalidateQueries({
+    onMutate: async (lead) => {
+      await queryClient.cancelQueries({
         queryKey: ["studio-leads", studioId],
       });
+      const snapshot = snapshotLeadsCache(queryClient, studioId);
+      removeLeadsFromCache(queryClient, studioId, new Set([lead.id]));
+      return snapshot;
+    },
+    onError: (error: unknown, _lead, snapshot) => {
+      if (snapshot) restoreLeadsCache(queryClient, snapshot);
+      toast({
+        title: "Couldn’t archive lead",
+        description: error instanceof Error ? error.message : "Try again.",
+        variant: "error",
+      });
+    },
+    onSuccess: (_data, lead) => {
       setSelectedIds((prev) => {
         if (!prev.has(lead.id)) return prev;
         const next = new Set(prev);
@@ -214,11 +267,9 @@ function LeadsPage() {
         variant: "success",
       });
     },
-    onError: (error: unknown) => {
-      toast({
-        title: "Couldn’t archive lead",
-        description: error instanceof Error ? error.message : "Try again.",
-        variant: "error",
+    onSettled: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: ["studio-leads", studioId],
       });
     },
   });
@@ -232,10 +283,27 @@ function LeadsPage() {
           }),
         ),
       ),
-    onSuccess: async (_data, leads) => {
-      await queryClient.invalidateQueries({
+    onMutate: async (leads) => {
+      await queryClient.cancelQueries({
         queryKey: ["studio-leads", studioId],
       });
+      const snapshot = snapshotLeadsCache(queryClient, studioId);
+      removeLeadsFromCache(
+        queryClient,
+        studioId,
+        new Set(leads.map((lead) => lead.id)),
+      );
+      return snapshot;
+    },
+    onError: (error: unknown, _leads, snapshot) => {
+      if (snapshot) restoreLeadsCache(queryClient, snapshot);
+      toast({
+        title: "Couldn’t archive leads",
+        description: error instanceof Error ? error.message : "Try again.",
+        variant: "error",
+      });
+    },
+    onSuccess: (_data, leads) => {
       const ids = new Set(leads.map((lead) => lead.id));
       setSelectedIds((prev) => {
         const next = new Set(prev);
@@ -248,11 +316,9 @@ function LeadsPage() {
         variant: "success",
       });
     },
-    onError: (error: unknown) => {
-      toast({
-        title: "Couldn’t archive leads",
-        description: error instanceof Error ? error.message : "Try again.",
-        variant: "error",
+    onSettled: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: ["studio-leads", studioId],
       });
     },
   });
@@ -262,10 +328,23 @@ function LeadsPage() {
       api.patch(`/users/studio/${studioId}/students/${lead.id}`, {
         active: true,
       }),
-    onSuccess: async (_data, lead) => {
-      await queryClient.invalidateQueries({
+    onMutate: async (lead) => {
+      await queryClient.cancelQueries({
         queryKey: ["studio-leads", studioId],
       });
+      const snapshot = snapshotLeadsCache(queryClient, studioId);
+      removeLeadsFromCache(queryClient, studioId, new Set([lead.id]));
+      return snapshot;
+    },
+    onError: (error: unknown, _lead, snapshot) => {
+      if (snapshot) restoreLeadsCache(queryClient, snapshot);
+      toast({
+        title: "Couldn’t unarchive lead",
+        description: error instanceof Error ? error.message : "Try again.",
+        variant: "error",
+      });
+    },
+    onSuccess: (_data, lead) => {
       setSelectedIds((prev) => {
         if (!prev.has(lead.id)) return prev;
         const next = new Set(prev);
@@ -278,11 +357,9 @@ function LeadsPage() {
         variant: "success",
       });
     },
-    onError: (error: unknown) => {
-      toast({
-        title: "Couldn’t unarchive lead",
-        description: error instanceof Error ? error.message : "Try again.",
-        variant: "error",
+    onSettled: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: ["studio-leads", studioId],
       });
     },
   });
@@ -296,10 +373,27 @@ function LeadsPage() {
           }),
         ),
       ),
-    onSuccess: async (_data, leads) => {
-      await queryClient.invalidateQueries({
+    onMutate: async (leads) => {
+      await queryClient.cancelQueries({
         queryKey: ["studio-leads", studioId],
       });
+      const snapshot = snapshotLeadsCache(queryClient, studioId);
+      removeLeadsFromCache(
+        queryClient,
+        studioId,
+        new Set(leads.map((lead) => lead.id)),
+      );
+      return snapshot;
+    },
+    onError: (error: unknown, _leads, snapshot) => {
+      if (snapshot) restoreLeadsCache(queryClient, snapshot);
+      toast({
+        title: "Couldn’t unarchive leads",
+        description: error instanceof Error ? error.message : "Try again.",
+        variant: "error",
+      });
+    },
+    onSuccess: (_data, leads) => {
       const ids = new Set(leads.map((lead) => lead.id));
       setSelectedIds((prev) => {
         const next = new Set(prev);
@@ -312,11 +406,9 @@ function LeadsPage() {
         variant: "success",
       });
     },
-    onError: (error: unknown) => {
-      toast({
-        title: "Couldn’t unarchive leads",
-        description: error instanceof Error ? error.message : "Try again.",
-        variant: "error",
+    onSettled: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: ["studio-leads", studioId],
       });
     },
   });
@@ -382,15 +474,14 @@ function LeadsPage() {
     });
   }
 
-  function setSection(next: LeadSection | null) {
+  function setFilters(next: {
+    range: LeadDateRange | null;
+    section: LeadSection | null;
+  }) {
     void navigate({
       search: {
-        ...(next === "archived"
-          ? {}
-          : range
-            ? { from: range.from, to: range.to }
-            : {}),
-        ...(next ? { section: next } : {}),
+        ...(next.range ? { from: next.range.from, to: next.range.to } : {}),
+        ...(next.section ? { section: next.section } : {}),
       },
     });
   }
@@ -398,6 +489,9 @@ function LeadsPage() {
   const itemTransition = reduce
     ? { duration: 0 }
     : { duration: 0.3, ease: EASE_OUT };
+  const exitTransition = reduce
+    ? { duration: 0 }
+    : { type: "spring", stiffness: 520, damping: 38, mass: 1 };
 
   return (
     <>
@@ -438,58 +532,52 @@ function LeadsPage() {
               <div
                 className={styles.quickActions}
                 role="toolbar"
-                aria-label="Quick date ranges"
+                aria-label="Filter leads"
               >
                 <button
                   type="button"
                   className={styles.filterChip}
-                  data-selected={!range ? "true" : undefined}
+                  data-selected={!range && !activeSection ? "true" : undefined}
                   data-testid="leads-filter-all"
-                  onClick={() => setRange(null)}
+                  onClick={() => setFilters({ range: null, section: null })}
                 >
                   All
                 </button>
-                {QUICK_DATE_PRESETS.map((preset) => (
-                  <button
-                    key={preset}
-                    type="button"
-                    className={styles.filterChip}
-                    data-selected={activePreset === preset ? "true" : undefined}
-                    data-testid={`leads-filter-${preset}`}
-                    onClick={() => setRange(presetRange(preset))}
-                  >
-                    {QUICK_DATE_LABELS[preset]}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div
-              className={styles.quickActions}
-              role="toolbar"
-              aria-label="Filter leads by status"
-            >
-              <button
-                type="button"
-                className={styles.filterChip}
-                data-selected={!activeSection ? "true" : undefined}
-                data-testid="leads-section-all"
-                onClick={() => setSection(null)}
-              >
-                All
-              </button>
-              {SECTION_ORDER.map((section) => (
+                {QUICK_DATE_PRESETS.filter((preset) => preset !== "last7").map(
+                  (preset) => (
+                    <button
+                      key={preset}
+                      type="button"
+                      className={styles.filterChip}
+                      data-selected={
+                        activePreset === preset ? "true" : undefined
+                      }
+                      data-testid={`leads-filter-${preset}`}
+                      onClick={() =>
+                        setFilters({
+                          range: presetRange(preset),
+                          section: null,
+                        })
+                      }
+                    >
+                      {QUICK_DATE_LABELS[preset]}
+                    </button>
+                  ),
+                )}
                 <button
-                  key={section}
                   type="button"
                   className={styles.filterChip}
-                  data-selected={activeSection === section ? "true" : undefined}
-                  data-testid={`leads-section-${section}`}
-                  onClick={() => setSection(section)}
+                  data-selected={
+                    activeSection === "archived" ? "true" : undefined
+                  }
+                  data-testid="leads-section-archived"
+                  onClick={() =>
+                    setFilters({ range: null, section: "archived" })
+                  }
                 >
-                  {SECTION_CHIP_LABELS[section]}
+                  Archived
                 </button>
-              ))}
+              </div>
             </div>
 
             {!isMobile && selectedIds.size > 0 ? (
@@ -590,117 +678,131 @@ function LeadsPage() {
               />
             ) : null}
 
-            {visibleSections.map((section) => (
-              <section key={section} className={staff.section}>
-                <h2 className={staff.sectionTitle}>
-                  {SECTION_LABELS[section]} · {grouped[section].length}
-                  {hasNextPage ? "+" : ""}
-                </h2>
-                <ul className={staff.list}>
-                  <AnimatePresence initial={false} mode="popLayout">
-                    {grouped[section].map((lead) => {
-                      const canSelect = !isMobile;
-                      const card = (
-                        <LeadCard
-                          lead={lead}
-                          range={range}
-                          selected={
-                            canSelect ? selectedIds.has(lead.id) : false
-                          }
-                          onToggleSelect={canSelect ? toggleSelect : undefined}
-                          onViewProfile={() => {
-                            void navigate({
-                              to: "/users/$id",
-                              params: { id: lead.id },
-                            });
-                          }}
-                          onSwitchTrial={setSwitchLead}
-                          {...(section === "trialBooked"
-                            ? {
-                                onConfirmSession: (next) => {
-                                  const bookingId = next.trialBooking?.id;
-                                  if (!bookingId) return;
-                                  confirmSession.mutate(bookingId);
-                                },
-                                confirmPending:
-                                  confirmSession.isPending &&
-                                  confirmSession.variables ===
-                                    lead.trialBooking?.id,
-                              }
-                            : {})}
-                        />
-                      );
-
-                      const item =
-                        section === "archived" ? (
-                          <Swipeable
-                            direction="horizontal"
-                            ariaLabel={`Actions for ${lead.name}`}
-                            onSwipeRight={() => unarchiveLead.mutate(lead)}
-                            leftActions={
-                              <TouchButton
-                                variant="primary"
-                                size="sm"
-                                isIconOnly
-                                className={styles.archiveAction}
-                                aria-label={`Unarchive ${lead.name}`}
-                                data-testid={`lead-unarchive-${lead.id}`}
-                                isDisabled={
-                                  unarchiveLead.isPending &&
-                                  unarchiveLead.variables?.id === lead.id
-                                }
-                                onClick={() => unarchiveLead.mutate(lead)}
-                              >
-                                <Icon name="inbox" />
-                              </TouchButton>
+            {SECTION_ORDER.map((section) => {
+              if (activeSection && section !== activeSection) return null;
+              const leadsInSection = grouped[section];
+              const sectionCount = leadsInSection.length;
+              return (
+                <section key={section} className={staff.section}>
+                  {sectionCount > 0 ? (
+                    <h2 className={staff.sectionTitle}>
+                      {SECTION_LABELS[section]} · {sectionCount}
+                      {hasNextPage ? "+" : ""}
+                    </h2>
+                  ) : null}
+                  <ul className={staff.list}>
+                    <AnimatePresence initial={false} mode="popLayout">
+                      {leadsInSection.map((lead) => {
+                        const canSelect = !isMobile;
+                        const card = (
+                          <LeadCard
+                            lead={lead}
+                            range={range}
+                            selected={
+                              canSelect ? selectedIds.has(lead.id) : false
                             }
-                          >
-                            {card}
-                          </Swipeable>
-                        ) : (
-                          <Swipeable
-                            direction="horizontal"
-                            ariaLabel={`Actions for ${lead.name}`}
-                            onSwipeLeft={() => archiveLead.mutate(lead)}
-                            rightActions={
-                              <TouchButton
-                                variant="danger"
-                                size="sm"
-                                isIconOnly
-                                className={styles.archiveAction}
-                                aria-label={`Archive ${lead.name}`}
-                                data-testid={`lead-archive-${lead.id}`}
-                                isDisabled={
-                                  archiveLead.isPending &&
-                                  archiveLead.variables?.id === lead.id
-                                }
-                                onClick={() => archiveLead.mutate(lead)}
-                              >
-                                <Icon name="archive" />
-                              </TouchButton>
+                            onToggleSelect={
+                              canSelect ? toggleSelect : undefined
                             }
-                          >
-                            {card}
-                          </Swipeable>
+                            onViewProfile={() => {
+                              void navigate({
+                                to: "/users/$id",
+                                params: { id: lead.id },
+                              });
+                            }}
+                            onSwitchTrial={setSwitchLead}
+                            {...(section === "trialBooked"
+                              ? {
+                                  onConfirmSession: (next) => {
+                                    const bookingId = next.trialBooking?.id;
+                                    if (!bookingId) return;
+                                    confirmSession.mutate(bookingId);
+                                  },
+                                  confirmPending:
+                                    confirmSession.isPending &&
+                                    confirmSession.variables ===
+                                      lead.trialBooking?.id,
+                                }
+                              : {})}
+                          />
                         );
 
-                      return (
-                        <motion.li
-                          key={lead.id}
-                          layout
-                          initial={{ opacity: 0, x: 24 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          exit={{ opacity: 0, x: -140 }}
-                          transition={itemTransition}
-                        >
-                          {item}
-                        </motion.li>
-                      );
-                    })}
-                  </AnimatePresence>
-                </ul>
-              </section>
-            ))}
+                        const item =
+                          section === "archived" ? (
+                            <Swipeable
+                              direction="horizontal"
+                              ariaLabel={`Actions for ${lead.name}`}
+                              onSwipeRight={() => unarchiveLead.mutate(lead)}
+                              leftActions={
+                                <TouchButton
+                                  variant="primary"
+                                  size="sm"
+                                  isIconOnly
+                                  className={styles.unarchiveAction}
+                                  aria-label={`Unarchive ${lead.name}`}
+                                  data-testid={`lead-unarchive-${lead.id}`}
+                                  isDisabled={
+                                    unarchiveLead.isPending &&
+                                    unarchiveLead.variables?.id === lead.id
+                                  }
+                                  onClick={() => unarchiveLead.mutate(lead)}
+                                >
+                                  <Icon name="inbox" />
+                                </TouchButton>
+                              }
+                            >
+                              {card}
+                            </Swipeable>
+                          ) : (
+                            <Swipeable
+                              direction="horizontal"
+                              ariaLabel={`Actions for ${lead.name}`}
+                              onSwipeLeft={() => archiveLead.mutate(lead)}
+                              rightActions={
+                                <TouchButton
+                                  variant="danger"
+                                  size="sm"
+                                  isIconOnly
+                                  className={styles.archiveAction}
+                                  aria-label={`Archive ${lead.name}`}
+                                  data-testid={`lead-archive-${lead.id}`}
+                                  isDisabled={
+                                    archiveLead.isPending &&
+                                    archiveLead.variables?.id === lead.id
+                                  }
+                                  onClick={() => archiveLead.mutate(lead)}
+                                >
+                                  <Icon name="archive" />
+                                </TouchButton>
+                              }
+                            >
+                              {card}
+                            </Swipeable>
+                          );
+
+                        return (
+                          <motion.li
+                            key={lead.id}
+                            layout
+                            className={styles.li}
+                            initial={{ opacity: 0, x: 24 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{
+                              opacity: 0,
+                              x: section === "archived" ? "100%" : "-100%",
+                              transition: exitTransition,
+                            }}
+                            transition={itemTransition}
+                          >
+                            {item}
+                          </motion.li>
+                        );
+                      })}
+                    </AnimatePresence>
+                  </ul>
+                </section>
+              );
+            })}
 
             {hasNextPage ? (
               <div
