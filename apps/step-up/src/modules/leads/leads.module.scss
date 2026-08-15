@@ -34,6 +34,16 @@
   flex-shrink: 0;
 }
 
+.skeletonList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 0.5rem);
+}
+
+.skeletonAvatar {
+  flex-shrink: 0;
+}
+
 .identity {
   display: flex;
   flex: 1;

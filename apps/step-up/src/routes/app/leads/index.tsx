@@ -18,6 +18,7 @@ import { useApi } from "@/lib/api-context";
 import { requireAdmin } from "@/lib/require-auth";
 import { useStudioId } from "@/lib/use-studio-id";
 import { LeadCard } from "@/modules/leads/lead-card";
+import { LeadCardSkeletonList } from "@/modules/leads/lead-card-skeleton";
 import { LeadDetailSheet } from "@/modules/leads/lead-detail-sheet";
 import styles from "@/modules/leads/leads.module.scss";
 import { QuickAddLeadSheet } from "@/modules/leads/quick-add-lead-sheet";
@@ -43,7 +44,6 @@ import {
 import { LoadMoreIndicator } from "@/modules/ui/load-more-indicator";
 import { PullToRefresh } from "@/modules/ui/pull-to-refresh";
 import { Screen } from "@/modules/ui/screen";
-import { SkeletonRowList } from "@/modules/ui/skeleton-block";
 import staff from "@/modules/ui/staff.module.scss";
 import { EmptyState, ErrorState } from "@/modules/ui/states";
 import { TouchButton } from "@/modules/ui/touch-button";
@@ -633,7 +633,7 @@ function LeadsPage() {
             ) : null}
 
             {query.isLoading ? (
-              <SkeletonRowList count={4} label="Loading leads" />
+              <LeadCardSkeletonList count={4} label="Loading leads" />
             ) : null}
 
             {query.isError ? (
