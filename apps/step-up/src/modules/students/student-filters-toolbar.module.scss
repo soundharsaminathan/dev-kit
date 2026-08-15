@@ -12,6 +12,11 @@
 .searchBar {
   width: 100%;
   min-width: 0;
+  padding: var(--space-3, 0.75rem);
+  border-radius: var(--radius-2xl, 1.25rem);
+  border: 1px solid color-mix(in srgb, var(--color-fg) 10%, transparent);
+  background: var(--color-card, var(--color-bg));
+  box-shadow: var(--shadow-sm, 0 1px 3px rgb(0 0 0 / 6%));
 }
 
 .filterBtn {
