@@ -651,54 +651,6 @@ function LeadsPage() {
               </div>
             ) : null}
 
-            {query.isLoading ? (
-              <LeadCardSkeletonList count={4} label="Loading leads" />
-            ) : null}
-
-            {query.isError ? (
-              <ErrorState
-                description={
-                  query.error instanceof Error
-                    ? query.error.message
-                    : "Could not load leads."
-                }
-                action={
-                  <TouchButton
-                    variant="primary"
-                    onClick={() => query.refetch()}
-                  >
-                    Try again
-                  </TouchButton>
-                }
-              />
-            ) : null}
-
-            {query.isSuccess && leads.length === 0 ? (
-              <EmptyState
-                icon="smartphone"
-                title={
-                  hasSearch
-                    ? "No matching leads"
-                    : `No ${SECTION_LABELS[activeSection].toLowerCase()}`
-                }
-                description={
-                  hasSearch
-                    ? "Try another name or clear your search."
-                    : "Nothing here yet. Try a different filter."
-                }
-                action={
-                  !hasSearch ? (
-                    <TouchButton
-                      variant="primary"
-                      onClick={() => setAddOpen(true)}
-                    >
-                      Add lead
-                    </TouchButton>
-                  ) : undefined
-                }
-              />
-            ) : null}
-
             <motion.div
               className={styles.swipeArea}
               drag={canSwipe ? "x" : false}
@@ -707,6 +659,54 @@ function LeadsPage() {
               dragDirectionLock
               {...(canSwipe ? { onDragEnd: handleDragEnd } : {})}
             >
+              {query.isLoading ? (
+                <LeadCardSkeletonList count={4} label="Loading leads" />
+              ) : null}
+
+              {query.isError ? (
+                <ErrorState
+                  description={
+                    query.error instanceof Error
+                      ? query.error.message
+                      : "Could not load leads."
+                  }
+                  action={
+                    <TouchButton
+                      variant="primary"
+                      onClick={() => query.refetch()}
+                    >
+                      Try again
+                    </TouchButton>
+                  }
+                />
+              ) : null}
+
+              {query.isSuccess && leads.length === 0 ? (
+                <EmptyState
+                  icon="smartphone"
+                  title={
+                    hasSearch
+                      ? "No matching leads"
+                      : `No ${SECTION_LABELS[activeSection].toLowerCase()}`
+                  }
+                  description={
+                    hasSearch
+                      ? "Try another name or clear your search."
+                      : "Nothing here yet. Try a different filter."
+                  }
+                  action={
+                    !hasSearch ? (
+                      <TouchButton
+                        variant="primary"
+                        onClick={() => setAddOpen(true)}
+                      >
+                        Add lead
+                      </TouchButton>
+                    ) : undefined
+                  }
+                />
+              ) : null}
+
               <ul className={staff.list}>
                 <AnimatePresence initial={false} mode="popLayout">
                   {leads.map((lead) => {

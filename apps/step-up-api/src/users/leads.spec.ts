@@ -243,24 +243,20 @@ describe("isLeadSection", () => {
     expect(isLeadSection(undefined)).toBe(false);
   });
 
-  it("lists booked, attended and missed as the date-filter sections", () => {
-    expect([...LEAD_SECTIONS_WITH_DATE_FILTER]).toEqual([
-      "trialBooked",
-      "trialAttended",
-      "trialMissed",
-    ]);
+  it("lists booked as the only date-filter section", () => {
+    expect([...LEAD_SECTIONS_WITH_DATE_FILTER]).toEqual(["trialBooked"]);
   });
 });
 
 describe("leadSectionAppliesDateFilter", () => {
-  it("gates the date range to booked, attended and missed only", () => {
+  it("gates the date range to booked only", () => {
     expect(leadSectionAppliesDateFilter("new")).toBe(false);
     expect(leadSectionAppliesDateFilter("converted")).toBe(false);
     expect(leadSectionAppliesDateFilter("left")).toBe(false);
     expect(leadSectionAppliesDateFilter("archived")).toBe(false);
     expect(leadSectionAppliesDateFilter("trialBooked")).toBe(true);
-    expect(leadSectionAppliesDateFilter("trialAttended")).toBe(true);
-    expect(leadSectionAppliesDateFilter("trialMissed")).toBe(true);
+    expect(leadSectionAppliesDateFilter("trialAttended")).toBe(false);
+    expect(leadSectionAppliesDateFilter("trialMissed")).toBe(false);
   });
 });
 

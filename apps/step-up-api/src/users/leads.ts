@@ -37,8 +37,6 @@ export type LeadSection = (typeof LEAD_SECTIONS)[number];
 
 export const LEAD_SECTIONS_WITH_DATE_FILTER = [
   "trialBooked",
-  "trialAttended",
-  "trialMissed",
 ] as const satisfies readonly LeadSection[];
 
 const OPEN_TRIAL_STATUSES: BookingStatus[] = [

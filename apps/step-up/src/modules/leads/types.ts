@@ -60,11 +60,7 @@ export const SECTION_ORDER: LeadSection[] = [
   "archived",
 ];
 
-export const LEAD_SECTIONS_WITH_DATE_FILTER = [
-  "trialBooked",
-  "trialAttended",
-  "trialMissed",
-] as const;
+export const LEAD_SECTIONS_WITH_DATE_FILTER = ["trialBooked"] as const;
 
 export type LeadSectionWithDateFilter =
   (typeof LEAD_SECTIONS_WITH_DATE_FILTER)[number];
