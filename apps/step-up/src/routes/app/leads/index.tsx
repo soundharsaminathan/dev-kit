@@ -704,12 +704,6 @@ function LeadsPage() {
                             onToggleSelect={
                               canSelect ? toggleSelect : undefined
                             }
-                            onViewProfile={() => {
-                              void navigate({
-                                to: "/users/$id",
-                                params: { id: lead.id },
-                              });
-                            }}
                             onSwitchTrial={setSwitchLead}
                             {...(section === "trialBooked"
                               ? {

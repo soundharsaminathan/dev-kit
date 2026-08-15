@@ -4,12 +4,6 @@ import { renderWithProviders } from "@/test/render";
 import { LeadCard } from "./lead-card";
 import type { Lead, LeadTrialBooking } from "./types";
 
-const toast = vi.hoisted(() => vi.fn());
-
-vi.mock("@dev-ui/components/toast", () => ({
-  useToastContext: () => ({ toast }),
-}));
-
 function trial(overrides: Partial<LeadTrialBooking> = {}): LeadTrialBooking {
   return {
     id: "bk-1",
@@ -36,31 +30,22 @@ function lead(overrides: Partial<Lead> = {}): Lead {
   };
 }
 
-describe("LeadCard profile", () => {
-  it("opens the student profile when the identity area is tapped", () => {
-    const onViewProfile = vi.fn();
-
-    renderWithProviders(
-      <LeadCard lead={lead()} range={null} onViewProfile={onViewProfile} />,
-    );
-
-    fireEvent.click(screen.getByTestId("lead-profile-lead-1"));
-    expect(onViewProfile).toHaveBeenCalledTimes(1);
-  });
-
-  it("shows a plain copy affordance when no profile handler is provided", () => {
+describe("LeadCard identity", () => {
+  it("renders name and phone as text so the row can be swiped", () => {
     renderWithProviders(<LeadCard lead={lead()} range={null} />);
 
-    expect(screen.queryByTestId("lead-profile-lead-1")).toBeNull();
+    expect(screen.getByTestId("lead-card-lead-1")).toBeInTheDocument();
+    expect(screen.getByText("Asha Rao")).toBeInTheDocument();
+    expect(screen.getByText("+91 91234 56789")).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "Copy +91 91234 56789" }),
-    ).toBeInTheDocument();
+      screen.queryByRole("button", { name: /view asha rao's profile/i }),
+    ).toBeNull();
+    expect(screen.queryByRole("button", { name: /copy \+91/i })).toBeNull();
   });
 });
 
 describe("LeadCard call button", () => {
   afterEach(() => {
-    toast.mockClear();
     vi.unstubAllGlobals();
   });
 
@@ -85,28 +70,11 @@ describe("LeadCard call button", () => {
     expect(screen.getByText("No mobile on file")).toBeInTheDocument();
   });
 
-  it("shows age next to the name and copies the mobile number", async () => {
-    const writeText = vi.fn().mockResolvedValue(undefined);
-    vi.stubGlobal("navigator", {
-      clipboard: { writeText },
-    });
-
+  it("shows age next to the name", () => {
     renderWithProviders(<LeadCard lead={lead()} range={null} />);
 
     expect(screen.getByText("Asha Rao")).toBeInTheDocument();
     expect(screen.getByText("20–40")).toBeInTheDocument();
-
-    fireEvent.click(
-      screen.getByRole("button", { name: "Copy +91 91234 56789" }),
-    );
-
-    expect(writeText).toHaveBeenCalledWith("+91 91234 56789");
-    await vi.waitFor(() => {
-      expect(toast).toHaveBeenCalledWith({
-        title: "Mobile number copied",
-        variant: "success",
-      });
-    });
   });
 });
 

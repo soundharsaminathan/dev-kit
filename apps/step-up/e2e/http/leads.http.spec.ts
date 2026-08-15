@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { SEED } from "../fixtures/seed";
-import { expectOk, expectStatus } from "./helpers";
+import { expectOk, expectStatus, TestDataCleanup } from "./helpers";
 
 const STUDIO_ID = SEED.users.OWNER.studioId;
 
@@ -58,6 +58,62 @@ test.describe("trial caller leads HTTP @http", () => {
       "STAFF",
       `/users/studio/${STUDIO_ID}/leads?from=2026-08-16&to=2026-08-10`,
       400,
+    );
+  });
+
+  test("staff can archive and unarchive a lead @http", async () => {
+    const cleanup = new TestDataCleanup();
+    try {
+      const stamp = Date.now();
+      const lead = await expectOk<{
+        id: string;
+        active: boolean;
+        section: string;
+      }>("STAFF", `/users/studio/${STUDIO_ID}/leads`, {
+        method: "POST",
+        body: JSON.stringify({
+          name: `HTTP Archive ${stamp}`,
+          phone: `900${String(stamp).slice(-7)}`,
+          ageRange: "TWENTY_TO_FORTY",
+        }),
+      });
+      cleanup.trackStudent(lead.id);
+      expect(lead.active).toBe(true);
+      expect(lead.section).toBe("new");
+
+      const archived = await expectOk<{ student: { active: boolean } }>(
+        "STAFF",
+        `/users/studio/${STUDIO_ID}/students/${lead.id}`,
+        {
+          method: "PATCH",
+          body: JSON.stringify({ active: false }),
+        },
+      );
+      expect(archived.student.active).toBe(false);
+
+      const unarchived = await expectOk<{ student: { active: boolean } }>(
+        "STAFF",
+        `/users/studio/${STUDIO_ID}/students/${lead.id}`,
+        {
+          method: "PATCH",
+          body: JSON.stringify({ active: true }),
+        },
+      );
+      expect(unarchived.student.active).toBe(true);
+    } finally {
+      await cleanup.dispose();
+    }
+  });
+
+  test("trainer cannot archive a lead @http", async () => {
+    await expectStatus(
+      "TRAINER",
+      `/users/studio/${STUDIO_ID}/students/${SEED.users.STUDENT.id}`,
+      403,
+      {
+        method: "PATCH",
+        body: JSON.stringify({ active: false }),
+      },
     );
   });
 });

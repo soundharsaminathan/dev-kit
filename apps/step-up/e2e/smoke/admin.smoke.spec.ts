@@ -314,6 +314,139 @@ test.describe("admin (staff) smoke @smoke", () => {
     }
   });
 
+  test("staff swipes to archive then unarchive a lead @smoke", async ({
+    browser,
+  }) => {
+    const cleanup = new SmokeDataCleanup();
+    const stamp = Date.now();
+    const lead = await apiRequest<{ id: string; name: string }>(
+      "STAFF",
+      `/users/studio/${SMOKE.studioId}/leads`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          name: `Smoke Archive ${stamp}`,
+          phone: `900${String(stamp).slice(-7)}`,
+          ageRange: "TWENTY_TO_FORTY",
+        }),
+      },
+    );
+    cleanup.trackStudent(lead.id);
+
+    const context = await browser.newContext({
+      storageState: authFile("STAFF"),
+      viewport: { width: 393, height: 851 },
+    });
+    const page = await context.newPage();
+    try {
+      await page.goto("/app/leads", { waitUntil: "domcontentloaded" });
+      await waitForAppReady(page);
+      await page
+        .getByRole("searchbox", { name: "Search leads" })
+        .fill(lead.name);
+      await expect(page.getByTestId(`lead-card-${lead.id}`)).toBeVisible({
+        timeout: 30_000,
+      });
+
+      const card = page.getByTestId(`lead-card-${lead.id}`);
+      const box = await card.boundingBox();
+      if (!box) {
+        throw new Error(`lead-card-${lead.id} has no bounding box`);
+      }
+      const startX = box.x + Math.min(96, box.width * 0.35);
+      const y = box.y + Math.min(28, box.height / 3);
+
+      const [archiveResponse] = await Promise.all([
+        waitForApiResponse(page, {
+          method: "PATCH",
+          pathIncludes: `/users/studio/${SMOKE.studioId}/students/${lead.id}`,
+        }),
+        (async () => {
+          await page.mouse.move(startX, y);
+          await page.mouse.down();
+          await page.mouse.move(startX - 180, y, { steps: 24 });
+          await page.mouse.up();
+        })(),
+      ]);
+      expect(archiveResponse.ok()).toBeTruthy();
+
+      await expect
+        .poll(async () => {
+          const latest = await apiRequest<{
+            items: Array<{ id: string; section: string }>;
+          }>(
+            "STAFF",
+            `/users/studio/${SMOKE.studioId}/leads?q=${encodeURIComponent(lead.name)}&limit=25`,
+          );
+          return latest.items.find((item) => item.id === lead.id)?.section;
+        })
+        .toBe("archived");
+
+      await page.getByTestId("leads-section-archived").click();
+      await expect(page.getByTestId(`lead-card-${lead.id}`)).toBeVisible({
+        timeout: 30_000,
+      });
+
+      const archivedBox = await page
+        .getByTestId(`lead-card-${lead.id}`)
+        .boundingBox();
+      if (!archivedBox) {
+        throw new Error(`archived lead-card-${lead.id} has no bounding box`);
+      }
+      const unarchiveX = archivedBox.x + Math.min(96, archivedBox.width * 0.35);
+      const unarchiveY = archivedBox.y + Math.min(28, archivedBox.height / 3);
+
+      const [unarchiveResponse] = await Promise.all([
+        waitForApiResponse(page, {
+          method: "PATCH",
+          pathIncludes: `/users/studio/${SMOKE.studioId}/students/${lead.id}`,
+        }),
+        (async () => {
+          await page.mouse.move(unarchiveX, unarchiveY);
+          await page.mouse.down();
+          await page.mouse.move(unarchiveX + 180, unarchiveY, { steps: 24 });
+          await page.mouse.up();
+        })(),
+      ]);
+      expect(unarchiveResponse.ok()).toBeTruthy();
+
+      await expect
+        .poll(async () => {
+          const latest = await apiRequest<{
+            items: Array<{ id: string; section: string }>;
+          }>(
+            "STAFF",
+            `/users/studio/${SMOKE.studioId}/leads?q=${encodeURIComponent(lead.name)}&limit=25`,
+          );
+          return latest.items.find((item) => item.id === lead.id)?.section;
+        })
+        .toBe("new");
+
+      await page.getByTestId("leads-filter-all").click();
+      await expect(page.getByTestId(`lead-card-${lead.id}`)).toBeVisible({
+        timeout: 30_000,
+      });
+    } finally {
+      await closeSmokeContext(context, cleanup);
+    }
+  });
+
+  test("trainer cannot archive a lead @smoke", async () => {
+    const token = await bearerFor("TRAINER");
+    const response = await fetch(
+      `${apiBaseUrl()}/users/studio/${SMOKE.studioId}/students/${SMOKE.users.STUDENT.id}`,
+      {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ active: false }),
+      },
+    );
+    expect(response.status).toBe(403);
+  });
+
   test("staff issues partial refund from invoices @smoke", async ({
     browser,
   }) => {

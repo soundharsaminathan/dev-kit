@@ -175,6 +175,23 @@ describe("Swipeable", () => {
     expect(screen.getByRole("button", { name: "Archive" })).toBeInTheDocument();
   });
 
+  it("starts a swipe from nested text even when a sibling button exists", () => {
+    const onSwipeLeft = vi.fn();
+
+    render(
+      <Swipeable ariaLabel="Row actions" onSwipeLeft={onSwipeLeft}>
+        <div>
+          <p>Row content</p>
+          <button type="button">Call</button>
+        </div>
+      </Swipeable>,
+    );
+
+    swipeX(screen.getByText("Row content"), 200, 100);
+
+    expect(onSwipeLeft).toHaveBeenCalledTimes(1);
+  });
+
   it("does not start a swipe from an interactive control", () => {
     const onSwipeLeft = vi.fn();
 
