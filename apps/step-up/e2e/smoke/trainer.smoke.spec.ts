@@ -1,4 +1,5 @@
 import type { Page } from "@playwright/test";
+import { isScheduleConflict } from "../fixtures/billing-calendar";
 import {
   apiRequest,
   authFile,
@@ -36,6 +37,49 @@ async function confirmUnpaidMarkIfShown(page: Page) {
   if (await confirm.isVisible({ timeout: 1500 }).catch(() => false)) {
     await confirm.click();
   }
+}
+
+/**
+ * Smoke seed books the trainer Saturdays 10:00-11:00 (beginner) and 11:00-12:00
+ * (trial), so a fixed +21d 10:00 slot conflicts whenever that day is a Saturday.
+ * Create on +21d in a slot clear of those, retrying across the day if a conflict
+ * still slips through.
+ */
+async function createSmokeSession(batchId: string) {
+  const base = new Date();
+  base.setDate(base.getDate() + 21);
+  const candidateHours = [9, 13, 14, 15, 16, 17];
+  let lastError: unknown;
+  for (const hour of candidateHours) {
+    const startsAt = new Date(base);
+    startsAt.setHours(hour, 0, 0, 0);
+    const endsAt = new Date(startsAt);
+    endsAt.setHours(hour + 1, 0, 0, 0);
+    try {
+      const session = await apiRequest<{ id: string; batchId: string }>(
+        "TRAINER",
+        "/sessions",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            batchId,
+            startsAt: startsAt.toISOString(),
+            endsAt: endsAt.toISOString(),
+            type: "REGULAR",
+          }),
+        },
+      );
+      return { session, start: startsAt };
+    } catch (error) {
+      if (!isScheduleConflict(error)) {
+        throw error;
+      }
+      lastError = error;
+    }
+  }
+  throw lastError instanceof Error
+    ? lastError
+    : new Error("Could not create a conflict-free smoke session");
 }
 
 test.describe("trainer smoke @smoke", () => {
@@ -315,25 +359,7 @@ test.describe("trainer smoke @smoke", () => {
   test("trainer can change and delete session from attendance @smoke", async ({
     browser,
   }) => {
-    const start = new Date();
-    start.setDate(start.getDate() + 21);
-    start.setHours(10, 0, 0, 0);
-    const end = new Date(start);
-    end.setHours(11, 0, 0, 0);
-
-    const session = await apiRequest<{ id: string; batchId: string }>(
-      "TRAINER",
-      "/sessions",
-      {
-        method: "POST",
-        body: JSON.stringify({
-          batchId: SMOKE.kidsBatchId,
-          startsAt: start.toISOString(),
-          endsAt: end.toISOString(),
-          type: "REGULAR",
-        }),
-      },
-    );
+    const { session, start } = await createSmokeSession(SMOKE.kidsBatchId);
 
     const context = await browser.newContext({
       storageState: authFile("TRAINER"),
