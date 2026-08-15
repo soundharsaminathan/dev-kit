@@ -20,9 +20,9 @@ import {
   getPeriodEnd,
   invoiceDueDate,
   invoiceFeePercents,
+  isAfterUtcDay20,
   isMonthlyPlanUnpaid,
   isPrepaidAtJoin,
-  isAfterUtcDay20,
   membershipCoversBatch,
   prorateByAttendance,
   prorateByRemaining,
@@ -97,6 +97,23 @@ describe("membership-helpers", () => {
         batchCategory: BatchCategory.ADULTS,
       }),
     ).toBe(false);
+  });
+
+  it("bypasses age match when ignoreAge is set", () => {
+    const base = {
+      status: MembershipStatus.ACTIVE,
+      periodStart: new Date(Date.UTC(2026, 6, 1)),
+      periodEnd: new Date(Date.UTC(2026, 6, 31, 23, 59, 59, 999)),
+      at: new Date(Date.UTC(2026, 6, 10)),
+    };
+    expect(
+      membershipCoversBatch({
+        ...base,
+        seatRole: MembershipSeatRole.KID,
+        batchCategory: BatchCategory.ADULTS,
+        ignoreAge: true,
+      }),
+    ).toBe(true);
   });
 
   it("maps age range to batch category", () => {

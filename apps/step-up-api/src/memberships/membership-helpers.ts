@@ -104,6 +104,8 @@ export function membershipCoversBatch(args: {
   seatRole: MembershipSeatRole;
   batchCategory: BatchCategory;
   at?: Date;
+  /** Bypass the age/category match so kids can cover adult batches (and vice versa). */
+  ignoreAge?: boolean;
 }): boolean {
   const at = args.at ?? new Date();
   if (args.status !== MembershipStatus.ACTIVE) {
@@ -111,6 +113,9 @@ export function membershipCoversBatch(args: {
   }
   if (at < args.periodStart || at > args.periodEnd) {
     return false;
+  }
+  if (args.ignoreAge === true) {
+    return true;
   }
   return args.seatRole === seatRoleForBatchCategory(args.batchCategory);
 }

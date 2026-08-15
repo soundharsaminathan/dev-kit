@@ -31,6 +31,7 @@ type SwitchTargetsResponse = {
   studentId: string;
   subscription: { id: string; name: string } | null;
   includeAllPrices?: boolean;
+  includeAllAges?: boolean;
   reason?: string;
   targets: SwitchTarget[];
 };
@@ -75,6 +76,7 @@ export function StudentBatchEnrollmentActions({
   const [switchOpen, setSwitchOpen] = useState(false);
   const [selectedTargetId, setSelectedTargetId] = useState<string | null>(null);
   const [includeAllPrices, setIncludeAllPrices] = useState(false);
+  const [includeAllAges, setIncludeAllAges] = useState(false);
   const [unenrollOpen, setUnenrollOpen] = useState(false);
   const [issueRefund, setIssueRefund] = useState(false);
   const [refundAmount, setRefundAmount] = useState("");
@@ -88,11 +90,15 @@ export function StudentBatchEnrollmentActions({
       batchId,
       studentId,
       includeAllPrices,
+      includeAllAges,
     ],
     queryFn: () => {
       const params = new URLSearchParams({ studentId });
       if (includeAllPrices) {
         params.set("includeAllPrices", "true");
+      }
+      if (includeAllAges) {
+        params.set("includeAllAges", "true");
       }
       return api.get<SwitchTargetsResponse>(
         `/batches/${batchId}/switch-targets?${params.toString()}`,
@@ -116,6 +122,7 @@ export function StudentBatchEnrollmentActions({
         studentId,
         toBatchId,
         ...(includeAllPrices ? { includeAllPrices: true } : {}),
+        ...(includeAllAges ? { includeAllAges: true } : {}),
       }),
     onSuccess: (_data, toBatchId) => {
       const targetName =
@@ -201,6 +208,7 @@ export function StudentBatchEnrollmentActions({
   function openSwitch() {
     setSelectedTargetId(null);
     setIncludeAllPrices(false);
+    setIncludeAllAges(false);
     setSwitchOpen(true);
   }
 
@@ -208,6 +216,7 @@ export function StudentBatchEnrollmentActions({
     setSwitchOpen(false);
     setSelectedTargetId(null);
     setIncludeAllPrices(false);
+    setIncludeAllAges(false);
   }
 
   function switchTargetLabel(target: SwitchTarget) {
@@ -272,7 +281,9 @@ export function StudentBatchEnrollmentActions({
         title={`Switch batch · ${batchName}`}
       >
         <div className={staff.sheetStack}>
-          <p className={staff.rowMeta}>Moving {studentName} to another batch.</p>
+          <p className={staff.rowMeta}>
+            Moving {studentName} to another batch.
+          </p>
           {switchTargetsQuery.data?.subscription ? (
             <p className={staff.rowMeta}>
               Plan: {switchTargetsQuery.data.subscription.name}
@@ -304,7 +315,7 @@ export function StudentBatchEnrollmentActions({
               title="No eligible batches"
               description={
                 switchTargetsQuery.data.reason ??
-                (includeAllPrices
+                (includeAllPrices || includeAllAges
                   ? "No other open batches match this student’s category."
                   : "No other batches offer this student’s current plan with open seats.")
               }
@@ -346,6 +357,16 @@ export function StudentBatchEnrollmentActions({
             data-testid="switch-include-all-prices"
           >
             Include all batches irrespective of price
+          </Checkbox>
+          <Checkbox
+            isSelected={includeAllAges}
+            onChange={(checked) => {
+              setIncludeAllAges(checked);
+              setSelectedTargetId(null);
+            }}
+            data-testid="switch-include-all-ages"
+          >
+            Include all batches irrespective of age
           </Checkbox>
           {switchBatch.isError ? (
             <ErrorState
@@ -509,9 +530,7 @@ export function StudentBatchEnrollmentActions({
                     return;
                   }
                   const raw =
-                    refundAmountInvoiceId === refundable.id
-                      ? refundAmount
-                      : "";
+                    refundAmountInvoiceId === refundable.id ? refundAmount : "";
                   parsedRefundAmount = Number(raw);
                   if (
                     !Number.isFinite(parsedRefundAmount) ||

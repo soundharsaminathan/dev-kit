@@ -260,6 +260,10 @@ class SwitchBatchDto {
   @IsOptional()
   @IsBoolean()
   includeAllPrices?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  includeAllAges?: boolean;
 }
 
 class UnenrollStudentDto {
@@ -354,12 +358,14 @@ export class BatchesController {
     @Param("id") id: string,
     @Query("studentId") studentId?: string,
     @Query("includeAllPrices") includeAllPrices?: string,
+    @Query("includeAllAges") includeAllAges?: string,
   ) {
     if (!studentId) {
       throw new BadRequestException("studentId is required");
     }
     return this.batchesService.listSwitchTargets(id, studentId, {
       includeAllPrices: includeAllPrices === "true" || includeAllPrices === "1",
+      includeAllAges: includeAllAges === "true" || includeAllAges === "1",
     });
   }
 
@@ -494,6 +500,7 @@ export class BatchesController {
   switchBatch(@Param("id") id: string, @Body() dto: SwitchBatchDto) {
     return this.batchCommands.switchBatch(id, dto.studentId, dto.toBatchId, {
       includeAllPrices: dto.includeAllPrices === true,
+      includeAllAges: dto.includeAllAges === true,
     });
   }
 

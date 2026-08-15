@@ -1566,9 +1566,10 @@ export class BatchesService {
   async listSwitchTargets(
     fromBatchId: string,
     studentId: string,
-    options: { includeAllPrices?: boolean } = {},
+    options: { includeAllPrices?: boolean; includeAllAges?: boolean } = {},
   ) {
     const includeAllPrices = options.includeAllPrices === true;
+    const includeAllAges = options.includeAllAges === true;
     const source = await this.prisma.batch.findUnique({
       where: { id: fromBatchId },
       include: {
@@ -1607,6 +1608,7 @@ export class BatchesService {
         studentId,
         subscription: null,
         includeAllPrices,
+        includeAllAges,
         reason: "No active subscription covering this batch",
         targets: [],
       };
@@ -1648,6 +1650,7 @@ export class BatchesService {
               periodEnd: membership.periodEnd,
               seatRole: seat.seatRole,
               batchCategory: batch.category,
+              ignoreAge: includeAllAges,
             })
           : false,
       )
@@ -1672,6 +1675,7 @@ export class BatchesService {
     return {
       studentId,
       includeAllPrices,
+      includeAllAges,
       subscription: {
         id: membership.subscription.id,
         name: membership.subscription.name,
@@ -1684,7 +1688,7 @@ export class BatchesService {
     fromBatchId: string,
     studentId: string,
     toBatchId: string,
-    options: { includeAllPrices?: boolean } = {},
+    options: { includeAllPrices?: boolean; includeAllAges?: boolean } = {},
   ) {
     if (fromBatchId === toBatchId) {
       throw new BadRequestException("Student is already in this batch");
@@ -1755,6 +1759,7 @@ export class BatchesService {
     }
 
     const seat = membership.coveredStudents[0];
+    const includeAllAges = options.includeAllAges === true;
     if (
       !seat ||
       !membershipCoversBatch({
@@ -1763,6 +1768,7 @@ export class BatchesService {
         periodEnd: membership.periodEnd,
         seatRole: seat.seatRole,
         batchCategory: target.category,
+        ignoreAge: includeAllAges,
       })
     ) {
       throw new BadRequestException(

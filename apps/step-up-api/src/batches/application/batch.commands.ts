@@ -113,7 +113,7 @@ export class BatchCommandsService {
     fromBatchId: string,
     studentId: string,
     toBatchId: string,
-    options: { includeAllPrices?: boolean } = {},
+    options: { includeAllPrices?: boolean; includeAllAges?: boolean } = {},
   ) {
     const result = await this.batches.switchBatch(
       fromBatchId,
