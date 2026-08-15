@@ -395,6 +395,18 @@ export class BatchesController {
     return this.batchQueries.getAttendanceSummary(id, { month: query.month });
   }
 
+  @Get(":id/attendance/:studentId")
+  @Roles(UserRole.OWNER, UserRole.STAFF, UserRole.TRAINER)
+  getStudentAttendance(
+    @Param("id") id: string,
+    @Param("studentId") studentId: string,
+    @Query() query: BatchAttendanceQueryDto,
+  ) {
+    return this.batchQueries.getStudentAttendanceDetail(id, studentId, {
+      month: query.month,
+    });
+  }
+
   @Get(":id")
   getById(@Param("id") id: string, @Query("studentId") studentId?: string) {
     return this.batchQueries.getHeader(id, { studentId });

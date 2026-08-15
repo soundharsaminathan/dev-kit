@@ -23,6 +23,7 @@ import { UserPresenter } from "../../users/user-presenter";
 import {
   compareAttendanceRisk,
   computeAttendanceMonthCounts,
+  isSessionEligibleForEnrollment,
   parseAttendanceMonthKey,
 } from "../attendance-month";
 import type { DiscoverBatchFilters } from "../batches.service";
@@ -333,7 +334,9 @@ export class BatchQueriesService {
     const hasMore = startIndex + page.length < filtered.length;
     return {
       items: page,
-      nextCursor: hasMore ? ((page[page.length - 1]?.id as string) ?? null) : null,
+      nextCursor: hasMore
+        ? ((page[page.length - 1]?.id as string) ?? null)
+        : null,
       limit,
     };
   }
@@ -470,6 +473,127 @@ export class BatchQueriesService {
       month,
       sessionCount: sessions.length,
       students,
+    };
+  }
+
+  async getStudentAttendanceDetail(
+    batchId: string,
+    studentId: string,
+    options: { month?: string } = {},
+  ) {
+    const batch = await this.prisma.batch.findUnique({
+      where: { id: batchId },
+      select: { id: true },
+    });
+    if (!batch) {
+      throw new NotFoundException("Batch not found");
+    }
+
+    const { month, periodStart, periodEnd } = parseAttendanceMonthKey(
+      options.month,
+    );
+
+    const [sessions, enrollment] = await Promise.all([
+      this.prisma.session.findMany({
+        where: {
+          batchId,
+          type: SessionType.REGULAR,
+          status: { not: SessionStatus.CANCELLED },
+          startsAt: { gte: periodStart, lt: periodEnd },
+        },
+        select: {
+          id: true,
+          startsAt: true,
+          type: true,
+          status: true,
+        },
+        orderBy: { startsAt: "asc" },
+      }),
+      this.prisma.batchEnrollment.findFirst({
+        where: { batchId, studentId },
+        select: {
+          studentId: true,
+          enrolledAt: true,
+          status: true,
+          endedAt: true,
+          student: {
+            select: {
+              id: true,
+              photoUrl: true,
+              ...userPiiSelect,
+            },
+          },
+        },
+      }),
+    ]);
+
+    if (!enrollment) {
+      throw new NotFoundException("Student is not enrolled in this batch");
+    }
+
+    const sessionIds = sessions.map((session) => session.id);
+    const marks =
+      sessionIds.length === 0
+        ? []
+        : await this.prisma.attendance.findMany({
+            where: {
+              sessionId: { in: sessionIds },
+              studentId,
+            },
+            select: {
+              sessionId: true,
+              status: true,
+            },
+          });
+    const marksBySession = new Map(
+      marks.map((mark) => [mark.sessionId, mark.status]),
+    );
+
+    const detailSessions = sessions
+      .filter((session) => isSessionEligibleForEnrollment(session, enrollment))
+      .map((session) => ({
+        id: session.id,
+        startsAt: session.startsAt,
+        type: session.type,
+        status: session.status,
+        attendance: marksBySession.get(session.id) ?? null,
+      }));
+
+    const [countsRow] = computeAttendanceMonthCounts({
+      enrollments: [enrollment],
+      sessions,
+      marks: marks.map((mark) => ({
+        sessionId: mark.sessionId,
+        studentId,
+        status: mark.status,
+      })),
+      periodStart,
+      periodEnd,
+    });
+
+    const presented = await this.users.presentLiteMany([enrollment.student]);
+    const student = presented[0];
+
+    const {
+      eligibleCount = 0,
+      presentCount = 0,
+      absentCount = 0,
+      unmarkedCount = 0,
+    } = countsRow ?? {};
+
+    return {
+      month,
+      student: student
+        ? { id: student.id, name: student.name, photoUrl: student.photoUrl }
+        : { id: studentId, name: "Student", photoUrl: null },
+      sessionCount: detailSessions.length,
+      sessions: detailSessions,
+      counts: {
+        eligibleCount,
+        presentCount,
+        absentCount,
+        unmarkedCount,
+      },
     };
   }
 

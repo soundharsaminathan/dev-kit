@@ -9,7 +9,6 @@ import {
 import { useLoadMoreOnScroll } from "@dev-ui/hooks";
 import { Icon } from "@dev-ui/icons";
 import { useQuery } from "@tanstack/react-query";
-import { useNavigate } from "@tanstack/react-router";
 import { useCallback, useMemo, useState } from "react";
 import { useApi } from "@/lib/api-context";
 import { ENTITY_ICONS } from "@/lib/entity-icons";
@@ -43,10 +42,66 @@ export type BatchAttendanceSummary = {
   students: BatchAttendanceStudent[];
 };
 
+export type StudentAttendanceStatus = "PRESENT" | "ABSENT" | null;
+
+export type StudentAttendanceSession = {
+  id: string;
+  startsAt: string;
+  type: string;
+  status: string;
+  attendance: StudentAttendanceStatus;
+};
+
+export type StudentAttendanceDetail = {
+  month: string;
+  student: {
+    id: string;
+    name: string;
+    photoUrl?: string | null;
+  };
+  sessionCount: number;
+  sessions: StudentAttendanceSession[];
+  counts: {
+    eligibleCount: number;
+    presentCount: number;
+    absentCount: number;
+    unmarkedCount: number;
+  };
+};
+
 type BatchAttendanceTabProps = {
   batchId: string;
   enabled: boolean;
 };
+
+function formatSessionDayLabel(startsAt: string) {
+  const date = new Date(startsAt);
+  if (!Number.isFinite(date.getTime())) return "—";
+  return date.toLocaleDateString(undefined, {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+  });
+}
+
+function formatSessionTimeLabel(startsAt: string) {
+  const date = new Date(startsAt);
+  if (!Number.isFinite(date.getTime())) return "—";
+  return date.toLocaleTimeString(undefined, {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function statusPillMeta(status: StudentAttendanceStatus) {
+  if (status === "PRESENT") {
+    return { label: "Present", tone: "present" } as const;
+  }
+  if (status === "ABSENT") {
+    return { label: "Absent", tone: "absent" } as const;
+  }
+  return { label: "Unmarked", tone: "unmarked" } as const;
+}
 
 function AttendanceSkeleton() {
   return (
@@ -86,6 +141,137 @@ function AttendanceSkeleton() {
   );
 }
 
+type StudentAttendanceSessionsProps = {
+  batchId: string;
+  studentId: string;
+  studentName: string;
+  month: string;
+};
+
+function StudentAttendanceSessions({
+  batchId,
+  studentId,
+  studentName,
+  month,
+}: StudentAttendanceSessionsProps) {
+  const api = useApi();
+
+  const query = useQuery({
+    queryKey: ["batch", batchId, "attendance", month, "student", studentId],
+    queryFn: () =>
+      api.get<StudentAttendanceDetail>(
+        `/batches/${batchId}/attendance/${studentId}?month=${encodeURIComponent(month)}`,
+      ),
+  });
+
+  if (query.isError) {
+    return (
+      <div className={styles.detailError}>
+        <p>
+          {query.error instanceof Error
+            ? query.error.message
+            : "Could not load sessions."}
+        </p>
+        <TouchButton
+          variant="quiet"
+          size="sm"
+          onClick={() => {
+            void query.refetch();
+          }}
+        >
+          Try again
+        </TouchButton>
+      </div>
+    );
+  }
+
+  if (query.isLoading || !query.data) {
+    return (
+      <div className={styles.detailLoading} aria-busy="true">
+        {["d0", "d1", "d2", "d3"].map((key) => (
+          <div key={key} className={styles.detailSkeletonRow}>
+            <SkeletonBlock height="2.5rem" width="2.5rem" radius="0.625rem" />
+            <div className={styles.detailSkeletonBody}>
+              <SkeletonBlock height="0.8125rem" width="55%" />
+              <SkeletonBlock height="0.625rem" width="30%" />
+            </div>
+            <SkeletonBlock height="1.25rem" width="4.5rem" radius="999px" />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  const { sessions, counts } = query.data;
+
+  if (sessions.length === 0) {
+    return (
+      <div className={styles.detailEmpty}>
+        <Icon name="calendar" className={styles.detailEmptyIcon} />
+        <p>No eligible sessions for {studentName} this month.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className={styles.detail}
+      data-testid={`student-attendance-detail-${studentId}`}
+    >
+      <div className={styles.detailHeader}>
+        <span className={styles.detailTitle}>{studentName}</span>
+        <div className={styles.detailChips}>
+          {counts.presentCount > 0 ? (
+            <span className={styles.chip} data-tone="present">
+              {counts.presentCount} present
+            </span>
+          ) : null}
+          {counts.absentCount > 0 ? (
+            <span className={styles.chip} data-tone="absent">
+              {counts.absentCount} absent
+            </span>
+          ) : null}
+          {counts.unmarkedCount > 0 ? (
+            <span className={styles.chip} data-tone="unmarked">
+              {counts.unmarkedCount} unmarked
+            </span>
+          ) : null}
+        </div>
+      </div>
+
+      <ul className={styles.sessionList}>
+        {sessions.map((session) => {
+          const meta = statusPillMeta(session.attendance);
+          return (
+            <li
+              key={session.id}
+              className={styles.sessionRow}
+              data-testid={`student-session-${session.id}`}
+            >
+              <div className={styles.sessionDate}>
+                <span className={styles.sessionDay}>
+                  {formatSessionDayLabel(session.startsAt)}
+                </span>
+                <span className={styles.sessionTime}>
+                  {formatSessionTimeLabel(session.startsAt)}
+                </span>
+              </div>
+              <span
+                className={styles.sessionStatus}
+                data-tone={meta.tone}
+                data-testid={`student-session-status-${session.id}`}
+              >
+                <span className={styles.sessionStatusDot} aria-hidden />
+                {meta.label}
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
 function attendancePercent(present: number, eligible: number) {
   if (eligible <= 0) return 0;
   return Math.round((present / eligible) * 100);
@@ -109,8 +295,10 @@ export function BatchAttendanceTab({
   enabled,
 }: BatchAttendanceTabProps) {
   const api = useApi();
-  const navigate = useNavigate();
   const [month, setMonth] = useState(() => utcMonthKey());
+  const [expandedStudentId, setExpandedStudentId] = useState<string | null>(
+    null,
+  );
 
   const monthChips = useMemo(() => {
     const current = utcMonthKey();
@@ -137,6 +325,7 @@ export function BatchAttendanceTab({
   if (windowKey !== month) {
     setWindowKey(month);
     setVisibleCount(ATTENDANCE_PAGE_SIZE);
+    setExpandedStudentId(null);
   }
   const visibleStudents = students.slice(0, visibleCount);
   const hasMore = visibleCount < students.length;
@@ -148,11 +337,8 @@ export function BatchAttendanceTab({
     onLoadMore: loadMore,
   });
 
-  function openStudent(id: string) {
-    void navigate({
-      to: "/app/students/$id",
-      params: { id },
-    });
+  function toggleStudent(id: string) {
+    setExpandedStudentId((current) => (current === id ? null : id));
   }
 
   return (
@@ -259,72 +445,98 @@ export function BatchAttendanceTab({
               const presentPct = eligible > 0 ? (present / eligible) * 100 : 0;
               const absentPct = eligible > 0 ? (absent / eligible) * 100 : 0;
               const rate = attendancePercent(present, eligible);
+              const expanded = expandedStudentId === row.studentId;
 
               return (
-                <PressableCard
-                  key={row.studentId}
-                  onClick={() => openStudent(row.studentId)}
-                >
-                  <div className={styles.card}>
-                    <Avatar size="lg" className={styles.avatar}>
-                      {student.photoUrl ? (
-                        <AvatarImage
-                          src={student.photoUrl}
-                          alt={student.name}
-                        />
-                      ) : null}
-                      <AvatarFallback>{initials}</AvatarFallback>
-                    </Avatar>
-
-                    <div className={styles.body}>
-                      <div className={styles.top}>
-                        <h3 className={styles.name}>{student.name}</h3>
-                        <span
-                          className={styles.count}
-                          data-testid={`attendance-count-${row.studentId}`}
-                          data-rate={rate}
-                        >
-                          <span className={styles.countPresent}>{present}</span>
-                          <span className={styles.countSep}>/</span>
-                          <span className={styles.countTotal}>{eligible}</span>
-                        </span>
-                      </div>
-
-                      <div
-                        className={styles.track}
-                        aria-hidden
-                        data-empty={eligible === 0 ? "true" : undefined}
-                      >
-                        <span
-                          className={styles.trackPresent}
-                          style={{ width: `${presentPct}%` }}
-                        />
-                        <span
-                          className={styles.trackAbsent}
-                          style={{ width: `${absentPct}%` }}
-                        />
-                        <span
-                          className={styles.trackUnmarked}
-                          style={{
-                            width: `${Math.max(0, 100 - presentPct - absentPct)}%`,
-                          }}
-                        />
-                      </div>
-
-                      <p className={styles.meta}>
-                        {present} present
-                        {absent > 0 || unmarked > 0 ? (
-                          <>
-                            {" · "}
-                            {absent + unmarked} missed
-                          </>
+                <div key={row.studentId} className={styles.studentItem}>
+                  <PressableCard
+                    onClick={() => toggleStudent(row.studentId)}
+                    aria-expanded={expanded}
+                    aria-controls={`student-attendance-${row.studentId}`}
+                  >
+                    <div className={styles.card}>
+                      <Avatar size="lg" className={styles.avatar}>
+                        {student.photoUrl ? (
+                          <AvatarImage
+                            src={student.photoUrl}
+                            alt={student.name}
+                          />
                         ) : null}
-                      </p>
-                    </div>
+                        <AvatarFallback>{initials}</AvatarFallback>
+                      </Avatar>
 
-                    <Icon name="chevron-right" className={styles.chevron} />
-                  </div>
-                </PressableCard>
+                      <div className={styles.body}>
+                        <div className={styles.top}>
+                          <h3 className={styles.name}>{student.name}</h3>
+                          <span
+                            className={styles.count}
+                            data-testid={`attendance-count-${row.studentId}`}
+                            data-rate={rate}
+                          >
+                            <span className={styles.countPresent}>
+                              {present}
+                            </span>
+                            <span className={styles.countSep}>/</span>
+                            <span className={styles.countTotal}>
+                              {eligible}
+                            </span>
+                          </span>
+                        </div>
+
+                        <div
+                          className={styles.track}
+                          aria-hidden
+                          data-empty={eligible === 0 ? "true" : undefined}
+                        >
+                          <span
+                            className={styles.trackPresent}
+                            style={{ width: `${presentPct}%` }}
+                          />
+                          <span
+                            className={styles.trackAbsent}
+                            style={{ width: `${absentPct}%` }}
+                          />
+                          <span
+                            className={styles.trackUnmarked}
+                            style={{
+                              width: `${Math.max(0, 100 - presentPct - absentPct)}%`,
+                            }}
+                          />
+                        </div>
+
+                        <p className={styles.meta}>
+                          {present} present
+                          {absent > 0 || unmarked > 0 ? (
+                            <>
+                              {" · "}
+                              {absent + unmarked} missed
+                            </>
+                          ) : null}
+                        </p>
+                      </div>
+
+                      <Icon
+                        name="chevron-right"
+                        className={styles.chevron}
+                        data-expanded={expanded ? "true" : undefined}
+                      />
+                    </div>
+                  </PressableCard>
+
+                  {expanded ? (
+                    <div
+                      id={`student-attendance-${row.studentId}`}
+                      className={styles.detailRegion}
+                    >
+                      <StudentAttendanceSessions
+                        batchId={batchId}
+                        studentId={row.studentId}
+                        studentName={student.name}
+                        month={month}
+                      />
+                    </div>
+                  ) : null}
+                </div>
               );
             })}
           </div>
