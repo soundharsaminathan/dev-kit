@@ -767,7 +767,6 @@ function SessionAttendancePage() {
         isError={rosterQuery.isError || sessionQuery.isError}
         error={rosterQuery.error ?? sessionQuery.error}
         data={rosterQuery.data}
-        allowEmpty
         emptyTitle="No enrolled students"
         emptyDescription="Enroll students in this batch before taking attendance."
       >
