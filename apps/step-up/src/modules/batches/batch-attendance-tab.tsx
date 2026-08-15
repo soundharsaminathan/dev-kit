@@ -1,4 +1,11 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@dev-ui/components/avatar";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@dev-ui/components/select";
 import { useLoadMoreOnScroll } from "@dev-ui/hooks";
 import { Icon } from "@dev-ui/icons";
 import { useQuery } from "@tanstack/react-query";
@@ -11,7 +18,6 @@ import {
   recentUtcMonthKeys,
   utcMonthKey,
 } from "@/modules/payments/invoice-types";
-import { FilterChipRow } from "@/modules/ui/filter-chip-row";
 import { PressableCard } from "@/modules/ui/pressable-card";
 import { SkeletonBlock } from "@/modules/ui/skeleton-block";
 import { EmptyState, ErrorState } from "@/modules/ui/states";
@@ -152,11 +158,28 @@ export function BatchAttendanceTab({
   return (
     <div className={styles.root} data-testid="batch-attendance-tab">
       <div className={styles.filters}>
-        <FilterChipRow
-          chips={monthChips}
-          selected={[month]}
-          onToggle={(id) => setMonth(id)}
-        />
+        <Select
+          aria-label="Attendance month"
+          selectedKey={month}
+          onSelectionChange={(key) => {
+            if (key != null) setMonth(String(key));
+          }}
+        >
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {monthChips.map((option) => (
+              <SelectItem
+                key={option.id}
+                id={option.id}
+                textValue={option.label}
+              >
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       {query.isLoading ? <AttendanceSkeleton /> : null}
@@ -260,12 +283,9 @@ export function BatchAttendanceTab({
                           className={styles.count}
                           data-testid={`attendance-count-${row.studentId}`}
                           data-rate={rate}
-                          aria-label={`${present} of ${eligible}`}
                         >
                           <span className={styles.countPresent}>{present}</span>
-                          <span className={styles.countSep} aria-hidden>
-                            /
-                          </span>
+                          <span className={styles.countSep}>/</span>
                           <span className={styles.countTotal}>{eligible}</span>
                         </span>
                       </div>

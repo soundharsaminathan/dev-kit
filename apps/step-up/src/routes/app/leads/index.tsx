@@ -257,6 +257,78 @@ function LeadsPage() {
     },
   });
 
+  const unarchiveLead = useMutation({
+    mutationFn: (lead: Lead) =>
+      api.patch(`/users/studio/${studioId}/students/${lead.id}`, {
+        active: true,
+      }),
+    onSuccess: async (_data, lead) => {
+      await queryClient.invalidateQueries({
+        queryKey: ["studio-leads", studioId],
+      });
+      setSelectedIds((prev) => {
+        if (!prev.has(lead.id)) return prev;
+        const next = new Set(prev);
+        next.delete(lead.id);
+        return next;
+      });
+      toast({
+        title: `${lead.name} unarchived`,
+        description: "They're back in your leads.",
+        variant: "success",
+      });
+    },
+    onError: (error: unknown) => {
+      toast({
+        title: "Couldn’t unarchive lead",
+        description: error instanceof Error ? error.message : "Try again.",
+        variant: "error",
+      });
+    },
+  });
+
+  const unarchiveLeads = useMutation({
+    mutationFn: (leads: Lead[]) =>
+      Promise.all(
+        leads.map((lead) =>
+          api.patch(`/users/studio/${studioId}/students/${lead.id}`, {
+            active: true,
+          }),
+        ),
+      ),
+    onSuccess: async (_data, leads) => {
+      await queryClient.invalidateQueries({
+        queryKey: ["studio-leads", studioId],
+      });
+      const ids = new Set(leads.map((lead) => lead.id));
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        for (const id of ids) next.delete(id);
+        return next;
+      });
+      toast({
+        title: `${leads.length} lead${leads.length === 1 ? "" : "s"} unarchived`,
+        description: "They're back in your leads.",
+        variant: "success",
+      });
+    },
+    onError: (error: unknown) => {
+      toast({
+        title: "Couldn’t unarchive leads",
+        description: error instanceof Error ? error.message : "Try again.",
+        variant: "error",
+      });
+    },
+  });
+
+  const selectedLeads = useMemo(
+    () => leads.filter((lead) => selectedIds.has(lead.id)),
+    [leads, selectedIds],
+  );
+  const allSelectedArchived =
+    selectedLeads.length > 0 &&
+    selectedLeads.every((lead) => lead.section === "archived");
+
   const grouped = useMemo(() => {
     const map: Record<LeadSection, Lead[]> = {
       new: [],
@@ -428,23 +500,37 @@ function LeadsPage() {
                 <span className={styles.selectionCount}>
                   {selectedIds.size} selected
                 </span>
-                <TouchButton
-                  variant="danger"
-                  size="sm"
-                  isPending={archiveLeads.isPending}
-                  isDisabled={archiveLeads.isPending}
-                  data-testid="leads-archive-selected"
-                  onClick={() => {
-                    const selected = leads.filter((lead) =>
-                      selectedIds.has(lead.id),
-                    );
-                    if (selected.length === 0) return;
-                    archiveLeads.mutate(selected);
-                  }}
-                >
-                  <Icon name="archive" />
-                  Archive
-                </TouchButton>
+                {allSelectedArchived ? (
+                  <TouchButton
+                    variant="primary"
+                    size="sm"
+                    isPending={unarchiveLeads.isPending}
+                    isDisabled={unarchiveLeads.isPending}
+                    data-testid="leads-unarchive-selected"
+                    onClick={() => {
+                      if (selectedLeads.length === 0) return;
+                      unarchiveLeads.mutate(selectedLeads);
+                    }}
+                  >
+                    <Icon name="inbox" />
+                    Unarchive
+                  </TouchButton>
+                ) : (
+                  <TouchButton
+                    variant="danger"
+                    size="sm"
+                    isPending={archiveLeads.isPending}
+                    isDisabled={archiveLeads.isPending}
+                    data-testid="leads-archive-selected"
+                    onClick={() => {
+                      if (selectedLeads.length === 0) return;
+                      archiveLeads.mutate(selectedLeads);
+                    }}
+                  >
+                    <Icon name="archive" />
+                    Archive
+                  </TouchButton>
+                )}
                 <TouchButton
                   variant="quiet"
                   size="sm"
@@ -513,7 +599,7 @@ function LeadsPage() {
                 <ul className={staff.list}>
                   <AnimatePresence initial={false} mode="popLayout">
                     {grouped[section].map((lead) => {
-                      const canSelect = !isMobile && section !== "archived";
+                      const canSelect = !isMobile;
                       const card = (
                         <LeadCard
                           lead={lead}
@@ -547,7 +633,30 @@ function LeadsPage() {
 
                       const item =
                         section === "archived" ? (
-                          card
+                          <Swipeable
+                            direction="horizontal"
+                            ariaLabel={`Actions for ${lead.name}`}
+                            onSwipeRight={() => unarchiveLead.mutate(lead)}
+                            leftActions={
+                              <TouchButton
+                                variant="primary"
+                                size="sm"
+                                isIconOnly
+                                className={styles.archiveAction}
+                                aria-label={`Unarchive ${lead.name}`}
+                                data-testid={`lead-unarchive-${lead.id}`}
+                                isDisabled={
+                                  unarchiveLead.isPending &&
+                                  unarchiveLead.variables?.id === lead.id
+                                }
+                                onClick={() => unarchiveLead.mutate(lead)}
+                              >
+                                <Icon name="inbox" />
+                              </TouchButton>
+                            }
+                          >
+                            {card}
+                          </Swipeable>
                         ) : (
                           <Swipeable
                             direction="horizontal"
