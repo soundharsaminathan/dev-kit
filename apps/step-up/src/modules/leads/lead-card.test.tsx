@@ -1,5 +1,5 @@
 import { fireEvent, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { renderWithProviders } from "@/test/render";
 import { LeadCard } from "./lead-card";
 import type { Lead, LeadTrialBooking } from "./types";
@@ -25,56 +25,87 @@ function lead(overrides: Partial<Lead> = {}): Lead {
     createdAt: "2026-08-01T10:00:00.000Z",
     active: true,
     section: "new",
+    lastFollowupAt: null,
     trialBooking: null,
     ...overrides,
   };
 }
 
 describe("LeadCard identity", () => {
-  it("renders name and phone as text so the row can be swiped", () => {
+  it("renders name, phone, and a missing follow-up chip", () => {
     renderWithProviders(<LeadCard lead={lead()} range={null} />);
 
     expect(screen.getByTestId("lead-card-lead-1")).toBeInTheDocument();
     expect(screen.getByText("Asha Rao")).toBeInTheDocument();
     expect(screen.getByText("+91 91234 56789")).toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: /view asha rao's profile/i }),
-    ).toBeNull();
-    expect(screen.queryByRole("button", { name: /copy \+91/i })).toBeNull();
+    expect(screen.getByTestId("lead-followup-lead-1")).toHaveTextContent(
+      "No follow-up",
+    );
+    expect(screen.queryByRole("button", { name: /call asha rao/i })).toBeNull();
+  });
+
+  it("shows a relative last follow-up chip", () => {
+    const now = Date.now();
+    renderWithProviders(
+      <LeadCard
+        lead={lead({
+          lastFollowupAt: new Date(now - 3 * 60_000).toISOString(),
+        })}
+        range={null}
+      />,
+    );
+
+    expect(screen.getByTestId("lead-followup-lead-1")).toHaveTextContent(
+      "3m ago",
+    );
   });
 });
 
-describe("LeadCard call button", () => {
-  afterEach(() => {
-    vi.unstubAllGlobals();
+describe("LeadCard open", () => {
+  it("opens on card click", () => {
+    const onOpen = vi.fn();
+    const row = lead();
+    renderWithProviders(<LeadCard lead={row} range={null} onOpen={onOpen} />);
+
+    fireEvent.click(screen.getByTestId("lead-open-lead-1"));
+    expect(onOpen).toHaveBeenCalledWith(row);
   });
 
-  it("dials through a primary button instead of a router-captured link", () => {
-    const assign = vi.fn();
-    vi.stubGlobal("location", { assign });
+  it("does not open when a trial action is clicked", () => {
+    const onOpen = vi.fn();
+    const onSwitchTrial = vi.fn();
+    const row = lead();
+    renderWithProviders(
+      <LeadCard
+        lead={row}
+        range={null}
+        onOpen={onOpen}
+        onSwitchTrial={onSwitchTrial}
+      />,
+    );
 
-    renderWithProviders(<LeadCard lead={lead()} range={null} />);
-
-    const button = screen.getByRole("button", { name: "Call Asha Rao" });
-    expect(button).toHaveAttribute("data-variant", "primary");
-    fireEvent.click(button);
-    expect(assign).toHaveBeenCalledWith("tel:+919123456789");
+    fireEvent.click(screen.getByTestId("lead-pick-session-lead-1"));
+    expect(onSwitchTrial).toHaveBeenCalledWith(row);
+    expect(onOpen).not.toHaveBeenCalled();
   });
 
-  it("disables the call button when the lead has no phone", () => {
-    renderWithProviders(<LeadCard lead={lead({ phone: null })} range={null} />);
+  it("does not open when the select checkbox is toggled", () => {
+    const onOpen = vi.fn();
+    const onToggleSelect = vi.fn();
+    const row = lead();
+    renderWithProviders(
+      <LeadCard
+        lead={row}
+        range={null}
+        onOpen={onOpen}
+        selected
+        onToggleSelect={onToggleSelect}
+      />,
+    );
 
-    expect(
-      screen.getByRole("button", { name: "No phone number" }),
-    ).toBeDisabled();
-    expect(screen.getByText("No mobile on file")).toBeInTheDocument();
-  });
-
-  it("shows age next to the name", () => {
-    renderWithProviders(<LeadCard lead={lead()} range={null} />);
-
-    expect(screen.getByText("Asha Rao")).toBeInTheDocument();
-    expect(screen.getByText("20–40")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("checkbox", { name: "Select Asha Rao" }));
+    expect(onToggleSelect).toHaveBeenCalledWith(row);
+    expect(onOpen).not.toHaveBeenCalled();
   });
 });
 

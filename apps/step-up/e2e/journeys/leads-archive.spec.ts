@@ -39,21 +39,6 @@ async function openLeadsOnMobile(page: Page, name: string, leadId: string) {
   });
 }
 
-async function swipeLeadCard(page: Page, leadId: string, dx: number) {
-  const card = page.getByTestId(`lead-card-${leadId}`);
-  await card.scrollIntoViewIfNeeded();
-  const box = await card.boundingBox();
-  if (!box) {
-    throw new Error(`lead-card-${leadId} has no bounding box`);
-  }
-  const startX = box.x + Math.min(96, box.width * 0.35);
-  const y = box.y + Math.min(28, box.height / 3);
-  await page.mouse.move(startX, y);
-  await page.mouse.down();
-  await page.mouse.move(startX + dx, y, { steps: 24 });
-  await page.mouse.up();
-}
-
 async function leadSection(name: string, leadId: string) {
   const page = await apiRequest<{
     items: Array<{ id: string; section: string }>;
@@ -64,8 +49,8 @@ async function leadSection(name: string, leadId: string) {
   return page.items.find((item) => item.id === leadId);
 }
 
-test.describe("trial caller swipe archive @critical", () => {
-  test("staff swipes to archive then unarchive a lead on mobile @critical", async ({
+test.describe("trial caller sheet archive @critical", () => {
+  test("staff archives then unarchives a lead from the sheet @critical", async ({
     browser,
   }) => {
     const cleanup = new TestDataCleanup();
@@ -79,12 +64,13 @@ test.describe("trial caller swipe archive @critical", () => {
     try {
       await openLeadsOnMobile(page, lead.name, lead.id);
 
+      await page.getByTestId(`lead-open-${lead.id}`).click();
       const [archiveResponse] = await Promise.all([
         waitForApiResponse(page, {
           method: "PATCH",
           pathIncludes: `/users/studio/${STUDIO_ID}/students/${lead.id}`,
         }),
-        swipeLeadCard(page, lead.id, -180),
+        page.getByTestId(`lead-archive-${lead.id}`).click(),
       ]);
       expect(archiveResponse.ok()).toBeTruthy();
 
@@ -97,12 +83,13 @@ test.describe("trial caller swipe archive @critical", () => {
         timeout: 30_000,
       });
 
+      await page.getByTestId(`lead-open-${lead.id}`).click();
       const [unarchiveResponse] = await Promise.all([
         waitForApiResponse(page, {
           method: "PATCH",
           pathIncludes: `/users/studio/${STUDIO_ID}/students/${lead.id}`,
         }),
-        swipeLeadCard(page, lead.id, 180),
+        page.getByTestId(`lead-unarchive-${lead.id}`).click(),
       ]);
       expect(unarchiveResponse.ok()).toBeTruthy();
 
@@ -114,6 +101,47 @@ test.describe("trial caller swipe archive @critical", () => {
       await expect(page.getByTestId(`lead-card-${lead.id}`)).toBeVisible({
         timeout: 30_000,
       });
+    } finally {
+      await context.close();
+      await cleanup.dispose();
+    }
+  });
+
+  test("staff posts a remark and the follow-up chip updates @critical", async ({
+    browser,
+  }) => {
+    const cleanup = new TestDataCleanup();
+    const lead = await createNewLead(cleanup);
+
+    const context = await browser.newContext({
+      storageState: authFile("STAFF"),
+      viewport: { width: 393, height: 851 },
+    });
+    const page = await context.newPage();
+    try {
+      await openLeadsOnMobile(page, lead.name, lead.id);
+      await expect(page.getByTestId(`lead-followup-${lead.id}`)).toHaveText(
+        "No follow-up",
+      );
+
+      await page.getByTestId(`lead-open-${lead.id}`).click();
+      await page.getByTestId("lead-remark-input").fill("Called, will visit");
+      const [remarkResponse] = await Promise.all([
+        waitForApiResponse(page, {
+          method: "POST",
+          pathIncludes: `/users/studio/${STUDIO_ID}/leads/${lead.id}/remarks`,
+        }),
+        page.getByTestId("lead-remark-send").click(),
+      ]);
+      expect(remarkResponse.ok()).toBeTruthy();
+      await expect(page.getByText("Called, will visit")).toBeVisible();
+
+      await page.keyboard.press("Escape");
+      await expect
+        .poll(async () =>
+          page.getByTestId(`lead-followup-${lead.id}`).textContent(),
+        )
+        .not.toBe("No follow-up");
     } finally {
       await context.close();
       await cleanup.dispose();

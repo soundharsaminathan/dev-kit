@@ -3,6 +3,7 @@ import {
   canConfirmTrialSession,
   defaultSessionDateKey,
   emptyLeadsTitle,
+  formatFollowupChip,
   isDateKey,
   isTrialSoon,
   type LeadDateRange,
@@ -35,6 +36,22 @@ describe("phoneTelHref", () => {
   it("returns null when nothing dialable remains", () => {
     expect(phoneTelHref("Lead only")).toBeNull();
     expect(phoneTelHref("   ")).toBeNull();
+  });
+});
+
+describe("formatFollowupChip", () => {
+  const now = new Date("2026-08-15T12:00:00.000Z");
+
+  it("labels a missing follow-up", () => {
+    expect(formatFollowupChip(null, now)).toBe("No follow-up");
+  });
+
+  it("uses compact relative time", () => {
+    expect(formatFollowupChip("2026-08-15T11:59:30.000Z", now)).toBe(
+      "just now",
+    );
+    expect(formatFollowupChip("2026-08-15T10:00:00.000Z", now)).toBe("2h ago");
+    expect(formatFollowupChip("2026-08-12T12:00:00.000Z", now)).toBe("3d ago");
   });
 });
 

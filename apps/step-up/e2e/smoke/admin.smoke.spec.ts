@@ -314,7 +314,7 @@ test.describe("admin (staff) smoke @smoke", () => {
     }
   });
 
-  test("staff swipes to archive then unarchive a lead @smoke", async ({
+  test("staff archives then unarchives a lead from the sheet @smoke", async ({
     browser,
   }) => {
     const cleanup = new SmokeDataCleanup();
@@ -348,25 +348,13 @@ test.describe("admin (staff) smoke @smoke", () => {
         timeout: 30_000,
       });
 
-      const card = page.getByTestId(`lead-card-${lead.id}`);
-      const box = await card.boundingBox();
-      if (!box) {
-        throw new Error(`lead-card-${lead.id} has no bounding box`);
-      }
-      const startX = box.x + Math.min(96, box.width * 0.35);
-      const y = box.y + Math.min(28, box.height / 3);
-
+      await page.getByTestId(`lead-open-${lead.id}`).click();
       const [archiveResponse] = await Promise.all([
         waitForApiResponse(page, {
           method: "PATCH",
           pathIncludes: `/users/studio/${SMOKE.studioId}/students/${lead.id}`,
         }),
-        (async () => {
-          await page.mouse.move(startX, y);
-          await page.mouse.down();
-          await page.mouse.move(startX - 180, y, { steps: 24 });
-          await page.mouse.up();
-        })(),
+        page.getByTestId(`lead-archive-${lead.id}`).click(),
       ]);
       expect(archiveResponse.ok()).toBeTruthy();
 
@@ -387,26 +375,13 @@ test.describe("admin (staff) smoke @smoke", () => {
         timeout: 30_000,
       });
 
-      const archivedBox = await page
-        .getByTestId(`lead-card-${lead.id}`)
-        .boundingBox();
-      if (!archivedBox) {
-        throw new Error(`archived lead-card-${lead.id} has no bounding box`);
-      }
-      const unarchiveX = archivedBox.x + Math.min(96, archivedBox.width * 0.35);
-      const unarchiveY = archivedBox.y + Math.min(28, archivedBox.height / 3);
-
+      await page.getByTestId(`lead-open-${lead.id}`).click();
       const [unarchiveResponse] = await Promise.all([
         waitForApiResponse(page, {
           method: "PATCH",
           pathIncludes: `/users/studio/${SMOKE.studioId}/students/${lead.id}`,
         }),
-        (async () => {
-          await page.mouse.move(unarchiveX, unarchiveY);
-          await page.mouse.down();
-          await page.mouse.move(unarchiveX + 180, unarchiveY, { steps: 24 });
-          await page.mouse.up();
-        })(),
+        page.getByTestId(`lead-unarchive-${lead.id}`).click(),
       ]);
       expect(unarchiveResponse.ok()).toBeTruthy();
 
@@ -431,6 +406,59 @@ test.describe("admin (staff) smoke @smoke", () => {
     }
   });
 
+  test("staff posts a remark and the follow-up chip updates @smoke", async ({
+    browser,
+  }) => {
+    const cleanup = new SmokeDataCleanup();
+    const stamp = Date.now();
+    const lead = await apiRequest<{ id: string; name: string }>(
+      "STAFF",
+      `/users/studio/${SMOKE.studioId}/leads`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          name: `Smoke Remark ${stamp}`,
+          phone: `900${String(stamp).slice(-7)}`,
+          ageRange: "TWENTY_TO_FORTY",
+        }),
+      },
+    );
+    cleanup.trackStudent(lead.id);
+
+    const context = await browser.newContext({
+      storageState: authFile("STAFF"),
+      viewport: { width: 393, height: 851 },
+    });
+    const page = await context.newPage();
+    try {
+      await page.goto("/app/leads", { waitUntil: "domcontentloaded" });
+      await waitForAppReady(page);
+      await page
+        .getByRole("searchbox", { name: "Search leads" })
+        .fill(lead.name);
+      await expect(page.getByTestId(`lead-card-${lead.id}`)).toBeVisible({
+        timeout: 30_000,
+      });
+      await expect(page.getByTestId(`lead-followup-${lead.id}`)).toHaveText(
+        "No follow-up",
+      );
+
+      await page.getByTestId(`lead-open-${lead.id}`).click();
+      await page.getByTestId("lead-remark-input").fill("Called, will visit");
+      const [remarkResponse] = await Promise.all([
+        waitForApiResponse(page, {
+          method: "POST",
+          pathIncludes: `/users/studio/${SMOKE.studioId}/leads/${lead.id}/remarks`,
+        }),
+        page.getByTestId("lead-remark-send").click(),
+      ]);
+      expect(remarkResponse.ok()).toBeTruthy();
+      await expect(page.getByText("Called, will visit")).toBeVisible();
+    } finally {
+      await closeSmokeContext(context, cleanup);
+    }
+  });
+
   test("trainer cannot archive a lead @smoke", async () => {
     const token = await bearerFor("TRAINER");
     const response = await fetch(
@@ -442,6 +470,22 @@ test.describe("admin (staff) smoke @smoke", () => {
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ active: false }),
+      },
+    );
+    expect(response.status).toBe(403);
+  });
+
+  test("trainer cannot add a lead remark @smoke", async () => {
+    const token = await bearerFor("TRAINER");
+    const response = await fetch(
+      `${apiBaseUrl()}/users/studio/${SMOKE.studioId}/leads/${SMOKE.users.STUDENT.id}/remarks`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ body: "Should not land" }),
       },
     );
     expect(response.status).toBe(403);

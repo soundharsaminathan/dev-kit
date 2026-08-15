@@ -60,6 +60,7 @@ export type Lead = {
   createdAt: string;
   active: boolean;
   section: LeadSection;
+  lastFollowupAt: string | null;
   trialBooking: LeadTrialBooking | null;
 };
 
@@ -68,6 +69,18 @@ export type LeadPage = {
   nextCursor: string | null;
   limit: number;
 };
+
+export type LeadRemark = {
+  id: string;
+  body: string;
+  createdAt: string;
+  author: {
+    id: string;
+    name: string;
+  };
+};
+
+export const LEAD_REMARK_MAX_LENGTH = 2000;
 
 export type TrialSlot = {
   sessionId: string;
@@ -118,6 +131,22 @@ export function ageRangeLabel(ageRange: AgeRange | null) {
 export function phoneTelHref(phone: string) {
   const digits = phone.replace(/[^\d+]/g, "");
   return digits ? `tel:${digits}` : null;
+}
+
+export function formatRelativeFollowup(iso: string, now: Date = new Date()) {
+  const start = new Date(iso);
+  if (Number.isNaN(start.getTime())) return iso;
+  const minutes = Math.floor((now.getTime() - start.getTime()) / 60_000);
+  if (minutes < 1) return "just now";
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  return `${Math.floor(hours / 24)}d ago`;
+}
+
+export function formatFollowupChip(iso: string | null, now: Date = new Date()) {
+  if (!iso) return "No follow-up";
+  return formatRelativeFollowup(iso, now);
 }
 
 export function canConfirmTrialSession(trial: LeadTrialBooking | null) {

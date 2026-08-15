@@ -74,6 +74,7 @@ function lead(sessionStartsAt: string): Lead {
     createdAt: "2026-08-01T10:00:00.000Z",
     active: true,
     section: "trialBooked",
+    lastFollowupAt: null,
     trialBooking: {
       id: "bk-1",
       status: "PENDING",

@@ -1,21 +1,22 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@dev-ui/components/avatar";
 import { CheckboxControl } from "@dev-ui/components/checkbox";
-import { Icon } from "@dev-ui/icons";
+import type { KeyboardEvent } from "react";
 import { TouchButton } from "@/modules/ui/touch-button";
 import styles from "./leads.module.scss";
 import {
   ageRangeLabel,
   canConfirmTrialSession,
+  formatFollowupChip,
   formatTrialWhen,
   isTrialSoon,
   type Lead,
   type LeadDateRange,
-  phoneTelHref,
 } from "./types";
 
 type LeadCardProps = {
   lead: Lead;
   range: LeadDateRange | null;
+  onOpen?: ((lead: Lead) => void) | undefined;
   onSwitchTrial?: ((lead: Lead) => void) | undefined;
   onConfirmSession?: ((lead: Lead) => void) | undefined;
   confirmPending?: boolean | undefined;
@@ -26,13 +27,13 @@ type LeadCardProps = {
 export function LeadCard({
   lead,
   range,
+  onOpen,
   onSwitchTrial,
   onConfirmSession,
   confirmPending = false,
   selected = false,
   onToggleSelect,
 }: LeadCardProps) {
-  const telHref = lead.phone ? phoneTelHref(lead.phone) : null;
   const age = ageRangeLabel(lead.ageRange);
   const trial = lead.trialBooking;
   const soon = isTrialSoon(trial?.sessionStartsAt ?? null, range);
@@ -42,6 +43,19 @@ export function LeadCard({
     .slice(0, 2)
     .map((part) => part[0]?.toUpperCase() ?? "")
     .join("");
+  const followupLabel = formatFollowupChip(lead.lastFollowupAt);
+  const clickable = Boolean(onOpen);
+
+  function handleOpen() {
+    onOpen?.(lead);
+  }
+
+  function handleKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      handleOpen();
+    }
+  }
 
   return (
     <div
@@ -49,6 +63,7 @@ export function LeadCard({
       data-testid={`lead-card-${lead.id}`}
       data-soon={soon ? "true" : undefined}
       data-selected={selected ? "true" : undefined}
+      data-clickable={clickable ? "true" : undefined}
     >
       <div className={styles.topRow}>
         {onToggleSelect ? (
@@ -59,7 +74,19 @@ export function LeadCard({
             className={styles.cardSelect}
           />
         ) : null}
-        <div className={styles.identity}>
+        <div
+          className={styles.identity}
+          data-testid={`lead-open-${lead.id}`}
+          {...(clickable
+            ? {
+                role: "button" as const,
+                tabIndex: 0,
+                onClick: handleOpen,
+                onKeyDown: handleKeyDown,
+                "aria-label": `Open ${lead.name}`,
+              }
+            : {})}
+        >
           <Avatar className={styles.avatar}>
             {lead.photoUrl ? <AvatarImage src={lead.photoUrl} alt="" /> : null}
             <AvatarFallback>{initials || "?"}</AvatarFallback>
@@ -72,28 +99,30 @@ export function LeadCard({
             <p className={styles.meta}>
               {lead.phone ? lead.phone : "No mobile on file"}
             </p>
+            <span
+              className={styles.followupChip}
+              data-empty={!lead.lastFollowupAt ? "true" : undefined}
+              data-testid={`lead-followup-${lead.id}`}
+            >
+              {followupLabel}
+            </span>
           </div>
         </div>
-        <TouchButton
-          variant="primary"
-          size="sm"
-          isIconOnly
-          className={styles.callButton}
-          aria-label={telHref ? `Call ${lead.name}` : "No phone number"}
-          data-testid={`lead-call-${lead.id}`}
-          isDisabled={!telHref}
-          onClick={() => {
-            if (!telHref) return;
-            window.location.assign(telHref);
-          }}
-        >
-          <Icon name="phone-call" />
-        </TouchButton>
       </div>
 
       {trial ? (
         <div className={styles.trialBlock}>
-          <div className={styles.trialInfo}>
+          <div
+            className={styles.trialInfo}
+            {...(clickable
+              ? {
+                  role: "button" as const,
+                  tabIndex: 0,
+                  onClick: handleOpen,
+                  onKeyDown: handleKeyDown,
+                }
+              : {})}
+          >
             {trial.status === "CONFIRMED" ? (
               <span
                 className={styles.badge}
@@ -143,7 +172,17 @@ export function LeadCard({
         </div>
       ) : (
         <div className={styles.trialBlock}>
-          <div className={styles.trialInfo}>
+          <div
+            className={styles.trialInfo}
+            {...(clickable
+              ? {
+                  role: "button" as const,
+                  tabIndex: 0,
+                  onClick: handleOpen,
+                  onKeyDown: handleKeyDown,
+                }
+              : {})}
+          >
             <p className={styles.trialLabel}>No trial yet</p>
             <p className={styles.trialBatch}>Call to pick a session</p>
           </div>

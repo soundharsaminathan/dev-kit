@@ -1,6 +1,5 @@
 import { DateRangePicker } from "@dev-ui/components/date-picker";
 import { SearchField } from "@dev-ui/components/search-field";
-import { Swipeable } from "@dev-ui/components/swipeable";
 import { useToastContext } from "@dev-ui/components/toast";
 import { useIsMobile, useLoadMoreOnScroll } from "@dev-ui/hooks";
 import { Icon } from "@dev-ui/icons";
@@ -19,6 +18,7 @@ import { useApi } from "@/lib/api-context";
 import { requireAdmin } from "@/lib/require-auth";
 import { useStudioId } from "@/lib/use-studio-id";
 import { LeadCard } from "@/modules/leads/lead-card";
+import { LeadDetailSheet } from "@/modules/leads/lead-detail-sheet";
 import styles from "@/modules/leads/leads.module.scss";
 import { QuickAddLeadSheet } from "@/modules/leads/quick-add-lead-sheet";
 import { SwitchTrialSheet } from "@/modules/leads/switch-trial-sheet";
@@ -165,6 +165,7 @@ function LeadsPage() {
   const reduce = useReducedMotion();
   const [addOpen, setAddOpen] = useState(false);
   const [switchLead, setSwitchLead] = useState<Lead | null>(null);
+  const [detailLead, setDetailLead] = useState<Lead | null>(null);
   const [search, setSearch] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const debouncedSearch = useDebouncedValue(search.trim(), 300);
@@ -694,86 +695,6 @@ function LeadsPage() {
                     <AnimatePresence initial={false} mode="popLayout">
                       {leadsInSection.map((lead) => {
                         const canSelect = !isMobile;
-                        const card = (
-                          <LeadCard
-                            lead={lead}
-                            range={range}
-                            selected={
-                              canSelect ? selectedIds.has(lead.id) : false
-                            }
-                            onToggleSelect={
-                              canSelect ? toggleSelect : undefined
-                            }
-                            onSwitchTrial={setSwitchLead}
-                            {...(section === "trialBooked"
-                              ? {
-                                  onConfirmSession: (next) => {
-                                    const bookingId = next.trialBooking?.id;
-                                    if (!bookingId) return;
-                                    confirmSession.mutate(bookingId);
-                                  },
-                                  confirmPending:
-                                    confirmSession.isPending &&
-                                    confirmSession.variables ===
-                                      lead.trialBooking?.id,
-                                }
-                              : {})}
-                          />
-                        );
-
-                        const item =
-                          section === "archived" ? (
-                            <Swipeable
-                              direction="horizontal"
-                              ariaLabel={`Actions for ${lead.name}`}
-                              onSwipeRight={() => unarchiveLead.mutate(lead)}
-                              leftActions={
-                                <TouchButton
-                                  variant="primary"
-                                  size="sm"
-                                  isIconOnly
-                                  className={styles.unarchiveAction}
-                                  aria-label={`Unarchive ${lead.name}`}
-                                  data-testid={`lead-unarchive-${lead.id}`}
-                                  isDisabled={
-                                    unarchiveLead.isPending &&
-                                    unarchiveLead.variables?.id === lead.id
-                                  }
-                                  onClick={() => unarchiveLead.mutate(lead)}
-                                >
-                                  <Icon name="inbox" />
-                                </TouchButton>
-                              }
-                            >
-                              {card}
-                            </Swipeable>
-                          ) : (
-                            <Swipeable
-                              direction="horizontal"
-                              ariaLabel={`Actions for ${lead.name}`}
-                              onSwipeLeft={() => archiveLead.mutate(lead)}
-                              rightActions={
-                                <TouchButton
-                                  variant="danger"
-                                  size="sm"
-                                  isIconOnly
-                                  className={styles.archiveAction}
-                                  aria-label={`Archive ${lead.name}`}
-                                  data-testid={`lead-archive-${lead.id}`}
-                                  isDisabled={
-                                    archiveLead.isPending &&
-                                    archiveLead.variables?.id === lead.id
-                                  }
-                                  onClick={() => archiveLead.mutate(lead)}
-                                >
-                                  <Icon name="archive" />
-                                </TouchButton>
-                              }
-                            >
-                              {card}
-                            </Swipeable>
-                          );
-
                         return (
                           <motion.li
                             key={lead.id}
@@ -788,7 +709,31 @@ function LeadsPage() {
                             }}
                             transition={itemTransition}
                           >
-                            {item}
+                            <LeadCard
+                              lead={lead}
+                              range={range}
+                              selected={
+                                canSelect ? selectedIds.has(lead.id) : false
+                              }
+                              onToggleSelect={
+                                canSelect ? toggleSelect : undefined
+                              }
+                              onOpen={setDetailLead}
+                              onSwitchTrial={setSwitchLead}
+                              {...(section === "trialBooked"
+                                ? {
+                                    onConfirmSession: (next) => {
+                                      const bookingId = next.trialBooking?.id;
+                                      if (!bookingId) return;
+                                      confirmSession.mutate(bookingId);
+                                    },
+                                    confirmPending:
+                                      confirmSession.isPending &&
+                                      confirmSession.variables ===
+                                        lead.trialBooking?.id,
+                                  }
+                                : {})}
+                            />
                           </motion.li>
                         );
                       })}
@@ -817,6 +762,32 @@ function LeadsPage() {
         isOpen={addOpen}
         onOpenChange={setAddOpen}
         studioId={studioId}
+      />
+      <LeadDetailSheet
+        key={detailLead?.id ?? "lead-detail"}
+        lead={
+          detailLead
+            ? (leads.find((item) => item.id === detailLead.id) ?? detailLead)
+            : null
+        }
+        studioId={studioId}
+        onOpenChange={(open) => {
+          if (!open) setDetailLead(null);
+        }}
+        onArchive={(lead) => {
+          setDetailLead(null);
+          archiveLead.mutate(lead);
+        }}
+        onUnarchive={(lead) => {
+          setDetailLead(null);
+          unarchiveLead.mutate(lead);
+        }}
+        archivePending={
+          (archiveLead.isPending &&
+            archiveLead.variables?.id === detailLead?.id) ||
+          (unarchiveLead.isPending &&
+            unarchiveLead.variables?.id === detailLead?.id)
+        }
       />
       <SwitchTrialSheet
         lead={switchLead}

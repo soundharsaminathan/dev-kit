@@ -105,6 +105,65 @@ test.describe("trial caller leads HTTP @http", () => {
     }
   });
 
+  test("staff can record remarks on a lead @http", async () => {
+    const cleanup = new TestDataCleanup();
+    try {
+      const stamp = Date.now();
+      const lead = await expectOk<{
+        id: string;
+        lastFollowupAt: string | null;
+      }>("STAFF", `/users/studio/${STUDIO_ID}/leads`, {
+        method: "POST",
+        body: JSON.stringify({
+          name: `HTTP Remark ${stamp}`,
+          phone: `900${String(stamp).slice(-7)}`,
+          ageRange: "TWENTY_TO_FORTY",
+        }),
+      });
+      cleanup.trackStudent(lead.id);
+      expect(lead.lastFollowupAt).toBeNull();
+
+      const empty = await expectStatus(
+        "STAFF",
+        `/users/studio/${STUDIO_ID}/leads/${lead.id}/remarks`,
+        400,
+        {
+          method: "POST",
+          body: JSON.stringify({ body: "   " }),
+        },
+      );
+      expect(empty.status).toBe(400);
+
+      const created = await expectOk<{
+        id: string;
+        body: string;
+        author: { name: string };
+      }>("STAFF", `/users/studio/${STUDIO_ID}/leads/${lead.id}/remarks`, {
+        method: "POST",
+        body: JSON.stringify({ body: "Called, no answer" }),
+      });
+      expect(created.body).toBe("Called, no answer");
+      expect(created.author.name.length).toBeGreaterThan(0);
+
+      const remarks = await expectOk<Array<{ id: string; body: string }>>(
+        "STAFF",
+        `/users/studio/${STUDIO_ID}/leads/${lead.id}/remarks`,
+      );
+      expect(remarks.map((row) => row.body)).toEqual(["Called, no answer"]);
+
+      const page = await expectOk<{
+        items: Array<{ id: string; lastFollowupAt: string | null }>;
+      }>(
+        "STAFF",
+        `/users/studio/${STUDIO_ID}/leads?q=${encodeURIComponent(`HTTP Remark ${stamp}`)}&limit=25`,
+      );
+      const listed = page.items.find((item) => item.id === lead.id);
+      expect(listed?.lastFollowupAt).toBeTruthy();
+    } finally {
+      await cleanup.dispose();
+    }
+  });
+
   test("trainer cannot archive a lead @http", async () => {
     await expectStatus(
       "TRAINER",
@@ -113,6 +172,23 @@ test.describe("trial caller leads HTTP @http", () => {
       {
         method: "PATCH",
         body: JSON.stringify({ active: false }),
+      },
+    );
+  });
+
+  test("trainer cannot list or add lead remarks @http", async () => {
+    await expectStatus(
+      "TRAINER",
+      `/users/studio/${STUDIO_ID}/leads/${SEED.users.STUDENT.id}/remarks`,
+      403,
+    );
+    await expectStatus(
+      "TRAINER",
+      `/users/studio/${STUDIO_ID}/leads/${SEED.users.STUDENT.id}/remarks`,
+      403,
+      {
+        method: "POST",
+        body: JSON.stringify({ body: "Should not land" }),
       },
     );
   });

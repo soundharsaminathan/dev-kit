@@ -36,8 +36,10 @@ import { PrismaService } from "../prisma/prisma.service";
 import { isAlwaysPublicRole } from "../social/visibility";
 import { ageRangeFromAge } from "./age-range";
 import {
+  LEAD_REMARK_MAX_LENGTH,
   type LeadDateFilter,
   type LeadDto,
+  type LeadRemarkDto,
   paginateLeads,
   resolveDateKeyRange,
   resolveLeadDayRange,
@@ -1621,7 +1623,7 @@ export class UsersService {
       BookingStatus.CONFIRMED,
     ];
 
-    const [students, openTrials] = await Promise.all([
+    const [students, openTrials, latestRemarks] = await Promise.all([
       this.prisma.user.findMany({
         where: { studioId, role: UserRole.STUDENT },
         select: {
@@ -1689,7 +1691,19 @@ export class UsersService {
         },
         orderBy: [{ startsAt: "asc" }, { id: "desc" }],
       }),
+      this.prisma.leadRemark.groupBy({
+        by: ["studentId"],
+        where: { studioId },
+        _max: { createdAt: true },
+      }),
     ]);
+
+    const lastFollowupByStudent = new Map(
+      latestRemarks.map((row) => [
+        row.studentId,
+        row._max.createdAt?.toISOString() ?? null,
+      ]),
+    );
 
     const trialByStudent = new Map<string, (typeof openTrials)[number]>();
     for (const trial of openTrials) {
@@ -1759,6 +1773,7 @@ export class UsersService {
         createdAt: student.createdAt.toISOString(),
         active: student.active,
         section: !student.active ? "archived" : trial ? "trialBooked" : "new",
+        lastFollowupAt: lastFollowupByStudent.get(student.id) ?? null,
         trialBooking: trial
           ? {
               id: trial.id,
@@ -1906,8 +1921,102 @@ export class UsersService {
       createdAt: user.createdAt.toISOString(),
       active: user.active,
       section: trialBooking ? "trialBooked" : "new",
+      lastFollowupAt: null,
       trialBooking,
     };
+  }
+
+  async listLeadRemarks(
+    studioId: string,
+    leadId: string,
+  ): Promise<LeadRemarkDto[]> {
+    await this.requireStudioStudent(studioId, leadId);
+    const remarks = await this.prisma.leadRemark.findMany({
+      where: { studioId, studentId: leadId },
+      select: {
+        id: true,
+        body: true,
+        createdAt: true,
+        author: {
+          select: {
+            id: true,
+            ...userPiiSelect,
+          },
+        },
+      },
+      orderBy: { createdAt: "asc" },
+    });
+
+    return Promise.all(
+      remarks.map(async (remark) => {
+        const author = await this.presentUser(remark.author);
+        return {
+          id: remark.id,
+          body: remark.body,
+          createdAt: remark.createdAt.toISOString(),
+          author: { id: author.id, name: author.name },
+        };
+      }),
+    );
+  }
+
+  async addLeadRemark(
+    studioId: string,
+    leadId: string,
+    authorId: string,
+    body: string,
+  ): Promise<LeadRemarkDto> {
+    await this.requireStudioStudent(studioId, leadId);
+    const trimmed = body.trim();
+    if (!trimmed) {
+      throw new BadRequestException("Remark cannot be empty");
+    }
+    if (trimmed.length > LEAD_REMARK_MAX_LENGTH) {
+      throw new BadRequestException("Remark is too long");
+    }
+
+    const remark = await this.prisma.leadRemark.create({
+      data: {
+        studioId,
+        studentId: leadId,
+        authorId,
+        body: trimmed,
+      },
+      select: {
+        id: true,
+        body: true,
+        createdAt: true,
+        author: {
+          select: {
+            id: true,
+            ...userPiiSelect,
+          },
+        },
+      },
+    });
+
+    const author = await this.presentUser(remark.author);
+    return {
+      id: remark.id,
+      body: remark.body,
+      createdAt: remark.createdAt.toISOString(),
+      author: { id: author.id, name: author.name },
+    };
+  }
+
+  private async requireStudioStudent(studioId: string, studentId: string) {
+    const student = await this.prisma.user.findFirst({
+      where: {
+        id: studentId,
+        studioId,
+        role: UserRole.STUDENT,
+      },
+      select: { id: true },
+    });
+    if (!student) {
+      throw new NotFoundException("Student not found in this studio");
+    }
+    return student;
   }
 
   async linkStudioFamily(

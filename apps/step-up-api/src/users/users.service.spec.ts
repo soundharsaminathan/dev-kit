@@ -1454,3 +1454,137 @@ describe("UsersService.createStudents", () => {
     });
   });
 });
+
+describe("UsersService lead remarks", () => {
+  const prisma = {
+    user: {
+      findFirst: vi.fn(),
+    },
+    leadRemark: {
+      findMany: vi.fn(),
+      create: vi.fn(),
+    },
+  };
+  const crypto = {
+    decryptUser: vi.fn((user: { id: string }) => ({
+      ...user,
+      email: "staff@stepup.dev",
+      name: "Staff Member",
+      phone: null,
+      bio: null,
+      instagramUrl: null,
+    })),
+  };
+  const media = {
+    signReadUrl: vi.fn(async (value: string | null) => value),
+  };
+  const firebase = {};
+
+  let service: UsersService;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    service = new UsersService(
+      prisma as never,
+      crypto as never,
+      media as never,
+      firebase as never,
+    );
+  });
+
+  it("rejects an empty remark body", async () => {
+    prisma.user.findFirst.mockResolvedValue({ id: "lead-1" });
+
+    await expect(
+      service.addLeadRemark("studio-1", "lead-1", "staff-1", "   "),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it("lists remarks oldest first", async () => {
+    prisma.user.findFirst.mockResolvedValue({ id: "lead-1" });
+    prisma.leadRemark.findMany.mockResolvedValue([
+      {
+        id: "r-1",
+        body: "Called, no answer",
+        createdAt: new Date("2026-08-10T10:00:00.000Z"),
+        author: {
+          id: "staff-1",
+          encryptedKey: "k",
+          piiCiphertext: "c",
+          piiIv: "iv",
+        },
+      },
+      {
+        id: "r-2",
+        body: "Will visit Saturday",
+        createdAt: new Date("2026-08-12T10:00:00.000Z"),
+        author: {
+          id: "staff-1",
+          encryptedKey: "k",
+          piiCiphertext: "c",
+          piiIv: "iv",
+        },
+      },
+    ]);
+
+    const remarks = await service.listLeadRemarks("studio-1", "lead-1");
+
+    expect(prisma.leadRemark.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { studioId: "studio-1", studentId: "lead-1" },
+        orderBy: { createdAt: "asc" },
+      }),
+    );
+    expect(remarks.map((row) => row.body)).toEqual([
+      "Called, no answer",
+      "Will visit Saturday",
+    ]);
+    expect(remarks[0]?.author).toEqual({
+      id: "staff-1",
+      name: "Staff Member",
+    });
+  });
+
+  it("creates a remark and returns the author", async () => {
+    prisma.user.findFirst.mockResolvedValue({ id: "lead-1" });
+    prisma.leadRemark.create.mockResolvedValue({
+      id: "r-1",
+      body: "Left a voicemail",
+      createdAt: new Date("2026-08-15T10:00:00.000Z"),
+      author: {
+        id: "staff-1",
+        encryptedKey: "k",
+        piiCiphertext: "c",
+        piiIv: "iv",
+      },
+    });
+
+    const remark = await service.addLeadRemark(
+      "studio-1",
+      "lead-1",
+      "staff-1",
+      "  Left a voicemail  ",
+    );
+
+    expect(prisma.leadRemark.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: {
+          studioId: "studio-1",
+          studentId: "lead-1",
+          authorId: "staff-1",
+          body: "Left a voicemail",
+        },
+      }),
+    );
+    expect(remark.body).toBe("Left a voicemail");
+    expect(remark.author.name).toBe("Staff Member");
+  });
+
+  it("rejects remarks for a missing studio student", async () => {
+    prisma.user.findFirst.mockResolvedValue(null);
+
+    await expect(
+      service.listLeadRemarks("studio-1", "missing"),
+    ).rejects.toBeInstanceOf(NotFoundException);
+  });
+});

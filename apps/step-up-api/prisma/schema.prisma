@@ -353,9 +353,26 @@ model User {
   updatedRecurringExpenses  RecurringExpense[]   @relation("RecurringExpenseUpdater")
   createdExpenseCategories  ExpenseCategory[]    @relation("ExpenseCategoryCreator")
   updatedExpenseCategories  ExpenseCategory[]    @relation("ExpenseCategoryUpdater")
+  leadRemarks               LeadRemark[]         @relation("LeadRemarks")
+  authoredLeadRemarks       LeadRemark[]         @relation("LeadRemarkAuthor")
 
   @@index([studioId, emailHash])
   @@index([preferredBranchId])
+}
+
+model LeadRemark {
+  id        String   @id @default(cuid())
+  studioId  String
+  studentId String
+  authorId  String
+  body      String
+  createdAt DateTime @default(now())
+
+  studio  Studio @relation(fields: [studioId], references: [id], onDelete: Cascade)
+  student User   @relation("LeadRemarks", fields: [studentId], references: [id], onDelete: Cascade)
+  author  User   @relation("LeadRemarkAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([studioId, studentId, createdAt])
 }
 
 model ParentChild {
@@ -412,6 +429,7 @@ model Studio {
   recurringExpenses    RecurringExpense[]
   batchSummaries       BatchSummary[]
   revenueSummaries     StudioRevenueSummary[]
+  leadRemarks          LeadRemark[]
 }
 
 model StudioRevenueSummary {

@@ -11,6 +11,7 @@ export const LEAD_DATE_FILTERS = [
 
 export const LEAD_PAGE_SIZE = 25;
 const LEAD_PAGE_SIZE_MAX = 50;
+export const LEAD_REMARK_MAX_LENGTH = 2000;
 
 export type LeadDateFilter = (typeof LEAD_DATE_FILTERS)[number];
 
@@ -25,6 +26,7 @@ export type LeadDto = {
   createdAt: string;
   active: boolean;
   section: LeadSection;
+  lastFollowupAt: string | null;
   trialBooking: {
     id: string;
     status: BookingStatus;
@@ -32,6 +34,16 @@ export type LeadDto = {
     sessionStartsAt: string | null;
     batchName: string | null;
   } | null;
+};
+
+export type LeadRemarkDto = {
+  id: string;
+  body: string;
+  createdAt: string;
+  author: {
+    id: string;
+    name: string;
+  };
 };
 
 export type LeadPage = {

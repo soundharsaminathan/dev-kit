@@ -155,6 +155,7 @@ function lead(
     createdAt: "2026-08-01T00:00:00.000Z",
     active: true,
     section: "new",
+    lastFollowupAt: null,
     trialBooking: null,
   };
 }

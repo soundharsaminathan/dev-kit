@@ -19,7 +19,7 @@ import {
   ProfileVisibility,
   UserRole,
 } from "@prisma/client";
-import { Type } from "class-transformer";
+import { Transform, Type } from "class-transformer";
 import {
   ArrayMaxSize,
   ArrayMinSize,
@@ -33,6 +33,7 @@ import {
   IsOptional,
   IsString,
   Max,
+  MaxLength,
   Min,
   ValidateNested,
 } from "class-validator";
@@ -314,6 +315,14 @@ class CreateLeadDto {
   sessionId?: string;
 }
 
+class CreateLeadRemarkDto {
+  @Transform(({ value }) => (typeof value === "string" ? value.trim() : value))
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(2000)
+  body!: string;
+}
+
 @Controller("users")
 @UseGuards(AuthGuard, RolesGuard)
 export class UsersController {
@@ -584,6 +593,29 @@ export class UsersController {
   ) {
     assertSameStudio(user, studioId);
     return this.usersService.createLead(studioId, dto);
+  }
+
+  @Get("studio/:studioId/leads/:leadId/remarks")
+  @Roles(UserRole.OWNER, UserRole.STAFF)
+  listLeadRemarks(
+    @CurrentUser() user: DecryptedUser,
+    @Param("studioId") studioId: string,
+    @Param("leadId") leadId: string,
+  ) {
+    assertSameStudio(user, studioId);
+    return this.usersService.listLeadRemarks(studioId, leadId);
+  }
+
+  @Post("studio/:studioId/leads/:leadId/remarks")
+  @Roles(UserRole.OWNER, UserRole.STAFF)
+  addLeadRemark(
+    @CurrentUser() user: DecryptedUser,
+    @Param("studioId") studioId: string,
+    @Param("leadId") leadId: string,
+    @Body() dto: CreateLeadRemarkDto,
+  ) {
+    assertSameStudio(user, studioId);
+    return this.usersService.addLeadRemark(studioId, leadId, user.id, dto.body);
   }
 
   @Get("studio/:studioId/students/:studentId")

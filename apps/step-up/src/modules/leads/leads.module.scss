@@ -42,6 +42,28 @@
   min-width: 0;
 }
 
+.identity[role="button"],
+.trialInfo[role="button"] {
+  cursor: pointer;
+  border: 0;
+  background: transparent;
+  text-align: start;
+  transition: transform var(--interaction-transition-fast, 120ms) ease;
+}
+
+.identity[role="button"]:active,
+.trialInfo[role="button"]:active {
+  transform: scale(var(--interaction-press-scale, 0.98));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .identity[role="button"],
+  .trialInfo[role="button"] {
+    transition-duration: 0ms;
+    transform: none;
+  }
+}
+
 .selectionBar {
   display: flex;
   align-items: center;
@@ -111,6 +133,26 @@
   color: color-mix(in srgb, var(--color-fg) 58%, transparent);
 }
 
+.followupChip {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  padding: 0.12rem 0.45rem;
+  border-radius: var(--radius-full, 9999px);
+  background: color-mix(in srgb, var(--color-fg) 8%, transparent);
+  color: color-mix(in srgb, var(--color-fg) 62%, transparent);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  line-height: 1.2;
+}
+
+.followupChip[data-empty="true"] {
+  background: transparent;
+  padding-inline: 0;
+  font-weight: 500;
+}
+
 .meta {
   margin: 0;
   font-size: 0.8125rem;
@@ -122,27 +164,86 @@
 
 .callButton {
   flex-shrink: 0;
-  width: 2.75rem !important;
-  min-width: 2.75rem;
-  padding-inline: 0 !important;
 }
 
-.archiveAction {
-  align-self: stretch;
-  width: 3.5rem !important;
-  min-width: 3.5rem;
-  height: 100% !important;
-  padding-inline: 0 !important;
-  border-radius: 0 !important;
+.sheetStack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4, 1rem);
+  min-height: 0;
 }
 
-.unarchiveAction {
-  align-self: stretch;
-  width: 3.5rem !important;
-  min-width: 3.5rem;
-  height: 100% !important;
-  padding-inline: 0 !important;
-  border-radius: 0 !important;
+.sheetHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-2, 0.5rem);
+}
+
+.sheetMeta {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1, 0.25rem);
+  min-width: 0;
+}
+
+.sheetPhone {
+  margin: 0;
+  font-size: 0.875rem;
+  color: color-mix(in srgb, var(--color-fg) 62%, transparent);
+}
+
+.sheetArchive {
+  flex-shrink: 0;
+}
+
+.remarks {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 0.75rem);
+  min-height: 8rem;
+}
+
+.remark {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.remarkMeta {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2, 0.5rem);
+  min-width: 0;
+}
+
+.remarkAuthor {
+  font-size: 0.8125rem;
+  font-weight: 700;
+}
+
+.remarkWhen {
+  font-size: 0.75rem;
+  color: color-mix(in srgb, var(--color-fg) 52%, transparent);
+}
+
+.remarkBody {
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.4;
+  white-space: pre-wrap;
+}
+
+.remarksEmpty {
+  margin: 0;
+  font-size: 0.875rem;
+  color: color-mix(in srgb, var(--color-fg) 58%, transparent);
+}
+
+.composer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 0.5rem);
 }
 
 .li {
