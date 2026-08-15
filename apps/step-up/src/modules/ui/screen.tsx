@@ -5,7 +5,7 @@ import styles from "./screen.module.scss";
 
 type ScreenProps = {
   title: string;
-  subtitle?: string | undefined;
+  subtitle?: ReactNode | undefined;
   titleEnd?: ReactNode;
   actions?: ReactNode;
   children: ReactNode;

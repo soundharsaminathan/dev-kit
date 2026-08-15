@@ -1,3 +1,5 @@
+import { useReducedMotion } from "motion/react";
+import { useEffect, useRef } from "react";
 import styles from "./leads.module.scss";
 import { type LeadSection, SECTION_LABELS, SECTION_ORDER } from "./types";
 
@@ -10,48 +12,50 @@ export function LeadSwipeHeader({
   activeSection,
   onSelectSection,
 }: LeadSwipeHeaderProps) {
-  const index = SECTION_ORDER.indexOf(activeSection);
-  const prev = index > 0 ? (SECTION_ORDER[index - 1] ?? null) : null;
-  const next =
-    index < SECTION_ORDER.length - 1
-      ? (SECTION_ORDER[index + 1] ?? null)
-      : null;
+  const reduce = useReducedMotion();
+  const listRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const container = listRef.current;
+    if (!container) return;
+    const active = container.querySelector<HTMLElement>(
+      `[data-section="${activeSection}"]`,
+    );
+    active?.scrollIntoView({
+      behavior: reduce ? "auto" : "smooth",
+      inline: "center",
+      block: "nearest",
+    });
+  }, [activeSection, reduce]);
 
   return (
-    <div className={styles.swipeHeader} data-testid="leads-swipe-header">
-      <button
-        type="button"
-        className={styles.swipeSlot}
-        data-slot="prev"
-        data-testid="leads-swipe-prev"
-        aria-label={
-          prev ? `Previous section: ${SECTION_LABELS[prev]}` : "First section"
-        }
-        disabled={!prev}
-        onClick={() => {
-          if (prev) onSelectSection(prev);
-        }}
-      >
-        {prev ? SECTION_LABELS[prev] : ""}
-      </button>
-      <span className={styles.swipeCurrent} data-testid="leads-swipe-current">
-        {SECTION_LABELS[activeSection]}
-      </span>
-      <button
-        type="button"
-        className={styles.swipeSlot}
-        data-slot="next"
-        data-testid="leads-swipe-next"
-        aria-label={
-          next ? `Next section: ${SECTION_LABELS[next]}` : "Last section"
-        }
-        disabled={!next}
-        onClick={() => {
-          if (next) onSelectSection(next);
-        }}
-      >
-        {next ? SECTION_LABELS[next] : ""}
-      </button>
+    <div
+      ref={listRef}
+      className={styles.swipeHeader}
+      role="tablist"
+      aria-label="Lead pipeline sections"
+      data-testid="leads-swipe-header"
+    >
+      {SECTION_ORDER.map((section) => {
+        const selected = section === activeSection;
+        return (
+          <button
+            key={section}
+            type="button"
+            role="tab"
+            aria-selected={selected}
+            className={styles.swipeTab}
+            data-selected={selected ? "true" : undefined}
+            data-section={section}
+            data-testid={selected ? "leads-swipe-current" : undefined}
+            onClick={() => {
+              if (!selected) onSelectSection(section);
+            }}
+          >
+            {SECTION_LABELS[section]}
+          </button>
+        );
+      })}
     </div>
   );
 }

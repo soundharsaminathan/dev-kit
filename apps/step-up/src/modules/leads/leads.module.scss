@@ -534,6 +534,7 @@
   max-width: 100%;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
+  scroll-snap-type: x mandatory;
   scrollbar-width: none;
 
   &::-webkit-scrollbar {
@@ -544,63 +545,58 @@
 .tab {
   flex: 0 0 auto;
   white-space: nowrap;
+  scroll-snap-align: start;
 }
 
 .swipeHeader {
-  display: grid;
-  grid-template-columns: 1fr 1.25fr 1fr;
+  display: flex;
   align-items: stretch;
   gap: var(--space-2, 0.5rem);
   width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
 }
 
-.swipeSlot {
+.swipeTab {
+  flex: 0 0 auto;
+  scroll-snap-align: start;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   padding: var(--space-2, 0.5rem) var(--space-3, 0.75rem);
   border-radius: var(--radius-xl, 1rem);
-  border: 1px solid color-mix(in srgb, var(--color-fg) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-fg) 12%, transparent);
   background: var(--color-card, var(--color-bg));
   font-size: 0.8125rem;
   font-weight: 600;
-  color: color-mix(in srgb, var(--color-fg) 48%, transparent);
+  color: color-mix(in srgb, var(--color-fg) 58%, transparent);
   cursor: pointer;
   transition:
     transform var(--interaction-transition-fast, 120ms) ease,
     color var(--interaction-transition-fast, 120ms) ease,
-    border-color var(--interaction-transition-fast, 120ms) ease;
+    border-color var(--interaction-transition-fast, 120ms) ease,
+    background-color var(--interaction-transition-fast, 120ms) ease;
 }
 
-.swipeSlot:active:not(:disabled) {
+.swipeTab:active {
   transform: scale(var(--interaction-press-scale, 0.97));
 }
 
-.swipeSlot:disabled {
-  visibility: hidden;
-}
-
-.swipeCurrent {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  padding: var(--space-2, 0.5rem) var(--space-3, 0.75rem);
-  border-radius: var(--radius-xl, 1rem);
-  border: 1px solid var(--color-primary);
+.swipeTab[data-selected="true"] {
+  border-color: var(--color-primary);
   background: color-mix(
     in srgb,
-    var(--color-primary) 12%,
+    var(--color-primary) 14%,
     var(--color-card, var(--color-bg))
   );
   color: var(--color-primary);
-  font-size: 0.875rem;
-  font-weight: 700;
-  text-align: center;
 }
 
 .swipeArea {
@@ -610,4 +606,32 @@
   width: 100%;
   min-width: 0;
   touch-action: pan-y;
+}
+
+.subtitleSkeleton {
+  display: inline-block;
+  width: 9.5rem;
+  height: 0.75rem;
+  border-radius: var(--radius-full, 999px);
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--color-fg) 8%, transparent) 0%,
+    color-mix(in srgb, var(--color-fg) 16%, transparent) 50%,
+    color-mix(in srgb, var(--color-fg) 8%, transparent) 100%
+  );
+  background-size: 200% 100%;
+  animation: subtitleShimmer 1.2s ease-in-out infinite;
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
+
+@keyframes subtitleShimmer {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: -100% 0;
+  }
 }

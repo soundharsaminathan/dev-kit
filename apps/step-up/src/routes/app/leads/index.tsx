@@ -476,6 +476,7 @@ function LeadsPage() {
   });
 
   const subtitle = useMemo(() => {
+    if (query.isLoading) return undefined;
     const count = leads.length;
     const more = hasNextPage ? "+" : "";
     if (hasSearch) {
@@ -485,7 +486,14 @@ function LeadsPage() {
       return `${count}${more} trial${count === 1 ? "" : "s"} · ${rangeLabel(range)}`;
     }
     return `${count}${more} ${SECTION_LABELS[activeSection].toLowerCase()}`;
-  }, [range, hasNextPage, hasSearch, leads.length, activeSection]);
+  }, [
+    query.isLoading,
+    range,
+    hasNextPage,
+    hasSearch,
+    leads.length,
+    activeSection,
+  ]);
 
   function setRange(next: LeadDateRange | null) {
     void navigate({
@@ -529,7 +537,17 @@ function LeadsPage() {
     <>
       <Screen
         title="Trial caller"
-        subtitle={subtitle}
+        subtitle={
+          query.isLoading ? (
+            <span
+              className={styles.subtitleSkeleton}
+              data-testid="leads-subtitle-skeleton"
+              aria-hidden="true"
+            />
+          ) : (
+            subtitle
+          )
+        }
         actions={
           <TouchButton
             size="sm"
