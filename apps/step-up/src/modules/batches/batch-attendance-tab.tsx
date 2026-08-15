@@ -17,6 +17,7 @@ import {
   recentUtcMonthKeys,
   utcMonthKey,
 } from "@/modules/payments/invoice-types";
+import { LoadMoreIndicator } from "@/modules/ui/load-more-indicator";
 import { PressableCard } from "@/modules/ui/pressable-card";
 import { SkeletonBlock } from "@/modules/ui/skeleton-block";
 import { EmptyState, ErrorState } from "@/modules/ui/states";
@@ -541,10 +542,10 @@ export function BatchAttendanceTab({
             })}
           </div>
           {hasMore ? (
-            <div
+            <LoadMoreIndicator
               ref={loadMoreRef}
-              className={styles.loadMore}
-              data-testid="batch-attendance-load-more"
+              isLoading={false}
+              testId="batch-attendance-load-more"
             />
           ) : null}
         </>

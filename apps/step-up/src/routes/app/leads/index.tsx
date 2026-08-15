@@ -40,6 +40,7 @@ import {
   rangeLabel,
   SECTION_LABELS,
 } from "@/modules/leads/types";
+import { LoadMoreIndicator } from "@/modules/ui/load-more-indicator";
 import { PullToRefresh } from "@/modules/ui/pull-to-refresh";
 import { Screen } from "@/modules/ui/screen";
 import { SkeletonRowList } from "@/modules/ui/skeleton-block";
@@ -744,15 +745,11 @@ function LeadsPage() {
             })}
 
             {hasNextPage ? (
-              <div
+              <LoadMoreIndicator
                 ref={loadMoreRef}
-                className={styles.loadMore}
-                data-testid="leads-load-more"
-              >
-                {isFetchingNextPage ? (
-                  <SkeletonRowList count={2} label="Loading more leads" />
-                ) : null}
-              </div>
+                isLoading={isFetchingNextPage}
+                testId="leads-load-more"
+              />
             ) : null}
           </div>
         </PullToRefresh>

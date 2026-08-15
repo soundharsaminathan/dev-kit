@@ -19,6 +19,7 @@ import { formatPaidMonths } from "@/lib/format-paid-months";
 import { matchesPersonSearch } from "@/lib/person-search";
 import { AppSheet } from "@/modules/ui/app-sheet";
 import { FilterChipRow } from "@/modules/ui/filter-chip-row";
+import { LoadMoreIndicator } from "@/modules/ui/load-more-indicator";
 import staff from "@/modules/ui/staff.module.scss";
 import { TouchButton } from "@/modules/ui/touch-button";
 import styles from "./attendance-roster-table.module.scss";
@@ -171,9 +172,8 @@ function AttendanceMarkPills({
   const isAbsent = status === "ABSENT";
 
   return (
-    <div
+    <fieldset
       className={styles.markPills}
-      role="group"
       aria-label={`Mark attendance for ${studentName}`}
       data-status={status === "UNMARKED" ? "unmarked" : status.toLowerCase()}
       data-testid={`mark-attendance-${studentId}`}
@@ -202,7 +202,7 @@ function AttendanceMarkPills({
       >
         Absent
       </button>
-    </div>
+    </fieldset>
   );
 }
 
@@ -470,9 +470,7 @@ export function AttendanceRosterTable({
 
   const searchableRoster = useMemo(() => {
     if (!search.trim()) return roster;
-    return roster.filter((entry) =>
-      matchesPersonSearch(entry.student, search),
-    );
+    return roster.filter((entry) => matchesPersonSearch(entry.student, search));
   }, [roster, search]);
 
   const table = useReactTable({
@@ -746,10 +744,10 @@ export function AttendanceRosterTable({
       </div>
 
       {hasMore ? (
-        <div
+        <LoadMoreIndicator
           ref={loadMoreRef}
-          className={styles.loadMore}
-          data-testid="attendance-roster-load-more"
+          isLoading={false}
+          testId="attendance-roster-load-more"
         />
       ) : null}
 

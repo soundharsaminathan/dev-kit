@@ -9,6 +9,7 @@ import { ComposePost } from "@/modules/social/compose-post";
 import { PostCard } from "@/modules/social/post-card";
 import type { SocialFeedPage, SocialPost } from "@/modules/social/types";
 import { sharePost } from "@/modules/social/upload";
+import { LoadMoreIndicator } from "@/modules/ui/load-more-indicator";
 import { PullToRefresh } from "@/modules/ui/pull-to-refresh";
 import { Screen } from "@/modules/ui/screen";
 import { SkeletonCardList } from "@/modules/ui/skeleton-block";
@@ -144,9 +145,11 @@ export function FeedPage() {
               ))}
 
               {hasNextPage ? (
-                <div ref={loadMoreRef} className={styles.loadMore} aria-hidden>
-                  {isFetchingNextPage ? <SkeletonCardList count={1} /> : null}
-                </div>
+                <LoadMoreIndicator
+                  ref={loadMoreRef}
+                  isLoading={isFetchingNextPage}
+                  testId="feed-load-more"
+                />
               ) : null}
             </div>
           ) : null}

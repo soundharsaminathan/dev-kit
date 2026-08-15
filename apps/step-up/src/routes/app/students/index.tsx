@@ -30,6 +30,7 @@ import {
   type StudentGender,
 } from "@/modules/students/student-filter-types";
 import { StudentFiltersToolbar } from "@/modules/students/student-filters-toolbar";
+import { LoadMoreIndicator } from "@/modules/ui/load-more-indicator";
 import { PressableCard } from "@/modules/ui/pressable-card";
 import { PullToRefresh } from "@/modules/ui/pull-to-refresh";
 import { Screen } from "@/modules/ui/screen";
@@ -390,10 +391,10 @@ function StudentsPage() {
           ) : null}
 
           {hasMore ? (
-            <div
+            <LoadMoreIndicator
               ref={loadMoreRef}
-              className={staff.loadMore}
-              data-testid="students-load-more"
+              isLoading={false}
+              testId="students-load-more"
             />
           ) : null}
         </div>

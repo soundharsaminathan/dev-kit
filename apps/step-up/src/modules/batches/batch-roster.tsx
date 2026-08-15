@@ -31,6 +31,7 @@ import { formatPrice } from "@/modules/payments/invoice-types";
 import type { StudioStudent } from "@/modules/students/student-search-combobox";
 import { StudentSearchMultiselect } from "@/modules/students/student-search-multiselect";
 import { AppBottomSheet } from "@/modules/ui/app-bottom-sheet";
+import { LoadMoreIndicator } from "@/modules/ui/load-more-indicator";
 import { PressableCard } from "@/modules/ui/pressable-card";
 import staff from "@/modules/ui/staff.module.scss";
 import { EmptyState, ErrorState } from "@/modules/ui/states";
@@ -567,10 +568,10 @@ export function BatchRoster({ batchId, capacity, active }: BatchRosterProps) {
                   })}
                 </div>
                 {activeRosterQuery.hasNextPage ? (
-                  <div
+                  <LoadMoreIndicator
                     ref={activeLoadMoreRef}
-                    className={staff.loadMore}
-                    data-testid="batch-roster-active-load-more"
+                    isLoading={activeRosterQuery.isFetchingNextPage}
+                    testId="batch-roster-active-load-more"
                   />
                 ) : null}
               </>
@@ -580,7 +581,10 @@ export function BatchRoster({ batchId, capacity, active }: BatchRosterProps) {
 
         <TabPanel id="inactive">
           <div className={styles.panel}>
-            <div className={styles.searchBar} data-testid="batch-roster-inactive-search">
+            <div
+              className={styles.searchBar}
+              data-testid="batch-roster-inactive-search"
+            >
               <SearchField
                 aria-label="Search inactive roster"
                 placeholder="Search by name, email, or phone"
@@ -650,10 +654,10 @@ export function BatchRoster({ batchId, capacity, active }: BatchRosterProps) {
                   })}
                 </div>
                 {inactiveRosterQuery.hasNextPage ? (
-                  <div
+                  <LoadMoreIndicator
                     ref={inactiveLoadMoreRef}
-                    className={staff.loadMore}
-                    data-testid="batch-roster-inactive-load-more"
+                    isLoading={inactiveRosterQuery.isFetchingNextPage}
+                    testId="batch-roster-inactive-load-more"
                   />
                 ) : null}
               </>

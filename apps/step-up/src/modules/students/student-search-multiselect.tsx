@@ -17,6 +17,7 @@ import { useApi } from "@/lib/api-context";
 import { matchesPersonSearch } from "@/lib/person-search";
 import { useStudioId } from "@/lib/use-studio-id";
 import { FormInput } from "@/modules/ui/form-input";
+import { LoadMoreIndicator } from "@/modules/ui/load-more-indicator";
 import { SkeletonCardList } from "@/modules/ui/skeleton-block";
 import { EmptyState, ErrorState } from "@/modules/ui/states";
 import type { StudioStudent } from "./student-search-combobox";
@@ -242,7 +243,7 @@ export function StudentSearchMultiselect({
   const loadMore = useCallback(() => {
     void activeQuery.fetchNextPage();
   }, [activeQuery.fetchNextPage]);
-  const loadMoreRef = useLoadMoreOnScroll<HTMLLIElement>({
+  const loadMoreRef = useLoadMoreOnScroll<HTMLDivElement>({
     hasMore: Boolean(showLoadMore),
     isLoading: activeQuery.isFetchingNextPage,
     onLoadMore: loadMore,
@@ -338,11 +339,13 @@ export function StudentSearchMultiselect({
             );
           })}
           {showLoadMore ? (
-            <li
-              ref={loadMoreRef}
-              className={styles.loadMore}
-              data-testid={`${testIdPrefix}-search-load-more`}
-            />
+            <li className={styles.loadMore}>
+              <LoadMoreIndicator
+                ref={loadMoreRef}
+                isLoading={activeQuery.isFetchingNextPage}
+                testId={`${testIdPrefix}-search-load-more`}
+              />
+            </li>
           ) : null}
         </ul>
       ) : null}
