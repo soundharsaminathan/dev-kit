@@ -1,4 +1,12 @@
-import { Body, Controller, Get, Param, Patch, UseGuards } from "@nestjs/common";
+import {
+  Body,
+  Controller,
+  Get,
+  Inject,
+  Param,
+  Patch,
+  UseGuards,
+} from "@nestjs/common";
 import { UserRole } from "@prisma/client";
 import {
   IsNumber,
@@ -13,7 +21,7 @@ import { CurrentUser } from "../auth/current-user.decorator";
 import { Roles } from "../auth/roles.decorator";
 import { RolesGuard } from "../auth/roles.guard";
 import type { DecryptedUser } from "../users/user-crypto.service";
-import type { PayoutsService } from "./payouts.service";
+import { PayoutsService } from "./payouts.service";
 
 class UpdatePayoutDto {
   @IsOptional()
@@ -31,7 +39,9 @@ class UpdatePayoutDto {
 @Controller("payouts")
 @UseGuards(AuthGuard, RolesGuard)
 export class PayoutsController {
-  constructor(private readonly payoutsService: PayoutsService) {}
+  constructor(
+    @Inject(PayoutsService) private readonly payoutsService: PayoutsService,
+  ) {}
 
   @Get("studio/:studioId")
   @Roles(UserRole.OWNER, UserRole.STAFF, UserRole.TRAINER)

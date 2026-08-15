@@ -2,6 +2,8 @@
 
 Dance studio ops: batches, monthly plans, attendance, retention, booking.
 
+Product and architecture summary: [OVERVIEW.md](./OVERVIEW.md).
+
 ## Apps
 
 | App | Path | Stack | Deploy |
