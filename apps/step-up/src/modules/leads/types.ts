@@ -41,7 +41,39 @@ export const QUICK_DATE_LABELS: Record<QuickDatePreset, string> = {
   last7: "Last 7 days",
 };
 
-export type LeadSection = "new" | "trialBooked" | "archived";
+export type LeadSection =
+  | "new"
+  | "trialBooked"
+  | "trialAttended"
+  | "trialMissed"
+  | "converted"
+  | "left"
+  | "archived";
+
+export const SECTION_ORDER: LeadSection[] = [
+  "new",
+  "trialBooked",
+  "trialAttended",
+  "trialMissed",
+  "converted",
+  "left",
+  "archived",
+];
+
+export const LEAD_SECTIONS_WITH_DATE_FILTER = [
+  "trialBooked",
+  "trialAttended",
+  "trialMissed",
+] as const;
+
+export type LeadSectionWithDateFilter =
+  (typeof LEAD_SECTIONS_WITH_DATE_FILTER)[number];
+
+export function sectionAppliesDateFilter(section: LeadSection): boolean {
+  return (LEAD_SECTIONS_WITH_DATE_FILTER as readonly LeadSection[]).includes(
+    section,
+  );
+}
 
 export type LeadTrialBooking = {
   id: string;
@@ -102,6 +134,10 @@ export const FILTER_LABELS: Record<LeadDateFilter, string> = {
 export const SECTION_LABELS: Record<LeadSection, string> = {
   new: "New leads",
   trialBooked: "Trial booked",
+  trialAttended: "Trial attended",
+  trialMissed: "Trial missed",
+  converted: "Converted",
+  left: "Left leads",
   archived: "Archived",
 };
 

@@ -129,6 +129,23 @@ describe("LeadDetailSheet", () => {
     expect(onUnarchive).toHaveBeenCalledWith(row);
   });
 
+  it("shows the current pipeline section label next to the follow-up chip", async () => {
+    renderWithProviders(
+      <LeadDetailSheet
+        lead={lead({ section: "trialBooked" })}
+        studioId="studio-1"
+        onOpenChange={vi.fn()}
+        onArchive={vi.fn()}
+        onUnarchive={vi.fn()}
+      />,
+    );
+
+    await waitFor(() => expect(get).toHaveBeenCalled());
+    expect(screen.getByTestId("lead-section-chip")).toHaveTextContent(
+      "Trial booked",
+    );
+  });
+
   it("posts a remark and lists existing ones", async () => {
     get.mockResolvedValue([remark()]);
     post.mockResolvedValue(remark({ id: "r-2", body: "Will visit Saturday" }));

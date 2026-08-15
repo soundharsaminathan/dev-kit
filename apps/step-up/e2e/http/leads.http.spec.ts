@@ -10,7 +10,10 @@ test.describe("trial caller leads HTTP @http", () => {
       items: Array<{ id: string; name: string; section: string }>;
       nextCursor: string | null;
       limit: number;
-    }>("STAFF", `/users/studio/${STUDIO_ID}/leads?filter=thisWeek&limit=25`);
+    }>(
+      "STAFF",
+      `/users/studio/${STUDIO_ID}/leads?section=trialBooked&filter=thisWeek&limit=25`,
+    );
 
     expect(Array.isArray(page.items)).toBe(true);
     expect(page.limit).toBe(25);
@@ -30,7 +33,7 @@ test.describe("trial caller leads HTTP @http", () => {
       limit: number;
     }>(
       "STAFF",
-      `/users/studio/${STUDIO_ID}/leads?from=${todayKey}&to=${todayKey}&limit=25`,
+      `/users/studio/${STUDIO_ID}/leads?section=trialBooked&from=${todayKey}&to=${todayKey}&limit=25`,
     );
 
     expect(Array.isArray(page.items)).toBe(true);
@@ -38,6 +41,53 @@ test.describe("trial caller leads HTTP @http", () => {
     expect(
       page.nextCursor === null || typeof page.nextCursor === "string",
     ).toBe(true);
+  });
+
+  test("lists only leads of the requested section @http", async () => {
+    const page = await expectOk<{
+      items: Array<{ id: string; section: string }>;
+    }>("STAFF", `/users/studio/${STUDIO_ID}/leads?section=left&limit=25`);
+
+    expect(Array.isArray(page.items)).toBe(true);
+    expect(page.items.every((item) => item.section === "left")).toBe(true);
+  });
+
+  test("ignores date params on sections without a date filter @http", async () => {
+    const cleanup = new TestDataCleanup();
+    try {
+      const stamp = Date.now();
+      const lead = await expectOk<{ id: string }>(
+        "STAFF",
+        `/users/studio/${STUDIO_ID}/leads`,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            name: `HTTP New ${stamp}`,
+            phone: `900${String(stamp).slice(-7)}`,
+            ageRange: "TWENTY_TO_FORTY",
+          }),
+        },
+      );
+      cleanup.trackStudent(lead.id);
+
+      const page = await expectOk<{
+        items: Array<{ id: string }>;
+      }>(
+        "STAFF",
+        `/users/studio/${STUDIO_ID}/leads?section=new&from=2026-01-01&to=2026-01-01&q=${encodeURIComponent(`HTTP New ${stamp}`)}&limit=25`,
+      );
+      expect(page.items.map((item) => item.id)).toContain(lead.id);
+    } finally {
+      await cleanup.dispose();
+    }
+  });
+
+  test("rejects an invalid section @http", async () => {
+    await expectStatus(
+      "STAFF",
+      `/users/studio/${STUDIO_ID}/leads?section=unknown`,
+      400,
+    );
   });
 
   test("rejects an unknown trial caller date filter @http", async () => {

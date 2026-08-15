@@ -1,10 +1,10 @@
+import type { MembershipStatus } from "@prisma/client";
 import {
   AttendanceStatus,
   BookingStatus,
   BookingType,
   SessionStatus,
 } from "@prisma/client";
-import type { MembershipStatus } from "@prisma/client";
 
 export type StudentFunnelStage =
   | "active"
@@ -149,7 +149,7 @@ export function isDateInRange(date: Date, range: DateRange): boolean {
   return true;
 }
 
-function hasActiveBatchEnrollment(
+export function hasActiveBatchEnrollment(
   enrollments: StudentFunnelEnrollmentInput[],
 ): boolean {
   return enrollments.some(
@@ -157,7 +157,7 @@ function hasActiveBatchEnrollment(
   );
 }
 
-function hasLeftBatch(
+export function hasLeftBatch(
   enrollments: StudentFunnelEnrollmentInput[],
 ): boolean {
   // Past batch history, not currently enrolled. Membership may still be ACTIVE
@@ -187,7 +187,7 @@ function trialSessionIdsFromBookings(
   return ids;
 }
 
-function hasTrialAttendance(
+export function hasTrialAttendance(
   bookings: StudentFunnelBookingInput[],
   attendance: StudentFunnelAttendanceInput[],
 ): boolean {

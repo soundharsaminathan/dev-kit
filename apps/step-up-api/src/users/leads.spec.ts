@@ -1,14 +1,23 @@
+import { AttendanceStatus, BookingStatus } from "@prisma/client";
 import { describe, expect, it } from "vitest";
 import {
+  classifyLeadSection,
   isIsoDateKey,
   isLeadDateFilter,
+  isLeadSection,
+  LEAD_SECTIONS,
+  LEAD_SECTIONS_WITH_DATE_FILTER,
   type LeadDto,
+  type LeadSectionBookingInput,
+  type LeadSectionInput,
+  leadSectionAppliesDateFilter,
   matchesLeadSearch,
   paginateLeads,
   resolveDateKeyRange,
   resolveLeadDayRange,
   startOfLocalWeek,
 } from "./leads";
+import type { StudentFunnelEnrollmentInput } from "./student-funnel";
 
 describe("resolveLeadDayRange", () => {
   it("returns null for all", () => {
@@ -221,5 +230,169 @@ describe("paginateLeads", () => {
     const page = paginateLeads(leads, { q: "zzz", limit: 25 });
     expect(page.items).toEqual([]);
     expect(page.nextCursor).toBeNull();
+  });
+});
+
+describe("isLeadSection", () => {
+  it("accepts every pipeline section and rejects unknown values", () => {
+    for (const section of LEAD_SECTIONS) {
+      expect(isLeadSection(section)).toBe(true);
+    }
+    expect(isLeadSection("all")).toBe(false);
+    expect(isLeadSection("trial")).toBe(false);
+    expect(isLeadSection(undefined)).toBe(false);
+  });
+
+  it("lists booked, attended and missed as the date-filter sections", () => {
+    expect([...LEAD_SECTIONS_WITH_DATE_FILTER]).toEqual([
+      "trialBooked",
+      "trialAttended",
+      "trialMissed",
+    ]);
+  });
+});
+
+describe("leadSectionAppliesDateFilter", () => {
+  it("gates the date range to booked, attended and missed only", () => {
+    expect(leadSectionAppliesDateFilter("new")).toBe(false);
+    expect(leadSectionAppliesDateFilter("converted")).toBe(false);
+    expect(leadSectionAppliesDateFilter("left")).toBe(false);
+    expect(leadSectionAppliesDateFilter("archived")).toBe(false);
+    expect(leadSectionAppliesDateFilter("trialBooked")).toBe(true);
+    expect(leadSectionAppliesDateFilter("trialAttended")).toBe(true);
+    expect(leadSectionAppliesDateFilter("trialMissed")).toBe(true);
+  });
+});
+
+describe("classifyLeadSection", () => {
+  const NOW = new Date("2026-08-15T12:00:00.000Z");
+  const PAST = new Date("2026-08-10T10:00:00.000Z");
+  const FUTURE = new Date("2026-08-20T10:00:00.000Z");
+
+  function enrollment(
+    overrides: Partial<StudentFunnelEnrollmentInput> = {},
+  ): StudentFunnelEnrollmentInput {
+    return {
+      batchId: "batch-1",
+      batchActive: true,
+      enrollmentActive: true,
+      hasScheduledSession: true,
+      hasCompletedSession: false,
+      ...overrides,
+    };
+  }
+
+  function booking(
+    overrides: Partial<LeadSectionBookingInput> = {},
+  ): LeadSectionBookingInput {
+    return {
+      status: BookingStatus.PENDING,
+      sessionId: "session-1",
+      sessionStartsAt: null,
+      ...overrides,
+    };
+  }
+
+  function student(
+    overrides: Partial<LeadSectionInput> = {},
+  ): LeadSectionInput {
+    return {
+      active: true,
+      enrollments: [],
+      bookings: [],
+      attendance: [],
+      ...overrides,
+    };
+  }
+
+  it("puts an inactive student in archived before left or converted", () => {
+    const row = student({
+      active: false,
+      enrollments: [enrollment({ batchActive: true, enrollmentActive: true })],
+      bookings: [
+        booking({
+          status: BookingStatus.CONFIRMED,
+          sessionStartsAt: FUTURE,
+        }),
+      ],
+    });
+    expect(classifyLeadSection(row, NOW)).toBe("archived");
+  });
+
+  it("treats a previously enrolled student as left, never converted", () => {
+    const inactiveEnrollment = student({
+      enrollments: [enrollment({ enrollmentActive: false })],
+    });
+    expect(classifyLeadSection(inactiveEnrollment, NOW)).toBe("left");
+
+    const closedBatch = student({
+      enrollments: [enrollment({ batchActive: false })],
+    });
+    expect(classifyLeadSection(closedBatch, NOW)).toBe("left");
+  });
+
+  it("classifies an active enrollment as converted, not new", () => {
+    const row = student({ enrollments: [enrollment()] });
+    expect(classifyLeadSection(row, NOW)).toBe("converted");
+  });
+
+  it("classifies a completed trial booking as attended", () => {
+    const row = student({
+      bookings: [
+        booking({ status: BookingStatus.COMPLETED, sessionStartsAt: PAST }),
+      ],
+    });
+    expect(classifyLeadSection(row, NOW)).toBe("trialAttended");
+  });
+
+  it("classifies a present-marked past trial as attended", () => {
+    const row = student({
+      bookings: [
+        booking({
+          status: BookingStatus.CONFIRMED,
+          sessionStartsAt: PAST,
+        }),
+      ],
+      attendance: [
+        { sessionId: "session-1", status: AttendanceStatus.PRESENT },
+      ],
+    });
+    expect(classifyLeadSection(row, NOW)).toBe("trialAttended");
+  });
+
+  it("keeps an upcoming open trial in trial booked", () => {
+    const row = student({
+      bookings: [
+        booking({ status: BookingStatus.CONFIRMED, sessionStartsAt: FUTURE }),
+      ],
+    });
+    expect(classifyLeadSection(row, NOW)).toBe("trialBooked");
+  });
+
+  it("classifies a past unattended trial as missed", () => {
+    const row = student({
+      bookings: [
+        booking({ status: BookingStatus.PENDING, sessionStartsAt: PAST }),
+      ],
+    });
+    expect(classifyLeadSection(row, NOW)).toBe("trialMissed");
+  });
+
+  it("moves a missed student with an upcoming rebook back to trial booked", () => {
+    const row = student({
+      bookings: [
+        booking({ status: BookingStatus.PENDING, sessionStartsAt: PAST }),
+        booking({ status: BookingStatus.CONFIRMED, sessionStartsAt: FUTURE }),
+      ],
+    });
+    expect(classifyLeadSection(row, NOW)).toBe("trialBooked");
+  });
+
+  it("returns new for an active student with no trial or batch history", () => {
+    expect(classifyLeadSection(student(), NOW)).toBe("new");
+  });
+
+  it("ignores date filtering for new (gated by leadSectionAppliesDateFilter)", () => {
+    expect(leadSectionAppliesDateFilter("new")).toBe(false);
   });
 });

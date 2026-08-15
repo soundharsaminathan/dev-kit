@@ -39,12 +39,12 @@ async function openLeadsOnMobile(page: Page, name: string, leadId: string) {
   });
 }
 
-async function leadSection(name: string, leadId: string) {
+async function leadSection(name: string, leadId: string, section: string) {
   const page = await apiRequest<{
     items: Array<{ id: string; section: string }>;
   }>(
     "STAFF",
-    `/users/studio/${STUDIO_ID}/leads?q=${encodeURIComponent(name)}&limit=25`,
+    `/users/studio/${STUDIO_ID}/leads?section=${section}&q=${encodeURIComponent(name)}&limit=25`,
   );
   return page.items.find((item) => item.id === leadId);
 }
@@ -75,10 +75,19 @@ test.describe("trial caller sheet archive @critical", () => {
       expect(archiveResponse.ok()).toBeTruthy();
 
       await expect
-        .poll(async () => (await leadSection(lead.name, lead.id))?.section)
+        .poll(
+          async () =>
+            (await leadSection(lead.name, lead.id, "archived"))?.section,
+        )
         .toBe("archived");
 
-      await page.getByTestId("leads-section-archived").click();
+      await page.goto("/app/leads?section=archived", {
+        waitUntil: "domcontentloaded",
+      });
+      await waitForAppReady(page);
+      await page
+        .getByRole("searchbox", { name: "Search leads" })
+        .fill(lead.name);
       await expect(page.getByTestId(`lead-card-${lead.id}`)).toBeVisible({
         timeout: 30_000,
       });
@@ -94,10 +103,18 @@ test.describe("trial caller sheet archive @critical", () => {
       expect(unarchiveResponse.ok()).toBeTruthy();
 
       await expect
-        .poll(async () => (await leadSection(lead.name, lead.id))?.section)
+        .poll(
+          async () => (await leadSection(lead.name, lead.id, "new"))?.section,
+        )
         .toBe("new");
 
-      await page.getByTestId("leads-filter-all").click();
+      await page.goto("/app/leads?section=new", {
+        waitUntil: "domcontentloaded",
+      });
+      await waitForAppReady(page);
+      await page
+        .getByRole("searchbox", { name: "Search leads" })
+        .fill(lead.name);
       await expect(page.getByTestId(`lead-card-${lead.id}`)).toBeVisible({
         timeout: 30_000,
       });

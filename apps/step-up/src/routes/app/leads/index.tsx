@@ -12,7 +12,12 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import {
+  AnimatePresence,
+  motion,
+  type PanInfo,
+  useReducedMotion,
+} from "motion/react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useApi } from "@/lib/api-context";
 import { requireAdmin } from "@/lib/require-auth";
@@ -20,12 +25,11 @@ import { useStudioId } from "@/lib/use-studio-id";
 import { LeadCard } from "@/modules/leads/lead-card";
 import { LeadCardSkeletonList } from "@/modules/leads/lead-card-skeleton";
 import { LeadDetailSheet } from "@/modules/leads/lead-detail-sheet";
+import { LeadPipelineTabs } from "@/modules/leads/lead-pipeline-tabs";
 import styles from "@/modules/leads/leads.module.scss";
 import { QuickAddLeadSheet } from "@/modules/leads/quick-add-lead-sheet";
 import { SwitchTrialSheet } from "@/modules/leads/switch-trial-sheet";
 import {
-  emptyLeadsDescription,
-  emptyLeadsTitle,
   isDateKey,
   LEAD_PAGE_SIZE,
   type Lead,
@@ -40,6 +44,8 @@ import {
   QUICK_DATE_PRESETS,
   rangeLabel,
   SECTION_LABELS,
+  SECTION_ORDER,
+  sectionAppliesDateFilter,
 } from "@/modules/leads/types";
 import { LoadMoreIndicator } from "@/modules/ui/load-more-indicator";
 import { PullToRefresh } from "@/modules/ui/pull-to-refresh";
@@ -54,9 +60,17 @@ type LeadsSearch = {
   section?: LeadSection;
 };
 
-const SECTION_ORDER: LeadSection[] = ["new", "trialBooked", "archived"];
-
 const EASE_OUT = [0.16, 1, 0.3, 1] as const;
+
+const SWIPE_DRAG = 56;
+const SWIPE_VELOCITY = 450;
+
+function isLeadSection(value: unknown): value is LeadSection {
+  return (
+    typeof value === "string" &&
+    (SECTION_ORDER as readonly string[]).includes(value)
+  );
+}
 
 function parseSearch(search: Record<string, unknown>): LeadsSearch {
   const result: LeadsSearch = {};
@@ -70,14 +84,40 @@ function parseSearch(search: Record<string, unknown>): LeadsSearch {
     result.from = search.from;
     result.to = search.to;
   }
-  if (
-    search.section === "new" ||
-    search.section === "trialBooked" ||
-    search.section === "archived"
-  ) {
+  if (isLeadSection(search.section)) {
     result.section = search.section;
   }
   return result;
+}
+
+function sectionAtOffset(
+  current: LeadSection,
+  direction: -1 | 1,
+): LeadSection | null {
+  const index = SECTION_ORDER.indexOf(current);
+  const next = index + direction;
+  if (next < 0 || next >= SECTION_ORDER.length) return null;
+  return SECTION_ORDER[next] ?? null;
+}
+
+function sectionFromSwipe(
+  current: LeadSection,
+  offsetX: number,
+  offsetY: number,
+  velocityX = 0,
+): LeadSection | null {
+  const horizontal =
+    Math.abs(offsetX) >= Math.abs(offsetY) ||
+    Math.abs(velocityX) >= SWIPE_VELOCITY;
+  if (!horizontal) return null;
+  let direction: -1 | 1 | null = null;
+  if (offsetX < -SWIPE_DRAG || velocityX < -SWIPE_VELOCITY) {
+    direction = 1;
+  } else if (offsetX > SWIPE_DRAG || velocityX > SWIPE_VELOCITY) {
+    direction = -1;
+  }
+  if (!direction) return null;
+  return sectionAtOffset(current, direction);
 }
 
 function useDebouncedValue<T>(value: T, delayMs: number) {
@@ -161,7 +201,7 @@ function LeadsPage() {
     [searchParams],
   );
   const activePreset = matchingPreset(range);
-  const activeSection = searchParams.section ?? null;
+  const activeSection = searchParams.section ?? "new";
   const isMobile = useIsMobile();
   const reduce = useReducedMotion();
   const [addOpen, setAddOpen] = useState(false);
@@ -188,10 +228,11 @@ function LeadsPage() {
   }, []);
 
   const query = useInfiniteQuery({
-    queryKey: ["studio-leads", studioId, range, debouncedSearch],
+    queryKey: ["studio-leads", studioId, activeSection, range, debouncedSearch],
     queryFn: ({ pageParam }) => {
       const params = new URLSearchParams();
-      if (range) {
+      params.set("section", activeSection);
+      if (range && sectionAppliesDateFilter(activeSection)) {
         params.set("from", range.from);
         params.set("to", range.to);
       }
@@ -423,23 +464,6 @@ function LeadsPage() {
     selectedLeads.length > 0 &&
     selectedLeads.every((lead) => lead.section === "archived");
 
-  const grouped = useMemo(() => {
-    const map: Record<LeadSection, Lead[]> = {
-      new: [],
-      trialBooked: [],
-      archived: [],
-    };
-    for (const lead of leads) {
-      map[lead.section].push(lead);
-    }
-    return map;
-  }, [leads]);
-
-  const visibleSections = useMemo(() => {
-    const sections = activeSection ? [activeSection] : SECTION_ORDER;
-    return sections.filter((section) => grouped[section].length > 0);
-  }, [grouped, activeSection]);
-
   const hasSearch = Boolean(search.trim());
   const { hasNextPage, isFetchingNextPage, fetchNextPage, refetch } = query;
   const loadMore = useCallback(() => {
@@ -457,36 +481,42 @@ function LeadsPage() {
     if (hasSearch) {
       return `${count}${more} matching lead${count === 1 ? "" : "s"}`;
     }
-    if (activeSection) {
-      const sectionCount = grouped[activeSection].length;
-      return `${sectionCount}${more} ${SECTION_LABELS[activeSection].toLowerCase()}`;
-    }
-    if (range) {
+    if (range && sectionAppliesDateFilter(activeSection)) {
       return `${count}${more} trial${count === 1 ? "" : "s"} · ${rangeLabel(range)}`;
     }
-    return "Call new signups and confirm trial sessions.";
-  }, [range, hasNextPage, hasSearch, leads.length, activeSection, grouped]);
+    return `${count}${more} ${SECTION_LABELS[activeSection].toLowerCase()}`;
+  }, [range, hasNextPage, hasSearch, leads.length, activeSection]);
 
   function setRange(next: LeadDateRange | null) {
     void navigate({
       search: {
         ...(next ? { from: next.from, to: next.to } : {}),
-        ...(activeSection ? { section: activeSection } : {}),
+        section: activeSection,
       },
     });
   }
 
-  function setFilters(next: {
-    range: LeadDateRange | null;
-    section: LeadSection | null;
-  }) {
+  function selectSection(section: LeadSection) {
+    const keepRange = sectionAppliesDateFilter(section);
     void navigate({
       search: {
-        ...(next.range ? { from: next.range.from, to: next.range.to } : {}),
-        ...(next.section ? { section: next.section } : {}),
+        ...(keepRange && range ? { from: range.from, to: range.to } : {}),
+        section,
       },
     });
   }
+
+  function handleDragEnd(_: unknown, info: PanInfo) {
+    const next = sectionFromSwipe(
+      activeSection,
+      info.offset.x,
+      info.offset.y,
+      info.velocity.x,
+    );
+    if (next) selectSection(next);
+  }
+
+  const canSwipe = isMobile && !reduce;
 
   const itemTransition = reduce
     ? { duration: 0 }
@@ -515,6 +545,11 @@ function LeadsPage() {
       >
         <PullToRefresh onRefresh={() => refetch()}>
           <div className={staff.section}>
+            <LeadPipelineTabs
+              activeSection={activeSection}
+              onSelectSection={selectSection}
+            />
+
             <div className={styles.searchBar} data-testid="leads-search">
               <SearchField
                 aria-label="Search leads"
@@ -524,29 +559,31 @@ function LeadsPage() {
               />
             </div>
 
-            <div className={styles.rangeBar}>
-              <DateRangePicker
-                aria-label="Lead date range"
-                value={leadDateRangeToValue(range)}
-                onChange={(value) => setRange(leadDateRangeFromValue(value))}
-                className={styles.rangePicker}
-              />
-              <div
-                className={styles.quickActions}
-                role="toolbar"
-                aria-label="Filter leads"
-              >
-                <button
-                  type="button"
-                  className={styles.filterChip}
-                  data-selected={!range && !activeSection ? "true" : undefined}
-                  data-testid="leads-filter-all"
-                  onClick={() => setFilters({ range: null, section: null })}
+            {sectionAppliesDateFilter(activeSection) ? (
+              <div className={styles.rangeBar}>
+                <DateRangePicker
+                  aria-label="Lead date range"
+                  value={leadDateRangeToValue(range)}
+                  onChange={(value) => setRange(leadDateRangeFromValue(value))}
+                  className={styles.rangePicker}
+                />
+                <div
+                  className={styles.quickActions}
+                  role="toolbar"
+                  aria-label="Filter leads"
                 >
-                  All
-                </button>
-                {QUICK_DATE_PRESETS.filter((preset) => preset !== "last7").map(
-                  (preset) => (
+                  <button
+                    type="button"
+                    className={styles.filterChip}
+                    data-selected={!range ? "true" : undefined}
+                    data-testid="leads-filter-all"
+                    onClick={() => setRange(null)}
+                  >
+                    All
+                  </button>
+                  {QUICK_DATE_PRESETS.filter(
+                    (preset) => preset !== "last7",
+                  ).map((preset) => (
                     <button
                       key={preset}
                       type="button"
@@ -555,32 +592,14 @@ function LeadsPage() {
                         activePreset === preset ? "true" : undefined
                       }
                       data-testid={`leads-filter-${preset}`}
-                      onClick={() =>
-                        setFilters({
-                          range: presetRange(preset),
-                          section: null,
-                        })
-                      }
+                      onClick={() => setRange(presetRange(preset))}
                     >
                       {QUICK_DATE_LABELS[preset]}
                     </button>
-                  ),
-                )}
-                <button
-                  type="button"
-                  className={styles.filterChip}
-                  data-selected={
-                    activeSection === "archived" ? "true" : undefined
-                  }
-                  data-testid="leads-section-archived"
-                  onClick={() =>
-                    setFilters({ range: null, section: "archived" })
-                  }
-                >
-                  Archived
-                </button>
+                  ))}
+                </div>
               </div>
-            </div>
+            ) : null}
 
             {!isMobile && selectedIds.size > 0 ? (
               <div
@@ -654,21 +673,21 @@ function LeadsPage() {
               />
             ) : null}
 
-            {query.isSuccess && visibleSections.length === 0 ? (
+            {query.isSuccess && leads.length === 0 ? (
               <EmptyState
                 icon="smartphone"
                 title={
-                  activeSection
-                    ? `No ${SECTION_LABELS[activeSection].toLowerCase()}`
-                    : emptyLeadsTitle(range, hasSearch)
+                  hasSearch
+                    ? "No matching leads"
+                    : `No ${SECTION_LABELS[activeSection].toLowerCase()}`
                 }
                 description={
-                  activeSection
-                    ? "Nothing here yet. Try a different filter."
-                    : emptyLeadsDescription(range, hasSearch)
+                  hasSearch
+                    ? "Try another name or clear your search."
+                    : "Nothing here yet. Try a different filter."
                 }
                 action={
-                  !activeSection && !range && !hasSearch ? (
+                  !hasSearch ? (
                     <TouchButton
                       variant="primary"
                       onClick={() => setAddOpen(true)}
@@ -680,77 +699,76 @@ function LeadsPage() {
               />
             ) : null}
 
-            {SECTION_ORDER.map((section) => {
-              if (activeSection && section !== activeSection) return null;
-              const leadsInSection = grouped[section];
-              const sectionCount = leadsInSection.length;
-              return (
-                <section key={section} className={staff.section}>
-                  {sectionCount > 0 ? (
-                    <h2 className={staff.sectionTitle}>
-                      {SECTION_LABELS[section]} · {sectionCount}
-                      {hasNextPage ? "+" : ""}
-                    </h2>
-                  ) : null}
-                  <ul className={staff.list}>
-                    <AnimatePresence initial={false} mode="popLayout">
-                      {leadsInSection.map((lead) => {
-                        const canSelect = !isMobile;
-                        return (
-                          <motion.li
-                            key={lead.id}
-                            layout
-                            className={styles.li}
-                            initial={{ opacity: 0, x: 24 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            exit={{
-                              opacity: 0,
-                              x: section === "archived" ? "100%" : "-100%",
-                              transition: exitTransition,
-                            }}
-                            transition={itemTransition}
-                          >
-                            <LeadCard
-                              lead={lead}
-                              range={range}
-                              selected={
-                                canSelect ? selectedIds.has(lead.id) : false
+            <motion.div
+              className={styles.swipeArea}
+              drag={canSwipe ? "x" : false}
+              dragConstraints={{ left: 0, right: 0 }}
+              dragElastic={0.18}
+              dragDirectionLock
+              {...(canSwipe ? { onDragEnd: handleDragEnd } : {})}
+            >
+              <ul className={staff.list}>
+                <AnimatePresence initial={false} mode="popLayout">
+                  {leads.map((lead) => {
+                    const canSelect = !isMobile;
+                    const canSwitchTrial =
+                      lead.section === "new" ||
+                      lead.section === "trialBooked" ||
+                      lead.section === "trialAttended" ||
+                      lead.section === "trialMissed";
+                    return (
+                      <motion.li
+                        key={lead.id}
+                        layout
+                        className={styles.li}
+                        initial={{ opacity: 0, x: 24 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{
+                          opacity: 0,
+                          x: lead.section === "archived" ? "100%" : "-100%",
+                          transition: exitTransition,
+                        }}
+                        transition={itemTransition}
+                      >
+                        <LeadCard
+                          lead={lead}
+                          range={range}
+                          selected={
+                            canSelect ? selectedIds.has(lead.id) : false
+                          }
+                          onToggleSelect={canSelect ? toggleSelect : undefined}
+                          onOpen={setDetailLead}
+                          onSwitchTrial={
+                            canSwitchTrial ? setSwitchLead : undefined
+                          }
+                          {...(lead.section === "trialBooked"
+                            ? {
+                                onConfirmSession: (next) => {
+                                  const bookingId = next.trialBooking?.id;
+                                  if (!bookingId) return;
+                                  confirmSession.mutate(bookingId);
+                                },
+                                confirmPending:
+                                  confirmSession.isPending &&
+                                  confirmSession.variables ===
+                                    lead.trialBooking?.id,
                               }
-                              onToggleSelect={
-                                canSelect ? toggleSelect : undefined
-                              }
-                              onOpen={setDetailLead}
-                              onSwitchTrial={setSwitchLead}
-                              {...(section === "trialBooked"
-                                ? {
-                                    onConfirmSession: (next) => {
-                                      const bookingId = next.trialBooking?.id;
-                                      if (!bookingId) return;
-                                      confirmSession.mutate(bookingId);
-                                    },
-                                    confirmPending:
-                                      confirmSession.isPending &&
-                                      confirmSession.variables ===
-                                        lead.trialBooking?.id,
-                                  }
-                                : {})}
-                            />
-                          </motion.li>
-                        );
-                      })}
-                    </AnimatePresence>
-                  </ul>
-                </section>
-              );
-            })}
+                            : {})}
+                        />
+                      </motion.li>
+                    );
+                  })}
+                </AnimatePresence>
+              </ul>
 
-            {hasNextPage ? (
-              <LoadMoreIndicator
-                ref={loadMoreRef}
-                isLoading={isFetchingNextPage}
-                testId="leads-load-more"
-              />
-            ) : null}
+              {hasNextPage ? (
+                <LoadMoreIndicator
+                  ref={loadMoreRef}
+                  isLoading={isFetchingNextPage}
+                  testId="leads-load-more"
+                />
+              ) : null}
+            </motion.div>
           </div>
         </PullToRefresh>
       </Screen>

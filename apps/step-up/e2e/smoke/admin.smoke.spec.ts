@@ -250,7 +250,9 @@ test.describe("admin (staff) smoke @smoke", () => {
     });
     const page = await context.newPage();
     try {
-      await page.goto("/app/leads", { waitUntil: "domcontentloaded" });
+      await page.goto("/app/leads?section=trialBooked", {
+        waitUntil: "domcontentloaded",
+      });
       await waitForAppReady(page);
 
       const confirm = page.getByTestId(`lead-confirm-session-${lead.id}`);
@@ -299,7 +301,9 @@ test.describe("admin (staff) smoke @smoke", () => {
     });
     const page = await context.newPage();
     try {
-      await page.goto("/app/leads", { waitUntil: "domcontentloaded" });
+      await page.goto("/app/leads?section=trialBooked", {
+        waitUntil: "domcontentloaded",
+      });
       await waitForAppReady(page);
 
       await expect(page.getByText(lead.name).first()).toBeVisible({
@@ -364,13 +368,19 @@ test.describe("admin (staff) smoke @smoke", () => {
             items: Array<{ id: string; section: string }>;
           }>(
             "STAFF",
-            `/users/studio/${SMOKE.studioId}/leads?q=${encodeURIComponent(lead.name)}&limit=25`,
+            `/users/studio/${SMOKE.studioId}/leads?section=archived&q=${encodeURIComponent(lead.name)}&limit=25`,
           );
           return latest.items.find((item) => item.id === lead.id)?.section;
         })
         .toBe("archived");
 
-      await page.getByTestId("leads-section-archived").click();
+      await page.goto("/app/leads?section=archived", {
+        waitUntil: "domcontentloaded",
+      });
+      await waitForAppReady(page);
+      await page
+        .getByRole("searchbox", { name: "Search leads" })
+        .fill(lead.name);
       await expect(page.getByTestId(`lead-card-${lead.id}`)).toBeVisible({
         timeout: 30_000,
       });
@@ -391,13 +401,19 @@ test.describe("admin (staff) smoke @smoke", () => {
             items: Array<{ id: string; section: string }>;
           }>(
             "STAFF",
-            `/users/studio/${SMOKE.studioId}/leads?q=${encodeURIComponent(lead.name)}&limit=25`,
+            `/users/studio/${SMOKE.studioId}/leads?section=new&q=${encodeURIComponent(lead.name)}&limit=25`,
           );
           return latest.items.find((item) => item.id === lead.id)?.section;
         })
         .toBe("new");
 
-      await page.getByTestId("leads-filter-all").click();
+      await page.goto("/app/leads?section=new", {
+        waitUntil: "domcontentloaded",
+      });
+      await waitForAppReady(page);
+      await page
+        .getByRole("searchbox", { name: "Search leads" })
+        .fill(lead.name);
       await expect(page.getByTestId(`lead-card-${lead.id}`)).toBeVisible({
         timeout: 30_000,
       });

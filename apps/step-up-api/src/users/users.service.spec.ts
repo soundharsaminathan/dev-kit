@@ -5,6 +5,8 @@ import {
 } from "@nestjs/common";
 import {
   AgeRange,
+  AttendanceStatus,
+  BookingStatus,
   ExperienceLevel,
   FamilyMemberKind,
   Gender,
@@ -1586,5 +1588,185 @@ describe("UsersService lead remarks", () => {
     await expect(
       service.listLeadRemarks("studio-1", "missing"),
     ).rejects.toBeInstanceOf(NotFoundException);
+  });
+});
+
+describe("UsersService listLeads sections", () => {
+  const prisma = {
+    user: { findMany: vi.fn() },
+    booking: { findMany: vi.fn() },
+    leadRemark: { groupBy: vi.fn() },
+  };
+  const crypto = {
+    decryptUser: vi.fn((user: { id: string }) => ({
+      ...user,
+      email: `${user.id}@stepup.dev`,
+      name: `Student ${user.id}`,
+      phone: "9000000000",
+      bio: null,
+      instagramUrl: null,
+    })),
+  };
+  const media = {
+    signReadUrl: vi.fn(async (value: string | null) => value),
+  };
+  const firebase = {};
+
+  let service: UsersService;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    prisma.leadRemark.groupBy.mockResolvedValue([]);
+    service = new UsersService(
+      prisma as never,
+      crypto as never,
+      media as never,
+      firebase as never,
+    );
+  });
+
+  const future = new Date(Date.now() + 24 * 60 * 60 * 1000);
+  const past = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  const futureKey = `${future.getFullYear()}-${String(future.getMonth() + 1).padStart(2, "0")}-${String(future.getDate()).padStart(2, "0")}`;
+  const pastKey = `${past.getFullYear()}-${String(past.getMonth() + 1).padStart(2, "0")}-${String(past.getDate()).padStart(2, "0")}`;
+
+  function studentRow(id: string, overrides: Record<string, unknown> = {}) {
+    return {
+      id,
+      createdAt: new Date("2026-08-01T00:00:00.000Z"),
+      active: true,
+      ageRange: AgeRange.TWENTY_TO_FORTY,
+      photoUrl: null,
+      encryptedKey: "k",
+      piiCiphertext: "c",
+      piiIv: "iv",
+      batchEnrollments: [],
+      attendanceRecords: [],
+      ...overrides,
+    };
+  }
+
+  function enrollmentRow(status: string, batchActive = true) {
+    return {
+      status,
+      batch: {
+        id: "batch-1",
+        active: batchActive,
+        sessions: [{ status: "SCHEDULED" }],
+      },
+    };
+  }
+
+  function bookingRow(
+    studentId: string,
+    sessionStartsAt: Date,
+    status: BookingStatus = BookingStatus.CONFIRMED,
+  ) {
+    return {
+      id: `bk-${studentId}`,
+      studentId,
+      status,
+      sessionId: "s-1",
+      startsAt: null,
+      session: {
+        startsAt: sessionStartsAt,
+        batch: { name: "Trial Batch" },
+      },
+      batch: null,
+    };
+  }
+
+  it("returns only the requested section as a flat page", async () => {
+    prisma.user.findMany.mockResolvedValue([
+      studentRow("student-new"),
+      studentRow("student-booked"),
+      studentRow("student-left", {
+        batchEnrollments: [enrollmentRow("LEFT")],
+      }),
+      studentRow("student-archived", { active: false }),
+    ]);
+    prisma.booking.findMany.mockResolvedValue([
+      bookingRow("student-booked", future),
+    ]);
+
+    const page = await service.listLeads("studio-1", { section: "left" });
+
+    expect(page.items.map((row) => row.id)).toEqual(["student-left"]);
+    expect(page.items[0]?.section).toBe("left");
+  });
+
+  it("ignores the date range on new, left and archived sections", async () => {
+    prisma.user.findMany.mockResolvedValue([
+      studentRow("student-new"),
+      studentRow("student-left", {
+        batchEnrollments: [enrollmentRow("LEFT")],
+      }),
+      studentRow("student-archived", { active: false }),
+    ]);
+    prisma.booking.findMany.mockResolvedValue([]);
+
+    for (const section of ["new", "left", "archived"] as const) {
+      const page = await service.listLeads("studio-1", {
+        section,
+        from: pastKey,
+        to: pastKey,
+      });
+      expect(page.items.map((row) => row.id)).toEqual([
+        section === "new"
+          ? "student-new"
+          : section === "left"
+            ? "student-left"
+            : "student-archived",
+      ]);
+    }
+  });
+
+  it("filters the trial booked section by the upcoming session date", async () => {
+    prisma.user.findMany.mockResolvedValue([studentRow("student-booked")]);
+    prisma.booking.findMany.mockResolvedValue([
+      bookingRow("student-booked", future),
+    ]);
+
+    const inRange = await service.listLeads("studio-1", {
+      section: "trialBooked",
+      from: futureKey,
+      to: futureKey,
+    });
+    expect(inRange.items.map((row) => row.id)).toEqual(["student-booked"]);
+    expect(inRange.items[0]?.trialBooking?.sessionStartsAt).toBe(
+      future.toISOString(),
+    );
+
+    const outOfRange = await service.listLeads("studio-1", {
+      section: "trialBooked",
+      from: pastKey,
+      to: pastKey,
+    });
+    expect(outOfRange.items).toEqual([]);
+  });
+
+  it("classifies attended and missed into their own sections", async () => {
+    prisma.user.findMany.mockResolvedValue([
+      studentRow("student-attended", {
+        attendanceRecords: [
+          { sessionId: "s-1", status: AttendanceStatus.PRESENT },
+        ],
+      }),
+      studentRow("student-missed"),
+    ]);
+    prisma.booking.findMany.mockResolvedValue([
+      bookingRow("student-attended", past, BookingStatus.CONFIRMED),
+      bookingRow("student-missed", past, BookingStatus.PENDING),
+    ]);
+
+    const attended = await service.listLeads("studio-1", {
+      section: "trialAttended",
+    });
+    expect(attended.items.map((row) => row.id)).toEqual(["student-attended"]);
+
+    const missed = await service.listLeads("studio-1", {
+      section: "trialMissed",
+    });
+    expect(missed.items.map((row) => row.id)).toEqual(["student-missed"]);
   });
 });

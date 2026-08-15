@@ -36,10 +36,13 @@ import { PrismaService } from "../prisma/prisma.service";
 import { isAlwaysPublicRole } from "../social/visibility";
 import { ageRangeFromAge } from "./age-range";
 import {
+  classifyLeadSection,
   LEAD_REMARK_MAX_LENGTH,
   type LeadDateFilter,
   type LeadDto,
   type LeadRemarkDto,
+  type LeadSection,
+  leadSectionAppliesDateFilter,
   paginateLeads,
   resolveDateKeyRange,
   resolveLeadDayRange,
@@ -82,6 +85,110 @@ type TemporaryPasswordResult = {
   temporaryPassword: string;
   setupHint: string;
 };
+
+type LoadedTrialBooking = {
+  id: string;
+  studentId: string;
+  status: BookingStatus;
+  sessionId: string | null;
+  startsAt: Date | null;
+  session: {
+    startsAt: Date;
+    batch: { name: string } | null;
+  } | null;
+  batch: { name: string } | null;
+};
+
+function loadedTrialSessionStartsAt(booking: LoadedTrialBooking): Date | null {
+  return booking.session?.startsAt ?? booking.startsAt ?? null;
+}
+
+function loadedTrialBatchName(booking: LoadedTrialBooking): string | null {
+  return booking.session?.batch?.name ?? booking.batch?.name ?? null;
+}
+
+function isOpenTrialStatus(status: BookingStatus): boolean {
+  return status === BookingStatus.PENDING || status === BookingStatus.CONFIRMED;
+}
+
+function isLoadedTrialAttended(
+  booking: LoadedTrialBooking,
+  attendance: Array<{ sessionId: string; status: AttendanceStatus }>,
+): boolean {
+  if (booking.status === BookingStatus.COMPLETED) return true;
+  if (!booking.sessionId) return false;
+  return attendance.some(
+    (record) =>
+      record.sessionId === booking.sessionId &&
+      record.status === AttendanceStatus.PRESENT,
+  );
+}
+
+function trialBookingsByTimeDesc(
+  bookings: LoadedTrialBooking[],
+): LoadedTrialBooking[] {
+  return [...bookings].sort(
+    (a, b) =>
+      (loadedTrialSessionStartsAt(b)?.getTime() ?? 0) -
+      (loadedTrialSessionStartsAt(a)?.getTime() ?? 0),
+  );
+}
+
+function relevantTrialForSection(
+  section: LeadSection,
+  bookings: LoadedTrialBooking[],
+  attendance: Array<{ sessionId: string; status: AttendanceStatus }>,
+  now: Date,
+): LoadedTrialBooking | null {
+  const upcoming = () =>
+    trialBookingsByTimeDesc(
+      bookings.filter((booking) => {
+        const startsAt = loadedTrialSessionStartsAt(booking);
+        return (
+          isOpenTrialStatus(booking.status) &&
+          startsAt !== null &&
+          startsAt > now
+        );
+      }),
+    )[0] ?? null;
+
+  if (section === "trialBooked") return upcoming();
+
+  if (section === "trialAttended") {
+    return (
+      trialBookingsByTimeDesc(
+        bookings.filter((booking) =>
+          isLoadedTrialAttended(booking, attendance),
+        ),
+      )[0] ?? null
+    );
+  }
+
+  if (section === "trialMissed") {
+    return (
+      trialBookingsByTimeDesc(
+        bookings.filter((booking) => {
+          const startsAt = loadedTrialSessionStartsAt(booking);
+          return (
+            isOpenTrialStatus(booking.status) &&
+            startsAt !== null &&
+            startsAt <= now
+          );
+        }),
+      )[0] ?? null
+    );
+  }
+
+  const nextUpcoming = upcoming();
+  if (nextUpcoming) return nextUpcoming;
+  return (
+    trialBookingsByTimeDesc(
+      bookings.filter(
+        (booking) => loadedTrialSessionStartsAt(booking) !== null,
+      ),
+    )[0] ?? null
+  );
+}
 
 @Injectable()
 export class UsersService {
@@ -1604,6 +1711,7 @@ export class UsersService {
   async listLeads(
     studioId: string,
     options: {
+      section?: LeadSection;
       filter?: LeadDateFilter;
       from?: string;
       to?: string;
@@ -1612,18 +1720,15 @@ export class UsersService {
       limit?: number;
     } = {},
   ) {
-    const filter = options.filter ?? "all";
-    const dayRange =
-      options.from && options.to
+    const section = options.section ?? "new";
+    const dayRange = leadSectionAppliesDateFilter(section)
+      ? options.from && options.to
         ? resolveDateKeyRange(options.from, options.to)
-        : resolveLeadDayRange(filter);
+        : resolveLeadDayRange(options.filter ?? "all")
+      : null;
+    const now = new Date();
 
-    const openTrialStatuses: BookingStatus[] = [
-      BookingStatus.PENDING,
-      BookingStatus.CONFIRMED,
-    ];
-
-    const [students, openTrials, latestRemarks] = await Promise.all([
+    const [students, trialBookings, latestRemarks] = await Promise.all([
       this.prisma.user.findMany({
         where: { studioId, role: UserRole.STUDENT },
         select: {
@@ -1646,25 +1751,11 @@ export class UsersService {
               },
             },
           },
-          bookings: {
-            where: { studioId },
-            select: {
-              type: true,
-              status: true,
-              sessionId: true,
-            },
-          },
           attendanceRecords: {
             where: { session: { batch: { studioId } } },
             select: {
               sessionId: true,
               status: true,
-            },
-          },
-          membershipSeats: {
-            where: { membership: { subscription: { studioId } } },
-            select: {
-              membership: { select: { status: true } },
             },
           },
         },
@@ -1673,7 +1764,9 @@ export class UsersService {
         where: {
           studioId,
           type: BookingType.TRIAL,
-          status: { in: openTrialStatuses },
+          status: {
+            notIn: [BookingStatus.CANCELLED, BookingStatus.AWAITING_PAYMENT],
+          },
         },
         select: {
           id: true,
@@ -1705,62 +1798,59 @@ export class UsersService {
       ]),
     );
 
-    const trialByStudent = new Map<string, (typeof openTrials)[number]>();
-    for (const trial of openTrials) {
-      if (!trialByStudent.has(trial.studentId)) {
-        trialByStudent.set(trial.studentId, trial);
+    const trialBookingsByStudent = new Map<string, LoadedTrialBooking[]>();
+    for (const booking of trialBookings) {
+      const list = trialBookingsByStudent.get(booking.studentId);
+      if (list) {
+        list.push(booking);
+      } else {
+        trialBookingsByStudent.set(booking.studentId, [booking]);
       }
     }
 
     const leads: LeadDto[] = [];
 
     for (const student of students) {
-      const {
-        batchEnrollments,
-        bookings,
-        attendanceRecords,
-        membershipSeats,
-        ...user
-      } = student;
+      const { batchEnrollments, attendanceRecords, ...user } = student;
 
-      const funnelInput = {
-        id: student.id,
-        createdAt: student.createdAt,
-        enrollments: batchEnrollments.map((enrollment) => ({
-          batchId: enrollment.batch.id,
-          batchActive: enrollment.batch.active,
-          enrollmentActive: enrollment.status === "ACTIVE",
-          hasScheduledSession: batchHasScheduledSession(
-            enrollment.batch.sessions,
-          ),
-          hasCompletedSession: batchHasCompletedSession(
-            enrollment.batch.sessions,
-          ),
-        })),
-        bookings,
-        attendance: attendanceRecords,
-        memberships: membershipSeats.map((seat) => ({
-          status: seat.membership.status,
-        })),
-      };
+      const enrollments = batchEnrollments.map((enrollment) => ({
+        batchId: enrollment.batch.id,
+        batchActive: enrollment.batch.active,
+        enrollmentActive: enrollment.status === "ACTIVE",
+        hasScheduledSession: batchHasScheduledSession(
+          enrollment.batch.sessions,
+        ),
+        hasCompletedSession: batchHasCompletedSession(
+          enrollment.batch.sessions,
+        ),
+      }));
+      const attendance = attendanceRecords;
 
-      const funnelStage = classifyStudentFunnelStage(funnelInput);
-      const trial = trialByStudent.get(student.id) ?? null;
-      const sessionStartsAt =
-        trial?.session?.startsAt?.toISOString() ??
-        trial?.startsAt?.toISOString() ??
-        null;
+      const bookings = (trialBookingsByStudent.get(student.id) ?? []).map(
+        (booking) => ({
+          status: booking.status,
+          sessionId: booking.sessionId,
+          sessionStartsAt: loadedTrialSessionStartsAt(booking),
+        }),
+      );
+
+      const leadSection = classifyLeadSection(
+        { active: student.active, enrollments, bookings, attendance },
+        now,
+      );
+      if (leadSection !== section) continue;
+
+      const relevant = relevantTrialForSection(
+        leadSection,
+        trialBookingsByStudent.get(student.id) ?? [],
+        attendance,
+        now,
+      );
 
       if (dayRange) {
-        if (!sessionStartsAt) continue;
-        const starts = new Date(sessionStartsAt);
-        if (starts < dayRange.start || starts > dayRange.end) continue;
-      } else if (!student.active) {
-        // archived included when filter=all
-      } else if (trial) {
-        // trial booked
-      } else if (funnelStage !== "signedInOnly") {
-        continue;
+        const startsAt = relevant ? loadedTrialSessionStartsAt(relevant) : null;
+        if (!startsAt) continue;
+        if (startsAt < dayRange.start || startsAt > dayRange.end) continue;
       }
 
       const presented = await this.presentUser(user);
@@ -1772,15 +1862,16 @@ export class UsersService {
         ageRange: student.ageRange,
         createdAt: student.createdAt.toISOString(),
         active: student.active,
-        section: !student.active ? "archived" : trial ? "trialBooked" : "new",
+        section: leadSection,
         lastFollowupAt: lastFollowupByStudent.get(student.id) ?? null,
-        trialBooking: trial
+        trialBooking: relevant
           ? {
-              id: trial.id,
-              status: trial.status,
-              sessionId: trial.sessionId,
-              sessionStartsAt,
-              batchName: trial.session?.batch.name ?? trial.batch?.name ?? null,
+              id: relevant.id,
+              status: relevant.status,
+              sessionId: relevant.sessionId,
+              sessionStartsAt:
+                loadedTrialSessionStartsAt(relevant)?.toISOString() ?? null,
+              batchName: loadedTrialBatchName(relevant),
             }
           : null,
       });

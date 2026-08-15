@@ -56,7 +56,7 @@ Primary tabs: Home, Batches, Trial caller (owner/staff), Messages, Profile.
 |---|---|---|
 | Home | `/app` | Metrics, student funnel tiles (period), current batches, pending bookings, incomplete past sessions. |
 | Batches | `/app/batches` | Create/edit/activate classes, trainers, roster, schedule, attendance tab, settings. Kids vs adults, capacity, staff-only or self-join. |
-| Trial caller | `/app/leads` | Lead pipeline: new → trial booked → archived. Quick add, remarks, switch-trial, date presets. |
+| Trial caller | `/app/leads` | Lead pipeline tabs: new, trial booked, trial attended, trial missed, converted, left, archive. Quick add, remarks, switch-trial, per-tab date presets. |
 | Students | `/app/students` | Directory, import (Excel), create, per-student profile. Owner/staff. |
 | Trainers | `/app/trainers` | Trainer roster and create. |
 | Bookings | `/app/bookings` | Trial / open-seat / private requests; review and confirm. |
@@ -136,7 +136,7 @@ Types: open seat, trial, private. Statuses: awaiting payment → pending → con
 
 ### Leads (trial caller)
 
-Owner/staff pipeline for people who signed up or were added but are not yet paying members. Sections: **new**, **trial booked**, **archived**. Staff add remarks, book or switch trials, and follow up by date range.
+Owner/staff pipeline for people who signed up or were added but are not yet paying members. Seven exclusive sections: **new**, **trial booked**, **trial attended**, **trial missed**, **converted**, **left**, **archive**. Each tab lists only its leads; date presets apply to the trial tabs (booked/attended/missed) only. Staff add remarks, book or switch trials, and archive/unarchive. On mobile a peeking prev/current/next header plus horizontal swipe switches tabs.
 
 ### Retention and funnel
 

@@ -1,5 +1,13 @@
-import type { AgeRange, BookingStatus } from "@prisma/client";
+import type { AgeRange } from "@prisma/client";
+import { BookingStatus, BookingType } from "@prisma/client";
 import { matchesPersonSearch } from "./person-search";
+import {
+  hasActiveBatchEnrollment,
+  hasLeftBatch,
+  hasTrialAttendance,
+  type StudentFunnelAttendanceInput,
+  type StudentFunnelEnrollmentInput,
+} from "./student-funnel";
 
 export const LEAD_DATE_FILTERS = [
   "all",
@@ -15,7 +23,89 @@ export const LEAD_REMARK_MAX_LENGTH = 2000;
 
 export type LeadDateFilter = (typeof LEAD_DATE_FILTERS)[number];
 
-export type LeadSection = "new" | "trialBooked" | "archived";
+export const LEAD_SECTIONS = [
+  "new",
+  "trialBooked",
+  "trialAttended",
+  "trialMissed",
+  "converted",
+  "left",
+  "archived",
+] as const;
+
+export type LeadSection = (typeof LEAD_SECTIONS)[number];
+
+export const LEAD_SECTIONS_WITH_DATE_FILTER = [
+  "trialBooked",
+  "trialAttended",
+  "trialMissed",
+] as const satisfies readonly LeadSection[];
+
+const OPEN_TRIAL_STATUSES: BookingStatus[] = [
+  BookingStatus.PENDING,
+  BookingStatus.CONFIRMED,
+];
+
+export type LeadSectionBookingInput = {
+  status: BookingStatus;
+  sessionId: string | null;
+  sessionStartsAt: Date | null;
+};
+
+export type LeadSectionInput = {
+  active: boolean;
+  enrollments: StudentFunnelEnrollmentInput[];
+  bookings: LeadSectionBookingInput[];
+  attendance: StudentFunnelAttendanceInput[];
+};
+
+export function isLeadSection(value: string | undefined): value is LeadSection {
+  return (
+    value !== undefined && (LEAD_SECTIONS as readonly string[]).includes(value)
+  );
+}
+
+export function leadSectionAppliesDateFilter(section: LeadSection): boolean {
+  return (LEAD_SECTIONS_WITH_DATE_FILTER as readonly LeadSection[]).includes(
+    section,
+  );
+}
+
+export function classifyLeadSection(
+  student: LeadSectionInput,
+  now: Date = new Date(),
+): LeadSection {
+  if (!student.active) return "archived";
+
+  if (hasActiveBatchEnrollment(student.enrollments)) return "converted";
+  if (hasLeftBatch(student.enrollments)) return "left";
+
+  const trialBookings = student.bookings.map(({ status, sessionId }) => ({
+    type: BookingType.TRIAL,
+    status,
+    sessionId,
+  }));
+  if (hasTrialAttendance(trialBookings, student.attendance)) {
+    return "trialAttended";
+  }
+
+  const open = student.bookings.filter((booking) =>
+    (OPEN_TRIAL_STATUSES as BookingStatus[]).includes(booking.status),
+  );
+  const upcoming = open.some(
+    (booking) =>
+      booking.sessionStartsAt !== null && booking.sessionStartsAt > now,
+  );
+  if (upcoming) return "trialBooked";
+
+  const missed = open.some(
+    (booking) =>
+      booking.sessionStartsAt !== null && booking.sessionStartsAt <= now,
+  );
+  if (missed) return "trialMissed";
+
+  return "new";
+}
 
 export type LeadDto = {
   id: string;

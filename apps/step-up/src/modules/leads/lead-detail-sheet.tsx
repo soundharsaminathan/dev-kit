@@ -15,6 +15,7 @@ import {
   type Lead,
   type LeadRemark,
   phoneTelHref,
+  SECTION_LABELS,
 } from "./types";
 
 type LeadDetailSheetProps = {
@@ -118,6 +119,12 @@ export function LeadDetailSheet({
                 data-empty={!lead.lastFollowupAt ? "true" : undefined}
               >
                 {formatFollowupChip(lead.lastFollowupAt)}
+              </span>
+              <span
+                className={styles.sectionChip}
+                data-testid="lead-section-chip"
+              >
+                {SECTION_LABELS[lead.section]}
               </span>
             </div>
             <TouchButton

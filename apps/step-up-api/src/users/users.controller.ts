@@ -46,8 +46,11 @@ import { SocialService } from "../social/social.service";
 import {
   isIsoDateKey,
   isLeadDateFilter,
+  isLeadSection,
   LEAD_DATE_FILTERS,
+  LEAD_SECTIONS,
   type LeadDateFilter,
+  type LeadSection,
 } from "./leads";
 import {
   isStudentFunnelPeriod,
@@ -546,6 +549,7 @@ export class UsersController {
   listLeads(
     @CurrentUser() user: DecryptedUser,
     @Param("studioId") studioId: string,
+    @Query("section") section?: string,
     @Query("filter") filter?: string,
     @Query("from") from?: string,
     @Query("to") to?: string,
@@ -554,6 +558,11 @@ export class UsersController {
     @Query("limit") limit?: string,
   ) {
     assertSameStudio(user, studioId);
+    if (section !== undefined && !isLeadSection(section)) {
+      throw new BadRequestException(
+        `Invalid section. Expected one of: ${LEAD_SECTIONS.join(", ")}`,
+      );
+    }
     if (filter !== undefined && !isLeadDateFilter(filter)) {
       throw new BadRequestException(
         `Invalid filter. Expected one of: ${LEAD_DATE_FILTERS.join(", ")}`,
@@ -575,6 +584,7 @@ export class UsersController {
 
     const parsedLimit = limit ? Number(limit) : undefined;
     return this.usersService.listLeads(studioId, {
+      section: (section as LeadSection | undefined) ?? "new",
       filter: (filter as LeadDateFilter | undefined) ?? "all",
       from,
       to,
