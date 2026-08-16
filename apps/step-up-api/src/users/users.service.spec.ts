@@ -1745,6 +1745,53 @@ describe("UsersService listLeads sections", () => {
     expect(outOfRange.items).toEqual([]);
   });
 
+  it("filters attended, missed and converted by the relevant trial date", async () => {
+    prisma.user.findMany.mockResolvedValue([
+      studentRow("student-attended", {
+        attendanceRecords: [
+          { sessionId: "s-1", status: AttendanceStatus.PRESENT },
+        ],
+      }),
+      studentRow("student-missed"),
+      studentRow("student-converted", {
+        batchEnrollments: [enrollmentRow("ACTIVE")],
+      }),
+    ]);
+    prisma.booking.findMany.mockResolvedValue([
+      bookingRow("student-attended", past, BookingStatus.CONFIRMED),
+      bookingRow("student-missed", past, BookingStatus.PENDING),
+      bookingRow("student-converted", past, BookingStatus.COMPLETED),
+    ]);
+
+    const attended = await service.listLeads("studio-1", {
+      section: "trialAttended",
+      from: pastKey,
+      to: pastKey,
+    });
+    expect(attended.items.map((row) => row.id)).toEqual(["student-attended"]);
+
+    const missed = await service.listLeads("studio-1", {
+      section: "trialMissed",
+      from: pastKey,
+      to: pastKey,
+    });
+    expect(missed.items.map((row) => row.id)).toEqual(["student-missed"]);
+
+    const converted = await service.listLeads("studio-1", {
+      section: "converted",
+      from: pastKey,
+      to: pastKey,
+    });
+    expect(converted.items.map((row) => row.id)).toEqual(["student-converted"]);
+
+    const outOfRange = await service.listLeads("studio-1", {
+      section: "trialAttended",
+      from: futureKey,
+      to: futureKey,
+    });
+    expect(outOfRange.items).toEqual([]);
+  });
+
   it("classifies attended and missed into their own sections", async () => {
     prisma.user.findMany.mockResolvedValue([
       studentRow("student-attended", {

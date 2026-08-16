@@ -42,7 +42,7 @@ import {
   matchingPreset,
   presetRange,
   QUICK_DATE_LABELS,
-  QUICK_DATE_PRESETS,
+  quickDatePresetsForSection,
   rangeLabel,
   SECTION_LABELS,
   SECTION_ORDER,
@@ -59,6 +59,7 @@ type LeadsSearch = {
   from?: string;
   to?: string;
   section?: LeadSection;
+  filter?: "all";
 };
 
 const EASE_OUT = [0.16, 1, 0.3, 1] as const;
@@ -106,6 +107,9 @@ function parseSearch(search: Record<string, unknown>): LeadsSearch {
   }
   if (isLeadSection(search.section)) {
     result.section = search.section;
+  }
+  if (search.filter === "all") {
+    result.filter = "all";
   }
   return result;
 }
@@ -213,15 +217,17 @@ function LeadsPage() {
   const { toast } = useToastContext("LeadsPage");
   const navigate = useNavigate({ from: Route.fullPath });
   const searchParams = Route.useSearch();
-  const range = useMemo<LeadDateRange | null>(
-    () =>
-      searchParams.from && searchParams.to
-        ? { from: searchParams.from, to: searchParams.to }
-        : null,
-    [searchParams],
-  );
-  const activePreset = matchingPreset(range);
   const activeSection = searchParams.section ?? "new";
+  const range = useMemo<LeadDateRange | null>(() => {
+    if (searchParams.from && searchParams.to) {
+      return { from: searchParams.from, to: searchParams.to };
+    }
+    if (searchParams.filter === "all") return null;
+    return sectionAppliesDateFilter(activeSection)
+      ? presetRange("today")
+      : null;
+  }, [searchParams, activeSection]);
+  const activePreset = matchingPreset(range);
   const isMobile = useIsMobile();
   const reduce = useReducedMotion();
   const [direction, setDirection] = useState<SwipeDirection>(1);
@@ -504,7 +510,9 @@ function LeadsPage() {
       return `${count}${more} matching lead${count === 1 ? "" : "s"}`;
     }
     if (range && sectionAppliesDateFilter(activeSection)) {
-      return `${count}${more} trial${count === 1 ? "" : "s"} · ${rangeLabel(range)}`;
+      const item = activeSection === "converted" ? "converted" : "trial";
+      const suffix = item === "trial" && count !== 1 ? "s" : "";
+      return `${count}${more} ${item}${suffix} · ${rangeLabel(range)}`;
     }
     return `${count}${more} ${SECTION_LABELS[activeSection].toLowerCase()}`;
   }, [
@@ -519,7 +527,7 @@ function LeadsPage() {
   function setRange(next: LeadDateRange | null) {
     void navigate({
       search: {
-        ...(next ? { from: next.from, to: next.to } : {}),
+        ...(next ? { from: next.from, to: next.to } : { filter: "all" }),
         section: activeSection,
       },
     });
@@ -631,9 +639,7 @@ function LeadsPage() {
                   >
                     All
                   </button>
-                  {QUICK_DATE_PRESETS.filter(
-                    (preset) => preset !== "last7",
-                  ).map((preset) => (
+                  {quickDatePresetsForSection(activeSection).map((preset) => (
                     <button
                       key={preset}
                       type="button"

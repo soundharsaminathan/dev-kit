@@ -29,6 +29,7 @@ export const QUICK_DATE_PRESETS = [
   "thisWeek",
   "nextWeek",
   "last7",
+  "yesterday",
 ] as const;
 
 export type QuickDatePreset = (typeof QUICK_DATE_PRESETS)[number];
@@ -39,6 +40,7 @@ export const QUICK_DATE_LABELS: Record<QuickDatePreset, string> = {
   thisWeek: "This week",
   nextWeek: "Next week",
   last7: "Last 7 days",
+  yesterday: "Yesterday",
 };
 
 export type LeadSection =
@@ -60,7 +62,12 @@ export const SECTION_ORDER: LeadSection[] = [
   "archived",
 ];
 
-export const LEAD_SECTIONS_WITH_DATE_FILTER = ["trialBooked"] as const;
+export const LEAD_SECTIONS_WITH_DATE_FILTER = [
+  "trialBooked",
+  "trialAttended",
+  "trialMissed",
+  "converted",
+] as const;
 
 export type LeadSectionWithDateFilter =
   (typeof LEAD_SECTIONS_WITH_DATE_FILTER)[number];
@@ -69,6 +76,15 @@ export function sectionAppliesDateFilter(section: LeadSection): boolean {
   return (LEAD_SECTIONS_WITH_DATE_FILTER as readonly LeadSection[]).includes(
     section,
   );
+}
+
+export function quickDatePresetsForSection(
+  section: LeadSection,
+): readonly QuickDatePreset[] {
+  if (section === "trialBooked") {
+    return ["today", "tomorrow", "thisWeek", "nextWeek"];
+  }
+  return ["today", "yesterday", "last7"];
 }
 
 export type LeadTrialBooking = {
@@ -354,6 +370,10 @@ export function presetRange(
         from: localDateKey(addLocalDays(todayDate, -6)),
         to: localDateKey(todayDate),
       };
+    case "yesterday": {
+      const day = addLocalDays(todayDate, -1);
+      return { from: localDateKey(day), to: localDateKey(day) };
+    }
   }
 }
 

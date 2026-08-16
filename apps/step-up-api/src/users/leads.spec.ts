@@ -243,20 +243,25 @@ describe("isLeadSection", () => {
     expect(isLeadSection(undefined)).toBe(false);
   });
 
-  it("lists booked as the only date-filter section", () => {
-    expect([...LEAD_SECTIONS_WITH_DATE_FILTER]).toEqual(["trialBooked"]);
+  it("lists booked, attended, missed and converted as date-filter sections", () => {
+    expect([...LEAD_SECTIONS_WITH_DATE_FILTER]).toEqual([
+      "trialBooked",
+      "trialAttended",
+      "trialMissed",
+      "converted",
+    ]);
   });
 });
 
 describe("leadSectionAppliesDateFilter", () => {
-  it("gates the date range to booked only", () => {
+  it("gates the date range to trial stages and converted only", () => {
     expect(leadSectionAppliesDateFilter("new")).toBe(false);
-    expect(leadSectionAppliesDateFilter("converted")).toBe(false);
     expect(leadSectionAppliesDateFilter("left")).toBe(false);
     expect(leadSectionAppliesDateFilter("archived")).toBe(false);
     expect(leadSectionAppliesDateFilter("trialBooked")).toBe(true);
-    expect(leadSectionAppliesDateFilter("trialAttended")).toBe(false);
-    expect(leadSectionAppliesDateFilter("trialMissed")).toBe(false);
+    expect(leadSectionAppliesDateFilter("trialAttended")).toBe(true);
+    expect(leadSectionAppliesDateFilter("trialMissed")).toBe(true);
+    expect(leadSectionAppliesDateFilter("converted")).toBe(true);
   });
 });
 

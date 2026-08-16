@@ -136,7 +136,7 @@ Types: open seat, trial, private. Statuses: awaiting payment → pending → con
 
 ### Leads (trial caller)
 
-Owner/staff pipeline for people who signed up or were added but are not yet paying members. Seven exclusive sections: **new**, **trial booked**, **trial attended**, **trial missed**, **converted**, **left**, **archive**. Each tab lists only its leads; date presets apply to the trial booked tab only (attended and missed trials are always in the past). Staff add remarks, book or switch trials, and archive/unarchive. On mobile a peeking prev/current/next header plus horizontal swipe switches tabs.
+Owner/staff pipeline for people who signed up or were added but are not yet paying members. Seven exclusive sections: **new**, **trial booked**, **trial attended**, **trial missed**, **converted**, **left**, **archive**. Each tab lists only its leads; date presets apply to trial booked (future-facing: today, tomorrow, this week, next week) and to trial attended, trial missed and converted (past-facing: today, yesterday, last 7 days). Staff add remarks, book or switch trials, and archive/unarchive. On mobile a peeking prev/current/next header plus horizontal swipe switches tabs.
 
 ### Retention and funnel
 

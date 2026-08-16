@@ -13,7 +13,9 @@ import {
   matchingPreset,
   phoneTelHref,
   presetRange,
+  quickDatePresetsForSection,
   SWITCH_DATE_FILTERS,
+  sectionAppliesDateFilter,
   slotMatchesDate,
 } from "./types";
 
@@ -166,6 +168,10 @@ describe("date range helpers", () => {
       from: "2026-08-08",
       to: "2026-08-14",
     });
+    expect(presetRange("yesterday", now)).toEqual({
+      from: "2026-08-13",
+      to: "2026-08-13",
+    });
   });
 
   it("matches a range back to its preset", () => {
@@ -185,5 +191,41 @@ describe("date range helpers", () => {
     expect(isTrialSoon(null, { from: "2026-08-16", to: "2026-08-23" })).toBe(
       false,
     );
+  });
+});
+
+describe("lead section date filters", () => {
+  it("applies the date filter to trial stages and converted only", () => {
+    expect(sectionAppliesDateFilter("new")).toBe(false);
+    expect(sectionAppliesDateFilter("left")).toBe(false);
+    expect(sectionAppliesDateFilter("archived")).toBe(false);
+    expect(sectionAppliesDateFilter("trialBooked")).toBe(true);
+    expect(sectionAppliesDateFilter("trialAttended")).toBe(true);
+    expect(sectionAppliesDateFilter("trialMissed")).toBe(true);
+    expect(sectionAppliesDateFilter("converted")).toBe(true);
+  });
+
+  it("offers future-facing chips on trial booked and past chips elsewhere", () => {
+    expect(quickDatePresetsForSection("trialBooked")).toEqual([
+      "today",
+      "tomorrow",
+      "thisWeek",
+      "nextWeek",
+    ]);
+    expect(quickDatePresetsForSection("trialAttended")).toEqual([
+      "today",
+      "yesterday",
+      "last7",
+    ]);
+    expect(quickDatePresetsForSection("trialMissed")).toEqual([
+      "today",
+      "yesterday",
+      "last7",
+    ]);
+    expect(quickDatePresetsForSection("converted")).toEqual([
+      "today",
+      "yesterday",
+      "last7",
+    ]);
   });
 });
