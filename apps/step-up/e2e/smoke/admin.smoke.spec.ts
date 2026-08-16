@@ -297,7 +297,7 @@ test.describe("admin (staff) smoke @smoke", () => {
     });
     const page = await context.newPage();
     try {
-      await page.goto("/app/leads?section=trialBooked", {
+      await page.goto("/app/leads?section=trialBooked&filter=all", {
         waitUntil: "domcontentloaded",
       });
       await waitForAppReady(page);
@@ -348,7 +348,7 @@ test.describe("admin (staff) smoke @smoke", () => {
     });
     const page = await context.newPage();
     try {
-      await page.goto("/app/leads?section=trialBooked", {
+      await page.goto("/app/leads?section=trialBooked&filter=all", {
         waitUntil: "domcontentloaded",
       });
       await waitForAppReady(page);
