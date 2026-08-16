@@ -21,6 +21,7 @@ import {
   UserRole,
 } from "@prisma/client";
 import { UserCryptoService } from "../src/users/user-crypto.service";
+import { SEED_PASSWORD, syncSeedFirebaseUser } from "./sync-seed-auth";
 
 /**
  * Isolated studio with rich analytics fixtures for Payments, Retention,
@@ -58,6 +59,12 @@ export const ANALYTICS = {
       firebaseUid: "analytics-staff-1",
       email: "analytics-staff@stepup.dev",
       name: "Analytics Front Desk",
+    },
+    STAFF1: {
+      id: "analytics-staff1-1",
+      firebaseUid: "analytics-staff1-1",
+      email: "analytics-staff1@stepup.dev",
+      name: "Staff 1",
     },
     TRAINER: {
       id: "analytics-trainer-1",
@@ -511,6 +518,13 @@ async function main() {
       profileVisibility: ProfileVisibility.PUBLIC,
     },
     {
+      ...u.STAFF1,
+      phone: "+91 98200 10005",
+      role: UserRole.STAFF,
+      styles: [] as string[],
+      profileVisibility: ProfileVisibility.PUBLIC,
+    },
+    {
       ...u.TRAINER,
       phone: "+91 98200 10003",
       role: UserRole.TRAINER,
@@ -527,6 +541,12 @@ async function main() {
   ] satisfies SeedUser[]) {
     await upsertUser(staff, studioId);
   }
+
+  await syncSeedFirebaseUser({
+    uid: u.STAFF1.firebaseUid,
+    email: u.STAFF1.email,
+    displayName: u.STAFF1.name,
+  });
 
   const subscriptions = [
     {
@@ -1219,6 +1239,7 @@ async function main() {
 
   console.log(`Analytics demo studio ready: ${studioId}`);
   console.log(`  owner login: ${u.OWNER.email}`);
+  console.log(`  staff1 login: ${u.STAFF1.email} / ${SEED_PASSWORD}`);
   console.log(
     `  funnel: signedInOnly=11 trialAttended=5 leftBatch=5 active=14`,
   );

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  getHeaderNavLinks,
   getMoreLinks,
   getPrimaryTabs,
   getSidebarSections,
@@ -72,6 +73,33 @@ describe("app nav role filtering", () => {
     );
     expect(more).toContain("/app/bookings");
     expect(more).not.toContain("/app/leads");
+  });
+
+  it("keeps Messages out of the sidebar and shows Calendar in its place", () => {
+    for (const role of ["OWNER", "STAFF", "TRAINER"] as const) {
+      const labels = sidebarLabels(role);
+      expect(labels).not.toContain("Messages");
+      expect(labels).toContain("Calendar");
+      expect(labels.filter((label) => label === "Calendar")).toHaveLength(1);
+    }
+  });
+
+  it("keeps Messages on the mobile toolbar", () => {
+    const primary = getPrimaryTabs("app", "OWNER").map((link) => link.to);
+    expect(primary).toContain("/app/messages");
+  });
+
+  it("swaps the header calendar icon for messages on mobile", () => {
+    const desktop = getHeaderNavLinks("app", "OWNER");
+    expect(desktop.map((link) => link.to)).toContain("/app/calendar");
+    expect(desktop.map((link) => link.to)).not.toContain("/app/messages");
+
+    const mobile = getHeaderNavLinks("app", "OWNER", true);
+    expect(mobile.map((link) => link.to)).toContain("/app/messages");
+    expect(mobile.map((link) => link.to)).not.toContain("/app/calendar");
+    expect(mobile.find((link) => link.to === "/app/messages")?.icon).toBe(
+      "message-square",
+    );
   });
 });
 

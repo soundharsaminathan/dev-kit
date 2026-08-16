@@ -18,6 +18,7 @@ import {
   UserRole,
 } from "@prisma/client";
 import { UserCryptoService } from "../src/users/user-crypto.service";
+import { SEED_PASSWORD, syncSeedFirebaseUser } from "./sync-seed-auth";
 
 /**
  * Isolated studio for Playwright / HTTP e2e.
@@ -70,6 +71,12 @@ export const E2E = {
       firebaseUid: "e2e-staff-1",
       email: "e2e-staff@stepup.dev",
       name: "Front Desk Staff",
+    },
+    STAFF1: {
+      id: "e2e-staff1-1",
+      firebaseUid: "e2e-staff1-1",
+      email: "e2e-staff1@stepup.dev",
+      name: "Staff 1",
     },
     TRAINER: {
       id: "e2e-trainer-1",
@@ -351,6 +358,13 @@ async function main() {
       profileVisibility: ProfileVisibility.PUBLIC,
     },
     {
+      ...u.STAFF1,
+      phone: "+91 98000 90009",
+      role: UserRole.STAFF,
+      styles: [],
+      profileVisibility: ProfileVisibility.PUBLIC,
+    },
+    {
       ...u.TRAINER,
       phone: "+91 98000 90003",
       role: UserRole.TRAINER,
@@ -397,6 +411,12 @@ async function main() {
   for (const user of studioUsers) {
     await upsertUser(user, studioId);
   }
+
+  await syncSeedFirebaseUser({
+    uid: u.STAFF1.firebaseUid,
+    email: u.STAFF1.email,
+    displayName: u.STAFF1.name,
+  });
 
   await prisma.parentChild.upsert({
     where: {
@@ -1030,6 +1050,7 @@ async function main() {
       .map((x) => x.id)
       .join(", ")}`,
   );
+  console.log(`  staff1 login: ${u.STAFF1.email} / ${SEED_PASSWORD}`);
   console.log(
     `  batches: ${E2E.kidsBatchId}, ${E2E.beginnerBatchId}, ${E2E.trialBatchId}`,
   );

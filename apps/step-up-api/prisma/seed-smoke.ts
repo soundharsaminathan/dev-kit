@@ -28,6 +28,7 @@ import { ChatCryptoService } from "../src/chat/chat-crypto.service";
 import { UserCryptoService } from "../src/users/user-crypto.service";
 import { createScriptPrismaClient, withDbRetry } from "./script-db";
 import { seedSmokeLoadData } from "./seed-smoke-load";
+import { SEED_PASSWORD, syncSeedFirebaseUser } from "./sync-seed-auth";
 
 /**
  * Isolated studio for deployed Playwright smoke against the real DB.
@@ -79,6 +80,12 @@ export const SMOKE = {
       firebaseUid: "smoke-staff-1",
       email: "smoke-staff@stepup.dev",
       name: "Smoke Front Desk",
+    },
+    STAFF1: {
+      id: "smoke-staff1-1",
+      firebaseUid: "smoke-staff1-1",
+      email: "smoke-staff1@stepup.dev",
+      name: "Staff 1",
     },
     TRAINER: {
       id: "smoke-trainer-1",
@@ -326,6 +333,13 @@ async function main() {
       profileVisibility: ProfileVisibility.PUBLIC,
     },
     {
+      ...u.STAFF1,
+      phone: "+91 97000 90004",
+      role: UserRole.STAFF,
+      styles: [],
+      profileVisibility: ProfileVisibility.PUBLIC,
+    },
+    {
       ...u.TRAINER,
       phone: "+91 97000 90003",
       role: UserRole.TRAINER,
@@ -373,6 +387,12 @@ async function main() {
   for (const user of studioUsers) {
     await upsertUser(user, studioId);
   }
+
+  await syncSeedFirebaseUser({
+    uid: u.STAFF1.firebaseUid,
+    email: u.STAFF1.email,
+    displayName: u.STAFF1.name,
+  });
 
   // Reset onboarding user every run so the wizard flow is re-testable.
   // Clear trial bookings/enrollments left behind when a prior run's cleanup failed.
@@ -1116,6 +1136,7 @@ async function main() {
       .map((x) => x.id)
       .join(", ")}`,
   );
+  console.log(`  staff1 login: ${u.STAFF1.email} / ${SEED_PASSWORD}`);
 }
 
 withDbRetry("smoke seed", async () => {

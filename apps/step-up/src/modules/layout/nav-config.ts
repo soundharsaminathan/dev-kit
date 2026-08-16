@@ -17,6 +17,8 @@ export type NavLinkItem = {
   exact?: boolean;
   section: string;
   primary?: boolean;
+  /** Defaults to true. Set false to keep the link out of the desktop sidebar (e.g. mobile-only tabs). */
+  sidebar?: boolean;
   /** Defaults to STAFF_ROLES (app), MEMBER_ROLES (me), or SYSTEM_ADMIN_ROLES (admin). */
   roles?: UserRole[];
 };
@@ -56,6 +58,13 @@ const appLinks: NavLinkItem[] = [
     icon: "message-square",
     section: "Studio",
     primary: true,
+    sidebar: false,
+  },
+  {
+    to: "/app/calendar",
+    label: "Calendar",
+    icon: "calendar",
+    section: "Studio",
   },
   {
     to: "/app/profile",
@@ -101,12 +110,6 @@ const appLinks: NavLinkItem[] = [
     icon: "clipboard",
     section: "Ops",
     roles: ADMIN_ROLES,
-  },
-  {
-    to: "/app/calendar",
-    label: "Calendar",
-    icon: "calendar",
-    section: "Ops",
   },
   { to: "/app/contests", label: "Contests", icon: "star", section: "Ops" },
   {
@@ -305,10 +308,25 @@ function linksFor(variant: ShellVariant, role?: UserRole): NavLinkItem[] {
 export function getHeaderNavLinks(
   variant: ShellVariant,
   role?: UserRole,
+  isMobile = false,
 ): NavLinkItem[] {
   if (variant === "app") {
-    return linksFor(variant, role).filter(
+    const links = linksFor(variant, role).filter(
       (link) => link.to === "/app/calendar" || link.to === "/app/feed",
+    );
+    if (!isMobile) {
+      return links;
+    }
+    // Mobile keeps quick access to Messages instead of Calendar in the header.
+    return links.map((link) =>
+      link.to === "/app/calendar"
+        ? {
+            to: "/app/messages",
+            label: "Messages",
+            icon: "message-square",
+            section: link.section,
+          }
+        : link,
     );
   }
 
@@ -339,7 +357,9 @@ export function getSidebarSections(
   variant: ShellVariant,
   role?: UserRole,
 ): NavSection[] {
-  return groupBySection(linksFor(variant, role));
+  return groupBySection(
+    linksFor(variant, role).filter((link) => link.sidebar !== false),
+  );
 }
 
 export function getMenuSections(

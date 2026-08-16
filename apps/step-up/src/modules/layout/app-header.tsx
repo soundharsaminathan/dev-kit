@@ -355,8 +355,8 @@ export { NotificationsControl };
 
 export function AppHeader({ variant }: AppHeaderProps) {
   const { user } = useAuth();
-  const headerLinks = getHeaderNavLinks(variant, user?.role);
   const isMobile = useIsMobile();
+  const headerLinks = getHeaderNavLinks(variant, user?.role, isMobile);
 
   return (
     <header className={styles.header}>
