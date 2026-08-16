@@ -736,7 +736,20 @@
 
 @media (max-width: 767px) {
   .header {
-    padding-inline: 1rem;
+    min-height: 3rem;
+    padding-block: 0.375rem;
+    padding-inline: 0.75rem;
+    padding-top: calc(0.375rem + env(safe-area-inset-top, 0px));
+  }
+
+  .navIcon {
+    width: 2.25rem;
+    height: 2.25rem;
+  }
+
+  .header .actions .control :global(button[data-icon-only="true"]) {
+    width: 2.25rem;
+    height: 2.25rem;
   }
 
   .profileName {
