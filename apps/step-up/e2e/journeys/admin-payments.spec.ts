@@ -244,6 +244,7 @@ test.describe("admin payments @critical", () => {
       page.getByRole("heading", { name: /^payments$/i }),
     ).toBeVisible();
     await expect(page.getByText(/net earnings/i).first()).toBeVisible();
+    await expect(page.getByTestId("payments-branch-switcher")).toBeVisible();
     await context.close();
   });
 });

@@ -409,6 +409,7 @@ export class BillingService {
       from?: string;
       to?: string;
       bucket?: AnalyticsBucket;
+      branchId?: string;
     } = {},
   ): Promise<TrainerPaymentAnalytics> {
     const resolvedTrainerId = this.resolveTrainerScope(actor, trainerId);
@@ -420,6 +421,7 @@ export class BillingService {
     const from = options.from ? new Date(options.from) : null;
     const to = options.to ? new Date(options.to) : null;
     const bucket: AnalyticsBucket = options.bucket ?? inferBucket(from, to);
+    const branchId = options.branchId;
 
     if (from && Number.isNaN(from.getTime())) {
       throw new BadRequestException("Invalid from date");
@@ -430,6 +432,21 @@ export class BillingService {
     if (options.bucket && !isAnalyticsBucket(options.bucket)) {
       throw new BadRequestException("Invalid bucket");
     }
+
+    if (branchId) {
+      const branch = await this.prisma.studioBranch.findFirst({
+        where: { id: branchId, studioId },
+        select: { id: true },
+      });
+      if (!branch) {
+        throw new NotFoundException("Branch not found in this studio");
+      }
+    }
+
+    const batchScope = {
+      studioId,
+      ...(branchId ? { branchId } : {}),
+    };
 
     const allTrainers = resolvedTrainerId === "all";
     let scopeTrainerId = resolvedTrainerId;
@@ -442,7 +459,7 @@ export class BillingService {
 
     if (allTrainers) {
       batches = await this.prisma.batch.findMany({
-        where: { studioId },
+        where: batchScope,
         select: {
           id: true,
           name: true,
@@ -468,7 +485,7 @@ export class BillingService {
       const batchLinks = await this.prisma.batchTrainer.findMany({
         where: {
           trainerId: resolvedTrainerId,
-          batch: { studioId },
+          batch: batchScope,
         },
         include: {
           batch: {

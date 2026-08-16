@@ -46,12 +46,18 @@ import { EmptyState, ErrorState } from "@/modules/ui/states";
 import { TouchButton } from "@/modules/ui/touch-button";
 
 const ALL_TRAINERS_ID = "all";
+const ALL_BRANCHES_ID = "all";
 
 type StudioMember = {
   id: string;
   name: string;
   role: "OWNER" | "STAFF" | "TRAINER" | "STUDENT" | "PARENT";
   photoUrl?: string | null;
+};
+
+type StudioBranch = {
+  id: string;
+  name: string;
 };
 
 type AnalyticsBucket = "day" | "week" | "month";
@@ -297,6 +303,8 @@ function PaymentsPage() {
   const isStaff = user?.role === "OWNER" || user?.role === "STAFF";
   const [selectedTrainerId, setSelectedTrainerId] =
     useState<string>(ALL_TRAINERS_ID);
+  const [selectedBranchId, setSelectedBranchId] =
+    useState<string>(ALL_BRANCHES_ID);
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
   const [chartType, setChartType] = useState<ChartType>("bar");
@@ -310,13 +318,24 @@ function PaymentsPage() {
     enabled: isStaff,
   });
 
+  const branchesQuery = useQuery({
+    queryKey: ["branches", studioId],
+    queryFn: () => api.get<StudioBranch[]>(`/studios/${studioId}/branches`),
+    enabled: isStaff,
+  });
+
   const trainers = useMemo(
     () =>
       membersQuery.data?.filter((member) => member.role === "TRAINER") ?? [],
     [membersQuery.data],
   );
 
+  const branches = branchesQuery.data ?? [];
+  const showBranchSwitcher = branches.length > 1;
+
   const trainerId = isTrainer ? (user?.id ?? null) : selectedTrainerId;
+  const branchId =
+    isStaff && selectedBranchId !== ALL_BRANCHES_ID ? selectedBranchId : null;
 
   const selectedTrainer =
     trainerId === ALL_TRAINERS_ID
@@ -329,6 +348,7 @@ function PaymentsPage() {
       "trainer-analytics",
       trainerId,
       studioId,
+      branchId,
       fromDate,
       toDate,
       bucket,
@@ -340,6 +360,9 @@ function PaymentsPage() {
       }
       if (toDate) {
         params.set("to", endOfDayIso(toDate));
+      }
+      if (branchId) {
+        params.set("branchId", branchId);
       }
       return api.get<TrainerPaymentAnalytics>(
         `/billing/analytics/trainer/${trainerId}?${params.toString()}`,
@@ -385,6 +408,7 @@ function PaymentsPage() {
   async function refresh() {
     await Promise.all([
       isStaff ? membersQuery.refetch() : Promise.resolve(),
+      isStaff ? branchesQuery.refetch() : Promise.resolve(),
       trainerId ? analyticsQuery.refetch() : Promise.resolve(),
     ]);
   }
@@ -457,7 +481,7 @@ function PaymentsPage() {
       subtitle={
         isTrainer
           ? "Money in, outstanding balances, and batch performance."
-          : "Studio payment dashboard by trainer."
+          : "Studio payment dashboard by trainer and branch."
       }
     >
       <PullToRefresh onRefresh={refresh}>
@@ -471,8 +495,8 @@ function PaymentsPage() {
                   <Select
                     label="Trainer"
                     placeholder="Select a trainer"
-                    value={trainerId}
-                    onChange={(key) =>
+                    selectedKey={trainerId}
+                    onSelectionChange={(key) =>
                       setSelectedTrainerId(
                         key == null ? ALL_TRAINERS_ID : String(key),
                       )
@@ -553,11 +577,55 @@ function PaymentsPage() {
               ) : null
             ) : null}
 
+            {isStaff ? (
+              branchesQuery.isLoading ? (
+                <div
+                  className={styles.filterField}
+                  data-testid="payments-branch-switcher-skeleton"
+                >
+                  <SkeletonBlock height="2.5rem" />
+                </div>
+              ) : showBranchSwitcher ? (
+                <div
+                  className={styles.filterField}
+                  data-testid="payments-branch-switcher"
+                >
+                  <Select
+                    label="Branch"
+                    selectedKey={selectedBranchId}
+                    onSelectionChange={(key) =>
+                      setSelectedBranchId(
+                        key == null ? ALL_BRANCHES_ID : String(key),
+                      )
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem id={ALL_BRANCHES_ID} textValue="All branches">
+                        All branches
+                      </SelectItem>
+                      {branches.map((branch) => (
+                        <SelectItem
+                          key={branch.id}
+                          id={branch.id}
+                          textValue={branch.name}
+                        >
+                          {branch.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              ) : null
+            ) : null}
+
             <div className={styles.filterField}>
               <Select
                 label="Period"
-                value={rangePreset}
-                onChange={(key) =>
+                selectedKey={rangePreset}
+                onSelectionChange={(key) =>
                   applyPreset(key == null ? "all" : String(key))
                 }
               >

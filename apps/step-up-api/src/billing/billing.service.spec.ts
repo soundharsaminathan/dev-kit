@@ -79,6 +79,7 @@ function makeUser(overrides: Partial<DecryptedUser> = {}): DecryptedUser {
 describe("BillingService.getTrainerAnalytics", () => {
   const prisma = {
     user: { findFirst: vi.fn() },
+    studioBranch: { findFirst: vi.fn() },
     batch: { findMany: vi.fn() },
     batchTrainer: { findMany: vi.fn() },
     invoice: { findMany: vi.fn() },
@@ -622,6 +623,98 @@ describe("BillingService.getTrainerAnalytics", () => {
     expect(result.trainerId).toBe("trainer-1");
     expect(result.invoiceCount).toBe(0);
     expect(result.byBatch).toEqual([]);
+  });
+
+  it("filters studio-wide analytics to the selected branch", async () => {
+    prisma.studioBranch.findFirst.mockResolvedValue({ id: "branch-1" });
+    prisma.batch.findMany.mockResolvedValue([
+      {
+        id: "batch-1",
+        name: "Main Hip-Hop",
+        enrollments: [{ studentId: "student-1" }],
+      },
+    ]);
+    prisma.invoice.findMany.mockResolvedValue([
+      {
+        id: "inv-1",
+        studentId: "student-1",
+        amount: 2000,
+        status: InvoiceStatus.PAID,
+        paymentMethod: PaymentMethod.CASH,
+        paidAt: new Date("2026-07-01T00:00:00.000Z"),
+        platformFeePercent: 5,
+        purchaseMeta: null,
+        membership: null,
+        student: { id: "student-1", name: "Alex" },
+      },
+    ]);
+
+    const result = await service.getTrainerAnalytics(
+      makeUser(),
+      "all",
+      "studio-1",
+      { branchId: "branch-1" },
+    );
+
+    expect(prisma.studioBranch.findFirst).toHaveBeenCalledWith({
+      where: { id: "branch-1", studioId: "studio-1" },
+      select: { id: true },
+    });
+    expect(prisma.batch.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { studioId: "studio-1", branchId: "branch-1" },
+      }),
+    );
+    expect(result.byBatch).toEqual([
+      expect.objectContaining({
+        batchId: "batch-1",
+        collected: 2000,
+      }),
+    ]);
+  });
+
+  it("scopes trainer analytics to batches at the selected branch", async () => {
+    prisma.studioBranch.findFirst.mockResolvedValue({ id: "branch-east" });
+    prisma.user.findFirst.mockResolvedValue({
+      id: "trainer-1",
+      name: "Lead Trainer",
+      role: UserRole.TRAINER,
+      studioId: "studio-1",
+    });
+    prisma.batchTrainer.findMany.mockResolvedValue([
+      {
+        batch: {
+          id: "batch-east",
+          name: "East Contemporary",
+          enrollments: [{ studentId: "student-2" }],
+        },
+      },
+    ]);
+    prisma.invoice.findMany.mockResolvedValue([]);
+
+    await service.getTrainerAnalytics(makeUser(), "trainer-1", "studio-1", {
+      branchId: "branch-east",
+    });
+
+    expect(prisma.batchTrainer.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          trainerId: "trainer-1",
+          batch: { studioId: "studio-1", branchId: "branch-east" },
+        },
+      }),
+    );
+  });
+
+  it("rejects a branch that is not in the studio", async () => {
+    prisma.studioBranch.findFirst.mockResolvedValue(null);
+
+    await expect(
+      service.getTrainerAnalytics(makeUser(), "all", "studio-1", {
+        branchId: "branch-other",
+      }),
+    ).rejects.toBeInstanceOf(NotFoundException);
+    expect(prisma.batch.findMany).not.toHaveBeenCalled();
   });
 });
 

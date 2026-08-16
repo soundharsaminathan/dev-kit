@@ -202,6 +202,53 @@ test.describe("admin (staff) smoke @smoke", () => {
     }
   });
 
+  test("staff can filter payment analytics by branch @smoke", async ({
+    browser,
+  }) => {
+    const context = await browser.newContext({
+      storageState: authFile("STAFF"),
+    });
+    const page = await context.newPage();
+    try {
+      await page.goto("/app/payments", { waitUntil: "domcontentloaded" });
+      await waitForAppReady(page);
+      await expect(
+        page.getByRole("heading", { name: /^payments$/i }),
+      ).toBeVisible();
+      await expect(page.getByTestId("payments-branch-switcher")).toBeVisible();
+
+      const [response] = await Promise.all([
+        waitForApiResponse(page, {
+          method: "GET",
+          pathIncludes: `branchId=${SMOKE.branchEastId}`,
+        }),
+        (async () => {
+          await page
+            .getByTestId("payments-branch-switcher")
+            .getByRole("button")
+            .click();
+          await page.getByRole("option", { name: "Smoke East" }).click();
+        })(),
+      ]);
+      expect(response.ok()).toBeTruthy();
+      await expect(page.getByText(/net earnings/i).first()).toBeVisible();
+    } finally {
+      await closeSmokeContext(context);
+    }
+  });
+
+  test("staff payment analytics rejects an unknown branch @smoke", async () => {
+    const token = await bearerFor("STAFF");
+    const response = await fetch(
+      `${apiBaseUrl()}/billing/analytics/trainer/all?studioId=${SMOKE.studioId}&branchId=missing-branch`,
+      {
+        headers: { Authorization: `Bearer ${token}` },
+      },
+    );
+    expect(response.status).toBe(404);
+    expect(await response.text()).toMatch(/branch not found/i);
+  });
+
   test("staff marks invoice paid @smoke", async ({ browser }) => {
     const cleanup = new SmokeDataCleanup();
     const { invoice } = await enrollPrepaid(cleanup, {

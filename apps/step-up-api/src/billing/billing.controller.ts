@@ -139,6 +139,7 @@ export class BillingController {
     @Query("from") from?: string,
     @Query("to") to?: string,
     @Query("bucket") bucket?: string,
+    @Query("branchId") branchId?: string,
   ) {
     if (!studioId) {
       throw new BadRequestException("studioId is required");
@@ -161,6 +162,7 @@ export class BillingController {
       ...(bucket === "day" || bucket === "week" || bucket === "month"
         ? { bucket }
         : {}),
+      ...(branchId ? { branchId } : {}),
     });
   }
 

@@ -96,6 +96,7 @@ export async function createCalendarBatch(
     name?: string;
     capacity?: number;
     enrollmentMode?: "SELF_JOIN" | "STAFF_ONLY";
+    branchId?: string;
   },
 ) {
   const category = options.category ?? "ADULTS";
@@ -121,7 +122,7 @@ export async function createCalendarBatch(
         body: JSON.stringify(
           batchCreateBody({
             studioId: SEED.users.STAFF.studioId,
-            branchId: branches[attempt % branches.length],
+            branchId: options.branchId ?? branches[attempt % branches.length],
             trainerId: trainers[Math.floor(attempt / 2) % trainers.length],
             name,
             category,

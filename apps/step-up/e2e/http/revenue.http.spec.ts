@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { REVENUE } from "../fixtures/revenue-fixtures";
 import { SEED } from "../fixtures/seed";
-import { enrollPrepaid } from "./billing-fixtures";
+import { createCalendarBatch, enrollPrepaid } from "./billing-fixtures";
 import {
   createHttpStudent,
   expectOk,
@@ -67,13 +67,14 @@ async function getBatchRevenue(batchId: string) {
 
 async function getTrainerAnalytics(
   trainerId: string,
-  opts?: { from?: string; to?: string; bucket?: string },
+  opts?: { from?: string; to?: string; bucket?: string; branchId?: string },
 ) {
   const params = new URLSearchParams();
   params.set("studioId", SEED.studioId);
   if (opts?.from) params.set("from", opts.from);
   if (opts?.to) params.set("to", opts.to);
   if (opts?.bucket) params.set("bucket", opts.bucket);
+  if (opts?.branchId) params.set("branchId", opts.branchId);
   const qs = params.toString();
   return expectOk<{
     trainerId: string;
@@ -386,6 +387,66 @@ test.describe("Trainer-level revenue @http", () => {
     } finally {
       await cleanup.dispose();
     }
+  });
+
+  test("trainer analytics can be scoped to a branch @http", async () => {
+    const cleanup = new TestDataCleanup();
+    try {
+      const stamp = Date.now();
+      const mainBatch = await createCalendarBatch(cleanup, {
+        kind: "prepaid",
+        branchId: SEED.branchMainId,
+        name: `Main Branch ${stamp}`,
+      });
+      const eastBatch = await createCalendarBatch(cleanup, {
+        kind: "prepaid",
+        branchId: SEED.branchEastId,
+        name: `East Branch ${stamp}`,
+      });
+      const { invoice: mainInvoice } = await enrollPrepaid(cleanup, {
+        batchId: mainBatch.id,
+        studentName: `Main Branch ${stamp}`,
+      });
+      const { invoice: eastInvoice } = await enrollPrepaid(cleanup, {
+        batchId: eastBatch.id,
+        studentName: `East Branch ${stamp}`,
+      });
+      await markPaid(mainInvoice.id);
+      await markPaid(eastInvoice.id);
+
+      const all = await getTrainerAnalytics("all");
+      const main = await getTrainerAnalytics("all", {
+        branchId: SEED.branchMainId,
+      });
+      const east = await getTrainerAnalytics("all", {
+        branchId: SEED.branchEastId,
+      });
+
+      expect(main.byBatch.some((row) => row.batchId === mainBatch.id)).toBe(
+        true,
+      );
+      expect(main.byBatch.every((row) => row.batchId !== eastBatch.id)).toBe(
+        true,
+      );
+      expect(east.byBatch.some((row) => row.batchId === eastBatch.id)).toBe(
+        true,
+      );
+      expect(east.byBatch.every((row) => row.batchId !== mainBatch.id)).toBe(
+        true,
+      );
+      expect(main.totals.collected).toBeLessThanOrEqual(all.totals.collected);
+      expect(east.totals.collected).toBeLessThanOrEqual(all.totals.collected);
+    } finally {
+      await cleanup.dispose();
+    }
+  });
+
+  test("trainer analytics rejects a branch that is not in the studio @http", async () => {
+    await expectStatus(
+      "STAFF",
+      `/billing/analytics/trainer/all?studioId=${SEED.studioId}&branchId=missing-branch`,
+      404,
+    );
   });
 
   test("trainer analytics tracks byPaymentMethod correctly @http", async () => {
