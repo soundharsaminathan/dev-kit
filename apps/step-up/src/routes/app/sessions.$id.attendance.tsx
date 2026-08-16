@@ -514,6 +514,7 @@ function SessionAttendancePage() {
   }
 
   const markAllPresent = useMutation({
+    mutationKey: ["mark-all-present", id],
     mutationFn: () =>
       api.post<{ marked: number; failed: number }>(
         `/attendance/session/${id}/mark-all-present`,
@@ -561,6 +562,7 @@ function SessionAttendancePage() {
   });
 
   const markAttendance = useMutation({
+    mutationKey: ["mark-attendance", id],
     mutationFn: (payload: {
       studentId: string;
       status: AttendanceStatusValue;
@@ -573,18 +575,31 @@ function SessionAttendancePage() {
       }),
     onMutate: async (payload) => {
       await queryClient.cancelQueries({ queryKey: rosterQueryKey });
-      const previous =
+      const previousRoster =
         queryClient.getQueryData<AttendanceRosterEntry[]>(rosterQueryKey);
+      const previousEntry = previousRoster?.find(
+        (entry) => entry.studentId === payload.studentId,
+      );
       queryClient.setQueryData<AttendanceRosterEntry[]>(
         rosterQueryKey,
         (current) =>
           patchRosterStatus(current, [payload.studentId], payload.status),
       );
-      return { previous };
+      return { previousRoster, previousEntry };
     },
-    onError: (error: unknown, _vars, context) => {
-      if (context?.previous) {
-        queryClient.setQueryData(rosterQueryKey, context.previous);
+    onError: (error: unknown, payload, context) => {
+      if (context?.previousEntry) {
+        queryClient.setQueryData<AttendanceRosterEntry[]>(
+          rosterQueryKey,
+          (current) =>
+            current?.map((entry) =>
+              entry.studentId === payload.studentId
+                ? context.previousEntry!
+                : entry,
+            ),
+        );
+      } else if (context?.previousRoster) {
+        queryClient.setQueryData(rosterQueryKey, context.previousRoster);
       }
       toast({
         title: "Couldn’t mark attendance",
@@ -594,57 +609,99 @@ function SessionAttendancePage() {
       });
     },
     onSettled: () => {
-      invalidateAttendance();
+      if (
+        queryClient.isMutating({ mutationKey: ["mark-attendance", id] }) <= 1
+      ) {
+        invalidateAttendance();
+      }
     },
   });
 
   const markSelected = useMutation({
+    mutationKey: ["mark-selected", id],
     mutationFn: async (payload: {
       studentIds: string[];
       status: AttendanceStatusValue;
     }) => {
       const results = await Promise.allSettled(
-        payload.studentIds.map((studentId) =>
-          api.post("/attendance/mark", {
+        payload.studentIds.map(async (studentId) => {
+          await api.post("/attendance/mark", {
             sessionId: id,
             studentId,
             status: payload.status,
             source: "TRAINER",
-          }),
-        ),
+          });
+          return studentId;
+        }),
+      );
+      const succeededIds = results
+        .filter(
+          (result): result is PromiseFulfilledResult<string> =>
+            result.status === "fulfilled",
+        )
+        .map((result) => result.value);
+      const failedIds = payload.studentIds.filter(
+        (studentId) => !succeededIds.includes(studentId),
       );
       return {
-        marked: results.filter((result) => result.status === "fulfilled")
-          .length,
-        failed: results.filter((result) => result.status === "rejected").length,
+        marked: succeededIds.length,
+        failed: failedIds.length,
+        failedIds,
         status: payload.status,
       };
     },
     onMutate: async (payload) => {
       await queryClient.cancelQueries({ queryKey: rosterQueryKey });
-      const previous =
+      const previousRoster =
         queryClient.getQueryData<AttendanceRosterEntry[]>(rosterQueryKey);
       queryClient.setQueryData<AttendanceRosterEntry[]>(
         rosterQueryKey,
         (current) =>
           patchRosterStatus(current, payload.studentIds, payload.status),
       );
-      return { previous };
+      return { previousRoster };
     },
-    onSuccess: (data) => {
+    onSuccess: (data, _payload, context) => {
+      if (data.failed > 0 && context?.previousRoster) {
+        const failedSet = new Set(data.failedIds);
+        const previousEntriesMap = new Map(
+          context.previousRoster
+            .filter((entry) => failedSet.has(entry.studentId))
+            .map((entry) => [entry.studentId, entry]),
+        );
+        queryClient.setQueryData<AttendanceRosterEntry[]>(
+          rosterQueryKey,
+          (current) =>
+            current?.map(
+              (entry) => previousEntriesMap.get(entry.studentId) ?? entry,
+            ),
+        );
+      }
+
       const statusLabel = data.status === "PRESENT" ? "present" : "absent";
-      toast({
-        title: "Attendance updated",
-        description:
-          data.failed > 0
-            ? `Marked ${data.marked} students ${statusLabel}. ${data.failed} could not be marked.`
-            : `Selected students were marked ${statusLabel}.`,
-        variant: "success",
-      });
+      if (data.marked === 0 && data.failed > 0) {
+        toast({
+          title: "Couldn’t mark selected",
+          description: `Could not mark selected students ${statusLabel}.`,
+          variant: "error",
+        });
+      } else {
+        toast({
+          title:
+            data.failed > 0
+              ? "Attendance partially updated"
+              : "Attendance updated",
+          description:
+            data.failed > 0
+              ? `Marked ${data.marked} students ${statusLabel}. ${data.failed} could not be marked.`
+              : `Selected students were marked ${statusLabel}.`,
+          variant: data.failed > 0 ? "warning" : "success",
+        });
+      }
     },
     onError: (error: unknown, _vars, context) => {
-      if (context?.previous) {
-        queryClient.setQueryData(rosterQueryKey, context.previous);
+      if (context?.previousRoster) {
+        queryClient.setQueryData(rosterQueryKey, context.previousRoster);
       }
       toast({
         title: "Couldn’t mark selected",
@@ -722,9 +779,8 @@ function SessionAttendancePage() {
         .join(" · ")
     : "Mark attendance for enrolled students.";
 
-  const isBusy =
+  const isBulkBusy =
     markAllPresent.isPending ||
-    markAttendance.isPending ||
     markSelected.isPending ||
     completeSession.isPending;
 
@@ -747,10 +803,7 @@ function SessionAttendancePage() {
   }, [markAllPresent]);
 
   const bulkError =
-    markAllPresent.error ??
-    markSelected.error ??
-    markAttendance.error ??
-    completeSession.error;
+    markAllPresent.error ?? markSelected.error ?? completeSession.error;
   const bulkResult = markSelected.data ?? markAllPresent.data;
 
   const canComplete = sessionQuery.data?.status === "SCHEDULED";
@@ -939,7 +992,7 @@ function SessionAttendancePage() {
             {roster.length > 0 ? (
               <AttendanceRosterTable
                 roster={roster}
-                isBusy={isBusy}
+                isBusy={isBulkBusy}
                 markingDisabled={markingLocked}
                 pendingStudentId={
                   markAttendance.isPending
