@@ -136,6 +136,34 @@ export type BranchOption = {
   name: string;
 };
 
+export type EventNavigation =
+  | { to: "/app/sessions/$id/attendance"; params: { id: string } }
+  | { to: "/app/bookings" }
+  | { to: "/me/batches/$id"; params: { id: string } }
+  | { to: "/me/check-in" };
+
+export function resolveEventNavigation(
+  event: CalendarEvent,
+  staffActions: boolean,
+): EventNavigation | null {
+  if (event.kind === "SESSION" && event.sessionId && staffActions) {
+    return {
+      to: "/app/sessions/$id/attendance",
+      params: { id: event.sessionId },
+    };
+  }
+  if (event.kind === "BOOKING" && staffActions) {
+    return { to: "/app/bookings" };
+  }
+  if (!staffActions && event.kind === "SESSION" && event.batchId) {
+    return { to: "/me/batches/$id", params: { id: event.batchId } };
+  }
+  if (!staffActions && event.kind === "SESSION") {
+    return { to: "/me/check-in" };
+  }
+  return null;
+}
+
 type CalendarPageProps = {
   title: string;
   description: string;
@@ -183,26 +211,9 @@ export function CalendarPage({
   };
 
   const handleSelectEvent = (event: CalendarEvent) => {
-    if (event.kind === "SESSION" && event.sessionId && staffActions) {
-      void navigate({
-        to: "/app/sessions/$id/attendance",
-        params: { id: event.sessionId },
-      });
-      return;
-    }
-    if (event.kind === "BOOKING" && staffActions) {
-      void navigate({ to: "/app/bookings" });
-      return;
-    }
-    if (!staffActions && event.kind === "SESSION" && event.batchId) {
-      void navigate({
-        to: "/me/batches/$id",
-        params: { id: event.batchId },
-      });
-      return;
-    }
-    if (!staffActions && event.kind === "SESSION") {
-      void navigate({ to: "/me/check-in" });
+    const destination = resolveEventNavigation(event, staffActions);
+    if (destination) {
+      void navigate(destination);
     }
   };
 
