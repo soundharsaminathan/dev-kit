@@ -7,6 +7,18 @@
   padding: 0;
 }
 
+.scrollPad {
+  padding-bottom: var(--app-bottom-nav-space, 0px);
+}
+
+@media (max-width: 767px) {
+  .scrollPad {
+    padding-bottom: calc(
+      var(--app-bottom-nav-space, 4rem) + var(--space-3, 0.75rem)
+    );
+  }
+}
+
 .loadMore {
   min-height: 1px;
 }

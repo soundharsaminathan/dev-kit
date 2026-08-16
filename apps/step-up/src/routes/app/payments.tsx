@@ -466,7 +466,7 @@ function PaymentsPage() {
             {isStaff ? (
               membersQuery.isLoading ? (
                 <SkeletonBlock height="2.5rem" className={styles.filterField} />
-              ) : (
+              ) : trainers.length > 1 ? (
                 <div className={styles.filterField}>
                   <Select
                     label="Trainer"
@@ -550,7 +550,7 @@ function PaymentsPage() {
                     </SelectContent>
                   </Select>
                 </div>
-              )
+              ) : null
             ) : null}
 
             <div className={styles.filterField}>

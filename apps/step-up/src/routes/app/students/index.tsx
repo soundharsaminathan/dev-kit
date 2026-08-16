@@ -273,7 +273,7 @@ function StudentsPage() {
       }
     >
       <PullToRefresh onRefresh={() => query.refetch()}>
-        <div className={staff.section}>
+        <div className={`${staff.section} ${staff.scrollPad}`} data-scroll-pad>
           <StudentFiltersToolbar
             stage={stage}
             period={period}

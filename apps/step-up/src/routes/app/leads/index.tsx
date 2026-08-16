@@ -724,7 +724,8 @@ function LeadsPage() {
               >
                 <motion.div
                   key={activeSection}
-                  className={styles.swipePage}
+                  className={`${styles.swipePage} ${staff.scrollPad}`}
+                  data-scroll-pad
                   custom={direction}
                   variants={pageVariants}
                   initial="enter"
