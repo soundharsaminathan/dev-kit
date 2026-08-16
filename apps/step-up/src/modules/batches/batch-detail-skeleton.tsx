@@ -116,8 +116,8 @@ export function BatchDetailSkeleton({
         <div className={styles.sectionHeader}>
           <div className={styles.copy}>
             <SkeletonBlock height="0.6875rem" width="5rem" />
-            <SkeletonBlock height="1rem" width="55%" />
-            <SkeletonBlock height="0.75rem" width="40%" />
+            <SkeletonBlock height="1.125rem" width="55%" />
+            <SkeletonBlock height="0.8125rem" width="40%" />
           </div>
           <SkeletonBlock
             height="1.75rem"
@@ -129,10 +129,14 @@ export function BatchDetailSkeleton({
           {TRAINER_KEYS.map((key) => (
             <div key={key} className={styles.trainerCard}>
               <SkeletonBlock
-                height="100%"
-                width="100%"
-                radius="var(--radius-xl, 1rem)"
+                height="3.5rem"
+                width="3.5rem"
+                radius="var(--radius-lg, 0.75rem)"
               />
+              <div className={styles.trainerCopy}>
+                <SkeletonBlock height="0.9375rem" width="55%" />
+                <SkeletonBlock height="0.75rem" width="80%" />
+              </div>
             </div>
           ))}
         </div>
