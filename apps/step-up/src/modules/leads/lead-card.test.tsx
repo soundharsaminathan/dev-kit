@@ -41,7 +41,9 @@ describe("LeadCard identity", () => {
     expect(screen.getByTestId("lead-followup-lead-1")).toHaveTextContent(
       "No follow-up",
     );
-    expect(screen.queryByRole("button", { name: /call asha rao/i })).toBeNull();
+    expect(
+      screen.getByRole("button", { name: "Call Asha Rao" }),
+    ).toBeInTheDocument();
   });
 
   it("shows a relative last follow-up chip", () => {
@@ -58,6 +60,26 @@ describe("LeadCard identity", () => {
     expect(screen.getByTestId("lead-followup-lead-1")).toHaveTextContent(
       "3m ago",
     );
+  });
+});
+
+describe("LeadCard call", () => {
+  it("dials the lead from the call button", () => {
+    const assign = vi.fn();
+    vi.stubGlobal("location", { assign });
+    renderWithProviders(<LeadCard lead={lead()} range={null} />);
+
+    fireEvent.click(screen.getByTestId("lead-call-lead-1"));
+    expect(assign).toHaveBeenCalledWith("tel:+919123456789");
+    vi.unstubAllGlobals();
+  });
+
+  it("disables call when the lead has no phone", () => {
+    renderWithProviders(<LeadCard lead={lead({ phone: null })} range={null} />);
+
+    expect(
+      screen.getByRole("button", { name: "No phone number" }),
+    ).toBeDisabled();
   });
 });
 
