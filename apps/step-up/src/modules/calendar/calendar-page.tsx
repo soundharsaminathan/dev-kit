@@ -6,11 +6,8 @@ import {
   SelectValue,
 } from "@dev-ui/components/select";
 import { Text } from "@dev-ui/components/text";
-import { useIsMobile } from "@dev-ui/hooks";
 import { useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { SessionScheduleActions } from "@/modules/sessions/session-schedule-actions";
-import { AppBottomSheet } from "@/modules/ui/app-bottom-sheet";
 import { Screen } from "@/modules/ui/screen";
 import { SkeletonBlock } from "@/modules/ui/skeleton-block";
 import { ErrorState } from "@/modules/ui/states";
@@ -24,7 +21,6 @@ import {
   type CalendarScope,
   type CalendarViewMode,
   formatMonthLabel,
-  formatTime,
   rangeForView,
 } from "./types";
 import { useCalendarEvents } from "./use-calendar-events";
@@ -36,7 +32,10 @@ const MONTH_CELL_KEYS = Array.from(
 );
 const WEEKDAY_KEYS = Array.from({ length: 7 }, (_, i) => `cal-weekday-${i}`);
 const WEEK_DAY_KEYS = Array.from({ length: 7 }, (_, i) => `cal-week-day-${i}`);
-const WEEK_HOUR_KEYS = Array.from({ length: 24 }, (_, i) => `cal-week-hour-${i}`);
+const WEEK_HOUR_KEYS = Array.from(
+  { length: 24 },
+  (_, i) => `cal-week-hour-${i}`,
+);
 const WEEK_EVENT_PLACEHOLDERS = [
   { day: 0, top: "12%", height: "8%" },
   { day: 1, top: "28%", height: "6%" },
@@ -151,102 +150,6 @@ type CalendarPageProps = {
   staffActions?: boolean | undefined;
 };
 
-function EventDetail({
-  selected,
-  staffActions,
-  onClose,
-  onOpenAttendance,
-  onOpenBookings,
-  onOpenBatch,
-  onCheckIn,
-  onSessionDeleted,
-}: {
-  selected: CalendarEvent;
-  staffActions: boolean;
-  onClose: () => void;
-  onOpenAttendance: () => void;
-  onOpenBookings: () => void;
-  onOpenBatch: () => void;
-  onCheckIn: () => void;
-  onSessionDeleted: () => void;
-}) {
-  const canManageSession =
-    staffActions &&
-    selected.kind === "SESSION" &&
-    Boolean(selected.sessionId) &&
-    Boolean(selected.batchId) &&
-    selected.status !== "COMPLETED" &&
-    selected.status !== "CANCELLED";
-
-  return (
-    <div className={styles.detail}>
-      <p className={styles.detailKind}>
-        {selected.kind === "SESSION" ? "Class session" : "Booking"}
-        {selected.branchName ? ` · ${selected.branchName}` : ""}
-      </p>
-      <Text>
-        {formatTime(new Date(selected.startsAt))} –{" "}
-        {formatTime(new Date(selected.endsAt))}
-      </Text>
-      <Text className={styles.meta}>
-        {new Date(selected.startsAt).toLocaleDateString(undefined, {
-          weekday: "long",
-          month: "long",
-          day: "numeric",
-        })}
-      </Text>
-      {selected.bookingType ? (
-        <Text className={styles.meta}>{selected.bookingType}</Text>
-      ) : null}
-      {canManageSession && selected.sessionId && selected.batchId ? (
-        <SessionScheduleActions
-          showAttendance
-          menuTestId="calendar-session-actions"
-          session={{
-            id: selected.sessionId,
-            batchId: selected.batchId,
-            startsAt: selected.startsAt,
-            endsAt: selected.endsAt,
-            status: selected.status as
-              | "SCHEDULED"
-              | "COMPLETED"
-              | "CANCELLED",
-          }}
-          onAttendance={onOpenAttendance}
-          onChanged={onClose}
-          onDeleted={onSessionDeleted}
-        />
-      ) : null}
-      {staffActions &&
-      selected.kind === "SESSION" &&
-      selected.sessionId &&
-      !canManageSession ? (
-        <TouchButton variant="primary" fullWidth onClick={onOpenAttendance}>
-          Attendance
-        </TouchButton>
-      ) : null}
-      {staffActions && selected.kind === "BOOKING" ? (
-        <TouchButton variant="primary" fullWidth onClick={onOpenBookings}>
-          Open bookings
-        </TouchButton>
-      ) : null}
-      {!staffActions && selected.kind === "SESSION" && selected.batchId ? (
-        <TouchButton variant="primary" fullWidth onClick={onOpenBatch}>
-          Open class
-        </TouchButton>
-      ) : null}
-      {!staffActions && selected.kind === "SESSION" ? (
-        <TouchButton variant="default" fullWidth onClick={onCheckIn}>
-          Check in
-        </TouchButton>
-      ) : null}
-      <TouchButton variant="quiet" fullWidth onClick={onClose}>
-        Close
-      </TouchButton>
-    </div>
-  );
-}
-
 export function CalendarPage({
   title,
   description,
@@ -261,8 +164,6 @@ export function CalendarPage({
   staffActions = false,
 }: CalendarPageProps) {
   const navigate = useNavigate();
-  const isMobile = useIsMobile();
-  const [selected, setSelected] = useState<CalendarEvent | null>(null);
   const [scrollToNowToken, setScrollToNowToken] = useState(0);
   const range = useMemo(() => rangeForView(focus, view), [focus, view]);
 
@@ -282,56 +183,28 @@ export function CalendarPage({
   };
 
   const handleSelectEvent = (event: CalendarEvent) => {
-    setSelected(event);
-  };
-
-  const openSelected = () => {
-    if (!selected) return;
-    if (selected.kind === "SESSION" && selected.sessionId && staffActions) {
+    if (event.kind === "SESSION" && event.sessionId && staffActions) {
       void navigate({
         to: "/app/sessions/$id/attendance",
-        params: { id: selected.sessionId },
+        params: { id: event.sessionId },
       });
       return;
     }
-    if (selected.kind === "BOOKING" && staffActions) {
+    if (event.kind === "BOOKING" && staffActions) {
       void navigate({ to: "/app/bookings" });
+      return;
+    }
+    if (!staffActions && event.kind === "SESSION" && event.batchId) {
+      void navigate({
+        to: "/me/batches/$id",
+        params: { id: event.batchId },
+      });
+      return;
+    }
+    if (!staffActions && event.kind === "SESSION") {
+      void navigate({ to: "/me/check-in" });
     }
   };
-
-  const detailProps = selected
-    ? {
-        selected,
-        staffActions,
-        onClose: () => setSelected(null),
-        onOpenAttendance: () => {
-          if (selected.sessionId) {
-            void navigate({
-              to: "/app/sessions/$id/attendance",
-              params: { id: selected.sessionId },
-            });
-          }
-        },
-        onOpenBookings: openSelected,
-        onOpenBatch: () => {
-          if (selected.batchId) {
-            void navigate({
-              to: "/me/batches/$id",
-              params: { id: selected.batchId },
-            });
-            setSelected(null);
-          }
-        },
-        onCheckIn: () => {
-          void navigate({ to: "/me/check-in" });
-          setSelected(null);
-        },
-        onSessionDeleted: () => {
-          setSelected(null);
-          void eventsQuery.refetch();
-        },
-      }
-    : null;
 
   return (
     <Screen
@@ -411,10 +284,7 @@ export function CalendarPage({
           ) : null}
         </div>
 
-        <div
-          className={styles.layout}
-          data-has-side={!isMobile && selected ? "true" : undefined}
-        >
+        <div className={styles.layout}>
           <div className={styles.main}>
             {eventsQuery.isLoading ? <CalendarSkeleton view={view} /> : null}
 
@@ -458,28 +328,7 @@ export function CalendarPage({
               )
             ) : null}
           </div>
-
-          {!isMobile && selected && detailProps ? (
-            <aside className={styles.side}>
-              <div className={styles.sideCard}>
-                <p className={styles.sideTitle}>{selected.title}</p>
-                <EventDetail {...detailProps} />
-              </div>
-            </aside>
-          ) : null}
         </div>
-
-        {isMobile ? (
-          <AppBottomSheet
-            isOpen={Boolean(selected)}
-            onOpenChange={(open) => {
-              if (!open) setSelected(null);
-            }}
-            title={selected?.title ?? "Event"}
-          >
-            {selected && detailProps ? <EventDetail {...detailProps} /> : null}
-          </AppBottomSheet>
-        ) : null}
       </div>
     </Screen>
   );
