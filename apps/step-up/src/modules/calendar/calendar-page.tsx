@@ -136,6 +136,18 @@ export type BranchOption = {
   name: string;
 };
 
+export type BranchSwitcherMode = "hidden" | "skeleton" | "ready";
+
+export function branchSwitcherMode(
+  branches: BranchOption[] | undefined,
+  options: { loading?: boolean; enabled?: boolean } = {},
+): BranchSwitcherMode {
+  if (!options.enabled) return "hidden";
+  if (options.loading) return "skeleton";
+  if ((branches?.length ?? 0) > 1) return "ready";
+  return "hidden";
+}
+
 export type EventNavigation =
   | { to: "/app/sessions/$id/attendance"; params: { id: string } }
   | { to: "/app/bookings" }
@@ -171,6 +183,7 @@ type CalendarPageProps = {
   view: CalendarViewMode;
   focus: Date;
   branches?: BranchOption[] | undefined;
+  branchesLoading?: boolean | undefined;
   selectedBranchId?: string | null | undefined;
   onViewChange: (view: CalendarViewMode) => void;
   onFocusChange: (focus: Date) => void;
@@ -185,6 +198,7 @@ export function CalendarPage({
   view,
   focus,
   branches,
+  branchesLoading = false,
   selectedBranchId,
   onViewChange,
   onFocusChange,
@@ -216,6 +230,11 @@ export function CalendarPage({
       void navigate(destination);
     }
   };
+
+  const switcher = branchSwitcherMode(branches, {
+    loading: branchesLoading,
+    enabled: Boolean(onBranchChange),
+  });
 
   return (
     <Screen
@@ -263,8 +282,21 @@ export function CalendarPage({
             </TouchButton>
           </div>
           <Text className={styles.rangeLabel}>{rangeLabel}</Text>
-          {branches && onBranchChange ? (
-            <div className={styles.branchSelect}>
+          {switcher === "skeleton" ? (
+            <div
+              className={styles.branchSelect}
+              data-testid="branch-switcher-skeleton"
+              role="status"
+              aria-label="Loading branches"
+            >
+              <SkeletonBlock
+                height="2.5rem"
+                radius="var(--radius-md, 0.5rem)"
+              />
+            </div>
+          ) : null}
+          {switcher === "ready" && onBranchChange ? (
+            <div className={styles.branchSelect} data-testid="branch-switcher">
               <Select
                 aria-label="Branch"
                 selectedKey={selectedBranchId ?? "all"}
@@ -280,7 +312,7 @@ export function CalendarPage({
                   <SelectItem id="all" textValue="All branches">
                     All branches
                   </SelectItem>
-                  {branches.map((branch) => (
+                  {branches?.map((branch) => (
                     <SelectItem
                       key={branch.id}
                       id={branch.id}

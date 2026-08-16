@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { resolveEventNavigation } from "./calendar-page";
+import { branchSwitcherMode, resolveEventNavigation } from "./calendar-page";
 import type { CalendarEvent } from "./types";
 
 function session(overrides: Partial<CalendarEvent> = {}): CalendarEvent {
@@ -25,6 +25,39 @@ function booking(overrides: Partial<CalendarEvent> = {}): CalendarEvent {
     ...overrides,
   };
 }
+
+describe("branchSwitcherMode", () => {
+  const twoBranches = [
+    { id: "b1", name: "Main" },
+    { id: "b2", name: "Annex" },
+  ];
+
+  it("shows a skeleton while branches load", () => {
+    expect(
+      branchSwitcherMode(undefined, { enabled: true, loading: true }),
+    ).toBe("skeleton");
+  });
+
+  it("hides the switcher when there is only one branch", () => {
+    expect(
+      branchSwitcherMode([{ id: "b1", name: "Main" }], { enabled: true }),
+    ).toBe("hidden");
+  });
+
+  it("hides the switcher when there are no branches", () => {
+    expect(branchSwitcherMode([], { enabled: true })).toBe("hidden");
+  });
+
+  it("shows the switcher when there are multiple branches", () => {
+    expect(branchSwitcherMode(twoBranches, { enabled: true })).toBe("ready");
+  });
+
+  it("hides the switcher when branch filtering is disabled", () => {
+    expect(
+      branchSwitcherMode(twoBranches, { enabled: false, loading: true }),
+    ).toBe("hidden");
+  });
+});
 
 describe("resolveEventNavigation", () => {
   describe("staff", () => {

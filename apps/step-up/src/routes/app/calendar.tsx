@@ -73,6 +73,7 @@ function AppCalendarPage() {
       view={search.view}
       focus={focus}
       branches={isStaff ? branchesQuery.data : undefined}
+      branchesLoading={isStaff && branchesQuery.isLoading}
       selectedBranchId={search.branchId ?? null}
       staffActions
       onViewChange={(view) => {
