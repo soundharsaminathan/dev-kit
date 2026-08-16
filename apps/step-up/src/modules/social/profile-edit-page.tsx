@@ -12,10 +12,11 @@ import { TextArea } from "@dev-ui/components/text-area";
 import { TextField } from "@dev-ui/components/text-field";
 import { useToastContext } from "@dev-ui/components/toast";
 import { Icon } from "@dev-ui/icons";
-import { useForm } from "@tanstack/react-form";
+import { useForm, useStore } from "@tanstack/react-form";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
+import { ageFromDateOfBirth } from "@/lib/age";
 import { useApi } from "@/lib/api-context";
 import { useAuth } from "@/lib/auth";
 import {
@@ -34,6 +35,11 @@ import {
 } from "@/modules/onboarding/options";
 import { InstallAppPanel } from "@/modules/pwa/install-app-panel";
 import { StylePicker } from "@/modules/styles/style-picker";
+import {
+  DateOfBirthOrAgeFields,
+  hasAgeValue,
+  resolveAgePayload,
+} from "@/modules/ui/date-of-birth-or-age";
 import { ImageCropSheet } from "@/modules/ui/image-crop-sheet";
 import { Screen } from "@/modules/ui/screen";
 import { SkeletonBlock } from "@/modules/ui/skeleton-block";
@@ -73,6 +79,10 @@ type ProfileFormValues = {
   scheduleVibe: string[];
   gender: Gender | "";
   ageRange: AgeRange | "";
+  dateOfBirth: string;
+  age: string;
+  guardianName: string;
+  alternateMobile: string;
   preferredBranchId: string;
 };
 
@@ -198,6 +208,7 @@ function ProfileEditForm({ backTo, profile }: ProfileEditFormProps) {
     user?.role === "STUDENT" || user?.role === "PARENT";
   const canEditStyles = user?.role === "TRAINER" || user?.role === "STUDENT";
   const canEditPrefs = user?.role === "STUDENT";
+  const canEditAgeFields = user?.role === "STUDENT" || user?.role === "PARENT";
 
   const saveMutation = useMutation({
     mutationFn: async (values: ProfileFormValues) => {
@@ -215,6 +226,10 @@ function ProfileEditForm({ backTo, profile }: ProfileEditFormProps) {
         scheduleVibe?: string[];
         gender?: Gender | null;
         ageRange?: AgeRange | null;
+        dateOfBirth?: string | null;
+        age?: number | null;
+        guardianName?: string | null;
+        alternateMobile?: string | null;
         preferredBranchId?: string | null;
       }>("/users/me", {
         name: trimmedName,
@@ -228,7 +243,20 @@ function ProfileEditForm({ backTo, profile }: ProfileEditFormProps) {
           : {}),
         ...(canEditStyles ? { styles: values.styles } : {}),
         gender: values.gender || undefined,
-        ageRange: values.ageRange || undefined,
+        ...(canEditAgeFields
+          ? {
+              ...resolveAgePayload({
+                dateOfBirth: values.dateOfBirth,
+                age: values.age,
+              }),
+              ...(values.guardianName.trim()
+                ? { guardianName: values.guardianName.trim() }
+                : {}),
+              ...(values.alternateMobile.trim()
+                ? { alternateMobile: values.alternateMobile.trim() }
+                : {}),
+            }
+          : { ageRange: values.ageRange || undefined }),
         ...(canEditPrefs
           ? {
               experienceLevel: values.experienceLevel || undefined,
@@ -267,6 +295,16 @@ function ProfileEditForm({ backTo, profile }: ProfileEditFormProps) {
         ...(saved.scheduleVibe ? { scheduleVibe: saved.scheduleVibe } : {}),
         ...(saved.gender !== undefined ? { gender: saved.gender } : {}),
         ...(saved.ageRange !== undefined ? { ageRange: saved.ageRange } : {}),
+        ...(saved.dateOfBirth !== undefined
+          ? { dateOfBirth: saved.dateOfBirth }
+          : {}),
+        ...(saved.age !== undefined ? { age: saved.age } : {}),
+        ...(saved.guardianName !== undefined
+          ? { guardianName: saved.guardianName }
+          : {}),
+        ...(saved.alternateMobile !== undefined
+          ? { alternateMobile: saved.alternateMobile }
+          : {}),
         ...(saved.preferredBranchId !== undefined
           ? { preferredBranchId: saved.preferredBranchId }
           : {}),
@@ -295,6 +333,11 @@ function ProfileEditForm({ backTo, profile }: ProfileEditFormProps) {
       scheduleVibe: user?.scheduleVibe ?? [],
       gender: user?.gender ?? "",
       ageRange: user?.ageRange ?? "",
+      dateOfBirth: user?.dateOfBirth ?? "",
+      age:
+        user?.age !== null && user?.age !== undefined ? String(user.age) : "",
+      guardianName: user?.guardianName ?? "",
+      alternateMobile: user?.alternateMobile ?? "",
       preferredBranchId: user?.preferredBranchId ?? "",
     } satisfies ProfileFormValues,
     onSubmit: async ({ value }) => {
@@ -303,8 +346,16 @@ function ProfileEditForm({ backTo, profile }: ProfileEditFormProps) {
         setSaveMessage("Choose Male or Female to continue.");
         return;
       }
-      if (!value.ageRange) {
-        setSaveMessage("Choose an age range to continue.");
+      if (
+        canEditAgeFields
+          ? !hasAgeValue({ dateOfBirth: value.dateOfBirth, age: value.age })
+          : !value.ageRange
+      ) {
+        setSaveMessage(
+          canEditAgeFields
+            ? "Enter your date of birth or exact age to continue."
+            : "Choose an age range to continue.",
+        );
         return;
       }
       try {
@@ -325,6 +376,30 @@ function ProfileEditForm({ backTo, profile }: ProfileEditFormProps) {
       ),
     enabled: canEditPrefs,
   });
+
+  function AgeFields() {
+    const dateOfBirth = useStore(
+      form.store,
+      (state) => state.values.dateOfBirth,
+    );
+    const age = useStore(form.store, (state) => state.values.age);
+    return (
+      <DateOfBirthOrAgeFields
+        dateOfBirth={dateOfBirth}
+        onDateOfBirthChange={(next) => {
+          form.setFieldValue("dateOfBirth", next);
+          const derived = ageFromDateOfBirth(next);
+          form.setFieldValue("age", derived === null ? "" : String(derived));
+        }}
+        age={age}
+        onAgeChange={(next) => {
+          form.setFieldValue("age", next);
+          if (next) form.setFieldValue("dateOfBirth", "");
+        }}
+        hint="Enter either your date of birth or an exact age."
+      />
+    );
+  }
 
   function handleSelect(kind: ProfileImageKind, files: FileList | null) {
     const file = files?.[0];
@@ -690,31 +765,89 @@ function ProfileEditForm({ backTo, profile }: ProfileEditFormProps) {
                 )}
               </form.Field>
 
-              <form.Field name="ageRange">
-                {(field) => (
+              {canEditAgeFields ? (
+                <>
                   <div className={styles.stylesBlock}>
                     <div className={styles.stylesHeader}>
-                      <h3 className={styles.stylesTitle}>Age range</h3>
-                      <p className={styles.cardDesc}>Required</p>
+                      <h3 className={styles.stylesTitle}>
+                        Date of birth / age
+                      </h3>
+                      <p className={styles.cardDesc}>Required — either one</p>
                     </div>
-                    <div className={styles.prefGrid}>
-                      {AGE_RANGES.map((option) => (
-                        <button
-                          key={option.id}
-                          type="button"
-                          className={styles.prefChip}
-                          data-selected={
-                            field.state.value === option.id ? "true" : undefined
-                          }
-                          onClick={() => field.handleChange(option.id)}
-                        >
-                          {option.label} · {option.title}
-                        </button>
-                      ))}
-                    </div>
+                    <AgeFields />
                   </div>
-                )}
-              </form.Field>
+                  <form.Field name="guardianName">
+                    {(field) => (
+                      <div className={styles.stylesBlock}>
+                        <div className={styles.stylesHeader}>
+                          <h3 className={styles.stylesTitle}>Guardian name</h3>
+                          <p className={styles.cardDesc}>Optional</p>
+                        </div>
+                        <Input
+                          name={field.name}
+                          value={field.state.value}
+                          onBlur={field.handleBlur}
+                          onChange={(event) =>
+                            field.handleChange(event.target.value)
+                          }
+                          placeholder="Parent or guardian"
+                        />
+                      </div>
+                    )}
+                  </form.Field>
+                  <form.Field name="alternateMobile">
+                    {(field) => (
+                      <div className={styles.stylesBlock}>
+                        <div className={styles.stylesHeader}>
+                          <h3 className={styles.stylesTitle}>
+                            Alternate mobile number
+                          </h3>
+                          <p className={styles.cardDesc}>Optional</p>
+                        </div>
+                        <Input
+                          name={field.name}
+                          type="tel"
+                          inputMode="tel"
+                          value={field.state.value}
+                          onBlur={field.handleBlur}
+                          onChange={(event) =>
+                            field.handleChange(event.target.value)
+                          }
+                          placeholder="+91 98765 43210"
+                        />
+                      </div>
+                    )}
+                  </form.Field>
+                </>
+              ) : (
+                <form.Field name="ageRange">
+                  {(field) => (
+                    <div className={styles.stylesBlock}>
+                      <div className={styles.stylesHeader}>
+                        <h3 className={styles.stylesTitle}>Age range</h3>
+                        <p className={styles.cardDesc}>Required</p>
+                      </div>
+                      <div className={styles.prefGrid}>
+                        {AGE_RANGES.map((option) => (
+                          <button
+                            key={option.id}
+                            type="button"
+                            className={styles.prefChip}
+                            data-selected={
+                              field.state.value === option.id
+                                ? "true"
+                                : undefined
+                            }
+                            onClick={() => field.handleChange(option.id)}
+                          >
+                            {option.label} · {option.title}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </form.Field>
+              )}
 
               {canEditPrefs ? (
                 <>

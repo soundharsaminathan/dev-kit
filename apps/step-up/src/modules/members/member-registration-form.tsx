@@ -16,6 +16,11 @@ import { setLastLoginIdentifier } from "@/lib/last-login";
 import { useStudioId } from "@/lib/use-studio-id";
 import { AGE_RANGES, GENDERS } from "@/modules/onboarding/options";
 import { StyleSpreePicker } from "@/modules/styles/style-spree-picker";
+import {
+  DateOfBirthOrAgeFields,
+  hasAgeValue,
+  resolveAgePayload,
+} from "@/modules/ui/date-of-birth-or-age";
 import { FormInput } from "@/modules/ui/form-input";
 import { Screen } from "@/modules/ui/screen";
 import staff from "@/modules/ui/staff.module.scss";
@@ -85,6 +90,10 @@ export function MemberRegistrationForm({
   const [phone, setPhone] = useState("");
   const [gender, setGender] = useState<Gender | null>(null);
   const [ageRange, setAgeRange] = useState<AgeRange | null>(null);
+  const [dateOfBirth, setDateOfBirth] = useState("");
+  const [age, setAge] = useState("");
+  const [guardianName, setGuardianName] = useState("");
+  const [alternateMobile, setAlternateMobile] = useState("");
   const [styles, setStyles] = useState<string[]>([]);
   const [batchId, setBatchId] = useState<string | null>(null);
   const [temporaryPassword] = useState(() => generateTemporaryPassword());
@@ -121,10 +130,17 @@ export function MemberRegistrationForm({
 
   const stepIsValid = useMemo(
     () => [
-      Boolean(name.trim() && email.trim() && gender && ageRange),
+      Boolean(
+        name.trim() &&
+          email.trim() &&
+          gender &&
+          (kind === "trainer"
+            ? Boolean(ageRange)
+            : hasAgeValue({ dateOfBirth, age })),
+      ),
       styles.length > 0,
     ],
-    [ageRange, email, gender, name, styles.length],
+    [age, ageRange, dateOfBirth, email, gender, kind, name, styles.length],
   );
 
   const createMember = useMutation({
@@ -134,7 +150,17 @@ export function MemberRegistrationForm({
         email: email.trim(),
         phone: phone.trim() || undefined,
         gender,
-        ageRange,
+        ...(kind === "student"
+          ? {
+              ...resolveAgePayload({ dateOfBirth, age }),
+              ...(guardianName.trim()
+                ? { guardianName: guardianName.trim() }
+                : {}),
+              ...(alternateMobile.trim()
+                ? { alternateMobile: alternateMobile.trim() }
+                : {}),
+            }
+          : { ageRange }),
         styles,
         ...(allowBatchEnrollment && batchId ? { batchId } : {}),
         ...(issueLoginCredentials
@@ -304,22 +330,49 @@ export function MemberRegistrationForm({
                 ))}
               </div>
             </div>
-            <div className={formStyles.fieldBlock}>
-              <p className={formStyles.fieldLabel}>Age range</p>
-              <div className={formStyles.chipGrid}>
-                {AGE_RANGES.map((option) => (
-                  <button
-                    key={option.id}
-                    type="button"
-                    className={formStyles.chip}
-                    data-selected={ageRange === option.id ? "true" : undefined}
-                    onClick={() => setAgeRange(option.id)}
-                  >
-                    {option.label} · {option.title}
-                  </button>
-                ))}
+            {kind === "student" ? (
+              <>
+                <div className={formStyles.fieldBlock}>
+                  <DateOfBirthOrAgeFields
+                    dateOfBirth={dateOfBirth}
+                    onDateOfBirthChange={setDateOfBirth}
+                    age={age}
+                    onAgeChange={setAge}
+                  />
+                </div>
+                <FormInput
+                  label="Guardian name"
+                  value={guardianName}
+                  onChange={setGuardianName}
+                  autoComplete="off"
+                />
+                <FormInput
+                  label="Alternate mobile number"
+                  type="tel"
+                  value={alternateMobile}
+                  onChange={setAlternateMobile}
+                />
+              </>
+            ) : (
+              <div className={formStyles.fieldBlock}>
+                <p className={formStyles.fieldLabel}>Age range</p>
+                <div className={formStyles.chipGrid}>
+                  {AGE_RANGES.map((option) => (
+                    <button
+                      key={option.id}
+                      type="button"
+                      className={formStyles.chip}
+                      data-selected={
+                        ageRange === option.id ? "true" : undefined
+                      }
+                      onClick={() => setAgeRange(option.id)}
+                    >
+                      {option.label} · {option.title}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
           </div>
         ) : (
           <div className={`${staff.softPanel} ${formStyles.stylesPanel}`}>

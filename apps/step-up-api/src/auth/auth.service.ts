@@ -85,10 +85,7 @@ export class AuthService {
     };
   }
 
-  acceptInvite(
-    token: string,
-    auth: VerifiedAuth,
-  ): Promise<DecryptedUser> {
+  acceptInvite(token: string, auth: VerifiedAuth): Promise<DecryptedUser> {
     if (!auth.email) {
       throw new BadRequestException("Authenticated email is required");
     }
@@ -136,6 +133,8 @@ export class AuthService {
           phone: current.phone,
           bio: current.bio,
           instagramUrl: current.instagramUrl,
+          guardianName: current.guardianName,
+          alternateMobile: current.alternateMobile,
         },
         existing.encryptedKey,
       );
@@ -180,6 +179,8 @@ export class AuthService {
           phone: current.phone,
           bio: current.bio,
           instagramUrl: current.instagramUrl,
+          guardianName: current.guardianName,
+          alternateMobile: current.alternateMobile,
         },
         provisioned.encryptedKey,
       );
@@ -227,6 +228,8 @@ export class AuthService {
       phone: null,
       bio: null,
       instagramUrl: null,
+      guardianName: null,
+      alternateMobile: null,
     });
 
     const created = await this.prisma.user.create({

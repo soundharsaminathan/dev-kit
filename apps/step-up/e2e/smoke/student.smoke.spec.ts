@@ -449,7 +449,7 @@ test.describe("student smoke @smoke", () => {
       ).toBeVisible();
       await page.getByLabel(/Display name/i).fill("Smoke Onboarded");
       await page.getByRole("button", { name: /^Female$/i }).click();
-      await page.getByRole("button", { name: /Adults/i }).click();
+      await page.getByLabel(/^age$/i).fill("28");
 
       const [profilePatch] = await Promise.all([
         waitForApiResponse(page, {

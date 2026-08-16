@@ -147,6 +147,8 @@ export class StudiosService {
           phone: null,
           bio: null,
           instagramUrl: null,
+          guardianName: null,
+          alternateMobile: null,
         });
         const owner = await tx.user.create({
           data: {

@@ -399,6 +399,7 @@ describe("UsersService onboarding", () => {
         ageRange: AgeRange.TEN_TO_TWENTY,
         preferredBranchId: "branch-main-1",
       }),
+      select: expect.anything(),
     });
   });
 
@@ -1815,5 +1816,293 @@ describe("UsersService listLeads sections", () => {
       section: "trialMissed",
     });
     expect(missed.items.map((row) => row.id)).toEqual(["student-missed"]);
+  });
+});
+
+describe("UsersService age fields", () => {
+  const prisma = {
+    user: {
+      findUniqueOrThrow: vi.fn(),
+      findFirst: vi.fn(),
+      findMany: vi.fn(),
+      create: vi.fn(),
+      createMany: vi.fn(),
+      update: vi.fn(),
+    },
+  };
+  const crypto = {
+    decryptUser: vi.fn(),
+    sealPii: vi.fn(() => ({
+      encryptedKey: "key",
+      piiCiphertext: "cipher",
+      piiIv: "iv",
+      emailHash: "hash",
+    })),
+    hashEmail: vi.fn((email: string) => `hash:${email}`),
+  };
+  const media = {
+    signReadUrl: vi.fn(async (value: string | null) => value),
+    resolveObjectKey: vi.fn((value: string) => value),
+  };
+  const firebase = {
+    ensureEmailPasswordUser: vi.fn(async () => null),
+  };
+
+  let service: UsersService;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    service = new UsersService(
+      prisma as never,
+      crypto as never,
+      media as never,
+      firebase as never,
+    );
+  });
+
+  it("creates a student from a date of birth, deriving the age range", async () => {
+    prisma.user.findFirst.mockResolvedValue(null);
+    prisma.user.create.mockResolvedValue(
+      makeUser({ id: "student-new", firebaseUid: "staff-created:abc" }),
+    );
+    prisma.user.update.mockResolvedValue({
+      id: "student-new",
+      firebaseUid: "fb-student-1",
+    });
+
+    await service.createStudent({
+      studioId: "studio-seed-1",
+      name: "New Student",
+      email: "new@stepup.dev",
+      gender: Gender.FEMALE,
+      dateOfBirth: "2020-01-15",
+      guardianName: "Guardian One",
+      alternateMobile: "+91 98765 43210",
+    });
+
+    expect(prisma.user.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          dateOfBirth: new Date("2020-01-15T00:00:00.000Z"),
+          ageRange: AgeRange.UNDER_10,
+        }),
+      }),
+    );
+    const data = (
+      prisma.user.create.mock.calls[0]?.[0] as { data: Record<string, unknown> }
+    ).data;
+    expect(data.ageYears).toBeUndefined();
+    expect(crypto.sealPii).toHaveBeenCalledWith(
+      expect.objectContaining({
+        guardianName: "Guardian One",
+        alternateMobile: "+91 98765 43210",
+      }),
+    );
+  });
+
+  it("creates a student from an exact age, deriving the age range", async () => {
+    prisma.user.findFirst.mockResolvedValue(null);
+    prisma.user.create.mockResolvedValue(
+      makeUser({ id: "student-new", firebaseUid: "staff-created:abc" }),
+    );
+    prisma.user.update.mockResolvedValue({
+      id: "student-new",
+      firebaseUid: "fb-student-1",
+    });
+
+    await service.createStudent({
+      studioId: "studio-seed-1",
+      name: "New Student",
+      email: "new@stepup.dev",
+      gender: Gender.MALE,
+      age: 7,
+    });
+
+    const data = (
+      prisma.user.create.mock.calls[0]?.[0] as { data: Record<string, unknown> }
+    ).data;
+    expect(data.ageYears).toBe(7);
+    expect(data.ageRange).toBe(AgeRange.UNDER_10);
+    expect(data.dateOfBirth).toBeUndefined();
+  });
+
+  it("prefers the date of birth when both are provided", async () => {
+    prisma.user.findFirst.mockResolvedValue(null);
+    prisma.user.create.mockResolvedValue(
+      makeUser({ id: "student-new", firebaseUid: "staff-created:abc" }),
+    );
+    prisma.user.update.mockResolvedValue({
+      id: "student-new",
+      firebaseUid: "fb-student-1",
+    });
+
+    await service.createStudent({
+      studioId: "studio-seed-1",
+      name: "New Student",
+      email: "new@stepup.dev",
+      gender: Gender.FEMALE,
+      dateOfBirth: "2000-01-15",
+      age: 45,
+    });
+
+    const data = (
+      prisma.user.create.mock.calls[0]?.[0] as { data: Record<string, unknown> }
+    ).data;
+    expect(data.dateOfBirth).toEqual(new Date("2000-01-15T00:00:00.000Z"));
+    expect(data.ageYears).toBeUndefined();
+    expect(data.ageRange).toBe(AgeRange.TWENTY_TO_FORTY);
+  });
+
+  it("rejects a student without date of birth or age", async () => {
+    await expect(
+      service.createStudent({
+        studioId: "studio-seed-1",
+        name: "New Student",
+        email: "new@stepup.dev",
+        gender: Gender.FEMALE,
+      }),
+    ).rejects.toThrow("date of birth or age is required");
+    expect(prisma.user.create).not.toHaveBeenCalled();
+  });
+
+  it("rejects a future date of birth", async () => {
+    await expect(
+      service.createStudent({
+        studioId: "studio-seed-1",
+        name: "New Student",
+        email: "new@stepup.dev",
+        gender: Gender.FEMALE,
+        dateOfBirth: "2099-01-01",
+      }),
+    ).rejects.toThrow("Date of birth is invalid or in the future");
+    expect(prisma.user.create).not.toHaveBeenCalled();
+  });
+
+  it("stores date of birth and guardian fields on bulk import rows", async () => {
+    prisma.user.findMany.mockResolvedValue([]);
+    prisma.user.createMany.mockResolvedValue({ count: 1 });
+
+    await service.createStudents("studio-seed-1", [
+      {
+        name: "Ada Lovelace",
+        email: "ada@example.com",
+        gender: Gender.FEMALE,
+        dateOfBirth: "2020-01-15",
+        guardianName: "Grace Hopper",
+        alternateMobile: "9876543210",
+      },
+    ]);
+
+    expect(prisma.user.createMany).toHaveBeenCalledWith({
+      data: [
+        expect.objectContaining({
+          dateOfBirth: new Date("2020-01-15T00:00:00.000Z"),
+          ageRange: AgeRange.UNDER_10,
+        }),
+      ],
+    });
+    expect(crypto.sealPii).toHaveBeenCalledWith(
+      expect.objectContaining({
+        guardianName: "Grace Hopper",
+        alternateMobile: "9876543210",
+      }),
+    );
+  });
+
+  it("keeps legacy ageRange rows valid on bulk import", async () => {
+    prisma.user.findMany.mockResolvedValue([]);
+    prisma.user.createMany.mockResolvedValue({ count: 1 });
+
+    await service.createStudents("studio-seed-1", [
+      {
+        name: "Legacy Kid",
+        email: "legacy@example.com",
+        gender: Gender.FEMALE,
+        age: 8,
+      },
+    ]);
+
+    expect(prisma.user.createMany).toHaveBeenCalledWith({
+      data: [
+        expect.objectContaining({
+          ageYears: 8,
+          ageRange: AgeRange.UNDER_10,
+        }),
+      ],
+    });
+  });
+
+  it("requires students and parents to have date of birth or age on profile patch", async () => {
+    const row = makeUser({ ageRange: null });
+    prisma.user.findUniqueOrThrow.mockResolvedValue(row);
+    crypto.decryptUser.mockReturnValue({ ...row, ...MASTER_PII });
+
+    await expect(
+      service.updateProfile("student-1", UserRole.STUDENT, {
+        name: "Alex Updated",
+      }),
+    ).rejects.toThrow("date of birth or age is required");
+    expect(prisma.user.update).not.toHaveBeenCalled();
+  });
+
+  it("derives the age range when a date of birth is patched", async () => {
+    const row = makeUser({ ageRange: null });
+    prisma.user.findUniqueOrThrow.mockResolvedValue(row);
+    crypto.decryptUser.mockReturnValue({ ...row, ...MASTER_PII });
+    prisma.user.update.mockResolvedValue(row);
+
+    await service.updateProfile("student-1", UserRole.STUDENT, {
+      dateOfBirth: "2000-01-15",
+    });
+
+    expect(prisma.user.update).toHaveBeenCalledWith({
+      where: { id: "student-1" },
+      data: expect.objectContaining({
+        dateOfBirth: new Date("2000-01-15T00:00:00.000Z"),
+        ageYears: null,
+        ageRange: AgeRange.TWENTY_TO_FORTY,
+      }),
+      select: expect.anything(),
+    });
+  });
+
+  it("derives the age range when an exact age is patched", async () => {
+    const row = makeUser({ ageRange: null });
+    prisma.user.findUniqueOrThrow.mockResolvedValue(row);
+    crypto.decryptUser.mockReturnValue({ ...row, ...MASTER_PII });
+    prisma.user.update.mockResolvedValue(row);
+
+    await service.updateProfile("student-1", UserRole.STUDENT, {
+      age: 7,
+    });
+
+    expect(prisma.user.update).toHaveBeenCalledWith({
+      where: { id: "student-1" },
+      data: expect.objectContaining({
+        ageYears: 7,
+        dateOfBirth: null,
+        ageRange: AgeRange.UNDER_10,
+      }),
+      select: expect.anything(),
+    });
+  });
+
+  it("accepts legacy ageRange patches for students without age fields", async () => {
+    const row = makeUser({ ageRange: null });
+    prisma.user.findUniqueOrThrow.mockResolvedValue(row);
+    crypto.decryptUser.mockReturnValue({ ...row, ...MASTER_PII });
+    prisma.user.update.mockResolvedValue(row);
+
+    await service.updateProfile("student-1", UserRole.STUDENT, {
+      ageRange: AgeRange.UNDER_10,
+    });
+
+    expect(prisma.user.update).toHaveBeenCalledWith({
+      where: { id: "student-1" },
+      data: expect.objectContaining({
+        ageRange: AgeRange.UNDER_10,
+      }),
+      select: expect.anything(),
+    });
   });
 });

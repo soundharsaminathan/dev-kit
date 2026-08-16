@@ -301,6 +301,8 @@ model User {
   experienceLevel        ExperienceLevel?
   scheduleVibe           String[]          @default([])
   gender                 Gender?
+  dateOfBirth            DateTime?
+  ageYears               Int?
   ageRange               AgeRange?
   preferredBranchId      String?
   onboardingCompletedAt  DateTime?

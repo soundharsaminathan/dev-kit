@@ -58,6 +58,10 @@ type SyncedApiUser = {
   scheduleVibe?: string[] | undefined;
   gender?: Gender | null | undefined;
   ageRange?: AgeRange | null | undefined;
+  dateOfBirth?: string | null | undefined;
+  age?: number | null | undefined;
+  guardianName?: string | null | undefined;
+  alternateMobile?: string | null | undefined;
   preferredBranchId?: string | null | undefined;
   onboardingCompletedAt?: string | Date | null | undefined;
   mustChangePassword?: boolean | undefined;
@@ -142,6 +146,10 @@ function mapSyncedUser(user: SyncedApiUser): AuthUser {
     scheduleVibe: user.scheduleVibe ?? [],
     gender: user.gender ?? null,
     ageRange: user.ageRange ?? null,
+    dateOfBirth: user.dateOfBirth ?? null,
+    age: user.age ?? null,
+    guardianName: user.guardianName ?? null,
+    alternateMobile: user.alternateMobile ?? null,
     preferredBranchId: user.preferredBranchId ?? null,
     onboardingCompletedAt: user.onboardingCompletedAt
       ? String(user.onboardingCompletedAt)

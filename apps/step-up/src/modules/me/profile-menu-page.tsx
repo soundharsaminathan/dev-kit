@@ -6,15 +6,20 @@ import { Link } from "@tanstack/react-router";
 import { useContext, useState } from "react";
 import { useApi } from "@/lib/api-context";
 import { useAuth } from "@/lib/auth";
-import type { AgeRange, Gender } from "@/lib/constants";
+import type { Gender } from "@/lib/constants";
 import { avatarLetter, resolveDisplayName } from "@/lib/display-name";
 import {
   getMenuSections,
   type ShellVariant,
 } from "@/modules/layout/nav-config";
 import { ActiveStudentContext } from "@/modules/me/active-student-context";
-import { AGE_RANGES, GENDERS } from "@/modules/onboarding/options";
+import { GENDERS } from "@/modules/onboarding/options";
 import { AppSheet } from "@/modules/ui/app-sheet";
+import {
+  DateOfBirthOrAgeFields,
+  hasAgeValue,
+  resolveAgePayload,
+} from "@/modules/ui/date-of-birth-or-age";
 import { FormInput } from "@/modules/ui/form-input";
 import { Screen } from "@/modules/ui/screen";
 import { ErrorState } from "@/modules/ui/states";
@@ -48,11 +53,14 @@ export function ProfileMenuPage({ variant = "me" }: ProfileMenuPageProps) {
   const [newName, setNewName] = useState("");
   const [newKind, setNewKind] = useState<"KID" | "CO_STUDENT">("KID");
   const [newGender, setNewGender] = useState<Gender | null>(null);
-  const [newAgeRange, setNewAgeRange] = useState<AgeRange | null>(null);
+  const [newDateOfBirth, setNewDateOfBirth] = useState("");
+  const [newAge, setNewAge] = useState("");
   const [linkEmail, setLinkEmail] = useState("");
   const isParent = user?.role === "PARENT";
   const canAddMember =
-    newName.trim().length > 0 && Boolean(newGender) && Boolean(newAgeRange);
+    newName.trim().length > 0 &&
+    Boolean(newGender) &&
+    hasAgeValue({ dateOfBirth: newDateOfBirth, age: newAge });
   const canLinkChild = linkEmail.trim().length > 0;
 
   const createMutation = useMutation({
@@ -61,7 +69,7 @@ export function ProfileMenuPage({ variant = "me" }: ProfileMenuPageProps) {
         name: newName,
         kind: newKind,
         gender: newGender,
-        ageRange: newAgeRange,
+        ...resolveAgePayload({ dateOfBirth: newDateOfBirth, age: newAge }),
       }),
     onSuccess: async (created: { id: string }) => {
       await queryClient.invalidateQueries({
@@ -73,7 +81,8 @@ export function ProfileMenuPage({ variant = "me" }: ProfileMenuPageProps) {
       setActiveAccount(created.id);
       setNewName("");
       setNewGender(null);
-      setNewAgeRange(null);
+      setNewDateOfBirth("");
+      setNewAge("");
     },
   });
 
@@ -119,9 +128,11 @@ export function ProfileMenuPage({ variant = "me" }: ProfileMenuPageProps) {
               />
             ) : null}
             <AvatarFallback>
-              {user
-                ? avatarLetter(user.name, user.email)
-                : <Icon name="user" />}
+              {user ? (
+                avatarLetter(user.name, user.email)
+              ) : (
+                <Icon name="user" />
+              )}
             </AvatarFallback>
           </Avatar>
           <span className={styles.profileText}>
@@ -303,20 +314,13 @@ export function ProfileMenuPage({ variant = "me" }: ProfileMenuPageProps) {
             </div>
           </div>
           <div className={styles.fieldBlock}>
-            <p className={styles.fieldLabel}>Age range</p>
-            <div className={styles.chipGrid}>
-              {AGE_RANGES.map((option) => (
-                <button
-                  key={option.id}
-                  type="button"
-                  className={styles.chip}
-                  data-selected={newAgeRange === option.id ? "true" : undefined}
-                  onClick={() => setNewAgeRange(option.id)}
-                >
-                  {option.label} · {option.title}
-                </button>
-              ))}
-            </div>
+            <DateOfBirthOrAgeFields
+              dateOfBirth={newDateOfBirth}
+              onDateOfBirthChange={setNewDateOfBirth}
+              age={newAge}
+              onAgeChange={setNewAge}
+              hint="Enter either a date of birth or an exact age."
+            />
           </div>
           <TouchButton
             variant="primary"

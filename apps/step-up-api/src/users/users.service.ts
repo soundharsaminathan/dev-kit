@@ -34,7 +34,7 @@ import {
 import { MediaService } from "../media/media.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { isAlwaysPublicRole } from "../social/visibility";
-import { ageRangeFromAge } from "./age-range";
+import { ageFromDateOfBirth, ageRangeFromAge } from "./age-range";
 import {
   classifyLeadSection,
   LEAD_REMARK_MAX_LENGTH,
@@ -199,6 +199,30 @@ export class UsersService {
     @Inject(FirebaseService) private readonly firebase: FirebaseService,
   ) {}
 
+  private resolveAgeFields(data: {
+    dateOfBirth?: string;
+    age?: number;
+    ageRange?: AgeRange;
+  }): { dateOfBirth?: Date; ageYears?: number; ageRange: AgeRange } {
+    if (data.dateOfBirth !== undefined) {
+      const dob = new Date(`${data.dateOfBirth}T00:00:00.000Z`);
+      const age = ageFromDateOfBirth(dob);
+      if (Number.isNaN(dob.getTime()) || age === null) {
+        throw new BadRequestException(
+          "Date of birth is invalid or in the future",
+        );
+      }
+      return { dateOfBirth: dob, ageRange: ageRangeFromAge(age) };
+    }
+    if (data.age !== undefined) {
+      return { ageYears: data.age, ageRange: ageRangeFromAge(data.age) };
+    }
+    if (data.ageRange !== undefined) {
+      return { ageRange: data.ageRange };
+    }
+    throw new BadRequestException("date of birth or age is required");
+  }
+
   private resolveTemporaryPassword(requested?: string) {
     const temporaryPassword = requested?.trim() || generateTemporaryPassword();
     if (temporaryPassword.length < 8) {
@@ -274,9 +298,15 @@ export class UsersService {
       photoUrl?: string | null;
       bannerUrl?: string | null;
       coverUrl?: string | null;
+      dateOfBirth?: Date | null;
+      ageYears?: number | null;
+      ageRange?: AgeRange | null;
     },
   >(user: T) {
     const decrypted = this.crypto.decryptUser(user);
+    const ageFromDob = user.dateOfBirth
+      ? ageFromDateOfBirth(user.dateOfBirth)
+      : null;
     return {
       ...decrypted,
       photoUrl: await this.media.signReadUrl(user.photoUrl ?? null),
@@ -286,6 +316,17 @@ export class UsersService {
       ...(user.coverUrl !== undefined
         ? { coverUrl: await this.media.signReadUrl(user.coverUrl) }
         : {}),
+      ...(user.dateOfBirth !== undefined
+        ? {
+            dateOfBirth: user.dateOfBirth
+              ? user.dateOfBirth.toISOString().slice(0, 10)
+              : null,
+          }
+        : {}),
+      ...(user.dateOfBirth !== undefined || user.ageYears !== undefined
+        ? { age: ageFromDob ?? user.ageYears ?? null }
+        : {}),
+      ...(user.ageRange !== undefined ? { ageRange: user.ageRange } : {}),
     };
   }
 
@@ -463,18 +504,27 @@ export class UsersService {
     name: string;
     email: string;
     gender: Gender;
-    ageRange: AgeRange;
+    dateOfBirth?: string;
+    age?: number;
+    guardianName?: string;
+    alternateMobile?: string;
+    ageRange?: AgeRange;
     phone?: string;
     styles?: string[];
     batchId?: string;
     temporaryPassword?: string;
   }) {
+    const ageFields = this.resolveAgeFields(data);
     const student = await this.createStudioMember({
       studioId: data.studioId,
       name: data.name,
       email: data.email,
       gender: data.gender,
-      ageRange: data.ageRange,
+      dateOfBirth: ageFields.dateOfBirth,
+      ageYears: ageFields.ageYears,
+      ageRange: ageFields.ageRange,
+      guardianName: data.guardianName,
+      alternateMobile: data.alternateMobile,
       phone: data.phone,
       styles: data.styles,
       role: UserRole.STUDENT,
@@ -556,6 +606,10 @@ export class UsersService {
     email: string;
     gender: Gender;
     ageRange: AgeRange;
+    dateOfBirth?: Date;
+    ageYears?: number;
+    guardianName?: string;
+    alternateMobile?: string;
     phone?: string;
     role: typeof UserRole.STUDENT | typeof UserRole.TRAINER;
     styles?: string[];
@@ -586,6 +640,8 @@ export class UsersService {
       phone: data.phone ?? null,
       bio: null,
       instagramUrl: null,
+      guardianName: data.guardianName?.trim() || null,
+      alternateMobile: data.alternateMobile?.trim() || null,
     });
 
     const user = await this.prisma.user.create({
@@ -596,6 +652,10 @@ export class UsersService {
         studioId: data.studioId,
         gender: data.gender,
         ageRange: data.ageRange,
+        ...(data.dateOfBirth !== undefined
+          ? { dateOfBirth: data.dateOfBirth }
+          : {}),
+        ...(data.ageYears !== undefined ? { ageYears: data.ageYears } : {}),
         styles: data.styles ?? [],
         profileVisibility: isAlwaysPublicRole(data.role)
           ? ProfileVisibility.PUBLIC
@@ -608,6 +668,9 @@ export class UsersService {
         ...userPiiSelect,
         role: true,
         mustChangePassword: true,
+        dateOfBirth: true,
+        ageYears: true,
+        ageRange: true,
       },
     });
 
@@ -756,22 +819,30 @@ export class UsersService {
       name: string;
       email: string;
       gender: Gender;
-      age: number;
+      age?: number;
+      dateOfBirth?: string;
+      guardianName?: string;
+      alternateMobile?: string;
       phone?: string | null;
     }>,
   ) {
     const uniqueStudents = Array.from(
       new Map(
-        students.map((student) => [
-          student.email.trim().toLowerCase(),
-          {
-            name: student.name.trim(),
-            email: student.email.trim().toLowerCase(),
-            gender: student.gender,
-            ageRange: ageRangeFromAge(student.age),
-            phone: student.phone?.trim() || null,
-          },
-        ]),
+        students.map((student) => {
+          const ageFields = this.resolveAgeFields(student);
+          return [
+            student.email.trim().toLowerCase(),
+            {
+              name: student.name.trim(),
+              email: student.email.trim().toLowerCase(),
+              gender: student.gender,
+              ...ageFields,
+              guardianName: student.guardianName?.trim() || null,
+              alternateMobile: student.alternateMobile?.trim() || null,
+              phone: student.phone?.trim() || null,
+            },
+          ];
+        }),
       ).values(),
     );
     const emailHashes = uniqueStudents.map((student) =>
@@ -799,11 +870,19 @@ export class UsersService {
             phone: student.phone,
             bio: null,
             instagramUrl: null,
+            guardianName: student.guardianName,
+            alternateMobile: student.alternateMobile,
           }),
           role: UserRole.STUDENT,
           studioId,
           gender: student.gender,
           ageRange: student.ageRange,
+          ...(student.dateOfBirth !== undefined
+            ? { dateOfBirth: student.dateOfBirth }
+            : {}),
+          ...(student.ageYears !== undefined
+            ? { ageYears: student.ageYears }
+            : {}),
           styles: [],
           profileVisibility: ProfileVisibility.PRIVATE,
         })),
@@ -830,6 +909,9 @@ export class UsersService {
         photoUrl: true,
         styles: true,
         active: true,
+        dateOfBirth: true,
+        ageYears: true,
+        ageRange: true,
       },
     });
 
@@ -843,6 +925,9 @@ export class UsersService {
       role: true,
       photoUrl: true,
       active: true,
+      dateOfBirth: true,
+      ageYears: true,
+      ageRange: true,
     };
 
     const [
@@ -1118,7 +1203,15 @@ export class UsersService {
   async updateStudioStudent(
     studioId: string,
     studentId: string,
-    data: { name?: string; phone?: string; active?: boolean },
+    data: {
+      name?: string;
+      phone?: string;
+      dateOfBirth?: string;
+      age?: number;
+      guardianName?: string;
+      alternateMobile?: string;
+      active?: boolean;
+    },
   ) {
     const student = await this.prisma.user.findFirst({
       where: {
@@ -1135,15 +1228,36 @@ export class UsersService {
     if (
       data.name === undefined &&
       data.phone === undefined &&
+      data.dateOfBirth === undefined &&
+      data.age === undefined &&
+      data.guardianName === undefined &&
+      data.alternateMobile === undefined &&
       data.active === undefined
     ) {
       throw new BadRequestException("No student fields to update");
     }
 
-    if (data.name !== undefined || data.phone !== undefined) {
+    if (
+      data.name !== undefined ||
+      data.phone !== undefined ||
+      data.dateOfBirth !== undefined ||
+      data.age !== undefined ||
+      data.guardianName !== undefined ||
+      data.alternateMobile !== undefined
+    ) {
       await this.updateProfile(studentId, UserRole.STUDENT, {
         ...(data.name !== undefined ? { name: data.name } : {}),
         ...(data.phone !== undefined ? { phone: data.phone } : {}),
+        ...(data.dateOfBirth !== undefined
+          ? { dateOfBirth: data.dateOfBirth }
+          : {}),
+        ...(data.age !== undefined ? { age: data.age } : {}),
+        ...(data.guardianName !== undefined
+          ? { guardianName: data.guardianName }
+          : {}),
+        ...(data.alternateMobile !== undefined
+          ? { alternateMobile: data.alternateMobile }
+          : {}),
       });
     }
 
@@ -1231,6 +1345,10 @@ export class UsersService {
       experienceLevel?: ExperienceLevel;
       scheduleVibe?: string[];
       gender?: Gender;
+      dateOfBirth?: string;
+      age?: number;
+      guardianName?: string;
+      alternateMobile?: string;
       ageRange?: AgeRange;
       preferredBranchId?: string | null;
       profileVisibility?: ProfileVisibility;
@@ -1258,7 +1376,9 @@ export class UsersService {
       data.name !== undefined ||
       data.phone !== undefined ||
       data.bio !== undefined ||
-      data.instagramUrl !== undefined;
+      data.instagramUrl !== undefined ||
+      data.guardianName !== undefined ||
+      data.alternateMobile !== undefined;
 
     const pii: UserPii = {
       email: current.email,
@@ -1269,6 +1389,14 @@ export class UsersService {
         data.instagramUrl !== undefined
           ? data.instagramUrl || null
           : current.instagramUrl,
+      guardianName:
+        data.guardianName !== undefined
+          ? data.guardianName || null
+          : current.guardianName,
+      alternateMobile:
+        data.alternateMobile !== undefined
+          ? data.alternateMobile || null
+          : current.alternateMobile,
     };
 
     const {
@@ -1278,7 +1406,26 @@ export class UsersService {
       scheduleVibe,
       gender,
       ageRange,
+      dateOfBirth,
+      age,
     } = data;
+
+    if (
+      (role === UserRole.STUDENT || role === UserRole.PARENT) &&
+      !existing.ageRange &&
+      !existing.dateOfBirth &&
+      !existing.ageYears &&
+      dateOfBirth === undefined &&
+      age === undefined &&
+      ageRange === undefined
+    ) {
+      throw new BadRequestException("date of birth or age is required");
+    }
+
+    const ageFields =
+      dateOfBirth !== undefined || age !== undefined || ageRange !== undefined
+        ? this.resolveAgeFields({ dateOfBirth, age, ageRange })
+        : null;
     const normalizeImage = (value: string | undefined) =>
       value !== undefined
         ? value
@@ -1303,7 +1450,13 @@ export class UsersService {
         ...(experienceLevel !== undefined ? { experienceLevel } : {}),
         ...(scheduleVibe !== undefined ? { scheduleVibe } : {}),
         ...(gender !== undefined ? { gender } : {}),
-        ...(ageRange !== undefined ? { ageRange } : {}),
+        ...(ageFields ? { ageRange: ageFields.ageRange } : {}),
+        ...(ageFields?.dateOfBirth !== undefined
+          ? { dateOfBirth: ageFields.dateOfBirth, ageYears: null }
+          : {}),
+        ...(ageFields?.ageYears !== undefined
+          ? { ageYears: ageFields.ageYears, dateOfBirth: null }
+          : {}),
         ...(data.preferredBranchId !== undefined
           ? { preferredBranchId: data.preferredBranchId || null }
           : {}),
@@ -1312,6 +1465,14 @@ export class UsersService {
           : isAlwaysPublicRole(role)
             ? { profileVisibility: ProfileVisibility.PUBLIC }
             : {}),
+      },
+      select: {
+        id: true,
+        ...userPiiSelect,
+        photoUrl: true,
+        dateOfBirth: true,
+        ageYears: true,
+        ageRange: true,
       },
     });
 
@@ -1951,6 +2112,8 @@ export class UsersService {
       phone,
       bio: null,
       instagramUrl: null,
+      guardianName: null,
+      alternateMobile: null,
     });
 
     const user = await this.prisma.user.create({
@@ -2317,7 +2480,11 @@ export class UsersService {
       name: string;
       kind: FamilyMemberKind;
       gender: Gender;
-      ageRange: AgeRange;
+      dateOfBirth?: string;
+      age?: number;
+      guardianName?: string;
+      alternateMobile?: string;
+      ageRange?: AgeRange;
     },
   ) {
     const name = data.name.trim();
@@ -2328,6 +2495,7 @@ export class UsersService {
       throw new BadRequestException("Owner must belong to a studio");
     }
 
+    const ageFields = this.resolveAgeFields(data);
     const dependentId = randomUUID();
     const syntheticEmail = `dependent+${dependentId}@internal.invalid`;
     const sealed = this.crypto.sealPii({
@@ -2336,6 +2504,8 @@ export class UsersService {
       phone: null,
       bio: null,
       instagramUrl: null,
+      guardianName: data.guardianName?.trim() || null,
+      alternateMobile: data.alternateMobile?.trim() || null,
     });
 
     const member = await this.prisma.$transaction(async (tx) => {
@@ -2346,7 +2516,13 @@ export class UsersService {
           role: UserRole.STUDENT,
           studioId: owner.studioId,
           gender: data.gender,
-          ageRange: data.ageRange,
+          ageRange: ageFields.ageRange,
+          ...(ageFields.dateOfBirth !== undefined
+            ? { dateOfBirth: ageFields.dateOfBirth }
+            : {}),
+          ...(ageFields.ageYears !== undefined
+            ? { ageYears: ageFields.ageYears }
+            : {}),
           styles: [],
           profileVisibility: ProfileVisibility.PRIVATE,
           onboardingCompletedAt: new Date(),

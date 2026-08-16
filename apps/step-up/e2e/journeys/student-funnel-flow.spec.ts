@@ -379,7 +379,7 @@ test.describe("student funnel full flow @critical", () => {
       await page.getByLabel(/^name$/i).fill(name);
       await page.getByLabel(/^email$/i).fill(email);
       await page.getByRole("button", { name: /^female$/i }).click();
-      await page.getByRole("button", { name: /20–40/i }).click();
+      await page.getByLabel(/^age$/i).fill("28");
       await expect(page.getByLabel(/^name$/i)).toHaveValue(name);
       await expect(page.getByLabel(/^email$/i)).toHaveValue(email);
       const continueBtn = page.getByRole("button", { name: /^continue$/i });

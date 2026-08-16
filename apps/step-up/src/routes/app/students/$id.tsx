@@ -28,6 +28,10 @@ import type { Studio } from "@/modules/settings/types";
 import { StudentSearchMultiselect } from "@/modules/students/student-search-multiselect";
 import { AppBottomSheet } from "@/modules/ui/app-bottom-sheet";
 import { AppSheet } from "@/modules/ui/app-sheet";
+import {
+  DateOfBirthOrAgeFields,
+  resolveAgePayload,
+} from "@/modules/ui/date-of-birth-or-age";
 import { FormInput } from "@/modules/ui/form-input";
 import { PullToRefresh } from "@/modules/ui/pull-to-refresh";
 import { Screen } from "@/modules/ui/screen";
@@ -46,6 +50,10 @@ type StudentStudioProfile = {
     role: string;
     styles: string[];
     active: boolean;
+    dateOfBirth?: string | null;
+    age?: number | null;
+    guardianName?: string | null;
+    alternateMobile?: string | null;
   };
   paidMonths?: number;
   batches: Array<{
@@ -247,6 +255,10 @@ function StudentDetailPage() {
   const [sheet, setSheet] = useState<SheetKind>(null);
   const [editName, setEditName] = useState("");
   const [editPhone, setEditPhone] = useState("");
+  const [editDateOfBirth, setEditDateOfBirth] = useState("");
+  const [editAge, setEditAge] = useState("");
+  const [editGuardianName, setEditGuardianName] = useState("");
+  const [editAlternateMobile, setEditAlternateMobile] = useState("");
   const [collectInvoiceId, setCollectInvoiceId] = useState<string | null>(null);
   const [familyOpenId, setFamilyOpenId] = useState<string | null>(null);
   const [payFamily, setPayFamily] = useState<StudioFamily | null>(null);
@@ -329,6 +341,14 @@ function StudentDetailPage() {
     if (!student) return;
     setEditName(student.name);
     setEditPhone(student.phone ?? "");
+    setEditDateOfBirth(student.dateOfBirth ?? "");
+    setEditAge(
+      student.age !== null && student.age !== undefined
+        ? String(student.age)
+        : "",
+    );
+    setEditGuardianName(student.guardianName ?? "");
+    setEditAlternateMobile(student.alternateMobile ?? "");
     setSheet("edit");
   }
 
@@ -422,6 +442,10 @@ function StudentDetailPage() {
     mutationFn: (payload: {
       name?: string;
       phone?: string;
+      dateOfBirth?: string;
+      age?: number;
+      guardianName?: string;
+      alternateMobile?: string;
       active?: boolean;
     }) => api.patch(`/users/studio/${studioId}/students/${id}`, payload),
     onSuccess: async (_data, variables) => {
@@ -716,6 +740,25 @@ function StudentDetailPage() {
                   ) : (
                     <p className={staff.rowMeta}>No phone on file</p>
                   )}
+                  {profile.student.age !== null &&
+                  profile.student.age !== undefined ? (
+                    <p className={staff.rowMeta}>
+                      Age {profile.student.age}
+                      {profile.student.dateOfBirth
+                        ? ` · DOB ${profile.student.dateOfBirth}`
+                        : ""}
+                    </p>
+                  ) : null}
+                  {profile.student.guardianName ? (
+                    <p className={staff.rowMeta}>
+                      Guardian: {profile.student.guardianName}
+                    </p>
+                  ) : null}
+                  {profile.student.alternateMobile ? (
+                    <p className={staff.rowMeta}>
+                      Alt: {profile.student.alternateMobile}
+                    </p>
+                  ) : null}
                   {profile.student.styles.length > 0 ? (
                     <p className={staff.rowMeta}>
                       {profile.student.styles.join(", ")}
@@ -1043,6 +1086,24 @@ function StudentDetailPage() {
             type="tel"
             data-testid="edit-student-phone"
           />
+          <DateOfBirthOrAgeFields
+            dateOfBirth={editDateOfBirth}
+            onDateOfBirthChange={setEditDateOfBirth}
+            age={editAge}
+            onAgeChange={setEditAge}
+            hint="Either a date of birth or an exact age."
+          />
+          <FormInput
+            label="Guardian name"
+            value={editGuardianName}
+            onChange={setEditGuardianName}
+          />
+          <FormInput
+            label="Alternate mobile number"
+            type="tel"
+            value={editAlternateMobile}
+            onChange={setEditAlternateMobile}
+          />
           {updateStudent.isError ? (
             <ErrorState
               description={
@@ -1063,6 +1124,12 @@ function StudentDetailPage() {
                 updateStudent.mutate({
                   name: editName.trim(),
                   phone: editPhone.trim(),
+                  ...resolveAgePayload({
+                    dateOfBirth: editDateOfBirth,
+                    age: editAge,
+                  }),
+                  guardianName: editGuardianName.trim(),
+                  alternateMobile: editAlternateMobile.trim(),
                 })
               }
             >

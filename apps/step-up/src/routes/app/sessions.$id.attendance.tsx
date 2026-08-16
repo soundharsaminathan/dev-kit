@@ -16,7 +16,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useApi } from "@/lib/api-context";
 import { ADMIN_ROLES } from "@/lib/constants";
 import { useAuth } from "@/lib/use-auth";
-import { useStudioId } from "@/lib/use-studio-id";
 import { AttendanceRosterTable } from "@/modules/attendance/attendance-roster-table";
 import {
   type TrialCandidate,
@@ -30,6 +29,11 @@ import { SessionScheduleActions } from "@/modules/sessions/session-schedule-acti
 import { useStudioTrainers } from "@/modules/trainers/use-trainers";
 import { ApiState } from "@/modules/ui/api-state";
 import { AppSheet } from "@/modules/ui/app-sheet";
+import {
+  DateOfBirthOrAgeFields,
+  hasAgeValue,
+  resolveAgePayload,
+} from "@/modules/ui/date-of-birth-or-age";
 import {
   ExpandableBentoGrid,
   type ExpandableBentoItem,
@@ -57,8 +61,11 @@ type Session = {
 type NewStudentForm = {
   name: string;
   email: string;
-  gender: "MALE" | "FEMALE" | "OTHER";
-  ageRange: "0-5" | "6-12" | "13-17" | "18+";
+  gender: "MALE" | "FEMALE";
+  dateOfBirth: string;
+  age: string;
+  guardianName: string;
+  alternateMobile: string;
 };
 
 function formatSessionDateTime(value: string) {
@@ -96,7 +103,6 @@ function AddTrialUserSheet({
   onSuccess: () => void;
 }) {
   const api = useApi();
-  const studioId = useStudioId();
   const { toast } = useToastContext("AddTrialUserSheet");
   const [selectedCandidate, setSelectedCandidate] =
     useState<TrialCandidate | null>(null);
@@ -106,7 +112,10 @@ function AddTrialUserSheet({
     name: "",
     email: "",
     gender: "MALE",
-    ageRange: "18+",
+    dateOfBirth: "",
+    age: "",
+    guardianName: "",
+    alternateMobile: "",
   });
 
   const addTrialMutation = useMutation({
@@ -138,10 +147,18 @@ function AddTrialUserSheet({
 
   const createStudentMutation = useMutation({
     mutationFn: async (data: NewStudentForm) => {
-      const student = await api.post<{ id: string }>(
-        `/users/studio/${studioId}/students`,
-        data,
-      );
+      const student = await api.post<{ id: string }>("/users", {
+        name: data.name.trim(),
+        email: data.email.trim(),
+        gender: data.gender,
+        ...resolveAgePayload({ dateOfBirth: data.dateOfBirth, age: data.age }),
+        ...(data.guardianName.trim()
+          ? { guardianName: data.guardianName.trim() }
+          : {}),
+        ...(data.alternateMobile.trim()
+          ? { alternateMobile: data.alternateMobile.trim() }
+          : {}),
+      });
       return student.id;
     },
     onSuccess: (studentId) => {
@@ -151,7 +168,10 @@ function AddTrialUserSheet({
         name: "",
         email: "",
         gender: "MALE",
-        ageRange: "18+",
+        dateOfBirth: "",
+        age: "",
+        guardianName: "",
+        alternateMobile: "",
       });
     },
     onError: (error: unknown) => {
@@ -169,6 +189,24 @@ function AddTrialUserSheet({
       toast({
         title: "Name required",
         description: "Please enter a student name.",
+        variant: "error",
+      });
+      return;
+    }
+    if (!newStudent.email.trim()) {
+      toast({
+        title: "Email required",
+        description: "Please enter a student email.",
+        variant: "error",
+      });
+      return;
+    }
+    if (
+      !hasAgeValue({ dateOfBirth: newStudent.dateOfBirth, age: newStudent.age })
+    ) {
+      toast({
+        title: "Age required",
+        description: "Enter a date of birth or exact age.",
         variant: "error",
       });
       return;
@@ -255,7 +293,7 @@ function AddTrialUserSheet({
                   htmlFor="student-email"
                   className={styles.trialFormLabel}
                 >
-                  Email
+                  Email <span className={styles.trialFormRequired}>*</span>
                 </label>
                 <input
                   id="student-email"
@@ -265,56 +303,86 @@ function AddTrialUserSheet({
                     setNewStudent({ ...newStudent, email: e.target.value })
                   }
                   placeholder="email@example.com"
+                  required
                   className={styles.trialFormInput}
                 />
               </div>
+              <div className={styles.trialFormField}>
+                <label
+                  htmlFor="student-gender"
+                  className={styles.trialFormLabel}
+                >
+                  Gender
+                </label>
+                <select
+                  id="student-gender"
+                  value={newStudent.gender}
+                  onChange={(e) =>
+                    setNewStudent({
+                      ...newStudent,
+                      gender: e.target.value as NewStudentForm["gender"],
+                    })
+                  }
+                  className={styles.trialFormSelect}
+                >
+                  <option value="MALE">Male</option>
+                  <option value="FEMALE">Female</option>
+                </select>
+              </div>
+              <DateOfBirthOrAgeFields
+                dateOfBirth={newStudent.dateOfBirth}
+                onDateOfBirthChange={(dateOfBirth) =>
+                  setNewStudent((current) => ({ ...current, dateOfBirth }))
+                }
+                age={newStudent.age}
+                onAgeChange={(age) =>
+                  setNewStudent((current) => ({ ...current, age }))
+                }
+                className={styles.trialFormRow}
+                hint="Enter either a date of birth or an exact age."
+              />
               <div className={styles.trialFormRow}>
                 <div className={styles.trialFormField}>
                   <label
-                    htmlFor="student-gender"
+                    htmlFor="student-guardian"
                     className={styles.trialFormLabel}
                   >
-                    Gender
+                    Guardian name
                   </label>
-                  <select
-                    id="student-gender"
-                    value={newStudent.gender}
+                  <input
+                    id="student-guardian"
+                    type="text"
+                    value={newStudent.guardianName}
                     onChange={(e) =>
                       setNewStudent({
                         ...newStudent,
-                        gender: e.target.value as NewStudentForm["gender"],
+                        guardianName: e.target.value,
                       })
                     }
-                    className={styles.trialFormSelect}
-                  >
-                    <option value="MALE">Male</option>
-                    <option value="FEMALE">Female</option>
-                    <option value="OTHER">Other</option>
-                  </select>
+                    placeholder="Optional"
+                    className={styles.trialFormInput}
+                  />
                 </div>
                 <div className={styles.trialFormField}>
                   <label
-                    htmlFor="student-age"
+                    htmlFor="student-alternate-mobile"
                     className={styles.trialFormLabel}
                   >
-                    Age range
+                    Alternate mobile
                   </label>
-                  <select
-                    id="student-age"
-                    value={newStudent.ageRange}
+                  <input
+                    id="student-alternate-mobile"
+                    type="tel"
+                    value={newStudent.alternateMobile}
                     onChange={(e) =>
                       setNewStudent({
                         ...newStudent,
-                        ageRange: e.target.value as NewStudentForm["ageRange"],
+                        alternateMobile: e.target.value,
                       })
                     }
-                    className={styles.trialFormSelect}
-                  >
-                    <option value="0-5">0-5</option>
-                    <option value="6-12">6-12</option>
-                    <option value="13-17">13-17</option>
-                    <option value="18+">18+</option>
-                  </select>
+                    placeholder="Optional"
+                    className={styles.trialFormInput}
+                  />
                 </div>
               </div>
               <div className={styles.trialCreateActions}>

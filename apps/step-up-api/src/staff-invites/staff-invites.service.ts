@@ -193,6 +193,8 @@ export class StaffInvitesService {
           phone: current.phone,
           bio: current.bio,
           instagramUrl: current.instagramUrl,
+          guardianName: current.guardianName,
+          alternateMobile: current.alternateMobile,
         },
         existingByFirebase.encryptedKey,
       );
@@ -213,6 +215,8 @@ export class StaffInvitesService {
         phone: null,
         bio: null,
         instagramUrl: null,
+        guardianName: null,
+        alternateMobile: null,
       });
 
       user = await this.prisma.user.create({

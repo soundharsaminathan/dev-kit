@@ -1,6 +1,6 @@
 import { AgeRange } from "@prisma/client";
 import { describe, expect, it } from "vitest";
-import { ageRangeFromAge, isImportAge } from "./age-range";
+import { ageFromDateOfBirth, ageRangeFromAge, isImportAge } from "./age-range";
 
 describe("ageRangeFromAge", () => {
   it("assigns under 10", () => {
@@ -35,5 +35,33 @@ describe("isImportAge", () => {
     expect(isImportAge(8.5)).toBe(false);
     expect(isImportAge(-1)).toBe(false);
     expect(isImportAge(121)).toBe(false);
+  });
+});
+
+describe("ageFromDateOfBirth", () => {
+  const now = new Date("2026-08-16T12:00:00.000Z");
+
+  it("computes whole years from a date", () => {
+    expect(ageFromDateOfBirth(new Date("2000-01-15T00:00:00.000Z"), now)).toBe(
+      26,
+    );
+    expect(ageFromDateOfBirth(new Date("2000-08-16T00:00:00.000Z"), now)).toBe(
+      26,
+    );
+    expect(ageFromDateOfBirth(new Date("2000-08-17T00:00:00.000Z"), now)).toBe(
+      25,
+    );
+  });
+
+  it("accepts YYYY-MM-DD strings", () => {
+    expect(ageFromDateOfBirth("2010-06-20", now)).toBe(16);
+    expect(ageFromDateOfBirth("2026-08-16", now)).toBe(0);
+  });
+
+  it("rejects future and malformed dates", () => {
+    expect(ageFromDateOfBirth("2099-01-01", now)).toBeNull();
+    expect(ageFromDateOfBirth("not-a-date", now)).toBeNull();
+    expect(ageFromDateOfBirth(new Date("invalid"), now)).toBeNull();
+    expect(ageFromDateOfBirth(null, now)).toBeNull();
   });
 });

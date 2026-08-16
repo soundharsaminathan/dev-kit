@@ -22,12 +22,16 @@ import { uploadSocialPhoto } from "@/modules/social/upload";
 import { TrainerCardsView } from "@/modules/trainers/trainer-cards-view";
 import { TrainerStackView } from "@/modules/trainers/trainer-stack-view";
 import type { StudioTrainer } from "@/modules/trainers/types";
+import {
+  DateOfBirthOrAgeFields,
+  hasAgeValue,
+  resolveAgePayload,
+} from "@/modules/ui/date-of-birth-or-age";
 import { FormInput } from "@/modules/ui/form-input";
 import { ImageCropSheet } from "@/modules/ui/image-crop-sheet";
 import { TouchButton } from "@/modules/ui/touch-button";
 import styles from "./onboarding.module.scss";
 import {
-  AGE_RANGES,
   EXPERIENCE_LEVELS,
   GENDERS,
   ONBOARDING_STEPS,
@@ -40,6 +44,8 @@ type ProfilePatch = {
   photoUrl?: string;
   experienceLevel?: ExperienceLevel;
   gender?: Gender;
+  dateOfBirth?: string;
+  age?: number;
   ageRange?: AgeRange;
   onboardingCompletedAt?: string | null;
 };
@@ -155,8 +161,9 @@ export function OnboardingWizard() {
   const [experienceLevel, setExperienceLevel] =
     useState<ExperienceLevel | null>(user?.experienceLevel ?? null);
   const [gender, setGender] = useState<Gender | null>(user?.gender ?? null);
-  const [ageRange, setAgeRange] = useState<AgeRange | null>(
-    user?.ageRange ?? null,
+  const [dateOfBirth, setDateOfBirth] = useState(() => user?.dateOfBirth ?? "");
+  const [age, setAge] = useState(() =>
+    user?.age !== null && user?.age !== undefined ? String(user.age) : "",
   );
   const [selectedTrial, setSelectedTrial] = useState<SelectedTrial | null>(
     null,
@@ -198,6 +205,10 @@ export function OnboardingWizard() {
           ? { experienceLevel: saved.experienceLevel }
           : {}),
         ...(saved.gender !== undefined ? { gender: saved.gender } : {}),
+        ...(saved.dateOfBirth !== undefined
+          ? { dateOfBirth: saved.dateOfBirth }
+          : {}),
+        ...(saved.age !== undefined ? { age: saved.age } : {}),
         ...(saved.ageRange !== undefined ? { ageRange: saved.ageRange } : {}),
       });
     },
@@ -255,13 +266,14 @@ export function OnboardingWizard() {
         if (!gender) {
           throw new Error("Choose Male or Female to continue");
         }
-        if (!ageRange) {
-          throw new Error("Choose your age range");
+        if (!hasAgeValue({ dateOfBirth, age })) {
+          throw new Error("Enter your date of birth or age");
         }
+        const agePayload = resolveAgePayload({ dateOfBirth, age });
         updateUser({
           name: trimmed,
           gender,
-          ageRange,
+          ...agePayload,
           ...(photoKey ? { photoUrl: photoKey } : {}),
         });
         advanceTo(next);
@@ -269,7 +281,7 @@ export function OnboardingWizard() {
           {
             name: trimmed,
             gender,
-            ageRange,
+            ...agePayload,
             ...(photoKey ? { photoUrl: photoKey } : {}),
           },
           stepIndex,
@@ -430,9 +442,7 @@ export function OnboardingWizard() {
                     ) : null}
                     <AvatarFallback>
                       {initials(
-                        name ||
-                          resolveDisplayName(null, user?.email) ||
-                          "You",
+                        name || resolveDisplayName(null, user?.email) || "You",
                       )}
                     </AvatarFallback>
                   </Avatar>
@@ -474,22 +484,13 @@ export function OnboardingWizard() {
                   </div>
                 </div>
                 <div className={styles.profileSection}>
-                  <p className={styles.sectionLabel}>Age range</p>
-                  <div className={styles.chipRow}>
-                    {AGE_RANGES.map((option) => (
-                      <button
-                        key={option.id}
-                        type="button"
-                        className={styles.styleChip}
-                        data-selected={
-                          ageRange === option.id ? "true" : undefined
-                        }
-                        onClick={() => setAgeRange(option.id)}
-                      >
-                        {option.label} · {option.title}
-                      </button>
-                    ))}
-                  </div>
+                  <DateOfBirthOrAgeFields
+                    dateOfBirth={dateOfBirth}
+                    onDateOfBirthChange={setDateOfBirth}
+                    age={age}
+                    onAgeChange={setAge}
+                    hint="Enter either your date of birth or an exact age."
+                  />
                 </div>
               </div>
             ) : null}

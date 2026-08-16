@@ -111,6 +111,25 @@ class UpdateProfileDto {
   gender?: Gender;
 
   @IsOptional()
+  @IsDateString()
+  dateOfBirth?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  @Max(120)
+  age?: number;
+
+  @IsOptional()
+  @IsString()
+  guardianName?: string;
+
+  @IsOptional()
+  @IsString()
+  alternateMobile?: string;
+
+  @IsOptional()
   @IsEnum(AgeRange)
   ageRange?: AgeRange;
 
@@ -185,6 +204,25 @@ class UpdateStudioStudentDto {
   phone?: string;
 
   @IsOptional()
+  @IsDateString()
+  dateOfBirth?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  @Max(120)
+  age?: number;
+
+  @IsOptional()
+  @IsString()
+  guardianName?: string;
+
+  @IsOptional()
+  @IsString()
+  alternateMobile?: string;
+
+  @IsOptional()
   @IsBoolean()
   active?: boolean;
 }
@@ -206,8 +244,28 @@ class CreateStudentDto {
   @IsEnum(Gender)
   gender!: Gender;
 
+  @IsOptional()
+  @IsDateString()
+  dateOfBirth?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  @Max(120)
+  age?: number;
+
+  @IsOptional()
+  @IsString()
+  guardianName?: string;
+
+  @IsOptional()
+  @IsString()
+  alternateMobile?: string;
+
+  @IsOptional()
   @IsEnum(AgeRange)
-  ageRange!: AgeRange;
+  ageRange?: AgeRange;
 
   @IsOptional()
   @IsString()
@@ -267,10 +325,23 @@ class BulkStudentDto {
   gender!: Gender;
 
   @Type(() => Number)
+  @IsOptional()
   @IsInt()
   @Min(0)
   @Max(120)
-  age!: number;
+  age?: number;
+
+  @IsOptional()
+  @IsDateString()
+  dateOfBirth?: string;
+
+  @IsOptional()
+  @IsString()
+  guardianName?: string;
+
+  @IsOptional()
+  @IsString()
+  alternateMobile?: string;
 
   @IsOptional()
   @IsString()
@@ -297,8 +368,28 @@ class CreateFamilyMemberDto {
   @IsEnum(Gender)
   gender!: Gender;
 
+  @IsOptional()
+  @IsDateString()
+  dateOfBirth?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  @Max(120)
+  age?: number;
+
+  @IsOptional()
+  @IsString()
+  guardianName?: string;
+
+  @IsOptional()
+  @IsString()
+  alternateMobile?: string;
+
+  @IsOptional()
   @IsEnum(AgeRange)
-  ageRange!: AgeRange;
+  ageRange?: AgeRange;
 }
 
 class CreateLeadDto {

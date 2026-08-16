@@ -13,23 +13,40 @@ function makeService(masterKey: string | null = MASTER_KEY) {
   return new UserCryptoService(config as never);
 }
 
+function pii(
+  overrides: Partial<Parameters<UserCryptoService["encryptPii"]>[1]> = {},
+) {
+  return {
+    email: "a@b.co",
+    name: "A",
+    phone: null,
+    bio: null,
+    instagramUrl: null,
+    guardianName: null,
+    alternateMobile: null,
+    ...overrides,
+  };
+}
+
 describe("UserCryptoService", () => {
   it("round-trips PII through encrypt/decrypt", () => {
     const service = makeService();
     const wrapped = service.generateWrappedKey();
-    const pii = {
+    const value = pii({
       email: "Alex@StepUp.dev",
       name: "Alex Student",
       phone: "+91 91234 56789",
       bio: "Loves hip-hop",
       instagramUrl: "https://instagram.com/alex",
-    };
+      guardianName: "Guardian One",
+      alternateMobile: "+91 98765 43210",
+    });
 
-    const { ciphertext, iv } = service.encryptPii(wrapped, pii);
+    const { ciphertext, iv } = service.encryptPii(wrapped, value);
     expect(ciphertext).not.toContain("Alex");
     expect(ciphertext).not.toContain("hip-hop");
 
-    expect(service.decryptPii(wrapped, ciphertext, iv)).toEqual(pii);
+    expect(service.decryptPii(wrapped, ciphertext, iv)).toEqual(value);
   });
 
   it("sealPii produces decryptable rows and stable email hashes", () => {
@@ -40,6 +57,8 @@ describe("UserCryptoService", () => {
       phone: null,
       bio: null,
       instagramUrl: null,
+      guardianName: " Guardian One ",
+      alternateMobile: null,
     });
 
     const decrypted = service.decryptUser({
@@ -49,9 +68,24 @@ describe("UserCryptoService", () => {
 
     expect(decrypted.email).toBe("Owner@StepUp.dev");
     expect(decrypted.name).toBe("Studio Owner");
+    expect(decrypted.guardianName).toBe("Guardian One");
     expect(decrypted).not.toHaveProperty("encryptedKey");
     expect(sealed.emailHash).toBe(service.hashEmail("owner@stepup.dev"));
     expect(service.hashEmail("OWNER@stepup.dev")).toBe(sealed.emailHash);
+  });
+
+  it("defaults missing guardian fields when decrypting legacy ciphertext", () => {
+    const service = makeService();
+    const wrapped = service.generateWrappedKey();
+    const { ciphertext, iv } = service.encryptPii(
+      wrapped,
+      pii({ email: "legacy@stepup.dev", name: "Legacy User" }),
+    );
+
+    const decrypted = service.decryptPii(wrapped, ciphertext, iv);
+    expect(decrypted.guardianName).toBeNull();
+    expect(decrypted.alternateMobile).toBeNull();
+    expect(decrypted.email).toBe("legacy@stepup.dev");
   });
 
   it("generates distinct keys and ciphertexts", () => {
@@ -60,28 +94,15 @@ describe("UserCryptoService", () => {
     const wrappedB = service.generateWrappedKey();
     expect(wrappedA).not.toBe(wrappedB);
 
-    const pii = {
-      email: "a@b.co",
-      name: "A",
-      phone: null,
-      bio: null,
-      instagramUrl: null,
-    };
-    const first = service.encryptPii(wrappedA, pii);
-    const second = service.encryptPii(wrappedA, pii);
+    const first = service.encryptPii(wrappedA, pii());
+    const second = service.encryptPii(wrappedA, pii());
     expect(first.ciphertext).not.toBe(second.ciphertext);
   });
 
   it("rejects tampered ciphertext", () => {
     const service = makeService();
     const wrapped = service.generateWrappedKey();
-    const { ciphertext, iv } = service.encryptPii(wrapped, {
-      email: "a@b.co",
-      name: "Secret",
-      phone: null,
-      bio: null,
-      instagramUrl: null,
-    });
+    const { ciphertext, iv } = service.encryptPii(wrapped, pii());
 
     const bytes = Buffer.from(ciphertext, "base64");
     bytes[0] ^= 0xff;
@@ -94,13 +115,7 @@ describe("UserCryptoService", () => {
     const service = makeService();
     const wrappedA = service.generateWrappedKey();
     const wrappedB = service.generateWrappedKey();
-    const { ciphertext, iv } = service.encryptPii(wrappedA, {
-      email: "a@b.co",
-      name: "Secret",
-      phone: null,
-      bio: null,
-      instagramUrl: null,
-    });
+    const { ciphertext, iv } = service.encryptPii(wrappedA, pii());
 
     expect(() => service.decryptPii(wrappedB, ciphertext, iv)).toThrow();
   });

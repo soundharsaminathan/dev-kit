@@ -114,14 +114,25 @@ const strings = [
   "Email",
   "Gender",
   "Age",
+  "Date of birth",
+  "Mobile",
+  "Guardian name",
+  "Alternate mobile",
   "Ada Lovelace",
   "ada@example.com",
   "Female",
   "28",
-  "Alan Turing",
-  "alan@example.com",
+  "9876543210",
+  "Grace Hopper",
+  "grace@example.com",
   "Male",
-  "16",
+  "2010-06-20",
+  "9123456789",
+  "Charles Babbage",
+  "charles@example.com",
+  "Male",
+  "14",
+  "Charles Parent",
 ];
 
 const sharedStrings = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -136,9 +147,10 @@ function cell(ref, idx) {
 const sheet = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
   <sheetData>
-    <row r="1">${cell("A1", 0)}${cell("B1", 1)}${cell("C1", 2)}${cell("D1", 3)}</row>
-    <row r="2">${cell("A2", 4)}${cell("B2", 5)}${cell("C2", 6)}${cell("D2", 7)}</row>
-    <row r="3">${cell("A3", 8)}${cell("B3", 9)}${cell("C3", 10)}${cell("D3", 11)}</row>
+    <row r="1">${cell("A1", 0)}${cell("B1", 1)}${cell("C1", 2)}${cell("D1", 3)}${cell("E1", 4)}${cell("F1", 5)}${cell("G1", 6)}${cell("H1", 7)}</row>
+    <row r="2">${cell("A2", 8)}${cell("B2", 9)}${cell("C2", 10)}${cell("D2", 11)}${cell("F2", 12)}</row>
+    <row r="3">${cell("A3", 13)}${cell("B3", 14)}${cell("C3", 15)}${cell("E3", 16)}${cell("F3", 17)}</row>
+    <row r="4">${cell("A4", 18)}${cell("B4", 19)}${cell("C4", 20)}${cell("D4", 21)}${cell("G4", 22)}</row>
   </sheetData>
 </worksheet>`;
 

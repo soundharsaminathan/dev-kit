@@ -23,6 +23,8 @@ export type UserPii = {
   phone: string | null;
   bio: string | null;
   instagramUrl: string | null;
+  guardianName: string | null;
+  alternateMobile: string | null;
 };
 
 export type EncryptedUserFields = {
@@ -120,7 +122,16 @@ export class UserCryptoService {
       Buffer.from(iv, "base64"),
       Buffer.from(ciphertext, "base64"),
     );
-    return JSON.parse(plaintext.toString("utf8")) as UserPii;
+    const parsed = JSON.parse(plaintext.toString("utf8")) as Partial<UserPii>;
+    return {
+      email: parsed.email ?? "",
+      name: parsed.name ?? "",
+      phone: parsed.phone ?? null,
+      bio: parsed.bio ?? null,
+      instagramUrl: parsed.instagramUrl ?? null,
+      guardianName: parsed.guardianName ?? null,
+      alternateMobile: parsed.alternateMobile ?? null,
+    };
   }
 
   sealPii(
@@ -134,6 +145,8 @@ export class UserCryptoService {
       phone: pii.phone?.trim() || null,
       bio: pii.bio?.trim() || null,
       instagramUrl: pii.instagramUrl?.trim() || null,
+      guardianName: pii.guardianName?.trim() || null,
+      alternateMobile: pii.alternateMobile?.trim() || null,
     });
     return {
       encryptedKey,

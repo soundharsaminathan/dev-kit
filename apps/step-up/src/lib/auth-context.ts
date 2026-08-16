@@ -15,6 +15,10 @@ export type AuthUser = {
   scheduleVibe?: string[] | undefined;
   gender?: Gender | null | undefined;
   ageRange?: AgeRange | null | undefined;
+  dateOfBirth?: string | null | undefined;
+  age?: number | null | undefined;
+  guardianName?: string | null | undefined;
+  alternateMobile?: string | null | undefined;
   preferredBranchId?: string | null | undefined;
   onboardingCompletedAt?: string | null | undefined;
   mustChangePassword?: boolean | undefined;
