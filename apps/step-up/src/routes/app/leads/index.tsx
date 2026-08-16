@@ -17,6 +17,7 @@ import {
   motion,
   type PanInfo,
   useReducedMotion,
+  type Variants,
 } from "motion/react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useApi } from "@/lib/api-context";
@@ -64,6 +65,25 @@ const EASE_OUT = [0.16, 1, 0.3, 1] as const;
 
 const SWIPE_DRAG = 56;
 const SWIPE_VELOCITY = 450;
+
+type SwipeDirection = -1 | 1;
+
+const SWIPE_SPRING = {
+  type: "spring",
+  stiffness: 400,
+  damping: 40,
+  mass: 0.9,
+} as const;
+
+const pageVariants: Variants = {
+  enter: (direction: SwipeDirection) => ({
+    x: direction > 0 ? "100%" : "-100%",
+  }),
+  center: { x: 0 },
+  exit: (direction: SwipeDirection) => ({
+    x: direction > 0 ? "-100%" : "100%",
+  }),
+};
 
 function isLeadSection(value: unknown): value is LeadSection {
   return (
@@ -204,6 +224,7 @@ function LeadsPage() {
   const activeSection = searchParams.section ?? "new";
   const isMobile = useIsMobile();
   const reduce = useReducedMotion();
+  const [direction, setDirection] = useState<SwipeDirection>(1);
   const [addOpen, setAddOpen] = useState(false);
   const [switchLead, setSwitchLead] = useState<Lead | null>(null);
   const [detailLead, setDetailLead] = useState<Lead | null>(null);
@@ -505,6 +526,10 @@ function LeadsPage() {
   }
 
   function selectSection(section: LeadSection) {
+    if (section === activeSection) return;
+    const fromIndex = SECTION_ORDER.indexOf(activeSection);
+    const toIndex = SECTION_ORDER.indexOf(section);
+    setDirection(toIndex > fromIndex ? 1 : -1);
     const keepRange = sectionAppliesDateFilter(section);
     void navigate({
       search: {
@@ -533,6 +558,9 @@ function LeadsPage() {
     ? { duration: 0 }
     : { type: "spring", stiffness: 520, damping: 38, mass: 1 };
 
+  const pageTransition = reduce ? { duration: 0 } : { x: SWIPE_SPRING };
+  const dragReturnTransition = reduce ? { duration: 0 } : SWIPE_SPRING;
+
   return (
     <>
       <Screen
@@ -560,9 +588,13 @@ function LeadsPage() {
             Add
           </TouchButton>
         }
+        className={styles.leadsScreen ?? ""}
       >
-        <PullToRefresh onRefresh={() => refetch()}>
-          <div className={staff.section}>
+        <PullToRefresh
+          onRefresh={() => refetch()}
+          className={styles.fill ?? ""}
+        >
+          <div className={`${staff.section} ${styles.fill ?? ""}`}>
             <LeadPipelineTabs
               activeSection={activeSection}
               onSelectSection={selectSection}
@@ -673,119 +705,140 @@ function LeadsPage() {
               className={styles.swipeArea}
               drag={canSwipe ? "x" : false}
               dragConstraints={{ left: 0, right: 0 }}
-              dragElastic={0.18}
+              dragElastic={0.55}
               dragDirectionLock
+              animate={{ x: 0 }}
+              transition={dragReturnTransition}
               {...(canSwipe ? { onDragEnd: handleDragEnd } : {})}
             >
-              {query.isLoading ? (
-                <LeadCardSkeletonList count={4} label="Loading leads" />
-              ) : null}
+              <AnimatePresence
+                initial={false}
+                mode="popLayout"
+                custom={direction}
+              >
+                <motion.div
+                  key={activeSection}
+                  className={styles.swipePage}
+                  custom={direction}
+                  variants={pageVariants}
+                  initial="enter"
+                  animate="center"
+                  exit="exit"
+                  transition={pageTransition}
+                >
+                  {query.isLoading ? (
+                    <LeadCardSkeletonList count={4} label="Loading leads" />
+                  ) : null}
 
-              {query.isError ? (
-                <ErrorState
-                  description={
-                    query.error instanceof Error
-                      ? query.error.message
-                      : "Could not load leads."
-                  }
-                  action={
-                    <TouchButton
-                      variant="primary"
-                      onClick={() => query.refetch()}
-                    >
-                      Try again
-                    </TouchButton>
-                  }
-                />
-              ) : null}
+                  {query.isError ? (
+                    <ErrorState
+                      description={
+                        query.error instanceof Error
+                          ? query.error.message
+                          : "Could not load leads."
+                      }
+                      action={
+                        <TouchButton
+                          variant="primary"
+                          onClick={() => query.refetch()}
+                        >
+                          Try again
+                        </TouchButton>
+                      }
+                    />
+                  ) : null}
 
-              {query.isSuccess && leads.length === 0 ? (
-                <EmptyState
-                  icon="smartphone"
-                  title={
-                    hasSearch
-                      ? "No matching leads"
-                      : `No ${SECTION_LABELS[activeSection].toLowerCase()}`
-                  }
-                  description={
-                    hasSearch
-                      ? "Try another name or clear your search."
-                      : "Nothing here yet. Try a different filter."
-                  }
-                  action={
-                    !hasSearch ? (
-                      <TouchButton
-                        variant="primary"
-                        onClick={() => setAddOpen(true)}
-                      >
-                        Add lead
-                      </TouchButton>
-                    ) : undefined
-                  }
-                />
-              ) : null}
+                  {query.isSuccess && leads.length === 0 ? (
+                    <EmptyState
+                      icon="smartphone"
+                      title={
+                        hasSearch
+                          ? "No matching leads"
+                          : `No ${SECTION_LABELS[activeSection].toLowerCase()}`
+                      }
+                      description={
+                        hasSearch
+                          ? "Try another name or clear your search."
+                          : "Nothing here yet. Try a different filter."
+                      }
+                      action={
+                        !hasSearch ? (
+                          <TouchButton
+                            variant="primary"
+                            onClick={() => setAddOpen(true)}
+                          >
+                            Add lead
+                          </TouchButton>
+                        ) : undefined
+                      }
+                    />
+                  ) : null}
 
-              <ul className={staff.list}>
-                <AnimatePresence initial={false} mode="popLayout">
-                  {leads.map((lead) => {
-                    const canSelect = !isMobile;
-                    const canSwitchTrial =
-                      lead.section === "new" ||
-                      lead.section === "trialBooked" ||
-                      lead.section === "trialAttended" ||
-                      lead.section === "trialMissed";
-                    return (
-                      <motion.li
-                        key={lead.id}
-                        layout
-                        className={styles.li}
-                        initial={{ opacity: 0, x: 24 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{
-                          opacity: 0,
-                          x: lead.section === "archived" ? "100%" : "-100%",
-                          transition: exitTransition,
-                        }}
-                        transition={itemTransition}
-                      >
-                        <LeadCard
-                          lead={lead}
-                          range={range}
-                          selected={
-                            canSelect ? selectedIds.has(lead.id) : false
-                          }
-                          onToggleSelect={canSelect ? toggleSelect : undefined}
-                          onOpen={setDetailLead}
-                          onSwitchTrial={
-                            canSwitchTrial ? setSwitchLead : undefined
-                          }
-                          {...(lead.section === "trialBooked"
-                            ? {
-                                onConfirmSession: (next) => {
-                                  const bookingId = next.trialBooking?.id;
-                                  if (!bookingId) return;
-                                  confirmSession.mutate(bookingId);
-                                },
-                                confirmPending:
-                                  confirmSession.isPending &&
-                                  confirmSession.variables ===
-                                    lead.trialBooking?.id,
+                  <ul className={staff.list}>
+                    <AnimatePresence initial={false} mode="popLayout">
+                      {leads.map((lead) => {
+                        const canSelect = !isMobile;
+                        const canSwitchTrial =
+                          lead.section === "new" ||
+                          lead.section === "trialBooked" ||
+                          lead.section === "trialAttended" ||
+                          lead.section === "trialMissed";
+                        return (
+                          <motion.li
+                            key={lead.id}
+                            layout
+                            className={styles.li}
+                            initial={{ opacity: 0, x: 24 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{
+                              opacity: 0,
+                              x: lead.section === "archived" ? "100%" : "-100%",
+                              transition: exitTransition,
+                            }}
+                            transition={itemTransition}
+                          >
+                            <LeadCard
+                              lead={lead}
+                              range={range}
+                              selected={
+                                canSelect ? selectedIds.has(lead.id) : false
                               }
-                            : {})}
-                        />
-                      </motion.li>
-                    );
-                  })}
-                </AnimatePresence>
-              </ul>
+                              onToggleSelect={
+                                canSelect ? toggleSelect : undefined
+                              }
+                              onOpen={setDetailLead}
+                              onSwitchTrial={
+                                canSwitchTrial ? setSwitchLead : undefined
+                              }
+                              {...(lead.section === "trialBooked"
+                                ? {
+                                    onConfirmSession: (next) => {
+                                      const bookingId = next.trialBooking?.id;
+                                      if (!bookingId) return;
+                                      confirmSession.mutate(bookingId);
+                                    },
+                                    confirmPending:
+                                      confirmSession.isPending &&
+                                      confirmSession.variables ===
+                                        lead.trialBooking?.id,
+                                  }
+                                : {})}
+                            />
+                          </motion.li>
+                        );
+                      })}
+                    </AnimatePresence>
+                  </ul>
 
-              {hasNextPage ? (
-                <LoadMoreIndicator
-                  ref={loadMoreRef}
-                  isLoading={isFetchingNextPage}
-                  testId="leads-load-more"
-                />
-              ) : null}
+                  {hasNextPage ? (
+                    <LoadMoreIndicator
+                      ref={loadMoreRef}
+                      isLoading={isFetchingNextPage}
+                      testId="leads-load-more"
+                    />
+                  ) : null}
+                </motion.div>
+              </AnimatePresence>
             </motion.div>
           </div>
         </PullToRefresh>
