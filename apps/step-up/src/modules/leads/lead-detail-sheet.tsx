@@ -1,9 +1,15 @@
 import { Avatar, AvatarFallback } from "@dev-ui/components/avatar";
 import { useToastContext } from "@dev-ui/components/toast";
+import {
+  captureQuerySnapshot,
+  restoreQuerySnapshot,
+  useOptimisticMutation,
+} from "@dev-ui/hooks";
 import { Icon } from "@dev-ui/icons";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { type KeyboardEvent, useState } from "react";
 import { useApi } from "@/lib/api-context";
+import { useAuth } from "@/lib/auth";
 import { AppSheet } from "@/modules/ui/app-sheet";
 import { FormInput } from "@/modules/ui/form-input";
 import { ErrorState } from "@/modules/ui/states";
@@ -45,6 +51,7 @@ export function LeadDetailSheet({
 }: LeadDetailSheetProps) {
   const api = useApi();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
   const { toast } = useToastContext("LeadDetailSheet");
   const [draft, setDraft] = useState("");
   const isOpen = Boolean(lead);
@@ -60,21 +67,33 @@ export function LeadDetailSheet({
     enabled: Boolean(lead),
   });
 
-  const addRemark = useMutation({
+  const addRemark = useOptimisticMutation({
     mutationFn: (body: string) =>
       api.post<LeadRemark>(
         `/users/studio/${studioId}/leads/${lead?.id}/remarks`,
         { body },
       ),
-    onSuccess: async () => {
-      setDraft("");
-      await queryClient.invalidateQueries({
-        queryKey: ["lead-remarks", studioId, lead?.id],
-      });
-      await queryClient.invalidateQueries({
-        queryKey: ["studio-leads", studioId],
-      });
+    onOptimistic: (body) => {
+      const queryKey = ["lead-remarks", studioId, lead?.id];
+      return captureQuerySnapshot<LeadRemark[]>(queryClient, queryKey).then(
+        (snapshot) => {
+          queryClient.setQueryData<LeadRemark[]>(queryKey, (current) => [
+            ...(current ?? []),
+            {
+              id: `optimistic-${Date.now()}`,
+              body,
+              createdAt: new Date().toISOString(),
+              author: {
+                id: user?.id ?? "",
+                name: user?.name ?? "You",
+              },
+            },
+          ]);
+          return snapshot;
+        },
+      );
     },
+    onRollback: (snapshot) => restoreQuerySnapshot(queryClient, snapshot),
     onError: (error: unknown) => {
       toast({
         title: "Couldn’t add remark",
@@ -83,11 +102,20 @@ export function LeadDetailSheet({
         variant: "error",
       });
     },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: ["lead-remarks", studioId, lead?.id],
+      });
+      await queryClient.invalidateQueries({
+        queryKey: ["studio-leads", studioId],
+      });
+    },
   });
 
   function submitRemark() {
     const body = draft.trim();
     if (!body || addRemark.isPending) return;
+    setDraft("");
     addRemark.mutate(body);
   }
 

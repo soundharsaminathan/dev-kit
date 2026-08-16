@@ -8,13 +8,26 @@ import type { Lead, LeadRemark } from "./types";
 const get = vi.fn();
 const post = vi.fn();
 const assign = vi.fn();
+const toast = vi.hoisted(() => vi.fn());
 
 vi.mock("@dev-ui/components/toast", () => ({
-  useToastContext: () => ({ toast: vi.fn() }),
+  useToastContext: () => ({ toast }),
 }));
 
 vi.mock("@/lib/api-context", () => ({
   useApi: () => ({ get, post }),
+}));
+
+vi.mock("@/lib/auth", () => ({
+  useAuth: () => ({
+    user: {
+      id: "staff-1",
+      email: "staff@example.com",
+      name: "Staff Member",
+      role: "STAFF",
+      studioId: "studio-1",
+    },
+  }),
 }));
 
 vi.mock("@/modules/ui/app-sheet", () => ({
@@ -144,9 +157,15 @@ describe("LeadDetailSheet", () => {
     expect(screen.getByText("+91 98765 43210")).toBeInTheDocument();
   });
 
-  it("posts a remark and lists existing ones", async () => {
+  it("posts a remark, showing it instantly before the API responds", async () => {
     get.mockResolvedValue([remark()]);
-    post.mockResolvedValue(remark({ id: "r-2", body: "Will visit Saturday" }));
+    let resolvePost: (value: LeadRemark) => void = () => undefined;
+    post.mockImplementation(
+      () =>
+        new Promise<LeadRemark>((resolve) => {
+          resolvePost = resolve;
+        }),
+    );
 
     renderWithProviders(
       <LeadDetailSheet
@@ -168,10 +187,66 @@ describe("LeadDetailSheet", () => {
     fireEvent.click(screen.getByTestId("lead-remark-send"));
 
     await waitFor(() => {
+      expect(screen.getByText("Will visit Saturday")).toBeInTheDocument();
+    });
+    expect(screen.getByTestId("lead-remark-input")).toHaveValue("");
+    expect(screen.getAllByText("Staff Member")).toHaveLength(2);
+
+    resolvePost(remark({ id: "r-2", body: "Will visit Saturday" }));
+
+    await waitFor(() => {
       expect(post).toHaveBeenCalledWith(
         "/users/studio/studio-1/leads/lead-1/remarks",
         { body: "Will visit Saturday" },
       );
+    });
+  });
+
+  it("removes the optimistic remark and toasts when posting fails", async () => {
+    get.mockResolvedValue([remark()]);
+    let rejectPost: (reason: Error) => void = () => undefined;
+    post.mockImplementation(
+      () =>
+        new Promise<LeadRemark>((_resolve, reject) => {
+          rejectPost = reject;
+        }),
+    );
+
+    renderWithProviders(
+      <LeadDetailSheet
+        lead={lead()}
+        studioId="studio-1"
+        onOpenChange={vi.fn()}
+        onArchive={vi.fn()}
+        onUnarchive={vi.fn()}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("Called, no answer")).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByTestId("lead-remark-input"), {
+      target: { value: "Will visit Saturday" },
+    });
+    fireEvent.click(screen.getByTestId("lead-remark-send"));
+
+    await waitFor(() => {
+      expect(screen.getByText("Will visit Saturday")).toBeInTheDocument();
+    });
+
+    rejectPost(new Error("Network error"));
+
+    await waitFor(() => {
+      expect(toast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: "Couldn’t add remark",
+          variant: "error",
+        }),
+      );
+    });
+    await waitFor(() => {
+      expect(screen.queryByText("Will visit Saturday")).not.toBeInTheDocument();
     });
   });
 });
