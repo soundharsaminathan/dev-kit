@@ -167,25 +167,6 @@
   font-weight: 500;
 }
 
-.sectionChip {
-  display: inline-flex;
-  align-items: center;
-  align-self: flex-start;
-  padding: 0.12rem 0.45rem;
-  border-radius: var(--radius-full, 9999px);
-  border: 1px solid color-mix(in srgb, var(--color-primary) 35%, transparent);
-  background: color-mix(
-    in srgb,
-    var(--color-primary) 8%,
-    var(--color-card, var(--color-bg))
-  );
-  color: var(--color-primary);
-  font-size: 0.6875rem;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  line-height: 1.2;
-}
-
 .meta {
   margin: 0;
   font-size: 0.8125rem;
@@ -239,20 +220,39 @@
 
 .remark {
   display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
-}
-
-.remarkMeta {
-  display: flex;
-  align-items: baseline;
+  align-items: flex-start;
   gap: var(--space-2, 0.5rem);
   min-width: 0;
 }
 
+.remarkAvatar {
+  flex-shrink: 0;
+  --avatar-radius: var(--radius-full, 9999px);
+  margin-top: 0.125rem;
+}
+
+.remarkContent {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.125rem;
+  min-width: 0;
+}
+
+.remarkText {
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
 .remarkAuthor {
-  font-size: 0.8125rem;
-  font-weight: 700;
+  font-weight: 600;
+}
+
+.remarkBody {
+  overflow-wrap: anywhere;
 }
 
 .remarkWhen {
@@ -260,11 +260,19 @@
   color: color-mix(in srgb, var(--color-fg) 52%, transparent);
 }
 
-.remarkBody {
-  margin: 0;
-  font-size: 0.875rem;
-  line-height: 1.4;
-  white-space: pre-wrap;
+.remarkLike {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  margin-top: 0.25rem;
+  color: color-mix(in srgb, var(--color-fg) 38%, transparent);
+  pointer-events: none;
+
+  svg {
+    width: 1rem;
+    height: 1rem;
+  }
 }
 
 .remarksEmpty {
@@ -275,8 +283,30 @@
 
 .composer {
   display: flex;
-  flex-direction: column;
+  align-items: center;
   gap: var(--space-2, 0.5rem);
+  width: 100%;
+  min-width: 0;
+
+  :global([data-field]) {
+    flex: 1;
+    min-width: 0;
+  }
+
+  :global([data-label]) {
+    display: none;
+  }
+
+  :global(input) {
+    border-radius: var(--radius-full, 9999px);
+    border-color: transparent;
+    background: color-mix(in srgb, var(--color-fg) 7%, transparent);
+  }
+
+  :global(input:focus-visible) {
+    border-color: var(--color-border-focus);
+    background: var(--color-field);
+  }
 }
 
 .li {

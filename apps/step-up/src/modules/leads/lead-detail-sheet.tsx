@@ -1,3 +1,4 @@
+import { Avatar, AvatarFallback } from "@dev-ui/components/avatar";
 import { useToastContext } from "@dev-ui/components/toast";
 import { Icon } from "@dev-ui/icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -9,14 +10,21 @@ import { ErrorState } from "@/modules/ui/states";
 import { TouchButton } from "@/modules/ui/touch-button";
 import styles from "./leads.module.scss";
 import {
-  formatFollowupChip,
   formatRelativeFollowup,
   LEAD_REMARK_MAX_LENGTH,
   type Lead,
   type LeadRemark,
   phoneTelHref,
-  SECTION_LABELS,
 } from "./types";
+
+function remarkInitials(name: string) {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? "")
+    .join("");
+}
 
 type LeadDetailSheetProps = {
   lead: Lead | null;
@@ -114,18 +122,6 @@ export function LeadDetailSheet({
               <p className={styles.sheetPhone}>
                 {lead.phone ? lead.phone : "No mobile on file"}
               </p>
-              <span
-                className={styles.followupChip}
-                data-empty={!lead.lastFollowupAt ? "true" : undefined}
-              >
-                {formatFollowupChip(lead.lastFollowupAt)}
-              </span>
-              <span
-                className={styles.sectionChip}
-                data-testid="lead-section-chip"
-              >
-                {SECTION_LABELS[lead.section]}
-              </span>
             </div>
             <TouchButton
               variant={archived ? "primary" : "quiet"}
@@ -152,18 +148,18 @@ export function LeadDetailSheet({
 
           <div className={styles.remarks}>
             {remarksQuery.isLoading ? (
-              <p className={styles.remarksEmpty}>Loading remarks…</p>
+              <p className={styles.remarksEmpty}>Loading comments…</p>
             ) : remarksQuery.isError ? (
               <ErrorState
                 description={
                   remarksQuery.error instanceof Error
                     ? remarksQuery.error.message
-                    : "Couldn’t load remarks."
+                    : "Couldn’t load comments."
                 }
               />
             ) : !remarksQuery.data?.length ? (
               <p className={styles.remarksEmpty}>
-                No remarks yet — add one after you call.
+                No comments yet — add one after you call.
               </p>
             ) : (
               remarksQuery.data.map((remark) => (
@@ -172,15 +168,25 @@ export function LeadDetailSheet({
                   className={styles.remark}
                   data-testid={`lead-remark-${remark.id}`}
                 >
-                  <div className={styles.remarkMeta}>
-                    <span className={styles.remarkAuthor}>
-                      {remark.author.name}
-                    </span>
+                  <Avatar className={styles.remarkAvatar}>
+                    <AvatarFallback>
+                      {remarkInitials(remark.author.name) || "?"}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className={styles.remarkContent}>
+                    <p className={styles.remarkText}>
+                      <span className={styles.remarkAuthor}>
+                        {remark.author.name}
+                      </span>{" "}
+                      <span className={styles.remarkBody}>{remark.body}</span>
+                    </p>
                     <span className={styles.remarkWhen}>
                       {formatRelativeFollowup(remark.createdAt)}
                     </span>
                   </div>
-                  <p className={styles.remarkBody}>{remark.body}</p>
+                  <span className={styles.remarkLike} aria-hidden="true">
+                    <Icon name="heart" />
+                  </span>
                 </div>
               ))
             )}
@@ -188,7 +194,8 @@ export function LeadDetailSheet({
 
           <div className={styles.composer}>
             <FormInput
-              label="Add a remark"
+              label="Add a comment"
+              placeholder="Add a comment…"
               value={draft}
               onChange={setDraft}
               maxLength={LEAD_REMARK_MAX_LENGTH}
@@ -197,13 +204,12 @@ export function LeadDetailSheet({
             />
             <TouchButton
               variant="outline"
-              fullWidth
               isPending={addRemark.isPending}
               isDisabled={!canSend}
               data-testid="lead-remark-send"
               onClick={submitRemark}
             >
-              Send
+              Post
             </TouchButton>
           </div>
 

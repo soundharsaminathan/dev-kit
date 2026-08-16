@@ -129,10 +129,10 @@ describe("LeadDetailSheet", () => {
     expect(onUnarchive).toHaveBeenCalledWith(row);
   });
 
-  it("shows the current pipeline section label next to the follow-up chip", async () => {
+  it("shows the phone number in the header", async () => {
     renderWithProviders(
       <LeadDetailSheet
-        lead={lead({ section: "trialBooked" })}
+        lead={lead({ phone: "+91 98765 43210" })}
         studioId="studio-1"
         onOpenChange={vi.fn()}
         onArchive={vi.fn()}
@@ -141,9 +141,7 @@ describe("LeadDetailSheet", () => {
     );
 
     await waitFor(() => expect(get).toHaveBeenCalled());
-    expect(screen.getByTestId("lead-section-chip")).toHaveTextContent(
-      "Trial booked",
-    );
+    expect(screen.getByText("+91 98765 43210")).toBeInTheDocument();
   });
 
   it("posts a remark and lists existing ones", async () => {
