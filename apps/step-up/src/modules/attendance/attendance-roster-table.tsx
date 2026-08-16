@@ -285,7 +285,7 @@ export function AttendanceRosterTable({
 }: AttendanceRosterTableProps) {
   const isMobile = useIsMobile();
   const [sorting, setSorting] = useState<SortingState>([
-    { id: "status", desc: false },
+    { id: "name", desc: false },
   ]);
   const [statusFilter, setStatusFilter] =
     useState<AttendanceStatusFilter>("all");
