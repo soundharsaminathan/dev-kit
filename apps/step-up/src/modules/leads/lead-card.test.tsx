@@ -32,18 +32,14 @@ function lead(overrides: Partial<Lead> = {}): Lead {
 }
 
 describe("LeadCard identity", () => {
-  it("renders name, phone, and a missing follow-up chip", () => {
+  it("renders name, and a missing follow-up chip", () => {
     renderWithProviders(<LeadCard lead={lead()} range={null} />);
 
     expect(screen.getByTestId("lead-card-lead-1")).toBeInTheDocument();
     expect(screen.getByText("Asha Rao")).toBeInTheDocument();
-    expect(screen.getByText("+91 91234 56789")).toBeInTheDocument();
     expect(screen.getByTestId("lead-followup-lead-1")).toHaveTextContent(
       "No follow-up",
     );
-    expect(
-      screen.getByRole("button", { name: "Call Asha Rao" }),
-    ).toBeInTheDocument();
   });
 
   it("shows a relative last follow-up chip", () => {

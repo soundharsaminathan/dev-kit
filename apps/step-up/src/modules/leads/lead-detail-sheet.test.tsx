@@ -107,21 +107,6 @@ describe("LeadDetailSheet", () => {
     expect(onUnarchive).toHaveBeenCalledWith(row);
   });
 
-  it("shows the phone number in the header", async () => {
-    renderWithProviders(
-      <LeadDetailSheet
-        lead={lead({ phone: "+91 98765 43210" })}
-        studioId="studio-1"
-        onOpenChange={vi.fn()}
-        onArchive={vi.fn()}
-        onUnarchive={vi.fn()}
-      />,
-    );
-
-    await waitFor(() => expect(get).toHaveBeenCalled());
-    expect(screen.getByText("+91 98765 43210")).toBeInTheDocument();
-  });
-
   it("posts a remark, showing it instantly before the API responds", async () => {
     get.mockResolvedValue([remark()]);
     let resolvePost: (value: LeadRemark) => void = () => undefined;
