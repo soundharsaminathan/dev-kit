@@ -54,7 +54,6 @@ const getFilteredModel = getFilteredRowModel<AttendanceRosterEntry>();
 type AttendanceRosterTableProps = {
   roster: AttendanceRosterEntry[];
   isBusy?: boolean | undefined;
-  pendingStudentId?: string | null | undefined;
   markingDisabled?: boolean | undefined;
   onMarkOne: (studentId: string, status: AttendanceStatusValue) => void;
   onMarkSelected: (studentIds: string[], status: AttendanceStatusValue) => void;
@@ -65,7 +64,6 @@ type AttendanceRosterTableProps = {
 type RosterTableMeta = {
   markingDisabled: boolean;
   actionsLocked: boolean;
-  pendingStudentId: string | null;
   requestMarkOne: (studentId: string, status: AttendanceStatusValue) => void;
 };
 
@@ -210,13 +208,11 @@ const RosterRow = memo(
   function RosterRow({
     row,
     isSelected,
-    isRowPending,
     actionsLocked,
     markingDisabled,
   }: {
     row: Row<AttendanceRosterEntry>;
     isSelected: boolean;
-    isRowPending: boolean;
     actionsLocked: boolean;
     markingDisabled: boolean;
   }) {
@@ -225,7 +221,6 @@ const RosterRow = memo(
         className={styles.tr}
         data-testid={`attendance-row-${row.original.studentId}`}
         data-selected={isSelected ? "" : undefined}
-        data-pending={isRowPending ? "" : undefined}
         data-actions-locked={actionsLocked ? "" : undefined}
         data-marking-disabled={markingDisabled ? "" : undefined}
       >
@@ -241,7 +236,6 @@ const RosterRow = memo(
     prev.row.id === next.row.id &&
     prev.row.original === next.row.original &&
     prev.isSelected === next.isSelected &&
-    prev.isRowPending === next.isRowPending &&
     prev.actionsLocked === next.actionsLocked &&
     prev.markingDisabled === next.markingDisabled,
 );
@@ -276,7 +270,6 @@ function unpaidConfirmCopy(pending: PendingConfirm) {
 export function AttendanceRosterTable({
   roster,
   isBusy = false,
-  pendingStudentId = null,
   markingDisabled = false,
   onMarkOne,
   onMarkSelected,
@@ -325,13 +318,11 @@ export function AttendanceRosterTable({
   const metaRef = useRef<RosterTableMeta>({
     markingDisabled,
     actionsLocked,
-    pendingStudentId,
     requestMarkOne,
   });
   metaRef.current = {
     markingDisabled,
     actionsLocked,
-    pendingStudentId,
     requestMarkOne,
   };
 
@@ -435,16 +426,13 @@ export function AttendanceRosterTable({
       header: "Mark",
       cell: ({ row }) => {
         const meta = metaRef.current;
-        const rowPending =
-          meta.actionsLocked ||
-          meta.pendingStudentId === row.original.studentId;
         const status = rosterStatus(row.original);
         return (
           <AttendanceMarkPills
             studentId={row.original.studentId}
             studentName={row.original.student.name}
             status={status}
-            isDisabled={rowPending}
+            isDisabled={meta.actionsLocked}
             onMark={(next) => meta.requestMarkOne(row.original.studentId, next)}
           />
         );
@@ -733,7 +721,6 @@ export function AttendanceRosterTable({
                   key={row.id}
                   row={row}
                   isSelected={row.getIsSelected()}
-                  isRowPending={pendingStudentId === row.original.studentId}
                   actionsLocked={actionsLocked}
                   markingDisabled={markingDisabled}
                 />

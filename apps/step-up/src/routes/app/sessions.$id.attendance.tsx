@@ -875,9 +875,19 @@ function SessionAttendancePage() {
     markSelected.isPending ||
     completeSession.isPending;
 
+  const markQueueRef = useRef(new Map<string, Promise<void>>());
+
   const handleMarkOne = useCallback(
     (studentId: string, status: AttendanceStatusValue) => {
-      markAttendance.mutate({ studentId, status });
+      const previous = markQueueRef.current.get(studentId) ?? Promise.resolve();
+      const next = previous.then(async () => {
+        try {
+          await markAttendance.mutateAsync({ studentId, status });
+        } catch {
+          return undefined;
+        }
+      });
+      markQueueRef.current.set(studentId, next);
     },
     [markAttendance],
   );
@@ -1086,11 +1096,6 @@ function SessionAttendancePage() {
                 roster={roster}
                 isBusy={isBulkBusy}
                 markingDisabled={markingLocked}
-                pendingStudentId={
-                  markAttendance.isPending
-                    ? (markAttendance.variables?.studentId ?? null)
-                    : null
-                }
                 unmarkedCount={summary.unmarked}
                 onMarkAllUnmarkedPresent={handleMarkAllUnmarkedPresent}
                 onMarkOne={handleMarkOne}
