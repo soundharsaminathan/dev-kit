@@ -47,7 +47,7 @@ describe("app nav role filtering", () => {
     expect(primary).toEqual([
       "/app",
       "/app/batches",
-      "/app/messages",
+      "/app/calendar",
       "/app/profile",
     ]);
     expect(more).toContain("/app/bookings");
@@ -65,7 +65,7 @@ describe("app nav role filtering", () => {
       "/app",
       "/app/batches",
       "/app/leads",
-      "/app/messages",
+      "/app/calendar",
       "/app/profile",
     ]);
     expect(primary.find((link) => link.to === "/app/leads")?.icon).toBe(
@@ -75,30 +75,28 @@ describe("app nav role filtering", () => {
     expect(more).not.toContain("/app/leads");
   });
 
-  it("keeps Messages out of the sidebar and shows Calendar in its place", () => {
+  it("includes Messages and Calendar in the sidebar", () => {
     for (const role of ["OWNER", "STAFF", "TRAINER"] as const) {
       const labels = sidebarLabels(role);
-      expect(labels).not.toContain("Messages");
+      expect(labels).toContain("Messages");
       expect(labels).toContain("Calendar");
       expect(labels.filter((label) => label === "Calendar")).toHaveLength(1);
     }
   });
 
-  it("keeps Messages on the mobile toolbar", () => {
+  it("keeps Calendar on the mobile toolbar", () => {
     const primary = getPrimaryTabs("app", "OWNER").map((link) => link.to);
-    expect(primary).toContain("/app/messages");
+    expect(primary).toContain("/app/calendar");
   });
 
-  it("swaps the header calendar icon for messages on mobile", () => {
+  it("keeps calendar navigation on header for desktop and mobile", () => {
     const desktop = getHeaderNavLinks("app", "OWNER");
     expect(desktop.map((link) => link.to)).toContain("/app/calendar");
-    expect(desktop.map((link) => link.to)).not.toContain("/app/messages");
 
     const mobile = getHeaderNavLinks("app", "OWNER", true);
-    expect(mobile.map((link) => link.to)).toContain("/app/messages");
-    expect(mobile.map((link) => link.to)).not.toContain("/app/calendar");
-    expect(mobile.find((link) => link.to === "/app/messages")?.icon).toBe(
-      "message-square",
+    expect(mobile.map((link) => link.to)).toContain("/app/calendar");
+    expect(mobile.find((link) => link.to === "/app/calendar")?.icon).toBe(
+      "calendar",
     );
   });
 });

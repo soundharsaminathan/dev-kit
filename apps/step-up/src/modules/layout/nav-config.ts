@@ -57,14 +57,13 @@ const appLinks: NavLinkItem[] = [
     label: "Messages",
     icon: "message-square",
     section: "Studio",
-    primary: true,
-    sidebar: false,
   },
   {
     to: "/app/calendar",
     label: "Calendar",
     icon: "calendar",
     section: "Studio",
+    primary: true,
   },
   {
     to: "/app/profile",
@@ -308,25 +307,11 @@ function linksFor(variant: ShellVariant, role?: UserRole): NavLinkItem[] {
 export function getHeaderNavLinks(
   variant: ShellVariant,
   role?: UserRole,
-  isMobile = false,
+  _isMobile = false,
 ): NavLinkItem[] {
   if (variant === "app") {
-    const links = linksFor(variant, role).filter(
+    return linksFor(variant, role).filter(
       (link) => link.to === "/app/calendar" || link.to === "/app/feed",
-    );
-    if (!isMobile) {
-      return links;
-    }
-    // Mobile keeps quick access to Messages instead of Calendar in the header.
-    return links.map((link) =>
-      link.to === "/app/calendar"
-        ? {
-            to: "/app/messages",
-            label: "Messages",
-            icon: "message-square",
-            section: link.section,
-          }
-        : link,
     );
   }
 
