@@ -34,10 +34,6 @@
   flex-shrink: 0;
 }
 
-.cardCall {
-  flex-shrink: 0;
-}
-
 .skeletonList {
   display: flex;
   flex-direction: column;
@@ -167,19 +163,6 @@
   font-weight: 500;
 }
 
-.meta {
-  margin: 0;
-  font-size: 0.8125rem;
-  color: color-mix(in srgb, var(--color-fg) 58%, transparent);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.callButton {
-  flex-shrink: 0;
-}
-
 .sheetStack {
   display: flex;
   flex-direction: column;
@@ -192,19 +175,6 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: var(--space-2, 0.5rem);
-}
-
-.sheetMeta {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1, 0.25rem);
-  min-width: 0;
-}
-
-.sheetPhone {
-  margin: 0;
-  font-size: 0.875rem;
-  color: color-mix(in srgb, var(--color-fg) 62%, transparent);
 }
 
 .sheetArchive {
@@ -258,21 +228,6 @@
 .remarkWhen {
   font-size: 0.75rem;
   color: color-mix(in srgb, var(--color-fg) 52%, transparent);
-}
-
-.remarkLike {
-  display: inline-flex;
-  flex-shrink: 0;
-  align-items: center;
-  justify-content: center;
-  margin-top: 0.25rem;
-  color: color-mix(in srgb, var(--color-fg) 38%, transparent);
-  pointer-events: none;
-
-  svg {
-    width: 1rem;
-    height: 1rem;
-  }
 }
 
 .remarksEmpty {

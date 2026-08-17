@@ -1,6 +1,5 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@dev-ui/components/avatar";
 import { CheckboxControl } from "@dev-ui/components/checkbox";
-import { Icon } from "@dev-ui/icons";
 import type { KeyboardEvent } from "react";
 import { TouchButton } from "@/modules/ui/touch-button";
 import styles from "./leads.module.scss";
@@ -12,7 +11,6 @@ import {
   isTrialSoon,
   type Lead,
   type LeadDateRange,
-  phoneTelHref,
 } from "./types";
 
 type LeadCardProps = {
@@ -39,7 +37,6 @@ export function LeadCard({
   const age = ageRangeLabel(lead.ageRange);
   const trial = lead.trialBooking;
   const soon = isTrialSoon(trial?.sessionStartsAt ?? null, range);
-  const telHref = lead.phone ? phoneTelHref(lead.phone) : null;
   const initials = lead.name
     .split(/\s+/)
     .filter(Boolean)
@@ -51,11 +48,6 @@ export function LeadCard({
 
   function handleOpen() {
     onOpen?.(lead);
-  }
-
-  function handleCall() {
-    if (!telHref) return;
-    window.location.assign(telHref);
   }
 
   function handleKeyDown(event: KeyboardEvent<HTMLDivElement>) {
@@ -104,9 +96,7 @@ export function LeadCard({
               <p className={styles.name}>{lead.name}</p>
               {age ? <span className={styles.age}>{age}</span> : null}
             </div>
-            <p className={styles.meta}>
-              {lead.phone ? lead.phone : "No mobile on file"}
-            </p>
+
             <span
               className={styles.followupChip}
               data-empty={!lead.lastFollowupAt ? "true" : undefined}
@@ -116,18 +106,6 @@ export function LeadCard({
             </span>
           </div>
         </div>
-        <TouchButton
-          variant="primary"
-          size="sm"
-          isIconOnly
-          className={styles.cardCall}
-          aria-label={telHref ? `Call ${lead.name}` : "No phone number"}
-          data-testid={`lead-call-${lead.id}`}
-          isDisabled={!telHref}
-          onClick={handleCall}
-        >
-          <Icon name="phone-call" />
-        </TouchButton>
       </div>
 
       {trial ? (

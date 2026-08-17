@@ -20,7 +20,6 @@ import {
   LEAD_REMARK_MAX_LENGTH,
   type Lead,
   type LeadRemark,
-  phoneTelHref,
 } from "./types";
 
 function remarkInitials(name: string) {
@@ -55,7 +54,6 @@ export function LeadDetailSheet({
   const { toast } = useToastContext("LeadDetailSheet");
   const [draft, setDraft] = useState("");
   const isOpen = Boolean(lead);
-  const telHref = lead?.phone ? phoneTelHref(lead.phone) : null;
   const archived = lead?.section === "archived" || lead?.active === false;
 
   const remarksQuery = useQuery({
@@ -126,11 +124,6 @@ export function LeadDetailSheet({
     }
   }
 
-  function handleCall() {
-    if (!telHref) return;
-    window.location.assign(telHref);
-  }
-
   const canSend =
     Boolean(draft.trim()) &&
     draft.trim().length <= LEAD_REMARK_MAX_LENGTH &&
@@ -146,11 +139,6 @@ export function LeadDetailSheet({
       {lead ? (
         <div className={styles.sheetStack}>
           <div className={styles.sheetHeader}>
-            <div className={styles.sheetMeta}>
-              <p className={styles.sheetPhone}>
-                {lead.phone ? lead.phone : "No mobile on file"}
-              </p>
-            </div>
             <TouchButton
               variant={archived ? "primary" : "quiet"}
               size="sm"
@@ -212,9 +200,6 @@ export function LeadDetailSheet({
                       {formatRelativeFollowup(remark.createdAt)}
                     </span>
                   </div>
-                  <span className={styles.remarkLike} aria-hidden="true">
-                    <Icon name="heart" />
-                  </span>
                 </div>
               ))
             )}
@@ -232,27 +217,17 @@ export function LeadDetailSheet({
             />
             <TouchButton
               variant="outline"
+              size="sm"
+              isIconOnly
               isPending={addRemark.isPending}
               isDisabled={!canSend}
               data-testid="lead-remark-send"
               onClick={submitRemark}
+              aria-label="Send"
             >
-              Post
+              <Icon name="send" />
             </TouchButton>
           </div>
-
-          <TouchButton
-            variant="primary"
-            fullWidth
-            className={styles.callButton}
-            aria-label={telHref ? `Call ${lead.name}` : "No phone number"}
-            data-testid={`lead-call-${lead.id}`}
-            isDisabled={!telHref}
-            onClick={handleCall}
-          >
-            <Icon name="phone-call" />
-            Call
-          </TouchButton>
         </div>
       ) : null}
     </AppSheet>

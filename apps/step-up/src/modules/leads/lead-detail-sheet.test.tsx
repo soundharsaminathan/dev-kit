@@ -7,7 +7,6 @@ import type { Lead, LeadRemark } from "./types";
 
 const get = vi.fn();
 const post = vi.fn();
-const assign = vi.fn();
 const toast = vi.hoisted(() => vi.fn());
 
 vi.mock("@dev-ui/components/toast", () => ({
@@ -69,41 +68,7 @@ describe("LeadDetailSheet", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.unstubAllGlobals();
-    vi.stubGlobal("location", { assign });
     get.mockResolvedValue([]);
-  });
-
-  it("dials from the bottom call button", async () => {
-    renderWithProviders(
-      <LeadDetailSheet
-        lead={lead()}
-        studioId="studio-1"
-        onOpenChange={vi.fn()}
-        onArchive={vi.fn()}
-        onUnarchive={vi.fn()}
-      />,
-    );
-
-    await waitFor(() => expect(get).toHaveBeenCalled());
-    fireEvent.click(screen.getByTestId("lead-call-lead-1"));
-    expect(assign).toHaveBeenCalledWith("tel:+919123456789");
-  });
-
-  it("disables call when the lead has no phone", async () => {
-    renderWithProviders(
-      <LeadDetailSheet
-        lead={lead({ phone: null })}
-        studioId="studio-1"
-        onOpenChange={vi.fn()}
-        onArchive={vi.fn()}
-        onUnarchive={vi.fn()}
-      />,
-    );
-
-    await waitFor(() => expect(get).toHaveBeenCalled());
-    expect(
-      screen.getByRole("button", { name: "No phone number" }),
-    ).toBeDisabled();
   });
 
   it("archives from the header button", async () => {

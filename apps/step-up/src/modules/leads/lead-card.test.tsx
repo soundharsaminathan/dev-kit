@@ -63,26 +63,6 @@ describe("LeadCard identity", () => {
   });
 });
 
-describe("LeadCard call", () => {
-  it("dials the lead from the call button", () => {
-    const assign = vi.fn();
-    vi.stubGlobal("location", { assign });
-    renderWithProviders(<LeadCard lead={lead()} range={null} />);
-
-    fireEvent.click(screen.getByTestId("lead-call-lead-1"));
-    expect(assign).toHaveBeenCalledWith("tel:+919123456789");
-    vi.unstubAllGlobals();
-  });
-
-  it("disables call when the lead has no phone", () => {
-    renderWithProviders(<LeadCard lead={lead({ phone: null })} range={null} />);
-
-    expect(
-      screen.getByRole("button", { name: "No phone number" }),
-    ).toBeDisabled();
-  });
-});
-
 describe("LeadCard open", () => {
   it("opens on card click", () => {
     const onOpen = vi.fn();
