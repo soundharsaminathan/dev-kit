@@ -39,6 +39,7 @@ import {
   type ExpandableBentoItem,
 } from "@/modules/ui/expandable-bento-grid";
 import { PageHeader } from "@/modules/ui/page-header";
+import { SkeletonBlock } from "@/modules/ui/skeleton-block";
 import staff from "@/modules/ui/staff.module.scss";
 import { TouchButton } from "@/modules/ui/touch-button";
 import styles from "./sessions.$id.attendance.module.scss";
@@ -433,6 +434,96 @@ function QrCanvas({ token }: { token: string }) {
       className={styles.qrCanvas}
       aria-label="Session QR code for student check-in"
     />
+  );
+}
+
+const SKELETON_ROWS = [
+  { id: "srow-0", title: "72%", meta: "38%" },
+  { id: "srow-1", title: "58%", meta: "30%" },
+  { id: "srow-2", title: "64%", meta: "34%" },
+  { id: "srow-3", title: "50%", meta: "28%" },
+  { id: "srow-4", title: "68%", meta: "36%" },
+  { id: "srow-5", title: "54%", meta: "32%" },
+] as const;
+
+function SessionAttendanceSkeleton() {
+  return (
+    <div
+      className={styles.skeleton}
+      aria-hidden
+      data-testid="attendance-skeleton"
+    >
+      <div className={styles.skeletonSummary}>
+        {SKELETON_ROWS.slice(0, 4).map((row) => (
+          <SkeletonBlock
+            key={row.id}
+            className={styles.skeletonChip}
+            height="2rem"
+            width="5.5rem"
+            radius="999px"
+          />
+        ))}
+      </div>
+
+      <div className={styles.skeletonToolbar}>
+        <SkeletonBlock
+          className={styles.skeletonSearch}
+          height="2.5rem"
+          width="100%"
+          radius="var(--radius-lg, 0.75rem)"
+        />
+        <div className={styles.skeletonChips}>
+          {SKELETON_ROWS.slice(0, 4).map((row) => (
+            <SkeletonBlock
+              key={`chip-${row.id}`}
+              height="1.75rem"
+              width="4.5rem"
+              radius="999px"
+            />
+          ))}
+        </div>
+      </div>
+
+      <div className={styles.skeletonTable}>
+        <div className={styles.skeletonTableHeader}>
+          <SkeletonBlock
+            className={styles.skeletonCheck}
+            height="1rem"
+            width="1rem"
+            radius="var(--radius-sm, 0.25rem)"
+          />
+          <SkeletonBlock height="0.625rem" width="3.5rem" />
+          <SkeletonBlock height="0.625rem" width="3.5rem" />
+          <SkeletonBlock height="0.625rem" width="2.5rem" />
+        </div>
+        {SKELETON_ROWS.map((row) => (
+          <div key={row.id} className={styles.skeletonRow}>
+            <SkeletonBlock
+              className={styles.skeletonCheck}
+              height="1rem"
+              width="1rem"
+              radius="var(--radius-sm, 0.25rem)"
+            />
+            <div className={styles.skeletonName}>
+              <SkeletonBlock height="0.9375rem" width={row.title} />
+              <SkeletonBlock height="0.75rem" width={row.meta} />
+            </div>
+            <SkeletonBlock
+              className={styles.skeletonStatus}
+              height="1.25rem"
+              width="4.75rem"
+              radius="999px"
+            />
+            <SkeletonBlock
+              className={styles.skeletonPills}
+              height="1.75rem"
+              width="10.5rem"
+              radius="999px"
+            />
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -929,6 +1020,7 @@ function SessionAttendancePage() {
         data={rosterQuery.data}
         emptyTitle="No enrolled students"
         emptyDescription="Enroll students in this batch before taking attendance."
+        loadingFallback={<SessionAttendanceSkeleton />}
       >
         {(roster) => (
           <>

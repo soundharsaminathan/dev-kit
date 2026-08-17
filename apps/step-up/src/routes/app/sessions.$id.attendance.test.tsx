@@ -90,6 +90,26 @@ describe("SessionAttendancePage optimistic updates", () => {
     });
   });
 
+  it("shows a roster skeleton while session and roster load", async () => {
+    apiGetMock.mockImplementation(
+      () =>
+        new Promise(() => {
+          // Never resolves while the skeleton should be visible.
+        }),
+    );
+
+    const queryClient = createTestQueryClient();
+    const PageComponent = Route.options.component!;
+    renderWithProviders(<PageComponent />, { queryClient });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("attendance-skeleton")).toBeInTheDocument();
+    });
+    expect(
+      screen.queryByTestId("attendance-roster-search"),
+    ).not.toBeInTheDocument();
+  });
+
   it("optimistically marks student present and retains state on success", async () => {
     let resolvePost: (value: unknown) => void;
     apiPostMock.mockImplementation(

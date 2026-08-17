@@ -118,6 +118,111 @@
   color: color-mix(in srgb, var(--color-warning) 72%, var(--color-fg));
 }
 
+.skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4, 1rem);
+}
+
+.skeletonSummary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2, 0.5rem);
+}
+
+.skeletonChip {
+  flex-shrink: 0;
+}
+
+.skeletonToolbar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 0.75rem);
+}
+
+.skeletonSearch {
+  flex-shrink: 0;
+}
+
+.skeletonChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2, 0.5rem);
+}
+
+.skeletonTable {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--color-fg) 12%, transparent);
+  border-radius: var(--radius-xl, 1rem);
+  background: var(--card-background, var(--color-card, var(--color-bg)));
+  box-shadow: var(--card-shadow, var(--shadow-sm, 0 1px 3px rgb(0 0 0 / 6%)));
+}
+
+.skeletonTableHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3, 0.75rem);
+  height: 2.75rem;
+  padding: 0 var(--space-3, 0.75rem);
+  border-bottom: 1px solid color-mix(in srgb, var(--color-fg) 10%, transparent);
+}
+
+.skeletonTableHeader > *:nth-child(2) {
+  flex: 2;
+}
+
+.skeletonTableHeader > *:nth-child(3) {
+  flex: 1;
+}
+
+.skeletonRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3, 0.75rem);
+  height: 3.5rem;
+  padding: 0 var(--space-3, 0.75rem);
+  border-bottom: 1px solid color-mix(in srgb, var(--color-fg) 8%, transparent);
+}
+
+.skeletonRow:last-child {
+  border-bottom: 0;
+}
+
+.skeletonCheck {
+  flex-shrink: 0;
+}
+
+.skeletonName {
+  display: flex;
+  flex: 2;
+  flex-direction: column;
+  gap: 0.375rem;
+  min-width: 0;
+}
+
+.skeletonStatus {
+  flex: 1;
+  flex-shrink: 0;
+}
+
+.skeletonPills {
+  flex-shrink: 0;
+  margin-inline-start: auto;
+}
+
+@media (min-width: 768px) {
+  .skeletonToolbar {
+    flex-direction: row;
+    align-items: center;
+  }
+
+  .skeletonSearch {
+    width: 20rem;
+  }
+}
+
 .bulkError {
   margin: 0;
   color: var(--color-danger, #ff3b30);

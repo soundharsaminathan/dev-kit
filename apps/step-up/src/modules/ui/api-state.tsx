@@ -15,6 +15,7 @@ type ApiStateProps<T> = {
   emptyDescription?: string;
   variant?: "default" | "compact";
   allowEmpty?: boolean;
+  loadingFallback?: ReactNode | undefined;
   children: (data: T) => ReactNode;
 };
 
@@ -45,9 +46,14 @@ export function ApiState<T>({
   emptyDescription = "There is no data to show right now.",
   variant = "default",
   allowEmpty = false,
+  loadingFallback,
   children,
 }: ApiStateProps<T>) {
   if (isLoading) {
+    if (loadingFallback) {
+      return <>{loadingFallback}</>;
+    }
+
     if (variant === "compact") {
       return (
         <div className={styles.compactLoading}>
