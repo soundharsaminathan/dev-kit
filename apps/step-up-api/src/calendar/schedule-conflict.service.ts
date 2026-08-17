@@ -20,6 +20,9 @@ export type AssertNoConflictsInput = {
   excludeBatchIds?: string[];
 };
 
+/** Conflicts are checked against a rolling window instead of all future sessions. */
+const CONFLICT_WINDOW_DAYS = 60;
+
 @Injectable()
 export class ScheduleConflictService {
   constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
@@ -67,17 +70,34 @@ export class ScheduleConflictService {
     }
   }
 
+  /**
+   * Asserts a student (or many students at once) has no schedule conflict with
+   * a batch. The batch's sessions and the occupancy scan are each loaded once,
+   * so bulk enrolls run a single check instead of one per student.
+   */
   async assertStudentAvailableForBatch(
-    studentId: string,
+    studentIdOrIds: string | string[],
     batchId: string,
     options?: { from?: Date; excludeBatchIds?: string[] },
   ): Promise<void> {
     const from = options?.from ?? new Date();
+    const studentIds = [
+      ...new Set(
+        Array.isArray(studentIdOrIds) ? studentIdOrIds : [studentIdOrIds],
+      ),
+    ];
+    if (studentIds.length === 0) {
+      return;
+    }
+    const horizon = new Date(
+      from.getTime() + CONFLICT_WINDOW_DAYS * 86_400_000,
+    );
     const sessions = await this.prisma.session.findMany({
       where: {
         batchId,
         status: { not: SessionStatus.CANCELLED },
         endsAt: { gt: from },
+        startsAt: { lt: horizon },
       },
       select: { startsAt: true, endsAt: true },
       orderBy: { startsAt: "asc" },
@@ -85,7 +105,7 @@ export class ScheduleConflictService {
 
     await this.assertNoConflicts({
       intervals: sessions,
-      studentIds: [studentId],
+      studentIds,
       excludeBatchId: batchId,
       excludeBatchIds: options?.excludeBatchIds,
     });

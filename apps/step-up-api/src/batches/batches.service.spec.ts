@@ -1128,6 +1128,9 @@ describe("BatchesService.remove and enroll", () => {
     expect(memberships.purchaseForBatch).not.toHaveBeenCalled();
     expect(prisma.$transaction).toHaveBeenCalledTimes(1);
     expect(
+      scheduleConflicts.assertStudentAvailableForBatch,
+    ).toHaveBeenCalledWith(["student-1", "student-2"], "batch-1");
+    expect(
       memberships.beginBatchEnrollment.mock.invocationCallOrder[0]!,
     ).toBeLessThan(prisma.$transaction.mock.invocationCallOrder[0]!);
     await vi.waitFor(() => {

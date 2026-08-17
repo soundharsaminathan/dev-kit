@@ -4,7 +4,7 @@ import {
 } from "@dev-ui/components/checkbox";
 import { Tag, TagGroup, TagList } from "@dev-ui/components/tag-group";
 import { useLoadMoreOnScroll } from "@dev-ui/hooks";
-import { useInfiniteQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import {
   type Key,
   useCallback,
@@ -102,31 +102,28 @@ export function StudentSearchMultiselect({
   const selectedIdSet = useMemo(() => new Set(selectedIds), [selectedIds]);
   const atCap = maxSelected != null && selectedIds.length >= maxSelected;
 
-  const catalogQuery = useInfiniteQuery({
+  const catalogQuery = useQuery({
     queryKey: [
       "studio-students-search",
       studioId,
       "",
       includeParents,
       pageSize,
-      "paged",
     ],
-    queryFn: ({ pageParam }) => {
+    queryFn: () => {
       const params = new URLSearchParams();
-      if (pageParam) params.set("cursor", pageParam);
       params.set("limit", String(pageSize));
       if (includeParents) params.set("includeParents", "true");
       return api.get<StudentSearchPage>(
         `/users/studio/${studioId}/students?${params.toString()}`,
       );
     },
-    initialPageParam: undefined as string | undefined,
-    getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
     enabled,
     placeholderData: (previous) => previous,
   });
 
-  const catalogComplete = catalogQuery.isSuccess && !catalogQuery.hasNextPage;
+  const catalogComplete =
+    catalogQuery.isSuccess && catalogQuery.data?.nextCursor == null;
 
   const remoteSearchQuery = useInfiniteQuery({
     queryKey: [
@@ -154,11 +151,17 @@ export function StudentSearchMultiselect({
   });
 
   const useRemoteSearch = !catalogComplete && debouncedSearch.length > 0;
-  const activeQuery = useRemoteSearch ? remoteSearchQuery : catalogQuery;
 
   const students = useMemo(() => {
+    if (useRemoteSearch) {
+      return flattenStudents(
+        remoteSearchQuery.data?.pages,
+        excluded,
+        selectedIdSet,
+      );
+    }
     const rows = flattenStudents(
-      activeQuery.data?.pages,
+      catalogQuery.data ? [catalogQuery.data] : undefined,
       excluded,
       selectedIdSet,
     );
@@ -166,11 +169,13 @@ export function StudentSearchMultiselect({
     const query = searchQuery.toLowerCase();
     return rows.filter((student) => matchesPersonSearch(student, query));
   }, [
-    activeQuery.data?.pages,
+    remoteSearchQuery.data?.pages,
+    catalogQuery.data,
     catalogComplete,
     excluded,
     searchQuery,
     selectedIdSet,
+    useRemoteSearch,
   ]);
 
   useEffect(() => {
@@ -234,18 +239,20 @@ export function StudentSearchMultiselect({
     ? remoteSearchQuery.isLoading ||
       (remoteSearchQuery.isFetching && !remoteSearchQuery.data)
     : catalogQuery.isLoading;
-  const isError = activeQuery.isError;
-  const error = activeQuery.error;
+  const isError = useRemoteSearch
+    ? remoteSearchQuery.isError
+    : catalogQuery.isError;
+  const error = useRemoteSearch ? remoteSearchQuery.error : catalogQuery.error;
   const showLoadMore =
-    !catalogComplete &&
-    activeQuery.hasNextPage &&
-    !(useRemoteSearch && remoteSearchQuery.isLoading);
+    useRemoteSearch &&
+    remoteSearchQuery.hasNextPage &&
+    !remoteSearchQuery.isLoading;
   const loadMore = useCallback(() => {
-    void activeQuery.fetchNextPage();
-  }, [activeQuery.fetchNextPage]);
+    void remoteSearchQuery.fetchNextPage();
+  }, [remoteSearchQuery.fetchNextPage]);
   const loadMoreRef = useLoadMoreOnScroll<HTMLDivElement>({
     hasMore: Boolean(showLoadMore),
-    isLoading: activeQuery.isFetchingNextPage,
+    isLoading: remoteSearchQuery.isFetchingNextPage,
     onLoadMore: loadMore,
   });
 
@@ -342,7 +349,7 @@ export function StudentSearchMultiselect({
             <li className={styles.loadMore}>
               <LoadMoreIndicator
                 ref={loadMoreRef}
-                isLoading={activeQuery.isFetchingNextPage}
+                isLoading={remoteSearchQuery.isFetchingNextPage}
                 testId={`${testIdPrefix}-search-load-more`}
               />
             </li>

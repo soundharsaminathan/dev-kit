@@ -26,7 +26,6 @@ import { useApi } from "@/lib/api-context";
 import type { Page } from "@/lib/api-page";
 import { ENTITY_ICONS } from "@/lib/entity-icons";
 import { formatPaidMonths } from "@/lib/format-paid-months";
-import { useStudioId } from "@/lib/use-studio-id";
 import { formatPrice } from "@/modules/payments/invoice-types";
 import type { StudioStudent } from "@/modules/students/student-search-combobox";
 import { StudentSearchMultiselect } from "@/modules/students/student-search-multiselect";
@@ -140,7 +139,6 @@ function prependRosterRows(
 
 export function BatchRoster({ batchId, capacity, active }: BatchRosterProps) {
   const api = useApi();
-  const studioId = useStudioId();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { toast } = useToastContext("BatchRoster");
@@ -348,15 +346,6 @@ export function BatchRoster({ batchId, capacity, active }: BatchRosterProps) {
         queryClient.invalidateQueries({ queryKey: ["batch", batchId] }),
         queryClient.invalidateQueries({
           queryKey: ["batch", batchId, "roster"],
-        }),
-        queryClient.invalidateQueries({
-          queryKey: ["studio-students-search", studioId],
-        }),
-        queryClient.invalidateQueries({
-          queryKey: ["student-profile", studioId],
-        }),
-        queryClient.invalidateQueries({
-          queryKey: ["invoices", studioId],
         }),
       ]);
     },

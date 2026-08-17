@@ -180,9 +180,14 @@ export class MembershipsService {
     coveredStudents: CoveredStudentInput[];
     /** When false, invoice stays pending until staff collects (no checkout timer). */
     paymentHold?: boolean;
+    /** Reuse an already-loaded batch instead of re-fetching it. */
+    batch?: Prisma.BatchGetPayload<Record<string, never>>;
+    /** Skip per-student schedule checks; the caller already validated everyone at once. */
+    skipScheduleConflicts?: boolean;
   }) {
     const [batch, planLink] = await Promise.all([
-      this.prisma.batch.findUnique({ where: { id: args.batchId } }),
+      args.batch ??
+        this.prisma.batch.findUnique({ where: { id: args.batchId } }),
       this.prisma.batchPlan.findUnique({
         where: {
           batchId_subscriptionId: {
@@ -233,11 +238,13 @@ export class MembershipsService {
       await this.assertBatchPicks(seatsWithBatch);
     }
 
-    for (const covered of seatsWithBatch) {
-      await this.scheduleConflicts.assertStudentAvailableForBatch(
-        covered.studentId,
-        covered.batchId!,
-      );
+    if (!args.skipScheduleConflicts) {
+      for (const covered of seatsWithBatch) {
+        await this.scheduleConflicts.assertStudentAvailableForBatch(
+          covered.studentId,
+          covered.batchId!,
+        );
+      }
     }
 
     const settings = await this.prisma.studioSettings.findUnique({
@@ -397,18 +404,24 @@ export class MembershipsService {
     subscriptionId: string;
     studentId: string;
     paymentHold?: boolean;
+    /** Reuse an already-loaded batch instead of re-fetching it. */
+    batch?: Prisma.BatchGetPayload<Record<string, never>>;
+    /** Skip per-student schedule checks; the caller already validated everyone at once. */
+    skipScheduleConflicts?: boolean;
   }): Promise<BatchEnrollmentBilling> {
     const now = new Date();
-    const batch = await this.prisma.batch.findUnique({
-      where: { id: args.batchId },
-    });
+    const batch =
+      args.batch ??
+      (await this.prisma.batch.findUnique({
+        where: { id: args.batchId },
+      }));
     if (!batch?.active) {
       throw new NotFoundException("Batch not found or inactive");
     }
     const seatRole = seatRoleForBatchCategory(batch.category);
     const track = await this.findCurrentPeriodTrack(args.studentId, now);
 
-    if (track && track.batchId && track.batchId !== args.batchId) {
+    if (track?.batchId && track.batchId !== args.batchId) {
       await this.moveTrackToBatch(track.id, args.batchId);
       return { kind: "switch", invoice: null };
     }
@@ -434,6 +447,8 @@ export class MembershipsService {
           },
         ],
         paymentHold: args.paymentHold,
+        batch,
+        skipScheduleConflicts: args.skipScheduleConflicts,
       });
       // Discover checkout keeps the hold-only invoice. Staff/bulk/parent seat
       // immediately, so the membership (and invoice link) exist before payment.
@@ -444,6 +459,7 @@ export class MembershipsService {
           studentId: args.studentId,
           at: now,
           billingPhase: MembershipBillingPhase.PREPAID,
+          batch,
         });
         const linked = await this.prisma.invoice.update({
           where: { id: invoice.id },
@@ -454,20 +470,22 @@ export class MembershipsService {
       return { kind: "prepaid", invoice };
     }
 
-    const membership = await this.startMembershipForEnroll({
-      batchId: args.batchId,
-      subscriptionId: args.subscriptionId,
-      studentId: args.studentId,
-      at: now,
-      billingPhase: MembershipBillingPhase.FIRST_POSTPAID,
-    });
-
     const subscription = await this.prisma.subscription.findUnique({
       where: { id: args.subscriptionId },
     });
     if (!subscription?.active) {
       throw new NotFoundException("Subscription not found or inactive");
     }
+
+    const membership = await this.startMembershipForEnroll({
+      batchId: args.batchId,
+      subscriptionId: args.subscriptionId,
+      studentId: args.studentId,
+      at: now,
+      billingPhase: MembershipBillingPhase.FIRST_POSTPAID,
+      batch,
+      subscription,
+    });
 
     const { billedSessionCount, remainingSessionCount } =
       await this.countMonthSessions(args.batchId, now);
@@ -697,16 +715,22 @@ export class MembershipsService {
     studentId: string;
     at: Date;
     billingPhase: MembershipBillingPhase;
+    batch?: Prisma.BatchGetPayload<Record<string, never>>;
+    subscription?: Prisma.SubscriptionGetPayload<Record<string, never>>;
   }) {
-    const subscription = await this.prisma.subscription.findUnique({
-      where: { id: args.subscriptionId },
-    });
+    const subscription =
+      args.subscription ??
+      (await this.prisma.subscription.findUnique({
+        where: { id: args.subscriptionId },
+      }));
     if (!subscription?.active) {
       throw new NotFoundException("Subscription not found or inactive");
     }
-    const batch = await this.prisma.batch.findUnique({
-      where: { id: args.batchId },
-    });
+    const batch =
+      args.batch ??
+      (await this.prisma.batch.findUnique({
+        where: { id: args.batchId },
+      }));
     if (!batch) {
       throw new NotFoundException("Batch not found");
     }

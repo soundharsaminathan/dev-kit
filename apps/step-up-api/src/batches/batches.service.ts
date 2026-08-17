@@ -37,7 +37,6 @@ import {
   membershipCoversBatch,
 } from "../memberships/membership-helpers";
 import {
-  type BatchEnrollmentBilling,
   type CoveredStudentInput,
   MembershipsService,
 } from "../memberships/memberships.service";
@@ -1512,20 +1511,29 @@ export class BatchesService {
       );
     }
 
-    const billings: BatchEnrollmentBilling[] = [];
-    for (const studentId of uniqueIds) {
-      // Bill before the locked seat writes. beginBatchEnrollment uses the
-      // root Prisma client; calling it inside $transaction holds one pool
-      // connection while waiting for another (P2024 under HTTP parallelism).
-      billings.push(
-        await this.memberships.beginBatchEnrollment({
+    // One occupancy load for every student instead of a per-student scan.
+    await this.scheduleConflicts.assertStudentAvailableForBatch(
+      uniqueIds,
+      batchId,
+    );
+
+    const billings = await Promise.all(
+      uniqueIds.map((studentId) =>
+        // Bill before the locked seat writes. beginBatchEnrollment uses the
+        // root Prisma client; calling it inside $transaction holds one pool
+        // connection while waiting for another (P2024 under HTTP parallelism).
+        // Parallelizing here (outside the transaction) is safe and cuts bulk
+        // enroll latency from N sequential billing chains to one.
+        this.memberships.beginBatchEnrollment({
           batchId,
           subscriptionId,
           studentId,
           paymentHold: false,
+          batch,
+          skipScheduleConflicts: true,
         }),
-      );
-    }
+      ),
+    );
 
     const results = await this.prisma.$transaction(
       async (tx) => {
@@ -2294,7 +2302,7 @@ export class BatchesService {
           continue;
         } else {
           const enrolledBatches = studentBatchMap.get(invoice.studentId);
-          if (!enrolledBatches || enrolledBatches.size !== 1) {
+          if (enrolledBatches?.size !== 1) {
             continue;
           }
         }
