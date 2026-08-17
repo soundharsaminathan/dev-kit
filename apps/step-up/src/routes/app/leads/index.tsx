@@ -788,7 +788,6 @@ function LeadsPage() {
                         const canSwitchTrial =
                           lead.section === "new" ||
                           lead.section === "trialBooked" ||
-                          lead.section === "trialAttended" ||
                           lead.section === "trialMissed";
                         return (
                           <motion.li
