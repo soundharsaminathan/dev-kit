@@ -35,6 +35,7 @@ import {
   IsString,
   Matches,
   Max,
+  MaxLength,
   Min,
   ValidateNested,
 } from "class-validator";
@@ -264,6 +265,11 @@ class SwitchBatchDto {
   @IsOptional()
   @IsBoolean()
   includeAllAges?: boolean;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  endNote?: string;
 }
 
 class UnenrollStudentDto {
@@ -278,6 +284,11 @@ class UnenrollStudentDto {
   @IsNumber()
   @Min(0.01)
   refundAmount?: number;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  endNote?: string;
 }
 
 class RateBatchDto {
@@ -501,6 +512,7 @@ export class BatchesController {
     return this.batchCommands.switchBatch(id, dto.studentId, dto.toBatchId, {
       includeAllPrices: dto.includeAllPrices === true,
       includeAllAges: dto.includeAllAges === true,
+      endNote: dto.endNote,
     });
   }
 
@@ -510,6 +522,7 @@ export class BatchesController {
     return this.batchCommands.unenroll(id, dto.studentId, {
       refund: dto.refund,
       refundAmount: dto.refundAmount,
+      endNote: dto.endNote,
     });
   }
 

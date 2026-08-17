@@ -102,7 +102,11 @@ export class BatchCommandsService {
   async unenroll(
     batchId: string,
     studentId: string,
-    options: { refund?: boolean; refundAmount?: number } = {},
+    options: {
+      refund?: boolean;
+      refundAmount?: number;
+      endNote?: string | null;
+    } = {},
   ) {
     const result = await this.batches.unenroll(batchId, studentId, options);
     await this.repository.refreshSummaryAfterMutation(batchId);
@@ -113,7 +117,11 @@ export class BatchCommandsService {
     fromBatchId: string,
     studentId: string,
     toBatchId: string,
-    options: { includeAllPrices?: boolean; includeAllAges?: boolean } = {},
+    options: {
+      includeAllPrices?: boolean;
+      includeAllAges?: boolean;
+      endNote?: string | null;
+    } = {},
   ) {
     const result = await this.batches.switchBatch(
       fromBatchId,

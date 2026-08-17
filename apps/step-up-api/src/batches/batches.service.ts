@@ -1695,7 +1695,11 @@ export class BatchesService {
     fromBatchId: string,
     studentId: string,
     toBatchId: string,
-    options: { includeAllPrices?: boolean; includeAllAges?: boolean } = {},
+    options: {
+      includeAllPrices?: boolean;
+      includeAllAges?: boolean;
+      endNote?: string | null;
+    } = {},
   ) {
     if (fromBatchId === toBatchId) {
       throw new BadRequestException("Student is already in this batch");
@@ -1807,7 +1811,7 @@ export class BatchesService {
         where: {
           batchId_studentId: { batchId: fromBatchId, studentId },
         },
-        data: endEnrollmentData("SWITCH"),
+        data: endEnrollmentData("SWITCH", undefined, options.endNote),
       });
 
       return tx.batchEnrollment.upsert({
@@ -1898,7 +1902,11 @@ export class BatchesService {
   async unenroll(
     batchId: string,
     studentId: string,
-    options: { refund?: boolean; refundAmount?: number } = {},
+    options: {
+      refund?: boolean;
+      refundAmount?: number;
+      endNote?: string | null;
+    } = {},
   ) {
     const enrollment = await this.prisma.batchEnrollment.findFirst({
       where: { batchId, studentId, ...ACTIVE_ENROLLMENT_WHERE },
@@ -1947,7 +1955,7 @@ export class BatchesService {
       async (tx) => {
         const endedEnrollment = await tx.batchEnrollment.update({
           where: { id: enrollment.id },
-          data: endEnrollmentData("UNENROLL", now),
+          data: endEnrollmentData("UNENROLL", now, options.endNote),
         });
 
         const cancelled = await tx.booking.updateMany({

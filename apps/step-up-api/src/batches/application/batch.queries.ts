@@ -291,6 +291,7 @@ export class BatchQueriesService {
           enrolledAt: row.enrolledAt,
           endedAt: row.endedAt,
           endReason: row.endReason,
+          endNote: row.endNote,
           inactiveReason: inactiveReasonFromEndReason(row.endReason),
           student,
         };

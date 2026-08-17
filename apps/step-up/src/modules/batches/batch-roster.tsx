@@ -57,6 +57,7 @@ export type BatchEnrollmentRow = {
 
 export type InactiveEnrollmentRow = BatchEnrollmentRow & {
   endReason?: string | null;
+  endNote?: string | null;
   endedAt?: string | null;
   inactiveReason: "MOVED" | "UNENROLLED";
 };
@@ -642,6 +643,14 @@ export function BatchRoster({ batchId, capacity, active }: BatchRosterProps) {
                                 </Badge>
                               </div>
                             </div>
+                            {row.endNote ? (
+                              <p
+                                className={styles.tenure}
+                                data-testid={`inactive-note-${row.studentId}`}
+                              >
+                                {row.endNote}
+                              </p>
+                            ) : null}
                           </div>
 
                           <Icon

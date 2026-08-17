@@ -89,14 +89,14 @@ describe("app nav role filtering", () => {
     expect(primary).toContain("/app/calendar");
   });
 
-  it("keeps calendar navigation on header for desktop and mobile", () => {
+  it("keeps messages navigation on header for desktop and mobile", () => {
     const desktop = getHeaderNavLinks("app", "OWNER");
-    expect(desktop.map((link) => link.to)).toContain("/app/calendar");
+    expect(desktop.map((link) => link.to)).toContain("/app/messages");
 
     const mobile = getHeaderNavLinks("app", "OWNER", true);
-    expect(mobile.map((link) => link.to)).toContain("/app/calendar");
-    expect(mobile.find((link) => link.to === "/app/calendar")?.icon).toBe(
-      "calendar",
+    expect(mobile.map((link) => link.to)).toContain("/app/messages");
+    expect(mobile.find((link) => link.to === "/app/messages")?.icon).toBe(
+      "message-square",
     );
   });
 });

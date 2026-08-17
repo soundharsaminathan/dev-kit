@@ -14,6 +14,7 @@ import { useStudioId } from "@/lib/use-studio-id";
 import { formatPrice } from "@/modules/payments/invoice-types";
 import { AppSheet } from "@/modules/ui/app-sheet";
 import { FormInput } from "@/modules/ui/form-input";
+import { FormTextArea } from "@/modules/ui/form-text-area";
 import staff from "@/modules/ui/staff.module.scss";
 import { EmptyState, ErrorState } from "@/modules/ui/states";
 import { TouchButton } from "@/modules/ui/touch-button";
@@ -83,6 +84,8 @@ export function StudentBatchEnrollmentActions({
   const [refundAmountInvoiceId, setRefundAmountInvoiceId] = useState<
     string | null
   >(null);
+  const [switchReason, setSwitchReason] = useState("");
+  const [unenrollReason, setUnenrollReason] = useState("");
 
   const switchTargetsQuery = useQuery({
     queryKey: [
@@ -117,14 +120,15 @@ export function StudentBatchEnrollmentActions({
   });
 
   const switchBatch = useMutation({
-    mutationFn: (toBatchId: string) =>
+    mutationFn: (args: { toBatchId: string; endNote?: string | null }) =>
       api.post(`/batches/${batchId}/switch`, {
         studentId,
-        toBatchId,
+        toBatchId: args.toBatchId,
         ...(includeAllPrices ? { includeAllPrices: true } : {}),
         ...(includeAllAges ? { includeAllAges: true } : {}),
+        ...(args.endNote ? { endNote: args.endNote } : {}),
       }),
-    onSuccess: (_data, toBatchId) => {
+    onSuccess: (_data, { toBatchId }) => {
       const targetName =
         switchTargetsQuery.data?.targets.find((t) => t.id === toBatchId)
           ?.name ?? "the new batch";
@@ -143,10 +147,10 @@ export function StudentBatchEnrollmentActions({
         variant: "error",
       });
     },
-    onSettled: async (_data, _error, toBatchId) => {
+    onSettled: async (_data, _error, args) => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["batch", batchId] }),
-        queryClient.invalidateQueries({ queryKey: ["batch", toBatchId] }),
+        queryClient.invalidateQueries({ queryKey: ["batch", args.toBatchId] }),
         queryClient.invalidateQueries({
           queryKey: ["student-profile", studioId, studentId],
         }),
@@ -158,13 +162,18 @@ export function StudentBatchEnrollmentActions({
   });
 
   const unenroll = useMutation({
-    mutationFn: (input: { refund: boolean; refundAmount?: number }) =>
+    mutationFn: (input: {
+      refund: boolean;
+      refundAmount?: number;
+      endNote?: string | null;
+    }) =>
       api.post(`/batches/${batchId}/unenroll`, {
         studentId,
         refund: input.refund,
         ...(input.refundAmount !== undefined
           ? { refundAmount: input.refundAmount }
           : {}),
+        ...(input.endNote ? { endNote: input.endNote } : {}),
       }),
     onSuccess: (_data, { refund }) => {
       toast({
@@ -209,6 +218,7 @@ export function StudentBatchEnrollmentActions({
     setSelectedTargetId(null);
     setIncludeAllPrices(false);
     setIncludeAllAges(false);
+    setSwitchReason("");
     setSwitchOpen(true);
   }
 
@@ -217,6 +227,7 @@ export function StudentBatchEnrollmentActions({
     setSelectedTargetId(null);
     setIncludeAllPrices(false);
     setIncludeAllAges(false);
+    setSwitchReason("");
   }
 
   function switchTargetLabel(target: SwitchTarget) {
@@ -232,6 +243,7 @@ export function StudentBatchEnrollmentActions({
     setIssueRefund(false);
     setRefundAmount("");
     setRefundAmountInvoiceId(null);
+    setUnenrollReason("");
     setUnenrollOpen(true);
   }
 
@@ -240,6 +252,7 @@ export function StudentBatchEnrollmentActions({
     setIssueRefund(false);
     setRefundAmount("");
     setRefundAmountInvoiceId(null);
+    setUnenrollReason("");
   }
 
   return (
@@ -368,6 +381,14 @@ export function StudentBatchEnrollmentActions({
           >
             Include all batches irrespective of age
           </Checkbox>
+          <FormTextArea
+            label="Reason (optional)"
+            value={switchReason}
+            onChange={setSwitchReason}
+            placeholder="Why is this student being moved?"
+            rows={2}
+            data-testid="switch-reason"
+          />
           {switchBatch.isError ? (
             <ErrorState
               description={
@@ -386,7 +407,11 @@ export function StudentBatchEnrollmentActions({
               data-testid="confirm-switch-batch"
               onClick={() => {
                 if (selectedTargetId) {
-                  switchBatch.mutate(selectedTargetId);
+                  const note = switchReason.trim() || null;
+                  switchBatch.mutate({
+                    toBatchId: selectedTargetId,
+                    endNote: note,
+                  });
                 }
               }}
             >
@@ -499,6 +524,14 @@ export function StudentBatchEnrollmentActions({
               No paid invoice available to refund.
             </p>
           ) : null}
+          <FormTextArea
+            label="Reason (optional)"
+            value={unenrollReason}
+            onChange={setUnenrollReason}
+            placeholder="Why is this student being unenrolled?"
+            rows={2}
+            data-testid="unenroll-reason"
+          />
           {unenroll.isError ? (
             <ErrorState
               description={
@@ -557,6 +590,7 @@ export function StudentBatchEnrollmentActions({
                   ...(parsedRefundAmount !== undefined
                     ? { refundAmount: parsedRefundAmount }
                     : {}),
+                  endNote: unenrollReason.trim() || null,
                 });
               }}
             >

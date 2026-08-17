@@ -1,8 +1,8 @@
 import { Inject, Injectable } from "@nestjs/common";
 import { BatchEnrollmentStatus, type Prisma } from "@prisma/client";
 import { PrismaService } from "../../prisma/prisma.service";
-import { userPiiSelect } from "../../users/user-crypto.service";
 import { resolvePageLimit } from "../../shared/pagination";
+import { userPiiSelect } from "../../users/user-crypto.service";
 import type { DiscoverBatchFilters } from "../batches.service";
 import { ACTIVE_ENROLLMENT_WHERE } from "../enrollment-status";
 
@@ -180,6 +180,7 @@ export class BatchQuery {
         status: true,
         endedAt: true,
         endReason: true,
+        endNote: true,
         student: { select: studentLiteSelect },
       },
       orderBy: [{ enrolledAt: "desc" }, { id: "asc" }],

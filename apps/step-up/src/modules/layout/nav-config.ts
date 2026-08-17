@@ -311,7 +311,7 @@ export function getHeaderNavLinks(
 ): NavLinkItem[] {
   if (variant === "app") {
     return linksFor(variant, role).filter(
-      (link) => link.to === "/app/calendar" || link.to === "/app/feed",
+      (link) => link.to === "/app/messages" || link.to === "/app/feed",
     );
   }
 

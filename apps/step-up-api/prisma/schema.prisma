@@ -695,6 +695,7 @@ model BatchEnrollment {
   status     BatchEnrollmentStatus @default(ACTIVE)
   endedAt    DateTime?
   endReason  String?
+  endNote    String?
 
   batch   Batch @relation(fields: [batchId], references: [id], onDelete: Cascade)
   student User  @relation(fields: [studentId], references: [id], onDelete: Cascade)
