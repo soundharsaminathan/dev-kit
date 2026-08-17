@@ -341,6 +341,7 @@ function AddTrialUserSheet({
                 }
                 className={styles.trialFormRow}
                 hint="Enter either a date of birth or an exact age."
+                required
               />
               <div className={styles.trialFormRow}>
                 <div className={styles.trialFormField}>

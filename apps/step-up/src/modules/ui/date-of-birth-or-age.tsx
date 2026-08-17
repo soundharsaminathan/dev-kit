@@ -9,6 +9,7 @@ type DateOfBirthOrAgeFieldsProps = {
   onAgeChange: (value: string) => void;
   className?: string | undefined;
   hint?: string | undefined;
+  required?: boolean | undefined;
 };
 
 const DEFAULT_HINT = "Enter either a date of birth or an exact age.";
@@ -21,16 +22,18 @@ export function DateOfBirthOrAgeFields({
   onAgeChange,
   className,
   hint = DEFAULT_HINT,
+  required,
 }: DateOfBirthOrAgeFieldsProps) {
   const derivedAge = ageFromDateOfBirth(dateOfBirth);
   const ageLocked = dateOfBirth.length > 0 && derivedAge !== null;
 
   return (
-    <div className={className}>
+    <div className={className ?? styles.stack}>
       <FormInput
         label="Date of birth"
         type="date"
         value={dateOfBirth}
+        {...(required ? { required: true } : {})}
         onChange={(value) => {
           onDateOfBirthChange(value);
           const derived = ageFromDateOfBirth(value);
@@ -46,6 +49,7 @@ export function DateOfBirthOrAgeFields({
         placeholder="e.g. 14"
         value={age}
         readOnly={ageLocked}
+        {...(required ? { required: true } : {})}
         onChange={(value) => {
           onAgeChange(value);
           if (value) onDateOfBirthChange("");

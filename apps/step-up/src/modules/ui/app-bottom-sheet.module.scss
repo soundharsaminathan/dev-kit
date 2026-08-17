@@ -1,6 +1,7 @@
 .body {
   display: flex;
   flex-direction: column;
+  gap: var(--space-3, 0.75rem);
   padding: 0 var(--space-4, 1rem) var(--space-5, 1.25rem);
   padding-bottom: calc(var(--space-5, 1.25rem) + env(safe-area-inset-bottom, 0px));
   max-height: min(75dvh, 36rem);

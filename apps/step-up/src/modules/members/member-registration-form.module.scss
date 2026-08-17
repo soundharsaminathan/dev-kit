@@ -45,6 +45,10 @@
   color: color-mix(in srgb, var(--color-fg) 70%, transparent);
 }
 
+.required {
+  color: var(--color-danger, #ff3b30);
+}
+
 .chipGrid {
   display: flex;
   flex-wrap: wrap;

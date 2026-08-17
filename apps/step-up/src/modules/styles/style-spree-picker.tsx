@@ -18,6 +18,7 @@ type StyleSpreePickerProps = {
   title?: string;
   summaryLabel?: string;
   catalog?: DanceStyle[];
+  required?: boolean;
 };
 
 function FloatingEmoji({
@@ -79,6 +80,7 @@ export function StyleSpreePicker({
   title = "Dance styles",
   summaryLabel = "styles",
   catalog: catalogProp,
+  required,
 }: StyleSpreePickerProps) {
   const { styles: studioStyles } = useStudioDanceStyles();
   const catalog = catalogProp ?? studioStyles;
@@ -132,7 +134,15 @@ export function StyleSpreePicker({
 
   return (
     <div className={styles.root}>
-      <h2 className={styles.title}>{title}</h2>
+      <h2 className={styles.title}>
+        {title}
+        {required ? (
+          <span className={styles.required} aria-hidden="true">
+            {" "}
+            *
+          </span>
+        ) : null}
+      </h2>
 
       <motion.div
         ref={containerRef}

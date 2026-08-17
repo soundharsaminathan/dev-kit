@@ -21,6 +21,10 @@
   letter-spacing: -0.02em;
 }
 
+.required {
+  color: var(--color-danger, #ff3b30);
+}
+
 .viewport {
   position: relative;
   z-index: 2;

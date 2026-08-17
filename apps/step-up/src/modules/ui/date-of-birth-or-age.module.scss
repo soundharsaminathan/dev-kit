@@ -1,3 +1,9 @@
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 0.75rem);
+}
+
 .hint {
   margin: 0;
   font-size: var(--font-size-sm, 0.8125rem);

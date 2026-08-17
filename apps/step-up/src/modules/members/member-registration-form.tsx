@@ -301,12 +301,13 @@ export function MemberRegistrationForm({
 
         {step === 0 ? (
           <div className={staff.softPanel}>
-            <FormInput label="Name" value={name} onChange={setName} />
+            <FormInput label="Name" value={name} onChange={setName} required />
             <FormInput
               label="Email"
               type="email"
               value={email}
               onChange={setEmail}
+              required
             />
             <FormInput
               label="Mobile number"
@@ -315,7 +316,12 @@ export function MemberRegistrationForm({
               onChange={setPhone}
             />
             <div className={formStyles.fieldBlock}>
-              <p className={formStyles.fieldLabel}>Gender</p>
+              <p className={formStyles.fieldLabel}>
+                Gender{" "}
+                <span className={formStyles.required} aria-hidden="true">
+                  *
+                </span>
+              </p>
               <div className={formStyles.chipGrid}>
                 {GENDERS.map((option) => (
                   <button
@@ -338,6 +344,7 @@ export function MemberRegistrationForm({
                     onDateOfBirthChange={setDateOfBirth}
                     age={age}
                     onAgeChange={setAge}
+                    required
                   />
                 </div>
                 <FormInput
@@ -381,6 +388,7 @@ export function MemberRegistrationForm({
               onChange={setStyles}
               title={stylesTitle}
               summaryLabel={stylesSummaryLabel}
+              required
             />
             {allowBatchEnrollment ? (
               <div
