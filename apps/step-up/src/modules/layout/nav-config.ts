@@ -133,6 +133,13 @@ const appLinks: NavLinkItem[] = [
     roles: ADMIN_ROLES,
   },
   {
+    to: "/app/import",
+    label: "Data import",
+    icon: "upload",
+    section: "Ops",
+    roles: ADMIN_ROLES,
+  },
+  {
     to: "/app/expenses",
     label: "Expenses",
     icon: "wallet",

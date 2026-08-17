@@ -41,6 +41,7 @@ import { Route as AppRetentionRouteImport } from './routes/app/retention'
 import { Route as AppProfileRouteImport } from './routes/app/profile'
 import { Route as AppPaymentsRouteImport } from './routes/app/payments'
 import { Route as AppInvoicesRouteImport } from './routes/app/invoices'
+import { Route as AppImportRouteImport } from './routes/app/import'
 import { Route as AppFeedRouteImport } from './routes/app/feed'
 import { Route as AppCalendarRouteImport } from './routes/app/calendar'
 import { Route as AdminProfileRouteImport } from './routes/admin/profile'
@@ -265,6 +266,11 @@ const AppPaymentsRoute = AppPaymentsRouteImport.update({
 const AppInvoicesRoute = AppInvoicesRouteImport.update({
   id: '/invoices',
   path: '/invoices',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppImportRoute = AppImportRouteImport.update({
+  id: '/import',
+  path: '/import',
   getParentRoute: () => AppRoute,
 } as any)
 const AppFeedRoute = AppFeedRouteImport.update({
@@ -608,6 +614,7 @@ export interface FileRoutesByFullPath {
   '/admin/profile': typeof AdminProfileRoute
   '/app/calendar': typeof AppCalendarRoute
   '/app/feed': typeof AppFeedRoute
+  '/app/import': typeof AppImportRoute
   '/app/invoices': typeof AppInvoicesRoute
   '/app/payments': typeof AppPaymentsRoute
   '/app/profile': typeof AppProfileRoute
@@ -704,6 +711,7 @@ export interface FileRoutesByTo {
   '/admin/profile': typeof AdminProfileRoute
   '/app/calendar': typeof AppCalendarRoute
   '/app/feed': typeof AppFeedRoute
+  '/app/import': typeof AppImportRoute
   '/app/invoices': typeof AppInvoicesRoute
   '/app/payments': typeof AppPaymentsRoute
   '/app/profile': typeof AppProfileRoute
@@ -804,6 +812,7 @@ export interface FileRoutesById {
   '/admin/profile': typeof AdminProfileRoute
   '/app/calendar': typeof AppCalendarRoute
   '/app/feed': typeof AppFeedRoute
+  '/app/import': typeof AppImportRoute
   '/app/invoices': typeof AppInvoicesRoute
   '/app/payments': typeof AppPaymentsRoute
   '/app/profile': typeof AppProfileRoute
@@ -905,6 +914,7 @@ export interface FileRouteTypes {
     | '/admin/profile'
     | '/app/calendar'
     | '/app/feed'
+    | '/app/import'
     | '/app/invoices'
     | '/app/payments'
     | '/app/profile'
@@ -1001,6 +1011,7 @@ export interface FileRouteTypes {
     | '/admin/profile'
     | '/app/calendar'
     | '/app/feed'
+    | '/app/import'
     | '/app/invoices'
     | '/app/payments'
     | '/app/profile'
@@ -1100,6 +1111,7 @@ export interface FileRouteTypes {
     | '/admin/profile'
     | '/app/calendar'
     | '/app/feed'
+    | '/app/import'
     | '/app/invoices'
     | '/app/payments'
     | '/app/profile'
@@ -1427,6 +1439,13 @@ declare module '@tanstack/react-router' {
       path: '/invoices'
       fullPath: '/app/invoices'
       preLoaderRoute: typeof AppInvoicesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/import': {
+      id: '/app/import'
+      path: '/import'
+      fullPath: '/app/import'
+      preLoaderRoute: typeof AppImportRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/feed': {
@@ -1906,6 +1925,7 @@ const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 interface AppRouteChildren {
   AppCalendarRoute: typeof AppCalendarRoute
   AppFeedRoute: typeof AppFeedRoute
+  AppImportRoute: typeof AppImportRoute
   AppInvoicesRoute: typeof AppInvoicesRoute
   AppPaymentsRoute: typeof AppPaymentsRoute
   AppProfileRoute: typeof AppProfileRoute
@@ -1963,6 +1983,7 @@ interface AppRouteChildren {
 const AppRouteChildren: AppRouteChildren = {
   AppCalendarRoute: AppCalendarRoute,
   AppFeedRoute: AppFeedRoute,
+  AppImportRoute: AppImportRoute,
   AppInvoicesRoute: AppInvoicesRoute,
   AppPaymentsRoute: AppPaymentsRoute,
   AppProfileRoute: AppProfileRoute,

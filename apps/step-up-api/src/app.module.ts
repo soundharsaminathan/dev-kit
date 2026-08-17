@@ -10,6 +10,7 @@ import { CalendarModule } from "./calendar/calendar.module";
 import { CertificatesModule } from "./certificates/certificates.module";
 import { ChatModule } from "./chat/chat.module";
 import { ContestsModule } from "./contests/contests.module";
+import { DataImportModule } from "./data-import/data-import.module";
 import { EventsModule } from "./events/events.module";
 import { ExpensesModule } from "./expenses/expenses.module";
 import { HealthModule } from "./health/health.module";
@@ -50,6 +51,7 @@ import { UsersModule } from "./users/users.module";
     BatchesModule,
     CertificatesModule,
     ContestsModule,
+    DataImportModule,
     SubscriptionsModule,
     MembershipsModule,
     SessionsModule,
