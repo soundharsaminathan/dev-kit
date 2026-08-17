@@ -9,6 +9,7 @@ import {
   formatFollowupChip,
   formatTrialWhen,
   isTrialSoon,
+  isTrialToday,
   type Lead,
   type LeadDateRange,
 } from "./types";
@@ -127,14 +128,19 @@ export function LeadCard({
                 data-tone="success"
                 data-testid={`lead-confirmed-${lead.id}`}
               >
-                Confirmed
+                Booking confirmed
               </span>
             ) : soon ? (
               <span className={styles.badge}>Call soon</span>
             ) : null}
-            <p className={styles.trialWhen}>
+            <p
+              className={styles.trialWhen}
+              data-testid={`lead-trial-when-${lead.id}`}
+            >
               {trial.sessionStartsAt
-                ? formatTrialWhen(trial.sessionStartsAt)
+                ? isTrialToday(trial.sessionStartsAt)
+                  ? "Today"
+                  : formatTrialWhen(trial.sessionStartsAt)
                 : "Time to confirm"}
             </p>
             {trial.batchName ? (

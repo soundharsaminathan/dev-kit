@@ -165,6 +165,13 @@ export function formatTrialWhen(startsAt: string) {
   }).format(start);
 }
 
+export function isTrialToday(startsAt: string | null, now: Date = new Date()) {
+  if (!startsAt) return false;
+  const start = new Date(startsAt);
+  if (Number.isNaN(start.getTime())) return false;
+  return localDateKey(start) === localDateKey(now);
+}
+
 export function ageRangeLabel(ageRange: AgeRange | null) {
   if (!ageRange) return null;
   const labels: Record<AgeRange, string> = {

@@ -143,7 +143,27 @@ describe("LeadCard confirm session", () => {
 
     expect(screen.queryByTestId("lead-confirm-session-lead-1")).toBeNull();
     expect(screen.getByTestId("lead-confirmed-lead-1")).toHaveTextContent(
-      "Confirmed",
+      "Booking confirmed",
+    );
+  });
+
+  it("shows Today when the trial session is today", () => {
+    const today = new Date();
+    today.setHours(14, 0, 0, 0);
+    renderWithProviders(
+      <LeadCard
+        lead={lead({
+          section: "trialBooked",
+          trialBooking: trial({ sessionStartsAt: today.toISOString() }),
+        })}
+        range={null}
+        onConfirmSession={vi.fn()}
+        onSwitchTrial={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByTestId("lead-trial-when-lead-1")).toHaveTextContent(
+      "Today",
     );
   });
 
