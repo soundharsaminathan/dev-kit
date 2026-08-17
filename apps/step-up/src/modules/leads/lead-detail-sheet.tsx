@@ -10,7 +10,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { type KeyboardEvent, useState } from "react";
 import { useApi } from "@/lib/api-context";
 import { useAuth } from "@/lib/auth";
-import { AppSheet } from "@/modules/ui/app-sheet";
+import { AppBottomSheet } from "@/modules/ui/app-bottom-sheet";
 import { FormInput } from "@/modules/ui/form-input";
 import { ErrorState } from "@/modules/ui/states";
 import { TouchButton } from "@/modules/ui/touch-button";
@@ -130,7 +130,7 @@ export function LeadDetailSheet({
     !addRemark.isPending;
 
   return (
-    <AppSheet
+    <AppBottomSheet
       isOpen={isOpen}
       onOpenChange={onOpenChange}
       title={lead?.name ?? "Lead"}
@@ -230,6 +230,6 @@ export function LeadDetailSheet({
           </div>
         </div>
       ) : null}
-    </AppSheet>
+    </AppBottomSheet>
   );
 }
