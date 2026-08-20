@@ -1,0 +1,65 @@
+/* IDE chrome tokens — VS Code–adjacent, not purple-glow marketing */
+
+:root,
+[data-theme-mode="dark"] {
+  --ide-bg: #1e1e1e;
+  --ide-bg-elevated: #252526;
+  --ide-bg-sidebar: #181818;
+  --ide-bg-activity: #181818;
+  --ide-bg-title: #3c3c3c;
+  --ide-bg-tab: #2d2d2d;
+  --ide-bg-tab-active: #1e1e1e;
+  --ide-bg-hover: #2a2d2e;
+  --ide-bg-input: #3c3c3c;
+  --ide-fg: #cccccc;
+  --ide-fg-muted: #858585;
+  --ide-fg-bright: #e7e7e7;
+  --ide-border: #2b2b2b;
+  --ide-accent: #3794ff;
+  --ide-accent-soft: color-mix(in srgb, #3794ff 18%, transparent);
+  --ide-success: #89d185;
+  --ide-warning: #cca700;
+  --ide-danger: #f14c4c;
+  --ide-info: #3794ff;
+  --ide-string: #ce9178;
+  --ide-keyword: #569cd6;
+  --ide-key: #9cdcfe;
+  --ide-number: #b5cea8;
+  --ide-comment: #6a9955;
+  --ide-selection: color-mix(in srgb, #3794ff 28%, transparent);
+  --ide-shadow: 0 8px 32px rgb(0 0 0 / 45%);
+  --ide-activity-width: 48px;
+  --ide-sidebar-width: 260px;
+  --ide-title-height: 36px;
+  --ide-status-height: 24px;
+  --ide-tab-height: 35px;
+}
+
+[data-theme-mode="light"] {
+  --ide-bg: #ffffff;
+  --ide-bg-elevated: #f3f3f3;
+  --ide-bg-sidebar: #f8f8f8;
+  --ide-bg-activity: #f3f3f3;
+  --ide-bg-title: #dddddd;
+  --ide-bg-tab: #ececec;
+  --ide-bg-tab-active: #ffffff;
+  --ide-bg-hover: #e8e8e8;
+  --ide-bg-input: #ffffff;
+  --ide-fg: #3b3b3b;
+  --ide-fg-muted: #6e6e6e;
+  --ide-fg-bright: #1a1a1a;
+  --ide-border: #e5e5e5;
+  --ide-accent: #005fb8;
+  --ide-accent-soft: color-mix(in srgb, #005fb8 14%, transparent);
+  --ide-success: #388a34;
+  --ide-warning: #bf8803;
+  --ide-danger: #e51400;
+  --ide-info: #005fb8;
+  --ide-string: #a31515;
+  --ide-keyword: #0000ff;
+  --ide-key: #0451a5;
+  --ide-number: #098658;
+  --ide-comment: #008000;
+  --ide-selection: color-mix(in srgb, #005fb8 18%, transparent);
+  --ide-shadow: 0 8px 32px rgb(0 0 0 / 12%);
+}

@@ -1,0 +1,50 @@
+.bar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 0;
+  background: var(--ide-bg-activity);
+  border-right: 1px solid var(--ide-border);
+  width: var(--ide-activity-width);
+}
+
+.btn {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ide-fg-muted);
+  cursor: pointer;
+  transition:
+    color 160ms ease,
+    background 160ms ease;
+}
+
+.btn:hover {
+  color: var(--ide-fg-bright);
+  background: var(--ide-bg-hover);
+}
+
+.btnActive {
+  color: var(--ide-fg-bright);
+}
+
+.btnActive::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 8px;
+  bottom: 8px;
+  width: 2px;
+  border-radius: 0 2px 2px 0;
+  background: var(--ide-accent);
+}
+
+.spacer {
+  flex: 1;
+}

@@ -16,6 +16,7 @@
     "test:watch": "vitest",
     "storybook": "nx run storybook:storybook",
     "dev:showcase": "nx run showcase:dev",
+    "dev:portfolio": "nx run portfolio:dev",
     "build:storybook": "nx run storybook:build-storybook",
     "test:e2e": "nx run storybook:test:e2e",
     "test:e2e:update": "nx run storybook:test:e2e:update",
