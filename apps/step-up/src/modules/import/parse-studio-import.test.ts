@@ -234,6 +234,8 @@ describe("parseStudioImportSheets", () => {
       capacity: 12,
       enrollmentMode: "STAFF_ONLY",
       active: true,
+      monthlyPlanName: null,
+      quarterlyPlanName: null,
     });
 
     expect(result.enrollments).toEqual([
@@ -244,6 +246,7 @@ describe("parseStudioImportSheets", () => {
         status: "ACTIVE",
         endedAt: null,
         endReason: null,
+        planName: null,
       },
       {
         studentEmail: "alan@example.com",
@@ -252,6 +255,7 @@ describe("parseStudioImportSheets", () => {
         status: "ENDED",
         endedAt: "2025-01-15",
         endReason: "Switched batch",
+        planName: null,
       },
     ]);
 
@@ -298,6 +302,7 @@ describe("parseStudioImportSheets", () => {
         studioDiscount: 0,
         refundedAmount: 0,
         refundedAt: null,
+        planName: null,
       },
       {
         studentEmail: "alan@example.com",
@@ -310,6 +315,7 @@ describe("parseStudioImportSheets", () => {
         studioDiscount: 0,
         refundedAmount: 1800,
         refundedAt: "2024-09-10",
+        planName: null,
       },
     ]);
     expect(result.invoicesInvalidRows).toEqual([]);
@@ -795,5 +801,100 @@ describe("parseStudioImportSheets", () => {
     expect(result.crossSheetErrors).toContain(
       "Attendance rows need a Start time that matches a Sessions row in this workbook.",
     );
+  });
+
+  it("parses plan name columns on batches, enrollments, and invoices", () => {
+    const result = parseStudioImportSheets([
+      {
+        sheet: "Batches",
+        data: [
+          [
+            "Batch name",
+            "Category",
+            "Monthly plan name",
+            "Quarterly plan name",
+            "Start time",
+            "End time",
+          ],
+          [
+            "Kids Hip-Hop",
+            "Kids",
+            "Kids Monthly",
+            "Kids Quarterly",
+            "16:00",
+            "17:00",
+          ],
+        ],
+      },
+      {
+        sheet: "Enrollments",
+        data: [
+          [
+            "Student email",
+            "Batch name",
+            "Enrolled date",
+            "Status",
+            "Plan name",
+          ],
+          [
+            "ada@example.com",
+            "Kids Hip-Hop",
+            "2024-06-03",
+            "Active",
+            "Kids Monthly",
+          ],
+        ],
+      },
+      {
+        sheet: "Invoices & Payments",
+        data: [
+          [
+            "Student email",
+            "Batch name",
+            "Amount",
+            "Status",
+            "Paid date",
+            "Plan name",
+          ],
+          [
+            "ada@example.com",
+            "Kids Hip-Hop",
+            1500,
+            "Paid",
+            "2024-06-03",
+            "Kids Monthly",
+          ],
+        ],
+      },
+    ]);
+
+    expect(result.sheetErrors).toEqual({});
+    expect(result.batches[0]).toMatchObject({
+      monthlyPlanName: "Kids Monthly",
+      quarterlyPlanName: "Kids Quarterly",
+    });
+    expect(result.enrollments[0]?.planName).toBe("Kids Monthly");
+    expect(result.invoices[0]?.planName).toBe("Kids Monthly");
+  });
+
+  it("rejects batches that only set one of monthly/quarterly plan names", () => {
+    const result = parseStudioImportSheets([
+      {
+        sheet: "Batches",
+        data: [
+          [
+            "Batch name",
+            "Category",
+            "Monthly plan name",
+            "Quarterly plan name",
+            "Start time",
+            "End time",
+          ],
+          ["Kids Hip-Hop", "Kids", "Kids Monthly", "", "16:00", "17:00"],
+        ],
+      },
+    ]);
+    expect(result.batches).toEqual([]);
+    expect(result.batchesInvalidRows).toEqual([2]);
   });
 });

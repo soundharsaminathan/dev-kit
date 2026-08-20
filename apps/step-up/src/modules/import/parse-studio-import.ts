@@ -20,6 +20,8 @@ export type ImportBatchRow = {
   capacity: number;
   enrollmentMode: EnrollmentMode;
   active: boolean;
+  monthlyPlanName: string | null;
+  quarterlyPlanName: string | null;
 };
 
 export type ImportEnrollmentRow = {
@@ -29,6 +31,7 @@ export type ImportEnrollmentRow = {
   status: "ACTIVE" | "ENDED";
   endedAt: string | null;
   endReason: string | null;
+  planName: string | null;
 };
 
 export type ImportInvoiceRow = {
@@ -42,6 +45,7 @@ export type ImportInvoiceRow = {
   studioDiscount: number;
   refundedAmount: number;
   refundedAt: string | null;
+  planName: string | null;
 };
 
 export type ImportSessionRow = {
@@ -512,6 +516,18 @@ function parseBatchesSheet(rows: unknown[][]): {
     "enrollment",
   ]);
   const statusIndex = findColumnIndex(headers, ["status", "state"]);
+  const monthlyPlanIndex = findColumnIndex(headers, [
+    "monthly plan name",
+    "monthly plan",
+    "1 month plan",
+    "1-month plan",
+  ]);
+  const quarterlyPlanIndex = findColumnIndex(headers, [
+    "quarterly plan name",
+    "quarterly plan",
+    "3 month plan",
+    "3-month plan",
+  ]);
 
   if (nameIndex === -1 || categoryIndex === -1) {
     throw new Error(
@@ -570,6 +586,14 @@ function parseBatchesSheet(rows: unknown[][]): {
       !rawStatus || /^(active|ended|inactive)$/i.test(rawStatus)
         ? !/^(ended|inactive)$/i.test(rawStatus)
         : true;
+    const monthlyPlanName =
+      monthlyPlanIndex === -1
+        ? null
+        : cellText(row?.[monthlyPlanIndex]) || null;
+    const quarterlyPlanName =
+      quarterlyPlanIndex === -1
+        ? null
+        : cellText(row?.[quarterlyPlanIndex]) || null;
 
     if (
       !name &&
@@ -577,7 +601,9 @@ function parseBatchesSheet(rows: unknown[][]): {
       !branchName &&
       danceStyles.length === 0 &&
       !startDate &&
-      !endDate
+      !endDate &&
+      !monthlyPlanName &&
+      !quarterlyPlanName
     ) {
       continue;
     }
@@ -588,6 +614,13 @@ function parseBatchesSheet(rows: unknown[][]): {
       capacity === null ||
       capacity < 1 ||
       capacity > 10_000
+    ) {
+      invalidRows.push(index + 2);
+      continue;
+    }
+    if (
+      (monthlyPlanName && !quarterlyPlanName) ||
+      (!monthlyPlanName && quarterlyPlanName)
     ) {
       invalidRows.push(index + 2);
       continue;
@@ -629,6 +662,8 @@ function parseBatchesSheet(rows: unknown[][]): {
       capacity,
       enrollmentMode,
       active,
+      monthlyPlanName,
+      quarterlyPlanName,
     });
   }
 
@@ -676,6 +711,12 @@ function parseEnrollmentsSheet(rows: unknown[][]): {
     "reason",
     "note",
   ]);
+  const planNameIndex = findColumnIndex(headers, [
+    "plan name",
+    "plan",
+    "subscription",
+    "subscription name",
+  ]);
 
   if (
     studentEmailIndex === -1 ||
@@ -703,8 +744,17 @@ function parseEnrollmentsSheet(rows: unknown[][]): {
     const endedAt = endedAtIndex === -1 ? null : parseDate(row?.[endedAtIndex]);
     const endReason =
       endReasonIndex === -1 ? null : cellText(row?.[endReasonIndex]) || null;
+    const planName =
+      planNameIndex === -1 ? null : cellText(row?.[planNameIndex]) || null;
 
-    if (!studentEmail && !batchName && !enrolledAt && !endedAt && !endReason) {
+    if (
+      !studentEmail &&
+      !batchName &&
+      !enrolledAt &&
+      !endedAt &&
+      !endReason &&
+      !planName
+    ) {
       continue;
     }
 
@@ -731,6 +781,7 @@ function parseEnrollmentsSheet(rows: unknown[][]): {
       status,
       endedAt,
       endReason,
+      planName,
     });
   }
 
@@ -803,6 +854,12 @@ function parseInvoicesSheet(rows: unknown[][]): {
     "refund date",
     "refunded on",
   ]);
+  const planNameIndex = findColumnIndex(headers, [
+    "plan name",
+    "plan",
+    "subscription",
+    "subscription name",
+  ]);
 
   if (studentEmailIndex === -1 || amountIndex === -1 || statusIndex === -1) {
     throw new Error(
@@ -838,8 +895,17 @@ function parseInvoicesSheet(rows: unknown[][]): {
         : parseMoney(row?.[refundedAmountIndex]);
     const refundedAt =
       refundedAtIndex === -1 ? null : parseDate(row?.[refundedAtIndex]);
+    const planName =
+      planNameIndex === -1 ? null : cellText(row?.[planNameIndex]) || null;
 
-    if (!studentEmail && !batchName && amount === null && !status && !paidAt) {
+    if (
+      !studentEmail &&
+      !batchName &&
+      amount === null &&
+      !status &&
+      !paidAt &&
+      !planName
+    ) {
       continue;
     }
 
@@ -868,6 +934,7 @@ function parseInvoicesSheet(rows: unknown[][]): {
       studioDiscount,
       refundedAmount: refundedAmount ?? (status === "REFUNDED" ? amount : 0),
       refundedAt,
+      planName,
     });
   }
 

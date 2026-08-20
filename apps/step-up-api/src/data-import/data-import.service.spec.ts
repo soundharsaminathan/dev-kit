@@ -25,11 +25,21 @@ function buildService(
     studioBranch: { findMany: vi.fn().mockResolvedValue([]) },
     batch: {
       findMany: vi.fn().mockResolvedValue([]),
+      findFirst: vi.fn().mockResolvedValue(null),
       createMany: vi.fn().mockResolvedValue({ count: 0 }),
+    },
+    batchPlan: {
+      createMany: vi.fn().mockResolvedValue({ count: 0 }),
+      findMany: vi.fn().mockResolvedValue([]),
     },
     batchEnrollment: {
       findMany: vi.fn().mockResolvedValue([]),
       createMany: vi.fn().mockResolvedValue({ count: 0 }),
+    },
+    subscription: { findMany: vi.fn().mockResolvedValue([]) },
+    membership: {
+      findFirst: vi.fn().mockResolvedValue(null),
+      create: vi.fn().mockResolvedValue({ id: "mem-1" }),
     },
     invoice: { createMany: vi.fn().mockResolvedValue({ count: 0 }) },
     session: { findMany: vi.fn().mockResolvedValue([]) },
@@ -1020,5 +1030,158 @@ describe("DataImportService.importStudioData", () => {
         }),
       ],
     });
+  });
+
+  it("attaches monthly and quarterly plans when batch plan names are provided", async () => {
+    const { service, prisma } = buildService({
+      prisma: {
+        studioBranch: {
+          findMany: vi
+            .fn()
+            .mockResolvedValue([{ id: "branch-main", name: "Main Branch" }]),
+        },
+        batch: {
+          findMany: vi.fn().mockResolvedValue([]),
+          createMany: vi.fn().mockResolvedValue({ count: 1 }),
+          findFirst: vi.fn().mockResolvedValue({
+            id: "batch-1",
+            category: BatchCategory.KIDS,
+          }),
+        },
+        subscription: {
+          findMany: vi.fn().mockResolvedValue([
+            {
+              id: "sub-month",
+              name: "Kids Monthly",
+              billingCadence: "MONTHLY",
+            },
+            {
+              id: "sub-quarter",
+              name: "Kids Quarterly",
+              billingCadence: "QUARTERLY",
+            },
+          ]),
+        },
+        batchPlan: {
+          createMany: vi.fn().mockResolvedValue({ count: 2 }),
+          findMany: vi.fn().mockResolvedValue([]),
+        },
+      },
+    });
+
+    // After createMany, refresh looks up created batches by name
+    prisma.batch.findMany
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{ id: "batch-1", name: "Kids Hip-Hop" }]);
+
+    await service.importStudioData(ACTOR, {
+      students: [],
+      batches: [
+        {
+          name: "Kids Hip-Hop",
+          category: BatchCategory.KIDS,
+          branchName: "Main Branch",
+          danceStyles: null,
+          frequency: "WEEKLY",
+          weekdays: [1],
+          startTime: "16:00",
+          endTime: "17:00",
+          startDate: "2024-06-03",
+          endDate: "2025-03-31",
+          utcOffsetMinutes: 0,
+          capacity: 12,
+          enrollmentMode: "STAFF_ONLY",
+          active: true,
+          monthlyPlanName: "Kids Monthly",
+          quarterlyPlanName: "Kids Quarterly",
+        },
+      ],
+      enrollments: [],
+      invoices: [],
+    });
+
+    expect(prisma.batchPlan.createMany).toHaveBeenCalledWith({
+      data: [
+        { batchId: "batch-1", subscriptionId: "sub-month" },
+        { batchId: "batch-1", subscriptionId: "sub-quarter" },
+      ],
+      skipDuplicates: true,
+    });
+  });
+
+  it("creates a membership when an enrollment includes a plan name", async () => {
+    const { service, prisma } = buildService({
+      prisma: {
+        user: {
+          findMany: vi
+            .fn()
+            .mockResolvedValue([
+              { id: "student-1", emailHash: "hash:ada@example.com" },
+            ]),
+        },
+        batch: {
+          findMany: vi.fn().mockResolvedValue([
+            {
+              id: "batch-1",
+              name: "Kids Hip-Hop",
+              category: BatchCategory.KIDS,
+            },
+          ]),
+        },
+        subscription: {
+          findMany: vi.fn().mockResolvedValue([
+            {
+              id: "sub-month",
+              name: "Kids Monthly",
+              billingCadence: "MONTHLY",
+            },
+          ]),
+        },
+        batchPlan: {
+          findMany: vi
+            .fn()
+            .mockResolvedValue([
+              { batchId: "batch-1", subscriptionId: "sub-month" },
+            ]),
+          createMany: vi.fn(),
+        },
+        batchEnrollment: {
+          findMany: vi.fn().mockResolvedValue([]),
+          createMany: vi.fn().mockResolvedValue({ count: 1 }),
+        },
+        membership: {
+          findFirst: vi.fn().mockResolvedValue(null),
+          create: vi.fn().mockResolvedValue({ id: "mem-1" }),
+        },
+      },
+    });
+
+    const result = await service.importStudioData(ACTOR, {
+      students: [],
+      batches: [],
+      enrollments: [
+        {
+          studentEmail: "ada@example.com",
+          batchName: "Kids Hip-Hop",
+          enrolledAt: "2024-06-03",
+          status: BatchEnrollmentStatus.ACTIVE,
+          endedAt: null,
+          endReason: null,
+          planName: "Kids Monthly",
+        },
+      ],
+      invoices: [],
+    });
+
+    expect(result.enrollments).toEqual({ created: 1, skipped: 0 });
+    expect(prisma.membership.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          subscriptionId: "sub-month",
+          purchaserUserId: "student-1",
+          batchId: "batch-1",
+        }),
+      }),
+    );
   });
 });

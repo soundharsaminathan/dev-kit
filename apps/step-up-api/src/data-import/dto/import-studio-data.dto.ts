@@ -156,6 +156,16 @@ export class ImportBatchDto {
   @IsOptional()
   @IsBoolean()
   active?: boolean;
+
+  @IsOptional()
+  @IsString()
+  @MinLength(1)
+  monthlyPlanName?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MinLength(1)
+  quarterlyPlanName?: string | null;
 }
 
 export class ImportEnrollmentDto {
@@ -179,6 +189,11 @@ export class ImportEnrollmentDto {
   @IsOptional()
   @IsString()
   endReason?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MinLength(1)
+  planName?: string | null;
 }
 
 export class ImportInvoiceDto {
@@ -222,6 +237,11 @@ export class ImportInvoiceDto {
   @IsOptional()
   @IsDateString()
   refundedAt?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MinLength(1)
+  planName?: string | null;
 }
 
 export class ImportSessionDto {

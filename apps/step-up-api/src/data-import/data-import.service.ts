@@ -9,17 +9,27 @@ import {
   type AttendanceStatus,
   type BatchCategory,
   BatchEnrollmentStatus,
+  BillingCadence,
+  IndividualAudience,
   InvoiceStatus,
+  MembershipBillingPhase,
+  MembershipStatus,
   type PaymentMethod,
   Prisma,
-  SessionStatus,
-  SessionType,
+  type SessionStatus,
+  type SessionType,
+  SubscriptionKind,
   UserRole,
 } from "@prisma/client";
 import {
   utcOffsetMinutesForZone,
   zonedLocalToUtc,
 } from "../common/zoned-local-time";
+import {
+  getPeriodEnd,
+  seatRoleForBatchCategory,
+  utcMonthStart,
+} from "../memberships/membership-helpers";
 import { PrismaService } from "../prisma/prisma.service";
 import {
   currentMonthPeriod,
@@ -43,6 +53,11 @@ type ImportCounts = { created: number; skipped: number };
 /** Chennai / IST — IANA has no Asia/Chennai; use Asia/Kolkata. */
 const DEFAULT_STUDIO_TIMEZONE = "Asia/Kolkata";
 
+function audienceForBatchCategory(category: BatchCategory): IndividualAudience {
+  return category === "KIDS"
+    ? IndividualAudience.KID
+    : IndividualAudience.ADULT;
+}
 @Injectable()
 export class DataImportService {
   constructor(
@@ -486,6 +501,7 @@ export class DataImportService {
     }
 
     if (data.length === 0) {
+      await this.attachBatchPlansFromRows(studioId, rows);
       return { created: 0, skipped };
     }
 
@@ -504,7 +520,99 @@ export class DataImportService {
       ),
     );
 
+    await this.attachBatchPlansFromRows(studioId, rows);
+
     return { created: data.length, skipped };
+  }
+
+  private async attachBatchPlansFromRows(
+    studioId: string,
+    rows: ImportBatchDto[],
+  ) {
+    const withPlans = rows.filter(
+      (row) =>
+        Boolean(row.monthlyPlanName?.trim()) ||
+        Boolean(row.quarterlyPlanName?.trim()),
+    );
+    if (withPlans.length === 0) {
+      return;
+    }
+
+    for (const row of withPlans) {
+      const monthlyName = row.monthlyPlanName?.trim() ?? "";
+      const quarterlyName = row.quarterlyPlanName?.trim() ?? "";
+      if (!monthlyName || !quarterlyName) {
+        throw new BadRequestException(
+          "Batches with plans need both Monthly plan name and Quarterly plan name.",
+        );
+      }
+
+      const batch = await this.prisma.batch.findFirst({
+        where: {
+          studioId,
+          name: { equals: row.name.trim(), mode: "insensitive" },
+        },
+        select: { id: true, category: true },
+      });
+      if (!batch) {
+        throw new BadRequestException(
+          `Cannot attach plans: batch "${row.name.trim()}" was not found.`,
+        );
+      }
+
+      const expectedAudience = audienceForBatchCategory(batch.category);
+      const subscriptions = await this.prisma.subscription.findMany({
+        where: {
+          studioId,
+          active: true,
+          kind: SubscriptionKind.INDIVIDUAL,
+          individualAudience: expectedAudience,
+          name: {
+            in: [monthlyName, quarterlyName],
+            mode: "insensitive",
+          },
+        },
+        select: {
+          id: true,
+          name: true,
+          billingCadence: true,
+        },
+      });
+
+      const byLowerName = new Map(
+        subscriptions.map((sub) => [sub.name.trim().toLowerCase(), sub]),
+      );
+      const monthly = byLowerName.get(monthlyName.toLowerCase());
+      const quarterly = byLowerName.get(quarterlyName.toLowerCase());
+      if (!monthly) {
+        throw new BadRequestException(
+          `Monthly plan "${monthlyName}" was not found for this studio (Individual ${expectedAudience}).`,
+        );
+      }
+      if (!quarterly) {
+        throw new BadRequestException(
+          `Quarterly plan "${quarterlyName}" was not found for this studio (Individual ${expectedAudience}).`,
+        );
+      }
+      if (monthly.billingCadence !== BillingCadence.MONTHLY) {
+        throw new BadRequestException(
+          `Plan "${monthly.name}" must be a monthly Individual plan.`,
+        );
+      }
+      if (quarterly.billingCadence !== BillingCadence.QUARTERLY) {
+        throw new BadRequestException(
+          `Plan "${quarterly.name}" must be a quarterly Individual plan.`,
+        );
+      }
+
+      await this.prisma.batchPlan.createMany({
+        data: [
+          { batchId: batch.id, subscriptionId: monthly.id },
+          { batchId: batch.id, subscriptionId: quarterly.id },
+        ],
+        skipDuplicates: true,
+      });
+    }
   }
 
   private async importEnrollments(
@@ -526,6 +634,56 @@ export class DataImportService {
       ),
     ]);
 
+    const planNames = [
+      ...new Set(
+        rows
+          .map((row) => row.planName?.trim().toLowerCase())
+          .filter((name): name is string => Boolean(name)),
+      ),
+    ];
+    const subscriptions =
+      planNames.length === 0
+        ? []
+        : await this.prisma.subscription.findMany({
+            where: {
+              studioId,
+              active: true,
+              kind: SubscriptionKind.INDIVIDUAL,
+            },
+            select: {
+              id: true,
+              name: true,
+              billingCadence: true,
+            },
+          });
+    const subscriptionByLowerName = new Map(
+      subscriptions.map((sub) => [sub.name.trim().toLowerCase(), sub]),
+    );
+
+    const batchIds = [...new Set([...batchIdByName.values()])];
+    const batchPlans =
+      batchIds.length === 0
+        ? []
+        : await this.prisma.batchPlan.findMany({
+            where: { batchId: { in: batchIds } },
+            select: { batchId: true, subscriptionId: true },
+          });
+    const planIdsByBatch = new Map<string, Set<string>>();
+    for (const link of batchPlans) {
+      const set = planIdsByBatch.get(link.batchId) ?? new Set<string>();
+      set.add(link.subscriptionId);
+      planIdsByBatch.set(link.batchId, set);
+    }
+
+    const batches =
+      batchIds.length === 0
+        ? []
+        : await this.prisma.batch.findMany({
+            where: { id: { in: batchIds } },
+            select: { id: true, category: true },
+          });
+    const batchById = new Map(batches.map((batch) => [batch.id, batch]));
+
     let skipped = 0;
     const seen = new Set<string>();
     const data: Array<{
@@ -535,6 +693,7 @@ export class DataImportService {
       status: BatchEnrollmentStatus;
       endedAt: string | null;
       endReason: string | null;
+      planName: string | null;
     }> = [];
 
     for (const row of rows) {
@@ -558,6 +717,25 @@ export class DataImportService {
         skipped += 1;
         continue;
       }
+
+      const planName = row.planName?.trim() || null;
+      if (planName) {
+        const subscription = subscriptionByLowerName.get(
+          planName.toLowerCase(),
+        );
+        if (!subscription) {
+          throw new BadRequestException(
+            `Plan "${planName}" was not found in this studio catalog.`,
+          );
+        }
+        const linked = planIdsByBatch.get(batchId);
+        if (!linked?.has(subscription.id)) {
+          throw new BadRequestException(
+            `Plan "${planName}" is not attached to batch "${row.batchName.trim()}". Add Monthly/Quarterly plan names on the Batches sheet (or batch settings) first.`,
+          );
+        }
+      }
+
       seen.add(pair);
       data.push({
         batchId,
@@ -566,6 +744,7 @@ export class DataImportService {
         status: row.status,
         endedAt: row.endedAt ?? null,
         endReason: row.endReason ?? null,
+        planName,
       });
     }
 
@@ -587,12 +766,73 @@ export class DataImportService {
     );
 
     if (toCreate.length > 0) {
-      await this.prisma.batchEnrollment.createMany({ data: toCreate });
+      await this.prisma.batchEnrollment.createMany({
+        data: toCreate.map(
+          ({ batchId, studentId, enrolledAt, status, endedAt, endReason }) => ({
+            batchId,
+            studentId,
+            enrolledAt,
+            status,
+            endedAt,
+            endReason,
+          }),
+        ),
+      });
       await Promise.all(
         [...new Set(toCreate.map((row) => row.batchId))].map((batchId) =>
           this.projections.refreshBatchSummary(batchId),
         ),
       );
+    }
+
+    // Membership for ACTIVE enrollments with a plan. Invoices stay on the
+    // Invoices sheet — import does not create a second bill.
+    for (const row of toCreate) {
+      if (row.status !== BatchEnrollmentStatus.ACTIVE || !row.planName) {
+        continue;
+      }
+      const subscription = subscriptionByLowerName.get(
+        row.planName.toLowerCase(),
+      );
+      const batch = batchById.get(row.batchId);
+      if (!subscription || !batch) {
+        continue;
+      }
+
+      const existingMembership = await this.prisma.membership.findFirst({
+        where: {
+          purchaserUserId: row.studentId,
+          batchId: row.batchId,
+          status: MembershipStatus.ACTIVE,
+        },
+        select: { id: true },
+      });
+      if (existingMembership) {
+        continue;
+      }
+
+      const enrolledAt = new Date(`${row.enrolledAt}T12:00:00.000Z`);
+      const periodStart = utcMonthStart(enrolledAt);
+      const periodEnd = getPeriodEnd(periodStart, subscription.billingCadence);
+      const seatRole = seatRoleForBatchCategory(batch.category);
+
+      await this.prisma.membership.create({
+        data: {
+          subscriptionId: subscription.id,
+          purchaserUserId: row.studentId,
+          periodStart,
+          periodEnd,
+          status: MembershipStatus.ACTIVE,
+          billingPhase: MembershipBillingPhase.PREPAID,
+          batchId: row.batchId,
+          coveredStudents: {
+            create: {
+              studentId: row.studentId,
+              seatRole,
+            },
+          },
+        },
+      });
     }
 
     return {
@@ -629,6 +869,28 @@ export class DataImportService {
     const platformFeePercent = settings?.platformFeePercent ?? 5;
     const gstPercent = settings?.gstPercent ?? 0;
 
+    const planNames = [
+      ...new Set(
+        rows
+          .map((row) => row.planName?.trim().toLowerCase())
+          .filter((name): name is string => Boolean(name)),
+      ),
+    ];
+    const subscriptions =
+      planNames.length === 0
+        ? []
+        : await this.prisma.subscription.findMany({
+            where: {
+              studioId,
+              active: true,
+              kind: SubscriptionKind.INDIVIDUAL,
+            },
+            select: { id: true, name: true },
+          });
+    const subscriptionByLowerName = new Map(
+      subscriptions.map((sub) => [sub.name.trim().toLowerCase(), sub]),
+    );
+
     let skipped = 0;
     const data: Array<{
       studentId: string;
@@ -662,15 +924,35 @@ export class DataImportService {
         continue;
       }
       const batchName = row.batchName?.trim() ?? "";
+      const planName = row.planName?.trim() ?? "";
+      let subscriptionId: string | undefined;
+      if (planName) {
+        const subscription = subscriptionByLowerName.get(
+          planName.toLowerCase(),
+        );
+        if (!subscription) {
+          throw new BadRequestException(
+            `Plan "${planName}" was not found in this studio catalog.`,
+          );
+        }
+        subscriptionId = subscription.id;
+      }
       let purchaseMeta: Prisma.InputJsonValue | typeof Prisma.JsonNull =
         Prisma.JsonNull;
-      if (batchName) {
-        const batchId = batchIdByName.get(batchName.toLowerCase());
-        if (!batchId) {
-          skipped += 1;
-          continue;
+      if (batchName || subscriptionId) {
+        const meta: Record<string, string> = {};
+        if (batchName) {
+          const batchId = batchIdByName.get(batchName.toLowerCase());
+          if (!batchId) {
+            skipped += 1;
+            continue;
+          }
+          meta.batchId = batchId;
         }
-        purchaseMeta = { batchId };
+        if (subscriptionId) {
+          meta.subscriptionId = subscriptionId;
+        }
+        purchaseMeta = meta;
       }
       const paidAt = row.paidAt ?? null;
       const refundedAt = row.refundedAt ?? null;

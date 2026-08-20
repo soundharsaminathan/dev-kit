@@ -247,12 +247,14 @@ function ImportDataPage() {
 
           <p className={staff.panelDesc}>
             One batch per file. Sheets: Students, Locations, Batches (single
-            row), Sessions, Enrollments, Invoices &amp; payments, and Attendance.
-            All rows must use the same batch name. Attendance needs a Start time
-            that matches a Sessions row. Dates and times are local wall clock in
-            your studio timezone (Billing settings). Batches are created without
-            trainers or plans — add those later from the batch page. Blank and
-            duplicate rows are skipped.
+            row), Sessions, Enrollments, Invoices &amp; payments, and
+            Attendance. All rows must use the same batch name. On Batches, set
+            Monthly plan name and Quarterly plan name to attach catalog plans.
+            On Enrollments and Invoices, set Plan name to link that subscription
+            (enrollment also starts a membership; invoices are not billed
+            twice). Attendance needs a Start time that matches a Sessions row.
+            Dates and times are local wall clock in your studio timezone
+            (Billing settings). Blank and duplicate rows are skipped.
           </p>
 
           {fileError ? (
