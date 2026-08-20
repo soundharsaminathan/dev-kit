@@ -110,6 +110,12 @@ class UpdateStudioSettingsDto {
 
   @IsOptional()
   @IsString()
+  @MinLength(1)
+  @MaxLength(64)
+  timezone?: string;
+
+  @IsOptional()
+  @IsString()
   razorpayKeyId?: string | null;
 
   @IsOptional()
@@ -256,6 +262,14 @@ export class StudiosController {
       dto.danceStyles !== undefined
     ) {
       throw new ForbiddenException("Only owners can change dance styles");
+    }
+
+    if (
+      user.role !== UserRole.OWNER &&
+      user.role !== UserRole.SYSTEM_ADMIN &&
+      dto.timezone !== undefined
+    ) {
+      throw new ForbiddenException("Only owners can change timezone");
     }
 
     return this.studiosService.updateSettings(id, dto);

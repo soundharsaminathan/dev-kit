@@ -468,6 +468,7 @@ model StudioSettings {
   expireAlertDays    Int     @default(7)
   platformFeePercent Float   @default(5)
   gstPercent         Float   @default(0)
+  timezone           String  @default("Asia/Kolkata")
   razorpayKeyId      String?
   razorpayKeySecret  String?
   razorpaySecretIv   String?

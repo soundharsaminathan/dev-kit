@@ -12,6 +12,29 @@ import { EmptyState, ErrorState } from "@/modules/ui/states";
 import { StickyCtaBar, TouchButton } from "@/modules/ui/touch-button";
 import type { Studio } from "./types";
 
+/** Chennai / India Standard Time — IANA id is Asia/Kolkata (no separate Asia/Chennai). */
+const DEFAULT_STUDIO_TIMEZONE = "Asia/Kolkata";
+
+const TIMEZONE_OPTIONS = [
+  DEFAULT_STUDIO_TIMEZONE,
+  "Asia/Dubai",
+  "Asia/Singapore",
+  "Europe/London",
+  "America/New_York",
+  "UTC",
+] as const;
+
+function isValidIanaTimeZone(timeZone: string): boolean {
+  const trimmed = timeZone.trim();
+  if (!trimmed) return false;
+  try {
+    Intl.DateTimeFormat(undefined, { timeZone: trimmed });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export function StudioBillingFormPage() {
   const api = useApi();
   const studioId = useStudioId();
@@ -21,6 +44,7 @@ export function StudioBillingFormPage() {
   const isOwner = user?.role === "OWNER";
   const [graceDays, setGraceDays] = useState("");
   const [expireAlertDays, setExpireAlertDays] = useState("");
+  const [timezone, setTimezone] = useState("");
 
   const studioQuery = useQuery({
     queryKey: ["studio", studioId],
@@ -30,9 +54,20 @@ export function StudioBillingFormPage() {
   const updateSettings = useMutation({
     mutationFn: () => {
       const settings = studioQuery.data?.settings;
+      const nextTimezone = (
+        timezone ||
+        settings?.timezone ||
+        DEFAULT_STUDIO_TIMEZONE
+      ).trim();
+      if (isOwner && !isValidIanaTimeZone(nextTimezone)) {
+        throw new Error(
+          "Enter a valid IANA timezone (e.g. Asia/Kolkata for Chennai).",
+        );
+      }
       const payload: {
         graceDays?: number;
         expireAlertDays: number;
+        timezone?: string;
       } = {
         expireAlertDays: Number(
           expireAlertDays || (settings?.expireAlertDays ?? 7),
@@ -40,6 +75,7 @@ export function StudioBillingFormPage() {
       };
       if (isOwner) {
         payload.graceDays = Number(graceDays || (settings?.graceDays ?? 3));
+        payload.timezone = nextTimezone;
       }
       return api.patch(`/studios/${studioId}/settings`, payload);
     },
@@ -70,7 +106,7 @@ export function StudioBillingFormPage() {
     <>
       <Screen
         title="Billing"
-        subtitle="Due days, expiry alerts, and platform fee."
+        subtitle="Due days, expiry alerts, timezone, and platform fee."
         showBack
         backTo="/app/settings"
         paddedCta
@@ -108,7 +144,7 @@ export function StudioBillingFormPage() {
           <div className={staff.softPanel}>
             <p className={staff.panelTitle}>Billing settings</p>
             <p className={staff.panelDesc}>
-              Due days, expiry alerts, and platform fee
+              Due days, expiry alerts, timezone, and platform fee
             </p>
             {isOwner ? (
               <FormInput
@@ -129,6 +165,25 @@ export function StudioBillingFormPage() {
               }
               onChange={setExpireAlertDays}
             />
+            {isOwner ? (
+              <>
+                <FormInput
+                  label="Studio timezone"
+                  value={
+                    timezone ||
+                    studioQuery.data.settings?.timezone ||
+                    DEFAULT_STUDIO_TIMEZONE
+                  }
+                  onChange={setTimezone}
+                  placeholder={DEFAULT_STUDIO_TIMEZONE}
+                />
+                <p className={staff.panelDesc}>
+                  Default is Chennai (Asia/Kolkata). Used when importing Excel
+                  dates and times as local wall clock. Common values:{" "}
+                  {TIMEZONE_OPTIONS.join(", ")}.
+                </p>
+              </>
+            ) : null}
             <FormInput
               label="Platform fee percent"
               type="number"

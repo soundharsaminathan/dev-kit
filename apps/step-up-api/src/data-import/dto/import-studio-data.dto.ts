@@ -270,45 +270,52 @@ export class ImportAttendanceDto {
 }
 
 export class ImportStudioDataDto {
+  @IsOptional()
   @IsArray()
   @ArrayMaxSize(500)
   @ValidateNested({ each: true })
   @Type(() => ImportStudentDto)
-  students!: ImportStudentDto[];
+  students?: ImportStudentDto[];
 
+  @IsOptional()
   @IsArray()
   @ArrayMaxSize(200)
   @ValidateNested({ each: true })
   @Type(() => ImportLocationDto)
-  locations!: ImportLocationDto[];
+  locations?: ImportLocationDto[];
 
+  @IsOptional()
   @IsArray()
-  @ArrayMaxSize(500)
+  @ArrayMaxSize(1)
   @ValidateNested({ each: true })
   @Type(() => ImportBatchDto)
-  batches!: ImportBatchDto[];
+  batches?: ImportBatchDto[];
 
+  @IsOptional()
   @IsArray()
   @ArrayMaxSize(5_000)
   @ValidateNested({ each: true })
   @Type(() => ImportEnrollmentDto)
-  enrollments!: ImportEnrollmentDto[];
+  enrollments?: ImportEnrollmentDto[];
 
+  @IsOptional()
   @IsArray()
   @ArrayMaxSize(5_000)
   @ValidateNested({ each: true })
   @Type(() => ImportSessionDto)
-  sessions!: ImportSessionDto[];
+  sessions?: ImportSessionDto[];
 
+  @IsOptional()
   @IsArray()
   @ArrayMaxSize(5_000)
   @ValidateNested({ each: true })
   @Type(() => ImportInvoiceDto)
-  invoices!: ImportInvoiceDto[];
+  invoices?: ImportInvoiceDto[];
 
+  @IsOptional()
   @IsArray()
   @ArrayMaxSize(5_000)
   @ValidateNested({ each: true })
   @Type(() => ImportAttendanceDto)
-  attendance!: ImportAttendanceDto[];
+  attendance?: ImportAttendanceDto[];
 }

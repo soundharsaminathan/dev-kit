@@ -13,6 +13,7 @@ import { MediaService } from "../media/media.service";
 import { RazorpayService } from "../payments/razorpay.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { UserCryptoService } from "../users/user-crypto.service";
+import { isValidIanaTimeZone } from "../common/zoned-local-time";
 import { parseDanceStyles } from "./dance-styles";
 
 export type CreateStudioInput = {
@@ -282,6 +283,7 @@ export class StudiosService {
           expireAlertDays: studio.settings.expireAlertDays,
           platformFeePercent: studio.settings.platformFeePercent,
           gstPercent: studio.settings.gstPercent,
+          timezone: studio.settings.timezone,
           razorpayKeyId: studio.settings.razorpayKeyId,
           razorpayConfigured: Boolean(
             studio.settings.razorpayKeyId &&
@@ -340,6 +342,7 @@ export class StudiosService {
       expireAlertDays?: number;
       platformFeePercent?: number;
       gstPercent?: number;
+      timezone?: string;
       razorpayKeyId?: string | null;
       razorpayKeySecret?: string | null;
       gstNumber?: string | null;
@@ -351,6 +354,7 @@ export class StudiosService {
       expireAlertDays?: number;
       platformFeePercent?: number;
       gstPercent?: number;
+      timezone?: string;
       razorpayKeyId?: string | null;
       razorpayKeySecret?: string | null;
       razorpaySecretIv?: string | null;
@@ -367,6 +371,13 @@ export class StudiosService {
     }
     if (data.gstPercent !== undefined) {
       update.gstPercent = data.gstPercent;
+    }
+    if (data.timezone !== undefined) {
+      const timezone = data.timezone.trim();
+      if (!isValidIanaTimeZone(timezone)) {
+        throw new BadRequestException("Invalid timezone");
+      }
+      update.timezone = timezone;
     }
 
     if (data.razorpayKeyId !== undefined) {
@@ -451,6 +462,7 @@ export class StudiosService {
       expireAlertDays: settings.expireAlertDays,
       platformFeePercent: settings.platformFeePercent,
       gstPercent: settings.gstPercent,
+      timezone: settings.timezone,
       razorpayKeyId: settings.razorpayKeyId,
       razorpayConfigured: Boolean(
         settings.razorpayKeyId &&

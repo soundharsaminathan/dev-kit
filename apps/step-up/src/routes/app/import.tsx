@@ -47,7 +47,7 @@ const SHEET_LABELS = {
   attendance: "Attendance",
 } as const;
 
-const EMPTY_RESULT = {
+const EMPTY_RESULT: ParseStudioImportResult = {
   found: {
     students: false,
     locations: false,
@@ -58,6 +58,7 @@ const EMPTY_RESULT = {
     attendance: false,
   },
   sheetErrors: {},
+  crossSheetErrors: [],
   students: [],
   studentsInvalidRows: [],
   locations: [],
@@ -149,11 +150,11 @@ function ImportDataPage() {
       ]);
       const totals = totalCounts(result);
       toast({
-        title: "Studio data imported",
+        title: "Batch imported",
         description: `Imported ${data.students.created} students, ${data.locations.created} locations, ${data.batches.created} batches, ${data.enrollments.created} enrollments, ${data.sessions.created} sessions, ${data.invoices.created} invoices, and ${data.attendance.created} attendance records (${totals} records in the file).`,
         variant: "success",
       });
-      await navigate({ to: "/app/students" });
+      clearSelection();
     },
     onError: (error: unknown) => {
       toast({
@@ -209,23 +210,18 @@ function ImportDataPage() {
     invoices: result.invoices.length,
     attendance: result.attendance.length,
   };
-  const totalRecords =
-    counts.students +
-    counts.locations +
-    counts.batches +
-    counts.enrollments +
-    counts.sessions +
-    counts.invoices +
-    counts.attendance;
+  const totalRecords = totalCounts(result);
+  const hasBlockingErrors = result.crossSheetErrors.length > 0;
+  const canImport = totalRecords > 0 && !hasBlockingErrors;
 
   return (
     <>
       <Screen
         title="Import studio data"
-        subtitle="Bring in previous years’ students, locations, batches, enrollments, sessions, invoices with payments, and attendance from one workbook."
+        subtitle="Import one batch at a time — that batch’s sessions, enrollments, payments, and attendance in one workbook. Times use your studio timezone (Chennai / Asia/Kolkata by default)."
         showBack
         backTo="/app/students"
-        paddedCta={totalRecords > 0}
+        paddedCta={canImport}
       >
         <div className={staff.softPanel}>
           <FileTrigger
@@ -250,19 +246,13 @@ function ImportDataPage() {
           </TouchButton>
 
           <p className={staff.panelDesc}>
-            The workbook can contain up to seven sheets — Students, Locations,
-            Batches, Sessions, Enrollments, Invoices &amp; payments, and
-            Attendance. Only the sheets you include are imported. Locations
-            create your studio branches — list them before Batches so branch
-            names link up. Sessions record classes that happened — attendance
-            rows link to a session for the batch on the same date (add a Start
-            time column to pin the exact session). Students must already exist
-            for enrollments, invoices, and attendance to link (use the Students
-            sheet or the student import first). Batches you import are created
-            without trainers or plans — add those later from the batch page.
-            Blank rows are skipped and duplicate rows are counted as skipped.
-            Students import up to 500, locations and batches up to 500,
-            enrollments, sessions, invoices, and attendance up to 5,000 each.
+            One batch per file. Sheets: Students, Locations, Batches (single
+            row), Sessions, Enrollments, Invoices &amp; payments, and Attendance.
+            All rows must use the same batch name. Attendance needs a Start time
+            that matches a Sessions row. Dates and times are local wall clock in
+            your studio timezone (Billing settings). Batches are created without
+            trainers or plans — add those later from the batch page. Blank and
+            duplicate rows are skipped.
           </p>
 
           {fileError ? (
@@ -283,6 +273,13 @@ function ImportDataPage() {
             </Alert>
           ) : null}
 
+          {result.crossSheetErrors.map((message) => (
+            <Alert key={message} variant="danger">
+              <AlertTitle>Fix before importing</AlertTitle>
+              <AlertDescription>{message}</AlertDescription>
+            </Alert>
+          ))}
+
           {Object.entries(result.sheetErrors).map(([kind, message]) => (
             <Alert key={kind} variant="warning">
               <AlertTitle>
@@ -292,7 +289,7 @@ function ImportDataPage() {
             </Alert>
           ))}
 
-          {fileName && totalRecords === 0 ? (
+          {fileName && totalRecords === 0 && !hasBlockingErrors ? (
             <Alert variant="warning">
               <AlertTitle>No records ready to import</AlertTitle>
               <AlertDescription>
@@ -341,7 +338,7 @@ function ImportDataPage() {
         </div>
       </Screen>
 
-      {totalRecords > 0 ? (
+      {canImport ? (
         <StickyCtaBar
           secondary={
             <TouchButton

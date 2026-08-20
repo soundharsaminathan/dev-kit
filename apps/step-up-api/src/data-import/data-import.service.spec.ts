@@ -27,7 +27,10 @@ function buildService(
       findMany: vi.fn().mockResolvedValue([]),
       createMany: vi.fn().mockResolvedValue({ count: 0 }),
     },
-    batchEnrollment: { createMany: vi.fn().mockResolvedValue({ count: 0 }) },
+    batchEnrollment: {
+      findMany: vi.fn().mockResolvedValue([]),
+      createMany: vi.fn().mockResolvedValue({ count: 0 }),
+    },
     invoice: { createMany: vi.fn().mockResolvedValue({ count: 0 }) },
     session: { findMany: vi.fn().mockResolvedValue([]) },
     attendance: {
@@ -35,7 +38,11 @@ function buildService(
       createMany: vi.fn().mockResolvedValue({ count: 0 }),
     },
     studioSettings: {
-      findUnique: vi.fn().mockResolvedValue(null),
+      findUnique: vi.fn().mockResolvedValue({
+        timezone: "UTC",
+        platformFeePercent: 5,
+        gstPercent: 0,
+      }),
     },
     user: { findMany: vi.fn().mockResolvedValue([]) },
     ...overrides.prisma,
@@ -137,60 +144,69 @@ describe("DataImportService.importStudioData", () => {
           enrollmentMode: "STAFF_ONLY",
           active: true,
         },
-        {
-          name: "Existing Batch",
-          category: BatchCategory.ADULTS,
-          branchName: null,
-          danceStyles: null,
-          frequency: "WEEKLY",
-          weekdays: [],
-          startTime: "09:00",
-          endTime: "10:00",
-          startDate: "2024-01-01",
-          endDate: "2024-12-31",
-          utcOffsetMinutes: null,
-          capacity: 10,
-          enrollmentMode: "STAFF_ONLY",
-          active: true,
-        },
-        {
-          name: "Unknown Branch Batch",
-          category: BatchCategory.ADULTS,
-          branchName: "No Such Branch",
-          danceStyles: null,
-          frequency: "WEEKLY",
-          weekdays: [],
-          startTime: "09:00",
-          endTime: "10:00",
-          startDate: "2024-01-01",
-          endDate: "2024-12-31",
-          utcOffsetMinutes: null,
-          capacity: 10,
-          enrollmentMode: "STAFF_ONLY",
-          active: true,
-        },
       ],
       enrollments: [],
       invoices: [],
     });
 
-    expect(result.batches).toEqual({ created: 1, skipped: 2 });
+    expect(result.batches).toEqual({ created: 1, skipped: 0 });
     expect(prisma.batch.createMany).toHaveBeenCalledWith({
       data: [
         expect.objectContaining({
           name: "Kids Hip-Hop",
           branchId: "branch-main",
           scheduleJson: expect.objectContaining({
-            frequency: "WEEKLY",
-            weekdays: [1, 3],
-            startTime: "16:00",
-            endTime: "17:00",
             utcOffsetMinutes: 330,
           }),
         }),
       ],
     });
     expect(projections.refreshBatchSummary).toHaveBeenCalled();
+  });
+
+  it("rejects more than one batch in a single import", async () => {
+    const { service } = buildService();
+    await expect(
+      service.importStudioData(ACTOR, {
+        students: [],
+        batches: [
+          {
+            name: "Kids Hip-Hop",
+            category: BatchCategory.KIDS,
+            branchName: null,
+            danceStyles: null,
+            frequency: "WEEKLY",
+            weekdays: [1],
+            startTime: "16:00",
+            endTime: "17:00",
+            startDate: "2024-06-03",
+            endDate: "2025-03-31",
+            utcOffsetMinutes: 0,
+            capacity: 12,
+            enrollmentMode: "STAFF_ONLY",
+            active: true,
+          },
+          {
+            name: "Adults",
+            category: BatchCategory.ADULTS,
+            branchName: null,
+            danceStyles: null,
+            frequency: "WEEKLY",
+            weekdays: [2],
+            startTime: "18:00",
+            endTime: "19:00",
+            startDate: "2024-06-03",
+            endDate: "2025-03-31",
+            utcOffsetMinutes: 0,
+            capacity: 10,
+            enrollmentMode: "STAFF_ONLY",
+            active: true,
+          },
+        ],
+        enrollments: [],
+        invoices: [],
+      }),
+    ).rejects.toThrow("Import one batch at a time");
   });
 
   it("creates a Main Branch when the studio has none", async () => {
@@ -282,19 +298,11 @@ describe("DataImportService.importStudioData", () => {
           endedAt: null,
           endReason: "no end date",
         },
-        {
-          studentEmail: "ada@example.com",
-          batchName: "No Such Batch",
-          enrolledAt: "2024-06-03",
-          status: BatchEnrollmentStatus.ACTIVE,
-          endedAt: null,
-          endReason: null,
-        },
       ],
       invoices: [],
     });
 
-    expect(result.enrollments).toEqual({ created: 1, skipped: 3 });
+    expect(result.enrollments).toEqual({ created: 1, skipped: 2 });
     expect(prisma.batchEnrollment.createMany).toHaveBeenCalledWith({
       data: [
         expect.objectContaining({
@@ -320,6 +328,7 @@ describe("DataImportService.importStudioData", () => {
         },
         studioSettings: {
           findUnique: vi.fn().mockResolvedValue({
+            timezone: "UTC",
             platformFeePercent: 3,
             gstPercent: 0,
           }),
@@ -423,7 +432,7 @@ describe("DataImportService.importStudioData", () => {
     ]);
   });
 
-  it("creates completed sessions and attendance rows, skipping unresolved and duplicate entries", async () => {
+  it("links attendance to existing sessions and skips rows without start time or session", async () => {
     const { service, prisma } = buildService({
       prisma: {
         user: {
@@ -442,17 +451,14 @@ describe("DataImportService.importStudioData", () => {
           ]),
         },
         session: {
-          findMany: vi
-            .fn()
-            .mockResolvedValueOnce([])
-            .mockResolvedValueOnce([
-              {
-                id: "session-1",
-                batchId: "batch-1",
-                startsAt: new Date("2024-06-03T16:00:00.000Z"),
-              },
-            ]),
-          createMany: vi.fn().mockResolvedValue({ count: 1 }),
+          findMany: vi.fn().mockResolvedValue([
+            {
+              id: "session-1",
+              batchId: "batch-1",
+              startsAt: new Date("2024-06-03T16:00:00.000Z"),
+            },
+          ]),
+          createMany: vi.fn().mockResolvedValue({ count: 0 }),
         },
       },
     });
@@ -467,47 +473,48 @@ describe("DataImportService.importStudioData", () => {
           batchName: "Kids Hip-Hop",
           studentEmail: "ada@example.com",
           date: "2024-06-03",
+          startTime: "16:00",
           status: "PRESENT",
         },
         {
           batchName: "kids hip-hop",
           studentEmail: "alan@example.com",
           date: "2024-06-03",
+          startTime: "16:00",
           status: "ABSENT",
         },
         {
           batchName: "Kids Hip-Hop",
           studentEmail: "unknown@example.com",
           date: "2024-06-03",
+          startTime: "16:00",
           status: "PRESENT",
         },
         {
           batchName: "Kids Hip-Hop",
           studentEmail: "ada@example.com",
           date: "2024-06-03",
+          startTime: "16:00",
           status: "PRESENT",
         },
         {
-          batchName: "No Such Batch",
+          batchName: "Kids Hip-Hop",
           studentEmail: "ada@example.com",
-          date: "2024-06-03",
+          date: "2024-06-04",
+          startTime: "16:00",
           status: "PRESENT",
+        },
+        {
+          batchName: "Kids Hip-Hop",
+          studentEmail: "alan@example.com",
+          date: "2024-06-03",
+          status: "ABSENT",
         },
       ],
     });
 
-    expect(result.attendance).toEqual({ created: 2, skipped: 3 });
-    expect(prisma.session.createMany).toHaveBeenCalledWith({
-      data: [
-        {
-          batchId: "batch-1",
-          startsAt: new Date("2024-06-03T16:00:00.000Z"),
-          endsAt: new Date("2024-06-03T17:00:00.000Z"),
-          status: "COMPLETED",
-          type: "REGULAR",
-        },
-      ],
-    });
+    expect(result.attendance).toEqual({ created: 2, skipped: 4 });
+    expect(prisma.session.createMany).not.toHaveBeenCalled();
     expect(prisma.attendance.createMany).toHaveBeenCalledWith({
       data: [
         {
@@ -713,6 +720,7 @@ describe("DataImportService.importStudioData", () => {
           batchName: "Kids Hip-Hop",
           studentEmail: "ada@example.com",
           date: "2024-06-03",
+          startTime: "09:00",
           status: "PRESENT",
         },
       ],
@@ -769,14 +777,6 @@ describe("DataImportService.importStudioData", () => {
           trainerEmail: null,
         },
         {
-          batchName: "No Such Batch",
-          date: "2024-06-03",
-          startTime: "16:00",
-          status: "COMPLETED",
-          type: "REGULAR",
-          trainerEmail: null,
-        },
-        {
           batchName: "Kids Hip-Hop",
           date: "2024-06-03",
           startTime: "16:00",
@@ -805,7 +805,7 @@ describe("DataImportService.importStudioData", () => {
       ],
     });
 
-    expect(result.sessions).toEqual({ created: 2, skipped: 4 });
+    expect(result.sessions).toEqual({ created: 2, skipped: 3 });
     expect(prisma.session.createMany).toHaveBeenCalledWith({
       data: [
         {
@@ -894,6 +894,7 @@ describe("DataImportService.importStudioData", () => {
           batchName: "Kids Hip-Hop",
           studentEmail: "alan@example.com",
           date: "2024-06-03",
+          startTime: "16:00",
           status: "ABSENT",
         },
       ],
@@ -918,6 +919,105 @@ describe("DataImportService.importStudioData", () => {
           markedById: "user-owner-1",
           source: "DESK",
         },
+      ],
+    });
+  });
+
+  it("stores purchaseMeta.batchId when invoice batchName resolves", async () => {
+    const { service, prisma } = buildService({
+      prisma: {
+        user: {
+          findMany: vi
+            .fn()
+            .mockResolvedValue([
+              { id: "student-1", emailHash: "hash:ada@example.com" },
+            ]),
+        },
+        batch: {
+          findMany: vi
+            .fn()
+            .mockResolvedValue([{ id: "batch-1", name: "Kids Hip-Hop" }]),
+        },
+      },
+    });
+
+    await service.importStudioData(ACTOR, {
+      students: [],
+      batches: [],
+      enrollments: [],
+      invoices: [
+        {
+          studentEmail: "ada@example.com",
+          batchName: "Kids Hip-Hop",
+          amount: 1500,
+          status: InvoiceStatus.PAID,
+          paymentMethod: "CASH",
+          paidAt: "2024-06-03",
+          referralDiscount: 0,
+          studioDiscount: 0,
+          refundedAmount: 0,
+          refundedAt: null,
+        },
+      ],
+    });
+
+    expect(prisma.invoice.createMany).toHaveBeenCalledWith({
+      data: [
+        expect.objectContaining({
+          studentId: "student-1",
+          purchaseMeta: { batchId: "batch-1" },
+        }),
+      ],
+    });
+  });
+
+  it("converts session local times using the studio timezone", async () => {
+    const { service, prisma } = buildService({
+      prisma: {
+        studioSettings: {
+          findUnique: vi.fn().mockResolvedValue({
+            timezone: "Asia/Kolkata",
+            platformFeePercent: 5,
+            gstPercent: 0,
+          }),
+        },
+        batch: {
+          findMany: vi
+            .fn()
+            .mockResolvedValue([{ id: "batch-1", name: "Kids Hip-Hop" }]),
+        },
+        session: {
+          findMany: vi.fn().mockResolvedValue([]),
+          createMany: vi.fn().mockResolvedValue({ count: 1 }),
+        },
+      },
+    });
+
+    await service.importStudioData(ACTOR, {
+      students: [],
+      batches: [],
+      enrollments: [],
+      invoices: [],
+      sessions: [
+        {
+          batchName: "Kids Hip-Hop",
+          date: "2024-06-03",
+          startTime: "16:00",
+          endTime: "17:00",
+          status: "COMPLETED",
+          type: "REGULAR",
+          trainerEmail: null,
+        },
+      ],
+    });
+
+    expect(prisma.session.createMany).toHaveBeenCalledWith({
+      data: [
+        expect.objectContaining({
+          batchId: "batch-1",
+          startsAt: new Date("2024-06-03T10:30:00.000Z"),
+          endsAt: new Date("2024-06-03T11:30:00.000Z"),
+        }),
       ],
     });
   });

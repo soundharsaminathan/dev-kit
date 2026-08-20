@@ -108,6 +108,7 @@ export type StudioImportSheets = {
 export type ParseStudioImportResult = {
   found: Record<StudioSheetKind, boolean>;
   sheetErrors: Partial<Record<StudioSheetKind, string>>;
+  crossSheetErrors: string[];
   students: StudentImportRow[];
   studentsInvalidRows: number[];
   locations: ImportLocationRow[];
@@ -1273,6 +1274,54 @@ export function formatImportRowList(rows: number[]) {
   return `${rows.slice(0, 8).join(", ")}, and ${rows.length - 8} more`;
 }
 
+export function collectOneBatchErrors(input: {
+  batches: Array<{ name: string }>;
+  enrollments: Array<{ batchName: string }>;
+  sessions: Array<{ batchName: string }>;
+  invoices: Array<{ batchName: string | null }>;
+  attendance: Array<{ batchName: string; startTime: string | null }>;
+}): string[] {
+  const errors: string[] = [];
+  if (input.batches.length > 1) {
+    errors.push(
+      "Import one batch at a time. The Batches sheet must have a single batch row.",
+    );
+  }
+
+  const names = new Set<string>();
+  if (input.batches.length === 1) {
+    names.add(input.batches[0]!.name.trim().toLowerCase());
+  }
+  for (const row of input.enrollments) {
+    names.add(row.batchName.trim().toLowerCase());
+  }
+  for (const row of input.sessions) {
+    names.add(row.batchName.trim().toLowerCase());
+  }
+  for (const row of input.attendance) {
+    names.add(row.batchName.trim().toLowerCase());
+  }
+  for (const row of input.invoices) {
+    if (row.batchName?.trim()) {
+      names.add(row.batchName.trim().toLowerCase());
+    }
+  }
+  if (names.size > 1) {
+    errors.push(
+      "Import one batch at a time. All rows must use the same batch name.",
+    );
+  }
+
+  const missingStartTime = input.attendance.filter((row) => !row.startTime);
+  if (missingStartTime.length > 0) {
+    errors.push(
+      "Attendance rows need a Start time that matches a Sessions row in this workbook.",
+    );
+  }
+
+  return errors;
+}
+
 export function parseStudioImportSheets(
   sheets: Array<{ sheet: string; data: unknown[][] }>,
 ): ParseStudioImportResult {
@@ -1345,9 +1394,18 @@ export function parseStudioImportSheets(
     }
   }
 
+  const crossSheetErrors = collectOneBatchErrors({
+    batches,
+    enrollments,
+    sessions,
+    invoices,
+    attendance,
+  });
+
   return {
     found,
     sheetErrors,
+    crossSheetErrors,
     students,
     studentsInvalidRows,
     locations,

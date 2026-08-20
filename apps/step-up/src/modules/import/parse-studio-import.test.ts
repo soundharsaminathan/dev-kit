@@ -162,7 +162,7 @@ const SESSIONS_SHEET = {
     ],
     ["Kids Hip-Hop", "2024-06-05", "16:00", "", "Held", "Trial", ""],
     [
-      "Adults Contemporary",
+      "Kids Hip-Hop",
       "2024-07-01",
       "19:00",
       "20:00",
@@ -171,7 +171,7 @@ const SESSIONS_SHEET = {
       "",
     ],
     [
-      "Adults Contemporary",
+      "Kids Hip-Hop",
       "2024-07-02",
       "21:00",
       "20:00",
@@ -186,9 +186,9 @@ const SESSIONS_SHEET = {
 const ATTENDANCE_SHEET = {
   sheet: "Attendance",
   data: [
-    ["Batch name", "Student email", "Date", "Status"],
-    ["Kids Hip-Hop", "ada@example.com", "2024-06-03", "Present"],
-    ["Kids Hip-Hop", "alan@example.com", "2024-06-05", "Absent"],
+    ["Batch name", "Student email", "Date", "Start time", "Status"],
+    ["Kids Hip-Hop", "ada@example.com", "2024-06-03", "16:00", "Present"],
+    ["Kids Hip-Hop", "alan@example.com", "2024-06-05", "16:00", "Absent"],
   ],
 };
 
@@ -214,6 +214,7 @@ describe("parseStudioImportSheets", () => {
       attendance: true,
     });
     expect(result.sheetErrors).toEqual({});
+    expect(result.crossSheetErrors).toEqual([]);
     expect(result.students).toHaveLength(2);
     expect(result.studentsInvalidRows).toEqual([]);
 
@@ -274,7 +275,7 @@ describe("parseStudioImportSheets", () => {
         trainerEmail: null,
       },
       {
-        batchName: "Adults Contemporary",
+        batchName: "Kids Hip-Hop",
         date: "2024-07-01",
         startTime: "19:00",
         endTime: "20:00",
@@ -318,14 +319,14 @@ describe("parseStudioImportSheets", () => {
         batchName: "Kids Hip-Hop",
         studentEmail: "ada@example.com",
         date: "2024-06-03",
-        startTime: null,
+        startTime: "16:00",
         status: "PRESENT",
       },
       {
         batchName: "Kids Hip-Hop",
         studentEmail: "alan@example.com",
         date: "2024-06-05",
-        startTime: null,
+        startTime: "16:00",
         status: "ABSENT",
       },
     ]);
@@ -763,5 +764,36 @@ describe("parseStudioImportSheets", () => {
       { sheet: "Branches", data: [["custom header"]] },
     ]);
     expect(result.found.locations).toBe(true);
+  });
+
+  it("blocks multiple batch names across sheets", () => {
+    const result = parseStudioImportSheets([
+      BATCHES_SHEET,
+      {
+        sheet: "Enrollments",
+        data: [
+          ["Student email", "Batch name", "Enrolled date", "Status"],
+          ["ada@example.com", "Other Batch", "2024-01-01", "Active"],
+        ],
+      },
+    ]);
+    expect(result.crossSheetErrors).toContain(
+      "Import one batch at a time. All rows must use the same batch name.",
+    );
+  });
+
+  it("blocks attendance without start time", () => {
+    const result = parseStudioImportSheets([
+      {
+        sheet: "Attendance",
+        data: [
+          ["Batch name", "Student email", "Date", "Status"],
+          ["Kids Hip-Hop", "ada@example.com", "2024-06-03", "Present"],
+        ],
+      },
+    ]);
+    expect(result.crossSheetErrors).toContain(
+      "Attendance rows need a Start time that matches a Sessions row in this workbook.",
+    );
   });
 });

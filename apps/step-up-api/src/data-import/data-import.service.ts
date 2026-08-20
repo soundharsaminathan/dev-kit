@@ -16,6 +16,10 @@ import {
   SessionType,
   UserRole,
 } from "@prisma/client";
+import {
+  utcOffsetMinutesForZone,
+  zonedLocalToUtc,
+} from "../common/zoned-local-time";
 import { PrismaService } from "../prisma/prisma.service";
 import {
   currentMonthPeriod,
@@ -35,6 +39,9 @@ import type {
 } from "./dto/import-studio-data.dto";
 
 type ImportCounts = { created: number; skipped: number };
+
+/** Chennai / IST — IANA has no Asia/Chennai; use Asia/Kolkata. */
+const DEFAULT_STUDIO_TIMEZONE = "Asia/Kolkata";
 
 @Injectable()
 export class DataImportService {
@@ -59,9 +66,31 @@ export class DataImportService {
       throw new NotFoundException("Studio not found");
     }
 
-    const students = await this.users.createStudents(
+    const students = dto.students ?? [];
+    const locations = dto.locations ?? [];
+    const batches = dto.batches ?? [];
+    const enrollments = dto.enrollments ?? [];
+    const sessions = dto.sessions ?? [];
+    const invoices = dto.invoices ?? [];
+    const attendance = dto.attendance ?? [];
+
+    this.assertOneBatchImport({
+      batches,
+      enrollments,
+      sessions,
+      invoices,
+      attendance,
+    });
+
+    const settings = await this.prisma.studioSettings.findUnique({
+      where: { studioId },
+      select: { timezone: true },
+    });
+    const timeZone = settings?.timezone?.trim() || DEFAULT_STUDIO_TIMEZONE;
+
+    const studentResult = await this.users.createStudents(
       studioId,
-      dto.students.map(
+      students.map(
         ({
           name,
           email,
@@ -89,31 +118,83 @@ export class DataImportService {
         }),
       ),
     );
-    const locations = await this.importLocations(studioId, dto.locations);
-    const batches = await this.importBatches(actor.id, studioId, dto.batches);
-    const enrollments = await this.importEnrollments(studioId, dto.enrollments);
-    const sessions = await this.importSessions(studioId, dto.sessions);
-    const invoices = await this.importInvoices(studioId, dto.invoices);
-    const attendance = await this.importAttendance(
+    const locationResult = await this.importLocations(studioId, locations);
+    const batchResult = await this.importBatches(
+      actor.id,
+      studioId,
+      batches,
+      timeZone,
+    );
+    const enrollmentResult = await this.importEnrollments(
+      studioId,
+      enrollments,
+    );
+    const sessionResult = await this.importSessions(
+      studioId,
+      sessions,
+      timeZone,
+    );
+    const invoiceResult = await this.importInvoices(studioId, invoices);
+    const attendanceResult = await this.importAttendance(
       actor,
       studioId,
-      dto.attendance,
+      attendance,
+      timeZone,
     );
 
     return {
-      students,
-      locations,
-      batches,
-      enrollments,
-      sessions,
-      invoices,
-      attendance,
+      students: studentResult,
+      locations: locationResult,
+      batches: batchResult,
+      enrollments: enrollmentResult,
+      sessions: sessionResult,
+      invoices: invoiceResult,
+      attendance: attendanceResult,
     };
+  }
+
+  private assertOneBatchImport(dto: {
+    batches: ImportBatchDto[];
+    enrollments: ImportEnrollmentDto[];
+    sessions: ImportSessionDto[];
+    invoices: ImportInvoiceDto[];
+    attendance: ImportAttendanceDto[];
+  }) {
+    if (dto.batches.length > 1) {
+      throw new BadRequestException(
+        "Import one batch at a time. The Batches sheet must have a single batch row.",
+      );
+    }
+
+    const names = new Set<string>();
+    if (dto.batches.length === 1) {
+      names.add(dto.batches[0]!.name.trim().toLowerCase());
+    }
+    for (const row of dto.enrollments) {
+      names.add(row.batchName.trim().toLowerCase());
+    }
+    for (const row of dto.sessions) {
+      names.add(row.batchName.trim().toLowerCase());
+    }
+    for (const row of dto.attendance) {
+      names.add(row.batchName.trim().toLowerCase());
+    }
+    for (const row of dto.invoices) {
+      if (row.batchName?.trim()) {
+        names.add(row.batchName.trim().toLowerCase());
+      }
+    }
+    if (names.size > 1) {
+      throw new BadRequestException(
+        "Import one batch at a time. All rows must use the same batch name.",
+      );
+    }
   }
 
   private async importSessions(
     studioId: string,
     rows: ImportSessionDto[] | undefined,
+    timeZone: string,
   ): Promise<ImportCounts> {
     if (!rows || rows.length === 0) {
       return { created: 0, skipped: 0 };
@@ -159,9 +240,9 @@ export class DataImportService {
           continue;
         }
       }
-      const startsAt = new Date(`${row.date}T${row.startTime}:00.000Z`);
+      const startsAt = zonedLocalToUtc(row.date, row.startTime, timeZone);
       const endsAt = row.endTime
-        ? new Date(`${row.date}T${row.endTime}:00.000Z`)
+        ? zonedLocalToUtc(row.date, row.endTime, timeZone)
         : new Date(startsAt.getTime() + 60 * 60_000);
       if (endsAt <= startsAt) {
         skipped += 1;
@@ -294,6 +375,7 @@ export class DataImportService {
     creatorId: string,
     studioId: string,
     rows: ImportBatchDto[],
+    timeZone: string,
   ): Promise<ImportCounts> {
     if (rows.length === 0) {
       return { created: 0, skipped: 0 };
@@ -372,6 +454,14 @@ export class DataImportService {
           ? styles.map((style) => ({ name: style, description: style }))
           : [{ name: "General", description: "General" }];
 
+      const utcOffsetMinutes =
+        row.utcOffsetMinutes !== undefined && row.utcOffsetMinutes !== null
+          ? row.utcOffsetMinutes
+          : utcOffsetMinutesForZone(
+              timeZone,
+              new Date(`${row.startDate}T12:00:00.000Z`),
+            );
+
       existingNames.add(name.toLowerCase());
       data.push({
         studioId,
@@ -386,7 +476,7 @@ export class DataImportService {
           endDate: row.endDate,
           startTime: row.startTime,
           endTime: row.endTime,
-          utcOffsetMinutes: row.utcOffsetMinutes ?? 0,
+          utcOffsetMinutes,
         },
         capacity: row.capacity,
         enrollmentMode: row.enrollmentMode,
@@ -446,7 +536,6 @@ export class DataImportService {
       endedAt: string | null;
       endReason: string | null;
     }> = [];
-    const affectedBatchIds = new Set<string>();
 
     for (const row of rows) {
       const studentId = studentIdByEmail.get(
@@ -470,7 +559,6 @@ export class DataImportService {
         continue;
       }
       seen.add(pair);
-      affectedBatchIds.add(batchId);
       data.push({
         batchId,
         studentId,
@@ -481,16 +569,36 @@ export class DataImportService {
       });
     }
 
-    if (data.length > 0) {
-      await this.prisma.batchEnrollment.createMany({ data });
+    if (data.length === 0) {
+      return { created: 0, skipped };
+    }
+
+    const existing = await this.prisma.batchEnrollment.findMany({
+      where: {
+        OR: data.map(({ batchId, studentId }) => ({ batchId, studentId })),
+      },
+      select: { batchId: true, studentId: true },
+    });
+    const existingPairs = new Set(
+      existing.map((row) => `${row.batchId}:${row.studentId}`),
+    );
+    const toCreate = data.filter(
+      (row) => !existingPairs.has(`${row.batchId}:${row.studentId}`),
+    );
+
+    if (toCreate.length > 0) {
+      await this.prisma.batchEnrollment.createMany({ data: toCreate });
       await Promise.all(
-        [...affectedBatchIds].map((batchId) =>
+        [...new Set(toCreate.map((row) => row.batchId))].map((batchId) =>
           this.projections.refreshBatchSummary(batchId),
         ),
       );
     }
 
-    return { created: data.length, skipped };
+    return {
+      created: toCreate.length,
+      skipped: skipped + (data.length - toCreate.length),
+    };
   }
 
   private async importInvoices(
@@ -501,10 +609,16 @@ export class DataImportService {
       return { created: 0, skipped: 0 };
     }
 
-    const [studentIdByEmail, settings] = await Promise.all([
+    const [studentIdByEmail, batchIdByName, settings] = await Promise.all([
       this.resolveStudentIdsByEmail(
         studioId,
         rows.map((row) => row.studentEmail),
+      ),
+      this.resolveBatchIdsByName(
+        studioId,
+        rows
+          .map((row) => row.batchName)
+          .filter((name): name is string => Boolean(name?.trim())),
       ),
       this.prisma.studioSettings.findUnique({
         where: { studioId },
@@ -529,6 +643,7 @@ export class DataImportService {
       refundedAt: string | null;
       platformFeePercent: number;
       gstPercent: number;
+      purchaseMeta: Prisma.InputJsonValue | typeof Prisma.JsonNull;
     }> = [];
     const periodsToRefresh = new Set<string>();
 
@@ -545,6 +660,17 @@ export class DataImportService {
       if (paid && !row.paidAt) {
         skipped += 1;
         continue;
+      }
+      const batchName = row.batchName?.trim() ?? "";
+      let purchaseMeta: Prisma.InputJsonValue | typeof Prisma.JsonNull =
+        Prisma.JsonNull;
+      if (batchName) {
+        const batchId = batchIdByName.get(batchName.toLowerCase());
+        if (!batchId) {
+          skipped += 1;
+          continue;
+        }
+        purchaseMeta = { batchId };
       }
       const paidAt = row.paidAt ?? null;
       const refundedAt = row.refundedAt ?? null;
@@ -570,6 +696,7 @@ export class DataImportService {
         refundedAt,
         platformFeePercent,
         gstPercent,
+        purchaseMeta,
       });
     }
 
@@ -589,6 +716,7 @@ export class DataImportService {
     actor: DecryptedUser,
     studioId: string,
     rows: ImportAttendanceDto[] | undefined,
+    timeZone: string,
   ): Promise<ImportCounts> {
     if (!rows || rows.length === 0) {
       return { created: 0, skipped: 0 };
@@ -606,29 +734,7 @@ export class DataImportService {
     ]);
 
     const batchIds = [...new Set(batchIdByName.values())].filter(Boolean);
-    const schedules = batchIds.length
-      ? await this.prisma.batch.findMany({
-          where: { id: { in: batchIds } },
-          select: { id: true, scheduleJson: true },
-        })
-      : [];
-    const startTimeById = new Map(
-      schedules.map((batch) => {
-        const schedule = batch.scheduleJson as
-          | { startTime?: string }
-          | null
-          | undefined;
-        const startTime = /^([01]\d|2[0-3]):[0-5]\d$/.test(
-          schedule?.startTime ?? "",
-        )
-          ? schedule!.startTime!
-          : "09:00";
-        return [batch.id, startTime];
-      }),
-    );
-
-    const SESSION_DURATION_MINUTES = 60;
-    const sessionStarts = new Map<string, string>();
+    const sessionStarts = new Map<string, Date>();
     const rowKeys = new Set<string>();
     let skipped = 0;
     const rowsBySessionKey = new Map<
@@ -649,9 +755,13 @@ export class DataImportService {
       const startTime =
         row.startTime && /^([01]\d|2[0-3]):[0-5]\d$/.test(row.startTime)
           ? row.startTime
-          : (startTimeById.get(batchId) ?? "09:00");
-      const startsAt = `${date}T${startTime}:00.000Z`;
-      const key = `${batchId}:${startsAt}`;
+          : null;
+      if (!startTime) {
+        skipped += 1;
+        continue;
+      }
+      const startsAt = zonedLocalToUtc(date, startTime, timeZone);
+      const key = `${batchId}:${startsAt.toISOString()}`;
       if (!sessionStarts.has(key)) {
         sessionStarts.set(key, startsAt);
       }
@@ -684,48 +794,6 @@ export class DataImportService {
       ]),
     );
 
-    const missingStarts = [...sessionStarts.entries()].filter(
-      ([key]) => !sessionIdByKey.has(key),
-    );
-    if (missingStarts.length > 0) {
-      await this.prisma.session.createMany({
-        data: missingStarts.map(([key, startsAt]) => {
-          const [batchId] = key.split(":");
-          return {
-            batchId: batchId!,
-            startsAt: new Date(startsAt),
-            endsAt: new Date(
-              new Date(startsAt).getTime() + SESSION_DURATION_MINUTES * 60_000,
-            ),
-            status: SessionStatus.COMPLETED,
-            type: SessionType.REGULAR,
-          };
-        }),
-      });
-      const created = await this.prisma.session.findMany({
-        where: {
-          batchId: { in: batchIds },
-          startsAt: { in: [...sessionStarts.values()] },
-        },
-        select: { id: true, batchId: true, startsAt: true },
-      });
-      for (const session of created) {
-        sessionIdByKey.set(
-          `${session.batchId}:${session.startsAt.toISOString()}`,
-          session.id,
-        );
-      }
-    }
-
-    const sessionIds = [...sessionIdByKey.values()];
-    const existingAttendance = await this.prisma.attendance.findMany({
-      where: { sessionId: { in: sessionIds } },
-      select: { sessionId: true, studentId: true },
-    });
-    const markedPairs = new Set(
-      existingAttendance.map((row) => `${row.sessionId}:${row.studentId}`),
-    );
-
     const source: AttendanceSource = "DESK";
     const data: Array<{
       sessionId: string;
@@ -742,12 +810,6 @@ export class DataImportService {
         continue;
       }
       for (const entry of rowsForSession) {
-        const pair = `${sessionId}:${entry.studentId}`;
-        if (markedPairs.has(pair)) {
-          skipped += 1;
-          continue;
-        }
-        markedPairs.add(pair);
         data.push({
           sessionId,
           studentId: entry.studentId,
@@ -759,11 +821,36 @@ export class DataImportService {
     }
     skipped += absentSession;
 
-    if (data.length > 0) {
-      await this.prisma.attendance.createMany({ data });
+    if (data.length === 0) {
+      return { created: 0, skipped };
     }
 
-    return { created: data.length, skipped };
+    const sessionIds = [...new Set(data.map((row) => row.sessionId))];
+    const existingAttendance = await this.prisma.attendance.findMany({
+      where: { sessionId: { in: sessionIds } },
+      select: { sessionId: true, studentId: true },
+    });
+    const markedPairs = new Set(
+      existingAttendance.map((row) => `${row.sessionId}:${row.studentId}`),
+    );
+
+    const toCreate = data.filter((row) => {
+      const pair = `${row.sessionId}:${row.studentId}`;
+      if (markedPairs.has(pair)) {
+        return false;
+      }
+      markedPairs.add(pair);
+      return true;
+    });
+
+    if (toCreate.length > 0) {
+      await this.prisma.attendance.createMany({ data: toCreate });
+    }
+
+    return {
+      created: toCreate.length,
+      skipped: skipped + (data.length - toCreate.length),
+    };
   }
 
   private async resolveStudentIdsByEmail(
