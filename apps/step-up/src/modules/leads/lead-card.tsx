@@ -1,5 +1,6 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@dev-ui/components/avatar";
 import { CheckboxControl } from "@dev-ui/components/checkbox";
+import { Icon } from "@dev-ui/icons";
 import type { KeyboardEvent } from "react";
 import { TouchButton } from "@/modules/ui/touch-button";
 import styles from "./leads.module.scss";
@@ -18,6 +19,7 @@ type LeadCardProps = {
   lead: Lead;
   range: LeadDateRange | null;
   onOpen?: ((lead: Lead) => void) | undefined;
+  onOpenRemarks?: ((lead: Lead) => void) | undefined;
   onSwitchTrial?: ((lead: Lead) => void) | undefined;
   onConfirmSession?: ((lead: Lead) => void) | undefined;
   confirmPending?: boolean | undefined;
@@ -29,6 +31,7 @@ export function LeadCard({
   lead,
   range,
   onOpen,
+  onOpenRemarks,
   onSwitchTrial,
   onConfirmSession,
   confirmPending = false,
@@ -107,6 +110,19 @@ export function LeadCard({
             </span>
           </div>
         </div>
+        {onOpenRemarks ? (
+          <TouchButton
+            variant="quiet"
+            size="sm"
+            isIconOnly
+            className={styles.commentAction}
+            aria-label={`Comments for ${lead.name}`}
+            data-testid={`lead-remarks-${lead.id}`}
+            onClick={() => onOpenRemarks(lead)}
+          >
+            <Icon name="message-square" />
+          </TouchButton>
+        ) : null}
       </div>
 
       {trial ? (

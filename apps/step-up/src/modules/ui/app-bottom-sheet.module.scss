@@ -12,6 +12,16 @@
   max-height: min(75dvh, 52rem);
 }
 
+.body[data-fill="true"] {
+  height: min(75dvh, 36rem);
+  overflow: hidden;
+  padding-bottom: 0;
+}
+
+.body[data-fill="true"][data-size="tall"] {
+  height: min(80dvh, 52rem);
+}
+
 .title {
   flex-shrink: 0;
   margin: 0 0 var(--space-3, 0.75rem);

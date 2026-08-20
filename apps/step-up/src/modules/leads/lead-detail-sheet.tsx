@@ -7,7 +7,7 @@ import {
 } from "@dev-ui/hooks";
 import { Icon } from "@dev-ui/icons";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { type KeyboardEvent, useState } from "react";
+import { type KeyboardEvent, useEffect, useRef, useState } from "react";
 import { useApi } from "@/lib/api-context";
 import { useAuth } from "@/lib/auth";
 import { AppBottomSheet } from "@/modules/ui/app-bottom-sheet";
@@ -53,6 +53,7 @@ export function LeadDetailSheet({
   const { user } = useAuth();
   const { toast } = useToastContext("LeadDetailSheet");
   const [draft, setDraft] = useState("");
+  const listRef = useRef<HTMLDivElement>(null);
   const isOpen = Boolean(lead);
   const archived = lead?.section === "archived" || lead?.active === false;
 
@@ -110,6 +111,14 @@ export function LeadDetailSheet({
     },
   });
 
+  const remarkCount = remarksQuery.data?.length ?? 0;
+
+  useEffect(() => {
+    const list = listRef.current;
+    if (!list || remarkCount === 0) return;
+    list.scrollTop = list.scrollHeight;
+  }, [remarkCount]);
+
   function submitRemark() {
     const body = draft.trim();
     if (!body || addRemark.isPending) return;
@@ -133,12 +142,14 @@ export function LeadDetailSheet({
     <AppBottomSheet
       isOpen={isOpen}
       onOpenChange={onOpenChange}
-      title={lead?.name ?? "Lead"}
+      title="Comments"
       size="tall"
+      fill
     >
       {lead ? (
         <div className={styles.sheetStack}>
           <div className={styles.sheetHeader}>
+            <p className={styles.sheetLead}>{lead.name}</p>
             <TouchButton
               variant={archived ? "primary" : "quiet"}
               size="sm"
@@ -162,7 +173,7 @@ export function LeadDetailSheet({
             </TouchButton>
           </div>
 
-          <div className={styles.remarks}>
+          <div className={styles.remarks} ref={listRef}>
             {remarksQuery.isLoading ? (
               <p className={styles.remarksEmpty}>Loading comments…</p>
             ) : remarksQuery.isError ? (

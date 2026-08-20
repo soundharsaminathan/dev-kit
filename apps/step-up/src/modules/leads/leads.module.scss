@@ -157,6 +157,11 @@
   line-height: 1.2;
 }
 
+.commentAction {
+  flex-shrink: 0;
+  align-self: flex-start;
+}
+
 .followupChip[data-empty="true"] {
   background: transparent;
   padding-inline: 0;
@@ -166,18 +171,30 @@
 .sheetStack {
   display: flex;
   flex-direction: column;
-  gap: var(--space-4, 1rem);
+  gap: var(--space-3, 0.75rem);
   min-height: 0;
+  height: 100%;
   flex: 1 1 auto;
   overflow: hidden;
 }
 
 .sheetHeader {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: var(--space-2, 0.5rem);
   flex-shrink: 0;
+}
+
+.sheetLead {
+  margin: 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: color-mix(in srgb, var(--color-fg) 70%, transparent);
 }
 
 .sheetArchive {
@@ -192,6 +209,7 @@
   flex: 1;
   overflow-y: auto;
   overscroll-behavior: contain;
+  padding-bottom: var(--space-2, 0.5rem);
 }
 
 .remark {
@@ -245,7 +263,8 @@
 }
 
 .remarksEmpty {
-  margin: 0;
+  margin: auto;
+  text-align: center;
   font-size: 0.875rem;
   color: color-mix(in srgb, var(--color-fg) 58%, transparent);
 }
@@ -258,6 +277,8 @@
   min-width: 0;
   flex-shrink: 0;
   padding-top: var(--space-2, 0.5rem);
+  padding-bottom: var(--space-2, 0.5rem);
+  background: var(--color-bg);
   border-top: 1px solid color-mix(in srgb, var(--color-fg) 10%, transparent);
 
   :global([data-field]) {

@@ -813,6 +813,7 @@ function LeadsPage() {
                                 canSelect ? toggleSelect : undefined
                               }
                               onOpen={setDetailLead}
+                              onOpenRemarks={setDetailLead}
                               onSwitchTrial={
                                 canSwitchTrial ? setSwitchLead : undefined
                               }

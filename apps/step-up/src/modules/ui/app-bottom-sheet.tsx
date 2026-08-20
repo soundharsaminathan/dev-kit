@@ -7,6 +7,8 @@ type AppBottomSheetProps = {
   onOpenChange: (open: boolean) => void;
   title?: string | undefined;
   size?: "default" | "tall" | undefined;
+  /** Locks the sheet to a fixed height so the content owns its own scrolling. */
+  fill?: boolean | undefined;
   children: ReactNode;
 };
 
@@ -15,6 +17,7 @@ export function AppBottomSheet({
   onOpenChange,
   title,
   size = "default",
+  fill = false,
   children,
 }: AppBottomSheetProps) {
   return (
@@ -23,6 +26,7 @@ export function AppBottomSheet({
       <div
         className={styles.body}
         data-size={size === "tall" ? "tall" : undefined}
+        data-fill={fill ? "true" : undefined}
       >
         {title ? <p className={styles.title}>{title}</p> : null}
         {children}
