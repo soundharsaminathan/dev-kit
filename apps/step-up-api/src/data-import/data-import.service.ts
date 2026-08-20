@@ -53,6 +53,12 @@ type ImportCounts = { created: number; skipped: number };
 /** Chennai / IST — IANA has no Asia/Chennai; use Asia/Kolkata. */
 const DEFAULT_STUDIO_TIMEZONE = "Asia/Kolkata";
 
+/** Prisma DateTime rejects date-only strings (`YYYY-MM-DD`). */
+function importDateTime(dateYmd: string): Date {
+  const day = dateYmd.slice(0, 10);
+  return new Date(`${day}T12:00:00.000Z`);
+}
+
 function audienceForBatchCategory(category: BatchCategory): IndividualAudience {
   return category === "KIDS"
     ? IndividualAudience.KID
@@ -770,9 +776,9 @@ export class DataImportService {
           ({ batchId, studentId, enrolledAt, status, endedAt, endReason }) => ({
             batchId,
             studentId,
-            enrolledAt,
+            enrolledAt: importDateTime(enrolledAt),
             status,
-            endedAt,
+            endedAt: endedAt ? importDateTime(endedAt) : null,
             endReason,
           }),
         ),
@@ -810,7 +816,7 @@ export class DataImportService {
         continue;
       }
 
-      const enrolledAt = new Date(`${row.enrolledAt}T12:00:00.000Z`);
+      const enrolledAt = importDateTime(row.enrolledAt);
       const periodStart = utcMonthStart(enrolledAt);
       const periodEnd = getPeriodEnd(periodStart, subscription.billingCadence);
       const seatRole = seatRoleForBatchCategory(batch.category);
@@ -900,8 +906,8 @@ export class DataImportService {
       refundedAmount: number;
       status: InvoiceStatus;
       paymentMethod: PaymentMethod | null;
-      paidAt: string | null;
-      refundedAt: string | null;
+      paidAt: Date | null;
+      refundedAt: Date | null;
       platformFeePercent: number;
       gstPercent: number;
       purchaseMeta: Prisma.InputJsonValue | typeof Prisma.JsonNull;
@@ -953,15 +959,15 @@ export class DataImportService {
         }
         purchaseMeta = meta;
       }
-      const paidAt = row.paidAt ?? null;
-      const refundedAt = row.refundedAt ?? null;
+      const paidAt = row.paidAt ? importDateTime(row.paidAt) : null;
+      const refundedAt = row.refundedAt ? importDateTime(row.refundedAt) : null;
       const refundedAmount = row.refundedAmount ?? (refunded ? row.amount : 0);
 
       if (paidAt) {
-        periodsToRefresh.add(currentMonthPeriod(new Date(paidAt)));
+        periodsToRefresh.add(currentMonthPeriod(paidAt));
       }
       if (refundedAt) {
-        periodsToRefresh.add(currentMonthPeriod(new Date(refundedAt)));
+        periodsToRefresh.add(currentMonthPeriod(refundedAt));
       }
 
       data.push({

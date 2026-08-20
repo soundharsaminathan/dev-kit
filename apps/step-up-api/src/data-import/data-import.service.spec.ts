@@ -318,7 +318,7 @@ describe("DataImportService.importStudioData", () => {
         expect.objectContaining({
           batchId: "batch-1",
           studentId: "student-1",
-          enrolledAt: "2024-06-03",
+          enrolledAt: new Date("2024-06-03T12:00:00.000Z"),
           status: BatchEnrollmentStatus.ACTIVE,
         }),
       ],
@@ -411,7 +411,7 @@ describe("DataImportService.importStudioData", () => {
       amount: 1500,
       status: InvoiceStatus.PAID,
       paymentMethod: "CASH",
-      paidAt: "2024-06-03",
+      paidAt: new Date("2024-06-03T12:00:00.000Z"),
       referralDiscount: 100,
       platformFeePercent: 3,
     });
@@ -419,7 +419,7 @@ describe("DataImportService.importStudioData", () => {
       amount: 1800,
       status: InvoiceStatus.REFUNDED,
       refundedAmount: 1800,
-      refundedAt: "2024-07-10",
+      refundedAt: new Date("2024-07-10T12:00:00.000Z"),
     });
     const periods = projections.refreshStudioRevenue.mock.calls.map(
       (call) => call[1],
