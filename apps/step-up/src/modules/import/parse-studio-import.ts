@@ -137,7 +137,10 @@ export const INVOICE_IMPORT_MAX = 5_000;
 export const ATTENDANCE_IMPORT_MAX = 5_000;
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
+/** Primary Excel date format: dd/mm/yyyy (also dd-mm-yyyy). */
+const DMY_DATE_PATTERN = /^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/;
+/** Also accepted; always normalized to this for the API payload. */
+const ISO_DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
 const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
 
 const CATEGORY_ALIASES: Record<string, BatchCategory> = {
@@ -289,30 +292,55 @@ function isRealDate(year: number, month: number, day: number) {
   );
 }
 
-/** Any calendar date (past, present, or future) normalized to YYYY-MM-DD. */
+function isUtcMidnight(value: Date): boolean {
+  return (
+    value.getUTCHours() === 0 &&
+    value.getUTCMinutes() === 0 &&
+    value.getUTCSeconds() === 0 &&
+    value.getUTCMilliseconds() === 0
+  );
+}
+
+function isLocalMidnight(value: Date): boolean {
+  return (
+    value.getHours() === 0 &&
+    value.getMinutes() === 0 &&
+    value.getSeconds() === 0 &&
+    value.getMilliseconds() === 0
+  );
+}
+
+/**
+ * Spreadsheet date cells are calendar days. Local midnight (common from Excel
+ * in the browser) must not go through `toISOString` — in positive UTC offsets
+ * that turns Aug 1 into Jul 31, so gap invoices start a month early.
+ */
+function formatCalendarDate(value: Date): string | null {
+  const useLocal = isLocalMidnight(value) || !isUtcMidnight(value);
+  const year = useLocal ? value.getFullYear() : value.getUTCFullYear();
+  const month = (useLocal ? value.getMonth() : value.getUTCMonth()) + 1;
+  const day = useLocal ? value.getDate() : value.getUTCDate();
+  return isRealDate(year, month, day)
+    ? `${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`
+    : null;
+}
+
+/** Calendar date → YYYY-MM-DD for the API. Excel text dates use dd/mm/yyyy. */
 function parseDate(value: unknown): string | null {
   if (value instanceof Date && !Number.isNaN(value.getTime())) {
-    return value.toISOString().slice(0, 10);
+    return formatCalendarDate(value);
   }
 
   if (typeof value === "number" && Number.isFinite(value) && value > 0) {
     const excelEpoch = Date.UTC(1899, 11, 30);
     const date = new Date(excelEpoch + Math.trunc(value) * 86_400_000);
-    return parseDate(date.toISOString().slice(0, 10));
+    return formatCalendarDate(date);
   }
 
   const raw = cellText(value);
   if (!raw) return null;
 
-  let match = DATE_PATTERN.exec(raw);
-  if (match) {
-    const year = Number(match[1]);
-    const month = Number(match[2]);
-    const day = Number(match[3]);
-    return isRealDate(year, month, day) ? raw : null;
-  }
-
-  match = /^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/.exec(raw);
+  let match = DMY_DATE_PATTERN.exec(raw);
   if (match) {
     const day = Number(match[1]);
     const month = Number(match[2]);
@@ -322,13 +350,24 @@ function parseDate(value: unknown): string | null {
       : null;
   }
 
+  match = ISO_DATE_PATTERN.exec(raw);
+  if (match) {
+    const year = Number(match[1]);
+    const month = Number(match[2]);
+    const day = Number(match[3]);
+    return isRealDate(year, month, day) ? raw : null;
+  }
+
   return null;
 }
 
 /** HH:MM (24h) from time cells, "9:00 AM/PM" strings, or Excel time values. */
 function parseTime(value: unknown): string | null {
   if (value instanceof Date && !Number.isNaN(value.getTime())) {
-    return value.toISOString().slice(11, 16);
+    // Wall clock in the browser (studio timezone), not UTC from toISOString.
+    const hours = value.getHours();
+    const minutes = value.getMinutes();
+    return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
   }
   const raw = cellText(value);
   if (!raw) return null;

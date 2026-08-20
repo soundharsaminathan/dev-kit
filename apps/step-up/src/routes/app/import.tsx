@@ -253,8 +253,9 @@ function ImportDataPage() {
             On Enrollments and Invoices, set Plan name to link that subscription
             (enrollment also starts a membership; invoices are not billed
             twice). Attendance needs a Start time that matches a Sessions row.
-            Dates and times are local wall clock in your studio timezone
-            (Billing settings). Blank and duplicate rows are skipped.
+            Dates use dd/mm/yyyy (e.g. 05/08/2026). Times are local wall clock
+            in your studio timezone (Billing settings). Blank and duplicate rows
+            are skipped.
           </p>
 
           {fileError ? (

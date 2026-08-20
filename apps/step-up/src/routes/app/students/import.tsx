@@ -156,7 +156,7 @@ function ImportStudentsPage() {
 
           <p className={staff.panelDesc}>
             Use the template columns Name, Email, Gender (Female/Male), Age
-            (exact years, 0–120) or Date of birth (YYYY-MM-DD), and optional
+            (exact years, 0–120) or Date of birth (dd/mm/yyyy), and optional
             Mobile, Guardian name, and Alternate mobile. Each row needs an Age
             or a Date of birth — age-range labels are assigned automatically.
             Blank rows are ignored. Duplicate emails are skipped. Maximum{" "}

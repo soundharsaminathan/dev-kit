@@ -897,4 +897,101 @@ describe("parseStudioImportSheets", () => {
     expect(result.batches).toEqual([]);
     expect(result.batchesInvalidRows).toEqual([2]);
   });
+
+  it("parses dd/mm/yyyy Excel date strings into ISO for the API", () => {
+    const result = parseStudioImportSheets([
+      STUDENTS_SHEET,
+      BATCHES_SHEET,
+      {
+        sheet: "Enrollments",
+        data: [
+          ["Student email", "Batch name", "Enrolled at", "Status", "Ended date"],
+          ["ada@example.com", "Kids Hip-Hop", "05/08/2026", "Active", ""],
+          [
+            "alan@example.com",
+            "Kids Hip-Hop",
+            "01-08-2026",
+            "Ended",
+            "15/01/2027",
+          ],
+        ],
+      },
+      {
+        sheet: "Sessions",
+        data: [
+          ["Batch name", "Date", "Start time", "End time", "Status"],
+          ["Kids Hip-Hop", "05/08/2026", "16:00", "17:00", "Completed"],
+        ],
+      },
+      {
+        sheet: "Invoices & Payments",
+        data: [
+          [
+            "Student email",
+            "Batch name",
+            "Amount",
+            "Status",
+            "Payment method",
+            "Paid date",
+          ],
+          ["ada@example.com", "Kids Hip-Hop", 1500, "Paid", "Cash", "05/08/2026"],
+        ],
+      },
+    ]);
+
+    expect(result.enrollments).toEqual([
+      {
+        studentEmail: "ada@example.com",
+        batchName: "Kids Hip-Hop",
+        enrolledAt: "2026-08-05",
+        status: "ACTIVE",
+        endedAt: null,
+        endReason: null,
+        planName: null,
+      },
+      {
+        studentEmail: "alan@example.com",
+        batchName: "Kids Hip-Hop",
+        enrolledAt: "2026-08-01",
+        status: "ENDED",
+        endedAt: "2027-01-15",
+        endReason: null,
+        planName: null,
+      },
+    ]);
+    expect(result.sessions[0]?.date).toBe("2026-08-05");
+    expect(result.invoices[0]?.paidAt).toBe("2026-08-05");
+  });
+
+  it("keeps Excel Date cells on the local calendar day (no UTC day-shift)", () => {
+    // Local midnight Aug 1 — toISOString() is Jul 31 in positive UTC offsets (e.g. IST).
+    const augustFirstLocal = new Date(2026, 7, 1);
+    const augustFirstUtc = new Date(Date.UTC(2026, 7, 1));
+
+    const fromLocal = parseStudioImportSheets([
+      STUDENTS_SHEET,
+      BATCHES_SHEET,
+      {
+        sheet: "Enrollments",
+        data: [
+          ["Student email", "Batch name", "Enrolled at", "Status"],
+          ["ada@example.com", "Kids Hip-Hop", augustFirstLocal, "Active"],
+        ],
+      },
+    ]);
+    expect(fromLocal.enrollments[0]?.enrolledAt).toBe("2026-08-01");
+
+    const fromUtc = parseStudioImportSheets([
+      STUDENTS_SHEET,
+      BATCHES_SHEET,
+      {
+        sheet: "Enrollments",
+        data: [
+          ["Student email", "Batch name", "Enrolled at", "Status"],
+          ["ada@example.com", "Kids Hip-Hop", augustFirstUtc, "Active"],
+        ],
+      },
+    ]);
+    expect(fromUtc.enrollments[0]?.enrolledAt).toBe("2026-08-01");
+  });
 });

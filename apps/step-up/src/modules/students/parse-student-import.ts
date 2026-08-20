@@ -21,7 +21,10 @@ export const STUDENT_IMPORT_MIN_AGE = 0;
 export const STUDENT_IMPORT_MAX_AGE = 120;
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
+/** Primary Excel date format: dd/mm/yyyy (also dd-mm-yyyy). */
+const DMY_DATE_PATTERN = /^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/;
+/** Also accepted; always normalized to this for the API payload. */
+const ISO_DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
 
 const GENDER_ALIASES: Record<string, Gender> = {
   female: "FEMALE",
@@ -96,29 +99,49 @@ function isPastCalendarDate(year: number, month: number, day: number) {
   return date <= today;
 }
 
+function isUtcMidnight(value: Date): boolean {
+  return (
+    value.getUTCHours() === 0 &&
+    value.getUTCMinutes() === 0 &&
+    value.getUTCSeconds() === 0 &&
+    value.getUTCMilliseconds() === 0
+  );
+}
+
+function isLocalMidnight(value: Date): boolean {
+  return (
+    value.getHours() === 0 &&
+    value.getMinutes() === 0 &&
+    value.getSeconds() === 0 &&
+    value.getMilliseconds() === 0
+  );
+}
+
+/** Keep Excel date cells on the calendar day (avoid toISOString day-shift). */
+function formatCalendarDate(value: Date): string | null {
+  const useLocal = isLocalMidnight(value) || !isUtcMidnight(value);
+  const year = useLocal ? value.getFullYear() : value.getUTCFullYear();
+  const month = (useLocal ? value.getMonth() : value.getUTCMonth()) + 1;
+  const day = useLocal ? value.getDate() : value.getUTCDate();
+  if (!isPastCalendarDate(year, month, day)) return null;
+  return `${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
 function parseDateOfBirth(value: unknown): string | null {
   if (value instanceof Date && !Number.isNaN(value.getTime())) {
-    return value.toISOString().slice(0, 10);
+    return formatCalendarDate(value);
   }
 
   if (typeof value === "number" && Number.isFinite(value) && value > 0) {
     const excelEpoch = Date.UTC(1899, 11, 30);
     const date = new Date(excelEpoch + Math.trunc(value) * 86_400_000);
-    return parseDateOfBirth(date.toISOString().slice(0, 10));
+    return formatCalendarDate(date);
   }
 
   const raw = cellText(value);
   if (!raw) return null;
 
-  let match = DATE_PATTERN.exec(raw);
-  if (match) {
-    const year = Number(match[1]);
-    const month = Number(match[2]);
-    const day = Number(match[3]);
-    return isPastCalendarDate(year, month, day) ? raw : null;
-  }
-
-  match = /^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/.exec(raw);
+  let match = DMY_DATE_PATTERN.exec(raw);
   if (match) {
     const day = Number(match[1]);
     const month = Number(match[2]);
@@ -126,6 +149,14 @@ function parseDateOfBirth(value: unknown): string | null {
     return isPastCalendarDate(year, month, day)
       ? `${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`
       : null;
+  }
+
+  match = ISO_DATE_PATTERN.exec(raw);
+  if (match) {
+    const year = Number(match[1]);
+    const month = Number(match[2]);
+    const day = Number(match[3]);
+    return isPastCalendarDate(year, month, day) ? raw : null;
   }
 
   return null;
