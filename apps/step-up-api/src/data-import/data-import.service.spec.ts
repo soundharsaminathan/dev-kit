@@ -39,6 +39,7 @@ function buildService(
     subscription: { findMany: vi.fn().mockResolvedValue([]) },
     membership: {
       findFirst: vi.fn().mockResolvedValue(null),
+      findMany: vi.fn().mockResolvedValue([]),
       create: vi.fn().mockResolvedValue({ id: "mem-1" }),
     },
     invoice: { createMany: vi.fn().mockResolvedValue({ count: 0 }) },
@@ -975,7 +976,88 @@ describe("DataImportService.importStudioData", () => {
       data: [
         expect.objectContaining({
           studentId: "student-1",
+          membershipId: null,
           purchaseMeta: { batchId: "batch-1" },
+        }),
+      ],
+    });
+  });
+
+  it("links imported invoices to an active membership for student+batch", async () => {
+    const { service, prisma } = buildService({
+      prisma: {
+        user: {
+          findMany: vi
+            .fn()
+            .mockResolvedValue([
+              { id: "student-1", emailHash: "hash:ada@example.com" },
+            ]),
+        },
+        batch: {
+          findMany: vi
+            .fn()
+            .mockResolvedValue([
+              { id: "batch-1", name: "Kids Hip-Hop", category: "KIDS" },
+            ]),
+        },
+        subscription: {
+          findMany: vi.fn().mockResolvedValue([
+            { id: "sub-quarterly", name: "Kids Quarterly" },
+          ]),
+        },
+        membership: {
+          findFirst: vi.fn().mockResolvedValue(null),
+          findMany: vi.fn().mockResolvedValue([
+            {
+              id: "mem-1",
+              purchaserUserId: "student-1",
+              batchId: "batch-1",
+              subscriptionId: "sub-quarterly",
+            },
+          ]),
+          create: vi.fn().mockResolvedValue({ id: "mem-1" }),
+        },
+      },
+    });
+
+    await service.importStudioData(ACTOR, {
+      students: [],
+      batches: [],
+      enrollments: [],
+      invoices: [
+        {
+          studentEmail: "ada@example.com",
+          batchName: "Kids Hip-Hop",
+          amount: 5000,
+          status: InvoiceStatus.PAID,
+          paymentMethod: "UPI_MANUAL",
+          paidAt: "2026-06-01",
+          referralDiscount: 0,
+          studioDiscount: 0,
+          refundedAmount: 0,
+          refundedAt: null,
+          planName: "Kids Quarterly",
+        },
+      ],
+    });
+
+    expect(prisma.invoice.createMany).toHaveBeenCalledWith({
+      data: [
+        expect.objectContaining({
+          studentId: "student-1",
+          membershipId: "mem-1",
+          purchaseMeta: {
+            batchId: "batch-1",
+            subscriptionId: "sub-quarterly",
+            purchaserUserId: "student-1",
+            coveredStudents: [
+              {
+                studentId: "student-1",
+                seatRole: "KID",
+                batchId: "batch-1",
+              },
+            ],
+          },
         }),
       ],
     });

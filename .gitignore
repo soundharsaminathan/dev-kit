@@ -45,6 +45,7 @@ Thumbs.db
 
 # Local scratch / smoke artifacts
 tmp/
+devtool/
 
 # Logs
 *.log

@@ -68,6 +68,42 @@ export function parsePurchaseMeta(value: unknown): InvoicePurchaseMeta | null {
   };
 }
 
+/** Batch id from purchaseMeta, including import/partial JSON shapes. */
+export function readPurchaseMetaBatchId(value: unknown): string | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return null;
+  }
+  const meta = value as Record<string, unknown>;
+  if (typeof meta.batchId === "string" && meta.batchId.length > 0) {
+    return meta.batchId;
+  }
+  if (!Array.isArray(meta.coveredStudents)) {
+    return null;
+  }
+  for (const seat of meta.coveredStudents) {
+    if (!seat || typeof seat !== "object" || Array.isArray(seat)) {
+      continue;
+    }
+    const entry = seat as Record<string, unknown>;
+    if (typeof entry.batchId === "string" && entry.batchId.length > 0) {
+      return entry.batchId;
+    }
+  }
+  return null;
+}
+
+/** Subscription id from purchaseMeta, including import/partial JSON shapes. */
+export function readPurchaseMetaSubscriptionId(value: unknown): string | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return null;
+  }
+  const meta = value as Record<string, unknown>;
+  return typeof meta.subscriptionId === "string" &&
+    meta.subscriptionId.length > 0
+    ? meta.subscriptionId
+    : null;
+}
+
 /** Prefer invoice batch metadata; only fall back to a single unambiguous enrollment. */
 export function batchIdsForInvoiceAttribution(args: {
   studentId: string;

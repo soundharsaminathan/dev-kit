@@ -84,6 +84,7 @@ export function BatchRevenue({ batchId }: BatchRevenueProps) {
       api.get<BatchRevenueResponse>(
         `/batches/${batchId}/revenue?period=${period}`,
       ),
+    staleTime: 30_000,
   });
 
   return (
@@ -174,8 +175,8 @@ export function BatchRevenue({ batchId }: BatchRevenueProps) {
           ) : (
             <p className={styles.empty}>
               {period === "month"
-                ? "No membership invoices for this month yet."
-                : "No membership invoices yet for enrolled students."}
+                ? "No invoices for this month yet."
+                : "No invoices yet for this batch."}
             </p>
           )}
         </>

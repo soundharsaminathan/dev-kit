@@ -13,6 +13,7 @@ import {
   IndividualAudience,
   InvoiceStatus,
   MembershipBillingPhase,
+  MembershipSeatRole,
   MembershipStatus,
   type PaymentMethod,
   Prisma,
@@ -896,10 +897,54 @@ export class DataImportService {
       subscriptions.map((sub) => [sub.name.trim().toLowerCase(), sub]),
     );
 
+    const resolvedStudentIds = [...new Set(studentIdByEmail.values())];
+    const resolvedBatchIds = [...new Set(batchIdByName.values())];
+    const [memberships, batchRows] = await Promise.all([
+      resolvedStudentIds.length === 0 || resolvedBatchIds.length === 0
+        ? Promise.resolve([])
+        : this.prisma.membership.findMany({
+            where: {
+              purchaserUserId: { in: resolvedStudentIds },
+              batchId: { in: resolvedBatchIds },
+              status: MembershipStatus.ACTIVE,
+            },
+            select: {
+              id: true,
+              purchaserUserId: true,
+              batchId: true,
+              subscriptionId: true,
+            },
+            orderBy: { periodStart: "desc" },
+          }),
+      resolvedBatchIds.length === 0
+        ? Promise.resolve([])
+        : this.prisma.batch.findMany({
+            where: { id: { in: resolvedBatchIds } },
+            select: { id: true, category: true },
+          }),
+    ]);
+    const batchCategoryById = new Map(
+      batchRows.map((batch) => [batch.id, batch.category]),
+    );
+    const membershipByStudentBatch = new Map<string, string>();
+    const membershipByStudentBatchSub = new Map<string, string>();
+    for (const membership of memberships) {
+      if (!membership.batchId) continue;
+      const pair = `${membership.purchaserUserId}:${membership.batchId}`;
+      if (!membershipByStudentBatch.has(pair)) {
+        membershipByStudentBatch.set(pair, membership.id);
+      }
+      const withSub = `${pair}:${membership.subscriptionId}`;
+      if (!membershipByStudentBatchSub.has(withSub)) {
+        membershipByStudentBatchSub.set(withSub, membership.id);
+      }
+    }
+
     let skipped = 0;
     const data: Array<{
       studentId: string;
       studioId: string;
+      membershipId: string | null;
       amount: number;
       referralDiscount: number;
       studioDiscount: number;
@@ -942,23 +987,51 @@ export class DataImportService {
         }
         subscriptionId = subscription.id;
       }
+      let batchId: string | undefined;
+      if (batchName) {
+        batchId = batchIdByName.get(batchName.toLowerCase());
+        if (!batchId) {
+          skipped += 1;
+          continue;
+        }
+      }
+
       let purchaseMeta: Prisma.InputJsonValue | typeof Prisma.JsonNull =
         Prisma.JsonNull;
-      if (batchName || subscriptionId) {
+      if (batchId && subscriptionId) {
+        const category = batchCategoryById.get(batchId);
+        const seatRole = category
+          ? seatRoleForBatchCategory(category)
+          : MembershipSeatRole.KID;
+        purchaseMeta = {
+          batchId,
+          subscriptionId,
+          purchaserUserId: studentId,
+          coveredStudents: [
+            {
+              studentId,
+              seatRole,
+              batchId,
+            },
+          ],
+        };
+      } else if (batchId || subscriptionId) {
         const meta: Record<string, string> = {};
-        if (batchName) {
-          const batchId = batchIdByName.get(batchName.toLowerCase());
-          if (!batchId) {
-            skipped += 1;
-            continue;
-          }
-          meta.batchId = batchId;
-        }
-        if (subscriptionId) {
-          meta.subscriptionId = subscriptionId;
-        }
+        if (batchId) meta.batchId = batchId;
+        if (subscriptionId) meta.subscriptionId = subscriptionId;
         purchaseMeta = meta;
       }
+
+      const membershipId =
+        batchId && subscriptionId
+          ? (membershipByStudentBatchSub.get(
+              `${studentId}:${batchId}:${subscriptionId}`,
+            ) ??
+            membershipByStudentBatch.get(`${studentId}:${batchId}`) ??
+            null)
+          : batchId
+            ? (membershipByStudentBatch.get(`${studentId}:${batchId}`) ?? null)
+            : null;
       const paidAt = row.paidAt ? importDateTime(row.paidAt) : null;
       const refundedAt = row.refundedAt ? importDateTime(row.refundedAt) : null;
       const refundedAmount = row.refundedAmount ?? (refunded ? row.amount : 0);
@@ -973,6 +1046,7 @@ export class DataImportService {
       data.push({
         studentId,
         studioId,
+        membershipId,
         amount: row.amount,
         referralDiscount: row.referralDiscount ?? 0,
         studioDiscount: row.studioDiscount ?? 0,

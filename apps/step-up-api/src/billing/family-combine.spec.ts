@@ -7,6 +7,9 @@ import {
   batchLabelForInvoice,
   monthsForBillingCadence,
   parseCombineMeta,
+  parsePurchaseMeta,
+  readPurchaseMetaBatchId,
+  readPurchaseMetaSubscriptionId,
 } from "./family-combine";
 
 describe("allocateFamilyDiscount", () => {
@@ -311,5 +314,30 @@ describe("monthsForBillingCadence", () => {
   it("maps quarterly to 3 months", () => {
     expect(monthsForBillingCadence(BillingCadence.QUARTERLY)).toBe(3);
     expect(monthsForBillingCadence(BillingCadence.MONTHLY)).toBe(1);
+  });
+});
+
+describe("purchaseMeta readers", () => {
+  it("reads batch and plan ids from import/partial JSON", () => {
+    const partial = {
+      batchId: "batch-1",
+      subscriptionId: "sub-quarterly",
+    };
+    expect(parsePurchaseMeta(partial)).toBeNull();
+    expect(readPurchaseMetaBatchId(partial)).toBe("batch-1");
+    expect(readPurchaseMetaSubscriptionId(partial)).toBe("sub-quarterly");
+  });
+
+  it("reads batchId from full checkout purchaseMeta", () => {
+    const full = {
+      batchId: "batch-1",
+      subscriptionId: "sub-1",
+      purchaserUserId: "student-1",
+      coveredStudents: [
+        { studentId: "student-1", seatRole: "KID", batchId: "batch-1" },
+      ],
+    };
+    expect(parsePurchaseMeta(full)?.batchId).toBe("batch-1");
+    expect(readPurchaseMetaBatchId(full)).toBe("batch-1");
   });
 });

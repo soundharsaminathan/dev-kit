@@ -451,12 +451,14 @@ describe("BatchesService getRevenue", () => {
     batch: { findUnique: vi.fn() },
     invoice: { findMany: vi.fn() },
     batchEnrollment: { findMany: vi.fn() },
+    subscription: { findMany: vi.fn() },
   };
 
   let service: BatchesService;
 
   beforeEach(() => {
     vi.clearAllMocks();
+    prisma.subscription.findMany.mockResolvedValue([]);
     service = new BatchesService(
       prisma as never,
       {
@@ -562,6 +564,55 @@ describe("BatchesService getRevenue", () => {
         }),
       ]),
     );
+  });
+
+  it("counts imported invoices with purchaseMeta.batchId and no membershipId", async () => {
+    prisma.batch.findUnique.mockResolvedValue({
+      id: "batch-1",
+      studioId: "studio-1",
+      enrollments: [{ studentId: "student-1", status: "ACTIVE" }],
+    });
+    prisma.batchEnrollment.findMany.mockResolvedValue([
+      { studentId: "student-1", batchId: "batch-1" },
+    ]);
+    prisma.subscription.findMany.mockResolvedValue([
+      {
+        id: "sub-quarterly",
+        name: "Kids Quarterly",
+        billingCadence: BillingCadence.QUARTERLY,
+      },
+    ]);
+    prisma.invoice.findMany.mockResolvedValue([
+      {
+        studentId: "student-1",
+        membershipId: null,
+        amount: 5000,
+        status: "PAID",
+        paidAt: new Date("2026-06-01T12:00:00.000Z"),
+        combineMeta: null,
+        purchaseMeta: {
+          batchId: "batch-1",
+          subscriptionId: "sub-quarterly",
+        },
+        membership: null,
+      },
+    ]);
+
+    const result = await service.getRevenue("batch-1");
+
+    expect(result.totals).toEqual({
+      collected: 5000,
+      pending: 0,
+      overdue: 0,
+      invoiceCount: 1,
+    });
+    expect(result.bySubscription).toEqual([
+      expect.objectContaining({
+        subscriptionId: "sub-quarterly",
+        collected: 5000,
+        invoiceCount: 1,
+      }),
+    ]);
   });
 
   it("month period counts only paid invoices paid this month", async () => {

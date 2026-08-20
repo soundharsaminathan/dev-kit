@@ -27,7 +27,8 @@ import {
   paidMonthsInvoiceSelect,
   paidMonthsInvoiceWhere,
   parseCombineMeta,
-  parsePurchaseMeta,
+  readPurchaseMetaBatchId,
+  readPurchaseMetaSubscriptionId,
 } from "../billing/family-combine";
 import { ScheduleConflictService } from "../calendar/schedule-conflict.service";
 import { ChatService } from "../chat/chat.service";
@@ -2228,8 +2229,12 @@ export class BatchesService {
     const period = options.period ?? "all";
     const batch = await this.prisma.batch.findUnique({
       where: { id },
-      include: {
-        enrollments: true,
+      select: {
+        id: true,
+        studioId: true,
+        enrollments: {
+          select: { studentId: true, status: true },
+        },
       },
     });
 
@@ -2268,142 +2273,211 @@ export class BatchesService {
     const monthRange =
       period === "month" ? currentCalendarMonthRange(new Date()) : null;
 
-    if (studentIds.length > 0) {
-      const studentIdSet = new Set(studentIds);
-      const [invoices, studioEnrollments] = await Promise.all([
-        this.prisma.invoice.findMany({
-          where: {
-            studioId: batch.studioId,
-            OR: [
-              {
-                studentId: { in: studentIds },
-                membershipId: { not: null },
+    if (studentIds.length === 0) {
+      return {
+        period,
+        from: monthRange?.from.toISOString() ?? null,
+        to: monthRange?.to.toISOString() ?? null,
+        enrolledCount,
+        totals,
+        bySubscription: [],
+      };
+    }
+
+    const studentIdSet = new Set(studentIds);
+    const periodWhere = monthRange
+      ? {
+          OR: [
+            {
+              status: {
+                in: [InvoiceStatus.PENDING, InvoiceStatus.OVERDUE],
               },
-              { combineMeta: { not: Prisma.DbNull } },
-            ],
-          },
-          include: {
-            membership: {
-              include: {
-                subscription: {
-                  select: {
-                    id: true,
-                    name: true,
-                    billingCadence: true,
-                  },
+            },
+            {
+              status: InvoiceStatus.PAID,
+              paidAt: { gte: monthRange.from, lte: monthRange.to },
+            },
+          ],
+        }
+      : null;
+
+    // Student invoices + studio plan catalog in parallel. Combine invoices stay
+    // studio-scoped (purchaser may not be enrolled in this batch).
+    const [invoices, studioSubscriptions] = await Promise.all([
+      this.prisma.invoice.findMany({
+        where: {
+          studioId: batch.studioId,
+          AND: [
+            {
+              OR: [
+                {
+                  studentId: { in: studentIds },
+                  OR: [
+                    { membershipId: { not: null } },
+                    {
+                      purchaseMeta: {
+                        path: ["batchId"],
+                        equals: id,
+                      },
+                    },
+                  ],
+                },
+                { combineMeta: { not: Prisma.DbNull } },
+              ],
+            },
+            ...(periodWhere ? [periodWhere] : []),
+          ],
+        },
+        select: {
+          studentId: true,
+          membershipId: true,
+          amount: true,
+          status: true,
+          paidAt: true,
+          purchaseMeta: true,
+          combineMeta: true,
+          membership: {
+            select: {
+              subscription: {
+                select: {
+                  id: true,
+                  name: true,
+                  billingCadence: true,
                 },
               },
             },
           },
-        }),
-        this.prisma.batchEnrollment.findMany({
-          where: {
-            studentId: { in: studentIds },
-            status: BatchEnrollmentStatus.ACTIVE,
-            batch: { studioId: batch.studioId },
-          },
-          select: { studentId: true, batchId: true },
-        }),
-      ]);
+        },
+      }),
+      this.prisma.subscription.findMany({
+        where: { studioId: batch.studioId, active: true },
+        select: {
+          id: true,
+          name: true,
+          billingCadence: true,
+        },
+      }),
+    ]);
 
-      const studentBatchMap = new Map<string, Set<string>>();
+    const subscriptionById = new Map(
+      studioSubscriptions.map((sub) => [sub.id, sub]),
+    );
+
+    // Enrollment fallback only for membership invoices missing batch meta.
+    const needsEnrollmentFallback = invoices.some((invoice) => {
+      if (invoice.combineMeta != null) return false;
+      if (readPurchaseMetaBatchId(invoice.purchaseMeta)) return false;
+      return Boolean(invoice.membershipId);
+    });
+
+    const studentBatchMap = new Map<string, Set<string>>();
+    if (needsEnrollmentFallback) {
+      const studioEnrollments = await this.prisma.batchEnrollment.findMany({
+        where: {
+          studentId: { in: studentIds },
+          status: BatchEnrollmentStatus.ACTIVE,
+          batch: { studioId: batch.studioId },
+        },
+        select: { studentId: true, batchId: true },
+      });
       for (const enrollment of studioEnrollments) {
         const set = studentBatchMap.get(enrollment.studentId) ?? new Set();
         set.add(enrollment.batchId);
         studentBatchMap.set(enrollment.studentId, set);
       }
+    }
 
-      for (const invoice of invoices) {
-        if (monthRange && !invoiceMatchesRevenuePeriod(invoice, monthRange)) {
-          continue;
-        }
+    for (const invoice of invoices) {
+      if (monthRange && !invoiceMatchesRevenuePeriod(invoice, monthRange)) {
+        continue;
+      }
 
-        const combineMeta = parseCombineMeta(invoice.combineMeta);
-        if (combineMeta) {
-          for (const source of combineMeta.sources) {
-            const sourceBatchId =
-              source.batchId ?? source.purchaseMeta?.batchId ?? null;
-            if (sourceBatchId !== batch.id) {
-              continue;
-            }
-            const amount = source.netAmount;
-            totals.invoiceCount += 1;
-            if (invoice.status === InvoiceStatus.PAID) {
-              totals.collected += amount;
-            } else if (invoice.status === InvoiceStatus.PENDING) {
-              totals.pending += amount;
-            } else if (invoice.status === InvoiceStatus.OVERDUE) {
-              totals.overdue += amount;
-            }
-          }
-          continue;
-        }
-
-        if (!invoice.membershipId) {
-          continue;
-        }
-
-        const purchaseMeta = parsePurchaseMeta(invoice.purchaseMeta);
-        const invoiceBatchId =
-          purchaseMeta?.batchId ??
-          purchaseMeta?.coveredStudents.find(
-            (seat) =>
-              seat.studentId === invoice.studentId &&
-              typeof seat.batchId === "string",
-          )?.batchId ??
-          null;
-
-        // Attribute by invoice batch, not "student is enrolled somewhere".
-        // Missing meta + multi-batch students would otherwise double-count.
-        if (invoiceBatchId) {
-          if (invoiceBatchId !== batch.id) {
+      const combineMeta = parseCombineMeta(invoice.combineMeta);
+      if (combineMeta) {
+        for (const source of combineMeta.sources) {
+          const sourceBatchId =
+            source.batchId ?? source.purchaseMeta?.batchId ?? null;
+          if (sourceBatchId !== batch.id) {
             continue;
           }
-        } else if (!studentIdSet.has(invoice.studentId)) {
-          continue;
-        } else {
-          const enrolledBatches = studentBatchMap.get(invoice.studentId);
-          if (enrolledBatches?.size !== 1) {
-            continue;
+          const amount = source.netAmount;
+          totals.invoiceCount += 1;
+          if (invoice.status === InvoiceStatus.PAID) {
+            totals.collected += amount;
+          } else if (invoice.status === InvoiceStatus.PENDING) {
+            totals.pending += amount;
+          } else if (invoice.status === InvoiceStatus.OVERDUE) {
+            totals.overdue += amount;
           }
         }
+        continue;
+      }
 
-        const amount = Number(invoice.amount);
-        const subscription = invoice.membership?.subscription;
-        const subscriptionId = subscription?.id;
+      const invoiceBatchId = readPurchaseMetaBatchId(invoice.purchaseMeta);
 
-        if (subscriptionId && !bySubscriptionMap.has(subscriptionId)) {
-          bySubscriptionMap.set(subscriptionId, {
-            subscriptionId,
-            name: subscription.name,
-            billingCadence: subscription.billingCadence,
-            ...emptyBucket(),
-          });
+      // Attribute by invoice batch, not "student is enrolled somewhere".
+      // Missing meta + multi-batch students would otherwise double-count.
+      if (invoiceBatchId) {
+        if (invoiceBatchId !== batch.id) {
+          continue;
         }
-        const bucket = subscriptionId
-          ? bySubscriptionMap.get(subscriptionId)
-          : undefined;
+      } else if (!invoice.membershipId) {
+        continue;
+      } else if (!studentIdSet.has(invoice.studentId)) {
+        continue;
+      } else {
+        const enrolledBatches = studentBatchMap.get(invoice.studentId);
+        if (enrolledBatches?.size !== 1) {
+          continue;
+        }
+      }
 
-        totals.invoiceCount += 1;
+      const amount = Number(invoice.amount);
+      const metaSubscriptionId = readPurchaseMetaSubscriptionId(
+        invoice.purchaseMeta,
+      );
+      const subscription =
+        invoice.membership?.subscription ??
+        (metaSubscriptionId
+          ? subscriptionById.get(metaSubscriptionId)
+          : undefined);
+      const subscriptionId = subscription?.id;
+
+      if (
+        subscriptionId &&
+        subscription &&
+        !bySubscriptionMap.has(subscriptionId)
+      ) {
+        bySubscriptionMap.set(subscriptionId, {
+          subscriptionId,
+          name: subscription.name,
+          billingCadence: subscription.billingCadence,
+          ...emptyBucket(),
+        });
+      }
+      const bucket = subscriptionId
+        ? bySubscriptionMap.get(subscriptionId)
+        : undefined;
+
+      totals.invoiceCount += 1;
+      if (bucket) {
+        bucket.invoiceCount += 1;
+      }
+
+      if (invoice.status === InvoiceStatus.PAID) {
+        totals.collected += amount;
         if (bucket) {
-          bucket.invoiceCount += 1;
+          bucket.collected += amount;
         }
-
-        if (invoice.status === InvoiceStatus.PAID) {
-          totals.collected += amount;
-          if (bucket) {
-            bucket.collected += amount;
-          }
-        } else if (invoice.status === InvoiceStatus.PENDING) {
-          totals.pending += amount;
-          if (bucket) {
-            bucket.pending += amount;
-          }
-        } else if (invoice.status === InvoiceStatus.OVERDUE) {
-          totals.overdue += amount;
-          if (bucket) {
-            bucket.overdue += amount;
-          }
+      } else if (invoice.status === InvoiceStatus.PENDING) {
+        totals.pending += amount;
+        if (bucket) {
+          bucket.pending += amount;
+        }
+      } else if (invoice.status === InvoiceStatus.OVERDUE) {
+        totals.overdue += amount;
+        if (bucket) {
+          bucket.overdue += amount;
         }
       }
     }
