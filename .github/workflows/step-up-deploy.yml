@@ -34,11 +34,6 @@ permissions:
   contents: read
   id-token: write
 
-concurrency:
-  # Normalize PR-merge + push onto the same deploy lane per target branch.
-  group: step-up-deploy-${{ github.event.pull_request.base.ref || github.ref_name }}
-  cancel-in-progress: false
-
 env:
   NX_CLOUD_ACCESS_TOKEN: ${{ secrets.NX_CLOUD_ACCESS_TOKEN }}
 
