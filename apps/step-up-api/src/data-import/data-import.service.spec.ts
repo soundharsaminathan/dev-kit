@@ -42,7 +42,10 @@ function buildService(
       findMany: vi.fn().mockResolvedValue([]),
       create: vi.fn().mockResolvedValue({ id: "mem-1" }),
     },
-    invoice: { createMany: vi.fn().mockResolvedValue({ count: 0 }) },
+    invoice: {
+      createMany: vi.fn().mockResolvedValue({ count: 0 }),
+      findMany: vi.fn().mockResolvedValue([]),
+    },
     session: { findMany: vi.fn().mockResolvedValue([]) },
     attendance: {
       findMany: vi.fn().mockResolvedValue([]),
@@ -403,7 +406,11 @@ describe("DataImportService.importStudioData", () => {
       ],
     });
 
-    expect(result.invoices).toEqual({ created: 2, skipped: 2 });
+    expect(result.invoices).toEqual({
+      created: 2,
+      skipped: 2,
+      gapsCreated: 0,
+    });
     const createdInvoices = prisma.invoice.createMany.mock.calls[0]![0]!
       .data as Array<Record<string, unknown>>;
     expect(createdInvoices).toHaveLength(2);
@@ -1063,6 +1070,197 @@ describe("DataImportService.importStudioData", () => {
     });
   });
 
+  it("creates OVERDUE gap invoices for uncovered monthly enrollment periods", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-20T12:00:00.000Z"));
+
+    const invoiceCreateMany = vi.fn().mockResolvedValue({ count: 0 });
+    const { service, prisma } = buildService({
+      prisma: {
+        user: {
+          findMany: vi
+            .fn()
+            .mockResolvedValue([
+              { id: "student-1", emailHash: "hash:zeff@example.com" },
+            ]),
+        },
+        batch: {
+          findMany: vi.fn().mockResolvedValue([
+            { id: "batch-1", name: "CB1", category: "KIDS" },
+          ]),
+        },
+        batchPlan: {
+          findMany: vi.fn().mockResolvedValue([
+            { batchId: "batch-1", subscriptionId: "sub-m" },
+          ]),
+          createMany: vi.fn().mockResolvedValue({ count: 0 }),
+        },
+        subscription: {
+          findMany: vi.fn().mockResolvedValue([
+            {
+              id: "sub-m",
+              name: "Kids Monthly",
+              billingCadence: "MONTHLY",
+              price: 2000,
+            },
+          ]),
+        },
+        membership: {
+          findFirst: vi.fn().mockResolvedValue(null),
+          findMany: vi.fn().mockResolvedValue([
+            {
+              id: "mem-1",
+              purchaserUserId: "student-1",
+              batchId: "batch-1",
+              subscriptionId: "sub-m",
+            },
+          ]),
+          create: vi.fn().mockResolvedValue({ id: "mem-1" }),
+        },
+        invoice: {
+          createMany: invoiceCreateMany,
+          findMany: vi.fn().mockResolvedValue([
+            {
+              studentId: "student-1",
+              status: InvoiceStatus.PAID,
+              paidAt: new Date("2026-08-01T12:00:00.000Z"),
+              purchaseMeta: {
+                batchId: "batch-1",
+                subscriptionId: "sub-m",
+              },
+              membershipId: "mem-1",
+            },
+          ]),
+        },
+      },
+    });
+
+    const result = await service.importStudioData(ACTOR, {
+      students: [],
+      batches: [],
+      enrollments: [
+        {
+          studentEmail: "zeff@example.com",
+          batchName: "CB1",
+          enrolledAt: "2026-06-05",
+          status: BatchEnrollmentStatus.ACTIVE,
+          endedAt: null,
+          endReason: null,
+          planName: "Kids Monthly",
+        },
+      ],
+      invoices: [],
+    });
+
+    expect(result.invoices.gapsCreated).toBe(2);
+    const gapCall = invoiceCreateMany.mock.calls.find((call) => {
+      const data = call[0]?.data as Array<Record<string, unknown>>;
+      return Array.isArray(data) && data.some((row) => row.status === "OVERDUE");
+    });
+    expect(gapCall).toBeTruthy();
+    const gapData = gapCall![0]!.data as Array<Record<string, unknown>>;
+    expect(gapData).toHaveLength(2);
+    expect(gapData.map((row) => row.status)).toEqual(["OVERDUE", "OVERDUE"]);
+    expect(gapData[0]).toMatchObject({
+      studentId: "student-1",
+      amount: 2000,
+      membershipId: "mem-1",
+      purchaseMeta: expect.objectContaining({
+        batchId: "batch-1",
+        subscriptionId: "sub-m",
+        periodStart: "2026-06-01T00:00:00.000Z",
+      }),
+    });
+    expect(prisma.batchEnrollment.createMany).toHaveBeenCalled();
+
+    vi.useRealTimers();
+  });
+
+  it("does not create monthly gaps inside a quarterly paid window", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-20T12:00:00.000Z"));
+
+    const invoiceCreateMany = vi.fn().mockResolvedValue({ count: 0 });
+    const { service } = buildService({
+      prisma: {
+        user: {
+          findMany: vi
+            .fn()
+            .mockResolvedValue([
+              { id: "student-1", emailHash: "hash:kid@example.com" },
+            ]),
+        },
+        batch: {
+          findMany: vi.fn().mockResolvedValue([
+            { id: "batch-1", name: "CB1", category: "KIDS" },
+          ]),
+        },
+        batchPlan: {
+          findMany: vi.fn().mockResolvedValue([
+            { batchId: "batch-1", subscriptionId: "sub-q" },
+          ]),
+          createMany: vi.fn().mockResolvedValue({ count: 0 }),
+        },
+        subscription: {
+          findMany: vi.fn().mockResolvedValue([
+            {
+              id: "sub-q",
+              name: "Kids Quarterly",
+              billingCadence: "QUARTERLY",
+              price: 5000,
+            },
+          ]),
+        },
+        membership: {
+          findFirst: vi.fn().mockResolvedValue(null),
+          findMany: vi.fn().mockResolvedValue([]),
+          create: vi.fn().mockResolvedValue({ id: "mem-1" }),
+        },
+        invoice: {
+          createMany: invoiceCreateMany,
+          findMany: vi.fn().mockResolvedValue([
+            {
+              studentId: "student-1",
+              status: InvoiceStatus.PAID,
+              paidAt: new Date("2026-06-01T12:00:00.000Z"),
+              purchaseMeta: {
+                batchId: "batch-1",
+                subscriptionId: "sub-q",
+              },
+              membershipId: null,
+            },
+          ]),
+        },
+      },
+    });
+
+    const result = await service.importStudioData(ACTOR, {
+      students: [],
+      batches: [],
+      enrollments: [
+        {
+          studentEmail: "kid@example.com",
+          batchName: "CB1",
+          enrolledAt: "2026-06-05",
+          status: BatchEnrollmentStatus.ACTIVE,
+          endedAt: null,
+          endReason: null,
+          planName: "Kids Quarterly",
+        },
+      ],
+      invoices: [],
+    });
+
+    expect(result.invoices.gapsCreated).toBe(0);
+    const overdueCalls = invoiceCreateMany.mock.calls.filter((call) => {
+      const data = call[0]?.data as Array<Record<string, unknown>>;
+      return Array.isArray(data) && data.some((row) => row.status === "OVERDUE");
+    });
+    expect(overdueCalls).toHaveLength(0);
+
+    vi.useRealTimers();
+  });
+
   it("converts session local times using the studio timezone", async () => {
     const { service, prisma } = buildService({
       prisma: {
@@ -1192,6 +1390,9 @@ describe("DataImportService.importStudioData", () => {
   });
 
   it("creates a membership when an enrollment includes a plan name", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2024-06-15T12:00:00.000Z"));
+
     const { service, prisma } = buildService({
       prisma: {
         user: {
@@ -1216,6 +1417,7 @@ describe("DataImportService.importStudioData", () => {
               id: "sub-month",
               name: "Kids Monthly",
               billingCadence: "MONTHLY",
+              price: 2000,
             },
           ]),
         },
@@ -1233,6 +1435,7 @@ describe("DataImportService.importStudioData", () => {
         },
         membership: {
           findFirst: vi.fn().mockResolvedValue(null),
+          findMany: vi.fn().mockResolvedValue([]),
           create: vi.fn().mockResolvedValue({ id: "mem-1" }),
         },
       },
@@ -1265,5 +1468,9 @@ describe("DataImportService.importStudioData", () => {
         }),
       }),
     );
+    // Current month uncovered → one PENDING gap at catalog price.
+    expect(result.invoices.gapsCreated).toBe(1);
+
+    vi.useRealTimers();
   });
 });

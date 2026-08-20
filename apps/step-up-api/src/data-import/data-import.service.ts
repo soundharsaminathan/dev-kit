@@ -22,6 +22,7 @@ import {
   SubscriptionKind,
   UserRole,
 } from "@prisma/client";
+import { readPurchaseMetaBatchId } from "../billing/family-combine";
 import {
   utcOffsetMinutesForZone,
   zonedLocalToUtc,
@@ -48,6 +49,11 @@ import type {
   ImportSessionDto,
   ImportStudioDataDto,
 } from "./dto/import-studio-data.dto";
+import {
+  buildImportGapInvoices,
+  type GapExistingPeriodInput,
+  type GapPaidInvoiceInput,
+} from "./import-invoice-gaps";
 
 type ImportCounts = { created: number; skipped: number };
 
@@ -157,6 +163,7 @@ export class DataImportService {
       timeZone,
     );
     const invoiceResult = await this.importInvoices(studioId, invoices);
+    const gapResult = await this.createGapInvoices(studioId, enrollments);
     const attendanceResult = await this.importAttendance(
       actor,
       studioId,
@@ -170,7 +177,11 @@ export class DataImportService {
       batches: batchResult,
       enrollments: enrollmentResult,
       sessions: sessionResult,
-      invoices: invoiceResult,
+      invoices: {
+        created: invoiceResult.created,
+        skipped: invoiceResult.skipped,
+        gapsCreated: gapResult.created,
+      },
       attendance: attendanceResult,
     };
   }
@@ -1071,6 +1082,248 @@ export class DataImportService {
     }
 
     return { created: data.length, skipped };
+  }
+
+  /**
+   * After sheet invoices: create OVERDUE/PENDING invoices for enrollment
+   * periods not covered by PAID payments (quarterly cover skips those months).
+   */
+  private async createGapInvoices(
+    studioId: string,
+    rows: ImportEnrollmentDto[],
+  ): Promise<{ created: number }> {
+    const withPlan = rows.filter((row) => row.planName?.trim());
+    if (withPlan.length === 0) {
+      return { created: 0 };
+    }
+
+    const [studentIdByEmail, batchIdByName, settings] = await Promise.all([
+      this.resolveStudentIdsByEmail(
+        studioId,
+        withPlan.map((row) => row.studentEmail),
+      ),
+      this.resolveBatchIdsByName(
+        studioId,
+        withPlan.map((row) => row.batchName),
+      ),
+      this.prisma.studioSettings.findUnique({
+        where: { studioId },
+        select: { platformFeePercent: true, gstPercent: true },
+      }),
+    ]);
+
+    const subscriptions = await this.prisma.subscription.findMany({
+      where: {
+        studioId,
+        active: true,
+        kind: SubscriptionKind.INDIVIDUAL,
+      },
+      select: {
+        id: true,
+        name: true,
+        billingCadence: true,
+        price: true,
+      },
+    });
+    const subscriptionByLowerName = new Map(
+      subscriptions.map((sub) => [sub.name.trim().toLowerCase(), sub]),
+    );
+
+    const resolvedBatchIds = [...new Set(batchIdByName.values())];
+    const batchRows =
+      resolvedBatchIds.length === 0
+        ? []
+        : await this.prisma.batch.findMany({
+            where: { id: { in: resolvedBatchIds } },
+            select: { id: true, category: true },
+          });
+    const batchCategoryById = new Map(
+      batchRows.map((batch) => [batch.id, batch.category]),
+    );
+
+    const enrollments: Array<{
+      studentId: string;
+      batchId: string;
+      enrolledAt: Date;
+      endedAt: Date | null;
+      planCadence: BillingCadence;
+      planPrice: number;
+      subscriptionId: string;
+    }> = [];
+    for (const row of withPlan) {
+      const studentId = studentIdByEmail.get(
+        row.studentEmail.trim().toLowerCase(),
+      );
+      const batchId = batchIdByName.get(row.batchName.trim().toLowerCase());
+      const subscription = subscriptionByLowerName.get(
+        row.planName!.trim().toLowerCase(),
+      );
+      if (!studentId || !batchId || !subscription) {
+        continue;
+      }
+      enrollments.push({
+        studentId,
+        batchId,
+        enrolledAt: importDateTime(row.enrolledAt),
+        endedAt: row.endedAt ? importDateTime(row.endedAt) : null,
+        planCadence: subscription.billingCadence,
+        planPrice: Number(subscription.price),
+        subscriptionId: subscription.id,
+      });
+    }
+
+    if (enrollments.length === 0) {
+      return { created: 0 };
+    }
+
+    const studentIds = [...new Set(enrollments.map((e) => e.studentId))];
+    const batchIds = [...new Set(enrollments.map((e) => e.batchId))];
+
+    const existingInvoices = await this.prisma.invoice.findMany({
+      where: {
+        studioId,
+        studentId: { in: studentIds },
+      },
+      select: {
+        studentId: true,
+        status: true,
+        paidAt: true,
+        purchaseMeta: true,
+        membershipId: true,
+      },
+    });
+
+    const paidInvoices: GapPaidInvoiceInput[] = [];
+    const existingPeriods: GapExistingPeriodInput[] = [];
+    const subById = new Map(subscriptions.map((sub) => [sub.id, sub] as const));
+
+    for (const invoice of existingInvoices) {
+      const batchId = readPurchaseMetaBatchId(invoice.purchaseMeta);
+      if (!batchId || !batchIds.includes(batchId)) {
+        continue;
+      }
+
+      const meta =
+        invoice.purchaseMeta &&
+        typeof invoice.purchaseMeta === "object" &&
+        !Array.isArray(invoice.purchaseMeta)
+          ? (invoice.purchaseMeta as Record<string, unknown>)
+          : null;
+      const metaPeriod =
+        typeof meta?.periodStart === "string"
+          ? new Date(meta.periodStart)
+          : null;
+      const periodStart =
+        metaPeriod && !Number.isNaN(metaPeriod.getTime())
+          ? utcMonthStart(metaPeriod)
+          : invoice.paidAt
+            ? utcMonthStart(invoice.paidAt)
+            : null;
+      if (periodStart) {
+        existingPeriods.push({
+          studentId: invoice.studentId,
+          batchId,
+          periodStart,
+        });
+      }
+
+      if (invoice.status !== InvoiceStatus.PAID || !invoice.paidAt) {
+        continue;
+      }
+      const subscriptionId =
+        typeof meta?.subscriptionId === "string" ? meta.subscriptionId : null;
+      const sub = subscriptionId ? subById.get(subscriptionId) : undefined;
+      paidInvoices.push({
+        studentId: invoice.studentId,
+        batchId,
+        paidAt: invoice.paidAt,
+        cadence: sub?.billingCadence ?? BillingCadence.MONTHLY,
+      });
+    }
+
+    const gaps = buildImportGapInvoices({
+      enrollments,
+      paidInvoices,
+      existingPeriods,
+    });
+    if (gaps.length === 0) {
+      return { created: 0 };
+    }
+
+    const memberships = await this.prisma.membership.findMany({
+      where: {
+        purchaserUserId: { in: studentIds },
+        batchId: { in: batchIds },
+        status: MembershipStatus.ACTIVE,
+      },
+      select: {
+        id: true,
+        purchaserUserId: true,
+        batchId: true,
+        subscriptionId: true,
+      },
+      orderBy: { periodStart: "desc" },
+    });
+    const membershipByPair = new Map<string, string>();
+    for (const membership of memberships) {
+      if (!membership.batchId) continue;
+      const key = `${membership.purchaserUserId}:${membership.batchId}:${membership.subscriptionId}`;
+      if (!membershipByPair.has(key)) {
+        membershipByPair.set(key, membership.id);
+      }
+      const pair = `${membership.purchaserUserId}:${membership.batchId}`;
+      if (!membershipByPair.has(pair)) {
+        membershipByPair.set(pair, membership.id);
+      }
+    }
+
+    const platformFeePercent = settings?.platformFeePercent ?? 5;
+    const gstPercent = settings?.gstPercent ?? 0;
+
+    await this.prisma.invoice.createMany({
+      data: gaps.map((gap) => {
+        const category = batchCategoryById.get(gap.batchId);
+        const seatRole = category
+          ? seatRoleForBatchCategory(category)
+          : MembershipSeatRole.KID;
+        const membershipId =
+          membershipByPair.get(
+            `${gap.studentId}:${gap.batchId}:${gap.subscriptionId}`,
+          ) ??
+          membershipByPair.get(`${gap.studentId}:${gap.batchId}`) ??
+          null;
+        return {
+          studentId: gap.studentId,
+          studioId,
+          membershipId,
+          amount: gap.amount,
+          referralDiscount: 0,
+          studioDiscount: 0,
+          refundedAmount: 0,
+          status: gap.status,
+          paymentMethod: null,
+          paidAt: null,
+          refundedAt: null,
+          platformFeePercent,
+          gstPercent,
+          purchaseMeta: {
+            batchId: gap.batchId,
+            subscriptionId: gap.subscriptionId,
+            purchaserUserId: gap.studentId,
+            periodStart: gap.periodStart.toISOString(),
+            coveredStudents: [
+              {
+                studentId: gap.studentId,
+                seatRole,
+                batchId: gap.batchId,
+              },
+            ],
+          },
+        };
+      }),
+    });
+
+    return { created: gaps.length };
   }
 
   private async importAttendance(

@@ -33,7 +33,7 @@ type StudioDataImportResult = {
   batches: { created: number; skipped: number };
   enrollments: { created: number; skipped: number };
   sessions: { created: number; skipped: number };
-  invoices: { created: number; skipped: number };
+  invoices: { created: number; skipped: number; gapsCreated: number };
   attendance: { created: number; skipped: number };
 };
 
@@ -151,7 +151,7 @@ function ImportDataPage() {
       const totals = totalCounts(result);
       toast({
         title: "Batch imported",
-        description: `Imported ${data.students.created} students, ${data.locations.created} locations, ${data.batches.created} batches, ${data.enrollments.created} enrollments, ${data.sessions.created} sessions, ${data.invoices.created} invoices, and ${data.attendance.created} attendance records (${totals} records in the file).`,
+        description: `Imported ${data.students.created} students, ${data.locations.created} locations, ${data.batches.created} batches, ${data.enrollments.created} enrollments, ${data.sessions.created} sessions, ${data.invoices.created} invoices${data.invoices.gapsCreated > 0 ? ` (+${data.invoices.gapsCreated} unpaid gaps)` : ""}, and ${data.attendance.created} attendance records (${totals} records in the file).`,
         variant: "success",
       });
       clearSelection();

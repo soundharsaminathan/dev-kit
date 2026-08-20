@@ -28,10 +28,21 @@ describe("allocateFamilyDiscount", () => {
 });
 
 describe("invoice month filter", () => {
-  it("keys a billing period from membership.periodStart in UTC", () => {
+  it("keys a billing period from membership.periodStart for unpaid invoices", () => {
     expect(
       invoiceMonthKey({
+        status: "PENDING",
         membership: { periodStart: "2026-08-01T00:00:00.000Z" },
+      }),
+    ).toBe("2026-08");
+  });
+
+  it("prefers paidAt for PAID invoices over membership.periodStart", () => {
+    expect(
+      invoiceMonthKey({
+        status: "PAID",
+        membership: { periodStart: "2026-06-01T00:00:00.000Z" },
+        paidAt: "2026-08-01T12:00:00.000Z",
       }),
     ).toBe("2026-08");
   });
@@ -39,27 +50,29 @@ describe("invoice month filter", () => {
   it("falls back to dueDate then paidAt when membership is missing", () => {
     expect(
       invoiceMonthKey({
+        status: "PENDING",
         dueDate: "2026-07-31T23:59:59.999Z",
         paidAt: "2026-08-02T10:00:00.000Z",
       }),
     ).toBe("2026-07");
-    expect(invoiceMonthKey({ paidAt: "2026-06-15T08:00:00.000Z" })).toBe(
-      "2026-06",
-    );
+    expect(
+      invoiceMonthKey({ status: "PAID", paidAt: "2026-06-15T08:00:00.000Z" }),
+    ).toBe("2026-06");
   });
 
   it("returns null when no date is present", () => {
-    expect(invoiceMonthKey({})).toBeNull();
+    expect(invoiceMonthKey({ status: "PENDING" })).toBeNull();
   });
 
   it("matches a selected month and treats ALL as unfiltered", () => {
     const invoice = {
+      status: "PENDING" as const,
       membership: { periodStart: "2026-08-01T00:00:00.000Z" },
     };
     expect(invoiceMatchesMonth(invoice, "2026-08")).toBe(true);
     expect(invoiceMatchesMonth(invoice, "2026-07")).toBe(false);
     expect(invoiceMatchesMonth(invoice, "ALL")).toBe(true);
-    expect(invoiceMatchesMonth({}, "2026-08")).toBe(false);
+    expect(invoiceMatchesMonth({ status: "PENDING" }, "2026-08")).toBe(false);
   });
 
   it("lists recent UTC months newest first including the current month", () => {
