@@ -97,13 +97,11 @@ export function answerFromPortfolio(question: string): string {
       "reach",
       "hire",
       "linkedin",
-      "github",
       "social",
     ])
   ) {
     return [
       `You can reach ${profile.name} at ${profile.email}.`,
-      `GitHub: ${profile.github}`,
       `LinkedIn: ${profile.linkedin}`,
       `Availability: ${profile.availability}.`,
     ].join("\n");

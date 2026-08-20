@@ -9,8 +9,6 @@ export const profile = {
   tagline:
     "I build accessible component libraries and developer experiences that feel like product.",
   email: "soundhar.saminathan.dev@gmail.com",
-  github: "https://github.com/soundharsaminathan",
-  githubHandle: "soundharsaminathan",
   /** TODO: replace with real details */
   linkedin: "https://linkedin.com/in/soundhar-saminathan",
   /** TODO: replace with real details */

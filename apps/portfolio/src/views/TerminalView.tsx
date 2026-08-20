@@ -80,11 +80,6 @@ export function TerminalView() {
       case "socials":
         next.push({
           id: nextId(),
-          text: `GitHub   ${profile.github}`,
-          tone: "ok",
-        });
-        next.push({
-          id: nextId(),
           text: `LinkedIn ${profile.linkedin}`,
           tone: "ok",
         });
