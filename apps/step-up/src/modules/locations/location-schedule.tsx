@@ -10,6 +10,12 @@ import type { BranchLandingBatch } from "./types";
 
 const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
+type ScheduleDayTime = {
+  weekday: number;
+  startTime: string;
+  endTime: string;
+};
+
 function scheduleLabel(schedule: unknown): string {
   if (!schedule || typeof schedule !== "object") {
     return "Schedule TBA";
@@ -19,12 +25,41 @@ function scheduleLabel(schedule: unknown): string {
     weekdays?: number[];
     startTime?: string;
     endTime?: string;
+    dayTimes?: ScheduleDayTime[];
   };
   if (!s.startTime || !s.endTime) {
     return "Schedule TBA";
   }
   if (s.frequency === "DAILY") {
     return `Daily · ${s.startTime}–${s.endTime}`;
+  }
+  const dayTimes = [...(s.dayTimes ?? [])].sort(
+    (a, b) => a.weekday - b.weekday,
+  );
+  if (dayTimes.length > 0) {
+    const uniqueRanges = new Set(
+      dayTimes.map((slot) => `${slot.startTime}|${slot.endTime}`),
+    );
+    if (uniqueRanges.size === 1) {
+      const first = dayTimes[0];
+      if (!first) {
+        return `${s.startTime}–${s.endTime}`;
+      }
+      const days = dayTimes
+        .map((slot) => WEEKDAY_LABELS[slot.weekday] ?? "")
+        .filter(Boolean)
+        .join(", ");
+      return days
+        ? `${days} · ${first.startTime}–${first.endTime}`
+        : `${first.startTime}–${first.endTime}`;
+    }
+    const parts = dayTimes
+      .map((slot) => {
+        const label = WEEKDAY_LABELS[slot.weekday] ?? "";
+        return label ? `${label} ${slot.startTime}–${slot.endTime}` : null;
+      })
+      .filter(Boolean);
+    if (parts.length > 0) return parts.join(", ");
   }
   const days = (s.weekdays ?? [])
     .map((d) => WEEKDAY_LABELS[d] ?? "")
@@ -43,14 +78,9 @@ function nextOccurrence(schedule: unknown, now: Date): number {
     frequency?: string;
     weekdays?: number[];
     startTime?: string;
+    dayTimes?: ScheduleDayTime[];
   };
   if (!s.startTime) {
-    return Number.POSITIVE_INFINITY;
-  }
-  const [rawHours, rawMinutes] = s.startTime.split(":").map(Number);
-  const hours = rawHours ?? Number.NaN;
-  const minutes = Number.isFinite(rawMinutes) ? (rawMinutes as number) : 0;
-  if (!Number.isFinite(hours)) {
     return Number.POSITIVE_INFINITY;
   }
   const weekdays =
@@ -61,11 +91,16 @@ function nextOccurrence(schedule: unknown, now: Date): number {
   for (let offset = 0; offset <= 7; offset++) {
     const candidate = new Date(now);
     candidate.setDate(now.getDate() + offset);
+    const weekday = candidate.getDay();
+    if (!weekdays.includes(weekday)) continue;
+    const slot = s.dayTimes?.find((entry) => entry.weekday === weekday);
+    const timeValue = slot?.startTime ?? s.startTime;
+    const [rawHours, rawMinutes] = timeValue.split(":").map(Number);
+    const hours = rawHours ?? Number.NaN;
+    const minutes = Number.isFinite(rawMinutes) ? (rawMinutes as number) : 0;
+    if (!Number.isFinite(hours)) continue;
     candidate.setHours(hours, minutes, 0, 0);
-    if (
-      weekdays.includes(candidate.getDay()) &&
-      candidate.getTime() >= now.getTime()
-    ) {
+    if (candidate.getTime() >= now.getTime()) {
       return candidate.getTime();
     }
   }

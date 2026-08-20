@@ -58,6 +58,12 @@ import {
   REACTIVATE_ENROLLMENT_DATA,
 } from "./enrollment-status";
 
+type BatchDayTime = {
+  weekday: number;
+  startTime: string;
+  endTime: string;
+};
+
 type BatchSchedule = {
   frequency: "DAILY" | "WEEKLY";
   weekdays: number[];
@@ -65,6 +71,7 @@ type BatchSchedule = {
   endDate: string;
   startTime: string;
   endTime: string;
+  dayTimes?: BatchDayTime[];
   utcOffsetMinutes: number;
 };
 
@@ -80,13 +87,32 @@ export type DiscoverBatchFilters = {
   studentId?: string;
 };
 
+function minutesFromHhmm(value: string) {
+  return Number(value.slice(0, 2)) * 60 + Number(value.slice(3));
+}
+
+function timesForWeekday(
+  schedule: Pick<BatchSchedule, "startTime" | "endTime" | "dayTimes">,
+  weekday: number,
+) {
+  const slot = schedule.dayTimes?.find((entry) => entry.weekday === weekday);
+  return {
+    startTime: slot?.startTime ?? schedule.startTime,
+    endTime: slot?.endTime ?? schedule.endTime,
+  };
+}
+
 function durationMinutesFromSchedule(schedule: unknown): number | null {
   if (!schedule || typeof schedule !== "object") return null;
   const s = schedule as Partial<BatchSchedule>;
-  if (!s.startTime || !s.endTime) return null;
-  const start =
-    Number(s.startTime.slice(0, 2)) * 60 + Number(s.startTime.slice(3));
-  const end = Number(s.endTime.slice(0, 2)) * 60 + Number(s.endTime.slice(3));
+  const sample =
+    s.dayTimes?.[0] ??
+    (s.startTime && s.endTime
+      ? { startTime: s.startTime, endTime: s.endTime }
+      : null);
+  if (!sample?.startTime || !sample.endTime) return null;
+  const start = minutesFromHhmm(sample.startTime);
+  const end = minutesFromHhmm(sample.endTime);
   if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) {
     return null;
   }
@@ -99,6 +125,34 @@ function scheduleLabelFrom(schedule: unknown): string | null {
   if (!s.startTime || !s.endTime) return null;
   if (s.frequency === "DAILY") {
     return `Daily · ${s.startTime}–${s.endTime}`;
+  }
+  const dayTimes = [...(s.dayTimes ?? [])].sort(
+    (a, b) => a.weekday - b.weekday,
+  );
+  if (dayTimes.length > 0) {
+    const uniqueRanges = new Set(
+      dayTimes.map((slot) => `${slot.startTime}|${slot.endTime}`),
+    );
+    if (uniqueRanges.size === 1) {
+      const first = dayTimes[0];
+      if (!first) {
+        return `${s.startTime}–${s.endTime}`;
+      }
+      const days = dayTimes
+        .map((slot) => WEEKDAY_LABELS[slot.weekday] ?? "")
+        .filter(Boolean)
+        .join(", ");
+      return days
+        ? `${days} · ${first.startTime}–${first.endTime}`
+        : `${first.startTime}–${first.endTime}`;
+    }
+    const parts = dayTimes
+      .map((slot) => {
+        const label = WEEKDAY_LABELS[slot.weekday] ?? "";
+        return label ? `${label} ${slot.startTime}–${slot.endTime}` : null;
+      })
+      .filter(Boolean);
+    if (parts.length > 0) return parts.join(", ");
   }
   const days = (s.weekdays ?? [])
     .map((d) => WEEKDAY_LABELS[d] ?? "")
@@ -224,22 +278,27 @@ function buildSessions(
 ) {
   const startDate = new Date(`${schedule.startDate}T00:00:00.000Z`);
   const endDate = new Date(`${schedule.endDate}T00:00:00.000Z`);
-  const startMinutes =
-    Number(schedule.startTime.slice(0, 2)) * 60 +
-    Number(schedule.startTime.slice(3));
-  const endMinutes =
-    Number(schedule.endTime.slice(0, 2)) * 60 +
-    Number(schedule.endTime.slice(3));
 
   if (endDate < startDate) {
     throw new BadRequestException(
       "Schedule end date must be after its start date",
     );
   }
-  if (endMinutes <= startMinutes) {
+
+  const defaultStartMinutes = minutesFromHhmm(schedule.startTime);
+  const defaultEndMinutes = minutesFromHhmm(schedule.endTime);
+  if (defaultEndMinutes <= defaultStartMinutes) {
     throw new BadRequestException(
       "Class end time must be after its start time",
     );
+  }
+
+  for (const slot of schedule.dayTimes ?? []) {
+    if (minutesFromHhmm(slot.endTime) <= minutesFromHhmm(slot.startTime)) {
+      throw new BadRequestException(
+        `Class end time must be after its start time for ${WEEKDAY_LABELS[slot.weekday] ?? "selected day"}`,
+      );
+    }
   }
 
   const totalDays = Math.floor(
@@ -257,14 +316,16 @@ function buildSessions(
   const sessions: { startsAt: Date; endsAt: Date; type: SessionType }[] = [];
   for (let day = 0; day <= totalDays; day += 1) {
     const date = new Date(startDate.getTime() + day * 86_400_000);
-    if (schedule.frequency === "DAILY" || weekdays.has(date.getUTCDay())) {
+    const weekday = date.getUTCDay();
+    if (schedule.frequency === "DAILY" || weekdays.has(weekday)) {
+      const times = timesForWeekday(schedule, weekday);
       sessions.push({
         startsAt: dateTimeFor(
           date,
-          schedule.startTime,
+          times.startTime,
           schedule.utcOffsetMinutes,
         ),
-        endsAt: dateTimeFor(date, schedule.endTime, schedule.utcOffsetMinutes),
+        endsAt: dateTimeFor(date, times.endTime, schedule.utcOffsetMinutes),
         type: sessionType,
       });
     }

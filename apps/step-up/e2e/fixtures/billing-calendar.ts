@@ -16,6 +16,11 @@ export type BatchScheduleJson = {
   endDate: string;
   startTime: string;
   endTime: string;
+  dayTimes?: Array<{
+    weekday: number;
+    startTime: string;
+    endTime: string;
+  }>;
   utcOffsetMinutes: 0;
 };
 

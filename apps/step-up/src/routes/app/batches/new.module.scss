@@ -625,6 +625,42 @@
   }
 }
 
+.dayTimings {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.dayTimingsHint {
+  margin: 0;
+  color: color-mix(in srgb, var(--color-fg) 58%, transparent);
+  font-size: 0.875rem;
+}
+
+.dayTimingRow {
+  display: grid;
+  grid-template-columns: 3.5rem minmax(0, 1fr) minmax(0, 1fr);
+  gap: 0.75rem;
+  align-items: end;
+  padding: 0.85rem 1rem;
+  border: 1px solid color-mix(in srgb, var(--color-fg) 10%, transparent);
+  border-radius: var(--radius-xl, 1rem);
+  background: color-mix(in srgb, var(--color-fg) 3%, transparent);
+}
+
+.dayTimingLabel {
+  padding-bottom: 0.65rem;
+  font-size: 0.875rem;
+  font-weight: 650;
+}
+
+.dayTimingError {
+  grid-column: 2 / -1;
+  margin: 0;
+  color: var(--color-danger, #b91c1c);
+  font-size: 0.8125rem;
+}
+
 .endDate {
   display: flex;
   flex-direction: column;
@@ -775,6 +811,19 @@
 
   .formGrid {
     grid-template-columns: 1fr;
+  }
+
+  .dayTimingRow {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .dayTimingLabel {
+    padding-bottom: 0;
+  }
+
+  .dayTimingError {
+    grid-column: auto;
   }
 
   .fullWidth {

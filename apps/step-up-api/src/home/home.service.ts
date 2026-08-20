@@ -49,10 +49,43 @@ function scheduleLabelFrom(schedule: unknown): string | null {
     weekdays?: number[];
     startTime?: string;
     endTime?: string;
+    dayTimes?: Array<{
+      weekday: number;
+      startTime: string;
+      endTime: string;
+    }>;
   };
   if (!s.startTime || !s.endTime) return null;
   if (s.frequency === "DAILY") {
     return `Daily · ${s.startTime}–${s.endTime}`;
+  }
+  const dayTimes = [...(s.dayTimes ?? [])].sort(
+    (a, b) => a.weekday - b.weekday,
+  );
+  if (dayTimes.length > 0) {
+    const uniqueRanges = new Set(
+      dayTimes.map((slot) => `${slot.startTime}|${slot.endTime}`),
+    );
+    if (uniqueRanges.size === 1) {
+      const first = dayTimes[0];
+      if (!first) {
+        return `${s.startTime}–${s.endTime}`;
+      }
+      const days = dayTimes
+        .map((slot) => WEEKDAY_LABELS[slot.weekday] ?? "")
+        .filter(Boolean)
+        .join(", ");
+      return days
+        ? `${days} · ${first.startTime}–${first.endTime}`
+        : `${first.startTime}–${first.endTime}`;
+    }
+    const parts = dayTimes
+      .map((slot) => {
+        const label = WEEKDAY_LABELS[slot.weekday] ?? "";
+        return label ? `${label} ${slot.startTime}–${slot.endTime}` : null;
+      })
+      .filter(Boolean);
+    if (parts.length > 0) return parts.join(", ");
   }
   const days = (s.weekdays ?? [])
     .map((day) => WEEKDAY_LABELS[day] ?? "")
@@ -74,14 +107,19 @@ function scheduleVibeScore(scheduleJson: unknown, vibes: string[]): number {
     weekdays?: number[];
     startTime?: string;
     frequency?: string;
+    dayTimes?: Array<{ weekday: number; startTime: string }>;
   };
   const days =
     schedule.frequency === "DAILY"
       ? [0, 1, 2, 3, 4, 5, 6]
       : (schedule.weekdays ?? []);
-  const startHour = schedule.startTime
-    ? Number(schedule.startTime.slice(0, 2))
-    : null;
+  const startHours = (
+    schedule.dayTimes?.length
+      ? schedule.dayTimes.map((slot) => Number(slot.startTime.slice(0, 2)))
+      : schedule.startTime
+        ? [Number(schedule.startTime.slice(0, 2))]
+        : []
+  ).filter((hour) => Number.isFinite(hour));
   let score = 0;
   for (const vibe of vibes) {
     if (vibe === "flexible") {
@@ -94,12 +132,11 @@ function scheduleVibeScore(scheduleJson: unknown, vibes: string[]): number {
     if (
       vibe === "weekday_evenings" &&
       days.some((day) => WEEKDAY_DAYS.has(day)) &&
-      startHour != null &&
-      startHour >= 17
+      startHours.some((hour) => hour >= 17)
     ) {
       score += 2;
     }
-    if (vibe === "mornings" && startHour != null && startHour < 12) {
+    if (vibe === "mornings" && startHours.some((hour) => hour < 12)) {
       score += 2;
     }
   }

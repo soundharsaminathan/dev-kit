@@ -30,6 +30,12 @@ import type { DiscoverBatchFilters } from "../batches.service";
 import { inactiveReasonFromEndReason } from "../enrollment-status";
 import { BatchQuery } from "../persistence/batch.query";
 
+type BatchDayTime = {
+  weekday: number;
+  startTime: string;
+  endTime: string;
+};
+
 type BatchSchedule = {
   frequency: "DAILY" | "WEEKLY";
   weekdays: number[];
@@ -37,18 +43,27 @@ type BatchSchedule = {
   endDate: string;
   startTime: string;
   endTime: string;
+  dayTimes?: BatchDayTime[];
   utcOffsetMinutes: number;
 };
 
 const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
+function minutesFromHhmm(value: string) {
+  return Number(value.slice(0, 2)) * 60 + Number(value.slice(3));
+}
+
 function durationMinutesFromSchedule(schedule: unknown): number | null {
   if (!schedule || typeof schedule !== "object") return null;
   const s = schedule as Partial<BatchSchedule>;
-  if (!s.startTime || !s.endTime) return null;
-  const start =
-    Number(s.startTime.slice(0, 2)) * 60 + Number(s.startTime.slice(3));
-  const end = Number(s.endTime.slice(0, 2)) * 60 + Number(s.endTime.slice(3));
+  const sample =
+    s.dayTimes?.[0] ??
+    (s.startTime && s.endTime
+      ? { startTime: s.startTime, endTime: s.endTime }
+      : null);
+  if (!sample?.startTime || !sample.endTime) return null;
+  const start = minutesFromHhmm(sample.startTime);
+  const end = minutesFromHhmm(sample.endTime);
   if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) {
     return null;
   }
@@ -61,6 +76,34 @@ function scheduleLabelFrom(schedule: unknown): string | null {
   if (!s.startTime || !s.endTime) return null;
   if (s.frequency === "DAILY") {
     return `Daily · ${s.startTime}–${s.endTime}`;
+  }
+  const dayTimes = [...(s.dayTimes ?? [])].sort(
+    (a, b) => a.weekday - b.weekday,
+  );
+  if (dayTimes.length > 0) {
+    const uniqueRanges = new Set(
+      dayTimes.map((slot) => `${slot.startTime}|${slot.endTime}`),
+    );
+    if (uniqueRanges.size === 1) {
+      const first = dayTimes[0];
+      if (!first) {
+        return `${s.startTime}–${s.endTime}`;
+      }
+      const days = dayTimes
+        .map((slot) => WEEKDAY_LABELS[slot.weekday] ?? "")
+        .filter(Boolean)
+        .join(", ");
+      return days
+        ? `${days} · ${first.startTime}–${first.endTime}`
+        : `${first.startTime}–${first.endTime}`;
+    }
+    const parts = dayTimes
+      .map((slot) => {
+        const label = WEEKDAY_LABELS[slot.weekday] ?? "";
+        return label ? `${label} ${slot.startTime}–${slot.endTime}` : null;
+      })
+      .filter(Boolean);
+    if (parts.length > 0) return parts.join(", ");
   }
   const days = (s.weekdays ?? [])
     .map((d) => WEEKDAY_LABELS[d] ?? "")

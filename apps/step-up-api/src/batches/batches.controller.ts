@@ -69,6 +69,19 @@ class DanceCategoryDto {
   description!: string;
 }
 
+class BatchDayTimeDto {
+  @IsInt()
+  @Min(0)
+  @Max(6)
+  weekday!: number;
+
+  @Matches(/^([01]\d|2[0-3]):[0-5]\d$/)
+  startTime!: string;
+
+  @Matches(/^([01]\d|2[0-3]):[0-5]\d$/)
+  endTime!: string;
+}
+
 class BatchScheduleDto {
   @IsIn(["DAILY", "WEEKLY"])
   frequency!: "DAILY" | "WEEKLY";
@@ -90,6 +103,12 @@ class BatchScheduleDto {
 
   @Matches(/^([01]\d|2[0-3]):[0-5]\d$/)
   endTime!: string;
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => BatchDayTimeDto)
+  dayTimes?: BatchDayTimeDto[];
 
   @IsInt()
   @Min(-840)

@@ -45,6 +45,12 @@ import { SkeletonBlock } from "@/modules/ui/skeleton-block";
 import formStyles from "./new.module.scss";
 import styles from "./settings.module.scss";
 
+type BatchDayTime = {
+  weekday: number;
+  startTime: string;
+  endTime: string;
+};
+
 type BatchSchedule = {
   frequency: "DAILY" | "WEEKLY";
   weekdays: number[];
@@ -52,7 +58,13 @@ type BatchSchedule = {
   endDate: string;
   startTime: string;
   endTime: string;
+  dayTimes?: BatchDayTime[];
   utcOffsetMinutes: number;
+};
+
+type DayTiming = {
+  startTime: string;
+  endTime: string;
 };
 
 type DanceCategory = {
@@ -117,6 +129,32 @@ const weekdays = [
   { value: 5, label: "Fri" },
   { value: 6, label: "Sat" },
 ] as const;
+
+const DEFAULT_DAY_TIMING: DayTiming = {
+  startTime: "18:00",
+  endTime: "19:00",
+};
+
+function dayTimingsFromSchedule(
+  schedule: BatchSchedule,
+): Record<number, DayTiming> {
+  const map: Record<number, DayTiming> = {};
+  for (const slot of schedule.dayTimes ?? []) {
+    map[slot.weekday] = {
+      startTime: slot.startTime,
+      endTime: slot.endTime,
+    };
+  }
+  for (const day of schedule.weekdays) {
+    if (!map[day]) {
+      map[day] = {
+        startTime: schedule.startTime,
+        endTime: schedule.endTime,
+      };
+    }
+  }
+  return map;
+}
 
 function toDateInputValue(date: Date) {
   const year = date.getFullYear();
@@ -535,29 +573,104 @@ function ScheduleTab({ batch }: { batch: Batch }) {
   const [endDate, setEndDate] = useState(schedule.endDate);
   const [startTime, setStartTime] = useState(schedule.startTime);
   const [endTime, setEndTime] = useState(schedule.endTime);
+  const [dayTimings, setDayTimings] = useState(() =>
+    dayTimingsFromSchedule(schedule),
+  );
+
+  const weekdaysScheduleValid =
+    frequency === "DAILY"
+      ? Boolean(startTime && endTime > startTime)
+      : selectedWeekdays.length > 0 &&
+        selectedWeekdays.every((day) => {
+          const timing = dayTimings[day] ?? {
+            startTime: schedule.startTime,
+            endTime: schedule.endTime,
+          };
+          return timing.endTime > timing.startTime;
+        });
 
   const isValid = Boolean(
-    startDate &&
-      endDate >= startDate &&
-      startTime &&
-      endTime > startTime &&
-      (frequency === "DAILY" || selectedWeekdays.length > 0),
+    startDate && endDate >= startDate && weekdaysScheduleValid,
   );
+
+  function toggleWeekday(day: number, selected: boolean) {
+    setSelectedWeekdays((current) =>
+      selected
+        ? current.includes(day)
+          ? current
+          : [...current, day]
+        : current.filter((value) => value !== day),
+    );
+    if (selected) {
+      setDayTimings((current) => ({
+        ...current,
+        [day]: current[day] ?? {
+          startTime,
+          endTime: endTime > startTime ? endTime : DEFAULT_DAY_TIMING.endTime,
+        },
+      }));
+    }
+  }
+
+  function updateDayTiming(
+    day: number,
+    field: keyof DayTiming,
+    value: string,
+  ) {
+    setDayTimings((current) => ({
+      ...current,
+      [day]: {
+        ...(current[day] ?? DEFAULT_DAY_TIMING),
+        [field]: value,
+      },
+    }));
+  }
+
+  function buildScheduleJson() {
+    const orderedWeekdays =
+      frequency === "DAILY"
+        ? []
+        : [...selectedWeekdays].sort((a, b) => a - b);
+    const dayTimes =
+      frequency === "WEEKLY"
+        ? orderedWeekdays.map((weekday) => {
+            const timing =
+              dayTimings[weekday] ??
+              ({
+                startTime,
+                endTime,
+              } satisfies DayTiming);
+            return {
+              weekday,
+              startTime: timing.startTime,
+              endTime: timing.endTime,
+            };
+          })
+        : undefined;
+    const primaryStart =
+      frequency === "DAILY"
+        ? startTime
+        : (dayTimes?.[0]?.startTime ?? startTime);
+    const primaryEnd =
+      frequency === "DAILY" ? endTime : (dayTimes?.[0]?.endTime ?? endTime);
+    return {
+      frequency,
+      weekdays: orderedWeekdays,
+      startDate,
+      endDate,
+      startTime: primaryStart,
+      endTime: primaryEnd,
+      ...(dayTimes ? { dayTimes } : {}),
+      utcOffsetMinutes: new Date(
+        `${startDate}T${primaryStart}:00`,
+      ).getTimezoneOffset(),
+    };
+  }
 
   const save = useMutation({
     mutationFn: () =>
       api.patch<Batch>(`/batches/${batch.id}`, {
-        scheduleJson: {
-          frequency,
-          weekdays: frequency === "DAILY" ? [] : selectedWeekdays,
-          startDate,
-          endDate,
-          startTime,
-          endTime,
-          utcOffsetMinutes: new Date(
-            `${startDate}T${startTime}:00`,
-          ).getTimezoneOffset(),
-        },
+        scheduleJson: buildScheduleJson(),
       }),
     onSuccess: async () => {
       await invalidateBatchQueries(queryClient, studioId, batch.id);
@@ -604,13 +717,7 @@ function ScheduleTab({ batch }: { batch: Batch }) {
                 <Checkbox
                   key={day.value}
                   isSelected={selectedWeekdays.includes(day.value)}
-                  onChange={(selected) =>
-                    setSelectedWeekdays((current) =>
-                      selected
-                        ? [...current, day.value]
-                        : current.filter((value) => value !== day.value),
-                    )
-                  }
+                  onChange={(selected) => toggleWeekday(day.value, selected)}
                 >
                   {day.label}
                 </Checkbox>
@@ -642,23 +749,72 @@ function ScheduleTab({ batch }: { batch: Batch }) {
               Until month end
             </Button>
           </div>
-          <FormInput
-            label="Starts at"
-            type="time"
-            value={startTime}
-            onChange={setStartTime}
-          />
-          <FormInput
-            label="Ends at"
-            type="time"
-            value={endTime}
-            onChange={setEndTime}
-          />
+          {frequency === "DAILY" ? (
+            <>
+              <FormInput
+                label="Starts at"
+                type="time"
+                value={startTime}
+                onChange={setStartTime}
+              />
+              <FormInput
+                label="Ends at"
+                type="time"
+                value={endTime}
+                onChange={setEndTime}
+              />
+            </>
+          ) : null}
         </div>
-        {endTime <= startTime ? (
+        {frequency === "DAILY" && endTime <= startTime ? (
           <p className={formStyles.error}>
             End time must be later than start time.
           </p>
+        ) : null}
+        {frequency === "WEEKLY" && selectedWeekdays.length > 0 ? (
+          <div className={formStyles.dayTimings}>
+            <p className={formStyles.dayTimingsHint}>
+              Set a start and end time for each selected day.
+            </p>
+            {[...selectedWeekdays]
+              .sort((a, b) => a - b)
+              .map((day) => {
+                const timing =
+                  dayTimings[day] ??
+                  ({
+                    startTime,
+                    endTime,
+                  } satisfies DayTiming);
+                const label =
+                  weekdays.find((entry) => entry.value === day)?.label ?? "Day";
+                return (
+                  <div key={day} className={formStyles.dayTimingRow}>
+                    <span className={formStyles.dayTimingLabel}>{label}</span>
+                    <FormInput
+                      label="Starts at"
+                      type="time"
+                      value={timing.startTime}
+                      onChange={(value) =>
+                        updateDayTiming(day, "startTime", value)
+                      }
+                    />
+                    <FormInput
+                      label="Ends at"
+                      type="time"
+                      value={timing.endTime}
+                      onChange={(value) =>
+                        updateDayTiming(day, "endTime", value)
+                      }
+                    />
+                    {timing.endTime <= timing.startTime ? (
+                      <p className={formStyles.dayTimingError}>
+                        End must be later than start.
+                      </p>
+                    ) : null}
+                  </div>
+                );
+              })}
+          </div>
         ) : null}
       </section>
 
