@@ -191,6 +191,9 @@ function InvoiceCard({
   if (invoice.chargeType === "PREPAID_FULL") {
     metaParts.push("1st of month");
   }
+  if (invoice.chargeType === "ADMISSION") {
+    metaParts.push("Admission fee");
+  }
   if (isFamily && summary?.planName) {
     metaParts.push(summary.planName);
   }

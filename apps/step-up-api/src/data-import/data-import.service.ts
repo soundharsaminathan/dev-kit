@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   Inject,
   Injectable,
   NotFoundException,
@@ -11,22 +12,33 @@ import {
   BatchEnrollmentStatus,
   BillingCadence,
   IndividualAudience,
+  InvoiceChargeType,
   InvoiceStatus,
   MembershipBillingPhase,
   MembershipSeatRole,
   MembershipStatus,
   type PaymentMethod,
   Prisma,
-  type SessionStatus,
+  SessionStatus,
   type SessionType,
   SubscriptionKind,
   UserRole,
 } from "@prisma/client";
 import { readPurchaseMetaBatchId } from "../billing/family-combine";
+import { ScheduleConflictService } from "../calendar/schedule-conflict.service";
+import {
+  formatConflictInstant,
+  intervalsOverlap,
+  type TimeInterval,
+} from "../calendar/schedule-conflict";
 import {
   utcOffsetMinutesForZone,
   zonedLocalToUtc,
 } from "../common/zoned-local-time";
+import {
+  buildAdmissionInvoiceData,
+  readAdmissionFeeAmount,
+} from "../memberships/admission-fee";
 import {
   getPeriodEnd,
   seatRoleForBatchCategory,
@@ -71,6 +83,29 @@ function audienceForBatchCategory(category: BatchCategory): IndividualAudience {
     ? IndividualAudience.KID
     : IndividualAudience.ADULT;
 }
+
+/** Reject overlapping intervals inside the same import payload (same batch). */
+function assertNoOverlappingImportedIntervals(intervals: TimeInterval[]) {
+  const sorted = [...intervals].sort(
+    (a, b) => a.startsAt.getTime() - b.startsAt.getTime(),
+  );
+  for (let i = 0; i < sorted.length; i += 1) {
+    const left = sorted[i]!;
+    for (
+      let j = i + 1;
+      j < sorted.length && sorted[j]!.startsAt < left.endsAt;
+      j += 1
+    ) {
+      const right = sorted[j]!;
+      if (intervalsOverlap(left, right)) {
+        throw new ConflictException(
+          `Imported sessions overlap at ${formatConflictInstant(right.startsAt)}`,
+        );
+      }
+    }
+  }
+}
+
 @Injectable()
 export class DataImportService {
   constructor(
@@ -79,6 +114,8 @@ export class DataImportService {
     @Inject(UsersService) private readonly users: UsersService,
     @Inject(ProjectionService)
     private readonly projections: ProjectionService,
+    @Inject(ScheduleConflictService)
+    private readonly scheduleConflicts: ScheduleConflictService,
   ) {}
 
   async importStudioData(actor: DecryptedUser, dto: ImportStudioDataDto) {
@@ -323,6 +360,7 @@ export class DataImportService {
         !existingKeys.has(`${row.batchId}:${row.startsAt.toISOString()}`),
     );
     if (toCreate.length > 0) {
+      await this.assertImportedSessionSchedule(toCreate);
       await this.prisma.session.createMany({
         data: toCreate.map(
           ({ batchId, startsAt, endsAt, status, type, trainerId }) => ({
@@ -341,6 +379,76 @@ export class DataImportService {
       created: toCreate.length,
       skipped: skipped + (data.length - toCreate.length),
     };
+  }
+
+  /**
+   * Same branch/trainer gates as live session create — import must not land
+   * overlapping classes that the UI would reject.
+   */
+  private async assertImportedSessionSchedule(
+    rows: Array<{
+      batchId: string;
+      startsAt: Date;
+      endsAt: Date;
+      status: SessionStatus;
+      trainerId: string | null;
+    }>,
+  ) {
+    const active = rows.filter(
+      (row) => row.status !== SessionStatus.CANCELLED,
+    );
+    if (active.length === 0) {
+      return;
+    }
+
+    const byBatch = new Map<string, typeof active>();
+    for (const row of active) {
+      const list = byBatch.get(row.batchId) ?? [];
+      list.push(row);
+      byBatch.set(row.batchId, list);
+    }
+
+    for (const batchRows of byBatch.values()) {
+      assertNoOverlappingImportedIntervals(
+        batchRows.map((row) => ({
+          startsAt: row.startsAt,
+          endsAt: row.endsAt,
+        })),
+      );
+    }
+
+    const batches = await this.prisma.batch.findMany({
+      where: { id: { in: [...byBatch.keys()] } },
+      select: {
+        id: true,
+        branchId: true,
+        trainers: { select: { trainerId: true } },
+      },
+    });
+    const batchById = new Map(batches.map((batch) => [batch.id, batch]));
+
+    for (const [batchId, batchRows] of byBatch) {
+      const batch = batchById.get(batchId);
+      if (!batch) {
+        continue;
+      }
+      const trainerIds = [
+        ...new Set([
+          ...batch.trainers.map((trainer) => trainer.trainerId),
+          ...batchRows
+            .map((row) => row.trainerId)
+            .filter((id): id is string => Boolean(id)),
+        ]),
+      ];
+      await this.scheduleConflicts.assertNoConflicts({
+        intervals: batchRows.map((row) => ({
+          startsAt: row.startsAt,
+          endsAt: row.endsAt,
+        })),
+        trainerIds,
+        branchId: batch.branchId,
+      });
+    }
   }
 
   private async importLocations(
@@ -782,6 +890,79 @@ export class DataImportService {
       (row) => !existingPairs.has(`${row.batchId}:${row.studentId}`),
     );
 
+    if (toCreate.length === 0) {
+      return {
+        created: 0,
+        skipped: skipped + data.length,
+      };
+    }
+
+    // Admission fee before seat writes so priorEnrollment only sees pre-import history.
+    const settings = await this.prisma.studioSettings.findUnique({
+      where: { studioId },
+      select: {
+        admissionFee: true,
+        platformFeePercent: true,
+        gstPercent: true,
+      },
+    });
+    const admissionAmount = readAdmissionFeeAmount(settings);
+    if (admissionAmount > 0) {
+      const firstEnrollmentByStudent = new Map<
+        string,
+        { batchId: string; enrolledAt: string }
+      >();
+      for (const row of toCreate) {
+        const current = firstEnrollmentByStudent.get(row.studentId);
+        if (!current || row.enrolledAt < current.enrolledAt) {
+          firstEnrollmentByStudent.set(row.studentId, {
+            batchId: row.batchId,
+            enrolledAt: row.enrolledAt,
+          });
+        }
+      }
+
+      const studentIds = [...firstEnrollmentByStudent.keys()];
+      const [existingAdmissions, priorEnrollments] = await Promise.all([
+        this.prisma.invoice.findMany({
+          where: {
+            studioId,
+            studentId: { in: studentIds },
+            chargeType: InvoiceChargeType.ADMISSION,
+          },
+          select: { studentId: true },
+        }),
+        this.prisma.batchEnrollment.findMany({
+          where: {
+            studentId: { in: studentIds },
+            batch: { studioId },
+          },
+          select: { studentId: true },
+        }),
+      ]);
+      const skipStudents = new Set([
+        ...existingAdmissions.map((row) => row.studentId),
+        ...priorEnrollments.map((row) => row.studentId),
+      ]);
+
+      const admissionRows = [...firstEnrollmentByStudent.entries()]
+        .filter(([studentId]) => !skipStudents.has(studentId))
+        .map(([studentId, first]) =>
+          buildAdmissionInvoiceData({
+            studentId,
+            studioId,
+            amount: admissionAmount,
+            batchId: first.batchId,
+            enrolledAt: importDateTime(first.enrolledAt),
+            settings,
+          }),
+        );
+
+      if (admissionRows.length > 0) {
+        await this.prisma.invoice.createMany({ data: admissionRows });
+      }
+    }
+
     if (toCreate.length > 0) {
       await this.prisma.batchEnrollment.createMany({
         data: toCreate.map(
@@ -1190,6 +1371,7 @@ export class DataImportService {
         paidAt: true,
         purchaseMeta: true,
         membershipId: true,
+        chargeType: true,
       },
     });
 
@@ -1198,6 +1380,9 @@ export class DataImportService {
     const subById = new Map(subscriptions.map((sub) => [sub.id, sub] as const));
 
     for (const invoice of existingInvoices) {
+      if (invoice.chargeType === InvoiceChargeType.ADMISSION) {
+        continue;
+      }
       const batchId = readPurchaseMetaBatchId(invoice.purchaseMeta);
       if (!batchId || !batchIds.includes(batchId)) {
         continue;

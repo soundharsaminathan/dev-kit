@@ -1,3 +1,4 @@
+import { ConflictException } from "@nestjs/common";
 import {
   BatchCategory,
   BatchEnrollmentStatus,
@@ -18,6 +19,7 @@ function buildService(
     crypto?: Record<string, unknown>;
     users?: Record<string, unknown>;
     projections?: Record<string, unknown>;
+    scheduleConflicts?: Record<string, unknown>;
   } = {},
 ) {
   const prisma = {
@@ -74,13 +76,19 @@ function buildService(
     refreshStudioRevenue: vi.fn().mockResolvedValue(null),
     ...overrides.projections,
   };
+  const scheduleConflicts = {
+    assertNoConflicts: vi.fn().mockResolvedValue(undefined),
+    assertStudentAvailableForBatch: vi.fn().mockResolvedValue(undefined),
+    ...overrides.scheduleConflicts,
+  };
   const service = new DataImportService(
     prisma as never,
     crypto as never,
     users as never,
     projections as never,
+    scheduleConflicts as never,
   );
-  return { service, prisma, crypto, users, projections };
+  return { service, prisma, crypto, users, projections, scheduleConflicts };
 }
 
 const STUDENTS = [
@@ -750,7 +758,7 @@ describe("DataImportService.importStudioData", () => {
   });
 
   it("creates sessions with trainers, defaulting end times and skipping unresolved rows", async () => {
-    const { service, prisma } = buildService({
+    const { service, prisma, scheduleConflicts } = buildService({
       prisma: {
         user: {
           findMany: vi
@@ -760,9 +768,14 @@ describe("DataImportService.importStudioData", () => {
             ]),
         },
         batch: {
-          findMany: vi
-            .fn()
-            .mockResolvedValue([{ id: "batch-1", name: "Kids Hip-Hop" }]),
+          findMany: vi.fn().mockResolvedValue([
+            {
+              id: "batch-1",
+              name: "Kids Hip-Hop",
+              branchId: "branch-1",
+              trainers: [],
+            },
+          ]),
         },
         session: {
           findMany: vi.fn().mockResolvedValue([]),
@@ -824,6 +837,20 @@ describe("DataImportService.importStudioData", () => {
     });
 
     expect(result.sessions).toEqual({ created: 2, skipped: 3 });
+    expect(scheduleConflicts.assertNoConflicts).toHaveBeenCalledWith({
+      intervals: [
+        {
+          startsAt: new Date("2024-06-03T16:00:00.000Z"),
+          endsAt: new Date("2024-06-03T17:00:00.000Z"),
+        },
+        {
+          startsAt: new Date("2024-06-04T18:00:00.000Z"),
+          endsAt: new Date("2024-06-04T19:00:00.000Z"),
+        },
+      ],
+      trainerIds: ["trainer-1"],
+      branchId: "branch-1",
+    });
     expect(prisma.session.createMany).toHaveBeenCalledWith({
       data: [
         {
@@ -846,6 +873,110 @@ describe("DataImportService.importStudioData", () => {
     });
   });
 
+  it("rejects session import when a schedule conflict exists", async () => {
+    const { service, prisma, scheduleConflicts } = buildService({
+      prisma: {
+        batch: {
+          findMany: vi.fn().mockResolvedValue([
+            {
+              id: "batch-1",
+              name: "Kids Hip-Hop",
+              branchId: "branch-1",
+              trainers: [{ trainerId: "trainer-1" }],
+            },
+          ]),
+        },
+        session: {
+          findMany: vi.fn().mockResolvedValue([]),
+          createMany: vi.fn(),
+        },
+      },
+      scheduleConflicts: {
+        assertNoConflicts: vi
+          .fn()
+          .mockRejectedValue(
+            new ConflictException("Branch already has a class at 3 Jun 2024"),
+          ),
+      },
+    });
+
+    await expect(
+      service.importStudioData(ACTOR, {
+        students: [],
+        batches: [],
+        enrollments: [],
+        invoices: [],
+        sessions: [
+          {
+            batchName: "Kids Hip-Hop",
+            date: "2024-06-03",
+            startTime: "16:00",
+            endTime: "17:00",
+            status: "SCHEDULED",
+            type: "REGULAR",
+            trainerEmail: null,
+          },
+        ],
+      }),
+    ).rejects.toBeInstanceOf(ConflictException);
+
+    expect(scheduleConflicts.assertNoConflicts).toHaveBeenCalled();
+    expect(prisma.session.createMany).not.toHaveBeenCalled();
+  });
+
+  it("rejects session import when rows in the file overlap each other", async () => {
+    const { service, prisma, scheduleConflicts } = buildService({
+      prisma: {
+        batch: {
+          findMany: vi.fn().mockResolvedValue([
+            {
+              id: "batch-1",
+              name: "Kids Hip-Hop",
+              branchId: "branch-1",
+              trainers: [],
+            },
+          ]),
+        },
+        session: {
+          findMany: vi.fn().mockResolvedValue([]),
+          createMany: vi.fn(),
+        },
+      },
+    });
+
+    await expect(
+      service.importStudioData(ACTOR, {
+        students: [],
+        batches: [],
+        enrollments: [],
+        invoices: [],
+        sessions: [
+          {
+            batchName: "Kids Hip-Hop",
+            date: "2024-06-03",
+            startTime: "16:00",
+            endTime: "17:00",
+            status: "SCHEDULED",
+            type: "REGULAR",
+            trainerEmail: null,
+          },
+          {
+            batchName: "Kids Hip-Hop",
+            date: "2024-06-03",
+            startTime: "16:30",
+            endTime: "17:30",
+            status: "SCHEDULED",
+            type: "REGULAR",
+            trainerEmail: null,
+          },
+        ],
+      }),
+    ).rejects.toThrow(/Imported sessions overlap/);
+
+    expect(scheduleConflicts.assertNoConflicts).not.toHaveBeenCalled();
+    expect(prisma.session.createMany).not.toHaveBeenCalled();
+  });
+
   it("links attendance rows to sessions imported in the same file", async () => {
     const { service, prisma } = buildService({
       prisma: {
@@ -860,6 +991,8 @@ describe("DataImportService.importStudioData", () => {
             {
               id: "batch-1",
               name: "Kids Hip-Hop",
+              branchId: "branch-1",
+              trainers: [],
               scheduleJson: { startTime: "16:00" },
             },
           ]),
@@ -1272,9 +1405,14 @@ describe("DataImportService.importStudioData", () => {
           }),
         },
         batch: {
-          findMany: vi
-            .fn()
-            .mockResolvedValue([{ id: "batch-1", name: "Kids Hip-Hop" }]),
+          findMany: vi.fn().mockResolvedValue([
+            {
+              id: "batch-1",
+              name: "Kids Hip-Hop",
+              branchId: "branch-1",
+              trainers: [],
+            },
+          ]),
         },
         session: {
           findMany: vi.fn().mockResolvedValue([]),
@@ -1472,5 +1610,181 @@ describe("DataImportService.importStudioData", () => {
     expect(result.invoices.gapsCreated).toBe(1);
 
     vi.useRealTimers();
+  });
+
+  it("creates an admission invoice on enrollment date when admissionFee is set", async () => {
+    const invoiceCreateMany = vi.fn().mockResolvedValue({ count: 0 });
+    const { service } = buildService({
+      prisma: {
+        studioSettings: {
+          findUnique: vi.fn().mockResolvedValue({
+            timezone: "UTC",
+            platformFeePercent: 5,
+            gstPercent: 0,
+            admissionFee: 1500,
+          }),
+        },
+        user: {
+          findMany: vi
+            .fn()
+            .mockResolvedValue([
+              { id: "student-1", emailHash: "hash:kid@example.com" },
+            ]),
+        },
+        batch: {
+          findMany: vi.fn().mockResolvedValue([
+            { id: "batch-1", name: "CB1", category: "KIDS" },
+          ]),
+        },
+        batchPlan: {
+          findMany: vi.fn().mockResolvedValue([
+            { batchId: "batch-1", subscriptionId: "sub-m" },
+          ]),
+          createMany: vi.fn().mockResolvedValue({ count: 0 }),
+        },
+        subscription: {
+          findMany: vi.fn().mockResolvedValue([
+            {
+              id: "sub-m",
+              name: "Kids Monthly",
+              billingCadence: "MONTHLY",
+              price: 2000,
+            },
+          ]),
+        },
+        batchEnrollment: {
+          findMany: vi.fn().mockResolvedValue([]),
+          createMany: vi.fn().mockResolvedValue({ count: 1 }),
+        },
+        invoice: {
+          createMany: invoiceCreateMany,
+          findMany: vi.fn().mockResolvedValue([]),
+        },
+      },
+    });
+
+    await service.importStudioData(ACTOR, {
+      students: [],
+      batches: [],
+      enrollments: [
+        {
+          studentEmail: "kid@example.com",
+          batchName: "CB1",
+          enrolledAt: "2026-01-15",
+          status: BatchEnrollmentStatus.ACTIVE,
+          endedAt: null,
+          endReason: null,
+          planName: "Kids Monthly",
+        },
+      ],
+      invoices: [],
+    });
+
+    const admissionCall = invoiceCreateMany.mock.calls.find((call) => {
+      const data = call[0]?.data as Array<Record<string, unknown>>;
+      return (
+        Array.isArray(data) &&
+        data.some((row) => row.chargeType === "ADMISSION")
+      );
+    });
+    expect(admissionCall).toBeTruthy();
+    const admissionData = admissionCall![0]!.data as Array<
+      Record<string, unknown>
+    >;
+    expect(admissionData).toHaveLength(1);
+    expect(admissionData[0]).toMatchObject({
+      studentId: "student-1",
+      amount: 1500,
+      chargeType: "ADMISSION",
+      membershipId: null,
+      purchaseMeta: expect.objectContaining({
+        feeKind: "ADMISSION",
+        batchId: "batch-1",
+        enrolledAt: "2026-01-15T12:00:00.000Z",
+      }),
+    });
+  });
+
+  it("skips admission invoice when student already had a studio enrollment", async () => {
+    const invoiceCreateMany = vi.fn().mockResolvedValue({ count: 0 });
+    const { service } = buildService({
+      prisma: {
+        studioSettings: {
+          findUnique: vi.fn().mockResolvedValue({
+            timezone: "UTC",
+            platformFeePercent: 5,
+            gstPercent: 0,
+            admissionFee: 1500,
+          }),
+        },
+        user: {
+          findMany: vi
+            .fn()
+            .mockResolvedValue([
+              { id: "student-1", emailHash: "hash:kid@example.com" },
+            ]),
+        },
+        batch: {
+          findMany: vi.fn().mockResolvedValue([
+            { id: "batch-1", name: "CB1", category: "KIDS" },
+          ]),
+        },
+        batchPlan: {
+          findMany: vi.fn().mockResolvedValue([
+            { batchId: "batch-1", subscriptionId: "sub-m" },
+          ]),
+          createMany: vi.fn().mockResolvedValue({ count: 0 }),
+        },
+        subscription: {
+          findMany: vi.fn().mockResolvedValue([
+            {
+              id: "sub-m",
+              name: "Kids Monthly",
+              billingCadence: "MONTHLY",
+              price: 2000,
+            },
+          ]),
+        },
+        batchEnrollment: {
+          // First call: existing pair check (empty so we create).
+          // Second call: prior studio enrollments for admission skip.
+          findMany: vi
+            .fn()
+            .mockResolvedValueOnce([])
+            .mockResolvedValueOnce([{ studentId: "student-1" }]),
+          createMany: vi.fn().mockResolvedValue({ count: 1 }),
+        },
+        invoice: {
+          createMany: invoiceCreateMany,
+          findMany: vi.fn().mockResolvedValue([]),
+        },
+      },
+    });
+
+    await service.importStudioData(ACTOR, {
+      students: [],
+      batches: [],
+      enrollments: [
+        {
+          studentEmail: "kid@example.com",
+          batchName: "CB1",
+          enrolledAt: "2026-01-15",
+          status: BatchEnrollmentStatus.ACTIVE,
+          endedAt: null,
+          endReason: null,
+          planName: "Kids Monthly",
+        },
+      ],
+      invoices: [],
+    });
+
+    const admissionCall = invoiceCreateMany.mock.calls.find((call) => {
+      const data = call[0]?.data as Array<Record<string, unknown>>;
+      return (
+        Array.isArray(data) &&
+        data.some((row) => row.chargeType === "ADMISSION")
+      );
+    });
+    expect(admissionCall).toBeUndefined();
   });
 });

@@ -18,7 +18,11 @@ type Invoice = {
   status: "PENDING" | "PAID" | "OVERDUE" | "REFUNDED";
   dueDate: string | null;
   batchName?: string | null;
-  chargeType?: "POSTPAID_PRORATED" | "PREPAID_PRORATED" | "PREPAID_FULL";
+  chargeType?:
+    | "POSTPAID_PRORATED"
+    | "PREPAID_PRORATED"
+    | "PREPAID_FULL"
+    | "ADMISSION";
   attendedSessionCount?: number | null;
   billedSessionCount?: number | null;
   canConvertToQuarterly?: boolean;
@@ -133,6 +137,9 @@ function MeInvoicesPage() {
                         {invoice.attendedSessionCount ?? 0} /{" "}
                         {invoice.billedSessionCount} remaining
                       </p>
+                    ) : null}
+                    {invoice.chargeType === "ADMISSION" ? (
+                      <p className={styles.due}>Admission fee</p>
                     ) : null}
                   </div>
                   <Badge

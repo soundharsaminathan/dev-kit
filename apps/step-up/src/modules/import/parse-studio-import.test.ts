@@ -653,7 +653,7 @@ describe("parseStudioImportSheets", () => {
     expect(result.sessions[0]?.status).toBe("COMPLETED");
   });
 
-  it("flags invalid and duplicate sessions", () => {
+  it("flags invalid, duplicate, and overlapping sessions", () => {
     const result = parseStudioImportSheets([
       {
         sheet: "Sessions",
@@ -673,6 +673,7 @@ describe("parseStudioImportSheets", () => {
             "19:00",
             "trainer@example.com",
           ],
+          ["Kids Hip-Hop", "2024-06-03", "16:30", "17:30", ""],
         ],
       },
     ]);
@@ -683,7 +684,7 @@ describe("parseStudioImportSheets", () => {
       startTime: "18:00",
       trainerEmail: "trainer@example.com",
     });
-    expect(result.sessionsInvalidRows).toEqual([2, 3, 4, 5, 7, 8]);
+    expect(result.sessionsInvalidRows).toEqual([2, 3, 4, 5, 7, 8, 10]);
   });
 
   it("parses attendance Start time and treats start times as distinct", () => {

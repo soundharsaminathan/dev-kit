@@ -45,6 +45,7 @@ export function StudioBillingFormPage() {
   const [graceDays, setGraceDays] = useState("");
   const [expireAlertDays, setExpireAlertDays] = useState("");
   const [timezone, setTimezone] = useState("");
+  const [admissionFee, setAdmissionFee] = useState("");
 
   const studioQuery = useQuery({
     queryKey: ["studio", studioId],
@@ -68,6 +69,7 @@ export function StudioBillingFormPage() {
         graceDays?: number;
         expireAlertDays: number;
         timezone?: string;
+        admissionFee?: number;
       } = {
         expireAlertDays: Number(
           expireAlertDays || (settings?.expireAlertDays ?? 7),
@@ -76,6 +78,9 @@ export function StudioBillingFormPage() {
       if (isOwner) {
         payload.graceDays = Number(graceDays || (settings?.graceDays ?? 3));
         payload.timezone = nextTimezone;
+        payload.admissionFee = Number(
+          admissionFee || String(settings?.admissionFee ?? 0),
+        );
       }
       return api.patch(`/studios/${studioId}/settings`, payload);
     },
@@ -106,7 +111,7 @@ export function StudioBillingFormPage() {
     <>
       <Screen
         title="Billing"
-        subtitle="Due days, expiry alerts, timezone, and platform fee."
+        subtitle="Due days, expiry alerts, admission fee, timezone, and platform fee."
         showBack
         backTo="/app/settings"
         paddedCta
@@ -144,7 +149,7 @@ export function StudioBillingFormPage() {
           <div className={staff.softPanel}>
             <p className={staff.panelTitle}>Billing settings</p>
             <p className={staff.panelDesc}>
-              Due days, expiry alerts, timezone, and platform fee
+              Due days, expiry alerts, admission fee, timezone, and platform fee
             </p>
             {isOwner ? (
               <FormInput
@@ -167,6 +172,19 @@ export function StudioBillingFormPage() {
             />
             {isOwner ? (
               <>
+                <FormInput
+                  label="Admission fee"
+                  type="number"
+                  value={
+                    admissionFee ||
+                    String(studioQuery.data.settings?.admissionFee ?? 0)
+                  }
+                  onChange={setAdmissionFee}
+                />
+                <p className={staff.panelDesc}>
+                  One-time fee charged on a student&apos;s first enrollment.
+                  Set to 0 to disable.
+                </p>
                 <FormInput
                   label="Studio timezone"
                   value={

@@ -82,6 +82,7 @@ enum InvoiceChargeType {
   POSTPAID_PRORATED
   PREPAID_PRORATED
   PREPAID_FULL
+  ADMISSION
 }
 
 enum FamilyMemberKind {
@@ -468,6 +469,7 @@ model StudioSettings {
   expireAlertDays    Int     @default(7)
   platformFeePercent Float   @default(5)
   gstPercent         Float   @default(0)
+  admissionFee       Decimal @default(0) @db.Decimal(10, 2)
   timezone           String  @default("Asia/Kolkata")
   razorpayKeyId      String?
   razorpayKeySecret  String?

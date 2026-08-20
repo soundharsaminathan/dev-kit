@@ -283,6 +283,7 @@ export class StudiosService {
           expireAlertDays: studio.settings.expireAlertDays,
           platformFeePercent: studio.settings.platformFeePercent,
           gstPercent: studio.settings.gstPercent,
+          admissionFee: Number(studio.settings.admissionFee),
           timezone: studio.settings.timezone,
           razorpayKeyId: studio.settings.razorpayKeyId,
           razorpayConfigured: Boolean(
@@ -342,6 +343,7 @@ export class StudiosService {
       expireAlertDays?: number;
       platformFeePercent?: number;
       gstPercent?: number;
+      admissionFee?: number;
       timezone?: string;
       razorpayKeyId?: string | null;
       razorpayKeySecret?: string | null;
@@ -354,6 +356,7 @@ export class StudiosService {
       expireAlertDays?: number;
       platformFeePercent?: number;
       gstPercent?: number;
+      admissionFee?: number;
       timezone?: string;
       razorpayKeyId?: string | null;
       razorpayKeySecret?: string | null;
@@ -371,6 +374,12 @@ export class StudiosService {
     }
     if (data.gstPercent !== undefined) {
       update.gstPercent = data.gstPercent;
+    }
+    if (data.admissionFee !== undefined) {
+      if (data.admissionFee < 0) {
+        throw new BadRequestException("Admission fee cannot be negative");
+      }
+      update.admissionFee = data.admissionFee;
     }
     if (data.timezone !== undefined) {
       const timezone = data.timezone.trim();
@@ -462,6 +471,7 @@ export class StudiosService {
       expireAlertDays: settings.expireAlertDays,
       platformFeePercent: settings.platformFeePercent,
       gstPercent: settings.gstPercent,
+      admissionFee: Number(settings.admissionFee),
       timezone: settings.timezone,
       razorpayKeyId: settings.razorpayKeyId,
       razorpayConfigured: Boolean(

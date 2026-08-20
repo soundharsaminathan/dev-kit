@@ -14,6 +14,7 @@ import {
   waitForApiResponse,
   waitForAppReady,
 } from "./fixtures";
+import { isScheduleConflict } from "../fixtures/billing-calendar";
 import { sweepPath, sweepPaths } from "./route-sweep";
 
 const STAFF_PATHS = [
@@ -25,6 +26,7 @@ const STAFF_PATHS = [
   "/app/students/new",
   `/app/students/${SMOKE.users.STUDENT.id}`,
   "/app/students/import",
+  "/app/import",
   "/app/leads",
   "/app/trainers",
   "/app/trainers/new",
@@ -168,6 +170,25 @@ test.describe("admin (staff) smoke @smoke", () => {
     expect(response.status).toBe(403);
     expect(await response.text()).toMatch(
       /only owners can change gst percent/i,
+    );
+  });
+
+  test("staff cannot change admission fee @smoke", async () => {
+    const token = await bearerFor("STAFF");
+    const response = await fetch(
+      `${apiBaseUrl()}/studios/${SMOKE.studioId}/settings`,
+      {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ admissionFee: 1500 }),
+      },
+    );
+    expect(response.status).toBe(403);
+    expect(await response.text()).toMatch(
+      /only owners can change admission fee/i,
     );
   });
 
@@ -945,6 +966,98 @@ test.describe("admin (staff) smoke @smoke", () => {
       await sweepPath(page, "/app/students/new");
     } finally {
       await context.close();
+    }
+  });
+
+  test("studio data import rejects overlapping branch sessions @smoke", async () => {
+    let createdSessionId: string | null = null;
+    try {
+      let startsAt: Date | null = null;
+      let endsAt: Date | null = null;
+      for (let attempt = 0; attempt < 8; attempt += 1) {
+        const start = new Date();
+        start.setUTCDate(start.getUTCDate() + 80 + attempt);
+        start.setUTCHours(2, 15 + attempt * 3, 0, 0);
+        const end = new Date(start.getTime() + 60 * 60 * 1000);
+        try {
+          const created = await apiRequest<{ id: string }>(
+            "STAFF",
+            "/sessions",
+            {
+              method: "POST",
+              body: JSON.stringify({
+                batchId: SMOKE.kidsBatchId,
+                startsAt: start.toISOString(),
+                endsAt: end.toISOString(),
+                type: "REGULAR",
+              }),
+            },
+          );
+          createdSessionId = created.id;
+          startsAt = start;
+          endsAt = end;
+          break;
+        } catch (error) {
+          if (!isScheduleConflict(error)) {
+            throw error;
+          }
+        }
+      }
+      expect(createdSessionId).toBeTruthy();
+      expect(startsAt).toBeTruthy();
+      expect(endsAt).toBeTruthy();
+
+      const overlapStart = new Date(startsAt!.getTime() + 15 * 60 * 1000);
+      const overlapEnd = new Date(endsAt!.getTime() + 15 * 60 * 1000);
+      const zone = "Asia/Kolkata";
+      const parts = new Intl.DateTimeFormat("en-CA", {
+        timeZone: zone,
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        hourCycle: "h23",
+      }).formatToParts(overlapStart);
+      const get = (type: Intl.DateTimeFormatPartTypes) =>
+        parts.find((part) => part.type === type)?.value ?? "";
+      const endParts = new Intl.DateTimeFormat("en-CA", {
+        timeZone: zone,
+        hour: "2-digit",
+        minute: "2-digit",
+        hourCycle: "h23",
+      }).formatToParts(overlapEnd);
+      const endGet = (type: Intl.DateTimeFormatPartTypes) =>
+        endParts.find((part) => part.type === type)?.value ?? "";
+
+      const token = await bearerFor("STAFF");
+      const response = await fetch(`${apiBaseUrl()}/import/studio-data`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          sessions: [
+            {
+              // Same main branch + trainer as kids → must 409.
+              batchName: "Smoke Open Trial",
+              date: `${get("year")}-${get("month")}-${get("day")}`,
+              startTime: `${get("hour")}:${get("minute")}`,
+              endTime: `${endGet("hour")}:${endGet("minute")}`,
+              status: "SCHEDULED",
+              type: "REGULAR",
+            },
+          ],
+        }),
+      });
+      expect(response.status).toBe(409);
+    } finally {
+      if (createdSessionId) {
+        await apiRequest("STAFF", `/sessions/${createdSessionId}`, {
+          method: "DELETE",
+        }).catch(() => undefined);
+      }
     }
   });
 

@@ -1537,7 +1537,7 @@ describe("MembershipsService.beginBatchEnrollment", () => {
     batch: { findUnique: vi.fn(), findMany: vi.fn() },
     batchPlan: { findUnique: vi.fn() },
     subscription: { findUnique: vi.fn() },
-    membership: { findFirst: vi.fn(), findUnique: vi.fn(), create: vi.fn() },
+    membership: { findFirst: vi.fn(), findUnique: vi.fn(), create: vi.fn(), update: vi.fn() },
     session: { findFirst: vi.fn(), count: vi.fn() },
     studioSettings: { findUnique: vi.fn() },
     invoice: { create: vi.fn(), update: vi.fn(), findFirst: vi.fn() },
@@ -1868,5 +1868,121 @@ describe("MembershipsService.beginBatchEnrollment", () => {
     expect(result).toEqual({ kind: "postpaid", invoice: null });
     expect(prisma.invoice.create).not.toHaveBeenCalled();
     expect(prisma.membership.create).toHaveBeenCalledTimes(1);
+  });
+
+  it("creates an admission invoice on first enroll when admissionFee is set", async () => {
+    prisma.session.findFirst.mockResolvedValue(null);
+    prisma.batchEnrollment.findFirst.mockResolvedValue(null);
+    prisma.studioSettings.findUnique.mockResolvedValue({
+      admissionFee: 1000,
+      platformFeePercent: 5,
+      gstPercent: 0,
+    });
+    prisma.invoice.create
+      .mockResolvedValueOnce({
+        id: "inv-admission",
+        status: "PENDING",
+        amount: 1000,
+        chargeType: "ADMISSION",
+      })
+      .mockResolvedValueOnce({
+        id: "inv-1",
+        status: "PENDING",
+        amount: 2500,
+      });
+    prisma.invoice.update.mockResolvedValue({
+      id: "inv-1",
+      membershipId: "mem-1",
+      status: "PENDING",
+      amount: 2500,
+    });
+
+    await service.beginBatchEnrollment({
+      batchId: "batch-kid",
+      subscriptionId: "sub-kid-mo",
+      studentId: "kid-1",
+      paymentHold: false,
+    });
+
+    expect(prisma.invoice.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        chargeType: "ADMISSION",
+        amount: 1000,
+        studentId: "kid-1",
+        studioId: "studio-1",
+        membershipId: null,
+        purchaseMeta: expect.objectContaining({
+          feeKind: "ADMISSION",
+          batchId: "batch-kid",
+        }),
+      }),
+    });
+  });
+
+  it("does not create an admission invoice when the student already enrolled before", async () => {
+    prisma.session.findFirst.mockResolvedValue(null);
+    prisma.batchEnrollment.findFirst.mockResolvedValue({ id: "old-enr" });
+    prisma.studioSettings.findUnique.mockResolvedValue({
+      admissionFee: 1000,
+      platformFeePercent: 5,
+      gstPercent: 0,
+    });
+    prisma.invoice.create.mockResolvedValue({
+      id: "inv-1",
+      status: "PENDING",
+      amount: 2500,
+    });
+    prisma.invoice.update.mockResolvedValue({
+      id: "inv-1",
+      membershipId: "mem-1",
+      status: "PENDING",
+      amount: 2500,
+    });
+
+    await service.beginBatchEnrollment({
+      batchId: "batch-kid",
+      subscriptionId: "sub-kid-mo",
+      studentId: "kid-1",
+      paymentHold: false,
+    });
+
+    expect(prisma.invoice.create).toHaveBeenCalledTimes(1);
+    expect(prisma.invoice.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        chargeType: "PREPAID_FULL",
+      }),
+    });
+  });
+
+  it("does not create an admission invoice on batch switch", async () => {
+    const track = {
+      id: "mem-track",
+      batchId: "batch-other",
+      status: "ACTIVE",
+      periodStart: new Date(Date.UTC(2026, 7, 1)),
+      periodEnd: new Date(Date.UTC(2026, 7, 31, 23, 59, 59, 999)),
+    };
+    prisma.membership.findFirst.mockResolvedValue(track);
+    prisma.membership.findUnique.mockResolvedValue({
+      ...track,
+      invoices: [],
+      coveredStudents: [{ studentId: "kid-1", seatRole: "KID" }],
+    });
+    prisma.membership.update.mockResolvedValue({ ...track, batchId: "batch-kid" });
+    prisma.studioSettings.findUnique.mockResolvedValue({
+      admissionFee: 1000,
+      platformFeePercent: 5,
+      gstPercent: 0,
+    });
+
+    const result = await service.beginBatchEnrollment({
+      batchId: "batch-kid",
+      subscriptionId: "sub-kid-mo",
+      studentId: "kid-1",
+      paymentHold: false,
+    });
+
+    expect(result).toEqual({ kind: "switch", invoice: null });
+    expect(prisma.invoice.create).not.toHaveBeenCalled();
   });
 });

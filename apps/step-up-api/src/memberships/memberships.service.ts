@@ -31,6 +31,10 @@ import { ScheduleConflictService } from "../calendar/schedule-conflict.service";
 import { NotificationsService } from "../notifications/notifications.service";
 import { PrismaService } from "../prisma/prisma.service";
 import {
+  buildAdmissionInvoiceData,
+  readAdmissionFeeAmount,
+} from "./admission-fee";
+import {
   getNextPeriodStart,
   getPeriodEnd,
   invoiceFeePercents,
@@ -399,6 +403,65 @@ export class MembershipsService {
     );
   }
 
+  /**
+   * One-time studio admission fee on a student's first enrollment. Skips when
+   * the fee is 0, an ADMISSION invoice already exists, or the student was
+   * enrolled in any batch at this studio before (including ended seats).
+   */
+  async ensureAdmissionFeeInvoice(args: {
+    studioId: string;
+    studentId: string;
+    batchId?: string;
+    enrolledAt?: Date;
+    status?: InvoiceStatus;
+  }) {
+    const settings = await this.prisma.studioSettings.findUnique({
+      where: { studioId: args.studioId },
+      select: {
+        admissionFee: true,
+        platformFeePercent: true,
+        gstPercent: true,
+      },
+    });
+    const amount = readAdmissionFeeAmount(settings);
+    if (amount <= 0) {
+      return null;
+    }
+
+    const [existingAdmission, priorEnrollment] = await Promise.all([
+      this.prisma.invoice.findFirst({
+        where: {
+          studioId: args.studioId,
+          studentId: args.studentId,
+          chargeType: InvoiceChargeType.ADMISSION,
+        },
+        select: { id: true },
+      }),
+      this.prisma.batchEnrollment.findFirst({
+        where: {
+          studentId: args.studentId,
+          batch: { studioId: args.studioId },
+        },
+        select: { id: true },
+      }),
+    ]);
+    if (existingAdmission || priorEnrollment) {
+      return null;
+    }
+
+    return this.prisma.invoice.create({
+      data: buildAdmissionInvoiceData({
+        studentId: args.studentId,
+        studioId: args.studioId,
+        amount,
+        batchId: args.batchId,
+        enrolledAt: args.enrolledAt,
+        status: args.status,
+        settings,
+      }),
+    });
+  }
+
   async beginBatchEnrollment(args: {
     batchId: string;
     subscriptionId: string;
@@ -429,6 +492,14 @@ export class MembershipsService {
     if (track && track.batchId === args.batchId) {
       await this.closeTrackWithoutRenewal(track.id);
     }
+
+    // Charge before the seat write so priorEnrollment stays empty on true first join.
+    await this.ensureAdmissionFeeInvoice({
+      studioId: batch.studioId,
+      studentId: args.studentId,
+      batchId: args.batchId,
+      enrolledAt: now,
+    });
 
     const firstSessionStartsAt = await this.findFirstSessionStartsAt(
       args.batchId,

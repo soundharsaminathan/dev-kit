@@ -1279,6 +1279,19 @@ function parseSessionsSheet(rows: unknown[][]): {
       invalidRows.push(index + 2);
       continue;
     }
+
+    const overlapsExisting = sessions.some(
+      (session) =>
+        session.batchName.toLowerCase() === batchName.toLowerCase() &&
+        session.date === date &&
+        timeToMinutes(startTime) < timeToMinutes(session.endTime) &&
+        timeToMinutes(resolvedEndTime) > timeToMinutes(session.startTime),
+    );
+    if (overlapsExisting) {
+      invalidRows.push(index + 2);
+      continue;
+    }
+
     seen.add(key);
     sessions.push({
       batchName,

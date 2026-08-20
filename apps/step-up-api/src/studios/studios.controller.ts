@@ -109,6 +109,11 @@ class UpdateStudioSettingsDto {
   gstPercent?: number;
 
   @IsOptional()
+  @IsNumber()
+  @Min(0)
+  admissionFee?: number;
+
+  @IsOptional()
   @IsString()
   @MinLength(1)
   @MaxLength(64)
@@ -270,6 +275,14 @@ export class StudiosController {
       dto.timezone !== undefined
     ) {
       throw new ForbiddenException("Only owners can change timezone");
+    }
+
+    if (
+      user.role !== UserRole.OWNER &&
+      user.role !== UserRole.SYSTEM_ADMIN &&
+      dto.admissionFee !== undefined
+    ) {
+      throw new ForbiddenException("Only owners can change admission fee");
     }
 
     return this.studiosService.updateSettings(id, dto);

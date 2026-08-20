@@ -106,6 +106,7 @@ describe("StudiosService", () => {
       danceStyles: null,
       gstNumber: null,
       gstPercent: 0,
+      admissionFee: 0,
     });
 
     const result = await service.updateSettings("studio-1", {
@@ -137,6 +138,7 @@ describe("StudiosService", () => {
       danceStyles: null,
       gstNumber: null,
       gstPercent: 0,
+      admissionFee: 0,
     });
     expect(result).not.toHaveProperty("razorpayKeySecret");
   });
@@ -161,6 +163,7 @@ describe("StudiosService", () => {
       danceStyles: null,
       gstNumber: null,
       gstPercent: 0,
+      admissionFee: 0,
     });
 
     const result = await service.updateSettings("studio-1", {
@@ -200,6 +203,7 @@ describe("StudiosService", () => {
       danceStyles,
       gstNumber: null,
       gstPercent: 0,
+      admissionFee: 0,
     });
 
     const saved = await service.updateSettings("studio-1", { danceStyles });
@@ -220,6 +224,7 @@ describe("StudiosService", () => {
       danceStyles: null,
       gstNumber: null,
       gstPercent: 0,
+      admissionFee: 0,
     });
 
     const cleared = await service.updateSettings("studio-1", {
@@ -253,6 +258,7 @@ describe("StudiosService", () => {
       danceStyles: null,
       gstNumber: "22AAAAA0000A1Z5",
       gstPercent: 0,
+      admissionFee: 0,
     });
 
     const saved = await service.updateSettings("studio-1", {
@@ -278,6 +284,7 @@ describe("StudiosService", () => {
       danceStyles: null,
       gstNumber: null,
       gstPercent: 18,
+      admissionFee: 0,
     });
 
     const saved = await service.updateSettings("studio-1", {
@@ -290,6 +297,39 @@ describe("StudiosService", () => {
       }),
     );
     expect(saved.gstPercent).toBe(18);
+  });
+
+  it("persists admissionFee", async () => {
+    prisma.studioSettings.upsert.mockResolvedValue({
+      graceDays: 3,
+      expireAlertDays: 7,
+      platformFeePercent: 5,
+      razorpayKeyId: null,
+      razorpayKeySecret: null,
+      razorpaySecretIv: null,
+      danceStyles: null,
+      gstNumber: null,
+      gstPercent: 0,
+      admissionFee: 1500,
+    });
+
+    const saved = await service.updateSettings("studio-1", {
+      admissionFee: 1500,
+    });
+
+    expect(prisma.studioSettings.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        update: expect.objectContaining({ admissionFee: 1500 }),
+      }),
+    );
+    expect(saved.admissionFee).toBe(1500);
+  });
+
+  it("rejects negative admissionFee", async () => {
+    await expect(
+      service.updateSettings("studio-1", { admissionFee: -1 }),
+    ).rejects.toThrow(/cannot be negative/);
+    expect(prisma.studioSettings.upsert).not.toHaveBeenCalled();
   });
 
   it("clears logo", async () => {

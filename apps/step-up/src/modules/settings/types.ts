@@ -5,6 +5,7 @@ export type StudioSettings = {
   expireAlertDays: number;
   platformFeePercent: number;
   gstPercent: number;
+  admissionFee: number;
   timezone: string;
   razorpayKeyId?: string | null;
   razorpayConfigured?: boolean;
