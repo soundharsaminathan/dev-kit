@@ -38,12 +38,12 @@ const STATUS_ORDER: Record<"PRESENT" | "ABSENT" | "UNMARKED", number> = {
   ABSENT: 2,
 };
 
-const STATUS_FILTER_CHIPS: { id: string; label: string }[] = [
+const STATUS_FILTER_DEFS = [
   { id: "all", label: "All" },
   { id: "UNMARKED", label: "Unmarked" },
   { id: "PRESENT", label: "Present" },
   { id: "ABSENT", label: "Absent" },
-];
+] as const;
 
 const ROSTER_PAGE_SIZE = 25;
 
@@ -58,7 +58,6 @@ type AttendanceRosterTableProps = {
   onMarkOne: (studentId: string, status: AttendanceStatusValue) => void;
   onMarkSelected: (studentIds: string[], status: AttendanceStatusValue) => void;
   onMarkAllUnmarkedPresent?: (() => void) | undefined;
-  unmarkedCount?: number | undefined;
 };
 
 type RosterTableMeta = {
@@ -274,7 +273,6 @@ export function AttendanceRosterTable({
   onMarkOne,
   onMarkSelected,
   onMarkAllUnmarkedPresent,
-  unmarkedCount = 0,
 }: AttendanceRosterTableProps) {
   const isMobile = useIsMobile();
   const [sorting, setSorting] = useState<SortingState>([
@@ -294,6 +292,37 @@ export function AttendanceRosterTable({
   const [pendingConfirm, setPendingConfirm] = useState<PendingConfirm | null>(
     null,
   );
+
+  const statusCounts = useMemo(() => {
+    let present = 0;
+    let absent = 0;
+    let unmarked = 0;
+    for (const entry of roster) {
+      const status = rosterStatus(entry);
+      if (status === "PRESENT") present += 1;
+      else if (status === "ABSENT") absent += 1;
+      else unmarked += 1;
+    }
+    return {
+      all: roster.length,
+      PRESENT: present,
+      ABSENT: absent,
+      UNMARKED: unmarked,
+    };
+  }, [roster]);
+
+  const statusFilterChips = useMemo(
+    () =>
+      STATUS_FILTER_DEFS.map((chip) => ({
+        id: chip.id,
+        label: `${chip.label} (${
+          statusCounts[chip.id === "all" ? "all" : chip.id]
+        })`,
+      })),
+    [statusCounts],
+  );
+
+  const unmarkedCount = statusCounts.UNMARKED;
   const actionsLocked = isBusy || markingDisabled;
 
   const requestMarkOne = useCallback(
@@ -577,7 +606,7 @@ export function AttendanceRosterTable({
       </div>
       <div className={styles.toolbar}>
         <FilterChipRow
-          chips={STATUS_FILTER_CHIPS}
+          chips={statusFilterChips}
           selected={selectedFilters}
           onToggle={handleFilterToggle}
         />

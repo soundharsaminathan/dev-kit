@@ -12,7 +12,7 @@ import { Icon } from "@dev-ui/icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import QRCode from "qrcode";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useApi } from "@/lib/api-context";
 import { ADMIN_ROLES } from "@/lib/constants";
 import { useAuth } from "@/lib/use-auth";
@@ -454,18 +454,6 @@ function SessionAttendanceSkeleton() {
       aria-hidden
       data-testid="attendance-skeleton"
     >
-      <div className={styles.skeletonSummary}>
-        {SKELETON_ROWS.slice(0, 4).map((row) => (
-          <SkeletonBlock
-            key={row.id}
-            className={styles.skeletonChip}
-            height="2rem"
-            width="5.5rem"
-            radius="999px"
-          />
-        ))}
-      </div>
-
       <div className={styles.skeletonToolbar}>
         <SkeletonBlock
           className={styles.skeletonSearch}
@@ -478,7 +466,7 @@ function SessionAttendanceSkeleton() {
             <SkeletonBlock
               key={`chip-${row.id}`}
               height="1.75rem"
-              width="4.5rem"
+              width="6.5rem"
               radius="999px"
             />
           ))}
@@ -843,17 +831,6 @@ function SessionAttendancePage() {
     },
   });
 
-  const summary = useMemo(() => {
-    const roster = rosterQuery.data ?? [];
-    return {
-      total: roster.length,
-      present: roster.filter((entry) => entry.attendance?.status === "PRESENT")
-        .length,
-      absent: roster.filter((entry) => entry.attendance?.status === "ABSENT")
-        .length,
-      unmarked: roster.filter((entry) => !entry.attendance).length,
-    };
-  }, [rosterQuery.data]);
 
   const sessionDescription = sessionQuery.data
     ? [
@@ -1035,44 +1012,6 @@ function SessionAttendancePage() {
       >
         {(roster) => (
           <>
-            {roster.length > 0 ? (
-              <div className={styles.summaryRow}>
-                <fieldset
-                  className={styles.summary}
-                  aria-label="Attendance summary"
-                >
-                  <span className={styles.statChip} data-tone="neutral">
-                    <strong>{summary.total}</strong>
-                    enrolled
-                  </span>
-                  <span
-                    className={styles.statChip}
-                    data-tone="present"
-                    data-active={summary.present > 0 ? "" : undefined}
-                  >
-                    <strong>{summary.present}</strong>
-                    present
-                  </span>
-                  <span
-                    className={styles.statChip}
-                    data-tone="absent"
-                    data-active={summary.absent > 0 ? "" : undefined}
-                  >
-                    <strong>{summary.absent}</strong>
-                    absent
-                  </span>
-                  <span
-                    className={styles.statChip}
-                    data-tone="unmarked"
-                    data-active={summary.unmarked > 0 ? "" : undefined}
-                  >
-                    <strong>{summary.unmarked}</strong>
-                    unmarked
-                  </span>
-                </fieldset>
-              </div>
-            ) : null}
-
             {bulkError ? (
               <p className={styles.bulkError} role="alert">
                 {bulkError instanceof Error
@@ -1097,7 +1036,6 @@ function SessionAttendancePage() {
                 roster={roster}
                 isBusy={isBulkBusy}
                 markingDisabled={markingLocked}
-                unmarkedCount={summary.unmarked}
                 onMarkAllUnmarkedPresent={handleMarkAllUnmarkedPresent}
                 onMarkOne={handleMarkOne}
                 onMarkSelected={handleMarkSelected}

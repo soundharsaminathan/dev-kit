@@ -61,7 +61,6 @@ function renderTable(
       onMarkOne={onMarkOne}
       onMarkSelected={onMarkSelected}
       onMarkAllUnmarkedPresent={onMarkAllUnmarkedPresent}
-      unmarkedCount={1}
       {...props}
     />,
   );
@@ -196,7 +195,7 @@ describe("AttendanceRosterTable selection", () => {
   });
 
   it("renders empty roster without selection chrome", () => {
-    renderTable({ roster: [], unmarkedCount: 0 });
+    renderTable({ roster: [] });
     expect(
       screen.getByText("No students match this status filter."),
     ).toBeInTheDocument();
@@ -345,35 +344,46 @@ describe("AttendanceRosterTable status filters", () => {
         },
       },
     ];
-    renderTable({ roster: absentRoster, unmarkedCount: 1 });
+    renderTable({ roster: absentRoster });
+
+    expect(screen.getByRole("button", { name: "All (3)" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Unmarked (1)" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Present (1)" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Absent (1)" }),
+    ).toBeInTheDocument();
 
     expect(screen.getByText("Ada Lovelace")).toBeInTheDocument();
     expect(screen.getByText("Grace Hopper")).toBeInTheDocument();
     expect(screen.getByText("Kathleen McNulty")).toBeInTheDocument();
 
-    const filterChip = (name: string, pressed = false) =>
+    const filterChip = (name: string | RegExp, pressed = false) =>
       screen
         .getAllByRole("button", { name, pressed })
         .find((button) => !button.hasAttribute("data-testid"));
 
-    fireEvent.click(filterChip("Present")!);
+    fireEvent.click(filterChip(/^Present/)!);
     expect(screen.queryByText("Ada Lovelace")).toBeNull();
     expect(screen.getByText("Grace Hopper")).toBeInTheDocument();
     expect(screen.queryByText("Kathleen McNulty")).toBeNull();
     expect(screen.getByText(/Showing 1 of 3/)).toBeInTheDocument();
     expect(screen.getByText(/filter: Present/)).toBeInTheDocument();
 
-    fireEvent.click(filterChip("Unmarked")!);
+    fireEvent.click(filterChip(/^Unmarked/)!);
     expect(screen.getByText("Ada Lovelace")).toBeInTheDocument();
     expect(screen.queryByText("Grace Hopper")).toBeNull();
     expect(screen.queryByText("Kathleen McNulty")).toBeNull();
 
-    fireEvent.click(filterChip("Absent")!);
+    fireEvent.click(filterChip(/^Absent/)!);
     expect(screen.queryByText("Ada Lovelace")).toBeNull();
     expect(screen.queryByText("Grace Hopper")).toBeNull();
     expect(screen.getByText("Kathleen McNulty")).toBeInTheDocument();
 
-    fireEvent.click(filterChip("All")!);
+    fireEvent.click(filterChip(/^All/)!);
     expect(screen.getByText("Ada Lovelace")).toBeInTheDocument();
     expect(screen.getByText("Grace Hopper")).toBeInTheDocument();
     expect(screen.getByText("Kathleen McNulty")).toBeInTheDocument();
