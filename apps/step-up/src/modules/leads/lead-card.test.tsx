@@ -57,6 +57,23 @@ describe("LeadCard identity", () => {
       "3m ago",
     );
   });
+
+  it("renders a primary call link for the lead phone", () => {
+    renderWithProviders(<LeadCard lead={lead()} range={null} />);
+
+    expect(screen.getByTestId("lead-call-lead-1")).toHaveAttribute(
+      "href",
+      "tel:+919123456789",
+    );
+  });
+
+  it("hides the call button when phone is missing", () => {
+    renderWithProviders(
+      <LeadCard lead={lead({ phone: null })} range={null} />,
+    );
+
+    expect(screen.queryByTestId("lead-call-lead-1")).toBeNull();
+  });
 });
 
 describe("LeadCard open", () => {
@@ -84,6 +101,15 @@ describe("LeadCard open", () => {
 
     fireEvent.click(screen.getByTestId("lead-pick-session-lead-1"));
     expect(onSwitchTrial).toHaveBeenCalledWith(row);
+    expect(onOpen).not.toHaveBeenCalled();
+  });
+
+  it("does not open when the call button is clicked", () => {
+    const onOpen = vi.fn();
+    const row = lead();
+    renderWithProviders(<LeadCard lead={row} range={null} onOpen={onOpen} />);
+
+    fireEvent.click(screen.getByTestId("lead-call-lead-1"));
     expect(onOpen).not.toHaveBeenCalled();
   });
 

@@ -13,6 +13,7 @@ import {
   isTrialToday,
   type Lead,
   type LeadDateRange,
+  phoneTelHref,
 } from "./types";
 
 type LeadCardProps = {
@@ -48,6 +49,7 @@ export function LeadCard({
     .map((part) => part[0]?.toUpperCase() ?? "")
     .join("");
   const followupLabel = formatFollowupChip(lead.lastFollowupAt);
+  const callHref = lead.phone ? phoneTelHref(lead.phone) : null;
   const clickable = Boolean(onOpen);
 
   function handleOpen() {
@@ -99,6 +101,21 @@ export function LeadCard({
             <div className={styles.nameRow}>
               <p className={styles.name}>{lead.name}</p>
               {age ? <span className={styles.age}>{age}</span> : null}
+              {callHref ? (
+                <TouchButton
+                  as="a"
+                  href={callHref}
+                  variant="primary"
+                  size="sm"
+                  isIconOnly
+                  className={styles.callAction}
+                  aria-label={`Call ${lead.name}`}
+                  data-testid={`lead-call-${lead.id}`}
+                  onClick={(event) => event.stopPropagation()}
+                >
+                  <Icon name="phone-call" />
+                </TouchButton>
+              ) : null}
             </div>
 
             <span
