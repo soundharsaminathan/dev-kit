@@ -493,6 +493,71 @@ function AppDashboardPage() {
                 loading={subscriptions.isLoading}
               />
             </div>
+            <div className={staff.section} data-testid="student-pipeline">
+              <p className={staff.sectionTitle}>Student pipeline</p>
+              <FilterChipRow
+                chips={STUDENT_FUNNEL_PERIOD_CHIPS}
+                selected={[funnelPeriod]}
+                onToggle={(id) => setFunnelPeriod(id as StudentFunnelPeriod)}
+              />
+              {studentFunnel.isLoading ? (
+                <div className={staff.statGrid}>
+                  {STUDENT_FUNNEL_TILES.map((tile) => (
+                    <SkeletonBlock
+                      key={tile.key}
+                      height="4.5rem"
+                      radius="var(--radius-2xl)"
+                    />
+                  ))}
+                </div>
+              ) : null}
+              {studentFunnel.data ? (
+                <div className={staff.statGrid} data-testid="funnel-tiles">
+                  {STUDENT_FUNNEL_TILES.map((tile) => (
+                    <div key={tile.key} className={staff.statTile}>
+                      <span className={staff.statLabel}>
+                        {tile.label}
+                        <Tooltip
+                          delay={200}
+                          touchBehavior="toggle"
+                          className={staff.statInfoWrap}
+                        >
+                          <button
+                            type="button"
+                            className={staff.statInfo}
+                            aria-label={`What is ${tile.label}?`}
+                          >
+                            <Icon name="help-circle" />
+                          </button>
+                          <TooltipContent
+                            portal
+                            placement="top"
+                            className={staff.statTooltip}
+                          >
+                            {tile.description}
+                          </TooltipContent>
+                        </Tooltip>
+                      </span>
+                      <Link
+                        to="/app/students"
+                        search={{
+                          stage: tile.key,
+                          period: funnelPeriod,
+                        }}
+                        className={staff.statValueLink}
+                        data-testid={`funnel-tile-${tile.key}`}
+                        aria-label={`${tile.label}: ${studentFunnel.data[tile.key]}. ${tile.hint}`}
+                      >
+                        <AnimatedMetric
+                          className={staff.statValue}
+                          value={studentFunnel.data[tile.key]}
+                        />
+                      </Link>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+            </div>
             <HomeCurrentBatches
               title="Current batches"
               batches={currentBatches}
@@ -502,74 +567,6 @@ function AppDashboardPage() {
             />
           </>
         )}
-
-        {!isTrainer ? (
-          <div className={staff.section} data-testid="student-pipeline">
-            <p className={staff.sectionTitle}>Student pipeline</p>
-            <FilterChipRow
-              chips={STUDENT_FUNNEL_PERIOD_CHIPS}
-              selected={[funnelPeriod]}
-              onToggle={(id) => setFunnelPeriod(id as StudentFunnelPeriod)}
-            />
-            {studentFunnel.isLoading ? (
-              <div className={staff.statGrid}>
-                {STUDENT_FUNNEL_TILES.map((tile) => (
-                  <SkeletonBlock
-                    key={tile.key}
-                    height="4.5rem"
-                    radius="var(--radius-2xl)"
-                  />
-                ))}
-              </div>
-            ) : null}
-            {studentFunnel.data ? (
-              <div className={staff.statGrid} data-testid="funnel-tiles">
-                {STUDENT_FUNNEL_TILES.map((tile) => (
-                  <div key={tile.key} className={staff.statTile}>
-                    <span className={staff.statLabel}>
-                      {tile.label}
-                      <Tooltip
-                        delay={200}
-                        touchBehavior="toggle"
-                        className={staff.statInfoWrap}
-                      >
-                        <button
-                          type="button"
-                          className={staff.statInfo}
-                          aria-label={`What is ${tile.label}?`}
-                        >
-                          <Icon name="help-circle" />
-                        </button>
-                        <TooltipContent
-                          portal
-                          placement="top"
-                          className={staff.statTooltip}
-                        >
-                          {tile.description}
-                        </TooltipContent>
-                      </Tooltip>
-                    </span>
-                    <Link
-                      to="/app/students"
-                      search={{
-                        stage: tile.key,
-                        period: funnelPeriod,
-                      }}
-                      className={staff.statValueLink}
-                      data-testid={`funnel-tile-${tile.key}`}
-                      aria-label={`${tile.label}: ${studentFunnel.data[tile.key]}. ${tile.hint}`}
-                    >
-                      <AnimatedMetric
-                        className={staff.statValue}
-                        value={studentFunnel.data[tile.key]}
-                      />
-                    </Link>
-                  </div>
-                ))}
-              </div>
-            ) : null}
-          </div>
-        ) : null}
 
         {!isTrainer ? (
           <div className={staff.section}>

@@ -139,13 +139,7 @@ export function LeadDetailSheet({
     !addRemark.isPending;
 
   return (
-    <AppBottomSheet
-      isOpen={isOpen}
-      onOpenChange={onOpenChange}
-      title="Comments"
-      size="tall"
-      fill
-    >
+    <AppBottomSheet isOpen={isOpen} onOpenChange={onOpenChange} title="Comments">
       {lead ? (
         <div className={styles.sheetStack}>
           <div className={styles.sheetHeader}>
@@ -174,48 +168,46 @@ export function LeadDetailSheet({
           </div>
 
           <div className={styles.remarks} ref={listRef}>
-            <div className={styles.remarksInner}>
-              {remarksQuery.isLoading ? (
-                <p className={styles.remarksEmpty}>Loading comments…</p>
-              ) : remarksQuery.isError ? (
-                <ErrorState
-                  description={
-                    remarksQuery.error instanceof Error
-                      ? remarksQuery.error.message
-                      : "Couldn’t load comments."
-                  }
-                />
-              ) : !remarksQuery.data?.length ? (
-                <p className={styles.remarksEmpty}>
-                  No comments yet — add one after you call.
-                </p>
-              ) : (
-                remarksQuery.data.map((remark) => (
-                  <div
-                    key={remark.id}
-                    className={styles.remark}
-                    data-testid={`lead-remark-${remark.id}`}
-                  >
-                    <Avatar className={styles.remarkAvatar}>
-                      <AvatarFallback>
-                        {remarkInitials(remark.author.name) || "?"}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className={styles.remarkContent}>
-                      <p className={styles.remarkText}>
-                        <span className={styles.remarkAuthor}>
-                          {remark.author.name}
-                        </span>{" "}
-                        <span className={styles.remarkBody}>{remark.body}</span>
-                      </p>
-                      <span className={styles.remarkWhen}>
-                        {formatRelativeFollowup(remark.createdAt)}
-                      </span>
-                    </div>
+            {remarksQuery.isLoading ? (
+              <p className={styles.remarksEmpty}>Loading comments…</p>
+            ) : remarksQuery.isError ? (
+              <ErrorState
+                description={
+                  remarksQuery.error instanceof Error
+                    ? remarksQuery.error.message
+                    : "Couldn’t load comments."
+                }
+              />
+            ) : !remarksQuery.data?.length ? (
+              <p className={styles.remarksEmpty}>
+                No comments yet — add one after you call.
+              </p>
+            ) : (
+              remarksQuery.data.map((remark) => (
+                <div
+                  key={remark.id}
+                  className={styles.remark}
+                  data-testid={`lead-remark-${remark.id}`}
+                >
+                  <Avatar className={styles.remarkAvatar}>
+                    <AvatarFallback>
+                      {remarkInitials(remark.author.name) || "?"}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className={styles.remarkContent}>
+                    <p className={styles.remarkText}>
+                      <span className={styles.remarkAuthor}>
+                        {remark.author.name}
+                      </span>{" "}
+                      <span className={styles.remarkBody}>{remark.body}</span>
+                    </p>
+                    <span className={styles.remarkWhen}>
+                      {formatRelativeFollowup(remark.createdAt)}
+                    </span>
                   </div>
-                ))
-              )}
-            </div>
+                </div>
+              ))
+            )}
           </div>
 
           <div className={styles.composer}>

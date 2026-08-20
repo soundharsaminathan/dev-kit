@@ -178,8 +178,7 @@
   flex-direction: column;
   gap: var(--space-3, 0.75rem);
   min-height: 0;
-  height: 100%;
-  flex: 1 1 auto;
+  max-height: min(70dvh, 36rem);
   overflow: hidden;
 }
 
@@ -209,20 +208,11 @@
 .remarks {
   display: flex;
   flex-direction: column;
+  gap: var(--space-3, 0.75rem);
   min-height: 0;
-  flex: 1;
+  max-height: min(42dvh, 22rem);
   overflow-y: auto;
   overscroll-behavior: contain;
-  padding-bottom: var(--space-2, 0.5rem);
-}
-
-.remarksInner {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3, 0.75rem);
-  margin-top: auto;
-  width: 100%;
-  min-height: min-content;
 }
 
 .remark {
@@ -277,7 +267,7 @@
 
 .remarksEmpty {
   margin: 0;
-  padding-block: var(--space-6, 1.5rem);
+  padding-block: var(--space-2, 0.5rem) var(--space-3, 0.75rem);
   text-align: center;
   font-size: 0.875rem;
   color: color-mix(in srgb, var(--color-fg) 58%, transparent);
@@ -291,7 +281,6 @@
   min-width: 0;
   flex-shrink: 0;
   padding-top: var(--space-2, 0.5rem);
-  padding-bottom: var(--space-2, 0.5rem);
   background: var(--color-bg);
   border-top: 1px solid color-mix(in srgb, var(--color-fg) 10%, transparent);
 
