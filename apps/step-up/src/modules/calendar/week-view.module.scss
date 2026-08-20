@@ -57,7 +57,8 @@
 }
 
 .today {
-  background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+  background: var(--color-accent);
+  color: var(--color-fg-on-accent);
 }
 
 .dayLabel {
