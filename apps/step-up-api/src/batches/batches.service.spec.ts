@@ -203,6 +203,7 @@ describe("BatchesService update", () => {
     batchTrainer: {
       deleteMany: vi.fn(),
       createMany: vi.fn(),
+      findMany: vi.fn(),
     },
     batchPlan: {
       deleteMany: vi.fn(),
@@ -263,6 +264,9 @@ describe("BatchesService update", () => {
     });
     prisma.batch.update.mockResolvedValue({ id: "batch-1", plans: [] });
     prisma.session.findMany.mockResolvedValue([]);
+    prisma.batchTrainer.findMany.mockResolvedValue([
+      { trainerId: "trainer-1" },
+    ]);
     prisma.$queryRaw.mockResolvedValue([{ id: "batch-1" }]);
     prisma.batchEnrollment.findMany.mockResolvedValue([]);
     prisma.booking.updateMany.mockResolvedValue({ count: 0 });
@@ -306,8 +310,8 @@ describe("BatchesService update", () => {
       scheduleJson: {
         frequency: "WEEKLY",
         weekdays: [1],
-        startDate: "2026-07-20",
-        endDate: "2026-07-27",
+        startDate: "2026-09-07",
+        endDate: "2026-09-14",
         startTime: "18:00",
         endTime: "19:00",
         utcOffsetMinutes: -330,
@@ -332,6 +336,80 @@ describe("BatchesService update", () => {
         }),
       }),
     );
+  });
+
+  it("keeps past sessions unchanged when the schedule is updated", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-21T12:00:00.000Z"));
+
+    const pastStartsAt = new Date("2026-08-10T12:30:00.000Z");
+    const pastEndsAt = new Date("2026-08-10T13:30:00.000Z");
+    const staleFutureStartsAt = new Date("2026-08-24T12:30:00.000Z");
+    const staleFutureEndsAt = new Date("2026-08-24T13:30:00.000Z");
+
+    prisma.session.findMany.mockResolvedValue([
+      {
+        id: "past-session",
+        startsAt: pastStartsAt,
+        endsAt: pastEndsAt,
+        type: "REGULAR",
+        _count: { attendance: 0, bookings: 0 },
+      },
+      {
+        id: "stale-future",
+        startsAt: staleFutureStartsAt,
+        endsAt: staleFutureEndsAt,
+        type: "REGULAR",
+        _count: { attendance: 0, bookings: 0 },
+      },
+    ]);
+
+    try {
+      await service.update("batch-1", {
+        scheduleJson: {
+          frequency: "WEEKLY",
+          weekdays: [1],
+          startDate: "2026-08-10",
+          endDate: "2026-08-31",
+          startTime: "19:00",
+          endTime: "20:00",
+          utcOffsetMinutes: -330,
+        },
+      });
+    } finally {
+      vi.useRealTimers();
+    }
+
+    expect(prisma.session.deleteMany).toHaveBeenCalledWith({
+      where: { id: { in: ["stale-future"] } },
+    });
+    expect(prisma.session.deleteMany).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: { in: expect.arrayContaining(["past-session"]) } },
+      }),
+    );
+    expect(prisma.session.update).not.toHaveBeenCalled();
+    expect(prisma.session.createMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.arrayContaining([
+          expect.objectContaining({
+            startsAt: new Date("2026-08-24T13:30:00.000Z"),
+            endsAt: new Date("2026-08-24T14:30:00.000Z"),
+          }),
+          expect.objectContaining({
+            startsAt: new Date("2026-08-31T13:30:00.000Z"),
+            endsAt: new Date("2026-08-31T14:30:00.000Z"),
+          }),
+        ]),
+      }),
+    );
+    const created = prisma.session.createMany.mock.calls[0]?.[0]?.data ?? [];
+    expect(
+      created.some(
+        (row: { startsAt: Date }) =>
+          row.startsAt.toISOString() === pastStartsAt.toISOString(),
+      ),
+    ).toBe(false);
   });
 
   it("replaces linked subscription plans", async () => {

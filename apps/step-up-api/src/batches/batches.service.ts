@@ -344,17 +344,25 @@ async function syncBatchSessions(
   batchId: string,
   desiredSessions: { startsAt: Date; endsAt: Date; type: SessionType }[],
 ) {
+  const now = new Date();
+  // Past sessions are historical — never delete, create, or patch them on
+  // schedule edits. Only future occurrences follow the new schedule.
+  const desiredFuture = desiredSessions.filter(
+    (session) => session.startsAt > now,
+  );
+
   const existing = await tx.session.findMany({
     where: { batchId },
     include: { _count: { select: { attendance: true, bookings: true } } },
   });
 
   const desiredKeys = new Set(
-    desiredSessions.map((session) => session.startsAt.toISOString()),
+    desiredFuture.map((session) => session.startsAt.toISOString()),
   );
 
   const removable = existing.filter(
     (session) =>
+      session.startsAt > now &&
       session._count.attendance === 0 &&
       session._count.bookings === 0 &&
       !desiredKeys.has(session.startsAt.toISOString()),
@@ -374,7 +382,7 @@ async function syncBatchSessions(
       .map((session) => session.startsAt.toISOString()),
   );
 
-  const toCreate = desiredSessions.filter(
+  const toCreate = desiredFuture.filter(
     (session) => !keptStarts.has(session.startsAt.toISOString()),
   );
 
@@ -390,7 +398,7 @@ async function syncBatchSessions(
     });
   }
 
-  for (const desired of desiredSessions) {
+  for (const desired of desiredFuture) {
     const match = existing.find(
       (session) =>
         session.startsAt.toISOString() === desired.startsAt.toISOString(),
@@ -1288,12 +1296,14 @@ export class BatchesService {
       data.branchId !== undefined;
 
     if (scheduleOrTrainersOrBranchChanged) {
+      const now = new Date();
       const intervals =
-        desiredSessions ??
+        desiredSessions?.filter((session) => session.startsAt > now) ??
         (await this.prisma.session.findMany({
           where: {
             batchId: id,
             status: { not: SessionStatus.CANCELLED },
+            startsAt: { gt: now },
           },
           select: { startsAt: true, endsAt: true },
         }));
