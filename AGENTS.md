@@ -40,3 +40,4 @@ This is a monorepo managed with pnpm workspaces and Nx.
 - Biome for formatting/linting
 - NestJS conventions for the API
 - Next.js conventions for the frontend
+- **NestJS value imports (hard):** never use `import type` for injectable services/providers in constructors, or for DTO classes used with `@Body()` / ValidationPipe. That erases the runtime class, Nest DI fails with `UnknownDependenciesException` (`argument Function`), and Cloud Run never binds `PORT`. Pure type aliases (e.g. `DecryptedUser`) may stay `import type`. See `.cursor/rules/nestjs-value-imports.mdc`.

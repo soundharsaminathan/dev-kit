@@ -5,8 +5,8 @@ import { CurrentUser } from "../auth/current-user.decorator";
 import { Roles } from "../auth/roles.decorator";
 import { RolesGuard } from "../auth/roles.guard";
 import type { DecryptedUser } from "../users/user-crypto.service";
-import type { DataImportService } from "./data-import.service";
-import type { ImportStudioDataDto } from "./dto/import-studio-data.dto";
+import { DataImportService } from "./data-import.service";
+import { ImportStudioDataDto } from "./dto/import-studio-data.dto";
 
 @Controller("import")
 @UseGuards(AuthGuard, RolesGuard)
