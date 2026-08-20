@@ -90,8 +90,9 @@ export class ImportLocationDto {
   description?: string | null;
 
   @IsOptional()
-  @IsString()
-  amenities?: string | null;
+  @IsArray()
+  @IsString({ each: true })
+  amenities?: string[] | null;
 
   @IsOptional()
   @IsObject()

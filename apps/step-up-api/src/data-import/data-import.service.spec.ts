@@ -566,7 +566,7 @@ describe("DataImportService.importStudioData", () => {
           latitude: 12.9716,
           longitude: 77.5946,
           description: "Flagship",
-          amenities: " Parking, Changing rooms;Wifi ",
+          amenities: [" Parking", "Changing rooms", "Wifi "],
           openingHours: { days: [{ day: 1, open: "09:00", close: "18:00" }] },
           pricingBlurb: null,
         },

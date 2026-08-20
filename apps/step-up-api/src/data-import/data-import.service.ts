@@ -368,8 +368,7 @@ export class DataImportService {
         latitude: row.latitude ?? null,
         longitude: row.longitude ?? null,
         description: row.description ?? null,
-        amenities: (row.amenities ?? "")
-          .split(/[,;]/)
+        amenities: (row.amenities ?? [])
           .map((amenity) => amenity.trim())
           .filter(Boolean),
         openingHours:
