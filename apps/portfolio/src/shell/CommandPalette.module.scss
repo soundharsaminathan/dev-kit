@@ -1,0 +1,83 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: color-mix(in srgb, #000 45%, transparent);
+}
+
+.palette {
+  position: fixed;
+  top: 18%;
+  left: 50%;
+  transform: translate(-50%, 0);
+  width: min(560px, calc(100vw - 24px));
+  background: var(--ide-bg-elevated);
+  border: 1px solid var(--ide-border);
+  border-radius: 8px;
+  box-shadow: var(--ide-shadow);
+  overflow: hidden;
+  animation: paletteIn 160ms ease;
+  z-index: 101;
+}
+
+@keyframes paletteIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1);
+  }
+}
+
+.input {
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid var(--ide-border);
+  background: var(--ide-bg-input);
+  color: var(--ide-fg-bright);
+  font-size: 14px;
+  padding: 14px 16px;
+  outline: none;
+  font-family: "Plus Jakarta Sans", var(--font-sans, system-ui, sans-serif);
+}
+
+.list {
+  max-height: 320px;
+  overflow: auto;
+  padding: 6px;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ide-fg);
+  text-align: left;
+  padding: 10px 12px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.item:hover,
+.itemActive {
+  background: var(--ide-selection);
+}
+
+.itemMeta {
+  color: var(--ide-fg-muted);
+  font-size: 11px;
+  font-family: "JetBrains Mono", var(--font-mono, monospace);
+}
+
+.empty {
+  padding: 16px;
+  color: var(--ide-fg-muted);
+  font-size: 13px;
+}

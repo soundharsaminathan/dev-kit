@@ -17,6 +17,7 @@
     "test:watch": "vitest",
     "storybook": "pnpm nx run storybook:storybook",
     "dev:showcase": "pnpm nx run showcase:dev",
+    "dev:portfolio": "pnpm nx run portfolio:dev",
     "dev:step-up": "pnpm nx run step-up:dev",
     "dev:step-up-api": "pnpm nx run step-up-api:dev",
     "build:storybook": "pnpm nx run storybook:build-storybook",

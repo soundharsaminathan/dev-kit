@@ -70,12 +70,17 @@ describe("runVitestCi", () => {
   it("executes the generated vitest command in the workspace root", () => {
     mockExecSync.mockClear();
 
+    const workspaceRoot = path.resolve(
+      path.dirname(fileURLToPath(import.meta.url)),
+      "../..",
+    );
+
     runVitestCi("scripts", { coverageOnly: true });
 
     expect(mockExecSync).toHaveBeenCalledWith(
       expect.stringMatching(/^pnpm exec vitest run /),
       expect.objectContaining({
-        cwd: expect.stringContaining("dev-kit"),
+        cwd: workspaceRoot,
         stdio: "inherit",
       }),
     );

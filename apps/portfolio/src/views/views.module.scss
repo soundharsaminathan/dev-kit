@@ -1,0 +1,460 @@
+.view {
+  padding: 20px 24px 40px;
+  max-width: 820px;
+  line-height: 1.65;
+  color: var(--ide-fg);
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--ide-warning);
+  margin-bottom: 12px;
+  font-family: "JetBrains Mono", var(--font-mono, monospace);
+}
+
+.brand {
+  font-family: "Plus Jakarta Sans", var(--font-sans, system-ui, sans-serif);
+  font-weight: 800;
+  font-size: clamp(2rem, 4vw, 2.75rem);
+  letter-spacing: -0.03em;
+  color: var(--ide-fg-bright);
+  line-height: 1.1;
+  margin-bottom: 8px;
+}
+
+.role {
+  color: var(--ide-accent);
+  font-weight: 600;
+  font-size: 1.05rem;
+  margin-bottom: 16px;
+}
+
+.heroActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 20px 0 28px;
+}
+
+.btn {
+  border: 1px solid var(--ide-border);
+  background: var(--ide-bg-elevated);
+  color: var(--ide-fg-bright);
+  border-radius: 4px;
+  padding: 8px 12px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.btnPrimary {
+  background: var(--ide-accent);
+  border-color: var(--ide-accent);
+  color: #fff;
+}
+
+.btn:hover {
+  filter: brightness(1.08);
+}
+
+.h1,
+.h2,
+.h3 {
+  color: var(--ide-fg-bright);
+  font-family: "Plus Jakarta Sans", var(--font-sans, system-ui, sans-serif);
+  letter-spacing: -0.02em;
+  margin: 1.4em 0 0.5em;
+}
+
+.h1 {
+  font-size: 1.75rem;
+  margin-top: 0;
+}
+.h2 {
+  font-size: 1.25rem;
+  border-bottom: 1px solid var(--ide-border);
+  padding-bottom: 6px;
+}
+.h3 {
+  font-size: 1.05rem;
+}
+
+.p {
+  margin: 0.6em 0;
+}
+
+.li {
+  margin: 0.25em 0 0.25em 1.1em;
+}
+
+.blockquote {
+  margin: 12px 0;
+  padding: 8px 12px;
+  border-left: 3px solid var(--ide-accent);
+  background: var(--ide-accent-soft);
+  color: var(--ide-fg);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 12px 0;
+  font-size: 13px;
+}
+
+.table th,
+.table td {
+  border: 1px solid var(--ide-border);
+  padding: 8px 10px;
+  text-align: left;
+}
+
+.table th {
+  background: var(--ide-bg-elevated);
+  color: var(--ide-fg-bright);
+}
+
+.inlineCode {
+  font-family: "JetBrains Mono", var(--font-mono, monospace);
+  font-size: 0.9em;
+  background: var(--ide-bg-elevated);
+  padding: 1px 5px;
+  border-radius: 3px;
+  border: 1px solid var(--ide-border);
+}
+
+.metaRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 20px;
+  margin: 8px 0 16px;
+  font-size: 13px;
+  color: var(--ide-fg-muted);
+}
+
+.metaStrong {
+  color: var(--ide-fg-bright);
+  font-weight: 600;
+}
+
+.json {
+  margin: 0;
+  padding: 20px 24px;
+  font-family: "JetBrains Mono", var(--font-mono, monospace);
+  font-size: 13px;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  overflow-x: auto;
+}
+
+.key {
+  color: var(--ide-key);
+}
+.string {
+  color: var(--ide-string);
+}
+.number {
+  color: var(--ide-number);
+}
+.comment {
+  color: var(--ide-comment);
+}
+.punct {
+  color: var(--ide-fg-muted);
+}
+
+.tree {
+  padding: 0 4px;
+}
+
+.treeBtn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: var(--ide-fg);
+  text-align: left;
+  padding: 4px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  font-family: "JetBrains Mono", var(--font-mono, monospace);
+}
+
+.treeBtn:hover {
+  background: var(--ide-bg-hover);
+}
+
+.treeBtnActive {
+  background: var(--ide-selection);
+  color: var(--ide-fg-bright);
+}
+
+.treeFolder {
+  font-weight: 600;
+  color: var(--ide-fg-bright);
+  cursor: default;
+}
+
+.indent1 {
+  padding-left: 16px;
+}
+.indent2 {
+  padding-left: 28px;
+}
+.indent3 {
+  padding-left: 40px;
+}
+
+.iconMuted {
+  color: var(--ide-fg-muted);
+  flex-shrink: 0;
+}
+
+.commit {
+  display: block;
+  width: calc(100% - 16px);
+  margin: 4px 8px;
+  padding: 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.commit:hover,
+.commitActive {
+  background: var(--ide-bg-hover);
+}
+
+.commitHash {
+  font-family: "JetBrains Mono", var(--font-mono, monospace);
+  font-size: 11px;
+  color: var(--ide-accent);
+}
+
+.commitTitle {
+  font-size: 12px;
+  color: var(--ide-fg-bright);
+  margin: 4px 0 2px;
+}
+
+.commitMeta {
+  font-size: 11px;
+  color: var(--ide-fg-muted);
+}
+
+.sampleTag {
+  font-size: 10px;
+  color: var(--ide-warning);
+  margin-left: 6px;
+}
+
+.extCard {
+  display: flex;
+  gap: 10px;
+  padding: 10px 12px;
+  margin: 4px 8px;
+  border-radius: 6px;
+}
+
+.extCard:hover {
+  background: var(--ide-bg-hover);
+}
+
+.extIcon {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  background: var(--ide-accent-soft);
+  color: var(--ide-accent);
+  flex-shrink: 0;
+}
+
+.extName {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ide-fg-bright);
+}
+
+.extPub {
+  font-size: 11px;
+  color: var(--ide-fg-muted);
+}
+
+.extDesc {
+  font-size: 12px;
+  margin-top: 4px;
+  color: var(--ide-fg);
+}
+
+.debugItem {
+  display: block;
+  width: calc(100% - 16px);
+  margin: 4px 8px;
+  padding: 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.debugItem:hover {
+  background: var(--ide-bg-hover);
+}
+
+.debugName {
+  font-size: 13px;
+  color: var(--ide-fg-bright);
+  font-weight: 600;
+}
+
+.debugType {
+  font-size: 11px;
+  color: var(--ide-success);
+  font-family: "JetBrains Mono", var(--font-mono, monospace);
+}
+
+.caseStudy {
+  padding: 20px 24px;
+  max-width: 820px;
+}
+
+.caseLabel {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ide-fg-muted);
+  margin: 16px 0 6px;
+}
+
+.problemRow {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 8px 14px;
+  font-size: 13px;
+  border-bottom: 1px solid var(--ide-border);
+}
+
+.sev {
+  font-family: "JetBrains Mono", var(--font-mono, monospace);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  min-width: 56px;
+}
+
+.sevInfo {
+  color: var(--ide-info);
+}
+.sevWarning {
+  color: var(--ide-warning);
+}
+.sevHint {
+  color: var(--ide-success);
+}
+
+.terminal {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  font-family: "JetBrains Mono", var(--font-mono, monospace);
+  font-size: 12px;
+  padding: 8px 12px;
+}
+
+.termOut {
+  flex: 1;
+  overflow: auto;
+  white-space: pre-wrap;
+  line-height: 1.55;
+  color: var(--ide-fg);
+}
+
+.termLineMuted {
+  color: var(--ide-fg-muted);
+}
+
+.termLineAccent {
+  color: var(--ide-accent);
+}
+
+.termLineOk {
+  color: var(--ide-success);
+}
+
+.termPromptRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.prompt {
+  color: var(--ide-success);
+  flex-shrink: 0;
+}
+
+.termInput {
+  flex: 1;
+  border: 0;
+  background: transparent;
+  color: var(--ide-fg-bright);
+  font: inherit;
+  outline: none;
+}
+
+.searchBox {
+  margin: 8px 12px;
+}
+
+.searchInput {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid var(--ide-border);
+  background: var(--ide-bg-input);
+  color: var(--ide-fg);
+  border-radius: 4px;
+  padding: 8px 10px;
+  font-size: 13px;
+  outline: none;
+}
+
+.searchInput:focus {
+  border-color: var(--ide-accent);
+}
+
+.searchHit {
+  display: block;
+  width: calc(100% - 16px);
+  margin: 2px 8px;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--ide-fg);
+  text-align: left;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.searchHit:hover {
+  background: var(--ide-bg-hover);
+}
+
+.searchPath {
+  color: var(--ide-fg-muted);
+  font-family: "JetBrains Mono", var(--font-mono, monospace);
+  font-size: 11px;
+}

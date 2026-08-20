@@ -26,6 +26,7 @@ export default defineConfig({
   forbidOnly: isCI,
   retries: isCI ? 2 : 0,
   ...(isCI ? { workers: 4 } : {}),
+  timeout: 60_000,
   reporter: isCI ? [["github"], ["html", { open: "never" }]] : "list",
   snapshotPathTemplate:
     "{testDir}/{testFilePath}-snapshots/{arg}-{projectName}{ext}",

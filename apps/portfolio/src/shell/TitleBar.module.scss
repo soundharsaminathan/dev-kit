@@ -1,0 +1,77 @@
+.bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  height: var(--ide-title-height);
+  padding: 0 12px;
+  background: var(--ide-bg-title);
+  border-bottom: 1px solid var(--ide-border);
+  user-select: none;
+  font-size: 12px;
+}
+
+.left,
+.right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.brand {
+  font-family: "Plus Jakarta Sans", var(--font-sans, system-ui, sans-serif);
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: -0.01em;
+  color: var(--ide-fg-bright);
+  white-space: nowrap;
+}
+
+.path {
+  color: var(--ide-fg-muted);
+  font-family: "JetBrains Mono", var(--font-mono, monospace);
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.menuHint {
+  color: var(--ide-fg-muted);
+  font-size: 11px;
+}
+
+.traffic {
+  display: flex;
+  gap: 6px;
+  margin-right: 4px;
+}
+
+.dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--ide-fg-muted);
+  opacity: 0.45;
+}
+
+.dot:nth-child(1) {
+  background: #ff5f57;
+  opacity: 0.85;
+}
+.dot:nth-child(2) {
+  background: #febc2e;
+  opacity: 0.85;
+}
+.dot:nth-child(3) {
+  background: #28c840;
+  opacity: 0.85;
+}
+
+@media (max-width: 768px) {
+  .path,
+  .menuHint {
+    display: none;
+  }
+}
