@@ -209,12 +209,20 @@
 .remarks {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3, 0.75rem);
   min-height: 0;
   flex: 1;
   overflow-y: auto;
   overscroll-behavior: contain;
   padding-bottom: var(--space-2, 0.5rem);
+}
+
+.remarksInner {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 0.75rem);
+  margin-top: auto;
+  width: 100%;
+  min-height: min-content;
 }
 
 .remark {
@@ -268,7 +276,8 @@
 }
 
 .remarksEmpty {
-  margin: auto;
+  margin: 0;
+  padding-block: var(--space-6, 1.5rem);
   text-align: center;
   font-size: 0.875rem;
   color: color-mix(in srgb, var(--color-fg) 58%, transparent);

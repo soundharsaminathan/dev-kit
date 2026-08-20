@@ -13,13 +13,13 @@
 }
 
 .body[data-fill="true"] {
-  height: min(75dvh, 36rem);
+  height: min(58dvh, 32rem);
   overflow: hidden;
   padding-bottom: 0;
 }
 
 .body[data-fill="true"][data-size="tall"] {
-  height: min(80dvh, 52rem);
+  height: min(62dvh, 36rem);
 }
 
 .title {
