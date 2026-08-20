@@ -168,27 +168,35 @@ async function handleAgentChat(
   }
 }
 
-function attachAgentApi(server: ViteDevServer | PreviewServer) {
-  server.middlewares.use("/api/agent/chat", (req, res, next) => {
-    void handleAgentChat(req, res).catch((error: unknown) => {
-      console.error("[agent/chat]", error);
-      if (!res.headersSent) {
-        sendJson(res, 500, { error: "Internal agent error" });
-      }
-      next(error);
+function attachAgentApi(server: ViteDevServer | PreviewServer, base: string) {
+  const roots = new Set(["/api/agent/chat"]);
+  const prefix = base.replace(/\/$/, "");
+  if (prefix && prefix !== "/") {
+    roots.add(`${prefix}/api/agent/chat`);
+  }
+
+  for (const mount of roots) {
+    server.middlewares.use(mount, (req, res, next) => {
+      void handleAgentChat(req, res).catch((error: unknown) => {
+        console.error("[agent/chat]", error);
+        if (!res.headersSent) {
+          sendJson(res, 500, { error: "Internal agent error" });
+        }
+        next(error);
+      });
     });
-  });
+  }
 }
 
 /** Vite plugin: POST /api/agent/chat → Groq, with local free fallback */
-export function portfolioAgentApiPlugin() {
+export function portfolioAgentApiPlugin(base = "/") {
   return {
     name: "portfolio-agent-api",
     configureServer(server: ViteDevServer) {
-      attachAgentApi(server);
+      attachAgentApi(server, base);
     },
     configurePreviewServer(server: PreviewServer) {
-      attachAgentApi(server);
+      attachAgentApi(server, base);
     },
   };
 }

@@ -45,6 +45,9 @@ function LandingPage() {
           </TouchButton>
         </div>
       </section>
+      <a className={styles.developerLink} href="/dev/">
+        Developer
+      </a>
     </PublicShell>
   );
 }

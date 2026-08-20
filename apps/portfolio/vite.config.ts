@@ -10,14 +10,21 @@ import { portfolioAgentApiPlugin } from "./server/agentApiPlugin";
 
 const appRoot = import.meta.dirname;
 
-export default defineConfig(({ mode }) => {
+export default defineConfig(({ command, mode }) => {
   // Expose GROQ_API_KEY to the Vite Node process for the agent middleware
   const env = loadEnv(mode, appRoot, "");
   if (env.GROQ_API_KEY) {
     process.env.GROQ_API_KEY = env.GROQ_API_KEY;
   }
 
+  // Production builds ship under Step Up Cloudflare Pages at /dev/.
+  // Local `vite` / `vite preview` of a fresh build use that base; `vite` dev stays at /.
+  const base =
+    env.PORTFOLIO_BASE_PATH ||
+    (command === "build" || mode === "production" ? "/dev/" : "/");
+
   return {
+    base,
     server: {
       port: 5174,
     },
@@ -45,7 +52,7 @@ export default defineConfig(({ mode }) => {
         generatedRouteTree: "./src/routeTree.gen.ts",
       }),
       react(),
-      portfolioAgentApiPlugin(),
+      portfolioAgentApiPlugin(base),
     ],
   };
 });

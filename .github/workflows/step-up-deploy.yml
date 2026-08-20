@@ -6,6 +6,7 @@ on:
     paths:
       - "apps/step-up/**"
       - "apps/step-up-api/**"
+      - "apps/portfolio/**"
       - "packages/components/**"
       - "packages/tokens/**"
       - "packages/core/**"
@@ -20,6 +21,7 @@ on:
     paths:
       - "apps/step-up/**"
       - "apps/step-up-api/**"
+      - "apps/portfolio/**"
       - "packages/components/**"
       - "packages/tokens/**"
       - "packages/core/**"
@@ -142,6 +144,11 @@ jobs:
           VITE_FIREBASE_PROJECT_ID: ${{ secrets.STEP_UP_FIREBASE_PROJECT_ID }}
           VITE_FIREBASE_APP_ID: ${{ secrets.STEP_UP_FIREBASE_APP_ID }}
           VITE_SENTRY_DSN: ${{ secrets.STEP_UP_SENTRY_DSN_WEB }}
+      - name: Build portfolio into /dev
+        run: |
+          pnpm exec nx run portfolio:build --skip-nx-cache
+          mkdir -p apps/step-up/dist/dev
+          cp -R apps/portfolio/dist/. apps/step-up/dist/dev/
       - name: Publish to Cloudflare Pages
         run: |
           if ! npx --yes wrangler@4 pages project list 2>/dev/null | grep -qE '(^|[^a-zA-Z0-9_-])step-up([^a-zA-Z0-9_-]|$)'; then

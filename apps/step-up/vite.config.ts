@@ -218,7 +218,8 @@ export default defineConfig(({ mode }) => {
             "**/source-serif-4-*",
           ],
           navigateFallback: "/index.html",
-          navigateFallbackDenylist: [/^\/api/],
+          // Portfolio SPA is co-deployed under /dev — do not serve Step Up shell.
+          navigateFallbackDenylist: [/^\/api/, /^\/dev(?:\/|$)/],
         },
         devOptions: {
           enabled: false,

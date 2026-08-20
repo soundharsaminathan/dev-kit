@@ -38,6 +38,24 @@
   margin-top: var(--space-2, 0.5rem);
 }
 
+.developerLink {
+  position: fixed;
+  right: var(--space-4, 1rem);
+  bottom: var(--space-4, 1rem);
+  z-index: 2;
+  font-size: 0.8125rem;
+  letter-spacing: -0.01em;
+  color: color-mix(in srgb, var(--color-fg) 42%, transparent);
+  text-decoration: none;
+}
+
+.developerLink:hover,
+.developerLink:focus-visible {
+  color: color-mix(in srgb, var(--color-fg) 72%, transparent);
+  text-decoration: underline;
+  outline: none;
+}
+
 @media (min-width: 768px) {
   .hero {
     padding-block: var(--space-12, 3rem);
@@ -46,5 +64,10 @@
 
   .headline {
     font-size: 1.375rem;
+  }
+
+  .developerLink {
+    right: var(--space-6, 1.5rem);
+    bottom: var(--space-6, 1.5rem);
   }
 }
