@@ -17,6 +17,7 @@ import {
 } from "@/lib/notifications-cache";
 import { useNotificationsSocket } from "@/lib/notifications-socket-provider";
 import { StudioBrandMark } from "@/modules/branding/studio-brand-mark";
+import { StaffAgentControl } from "@/modules/staff-agent/staff-agent-control";
 import {
   TooltipIconBar,
   TooltipIconBarItem,
@@ -387,6 +388,7 @@ export function AppHeader({ variant }: AppHeaderProps) {
             </Link>
           </TooltipIconBarItem>
         ))}
+        {variant === "app" ? <StaffAgentControl /> : null}
         <NotificationsControl variant={variant} />
         <ProfileControl variant={variant} />
       </TooltipIconBar>

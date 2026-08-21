@@ -28,6 +28,7 @@ import { RetentionModule } from "./retention/retention.module";
 import { sentryNestImports, sentryNestProviders } from "./sentry-nest";
 import { SessionsModule } from "./sessions/sessions.module";
 import { SocialModule } from "./social/social.module";
+import { StaffAgentModule } from "./staff-agent/staff-agent.module";
 import { StaffInvitesModule } from "./staff-invites/staff-invites.module";
 import { StudiosModule } from "./studios/studios.module";
 import { SubscriptionsModule } from "./subscriptions/subscriptions.module";
@@ -66,6 +67,7 @@ import { UsersModule } from "./users/users.module";
     MediaModule,
     SocialModule,
     ChatModule,
+    StaffAgentModule,
     JobsModule,
     HealthModule,
     HomeModule,

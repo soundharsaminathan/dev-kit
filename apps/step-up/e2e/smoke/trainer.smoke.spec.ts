@@ -98,6 +98,22 @@ test.describe("trainer smoke @smoke", () => {
     }
   });
 
+  test("trainer header does not show studio agent @smoke", async ({
+    browser,
+  }) => {
+    const context = await browser.newContext({
+      storageState: authFile("TRAINER"),
+    });
+    const page = await context.newPage();
+    try {
+      await page.goto("/app");
+      await waitForAppReady(page);
+      await expect(page.getByTestId("staff-agent-toggle")).toHaveCount(0);
+    } finally {
+      await context.close();
+    }
+  });
+
   test("trainer is denied staff-only paths @smoke", async ({ browser }) => {
     const context = await browser.newContext({
       storageState: authFile("TRAINER"),

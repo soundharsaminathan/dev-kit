@@ -135,6 +135,30 @@ test.describe("admin (staff) smoke @smoke", () => {
     }
   });
 
+  test("staff header shows studio agent and opens the panel @smoke", async ({
+    browser,
+  }) => {
+    const context = await browser.newContext({
+      storageState: authFile("STAFF"),
+    });
+    const page = await context.newPage();
+    try {
+      await page.goto("/app");
+      await waitForAppReady(page);
+      const toggle = page.getByTestId("staff-agent-toggle");
+      await expect(toggle).toBeVisible();
+      await toggle.click();
+      await expect(
+        page.getByRole("dialog", { name: "Studio agent" }),
+      ).toBeVisible();
+      await expect(
+        page.getByText("Ask the studio agent", { exact: false }),
+      ).toBeVisible();
+    } finally {
+      await context.close();
+    }
+  });
+
   test("staff is denied owner-only settings pages @smoke", async ({
     browser,
   }) => {
