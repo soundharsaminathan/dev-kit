@@ -240,6 +240,7 @@ function Drawer({
   isOpen,
   onOpenChange,
   placement = "bottom",
+  sizing = "static",
   swipeToDismiss = true,
   style,
 }: DrawerProps) {
@@ -428,6 +429,7 @@ function Drawer({
                   data-drawer=""
                   data-open={openAttr}
                   data-placement={placement}
+                  data-sizing={sizing}
                   data-swipe-disabled={swipeToDismiss ? undefined : ""}
                   data-starting-style={isStarting ? "" : undefined}
                   data-ending-style={isEnding ? "" : undefined}
@@ -507,6 +509,7 @@ export type {
   DrawerPlacement,
   DrawerProps,
   DrawerProviderProps,
+  DrawerSizing,
   DrawerSwipeAreaProps,
 } from "./drawer.types";
 export {

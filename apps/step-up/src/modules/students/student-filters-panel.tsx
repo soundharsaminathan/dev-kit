@@ -80,8 +80,10 @@ export function StudentFiltersPanel({
 
   const panelClassName = [
     styles.panel,
-    isMobile ? styles.panelFullscreen : styles.panelSide,
-  ].join(" ");
+    isMobile ? styles.panelFullscreen : undefined,
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   function clearAll() {
     setDraft({
@@ -101,6 +103,7 @@ export function StudentFiltersPanel({
   return (
     <Drawer
       placement="right"
+      sizing="static"
       isOpen={isOpen}
       onOpenChange={onOpenChange}
       className={panelClassName}

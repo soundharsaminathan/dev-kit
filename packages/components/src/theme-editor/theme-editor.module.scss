@@ -13,7 +13,7 @@
 }
 
 .drawerPopup {
-  width: min(28rem, calc(100dvw - 3rem));
+  --drawer-inline-size: min(28rem, calc(100dvw - 3rem));
 }
 
 .drawer {

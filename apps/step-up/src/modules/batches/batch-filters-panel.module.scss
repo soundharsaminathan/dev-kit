@@ -5,14 +5,10 @@
 }
 
 .panel.panelFullscreen {
-  width: 100dvw;
-  max-width: 100dvw;
+  --drawer-inline-size: 100dvw;
+  --drawer-inline-max: 100dvw;
   border: none;
   border-radius: 0;
-}
-
-.panelSide {
-  width: min(28rem, calc(100dvw - 3rem));
 }
 
 .shell {

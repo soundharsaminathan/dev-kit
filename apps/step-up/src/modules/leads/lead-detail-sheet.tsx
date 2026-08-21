@@ -139,7 +139,12 @@ export function LeadDetailSheet({
     !addRemark.isPending;
 
   return (
-    <AppBottomSheet isOpen={isOpen} onOpenChange={onOpenChange} title="Comments">
+    <AppBottomSheet
+      isOpen={isOpen}
+      onOpenChange={onOpenChange}
+      title="Comments"
+      sizing="dynamic"
+    >
       {lead ? (
         <div className={styles.sheetStack}>
           <div className={styles.sheetHeader}>

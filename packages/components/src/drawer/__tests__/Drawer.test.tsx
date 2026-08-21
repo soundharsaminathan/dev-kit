@@ -180,6 +180,26 @@ describe("Drawer", () => {
     );
   });
 
+  it("defaults side drawers to static sizing", () => {
+    render(
+      <Drawer defaultOpen placement="right">
+        <p>Drawer content</p>
+      </Drawer>,
+    );
+
+    expect(getDrawerPanel()).toHaveAttribute("data-sizing", "static");
+  });
+
+  it("hugs content when sizing is dynamic", () => {
+    render(
+      <Drawer defaultOpen placement="right" sizing="dynamic">
+        <p>Drawer content</p>
+      </Drawer>,
+    );
+
+    expect(getDrawerPanel()).toHaveAttribute("data-sizing", "dynamic");
+  });
+
   it("renders auxiliary drawer primitives", () => {
     render(
       <DrawerProvider>

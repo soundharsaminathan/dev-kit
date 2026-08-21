@@ -1,4 +1,4 @@
-import { Drawer } from "@dev-ui/components/drawer";
+import { Drawer, type DrawerSizing } from "@dev-ui/components/drawer";
 import { useIsMobile } from "@dev-ui/hooks";
 import { Icon } from "@dev-ui/icons";
 import type { ReactNode } from "react";
@@ -12,6 +12,7 @@ export type AppDrawerProps = {
   footer?: ReactNode;
   children: ReactNode;
   className?: string | undefined;
+  sizing?: DrawerSizing | undefined;
 };
 
 export function AppDrawer({
@@ -22,11 +23,12 @@ export function AppDrawer({
   footer,
   children,
   className,
+  sizing = "static",
 }: AppDrawerProps) {
   const isMobile = useIsMobile();
   const panelClassName = [
     styles.panel,
-    isMobile ? styles.panelFullscreen : styles.panelSide,
+    isMobile ? styles.panelFullscreen : undefined,
     className,
   ]
     .filter(Boolean)
@@ -35,6 +37,7 @@ export function AppDrawer({
   return (
     <Drawer
       placement="right"
+      sizing={sizing}
       isOpen={isOpen}
       onOpenChange={onOpenChange}
       className={panelClassName}
