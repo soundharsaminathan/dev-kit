@@ -21,6 +21,35 @@ export function studioFeaturesQueryKey(studioId: string) {
   return ["studio-features", studioId] as const;
 }
 
+export function applyStudioFeatureEnabled(
+  data: StudioFeaturesResponse | undefined,
+  key: string,
+  enabled: boolean,
+): StudioFeaturesResponse | undefined {
+  if (!data) {
+    return data;
+  }
+  return {
+    features: data.features.map((feature) =>
+      feature.key === key ? { ...feature, enabled } : feature,
+    ),
+  };
+}
+
+export function applyStudioFeatureItem(
+  data: StudioFeaturesResponse | undefined,
+  updated: StudioFeatureItem,
+): StudioFeaturesResponse {
+  if (!data) {
+    return { features: [updated] };
+  }
+  return {
+    features: data.features.map((feature) =>
+      feature.key === updated.key ? { ...feature, ...updated } : feature,
+    ),
+  };
+}
+
 export function enabledFeatureKeys(
   features: StudioFeatureItem[] | undefined,
 ): Set<string> {
@@ -37,8 +66,9 @@ export function isFeatureEnabled(
   features: StudioFeatureItem[] | undefined,
   key: FeatureKey,
 ): boolean {
-  return features?.some((feature) => feature.key === key && feature.enabled) ===
-    true;
+  return (
+    features?.some((feature) => feature.key === key && feature.enabled) === true
+  );
 }
 
 /** Tenant studio features — skip when no studioId (system admin / public). */

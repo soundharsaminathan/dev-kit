@@ -1,16 +1,20 @@
 import { Switch } from "@dev-ui/components/switch";
 import { useToastContext } from "@dev-ui/components/toast";
+import { Icon } from "@dev-ui/icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useMemo, useRef } from "react";
 import { useApi } from "@/lib/api-context";
+import { featureCategoryIcon, featureIcon } from "@/lib/feature-icons";
 import {
+  applyStudioFeatureEnabled,
+  applyStudioFeatureItem,
   type StudioFeatureItem,
   type StudioFeaturesResponse,
   studioFeaturesQueryKey,
 } from "@/lib/studio-features";
 import { Screen } from "@/modules/ui/screen";
-import { SkeletonBlock } from "@/modules/ui/skeleton-block";
+import { SkeletonRowList } from "@/modules/ui/skeleton-block";
 import staff from "@/modules/ui/staff.module.scss";
 import { EmptyState, ErrorState } from "@/modules/ui/states";
 import { TouchButton } from "@/modules/ui/touch-button";
@@ -20,12 +24,10 @@ export const Route = createFileRoute("/admin/studios/$id_/features")({
   component: AdminStudioFeaturesPage,
 });
 
-const CATEGORY_ORDER = [
-  "Communication",
-  "Finance",
-  "Engagement",
-  "Operations",
-];
+const CATEGORY_ORDER = ["Communication", "Finance", "Engagement", "Operations"];
+
+type ToggleVariables = { key: string; enabled: boolean };
+type ToggleContext = ToggleVariables & { gen: number };
 
 function AdminStudioFeaturesPage() {
   const { id } = Route.useParams();
@@ -33,47 +35,54 @@ function AdminStudioFeaturesPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { toast } = useToastContext("AdminStudioFeaturesPage");
-  const [pendingKey, setPendingKey] = useState<string | null>(null);
+  const queryKey = studioFeaturesQueryKey(id);
+  const inFlight = useRef(0);
+  const generation = useRef(new Map<string, number>());
 
   const featuresQuery = useQuery({
-    queryKey: studioFeaturesQueryKey(id),
-    queryFn: () =>
-      api.get<StudioFeaturesResponse>(`/studios/${id}/features`),
+    queryKey,
+    queryFn: () => api.get<StudioFeaturesResponse>(`/studios/${id}/features`),
   });
 
-  const toggleMutation = useMutation({
-    mutationFn: ({ key, enabled }: { key: string; enabled: boolean }) =>
+  const toggleMutation = useMutation<
+    StudioFeatureItem,
+    Error,
+    ToggleVariables,
+    ToggleContext
+  >({
+    mutationFn: ({ key, enabled }) =>
       api.patch<StudioFeatureItem>(`/studios/${id}/features/${key}`, {
         enabled,
       }),
-    onMutate: ({ key }) => {
-      setPendingKey(key);
-    },
-    onSuccess: (updated) => {
-      queryClient.setQueryData<StudioFeaturesResponse>(
-        studioFeaturesQueryKey(id),
-        (prev) => {
-          if (!prev) {
-            return { features: [updated] };
-          }
-          return {
-            features: prev.features.map((feature) =>
-              feature.key === updated.key
-                ? { ...feature, ...updated }
-                : feature,
-            ),
-          };
-        },
+    onMutate: async ({ key, enabled }) => {
+      inFlight.current += 1;
+      const gen = (generation.current.get(key) ?? 0) + 1;
+      generation.current.set(key, gen);
+
+      queryClient.setQueryData<StudioFeaturesResponse>(queryKey, (prev) =>
+        applyStudioFeatureEnabled(prev, key, enabled),
       );
-      toast({
-        title: updated.enabled ? "Feature enabled" : "Feature disabled",
-        description: updated.enabled
-          ? `${updated.name} is now available to this studio.`
-          : `${updated.name} is hidden from this studio.`,
-        variant: "success",
-      });
+      await queryClient.cancelQueries({ queryKey });
+      queryClient.setQueryData<StudioFeaturesResponse>(queryKey, (prev) =>
+        applyStudioFeatureEnabled(prev, key, enabled),
+      );
+
+      return { key, enabled, gen };
     },
-    onError: (error: unknown) => {
+    onSuccess: (updated, _variables, context) => {
+      if (context && generation.current.get(context.key) !== context.gen) {
+        return;
+      }
+      queryClient.setQueryData<StudioFeaturesResponse>(queryKey, (prev) =>
+        applyStudioFeatureItem(prev, updated),
+      );
+    },
+    onError: (error, variables, context) => {
+      if (context && generation.current.get(variables.key) === context.gen) {
+        queryClient.setQueryData<StudioFeaturesResponse>(queryKey, (prev) =>
+          applyStudioFeatureEnabled(prev, variables.key, !variables.enabled),
+        );
+      }
       toast({
         title: "Couldn’t update feature",
         description:
@@ -82,10 +91,10 @@ function AdminStudioFeaturesPage() {
       });
     },
     onSettled: () => {
-      setPendingKey(null);
-      void queryClient.invalidateQueries({
-        queryKey: studioFeaturesQueryKey(id),
-      });
+      inFlight.current = Math.max(0, inFlight.current - 1);
+      if (inFlight.current === 0) {
+        void queryClient.invalidateQueries({ queryKey });
+      }
     },
   });
 
@@ -111,10 +120,22 @@ function AdminStudioFeaturesPage() {
     }));
   }, [featuresQuery.data?.features]);
 
+  const enabledCount = featuresQuery.data?.features.filter(
+    (feature) => feature.enabled,
+  ).length;
+  const totalCount = featuresQuery.data?.features.length;
+
   return (
     <Screen
       title="Studio features"
-      subtitle="Enable or disable modules for this studio. Disabled modules are unavailable in the app and API."
+      subtitle="Turn modules on or off for this studio. Disabled modules disappear from the app and API."
+      titleEnd={
+        totalCount ? (
+          <span>
+            {enabledCount} of {totalCount} on
+          </span>
+        ) : null
+      }
       showBack
       backTo={`/admin/studios/${id}`}
     >
@@ -133,7 +154,9 @@ function AdminStudioFeaturesPage() {
         </TouchButton>
       </div>
 
-      {featuresQuery.isLoading ? <SkeletonBlock height="12rem" /> : null}
+      {featuresQuery.isLoading ? (
+        <SkeletonRowList count={6} label="Loading studio features" />
+      ) : null}
 
       {featuresQuery.isError ? (
         <ErrorState
@@ -160,39 +183,58 @@ function AdminStudioFeaturesPage() {
         />
       ) : null}
 
-      {grouped.map((group) => (
-        <section key={group.category} className={staff.section}>
-          <h2 className={staff.sectionTitle}>{group.category}</h2>
-          <ul className={styles.list}>
-            {group.features.map((feature) => {
-              const saving = pendingKey === feature.key;
-              return (
-                <li key={feature.key} className={styles.row}>
-                  <div className={styles.copy}>
-                    <p className={styles.name}>{feature.name}</p>
-                    <p className={styles.description}>{feature.description}</p>
-                    <p className={styles.hint}>
-                      {feature.enabled
-                        ? "Available to this studio."
-                        : "Hidden from this studio’s navigation and APIs."}
-                    </p>
-                  </div>
-                  <div data-testid={`feature-toggle-${feature.key}`}>
-                    <Switch
-                      isSelected={feature.enabled}
-                      isDisabled={saving || toggleMutation.isPending}
-                      aria-label={`Toggle ${feature.name}`}
-                      onChange={(enabled) => {
-                        toggleMutation.mutate({ key: feature.key, enabled });
-                      }}
-                    />
+      <div className={styles.groups}>
+        {grouped.map((group) => (
+          <section key={group.category} className={staff.section}>
+            <div className={styles.groupHeader}>
+              <span className={styles.groupIcon} aria-hidden>
+                <Icon name={featureCategoryIcon(group.category)} />
+              </span>
+              <h2 className={staff.sectionTitle}>{group.category}</h2>
+            </div>
+            <ul className={styles.card}>
+              {group.features.map((feature) => (
+                <li key={feature.key}>
+                  <div
+                    className={styles.row}
+                    data-enabled={feature.enabled ? "true" : "false"}
+                  >
+                    <span className={styles.icon} aria-hidden>
+                      <Icon name={featureIcon(feature.key)} />
+                    </span>
+                    <div className={styles.copy}>
+                      <div className={styles.nameRow}>
+                        <p className={styles.name}>{feature.name}</p>
+                        <span className={styles.status}>
+                          {feature.enabled ? "On" : "Off"}
+                        </span>
+                      </div>
+                      <p className={styles.description}>
+                        {feature.description}
+                      </p>
+                    </div>
+                    <div
+                      className={styles.toggle}
+                      data-testid={`feature-toggle-${feature.key}`}
+                    >
+                      <Switch
+                        isSelected={feature.enabled}
+                        aria-label={`Toggle ${feature.name}`}
+                        onChange={(enabled) => {
+                          toggleMutation.mutate({
+                            key: feature.key,
+                            enabled,
+                          });
+                        }}
+                      />
+                    </div>
                   </div>
                 </li>
-              );
-            })}
-          </ul>
-        </section>
-      ))}
+              ))}
+            </ul>
+          </section>
+        ))}
+      </div>
     </Screen>
   );
 }
