@@ -1110,6 +1110,7 @@ describe("UsersService.updateStudioStudent", () => {
     membership: { findMany: vi.fn() },
     attendance: { findMany: vi.fn() },
     invoice: { findMany: vi.fn() },
+    subscription: { findMany: vi.fn().mockResolvedValue([]) },
     parentChild: { findMany: vi.fn() },
     familyMember: { findMany: vi.fn() },
   };

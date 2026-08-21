@@ -545,6 +545,7 @@ describe("AttendanceService.getSessionRoster", () => {
     parentChild: { findUnique: vi.fn() },
     booking: { findMany: vi.fn(), findFirst: vi.fn() },
     invoice: { findMany: vi.fn() },
+    subscription: { findMany: vi.fn().mockResolvedValue([]) },
     user: { findUnique: vi.fn() },
   };
   const memberships = {

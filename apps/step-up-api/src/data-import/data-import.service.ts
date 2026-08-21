@@ -1218,9 +1218,7 @@ export class DataImportService {
         batchId && subscriptionId
           ? (membershipByStudentBatchSub.get(
               `${studentId}:${batchId}:${subscriptionId}`,
-            ) ??
-            membershipByStudentBatch.get(`${studentId}:${batchId}`) ??
-            null)
+            ) ?? null)
           : batchId
             ? (membershipByStudentBatch.get(`${studentId}:${batchId}`) ?? null)
             : null;

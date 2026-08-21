@@ -67,6 +67,7 @@ describe("BatchQueriesService.getRoster search", () => {
     };
     const prisma = {
       invoice: { findMany: vi.fn().mockResolvedValue([]) },
+      subscription: { findMany: vi.fn().mockResolvedValue([]) },
     };
 
     const service = new BatchQueriesService(

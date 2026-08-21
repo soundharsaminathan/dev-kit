@@ -324,6 +324,7 @@ export function monthsForBillingCadence(
 export type PaidMonthsInvoice = {
   studentId: string;
   combineMeta?: unknown;
+  purchaseMeta?: unknown;
   membership?: {
     subscription?: { billingCadence?: BillingCadence | string | null } | null;
   } | null;
@@ -333,12 +334,61 @@ export type PaidMonthsInvoice = {
 export const paidMonthsInvoiceSelect = {
   studentId: true,
   combineMeta: true,
+  purchaseMeta: true,
   membership: {
     select: {
       subscription: { select: { billingCadence: true } },
     },
   },
 } as const;
+
+type PaidMonthsDb = {
+  invoice: {
+    findMany: (args: {
+      where: Prisma.InvoiceWhereInput;
+      select: typeof paidMonthsInvoiceSelect;
+    }) => Promise<PaidMonthsInvoice[]>;
+  };
+  subscription: {
+    findMany: (args: {
+      where: { id: { in: string[] } };
+      select: { id: true; billingCadence: true };
+    }) => Promise<Array<{ id: string; billingCadence: BillingCadence | string }>>;
+  };
+};
+
+function cadenceForPaidInvoice(
+  invoice: PaidMonthsInvoice,
+  cadenceBySubscriptionId?: ReadonlyMap<string, BillingCadence | string>,
+) {
+  const subscriptionId = readPurchaseMetaSubscriptionId(invoice.purchaseMeta);
+  if (subscriptionId && cadenceBySubscriptionId?.has(subscriptionId)) {
+    return cadenceBySubscriptionId.get(subscriptionId);
+  }
+  return invoice.membership?.subscription?.billingCadence;
+}
+
+/** Look up billing cadence for purchaseMeta.subscriptionId (import plan, not linked membership). */
+export async function resolvePlanCadenceBySubscriptionId(
+  prisma: Pick<PaidMonthsDb, "subscription">,
+  invoices: PaidMonthsInvoice[],
+): Promise<Map<string, BillingCadence | string>> {
+  const ids = [
+    ...new Set(
+      invoices
+        .map((invoice) => readPurchaseMetaSubscriptionId(invoice.purchaseMeta))
+        .filter((id): id is string => Boolean(id)),
+    ),
+  ];
+  if (ids.length === 0) {
+    return new Map();
+  }
+  const rows = await prisma.subscription.findMany({
+    where: { id: { in: ids } },
+    select: { id: true, billingCadence: true },
+  });
+  return new Map(rows.map((row) => [row.id, row.billingCadence]));
+}
 
 /** Load PAID invoices billed to students or covering them via combineMeta.sources. */
 export function paidMonthsInvoiceWhere(
@@ -361,7 +411,10 @@ export function paidMonthsInvoiceWhere(
  */
 export function accumulatePaidMonths(
   invoices: PaidMonthsInvoice[],
-  options?: { onlyStudentIds?: ReadonlySet<string> },
+  options?: {
+    onlyStudentIds?: ReadonlySet<string>;
+    cadenceBySubscriptionId?: ReadonlyMap<string, BillingCadence | string>;
+  },
 ): Map<string, number> {
   const paidMonthsByStudent = new Map<string, number>();
   const only = options?.onlyStudentIds;
@@ -385,10 +438,34 @@ export function accumulatePaidMonths(
     credit(
       invoice.studentId,
       monthsForBillingCadence(
-        invoice.membership?.subscription?.billingCadence,
+        cadenceForPaidInvoice(invoice, options?.cadenceBySubscriptionId),
       ),
     );
   }
 
   return paidMonthsByStudent;
+}
+
+/** Paid-month totals using each invoice's plan (purchaseMeta), not the linked membership. */
+export async function loadPaidMonthsByStudent(
+  prisma: PaidMonthsDb,
+  studioId: string,
+  studentIds: readonly string[],
+): Promise<Map<string, number>> {
+  if (studentIds.length === 0) {
+    return new Map();
+  }
+  const ids = [...studentIds];
+  const invoices = await prisma.invoice.findMany({
+    where: paidMonthsInvoiceWhere(studioId, ids),
+    select: paidMonthsInvoiceSelect,
+  });
+  const cadenceBySubscriptionId = await resolvePlanCadenceBySubscriptionId(
+    prisma,
+    invoices,
+  );
+  return accumulatePaidMonths(invoices, {
+    onlyStudentIds: new Set(ids),
+    cadenceBySubscriptionId,
+  });
 }

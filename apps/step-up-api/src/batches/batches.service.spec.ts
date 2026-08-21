@@ -2499,6 +2499,7 @@ describe("BatchesService.getById roster split", () => {
       updateMany: vi.fn(),
     },
     invoice: { findMany: vi.fn() },
+    subscription: { findMany: vi.fn().mockResolvedValue([]) },
   };
 
   const memberships = {

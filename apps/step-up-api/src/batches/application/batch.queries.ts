@@ -8,11 +8,7 @@ import {
   SessionType,
   type SubscriptionKind,
 } from "@prisma/client";
-import {
-  accumulatePaidMonths,
-  paidMonthsInvoiceSelect,
-  paidMonthsInvoiceWhere,
-} from "../../billing/family-combine";
+import { loadPaidMonthsByStudent } from "../../billing/family-combine";
 import { MediaService } from "../../media/media.service";
 import { MembershipsService } from "../../memberships/memberships.service";
 import { PrismaService } from "../../prisma/prisma.service";
@@ -306,13 +302,11 @@ export class BatchQueriesService {
     if (tab === "active" && batch && studentIds.length > 0) {
       monthlyUnpaidIds =
         await this.memberships.findMonthlyUnpaidStudentIds(studentIds);
-      const paidInvoices = await this.prisma.invoice.findMany({
-        where: paidMonthsInvoiceWhere(batch.studioId, studentIds),
-        select: paidMonthsInvoiceSelect,
-      });
-      paidMonthsByStudent = accumulatePaidMonths(paidInvoices, {
-        onlyStudentIds: new Set(studentIds),
-      });
+      paidMonthsByStudent = await loadPaidMonthsByStudent(
+        this.prisma,
+        batch.studioId,
+        studentIds,
+      );
     }
 
     const presentedStudents = await this.users.presentLiteMany(

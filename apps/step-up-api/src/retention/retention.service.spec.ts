@@ -62,6 +62,9 @@ describe("RetentionService people fields", () => {
       invoice: {
         findMany: vi.fn().mockResolvedValue([]),
       },
+      subscription: {
+        findMany: vi.fn().mockResolvedValue([]),
+      },
     };
 
     const service = new RetentionService(prisma as never, crypto as never);

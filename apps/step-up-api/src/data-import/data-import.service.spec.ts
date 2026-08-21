@@ -1203,6 +1203,98 @@ describe("DataImportService.importStudioData", () => {
     });
   });
 
+  it("does not attach a monthly invoice to a quarterly membership (negative path)", async () => {
+    const { service, prisma } = buildService({
+      prisma: {
+        user: {
+          findMany: vi
+            .fn()
+            .mockResolvedValue([
+              { id: "student-1", emailHash: "hash:adidev.ashok@4dflo.import" },
+            ]),
+        },
+        batch: {
+          findMany: vi
+            .fn()
+            .mockResolvedValue([
+              { id: "batch-1", name: "RB1", category: "KIDS" },
+            ]),
+        },
+        subscription: {
+          findMany: vi.fn().mockResolvedValue([
+            { id: "sub-monthly", name: "Kids Monthly" },
+            { id: "sub-quarterly", name: "Kids Quarterly" },
+          ]),
+        },
+        membership: {
+          findFirst: vi.fn().mockResolvedValue(null),
+          findMany: vi.fn().mockResolvedValue([
+            {
+              id: "mem-quarterly",
+              purchaserUserId: "student-1",
+              batchId: "batch-1",
+              subscriptionId: "sub-quarterly",
+            },
+          ]),
+          create: vi.fn().mockResolvedValue({ id: "mem-quarterly" }),
+        },
+      },
+    });
+
+    await service.importStudioData(ACTOR, {
+      students: [],
+      batches: [],
+      enrollments: [],
+      invoices: [
+        {
+          studentEmail: "adidev.ashok@4dflo.import",
+          batchName: "RB1",
+          amount: 1500,
+          status: InvoiceStatus.PAID,
+          paymentMethod: "UPI_MANUAL",
+          paidAt: "2026-06-01",
+          referralDiscount: 0,
+          studioDiscount: 0,
+          refundedAmount: 0,
+          refundedAt: null,
+          planName: "Kids Monthly",
+        },
+        {
+          studentEmail: "adidev.ashok@4dflo.import",
+          batchName: "RB1",
+          amount: 5000,
+          status: InvoiceStatus.PAID,
+          paymentMethod: "UPI_MANUAL",
+          paidAt: "2026-07-01",
+          referralDiscount: 0,
+          studioDiscount: 0,
+          refundedAmount: 0,
+          refundedAt: null,
+          planName: "Kids Quarterly",
+        },
+      ],
+    });
+
+    expect(prisma.invoice.createMany).toHaveBeenCalledWith({
+      data: [
+        expect.objectContaining({
+          studentId: "student-1",
+          membershipId: null,
+          purchaseMeta: expect.objectContaining({
+            subscriptionId: "sub-monthly",
+          }),
+        }),
+        expect.objectContaining({
+          studentId: "student-1",
+          membershipId: "mem-quarterly",
+          purchaseMeta: expect.objectContaining({
+            subscriptionId: "sub-quarterly",
+          }),
+        }),
+      ],
+    });
+  });
+
   it("creates OVERDUE gap invoices for uncovered monthly enrollment periods", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-08-20T12:00:00.000Z"));

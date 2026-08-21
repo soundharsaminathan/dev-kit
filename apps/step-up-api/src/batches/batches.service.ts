@@ -23,9 +23,7 @@ import {
 } from "@prisma/client";
 import { BillingService } from "../billing/billing.service";
 import {
-  accumulatePaidMonths,
-  paidMonthsInvoiceSelect,
-  paidMonthsInvoiceWhere,
+  loadPaidMonthsByStudent,
   parseCombineMeta,
   readPurchaseMetaBatchId,
   readPurchaseMetaSubscriptionId,
@@ -847,16 +845,11 @@ export class BatchesService {
     );
     const monthlyUnpaidIds =
       await this.memberships.findMonthlyUnpaidStudentIds(activeStudentIds);
-    const paidInvoices =
-      activeStudentIds.length === 0
-        ? []
-        : await this.prisma.invoice.findMany({
-            where: paidMonthsInvoiceWhere(batch.studioId, activeStudentIds),
-            select: paidMonthsInvoiceSelect,
-          });
-    const paidMonthsByStudent = accumulatePaidMonths(paidInvoices, {
-      onlyStudentIds: new Set(activeStudentIds),
-    });
+    const paidMonthsByStudent = await loadPaidMonthsByStudent(
+      this.prisma,
+      batch.studioId,
+      activeStudentIds,
+    );
     const enrollments = activeEnrollmentsRaw.map((enrollment) => ({
       ...enrollment,
       monthlyUnpaid: monthlyUnpaidIds.has(enrollment.studentId),

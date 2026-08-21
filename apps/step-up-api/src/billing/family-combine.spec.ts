@@ -1,10 +1,11 @@
 import { BillingCadence } from "@prisma/client";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   accumulatePaidMonths,
   allocateFamilyDiscount,
   attributionTargetsForInvoice,
   batchLabelForInvoice,
+  loadPaidMonthsByStudent,
   monthsForBillingCadence,
   parseCombineMeta,
   parsePurchaseMeta,
@@ -274,6 +275,74 @@ describe("accumulatePaidMonths", () => {
     ]);
     expect(months.get("s1")).toBe(3);
     expect(months.get("s2")).toBe(1);
+  });
+
+  it("counts mixed monthly + quarterly invoices as 4 months, not 6 (negative path)", () => {
+    const months = accumulatePaidMonths(
+      [
+        {
+          studentId: "s1",
+          combineMeta: null,
+          purchaseMeta: { subscriptionId: "sub-monthly" },
+          membership: {
+            subscription: { billingCadence: BillingCadence.QUARTERLY },
+          },
+        },
+        {
+          studentId: "s1",
+          combineMeta: null,
+          purchaseMeta: { subscriptionId: "sub-quarterly" },
+          membership: {
+            subscription: { billingCadence: BillingCadence.QUARTERLY },
+          },
+        },
+      ],
+      {
+        cadenceBySubscriptionId: new Map([
+          ["sub-monthly", BillingCadence.MONTHLY],
+          ["sub-quarterly", BillingCadence.QUARTERLY],
+        ]),
+      },
+    );
+    expect(months.get("s1")).toBe(4);
+  });
+
+  it("loads plan cadence from purchaseMeta so a monthly invoice is not counted as a quarter", async () => {
+    const prisma = {
+      invoice: {
+        findMany: vi.fn().mockResolvedValue([
+          {
+            studentId: "s1",
+            combineMeta: null,
+            purchaseMeta: { subscriptionId: "sub-monthly" },
+            membership: {
+              subscription: { billingCadence: BillingCadence.QUARTERLY },
+            },
+          },
+          {
+            studentId: "s1",
+            combineMeta: null,
+            purchaseMeta: { subscriptionId: "sub-quarterly" },
+            membership: {
+              subscription: { billingCadence: BillingCadence.QUARTERLY },
+            },
+          },
+        ]),
+      },
+      subscription: {
+        findMany: vi.fn().mockResolvedValue([
+          { id: "sub-monthly", billingCadence: BillingCadence.MONTHLY },
+          { id: "sub-quarterly", billingCadence: BillingCadence.QUARTERLY },
+        ]),
+      },
+    };
+
+    const months = await loadPaidMonthsByStudent(prisma, "studio-1", ["s1"]);
+    expect(months.get("s1")).toBe(4);
+    expect(prisma.subscription.findMany).toHaveBeenCalledWith({
+      where: { id: { in: ["sub-monthly", "sub-quarterly"] } },
+      select: { id: true, billingCadence: true },
+    });
   });
 
   it("can scope credits to a single covered student (profile card)", () => {

@@ -26,10 +26,12 @@ import {
   accumulatePaidMonths,
   batchIdsForInvoiceDisplay,
   batchLabelForInvoice,
+  loadPaidMonthsByStudent,
   paidMonthsInvoiceSelect,
   paidMonthsInvoiceWhere,
   parseCombineMeta,
   parsePurchaseMeta,
+  resolvePlanCadenceBySubscriptionId,
 } from "../billing/family-combine";
 import { MediaService } from "../media/media.service";
 import { PrismaService } from "../prisma/prisma.service";
@@ -1028,9 +1030,14 @@ export class UsersService {
       ).length,
     };
 
+    const cadenceBySubscriptionId = await resolvePlanCadenceBySubscriptionId(
+      this.prisma,
+      paidInvoices,
+    );
     const paidMonths =
       accumulatePaidMonths(paidInvoices, {
         onlyStudentIds: new Set([studentId]),
+        cadenceBySubscriptionId,
       }).get(studentId) ?? 0;
 
     const studentBatchMap = new Map<string, Set<string>>([
@@ -1838,17 +1845,11 @@ export class UsersService {
     );
 
     const cohortIds = cohort.map((student) => student.id);
-    const paidInvoices =
-      cohortIds.length === 0
-        ? []
-        : await this.prisma.invoice.findMany({
-            where: paidMonthsInvoiceWhere(studioId, cohortIds),
-            select: paidMonthsInvoiceSelect,
-          });
-
-    const paidMonthsByStudent = accumulatePaidMonths(paidInvoices, {
-      onlyStudentIds: new Set(cohortIds),
-    });
+    const paidMonthsByStudent = await loadPaidMonthsByStudent(
+      this.prisma,
+      studioId,
+      cohortIds,
+    );
 
     const presented = await Promise.all(
       cohort.map(async (student) => {

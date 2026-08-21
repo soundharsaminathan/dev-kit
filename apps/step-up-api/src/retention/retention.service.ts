@@ -1,10 +1,6 @@
 import { Inject, Injectable } from "@nestjs/common";
 import { AttendanceStatus, MembershipStatus } from "@prisma/client";
-import {
-  accumulatePaidMonths,
-  paidMonthsInvoiceSelect,
-  paidMonthsInvoiceWhere,
-} from "../billing/family-combine";
+import { loadPaidMonthsByStudent } from "../billing/family-combine";
 import { PrismaService } from "../prisma/prisma.service";
 import { UserCryptoService } from "../users/user-crypto.service";
 
@@ -19,16 +15,7 @@ export class RetentionService {
     studioId: string,
     studentIds: string[],
   ): Promise<Map<string, number>> {
-    if (studentIds.length === 0) return new Map();
-
-    const paidInvoices = await this.prisma.invoice.findMany({
-      where: paidMonthsInvoiceWhere(studioId, studentIds),
-      select: paidMonthsInvoiceSelect,
-    });
-
-    return accumulatePaidMonths(paidInvoices, {
-      onlyStudentIds: new Set(studentIds),
-    });
+    return loadPaidMonthsByStudent(this.prisma, studioId, studentIds);
   }
 
   async getBatchStats(batchId: string) {

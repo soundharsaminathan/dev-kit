@@ -17,11 +17,7 @@ import {
   UserRole,
 } from "@prisma/client";
 import { enrollmentVisibleAtSession } from "../batches/enrollment-status";
-import {
-  accumulatePaidMonths,
-  paidMonthsInvoiceSelect,
-  paidMonthsInvoiceWhere,
-} from "../billing/family-combine";
+import { loadPaidMonthsByStudent } from "../billing/family-combine";
 import { MembershipsService } from "../memberships/memberships.service";
 import { NotificationsService } from "../notifications/notifications.service";
 import { PrismaService } from "../prisma/prisma.service";
@@ -187,19 +183,11 @@ export class AttendanceService {
     }
 
     const rosterStudentIds = roster.map((entry) => entry.studentId);
-    const paidInvoices =
-      rosterStudentIds.length === 0
-        ? []
-        : await this.prisma.invoice.findMany({
-            where: paidMonthsInvoiceWhere(
-              session.batch.studioId,
-              rosterStudentIds,
-            ),
-            select: paidMonthsInvoiceSelect,
-          });
-    const paidMonthsByStudent = accumulatePaidMonths(paidInvoices, {
-      onlyStudentIds: new Set(rosterStudentIds),
-    });
+    const paidMonthsByStudent = await loadPaidMonthsByStudent(
+      this.prisma,
+      session.batch.studioId,
+      rosterStudentIds,
+    );
     for (const entry of roster) {
       entry.paidMonths = paidMonthsByStudent.get(entry.studentId) ?? 0;
     }
