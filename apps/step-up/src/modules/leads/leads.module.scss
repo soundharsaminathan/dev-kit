@@ -582,16 +582,24 @@
   align-items: stretch;
   gap: var(--space-1, 0.25rem);
   width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 .swipeTab {
-  flex: 1 1 0;
-  min-width: 0;
+  flex: 1 0 auto;
+  min-width: max-content;
   overflow: hidden;
   text-align: center;
-  white-space: normal;
+  white-space: nowrap;
   line-height: 1.2;
-  padding: var(--space-2, 0.5rem) var(--space-1, 0.25rem);
+  padding: var(--space-2, 0.5rem) var(--space-3, 0.75rem);
   border-radius: var(--radius-xl, 1rem);
   border: 1px solid color-mix(in srgb, var(--color-fg) 12%, transparent);
   background: var(--color-card, var(--color-bg));
