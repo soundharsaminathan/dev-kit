@@ -39,31 +39,31 @@
   z-index: 10;
   touch-action: none;
   pointer-events: none;
-}
 
-.viewport-top {
-  display: grid;
-  grid-template-rows: auto 1fr;
-  padding-bottom: 3rem;
-}
+  &[data-placement="top"] {
+    display: grid;
+    grid-template-rows: auto 1fr;
+    padding-bottom: 3rem;
+  }
 
-.viewport-bottom {
-  display: grid;
-  grid-template-rows: 1fr auto;
-  overflow: visible;
-  padding-top: 3rem;
-}
+  &[data-placement="bottom"] {
+    display: grid;
+    grid-template-rows: 1fr auto;
+    overflow: visible;
+    padding-top: 3rem;
+  }
 
-.viewport-left {
-  display: flex;
-  justify-content: flex-start;
-  padding-inline-end: 3rem;
-}
+  &[data-placement="left"] {
+    display: flex;
+    justify-content: flex-start;
+    padding-inline-end: 3rem;
+  }
 
-.viewport-right {
-  display: flex;
-  justify-content: flex-end;
-  padding-inline-start: 3rem;
+  &[data-placement="right"] {
+    display: flex;
+    justify-content: flex-end;
+    padding-inline-start: 3rem;
+  }
 }
 
 .popup {
@@ -117,105 +117,105 @@
     transition: none;
     user-select: none;
   }
-}
 
-.popup-top {
-  grid-row-start: 1;
-  max-height: calc(100dvh - 3rem);
-  min-height: 5rem;
-  width: 100%;
-  transform-origin: 50% 0;
-  transform: translateY(var(--drawer-swipe-movement-y, 0px));
-  border-top: 0;
-  border-radius: 0 0 var(--radius-xl) var(--radius-xl);
+  &[data-placement="top"] {
+    grid-row-start: 1;
+    max-height: calc(100dvh - 3rem);
+    min-height: 5rem;
+    width: 100%;
+    transform-origin: 50% 0;
+    transform: translateY(var(--drawer-swipe-movement-y, 0px));
+    border-top: 0;
+    border-radius: 0 0 var(--radius-xl) var(--radius-xl);
 
-  &[data-ending-style] {
-    transform: translateY(-100%);
+    &[data-ending-style] {
+      transform: translateY(-100%);
+    }
+
+    &[data-starting-style] {
+      transform: translateY(-100%);
+    }
   }
 
-  &[data-starting-style] {
-    transform: translateY(-100%);
-  }
-}
+  &[data-placement="bottom"] {
+    grid-row-start: 2;
+    margin-bottom: calc(0px - var(--drawer-bleed));
+    max-height: calc(100dvh - 3rem + var(--drawer-bleed));
+    min-height: 5rem;
+    width: 100%;
+    transform-origin: 50% 100%;
+    transform: translateY(var(--drawer-swipe-movement-y, 0px));
+    border-bottom: 0;
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+    padding-bottom: calc(
+      env(safe-area-inset-bottom, 0px) + var(--drawer-bleed)
+    );
 
-.popup-bottom {
-  grid-row-start: 2;
-  margin-bottom: calc(0px - var(--drawer-bleed));
-  max-height: calc(100dvh - 3rem + var(--drawer-bleed));
-  min-height: 5rem;
-  width: 100%;
-  transform-origin: 50% 100%;
-  transform: translateY(var(--drawer-swipe-movement-y, 0px));
-  border-bottom: 0;
-  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
-  padding-bottom: calc(
-    env(safe-area-inset-bottom, 0px) + var(--drawer-bleed)
-  );
+    &[data-ending-style] {
+      transform: translateY(100%);
+    }
 
-  &[data-ending-style] {
-    transform: translateY(100%);
-  }
-
-  &[data-starting-style] {
-    transform: translateY(100%);
-  }
-}
-
-.popup-left {
-  flex-direction: row-reverse;
-  align-items: center;
-  width: auto;
-  flex-shrink: 0;
-  height: 100%;
-  max-width: calc(100dvw - 3rem);
-  min-width: 5rem;
-  transform-origin: right;
-  transform: translateX(var(--drawer-swipe-movement-x, 0px));
-  border-left: 0;
-  border-radius: 0 var(--radius-xl) var(--radius-xl) 0;
-
-  > :not([data-slot="drawer-handle"]) {
-    flex: 1;
-    min-width: 0;
-    min-height: 0;
-    align-self: stretch;
+    &[data-starting-style] {
+      transform: translateY(100%);
+    }
   }
 
-  &[data-ending-style] {
-    transform: translateX(-100%);
+  &[data-placement="left"] {
+    flex-direction: row-reverse;
+    align-items: center;
+    width: auto;
+    flex-shrink: 0;
+    height: 100%;
+    max-width: calc(100dvw - 3rem);
+    min-width: 5rem;
+    transform-origin: right;
+    transform: translateX(var(--drawer-swipe-movement-x, 0px));
+    border-left: 0;
+    border-radius: 0 var(--radius-xl) var(--radius-xl) 0;
+
+    > :not([data-slot="drawer-handle"]) {
+      flex: 1;
+      min-width: 0;
+      min-height: 0;
+      align-self: stretch;
+    }
+
+    &[data-ending-style] {
+      transform: translateX(-100%);
+    }
+
+    &[data-starting-style] {
+      transform: translateX(-100%);
+    }
   }
 
-  &[data-starting-style] {
-    transform: translateX(-100%);
-  }
-}
+  &[data-placement="right"] {
+    flex-direction: row;
+    align-items: center;
+    width: auto;
+    flex-shrink: 0;
+    height: 100%;
+    max-width: calc(100dvw - 3rem);
+    min-width: 5rem;
+    transform-origin: left;
+    transform: translateX(var(--drawer-swipe-movement-x, 0px));
+    border-right: 0;
+    border-radius: var(--radius-xl) 0 0 var(--radius-xl);
 
-.popup-right {
-  flex-direction: row;
-  align-items: center;
-  width: auto;
-  flex-shrink: 0;
-  height: 100%;
-  max-width: calc(100dvw - 3rem);
-  min-width: 5rem;
-  transform-origin: left;
-  transform: translateX(var(--drawer-swipe-movement-x, 0px));
-  border-right: 0;
-  border-radius: var(--radius-xl) 0 0 var(--radius-xl);
+    > :not([data-slot="drawer-handle"]) {
+      flex: 1;
+      min-width: 0;
+      min-height: 0;
+      align-self: stretch;
+    }
 
-  > :not([data-slot="drawer-handle"]) {
-    flex: 1;
-    min-width: 0;
-    min-height: 0;
-    align-self: stretch;
-  }
+    &[data-ending-style] {
+      transform: translateX(100%);
+    }
 
-  &[data-ending-style] {
-    transform: translateX(100%);
-  }
-
-  &[data-starting-style] {
-    transform: translateX(100%);
+    &[data-starting-style] {
+      transform: translateX(100%);
+    }
   }
 }
 
@@ -248,30 +248,30 @@
   position: fixed;
   z-index: 50;
   touch-action: none;
-}
 
-.swipeArea-top {
-  inset-inline: 0;
-  top: 0;
-  height: 2rem;
-}
+  &[data-placement="top"] {
+    inset-inline: 0;
+    top: 0;
+    height: 2rem;
+  }
 
-.swipeArea-bottom {
-  inset-inline: 0;
-  bottom: 0;
-  height: 2rem;
-}
+  &[data-placement="bottom"] {
+    inset-inline: 0;
+    bottom: 0;
+    height: 2rem;
+  }
 
-.swipeArea-left {
-  inset-block: 0;
-  left: 0;
-  width: 2rem;
-}
+  &[data-placement="left"] {
+    inset-block: 0;
+    left: 0;
+    width: 2rem;
+  }
 
-.swipeArea-right {
-  inset-block: 0;
-  right: 0;
-  width: 2rem;
+  &[data-placement="right"] {
+    inset-block: 0;
+    right: 0;
+    width: 2rem;
+  }
 }
 
 .indent {
@@ -324,10 +324,7 @@
     transition-duration: 0ms;
   }
 
-  .popup-top,
-  .popup-bottom,
-  .popup-left,
-  .popup-right {
+  .popup[data-placement] {
     &[data-ending-style],
     &[data-starting-style] {
       transform: none;

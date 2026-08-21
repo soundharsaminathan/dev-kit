@@ -418,20 +418,21 @@ function Drawer({
                 />
               )}
               <div
-                className={cn(styles.viewport, styles[`viewport-${placement}`])}
+                className={styles.viewport}
                 data-open={openAttr}
+                data-placement={placement}
               >
                 <div
                   {...mergeProps(modalProps, swipeProps)}
                   ref={panelRef}
                   data-drawer=""
                   data-open={openAttr}
+                  data-placement={placement}
                   data-swipe-disabled={swipeToDismiss ? undefined : ""}
                   data-starting-style={isStarting ? "" : undefined}
                   data-ending-style={isEnding ? "" : undefined}
                   className={cn(
                     styles.popup,
-                    styles[`popup-${placement}`],
                     resolveClassName(className, state.isOpen),
                   )}
                   style={style}
@@ -476,13 +477,10 @@ function DrawerSwipeArea({ className, ...props }: DrawerSwipeAreaProps) {
 
   return (
     <div
-      className={cn(
-        styles.swipeArea,
-        styles[`swipeArea-${placement}`],
-        className,
-      )}
-      data-slot="drawer-swipe-area"
       {...props}
+      className={cn(styles.swipeArea, className)}
+      data-placement={placement}
+      data-slot="drawer-swipe-area"
     />
   );
 }

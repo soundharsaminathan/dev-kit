@@ -125,6 +125,11 @@ describe("Drawer", () => {
       "data-orientation",
       "horizontal",
     );
+    expect(getDrawerPanel()).toHaveAttribute("data-placement", "bottom");
+    expect(getDrawerPanel()?.parentElement).toHaveAttribute(
+      "data-placement",
+      "bottom",
+    );
   });
 
   it("orients the handle for side placements", () => {
@@ -190,6 +195,10 @@ describe("Drawer", () => {
     expect(screen.getByTestId("drawer-swipe-area")).toHaveAttribute(
       "data-slot",
       "drawer-swipe-area",
+    );
+    expect(screen.getByTestId("drawer-swipe-area")).toHaveAttribute(
+      "data-placement",
+      "top",
     );
     expect(screen.getByTestId("drawer-indent")).toBeInTheDocument();
     expect(screen.getByTestId("drawer-indent-background")).toBeInTheDocument();
