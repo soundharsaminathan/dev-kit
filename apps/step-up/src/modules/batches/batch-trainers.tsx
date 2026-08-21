@@ -11,7 +11,7 @@ import { StyleList } from "@/modules/styles/style-list";
 import { FollowCounts } from "@/modules/trainers/follow-counts";
 import type { StudioTrainer } from "@/modules/trainers/types";
 import { useStudioTrainers } from "@/modules/trainers/use-trainers";
-import { AppBottomSheet } from "@/modules/ui/app-bottom-sheet";
+import { AppSheet } from "@/modules/ui/app-sheet";
 import {
   ExpandableBentoGrid,
   type ExpandableBentoItem,
@@ -248,7 +248,7 @@ export function BatchTrainers({ batchId, trainers }: BatchTrainersProps) {
         <ExpandableBentoGrid items={items} aria-label="Batch instructors" />
       ) : null}
 
-      <AppBottomSheet
+      <AppSheet
         isOpen={manageOpen}
         onOpenChange={setManageOpen}
         title="Assign instructors"
@@ -322,7 +322,7 @@ export function BatchTrainers({ batchId, trainers }: BatchTrainersProps) {
             Save instructors
           </Button>
         </div>
-      </AppBottomSheet>
+      </AppSheet>
     </div>
   );
 }

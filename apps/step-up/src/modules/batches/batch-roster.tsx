@@ -440,15 +440,28 @@ export function BatchRoster({ batchId, capacity, active }: BatchRosterProps) {
           }
         }}
         aria-label="Student roster"
+        className={styles.tabs}
       >
-        <TabList>
-          <Tab id="active" data-testid="roster-tab-active">
+        <TabList className={styles.tabList}>
+          <Tab
+            id="active"
+            data-testid="roster-tab-active"
+            className={styles.tab}
+          >
             Active
           </Tab>
-          <Tab id="inactive" data-testid="roster-tab-inactive">
+          <Tab
+            id="inactive"
+            data-testid="roster-tab-inactive"
+            className={styles.tab}
+          >
             Inactive
           </Tab>
-          <Tab id="attendance" data-testid="roster-tab-attendance">
+          <Tab
+            id="attendance"
+            data-testid="roster-tab-attendance"
+            className={styles.tab}
+          >
             Attendance
           </Tab>
         </TabList>

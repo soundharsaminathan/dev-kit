@@ -32,6 +32,22 @@
   margin-inline-start: auto;
 }
 
+.tabs {
+  width: 100%;
+}
+
+.tabs .tabList {
+  display: flex;
+  width: 100%;
+  max-width: 100%;
+}
+
+.tabs .tab {
+  flex: 1 1 0;
+  min-width: 0;
+  justify-content: center;
+}
+
 .hint {
   margin: 0;
   font-size: 0.8125rem;

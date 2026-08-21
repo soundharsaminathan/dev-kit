@@ -560,47 +560,38 @@
 }
 
 .tabs .tabList {
+  display: flex;
   width: 100%;
   max-width: 100%;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  scroll-snap-type: x mandatory;
-  scrollbar-width: none;
-
-  &::-webkit-scrollbar {
-    display: none;
-  }
 }
 
-.tab {
-  flex: 0 0 auto;
-  white-space: nowrap;
-  scroll-snap-align: start;
+.tabs .tabList[data-orientation="horizontal"] {
+  height: auto;
+}
+
+.tabs .tab {
+  flex: 1 1 0;
+  min-width: 0;
+  justify-content: center;
+  white-space: normal;
+  text-align: center;
 }
 
 .swipeHeader {
   display: flex;
   align-items: stretch;
-  gap: var(--space-2, 0.5rem);
+  gap: var(--space-1, 0.25rem);
   width: 100%;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  scroll-snap-type: x mandatory;
-  scrollbar-width: none;
-
-  &::-webkit-scrollbar {
-    display: none;
-  }
 }
 
 .swipeTab {
-  flex: 0 0 auto;
-  scroll-snap-align: start;
+  flex: 1 1 0;
   min-width: 0;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  padding: var(--space-2, 0.5rem) var(--space-3, 0.75rem);
+  text-align: center;
+  white-space: normal;
+  line-height: 1.2;
+  padding: var(--space-2, 0.5rem) var(--space-1, 0.25rem);
   border-radius: var(--radius-xl, 1rem);
   border: 1px solid color-mix(in srgb, var(--color-fg) 12%, transparent);
   background: var(--color-card, var(--color-bg));
