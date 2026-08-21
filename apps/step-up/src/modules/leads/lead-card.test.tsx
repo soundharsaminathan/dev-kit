@@ -77,13 +77,16 @@ describe("LeadCard identity", () => {
 });
 
 describe("LeadCard open", () => {
-  it("opens on card click", () => {
+  it("opens the student profile on card click", () => {
     const onOpen = vi.fn();
     const row = lead();
     renderWithProviders(<LeadCard lead={row} range={null} onOpen={onOpen} />);
 
     fireEvent.click(screen.getByTestId("lead-open-lead-1"));
     expect(onOpen).toHaveBeenCalledWith(row);
+    expect(
+      screen.getByRole("button", { name: "Open Asha Rao profile" }),
+    ).toBeInTheDocument();
   });
 
   it("does not open when a trial action is clicked", () => {
@@ -129,6 +132,24 @@ describe("LeadCard open", () => {
 
     fireEvent.click(screen.getByRole("checkbox", { name: "Select Asha Rao" }));
     expect(onToggleSelect).toHaveBeenCalledWith(row);
+    expect(onOpen).not.toHaveBeenCalled();
+  });
+
+  it("opens remarks without navigating to the profile", () => {
+    const onOpen = vi.fn();
+    const onOpenRemarks = vi.fn();
+    const row = lead();
+    renderWithProviders(
+      <LeadCard
+        lead={row}
+        range={null}
+        onOpen={onOpen}
+        onOpenRemarks={onOpenRemarks}
+      />,
+    );
+
+    fireEvent.click(screen.getByTestId("lead-remarks-lead-1"));
+    expect(onOpenRemarks).toHaveBeenCalledWith(row);
     expect(onOpen).not.toHaveBeenCalled();
   });
 });

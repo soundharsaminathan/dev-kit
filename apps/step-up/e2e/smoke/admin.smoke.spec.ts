@@ -420,7 +420,7 @@ test.describe("admin (staff) smoke @smoke", () => {
         timeout: 30_000,
       });
 
-      await page.getByTestId(`lead-open-${lead.id}`).click();
+      await page.getByTestId(`lead-remarks-${lead.id}`).click();
       const [archiveResponse] = await Promise.all([
         waitForApiResponse(page, {
           method: "PATCH",
@@ -453,7 +453,7 @@ test.describe("admin (staff) smoke @smoke", () => {
         timeout: 30_000,
       });
 
-      await page.getByTestId(`lead-open-${lead.id}`).click();
+      await page.getByTestId(`lead-remarks-${lead.id}`).click();
       const [unarchiveResponse] = await Promise.all([
         waitForApiResponse(page, {
           method: "PATCH",
@@ -527,7 +527,7 @@ test.describe("admin (staff) smoke @smoke", () => {
         "No follow-up",
       );
 
-      await page.getByTestId(`lead-open-${lead.id}`).click();
+      await page.getByTestId(`lead-remarks-${lead.id}`).click();
       await page.getByTestId("lead-remark-input").fill("Called, will visit");
       const [remarkResponse] = await Promise.all([
         waitForApiResponse(page, {

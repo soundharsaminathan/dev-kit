@@ -89,7 +89,7 @@ export function LeadCard({
                 tabIndex: 0,
                 onClick: handleOpen,
                 onKeyDown: handleKeyDown,
-                "aria-label": `Open ${lead.name}`,
+                "aria-label": `Open ${lead.name} profile`,
               }
             : {})}
         >
@@ -135,9 +135,12 @@ export function LeadCard({
             className={styles.commentAction}
             aria-label={`Comments for ${lead.name}`}
             data-testid={`lead-remarks-${lead.id}`}
-            onClick={() => onOpenRemarks(lead)}
+            onClick={(event) => {
+              event.stopPropagation();
+              onOpenRemarks(lead);
+            }}
           >
-            <Icon name="message-square" />
+            <Icon name="file-text" />
           </TouchButton>
         ) : null}
       </div>

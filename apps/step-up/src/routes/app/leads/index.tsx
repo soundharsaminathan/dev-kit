@@ -812,7 +812,12 @@ function LeadsPage() {
                               onToggleSelect={
                                 canSelect ? toggleSelect : undefined
                               }
-                              onOpen={setDetailLead}
+                              onOpen={(next) => {
+                                void navigate({
+                                  to: "/app/students/$id",
+                                  params: { id: next.id },
+                                });
+                              }}
                               onOpenRemarks={setDetailLead}
                               onSwitchTrial={
                                 canSwitchTrial ? setSwitchLead : undefined
