@@ -189,7 +189,13 @@ function InvoiceCard({
     metaParts.push(`${remaining} / ${billed} remaining`);
   }
   if (invoice.chargeType === "PREPAID_FULL") {
-    metaParts.push("1st of month");
+    const billed = invoice.membership?.periodStart ?? invoice.dueDate;
+    const billedDate = billed ? new Date(billed) : null;
+    metaParts.push(
+      billedDate && !Number.isNaN(billedDate.getTime())
+        ? formatInvoiceMonthLabel(utcMonthKey(billedDate))
+        : "Full month",
+    );
   }
   if (invoice.chargeType === "ADMISSION") {
     metaParts.push("Admission fee");
