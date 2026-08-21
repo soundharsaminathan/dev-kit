@@ -23,6 +23,7 @@ import { Screen } from "@/modules/ui/screen";
 import { SkeletonBlock } from "@/modules/ui/skeleton-block";
 import { EmptyState, ErrorState } from "@/modules/ui/states";
 import { TouchButton } from "@/modules/ui/touch-button";
+import { RequireStudioFeature } from "@/modules/studio-features/require-studio-feature";
 
 export const Route = createFileRoute("/app/expenses/categories")({
   beforeLoad: ({ context, location }) => {
@@ -31,7 +32,11 @@ export const Route = createFileRoute("/app/expenses/categories")({
       searchStr: location.searchStr,
     });
   },
-  component: ExpensesCategoriesPage,
+  component: () => (
+    <RequireStudioFeature feature="expenses">
+      <ExpensesCategoriesPage />
+    </RequireStudioFeature>
+  ),
 });
 
 function CategoryFormSheet({

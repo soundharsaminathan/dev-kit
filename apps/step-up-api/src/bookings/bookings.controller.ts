@@ -15,6 +15,8 @@ import { CurrentUser } from "../auth/current-user.decorator";
 import { Roles } from "../auth/roles.decorator";
 import { RolesGuard } from "../auth/roles.guard";
 import { assertSameStudio } from "../auth/studio-access";
+import { FeatureGuard } from "../studio-features/feature.guard";
+import { RequireFeature } from "../studio-features/require-feature.decorator";
 import type { DecryptedUser } from "../users/user-crypto.service";
 import { BookingCommandsService } from "./application/booking.commands";
 import { BookingQueriesService } from "./application/booking.queries";
@@ -125,7 +127,8 @@ class RequestRescheduleDto {
 }
 
 @Controller("bookings")
-@UseGuards(AuthGuard, RolesGuard)
+@UseGuards(AuthGuard, RolesGuard, FeatureGuard)
+@RequireFeature("bookings")
 export class BookingsController {
   constructor(
     @Inject(BookingQueriesService)
@@ -180,6 +183,7 @@ export class BookingsController {
 
   @Post(":id/create-payment-order")
   @Roles(UserRole.STUDENT, UserRole.PARENT)
+  @RequireFeature("bookings", "payments")
   createPaymentOrder(
     @Param("id") id: string,
     @CurrentUser() user: DecryptedUser,
@@ -189,6 +193,7 @@ export class BookingsController {
 
   @Post(":id/confirm-payment")
   @Roles(UserRole.STUDENT, UserRole.PARENT)
+  @RequireFeature("bookings", "payments")
   confirmPayment(
     @Param("id") id: string,
     @CurrentUser() user: DecryptedUser,

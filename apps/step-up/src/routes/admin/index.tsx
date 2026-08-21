@@ -124,6 +124,19 @@ function AdminStudiosPage() {
                     Edit
                   </TouchButton>
                   <TouchButton
+                    variant="default"
+                    size="sm"
+                    data-testid={`studio-features-${studio.id}`}
+                    onClick={() =>
+                      void navigate({
+                        to: "/admin/studios/$id/features",
+                        params: { id: studio.id },
+                      })
+                    }
+                  >
+                    Features
+                  </TouchButton>
+                  <TouchButton
                     variant="danger"
                     size="sm"
                     data-testid={`delete-studio-${studio.id}`}

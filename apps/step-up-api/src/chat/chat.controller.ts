@@ -32,6 +32,8 @@ import {
 import { AuthGuard } from "../auth/auth.guard";
 import { CurrentUser } from "../auth/current-user.decorator";
 import type { DecryptedUser } from "../users/user-crypto.service";
+import { FeatureGuard } from "../studio-features/feature.guard";
+import { RequireFeature } from "../studio-features/require-feature.decorator";
 import { ChatService } from "./chat.service";
 
 class CreateConversationDto {
@@ -201,7 +203,8 @@ class UpdateGroupDto {
 }
 
 @Controller("chat")
-@UseGuards(AuthGuard)
+@UseGuards(AuthGuard, FeatureGuard)
+@RequireFeature("chat")
 export class ChatController {
   constructor(@Inject(ChatService) private readonly chatService: ChatService) {}
 

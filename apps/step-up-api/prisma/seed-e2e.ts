@@ -18,6 +18,10 @@ import {
   UserRole,
 } from "@prisma/client";
 import { UserCryptoService } from "../src/users/user-crypto.service";
+import {
+  ensureStudioFeaturesEnabled,
+  seedFeatureCatalog,
+} from "./seed-features";
 import { SEED_PASSWORD, syncSeedFirebaseUser } from "./sync-seed-auth";
 
 /**
@@ -311,6 +315,9 @@ async function main() {
       danceStyles: e2eDanceStyles,
     },
   });
+
+  await seedFeatureCatalog(prisma);
+  await ensureStudioFeaturesEnabled(prisma, studioId, true);
 
   await prisma.user.update({
     where: { id: u.OWNER.id },

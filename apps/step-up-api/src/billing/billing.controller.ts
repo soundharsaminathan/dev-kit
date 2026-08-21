@@ -26,6 +26,8 @@ import { Roles } from "../auth/roles.decorator";
 import { RolesGuard } from "../auth/roles.guard";
 import { assertSameStudio } from "../auth/studio-access";
 import { PaginationQueryDto } from "../shared/pagination";
+import { FeatureGuard } from "../studio-features/feature.guard";
+import { RequireFeature } from "../studio-features/require-feature.decorator";
 import type { DecryptedUser } from "../users/user-crypto.service";
 import { BillingCommandsService } from "./application/billing.commands";
 import { BillingQueriesService } from "./application/billing.queries";
@@ -95,7 +97,7 @@ class BillingStudioListQueryDto extends PaginationQueryDto {
 }
 
 @Controller("billing")
-@UseGuards(AuthGuard, RolesGuard)
+@UseGuards(AuthGuard, RolesGuard, FeatureGuard)
 export class BillingController {
   constructor(
     @Inject(BillingService) private readonly billingService: BillingService,
@@ -132,6 +134,7 @@ export class BillingController {
 
   @Get("analytics/trainer/:trainerId")
   @Roles(UserRole.OWNER, UserRole.STAFF)
+  @RequireFeature("payments")
   trainerAnalytics(
     @CurrentUser() user: DecryptedUser,
     @Param("trainerId") trainerId: string,
@@ -208,6 +211,7 @@ export class BillingController {
 
   @Post(":id/create-payment-order")
   @Roles(UserRole.STUDENT, UserRole.PARENT)
+  @RequireFeature("payments")
   createPaymentOrder(
     @CurrentUser() user: DecryptedUser,
     @Param("id") id: string,
@@ -217,6 +221,7 @@ export class BillingController {
 
   @Post(":id/confirm-payment")
   @Roles(UserRole.STUDENT, UserRole.PARENT)
+  @RequireFeature("payments")
   confirmPayment(
     @CurrentUser() user: DecryptedUser,
     @Param("id") id: string,

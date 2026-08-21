@@ -28,9 +28,14 @@ import type {
 import { ApiState } from "@/modules/ui/api-state";
 import { FormInput } from "@/modules/ui/form-input";
 import { PageHeader } from "@/modules/ui/page-header";
+import { RequireStudioFeature } from "@/modules/studio-features/require-studio-feature";
 
 export const Route = createFileRoute("/app/contests/$id")({
-  component: ContestDetailPage,
+  component: () => (
+    <RequireStudioFeature feature="contests">
+      <ContestDetailPage />
+    </RequireStudioFeature>
+  ),
 });
 
 const STATUS_VARIANT: Record<

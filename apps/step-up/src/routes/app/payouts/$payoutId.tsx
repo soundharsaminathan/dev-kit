@@ -18,6 +18,7 @@ import { SkeletonBlock } from "@/modules/ui/skeleton-block";
 import staff from "@/modules/ui/staff.module.scss";
 import { EmptyState, ErrorState } from "@/modules/ui/states";
 import { TouchButton } from "@/modules/ui/touch-button";
+import { RequireStudioFeature } from "@/modules/studio-features/require-studio-feature";
 
 function formatSessionDateTime(value: string) {
   return new Date(value).toLocaleString(undefined, {
@@ -37,7 +38,11 @@ function statusTone(status: TrainerPayoutDetail["status"]) {
 }
 
 export const Route = createFileRoute("/app/payouts/$payoutId")({
-  component: PayoutDetailPage,
+  component: () => (
+    <RequireStudioFeature feature="payouts">
+      <PayoutDetailPage />
+    </RequireStudioFeature>
+  ),
 });
 
 function PayoutDetailPage() {

@@ -36,6 +36,8 @@ import { AuthGuard } from "../auth/auth.guard";
 import { CurrentUser } from "../auth/current-user.decorator";
 import { Roles } from "../auth/roles.decorator";
 import { RolesGuard } from "../auth/roles.guard";
+import { FeatureGuard } from "../studio-features/feature.guard";
+import { RequireFeature } from "../studio-features/require-feature.decorator";
 import type { DecryptedUser } from "../users/user-crypto.service";
 import { ContestsService } from "./contests.service";
 
@@ -247,7 +249,8 @@ class UpsertScoreDto {
 }
 
 @Controller("contests")
-@UseGuards(AuthGuard, RolesGuard)
+@UseGuards(AuthGuard, RolesGuard, FeatureGuard)
+@RequireFeature("contests")
 export class ContestsController {
   constructor(
     @Inject(ContestsService) private readonly contestsService: ContestsService,

@@ -1,6 +1,7 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { requireAdmin } from "@/lib/require-auth";
 import { StudioPaymentsFormPage } from "@/modules/settings/studio-payments-form-page";
+import { RequireStudioFeature } from "@/modules/studio-features/require-studio-feature";
 
 export const Route = createFileRoute("/app/settings_/payments")({
   beforeLoad: ({ context, location }) => {
@@ -12,5 +13,9 @@ export const Route = createFileRoute("/app/settings_/payments")({
       throw redirect({ to: "/app/settings" });
     }
   },
-  component: StudioPaymentsFormPage,
+  component: () => (
+    <RequireStudioFeature feature="payments">
+      <StudioPaymentsFormPage />
+    </RequireStudioFeature>
+  ),
 });

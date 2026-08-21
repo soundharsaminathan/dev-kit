@@ -14,6 +14,7 @@ import { Screen } from "@/modules/ui/screen";
 import { SkeletonCardList } from "@/modules/ui/skeleton-block";
 import { EmptyState, ErrorState, SuccessState } from "@/modules/ui/states";
 import { TouchButton } from "@/modules/ui/touch-button";
+import { RequireStudioFeature } from "@/modules/studio-features/require-studio-feature";
 import styles from "./contests.module.scss";
 
 type StudioMember = {
@@ -32,7 +33,11 @@ type UserDetail = {
 };
 
 export const Route = createFileRoute("/me/contests")({
-  component: MeContestsPage,
+  component: () => (
+    <RequireStudioFeature feature="contests">
+      <MeContestsPage />
+    </RequireStudioFeature>
+  ),
 });
 
 function formatDate(value: string) {

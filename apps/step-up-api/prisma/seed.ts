@@ -120,6 +120,9 @@ async function main() {
     },
   });
 
+  const { seedFeatureCatalog } = await import("./seed-features");
+  await seedFeatureCatalog(prisma);
+
   console.log("Seed complete.");
   console.log(`  System admin: ${SYSTEM_ADMIN.email} / ${SEED_PASSWORD}`);
   console.log(

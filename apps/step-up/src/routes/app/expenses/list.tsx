@@ -31,6 +31,7 @@ import { Screen } from "@/modules/ui/screen";
 import { SkeletonRowList } from "@/modules/ui/skeleton-block";
 import { EmptyState, ErrorState } from "@/modules/ui/states";
 import { TouchButton } from "@/modules/ui/touch-button";
+import { RequireStudioFeature } from "@/modules/studio-features/require-studio-feature";
 
 const PAGE_SIZE = 20;
 
@@ -44,7 +45,11 @@ export const Route = createFileRoute("/app/expenses/list")({
       searchStr: location.searchStr,
     });
   },
-  component: ExpensesListPage,
+  component: () => (
+    <RequireStudioFeature feature="expenses">
+      <ExpensesListPage />
+    </RequireStudioFeature>
+  ),
 });
 
 function ExpensesListPage() {

@@ -34,6 +34,7 @@ import { Screen } from "@/modules/ui/screen";
 import { SkeletonBlock } from "@/modules/ui/skeleton-block";
 import { EmptyState, ErrorState } from "@/modules/ui/states";
 import { TouchButton } from "@/modules/ui/touch-button";
+import { RequireStudioFeature } from "@/modules/studio-features/require-studio-feature";
 
 const chartConfig = {
   total: {
@@ -58,7 +59,11 @@ export const Route = createFileRoute("/app/expenses/reports")({
       searchStr: location.searchStr,
     });
   },
-  component: ExpensesReportsPage,
+  component: () => (
+    <RequireStudioFeature feature="expenses">
+      <ExpensesReportsPage />
+    </RequireStudioFeature>
+  ),
 });
 
 function ExpensesReportsPage() {

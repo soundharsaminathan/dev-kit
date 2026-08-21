@@ -30,6 +30,7 @@ import { SessionsModule } from "./sessions/sessions.module";
 import { SocialModule } from "./social/social.module";
 import { StaffAgentModule } from "./staff-agent/staff-agent.module";
 import { StaffInvitesModule } from "./staff-invites/staff-invites.module";
+import { StudioFeaturesModule } from "./studio-features/studio-features.module";
 import { StudiosModule } from "./studios/studios.module";
 import { SubscriptionsModule } from "./subscriptions/subscriptions.module";
 import { UserCryptoModule } from "./users/user-crypto.module";
@@ -47,6 +48,7 @@ import { UsersModule } from "./users/users.module";
     AuthModule,
     UsersModule,
     StudiosModule,
+    StudioFeaturesModule,
     StaffInvitesModule,
     BranchesModule,
     BatchesModule,

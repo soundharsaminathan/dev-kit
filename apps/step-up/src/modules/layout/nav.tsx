@@ -13,6 +13,7 @@ import {
   type NavLinkItem,
   type ShellVariant,
 } from "./nav-config";
+import { useNavEnabledFeatures } from "./use-nav-enabled-features";
 
 export function NavLink({ to, label, icon, exact }: NavLinkItem) {
   return (
@@ -31,7 +32,8 @@ export function NavLink({ to, label, icon, exact }: NavLinkItem) {
 
 export function SidebarNavSections({ variant }: { variant: ShellVariant }) {
   const { user } = useAuth();
-  const sections = getSidebarSections(variant, user?.role);
+  const enabledFeatures = useNavEnabledFeatures(variant);
+  const sections = getSidebarSections(variant, user?.role, enabledFeatures);
 
   return (
     <>

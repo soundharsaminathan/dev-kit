@@ -369,6 +369,12 @@ describe("StudiosService", () => {
             contact: null,
           }),
         },
+        feature: {
+          findMany: vi.fn().mockResolvedValue([{ id: "feat-bookings" }]),
+        },
+        studioFeature: {
+          createMany: vi.fn().mockResolvedValue({ count: 1 }),
+        },
       };
       const result = await fn(tx);
       expect(tx.user.create).toHaveBeenCalledWith(
@@ -378,6 +384,7 @@ describe("StudiosService", () => {
           }),
         }),
       );
+      expect(tx.studioFeature.createMany).toHaveBeenCalled();
       return result;
     });
 

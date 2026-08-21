@@ -1,4 +1,5 @@
 import type { IconName } from "@dev-ui/icons";
+import type { FeatureKey } from "@/lib/feature-keys";
 import {
   ADMIN_ROLES,
   MEMBER_ROLES,
@@ -21,6 +22,8 @@ export type NavLinkItem = {
   sidebar?: boolean;
   /** Defaults to STAFF_ROLES (app), MEMBER_ROLES (me), or SYSTEM_ADMIN_ROLES (admin). */
   roles?: UserRole[];
+  /** When set, link is hidden unless this studio feature is enabled. */
+  feature?: FeatureKey;
 };
 
 export type NavSection = {
@@ -57,6 +60,7 @@ const appLinks: NavLinkItem[] = [
     label: "Messages",
     icon: "message-square",
     section: "Studio",
+    feature: "chat",
   },
   {
     to: "/app/calendar",
@@ -77,6 +81,7 @@ const appLinks: NavLinkItem[] = [
     label: "Feed",
     icon: "image",
     section: "Studio",
+    feature: "feed",
   },
   {
     to: "/app/students",
@@ -90,6 +95,7 @@ const appLinks: NavLinkItem[] = [
     label: "Bookings",
     icon: "book-open",
     section: "Ops",
+    feature: "bookings",
   },
   {
     to: "/app/trainers",
@@ -110,7 +116,13 @@ const appLinks: NavLinkItem[] = [
     section: "Ops",
     roles: ADMIN_ROLES,
   },
-  { to: "/app/contests", label: "Contests", icon: "star", section: "Ops" },
+  {
+    to: "/app/contests",
+    label: "Contests",
+    icon: "star",
+    section: "Ops",
+    feature: "contests",
+  },
   {
     to: "/app/certificates",
     label: "Certificates",
@@ -131,6 +143,7 @@ const appLinks: NavLinkItem[] = [
     icon: "credit-card",
     section: "Money",
     roles: ADMIN_ROLES,
+    feature: "payments",
   },
   {
     to: "/app/import",
@@ -138,6 +151,7 @@ const appLinks: NavLinkItem[] = [
     icon: "upload",
     section: "Ops",
     roles: ADMIN_ROLES,
+    feature: "data_import",
   },
   {
     to: "/app/expenses",
@@ -145,12 +159,14 @@ const appLinks: NavLinkItem[] = [
     icon: "wallet",
     section: "Money",
     roles: ADMIN_ROLES,
+    feature: "expenses",
   },
   {
     to: "/app/payouts",
     label: "Payouts",
     icon: "wallet",
     section: "Money",
+    feature: "payouts",
   },
   {
     to: "/app/retention",
@@ -195,6 +211,7 @@ const memberLinks: NavLinkItem[] = [
     icon: "message-square",
     section: "My dance",
     primary: true,
+    feature: "chat",
   },
   {
     to: "/me/profile",
@@ -208,12 +225,14 @@ const memberLinks: NavLinkItem[] = [
     label: "Feed",
     icon: "image",
     section: "My dance",
+    feature: "feed",
   },
   {
     to: "/me/bookings",
     label: "Bookings",
     icon: "book-open",
     section: "Activity",
+    feature: "bookings",
   },
   {
     to: "/me/locations",
@@ -250,6 +269,7 @@ const memberLinks: NavLinkItem[] = [
     label: "Contests",
     icon: "star",
     section: "Activity",
+    feature: "contests",
   },
   {
     to: "/me/subscriptions",
@@ -298,26 +318,54 @@ function linkVisibleToRole(
   return allowed.includes(role);
 }
 
-function linksFor(variant: ShellVariant, role?: UserRole): NavLinkItem[] {
+function linkVisibleToFeatures(
+  link: NavLinkItem,
+  enabledFeatures: Set<string> | null | undefined,
+) {
+  if (!link.feature) {
+    return true;
+  }
+  // undefined = caller not applying feature filter (role-only / tests).
+  if (enabledFeatures === undefined) {
+    return true;
+  }
+  // null = features still loading — hide gated links.
+  if (enabledFeatures === null) {
+    return false;
+  }
+  return enabledFeatures.has(link.feature);
+}
+
+function linksFor(
+  variant: ShellVariant,
+  role?: UserRole,
+  enabledFeatures?: Set<string> | null,
+): NavLinkItem[] {
   const links =
     variant === "app"
       ? appLinks
       : variant === "admin"
         ? adminLinks
         : memberLinks;
-  if (!role) {
-    return links;
-  }
-  return links.filter((link) => linkVisibleToRole(link, variant, role));
+  return links.filter((link) => {
+    if (role && !linkVisibleToRole(link, variant, role)) {
+      return false;
+    }
+    if (!linkVisibleToFeatures(link, enabledFeatures)) {
+      return false;
+    }
+    return true;
+  });
 }
 
 export function getHeaderNavLinks(
   variant: ShellVariant,
   role?: UserRole,
   _isMobile = false,
+  enabledFeatures?: Set<string> | null,
 ): NavLinkItem[] {
   if (variant === "app") {
-    return linksFor(variant, role).filter(
+    return linksFor(variant, role, enabledFeatures).filter(
       (link) => link.to === "/app/messages" || link.to === "/app/feed",
     );
   }
@@ -348,31 +396,41 @@ function groupBySection(links: NavLinkItem[]): NavSection[] {
 export function getSidebarSections(
   variant: ShellVariant,
   role?: UserRole,
+  enabledFeatures?: Set<string> | null,
 ): NavSection[] {
   return groupBySection(
-    linksFor(variant, role).filter((link) => link.sidebar !== false),
+    linksFor(variant, role, enabledFeatures).filter(
+      (link) => link.sidebar !== false,
+    ),
   );
 }
 
 export function getMenuSections(
   variant: ShellVariant,
   role?: UserRole,
+  enabledFeatures?: Set<string> | null,
 ): NavSection[] {
-  return groupBySection(getMoreLinks(variant, role));
+  return groupBySection(getMoreLinks(variant, role, enabledFeatures));
 }
 
 export function getPrimaryTabs(
   variant: ShellVariant,
   role?: UserRole,
+  enabledFeatures?: Set<string> | null,
 ): NavLinkItem[] {
-  return linksFor(variant, role).filter((link) => link.primary);
+  return linksFor(variant, role, enabledFeatures).filter(
+    (link) => link.primary,
+  );
 }
 
 export function getMoreLinks(
   variant: ShellVariant,
   role?: UserRole,
+  enabledFeatures?: Set<string> | null,
 ): NavLinkItem[] {
-  return linksFor(variant, role).filter((link) => !link.primary);
+  return linksFor(variant, role, enabledFeatures).filter(
+    (link) => !link.primary,
+  );
 }
 
 export function getProfilePath(variant: ShellVariant): string {

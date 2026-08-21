@@ -16,6 +16,7 @@ import {
 import { Screen } from "@/modules/ui/screen";
 import staff from "@/modules/ui/staff.module.scss";
 import { StickyCtaBar, TouchButton } from "@/modules/ui/touch-button";
+import { RequireStudioFeature } from "@/modules/studio-features/require-studio-feature";
 
 type SheetCounts = {
   students: number;
@@ -82,7 +83,11 @@ export const Route = createFileRoute("/app/import")({
       searchStr: location.searchStr,
     });
   },
-  component: ImportDataPage,
+  component: () => (
+    <RequireStudioFeature feature="data_import">
+      <ImportDataPage />
+    </RequireStudioFeature>
+  ),
 });
 
 function ImportDataPage() {

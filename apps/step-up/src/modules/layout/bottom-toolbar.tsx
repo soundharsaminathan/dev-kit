@@ -15,6 +15,7 @@ import {
   type NavLinkItem,
   type ShellVariant,
 } from "./nav-config";
+import { useNavEnabledFeatures } from "./use-nav-enabled-features";
 
 const SPRING_TAB_BUBBLE = {
   type: "spring",
@@ -89,11 +90,12 @@ function ToolbarLink({
 export function BottomToolbar({ variant }: BottomToolbarProps) {
   const isMobile = useIsMobile();
   const { user } = useAuth();
+  const enabledFeatures = useNavEnabledFeatures(variant);
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
   });
-  const primary = getPrimaryTabs(variant, user?.role);
-  const moreLinks = getMoreLinks(variant, user?.role);
+  const primary = getPrimaryTabs(variant, user?.role, enabledFeatures);
+  const moreLinks = getMoreLinks(variant, user?.role, enabledFeatures);
   const moreActive = moreLinks.some((link) => isLinkActive(pathname, link));
   const profilePath = getProfilePath(variant);
   const memberChrome = variant === "me";

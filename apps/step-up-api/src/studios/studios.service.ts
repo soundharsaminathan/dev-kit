@@ -177,6 +177,17 @@ export class StudiosService {
         },
       });
 
+      const features = await tx.feature.findMany({ select: { id: true } });
+      if (features.length > 0) {
+        await tx.studioFeature.createMany({
+          data: features.map((feature) => ({
+            studioId: studio.id,
+            featureId: feature.id,
+            enabled: true,
+          })),
+        });
+      }
+
       await tx.user.update({
         where: { id: ownerId },
         data: { studioId: studio.id, role: UserRole.OWNER },

@@ -9,6 +9,7 @@ import { useApi } from "@/lib/api-context";
 import { unwrapPage } from "@/lib/api-page";
 import { useAuth } from "@/lib/auth";
 import { ENTITY_ICONS } from "@/lib/entity-icons";
+import { useIsFeatureEnabled } from "@/lib/studio-features";
 import { useStudioId } from "@/lib/use-studio-id";
 import {
   isBookingForTrainer,
@@ -183,6 +184,7 @@ function AppDashboardPage() {
   const { toast } = useToastContext("AppDashboardPage");
   const { user } = useAuth();
   const isTrainer = user?.role === "TRAINER";
+  const bookingsEnabled = useIsFeatureEnabled("bookings");
   const [funnelPeriod, setFunnelPeriod] =
     useState<StudentFunnelPeriod>("lifetime");
   const [pendingOpen, setPendingOpen] = useState(false);
@@ -262,6 +264,7 @@ function AppDashboardPage() {
   const bookings = useQuery({
     queryKey: ["bookings", "studio", studioId],
     queryFn: () => api.get<StudioBooking[]>(`/bookings/studio/${studioId}`),
+    enabled: bookingsEnabled,
     staleTime: 30_000,
   });
   const incompletePast = useQuery({
@@ -577,14 +580,18 @@ function AppDashboardPage() {
               ) : null}
               {!bookings.isLoading &&
               !incompletePast.isLoading &&
-              pending.length === 0 &&
+              (!bookingsEnabled || pending.length === 0) &&
               (incompletePast.data?.length ?? 0) === 0 ? (
                 <EmptyState
                   title="All clear"
-                  description="No pending bookings or incomplete sessions."
+                  description={
+                    bookingsEnabled
+                      ? "No pending bookings or incomplete sessions."
+                      : "No incomplete sessions."
+                  }
                 />
               ) : null}
-              {pending.length > 0 ? (
+              {bookingsEnabled && pending.length > 0 ? (
                 <>
                   {/*
                     Compact summary (not a long booking list): under Lighthouse the
@@ -688,10 +695,12 @@ function AppDashboardPage() {
                 Calendar
                 <span className={staff.quickLinkMeta}>Schedule</span>
               </Link>
-              <Link to="/app/bookings" className={staff.quickLink}>
-                Bookings
-                <span className={staff.quickLinkMeta}>All requests</span>
-              </Link>
+              {bookingsEnabled ? (
+                <Link to="/app/bookings" className={staff.quickLink}>
+                  Bookings
+                  <span className={staff.quickLinkMeta}>All requests</span>
+                </Link>
+              ) : null}
               <Link to="/app/messages" className={staff.quickLink}>
                 Messages
                 <span className={staff.quickLinkMeta}>Chat</span>

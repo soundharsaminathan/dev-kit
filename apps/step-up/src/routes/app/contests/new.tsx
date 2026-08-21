@@ -31,6 +31,7 @@ import type {
 } from "@/modules/contests/types";
 import { FormInput } from "@/modules/ui/form-input";
 import { PageHeader } from "@/modules/ui/page-header";
+import { RequireStudioFeature } from "@/modules/studio-features/require-studio-feature";
 
 type StudioMember = {
   id: string;
@@ -65,7 +66,11 @@ export const Route = createFileRoute("/app/contests/new")({
       searchStr: location.searchStr,
     });
   },
-  component: NewContestPage,
+  component: () => (
+    <RequireStudioFeature feature="contests">
+      <NewContestPage />
+    </RequireStudioFeature>
+  ),
 });
 
 function NewContestPage() {

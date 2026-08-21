@@ -1,4 +1,11 @@
-import { authFile, expect, SMOKE, test, waitForAppReady } from "./fixtures";
+import {
+  apiRequest,
+  authFile,
+  expect,
+  SMOKE,
+  test,
+  waitForAppReady,
+} from "./fixtures";
 import { sweepPaths } from "./route-sweep";
 
 const ADMIN_PATHS = [
@@ -6,6 +13,7 @@ const ADMIN_PATHS = [
   "/admin/profile",
   "/admin/studios/new",
   `/admin/studios/${SMOKE.studioId}`,
+  `/admin/studios/${SMOKE.studioId}/features`,
 ];
 
 test.describe("system admin smoke @smoke", () => {
@@ -52,26 +60,66 @@ test.describe("system admin smoke @smoke", () => {
     }
   });
 
-  test("system admin can open smoke studio detail @smoke", async ({
+  test("system admin can open features page and toggle bookings restore @smoke", async ({
     browser,
   }) => {
-    const context = await browser.newContext({
-      storageState: authFile("SYSTEM_ADMIN"),
-    });
-    const page = await context.newPage();
+    await apiRequest(
+      "SYSTEM_ADMIN",
+      `/studios/${SMOKE.studioId}/features/bookings`,
+      {
+        method: "PATCH",
+        body: JSON.stringify({ enabled: false }),
+      },
+    );
     try {
-      await page.goto(`/admin/studios/${SMOKE.studioId}`, {
-        waitUntil: "domcontentloaded",
+      const adminContext = await browser.newContext({
+        storageState: authFile("SYSTEM_ADMIN"),
       });
-      await waitForAppReady(page);
-      await expect(page).toHaveURL(
-        new RegExp(`/admin/studios/${SMOKE.studioId}`),
-      );
-      await expect(
-        page.getByRole("heading", { name: /edit studio|smoke test studio/i }),
-      ).toBeVisible();
+      const adminPage = await adminContext.newPage();
+      try {
+        await adminPage.goto(`/admin/studios/${SMOKE.studioId}/features`, {
+          waitUntil: "domcontentloaded",
+        });
+        await waitForAppReady(adminPage);
+        await expect(
+          adminPage.getByRole("heading", {
+            name: "Studio features",
+            exact: true,
+          }),
+        ).toBeVisible();
+      } finally {
+        await adminContext.close();
+      }
+
+      const ownerContext = await browser.newContext({
+        storageState: authFile("OWNER"),
+      });
+      const ownerPage = await ownerContext.newPage();
+      try {
+        await ownerPage.goto("/app", { waitUntil: "domcontentloaded" });
+        await waitForAppReady(ownerPage);
+        await expect(ownerPage.locator('a[href="/app/bookings"]')).toHaveCount(
+          0,
+        );
+        await ownerPage.goto("/app/bookings", {
+          waitUntil: "domcontentloaded",
+        });
+        await waitForAppReady(ownerPage);
+        await expect(
+          ownerPage.getByRole("heading", { name: /feature unavailable/i }),
+        ).toBeVisible();
+      } finally {
+        await ownerContext.close();
+      }
     } finally {
-      await context.close();
+      await apiRequest(
+        "SYSTEM_ADMIN",
+        `/studios/${SMOKE.studioId}/features/bookings`,
+        {
+          method: "PATCH",
+          body: JSON.stringify({ enabled: true }),
+        },
+      );
     }
   });
 });

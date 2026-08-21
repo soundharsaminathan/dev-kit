@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { useApi } from "@/lib/api-context";
 import { useAuth } from "@/lib/auth";
+import { useIsFeatureEnabled } from "@/lib/studio-features";
 import { useStudioId } from "@/lib/use-studio-id";
 import menu from "@/modules/me/profile-menu-page.module.scss";
 import { InstallAppPanel } from "@/modules/pwa/install-app-panel";
@@ -32,6 +33,7 @@ type SettingsLink = {
     | "users";
   ownerOnly?: boolean;
   adminOnly?: boolean;
+  feature?: "payments";
 };
 
 const LINKS: SettingsLink[] = [
@@ -67,6 +69,7 @@ const LINKS: SettingsLink[] = [
     hint: "GST and Razorpay",
     icon: "credit-card",
     ownerOnly: true,
+    feature: "payments",
   },
   {
     to: "/app/settings/team",
@@ -83,6 +86,7 @@ export function SettingsMenuPage() {
   const { user } = useAuth();
   const isOwner = user?.role === "OWNER";
   const isAdmin = user?.role === "OWNER" || user?.role === "STAFF";
+  const paymentsEnabled = useIsFeatureEnabled("payments");
 
   const studioQuery = useQuery({
     queryKey: ["studio", studioId],
@@ -92,6 +96,7 @@ export function SettingsMenuPage() {
   const visibleLinks = LINKS.filter((link) => {
     if (link.ownerOnly && !isOwner) return false;
     if (link.adminOnly && !isAdmin) return false;
+    if (link.feature === "payments" && !paymentsEnabled) return false;
     return true;
   });
 

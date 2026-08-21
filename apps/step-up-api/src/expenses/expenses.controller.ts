@@ -33,6 +33,8 @@ import { CurrentUser } from "../auth/current-user.decorator";
 import { Roles } from "../auth/roles.decorator";
 import { RolesGuard } from "../auth/roles.guard";
 import { assertSameStudio } from "../auth/studio-access";
+import { FeatureGuard } from "../studio-features/feature.guard";
+import { RequireFeature } from "../studio-features/require-feature.decorator";
 import type { DecryptedUser } from "../users/user-crypto.service";
 import { ExpensesService } from "./expenses.service";
 
@@ -301,7 +303,8 @@ class RangeQueryDto {
 const EXPENSE_ROLES = [UserRole.OWNER, UserRole.STAFF];
 
 @Controller()
-@UseGuards(AuthGuard, RolesGuard)
+@UseGuards(AuthGuard, RolesGuard, FeatureGuard)
+@RequireFeature("expenses")
 export class ExpensesController {
   constructor(
     @Inject(ExpensesService) private readonly expensesService: ExpensesService,

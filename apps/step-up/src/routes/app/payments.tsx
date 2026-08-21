@@ -44,6 +44,7 @@ import { Screen } from "@/modules/ui/screen";
 import { SkeletonBlock, SkeletonCardList } from "@/modules/ui/skeleton-block";
 import { EmptyState, ErrorState } from "@/modules/ui/states";
 import { TouchButton } from "@/modules/ui/touch-button";
+import { RequireStudioFeature } from "@/modules/studio-features/require-studio-feature";
 
 const ALL_TRAINERS_ID = "all";
 const ALL_BRANCHES_ID = "all";
@@ -171,7 +172,11 @@ export const Route = createFileRoute("/app/payments")({
       searchStr: location.searchStr,
     });
   },
-  component: PaymentsPage,
+  component: () => (
+    <RequireStudioFeature feature="payments">
+      <PaymentsPage />
+    </RequireStudioFeature>
+  ),
 });
 
 function pad(value: number) {

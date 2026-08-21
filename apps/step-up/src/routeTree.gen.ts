@@ -107,6 +107,7 @@ import { Route as AppSessionsIdAttendanceRouteImport } from './routes/app/sessio
 import { Route as AppLocationsIdEditRouteImport } from './routes/app/locations/$id_.edit'
 import { Route as AppLocationsIdClassesRouteImport } from './routes/app/locations/$id_.classes'
 import { Route as AppBatchesIdSettingsRouteImport } from './routes/app/batches/$id_.settings'
+import { Route as AdminStudiosIdFeaturesRouteImport } from './routes/admin/studios/$id_.features'
 
 const RegisterRoute = RegisterRouteImport.update({
   id: '/register',
@@ -601,6 +602,11 @@ const AppBatchesIdSettingsRoute = AppBatchesIdSettingsRouteImport.update({
   path: '/batches/$id/settings',
   getParentRoute: () => AppRoute,
 } as any)
+const AdminStudiosIdFeaturesRoute = AdminStudiosIdFeaturesRouteImport.update({
+  id: '/studios/$id_/features',
+  path: '/studios/$id/features',
+  getParentRoute: () => AdminRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -695,6 +701,7 @@ export interface FileRoutesByFullPath {
   '/me/locations/': typeof MeLocationsIndexRoute
   '/me/messages/': typeof MeMessagesIndexRoute
   '/me/trainers/': typeof MeTrainersIndexRoute
+  '/admin/studios/$id/features': typeof AdminStudiosIdFeaturesRoute
   '/app/batches/$id/settings': typeof AppBatchesIdSettingsRoute
   '/app/locations/$id/classes': typeof AppLocationsIdClassesRoute
   '/app/locations/$id/edit': typeof AppLocationsIdEditRoute
@@ -792,6 +799,7 @@ export interface FileRoutesByTo {
   '/me/locations': typeof MeLocationsIndexRoute
   '/me/messages': typeof MeMessagesIndexRoute
   '/me/trainers': typeof MeTrainersIndexRoute
+  '/admin/studios/$id/features': typeof AdminStudiosIdFeaturesRoute
   '/app/batches/$id/settings': typeof AppBatchesIdSettingsRoute
   '/app/locations/$id/classes': typeof AppLocationsIdClassesRoute
   '/app/locations/$id/edit': typeof AppLocationsIdEditRoute
@@ -893,6 +901,7 @@ export interface FileRoutesById {
   '/me/locations/': typeof MeLocationsIndexRoute
   '/me/messages/': typeof MeMessagesIndexRoute
   '/me/trainers/': typeof MeTrainersIndexRoute
+  '/admin/studios/$id_/features': typeof AdminStudiosIdFeaturesRoute
   '/app/batches/$id_/settings': typeof AppBatchesIdSettingsRoute
   '/app/locations/$id_/classes': typeof AppLocationsIdClassesRoute
   '/app/locations/$id_/edit': typeof AppLocationsIdEditRoute
@@ -995,6 +1004,7 @@ export interface FileRouteTypes {
     | '/me/locations/'
     | '/me/messages/'
     | '/me/trainers/'
+    | '/admin/studios/$id/features'
     | '/app/batches/$id/settings'
     | '/app/locations/$id/classes'
     | '/app/locations/$id/edit'
@@ -1092,6 +1102,7 @@ export interface FileRouteTypes {
     | '/me/locations'
     | '/me/messages'
     | '/me/trainers'
+    | '/admin/studios/$id/features'
     | '/app/batches/$id/settings'
     | '/app/locations/$id/classes'
     | '/app/locations/$id/edit'
@@ -1192,6 +1203,7 @@ export interface FileRouteTypes {
     | '/me/locations/'
     | '/me/messages/'
     | '/me/trainers/'
+    | '/admin/studios/$id_/features'
     | '/app/batches/$id_/settings'
     | '/app/locations/$id_/classes'
     | '/app/locations/$id_/edit'
@@ -1903,6 +1915,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppBatchesIdSettingsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/admin/studios/$id_/features': {
+      id: '/admin/studios/$id_/features'
+      path: '/studios/$id/features'
+      fullPath: '/admin/studios/$id/features'
+      preLoaderRoute: typeof AdminStudiosIdFeaturesRouteImport
+      parentRoute: typeof AdminRoute
+    }
   }
 }
 
@@ -1911,6 +1930,7 @@ interface AdminRouteChildren {
   AdminIndexRoute: typeof AdminIndexRoute
   AdminStudiosIdRoute: typeof AdminStudiosIdRoute
   AdminStudiosNewRoute: typeof AdminStudiosNewRoute
+  AdminStudiosIdFeaturesRoute: typeof AdminStudiosIdFeaturesRoute
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
@@ -1918,6 +1938,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminIndexRoute: AdminIndexRoute,
   AdminStudiosIdRoute: AdminStudiosIdRoute,
   AdminStudiosNewRoute: AdminStudiosNewRoute,
+  AdminStudiosIdFeaturesRoute: AdminStudiosIdFeaturesRoute,
 }
 
 const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)

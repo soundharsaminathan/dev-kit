@@ -42,6 +42,7 @@ import { SkeletonBlock } from "@/modules/ui/skeleton-block";
 import staff from "@/modules/ui/staff.module.scss";
 import { EmptyState, ErrorState } from "@/modules/ui/states";
 import { TouchButton } from "@/modules/ui/touch-button";
+import { RequireStudioFeature } from "@/modules/studio-features/require-studio-feature";
 
 const chartConfig = {
   amount: {
@@ -92,7 +93,11 @@ export const Route = createFileRoute("/app/expenses/")({
       searchStr: location.searchStr,
     });
   },
-  component: ExpensesDashboardPage,
+  component: () => (
+    <RequireStudioFeature feature="expenses">
+      <ExpensesDashboardPage />
+    </RequireStudioFeature>
+  ),
 });
 
 function ExpensesDashboardPage() {

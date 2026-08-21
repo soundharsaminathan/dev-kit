@@ -444,6 +444,34 @@ model Studio {
   revenueSummaries     StudioRevenueSummary[]
   leadRemarks          LeadRemark[]
   trainerPayouts       TrainerPayout[]
+  studioFeatures       StudioFeature[]
+}
+
+model Feature {
+  id              String          @id @default(cuid())
+  key             String          @unique
+  name            String
+  description     String
+  category        String
+  globallyEnabled Boolean         @default(true)
+  dependsOnKeys   String[]        @default([])
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  studioFeatures  StudioFeature[]
+}
+
+model StudioFeature {
+  studioId  String
+  featureId String
+  enabled   Boolean
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  studio  Studio  @relation(fields: [studioId], references: [id], onDelete: Cascade)
+  feature Feature @relation(fields: [featureId], references: [id], onDelete: Cascade)
+
+  @@id([studioId, featureId])
+  @@index([studioId])
 }
 
 model StudioRevenueSummary {

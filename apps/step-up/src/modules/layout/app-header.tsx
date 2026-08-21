@@ -28,6 +28,7 @@ import {
   getProfilePath,
   type ShellVariant,
 } from "./nav-config";
+import { useNavEnabledFeatures } from "./use-nav-enabled-features";
 import type { NotificationDestination } from "./notification-links";
 import {
   type NotificationItem,
@@ -357,7 +358,17 @@ export { NotificationsControl };
 export function AppHeader({ variant }: AppHeaderProps) {
   const { user } = useAuth();
   const isMobile = useIsMobile();
-  const headerLinks = getHeaderNavLinks(variant, user?.role, isMobile);
+  const enabledFeatures = useNavEnabledFeatures(variant);
+  const headerLinks = getHeaderNavLinks(
+    variant,
+    user?.role,
+    isMobile,
+    enabledFeatures,
+  );
+  const showStaffAgent =
+    variant === "app" &&
+    enabledFeatures !== null &&
+    (enabledFeatures === undefined || enabledFeatures.has("ai_agent"));
 
   return (
     <header className={styles.header}>
@@ -388,7 +399,7 @@ export function AppHeader({ variant }: AppHeaderProps) {
             </Link>
           </TooltipIconBarItem>
         ))}
-        {variant === "app" ? <StaffAgentControl /> : null}
+        {showStaffAgent ? <StaffAgentControl /> : null}
         <NotificationsControl variant={variant} />
         <ProfileControl variant={variant} />
       </TooltipIconBar>

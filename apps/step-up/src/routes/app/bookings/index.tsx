@@ -20,9 +20,14 @@ import { SkeletonCardList } from "@/modules/ui/skeleton-block";
 import staff from "@/modules/ui/staff.module.scss";
 import { EmptyState, ErrorState } from "@/modules/ui/states";
 import { TouchButton } from "@/modules/ui/touch-button";
+import { RequireStudioFeature } from "@/modules/studio-features/require-studio-feature";
 
 export const Route = createFileRoute("/app/bookings/")({
-  component: BookingsPage,
+  component: () => (
+    <RequireStudioFeature feature="bookings">
+      <BookingsPage />
+    </RequireStudioFeature>
+  ),
 });
 
 function BookingMedia({ name }: { name: string }) {

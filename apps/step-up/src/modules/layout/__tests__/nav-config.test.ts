@@ -101,6 +101,36 @@ describe("app nav role filtering", () => {
   });
 });
 
+describe("app nav feature filtering", () => {
+  it("hides bookings when bookings feature is disabled", () => {
+    const enabled = new Set([
+      "chat",
+      "feed",
+      "payments",
+      "expenses",
+      "payouts",
+      "contests",
+      "data_import",
+      "ai_agent",
+    ]);
+    const labels = getSidebarSections("app", "OWNER", enabled).flatMap(
+      (section) => section.links.map((link) => link.label),
+    );
+    expect(labels).toContain("Batches");
+    expect(labels).not.toContain("Bookings");
+    expect(labels).toContain("Payments");
+  });
+
+  it("hides gated links while features are loading (null)", () => {
+    const labels = getSidebarSections("app", "OWNER", null).flatMap(
+      (section) => section.links.map((link) => link.label),
+    );
+    expect(labels).toContain("Batches");
+    expect(labels).not.toContain("Bookings");
+    expect(labels).not.toContain("Messages");
+  });
+});
+
 describe("member nav", () => {
   it("keeps trainers out of primary tabs", () => {
     const primary = getPrimaryTabs("me").map((link) => link.to);

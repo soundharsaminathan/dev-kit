@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useApi } from "@/lib/api-context";
 import {
   StudioWizard,
@@ -7,6 +7,7 @@ import {
 } from "@/modules/admin/studio-wizard";
 import { Screen } from "@/modules/ui/screen";
 import { SkeletonBlock } from "@/modules/ui/skeleton-block";
+import staff from "@/modules/ui/staff.module.scss";
 import { EmptyState, ErrorState } from "@/modules/ui/states";
 import { TouchButton } from "@/modules/ui/touch-button";
 
@@ -17,6 +18,7 @@ export const Route = createFileRoute("/admin/studios/$id")({
 function AdminEditStudioPage() {
   const { id } = Route.useParams();
   const api = useApi();
+  const navigate = useNavigate();
 
   const studioQuery = useQuery({
     queryKey: ["admin", "studio", id],
@@ -67,13 +69,30 @@ function AdminEditStudioPage() {
   const studio = studioQuery.data;
 
   return (
-    <StudioWizard
-      mode="edit"
-      studio={{
-        ...studio,
-        address: studio.address ?? "",
-        contact: studio.contact ?? "",
-      }}
-    />
+    <>
+      <div className={staff.rowActions}>
+        <TouchButton
+          variant="default"
+          size="sm"
+          data-testid={`studio-features-${id}`}
+          onClick={() =>
+            void navigate({
+              to: "/admin/studios/$id/features",
+              params: { id },
+            })
+          }
+        >
+          Manage features
+        </TouchButton>
+      </div>
+      <StudioWizard
+        mode="edit"
+        studio={{
+          ...studio,
+          address: studio.address ?? "",
+          contact: studio.contact ?? "",
+        }}
+      />
+    </>
   );
 }

@@ -27,6 +27,10 @@ import { SAMPLE_CERTIFICATE_LAYOUT } from "../src/certificates/certificate-layou
 import { ChatCryptoService } from "../src/chat/chat-crypto.service";
 import { UserCryptoService } from "../src/users/user-crypto.service";
 import { createScriptPrismaClient, withDbRetry } from "./script-db";
+import {
+  ensureStudioFeaturesEnabled,
+  seedFeatureCatalog,
+} from "./seed-features";
 import { seedSmokeLoadData } from "./seed-smoke-load";
 import { SEED_PASSWORD, syncSeedFirebaseUser } from "./sync-seed-auth";
 
@@ -286,6 +290,9 @@ async function main() {
       platformFeePercent: 5,
     },
   });
+
+  await seedFeatureCatalog(prisma);
+  await ensureStudioFeaturesEnabled(prisma, studioId, true);
 
   await prisma.user.update({
     where: { id: u.OWNER.id },

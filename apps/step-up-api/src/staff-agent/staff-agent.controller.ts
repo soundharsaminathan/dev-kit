@@ -15,6 +15,8 @@ import { AuthGuard } from "../auth/auth.guard";
 import { CurrentUser } from "../auth/current-user.decorator";
 import { Roles } from "../auth/roles.decorator";
 import { RolesGuard } from "../auth/roles.guard";
+import { FeatureGuard } from "../studio-features/feature.guard";
+import { RequireFeature } from "../studio-features/require-feature.decorator";
 import type { DecryptedUser } from "../users/user-crypto.service";
 import { StaffAgentService } from "./staff-agent.service";
 
@@ -51,7 +53,8 @@ class StaffAgentChatDto {
 }
 
 @Controller("staff-agent")
-@UseGuards(AuthGuard, RolesGuard)
+@UseGuards(AuthGuard, RolesGuard, FeatureGuard)
+@RequireFeature("ai_agent")
 export class StaffAgentController {
   constructor(
     @Inject(StaffAgentService) private readonly staffAgent: StaffAgentService,

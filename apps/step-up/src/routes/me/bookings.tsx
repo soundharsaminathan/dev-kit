@@ -19,6 +19,7 @@ import { SkeletonCardList } from "@/modules/ui/skeleton-block";
 import staff from "@/modules/ui/staff.module.scss";
 import { EmptyState, ErrorState } from "@/modules/ui/states";
 import { TouchButton } from "@/modules/ui/touch-button";
+import { RequireStudioFeature } from "@/modules/studio-features/require-studio-feature";
 
 type Booking = {
   id: string;
@@ -58,7 +59,11 @@ function toLocalInputValue(iso: string | null | undefined) {
 }
 
 export const Route = createFileRoute("/me/bookings")({
-  component: MeBookingsPage,
+  component: () => (
+    <RequireStudioFeature feature="bookings">
+      <MeBookingsPage />
+    </RequireStudioFeature>
+  ),
 });
 
 function MeBookingsPage() {
