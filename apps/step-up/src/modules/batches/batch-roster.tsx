@@ -32,6 +32,7 @@ import { StudentSearchMultiselect } from "@/modules/students/student-search-mult
 import { AppBottomSheet } from "@/modules/ui/app-bottom-sheet";
 import { LoadMoreIndicator } from "@/modules/ui/load-more-indicator";
 import { PressableCard } from "@/modules/ui/pressable-card";
+import { SkeletonRowList } from "@/modules/ui/skeleton-block";
 import staff from "@/modules/ui/staff.module.scss";
 import { EmptyState, ErrorState } from "@/modules/ui/states";
 import { TouchButton } from "@/modules/ui/touch-button";
@@ -222,10 +223,8 @@ export function BatchRoster({ batchId, capacity, active }: BatchRosterProps) {
   const enrollExcludeIds = enrollSheetBaseline?.excludeIds ?? enrolledIds;
   const enrollMaxSelected = enrollSheetBaseline?.seatsLeft ?? seatsLeft;
   const isFull = seatsLeft <= 0;
-  const isLoading =
-    headerQuery.isLoading ||
-    activeRosterQuery.isLoading ||
-    inactiveRosterQuery.isLoading;
+  const isActiveRosterLoading = activeRosterQuery.isLoading;
+  const isInactiveRosterLoading = inactiveRosterQuery.isLoading;
   const hasUpcomingSessions =
     !headerQuery.isLoading &&
     upcomingSessions(headerQuery.data?.sessions).length > 0;
@@ -468,7 +467,7 @@ export function BatchRoster({ batchId, capacity, active }: BatchRosterProps) {
 
         <TabPanel id="active">
           <div className={styles.panel}>
-            {!isLoading && !hasUpcomingSessions ? (
+            {!headerQuery.isLoading && !hasUpcomingSessions ? (
               <div className={staff.softPanel}>
                 <p className={styles.hint}>
                   No upcoming sessions — enrollment is closed until this batch
@@ -506,7 +505,9 @@ export function BatchRoster({ batchId, capacity, active }: BatchRosterProps) {
               />
             </div>
 
-            {enrollments.length === 0 ? (
+            {isActiveRosterLoading ? (
+              <SkeletonRowList count={4} label="Loading roster" />
+            ) : enrollments.length === 0 ? (
               <EmptyState
                 icon={ENTITY_ICONS.student}
                 title={
@@ -595,7 +596,9 @@ export function BatchRoster({ batchId, capacity, active }: BatchRosterProps) {
                 onChange={setSearch}
               />
             </div>
-            {inactiveEnrollments.length === 0 ? (
+            {isInactiveRosterLoading ? (
+              <SkeletonRowList count={4} label="Loading inactive roster" />
+            ) : inactiveEnrollments.length === 0 ? (
               <EmptyState
                 icon={ENTITY_ICONS.student}
                 title={
