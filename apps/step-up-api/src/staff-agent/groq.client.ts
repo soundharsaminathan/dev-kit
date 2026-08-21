@@ -6,7 +6,8 @@ import {
 import { ConfigService } from "@nestjs/config";
 
 const GROQ_BASE = "https://api.groq.com/openai/v1";
-export const GROQ_CHAT_MODEL = "llama-3.3-70b-versatile";
+/** Default chat model — llama-3.3-70b-versatile was deprecated on Groq free/dev tiers. */
+export const GROQ_CHAT_MODEL_DEFAULT = "openai/gpt-oss-120b";
 export const GROQ_STT_MODEL = "whisper-large-v3";
 export const GROQ_TTS_MODEL = "playai-tts";
 export const GROQ_TTS_VOICE = "Fritz-PlayAI";
@@ -64,6 +65,13 @@ export class GroqClient {
     return key;
   }
 
+  chatModel(): string {
+    return (
+      this.config.get<string>("GROQ_CHAT_MODEL")?.trim() ||
+      GROQ_CHAT_MODEL_DEFAULT
+    );
+  }
+
   async chat(input: {
     messages: GroqChatMessage[];
     tools?: GroqToolDefinition[];
@@ -75,8 +83,9 @@ export class GroqClient {
     model: string;
   }> {
     const apiKey = this.requireApiKey();
+    const model = this.chatModel();
     const body: Record<string, unknown> = {
-      model: GROQ_CHAT_MODEL,
+      model,
       messages: input.messages,
       temperature: input.temperature ?? 0.2,
       max_tokens: input.maxTokens ?? 1024,
@@ -106,7 +115,7 @@ export class GroqClient {
     return {
       content: message?.content?.trim() || null,
       toolCalls: message?.tool_calls ?? [],
-      model: GROQ_CHAT_MODEL,
+      model,
     };
   }
 

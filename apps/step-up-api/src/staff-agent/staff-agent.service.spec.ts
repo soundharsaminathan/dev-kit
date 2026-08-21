@@ -59,12 +59,12 @@ describe("StaffAgentService", () => {
             },
           },
         ],
-        model: "llama-3.3-70b-versatile",
+        model: "openai/gpt-oss-120b",
       })
       .mockResolvedValueOnce({
         content: "Created lead Riya.",
         toolCalls: [],
-        model: "llama-3.3-70b-versatile",
+        model: "openai/gpt-oss-120b",
       });
     tools.execute.mockResolvedValue({
       content: JSON.stringify({ id: "lead-1", name: "Riya" }),

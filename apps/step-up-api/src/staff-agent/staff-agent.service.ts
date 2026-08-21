@@ -2,7 +2,7 @@ import { BadRequestException, Inject, Injectable } from "@nestjs/common";
 import { requireUserStudioId } from "../auth/studio-access";
 import type { DecryptedUser } from "../users/user-crypto.service";
 import {
-  GROQ_CHAT_MODEL,
+  GROQ_CHAT_MODEL_DEFAULT,
   type GroqChatMessage,
   GroqClient,
 } from "./groq.client";
@@ -103,7 +103,7 @@ export class StaffAgentService {
 
     const resolved = createResolvedIds();
     const actions: StaffAgentAction[] = [];
-    let model = GROQ_CHAT_MODEL;
+    let model = GROQ_CHAT_MODEL_DEFAULT;
     let finalReply = "";
 
     for (let round = 0; round < MAX_TOOL_ROUNDS; round += 1) {
