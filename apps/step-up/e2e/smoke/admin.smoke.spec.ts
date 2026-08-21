@@ -1,3 +1,4 @@
+import { isScheduleConflict } from "../fixtures/billing-calendar";
 import {
   apiBaseUrl,
   apiRequest,
@@ -14,7 +15,6 @@ import {
   waitForApiResponse,
   waitForAppReady,
 } from "./fixtures";
-import { isScheduleConflict } from "../fixtures/billing-calendar";
 import { sweepPath, sweepPaths } from "./route-sweep";
 
 const STAFF_PATHS = [
@@ -766,6 +766,52 @@ test.describe("admin (staff) smoke @smoke", () => {
       await expect(count).toHaveText(/\d+\s*\/\s*\d+/);
     } finally {
       await closeSmokeContext(context);
+    }
+  });
+
+  test("staff cannot extend a batch schedule by more than one year @smoke", async () => {
+    const cleanup = new SmokeDataCleanup();
+    try {
+      const batch = await createCalendarBatch(cleanup, {
+        kind: "prepaid",
+        category: "ADULTS",
+      });
+      const header = await apiRequest<{
+        scheduleJson: {
+          frequency: "DAILY" | "WEEKLY";
+          weekdays: number[];
+          startDate: string;
+          endDate: string;
+          startTime: string;
+          endTime: string;
+          utcOffsetMinutes: number;
+          dayTimes?: Array<{
+            weekday: number;
+            startTime: string;
+            endTime: string;
+          }>;
+        };
+      }>("STAFF", `/batches/${batch.id}`);
+      const tooFar = new Date(`${header.scheduleJson.endDate}T00:00:00.000Z`);
+      tooFar.setUTCDate(tooFar.getUTCDate() + 400);
+      const token = await bearerFor("STAFF");
+      const denied = await fetch(`${apiBaseUrl()}/batches/${batch.id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          scheduleJson: {
+            ...header.scheduleJson,
+            endDate: tooFar.toISOString().slice(0, 10),
+          },
+        }),
+      });
+      expect(denied.status).toBe(400);
+      expect(await denied.text()).toMatch(/extension cannot exceed one year/i);
+    } finally {
+      await cleanup.dispose();
     }
   });
 

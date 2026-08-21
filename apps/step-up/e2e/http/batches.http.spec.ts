@@ -1,5 +1,9 @@
 import { expect, test } from "@playwright/test";
-import { canJoinPostpaidNow } from "../fixtures/billing-calendar";
+import {
+  canJoinPostpaidNow,
+  isScheduleConflict,
+  uniqueClockSlot,
+} from "../fixtures/billing-calendar";
 import { apiBaseUrl, bearerFor, SEED } from "../fixtures/seed";
 import {
   createCalendarBatch,
@@ -16,6 +20,78 @@ import {
   expectStatus,
   TestDataCleanup,
 } from "./helpers";
+
+type HttpBatchSchedule = {
+  frequency: "DAILY" | "WEEKLY";
+  weekdays: number[];
+  startDate: string;
+  endDate: string;
+  startTime: string;
+  endTime: string;
+  utcOffsetMinutes: number;
+  dayTimes?: Array<{ weekday: number; startTime: string; endTime: string }>;
+};
+
+function addUtcDays(isoDate: string, days: number) {
+  const date = new Date(`${isoDate}T00:00:00.000Z`);
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
+async function createYearLongHttpBatch(cleanup: TestDataCleanup) {
+  const trainers = [SEED.users.TRAINER.id, SEED.users.TRAINER_2.id];
+  const branches = [SEED.branchMainId, SEED.branchEastId];
+  let lastError: unknown;
+
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    const stamp = Date.now() + attempt * 97_000;
+    const clock = uniqueClockSlot(stamp);
+    try {
+      const created = await expectOk<{
+        id: string;
+        scheduleJson: HttpBatchSchedule;
+      }>("STAFF", "/batches", {
+        method: "POST",
+        body: JSON.stringify({
+          studioId: SEED.users.STAFF.studioId,
+          name: `HTTP Year Batch ${stamp}`,
+          coverImageUrl:
+            "https://images.unsplash.com/photo-1518611012118-696072aa579a?w=800&q=80",
+          category: "ADULTS",
+          branchId: branches[attempt % branches.length],
+          trainerIds: [trainers[Math.floor(attempt / 2) % trainers.length]],
+          danceCategories: [
+            { name: "Hip Hop", description: "Year-long HTTP batch" },
+          ],
+          scheduleJson: {
+            frequency: "WEEKLY",
+            weekdays: [0],
+            startDate: "2030-01-06",
+            endDate: "2030-12-29",
+            ...clock,
+            utcOffsetMinutes: 0,
+          },
+          capacity: 8,
+          enrollmentMode: "SELF_JOIN",
+          subscriptionIds: [...SEED.adultPlanIds],
+          active: true,
+          certificationEnabled: false,
+        }),
+      });
+      cleanup.trackBatch(created.id);
+      return created;
+    } catch (error) {
+      lastError = error;
+      if (!isScheduleConflict(error)) {
+        throw error;
+      }
+    }
+  }
+
+  throw lastError instanceof Error
+    ? lastError
+    : new Error("Could not create year-long HTTP batch");
+}
 
 test.describe("batches HTTP @http", () => {
   test("staff creates and removes a batch with plans @http", async () => {
@@ -60,6 +136,88 @@ test.describe("batches HTTP @http", () => {
 
       expect(created.id).toBeTruthy();
       expect(created.name).toBe(name);
+    } finally {
+      await cleanup.dispose();
+    }
+  });
+
+  test("staff cannot create a batch whose schedule exceeds one year @http", async () => {
+    const result = await expectStatus("STAFF", "/batches", 400, {
+      method: "POST",
+      body: JSON.stringify({
+        studioId: SEED.users.STAFF.studioId,
+        name: `HTTP Overlong ${Date.now()}`,
+        coverImageUrl:
+          "https://images.unsplash.com/photo-1518611012118-696072aa579a?w=800&q=80",
+        category: "ADULTS",
+        branchId: SEED.branchMainId,
+        trainerIds: [SEED.users.TRAINER.id],
+        danceCategories: [
+          { name: "Hip Hop", description: "Overlong HTTP batch" },
+        ],
+        scheduleJson: {
+          frequency: "WEEKLY",
+          weekdays: [0],
+          startDate: "2027-01-03",
+          endDate: "2028-01-10",
+          startTime: "06:15",
+          endTime: "07:00",
+          utcOffsetMinutes: 0,
+        },
+        capacity: 8,
+        enrollmentMode: "SELF_JOIN",
+        subscriptionIds: [...SEED.adultPlanIds],
+        active: true,
+        certificationEnabled: false,
+      }),
+    });
+    expect(result.text).toMatch(/one year/i);
+  });
+
+  test("staff can extend a year-long batch by less than one more year @http", async () => {
+    const cleanup = new TestDataCleanup();
+    try {
+      const created = await createYearLongHttpBatch(cleanup);
+      const schedule = created.scheduleJson;
+      const extended = await expectOk<{
+        id: string;
+        scheduleJson: { endDate: string };
+      }>("STAFF", `/batches/${created.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          scheduleJson: {
+            ...schedule,
+            endDate: addUtcDays(schedule.endDate, 180),
+          },
+        }),
+      });
+      expect(extended.scheduleJson.endDate).toBe(
+        addUtcDays(schedule.endDate, 180),
+      );
+    } finally {
+      await cleanup.dispose();
+    }
+  });
+
+  test("staff cannot extend a batch by more than one year in one update @http", async () => {
+    const cleanup = new TestDataCleanup();
+    try {
+      const created = await createYearLongHttpBatch(cleanup);
+      const result = await expectStatus(
+        "STAFF",
+        `/batches/${created.id}`,
+        400,
+        {
+          method: "PATCH",
+          body: JSON.stringify({
+            scheduleJson: {
+              ...created.scheduleJson,
+              endDate: addUtcDays(created.scheduleJson.endDate, 400),
+            },
+          }),
+        },
+      );
+      expect(result.text).toMatch(/extension cannot exceed one year/i);
     } finally {
       await cleanup.dispose();
     }

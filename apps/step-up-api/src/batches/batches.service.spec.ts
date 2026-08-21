@@ -189,6 +189,29 @@ describe("BatchesService branch validation", () => {
     ).rejects.toBeInstanceOf(ConflictException);
     expect(prisma.batch.create).not.toHaveBeenCalled();
   });
+
+  it("rejects a new batch whose schedule exceeds one year", async () => {
+    prisma.studioBranch.findUnique.mockResolvedValue({
+      id: "branch-1",
+      studioId: "studio-1",
+    });
+
+    await expect(
+      service.create("owner-1", {
+        ...createPayload,
+        scheduleJson: {
+          ...createPayload.scheduleJson,
+          startDate: "2026-01-01",
+          endDate: "2027-01-03",
+        },
+      }),
+    ).rejects.toSatisfy((error: unknown) => {
+      expect(error).toBeInstanceOf(BadRequestException);
+      expect((error as BadRequestException).message).toContain("one year");
+      return true;
+    });
+    expect(prisma.batch.create).not.toHaveBeenCalled();
+  });
 });
 describe("BatchesService update", () => {
   const prisma = {
@@ -410,6 +433,91 @@ describe("BatchesService update", () => {
           row.startsAt.toISOString() === pastStartsAt.toISOString(),
       ),
     ).toBe(false);
+  });
+
+  const existingYearSchedule = {
+    frequency: "WEEKLY" as const,
+    weekdays: [1],
+    startDate: "2025-01-06",
+    endDate: "2025-12-29",
+    startTime: "18:00",
+    endTime: "19:00",
+    utcOffsetMinutes: -330,
+  };
+
+  it("allows extending a batch when only the new period is within one year", async () => {
+    prisma.batch.findUnique.mockResolvedValue({
+      id: "batch-1",
+      studioId: "studio-1",
+      category: BatchCategory.ADULTS,
+      branchId: "branch-1",
+      certificationEnabled: false,
+      certificateTemplateId: null,
+      scheduleJson: existingYearSchedule,
+    });
+
+    await service.update("batch-1", {
+      scheduleJson: {
+        ...existingYearSchedule,
+        endDate: "2026-06-29",
+      },
+    });
+
+    expect(prisma.batch.update).toHaveBeenCalled();
+  });
+
+  it("rejects an extension whose new period exceeds one year", async () => {
+    prisma.batch.findUnique.mockResolvedValue({
+      id: "batch-1",
+      studioId: "studio-1",
+      category: BatchCategory.ADULTS,
+      branchId: "branch-1",
+      certificationEnabled: false,
+      certificateTemplateId: null,
+      scheduleJson: existingYearSchedule,
+    });
+
+    await expect(
+      service.update("batch-1", {
+        scheduleJson: {
+          ...existingYearSchedule,
+          endDate: "2027-06-29",
+        },
+      }),
+    ).rejects.toSatisfy((error: unknown) => {
+      expect(error).toBeInstanceOf(BadRequestException);
+      expect((error as BadRequestException).message).toContain(
+        "extension cannot exceed one year",
+      );
+      return true;
+    });
+    expect(prisma.batch.update).not.toHaveBeenCalled();
+  });
+
+  it("does not re-check the full duration when only class times change", async () => {
+    prisma.batch.findUnique.mockResolvedValue({
+      id: "batch-1",
+      studioId: "studio-1",
+      category: BatchCategory.ADULTS,
+      branchId: "branch-1",
+      certificationEnabled: false,
+      certificateTemplateId: null,
+      scheduleJson: {
+        ...existingYearSchedule,
+        endDate: "2026-06-29",
+      },
+    });
+
+    await service.update("batch-1", {
+      scheduleJson: {
+        ...existingYearSchedule,
+        endDate: "2026-06-29",
+        startTime: "19:00",
+        endTime: "20:00",
+      },
+    });
+
+    expect(prisma.batch.update).toHaveBeenCalled();
   });
 
   it("replaces linked subscription plans", async () => {

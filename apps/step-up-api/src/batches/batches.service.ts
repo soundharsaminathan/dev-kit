@@ -273,12 +273,64 @@ function dateTimeFor(date: Date, time: string, utcOffsetMinutes: number): Date {
   );
 }
 
+const ONE_YEAR_DAYS = 366;
+
+function utcDay(isoDate: string): Date {
+  return new Date(`${isoDate}T00:00:00.000Z`);
+}
+
+function scheduleDateRange(
+  schedule: unknown,
+): { startDate: string; endDate: string } | null {
+  if (!schedule || typeof schedule !== "object") return null;
+  const parsed = schedule as Partial<BatchSchedule>;
+  if (
+    typeof parsed.startDate !== "string" ||
+    typeof parsed.endDate !== "string"
+  ) {
+    return null;
+  }
+  return { startDate: parsed.startDate, endDate: parsed.endDate };
+}
+
+function assertAtMostOneYear(from: Date, to: Date, message: string) {
+  const days = Math.floor((to.getTime() - from.getTime()) / 86_400_000);
+  if (days > ONE_YEAR_DAYS) {
+    throw new BadRequestException(message);
+  }
+}
+
+function assertScheduleDurationLimit(
+  incoming: BatchSchedule,
+  previous?: unknown,
+) {
+  const start = utcDay(incoming.startDate);
+  const end = utcDay(incoming.endDate);
+  const prior = scheduleDateRange(previous);
+
+  if (prior && incoming.startDate === prior.startDate) {
+    const previousEnd = utcDay(prior.endDate);
+    if (!Number.isNaN(previousEnd.getTime())) {
+      if (end > previousEnd) {
+        assertAtMostOneYear(
+          previousEnd,
+          end,
+          "A schedule extension cannot exceed one year",
+        );
+      }
+      return;
+    }
+  }
+
+  assertAtMostOneYear(start, end, "A batch schedule cannot exceed one year");
+}
+
 function buildSessions(
   schedule: BatchSchedule,
   sessionType: SessionType = SessionType.REGULAR,
 ) {
-  const startDate = new Date(`${schedule.startDate}T00:00:00.000Z`);
-  const endDate = new Date(`${schedule.endDate}T00:00:00.000Z`);
+  const startDate = utcDay(schedule.startDate);
+  const endDate = utcDay(schedule.endDate);
 
   if (endDate < startDate) {
     throw new BadRequestException(
@@ -305,9 +357,6 @@ function buildSessions(
   const totalDays = Math.floor(
     (endDate.getTime() - startDate.getTime()) / 86_400_000,
   );
-  if (totalDays > 366) {
-    throw new BadRequestException("A batch schedule cannot exceed one year");
-  }
 
   const weekdays = new Set(schedule.weekdays);
   if (schedule.frequency === "WEEKLY" && weekdays.size === 0) {
@@ -321,11 +370,7 @@ function buildSessions(
     if (schedule.frequency === "DAILY" || weekdays.has(weekday)) {
       const times = timesForWeekday(schedule, weekday);
       sessions.push({
-        startsAt: dateTimeFor(
-          date,
-          times.startTime,
-          schedule.utcOffsetMinutes,
-        ),
+        startsAt: dateTimeFor(date, times.startTime, schedule.utcOffsetMinutes),
         endsAt: dateTimeFor(date, times.endTime, schedule.utcOffsetMinutes),
         type: sessionType,
       });
@@ -936,6 +981,7 @@ export class BatchesService {
     },
   ) {
     const schedule = data.scheduleJson as unknown as BatchSchedule;
+    assertScheduleDurationLimit(schedule);
     const sessions = buildSessions(schedule, SessionType.REGULAR);
     const trainerIds = [...new Set(data.trainerIds)];
     const subscriptionIds = [...new Set(data.subscriptionIds)];
@@ -1283,11 +1329,14 @@ export class BatchesService {
       }
     }
 
-    const desiredSessions = data.scheduleJson
-      ? buildSessions(
-          data.scheduleJson as unknown as BatchSchedule,
-          SessionType.REGULAR,
-        )
+    const incomingSchedule = data.scheduleJson
+      ? (data.scheduleJson as unknown as BatchSchedule)
+      : undefined;
+    if (incomingSchedule) {
+      assertScheduleDurationLimit(incomingSchedule, batch.scheduleJson);
+    }
+    const desiredSessions = incomingSchedule
+      ? buildSessions(incomingSchedule, SessionType.REGULAR)
       : undefined;
 
     const scheduleOrTrainersOrBranchChanged =
