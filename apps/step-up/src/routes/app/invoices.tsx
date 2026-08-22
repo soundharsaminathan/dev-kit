@@ -338,7 +338,7 @@ function InvoicesPage() {
   const queryClient = useQueryClient();
   const { toast } = useToastContext("InvoicesPage");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL");
-  const [monthFilter, setMonthFilter] = useState(() => utcMonthKey());
+  const [monthFilter, setMonthFilter] = useState("ALL");
   const monthOptions = useMemo(() => {
     const current = utcMonthKey();
     return [

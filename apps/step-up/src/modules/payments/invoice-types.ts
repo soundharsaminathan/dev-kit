@@ -116,15 +116,10 @@ export function formatInvoiceMonthLabel(key: string): string {
 
 export function invoiceMonthKey(invoice: InvoiceMonthSource): string | null {
   const source =
-    invoice.status === "PAID" || invoice.status === "REFUNDED"
-      ? (invoice.paidAt ??
-        invoice.refundedAt ??
-        invoice.membership?.periodStart ??
-        invoice.dueDate)
-      : (invoice.membership?.periodStart ??
-        invoice.dueDate ??
-        invoice.paidAt ??
-        invoice.refundedAt);
+    invoice.membership?.periodStart ??
+    invoice.dueDate ??
+    invoice.paidAt ??
+    invoice.refundedAt;
   if (!source) return null;
   const date = new Date(source);
   if (Number.isNaN(date.getTime())) return null;

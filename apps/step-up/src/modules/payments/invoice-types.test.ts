@@ -37,14 +37,14 @@ describe("invoice month filter", () => {
     ).toBe("2026-08");
   });
 
-  it("prefers paidAt for PAID invoices over membership.periodStart", () => {
+  it("prefers membership.periodStart over paidAt for PAID invoices", () => {
     expect(
       invoiceMonthKey({
         status: "PAID",
         membership: { periodStart: "2026-06-01T00:00:00.000Z" },
         paidAt: "2026-08-01T12:00:00.000Z",
       }),
-    ).toBe("2026-08");
+    ).toBe("2026-06");
   });
 
   it("falls back to dueDate then paidAt when membership is missing", () => {
