@@ -30,6 +30,8 @@ on:
       - ".github/workflows/step-up-deploy.yml"
   workflow_dispatch:
 
+# Deploy: Cloudflare Pages (web) + Cloud Run API (Memorystore via Direct VPC).
+
 permissions:
   contents: read
   id-token: write
