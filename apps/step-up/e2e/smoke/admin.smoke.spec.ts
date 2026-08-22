@@ -1103,7 +1103,6 @@ test.describe("admin (staff) smoke @smoke", () => {
       expect(endsAt).toBeTruthy();
 
       const overlapStart = new Date(startsAt!.getTime() + 15 * 60 * 1000);
-      const overlapEnd = new Date(endsAt!.getTime() + 15 * 60 * 1000);
       const zone = "Asia/Kolkata";
       const parts = new Intl.DateTimeFormat("en-CA", {
         timeZone: zone,
@@ -1116,14 +1115,6 @@ test.describe("admin (staff) smoke @smoke", () => {
       }).formatToParts(overlapStart);
       const get = (type: Intl.DateTimeFormatPartTypes) =>
         parts.find((part) => part.type === type)?.value ?? "";
-      const endParts = new Intl.DateTimeFormat("en-CA", {
-        timeZone: zone,
-        hour: "2-digit",
-        minute: "2-digit",
-        hourCycle: "h23",
-      }).formatToParts(overlapEnd);
-      const endGet = (type: Intl.DateTimeFormatPartTypes) =>
-        endParts.find((part) => part.type === type)?.value ?? "";
 
       const token = await bearerFor("STAFF");
       const startResponse = await fetch(`${apiBaseUrl()}/import/studio-data`, {
@@ -1135,11 +1126,10 @@ test.describe("admin (staff) smoke @smoke", () => {
         body: JSON.stringify({
           sessions: [
             {
-              // Same main branch + trainer as kids → must fail on overlap.
+              // Same main branch + trainer as kids → must fail on schedule conflict.
               batchName: "Smoke Open Trial",
               date: `${get("year")}-${get("month")}-${get("day")}`,
               startTime: `${get("hour")}:${get("minute")}`,
-              endTime: `${endGet("hour")}:${endGet("minute")}`,
               status: "SCHEDULED",
               type: "REGULAR",
             },
@@ -1150,7 +1140,7 @@ test.describe("admin (staff) smoke @smoke", () => {
       const { id: importId } = (await startResponse.json()) as { id: string };
       const job = await pollImportJob("STAFF", importId);
       expect(job.status).toBe("FAILED");
-      expect(job.error?.toLowerCase()).toContain("overlap");
+      expect(isScheduleConflict(job.error)).toBe(true);
     } finally {
       if (createdSessionId) {
         await apiRequest("STAFF", `/sessions/${createdSessionId}`, {

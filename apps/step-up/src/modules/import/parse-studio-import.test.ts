@@ -243,7 +243,7 @@ describe("parseStudioImportSheets", () => {
         {
           sheet: "Batches",
           data: [
-            BATCHES_SHEET.data[0],
+            BATCHES_SHEET.data[0]!,
             [
               "RB1",
               "Kids",

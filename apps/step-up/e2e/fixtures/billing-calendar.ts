@@ -178,12 +178,15 @@ export function batchCreateBody(args: {
 }
 
 export function isScheduleConflict(error: unknown) {
-  const text = String(error);
+  const text = String(error).toLowerCase();
   return (
     text.includes("409") ||
     /conflict/i.test(text) ||
     /already scheduled/i.test(text) ||
-    /overlap/i.test(text)
+    /overlap/i.test(text) ||
+    text.includes("branch already has a class") ||
+    text.includes("trainer is already booked") ||
+    text.includes("student has another class")
   );
 }
 
