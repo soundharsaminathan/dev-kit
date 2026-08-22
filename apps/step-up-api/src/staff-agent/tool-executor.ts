@@ -1,5 +1,6 @@
 import { BadRequestException, Inject, Injectable } from "@nestjs/common";
-import { AgeRange, BookingStatus, BookingType, Gender } from "@prisma/client";
+import { type AgeRange, BookingStatus, BookingType, Gender } from "@prisma/client";
+import { ageRangeFromAge, isImportAge } from "../users/age-range";
 import { BatchCommandsService } from "../batches/application/batch.commands";
 import { BatchQueriesService } from "../batches/application/batch.queries";
 import { BookingCommandsService } from "../bookings/application/booking.commands";
@@ -35,7 +36,6 @@ export function createResolvedIds(): ResolvedIds {
   };
 }
 
-const AGE_RANGES = new Set<string>(Object.values(AgeRange));
 const GENDERS = new Set<string>(Object.values(Gender));
 
 @Injectable()
@@ -260,7 +260,7 @@ export class StaffAgentToolExecutor {
   ): Promise<ToolExecutionResult> {
     const name = requireString(args, "name");
     const phone = requireString(args, "phone");
-    const ageRange = requireAgeRange(args);
+    const ageRange = requireAge(args);
     const sessionId =
       typeof args.sessionId === "string" && args.sessionId.trim()
         ? args.sessionId.trim()
@@ -307,7 +307,7 @@ export class StaffAgentToolExecutor {
     const name = requireString(args, "name");
     const email = requireString(args, "email");
     const gender = requireGender(args);
-    const ageRange = requireAgeRange(args);
+    const age = requireAgeNumber(args);
     const phone =
       typeof args.phone === "string" && args.phone.trim()
         ? args.phone.trim()
@@ -318,7 +318,7 @@ export class StaffAgentToolExecutor {
       name,
       email,
       gender,
-      ageRange,
+      age,
       phone,
     });
     const id = String((created as { id?: string }).id ?? "");
@@ -573,12 +573,26 @@ function requireBoolean(args: Record<string, unknown>, key: string): boolean {
   return value;
 }
 
-function requireAgeRange(args: Record<string, unknown>): AgeRange {
-  const value = requireString(args, "ageRange");
-  if (!AGE_RANGES.has(value)) {
-    throw new BadRequestException(`Invalid ageRange: ${value}`);
+function parseAge(args: Record<string, unknown>): number {
+  const raw = args.age;
+  const value =
+    typeof raw === "number"
+      ? raw
+      : typeof raw === "string" && raw.trim()
+        ? Number(raw.trim())
+        : Number.NaN;
+  if (!isImportAge(value)) {
+    throw new BadRequestException("age must be an integer between 0 and 120");
   }
-  return value as AgeRange;
+  return value;
+}
+
+function requireAge(args: Record<string, unknown>): AgeRange {
+  return ageRangeFromAge(parseAge(args));
+}
+
+function requireAgeNumber(args: Record<string, unknown>): number {
+  return parseAge(args);
 }
 
 function requireGender(args: Record<string, unknown>): Gender {

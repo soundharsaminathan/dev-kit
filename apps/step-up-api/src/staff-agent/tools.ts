@@ -57,21 +57,19 @@ export const STAFF_AGENT_TOOLS: AgentToolDefinition[] = [
         properties: {
           name: { type: "string" },
           phone: { type: "string" },
-          ageRange: {
-            type: "string",
-            enum: [
-              "UNDER_10",
-              "TEN_TO_TWENTY",
-              "TWENTY_TO_FORTY",
-              "FORTY_PLUS",
-            ],
+          age: {
+            type: "integer",
+            minimum: 0,
+            maximum: 120,
+            description:
+              "Exact age in years (e.g. 25). Ask staff for a number, not an age range band.",
           },
           sessionId: {
             type: "string",
             description: "Optional trial session id from list_trial_slots",
           },
         },
-        required: ["name", "phone", "ageRange"],
+        required: ["name", "phone", "age"],
       },
     },
   },
@@ -88,17 +86,15 @@ export const STAFF_AGENT_TOOLS: AgentToolDefinition[] = [
           email: { type: "string" },
           gender: { type: "string", enum: ["FEMALE", "MALE"] },
           phone: { type: "string" },
-          ageRange: {
-            type: "string",
-            enum: [
-              "UNDER_10",
-              "TEN_TO_TWENTY",
-              "TWENTY_TO_FORTY",
-              "FORTY_PLUS",
-            ],
+          age: {
+            type: "integer",
+            minimum: 0,
+            maximum: 120,
+            description:
+              "Exact age in years (e.g. 25). Ask staff for a number, not an age range band.",
           },
         },
-        required: ["name", "email", "gender", "ageRange"],
+        required: ["name", "email", "gender", "age"],
       },
     },
   },
@@ -213,6 +209,7 @@ Rules:
 - Use tools for all lookups and mutations. Never invent student IDs, session IDs, booking IDs, or batch IDs.
 - Search people before acting on an existing person. If multiple matches, ask which one.
 - For voice turns, read back phone digits and get confirmation before create_lead.
+- When creating a lead or student, ask for exact age in years (e.g. "How old are they?"). Do not ask for age range bands like "20–40" or "Under 10". Pass the number in the age field; the system stores the range internally.
 - Archive (set_active) and switch_batch require an explicit staff confirmation turn, then call with confirm=true.
 - Do not enroll students into paid plans or pick subscriptions.
 - Be concise and professional. After a successful mutation, summarize what changed.

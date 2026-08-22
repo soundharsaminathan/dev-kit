@@ -19,6 +19,8 @@
     "prisma:seed:analytics": "tsx prisma/seed-analytics.ts",
     "prisma:cleanup:smoke": "tsx prisma/cleanup-smoke.ts",
     "smoke:provision-users": "tsx scripts/provision-smoke-users.ts",
+    "devtool:backdate-students": "tsx devtool/backdate-imported-students.ts",
+    "devtool:backfill-admission": "tsx devtool/backfill-admission-invoices.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:migrations": "tsx scripts/test-migrations.ts --upgrade"

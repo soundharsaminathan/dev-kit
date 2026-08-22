@@ -54,7 +54,7 @@ describe("StaffAgentService", () => {
               arguments: JSON.stringify({
                 name: "Riya",
                 phone: "9000000001",
-                ageRange: "TWENTY_TO_FORTY",
+                age: 25,
               }),
             },
           },
@@ -79,7 +79,7 @@ describe("StaffAgentService", () => {
       } as never,
       {
         messages: [
-          { role: "user", content: "Add lead Riya 9000000001 age 20-40" },
+          { role: "user", content: "Add lead Riya 9000000001 age 25" },
         ],
       },
     );

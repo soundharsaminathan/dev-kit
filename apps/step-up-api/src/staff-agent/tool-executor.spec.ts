@@ -80,7 +80,7 @@ describe("StaffAgentToolExecutor", () => {
   it("rejects create_lead without phone", async () => {
     const result = await executor.execute(
       "create_lead",
-      { name: "Riya", ageRange: "TWENTY_TO_FORTY" },
+      { name: "Riya", age: 25 },
       actor(),
       "studio-1",
       createResolvedIds(),
@@ -152,7 +152,7 @@ describe("StaffAgentToolExecutor", () => {
       {
         name: "Riya",
         phone: "9000000001",
-        ageRange: "TWENTY_TO_FORTY",
+        age: 25,
       },
       actor(),
       "studio-1",
