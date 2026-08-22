@@ -628,8 +628,7 @@ function AppDashboardPage() {
               {!incompletePast.isLoading &&
               (incompletePast.data?.length ?? 0) > 0 ? (
                 <Link
-                  to="/app/sessions/$id/attendance"
-                  params={{ id: incompletePast.data?.[0]?.id ?? "" }}
+                  to="/app/sessions/incomplete"
                   className={staff.metricCard}
                   data-testid="overdue-sessions-summary"
                 >

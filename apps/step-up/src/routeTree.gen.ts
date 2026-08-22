@@ -81,6 +81,7 @@ import { Route as AppSettingsProfileRouteImport } from './routes/app/settings_.p
 import { Route as AppSettingsPaymentsRouteImport } from './routes/app/settings_.payments'
 import { Route as AppSettingsBrandingRouteImport } from './routes/app/settings_.branding'
 import { Route as AppSettingsBillingRouteImport } from './routes/app/settings_.billing'
+import { Route as AppSessionsIncompleteRouteImport } from './routes/app/sessions/incomplete'
 import { Route as AppProfileSecurityRouteImport } from './routes/app/profile_.security'
 import { Route as AppProfileFollowRequestsRouteImport } from './routes/app/profile_.follow-requests'
 import { Route as AppProfileEditRouteImport } from './routes/app/profile_.edit'
@@ -469,6 +470,11 @@ const AppSettingsBillingRoute = AppSettingsBillingRouteImport.update({
   path: '/settings/billing',
   getParentRoute: () => AppRoute,
 } as any)
+const AppSessionsIncompleteRoute = AppSessionsIncompleteRouteImport.update({
+  id: '/sessions/incomplete',
+  path: '/sessions/incomplete',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppProfileSecurityRoute = AppProfileSecurityRouteImport.update({
   id: '/profile_/security',
   path: '/profile/security',
@@ -665,6 +671,7 @@ export interface FileRoutesByFullPath {
   '/app/profile/edit': typeof AppProfileEditRoute
   '/app/profile/follow-requests': typeof AppProfileFollowRequestsRoute
   '/app/profile/security': typeof AppProfileSecurityRoute
+  '/app/sessions/incomplete': typeof AppSessionsIncompleteRoute
   '/app/settings/billing': typeof AppSettingsBillingRoute
   '/app/settings/branding': typeof AppSettingsBrandingRoute
   '/app/settings/payments': typeof AppSettingsPaymentsRoute
@@ -763,6 +770,7 @@ export interface FileRoutesByTo {
   '/app/profile/edit': typeof AppProfileEditRoute
   '/app/profile/follow-requests': typeof AppProfileFollowRequestsRoute
   '/app/profile/security': typeof AppProfileSecurityRoute
+  '/app/sessions/incomplete': typeof AppSessionsIncompleteRoute
   '/app/settings/billing': typeof AppSettingsBillingRoute
   '/app/settings/branding': typeof AppSettingsBrandingRoute
   '/app/settings/payments': typeof AppSettingsPaymentsRoute
@@ -865,6 +873,7 @@ export interface FileRoutesById {
   '/app/profile_/edit': typeof AppProfileEditRoute
   '/app/profile_/follow-requests': typeof AppProfileFollowRequestsRoute
   '/app/profile_/security': typeof AppProfileSecurityRoute
+  '/app/sessions/incomplete': typeof AppSessionsIncompleteRoute
   '/app/settings_/billing': typeof AppSettingsBillingRoute
   '/app/settings_/branding': typeof AppSettingsBrandingRoute
   '/app/settings_/payments': typeof AppSettingsPaymentsRoute
@@ -968,6 +977,7 @@ export interface FileRouteTypes {
     | '/app/profile/edit'
     | '/app/profile/follow-requests'
     | '/app/profile/security'
+    | '/app/sessions/incomplete'
     | '/app/settings/billing'
     | '/app/settings/branding'
     | '/app/settings/payments'
@@ -1066,6 +1076,7 @@ export interface FileRouteTypes {
     | '/app/profile/edit'
     | '/app/profile/follow-requests'
     | '/app/profile/security'
+    | '/app/sessions/incomplete'
     | '/app/settings/billing'
     | '/app/settings/branding'
     | '/app/settings/payments'
@@ -1167,6 +1178,7 @@ export interface FileRouteTypes {
     | '/app/profile_/edit'
     | '/app/profile_/follow-requests'
     | '/app/profile_/security'
+    | '/app/sessions/incomplete'
     | '/app/settings_/billing'
     | '/app/settings_/branding'
     | '/app/settings_/payments'
@@ -1733,6 +1745,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSettingsBillingRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/sessions/incomplete': {
+      id: '/app/sessions/incomplete'
+      path: '/sessions/incomplete'
+      fullPath: '/app/sessions/incomplete'
+      preLoaderRoute: typeof AppSessionsIncompleteRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/profile_/security': {
       id: '/app/profile_/security'
       path: '/profile/security'
@@ -1971,6 +1990,7 @@ interface AppRouteChildren {
   AppProfileEditRoute: typeof AppProfileEditRoute
   AppProfileFollowRequestsRoute: typeof AppProfileFollowRequestsRoute
   AppProfileSecurityRoute: typeof AppProfileSecurityRoute
+  AppSessionsIncompleteRoute: typeof AppSessionsIncompleteRoute
   AppSettingsBillingRoute: typeof AppSettingsBillingRoute
   AppSettingsBrandingRoute: typeof AppSettingsBrandingRoute
   AppSettingsPaymentsRoute: typeof AppSettingsPaymentsRoute
@@ -2029,6 +2049,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppProfileEditRoute: AppProfileEditRoute,
   AppProfileFollowRequestsRoute: AppProfileFollowRequestsRoute,
   AppProfileSecurityRoute: AppProfileSecurityRoute,
+  AppSessionsIncompleteRoute: AppSessionsIncompleteRoute,
   AppSettingsBillingRoute: AppSettingsBillingRoute,
   AppSettingsBrandingRoute: AppSettingsBrandingRoute,
   AppSettingsPaymentsRoute: AppSettingsPaymentsRoute,
