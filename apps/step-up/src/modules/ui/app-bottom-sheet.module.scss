@@ -1,7 +1,15 @@
 .panel[data-drawer] {
-  width: min(28rem, 100%);
-  max-width: min(28rem, 100%);
-  justify-self: center;
+  width: 100%;
+  max-width: 100%;
+  justify-self: stretch;
+}
+
+@media (min-width: 480px) {
+  .panel[data-drawer] {
+    width: min(28rem, 100%);
+    max-width: min(28rem, 100%);
+    justify-self: center;
+  }
 }
 
 .body {

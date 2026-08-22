@@ -275,6 +275,14 @@
 .panelDesc {
   font-size: 0.8125rem;
   color: color-mix(in srgb, var(--color-fg) 56%, transparent);
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+
+.panelDesc :global(code) {
+  display: inline;
+  overflow-wrap: anywhere;
+  word-break: break-all;
 }
 
 .sheetStack {

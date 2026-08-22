@@ -1,9 +1,22 @@
 .layout {
   display: grid;
-  gap: var(--space-6, 1.5rem);
+  gap: var(--space-5, 1.25rem);
+  box-sizing: border-box;
   width: 100%;
-  max-width: 64rem;
+  max-width: min(64rem, 100%);
+  min-width: 0;
   margin-inline: auto;
+  padding-inline: var(--space-4, 1rem);
+  padding-block: var(--space-2, 0.5rem) var(--space-5, 1.25rem);
+  overflow-x: clip;
+}
+
+@media (min-width: 768px) {
+  .layout {
+    padding-inline: var(--space-6, 1.5rem);
+    padding-block: var(--space-4, 1rem) var(--space-6, 1.5rem);
+    gap: var(--space-6, 1.5rem);
+  }
 }
 
 @media (min-width: 900px) {
@@ -58,12 +71,16 @@
   flex-direction: column;
   gap: 0.125rem;
   min-width: 0;
+  flex: 1;
 }
 
 .mobileTriggerHint {
+  overflow: hidden;
   font-size: 0.75rem;
   font-weight: 500;
   color: color-mix(in srgb, var(--color-fg) 55%, transparent);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .mobileTriggerChevron {
@@ -79,24 +96,39 @@
 
 .content {
   min-width: 0;
+  max-width: 100%;
   display: flex;
   flex-direction: column;
-  gap: var(--space-6, 1.5rem);
+  gap: var(--space-5, 1.25rem);
   padding-bottom: var(--space-8, 2rem);
+}
+
+@media (min-width: 768px) {
+  .content {
+    gap: var(--space-6, 1.5rem);
+  }
 }
 
 .contentHeader {
   display: flex;
   flex-direction: column;
   gap: var(--space-1, 0.25rem);
+  min-width: 0;
 }
 
 .contentTitle {
   margin: 0;
-  font-size: 1.25rem;
+  font-size: 1.125rem;
   font-weight: 650;
   letter-spacing: -0.02em;
   line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+@media (min-width: 768px) {
+  .contentTitle {
+    font-size: 1.25rem;
+  }
 }
 
 .contentSubtitle {
@@ -104,6 +136,7 @@
   font-size: 0.875rem;
   line-height: 1.45;
   color: color-mix(in srgb, var(--color-fg) 58%, transparent);
+  overflow-wrap: anywhere;
 }
 
 .nav {
@@ -204,12 +237,15 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-4, 1rem);
+  min-width: 0;
+  max-width: 100%;
 }
 
 .sectionHeader {
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
+  min-width: 0;
   padding-bottom: var(--space-3, 0.75rem);
   border-bottom: 1px solid color-mix(in srgb, var(--color-fg) 8%, transparent);
 }
@@ -228,19 +264,24 @@
   font-size: 0.8125rem;
   line-height: 1.45;
   color: color-mix(in srgb, var(--color-fg) 55%, transparent);
+  overflow-wrap: anywhere;
 }
 
 .sectionBody {
   display: flex;
   flex-direction: column;
   gap: var(--space-4, 1rem);
+  min-width: 0;
+  max-width: 100%;
 }
 
 .field {
   display: flex;
   flex-direction: column;
   gap: var(--space-2, 0.5rem);
-  max-width: 32rem;
+  width: 100%;
+  max-width: min(32rem, 100%);
+  min-width: 0;
 }
 
 .fieldLabel {
@@ -255,23 +296,40 @@
   font-size: 0.8125rem;
   line-height: 1.4;
   color: color-mix(in srgb, var(--color-fg) 55%, transparent);
+  overflow-wrap: anywhere;
 }
 
 .fieldControl {
   min-width: 0;
+  max-width: 100%;
 }
 
 .fieldControl :global(input),
-.fieldControl :global(textarea) {
+.fieldControl :global(textarea),
+.fieldControl :global(select) {
+  width: 100%;
+  max-width: 100%;
   min-height: 2.625rem;
 }
 
 .row {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
-  gap: var(--space-4, 1rem);
+  gap: var(--space-3, 0.75rem);
   padding-block: var(--space-3, 0.75rem);
+  min-width: 0;
+  max-width: 100%;
+}
+
+@media (max-width: 479px) {
+  .row {
+    flex-wrap: wrap;
+  }
+
+  .rowControl {
+    margin-inline-start: auto;
+  }
 }
 
 .row + .row {
@@ -325,6 +383,8 @@
   align-items: center;
   gap: var(--space-3, 0.75rem);
   padding: var(--space-3, 0.75rem) var(--space-4, 1rem);
+  min-width: 0;
+  max-width: 100%;
 }
 
 .toggleIcon {
@@ -391,8 +451,14 @@
   overflow: hidden;
   color: color-mix(in srgb, var(--color-fg) 58%, transparent);
   font-size: 0.8125rem;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
+}
+
+@media (min-width: 480px) {
+  .toggleDescription {
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 }
 
 .toggleControl {
@@ -404,10 +470,14 @@
   inset-inline: 0;
   bottom: 0;
   z-index: 25;
+  box-sizing: border-box;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3, 0.75rem);
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
   padding: var(--space-3, 0.75rem) var(--space-4, 1rem);
   padding-bottom: calc(
     var(--space-3, 0.75rem) + env(safe-area-inset-bottom, 0px)
@@ -419,9 +489,14 @@
 
 .saveBarMessage {
   margin: 0;
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
   font-size: 0.875rem;
   font-weight: 600;
   color: color-mix(in srgb, var(--color-fg) 72%, transparent);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .saveBarActions {
@@ -429,6 +504,7 @@
   align-items: center;
   gap: var(--space-2, 0.5rem);
   flex-shrink: 0;
+  max-width: 100%;
 }
 
 @media (min-width: 768px) {
@@ -454,6 +530,20 @@
 
   .contentPaddedSave {
     padding-bottom: 5.5rem;
+  }
+}
+
+@media (max-width: 379px) {
+  .saveBar {
+    flex-wrap: wrap;
+  }
+
+  .saveBarMessage {
+    flex: 1 1 100%;
+  }
+
+  .saveBarActions {
+    margin-inline-start: auto;
   }
 }
 
