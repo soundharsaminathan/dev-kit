@@ -6,7 +6,7 @@ import {
 } from "../src/agent/portfolioContext";
 
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
-const GROQ_MODEL = "llama-3.1-8b-instant";
+const GROQ_MODEL = "openai/gpt-oss-20b";
 const LOCAL_MODEL = "local-portfolio";
 
 type ChatBody = {

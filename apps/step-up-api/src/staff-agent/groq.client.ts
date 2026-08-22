@@ -13,8 +13,8 @@ import type {
 
 const GROQ_BASE = "https://api.groq.com/openai/v1";
 
-/** Fast Llama — good free-tier RPM and reliable tool calling. */
-export const GROQ_CHAT_MODEL_DEFAULT = "llama-3.3-70b-versatile";
+/** Production Groq chat model (replaces retired llama-3.3-70b-versatile). */
+export const GROQ_CHAT_MODEL_DEFAULT = "openai/gpt-oss-120b";
 export const GROQ_STT_MODEL_DEFAULT = "whisper-large-v3-turbo";
 export const GROQ_TTS_MODEL_DEFAULT = "canopylabs/orpheus-v1-english";
 export const GROQ_TTS_VOICE_DEFAULT = "hannah";
