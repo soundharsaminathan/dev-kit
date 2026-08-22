@@ -16,7 +16,7 @@ import {
   MembershipSeatRole,
   MembershipStatus,
   MessageType,
-  type Prisma,
+  Prisma,
   ProfileVisibility,
   SessionStatus,
   SessionType,
@@ -189,6 +189,8 @@ async function upsertUser(user: SeedUser, studioId: string | null) {
     phone: user.phone,
     bio: null,
     instagramUrl: null,
+    guardianName: null,
+    alternateMobile: null,
   });
   const studentOnboarding =
     user.role === UserRole.STUDENT
@@ -958,7 +960,7 @@ async function main() {
       studioId,
       membershipId: SMOKE.membershipStudentId,
       paymentHoldExpiresAt: null,
-      purchaseMeta: null,
+      purchaseMeta: Prisma.DbNull,
     },
     create: {
       id: "smoke-invoice-paid-membership-1",

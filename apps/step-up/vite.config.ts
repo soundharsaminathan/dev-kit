@@ -100,10 +100,20 @@ function stepUpManualChunks(id: string) {
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, appRoot, "");
+  const firebaseConfigured = Boolean(
+    env.VITE_FIREBASE_API_KEY &&
+      env.VITE_FIREBASE_AUTH_DOMAIN &&
+      env.VITE_FIREBASE_PROJECT_ID &&
+      env.VITE_FIREBASE_APP_ID,
+  );
+  const authBypassExplicit =
+    process.env.VITE_AUTH_BYPASS ?? env.VITE_AUTH_BYPASS;
   const authBypass =
-    process.env.VITE_AUTH_BYPASS === "true" ||
+    authBypassExplicit === "true" ||
     process.env.STEP_UP_E2E === "true" ||
-    env.VITE_AUTH_BYPASS === "true";
+    (mode === "development" &&
+      authBypassExplicit !== "false" &&
+      !firebaseConfigured);
 
   return {
     server: {

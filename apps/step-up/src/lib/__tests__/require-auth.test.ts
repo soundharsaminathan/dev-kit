@@ -142,6 +142,14 @@ describe("homePathForUser", () => {
     expect(homePathForUser(SEED_SYSTEM_ADMIN)).toBe("/admin");
   });
 
+  it("keeps system admin on /admin even if mustChangePassword is set", () => {
+    expect(
+      homePathForUser(
+        fixtureUser("SYSTEM_ADMIN", { mustChangePassword: true }),
+      ),
+    ).toBe("/admin");
+  });
+
   it("sends owners with a temp password to change-password", () => {
     expect(
       homePathForUser(fixtureUser("OWNER", { mustChangePassword: true })),
@@ -243,6 +251,18 @@ describe("requireSystemAdmin", () => {
         pathname: "/admin",
         searchStr: "",
       }).role,
+    ).toBe("SYSTEM_ADMIN");
+  });
+
+  it("does not bounce system admin to /app change-password", () => {
+    expect(
+      requireSystemAdmin(
+        authWith(fixtureUser("SYSTEM_ADMIN", { mustChangePassword: true })),
+        {
+          pathname: "/admin",
+          searchStr: "",
+        },
+      ).role,
     ).toBe("SYSTEM_ADMIN");
   });
 

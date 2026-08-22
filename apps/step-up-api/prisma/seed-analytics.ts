@@ -12,7 +12,7 @@ import {
   MembershipSeatRole,
   MembershipStatus,
   PaymentMethod,
-  type Prisma,
+  Prisma,
   PrismaClient,
   ProfileVisibility,
   SessionStatus,
@@ -161,6 +161,8 @@ async function upsertUser(user: SeedUser, studioId: string | null) {
     phone: user.phone,
     bio: null,
     instagramUrl: null,
+    guardianName: null,
+    alternateMobile: null,
   });
   const studentOnboarding =
     user.role === UserRole.STUDENT
@@ -301,7 +303,7 @@ async function upsertInvoice(opts: {
       studioId: ANALYTICS.studioId,
       membershipId: opts.membershipId ?? null,
       paymentHoldExpiresAt: null,
-      purchaseMeta: null,
+      purchaseMeta: Prisma.DbNull,
     },
     create: {
       id: opts.id,

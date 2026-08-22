@@ -179,3 +179,84 @@ describe("AuthController.sync", () => {
     );
   });
 });
+
+describe("AuthController.bypassLogin", () => {
+  const prisma = {
+    user: {
+      findMany: vi.fn(),
+    },
+  };
+  const crypto = {
+    hashEmail: vi.fn((email: string) => `hash:${email}`),
+    decryptUser: vi.fn((user: { id: string; role: UserRole }) => ({
+      id: user.id,
+      email: "admin@stepup.dev",
+      name: "System Admin",
+      role: user.role,
+      studioId: null,
+      photoUrl: null,
+      active: true,
+    })),
+  };
+  const media = {
+    signReadUrl: vi.fn(async (url: string | null) => url),
+  };
+  const firebase = {
+    isBypassEnabled: vi.fn(() => true),
+  };
+
+  let controller: AuthController;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    firebase.isBypassEnabled.mockReturnValue(true);
+    const auth = new AuthService(
+      prisma as never,
+      crypto as never,
+      media as never,
+      { registerToken: vi.fn() } as never,
+      firebase as never,
+      {} as never,
+    );
+    controller = new AuthController(auth);
+  });
+
+  it("returns the system admin when email hashes collide with a newer student", async () => {
+    prisma.user.findMany.mockResolvedValue([
+      {
+        id: "student-dup",
+        role: UserRole.STUDENT,
+        active: true,
+        createdAt: new Date("2026-08-22"),
+      },
+      {
+        id: "system-admin-1",
+        role: UserRole.SYSTEM_ADMIN,
+        active: true,
+        createdAt: new Date("2026-01-01"),
+      },
+    ]);
+
+    const result = await controller.bypassLogin({
+      email: "admin@stepup.dev",
+    });
+
+    expect(result.id).toBe("system-admin-1");
+    expect(result.role).toBe(UserRole.SYSTEM_ADMIN);
+  });
+
+  it("rejects a deactivated admin account", async () => {
+    prisma.user.findMany.mockResolvedValue([
+      {
+        id: "system-admin-1",
+        role: UserRole.SYSTEM_ADMIN,
+        active: false,
+        createdAt: new Date("2026-01-01"),
+      },
+    ]);
+
+    await expect(
+      controller.bypassLogin({ email: "admin@stepup.dev" }),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+  });
+});

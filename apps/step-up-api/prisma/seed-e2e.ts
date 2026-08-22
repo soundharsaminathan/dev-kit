@@ -179,6 +179,8 @@ async function upsertUser(user: SeedUser, studioId: string | null) {
     phone: user.phone,
     bio: null,
     instagramUrl: null,
+    guardianName: null,
+    alternateMobile: null,
   });
   const studentOnboarding =
     user.role === UserRole.STUDENT
@@ -203,6 +205,10 @@ async function upsertUser(user: SeedUser, studioId: string | null) {
       profileVisibility: user.profileVisibility,
       studioId,
       role: user.role,
+      active: true,
+      ...(user.role === UserRole.SYSTEM_ADMIN
+        ? { mustChangePassword: false }
+        : {}),
       ...studentOnboarding,
     },
     create: {

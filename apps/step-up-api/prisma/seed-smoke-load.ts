@@ -1,10 +1,13 @@
 import { ConfigService } from "@nestjs/config";
 import {
+  AgeRange,
   AttendanceSource,
   AttendanceStatus,
   BookingStatus,
   BookingType,
   EnrollmentMode,
+  ExperienceLevel,
+  Gender,
   InvoiceStatus,
   MembershipSeatRole,
   MembershipStatus,
@@ -140,10 +143,10 @@ async function upsertSmokeLoadUser(
       profileVisibility: ProfileVisibility;
       studioId: string;
       active?: boolean;
-      experienceLevel: string;
+      experienceLevel: ExperienceLevel;
       scheduleVibe?: string[];
-      gender: string;
-      ageRange: string;
+      gender: Gender;
+      ageRange: AgeRange;
       preferredBranchId?: string;
       onboardingCompletedAt: Date;
     };
@@ -191,6 +194,8 @@ export async function seedSmokeLoadData(deps: LoadDeps) {
       phone: `+91 97100 ${pad(10000 + n, 5)}`,
       bio: null,
       instagramUrl: null,
+      guardianName: null,
+      alternateMobile: null,
     });
     await upsertSmokeLoadUser(prisma, {
       id,
@@ -201,9 +206,9 @@ export async function seedSmokeLoadData(deps: LoadDeps) {
         profileVisibility: ProfileVisibility.PUBLIC,
         studioId: deps.studioId,
         active: true,
-        experienceLevel: "INTERMEDIATE",
-        gender: n % 2 === 0 ? "FEMALE" : "MALE",
-        ageRange: "TWENTY_TO_FORTY",
+        experienceLevel: ExperienceLevel.INTERMEDIATE,
+        gender: n % 2 === 0 ? Gender.FEMALE : Gender.MALE,
+        ageRange: AgeRange.TWENTY_TO_FORTY,
         onboardingCompletedAt: daysAgo(90),
       },
     });
@@ -217,6 +222,8 @@ export async function seedSmokeLoadData(deps: LoadDeps) {
       phone: `+91 97200 ${pad(10000 + n, 5)}`,
       bio: null,
       instagramUrl: null,
+      guardianName: null,
+      alternateMobile: null,
     });
     await upsertSmokeLoadUser(prisma, {
       id,
@@ -227,15 +234,16 @@ export async function seedSmokeLoadData(deps: LoadDeps) {
         profileVisibility: ProfileVisibility.PUBLIC,
         studioId: deps.studioId,
         active: true,
-        experienceLevel: n % 3 === 0 ? "ADVANCED" : "BEGINNER",
+        experienceLevel:
+          n % 3 === 0 ? ExperienceLevel.ADVANCED : ExperienceLevel.BEGINNER,
         scheduleVibe: ["weekday_evenings", "weekends"],
-        gender: n % 2 === 0 ? "FEMALE" : "MALE",
+        gender: n % 2 === 0 ? Gender.FEMALE : Gender.MALE,
         ageRange:
           n % 4 === 0
-            ? "TEN_TO_TWENTY"
+            ? AgeRange.TEN_TO_TWENTY
             : n % 4 === 1
-              ? "UNDER_10"
-              : "TWENTY_TO_FORTY",
+              ? AgeRange.UNDER_10
+              : AgeRange.TWENTY_TO_FORTY,
         preferredBranchId: n % 2 === 0 ? deps.branchMainId : deps.branchEastId,
         onboardingCompletedAt: daysAgo(30 + (n % 60)),
       },

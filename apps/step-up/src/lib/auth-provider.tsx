@@ -490,7 +490,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       commitBypassSession(mapped);
       setLastLoginIdentifier(SEED_SYSTEM_ADMIN.email);
       return mapped;
-    } catch {
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 403) {
+        throw new Error(
+          "Auth bypass is disabled on the API. Set AUTH_BYPASS=true, or sign in with Firebase.",
+        );
+      }
       throw new Error(
         "System admin is missing. Run pnpm --filter @step-up/api prisma:seed.",
       );
@@ -527,7 +532,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       const auth = await getFirebaseAuthAsync();
       if (!auth) {
-        throw new Error("Firebase is not configured");
+        throw new Error(
+          "Firebase is not configured. Copy apps/step-up/.env.example to apps/step-up/.env (VITE_AUTH_BYPASS=true) and restart the web app.",
+        );
       }
 
       const { signInWithEmailAndPassword } = await import("firebase/auth");

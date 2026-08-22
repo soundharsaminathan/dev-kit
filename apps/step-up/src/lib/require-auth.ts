@@ -27,6 +27,9 @@ function loginRedirectPath(pathname: string, searchStr: string) {
 export function changePasswordPathForUser(
   user: NonNullable<AuthContextValue["user"]>,
 ) {
+  if (user.role === "SYSTEM_ADMIN") {
+    return "/admin" as const;
+  }
   if (STAFF_ROLES.includes(user.role)) {
     return "/app/profile/change-password" as const;
   }
@@ -47,7 +50,13 @@ function enforceMustChangePassword(
   user: NonNullable<AuthContextValue["user"]>,
   pathname: string,
 ) {
-  if (!user.mustChangePassword || isChangePasswordPath(pathname)) {
+  // Platform admin has no change-password route under /admin, and /app
+  // rejects SYSTEM_ADMIN — sending them there looks like a failed login.
+  if (
+    user.role === "SYSTEM_ADMIN" ||
+    !user.mustChangePassword ||
+    isChangePasswordPath(pathname)
+  ) {
     return;
   }
   throw redirect({
@@ -107,11 +116,11 @@ export function safeInternalPath(path: string | undefined): string | null {
 }
 
 export function homePathForUser(user: NonNullable<AuthContextValue["user"]>) {
-  if (user.mustChangePassword) {
-    return changePasswordPathForUser(user);
-  }
   if (user.role === "SYSTEM_ADMIN") {
     return "/admin" as const;
+  }
+  if (user.mustChangePassword) {
+    return changePasswordPathForUser(user);
   }
   if (STAFF_ROLES.includes(user.role)) {
     return "/app" as const;
@@ -145,7 +154,7 @@ export function redirectIfAuthenticated(
     return;
   }
 
-  if (user.mustChangePassword) {
+  if (user.mustChangePassword && user.role !== "SYSTEM_ADMIN") {
     throw redirect({
       to: changePasswordPathForUser(user),
       replace: true,

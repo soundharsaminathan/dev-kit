@@ -57,12 +57,17 @@ export class AuthService {
     }
 
     const emailHash = this.crypto.hashEmail(email);
-    const user = await this.prisma.user.findFirst({
+    const matches = await this.prisma.user.findMany({
       where: { emailHash },
       orderBy: { createdAt: "desc" },
     });
+    const user =
+      matches.find((row) => row.role === UserRole.SYSTEM_ADMIN) ?? matches[0];
     if (!user) {
       throw new UnauthorizedException("No account found for this email");
+    }
+    if (!user.active) {
+      throw new UnauthorizedException("This account has been deactivated");
     }
 
     const decrypted = this.crypto.decryptUser(user);

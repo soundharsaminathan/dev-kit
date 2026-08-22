@@ -68,7 +68,7 @@
       "executor": "nx:run-commands",
       "options": {
         "cwd": "apps/step-up-api",
-        "command": "tsc -p tsconfig.build.json --noEmit"
+        "command": "tsc -p tsconfig.typecheck.json --noEmit"
       },
       "dependsOn": ["prisma:generate"]
     }

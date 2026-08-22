@@ -98,6 +98,8 @@ async function main() {
     phone: SYSTEM_ADMIN.phone,
     bio: SYSTEM_ADMIN.bio,
     instagramUrl: null,
+    guardianName: null,
+    alternateMobile: null,
   });
 
   await prisma.user.upsert({
@@ -108,6 +110,8 @@ async function main() {
       studioId: null,
       styles: [],
       profileVisibility: ProfileVisibility.PRIVATE,
+      active: true,
+      mustChangePassword: false,
     },
     create: {
       id: SYSTEM_ADMIN.id,
@@ -117,6 +121,8 @@ async function main() {
       studioId: null,
       styles: [],
       profileVisibility: ProfileVisibility.PRIVATE,
+      active: true,
+      mustChangePassword: false,
     },
   });
 
