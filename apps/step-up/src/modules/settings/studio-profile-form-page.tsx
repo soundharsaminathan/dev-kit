@@ -1,39 +1,63 @@
+import { Input } from "@dev-ui/components/input";
+import { TextArea } from "@dev-ui/components/text-area";
 import { useToastContext } from "@dev-ui/components/toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect } from "react";
 import { useApi } from "@/lib/api-context";
 import { useStudioId } from "@/lib/use-studio-id";
-import { FormInput } from "@/modules/ui/form-input";
-import { FormTextArea } from "@/modules/ui/form-text-area";
-import { Screen } from "@/modules/ui/screen";
 import { SkeletonBlock } from "@/modules/ui/skeleton-block";
-import staff from "@/modules/ui/staff.module.scss";
 import { EmptyState, ErrorState } from "@/modules/ui/states";
-import { StickyCtaBar, TouchButton } from "@/modules/ui/touch-button";
+import { TouchButton } from "@/modules/ui/touch-button";
 import type { Studio } from "./types";
+import {
+  SettingsField,
+  SettingsSaveBar,
+  SettingsSection,
+  useSettingsDirtyForm,
+} from "./ui";
+
+type ProfileValues = {
+  name: string;
+  address: string;
+  contact: string;
+};
 
 export function StudioProfileFormPage() {
   const api = useApi();
   const studioId = useStudioId();
   const queryClient = useQueryClient();
   const { toast } = useToastContext("StudioProfileFormPage");
-  const [name, setName] = useState("");
-  const [address, setAddress] = useState("");
-  const [contact, setContact] = useState("");
+  const form = useSettingsDirtyForm<ProfileValues>({
+    name: "",
+    address: "",
+    contact: "",
+  });
+  const { hydrate, hydrated, values, setField, isDirty, reset, markSaved } =
+    form;
 
   const studioQuery = useQuery({
     queryKey: ["studio", studioId],
     queryFn: () => api.get<Studio>(`/studios/${studioId}`),
   });
 
+  useEffect(() => {
+    if (!studioQuery.data || hydrated) return;
+    hydrate({
+      name: studioQuery.data.name,
+      address: studioQuery.data.address,
+      contact: studioQuery.data.contact,
+    });
+  }, [studioQuery.data, hydrated, hydrate]);
+
   const updateStudio = useMutation({
     mutationFn: () =>
       api.patch(`/studios/${studioId}`, {
-        name: name || studioQuery.data?.name,
-        address: address || studioQuery.data?.address,
-        contact: contact || studioQuery.data?.contact,
+        name: values.name.trim(),
+        address: values.address.trim(),
+        contact: values.contact.trim(),
       }),
     onSuccess: () => {
+      markSaved();
       void queryClient.invalidateQueries({ queryKey: ["studio", studioId] });
       void queryClient.invalidateQueries({
         queryKey: ["studio-public", studioId],
@@ -54,89 +78,104 @@ export function StudioProfileFormPage() {
     },
   });
 
+  if (studioQuery.isLoading) {
+    return <SkeletonBlock height="12rem" radius="var(--radius-xl)" />;
+  }
+
+  if (studioQuery.isError) {
+    return (
+      <ErrorState
+        description={
+          studioQuery.error instanceof Error
+            ? studioQuery.error.message
+            : "Unable to load studio profile."
+        }
+        action={
+          <TouchButton variant="primary" onClick={() => studioQuery.refetch()}>
+            Try again
+          </TouchButton>
+        }
+      />
+    );
+  }
+
+  if (!studioQuery.data) {
+    return (
+      <EmptyState
+        title="Studio not found"
+        description="Unable to load studio profile."
+      />
+    );
+  }
+
   return (
     <>
-      <Screen
-        title="Studio profile"
-        subtitle="Name, address, and contact details."
-        showBack
-        backTo="/app/settings"
-        paddedCta
+      <SettingsSection
+        title="General"
+        description="Your studio's display name appears across Step Up."
       >
-        {studioQuery.isLoading ? (
-          <SkeletonBlock height="12rem" radius="var(--radius-2xl)" />
-        ) : null}
-
-        {studioQuery.isError ? (
-          <ErrorState
-            description={
-              studioQuery.error instanceof Error
-                ? studioQuery.error.message
-                : "Unable to load studio profile."
-            }
-            action={
-              <TouchButton
-                variant="primary"
-                onClick={() => studioQuery.refetch()}
-              >
-                Try again
-              </TouchButton>
-            }
+        <SettingsField
+          label="Studio name"
+          description="The name displayed to students and staff."
+        >
+          <Input
+            value={values.name}
+            onChange={(event) => setField("name", event.target.value)}
+            autoComplete="organization"
           />
-        ) : null}
+        </SettingsField>
+      </SettingsSection>
 
-        {studioQuery.isFetched && !studioQuery.data ? (
-          <EmptyState
-            title="Studio not found"
-            description="Unable to load studio profile."
+      <SettingsSection
+        title="Contact"
+        description="How students and staff reach the studio."
+      >
+        <SettingsField
+          label="Phone number"
+          description="Used for studio communication."
+        >
+          <Input
+            value={values.contact}
+            onChange={(event) => setField("contact", event.target.value)}
+            inputMode="tel"
+            autoComplete="tel"
           />
-        ) : null}
+        </SettingsField>
+      </SettingsSection>
 
-        {studioQuery.data ? (
-          <div className={staff.softPanel}>
-            <p className={staff.panelTitle}>Profile</p>
-            <p className={staff.panelDesc}>{studioQuery.data.name}</p>
-            <FormInput
-              label="Name"
-              value={name || studioQuery.data.name}
-              onChange={setName}
-            />
-            <FormTextArea
-              label="Address"
-              value={address || studioQuery.data.address}
-              onChange={setAddress}
-              autoComplete="street-address"
-            />
-            <FormInput
-              label="Contact"
-              value={contact || studioQuery.data.contact}
-              onChange={setContact}
-            />
-            {updateStudio.isError ? (
-              <ErrorState
-                description={
-                  updateStudio.error instanceof Error
-                    ? updateStudio.error.message
-                    : "Could not save profile."
-                }
-              />
-            ) : null}
-          </div>
-        ) : null}
-      </Screen>
+      <SettingsSection
+        title="Address"
+        description="Your primary studio address."
+      >
+        <SettingsField
+          label="Studio address"
+          description="Shown on public and staff surfaces."
+        >
+          <TextArea
+            value={values.address}
+            onChange={(event) => setField("address", event.target.value)}
+            rows={3}
+            autoComplete="street-address"
+          />
+        </SettingsField>
+      </SettingsSection>
 
-      {studioQuery.data ? (
-        <StickyCtaBar>
-          <TouchButton
-            variant="primary"
-            fullWidth
-            isPending={updateStudio.isPending}
-            onClick={() => updateStudio.mutate()}
-          >
-            Save profile
-          </TouchButton>
-        </StickyCtaBar>
+      {updateStudio.isError ? (
+        <ErrorState
+          description={
+            updateStudio.error instanceof Error
+              ? updateStudio.error.message
+              : "Could not save profile."
+          }
+        />
       ) : null}
+
+      <SettingsSaveBar
+        isDirty={isDirty}
+        isPending={updateStudio.isPending}
+        onCancel={reset}
+        onSave={() => updateStudio.mutate()}
+      />
     </>
   );
 }

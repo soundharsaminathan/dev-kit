@@ -10,13 +10,13 @@ import {
 } from "@/lib/dance-styles";
 import { useStudioId } from "@/lib/use-studio-id";
 import { FormInput } from "@/modules/ui/form-input";
-import { Screen } from "@/modules/ui/screen";
 import { SkeletonBlock } from "@/modules/ui/skeleton-block";
 import staff from "@/modules/ui/staff.module.scss";
 import { EmptyState, ErrorState } from "@/modules/ui/states";
-import { StickyCtaBar, TouchButton } from "@/modules/ui/touch-button";
+import { TouchButton } from "@/modules/ui/touch-button";
 import page from "./studio-dance-styles-form-page.module.scss";
 import type { Studio } from "./types";
+import { SettingsSaveBar, SettingsSection } from "./ui";
 
 const FALLBACK_COLORS = [
   "#E4572E",
@@ -52,6 +52,7 @@ export function StudioDanceStylesFormPage() {
   const queryClient = useQueryClient();
   const { toast } = useToastContext("StudioDanceStylesFormPage");
   const [styles, setStyles] = useState<DanceStyle[]>([]);
+  const [baseline, setBaseline] = useState<DanceStyle[]>([]);
   const [hydrated, setHydrated] = useState(false);
 
   const studioQuery = useQuery({
@@ -61,16 +62,23 @@ export function StudioDanceStylesFormPage() {
 
   useEffect(() => {
     if (!studioQuery.data || hydrated) return;
-    setStyles(
-      cloneStyles(effectiveDanceStyles(studioQuery.data.settings?.danceStyles)),
+    const next = cloneStyles(
+      effectiveDanceStyles(studioQuery.data.settings?.danceStyles),
     );
+    setStyles(next);
+    setBaseline(cloneStyles(next));
     setHydrated(true);
   }, [studioQuery.data, hydrated]);
+
+  const isDirty =
+    hydrated && JSON.stringify(styles) !== JSON.stringify(baseline);
 
   const updateSettings = useMutation({
     mutationFn: (danceStyles: DanceStyle[]) =>
       api.patch(`/studios/${studioId}/settings`, { danceStyles }),
-    onSuccess: () => {
+    onSuccess: (_data, danceStyles) => {
+      setBaseline(cloneStyles(danceStyles));
+      setStyles(cloneStyles(danceStyles));
       void queryClient.invalidateQueries({ queryKey: ["studio", studioId] });
       toast({
         title: "Dance styles saved",
@@ -172,178 +180,165 @@ export function StudioDanceStylesFormPage() {
 
   const busy = updateSettings.isPending;
 
+  if (studioQuery.isLoading) {
+    return <SkeletonBlock height="12rem" radius="var(--radius-xl)" />;
+  }
+
+  if (studioQuery.isError) {
+    return (
+      <ErrorState
+        description={
+          studioQuery.error instanceof Error
+            ? studioQuery.error.message
+            : "Unable to load dance styles."
+        }
+        action={
+          <TouchButton variant="primary" onClick={() => studioQuery.refetch()}>
+            Try again
+          </TouchButton>
+        }
+      />
+    );
+  }
+
+  if (!studioQuery.data) {
+    return (
+      <EmptyState
+        title="Studio not found"
+        description="Unable to load dance styles."
+      />
+    );
+  }
+
   return (
     <>
-      <Screen
-        title="Dance styles"
-        subtitle="Styles students and trainers can pick at this studio."
-        showBack
-        backTo="/app/settings"
-        paddedCta
+      <SettingsSection
+        title="Catalog"
+        description="Add the dance styles offered at this studio. Edit names, abbreviations, colors, and emoji."
       >
-        {studioQuery.isLoading ? (
-          <SkeletonBlock height="12rem" radius="var(--radius-2xl)" />
-        ) : null}
+        <div className={page.toolbar}>
+          <TouchButton variant="quiet" onClick={addStyle} disabled={busy}>
+            Add style
+          </TouchButton>
+        </div>
 
-        {studioQuery.isError ? (
-          <ErrorState
-            description={
-              studioQuery.error instanceof Error
-                ? studioQuery.error.message
-                : "Unable to load dance styles."
-            }
+        {styles.length === 0 ? (
+          <EmptyState
+            title="No dance styles yet"
+            description="Add the styles students and trainers can choose from."
             action={
-              <TouchButton
-                variant="primary"
-                onClick={() => studioQuery.refetch()}
-              >
-                Try again
+              <TouchButton variant="primary" onClick={addStyle}>
+                Add style
               </TouchButton>
             }
           />
         ) : null}
 
-        {studioQuery.isFetched && !studioQuery.data ? (
-          <EmptyState
-            title="Studio not found"
-            description="Unable to load dance styles."
-          />
-        ) : null}
-
-        {studioQuery.data ? (
-          <div className={page.root}>
-            <div className={staff.softPanel}>
-              <p className={staff.panelTitle}>Studio catalog</p>
-              <p className={staff.panelDesc}>
-                Add the dance styles offered at this studio. Edit names,
-                abbreviations, colors, and emoji.
-              </p>
-              <div className={page.toolbar}>
-                <TouchButton variant="quiet" onClick={addStyle} disabled={busy}>
-                  Add style
-                </TouchButton>
-              </div>
-            </div>
-
-            {styles.length === 0 ? (
-              <EmptyState
-                title="No dance styles yet"
-                description="Add the styles students and trainers can choose from."
-                action={
-                  <TouchButton variant="primary" onClick={addStyle}>
-                    Add style
-                  </TouchButton>
-                }
-              />
-            ) : null}
-
-            {styles.map((style, index) => (
-              <div key={style.id} className={page.styleCard}>
-                <div className={page.styleHeader}>
-                  <span className={page.stylePreview}>
-                    <span
-                      className={page.previewSwatch}
-                      style={{ background: style.color }}
-                    >
-                      {style.abbrev || "?"}
-                    </span>
-                    <span aria-hidden="true">{style.emoji}</span>
-                    <span>{style.label || "Untitled"}</span>
+        <div className={page.root}>
+          {styles.map((style, index) => (
+            <div key={style.id} className={page.styleCard}>
+              <div className={page.styleHeader}>
+                <span className={page.stylePreview}>
+                  <span
+                    className={page.previewSwatch}
+                    style={{ background: style.color }}
+                  >
+                    {style.abbrev || "?"}
                   </span>
-                  <div className={staff.rowActions}>
-                    <TouchButton
-                      variant="quiet"
-                      onClick={() => moveStyle(style.id, -1)}
-                      disabled={busy || index === 0}
-                    >
-                      Up
-                    </TouchButton>
-                    <TouchButton
-                      variant="quiet"
-                      onClick={() => moveStyle(style.id, 1)}
-                      disabled={busy || index === styles.length - 1}
-                    >
-                      Down
-                    </TouchButton>
-                    <TouchButton
-                      variant="quiet"
-                      onClick={() => removeStyle(style.id)}
-                      disabled={busy}
-                    >
-                      Remove
-                    </TouchButton>
-                  </div>
+                  <span aria-hidden="true">{style.emoji}</span>
+                  <span>{style.label || "Untitled"}</span>
+                </span>
+                <div className={staff.rowActions}>
+                  <TouchButton
+                    variant="quiet"
+                    onClick={() => moveStyle(style.id, -1)}
+                    disabled={busy || index === 0}
+                  >
+                    Up
+                  </TouchButton>
+                  <TouchButton
+                    variant="quiet"
+                    onClick={() => moveStyle(style.id, 1)}
+                    disabled={busy || index === styles.length - 1}
+                  >
+                    Down
+                  </TouchButton>
+                  <TouchButton
+                    variant="quiet"
+                    onClick={() => removeStyle(style.id)}
+                    disabled={busy}
+                  >
+                    Remove
+                  </TouchButton>
                 </div>
+              </div>
 
-                <div className={page.fields}>
+              <div className={page.fields}>
+                <FormInput
+                  label="Name"
+                  value={style.label}
+                  onChange={(value) => updateStyle(style.id, { label: value })}
+                />
+                <div className={page.inlineFields}>
                   <FormInput
-                    label="Name"
-                    value={style.label}
+                    label="Abbreviation"
+                    value={style.abbrev}
+                    maxLength={4}
                     onChange={(value) =>
-                      updateStyle(style.id, { label: value })
+                      updateStyle(style.id, {
+                        abbrev: value.toUpperCase().slice(0, 4),
+                      })
                     }
                   />
-                  <div className={page.inlineFields}>
-                    <FormInput
-                      label="Abbreviation"
-                      value={style.abbrev}
-                      maxLength={4}
-                      onChange={(value) =>
-                        updateStyle(style.id, {
-                          abbrev: value.toUpperCase().slice(0, 4),
-                        })
-                      }
-                    />
-                    <FormInput
-                      label="Emoji"
-                      value={style.emoji}
-                      onChange={(value) =>
-                        updateStyle(style.id, { emoji: value })
-                      }
-                    />
-                    <div className={page.colorField}>
-                      <span className={page.colorLabel}>Color</span>
-                      <div className={page.colorRow}>
-                        <input
-                          className={page.colorInput}
-                          type="color"
-                          value={
-                            /^#([0-9a-fA-F]{6})$/.test(style.color)
-                              ? style.color
-                              : "#E4572E"
-                          }
-                          aria-label={`${style.label || "Style"} color`}
-                          onChange={(event) =>
-                            updateStyle(style.id, {
-                              color: event.target.value.toUpperCase(),
-                            })
-                          }
-                        />
-                        <FormInput
-                          label="Hex"
-                          aria-label={`${style.label || "Style"} hex color`}
-                          value={style.color}
-                          onChange={(value) =>
-                            updateStyle(style.id, { color: value })
-                          }
-                        />
-                      </div>
+                  <FormInput
+                    label="Emoji"
+                    value={style.emoji}
+                    onChange={(value) =>
+                      updateStyle(style.id, { emoji: value })
+                    }
+                  />
+                  <div className={page.colorField}>
+                    <span className={page.colorLabel}>Color</span>
+                    <div className={page.colorRow}>
+                      <input
+                        className={page.colorInput}
+                        type="color"
+                        value={
+                          /^#([0-9a-fA-F]{6})$/.test(style.color)
+                            ? style.color
+                            : "#E4572E"
+                        }
+                        aria-label={`${style.label || "Style"} color`}
+                        onChange={(event) =>
+                          updateStyle(style.id, {
+                            color: event.target.value.toUpperCase(),
+                          })
+                        }
+                      />
+                      <FormInput
+                        label="Hex"
+                        aria-label={`${style.label || "Style"} hex color`}
+                        value={style.color}
+                        onChange={(value) =>
+                          updateStyle(style.id, { color: value })
+                        }
+                      />
                     </div>
                   </div>
                 </div>
               </div>
-            ))}
-          </div>
-        ) : null}
-      </Screen>
+            </div>
+          ))}
+        </div>
+      </SettingsSection>
 
-      {studioQuery.data ? (
-        <StickyCtaBar>
-          <TouchButton variant="primary" onClick={handleSave} disabled={busy}>
-            {updateSettings.isPending ? "Saving…" : "Save dance styles"}
-          </TouchButton>
-        </StickyCtaBar>
-      ) : null}
+      <SettingsSaveBar
+        isDirty={isDirty}
+        isPending={busy}
+        onCancel={() => setStyles(cloneStyles(baseline))}
+        onSave={handleSave}
+        saveLabel="Save dance styles"
+      />
     </>
   );
 }

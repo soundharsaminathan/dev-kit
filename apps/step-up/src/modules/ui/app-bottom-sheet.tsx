@@ -29,7 +29,7 @@ export function AppBottomSheet({
       sizing={sizing}
       isOpen={isOpen}
       onOpenChange={onOpenChange}
-      className={styles.panel}
+      className={styles.panel ?? ""}
     >
       <DrawerHandle />
       <div

@@ -153,7 +153,7 @@ const PERMISSION_MATRIX: MatrixRow[] = [
   },
   {
     action: "studios.features.write",
-    allowed: [UserRole.SYSTEM_ADMIN],
+    allowed: [UserRole.SYSTEM_ADMIN, UserRole.OWNER],
   },
   {
     action: "batches.roster / attendance.summary",

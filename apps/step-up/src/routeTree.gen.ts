@@ -51,6 +51,7 @@ import { Route as MeLocationsIndexRouteImport } from './routes/me/locations/inde
 import { Route as AppTrainersIndexRouteImport } from './routes/app/trainers/index'
 import { Route as AppSubscriptionsIndexRouteImport } from './routes/app/subscriptions/index'
 import { Route as AppStudentsIndexRouteImport } from './routes/app/students/index'
+import { Route as AppSettingsIndexRouteImport } from './routes/app/settings.index'
 import { Route as AppPayoutsIndexRouteImport } from './routes/app/payouts/index'
 import { Route as AppMessagesIndexRouteImport } from './routes/app/messages/index'
 import { Route as AppLocationsIndexRouteImport } from './routes/app/locations/index'
@@ -75,12 +76,16 @@ import { Route as AppSubscriptionsIdRouteImport } from './routes/app/subscriptio
 import { Route as AppStudentsNewRouteImport } from './routes/app/students/new'
 import { Route as AppStudentsImportRouteImport } from './routes/app/students/import'
 import { Route as AppStudentsIdRouteImport } from './routes/app/students/$id'
-import { Route as AppSettingsTeamRouteImport } from './routes/app/settings_.team'
-import { Route as AppSettingsStylesRouteImport } from './routes/app/settings_.styles'
-import { Route as AppSettingsProfileRouteImport } from './routes/app/settings_.profile'
-import { Route as AppSettingsPaymentsRouteImport } from './routes/app/settings_.payments'
-import { Route as AppSettingsBrandingRouteImport } from './routes/app/settings_.branding'
-import { Route as AppSettingsBillingRouteImport } from './routes/app/settings_.billing'
+import { Route as AppSettingsTeamRouteImport } from './routes/app/settings.team'
+import { Route as AppSettingsStylesRouteImport } from './routes/app/settings.styles'
+import { Route as AppSettingsProfileRouteImport } from './routes/app/settings.profile'
+import { Route as AppSettingsPaymentsRouteImport } from './routes/app/settings.payments'
+import { Route as AppSettingsNotificationsRouteImport } from './routes/app/settings.notifications'
+import { Route as AppSettingsIntegrationsRouteImport } from './routes/app/settings.integrations'
+import { Route as AppSettingsFeaturesRouteImport } from './routes/app/settings.features'
+import { Route as AppSettingsChatRouteImport } from './routes/app/settings.chat'
+import { Route as AppSettingsBrandingRouteImport } from './routes/app/settings.branding'
+import { Route as AppSettingsBillingRouteImport } from './routes/app/settings.billing'
 import { Route as AppSessionsIncompleteRouteImport } from './routes/app/sessions/incomplete'
 import { Route as AppProfileSecurityRouteImport } from './routes/app/profile_.security'
 import { Route as AppProfileFollowRequestsRouteImport } from './routes/app/profile_.follow-requests'
@@ -320,6 +325,11 @@ const AppStudentsIndexRoute = AppStudentsIndexRouteImport.update({
   path: '/students/',
   getParentRoute: () => AppRoute,
 } as any)
+const AppSettingsIndexRoute = AppSettingsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppSettingsRoute,
+} as any)
 const AppPayoutsIndexRoute = AppPayoutsIndexRouteImport.update({
   id: '/payouts/',
   path: '/payouts/',
@@ -441,34 +451,55 @@ const AppStudentsIdRoute = AppStudentsIdRouteImport.update({
   getParentRoute: () => AppRoute,
 } as any)
 const AppSettingsTeamRoute = AppSettingsTeamRouteImport.update({
-  id: '/settings_/team',
-  path: '/settings/team',
-  getParentRoute: () => AppRoute,
+  id: '/team',
+  path: '/team',
+  getParentRoute: () => AppSettingsRoute,
 } as any)
 const AppSettingsStylesRoute = AppSettingsStylesRouteImport.update({
-  id: '/settings_/styles',
-  path: '/settings/styles',
-  getParentRoute: () => AppRoute,
+  id: '/styles',
+  path: '/styles',
+  getParentRoute: () => AppSettingsRoute,
 } as any)
 const AppSettingsProfileRoute = AppSettingsProfileRouteImport.update({
-  id: '/settings_/profile',
-  path: '/settings/profile',
-  getParentRoute: () => AppRoute,
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => AppSettingsRoute,
 } as any)
 const AppSettingsPaymentsRoute = AppSettingsPaymentsRouteImport.update({
-  id: '/settings_/payments',
-  path: '/settings/payments',
-  getParentRoute: () => AppRoute,
+  id: '/payments',
+  path: '/payments',
+  getParentRoute: () => AppSettingsRoute,
+} as any)
+const AppSettingsNotificationsRoute =
+  AppSettingsNotificationsRouteImport.update({
+    id: '/notifications',
+    path: '/notifications',
+    getParentRoute: () => AppSettingsRoute,
+  } as any)
+const AppSettingsIntegrationsRoute = AppSettingsIntegrationsRouteImport.update({
+  id: '/integrations',
+  path: '/integrations',
+  getParentRoute: () => AppSettingsRoute,
+} as any)
+const AppSettingsFeaturesRoute = AppSettingsFeaturesRouteImport.update({
+  id: '/features',
+  path: '/features',
+  getParentRoute: () => AppSettingsRoute,
+} as any)
+const AppSettingsChatRoute = AppSettingsChatRouteImport.update({
+  id: '/chat',
+  path: '/chat',
+  getParentRoute: () => AppSettingsRoute,
 } as any)
 const AppSettingsBrandingRoute = AppSettingsBrandingRouteImport.update({
-  id: '/settings_/branding',
-  path: '/settings/branding',
-  getParentRoute: () => AppRoute,
+  id: '/branding',
+  path: '/branding',
+  getParentRoute: () => AppSettingsRoute,
 } as any)
 const AppSettingsBillingRoute = AppSettingsBillingRouteImport.update({
-  id: '/settings_/billing',
-  path: '/settings/billing',
-  getParentRoute: () => AppRoute,
+  id: '/billing',
+  path: '/billing',
+  getParentRoute: () => AppSettingsRoute,
 } as any)
 const AppSessionsIncompleteRoute = AppSessionsIncompleteRouteImport.update({
   id: '/sessions/incomplete',
@@ -631,7 +662,7 @@ export interface FileRoutesByFullPath {
   '/app/payments': typeof AppPaymentsRoute
   '/app/profile': typeof AppProfileRoute
   '/app/retention': typeof AppRetentionRoute
-  '/app/settings': typeof AppSettingsRoute
+  '/app/settings': typeof AppSettingsRouteWithChildren
   '/me/attendance': typeof MeAttendanceRoute
   '/me/book': typeof MeBookRoute
   '/me/bookings': typeof MeBookingsRoute
@@ -674,6 +705,10 @@ export interface FileRoutesByFullPath {
   '/app/sessions/incomplete': typeof AppSessionsIncompleteRoute
   '/app/settings/billing': typeof AppSettingsBillingRoute
   '/app/settings/branding': typeof AppSettingsBrandingRoute
+  '/app/settings/chat': typeof AppSettingsChatRoute
+  '/app/settings/features': typeof AppSettingsFeaturesRoute
+  '/app/settings/integrations': typeof AppSettingsIntegrationsRoute
+  '/app/settings/notifications': typeof AppSettingsNotificationsRoute
   '/app/settings/payments': typeof AppSettingsPaymentsRoute
   '/app/settings/profile': typeof AppSettingsProfileRoute
   '/app/settings/styles': typeof AppSettingsStylesRoute
@@ -702,6 +737,7 @@ export interface FileRoutesByFullPath {
   '/app/locations/': typeof AppLocationsIndexRoute
   '/app/messages/': typeof AppMessagesIndexRoute
   '/app/payouts/': typeof AppPayoutsIndexRoute
+  '/app/settings/': typeof AppSettingsIndexRoute
   '/app/students/': typeof AppStudentsIndexRoute
   '/app/subscriptions/': typeof AppSubscriptionsIndexRoute
   '/app/trainers/': typeof AppTrainersIndexRoute
@@ -730,7 +766,6 @@ export interface FileRoutesByTo {
   '/app/payments': typeof AppPaymentsRoute
   '/app/profile': typeof AppProfileRoute
   '/app/retention': typeof AppRetentionRoute
-  '/app/settings': typeof AppSettingsRoute
   '/me/attendance': typeof MeAttendanceRoute
   '/me/book': typeof MeBookRoute
   '/me/bookings': typeof MeBookingsRoute
@@ -773,6 +808,10 @@ export interface FileRoutesByTo {
   '/app/sessions/incomplete': typeof AppSessionsIncompleteRoute
   '/app/settings/billing': typeof AppSettingsBillingRoute
   '/app/settings/branding': typeof AppSettingsBrandingRoute
+  '/app/settings/chat': typeof AppSettingsChatRoute
+  '/app/settings/features': typeof AppSettingsFeaturesRoute
+  '/app/settings/integrations': typeof AppSettingsIntegrationsRoute
+  '/app/settings/notifications': typeof AppSettingsNotificationsRoute
   '/app/settings/payments': typeof AppSettingsPaymentsRoute
   '/app/settings/profile': typeof AppSettingsProfileRoute
   '/app/settings/styles': typeof AppSettingsStylesRoute
@@ -801,6 +840,7 @@ export interface FileRoutesByTo {
   '/app/locations': typeof AppLocationsIndexRoute
   '/app/messages': typeof AppMessagesIndexRoute
   '/app/payouts': typeof AppPayoutsIndexRoute
+  '/app/settings': typeof AppSettingsIndexRoute
   '/app/students': typeof AppStudentsIndexRoute
   '/app/subscriptions': typeof AppSubscriptionsIndexRoute
   '/app/trainers': typeof AppTrainersIndexRoute
@@ -833,7 +873,7 @@ export interface FileRoutesById {
   '/app/payments': typeof AppPaymentsRoute
   '/app/profile': typeof AppProfileRoute
   '/app/retention': typeof AppRetentionRoute
-  '/app/settings': typeof AppSettingsRoute
+  '/app/settings': typeof AppSettingsRouteWithChildren
   '/me/attendance': typeof MeAttendanceRoute
   '/me/book': typeof MeBookRoute
   '/me/bookings': typeof MeBookingsRoute
@@ -874,12 +914,16 @@ export interface FileRoutesById {
   '/app/profile_/follow-requests': typeof AppProfileFollowRequestsRoute
   '/app/profile_/security': typeof AppProfileSecurityRoute
   '/app/sessions/incomplete': typeof AppSessionsIncompleteRoute
-  '/app/settings_/billing': typeof AppSettingsBillingRoute
-  '/app/settings_/branding': typeof AppSettingsBrandingRoute
-  '/app/settings_/payments': typeof AppSettingsPaymentsRoute
-  '/app/settings_/profile': typeof AppSettingsProfileRoute
-  '/app/settings_/styles': typeof AppSettingsStylesRoute
-  '/app/settings_/team': typeof AppSettingsTeamRoute
+  '/app/settings/billing': typeof AppSettingsBillingRoute
+  '/app/settings/branding': typeof AppSettingsBrandingRoute
+  '/app/settings/chat': typeof AppSettingsChatRoute
+  '/app/settings/features': typeof AppSettingsFeaturesRoute
+  '/app/settings/integrations': typeof AppSettingsIntegrationsRoute
+  '/app/settings/notifications': typeof AppSettingsNotificationsRoute
+  '/app/settings/payments': typeof AppSettingsPaymentsRoute
+  '/app/settings/profile': typeof AppSettingsProfileRoute
+  '/app/settings/styles': typeof AppSettingsStylesRoute
+  '/app/settings/team': typeof AppSettingsTeamRoute
   '/app/students/$id': typeof AppStudentsIdRoute
   '/app/students/import': typeof AppStudentsImportRoute
   '/app/students/new': typeof AppStudentsNewRoute
@@ -904,6 +948,7 @@ export interface FileRoutesById {
   '/app/locations/': typeof AppLocationsIndexRoute
   '/app/messages/': typeof AppMessagesIndexRoute
   '/app/payouts/': typeof AppPayoutsIndexRoute
+  '/app/settings/': typeof AppSettingsIndexRoute
   '/app/students/': typeof AppStudentsIndexRoute
   '/app/subscriptions/': typeof AppSubscriptionsIndexRoute
   '/app/trainers/': typeof AppTrainersIndexRoute
@@ -980,6 +1025,10 @@ export interface FileRouteTypes {
     | '/app/sessions/incomplete'
     | '/app/settings/billing'
     | '/app/settings/branding'
+    | '/app/settings/chat'
+    | '/app/settings/features'
+    | '/app/settings/integrations'
+    | '/app/settings/notifications'
     | '/app/settings/payments'
     | '/app/settings/profile'
     | '/app/settings/styles'
@@ -1008,6 +1057,7 @@ export interface FileRouteTypes {
     | '/app/locations/'
     | '/app/messages/'
     | '/app/payouts/'
+    | '/app/settings/'
     | '/app/students/'
     | '/app/subscriptions/'
     | '/app/trainers/'
@@ -1036,7 +1086,6 @@ export interface FileRouteTypes {
     | '/app/payments'
     | '/app/profile'
     | '/app/retention'
-    | '/app/settings'
     | '/me/attendance'
     | '/me/book'
     | '/me/bookings'
@@ -1079,6 +1128,10 @@ export interface FileRouteTypes {
     | '/app/sessions/incomplete'
     | '/app/settings/billing'
     | '/app/settings/branding'
+    | '/app/settings/chat'
+    | '/app/settings/features'
+    | '/app/settings/integrations'
+    | '/app/settings/notifications'
     | '/app/settings/payments'
     | '/app/settings/profile'
     | '/app/settings/styles'
@@ -1107,6 +1160,7 @@ export interface FileRouteTypes {
     | '/app/locations'
     | '/app/messages'
     | '/app/payouts'
+    | '/app/settings'
     | '/app/students'
     | '/app/subscriptions'
     | '/app/trainers'
@@ -1179,12 +1233,16 @@ export interface FileRouteTypes {
     | '/app/profile_/follow-requests'
     | '/app/profile_/security'
     | '/app/sessions/incomplete'
-    | '/app/settings_/billing'
-    | '/app/settings_/branding'
-    | '/app/settings_/payments'
-    | '/app/settings_/profile'
-    | '/app/settings_/styles'
-    | '/app/settings_/team'
+    | '/app/settings/billing'
+    | '/app/settings/branding'
+    | '/app/settings/chat'
+    | '/app/settings/features'
+    | '/app/settings/integrations'
+    | '/app/settings/notifications'
+    | '/app/settings/payments'
+    | '/app/settings/profile'
+    | '/app/settings/styles'
+    | '/app/settings/team'
     | '/app/students/$id'
     | '/app/students/import'
     | '/app/students/new'
@@ -1209,6 +1267,7 @@ export interface FileRouteTypes {
     | '/app/locations/'
     | '/app/messages/'
     | '/app/payouts/'
+    | '/app/settings/'
     | '/app/students/'
     | '/app/subscriptions/'
     | '/app/trainers/'
@@ -1535,6 +1594,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppStudentsIndexRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/settings/': {
+      id: '/app/settings/'
+      path: '/'
+      fullPath: '/app/settings/'
+      preLoaderRoute: typeof AppSettingsIndexRouteImport
+      parentRoute: typeof AppSettingsRoute
+    }
     '/app/payouts/': {
       id: '/app/payouts/'
       path: '/payouts'
@@ -1703,47 +1769,75 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppStudentsIdRouteImport
       parentRoute: typeof AppRoute
     }
-    '/app/settings_/team': {
-      id: '/app/settings_/team'
-      path: '/settings/team'
+    '/app/settings/team': {
+      id: '/app/settings/team'
+      path: '/team'
       fullPath: '/app/settings/team'
       preLoaderRoute: typeof AppSettingsTeamRouteImport
-      parentRoute: typeof AppRoute
+      parentRoute: typeof AppSettingsRoute
     }
-    '/app/settings_/styles': {
-      id: '/app/settings_/styles'
-      path: '/settings/styles'
+    '/app/settings/styles': {
+      id: '/app/settings/styles'
+      path: '/styles'
       fullPath: '/app/settings/styles'
       preLoaderRoute: typeof AppSettingsStylesRouteImport
-      parentRoute: typeof AppRoute
+      parentRoute: typeof AppSettingsRoute
     }
-    '/app/settings_/profile': {
-      id: '/app/settings_/profile'
-      path: '/settings/profile'
+    '/app/settings/profile': {
+      id: '/app/settings/profile'
+      path: '/profile'
       fullPath: '/app/settings/profile'
       preLoaderRoute: typeof AppSettingsProfileRouteImport
-      parentRoute: typeof AppRoute
+      parentRoute: typeof AppSettingsRoute
     }
-    '/app/settings_/payments': {
-      id: '/app/settings_/payments'
-      path: '/settings/payments'
+    '/app/settings/payments': {
+      id: '/app/settings/payments'
+      path: '/payments'
       fullPath: '/app/settings/payments'
       preLoaderRoute: typeof AppSettingsPaymentsRouteImport
-      parentRoute: typeof AppRoute
+      parentRoute: typeof AppSettingsRoute
     }
-    '/app/settings_/branding': {
-      id: '/app/settings_/branding'
-      path: '/settings/branding'
+    '/app/settings/notifications': {
+      id: '/app/settings/notifications'
+      path: '/notifications'
+      fullPath: '/app/settings/notifications'
+      preLoaderRoute: typeof AppSettingsNotificationsRouteImport
+      parentRoute: typeof AppSettingsRoute
+    }
+    '/app/settings/integrations': {
+      id: '/app/settings/integrations'
+      path: '/integrations'
+      fullPath: '/app/settings/integrations'
+      preLoaderRoute: typeof AppSettingsIntegrationsRouteImport
+      parentRoute: typeof AppSettingsRoute
+    }
+    '/app/settings/features': {
+      id: '/app/settings/features'
+      path: '/features'
+      fullPath: '/app/settings/features'
+      preLoaderRoute: typeof AppSettingsFeaturesRouteImport
+      parentRoute: typeof AppSettingsRoute
+    }
+    '/app/settings/chat': {
+      id: '/app/settings/chat'
+      path: '/chat'
+      fullPath: '/app/settings/chat'
+      preLoaderRoute: typeof AppSettingsChatRouteImport
+      parentRoute: typeof AppSettingsRoute
+    }
+    '/app/settings/branding': {
+      id: '/app/settings/branding'
+      path: '/branding'
       fullPath: '/app/settings/branding'
       preLoaderRoute: typeof AppSettingsBrandingRouteImport
-      parentRoute: typeof AppRoute
+      parentRoute: typeof AppSettingsRoute
     }
-    '/app/settings_/billing': {
-      id: '/app/settings_/billing'
-      path: '/settings/billing'
+    '/app/settings/billing': {
+      id: '/app/settings/billing'
+      path: '/billing'
       fullPath: '/app/settings/billing'
       preLoaderRoute: typeof AppSettingsBillingRouteImport
-      parentRoute: typeof AppRoute
+      parentRoute: typeof AppSettingsRoute
     }
     '/app/sessions/incomplete': {
       id: '/app/sessions/incomplete'
@@ -1962,6 +2056,38 @@ const AdminRouteChildren: AdminRouteChildren = {
 
 const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 
+interface AppSettingsRouteChildren {
+  AppSettingsBillingRoute: typeof AppSettingsBillingRoute
+  AppSettingsBrandingRoute: typeof AppSettingsBrandingRoute
+  AppSettingsChatRoute: typeof AppSettingsChatRoute
+  AppSettingsFeaturesRoute: typeof AppSettingsFeaturesRoute
+  AppSettingsIntegrationsRoute: typeof AppSettingsIntegrationsRoute
+  AppSettingsNotificationsRoute: typeof AppSettingsNotificationsRoute
+  AppSettingsPaymentsRoute: typeof AppSettingsPaymentsRoute
+  AppSettingsProfileRoute: typeof AppSettingsProfileRoute
+  AppSettingsStylesRoute: typeof AppSettingsStylesRoute
+  AppSettingsTeamRoute: typeof AppSettingsTeamRoute
+  AppSettingsIndexRoute: typeof AppSettingsIndexRoute
+}
+
+const AppSettingsRouteChildren: AppSettingsRouteChildren = {
+  AppSettingsBillingRoute: AppSettingsBillingRoute,
+  AppSettingsBrandingRoute: AppSettingsBrandingRoute,
+  AppSettingsChatRoute: AppSettingsChatRoute,
+  AppSettingsFeaturesRoute: AppSettingsFeaturesRoute,
+  AppSettingsIntegrationsRoute: AppSettingsIntegrationsRoute,
+  AppSettingsNotificationsRoute: AppSettingsNotificationsRoute,
+  AppSettingsPaymentsRoute: AppSettingsPaymentsRoute,
+  AppSettingsProfileRoute: AppSettingsProfileRoute,
+  AppSettingsStylesRoute: AppSettingsStylesRoute,
+  AppSettingsTeamRoute: AppSettingsTeamRoute,
+  AppSettingsIndexRoute: AppSettingsIndexRoute,
+}
+
+const AppSettingsRouteWithChildren = AppSettingsRoute._addFileChildren(
+  AppSettingsRouteChildren,
+)
+
 interface AppRouteChildren {
   AppCalendarRoute: typeof AppCalendarRoute
   AppFeedRoute: typeof AppFeedRoute
@@ -1970,7 +2096,7 @@ interface AppRouteChildren {
   AppPaymentsRoute: typeof AppPaymentsRoute
   AppProfileRoute: typeof AppProfileRoute
   AppRetentionRoute: typeof AppRetentionRoute
-  AppSettingsRoute: typeof AppSettingsRoute
+  AppSettingsRoute: typeof AppSettingsRouteWithChildren
   AppIndexRoute: typeof AppIndexRoute
   AppBatchesIdRoute: typeof AppBatchesIdRoute
   AppBatchesNewRoute: typeof AppBatchesNewRoute
@@ -1991,12 +2117,6 @@ interface AppRouteChildren {
   AppProfileFollowRequestsRoute: typeof AppProfileFollowRequestsRoute
   AppProfileSecurityRoute: typeof AppProfileSecurityRoute
   AppSessionsIncompleteRoute: typeof AppSessionsIncompleteRoute
-  AppSettingsBillingRoute: typeof AppSettingsBillingRoute
-  AppSettingsBrandingRoute: typeof AppSettingsBrandingRoute
-  AppSettingsPaymentsRoute: typeof AppSettingsPaymentsRoute
-  AppSettingsProfileRoute: typeof AppSettingsProfileRoute
-  AppSettingsStylesRoute: typeof AppSettingsStylesRoute
-  AppSettingsTeamRoute: typeof AppSettingsTeamRoute
   AppStudentsIdRoute: typeof AppStudentsIdRoute
   AppStudentsImportRoute: typeof AppStudentsImportRoute
   AppStudentsNewRoute: typeof AppStudentsNewRoute
@@ -2029,7 +2149,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppPaymentsRoute: AppPaymentsRoute,
   AppProfileRoute: AppProfileRoute,
   AppRetentionRoute: AppRetentionRoute,
-  AppSettingsRoute: AppSettingsRoute,
+  AppSettingsRoute: AppSettingsRouteWithChildren,
   AppIndexRoute: AppIndexRoute,
   AppBatchesIdRoute: AppBatchesIdRoute,
   AppBatchesNewRoute: AppBatchesNewRoute,
@@ -2050,12 +2170,6 @@ const AppRouteChildren: AppRouteChildren = {
   AppProfileFollowRequestsRoute: AppProfileFollowRequestsRoute,
   AppProfileSecurityRoute: AppProfileSecurityRoute,
   AppSessionsIncompleteRoute: AppSessionsIncompleteRoute,
-  AppSettingsBillingRoute: AppSettingsBillingRoute,
-  AppSettingsBrandingRoute: AppSettingsBrandingRoute,
-  AppSettingsPaymentsRoute: AppSettingsPaymentsRoute,
-  AppSettingsProfileRoute: AppSettingsProfileRoute,
-  AppSettingsStylesRoute: AppSettingsStylesRoute,
-  AppSettingsTeamRoute: AppSettingsTeamRoute,
   AppStudentsIdRoute: AppStudentsIdRoute,
   AppStudentsImportRoute: AppStudentsImportRoute,
   AppStudentsNewRoute: AppStudentsNewRoute,

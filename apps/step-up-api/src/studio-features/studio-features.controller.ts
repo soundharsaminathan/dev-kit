@@ -44,12 +44,16 @@ export class StudioFeaturesController {
   }
 
   @Patch(":key")
-  @Roles(UserRole.SYSTEM_ADMIN)
+  @Roles(UserRole.SYSTEM_ADMIN, UserRole.OWNER)
   update(
     @Param("studioId") studioId: string,
     @Param("key") key: string,
     @Body() dto: UpdateStudioFeatureDto,
+    @CurrentUser() user: DecryptedUser,
   ) {
+    if (user.role !== UserRole.SYSTEM_ADMIN) {
+      assertSameStudio(user, studioId);
+    }
     return this.studioFeatures.setEnabled(studioId, key, dto.enabled);
   }
 }

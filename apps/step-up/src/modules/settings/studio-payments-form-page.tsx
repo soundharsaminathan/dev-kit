@@ -1,26 +1,36 @@
 import { useToastContext } from "@dev-ui/components/toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useApi } from "@/lib/api-context";
 import { useStudioId } from "@/lib/use-studio-id";
 import { StudioPaymentsFields } from "@/modules/admin/studio-payments-fields";
 import paymentsStyles from "@/modules/admin/studio-payments-fields.module.scss";
-import { Screen } from "@/modules/ui/screen";
 import { SkeletonBlock } from "@/modules/ui/skeleton-block";
-import staff from "@/modules/ui/staff.module.scss";
 import { EmptyState, ErrorState } from "@/modules/ui/states";
-import { StickyCtaBar, TouchButton } from "@/modules/ui/touch-button";
+import { TouchButton } from "@/modules/ui/touch-button";
 import type { Studio } from "./types";
+import { SettingsSaveBar, SettingsSection, useSettingsDirtyForm } from "./ui";
+import styles from "./ui/settings-ui.module.scss";
+
+type PaymentsValues = {
+  razorpayKeyId: string;
+  razorpayKeySecret: string;
+  gstNumber: string;
+  gstPercent: string;
+};
 
 export function StudioPaymentsFormPage() {
   const api = useApi();
   const studioId = useStudioId();
   const queryClient = useQueryClient();
   const { toast } = useToastContext("StudioPaymentsFormPage");
-  const [razorpayKeyId, setRazorpayKeyId] = useState("");
-  const [razorpayKeySecret, setRazorpayKeySecret] = useState("");
-  const [gstNumber, setGstNumber] = useState("");
-  const [gstPercent, setGstPercent] = useState("0");
+  const { hydrate, hydrated, values, setField, isDirty, reset, markSaved } =
+    useSettingsDirtyForm<PaymentsValues>({
+      razorpayKeyId: "",
+      razorpayKeySecret: "",
+      gstNumber: "",
+      gstPercent: "0",
+    });
 
   const studioQuery = useQuery({
     queryKey: ["studio", studioId],
@@ -31,17 +41,21 @@ export function StudioPaymentsFormPage() {
   const savedKeyId = studioQuery.data?.settings?.razorpayKeyId?.trim() ?? "";
 
   useEffect(() => {
-    if (!studioQuery.data) return;
-    setGstNumber(studioQuery.data.settings?.gstNumber ?? "");
-    setGstPercent(String(studioQuery.data.settings?.gstPercent ?? 0));
-  }, [studioQuery.data]);
+    if (!studioQuery.data || hydrated) return;
+    hydrate({
+      razorpayKeyId: "",
+      razorpayKeySecret: "",
+      gstNumber: studioQuery.data.settings?.gstNumber ?? "",
+      gstPercent: String(studioQuery.data.settings?.gstPercent ?? 0),
+    });
+  }, [studioQuery.data, hydrated, hydrate]);
 
   const updateSettings = useMutation({
     mutationFn: async () => {
       const settings = studioQuery.data?.settings;
-      const nextKeyId = razorpayKeyId.trim() || savedKeyId;
-      const nextSecret = razorpayKeySecret.trim();
-      const gst = Number(gstPercent);
+      const nextKeyId = values.razorpayKeyId.trim() || savedKeyId;
+      const nextSecret = values.razorpayKeySecret.trim();
+      const gst = Number(values.gstPercent);
       if (!Number.isFinite(gst) || gst < 0 || gst > 100) {
         throw new Error("GST percent must be between 0 and 100.");
       }
@@ -55,7 +69,7 @@ export function StudioPaymentsFormPage() {
       } = {
         graceDays: settings?.graceDays ?? 3,
         expireAlertDays: settings?.expireAlertDays ?? 7,
-        gstNumber: gstNumber.trim() || null,
+        gstNumber: values.gstNumber.trim() || null,
         gstPercent: gst,
       };
       if (nextKeyId) {
@@ -71,7 +85,11 @@ export function StudioPaymentsFormPage() {
       return { secretUpdated: Boolean(nextSecret) };
     },
     onSuccess: (result) => {
-      setRazorpayKeySecret("");
+      markSaved({
+        ...values,
+        razorpayKeyId: "",
+        razorpayKeySecret: "",
+      });
       void queryClient.invalidateQueries({ queryKey: ["studio", studioId] });
       void queryClient.invalidateQueries({
         queryKey: ["studio-public", studioId],
@@ -96,92 +114,80 @@ export function StudioPaymentsFormPage() {
     },
   });
 
+  if (studioQuery.isLoading) {
+    return <SkeletonBlock height="12rem" radius="var(--radius-xl)" />;
+  }
+
+  if (studioQuery.isError) {
+    return (
+      <ErrorState
+        description={
+          studioQuery.error instanceof Error
+            ? studioQuery.error.message
+            : "Unable to load payment settings."
+        }
+        action={
+          <TouchButton variant="primary" onClick={() => studioQuery.refetch()}>
+            Try again
+          </TouchButton>
+        }
+      />
+    );
+  }
+
+  if (!studioQuery.data) {
+    return (
+      <EmptyState
+        title="Studio not found"
+        description="Unable to load payment settings."
+      />
+    );
+  }
+
   return (
     <>
-      <Screen
-        title="Payments"
-        subtitle="Configure GST and Razorpay for student checkout."
-        showBack
-        backTo="/app/settings"
-        paddedCta
+      <SettingsSection
+        title="Checkout"
+        description="GST and Razorpay credentials for online payments."
       >
-        {studioQuery.isLoading ? (
-          <SkeletonBlock height="12rem" radius="var(--radius-2xl)" />
+        <StudioPaymentsFields
+          className={paymentsStyles.fields}
+          titleClassName={styles.fieldLabel}
+          descClassName={styles.fieldDescription}
+          razorpayKeyId={values.razorpayKeyId}
+          razorpayKeySecret={values.razorpayKeySecret}
+          savedKeyId={savedKeyId}
+          configured={configured}
+          onKeyIdChange={(value) => setField("razorpayKeyId", value)}
+          onKeySecretChange={(value) => setField("razorpayKeySecret", value)}
+          gstNumber={values.gstNumber}
+          onGstNumberChange={(value) => setField("gstNumber", value)}
+          gstPercent={values.gstPercent}
+          onGstPercentChange={(value) => setField("gstPercent", value)}
+        />
+        {configured && !values.razorpayKeySecret ? (
+          <p className={styles.fieldDescription}>
+            Key ID and secret must be a matching pair from the same Razorpay
+            mode (test or live).
+          </p>
         ) : null}
-
-        {studioQuery.isError ? (
+        {updateSettings.isError ? (
           <ErrorState
             description={
-              studioQuery.error instanceof Error
-                ? studioQuery.error.message
-                : "Unable to load payment settings."
-            }
-            action={
-              <TouchButton
-                variant="primary"
-                onClick={() => studioQuery.refetch()}
-              >
-                Try again
-              </TouchButton>
+              updateSettings.error instanceof Error
+                ? updateSettings.error.message
+                : "Could not save payment settings."
             }
           />
         ) : null}
+      </SettingsSection>
 
-        {studioQuery.isFetched && !studioQuery.data ? (
-          <EmptyState
-            title="Studio not found"
-            description="Unable to load payment settings."
-          />
-        ) : null}
-
-        {studioQuery.data ? (
-          <div className={staff.softPanel}>
-            <StudioPaymentsFields
-              className={paymentsStyles.fields}
-              titleClassName={staff.panelTitle}
-              descClassName={staff.panelDesc}
-              razorpayKeyId={razorpayKeyId}
-              razorpayKeySecret={razorpayKeySecret}
-              savedKeyId={savedKeyId}
-              configured={configured}
-              onKeyIdChange={setRazorpayKeyId}
-              onKeySecretChange={setRazorpayKeySecret}
-              gstNumber={gstNumber}
-              onGstNumberChange={setGstNumber}
-              gstPercent={gstPercent}
-              onGstPercentChange={setGstPercent}
-            />
-            {configured && !razorpayKeySecret ? (
-              <p className={staff.panelDesc}>
-                Key ID and secret must be a matching pair from the same Razorpay
-                mode (test or live).
-              </p>
-            ) : null}
-            {updateSettings.isError ? (
-              <ErrorState
-                description={
-                  updateSettings.error instanceof Error
-                    ? updateSettings.error.message
-                    : "Could not save payment settings."
-                }
-              />
-            ) : null}
-          </div>
-        ) : null}
-      </Screen>
-
-      {studioQuery.data ? (
-        <StickyCtaBar>
-          <TouchButton
-            variant="primary"
-            fullWidth
-            isPending={updateSettings.isPending}
-            onClick={() => updateSettings.mutate()}
-          >
-            Save payments
-          </TouchButton>
-        </StickyCtaBar>
-      ) : null}
+      <SettingsSaveBar
+        isDirty={isDirty}
+        isPending={updateSettings.isPending}
+        onCancel={reset}
+        onSave={() => updateSettings.mutate()}
+      />
     </>
   );
 }

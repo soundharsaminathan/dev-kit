@@ -1,15 +1,15 @@
+import { Input } from "@dev-ui/components/input";
 import { useToastContext } from "@dev-ui/components/toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useApi } from "@/lib/api-context";
 import { useStudioId } from "@/lib/use-studio-id";
-import { FormInput } from "@/modules/ui/form-input";
-import { Screen } from "@/modules/ui/screen";
 import { SkeletonBlock } from "@/modules/ui/skeleton-block";
 import staff from "@/modules/ui/staff.module.scss";
 import { ErrorState } from "@/modules/ui/states";
 import { TouchButton } from "@/modules/ui/touch-button";
 import type { StaffInvite } from "./types";
+import { SettingsField, SettingsSection } from "./ui";
 
 export function StudioTeamFormPage() {
   const api = useApi();
@@ -80,24 +80,19 @@ export function StudioTeamFormPage() {
   );
 
   return (
-    <Screen
-      title="Team invites"
-      subtitle="Email a join link for staff or trainers."
-      showBack
-      backTo="/app/settings"
-    >
-      <div className={staff.softPanel}>
-        <p className={staff.panelTitle}>Send invite</p>
-        <p className={staff.panelDesc}>
-          Email a join link for staff or trainers
-        </p>
-        <FormInput
-          label="Email"
-          type="email"
-          value={inviteEmail}
-          onChange={setInviteEmail}
-          placeholder="teammate@studio.com"
-        />
+    <>
+      <SettingsSection
+        title="Send invite"
+        description="Email a join link for staff or trainers."
+      >
+        <SettingsField label="Email" description="Teammate work email address.">
+          <Input
+            type="email"
+            value={inviteEmail}
+            onChange={(event) => setInviteEmail(event.target.value)}
+            placeholder="teammate@studio.com"
+          />
+        </SettingsField>
         <div className={staff.rowActions}>
           <TouchButton
             size="sm"
@@ -116,7 +111,6 @@ export function StudioTeamFormPage() {
         </div>
         <TouchButton
           variant="primary"
-          fullWidth
           isDisabled={!inviteEmail.trim()}
           isPending={createInvite.isPending}
           onClick={() => createInvite.mutate()}
@@ -137,10 +131,12 @@ export function StudioTeamFormPage() {
             Invite link: <code>{lastInviteUrl}</code>
           </p>
         ) : null}
-      </div>
+      </SettingsSection>
 
-      <div className={staff.softPanel}>
-        <p className={staff.panelTitle}>Pending invites</p>
+      <SettingsSection
+        title="Pending invites"
+        description="Revoke access before the invite is accepted."
+      >
         {invitesQuery.isLoading ? (
           <SkeletonBlock height="4rem" radius="var(--radius-xl)" />
         ) : null}
@@ -173,10 +169,10 @@ export function StudioTeamFormPage() {
               </div>
             ))}
           </div>
-        ) : (
+        ) : !invitesQuery.isLoading && !invitesQuery.isError ? (
           <p className={staff.panelDesc}>No pending invites.</p>
-        )}
-      </div>
-    </Screen>
+        ) : null}
+      </SettingsSection>
+    </>
   );
 }
