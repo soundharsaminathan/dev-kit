@@ -1,11 +1,19 @@
 import { BadRequestException, Inject, Injectable } from "@nestjs/common";
 import { requireUserStudioId } from "../auth/studio-access";
 import type { DecryptedUser } from "../users/user-crypto.service";
-import type { AgentChatMessage } from "./agent.types";
+import type {
+  AgentChatMessage,
+  StaffAgentProvider,
+} from "./agent.types";
+import { STAFF_AGENT_PROVIDER_DEFAULT } from "./agent.types";
 import {
   GEMINI_CHAT_MODEL_DEFAULT,
   GeminiClient,
 } from "./gemini.client";
+import {
+  GROQ_CHAT_MODEL_DEFAULT,
+  GroqClient,
+} from "./groq.client";
 import {
   createResolvedIds,
   parseToolArguments,
@@ -39,11 +47,29 @@ export type StaffAgentChatResult = {
   actions: StaffAgentAction[];
   audioBase64?: string;
   model: string;
+  provider: StaffAgentProvider;
+};
+
+type LlmClient = {
+  requireApiKey: () => string;
+  chat: (input: {
+    messages: AgentChatMessage[];
+    tools?: typeof STAFF_AGENT_TOOLS;
+    temperature?: number;
+    maxTokens?: number;
+  }) => Promise<{
+    content: string | null;
+    toolCalls: NonNullable<AgentChatMessage["tool_calls"]>;
+    model: string;
+  }>;
+  transcribe: (audio: Buffer, mimeType: string) => Promise<string>;
+  synthesizeSpeech: (text: string) => Promise<Buffer | null>;
 };
 
 @Injectable()
 export class StaffAgentService {
   constructor(
+    @Inject(GroqClient) private readonly groq: GroqClient,
     @Inject(GeminiClient) private readonly gemini: GeminiClient,
     @Inject(StaffAgentToolExecutor)
     private readonly tools: StaffAgentToolExecutor,
@@ -53,12 +79,15 @@ export class StaffAgentService {
     actor: DecryptedUser,
     input: {
       messages: StaffAgentChatMessage[];
+      provider?: StaffAgentProvider;
       voice?: boolean;
       audioBase64?: string;
       audioMimeType?: string;
     },
   ): Promise<StaffAgentChatResult> {
-    this.gemini.requireApiKey();
+    const provider = input.provider ?? STAFF_AGENT_PROVIDER_DEFAULT;
+    const llm = this.clientFor(provider);
+    llm.requireApiKey();
     const studioId = requireUserStudioId(actor);
 
     let transcript: string | undefined;
@@ -80,7 +109,7 @@ export class StaffAgentService {
           "Audio is too large. Keep recordings under about 30 seconds.",
         );
       }
-      transcript = await this.gemini.transcribe(buffer, mime);
+      transcript = await llm.transcribe(buffer, mime);
       if (!transcript) {
         throw new BadRequestException("Could not transcribe the recording");
       }
@@ -103,11 +132,12 @@ export class StaffAgentService {
 
     const resolved = createResolvedIds();
     const actions: StaffAgentAction[] = [];
-    let model = GEMINI_CHAT_MODEL_DEFAULT;
+    let model =
+      provider === "gemini" ? GEMINI_CHAT_MODEL_DEFAULT : GROQ_CHAT_MODEL_DEFAULT;
     let finalReply = "";
 
     for (let round = 0; round < MAX_TOOL_ROUNDS; round += 1) {
-      const completion = await this.gemini.chat({
+      const completion = await llm.chat({
         messages,
         tools: STAFF_AGENT_TOOLS,
       });
@@ -164,7 +194,7 @@ export class StaffAgentService {
       }
 
       if (round === MAX_TOOL_ROUNDS - 1) {
-        const wrap = await this.gemini.chat({
+        const wrap = await llm.chat({
           messages: [
             ...messages,
             {
@@ -187,7 +217,7 @@ export class StaffAgentService {
 
     let audioBase64: string | undefined;
     if (input.voice || input.audioBase64) {
-      const speech = await this.gemini.synthesizeSpeech(finalReply);
+      const speech = await llm.synthesizeSpeech(finalReply);
       if (speech && speech.length > 0) {
         audioBase64 = speech.toString("base64");
       }
@@ -199,7 +229,12 @@ export class StaffAgentService {
       actions,
       audioBase64,
       model,
+      provider,
     };
+  }
+
+  private clientFor(provider: StaffAgentProvider): LlmClient {
+    return provider === "gemini" ? this.gemini : this.groq;
   }
 }
 

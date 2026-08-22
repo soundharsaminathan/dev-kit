@@ -4,6 +4,7 @@ import { BookingsModule } from "../bookings/bookings.module";
 import { SessionsModule } from "../sessions/sessions.module";
 import { UsersModule } from "../users/users.module";
 import { GeminiClient } from "./gemini.client";
+import { GroqClient } from "./groq.client";
 import { StaffAgentController } from "./staff-agent.controller";
 import { StaffAgentService } from "./staff-agent.service";
 import { StaffAgentToolExecutor } from "./tool-executor";
@@ -11,6 +12,11 @@ import { StaffAgentToolExecutor } from "./tool-executor";
 @Module({
   imports: [UsersModule, BookingsModule, BatchesModule, SessionsModule],
   controllers: [StaffAgentController],
-  providers: [GeminiClient, StaffAgentToolExecutor, StaffAgentService],
+  providers: [
+    GroqClient,
+    GeminiClient,
+    StaffAgentToolExecutor,
+    StaffAgentService,
+  ],
 })
 export class StaffAgentModule {}

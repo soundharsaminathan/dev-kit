@@ -1,3 +1,9 @@
+export type StaffAgentProvider = "groq" | "gemini";
+
+export const STAFF_AGENT_PROVIDERS = ["groq", "gemini"] as const;
+
+export const STAFF_AGENT_PROVIDER_DEFAULT: StaffAgentProvider = "groq";
+
 export type AgentChatMessage = {
   role: "system" | "user" | "assistant" | "tool";
   content: string | null;

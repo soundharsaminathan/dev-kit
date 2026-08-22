@@ -18,6 +18,22 @@ import {
   MAX_AGENT_AUDIO_SECONDS,
 } from "./voice-recorder";
 
+type StaffAgentProvider = "groq" | "gemini";
+
+const PROVIDER_STORAGE_KEY = "step-up.staff-agent.provider";
+const DEFAULT_PROVIDER: StaffAgentProvider = "groq";
+
+function readStoredProvider(): StaffAgentProvider {
+  if (typeof window === "undefined") return DEFAULT_PROVIDER;
+  try {
+    const value = window.localStorage.getItem(PROVIDER_STORAGE_KEY);
+    if (value === "groq" || value === "gemini") return value;
+  } catch {
+    // ignore storage errors
+  }
+  return DEFAULT_PROVIDER;
+}
+
 type UiMessage = {
   id: string;
   role: "user" | "assistant" | "error";
@@ -31,6 +47,7 @@ type ChatResponse = {
   actions: Array<{ tool: string; ok: boolean; summary: string }>;
   audioBase64?: string;
   model: string;
+  provider?: StaffAgentProvider;
 };
 
 const SUGGESTIONS = [
@@ -77,6 +94,7 @@ export function StaffAgentPanel({ onClose }: { onClose?: () => void }) {
   const [pending, setPending] = useState(false);
   const [recording, setRecording] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
+  const [provider, setProvider] = useState<StaffAgentProvider>(DEFAULT_PROVIDER);
   const listRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const recorderRef = useRef<ReturnType<typeof createVoiceRecorder> | null>(
@@ -91,6 +109,7 @@ export function StaffAgentPanel({ onClose }: { onClose?: () => void }) {
   };
 
   useEffect(() => {
+    setProvider(readStoredProvider());
     inputRef.current?.focus();
     return () => {
       recorderRef.current?.cancel();
@@ -104,6 +123,16 @@ export function StaffAgentPanel({ onClose }: { onClose?: () => void }) {
       behavior: "smooth",
     });
   }, [messages, pending, recording]);
+
+  const selectProvider = (next: StaffAgentProvider) => {
+    if (next === provider || pending || recording) return;
+    setProvider(next);
+    try {
+      window.localStorage.setItem(PROVIDER_STORAGE_KEY, next);
+    } catch {
+      // ignore storage errors
+    }
+  };
 
   const invalidateCrm = async () => {
     if (!studioId) return;
@@ -119,6 +148,7 @@ export function StaffAgentPanel({ onClose }: { onClose?: () => void }) {
 
   const askAgent = async (body: {
     messages: Array<{ role: "user" | "assistant"; content: string }>;
+    provider: StaffAgentProvider;
     voice?: boolean;
     audioBase64?: string;
     audioMimeType?: string;
@@ -146,10 +176,11 @@ export function StaffAgentPanel({ onClose }: { onClose?: () => void }) {
     try {
       const requestBody: {
         messages: Array<{ role: "user" | "assistant"; content: string }>;
+        provider: StaffAgentProvider;
         voice?: boolean;
         audioBase64?: string;
         audioMimeType?: string;
-      } = { messages: history };
+      } = { messages: history, provider };
       if (options.voice) {
         requestBody.voice = true;
       }
@@ -314,6 +345,34 @@ export function StaffAgentPanel({ onClose }: { onClose?: () => void }) {
           </span>
         </div>
         <div className={styles.headerActions}>
+          <div
+            className={styles.providerSwitch}
+            role="group"
+            aria-label="AI provider"
+          >
+            <button
+              type="button"
+              className={styles.providerBtn}
+              data-active={provider === "groq" ? "true" : undefined}
+              disabled={pending || recording}
+              aria-pressed={provider === "groq"}
+              data-testid="staff-agent-provider-groq"
+              onClick={() => selectProvider("groq")}
+            >
+              Groq
+            </button>
+            <button
+              type="button"
+              className={styles.providerBtn}
+              data-active={provider === "gemini" ? "true" : undefined}
+              disabled={pending || recording}
+              aria-pressed={provider === "gemini"}
+              data-testid="staff-agent-provider-gemini"
+              onClick={() => selectProvider("gemini")}
+            >
+              Gemini
+            </button>
+          </div>
           <button
             type="button"
             className={styles.iconBtn}
@@ -439,8 +498,8 @@ export function StaffAgentPanel({ onClose }: { onClose?: () => void }) {
           </button>
         </div>
         <div className={styles.hint}>
-          Enter to send · mic for turn-based voice · archive and batch moves
-          need confirmation
+          {provider === "groq" ? "Groq" : "Gemini"} · Enter to send · mic for
+          voice · archive and batch moves need confirmation
         </div>
       </form>
     </section>

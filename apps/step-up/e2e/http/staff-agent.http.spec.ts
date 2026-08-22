@@ -20,11 +20,12 @@ test.describe("staff agent HTTP @http", () => {
     });
   });
 
-  test("STAFF gets 503 without GEMINI_API_KEY or succeeds when configured @http", async () => {
+  test("STAFF gets 503 without provider API key or succeeds when configured @http", async () => {
     const result = await httpJson<{
       reply?: string;
       message?: string | string[];
       actions?: unknown[];
+      provider?: string;
     }>("STAFF", "/staff-agent/chat", {
       method: "POST",
       body: JSON.stringify({
@@ -37,18 +38,19 @@ test.describe("staff agent HTTP @http", () => {
       }),
     });
 
-    // CI typically has no GEMINI_API_KEY → 503. Local/dev with a key → 200.
+    // CI typically has no GROQ_API_KEY → 503. Local/dev with a key → 200.
     if (result.status === 503) {
       const message = Array.isArray(result.data.message)
         ? result.data.message.join(" ")
         : String(result.data.message ?? result.text);
-      expect(message.toLowerCase()).toContain("gemini");
+      expect(message.toLowerCase()).toMatch(/groq|gemini/);
       return;
     }
 
     expect(result.status).toBe(200);
     expect(typeof result.data.reply).toBe("string");
     expect(Array.isArray(result.data.actions)).toBe(true);
+    expect(result.data.provider ?? "groq").toBe("groq");
   });
 
   test("rejects empty chat body for STAFF @http", async () => {
