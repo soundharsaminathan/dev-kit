@@ -560,6 +560,11 @@ export class DataImportService {
         endDate: string;
         startTime: string;
         endTime: string;
+        dayTimes?: Array<{
+          weekday: number;
+          startTime: string;
+          endTime: string;
+        }>;
         utcOffsetMinutes: number;
       };
       capacity: number;
@@ -581,7 +586,14 @@ export class DataImportService {
         skipped += 1;
         continue;
       }
-      if (row.endDate < row.startDate || row.endTime <= row.startTime) {
+      const invalidDayTimes = (row.dayTimes ?? []).some(
+        (slot) => slot.endTime <= slot.startTime,
+      );
+      if (
+        row.endDate < row.startDate ||
+        invalidDayTimes ||
+        (!row.dayTimes?.length && row.endTime <= row.startTime)
+      ) {
         skipped += 1;
         continue;
       }
@@ -616,6 +628,7 @@ export class DataImportService {
           endDate: row.endDate,
           startTime: row.startTime,
           endTime: row.endTime,
+          ...(row.dayTimes?.length ? { dayTimes: row.dayTimes } : {}),
           utcOffsetMinutes,
         },
         capacity: row.capacity,

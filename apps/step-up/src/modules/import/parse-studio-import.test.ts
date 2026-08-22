@@ -501,6 +501,81 @@ describe("parseStudioImportSheets", () => {
     expect(result.found.invoices).toBe(true);
   });
 
+  it("parses per-weekday day times for batches with different hours", () => {
+    const result = parseStudioImportSheets([
+      {
+        sheet: "Batches",
+        data: [
+          [
+            "Batch name",
+            "Category",
+            "Weekdays",
+            "Day times",
+            "Start date",
+            "End date",
+          ],
+          [
+            "Evening Mix",
+            "Adults",
+            "Mon, Wed",
+            "Mon 16:00-17:00, Wed 18:00-19:00",
+            "2024-06-03",
+            "2025-03-31",
+          ],
+        ],
+      },
+    ]);
+
+    expect(result.batches).toHaveLength(1);
+    expect(result.batches[0]).toMatchObject({
+      weekdays: [1, 3],
+      startTime: "16:00",
+      endTime: "17:00",
+      dayTimes: [
+        { weekday: 1, startTime: "16:00", endTime: "17:00" },
+        { weekday: 3, startTime: "18:00", endTime: "19:00" },
+      ],
+    });
+    expect(result.batchesInvalidRows).toEqual([]);
+  });
+
+  it("rejects invalid or mismatched day times", () => {
+    const result = parseStudioImportSheets([
+      {
+        sheet: "Batches",
+        data: [
+          [
+            "Batch name",
+            "Category",
+            "Weekdays",
+            "Day times",
+            "Start time",
+            "End time",
+          ],
+          [
+            "Bad Batch",
+            "Kids",
+            "Mon, Wed",
+            "Mon 16:00-17:00, Fri 18:00-19:00",
+            "16:00",
+            "17:00",
+          ],
+          [
+            "Bad Times",
+            "Kids",
+            "Mon",
+            "not-a-schedule",
+            "16:00",
+            "17:00",
+          ],
+        ],
+      },
+    ]);
+
+    expect(result.batches).toEqual([]);
+    expect(result.batchesInvalidRows).toEqual([2, 3]);
+  });
+
   it("parses day-first dates and AM/PM times", () => {
     const result = parseStudioImportSheets([
       {

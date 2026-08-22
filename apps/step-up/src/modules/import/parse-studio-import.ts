@@ -5,6 +5,11 @@ import {
 
 export type BatchCategory = "KIDS" | "ADULTS";
 export type EnrollmentMode = "STAFF_ONLY" | "SELF_JOIN";
+export type ImportBatchDayTime = {
+  weekday: number;
+  startTime: string;
+  endTime: string;
+};
 export type ImportBatchRow = {
   name: string;
   category: BatchCategory;
@@ -14,6 +19,7 @@ export type ImportBatchRow = {
   weekdays: number[];
   startTime: string;
   endTime: string;
+  dayTimes?: ImportBatchDayTime[];
   startDate: string;
   endDate: string;
   utcOffsetMinutes: number | null;
@@ -406,6 +412,51 @@ function parseInteger(value: unknown): number | null {
   return Number.isSafeInteger(parsed) ? parsed : null;
 }
 
+/**
+ * Per-weekday slots like "Mon 16:00-17:00, Wed 18:00-19:00" or
+ * "Mon-Wed 09:00-10:00" when several days share the same hours.
+ */
+function parseDayTimes(value: unknown): ImportBatchDayTime[] | null {
+  const raw = cellText(value);
+  if (!raw) return null;
+
+  const segments = raw
+    .split(/[,;]/)
+    .map((segment) => segment.trim())
+    .filter(Boolean);
+  const slots: ImportBatchDayTime[] = [];
+
+  for (const segment of segments) {
+    const match = /^([a-z]{3,9})(?:\s*-\s*([a-z]{3,9}))?\s+(\S+)-(\S+)$/i.exec(
+      segment,
+    );
+    if (!match) return null;
+
+    const startDay = WEEKDAY_ALIASES[match[1]!.toLowerCase()];
+    if (startDay === undefined) return null;
+    const endDay = match[2]
+      ? WEEKDAY_ALIASES[match[2]!.toLowerCase()]
+      : startDay;
+    if (endDay === undefined || endDay < startDay) return null;
+
+    const startTime = parseTime(match[3]);
+    const endTime = parseTime(match[4]);
+    if (!startTime || !endTime || endTime <= startTime) return null;
+
+    for (let day = startDay; day <= endDay; day += 1) {
+      slots.push({ weekday: day, startTime, endTime });
+    }
+  }
+
+  if (slots.length === 0) return null;
+
+  const byWeekday = new Map<number, ImportBatchDayTime>();
+  for (const slot of slots) {
+    byWeekday.set(slot.weekday, slot);
+  }
+  return [...byWeekday.values()].sort((a, b) => a.weekday - b.weekday);
+}
+
 function parseWeekdays(value: unknown): number[] | null {
   const raw = cellText(value);
   if (!raw) return [];
@@ -542,6 +593,12 @@ function parseBatchesSheet(rows: unknown[][]): {
   ]);
   const startTimeIndex = findColumnIndex(headers, ["start time"]);
   const endTimeIndex = findColumnIndex(headers, ["end time"]);
+  const dayTimesIndex = findColumnIndex(headers, [
+    "day times",
+    "day time",
+    "schedule times",
+    "weekly times",
+  ]);
   const startDateIndex = findColumnIndex(headers, ["start date"]);
   const endDateIndex = findColumnIndex(headers, ["end date"]);
   const utcOffsetIndex = findColumnIndex(headers, [
@@ -594,18 +651,55 @@ function parseBatchesSheet(rows: unknown[][]): {
       frequencyIndex === -1
         ? ("WEEKLY" as const)
         : (parseEnum(row?.[frequencyIndex], FREQUENCY_ALIASES) ?? "WEEKLY");
-    const weekdays =
-      weekdaysIndex === -1
+    const rawDayTimes =
+      dayTimesIndex === -1 ? null : parseDayTimes(row?.[dayTimesIndex]);
+    if (dayTimesIndex !== -1 && cellText(row?.[dayTimesIndex]) && !rawDayTimes) {
+      invalidRows.push(index + 2);
+      continue;
+    }
+
+    const weekdaysFromColumn =
+      weekdaysIndex === -1 ? null : parseWeekdays(row?.[weekdaysIndex]);
+    if (weekdaysIndex !== -1 && weekdaysFromColumn === null) {
+      invalidRows.push(index + 2);
+      continue;
+    }
+
+    const dayTimes =
+      rawDayTimes && rawDayTimes.length > 0 ? rawDayTimes : undefined;
+    const weekdays = dayTimes
+      ? dayTimes.map((slot) => slot.weekday)
+      : weekdaysIndex === -1
         ? [1, 3, 5]
-        : (parseWeekdays(row?.[weekdaysIndex]) ?? [1, 3, 5]);
+        : (weekdaysFromColumn ?? []);
+    if (weekdays.length === 0) {
+      invalidRows.push(index + 2);
+      continue;
+    }
+    if (
+      dayTimes &&
+      weekdaysIndex !== -1 &&
+      weekdaysFromColumn &&
+      weekdaysFromColumn.length > 0 &&
+      (weekdaysFromColumn.length !== weekdays.length ||
+        weekdaysFromColumn.some((day, index) => day !== weekdays[index]))
+    ) {
+      invalidRows.push(index + 2);
+      continue;
+    }
+
     const startTime =
       startTimeIndex === -1
-        ? "09:00"
-        : (parseTime(row?.[startTimeIndex]) ?? "09:00");
+        ? (dayTimes?.[0]?.startTime ?? "09:00")
+        : (parseTime(row?.[startTimeIndex]) ??
+          dayTimes?.[0]?.startTime ??
+          "09:00");
     const endTime =
       endTimeIndex === -1
-        ? "10:00"
-        : (parseTime(row?.[endTimeIndex]) ?? "10:00");
+        ? (dayTimes?.[0]?.endTime ?? "10:00")
+        : (parseTime(row?.[endTimeIndex]) ??
+          dayTimes?.[0]?.endTime ??
+          "10:00");
     const startDate =
       startDateIndex === -1 ? null : parseDate(row?.[startDateIndex]);
     const endDate = endDateIndex === -1 ? null : parseDate(row?.[endDateIndex]);
@@ -664,7 +758,7 @@ function parseBatchesSheet(rows: unknown[][]): {
       invalidRows.push(index + 2);
       continue;
     }
-    if (endTime <= startTime) {
+    if (!dayTimes && endTime <= startTime) {
       invalidRows.push(index + 2);
       continue;
     }
@@ -692,6 +786,7 @@ function parseBatchesSheet(rows: unknown[][]): {
       weekdays,
       startTime,
       endTime,
+      ...(dayTimes ? { dayTimes } : {}),
       startDate: startDate ?? todayIso(),
       endDate: endDate ?? todayIso(),
       utcOffsetMinutes:

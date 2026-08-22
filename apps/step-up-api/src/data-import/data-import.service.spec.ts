@@ -130,6 +130,63 @@ describe("DataImportService.importStudioData", () => {
     ).rejects.toThrow("Studio not found");
   });
 
+  it("stores dayTimes on imported batch scheduleJson", async () => {
+    const { service, prisma } = buildService({
+      prisma: {
+        studioBranch: {
+          findMany: vi
+            .fn()
+            .mockResolvedValue([{ id: "branch-main", name: "Main Branch" }]),
+        },
+        batch: {
+          findMany: vi.fn().mockResolvedValue([]),
+          createMany: vi.fn().mockResolvedValue({ count: 1 }),
+        },
+      },
+    });
+
+    await service.importStudioData(ACTOR, {
+      students: [],
+      batches: [
+        {
+          name: "Evening Mix",
+          category: BatchCategory.ADULTS,
+          branchName: null,
+          danceStyles: null,
+          frequency: "WEEKLY",
+          weekdays: [1, 3],
+          startTime: "16:00",
+          endTime: "17:00",
+          dayTimes: [
+            { weekday: 1, startTime: "16:00", endTime: "17:00" },
+            { weekday: 3, startTime: "18:00", endTime: "19:00" },
+          ],
+          startDate: "2024-06-03",
+          endDate: "2025-03-31",
+          utcOffsetMinutes: 330,
+          capacity: 12,
+          enrollmentMode: "STAFF_ONLY",
+          active: true,
+        },
+      ],
+      enrollments: [],
+      invoices: [],
+    });
+
+    expect(prisma.batch.createMany).toHaveBeenCalledWith({
+      data: [
+        expect.objectContaining({
+          scheduleJson: expect.objectContaining({
+            dayTimes: [
+              { weekday: 1, startTime: "16:00", endTime: "17:00" },
+              { weekday: 3, startTime: "18:00", endTime: "19:00" },
+            ],
+          }),
+        }),
+      ],
+    });
+  });
+
   it("creates batches with a fallback branch and refreshes summaries", async () => {
     const { service, prisma, projections } = buildService({
       prisma: {
