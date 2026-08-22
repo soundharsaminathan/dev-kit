@@ -9,6 +9,8 @@ export type AgentToolCall = {
   id: string;
   type: "function";
   function: { name: string; arguments: string };
+  /** Gemini 3 thought signature — must be echoed on the matching functionCall part. */
+  thoughtSignature?: string;
 };
 
 export type AgentToolDefinition = {

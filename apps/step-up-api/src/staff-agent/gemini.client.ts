@@ -18,24 +18,30 @@ export const GEMINI_CHAT_MODEL_DEFAULT = "gemini-3.6-flash";
 export const GEMINI_TTS_MODEL_DEFAULT = "gemini-2.5-flash-preview-tts";
 export const GEMINI_TTS_VOICE_DEFAULT = "Kore";
 
+type GeminiFunctionCallPart = {
+  functionCall: {
+    id?: string;
+    name: string;
+    args: Record<string, unknown>;
+  };
+  /** Required on Gemini 3 when echoing a model functionCall in history. */
+  thoughtSignature?: string;
+};
+
 type GeminiPart =
-  | { text: string }
+  | { text: string; thoughtSignature?: string }
   | {
       inlineData: { mimeType: string; data: string };
+      thoughtSignature?: string;
     }
-  | {
-      functionCall: {
-        id?: string;
-        name: string;
-        args: Record<string, unknown>;
-      };
-    }
+  | GeminiFunctionCallPart
   | {
       functionResponse: {
         id?: string;
         name: string;
         response: Record<string, unknown>;
       };
+      thoughtSignature?: string;
     };
 
 type GeminiContent = {
@@ -140,17 +146,7 @@ export class GeminiClient {
       .trim();
 
     const toolCalls: AgentToolCall[] = parts
-      .filter(
-        (
-          part,
-        ): part is {
-          functionCall: {
-            id?: string;
-            name: string;
-            args: Record<string, unknown>;
-          };
-        } => "functionCall" in part,
-      )
+      .filter((part): part is GeminiFunctionCallPart => "functionCall" in part)
       .map((part) => ({
         id: part.functionCall.id ?? randomUUID(),
         type: "function" as const,
@@ -158,6 +154,9 @@ export class GeminiClient {
           name: part.functionCall.name,
           arguments: JSON.stringify(part.functionCall.args ?? {}),
         },
+        ...(part.thoughtSignature
+          ? { thoughtSignature: part.thoughtSignature }
+          : {}),
       }));
 
     return {
@@ -271,7 +270,8 @@ export class GeminiClient {
   }
 }
 
-function toGeminiContents(messages: AgentChatMessage[]): {
+/** Maps agent history into Gemini contents. Exported for unit tests. */
+export function toGeminiContents(messages: AgentChatMessage[]): {
   systemInstruction?: string;
   contents: GeminiContent[];
 } {
@@ -341,13 +341,17 @@ function toGeminiContents(messages: AgentChatMessage[]): {
       } catch {
         args = {};
       }
-      parts.push({
+      const functionPart: GeminiFunctionCallPart = {
         functionCall: {
           id: call.id,
           name: call.function.name,
           args,
         },
-      });
+      };
+      if (call.thoughtSignature) {
+        functionPart.thoughtSignature = call.thoughtSignature;
+      }
+      parts.push(functionPart);
     }
     contents.push({ role: "model", parts });
   }
