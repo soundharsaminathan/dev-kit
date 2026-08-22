@@ -21,6 +21,8 @@ export type ButtonOwnProps = {
   isPending?: boolean | undefined;
   /** Disables the button (React Aria convention; same as disabled) */
   isDisabled?: boolean | undefined;
+  /** When true, pressing the button does not move focus to it (keeps soft keyboards open). */
+  preventFocusOnPress?: boolean | undefined;
 };
 
 export type ButtonProps<C extends ElementType = "button"> =

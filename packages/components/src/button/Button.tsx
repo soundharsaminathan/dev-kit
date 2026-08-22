@@ -22,6 +22,7 @@ function Button<C extends ElementType = "button">({
   isPending,
   children,
   isDisabled,
+  preventFocusOnPress,
   className,
   ...rest
 }: ButtonProps<C>) {
@@ -36,6 +37,7 @@ function Button<C extends ElementType = "button">({
     {
       isDisabled: disabled,
       elementType: "button",
+      preventFocusOnPress,
       ...rest,
     } as Parameters<typeof useButton>[0],
     refForHook,

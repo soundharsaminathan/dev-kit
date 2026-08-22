@@ -250,6 +250,13 @@ export function Composer({
     };
   }
 
+  function keepComposerFocused() {
+    // Keep the soft keyboard open for consecutive sends on mobile.
+    requestAnimationFrame(() => {
+      textAreaRef.current?.focus({ preventScroll: true });
+    });
+  }
+
   function sendNow() {
     const payload = captureSendPayload();
     if (!payload) {
@@ -261,6 +268,7 @@ export function Composer({
     });
     resetComposer({ revokeVoice: false });
     stopTyping();
+    keepComposerFocused();
 
     if (online) {
       void deliverPendingSend(api, queryClient, payload).catch(() => {
@@ -836,6 +844,7 @@ export function Composer({
               isIconOnly
               aria-label={online ? "Send" : "Queue send"}
               isDisabled={!canSend || recording}
+              preventFocusOnPress
               onClick={sendNow}
             >
               <Icon name="send" />

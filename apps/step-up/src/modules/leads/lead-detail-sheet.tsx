@@ -54,6 +54,7 @@ export function LeadDetailSheet({
   const { toast } = useToastContext("LeadDetailSheet");
   const [draft, setDraft] = useState("");
   const listRef = useRef<HTMLDivElement>(null);
+  const composerRef = useRef<HTMLDivElement>(null);
   const isOpen = Boolean(lead);
   const archived = lead?.section === "archived" || lead?.active === false;
 
@@ -130,11 +131,21 @@ export function LeadDetailSheet({
     list.scrollTop = list.scrollHeight;
   }, [remarkCount]);
 
+  function keepComposerFocused() {
+    // Keep the soft keyboard open for consecutive comments on mobile.
+    requestAnimationFrame(() => {
+      composerRef.current
+        ?.querySelector<HTMLInputElement>("input")
+        ?.focus({ preventScroll: true });
+    });
+  }
+
   function submitRemark() {
     const body = draft.trim();
     if (!body || body.length > LEAD_REMARK_MAX_LENGTH) return;
     setDraft("");
     addRemark.mutate(body);
+    keepComposerFocused();
   }
 
   function handleComposerKeyDown(event: KeyboardEvent<HTMLInputElement>) {
@@ -224,7 +235,7 @@ export function LeadDetailSheet({
             )}
           </div>
 
-          <div className={styles.composer}>
+          <div className={styles.composer} ref={composerRef}>
             <FormInput
               label="Add a comment"
               placeholder="Add a comment…"
@@ -240,6 +251,7 @@ export function LeadDetailSheet({
               isIconOnly
               isDisabled={!canSend}
               data-testid="lead-remark-send"
+              preventFocusOnPress
               onClick={submitRemark}
               aria-label="Send"
             >
