@@ -18,7 +18,7 @@ export interface DrawerProps {
   swipeToDismiss?: boolean | undefined;
   isDismissable?: boolean | undefined;
   isKeyboardDismissDisabled?: boolean | undefined;
-  className?: DrawerPopupClassName;
+  className?: DrawerPopupClassName | undefined;
   style?: React.CSSProperties | undefined;
   children?: React.ReactNode;
 }
