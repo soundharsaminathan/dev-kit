@@ -1,12 +1,21 @@
 import "./instrument";
 import { ValidationPipe } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
+import { NestExpressApplication } from "@nestjs/platform-express";
 import { AppModule } from "./app.module";
 import { RedisIoAdapter } from "./realtime/redis-io.adapter";
 import { captureException } from "./sentry";
 
+/**
+ * Staff-agent voice posts base64 audio in JSON (up to 3MB binary ≈ 4MB
+ * base64, plus chat history). Express defaults to 100kb and returns
+ * "request entity too large" before Gemini ever runs.
+ */
+const JSON_BODY_LIMIT = "5mb";
+
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  app.useBodyParser("json", { limit: JSON_BODY_LIMIT });
 
   app.enableCors({
     origin: true,
