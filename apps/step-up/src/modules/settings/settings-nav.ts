@@ -1,14 +1,14 @@
 import type { IconName } from "@dev-ui/icons";
 import type { FeatureKey } from "@/lib/feature-keys";
 
-export type SettingsNavKind = "internal" | "external" | "comingSoon";
+export type SettingsNavKind = "internal" | "comingSoon";
 
 export type SettingsNavItem = {
   id: string;
   label: string;
   icon: IconName;
   kind: SettingsNavKind;
-  /** Internal settings path or external app path */
+  /** Internal settings path */
   to: string;
   ownerOnly?: boolean;
   adminOnly?: boolean;
@@ -42,40 +42,12 @@ export const SETTINGS_NAV: SettingsNavGroup[] = [
         ownerOnly: true,
       },
       {
-        id: "locations",
-        label: "Locations",
-        icon: "map-pin",
-        kind: "external",
-        to: "/app/locations",
-      },
-    ],
-  },
-  {
-    id: "product",
-    label: "Product",
-    items: [
-      {
-        id: "features",
-        label: "Features",
-        icon: "star",
-        kind: "internal",
-        to: "/app/settings/features",
-        ownerOnly: true,
-      },
-      {
         id: "styles",
         label: "Dance styles",
         icon: "sparkles",
         kind: "internal",
         to: "/app/settings/styles",
         ownerOnly: true,
-      },
-      {
-        id: "subscriptions",
-        label: "Subscriptions",
-        icon: "clipboard",
-        kind: "external",
-        to: "/app/subscriptions",
       },
     ],
   },
@@ -98,29 +70,6 @@ export const SETTINGS_NAV: SettingsNavGroup[] = [
         to: "/app/settings/payments",
         ownerOnly: true,
         feature: "payments",
-      },
-      {
-        id: "invoices",
-        label: "Invoices",
-        icon: "file-text",
-        kind: "external",
-        to: "/app/invoices",
-      },
-      {
-        id: "payouts",
-        label: "Payouts",
-        icon: "wallet",
-        kind: "external",
-        to: "/app/payouts",
-        feature: "payouts",
-      },
-      {
-        id: "expenses",
-        label: "Expenses",
-        icon: "wallet",
-        kind: "external",
-        to: "/app/expenses",
-        feature: "expenses",
       },
     ],
   },
@@ -155,14 +104,6 @@ export const SETTINGS_NAV: SettingsNavGroup[] = [
         kind: "internal",
         to: "/app/settings/team",
         adminOnly: true,
-      },
-      {
-        id: "import",
-        label: "Data import",
-        icon: "upload",
-        kind: "external",
-        to: "/app/import",
-        feature: "data_import",
       },
       {
         id: "integrations",
@@ -206,7 +147,6 @@ export function findSettingsNavItem(
 ): SettingsNavItem | undefined {
   for (const group of groups) {
     for (const item of group.items) {
-      if (item.kind === "external") continue;
       if (pathname === item.to || pathname.startsWith(`${item.to}/`)) {
         return item;
       }
@@ -226,10 +166,6 @@ export const SETTINGS_PAGE_META: Record<
   "/app/settings/branding": {
     title: "Branding",
     subtitle: "Logo and member home hero images.",
-  },
-  "/app/settings/features": {
-    title: "Features",
-    subtitle: "Control which Step Up modules are available for this studio.",
   },
   "/app/settings/styles": {
     title: "Dance styles",

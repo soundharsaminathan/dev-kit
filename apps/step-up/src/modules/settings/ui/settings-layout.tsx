@@ -59,8 +59,7 @@ function NavItemLink({
   onNavigate?: (() => void) | undefined;
 }) {
   const active =
-    item.kind !== "external" &&
-    (pathname === item.to || pathname.startsWith(`${item.to}/`));
+    pathname === item.to || pathname.startsWith(`${item.to}/`);
 
   return (
     <Link
@@ -102,28 +101,16 @@ export function SettingsLayout({
   const isAdmin = user?.role === "OWNER" || user?.role === "STAFF";
 
   const paymentsEnabled = useIsFeatureEnabled("payments");
-  const payoutsEnabled = useIsFeatureEnabled("payouts");
-  const expensesEnabled = useIsFeatureEnabled("expenses");
-  const dataImportEnabled = useIsFeatureEnabled("data_import");
-
-  const featureFlags = useMemo(() => {
-    const map: Partial<Record<FeatureKey, boolean>> = {
-      payments: paymentsEnabled,
-      payouts: payoutsEnabled,
-      expenses: expensesEnabled,
-      data_import: dataImportEnabled,
-    };
-    return map;
-  }, [paymentsEnabled, payoutsEnabled, expensesEnabled, dataImportEnabled]);
 
   const groups = useMemo(
     () =>
       filterSettingsNav(SETTINGS_NAV, {
         isOwner,
         isAdmin,
-        isFeatureEnabled: (key) => featureFlags[key] === true,
+        isFeatureEnabled: (key: FeatureKey) =>
+          key === "payments" ? paymentsEnabled : false,
       }),
-    [isOwner, isAdmin, featureFlags],
+    [isOwner, isAdmin, paymentsEnabled],
   );
 
   const activeItem = findSettingsNavItem(pathname, groups);
