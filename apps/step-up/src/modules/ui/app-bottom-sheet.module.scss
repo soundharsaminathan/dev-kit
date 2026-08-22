@@ -1,3 +1,9 @@
+.panel[data-drawer] {
+  width: min(28rem, 100%);
+  max-width: min(28rem, 100%);
+  justify-self: center;
+}
+
 .body {
   display: flex;
   flex-direction: column;

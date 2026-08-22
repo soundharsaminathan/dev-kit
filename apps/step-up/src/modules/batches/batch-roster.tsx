@@ -474,7 +474,8 @@ export function BatchRoster({ batchId, capacity, active }: BatchRosterProps) {
                   has a next class on the schedule.
                 </p>
               </div>
-            ) : hasUpcomingSessions ? (
+            ) : hasUpcomingSessions &&
+              (!hasPlans || !active || isFull) ? (
               <div className={staff.softPanel}>
                 {!hasPlans ? (
                   <p className={styles.hint}>
