@@ -31,7 +31,14 @@ async function bootstrap() {
   );
 
   const redisIoAdapter = new RedisIoAdapter(app, process.env.REDIS_URL || null);
-  await redisIoAdapter.connectToRedis();
+  // Hard-cap Redis adapter setup so Cloud Run always reaches listen() in time.
+  // Direct VPC + Memorystore can stall connection attempts on cold start.
+  await Promise.race([
+    redisIoAdapter.connectToRedis(),
+    new Promise<void>((resolve) => {
+      setTimeout(resolve, 5_000);
+    }),
+  ]);
   app.useWebSocketAdapter(redisIoAdapter);
 
   const port = Number(process.env.PORT ?? 3000);

@@ -21,7 +21,17 @@ export class PrismaService
   }
 
   async onModuleInit() {
-    await this.$connect();
+    // Cap connect wait so Cloud Run can fail fast / still bind PORT instead of
+    // hanging forever when DB or VPC networking is misconfigured.
+    await Promise.race([
+      this.$connect(),
+      new Promise<never>((_, reject) => {
+        setTimeout(
+          () => reject(new Error("Prisma $connect timed out after 15s")),
+          15_000,
+        );
+      }),
+    ]);
   }
 
   async onModuleDestroy() {

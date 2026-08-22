@@ -45,16 +45,26 @@ export class QueueModule {
     const redisUrl = process.env.REDIS_URL;
     const logger = new Logger("QueueModule");
     const requireRedis = options.requireRedis ?? options.role === "worker";
+    // API + OUTBOX_INLINE: deliver in-process. Skip BullMQ so a slow/unreachable
+    // Memorystore cannot block Nest bootstrap (Cloud Run PORT listen timeout).
+    const apiInline =
+      options.role === "api" && process.env.OUTBOX_INLINE === "true";
 
-    if (!redisUrl) {
-      if (requireRedis) {
+    if (!redisUrl || apiInline) {
+      if (!redisUrl && requireRedis) {
         throw new Error(
           "REDIS_URL is required for the Step Up worker (and production queues)",
         );
       }
-      logger.warn(
-        "REDIS_URL missing — BullMQ disabled; outbox uses inline delivery",
-      );
+      if (apiInline) {
+        logger.warn(
+          "OUTBOX_INLINE=true — BullMQ disabled on API; Redis still used for cache/sockets",
+        );
+      } else {
+        logger.warn(
+          "REDIS_URL missing — BullMQ disabled; outbox uses inline delivery",
+        );
+      }
       return {
         module: QueueModule,
         global: true,
