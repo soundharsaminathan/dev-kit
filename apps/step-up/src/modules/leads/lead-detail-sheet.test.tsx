@@ -199,4 +199,57 @@ describe("LeadDetailSheet", () => {
       expect(screen.queryByText("Will visit Saturday")).not.toBeInTheDocument();
     });
   });
+
+  it("allows sending another remark while one is still in flight", async () => {
+    get.mockResolvedValue([remark()]);
+    const resolvers: Array<(value: LeadRemark) => void> = [];
+    post.mockImplementation(
+      () =>
+        new Promise<LeadRemark>((resolve) => {
+          resolvers.push(resolve);
+        }),
+    );
+
+    renderWithProviders(
+      <LeadDetailSheet
+        lead={lead()}
+        studioId="studio-1"
+        onOpenChange={vi.fn()}
+        onArchive={vi.fn()}
+        onUnarchive={vi.fn()}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("Called, no answer")).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByTestId("lead-remark-input"), {
+      target: { value: "First note" },
+    });
+    fireEvent.click(screen.getByTestId("lead-remark-send"));
+
+    await waitFor(() => {
+      expect(screen.getByText("First note")).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByTestId("lead-remark-input"), {
+      target: { value: "Second note" },
+    });
+    expect(screen.getByTestId("lead-remark-send")).not.toBeDisabled();
+    fireEvent.click(screen.getByTestId("lead-remark-send"));
+
+    await waitFor(() => {
+      expect(screen.getByText("Second note")).toBeInTheDocument();
+    });
+    expect(post).toHaveBeenCalledTimes(2);
+
+    resolvers[0]?.(remark({ id: "r-2", body: "First note" }));
+    resolvers[1]?.(remark({ id: "r-3", body: "Second note" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("First note")).toBeInTheDocument();
+      expect(screen.getByText("Second note")).toBeInTheDocument();
+    });
+  });
 });

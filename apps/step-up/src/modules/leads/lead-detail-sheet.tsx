@@ -1,10 +1,6 @@
 import { Avatar, AvatarFallback } from "@dev-ui/components/avatar";
 import { useToastContext } from "@dev-ui/components/toast";
-import {
-  captureQuerySnapshot,
-  restoreQuerySnapshot,
-  useOptimisticMutation,
-} from "@dev-ui/hooks";
+import { useOptimisticMutation } from "@dev-ui/hooks";
 import { Icon } from "@dev-ui/icons";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { type KeyboardEvent, useEffect, useRef, useState } from "react";
@@ -21,6 +17,10 @@ import {
   type Lead,
   type LeadRemark,
 } from "./types";
+
+function newOptimisticRemarkId() {
+  return `optimistic-${crypto.randomUUID()}`;
+}
 
 function remarkInitials(name: string) {
   return name
@@ -72,27 +72,30 @@ export function LeadDetailSheet({
         `/users/studio/${studioId}/leads/${lead?.id}/remarks`,
         { body },
       ),
-    onOptimistic: (body) => {
+    onOptimistic: async (body) => {
       const queryKey = ["lead-remarks", studioId, lead?.id];
-      return captureQuerySnapshot<LeadRemark[]>(queryClient, queryKey).then(
-        (snapshot) => {
-          queryClient.setQueryData<LeadRemark[]>(queryKey, (current) => [
-            ...(current ?? []),
-            {
-              id: `optimistic-${Date.now()}`,
-              body,
-              createdAt: new Date().toISOString(),
-              author: {
-                id: user?.id ?? "",
-                name: user?.name ?? "You",
-              },
-            },
-          ]);
-          return snapshot;
+      const optimisticId = newOptimisticRemarkId();
+      await queryClient.cancelQueries({ queryKey });
+      queryClient.setQueryData<LeadRemark[]>(queryKey, (current) => [
+        ...(current ?? []),
+        {
+          id: optimisticId,
+          body,
+          createdAt: new Date().toISOString(),
+          author: {
+            id: user?.id ?? "",
+            name: user?.name ?? "You",
+          },
         },
+      ]);
+      return optimisticId;
+    },
+    onRollback: (optimisticId) => {
+      const queryKey = ["lead-remarks", studioId, lead?.id];
+      queryClient.setQueryData<LeadRemark[]>(queryKey, (current) =>
+        (current ?? []).filter((remark) => remark.id !== optimisticId),
       );
     },
-    onRollback: (snapshot) => restoreQuerySnapshot(queryClient, snapshot),
     onError: (error: unknown) => {
       toast({
         title: "Couldn’t add remark",
@@ -101,11 +104,19 @@ export function LeadDetailSheet({
         variant: "error",
       });
     },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({
-        queryKey: ["lead-remarks", studioId, lead?.id],
+    onSuccess: (remark, _body, context) => {
+      const queryKey = ["lead-remarks", studioId, lead?.id];
+      const optimisticId = context?.snapshot;
+      queryClient.setQueryData<LeadRemark[]>(queryKey, (current) => {
+        const withoutOptimistic = (current ?? []).filter(
+          (row) => row.id !== optimisticId && row.id !== remark.id,
+        );
+        return [...withoutOptimistic, remark].sort(
+          (a, b) =>
+            new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+        );
       });
-      await queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: ["studio-leads", studioId],
       });
     },
@@ -121,7 +132,7 @@ export function LeadDetailSheet({
 
   function submitRemark() {
     const body = draft.trim();
-    if (!body || addRemark.isPending) return;
+    if (!body || body.length > LEAD_REMARK_MAX_LENGTH) return;
     setDraft("");
     addRemark.mutate(body);
   }
@@ -134,9 +145,7 @@ export function LeadDetailSheet({
   }
 
   const canSend =
-    Boolean(draft.trim()) &&
-    draft.trim().length <= LEAD_REMARK_MAX_LENGTH &&
-    !addRemark.isPending;
+    Boolean(draft.trim()) && draft.trim().length <= LEAD_REMARK_MAX_LENGTH;
 
   return (
     <AppBottomSheet
@@ -229,7 +238,6 @@ export function LeadDetailSheet({
               variant="outline"
               size="sm"
               isIconOnly
-              isPending={addRemark.isPending}
               isDisabled={!canSend}
               data-testid="lead-remark-send"
               onClick={submitRemark}
