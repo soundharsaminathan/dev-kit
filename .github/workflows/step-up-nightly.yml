@@ -21,6 +21,7 @@ env:
   STEP_UP_E2E_NIGHTLY: "true"
   PORT: "3199"
   DATABASE_URL: postgresql://postgres:postgres@localhost:5432/step_up_e2e?schema=public
+  DIRECT_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/step_up_e2e?schema=public
   SESSION_QR_SECRET: nightly-session-qr-secret-0123456789abcdef
   JOBS_SECRET: nightly-jobs-secret-0123456789abcdef01234567
   # Non-secret CI dummies (64-char hex). Seed encrypts PII; chat wraps conversation keys.
@@ -63,12 +64,16 @@ jobs:
         working-directory: apps/step-up-api
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/step_up_migrate?schema=public
+          DIRECT_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/step_up_migrate?schema=public
         run: |
           pnpm exec prisma generate
           pnpm exec nx run step-up-api:test:migrations
 
       - name: Generate Prisma client, migrate, and e2e seed
         working-directory: apps/step-up-api
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/step_up_e2e?schema=public
+          DIRECT_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/step_up_e2e?schema=public
         run: |
           pnpm exec prisma generate
           pnpm exec prisma migrate deploy

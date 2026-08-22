@@ -181,6 +181,7 @@ jobs:
       STEP_UP_WEB_PORT: "5199"
       PORT: "3199"
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/step_up_e2e?schema=public
+      DIRECT_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/step_up_e2e?schema=public
       SESSION_QR_SECRET: ci-session-qr-secret-0123456789abcdef
       JOBS_SECRET: ci-jobs-secret-0123456789abcdef0123456789
       # Non-secret CI dummies (64-char hex). Seed encrypts PII; chat wraps conversation keys.
@@ -213,6 +214,7 @@ jobs:
         working-directory: apps/step-up-api
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/step_up_migrate?schema=public
+          DIRECT_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/step_up_migrate?schema=public
         run: |
           pnpm exec prisma generate
           pnpm exec nx run step-up-api:test:migrations
@@ -220,6 +222,9 @@ jobs:
       - name: Generate Prisma client, migrate, and e2e seed
         if: steps.changes.outputs.run == 'true'
         working-directory: apps/step-up-api
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/step_up_e2e?schema=public
+          DIRECT_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/step_up_e2e?schema=public
         run: |
           pnpm exec prisma generate
           pnpm exec prisma migrate deploy
@@ -288,6 +293,7 @@ jobs:
       STEP_UP_WEB_PORT: "5199"
       PORT: "3199"
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/step_up_e2e?schema=public
+      DIRECT_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/step_up_e2e?schema=public
       SESSION_QR_SECRET: ci-session-qr-secret-0123456789abcdef
       JOBS_SECRET: ci-jobs-secret-0123456789abcdef0123456789
       # Non-secret CI dummies (64-char hex). Seed encrypts PII; chat wraps conversation keys.
@@ -309,12 +315,16 @@ jobs:
         working-directory: apps/step-up-api
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/step_up_migrate?schema=public
+          DIRECT_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/step_up_migrate?schema=public
         run: |
           pnpm exec prisma generate
           pnpm exec nx run step-up-api:test:migrations
 
       - name: Generate Prisma client, migrate, and e2e seed
         working-directory: apps/step-up-api
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/step_up_e2e?schema=public
+          DIRECT_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/step_up_e2e?schema=public
         run: |
           pnpm exec prisma generate
           pnpm exec prisma migrate deploy
