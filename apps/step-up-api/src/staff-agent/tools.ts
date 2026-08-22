@@ -1,6 +1,6 @@
-import type { GroqToolDefinition } from "./groq.client";
+import type { AgentToolDefinition } from "./agent.types";
 
-export const STAFF_AGENT_TOOLS: GroqToolDefinition[] = [
+export const STAFF_AGENT_TOOLS: AgentToolDefinition[] = [
   {
     type: "function",
     function: {

@@ -1,10 +1,10 @@
 import { ServiceUnavailableException } from "@nestjs/common";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { GroqClient } from "./groq.client";
+import { GeminiClient } from "./gemini.client";
 import { StaffAgentService } from "./staff-agent.service";
 
 describe("StaffAgentService", () => {
-  const groq = {
+  const gemini = {
     requireApiKey: vi.fn(),
     chat: vi.fn(),
     transcribe: vi.fn(),
@@ -18,13 +18,13 @@ describe("StaffAgentService", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    service = new StaffAgentService(groq as never, tools as never);
+    service = new StaffAgentService(gemini as never, tools as never);
   });
 
-  it("throws 503 when GROQ_API_KEY is missing", async () => {
-    groq.requireApiKey.mockImplementation(() => {
+  it("throws 503 when GEMINI_API_KEY is missing", async () => {
+    gemini.requireApiKey.mockImplementation(() => {
       throw new ServiceUnavailableException(
-        "Staff agent is unavailable: GROQ_API_KEY is not configured",
+        "Staff agent is unavailable: GEMINI_API_KEY is not configured",
       );
     });
 
@@ -41,8 +41,8 @@ describe("StaffAgentService", () => {
   });
 
   it("runs a tool loop then returns the assistant reply", async () => {
-    groq.requireApiKey.mockReturnValue("test-key");
-    groq.chat
+    gemini.requireApiKey.mockReturnValue("test-key");
+    gemini.chat
       .mockResolvedValueOnce({
         content: null,
         toolCalls: [
@@ -59,12 +59,12 @@ describe("StaffAgentService", () => {
             },
           },
         ],
-        model: "openai/gpt-oss-120b",
+        model: "gemini-2.5-flash",
       })
       .mockResolvedValueOnce({
         content: "Created lead Riya.",
         toolCalls: [],
-        model: "openai/gpt-oss-120b",
+        model: "gemini-2.5-flash",
       });
     tools.execute.mockResolvedValue({
       content: JSON.stringify({ id: "lead-1", name: "Riya" }),
@@ -92,9 +92,9 @@ describe("StaffAgentService", () => {
   });
 });
 
-describe("GroqClient.requireApiKey", () => {
+describe("GeminiClient.requireApiKey", () => {
   it("throws when key is empty", () => {
-    const client = new GroqClient({
+    const client = new GeminiClient({
       get: () => "",
     } as never);
     expect(() => client.requireApiKey()).toThrow(ServiceUnavailableException);

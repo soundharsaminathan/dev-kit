@@ -194,6 +194,7 @@ export class DataImportService {
       studioId,
       enrollments,
     );
+    await this.backdateStudentCreatedAtFromEnrollments(studioId, enrollments);
     const sessionResult = await this.importSessions(
       studioId,
       sessions,
@@ -1661,6 +1662,75 @@ export class DataImportService {
       created: toCreate.length,
       skipped: skipped + (data.length - toCreate.length),
     };
+  }
+
+  private earliestEnrollmentDateByEmail(
+    rows: ImportEnrollmentDto[],
+  ): Map<string, string> {
+    const earliest = new Map<string, string>();
+    for (const row of rows) {
+      const email = row.studentEmail.trim().toLowerCase();
+      const enrolledAt = row.enrolledAt.slice(0, 10);
+      const current = earliest.get(email);
+      if (!current || enrolledAt < current) {
+        earliest.set(email, enrolledAt);
+      }
+    }
+    return earliest;
+  }
+
+  /**
+   * Imported users get `createdAt = now()` on insert. Backdate to the earliest
+   * enrollment so directory "New" badges and funnel period filters match history.
+   */
+  private async backdateStudentCreatedAtFromEnrollments(
+    studioId: string,
+    rows: ImportEnrollmentDto[],
+  ): Promise<void> {
+    const earliestByEmail = this.earliestEnrollmentDateByEmail(rows);
+    if (earliestByEmail.size === 0) {
+      return;
+    }
+
+    const studentIdByEmail = await this.resolveStudentIdsByEmail(
+      studioId,
+      [...earliestByEmail.keys()],
+    );
+
+    const targetCreatedAtById = new Map<string, Date>();
+    for (const [email, enrolledAt] of earliestByEmail) {
+      const studentId = studentIdByEmail.get(email);
+      if (!studentId) {
+        continue;
+      }
+      targetCreatedAtById.set(studentId, importDateTime(enrolledAt));
+    }
+    if (targetCreatedAtById.size === 0) {
+      return;
+    }
+
+    const students = await this.prisma.user.findMany({
+      where: {
+        id: { in: [...targetCreatedAtById.keys()] },
+        studioId,
+        role: UserRole.STUDENT,
+      },
+      select: { id: true, createdAt: true },
+    });
+
+    await Promise.all(
+      students
+        .filter((student) => {
+          const target = targetCreatedAtById.get(student.id);
+          return target !== undefined && student.createdAt > target;
+        })
+        .map((student) =>
+          this.prisma.user.update({
+            where: { id: student.id },
+            data: { createdAt: targetCreatedAtById.get(student.id)! },
+          }),
+        ),
+    );
   }
 
   private async resolveStudentIdsByEmail(

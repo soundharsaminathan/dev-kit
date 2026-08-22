@@ -60,7 +60,10 @@ function buildService(
         gstPercent: 0,
       }),
     },
-    user: { findMany: vi.fn().mockResolvedValue([]) },
+    user: {
+      findMany: vi.fn().mockResolvedValue([]),
+      update: vi.fn().mockResolvedValue({}),
+    },
     ...overrides.prisma,
   };
   const crypto = {
@@ -393,6 +396,109 @@ describe("DataImportService.importStudioData", () => {
       ],
     });
     expect(projections.refreshBatchSummary).toHaveBeenCalledWith("batch-1");
+  });
+
+  it("backdates imported student createdAt to earliest enrollment date", async () => {
+    const recentCreatedAt = new Date("2026-08-20T12:00:00.000Z");
+    const { service, prisma } = buildService({
+      prisma: {
+        user: {
+          findMany: vi.fn((args: { select?: { createdAt?: boolean } }) => {
+            if (args.select?.createdAt) {
+              return Promise.resolve([
+                { id: "student-1", createdAt: recentCreatedAt },
+              ]);
+            }
+            return Promise.resolve([
+              { id: "student-1", emailHash: "hash:ada@example.com" },
+            ]);
+          }),
+          update: vi.fn().mockResolvedValue({}),
+        },
+        batch: {
+          findMany: vi
+            .fn()
+            .mockResolvedValue([
+              { id: "batch-1", name: "Kids Hip-Hop", category: "KIDS" },
+            ]),
+        },
+      },
+    });
+
+    await service.importStudioData(ACTOR, {
+      students: [],
+      batches: [],
+      enrollments: [
+        {
+          studentEmail: "ada@example.com",
+          batchName: "Kids Hip-Hop",
+          enrolledAt: "2026-05-15",
+          status: BatchEnrollmentStatus.ACTIVE,
+          endedAt: null,
+          endReason: null,
+        },
+        {
+          studentEmail: "ada@example.com",
+          batchName: "Kids Hip-Hop",
+          enrolledAt: "2026-06-03",
+          status: BatchEnrollmentStatus.ENDED,
+          endedAt: "2026-08-01",
+          endReason: "Moved",
+        },
+      ],
+      invoices: [],
+    });
+
+    expect(prisma.user.update).toHaveBeenCalledWith({
+      where: { id: "student-1" },
+      data: { createdAt: new Date("2026-05-15T12:00:00.000Z") },
+    });
+  });
+
+  it("does not backdate student createdAt when already before enrollment", async () => {
+    const historicalCreatedAt = new Date("2026-01-01T12:00:00.000Z");
+    const { service, prisma } = buildService({
+      prisma: {
+        user: {
+          findMany: vi.fn((args: { select?: { createdAt?: boolean } }) => {
+            if (args.select?.createdAt) {
+              return Promise.resolve([
+                { id: "student-1", createdAt: historicalCreatedAt },
+              ]);
+            }
+            return Promise.resolve([
+              { id: "student-1", emailHash: "hash:ada@example.com" },
+            ]);
+          }),
+          update: vi.fn().mockResolvedValue({}),
+        },
+        batch: {
+          findMany: vi
+            .fn()
+            .mockResolvedValue([
+              { id: "batch-1", name: "Kids Hip-Hop", category: "KIDS" },
+            ]),
+        },
+      },
+    });
+
+    await service.importStudioData(ACTOR, {
+      students: [],
+      batches: [],
+      enrollments: [
+        {
+          studentEmail: "ada@example.com",
+          batchName: "Kids Hip-Hop",
+          enrolledAt: "2026-05-15",
+          status: BatchEnrollmentStatus.ACTIVE,
+          endedAt: null,
+          endReason: null,
+        },
+      ],
+      invoices: [],
+    });
+
+    expect(prisma.user.update).not.toHaveBeenCalled();
   });
 
   it("creates historical invoices and refreshes revenue for paid months", async () => {

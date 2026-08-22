@@ -1,11 +1,11 @@
 import { BadRequestException, Inject, Injectable } from "@nestjs/common";
 import { requireUserStudioId } from "../auth/studio-access";
 import type { DecryptedUser } from "../users/user-crypto.service";
+import type { AgentChatMessage } from "./agent.types";
 import {
-  GROQ_CHAT_MODEL_DEFAULT,
-  type GroqChatMessage,
-  GroqClient,
-} from "./groq.client";
+  GEMINI_CHAT_MODEL_DEFAULT,
+  GeminiClient,
+} from "./gemini.client";
 import {
   createResolvedIds,
   parseToolArguments,
@@ -44,7 +44,7 @@ export type StaffAgentChatResult = {
 @Injectable()
 export class StaffAgentService {
   constructor(
-    @Inject(GroqClient) private readonly groq: GroqClient,
+    @Inject(GeminiClient) private readonly gemini: GeminiClient,
     @Inject(StaffAgentToolExecutor)
     private readonly tools: StaffAgentToolExecutor,
   ) {}
@@ -58,7 +58,7 @@ export class StaffAgentService {
       audioMimeType?: string;
     },
   ): Promise<StaffAgentChatResult> {
-    this.groq.requireApiKey();
+    this.gemini.requireApiKey();
     const studioId = requireUserStudioId(actor);
 
     let transcript: string | undefined;
@@ -80,7 +80,7 @@ export class StaffAgentService {
           "Audio is too large. Keep recordings under about 30 seconds.",
         );
       }
-      transcript = await this.groq.transcribe(buffer, mime);
+      transcript = await this.gemini.transcribe(buffer, mime);
       if (!transcript) {
         throw new BadRequestException("Could not transcribe the recording");
       }
@@ -93,7 +93,7 @@ export class StaffAgentService {
       );
     }
 
-    const messages: GroqChatMessage[] = [
+    const messages: AgentChatMessage[] = [
       { role: "system", content: STAFF_AGENT_SYSTEM_PROMPT },
       ...history.map((m) => ({
         role: m.role as "user" | "assistant",
@@ -103,11 +103,11 @@ export class StaffAgentService {
 
     const resolved = createResolvedIds();
     const actions: StaffAgentAction[] = [];
-    let model = GROQ_CHAT_MODEL_DEFAULT;
+    let model = GEMINI_CHAT_MODEL_DEFAULT;
     let finalReply = "";
 
     for (let round = 0; round < MAX_TOOL_ROUNDS; round += 1) {
-      const completion = await this.groq.chat({
+      const completion = await this.gemini.chat({
         messages,
         tools: STAFF_AGENT_TOOLS,
       });
@@ -164,7 +164,7 @@ export class StaffAgentService {
       }
 
       if (round === MAX_TOOL_ROUNDS - 1) {
-        const wrap = await this.groq.chat({
+        const wrap = await this.gemini.chat({
           messages: [
             ...messages,
             {
@@ -187,7 +187,7 @@ export class StaffAgentService {
 
     let audioBase64: string | undefined;
     if (input.voice || input.audioBase64) {
-      const speech = await this.groq.synthesizeSpeech(finalReply);
+      const speech = await this.gemini.synthesizeSpeech(finalReply);
       if (speech && speech.length > 0) {
         audioBase64 = speech.toString("base64");
       }
