@@ -152,7 +152,7 @@ test.describe("admin (staff) smoke @smoke", () => {
         page.getByRole("dialog", { name: "Studio agent" }),
       ).toBeVisible();
       await expect(
-        page.getByText("Ask the studio agent", { exact: false }),
+        page.getByRole("button", { name: "Add a lead named" }),
       ).toBeVisible();
     } finally {
       await context.close();

@@ -34,9 +34,9 @@ type ChatResponse = {
 };
 
 const SUGGESTIONS = [
-  "Add a lead named…",
-  "Add a remark for…",
-  "Book a trial for…",
+  "Add a lead named",
+  "Add a remark for",
+  "Book a trial for",
   "Move this student to another batch",
 ];
 
@@ -340,11 +340,6 @@ export function StaffAgentPanel({ onClose }: { onClose?: () => void }) {
       <div className={styles.messages} ref={listRef}>
         {messages.length === 0 ? (
           <div className={styles.empty}>
-            <div className={styles.emptyTitle}>Ask the studio agent</div>
-            <p className={styles.emptyBody}>
-              Text or tap the mic. I only change CRM data through confirmed
-              tools — Trial caller stays the source of truth.
-            </p>
             <div className={styles.suggestions}>
               {SUGGESTIONS.map((q) => (
                 <button
@@ -353,7 +348,7 @@ export function StaffAgentPanel({ onClose }: { onClose?: () => void }) {
                   className={styles.chip}
                   disabled={pending}
                   onClick={() => {
-                    setInput(q.replace("…", " "));
+                    setInput(`${q} `);
                     inputRef.current?.focus();
                   }}
                 >
