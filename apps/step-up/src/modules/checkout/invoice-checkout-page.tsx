@@ -102,7 +102,9 @@ export function InvoiceCheckoutPage() {
       await openRazorpayCheckout({
         order,
         description: invoiceQuery.data?.batch?.name ?? "Plan payment",
-        confirm: (response) => confirmPayment.mutateAsync(response),
+        confirm: async (response) => {
+          await confirmPayment.mutateAsync(response);
+        },
       });
     },
     onError: (error: unknown) => {

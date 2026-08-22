@@ -79,8 +79,12 @@ export function CollectPaymentSheet({
         amount: updated.amount,
         paymentMethod: updated.paymentMethod ?? null,
         paidAt: updated.paidAt ?? null,
-        referralDiscount: updated.referralDiscount,
-        studioDiscount: updated.studioDiscount,
+        ...(typeof updated.referralDiscount === "number"
+          ? { referralDiscount: updated.referralDiscount }
+          : {}),
+        ...(typeof updated.studioDiscount === "number"
+          ? { studioDiscount: updated.studioDiscount }
+          : {}),
       });
       await refreshPaymentQueries(queryClient, studioId);
       toast({

@@ -95,7 +95,9 @@ export function CheckoutPage() {
       await openRazorpayCheckout({
         order,
         description: bookingQuery.data?.batch?.name ?? "Booking payment",
-        confirm: (response) => confirmPayment.mutateAsync(response),
+        confirm: async (response) => {
+          await confirmPayment.mutateAsync(response);
+        },
       });
     },
     onError: (error: unknown) => {
