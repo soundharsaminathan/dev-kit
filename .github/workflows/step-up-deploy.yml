@@ -216,7 +216,7 @@ jobs:
           pnpm --filter @step-up/api exec prisma migrate deploy
         env:
           DATABASE_URL: ${{ secrets.STEP_UP_DATABASE_URL }}
-          DIRECT_DATABASE_URL: ${{ vars.DIRECT_DATABASE_URL }}
+          DIRECT_DATABASE_URL: ${{ secrets.DIRECT_DATABASE_URL }}
 
   smoke:
     name: Deployed smoke suite
