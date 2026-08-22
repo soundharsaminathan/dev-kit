@@ -59,12 +59,12 @@ describe("StaffAgentService", () => {
             },
           },
         ],
-        model: "gemini-2.5-flash",
+        model: "gemini-3.6-flash",
       })
       .mockResolvedValueOnce({
         content: "Created lead Riya.",
         toolCalls: [],
-        model: "gemini-2.5-flash",
+        model: "gemini-3.6-flash",
       });
     tools.execute.mockResolvedValue({
       content: JSON.stringify({ id: "lead-1", name: "Riya" }),

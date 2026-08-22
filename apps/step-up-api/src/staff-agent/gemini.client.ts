@@ -14,7 +14,7 @@ import type {
 const GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta";
 
 /** Default chat model — supports tool calling and audio input on the free tier. */
-export const GEMINI_CHAT_MODEL_DEFAULT = "gemini-2.5-flash";
+export const GEMINI_CHAT_MODEL_DEFAULT = "gemini-3.6-flash";
 export const GEMINI_TTS_MODEL_DEFAULT = "gemini-2.5-flash-preview-tts";
 export const GEMINI_TTS_VOICE_DEFAULT = "Kore";
 
