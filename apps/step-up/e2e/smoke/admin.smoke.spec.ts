@@ -193,10 +193,10 @@ test.describe("admin (staff) smoke @smoke", () => {
     const page = await context.newPage();
     try {
       await sweepPath(page, "/app/settings/payments", {
-        denyRedirect: /\/app\/settings\/?$/,
+        denyRedirect: /\/app\/settings\/profile\/?$/,
       });
       await sweepPath(page, "/app/settings/branding", {
-        denyRedirect: /\/app\/settings\/?$/,
+        denyRedirect: /\/app\/settings\/profile\/?$/,
       });
     } finally {
       await context.close();
