@@ -39,6 +39,9 @@ test.describe("admin payments @critical", () => {
     ]);
     expect(response.ok()).toBeTruthy();
 
+    await expect(page.getByTestId(`mark-paid-${invoice.id}`)).toHaveCount(0);
+    await expect(page.getByTestId(`print-invoice-${invoice.id}`)).toBeVisible();
+
     await expect
       .poll(async () => {
         const latest = unwrapPage(

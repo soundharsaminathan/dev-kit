@@ -69,6 +69,71 @@ export function formatPaiseAsInr(paise: number) {
 
 let checkoutScriptPromise: Promise<void> | null = null;
 
+type RazorpayOrder = Extract<PaymentOrderResponse, { mode: "razorpay" }>;
+
+export async function openRazorpayCheckout(options: {
+  order: RazorpayOrder;
+  description: string;
+  confirm: (response: RazorpaySuccessResponse) => Promise<void>;
+}): Promise<void> {
+  await loadRazorpayCheckout();
+
+  await new Promise<void>((resolve, reject) => {
+    let settled = false;
+    let handlerStarted = false;
+
+    const finish = (run: () => void) => {
+      if (settled) return;
+      settled = true;
+      run();
+    };
+
+    const rzp = new window.Razorpay({
+      key: options.order.keyId,
+      amount: options.order.amount,
+      currency: options.order.currency,
+      name: "Step Up",
+      description: options.description,
+      order_id: options.order.orderId,
+      handler: (response) => {
+        handlerStarted = true;
+        options
+          .confirm(response)
+          .then(() => {
+            finish(resolve);
+          })
+          .catch((error: unknown) => {
+            finish(() => {
+              reject(error);
+            });
+          });
+      },
+      modal: {
+        ondismiss: () => {
+          if (handlerStarted) return;
+          finish(() => {
+            reject(new Error("Payment cancelled"));
+          });
+        },
+      },
+    });
+
+    rzp.on("payment.failed", (response) => {
+      finish(() => {
+        reject(
+          new Error(
+            response.error?.description ??
+              response.error?.reason ??
+              "Payment failed",
+          ),
+        );
+      });
+    });
+
+    rzp.open();
+  });
+}
+
 export function loadRazorpayCheckout(): Promise<void> {
   if (typeof window === "undefined") {
     return Promise.reject(new Error("Razorpay requires a browser"));

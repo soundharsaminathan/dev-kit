@@ -10,7 +10,7 @@ import styles from "./checkout-page.module.scss";
 import {
   formatPaiseAsInr,
   formatSeconds,
-  loadRazorpayCheckout,
+  openRazorpayCheckout,
   type PaymentOrderResponse,
   type RazorpaySuccessResponse,
   secondsLeft,
@@ -67,9 +67,10 @@ export function CheckoutPage() {
         `/bookings/${bookingId}/confirm-payment`,
         payload ?? {},
       ),
-    onSuccess: async () => {
+    onSuccess: async (updated) => {
       setPaid(true);
       setPayError(null);
+      queryClient.setQueryData(["bookings", bookingId], updated);
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["bookings"] }),
         queryClient.invalidateQueries({ queryKey: ["batches"] }),
@@ -91,38 +92,10 @@ export function CheckoutPage() {
       }
 
       setAmountLabel(formatPaiseAsInr(order.amount));
-      await loadRazorpayCheckout();
-
-      await new Promise<void>((resolve, reject) => {
-        const rzp = new window.Razorpay({
-          key: order.keyId,
-          amount: order.amount,
-          currency: order.currency,
-          name: "Step Up",
-          description: bookingQuery.data?.batch?.name ?? "Booking payment",
-          order_id: order.orderId,
-          handler: (response) => {
-            confirmPayment
-              .mutateAsync(response)
-              .then(() => resolve())
-              .catch((error: unknown) => reject(error));
-          },
-          modal: {
-            ondismiss: () => {
-              reject(new Error("Payment cancelled"));
-            },
-          },
-        });
-        rzp.on("payment.failed", (response) => {
-          reject(
-            new Error(
-              response.error?.description ??
-                response.error?.reason ??
-                "Payment failed",
-            ),
-          );
-        });
-        rzp.open();
+      await openRazorpayCheckout({
+        order,
+        description: bookingQuery.data?.batch?.name ?? "Booking payment",
+        confirm: (response) => confirmPayment.mutateAsync(response),
       });
     },
     onError: (error: unknown) => {

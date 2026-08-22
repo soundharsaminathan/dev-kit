@@ -12,6 +12,11 @@ import { ErrorState } from "@/modules/ui/states";
 import { TouchButton } from "@/modules/ui/touch-button";
 import { InvoiceBill, type InvoiceBillLine } from "./invoice-bill";
 import {
+  patchStudioInvoiceList,
+  refreshPaymentQueries,
+  type MarkPaidInvoicePatch,
+} from "./invoice-cache";
+import {
   computeGst,
   formatPrice,
   type Invoice,
@@ -62,13 +67,22 @@ export function CollectPaymentSheet({
       referralDiscount: number;
       studioDiscount: number;
     }) =>
-      api.patch(`/billing/${payload.id}/paid`, {
+      api.patch<MarkPaidInvoicePatch>(`/billing/${payload.id}/paid`, {
         paymentMethod: payload.paymentMethod,
         referralDiscount: payload.referralDiscount,
         studioDiscount: payload.studioDiscount,
       }),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["invoices", studioId] });
+    onSuccess: async (updated) => {
+      patchStudioInvoiceList(queryClient, studioId, {
+        id: updated.id,
+        status: updated.status,
+        amount: updated.amount,
+        paymentMethod: updated.paymentMethod ?? null,
+        paidAt: updated.paidAt ?? null,
+        referralDiscount: updated.referralDiscount,
+        studioDiscount: updated.studioDiscount,
+      });
+      await refreshPaymentQueries(queryClient, studioId);
       toast({
         title: "Payment recorded",
         description: "Invoice marked paid. Receipt emailed to the student.",
