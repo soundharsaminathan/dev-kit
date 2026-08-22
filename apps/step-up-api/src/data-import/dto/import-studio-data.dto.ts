@@ -9,7 +9,7 @@ import {
   SessionStatus,
   SessionType,
 } from "@prisma/client";
-import { Type } from "class-transformer";
+import { Transform, Type } from "class-transformer";
 import {
   ArrayMaxSize,
   IsArray,
@@ -29,6 +29,27 @@ import {
   MinLength,
   ValidateNested,
 } from "class-validator";
+
+import { decodeImportText } from "../../common/decode-import-text";
+
+export function normalizeImportDanceStyles(
+  value: unknown,
+): string | null | undefined {
+  if (value === null || value === undefined) {
+    return value;
+  }
+  if (Array.isArray(value)) {
+    const styles = value
+      .map((item) => decodeImportText(String(item).trim()))
+      .filter(Boolean);
+    return styles.length > 0 ? styles.join(", ") : null;
+  }
+  if (typeof value === "string") {
+    const trimmed = decodeImportText(value.trim());
+    return trimmed.length > 0 ? trimmed : null;
+  }
+  return decodeImportText(String(value));
+}
 
 export class ImportBatchDayTimeDto {
   @IsInt()
@@ -129,6 +150,7 @@ export class ImportBatchDto {
   branchName?: string | null;
 
   @IsOptional()
+  @Transform(({ value }) => normalizeImportDanceStyles(value))
   @IsString()
   danceStyles?: string | null;
 

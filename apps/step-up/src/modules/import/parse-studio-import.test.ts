@@ -238,6 +238,33 @@ describe("parseStudioImportSheets", () => {
       quarterlyPlanName: null,
     });
 
+    expect(
+      parseStudioImportSheets([
+        {
+          sheet: "Batches",
+          data: [
+            BATCHES_SHEET.data[0],
+            [
+              "RB1",
+              "Kids",
+              "Main Branch",
+              "Free style &amp; Choreography",
+              "Weekly",
+              "Thu, Sat",
+              "18:00",
+              "19:00",
+              "2026-06-18",
+              "2026-12-31",
+              "",
+              "20",
+              "Staff only",
+              "Active",
+            ],
+          ],
+        },
+      ]).batches[0]?.danceStyles,
+    ).toEqual(["Free style & Choreography"]);
+
     expect(result.enrollments).toEqual([
       {
         studentEmail: "ada@example.com",

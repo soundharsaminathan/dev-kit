@@ -272,6 +272,10 @@ describe("DataImportService.runStudioDataImport", () => {
         expect.objectContaining({
           name: "Kids Hip-Hop",
           branchId: "branch-main",
+          danceCategories: [
+            { name: "Hip-Hop", description: "Hip-Hop" },
+            { name: "Jazz", description: "Jazz" },
+          ],
           scheduleJson: expect.objectContaining({
             utcOffsetMinutes: 330,
           }),

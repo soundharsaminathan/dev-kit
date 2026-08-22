@@ -252,6 +252,8 @@ const WEEKDAY_ALIASES: Record<string, number> = {
   saturday: 6,
 };
 
+import { decodeImportText } from "./decode-import-text";
+
 const SHEET_ALIASES: Record<StudioSheetKind, string[]> = {
   students: ["students", "student", "members"],
   locations: ["locations", "location", "branches", "branch"],
@@ -263,7 +265,9 @@ const SHEET_ALIASES: Record<StudioSheetKind, string[]> = {
 };
 
 function cellText(value: unknown) {
-  return typeof value === "string" ? value.trim() : String(value ?? "").trim();
+  const text =
+    typeof value === "string" ? value.trim() : String(value ?? "").trim();
+  return decodeImportText(text);
 }
 
 function normalizeHeader(value: unknown) {

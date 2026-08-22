@@ -472,7 +472,12 @@ function buildImportPayload(result: ParseStudioImportResult) {
       }),
     ),
     locations: result.locations,
-    batches: result.batches,
+    batches: result.batches.map(({ danceStyles, ...batch }) => ({
+      ...batch,
+      ...(danceStyles.length > 0
+        ? { danceStyles: danceStyles.join(", ") }
+        : {}),
+    })),
     enrollments: result.enrollments,
     sessions: result.sessions,
     invoices: result.invoices,

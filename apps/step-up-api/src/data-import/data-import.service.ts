@@ -69,6 +69,7 @@ import {
   type GapExistingPeriodInput,
   type GapPaidInvoiceInput,
 } from "./import-invoice-gaps";
+import { sanitizeImportStudioDataDto } from "./sanitize-import-dto";
 import {
   buildInitialEntities,
   dtoSliceCount,
@@ -151,6 +152,7 @@ export class DataImportService {
     if (!actor.studioId) {
       throw new BadRequestException("User is not assigned to a studio");
     }
+    const sanitizedDto = sanitizeImportStudioDataDto(dto);
     const studioId = actor.studioId;
     const studio = await this.prisma.studio.findUnique({
       where: { id: studioId },
@@ -161,21 +163,21 @@ export class DataImportService {
     }
 
     this.assertOneBatchImport({
-      batches: dto.batches ?? [],
-      enrollments: dto.enrollments ?? [],
-      sessions: dto.sessions ?? [],
-      invoices: dto.invoices ?? [],
-      attendance: dto.attendance ?? [],
+      batches: sanitizedDto.batches ?? [],
+      enrollments: sanitizedDto.enrollments ?? [],
+      sessions: sanitizedDto.sessions ?? [],
+      invoices: sanitizedDto.invoices ?? [],
+      attendance: sanitizedDto.attendance ?? [],
     });
 
-    const entities = buildInitialEntities(dto);
+    const entities = buildInitialEntities(sanitizedDto);
     const importRow = await this.prisma.$transaction(async (tx) => {
       const row = await tx.studioDataImport.create({
         data: {
           studioId,
           requestedByUserId: actor.id,
           status: "PENDING",
-          payload: dto as Prisma.InputJsonValue,
+          payload: sanitizedDto as Prisma.InputJsonValue,
           entities: entities as Prisma.InputJsonValue,
         },
       });
@@ -935,7 +937,7 @@ export class DataImportService {
         continue;
       }
       const styles = (row.danceStyles ?? "")
-        .split(",")
+        .split(/[,;]/)
         .map((style) => style.trim())
         .filter(Boolean);
       const danceCategories =
