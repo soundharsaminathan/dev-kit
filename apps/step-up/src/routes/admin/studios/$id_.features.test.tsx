@@ -114,7 +114,7 @@ describe("AdminStudioFeaturesPage", () => {
       screen.getByRole("heading", { name: "Communication" }),
     ).toBeVisible();
     expect(screen.getByRole("heading", { name: "Operations" })).toBeVisible();
-    expect(screen.getByText("2 of 2 on")).toBeVisible();
+    expect(screen.getByText("2 of 2 enabled")).toBeVisible();
   });
 
   it("updates the switch immediately and keeps sibling switches enabled", async () => {
