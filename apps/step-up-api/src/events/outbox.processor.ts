@@ -10,6 +10,7 @@ import {
 import { ModuleRef } from "@nestjs/core";
 import type { JobsOptions, Queue } from "bullmq";
 import { NotificationDeliveryService } from "../queues/processors/notification-delivery.service";
+import { DataImportService } from "../data-import/data-import.service";
 import {
   DAILY_JOBS_QUEUE,
   NOTIFICATION_DELIVER_QUEUE,
@@ -18,6 +19,7 @@ import {
 import {
   OUTBOX_EVENT_BATCH_CAPACITY_CHANGED,
   OUTBOX_EVENT_DAILY_JOBS_REQUESTED,
+  OUTBOX_EVENT_DATA_IMPORT_REQUESTED,
   OUTBOX_EVENT_INVOICE_REFUNDED,
   OUTBOX_EVENT_NOTIFICATION_CREATED,
   OUTBOX_EVENT_PAYMENT_CONFIRMED,
@@ -80,6 +82,20 @@ export class OutboxProcessor implements OnModuleInit, OnModuleDestroy {
 
       for (const event of events) {
         try {
+          if (event.type === OUTBOX_EVENT_DATA_IMPORT_REQUESTED) {
+            const dataImport = this.tryGetDataImport();
+            const payload = event.payload as { importId?: string };
+            if (dataImport && payload.importId) {
+              void dataImport.runImportJob(payload.importId).catch((error) => {
+                this.logger.error(
+                  `Import job ${payload.importId} failed: ${String(error)}`,
+                );
+              });
+            }
+            publishedIds.push(event.id);
+            continue;
+          }
+
           const jobs = this.jobsForEvent(event.type, event.id, event.payload);
           if (jobs.length === 0) {
             if (
@@ -139,6 +155,14 @@ export class OutboxProcessor implements OnModuleInit, OnModuleDestroy {
   private tryGetQueue(name: string): Queue | null {
     try {
       return this.moduleRef.get<Queue>(getQueueToken(name), { strict: false });
+    } catch {
+      return null;
+    }
+  }
+
+  private tryGetDataImport(): DataImportService | null {
+    try {
+      return this.moduleRef.get(DataImportService, { strict: false });
     } catch {
       return null;
     }

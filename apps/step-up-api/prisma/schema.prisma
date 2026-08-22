@@ -191,6 +191,13 @@ enum DeliveryStatus {
   SKIPPED
 }
 
+enum StudioDataImportStatus {
+  PENDING
+  RUNNING
+  SUCCEEDED
+  FAILED
+}
+
 enum NotificationStatus {
   ACTIVE
   ARCHIVED
@@ -368,6 +375,7 @@ model User {
   authoredLeadRemarks       LeadRemark[]         @relation("LeadRemarkAuthor")
   taughtSessions            Session[]            @relation("SessionTrainer")
   trainerPayouts            TrainerPayout[]      @relation("TrainerPayoutTrainer")
+  dataImportsRequested      StudioDataImport[]   @relation("DataImportRequester")
 
   @@index([studioId, emailHash])
   @@index([preferredBranchId])
@@ -445,6 +453,7 @@ model Studio {
   leadRemarks          LeadRemark[]
   trainerPayouts       TrainerPayout[]
   studioFeatures       StudioFeature[]
+  dataImports          StudioDataImport[]
 }
 
 model Feature {
@@ -1098,6 +1107,25 @@ model OutboxEvent {
 
   @@index([publishedAt, createdAt])
   @@index([claimedAt])
+}
+
+model StudioDataImport {
+  id                String                 @id @default(cuid())
+  studioId          String
+  requestedByUserId String
+  status            StudioDataImportStatus @default(PENDING)
+  payload           Json
+  entities          Json
+  error             String?
+  startedAt         DateTime?
+  finishedAt        DateTime?
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
+
+  studio      Studio @relation(fields: [studioId], references: [id], onDelete: Cascade)
+  requestedBy User   @relation("DataImportRequester", fields: [requestedByUserId], references: [id], onDelete: Cascade)
+
+  @@index([studioId, createdAt])
 }
 
 model Follow {

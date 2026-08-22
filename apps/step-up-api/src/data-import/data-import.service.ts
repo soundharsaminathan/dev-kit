@@ -49,6 +49,8 @@ import {
   currentMonthPeriod,
   ProjectionService,
 } from "../queues/processors/projection.service";
+import { OutboxService } from "../events/outbox.service";
+import { OUTBOX_EVENT_DATA_IMPORT_REQUESTED } from "../shared/outbox-events";
 import type { DecryptedUser } from "../users/user-crypto.service";
 import { UserCryptoService } from "../users/user-crypto.service";
 import { UsersService } from "../users/users.service";
@@ -60,14 +62,40 @@ import type {
   ImportLocationDto,
   ImportSessionDto,
   ImportStudioDataDto,
+  ImportStudentDto,
 } from "./dto/import-studio-data.dto";
 import {
   buildImportGapInvoices,
   type GapExistingPeriodInput,
   type GapPaidInvoiceInput,
 } from "./import-invoice-gaps";
+import {
+  buildInitialEntities,
+  dtoSliceCount,
+  entitySamples,
+  type ImportEntityKey,
+  type ImportEntitiesSnapshot,
+  type ImportJobSnapshot,
+  type ImportProgressPatch,
+  IMPORT_PROGRESS_CHUNK_SIZE,
+} from "./import-job.types";
 
 type ImportCounts = { created: number; skipped: number };
+
+type EntityProgressReporter = (
+  entity: ImportEntityKey,
+  patch: ImportProgressPatch,
+) => Promise<void>;
+
+type RunStudioDataImportResult = {
+  students: ImportCounts;
+  locations: ImportCounts;
+  batches: ImportCounts;
+  enrollments: ImportCounts;
+  sessions: ImportCounts;
+  invoices: ImportCounts & { gapsCreated: number };
+  attendance: ImportCounts;
+};
 
 /** Chennai / IST — IANA has no Asia/Chennai; use Asia/Kolkata. */
 const DEFAULT_STUDIO_TIMEZONE = "Asia/Kolkata";
@@ -116,9 +144,119 @@ export class DataImportService {
     private readonly projections: ProjectionService,
     @Inject(ScheduleConflictService)
     private readonly scheduleConflicts: ScheduleConflictService,
+    @Inject(OutboxService) private readonly outbox: OutboxService,
   ) {}
 
+  async startImportJob(actor: DecryptedUser, dto: ImportStudioDataDto) {
+    if (!actor.studioId) {
+      throw new BadRequestException("User is not assigned to a studio");
+    }
+    const studioId = actor.studioId;
+    const studio = await this.prisma.studio.findUnique({
+      where: { id: studioId },
+      select: { id: true },
+    });
+    if (!studio) {
+      throw new NotFoundException("Studio not found");
+    }
+
+    this.assertOneBatchImport({
+      batches: dto.batches ?? [],
+      enrollments: dto.enrollments ?? [],
+      sessions: dto.sessions ?? [],
+      invoices: dto.invoices ?? [],
+      attendance: dto.attendance ?? [],
+    });
+
+    const entities = buildInitialEntities(dto);
+    const importRow = await this.prisma.$transaction(async (tx) => {
+      const row = await tx.studioDataImport.create({
+        data: {
+          studioId,
+          requestedByUserId: actor.id,
+          status: "PENDING",
+          payload: dto as Prisma.InputJsonValue,
+          entities: entities as Prisma.InputJsonValue,
+        },
+      });
+      await this.outbox.append(tx, OUTBOX_EVENT_DATA_IMPORT_REQUESTED, {
+        importId: row.id,
+      });
+      return row;
+    });
+
+    return { id: importRow.id };
+  }
+
   async importStudioData(actor: DecryptedUser, dto: ImportStudioDataDto) {
+    return this.startImportJob(actor, dto);
+  }
+
+  async getImportJob(actor: DecryptedUser, importId: string): Promise<ImportJobSnapshot> {
+    if (!actor.studioId) {
+      throw new BadRequestException("User is not assigned to a studio");
+    }
+    const row = await this.prisma.studioDataImport.findFirst({
+      where: { id: importId, studioId: actor.studioId },
+    });
+    if (!row) {
+      throw new NotFoundException("Import job not found");
+    }
+    return this.toImportJobSnapshot(row);
+  }
+
+  async runImportJob(importId: string) {
+    const row = await this.prisma.studioDataImport.findUnique({
+      where: { id: importId },
+    });
+    if (!row) {
+      return;
+    }
+    if (row.status === "RUNNING" || row.status === "SUCCEEDED") {
+      return;
+    }
+
+    const actor: DecryptedUser = {
+      id: row.requestedByUserId,
+      studioId: row.studioId,
+    } as DecryptedUser;
+    const dto = row.payload as ImportStudioDataDto;
+    const report: EntityProgressReporter = async (entity, patch) => {
+      await this.patchImportEntity(importId, entity, patch);
+    };
+
+    await this.prisma.studioDataImport.update({
+      where: { id: importId },
+      data: { status: "RUNNING", startedAt: new Date(), error: null },
+    });
+
+    try {
+      await this.runStudioDataImport(actor, dto, report);
+      await this.prisma.studioDataImport.update({
+        where: { id: importId },
+        data: { status: "SUCCEEDED", finishedAt: new Date() },
+      });
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Import failed";
+      await this.prisma.studioDataImport.update({
+        where: { id: importId },
+        data: {
+          status: "FAILED",
+          finishedAt: new Date(),
+          error: message,
+        },
+      });
+      throw error;
+    }
+  }
+
+  /** Runs all import stages synchronously. Used by the async job runner and unit tests. */
+  async runStudioDataImport(
+    actor: DecryptedUser,
+    dto: ImportStudioDataDto,
+    report?: EntityProgressReporter,
+  ): Promise<RunStudioDataImportResult> {
     if (!actor.studioId) {
       throw new BadRequestException("User is not assigned to a studio");
     }
@@ -153,60 +291,87 @@ export class DataImportService {
     });
     const timeZone = settings?.timezone?.trim() || DEFAULT_STUDIO_TIMEZONE;
 
-    const studentResult = await this.users.createStudents(
-      studioId,
-      students.map(
-        ({
-          name,
-          email,
-          gender,
-          age,
-          dateOfBirth,
-          guardianName,
-          alternateMobile,
-          phone,
-        }) => ({
-          name,
-          email,
-          gender,
-          ...(age !== undefined && age !== null ? { age } : {}),
-          ...(dateOfBirth !== undefined && dateOfBirth !== null
-            ? { dateOfBirth }
-            : {}),
-          ...(guardianName !== undefined && guardianName !== null
-            ? { guardianName }
-            : {}),
-          ...(alternateMobile !== undefined && alternateMobile !== null
-            ? { alternateMobile }
-            : {}),
-          ...(phone !== undefined && phone !== null ? { phone } : {}),
+    const studentResult = await this.runEntityStage(
+      "students",
+      dto,
+      report,
+      () => this.importStudentsChunked(studioId, students, async (patch) => {
+        if (report) {
+          await report("students", patch);
+        }
+      }),
+    );
+
+    const locationResult = await this.runEntityStage(
+      "locations",
+      dto,
+      report,
+      () => this.importLocations(studioId, locations),
+    );
+
+    const batchResult = await this.runEntityStage(
+      "batches",
+      dto,
+      report,
+      () => this.importBatches(actor.id, studioId, batches, timeZone),
+    );
+
+    const sessionResult = await this.runEntityStage(
+      "sessions",
+      dto,
+      report,
+      () =>
+        this.importSessions(studioId, sessions, timeZone, async (patch) => {
+          if (report) {
+            await report("sessions", patch);
+          }
         }),
-      ),
     );
-    const locationResult = await this.importLocations(studioId, locations);
-    const batchResult = await this.importBatches(
-      actor.id,
-      studioId,
-      batches,
-      timeZone,
+
+    const enrollmentResult = await this.runEntityStage(
+      "enrollments",
+      dto,
+      report,
+      () =>
+        this.importEnrollments(studioId, enrollments, async (patch) => {
+          if (report) {
+            await report("enrollments", patch);
+          }
+        }),
     );
-    const enrollmentResult = await this.importEnrollments(
-      studioId,
-      enrollments,
-    );
+
     await this.backdateStudentCreatedAtFromEnrollments(studioId, enrollments);
-    const sessionResult = await this.importSessions(
-      studioId,
-      sessions,
-      timeZone,
+
+    const invoiceResult = await this.runEntityStage(
+      "invoices",
+      dto,
+      report,
+      () =>
+        this.importInvoices(studioId, invoices, async (patch) => {
+          if (report) {
+            await report("invoices", patch);
+          }
+        }),
     );
-    const invoiceResult = await this.importInvoices(studioId, invoices);
+
     const gapResult = await this.createGapInvoices(studioId, enrollments);
-    const attendanceResult = await this.importAttendance(
-      actor,
-      studioId,
-      attendance,
-      timeZone,
+
+    const attendanceResult = await this.runEntityStage(
+      "attendance",
+      dto,
+      report,
+      () =>
+        this.importAttendance(
+          actor,
+          studioId,
+          attendance,
+          timeZone,
+          async (patch) => {
+            if (report) {
+              await report("attendance", patch);
+            }
+          },
+        ),
     );
 
     return {
@@ -222,6 +387,144 @@ export class DataImportService {
       },
       attendance: attendanceResult,
     };
+  }
+
+  private async runEntityStage(
+    entity: ImportEntityKey,
+    dto: ImportStudioDataDto,
+    report: EntityProgressReporter | undefined,
+    run: () => Promise<ImportCounts>,
+  ): Promise<ImportCounts> {
+    const total = dtoSliceCount(entity, dto);
+    if (total === 0) {
+      return { created: 0, skipped: 0 };
+    }
+
+    if (report) {
+      await report(entity, {
+        status: "creating",
+        processed: 0,
+        created: 0,
+        skipped: 0,
+        samples: entitySamples(entity, dto),
+      });
+    }
+
+    const result = await run();
+
+    if (report) {
+      await report(entity, {
+        status: "completed",
+        processed: total,
+        created: result.created,
+        skipped: result.skipped,
+      });
+    }
+
+    return result;
+  }
+
+  private async patchImportEntity(
+    importId: string,
+    entity: ImportEntityKey,
+    patch: ImportProgressPatch,
+  ) {
+    const row = await this.prisma.studioDataImport.findUnique({
+      where: { id: importId },
+      select: { entities: true },
+    });
+    if (!row) {
+      return;
+    }
+    const entities = row.entities as ImportEntitiesSnapshot;
+    const current = entities[entity];
+    entities[entity] = {
+      ...current,
+      ...patch,
+      samples: patch.samples ?? current.samples,
+    };
+    if (patch.status === "failed") {
+      entities[entity].status = "failed";
+    }
+    await this.prisma.studioDataImport.update({
+      where: { id: importId },
+      data: { entities: entities as Prisma.InputJsonValue },
+    });
+  }
+
+  private toImportJobSnapshot(row: {
+    id: string;
+    status: "PENDING" | "RUNNING" | "SUCCEEDED" | "FAILED";
+    error: string | null;
+    entities: Prisma.JsonValue;
+  }): ImportJobSnapshot {
+    return {
+      id: row.id,
+      status: row.status,
+      error: row.error,
+      entities: row.entities as ImportEntitiesSnapshot,
+    };
+  }
+
+  private async importStudentsChunked(
+    studioId: string,
+    students: ImportStudentDto[],
+    onProgress?: (patch: ImportProgressPatch) => Promise<void>,
+  ): Promise<ImportCounts> {
+    if (students.length === 0) {
+      return { created: 0, skipped: 0 };
+    }
+
+    let created = 0;
+    let skipped = 0;
+    let processed = 0;
+
+    for (let i = 0; i < students.length; i += IMPORT_PROGRESS_CHUNK_SIZE) {
+      const chunk = students.slice(i, i + IMPORT_PROGRESS_CHUNK_SIZE);
+      const result = await this.users.createStudents(
+        studioId,
+        chunk.map(
+          ({
+            name,
+            email,
+            gender,
+            age,
+            dateOfBirth,
+            guardianName,
+            alternateMobile,
+            phone,
+          }) => ({
+            name,
+            email,
+            gender,
+            ...(age !== undefined && age !== null ? { age } : {}),
+            ...(dateOfBirth !== undefined && dateOfBirth !== null
+              ? { dateOfBirth }
+              : {}),
+            ...(guardianName !== undefined && guardianName !== null
+              ? { guardianName }
+              : {}),
+            ...(alternateMobile !== undefined && alternateMobile !== null
+              ? { alternateMobile }
+              : {}),
+            ...(phone !== undefined && phone !== null ? { phone } : {}),
+          }),
+        ),
+      );
+      created += result.created;
+      skipped += result.skipped;
+      processed += chunk.length;
+      if (onProgress) {
+        await onProgress({
+          processed,
+          created,
+          skipped,
+          samples: chunk.slice(0, 3).map((student) => student.name),
+        });
+      }
+    }
+
+    return { created, skipped };
   }
 
   private assertOneBatchImport(dto: {
@@ -266,6 +569,7 @@ export class DataImportService {
     studioId: string,
     rows: ImportSessionDto[] | undefined,
     timeZone: string,
+    onProgress?: (patch: ImportProgressPatch) => Promise<void>,
   ): Promise<ImportCounts> {
     if (!rows || rows.length === 0) {
       return { created: 0, skipped: 0 };
@@ -337,6 +641,21 @@ export class DataImportService {
             null)
           : null,
       });
+
+      const processed = skipped + data.length;
+      if (
+        onProgress &&
+        processed % IMPORT_PROGRESS_CHUNK_SIZE === 0
+      ) {
+        await onProgress({
+          processed,
+          created: 0,
+          skipped,
+          samples: rows
+            .slice(Math.max(0, processed - 3), processed)
+            .map((session) => `${session.batchName} · ${session.date}`),
+        });
+      }
     }
 
     if (data.length === 0) {
@@ -362,18 +681,35 @@ export class DataImportService {
     );
     if (toCreate.length > 0) {
       await this.assertImportedSessionSchedule(toCreate);
-      await this.prisma.session.createMany({
-        data: toCreate.map(
-          ({ batchId, startsAt, endsAt, status, type, trainerId }) => ({
-            batchId,
-            startsAt,
-            endsAt,
-            status,
-            type,
-            trainerId,
-          }),
-        ),
-      });
+      let created = 0;
+      for (let i = 0; i < toCreate.length; i += IMPORT_PROGRESS_CHUNK_SIZE) {
+        const chunk = toCreate.slice(i, i + IMPORT_PROGRESS_CHUNK_SIZE);
+        await this.prisma.session.createMany({
+          data: chunk.map(
+            ({ batchId, startsAt, endsAt, status, type, trainerId }) => ({
+              batchId,
+              startsAt,
+              endsAt,
+              status,
+              type,
+              trainerId,
+            }),
+          ),
+        });
+        created += chunk.length;
+        if (onProgress) {
+          const processed =
+            skipped + (data.length - toCreate.length) + created;
+          await onProgress({
+            processed: Math.min(processed, rows.length),
+            created,
+            skipped,
+            samples: rows
+              .slice(Math.max(0, created - 3), created)
+              .map((session) => `${session.batchName} · ${session.date}`),
+          });
+        }
+      }
     }
 
     return {
@@ -757,6 +1093,7 @@ export class DataImportService {
   private async importEnrollments(
     studioId: string,
     rows: ImportEnrollmentDto[],
+    onProgress?: (patch: ImportProgressPatch) => Promise<void>,
   ): Promise<ImportCounts> {
     if (rows.length === 0) {
       return { created: 0, skipped: 0 };
@@ -885,6 +1222,20 @@ export class DataImportService {
         endReason: row.endReason ?? null,
         planName,
       });
+
+      const processed = skipped + data.length;
+      if (onProgress && processed % IMPORT_PROGRESS_CHUNK_SIZE === 0) {
+        await onProgress({
+          processed,
+          created: 0,
+          skipped,
+          samples: rows
+            .slice(Math.max(0, processed - 3), processed)
+            .map((enrollment) =>
+              `${enrollment.studentEmail} → ${enrollment.batchName}`,
+            ),
+        });
+      }
     }
 
     if (data.length === 0) {
@@ -999,6 +1350,7 @@ export class DataImportService {
 
     // Membership for ACTIVE enrollments with a plan. Invoices stay on the
     // Invoices sheet — import does not create a second bill.
+    let membershipsCreated = 0;
     for (const row of toCreate) {
       if (row.status !== BatchEnrollmentStatus.ACTIVE || !row.planName) {
         continue;
@@ -1045,6 +1397,23 @@ export class DataImportService {
           },
         },
       });
+      membershipsCreated += 1;
+      if (
+        onProgress &&
+        membershipsCreated % IMPORT_PROGRESS_CHUNK_SIZE === 0
+      ) {
+        const processed = skipped + membershipsCreated;
+        await onProgress({
+          processed: Math.min(processed, rows.length),
+          created: membershipsCreated,
+          skipped,
+          samples: rows
+            .slice(Math.max(0, membershipsCreated - 3), membershipsCreated)
+            .map((enrollment) =>
+              `${enrollment.studentEmail} → ${enrollment.batchName}`,
+            ),
+        });
+      }
     }
 
     return {
@@ -1056,6 +1425,7 @@ export class DataImportService {
   private async importInvoices(
     studioId: string,
     rows: ImportInvoiceDto[],
+    onProgress?: (patch: ImportProgressPatch) => Promise<void>,
   ): Promise<ImportCounts> {
     if (rows.length === 0) {
       return { created: 0, skipped: 0 };
@@ -1263,10 +1633,37 @@ export class DataImportService {
         gstPercent,
         purchaseMeta,
       });
+
+      const processed = skipped + data.length;
+      if (onProgress && processed % IMPORT_PROGRESS_CHUNK_SIZE === 0) {
+        await onProgress({
+          processed,
+          created: data.length,
+          skipped,
+          samples: rows
+            .slice(Math.max(0, processed - 3), processed)
+            .map((invoice) => `${invoice.studentEmail} · ${invoice.status}`),
+        });
+      }
     }
 
     if (data.length > 0) {
-      await this.prisma.invoice.createMany({ data });
+      let created = 0;
+      for (let i = 0; i < data.length; i += IMPORT_PROGRESS_CHUNK_SIZE) {
+        const chunk = data.slice(i, i + IMPORT_PROGRESS_CHUNK_SIZE);
+        await this.prisma.invoice.createMany({ data: chunk });
+        created += chunk.length;
+        if (onProgress) {
+          await onProgress({
+            processed: Math.min(skipped + created, rows.length),
+            created,
+            skipped,
+            samples: rows
+              .slice(Math.max(0, created - 3), created)
+              .map((invoice) => `${invoice.studentEmail} · ${invoice.status}`),
+          });
+        }
+      }
       await Promise.all(
         [...periodsToRefresh].map((period) =>
           this.projections.refreshStudioRevenue(studioId, period),
@@ -1528,6 +1925,7 @@ export class DataImportService {
     studioId: string,
     rows: ImportAttendanceDto[] | undefined,
     timeZone: string,
+    onProgress?: (patch: ImportProgressPatch) => Promise<void>,
   ): Promise<ImportCounts> {
     if (!rows || rows.length === 0) {
       return { created: 0, skipped: 0 };
@@ -1585,6 +1983,20 @@ export class DataImportService {
       const rowsForSession = rowsBySessionKey.get(key) ?? [];
       rowsForSession.push({ studentId, status: row.status });
       rowsBySessionKey.set(key, rowsForSession);
+
+      const processed = skipped + rowKeys.size;
+      if (onProgress && processed % IMPORT_PROGRESS_CHUNK_SIZE === 0) {
+        await onProgress({
+          processed: Math.min(processed, rows.length),
+          created: 0,
+          skipped,
+          samples: rows
+            .slice(Math.max(0, processed - 3), processed)
+            .map((attendance) =>
+              `${attendance.studentEmail} → ${attendance.batchName}`,
+            ),
+        });
+      }
     }
 
     if (sessionStarts.size === 0) {
@@ -1655,7 +2067,25 @@ export class DataImportService {
     });
 
     if (toCreate.length > 0) {
-      await this.prisma.attendance.createMany({ data: toCreate });
+      let created = 0;
+      for (let i = 0; i < toCreate.length; i += IMPORT_PROGRESS_CHUNK_SIZE) {
+        const chunk = toCreate.slice(i, i + IMPORT_PROGRESS_CHUNK_SIZE);
+        await this.prisma.attendance.createMany({ data: chunk });
+        created += chunk.length;
+        if (onProgress) {
+          const processed = skipped + created;
+          await onProgress({
+            processed: Math.min(processed, rows.length),
+            created,
+            skipped,
+            samples: rows
+              .slice(Math.max(0, created - 3), created)
+              .map((attendance) =>
+                `${attendance.studentEmail} → ${attendance.batchName}`,
+              ),
+          });
+        }
+      }
     }
 
     return {

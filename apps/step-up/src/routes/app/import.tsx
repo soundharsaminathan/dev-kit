@@ -1,22 +1,27 @@
 import { Alert, AlertDescription, AlertTitle } from "@dev-ui/components/alert";
 import { FileTrigger } from "@dev-ui/components/file-trigger";
 import { useToastContext } from "@dev-ui/components/toast";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { Icon } from "@dev-ui/icons";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { default as readXlsxFile } from "read-excel-file/browser";
 import { useApi } from "@/lib/api-context";
 import { requireAdmin } from "@/lib/require-auth";
 import { useStudioId } from "@/lib/use-studio-id";
+import { ImportComplete } from "@/modules/import/import-complete";
+import styles from "@/modules/import/import-pipeline.module.scss";
+import { ImportPipeline } from "@/modules/import/import-pipeline";
+import type { ImportJobSnapshot } from "@/modules/import/import-types";
 import {
   formatImportRowList,
   type ParseStudioImportResult,
   parseStudioImportSheets,
 } from "@/modules/import/parse-studio-import";
+import { RequireStudioFeature } from "@/modules/studio-features/require-studio-feature";
 import { Screen } from "@/modules/ui/screen";
 import staff from "@/modules/ui/staff.module.scss";
 import { StickyCtaBar, TouchButton } from "@/modules/ui/touch-button";
-import { RequireStudioFeature } from "@/modules/studio-features/require-studio-feature";
 
 type SheetCounts = {
   students: number;
@@ -28,15 +33,7 @@ type SheetCounts = {
   attendance: number;
 };
 
-type StudioDataImportResult = {
-  students: { created: number; skipped: number };
-  locations: { created: number; skipped: number };
-  batches: { created: number; skipped: number };
-  enrollments: { created: number; skipped: number };
-  sessions: { created: number; skipped: number };
-  invoices: { created: number; skipped: number; gapsCreated: number };
-  attendance: { created: number; skipped: number };
-};
+type ImportPhase = "upload" | "analyze" | "create" | "complete" | "failed";
 
 const SHEET_LABELS = {
   students: "Students",
@@ -96,106 +93,95 @@ function ImportDataPage() {
   const navigate = useNavigate({ from: Route.fullPath });
   const queryClient = useQueryClient();
   const { toast } = useToastContext("ImportDataPage");
+  const [phase, setPhase] = useState<ImportPhase>("upload");
   const [fileName, setFileName] = useState<string | null>(null);
   const [result, setResult] = useState<ParseStudioImportResult>(EMPTY_RESULT);
   const [fileError, setFileError] = useState<string | null>(null);
   const [isReading, setIsReading] = useState(false);
+  const [jobId, setJobId] = useState<string | null>(null);
+  const [startError, setStartError] = useState<string | null>(null);
 
-  const importData = useMutation({
+  const startImport = useMutation({
     mutationFn: () =>
-      api.post<StudioDataImportResult>("/import/studio-data", {
-        students: result.students.map(
-          ({
-            name,
-            email,
-            gender,
-            age,
-            dateOfBirth,
-            phone,
-            guardianName,
-            alternateMobile,
-          }) => ({
-            name,
-            email,
-            gender,
-            ...(age !== null ? { age } : {}),
-            ...(dateOfBirth ? { dateOfBirth } : {}),
-            ...(phone ? { phone } : {}),
-            ...(guardianName ? { guardianName } : {}),
-            ...(alternateMobile ? { alternateMobile } : {}),
-          }),
-        ),
-        batches: result.batches.map(({ danceStyles, ...batch }) => ({
-          ...batch,
-          danceStyles: danceStyles.join(", "),
-        })),
-        locations: result.locations,
-        enrollments: result.enrollments,
-        sessions: result.sessions,
-        invoices: result.invoices,
-        attendance: result.attendance,
-      }),
-    onSuccess: async (data) => {
-      await Promise.all([
-        queryClient.invalidateQueries({
-          queryKey: ["studio-members", studioId],
-        }),
-        queryClient.invalidateQueries({
-          queryKey: ["student-funnel", studioId],
-        }),
-        queryClient.invalidateQueries({
-          queryKey: ["student-directory", studioId],
-        }),
-        queryClient.invalidateQueries({
-          queryKey: ["batches", studioId],
-        }),
-        queryClient.invalidateQueries({
-          queryKey: ["invoices", studioId],
-        }),
-      ]);
-      const totals = totalCounts(result);
-      toast({
-        title: "Batch imported",
-        description: `Imported ${data.students.created} students, ${data.locations.created} locations, ${data.batches.created} batches, ${data.enrollments.created} enrollments, ${data.sessions.created} sessions, ${data.invoices.created} invoices${data.invoices.gapsCreated > 0 ? ` (+${data.invoices.gapsCreated} unpaid gaps)` : ""}, and ${data.attendance.created} attendance records (${totals} records in the file).`,
-        variant: "success",
-      });
-      clearSelection();
+      api.post<{ id: string }>("/import/jobs", buildImportPayload(result)),
+    onSuccess: (data) => {
+      setJobId(data.id);
+      setPhase("create");
+      setStartError(null);
     },
-    onError: (error: unknown) => {
-      toast({
-        title: "Couldn’t import the data",
-        description:
-          error instanceof Error ? error.message : "Please try again.",
-        variant: "error",
-      });
+    onError: (error) => {
+      setStartError(
+        error instanceof Error ? error.message : "Unable to start import.",
+      );
     },
   });
 
-  const clearSelection = () => {
-    setResult(EMPTY_RESULT);
-    setFileError(null);
-    setFileName(null);
-    importData.reset();
-  };
+  const jobQuery = useQuery({
+    queryKey: ["import-job", studioId, jobId],
+    queryFn: () => api.get<ImportJobSnapshot>(`/import/jobs/${jobId}`),
+    enabled: Boolean(jobId) && phase === "create",
+    refetchInterval: (query) => {
+      const status = query.state.data?.status;
+      if (status === "PENDING" || status === "RUNNING") {
+        return 750;
+      }
+      return false;
+    },
+  });
+
+  useEffect(() => {
+    const job = jobQuery.data;
+    if (!job || phase !== "create") {
+      return;
+    }
+    if (job.status === "SUCCEEDED") {
+      setPhase("complete");
+      void queryClient.invalidateQueries({ queryKey: ["studio-members"] });
+      void queryClient.invalidateQueries({ queryKey: ["student-funnel"] });
+      void queryClient.invalidateQueries({ queryKey: ["student-directory"] });
+      void queryClient.invalidateQueries({ queryKey: ["batches"] });
+      void queryClient.invalidateQueries({ queryKey: ["invoices"] });
+      toast({
+        title: "Import complete",
+        description: "Your studio data has been created.",
+      });
+    }
+    if (job.status === "FAILED") {
+      setPhase("failed");
+    }
+  }, [jobQuery.data, phase, queryClient, toast]);
 
   const selectFile = async (files: FileList | null) => {
     const file = files?.[0];
-
     if (!file) {
-      clearSelection();
+      setFileName(null);
+      setResult(EMPTY_RESULT);
+      setFileError(null);
+      setPhase("upload");
+      setJobId(null);
       return;
     }
 
+    setIsReading(true);
     setFileError(null);
     setFileName(file.name);
-    importData.reset();
-    setIsReading(true);
+    setJobId(null);
+    setStartError(null);
 
     try {
-      const sheets = await readXlsxFile(file);
-      setResult(parseStudioImportSheets(sheets));
+      const sheets = await readXlsxFile(file, {
+        getSheets: true,
+      } as Parameters<typeof readXlsxFile>[1]);
+      const parsed = await parseStudioImportSheets(sheets);
+      setResult(parsed);
+      setPhase(
+        totalCounts(parsed) > 0 && parsed.crossSheetErrors.length === 0
+          ? "analyze"
+          : "analyze",
+      );
     } catch (error) {
       setResult(EMPTY_RESULT);
+      setPhase("upload");
       setFileError(
         error instanceof Error
           ? error.message
@@ -217,136 +203,220 @@ function ImportDataPage() {
   };
   const totalRecords = totalCounts(result);
   const hasBlockingErrors = result.crossSheetErrors.length > 0;
-  const canImport = totalRecords > 0 && !hasBlockingErrors;
+  const canStartImport = totalRecords > 0 && !hasBlockingErrors;
+  const job = jobQuery.data;
+  const showAnalyzeCta = phase === "analyze" && canStartImport;
+
+  const screenTitle =
+    phase === "upload"
+      ? "Import studio data"
+      : phase === "analyze"
+        ? "Review import"
+        : phase === "create"
+          ? "Importing your studio"
+          : phase === "complete"
+            ? "Import complete"
+            : "Import failed";
+
+  const screenSubtitle =
+    phase === "upload"
+      ? "Upload your Excel workbook and Step Up will create your studio data automatically."
+      : phase === "analyze"
+        ? "Confirm the records below, then start creating studio data."
+        : phase === "create"
+          ? "Step Up is creating your studio data in real time."
+          : phase === "complete"
+            ? "Your studio data is ready to use."
+            : "Some records could not be created.";
 
   return (
     <>
       <Screen
-        title="Import studio data"
-        subtitle="Import one batch at a time — that batch’s sessions, enrollments, payments, and attendance in one workbook. Times use your studio timezone (Chennai / Asia/Kolkata by default)."
+        title={screenTitle}
+        subtitle={screenSubtitle}
         showBack
         backTo="/app/students"
-        paddedCta={canImport}
+        paddedCta={showAnalyzeCta}
       >
-        <div className={staff.softPanel}>
-          <FileTrigger
-            accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            allowsClearing
-            clearLabel="Clear spreadsheet"
-            onSelect={(files) => void selectFile(files)}
-          >
-            <TouchButton isPending={isReading} fullWidth>
-              {fileName ?? "Choose Excel file"}
+        {phase === "upload" ? (
+          <div className={staff.softPanel}>
+            <FileTrigger
+              accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+              allowsClearing
+              clearLabel="Clear spreadsheet"
+              onSelect={(files) => void selectFile(files)}
+            >
+              <div className={styles.uploadZone}>
+                <Icon name="upload" aria-hidden />
+                <p className={styles.uploadTitle}>
+                  {fileName ?? "Drop Excel file"}
+                </p>
+                <p className={styles.uploadHint}>
+                  {fileName
+                    ? "Choose another file to replace"
+                    : "or choose from computer"}
+                </p>
+                <p className={styles.uploadExt}>.xlsx</p>
+              </div>
+            </FileTrigger>
+
+            <TouchButton
+              as="a"
+              href="/templates/studio-import-template.xlsx"
+              download="studio-import-template.xlsx"
+              variant="quiet"
+              fullWidth
+            >
+              Download template
             </TouchButton>
-          </FileTrigger>
 
-          <TouchButton
-            as="a"
-            href="/templates/studio-import-template.xlsx"
-            download="studio-import-template.xlsx"
-            variant="quiet"
-            fullWidth
-          >
-            Download template
-          </TouchButton>
+            {fileError ? (
+              <Alert variant="danger">
+                <AlertTitle>Unable to read this file</AlertTitle>
+                <AlertDescription>{fileError}</AlertDescription>
+              </Alert>
+            ) : null}
 
-          <p className={staff.panelDesc}>
-            One batch per file. Sheets: Students, Locations, Batches (single
-            row), Sessions, Enrollments, Invoices &amp; payments, and
-            Attendance. All rows must use the same batch name. On Batches, set
-            Monthly plan name and Quarterly plan name to attach catalog plans.
-            On Enrollments and Invoices, set Plan name to link that subscription
-            (enrollment also starts a membership; invoices are not billed
-            twice). Attendance needs a Start time that matches a Sessions row.
-            Dates use dd/mm/yyyy (e.g. 05/08/2026). Times are local wall clock
-            in your studio timezone (Billing settings). Blank and duplicate rows
-            are skipped.
-          </p>
+            {isReading ? (
+              <p className={staff.panelDesc} role="status">Reading workbook…</p>
+            ) : null}
+          </div>
+        ) : null}
 
-          {fileError ? (
-            <Alert variant="danger">
-              <AlertTitle>Unable to import this file</AlertTitle>
-              <AlertDescription>{fileError}</AlertDescription>
-            </Alert>
-          ) : null}
+        {phase === "analyze" ? (
+          <div className={staff.softPanel}>
+            {fileName ? (
+              <p className={staff.panelDesc}>
+                File: <strong>{fileName}</strong>
+              </p>
+            ) : null}
 
-          {importData.isError ? (
+            <TouchButton
+              variant="quiet"
+              fullWidth
+              onClick={() => void selectFile(null)}
+            >
+              Choose a different file
+            </TouchButton>
+
+            {result.crossSheetErrors.map((message) => (
+              <Alert key={message} variant="danger">
+                <AlertTitle>Fix before importing</AlertTitle>
+                <AlertDescription>{message}</AlertDescription>
+              </Alert>
+            ))}
+
+            {Object.entries(result.sheetErrors).map(([kind, message]) => (
+              <Alert key={kind} variant="warning">
+                <AlertTitle>
+                  {SHEET_LABELS[kind as keyof typeof SHEET_LABELS]} sheet
+                  skipped
+                </AlertTitle>
+                <AlertDescription>{message}</AlertDescription>
+              </Alert>
+            ))}
+
+            {fileName && totalRecords === 0 && !hasBlockingErrors ? (
+              <Alert variant="warning">
+                <AlertTitle>No records ready to import</AlertTitle>
+                <AlertDescription>
+                  No valid rows were found. Add sheets with the template headers
+                  and fill in at least one row.
+                </AlertDescription>
+              </Alert>
+            ) : null}
+
+            {totalRecords > 0 ? (
+              <div className={staff.section}>
+                <p className={staff.panelTitle}>{totalRecords} records ready</p>
+                <p className={staff.panelDesc}>Previewing the first rows</p>
+                <div className={staff.list}>
+                  {(
+                    [
+                      ["students", counts.students],
+                      ["locations", counts.locations],
+                      ["batches", counts.batches],
+                      ["sessions", counts.sessions],
+                      ["enrollments", counts.enrollments],
+                      ["invoices", counts.invoices],
+                      ["attendance", counts.attendance],
+                    ] as const
+                  ).map(([kind, count]) =>
+                    count > 0 ? (
+                      <div key={kind} className={staff.attentionCard}>
+                        <span className={staff.attentionTitle}>
+                          {SHEET_LABELS[kind]} · {count}
+                        </span>
+                        <p className={staff.attentionMeta}>
+                          {sheetPreview(kind, result)}
+                        </p>
+                      </div>
+                    ) : null,
+                  )}
+                </div>
+                {invalidRowSummary(result) ? (
+                  <p className={staff.panelDesc} role="status">
+                    {invalidRowSummary(result)}
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
+
+            {startError ? (
+              <Alert variant="danger">
+                <AlertTitle>Import failed to start</AlertTitle>
+                <AlertDescription>{startError}</AlertDescription>
+              </Alert>
+            ) : null}
+          </div>
+        ) : null}
+
+        {phase === "create" && job ? (
+          <ImportPipeline entities={job.entities} />
+        ) : null}
+
+        {phase === "create" && !job && jobQuery.isError ? (
+          <Alert variant="danger">
+            <AlertTitle>Unable to load import status</AlertTitle>
+            <AlertDescription>
+              {jobQuery.error instanceof Error
+                ? jobQuery.error.message
+                : "Please try again."}
+            </AlertDescription>
+          </Alert>
+        ) : null}
+
+        {phase === "complete" && job ? (
+          <ImportComplete
+            entities={job.entities}
+            onViewStudio={() => void navigate({ to: "/app/students" })}
+          />
+        ) : null}
+
+        {phase === "failed" && job ? (
+          <div className={staff.softPanel}>
             <Alert variant="danger">
               <AlertTitle>Import failed</AlertTitle>
               <AlertDescription>
-                {importData.error instanceof Error
-                  ? importData.error.message
-                  : "Please try again."}
+                {job.error ?? "Something went wrong while creating studio data."}
               </AlertDescription>
             </Alert>
-          ) : null}
-
-          {result.crossSheetErrors.map((message) => (
-            <Alert key={message} variant="danger">
-              <AlertTitle>Fix before importing</AlertTitle>
-              <AlertDescription>{message}</AlertDescription>
-            </Alert>
-          ))}
-
-          {Object.entries(result.sheetErrors).map(([kind, message]) => (
-            <Alert key={kind} variant="warning">
-              <AlertTitle>
-                {SHEET_LABELS[kind as keyof typeof SHEET_LABELS]} sheet skipped
-              </AlertTitle>
-              <AlertDescription>{message}</AlertDescription>
-            </Alert>
-          ))}
-
-          {fileName && totalRecords === 0 && !hasBlockingErrors ? (
-            <Alert variant="warning">
-              <AlertTitle>No records ready to import</AlertTitle>
-              <AlertDescription>
-                No valid rows were found. Add sheets with the template headers,
-                fill in at least one row, and choose the file again to refresh
-                the preview.
-              </AlertDescription>
-            </Alert>
-          ) : null}
-
-          {totalRecords > 0 ? (
-            <div className={staff.section}>
-              <p className={staff.panelTitle}>{totalRecords} records ready</p>
-              <p className={staff.panelDesc}>Previewing the first rows</p>
-              <div className={staff.list}>
-                {(
-                  [
-                    ["students", counts.students],
-                    ["locations", counts.locations],
-                    ["batches", counts.batches],
-                    ["sessions", counts.sessions],
-                    ["enrollments", counts.enrollments],
-                    ["invoices", counts.invoices],
-                    ["attendance", counts.attendance],
-                  ] as const
-                ).map(([kind, count]) =>
-                  count > 0 ? (
-                    <div key={kind} className={staff.attentionCard}>
-                      <span className={staff.attentionTitle}>
-                        {SHEET_LABELS[kind]} · {count}
-                      </span>
-                      <p className={staff.attentionMeta}>
-                        {sheetPreview(kind, result)}
-                      </p>
-                    </div>
-                  ) : null,
-                )}
-              </div>
-              {invalidRowSummary(result) ? (
-                <p className={staff.panelDesc} role="status">
-                  {invalidRowSummary(result)}
-                </p>
-              ) : null}
-            </div>
-          ) : null}
-        </div>
+            <ImportPipeline entities={job.entities} />
+            <TouchButton
+              variant="quiet"
+              fullWidth
+              onClick={() => {
+                setPhase("analyze");
+                setJobId(null);
+              }}
+            >
+              Back to review
+            </TouchButton>
+          </div>
+        ) : null}
       </Screen>
 
-      {canImport ? (
+      {showAnalyzeCta ? (
         <StickyCtaBar
           secondary={
             <TouchButton
@@ -361,15 +431,53 @@ function ImportDataPage() {
           <TouchButton
             variant="primary"
             fullWidth
-            isPending={importData.isPending}
-            onClick={() => importData.mutate()}
+            isPending={startImport.isPending}
+            onClick={() => startImport.mutate()}
           >
-            Import {totalRecords} records
+            Start import
           </TouchButton>
         </StickyCtaBar>
       ) : null}
     </>
   );
+}
+
+function buildImportPayload(result: ParseStudioImportResult) {
+  return {
+    students: result.students.map(
+      ({
+        name,
+        email,
+        gender,
+        age,
+        dateOfBirth,
+        phone,
+        guardianName,
+        alternateMobile,
+      }) => ({
+        name,
+        email,
+        gender,
+        ...(age !== undefined && age !== null ? { age } : {}),
+        ...(dateOfBirth !== undefined && dateOfBirth !== null
+          ? { dateOfBirth }
+          : {}),
+        ...(guardianName !== undefined && guardianName !== null
+          ? { guardianName }
+          : {}),
+        ...(alternateMobile !== undefined && alternateMobile !== null
+          ? { alternateMobile }
+          : {}),
+        ...(phone !== undefined && phone !== null ? { phone } : {}),
+      }),
+    ),
+    locations: result.locations,
+    batches: result.batches,
+    enrollments: result.enrollments,
+    sessions: result.sessions,
+    invoices: result.invoices,
+    attendance: result.attendance,
+  };
 }
 
 function sheetPreview(

@@ -64,6 +64,15 @@ function buildService(
       findMany: vi.fn().mockResolvedValue([]),
       update: vi.fn().mockResolvedValue({}),
     },
+    studioDataImport: {
+      create: vi.fn().mockResolvedValue({ id: "import-1" }),
+      findUnique: vi.fn().mockResolvedValue(null),
+      findFirst: vi.fn().mockResolvedValue(null),
+      update: vi.fn().mockResolvedValue({}),
+    },
+    $transaction: vi.fn(async (fn: (tx: typeof prisma) => Promise<unknown>) =>
+      fn(prisma as never),
+    ),
     ...overrides.prisma,
   };
   const crypto = {
@@ -84,14 +93,19 @@ function buildService(
     assertStudentAvailableForBatch: vi.fn().mockResolvedValue(undefined),
     ...overrides.scheduleConflicts,
   };
+  const outbox = {
+    append: vi.fn().mockResolvedValue({ id: "outbox-1" }),
+    ...overrides.outbox,
+  };
   const service = new DataImportService(
     prisma as never,
     crypto as never,
     users as never,
     projections as never,
     scheduleConflicts as never,
+    outbox as never,
   );
-  return { service, prisma, crypto, users, projections, scheduleConflicts };
+  return { service, prisma, crypto, users, projections, scheduleConflicts, outbox };
 }
 
 const STUDENTS = [
@@ -107,11 +121,32 @@ const STUDENTS = [
   },
 ];
 
-describe("DataImportService.importStudioData", () => {
+describe("DataImportService.startImportJob", () => {
+  it("creates a job row and appends an outbox event", async () => {
+    const { service, prisma, outbox } = buildService();
+
+    const result = await service.startImportJob(ACTOR, {
+      students: STUDENTS,
+      batches: [],
+      enrollments: [],
+      invoices: [],
+    });
+
+    expect(result).toEqual({ id: "import-1" });
+    expect(prisma.studioDataImport.create).toHaveBeenCalled();
+    expect(outbox.append).toHaveBeenCalledWith(
+      expect.anything(),
+      "data_import.requested",
+      { importId: "import-1" },
+    );
+  });
+});
+
+describe("DataImportService.runStudioDataImport", () => {
   it("rejects when the actor has no studio", async () => {
     const { service } = buildService();
     await expect(
-      service.importStudioData({ ...ACTOR, studioId: null } as never, {
+      service.runStudioDataImport({ ...ACTOR, studioId: null } as never, {
         students: [],
         batches: [],
         enrollments: [],
@@ -124,7 +159,7 @@ describe("DataImportService.importStudioData", () => {
     const { service, prisma } = buildService();
     prisma.studio.findUnique.mockResolvedValue(null);
     await expect(
-      service.importStudioData(ACTOR, {
+      service.runStudioDataImport(ACTOR, {
         students: [],
         batches: [],
         enrollments: [],
@@ -148,7 +183,7 @@ describe("DataImportService.importStudioData", () => {
       },
     });
 
-    await service.importStudioData(ACTOR, {
+    await service.runStudioDataImport(ACTOR, {
       students: [],
       batches: [
         {
@@ -207,7 +242,7 @@ describe("DataImportService.importStudioData", () => {
       },
     });
 
-    const result = await service.importStudioData(ACTOR, {
+    const result = await service.runStudioDataImport(ACTOR, {
       students: [],
       batches: [
         {
@@ -249,7 +284,7 @@ describe("DataImportService.importStudioData", () => {
   it("rejects more than one batch in a single import", async () => {
     const { service } = buildService();
     await expect(
-      service.importStudioData(ACTOR, {
+      service.runStudioDataImport(ACTOR, {
         students: [],
         batches: [
           {
@@ -301,7 +336,7 @@ describe("DataImportService.importStudioData", () => {
       },
     });
 
-    await service.importStudioData(ACTOR, {
+    await service.runStudioDataImport(ACTOR, {
       students: [],
       batches: [
         {
@@ -352,7 +387,7 @@ describe("DataImportService.importStudioData", () => {
       },
     });
 
-    const result = await service.importStudioData(ACTOR, {
+    const result = await service.runStudioDataImport(ACTOR, {
       students: [],
       batches: [],
       enrollments: [
@@ -425,7 +460,7 @@ describe("DataImportService.importStudioData", () => {
       },
     });
 
-    await service.importStudioData(ACTOR, {
+    await service.runStudioDataImport(ACTOR, {
       students: [],
       batches: [],
       enrollments: [
@@ -482,7 +517,7 @@ describe("DataImportService.importStudioData", () => {
       },
     });
 
-    await service.importStudioData(ACTOR, {
+    await service.runStudioDataImport(ACTOR, {
       students: [],
       batches: [],
       enrollments: [
@@ -521,7 +556,7 @@ describe("DataImportService.importStudioData", () => {
       },
     });
 
-    const result = await service.importStudioData(ACTOR, {
+    const result = await service.runStudioDataImport(ACTOR, {
       students: [],
       batches: [],
       enrollments: [],
@@ -609,7 +644,7 @@ describe("DataImportService.importStudioData", () => {
 
   it("passes students through to createStudents", async () => {
     const { service, users } = buildService();
-    await service.importStudioData(ACTOR, {
+    await service.runStudioDataImport(ACTOR, {
       students: STUDENTS,
       batches: [],
       enrollments: [],
@@ -652,7 +687,7 @@ describe("DataImportService.importStudioData", () => {
       },
     });
 
-    const result = await service.importStudioData(ACTOR, {
+    const result = await service.runStudioDataImport(ACTOR, {
       students: [],
       batches: [],
       enrollments: [],
@@ -736,7 +771,7 @@ describe("DataImportService.importStudioData", () => {
       },
     });
 
-    const result = await service.importStudioData(ACTOR, {
+    const result = await service.runStudioDataImport(ACTOR, {
       students: [],
       locations: [
         {
@@ -815,7 +850,7 @@ describe("DataImportService.importStudioData", () => {
       },
     });
 
-    const result = await service.importStudioData(ACTOR, {
+    const result = await service.runStudioDataImport(ACTOR, {
       students: [],
       locations: [
         {
@@ -899,7 +934,7 @@ describe("DataImportService.importStudioData", () => {
       },
     });
 
-    const result = await service.importStudioData(ACTOR, {
+    const result = await service.runStudioDataImport(ACTOR, {
       students: [],
       batches: [],
       enrollments: [],
@@ -947,7 +982,7 @@ describe("DataImportService.importStudioData", () => {
       },
     });
 
-    const result = await service.importStudioData(ACTOR, {
+    const result = await service.runStudioDataImport(ACTOR, {
       students: [],
       batches: [],
       enrollments: [],
@@ -1064,7 +1099,7 @@ describe("DataImportService.importStudioData", () => {
     });
 
     await expect(
-      service.importStudioData(ACTOR, {
+      service.runStudioDataImport(ACTOR, {
         students: [],
         batches: [],
         enrollments: [],
@@ -1108,7 +1143,7 @@ describe("DataImportService.importStudioData", () => {
     });
 
     await expect(
-      service.importStudioData(ACTOR, {
+      service.runStudioDataImport(ACTOR, {
         students: [],
         batches: [],
         enrollments: [],
@@ -1180,7 +1215,7 @@ describe("DataImportService.importStudioData", () => {
       },
     });
 
-    const result = await service.importStudioData(ACTOR, {
+    const result = await service.runStudioDataImport(ACTOR, {
       students: [],
       batches: [],
       enrollments: [],
@@ -1255,7 +1290,7 @@ describe("DataImportService.importStudioData", () => {
       },
     });
 
-    await service.importStudioData(ACTOR, {
+    await service.runStudioDataImport(ACTOR, {
       students: [],
       batches: [],
       enrollments: [],
@@ -1323,7 +1358,7 @@ describe("DataImportService.importStudioData", () => {
       },
     });
 
-    await service.importStudioData(ACTOR, {
+    await service.runStudioDataImport(ACTOR, {
       students: [],
       batches: [],
       enrollments: [],
@@ -1404,7 +1439,7 @@ describe("DataImportService.importStudioData", () => {
       },
     });
 
-    await service.importStudioData(ACTOR, {
+    await service.runStudioDataImport(ACTOR, {
       students: [],
       batches: [],
       enrollments: [],
@@ -1523,7 +1558,7 @@ describe("DataImportService.importStudioData", () => {
       },
     });
 
-    const result = await service.importStudioData(ACTOR, {
+    const result = await service.runStudioDataImport(ACTOR, {
       students: [],
       batches: [],
       enrollments: [
@@ -1622,7 +1657,7 @@ describe("DataImportService.importStudioData", () => {
       },
     });
 
-    const result = await service.importStudioData(ACTOR, {
+    const result = await service.runStudioDataImport(ACTOR, {
       students: [],
       batches: [],
       enrollments: [
@@ -1676,7 +1711,7 @@ describe("DataImportService.importStudioData", () => {
       },
     });
 
-    await service.importStudioData(ACTOR, {
+    await service.runStudioDataImport(ACTOR, {
       students: [],
       batches: [],
       enrollments: [],
@@ -1747,7 +1782,7 @@ describe("DataImportService.importStudioData", () => {
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([{ id: "batch-1", name: "Kids Hip-Hop" }]);
 
-    await service.importStudioData(ACTOR, {
+    await service.runStudioDataImport(ACTOR, {
       students: [],
       batches: [
         {
@@ -1834,7 +1869,7 @@ describe("DataImportService.importStudioData", () => {
       },
     });
 
-    const result = await service.importStudioData(ACTOR, {
+    const result = await service.runStudioDataImport(ACTOR, {
       students: [],
       batches: [],
       enrollments: [
@@ -1918,7 +1953,7 @@ describe("DataImportService.importStudioData", () => {
       },
     });
 
-    await service.importStudioData(ACTOR, {
+    await service.runStudioDataImport(ACTOR, {
       students: [],
       batches: [],
       enrollments: [
@@ -2016,7 +2051,7 @@ describe("DataImportService.importStudioData", () => {
       },
     });
 
-    await service.importStudioData(ACTOR, {
+    await service.runStudioDataImport(ACTOR, {
       students: [],
       batches: [],
       enrollments: [

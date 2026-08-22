@@ -81,6 +81,31 @@ async function createSmokeFamilyKid(name: string) {
   });
 }
 
+type SmokeImportJobSnapshot = {
+  id: string;
+  status: "PENDING" | "RUNNING" | "SUCCEEDED" | "FAILED";
+  error: string | null;
+};
+
+async function pollImportJob(
+  role: "STAFF" | "OWNER",
+  importId: string,
+  timeoutMs = 60_000,
+) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const job = await apiRequest<SmokeImportJobSnapshot>(
+      role,
+      `/import/jobs/${importId}`,
+    );
+    if (job.status === "SUCCEEDED" || job.status === "FAILED") {
+      return job;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 750));
+  }
+  throw new Error(`Import job ${importId} did not complete within ${timeoutMs}ms`);
+}
+
 async function openInvoicesAndWaitFor(
   page: import("@playwright/test").Page,
   testId: string,
@@ -1101,7 +1126,7 @@ test.describe("admin (staff) smoke @smoke", () => {
         endParts.find((part) => part.type === type)?.value ?? "";
 
       const token = await bearerFor("STAFF");
-      const response = await fetch(`${apiBaseUrl()}/import/studio-data`, {
+      const startResponse = await fetch(`${apiBaseUrl()}/import/studio-data`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -1110,7 +1135,7 @@ test.describe("admin (staff) smoke @smoke", () => {
         body: JSON.stringify({
           sessions: [
             {
-              // Same main branch + trainer as kids → must 409.
+              // Same main branch + trainer as kids → must fail on overlap.
               batchName: "Smoke Open Trial",
               date: `${get("year")}-${get("month")}-${get("day")}`,
               startTime: `${get("hour")}:${get("minute")}`,
@@ -1121,7 +1146,11 @@ test.describe("admin (staff) smoke @smoke", () => {
           ],
         }),
       });
-      expect(response.status).toBe(409);
+      expect(startResponse.ok).toBe(true);
+      const { id: importId } = (await startResponse.json()) as { id: string };
+      const job = await pollImportJob("STAFF", importId);
+      expect(job.status).toBe("FAILED");
+      expect(job.error?.toLowerCase()).toContain("overlap");
     } finally {
       if (createdSessionId) {
         await apiRequest("STAFF", `/sessions/${createdSessionId}`, {
