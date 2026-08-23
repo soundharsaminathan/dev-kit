@@ -6,6 +6,7 @@ import { useMemo, useState } from "react";
 import { useApi } from "@/lib/api-context";
 import { useAuth } from "@/lib/auth";
 import { matchesPersonSearch } from "@/lib/person-search";
+import { useStudentSearchPlaceholder } from "@/lib/use-student-search-placeholder";
 import { useStudioId } from "@/lib/use-studio-id";
 import { BookingDetailDrawer } from "@/modules/bookings/booking-detail-drawer";
 import {
@@ -48,6 +49,9 @@ function BookingsPage() {
   const [filter, setFilter] = useState("ALL");
   const [search, setSearch] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const searchPlaceholder = useStudentSearchPlaceholder({
+    enabled: !search.trim(),
+  });
 
   const bookings = useQuery({
     queryKey: ["bookings", "studio", studioId],
@@ -158,7 +162,7 @@ function BookingsPage() {
           <div data-testid="bookings-search">
             <SearchField
               aria-label="Search bookings"
-              placeholder="Search by name, email, or phone"
+              placeholder={searchPlaceholder}
               value={search}
               onChange={setSearch}
             />

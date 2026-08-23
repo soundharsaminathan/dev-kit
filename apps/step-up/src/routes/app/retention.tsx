@@ -15,6 +15,7 @@ import { unwrapPage } from "@/lib/api-page";
 import { ENTITY_ICONS } from "@/lib/entity-icons";
 import { formatPaidMonths } from "@/lib/format-paid-months";
 import { matchesPersonSearch } from "@/lib/person-search";
+import { useStudentSearchPlaceholder } from "@/lib/use-student-search-placeholder";
 import { useStudioId } from "@/lib/use-studio-id";
 import { useStudioTrainers } from "@/modules/trainers/use-trainers";
 import { AnimatedMetric } from "@/modules/ui/animated-metric";
@@ -88,6 +89,12 @@ function RetentionPage() {
   );
   const [absenteeSearch, setAbsenteeSearch] = useState("");
   const [recentSearch, setRecentSearch] = useState("");
+  const absenteePlaceholder = useStudentSearchPlaceholder({
+    enabled: !absenteeSearch.trim(),
+  });
+  const recentPlaceholder = useStudentSearchPlaceholder({
+    enabled: !recentSearch.trim(),
+  });
 
   const batchesQuery = useQuery({
     queryKey: ["batches", studioId],
@@ -277,7 +284,7 @@ function RetentionPage() {
                   <div data-testid="retention-absentee-search">
                     <SearchField
                       aria-label="Search absences"
-                      placeholder="Search by name, email, or phone"
+                      placeholder={absenteePlaceholder}
                       value={absenteeSearch}
                       onChange={setAbsenteeSearch}
                     />
@@ -414,7 +421,7 @@ function RetentionPage() {
                   <div data-testid="retention-recent-search">
                     <SearchField
                       aria-label="Search recent students"
-                      placeholder="Search by name, email, or phone"
+                      placeholder={recentPlaceholder}
                       value={recentSearch}
                       onChange={setRecentSearch}
                     />

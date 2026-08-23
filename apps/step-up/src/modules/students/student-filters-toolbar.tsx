@@ -1,6 +1,7 @@
 import { SearchField } from "@dev-ui/components/search-field";
 import { Icon } from "@dev-ui/icons";
 import { useMemo, useState } from "react";
+import { useStudentSearchPlaceholder } from "@/lib/use-student-search-placeholder";
 import { FilterChipRow } from "@/modules/ui/filter-chip-row";
 import {
   AGE_RANGE_OPTIONS,
@@ -69,6 +70,9 @@ export function StudentFiltersToolbar({
   onSearchChange,
 }: StudentFiltersToolbarProps) {
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const searchPlaceholder = useStudentSearchPlaceholder({
+    enabled: !search.trim(),
+  });
 
   const quickChips = useMemo(
     () => [
@@ -131,7 +135,7 @@ export function StudentFiltersToolbar({
       <div className={styles.searchBar} data-testid="students-search">
         <SearchField
           aria-label="Search students"
-          placeholder="Search students"
+          placeholder={searchPlaceholder}
           value={search}
           onChange={onSearchChange}
         />

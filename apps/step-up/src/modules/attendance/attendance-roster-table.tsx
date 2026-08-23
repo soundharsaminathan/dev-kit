@@ -17,6 +17,7 @@ import {
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { formatPaidMonths } from "@/lib/format-paid-months";
 import { matchesPersonSearch } from "@/lib/person-search";
+import { useStudentSearchPlaceholder } from "@/lib/use-student-search-placeholder";
 import { AppSheet } from "@/modules/ui/app-sheet";
 import { FilterChipRow } from "@/modules/ui/filter-chip-row";
 import { LoadMoreIndicator } from "@/modules/ui/load-more-indicator";
@@ -281,6 +282,9 @@ export function AttendanceRosterTable({
   const [statusFilter, setStatusFilter] =
     useState<AttendanceStatusFilter>("all");
   const [search, setSearch] = useState("");
+  const searchPlaceholder = useStudentSearchPlaceholder({
+    enabled: !search.trim(),
+  });
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const listWindowKey = `${statusFilter}:${search}:${sorting[0]?.id ?? ""}:${sorting[0]?.desc ? "desc" : "asc"}`;
   const [visibleCount, setVisibleCount] = useState(ROSTER_PAGE_SIZE);
@@ -599,7 +603,7 @@ export function AttendanceRosterTable({
       <div className={styles.searchBar} data-testid="attendance-roster-search">
         <SearchField
           aria-label="Search roster"
-          placeholder="Search by name, email, or phone"
+          placeholder={searchPlaceholder}
           value={search}
           onChange={setSearch}
         />

@@ -9,6 +9,7 @@ import { Icon } from "@dev-ui/icons";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { useApi } from "@/lib/api-context";
+import { useStudentSearchPlaceholder } from "@/lib/use-student-search-placeholder";
 
 export type TrialCandidate = {
   id: string;
@@ -55,12 +56,16 @@ export function TrialCandidateCombobox({
   onSelectionChange,
   isDisabled,
   isOpen = true,
-  placeholder = "Search by name, email, or phone",
+  placeholder,
 }: TrialCandidateComboboxProps) {
   const api = useApi();
   const [inputValue, setInputValue] = useState("");
   const [selectedName, setSelectedName] = useState<string | null>(null);
   const debouncedSearch = useDebouncedValue(inputValue.trim(), 300);
+  const rotatingPlaceholder = useStudentSearchPlaceholder({
+    enabled: !inputValue.trim(),
+  });
+  const resolvedPlaceholder = placeholder ?? rotatingPlaceholder;
 
   const candidatesQuery = useQuery({
     queryKey: ["trial-candidates", sessionId, debouncedSearch],
@@ -130,7 +135,7 @@ export function TrialCandidateCombobox({
     >
       <InputGroup>
         <ComboboxInput
-          placeholder={placeholder}
+          placeholder={resolvedPlaceholder}
           data-testid="add-trial-search"
         />
         <InputGroupAddon>

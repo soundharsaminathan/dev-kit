@@ -26,6 +26,7 @@ import { useApi } from "@/lib/api-context";
 import type { Page } from "@/lib/api-page";
 import { ENTITY_ICONS } from "@/lib/entity-icons";
 import { formatPaidMonths } from "@/lib/format-paid-months";
+import { useStudentSearchPlaceholder } from "@/lib/use-student-search-placeholder";
 import { formatPrice } from "@/modules/payments/invoice-types";
 import type { StudioStudent } from "@/modules/students/student-search-combobox";
 import { StudentSearchMultiselect } from "@/modules/students/student-search-multiselect";
@@ -156,6 +157,9 @@ export function BatchRoster({ batchId, capacity, active }: BatchRosterProps) {
   } | null>(null);
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebouncedValue(search.trim(), 300);
+  const searchPlaceholder = useStudentSearchPlaceholder({
+    enabled: !search.trim(),
+  });
 
   const headerQuery = useQuery({
     queryKey: ["batch", batchId],
@@ -500,7 +504,7 @@ export function BatchRoster({ batchId, capacity, active }: BatchRosterProps) {
             <div className={styles.searchBar} data-testid="batch-roster-search">
               <SearchField
                 aria-label="Search roster"
-                placeholder="Search by name, email, or phone"
+                placeholder={searchPlaceholder}
                 value={search}
                 onChange={setSearch}
               />
@@ -592,7 +596,7 @@ export function BatchRoster({ batchId, capacity, active }: BatchRosterProps) {
             >
               <SearchField
                 aria-label="Search inactive roster"
-                placeholder="Search by name, email, or phone"
+                placeholder={searchPlaceholder}
                 value={search}
                 onChange={setSearch}
               />
@@ -712,7 +716,6 @@ export function BatchRoster({ batchId, capacity, active }: BatchRosterProps) {
             isDisabled={enroll.isPending}
             testIdPrefix="enroll-student"
             label="Search students"
-            placeholder="Search students"
             emptyTitle="No students found"
             emptyDescription="Try a different name or email."
           />

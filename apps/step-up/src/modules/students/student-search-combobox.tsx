@@ -9,6 +9,7 @@ import { Icon } from "@dev-ui/icons";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { useApi } from "@/lib/api-context";
+import { useStudentSearchPlaceholder } from "@/lib/use-student-search-placeholder";
 import { useStudioId } from "@/lib/use-studio-id";
 
 export type StudioStudent = {
@@ -45,13 +46,17 @@ export function StudentSearchCombobox({
   onSelectionChange,
   excludeIds,
   isDisabled,
-  placeholder = "Search by name or email",
+  placeholder,
 }: StudentSearchComboboxProps) {
   const api = useApi();
   const studioId = useStudioId();
   const [inputValue, setInputValue] = useState("");
   const [selectedName, setSelectedName] = useState<string | null>(null);
   const debouncedSearch = useDebouncedValue(inputValue.trim(), 300);
+  const rotatingPlaceholder = useStudentSearchPlaceholder({
+    enabled: !inputValue.trim(),
+  });
+  const resolvedPlaceholder = placeholder ?? rotatingPlaceholder;
 
   const excluded = useMemo(() => new Set(excludeIds ?? []), [excludeIds]);
 
@@ -118,7 +123,7 @@ export function StudentSearchCombobox({
       }}
     >
       <InputGroup>
-        <ComboboxInput placeholder={placeholder} />
+        <ComboboxInput placeholder={resolvedPlaceholder} />
         <InputGroupAddon>
           <ComboboxButton aria-label="Show students">
             <Icon name="chevron-down" />

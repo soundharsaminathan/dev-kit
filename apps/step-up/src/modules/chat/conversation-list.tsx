@@ -12,6 +12,7 @@ import { chatConversationsKey } from "@/lib/chat-socket";
 import { STAFF_ROLES, type UserRole } from "@/lib/constants";
 import { ENTITY_ICONS } from "@/lib/entity-icons";
 import { matchesPersonSearch } from "@/lib/person-search";
+import { useStudentSearchPlaceholder } from "@/lib/use-student-search-placeholder";
 import { ApiState } from "@/modules/ui/api-state";
 import { SkeletonBlock } from "@/modules/ui/skeleton-block";
 import {
@@ -226,6 +227,12 @@ export function ConversationList({
   const [search, setSearch] = useState("");
   const [contactSearch, setContactSearch] = useState("");
   const [filter, setFilter] = useState<ConversationFilter>("all");
+  const searchPlaceholder = useStudentSearchPlaceholder({
+    enabled: !search.trim(),
+  });
+  const contactPlaceholder = useStudentSearchPlaceholder({
+    enabled: !contactSearch.trim(),
+  });
   const emptyContacts = contactsEmptyCopy(user?.role);
 
   const conversationsQuery = useQuery({
@@ -317,7 +324,7 @@ export function ConversationList({
         <div className={styles.contactSearch}>
           <SearchField
             aria-label="Search people"
-            placeholder="Search by name, email, or phone"
+            placeholder={contactPlaceholder}
             value={contactSearch}
             onChange={setContactSearch}
           />
@@ -480,7 +487,7 @@ export function ConversationList({
       <div className={styles.toolbar}>
         <SearchField
           aria-label="Search conversations"
-          placeholder="Search by name, email, or phone"
+          placeholder={searchPlaceholder}
           value={search}
           onChange={setSearch}
           {...(styles.search ? { className: styles.search } : {})}

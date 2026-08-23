@@ -2,6 +2,7 @@ import { Drawer } from "@dev-ui/components/drawer";
 import { useIsMobile } from "@dev-ui/hooks";
 import { Icon } from "@dev-ui/icons";
 import { useEffect, useMemo, useState } from "react";
+import { useStudentSearchPlaceholder } from "@/lib/use-student-search-placeholder";
 import { FormInput } from "@/modules/ui/form-input";
 import { TouchButton } from "@/modules/ui/touch-button";
 import {
@@ -49,6 +50,9 @@ export function StudentFiltersPanel({
   const isMobile = useIsMobile();
   const [section, setSection] = useState<FilterSectionId>("suggested");
   const [draft, setDraft] = useState<StudentFiltersDraft>(value);
+  const searchPlaceholder = useStudentSearchPlaceholder({
+    enabled: !draft.search.trim(),
+  });
 
   useEffect(() => {
     if (!isOpen) return;
@@ -373,7 +377,7 @@ export function StudentFiltersPanel({
                   onChange={(search) =>
                     setDraft((prev) => ({ ...prev, search }))
                   }
-                  placeholder="Search students"
+                  placeholder={searchPlaceholder}
                 />
               </div>
             ) : null}

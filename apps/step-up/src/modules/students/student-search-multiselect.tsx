@@ -15,6 +15,7 @@ import {
 } from "react";
 import { useApi } from "@/lib/api-context";
 import { matchesPersonSearch } from "@/lib/person-search";
+import { useStudentSearchPlaceholder } from "@/lib/use-student-search-placeholder";
 import { useStudioId } from "@/lib/use-studio-id";
 import { FormInput } from "@/modules/ui/form-input";
 import { LoadMoreIndicator } from "@/modules/ui/load-more-indicator";
@@ -84,7 +85,7 @@ export function StudentSearchMultiselect({
   isDisabled,
   enabled = true,
   label = "Search students",
-  placeholder = "Search students",
+  placeholder,
   emptyTitle = "No students found",
   emptyDescription = "Try a different name or email.",
   pageSize = 20,
@@ -98,6 +99,10 @@ export function StudentSearchMultiselect({
   >({});
   const searchQuery = search.trim();
   const debouncedSearch = useDebouncedValue(searchQuery, 300);
+  const rotatingPlaceholder = useStudentSearchPlaceholder({
+    enabled: !searchQuery,
+  });
+  const resolvedPlaceholder = placeholder ?? rotatingPlaceholder;
   const excluded = useMemo(() => new Set(excludeIds ?? []), [excludeIds]);
   const selectedIdSet = useMemo(() => new Set(selectedIds), [selectedIds]);
   const atCap = maxSelected != null && selectedIds.length >= maxSelected;
@@ -262,7 +267,7 @@ export function StudentSearchMultiselect({
         label={label}
         value={search}
         onChange={setSearch}
-        placeholder={placeholder}
+        placeholder={resolvedPlaceholder}
         {...(isDisabled != null ? { isDisabled } : {})}
         data-testid={`${testIdPrefix}-search`}
       />
