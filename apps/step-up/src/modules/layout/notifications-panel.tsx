@@ -70,6 +70,8 @@ function notificationIcon(
       return "user";
     case "CHAT_MESSAGE":
       return "message-square";
+    case "DATA_IMPORT_COMPLETE":
+      return "upload";
     default:
       return "bell";
   }

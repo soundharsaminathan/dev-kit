@@ -70,6 +70,10 @@ export function resolveDeepLink(input: {
     }
     case "TRAINER_PAYOUT":
       return "/app/payouts";
+    case "DATA_IMPORT_COMPLETE": {
+      const batchId = stringMeta("batchId");
+      return batchId ? `/app/batches/${batchId}` : "/app/import";
+    }
     default:
       return null;
   }

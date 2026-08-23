@@ -115,6 +115,13 @@ export function buildNotificationCopy(input: NotificationTemplateInput): {
           input.body ??
           "Your payout for last month is ready. Review it in the Payouts tab.",
       };
+    case "DATA_IMPORT_COMPLETE":
+      return {
+        title: input.title ?? "Import complete",
+        body:
+          input.body ??
+          `${input.batchName ?? "Batch"} data has been imported successfully.`,
+      };
     default:
       return {
         title: input.title ?? "Notification",
@@ -168,5 +175,9 @@ export const NOTIFICATION_TYPE_REGISTRY: Record<
   TRAINER_PAYOUT: {
     label: "Trainer payouts",
     defaultChannels: ["IN_APP"],
+  },
+  DATA_IMPORT_COMPLETE: {
+    label: "Data imports",
+    defaultChannels: ["IN_APP", "PUSH"],
   },
 };

@@ -11,7 +11,8 @@ export type NotificationType =
   | "RENEWED"
   | "NOT_RENEWED"
   | "NEW_FOLLOW"
-  | "CHAT_MESSAGE";
+  | "CHAT_MESSAGE"
+  | "DATA_IMPORT_COMPLETE";
 
 export type NotificationMeta = {
   sessionId?: string;
@@ -142,6 +143,10 @@ export function resolveNotificationDestination(
     case "PAYMENT_OVERDUE":
     case "PAYMENT_RECEIVED":
       return { to: "/app/invoices" };
+    case "DATA_IMPORT_COMPLETE":
+      return m.batchId
+        ? { to: "/app/batches/$id", params: { id: m.batchId } }
+        : null;
     default:
       return null;
   }

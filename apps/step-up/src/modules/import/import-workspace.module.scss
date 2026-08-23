@@ -5,48 +5,6 @@
     calc(var(--space-6, 1.5rem) + env(safe-area-inset-bottom, 0px));
 }
 
-.page[data-importing="true"] {
-  padding-top: var(--space-2, 0.5rem);
-  padding-bottom: calc(
-    var(--space-2, 0.5rem) + env(safe-area-inset-bottom, 0px)
-  );
-}
-
-.page[data-importing="true"] .container {
-  gap: 0;
-}
-
-.page[data-importing="true"] .workspaceInner {
-  gap: var(--space-1, 0.25rem);
-  padding: var(--space-2, 0.5rem) var(--space-3, 0.75rem);
-}
-
-.page[data-importing="true"] .cardGreeting {
-  font-size: 0.9375rem;
-}
-
-.page[data-importing="true"] .cardMessage {
-  font-size: 0.75rem;
-}
-
-.page[data-importing="true"] .cardHeader {
-  padding-block: 0;
-}
-
-.page[data-importing="true"] .entityList {
-  max-height: min(16rem, 42vh);
-  overflow-y: auto;
-}
-
-.page[data-importing="true"] .entityRow {
-  padding-block: 0.375rem;
-}
-
-.page[data-importing="true"] .footer {
-  padding: var(--space-2, 0.5rem) var(--space-3, 0.75rem);
-  gap: var(--space-1, 0.25rem);
-}
-
 .container {
   width: 100%;
   max-width: 44rem;

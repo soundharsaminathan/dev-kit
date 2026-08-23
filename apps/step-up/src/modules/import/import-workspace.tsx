@@ -227,7 +227,7 @@ export function ImportWorkspace({
     isImporting || phase === "complete" || (phase === "failed" && Boolean(job));
 
   return (
-    <div className={styles.page} data-importing={isImporting ? "true" : undefined}>
+    <div className={styles.page}>
       <div className={styles.container}>
         {!isImporting ? (
           <header className={styles.pageHeader}>

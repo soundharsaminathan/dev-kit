@@ -17,6 +17,7 @@ import {
   MembershipBillingPhase,
   MembershipSeatRole,
   MembershipStatus,
+  NotificationType,
   type PaymentMethod,
   Prisma,
   SessionStatus,
@@ -51,6 +52,7 @@ import {
   ProjectionService,
 } from "../queues/processors/projection.service";
 import { OutboxService } from "../events/outbox.service";
+import { NotificationsService } from "../notifications/notifications.service";
 import { OUTBOX_EVENT_DATA_IMPORT_REQUESTED } from "../shared/outbox-events";
 import type { DecryptedUser } from "../users/user-crypto.service";
 import { UserCryptoService } from "../users/user-crypto.service";
@@ -148,6 +150,8 @@ export class DataImportService {
     @Inject(ScheduleConflictService)
     private readonly scheduleConflicts: ScheduleConflictService,
     @Inject(OutboxService) private readonly outbox: OutboxService,
+    @Inject(NotificationsService)
+    private readonly notifications: NotificationsService,
   ) {}
 
   async precheckStudioImport(actor: DecryptedUser, dto: ImportStudioDataDto) {
@@ -262,6 +266,7 @@ export class DataImportService {
         where: { id: importId },
         data: { status: "SUCCEEDED", finishedAt: new Date() },
       });
+      await this.notifyImportComplete(actor, dto, importId);
     } catch (error) {
       const message = importFailureMessage(error);
       await this.prisma.studioDataImport.update({
@@ -643,6 +648,71 @@ export class DataImportService {
       existingBatches,
       batchPlanSubscriptionIdsByBatchId,
       audienceForBatchCategory,
+    });
+  }
+
+  private resolveImportBatchName(dto: ImportStudioDataDto): string | null {
+    const batchRow = dto.batches?.[0];
+    if (batchRow?.name?.trim()) {
+      return batchRow.name.trim();
+    }
+
+    for (const row of dto.enrollments ?? []) {
+      if (row.batchName?.trim()) {
+        return row.batchName.trim();
+      }
+    }
+    for (const row of dto.sessions ?? []) {
+      if (row.batchName?.trim()) {
+        return row.batchName.trim();
+      }
+    }
+    for (const row of dto.attendance ?? []) {
+      if (row.batchName?.trim()) {
+        return row.batchName.trim();
+      }
+    }
+    for (const row of dto.invoices ?? []) {
+      if (row.batchName?.trim()) {
+        return row.batchName.trim();
+      }
+    }
+
+    return null;
+  }
+
+  private async notifyImportComplete(
+    actor: DecryptedUser,
+    dto: ImportStudioDataDto,
+    importId: string,
+  ) {
+    const batchName = this.resolveImportBatchName(dto);
+    let batchId: string | null = null;
+
+    if (actor.studioId && batchName) {
+      const batch = await this.prisma.batch.findFirst({
+        where: {
+          studioId: actor.studioId,
+          name: { equals: batchName, mode: "insensitive" },
+        },
+        select: { id: true },
+      });
+      batchId = batch?.id ?? null;
+    }
+
+    await this.notifications.create({
+      userId: actor.id,
+      type: NotificationType.DATA_IMPORT_COMPLETE,
+      batchName: batchName ?? undefined,
+      dedupeKey: `DATA_IMPORT_COMPLETE:${importId}`,
+      deepLink: batchId ? `/app/batches/${batchId}` : "/app/import",
+      entityType: "studio_data_import",
+      entityId: importId,
+      meta: {
+        importId,
+        ...(batchName ? { batchName } : {}),
+        ...(batchId ? { batchId } : {}),
+      },
     });
   }
 

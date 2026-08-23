@@ -170,6 +170,7 @@ enum NotificationType {
   NEW_FOLLOW
   CHAT_MESSAGE
   TRAINER_PAYOUT
+  DATA_IMPORT_COMPLETE
 }
 
 enum TrainerPayoutStatus {

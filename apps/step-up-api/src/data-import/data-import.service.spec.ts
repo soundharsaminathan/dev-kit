@@ -5,6 +5,7 @@ import {
   InvoiceStatus,
 } from "@prisma/client";
 import { describe, expect, it, vi } from "vitest";
+import { createNotificationsMock } from "../test/mocks/notifications.mock";
 import { DataImportService } from "./data-import.service";
 
 const ACTOR = {
@@ -20,6 +21,8 @@ function buildService(
     users?: Record<string, unknown>;
     projections?: Record<string, unknown>;
     scheduleConflicts?: Record<string, unknown>;
+    outbox?: Record<string, unknown>;
+    notifications?: Record<string, unknown>;
   } = {},
 ) {
   const prisma = {
@@ -97,6 +100,10 @@ function buildService(
     append: vi.fn().mockResolvedValue({ id: "outbox-1" }),
     ...overrides.outbox,
   };
+  const notifications = {
+    ...createNotificationsMock(),
+    ...overrides.notifications,
+  };
   const service = new DataImportService(
     prisma as never,
     crypto as never,
@@ -104,8 +111,18 @@ function buildService(
     projections as never,
     scheduleConflicts as never,
     outbox as never,
+    notifications as never,
   );
-  return { service, prisma, crypto, users, projections, scheduleConflicts, outbox };
+  return {
+    service,
+    prisma,
+    crypto,
+    users,
+    projections,
+    scheduleConflicts,
+    outbox,
+    notifications,
+  };
 }
 
 const STUDENTS = [
@@ -184,6 +201,49 @@ describe("DataImportService.startImportJob", () => {
       "Plan \"Kids Monthly\" is not attached to batch \"Kids Hip-Hop\"",
     );
     expect(prisma.studioDataImport.create).not.toHaveBeenCalled();
+  });
+});
+
+describe("DataImportService.runImportJob", () => {
+  it("sends an import-complete notification with the batch name", async () => {
+    const { service, prisma, notifications } = buildService();
+
+    prisma.studioDataImport.findUnique.mockResolvedValue({
+      id: "import-1",
+      status: "PENDING",
+      requestedByUserId: "user-owner-1",
+      studioId: "studio-1",
+      payload: {
+        batches: [{ name: "Kids Hip-Hop" }],
+        students: [],
+        enrollments: [],
+        sessions: [],
+        invoices: [],
+        attendance: [],
+      },
+    });
+    prisma.batch.findFirst.mockResolvedValue({ id: "batch-1" });
+
+    vi.spyOn(service, "runStudioDataImport").mockResolvedValue({
+      students: { created: 0, skipped: 0 },
+      locations: { created: 0, skipped: 0 },
+      batches: { created: 1, skipped: 0 },
+      enrollments: { created: 0, skipped: 0 },
+      sessions: { created: 0, skipped: 0 },
+      invoices: { created: 0, skipped: 0, gapsCreated: 0 },
+      attendance: { created: 0, skipped: 0 },
+    });
+
+    await service.runImportJob("import-1");
+
+    expect(notifications.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: "user-owner-1",
+        type: "DATA_IMPORT_COMPLETE",
+        batchName: "Kids Hip-Hop",
+        deepLink: "/app/batches/batch-1",
+      }),
+    );
   });
 });
 

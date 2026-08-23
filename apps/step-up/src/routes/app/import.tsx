@@ -84,6 +84,13 @@ export const Route = createFileRoute("/app/import")({
   ),
 });
 
+function resolveImportBatchName(result: ParseStudioImportResult): string | null {
+  if (result.batches[0]?.name?.trim()) {
+    return result.batches[0].name.trim();
+  }
+  return null;
+}
+
 function ImportDataPage() {
   const api = useApi();
   const studioId = useStudioId();
@@ -143,16 +150,19 @@ function ImportDataPage() {
       void queryClient.invalidateQueries({ queryKey: ["student-directory"] });
       void queryClient.invalidateQueries({ queryKey: ["batches"] });
       void queryClient.invalidateQueries({ queryKey: ["invoices"] });
+      const batchName = resolveImportBatchName(result);
       toast({
         title: "Import complete",
-        description: "Your studio data has been created.",
+        description: batchName
+          ? `${batchName} data has been imported successfully.`
+          : "Your studio data has been imported successfully.",
       });
     }
     if (job.status === "FAILED" && phase === "create") {
       persistImportHistory(jobId, fileName, job.status);
       setPhase("failed");
     }
-  }, [fileName, jobId, jobQuery.data, phase, queryClient, toast]);
+  }, [fileName, jobId, jobQuery.data, phase, queryClient, result, toast]);
 
   const selectFile = async (files: FileList | null) => {
     const file = files?.[0];
