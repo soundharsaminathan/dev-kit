@@ -1,7 +1,7 @@
 export const SHARE_CARD_WIDTH = 1080;
 export const SHARE_CARD_HEIGHT = 1920;
 
-export type ShareCardThemeId = "bold" | "elegant" | "studio";
+export type ShareCardLayoutId = "fullBleed" | "heroBand" | "studioFrame";
 
 export type ShareCardFieldKey =
   | "danceStyle"
@@ -12,6 +12,7 @@ export type ShareCardFieldKey =
 
 export type BatchShareCardData = {
   batchName: string;
+  coverImageUrl?: string;
   danceStyle?: string;
   trainerName?: string;
   schedule?: string;
@@ -33,12 +34,13 @@ export type ShareCardFieldVisibility = Partial<
 export type ShareCardOptions = {
   headline: string;
   cta: string;
-  theme: ShareCardThemeId;
+  layout: ShareCardLayoutId;
   fields: ShareCardFieldVisibility;
 };
 
 export type BatchShareSource = {
   name: string;
+  coverImageUrl?: string | null;
   category?: "KIDS" | "ADULTS" | string | null;
   styleBadge?: string | null;
   danceCategories?: Array<{ name: string }> | null;
@@ -69,11 +71,24 @@ export const SHARE_CARD_FIELD_LABELS: Record<ShareCardFieldKey, string> = {
   location: "Location",
 };
 
-export const SHARE_CARD_THEMES: Array<{
-  id: ShareCardThemeId;
+export const SHARE_CARD_LAYOUTS: Array<{
+  id: ShareCardLayoutId;
   label: string;
+  description: string;
 }> = [
-  { id: "bold", label: "Bold" },
-  { id: "elegant", label: "Elegant" },
-  { id: "studio", label: "Studio" },
+  {
+    id: "fullBleed",
+    label: "Full Bleed",
+    description: "Cover fills the story",
+  },
+  {
+    id: "heroBand",
+    label: "Hero Band",
+    description: "Image on top, details below",
+  },
+  {
+    id: "studioFrame",
+    label: "Studio Frame",
+    description: "Logo-first with framed photo",
+  },
 ];

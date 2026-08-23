@@ -1,5 +1,6 @@
 import { Button } from "@dev-ui/components/button";
 import { useToastContext } from "@dev-ui/components/toast";
+import { Icon } from "@dev-ui/icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
@@ -14,6 +15,8 @@ import { BatchRoster } from "@/modules/batches/batch-roster";
 import { BatchSessionsLane } from "@/modules/batches/batch-sessions-lane";
 import { BatchTrainers } from "@/modules/batches/batch-trainers";
 import { BatchChatButton } from "@/modules/chat/batch-chat-button";
+import type { Studio } from "@/modules/settings/types";
+import { BatchShareSheet } from "@/modules/share-card/batch-share-sheet";
 import { ApiState } from "@/modules/ui/api-state";
 import { AppSheet } from "@/modules/ui/app-sheet";
 import { PageHeader } from "@/modules/ui/page-header";
@@ -26,6 +29,9 @@ type Batch = {
   id: string;
   name: string;
   coverImageUrl?: string | null;
+  category?: "KIDS" | "ADULTS";
+  styleBadge?: string | null;
+  danceCategories?: Array<{ name: string; description?: string }>;
   capacity: number;
   enrollmentMode: "STAFF_ONLY" | "SELF_JOIN";
   enrollmentCount?: number;
@@ -71,11 +77,18 @@ function EditBatchPage() {
   const queryClient = useQueryClient();
   const { toast } = useToastContext("EditBatchPage");
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
   const canViewPayments = isAdminRole(user?.role);
 
   const query = useQuery({
     queryKey: ["batch", id],
     queryFn: () => api.get<Batch>(`/batches/${id}`),
+  });
+
+  const studioQuery = useQuery({
+    queryKey: ["studio", studioId],
+    queryFn: () => api.get<Studio>(`/studios/${studioId}`),
+    enabled: Boolean(studioId),
   });
 
   const deleteBatch = useMutation({
@@ -114,6 +127,16 @@ function EditBatchPage() {
         description="Roster, instructors, and sessions."
         actions={
           <div className={styles.headerActions}>
+            {query.data ? (
+              <Button
+                variant="quiet"
+                data-testid="batch-share"
+                onClick={() => setShareOpen(true)}
+              >
+                <Icon name="share" />
+                Share Batch
+              </Button>
+            ) : null}
             {query.data ? (
               <Button
                 variant="quiet"
@@ -188,6 +211,15 @@ function EditBatchPage() {
           )}
         </ApiState>
       )}
+
+      {query.data ? (
+        <BatchShareSheet
+          isOpen={shareOpen}
+          onOpenChange={setShareOpen}
+          batch={query.data}
+          studio={studioQuery.data ?? { name: "Studio" }}
+        />
+      ) : null}
 
       <AppSheet
         isOpen={deleteOpen}
