@@ -69,6 +69,7 @@ import {
   type GapExistingPeriodInput,
   type GapPaidInvoiceInput,
 } from "./import-invoice-gaps";
+import { collectImportPlanPrecheckErrors } from "./import-plan-precheck";
 import { sanitizeImportStudioDataDto } from "./sanitize-import-dto";
 import {
   buildInitialEntities,
@@ -148,6 +149,18 @@ export class DataImportService {
     @Inject(OutboxService) private readonly outbox: OutboxService,
   ) {}
 
+  async precheckStudioImport(actor: DecryptedUser, dto: ImportStudioDataDto) {
+    if (!actor.studioId) {
+      throw new BadRequestException("User is not assigned to a studio");
+    }
+    const sanitizedDto = sanitizeImportStudioDataDto(dto);
+    const errors = await this.collectImportPlanPrecheckErrors(
+      actor.studioId,
+      sanitizedDto,
+    );
+    return { errors };
+  }
+
   async startImportJob(actor: DecryptedUser, dto: ImportStudioDataDto) {
     if (!actor.studioId) {
       throw new BadRequestException("User is not assigned to a studio");
@@ -169,6 +182,14 @@ export class DataImportService {
       invoices: sanitizedDto.invoices ?? [],
       attendance: sanitizedDto.attendance ?? [],
     });
+
+    const planErrors = await this.collectImportPlanPrecheckErrors(
+      studioId,
+      sanitizedDto,
+    );
+    if (planErrors.length > 0) {
+      throw new BadRequestException(planErrors[0]);
+    }
 
     const entities = buildInitialEntities(sanitizedDto);
     const importRow = await this.prisma.$transaction(async (tx) => {
@@ -527,6 +548,100 @@ export class DataImportService {
     }
 
     return { created, skipped };
+  }
+
+  private async collectImportPlanPrecheckErrors(
+    studioId: string,
+    dto: ImportStudioDataDto,
+  ): Promise<string[]> {
+    const batches = dto.batches ?? [];
+    const enrollments = dto.enrollments ?? [];
+    const invoices = dto.invoices ?? [];
+    const referencedNames = new Set<string>();
+    for (const batch of batches) {
+      if (batch.monthlyPlanName?.trim()) {
+        referencedNames.add(batch.monthlyPlanName.trim().toLowerCase());
+      }
+      if (batch.quarterlyPlanName?.trim()) {
+        referencedNames.add(batch.quarterlyPlanName.trim().toLowerCase());
+      }
+    }
+    for (const row of enrollments) {
+      if (row.planName?.trim()) {
+        referencedNames.add(row.planName.trim().toLowerCase());
+      }
+    }
+    for (const row of invoices) {
+      if (row.planName?.trim()) {
+        referencedNames.add(row.planName.trim().toLowerCase());
+      }
+    }
+    if (referencedNames.size === 0) {
+      return [];
+    }
+
+    const batchNames = new Set<string>();
+    for (const batch of batches) {
+      batchNames.add(batch.name.trim().toLowerCase());
+    }
+    for (const row of enrollments) {
+      batchNames.add(row.batchName.trim().toLowerCase());
+    }
+
+    const [catalog, existingBatches] = await Promise.all([
+      this.prisma.subscription.findMany({
+        where: {
+          studioId,
+          active: true,
+          kind: SubscriptionKind.INDIVIDUAL,
+        },
+        select: {
+          id: true,
+          name: true,
+          billingCadence: true,
+          individualAudience: true,
+        },
+      }),
+      batchNames.size === 0
+        ? Promise.resolve([])
+        : this.prisma.batch.findMany({
+            where: {
+              studioId,
+              name: {
+                in: [...batchNames],
+                mode: "insensitive",
+              },
+            },
+            select: { id: true, name: true, category: true },
+          }),
+    ]);
+
+    const batchIds = existingBatches.map((batch) => batch.id);
+    const batchPlans =
+      batchIds.length === 0
+        ? []
+        : await this.prisma.batchPlan.findMany({
+            where: { batchId: { in: batchIds } },
+            select: { batchId: true, subscriptionId: true },
+          });
+    const batchPlanSubscriptionIdsByBatchId = new Map<string, Set<string>>();
+    for (const link of batchPlans) {
+      const set =
+        batchPlanSubscriptionIdsByBatchId.get(link.batchId) ??
+        new Set<string>();
+      set.add(link.subscriptionId);
+      batchPlanSubscriptionIdsByBatchId.set(link.batchId, set);
+    }
+
+    return collectImportPlanPrecheckErrors({
+      batches,
+      enrollments,
+      invoices,
+      catalog,
+      existingBatches,
+      batchPlanSubscriptionIdsByBatchId,
+      audienceForBatchCategory,
+    });
   }
 
   private assertOneBatchImport(dto: {
@@ -1352,6 +1467,46 @@ export class DataImportService {
 
     // Membership for ACTIVE enrollments with a plan. Invoices stay on the
     // Invoices sheet — import does not create a second bill.
+    const activeMembershipPairs = new Set<string>();
+    const membershipStudentIds = [
+      ...new Set(
+        toCreate
+          .filter(
+            (row) =>
+              row.status === BatchEnrollmentStatus.ACTIVE && row.planName,
+          )
+          .map((row) => row.studentId),
+      ),
+    ];
+    const membershipBatchIds = [
+      ...new Set(
+        toCreate
+          .filter(
+            (row) =>
+              row.status === BatchEnrollmentStatus.ACTIVE && row.planName,
+          )
+          .map((row) => row.batchId),
+      ),
+    ];
+    if (membershipStudentIds.length > 0 && membershipBatchIds.length > 0) {
+      const existingMemberships = await this.prisma.membership.findMany({
+        where: {
+          purchaserUserId: { in: membershipStudentIds },
+          batchId: { in: membershipBatchIds },
+          status: MembershipStatus.ACTIVE,
+        },
+        select: { purchaserUserId: true, batchId: true },
+      });
+      for (const membership of existingMemberships) {
+        if (!membership.batchId) {
+          continue;
+        }
+        activeMembershipPairs.add(
+          `${membership.batchId}:${membership.purchaserUserId}`,
+        );
+      }
+    }
+
     let membershipsCreated = 0;
     for (const row of toCreate) {
       if (row.status !== BatchEnrollmentStatus.ACTIVE || !row.planName) {
@@ -1365,15 +1520,7 @@ export class DataImportService {
         continue;
       }
 
-      const existingMembership = await this.prisma.membership.findFirst({
-        where: {
-          purchaserUserId: row.studentId,
-          batchId: row.batchId,
-          status: MembershipStatus.ACTIVE,
-        },
-        select: { id: true },
-      });
-      if (existingMembership) {
+      if (activeMembershipPairs.has(`${row.batchId}:${row.studentId}`)) {
         continue;
       }
 
@@ -1399,6 +1546,7 @@ export class DataImportService {
           },
         },
       });
+      activeMembershipPairs.add(`${row.batchId}:${row.studentId}`);
       membershipsCreated += 1;
       if (
         onProgress &&

@@ -23,6 +23,15 @@ import { ImportStudioDataDto } from "./dto/import-studio-data.dto";
 export class DataImportController {
   constructor(private readonly dataImport: DataImportService) {}
 
+  @Post("precheck")
+  @Roles(UserRole.OWNER, UserRole.STAFF)
+  precheckStudioImport(
+    @CurrentUser() user: DecryptedUser,
+    @Body() dto: ImportStudioDataDto,
+  ) {
+    return this.dataImport.precheckStudioImport(user, dto);
+  }
+
   @Post("jobs")
   @Roles(UserRole.OWNER, UserRole.STAFF)
   startImportJob(

@@ -140,6 +140,51 @@ describe("DataImportService.startImportJob", () => {
       { importId: "import-1" },
     );
   });
+
+  it("rejects when a referenced plan is missing from the catalog", async () => {
+    const { service, prisma } = buildService({
+      prisma: {
+        subscription: {
+          findMany: vi.fn().mockResolvedValue([
+            {
+              id: "sub-month",
+              name: "Kids Monthly",
+              billingCadence: "MONTHLY",
+              individualAudience: "KID",
+            },
+          ]),
+        },
+        batch: {
+          findMany: vi.fn().mockResolvedValue([
+            { id: "batch-1", name: "Kids Hip-Hop", category: "KIDS" },
+          ]),
+        },
+        batchPlan: {
+          findMany: vi.fn().mockResolvedValue([]),
+        },
+      },
+    });
+
+    await expect(
+      service.startImportJob(ACTOR, {
+        students: [],
+        batches: [],
+        enrollments: [
+          {
+            studentEmail: "kid@example.com",
+            batchName: "Kids Hip-Hop",
+            enrolledAt: "2026-01-15",
+            status: BatchEnrollmentStatus.ACTIVE,
+            planName: "Kids Monthly",
+          },
+        ],
+        invoices: [],
+      }),
+    ).rejects.toThrow(
+      "Plan \"Kids Monthly\" is not attached to batch \"Kids Hip-Hop\"",
+    );
+    expect(prisma.studioDataImport.create).not.toHaveBeenCalled();
+  });
 });
 
 describe("DataImportService.runStudioDataImport", () => {

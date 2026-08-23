@@ -59,11 +59,12 @@ type ImportWorkspaceProps = {
   startError: string | null;
   job: ImportJobSnapshot | null;
   isStarting: boolean;
+  precheckErrors?: string[];
+  isPrechecking?: boolean;
   onSelectFile: (files: FileList | null) => void;
   onStartImport: () => void;
   onCancelImport: () => void;
   onImportAnother: () => void;
-  onBack: () => void;
 };
 
 function firstName(name?: string | null): string {
@@ -148,11 +149,12 @@ export function ImportWorkspace({
   startError,
   job,
   isStarting,
+  precheckErrors = [],
+  isPrechecking = false,
   onSelectFile,
   onStartImport,
   onCancelImport,
   onImportAnother,
-  onBack,
 }: ImportWorkspaceProps) {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -170,7 +172,8 @@ export function ImportWorkspace({
       IMPORT_ENTITY_KEYS.reduce((sum, key) => sum + invalidRows[key].length, 0),
     [invalidRows],
   );
-  const hasBlockingErrors = result.crossSheetErrors.length > 0;
+  const hasBlockingErrors =
+    result.crossSheetErrors.length > 0 || precheckErrors.length > 0;
   const canStartImport = totalRecords > 0 && !hasBlockingErrors;
   const showEntityList =
     phase === "analyze" ||
@@ -198,7 +201,7 @@ export function ImportWorkspace({
       ? "Your studio data has been imported successfully."
       : phase === "failed"
         ? "Some records could not be created. Review the details below."
-        : "Upload your Excel workbook and we'll import all studio data for you.";
+        : null;
 
   const cardGreeting =
     phase === "complete"
@@ -230,17 +233,11 @@ export function ImportWorkspace({
       <div className={styles.container}>
         <header className={styles.pageHeader}>
           <div className={styles.pageHeaderTop}>
-            <button
-              type="button"
-              className={styles.back}
-              aria-label="Go back"
-              onClick={onBack}
-            >
-              <Icon name="chevron-left" />
-            </button>
             <div className={styles.pageHeaderCopy}>
               <h1 className={styles.pageTitle}>{pageTitle}</h1>
-              <p className={styles.pageSubtitle}>{pageSubtitle}</p>
+              {pageSubtitle ? (
+                <p className={styles.pageSubtitle}>{pageSubtitle}</p>
+              ) : null}
             </div>
           </div>
           <div className={styles.pageActions}>
@@ -300,9 +297,11 @@ export function ImportWorkspace({
                 <div className={styles.fileSummaryCopy}>
                   <p className={styles.fileSummaryName}>{fileName}</p>
                   <p className={styles.fileSummaryMeta}>
-                    {totalRecords > 0
-                      ? `${totalRecords.toLocaleString("en-IN")} records validated`
-                      : "No valid records found"}
+                    {isReading || isPrechecking
+                      ? "Reading workbook…"
+                      : totalRecords > 0
+                        ? `${totalRecords.toLocaleString("en-IN")} records validated`
+                        : "No valid records found"}
                     {totalInvalid > 0
                       ? ` · ${totalInvalid.toLocaleString("en-IN")} rows skipped`
                       : ""}
@@ -343,6 +342,13 @@ export function ImportWorkspace({
               ) : null}
 
               {result.crossSheetErrors.map((message) => (
+                <Alert key={message} variant="danger">
+                  <AlertTitle>Fix before importing</AlertTitle>
+                  <AlertDescription>{message}</AlertDescription>
+                </Alert>
+              ))}
+
+              {precheckErrors.map((message) => (
                 <Alert key={message} variant="danger">
                   <AlertTitle>Fix before importing</AlertTitle>
                   <AlertDescription>{message}</AlertDescription>

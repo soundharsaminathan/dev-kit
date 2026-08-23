@@ -1,6 +1,6 @@
 import { useToastContext } from "@dev-ui/components/toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { default as readXlsxFile } from "read-excel-file/browser";
 import { useApi } from "@/lib/api-context";
@@ -87,7 +87,6 @@ export const Route = createFileRoute("/app/import")({
 function ImportDataPage() {
   const api = useApi();
   const studioId = useStudioId();
-  const navigate = useNavigate({ from: Route.fullPath });
   const queryClient = useQueryClient();
   const { toast } = useToastContext("ImportDataPage");
   const [phase, setPhase] = useState<ImportWorkspacePhase>("upload");
@@ -97,6 +96,8 @@ function ImportDataPage() {
   const [isReading, setIsReading] = useState(false);
   const [jobId, setJobId] = useState<string | null>(null);
   const [startError, setStartError] = useState<string | null>(null);
+  const [precheckErrors, setPrecheckErrors] = useState<string[]>([]);
+  const [isPrechecking, setIsPrechecking] = useState(false);
 
   const startImport = useMutation({
     mutationFn: () =>
@@ -162,6 +163,8 @@ function ImportDataPage() {
       setPhase("upload");
       setJobId(null);
       setStartError(null);
+      setPrecheckErrors([]);
+      setIsPrechecking(false);
       return;
     }
 
@@ -170,6 +173,7 @@ function ImportDataPage() {
     setFileName(file.name);
     setJobId(null);
     setStartError(null);
+    setPrecheckErrors([]);
 
     try {
       const sheets = await readXlsxFile(file, {
@@ -178,6 +182,22 @@ function ImportDataPage() {
       const parsed = await parseStudioImportSheets(sheets);
       setResult(parsed);
       setPhase("analyze");
+      setIsPrechecking(true);
+      try {
+        const precheck = await api.post<{ errors: string[] }>(
+          "/import/precheck",
+          buildImportPayload(parsed),
+        );
+        setPrecheckErrors(precheck.errors);
+      } catch (error) {
+        setPrecheckErrors([
+          error instanceof Error
+            ? error.message
+            : "Unable to validate plan names for this workbook.",
+        ]);
+      } finally {
+        setIsPrechecking(false);
+      }
     } catch (error) {
       setResult(EMPTY_RESULT);
       setPhase("upload");
@@ -198,6 +218,8 @@ function ImportDataPage() {
     setFileError(null);
     setJobId(null);
     setStartError(null);
+    setPrecheckErrors([]);
+    setIsPrechecking(false);
   };
 
   return (
@@ -210,6 +232,8 @@ function ImportDataPage() {
       startError={startError}
       job={jobQuery.data ?? null}
       isStarting={startImport.isPending}
+      precheckErrors={precheckErrors}
+      isPrechecking={isPrechecking}
       onSelectFile={(files) => void selectFile(files)}
       onStartImport={() => startImport.mutate()}
       onCancelImport={() => {
@@ -217,7 +241,6 @@ function ImportDataPage() {
         setPhase("analyze");
       }}
       onImportAnother={resetImport}
-      onBack={() => void navigate({ to: "/app/students" })}
     />
   );
 }
