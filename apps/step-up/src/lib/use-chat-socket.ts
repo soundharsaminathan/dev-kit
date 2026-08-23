@@ -1,6 +1,15 @@
-import { useContext } from "react";
-import { ChatSocketContext } from "@/lib/chat-socket-context";
+import { useSyncExternalStore } from "react";
+import {
+  type ChatSocketState,
+  chatSocketStore,
+} from "@/lib/realtime-socket-store";
 
-export function useChatSocket() {
-  return useContext(ChatSocketContext);
+export type ChatSocketContextValue = ChatSocketState;
+
+export function useChatSocket(): ChatSocketContextValue {
+  return useSyncExternalStore(
+    chatSocketStore.subscribe,
+    chatSocketStore.getSnapshot,
+    chatSocketStore.getServerSnapshot,
+  );
 }

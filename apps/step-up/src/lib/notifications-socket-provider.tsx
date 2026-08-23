@@ -1,11 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
-import {
-  createContext,
-  type ReactNode,
-  useContext,
-  useEffect,
-  useState,
-} from "react";
+import { type ReactNode, useEffect, useSyncExternalStore } from "react";
 import type { Socket } from "socket.io-client";
 import { useAuth } from "@/lib/auth";
 import { getApiBaseUrl } from "@/lib/constants";
@@ -17,20 +11,23 @@ import {
   notificationsUnreadKey,
   publishNotificationBroadcast,
 } from "@/lib/notifications-cache";
+import {
+  type NotificationsSocketState,
+  notificationsSocketStore,
+} from "@/lib/realtime-socket-store";
 
-type NotificationsSocketContextValue = {
-  connected: boolean;
-  socket: Socket | null;
-};
+export type NotificationsSocketContextValue = NotificationsSocketState;
 
-const NotificationsSocketContext =
-  createContext<NotificationsSocketContextValue>({
-    connected: false,
-    socket: null,
-  });
+export function useNotificationsSocket(): NotificationsSocketContextValue {
+  return useSyncExternalStore(
+    notificationsSocketStore.subscribe,
+    notificationsSocketStore.getSnapshot,
+    notificationsSocketStore.getServerSnapshot,
+  );
+}
 
-export function useNotificationsSocket() {
-  return useContext(NotificationsSocketContext);
+function setNotificationsSocketState(state: NotificationsSocketState) {
+  notificationsSocketStore.setState(state);
 }
 
 export function NotificationsSocketProvider({
@@ -40,8 +37,6 @@ export function NotificationsSocketProvider({
 }) {
   const { user, getIdToken, loading: authLoading } = useAuth();
   const queryClient = useQueryClient();
-  const [socket, setSocket] = useState<Socket | null>(null);
-  const [connected, setConnected] = useState(false);
   const userId = user?.id ?? null;
 
   useEffect(() => {
@@ -100,7 +95,7 @@ export function NotificationsSocketProvider({
           if (!active) {
             return;
           }
-          setConnected(true);
+          setNotificationsSocketState({ connected: true, socket: created });
           void queryClient.invalidateQueries({ queryKey: ["notifications"] });
         });
 
@@ -108,7 +103,7 @@ export function NotificationsSocketProvider({
           if (!active) {
             return;
           }
-          setConnected(false);
+          setNotificationsSocketState({ connected: false, socket: created });
         });
 
         created.on("notification.created", (notification: NotificationDto) => {
@@ -187,10 +182,10 @@ export function NotificationsSocketProvider({
           });
         });
 
-        setSocket(created);
-        if (created.connected) {
-          setConnected(true);
-        }
+        setNotificationsSocketState({
+          connected: created.connected,
+          socket: created,
+        });
       },
     );
 
@@ -198,14 +193,9 @@ export function NotificationsSocketProvider({
       active = false;
       created?.disconnect();
       created = null;
-      setSocket(null);
-      setConnected(false);
+      setNotificationsSocketState({ connected: false, socket: null });
     };
   }, [authLoading, getIdToken, queryClient, userId]);
 
-  return (
-    <NotificationsSocketContext.Provider value={{ connected, socket }}>
-      {children}
-    </NotificationsSocketContext.Provider>
-  );
+  return children;
 }

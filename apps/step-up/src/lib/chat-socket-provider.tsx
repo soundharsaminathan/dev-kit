@@ -1,14 +1,14 @@
 import { useOnlineStatus } from "@dev-ui/hooks";
 import { useQueryClient } from "@tanstack/react-query";
-import { type ReactNode, useEffect, useState } from "react";
+import { type ReactNode, useEffect } from "react";
 import type { Socket } from "socket.io-client";
 import {
   appendMessageToCache,
   chatConversationsKey,
   updateMessagesInCache,
 } from "@/lib/chat-cache";
-import { ChatSocketContext } from "@/lib/chat-socket-context";
 import { getApiBaseUrl } from "@/lib/constants";
+import { chatSocketStore } from "@/lib/realtime-socket-store";
 import { useApi } from "@/lib/use-api";
 import { useAuth } from "@/lib/use-auth";
 import { mergeEventWithPendingRsvp } from "@/modules/chat/optimistic-rsvp";
@@ -23,12 +23,15 @@ import type {
   ChatReaction,
 } from "@/modules/chat/types";
 
+function setChatSocket(socket: Socket | null) {
+  chatSocketStore.setState({ socket });
+}
+
 export function ChatSocketProvider({ children }: { children: ReactNode }) {
   const { user, getIdToken, loading: authLoading } = useAuth();
   const api = useApi();
   const queryClient = useQueryClient();
   const online = useOnlineStatus();
-  const [socket, setSocket] = useState<Socket | null>(null);
   const userId = user?.id ?? null;
 
   useEffect(() => {
@@ -171,7 +174,7 @@ export function ChatSocketProvider({ children }: { children: ReactNode }) {
           });
         });
 
-        setSocket(created);
+        setChatSocket(created);
       },
     );
 
@@ -179,13 +182,9 @@ export function ChatSocketProvider({ children }: { children: ReactNode }) {
       active = false;
       created?.disconnect();
       created = null;
-      setSocket(null);
+      setChatSocket(null);
     };
   }, [userId, authLoading, getIdToken, queryClient]);
 
-  return (
-    <ChatSocketContext.Provider value={{ socket }}>
-      {children}
-    </ChatSocketContext.Provider>
-  );
+  return children;
 }
