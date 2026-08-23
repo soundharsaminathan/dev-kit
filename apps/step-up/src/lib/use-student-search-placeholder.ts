@@ -12,6 +12,14 @@ export const STUDENT_SEARCH_PLACEHOLDER_WORDS = [
 export const STUDENT_SEARCH_PLACEHOLDER_STATIC =
   "Search by name, email, or mobile number";
 
+function wordAt(index: number) {
+  return (
+    STUDENT_SEARCH_PLACEHOLDER_WORDS[
+      index % STUDENT_SEARCH_PLACEHOLDER_WORDS.length
+    ] ?? STUDENT_SEARCH_PLACEHOLDER_WORDS[0]
+  );
+}
+
 type Phase = "typing" | "holding" | "deleting";
 
 type UseStudentSearchPlaceholderOptions = {
@@ -54,7 +62,7 @@ export function useStudentSearchPlaceholder(
   useEffect(() => {
     if (!enabled || reduceMotion) return;
 
-    const word = STUDENT_SEARCH_PLACEHOLDER_WORDS[wordIndex];
+    const word = wordAt(wordIndex);
     let delay = typeMs;
 
     if (phase === "holding") {
@@ -105,6 +113,5 @@ export function useStudentSearchPlaceholder(
     return STUDENT_SEARCH_PLACEHOLDER_STATIC;
   }
 
-  const word = STUDENT_SEARCH_PLACEHOLDER_WORDS[wordIndex];
-  return `${PREFIX}${word.slice(0, charCount)}${SUFFIX}`;
+  return `${PREFIX}${wordAt(wordIndex).slice(0, charCount)}${SUFFIX}`;
 }
