@@ -313,6 +313,7 @@ function PaymentsPage() {
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
   const [chartType, setChartType] = useState<ChartType>("bar");
+  const [refreshing, setRefreshing] = useState(false);
 
   const rangePreset = detectPreset(fromDate, toDate);
   const bucket = bucketForPreset(rangePreset);
@@ -411,11 +412,16 @@ function PaymentsPage() {
   }
 
   async function refresh() {
-    await Promise.all([
-      isStaff ? membersQuery.refetch() : Promise.resolve(),
-      isStaff ? branchesQuery.refetch() : Promise.resolve(),
-      trainerId ? analyticsQuery.refetch() : Promise.resolve(),
-    ]);
+    setRefreshing(true);
+    try {
+      await Promise.all([
+        isStaff ? membersQuery.refetch() : Promise.resolve(),
+        isStaff ? branchesQuery.refetch() : Promise.resolve(),
+        trainerId ? analyticsQuery.refetch() : Promise.resolve(),
+      ]);
+    } finally {
+      setRefreshing(false);
+    }
   }
 
   const data = analyticsQuery.data;
@@ -661,6 +667,8 @@ function PaymentsPage() {
               <TouchButton
                 variant="default"
                 size="md"
+                isPending={refreshing}
+                isDisabled={refreshing}
                 onClick={() => void refresh()}
               >
                 Refresh
