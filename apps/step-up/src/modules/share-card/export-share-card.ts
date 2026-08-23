@@ -83,7 +83,7 @@ export async function generateShareCardFile(input: {
   const canvas = await renderShareCard({
     data: input.data,
     layout: input.layout,
-    canvas: input.canvas,
+    ...(input.canvas ? { canvas: input.canvas } : {}),
   });
   const filename = `${slugifyFilename(input.data.batchName)}-story.png`;
   return canvasToPngFile(canvas, filename);

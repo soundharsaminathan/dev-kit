@@ -1,3 +1,5 @@
+import type { DanceStyle } from "@/lib/dance-styles";
+
 export const SHARE_CARD_WIDTH = 1080;
 export const SHARE_CARD_HEIGHT = 1920;
 
@@ -59,7 +61,7 @@ export type StudioShareSource = {
   logoUrl?: string | null;
   address?: string | null;
   settings?: {
-    danceStyles?: Array<{ id: string; label: string; color: string }> | null;
+    danceStyles?: DanceStyle[] | null;
   } | null;
 };
 

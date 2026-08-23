@@ -10,7 +10,15 @@ const studio: StudioShareSource = {
   name: "Rhythm Studio",
   logoUrl: "https://cdn.example/logo.png",
   settings: {
-    danceStyles: [{ id: "hip-hop", label: "Hip Hop", color: "#E4572E" }],
+    danceStyles: [
+      {
+        id: "hip-hop",
+        label: "Hip Hop",
+        color: "#E4572E",
+        abbrev: "HH",
+        emoji: "💃",
+      },
+    ],
   },
 };
 

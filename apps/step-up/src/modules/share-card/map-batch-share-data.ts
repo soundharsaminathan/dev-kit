@@ -58,6 +58,17 @@ function accentFromStyle(
     .color;
 }
 
+/** Assign optional props without writing explicit `undefined` (exactOptionalPropertyTypes). */
+function setOptional<K extends keyof BatchShareCardData>(
+  target: BatchShareCardData,
+  key: K,
+  value: BatchShareCardData[K] | undefined,
+) {
+  if (value !== undefined) {
+    target[key] = value;
+  }
+}
+
 export function availableShareFields(
   data: Pick<BatchShareCardData, ShareCardFieldKey>,
 ): ShareCardFieldKey[] {
@@ -85,14 +96,41 @@ export function applyFieldVisibility(
   data: BatchShareCardData,
   fields: ShareCardFieldVisibility,
 ): BatchShareCardData {
-  return {
-    ...data,
-    danceStyle: fields.danceStyle === false ? undefined : data.danceStyle,
-    trainerName: fields.trainerName === false ? undefined : data.trainerName,
-    schedule: fields.schedule === false ? undefined : data.schedule,
-    ageGroup: fields.ageGroup === false ? undefined : data.ageGroup,
-    location: fields.location === false ? undefined : data.location,
+  const next: BatchShareCardData = {
+    batchName: data.batchName,
+    headline: data.headline,
+    studioName: data.studioName,
   };
+  setOptional(next, "coverImageUrl", data.coverImageUrl);
+  setOptional(
+    next,
+    "danceStyle",
+    fields.danceStyle === false ? undefined : data.danceStyle,
+  );
+  setOptional(
+    next,
+    "trainerName",
+    fields.trainerName === false ? undefined : data.trainerName,
+  );
+  setOptional(
+    next,
+    "schedule",
+    fields.schedule === false ? undefined : data.schedule,
+  );
+  setOptional(
+    next,
+    "ageGroup",
+    fields.ageGroup === false ? undefined : data.ageGroup,
+  );
+  setOptional(
+    next,
+    "location",
+    fields.location === false ? undefined : data.location,
+  );
+  setOptional(next, "cta", data.cta);
+  setOptional(next, "studioLogoUrl", data.studioLogoUrl);
+  setOptional(next, "studioPrimaryColor", data.studioPrimaryColor);
+  return next;
 }
 
 export function buildBatchShareCardData(
@@ -103,18 +141,18 @@ export function buildBatchShareCardData(
   const danceStyle = danceStyleFromBatch(batch);
   const base: BatchShareCardData = {
     batchName: batch.name.trim() || "Batch",
-    coverImageUrl: nonEmpty(batch.coverImageUrl),
-    danceStyle,
-    trainerName: trainerNameFromBatch(batch),
-    schedule: nonEmpty(batch.scheduleLabel),
-    ageGroup: ageGroupFromCategory(batch.category),
-    location: locationFromBatch(batch),
     headline: options?.headline?.trim() || DEFAULT_SHARE_HEADLINE,
-    cta: options?.cta?.trim() || DEFAULT_SHARE_CTA,
     studioName: studio.name.trim() || "Studio",
-    studioLogoUrl: nonEmpty(studio.logoUrl),
-    studioPrimaryColor: accentFromStyle(danceStyle, studio),
   };
+  setOptional(base, "coverImageUrl", nonEmpty(batch.coverImageUrl));
+  setOptional(base, "danceStyle", danceStyle);
+  setOptional(base, "trainerName", trainerNameFromBatch(batch));
+  setOptional(base, "schedule", nonEmpty(batch.scheduleLabel));
+  setOptional(base, "ageGroup", ageGroupFromCategory(batch.category));
+  setOptional(base, "location", locationFromBatch(batch));
+  setOptional(base, "cta", options?.cta?.trim() || DEFAULT_SHARE_CTA);
+  setOptional(base, "studioLogoUrl", nonEmpty(studio.logoUrl));
+  setOptional(base, "studioPrimaryColor", accentFromStyle(danceStyle, studio));
 
   if (options?.fields) {
     return applyFieldVisibility(base, options.fields);
