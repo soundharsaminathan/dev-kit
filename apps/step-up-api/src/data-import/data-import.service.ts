@@ -689,6 +689,15 @@ export class DataImportService {
     importId: string,
   ) {
     const batchName = resolveImportBatchName(dto);
+    const isStudentsOnly =
+      !batchName &&
+      (dto.students?.length ?? 0) > 0 &&
+      !(dto.batches?.length ?? 0) &&
+      !(dto.locations?.length ?? 0) &&
+      !(dto.enrollments?.length ?? 0) &&
+      !(dto.sessions?.length ?? 0) &&
+      !(dto.invoices?.length ?? 0) &&
+      !(dto.attendance?.length ?? 0);
     let batchId: string | null = null;
 
     if (actor.studioId && batchName) {
@@ -706,12 +715,21 @@ export class DataImportService {
       userId: actor.id,
       type: NotificationType.DATA_IMPORT_COMPLETE,
       batchName: batchName ?? undefined,
+      title: isStudentsOnly ? "Students imported" : undefined,
+      body: isStudentsOnly
+        ? "Students have been imported successfully."
+        : undefined,
       dedupeKey: `DATA_IMPORT_COMPLETE:${importId}`,
-      deepLink: batchId ? `/app/batches/${batchId}` : "/app/import",
+      deepLink: batchId
+        ? `/app/batches/${batchId}`
+        : isStudentsOnly
+          ? "/app/students/import"
+          : "/app/import",
       entityType: "studio_data_import",
       entityId: importId,
       meta: {
         importId,
+        ...(isStudentsOnly ? { importKind: "students" } : {}),
         ...(batchName ? { batchName } : {}),
         ...(batchId ? { batchId } : {}),
       },

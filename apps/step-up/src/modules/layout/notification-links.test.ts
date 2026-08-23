@@ -80,4 +80,20 @@ describe("resolveNotificationDestination", () => {
       ),
     ).toEqual({ to: "/app/batches/$id", params: { id: "batch-1" } });
   });
+
+  it("routes student import completion to the students import page", () => {
+    expect(
+      resolveNotificationDestination(
+        "DATA_IMPORT_COMPLETE",
+        { importKind: "students" },
+        "app",
+      ),
+    ).toEqual({ to: "/app/students/import" });
+  });
+
+  it("routes studio import completion to the import page when no batch is linked", () => {
+    expect(
+      resolveNotificationDestination("DATA_IMPORT_COMPLETE", {}, "app"),
+    ).toEqual({ to: "/app/import" });
+  });
 });

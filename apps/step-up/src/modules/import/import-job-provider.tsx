@@ -218,12 +218,13 @@ export function ImportJobProvider({ children }: { children: ReactNode }) {
     completionNotifiedRef.current = job.id;
     const resolvedBatchName = job.batchName ?? batchName;
     toast({
-      title: "Import complete",
-      description: resolvedBatchName
-        ? `${resolvedBatchName} data has been imported successfully.`
-        : kind === "students"
+      title: kind === "students" ? "Students imported" : "Import complete",
+      description:
+        kind === "students"
           ? "Students have been imported successfully."
-          : "Your studio data has been imported successfully.",
+          : resolvedBatchName
+            ? `${resolvedBatchName} data has been imported successfully.`
+            : "Your studio data has been imported successfully.",
     });
     void queryClient.invalidateQueries({ queryKey: ["studio-members"] });
     void queryClient.invalidateQueries({ queryKey: ["student-funnel"] });

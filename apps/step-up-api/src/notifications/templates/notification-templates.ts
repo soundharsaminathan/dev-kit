@@ -120,7 +120,9 @@ export function buildNotificationCopy(input: NotificationTemplateInput): {
         title: input.title ?? "Import complete",
         body:
           input.body ??
-          `${input.batchName ?? "Batch"} data has been imported successfully.`,
+          (input.batchName
+            ? `${input.batchName} data has been imported successfully.`
+            : "Your studio data has been imported successfully."),
       };
     default:
       return {

@@ -72,7 +72,11 @@ export function resolveDeepLink(input: {
       return "/app/payouts";
     case "DATA_IMPORT_COMPLETE": {
       const batchId = stringMeta("batchId");
-      return batchId ? `/app/batches/${batchId}` : "/app/import";
+      if (batchId) {
+        return `/app/batches/${batchId}`;
+      }
+      const importKind = stringMeta("importKind");
+      return importKind === "students" ? "/app/students/import" : "/app/import";
     }
     default:
       return null;

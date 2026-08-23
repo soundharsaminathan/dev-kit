@@ -22,6 +22,7 @@ export type NotificationMeta = {
   invoiceId?: string;
   followerId?: string;
   conversationId?: string;
+  importKind?: string;
 };
 
 export type NotificationDestination =
@@ -39,7 +40,9 @@ export type NotificationDestination =
   | { to: "/app/batches/$id"; params: { id: string } }
   | { to: "/app/subscriptions" }
   | { to: "/app/invoices" }
-  | { to: "/app/calendar" };
+  | { to: "/app/calendar" }
+  | { to: "/app/import" }
+  | { to: "/app/students/import" };
 
 function asMeta(value: unknown): NotificationMeta {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
@@ -58,6 +61,7 @@ function asMeta(value: unknown): NotificationMeta {
   const invoiceId = pick("invoiceId");
   const followerId = pick("followerId");
   const conversationId = pick("conversationId");
+  const importKind = pick("importKind");
   if (sessionId) meta.sessionId = sessionId;
   if (batchId) meta.batchId = batchId;
   if (membershipId) meta.membershipId = membershipId;
@@ -65,6 +69,7 @@ function asMeta(value: unknown): NotificationMeta {
   if (invoiceId) meta.invoiceId = invoiceId;
   if (followerId) meta.followerId = followerId;
   if (conversationId) meta.conversationId = conversationId;
+  if (importKind) meta.importKind = importKind;
   return meta;
 }
 
@@ -144,9 +149,12 @@ export function resolveNotificationDestination(
     case "PAYMENT_RECEIVED":
       return { to: "/app/invoices" };
     case "DATA_IMPORT_COMPLETE":
-      return m.batchId
-        ? { to: "/app/batches/$id", params: { id: m.batchId } }
-        : null;
+      if (m.batchId) {
+        return { to: "/app/batches/$id", params: { id: m.batchId } };
+      }
+      return m.importKind === "students"
+        ? { to: "/app/students/import" }
+        : { to: "/app/import" };
     default:
       return null;
   }

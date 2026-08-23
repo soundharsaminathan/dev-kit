@@ -269,6 +269,57 @@ describe("DataImportService.runImportJob", () => {
       }),
     );
   });
+
+  it("sends a students-only import-complete notification", async () => {
+    const { service, prisma, notifications } = buildService();
+
+    prisma.studioDataImport.findUnique.mockResolvedValue({
+      id: "import-students-1",
+      status: "PENDING",
+      requestedByUserId: "user-owner-1",
+      studioId: "studio-1",
+      payload: {
+        students: [
+          {
+            name: "Ada",
+            email: "ada@example.com",
+            gender: "FEMALE",
+          },
+        ],
+        batches: [],
+        enrollments: [],
+        sessions: [],
+        invoices: [],
+        attendance: [],
+      },
+    });
+
+    vi.spyOn(service, "runStudioDataImport").mockResolvedValue({
+      students: { created: 1, skipped: 0 },
+      locations: { created: 0, skipped: 0 },
+      batches: { created: 0, skipped: 0 },
+      enrollments: { created: 0, skipped: 0 },
+      sessions: { created: 0, skipped: 0 },
+      invoices: { created: 0, skipped: 0, gapsCreated: 0 },
+      attendance: { created: 0, skipped: 0 },
+    });
+
+    await service.runImportJob("import-students-1");
+
+    expect(notifications.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: "user-owner-1",
+        type: "DATA_IMPORT_COMPLETE",
+        title: "Students imported",
+        body: "Students have been imported successfully.",
+        deepLink: "/app/students/import",
+        meta: expect.objectContaining({
+          importId: "import-students-1",
+          importKind: "students",
+        }),
+      }),
+    );
+  });
 });
 
 describe("DataImportService.runStudioDataImport", () => {
