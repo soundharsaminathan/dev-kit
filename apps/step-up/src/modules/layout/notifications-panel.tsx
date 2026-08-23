@@ -51,6 +51,7 @@ function notificationIcon(
   | "alert-circle"
   | "user"
   | "message-square"
+  | "upload"
   | "bell" {
   switch (type) {
     case "MISSED_SESSION":
