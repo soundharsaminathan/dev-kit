@@ -89,12 +89,25 @@ export function NotificationsSocketProvider({
           reconnectionDelay: 1000,
         });
 
+        // Effect may have cleaned up between the active check and io().
+        if (!active) {
+          created.disconnect();
+          created = null;
+          return;
+        }
+
         created.on("connect", () => {
+          if (!active) {
+            return;
+          }
           setConnected(true);
           void queryClient.invalidateQueries({ queryKey: ["notifications"] });
         });
 
         created.on("disconnect", () => {
+          if (!active) {
+            return;
+          }
           setConnected(false);
         });
 
@@ -175,12 +188,16 @@ export function NotificationsSocketProvider({
         });
 
         setSocket(created);
+        if (created.connected) {
+          setConnected(true);
+        }
       },
     );
 
     return () => {
       active = false;
       created?.disconnect();
+      created = null;
       setSocket(null);
       setConnected(false);
     };

@@ -943,12 +943,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setEmailVerified(false);
   }, []);
 
+  const userRef = useRef(user);
+  userRef.current = user;
+
+  // Stable identity: socket providers depend on this; tying it to `user`
+  // reconnects WebSockets on every profile patch.
   const getIdToken = useCallback(async () => {
     if (isAuthBypassEnabled()) {
-      if (!user) {
+      const current = userRef.current;
+      if (!current) {
         return null;
       }
-      return `dev:${user.role}:${user.id}`;
+      return `dev:${current.role}:${current.id}`;
     }
 
     const auth = await getFirebaseAuthAsync();
@@ -957,7 +963,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     return auth.currentUser.getIdToken();
-  }, [user]);
+  }, []);
 
   const updateUser = useCallback((patch: Partial<AuthUser>) => {
     setUser((current) => {

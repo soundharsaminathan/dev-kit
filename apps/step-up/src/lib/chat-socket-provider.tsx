@@ -62,8 +62,15 @@ export function ChatSocketProvider({ children }: { children: ReactNode }) {
           reconnectionAttempts: 2,
         });
 
+        // Effect may have cleaned up between the active check and io().
+        if (!active) {
+          created.disconnect();
+          created = null;
+          return;
+        }
+
         created.on("connect_error", () => {
-          if (!created) {
+          if (!created || !active) {
             return;
           }
           created.io.opts.reconnection = false;
@@ -171,6 +178,7 @@ export function ChatSocketProvider({ children }: { children: ReactNode }) {
     return () => {
       active = false;
       created?.disconnect();
+      created = null;
       setSocket(null);
     };
   }, [userId, authLoading, getIdToken, queryClient]);
