@@ -1,27 +1,62 @@
-import { Alert, AlertDescription, AlertTitle } from "@dev-ui/components/alert";
-import { FileTrigger } from "@dev-ui/components/file-trigger";
-import { useToastContext } from "@dev-ui/components/toast";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useMutation } from "@tanstack/react-query";
+import { createFileRoute } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import { readSheet } from "read-excel-file/browser";
 import { useApi } from "@/lib/api-context";
 import { requireAdmin } from "@/lib/require-auth";
-import { useStudioId } from "@/lib/use-studio-id";
+import { useImportJob } from "@/modules/import/import-job-provider";
 import {
-  formatStudentImportRowList,
+  ImportWorkspace,
+  type ImportWorkspacePhase,
+} from "@/modules/import/import-workspace";
+import type { ParseStudioImportResult } from "@/modules/import/parse-studio-import";
+import {
   parseStudentImportRows,
-  STUDENT_IMPORT_MAX,
   type StudentImportRow,
 } from "@/modules/students/parse-student-import";
-import { Screen } from "@/modules/ui/screen";
-import staff from "@/modules/ui/staff.module.scss";
-import { StickyCtaBar, TouchButton } from "@/modules/ui/touch-button";
 
-type BulkImportResult = {
-  created: number;
-  skipped: number;
+const EMPTY_RESULT: ParseStudioImportResult = {
+  found: {
+    students: false,
+    locations: false,
+    batches: false,
+    enrollments: false,
+    sessions: false,
+    invoices: false,
+    attendance: false,
+  },
+  sheetErrors: {},
+  crossSheetErrors: [],
+  students: [],
+  studentsInvalidRows: [],
+  locations: [],
+  locationsInvalidRows: [],
+  batches: [],
+  batchesInvalidRows: [],
+  enrollments: [],
+  enrollmentsInvalidRows: [],
+  sessions: [],
+  sessionsInvalidRows: [],
+  invoices: [],
+  invoicesInvalidRows: [],
+  attendance: [],
+  attendanceInvalidRows: [],
 };
+
+function toStudioResult(
+  students: StudentImportRow[],
+  invalidRows: number[],
+): ParseStudioImportResult {
+  return {
+    ...EMPTY_RESULT,
+    found: {
+      ...EMPTY_RESULT.found,
+      students: students.length > 0 || invalidRows.length > 0,
+    },
+    students,
+    studentsInvalidRows: invalidRows,
+  };
+}
 
 export const Route = createFileRoute("/app/students/import")({
   beforeLoad: ({ context, location }) => {
@@ -35,84 +70,104 @@ export const Route = createFileRoute("/app/students/import")({
 
 function ImportStudentsPage() {
   const api = useApi();
-  const studioId = useStudioId();
-  const navigate = useNavigate({ from: Route.fullPath });
-  const queryClient = useQueryClient();
-  const { toast } = useToastContext("ImportStudentsPage");
+  const { job, isActive, isComplete, isFailed, trackImport, clearImport } =
+    useImportJob();
+  const [phase, setPhase] = useState<ImportWorkspacePhase>("upload");
   const [fileName, setFileName] = useState<string | null>(null);
-  const [students, setStudents] = useState<StudentImportRow[]>([]);
+  const [result, setResult] =
+    useState<ParseStudioImportResult>(EMPTY_RESULT);
   const [fileError, setFileError] = useState<string | null>(null);
-  const [rowWarning, setRowWarning] = useState<string | null>(null);
   const [isReading, setIsReading] = useState(false);
+  const [startError, setStartError] = useState<string | null>(null);
 
-  const importStudents = useMutation({
+  useEffect(() => {
+    if (isActive) {
+      setPhase("create");
+      return;
+    }
+    if (isComplete) {
+      setPhase("complete");
+      return;
+    }
+    if (isFailed) {
+      setPhase("failed");
+    }
+  }, [isActive, isComplete, isFailed]);
+
+  const startImport = useMutation({
     mutationFn: () =>
-      api.post<BulkImportResult>("/users/bulk", {
-        students,
+      api.post<{ id: string }>("/users/bulk/jobs", {
+        students: result.students.map(
+          ({
+            name,
+            email,
+            gender,
+            age,
+            dateOfBirth,
+            phone,
+            guardianName,
+            alternateMobile,
+          }) => ({
+            name,
+            email,
+            gender,
+            ...(age !== undefined && age !== null ? { age } : {}),
+            ...(dateOfBirth !== undefined && dateOfBirth !== null
+              ? { dateOfBirth }
+              : {}),
+            ...(guardianName !== undefined && guardianName !== null
+              ? { guardianName }
+              : {}),
+            ...(alternateMobile !== undefined && alternateMobile !== null
+              ? { alternateMobile }
+              : {}),
+            ...(phone !== undefined && phone !== null ? { phone } : {}),
+          }),
+        ),
       }),
-    onSuccess: async () => {
-      await Promise.all([
-        queryClient.invalidateQueries({
-          queryKey: ["studio-members", studioId],
-        }),
-        queryClient.invalidateQueries({
-          queryKey: ["student-funnel", studioId],
-        }),
-        queryClient.invalidateQueries({
-          queryKey: ["student-directory", studioId],
-        }),
-      ]);
-      toast({
-        title: "Students imported",
-        description: "Spreadsheet import completed.",
-        variant: "success",
+    onSuccess: (data) => {
+      trackImport({
+        jobId: data.id,
+        batchName: null,
+        fileName,
+        kind: "students",
       });
-      await navigate({ to: "/app/students" });
+      setPhase("create");
+      setStartError(null);
     },
-    onError: (error: unknown) => {
-      toast({
-        title: "Couldn’t import students",
-        description:
-          error instanceof Error ? error.message : "Please try again.",
-        variant: "error",
-      });
+    onError: (error) => {
+      setStartError(
+        error instanceof Error ? error.message : "Unable to start import.",
+      );
     },
   });
 
-  const clearSelection = () => {
-    setStudents([]);
-    setFileError(null);
-    setRowWarning(null);
-    setFileName(null);
-    importStudents.reset();
-  };
-
   const selectFile = async (files: FileList | null) => {
     const file = files?.[0];
-
     if (!file) {
-      clearSelection();
+      setFileName(null);
+      setResult(EMPTY_RESULT);
+      setFileError(null);
+      setPhase("upload");
+      clearImport();
+      setStartError(null);
       return;
     }
 
-    setFileError(null);
-    setRowWarning(null);
-    setFileName(file.name);
-    importStudents.reset();
     setIsReading(true);
+    setFileError(null);
+    setFileName(file.name);
+    clearImport();
+    setStartError(null);
 
     try {
       const rows = await readSheet(file);
-      const result = parseStudentImportRows(rows);
-      setStudents(result.students);
-      if (result.invalidRows.length > 0) {
-        setRowWarning(
-          `Skipped row${result.invalidRows.length === 1 ? "" : "s"} ${formatStudentImportRowList(result.invalidRows)} (missing name, invalid email, gender, or missing both age and date of birth). Mobile, guardian, and alternate mobile are optional. Fix those rows and re-upload, or import the ${result.students.length} valid student${result.students.length === 1 ? "" : "s"} below.`,
-        );
-      }
+      const parsed = parseStudentImportRows(rows);
+      setResult(toStudioResult(parsed.students, parsed.invalidRows));
+      setPhase("analyze");
     } catch (error) {
-      setStudents([]);
-      setRowWarning(null);
+      setResult(EMPTY_RESULT);
+      setPhase("upload");
       setFileError(
         error instanceof Error
           ? error.message
@@ -123,120 +178,33 @@ function ImportStudentsPage() {
     }
   };
 
+  const resetImport = () => {
+    setPhase("upload");
+    setFileName(null);
+    setResult(EMPTY_RESULT);
+    setFileError(null);
+    clearImport();
+    setStartError(null);
+  };
+
   return (
-    <>
-      <Screen
-        title="Import students"
-        subtitle='Upload a workbook with "Name", "Email", "Gender", "Age" or "Date of birth", and optional "Mobile", "Guardian name", and "Alternate mobile" columns.'
-        showBack
-        backTo="/app/students"
-        paddedCta={students.length > 0}
-      >
-        <div className={staff.softPanel}>
-          <FileTrigger
-            accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            allowsClearing
-            clearLabel="Clear spreadsheet"
-            onSelect={(files) => void selectFile(files)}
-          >
-            <TouchButton isPending={isReading} fullWidth>
-              {fileName ?? "Choose Excel file"}
-            </TouchButton>
-          </FileTrigger>
-
-          <TouchButton
-            as="a"
-            href="/templates/student-import-template.xlsx"
-            download="student-import-template.xlsx"
-            variant="quiet"
-            fullWidth
-          >
-            Download template
-          </TouchButton>
-
-          <p className={staff.panelDesc}>
-            Use the template columns Name, Email, Gender (Female/Male), Age
-            (exact years, 0–120) or Date of birth (dd/mm/yyyy), and optional
-            Mobile, Guardian name, and Alternate mobile. Each row needs an Age
-            or a Date of birth — age-range labels are assigned automatically.
-            Blank rows are ignored. Duplicate emails are skipped. Maximum{" "}
-            {STUDENT_IMPORT_MAX} students per import. After fixing rows, choose
-            the file again to refresh the preview.
-          </p>
-
-          {fileError ? (
-            <Alert variant="danger">
-              <AlertTitle>Unable to import this file</AlertTitle>
-              <AlertDescription>{fileError}</AlertDescription>
-            </Alert>
-          ) : null}
-
-          {rowWarning ? (
-            <Alert variant="warning">
-              <AlertTitle>Some rows were skipped</AlertTitle>
-              <AlertDescription>{rowWarning}</AlertDescription>
-            </Alert>
-          ) : null}
-
-          {importStudents.isError ? (
-            <Alert variant="danger">
-              <AlertTitle>Import failed</AlertTitle>
-              <AlertDescription>
-                {importStudents.error instanceof Error
-                  ? importStudents.error.message
-                  : "Please try again."}
-              </AlertDescription>
-            </Alert>
-          ) : null}
-
-          {students.length > 0 ? (
-            <div className={staff.section}>
-              <p className={staff.panelTitle}>
-                {students.length} students ready
-              </p>
-              <p className={staff.panelDesc}>Previewing the first five rows</p>
-              <div className={staff.list}>
-                {students.slice(0, 5).map((student) => (
-                  <div key={student.email} className={staff.attentionCard}>
-                    <span className={staff.attentionTitle}>{student.name}</span>
-                    <p className={staff.attentionMeta}>
-                      {student.email} · {student.gender} ·{" "}
-                      {student.dateOfBirth ??
-                        (student.age !== null
-                          ? `Age ${student.age}`
-                          : "No age")}
-                      {student.phone ? ` · ${student.phone}` : ""}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ) : null}
-        </div>
-      </Screen>
-
-      {students.length > 0 ? (
-        <StickyCtaBar
-          secondary={
-            <TouchButton
-              variant="quiet"
-              fullWidth
-              onClick={() => void navigate({ to: "/app/students" })}
-            >
-              Cancel
-            </TouchButton>
-          }
-        >
-          <TouchButton
-            variant="primary"
-            fullWidth
-            isPending={importStudents.isPending}
-            onClick={() => importStudents.mutate()}
-          >
-            Import {students.length} students
-          </TouchButton>
-        </StickyCtaBar>
-      ) : null}
-    </>
+    <ImportWorkspace
+      mode="students"
+      phase={phase}
+      fileName={fileName}
+      result={result}
+      fileError={fileError}
+      isReading={isReading}
+      startError={startError}
+      job={job}
+      isStarting={startImport.isPending}
+      onSelectFile={(files) => void selectFile(files)}
+      onStartImport={() => startImport.mutate()}
+      onCancelImport={() => {
+        clearImport();
+        setPhase("analyze");
+      }}
+      onImportAnother={resetImport}
+    />
   );
 }

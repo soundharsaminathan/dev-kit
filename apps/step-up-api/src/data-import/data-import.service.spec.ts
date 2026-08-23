@@ -170,6 +170,18 @@ describe("DataImportService.startImportJob", () => {
     );
   });
 
+  it("accepts a students-only payload without batches", async () => {
+    const { service, prisma, outbox } = buildService();
+
+    const result = await service.startImportJob(ACTOR, {
+      students: STUDENTS,
+    });
+
+    expect(result).toEqual({ id: "import-1" });
+    expect(prisma.studioDataImport.create).toHaveBeenCalled();
+    expect(outbox.append).toHaveBeenCalled();
+  });
+
   it("rejects when a referenced plan is missing from the catalog", async () => {
     const { service, prisma } = buildService({
       prisma: {

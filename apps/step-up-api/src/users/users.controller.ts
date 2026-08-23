@@ -4,6 +4,7 @@ import {
   Controller,
   Delete,
   Get,
+  forwardRef,
   Inject,
   Param,
   Patch,
@@ -61,6 +62,7 @@ import {
   type StudentFunnelStage,
 } from "./student-funnel";
 import type { DecryptedUser } from "./user-crypto.service";
+import { DataImportService } from "../data-import/data-import.service";
 import { UsersService } from "./users.service";
 
 class UpdateProfileDto {
@@ -423,6 +425,8 @@ export class UsersController {
   constructor(
     @Inject(UsersService) private readonly usersService: UsersService,
     @Inject(SocialService) private readonly socialService: SocialService,
+    @Inject(forwardRef(() => DataImportService))
+    private readonly dataImport: DataImportService,
   ) {}
 
   @Get("me")
@@ -536,6 +540,21 @@ export class UsersController {
     }
 
     return this.usersService.createStudents(user.studioId, dto.students);
+  }
+
+  @Post("bulk/jobs")
+  @Roles(UserRole.OWNER, UserRole.STAFF)
+  startBulkStudentsJob(
+    @CurrentUser() user: DecryptedUser,
+    @Body() dto: BulkCreateStudentsDto,
+  ) {
+    if (!user.studioId) {
+      throw new BadRequestException("User is not assigned to a studio");
+    }
+
+    return this.dataImport.startImportJob(user, {
+      students: dto.students,
+    });
   }
 
   @Get("studio/:studioId")

@@ -49,7 +49,10 @@ type ImportHistoryEntry = {
 
 const IMPORT_HISTORY_KEY = "step-up-import-history";
 
+export type ImportWorkspaceMode = "studio" | "students";
+
 type ImportWorkspaceProps = {
+  mode?: ImportWorkspaceMode;
   phase: ImportWorkspacePhase;
   fileName: string | null;
   result: ParseStudioImportResult;
@@ -140,6 +143,7 @@ function downloadSkippedRows(result: ParseStudioImportResult) {
 }
 
 export function ImportWorkspace({
+  mode = "studio",
   phase,
   fileName,
   result,
@@ -159,19 +163,32 @@ export function ImportWorkspace({
   const [historyOpen, setHistoryOpen] = useState(false);
   const [cancelConfirm, setCancelConfirm] = useState(false);
 
+  const entityKeys: readonly ImportEntityKey[] =
+    mode === "students" ? ["students"] : IMPORT_ENTITY_KEYS;
+  const templateHref =
+    mode === "students"
+      ? "/templates/student-import-template.xlsx"
+      : "/templates/studio-import-template.xlsx";
+  const templateDownload =
+    mode === "students"
+      ? "student-import-template.xlsx"
+      : "studio-import-template.xlsx";
+
   const counts = useMemo(() => buildCounts(result), [result]);
   const invalidRows = useMemo(() => buildInvalidRows(result), [result]);
   const totalRecords = useMemo(
-    () => IMPORT_ENTITY_KEYS.reduce((sum, key) => sum + counts[key], 0),
-    [counts],
+    () => entityKeys.reduce((sum, key) => sum + counts[key], 0),
+    [counts, entityKeys],
   );
   const totalInvalid = useMemo(
     () =>
-      IMPORT_ENTITY_KEYS.reduce((sum, key) => sum + invalidRows[key].length, 0),
-    [invalidRows],
+      entityKeys.reduce((sum, key) => sum + invalidRows[key].length, 0),
+    [invalidRows, entityKeys],
   );
   const hasBlockingErrors =
-    result.crossSheetErrors.length > 0 || precheckErrors.length > 0;
+    mode === "studio"
+      ? result.crossSheetErrors.length > 0 || precheckErrors.length > 0
+      : false;
   const canStartImport = totalRecords > 0 && !hasBlockingErrors;
   const showEntityList =
     phase === "analyze" ||
@@ -181,8 +198,8 @@ export function ImportWorkspace({
   const jobDone = phase === "complete" || phase === "failed";
   const isImporting = phase === "create";
   const progress = job
-    ? computeImportProgress(job.entities)
-    : { percent: 0, completedCount: 0, totalEntities: IMPORT_ENTITY_KEYS.length };
+    ? computeImportProgress(job.entities, entityKeys)
+    : { percent: 0, completedCount: 0, totalEntities: entityKeys.length };
   const createdTotal = job ? totalImportCreated(job.entities) : 0;
   const skippedTotal = job ? totalImportSkipped(job.entities) : 0;
   const history = readImportHistory();
@@ -192,11 +209,15 @@ export function ImportWorkspace({
       ? "Import complete 🎉"
       : phase === "failed"
         ? "Import failed"
-        : "Import studio data";
+        : mode === "students"
+          ? "Import students"
+          : "Import studio data";
 
   const pageSubtitle =
     phase === "complete"
-      ? "Your studio data has been imported successfully."
+      ? mode === "students"
+        ? "Students have been imported successfully."
+        : "Your studio data has been imported successfully."
       : phase === "failed"
         ? "Some records could not be created. Review the details below."
         : null;
@@ -216,11 +237,18 @@ export function ImportWorkspace({
     phase === "complete"
       ? null
       : phase === "failed"
-        ? job?.error ?? "Something went wrong while creating studio data."
+        ? job?.error ??
+          (mode === "students"
+            ? "Something went wrong while importing students."
+            : "Something went wrong while creating studio data.")
         : isImporting
-          ? "We're importing your studio data. This may take a few minutes."
+          ? mode === "students"
+            ? "We're importing your students. This may take a few minutes."
+            : "We're importing your studio data. This may take a few minutes."
           : phase === "analyze"
-            ? `${totalRecords.toLocaleString("en-IN")} records are ready to import across ${IMPORT_ENTITY_KEYS.length} data sets.`
+            ? mode === "students"
+              ? `${totalRecords.toLocaleString("en-IN")} students are ready to import.`
+              : `${totalRecords.toLocaleString("en-IN")} records are ready to import across ${entityKeys.length} data sets.`
             : null;
 
   const showProgress =
@@ -250,8 +278,8 @@ export function ImportWorkspace({
               </button>
               <a
                 className={styles.outlineButton}
-                href="/templates/studio-import-template.xlsx"
-                download="studio-import-template.xlsx"
+                href={templateHref}
+                download={templateDownload}
               >
                 <Icon name="download" aria-hidden />
                 Download template
@@ -406,7 +434,7 @@ export function ImportWorkspace({
 
             {showEntityList ? (
               <div className={styles.entityList}>
-                {IMPORT_ENTITY_KEYS.map((entityKey) => (
+                {entityKeys.map((entityKey) => (
                   <ImportEntityRow
                     key={entityKey}
                     entityKey={entityKey}

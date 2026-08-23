@@ -18,12 +18,13 @@ import { DataImportService } from "./data-import.service";
 import { ImportStudioDataDto } from "./dto/import-studio-data.dto";
 
 @Controller("import")
-@UseGuards(AuthGuard, RolesGuard, FeatureGuard)
-@RequireFeature("data_import")
+@UseGuards(AuthGuard, RolesGuard)
 export class DataImportController {
   constructor(private readonly dataImport: DataImportService) {}
 
   @Post("precheck")
+  @UseGuards(FeatureGuard)
+  @RequireFeature("data_import")
   @Roles(UserRole.OWNER, UserRole.STAFF)
   precheckStudioImport(
     @CurrentUser() user: DecryptedUser,
@@ -33,6 +34,8 @@ export class DataImportController {
   }
 
   @Post("jobs")
+  @UseGuards(FeatureGuard)
+  @RequireFeature("data_import")
   @Roles(UserRole.OWNER, UserRole.STAFF)
   startImportJob(
     @CurrentUser() user: DecryptedUser,
@@ -57,6 +60,8 @@ export class DataImportController {
   }
 
   @Post("studio-data")
+  @UseGuards(FeatureGuard)
+  @RequireFeature("data_import")
   @Roles(UserRole.OWNER, UserRole.STAFF)
   importStudioData(
     @CurrentUser() user: DecryptedUser,

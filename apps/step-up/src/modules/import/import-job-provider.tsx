@@ -17,6 +17,8 @@ import {
   type ImportJobSnapshot,
 } from "@/modules/import/import-types";
 
+export type ImportJobKind = "studio" | "students";
+
 const STORAGE_KEY = "step-up-active-import";
 
 type StoredImportJob = {
@@ -24,12 +26,14 @@ type StoredImportJob = {
   jobId: string;
   batchName: string | null;
   fileName: string | null;
+  kind: ImportJobKind;
 };
 
 type ImportJobContextValue = {
   job: ImportJobSnapshot | null;
   batchName: string | null;
   fileName: string | null;
+  kind: ImportJobKind;
   percent: number;
   isActive: boolean;
   isComplete: boolean;
@@ -38,6 +42,7 @@ type ImportJobContextValue = {
     jobId: string;
     batchName: string | null;
     fileName: string | null;
+    kind?: ImportJobKind;
   }) => void;
   clearImport: () => void;
 };
@@ -77,6 +82,7 @@ export function ImportJobProvider({ children }: { children: ReactNode }) {
   const [trackedJobId, setTrackedJobId] = useState<string | null>(null);
   const [batchName, setBatchName] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
+  const [kind, setKind] = useState<ImportJobKind>("studio");
   const completionNotifiedRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -85,6 +91,7 @@ export function ImportJobProvider({ children }: { children: ReactNode }) {
       setTrackedJobId(stored.jobId);
       setBatchName(stored.batchName);
       setFileName(stored.fileName);
+      setKind(stored.kind ?? "studio");
     }
   }, [studioId]);
 
@@ -113,11 +120,20 @@ export function ImportJobProvider({ children }: { children: ReactNode }) {
     ) {
       setTrackedJobId(activeJobQuery.data.id);
       setBatchName(activeJobQuery.data.batchName);
+      const inferredKind =
+        activeJobQuery.data.entities.students.total > 0 &&
+        Object.entries(activeJobQuery.data.entities).every(
+          ([key, entity]) => key === "students" || entity.total === 0,
+        )
+          ? ("students" as const)
+          : ("studio" as const);
+      setKind(inferredKind);
       writeStoredImport({
         studioId,
         jobId: activeJobQuery.data.id,
         batchName: activeJobQuery.data.batchName,
         fileName: null,
+        kind: inferredKind,
       });
     }
   }, [activeJobQuery.data, studioId, trackedJobId]);
@@ -146,7 +162,10 @@ export function ImportJobProvider({ children }: { children: ReactNode }) {
   const percent = job
     ? isComplete
       ? 100
-      : computeImportProgress(job.entities).percent
+      : computeImportProgress(
+          job.entities,
+          kind === "students" ? (["students"] as const) : undefined,
+        ).percent
     : 0;
 
   const trackImport = useCallback(
@@ -154,16 +173,20 @@ export function ImportJobProvider({ children }: { children: ReactNode }) {
       jobId: string;
       batchName: string | null;
       fileName: string | null;
+      kind?: ImportJobKind;
     }) => {
       completionNotifiedRef.current = null;
+      const nextKind = input.kind ?? "studio";
       setTrackedJobId(input.jobId);
       setBatchName(input.batchName);
       setFileName(input.fileName);
+      setKind(nextKind);
       writeStoredImport({
         studioId,
         jobId: input.jobId,
         batchName: input.batchName,
         fileName: input.fileName,
+        kind: nextKind,
       });
       void queryClient.invalidateQueries({
         queryKey: ["import-job", studioId, input.jobId],
@@ -180,6 +203,7 @@ export function ImportJobProvider({ children }: { children: ReactNode }) {
     setTrackedJobId(null);
     setBatchName(null);
     setFileName(null);
+    setKind("studio");
     writeStoredImport(null);
     void queryClient.removeQueries({ queryKey: ["import-job-active", studioId] });
   }, [queryClient, studioId]);
@@ -197,7 +221,9 @@ export function ImportJobProvider({ children }: { children: ReactNode }) {
       title: "Import complete",
       description: resolvedBatchName
         ? `${resolvedBatchName} data has been imported successfully.`
-        : "Your studio data has been imported successfully.",
+        : kind === "students"
+          ? "Students have been imported successfully."
+          : "Your studio data has been imported successfully.",
     });
     void queryClient.invalidateQueries({ queryKey: ["studio-members"] });
     void queryClient.invalidateQueries({ queryKey: ["student-funnel"] });
@@ -209,15 +235,17 @@ export function ImportJobProvider({ children }: { children: ReactNode }) {
       setTrackedJobId(null);
       setBatchName(null);
       setFileName(null);
+      setKind("studio");
     }, 3200);
     return () => window.clearTimeout(timer);
-  }, [batchName, isComplete, job, queryClient, toast]);
+  }, [batchName, isComplete, job, kind, queryClient, toast]);
 
   const value = useMemo(
     () => ({
       job: job ?? null,
       batchName: job?.batchName ?? batchName,
       fileName,
+      kind,
       percent,
       isActive,
       isComplete,
@@ -233,6 +261,7 @@ export function ImportJobProvider({ children }: { children: ReactNode }) {
       isComplete,
       isFailed,
       job,
+      kind,
       percent,
       trackImport,
     ],

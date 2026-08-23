@@ -128,6 +128,7 @@ function ImportDataPage() {
         jobId: data.id,
         batchName,
         fileName,
+        kind: "studio",
       });
       setPhase("create");
       setStartError(null);
@@ -209,6 +210,7 @@ function ImportDataPage() {
 
   return (
     <ImportWorkspace
+      mode="studio"
       phase={phase}
       fileName={fileName}
       result={result}

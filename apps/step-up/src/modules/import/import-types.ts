@@ -65,16 +65,19 @@ export const IMPORT_ENTITY_DESCRIPTIONS: Record<ImportEntityKey, string> = {
 
 export const IMPORT_SEGMENT_COUNT = 40;
 
-export function computeImportProgress(entities: ImportEntitiesSnapshot): {
+export function computeImportProgress(
+  entities: ImportEntitiesSnapshot,
+  entityKeys: readonly ImportEntityKey[] = IMPORT_ENTITY_KEYS,
+): {
   percent: number;
   completedCount: number;
   totalEntities: number;
 } {
-  const totalEntities = IMPORT_ENTITY_KEYS.length;
+  const totalEntities = entityKeys.length || 1;
   let progressUnits = 0;
   let completedCount = 0;
 
-  for (const key of IMPORT_ENTITY_KEYS) {
+  for (const key of entityKeys) {
     const entity = entities[key];
     if (entity.status === "completed") {
       progressUnits += 1;

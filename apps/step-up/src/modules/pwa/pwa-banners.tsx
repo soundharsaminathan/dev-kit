@@ -2,7 +2,12 @@ import { useRegisterSW } from "virtual:pwa-register/react";
 import { useOnlineStatus } from "@dev-ui/hooks";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
-import styles from "./pwa-banners.module.scss";
+import {
+  StatusBanner,
+  StatusBannerAction,
+  StatusBannerActions,
+  StatusBannerStack,
+} from "@/modules/ui/status-banner";
 
 export function PwaBanners() {
   const online = useOnlineStatus();
@@ -39,13 +44,12 @@ export function PwaBanners() {
 
   if (!online) {
     return (
-      <div className={styles.stack} role="status">
-        <div className={`${styles.banner} ${styles.offline}`}>
-          <p className={styles.message}>
-            You’re offline. Viewing the cached shell — data needs a connection.
-          </p>
-        </div>
-      </div>
+      <StatusBannerStack zIndex={40}>
+        <StatusBanner
+          tone="offline"
+          title="You’re offline. Viewing the cached shell — data needs a connection."
+        />
+      </StatusBannerStack>
     );
   }
 
@@ -54,34 +58,30 @@ export function PwaBanners() {
   }
 
   return (
-    <div className={styles.stack}>
+    <StatusBannerStack zIndex={40}>
       {showBackOnline ? (
-        <div className={`${styles.banner} ${styles.online}`} role="status">
-          <p className={styles.message}>Back online. Refreshing data…</p>
-        </div>
+        <StatusBanner tone="online" title="Back online. Refreshing data…" />
       ) : null}
 
       {needRefresh ? (
-        <div className={`${styles.banner} ${styles.update}`} role="status">
-          <p className={styles.message}>Update available</p>
-          <div className={styles.actions}>
-            <button
-              type="button"
-              className={styles.action}
-              onClick={() => setNeedRefresh(false)}
-            >
-              Later
-            </button>
-            <button
-              type="button"
-              className={`${styles.action} ${styles.actionPrimary}`}
-              onClick={() => void updateServiceWorker(true)}
-            >
-              Reload
-            </button>
-          </div>
-        </div>
+        <StatusBanner
+          tone="update"
+          title="Update available"
+          action={
+            <StatusBannerActions>
+              <StatusBannerAction onClick={() => setNeedRefresh(false)}>
+                Later
+              </StatusBannerAction>
+              <StatusBannerAction
+                primary
+                onClick={() => void updateServiceWorker(true)}
+              >
+                Reload
+              </StatusBannerAction>
+            </StatusBannerActions>
+          }
+        />
       ) : null}
-    </div>
+    </StatusBannerStack>
   );
 }

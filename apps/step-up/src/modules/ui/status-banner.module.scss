@@ -1,9 +1,10 @@
 .stack {
   position: sticky;
   top: 0;
-  z-index: 39;
+  z-index: var(--status-banner-z, 40);
   display: flex;
   flex-direction: column;
+  gap: 0;
   flex-shrink: 0;
 }
 
@@ -19,17 +20,40 @@
   font-weight: 600;
   line-height: 1.25;
   border-bottom: 1px solid color-mix(in srgb, var(--color-fg) 8%, transparent);
+  background: color-mix(in srgb, var(--color-fg) 6%, var(--color-bg));
+  color: var(--color-fg);
+}
+
+.warning {
   background: color-mix(in srgb, var(--color-warning, #f59e0b) 14%, var(--color-bg));
   color: var(--color-fg);
 }
 
-.complete {
+.success {
   background: #238636;
   color: #ffffff;
 }
 
-.failed {
+.danger {
   background: color-mix(in srgb, var(--color-danger) 14%, var(--color-bg));
+  color: var(--color-fg);
+}
+
+.offline {
+  background: color-mix(in srgb, var(--color-warning, #ff9f0a) 18%, var(--color-bg));
+  color: var(--color-fg);
+}
+
+.online {
+  background: #238636;
+  color: #ffffff;
+  font-size: 0.6875rem;
+  font-weight: 500;
+}
+
+.update {
+  background: color-mix(in srgb, var(--color-primary, #0a84ff) 14%, var(--color-bg));
+  color: var(--color-fg);
 }
 
 .copy {
@@ -45,7 +69,16 @@
   padding-inline-end: 0.75rem;
 }
 
-.banner:not(:has(.action)) .copy {
+.message {
+  min-width: 0;
+  flex: 1;
+  margin: 0;
+  padding-block: 0.3rem;
+  padding-inline-end: 0.75rem;
+}
+
+.banner:not(:has(.actions)):not(:has(.action)) .copy,
+.banner:not(:has(.actions)):not(:has(.action)) .message {
   padding-inline-end: max(0.75rem, env(safe-area-inset-right, 0px));
 }
 
@@ -68,26 +101,61 @@
   color: color-mix(in srgb, currentColor 55%, transparent);
 }
 
-.complete .meta {
+.success .meta {
   color: rgb(255 255 255 / 88%);
 }
 
+.actions {
+  display: flex;
+  align-items: stretch;
+  flex-shrink: 0;
+}
+
 .action {
+  appearance: none;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   align-self: stretch;
   margin: 0;
-  padding: 0 max(0.85rem, env(safe-area-inset-right, 0px)) 0 0.85rem;
+  padding: 0 0.85rem;
   border: 0;
   border-inline-start: 1px solid color-mix(in srgb, currentColor 18%, transparent);
   border-radius: 0;
-  background: color-mix(in srgb, var(--color-bg) 55%, transparent);
+  background: color-mix(in srgb, var(--color-fg) 10%, transparent);
   color: inherit;
-  font-size: 0.6875rem;
+  font: inherit;
   font-weight: 700;
+  font-size: 0.6875rem;
   text-decoration: none;
   white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color var(--interaction-transition-duration, 220ms)
+      var(--interaction-transition-curve, ease),
+    transform var(--interaction-transition-duration, 220ms)
+      var(--interaction-transition-curve, ease);
+
+  &:last-child {
+    padding-inline-end: max(0.85rem, env(safe-area-inset-right, 0px));
+  }
+}
+
+.action:hover {
+  background: color-mix(in srgb, var(--color-fg) 16%, transparent);
+}
+
+.action:active {
+  transform: scale(var(--interaction-press-scale, 0.98));
+}
+
+.actionPrimary {
+  background: #238636;
+  color: #ffffff;
+}
+
+.actionPrimary:hover {
+  background: color-mix(in srgb, #238636 88%, black);
 }
 
 .progress {
@@ -100,4 +168,15 @@
   height: 100%;
   background: var(--color-warning, #f59e0b);
   transition: width var(--motion-normal, 200ms) ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .action {
+    transition-duration: 0ms;
+    transform: none;
+  }
+
+  .progressFill {
+    transition-duration: 0ms;
+  }
 }
