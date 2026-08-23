@@ -99,9 +99,36 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3, 0.75rem);
+  width: 100%;
   padding: var(--space-2, 0.5rem) var(--space-3, 0.75rem);
+  border: none;
   border-radius: var(--radius-lg, 0.75rem);
   background: color-mix(in srgb, var(--color-fg) 4%, transparent);
+  text-align: start;
+  cursor: pointer;
+  color: inherit;
+}
+
+.sheetRow[data-disabled="true"] {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.sheetRow:has([data-selected="true"]) {
+  background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+}
+
+.sheetMain {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2, 0.5rem);
+  min-width: 0;
+}
+
+.sheetTitle {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-fg);
 }
 
 .sheetMeta {

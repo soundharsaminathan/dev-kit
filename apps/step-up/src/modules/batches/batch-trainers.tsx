@@ -1,5 +1,8 @@
 import { Button } from "@dev-ui/components/button";
-import { Checkbox } from "@dev-ui/components/checkbox";
+import {
+  CheckboxControl,
+  CheckboxIndicator,
+} from "@dev-ui/components/checkbox";
 import { useToastContext } from "@dev-ui/components/toast";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
@@ -274,21 +277,24 @@ export function BatchTrainers({ batchId, trainers }: BatchTrainersProps) {
             const selected = draftIds.includes(trainer.id);
             const atCap = !selected && draftIds.length >= MAX_TRAINERS;
             return (
-              <div key={trainer.id} className={styles.sheetRow}>
-                <Checkbox
-                  isSelected={selected}
-                  isDisabled={atCap}
-                  onChange={(value) => toggleTrainer(trainer.id, value)}
-                >
-                  {trainer.name}
-                </Checkbox>
-                <div className={styles.sheetMeta}>
+              <CheckboxControl
+                key={trainer.id}
+                className={styles.sheetRow}
+                isSelected={selected}
+                isDisabled={atCap}
+                onChange={(value) => toggleTrainer(trainer.id, value)}
+              >
+                <span className={styles.sheetMain}>
+                  <CheckboxIndicator />
+                  <span className={styles.sheetTitle}>{trainer.name}</span>
+                </span>
+                <span className={styles.sheetMeta}>
                   <span>{trainer.email}</span>
                   {trainer.styles.length > 0 ? (
                     <span>{trainer.styles.slice(0, 2).join(" · ")}</span>
                   ) : null}
-                </div>
-              </div>
+                </span>
+              </CheckboxControl>
             );
           })}
         </div>
