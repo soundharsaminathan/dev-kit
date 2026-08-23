@@ -1,5 +1,8 @@
 export const SEED = {
   studioId: "studio-e2e-1",
+  studioSlug: "e2e-test-studio",
+  studioBId: "studio-e2e-2",
+  studioBSlug: "e2e-test-studio-b",
   branchMainId: "e2e-branch-main-1",
   branchEastId: "e2e-branch-east-1",
   membershipStudentId: "e2e-membership-student-1",
@@ -42,12 +45,26 @@ export const SEED = {
       role: "OWNER" as const,
       studioId: "studio-e2e-1",
     },
+    OWNER_B: {
+      id: "e2e-owner-b-1",
+      email: "e2e-owner-b@stepup.dev",
+      name: "Studio B Owner",
+      role: "OWNER" as const,
+      studioId: "studio-e2e-2",
+    },
     STAFF: {
       id: "e2e-staff-1",
       email: "e2e-staff@stepup.dev",
       name: "Front Desk Staff",
       role: "STAFF" as const,
       studioId: "studio-e2e-1",
+    },
+    STAFF_B: {
+      id: "e2e-staff-b-1",
+      email: "e2e-staff-b@stepup.dev",
+      name: "Studio B Staff",
+      role: "STAFF" as const,
+      studioId: "studio-e2e-2",
     },
     TRAINER: {
       id: "e2e-trainer-1",
@@ -76,6 +93,13 @@ export const SEED = {
       ageRange: "TWENTY_TO_FORTY" as const,
       preferredBranchId: "e2e-branch-main-1",
       onboardingCompletedAt: "2026-01-01T00:00:00.000Z",
+    },
+    STUDENT_B: {
+      id: "e2e-student-b-1",
+      email: "e2e-student-b@stepup.dev",
+      name: "Studio B Student",
+      role: "STUDENT" as const,
+      studioId: "studio-e2e-2",
     },
     STUDENT_UNENROLLED: {
       id: "e2e-student-unenrolled-1",

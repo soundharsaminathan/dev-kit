@@ -14,6 +14,7 @@ import { sentryExceptionFilters } from "../sentry-nest";
 
 interface SocketData {
   userId?: string;
+  studioId?: string | null;
 }
 
 @UseFilters(...sentryExceptionFilters())
@@ -45,8 +46,12 @@ export class ChatGateway implements OnGatewayConnection {
       const auth = await this.firebase.verifyToken(token);
       const user = await this.firebase.resolveUser(auth);
       (socket.data as SocketData).userId = user.id;
+      (socket.data as SocketData).studioId = user.studioId;
 
       await socket.join(`user:${user.id}`);
+      if (user.studioId) {
+        await socket.join(`studio:${user.studioId}`);
+      }
       const memberships = await this.prisma.conversationMember.findMany({
         where: { userId: user.id },
         select: { conversationId: true },

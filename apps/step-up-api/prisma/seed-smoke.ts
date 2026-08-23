@@ -268,6 +268,8 @@ async function main() {
     where: { id: studioId },
     update: {
       name: "Smoke Test Studio",
+      slug: "smoke-test-studio",
+      status: "ACTIVE",
       address: "1 Smoke Lane",
       contact: u.OWNER.email,
       ownerId: u.OWNER.id,
@@ -275,6 +277,8 @@ async function main() {
     create: {
       id: studioId,
       name: "Smoke Test Studio",
+      slug: "smoke-test-studio",
+      status: "ACTIVE",
       address: "1 Smoke Lane",
       photos: [],
       contact: u.OWNER.email,

@@ -35,6 +35,9 @@ const crypto = new UserCryptoService(new ConfigService());
 
 export const E2E = {
   studioId: "studio-e2e-1",
+  studioSlug: "e2e-test-studio",
+  studioBId: "studio-e2e-2",
+  studioBSlug: "e2e-test-studio-b",
   branchMainId: "e2e-branch-main-1",
   branchEastId: "e2e-branch-east-1",
   adultMonthlyId: "e2e-sub-individual-adult-monthly",
@@ -70,11 +73,23 @@ export const E2E = {
       email: "e2e-owner@stepup.dev",
       name: "Studio Owner",
     },
+    OWNER_B: {
+      id: "e2e-owner-b-1",
+      firebaseUid: "e2e-owner-b-1",
+      email: "e2e-owner-b@stepup.dev",
+      name: "Studio B Owner",
+    },
     STAFF: {
       id: "e2e-staff-1",
       firebaseUid: "e2e-staff-1",
       email: "e2e-staff@stepup.dev",
       name: "Front Desk Staff",
+    },
+    STAFF_B: {
+      id: "e2e-staff-b-1",
+      firebaseUid: "e2e-staff-b-1",
+      email: "e2e-staff-b@stepup.dev",
+      name: "Studio B Staff",
     },
     STAFF1: {
       id: "e2e-staff1-1",
@@ -99,6 +114,12 @@ export const E2E = {
       firebaseUid: "e2e-student-1",
       email: "e2e-student@stepup.dev",
       name: "Alex Student",
+    },
+    STUDENT_B: {
+      id: "e2e-student-b-1",
+      firebaseUid: "e2e-student-b-1",
+      email: "e2e-student-b@stepup.dev",
+      name: "Studio B Student",
     },
     STUDENT_UNENROLLED: {
       id: "e2e-student-unenrolled-1",
@@ -189,7 +210,8 @@ async function upsertUser(user: SeedUser, studioId: string | null) {
           scheduleVibe: ["weekday_evenings", "weekends"],
           gender: "FEMALE" as const,
           ageRange: "TWENTY_TO_FORTY" as const,
-          preferredBranchId: E2E.branchMainId,
+          preferredBranchId:
+            studioId === E2E.studioId ? E2E.branchMainId : null,
           onboardingCompletedAt: new Date("2026-01-01T00:00:00.000Z"),
         }
       : {};
@@ -270,6 +292,8 @@ async function main() {
     where: { id: studioId },
     update: {
       name: "E2E Test Studio",
+      slug: "e2e-test-studio",
+      status: "ACTIVE",
       address: "1 Test Lane",
       contact: u.OWNER.email,
       ownerId: u.OWNER.id,
@@ -277,6 +301,8 @@ async function main() {
     create: {
       id: studioId,
       name: "E2E Test Studio",
+      slug: "e2e-test-studio",
+      status: "ACTIVE",
       address: "1 Test Lane",
       photos: [],
       contact: u.OWNER.email,
@@ -1067,6 +1093,73 @@ async function main() {
   console.log(
     `  batches: ${E2E.kidsBatchId}, ${E2E.beginnerBatchId}, ${E2E.trialBatchId}`,
   );
+
+  // Second studio for cross-tenant isolation tests (distinct users only).
+  await upsertUser(
+    {
+      ...u.OWNER_B,
+      phone: "+91 98000 91001",
+      role: UserRole.OWNER,
+      styles: [],
+      profileVisibility: ProfileVisibility.PUBLIC,
+    },
+    null,
+  );
+  await prisma.studio.upsert({
+    where: { id: E2E.studioBId },
+    update: {
+      name: "E2E Test Studio B",
+      slug: E2E.studioBSlug,
+      status: "ACTIVE",
+      address: "2 Test Lane",
+      contact: u.OWNER_B.email,
+      ownerId: u.OWNER_B.id,
+    },
+    create: {
+      id: E2E.studioBId,
+      name: "E2E Test Studio B",
+      slug: E2E.studioBSlug,
+      status: "ACTIVE",
+      address: "2 Test Lane",
+      photos: [],
+      contact: u.OWNER_B.email,
+      ownerId: u.OWNER_B.id,
+    },
+  });
+  await prisma.studioSettings.upsert({
+    where: { studioId: E2E.studioBId },
+    update: {},
+    create: {
+      studioId: E2E.studioBId,
+      graceDays: 3,
+      expireAlertDays: 7,
+      platformFeePercent: 5,
+    },
+  });
+  await ensureStudioFeaturesEnabled(prisma, E2E.studioBId, true);
+  await prisma.user.update({
+    where: { id: u.OWNER_B.id },
+    data: { studioId: E2E.studioBId },
+  });
+  for (const user of [
+    {
+      ...u.STAFF_B,
+      phone: "+91 98000 91002",
+      role: UserRole.STAFF,
+      styles: [],
+      profileVisibility: ProfileVisibility.PUBLIC,
+    },
+    {
+      ...u.STUDENT_B,
+      phone: "+91 98000 91003",
+      role: UserRole.STUDENT,
+      styles: [],
+      profileVisibility: ProfileVisibility.PUBLIC,
+    },
+  ]) {
+    await upsertUser(user, E2E.studioBId);
+  }
+  console.log(`E2E isolation studio ready: ${E2E.studioBId} (${E2E.studioBSlug})`);
 }
 
 main()

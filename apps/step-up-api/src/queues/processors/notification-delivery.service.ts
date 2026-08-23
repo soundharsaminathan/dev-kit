@@ -62,6 +62,19 @@ export class NotificationDeliveryService {
       return { skipped: true };
     }
 
+    if (notification.studioId) {
+      const recipient = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { studioId: true },
+      });
+      if (!recipient?.studioId || recipient.studioId !== notification.studioId) {
+        this.logger.warn(
+          `Skipped cross-studio notification ${notificationId} for user ${userId}`,
+        );
+        return { skipped: true, reason: "studio_mismatch" };
+      }
+    }
+
     const existingInApp = await this.prisma.notificationDelivery.findFirst({
       where: {
         notificationId,

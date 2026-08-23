@@ -18,18 +18,25 @@ import {
 } from "@/lib/require-auth";
 import { PublicShell } from "@/modules/layout/public-shell";
 import { PasswordInput } from "@/modules/ui/password-input";
-import { StudioSelect, useStudioDirectory } from "@/modules/ui/studio-select";
+import {
+  StudioSelect,
+  useStudioDirectory,
+} from "@/modules/ui/studio-select";
 import { TouchButton } from "@/modules/ui/touch-button";
 import styles from "./login.module.scss";
 
 type LoginSearch = {
   redirect?: string;
   identifier?: string;
+  /** Preferred: studio slug */
+  studio?: string;
+  /** Compat: studio id */
   studioId?: string;
 };
 
 type LoginFormValues = {
   studioId: string;
+  studioSlug: string;
   identifier: string;
   password: string;
 };
@@ -41,6 +48,9 @@ function parseSearch(search: Record<string, unknown>): LoginSearch {
   }
   if (typeof search.identifier === "string" && search.identifier.trim()) {
     next.identifier = search.identifier.trim();
+  }
+  if (typeof search.studio === "string" && search.studio.trim()) {
+    next.studio = search.studio.trim();
   }
   if (typeof search.studioId === "string" && search.studioId.trim()) {
     next.studioId = search.studioId.trim();
@@ -68,6 +78,8 @@ function validatePassword(value: string) {
   return undefined;
 }
 
+const STUDIO_ACCESS_DENIED = "You don't have access to this studio.";
+
 export const Route = createFileRoute("/login")({
   validateSearch: (search: Record<string, unknown>): LoginSearch =>
     parseSearch(search),
@@ -82,9 +94,11 @@ function LoginPage() {
   const {
     redirect: redirectTo,
     identifier: searchIdentifier,
+    studio: searchStudioSlug,
     studioId: searchStudioId,
   } = Route.useSearch();
-  const { signIn, signInWithGoogle, loginAsSystemAdmin } = useAuth();
+  const { signIn, signInWithGoogle, loginAsSystemAdmin, signOutUser } =
+    useAuth();
   const online = useOnlineStatus();
   const [error, setError] = useState<string | null>(null);
   const directory = useStudioDirectory();
@@ -101,9 +115,26 @@ function LoginPage() {
     [navigate, redirectTo],
   );
 
+  const assertStudioAccess = useCallback(
+    async (authUser: AuthUser, selectedStudioId: string) => {
+      if (authUser.role === "SYSTEM_ADMIN") {
+        return;
+      }
+      if (!selectedStudioId.trim()) {
+        return;
+      }
+      if (authUser.studioId !== selectedStudioId) {
+        await signOutUser();
+        throw new Error(STUDIO_ACCESS_DENIED);
+      }
+    },
+    [signOutUser],
+  );
+
   const form = useForm({
     defaultValues: {
       studioId: searchStudioId ?? "",
+      studioSlug: searchStudioSlug ?? "",
       identifier: suggestedLoginIdentifier(searchIdentifier),
       password: isAuthBypassEnabled() ? SEED_PASSWORD : "",
     } satisfies LoginFormValues,
@@ -111,6 +142,7 @@ function LoginPage() {
       setError(null);
       try {
         const signedIn = await signIn(value.identifier.trim(), value.password);
+        await assertStudioAccess(signedIn, value.studioId);
         redirectAfterSignIn(signedIn);
       } catch (signInError) {
         setError(
@@ -123,20 +155,62 @@ function LoginPage() {
   });
 
   useEffect(() => {
-    if (searchStudioId) return;
+    const studios = directory.data;
+    if (!studios?.length) return;
+
+    const bySlug = searchStudioSlug
+      ? studios.find((s) => s.slug === searchStudioSlug)
+      : undefined;
+    const byId = searchStudioId
+      ? studios.find((s) => s.id === searchStudioId)
+      : undefined;
+    const matched = bySlug ?? byId;
+
+    if (matched) {
+      form.setFieldValue("studioId", matched.id);
+      form.setFieldValue("studioSlug", matched.slug);
+      if (!searchStudioSlug || searchStudioSlug !== matched.slug) {
+        void navigate({
+          to: "/login",
+          search: {
+            ...(redirectTo ? { redirect: redirectTo } : {}),
+            ...(searchIdentifier ? { identifier: searchIdentifier } : {}),
+            studio: matched.slug,
+          },
+          replace: true,
+        });
+      }
+      return;
+    }
+
     if (form.getFieldValue("studioId")) return;
-    const first = directory.data?.[0];
+    const first = studios[0];
     if (!first) return;
     form.setFieldValue("studioId", first.id);
-  }, [directory.data, form, searchStudioId]);
+    form.setFieldValue("studioSlug", first.slug);
+  }, [
+    directory.data,
+    form,
+    navigate,
+    redirectTo,
+    searchIdentifier,
+    searchStudioId,
+    searchStudioSlug,
+  ]);
 
   const handleGoogleSignIn = async () => {
     setError(null);
     try {
+      const studioId = form.getFieldValue("studioId");
       const signedIn = await signInWithGoogle();
+      await assertStudioAccess(signedIn, studioId);
       redirectAfterSignIn(signedIn);
-    } catch {
-      setError("Google sign in failed");
+    } catch (googleError) {
+      setError(
+        googleError instanceof Error
+          ? googleError.message
+          : "Google sign in failed",
+      );
     }
   };
 
@@ -173,7 +247,11 @@ function LoginPage() {
 
         {error ? (
           <Alert variant="danger">
-            <AlertTitle>Sign in failed</AlertTitle>
+            <AlertTitle>
+              {error === STUDIO_ACCESS_DENIED
+                ? "Access denied"
+                : "Sign in failed"}
+            </AlertTitle>
             <AlertDescription>{error}</AlertDescription>
           </Alert>
         ) : null}
@@ -199,8 +277,9 @@ function LoginPage() {
             {(field) => (
               <StudioSelect
                 selectedKey={field.state.value || null}
-                onSelectionChange={(studioId) => {
+                onSelectionChange={(studioId, studio) => {
                   field.handleChange(studioId ?? "");
+                  form.setFieldValue("studioSlug", studio?.slug ?? "");
                   void navigate({
                     to: "/login",
                     search: {
@@ -208,7 +287,7 @@ function LoginPage() {
                       ...(searchIdentifier
                         ? { identifier: searchIdentifier }
                         : {}),
-                      ...(studioId ? { studioId } : {}),
+                      ...(studio?.slug ? { studio: studio.slug } : {}),
                     },
                     replace: true,
                   });
@@ -326,12 +405,18 @@ function LoginPage() {
           </div>
         ) : null}
 
-        <form.Subscribe selector={(state) => state.values.studioId}>
-          {(studioId) => (
+        <form.Subscribe
+          selector={(state) => ({
+            studioId: state.values.studioId,
+            studioSlug: state.values.studioSlug,
+          })}
+        >
+          {({ studioId, studioSlug }) => (
             <Link
               to="/register"
               search={{
                 ...(studioId.trim() ? { studioId: studioId.trim() } : {}),
+                ...(studioSlug.trim() ? { studio: studioSlug.trim() } : {}),
               }}
               className={styles.footerLink}
             >

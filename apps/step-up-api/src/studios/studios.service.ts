@@ -7,13 +7,14 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
-import { Prisma, UserRole } from "@prisma/client";
+import { Prisma, StudioStatus, UserRole } from "@prisma/client";
 import { FirebaseService } from "../auth/firebase.service";
 import { MediaService } from "../media/media.service";
 import { RazorpayService } from "../payments/razorpay.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { UserCryptoService } from "../users/user-crypto.service";
 import { isValidIanaTimeZone } from "../common/zoned-local-time";
+import { slugifyStudioName, uniquifySlug } from "../tenancy/studio-slug";
 import { parseDanceStyles } from "./dance-styles";
 
 export type CreateStudioInput = {
@@ -61,6 +62,7 @@ export class StudiosService {
         const owner = this.crypto.decryptUser(studio.owner);
         return {
           id: studio.id,
+          slug: studio.slug,
           name: studio.name,
           address: studio.address,
           contact: studio.contact,
@@ -78,8 +80,9 @@ export class StudiosService {
 
   async listDirectory() {
     return this.prisma.studio.findMany({
+      where: { status: StudioStatus.ACTIVE },
       orderBy: { name: "asc" },
-      select: { id: true, name: true },
+      select: { id: true, slug: true, name: true },
     });
   }
 
@@ -164,9 +167,17 @@ export class StudiosService {
         ownerProvisioned = true;
       }
 
+      const existingSlugs = await tx.studio.findMany({
+        select: { slug: true },
+      });
+      const taken = new Set(existingSlugs.map((row) => row.slug));
+      const slug = uniquifySlug(slugifyStudioName(name), taken);
+
       const studio = await tx.studio.create({
         data: {
           name,
+          slug,
+          status: StudioStatus.ACTIVE,
           address: data.address?.trim() || null,
           contact: data.contact?.trim() || null,
           photos: [],
@@ -235,6 +246,7 @@ export class StudiosService {
 
     return {
       id: result.studio.id,
+      slug: result.studio.slug,
       name: result.studio.name,
       address: result.studio.address,
       contact: result.studio.contact,
@@ -252,10 +264,14 @@ export class StudiosService {
   }
 
   async getPublicProfile(id: string) {
-    const studio = await this.prisma.studio.findUnique({
-      where: { id },
+    const studio = await this.prisma.studio.findFirst({
+      where: {
+        OR: [{ id }, { slug: id }],
+        status: StudioStatus.ACTIVE,
+      },
       select: {
         id: true,
+        slug: true,
         name: true,
         address: true,
         contact: true,

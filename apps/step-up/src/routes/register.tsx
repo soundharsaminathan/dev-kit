@@ -22,6 +22,7 @@ import styles from "./login.module.scss";
 
 type RegisterSearch = {
   redirect?: string;
+  studio?: string;
   studioId?: string;
 };
 
@@ -37,6 +38,9 @@ function parseSearch(search: Record<string, unknown>): RegisterSearch {
   const result: RegisterSearch = {};
   if (typeof search.redirect === "string") {
     result.redirect = search.redirect;
+  }
+  if (typeof search.studio === "string" && search.studio.trim()) {
+    result.studio = search.studio.trim();
   }
   if (typeof search.studioId === "string" && search.studioId.trim()) {
     result.studioId = search.studioId.trim();
@@ -93,7 +97,11 @@ export const Route = createFileRoute("/register")({
 
 function RegisterPage() {
   const navigate = useNavigate();
-  const { redirect: redirectTo, studioId: searchStudioId } = Route.useSearch();
+  const {
+    redirect: redirectTo,
+    studio: searchStudioSlug,
+    studioId: searchStudioId,
+  } = Route.useSearch();
   const { signUp, signInWithGoogle, user } = useAuth();
   const online = useOnlineStatus();
   const [error, setError] = useState<string | null>(null);
@@ -144,12 +152,26 @@ function RegisterPage() {
   });
 
   useEffect(() => {
-    if (searchStudioId) return;
+    const studios = directory.data;
+    if (!studios?.length) return;
+
+    const bySlug = searchStudioSlug
+      ? studios.find((s) => s.slug === searchStudioSlug)
+      : undefined;
+    const byId = searchStudioId
+      ? studios.find((s) => s.id === searchStudioId)
+      : undefined;
+    const matched = bySlug ?? byId;
+    if (matched) {
+      form.setFieldValue("studioId", matched.id);
+      return;
+    }
+
     if (form.getFieldValue("studioId")) return;
-    const first = directory.data?.[0];
+    const first = studios[0];
     if (!first) return;
     form.setFieldValue("studioId", first.id);
-  }, [directory.data, form, searchStudioId]);
+  }, [directory.data, form, searchStudioId, searchStudioSlug]);
 
   const handleGoogleSignIn = async () => {
     setError(null);

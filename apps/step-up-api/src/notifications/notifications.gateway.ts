@@ -13,6 +13,7 @@ import { NotificationsService } from "./notifications.service";
 
 interface SocketData {
   userId?: string;
+  studioId?: string | null;
 }
 
 @UseFilters(...sentryExceptionFilters())
@@ -45,7 +46,11 @@ export class NotificationsGateway implements OnGatewayConnection {
       const auth = await this.firebase.verifyToken(token);
       const user = await this.firebase.resolveUser(auth);
       (socket.data as SocketData).userId = user.id;
+      (socket.data as SocketData).studioId = user.studioId;
       await socket.join(`user:${user.id}`);
+      if (user.studioId) {
+        await socket.join(`studio:${user.studioId}`);
+      }
 
       const badge = await this.notifications.unreadCount(user.id);
       socket.emit("notifications.badge", { unreadCount: badge.count });
@@ -66,5 +71,9 @@ export class NotificationsGateway implements OnGatewayConnection {
 
   emitToUser(userId: string, event: string, payload: unknown) {
     this.server?.to(`user:${userId}`).emit(event, payload);
+  }
+
+  emitToStudio(studioId: string, event: string, payload: unknown) {
+    this.server?.to(`studio:${studioId}`).emit(event, payload);
   }
 }

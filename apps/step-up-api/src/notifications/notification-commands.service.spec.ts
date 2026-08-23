@@ -13,6 +13,9 @@ describe("NotificationCommandsService.create", () => {
     notificationDelivery: {
       create: vi.fn(),
     },
+    user: {
+      findUnique: vi.fn(),
+    },
     $transaction: vi.fn(),
   };
 
@@ -31,6 +34,7 @@ describe("NotificationCommandsService.create", () => {
     prisma.$transaction.mockImplementation(
       async (fn: (tx: typeof prisma) => unknown) => fn(prisma),
     );
+    prisma.user.findUnique.mockResolvedValue({ studioId: "studio-1" });
     service = new NotificationCommandsService(
       prisma as never,
       outbox as never,
@@ -43,6 +47,7 @@ describe("NotificationCommandsService.create", () => {
     prisma.notification.create.mockResolvedValue({
       id: "notif-1",
       userId: "student-1",
+      studioId: "studio-1",
       type: NotificationType.MISSED_SESSION,
       title: "Missed session",
       body: "Absent",
@@ -64,6 +69,7 @@ describe("NotificationCommandsService.create", () => {
       expect.objectContaining({
         data: expect.objectContaining({
           userId: "student-1",
+          studioId: "studio-1",
           type: NotificationType.MISSED_SESSION,
           dedupeKey: "MISSED_SESSION:session-1:student-1",
         }),
@@ -82,7 +88,9 @@ describe("NotificationCommandsService.create", () => {
       expect.objectContaining({
         notificationId: "notif-1",
         userId: "student-1",
+        studioId: "studio-1",
       }),
+      { studioId: "studio-1" },
     );
     expect(unreadCache.increment).toHaveBeenCalledWith("student-1");
   });
@@ -160,6 +168,7 @@ describe("NotificationCommandsService.create", () => {
         notificationId: "notif-chat",
         refreshed: true,
       }),
+      { studioId: undefined },
     );
     expect(unreadCache.increment).toHaveBeenCalledWith("student-1");
   });

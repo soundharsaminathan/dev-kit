@@ -33,7 +33,12 @@ export class BatchRepository {
       batchId: summary.batchId,
       studioId: summary.studioId,
     };
-    await this.outbox.append(this.prisma, OUTBOX_EVENT_BATCH_CAPACITY_CHANGED, payload);
+    await this.outbox.append(
+      this.prisma,
+      OUTBOX_EVENT_BATCH_CAPACITY_CHANGED,
+      payload,
+      { studioId: summary.studioId },
+    );
     return summary;
   }
 }

@@ -15,6 +15,7 @@ import { UnreadCacheService } from "./unread-cache.service";
 
 export type CreateNotificationInput = {
   userId: string;
+  studioId?: string | null;
   type: NotificationType;
   title?: string;
   body?: string;
@@ -48,6 +49,7 @@ export class NotificationCommandsService {
     input: CreateNotificationInput,
     copy: { title: string; body: string },
     deepLink: string | null,
+    studioId: string | null,
   ): Promise<Notification> {
     const isActive =
       existing.status === NotificationStatus.ACTIVE &&
@@ -76,15 +78,22 @@ export class NotificationCommandsService {
           actorId: input.actorId ?? existing.actorId,
           entityType: input.entityType ?? existing.entityType,
           entityId: input.entityId ?? existing.entityId,
+          studioId: studioId ?? existing.studioId,
         },
       });
-      await this.outbox.append(tx, OUTBOX_EVENT_NOTIFICATION_CREATED, {
-        notificationId: row.id,
-        userId: row.userId,
-        type: row.type,
-        refreshed: true,
-        reactivated: !isActive,
-      });
+      await this.outbox.append(
+        tx,
+        OUTBOX_EVENT_NOTIFICATION_CREATED,
+        {
+          notificationId: row.id,
+          userId: row.userId,
+          studioId: row.studioId,
+          type: row.type,
+          refreshed: true,
+          reactivated: !isActive,
+        },
+        { studioId: row.studioId },
+      );
       return row;
     });
 
@@ -102,6 +111,10 @@ export class NotificationCommandsService {
       deepLink: input.deepLink,
       meta: input.meta,
     });
+    const studioId =
+      input.studioId === undefined
+        ? await this.resolveUserStudioId(input.userId)
+        : input.studioId;
 
     if (input.dedupeKey) {
       const existing = await this.prisma.notification.findUnique({
@@ -113,7 +126,7 @@ export class NotificationCommandsService {
         },
       });
       if (existing) {
-        return this.refreshExisting(existing, input, copy, deepLink);
+        return this.refreshExisting(existing, input, copy, deepLink, studioId);
       }
     }
 
@@ -122,6 +135,7 @@ export class NotificationCommandsService {
         const created = await tx.notification.create({
           data: {
             userId: input.userId,
+            studioId,
             type: input.type,
             title: copy.title,
             body: copy.body,
@@ -142,11 +156,17 @@ export class NotificationCommandsService {
           },
         });
 
-        await this.outbox.append(tx, OUTBOX_EVENT_NOTIFICATION_CREATED, {
-          notificationId: created.id,
-          userId: created.userId,
-          type: created.type,
-        });
+        await this.outbox.append(
+          tx,
+          OUTBOX_EVENT_NOTIFICATION_CREATED,
+          {
+            notificationId: created.id,
+            userId: created.userId,
+            studioId: created.studioId,
+            type: created.type,
+          },
+          { studioId: created.studioId },
+        );
 
         return created;
       });
@@ -170,10 +190,24 @@ export class NotificationCommandsService {
           },
         });
         if (existing) {
-          return this.refreshExisting(existing, input, copy, deepLink);
+          return this.refreshExisting(
+            existing,
+            input,
+            copy,
+            deepLink,
+            studioId,
+          );
         }
       }
       throw error;
     }
+  }
+
+  private async resolveUserStudioId(userId: string): Promise<string | null> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { studioId: true },
+    });
+    return user?.studioId ?? null;
   }
 }

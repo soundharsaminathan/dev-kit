@@ -11,13 +11,15 @@ import styles from "./studio-select.module.scss";
 
 export type StudioDirectoryItem = {
   id: string;
+  slug: string;
   name: string;
 };
 
 type StudioSelectProps = {
   label?: string;
+  /** Selected studio id (stable identity for API calls). */
   selectedKey: string | null;
-  onSelectionChange: (studioId: string | null) => void;
+  onSelectionChange: (studioId: string | null, studio?: StudioDirectoryItem) => void;
   isRequired?: boolean;
   isInvalid?: boolean;
   errorMessage?: string | undefined;
@@ -52,7 +54,13 @@ export function StudioSelect({
         }
         selectedKey={selectedKey}
         onSelectionChange={(key) => {
-          onSelectionChange(key == null ? null : String(key));
+          if (key == null) {
+            onSelectionChange(null);
+            return;
+          }
+          const id = String(key);
+          const studio = studios.find((item) => item.id === id);
+          onSelectionChange(id, studio);
         }}
         isRequired={isRequired}
         isInvalid={isInvalid || directory.isError}

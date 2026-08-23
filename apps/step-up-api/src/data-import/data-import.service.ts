@@ -218,9 +218,15 @@ export class DataImportService {
           entities: entities as Prisma.InputJsonValue,
         },
       });
-      await this.outbox.append(tx, OUTBOX_EVENT_DATA_IMPORT_REQUESTED, {
-        importId: row.id,
-      });
+      await this.outbox.append(
+        tx,
+        OUTBOX_EVENT_DATA_IMPORT_REQUESTED,
+        {
+          importId: row.id,
+          studioId,
+        },
+        { studioId },
+      );
       return row;
     });
 

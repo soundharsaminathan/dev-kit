@@ -40,9 +40,12 @@ describe("NotificationsGateway", () => {
     expect(firebase.verifyToken).not.toHaveBeenCalled();
   });
 
-  it("authenticates, joins the user room, and emits the badge", async () => {
+  it("authenticates, joins the user and studio rooms, and emits the badge", async () => {
     firebase.verifyToken.mockResolvedValue({ uid: "firebase-1" });
-    firebase.resolveUser.mockResolvedValue({ id: "user-1" });
+    firebase.resolveUser.mockResolvedValue({
+      id: "user-1",
+      studioId: "studio-1",
+    });
     notifications.unreadCount.mockResolvedValue({ count: 4 });
 
     const socket = {
@@ -50,7 +53,7 @@ describe("NotificationsGateway", () => {
         auth: { token: "token-1" },
         headers: {},
       },
-      data: {} as { userId?: string },
+      data: {} as { userId?: string; studioId?: string | null },
       join: vi.fn(),
       emit: vi.fn(),
       disconnect: vi.fn(),
@@ -60,7 +63,9 @@ describe("NotificationsGateway", () => {
 
     expect(firebase.verifyToken).toHaveBeenCalledWith("token-1");
     expect(socket.data.userId).toBe("user-1");
+    expect(socket.data.studioId).toBe("studio-1");
     expect(socket.join).toHaveBeenCalledWith("user:user-1");
+    expect(socket.join).toHaveBeenCalledWith("studio:studio-1");
     expect(socket.emit).toHaveBeenCalledWith("notifications.badge", {
       unreadCount: 4,
     });

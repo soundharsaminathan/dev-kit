@@ -453,6 +453,8 @@ async function main() {
     where: { id: studioId },
     update: {
       name: "Analytics Demo Studio",
+      slug: "analytics-demo-studio",
+      status: "ACTIVE",
       address: "88 Metrics Avenue",
       contact: u.OWNER.email,
       ownerId: u.OWNER.id,
@@ -460,6 +462,8 @@ async function main() {
     create: {
       id: studioId,
       name: "Analytics Demo Studio",
+      slug: "analytics-demo-studio",
+      status: "ACTIVE",
       address: "88 Metrics Avenue",
       photos: [],
       contact: u.OWNER.email,

@@ -109,6 +109,7 @@ export class BillingCommandsService {
       this.prisma,
       OUTBOX_EVENT_PAYMENT_CONFIRMED,
       payload,
+      { studioId: payload.studioId },
     );
     await this.projections.refreshStudioRevenue(payload.studioId);
   }
@@ -118,6 +119,7 @@ export class BillingCommandsService {
       this.prisma,
       OUTBOX_EVENT_INVOICE_REFUNDED,
       payload,
+      { studioId: payload.studioId },
     );
     await this.projections.refreshStudioRevenue(payload.studioId);
   }

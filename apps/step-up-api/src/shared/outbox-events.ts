@@ -7,6 +7,7 @@ export const OUTBOX_EVENT_DATA_IMPORT_REQUESTED = "data_import.requested";
 
 export type DataImportRequestedPayload = {
   importId: string;
+  studioId: string;
 };
 
 export const PROJECTION_QUEUE = "projection";

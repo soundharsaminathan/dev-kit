@@ -63,19 +63,16 @@ export class FeatureGuard implements CanActivate {
 }
 
 function resolveStudioId(request: FeatureRequest): string | null {
+  const contextStudioId = (
+    request as FeatureRequest & { studioContext?: { studioId?: string } }
+  ).studioContext?.studioId;
+  if (typeof contextStudioId === "string" && contextStudioId.length > 0) {
+    return contextStudioId;
+  }
+
   const params = request.params ?? {};
   if (typeof params.studioId === "string" && params.studioId.length > 0) {
     return params.studioId;
-  }
-
-  const queryStudioId = request.query?.studioId;
-  if (typeof queryStudioId === "string" && queryStudioId.length > 0) {
-    return queryStudioId;
-  }
-
-  const bodyStudioId = request.body?.studioId;
-  if (typeof bodyStudioId === "string" && bodyStudioId.length > 0) {
-    return bodyStudioId;
   }
 
   const userStudioId = request.user?.studioId;

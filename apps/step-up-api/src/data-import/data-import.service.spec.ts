@@ -165,7 +165,8 @@ describe("DataImportService.startImportJob", () => {
     expect(outbox.append).toHaveBeenCalledWith(
       expect.anything(),
       "data_import.requested",
-      { importId: "import-1" },
+      { importId: "import-1", studioId: ACTOR.studioId },
+      { studioId: ACTOR.studioId },
     );
   });
 

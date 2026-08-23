@@ -33,6 +33,7 @@ import { StaffInvitesModule } from "./staff-invites/staff-invites.module";
 import { StudioFeaturesModule } from "./studio-features/studio-features.module";
 import { StudiosModule } from "./studios/studios.module";
 import { SubscriptionsModule } from "./subscriptions/subscriptions.module";
+import { TenancyModule } from "./tenancy/tenancy.module";
 import { UserCryptoModule } from "./users/user-crypto.module";
 import { UsersModule } from "./users/users.module";
 
@@ -45,6 +46,7 @@ import { UsersModule } from "./users/users.module";
     QueueModule.forRoot({ role: "api" }),
     EventsModule.forRoot({ role: "api" }),
     UserCryptoModule,
+    TenancyModule,
     AuthModule,
     UsersModule,
     StudiosModule,

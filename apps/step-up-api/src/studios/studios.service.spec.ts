@@ -1,5 +1,5 @@
 import { BadRequestException, ConflictException } from "@nestjs/common";
-import { Prisma, UserRole } from "@prisma/client";
+import { Prisma, StudioStatus, UserRole } from "@prisma/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { StudiosService } from "./studios.service";
 
@@ -80,17 +80,18 @@ describe("StudiosService", () => {
 
   it("lists public studio directory entries", async () => {
     prisma.studio.findMany.mockResolvedValue([
-      { id: "studio-2", name: "Beta" },
-      { id: "studio-1", name: "Alpha" },
+      { id: "studio-2", slug: "beta", name: "Beta" },
+      { id: "studio-1", slug: "alpha", name: "Alpha" },
     ]);
 
     await expect(service.listDirectory()).resolves.toEqual([
-      { id: "studio-2", name: "Beta" },
-      { id: "studio-1", name: "Alpha" },
+      { id: "studio-2", slug: "beta", name: "Beta" },
+      { id: "studio-1", slug: "alpha", name: "Alpha" },
     ]);
     expect(prisma.studio.findMany).toHaveBeenCalledWith({
+      where: { status: StudioStatus.ACTIVE },
       orderBy: { name: "asc" },
-      select: { id: true, name: true },
+      select: { id: true, slug: true, name: true },
     });
   });
 
@@ -362,8 +363,10 @@ describe("StudiosService", () => {
             .mockResolvedValue({ id: "owner-new", email: "x" }),
         },
         studio: {
+          findMany: vi.fn().mockResolvedValue([]),
           create: vi.fn().mockResolvedValue({
             id: "studio-new",
+            slug: "nova-dance",
             name: "Nova Dance",
             address: null,
             contact: null,

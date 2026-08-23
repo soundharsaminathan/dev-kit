@@ -85,14 +85,14 @@ describe("FeatureGuard", () => {
     ).rejects.toThrow(/not available for this studio/);
   });
 
-  it("resolves studioId from query when params omit it", async () => {
+  it("ignores query studioId and uses user.studioId", async () => {
     reflector.getAllAndOverride.mockReturnValue(["payments"]);
     studioFeatures.isEnabled.mockResolvedValue(true);
     await expect(
       guard.canActivate(
         makeContext({
           user: FIXTURE_USERS.owner,
-          query: { studioId: FIXTURE_USERS.owner.studioId },
+          query: { studioId: "attacker-studio" },
         }) as never,
       ),
     ).resolves.toBe(true);

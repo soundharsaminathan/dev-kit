@@ -17,6 +17,11 @@ enum UserRole {
   PARENT
 }
 
+enum StudioStatus {
+  ACTIVE
+  SUSPENDED
+}
+
 enum InviteStatus {
   PENDING
   ACCEPTED
@@ -424,15 +429,19 @@ model FamilyMember {
 }
 
 model Studio {
-  id         String   @id @default(cuid())
-  name       String
-  address    String?
-  photos     String[]
-  contact    String?
+  id              String       @id @default(cuid())
+  slug            String       @unique
+  name            String
+  status          StudioStatus @default(ACTIVE)
+  address         String?
+  photos          String[]
+  contact         String?
   logoUrl         String?
   heroMobileUrl   String?
   heroDesktopUrl  String?
-  ownerId    String   @unique
+  ownerId         String       @unique
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
 
   owner                User                 @relation("StudioOwner", fields: [ownerId], references: [id])
   members              User[]               @relation("StudioMembers")
@@ -456,6 +465,8 @@ model Studio {
   trainerPayouts       TrainerPayout[]
   studioFeatures       StudioFeature[]
   dataImports          StudioDataImport[]
+  notifications        Notification[]
+  outboxEvents         OutboxEvent[]
 }
 
 model Feature {
@@ -565,6 +576,7 @@ model StudioBranch {
   preferredByUsers  User[]              @relation("UserPreferredBranch")
   expenses          Expense[]
 
+  @@unique([studioId, name])
   @@index([studioId])
 }
 
@@ -633,6 +645,7 @@ model CertificateTemplate {
   contestCategories ContestCategory[]
   contestCertificates ContestCertificate[]
 
+  @@unique([studioId, name])
   @@index([studioId])
 }
 
@@ -668,6 +681,7 @@ model Batch {
   summary             BatchSummary?
   memberships         Membership[]
 
+  @@unique([studioId, branchId, name])
   @@index([studioId, active])
 }
 
@@ -766,6 +780,7 @@ model Subscription {
   memberships Membership[]
   batchPlans  BatchPlan[]
 
+  @@unique([studioId, name])
   @@index([studioId, active])
 }
 
@@ -1024,6 +1039,7 @@ model Booking {
 model Notification {
   id         String             @id @default(cuid())
   userId     String
+  studioId   String?
   type       NotificationType
   title      String
   body       String
@@ -1041,11 +1057,13 @@ model Notification {
   updatedAt  DateTime           @updatedAt
 
   user       User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  studio     Studio?                @relation(fields: [studioId], references: [id], onDelete: Cascade)
   deliveries NotificationDelivery[]
 
   @@unique([userId, dedupeKey])
   @@index([userId, status, createdAt(sort: Desc)])
   @@index([userId, readAt, status])
+  @@index([studioId, createdAt(sort: Desc)])
 }
 
 model NotificationDelivery {
@@ -1102,13 +1120,17 @@ model OutboxEvent {
   id          String    @id @default(cuid())
   type        String
   payload     Json
+  studioId    String?
   createdAt   DateTime  @default(now())
   publishedAt DateTime?
   claimedAt   DateTime?
   attempts    Int       @default(0)
 
+  studio Studio? @relation(fields: [studioId], references: [id], onDelete: SetNull)
+
   @@index([publishedAt, createdAt])
   @@index([claimedAt])
+  @@index([studioId, publishedAt])
 }
 
 model StudioDataImport {

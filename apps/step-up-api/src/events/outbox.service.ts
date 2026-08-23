@@ -6,10 +6,15 @@ type ClaimedOutboxRow = {
   id: string;
   type: string;
   payload: Prisma.JsonValue;
+  studioId: string | null;
   createdAt: Date;
   publishedAt: Date | null;
   claimedAt: Date | null;
   attempts: number;
+};
+
+export type AppendOutboxOptions = {
+  studioId?: string | null;
 };
 
 @Injectable()
@@ -20,19 +25,29 @@ export class OutboxService {
     tx: Prisma.TransactionClient | PrismaService,
     type: string,
     payload: Prisma.InputJsonValue,
+    options?: AppendOutboxOptions,
   ) {
     return tx.outboxEvent.create({
       data: {
         type,
         payload,
+        studioId: options?.studioId ?? null,
       },
     });
   }
 
   /** Non-transactional append (post-commit side-effect enqueue). */
-  create(type: string, payload: Prisma.InputJsonValue) {
+  create(
+    type: string,
+    payload: Prisma.InputJsonValue,
+    options?: AppendOutboxOptions,
+  ) {
     return this.prisma.outboxEvent.create({
-      data: { type, payload },
+      data: {
+        type,
+        payload,
+        studioId: options?.studioId ?? null,
+      },
     });
   }
 
@@ -62,6 +77,7 @@ export class OutboxService {
         o.id,
         o.type,
         o.payload,
+        o."studioId",
         o."createdAt",
         o."publishedAt",
         o."claimedAt",

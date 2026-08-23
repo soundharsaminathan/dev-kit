@@ -991,15 +991,22 @@ export class BatchesService {
 
     const [trainers, branch, certificateTemplate, subscriptions] =
       await Promise.all([
-        this.prisma.user.findMany({ where: { id: { in: trainerIds } } }),
-        this.prisma.studioBranch.findUnique({ where: { id: data.branchId } }),
+        this.prisma.user.findMany({
+          where: { id: { in: trainerIds }, studioId: data.studioId },
+        }),
+        this.prisma.studioBranch.findFirst({
+          where: { id: data.branchId, studioId: data.studioId },
+        }),
         certificationEnabled && data.certificateTemplateId
-          ? this.prisma.certificateTemplate.findUnique({
-              where: { id: data.certificateTemplateId },
+          ? this.prisma.certificateTemplate.findFirst({
+              where: {
+                id: data.certificateTemplateId,
+                studioId: data.studioId,
+              },
             })
           : Promise.resolve(null),
         this.prisma.subscription.findMany({
-          where: { id: { in: subscriptionIds } },
+          where: { id: { in: subscriptionIds }, studioId: data.studioId },
         }),
       ]);
 
