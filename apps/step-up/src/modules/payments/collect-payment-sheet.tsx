@@ -1,26 +1,30 @@
 import { Badge } from "@dev-ui/components/badge";
-import { Checkbox } from "@dev-ui/components/checkbox";
 import { useToastContext } from "@dev-ui/components/toast";
+import { ToggleButton } from "@dev-ui/components/toggle-button";
+import { ToggleButtonGroup } from "@dev-ui/components/toggle-button-group";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useApi } from "@/lib/api-context";
 import { useStudioId } from "@/lib/use-studio-id";
 import { AppSheet } from "@/modules/ui/app-sheet";
 import { FormInput } from "@/modules/ui/form-input";
-import staff from "@/modules/ui/staff.module.scss";
 import { ErrorState } from "@/modules/ui/states";
 import { TouchButton } from "@/modules/ui/touch-button";
+import styles from "./collect-payment-sheet.module.scss";
 import { InvoiceBill, type InvoiceBillLine } from "./invoice-bill";
 import {
+  type MarkPaidInvoicePatch,
   patchStudioInvoiceList,
   refreshPaymentQueries,
-  type MarkPaidInvoicePatch,
 } from "./invoice-cache";
 import {
-  computeGst,
+  type BillingCadence,
+  cadenceDisplayLabel,
+  cadencePriceHint,
   formatPrice,
   type Invoice,
   type ManualPaymentMethod,
+  paymentPlanPrice,
 } from "./invoice-types";
 import { parseDiscountInput } from "./print-invoice";
 
@@ -50,6 +54,10 @@ export function CollectPaymentSheet({
     useState<ManualPaymentMethod | null>(null);
   const [referralDiscount, setReferralDiscount] = useState("");
   const [studioDiscount, setStudioDiscount] = useState("");
+  const [discountsOpen, setDiscountsOpen] = useState(false);
+  const [selectedCadence, setSelectedCadence] = useState<BillingCadence | null>(
+    null,
+  );
 
   const invoiceId = invoice?.id ?? null;
   const [lastInvoiceId, setLastInvoiceId] = useState(invoiceId);
@@ -58,7 +66,16 @@ export function CollectPaymentSheet({
     setPaymentMethod(null);
     setReferralDiscount("");
     setStudioDiscount("");
+    setDiscountsOpen(false);
+    setSelectedCadence(invoice?.paymentPlan?.currentCadence ?? null);
   }
+
+  const paymentPlan = invoice?.paymentPlan ?? null;
+  const activeCadence = selectedCadence ?? paymentPlan?.currentCadence ?? null;
+  const planChanged =
+    Boolean(paymentPlan) &&
+    activeCadence != null &&
+    activeCadence !== paymentPlan?.currentCadence;
 
   const markPaid = useMutation({
     mutationFn: (payload: {
@@ -66,11 +83,15 @@ export function CollectPaymentSheet({
       paymentMethod: ManualPaymentMethod;
       referralDiscount: number;
       studioDiscount: number;
+      billingCadence?: BillingCadence;
     }) =>
       api.patch<MarkPaidInvoicePatch>(`/billing/${payload.id}/paid`, {
         paymentMethod: payload.paymentMethod,
         referralDiscount: payload.referralDiscount,
         studioDiscount: payload.studioDiscount,
+        ...(payload.billingCadence
+          ? { billingCadence: payload.billingCadence }
+          : {}),
       }),
     onSuccess: async (updated) => {
       patchStudioInvoiceList(queryClient, studioId, {
@@ -109,33 +130,54 @@ export function CollectPaymentSheet({
 
   function submit() {
     if (!invoice || !paymentMethod) return;
-    const referral = parseDiscountInput(referralDiscount);
-    const studio = parseDiscountInput(studioDiscount);
-    if (Number.isNaN(referral) || Number.isNaN(studio)) {
-      toast({
-        title: "Invalid discount",
-        description: "Enter a valid amount of 0 or more for each discount.",
-        variant: "error",
-      });
+    const referralValue = parseDiscountInput(referralDiscount);
+    const studioValue = parseDiscountInput(studioDiscount);
+    if (Number.isNaN(referralValue) || Number.isNaN(studioValue)) {
+      return;
+    }
+    if (referralValue + studioValue > subtotal) {
       return;
     }
     markPaid.mutate({
       id: invoice.id,
       paymentMethod,
-      referralDiscount: referral,
-      studioDiscount: studio,
+      referralDiscount: referralValue,
+      studioDiscount: studioValue,
+      ...(activeCadence ? { billingCadence: activeCadence } : {}),
     });
   }
 
   const referral = parseDiscountInput(referralDiscount);
   const studio = parseDiscountInput(studioDiscount);
-  const discountsValid = !Number.isNaN(referral) && !Number.isNaN(studio);
+  const discountsParsed = !Number.isNaN(referral) && !Number.isNaN(studio);
+
+  const subtotal =
+    invoice && activeCadence && paymentPlan
+      ? paymentPlanPrice(paymentPlan, activeCadence, invoice.amount)
+      : (invoice?.amount ?? 0);
+
+  const discountTotal =
+    discountsParsed && (referral > 0 || studio > 0)
+      ? Math.round((referral + studio) * 100) / 100
+      : 0;
+
+  const discountsExceed =
+    discountsParsed && discountTotal > subtotal && discountTotal > 0;
+
+  const discountError =
+    referralDiscount !== "" && Number.isNaN(referral)
+      ? "Enter a valid referral discount of 0 or more."
+      : studioDiscount !== "" && Number.isNaN(studio)
+        ? "Enter a valid studio discount of 0 or more."
+        : discountsExceed
+          ? "Discounts cannot exceed the invoice amount."
+          : null;
+
+  const discountsValid = discountsParsed && !discountsExceed;
+
   const totalDue =
     invoice && discountsValid
-      ? Math.max(
-          0,
-          Math.round((invoice.amount - referral - studio) * 100) / 100,
-        )
+      ? Math.round((subtotal - referral - studio) * 100) / 100
       : null;
 
   const isFamily = invoice?.kind === "FAMILY";
@@ -145,6 +187,13 @@ export function CollectPaymentSheet({
     invoice?.purchaseMeta?.coveredStudents ??
     invoice?.familySummary?.coveredStudents ??
     [];
+
+  const planLabel =
+    activeCadence != null
+      ? cadenceDisplayLabel(activeCadence)
+      : ((invoice?.membership?.subscription?.billingCadence
+          ? cadenceDisplayLabel(invoice.membership.subscription.billingCadence)
+          : invoice?.familySummary?.planName) ?? null);
 
   const lines: InvoiceBillLine[] = [];
   if (invoice) {
@@ -163,40 +212,35 @@ export function CollectPaymentSheet({
         label:
           invoice.familySummary?.planName ??
           (isCombined ? "Combined family" : "Family pack"),
-        value: formatPrice(invoice.amount),
+        value: formatPrice(subtotal),
       });
     } else {
-      lines.push({ label: "Subtotal", value: formatPrice(invoice.amount) });
+      if (planLabel) {
+        lines.push({
+          id: "current-plan",
+          label: "Current plan",
+          value: planLabel,
+        });
+      }
+      lines.push({ label: "Subtotal", value: formatPrice(subtotal) });
     }
-    if (discountsValid && referral > 0) {
+    if (discountsValid && discountTotal > 0) {
       lines.push({
-        label: "Referral discount",
-        value: `−${formatPrice(referral)}`,
+        label: "Discount",
+        value: `−${formatPrice(discountTotal)}`,
         variant: "discount",
-      });
-    }
-    if (discountsValid && studio > 0) {
-      lines.push({
-        label: "Studio discount",
-        value: `−${formatPrice(studio)}`,
-        variant: "discount",
-      });
-    }
-    const gstPercent = invoice.gstPercent ?? 0;
-    if (discountsValid && gstPercent > 0 && totalDue != null) {
-      lines.push({
-        label: `GST (${gstPercent}%)`,
-        value: formatPrice(computeGst(totalDue, gstPercent)),
       });
     }
   }
 
-  const methodLabel =
-    paymentMethod === "CASH"
-      ? "cash"
-      : paymentMethod === "UPI_MANUAL"
-        ? "UPI"
-        : null;
+  const pending = markPaid.isPending;
+  const ctaLabel = !paymentMethod
+    ? "Select payment method"
+    : pending && totalDue != null
+      ? `Collecting ${formatPrice(totalDue)}…`
+      : totalDue != null
+        ? `Collect ${formatPrice(totalDue)}`
+        : "Collect payment";
 
   return (
     <AppSheet
@@ -205,100 +249,196 @@ export function CollectPaymentSheet({
         if (!open) onOpenChange(false);
       }}
       title="Collect payment"
-      size="tall"
+      size="wide"
     >
       {invoice ? (
-        <div className={staff.sheetStack}>
-          <InvoiceBill
-            heading={invoice.student?.name ?? "Invoice"}
-            meta={[
-              isFamily
-                ? "Family pack"
-                : isCombined
-                  ? "Combined family"
-                  : "Individual",
-              invoice.batchName,
-              `Invoice ${invoice.id.slice(-6).toUpperCase()}`,
-            ]
-              .filter(Boolean)
-              .join(" · ")}
-            badge={
-              <Badge
-                variant={invoice.status === "OVERDUE" ? "danger" : "neutral"}
-              >
-                {invoice.status}
-              </Badge>
-            }
-            lines={lines}
-            totalLabel="Total due"
-            totalValue={totalDue != null ? formatPrice(totalDue) : "—"}
-            footnote={
-              paymentMethod && totalDue != null
-                ? `Recording ${formatPrice(totalDue)} received as ${methodLabel}. This cannot be undone from here.`
-                : "Optional discounts reduce the amount collected. Choose how payment was received, then confirm."
-            }
-          />
-          <FormInput
-            label="Referral discount"
-            type="number"
-            min="0"
-            step="1"
-            inputMode="decimal"
-            data-testid={`${discountTestIdPrefix}referral-discount`}
-            value={referralDiscount}
-            onChange={setReferralDiscount}
-            placeholder="0"
-          />
-          <FormInput
-            label="Studio discount"
-            type="number"
-            min="0"
-            step="1"
-            inputMode="decimal"
-            data-testid={`${discountTestIdPrefix}studio-discount`}
-            value={studioDiscount}
-            onChange={setStudioDiscount}
-            placeholder="0"
-          />
-          {markPaid.isError ? (
-            <ErrorState
-              description={
-                markPaid.error instanceof Error
-                  ? markPaid.error.message
-                  : "Could not mark invoice paid."
+        <div className={styles.root}>
+          <div className={styles.scroll}>
+            <InvoiceBill
+              heading={invoice.student?.name ?? "Invoice"}
+              meta={[
+                isFamily
+                  ? "Family pack"
+                  : isCombined
+                    ? "Combined family"
+                    : "Individual",
+                invoice.batchName,
+                `Invoice ${invoice.id.slice(-6).toUpperCase()}`,
+              ]
+                .filter(Boolean)
+                .join(" · ")}
+              badge={
+                <Badge
+                  variant={invoice.status === "OVERDUE" ? "danger" : "neutral"}
+                >
+                  {invoice.status}
+                </Badge>
               }
+              lines={lines}
+              totalLabel="Total due"
+              totalValue={totalDue != null ? formatPrice(totalDue) : "—"}
             />
-          ) : null}
-          <div className={staff.sheetActions}>
-            <Checkbox
-              isSelected={paymentMethod === "CASH"}
-              isDisabled={markPaid.isPending}
-              onChange={(selected) =>
-                setPaymentMethod(selected ? "CASH" : null)
-              }
+
+            {paymentPlan ? (
+              <section className={styles.planSection} aria-label="Payment plan">
+                <p className={styles.sectionLabel}>Payment plan</p>
+                <ToggleButtonGroup
+                  aria-label="Payment plan"
+                  selectionMode="single"
+                  selectedKeys={activeCadence ? [activeCadence] : []}
+                  disallowEmptySelection
+                  size="sm"
+                  isDisabled={pending}
+                  data-testid={`${discountTestIdPrefix}payment-plan`}
+                  onSelectionChange={(keys) => {
+                    const next = String([...keys][0] ?? "");
+                    if (next === "MONTHLY" || next === "QUARTERLY") {
+                      setSelectedCadence(next);
+                    }
+                  }}
+                >
+                  {paymentPlan.options.map((option) => (
+                    <ToggleButton
+                      key={option.cadence}
+                      id={option.cadence}
+                      data-testid={`${discountTestIdPrefix}plan-${option.cadence.toLowerCase()}`}
+                    >
+                      {option.label}
+                    </ToggleButton>
+                  ))}
+                </ToggleButtonGroup>
+                {activeCadence ? (
+                  <p className={styles.planHint}>
+                    {cadencePriceHint(paymentPlan, activeCadence)}
+                  </p>
+                ) : null}
+                {planChanged ? (
+                  <p className={styles.planNote}>
+                    Plan changes apply from this payment
+                  </p>
+                ) : null}
+              </section>
+            ) : null}
+
+            <section className={styles.discountSection}>
+              {discountsOpen ? (
+                <div className={styles.discountFields}>
+                  <div className={styles.discountHeader}>
+                    <p className={styles.sectionLabel}>Discounts</p>
+                    <button
+                      type="button"
+                      className={styles.textButton}
+                      onClick={() => {
+                        setDiscountsOpen(false);
+                        setReferralDiscount("");
+                        setStudioDiscount("");
+                      }}
+                      disabled={pending}
+                    >
+                      Hide
+                    </button>
+                  </div>
+                  <FormInput
+                    label="Referral discount"
+                    type="number"
+                    min="0"
+                    step="1"
+                    inputMode="decimal"
+                    data-testid={`${discountTestIdPrefix}referral-discount`}
+                    value={referralDiscount}
+                    onChange={setReferralDiscount}
+                    placeholder="0"
+                    isDisabled={pending}
+                  />
+                  <FormInput
+                    label="Studio discount"
+                    type="number"
+                    min="0"
+                    step="1"
+                    inputMode="decimal"
+                    data-testid={`${discountTestIdPrefix}studio-discount`}
+                    value={studioDiscount}
+                    onChange={setStudioDiscount}
+                    placeholder="0"
+                    isDisabled={pending}
+                  />
+                  {discountError ? (
+                    <p className={styles.fieldError} role="alert">
+                      {discountError}
+                    </p>
+                  ) : null}
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  className={styles.addDiscount}
+                  data-testid={`${discountTestIdPrefix}add-discount`}
+                  onClick={() => setDiscountsOpen(true)}
+                  disabled={pending}
+                >
+                  + Add discount
+                </button>
+              )}
+            </section>
+
+            <section
+              className={styles.methodSection}
+              aria-label="Payment method"
             >
-              Cash
-            </Checkbox>
-            <Checkbox
-              isSelected={paymentMethod === "UPI_MANUAL"}
-              isDisabled={markPaid.isPending}
-              onChange={(selected) =>
-                setPaymentMethod(selected ? "UPI_MANUAL" : null)
-              }
-            >
-              UPI
-            </Checkbox>
+              <p className={styles.sectionLabel}>Payment method</p>
+              <ToggleButtonGroup
+                aria-label="Payment method"
+                selectionMode="single"
+                selectedKeys={paymentMethod ? [paymentMethod] : []}
+                size="sm"
+                isDisabled={pending}
+                data-testid={`${discountTestIdPrefix}payment-method`}
+                onSelectionChange={(keys) => {
+                  const next = String([...keys][0] ?? "");
+                  if (next === "CASH" || next === "UPI_MANUAL") {
+                    setPaymentMethod(next);
+                  } else {
+                    setPaymentMethod(null);
+                  }
+                }}
+                className={styles.methodGroup}
+              >
+                <ToggleButton
+                  id="CASH"
+                  data-testid={`${discountTestIdPrefix}method-cash`}
+                >
+                  Cash
+                </ToggleButton>
+                <ToggleButton
+                  id="UPI_MANUAL"
+                  data-testid={`${discountTestIdPrefix}method-upi`}
+                >
+                  UPI
+                </ToggleButton>
+              </ToggleButtonGroup>
+            </section>
+
+            {markPaid.isError ? (
+              <ErrorState
+                description={
+                  markPaid.error instanceof Error
+                    ? markPaid.error.message
+                    : "Could not mark invoice paid."
+                }
+              />
+            ) : null}
+          </div>
+
+          <div className={styles.footer}>
             <TouchButton
               variant="primary"
               fullWidth
-              isDisabled={!paymentMethod || totalDue == null}
-              isPending={markPaid.isPending}
+              isDisabled={!paymentMethod || totalDue == null || pending}
+              isPending={pending}
               data-testid={confirmTestId}
               onClick={submit}
             >
-              {totalDue != null
-                ? `Confirm payment · ${formatPrice(totalDue)}`
-                : "Confirm payment"}
+              {ctaLabel}
             </TouchButton>
           </div>
         </div>

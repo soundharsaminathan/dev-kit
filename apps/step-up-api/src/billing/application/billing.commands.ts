@@ -1,5 +1,5 @@
 import { Inject, Injectable } from "@nestjs/common";
-import type { PaymentMethod } from "@prisma/client";
+import type { BillingCadence, PaymentMethod } from "@prisma/client";
 import { OutboxService } from "../../events/outbox.service";
 import { PrismaService } from "../../prisma/prisma.service";
 import { ProjectionService } from "../../queues/processors/projection.service";
@@ -36,6 +36,7 @@ export class BillingCommandsService {
       paymentMethod: PaymentMethod;
       referralDiscount?: number;
       studioDiscount?: number;
+      billingCadence?: BillingCadence;
     },
   ) {
     const result = await this.billing.markPaid(actor, id, input);

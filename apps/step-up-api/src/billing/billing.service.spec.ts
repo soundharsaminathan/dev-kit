@@ -16,6 +16,7 @@ import { BillingService } from "./billing.service";
 const membershipsStub = {
   renewFromPaidInvoice: vi.fn().mockResolvedValue(null),
   assign: vi.fn(),
+  setInvoiceBillingCadence: vi.fn().mockResolvedValue(null),
 };
 
 const razorpayStub = {
@@ -1020,6 +1021,7 @@ describe("BillingService.markPaid", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     membershipsStub.renewFromPaidInvoice.mockResolvedValue(null);
+    membershipsStub.setInvoiceBillingCadence.mockResolvedValue(null);
     notificationsStub.create.mockResolvedValue({ id: "notif-1" });
     emailStub.sendPaymentInvoice.mockResolvedValue(undefined);
     service = new BillingService(
@@ -1374,6 +1376,53 @@ describe("BillingService.markPaid", () => {
         { paymentMethod: PaymentMethod.CASH },
       ),
     ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it("applies billingCadence before discounts and mark-paid", async () => {
+    membershipsStub.setInvoiceBillingCadence.mockImplementation(async () => {
+      prisma.invoice.findUniqueOrThrow.mockResolvedValue(
+        unpaidInvoice({ amount: 5499 }),
+      );
+      return {
+        invoice: { id: "inv-1", amount: 5499 },
+        membership: { id: "mem-1" },
+      };
+    });
+    prisma.invoice.findUniqueOrThrow.mockResolvedValue(
+      unpaidInvoice({ amount: 1999, membershipId: "mem-1" }),
+    );
+    prisma.invoice.update.mockResolvedValue({
+      id: "inv-1",
+      status: InvoiceStatus.PAID,
+      paymentMethod: PaymentMethod.CASH,
+      paidAt: new Date("2026-07-20T12:00:00.000Z"),
+      amount: 4999,
+      referralDiscount: 500,
+      studioDiscount: 0,
+    });
+
+    const result = await service.markPaid(
+      makeUser({ role: UserRole.OWNER }),
+      "inv-1",
+      {
+        paymentMethod: PaymentMethod.CASH,
+        billingCadence: "QUARTERLY" as never,
+        referralDiscount: 500,
+      },
+    );
+
+    expect(membershipsStub.setInvoiceBillingCadence).toHaveBeenCalledWith(
+      "inv-1",
+      "QUARTERLY",
+    );
+    expect(prisma.invoice.update).toHaveBeenCalledWith({
+      where: { id: "inv-1" },
+      data: expect.objectContaining({
+        amount: 4999,
+        referralDiscount: 500,
+      }),
+    });
+    expect(result.subtotal).toBe(5499);
   });
 });
 

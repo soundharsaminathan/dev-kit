@@ -1,11 +1,14 @@
 import { describe, expect, it } from "vitest";
 import {
   allocateFamilyDiscount,
+  cadencePriceHint,
   formatInvoiceMonthLabel,
   invoiceMatchesMonth,
   invoiceMonthKey,
+  quarterlyPlanSavings,
   recentUtcMonthKeys,
   utcMonthKey,
+  type InvoicePaymentPlan,
 } from "./invoice-types";
 
 describe("allocateFamilyDiscount", () => {
@@ -23,6 +26,37 @@ describe("allocateFamilyDiscount", () => {
   it("rejects negative discount", () => {
     expect(() => allocateFamilyDiscount([500, 500], -1)).toThrow(
       /invalid family discount/i,
+    );
+  });
+});
+
+describe("payment plan helpers", () => {
+  const plan: InvoicePaymentPlan = {
+    currentCadence: "MONTHLY",
+    options: [
+      {
+        cadence: "MONTHLY",
+        subscriptionId: "sub-m",
+        price: 1999,
+        label: "Monthly",
+      },
+      {
+        cadence: "QUARTERLY",
+        subscriptionId: "sub-q",
+        price: 5499,
+        label: "Quarterly",
+      },
+    ],
+  };
+
+  it("computes quarterly savings against 3× monthly", () => {
+    expect(quarterlyPlanSavings(plan)).toBe(498);
+  });
+
+  it("formats cadence price hints with savings when positive", () => {
+    expect(cadencePriceHint(plan, "MONTHLY")).toBe("₹1,999 / month");
+    expect(cadencePriceHint(plan, "QUARTERLY")).toBe(
+      "₹5,499 / 3 months · Save ₹498",
     );
   });
 });

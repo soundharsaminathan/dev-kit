@@ -7,6 +7,7 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import {
+  type BillingCadence,
   InvoiceStatus,
   NotificationType,
   PaymentMethod,
@@ -817,10 +818,28 @@ export class BillingService {
       paymentMethod: PaymentMethod;
       referralDiscount?: number;
       studioDiscount?: number;
+      billingCadence?: BillingCadence;
     },
   ) {
     if (actor.role !== UserRole.OWNER && actor.role !== UserRole.STAFF) {
       throw new ForbiddenException("Only studio admins can mark invoices paid");
+    }
+
+    const existing = await this.prisma.invoice.findUniqueOrThrow({
+      where: { id },
+      select: { studioId: true, status: true },
+    });
+
+    if (actor.studioId !== existing.studioId) {
+      throw new ForbiddenException("Cannot mark invoices for another studio");
+    }
+
+    if (existing.status === InvoiceStatus.PAID) {
+      throw new BadRequestException("Invoice is already paid");
+    }
+
+    if (input.billingCadence) {
+      await this.memberships.setInvoiceBillingCadence(id, input.billingCadence);
     }
 
     const invoice = await this.prisma.invoice.findUniqueOrThrow({
@@ -830,10 +849,6 @@ export class BillingService {
         studio: { select: { id: true, name: true } },
       },
     });
-
-    if (actor.studioId !== invoice.studioId) {
-      throw new ForbiddenException("Cannot mark invoices for another studio");
-    }
 
     if (invoice.status === InvoiceStatus.PAID) {
       throw new BadRequestException("Invoice is already paid");

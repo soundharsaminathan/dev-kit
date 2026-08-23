@@ -15,6 +15,7 @@ const membershipStudioSelect = {
   periodStart: true,
   periodEnd: true,
   billingPhase: true,
+  batchId: true,
   subscription: {
     select: {
       id: true,
@@ -23,6 +24,7 @@ const membershipStudioSelect = {
       adultSeats: true,
       kidSeats: true,
       billingCadence: true,
+      individualAudience: true,
     },
   },
 } as const;

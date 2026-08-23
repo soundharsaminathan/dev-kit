@@ -10,7 +10,12 @@ import {
   Query,
   UseGuards,
 } from "@nestjs/common";
-import { InvoiceStatus, PaymentMethod, UserRole } from "@prisma/client";
+import {
+  BillingCadence,
+  InvoiceStatus,
+  PaymentMethod,
+  UserRole,
+} from "@prisma/client";
 import {
   ArrayMinSize,
   IsArray,
@@ -46,6 +51,10 @@ class MarkPaidDto {
   @IsNumber()
   @Min(0)
   studioDiscount?: number;
+
+  @IsOptional()
+  @IsEnum(BillingCadence)
+  billingCadence?: BillingCadence;
 }
 
 class ConfirmInvoicePaymentDto {
@@ -247,6 +256,7 @@ export class BillingController {
       paymentMethod: dto.paymentMethod,
       referralDiscount: dto.referralDiscount,
       studioDiscount: dto.studioDiscount,
+      billingCadence: dto.billingCadence,
     });
   }
 

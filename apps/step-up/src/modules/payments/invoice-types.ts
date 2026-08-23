@@ -13,6 +13,20 @@ export type CombineSource = {
   netAmount: number;
 };
 
+export type BillingCadence = "MONTHLY" | "QUARTERLY";
+
+export type PaymentPlanOption = {
+  cadence: BillingCadence;
+  subscriptionId: string;
+  price: number;
+  label: string;
+};
+
+export type InvoicePaymentPlan = {
+  currentCadence: BillingCadence;
+  options: PaymentPlanOption[];
+};
+
 export type Invoice = {
   id: string;
   studentId: string;
@@ -33,6 +47,11 @@ export type Invoice = {
   membership?: {
     periodStart?: string | null;
     periodEnd?: string | null;
+    subscription?: {
+      name?: string;
+      billingCadence?: BillingCadence;
+      kind?: string;
+    } | null;
   } | null;
   chargeType?:
     | "POSTPAID_PRORATED"
@@ -42,6 +61,7 @@ export type Invoice = {
   attendedSessionCount?: number | null;
   billedSessionCount?: number | null;
   canConvertToQuarterly?: boolean;
+  paymentPlan?: InvoicePaymentPlan | null;
   dueDate?: string | null;
   familySummary?: {
     planName: string | null;
@@ -84,6 +104,45 @@ export function formatPrice(amount: number | string) {
 
 export function computeGst(amount: number, gstPercent: number): number {
   return Math.round(amount * (gstPercent / 100) * 100) / 100;
+}
+
+/** Savings when paying quarterly vs 3× monthly; 0 when not applicable. */
+export function quarterlyPlanSavings(
+  plan: InvoicePaymentPlan | null | undefined,
+): number {
+  if (!plan) return 0;
+  const monthly = plan.options.find((o) => o.cadence === "MONTHLY");
+  const quarterly = plan.options.find((o) => o.cadence === "QUARTERLY");
+  if (!monthly || !quarterly) return 0;
+  const savings = Math.round((monthly.price * 3 - quarterly.price) * 100) / 100;
+  return savings > 0 ? savings : 0;
+}
+
+export function paymentPlanPrice(
+  plan: InvoicePaymentPlan | null | undefined,
+  cadence: BillingCadence,
+  fallbackAmount: number,
+): number {
+  const option = plan?.options.find((o) => o.cadence === cadence);
+  return option?.price ?? fallbackAmount;
+}
+
+export function cadenceDisplayLabel(cadence: BillingCadence): string {
+  return cadence === "QUARTERLY" ? "Quarterly" : "Monthly";
+}
+
+export function cadencePriceHint(
+  plan: InvoicePaymentPlan,
+  cadence: BillingCadence,
+): string {
+  const option = plan.options.find((o) => o.cadence === cadence);
+  if (!option) return "";
+  if (cadence === "QUARTERLY") {
+    const savings = quarterlyPlanSavings(plan);
+    const base = `${formatPrice(option.price)} / 3 months`;
+    return savings > 0 ? `${base} · Save ${formatPrice(savings)}` : base;
+  }
+  return `${formatPrice(option.price)} / month`;
 }
 
 export type InvoiceMonthSource = Pick<

@@ -332,7 +332,7 @@ test.describe("admin (staff) smoke @smoke", () => {
     try {
       await openInvoicesAndWaitFor(page, `mark-paid-${invoice.id}`);
       await page.getByTestId(`mark-paid-${invoice.id}`).click();
-      await page.getByRole("checkbox", { name: /^Cash$/i }).click();
+      await page.getByTestId("method-cash").click();
       const [response] = await Promise.all([
         waitForApiResponse(page, {
           method: "PATCH",
@@ -973,7 +973,7 @@ test.describe("admin (staff) smoke @smoke", () => {
       expect(combined.id).toBeTruthy();
 
       await expect(page.getByTestId("confirm-open-family-paid")).toBeVisible();
-      await page.getByRole("checkbox", { name: /^Cash$/i }).click();
+      await page.getByTestId("family-method-cash").click();
       await expect(page.getByTestId("confirm-open-family-paid")).toBeEnabled();
       const [paidResponse] = await Promise.all([
         waitForApiResponse(page, {
@@ -1035,7 +1035,7 @@ test.describe("admin (staff) smoke @smoke", () => {
       // Paying only the opened invoice (optional combine) still works.
       await page.getByTestId("confirm-family-combine").click();
       await expect(page.getByTestId("confirm-mark-paid")).toBeVisible();
-      await page.getByRole("checkbox", { name: /^Cash$/i }).click();
+      await page.getByTestId("method-cash").click();
       const [paidResponse] = await Promise.all([
         waitForApiResponse(page, {
           method: "PATCH",

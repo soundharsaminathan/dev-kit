@@ -1,0 +1,131 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  min-height: 0;
+  max-height: inherit;
+}
+
+.scroll {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4, 1rem);
+  min-height: 0;
+  overflow: auto;
+  padding-block-end: var(--space-3, 0.75rem);
+}
+
+.sectionLabel {
+  margin: 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--color-fg) 55%, transparent);
+}
+
+.planSection,
+.methodSection,
+.discountSection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 0.5rem);
+}
+
+.planHint {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: color-mix(in srgb, var(--color-fg) 58%, transparent);
+  font-variant-numeric: tabular-nums;
+}
+
+.planNote {
+  margin: 0;
+  font-size: 0.75rem;
+  color: color-mix(in srgb, var(--color-fg) 48%, transparent);
+}
+
+.addDiscount {
+  align-self: flex-start;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-accent, var(--color-primary, #2563eb));
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
+.addDiscount:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.discountFields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 0.75rem);
+  padding: var(--space-3, 0.75rem);
+  border-radius: var(--radius-xl, 1rem);
+  border: 1px solid color-mix(in srgb, var(--color-fg) 10%, transparent);
+  background: color-mix(in srgb, var(--color-fg) 3%, transparent);
+}
+
+.discountHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2, 0.5rem);
+}
+
+.textButton {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: color-mix(in srgb, var(--color-fg) 55%, transparent);
+  cursor: pointer;
+}
+
+.textButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.fieldError {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--color-danger, #dc2626);
+}
+
+.methodGroup {
+  width: 100%;
+}
+
+.methodGroup :global([role="group"]),
+.methodGroup {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  width: 100%;
+}
+
+.footer {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  margin-top: auto;
+  padding-top: var(--space-3, 0.75rem);
+  padding-bottom: calc(var(--space-1, 0.25rem) + env(safe-area-inset-bottom, 0px));
+  background: linear-gradient(
+    to top,
+    var(--color-bg, #fff) 70%,
+    color-mix(in srgb, var(--color-bg, #fff) 0%, transparent)
+  );
+}

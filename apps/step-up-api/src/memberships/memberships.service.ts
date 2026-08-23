@@ -616,7 +616,16 @@ export class MembershipsService {
     await this.moveTrackToBatch(track.id, toBatchId);
   }
 
-  async convertUpcomingInvoiceToQuarterly(invoiceId: string) {
+  /**
+   * Switch an unpaid individual prepaid invoice between monthly and quarterly
+   * batch plans. Staff collect-payment uses this without the first-month gate;
+   * student convert-quarterly still requires that flag via the wrapper below.
+   */
+  async setInvoiceBillingCadence(
+    invoiceId: string,
+    cadence: BillingCadence,
+    options: { requireFirstMonthConvertFlag?: boolean } = {},
+  ) {
     const invoice = await this.prisma.invoice.findUnique({
       where: { id: invoiceId },
       include: {
@@ -639,52 +648,79 @@ export class MembershipsService {
     }
     if (invoice.chargeType !== InvoiceChargeType.PREPAID_FULL) {
       throw new BadRequestException(
-        "Only the upcoming prepaid invoice can convert to quarterly",
+        "Only the upcoming prepaid invoice can change payment plan",
       );
     }
     const meta = parsePurchaseMeta(invoice.purchaseMeta);
-    if (!meta?.firstMonthConvertToQuarterly) {
-      throw new BadRequestException(
-        "Quarterly convert is only available on the first-month bill",
-      );
+    if (options.requireFirstMonthConvertFlag) {
+      if (!meta?.firstMonthConvertToQuarterly) {
+        throw new BadRequestException(
+          "Quarterly convert is only available on the first-month bill",
+        );
+      }
+      if (cadence !== BillingCadence.QUARTERLY) {
+        throw new BadRequestException(
+          "First-month convert only supports switching to quarterly",
+        );
+      }
     }
     const membership = invoice.membership;
     if (!membership) {
       throw new BadRequestException("Invoice is not linked to a membership");
     }
-    if (membership.subscription.billingCadence !== BillingCadence.MONTHLY) {
-      throw new BadRequestException("This invoice is already quarterly");
+    if (membership.subscription.kind !== SubscriptionKind.INDIVIDUAL) {
+      throw new BadRequestException(
+        "Payment plan changes are only available for individual memberships",
+      );
     }
-    const batchId = membership.batchId ?? meta.batchId;
+    const currentCadence = membership.subscription.billingCadence;
+    if (currentCadence === cadence) {
+      return {
+        membership,
+        invoice: {
+          ...invoice,
+          amount: Number(invoice.amount),
+        },
+      };
+    }
+    const batchId = membership.batchId ?? meta?.batchId;
     if (!batchId) {
       throw new BadRequestException("No batch is linked to this invoice");
     }
 
-    const quarterly = await this.prisma.batchPlan.findFirst({
+    const targetPlan = await this.prisma.batchPlan.findFirst({
       where: {
         batchId,
         subscription: {
           active: true,
           kind: SubscriptionKind.INDIVIDUAL,
-          billingCadence: BillingCadence.QUARTERLY,
+          billingCadence: cadence,
           individualAudience: membership.subscription.individualAudience,
         },
       },
       include: { subscription: true },
     });
-    if (!quarterly) {
+    if (!targetPlan) {
       throw new BadRequestException(
-        "This batch does not have a quarterly plan",
+        cadence === BillingCadence.QUARTERLY
+          ? "This batch does not have a quarterly plan"
+          : "This batch does not have a monthly plan",
       );
     }
 
-    const periodEnd = getPeriodEnd(
-      membership.periodStart,
-      BillingCadence.QUARTERLY,
-    );
+    const periodEnd = getPeriodEnd(membership.periodStart, cadence);
     const nextMeta: InvoicePurchaseMeta = {
-      ...meta,
-      subscriptionId: quarterly.subscriptionId,
+      ...(meta ?? {
+        subscriptionId: targetPlan.subscriptionId,
+        purchaserUserId: membership.purchaserUserId,
+        coveredStudents: membership.coveredStudents.map((seat) => ({
+          studentId: seat.studentId,
+          seatRole: seat.seatRole,
+        })),
+        ...(batchId ? { batchId } : {}),
+      }),
+      subscriptionId: targetPlan.subscriptionId,
+      // Clear after any staff/student plan switch so the flag is one-shot.
       firstMonthConvertToQuarterly: false,
     };
 
@@ -692,14 +728,14 @@ export class MembershipsService {
       this.prisma.membership.update({
         where: { id: membership.id },
         data: {
-          subscriptionId: quarterly.subscriptionId,
+          subscriptionId: targetPlan.subscriptionId,
           periodEnd,
         },
       }),
       this.prisma.invoice.update({
         where: { id: invoice.id },
         data: {
-          amount: quarterly.subscription.price,
+          amount: targetPlan.subscription.price,
           purchaseMeta: nextMeta as unknown as Prisma.InputJsonValue,
         },
       }),
@@ -712,6 +748,12 @@ export class MembershipsService {
         amount: Number(updatedInvoice.amount),
       },
     };
+  }
+
+  async convertUpcomingInvoiceToQuarterly(invoiceId: string) {
+    return this.setInvoiceBillingCadence(invoiceId, BillingCadence.QUARTERLY, {
+      requireFirstMonthConvertFlag: true,
+    });
   }
 
   private async findCurrentPeriodTrack(studentId: string, at: Date) {

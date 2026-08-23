@@ -1,5 +1,9 @@
 import { Inject, Injectable, Logger } from "@nestjs/common";
-import type { InvoiceStatus } from "@prisma/client";
+import {
+  BillingCadence,
+  type InvoiceStatus,
+  SubscriptionKind,
+} from "@prisma/client";
 import { ACTIVE_ENROLLMENT_WHERE } from "../../batches/enrollment-status";
 import { invoiceDueDate } from "../../memberships/membership-helpers";
 import { PrismaService } from "../../prisma/prisma.service";
@@ -13,6 +17,7 @@ import {
   parseCombineMeta,
   parsePurchaseMeta,
 } from "../family-combine";
+import { buildInvoicePaymentPlan, type SiblingPlanRow } from "../payment-plan";
 import { BillingQuery } from "../persistence/billing.query";
 
 @Injectable()
@@ -92,6 +97,12 @@ export class BillingQueriesService {
       })) {
         batchIdsToResolve.add(batchId);
       }
+      if (invoice.membership?.batchId) {
+        batchIdsToResolve.add(invoice.membership.batchId);
+      }
+      if (purchaseMeta?.batchId) {
+        batchIdsToResolve.add(purchaseMeta.batchId);
+      }
     }
 
     const batches =
@@ -103,6 +114,11 @@ export class BillingQueriesService {
         : [];
     const batchNameById = new Map(
       batches.map((batch) => [batch.id, batch.name] as const),
+    );
+
+    const siblingPlans = await this.loadSiblingPlans(
+      studioId,
+      batchIdsToResolve,
     );
 
     let presentedStudents: Awaited<
@@ -163,6 +179,25 @@ export class BillingQueriesService {
         photoUrl: null,
       };
 
+      const membershipSubscription = invoice.membership?.subscription
+        ? {
+            kind: invoice.membership.subscription.kind,
+            billingCadence: invoice.membership.subscription.billingCadence,
+            individualAudience:
+              invoice.membership.subscription.individualAudience,
+          }
+        : null;
+
+      const paymentPlan = buildInvoicePaymentPlan({
+        kind,
+        status: invoice.status,
+        chargeType: invoice.chargeType,
+        batchId:
+          invoice.membership?.batchId ?? purchaseMeta?.batchId ?? batchId,
+        membershipSubscription,
+        siblingPlans,
+      });
+
       return {
         id: invoice.id,
         studentId: invoice.studentId,
@@ -190,6 +225,7 @@ export class BillingQueriesService {
           Boolean(purchaseMeta?.firstMonthConvertToQuarterly) &&
           (invoice.status === "PENDING" || invoice.status === "OVERDUE") &&
           invoice.chargeType === "PREPAID_FULL",
+        paymentPlan,
         dueDate:
           invoiceDueDate({
             chargeType: invoice.chargeType,
@@ -240,6 +276,44 @@ export class BillingQueriesService {
     });
 
     return buildPage(items, limit, (row) => row.id as string);
+  }
+
+  private async loadSiblingPlans(
+    studioId: string | null | undefined,
+    batchIds: Set<string>,
+  ): Promise<SiblingPlanRow[]> {
+    if (batchIds.size === 0) return [];
+    const plans = await this.prisma.batchPlan.findMany({
+      where: {
+        batchId: { in: [...batchIds] },
+        ...(studioId ? { batch: { studioId } } : {}),
+        subscription: {
+          active: true,
+          kind: SubscriptionKind.INDIVIDUAL,
+          billingCadence: {
+            in: [BillingCadence.MONTHLY, BillingCadence.QUARTERLY],
+          },
+        },
+      },
+      select: {
+        batchId: true,
+        subscriptionId: true,
+        subscription: {
+          select: {
+            price: true,
+            billingCadence: true,
+            individualAudience: true,
+          },
+        },
+      },
+    });
+    return plans.map((plan) => ({
+      batchId: plan.batchId,
+      subscriptionId: plan.subscriptionId,
+      price: Number(plan.subscription.price),
+      billingCadence: plan.subscription.billingCadence,
+      individualAudience: plan.subscription.individualAudience,
+    }));
   }
 
   async listForStudent(

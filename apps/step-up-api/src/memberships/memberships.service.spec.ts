@@ -439,7 +439,10 @@ describe("MembershipsService.convertUpcomingInvoiceToQuarterly", () => {
         id: "mem-1",
         batchId: "batch-1",
         periodStart: new Date(Date.UTC(2026, 7, 1)),
+        purchaserUserId: "user-1",
+        coveredStudents: [],
         subscription: {
+          kind: "INDIVIDUAL",
           billingCadence: "MONTHLY",
           individualAudience: "ADULT",
         },
@@ -459,7 +462,9 @@ describe("MembershipsService.convertUpcomingInvoiceToQuarterly", () => {
       purchaseMeta: { firstMonthConvertToQuarterly: true },
       membership: {
         id: "mem-1",
-        subscription: { billingCadence: "MONTHLY" },
+        purchaserUserId: "user-1",
+        coveredStudents: [],
+        subscription: { kind: "INDIVIDUAL", billingCadence: "MONTHLY" },
       },
     });
 
@@ -476,7 +481,9 @@ describe("MembershipsService.convertUpcomingInvoiceToQuarterly", () => {
       purchaseMeta: { firstMonthConvertToQuarterly: true },
       membership: {
         id: "mem-1",
-        subscription: { billingCadence: "MONTHLY" },
+        purchaserUserId: "user-1",
+        coveredStudents: [],
+        subscription: { kind: "INDIVIDUAL", billingCadence: "MONTHLY" },
       },
     });
 
@@ -490,6 +497,7 @@ describe("MembershipsService.convertUpcomingInvoiceToQuarterly", () => {
       id: "inv-next",
       status: "PENDING",
       chargeType: "PREPAID_FULL",
+      amount: 3000,
       purchaseMeta: {
         batchId: "batch-1",
         subscriptionId: "sub-m",
@@ -501,7 +509,10 @@ describe("MembershipsService.convertUpcomingInvoiceToQuarterly", () => {
         id: "mem-sep",
         batchId: "batch-1",
         periodStart: new Date(Date.UTC(2026, 7, 1)),
+        purchaserUserId: "user-1",
+        coveredStudents: [],
         subscription: {
+          kind: "INDIVIDUAL",
           billingCadence: "MONTHLY",
           individualAudience: "ADULT",
         },
@@ -540,6 +551,116 @@ describe("MembershipsService.convertUpcomingInvoiceToQuarterly", () => {
       }),
     });
     expect(result.invoice.amount).toBe(9000);
+  });
+});
+
+describe("MembershipsService.setInvoiceBillingCadence", () => {
+  const prisma = {
+    invoice: {
+      findUnique: vi.fn(),
+      update: vi.fn(),
+    },
+    membership: { update: vi.fn() },
+    batchPlan: { findFirst: vi.fn() },
+    $transaction: vi.fn(),
+  };
+  const notifications = { create: vi.fn() };
+  let service: MembershipsService;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    service = new MembershipsService(
+      prisma as never,
+      notifications as never,
+      {
+        assertNoConflicts: vi.fn().mockResolvedValue(undefined),
+        assertStudentAvailableForBatch: vi.fn().mockResolvedValue(undefined),
+      } as never,
+    );
+  });
+
+  it("switches quarterly back to monthly without the first-month flag", async () => {
+    const invoice = {
+      id: "inv-q",
+      status: "OVERDUE",
+      chargeType: "PREPAID_FULL",
+      amount: 9000,
+      purchaseMeta: {
+        batchId: "batch-1",
+        subscriptionId: "sub-q",
+        purchaserUserId: "user-1",
+        coveredStudents: [],
+      },
+      membership: {
+        id: "mem-1",
+        batchId: "batch-1",
+        periodStart: new Date(Date.UTC(2026, 7, 1)),
+        purchaserUserId: "user-1",
+        coveredStudents: [],
+        subscription: {
+          kind: "INDIVIDUAL",
+          billingCadence: "QUARTERLY",
+          individualAudience: "ADULT",
+        },
+      },
+    };
+    prisma.invoice.findUnique.mockResolvedValue(invoice);
+    prisma.batchPlan.findFirst.mockResolvedValue({
+      subscriptionId: "sub-m",
+      subscription: { id: "sub-m", price: 3000 },
+    });
+    prisma.membership.update.mockResolvedValue({ id: "mem-1" });
+    prisma.invoice.update.mockResolvedValue({ ...invoice, amount: 3000 });
+    prisma.$transaction.mockImplementation((ops: unknown[]) =>
+      Promise.all(ops as Promise<unknown>[]),
+    );
+
+    const result = await service.setInvoiceBillingCadence(
+      "inv-q",
+      "MONTHLY" as never,
+    );
+
+    expect(prisma.batchPlan.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          batchId: "batch-1",
+          subscription: expect.objectContaining({
+            billingCadence: "MONTHLY",
+          }),
+        }),
+      }),
+    );
+    expect(result.invoice.amount).toBe(3000);
+  });
+
+  it("is a no-op when cadence already matches", async () => {
+    prisma.invoice.findUnique.mockResolvedValue({
+      id: "inv-1",
+      status: "PENDING",
+      chargeType: "PREPAID_FULL",
+      amount: 3000,
+      purchaseMeta: { subscriptionId: "sub-m", purchaserUserId: "u", coveredStudents: [] },
+      membership: {
+        id: "mem-1",
+        batchId: "batch-1",
+        periodStart: new Date(Date.UTC(2026, 7, 1)),
+        purchaserUserId: "u",
+        coveredStudents: [],
+        subscription: {
+          kind: "INDIVIDUAL",
+          billingCadence: "MONTHLY",
+          individualAudience: "ADULT",
+        },
+      },
+    });
+
+    const result = await service.setInvoiceBillingCadence(
+      "inv-1",
+      "MONTHLY" as never,
+    );
+
+    expect(prisma.batchPlan.findFirst).not.toHaveBeenCalled();
+    expect(result.invoice.amount).toBe(3000);
   });
 });
 

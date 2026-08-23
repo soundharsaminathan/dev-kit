@@ -15,7 +15,7 @@ export type AppSheetProps = {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   title?: string | undefined;
-  size?: "default" | "tall" | undefined;
+  size?: "default" | "tall" | "wide" | undefined;
   children: ReactNode;
 };
 
@@ -34,7 +34,7 @@ export function AppSheet({
         isOpen={isOpen}
         onOpenChange={onOpenChange}
         title={title}
-        size={size}
+        size={size === "wide" ? "tall" : size}
       >
         {children}
       </AppBottomSheet>
@@ -43,7 +43,10 @@ export function AppSheet({
 
   return (
     <Dialog isOpen={isOpen} onOpenChange={onOpenChange}>
-      <Modal className={styles.modal}>
+      <Modal
+        className={styles.modal}
+        data-size={size === "wide" ? "wide" : undefined}
+      >
         <DialogContent showCloseButton className={styles.content}>
           {title ? (
             <DialogHeader>
@@ -52,7 +55,7 @@ export function AppSheet({
           ) : null}
           <DialogBody
             className={styles.body}
-            data-size={size === "tall" ? "tall" : undefined}
+            data-size={size === "tall" || size === "wide" ? "tall" : undefined}
           >
             {children}
           </DialogBody>
