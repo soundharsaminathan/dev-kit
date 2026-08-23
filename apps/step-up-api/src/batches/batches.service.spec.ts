@@ -20,7 +20,7 @@ const importLock = createImportLockMock();
 describe("BatchesService branch validation", () => {
   const prisma = {
     user: { findMany: vi.fn() },
-    studioBranch: { findUnique: vi.fn() },
+    studioBranch: { findFirst: vi.fn(), findUnique: vi.fn() },
     certificateTemplate: { findUnique: vi.fn() },
     subscription: { findMany: vi.fn() },
     batch: {
@@ -133,10 +133,7 @@ describe("BatchesService branch validation", () => {
   });
 
   it("rejects a branch from another studio", async () => {
-    prisma.studioBranch.findUnique.mockResolvedValue({
-      id: "branch-other",
-      studioId: "studio-2",
-    });
+    prisma.studioBranch.findFirst.mockResolvedValue(null);
 
     await expect(
       service.create("owner-1", {
@@ -144,11 +141,14 @@ describe("BatchesService branch validation", () => {
         branchId: "branch-other",
       }),
     ).rejects.toBeInstanceOf(BadRequestException);
+    expect(prisma.studioBranch.findFirst).toHaveBeenCalledWith({
+      where: { id: "branch-other", studioId: "studio-1" },
+    });
     expect(prisma.batch.create).not.toHaveBeenCalled();
   });
 
   it("creates a batch when the branch belongs to the studio", async () => {
-    prisma.studioBranch.findUnique.mockResolvedValue({
+    prisma.studioBranch.findFirst.mockResolvedValue({
       id: "branch-1",
       studioId: "studio-1",
     });
@@ -178,7 +178,7 @@ describe("BatchesService branch validation", () => {
   });
 
   it("rejects create when a schedule conflict exists", async () => {
-    prisma.studioBranch.findUnique.mockResolvedValue({
+    prisma.studioBranch.findFirst.mockResolvedValue({
       id: "branch-1",
       studioId: "studio-1",
     });
@@ -195,7 +195,7 @@ describe("BatchesService branch validation", () => {
   });
 
   it("rejects a new batch whose schedule exceeds one year", async () => {
-    prisma.studioBranch.findUnique.mockResolvedValue({
+    prisma.studioBranch.findFirst.mockResolvedValue({
       id: "branch-1",
       studioId: "studio-1",
     });
