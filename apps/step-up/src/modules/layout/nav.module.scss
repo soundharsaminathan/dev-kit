@@ -28,7 +28,7 @@
 
 :global([data-sidebar=""]:not([data-expanded="true"])) .link {
   justify-content: center;
-  padding-inline: 0;
+  padding: 0.4375rem 0;
 }
 
 .trigger {

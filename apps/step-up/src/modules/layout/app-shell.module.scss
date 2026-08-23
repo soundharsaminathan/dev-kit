@@ -63,6 +63,12 @@
   justify-content: center;
 }
 
+.sidebarWrap
+  :global([data-sidebar=""]:not([data-expanded="true"]))
+  .sidebarBrand {
+  display: none;
+}
+
 .sidebarWrap :global([data-sidebar=""]) {
   height: 100%;
 }

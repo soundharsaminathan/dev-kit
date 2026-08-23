@@ -85,17 +85,30 @@
   overflow: auto;
 }
 
-.root:not([data-expanded="true"]) .content {
-  overflow: hidden;
-}
-
 .root:not([data-expanded="true"]) {
   [data-sidebar-label] {
     display: none;
   }
 
+  .content {
+    gap: 0;
+  }
+
+  .section {
+    padding-block: 0;
+    padding-inline: var(--space-2);
+  }
+
+  .section + .section {
+    margin-top: var(--space-1);
+  }
+
   .heading {
-    visibility: hidden;
+    display: none;
+  }
+
+  .list {
+    gap: 0;
   }
 
   .item :global([data-button=""]) {
