@@ -12,11 +12,32 @@
   flex-wrap: nowrap;
   gap: 0.25rem;
   width: 100%;
+  height: auto;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: thin;
+  padding: var(--space-1, 0.25rem) 0;
   padding-bottom: 0.15rem;
   border-bottom: 1px solid color-mix(in srgb, var(--color-fg) 10%, transparent);
+}
+
+.tab {
+  height: auto;
+  padding: var(--space-2, 0.5rem) var(--space-3, 0.75rem);
+  font-size: 0.9375rem;
+  line-height: 1.25;
+}
+
+@media (min-width: 768px) {
+  .tabList {
+    padding: 0.375rem 0;
+    padding-bottom: 0.2rem;
+  }
+
+  .tab {
+    padding: 0.625rem var(--space-4, 1rem);
+    font-size: 1rem;
+  }
 }
 
 .tabPanel {

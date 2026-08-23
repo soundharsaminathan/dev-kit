@@ -563,6 +563,8 @@
   display: flex;
   width: 100%;
   max-width: 100%;
+  height: auto;
+  padding: var(--space-1, 0.25rem);
 }
 
 .tabs .tabList[data-orientation="horizontal"] {
@@ -573,8 +575,23 @@
   flex: 1 1 0;
   min-width: 0;
   justify-content: center;
+  height: auto;
   white-space: normal;
   text-align: center;
+  padding: var(--space-2, 0.5rem) var(--space-3, 0.75rem);
+  font-size: 0.9375rem;
+  line-height: 1.25;
+}
+
+@media (min-width: 768px) {
+  .tabs .tabList {
+    padding: 0.375rem;
+  }
+
+  .tabs .tab {
+    padding: 0.625rem var(--space-4, 1rem);
+    font-size: 1rem;
+  }
 }
 
 .swipeHeader {
@@ -598,12 +615,12 @@
   overflow: hidden;
   text-align: center;
   white-space: nowrap;
-  line-height: 1.2;
+  line-height: 1.25;
   padding: var(--space-2, 0.5rem) var(--space-3, 0.75rem);
   border-radius: var(--radius-xl, 1rem);
   border: 1px solid color-mix(in srgb, var(--color-fg) 12%, transparent);
   background: var(--color-card, var(--color-bg));
-  font-size: 0.8125rem;
+  font-size: 0.9375rem;
   font-weight: 600;
   color: color-mix(in srgb, var(--color-fg) 58%, transparent);
   cursor: pointer;

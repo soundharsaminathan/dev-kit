@@ -261,11 +261,21 @@ function BatchSettingsPage() {
               className={styles.tabs}
             >
               <TabList className={styles.tabList}>
-                <Tab id="basics">Basics</Tab>
-                <Tab id="schedule">Schedule</Tab>
-                <Tab id="categories">Categories</Tab>
-                <Tab id="plans">Plans</Tab>
-                <Tab id="certification">Certification</Tab>
+                <Tab id="basics" className={styles.tab}>
+                  Basics
+                </Tab>
+                <Tab id="schedule" className={styles.tab}>
+                  Schedule
+                </Tab>
+                <Tab id="categories" className={styles.tab}>
+                  Categories
+                </Tab>
+                <Tab id="plans" className={styles.tab}>
+                  Plans
+                </Tab>
+                <Tab id="certification" className={styles.tab}>
+                  Certification
+                </Tab>
               </TabList>
 
               <TabPanel id="basics" className={styles.tabPanel}>

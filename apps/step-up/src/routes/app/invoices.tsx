@@ -488,11 +488,21 @@ function InvoicesPage() {
           </div>
         </div>
 
-        <Tabs defaultSelectedKey="individual" aria-label="Invoice types">
-          <TabList>
-            <Tab id="individual">Individual</Tab>
-            <Tab id="family">Family</Tab>
-            <Tab id="refunds">Refunds</Tab>
+        <Tabs
+          defaultSelectedKey="individual"
+          aria-label="Invoice types"
+          className={screen.tabs}
+        >
+          <TabList className={screen.tabList}>
+            <Tab id="individual" className={screen.tab}>
+              Individual
+            </Tab>
+            <Tab id="family" className={screen.tab}>
+              Family
+            </Tab>
+            <Tab id="refunds" className={screen.tab}>
+              Refunds
+            </Tab>
           </TabList>
 
           <TabPanel id="individual">

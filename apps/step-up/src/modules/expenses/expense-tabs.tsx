@@ -37,7 +37,7 @@ export function ExpenseTabs() {
     >
       <TabList className={styles.tabList}>
         {TABS.map((tab) => (
-          <Tab key={tab.id} id={tab.id}>
+          <Tab key={tab.id} id={tab.id} className={styles.tab}>
             {tab.label}
           </Tab>
         ))}
