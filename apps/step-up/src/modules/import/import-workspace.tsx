@@ -1,7 +1,6 @@
 import { Alert, AlertDescription, AlertTitle } from "@dev-ui/components/alert";
 import { FileTrigger } from "@dev-ui/components/file-trigger";
 import { Icon } from "@dev-ui/icons";
-import { useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useAuth } from "@/lib/use-auth";
 import { AppSheet } from "@/modules/ui/app-sheet";
@@ -156,7 +155,6 @@ export function ImportWorkspace({
   onCancelImport,
   onImportAnother,
 }: ImportWorkspaceProps) {
-  const navigate = useNavigate();
   const { user } = useAuth();
   const [historyOpen, setHistoryOpen] = useState(false);
   const [cancelConfirm, setCancelConfirm] = useState(false);
@@ -486,11 +484,11 @@ export function ImportWorkspace({
             ) : null}
 
             {phase === "complete" ? (
-              <div className={styles.footerActions}>
+              <div className={styles.footerOutlineActions}>
                 {totalInvalid > 0 || skippedTotal > 0 ? (
-                  <TouchButton
-                    variant="quiet"
-                    fullWidth
+                  <button
+                    type="button"
+                    className={styles.outlineButton}
                     onClick={() => {
                       if (totalInvalid > 0) {
                         downloadSkippedRows(result);
@@ -521,19 +519,15 @@ export function ImportWorkspace({
                     }}
                   >
                     View skipped records
-                  </TouchButton>
+                  </button>
                 ) : null}
-                <div className={styles.footerActionsRow}>
-                  <TouchButton
-                    variant="primary"
-                    onClick={() => void navigate({ to: "/app/students" })}
-                  >
-                    View studio
-                  </TouchButton>
-                  <TouchButton variant="quiet" onClick={onImportAnother}>
-                    Import another workbook
-                  </TouchButton>
-                </div>
+                <button
+                  type="button"
+                  className={styles.outlineButton}
+                  onClick={onImportAnother}
+                >
+                  Import another workbook
+                </button>
               </div>
             ) : null}
 
