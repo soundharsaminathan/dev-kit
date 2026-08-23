@@ -40,6 +40,7 @@ export type ImportJobSnapshot = {
   status: StudioDataImportJobStatus;
   error: string | null;
   entities: ImportEntitiesSnapshot;
+  batchName: string | null;
 };
 
 export const IMPORT_ENTITY_LABELS: Record<ImportEntityKey, string> = {

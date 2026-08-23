@@ -49,6 +49,7 @@ export type ImportJobSnapshot = {
   status: StudioDataImportJobStatus;
   error: string | null;
   entities: ImportEntitiesSnapshot;
+  batchName: string | null;
 };
 
 export const IMPORT_PROGRESS_CHUNK_SIZE = 50;

@@ -1,16 +1,14 @@
-import { useToastContext } from "@dev-ui/components/toast";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { default as readXlsxFile } from "read-excel-file/browser";
 import { useApi } from "@/lib/api-context";
 import { requireAdmin } from "@/lib/require-auth";
-import { useStudioId } from "@/lib/use-studio-id";
+import { useImportJob } from "@/modules/import/import-job-provider";
 import {
   ImportWorkspace,
   type ImportWorkspacePhase,
 } from "@/modules/import/import-workspace";
-import type { ImportJobSnapshot } from "@/modules/import/import-types";
 import {
   type ParseStudioImportResult,
   parseStudioImportSheets,
@@ -50,7 +48,7 @@ const IMPORT_HISTORY_KEY = "step-up-import-history";
 function persistImportHistory(
   id: string,
   fileName: string,
-  status: ImportJobSnapshot["status"],
+  status: "PENDING" | "RUNNING" | "SUCCEEDED" | "FAILED",
 ) {
   try {
     const raw = localStorage.getItem(IMPORT_HISTORY_KEY);
@@ -93,27 +91,44 @@ function resolveImportBatchName(result: ParseStudioImportResult): string | null 
 
 function ImportDataPage() {
   const api = useApi();
-  const studioId = useStudioId();
-  const queryClient = useQueryClient();
-  const { toast } = useToastContext("ImportDataPage");
+  const { job, isActive, isComplete, isFailed, trackImport, clearImport } =
+    useImportJob();
   const [phase, setPhase] = useState<ImportWorkspacePhase>("upload");
   const [fileName, setFileName] = useState<string | null>(null);
   const [result, setResult] = useState<ParseStudioImportResult>(EMPTY_RESULT);
   const [fileError, setFileError] = useState<string | null>(null);
   const [isReading, setIsReading] = useState(false);
-  const [jobId, setJobId] = useState<string | null>(null);
   const [startError, setStartError] = useState<string | null>(null);
   const [precheckErrors, setPrecheckErrors] = useState<string[]>([]);
   const [isPrechecking, setIsPrechecking] = useState(false);
+
+  useEffect(() => {
+    if (isActive) {
+      setPhase("create");
+      return;
+    }
+    if (isComplete) {
+      setPhase("complete");
+      return;
+    }
+    if (isFailed) {
+      setPhase("failed");
+    }
+  }, [isActive, isComplete, isFailed]);
 
   const startImport = useMutation({
     mutationFn: () =>
       api.post<{ id: string }>("/import/jobs", buildImportPayload(result)),
     onSuccess: (data) => {
+      const batchName = resolveImportBatchName(result);
       if (fileName) {
         persistImportHistory(data.id, fileName, "PENDING");
       }
-      setJobId(data.id);
+      trackImport({
+        jobId: data.id,
+        batchName,
+        fileName,
+      });
       setPhase("create");
       setStartError(null);
     },
@@ -124,46 +139,6 @@ function ImportDataPage() {
     },
   });
 
-  const jobQuery = useQuery({
-    queryKey: ["import-job", studioId, jobId],
-    queryFn: () => api.get<ImportJobSnapshot>(`/import/jobs/${jobId}`),
-    enabled: Boolean(jobId) && (phase === "create" || phase === "failed"),
-    refetchInterval: (query) => {
-      const status = query.state.data?.status;
-      if (status === "PENDING" || status === "RUNNING") {
-        return 750;
-      }
-      return false;
-    },
-  });
-
-  useEffect(() => {
-    const job = jobQuery.data;
-    if (!job || !jobId || !fileName) {
-      return;
-    }
-    if (job.status === "SUCCEEDED" && phase === "create") {
-      persistImportHistory(jobId, fileName, job.status);
-      setPhase("complete");
-      void queryClient.invalidateQueries({ queryKey: ["studio-members"] });
-      void queryClient.invalidateQueries({ queryKey: ["student-funnel"] });
-      void queryClient.invalidateQueries({ queryKey: ["student-directory"] });
-      void queryClient.invalidateQueries({ queryKey: ["batches"] });
-      void queryClient.invalidateQueries({ queryKey: ["invoices"] });
-      const batchName = resolveImportBatchName(result);
-      toast({
-        title: "Import complete",
-        description: batchName
-          ? `${batchName} data has been imported successfully.`
-          : "Your studio data has been imported successfully.",
-      });
-    }
-    if (job.status === "FAILED" && phase === "create") {
-      persistImportHistory(jobId, fileName, job.status);
-      setPhase("failed");
-    }
-  }, [fileName, jobId, jobQuery.data, phase, queryClient, result, toast]);
-
   const selectFile = async (files: FileList | null) => {
     const file = files?.[0];
     if (!file) {
@@ -171,7 +146,7 @@ function ImportDataPage() {
       setResult(EMPTY_RESULT);
       setFileError(null);
       setPhase("upload");
-      setJobId(null);
+      clearImport();
       setStartError(null);
       setPrecheckErrors([]);
       setIsPrechecking(false);
@@ -181,7 +156,7 @@ function ImportDataPage() {
     setIsReading(true);
     setFileError(null);
     setFileName(file.name);
-    setJobId(null);
+    clearImport();
     setStartError(null);
     setPrecheckErrors([]);
 
@@ -226,7 +201,7 @@ function ImportDataPage() {
     setFileName(null);
     setResult(EMPTY_RESULT);
     setFileError(null);
-    setJobId(null);
+    clearImport();
     setStartError(null);
     setPrecheckErrors([]);
     setIsPrechecking(false);
@@ -240,14 +215,14 @@ function ImportDataPage() {
       fileError={fileError}
       isReading={isReading}
       startError={startError}
-      job={jobQuery.data ?? null}
+      job={job}
       isStarting={startImport.isPending}
       precheckErrors={precheckErrors}
       isPrechecking={isPrechecking}
       onSelectFile={(files) => void selectFile(files)}
       onStartImport={() => startImport.mutate()}
       onCancelImport={() => {
-        setJobId(null);
+        clearImport();
         setPhase("analyze");
       }}
       onImportAnother={resetImport}

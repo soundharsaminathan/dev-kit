@@ -14,6 +14,7 @@ import {
 import { ACTIVE_ENROLLMENT_WHERE } from "../batches/enrollment-status";
 import { ScheduleConflictService } from "../calendar/schedule-conflict.service";
 import { ChatService } from "../chat/chat.service";
+import { ImportLockService } from "../data-import/import-lock.service";
 import { NotificationsService } from "../notifications/notifications.service";
 import { PrismaService } from "../prisma/prisma.service";
 import {
@@ -70,7 +71,23 @@ export class SessionsService {
     private readonly notifications: NotificationsService,
     @Inject(ChatService) private readonly chat: ChatService,
     @Inject(UserCryptoService) private readonly crypto: UserCryptoService,
+    @Inject(ImportLockService)
+    private readonly importLock: ImportLockService,
   ) {}
+
+  private async assertSessionBatchUnlocked(sessionId: string) {
+    const session = await this.prisma.session.findUnique({
+      where: { id: sessionId },
+      include: { batch: { select: { id: true, studioId: true } } },
+    });
+    if (!session) {
+      throw new NotFoundException("Session not found");
+    }
+    await this.importLock.assertBatchUnlocked(
+      session.batch.studioId,
+      session.batch.id,
+    );
+  }
 
   listByBatch(batchId: string) {
     return this.prisma.session.findMany({
@@ -219,6 +236,7 @@ export class SessionsService {
     if (!batch) {
       throw new NotFoundException("Batch not found");
     }
+    await this.importLock.assertBatchUnlocked(batch.studioId, data.batchId);
 
     await this.scheduleConflicts.assertNoConflicts({
       intervals: [{ startsAt, endsAt }],
@@ -253,6 +271,7 @@ export class SessionsService {
     id: string,
     data: { startsAt: string; endsAt: string },
   ) {
+    await this.assertSessionBatchUnlocked(id);
     const startsAt = new Date(data.startsAt);
     const endsAt = new Date(data.endsAt);
     this.assertValidWindow(startsAt, endsAt);
@@ -302,6 +321,7 @@ export class SessionsService {
   }
 
   async cancel(actor: DecryptedUser, id: string) {
+    await this.assertSessionBatchUnlocked(id);
     const existing = await this.prisma.session.findUnique({
       where: { id },
       include: {
@@ -340,6 +360,7 @@ export class SessionsService {
     id: string,
     data: { trainerId?: string } = {},
   ) {
+    await this.assertSessionBatchUnlocked(id);
     const session = await this.prisma.session.findUnique({
       where: { id },
       include: {

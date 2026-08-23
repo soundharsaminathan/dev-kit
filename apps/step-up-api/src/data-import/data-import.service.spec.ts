@@ -23,6 +23,7 @@ function buildService(
     scheduleConflicts?: Record<string, unknown>;
     outbox?: Record<string, unknown>;
     notifications?: Record<string, unknown>;
+    importLock?: Record<string, unknown>;
   } = {},
 ) {
   const prisma = {
@@ -104,6 +105,14 @@ function buildService(
     ...createNotificationsMock(),
     ...overrides.notifications,
   };
+  const importLock = {
+    getActiveImport: vi.fn().mockResolvedValue(null),
+    getActiveImportBatchName: vi.fn().mockResolvedValue(null),
+    assertBatchUnlocked: vi.fn().mockResolvedValue(undefined),
+    assertBatchNameUnlocked: vi.fn().mockResolvedValue(undefined),
+    resolveImportBatchName: vi.fn(),
+    ...overrides.importLock,
+  };
   const service = new DataImportService(
     prisma as never,
     crypto as never,
@@ -112,6 +121,7 @@ function buildService(
     scheduleConflicts as never,
     outbox as never,
     notifications as never,
+    importLock as never,
   );
   return {
     service,
@@ -122,6 +132,7 @@ function buildService(
     scheduleConflicts,
     outbox,
     notifications,
+    importLock,
   };
 }
 

@@ -18,6 +18,7 @@ import {
 } from "@prisma/client";
 import { enrollmentVisibleAtSession } from "../batches/enrollment-status";
 import { loadPaidMonthsByStudent } from "../billing/family-combine";
+import { ImportLockService } from "../data-import/import-lock.service";
 import { MembershipsService } from "../memberships/memberships.service";
 import { NotificationsService } from "../notifications/notifications.service";
 import { PrismaService } from "../prisma/prisma.service";
@@ -42,7 +43,23 @@ export class AttendanceService {
     private readonly notifications: NotificationsService,
     @Inject(ConfigService) private readonly config: ConfigService,
     @Inject(UserCryptoService) private readonly crypto: UserCryptoService,
+    @Inject(ImportLockService)
+    private readonly importLock: ImportLockService,
   ) {}
+
+  private async assertSessionBatchUnlocked(sessionId: string) {
+    const session = await this.prisma.session.findUnique({
+      where: { id: sessionId },
+      include: { batch: { select: { id: true, studioId: true } } },
+    });
+    if (!session) {
+      throw new BadRequestException("Session not found");
+    }
+    await this.importLock.assertBatchUnlocked(
+      session.batch.studioId,
+      session.batch.id,
+    );
+  }
 
   async listBySession(sessionId: string) {
     const records = await this.prisma.attendance.findMany({
@@ -335,6 +352,7 @@ export class AttendanceService {
   }
 
   async markAllPresent(sessionId: string, markedById: string) {
+    await this.assertSessionBatchUnlocked(sessionId);
     const session = await this.prisma.session.findUnique({
       where: { id: sessionId },
       select: { id: true, startsAt: true },
@@ -385,6 +403,7 @@ export class AttendanceService {
     markedById: string;
     source: AttendanceSource;
   }) {
+    await this.assertSessionBatchUnlocked(data.sessionId);
     const session = await this.prisma.session.findUnique({
       where: { id: data.sessionId },
       include: { batch: true },

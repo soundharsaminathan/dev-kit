@@ -1,0 +1,83 @@
+.stack {
+  position: sticky;
+  top: 0;
+  z-index: 39;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+
+.banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3, 0.75rem);
+  padding: 0.625rem 1rem;
+  padding-inline: max(1rem, env(safe-area-inset-left, 0px))
+    max(1rem, env(safe-area-inset-right, 0px));
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.35;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-fg) 8%, transparent);
+  background: color-mix(in srgb, var(--color-warning, #f59e0b) 14%, var(--color-bg));
+  color: var(--color-fg);
+}
+
+.complete {
+  background: #238636;
+  color: #ffffff;
+}
+
+.failed {
+  background: color-mix(in srgb, var(--color-danger) 14%, var(--color-bg));
+}
+
+.copy {
+  min-width: 0;
+  flex: 1;
+}
+
+.title {
+  margin: 0;
+  font-size: 0.8125rem;
+  font-weight: 700;
+}
+
+.meta {
+  margin: 0.125rem 0 0;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: color-mix(in srgb, currentColor 78%, transparent);
+}
+
+.complete .meta {
+  color: rgb(255 255 255 / 88%);
+}
+
+.action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 1.75rem;
+  padding: 0 0.65rem;
+  border-radius: var(--radius-lg, 0.75rem);
+  border: 1px solid color-mix(in srgb, currentColor 18%, transparent);
+  background: color-mix(in srgb, var(--color-bg) 72%, transparent);
+  color: inherit;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.progress {
+  height: 3px;
+  background: color-mix(in srgb, var(--color-fg) 10%, transparent);
+}
+
+.progressFill {
+  display: block;
+  height: 100%;
+  background: var(--color-warning, #f59e0b);
+  transition: width var(--motion-normal, 200ms) ease;
+}

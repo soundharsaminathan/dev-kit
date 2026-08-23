@@ -41,6 +41,12 @@ export class DataImportController {
     return this.dataImport.startImportJob(user, dto);
   }
 
+  @Get("jobs/active")
+  @Roles(UserRole.OWNER, UserRole.STAFF)
+  getActiveImportJob(@CurrentUser() user: DecryptedUser) {
+    return this.dataImport.getActiveImportJob(user);
+  }
+
   @Get("jobs/:id")
   @Roles(UserRole.OWNER, UserRole.STAFF)
   getImportJob(

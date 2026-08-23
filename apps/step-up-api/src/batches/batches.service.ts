@@ -22,6 +22,7 @@ import {
   UserRole,
 } from "@prisma/client";
 import { BillingService } from "../billing/billing.service";
+import { ImportLockService } from "../data-import/import-lock.service";
 import {
   loadPaidMonthsByStudent,
   parseCombineMeta,
@@ -477,7 +478,20 @@ export class BatchesService {
     private readonly memberships: MembershipsService,
     @Inject(BillingService) private readonly billing: BillingService,
     @Inject(ChatService) private readonly chat: ChatService,
+    @Inject(ImportLockService)
+    private readonly importLock: ImportLockService,
   ) {}
+
+  private async assertBatchImportUnlocked(batchId: string) {
+    const batch = await this.prisma.batch.findUnique({
+      where: { id: batchId },
+      select: { studioId: true },
+    });
+    if (!batch) {
+      throw new NotFoundException("Batch not found");
+    }
+    await this.importLock.assertBatchUnlocked(batch.studioId, batchId);
+  }
 
   private async withSignedStudentPhoto<
     T extends { photoUrl?: string | null } & Record<string, unknown>,
@@ -1232,6 +1246,7 @@ export class BatchesService {
     if (!batch) {
       throw new NotFoundException("Batch not found");
     }
+    await this.importLock.assertBatchUnlocked(batch.studioId, id);
 
     if (data.branchId) {
       const branch = await this.prisma.studioBranch.findUnique({
@@ -1453,6 +1468,7 @@ export class BatchesService {
     if (!batch) {
       throw new NotFoundException("Batch not found");
     }
+    await this.importLock.assertBatchUnlocked(batch.studioId, id);
     if (batch._count.enrollments > 0) {
       throw new ConflictException(
         "Cannot delete a batch that has enrolled students",
@@ -1470,6 +1486,7 @@ export class BatchesService {
     actor: DecryptedUser,
     subscriptionId: string,
   ) {
+    await this.assertBatchImportUnlocked(batchId);
     const staffRoles: UserRole[] = [
       UserRole.OWNER,
       UserRole.STAFF,
@@ -1578,6 +1595,7 @@ export class BatchesService {
     actor: DecryptedUser,
     subscriptionId: string,
   ) {
+    await this.assertBatchImportUnlocked(batchId);
     const staffRoles: UserRole[] = [
       UserRole.OWNER,
       UserRole.STAFF,
@@ -1826,6 +1844,8 @@ export class BatchesService {
     if (fromBatchId === toBatchId) {
       throw new BadRequestException("Student is already in this batch");
     }
+    await this.assertBatchImportUnlocked(fromBatchId);
+    await this.assertBatchImportUnlocked(toBatchId);
 
     const [source, target] = await Promise.all([
       this.prisma.batch.findUnique({
@@ -2030,6 +2050,7 @@ export class BatchesService {
       endNote?: string | null;
     } = {},
   ) {
+    await this.assertBatchImportUnlocked(batchId);
     const enrollment = await this.prisma.batchEnrollment.findFirst({
       where: { batchId, studentId, ...ACTIVE_ENROLLMENT_WHERE },
       include: {

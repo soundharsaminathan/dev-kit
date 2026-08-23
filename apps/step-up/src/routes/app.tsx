@@ -1,6 +1,8 @@
 import { createFileRoute, Outlet } from "@tanstack/react-router";
 import { STAFF_ROLES } from "@/lib/constants";
 import { requireAuth } from "@/lib/require-auth";
+import { ImportJobProvider } from "@/modules/import/import-job-provider";
+import { ImportStatusBanner } from "@/modules/import/import-status-banner";
 import { AppShell } from "@/modules/layout/app-shell";
 
 export const Route = createFileRoute("/app")({
@@ -17,8 +19,11 @@ export const Route = createFileRoute("/app")({
 
 function AppLayout() {
   return (
-    <AppShell variant="app">
-      <Outlet />
-    </AppShell>
+    <ImportJobProvider>
+      <ImportStatusBanner />
+      <AppShell variant="app">
+        <Outlet />
+      </AppShell>
+    </ImportJobProvider>
   );
 }

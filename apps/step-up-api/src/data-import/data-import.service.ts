@@ -67,11 +67,13 @@ import type {
   ImportStudioDataDto,
   ImportStudentDto,
 } from "./dto/import-studio-data.dto";
+import { resolveImportBatchName } from "./import-batch-name";
 import {
   buildImportGapInvoices,
   type GapExistingPeriodInput,
   type GapPaidInvoiceInput,
 } from "./import-invoice-gaps";
+import { ImportLockService } from "./import-lock.service";
 import { collectImportPlanPrecheckErrors } from "./import-plan-precheck";
 import { sanitizeImportStudioDataDto } from "./sanitize-import-dto";
 import {
@@ -152,6 +154,8 @@ export class DataImportService {
     @Inject(OutboxService) private readonly outbox: OutboxService,
     @Inject(NotificationsService)
     private readonly notifications: NotificationsService,
+    @Inject(ImportLockService)
+    private readonly importLock: ImportLockService,
   ) {}
 
   async precheckStudioImport(actor: DecryptedUser, dto: ImportStudioDataDto) {
@@ -196,6 +200,13 @@ export class DataImportService {
       throw new BadRequestException(planErrors[0]);
     }
 
+    const activeImport = await this.importLock.getActiveImport(studioId);
+    if (activeImport) {
+      throw new ConflictException(
+        "An import is already in progress for this studio.",
+      );
+    }
+
     const entities = buildInitialEntities(sanitizedDto);
     const importRow = await this.prisma.$transaction(async (tx) => {
       const row = await tx.studioDataImport.create({
@@ -229,6 +240,19 @@ export class DataImportService {
     });
     if (!row) {
       throw new NotFoundException("Import job not found");
+    }
+    return this.toImportJobSnapshot(row);
+  }
+
+  async getActiveImportJob(
+    actor: DecryptedUser,
+  ): Promise<ImportJobSnapshot | null> {
+    if (!actor.studioId) {
+      throw new BadRequestException("User is not assigned to a studio");
+    }
+    const row = await this.importLock.getActiveImport(actor.studioId);
+    if (!row) {
+      return null;
     }
     return this.toImportJobSnapshot(row);
   }
@@ -487,12 +511,14 @@ export class DataImportService {
     status: "PENDING" | "RUNNING" | "SUCCEEDED" | "FAILED";
     error: string | null;
     entities: Prisma.JsonValue;
+    payload: Prisma.JsonValue;
   }): ImportJobSnapshot {
     return {
       id: row.id,
       status: row.status,
       error: row.error,
       entities: row.entities as ImportEntitiesSnapshot,
+      batchName: resolveImportBatchName(row.payload as ImportStudioDataDto),
     };
   }
 
@@ -651,42 +677,12 @@ export class DataImportService {
     });
   }
 
-  private resolveImportBatchName(dto: ImportStudioDataDto): string | null {
-    const batchRow = dto.batches?.[0];
-    if (batchRow?.name?.trim()) {
-      return batchRow.name.trim();
-    }
-
-    for (const row of dto.enrollments ?? []) {
-      if (row.batchName?.trim()) {
-        return row.batchName.trim();
-      }
-    }
-    for (const row of dto.sessions ?? []) {
-      if (row.batchName?.trim()) {
-        return row.batchName.trim();
-      }
-    }
-    for (const row of dto.attendance ?? []) {
-      if (row.batchName?.trim()) {
-        return row.batchName.trim();
-      }
-    }
-    for (const row of dto.invoices ?? []) {
-      if (row.batchName?.trim()) {
-        return row.batchName.trim();
-      }
-    }
-
-    return null;
-  }
-
   private async notifyImportComplete(
     actor: DecryptedUser,
     dto: ImportStudioDataDto,
     importId: string,
   ) {
-    const batchName = this.resolveImportBatchName(dto);
+    const batchName = resolveImportBatchName(dto);
     let batchId: string | null = null;
 
     if (actor.studioId && batchName) {
