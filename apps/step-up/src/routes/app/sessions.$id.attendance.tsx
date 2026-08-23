@@ -1,5 +1,4 @@
 import { Button } from "@dev-ui/components/button";
-import { Drawer } from "@dev-ui/components/drawer";
 import {
   Select,
   SelectContent,
@@ -216,204 +215,187 @@ function AddTrialUserSheet({
   }
 
   return (
-    <Drawer isOpen={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <div className={styles.trialSheet}>
-        <div className={styles.trialSheetHeader}>
-          <h2 className={styles.trialSheetTitle}>Add trial user</h2>
-          <button
-            type="button"
-            className={styles.trialSheetClose}
-            onClick={onClose}
-            aria-label="Close"
-          >
-            <Icon name="x" />
-          </button>
-        </div>
+    <AppSheet
+      isOpen={isOpen}
+      onOpenChange={(open) => !open && onClose()}
+      title="Add trial user"
+      size="wide"
+    >
+      <div className={styles.trialSheetBody}>
+        {!showCreateForm ? (
+          <>
+            <TrialCandidateCombobox
+              key={pickerKey}
+              sessionId={sessionId}
+              selectedKey={selectedCandidate?.id ?? null}
+              onSelectionChange={setSelectedCandidate}
+              isDisabled={addTrialMutation.isPending}
+              isOpen={isOpen}
+            />
 
-        <div className={styles.trialSheetBody}>
-          {!showCreateForm ? (
-            <>
-              <TrialCandidateCombobox
-                key={pickerKey}
-                sessionId={sessionId}
-                selectedKey={selectedCandidate?.id ?? null}
-                onSelectionChange={setSelectedCandidate}
-                isDisabled={addTrialMutation.isPending}
-                isOpen={isOpen}
+            <TouchButton
+              fullWidth
+              variant="primary"
+              data-testid="add-trial-confirm"
+              isDisabled={!selectedCandidate || addTrialMutation.isPending}
+              isPending={addTrialMutation.isPending}
+              onClick={() => {
+                if (!selectedCandidate) return;
+                addTrialMutation.mutate(selectedCandidate.id);
+              }}
+            >
+              Add to roster
+            </TouchButton>
+
+            <div className={styles.trialSheetDivider}>
+              <span>or</span>
+            </div>
+
+            <TouchButton
+              fullWidth
+              variant="default"
+              onClick={() => setShowCreateForm(true)}
+              data-testid="add-trial-create"
+              isDisabled={addTrialMutation.isPending}
+            >
+              <Icon name="plus" />
+              Create new student
+            </TouchButton>
+          </>
+        ) : (
+          <div className={styles.trialCreateForm}>
+            <div className={styles.trialFormField}>
+              <label htmlFor="student-name" className={styles.trialFormLabel}>
+                Name <span className={styles.trialFormRequired}>*</span>
+              </label>
+              <input
+                id="student-name"
+                type="text"
+                value={newStudent.name}
+                onChange={(e) =>
+                  setNewStudent({ ...newStudent, name: e.target.value })
+                }
+                placeholder="Student name"
+                required
+                className={styles.trialFormInput}
               />
-
-              <TouchButton
-                fullWidth
-                variant="primary"
-                data-testid="add-trial-confirm"
-                isDisabled={!selectedCandidate || addTrialMutation.isPending}
-                isPending={addTrialMutation.isPending}
-                onClick={() => {
-                  if (!selectedCandidate) return;
-                  addTrialMutation.mutate(selectedCandidate.id);
-                }}
+            </div>
+            <div className={styles.trialFormField}>
+              <label htmlFor="student-email" className={styles.trialFormLabel}>
+                Email <span className={styles.trialFormRequired}>*</span>
+              </label>
+              <input
+                id="student-email"
+                type="email"
+                value={newStudent.email}
+                onChange={(e) =>
+                  setNewStudent({ ...newStudent, email: e.target.value })
+                }
+                placeholder="email@example.com"
+                required
+                className={styles.trialFormInput}
+              />
+            </div>
+            <div className={styles.trialFormField}>
+              <label htmlFor="student-gender" className={styles.trialFormLabel}>
+                Gender
+              </label>
+              <select
+                id="student-gender"
+                value={newStudent.gender}
+                onChange={(e) =>
+                  setNewStudent({
+                    ...newStudent,
+                    gender: e.target.value as NewStudentForm["gender"],
+                  })
+                }
+                className={styles.trialFormSelect}
               >
-                Add to roster
-              </TouchButton>
-
-              <div className={styles.trialSheetDivider}>
-                <span>or</span>
-              </div>
-
-              <TouchButton
-                fullWidth
-                variant="default"
-                onClick={() => setShowCreateForm(true)}
-                data-testid="add-trial-create"
-                isDisabled={addTrialMutation.isPending}
-              >
-                <Icon name="plus" />
-                Create new student
-              </TouchButton>
-            </>
-          ) : (
-            <div className={styles.trialCreateForm}>
+                <option value="MALE">Male</option>
+                <option value="FEMALE">Female</option>
+              </select>
+            </div>
+            <DateOfBirthOrAgeFields
+              dateOfBirth={newStudent.dateOfBirth}
+              onDateOfBirthChange={(dateOfBirth) =>
+                setNewStudent((current) => ({ ...current, dateOfBirth }))
+              }
+              age={newStudent.age}
+              onAgeChange={(age) =>
+                setNewStudent((current) => ({ ...current, age }))
+              }
+              className={styles.trialFormRow}
+              hint="Enter either a date of birth or an exact age."
+              required
+            />
+            <div className={styles.trialFormRow}>
               <div className={styles.trialFormField}>
-                <label htmlFor="student-name" className={styles.trialFormLabel}>
-                  Name <span className={styles.trialFormRequired}>*</span>
+                <label
+                  htmlFor="student-guardian"
+                  className={styles.trialFormLabel}
+                >
+                  Guardian name
                 </label>
                 <input
-                  id="student-name"
+                  id="student-guardian"
                   type="text"
-                  value={newStudent.name}
-                  onChange={(e) =>
-                    setNewStudent({ ...newStudent, name: e.target.value })
-                  }
-                  placeholder="Student name"
-                  required
-                  className={styles.trialFormInput}
-                />
-              </div>
-              <div className={styles.trialFormField}>
-                <label
-                  htmlFor="student-email"
-                  className={styles.trialFormLabel}
-                >
-                  Email <span className={styles.trialFormRequired}>*</span>
-                </label>
-                <input
-                  id="student-email"
-                  type="email"
-                  value={newStudent.email}
-                  onChange={(e) =>
-                    setNewStudent({ ...newStudent, email: e.target.value })
-                  }
-                  placeholder="email@example.com"
-                  required
-                  className={styles.trialFormInput}
-                />
-              </div>
-              <div className={styles.trialFormField}>
-                <label
-                  htmlFor="student-gender"
-                  className={styles.trialFormLabel}
-                >
-                  Gender
-                </label>
-                <select
-                  id="student-gender"
-                  value={newStudent.gender}
+                  value={newStudent.guardianName}
                   onChange={(e) =>
                     setNewStudent({
                       ...newStudent,
-                      gender: e.target.value as NewStudentForm["gender"],
+                      guardianName: e.target.value,
                     })
                   }
-                  className={styles.trialFormSelect}
-                >
-                  <option value="MALE">Male</option>
-                  <option value="FEMALE">Female</option>
-                </select>
+                  placeholder="Optional"
+                  className={styles.trialFormInput}
+                />
               </div>
-              <DateOfBirthOrAgeFields
-                dateOfBirth={newStudent.dateOfBirth}
-                onDateOfBirthChange={(dateOfBirth) =>
-                  setNewStudent((current) => ({ ...current, dateOfBirth }))
-                }
-                age={newStudent.age}
-                onAgeChange={(age) =>
-                  setNewStudent((current) => ({ ...current, age }))
-                }
-                className={styles.trialFormRow}
-                hint="Enter either a date of birth or an exact age."
-                required
-              />
-              <div className={styles.trialFormRow}>
-                <div className={styles.trialFormField}>
-                  <label
-                    htmlFor="student-guardian"
-                    className={styles.trialFormLabel}
-                  >
-                    Guardian name
-                  </label>
-                  <input
-                    id="student-guardian"
-                    type="text"
-                    value={newStudent.guardianName}
-                    onChange={(e) =>
-                      setNewStudent({
-                        ...newStudent,
-                        guardianName: e.target.value,
-                      })
-                    }
-                    placeholder="Optional"
-                    className={styles.trialFormInput}
-                  />
-                </div>
-                <div className={styles.trialFormField}>
-                  <label
-                    htmlFor="student-alternate-mobile"
-                    className={styles.trialFormLabel}
-                  >
-                    Alternate mobile
-                  </label>
-                  <input
-                    id="student-alternate-mobile"
-                    type="tel"
-                    value={newStudent.alternateMobile}
-                    onChange={(e) =>
-                      setNewStudent({
-                        ...newStudent,
-                        alternateMobile: e.target.value,
-                      })
-                    }
-                    placeholder="Optional"
-                    className={styles.trialFormInput}
-                  />
-                </div>
-              </div>
-              <div className={styles.trialCreateActions}>
-                <TouchButton
-                  variant="default"
-                  onClick={() => setShowCreateForm(false)}
-                  isDisabled={
-                    createStudentMutation.isPending ||
-                    addTrialMutation.isPending
-                  }
+              <div className={styles.trialFormField}>
+                <label
+                  htmlFor="student-alternate-mobile"
+                  className={styles.trialFormLabel}
                 >
-                  Cancel
-                </TouchButton>
-                <TouchButton
-                  variant="primary"
-                  onClick={handleCreateSubmit}
-                  isPending={
-                    createStudentMutation.isPending ||
-                    addTrialMutation.isPending
+                  Alternate mobile
+                </label>
+                <input
+                  id="student-alternate-mobile"
+                  type="tel"
+                  value={newStudent.alternateMobile}
+                  onChange={(e) =>
+                    setNewStudent({
+                      ...newStudent,
+                      alternateMobile: e.target.value,
+                    })
                   }
-                >
-                  Create & add
-                </TouchButton>
+                  placeholder="Optional"
+                  className={styles.trialFormInput}
+                />
               </div>
             </div>
-          )}
-        </div>
+            <div className={styles.trialCreateActions}>
+              <TouchButton
+                variant="default"
+                onClick={() => setShowCreateForm(false)}
+                isDisabled={
+                  createStudentMutation.isPending || addTrialMutation.isPending
+                }
+              >
+                Cancel
+              </TouchButton>
+              <TouchButton
+                variant="primary"
+                onClick={handleCreateSubmit}
+                isPending={
+                  createStudentMutation.isPending || addTrialMutation.isPending
+                }
+              >
+                Create & add
+              </TouchButton>
+            </div>
+          </div>
+        )}
       </div>
-    </Drawer>
+    </AppSheet>
   );
 }
 
