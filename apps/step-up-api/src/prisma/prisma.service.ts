@@ -4,6 +4,7 @@ import {
   type OnModuleInit,
 } from "@nestjs/common";
 import { PrismaClient } from "@prisma/client";
+import { withDatabaseConnectTimeout } from "./db-retry";
 
 @Injectable()
 export class PrismaService
@@ -12,6 +13,11 @@ export class PrismaService
 {
   constructor() {
     super({
+      datasources: {
+        db: {
+          url: withDatabaseConnectTimeout(process.env.DATABASE_URL, 30),
+        },
+      },
       transactionOptions: {
         // Remote DB / pooler RTT can exceed Prisma's 5s default during
         // seat locks + capacity checks inside enroll/booking transactions.

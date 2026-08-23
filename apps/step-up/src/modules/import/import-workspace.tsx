@@ -229,36 +229,38 @@ export function ImportWorkspace({
     isImporting || phase === "complete" || (phase === "failed" && Boolean(job));
 
   return (
-    <div className={styles.page}>
+    <div className={styles.page} data-importing={isImporting ? "true" : undefined}>
       <div className={styles.container}>
-        <header className={styles.pageHeader}>
-          <div className={styles.pageHeaderTop}>
-            <div className={styles.pageHeaderCopy}>
-              <h1 className={styles.pageTitle}>{pageTitle}</h1>
-              {pageSubtitle ? (
-                <p className={styles.pageSubtitle}>{pageSubtitle}</p>
-              ) : null}
+        {!isImporting ? (
+          <header className={styles.pageHeader}>
+            <div className={styles.pageHeaderTop}>
+              <div className={styles.pageHeaderCopy}>
+                <h1 className={styles.pageTitle}>{pageTitle}</h1>
+                {pageSubtitle ? (
+                  <p className={styles.pageSubtitle}>{pageSubtitle}</p>
+                ) : null}
+              </div>
             </div>
-          </div>
-          <div className={styles.pageActions}>
-            <button
-              type="button"
-              className={styles.outlineButton}
-              onClick={() => setHistoryOpen(true)}
-            >
-              <Icon name="clock" aria-hidden />
-              Import history
-            </button>
-            <a
-              className={styles.outlineButton}
-              href="/templates/studio-import-template.xlsx"
-              download="studio-import-template.xlsx"
-            >
-              <Icon name="download" aria-hidden />
-              Download template
-            </a>
-          </div>
-        </header>
+            <div className={styles.pageActions}>
+              <button
+                type="button"
+                className={styles.outlineButton}
+                onClick={() => setHistoryOpen(true)}
+              >
+                <Icon name="clock" aria-hidden />
+                Import history
+              </button>
+              <a
+                className={styles.outlineButton}
+                href="/templates/studio-import-template.xlsx"
+                download="studio-import-template.xlsx"
+              >
+                <Icon name="download" aria-hidden />
+                Download template
+              </a>
+            </div>
+          </header>
+        ) : null}
 
         <div className={styles.workspace}>
           <div className={styles.workspaceInner}>
@@ -289,7 +291,7 @@ export function ImportWorkspace({
               </FileTrigger>
             ) : null}
 
-            {fileName && phase !== "upload" ? (
+            {fileName && phase !== "upload" && !isImporting ? (
               <div className={styles.fileSummary}>
                 <span className={styles.fileSummaryIcon} aria-hidden>
                   <Icon name="file" />

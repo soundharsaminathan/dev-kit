@@ -45,6 +45,7 @@ import {
   utcMonthStart,
 } from "../memberships/membership-helpers";
 import { PrismaService } from "../prisma/prisma.service";
+import { importFailureMessage, withDbRetry } from "../prisma/db-retry";
 import {
   currentMonthPeriod,
   ProjectionService,
@@ -254,14 +255,15 @@ export class DataImportService {
     });
 
     try {
-      await this.runStudioDataImport(actor, dto, report);
+      await withDbRetry(`import job ${importId}`, () =>
+        this.runStudioDataImport(actor, dto, report),
+      );
       await this.prisma.studioDataImport.update({
         where: { id: importId },
         data: { status: "SUCCEEDED", finishedAt: new Date() },
       });
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Import failed";
+      const message = importFailureMessage(error);
       await this.prisma.studioDataImport.update({
         where: { id: importId },
         data: {
