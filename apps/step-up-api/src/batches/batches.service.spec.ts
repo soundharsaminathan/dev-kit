@@ -12,7 +12,10 @@ import {
   UserRole,
 } from "@prisma/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { createImportLockMock } from "../test/mocks/import-lock.mock";
 import { BatchesService } from "./batches.service";
+
+const importLock = createImportLockMock();
 
 describe("BatchesService branch validation", () => {
   const prisma = {
@@ -114,6 +117,7 @@ describe("BatchesService branch validation", () => {
       memberships as never,
       { refundInvoice: vi.fn() } as never,
       { announceMembersJoined: vi.fn().mockResolvedValue(undefined) } as never,
+      importLock as never,
     );
     prisma.$transaction.mockImplementation(
       async (callback: (tx: typeof prisma) => unknown) => callback(prisma),
@@ -273,6 +277,7 @@ describe("BatchesService update", () => {
       } as never,
       { refundInvoice: vi.fn() } as never,
       { announceMembersJoined: vi.fn().mockResolvedValue(undefined) } as never,
+      importLock as never,
     );
     prisma.$transaction.mockImplementation(
       async (callback: (tx: typeof prisma) => unknown) => callback(prisma),
@@ -665,6 +670,7 @@ describe("BatchesService getRevenue", () => {
       } as never,
       { refundInvoice: vi.fn() } as never,
       { announceMembersJoined: vi.fn().mockResolvedValue(undefined) } as never,
+      importLock as never,
     );
   });
 
@@ -1045,6 +1051,7 @@ describe("BatchesService rate", () => {
       } as never,
       { refundInvoice: vi.fn() } as never,
       { announceMembersJoined: vi.fn().mockResolvedValue(undefined) } as never,
+      importLock as never,
     );
     prisma.$transaction.mockImplementation(
       async (callback: (tx: typeof prisma) => unknown) => callback(prisma),
@@ -1160,6 +1167,7 @@ describe("BatchesService.remove and enroll", () => {
       memberships as never,
       { refundInvoice: vi.fn() } as never,
       chat as never,
+      importLock as never,
     );
     prisma.$transaction.mockImplementation(
       async (callback: (tx: typeof prisma) => unknown) => callback(prisma),
@@ -1459,6 +1467,7 @@ describe("BatchesService.listByStudio viewer enrollment", () => {
       { purchaseForBatch: vi.fn() } as never,
       { refundInvoice: vi.fn() } as never,
       { announceMembersJoined: vi.fn().mockResolvedValue(undefined) } as never,
+      importLock as never,
     );
     prisma.batchEnrollment.findMany.mockResolvedValue([]);
     prisma.batchEnrollment.findFirst.mockResolvedValue(null);
@@ -1826,6 +1835,7 @@ describe("BatchesService.switchBatch", () => {
       memberships as never,
       { refundInvoice: vi.fn() } as never,
       chat as never,
+      importLock as never,
     );
     prisma.$transaction.mockImplementation(
       async (callback: (tx: typeof prisma) => unknown) => callback(prisma),
@@ -2372,6 +2382,7 @@ describe("BatchesService.unenroll", () => {
       memberships as never,
       billing as never,
       { announceMembersJoined: vi.fn().mockResolvedValue(undefined) } as never,
+      importLock as never,
     );
     prisma.$transaction.mockImplementation(
       async (callback: (tx: typeof prisma) => unknown) => callback(prisma),
@@ -2541,6 +2552,7 @@ describe("BatchesService.getById roster split", () => {
       memberships as never,
       { refundInvoice: vi.fn() } as never,
       { announceMembersJoined: vi.fn().mockResolvedValue(undefined) } as never,
+      importLock as never,
     );
     prisma.booking.updateMany.mockResolvedValue({ count: 0 });
     prisma.booking.findMany.mockResolvedValue([]);

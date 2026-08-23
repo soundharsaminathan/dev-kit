@@ -13,7 +13,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { makeSession } from "../test/fixtures/sessions";
 import { FIXTURE_USERS } from "../test/fixtures/users";
 import { createNotificationsMock } from "../test/mocks/notifications.mock";
+import { createImportLockMock } from "../test/mocks/import-lock.mock";
 import { AttendanceService } from "./attendance.service";
+
+const importLock = createImportLockMock();
 
 describe("AttendanceService.markAttendance", () => {
   const prisma = {
@@ -51,6 +54,7 @@ describe("AttendanceService.markAttendance", () => {
       notifications as never,
       config as never,
       crypto as never,
+      importLock as never,
     );
   });
 
@@ -293,6 +297,7 @@ describe("AttendanceService.markAllPresent", () => {
       notifications as never,
       config as never,
       crypto as never,
+      importLock as never,
     );
   });
 
@@ -443,6 +448,7 @@ describe("AttendanceService QR", () => {
       notifications as never,
       config as never,
       crypto as never,
+      importLock as never,
     );
   });
 
@@ -572,6 +578,7 @@ describe("AttendanceService.getSessionRoster", () => {
       notifications as never,
       config as never,
       crypto as never,
+      importLock as never,
     );
   });
 

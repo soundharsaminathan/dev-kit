@@ -482,17 +482,6 @@ export class BatchesService {
     private readonly importLock: ImportLockService,
   ) {}
 
-  private async assertBatchImportUnlocked(batchId: string) {
-    const batch = await this.prisma.batch.findUnique({
-      where: { id: batchId },
-      select: { studioId: true },
-    });
-    if (!batch) {
-      throw new NotFoundException("Batch not found");
-    }
-    await this.importLock.assertBatchUnlocked(batch.studioId, batchId);
-  }
-
   private async withSignedStudentPhoto<
     T extends { photoUrl?: string | null } & Record<string, unknown>,
   >(student: T): Promise<T> {
@@ -1486,7 +1475,6 @@ export class BatchesService {
     actor: DecryptedUser,
     subscriptionId: string,
   ) {
-    await this.assertBatchImportUnlocked(batchId);
     const staffRoles: UserRole[] = [
       UserRole.OWNER,
       UserRole.STAFF,
@@ -1530,6 +1518,7 @@ export class BatchesService {
     if (!batch) {
       throw new NotFoundException("Batch not found");
     }
+    await this.importLock.assertBatchUnlocked(batch.studioId, batchId);
 
     if (!batch.active) {
       throw new BadRequestException("Batch is not active");
@@ -1595,7 +1584,6 @@ export class BatchesService {
     actor: DecryptedUser,
     subscriptionId: string,
   ) {
-    await this.assertBatchImportUnlocked(batchId);
     const staffRoles: UserRole[] = [
       UserRole.OWNER,
       UserRole.STAFF,
@@ -1625,6 +1613,7 @@ export class BatchesService {
     if (!batch) {
       throw new NotFoundException("Batch not found");
     }
+    await this.importLock.assertBatchUnlocked(batch.studioId, batchId);
 
     if (!batch.active) {
       throw new BadRequestException("Batch is not active");
@@ -1844,8 +1833,6 @@ export class BatchesService {
     if (fromBatchId === toBatchId) {
       throw new BadRequestException("Student is already in this batch");
     }
-    await this.assertBatchImportUnlocked(fromBatchId);
-    await this.assertBatchImportUnlocked(toBatchId);
 
     const [source, target] = await Promise.all([
       this.prisma.batch.findUnique({
@@ -1871,6 +1858,8 @@ export class BatchesService {
     if (!target) {
       throw new NotFoundException("Target batch not found");
     }
+    await this.importLock.assertBatchUnlocked(source.studioId, fromBatchId);
+    await this.importLock.assertBatchUnlocked(target.studioId, toBatchId);
 
     const enrollment = source.enrollments[0];
     if (!enrollment) {
@@ -2050,7 +2039,6 @@ export class BatchesService {
       endNote?: string | null;
     } = {},
   ) {
-    await this.assertBatchImportUnlocked(batchId);
     const enrollment = await this.prisma.batchEnrollment.findFirst({
       where: { batchId, studentId, ...ACTIVE_ENROLLMENT_WHERE },
       include: {
@@ -2061,6 +2049,10 @@ export class BatchesService {
     if (!enrollment) {
       throw new BadRequestException("Student is not enrolled in this batch");
     }
+    await this.importLock.assertBatchUnlocked(
+      enrollment.batch.studioId,
+      batchId,
+    );
 
     const refund = options.refund === true;
     let refundedInvoice: {

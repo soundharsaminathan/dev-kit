@@ -1,6 +1,9 @@
 import { SessionStatus, SessionType } from "@prisma/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { createImportLockMock } from "../test/mocks/import-lock.mock";
 import { SessionsService } from "./sessions.service";
+
+const importLock = createImportLockMock();
 
 const baseSchedulePrisma = () => ({
   session: {
@@ -66,6 +69,7 @@ function buildService(
     (extra.notifications ?? baseNotifications()) as never,
     baseChat() as never,
     baseCrypto() as never,
+    importLock as never,
   );
 }
 
@@ -340,6 +344,7 @@ describe("SessionsService listTrialSlots", () => {
       notifications as never,
       chat as never,
       crypto as never,
+      importLock as never,
     );
   });
 
@@ -528,6 +533,7 @@ describe("SessionsService schedule mutations", () => {
       notifications as never,
       chat as never,
       crypto as never,
+      importLock as never,
     );
   });
 
