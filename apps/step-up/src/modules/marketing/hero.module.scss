@@ -56,53 +56,67 @@
   letter-spacing: -0.04em;
   line-height: 1;
   text-wrap: balance;
-  background: linear-gradient(to right, #000000, #666666);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-}
-
-:global(html[data-theme-mode="dark"]) .headline {
-  background: linear-gradient(to right, #ffffff, #9b9b9b);
-  -webkit-background-clip: text;
-  background-clip: text;
 }
 
 .line {
   display: block;
 }
 
+.fill,
+.line:first-child,
+.cycleWord {
+  background: linear-gradient(to right, #000000, #666666);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+:global(html[data-theme-mode="dark"]) .fill,
+:global(html[data-theme-mode="dark"]) .line:first-child,
+:global(html[data-theme-mode="dark"]) .cycleWord {
+  background: linear-gradient(to right, #ffffff, #9b9b9b);
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+
 .cycleWrapper {
   position: relative;
   display: inline-block;
+  vertical-align: bottom;
 }
 
-.cycleWord {
+.cycleSizer {
+  visibility: hidden;
+  white-space: nowrap;
+}
+
+.cycleLive {
   position: absolute;
-  left: 0;
-  opacity: 0;
-  animation: cycleFade 5s ease-in-out infinite;
+  inset-inline-start: 0;
+  inset-block-start: 0;
+  display: inline-flex;
+  align-items: baseline;
+  white-space: nowrap;
 }
 
-.cycleWord:first-child {
-  position: relative;
+.caret {
+  display: inline-block;
+  width: 0.07em;
+  height: 0.82em;
+  margin-inline-start: 0.06em;
+  background: var(--color-fg);
+  transform-origin: center bottom;
+  animation: caretPulse 1s cubic-bezier(0.32, 0.72, 0, 1) infinite;
 }
 
-@keyframes cycleFade {
+@keyframes caretPulse {
   0%,
-  5% {
-    opacity: 0;
-    transform: translateY(0.15em);
-  }
-  10%,
   45% {
     opacity: 1;
-    transform: translateY(0);
   }
-  50%,
+  55%,
   100% {
-    opacity: 0;
-    transform: translateY(-0.15em);
+    opacity: 0.15;
   }
 }
 
@@ -218,12 +232,8 @@
     transform: none;
   }
 
-  .cycleWord {
+  .caret {
     animation: none;
-    opacity: 0;
-  }
-
-  .cycleWord:first-child {
     opacity: 1;
   }
 }
