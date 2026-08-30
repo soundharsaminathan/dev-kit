@@ -1,11 +1,16 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { SettingsComingSoon } from "@/modules/settings/ui";
+import { createFileRoute, redirect } from "@tanstack/react-router";
+import { StudioIntegrationsFormPage } from "@/modules/settings/studio-integrations-form-page";
+import { RequireStudioFeature } from "@/modules/studio-features/require-studio-feature";
 
 export const Route = createFileRoute("/app/settings/integrations")({
+  beforeLoad: ({ context }) => {
+    if (context.auth.user?.role !== "OWNER") {
+      throw redirect({ to: "/app/settings/profile" });
+    }
+  },
   component: () => (
-    <SettingsComingSoon
-      title="Integrations"
-      description="Connect third-party tools to classa from this page once integrations ship."
-    />
+    <RequireStudioFeature feature="ai_agent">
+      <StudioIntegrationsFormPage />
+    </RequireStudioFeature>
   ),
 });

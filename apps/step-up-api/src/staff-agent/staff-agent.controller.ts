@@ -18,11 +18,6 @@ import { RolesGuard } from "../auth/roles.guard";
 import { FeatureGuard } from "../studio-features/feature.guard";
 import { RequireFeature } from "../studio-features/require-feature.decorator";
 import type { DecryptedUser } from "../users/user-crypto.service";
-import {
-  STAFF_AGENT_PROVIDER_DEFAULT,
-  STAFF_AGENT_PROVIDERS,
-  type StaffAgentProvider,
-} from "./agent.types";
 import { StaffAgentService } from "./staff-agent.service";
 
 class StaffAgentMessageDto {
@@ -41,10 +36,6 @@ class StaffAgentChatDto {
   @ValidateNested({ each: true })
   @Type(() => StaffAgentMessageDto)
   messages!: StaffAgentMessageDto[];
-
-  @IsOptional()
-  @IsIn([...STAFF_AGENT_PROVIDERS])
-  provider?: StaffAgentProvider;
 
   @IsOptional()
   @IsBoolean()
@@ -74,7 +65,6 @@ export class StaffAgentController {
   chat(@CurrentUser() user: DecryptedUser, @Body() dto: StaffAgentChatDto) {
     return this.staffAgent.chat(user, {
       messages: dto.messages ?? [],
-      provider: dto.provider ?? STAFF_AGENT_PROVIDER_DEFAULT,
       voice: dto.voice,
       audioBase64: dto.audioBase64,
       audioMimeType: dto.audioMimeType,

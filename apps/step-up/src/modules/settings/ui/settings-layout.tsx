@@ -3,7 +3,7 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import type { FeatureKey } from "@/lib/feature-keys";
-import { useIsFeatureEnabled } from "@/lib/studio-features";
+import { isFeatureEnabled, useStudioFeatures } from "@/lib/studio-features";
 import { InstallAppPanel } from "@/modules/pwa/install-app-panel";
 import { AppBottomSheet } from "@/modules/ui/app-bottom-sheet";
 import {
@@ -58,8 +58,7 @@ function NavItemLink({
   pathname: string;
   onNavigate?: (() => void) | undefined;
 }) {
-  const active =
-    pathname === item.to || pathname.startsWith(`${item.to}/`);
+  const active = pathname === item.to || pathname.startsWith(`${item.to}/`);
 
   return (
     <Link
@@ -100,7 +99,9 @@ export function SettingsLayout({
   const isOwner = user?.role === "OWNER";
   const isAdmin = user?.role === "OWNER" || user?.role === "STAFF";
 
-  const paymentsEnabled = useIsFeatureEnabled("payments");
+  const featuresQuery = useStudioFeatures();
+  const features = featuresQuery.data?.features;
+  const featuresReady = !featuresQuery.isLoading && !featuresQuery.isPending;
 
   const groups = useMemo(
     () =>
@@ -108,9 +109,9 @@ export function SettingsLayout({
         isOwner,
         isAdmin,
         isFeatureEnabled: (key: FeatureKey) =>
-          key === "payments" ? paymentsEnabled : false,
+          featuresReady && isFeatureEnabled(features, key),
       }),
-    [isOwner, isAdmin, paymentsEnabled],
+    [isOwner, isAdmin, featuresReady, features],
   );
 
   const activeItem = findSettingsNavItem(pathname, groups);

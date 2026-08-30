@@ -1,10 +1,15 @@
 import { BadRequestException, Inject, Injectable } from "@nestjs/common";
-import { type AgeRange, BookingStatus, BookingType, Gender } from "@prisma/client";
-import { ageRangeFromAge, isImportAge } from "../users/age-range";
+import {
+  type AgeRange,
+  BookingStatus,
+  BookingType,
+  Gender,
+} from "@prisma/client";
 import { BatchCommandsService } from "../batches/application/batch.commands";
 import { BatchQueriesService } from "../batches/application/batch.queries";
 import { BookingCommandsService } from "../bookings/application/booking.commands";
 import { SessionsService } from "../sessions/sessions.service";
+import { ageRangeFromAge, isImportAge } from "../users/age-range";
 import type { DecryptedUser } from "../users/user-crypto.service";
 import { UsersService } from "../users/users.service";
 

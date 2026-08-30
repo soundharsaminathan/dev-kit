@@ -143,6 +143,20 @@ test.describe("studios HTTP @http", () => {
       );
       expect(denied.text).toMatch(/only owners can change gst percent/i);
 
+      const deniedAi = await expectStatus(
+        "STAFF",
+        `/studios/${SEED.studioId}/settings`,
+        403,
+        {
+          method: "PATCH",
+          body: JSON.stringify({
+            aiProvider: "groq",
+            aiApiKey: "should-not-work",
+          }),
+        },
+      );
+      expect(deniedAi.text).toMatch(/only owners can change ai agent settings/i);
+
       await expectStatus(
         "OWNER",
         `/studios/${created.id}/settings`,

@@ -117,8 +117,10 @@ export const SETTINGS_NAV: SettingsNavGroup[] = [
         id: "integrations",
         label: "Integrations",
         icon: "link",
-        kind: "comingSoon",
+        kind: "internal",
         to: "/app/settings/integrations",
+        ownerOnly: true,
+        feature: "ai_agent",
       },
     ],
   },
@@ -205,6 +207,6 @@ export const SETTINGS_PAGE_META: Record<
   },
   "/app/settings/integrations": {
     title: "Integrations",
-    subtitle: "Connect third-party tools to classa.",
+    subtitle: "Connect AI and other tools for this studio.",
   },
 };

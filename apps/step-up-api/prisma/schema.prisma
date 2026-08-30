@@ -109,6 +109,12 @@ enum PaymentMethod {
   RAZORPAY
 }
 
+enum AiProvider {
+  GROQ
+  GEMINI
+  OPENAI
+}
+
 enum ExpensePaymentMethod {
   CASH
   BANK_TRANSFER
@@ -563,18 +569,22 @@ model StudioRevenueSummary {
 }
 
 model StudioSettings {
-  studioId           String  @id
-  graceDays          Int     @default(3)
-  expireAlertDays    Int     @default(7)
-  platformFeePercent Float   @default(5)
-  gstPercent         Float   @default(0)
-  admissionFee       Decimal @default(0) @db.Decimal(10, 2)
-  timezone           String  @default("Asia/Kolkata")
+  studioId           String      @id
+  graceDays          Int         @default(3)
+  expireAlertDays    Int         @default(7)
+  platformFeePercent Float       @default(5)
+  gstPercent         Float       @default(0)
+  admissionFee       Decimal     @default(0) @db.Decimal(10, 2)
+  timezone           String      @default("Asia/Kolkata")
   razorpayKeyId      String?
   razorpayKeySecret  String?
   razorpaySecretIv   String?
   danceStyles        Json?
   gstNumber          String?
+  aiProvider         AiProvider?
+  aiApiKey           String?
+  aiApiKeyIv         String?
+  aiChatModel        String?
 
   studio Studio @relation(fields: [studioId], references: [id], onDelete: Cascade)
 }

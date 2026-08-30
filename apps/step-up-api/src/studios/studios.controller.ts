@@ -14,6 +14,7 @@ import { UserRole } from "@prisma/client";
 import {
   Allow,
   IsEmail,
+  IsIn,
   IsNumber,
   IsOptional,
   IsString,
@@ -30,6 +31,7 @@ import { RolesGuard } from "../auth/roles.guard";
 import { assertSameStudio } from "../auth/studio-access";
 import type { DecryptedUser } from "../users/user-crypto.service";
 import { UsersService } from "../users/users.service";
+import { AI_PROVIDER_API_VALUES } from "./ai-provider";
 import { StudiosService } from "./studios.service";
 
 class CreateStudioDto {
@@ -136,6 +138,21 @@ class UpdateStudioSettingsDto {
   @IsOptional()
   @Allow()
   danceStyles?: unknown;
+
+  @IsOptional()
+  @ValidateIf((_, value) => value !== null)
+  @IsIn([...AI_PROVIDER_API_VALUES])
+  aiProvider?: (typeof AI_PROVIDER_API_VALUES)[number] | null;
+
+  @IsOptional()
+  @IsString()
+  aiApiKey?: string | null;
+
+  @IsOptional()
+  @ValidateIf((_, value) => value !== null)
+  @IsString()
+  @MaxLength(128)
+  aiChatModel?: string | null;
 }
 
 class ResetOwnerPasswordDto {
@@ -243,6 +260,16 @@ export class StudiosController {
       (dto.razorpayKeyId !== undefined || dto.razorpayKeySecret !== undefined)
     ) {
       throw new ForbiddenException("Only owners can change Razorpay keys");
+    }
+
+    if (
+      user.role !== UserRole.OWNER &&
+      user.role !== UserRole.SYSTEM_ADMIN &&
+      (dto.aiProvider !== undefined ||
+        dto.aiApiKey !== undefined ||
+        dto.aiChatModel !== undefined)
+    ) {
+      throw new ForbiddenException("Only owners can change AI agent settings");
     }
 
     if (

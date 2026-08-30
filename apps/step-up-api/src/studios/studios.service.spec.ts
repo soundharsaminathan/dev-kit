@@ -39,6 +39,9 @@ describe("StudiosService", () => {
       ciphertext: `sealed:${secret}`,
       iv: "iv-1",
     })),
+    decryptStudioSecret: vi.fn((ciphertext: string) =>
+      ciphertext.replace(/^sealed:/, ""),
+    ),
     hashEmail: vi.fn((email: string) => `hash:${email}`),
     sealPii: vi.fn(() => ({
       encryptedKey: "key",
@@ -108,6 +111,10 @@ describe("StudiosService", () => {
       gstNumber: null,
       gstPercent: 0,
       admissionFee: 0,
+      aiProvider: null,
+      aiApiKey: null,
+      aiApiKeyIv: null,
+      aiChatModel: null,
     });
 
     const result = await service.updateSettings("studio-1", {
@@ -140,8 +147,97 @@ describe("StudiosService", () => {
       gstNumber: null,
       gstPercent: 0,
       admissionFee: 0,
+      aiConfigured: false,
+      aiProvider: null,
+      aiChatModel: null,
     });
     expect(result).not.toHaveProperty("razorpayKeySecret");
+    expect(result).not.toHaveProperty("aiApiKey");
+    expect(result).not.toHaveProperty("aiApiKeyIv");
+  });
+
+  it("encrypts AI API key and never returns it", async () => {
+    prisma.studioSettings.upsert.mockResolvedValue({
+      graceDays: 3,
+      expireAlertDays: 7,
+      platformFeePercent: 5,
+      timezone: "Asia/Kolkata",
+      razorpayKeyId: null,
+      razorpayKeySecret: null,
+      razorpaySecretIv: null,
+      danceStyles: null,
+      gstNumber: null,
+      gstPercent: 0,
+      admissionFee: 0,
+      aiProvider: "GROQ",
+      aiApiKey: "sealed:ai-key",
+      aiApiKeyIv: "iv-1",
+      aiChatModel: null,
+    });
+
+    const result = await service.updateSettings("studio-1", {
+      aiProvider: "groq",
+      aiApiKey: "ai-key",
+    });
+
+    expect(crypto.encryptStudioSecret).toHaveBeenCalledWith("ai-key");
+    expect(prisma.studioSettings.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        update: expect.objectContaining({
+          aiProvider: "GROQ",
+          aiApiKey: "sealed:ai-key",
+          aiApiKeyIv: "iv-1",
+        }),
+      }),
+    );
+    expect(result.aiConfigured).toBe(true);
+    expect(result.aiProvider).toBe("groq");
+    expect(result).not.toHaveProperty("aiApiKey");
+    expect(result).not.toHaveProperty("aiApiKeyIv");
+  });
+
+  it("rejects saving an AI key without a provider", async () => {
+    await expect(
+      service.updateSettings("studio-1", {
+        aiApiKey: "ai-key",
+      }),
+    ).rejects.toThrow(/AI provider is required/);
+    expect(prisma.studioSettings.upsert).not.toHaveBeenCalled();
+  });
+
+  it("clears AI key when empty string is sent", async () => {
+    prisma.studioSettings.upsert.mockResolvedValue({
+      graceDays: 3,
+      expireAlertDays: 7,
+      platformFeePercent: 5,
+      timezone: "Asia/Kolkata",
+      razorpayKeyId: null,
+      razorpayKeySecret: null,
+      razorpaySecretIv: null,
+      danceStyles: null,
+      gstNumber: null,
+      gstPercent: 0,
+      admissionFee: 0,
+      aiProvider: "GROQ",
+      aiApiKey: null,
+      aiApiKeyIv: null,
+      aiChatModel: null,
+    });
+
+    const result = await service.updateSettings("studio-1", {
+      aiApiKey: "",
+    });
+
+    expect(crypto.encryptStudioSecret).not.toHaveBeenCalled();
+    expect(prisma.studioSettings.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        update: expect.objectContaining({
+          aiApiKey: null,
+          aiApiKeyIv: null,
+        }),
+      }),
+    );
+    expect(result.aiConfigured).toBe(false);
   });
 
   it("rejects saving a secret without a key ID", async () => {
@@ -158,6 +254,7 @@ describe("StudiosService", () => {
       graceDays: 3,
       expireAlertDays: 7,
       platformFeePercent: 5,
+      timezone: "Asia/Kolkata",
       razorpayKeyId: "rzp_test_studio",
       razorpayKeySecret: null,
       razorpaySecretIv: null,
@@ -165,6 +262,10 @@ describe("StudiosService", () => {
       gstNumber: null,
       gstPercent: 0,
       admissionFee: 0,
+      aiProvider: null,
+      aiApiKey: null,
+      aiApiKeyIv: null,
+      aiChatModel: null,
     });
 
     const result = await service.updateSettings("studio-1", {

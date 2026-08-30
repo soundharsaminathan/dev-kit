@@ -11,6 +11,7 @@ import type { Studio } from "@/modules/settings/types";
 import { FormInput } from "@/modules/ui/form-input";
 import { FormTextArea } from "@/modules/ui/form-text-area";
 import { PasswordInput } from "@/modules/ui/password-input";
+import { StudioAiFields } from "./studio-ai-fields";
 import { StudioPaymentsFields } from "./studio-payments-fields";
 import styles from "./studio-wizard.module.scss";
 
@@ -70,6 +71,13 @@ export function StudioWizard(props: StudioWizardProps) {
   );
   const [razorpayKeyId, setRazorpayKeyId] = useState("");
   const [razorpayKeySecret, setRazorpayKeySecret] = useState("");
+  const [aiProvider, setAiProvider] = useState<
+    "groq" | "gemini" | "openai" | ""
+  >((studio?.settings?.aiProvider as "groq" | "gemini" | "openai") ?? "");
+  const [aiApiKey, setAiApiKey] = useState("");
+  const [aiChatModel, setAiChatModel] = useState(
+    studio?.settings?.aiChatModel ?? "",
+  );
   const [platformFeePercent, setPlatformFeePercent] = useState(
     String(studio?.settings?.platformFeePercent ?? 5),
   );
@@ -132,6 +140,10 @@ export function StudioWizard(props: StudioWizardProps) {
             "Enter the Razorpay key ID together with the secret.",
           );
         }
+        const nextAiKey = aiApiKey.trim();
+        if (nextAiKey && !aiProvider) {
+          throw new Error("Select an AI provider together with the API key.");
+        }
         const fee = Number(platformFeePercent);
         if (!Number.isFinite(fee) || fee < 0 || fee > 100) {
           throw new Error("Platform fee percent must be between 0 and 100.");
@@ -142,6 +154,11 @@ export function StudioWizard(props: StudioWizardProps) {
           platformFeePercent: fee,
           ...(nextKeyId ? { razorpayKeyId: nextKeyId } : {}),
           ...(nextSecret ? { razorpayKeySecret: nextSecret } : {}),
+          ...(aiProvider ? { aiProvider } : {}),
+          ...(nextAiKey ? { aiApiKey: nextAiKey } : {}),
+          ...(aiChatModel.trim()
+            ? { aiChatModel: aiChatModel.trim() }
+            : { aiChatModel: null }),
         });
       }
 
@@ -188,6 +205,10 @@ export function StudioWizard(props: StudioWizardProps) {
       if (nextSecret && !nextKeyId) {
         throw new Error("Enter the Razorpay key ID together with the secret.");
       }
+      const nextAiKey = aiApiKey.trim();
+      if (nextAiKey && !aiProvider) {
+        throw new Error("Select an AI provider together with the API key.");
+      }
 
       const fee = Number(platformFeePercent);
       if (!Number.isFinite(fee) || fee < 0 || fee > 100) {
@@ -197,6 +218,9 @@ export function StudioWizard(props: StudioWizardProps) {
       const paymentsTouched =
         Boolean(razorpayKeyId.trim()) ||
         Boolean(nextSecret) ||
+        Boolean(aiProvider) ||
+        Boolean(nextAiKey) ||
+        aiChatModel.trim() !== (studio.settings?.aiChatModel ?? "") ||
         fee !== (studio.settings?.platformFeePercent ?? 5);
       if (paymentsTouched) {
         await api.patch(`/studios/${studio.id}/settings`, {
@@ -205,6 +229,9 @@ export function StudioWizard(props: StudioWizardProps) {
           platformFeePercent: fee,
           ...(nextKeyId ? { razorpayKeyId: nextKeyId } : {}),
           ...(nextSecret ? { razorpayKeySecret: nextSecret } : {}),
+          ...(aiProvider ? { aiProvider } : {}),
+          ...(nextAiKey ? { aiApiKey: nextAiKey } : {}),
+          aiChatModel: aiChatModel.trim() || null,
         });
       }
     },
@@ -565,6 +592,18 @@ export function StudioWizard(props: StudioWizardProps) {
                 onKeySecretChange={setRazorpayKeySecret}
                 platformFeePercent={platformFeePercent}
                 onPlatformFeePercentChange={setPlatformFeePercent}
+              />
+              <StudioAiFields
+                className={styles.paymentsCard}
+                titleClassName={styles.paymentsCardTitle}
+                descClassName={styles.paymentsCardDesc}
+                aiProvider={aiProvider}
+                aiApiKey={aiApiKey}
+                aiChatModel={aiChatModel}
+                configured={Boolean(studio?.settings?.aiConfigured)}
+                onProviderChange={setAiProvider}
+                onApiKeyChange={setAiApiKey}
+                onChatModelChange={setAiChatModel}
               />
             </div>
           ) : null}

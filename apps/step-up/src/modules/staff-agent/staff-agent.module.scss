@@ -40,40 +40,6 @@
   gap: 0.25rem;
 }
 
-.providerSwitch {
-  display: inline-flex;
-  align-items: center;
-  padding: 0.15rem;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--color-fg) 8%, transparent);
-  gap: 0.1rem;
-  margin-right: 0.15rem;
-}
-
-.providerBtn {
-  border: 0;
-  border-radius: 999px;
-  background: transparent;
-  color: color-mix(in srgb, var(--color-fg) 62%, transparent);
-  font: inherit;
-  font-size: 0.68rem;
-  font-weight: 650;
-  letter-spacing: 0.01em;
-  padding: 0.28rem 0.55rem;
-  cursor: pointer;
-  line-height: 1;
-}
-
-.providerBtn[data-active="true"] {
-  background: color-mix(in srgb, var(--color-fg) 12%, transparent);
-  color: var(--color-fg);
-}
-
-.providerBtn:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
-
 .iconBtn {
   display: inline-flex;
   align-items: center;

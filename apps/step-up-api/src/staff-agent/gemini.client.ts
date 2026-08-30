@@ -1,15 +1,11 @@
 import { randomUUID } from "node:crypto";
-import {
-  Inject,
-  Injectable,
-  ServiceUnavailableException,
-} from "@nestjs/common";
-import { ConfigService } from "@nestjs/config";
+import { Injectable, ServiceUnavailableException } from "@nestjs/common";
 import type {
   AgentChatMessage,
   AgentToolCall,
   AgentToolDefinition,
 } from "./agent.types";
+import { aiUnavailable } from "./ai-errors";
 
 const GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta";
 
@@ -58,45 +54,21 @@ type GenerateContentResponse = {
 
 @Injectable()
 export class GeminiClient {
-  constructor(@Inject(ConfigService) private readonly config: ConfigService) {}
-
-  getApiKey(): string | null {
-    const key = this.config.get<string>("GEMINI_API_KEY")?.trim();
-    return key || null;
-  }
-
-  requireApiKey(): string {
-    const key = this.getApiKey();
-    if (!key) {
-      throw new ServiceUnavailableException(
-        "Staff agent is unavailable: GEMINI_API_KEY is not configured",
-      );
-    }
-    return key;
-  }
-
-  chatModel(): string {
-    return (
-      this.config.get<string>("GEMINI_CHAT_MODEL")?.trim() ||
-      GEMINI_CHAT_MODEL_DEFAULT
-    );
+  chatModel(override?: string | null): string {
+    return override?.trim() || GEMINI_CHAT_MODEL_DEFAULT;
   }
 
   ttsModel(): string {
-    return (
-      this.config.get<string>("GEMINI_TTS_MODEL")?.trim() ||
-      GEMINI_TTS_MODEL_DEFAULT
-    );
+    return GEMINI_TTS_MODEL_DEFAULT;
   }
 
   ttsVoice(): string {
-    return (
-      this.config.get<string>("GEMINI_TTS_VOICE")?.trim() ||
-      GEMINI_TTS_VOICE_DEFAULT
-    );
+    return GEMINI_TTS_VOICE_DEFAULT;
   }
 
   async chat(input: {
+    apiKey: string;
+    chatModel?: string | null;
     messages: AgentChatMessage[];
     tools?: AgentToolDefinition[];
     temperature?: number;
@@ -106,8 +78,13 @@ export class GeminiClient {
     toolCalls: AgentToolCall[];
     model: string;
   }> {
-    const apiKey = this.requireApiKey();
-    const model = this.chatModel();
+    const apiKey = input.apiKey.trim();
+    if (!apiKey) {
+      throw new ServiceUnavailableException(
+        "AI agent is not configured for this studio.",
+      );
+    }
+    const model = this.chatModel(input.chatModel);
     const { systemInstruction, contents } = toGeminiContents(input.messages);
 
     const body: Record<string, unknown> = {
@@ -166,11 +143,21 @@ export class GeminiClient {
     };
   }
 
-  async transcribe(audio: Buffer, mimeType: string): Promise<string> {
-    const apiKey = this.requireApiKey();
-    const model = this.chatModel();
+  async transcribe(
+    apiKey: string,
+    audio: Buffer,
+    mimeType: string,
+    chatModel?: string | null,
+  ): Promise<string> {
+    const key = apiKey.trim();
+    if (!key) {
+      throw new ServiceUnavailableException(
+        "AI agent is not configured for this studio.",
+      );
+    }
+    const model = this.chatModel(chatModel);
 
-    const data = await this.generateContent(apiKey, model, {
+    const data = await this.generateContent(key, model, {
       systemInstruction: {
         parts: [
           {
@@ -206,16 +193,16 @@ export class GeminiClient {
       .trim();
   }
 
-  async synthesizeSpeech(text: string): Promise<Buffer | null> {
-    const apiKey = this.getApiKey();
+  async synthesizeSpeech(apiKey: string, text: string): Promise<Buffer | null> {
+    const key = apiKey.trim();
     const trimmed = text.trim().slice(0, 2000);
-    if (!apiKey || !trimmed) {
+    if (!key || !trimmed) {
       return null;
     }
 
     try {
       const model = this.ttsModel();
-      const data = await this.generateContent(apiKey, model, {
+      const data = await this.generateContent(key, model, {
         contents: [{ parts: [{ text: trimmed }] }],
         generationConfig: {
           responseModalities: ["AUDIO"],
@@ -262,7 +249,8 @@ export class GeminiClient {
 
     const data = (await response.json()) as GenerateContentResponse;
     if (!response.ok) {
-      throw new ServiceUnavailableException(
+      throw aiUnavailable(
+        response.status,
         data.error?.message ?? "Gemini request failed",
       );
     }

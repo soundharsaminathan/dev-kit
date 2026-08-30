@@ -11,6 +11,9 @@ export type StudioSettings = {
   razorpayConfigured?: boolean;
   danceStyles?: DanceStyle[] | null;
   gstNumber?: string | null;
+  aiConfigured?: boolean;
+  aiProvider?: "groq" | "gemini" | "openai" | null;
+  aiChatModel?: string | null;
 };
 
 export type Studio = {

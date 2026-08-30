@@ -20,7 +20,7 @@ test.describe("staff agent HTTP @http", () => {
     });
   });
 
-  test("STAFF gets 503 without provider API key or succeeds when configured @http", async () => {
+  test("STAFF gets 503 when studio AI is not configured or succeeds when configured @http", async () => {
     const result = await httpJson<{
       reply?: string;
       message?: string | string[];
@@ -38,19 +38,29 @@ test.describe("staff agent HTTP @http", () => {
       }),
     });
 
-    // CI typically has no GROQ_API_KEY → 503. Local/dev with a key → 200.
+    // Seed studios typically have no studio AI key → 503.
     if (result.status === 503) {
       const message = Array.isArray(result.data.message)
         ? result.data.message.join(" ")
         : String(result.data.message ?? result.text);
-      expect(message.toLowerCase()).toMatch(/groq|gemini/);
+      expect(message.toLowerCase()).toMatch(/not configured/);
       return;
     }
 
     expect(result.status).toBe(200);
     expect(typeof result.data.reply).toBe("string");
     expect(Array.isArray(result.data.actions)).toBe(true);
-    expect(result.data.provider ?? "groq").toBe("groq");
+  });
+
+  test("rejects client-supplied provider override for STAFF @http", async () => {
+    const result = await httpJson("STAFF", "/staff-agent/chat", {
+      method: "POST",
+      body: JSON.stringify({
+        messages: [{ role: "user", content: "Say hello" }],
+        provider: "gemini",
+      }),
+    });
+    expect(result.status).toBe(400);
   });
 
   test("rejects empty chat body for STAFF @http", async () => {
@@ -58,7 +68,7 @@ test.describe("staff agent HTTP @http", () => {
       method: "POST",
       body: JSON.stringify({ messages: [] }),
     });
-    // 400 validation / business rule, or 503 when key missing (checked first)
+    // 400 validation / business rule, or 503 when studio AI is not configured
     expect([400, 503]).toContain(result.status);
   });
 });

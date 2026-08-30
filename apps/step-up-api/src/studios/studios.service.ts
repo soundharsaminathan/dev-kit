@@ -7,16 +7,66 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
-import { Prisma, StudioStatus, UserRole } from "@prisma/client";
+import {
+  type AiProvider,
+  Prisma,
+  StudioStatus,
+  UserRole,
+} from "@prisma/client";
 import { FirebaseService } from "../auth/firebase.service";
+import { isValidIanaTimeZone } from "../common/zoned-local-time";
 import { MediaService } from "../media/media.service";
 import { RazorpayService } from "../payments/razorpay.service";
 import { PrismaService } from "../prisma/prisma.service";
-import { UserCryptoService } from "../users/user-crypto.service";
-import { isValidIanaTimeZone } from "../common/zoned-local-time";
-import { slugifyStudioName, uniquifySlug } from "../tenancy/studio-slug";
 import { getStudioUsageSummaries } from "../studio-invoices/studio-usage";
+import { slugifyStudioName, uniquifySlug } from "../tenancy/studio-slug";
+import { UserCryptoService } from "../users/user-crypto.service";
+import {
+  isAiConfigured,
+  toAiProviderApiValue,
+  toAiProviderEnum,
+} from "./ai-provider";
 import { parseDanceStyles } from "./dance-styles";
+
+type StudioSettingsRow = {
+  graceDays: number;
+  expireAlertDays: number;
+  platformFeePercent: number;
+  gstPercent: number;
+  admissionFee: Prisma.Decimal | number;
+  timezone: string;
+  razorpayKeyId: string | null;
+  razorpayKeySecret: string | null;
+  razorpaySecretIv: string | null;
+  danceStyles: unknown;
+  gstNumber: string | null;
+  aiProvider: AiProvider | null;
+  aiApiKey: string | null;
+  aiApiKeyIv: string | null;
+  aiChatModel: string | null;
+};
+
+function toPublicStudioSettings(settings: StudioSettingsRow) {
+  return {
+    graceDays: settings.graceDays,
+    expireAlertDays: settings.expireAlertDays,
+    platformFeePercent: settings.platformFeePercent,
+    gstPercent: settings.gstPercent,
+    admissionFee: Number(settings.admissionFee),
+    timezone: settings.timezone,
+    razorpayKeyId: settings.razorpayKeyId,
+    razorpayConfigured: Boolean(
+      settings.razorpayKeyId &&
+        settings.razorpayKeySecret &&
+        settings.razorpaySecretIv,
+    ),
+    danceStyles: settings.danceStyles ?? null,
+    gstNumber: settings.gstNumber ?? null,
+    aiConfigured: isAiConfigured(settings),
+    aiProvider: toAiProviderApiValue(settings.aiProvider),
+    aiChatModel: settings.aiChatModel ?? null,
+  };
+}
 
 export type CreateStudioInput = {
   name: string;
@@ -315,22 +365,7 @@ export class StudiosService {
     }
 
     const settings = studio.settings
-      ? {
-          graceDays: studio.settings.graceDays,
-          expireAlertDays: studio.settings.expireAlertDays,
-          platformFeePercent: studio.settings.platformFeePercent,
-          gstPercent: studio.settings.gstPercent,
-          admissionFee: Number(studio.settings.admissionFee),
-          timezone: studio.settings.timezone,
-          razorpayKeyId: studio.settings.razorpayKeyId,
-          razorpayConfigured: Boolean(
-            studio.settings.razorpayKeyId &&
-              studio.settings.razorpayKeySecret &&
-              studio.settings.razorpaySecretIv,
-          ),
-          danceStyles: studio.settings.danceStyles ?? null,
-          gstNumber: studio.settings.gstNumber ?? null,
-        }
+      ? toPublicStudioSettings(studio.settings)
       : null;
 
     return {
@@ -386,6 +421,9 @@ export class StudiosService {
       razorpayKeySecret?: string | null;
       gstNumber?: string | null;
       danceStyles?: unknown;
+      aiProvider?: string | null;
+      aiApiKey?: string | null;
+      aiChatModel?: string | null;
     },
   ) {
     const update: {
@@ -400,6 +438,10 @@ export class StudiosService {
       razorpaySecretIv?: string | null;
       gstNumber?: string | null;
       danceStyles?: Prisma.InputJsonValue | typeof Prisma.DbNull;
+      aiProvider?: AiProvider | null;
+      aiApiKey?: string | null;
+      aiApiKeyIv?: string | null;
+      aiChatModel?: string | null;
     } = {};
 
     if (data.graceDays !== undefined) update.graceDays = data.graceDays;
@@ -441,12 +483,32 @@ export class StudiosService {
         parsed === null ? Prisma.DbNull : (parsed as Prisma.InputJsonValue);
     }
 
+    if (data.aiProvider !== undefined) {
+      if (data.aiProvider === null || data.aiProvider === "") {
+        update.aiProvider = null;
+      } else {
+        const provider = toAiProviderEnum(data.aiProvider);
+        if (!provider) {
+          throw new BadRequestException("Invalid AI provider");
+        }
+        update.aiProvider = provider;
+      }
+    }
+
+    if (data.aiChatModel !== undefined) {
+      const trimmed = data.aiChatModel?.trim() ?? "";
+      update.aiChatModel = trimmed || null;
+    }
+
     const existing = await this.prisma.studioSettings.findUnique({
       where: { studioId },
       select: {
         razorpayKeyId: true,
         razorpayKeySecret: true,
         razorpaySecretIv: true,
+        aiProvider: true,
+        aiApiKey: true,
+        aiApiKeyIv: true,
       },
     });
 
@@ -497,28 +559,41 @@ export class StudiosService {
       });
     }
 
+    let plainAiKey: string | null | undefined;
+    if (data.aiApiKey !== undefined) {
+      const secret = data.aiApiKey?.trim() ?? "";
+      if (!secret) {
+        update.aiApiKey = null;
+        update.aiApiKeyIv = null;
+        plainAiKey = null;
+      } else {
+        plainAiKey = secret;
+      }
+    }
+
+    const nextAiProvider =
+      update.aiProvider !== undefined
+        ? update.aiProvider
+        : (existing?.aiProvider ?? null);
+
+    if (plainAiKey) {
+      if (!nextAiProvider) {
+        throw new BadRequestException(
+          "AI provider is required when saving an API key",
+        );
+      }
+      const sealed = this.crypto.encryptStudioSecret(plainAiKey);
+      update.aiApiKey = sealed.ciphertext;
+      update.aiApiKeyIv = sealed.iv;
+    }
+
     const settings = await this.prisma.studioSettings.upsert({
       where: { studioId },
       update,
       create: { studioId, ...update },
     });
 
-    return {
-      graceDays: settings.graceDays,
-      expireAlertDays: settings.expireAlertDays,
-      platformFeePercent: settings.platformFeePercent,
-      gstPercent: settings.gstPercent,
-      admissionFee: Number(settings.admissionFee),
-      timezone: settings.timezone,
-      razorpayKeyId: settings.razorpayKeyId,
-      razorpayConfigured: Boolean(
-        settings.razorpayKeyId &&
-          settings.razorpayKeySecret &&
-          settings.razorpaySecretIv,
-      ),
-      danceStyles: settings.danceStyles ?? null,
-      gstNumber: settings.gstNumber ?? null,
-    };
+    return toPublicStudioSettings(settings);
   }
 
   async deleteStudio(id: string) {

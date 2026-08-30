@@ -1,18 +1,31 @@
 import { ServiceUnavailableException } from "@nestjs/common";
+import { AiProvider } from "@prisma/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { AI_KEY_REJECTED_MESSAGE } from "./ai-errors";
 import { GeminiClient, toGeminiContents } from "./gemini.client";
 import { GroqClient, toGroqMessages } from "./groq.client";
 import { StaffAgentService } from "./staff-agent.service";
 
 describe("StaffAgentService", () => {
+  const prisma = {
+    studioSettings: {
+      findUnique: vi.fn(),
+    },
+  };
+  const agentConfig = {
+    resolve: vi.fn(),
+  };
   const groq = {
-    requireApiKey: vi.fn(),
     chat: vi.fn(),
     transcribe: vi.fn(),
     synthesizeSpeech: vi.fn(),
   };
   const gemini = {
-    requireApiKey: vi.fn(),
+    chat: vi.fn(),
+    transcribe: vi.fn(),
+    synthesizeSpeech: vi.fn(),
+  };
+  const openai = {
     chat: vi.fn(),
     transcribe: vi.fn(),
     synthesizeSpeech: vi.fn(),
@@ -26,16 +39,20 @@ describe("StaffAgentService", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     service = new StaffAgentService(
+      prisma as never,
+      agentConfig as never,
       groq as never,
       gemini as never,
+      openai as never,
       tools as never,
     );
   });
 
-  it("throws 503 when GROQ_API_KEY is missing (default provider)", async () => {
-    groq.requireApiKey.mockImplementation(() => {
+  it("throws 503 when studio AI is not configured", async () => {
+    prisma.studioSettings.findUnique.mockResolvedValue(null);
+    agentConfig.resolve.mockImplementation(() => {
       throw new ServiceUnavailableException(
-        "Staff agent is unavailable: GROQ_API_KEY is not configured",
+        "AI agent is not configured for this studio.",
       );
     });
 
@@ -49,11 +66,22 @@ describe("StaffAgentService", () => {
         { messages: [{ role: "user", content: "Add a lead named Riya" }] },
       ),
     ).rejects.toBeInstanceOf(ServiceUnavailableException);
-    expect(gemini.requireApiKey).not.toHaveBeenCalled();
+    expect(groq.chat).not.toHaveBeenCalled();
+    expect(gemini.chat).not.toHaveBeenCalled();
   });
 
-  it("uses Gemini when provider is gemini", async () => {
-    gemini.requireApiKey.mockReturnValue("test-key");
+  it("uses Gemini when studio settings say gemini", async () => {
+    prisma.studioSettings.findUnique.mockResolvedValue({
+      aiProvider: AiProvider.GEMINI,
+      aiApiKey: "sealed",
+      aiApiKeyIv: "iv",
+      aiChatModel: null,
+    });
+    agentConfig.resolve.mockReturnValue({
+      provider: "gemini",
+      apiKey: "studio-gemini",
+      chatModel: null,
+    });
     gemini.chat.mockResolvedValue({
       content: "Hello from Gemini.",
       toolCalls: [],
@@ -67,19 +95,62 @@ describe("StaffAgentService", () => {
         studioId: "studio-1",
       } as never,
       {
-        provider: "gemini",
         messages: [{ role: "user", content: "Say hello" }],
       },
     );
 
     expect(result.provider).toBe("gemini");
     expect(result.reply).toBe("Hello from Gemini.");
-    expect(groq.requireApiKey).not.toHaveBeenCalled();
-    expect(gemini.chat).toHaveBeenCalled();
+    expect(groq.chat).not.toHaveBeenCalled();
+    expect(gemini.chat).toHaveBeenCalledWith(
+      expect.objectContaining({ apiKey: "studio-gemini" }),
+    );
+  });
+
+  it("uses OpenAI when studio settings say openai", async () => {
+    prisma.studioSettings.findUnique.mockResolvedValue({
+      aiProvider: AiProvider.OPENAI,
+      aiApiKey: "sealed",
+      aiApiKeyIv: "iv",
+      aiChatModel: null,
+    });
+    agentConfig.resolve.mockReturnValue({
+      provider: "openai",
+      apiKey: "studio-openai",
+      chatModel: null,
+    });
+    openai.chat.mockResolvedValue({
+      content: "Hello from OpenAI.",
+      toolCalls: [],
+      model: "gpt-4o-mini",
+    });
+
+    const result = await service.chat(
+      {
+        id: "staff-1",
+        role: "STAFF",
+        studioId: "studio-1",
+      } as never,
+      { messages: [{ role: "user", content: "Say hello" }] },
+    );
+
+    expect(result.provider).toBe("openai");
+    expect(openai.chat).toHaveBeenCalled();
+    expect(groq.chat).not.toHaveBeenCalled();
   });
 
   it("runs a tool loop then returns the assistant reply", async () => {
-    groq.requireApiKey.mockReturnValue("test-key");
+    prisma.studioSettings.findUnique.mockResolvedValue({
+      aiProvider: AiProvider.GROQ,
+      aiApiKey: "sealed",
+      aiApiKeyIv: "iv",
+      aiChatModel: null,
+    });
+    agentConfig.resolve.mockReturnValue({
+      provider: "groq",
+      apiKey: "studio-groq",
+      chatModel: null,
+    });
     groq.chat
       .mockResolvedValueOnce({
         content: null,
@@ -128,24 +199,6 @@ describe("StaffAgentService", () => {
       { tool: "create_lead", ok: true, summary: "Created lead Riya" },
     ]);
     expect(tools.execute).toHaveBeenCalled();
-  });
-});
-
-describe("GeminiClient.requireApiKey", () => {
-  it("throws when key is empty", () => {
-    const client = new GeminiClient({
-      get: () => "",
-    } as never);
-    expect(() => client.requireApiKey()).toThrow(ServiceUnavailableException);
-  });
-});
-
-describe("GroqClient.requireApiKey", () => {
-  it("throws when key is empty", () => {
-    const client = new GroqClient({
-      get: () => "",
-    } as never);
-    expect(() => client.requireApiKey()).toThrow(ServiceUnavailableException);
   });
 });
 
@@ -265,12 +318,10 @@ describe("GeminiClient.chat preserves thoughtSignature from API", () => {
       }),
     }) as never;
 
-    const client = new GeminiClient({
-      get: (key: string) =>
-        key === "GEMINI_API_KEY" ? "test-key" : undefined,
-    } as never);
+    const client = new GeminiClient();
 
     const result = await client.chat({
+      apiKey: "test-key",
       messages: [{ role: "user", content: "Add lead GuruRam" }],
       tools: [
         {
@@ -287,5 +338,23 @@ describe("GeminiClient.chat preserves thoughtSignature from API", () => {
     expect(result.toolCalls).toHaveLength(1);
     expect(result.toolCalls[0]?.thoughtSignature).toBe("sig-from-api");
     expect(result.toolCalls[0]?.function.name).toBe("search_people");
+  });
+
+  it("maps 401 to a safe key-rejected message", async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 401,
+      json: async () => ({ error: { message: "secret-key-xyz" } }),
+    }) as never;
+
+    const client = new GroqClient();
+    await expect(
+      client.chat({
+        apiKey: "bad-key",
+        messages: [{ role: "user", content: "Hi" }],
+      }),
+    ).rejects.toMatchObject({
+      message: AI_KEY_REJECTED_MESSAGE,
+    });
   });
 });

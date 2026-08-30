@@ -6,47 +6,47 @@ import type {
   AgentToolDefinition,
 } from "./agent.types";
 import { aiUnavailable } from "./ai-errors";
+import { toGroqMessages } from "./groq.client";
 
-const GROQ_BASE = "https://api.groq.com/openai/v1";
+const OPENAI_BASE = "https://api.openai.com/v1";
 
-/** Production Groq chat model (replaces retired llama-3.3-70b-versatile). */
-export const GROQ_CHAT_MODEL_DEFAULT = "openai/gpt-oss-120b";
-export const GROQ_STT_MODEL_DEFAULT = "whisper-large-v3-turbo";
-export const GROQ_TTS_MODEL_DEFAULT = "canopylabs/orpheus-v1-english";
-export const GROQ_TTS_VOICE_DEFAULT = "hannah";
+export const OPENAI_CHAT_MODEL_DEFAULT = "gpt-4o-mini";
+export const OPENAI_STT_MODEL_DEFAULT = "whisper-1";
+export const OPENAI_TTS_MODEL_DEFAULT = "tts-1";
+export const OPENAI_TTS_VOICE_DEFAULT = "alloy";
 
-type GroqToolCall = {
+type OpenAiToolCall = {
   id?: string;
   type?: string;
   function?: { name?: string; arguments?: string };
 };
 
-type GroqChatResponse = {
+type OpenAiChatResponse = {
   choices?: Array<{
     message?: {
       content?: string | null;
-      tool_calls?: GroqToolCall[];
+      tool_calls?: OpenAiToolCall[];
     };
   }>;
   error?: { message?: string };
 };
 
 @Injectable()
-export class GroqClient {
+export class OpenAiClient {
   chatModel(override?: string | null): string {
-    return override?.trim() || GROQ_CHAT_MODEL_DEFAULT;
+    return override?.trim() || OPENAI_CHAT_MODEL_DEFAULT;
   }
 
   sttModel(): string {
-    return GROQ_STT_MODEL_DEFAULT;
+    return OPENAI_STT_MODEL_DEFAULT;
   }
 
   ttsModel(): string {
-    return GROQ_TTS_MODEL_DEFAULT;
+    return OPENAI_TTS_MODEL_DEFAULT;
   }
 
   ttsVoice(): string {
-    return GROQ_TTS_VOICE_DEFAULT;
+    return OPENAI_TTS_VOICE_DEFAULT;
   }
 
   async chat(input: {
@@ -81,7 +81,7 @@ export class GroqClient {
       body.tool_choice = "auto";
     }
 
-    const response = await fetch(`${GROQ_BASE}/chat/completions`, {
+    const response = await fetch(`${OPENAI_BASE}/chat/completions`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${apiKey}`,
@@ -90,11 +90,11 @@ export class GroqClient {
       body: JSON.stringify(body),
     });
 
-    const data = (await response.json()) as GroqChatResponse;
+    const data = (await response.json()) as OpenAiChatResponse;
     if (!response.ok) {
       throw aiUnavailable(
         response.status,
-        data.error?.message ?? "Groq chat request failed",
+        data.error?.message ?? "OpenAI chat request failed",
       );
     }
 
@@ -125,7 +125,6 @@ export class GroqClient {
         "AI agent is not configured for this studio.",
       );
     }
-    const model = this.sttModel();
     const form = new FormData();
     const filename = `recording${extensionForMime(mimeType)}`;
     form.append(
@@ -133,11 +132,11 @@ export class GroqClient {
       new Blob([new Uint8Array(audio)], { type: mimeType }),
       filename,
     );
-    form.append("model", model);
+    form.append("model", this.sttModel());
     form.append("response_format", "json");
     form.append("temperature", "0");
 
-    const response = await fetch(`${GROQ_BASE}/audio/transcriptions`, {
+    const response = await fetch(`${OPENAI_BASE}/audio/transcriptions`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${key}`,
@@ -152,7 +151,7 @@ export class GroqClient {
     if (!response.ok) {
       throw aiUnavailable(
         response.status,
-        data.error?.message ?? "Groq transcription failed",
+        data.error?.message ?? "OpenAI transcription failed",
       );
     }
 
@@ -167,7 +166,7 @@ export class GroqClient {
     }
 
     try {
-      const response = await fetch(`${GROQ_BASE}/audio/speech`, {
+      const response = await fetch(`${OPENAI_BASE}/audio/speech`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${key}`,
@@ -191,41 +190,6 @@ export class GroqClient {
       return null;
     }
   }
-}
-
-/** Maps agent history into OpenAI-compatible Groq messages. */
-export function toGroqMessages(
-  messages: AgentChatMessage[],
-): Array<Record<string, unknown>> {
-  return messages.map((message) => {
-    if (message.role === "tool") {
-      return {
-        role: "tool",
-        tool_call_id: message.tool_call_id,
-        content: message.content ?? "",
-      };
-    }
-
-    if (message.role === "assistant" && message.tool_calls?.length) {
-      return {
-        role: "assistant",
-        content: message.content,
-        tool_calls: message.tool_calls.map((call) => ({
-          id: call.id,
-          type: "function",
-          function: {
-            name: call.function.name,
-            arguments: call.function.arguments,
-          },
-        })),
-      };
-    }
-
-    return {
-      role: message.role,
-      content: message.content ?? "",
-    };
-  });
 }
 
 function extensionForMime(mimeType: string): string {

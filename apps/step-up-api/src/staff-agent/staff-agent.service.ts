@@ -1,19 +1,17 @@
-import { BadRequestException, Inject, Injectable } from "@nestjs/common";
+import {
+  BadRequestException,
+  Inject,
+  Injectable,
+  ServiceUnavailableException,
+} from "@nestjs/common";
 import { requireUserStudioId } from "../auth/studio-access";
+import { PrismaService } from "../prisma/prisma.service";
 import type { DecryptedUser } from "../users/user-crypto.service";
-import type {
-  AgentChatMessage,
-  StaffAgentProvider,
-} from "./agent.types";
-import { STAFF_AGENT_PROVIDER_DEFAULT } from "./agent.types";
-import {
-  GEMINI_CHAT_MODEL_DEFAULT,
-  GeminiClient,
-} from "./gemini.client";
-import {
-  GROQ_CHAT_MODEL_DEFAULT,
-  GroqClient,
-} from "./groq.client";
+import type { AgentChatMessage, StaffAgentProvider } from "./agent.types";
+import { GEMINI_CHAT_MODEL_DEFAULT, GeminiClient } from "./gemini.client";
+import { GROQ_CHAT_MODEL_DEFAULT, GroqClient } from "./groq.client";
+import { OPENAI_CHAT_MODEL_DEFAULT, OpenAiClient } from "./openai.client";
+import { StaffAgentConfigService } from "./staff-agent-config.service";
 import {
   createResolvedIds,
   parseToolArguments,
@@ -50,8 +48,7 @@ export type StaffAgentChatResult = {
   provider: StaffAgentProvider;
 };
 
-type LlmClient = {
-  requireApiKey: () => string;
+type BoundLlmClient = {
   chat: (input: {
     messages: AgentChatMessage[];
     tools?: typeof STAFF_AGENT_TOOLS;
@@ -69,8 +66,12 @@ type LlmClient = {
 @Injectable()
 export class StaffAgentService {
   constructor(
+    @Inject(PrismaService) private readonly prisma: PrismaService,
+    @Inject(StaffAgentConfigService)
+    private readonly agentConfig: StaffAgentConfigService,
     @Inject(GroqClient) private readonly groq: GroqClient,
     @Inject(GeminiClient) private readonly gemini: GeminiClient,
+    @Inject(OpenAiClient) private readonly openai: OpenAiClient,
     @Inject(StaffAgentToolExecutor)
     private readonly tools: StaffAgentToolExecutor,
   ) {}
@@ -79,16 +80,28 @@ export class StaffAgentService {
     actor: DecryptedUser,
     input: {
       messages: StaffAgentChatMessage[];
-      provider?: StaffAgentProvider;
       voice?: boolean;
       audioBase64?: string;
       audioMimeType?: string;
     },
   ): Promise<StaffAgentChatResult> {
-    const provider = input.provider ?? STAFF_AGENT_PROVIDER_DEFAULT;
-    const llm = this.clientFor(provider);
-    llm.requireApiKey();
     const studioId = requireUserStudioId(actor);
+    const settings = await this.prisma.studioSettings.findUnique({
+      where: { studioId },
+      select: {
+        aiProvider: true,
+        aiApiKey: true,
+        aiApiKeyIv: true,
+        aiChatModel: true,
+      },
+    });
+
+    const config = this.agentConfig.resolve(settings);
+    const llm = this.bindClient(
+      config.provider,
+      config.apiKey,
+      config.chatModel,
+    );
 
     let transcript: string | undefined;
     const history = sanitizeMessages(input.messages);
@@ -132,8 +145,7 @@ export class StaffAgentService {
 
     const resolved = createResolvedIds();
     const actions: StaffAgentAction[] = [];
-    let model =
-      provider === "gemini" ? GEMINI_CHAT_MODEL_DEFAULT : GROQ_CHAT_MODEL_DEFAULT;
+    let model = defaultModelFor(config.provider, config.chatModel);
     let finalReply = "";
 
     for (let round = 0; round < MAX_TOOL_ROUNDS; round += 1) {
@@ -229,13 +241,53 @@ export class StaffAgentService {
       actions,
       audioBase64,
       model,
-      provider,
+      provider: config.provider,
     };
   }
 
-  private clientFor(provider: StaffAgentProvider): LlmClient {
-    return provider === "gemini" ? this.gemini : this.groq;
+  private bindClient(
+    provider: StaffAgentProvider,
+    apiKey: string,
+    chatModel: string | null,
+  ): BoundLlmClient {
+    if (provider === "gemini") {
+      return {
+        chat: (input) => this.gemini.chat({ ...input, apiKey, chatModel }),
+        transcribe: (audio, mimeType) =>
+          this.gemini.transcribe(apiKey, audio, mimeType, chatModel),
+        synthesizeSpeech: (text) => this.gemini.synthesizeSpeech(apiKey, text),
+      };
+    }
+    if (provider === "openai") {
+      return {
+        chat: (input) => this.openai.chat({ ...input, apiKey, chatModel }),
+        transcribe: (audio, mimeType) =>
+          this.openai.transcribe(apiKey, audio, mimeType),
+        synthesizeSpeech: (text) => this.openai.synthesizeSpeech(apiKey, text),
+      };
+    }
+    if (provider === "groq") {
+      return {
+        chat: (input) => this.groq.chat({ ...input, apiKey, chatModel }),
+        transcribe: (audio, mimeType) =>
+          this.groq.transcribe(apiKey, audio, mimeType),
+        synthesizeSpeech: (text) => this.groq.synthesizeSpeech(apiKey, text),
+      };
+    }
+    throw new ServiceUnavailableException(
+      "AI agent is not configured for this studio.",
+    );
   }
+}
+
+function defaultModelFor(
+  provider: StaffAgentProvider,
+  chatModel: string | null,
+): string {
+  if (chatModel?.trim()) return chatModel.trim();
+  if (provider === "gemini") return GEMINI_CHAT_MODEL_DEFAULT;
+  if (provider === "openai") return OPENAI_CHAT_MODEL_DEFAULT;
+  return GROQ_CHAT_MODEL_DEFAULT;
 }
 
 function sanitizeMessages(
