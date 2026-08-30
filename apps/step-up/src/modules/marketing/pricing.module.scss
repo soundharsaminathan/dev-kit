@@ -1,0 +1,188 @@
+.pricing {
+  background: color-mix(in srgb, var(--color-fg) 4%, var(--surface-background, #f8f4ec));
+}
+
+.intro {
+  max-width: var(--lp-copy);
+  margin-bottom: var(--lp-space-600);
+}
+
+.grid {
+  display: grid;
+  gap: var(--lp-space-300);
+  align-items: stretch;
+}
+
+.plan {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: var(--lp-space-300);
+  border-radius: var(--lp-radius-2xl);
+  border: 1px solid color-mix(in srgb, var(--color-fg) 10%, transparent);
+  background: var(--color-card, #fff);
+  transition:
+    transform var(--lp-duration) var(--lp-ease),
+    border-color var(--lp-duration) var(--lp-ease),
+    box-shadow var(--lp-duration) var(--lp-ease);
+
+  &:hover {
+    border-color: color-mix(in srgb, var(--color-fg) 18%, transparent);
+  }
+
+  &:focus-within {
+    border-color: color-mix(in srgb, var(--color-primary) 45%, transparent);
+  }
+}
+
+.featured {
+  border-color: color-mix(in srgb, var(--color-primary) 42%, transparent);
+  box-shadow: 0 16px 40px color-mix(in srgb, var(--color-fg) 8%, transparent);
+  background: #fff;
+}
+
+.badge,
+.badgeSpacer {
+  margin: 0 0 var(--lp-space-200);
+  min-height: 1.25rem;
+  font-size: var(--lp-text-xs);
+  font-weight: 700;
+  line-height: var(--lp-text-xs-lh);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-primary);
+}
+
+.badgeSpacer {
+  visibility: hidden;
+}
+
+.name {
+  margin: 0;
+  font-size: var(--lp-text-2xl);
+  font-weight: 700;
+  line-height: var(--lp-text-2xl-lh);
+  letter-spacing: -0.03em;
+  text-wrap: balance;
+}
+
+.pitch {
+  margin: var(--lp-space-75) 0 0;
+  font-size: var(--lp-text-base);
+  line-height: var(--lp-text-base-lh);
+  color: color-mix(in srgb, var(--color-fg) 62%, transparent);
+  text-wrap: pretty;
+}
+
+.priceRow {
+  display: flex;
+  align-items: baseline;
+  gap: var(--lp-space-75);
+  margin: var(--lp-space-300) 0 0;
+}
+
+.price {
+  font-size: var(--lp-text-4xl);
+  font-weight: 700;
+  line-height: var(--lp-text-4xl-lh);
+  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+}
+
+.cadence {
+  font-size: var(--lp-text-sm);
+  line-height: var(--lp-text-sm-lh);
+  color: color-mix(in srgb, var(--color-fg) 52%, transparent);
+}
+
+.limits {
+  margin: var(--lp-space-300) 0 0;
+  padding: var(--lp-space-200);
+  list-style: none;
+  display: grid;
+  gap: var(--lp-space-75);
+  border-radius: var(--lp-radius-lg);
+  background: color-mix(in srgb, var(--color-fg) 4%, transparent);
+
+  li {
+    font-size: var(--lp-text-sm);
+    font-weight: 600;
+    line-height: var(--lp-text-sm-lh);
+    color: color-mix(in srgb, var(--color-fg) 78%, transparent);
+  }
+}
+
+.includes {
+  margin: var(--lp-space-300) 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: var(--lp-space-100);
+  flex: 1;
+}
+
+.includes li {
+  display: grid;
+  grid-template-columns: 1rem 1fr;
+  gap: var(--lp-space-100);
+  align-items: start;
+  font-size: var(--lp-text-base);
+  line-height: var(--lp-text-base-lh);
+  color: color-mix(in srgb, var(--color-fg) 72%, transparent);
+  text-wrap: pretty;
+}
+
+.check {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 0.15rem;
+  width: 1rem;
+  height: 1rem;
+  font-size: var(--lp-text-xs);
+  font-weight: 700;
+  line-height: 1;
+  color: var(--color-primary);
+}
+
+.ctaLink {
+  display: block;
+  margin-top: var(--lp-space-400);
+  text-decoration: none;
+
+  :global(button),
+  :global(a) {
+    width: 100%;
+  }
+}
+
+.note {
+  margin: var(--lp-space-500) 0 0;
+  max-width: var(--lp-copy);
+  font-size: var(--lp-text-sm);
+  line-height: var(--lp-text-sm-lh);
+  color: color-mix(in srgb, var(--color-fg) 52%, transparent);
+  text-wrap: pretty;
+}
+
+@media (min-width: 768px) {
+  .grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--lp-space-400);
+  }
+
+  .featured {
+    transform: translateY(calc(var(--lp-space-75) * -1));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .plan {
+    transition: none;
+  }
+
+  .featured {
+    transform: none;
+  }
+}

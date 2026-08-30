@@ -5,7 +5,7 @@ export const HERO = {
   headlineLine2: "without chasing parents",
   support:
     "classa is the workspace for dance studio owners. Students, batches, attendance, and payments live in one place so you can teach instead of chase.",
-  primaryCta: "Start for free",
+  primaryCta: "Get started",
   proof:
     "Studios mark attendance in 38 seconds, between songs, not after class.",
 } as const;
@@ -119,6 +119,62 @@ export const TESTIMONIALS = {
   ],
 } as const;
 
+export const PRICING = {
+  headline: "Simple plans for a busy floor",
+  support:
+    "Pick the size that fits your studio. Limits are guidance for billing, not walls on day one.",
+  note: "Billed monthly to the studio owner. Cancel anytime.",
+  plans: [
+    {
+      id: "basic",
+      name: "Basic",
+      price: "₹999",
+      cadence: "per month",
+      pitch: "Run one floor and collect dues.",
+      cta: "Start with Basic",
+      featured: false,
+      limits: [
+        "200 active students",
+        "10 batches",
+        "3 trainers",
+        "1 owner, 1 staff",
+      ],
+      includes: [
+        "Batches, calendar, and attendance",
+        "Individual and family packs",
+        "Cash and UPI invoices",
+        "Certificates",
+        "Trial caller and class bookings",
+        "Member app for students and parents",
+      ],
+    },
+    {
+      id: "advanced",
+      name: "Advanced",
+      price: "₹1,499",
+      cadence: "per month",
+      pitch: "Grow the books and the rooms.",
+      cta: "Choose Advanced",
+      featured: true,
+      badge: "Most studios",
+      limits: [
+        "500 active students",
+        "20 batches",
+        "10 trainers",
+        "1 owner, 10 staff",
+      ],
+      includes: [
+        "Everything in Basic",
+        "Online payments with Razorpay",
+        "Expenses and trainer payouts",
+        "Excel roster import",
+        "Retention and revenue views",
+        "Contests, chat, feed, and AI agent",
+      ],
+    },
+  ],
+} as const;
+
 export const FAQ = {
   headline: "Questions owners ask before they start",
   items: [
@@ -131,8 +187,8 @@ export const FAQ = {
       a: "Studio owners and staff who run classes every week, plus the trainers, students, and parents around them. If you teach dance and still chase fees by hand, this is for you.",
     },
     {
-      q: "Do I need a credit card to start?",
-      a: "No. Create a studio, invite your team, and run classes. You can start free without entering a card.",
+      q: "How much does classa cost?",
+      a: "Basic is ₹999 a month for one floor. Advanced is ₹1,499 a month when you need online payments, import, payouts, and higher caps. classa invoices the studio owner.",
     },
     {
       q: "Can parents and students use it?",
@@ -144,15 +200,15 @@ export const FAQ = {
     },
     {
       q: "How do payments work?",
-      a: "Mark cash or UPI paid in studio, or collect online with Razorpay. Invoices stay tied to plans and batches so families see what is due.",
+      a: "Mark cash or UPI paid in studio, or collect online with Razorpay on Advanced. Invoices stay tied to plans and batches so families see what is due.",
     },
     {
       q: "Can I bring existing students in?",
-      a: "Yes. Import a roster from Excel, then attach batches and plans instead of retyping every family by hand.",
+      a: "Yes. On Advanced you can import a roster from Excel, then attach batches and plans instead of retyping every family by hand.",
     },
     {
       q: "Can I cancel anytime?",
-      a: "Yes. There is no lock in term. Start free, use it with your team, and leave if it is not the right fit.",
+      a: "Yes. There is no lock in term. Use classa with your team and leave if it is not the right fit.",
     },
   ],
 } as const;
@@ -161,19 +217,20 @@ export const FINAL_CTA = {
   headlineLine1: "Spend less time managing.",
   headlineLine2: "More time teaching.",
   support:
-    "Start free, no credit card. Cancel anytime. Your studio can be in one workspace this week.",
-  primaryCta: "Start for free",
-  risk: "Free to start. No credit card. Cancel anytime.",
+    "Start with Basic or Advanced this week. Cancel anytime. Your studio can live in one workspace.",
+  primaryCta: "Get started",
+  risk: "Monthly billing. Cancel anytime.",
 } as const;
 
 export const NAV = {
   links: [
     { label: "Product", href: "#features" },
     { label: "How it works", href: "#how-it-works" },
+    { label: "Pricing", href: "#pricing" },
     { label: "FAQ", href: "#faq" },
   ],
   login: "Log in",
-  start: "Start for free",
+  start: "Get started",
 } as const;
 
 export const FOOTER = {
@@ -252,9 +309,9 @@ export const JOURNEY = {
     "classa holds the path from lead to paid student so the floor stays full.",
   student: "Iniya",
   closingHeadlineLine1: "Ready when you are",
-  closingHeadlineLine2: "Start free this week",
+  closingHeadlineLine2: "Start this week",
   closingSupport: "Create a studio, invite your team, and run the next class.",
-  closingCta: "Start for free",
+  closingCta: "Get started",
   nodes: [
     {
       id: "lead",
