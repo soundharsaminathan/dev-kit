@@ -1,0 +1,64 @@
+.problem {
+  overflow: hidden;
+}
+
+.fragments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--lp-space-100);
+  margin-top: var(--lp-space-400);
+  max-width: 40rem;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--lp-space-75);
+  padding: var(--lp-space-75) var(--lp-space-200);
+  border-radius: 999px;
+  border: 1px solid rgb(248 244 236 / 14%);
+  background: rgb(248 244 236 / 6%);
+  font-size: var(--lp-text-sm);
+  line-height: var(--lp-text-sm-lh);
+}
+
+.chipLabel {
+  font-weight: 600;
+  color: rgb(248 244 236 / 88%);
+}
+
+.chipArrow {
+  color: var(--color-primary);
+  font-weight: 700;
+}
+
+.chipTool {
+  font-weight: 600;
+  color: rgb(248 244 236 / 52%);
+}
+
+.resolution {
+  margin-top: var(--lp-space-600);
+  padding: var(--lp-space-300);
+  max-width: 28rem;
+  border-radius: var(--lp-radius-2xl);
+  border: 1px solid color-mix(in srgb, var(--color-primary) 40%, transparent);
+  background: color-mix(in srgb, var(--color-primary) 12%, #181818);
+}
+
+.resolutionTitle {
+  margin: 0;
+  font-size: var(--lp-text-xl);
+  font-weight: 700;
+  line-height: var(--lp-text-xl-lh);
+  letter-spacing: -0.02em;
+  color: #f8f4ec;
+}
+
+.resolutionSupport {
+  margin: var(--lp-space-75) 0 0;
+  font-size: var(--lp-text-base);
+  line-height: var(--lp-text-base-lh);
+  color: rgb(248 244 236 / 68%);
+  text-wrap: pretty;
+}

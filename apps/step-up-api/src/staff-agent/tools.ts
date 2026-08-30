@@ -202,7 +202,7 @@ export const STAFF_AGENT_TOOLS: AgentToolDefinition[] = [
   },
 ];
 
-export const STAFF_AGENT_SYSTEM_PROMPT = `You are the Step Up studio CRM assistant for OWNER/STAFF.
+export const STAFF_AGENT_SYSTEM_PROMPT = `You are the classa studio CRM assistant for OWNER/STAFF.
 You help staff create leads and students, add remarks, book/switch/confirm trials, archive leads, and switch batches.
 
 Rules:

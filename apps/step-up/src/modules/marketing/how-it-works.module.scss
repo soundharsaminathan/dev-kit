@@ -1,0 +1,81 @@
+.how {
+  background: color-mix(in srgb, var(--color-fg) 4%, var(--surface-background, #f8f4ec));
+}
+
+.intro {
+  max-width: var(--lp-copy);
+  margin-bottom: var(--lp-space-600);
+}
+
+.list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: var(--lp-space-200);
+}
+
+.card {
+  margin: 0;
+  padding: var(--lp-space-300);
+  border-radius: var(--lp-radius-2xl);
+  border: 1px solid color-mix(in srgb, var(--color-fg) 8%, transparent);
+  background: var(--color-card, #fff);
+}
+
+.iconWrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  margin-bottom: var(--lp-space-200);
+  border-radius: var(--lp-radius-lg);
+  background: color-mix(in srgb, var(--color-primary) 16%, transparent);
+  color: var(--color-primary);
+}
+
+.icon {
+  display: inline-flex;
+  width: 20px;
+  height: 20px;
+
+  svg {
+    width: 100%;
+    height: 100%;
+  }
+}
+
+.num {
+  margin: 0 0 var(--lp-space-75);
+  font-size: var(--lp-text-sm);
+  font-weight: 700;
+  line-height: var(--lp-text-sm-lh);
+  letter-spacing: 0.04em;
+  font-variant-numeric: tabular-nums;
+  color: color-mix(in srgb, var(--color-fg) 48%, transparent);
+}
+
+.cardTitle {
+  margin: 0;
+  font-size: var(--lp-text-xl);
+  font-weight: 700;
+  line-height: var(--lp-text-xl-lh);
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+
+.cardBody {
+  margin: var(--lp-space-75) 0 0;
+  font-size: var(--lp-text-base);
+  line-height: var(--lp-text-base-lh);
+  color: color-mix(in srgb, var(--color-fg) 62%, transparent);
+  text-wrap: pretty;
+}
+
+@media (min-width: 768px) {
+  .list {
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--lp-space-300);
+  }
+}

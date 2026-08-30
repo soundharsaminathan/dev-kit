@@ -1,4 +1,4 @@
-# Step Up testing
+# classa testing
 
 Strategy: finalized product flows are the contract. Each flow gets the lightest reliable layer.
 
@@ -85,7 +85,7 @@ Tag critical journeys with `@critical` in the test title so PR regression stays 
 
 ## Definition of Done
 
-A Step Up feature is complete only when:
+A classa feature is complete only when:
 
 ```
 Feature implemented

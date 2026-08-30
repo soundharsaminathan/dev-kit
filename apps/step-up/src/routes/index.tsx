@@ -1,9 +1,11 @@
-import { createFileRoute, Link, redirect } from "@tanstack/react-router";
-import { SEED_STUDIO_ID } from "@/lib/constants";
+import { createFileRoute, redirect } from "@tanstack/react-router";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { homePathForUser } from "@/lib/require-auth";
 import { PublicShell } from "@/modules/layout/public-shell";
-import { TouchButton } from "@/modules/ui/touch-button";
+import { Hero } from "@/modules/marketing/hero";
 import styles from "./index.module.scss";
+
+const LandingSections = lazy(() => import("@/modules/marketing/sections"));
 
 export const Route = createFileRoute("/")({
   beforeLoad: ({ context }) => {
@@ -16,38 +18,28 @@ export const Route = createFileRoute("/")({
 });
 
 function LandingPage() {
+  const [showSections, setShowSections] = useState(false);
+
+  useEffect(() => {
+    const enable = () => setShowSections(true);
+    if (typeof requestIdleCallback === "function") {
+      const id = requestIdleCallback(enable, { timeout: 2500 });
+      return () => cancelIdleCallback(id);
+    }
+    const id = window.setTimeout(enable, 800);
+    return () => window.clearTimeout(id);
+  }, []);
+
   return (
-    <PublicShell>
-      <section className={styles.hero}>
-        <h1 className={styles.brand}>Step Up</h1>
-        <p className={styles.headline}>
-          Dance studio operations, beautifully simple.
-        </p>
-        <p className={styles.support}>
-          Run batches, plans, attendance, and bookings from one calm workspace —
-          or step into class as a student or parent.
-        </p>
-        <div className={styles.actions}>
-          <TouchButton as={Link} to="/register" variant="primary" fullWidth>
-            Join as a student
-          </TouchButton>
-          <TouchButton as={Link} to="/login" variant="default" fullWidth>
-            Sign in
-          </TouchButton>
-          <TouchButton
-            as={Link}
-            to="/studio/$studioId"
-            params={{ studioId: SEED_STUDIO_ID } as never}
-            variant="quiet"
-            fullWidth
-          >
-            Explore the studio
-          </TouchButton>
-        </div>
-      </section>
-      <a className={styles.developerLink} href="/dev/">
-        Developer
-      </a>
+    <PublicShell nav="marketing" width="full">
+      <div className={styles.page}>
+        <Hero />
+        {showSections ? (
+          <Suspense fallback={null}>
+            <LandingSections />
+          </Suspense>
+        ) : null}
+      </div>
     </PublicShell>
   );
 }

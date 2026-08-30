@@ -153,7 +153,7 @@ jobs:
           retention-days: 7
 
   step-up-regression:
-    name: Step Up regression
+    name: classa regression
     runs-on: ubuntu-latest
     timeout-minutes: 15
     if: github.event_name == 'pull_request'
@@ -195,7 +195,7 @@ jobs:
 
       - uses: ./.github/actions/setup
 
-      - name: Detect Step Up changes
+      - name: Detect classa changes
         id: changes
         run: |
           if git diff --name-only origin/${{ github.base_ref }}...HEAD | grep -E '^(apps/step-up|apps/step-up-api)/'; then
@@ -254,7 +254,7 @@ jobs:
         env:
           CI: true
 
-      - name: Upload Step Up regression report
+      - name: Upload classa regression report
         uses: actions/upload-artifact@v7
         if: always() && steps.changes.outputs.run == 'true' && !cancelled()
         with:
@@ -265,7 +265,7 @@ jobs:
           retention-days: 7
 
   step-up-e2e:
-    name: Step Up E2E
+    name: classa E2E
     runs-on: ubuntu-latest
     timeout-minutes: 45
     if: github.event_name == 'merge_group'
@@ -333,12 +333,12 @@ jobs:
       - name: Install Playwright browser
         run: pnpm --filter @step-up/web exec playwright install chromium --with-deps
 
-      - name: Run Step Up Playwright E2E
+      - name: Run classa Playwright E2E
         run: pnpm exec nx run step-up:test:e2e
         env:
           CI: true
 
-      - name: Upload Step Up Playwright report
+      - name: Upload classa Playwright report
         uses: actions/upload-artifact@v7
         if: always() && !cancelled()
         with:

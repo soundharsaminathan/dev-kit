@@ -1,4 +1,4 @@
-# Step Up Flow Coverage Matrix
+# classa Flow Coverage Matrix
 
 Product contract for automated testing. Roles use the canonical enum:
 `OWNER` · `STAFF` (admin) · `TRAINER` · `STUDENT` · `PARENT`.
@@ -167,8 +167,8 @@ Product contract for automated testing. Roles use the canonical enum:
 
 | Suite | When | Scope | Target |
 | --- | --- | --- | --- |
-| PR regression | Pull requests touching Step Up | Vitest API + Vitest UI + Playwright `@critical` | &lt; 15 min |
-| Merge queue | `merge_group` | Full Step Up Playwright + migration smoke | &lt; 45 min |
+| PR regression | Pull requests touching classa | Vitest API + Vitest UI + Playwright `@critical` | &lt; 15 min |
+| Merge queue | `merge_group` | Full classa Playwright + migration smoke | &lt; 45 min |
 | Deployed smoke | After `step-up` branch deploy (Pages + Cloud Run) | Per-role path sweeps + interactive flows against `https://step-up.pages.dev` (`@smoke`), isolated `studio-smoke-1` tenant | &lt; 45 min |
 | Nightly | 18:00 UTC + manual | All Vitest + all Playwright + Chromium/Firefox/WebKit + mobile subset | Full artifacts |
 
@@ -178,7 +178,7 @@ Deployed smoke scripts live under `apps/step-up/e2e/smoke/` and `apps/step-up-ap
 
 ## Definition of Done (feature)
 
-A Step Up feature is complete only when:
+A classa feature is complete only when:
 
 1. Feature implemented
 2. API tests added for business rules

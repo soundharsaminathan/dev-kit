@@ -469,7 +469,7 @@ function NewBatchPage() {
         <div className={styles.heroCopy}>
           <p className={styles.brandMark}>
             <span className={styles.brandDot} aria-hidden />
-            Step Up · Studio
+            classa · Studio
           </p>
           <h1 className={styles.heroTitle}>New batch</h1>
           <p className={styles.heroDescription}>
@@ -997,7 +997,7 @@ function NewBatchPage() {
                         (item) => item.name,
                       )}
                       trainers={selectedTrainers.map((trainer) => trainer.name)}
-                      footer={`Step Up Dance Studio · ${formatIssuedAt(endDate)}`}
+                      footer={`classa Dance Studio · ${formatIssuedAt(endDate)}`}
                     />
                   )}
                 </>

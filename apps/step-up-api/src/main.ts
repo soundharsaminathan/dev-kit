@@ -43,7 +43,7 @@ async function bootstrap() {
 
   const port = Number(process.env.PORT ?? 3000);
   await app.listen(port, "0.0.0.0");
-  console.log(`Step Up API listening on 0.0.0.0:${port}`);
+  console.log(`classa API listening on 0.0.0.0:${port}`);
 }
 
 bootstrap().catch((error) => {

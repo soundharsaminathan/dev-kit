@@ -1,4 +1,4 @@
-name: Step Up Nightly
+name: classa Nightly
 
 on:
   schedule:
@@ -31,7 +31,7 @@ env:
 
 jobs:
   nightly:
-    name: Step Up full suite
+    name: classa full suite
     runs-on: ubuntu-latest
     timeout-minutes: 90
     services:

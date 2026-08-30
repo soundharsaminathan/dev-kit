@@ -1,4 +1,4 @@
-# Step Up — Studio Feature Management
+# classa — Studio Feature Management
 
 Per-studio module flags controlled by System Admin. Feature **access** is separate from module **configuration** (e.g. Payments enabled ≠ Razorpay keys configured).
 

@@ -1,5 +1,5 @@
 /**
- * Important Step Up routes for Lighthouse performance checks.
+ * Important classa routes for Lighthouse performance checks.
  * Authenticated routes require the existing smoke auth setup.
  */
 export type PerfRoute = {

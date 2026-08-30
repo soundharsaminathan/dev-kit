@@ -1,4 +1,4 @@
-name: Step Up Deploy
+name: classa Deploy
 
 on:
   push:
@@ -82,7 +82,7 @@ jobs:
           echo "Deploy target=$TARGET sha=$SHA"
 
   test-api:
-    name: Step Up API tests
+    name: classa API tests
     needs: [prepare]
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -99,7 +99,7 @@ jobs:
         run: pnpm exec nx run step-up-api:typecheck
 
   test-web:
-    name: Step Up web typecheck
+    name: classa web typecheck
     needs: [prepare]
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -131,7 +131,7 @@ jobs:
         with:
           ref: ${{ needs.prepare.outputs.sha }}
       - uses: ./.github/actions/setup
-      - name: Build Step Up web
+      - name: Build classa web
         run: pnpm exec nx run step-up:build --skip-nx-cache
         env:
           VITE_API_URL: ${{ vars.STEP_UP_API_URL }}

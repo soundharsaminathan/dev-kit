@@ -5,7 +5,7 @@ export const Route = createFileRoute("/app/settings/integrations")({
   component: () => (
     <SettingsComingSoon
       title="Integrations"
-      description="Connect third-party tools to Step Up from this page once integrations ship."
+      description="Connect third-party tools to classa from this page once integrations ship."
     />
   ),
 });

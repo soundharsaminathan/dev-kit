@@ -283,7 +283,7 @@ export function StudioWizard(props: StudioWizardProps) {
           <div className={styles.heroCopy}>
             <p className={styles.brandMark}>
               <span className={styles.brandDot} aria-hidden />
-              Step Up · Admin
+              classa · Admin
             </p>
             <h1 className={styles.heroTitle}>Studio ready</h1>
             <p className={styles.heroDescription}>
@@ -363,7 +363,7 @@ export function StudioWizard(props: StudioWizardProps) {
         <div className={styles.heroCopy}>
           <p className={styles.brandMark}>
             <span className={styles.brandDot} aria-hidden />
-            Step Up · Admin
+            classa · Admin
           </p>
           <h1 className={styles.heroTitle}>
             {isCreate ? "New studio" : "Edit studio"}

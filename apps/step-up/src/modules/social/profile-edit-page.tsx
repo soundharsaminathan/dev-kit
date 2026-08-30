@@ -588,7 +588,7 @@ function ProfileEditForm({ backTo, profile }: ProfileEditFormProps) {
           <section className={styles.card}>
             <header className={styles.cardHeader}>
               <h2 className={styles.cardTitle}>About you</h2>
-              <p className={styles.cardDesc}>How you show up across Step Up.</p>
+              <p className={styles.cardDesc}>How you show up across classa.</p>
             </header>
 
             <div className={styles.fieldStack}>

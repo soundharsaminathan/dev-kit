@@ -22,14 +22,14 @@ type ApiStateProps<T> = {
 function getErrorMessage(error: unknown) {
   if (error instanceof ApiError) {
     if (error.status === 0 || error.message.includes("Failed to fetch")) {
-      return "We could not reach the Step Up API. Start the API server and try again.";
+      return "We could not reach the classa API. Start the API server and try again.";
     }
     return error.message;
   }
 
   if (error instanceof Error) {
     if (error.message.includes("Failed to fetch")) {
-      return "We could not reach the Step Up API. Start the API server and try again.";
+      return "We could not reach the classa API. Start the API server and try again.";
     }
     return error.message;
   }

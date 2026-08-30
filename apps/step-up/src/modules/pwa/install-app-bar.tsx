@@ -59,11 +59,11 @@ export function InstallAppBar({ onVisibleChange }: InstallAppBarProps) {
   return (
     <section
       className={styles.bar}
-      aria-label="Install Step Up"
+      aria-label="Install classa"
       data-install-bar="true"
     >
       <div className={styles.copy}>
-        <p className={styles.title}>Install Step Up</p>
+        <p className={styles.title}>Install classa</p>
         <p className={styles.hint}>
           {iosHint
             ? "Tap Share in Safari, then Add to Home Screen."

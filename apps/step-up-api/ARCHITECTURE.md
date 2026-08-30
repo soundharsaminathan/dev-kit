@@ -1,4 +1,4 @@
-# Step Up API architecture
+# classa API architecture
 
 Modular monolith with selective CQRS, transactional outbox, and a dedicated BullMQ worker.
 

@@ -122,7 +122,7 @@ function drawFooter(
   ctx.font = `500 22px Inter, system-ui, sans-serif`;
   ctx.textAlign = "center";
   ctx.textBaseline = "bottom";
-  ctx.fillText("Step Up", SHARE_CARD_WIDTH / 2, SHARE_CARD_HEIGHT - 40);
+  ctx.fillText("classa", SHARE_CARD_WIDTH / 2, SHARE_CARD_HEIGHT - 40);
   ctx.restore();
 }
 

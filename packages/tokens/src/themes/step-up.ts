@@ -2,7 +2,7 @@ import type { ThemeDefinition } from "../types.js";
 
 export const stepUpTheme: ThemeDefinition = {
   id: "step-up",
-  label: "Step Up",
+  label: "classa",
   color: {
     algorithm: "oklch",
     seeds: {

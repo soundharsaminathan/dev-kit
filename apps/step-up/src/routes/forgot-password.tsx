@@ -70,7 +70,7 @@ function ForgotPasswordPage() {
     <PublicShell>
       <section className={styles.panel}>
         <div>
-          <p className={styles.brand}>Step Up</p>
+          <p className={styles.brand}>classa</p>
           <h1 className={styles.title}>Reset password</h1>
           <p className={styles.subtitle}>
             Enter the email on your account and we’ll send a link to choose a

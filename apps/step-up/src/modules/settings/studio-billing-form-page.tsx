@@ -216,7 +216,7 @@ export function StudioBillingFormPage() {
         </SettingsSection>
       ) : null}
 
-      <SettingsSection title="Platform" description="Set by Step Up admin.">
+      <SettingsSection title="Platform" description="Set by classa admin.">
         <SettingsField
           label="Platform fee percent"
           description="Contact support to change it."

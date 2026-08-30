@@ -1,0 +1,120 @@
+.section {
+  --lp-ease: cubic-bezier(0.32, 0.72, 0, 1);
+  --lp-copy: 42.5rem;
+  --lp-space-200: 16px;
+  --lp-space-400: 32px;
+  --lp-space-700: 64px;
+  --lp-space-800: 80px;
+  --lp-text-4xl: 2.25rem;
+  --lp-text-5xl: 3rem;
+  --lp-text-6xl: 3.75rem;
+
+  flex-shrink: 0;
+  padding: var(--lp-space-800) var(--lp-space-200);
+  hyphens: none;
+
+  &[data-compact] {
+    padding: 0;
+  }
+}
+
+.headline {
+  margin: 0 auto;
+  max-width: var(--lp-copy);
+  font-size: var(--lp-text-4xl);
+  font-weight: 700;
+  line-height: 1.22;
+  overflow: visible;
+  letter-spacing: -0.03em;
+  text-wrap: balance;
+}
+
+.section[data-compact] .headline {
+  margin: 0;
+}
+
+.line {
+  display: block;
+}
+
+.word {
+  display: inline-block;
+  margin-right: 0.28em;
+  color: color-mix(in srgb, var(--color-fg) 30%, transparent);
+  transition: color 700ms var(--lp-ease);
+
+  &[data-active] {
+    color: var(--color-fg);
+
+    .f {
+      color: var(--color-primary);
+      animation: f-pop 700ms var(--lp-ease) both;
+    }
+  }
+}
+
+.f {
+  display: inline-block;
+  font-family: Georgia, "Times New Roman", serif;
+  font-weight: 700;
+  font-size: 1.12em;
+  line-height: 1;
+  color: color-mix(in srgb, var(--color-primary) 32%, transparent);
+  transform-origin: 50% 80%;
+  transition: color 700ms var(--lp-ease);
+}
+
+@keyframes f-pop {
+  0% {
+    transform: translateY(0.16em) scale(0.72) rotate(-10deg);
+  }
+
+  58% {
+    transform: translateY(-0.06em) scale(1.14) rotate(3deg);
+  }
+
+  100% {
+    transform: translateY(0) scale(1.06) rotate(0deg);
+  }
+}
+
+@media (min-width: 768px) {
+  .section:not([data-compact]) {
+    padding-inline: var(--lp-space-400);
+  }
+
+  .headline {
+    font-size: var(--lp-text-5xl);
+  }
+}
+
+@media (min-width: 1100px) {
+  .section:not([data-compact]) {
+    padding-block: var(--lp-space-700) var(--lp-space-800);
+  }
+
+  .headline {
+    font-size: var(--lp-text-6xl);
+  }
+
+  .section[data-compact] .headline {
+    font-size: var(--lp-text-5xl);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .word {
+    color: var(--color-fg);
+    transition: none;
+
+    &[data-active] .f {
+      animation: none;
+      transform: none;
+    }
+  }
+
+  .f {
+    color: var(--color-primary);
+    transition: none;
+  }
+}

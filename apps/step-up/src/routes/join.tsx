@@ -143,7 +143,7 @@ function JoinPage() {
     <PublicShell>
       <section className={styles.panel}>
         <div>
-          <p className={styles.brand}>Step Up</p>
+          <p className={styles.brand}>classa</p>
           <h1 className={styles.title}>Join your studio</h1>
           <p className={styles.subtitle}>
             Create an account with the email on your invite, then continue.

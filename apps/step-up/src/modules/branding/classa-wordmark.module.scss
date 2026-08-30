@@ -1,0 +1,98 @@
+.wordmark {
+  display: inline-flex;
+  align-items: baseline;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  color: inherit;
+}
+
+/* Default — clean sans-serif */
+.default {
+  font-family: var(--font-sans, system-ui, sans-serif);
+}
+
+/* Split — "class" bold + "a" accent color */
+.split {
+  font-family: var(--font-sans, system-ui, sans-serif);
+
+  .prefix {
+    font-weight: 700;
+  }
+
+  .suffix {
+    font-weight: 400;
+    color: var(--color-primary, #7c3aed);
+    margin-left: 0.02em;
+  }
+}
+
+/* Italic-a — upright "class" + italic "a" */
+.italic-a {
+  font-family: var(--font-sans, system-ui, sans-serif);
+
+  .prefix {
+    font-weight: 700;
+  }
+
+  .suffix {
+    font-style: italic;
+    font-weight: 500;
+    margin-left: -0.02em;
+  }
+}
+
+/* Serif — elegant serif treatment */
+.serif {
+  font-family: var(--font-serif, "Times New Roman", Georgia, serif);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+/* Mono — monospace tech feel */
+.mono {
+  font-family: var(--font-mono, ui-monospace, "Cascadia Code", "Source Code Pro", Menlo, monospace);
+  font-weight: 600;
+  letter-spacing: -0.06em;
+  text-transform: lowercase;
+}
+
+/* Stencil — cutout style with letter gaps */
+.stencil {
+  font-family: var(--font-sans, system-ui, sans-serif);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+
+  .letter {
+    display: inline-block;
+    position: relative;
+
+    /* vertical cutout line */
+    &::after {
+      content: "";
+      position: absolute;
+      left: 50%;
+      top: 25%;
+      bottom: 25%;
+      width: 2px;
+      background: var(--surface-background, var(--color-bg, #fff));
+      transform: translateX(-50%);
+    }
+  }
+}
+
+/* Gradient — colorful text fill */
+.gradient {
+  font-family: var(--font-sans, system-ui, sans-serif);
+  background: linear-gradient(
+    135deg,
+    #7c3aed 0%,
+    #ec4899 50%,
+    #f97316 100%
+  );
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+}

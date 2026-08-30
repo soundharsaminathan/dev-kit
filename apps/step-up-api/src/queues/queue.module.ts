@@ -53,7 +53,7 @@ export class QueueModule {
     if (!redisUrl || apiInline) {
       if (!redisUrl && requireRedis) {
         throw new Error(
-          "REDIS_URL is required for the Step Up worker (and production queues)",
+          "REDIS_URL is required for the classa worker (and production queues)",
         );
       }
       if (apiInline) {

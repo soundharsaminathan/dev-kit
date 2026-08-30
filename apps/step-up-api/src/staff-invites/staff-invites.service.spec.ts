@@ -79,7 +79,7 @@ describe("StaffInvitesService", () => {
   it("creates an invite, emails it, and returns inviteUrl", async () => {
     prisma.user.findFirst.mockResolvedValue(null);
     prisma.staffInvite.findFirst.mockResolvedValue(null);
-    prisma.studio.findUnique.mockResolvedValue({ name: "Step Up" });
+    prisma.studio.findUnique.mockResolvedValue({ name: "classa" });
     prisma.staffInvite.create.mockResolvedValue({
       id: "inv-1",
       studioId: "studio-1",
@@ -98,7 +98,7 @@ describe("StaffInvitesService", () => {
     expect(email.sendStaffInvite).toHaveBeenCalledWith(
       expect.objectContaining({
         to: "staff@stepup.dev",
-        studioName: "Step Up",
+        studioName: "classa",
         role: UserRole.STAFF,
       }),
     );

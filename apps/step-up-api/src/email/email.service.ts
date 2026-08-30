@@ -38,7 +38,7 @@ export class EmailService {
     const apiKey = this.config.get<string>("RESEND_API_KEY")?.trim();
     const from =
       this.config.get<string>("EMAIL_FROM")?.trim() ||
-      "Step Up <onboarding@resend.dev>";
+      "classa <onboarding@resend.dev>";
 
     if (!apiKey) {
       this.logger.warn(
@@ -57,7 +57,7 @@ export class EmailService {
       body: JSON.stringify({
         from,
         to: [input.to],
-        subject: `You're invited to join ${input.studioName} on Step Up`,
+        subject: `You're invited to join ${input.studioName} on classa`,
         html: [
           `<p>You've been invited to join <strong>${escapeHtml(input.studioName)}</strong> as ${escapeHtml(roleLabel)}.</p>`,
           `<p><a href="${escapeHtml(input.inviteUrl)}">Accept invite</a></p>`,
@@ -77,7 +77,7 @@ export class EmailService {
     const apiKey = this.config.get<string>("RESEND_API_KEY")?.trim();
     const from =
       this.config.get<string>("EMAIL_FROM")?.trim() ||
-      "Step Up <onboarding@resend.dev>";
+      "classa <onboarding@resend.dev>";
 
     if (!apiKey) {
       this.logger.warn(

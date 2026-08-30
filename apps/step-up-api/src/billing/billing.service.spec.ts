@@ -1013,7 +1013,7 @@ describe("BillingService.markPaid", () => {
         name: "Student",
         email: "student@example.com",
       },
-      studio: { id: "studio-1", name: "Step Up Studio" },
+      studio: { id: "studio-1", name: "classa Studio" },
       ...overrides,
     };
   }

@@ -17,7 +17,7 @@ export default defineConfig(({ command, mode }) => {
     process.env.GROQ_API_KEY = env.GROQ_API_KEY;
   }
 
-  // Production builds ship under Step Up Cloudflare Pages at /dev/.
+  // Production builds ship under classa Cloudflare Pages at /dev/.
   // Local `vite` / `vite preview` of a fresh build use that base; `vite` dev stays at /.
   const base =
     env.PORTFOLIO_BASE_PATH ||

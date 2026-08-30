@@ -1,11 +1,11 @@
 ---
 name: step-up-student-screens
-description: Redesigns and builds Step Up student/member screens (/me routes) with a modern, expressive mobile-first design — not Apple-plain minimalism — and a social-media-style feed. Use when changing student screens, member UX, mobile design, the feed, discover/booking, or any route under apps/step-up/src/routes/me.
+description: Redesigns and builds classa student/member screens (/me routes) with a modern, expressive mobile-first design — not Apple-plain minimalism — and a social-media-style feed. Use when changing student screens, member UX, mobile design, the feed, discover/booking, or any route under apps/step-up/src/routes/me.
 ---
 
-# Step Up student screens — modern mobile design
+# classa student screens — modern mobile design
 
-Applies to the member surface of the Step Up app: `apps/step-up/src/routes/me/**` and its modules (`apps/step-up/src/modules/social/`, `modules/ui/`, `modules/layout/`, `modules/me/`). Students and parents use this surface on phones; treat mobile (390px) as the primary canvas and desktop as an expanded phone column.
+Applies to the member surface of the classa app: `apps/step-up/src/routes/me/**` and its modules (`apps/step-up/src/modules/social/`, `modules/ui/`, `modules/layout/`, `modules/me/`). Students and parents use this surface on phones; treat mobile (390px) as the primary canvas and desktop as an expanded phone column.
 
 ## Theme
 

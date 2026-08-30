@@ -1,6 +1,6 @@
-# Step Up — Core Flow Documentation
+# classa — Core Flow Documentation
 
-> **Purpose**: Detailed flow reference for agents working on the Step Up codebase. Covers Payments, Enrollments, and User Lifecycle.
+> **Purpose**: Detailed flow reference for agents working on the classa codebase. Covers Payments, Enrollments, and User Lifecycle.
 
 **Billing calendar** (when invoices are created, mid-month proration, switch vs new joiner): [step-up-billing-calendar.md](./step-up-billing-calendar.md)
 

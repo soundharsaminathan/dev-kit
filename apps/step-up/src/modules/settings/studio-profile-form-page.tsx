@@ -112,7 +112,7 @@ export function StudioProfileFormPage() {
     <>
       <SettingsSection
         title="General"
-        description="Your studio's display name appears across Step Up."
+        description="Your studio's display name appears across classa."
       >
         <SettingsField
           label="Studio name"

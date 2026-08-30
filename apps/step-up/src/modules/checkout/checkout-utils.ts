@@ -92,7 +92,7 @@ export async function openRazorpayCheckout(options: {
       key: options.order.keyId,
       amount: options.order.amount,
       currency: options.order.currency,
-      name: "Step Up",
+      name: "classa",
       description: options.description,
       order_id: options.order.orderId,
       handler: (response) => {

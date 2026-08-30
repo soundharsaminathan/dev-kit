@@ -6,23 +6,30 @@
       name="viewport"
       content="width=device-width, initial-scale=1.0, viewport-fit=cover"
     />
-    <meta name="theme-color" content="#0a84ff" />
+    <meta name="theme-color" content="#EE8A55" />
     <meta
       name="theme-color"
       media="(prefers-color-scheme: dark)"
-      content="#0a84ff"
+      content="#EE8A55"
     />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-title" content="Step Up" />
+    <meta name="apple-mobile-web-app-title" content="classa" />
     <meta
       name="apple-mobile-web-app-status-bar-style"
       content="black-translucent"
     />
     <meta
       name="description"
-      content="Dance studio ops — batches, plans, attendance, booking"
+      content="classa is the workspace for dance studio owners. Collect fees, mark attendance, and run batches in one place, without chasing parents on WhatsApp."
     />
+    <meta property="og:title" content="classa | Collect every fee without chasing parents" />
+    <meta
+      property="og:description"
+      content="Students, batches, attendance, and payments in one workspace so you can teach instead of chase."
+    />
+    <meta property="og:image" content="/apple-touch-icon.png" />
+    <meta name="twitter:card" content="summary" />
     <link rel="icon" href="/icons/dance.svg" type="image/svg+xml" />
     <link rel="icon" href="/favicon-32.png" type="image/png" sizes="32x32" />
     <link rel="icon" href="/favicon.ico" sizes="32x32" />
@@ -41,7 +48,7 @@
       type="font/woff2"
       crossorigin
     />
-    <title>Step Up</title>
+    <title>classa | Collect every fee without chasing parents</title>
     <script>
       (function () {
         try {
@@ -479,17 +486,47 @@
         box-sizing: border-box;
       }
 
+      #boot-public .shell-main.shell-main-landing {
+        max-width: 42.5rem;
+        text-align: left;
+        align-items: flex-start;
+        padding-top: 2.5rem;
+        gap: 1rem;
+      }
+
+      #boot-public .hero-eyebrow {
+        margin: 0;
+        font-size: 0.75rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #ee8a55;
+      }
+
       #boot-public .hero-brand {
         margin: 0;
-        font-size: clamp(2.75rem, 12vw, 4rem);
+        max-width: 42.5rem;
+        font-size: 2.25rem;
         font-weight: 700;
-        letter-spacing: -0.05em;
-        line-height: 0.95;
+        letter-spacing: -0.04em;
+        line-height: 1;
         color: #1c1a17;
       }
 
       html[data-theme-mode="dark"] #boot-public .hero-brand {
         color: oklch(0.95 0.01 78);
+      }
+
+      @media (min-width: 768px) {
+        #boot-public .hero-brand {
+          font-size: 3rem;
+        }
+      }
+
+      @media (min-width: 1100px) {
+        #boot-public .hero-brand {
+          font-size: 3.75rem;
+        }
       }
 
       #boot-public .hero-headline {
@@ -507,6 +544,7 @@
 
       #boot-public .hero-support {
         margin: 0;
+        max-width: 34rem;
         font-size: 1rem;
         line-height: 1.55;
         color: rgb(28 26 23 / 62%);
@@ -574,27 +612,29 @@
         var root = document.getElementById("root");
         if (!root) return;
 
-        function publicShell(inner) {
+        function publicShell(inner, mainClass) {
           return (
             '<div id="boot-public">' +
             '<header class="shell-header">' +
             '<a class="shell-brand" href="/">' +
             '<img src="/icons/dance.svg" alt="" />' +
-            "<span>Step Up</span>" +
+            "<span>classa</span>" +
             "</a>" +
             "</header>" +
-            '<main class="shell-main">' +
+            '<main class="shell-main' +
+            (mainClass ? " " + mainClass : "") +
+            '">' +
             inner +
             "</main>" +
-            '<footer class="shell-footer">Step Up Dance Studio — move with confidence.</footer>' +
+            '<footer class="shell-footer">classa Dance Studio — move with confidence.</footer>' +
             "</div>"
           );
         }
 
-        function mountPublic(inner) {
+        function mountPublic(inner, mainClass) {
           // Keep the shell outside #root so React createRoot does not destroy
           // the early LCP element when the app mounts.
-          var shellHtml = publicShell(inner);
+          var shellHtml = publicShell(inner, mainClass);
           var wrap = document.createElement("div");
           wrap.innerHTML = shellHtml;
           var shell = wrap.firstChild;
@@ -605,16 +645,16 @@
         // Public routes: paint real LCP text in HTML before the module graph.
         if (path === "/" || path === "") {
           mountPublic(
-            '<h1 class="hero-brand">Step Up</h1>' +
-              '<p class="hero-headline">Dance studio operations, beautifully simple.</p>' +
-              '<p class="hero-support">Run batches, plans, attendance, and bookings from one calm workspace — or step into class as a student or parent.</p>',
+            '<h1 class="hero-brand">Collect every fee<br />without chasing parents</h1>' +
+              '<p class="hero-support">classa is the workspace for dance studio owners. Students, batches, attendance, and payments live in one place so you can teach instead of chase.</p>',
+            "shell-main-landing",
           );
           return;
         }
 
         if (path === "/login" || path.indexOf("/login") === 0) {
           mountPublic(
-            '<p class="login-eyebrow" style="margin:0;font-size:0.875rem;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#ee8a55">Step Up</p>' +
+            '<p class="login-eyebrow" style="margin:0;font-size:0.875rem;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#ee8a55">classa</p>' +
               '<h1 class="login-title">Welcome back</h1>' +
               '<p class="login-subtitle">Sign in to manage your studio or continue to your classes.</p>',
           );
@@ -628,7 +668,7 @@
           path.indexOf("/studio/") === 0
         ) {
           mountPublic(
-            '<h1 class="login-title">Step Up</h1>' +
+            '<h1 class="login-title">classa</h1>' +
               '<p class="login-subtitle">Loading…</p>',
           );
           return;
@@ -698,7 +738,7 @@
             '<span class="slow-sep" aria-hidden="true">—</span>' +
             '<a class="slow-link" href="/">Home</a>' +
             "</nav>" +
-            '<img class="slow-brand" src="/icons/dance.svg" alt="Step Up" />' +
+            '<img class="slow-brand" src="/icons/dance.svg" alt="classa" />' +
             "</div>";
           var refresh = document.getElementById("boot-slow-refresh");
           if (refresh) {

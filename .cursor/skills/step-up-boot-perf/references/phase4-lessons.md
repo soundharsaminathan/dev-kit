@@ -1,6 +1,6 @@
 # Phase 4 lessons (PR #13)
 
-Source: Step Up Phase 4 `/app` Lighthouse work and follow-up critical e2e
+Source: classa Phase 4 `/app` Lighthouse work and follow-up critical e2e
 fixes. Read when a rule in `SKILL.md` needs “why” context.
 
 ## Measured targets (mobile, Lighthouse ~13.4, median)

@@ -25,7 +25,7 @@ function firebaseMessagingSwPlugin(env: Record<string, string>): Plugin {
 importScripts("https://www.gstatic.com/firebasejs/11.10.0/firebase-messaging-compat.js");
 firebase.initializeApp(${JSON.stringify(config)});
 firebase.messaging().onBackgroundMessage((payload) => {
-  const title = payload.notification?.title ?? "Step Up";
+  const title = payload.notification?.title ?? "classa";
   const options = {
     body: payload.notification?.body ?? "",
     icon: "/icons/icon-192.png",
@@ -179,8 +179,8 @@ export default defineConfig(({ mode }) => {
           "icons/*.png",
         ],
         manifest: {
-          name: "Step Up",
-          short_name: "Step Up",
+          name: "classa",
+          short_name: "classa",
           description: "Dance studio ops — batches, plans, attendance, booking",
           start_url: "/",
           scope: "/",
@@ -229,7 +229,7 @@ export default defineConfig(({ mode }) => {
             "**/source-serif-4-*",
           ],
           navigateFallback: "/index.html",
-          // Portfolio SPA is co-deployed under /dev — do not serve Step Up shell.
+          // Portfolio SPA is co-deployed under /dev — do not serve classa shell.
           navigateFallbackDenylist: [/^\/api/, /^\/dev(?:\/|$)/],
         },
         devOptions: {

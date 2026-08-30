@@ -1,4 +1,4 @@
-# Step Up billing calendar
+# classa billing calendar
 
 How monthly invoices are created after a student joins a batch.
 

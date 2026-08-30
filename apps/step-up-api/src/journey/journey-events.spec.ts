@@ -14,7 +14,7 @@ describe("journey-events", () => {
   it("builds chronological events with joined, batch, attendance, and plan", () => {
     const events = buildJourneyEvents({
       joinedAt: baseDate,
-      studioName: "Step Up",
+      studioName: "classa",
       enrollments: [
         {
           id: "en-1",
@@ -56,7 +56,7 @@ describe("journey-events", () => {
       "TRAINER",
       "ATTENDANCE",
     ]);
-    expect(events[0]?.title).toBe("Joined Step Up");
+    expect(events[0]?.title).toBe("Joined classa");
     expect(events.find((e) => e.kind === "TRAINER")?.trainer?.name).toBe(
       "Asha",
     );

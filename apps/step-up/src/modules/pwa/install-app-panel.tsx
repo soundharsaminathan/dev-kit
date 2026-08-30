@@ -29,7 +29,7 @@ export function InstallAppPanel() {
     <div className={staff.softPanel}>
       <p className={staff.panelTitle}>Install app</p>
       <p className={staff.panelDesc}>
-        Add Step Up to your home screen for a faster, full-screen experience.
+        Add classa to your home screen for a faster, full-screen experience.
       </p>
       {canInstall ? (
         <TouchButton
@@ -37,7 +37,7 @@ export function InstallAppPanel() {
           onClick={() => void handleInstall()}
           isPending={busy}
         >
-          Install Step Up
+          Install classa
         </TouchButton>
       ) : null}
       {isIos ? (

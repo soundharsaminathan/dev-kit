@@ -8,6 +8,7 @@ import { QueryProvider } from "@/lib/query";
 import type { RouterAuthContext } from "@/lib/require-auth";
 import { SessionGate } from "@/lib/session-gate";
 import { ThemeColorSync } from "@/lib/theme-color";
+import { NotFoundPage } from "@/modules/layout/not-found";
 
 const PwaBanners = lazy(() =>
   import("@/modules/pwa/pwa-banners").then((m) => ({ default: m.PwaBanners })),
@@ -15,6 +16,7 @@ const PwaBanners = lazy(() =>
 
 export const Route = createRootRouteWithContext<RouterAuthContext>()({
   component: RootLayout,
+  notFoundComponent: NotFoundPage,
 });
 
 function RootLayout() {

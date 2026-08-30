@@ -1,15 +1,15 @@
 ---
 name: step-up-negative-path-tests
 description: >-
-  Prevents Step Up regressions by requiring tests for edge and negative paths
+  Prevents classa regressions by requiring tests for edge and negative paths
   (unpaid, denied roles, expired membership, mid-flow payment, empty roster),
   not only happy-path seeds. Use when changing attendance, billing, membership,
-  enrollment, booking, checkout, authz, or any Step Up API/UI status machine;
+  enrollment, booking, checkout, authz, or any classa API/UI status machine;
   when fixing a production bug; or when writing/updating unit, @http, @critical,
   or @smoke tests.
 ---
 
-# Step Up negative-path tests
+# classa negative-path tests
 
 Remember to write tests. At least add a negative path in the smoke suite.
 
@@ -84,4 +84,4 @@ With the feature change:
 
 - [ ] Unit: negative or edge path for the gate
 - [ ] Smoke: negative path in `@smoke` for the flow
-- [ ] Gate: `pnpm nx run step-up:test:regression` when Step Up web/API changed
+- [ ] Gate: `pnpm nx run step-up:test:regression` when classa web/API changed

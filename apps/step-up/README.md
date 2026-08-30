@@ -1,4 +1,4 @@
-# Step Up
+# classa
 
 Dance studio ops: batches, monthly plans, attendance, retention, booking.
 
@@ -42,7 +42,7 @@ Built-in `@dev-ui/tokens` theme id `step-up`: soft blue accent, larger radius, S
 
 ## PWA
 
-Step Up ships as an installable Progressive Web App (Cloudflare Pages).
+classa ships as an installable Progressive Web App (Cloudflare Pages).
 
 | Piece | Behavior |
 |---|---|
@@ -50,7 +50,7 @@ Step Up ships as an installable Progressive Web App (Cloudflare Pages).
 | Service worker | Precaches the app shell (HTML/JS/CSS). API, Firebase Auth, chat, and R2 media stay network-only |
 | Updates | `registerType: "prompt"` — an in-app “Update available / Reload” banner; no mid-session auto-reload |
 | Offline | Cached shell loads; banner explains data needs a connection. Login and chat send are disabled offline |
-| Install | Chrome/Android: Settings → Install Step Up. iOS Safari: Share → Add to Home Screen |
+| Install | Chrome/Android: Settings → Install classa. iOS Safari: Share → Add to Home Screen |
 | Hosting | `public/_redirects` SPA fallback (`/* → /index.html 200`); `public/_headers` keeps `/sw.js` uncached |
 
 Service worker is **off in `vite` dev** (`devOptions.enabled: false`). To debug SW locally, set `devOptions.enabled: true` temporarily and use `vite preview` after a production build.
@@ -75,7 +75,7 @@ Layered gate (not 90% coverage, not every-flow e2e):
 | Critical e2e | `pnpm nx run step-up:test:e2e:critical` | Click → API → UI for money/trust flows |
 | Full / nightly | `STEP_UP_E2E_NIGHTLY=true pnpm nx run step-up:test:e2e` | Secondary shells + multi-browser |
 
-**Agent / PR gate after Step Up changes:**
+**Agent / PR gate after classa changes:**
 
 ```bash
 pnpm nx run step-up:test:regression

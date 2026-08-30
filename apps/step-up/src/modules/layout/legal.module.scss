@@ -1,0 +1,48 @@
+.page {
+  padding: 32px 16px 64px;
+  hyphens: none;
+}
+
+.title {
+  margin: 0;
+  font-size: 1.875rem;
+  font-weight: 700;
+  line-height: 2.25rem;
+  letter-spacing: -0.03em;
+  text-wrap: balance;
+}
+
+.updated {
+  margin: 8px 0 0;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  color: color-mix(in srgb, var(--color-fg) 55%, transparent);
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 24px;
+  font-size: 1rem;
+  line-height: 1.5rem;
+  color: color-mix(in srgb, var(--color-fg) 78%, transparent);
+  text-wrap: pretty;
+
+  h2 {
+    margin: 16px 0 0;
+    font-size: 1.25rem;
+    font-weight: 700;
+    line-height: 1.75rem;
+    color: var(--color-fg);
+  }
+
+  p,
+  ul {
+    margin: 0;
+  }
+
+  ul {
+    padding-left: 1.25rem;
+  }
+}

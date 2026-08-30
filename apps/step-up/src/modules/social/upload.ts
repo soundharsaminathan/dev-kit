@@ -73,7 +73,7 @@ export async function sharePost(postId: string) {
   const url = `${window.location.origin}/posts/${postId}`;
   if (navigator.share) {
     try {
-      await navigator.share({ title: "Step Up post", url });
+      await navigator.share({ title: "classa post", url });
       return;
     } catch {
       // fall through to clipboard

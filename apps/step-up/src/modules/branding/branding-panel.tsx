@@ -203,7 +203,7 @@ export function BrandingPanel({
     <div className={staff.softPanel}>
       <p className={staff.panelTitle}>Branding</p>
       <p className={staff.panelDesc}>
-        Logo replaces the Step Up wordmark after login. Hero images fill the
+        Logo replaces the classa wordmark after login. Hero images fill the
         member home banner.
       </p>
 

@@ -126,7 +126,7 @@ function readImportHistory(): ImportHistoryEntry[] {
 
 function downloadSkippedRows(result: ParseStudioImportResult) {
   const invalidRows = buildInvalidRows(result);
-  const lines: string[] = ["Step Up import — skipped rows", ""];
+  const lines: string[] = ["classa import — skipped rows", ""];
   for (const key of IMPORT_ENTITY_KEYS) {
     const rows = invalidRows[key];
     if (rows.length > 0) {
@@ -530,7 +530,7 @@ export function ImportWorkspace({
                             : [];
                         });
                         const content = [
-                          "Step Up import — skipped records",
+                          "classa import — skipped records",
                           "",
                           ...lines,
                         ].join("\n");

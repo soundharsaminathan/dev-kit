@@ -22,7 +22,7 @@ describe("EmailService", () => {
   it("skips send when RESEND_API_KEY is missing", async () => {
     await service.sendStaffInvite({
       to: "staff@stepup.dev",
-      studioName: "Step Up",
+      studioName: "classa",
       inviteUrl: "http://localhost:5199/join?token=abc",
       role: "STAFF",
     });
@@ -31,7 +31,7 @@ describe("EmailService", () => {
 
   it("posts to Resend when configured", async () => {
     configValues.RESEND_API_KEY = "re_test";
-    configValues.EMAIL_FROM = "Step Up <hello@stepup.dev>";
+    configValues.EMAIL_FROM = "classa <hello@stepup.dev>";
     fetchMock.mockResolvedValue({
       ok: true,
       text: async () => "",
@@ -39,7 +39,7 @@ describe("EmailService", () => {
 
     await service.sendStaffInvite({
       to: "staff@stepup.dev",
-      studioName: "Step Up",
+      studioName: "classa",
       inviteUrl: "http://localhost:5199/join?token=abc",
       role: "STAFF",
     });

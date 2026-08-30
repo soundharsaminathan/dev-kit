@@ -161,7 +161,7 @@ export const SETTINGS_PAGE_META: Record<
 > = {
   "/app/settings/profile": {
     title: "Studio profile",
-    subtitle: "Your studio's basic information used throughout Step Up.",
+    subtitle: "Your studio's basic information used throughout classa.",
   },
   "/app/settings/branding": {
     title: "Branding",
@@ -193,6 +193,6 @@ export const SETTINGS_PAGE_META: Record<
   },
   "/app/settings/integrations": {
     title: "Integrations",
-    subtitle: "Connect third-party tools to Step Up.",
+    subtitle: "Connect third-party tools to classa.",
   },
 };

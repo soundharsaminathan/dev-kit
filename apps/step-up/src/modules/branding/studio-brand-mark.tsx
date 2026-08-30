@@ -21,7 +21,7 @@ export function StudioBrandMark({
   className,
   labelClassName,
   logoClassName,
-  fallbackLabel = "Step Up",
+  fallbackLabel = "classa",
 }: StudioBrandMarkProps) {
   const api = useApi();
   const { user } = useAuth();

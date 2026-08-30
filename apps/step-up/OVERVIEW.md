@@ -1,4 +1,4 @@
-# Step Up
+# classa
 
 Dance studio operations product: batches, plans, attendance, billing, retention, and booking — plus a member app for students and parents.
 

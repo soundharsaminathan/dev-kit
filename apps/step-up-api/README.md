@@ -1,6 +1,6 @@
 # @step-up/api
 
-NestJS API for the Step Up dance studio product. Uses Prisma + PostgreSQL (Neon), Firebase Admin auth, and is deployable to Cloud Run.
+NestJS API for the classa dance studio product. Uses Prisma + PostgreSQL (Neon), Firebase Admin auth, and is deployable to Cloud Run.
 
 ## Setup
 

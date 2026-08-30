@@ -9,7 +9,9 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as TermsRouteImport } from './routes/terms'
 import { Route as RegisterRouteImport } from './routes/register'
+import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as MeRouteImport } from './routes/me'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as JoinRouteImport } from './routes/join'
@@ -115,9 +117,19 @@ import { Route as AppLocationsIdClassesRouteImport } from './routes/app/location
 import { Route as AppBatchesIdSettingsRouteImport } from './routes/app/batches/$id_.settings'
 import { Route as AdminStudiosIdFeaturesRouteImport } from './routes/admin/studios/$id_.features'
 
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RegisterRoute = RegisterRouteImport.update({
   id: '/register',
   path: '/register',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MeRoute = MeRouteImport.update({
@@ -653,7 +665,9 @@ export interface FileRoutesByFullPath {
   '/join': typeof JoinRoute
   '/login': typeof LoginRoute
   '/me': typeof MeRouteWithChildren
+  '/privacy': typeof PrivacyRoute
   '/register': typeof RegisterRoute
+  '/terms': typeof TermsRoute
   '/admin/profile': typeof AdminProfileRoute
   '/app/calendar': typeof AppCalendarRoute
   '/app/feed': typeof AppFeedRoute
@@ -757,7 +771,9 @@ export interface FileRoutesByTo {
   '/forgot-password': typeof ForgotPasswordRoute
   '/join': typeof JoinRoute
   '/login': typeof LoginRoute
+  '/privacy': typeof PrivacyRoute
   '/register': typeof RegisterRoute
+  '/terms': typeof TermsRoute
   '/admin/profile': typeof AdminProfileRoute
   '/app/calendar': typeof AppCalendarRoute
   '/app/feed': typeof AppFeedRoute
@@ -864,7 +880,9 @@ export interface FileRoutesById {
   '/join': typeof JoinRoute
   '/login': typeof LoginRoute
   '/me': typeof MeRouteWithChildren
+  '/privacy': typeof PrivacyRoute
   '/register': typeof RegisterRoute
+  '/terms': typeof TermsRoute
   '/admin/profile': typeof AdminProfileRoute
   '/app/calendar': typeof AppCalendarRoute
   '/app/feed': typeof AppFeedRoute
@@ -973,7 +991,9 @@ export interface FileRouteTypes {
     | '/join'
     | '/login'
     | '/me'
+    | '/privacy'
     | '/register'
+    | '/terms'
     | '/admin/profile'
     | '/app/calendar'
     | '/app/feed'
@@ -1077,7 +1097,9 @@ export interface FileRouteTypes {
     | '/forgot-password'
     | '/join'
     | '/login'
+    | '/privacy'
     | '/register'
+    | '/terms'
     | '/admin/profile'
     | '/app/calendar'
     | '/app/feed'
@@ -1183,7 +1205,9 @@ export interface FileRouteTypes {
     | '/join'
     | '/login'
     | '/me'
+    | '/privacy'
     | '/register'
+    | '/terms'
     | '/admin/profile'
     | '/app/calendar'
     | '/app/feed'
@@ -1291,7 +1315,9 @@ export interface RootRouteChildren {
   JoinRoute: typeof JoinRoute
   LoginRoute: typeof LoginRoute
   MeRoute: typeof MeRouteWithChildren
+  PrivacyRoute: typeof PrivacyRoute
   RegisterRoute: typeof RegisterRoute
+  TermsRoute: typeof TermsRoute
   PostsIdRoute: typeof PostsIdRoute
   StudioStudioIdRoute: typeof StudioStudioIdRoute
   TrainersIdRoute: typeof TrainersIdRoute
@@ -1300,11 +1326,25 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/register': {
       id: '/register'
       path: '/register'
       fullPath: '/register'
       preLoaderRoute: typeof RegisterRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/me': {
@@ -2266,7 +2306,9 @@ const rootRouteChildren: RootRouteChildren = {
   JoinRoute: JoinRoute,
   LoginRoute: LoginRoute,
   MeRoute: MeRouteWithChildren,
+  PrivacyRoute: PrivacyRoute,
   RegisterRoute: RegisterRoute,
+  TermsRoute: TermsRoute,
   PostsIdRoute: PostsIdRoute,
   StudioStudioIdRoute: StudioStudioIdRoute,
   TrainersIdRoute: TrainersIdRoute,

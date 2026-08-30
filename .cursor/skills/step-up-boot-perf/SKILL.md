@@ -1,7 +1,7 @@
 ---
 name: step-up-boot-perf
 description: >
-  Strict Step Up web boot, LCP, TBT, and provider-tree rules from Phase 4
+  Strict classa web boot, LCP, TBT, and provider-tree rules from Phase 4
   (/app Lighthouse work, PR #13). Use whenever changing apps/step-up startup,
   auth boot, theme/toast/session providers, public shells (#boot-public),
   /app or /me first paint, deferred chunks, router invalidate, or Lighthouse
@@ -11,9 +11,9 @@ paths:
   - apps/step-up/**
 ---
 
-# Step Up boot & LCP — strict rules
+# classa boot & LCP — strict rules
 
-Read this skill **before** editing Step Up boot, providers, shells, or home
+Read this skill **before** editing classa boot, providers, shells, or home
 first-paint UI. These are hard constraints learned from Phase 4 regressions.
 Do not “simplify” them away for elegance.
 

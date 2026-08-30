@@ -1,0 +1,305 @@
+.section {
+  position: relative;
+  overflow: visible;
+}
+
+.backdrop {
+  position: absolute;
+  inset: 8% -8% 0;
+  pointer-events: none;
+  opacity: 0.9;
+
+  svg {
+    width: 100%;
+    height: 100%;
+  }
+}
+
+.glow {
+  position: absolute;
+  right: 4%;
+  top: 28%;
+  width: min(42rem, 70%);
+  height: 70%;
+  background: radial-gradient(
+    ellipse at 70% 45%,
+    color-mix(in srgb, var(--color-primary) 32%, transparent) 0%,
+    transparent 68%
+  );
+  pointer-events: none;
+}
+
+.sparkle {
+  position: absolute;
+  right: clamp(1rem, 4vw, 3rem);
+  bottom: clamp(1.5rem, 4vw, 3rem);
+  width: 1.25rem;
+  height: 1.25rem;
+  pointer-events: none;
+  z-index: 2;
+
+  svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+}
+
+.inner {
+  position: relative;
+  z-index: 1;
+}
+
+.intro {
+  text-align: center;
+  margin-bottom: clamp(2.75rem, 5.5vw, 4.25rem);
+}
+
+.headline {
+  margin: 0 auto;
+  max-width: 22ch;
+  font-size: clamp(1.875rem, 4.6vw, 3rem);
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  line-height: 1.1;
+  color: #f8f4ec;
+  text-wrap: balance;
+}
+
+.stage {
+  position: relative;
+  display: grid;
+  gap: var(--space-4, 1rem);
+}
+
+.connectors {
+  display: none;
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 1;
+  overflow: visible;
+
+  path {
+    fill: none;
+    stroke: color-mix(in srgb, var(--color-primary) 42%, #f8f4ec);
+    stroke-width: 1.5;
+    stroke-linecap: round;
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
+  }
+}
+
+/* Draw runs only once the stage scrolls into view (.draw via IO). */
+.draw path {
+  animation: drawLine 0.9s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  animation-delay: calc(0.2s + var(--line-index, 0) * 0.12s);
+}
+
+.old,
+.fresh {
+  position: relative;
+  border-radius: 1.5rem;
+  padding: 1.15rem 1.35rem 1.5rem;
+}
+
+.old {
+  background: rgb(248 244 236 / 7%);
+  border: 1px solid rgb(248 244 236 / 12%);
+}
+
+.fresh {
+  background: #f8f4ec;
+  color: #1c1a17;
+  border: 1px solid transparent;
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--color-primary) 18%, transparent),
+    0 18px 50px rgb(0 0 0 / 32%),
+    0 0 80px color-mix(in srgb, var(--color-primary) 22%, transparent);
+}
+
+.colTitle {
+  position: relative;
+  z-index: 2;
+  margin: 0 0 1rem;
+  font-size: 1.125rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.fresh .colTitle {
+  color: #1c1a17;
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.oldItem,
+.freshItem {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  min-height: 1.5rem;
+  font-size: 0.9375rem;
+  line-height: 1.35;
+  letter-spacing: -0.01em;
+}
+
+.oldItem {
+  color: rgb(248 244 236 / 62%);
+}
+
+.freshItem {
+  color: #1c1a17;
+  font-weight: 600;
+}
+
+.label {
+  position: relative;
+  z-index: 2;
+  min-width: 0;
+}
+
+.fromAnchor {
+  flex-shrink: 0;
+  width: 0;
+  height: 1.2rem;
+}
+
+.x {
+  position: relative;
+  z-index: 2;
+  flex-shrink: 0;
+  width: 1.1rem;
+  display: grid;
+  place-items: center;
+  color: rgb(248 244 236 / 55%);
+  font-size: 0.95rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.check {
+  position: relative;
+  z-index: 2;
+  flex-shrink: 0;
+  width: 1.2rem;
+  height: 1.2rem;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--color-primary);
+  color: #f8f4ec;
+
+  svg {
+    width: 0.75rem;
+    height: 0.75rem;
+    display: block;
+  }
+}
+
+.accent {
+  position: relative;
+  flex-shrink: 0;
+  width: 2.65rem;
+  height: 2.2rem;
+  margin-left: 0.35rem;
+  pointer-events: none;
+  z-index: 3;
+
+  svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+}
+
+.oldItem .accent {
+  width: 3.1rem;
+  height: 2.6rem;
+  margin-left: 0.5rem;
+  margin-top: -0.55rem;
+  align-self: flex-start;
+}
+
+.accentGears {
+  width: 2.5rem;
+  height: 2.1rem;
+}
+
+.accentDb {
+  width: 2.35rem;
+  height: 2.35rem;
+}
+
+.gearLarge {
+  animation: gearTurnLarge 2.6s linear infinite;
+}
+
+.gearSmall {
+  animation: gearTurnSmall 2.6s linear infinite;
+}
+
+@keyframes drawLine {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* One tooth step per cycle, counter-rotating, so the loop is seamless. */
+@keyframes gearTurnLarge {
+  to {
+    transform: rotate(45deg);
+  }
+}
+
+@keyframes gearTurnSmall {
+  to {
+    transform: rotate(-60deg);
+  }
+}
+
+@media (min-width: 768px) {
+  .stage {
+    grid-template-columns: 1fr 1fr;
+    gap: clamp(2.75rem, 5vw, 4.25rem);
+  }
+
+  .connectors {
+    display: block;
+  }
+
+  .oldItem,
+  .freshItem {
+    white-space: nowrap;
+  }
+}
+
+@media (max-width: 767px) {
+  .accent {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .connectors path,
+  .draw path {
+    stroke-dasharray: none;
+    stroke-dashoffset: 0;
+    animation: none;
+  }
+
+  .gearLarge,
+  .gearSmall {
+    animation: none;
+  }
+}

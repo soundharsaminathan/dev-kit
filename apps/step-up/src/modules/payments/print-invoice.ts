@@ -93,7 +93,7 @@ export function printInvoice(invoice: PrintableInvoice) {
       })
     : "—";
 
-  const studioName = invoice.studioName?.trim() || "Step Up";
+  const studioName = invoice.studioName?.trim() || "classa";
   const gstNumber = invoice.gstNumber?.trim() || "";
   const studioAddress = invoice.studioAddress?.trim() || "";
   const logoUrl = invoice.studioLogoUrl?.trim() || "";
