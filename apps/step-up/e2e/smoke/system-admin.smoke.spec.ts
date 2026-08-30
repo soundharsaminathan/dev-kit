@@ -49,6 +49,20 @@ test.describe("system admin smoke @smoke", () => {
         page.getByRole("button", { name: "Create studio" }),
       ).toBeVisible();
 
+      await expect(
+        page.getByRole("button", { name: "Create login page link" }),
+      ).toBeVisible();
+
+      await page
+        .getByRole("button", { name: "Create login page link" })
+        .click();
+      await expect(page.getByText("Login page link").first()).toBeVisible();
+      const loginLink = page.getByTestId("login-page-link-url");
+      await expect(loginLink).toBeVisible();
+      await expect(loginLink).toContainText("/login?direct=1");
+      await expect(page.getByText(/username and password only/i)).toBeVisible();
+      await page.getByRole("button", { name: "Done" }).click();
+
       await page.getByRole("button", { name: "Create studio" }).click();
       await expect(page).toHaveURL(/\/admin\/studios\/new\/?$/);
       await expect(

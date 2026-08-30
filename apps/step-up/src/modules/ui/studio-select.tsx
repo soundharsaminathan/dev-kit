@@ -19,17 +19,21 @@ type StudioSelectProps = {
   label?: string;
   /** Selected studio id (stable identity for API calls). */
   selectedKey: string | null;
-  onSelectionChange: (studioId: string | null, studio?: StudioDirectoryItem) => void;
+  onSelectionChange: (
+    studioId: string | null,
+    studio?: StudioDirectoryItem,
+  ) => void;
   isRequired?: boolean;
   isInvalid?: boolean;
   errorMessage?: string | undefined;
   "data-testid"?: string;
 };
 
-export function useStudioDirectory() {
+export function useStudioDirectory(options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: ["studios", "directory"],
     queryFn: () => getPublic<StudioDirectoryItem[]>("/studios/directory"),
+    enabled: options?.enabled ?? true,
   });
 }
 

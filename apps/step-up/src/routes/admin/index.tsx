@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { useApi } from "@/lib/api-context";
+import { buildDirectLoginUrl } from "@/lib/direct-login";
 import { rememberAdminStudioId } from "@/modules/admin/use-admin-studio";
 import { AppSheet } from "@/modules/ui/app-sheet";
 import { Screen } from "@/modules/ui/screen";
@@ -41,6 +42,10 @@ function AdminStudiosPage() {
   const [studioToDelete, setStudioToDelete] = useState<StudioListItem | null>(
     null,
   );
+  const [loginLinkOpen, setLoginLinkOpen] = useState(false);
+  const loginPageUrl = loginLinkOpen
+    ? buildDirectLoginUrl(window.location.origin)
+    : "";
 
   const studiosQuery = useQuery({
     queryKey: ["admin", "studios"],
@@ -81,6 +86,13 @@ function AdminStudiosPage() {
           onClick={() => void navigate({ to: "/admin/studios/new" })}
         >
           Create studio
+        </TouchButton>
+        <TouchButton
+          variant="default"
+          data-testid="create-login-page-link"
+          onClick={() => setLoginLinkOpen(true)}
+        >
+          Create login page link
         </TouchButton>
       </div>
 
@@ -140,6 +152,54 @@ function AdminStudiosPage() {
           </ul>
         ) : null}
       </section>
+
+      <AppSheet
+        isOpen={loginLinkOpen}
+        onOpenChange={setLoginLinkOpen}
+        title="Login page link"
+      >
+        <div className={staff.sheetStack}>
+          <p className={staff.rowMeta}>
+            Share this page for sign in with username and password only. Studio
+            is not selected on this page.
+          </p>
+          <p className={staff.panelDesc} data-testid="login-page-link-url">
+            <code>{loginPageUrl}</code>
+          </p>
+          <div className={staff.sheetActions}>
+            <TouchButton
+              variant="primary"
+              fullWidth
+              data-testid="copy-login-page-link"
+              onClick={() => {
+                void navigator.clipboard.writeText(loginPageUrl).then(
+                  () => {
+                    toast({
+                      title: "Login page link copied",
+                      variant: "success",
+                    });
+                  },
+                  () => {
+                    toast({
+                      title: "Couldn’t copy login page link",
+                      variant: "error",
+                    });
+                  },
+                );
+              }}
+            >
+              Copy link
+            </TouchButton>
+            <TouchButton
+              variant="default"
+              fullWidth
+              onClick={() => setLoginLinkOpen(false)}
+            >
+              Done
+            </TouchButton>
+          </div>
+        </div>
+      </AppSheet>
 
       <AppSheet
         isOpen={studioToDelete !== null}

@@ -24,6 +24,23 @@ test.describe("public smoke @smoke", () => {
     }
   });
 
+  test("direct login page has username and password only @smoke", async ({
+    page,
+  }) => {
+    await page.goto("/login?direct=1", { waitUntil: "domcontentloaded" });
+    await waitForAppReady(page);
+    await expect(page).toHaveURL(/\/login/);
+    await expect(page.getByLabel("Username")).toBeVisible();
+    await expect(page.getByLabel("Password", { exact: true })).toBeVisible();
+    await expect(page.getByTestId("login-studio-select")).toHaveCount(0);
+    await expect(
+      page.getByRole("button", { name: "Continue with Google" }),
+    ).toHaveCount(0);
+    await expect(
+      page.getByRole("link", { name: "New here? Create a student account" }),
+    ).toHaveCount(0);
+  });
+
   test("guest is redirected from authed shells to login @smoke", async ({
     page,
   }) => {

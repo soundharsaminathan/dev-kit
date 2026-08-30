@@ -10,6 +10,7 @@ import { useAuth } from "@/lib/auth";
 import type { AuthUser } from "@/lib/auth-context";
 import { BRAND_ICON_SRC, BRAND_NAME } from "@/lib/brand";
 import { isAuthBypassEnabled, SEED_PASSWORD } from "@/lib/constants";
+import { isDirectLoginFlag } from "@/lib/direct-login";
 import { getLastLoginIdentifier } from "@/lib/last-login";
 import {
   homePathForUser,
@@ -18,10 +19,7 @@ import {
 } from "@/lib/require-auth";
 import { PublicShell } from "@/modules/layout/public-shell";
 import { PasswordInput } from "@/modules/ui/password-input";
-import {
-  StudioSelect,
-  useStudioDirectory,
-} from "@/modules/ui/studio-select";
+import { StudioSelect, useStudioDirectory } from "@/modules/ui/studio-select";
 import { TouchButton } from "@/modules/ui/touch-button";
 import styles from "./login.module.scss";
 
@@ -32,6 +30,8 @@ type LoginSearch = {
   studio?: string;
   /** Compat: studio id */
   studioId?: string;
+  /** Username and password only — no studio picker */
+  direct?: true;
 };
 
 type LoginFormValues = {
@@ -54,6 +54,9 @@ function parseSearch(search: Record<string, unknown>): LoginSearch {
   }
   if (typeof search.studioId === "string" && search.studioId.trim()) {
     next.studioId = search.studioId.trim();
+  }
+  if (isDirectLoginFlag(search.direct)) {
+    next.direct = true;
   }
   return next;
 }
@@ -96,12 +99,13 @@ function LoginPage() {
     identifier: searchIdentifier,
     studio: searchStudioSlug,
     studioId: searchStudioId,
+    direct: isDirectLogin,
   } = Route.useSearch();
   const { signIn, signInWithGoogle, loginAsSystemAdmin, signOutUser } =
     useAuth();
   const online = useOnlineStatus();
   const [error, setError] = useState<string | null>(null);
-  const directory = useStudioDirectory();
+  const directory = useStudioDirectory({ enabled: !isDirectLogin });
 
   const redirectAfterSignIn = useCallback(
     (authUser: AuthUser) => {
@@ -142,7 +146,9 @@ function LoginPage() {
       setError(null);
       try {
         const signedIn = await signIn(value.identifier.trim(), value.password);
-        await assertStudioAccess(signedIn, value.studioId);
+        if (!isDirectLogin) {
+          await assertStudioAccess(signedIn, value.studioId);
+        }
         redirectAfterSignIn(signedIn);
       } catch (signInError) {
         setError(
@@ -155,6 +161,7 @@ function LoginPage() {
   });
 
   useEffect(() => {
+    if (isDirectLogin) return;
     const studios = directory.data;
     if (!studios?.length) return;
 
@@ -191,6 +198,7 @@ function LoginPage() {
   }, [
     directory.data,
     form,
+    isDirectLogin,
     navigate,
     redirectTo,
     searchIdentifier,
@@ -240,7 +248,9 @@ function LoginPage() {
             <p className={styles.brand}>{BRAND_NAME}</p>
             <h1 className={styles.title}>Welcome back</h1>
             <p className={styles.subtitle}>
-              Sign in to manage your studio or continue to your classes.
+              {isDirectLogin
+                ? "Sign in with your username and password."
+                : "Sign in to manage your studio or continue to your classes."}
             </p>
           </div>
         </div>
@@ -273,29 +283,31 @@ function LoginPage() {
             void form.handleSubmit();
           }}
         >
-          <form.Field name="studioId">
-            {(field) => (
-              <StudioSelect
-                selectedKey={field.state.value || null}
-                onSelectionChange={(studioId, studio) => {
-                  field.handleChange(studioId ?? "");
-                  form.setFieldValue("studioSlug", studio?.slug ?? "");
-                  void navigate({
-                    to: "/login",
-                    search: {
-                      ...(redirectTo ? { redirect: redirectTo } : {}),
-                      ...(searchIdentifier
-                        ? { identifier: searchIdentifier }
-                        : {}),
-                      ...(studio?.slug ? { studio: studio.slug } : {}),
-                    },
-                    replace: true,
-                  });
-                }}
-                data-testid="login-studio-select"
-              />
-            )}
-          </form.Field>
+          {isDirectLogin ? null : (
+            <form.Field name="studioId">
+              {(field) => (
+                <StudioSelect
+                  selectedKey={field.state.value || null}
+                  onSelectionChange={(studioId, studio) => {
+                    field.handleChange(studioId ?? "");
+                    form.setFieldValue("studioSlug", studio?.slug ?? "");
+                    void navigate({
+                      to: "/login",
+                      search: {
+                        ...(redirectTo ? { redirect: redirectTo } : {}),
+                        ...(searchIdentifier
+                          ? { identifier: searchIdentifier }
+                          : {}),
+                        ...(studio?.slug ? { studio: studio.slug } : {}),
+                      },
+                      replace: true,
+                    });
+                  }}
+                  data-testid="login-studio-select"
+                />
+              )}
+            </form.Field>
+          )}
 
           <form.Field
             name="identifier"
@@ -308,7 +320,9 @@ function LoginPage() {
               const err = fieldError(field.state.meta.errors);
               return (
                 <TextField>
-                  <Label data-required="true">Email or username</Label>
+                  <Label data-required="true">
+                    {isDirectLogin ? "Username" : "Email or username"}
+                  </Label>
                   <Input
                     name={field.name}
                     type="text"
@@ -373,7 +387,7 @@ function LoginPage() {
             )}
           </form.Subscribe>
 
-          {!isAuthBypassEnabled() ? (
+          {!isDirectLogin && !isAuthBypassEnabled() ? (
             <TouchButton
               type="button"
               variant="default"
@@ -405,25 +419,27 @@ function LoginPage() {
           </div>
         ) : null}
 
-        <form.Subscribe
-          selector={(state) => ({
-            studioId: state.values.studioId,
-            studioSlug: state.values.studioSlug,
-          })}
-        >
-          {({ studioId, studioSlug }) => (
-            <Link
-              to="/register"
-              search={{
-                ...(studioId.trim() ? { studioId: studioId.trim() } : {}),
-                ...(studioSlug.trim() ? { studio: studioSlug.trim() } : {}),
-              }}
-              className={styles.footerLink}
-            >
-              New here? Create a student account
-            </Link>
-          )}
-        </form.Subscribe>
+        {isDirectLogin ? null : (
+          <form.Subscribe
+            selector={(state) => ({
+              studioId: state.values.studioId,
+              studioSlug: state.values.studioSlug,
+            })}
+          >
+            {({ studioId, studioSlug }) => (
+              <Link
+                to="/register"
+                search={{
+                  ...(studioId.trim() ? { studioId: studioId.trim() } : {}),
+                  ...(studioSlug.trim() ? { studio: studioSlug.trim() } : {}),
+                }}
+                className={styles.footerLink}
+              >
+                New here? Create a student account
+              </Link>
+            )}
+          </form.Subscribe>
+        )}
       </section>
     </PublicShell>
   );
