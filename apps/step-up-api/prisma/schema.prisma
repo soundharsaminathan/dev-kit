@@ -176,6 +176,24 @@ enum NotificationType {
   CHAT_MESSAGE
   TRAINER_PAYOUT
   DATA_IMPORT_COMPLETE
+  STUDIO_PLAN_INVOICE
+}
+
+enum StudioPlan {
+  BASIC
+  ADVANCED
+}
+
+enum StudioInvoiceStatus {
+  DRAFT
+  PENDING
+  PAID
+  VOID
+}
+
+enum StudioInvoicePaymentMethod {
+  CASH
+  UPI_MANUAL
 }
 
 enum TrainerPayoutStatus {
@@ -383,6 +401,8 @@ model User {
   taughtSessions            Session[]            @relation("SessionTrainer")
   trainerPayouts            TrainerPayout[]      @relation("TrainerPayoutTrainer")
   dataImportsRequested      StudioDataImport[]   @relation("DataImportRequester")
+  studioInvoicesBilled      StudioInvoice[]      @relation("StudioInvoiceBilledUser")
+  studioInvoicesCreated     StudioInvoice[]      @relation("StudioInvoiceCreator")
 
   @@index([studioId, emailHash])
   @@index([preferredBranchId])
@@ -465,8 +485,37 @@ model Studio {
   trainerPayouts       TrainerPayout[]
   studioFeatures       StudioFeature[]
   dataImports          StudioDataImport[]
+  studioInvoices       StudioInvoice[]
   notifications        Notification[]
   outboxEvents         OutboxEvent[]
+}
+
+model StudioInvoice {
+  id             String                      @id @default(cuid())
+  studioId       String
+  billedUserId   String
+  createdById    String
+  status         StudioInvoiceStatus         @default(DRAFT)
+  plan           StudioPlan
+  listAmount     Decimal                     @db.Decimal(10, 2)
+  discount       Decimal                     @default(0) @db.Decimal(10, 2)
+  periodStart    DateTime
+  periodEnd      DateTime
+  usageSnapshot  Json
+  notes          String?
+  publishedAt    DateTime?
+  paidAt         DateTime?
+  paymentMethod  StudioInvoicePaymentMethod?
+  createdAt      DateTime                    @default(now())
+  updatedAt      DateTime                    @updatedAt
+
+  studio     Studio @relation(fields: [studioId], references: [id], onDelete: Cascade)
+  billedUser User   @relation("StudioInvoiceBilledUser", fields: [billedUserId], references: [id], onDelete: Restrict)
+  createdBy  User   @relation("StudioInvoiceCreator", fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@index([studioId, status])
+  @@index([studioId, periodStart])
+  @@index([billedUserId])
 }
 
 model Feature {

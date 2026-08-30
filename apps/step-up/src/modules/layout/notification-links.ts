@@ -12,7 +12,9 @@ export type NotificationType =
   | "NOT_RENEWED"
   | "NEW_FOLLOW"
   | "CHAT_MESSAGE"
-  | "DATA_IMPORT_COMPLETE";
+  | "DATA_IMPORT_COMPLETE"
+  | "STUDIO_PLAN_INVOICE"
+  | "TRAINER_PAYOUT";
 
 export type NotificationMeta = {
   sessionId?: string;
@@ -42,7 +44,9 @@ export type NotificationDestination =
   | { to: "/app/invoices" }
   | { to: "/app/calendar" }
   | { to: "/app/import" }
-  | { to: "/app/students/import" };
+  | { to: "/app/students/import" }
+  | { to: "/app/settings/plan" }
+  | { to: "/app/payouts" };
 
 function asMeta(value: unknown): NotificationMeta {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
@@ -155,6 +159,10 @@ export function resolveNotificationDestination(
       return m.importKind === "students"
         ? { to: "/app/students/import" }
         : { to: "/app/import" };
+    case "STUDIO_PLAN_INVOICE":
+      return { to: "/app/settings/plan" };
+    case "TRAINER_PAYOUT":
+      return { to: "/app/payouts" };
     default:
       return null;
   }

@@ -31,6 +31,7 @@ import { SocialModule } from "./social/social.module";
 import { StaffAgentModule } from "./staff-agent/staff-agent.module";
 import { StaffInvitesModule } from "./staff-invites/staff-invites.module";
 import { StudioFeaturesModule } from "./studio-features/studio-features.module";
+import { StudioInvoicesModule } from "./studio-invoices/studio-invoices.module";
 import { StudiosModule } from "./studios/studios.module";
 import { SubscriptionsModule } from "./subscriptions/subscriptions.module";
 import { TenancyModule } from "./tenancy/tenancy.module";
@@ -51,6 +52,7 @@ import { UsersModule } from "./users/users.module";
     UsersModule,
     StudiosModule,
     StudioFeaturesModule,
+    StudioInvoicesModule,
     StaffInvitesModule,
     BranchesModule,
     BatchesModule,

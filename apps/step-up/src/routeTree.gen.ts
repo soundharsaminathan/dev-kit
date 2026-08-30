@@ -81,6 +81,7 @@ import { Route as AppStudentsIdRouteImport } from './routes/app/students/$id'
 import { Route as AppSettingsTeamRouteImport } from './routes/app/settings.team'
 import { Route as AppSettingsStylesRouteImport } from './routes/app/settings.styles'
 import { Route as AppSettingsProfileRouteImport } from './routes/app/settings.profile'
+import { Route as AppSettingsPlanRouteImport } from './routes/app/settings.plan'
 import { Route as AppSettingsPaymentsRouteImport } from './routes/app/settings.payments'
 import { Route as AppSettingsNotificationsRouteImport } from './routes/app/settings.notifications'
 import { Route as AppSettingsIntegrationsRouteImport } from './routes/app/settings.integrations'
@@ -115,6 +116,7 @@ import { Route as AppSessionsIdAttendanceRouteImport } from './routes/app/sessio
 import { Route as AppLocationsIdEditRouteImport } from './routes/app/locations/$id_.edit'
 import { Route as AppLocationsIdClassesRouteImport } from './routes/app/locations/$id_.classes'
 import { Route as AppBatchesIdSettingsRouteImport } from './routes/app/batches/$id_.settings'
+import { Route as AdminStudiosIdInvoicesRouteImport } from './routes/admin/studios/$id_.invoices'
 import { Route as AdminStudiosIdFeaturesRouteImport } from './routes/admin/studios/$id_.features'
 
 const TermsRoute = TermsRouteImport.update({
@@ -477,6 +479,11 @@ const AppSettingsProfileRoute = AppSettingsProfileRouteImport.update({
   path: '/profile',
   getParentRoute: () => AppSettingsRoute,
 } as any)
+const AppSettingsPlanRoute = AppSettingsPlanRouteImport.update({
+  id: '/plan',
+  path: '/plan',
+  getParentRoute: () => AppSettingsRoute,
+} as any)
 const AppSettingsPaymentsRoute = AppSettingsPaymentsRouteImport.update({
   id: '/payments',
   path: '/payments',
@@ -651,6 +658,11 @@ const AppBatchesIdSettingsRoute = AppBatchesIdSettingsRouteImport.update({
   path: '/batches/$id/settings',
   getParentRoute: () => AppRoute,
 } as any)
+const AdminStudiosIdInvoicesRoute = AdminStudiosIdInvoicesRouteImport.update({
+  id: '/studios/$id_/invoices',
+  path: '/studios/$id/invoices',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminStudiosIdFeaturesRoute = AdminStudiosIdFeaturesRouteImport.update({
   id: '/studios/$id_/features',
   path: '/studios/$id/features',
@@ -724,6 +736,7 @@ export interface FileRoutesByFullPath {
   '/app/settings/integrations': typeof AppSettingsIntegrationsRoute
   '/app/settings/notifications': typeof AppSettingsNotificationsRoute
   '/app/settings/payments': typeof AppSettingsPaymentsRoute
+  '/app/settings/plan': typeof AppSettingsPlanRoute
   '/app/settings/profile': typeof AppSettingsProfileRoute
   '/app/settings/styles': typeof AppSettingsStylesRoute
   '/app/settings/team': typeof AppSettingsTeamRoute
@@ -759,6 +772,7 @@ export interface FileRoutesByFullPath {
   '/me/messages/': typeof MeMessagesIndexRoute
   '/me/trainers/': typeof MeTrainersIndexRoute
   '/admin/studios/$id/features': typeof AdminStudiosIdFeaturesRoute
+  '/admin/studios/$id/invoices': typeof AdminStudiosIdInvoicesRoute
   '/app/batches/$id/settings': typeof AppBatchesIdSettingsRoute
   '/app/locations/$id/classes': typeof AppLocationsIdClassesRoute
   '/app/locations/$id/edit': typeof AppLocationsIdEditRoute
@@ -829,6 +843,7 @@ export interface FileRoutesByTo {
   '/app/settings/integrations': typeof AppSettingsIntegrationsRoute
   '/app/settings/notifications': typeof AppSettingsNotificationsRoute
   '/app/settings/payments': typeof AppSettingsPaymentsRoute
+  '/app/settings/plan': typeof AppSettingsPlanRoute
   '/app/settings/profile': typeof AppSettingsProfileRoute
   '/app/settings/styles': typeof AppSettingsStylesRoute
   '/app/settings/team': typeof AppSettingsTeamRoute
@@ -864,6 +879,7 @@ export interface FileRoutesByTo {
   '/me/messages': typeof MeMessagesIndexRoute
   '/me/trainers': typeof MeTrainersIndexRoute
   '/admin/studios/$id/features': typeof AdminStudiosIdFeaturesRoute
+  '/admin/studios/$id/invoices': typeof AdminStudiosIdInvoicesRoute
   '/app/batches/$id/settings': typeof AppBatchesIdSettingsRoute
   '/app/locations/$id/classes': typeof AppLocationsIdClassesRoute
   '/app/locations/$id/edit': typeof AppLocationsIdEditRoute
@@ -939,6 +955,7 @@ export interface FileRoutesById {
   '/app/settings/integrations': typeof AppSettingsIntegrationsRoute
   '/app/settings/notifications': typeof AppSettingsNotificationsRoute
   '/app/settings/payments': typeof AppSettingsPaymentsRoute
+  '/app/settings/plan': typeof AppSettingsPlanRoute
   '/app/settings/profile': typeof AppSettingsProfileRoute
   '/app/settings/styles': typeof AppSettingsStylesRoute
   '/app/settings/team': typeof AppSettingsTeamRoute
@@ -974,6 +991,7 @@ export interface FileRoutesById {
   '/me/messages/': typeof MeMessagesIndexRoute
   '/me/trainers/': typeof MeTrainersIndexRoute
   '/admin/studios/$id_/features': typeof AdminStudiosIdFeaturesRoute
+  '/admin/studios/$id_/invoices': typeof AdminStudiosIdInvoicesRoute
   '/app/batches/$id_/settings': typeof AppBatchesIdSettingsRoute
   '/app/locations/$id_/classes': typeof AppLocationsIdClassesRoute
   '/app/locations/$id_/edit': typeof AppLocationsIdEditRoute
@@ -1050,6 +1068,7 @@ export interface FileRouteTypes {
     | '/app/settings/integrations'
     | '/app/settings/notifications'
     | '/app/settings/payments'
+    | '/app/settings/plan'
     | '/app/settings/profile'
     | '/app/settings/styles'
     | '/app/settings/team'
@@ -1085,6 +1104,7 @@ export interface FileRouteTypes {
     | '/me/messages/'
     | '/me/trainers/'
     | '/admin/studios/$id/features'
+    | '/admin/studios/$id/invoices'
     | '/app/batches/$id/settings'
     | '/app/locations/$id/classes'
     | '/app/locations/$id/edit'
@@ -1155,6 +1175,7 @@ export interface FileRouteTypes {
     | '/app/settings/integrations'
     | '/app/settings/notifications'
     | '/app/settings/payments'
+    | '/app/settings/plan'
     | '/app/settings/profile'
     | '/app/settings/styles'
     | '/app/settings/team'
@@ -1190,6 +1211,7 @@ export interface FileRouteTypes {
     | '/me/messages'
     | '/me/trainers'
     | '/admin/studios/$id/features'
+    | '/admin/studios/$id/invoices'
     | '/app/batches/$id/settings'
     | '/app/locations/$id/classes'
     | '/app/locations/$id/edit'
@@ -1264,6 +1286,7 @@ export interface FileRouteTypes {
     | '/app/settings/integrations'
     | '/app/settings/notifications'
     | '/app/settings/payments'
+    | '/app/settings/plan'
     | '/app/settings/profile'
     | '/app/settings/styles'
     | '/app/settings/team'
@@ -1299,6 +1322,7 @@ export interface FileRouteTypes {
     | '/me/messages/'
     | '/me/trainers/'
     | '/admin/studios/$id_/features'
+    | '/admin/studios/$id_/invoices'
     | '/app/batches/$id_/settings'
     | '/app/locations/$id_/classes'
     | '/app/locations/$id_/edit'
@@ -1830,6 +1854,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSettingsProfileRouteImport
       parentRoute: typeof AppSettingsRoute
     }
+    '/app/settings/plan': {
+      id: '/app/settings/plan'
+      path: '/plan'
+      fullPath: '/app/settings/plan'
+      preLoaderRoute: typeof AppSettingsPlanRouteImport
+      parentRoute: typeof AppSettingsRoute
+    }
     '/app/settings/payments': {
       id: '/app/settings/payments'
       path: '/payments'
@@ -2068,6 +2099,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppBatchesIdSettingsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/admin/studios/$id_/invoices': {
+      id: '/admin/studios/$id_/invoices'
+      path: '/studios/$id/invoices'
+      fullPath: '/admin/studios/$id/invoices'
+      preLoaderRoute: typeof AdminStudiosIdInvoicesRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/studios/$id_/features': {
       id: '/admin/studios/$id_/features'
       path: '/studios/$id/features'
@@ -2084,6 +2122,7 @@ interface AdminRouteChildren {
   AdminStudiosIdRoute: typeof AdminStudiosIdRoute
   AdminStudiosNewRoute: typeof AdminStudiosNewRoute
   AdminStudiosIdFeaturesRoute: typeof AdminStudiosIdFeaturesRoute
+  AdminStudiosIdInvoicesRoute: typeof AdminStudiosIdInvoicesRoute
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
@@ -2092,6 +2131,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminStudiosIdRoute: AdminStudiosIdRoute,
   AdminStudiosNewRoute: AdminStudiosNewRoute,
   AdminStudiosIdFeaturesRoute: AdminStudiosIdFeaturesRoute,
+  AdminStudiosIdInvoicesRoute: AdminStudiosIdInvoicesRoute,
 }
 
 const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
@@ -2104,6 +2144,7 @@ interface AppSettingsRouteChildren {
   AppSettingsIntegrationsRoute: typeof AppSettingsIntegrationsRoute
   AppSettingsNotificationsRoute: typeof AppSettingsNotificationsRoute
   AppSettingsPaymentsRoute: typeof AppSettingsPaymentsRoute
+  AppSettingsPlanRoute: typeof AppSettingsPlanRoute
   AppSettingsProfileRoute: typeof AppSettingsProfileRoute
   AppSettingsStylesRoute: typeof AppSettingsStylesRoute
   AppSettingsTeamRoute: typeof AppSettingsTeamRoute
@@ -2118,6 +2159,7 @@ const AppSettingsRouteChildren: AppSettingsRouteChildren = {
   AppSettingsIntegrationsRoute: AppSettingsIntegrationsRoute,
   AppSettingsNotificationsRoute: AppSettingsNotificationsRoute,
   AppSettingsPaymentsRoute: AppSettingsPaymentsRoute,
+  AppSettingsPlanRoute: AppSettingsPlanRoute,
   AppSettingsProfileRoute: AppSettingsProfileRoute,
   AppSettingsStylesRoute: AppSettingsStylesRoute,
   AppSettingsTeamRoute: AppSettingsTeamRoute,

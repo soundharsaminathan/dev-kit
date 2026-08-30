@@ -96,4 +96,10 @@ describe("resolveNotificationDestination", () => {
       resolveNotificationDestination("DATA_IMPORT_COMPLETE", {}, "app"),
     ).toEqual({ to: "/app/import" });
   });
+
+  it("routes classa plan invoice notifications to settings plan", () => {
+    expect(
+      resolveNotificationDestination("STUDIO_PLAN_INVOICE", {}, "app"),
+    ).toEqual({ to: "/app/settings/plan" });
+  });
 });

@@ -78,6 +78,8 @@ export function resolveDeepLink(input: {
       const importKind = stringMeta("importKind");
       return importKind === "students" ? "/app/students/import" : "/app/import";
     }
+    case "STUDIO_PLAN_INVOICE":
+      return "/app/settings/plan";
     default:
       return null;
   }

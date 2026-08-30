@@ -124,6 +124,13 @@ export function buildNotificationCopy(input: NotificationTemplateInput): {
             ? `${input.batchName} data has been imported successfully.`
             : "Your studio data has been imported successfully."),
       };
+    case "STUDIO_PLAN_INVOICE":
+      return {
+        title: input.title ?? "classa plan invoice",
+        body:
+          input.body ??
+          "A classa plan invoice is ready. Review it under Settings → classa plan.",
+      };
     default:
       return {
         title: input.title ?? "Notification",
@@ -181,5 +188,9 @@ export const NOTIFICATION_TYPE_REGISTRY: Record<
   DATA_IMPORT_COMPLETE: {
     label: "Data imports",
     defaultChannels: ["IN_APP", "PUSH"],
+  },
+  STUDIO_PLAN_INVOICE: {
+    label: "classa plan invoices",
+    defaultChannels: ["IN_APP"],
   },
 };

@@ -15,6 +15,7 @@ import { PrismaService } from "../prisma/prisma.service";
 import { UserCryptoService } from "../users/user-crypto.service";
 import { isValidIanaTimeZone } from "../common/zoned-local-time";
 import { slugifyStudioName, uniquifySlug } from "../tenancy/studio-slug";
+import { getStudioUsageSummaries } from "../studio-invoices/studio-usage";
 import { parseDanceStyles } from "./dance-styles";
 
 export type CreateStudioInput = {
@@ -57,9 +58,15 @@ export class StudiosService {
       },
     });
 
+    const usageByStudio = await getStudioUsageSummaries(
+      this.prisma,
+      studios.map((studio) => studio.id),
+    );
+
     return Promise.all(
       studios.map(async (studio) => {
         const owner = this.crypto.decryptUser(studio.owner);
+        const usage = usageByStudio.get(studio.id);
         return {
           id: studio.id,
           slug: studio.slug,
@@ -68,6 +75,9 @@ export class StudiosService {
           contact: studio.contact,
           logoUrl: await this.media.signReadUrl(studio.logoUrl),
           memberCount: studio._count.members,
+          activeStudents: usage?.activeStudents ?? 0,
+          trainers: usage?.trainers ?? 0,
+          sessionsThisMonth: usage?.sessionsThisMonth ?? 0,
           owner: {
             id: owner.id,
             email: owner.email,

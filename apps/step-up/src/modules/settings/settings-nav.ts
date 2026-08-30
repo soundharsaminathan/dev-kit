@@ -63,6 +63,14 @@ export const SETTINGS_NAV: SettingsNavGroup[] = [
         to: "/app/settings/billing",
       },
       {
+        id: "plan",
+        label: "classa plan",
+        icon: "wallet",
+        kind: "internal",
+        to: "/app/settings/plan",
+        ownerOnly: true,
+      },
+      {
         id: "payments",
         label: "Payments",
         icon: "credit-card",
@@ -174,6 +182,10 @@ export const SETTINGS_PAGE_META: Record<
   "/app/settings/billing": {
     title: "Billing",
     subtitle: "Due days, expiry alerts, admission fee, and timezone.",
+  },
+  "/app/settings/plan": {
+    title: "classa plan",
+    subtitle: "Usage and published plan invoices from classa.",
   },
   "/app/settings/payments": {
     title: "Payments",

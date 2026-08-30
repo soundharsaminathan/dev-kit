@@ -16,6 +16,9 @@ type StudioListItem = {
   address: string | null;
   contact: string | null;
   memberCount: number;
+  activeStudents: number;
+  trainers: number;
+  sessionsThisMonth: number;
   owner: { id: string; email: string; name: string };
 };
 
@@ -107,6 +110,10 @@ function AdminStudiosPage() {
                   Owner {studio.owner.name} · {studio.owner.email}
                 </p>
                 <p className={staff.attentionMeta}>
+                  {studio.activeStudents} active students · {studio.trainers}{" "}
+                  trainers · {studio.sessionsThisMonth} sessions this month
+                </p>
+                <p className={staff.attentionMeta}>
                   {studio.memberCount} members · {studio.id}
                 </p>
                 <div className={staff.rowActions}>
@@ -122,6 +129,19 @@ function AdminStudiosPage() {
                     }
                   >
                     Edit
+                  </TouchButton>
+                  <TouchButton
+                    variant="default"
+                    size="sm"
+                    data-testid={`studio-invoices-${studio.id}`}
+                    onClick={() =>
+                      void navigate({
+                        to: "/admin/studios/$id/invoices",
+                        params: { id: studio.id },
+                      })
+                    }
+                  >
+                    Invoice
                   </TouchButton>
                   <TouchButton
                     variant="default"

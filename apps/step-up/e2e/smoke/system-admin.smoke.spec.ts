@@ -14,6 +14,7 @@ const ADMIN_PATHS = [
   "/admin/studios/new",
   `/admin/studios/${SMOKE.studioId}`,
   `/admin/studios/${SMOKE.studioId}/features`,
+  `/admin/studios/${SMOKE.studioId}/invoices`,
 ];
 
 test.describe("system admin smoke @smoke", () => {

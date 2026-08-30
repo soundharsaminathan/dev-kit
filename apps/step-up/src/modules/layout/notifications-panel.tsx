@@ -52,6 +52,7 @@ function notificationIcon(
   | "user"
   | "message-square"
   | "upload"
+  | "wallet"
   | "bell" {
   switch (type) {
     case "MISSED_SESSION":
@@ -73,6 +74,8 @@ function notificationIcon(
       return "message-square";
     case "DATA_IMPORT_COMPLETE":
       return "upload";
+    case "STUDIO_PLAN_INVOICE":
+      return "wallet";
     default:
       return "bell";
   }
