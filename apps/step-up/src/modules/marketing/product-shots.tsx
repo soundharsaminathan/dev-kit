@@ -5,6 +5,7 @@ import { CertificateMock } from "./mocks/certificate";
 import { DashboardMock } from "./mocks/dashboard";
 import { InvoiceMock } from "./mocks/invoice";
 import { LeadsMock } from "./mocks/leads";
+import { PaymentAnalyticsMock } from "./mocks/payment-analytics";
 import { ScheduleMock } from "./mocks/schedule";
 import { StudentProfileMock } from "./mocks/student-profile";
 import { ProductShot } from "./product-shot";
@@ -21,6 +22,7 @@ export type ShotId =
   | "studentProfile"
   | "leads"
   | "invoice"
+  | "paymentAnalytics"
   | "schedule"
   | "certificate";
 
@@ -69,6 +71,12 @@ export const PRODUCT_SHOTS: Record<ShotId, ShotDef> = {
     alt: "classa invoices and payment status list",
     ratio: "16 / 10",
     mock: () => <InvoiceMock />,
+  },
+  paymentAnalytics: {
+    id: "paymentAnalytics",
+    alt: "classa payment analytics with collections and revenue trends",
+    ratio: "16 / 10",
+    mock: () => <PaymentAnalyticsMock />,
   },
   schedule: {
     id: "schedule",

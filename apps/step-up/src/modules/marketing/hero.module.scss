@@ -72,6 +72,40 @@
   display: block;
 }
 
+.cycleWrapper {
+  position: relative;
+  display: inline-block;
+}
+
+.cycleWord {
+  position: absolute;
+  left: 0;
+  opacity: 0;
+  animation: cycleFade 5s ease-in-out infinite;
+}
+
+.cycleWord:first-child {
+  position: relative;
+}
+
+@keyframes cycleFade {
+  0%,
+  5% {
+    opacity: 0;
+    transform: translateY(0.15em);
+  }
+  10%,
+  45% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  50%,
+  100% {
+    opacity: 0;
+    transform: translateY(-0.15em);
+  }
+}
+
 .support {
   margin: 0;
   max-width: var(--lp-copy);
@@ -121,6 +155,14 @@
 }
 
 @media (min-width: 768px) {
+  .hero .visual .shot {
+    height: auto;
+    max-height: 100%;
+    aspect-ratio: 16 / 10;
+  }
+}
+
+@media (min-width: 768px) {
   .hero {
     padding-inline: var(--lp-space-300);
     gap: var(--lp-space-400);
@@ -134,6 +176,10 @@
 
   .copy {
     justify-content: center;
+  }
+
+  .visual {
+    align-items: center;
   }
 
   .headline {
@@ -170,5 +216,14 @@
 @media (prefers-reduced-motion: reduce) {
   .ctaLink :global(button:active) {
     transform: none;
+  }
+
+  .cycleWord {
+    animation: none;
+    opacity: 0;
+  }
+
+  .cycleWord:first-child {
+    opacity: 1;
   }
 }

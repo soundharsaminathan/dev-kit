@@ -18,7 +18,10 @@ function WordText({ word }: { word: string }) {
   );
 }
 
-export function Tagline({ compact = false }: { compact?: boolean }) {
+export function Tagline({
+  compact = false,
+  inline = false,
+}: { compact?: boolean; inline?: boolean }) {
   const words = TAGLINE.lines.map((line) => line.split(" "));
   const total = words.reduce((n, line) => n + line.length, 0);
   const [active, setActive] = useState(0);
@@ -28,6 +31,17 @@ export function Tagline({ compact = false }: { compact?: boolean }) {
     if (prefersReducedMotion()) {
       setActive(total);
       return;
+    }
+
+    if (inline) {
+      let i = 0;
+      const step = () => {
+        i += 1;
+        setActive(i);
+        if (i < total) setTimeout(step, 120);
+      };
+      const id = setTimeout(step, 300);
+      return () => clearTimeout(id);
     }
 
     const nodes = refs.current.filter(Boolean) as HTMLSpanElement[];
@@ -48,18 +62,20 @@ export function Tagline({ compact = false }: { compact?: boolean }) {
 
     for (const node of nodes) observer.observe(node);
     return () => observer.disconnect();
-  }, [total]);
+  }, [total, inline]);
 
   let index = 0;
 
+  const Wrapper = inline ? "div" : "section";
+
   return (
-    <section
+    <Wrapper
       className={styles.section}
       data-compact={compact || undefined}
-      aria-labelledby="tagline-headline"
+      aria-labelledby={inline ? undefined : "tagline-headline"}
     >
       <h2
-        id="tagline-headline"
+        id={inline ? undefined : "tagline-headline"}
         className={styles.headline}
         aria-label={TAGLINE.lines.join(" ")}
       >
@@ -85,6 +101,6 @@ export function Tagline({ compact = false }: { compact?: boolean }) {
           </span>
         ))}
       </h2>
-    </section>
+    </Wrapper>
   );
 }

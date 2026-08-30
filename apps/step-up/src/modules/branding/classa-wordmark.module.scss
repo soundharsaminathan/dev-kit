@@ -54,7 +54,6 @@
   font-family: var(--font-mono, ui-monospace, "Cascadia Code", "Source Code Pro", Menlo, monospace);
   font-weight: 600;
   letter-spacing: -0.06em;
-  text-transform: lowercase;
 }
 
 /* Stencil — cutout style with letter gaps */
@@ -62,7 +61,6 @@
   font-family: var(--font-sans, system-ui, sans-serif);
   font-weight: 800;
   letter-spacing: 0.08em;
-  text-transform: uppercase;
 
   .letter {
     display: inline-block;

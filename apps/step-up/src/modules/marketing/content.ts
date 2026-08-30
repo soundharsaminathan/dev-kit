@@ -39,22 +39,28 @@ export const FEATURES = {
       shot: "leads" as const,
     },
     {
+      id: "batches",
+      title: "Organize your classes",
+      body: "Set up batches with trainers, schedules, and capacity. See who is enrolled, who has seats left, and keep every class running on time.",
+      shot: "batches" as const,
+    },
+    {
       id: "attendance",
       title: "Know who showed up",
       body: "Mark attendance between songs, not after class. Spot absences the same day and keep every batch visible at a glance.",
       shot: "attendance" as const,
     },
     {
-      id: "payment",
+      id: "invoices",
       title: "Collect dues without the chase",
       body: "Invoices, reminders, and outstanding balances live together. Follow through becomes a workflow instead of another WhatsApp thread.",
       shot: "invoice" as const,
     },
     {
       id: "analytics",
-      title: "See the studio before it slips",
-      body: "Watch attendance, revenue, and batch health in one view so you catch dips early and grow with numbers, not guesswork.",
-      shot: "dashboard" as const,
+      title: "See where the money flows",
+      body: "Track collections, spot overdue payments, and watch revenue trends so you know exactly where the studio stands before the month ends.",
+      shot: "paymentAnalytics" as const,
     },
   ],
 } as const;

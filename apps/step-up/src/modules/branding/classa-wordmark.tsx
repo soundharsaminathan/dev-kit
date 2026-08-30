@@ -40,8 +40,8 @@ export function ClassaWordmark({
   if (variant === "split" || variant === "italic-a") {
     return (
       <span className={rootClass} style={style}>
-        <span className={styles.prefix}>class</span>
-        <span className={styles.suffix}>a</span>
+        <span className={styles.prefix}>Class</span>
+        <span className={styles.suffix}>A</span>
       </span>
     );
   }
@@ -49,19 +49,19 @@ export function ClassaWordmark({
   if (variant === "stencil") {
     return (
       <span className={rootClass} style={style}>
-        <span className={styles.letter}>c</span>
+        <span className={styles.letter}>C</span>
         <span className={styles.letter}>l</span>
         <span className={styles.letter}>a</span>
         <span className={styles.letter}>s</span>
         <span className={styles.letter}>s</span>
-        <span className={styles.letter}>a</span>
+        <span className={styles.letter}>A</span>
       </span>
     );
   }
 
   return (
     <span className={rootClass} style={style}>
-      classa
+      ClassA
     </span>
   );
 }

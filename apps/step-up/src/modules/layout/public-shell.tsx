@@ -155,7 +155,7 @@ export function PublicShell({
                 alt=""
                 aria-hidden
               />
-              <ClassaWordmark variant="gradient" />
+              <ClassaWordmark variant="mono" />
             </Link>
             <nav className={styles.desktopNav} aria-label="Primary">
               {NAV.links.map((link) => (
@@ -199,7 +199,7 @@ export function PublicShell({
               alt=""
               aria-hidden
             />
-            <ClassaWordmark variant="gradient" />
+            <ClassaWordmark variant="italic-a" />
           </Link>
           <nav className={styles.nav}>
             <Link to="/studio/$studioId" params={{ studioId: SEED_STUDIO_ID }}>
@@ -294,7 +294,7 @@ export function PublicShell({
                 alt=""
                 aria-hidden
               />
-              <ClassaWordmark variant="gradient" />
+              <ClassaWordmark variant="italic-a" />
               <p className={styles.footerTagline}>{FOOTER.tagline}</p>
             </div>
             <nav className={styles.footerLinks} aria-label="Footer">
