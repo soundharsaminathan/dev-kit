@@ -139,3 +139,50 @@ describe("member nav", () => {
     expect(more).toContain("/me/trainers");
   });
 });
+
+describe("admin nav", () => {
+  it("hides studio-scoped links without a studio id", () => {
+    const labels = getSidebarSections("admin", "SYSTEM_ADMIN").flatMap(
+      (section) => section.links.map((link) => link.label),
+    );
+    expect(labels).toEqual(["Studios", "Profile"]);
+  });
+
+  it("shows Edit, Features, and Invoices when a studio id is set", () => {
+    const sections = getSidebarSections(
+      "admin",
+      "SYSTEM_ADMIN",
+      undefined,
+      "studio-1",
+    );
+    const links = sections.flatMap((section) => section.links);
+    expect(links.map((link) => link.label)).toEqual([
+      "Studios",
+      "Edit",
+      "Features",
+      "Invoices",
+      "Profile",
+    ]);
+    expect(links.find((link) => link.label === "Edit")?.params).toEqual({
+      id: "studio-1",
+    });
+    expect(links.find((link) => link.label === "Features")?.params).toEqual({
+      id: "studio-1",
+    });
+    expect(links.find((link) => link.label === "Invoices")?.params).toEqual({
+      id: "studio-1",
+    });
+    expect(links.find((link) => link.label === "Edit")?.exact).toBe(true);
+  });
+
+  it("keeps studio-scoped links out of primary tabs and more menu", () => {
+    const primary = getPrimaryTabs("admin", "SYSTEM_ADMIN").map(
+      (link) => link.label,
+    );
+    const more = getMoreLinks("admin", "SYSTEM_ADMIN").map(
+      (link) => link.label,
+    );
+    expect(primary).toEqual(["Studios", "Profile"]);
+    expect(more).toEqual([]);
+  });
+});

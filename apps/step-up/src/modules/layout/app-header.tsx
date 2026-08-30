@@ -1,11 +1,18 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@dev-ui/components/avatar";
 import { Button } from "@dev-ui/components/button";
 import { Drawer, DrawerHandle } from "@dev-ui/components/drawer";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@dev-ui/components/select";
 import { Text } from "@dev-ui/components/text";
 import { useIsMobile } from "@dev-ui/hooks";
 import { Icon } from "@dev-ui/icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { useApi } from "@/lib/api-context";
 import { useAuth } from "@/lib/auth";
@@ -16,6 +23,11 @@ import {
   publishNotificationBroadcast,
 } from "@/lib/notifications-cache";
 import { useNotificationsSocket } from "@/lib/notifications-socket-provider";
+import {
+  adminStudioDestination,
+  rememberAdminStudioId,
+  useAdminStudioId,
+} from "@/modules/admin/use-admin-studio";
 import { StudioBrandMark } from "@/modules/branding/studio-brand-mark";
 import { StaffAgentControl } from "@/modules/staff-agent/staff-agent-control";
 import {
@@ -28,12 +40,12 @@ import {
   getProfilePath,
   type ShellVariant,
 } from "./nav-config";
-import { useNavEnabledFeatures } from "./use-nav-enabled-features";
 import type { NotificationDestination } from "./notification-links";
 import {
   type NotificationItem,
   NotificationsPanel,
 } from "./notifications-panel";
+import { useNavEnabledFeatures } from "./use-nav-enabled-features";
 
 type AppHeaderProps = {
   variant: ShellVariant;
@@ -43,6 +55,58 @@ type NotificationsPage = {
   items: NotificationItem[];
   nextCursor: string | null;
 };
+
+type AdminStudioListItem = {
+  id: string;
+  name: string;
+};
+
+function AdminStudioSwitcher() {
+  const api = useApi();
+  const navigate = useNavigate();
+  const studioId = useAdminStudioId();
+  const pathname = useRouterState({
+    select: (state) => state.location.pathname,
+  });
+
+  const studiosQuery = useQuery({
+    queryKey: ["admin", "studios"],
+    queryFn: () => api.get<AdminStudioListItem[]>("/studios"),
+  });
+
+  const studios = studiosQuery.data ?? [];
+
+  return (
+    <div className={styles.studioSwitcher}>
+      <Select
+        aria-label="Studio"
+        placeholder={
+          studiosQuery.isLoading ? "Loading studios…" : "Select a studio"
+        }
+        selectedKey={studioId}
+        onSelectionChange={(key) => {
+          if (key == null) return;
+          const id = String(key);
+          rememberAdminStudioId(id);
+          const destination = adminStudioDestination(pathname, id);
+          void navigate(destination);
+        }}
+        isDisabled={studiosQuery.isLoading || studios.length === 0}
+      >
+        <SelectTrigger data-testid="admin-studio-switcher">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {studios.map((studio) => (
+            <SelectItem key={studio.id} id={studio.id} textValue={studio.name}>
+              {studio.name}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  );
+}
 
 function NotificationsControl({
   variant,
@@ -378,6 +442,7 @@ export function AppHeader({ variant }: AppHeaderProps) {
           labelClassName={styles.brandLabel}
           logoClassName={styles.brandLogo}
         />
+        {variant === "admin" ? <AdminStudioSwitcher /> : null}
       </div>
       <TooltipIconBar
         placement="bottom"

@@ -136,6 +136,12 @@
   font-size: 0.9375rem;
   font-weight: 600;
   letter-spacing: -0.02em;
+  color: inherit;
+  text-decoration: none;
+}
+
+a.attentionTitle:hover {
+  color: var(--color-primary);
 }
 
 .attentionMeta {

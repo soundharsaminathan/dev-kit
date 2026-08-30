@@ -1,7 +1,7 @@
 import { Input } from "@dev-ui/components/input";
 import { useToastContext } from "@dev-ui/components/toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useApi } from "@/lib/api-context";
 import {
@@ -30,7 +30,6 @@ export const Route = createFileRoute("/admin/studios/$id_/invoices")({
 function AdminStudioInvoicesPage() {
   const { id: studioId } = Route.useParams();
   const api = useApi();
-  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { toast } = useToastContext("AdminStudioInvoicesPage");
 
@@ -228,33 +227,6 @@ function AdminStudioInvoicesPage() {
       showBack
       backTo="/admin"
     >
-      <div className={staff.rowActions}>
-        <TouchButton
-          variant="default"
-          size="sm"
-          onClick={() =>
-            void navigate({
-              to: "/admin/studios/$id",
-              params: { id: studioId },
-            })
-          }
-        >
-          Edit studio
-        </TouchButton>
-        <TouchButton
-          variant="default"
-          size="sm"
-          onClick={() =>
-            void navigate({
-              to: "/admin/studios/$id/features",
-              params: { id: studioId },
-            })
-          }
-        >
-          Features
-        </TouchButton>
-      </div>
-
       <SettingsSection
         title="Compose"
         description="Usage is a hint only. Studios are never blocked from creating students or classes."

@@ -20,10 +20,17 @@ export type NavLinkItem = {
   primary?: boolean;
   /** Defaults to true. Set false to keep the link out of the desktop sidebar (e.g. mobile-only tabs). */
   sidebar?: boolean;
+  /** Path params for routes like `/admin/studios/$id`. */
+  params?: Record<string, string>;
   /** Defaults to STAFF_ROLES (app), MEMBER_ROLES (me), or SYSTEM_ADMIN_ROLES (admin). */
   roles?: UserRole[];
   /** When set, link is hidden unless this studio feature is enabled. */
   feature?: FeatureKey;
+  /**
+   * Admin studio-scoped links: only shown when a studio id is known.
+   * Filled with `params: { id }` by `getAdminSidebarSections`.
+   */
+  requiresStudio?: boolean;
 };
 
 export type NavSection = {
@@ -295,6 +302,28 @@ const adminLinks: NavLinkItem[] = [
     primary: true,
   },
   {
+    to: "/admin/studios/$id",
+    label: "Edit",
+    icon: "edit",
+    exact: true,
+    section: "Studio",
+    requiresStudio: true,
+  },
+  {
+    to: "/admin/studios/$id/features",
+    label: "Features",
+    icon: "settings",
+    section: "Studio",
+    requiresStudio: true,
+  },
+  {
+    to: "/admin/studios/$id/invoices",
+    label: "Invoices",
+    icon: "file-text",
+    section: "Studio",
+    requiresStudio: true,
+  },
+  {
     to: "/admin/profile",
     label: "Profile",
     icon: "user",
@@ -340,6 +369,7 @@ function linksFor(
   variant: ShellVariant,
   role?: UserRole,
   enabledFeatures?: Set<string> | null,
+  studioId?: string | null,
 ): NavLinkItem[] {
   const links =
     variant === "app"
@@ -347,15 +377,25 @@ function linksFor(
       : variant === "admin"
         ? adminLinks
         : memberLinks;
-  return links.filter((link) => {
-    if (role && !linkVisibleToRole(link, variant, role)) {
-      return false;
-    }
-    if (!linkVisibleToFeatures(link, enabledFeatures)) {
-      return false;
-    }
-    return true;
-  });
+  return links
+    .filter((link) => {
+      if (role && !linkVisibleToRole(link, variant, role)) {
+        return false;
+      }
+      if (!linkVisibleToFeatures(link, enabledFeatures)) {
+        return false;
+      }
+      if (link.requiresStudio && !studioId) {
+        return false;
+      }
+      return true;
+    })
+    .map((link) => {
+      if (link.requiresStudio && studioId) {
+        return { ...link, params: { id: studioId } };
+      }
+      return link;
+    });
 }
 
 export function getHeaderNavLinks(
@@ -397,9 +437,10 @@ export function getSidebarSections(
   variant: ShellVariant,
   role?: UserRole,
   enabledFeatures?: Set<string> | null,
+  studioId?: string | null,
 ): NavSection[] {
   return groupBySection(
-    linksFor(variant, role, enabledFeatures).filter(
+    linksFor(variant, role, enabledFeatures, studioId).filter(
       (link) => link.sidebar !== false,
     ),
   );
@@ -429,7 +470,7 @@ export function getMoreLinks(
   enabledFeatures?: Set<string> | null,
 ): NavLinkItem[] {
   return linksFor(variant, role, enabledFeatures).filter(
-    (link) => !link.primary,
+    (link) => !link.primary && !link.requiresStudio,
   );
 }
 

@@ -1,8 +1,9 @@
 import { useToastContext } from "@dev-ui/components/toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { useApi } from "@/lib/api-context";
+import { rememberAdminStudioId } from "@/modules/admin/use-admin-studio";
 import { AppSheet } from "@/modules/ui/app-sheet";
 import { Screen } from "@/modules/ui/screen";
 import { SkeletonBlock } from "@/modules/ui/skeleton-block";
@@ -105,7 +106,15 @@ function AdminStudiosPage() {
           <ul className={staff.list}>
             {studiosQuery.data.map((studio) => (
               <li key={studio.id} className={staff.attentionCard}>
-                <p className={staff.attentionTitle}>{studio.name}</p>
+                <Link
+                  to="/admin/studios/$id"
+                  params={{ id: studio.id }}
+                  className={staff.attentionTitle}
+                  data-testid={`edit-studio-${studio.id}`}
+                  onClick={() => rememberAdminStudioId(studio.id)}
+                >
+                  {studio.name}
+                </Link>
                 <p className={staff.attentionMeta}>
                   Owner {studio.owner.name} · {studio.owner.email}
                 </p>
@@ -117,45 +126,6 @@ function AdminStudiosPage() {
                   {studio.memberCount} members · {studio.id}
                 </p>
                 <div className={staff.rowActions}>
-                  <TouchButton
-                    variant="default"
-                    size="sm"
-                    data-testid={`edit-studio-${studio.id}`}
-                    onClick={() =>
-                      void navigate({
-                        to: "/admin/studios/$id",
-                        params: { id: studio.id },
-                      })
-                    }
-                  >
-                    Edit
-                  </TouchButton>
-                  <TouchButton
-                    variant="default"
-                    size="sm"
-                    data-testid={`studio-invoices-${studio.id}`}
-                    onClick={() =>
-                      void navigate({
-                        to: "/admin/studios/$id/invoices",
-                        params: { id: studio.id },
-                      })
-                    }
-                  >
-                    Invoice
-                  </TouchButton>
-                  <TouchButton
-                    variant="default"
-                    size="sm"
-                    data-testid={`studio-features-${studio.id}`}
-                    onClick={() =>
-                      void navigate({
-                        to: "/admin/studios/$id/features",
-                        params: { id: studio.id },
-                      })
-                    }
-                  >
-                    Features
-                  </TouchButton>
                   <TouchButton
                     variant="danger"
                     size="sm"

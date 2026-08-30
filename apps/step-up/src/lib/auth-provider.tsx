@@ -523,7 +523,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           commitBypassSession(mapped);
           setLastLoginIdentifier(identifier);
           return mapped;
-        } catch {
+        } catch (error) {
+          if (error instanceof ApiError && error.status === 403) {
+            throw new Error(
+              "Auth bypass is disabled on the API. Set AUTH_BYPASS=true, or sign in with Firebase.",
+            );
+          }
           throw new Error(
             `No account found for “${email}”. Create users from /admin, or register as a student.`,
           );

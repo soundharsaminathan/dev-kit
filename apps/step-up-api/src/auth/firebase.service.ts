@@ -8,6 +8,7 @@ import {
   type DecryptedUser,
   UserCryptoService,
 } from "../users/user-crypto.service";
+import { resolveAuthBypassEnabled } from "./auth-bypass";
 
 export interface VerifiedAuth {
   firebaseUid: string;
@@ -28,7 +29,15 @@ export class FirebaseService {
   ) {}
 
   isBypassEnabled(): boolean {
-    return this.config.get<string>("AUTH_BYPASS") === "true";
+    const projectId = this.config.get<string>("FIREBASE_PROJECT_ID");
+    const clientEmail = this.config.get<string>("FIREBASE_CLIENT_EMAIL");
+    const privateKey = this.config.get<string>("FIREBASE_PRIVATE_KEY");
+    return resolveAuthBypassEnabled({
+      authBypass: this.config.get<string>("AUTH_BYPASS"),
+      nodeEnv: this.config.get<string>("NODE_ENV") ?? process.env.NODE_ENV,
+      e2e: process.env.STEP_UP_E2E,
+      firebaseConfigured: Boolean(projectId && clientEmail && privateKey),
+    });
   }
 
   private ensureFirebase() {

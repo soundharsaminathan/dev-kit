@@ -9,13 +9,30 @@
 }
 
 .brand {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
   min-width: 0;
+  flex: 1;
+}
+
+.studioSwitcher {
+  min-width: 0;
+  max-width: 16rem;
+  flex: 0 1 16rem;
+}
+
+.studioSwitcher :global([data-slot="trigger"]),
+.studioSwitcher :global(button) {
+  min-height: 2.5rem;
+  max-width: 100%;
 }
 
 .brandMark {
   display: flex;
   align-items: center;
   min-width: 0;
+  flex-shrink: 0;
 }
 
 .brandLabel {
@@ -740,6 +757,15 @@
     padding-block: 0.375rem;
     padding-inline: 0.75rem;
     padding-top: calc(0.375rem + env(safe-area-inset-top, 0px));
+  }
+
+  .studioSwitcher {
+    max-width: 9.5rem;
+    flex: 1 1 auto;
+  }
+
+  .brandMark .brandLabel {
+    display: none;
   }
 
   .navIcon {

@@ -111,13 +111,17 @@ test.describe("role shells @critical", () => {
 
     await page.goto("/admin");
     await waitForAppReady(page);
-    const editButton = page.getByRole("button", { name: "Edit" }).first();
-    await expect(editButton).toBeVisible();
-    await editButton.click();
+    const editLink = page.getByTestId(/edit-studio-/).first();
+    await expect(editLink).toBeVisible();
+    await editLink.click();
     await expect(page).toHaveURL(/\/admin\/studios\/[^/]+\/?$/);
     await expect(
       page.getByRole("heading", { name: "Edit studio", exact: true }),
     ).toBeVisible();
+    await expect(page.getByTestId("admin-studio-switcher")).toBeVisible();
+    await expect(page.getByRole("link", { name: "Edit" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Features" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Invoices" })).toBeVisible();
 
     await context.close();
   });
