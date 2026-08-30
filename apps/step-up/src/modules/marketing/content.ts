@@ -120,24 +120,28 @@ export const TESTIMONIALS = {
 } as const;
 
 export const PRICING = {
+  eyebrow: "Pricing",
   headline: "Simple plans for a busy floor",
   support:
     "Pick the size that fits your studio. Limits are guidance for billing, not walls on day one.",
-  note: "Billed monthly to the studio owner. Cancel anytime.",
+  cadence: "Monthly billing",
+  cadenceHint: "Cancel anytime",
   plans: [
     {
       id: "basic",
       name: "Basic",
+      icon: "leaf" as const,
       price: "₹999",
       cadence: "per month",
       pitch: "Run one floor and collect dues.",
       cta: "Start with Basic",
       featured: false,
       limits: [
-        "200 active students",
-        "10 batches",
-        "3 trainers",
-        "1 owner, 1 staff",
+        { value: "200", label: "Students", icon: "users" as const },
+        { value: "10", label: "Batches", icon: "calendar" as const },
+        { value: "3", label: "Trainers", icon: "user" as const },
+        { value: "1", label: "Owner", icon: "shield" as const },
+        { value: "1", label: "Staff", icon: "staff" as const },
       ],
       includes: [
         "Batches, calendar, and attendance",
@@ -151,6 +155,7 @@ export const PRICING = {
     {
       id: "advanced",
       name: "Advanced",
+      icon: "rocket" as const,
       price: "₹1,499",
       cadence: "per month",
       pitch: "Grow the books and the rooms.",
@@ -158,10 +163,11 @@ export const PRICING = {
       featured: true,
       badge: "Most studios",
       limits: [
-        "500 active students",
-        "20 batches",
-        "10 trainers",
-        "1 owner, 10 staff",
+        { value: "500", label: "Students", icon: "users" as const },
+        { value: "20", label: "Batches", icon: "calendar" as const },
+        { value: "10", label: "Trainers", icon: "user" as const },
+        { value: "1", label: "Owner", icon: "shield" as const },
+        { value: "10", label: "Staff", icon: "staff" as const },
       ],
       includes: [
         "Everything in Basic",
@@ -171,6 +177,26 @@ export const PRICING = {
         "Retention and revenue views",
         "Contests, chat, feed, and AI agent",
       ],
+    },
+  ],
+  assurances: [
+    {
+      id: "fees",
+      icon: "shield" as const,
+      title: "No hidden fees",
+      body: "Cancel or change plan anytime.",
+    },
+    {
+      id: "help",
+      icon: "headset" as const,
+      title: "We are here to help",
+      body: "Real people. Real fast.",
+    },
+    {
+      id: "data",
+      icon: "lock" as const,
+      title: "Your data is safe",
+      body: "Secure, backed up, and yours.",
     },
   ],
 } as const;
