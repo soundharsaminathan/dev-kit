@@ -11,8 +11,8 @@ export const HERO = {
 } as const;
 
 export const TAGLINE = {
-  // \u00A0 keeps "the fillings" together so mobile wraps after "forgot"
-  lines: ["follow the fashion,", "forgot the\u00A0fillings"],
+  // Third line sits under "forgot" on small screens; joined again from 768px.
+  lines: ["follow the fashion,", "forgot", "the fillings"],
 } as const;
 
 export const PROBLEM = {

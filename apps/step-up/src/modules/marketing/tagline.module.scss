@@ -37,6 +37,12 @@
   display: block;
 }
 
+@media (min-width: 768px) {
+  .line[data-join] {
+    display: inline;
+  }
+}
+
 .word {
   display: inline-block;
   margin-right: 0.28em;

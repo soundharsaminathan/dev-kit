@@ -80,7 +80,11 @@ export function Tagline({
         aria-label={TAGLINE.lines.join(" ")}
       >
         {words.map((line, lineIdx) => (
-          <span key={TAGLINE.lines[lineIdx]} className={styles.line}>
+          <span
+            key={TAGLINE.lines[lineIdx]}
+            className={styles.line}
+            data-join={lineIdx > 0 || undefined}
+          >
             {line.map((word) => {
               const i = index;
               index += 1;
