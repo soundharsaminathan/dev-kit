@@ -3,12 +3,15 @@ import {
   allocateFamilyDiscount,
   cadencePriceHint,
   formatInvoiceMonthLabel,
+  formatInvoicePeriodLabel,
+  type InvoicePaymentPlan,
+  invoiceCoveredMonthKeys,
   invoiceMatchesMonth,
   invoiceMonthKey,
+  invoicePeriodLabel,
   quarterlyPlanSavings,
   recentUtcMonthKeys,
   utcMonthKey,
-  type InvoicePaymentPlan,
 } from "./invoice-types";
 
 describe("allocateFamilyDiscount", () => {
@@ -118,5 +121,38 @@ describe("invoice month filter", () => {
       "2026-06",
     ]);
     expect(formatInvoiceMonthLabel("2026-08")).toBe("Aug 2026");
+  });
+
+  it("lists all three months for a quarterly invoice", () => {
+    const invoice = {
+      status: "PAID" as const,
+      membership: {
+        periodStart: "2026-06-01T00:00:00.000Z",
+        periodEnd: "2026-08-31T23:59:59.999Z",
+        subscription: { billingCadence: "QUARTERLY" as const },
+      },
+    };
+    expect(invoiceCoveredMonthKeys(invoice)).toEqual([
+      "2026-06",
+      "2026-07",
+      "2026-08",
+    ]);
+    expect(invoicePeriodLabel(invoice)).toBe("Jun, Jul, Aug 2026");
+    expect(invoicePeriodLabel(invoice, "long")).toBe("June, July, August 2026");
+    expect(invoiceMatchesMonth(invoice, "2026-07")).toBe(true);
+    expect(invoiceMatchesMonth(invoice, "2026-09")).toBe(false);
+  });
+
+  it("uses paymentPlan cadence when membership subscription is missing", () => {
+    expect(
+      invoiceCoveredMonthKeys({
+        status: "PENDING",
+        membership: { periodStart: "2026-12-01T00:00:00.000Z" },
+        paymentPlan: { currentCadence: "QUARTERLY", options: [] },
+      }),
+    ).toEqual(["2026-12", "2027-01", "2027-02"]);
+    expect(formatInvoicePeriodLabel(["2026-12", "2027-01", "2027-02"])).toBe(
+      "Dec 2026, Jan 2027, Feb 2027",
+    );
   });
 });

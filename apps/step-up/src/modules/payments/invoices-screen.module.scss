@@ -80,6 +80,14 @@
   color: color-mix(in srgb, var(--color-fg) 46%, transparent);
 }
 
+.period {
+  margin: var(--space-1, 0.25rem) 0 0;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.4;
+  color: color-mix(in srgb, var(--color-fg) 72%, transparent);
+}
+
 .memberStack {
   display: flex;
   align-items: center;

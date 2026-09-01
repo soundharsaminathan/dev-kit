@@ -24,7 +24,9 @@ import {
   formatInvoiceMonthLabel,
   formatPrice,
   type Invoice,
+  invoiceCoveredMonthKeys,
   invoiceMatchesMonth,
+  invoicePeriodLabel,
   recentUtcMonthKeys,
   type StudioFamily,
   utcMonthKey,
@@ -164,6 +166,7 @@ function InvoiceCard({
   const refundedAmount = invoice.refundedAmount ?? 0;
   const isFamily = invoice.kind === "FAMILY" || invoice.kind === "COMBINED";
   const summary = invoice.familySummary;
+  const periodLabel = invoicePeriodLabel(invoice);
   const metaParts = [
     invoice.kind === "COMBINED"
       ? "Combined family"
@@ -183,15 +186,6 @@ function InvoiceCard({
     const remaining = invoice.attendedSessionCount ?? 0;
     const billed = invoice.billedSessionCount ?? 0;
     metaParts.push(`${remaining} / ${billed} remaining`);
-  }
-  if (invoice.chargeType === "PREPAID_FULL") {
-    const billed = invoice.membership?.periodStart ?? invoice.dueDate;
-    const billedDate = billed ? new Date(billed) : null;
-    metaParts.push(
-      billedDate && !Number.isNaN(billedDate.getTime())
-        ? formatInvoiceMonthLabel(utcMonthKey(billedDate))
-        : "Full month",
-    );
   }
   if (invoice.chargeType === "ADMISSION") {
     metaParts.push("Admission fee");
@@ -244,6 +238,14 @@ function InvoiceCard({
                   : "Total paid"}
           </span>
         </div>
+        {periodLabel ? (
+          <p
+            className={screen.period}
+            data-testid={`invoice-months-${invoice.id}`}
+          >
+            {periodLabel}
+          </p>
+        ) : null}
         <p className={staff.rowMeta}>{metaParts.join(" · ")}</p>
         <div className={staff.rowFooter}>
           <div className={screen.cardActionsStart}>
@@ -273,6 +275,8 @@ function InvoiceCard({
                     paymentMethod: invoice.paymentMethod,
                     paidAt: invoice.paidAt,
                     billMonth: invoice.membership?.periodStart,
+                    billMonthKeys: invoiceCoveredMonthKeys(invoice),
+                    billPeriodLabel: invoicePeriodLabel(invoice, "long"),
                     studentName: invoice.student?.name,
                     studioName: studio?.name,
                     studioLogoUrl: studio?.logoUrl,

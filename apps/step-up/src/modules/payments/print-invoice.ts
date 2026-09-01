@@ -1,3 +1,5 @@
+import { formatInvoicePeriodLabel } from "./invoice-types";
+
 export type PrintableInvoice = {
   id: string;
   amount: number;
@@ -9,6 +11,9 @@ export type PrintableInvoice = {
   paidAt?: string | Date | null | undefined;
   /** Billing period month; falls back to paidAt when omitted. */
   billMonth?: string | Date | null | undefined;
+  /** YYYY-MM keys covered by this invoice. Quarterly invoices pass all 3. */
+  billMonthKeys?: string[] | undefined;
+  billPeriodLabel?: string | null | undefined;
   studentName?: string | null | undefined;
   studioName?: string | null | undefined;
   studioLogoUrl?: string | null | undefined;
@@ -22,13 +27,63 @@ export function formatBillMonth(value: string | Date): string {
   const date = value instanceof Date ? value : new Date(value);
   if (Number.isNaN(date.getTime())) return "Unknown";
   return date
-    .toLocaleString("en-IN", { month: "long", year: "numeric" })
+    .toLocaleString("en-IN", {
+      month: "long",
+      year: "numeric",
+      timeZone: "UTC",
+    })
     .replace(/\s+/g, "");
+}
+
+export function formatBillPeriodFileName(keys: string[]): string {
+  if (keys.length === 0) return formatBillMonth(new Date());
+  const firstKey = keys[0]!;
+  const lastKey = keys[keys.length - 1]!;
+  const first = monthDateFromKey(firstKey);
+  const last = monthDateFromKey(lastKey);
+  if (!first || !last || keys.length === 1 || firstKey === lastKey) {
+    return first ? formatBillMonth(first) : formatBillMonth(new Date());
+  }
+  const firstMonth = first.toLocaleString("en-IN", {
+    month: "long",
+    timeZone: "UTC",
+  });
+  const lastMonth = last.toLocaleString("en-IN", {
+    month: "long",
+    timeZone: "UTC",
+  });
+  if (first.getUTCFullYear() === last.getUTCFullYear()) {
+    return `${firstMonth}-${lastMonth}${first.getUTCFullYear()}`;
+  }
+  return `${firstMonth}${first.getUTCFullYear()}-${lastMonth}${last.getUTCFullYear()}`;
+}
+
+function monthDateFromKey(key: string): Date | null {
+  const [year, month] = key.split("-").map(Number);
+  if (!year || !month) return null;
+  return new Date(Date.UTC(year, month - 1, 1));
+}
+
+function printBillPeriodLabel(invoice: PrintableInvoice): string | null {
+  if (invoice.billPeriodLabel?.trim()) return invoice.billPeriodLabel.trim();
+  if (invoice.billMonthKeys && invoice.billMonthKeys.length > 0) {
+    return formatInvoicePeriodLabel(invoice.billMonthKeys, "long") || null;
+  }
+  const source = invoice.billMonth ?? invoice.paidAt;
+  if (!source) return null;
+  const date = source instanceof Date ? source : new Date(source);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toLocaleString("en-IN", {
+    month: "long",
+    year: "numeric",
+    timeZone: "UTC",
+  });
 }
 
 export function invoiceFileName(invoice: {
   studentName?: string | null | undefined;
   billMonth?: string | Date | null | undefined;
+  billMonthKeys?: string[] | undefined;
   paidAt?: string | Date | null | undefined;
 }): string {
   const rawName = invoice.studentName?.trim() || "invoice";
@@ -37,11 +92,10 @@ export function invoiceFileName(invoice: {
     .replace(/[^\w.-]+/g, "")
     .replace(/_+/g, "_")
     .replace(/^_|_$/g, "");
-  const monthSource = invoice.billMonth ?? invoice.paidAt ?? new Date();
   const billMonth =
-    monthSource instanceof Date || typeof monthSource === "string"
-      ? formatBillMonth(monthSource)
-      : formatBillMonth(new Date());
+    invoice.billMonthKeys && invoice.billMonthKeys.length > 0
+      ? formatBillPeriodFileName(invoice.billMonthKeys)
+      : formatBillMonth(invoice.billMonth ?? invoice.paidAt ?? new Date());
   return `${username || "invoice"}_${billMonth}`;
 }
 
@@ -125,6 +179,17 @@ export function printInvoice(invoice: PrintableInvoice) {
     : "";
 
   const fileName = invoiceFileName(invoice);
+  const periodLabel = printBillPeriodLabel(invoice);
+  const periodHeading =
+    (invoice.billMonthKeys?.length ?? 0) > 1
+      ? "Invoice months"
+      : "Invoice month";
+  const periodHtml = periodLabel
+    ? `<section class="section">
+      <p class="section-label">${escapeHtml(periodHeading)}</p>
+      <p class="student">${escapeHtml(periodLabel)}</p>
+    </section>`
+    : "";
 
   const html = `<!doctype html>
 <html>
@@ -259,6 +324,7 @@ export function printInvoice(invoice: PrintableInvoice) {
       <p class="section-label">Billed to</p>
       <p class="student">${escapeHtml(invoice.studentName ?? "—")}</p>
     </section>
+    ${periodHtml}
     <section class="section">
       <p class="section-label">Payment</p>
       <table>

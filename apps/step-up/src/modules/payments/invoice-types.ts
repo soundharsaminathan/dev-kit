@@ -147,7 +147,7 @@ export function cadencePriceHint(
 
 export type InvoiceMonthSource = Pick<
   Invoice,
-  "membership" | "dueDate" | "paidAt" | "refundedAt" | "status"
+  "membership" | "dueDate" | "paidAt" | "refundedAt" | "status" | "paymentPlan"
 >;
 
 export function utcMonthKey(date: Date = new Date()): string {
@@ -173,7 +173,13 @@ export function formatInvoiceMonthLabel(key: string): string {
   }).format(new Date(Date.UTC(year, month - 1, 1)));
 }
 
-export function invoiceMonthKey(invoice: InvoiceMonthSource): string | null {
+function dateFromMonthKey(key: string): Date | null {
+  const [year, month] = key.split("-").map(Number);
+  if (!year || !month) return null;
+  return new Date(Date.UTC(year, month - 1, 1));
+}
+
+function invoicePeriodStart(invoice: InvoiceMonthSource): Date | null {
   const source =
     invoice.membership?.periodStart ??
     invoice.dueDate ??
@@ -182,7 +188,90 @@ export function invoiceMonthKey(invoice: InvoiceMonthSource): string | null {
   if (!source) return null;
   const date = new Date(source);
   if (Number.isNaN(date.getTime())) return null;
-  return utcMonthKey(date);
+  return date;
+}
+
+function monthSpanUtc(start: Date, end: Date): number {
+  return (
+    (end.getUTCFullYear() - start.getUTCFullYear()) * 12 +
+    (end.getUTCMonth() - start.getUTCMonth()) +
+    1
+  );
+}
+
+/** Calendar months this invoice covers. Quarterly plans always list all 3. */
+export function invoiceCoveredMonthKeys(invoice: InvoiceMonthSource): string[] {
+  const start = invoicePeriodStart(invoice);
+  if (!start) return [];
+
+  const cadence =
+    invoice.membership?.subscription?.billingCadence ??
+    invoice.paymentPlan?.currentCadence;
+
+  let count = 1;
+  if (cadence === "QUARTERLY") {
+    count = 3;
+  } else if (invoice.membership?.periodEnd) {
+    const end = new Date(invoice.membership.periodEnd);
+    if (!Number.isNaN(end.getTime())) {
+      count = Math.min(12, Math.max(1, monthSpanUtc(start, end)));
+    }
+  }
+
+  return Array.from({ length: count }, (_, offset) =>
+    utcMonthKey(
+      new Date(
+        Date.UTC(start.getUTCFullYear(), start.getUTCMonth() + offset, 1),
+      ),
+    ),
+  );
+}
+
+export function formatInvoicePeriodLabel(
+  keys: string[],
+  month: "short" | "long" = "short",
+): string {
+  const dates = keys
+    .map((key) => {
+      const date = dateFromMonthKey(key);
+      if (!date) return null;
+      return { year: date.getUTCFullYear(), date };
+    })
+    .filter((item): item is { year: number; date: Date } => item != null);
+  if (dates.length === 0) return "";
+
+  const formatMonthYear = (date: Date) =>
+    new Intl.DateTimeFormat("en-IN", {
+      month,
+      year: "numeric",
+      timeZone: "UTC",
+    }).format(date);
+
+  if (dates.length === 1) {
+    return formatMonthYear(dates[0]!.date);
+  }
+
+  const formatMonth = (date: Date) =>
+    new Intl.DateTimeFormat("en-IN", { month, timeZone: "UTC" }).format(date);
+
+  const sameYear = dates.every((item) => item.year === dates[0]!.year);
+  if (sameYear) {
+    return `${dates.map((item) => formatMonth(item.date)).join(", ")} ${dates[0]!.year}`;
+  }
+  return dates.map((item) => formatMonthYear(item.date)).join(", ");
+}
+
+export function invoicePeriodLabel(
+  invoice: InvoiceMonthSource,
+  month: "short" | "long" = "short",
+): string | null {
+  const keys = invoiceCoveredMonthKeys(invoice);
+  if (keys.length === 0) return null;
+  return formatInvoicePeriodLabel(keys, month);
+}
+
+export function invoiceMonthKey(invoice: InvoiceMonthSource): string | null {
+  return invoiceCoveredMonthKeys(invoice)[0] ?? null;
 }
 
 export function invoiceMatchesMonth(
@@ -190,7 +279,7 @@ export function invoiceMatchesMonth(
   monthKey: string,
 ): boolean {
   if (monthKey === "ALL") return true;
-  return invoiceMonthKey(invoice) === monthKey;
+  return invoiceCoveredMonthKeys(invoice).includes(monthKey);
 }
 
 export function allocateFamilyDiscount(

@@ -22,7 +22,12 @@ import type { ChatConversation } from "@/modules/chat/types";
 import { TemporaryCredentialsPanel } from "@/modules/members/temporary-credentials-panel";
 import { CollectPaymentSheet } from "@/modules/payments/collect-payment-sheet";
 import { FamilyCombineSheet } from "@/modules/payments/family-combine-sheet";
-import type { Invoice, StudioFamily } from "@/modules/payments/invoice-types";
+import {
+  type Invoice,
+  invoiceCoveredMonthKeys,
+  invoicePeriodLabel,
+  type StudioFamily,
+} from "@/modules/payments/invoice-types";
 import { printInvoice } from "@/modules/payments/print-invoice";
 import type { Studio } from "@/modules/settings/types";
 import { StudentSearchMultiselect } from "@/modules/students/student-search-multiselect";
@@ -96,6 +101,8 @@ type StudentStudioProfile = {
     batchName?: string | null;
     membership?: {
       periodStart?: string | null;
+      periodEnd?: string | null;
+      subscription?: { billingCadence?: "MONTHLY" | "QUARTERLY" } | null;
     } | null;
   }>;
   parents: Array<{
@@ -990,6 +997,11 @@ function StudentDetailPage() {
                                 paymentMethod: invoice.paymentMethod,
                                 paidAt: invoice.paidAt,
                                 billMonth: invoice.membership?.periodStart,
+                                billMonthKeys: invoiceCoveredMonthKeys(invoice),
+                                billPeriodLabel: invoicePeriodLabel(
+                                  invoice,
+                                  "long",
+                                ),
                                 studentName: profile.student.name,
                                 studioName: studioQuery.data?.name,
                                 studioLogoUrl: studioQuery.data?.logoUrl,

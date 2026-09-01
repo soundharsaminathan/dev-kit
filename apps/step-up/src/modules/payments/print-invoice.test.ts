@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  formatBillPeriodFileName,
   invoiceFileName,
   parseDiscountInput,
   printInvoice,
@@ -22,6 +23,18 @@ describe("invoiceFileName", () => {
         paidAt: "2026-07-15T10:00:00.000Z",
       }),
     ).toBe("Ravi_July2026");
+  });
+
+  it("uses a first-last month range for quarterly invoices", () => {
+    expect(
+      invoiceFileName({
+        studentName: "Asha Kumar",
+        billMonthKeys: ["2026-06", "2026-07", "2026-08"],
+      }),
+    ).toBe("Asha_Kumar_June-August2026");
+    expect(formatBillPeriodFileName(["2026-12", "2027-01", "2027-02"])).toBe(
+      "December2026-February2027",
+    );
   });
 });
 
@@ -78,6 +91,8 @@ describe("printInvoice", () => {
     expect(html).toContain("162.00");
     expect(html).toContain("12 MG Road");
     expect(html).toContain("Amount paid");
+    expect(html).toContain("Invoice month");
+    expect(html).toContain("August 2026");
     expect(html).toContain("window.print()");
     expect(close).toHaveBeenCalled();
   });
@@ -102,6 +117,29 @@ describe("printInvoice", () => {
     expect(html).toContain("Family discount");
     expect(html).toContain("3,000.00");
     expect(html).not.toContain("GST (");
+  });
+
+  it("lists all three months on a quarterly receipt", () => {
+    const write = vi.fn();
+    const popup = {
+      opener: window,
+      document: { open: vi.fn(), write, close: vi.fn() },
+    };
+    vi.spyOn(window, "open").mockReturnValue(popup as unknown as Window);
+
+    printInvoice({
+      id: "inv_q",
+      amount: 5499,
+      status: "PAID",
+      studentName: "Asha",
+      billMonthKeys: ["2026-06", "2026-07", "2026-08"],
+      billPeriodLabel: "June, July, August 2026",
+    });
+
+    const html = String(write.mock.calls[0]?.[0] ?? "");
+    expect(html).toContain("<title>Asha_June-August2026</title>");
+    expect(html).toContain("Invoice months");
+    expect(html).toContain("June, July, August 2026");
   });
 });
 

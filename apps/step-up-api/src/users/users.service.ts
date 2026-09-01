@@ -985,7 +985,13 @@ export class UsersService {
         orderBy: { id: "desc" },
         take: 20,
         include: {
-          membership: { select: { periodStart: true } },
+          membership: {
+            select: {
+              periodStart: true,
+              periodEnd: true,
+              subscription: { select: { billingCadence: true } },
+            },
+          },
         },
       }),
       this.prisma.parentChild.findMany({
