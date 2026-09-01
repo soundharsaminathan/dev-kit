@@ -85,12 +85,19 @@ export class OutboxProcessor implements OnModuleInit, OnModuleDestroy {
           if (event.type === OUTBOX_EVENT_DATA_IMPORT_REQUESTED) {
             const dataImport = this.tryGetDataImport();
             const payload = event.payload as { importId?: string };
-            if (dataImport && payload.importId) {
-              void dataImport.runImportJob(payload.importId).catch((error) => {
-                this.logger.error(
-                  `Import job ${payload.importId} failed: ${String(error)}`,
-                );
-              });
+            if (!dataImport || !payload.importId) {
+              this.logger.warn(
+                `Releasing data import outbox event ${event.id}: DataImportService is not available on this process`,
+              );
+              await this.outbox.bumpAttempts(event.id);
+              continue;
+            }
+            try {
+              await dataImport.runImportJob(payload.importId);
+            } catch (error) {
+              this.logger.error(
+                `Import job ${payload.importId} failed: ${String(error)}`,
+              );
             }
             publishedIds.push(event.id);
             continue;
@@ -162,7 +169,7 @@ export class OutboxProcessor implements OnModuleInit, OnModuleDestroy {
 
   private tryGetDataImport(): DataImportService | null {
     try {
-      return this.moduleRef.get(DataImportService, { strict: false });
+      return this.moduleRef.get(DataImportService, { strict: false }) ?? null;
     } catch {
       return null;
     }

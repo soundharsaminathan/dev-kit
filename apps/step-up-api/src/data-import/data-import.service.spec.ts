@@ -73,6 +73,7 @@ function buildService(
       findUnique: vi.fn().mockResolvedValue(null),
       findFirst: vi.fn().mockResolvedValue(null),
       update: vi.fn().mockResolvedValue({}),
+      updateMany: vi.fn().mockResolvedValue({ count: 1 }),
     },
     $transaction: vi.fn(async (fn: (tx: typeof prisma) => Promise<unknown>) =>
       fn(prisma as never),
@@ -319,6 +320,88 @@ describe("DataImportService.runImportJob", () => {
         }),
       }),
     );
+  });
+
+  it("does not run when another process already claimed the job", async () => {
+    const { service, prisma } = buildService();
+    prisma.studioDataImport.findUnique.mockResolvedValue({
+      id: "import-1",
+      status: "PENDING",
+      requestedByUserId: "user-owner-1",
+      studioId: "studio-1",
+      payload: { sessions: [] },
+    });
+    prisma.studioDataImport.updateMany.mockResolvedValue({ count: 0 });
+    const runStudio = vi
+      .spyOn(service, "runStudioDataImport")
+      .mockResolvedValue({
+        students: { created: 0, skipped: 0 },
+        locations: { created: 0, skipped: 0 },
+        batches: { created: 0, skipped: 0 },
+        enrollments: { created: 0, skipped: 0 },
+        sessions: { created: 0, skipped: 0 },
+        invoices: { created: 0, skipped: 0, gapsCreated: 0 },
+        attendance: { created: 0, skipped: 0 },
+      });
+
+    await service.runImportJob("import-1");
+
+    expect(runStudio).not.toHaveBeenCalled();
+  });
+});
+
+describe("DataImportService.getImportJob", () => {
+  const pendingRow = {
+    id: "import-1",
+    studioId: "studio-1",
+    status: "PENDING" as const,
+    error: null,
+    entities: {},
+    payload: { sessions: [{ batchName: "Smoke Open Trial" }] },
+  };
+
+  it("runs a pending job when the snapshot is fetched", async () => {
+    const { service, prisma } = buildService({
+      prisma: {
+        studioDataImport: {
+          findFirst: vi
+            .fn()
+            .mockResolvedValueOnce(pendingRow)
+            .mockResolvedValueOnce({
+              ...pendingRow,
+              status: "FAILED",
+              error: "Branch already has a class at 21 Nov 2026",
+            }),
+        },
+      },
+    });
+    vi.spyOn(service, "runImportJob").mockResolvedValue(undefined);
+
+    const job = await service.getImportJob(ACTOR, "import-1");
+
+    expect(service.runImportJob).toHaveBeenCalledWith("import-1");
+    expect(job.status).toBe("FAILED");
+    expect(job.error).toContain("Branch already has a class");
+    expect(prisma.studioDataImport.findFirst).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not re-run a finished job", async () => {
+    const { service } = buildService({
+      prisma: {
+        studioDataImport: {
+          findFirst: vi.fn().mockResolvedValue({
+            ...pendingRow,
+            status: "SUCCEEDED",
+          }),
+        },
+      },
+    });
+    const run = vi.spyOn(service, "runImportJob");
+
+    const job = await service.getImportJob(ACTOR, "import-1");
+
+    expect(run).not.toHaveBeenCalled();
+    expect(job.status).toBe("SUCCEEDED");
   });
 });
 

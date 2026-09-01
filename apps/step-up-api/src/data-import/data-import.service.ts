@@ -143,6 +143,9 @@ function assertNoOverlappingImportedIntervals(intervals: TimeInterval[]) {
 
 @Injectable()
 export class DataImportService {
+  /** Same-process callers (outbox tick + job poll) share one run. */
+  private readonly inFlightJobs = new Map<string, Promise<void>>();
+
   constructor(
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(UserCryptoService) private readonly crypto: UserCryptoService,
@@ -241,11 +244,23 @@ export class DataImportService {
     if (!actor.studioId) {
       throw new BadRequestException("User is not assigned to a studio");
     }
-    const row = await this.prisma.studioDataImport.findFirst({
-      where: { id: importId, studioId: actor.studioId },
-    });
+    let row = await this.findStudioImport(actor.studioId, importId);
     if (!row) {
       throw new NotFoundException("Import job not found");
+    }
+    // Cloud Run throttles CPU after the start POST returns, so the outbox
+    // timer may never run. The poll request keeps CPU allocated — finish
+    // a still-pending job here so clients (and smoke) do not stall.
+    if (row.status === "PENDING") {
+      try {
+        await this.runImportJob(row.id);
+      } catch {
+        // Failure is stored on the job row.
+      }
+      row = await this.findStudioImport(actor.studioId, importId);
+      if (!row) {
+        throw new NotFoundException("Import job not found");
+      }
     }
     return this.toImportJobSnapshot(row);
   }
@@ -264,13 +279,30 @@ export class DataImportService {
   }
 
   async runImportJob(importId: string) {
+    const pending = this.inFlightJobs.get(importId);
+    if (pending) {
+      return pending;
+    }
+    const run = this.executeImportJob(importId).finally(() => {
+      this.inFlightJobs.delete(importId);
+    });
+    this.inFlightJobs.set(importId, run);
+    return run;
+  }
+
+  private async executeImportJob(importId: string) {
     const row = await this.prisma.studioDataImport.findUnique({
       where: { id: importId },
     });
-    if (!row) {
+    if (!row || row.status !== "PENDING") {
       return;
     }
-    if (row.status === "RUNNING" || row.status === "SUCCEEDED") {
+
+    const claimed = await this.prisma.studioDataImport.updateMany({
+      where: { id: importId, status: "PENDING" },
+      data: { status: "RUNNING", startedAt: new Date(), error: null },
+    });
+    if (claimed.count === 0) {
       return;
     }
 
@@ -282,11 +314,6 @@ export class DataImportService {
     const report: EntityProgressReporter = async (entity, patch) => {
       await this.patchImportEntity(importId, entity, patch);
     };
-
-    await this.prisma.studioDataImport.update({
-      where: { id: importId },
-      data: { status: "RUNNING", startedAt: new Date(), error: null },
-    });
 
     try {
       await withDbRetry(`import job ${importId}`, () =>
@@ -309,6 +336,12 @@ export class DataImportService {
       });
       throw error;
     }
+  }
+
+  private findStudioImport(studioId: string, importId: string) {
+    return this.prisma.studioDataImport.findFirst({
+      where: { id: importId, studioId },
+    });
   }
 
   /** Runs all import stages synchronously. Used by the async job runner and unit tests. */
