@@ -7,6 +7,8 @@
 
 .shellMarketing {
   --lp-ease: cubic-bezier(0.32, 0.72, 0, 1);
+  --island-offset: calc(24px + env(safe-area-inset-top, 0px));
+  --island-size: 3.75rem;
   background: var(--surface-background, #f8f4ec);
   hyphens: none;
 }
@@ -40,7 +42,7 @@
   z-index: 20;
   display: flex;
   justify-content: center;
-  padding: 24px 16px 0;
+  padding: var(--island-offset) 16px 0;
   pointer-events: none;
 }
 
@@ -202,9 +204,17 @@
 
 .mobilePanel {
   position: fixed;
-  inset: 0;
+  top: 0;
+  right: 0;
+  left: 0;
   z-index: 15;
-  padding: calc(6rem + env(safe-area-inset-top, 0px)) 16px
+  box-sizing: border-box;
+  height: 100dvh;
+  max-height: 100dvh;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: calc(var(--island-offset) + var(--island-size) + 24px) 16px
     calc(24px + env(safe-area-inset-bottom, 0px));
   background: color-mix(in srgb, var(--surface-background, #f8f4ec) 80%, transparent);
   backdrop-filter: blur(64px);
@@ -263,6 +273,7 @@
   flex-direction: column;
   gap: var(--space-3, 0.75rem);
   margin-top: auto;
+  flex-shrink: 0;
 }
 
 .main {
