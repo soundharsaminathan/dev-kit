@@ -8,39 +8,41 @@ import {
   ExpenseRecurrenceFrequency,
   Prisma,
 } from "@prisma/client";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createPrismaMock } from "../test/mocks/create-prisma-mock";
 import { ExpensesService } from "./expenses.service";
 
 function makePrisma() {
-  const prisma = createPrismaMock({
-    expenseCategory: {
-      findMany: vi.fn(),
-      findFirst: vi.fn(),
-      findUnique: vi.fn(),
-      create: vi.fn(),
-      update: vi.fn(),
-    },
-    expense: {
-      findMany: vi.fn(),
-      findFirst: vi.fn(),
-      findUnique: vi.fn(),
-      create: vi.fn(),
-      update: vi.fn(),
-      updateMany: vi.fn(),
-      count: vi.fn(),
-    },
-    recurringExpense: {
-      findMany: vi.fn(),
-      findFirst: vi.fn(),
-      findUnique: vi.fn(),
-      create: vi.fn(),
-      update: vi.fn(),
-      updateMany: vi.fn(),
-      count: vi.fn(),
-    },
+  const expenseCategory = {
+    findMany: vi.fn(),
+    findFirst: vi.fn(),
+    findUnique: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
+  };
+  const expense = {
+    findMany: vi.fn(),
+    findFirst: vi.fn(),
+    findUnique: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
+    updateMany: vi.fn(),
+    count: vi.fn(),
+  };
+  const recurringExpense = {
+    findMany: vi.fn(),
+    findFirst: vi.fn(),
+    findUnique: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
+    updateMany: vi.fn(),
+    count: vi.fn(),
+  };
+  return Object.assign(createPrismaMock(), {
+    expenseCategory,
+    expense,
+    recurringExpense,
   });
-  return prisma as never as Record<string, never>;
 }
 
 function makeBillingStub() {
@@ -362,8 +364,10 @@ describe("ExpensesService", () => {
       );
 
       const result = await service.getExpense("exp-1", "studio-1");
-      expect(result.amount).toBe(1200);
-      expect(result.category.name).toBe("Rent");
+      expect(result).toMatchObject({
+        amount: 1200,
+        category: { name: "Rent" },
+      });
     });
 
     it("rejects cross-studio access", async () => {
@@ -463,31 +467,29 @@ describe("ExpensesService", () => {
   });
 
   describe("getDashboard", () => {
-    function monthStart(offsetMonths: number) {
-      const now = new Date();
-      return new Date(
-        Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + offsetMonths, 1),
-      );
-    }
+    afterEach(() => {
+      vi.useRealTimers();
+    });
 
     it("computes summary cards, trend, categories, and recent", async () => {
-      const thisMonthDate = monthStart(0);
-      const prevMonthDate = monthStart(-1);
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date("2026-09-15T12:00:00.000Z"));
+
       const fixtures = [
         expenseFixture({
           id: "e1",
           amount: new Prisma.Decimal(1000),
-          expenseDate: thisMonthDate,
+          expenseDate: new Date("2026-09-01T00:00:00.000Z"),
         }),
         expenseFixture({
           id: "e2",
           amount: new Prisma.Decimal(2000),
-          expenseDate: new Date(thisMonthDate.getTime() + 24 * 60 * 60 * 1000),
+          expenseDate: new Date("2026-09-02T00:00:00.000Z"),
         }),
         expenseFixture({
           id: "e3",
           amount: new Prisma.Decimal(500),
-          expenseDate: prevMonthDate,
+          expenseDate: new Date("2026-08-01T00:00:00.000Z"),
           categoryId: "cat-mkt",
           category: { id: "cat-mkt", name: "Marketing", icon: "megaphone" },
         }),

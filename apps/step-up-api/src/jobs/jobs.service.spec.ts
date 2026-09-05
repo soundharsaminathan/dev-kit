@@ -1,5 +1,5 @@
 import { MembershipStatus, NotificationType } from "@prisma/client";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { JobsService } from "./jobs.service";
 
 describe("JobsService.runDaily", () => {
@@ -42,6 +42,7 @@ describe("JobsService.runDaily", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     prisma.studioSettings.findMany.mockResolvedValue([]);
+    prisma.session.findMany.mockResolvedValue([]);
     memberships.ensureRenewalInvoice.mockResolvedValue({
       invoice: { id: "inv-1" },
       created: false,
@@ -56,6 +57,10 @@ describe("JobsService.runDaily", () => {
       notifications as never,
       memberships as never,
     );
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it("creates NOT_RENEWED notifications when memberships expire", async () => {
@@ -263,6 +268,9 @@ describe("JobsService.runDaily", () => {
   });
 
   it("rolls ended ACTIVE memberships into next-period DUE and invoices them", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-07-20T12:00:00.000Z"));
+
     prisma.membership.findMany
       .mockResolvedValueOnce([{ id: "mem-ended" }])
       .mockResolvedValueOnce([{ id: "mem-due" }, { id: "mem-expired" }])
@@ -330,15 +338,16 @@ describe("JobsService.runDaily", () => {
       },
     ]);
     prisma.trainerPayout.findUnique.mockResolvedValue(null);
-    prisma.$transaction.mockImplementation(async (fn: unknown) =>
-      fn({
-        trainerPayout: {
-          create: vi.fn().mockResolvedValue({ id: "payout-1" }),
-        },
-        trainerPayoutSession: {
-          createMany: vi.fn(),
-        },
-      }),
+    prisma.$transaction.mockImplementation(
+      async (fn: (tx: Record<string, unknown>) => Promise<unknown>) =>
+        fn({
+          trainerPayout: {
+            create: vi.fn().mockResolvedValue({ id: "payout-1" }),
+          },
+          trainerPayoutSession: {
+            createMany: vi.fn(),
+          },
+        }),
     );
 
     const result = await service.runDaily();
