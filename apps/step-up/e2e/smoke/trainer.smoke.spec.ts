@@ -321,14 +321,14 @@ test.describe("trainer smoke @smoke", () => {
     }
   });
 
-  test("mid-month postpaid enrollee marks present without unpaid warning @smoke", async ({
+  test("mid-month postpaid enrollee marks present after prorated unpaid confirm @smoke", async ({
     browser,
   }) => {
     test.setTimeout(180_000);
     test.skip(!canJoinPostpaidNow(), "UTC 1st is always prepaid-at-join");
     const cleanup = new SmokeDataCleanup();
     const stamp = Date.now();
-    const { student, sessionId, batchId } = await enrollPostpaid(
+    const { student, sessionId, batchId, invoice } = await enrollPostpaid(
       cleanup,
       {
         name: `Smoke Postpaid ${stamp}`,
@@ -339,9 +339,10 @@ test.describe("trainer smoke @smoke", () => {
     const roster = await apiRequest<
       Array<{ studentId: string; monthlyUnpaid?: boolean }>
     >("TRAINER", `/attendance/session/${sessionId}/roster`);
-    expect(
-      roster.find((row) => row.studentId === student.id)?.monthlyUnpaid,
-    ).toBe(false);
+    const unpaid =
+      roster.find((row) => row.studentId === student.id)?.monthlyUnpaid === true;
+    // Remaining sessions this month create a pending PREPAID_PRORATED invoice.
+    expect(unpaid).toBe(Boolean(invoice));
 
     const context = await browser.newContext({
       storageState: authFile("TRAINER"),
@@ -353,18 +354,33 @@ test.describe("trainer smoke @smoke", () => {
       });
       await waitForAppReady(page);
 
-      await expect(page.getByText("Not paid")).toHaveCount(0);
-
       const presentBtn = page.getByTestId(`mark-present-${student.id}`);
       await expect(presentBtn).toBeVisible();
-      const [response] = await Promise.all([
-        waitForApiResponse(page, {
-          method: "POST",
-          pathIncludes: "/attendance/mark",
-        }),
-        presentBtn.click(),
-      ]);
-      expect(response.ok()).toBeTruthy();
+
+      if (unpaid) {
+        await expect(page.getByText("Not paid").first()).toBeVisible();
+        await presentBtn.click();
+        const confirm = page.getByTestId("confirm-unpaid-mark");
+        await expect(confirm).toBeVisible();
+        const [response] = await Promise.all([
+          waitForApiResponse(page, {
+            method: "POST",
+            pathIncludes: "/attendance/mark",
+          }),
+          confirm.click(),
+        ]);
+        expect(response.ok()).toBeTruthy();
+      } else {
+        await expect(page.getByText("Not paid")).toHaveCount(0);
+        const [response] = await Promise.all([
+          waitForApiResponse(page, {
+            method: "POST",
+            pathIncludes: "/attendance/mark",
+          }),
+          presentBtn.click(),
+        ]);
+        expect(response.ok()).toBeTruthy();
+      }
     } finally {
       await closeSmokeContext(context, cleanup);
     }

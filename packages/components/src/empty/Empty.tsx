@@ -27,7 +27,7 @@ function EmptyHeader({ className, ...props }: EmptyHeaderProps) {
 
 function EmptyTitle({ className, ...props }: EmptyTitleProps) {
   return (
-    <div
+    <h2
       data-slot="empty-title"
       className={cn(styles.title, className)}
       {...props}

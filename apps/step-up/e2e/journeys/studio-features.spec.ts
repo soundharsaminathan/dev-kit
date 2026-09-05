@@ -22,7 +22,7 @@ test.describe("studio features journey @critical", () => {
       try {
         await page.goto("/app");
         await waitForAppReady(page);
-        await expect(page.locator('a[href="/app/bookings"]')).toHaveCount(0);
+        await expect(page.locator('a[href^="/app/bookings"]')).toHaveCount(0);
 
         await page.goto("/app/bookings");
         await waitForAppReady(page);
@@ -43,7 +43,7 @@ test.describe("studio features journey @critical", () => {
     try {
       await page.goto("/app");
       await waitForAppReady(page);
-      await expect(page.locator('a[href="/app/bookings"]')).not.toHaveCount(0);
+      await expect(page.locator('a[href^="/app/bookings"]')).not.toHaveCount(0);
       await page.goto("/app/bookings");
       await waitForAppReady(page);
       await expect(

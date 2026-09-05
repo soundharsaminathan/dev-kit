@@ -87,6 +87,16 @@ test.describe("system admin smoke @smoke", () => {
       },
     );
     try {
+      await expect
+        .poll(async () => {
+          const payload = await apiRequest<{
+            features: Array<{ key: string; enabled: boolean }>;
+          }>("OWNER", `/studios/${SMOKE.studioId}/features`);
+          return payload.features.find((feature) => feature.key === "bookings")
+            ?.enabled;
+        })
+        .toBe(false);
+
       const adminContext = await browser.newContext({
         storageState: authFile("SYSTEM_ADMIN"),
       });
@@ -97,10 +107,10 @@ test.describe("system admin smoke @smoke", () => {
         });
         await waitForAppReady(adminPage);
         await expect(
-          adminPage.getByRole("heading", {
-            name: "Studio features",
-            exact: true,
-          }),
+          adminPage.getByRole("heading", { name: /studio features/i }),
+        ).toBeVisible();
+        await expect(
+          adminPage.getByTestId("feature-toggle-bookings"),
         ).toBeVisible();
       } finally {
         await adminContext.close();
@@ -113,9 +123,9 @@ test.describe("system admin smoke @smoke", () => {
       try {
         await ownerPage.goto("/app", { waitUntil: "domcontentloaded" });
         await waitForAppReady(ownerPage);
-        await expect(ownerPage.locator('a[href="/app/bookings"]')).toHaveCount(
-          0,
-        );
+        await expect(
+          ownerPage.locator('a[href^="/app/bookings"]'),
+        ).toHaveCount(0);
         await ownerPage.goto("/app/bookings", {
           waitUntil: "domcontentloaded",
         });
