@@ -14,6 +14,7 @@ import {
   UserCryptoService,
 } from "../users/user-crypto.service";
 import { resolveAuthBypassEnabled } from "./auth-bypass";
+import { toAppEmailActionUrl } from "./firebase-action-url";
 
 export interface VerifiedAuth {
   firebaseUid: string;
@@ -204,13 +205,15 @@ export class FirebaseService {
       throw new BadRequestException("Firebase is not configured");
     }
 
-    return admin
-      .auth()
-      .generateVerifyAndChangeEmailLink(
-        currentEmail.trim().toLowerCase(),
-        newEmail.trim().toLowerCase(),
-        this.actionCodeSettings(),
-      );
+    return this.toAppLink(
+      await admin
+        .auth()
+        .generateVerifyAndChangeEmailLink(
+          currentEmail.trim().toLowerCase(),
+          newEmail.trim().toLowerCase(),
+          this.actionCodeSettings(),
+        ),
+    );
   }
 
   async generateEmailVerificationLink(email: string): Promise<string> {
@@ -218,12 +221,14 @@ export class FirebaseService {
     if (!admin.apps.length) {
       throw new BadRequestException("Firebase is not configured");
     }
-    return admin
-      .auth()
-      .generateEmailVerificationLink(
-        email.trim().toLowerCase(),
-        this.actionCodeSettings(),
-      );
+    return this.toAppLink(
+      await admin
+        .auth()
+        .generateEmailVerificationLink(
+          email.trim().toLowerCase(),
+          this.actionCodeSettings(),
+        ),
+    );
   }
 
   async generatePasswordResetLink(email: string): Promise<string> {
@@ -231,20 +236,30 @@ export class FirebaseService {
     if (!admin.apps.length) {
       throw new BadRequestException("Firebase is not configured");
     }
-    return admin
-      .auth()
-      .generatePasswordResetLink(
-        email.trim().toLowerCase(),
-        this.actionCodeSettings(),
-      );
+    return this.toAppLink(
+      await admin
+        .auth()
+        .generatePasswordResetLink(
+          email.trim().toLowerCase(),
+          this.actionCodeSettings(),
+        ),
+    );
+  }
+
+  private appUrl() {
+    return (
+      this.config.get<string>("APP_URL")?.trim().replace(/\/$/, "") ||
+      "https://step-up.pages.dev"
+    );
+  }
+
+  private toAppLink(firebaseLink: string) {
+    return toAppEmailActionUrl(firebaseLink, this.appUrl());
   }
 
   private actionCodeSettings() {
-    const appUrl =
-      this.config.get<string>("APP_URL")?.trim().replace(/\/$/, "") ||
-      "https://step-up.pages.dev";
     return {
-      url: `${appUrl}/login`,
+      url: `${this.appUrl()}/login`,
       handleCodeInApp: false,
     };
   }

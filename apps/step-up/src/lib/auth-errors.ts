@@ -23,6 +23,10 @@ export function mapAuthError(
     case "auth/wrong-password":
     case "auth/invalid-credential":
       return "Current password is incorrect.";
+    case "auth/expired-action-code":
+      return "This link has expired. Request a new one and try again.";
+    case "auth/invalid-action-code":
+      return "This link is invalid or already used. Request a new one.";
     case "auth/weak-password":
       return "Password must be at least 6 characters.";
     case "auth/requires-recent-login":

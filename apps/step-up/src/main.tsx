@@ -44,6 +44,7 @@ function isPublicBootPath(pathname: string) {
     pathname.startsWith("/login") ||
     pathname.startsWith("/register") ||
     pathname.startsWith("/forgot-password") ||
+    pathname.startsWith("/auth/action") ||
     pathname.startsWith("/join") ||
     pathname.startsWith("/studio/")
   );

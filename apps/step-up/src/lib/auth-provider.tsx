@@ -350,6 +350,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         path.startsWith("/login") ||
         path.startsWith("/register") ||
         path.startsWith("/forgot-password") ||
+        path.startsWith("/auth/action") ||
         path.startsWith("/join") ||
         path.startsWith("/studio/");
       if (isPublic) {

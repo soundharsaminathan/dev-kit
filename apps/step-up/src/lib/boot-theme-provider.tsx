@@ -1,12 +1,12 @@
 import { IconProvider } from "@dev-ui/icons";
 import { useRouterState } from "@tanstack/react-router";
 import { type ReactNode, useEffect, useLayoutEffect, useState } from "react";
+import { APP_THEME } from "@/lib/app-theme";
 import {
   getCachedLucidePack,
   getEmptyLucidePack,
   preloadLucidePack,
 } from "@/lib/deferred-icon-pack";
-import { APP_THEME } from "@/lib/app-theme";
 import { AuthBootLoader } from "@/modules/ui/auth-boot-loader";
 
 function applyDocumentTheme() {
@@ -26,6 +26,7 @@ function isPublicBootPath(pathname: string) {
     pathname.startsWith("/login") ||
     pathname.startsWith("/register") ||
     pathname.startsWith("/forgot-password") ||
+    pathname.startsWith("/auth/action") ||
     pathname.startsWith("/join") ||
     pathname.startsWith("/studio/")
   );

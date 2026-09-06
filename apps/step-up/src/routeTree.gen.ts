@@ -38,6 +38,7 @@ import { Route as MeCalendarRouteImport } from './routes/me/calendar'
 import { Route as MeBookingsRouteImport } from './routes/me/bookings'
 import { Route as MeBookRouteImport } from './routes/me/book'
 import { Route as MeAttendanceRouteImport } from './routes/me/attendance'
+import { Route as AuthActionRouteImport } from './routes/auth.action'
 import { Route as AppSettingsRouteImport } from './routes/app/settings'
 import { Route as AppRetentionRouteImport } from './routes/app/retention'
 import { Route as AppProfileRouteImport } from './routes/app/profile'
@@ -263,6 +264,11 @@ const MeAttendanceRoute = MeAttendanceRouteImport.update({
   id: '/attendance',
   path: '/attendance',
   getParentRoute: () => MeRoute,
+} as any)
+const AuthActionRoute = AuthActionRouteImport.update({
+  id: '/auth/action',
+  path: '/auth/action',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const AppSettingsRoute = AppSettingsRouteImport.update({
   id: '/settings',
@@ -689,6 +695,7 @@ export interface FileRoutesByFullPath {
   '/app/profile': typeof AppProfileRoute
   '/app/retention': typeof AppRetentionRoute
   '/app/settings': typeof AppSettingsRouteWithChildren
+  '/auth/action': typeof AuthActionRoute
   '/me/attendance': typeof MeAttendanceRoute
   '/me/book': typeof MeBookRoute
   '/me/bookings': typeof MeBookingsRoute
@@ -796,6 +803,7 @@ export interface FileRoutesByTo {
   '/app/payments': typeof AppPaymentsRoute
   '/app/profile': typeof AppProfileRoute
   '/app/retention': typeof AppRetentionRoute
+  '/auth/action': typeof AuthActionRoute
   '/me/attendance': typeof MeAttendanceRoute
   '/me/book': typeof MeBookRoute
   '/me/bookings': typeof MeBookingsRoute
@@ -908,6 +916,7 @@ export interface FileRoutesById {
   '/app/profile': typeof AppProfileRoute
   '/app/retention': typeof AppRetentionRoute
   '/app/settings': typeof AppSettingsRouteWithChildren
+  '/auth/action': typeof AuthActionRoute
   '/me/attendance': typeof MeAttendanceRoute
   '/me/book': typeof MeBookRoute
   '/me/bookings': typeof MeBookingsRoute
@@ -1021,6 +1030,7 @@ export interface FileRouteTypes {
     | '/app/profile'
     | '/app/retention'
     | '/app/settings'
+    | '/auth/action'
     | '/me/attendance'
     | '/me/book'
     | '/me/bookings'
@@ -1128,6 +1138,7 @@ export interface FileRouteTypes {
     | '/app/payments'
     | '/app/profile'
     | '/app/retention'
+    | '/auth/action'
     | '/me/attendance'
     | '/me/book'
     | '/me/bookings'
@@ -1239,6 +1250,7 @@ export interface FileRouteTypes {
     | '/app/profile'
     | '/app/retention'
     | '/app/settings'
+    | '/auth/action'
     | '/me/attendance'
     | '/me/book'
     | '/me/bookings'
@@ -1342,6 +1354,7 @@ export interface RootRouteChildren {
   PrivacyRoute: typeof PrivacyRoute
   RegisterRoute: typeof RegisterRoute
   TermsRoute: typeof TermsRoute
+  AuthActionRoute: typeof AuthActionRoute
   PostsIdRoute: typeof PostsIdRoute
   StudioStudioIdRoute: typeof StudioStudioIdRoute
   TrainersIdRoute: typeof TrainersIdRoute
@@ -1552,6 +1565,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/me/attendance'
       preLoaderRoute: typeof MeAttendanceRouteImport
       parentRoute: typeof MeRoute
+    }
+    '/auth/action': {
+      id: '/auth/action'
+      path: '/auth/action'
+      fullPath: '/auth/action'
+      preLoaderRoute: typeof AuthActionRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/app/settings': {
       id: '/app/settings'
@@ -2351,6 +2371,7 @@ const rootRouteChildren: RootRouteChildren = {
   PrivacyRoute: PrivacyRoute,
   RegisterRoute: RegisterRoute,
   TermsRoute: TermsRoute,
+  AuthActionRoute: AuthActionRoute,
   PostsIdRoute: PostsIdRoute,
   StudioStudioIdRoute: StudioStudioIdRoute,
   TrainersIdRoute: TrainersIdRoute,

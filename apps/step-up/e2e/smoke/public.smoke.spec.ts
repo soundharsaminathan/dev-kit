@@ -7,6 +7,7 @@ test.describe("public smoke @smoke", () => {
       "/login",
       "/register",
       "/forgot-password",
+      "/auth/action",
       "/join",
     ]) {
       await page.goto(pathName, { waitUntil: "domcontentloaded" });
