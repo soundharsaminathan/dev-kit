@@ -1,4 +1,5 @@
 import { forwardRef, Global, Module } from "@nestjs/common";
+import { EmailModule } from "../email/email.module";
 import { NotificationsModule } from "../notifications/notifications.module";
 import { StaffInvitesModule } from "../staff-invites/staff-invites.module";
 import { AuthController } from "./auth.controller";
@@ -10,15 +11,13 @@ import { TokenGuard } from "./token.guard";
 
 @Global()
 @Module({
-  imports: [NotificationsModule, forwardRef(() => StaffInvitesModule)],
-  controllers: [AuthController],
-  providers: [
-    AuthService,
-    FirebaseService,
-    AuthGuard,
-    TokenGuard,
-    RolesGuard,
+  imports: [
+    NotificationsModule,
+    EmailModule,
+    forwardRef(() => StaffInvitesModule),
   ],
+  controllers: [AuthController],
+  providers: [AuthService, FirebaseService, AuthGuard, TokenGuard, RolesGuard],
   exports: [AuthService, FirebaseService, AuthGuard, TokenGuard, RolesGuard],
 })
 export class AuthModule {}

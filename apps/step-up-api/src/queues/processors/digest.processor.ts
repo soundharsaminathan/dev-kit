@@ -1,16 +1,20 @@
 import { Processor, WorkerHost } from "@nestjs/bullmq";
 import { Inject, Logger } from "@nestjs/common";
-import { NotificationChannel, NotificationStatus } from "@prisma/client";
+import {
+  DeliveryStatus,
+  NotificationChannel,
+  NotificationStatus,
+} from "@prisma/client";
 import type { Job } from "bullmq";
+import { EmailService } from "../../email/email.service";
 import { PreferencesService } from "../../notifications/preferences.service";
 import { PrismaService } from "../../prisma/prisma.service";
+import {
+  UserCryptoService,
+  userPiiSelect,
+} from "../../users/user-crypto.service";
 import { NOTIFICATION_DIGEST_QUEUE } from "../queue.constants";
 
-/**
- * Phase 3 email digest worker.
- * Collects unread high-priority notifications and logs digest payloads.
- * Wire SMTP here when EMAIL channel goes live.
- */
 @Processor(NOTIFICATION_DIGEST_QUEUE)
 export class DigestProcessor extends WorkerHost {
   private readonly logger = new Logger(DigestProcessor.name);
@@ -19,6 +23,8 @@ export class DigestProcessor extends WorkerHost {
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(PreferencesService)
     private readonly preferences: PreferencesService,
+    @Inject(EmailService) private readonly email: EmailService,
+    @Inject(UserCryptoService) private readonly crypto: UserCryptoService,
   ) {
     super();
   }
@@ -27,7 +33,7 @@ export class DigestProcessor extends WorkerHost {
     const where = job.data.userId ? { id: job.data.userId } : {};
     const users = await this.prisma.user.findMany({
       where,
-      select: { id: true },
+      select: { id: true, ...userPiiSelect },
       take: job.data.userId ? 1 : 500,
     });
 
@@ -61,25 +67,84 @@ export class DigestProcessor extends WorkerHost {
       }
 
       digests += 1;
-      this.logger.log(
-        JSON.stringify({
-          channel: "EMAIL",
-          provider: "pending",
-          userId: user.id,
-          count: unread.length,
-          types: unread.map((row) => row.type),
-        }),
-      );
 
-      await this.prisma.notificationDelivery.createMany({
-        data: unread.map((row) => ({
-          notificationId: row.id,
-          channel: NotificationChannel.EMAIL,
-          status: "SKIPPED",
-          errorCode: "email_provider_not_configured",
-          attemptCount: 1,
-        })),
-      });
+      if (!this.email.isConfigured()) {
+        this.logger.log(
+          JSON.stringify({
+            channel: "EMAIL",
+            provider: "smtp",
+            userId: user.id,
+            count: unread.length,
+            status: DeliveryStatus.SKIPPED,
+            errorCode: "email_provider_not_configured",
+          }),
+        );
+        await this.prisma.notificationDelivery.createMany({
+          data: unread.map((row) => ({
+            notificationId: row.id,
+            channel: NotificationChannel.EMAIL,
+            status: DeliveryStatus.SKIPPED,
+            errorCode: "email_provider_not_configured",
+            attemptCount: 1,
+          })),
+        });
+        continue;
+      }
+
+      let to: string | null = null;
+      try {
+        to = this.crypto.decryptUser(user).email?.trim() || null;
+      } catch (error) {
+        this.logger.warn(
+          `Digest decrypt failed for ${user.id}: ${error instanceof Error ? error.message : "unknown"}`,
+        );
+      }
+
+      if (!to) {
+        await this.prisma.notificationDelivery.createMany({
+          data: unread.map((row) => ({
+            notificationId: row.id,
+            channel: NotificationChannel.EMAIL,
+            status: DeliveryStatus.SKIPPED,
+            errorCode: "missing_email",
+            attemptCount: 1,
+          })),
+        });
+        continue;
+      }
+
+      try {
+        await this.email.sendNotificationDigest({
+          to,
+          items: unread.map((row) => ({
+            title: row.title,
+            body: row.body,
+          })),
+        });
+        const sentAt = new Date();
+        await this.prisma.notificationDelivery.createMany({
+          data: unread.map((row) => ({
+            notificationId: row.id,
+            channel: NotificationChannel.EMAIL,
+            status: DeliveryStatus.SENT,
+            sentAt,
+            attemptCount: 1,
+          })),
+        });
+      } catch (error) {
+        const errorCode =
+          error instanceof Error ? error.message.slice(0, 120) : "send_failed";
+        this.logger.error(`Digest send failed for ${user.id}: ${errorCode}`);
+        await this.prisma.notificationDelivery.createMany({
+          data: unread.map((row) => ({
+            notificationId: row.id,
+            channel: NotificationChannel.EMAIL,
+            status: DeliveryStatus.FAILED,
+            errorCode,
+            attemptCount: 1,
+          })),
+        });
+      }
     }
 
     return { digests };

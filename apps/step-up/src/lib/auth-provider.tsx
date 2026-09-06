@@ -584,11 +584,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw new Error("Firebase is not configured");
       }
 
-      const {
-        createUserWithEmailAndPassword,
-        sendEmailVerification,
-        updateProfile,
-      } = await import("firebase/auth");
+      const { createUserWithEmailAndPassword, updateProfile } = await import(
+        "firebase/auth"
+      );
       pendingSyncOptionsRef.current = {
         create: true,
         name: displayName,
@@ -603,10 +601,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await updateProfile(credential.user, { displayName });
       }
       try {
-        await sendEmailVerification(credential.user, {
-          url: `${window.location.origin}/login`,
-          handleCodeInApp: false,
-        });
+        const token = await credential.user.getIdToken();
+        await apiRequest("/auth/verify-email", { method: "POST", token });
       } catch {
         // Banner still offers resend if this fails.
       }
@@ -686,29 +682,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       );
     }
 
-    const auth = await getFirebaseAuthAsync();
-    if (!auth) {
-      throw new Error("Firebase is not configured");
-    }
-
-    const { sendPasswordResetEmail } = await import("firebase/auth");
     const trimmed = email.trim().toLowerCase();
     try {
-      await sendPasswordResetEmail(auth, trimmed, {
-        url: `${window.location.origin}/login`,
-        handleCodeInApp: false,
+      await apiRequest("/auth/forgot-password", {
+        method: "POST",
+        body: { email: trimmed },
       });
     } catch (error) {
-      const code =
-        typeof error === "object" &&
-        error !== null &&
-        "code" in error &&
-        typeof (error as { code: unknown }).code === "string"
-          ? (error as { code: string }).code
-          : null;
-      if (code === "auth/user-not-found") {
-        return;
-      }
       throw new Error(
         mapAuthError(error, "Unable to send password reset email."),
       );
@@ -814,19 +794,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       try {
-        const {
-          EmailAuthProvider,
-          reauthenticateWithCredential,
-          verifyBeforeUpdateEmail,
-        } = await import("firebase/auth");
+        const { EmailAuthProvider, reauthenticateWithCredential } =
+          await import("firebase/auth");
         const credential = EmailAuthProvider.credential(
           firebaseUser.email,
           currentPassword,
         );
         await reauthenticateWithCredential(firebaseUser, credential);
-        await verifyBeforeUpdateEmail(firebaseUser, trimmed, {
-          url: `${window.location.origin}/login`,
-          handleCodeInApp: false,
+        const token = await firebaseUser.getIdToken();
+        await apiRequest("/auth/change-email", {
+          method: "POST",
+          token,
+          body: { newEmail: trimmed },
         });
       } catch (error) {
         throw new Error(mapAuthError(error, "Unable to change email."));
@@ -852,11 +831,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     try {
-      const { sendEmailVerification } = await import("firebase/auth");
-      await sendEmailVerification(firebaseUser, {
-        url: `${window.location.origin}/login`,
-        handleCodeInApp: false,
-      });
+      const token = await firebaseUser.getIdToken();
+      await apiRequest("/auth/verify-email", { method: "POST", token });
     } catch (error) {
       throw new Error(
         mapAuthError(error, "Unable to send verification email."),

@@ -1,6 +1,11 @@
 import { Inject, Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import nodemailer from "nodemailer";
+import {
+  buildInvoiceReceiptPdf,
+  type InvoiceReceiptPdfInput,
+  invoiceReceiptFileName,
+} from "./invoice-receipt-pdf";
 
 export type StaffInviteEmailInput = {
   to: string;
@@ -9,20 +14,28 @@ export type StaffInviteEmailInput = {
   role: string;
 };
 
-export type PaymentInvoiceEmailInput = {
+export type PaymentInvoiceEmailInput = InvoiceReceiptPdfInput & {
   to: string;
-  studentName: string;
-  studioName: string;
-  invoiceId: string;
-  subtotal: number;
-  referralDiscount: number;
-  studioDiscount: number;
-  familyDiscount?: number;
-  gstPercent?: number;
-  gstAmount?: number;
-  amountPaid: number;
-  paymentMethod: string;
-  paidAt: Date;
+};
+
+export type ChangeEmailMailInput = {
+  to: string;
+  confirmUrl: string;
+};
+
+export type VerifyEmailMailInput = {
+  to: string;
+  confirmUrl: string;
+};
+
+export type PasswordResetMailInput = {
+  to: string;
+  resetUrl: string;
+};
+
+export type NotificationDigestMailInput = {
+  to: string;
+  items: Array<{ title: string; body: string }>;
 };
 
 type SmtpAuth = {
@@ -82,6 +95,8 @@ export class EmailService {
       row("Payment method", methodLabel),
       row("Paid at", paidAtLabel),
     ];
+    const pdf = await buildInvoiceReceiptPdf(input);
+    const filename = invoiceReceiptFileName(input);
 
     await this.send(
       input.to,
@@ -92,8 +107,68 @@ export class EmailService {
         `<table style="border-collapse:collapse;width:100%;max-width:420px;margin:16px 0;font-family:system-ui,sans-serif;font-size:14px;">`,
         ...rows,
         `</table>`,
+        `<p>Your invoice PDF is attached.</p>`,
         `<p style="color:#666;font-size:12px;">Invoice ${escapeHtml(input.invoiceId)}</p>`,
       ].join(""),
+      [
+        {
+          filename,
+          content: pdf,
+          contentType: "application/pdf",
+        },
+      ],
+    );
+  }
+
+  async sendChangeEmail(input: ChangeEmailMailInput): Promise<void> {
+    await this.send(
+      input.to,
+      "Confirm your new classa email",
+      [
+        `<p>Confirm this address to finish changing your classa login email.</p>`,
+        `<p><a href="${escapeHtml(input.confirmUrl)}">Confirm email</a></p>`,
+        `<p>Or open this link: ${escapeHtml(input.confirmUrl)}</p>`,
+      ].join(""),
+    );
+  }
+
+  async sendVerifyEmail(input: VerifyEmailMailInput): Promise<void> {
+    await this.send(
+      input.to,
+      "Verify your classa email",
+      [
+        `<p>Confirm this address to finish creating your classa account.</p>`,
+        `<p><a href="${escapeHtml(input.confirmUrl)}">Verify email</a></p>`,
+        `<p>Or open this link: ${escapeHtml(input.confirmUrl)}</p>`,
+      ].join(""),
+    );
+  }
+
+  async sendPasswordReset(input: PasswordResetMailInput): Promise<void> {
+    await this.send(
+      input.to,
+      "Reset your classa password",
+      [
+        `<p>Use this link to choose a new classa password.</p>`,
+        `<p><a href="${escapeHtml(input.resetUrl)}">Reset password</a></p>`,
+        `<p>Or open this link: ${escapeHtml(input.resetUrl)}</p>`,
+      ].join(""),
+    );
+  }
+
+  async sendNotificationDigest(
+    input: NotificationDigestMailInput,
+  ): Promise<void> {
+    const items = input.items
+      .map(
+        (item) =>
+          `<p><strong>${escapeHtml(item.title)}</strong><br/>${escapeHtml(item.body)}</p>`,
+      )
+      .join("");
+    await this.send(
+      input.to,
+      "classa updates",
+      [`<p>Here are your latest classa alerts.</p>`, items].join(""),
     );
   }
 
@@ -115,7 +190,16 @@ export class EmailService {
     };
   }
 
-  private async send(to: string, subject: string, html: string): Promise<void> {
+  private async send(
+    to: string,
+    subject: string,
+    html: string,
+    attachments?: Array<{
+      filename: string;
+      content: Buffer;
+      contentType: string;
+    }>,
+  ): Promise<void> {
     const auth = this.smtpAuth();
     if (!auth) {
       this.logger.warn(`SMTP_USER/SMTP_PASS missing — skipped email to ${to}`);
@@ -132,7 +216,13 @@ export class EmailService {
     });
 
     try {
-      await transport.sendMail({ from, to, subject, html });
+      await transport.sendMail({
+        from,
+        to,
+        subject,
+        html,
+        ...(attachments?.length ? { attachments } : {}),
+      });
     } catch (error) {
       this.logger.error(error);
       throw new Error("Failed to send email");

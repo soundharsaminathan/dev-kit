@@ -99,6 +99,72 @@ describe("EmailService", () => {
         from: "classa <info@classa.in>",
         to: "student@stepup.dev",
         subject: "Payment receipt from Floor One",
+        html: expect.stringContaining("Your invoice PDF is attached."),
+        attachments: [
+          expect.objectContaining({
+            filename: "Asha_September2026.pdf",
+            contentType: "application/pdf",
+            content: expect.any(Buffer),
+          }),
+        ],
+      }),
+    );
+    const attachment = sendMail.mock.calls[0]?.[0]?.attachments?.[0];
+    expect(attachment?.content.subarray(0, 5).toString("utf8")).toBe("%PDF-");
+  });
+
+  it("sends change-email confirmation through SMTP", async () => {
+    configValues.SMTP_USER = "info@classa.in";
+    configValues.SMTP_PASS = "mailbox-pass";
+    sendMail.mockResolvedValue({ messageId: "3" });
+
+    await service.sendChangeEmail({
+      to: "new@example.com",
+      confirmUrl: "https://step-up.pages.dev/login?oobCode=abc",
+    });
+
+    expect(sendMail).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: "new@example.com",
+        subject: "Confirm your new classa email",
+      }),
+    );
+  });
+
+  it("sends verification, password reset, and digest mail through SMTP", async () => {
+    configValues.SMTP_USER = "info@classa.in";
+    configValues.SMTP_PASS = "mailbox-pass";
+    sendMail.mockResolvedValue({ messageId: "4" });
+
+    await service.sendVerifyEmail({
+      to: "member@example.com",
+      confirmUrl: "https://step-up.pages.dev/login?oobCode=verify",
+    });
+    await service.sendPasswordReset({
+      to: "member@example.com",
+      resetUrl: "https://step-up.pages.dev/login?oobCode=reset",
+    });
+    await service.sendNotificationDigest({
+      to: "member@example.com",
+      items: [{ title: "Overdue", body: "Pay now" }],
+    });
+
+    expect(sendMail).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: "member@example.com",
+        subject: "Verify your classa email",
+      }),
+    );
+    expect(sendMail).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: "member@example.com",
+        subject: "Reset your classa password",
+      }),
+    );
+    expect(sendMail).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: "member@example.com",
+        subject: "classa updates",
       }),
     );
   });

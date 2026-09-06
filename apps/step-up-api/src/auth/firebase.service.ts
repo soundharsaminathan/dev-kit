@@ -1,4 +1,9 @@
-import { Inject, Injectable, UnauthorizedException } from "@nestjs/common";
+import {
+  BadRequestException,
+  Inject,
+  Injectable,
+  UnauthorizedException,
+} from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { UserRole } from "@prisma/client";
 import * as admin from "firebase-admin";
@@ -188,5 +193,59 @@ export class FirebaseService {
       });
       return { uid: existing.uid };
     }
+  }
+
+  async generateVerifyAndChangeEmailLink(
+    currentEmail: string,
+    newEmail: string,
+  ): Promise<string> {
+    this.ensureFirebase();
+    if (!admin.apps.length) {
+      throw new BadRequestException("Firebase is not configured");
+    }
+
+    return admin
+      .auth()
+      .generateVerifyAndChangeEmailLink(
+        currentEmail.trim().toLowerCase(),
+        newEmail.trim().toLowerCase(),
+        this.actionCodeSettings(),
+      );
+  }
+
+  async generateEmailVerificationLink(email: string): Promise<string> {
+    this.ensureFirebase();
+    if (!admin.apps.length) {
+      throw new BadRequestException("Firebase is not configured");
+    }
+    return admin
+      .auth()
+      .generateEmailVerificationLink(
+        email.trim().toLowerCase(),
+        this.actionCodeSettings(),
+      );
+  }
+
+  async generatePasswordResetLink(email: string): Promise<string> {
+    this.ensureFirebase();
+    if (!admin.apps.length) {
+      throw new BadRequestException("Firebase is not configured");
+    }
+    return admin
+      .auth()
+      .generatePasswordResetLink(
+        email.trim().toLowerCase(),
+        this.actionCodeSettings(),
+      );
+  }
+
+  private actionCodeSettings() {
+    const appUrl =
+      this.config.get<string>("APP_URL")?.trim().replace(/\/$/, "") ||
+      "https://step-up.pages.dev";
+    return {
+      url: `${appUrl}/login`,
+      handleCodeInApp: false,
+    };
   }
 }

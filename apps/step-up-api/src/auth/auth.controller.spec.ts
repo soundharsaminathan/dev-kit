@@ -1,4 +1,4 @@
-import { UnauthorizedException } from "@nestjs/common";
+import { BadRequestException, UnauthorizedException } from "@nestjs/common";
 import { UserRole } from "@prisma/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AuthController } from "./auth.controller";
@@ -54,6 +54,7 @@ describe("AuthController.sync", () => {
       push as never,
       firebase as never,
       staffInvites as never,
+      { isConfigured: vi.fn(), sendChangeEmail: vi.fn() } as never,
     );
     controller = new AuthController(auth);
   });
@@ -217,6 +218,7 @@ describe("AuthController.bypassLogin", () => {
       { registerToken: vi.fn() } as never,
       firebase as never,
       {} as never,
+      { isConfigured: vi.fn(), sendChangeEmail: vi.fn() } as never,
     );
     controller = new AuthController(auth);
   });
@@ -258,5 +260,179 @@ describe("AuthController.bypassLogin", () => {
     await expect(
       controller.bypassLogin({ email: "admin@stepup.dev" }),
     ).rejects.toBeInstanceOf(UnauthorizedException);
+  });
+});
+
+describe("AuthService.requestChangeEmail", () => {
+  const prisma = {
+    user: {
+      findFirst: vi.fn(),
+    },
+  };
+  const crypto = {
+    hashEmail: vi.fn((email: string) => `hash:${email}`),
+  };
+  const firebase = {
+    isBypassEnabled: vi.fn(() => false),
+    resolveUser: vi.fn(),
+    generateVerifyAndChangeEmailLink: vi.fn(),
+    generateEmailVerificationLink: vi.fn(),
+    generatePasswordResetLink: vi.fn(),
+  };
+  const email = {
+    isConfigured: vi.fn(() => true),
+    sendChangeEmail: vi.fn(),
+    sendVerifyEmail: vi.fn(),
+    sendPasswordReset: vi.fn(),
+  };
+
+  let auth: AuthService;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    firebase.isBypassEnabled.mockReturnValue(false);
+    email.isConfigured.mockReturnValue(true);
+    auth = new AuthService(
+      prisma as never,
+      crypto as never,
+      { signReadUrl: vi.fn() } as never,
+      { registerToken: vi.fn() } as never,
+      firebase as never,
+      {} as never,
+      email as never,
+    );
+  });
+
+  it("sends a Titan confirmation to the new address", async () => {
+    firebase.resolveUser.mockResolvedValue({ id: "user-1" });
+    prisma.user.findFirst.mockResolvedValue(null);
+    firebase.generateVerifyAndChangeEmailLink.mockResolvedValue(
+      "https://step-up.pages.dev/login?oobCode=abc",
+    );
+
+    await auth.requestChangeEmail(
+      { firebaseUid: "fb-1", email: "old@example.com" },
+      "new@example.com",
+    );
+
+    expect(firebase.generateVerifyAndChangeEmailLink).toHaveBeenCalledWith(
+      "old@example.com",
+      "new@example.com",
+    );
+    expect(email.sendChangeEmail).toHaveBeenCalledWith({
+      to: "new@example.com",
+      confirmUrl: "https://step-up.pages.dev/login?oobCode=abc",
+    });
+  });
+
+  it("rejects when SMTP is not configured", async () => {
+    email.isConfigured.mockReturnValue(false);
+    await expect(
+      auth.requestChangeEmail(
+        { firebaseUid: "fb-1", email: "old@example.com" },
+        "new@example.com",
+      ),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(email.sendChangeEmail).not.toHaveBeenCalled();
+  });
+});
+
+describe("AuthService.requestEmailVerification", () => {
+  const firebase = {
+    isBypassEnabled: vi.fn(() => false),
+    generateEmailVerificationLink: vi.fn(),
+  };
+  const email = {
+    isConfigured: vi.fn(() => true),
+    sendVerifyEmail: vi.fn(),
+  };
+  let auth: AuthService;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    firebase.isBypassEnabled.mockReturnValue(false);
+    email.isConfigured.mockReturnValue(true);
+    auth = new AuthService(
+      {} as never,
+      {} as never,
+      { signReadUrl: vi.fn() } as never,
+      { registerToken: vi.fn() } as never,
+      firebase as never,
+      {} as never,
+      email as never,
+    );
+  });
+
+  it("sends a Titan verification link to the signed-in address", async () => {
+    firebase.generateEmailVerificationLink.mockResolvedValue(
+      "https://step-up.pages.dev/login?oobCode=verify",
+    );
+
+    await auth.requestEmailVerification({
+      firebaseUid: "fb-1",
+      email: "member@example.com",
+    });
+
+    expect(firebase.generateEmailVerificationLink).toHaveBeenCalledWith(
+      "member@example.com",
+    );
+    expect(email.sendVerifyEmail).toHaveBeenCalledWith({
+      to: "member@example.com",
+      confirmUrl: "https://step-up.pages.dev/login?oobCode=verify",
+    });
+  });
+});
+
+describe("AuthService.requestPasswordReset", () => {
+  const firebase = {
+    isBypassEnabled: vi.fn(() => false),
+    generatePasswordResetLink: vi.fn(),
+  };
+  const email = {
+    isConfigured: vi.fn(() => true),
+    sendPasswordReset: vi.fn(),
+  };
+  let auth: AuthService;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    firebase.isBypassEnabled.mockReturnValue(false);
+    email.isConfigured.mockReturnValue(true);
+    auth = new AuthService(
+      {} as never,
+      {} as never,
+      { signReadUrl: vi.fn() } as never,
+      { registerToken: vi.fn() } as never,
+      firebase as never,
+      {} as never,
+      email as never,
+    );
+  });
+
+  it("sends a Titan reset link when the Firebase user exists", async () => {
+    firebase.generatePasswordResetLink.mockResolvedValue(
+      "https://step-up.pages.dev/login?oobCode=reset",
+    );
+
+    await auth.requestPasswordReset("member@example.com");
+
+    expect(firebase.generatePasswordResetLink).toHaveBeenCalledWith(
+      "member@example.com",
+    );
+    expect(email.sendPasswordReset).toHaveBeenCalledWith({
+      to: "member@example.com",
+      resetUrl: "https://step-up.pages.dev/login?oobCode=reset",
+    });
+  });
+
+  it("does not leak whether the account exists", async () => {
+    firebase.generatePasswordResetLink.mockRejectedValue({
+      code: "auth/user-not-found",
+    });
+
+    await expect(
+      auth.requestPasswordReset("missing@example.com"),
+    ).resolves.toBeUndefined();
+    expect(email.sendPasswordReset).not.toHaveBeenCalled();
   });
 });

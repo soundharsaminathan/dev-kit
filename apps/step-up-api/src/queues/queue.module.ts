@@ -1,8 +1,10 @@
 import { BullModule } from "@nestjs/bullmq";
 import { type DynamicModule, forwardRef, Logger, Module } from "@nestjs/common";
 import { ConfigModule, ConfigService } from "@nestjs/config";
+import { EmailModule } from "../email/email.module";
 import { JobsModule } from "../jobs/jobs.module";
 import { NotificationsModule } from "../notifications/notifications.module";
+import { UserCryptoModule } from "../users/user-crypto.module";
 import { DailyJobsProcessor } from "./processors/daily-jobs.processor";
 import { DigestProcessor } from "./processors/digest.processor";
 import { NotificationProcessor } from "./processors/notification.processor";
@@ -95,7 +97,7 @@ export class QueueModule {
         ConfigModule,
         forwardRef(() => NotificationsModule),
         ...(options.role === "worker"
-          ? [forwardRef(() => JobsModule)]
+          ? [forwardRef(() => JobsModule), EmailModule, UserCryptoModule]
           : []),
         BullModule.forRootAsync({
           imports: [ConfigModule],

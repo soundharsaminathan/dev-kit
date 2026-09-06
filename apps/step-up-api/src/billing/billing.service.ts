@@ -18,6 +18,10 @@ import {
 import { ACTIVE_ENROLLMENT_WHERE } from "../batches/enrollment-status";
 import { EmailService } from "../email/email.service";
 import {
+  coveredMonthKeys,
+  formatInvoicePeriodLabel,
+} from "../email/invoice-receipt-pdf";
+import {
   computeGst,
   computePlatformFee,
   invoiceDueDate,
@@ -846,7 +850,21 @@ export class BillingService {
       where: { id },
       include: {
         student: true,
-        studio: { select: { id: true, name: true } },
+        studio: {
+          select: {
+            id: true,
+            name: true,
+            address: true,
+            settings: { select: { gstNumber: true } },
+          },
+        },
+        membership: {
+          select: {
+            periodStart: true,
+            periodEnd: true,
+            subscription: { select: { billingCadence: true } },
+          },
+        },
       },
     });
 
@@ -948,11 +966,19 @@ export class BillingService {
     });
 
     if (student.email) {
+      const billMonthKeys = coveredMonthKeys({
+        periodStart: invoice.membership?.periodStart ?? null,
+        periodEnd: invoice.membership?.periodEnd ?? null,
+        billingCadence:
+          invoice.membership?.subscription?.billingCadence ?? null,
+      });
       void this.email
         .sendPaymentInvoice({
           to: student.email,
           studentName: student.name || "there",
           studioName: invoice.studio.name,
+          studioAddress: invoice.studio.address,
+          gstNumber: invoice.studio.settings?.gstNumber,
           invoiceId: invoice.id,
           subtotal: printSubtotal,
           referralDiscount,
@@ -963,6 +989,10 @@ export class BillingService {
           amountPaid,
           paymentMethod: input.paymentMethod,
           paidAt,
+          status: InvoiceStatus.PAID,
+          billMonth: invoice.membership?.periodStart ?? paidAt,
+          billMonthKeys,
+          billPeriodLabel: formatInvoicePeriodLabel(billMonthKeys) || null,
         })
         .catch((error: unknown) => {
           this.logger.error(

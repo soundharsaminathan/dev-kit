@@ -23,11 +23,29 @@ describe("DigestProcessor", () => {
     isChannelEnabled: vi.fn(),
   };
 
+  const email = {
+    isConfigured: vi.fn(() => false),
+    sendNotificationDigest: vi.fn(),
+  };
+
+  const crypto = {
+    decryptUser: vi.fn((user: { id: string }) => ({
+      ...user,
+      email: "member@example.com",
+    })),
+  };
+
   let processor: DigestProcessor;
 
   beforeEach(() => {
     vi.clearAllMocks();
-    processor = new DigestProcessor(prisma as never, preferences as never);
+    email.isConfigured.mockReturnValue(false);
+    processor = new DigestProcessor(
+      prisma as never,
+      preferences as never,
+      email as never,
+      crypto as never,
+    );
   });
 
   it("skips users with email digests disabled", async () => {
@@ -65,6 +83,42 @@ describe("DigestProcessor", () => {
           notificationId: "n2",
           channel: NotificationChannel.EMAIL,
           status: DeliveryStatus.SKIPPED,
+        }),
+      ],
+    });
+  });
+
+  it("sends a Titan digest and records SENT deliveries", async () => {
+    email.isConfigured.mockReturnValue(true);
+    prisma.user.findMany.mockResolvedValue([
+      {
+        id: "user-1",
+        encryptedKey: "key",
+        piiCiphertext: "cipher",
+        piiIv: "iv",
+      },
+    ]);
+    preferences.isChannelEnabled.mockResolvedValue(true);
+    prisma.notification.findMany.mockResolvedValue([
+      { id: "n1", type: "PAYMENT_OVERDUE", title: "Overdue", body: "Pay now" },
+    ]);
+    prisma.notificationDelivery.createMany.mockResolvedValue({ count: 1 });
+    email.sendNotificationDigest.mockResolvedValue(undefined);
+
+    await expect(
+      processor.process({ data: { userId: "user-1" } } as never),
+    ).resolves.toEqual({ digests: 1 });
+
+    expect(email.sendNotificationDigest).toHaveBeenCalledWith({
+      to: "member@example.com",
+      items: [{ title: "Overdue", body: "Pay now" }],
+    });
+    expect(prisma.notificationDelivery.createMany).toHaveBeenCalledWith({
+      data: [
+        expect.objectContaining({
+          notificationId: "n1",
+          channel: NotificationChannel.EMAIL,
+          status: DeliveryStatus.SENT,
         }),
       ],
     });

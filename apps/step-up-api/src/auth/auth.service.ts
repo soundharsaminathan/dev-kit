@@ -7,6 +7,7 @@ import {
   UnauthorizedException,
 } from "@nestjs/common";
 import { UserRole } from "@prisma/client";
+import { EmailService } from "../email/email.service";
 import { MediaService } from "../media/media.service";
 import { PushService } from "../notifications/push.service";
 import { PrismaService } from "../prisma/prisma.service";
@@ -49,6 +50,7 @@ export class AuthService {
     @Inject(FirebaseService) private readonly firebase: FirebaseService,
     @Inject(StaffInvitesService)
     private readonly staffInvites: StaffInvitesService,
+    @Inject(EmailService) private readonly email: EmailService,
   ) {}
 
   async bypassLogin(email: string): Promise<DecryptedUser> {
@@ -255,6 +257,88 @@ export class AuthService {
       ...decrypted,
       photoUrl: await this.media.signReadUrl(decrypted.photoUrl),
     };
+  }
+
+  async requestChangeEmail(
+    auth: VerifiedAuth,
+    newEmail: string,
+  ): Promise<void> {
+    if (this.firebase.isBypassEnabled()) {
+      throw new BadRequestException(
+        "Email changes are unavailable while auth bypass is enabled.",
+      );
+    }
+    if (!this.email.isConfigured()) {
+      throw new BadRequestException("Email is not configured");
+    }
+
+    const currentEmail = auth.email?.trim().toLowerCase();
+    const nextEmail = newEmail.trim().toLowerCase();
+    if (!currentEmail) {
+      throw new BadRequestException("Authenticated email is required");
+    }
+    if (!nextEmail) {
+      throw new BadRequestException("Enter a valid email address");
+    }
+    if (nextEmail === currentEmail) {
+      throw new BadRequestException("That is already your current email");
+    }
+
+    const user = await this.firebase.resolveUser(auth);
+    await this.assertEmailAvailable(nextEmail, user.id);
+
+    const confirmUrl = await this.firebase.generateVerifyAndChangeEmailLink(
+      currentEmail,
+      nextEmail,
+    );
+    await this.email.sendChangeEmail({ to: nextEmail, confirmUrl });
+  }
+
+  async requestEmailVerification(auth: VerifiedAuth): Promise<void> {
+    if (this.firebase.isBypassEnabled()) {
+      return;
+    }
+    if (!this.email.isConfigured()) {
+      throw new BadRequestException("Email is not configured");
+    }
+    const currentEmail = auth.email?.trim().toLowerCase();
+    if (!currentEmail) {
+      throw new BadRequestException("Authenticated email is required");
+    }
+    const confirmUrl =
+      await this.firebase.generateEmailVerificationLink(currentEmail);
+    await this.email.sendVerifyEmail({ to: currentEmail, confirmUrl });
+  }
+
+  async requestPasswordReset(email: string): Promise<void> {
+    if (this.firebase.isBypassEnabled()) {
+      throw new BadRequestException(
+        "Password reset is unavailable while auth bypass is enabled.",
+      );
+    }
+    if (!this.email.isConfigured()) {
+      throw new BadRequestException("Email is not configured");
+    }
+    const trimmed = email.trim().toLowerCase();
+    if (!trimmed) {
+      throw new BadRequestException("Enter a valid email address");
+    }
+    try {
+      const resetUrl = await this.firebase.generatePasswordResetLink(trimmed);
+      await this.email.sendPasswordReset({ to: trimmed, resetUrl });
+    } catch (error) {
+      const code =
+        typeof error === "object" &&
+        error !== null &&
+        "code" in error &&
+        typeof (error as { code: unknown }).code === "string"
+          ? (error as { code: string }).code
+          : null;
+      if (code === "auth/user-not-found") {
+        return;
+      }
+      throw error;
+    }
   }
 
   private async assertEmailAvailable(email: string, excludeUserId?: string) {

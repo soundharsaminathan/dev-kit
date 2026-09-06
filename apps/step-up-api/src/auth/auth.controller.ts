@@ -1,11 +1,4 @@
-import {
-  Body,
-  Controller,
-  Inject,
-  Post,
-  Req,
-  UseGuards,
-} from "@nestjs/common";
+import { Body, Controller, Inject, Post, Req, UseGuards } from "@nestjs/common";
 import { UserRole } from "@prisma/client";
 import {
   IsBoolean,
@@ -57,6 +50,16 @@ class AcceptInviteDto {
   token!: string;
 }
 
+class ChangeEmailDto {
+  @IsEmail()
+  newEmail!: string;
+}
+
+class ForgotPasswordDto {
+  @IsEmail()
+  email!: string;
+}
+
 @Controller("auth")
 export class AuthController {
   constructor(@Inject(AuthService) private readonly auth: AuthService) {}
@@ -81,6 +84,26 @@ export class AuthController {
     @Body() dto: AcceptInviteDto,
   ): Promise<DecryptedUser> {
     return this.auth.acceptInvite(dto.token, request.auth);
+  }
+
+  @Post("change-email")
+  @UseGuards(TokenGuard)
+  changeEmail(
+    @Req() request: { auth: VerifiedAuth },
+    @Body() dto: ChangeEmailDto,
+  ): Promise<void> {
+    return this.auth.requestChangeEmail(request.auth, dto.newEmail);
+  }
+
+  @Post("verify-email")
+  @UseGuards(TokenGuard)
+  verifyEmail(@Req() request: { auth: VerifiedAuth }): Promise<void> {
+    return this.auth.requestEmailVerification(request.auth);
+  }
+
+  @Post("forgot-password")
+  forgotPassword(@Body() dto: ForgotPasswordDto): Promise<void> {
+    return this.auth.requestPasswordReset(dto.email);
   }
 
   @Post("sync")
