@@ -9,7 +9,7 @@ import { NOTIFICATION_DIGEST_QUEUE } from "../queue.constants";
 /**
  * Phase 3 email digest worker.
  * Collects unread high-priority notifications and logs digest payloads.
- * Wire Resend/SES here when EMAIL channel goes live.
+ * Wire SMTP here when EMAIL channel goes live.
  */
 @Processor(NOTIFICATION_DIGEST_QUEUE)
 export class DigestProcessor extends WorkerHost {

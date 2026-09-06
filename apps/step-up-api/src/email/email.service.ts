@@ -1,5 +1,6 @@
 import { Inject, Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
+import nodemailer from "nodemailer";
 
 export type StaffInviteEmailInput = {
   to: string;
@@ -24,6 +25,13 @@ export type PaymentInvoiceEmailInput = {
   paidAt: Date;
 };
 
+type SmtpAuth = {
+  host: string;
+  port: number;
+  user: string;
+  pass: string;
+};
+
 @Injectable()
 export class EmailService {
   private readonly logger = new Logger(EmailService.name);
@@ -31,61 +39,23 @@ export class EmailService {
   constructor(@Inject(ConfigService) private readonly config: ConfigService) {}
 
   isConfigured(): boolean {
-    return Boolean(this.config.get<string>("RESEND_API_KEY")?.trim());
+    return this.smtpAuth() !== null;
   }
 
   async sendStaffInvite(input: StaffInviteEmailInput): Promise<void> {
-    const apiKey = this.config.get<string>("RESEND_API_KEY")?.trim();
-    const from =
-      this.config.get<string>("EMAIL_FROM")?.trim() ||
-      "classa <onboarding@resend.dev>";
-
-    if (!apiKey) {
-      this.logger.warn(
-        `RESEND_API_KEY missing — skipped invite email to ${input.to}`,
-      );
-      return;
-    }
-
     const roleLabel = input.role.toLowerCase();
-    const response = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        from,
-        to: [input.to],
-        subject: `You're invited to join ${input.studioName} on classa`,
-        html: [
-          `<p>You've been invited to join <strong>${escapeHtml(input.studioName)}</strong> as ${escapeHtml(roleLabel)}.</p>`,
-          `<p><a href="${escapeHtml(input.inviteUrl)}">Accept invite</a></p>`,
-          `<p>Or open this link: ${escapeHtml(input.inviteUrl)}</p>`,
-        ].join(""),
-      }),
-    });
-
-    if (!response.ok) {
-      const body = await response.text();
-      this.logger.error(`Resend failed (${response.status}): ${body}`);
-      throw new Error("Failed to send invite email");
-    }
+    await this.send(
+      input.to,
+      `You're invited to join ${input.studioName} on classa`,
+      [
+        `<p>You've been invited to join <strong>${escapeHtml(input.studioName)}</strong> as ${escapeHtml(roleLabel)}.</p>`,
+        `<p><a href="${escapeHtml(input.inviteUrl)}">Accept invite</a></p>`,
+        `<p>Or open this link: ${escapeHtml(input.inviteUrl)}</p>`,
+      ].join(""),
+    );
   }
 
   async sendPaymentInvoice(input: PaymentInvoiceEmailInput): Promise<void> {
-    const apiKey = this.config.get<string>("RESEND_API_KEY")?.trim();
-    const from =
-      this.config.get<string>("EMAIL_FROM")?.trim() ||
-      "classa <onboarding@resend.dev>";
-
-    if (!apiKey) {
-      this.logger.warn(
-        `RESEND_API_KEY missing — skipped payment invoice email to ${input.to}`,
-      );
-      return;
-    }
-
     const paidAtLabel = input.paidAt.toLocaleString("en-IN", {
       dateStyle: "medium",
       timeStyle: "short",
@@ -113,31 +83,59 @@ export class EmailService {
       row("Paid at", paidAtLabel),
     ];
 
-    const response = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        from,
-        to: [input.to],
-        subject: `Payment receipt from ${input.studioName}`,
-        html: [
-          `<p>Hi ${escapeHtml(input.studentName)},</p>`,
-          `<p>We've recorded your payment at <strong>${escapeHtml(input.studioName)}</strong>.</p>`,
-          `<table style="border-collapse:collapse;width:100%;max-width:420px;margin:16px 0;font-family:system-ui,sans-serif;font-size:14px;">`,
-          ...rows,
-          `</table>`,
-          `<p style="color:#666;font-size:12px;">Invoice ${escapeHtml(input.invoiceId)}</p>`,
-        ].join(""),
-      }),
+    await this.send(
+      input.to,
+      `Payment receipt from ${input.studioName}`,
+      [
+        `<p>Hi ${escapeHtml(input.studentName)},</p>`,
+        `<p>We've recorded your payment at <strong>${escapeHtml(input.studioName)}</strong>.</p>`,
+        `<table style="border-collapse:collapse;width:100%;max-width:420px;margin:16px 0;font-family:system-ui,sans-serif;font-size:14px;">`,
+        ...rows,
+        `</table>`,
+        `<p style="color:#666;font-size:12px;">Invoice ${escapeHtml(input.invoiceId)}</p>`,
+      ].join(""),
+    );
+  }
+
+  private smtpAuth(): SmtpAuth | null {
+    const user = this.config.get<string>("SMTP_USER")?.trim();
+    const pass = this.config.get<string>("SMTP_PASS")?.trim();
+    if (!user || !pass) {
+      return null;
+    }
+
+    const parsedPort = Number(this.config.get<string>("SMTP_PORT")?.trim());
+    return {
+      host:
+        this.config.get<string>("SMTP_HOST")?.trim() ||
+        "smtpout.secureserver.net",
+      port: Number.isFinite(parsedPort) && parsedPort > 0 ? parsedPort : 465,
+      user,
+      pass,
+    };
+  }
+
+  private async send(to: string, subject: string, html: string): Promise<void> {
+    const auth = this.smtpAuth();
+    if (!auth) {
+      this.logger.warn(`SMTP_USER/SMTP_PASS missing — skipped email to ${to}`);
+      return;
+    }
+
+    const from =
+      this.config.get<string>("EMAIL_FROM")?.trim() || `classa <${auth.user}>`;
+    const transport = nodemailer.createTransport({
+      host: auth.host,
+      port: auth.port,
+      secure: auth.port === 465,
+      auth: { user: auth.user, pass: auth.pass },
     });
 
-    if (!response.ok) {
-      const body = await response.text();
-      this.logger.error(`Resend failed (${response.status}): ${body}`);
-      throw new Error("Failed to send payment invoice email");
+    try {
+      await transport.sendMail({ from, to, subject, html });
+    } catch (error) {
+      this.logger.error(error);
+      throw new Error("Failed to send email");
     }
   }
 }

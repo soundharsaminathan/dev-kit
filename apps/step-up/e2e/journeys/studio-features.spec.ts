@@ -27,7 +27,10 @@ test.describe("studio features journey @critical", () => {
         await page.goto("/app/bookings");
         await waitForAppReady(page);
         await expect(
-          page.getByRole("heading", { name: /feature unavailable/i }),
+          page.getByRole("heading", {
+            name: "Feature unavailable",
+            exact: true,
+          }),
         ).toBeVisible();
       } finally {
         await context.close();
@@ -47,7 +50,10 @@ test.describe("studio features journey @critical", () => {
       await page.goto("/app/bookings");
       await waitForAppReady(page);
       await expect(
-        page.getByRole("heading", { name: /feature unavailable/i }),
+        page.getByRole("heading", {
+          name: "Feature unavailable",
+          exact: true,
+        }),
       ).toHaveCount(0);
     } finally {
       await context.close();
@@ -75,7 +81,10 @@ test.describe("studio features journey @critical", () => {
         await page.goto("/app/messages");
         await waitForAppReady(page);
         await expect(
-          page.getByRole("heading", { name: /feature unavailable/i }),
+          page.getByRole("heading", {
+            name: "Feature unavailable",
+            exact: true,
+          }),
         ).toBeVisible();
       } finally {
         await context.close();

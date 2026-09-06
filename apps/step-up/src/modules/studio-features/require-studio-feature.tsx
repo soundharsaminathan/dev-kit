@@ -1,9 +1,6 @@
 import type { ReactNode } from "react";
-import {
-  isFeatureEnabled,
-  useStudioFeatures,
-} from "@/lib/studio-features";
 import type { FeatureKey } from "@/lib/feature-keys";
+import { isFeatureEnabled, useStudioFeatures } from "@/lib/studio-features";
 import { Screen } from "@/modules/ui/screen";
 import { SkeletonBlock } from "@/modules/ui/skeleton-block";
 import { EmptyState } from "@/modules/ui/states";
@@ -26,21 +23,16 @@ export function RequireStudioFeature({
 
   if (query.isLoading || query.isPending) {
     const loading = <SkeletonBlock height="8rem" />;
-    return wrapScreen ? (
-      <Screen title="Loading">
-        {loading}
-      </Screen>
-    ) : (
-      loading
-    );
+    return wrapScreen ? <Screen title="Loading">{loading}</Screen> : loading;
   }
 
   if (!isFeatureEnabled(query.data?.features, feature)) {
-    const empty = (
-      <EmptyState
-        title={title}
-        description="This module is not enabled for your studio. Contact your system administrator if you need access."
-      />
+    const description =
+      "This module is not enabled for your studio. Contact your system administrator if you need access.";
+    const empty = wrapScreen ? (
+      <EmptyState description={description} />
+    ) : (
+      <EmptyState title={title} description={description} />
     );
     return wrapScreen ? (
       <Screen title={title} showBack>

@@ -15,7 +15,7 @@ export function EmptyState({
   action,
   icon,
 }: {
-  title: string;
+  title?: string;
   description?: string;
   action?: ReactNode;
   icon?: IconName;
@@ -28,7 +28,7 @@ export function EmptyState({
             <Icon name={icon} />
           </EmptyMedia>
         ) : null}
-        <EmptyTitle>{title}</EmptyTitle>
+        {title ? <EmptyTitle>{title}</EmptyTitle> : null}
         {description ? (
           <EmptyDescription>{description}</EmptyDescription>
         ) : null}

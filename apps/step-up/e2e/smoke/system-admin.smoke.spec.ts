@@ -123,15 +123,18 @@ test.describe("system admin smoke @smoke", () => {
       try {
         await ownerPage.goto("/app", { waitUntil: "domcontentloaded" });
         await waitForAppReady(ownerPage);
-        await expect(
-          ownerPage.locator('a[href^="/app/bookings"]'),
-        ).toHaveCount(0);
+        await expect(ownerPage.locator('a[href^="/app/bookings"]')).toHaveCount(
+          0,
+        );
         await ownerPage.goto("/app/bookings", {
           waitUntil: "domcontentloaded",
         });
         await waitForAppReady(ownerPage);
         await expect(
-          ownerPage.getByRole("heading", { name: /feature unavailable/i }),
+          ownerPage.getByRole("heading", {
+            name: "Feature unavailable",
+            exact: true,
+          }),
         ).toBeVisible();
       } finally {
         await ownerContext.close();
