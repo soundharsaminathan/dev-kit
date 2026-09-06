@@ -1,3 +1,4 @@
+import { testEmail } from "../src/test/test-email";
 import "dotenv/config";
 import { ConfigService } from "@nestjs/config";
 import {
@@ -64,79 +65,79 @@ export const E2E = {
     SYSTEM_ADMIN: {
       id: "e2e-system-admin-1",
       firebaseUid: "e2e-system-admin-1",
-      email: "e2e-admin@stepup.dev",
+      email: testEmail("e2e-admin"),
       name: "E2E System Admin",
     },
     OWNER: {
       id: "e2e-owner-1",
       firebaseUid: "e2e-owner-1",
-      email: "e2e-owner@stepup.dev",
+      email: testEmail("e2e-owner"),
       name: "Studio Owner",
     },
     OWNER_B: {
       id: "e2e-owner-b-1",
       firebaseUid: "e2e-owner-b-1",
-      email: "e2e-owner-b@stepup.dev",
+      email: testEmail("e2e-owner-b"),
       name: "Studio B Owner",
     },
     STAFF: {
       id: "e2e-staff-1",
       firebaseUid: "e2e-staff-1",
-      email: "e2e-staff@stepup.dev",
+      email: testEmail("e2e-staff"),
       name: "Front Desk Staff",
     },
     STAFF_B: {
       id: "e2e-staff-b-1",
       firebaseUid: "e2e-staff-b-1",
-      email: "e2e-staff-b@stepup.dev",
+      email: testEmail("e2e-staff-b"),
       name: "Studio B Staff",
     },
     STAFF1: {
       id: "e2e-staff1-1",
       firebaseUid: "e2e-staff1-1",
-      email: "e2e-staff1@stepup.dev",
+      email: testEmail("e2e-staff1"),
       name: "Staff 1",
     },
     TRAINER: {
       id: "e2e-trainer-1",
       firebaseUid: "e2e-trainer-1",
-      email: "e2e-trainer@stepup.dev",
+      email: testEmail("e2e-trainer"),
       name: "Lead Trainer",
     },
     TRAINER_2: {
       id: "e2e-trainer-2",
       firebaseUid: "e2e-trainer-2",
-      email: "e2e-trainer-2@stepup.dev",
+      email: testEmail("e2e-trainer-2"),
       name: "Second Trainer",
     },
     STUDENT: {
       id: "e2e-student-1",
       firebaseUid: "e2e-student-1",
-      email: "e2e-student@stepup.dev",
+      email: testEmail("e2e-student"),
       name: "Alex Student",
     },
     STUDENT_B: {
       id: "e2e-student-b-1",
       firebaseUid: "e2e-student-b-1",
-      email: "e2e-student-b@stepup.dev",
+      email: testEmail("e2e-student-b"),
       name: "Studio B Student",
     },
     STUDENT_UNENROLLED: {
       id: "e2e-student-unenrolled-1",
       firebaseUid: "e2e-student-unenrolled-1",
-      email: "e2e-student-unenrolled@stepup.dev",
+      email: testEmail("e2e-student-unenrolled"),
       name: "Unenrolled Kid",
     },
     STUDENT_MOVED: {
       id: "e2e-student-moved-1",
       firebaseUid: "e2e-student-moved-1",
-      email: "e2e-student-moved@stepup.dev",
+      email: testEmail("e2e-student-moved"),
       name: "Moved Kid",
     },
     PARENT: {
       id: "e2e-parent-1",
       firebaseUid: "e2e-parent-1",
-      email: "e2e-parent@stepup.dev",
+      email: testEmail("e2e-parent"),
       name: "Jamie Parent",
     },
   },
@@ -267,7 +268,7 @@ async function main() {
     {
       id: "system-admin-1",
       firebaseUid: "dev-system-admin-1",
-      email: "admin@stepup.dev",
+      email: testEmail("admin"),
       name: "System Admin",
       phone: "+91 98000 00000",
       role: UserRole.SYSTEM_ADMIN,
@@ -1159,7 +1160,9 @@ async function main() {
   ]) {
     await upsertUser(user, E2E.studioBId);
   }
-  console.log(`E2E isolation studio ready: ${E2E.studioBId} (${E2E.studioBSlug})`);
+  console.log(
+    `E2E isolation studio ready: ${E2E.studioBId} (${E2E.studioBSlug})`,
+  );
 }
 
 main()

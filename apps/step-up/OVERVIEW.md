@@ -91,7 +91,7 @@ Primary tabs: Home, Discover, Messages, Profile.
 
 ### Platform admin (`/admin`)
 
-Create studios (and their users) from `/admin`. Profile at `/admin/profile`. Seed login: `admin@stepup.dev` / `password`.
+Create studios (and their users) from `/admin`. Profile at `/admin/profile`. Seed login: `soundhar.adi+admin@gmail.com` / `password`.
 
 ---
 
@@ -192,4 +192,4 @@ PII and chat ciphertext are never listed as full user blobs on discover cards; p
 
 From the monorepo root: build tokens, migrate + seed the API, then `pnpm dev:step-up-api` and `pnpm dev:step-up`. Web is http://localhost:5180.
 
-See [README.md](./README.md) for env files, seed users (`admin@stepup.dev`, analytics owner, e2e studio), PWA QA, and GitHub Actions deploy (Pages + Cloud Run + Neon + Firebase + R2 + Sentry).
+See [README.md](./README.md) for env files, seed users (`soundhar.adi+admin@gmail.com`, analytics owner, e2e studio), PWA QA, and GitHub Actions deploy (Pages + Cloud Run + Neon + Firebase + R2 + Sentry).

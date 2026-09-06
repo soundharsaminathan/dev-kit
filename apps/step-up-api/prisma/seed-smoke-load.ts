@@ -18,6 +18,7 @@ import {
   SessionType,
   UserRole,
 } from "@prisma/client";
+import { testEmail } from "../src/test/test-email";
 import { UserCryptoService } from "../src/users/user-crypto.service";
 
 /**
@@ -189,7 +190,7 @@ export async function seedSmokeLoadData(deps: LoadDeps) {
   await mapPool(trainerIds, 8, async (id, index) => {
     const n = index + 1;
     const sealed = crypto.sealPii({
-      email: `${id}@stepup.dev`,
+      email: testEmail(`${id}`),
       name: `Load Trainer ${pad(n, 2)}`,
       phone: `+91 97100 ${pad(10000 + n, 5)}`,
       bio: null,
@@ -217,7 +218,7 @@ export async function seedSmokeLoadData(deps: LoadDeps) {
   await mapPool(studentIds, 12, async (id, index) => {
     const n = index + 1;
     const sealed = crypto.sealPii({
-      email: `${id}@stepup.dev`,
+      email: testEmail(`${id}`),
       name: `Load Student ${pad(n, 3)}`,
       phone: `+91 97200 ${pad(10000 + n, 5)}`,
       bio: null,

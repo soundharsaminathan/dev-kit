@@ -13,14 +13,18 @@ describe("step-up constants", () => {
 
   it("maps only the seeded system admin", () => {
     expect(SEED_SYSTEM_ADMIN.id).toBe("system-admin-1");
-    expect(SEED_SYSTEM_ADMIN.email).toBe("admin@stepup.dev");
+    expect(SEED_SYSTEM_ADMIN.email).toBe("soundhar.adi+admin@gmail.com");
     expect(SEED_SYSTEM_ADMIN.studioId).toBeNull();
   });
 
   it("resolves admin aliases and passes emails through", () => {
-    expect(resolveLoginEmail("admin")).toBe("admin@stepup.dev");
-    expect(resolveLoginEmail("SYSTEM_ADMIN")).toBe("admin@stepup.dev");
-    expect(resolveLoginEmail("system-admin-1")).toBe("admin@stepup.dev");
+    expect(resolveLoginEmail("admin")).toBe("soundhar.adi+admin@gmail.com");
+    expect(resolveLoginEmail("SYSTEM_ADMIN")).toBe(
+      "soundhar.adi+admin@gmail.com",
+    );
+    expect(resolveLoginEmail("system-admin-1")).toBe(
+      "soundhar.adi+admin@gmail.com",
+    );
     expect(resolveLoginEmail("admin@stepup.dev")).toBe("admin@stepup.dev");
     expect(resolveLoginEmail("someone@example.com")).toBe(
       "someone@example.com",

@@ -1,3 +1,4 @@
+import { testEmail } from "../../src/lib/test-email";
 import {
   apiRequest,
   authFile,
@@ -74,7 +75,7 @@ function expectTransition(
 async function createSelfStudent(label: string) {
   const stamp = Date.now();
   const id = `dev-signup-funnel-${stamp}-${label}`;
-  const email = `funnel-self-${stamp}-${label}@stepup.dev`;
+  const email = testEmail(`funnel-self-${stamp}-${label}`);
   return apiRequest<{ id: string; email: string; name: string }>(
     "OWNER",
     "/auth/sync",
@@ -105,7 +106,7 @@ async function createOwnerStudent(
       method: "POST",
       body: JSON.stringify({
         name: `Owner Funnel ${label}`,
-        email: `funnel-owner-${stamp}-${label}@stepup.dev`,
+        email: testEmail(`funnel-owner-${stamp}-${label}`),
         gender: "FEMALE",
         ageRange: "TWENTY_TO_FORTY",
         styles: ["Hip Hop"],
@@ -374,7 +375,7 @@ test.describe("student funnel full flow @critical", () => {
 
       const stamp = Date.now();
       const name = `UI Enroll ${stamp}`;
-      const email = `funnel-ui-enroll-${stamp}@stepup.dev`;
+      const email = testEmail(`funnel-ui-enroll-${stamp}`);
 
       await page.getByLabel(/^name$/i).fill(name);
       await page.getByLabel(/^email$/i).fill(email);

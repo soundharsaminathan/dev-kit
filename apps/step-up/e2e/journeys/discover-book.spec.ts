@@ -1,4 +1,5 @@
 import type { Page } from "@playwright/test";
+import { testEmail } from "../../src/lib/test-email";
 import {
   apiRequest,
   authFile,
@@ -21,7 +22,7 @@ const TRIAL_BATCH_ID = SEED.trialBatchId;
 async function createTrialReadyStudent() {
   const stamp = Date.now();
   const id = `dev-trial-request-${stamp}`;
-  const email = `trial-request-${stamp}@stepup.dev`;
+  const email = testEmail(`trial-request-${stamp}`);
   const name = `Trial Request ${stamp}`;
 
   const student = await apiRequest<{

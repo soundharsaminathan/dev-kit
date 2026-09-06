@@ -1,4 +1,5 @@
 import type { Page } from "@playwright/test";
+import { testEmail } from "../../src/lib/test-email";
 import { AUTH_STORAGE_KEY, apiBaseUrl, SEED } from "./seed";
 import type { TestDataCleanup } from "./test-cleanup";
 
@@ -44,7 +45,7 @@ export async function createOnboardedStudent(
   const stamp = Date.now();
   const slug = namePrefix.toLowerCase().replace(/[^a-z0-9]+/g, "-");
   const provisionalId = `dev-${slug}-${stamp}`;
-  const email = `${slug}-${stamp}@stepup.dev`;
+  const email = testEmail(`${slug}-${stamp}`);
   const name = `${namePrefix} ${stamp}`;
 
   const student = await studentRequest<OnboardedStudent>(

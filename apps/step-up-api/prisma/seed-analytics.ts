@@ -1,3 +1,4 @@
+import { testEmail } from "../src/test/test-email";
 import "dotenv/config";
 import { ConfigService } from "@nestjs/config";
 import {
@@ -33,7 +34,7 @@ import { SEED_PASSWORD, syncSeedFirebaseUser } from "./sync-seed-auth";
  *
  *   pnpm --filter @step-up/api prisma:seed:analytics
  *
- * Log in (AUTH_BYPASS): analytics-owner@stepup.dev
+ * Log in (AUTH_BYPASS): soundhar.adi+analytics-owner@gmail.com
  */
 
 const prisma = new PrismaClient();
@@ -55,31 +56,31 @@ export const ANALYTICS = {
     OWNER: {
       id: "analytics-owner-1",
       firebaseUid: "analytics-owner-1",
-      email: "analytics-owner@stepup.dev",
+      email: testEmail("analytics-owner"),
       name: "Analytics Studio Owner",
     },
     STAFF: {
       id: "analytics-staff-1",
       firebaseUid: "analytics-staff-1",
-      email: "analytics-staff@stepup.dev",
+      email: testEmail("analytics-staff"),
       name: "Analytics Front Desk",
     },
     STAFF1: {
       id: "analytics-staff1-1",
       firebaseUid: "analytics-staff1-1",
-      email: "analytics-staff1@stepup.dev",
+      email: testEmail("analytics-staff1"),
       name: "Staff 1",
     },
     TRAINER: {
       id: "analytics-trainer-1",
       firebaseUid: "analytics-trainer-1",
-      email: "analytics-trainer@stepup.dev",
+      email: testEmail("analytics-trainer"),
       name: "Analytics Lead Trainer",
     },
     TRAINER_2: {
       id: "analytics-trainer-2",
       firebaseUid: "analytics-trainer-2",
-      email: "analytics-trainer-2@stepup.dev",
+      email: testEmail("analytics-trainer-2"),
       name: "Analytics Second Trainer",
     },
   },
@@ -212,7 +213,7 @@ async function upsertStudent(opts: {
     {
       id,
       firebaseUid: id,
-      email: `${id}@stepup.dev`,
+      email: testEmail(`${id}`),
       name: opts.name,
       phone: `+91 98100 ${String(10000 + opts.index).slice(-5)}`,
       role: UserRole.STUDENT,

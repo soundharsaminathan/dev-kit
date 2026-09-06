@@ -1,4 +1,5 @@
 import { expect } from "@playwright/test";
+import { testEmail } from "../../src/lib/test-email";
 import {
   batchCreateBody,
   isScheduleConflict,
@@ -100,7 +101,9 @@ export async function createHttpStudent(
   cleanup?: TestDataCleanup,
   options: { ageRange?: string } = {},
 ) {
-  const email = `http-student-${Date.now()}-${Math.random().toString(36).slice(2, 8)}@stepup.dev`;
+  const email = testEmail(
+    `http-student-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+  );
   const student = await expectOk<{ id: string; email: string; name: string }>(
     "OWNER",
     "/users",

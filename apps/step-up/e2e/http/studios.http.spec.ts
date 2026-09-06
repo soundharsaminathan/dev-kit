@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { testEmail } from "../../src/lib/test-email";
 import { apiBaseUrl, SEED } from "../fixtures/seed";
 import { expectOk, expectStatus, httpJson, TestDataCleanup } from "./helpers";
 
@@ -25,7 +26,7 @@ test.describe("studios HTTP @http", () => {
   test("admin creates studio with temp password and owner must change it @http", async () => {
     const cleanup = new TestDataCleanup();
     const stamp = Date.now();
-    const ownerEmail = `http-owner-${stamp}@stepup.dev`;
+    const ownerEmail = testEmail(`http-owner-${stamp}`);
     const temporaryPassword = `Su-Temp${stamp.toString(36)}xx`;
 
     try {
@@ -89,7 +90,7 @@ test.describe("studios HTTP @http", () => {
   test("owner can set GST percent and staff cannot @http", async () => {
     const cleanup = new TestDataCleanup();
     const stamp = Date.now();
-    const ownerEmail = `http-gst-owner-${stamp}@stepup.dev`;
+    const ownerEmail = testEmail(`http-gst-owner-${stamp}`);
     const temporaryPassword = `Su-Gst${stamp.toString(36)}xx`;
 
     try {
@@ -155,7 +156,9 @@ test.describe("studios HTTP @http", () => {
           }),
         },
       );
-      expect(deniedAi.text).toMatch(/only owners can change ai agent settings/i);
+      expect(deniedAi.text).toMatch(
+        /only owners can change ai agent settings/i,
+      );
 
       await expectStatus(
         "OWNER",

@@ -1,3 +1,5 @@
+import { testEmail } from "./test-email";
+
 /** Seed / e2e fixture studio only — never use in feature UI. Prefer useStudioId(). */
 export const SEED_STUDIO_ID = "studio-seed-1";
 
@@ -32,7 +34,7 @@ export type AgeRange =
 /** Only seeded local account — other users are created from /admin. */
 export const SEED_SYSTEM_ADMIN = {
   id: "system-admin-1",
-  email: "admin@stepup.dev",
+  email: testEmail("admin"),
   name: "System Admin",
   role: "SYSTEM_ADMIN" as const satisfies UserRole,
   studioId: null as string | null,

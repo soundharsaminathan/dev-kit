@@ -1,3 +1,4 @@
+import { testEmail } from "../src/test/test-email";
 import "dotenv/config";
 import { ConfigService } from "@nestjs/config";
 import {
@@ -70,61 +71,61 @@ export const SMOKE = {
     SYSTEM_ADMIN: {
       id: "smoke-system-admin-1",
       firebaseUid: "smoke-system-admin-1",
-      email: "smoke-admin@stepup.dev",
+      email: testEmail("smoke-admin"),
       name: "Smoke System Admin",
     },
     OWNER: {
       id: "smoke-owner-1",
       firebaseUid: "smoke-owner-1",
-      email: "smoke-owner@stepup.dev",
+      email: testEmail("smoke-owner"),
       name: "Smoke Studio Owner",
     },
     STAFF: {
       id: "smoke-staff-1",
       firebaseUid: "smoke-staff-1",
-      email: "smoke-staff@stepup.dev",
+      email: testEmail("smoke-staff"),
       name: "Smoke Front Desk",
     },
     STAFF1: {
       id: "smoke-staff1-1",
       firebaseUid: "smoke-staff1-1",
-      email: "smoke-staff1@stepup.dev",
+      email: testEmail("smoke-staff1"),
       name: "Staff 1",
     },
     TRAINER: {
       id: "smoke-trainer-1",
       firebaseUid: "smoke-trainer-1",
-      email: "smoke-trainer@stepup.dev",
+      email: testEmail("smoke-trainer"),
       name: "Smoke Lead Trainer",
     },
     STUDENT: {
       id: "smoke-student-1",
       firebaseUid: "smoke-student-1",
-      email: "smoke-student@stepup.dev",
+      email: testEmail("smoke-student"),
       name: "Smoke Alex Student",
     },
     STUDENT_UNENROLLED: {
       id: "smoke-student-unenrolled-1",
       firebaseUid: "smoke-student-unenrolled-1",
-      email: "smoke-student-unenrolled@stepup.dev",
+      email: testEmail("smoke-student-unenrolled"),
       name: "Smoke Unenrolled Kid",
     },
     STUDENT_MOVED: {
       id: "smoke-student-moved-1",
       firebaseUid: "smoke-student-moved-1",
-      email: "smoke-student-moved@stepup.dev",
+      email: testEmail("smoke-student-moved"),
       name: "Smoke Moved Kid",
     },
     PARENT: {
       id: "smoke-parent-1",
       firebaseUid: "smoke-parent-1",
-      email: "smoke-parent@stepup.dev",
+      email: testEmail("smoke-parent"),
       name: "Smoke Jamie Parent",
     },
     ONBOARDING: {
       id: "smoke-onboarding-1",
       firebaseUid: "smoke-onboarding-1",
-      email: "smoke-onboarding@stepup.dev",
+      email: testEmail("smoke-onboarding"),
       name: "Smoke New Dancer",
     },
   },

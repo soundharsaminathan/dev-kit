@@ -1,3 +1,4 @@
+import { testEmail } from "../src/test/test-email";
 import "dotenv/config";
 import { ConfigService } from "@nestjs/config";
 import { PrismaClient, ProfileVisibility, UserRole } from "@prisma/client";
@@ -12,7 +13,7 @@ const SEED_PASSWORD = "password";
 const SYSTEM_ADMIN = {
   id: "system-admin-1",
   firebaseUid: "dev-system-admin-1",
-  email: "admin@stepup.dev",
+  email: testEmail("admin"),
   name: "System Admin",
   phone: "+91 98000 00000",
   bio: "Platform administrator.",

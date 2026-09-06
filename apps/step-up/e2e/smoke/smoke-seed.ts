@@ -1,3 +1,4 @@
+import { testEmail } from "../../src/lib/test-email";
 /**
  * Canonical IDs for the deployed smoke suite.
  * Must stay in sync with apps/step-up-api/prisma/seed-smoke.ts.
@@ -36,7 +37,7 @@ export const SMOKE = {
     SYSTEM_ADMIN: {
       id: "smoke-system-admin-1",
       firebaseUid: "smoke-system-admin-1",
-      email: "smoke-admin@stepup.dev",
+      email: testEmail("smoke-admin"),
       name: "Smoke System Admin",
       role: "SYSTEM_ADMIN" as const,
       studioId: null as string | null,
@@ -44,7 +45,7 @@ export const SMOKE = {
     OWNER: {
       id: "smoke-owner-1",
       firebaseUid: "smoke-owner-1",
-      email: "smoke-owner@stepup.dev",
+      email: testEmail("smoke-owner"),
       name: "Smoke Studio Owner",
       role: "OWNER" as const,
       studioId: "studio-smoke-1",
@@ -52,7 +53,7 @@ export const SMOKE = {
     STAFF: {
       id: "smoke-staff-1",
       firebaseUid: "smoke-staff-1",
-      email: "smoke-staff@stepup.dev",
+      email: testEmail("smoke-staff"),
       name: "Smoke Front Desk",
       role: "STAFF" as const,
       studioId: "studio-smoke-1",
@@ -60,7 +61,7 @@ export const SMOKE = {
     TRAINER: {
       id: "smoke-trainer-1",
       firebaseUid: "smoke-trainer-1",
-      email: "smoke-trainer@stepup.dev",
+      email: testEmail("smoke-trainer"),
       name: "Smoke Lead Trainer",
       role: "TRAINER" as const,
       studioId: "studio-smoke-1",
@@ -68,7 +69,7 @@ export const SMOKE = {
     STUDENT: {
       id: "smoke-student-1",
       firebaseUid: "smoke-student-1",
-      email: "smoke-student@stepup.dev",
+      email: testEmail("smoke-student"),
       name: "Smoke Alex Student",
       role: "STUDENT" as const,
       studioId: "studio-smoke-1",
@@ -76,7 +77,7 @@ export const SMOKE = {
     STUDENT_UNENROLLED: {
       id: "smoke-student-unenrolled-1",
       firebaseUid: "smoke-student-unenrolled-1",
-      email: "smoke-student-unenrolled@stepup.dev",
+      email: testEmail("smoke-student-unenrolled"),
       name: "Smoke Unenrolled Kid",
       role: "STUDENT" as const,
       studioId: "studio-smoke-1",
@@ -84,7 +85,7 @@ export const SMOKE = {
     STUDENT_MOVED: {
       id: "smoke-student-moved-1",
       firebaseUid: "smoke-student-moved-1",
-      email: "smoke-student-moved@stepup.dev",
+      email: testEmail("smoke-student-moved"),
       name: "Smoke Moved Kid",
       role: "STUDENT" as const,
       studioId: "studio-smoke-1",
@@ -92,7 +93,7 @@ export const SMOKE = {
     PARENT: {
       id: "smoke-parent-1",
       firebaseUid: "smoke-parent-1",
-      email: "smoke-parent@stepup.dev",
+      email: testEmail("smoke-parent"),
       name: "Smoke Jamie Parent",
       role: "PARENT" as const,
       studioId: "studio-smoke-1",
@@ -100,7 +101,7 @@ export const SMOKE = {
     ONBOARDING: {
       id: "smoke-onboarding-1",
       firebaseUid: "smoke-onboarding-1",
-      email: "smoke-onboarding@stepup.dev",
+      email: testEmail("smoke-onboarding"),
       name: "Smoke New Dancer",
       role: "STUDENT" as const,
       studioId: "studio-smoke-1",

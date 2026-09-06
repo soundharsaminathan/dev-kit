@@ -27,13 +27,13 @@ For local development, set `AUTH_BYPASS=true` and use mock tokens.
 Admin seed (`prisma:seed`) creates only:
 
 ```
-admin@stepup.dev / password
+soundhar.adi+admin@gmail.com / password
 Authorization: Bearer dev:SYSTEM_ADMIN:system-admin-1
 ```
 
 Create studios from `/admin`, or load demo/test data with `prisma:seed:e2e` (`studio-e2e-1`, `e2e-*` users — see `apps/step-up/e2e/fixtures/seed.ts`).
 
-For Payments, Retention, student funnel, and batch revenue demos, run `prisma:seed:analytics` and sign in as `analytics-owner@stepup.dev` (`studio-analytics-1`).
+For Payments, Retention, student funnel, and batch revenue demos, run `prisma:seed:analytics` and sign in as `soundhar.adi+analytics-owner@gmail.com` (`studio-analytics-1`).
 
 ## Encryption
 

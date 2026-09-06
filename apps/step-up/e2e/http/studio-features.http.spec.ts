@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { testEmail } from "../../src/lib/test-email";
 import { SEED } from "../fixtures/seed";
 import { expectOk, expectStatus, httpJson, TestDataCleanup } from "./helpers";
 
@@ -17,15 +18,10 @@ test.describe("studio features HTTP @http", () => {
     }>("OWNER", `/studios/${studioId}/features`);
     expect(asOwner.features.some((f) => f.key === "bookings")).toBe(true);
 
-    await expectStatus(
-      "OWNER",
-      `/studios/${studioId}/features/bookings`,
-      403,
-      {
-        method: "PATCH",
-        body: JSON.stringify({ enabled: false }),
-      },
-    );
+    await expectStatus("OWNER", `/studios/${studioId}/features/bookings`, 403, {
+      method: "PATCH",
+      body: JSON.stringify({ enabled: false }),
+    });
 
     const disabled = await expectOk<{ key: string; enabled: boolean }>(
       "SYSTEM_ADMIN",
@@ -81,15 +77,19 @@ test.describe("studio features HTTP @http", () => {
     const cleanup = new TestDataCleanup();
     const stamp = Date.now();
     try {
-      const created = await expectOk<{ id: string }>("SYSTEM_ADMIN", "/studios", {
-        method: "POST",
-        body: JSON.stringify({
-          name: `Features Studio ${stamp}`,
-          ownerEmail: `features-owner-${stamp}@stepup.dev`,
-          ownerName: "Features Owner",
-          temporaryPassword: `Su-Feat${stamp.toString(36)}xx`,
-        }),
-      });
+      const created = await expectOk<{ id: string }>(
+        "SYSTEM_ADMIN",
+        "/studios",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            name: `Features Studio ${stamp}`,
+            ownerEmail: testEmail(`features-owner-${stamp}`),
+            ownerName: "Features Owner",
+            temporaryPassword: `Su-Feat${stamp.toString(36)}xx`,
+          }),
+        },
+      );
       cleanup.trackStudio(created.id);
 
       await expectOk(
@@ -121,14 +121,10 @@ test.describe("studio features HTTP @http", () => {
 
   test("disabled payments blocks checkout order but not invoice list @http", async () => {
     const studioId = SEED.studioId;
-    await expectOk(
-      "SYSTEM_ADMIN",
-      `/studios/${studioId}/features/payments`,
-      {
-        method: "PATCH",
-        body: JSON.stringify({ enabled: false }),
-      },
-    );
+    await expectOk("SYSTEM_ADMIN", `/studios/${studioId}/features/payments`, {
+      method: "PATCH",
+      body: JSON.stringify({ enabled: false }),
+    });
     try {
       await expectOk("OWNER", `/billing/studio/${studioId}`);
       await expectStatus(
@@ -137,29 +133,21 @@ test.describe("studio features HTTP @http", () => {
         403,
       );
     } finally {
-      await expectOk(
-        "SYSTEM_ADMIN",
-        `/studios/${studioId}/features/payments`,
-        {
-          method: "PATCH",
-          body: JSON.stringify({ enabled: true }),
-        },
-      );
+      await expectOk("SYSTEM_ADMIN", `/studios/${studioId}/features/payments`, {
+        method: "PATCH",
+        body: JSON.stringify({ enabled: true }),
+      });
     }
   });
 
   test("wrong role still returns insufficient permissions when feature is on @http", async () => {
-    await expectStatus(
-      "STUDENT",
-      `/bookings/studio/${SEED.studioId}`,
-      403,
-    );
+    await expectStatus("STUDENT", `/bookings/studio/${SEED.studioId}`, 403);
     const denied = await httpJson(
       "STUDENT",
       `/bookings/studio/${SEED.studioId}`,
     );
-    expect(String((denied.data as { message?: string }).message ?? denied.data)).toMatch(
-      /Insufficient permissions/i,
-    );
+    expect(
+      String((denied.data as { message?: string }).message ?? denied.data),
+    ).toMatch(/Insufficient permissions/i);
   });
 });

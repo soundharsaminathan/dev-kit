@@ -1,3 +1,4 @@
+import { testEmail } from "../../src/lib/test-email";
 /**
  * Mirror of `apps/step-up-api/prisma/seed-analytics.ts` IDs for local QA.
  * Not used by Playwright CI — analytics seed is a manual demo tenant.
@@ -11,28 +12,28 @@ export const ANALYTICS_SEED = {
   users: {
     OWNER: {
       id: "analytics-owner-1",
-      email: "analytics-owner@stepup.dev",
+      email: testEmail("analytics-owner"),
       name: "Analytics Studio Owner",
       role: "OWNER" as const,
       studioId: "studio-analytics-1",
     },
     STAFF: {
       id: "analytics-staff-1",
-      email: "analytics-staff@stepup.dev",
+      email: testEmail("analytics-staff"),
       name: "Analytics Front Desk",
       role: "STAFF" as const,
       studioId: "studio-analytics-1",
     },
     TRAINER: {
       id: "analytics-trainer-1",
-      email: "analytics-trainer@stepup.dev",
+      email: testEmail("analytics-trainer"),
       name: "Analytics Lead Trainer",
       role: "TRAINER" as const,
       studioId: "studio-analytics-1",
     },
     TRAINER_2: {
       id: "analytics-trainer-2",
-      email: "analytics-trainer-2@stepup.dev",
+      email: testEmail("analytics-trainer-2"),
       name: "Analytics Second Trainer",
       role: "TRAINER" as const,
       studioId: "studio-analytics-1",

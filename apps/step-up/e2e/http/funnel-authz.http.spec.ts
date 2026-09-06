@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { testEmail } from "../../src/lib/test-email";
 import { SEED } from "../fixtures/seed";
 import { expectOk, expectStatus, TestDataCleanup } from "./helpers";
 
@@ -19,7 +20,7 @@ test.describe("funnel and authz HTTP @http", () => {
   test("owner can create a student @http", async () => {
     const cleanup = new TestDataCleanup();
     try {
-      const email = `http-student-${Date.now()}@stepup.dev`;
+      const email = testEmail(`http-student-${Date.now()}`);
       const created = await expectOk<{ id: string; email: string }>(
         "OWNER",
         "/users",

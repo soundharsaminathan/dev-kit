@@ -32,7 +32,7 @@ cp apps/step-up/.env.example apps/step-up/.env
 pnpm dev:step-up
 ```
 
-Open http://localhost:5180 — sign in as `admin@stepup.dev` / `password`, or use **Continue as system admin** when `VITE_AUTH_BYPASS=true`. Create studios (and their users) from `/admin`. For Playwright / HTTP fixtures, run `pnpm --filter @step-up/api prisma:seed:e2e`. For analytics views (Payments, Retention, funnel, batch revenue), run `pnpm --filter @step-up/api prisma:seed:analytics` and sign in as `analytics-owner@stepup.dev`.
+Open http://localhost:5180 — sign in as `soundhar.adi+admin@gmail.com` / `password`, or use **Continue as system admin** when `VITE_AUTH_BYPASS=true`. Create studios (and their users) from `/admin`. For Playwright / HTTP fixtures, run `pnpm --filter @step-up/api prisma:seed:e2e`. For analytics views (Payments, Retention, funnel, batch revenue), run `pnpm --filter @step-up/api prisma:seed:analytics` and sign in as `soundhar.adi+analytics-owner@gmail.com`.
 
 Dev auth header: `Authorization: Bearer dev:SYSTEM_ADMIN:system-admin-1`
 

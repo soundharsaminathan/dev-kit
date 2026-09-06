@@ -1,3 +1,4 @@
+import { testEmail } from "../../src/lib/test-email";
 import {
   apiRequest,
   expect,
@@ -22,7 +23,7 @@ test.describe("owner initial login @critical", () => {
     test.setTimeout(120_000);
     const cleanup = new TestDataCleanup();
     const stamp = Date.now();
-    const ownerEmail = `e2e-owner-login-${stamp}@stepup.dev`;
+    const ownerEmail = testEmail(`e2e-owner-login-${stamp}`);
     const temporaryPassword = `Su-Temp${stamp.toString(36)}xx`;
 
     const created = await apiRequest<CreatedStudio>(

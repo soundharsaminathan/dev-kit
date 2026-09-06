@@ -1,3 +1,4 @@
+import { testEmail } from "../../src/lib/test-email";
 import {
   apiRequest,
   expect,
@@ -20,7 +21,7 @@ type SyncedStudent = {
 async function createIncompleteStudent(label: string) {
   const stamp = Date.now();
   const id = `dev-signup-onboarding-${stamp}-${label}`;
-  const email = `onboarding-${stamp}-${label}@stepup.dev`;
+  const email = testEmail(`onboarding-${stamp}-${label}`);
   return apiRequest<SyncedStudent>("OWNER", "/auth/sync", {
     method: "POST",
     headers: {

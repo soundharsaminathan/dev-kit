@@ -1,3 +1,4 @@
+import { testEmail } from "../src/test/test-email";
 import "dotenv/config";
 import * as admin from "firebase-admin";
 
@@ -11,37 +12,37 @@ import * as admin from "firebase-admin";
 const USERS = [
   {
     uid: "smoke-system-admin-1",
-    email: "smoke-admin@stepup.dev",
+    email: testEmail("smoke-admin"),
     displayName: "Smoke System Admin",
   },
   {
     uid: "smoke-owner-1",
-    email: "smoke-owner@stepup.dev",
+    email: testEmail("smoke-owner"),
     displayName: "Smoke Studio Owner",
   },
   {
     uid: "smoke-staff-1",
-    email: "smoke-staff@stepup.dev",
+    email: testEmail("smoke-staff"),
     displayName: "Smoke Front Desk",
   },
   {
     uid: "smoke-trainer-1",
-    email: "smoke-trainer@stepup.dev",
+    email: testEmail("smoke-trainer"),
     displayName: "Smoke Lead Trainer",
   },
   {
     uid: "smoke-student-1",
-    email: "smoke-student@stepup.dev",
+    email: testEmail("smoke-student"),
     displayName: "Smoke Alex Student",
   },
   {
     uid: "smoke-parent-1",
-    email: "smoke-parent@stepup.dev",
+    email: testEmail("smoke-parent"),
     displayName: "Smoke Jamie Parent",
   },
   {
     uid: "smoke-onboarding-1",
-    email: "smoke-onboarding@stepup.dev",
+    email: testEmail("smoke-onboarding"),
     displayName: "Smoke New Dancer",
   },
 ] as const;

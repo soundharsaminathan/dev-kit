@@ -32,6 +32,7 @@ import {
   loadFirebase,
 } from "./firebase";
 import { setLastLoginIdentifier } from "./last-login";
+import { testEmail } from "./test-email";
 
 const AUTH_BOOTSTRAP_TIMEOUT_MS = 12_000;
 
@@ -642,7 +643,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (isAuthBypassEnabled()) {
         if (options?.asNewStudent) {
           const created = await createBypassStudent({
-            email: `google-${Date.now()}@stepup.dev`,
+            email: testEmail(`google-${Date.now()}`),
             name: "New dancer",
             ...(options.studioId ? { studioId: options.studioId } : {}),
           });

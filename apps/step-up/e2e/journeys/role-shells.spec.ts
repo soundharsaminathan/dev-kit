@@ -1,3 +1,4 @@
+import { testEmail } from "../../src/lib/test-email";
 import { authFile, expect, test, waitForAppReady } from "../fixtures";
 
 test.describe("role shells @critical", () => {
@@ -99,7 +100,7 @@ test.describe("role shells @critical", () => {
       page.getByRole("heading", { name: "Details", exact: true }),
     ).toBeVisible();
     await page.getByLabel("Studio name").fill("E2E Admin Studio");
-    await page.getByLabel("Owner email").fill("e2e-new-owner@stepup.dev");
+    await page.getByLabel("Owner email").fill(testEmail("e2e-new-owner"));
     await page.getByTestId("studio-wizard-next").click();
     await expect(
       page.getByRole("heading", { name: "Optional Branding", exact: true }),

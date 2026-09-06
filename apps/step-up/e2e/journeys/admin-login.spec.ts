@@ -1,8 +1,9 @@
 import type { Page } from "@playwright/test";
+import { testEmail } from "../../src/lib/test-email";
 import { expect, test, waitForAppReady } from "../fixtures";
 
 const BYPASS_PASSWORD = "password";
-const ADMIN_EMAIL = "admin@stepup.dev";
+const ADMIN_EMAIL = testEmail("admin");
 
 async function expectAdminStudiosShell(page: Page) {
   await expect(page).toHaveURL(/\/admin\/?$/, { timeout: 60_000 });

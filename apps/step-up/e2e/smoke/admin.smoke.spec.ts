@@ -1,3 +1,4 @@
+import { testEmail } from "../../src/lib/test-email";
 import { isScheduleConflict } from "../fixtures/billing-calendar";
 import {
   apiBaseUrl,
@@ -103,7 +104,9 @@ async function pollImportJob(
     }
     await new Promise((resolve) => setTimeout(resolve, 750));
   }
-  throw new Error(`Import job ${importId} did not complete within ${timeoutMs}ms`);
+  throw new Error(
+    `Import job ${importId} did not complete within ${timeoutMs}ms`,
+  );
 }
 
 async function openInvoicesAndWaitFor(
@@ -715,7 +718,7 @@ test.describe("admin (staff) smoke @smoke", () => {
       method: "POST",
       body: JSON.stringify({
         name: `Smoke Unenroll ${stamp}`,
-        email: `smoke-unenroll-${stamp}@stepup.dev`,
+        email: testEmail(`smoke-unenroll-${stamp}`),
         gender: "FEMALE",
         ageRange: "TWENTY_TO_FORTY",
         styles: ["Hip Hop"],

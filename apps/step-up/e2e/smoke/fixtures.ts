@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { test as base, expect, type Page } from "@playwright/test";
+import { testEmail } from "../../src/lib/test-email";
 import {
   batchCreateBody,
   canJoinPostpaidNow,
@@ -391,7 +392,7 @@ export async function enrollPrepaid(
         method: "POST",
         body: JSON.stringify({
           name: options.name ?? `Smoke Pay ${stamp}`,
-          email: `smoke-pay-${stamp}@stepup.dev`,
+          email: testEmail(`smoke-pay-${stamp}`),
           gender: "FEMALE",
           ageRange:
             options.ageRange ??
@@ -447,7 +448,7 @@ export async function enrollPostpaid(
       method: "POST",
       body: JSON.stringify({
         name: options.name ?? `Smoke Postpaid ${stamp}`,
-        email: `smoke-postpaid-${stamp}@stepup.dev`,
+        email: testEmail(`smoke-postpaid-${stamp}`),
         gender: "FEMALE",
         ageRange:
           options.ageRange ??
