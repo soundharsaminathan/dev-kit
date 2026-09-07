@@ -52,8 +52,8 @@ export function writeRoleStorageState(role: SeedRole) {
  */
 export async function waitForAppReady(page: Page) {
   const readyTimeout = 60_000;
-  // Login/register keep a static #boot-public shell until first interaction
-  // (LCP). Nudge dismiss if the React app has mounted underneath.
+  // Auth forms dismiss #boot-public once React is ready. Nudge in case an
+  // older overlay is still covering the tree.
   const bootPublic = page.locator("#boot-public");
   if ((await bootPublic.count()) > 0) {
     await page

@@ -1,9 +1,18 @@
-import { useEffect } from "react";
+import { useEffect, useLayoutEffect } from "react";
 
-type DismissMode = "idle" | "interact";
+type DismissMode = "idle" | "interact" | "ready";
+
+/** Landing can wait for idle, but never long enough to feel stuck. */
+const IDLE_DISMISS_TIMEOUT_MS = 1_500;
+const IDLE_DISMISS_FALLBACK_MS = 800;
 
 function isAutomatedClient() {
   return import.meta.env.VITE_AUTH_BYPASS === "true";
+}
+
+function dismissBootPublic(shell: HTMLElement) {
+  document.documentElement.removeAttribute("data-boot-public");
+  shell.remove();
 }
 
 /**
@@ -11,14 +20,32 @@ function isAutomatedClient() {
  * slow networks) get early FCP/LCP from index.html. React mounts underneath
  * (`html[data-boot-public] #root { visibility: hidden }`).
  *
- * - idle: dismiss on requestIdleCallback (landing)
- * - interact: dismiss on first pointer/keyboard (login/register) so the shell
- *   remains the LCP candidate under mobile simulation
+ * - ready: dismiss as soon as the React page committed (login/register). Do
+ *   not wait for a click — that hid the real form for up to 30s.
+ * - idle: dismiss on requestIdleCallback (landing), capped so a busy main
+ *   thread cannot hold the overlay for 12s.
+ * - interact: dismiss on first pointer/keyboard. Lab-only LCP hold; avoid on
+ *   forms.
  *
  * Bypass/e2e clients dismiss immediately so Playwright can reach the real form.
  */
 export function useDismissBootPublic(mode: DismissMode = "idle") {
+  useLayoutEffect(() => {
+    if (mode !== "ready" && !isAutomatedClient()) {
+      return;
+    }
+    const shell = document.getElementById("boot-public");
+    if (!shell) {
+      return;
+    }
+    dismissBootPublic(shell);
+  }, [mode]);
+
   useEffect(() => {
+    if (mode === "ready" || isAutomatedClient()) {
+      return;
+    }
+
     const shell = document.getElementById("boot-public");
     if (!shell) {
       return;
@@ -30,17 +57,8 @@ export function useDismissBootPublic(mode: DismissMode = "idle") {
     const dismiss = () => {
       if (cancelled) return;
       cancelled = true;
-      document.documentElement.removeAttribute("data-boot-public");
-      shell.remove();
+      dismissBootPublic(shell);
     };
-
-    if (isAutomatedClient()) {
-      dismiss();
-      return () => {
-        cancelled = true;
-        document.documentElement.removeAttribute("data-boot-public");
-      };
-    }
 
     if (mode === "interact") {
       const onInteract = () => dismiss();
@@ -49,8 +67,7 @@ export function useDismissBootPublic(mode: DismissMode = "idle") {
         passive: true,
       });
       window.addEventListener("keydown", onInteract, { once: true });
-      // Safety net for accessibility / non-interactive waits.
-      const safety = window.setTimeout(dismiss, 30_000);
+      const safety = window.setTimeout(dismiss, 8_000);
       return () => {
         cancelled = true;
         window.removeEventListener("pointerdown", onInteract);
@@ -63,11 +80,13 @@ export function useDismissBootPublic(mode: DismissMode = "idle") {
     const schedule =
       typeof requestIdleCallback === "function"
         ? (cb: () => void) => {
-            const id = requestIdleCallback(cb, { timeout: 12_000 });
+            const id = requestIdleCallback(cb, {
+              timeout: IDLE_DISMISS_TIMEOUT_MS,
+            });
             return () => cancelIdleCallback(id);
           }
         : (cb: () => void) => {
-            const id = window.setTimeout(cb, 4_000);
+            const id = window.setTimeout(cb, IDLE_DISMISS_FALLBACK_MS);
             return () => window.clearTimeout(id);
           };
 

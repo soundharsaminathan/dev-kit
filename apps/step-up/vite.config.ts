@@ -119,6 +119,15 @@ export default defineConfig(({ mode }) => {
     server: {
       port: 5180,
       open: !(process.env.CI || process.env.STEP_UP_E2E === "true"),
+      warmup: {
+        clientFiles: [
+          "./src/main.tsx",
+          "./src/routes/__root.tsx",
+          "./src/routes/login.tsx",
+          "./src/routes/register.tsx",
+          "./src/lib/auth-provider.tsx",
+        ],
+      },
     },
     define: {
       // Guarantee bypass for e2e even if a parent shell has an empty VITE_AUTH_BYPASS.

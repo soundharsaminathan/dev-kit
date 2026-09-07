@@ -10,18 +10,18 @@ import {
 } from "react";
 import { useAuth } from "@/lib/auth";
 import { BRAND_ICON_SRC } from "@/lib/brand";
-import { ClassaWordmark } from "@/modules/branding/classa-wordmark";
 import { SEED_STUDIO_ID } from "@/lib/constants";
 import { homePathForUser } from "@/lib/require-auth";
 import { useDismissBootPublic } from "@/lib/use-dismiss-boot-public";
+import { ClassaWordmark } from "@/modules/branding/classa-wordmark";
 import { FOOTER, NAV } from "@/modules/marketing/content";
 import { TouchButton } from "@/modules/ui/touch-button";
 import styles from "./public-shell.module.scss";
 
 type PublicShellProps = {
   children: ReactNode;
-  /** Login keeps the static shell until first input for LCP; others idle-dismiss. */
-  bootDismiss?: "idle" | "interact";
+  /** Login/register dismiss as soon as React is ready; landing may idle. */
+  bootDismiss?: "idle" | "interact" | "ready";
   /** `marketing` adds full landing nav; `minimal` keeps Studio + Sign in. */
   nav?: "minimal" | "marketing";
   /** `full` removes main max-width clamp for edge-to-edge sections. */

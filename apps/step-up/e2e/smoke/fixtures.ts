@@ -30,9 +30,8 @@ export function authFile(role: SmokeRole) {
 
 export async function waitForAppReady(page: Page) {
   const readyTimeout = 60_000;
-  // Deployed smoke has no VITE_AUTH_BYPASS; login keeps #boot-public until
-  // interaction. Wait for the dismiss hook to arm, then nudge — an early click
-  // is a no-op and the 30s safety timeout exhausts the 5m auth setup budget.
+  // Deployed smoke has no VITE_AUTH_BYPASS. Auth forms dismiss #boot-public
+  // once React is ready; keep a click nudge for any leftover overlay.
   const bootPublic = page.locator("#boot-public");
   if ((await bootPublic.count()) > 0) {
     await expect

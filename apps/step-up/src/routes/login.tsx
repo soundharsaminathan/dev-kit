@@ -235,7 +235,7 @@ function LoginPage() {
   };
 
   return (
-    <PublicShell bootDismiss="interact">
+    <PublicShell bootDismiss="ready">
       <section className={styles.panel}>
         <div className={styles.brandBlock}>
           <img
