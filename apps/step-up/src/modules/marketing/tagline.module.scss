@@ -8,8 +8,12 @@
   --lp-text-4xl: 2.25rem;
   --lp-text-5xl: 3rem;
   --lp-text-6xl: 3.75rem;
+  --tagline-gap: 0.28em;
 
   flex-shrink: 0;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
   padding: var(--lp-space-800) var(--lp-space-200);
   hyphens: none;
 
@@ -19,6 +23,13 @@
 }
 
 .headline {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
   margin: 0 auto;
   max-width: var(--lp-copy);
   font-size: var(--lp-text-4xl);
@@ -26,26 +37,52 @@
   line-height: 1.22;
   overflow: visible;
   letter-spacing: -0.03em;
-  text-wrap: balance;
 }
 
 .section[data-compact] .headline {
   margin: 0;
 }
 
-.line {
-  display: block;
+.sizer {
+  position: absolute;
+  display: grid;
+  grid-template-columns: max-content max-content;
+  column-gap: var(--tagline-gap);
+  width: max-content;
+  height: 0;
+  overflow: hidden;
+  visibility: hidden;
+  pointer-events: none;
 }
 
-@media (min-width: 768px) {
-  .line[data-join] {
-    display: inline;
-  }
+.sizerCell {
+  display: contents;
+}
+
+.phrase {
+  display: flex;
+  flex-wrap: nowrap;
+  column-gap: var(--tagline-gap);
+  max-width: 100%;
+}
+
+.headline[data-stack] .phrase {
+  flex-wrap: wrap;
+}
+
+.headline[data-stack] .phrase > .word {
+  flex-basis: 100%;
+}
+
+.chunk {
+  display: flex;
+  flex-wrap: nowrap;
+  column-gap: var(--tagline-gap);
+  white-space: nowrap;
 }
 
 .word {
   display: inline-block;
-  margin-right: 0.28em;
   color: color-mix(in srgb, var(--color-fg) 30%, transparent);
   transition: color 700ms var(--lp-ease);
 

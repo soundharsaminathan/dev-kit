@@ -11,8 +11,10 @@ export const HERO = {
 } as const;
 
 export const TAGLINE = {
-  // Third line sits under "forgot" on small screens; joined again from 768px.
-  lines: ["follow the fashion,", "forgot", "the fillings"],
+  phrases: [
+    { lead: "follow", tail: ["the", "fashion,"] },
+    { lead: "forgot", tail: ["the", "fillings"] },
+  ],
 } as const;
 
 export const PROBLEM = {

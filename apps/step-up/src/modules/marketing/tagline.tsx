@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { TAGLINE } from "./content";
 import styles from "./tagline.module.scss";
 
@@ -9,27 +9,49 @@ function prefersReducedMotion() {
 function WordText({ word }: { word: string }) {
   return Array.from(word).map((char, i) =>
     char.toLowerCase() === "f" ? (
-        <span key={i} className={styles.f}>
-          {char}
-        </span>
+      <span key={i} className={styles.f}>
+        {char}
+      </span>
     ) : (
       <span key={i}>{char}</span>
     ),
   );
 }
 
+const PHRASES = TAGLINE.phrases;
+const LABEL = PHRASES.map(
+  (phrase) => `${phrase.lead} ${phrase.tail.join(" ")}`,
+).join(" ");
+const TOTAL = PHRASES.reduce((n, phrase) => n + 1 + phrase.tail.length, 0);
+
 export function Tagline({
   compact = false,
   inline = false,
 }: { compact?: boolean; inline?: boolean }) {
-  const words = TAGLINE.lines.map((line) => line.split(" "));
-  const total = words.reduce((n, line) => n + line.length, 0);
   const [active, setActive] = useState(0);
+  const [stack, setStack] = useState(true);
   const refs = useRef<(HTMLSpanElement | null)[]>([]);
+  const headRef = useRef<HTMLHeadingElement>(null);
+  const sizerRef = useRef<HTMLSpanElement>(null);
+
+  useLayoutEffect(() => {
+    const head = headRef.current;
+    const sizer = sizerRef.current;
+    if (!head || !sizer) return;
+
+    const update = () => {
+      setStack(sizer.offsetWidth > head.clientWidth + 1);
+    };
+
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(head);
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     if (prefersReducedMotion()) {
-      setActive(total);
+      setActive(TOTAL);
       return;
     }
 
@@ -38,7 +60,7 @@ export function Tagline({
       const step = () => {
         i += 1;
         setActive(i);
-        if (i < total) setTimeout(step, 120);
+        if (i < TOTAL) setTimeout(step, 120);
       };
       const id = setTimeout(step, 300);
       return () => clearTimeout(id);
@@ -62,9 +84,27 @@ export function Tagline({
 
     for (const node of nodes) observer.observe(node);
     return () => observer.disconnect();
-  }, [total, inline]);
+  }, [inline]);
 
   let index = 0;
+
+  const renderWord = (word: string) => {
+    const i = index;
+    index += 1;
+    const on = i < active;
+    return (
+      <span
+        key={`${word}-${i}`}
+        ref={(el) => {
+          refs.current[i] = el;
+        }}
+        className={styles.word}
+        data-active={on || undefined}
+      >
+        <WordText word={word} />
+      </span>
+    );
+  };
 
   const Wrapper = inline ? "div" : "section";
 
@@ -75,33 +115,34 @@ export function Tagline({
       aria-labelledby={inline ? undefined : "tagline-headline"}
     >
       <h2
+        ref={headRef}
         id={inline ? undefined : "tagline-headline"}
         className={styles.headline}
-        aria-label={TAGLINE.lines.join(" ")}
+        data-stack={stack || undefined}
+        aria-label={LABEL}
       >
-        {words.map((line, lineIdx) => (
-          <span
-            key={TAGLINE.lines[lineIdx]}
-            className={styles.line}
-            data-join={lineIdx > 0 || undefined}
-          >
-            {line.map((word) => {
-              const i = index;
-              index += 1;
-              const on = i < active;
-              return (
-                <span
-                  key={`${word}-${i}`}
-                  ref={(el) => {
-                    refs.current[i] = el;
-                  }}
-                  className={styles.word}
-                  data-active={on || undefined}
-                >
-                  <WordText word={word} />
-                </span>
-              );
-            })}
+        <span ref={sizerRef} className={styles.sizer} aria-hidden>
+          {PHRASES.map((phrase) => (
+            <span key={`sizer-${phrase.lead}`} className={styles.sizerCell}>
+              <span className={styles.word}>
+                <WordText word={phrase.lead} />
+              </span>
+              <span className={styles.chunk}>
+                {phrase.tail.map((word) => (
+                  <span key={word} className={styles.word}>
+                    <WordText word={word} />
+                  </span>
+                ))}
+              </span>
+            </span>
+          ))}
+        </span>
+        {PHRASES.map((phrase) => (
+          <span key={phrase.lead} className={styles.phrase}>
+            {renderWord(phrase.lead)}
+            <span className={styles.chunk}>
+              {phrase.tail.map((word) => renderWord(word))}
+            </span>
           </span>
         ))}
       </h2>
