@@ -126,7 +126,7 @@ function JoinPage() {
 
   if (!token) {
     return (
-      <PublicShell bootDismiss="ready">
+      <PublicShell>
         <section className={styles.panel}>
           <Alert variant="danger">
             <AlertTitle>Missing invite</AlertTitle>
@@ -140,7 +140,7 @@ function JoinPage() {
   }
 
   return (
-    <PublicShell bootDismiss="ready">
+    <PublicShell>
       <section className={styles.panel}>
         <div>
           <p className={styles.brand}>classa</p>

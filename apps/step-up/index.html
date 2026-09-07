@@ -554,26 +554,6 @@
         color: oklch(0.72 0.01 78);
       }
 
-      #boot-public .login-title {
-        margin: 0;
-        font-size: 1.75rem;
-        font-weight: 700;
-        letter-spacing: -0.03em;
-        line-height: 1.15;
-        color: inherit;
-      }
-
-      #boot-public .login-subtitle {
-        margin: 0;
-        font-size: 0.9375rem;
-        line-height: 1.45;
-        color: rgb(28 26 23 / 62%);
-      }
-
-      html[data-theme-mode="dark"] #boot-public .login-subtitle {
-        color: oklch(0.72 0.01 78);
-      }
-
       #boot-public .shell-footer {
         padding: 1.5rem 1rem;
         text-align: center;
@@ -583,10 +563,6 @@
 
       html[data-theme-mode="dark"] #boot-public .shell-footer {
         color: oklch(0.72 0.01 78);
-      }
-
-      html[data-boot-public] #root {
-        visibility: hidden;
       }
     </style>
   </head>
@@ -648,29 +624,6 @@
             '<h1 class="hero-brand">Collect every fee<br />without chasing parents</h1>' +
               '<p class="hero-support">classa is the workspace for dance studio owners. Students, batches, attendance, and payments live in one place so you can teach instead of chase.</p>',
             "shell-main-landing",
-          );
-          return;
-        }
-
-        if (path === "/login" || path.indexOf("/login") === 0) {
-          mountPublic(
-            '<p class="login-eyebrow" style="margin:0;font-size:0.875rem;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#ee8a55">classa</p>' +
-              '<h1 class="login-title">Welcome back</h1>' +
-              '<p class="login-subtitle">Sign in to manage your studio or continue to your classes.</p>',
-          );
-          return;
-        }
-
-        if (
-          path.indexOf("/register") === 0 ||
-          path.indexOf("/forgot-password") === 0 ||
-          path.indexOf("/auth/action") === 0 ||
-          path.indexOf("/join") === 0 ||
-          path.indexOf("/studio/") === 0
-        ) {
-          mountPublic(
-            '<h1 class="login-title">classa</h1>' +
-              '<p class="login-subtitle">Loading…</p>',
           );
           return;
         }

@@ -52,15 +52,6 @@ export function writeRoleStorageState(role: SeedRole) {
  */
 export async function waitForAppReady(page: Page) {
   const readyTimeout = 60_000;
-  // Auth forms dismiss #boot-public once React is ready. Nudge in case an
-  // older overlay is still covering the tree.
-  const bootPublic = page.locator("#boot-public");
-  if ((await bootPublic.count()) > 0) {
-    await page
-      .locator("body")
-      .click({ position: { x: 2, y: 2 }, force: true })
-      .catch(() => undefined);
-  }
   await expect(
     page.locator("#boot-splash, [data-boot-loader], #boot-public"),
   ).toHaveCount(0, {

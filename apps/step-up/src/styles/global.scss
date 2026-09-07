@@ -19,11 +19,6 @@ body {
     sans-serif;
 }
 
-/* While the static public shell is up, hide React to avoid CLS/LCP churn. */
-html[data-boot-public] #root {
-  visibility: hidden;
-}
-
 html[data-theme-mode="light"] {
   color-scheme: light;
 }

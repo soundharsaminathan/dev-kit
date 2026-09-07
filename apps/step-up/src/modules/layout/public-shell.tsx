@@ -20,8 +20,6 @@ import styles from "./public-shell.module.scss";
 
 type PublicShellProps = {
   children: ReactNode;
-  /** Login/register dismiss as soon as React is ready; landing may idle. */
-  bootDismiss?: "idle" | "interact" | "ready";
   /** `marketing` adds full landing nav; `minimal` keeps Studio + Sign in. */
   nav?: "minimal" | "marketing";
   /** `full` removes main max-width clamp for edge-to-edge sections. */
@@ -30,11 +28,10 @@ type PublicShellProps = {
 
 export function PublicShell({
   children,
-  bootDismiss = "idle",
   nav = "minimal",
   width = "prose",
 }: PublicShellProps) {
-  useDismissBootPublic(bootDismiss);
+  useDismissBootPublic();
   const { user, loading } = useAuth();
   const appHome = user ? homePathForUser(user) : null;
   const isMarketing = nav === "marketing";

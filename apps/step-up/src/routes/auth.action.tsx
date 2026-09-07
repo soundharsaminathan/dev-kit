@@ -121,7 +121,7 @@ function AuthActionPage() {
       };
 
   return (
-    <PublicShell bootDismiss="ready">
+    <PublicShell>
       <section className={styles.panel}>
         <div>
           <p className={styles.brand}>classa</p>

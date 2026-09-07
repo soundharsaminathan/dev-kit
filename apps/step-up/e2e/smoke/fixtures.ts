@@ -30,28 +30,6 @@ export function authFile(role: SmokeRole) {
 
 export async function waitForAppReady(page: Page) {
   const readyTimeout = 60_000;
-  // Deployed smoke has no VITE_AUTH_BYPASS. Auth forms dismiss #boot-public
-  // once React is ready; keep a click nudge for any leftover overlay.
-  const bootPublic = page.locator("#boot-public");
-  if ((await bootPublic.count()) > 0) {
-    await expect
-      .poll(
-        async () => {
-          if ((await bootPublic.count()) === 0) return "gone";
-          const armed = await page.evaluate(() =>
-            document.documentElement.hasAttribute("data-boot-public"),
-          );
-          if (!armed) return "pending";
-          await page
-            .locator("body")
-            .click({ position: { x: 2, y: 2 }, force: true })
-            .catch(() => undefined);
-          return (await bootPublic.count()) === 0 ? "gone" : "armed";
-        },
-        { timeout: readyTimeout, intervals: [100, 250, 500] },
-      )
-      .toBe("gone");
-  }
   await expect(
     page.locator("#boot-splash, [data-boot-loader], #boot-public"),
   ).toHaveCount(0, {

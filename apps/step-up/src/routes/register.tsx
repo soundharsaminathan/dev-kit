@@ -192,7 +192,7 @@ function RegisterPage() {
   };
 
   return (
-    <PublicShell bootDismiss="ready">
+    <PublicShell>
       <section className={styles.panel}>
         <div className={styles.brandBlock}>
           <img
