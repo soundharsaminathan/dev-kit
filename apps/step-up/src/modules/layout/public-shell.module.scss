@@ -90,11 +90,12 @@
 
 .brandIcon {
   display: block;
-  width: 1.75rem;
-  height: 1.75rem;
+  width: 2rem;
+  height: 2rem;
   object-fit: contain;
-  border-radius: var(--radius-md, 0.5rem);
+  object-position: center;
   flex-shrink: 0;
+  overflow: visible;
 }
 
 .nav {

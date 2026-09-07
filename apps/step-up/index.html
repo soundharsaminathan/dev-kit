@@ -467,10 +467,10 @@
       }
 
       #boot-public .shell-brand img {
-        width: 1.75rem;
-        height: 1.75rem;
-        border-radius: 0.5rem;
+        width: 2rem;
+        height: 2rem;
         object-fit: contain;
+        flex-shrink: 0;
       }
 
       #boot-public .shell-main {
@@ -593,7 +593,7 @@
             '<div id="boot-public">' +
             '<header class="shell-header">' +
             '<a class="shell-brand" href="/">' +
-            '<img src="/icons/classa-mark.png" alt="" />' +
+            '<img src="/icons/classa-header.png" width="32" height="32" alt="" />' +
             "<span>classa</span>" +
             "</a>" +
             "</header>" +
@@ -692,7 +692,7 @@
             '<span class="slow-sep" aria-hidden="true">—</span>' +
             '<a class="slow-link" href="/">Home</a>' +
             "</nav>" +
-            '<img class="slow-brand" src="/icons/classa-mark.png" alt="classa" />' +
+            '<img class="slow-brand" src="/icons/classa-header.png" alt="classa" />' +
             "</div>";
           var refresh = document.getElementById("boot-slow-refresh");
           if (refresh) {

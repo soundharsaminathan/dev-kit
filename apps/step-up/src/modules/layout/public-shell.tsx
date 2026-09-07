@@ -149,6 +149,8 @@ export function PublicShell({
               <img
                 className={styles.brandIcon}
                 src={BRAND_ICON_SRC}
+                width={32}
+                height={32}
                 alt=""
                 aria-hidden
               />
@@ -193,6 +195,8 @@ export function PublicShell({
             <img
               className={styles.brandIcon}
               src={BRAND_ICON_SRC}
+              width={32}
+              height={32}
               alt=""
               aria-hidden
             />
@@ -288,6 +292,8 @@ export function PublicShell({
               <img
                 className={styles.brandIcon}
                 src={BRAND_ICON_SRC}
+                width={32}
+                height={32}
                 alt=""
                 aria-hidden
               />
