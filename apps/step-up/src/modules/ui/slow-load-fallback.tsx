@@ -1,4 +1,4 @@
-import { BRAND_ICON_SRC, BRAND_NAME } from "@/lib/brand";
+import { BRAND_ICON_SRC, BRAND_LOGO_SRC, BRAND_NAME } from "@/lib/brand";
 import styles from "./slow-load-fallback.module.scss";
 
 type SlowLoadFallbackProps = {
@@ -26,7 +26,7 @@ export function SlowLoadFallback({ onRefresh }: SlowLoadFallbackProps) {
       <div className={styles.content}>
         <img
           className={styles.mascot}
-          src={BRAND_ICON_SRC}
+          src={BRAND_LOGO_SRC}
           alt=""
           aria-hidden
         />

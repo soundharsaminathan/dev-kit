@@ -8,7 +8,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import type { AuthUser } from "@/lib/auth-context";
-import { BRAND_ICON_SRC, BRAND_NAME } from "@/lib/brand";
+import { BRAND_LOGO_SRC, BRAND_NAME } from "@/lib/brand";
 import { isAuthBypassEnabled, SEED_PASSWORD } from "@/lib/constants";
 import { isDirectLoginFlag } from "@/lib/direct-login";
 import { getLastLoginIdentifier } from "@/lib/last-login";
@@ -240,7 +240,7 @@ function LoginPage() {
         <div className={styles.brandBlock}>
           <img
             className={styles.brandMark}
-            src={BRAND_ICON_SRC}
+            src={BRAND_LOGO_SRC}
             alt=""
             aria-hidden
           />

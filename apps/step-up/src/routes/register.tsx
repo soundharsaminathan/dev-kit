@@ -7,7 +7,7 @@ import { useForm } from "@tanstack/react-form";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
-import { BRAND_ICON_SRC, BRAND_NAME } from "@/lib/brand";
+import { BRAND_LOGO_SRC, BRAND_NAME } from "@/lib/brand";
 import type { UserRole } from "@/lib/constants";
 import {
   homePathForUser,
@@ -197,7 +197,7 @@ function RegisterPage() {
         <div className={styles.brandBlock}>
           <img
             className={styles.brandMark}
-            src={BRAND_ICON_SRC}
+            src={BRAND_LOGO_SRC}
             alt=""
             aria-hidden
           />
