@@ -191,20 +191,16 @@ test.describe("student smoke @smoke", () => {
       if (body.status === "AWAITING_PAYMENT") {
         await expect(page).toHaveURL(/\/me\/checkout\//);
         await expect(page.getByTestId("checkout-pay")).toBeVisible();
-
-        const [orderResponse, confirmResponse] = await Promise.all([
+        // Deployed smoke hits live Razorpay; do not complete Pay. Abandon the
+        // hold instead — the mid-flow cancel that works without a gateway.
+        const [abandonResponse] = await Promise.all([
           waitForApiResponse(page, {
             method: "POST",
-            pathIncludes: "/create-payment-order",
+            pathIncludes: "/abandon-payment",
           }),
-          waitForApiResponse(page, {
-            method: "POST",
-            pathIncludes: "/confirm-payment",
-          }),
-          page.getByTestId("checkout-pay").click(),
+          page.getByTestId("checkout-abandon").click(),
         ]);
-        expect(orderResponse.ok()).toBeTruthy();
-        expect(confirmResponse.ok()).toBeTruthy();
+        expect(abandonResponse.ok()).toBeTruthy();
       }
     } finally {
       await context.close();

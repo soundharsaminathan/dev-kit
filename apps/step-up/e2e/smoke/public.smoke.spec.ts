@@ -34,8 +34,17 @@ test.describe("public smoke @smoke", () => {
 
     await page.goto("/login?includeTest=1", { waitUntil: "domcontentloaded" });
     await waitForAppReady(page);
-    await expect(page.getByTestId("login-studio-select")).toBeVisible();
-    await expect(page.getByText("Smoke Test Studio")).toBeVisible();
+    const picker = page.getByTestId("login-studio-select");
+    await expect(picker).toBeVisible();
+    await expect(picker).toBeEnabled();
+    await picker.click();
+    // Native HiddenSelect <option>s are in the DOM but not visible; assert the
+    // open listbox item the user actually sees.
+    await expect(
+      page
+        .getByRole("listbox")
+        .getByRole("option", { name: "Smoke Test Studio" }),
+    ).toBeVisible();
   });
 
   test("direct login page has username and password only @smoke", async ({
