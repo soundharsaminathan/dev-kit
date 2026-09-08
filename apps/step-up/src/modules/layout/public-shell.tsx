@@ -10,7 +10,6 @@ import {
 } from "react";
 import { useAuth } from "@/lib/auth";
 import { BRAND_ICON_SRC } from "@/lib/brand";
-import { SEED_STUDIO_ID } from "@/lib/constants";
 import { homePathForUser } from "@/lib/require-auth";
 import { useDismissBootPublic } from "@/lib/use-dismiss-boot-public";
 import { ClassaWordmark } from "@/modules/branding/classa-wordmark";
@@ -20,7 +19,7 @@ import styles from "./public-shell.module.scss";
 
 type PublicShellProps = {
   children: ReactNode;
-  /** `marketing` adds full landing nav; `minimal` keeps Studio + Sign in. */
+  /** `marketing` adds full landing nav; `minimal` keeps Sign in. */
   nav?: "minimal" | "marketing";
   /** `full` removes main max-width clamp for edge-to-edge sections. */
   width?: "prose" | "full";
@@ -203,9 +202,6 @@ export function PublicShell({
             <ClassaWordmark variant="italic-a" />
           </Link>
           <nav className={styles.nav}>
-            <Link to="/studio/$studioId" params={{ studioId: SEED_STUDIO_ID }}>
-              <Button variant="quiet">Studio</Button>
-            </Link>
             {!loading &&
               (appHome ? (
                 <Link to={appHome}>
