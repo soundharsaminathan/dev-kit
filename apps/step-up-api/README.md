@@ -61,6 +61,7 @@ Generate a key: `node -e "console.log(require('crypto').randomBytes(32).toString
 | `pnpm prisma:seed:e2e` | Seed isolated e2e test studio (`studio-e2e-1`) |
 | `pnpm prisma:seed:smoke` | Seed isolated smoke studio (`studio-smoke-1`) |
 | `pnpm prisma:seed:analytics` | Seed analytics demo studio (`studio-analytics-1`) |
+| `pnpm devtool:create-month-invoices` | Catch up this month's prepaid invoices (`[--dry-run]`, optional studio id). Prod: `ALLOW_PROD_DB=1` |
 | `pnpm test` | Run unit tests |
 
 See [ARCHITECTURE.md](./ARCHITECTURE.md) for CQRS, outbox, and layering rules.
