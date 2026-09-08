@@ -33,6 +33,20 @@ export class QueueBootstrapService implements OnModuleInit {
         },
       );
 
+      // Catch up membership rolls on boot (idempotent). Covers deploys that
+      // miss 06:00 UTC, e.g. first worker bring-up mid-month.
+      await this.scheduledQueue.add(
+        "daily",
+        {},
+        {
+          jobId: `daily-jobs:boot:${Date.now()}`,
+          attempts: 3,
+          backoff: { type: "exponential", delay: 2000 },
+          removeOnComplete: 50,
+          removeOnFail: 100,
+        },
+      );
+
       await this.retentionQueue.add(
         "retention",
         {},

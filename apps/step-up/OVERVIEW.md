@@ -163,7 +163,7 @@ Owner home tiles count students by period (`lifetime` / month / quarter / half-y
 Controller → application (commands / queries) → domain → persistence
 ```
 
-HTTP and WebSocket live in `main.ts`. A separate worker claims `OutboxEvent` rows (SKIP LOCKED) and runs BullMQ processors (notifications, projections, scheduled jobs). Daily work is `POST /jobs/daily` with `x-jobs-secret` (Cloud Scheduler). List APIs are cursor-paginated. Heavy dashboards read `BatchSummary` / `StudioRevenueSummary` rather than giant includes.
+HTTP and WebSocket live in `main.ts`. A separate worker claims `OutboxEvent` rows (SKIP LOCKED) and runs BullMQ processors (notifications, projections, scheduled jobs). Daily work runs on Cloud Run `step-up-worker` (BullMQ cron at 06:00 UTC plus a catch-up job on boot). `POST /jobs/daily` only enqueues for that worker. List APIs are cursor-paginated. Heavy dashboards read `BatchSummary` / `StudioRevenueSummary` rather than giant includes.
 
 PII and chat ciphertext are never listed as full user blobs on discover cards; presenters expose lite display fields.
 

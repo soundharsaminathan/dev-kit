@@ -7,7 +7,7 @@ Modular monolith with selective CQRS, transactional outbox, and a dedicated Bull
 | Process | Entry | Responsibility |
 |---------|-------|----------------|
 | API | `src/main.ts` | HTTP, WebSocket, commands, queries. Writes outbox rows / enqueues jobs. No `@Processor`, no outbox poller. |
-| Worker | `src/worker.main.ts` | Outbox claim → BullMQ, notification/projection/scheduled processors. Health-only HTTP. |
+| Worker | `src/worker.main.ts` | Outbox claim → BullMQ, notification/projection/scheduled processors. Health-only HTTP. Deployed as Cloud Run `step-up-worker` (same image, `node dist/worker.main.js`, min instances 1, CPU always allocated). |
 
 ## Layering (per domain module)
 

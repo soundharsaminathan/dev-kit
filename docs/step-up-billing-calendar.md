@@ -122,7 +122,7 @@ Shared helpers:
 | Unpaid + markable session | `enrollUnpaidOnPostpaidBatch` — prepaid on owned A, **switch** onto owned in-progress B (product switch, not seed) |
 | Discover prepaid | `POST /batches/:id/purchase` on a prepaid batch → checkout hold, not seated |
 | Discover mid-month / switch | Same purchase path → enroll now; mid-month may return a prorated invoice for desk collect |
-| Month-end roll without usage | Unit tests on `rollEndedActiveToNextDue` (daily job only enqueues; no HTTP worker) |
+| Month-end roll without usage | Unit tests on `rollEndedActiveToNextDue`. Production roll is Cloud Run `step-up-worker` (06:00 UTC + boot catch-up). |
 
 Canonical HTTP contract: `apps/step-up/e2e/http/billing-calendar.http.spec.ts`. Seed batches stay for auth, roles, and shared shells — not for join billing.
 

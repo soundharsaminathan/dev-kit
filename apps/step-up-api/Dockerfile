@@ -38,6 +38,6 @@ COPY --from=builder /app/prisma ./prisma
 USER app
 EXPOSE 8080
 ENV PORT=8080
-# API default. Worker Cloud Run service: override command to
-# ["node", "dist/worker.main.js"] (requires REDIS_URL).
+# API default. Worker Cloud Run service (`step-up-worker`): override command to
+# node dist/worker.main.js (requires REDIS_URL; min instances 1 + no CPU throttle).
 CMD ["node", "dist/main.js"]

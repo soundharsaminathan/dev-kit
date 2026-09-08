@@ -70,9 +70,41 @@ See [ARCHITECTURE.md](./ARCHITECTURE.md) for CQRS, outbox, and layering rules.
 ```bash
 docker build -t step-up-api .
 docker run -p 8080:8080 --env-file .env step-up-api
-# Worker (same image, different command):
-# docker run --env-file .env step-up-api node dist/worker.main.js
+# Worker (same image, different command; requires REDIS_URL):
+docker run --env-file .env -p 8080:8080 step-up-api node dist/worker.main.js
 ```
+
+## Cloud Run worker
+
+The API image already includes `dist/worker.main.js`. Production must run a **second** service with that command — the HTTP API (`OUTBOX_INLINE=true`) does not process BullMQ or the 06:00 UTC membership roll.
+
+CI deploys `step-up-worker` next to `step-up-api` (same image). To bring it up immediately from an already-deployed API revision:
+
+```bash
+REGION="$(gcloud run services describe step-up-api --format='value(metadata.labels.cloud.googleapis.com/location)')"
+IMAGE="$(gcloud run services describe step-up-api --region "$REGION" --format='value(spec.template.spec.containers[0].image)')"
+
+gcloud run deploy step-up-worker \
+  --image "$IMAGE" \
+  --region "$REGION" \
+  --platform managed \
+  --no-allow-unauthenticated \
+  --min-instances 1 \
+  --max-instances 1 \
+  --cpu 1 \
+  --memory 512Mi \
+  --no-cpu-throttling \
+  --port 8080 \
+  --command=node \
+  --args=dist/worker.main.js \
+  --network default \
+  --subnet default \
+  --vpc-egress private-ranges-only
+```
+
+Then copy env/secrets from `step-up-api` (at least `DATABASE_URL`, `REDIS_URL`, `PII_MASTER_KEY`, SMTP, Sentry). Do **not** set `OUTBOX_INLINE=true` on the worker.
+
+`--min-instances 1` and `--no-cpu-throttling` are required: Cloud Run otherwise freezes the process between HTTP requests, so the daily invoice job never runs. On boot the worker also enqueues one catch-up `runDaily` (idempotent), then repeats at 06:00 UTC.
 
 ## Key endpoints
 

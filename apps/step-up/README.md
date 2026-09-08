@@ -95,4 +95,4 @@ GitHub Actions: [`.github/workflows/step-up-deploy.yml`](../../.github/workflows
 
 Required secrets/vars: Cloudflare Pages, GCP Cloud Run WIF, Neon `DATABASE_URL`, Firebase, R2, Sentry.
 
-Daily jobs: `POST /jobs/daily` with header `x-jobs-secret: $JOBS_SECRET` (Cloud Scheduler).
+Daily jobs (next-month invoices, overdue, payouts) run on the **Cloud Run worker** (`step-up-worker`, same image, `node dist/worker.main.js`), not on the HTTP API. See [apps/step-up-api/README.md](../step-up-api/README.md#cloud-run-worker). `POST /jobs/daily` only enqueues for that worker.

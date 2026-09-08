@@ -196,6 +196,10 @@ jobs:
           echo "IMAGE=$IMAGE" >> "$GITHUB_ENV"
       - name: Deploy to Cloud Run
         run: |
+          set -euo pipefail
+          SECRETS="DATABASE_URL=STEP_UP_DATABASE_URL:latest,FIREBASE_PRIVATE_KEY=STEP_UP_FIREBASE_PRIVATE_KEY:latest,SESSION_QR_SECRET=STEP_UP_SESSION_QR_SECRET:latest,JOBS_SECRET=STEP_UP_JOBS_SECRET:latest,SENTRY_DSN=STEP_UP_SENTRY_DSN_API:latest,PII_MASTER_KEY=STEP_UP_PII_MASTER_KEY:latest,CHAT_MASTER_KEY=STEP_UP_CHAT_MASTER_KEY:latest,R2_ACCESS_KEY_ID=STEP_UP_R2_ACCESS_KEY_ID:latest,R2_SECRET_ACCESS_KEY=STEP_UP_R2_SECRET_ACCESS_KEY:latest,GEMINI_API_KEY=STEP_UP_GEMINI_API_KEY:latest,GROQ_API_KEY=STEP_UP_GROQ_API_KEY:latest"
+          ENV_COMMON="AUTH_BYPASS=false|FIREBASE_PROJECT_ID=${{ secrets.STEP_UP_FIREBASE_PROJECT_ID }}|FIREBASE_CLIENT_EMAIL=${{ secrets.STEP_UP_FIREBASE_CLIENT_EMAIL }}|SENTRY_ENVIRONMENT=production|R2_ACCOUNT_ID=${{ secrets.R2_ACCOUNT_ID }}|R2_BUCKET=${{ secrets.R2_BUCKET }}|R2_PUBLIC_URL=${{ secrets.R2_PUBLIC_URL }}|REDIS_URL=${{ secrets.STEP_UP_REDIS_URL }}|GEMINI_CHAT_MODEL=${{ vars.GEMINI_CHAT_MODEL || 'gemini-3.6-flash' }}|GROQ_CHAT_MODEL=${{ vars.GROQ_CHAT_MODEL || 'openai/gpt-oss-120b' }}|SMTP_HOST=${{ vars.SMTP_HOST || 'smtpout.secureserver.net' }}|SMTP_PORT=${{ vars.SMTP_PORT || '465' }}|SMTP_USER=${{ vars.SMTP_USER || 'info@classa.in' }}|SMTP_PASS=${{ secrets.SMTP_PASS }}|EMAIL_FROM=${{ vars.EMAIL_FROM || 'classa <info@classa.in>' }}|APP_URL=${{ vars.APP_URL || 'https://step-up.pages.dev' }}"
+
           gcloud run deploy step-up-api \
             --image "$IMAGE" \
             --region "${{ vars.GCP_REGION }}" \
@@ -208,8 +212,29 @@ jobs:
             --network default \
             --subnet default \
             --vpc-egress private-ranges-only \
-            --set-secrets=DATABASE_URL=STEP_UP_DATABASE_URL:latest,FIREBASE_PRIVATE_KEY=STEP_UP_FIREBASE_PRIVATE_KEY:latest,SESSION_QR_SECRET=STEP_UP_SESSION_QR_SECRET:latest,JOBS_SECRET=STEP_UP_JOBS_SECRET:latest,SENTRY_DSN=STEP_UP_SENTRY_DSN_API:latest,PII_MASTER_KEY=STEP_UP_PII_MASTER_KEY:latest,CHAT_MASTER_KEY=STEP_UP_CHAT_MASTER_KEY:latest,R2_ACCESS_KEY_ID=STEP_UP_R2_ACCESS_KEY_ID:latest,R2_SECRET_ACCESS_KEY=STEP_UP_R2_SECRET_ACCESS_KEY:latest,GEMINI_API_KEY=STEP_UP_GEMINI_API_KEY:latest,GROQ_API_KEY=STEP_UP_GROQ_API_KEY:latest \
-            --set-env-vars="^|^AUTH_BYPASS=false|OUTBOX_INLINE=true|FIREBASE_PROJECT_ID=${{ secrets.STEP_UP_FIREBASE_PROJECT_ID }}|FIREBASE_CLIENT_EMAIL=${{ secrets.STEP_UP_FIREBASE_CLIENT_EMAIL }}|SENTRY_ENVIRONMENT=production|R2_ACCOUNT_ID=${{ secrets.R2_ACCOUNT_ID }}|R2_BUCKET=${{ secrets.R2_BUCKET }}|R2_PUBLIC_URL=${{ secrets.R2_PUBLIC_URL }}|REDIS_URL=${{ secrets.STEP_UP_REDIS_URL }}|GEMINI_CHAT_MODEL=${{ vars.GEMINI_CHAT_MODEL || 'gemini-3.6-flash' }}|GROQ_CHAT_MODEL=${{ vars.GROQ_CHAT_MODEL || 'openai/gpt-oss-120b' }}|SMTP_HOST=${{ vars.SMTP_HOST || 'smtpout.secureserver.net' }}|SMTP_PORT=${{ vars.SMTP_PORT || '465' }}|SMTP_USER=${{ vars.SMTP_USER || 'info@classa.in' }}|SMTP_PASS=${{ secrets.SMTP_PASS }}|EMAIL_FROM=${{ vars.EMAIL_FROM || 'classa <info@classa.in>' }}|APP_URL=${{ vars.APP_URL || 'https://step-up.pages.dev' }}"
+            --set-secrets="$SECRETS" \
+            --set-env-vars="^|^OUTBOX_INLINE=true|${ENV_COMMON}"
+
+          # Same image, worker entry. Always-on CPU so BullMQ cron (06:00 UTC)
+          # can roll memberships / create next-month invoices.
+          gcloud run deploy step-up-worker \
+            --image "$IMAGE" \
+            --region "${{ vars.GCP_REGION }}" \
+            --platform managed \
+            --no-allow-unauthenticated \
+            --min-instances 1 \
+            --max-instances 1 \
+            --cpu 1 \
+            --memory 512Mi \
+            --no-cpu-throttling \
+            --port 8080 \
+            --command=node \
+            --args=dist/worker.main.js \
+            --network default \
+            --subnet default \
+            --vpc-egress private-ranges-only \
+            --set-secrets="$SECRETS" \
+            --set-env-vars="^|^${ENV_COMMON}"
       - name: Prisma migrate deploy
         run: |
           pnpm --filter @step-up/api prisma:generate
