@@ -20,7 +20,13 @@ export class QueueBootstrapService implements OnModuleInit {
     private readonly digestQueue: Queue,
   ) {}
 
-  async onModuleInit() {
+  onModuleInit() {
+    // Do not await Redis here: NestFactory.create waits for OnModuleInit, and
+    // a hanging queue.add() means Cloud Run never sees listen() on PORT.
+    void this.registerRepeatableJobs();
+  }
+
+  private async registerRepeatableJobs() {
     try {
       await this.scheduledQueue.add(
         "daily",

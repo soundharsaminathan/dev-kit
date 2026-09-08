@@ -9,7 +9,8 @@ async function bootstrap() {
   }
 
   const app = await NestFactory.create(WorkerModule);
-  const port = Number(process.env.WORKER_PORT ?? process.env.PORT ?? 3001);
+  // Cloud Run injects PORT; prefer it over WORKER_PORT so the probe hits us.
+  const port = Number(process.env.PORT ?? process.env.WORKER_PORT ?? 3001);
   await app.listen(port, "0.0.0.0");
   console.log(`classa worker listening on 0.0.0.0:${port} (health only)`);
 }

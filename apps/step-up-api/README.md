@@ -93,7 +93,8 @@ gcloud run deploy step-up-worker \
   --min-instances 1 \
   --max-instances 1 \
   --cpu 1 \
-  --memory 512Mi \
+  --memory 1Gi \
+  --cpu-boost \
   --no-cpu-throttling \
   --port 8080 \
   --command=node \
