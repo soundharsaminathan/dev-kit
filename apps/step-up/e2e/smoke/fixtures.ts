@@ -350,6 +350,37 @@ function isSmokeSeedBatchId(batchId: string): boolean {
   );
 }
 
+export async function createLinkedFamilyKid(
+  cleanup: SmokeDataCleanup,
+  name: string,
+) {
+  const student = await apiRequest<{ id: string; name: string }>(
+    "OWNER",
+    "/users",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        name,
+        email: testEmail(
+          `smoke-kid-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        ),
+        gender: "FEMALE",
+        ageRange: "UNDER_10",
+        styles: ["Hip Hop"],
+      }),
+    },
+  );
+  cleanup.trackStudent(student.id);
+  await apiRequest("STAFF", `/users/studio/${SMOKE.studioId}/families/link`, {
+    method: "POST",
+    body: JSON.stringify({
+      anchorUserId: SMOKE.users.STUDENT.id,
+      memberUserIds: [student.id],
+    }),
+  });
+  return student;
+}
+
 export async function enrollPrepaid(
   cleanup: SmokeDataCleanup,
   options: {

@@ -9,7 +9,7 @@ import {
 } from "../fixtures";
 import { SEED } from "../fixtures/seed";
 import { createCalendarBatch, enrollPrepaid } from "../http/billing-fixtures";
-import { TestDataCleanup } from "../http/helpers";
+import { createLinkedFamilyKid, TestDataCleanup } from "../http/helpers";
 
 test.describe("admin payments @critical", () => {
   test("staff marks invoice paid through UI @critical", async ({ browser }) => {
@@ -122,34 +122,14 @@ test.describe("admin payments @critical", () => {
   }) => {
     const cleanup = new TestDataCleanup();
     const stamp = Date.now();
-    const kidA = await apiRequest<{ id: string }>(
-      "STUDENT",
-      "/users/me/family-members",
-      {
-        method: "POST",
-        body: JSON.stringify({
-          name: `Combine A ${stamp}`,
-          kind: "KID",
-          gender: "FEMALE",
-          ageRange: "UNDER_10",
-        }),
-      },
+    const kidA = await createLinkedFamilyKid(
+      cleanup,
+      `Combine A ${stamp}`,
     );
-    cleanup.trackStudent(kidA.id);
-    const kidB = await apiRequest<{ id: string }>(
-      "STUDENT",
-      "/users/me/family-members",
-      {
-        method: "POST",
-        body: JSON.stringify({
-          name: `Combine B ${stamp}`,
-          kind: "KID",
-          gender: "FEMALE",
-          ageRange: "UNDER_10",
-        }),
-      },
+    const kidB = await createLinkedFamilyKid(
+      cleanup,
+      `Combine B ${stamp}`,
     );
-    cleanup.trackStudent(kidB.id);
     const kidsBatch = await createCalendarBatch(cleanup, {
       kind: "prepaid",
       category: "KIDS",

@@ -7,6 +7,7 @@ import {
   bearerFor,
   closeSmokeContext,
   createCalendarBatch,
+  createLinkedFamilyKid,
   enrollPrepaid,
   expect,
   SMOKE,
@@ -69,18 +70,6 @@ const STAFF_PATHS = [
   "/app/settings/team",
   "/app/settings/billing",
 ];
-
-async function createSmokeFamilyKid(name: string) {
-  return apiRequest<{ id: string }>("STUDENT", "/users/me/family-members", {
-    method: "POST",
-    body: JSON.stringify({
-      name,
-      kind: "KID",
-      gender: "FEMALE",
-      ageRange: "UNDER_10",
-    }),
-  });
-}
 
 type SmokeImportJobSnapshot = {
   id: string;
@@ -908,10 +897,14 @@ test.describe("admin (staff) smoke @smoke", () => {
     test.setTimeout(180_000);
     const cleanup = new SmokeDataCleanup();
     const stamp = Date.now();
-    const kidA = await createSmokeFamilyKid(`Smoke Combine A ${stamp}`);
-    const kidB = await createSmokeFamilyKid(`Smoke Combine B ${stamp}`);
-    cleanup.trackStudent(kidA.id);
-    cleanup.trackStudent(kidB.id);
+    const kidA = await createLinkedFamilyKid(
+      cleanup,
+      `Smoke Combine A ${stamp}`,
+    );
+    const kidB = await createLinkedFamilyKid(
+      cleanup,
+      `Smoke Combine B ${stamp}`,
+    );
     const kidsBatch = await createCalendarBatch(cleanup, {
       kind: "prepaid",
       category: "KIDS",
@@ -997,10 +990,14 @@ test.describe("admin (staff) smoke @smoke", () => {
     test.setTimeout(180_000);
     const cleanup = new SmokeDataCleanup();
     const stamp = Date.now();
-    const kidA = await createSmokeFamilyKid(`Smoke Ind Combine A ${stamp}`);
-    const kidB = await createSmokeFamilyKid(`Smoke Ind Combine B ${stamp}`);
-    cleanup.trackStudent(kidA.id);
-    cleanup.trackStudent(kidB.id);
+    const kidA = await createLinkedFamilyKid(
+      cleanup,
+      `Smoke Ind Combine A ${stamp}`,
+    );
+    const kidB = await createLinkedFamilyKid(
+      cleanup,
+      `Smoke Ind Combine B ${stamp}`,
+    );
     const kidsBatch = await createCalendarBatch(cleanup, {
       kind: "prepaid",
       category: "KIDS",

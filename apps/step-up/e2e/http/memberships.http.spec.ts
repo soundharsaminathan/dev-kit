@@ -1,7 +1,12 @@
 import { expect, test } from "@playwright/test";
 import { SEED } from "../fixtures/seed";
 import { createCalendarBatch, enrollPrepaid } from "./billing-fixtures";
-import { expectOk, expectStatus, TestDataCleanup } from "./helpers";
+import {
+  createLinkedFamilyKid,
+  expectOk,
+  expectStatus,
+  TestDataCleanup,
+} from "./helpers";
 
 test.describe("memberships HTTP @http", () => {
   test("removed no-invoice shortcuts return 404 @http", async () => {
@@ -98,34 +103,14 @@ test.describe("memberships HTTP @http", () => {
         capacity: 8,
       });
 
-      const depA = await expectOk<{ id: string }>(
-        "STUDENT",
-        "/users/me/family-members",
-        {
-          method: "POST",
-          body: JSON.stringify({
-            name: `HTTP Combine A ${stamp}`,
-            kind: "KID",
-            gender: "FEMALE",
-            ageRange: "UNDER_10",
-          }),
-        },
+      const depA = await createLinkedFamilyKid(
+        cleanup,
+        `HTTP Combine A ${stamp}`,
       );
-      cleanup.trackStudent(depA.id);
-      const depB = await expectOk<{ id: string }>(
-        "STUDENT",
-        "/users/me/family-members",
-        {
-          method: "POST",
-          body: JSON.stringify({
-            name: `HTTP Combine B ${stamp}`,
-            kind: "KID",
-            gender: "FEMALE",
-            ageRange: "UNDER_10",
-          }),
-        },
+      const depB = await createLinkedFamilyKid(
+        cleanup,
+        `HTTP Combine B ${stamp}`,
       );
-      cleanup.trackStudent(depB.id);
 
       const invA = await enrollPrepaid(cleanup, {
         category: "KIDS",

@@ -15,6 +15,7 @@ import {
 } from "./billing-fixtures";
 import {
   createHttpStudent,
+  createLinkedFamilyKid,
   expectOk,
   expectStatus,
   TestDataCleanup,
@@ -453,34 +454,14 @@ test.describe("billing calendar HTTP @http", () => {
     const cleanup = new TestDataCleanup();
     const stamp = Date.now();
     try {
-      const depA = await expectOk<{ id: string }>(
-        "STUDENT",
-        "/users/me/family-members",
-        {
-          method: "POST",
-          body: JSON.stringify({
-            name: `Calendar Combine A ${stamp}`,
-            kind: "KID",
-            gender: "FEMALE",
-            ageRange: "UNDER_10",
-          }),
-        },
+      const depA = await createLinkedFamilyKid(
+        cleanup,
+        `Calendar Combine A ${stamp}`,
       );
-      cleanup.trackStudent(depA.id);
-      const depB = await expectOk<{ id: string }>(
-        "STUDENT",
-        "/users/me/family-members",
-        {
-          method: "POST",
-          body: JSON.stringify({
-            name: `Calendar Combine B ${stamp}`,
-            kind: "KID",
-            gender: "FEMALE",
-            ageRange: "UNDER_10",
-          }),
-        },
+      const depB = await createLinkedFamilyKid(
+        cleanup,
+        `Calendar Combine B ${stamp}`,
       );
-      cleanup.trackStudent(depB.id);
 
       const kidsBatch = await createCalendarBatch(cleanup, {
         kind: "prepaid",

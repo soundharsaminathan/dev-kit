@@ -122,6 +122,23 @@ export async function createHttpStudent(
   return student;
 }
 
+export async function createLinkedFamilyKid(
+  cleanup: TestDataCleanup,
+  name: string,
+) {
+  const student = await createHttpStudent(cleanup, name, {
+    ageRange: "UNDER_10",
+  });
+  await expectOk("STAFF", `/users/studio/${SEED.studioId}/families/link`, {
+    method: "POST",
+    body: JSON.stringify({
+      anchorUserId: SEED.users.STUDENT.id,
+      memberUserIds: [student.id],
+    }),
+  });
+  return student;
+}
+
 /** Owned prepaid batch: schedule starts next UTC month (invoice at staff enroll). */
 export async function createFutureScheduleBatch(
   cleanup: TestDataCleanup,
