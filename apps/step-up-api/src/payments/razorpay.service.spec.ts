@@ -131,4 +131,17 @@ describe("RazorpayService", () => {
       }),
     ).rejects.toThrow(/at least 100 paise/);
   });
+
+  it("verifies a webhook signature", () => {
+    const rawBody = Buffer.from('{"event":"payment_link.paid"}');
+    const signature = createHmac("sha256", "whsec")
+      .update(rawBody)
+      .digest("hex");
+    expect(service.verifyWebhookSignature(rawBody, signature, "whsec")).toBe(
+      true,
+    );
+    expect(
+      service.verifyWebhookSignature(rawBody, "deadbeef", "whsec"),
+    ).toBe(false);
+  });
 });

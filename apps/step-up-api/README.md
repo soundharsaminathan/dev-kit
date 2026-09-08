@@ -112,4 +112,22 @@ Then copy env/secrets from `step-up-api` (at least `DATABASE_URL`, `REDIS_URL`, 
 - `GET /health` — health check
 - `POST /auth/sync` — create/update user from token
 - `POST /jobs/daily` — enqueue daily jobs for the worker (requires `x-jobs-secret` header)
+- `GET /billing/pay/:invoiceId` — public 302 to Razorpay Payment Link (or in-app checkout fallback)
+- `POST /billing/webhooks/razorpay` — Razorpay `payment_link.paid` webhook (raw body + `X-Razorpay-Signature`)
 - Module routes under `/users`, `/studios`, `/batches`, `/plans`, `/subscriptions`, `/sessions`, `/attendance`, `/bookings`, `/billing`, `/notifications`, `/retention`, `/media`
+
+## WhatsApp invoice reminders + Payment Links
+
+When a student invoice is created (enroll, renewal, family combine — not data import), the outbox:
+
+1. Creates a Razorpay **Payment Link** (studio keys, else `RAZORPAY_KEY_*`) and stores `razorpayPaymentLinkId` / `razorpayPaymentLinkUrl`
+2. Sends a Meta Cloud API **template** from the platform WhatsApp number (`WHATSAPP_*`)
+
+Approved template (`invoice_created` / `en`):
+
+- Body: `Hi {{1}}, {{3}} created an invoice for Rs {{2}}. Tap Pay to complete payment.`
+- URL button: `{API_PUBLIC_URL or APP_URL}/billing/pay/{{1}}` (dynamic suffix = invoice id)
+
+`GET /billing/pay/:invoiceId` redirects to the Razorpay short URL, or to `{APP_URL}/me/checkout/invoice/:id` when no link exists.
+
+Configure Razorpay Dashboard webhooks to `POST /billing/webhooks/razorpay` for `payment_link.paid`, using `RAZORPAY_WEBHOOK_SECRET` (or a per-studio encrypted webhook secret). Local/CI without WhatsApp/Razorpay credentials stay silent: invoices still create; sends and links are skipped.

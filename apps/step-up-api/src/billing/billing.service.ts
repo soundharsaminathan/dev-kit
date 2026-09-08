@@ -21,6 +21,7 @@ import {
   coveredMonthKeys,
   formatInvoicePeriodLabel,
 } from "../email/invoice-receipt-pdf";
+import { OutboxService } from "../events/outbox.service";
 import {
   computeGst,
   computePlatformFee,
@@ -36,6 +37,7 @@ import {
   UserCryptoService,
 } from "../users/user-crypto.service";
 import { UserPresenter } from "../users/user-presenter";
+import { enqueueInvoiceCreated } from "./enqueue-invoice-created";
 import {
   allocateFamilyDiscount,
   attributionTargetsForInvoice,
@@ -153,6 +155,7 @@ export class BillingService {
     @Inject(NotificationsService)
     private readonly notifications: NotificationsService,
     @Inject(EmailService) private readonly email: EmailService,
+    @Inject(OutboxService) private readonly outbox: OutboxService,
   ) {}
 
   async convertToQuarterly(actor: DecryptedUser, invoiceId: string) {
@@ -1163,6 +1166,7 @@ export class BillingService {
       await tx.invoice.deleteMany({
         where: { id: { in: uniqueIds }, studioId: data.studioId },
       });
+      await enqueueInvoiceCreated(this.outbox, tx, invoice);
       return invoice;
     });
 

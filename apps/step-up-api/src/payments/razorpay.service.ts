@@ -251,13 +251,132 @@ export class RazorpayService {
       .update(`${input.orderId}|${input.paymentId}`)
       .digest("hex");
 
-    const expectedBuf = Buffer.from(expected, "utf8");
-    const actualBuf = Buffer.from(input.signature, "utf8");
-    if (expectedBuf.length !== actualBuf.length) {
+    return timingSafeEqualHex(expected, input.signature);
+  }
+
+  async createPaymentLink(
+    input: CreateRazorpayPaymentLinkInput,
+    settings?: StudioRazorpaySettings,
+  ): Promise<CreateRazorpayPaymentLinkResult> {
+    if (!Number.isFinite(input.amountPaise) || input.amountPaise < 100) {
+      throw new BadRequestException("Amount must be at least 100 paise");
+    }
+
+    const keys = this.resolveKeys(settings);
+    if (!keys) {
+      throw new BadRequestException("Razorpay is not configured");
+    }
+
+    try {
+      const client = new Razorpay({
+        key_id: keys.keyId,
+        key_secret: keys.keySecret,
+      });
+      // Razorpay's TS defs incorrectly require AdvanceOption.options for create().
+      const link = (await client.paymentLink.create({
+        amount: input.amountPaise,
+        currency: "INR",
+        accept_partial: false,
+        description: input.description.slice(0, 2048),
+        reference_id: input.invoiceId.slice(0, 40),
+        notes: {
+          invoiceId: input.invoiceId,
+          ...(input.notes ?? {}),
+        },
+        notify: { sms: false, email: false },
+        reminder_enable: false,
+        ...(input.customer
+          ? {
+              customer: {
+                ...(input.customer.name
+                  ? { name: input.customer.name.slice(0, 50) }
+                  : {}),
+                ...(input.customer.contact
+                  ? { contact: input.customer.contact }
+                  : {}),
+                ...(input.customer.email
+                  ? { email: input.customer.email }
+                  : {}),
+              },
+            }
+          : {}),
+      } as never)) as { id?: string; short_url?: string };
+
+      const id = String(link.id ?? "");
+      const shortUrl = String(link.short_url ?? "");
+      if (!id || !shortUrl) {
+        throw new InternalServerErrorException(
+          "Razorpay payment link response was incomplete",
+        );
+      }
+
+      return { id, shortUrl };
+    } catch (error) {
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      if (error instanceof InternalServerErrorException) {
+        throw error;
+      }
+
+      const status = razorpayErrorStatus(error);
+      if (status === 401 || status === 403) {
+        throw new BadRequestException(
+          "Razorpay key ID and secret do not match. Re-save both from the same API Keys page in Settings → Payments.",
+        );
+      }
+
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Failed to create Razorpay payment link";
+      throw new InternalServerErrorException(message);
+    }
+  }
+
+  verifyWebhookSignature(
+    rawBody: string | Buffer,
+    signature: string,
+    secret: string,
+  ): boolean {
+    const trimmedSecret = secret.trim();
+    const trimmedSignature = signature.trim();
+    if (!trimmedSecret || !trimmedSignature) {
       return false;
     }
-    return timingSafeEqual(expectedBuf, actualBuf);
+
+    const expected = createHmac("sha256", trimmedSecret)
+      .update(rawBody)
+      .digest("hex");
+
+    return timingSafeEqualHex(expected, trimmedSignature);
   }
+}
+
+export type CreateRazorpayPaymentLinkInput = {
+  amountPaise: number;
+  invoiceId: string;
+  description: string;
+  customer?: {
+    name?: string;
+    contact?: string;
+    email?: string;
+  };
+  notes?: Record<string, string>;
+};
+
+export type CreateRazorpayPaymentLinkResult = {
+  id: string;
+  shortUrl: string;
+};
+
+function timingSafeEqualHex(expected: string, actual: string): boolean {
+  const expectedBuf = Buffer.from(expected, "utf8");
+  const actualBuf = Buffer.from(actual, "utf8");
+  if (expectedBuf.length !== actualBuf.length) {
+    return false;
+  }
+  return timingSafeEqual(expectedBuf, actualBuf);
 }
 
 function razorpayErrorStatus(error: unknown): number | undefined {

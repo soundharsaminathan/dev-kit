@@ -9,8 +9,9 @@ import {
 } from "@nestjs/common";
 import { ModuleRef } from "@nestjs/core";
 import type { JobsOptions, Queue } from "bullmq";
-import { NotificationDeliveryService } from "../queues/processors/notification-delivery.service";
+import { InvoiceCreatedHandler } from "../billing/invoice-created.handler";
 import { DataImportService } from "../data-import/data-import.service";
+import { NotificationDeliveryService } from "../queues/processors/notification-delivery.service";
 import {
   DAILY_JOBS_QUEUE,
   NOTIFICATION_DELIVER_QUEUE,
@@ -20,10 +21,12 @@ import {
   OUTBOX_EVENT_BATCH_CAPACITY_CHANGED,
   OUTBOX_EVENT_DAILY_JOBS_REQUESTED,
   OUTBOX_EVENT_DATA_IMPORT_REQUESTED,
+  OUTBOX_EVENT_INVOICE_CREATED,
   OUTBOX_EVENT_INVOICE_REFUNDED,
   OUTBOX_EVENT_NOTIFICATION_CREATED,
   OUTBOX_EVENT_PAYMENT_CONFIRMED,
   type BatchCapacityChangedPayload,
+  type InvoiceCreatedPayload,
   type InvoiceRefundedPayload,
   type PaymentConfirmedPayload,
 } from "../shared/outbox-events";
@@ -103,6 +106,29 @@ export class OutboxProcessor implements OnModuleInit, OnModuleDestroy {
             continue;
           }
 
+          if (event.type === OUTBOX_EVENT_INVOICE_CREATED) {
+            const handler = this.tryGetInvoiceCreatedHandler();
+            const payload = event.payload as InvoiceCreatedPayload;
+            if (!handler || !payload.invoiceId) {
+              this.logger.warn(
+                `Releasing invoice.created outbox event ${event.id}: handler unavailable`,
+              );
+              await this.outbox.bumpAttempts(event.id);
+              continue;
+            }
+            try {
+              await handler.handle(payload.invoiceId);
+            } catch (error) {
+              this.logger.warn(
+                `invoice.created handler failed for ${payload.invoiceId}: ${String(error)}`,
+              );
+              await this.outbox.bumpAttempts(event.id);
+              continue;
+            }
+            publishedIds.push(event.id);
+            continue;
+          }
+
           const jobs = this.jobsForEvent(event.type, event.id, event.payload);
           if (jobs.length === 0) {
             if (
@@ -170,6 +196,14 @@ export class OutboxProcessor implements OnModuleInit, OnModuleDestroy {
   private tryGetDataImport(): DataImportService | null {
     try {
       return this.moduleRef.get(DataImportService, { strict: false }) ?? null;
+    } catch {
+      return null;
+    }
+  }
+
+  private tryGetInvoiceCreatedHandler(): InvoiceCreatedHandler | null {
+    try {
+      return this.moduleRef.get(InvoiceCreatedHandler, { strict: false }) ?? null;
     } catch {
       return null;
     }

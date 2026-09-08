@@ -27,6 +27,7 @@ describe("MembershipsService.renewManual", () => {
         assertNoConflicts: vi.fn().mockResolvedValue(undefined),
         assertStudentAvailableForBatch: vi.fn().mockResolvedValue(undefined),
       } as never,
+      { append: vi.fn().mockResolvedValue({}) } as never,
     );
   });
 
@@ -125,6 +126,7 @@ describe("MembershipsService.renewFromPaidInvoice", () => {
         assertNoConflicts: vi.fn().mockResolvedValue(undefined),
         assertStudentAvailableForBatch: vi.fn().mockResolvedValue(undefined),
       } as never,
+      { append: vi.fn().mockResolvedValue({}) } as never,
     );
   });
 
@@ -205,6 +207,7 @@ describe("MembershipsService.rollEndedActiveToNextDue", () => {
         assertNoConflicts: vi.fn().mockResolvedValue(undefined),
         assertStudentAvailableForBatch: vi.fn().mockResolvedValue(undefined),
       } as never,
+      { append: vi.fn().mockResolvedValue({}) } as never,
     );
   });
 
@@ -426,6 +429,7 @@ describe("MembershipsService.convertUpcomingInvoiceToQuarterly", () => {
         assertNoConflicts: vi.fn().mockResolvedValue(undefined),
         assertStudentAvailableForBatch: vi.fn().mockResolvedValue(undefined),
       } as never,
+      { append: vi.fn().mockResolvedValue({}) } as never,
     );
   });
 
@@ -576,6 +580,7 @@ describe("MembershipsService.setInvoiceBillingCadence", () => {
         assertNoConflicts: vi.fn().mockResolvedValue(undefined),
         assertStudentAvailableForBatch: vi.fn().mockResolvedValue(undefined),
       } as never,
+      { append: vi.fn().mockResolvedValue({}) } as never,
     );
   });
 
@@ -694,6 +699,7 @@ describe("MembershipsService.requestRenewalInvoice", () => {
         assertNoConflicts: vi.fn().mockResolvedValue(undefined),
         assertStudentAvailableForBatch: vi.fn().mockResolvedValue(undefined),
       } as never,
+      { append: vi.fn().mockResolvedValue({}) } as never,
     );
   });
 
@@ -900,6 +906,7 @@ describe("MembershipsService.assign family packs", () => {
       prisma as never,
       notifications as never,
       scheduleConflicts as never,
+      { append: vi.fn().mockResolvedValue({}) } as never,
     );
     prisma.$transaction.mockImplementation(
       async (fn: (tx: typeof prisma) => Promise<unknown>) => fn(prisma),
@@ -1076,6 +1083,7 @@ describe("MembershipsService.purchaseForBatch", () => {
       prisma as never,
       { create: vi.fn() } as never,
       scheduleConflicts as never,
+      { append: vi.fn().mockResolvedValue({}) } as never,
     );
     prisma.$transaction.mockImplementation(
       async (fn: (tx: typeof prisma) => Promise<unknown>) => fn(prisma),
@@ -1356,6 +1364,7 @@ describe("MembershipsService.purchaseFamily", () => {
       prisma as never,
       { create: vi.fn() } as never,
       scheduleConflicts as never,
+      { append: vi.fn().mockResolvedValue({}) } as never,
     );
     prisma.$transaction.mockImplementation(
       async (fn: (tx: typeof prisma) => Promise<unknown>) => fn(prisma),
@@ -1403,6 +1412,7 @@ describe("MembershipsService.findActiveForBatch", () => {
       prisma as never,
       notifications as never,
       scheduleConflicts as never,
+      { append: vi.fn().mockResolvedValue({}) } as never,
     );
   });
 
@@ -1490,6 +1500,7 @@ describe("MembershipsService.findMonthlyUnpaidStudentIds", () => {
       prisma as never,
       notifications as never,
       scheduleConflicts as never,
+      { append: vi.fn().mockResolvedValue({}) } as never,
     );
   });
 
@@ -1610,6 +1621,7 @@ describe("MembershipsService.findStudentIdsWithActiveMonthForBatch", () => {
       prisma as never,
       notifications as never,
       scheduleConflicts as never,
+      { append: vi.fn().mockResolvedValue({}) } as never,
     );
   });
 
@@ -1682,6 +1694,7 @@ describe("MembershipsService.beginBatchEnrollment", () => {
       prisma as never,
       { create: vi.fn() } as never,
       scheduleConflicts as never,
+      { append: vi.fn().mockResolvedValue({}) } as never,
     );
     prisma.$transaction.mockImplementation(
       async (fn: (tx: typeof prisma) => Promise<unknown>) => fn(prisma),

@@ -576,10 +576,12 @@ model StudioSettings {
   gstPercent         Float       @default(0)
   admissionFee       Decimal     @default(0) @db.Decimal(10, 2)
   timezone           String      @default("Asia/Kolkata")
-  razorpayKeyId      String?
-  razorpayKeySecret  String?
-  razorpaySecretIv   String?
-  danceStyles        Json?
+  razorpayKeyId              String?
+  razorpayKeySecret          String?
+  razorpaySecretIv           String?
+  razorpayWebhookSecret      String?
+  razorpayWebhookSecretIv    String?
+  danceStyles                Json?
   gstNumber          String?
   aiProvider         AiProvider?
   aiApiKey           String?
@@ -893,22 +895,44 @@ model Invoice {
   platformFeePercent   Float
   gstPercent           Float             @default(0)
   studioId             String
-  razorpayOrderId      String?            @unique
-  razorpayPaymentId    String?            @unique
-  paymentHoldExpiresAt DateTime?
-  purchaseMeta         Json?
-  combineMeta          Json?
-  chargeType           InvoiceChargeType  @default(PREPAID_FULL)
-  attendedSessionCount Int?
-  billedSessionCount   Int?
+  razorpayOrderId         String?            @unique
+  razorpayPaymentId       String?            @unique
+  razorpayPaymentLinkId   String?            @unique
+  razorpayPaymentLinkUrl  String?
+  paymentHoldExpiresAt    DateTime?
+  purchaseMeta            Json?
+  combineMeta             Json?
+  chargeType              InvoiceChargeType  @default(PREPAID_FULL)
+  attendedSessionCount    Int?
+  billedSessionCount      Int?
 
   student    User        @relation(fields: [studentId], references: [id], onDelete: Cascade)
   membership Membership? @relation(fields: [membershipId], references: [id])
   studio     Studio      @relation(fields: [studioId], references: [id], onDelete: Cascade)
+  whatsappMessage WhatsappMessage?
 
   @@index([status, paymentHoldExpiresAt])
   @@index([studioId, id])
   @@index([studentId])
+}
+
+model WhatsappMessage {
+  id         String         @id @default(cuid())
+  invoiceId  String         @unique
+  userId     String
+  studioId   String
+  template   String
+  status     DeliveryStatus @default(PENDING)
+  providerId String?
+  errorCode  String?
+  sentAt     DateTime?
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([studioId, createdAt(sort: Desc)])
+  @@index([status, updatedAt])
 }
 
 model ExpenseCategory {

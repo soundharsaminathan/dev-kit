@@ -26,8 +26,10 @@ import {
   paymentHoldExpiresAt,
 } from "../batches/batch-capacity";
 import { REACTIVATE_ENROLLMENT_DATA } from "../batches/enrollment-status";
+import { enqueueInvoiceCreated } from "../billing/enqueue-invoice-created";
 import { parseCombineMeta, parsePurchaseMeta } from "../billing/family-combine";
 import { ScheduleConflictService } from "../calendar/schedule-conflict.service";
+import { OutboxService } from "../events/outbox.service";
 import { NotificationsService } from "../notifications/notifications.service";
 import { PrismaService } from "../prisma/prisma.service";
 import {
@@ -79,6 +81,7 @@ export class MembershipsService {
     private readonly notifications: NotificationsService,
     @Inject(ScheduleConflictService)
     private readonly scheduleConflicts: ScheduleConflictService,
+    @Inject(OutboxService) private readonly outbox: OutboxService,
   ) {}
 
   listForStudent(studentId: string) {
@@ -265,7 +268,7 @@ export class MembershipsService {
 
     const holdPayment = args.paymentHold !== false;
 
-    return this.prisma.invoice.create({
+    const invoice = await this.prisma.invoice.create({
       data: {
         studentId: args.purchaserUserId,
         studioId: batch.studioId,
@@ -279,6 +282,8 @@ export class MembershipsService {
         purchaseMeta,
       },
     });
+    await enqueueInvoiceCreated(this.outbox, this.prisma, invoice);
+    return invoice;
   }
 
   /**
@@ -386,6 +391,7 @@ export class MembershipsService {
           purchaseMeta,
         },
       });
+      await enqueueInvoiceCreated(this.outbox, db, invoice);
       invoices.push(invoice);
     }
 
@@ -449,7 +455,7 @@ export class MembershipsService {
       return null;
     }
 
-    return this.prisma.invoice.create({
+    const invoice = await this.prisma.invoice.create({
       data: buildAdmissionInvoiceData({
         studentId: args.studentId,
         studioId: args.studioId,
@@ -460,6 +466,8 @@ export class MembershipsService {
         settings,
       }),
     });
+    await enqueueInvoiceCreated(this.outbox, this.prisma, invoice);
+    return invoice;
   }
 
   async beginBatchEnrollment(args: {
@@ -596,6 +604,11 @@ export class MembershipsService {
             ],
           } as unknown as Prisma.InputJsonValue,
         },
+      });
+      await enqueueInvoiceCreated(this.outbox, this.prisma, {
+        id: invoice.id,
+        studioId: batch.studioId,
+        studentId: args.studentId,
       });
     }
 
@@ -1313,6 +1326,7 @@ export class MembershipsService {
       },
     });
 
+    await enqueueInvoiceCreated(this.outbox, this.prisma, invoice);
     return { invoice, created: true as const };
   }
 

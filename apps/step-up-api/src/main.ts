@@ -14,7 +14,9 @@ import { captureException } from "./sentry";
 const JSON_BODY_LIMIT = "5mb";
 
 async function bootstrap() {
-  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
+    rawBody: true,
+  });
   app.useBodyParser("json", { limit: JSON_BODY_LIMIT });
 
   app.enableCors({

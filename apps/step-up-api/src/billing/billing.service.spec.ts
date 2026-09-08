@@ -105,6 +105,7 @@ describe("BillingService.getTrainerAnalytics", () => {
       razorpayStub as never,
       notificationsStub as never,
       emailStub as never,
+      { append: vi.fn().mockResolvedValue({}) } as never,
     );
   });
 
@@ -746,6 +747,7 @@ describe("BillingService.refundInvoice", () => {
       razorpayStub as never,
       notificationsStub as never,
       emailStub as never,
+      { append: vi.fn().mockResolvedValue({}) } as never,
     );
     prisma.$transaction.mockImplementation(
       async (callback: (tx: typeof prisma) => unknown) => callback(prisma),
@@ -891,6 +893,7 @@ describe("BillingService.listForStudent", () => {
       razorpayStub as never,
       notificationsStub as never,
       emailStub as never,
+      { append: vi.fn().mockResolvedValue({}) } as never,
     );
     prisma.batchEnrollment.findMany.mockResolvedValue([]);
     prisma.batch.findMany.mockResolvedValue([]);
@@ -1032,6 +1035,7 @@ describe("BillingService.markPaid", () => {
       razorpayStub as never,
       notificationsStub as never,
       emailStub as never,
+      { append: vi.fn().mockResolvedValue({}) } as never,
     );
   });
 
@@ -1452,6 +1456,7 @@ describe("BillingService.listByStudio", () => {
       razorpayStub as never,
       notificationsStub as never,
       emailStub as never,
+      { append: vi.fn().mockResolvedValue({}) } as never,
     );
     prisma.subscription.findMany.mockResolvedValue([]);
     prisma.batchEnrollment.findMany.mockResolvedValue([]);
@@ -1596,6 +1601,7 @@ describe("BillingService invoice checkout", () => {
       razorpayStub as never,
       notificationsStub as never,
       emailStub as never,
+      { append: vi.fn().mockResolvedValue({}) } as never,
     );
   });
 
@@ -1761,6 +1767,9 @@ describe("BillingService invoice checkout", () => {
 });
 
 describe("BillingService.familyCombine", () => {
+  const outboxStub = {
+    append: vi.fn().mockResolvedValue({}),
+  };
   const prisma = {
     invoice: {
       findMany: vi.fn(),
@@ -1785,6 +1794,7 @@ describe("BillingService.familyCombine", () => {
       razorpayStub as never,
       notificationsStub as never,
       emailStub as never,
+      outboxStub as never,
     );
     prisma.$transaction.mockImplementation(
       async (fn: (tx: typeof prisma) => Promise<unknown>) => fn(prisma),
@@ -1875,6 +1885,16 @@ describe("BillingService.familyCombine", () => {
     expect(prisma.invoice.deleteMany).toHaveBeenCalledWith({
       where: { id: { in: ["inv-a", "inv-b"] }, studioId: "studio-1" },
     });
+    expect(outboxStub.append).toHaveBeenCalledWith(
+      prisma,
+      "invoice.created",
+      expect.objectContaining({
+        invoiceId: "inv-combined",
+        studioId: "studio-1",
+        studentId: "owner-1",
+      }),
+      { studioId: "studio-1" },
+    );
   });
 
   it("rejects family discount above the selected total", async () => {

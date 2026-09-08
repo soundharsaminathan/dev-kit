@@ -37,6 +37,7 @@ import { SubscriptionsModule } from "./subscriptions/subscriptions.module";
 import { TenancyModule } from "./tenancy/tenancy.module";
 import { UserCryptoModule } from "./users/user-crypto.module";
 import { UsersModule } from "./users/users.module";
+import { WhatsappModule } from "./whatsapp/whatsapp.module";
 
 @Module({
   imports: [
@@ -78,6 +79,7 @@ import { UsersModule } from "./users/users.module";
     HealthModule,
     HomeModule,
     JourneyModule,
+    WhatsappModule,
   ],
   providers: [...sentryNestProviders()],
 })
