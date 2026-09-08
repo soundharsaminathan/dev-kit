@@ -27,7 +27,7 @@ import {
   toAiProviderEnum,
 } from "./ai-provider";
 import { parseDanceStyles } from "./dance-styles";
-import { isTestStudioSlug } from "./test-studio";
+import { isTestStudio } from "./test-studio";
 
 type StudioSettingsRow = {
   graceDays: number;
@@ -146,7 +146,7 @@ export class StudiosService {
       select: { id: true, slug: true, name: true },
     });
     if (includeTest) return studios;
-    return studios.filter((studio) => !isTestStudioSlug(studio.slug));
+    return studios.filter((studio) => !isTestStudio(studio));
   }
 
   async createStudio(data: CreateStudioInput) {

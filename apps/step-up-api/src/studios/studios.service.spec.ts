@@ -85,6 +85,11 @@ describe("StudiosService", () => {
     prisma.studio.findMany.mockResolvedValue([
       { id: "studio-2", slug: "beta", name: "Beta" },
       { id: "studio-e2e", slug: "e2e-test-studio", name: "E2E Test Studio" },
+      {
+        id: "studio-login",
+        slug: "e2e-owner-login-1785885721343",
+        name: "E2E Owner Login 1785885721343",
+      },
       { id: "studio-1", slug: "alpha", name: "Alpha" },
     ]);
 

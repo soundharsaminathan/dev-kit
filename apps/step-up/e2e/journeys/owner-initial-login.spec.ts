@@ -47,7 +47,7 @@ test.describe("owner initial login @critical", () => {
     const page = await context.newPage();
 
     try {
-      await page.goto("/login");
+      await page.goto(`/login?includeTest=1&studioId=${created.id}`);
       await waitForAppReady(page);
       await page.getByLabel("Email or username").fill(ownerEmail);
       await page

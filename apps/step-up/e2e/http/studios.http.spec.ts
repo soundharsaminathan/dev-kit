@@ -28,9 +28,14 @@ test.describe("studios HTTP @http", () => {
   test("public directory omits test studios without includeTest @http", async () => {
     const response = await fetch(`${apiBaseUrl()}/studios/directory`);
     expect(response.ok).toBeTruthy();
-    const data = (await response.json()) as Array<{ slug: string }>;
+    const data = (await response.json()) as Array<{
+      slug: string;
+      name: string;
+    }>;
     expect(data.some((studio) => studio.slug === SEED.studioSlug)).toBe(false);
     expect(data.some((studio) => studio.slug === SEED.studioBSlug)).toBe(false);
+    expect(data.some((studio) => /^e2e\b/i.test(studio.name))).toBe(false);
+    expect(data.some((studio) => /^http\b/i.test(studio.name))).toBe(false);
 
     const withTest = await fetch(
       `${apiBaseUrl()}/studios/directory?includeTest=1`,
