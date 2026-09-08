@@ -59,7 +59,7 @@ describe("cross-studio isolation @http", () => {
   });
 
   it("lists both studios in the public directory with slugs", async () => {
-    const response = await fetch(`${base}/studios/directory`);
+    const response = await fetch(`${base}/studios/directory?includeTest=1`);
     expect(response.status).toBe(200);
     const body = (await response.json()) as Array<{
       id: string;

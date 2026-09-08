@@ -41,7 +41,7 @@ setup("authenticate smoke roles", async ({ page, request }) => {
     const user = SMOKE.users[role];
     const home = homePathForRole(role);
 
-    await page.goto("/login", { waitUntil: "domcontentloaded" });
+    await page.goto("/login?includeTest=1", { waitUntil: "domcontentloaded" });
     await waitForAppReady(page);
 
     // Clear any leftover Firebase session from a previous role.
@@ -69,7 +69,7 @@ setup("authenticate smoke roles", async ({ page, request }) => {
         // Best-effort wipe.
       }
     });
-    await page.goto("/login", { waitUntil: "domcontentloaded" });
+    await page.goto("/login?includeTest=1", { waitUntil: "domcontentloaded" });
     await waitForAppReady(page);
 
     await page.getByLabel(/email or username/i).fill(user.email);

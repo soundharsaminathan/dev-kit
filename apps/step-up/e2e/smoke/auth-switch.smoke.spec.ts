@@ -34,10 +34,10 @@ async function signInAs(page: Page, role: SmokeRole, password: string) {
   const user = SMOKE.users[role];
   const home = homePathForRole(role);
 
-  await page.goto("/login", { waitUntil: "domcontentloaded" });
+  await page.goto("/login?includeTest=1", { waitUntil: "domcontentloaded" });
   await waitForAppReady(page);
   await clearBrowserAuthState(page);
-  await page.goto("/login", { waitUntil: "domcontentloaded" });
+  await page.goto("/login?includeTest=1", { waitUntil: "domcontentloaded" });
   await waitForAppReady(page);
 
   await page.getByLabel(/email or username/i).fill(user.email);

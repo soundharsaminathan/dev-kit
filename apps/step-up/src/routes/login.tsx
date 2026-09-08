@@ -17,6 +17,7 @@ import {
   redirectIfAuthenticated,
   safeInternalPath,
 } from "@/lib/require-auth";
+import { isIncludeTestFlag } from "@/lib/test-studios";
 import { PublicShell } from "@/modules/layout/public-shell";
 import { PasswordInput } from "@/modules/ui/password-input";
 import { StudioSelect, useStudioDirectory } from "@/modules/ui/studio-select";
@@ -32,6 +33,8 @@ type LoginSearch = {
   studioId?: string;
   /** Username and password only — no studio picker */
   direct?: true;
+  /** Testing only: include seeded e2e/smoke studios in the picker */
+  includeTest?: true;
 };
 
 type LoginFormValues = {
@@ -57,6 +60,9 @@ function parseSearch(search: Record<string, unknown>): LoginSearch {
   }
   if (isDirectLoginFlag(search.direct)) {
     next.direct = true;
+  }
+  if (isIncludeTestFlag(search.includeTest)) {
+    next.includeTest = true;
   }
   return next;
 }
@@ -100,12 +106,16 @@ function LoginPage() {
     studio: searchStudioSlug,
     studioId: searchStudioId,
     direct: isDirectLogin,
+    includeTest,
   } = Route.useSearch();
   const { signIn, signInWithGoogle, loginAsSystemAdmin, signOutUser } =
     useAuth();
   const online = useOnlineStatus();
   const [error, setError] = useState<string | null>(null);
-  const directory = useStudioDirectory({ enabled: !isDirectLogin });
+  const directory = useStudioDirectory({
+    enabled: !isDirectLogin,
+    includeTest,
+  });
 
   const redirectAfterSignIn = useCallback(
     (authUser: AuthUser) => {
@@ -183,6 +193,7 @@ function LoginPage() {
             ...(redirectTo ? { redirect: redirectTo } : {}),
             ...(searchIdentifier ? { identifier: searchIdentifier } : {}),
             studio: matched.slug,
+            ...(includeTest ? { includeTest: true } : {}),
           },
           replace: true,
         });
@@ -204,6 +215,7 @@ function LoginPage() {
     searchIdentifier,
     searchStudioId,
     searchStudioSlug,
+    includeTest,
   ]);
 
   const handleGoogleSignIn = async () => {
@@ -299,10 +311,12 @@ function LoginPage() {
                           ? { identifier: searchIdentifier }
                           : {}),
                         ...(studio?.slug ? { studio: studio.slug } : {}),
+                        ...(includeTest ? { includeTest: true } : {}),
                       },
                       replace: true,
                     });
                   }}
+                  includeTest={includeTest}
                   data-testid="login-studio-select"
                 />
               )}
@@ -432,6 +446,7 @@ function LoginPage() {
                 search={{
                   ...(studioId.trim() ? { studioId: studioId.trim() } : {}),
                   ...(studioSlug.trim() ? { studio: studioSlug.trim() } : {}),
+                  ...(includeTest ? { includeTest: true } : {}),
                 }}
                 className={styles.footerLink}
               >

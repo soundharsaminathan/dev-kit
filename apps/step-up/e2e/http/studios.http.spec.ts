@@ -5,7 +5,9 @@ import { expectOk, expectStatus, httpJson, TestDataCleanup } from "./helpers";
 
 test.describe("studios HTTP @http", () => {
   test("public directory lists studio id and name @http", async () => {
-    const response = await fetch(`${apiBaseUrl()}/studios/directory`);
+    const response = await fetch(
+      `${apiBaseUrl()}/studios/directory?includeTest=1`,
+    );
     expect(response.ok).toBeTruthy();
     const data = (await response.json()) as Array<{
       id: string;
@@ -21,6 +23,21 @@ test.describe("studios HTTP @http", () => {
     );
     expect(data[0]).not.toHaveProperty("owner");
     expect(data[0]).not.toHaveProperty("memberCount");
+  });
+
+  test("public directory omits test studios without includeTest @http", async () => {
+    const response = await fetch(`${apiBaseUrl()}/studios/directory`);
+    expect(response.ok).toBeTruthy();
+    const data = (await response.json()) as Array<{ slug: string }>;
+    expect(data.some((studio) => studio.slug === SEED.studioSlug)).toBe(false);
+    expect(data.some((studio) => studio.slug === SEED.studioBSlug)).toBe(false);
+
+    const withTest = await fetch(
+      `${apiBaseUrl()}/studios/directory?includeTest=1`,
+    );
+    expect(withTest.ok).toBeTruthy();
+    const listed = (await withTest.json()) as Array<{ slug: string }>;
+    expect(listed.some((studio) => studio.slug === SEED.studioSlug)).toBe(true);
   });
 
   test("admin creates studio with temp password and owner must change it @http", async () => {

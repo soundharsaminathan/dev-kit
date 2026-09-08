@@ -81,9 +81,10 @@ describe("StudiosService", () => {
     );
   });
 
-  it("lists public studio directory entries", async () => {
+  it("lists public studio directory entries without test studios", async () => {
     prisma.studio.findMany.mockResolvedValue([
       { id: "studio-2", slug: "beta", name: "Beta" },
+      { id: "studio-e2e", slug: "e2e-test-studio", name: "E2E Test Studio" },
       { id: "studio-1", slug: "alpha", name: "Alpha" },
     ]);
 
@@ -96,6 +97,18 @@ describe("StudiosService", () => {
       orderBy: { name: "asc" },
       select: { id: true, slug: true, name: true },
     });
+  });
+
+  it("includes test studios in the directory when opted in", async () => {
+    prisma.studio.findMany.mockResolvedValue([
+      { id: "studio-e2e", slug: "e2e-test-studio", name: "E2E Test Studio" },
+      { id: "studio-1", slug: "alpha", name: "Alpha" },
+    ]);
+
+    await expect(service.listDirectory(true)).resolves.toEqual([
+      { id: "studio-e2e", slug: "e2e-test-studio", name: "E2E Test Studio" },
+      { id: "studio-1", slug: "alpha", name: "Alpha" },
+    ]);
   });
 
   it("encrypts razorpay secret and never returns it", async () => {

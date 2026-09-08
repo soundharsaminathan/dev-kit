@@ -6,7 +6,7 @@ const BYPASS_PASSWORD = "password";
 
 async function signInAs(page: Page, role: SeedRole) {
   const user = SEED.users[role];
-  await page.goto("/login");
+  await page.goto("/login?includeTest=1");
   await waitForAppReady(page);
   await page.getByLabel("Email or username").fill(user.email);
   await page.getByLabel("Password", { exact: true }).fill(BYPASS_PASSWORD);

@@ -14,6 +14,7 @@ import {
   redirectIfAuthenticated,
   safeInternalPath,
 } from "@/lib/require-auth";
+import { isIncludeTestFlag } from "@/lib/test-studios";
 import { PublicShell } from "@/modules/layout/public-shell";
 import { PasswordInput } from "@/modules/ui/password-input";
 import { StudioSelect, useStudioDirectory } from "@/modules/ui/studio-select";
@@ -24,6 +25,7 @@ type RegisterSearch = {
   redirect?: string;
   studio?: string;
   studioId?: string;
+  includeTest?: true;
 };
 
 type RegisterFormValues = {
@@ -44,6 +46,9 @@ function parseSearch(search: Record<string, unknown>): RegisterSearch {
   }
   if (typeof search.studioId === "string" && search.studioId.trim()) {
     result.studioId = search.studioId.trim();
+  }
+  if (isIncludeTestFlag(search.includeTest)) {
+    result.includeTest = true;
   }
   return result;
 }
@@ -101,11 +106,12 @@ function RegisterPage() {
     redirect: redirectTo,
     studio: searchStudioSlug,
     studioId: searchStudioId,
+    includeTest,
   } = Route.useSearch();
   const { signUp, signInWithGoogle, user } = useAuth();
   const online = useOnlineStatus();
   const [error, setError] = useState<string | null>(null);
-  const directory = useStudioDirectory();
+  const directory = useStudioDirectory({ includeTest });
 
   const redirectForRole = useCallback(
     (_role: UserRole, authUser = user) => {
@@ -254,10 +260,12 @@ function RegisterPage() {
                       search: {
                         ...(redirectTo ? { redirect: redirectTo } : {}),
                         ...(studioId ? { studioId } : {}),
+                        ...(includeTest ? { includeTest: true } : {}),
                       },
                       replace: true,
                     });
                   }}
+                  includeTest={includeTest}
                   isRequired
                   isInvalid={Boolean(err)}
                   errorMessage={err}
@@ -430,6 +438,7 @@ function RegisterPage() {
                 search={{
                   ...(trimmed ? { identifier: trimmed } : {}),
                   ...(studioId.trim() ? { studioId: studioId.trim() } : {}),
+                  ...(includeTest ? { includeTest: true } : {}),
                 }}
                 className={styles.footerLink}
               >

@@ -8,6 +8,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from "@nestjs/common";
 import { UserRole } from "@prisma/client";
@@ -33,6 +34,7 @@ import type { DecryptedUser } from "../users/user-crypto.service";
 import { UsersService } from "../users/users.service";
 import { AI_PROVIDER_API_VALUES } from "./ai-provider";
 import { StudiosService } from "./studios.service";
+import { isIncludeTestQuery } from "./test-studio";
 
 class CreateStudioDto {
   @IsString()
@@ -177,8 +179,8 @@ export class StudiosController {
   }
 
   @Get("directory")
-  listDirectory() {
-    return this.studiosService.listDirectory();
+  listDirectory(@Query("includeTest") includeTest?: string) {
+    return this.studiosService.listDirectory(isIncludeTestQuery(includeTest));
   }
 
   @Post()

@@ -25,6 +25,19 @@ test.describe("public smoke @smoke", () => {
     }
   });
 
+  test("login picker hides test studios unless includeTest is set @smoke", async ({
+    page,
+  }) => {
+    await page.goto("/login", { waitUntil: "domcontentloaded" });
+    await waitForAppReady(page);
+    await expect(page.getByText("Smoke Test Studio")).toHaveCount(0);
+
+    await page.goto("/login?includeTest=1", { waitUntil: "domcontentloaded" });
+    await waitForAppReady(page);
+    await expect(page.getByTestId("login-studio-select")).toBeVisible();
+    await expect(page.getByText("Smoke Test Studio")).toBeVisible();
+  });
+
   test("direct login page has username and password only @smoke", async ({
     page,
   }) => {

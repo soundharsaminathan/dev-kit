@@ -27,6 +27,7 @@ import {
   toAiProviderEnum,
 } from "./ai-provider";
 import { parseDanceStyles } from "./dance-styles";
+import { isTestStudioSlug } from "./test-studio";
 
 type StudioSettingsRow = {
   graceDays: number;
@@ -138,12 +139,14 @@ export class StudiosService {
     );
   }
 
-  async listDirectory() {
-    return this.prisma.studio.findMany({
+  async listDirectory(includeTest = false) {
+    const studios = await this.prisma.studio.findMany({
       where: { status: StudioStatus.ACTIVE },
       orderBy: { name: "asc" },
       select: { id: true, slug: true, name: true },
     });
+    if (includeTest) return studios;
+    return studios.filter((studio) => !isTestStudioSlug(studio.slug));
   }
 
   async createStudio(data: CreateStudioInput) {

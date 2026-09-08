@@ -26,13 +26,21 @@ type StudioSelectProps = {
   isRequired?: boolean;
   isInvalid?: boolean;
   errorMessage?: string | undefined;
+  includeTest?: boolean | undefined;
   "data-testid"?: string;
 };
 
-export function useStudioDirectory(options?: { enabled?: boolean }) {
+export function useStudioDirectory(options?: {
+  enabled?: boolean;
+  includeTest?: boolean | undefined;
+}) {
+  const includeTest = options?.includeTest ?? false;
   return useQuery({
-    queryKey: ["studios", "directory"],
-    queryFn: () => getPublic<StudioDirectoryItem[]>("/studios/directory"),
+    queryKey: ["studios", "directory", includeTest ? "includeTest" : "public"],
+    queryFn: () =>
+      getPublic<StudioDirectoryItem[]>(
+        includeTest ? "/studios/directory?includeTest=1" : "/studios/directory",
+      ),
     enabled: options?.enabled ?? true,
   });
 }
@@ -44,9 +52,10 @@ export function StudioSelect({
   isRequired = false,
   isInvalid = false,
   errorMessage,
+  includeTest = false,
   "data-testid": testId,
 }: StudioSelectProps) {
-  const directory = useStudioDirectory();
+  const directory = useStudioDirectory({ includeTest });
   const studios = directory.data ?? [];
 
   return (
