@@ -94,12 +94,40 @@ export type StudioFamily = {
 
 export type ManualPaymentMethod = "CASH" | "UPI_MANUAL";
 
+const inrPriceFormat = new Intl.NumberFormat("en-IN", {
+  style: "currency",
+  currency: "INR",
+  maximumFractionDigits: 0,
+});
+
 export function formatPrice(amount: number | string) {
-  return new Intl.NumberFormat("en-IN", {
-    style: "currency",
-    currency: "INR",
-    maximumFractionDigits: 0,
-  }).format(Number(amount));
+  return inrPriceFormat.format(Number(amount));
+}
+
+/** Currency mark and digits as separate strings so the ₹ can be weighted independently. */
+export function formatPriceParts(amount: number | string): {
+  currency: string;
+  value: string;
+} {
+  const parts = inrPriceFormat.formatToParts(Number(amount));
+  let currency = "";
+  let value = "";
+  for (const part of parts) {
+    if (part.type === "currency") {
+      currency += part.value;
+      continue;
+    }
+    if (
+      currency &&
+      !value &&
+      part.type === "literal" &&
+      part.value.trim() === ""
+    ) {
+      continue;
+    }
+    value += part.value;
+  }
+  return { currency, value };
 }
 
 export function computeGst(amount: number, gstPercent: number): number {

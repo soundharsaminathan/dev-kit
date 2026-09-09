@@ -27,6 +27,7 @@ import { FamilyCombineSheet } from "@/modules/payments/family-combine-sheet";
 import {
   formatInvoiceMonthLabel,
   formatPrice,
+  formatPriceParts,
   type Invoice,
   invoiceCoveredMonthKeys,
   invoiceMatchesMonth,
@@ -101,6 +102,18 @@ function canRefund(invoice: Invoice) {
   const diffMs = now.getTime() - paidDate.getTime();
   const diffDays = diffMs / (1000 * 60 * 60 * 24);
   return diffDays <= 30;
+}
+
+function InvoiceCardAmount({ amount }: { amount: number }) {
+  const { currency, value } = formatPriceParts(amount);
+  return (
+    <span className={screen.amount}>
+      {currency ? (
+        <span className={screen.currencyMark}>{currency}</span>
+      ) : null}
+      {value}
+    </span>
+  );
 }
 
 type InvoiceCardProps = {
@@ -186,11 +199,11 @@ function InvoiceCard({
           </Badge>
         </div>
         <div className={screen.amountRow}>
-          <span className={screen.amount}>
-            {refundMode
-              ? formatPrice(refundedAmount || invoice.amount)
-              : formatPrice(invoice.amount)}
-          </span>
+          <InvoiceCardAmount
+            amount={
+              refundMode ? refundedAmount || invoice.amount : invoice.amount
+            }
+          />
           <span className={screen.amountHint}>
             {refundMode
               ? "Refunded"

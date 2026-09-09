@@ -4,6 +4,7 @@ import {
   cadencePriceHint,
   formatInvoiceMonthLabel,
   formatInvoicePeriodLabel,
+  formatPriceParts,
   type InvoicePaymentPlan,
   invoiceCoveredMonthKeys,
   invoiceMatchesMonth,
@@ -154,5 +155,14 @@ describe("invoice month filter", () => {
     expect(formatInvoicePeriodLabel(["2026-12", "2027-01", "2027-02"])).toBe(
       "Dec 2026, Jan 2027, Feb 2027",
     );
+  });
+});
+
+describe("formatPriceParts", () => {
+  it("splits the rupee mark from the digits", () => {
+    expect(formatPriceParts(3500)).toEqual({
+      currency: "₹",
+      value: "3,500",
+    });
   });
 });
