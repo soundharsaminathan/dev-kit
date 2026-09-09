@@ -21,7 +21,7 @@ export function SessionPager({ previousId, nextId }: SessionPagerProps) {
   return (
     <div className={styles.root}>
       <Button
-        variant="quiet"
+        variant="outline"
         size="md"
         isIconOnly
         className={styles.button}
@@ -35,7 +35,7 @@ export function SessionPager({ previousId, nextId }: SessionPagerProps) {
         <Icon name="chevron-left" />
       </Button>
       <Button
-        variant="quiet"
+        variant="outline"
         size="md"
         isIconOnly
         className={styles.button}
