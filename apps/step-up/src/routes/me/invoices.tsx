@@ -5,6 +5,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useApi } from "@/lib/api-context";
 import { fetchAllPages } from "@/lib/api-page";
 import { useActiveStudentContext } from "@/modules/me/use-active-student-context";
+import { invoiceTilePeriodLabel } from "@/modules/payments/invoice-types";
 import { PullToRefresh } from "@/modules/ui/pull-to-refresh";
 import { Screen } from "@/modules/ui/screen";
 import { SkeletonCardList } from "@/modules/ui/skeleton-block";
@@ -17,6 +18,7 @@ type Invoice = {
   amount: number;
   status: "PENDING" | "PAID" | "OVERDUE" | "REFUNDED";
   dueDate: string | null;
+  paidAt?: string | null;
   batchName?: string | null;
   chargeType?:
     | "POSTPAID_PRORATED"
@@ -26,6 +28,11 @@ type Invoice = {
   attendedSessionCount?: number | null;
   billedSessionCount?: number | null;
   canConvertToQuarterly?: boolean;
+  membership?: {
+    periodStart?: string | null;
+    periodEnd?: string | null;
+    subscription?: { billingCadence?: "MONTHLY" | "QUARTERLY" } | null;
+  } | null;
 };
 
 export const Route = createFileRoute("/me/invoices")({
@@ -111,73 +118,80 @@ function MeInvoicesPage() {
 
         {query.data && query.data.length > 0 ? (
           <div className={styles.list}>
-            {query.data.map((invoice) => (
-              <div key={invoice.id} className={styles.row}>
-                <div className={styles.rowTop}>
-                  <div>
-                    <p className={styles.amount}>₹{invoice.amount}</p>
-                    {invoice.batchName ? (
-                      <p className={styles.due}>{invoice.batchName}</p>
-                    ) : null}
-                    <p className={styles.due}>
-                      {invoice.dueDate
-                        ? `Due ${new Date(invoice.dueDate).toLocaleDateString()}`
-                        : "No due date"}
-                    </p>
-                    {invoice.chargeType === "POSTPAID_PRORATED" &&
-                    invoice.billedSessionCount != null ? (
-                      <p className={styles.due}>
-                        {invoice.attendedSessionCount ?? 0} /{" "}
-                        {invoice.billedSessionCount} sessions
-                      </p>
-                    ) : null}
-                    {invoice.chargeType === "PREPAID_PRORATED" &&
-                    invoice.billedSessionCount != null ? (
-                      <p className={styles.due}>
-                        {invoice.attendedSessionCount ?? 0} /{" "}
-                        {invoice.billedSessionCount} remaining
-                      </p>
-                    ) : null}
-                    {invoice.chargeType === "ADMISSION" ? (
-                      <p className={styles.due}>Admission fee</p>
-                    ) : null}
+            {query.data.map((invoice) => {
+              const periodLabel = invoiceTilePeriodLabel(invoice);
+              return (
+                <div key={invoice.id} className={styles.row}>
+                  <div className={styles.rowTop}>
+                    <div>
+                      <p className={styles.amount}>₹{invoice.amount}</p>
+                      {invoice.batchName ? (
+                        <p className={styles.due}>{invoice.batchName}</p>
+                      ) : null}
+                      {periodLabel ? (
+                        <p
+                          className={styles.due}
+                          data-testid={`invoice-months-${invoice.id}`}
+                        >
+                          {periodLabel}
+                        </p>
+                      ) : invoice.dueDate ? (
+                        <p className={styles.due}>
+                          Due {new Date(invoice.dueDate).toLocaleDateString()}
+                        </p>
+                      ) : null}
+                      {invoice.chargeType === "POSTPAID_PRORATED" &&
+                      invoice.billedSessionCount != null ? (
+                        <p className={styles.due}>
+                          {invoice.attendedSessionCount ?? 0} /{" "}
+                          {invoice.billedSessionCount} sessions
+                        </p>
+                      ) : null}
+                      {invoice.chargeType === "PREPAID_PRORATED" &&
+                      invoice.billedSessionCount != null ? (
+                        <p className={styles.due}>
+                          {invoice.attendedSessionCount ?? 0} /{" "}
+                          {invoice.billedSessionCount} remaining
+                        </p>
+                      ) : null}
+                    </div>
+                    <Badge
+                      variant={
+                        invoice.status === "PAID"
+                          ? "success"
+                          : invoice.status === "OVERDUE"
+                            ? "danger"
+                            : invoice.status === "REFUNDED"
+                              ? "warning"
+                              : "neutral"
+                      }
+                    >
+                      {invoice.status}
+                    </Badge>
                   </div>
-                  <Badge
-                    variant={
-                      invoice.status === "PAID"
-                        ? "success"
-                        : invoice.status === "OVERDUE"
-                          ? "danger"
-                          : invoice.status === "REFUNDED"
-                            ? "warning"
-                            : "neutral"
-                    }
-                  >
-                    {invoice.status}
-                  </Badge>
-                </div>
-                {invoice.status === "PENDING" ? (
-                  <div className={styles.actions}>
-                    <TouchButton variant="quiet" isDisabled>
-                      Pay at front desk
-                    </TouchButton>
-                    {invoice.canConvertToQuarterly ? (
-                      <TouchButton
-                        variant="quiet"
-                        data-testid={`convert-quarterly-${invoice.id}`}
-                        isPending={
-                          convertToQuarterly.isPending &&
-                          convertToQuarterly.variables === invoice.id
-                        }
-                        onClick={() => convertToQuarterly.mutate(invoice.id)}
-                      >
-                        Convert to quarterly
+                  {invoice.status === "PENDING" ? (
+                    <div className={styles.actions}>
+                      <TouchButton variant="quiet" isDisabled>
+                        Pay at front desk
                       </TouchButton>
-                    ) : null}
-                  </div>
-                ) : null}
-              </div>
-            ))}
+                      {invoice.canConvertToQuarterly ? (
+                        <TouchButton
+                          variant="quiet"
+                          data-testid={`convert-quarterly-${invoice.id}`}
+                          isPending={
+                            convertToQuarterly.isPending &&
+                            convertToQuarterly.variables === invoice.id
+                          }
+                          onClick={() => convertToQuarterly.mutate(invoice.id)}
+                        >
+                          Convert to quarterly
+                        </TouchButton>
+                      ) : null}
+                    </div>
+                  ) : null}
+                </div>
+              );
+            })}
           </div>
         ) : null}
       </PullToRefresh>

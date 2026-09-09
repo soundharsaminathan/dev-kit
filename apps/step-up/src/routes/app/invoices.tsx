@@ -32,6 +32,7 @@ import {
   invoiceCoveredMonthKeys,
   invoiceMatchesMonth,
   invoicePeriodLabel,
+  invoiceTilePeriodLabel,
   recentUtcMonthKeys,
   type StudioFamily,
   utcMonthKey,
@@ -142,7 +143,7 @@ function InvoiceCard({
   const refundedAmount = invoice.refundedAmount ?? 0;
   const isFamily = invoice.kind === "FAMILY" || invoice.kind === "COMBINED";
   const summary = invoice.familySummary;
-  const periodLabel = invoicePeriodLabel(invoice);
+  const periodLabel = invoiceTilePeriodLabel(invoice);
   const metaParts = [
     invoice.kind === "COMBINED"
       ? "Combined family"
@@ -162,9 +163,6 @@ function InvoiceCard({
     const remaining = invoice.attendedSessionCount ?? 0;
     const billed = invoice.billedSessionCount ?? 0;
     metaParts.push(`${remaining} / ${billed} remaining`);
-  }
-  if (invoice.chargeType === "ADMISSION") {
-    metaParts.push("Admission fee");
   }
   if (isFamily && summary?.planName) {
     metaParts.push(summary.planName);

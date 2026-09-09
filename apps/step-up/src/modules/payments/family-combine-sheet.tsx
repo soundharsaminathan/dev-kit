@@ -14,7 +14,7 @@ import {
   allocateFamilyDiscount,
   formatPrice,
   type Invoice,
-  invoicePeriodLabel,
+  invoiceTilePeriodLabel,
   type StudioFamily,
 } from "./invoice-types";
 import { parseDiscountInput } from "./print-invoice";
@@ -234,7 +234,7 @@ export function FamilyCombineSheet({
                       data-testid={`combine-invoice-period-${invoice.id}`}
                     >
                       {[
-                        invoicePeriodLabel(invoice),
+                        invoiceTilePeriodLabel(invoice),
                         invoice.batchName,
                         invoice.status,
                         invoice.chargeType === "PREPAID_PRORATED" &&

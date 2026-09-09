@@ -178,6 +178,9 @@ export type InvoiceMonthSource = Pick<
   "membership" | "dueDate" | "paidAt" | "refundedAt" | "status" | "paymentPlan"
 >;
 
+export type InvoiceTilePeriodSource = InvoiceMonthSource &
+  Pick<Invoice, "chargeType">;
+
 export function utcMonthKey(date: Date = new Date()): string {
   return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`;
 }
@@ -296,6 +299,15 @@ export function invoicePeriodLabel(
   const keys = invoiceCoveredMonthKeys(invoice);
   if (keys.length === 0) return null;
   return formatInvoicePeriodLabel(keys, month);
+}
+
+/** Tile heading: billing months, or Admission fee (never the paid-at month). */
+export function invoiceTilePeriodLabel(
+  invoice: InvoiceTilePeriodSource,
+  month: "short" | "long" = "short",
+): string | null {
+  if (invoice.chargeType === "ADMISSION") return "Admission fee";
+  return invoicePeriodLabel(invoice, month);
 }
 
 export function invoiceMonthKey(invoice: InvoiceMonthSource): string | null {

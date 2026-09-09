@@ -401,6 +401,12 @@ export class BillingQueriesService {
             periodStart: invoice.membership?.periodStart,
             periodEnd: invoice.membership?.periodEnd,
           })?.toISOString() ?? null,
+        membership: invoice.membership
+          ? {
+              periodStart: invoice.membership.periodStart.toISOString(),
+              periodEnd: invoice.membership.periodEnd.toISOString(),
+            }
+          : null,
         chargeType: invoice.chargeType,
         attendedSessionCount: invoice.attendedSessionCount,
         billedSessionCount: invoice.billedSessionCount,

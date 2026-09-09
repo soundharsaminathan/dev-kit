@@ -30,6 +30,7 @@ import {
   type Invoice,
   invoiceCoveredMonthKeys,
   invoicePeriodLabel,
+  invoiceTilePeriodLabel,
   type StudioFamily,
 } from "@/modules/payments/invoice-types";
 import { printInvoice } from "@/modules/payments/print-invoice";
@@ -103,6 +104,11 @@ type StudentStudioProfile = {
     paidAt?: string | null;
     batchId?: string | null;
     batchName?: string | null;
+    chargeType?:
+      | "POSTPAID_PRORATED"
+      | "PREPAID_PRORATED"
+      | "PREPAID_FULL"
+      | "ADMISSION";
     membership?: {
       periodStart?: string | null;
       periodEnd?: string | null;
@@ -892,91 +898,96 @@ function StudentDetailPage() {
                 />
               ) : (
                 <div className={staff.list}>
-                  {profile.invoices.map((invoice) => (
-                    <div key={invoice.id} className={staff.attentionCard}>
-                      <div className={staff.attentionTop}>
-                        <span className={staff.attentionTitle}>
-                          {formatInr(invoice.amount)}
-                        </span>
-                        <Badge variant={invoiceStatusVariant(invoice.status)}>
-                          {invoice.status}
-                        </Badge>
-                      </div>
-                      {invoice.paidAt ? (
+                  {profile.invoices.map((invoice) => {
+                    const periodLabel = invoiceTilePeriodLabel(invoice);
+                    return (
+                      <div key={invoice.id} className={staff.attentionCard}>
+                        <div className={staff.attentionTop}>
+                          <span className={staff.attentionTitle}>
+                            {formatInr(invoice.amount)}
+                          </span>
+                          <Badge variant={invoiceStatusVariant(invoice.status)}>
+                            {invoice.status}
+                          </Badge>
+                        </div>
+                        {periodLabel ? (
+                          <p
+                            className={staff.attentionMeta}
+                            data-testid={`invoice-months-${invoice.id}`}
+                          >
+                            {periodLabel}
+                          </p>
+                        ) : null}
                         <p className={staff.attentionMeta}>
                           {[
                             invoice.batchName,
-                            `Paid ${formatDate(invoice.paidAt)}`,
-                            invoice.paymentMethod
-                              ? invoice.paymentMethod.replace("_", " ")
-                              : null,
+                            invoice.paidAt
+                              ? invoice.paymentMethod
+                                ? invoice.paymentMethod.replace("_", " ")
+                                : null
+                              : "Not paid yet",
                           ]
                             .filter(Boolean)
                             .join(" · ")}
                         </p>
-                      ) : (
-                        <p className={staff.attentionMeta}>
-                          {[invoice.batchName, "Not paid yet"]
-                            .filter(Boolean)
-                            .join(" · ")}
-                        </p>
-                      )}
-                      {invoice.status !== "PAID" ? (
-                        <div className={staff.rowActions}>
-                          <TouchButton
-                            size="sm"
-                            variant="primary"
-                            data-testid={`mark-paid-${invoice.id}`}
-                            onClick={() => openMarkPaid(invoice.id)}
-                          >
-                            Mark paid
-                          </TouchButton>
-                        </div>
-                      ) : (
-                        <div className={staff.rowActions}>
-                          <TouchButton
-                            size="sm"
-                            variant="default"
-                            data-testid={`print-invoice-${invoice.id}`}
-                            onClick={() => {
-                              const opened = printInvoice({
-                                id: invoice.id,
-                                amount: invoice.amount,
-                                referralDiscount: invoice.referralDiscount,
-                                studioDiscount: invoice.studioDiscount,
-                                status: invoice.status,
-                                paymentMethod: invoice.paymentMethod,
-                                paidAt: invoice.paidAt,
-                                billMonth: invoice.membership?.periodStart,
-                                billMonthKeys: invoiceCoveredMonthKeys(invoice),
-                                billPeriodLabel: invoicePeriodLabel(
-                                  invoice,
-                                  "long",
-                                ),
-                                studentName: profile.student.name,
-                                studioName: studioQuery.data?.name,
-                                studioLogoUrl: studioQuery.data?.logoUrl,
-                                studioAddress: studioQuery.data?.address,
-                                gstNumber:
-                                  studioQuery.data?.settings?.gstNumber,
-                                gstPercent: invoice.gstPercent,
-                              });
-                              if (!opened) {
-                                toast({
-                                  title: "Couldn't open print window",
-                                  description:
-                                    "Allow pop-ups for this site, then try again.",
-                                  variant: "error",
+                        {invoice.status !== "PAID" ? (
+                          <div className={staff.rowActions}>
+                            <TouchButton
+                              size="sm"
+                              variant="primary"
+                              data-testid={`mark-paid-${invoice.id}`}
+                              onClick={() => openMarkPaid(invoice.id)}
+                            >
+                              Mark paid
+                            </TouchButton>
+                          </div>
+                        ) : (
+                          <div className={staff.rowActions}>
+                            <TouchButton
+                              size="sm"
+                              variant="default"
+                              data-testid={`print-invoice-${invoice.id}`}
+                              onClick={() => {
+                                const opened = printInvoice({
+                                  id: invoice.id,
+                                  amount: invoice.amount,
+                                  referralDiscount: invoice.referralDiscount,
+                                  studioDiscount: invoice.studioDiscount,
+                                  status: invoice.status,
+                                  paymentMethod: invoice.paymentMethod,
+                                  paidAt: invoice.paidAt,
+                                  billMonth: invoice.membership?.periodStart,
+                                  billMonthKeys:
+                                    invoiceCoveredMonthKeys(invoice),
+                                  billPeriodLabel: invoicePeriodLabel(
+                                    invoice,
+                                    "long",
+                                  ),
+                                  studentName: profile.student.name,
+                                  studioName: studioQuery.data?.name,
+                                  studioLogoUrl: studioQuery.data?.logoUrl,
+                                  studioAddress: studioQuery.data?.address,
+                                  gstNumber:
+                                    studioQuery.data?.settings?.gstNumber,
+                                  gstPercent: invoice.gstPercent,
                                 });
-                              }
-                            }}
-                          >
-                            Print invoice
-                          </TouchButton>
-                        </div>
-                      )}
-                    </div>
-                  ))}
+                                if (!opened) {
+                                  toast({
+                                    title: "Couldn't open print window",
+                                    description:
+                                      "Allow pop-ups for this site, then try again.",
+                                    variant: "error",
+                                  });
+                                }
+                              }}
+                            >
+                              Print invoice
+                            </TouchButton>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </section>

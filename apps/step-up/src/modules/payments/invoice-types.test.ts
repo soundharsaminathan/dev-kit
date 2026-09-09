@@ -10,6 +10,7 @@ import {
   invoiceMatchesMonth,
   invoiceMonthKey,
   invoicePeriodLabel,
+  invoiceTilePeriodLabel,
   quarterlyPlanSavings,
   recentUtcMonthKeys,
   utcMonthKey,
@@ -156,6 +157,40 @@ describe("invoice month filter", () => {
     expect(formatInvoicePeriodLabel(["2026-12", "2027-01", "2027-02"])).toBe(
       "Dec 2026, Jan 2027, Feb 2027",
     );
+  });
+
+  it("labels tiles with the billing month, including unpaid invoices", () => {
+    expect(
+      invoiceTilePeriodLabel({
+        status: "PENDING",
+        chargeType: "PREPAID_FULL",
+        membership: { periodStart: "2026-08-01T00:00:00.000Z" },
+      }),
+    ).toBe("Aug 2026");
+    expect(
+      invoiceTilePeriodLabel({
+        status: "PAID",
+        chargeType: "PREPAID_FULL",
+        membership: { periodStart: "2026-06-01T00:00:00.000Z" },
+        paidAt: "2026-08-01T12:00:00.000Z",
+      }),
+    ).toBe("Jun 2026");
+  });
+
+  it("labels admission fee tiles as Admission fee instead of a month", () => {
+    expect(
+      invoiceTilePeriodLabel({
+        status: "PENDING",
+        chargeType: "ADMISSION",
+      }),
+    ).toBe("Admission fee");
+    expect(
+      invoiceTilePeriodLabel({
+        status: "PAID",
+        chargeType: "ADMISSION",
+        paidAt: "2026-08-15T10:00:00.000Z",
+      }),
+    ).toBe("Admission fee");
   });
 });
 
