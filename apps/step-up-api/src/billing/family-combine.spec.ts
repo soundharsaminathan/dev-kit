@@ -5,6 +5,8 @@ import {
   allocateFamilyDiscount,
   attributionTargetsForInvoice,
   batchLabelForInvoice,
+  familyCombineBlockReason,
+  householdStudentIds,
   loadPaidMonthsByStudent,
   monthsForBillingCadence,
   parseCombineMeta,
@@ -22,9 +24,28 @@ describe("allocateFamilyDiscount", () => {
   });
 
   it("rejects discount above subtotal (negative path)", () => {
-    expect(() => allocateFamilyDiscount([100], 150)).toThrow(
-      /cannot exceed/i,
+    expect(() => allocateFamilyDiscount([100], 150)).toThrow(/cannot exceed/i);
+  });
+});
+
+describe("familyCombineBlockReason", () => {
+  it("blocks one person's invoices even when they are the purchaser", () => {
+    const household = householdStudentIds("solo", [], []);
+    expect(familyCombineBlockReason(["solo", "solo"], household)).toBe(
+      "same_person",
     );
+  });
+
+  it("blocks students who are not in the household", () => {
+    const household = householdStudentIds("owner", ["kid-1"], []);
+    expect(familyCombineBlockReason(["kid-1", "stranger"], household)).toBe(
+      "not_family",
+    );
+  });
+
+  it("allows two household members", () => {
+    const household = householdStudentIds("owner", ["kid-1", "kid-2"], []);
+    expect(familyCombineBlockReason(["kid-1", "kid-2"], household)).toBeNull();
   });
 });
 
@@ -153,9 +174,7 @@ describe("attributionTargetsForInvoice", () => {
         coveredStudents: [{ studentId: "s1", seatRole: "KID", batchId: "b1" }],
       },
     });
-    expect(targets).toEqual([
-      { batchId: "b1", amount: 500, studentId: "s1" },
-    ]);
+    expect(targets).toEqual([{ batchId: "b1", amount: 500, studentId: "s1" }]);
   });
 
   it("does not fan out to every enrollment without batch metadata (negative path)", () => {
@@ -185,9 +204,7 @@ describe("attributionTargetsForInvoice", () => {
       combineMeta: null,
       purchaseMeta: null,
     });
-    expect(targets).toEqual([
-      { batchId: "b1", amount: 500, studentId: "s1" },
-    ]);
+    expect(targets).toEqual([{ batchId: "b1", amount: 500, studentId: "s1" }]);
   });
 });
 

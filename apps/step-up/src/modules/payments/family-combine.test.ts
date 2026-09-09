@@ -63,8 +63,8 @@ describe("shouldOfferFamilyCombine", () => {
     expect(shouldOfferFamilyCombine(family, [kidA, kidB])).toBe(true);
   });
 
-  it("still offers combine when both unpaid invoices belong to one member", () => {
-    expect(shouldOfferFamilyCombine(family, [kidA, secondA])).toBe(true);
+  it("does not offer combine when both unpaid invoices belong to one member", () => {
+    expect(shouldOfferFamilyCombine(family, [kidA, secondA])).toBe(false);
   });
 
   it("does not offer combine for a student who is not in a family", () => {

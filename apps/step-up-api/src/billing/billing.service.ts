@@ -43,6 +43,8 @@ import {
   attributionTargetsForInvoice,
   batchIdsForInvoiceDisplay,
   batchLabelForInvoice,
+  familyCombineBlockReason,
+  householdStudentIds,
   type InvoiceCombineMeta,
   parseCombineMeta,
   parsePurchaseMeta,
@@ -1075,14 +1077,33 @@ export class BillingService {
           "Already combined invoices cannot be combined again",
         );
       }
-      const linked =
-        invoice.studentId === data.purchaserUserId ||
-        (await this.isFamilyLinked(data.purchaserUserId, invoice.studentId));
-      if (!linked) {
-        throw new BadRequestException(
-          "All invoices must belong to this family",
-        );
-      }
+    }
+
+    const studentIds = sources.map((invoice) => invoice.studentId);
+    const uniqueStudentIds = [...new Set(studentIds)];
+    if (uniqueStudentIds.length < 2) {
+      throw new BadRequestException(
+        "Combine invoices from more than one family member",
+      );
+    }
+
+    const [familyLinks, parentLinks] = await Promise.all([
+      this.prisma.familyMember.findMany({
+        where: { ownerUserId: data.purchaserUserId },
+        select: { memberUserId: true },
+      }),
+      this.prisma.parentChild.findMany({
+        where: { parentUserId: data.purchaserUserId },
+        select: { childUserId: true },
+      }),
+    ]);
+    const householdIds = householdStudentIds(
+      data.purchaserUserId,
+      familyLinks.map((link) => link.memberUserId),
+      parentLinks.map((link) => link.childUserId),
+    );
+    if (familyCombineBlockReason(studentIds, householdIds) === "not_family") {
+      throw new BadRequestException("All invoices must belong to this family");
     }
 
     const amounts = sources.map((invoice) => Number(invoice.amount));
@@ -1104,12 +1125,9 @@ export class BillingService {
       );
     }
 
-    const studentIds = [
-      ...new Set(sources.map((invoice) => invoice.studentId)),
-    ];
     const enrollments = await this.prisma.batchEnrollment.findMany({
       where: {
-        studentId: { in: studentIds },
+        studentId: { in: uniqueStudentIds },
         ...ACTIVE_ENROLLMENT_WHERE,
         batch: { studioId: data.studioId },
       },
@@ -1180,25 +1198,6 @@ export class BillingService {
       combineMeta,
       student: undefined,
     };
-  }
-
-  private async isFamilyLinked(ownerUserId: string, memberUserId: string) {
-    const [family, parent] = await Promise.all([
-      this.prisma.familyMember.findUnique({
-        where: {
-          ownerUserId_memberUserId: { ownerUserId, memberUserId },
-        },
-      }),
-      this.prisma.parentChild.findUnique({
-        where: {
-          parentUserId_childUserId: {
-            parentUserId: ownerUserId,
-            childUserId: memberUserId,
-          },
-        },
-      }),
-    ]);
-    return Boolean(family || parent);
   }
 
   async getCheckoutInvoice(id: string, actor: DecryptedUser) {

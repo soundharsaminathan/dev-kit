@@ -187,6 +187,27 @@ export function roundMoney(value: number) {
   return Math.round(value * 100) / 100;
 }
 
+export function householdStudentIds(
+  ownerUserId: string,
+  memberUserIds: readonly string[],
+  childUserIds: readonly string[],
+): Set<string> {
+  return new Set([ownerUserId, ...memberUserIds, ...childUserIds]);
+}
+
+/** Combine is a multi-person household bill, not one student's invoices. */
+export function familyCombineBlockReason(
+  studentIds: readonly string[],
+  householdIds: ReadonlySet<string>,
+): "same_person" | "not_family" | null {
+  const unique = new Set(studentIds);
+  if (unique.size < 2) return "same_person";
+  for (const studentId of unique) {
+    if (!householdIds.has(studentId)) return "not_family";
+  }
+  return null;
+}
+
 /** Proportional family discount; last row absorbs remainder so cents sum exactly. */
 export function allocateFamilyDiscount(
   amounts: number[],
@@ -353,7 +374,9 @@ type PaidMonthsDb = {
     findMany: (args: {
       where: { id: { in: string[] } };
       select: { id: true; billingCadence: true };
-    }) => Promise<Array<{ id: string; billingCadence: BillingCadence | string }>>;
+    }) => Promise<
+      Array<{ id: string; billingCadence: BillingCadence | string }>
+    >;
   };
 };
 

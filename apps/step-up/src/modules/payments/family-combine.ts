@@ -46,13 +46,13 @@ export function invoicesCoverMultiplePeople(invoices: Invoice[]): boolean {
   return studentIds.size >= 2;
 }
 
-/** Combine is only for a linked family with at least two unpaid invoices. */
+/** Combine is only for a linked family with unpaid invoices from 2+ people. */
 export function shouldOfferFamilyCombine(
   family: StudioFamily | null,
   invoices: Invoice[],
 ): family is StudioFamily {
   return (
     isLinkedFamily(family) &&
-    householdUnpaidInvoices(invoices, family).length >= 2
+    invoicesCoverMultiplePeople(householdUnpaidInvoices(invoices, family))
   );
 }

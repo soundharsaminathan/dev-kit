@@ -1116,69 +1116,36 @@ test.describe("admin (staff) smoke @smoke", () => {
     }
   });
 
-  test("same-person family invoices hide family discount @smoke", async ({
-    browser,
-  }) => {
-    test.setTimeout(180_000);
+  test("family-combine rejects one person's invoices @smoke", async () => {
     const cleanup = new SmokeDataCleanup();
-    const stamp = Date.now();
-    const kid = await createLinkedFamilyKid(
-      cleanup,
-      `Smoke Same Person ${stamp}`,
-    );
-    const kidsBatch = await createCalendarBatch(cleanup, {
-      kind: "prepaid",
-      category: "KIDS",
-      capacity: 8,
-    });
-    const secondBatch = await createCalendarBatch(cleanup, {
-      kind: "prepaid",
-      category: "KIDS",
-      capacity: 8,
-    });
-    const enrollA = await enrollPrepaid(cleanup, {
-      category: "KIDS",
-      studentId: kid.id,
-      batchId: kidsBatch.id,
-    });
-    const enrollB = await enrollPrepaid(cleanup, {
-      category: "KIDS",
-      studentId: kid.id,
-      batchId: secondBatch.id,
-    });
-
-    const context = await browser.newContext({
-      storageState: authFile("STAFF"),
-    });
-    const page = await context.newPage();
     try {
-      await openInvoicesAndWaitFor(page, `mark-paid-${enrollA.invoice.id}`);
-      await page.getByRole("tab", { name: /^family$/i }).click();
-      await expect(
-        page.getByTestId(`family-group-${SMOKE.users.STUDENT.id}`),
-      ).toBeVisible({ timeout: 30_000 });
-      await page.getByRole("tab", { name: /^individual$/i }).click();
-      await page.getByTestId(`mark-paid-${enrollA.invoice.id}`).click();
+      const stamp = Date.now();
+      const first = await enrollPrepaid(cleanup, {
+        name: `Smoke Solo Combine Api ${stamp}`,
+      });
+      const second = await enrollPrepaid(cleanup, {
+        studentId: first.student.id,
+        name: first.student.name,
+      });
 
-      await expect(
-        page.getByRole("heading", { name: /collect payment ·/i }),
-      ).toBeVisible();
-      await expect(
-        page.getByTestId(`combine-invoice-${enrollA.invoice.id}`),
-      ).toBeVisible();
-      await expect(
-        page.getByTestId(`combine-invoice-${enrollB.invoice.id}`),
-      ).toBeVisible();
-      await page
-        .getByTestId(`combine-invoice-${enrollB.invoice.id}`)
-        .getByRole("checkbox")
-        .click();
-      await expect(page.getByTestId("family-combine-discount")).toHaveCount(0);
-      await expect(page.getByTestId("confirm-family-combine")).toContainText(
-        /combine/i,
-      );
+      const token = await bearerFor("STAFF");
+      const response = await fetch(`${apiBaseUrl()}/billing/family-combine`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          studioId: SMOKE.studioId,
+          purchaserUserId: first.student.id,
+          invoiceIds: [first.invoice.id, second.invoice.id],
+          familyDiscount: 0,
+        }),
+      });
+      expect(response.status).toBe(400);
+      expect(await response.text()).toMatch(/more than one family member/i);
     } finally {
-      await closeSmokeContext(context, cleanup);
+      await cleanup.dispose();
     }
   });
 

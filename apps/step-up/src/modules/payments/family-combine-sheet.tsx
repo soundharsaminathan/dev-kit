@@ -116,7 +116,10 @@ export function FamilyCombineSheet({
     : null;
 
   const canCombine =
-    selected.length >= 2 && discountValid && netDue != null && netDue >= 0;
+    invoicesCoverMultiplePeople(selected) &&
+    discountValid &&
+    netDue != null &&
+    netDue >= 0;
   const canPaySingle =
     Boolean(onPaySingle) && selected.length === 1 && discountValid;
 
@@ -176,10 +179,10 @@ export function FamilyCombineSheet({
   const confirmLabel =
     canPaySingle && selected[0]
       ? `Collect payment · ${formatPrice(selected[0].amount)}`
-      : netDue != null && selected.length >= 2
+      : netDue != null && invoicesCoverMultiplePeople(selected)
         ? `Combine · ${formatPrice(netDue)}`
         : selected.length >= 2
-          ? "Combine invoices"
+          ? "Select more than one person"
           : "Select invoices";
 
   return (
@@ -269,9 +272,7 @@ export function FamilyCombineSheet({
             />
           ) : null}
 
-          {showFamilyDiscount &&
-          allocations.length > 0 &&
-          selected.length >= 2 ? (
+          {showFamilyDiscount && allocations.length > 0 ? (
             <div className={staff.list}>
               {allocations.map((row) => (
                 <p key={row.invoice.id} className={staff.rowMeta}>
@@ -284,7 +285,7 @@ export function FamilyCombineSheet({
 
           <p className={staff.rowMeta}>
             {selected.length} selected · Subtotal {formatPrice(subtotal)}
-            {netDue != null && selected.length >= 2
+            {netDue != null && invoicesCoverMultiplePeople(selected)
               ? ` · Net ${formatPrice(netDue)}`
               : ""}
           </p>

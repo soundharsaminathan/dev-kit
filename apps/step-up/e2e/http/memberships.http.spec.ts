@@ -185,4 +185,35 @@ test.describe("memberships HTTP @http", () => {
       await cleanup.dispose();
     }
   });
+
+  test("family-combine rejects one person's invoices @http", async () => {
+    const cleanup = new TestDataCleanup();
+    const stamp = Date.now();
+    try {
+      const first = await enrollPrepaid(cleanup, {
+        studentName: `HTTP Solo Combine ${stamp}`,
+      });
+      const second = await enrollPrepaid(cleanup, {
+        studentId: first.student.id,
+      });
+
+      const result = await expectStatus(
+        "STAFF",
+        "/billing/family-combine",
+        400,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            studioId: SEED.studioId,
+            purchaserUserId: first.student.id,
+            invoiceIds: [first.invoice.id, second.invoice.id],
+            familyDiscount: 0,
+          }),
+        },
+      );
+      expect(result.text).toMatch(/more than one family member/i);
+    } finally {
+      await cleanup.dispose();
+    }
+  });
 });

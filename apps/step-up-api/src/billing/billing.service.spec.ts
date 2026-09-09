@@ -1778,8 +1778,8 @@ describe("BillingService.familyCombine", () => {
     },
     batchEnrollment: { findMany: vi.fn() },
     studioSettings: { findUnique: vi.fn() },
-    familyMember: { findUnique: vi.fn() },
-    parentChild: { findUnique: vi.fn() },
+    familyMember: { findMany: vi.fn(), findUnique: vi.fn() },
+    parentChild: { findMany: vi.fn(), findUnique: vi.fn() },
     $transaction: vi.fn(),
   };
   let service: BillingService;
@@ -1806,8 +1806,11 @@ describe("BillingService.familyCombine", () => {
       { studentId: "kid-1", batchId: "batch-kid" },
       { studentId: "kid-2", batchId: "batch-kid" },
     ]);
-    prisma.familyMember.findUnique.mockResolvedValue({ id: "link" });
-    prisma.parentChild.findUnique.mockResolvedValue(null);
+    prisma.familyMember.findMany.mockResolvedValue([
+      { memberUserId: "kid-1" },
+      { memberUserId: "kid-2" },
+    ]);
+    prisma.parentChild.findMany.mockResolvedValue([]);
     prisma.invoice.create.mockResolvedValue({
       id: "inv-combined",
       studentId: "owner-1",
@@ -1912,8 +1915,8 @@ describe("BillingService.familyCombine", () => {
 
   it("rejects invoices outside the family", async () => {
     prisma.invoice.findMany.mockResolvedValue(unpaidSources());
-    prisma.familyMember.findUnique.mockResolvedValue(null);
-    prisma.parentChild.findUnique.mockResolvedValue(null);
+    prisma.familyMember.findMany.mockResolvedValue([]);
+    prisma.parentChild.findMany.mockResolvedValue([]);
 
     await expect(
       service.familyCombine(makeUser(), {
@@ -1923,6 +1926,26 @@ describe("BillingService.familyCombine", () => {
         familyDiscount: 0,
       }),
     ).rejects.toThrow(/family/i);
+  });
+
+  it("rejects combining two invoices for the same person", async () => {
+    prisma.invoice.findMany.mockResolvedValue([
+      unpaidSources()[0],
+      {
+        ...unpaidSources()[0],
+        id: "inv-a2",
+      },
+    ]);
+
+    await expect(
+      service.familyCombine(makeUser(), {
+        studioId: "studio-1",
+        purchaserUserId: "owner-1",
+        invoiceIds: ["inv-a", "inv-a2"],
+        familyDiscount: 0,
+      }),
+    ).rejects.toThrow(/more than one family member/i);
+    expect(prisma.familyMember.findMany).not.toHaveBeenCalled();
   });
 
   it("rejects fewer than two invoices", async () => {
