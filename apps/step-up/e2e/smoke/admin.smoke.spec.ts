@@ -955,12 +955,17 @@ test.describe("admin (staff) smoke @smoke", () => {
       await expect(page.getByTestId("sell-family-pack")).toHaveCount(0);
       await page.getByTestId(`family-group-${SMOKE.users.STUDENT.id}`).click();
       await expect(
-        page.getByRole("heading", { name: /combine ·/i }),
+        page.getByRole("heading", { name: /collect payment ·/i }),
       ).toBeVisible();
 
       await expect(
         page.getByTestId(`combine-invoice-${enrollA.invoice.id}`),
       ).toBeVisible({ timeout: 30_000 });
+      await expect(
+        page.getByTestId(`combine-invoice-period-${enrollA.invoice.id}`),
+      ).toContainText(
+        /(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{4}/,
+      );
       await page
         .getByTestId(`combine-invoice-${enrollA.invoice.id}`)
         .getByRole("checkbox")
@@ -1045,7 +1050,7 @@ test.describe("admin (staff) smoke @smoke", () => {
       await page.getByTestId(`mark-paid-${enrollA.invoice.id}`).click();
 
       await expect(
-        page.getByRole("heading", { name: /combine ·/i }),
+        page.getByRole("heading", { name: /collect payment ·/i }),
       ).toBeVisible();
       await expect(
         page.getByTestId(`combine-invoice-${enrollA.invoice.id}`),
@@ -1066,6 +1071,112 @@ test.describe("admin (staff) smoke @smoke", () => {
         page.getByTestId("confirm-mark-paid").click(),
       ]);
       expect(paidResponse.ok()).toBeTruthy();
+    } finally {
+      await closeSmokeContext(context, cleanup);
+    }
+  });
+
+  test("non-family collect payment skips combine @smoke", async ({
+    browser,
+  }) => {
+    test.setTimeout(180_000);
+    const cleanup = new SmokeDataCleanup();
+    const stamp = Date.now();
+    const first = await enrollPrepaid(cleanup, {
+      name: `Smoke Solo Combine ${stamp}`,
+    });
+    const second = await enrollPrepaid(cleanup, {
+      studentId: first.student.id,
+      name: first.student.name,
+    });
+
+    const context = await browser.newContext({
+      storageState: authFile("STAFF"),
+    });
+    const page = await context.newPage();
+    try {
+      await openInvoicesAndWaitFor(page, `mark-paid-${first.invoice.id}`);
+      await page.getByRole("tab", { name: /^family$/i }).click();
+      await expect(
+        page.getByTestId(`family-group-${SMOKE.users.STUDENT.id}`),
+      ).toBeVisible({ timeout: 30_000 });
+      await page.getByRole("tab", { name: /^individual$/i }).click();
+      await page.getByTestId(`mark-paid-${first.invoice.id}`).click();
+
+      await expect(page.getByTestId("confirm-family-combine")).toHaveCount(0);
+      await expect(
+        page.getByTestId(`combine-invoice-${second.invoice.id}`),
+      ).toHaveCount(0);
+      await expect(page.getByTestId("confirm-mark-paid")).toBeVisible();
+      await expect(
+        page.getByRole("heading", { name: /^collect payment$/i }),
+      ).toBeVisible();
+    } finally {
+      await closeSmokeContext(context, cleanup);
+    }
+  });
+
+  test("same-person family invoices hide family discount @smoke", async ({
+    browser,
+  }) => {
+    test.setTimeout(180_000);
+    const cleanup = new SmokeDataCleanup();
+    const stamp = Date.now();
+    const kid = await createLinkedFamilyKid(
+      cleanup,
+      `Smoke Same Person ${stamp}`,
+    );
+    const kidsBatch = await createCalendarBatch(cleanup, {
+      kind: "prepaid",
+      category: "KIDS",
+      capacity: 8,
+    });
+    const secondBatch = await createCalendarBatch(cleanup, {
+      kind: "prepaid",
+      category: "KIDS",
+      capacity: 8,
+    });
+    const enrollA = await enrollPrepaid(cleanup, {
+      category: "KIDS",
+      studentId: kid.id,
+      batchId: kidsBatch.id,
+    });
+    const enrollB = await enrollPrepaid(cleanup, {
+      category: "KIDS",
+      studentId: kid.id,
+      batchId: secondBatch.id,
+    });
+
+    const context = await browser.newContext({
+      storageState: authFile("STAFF"),
+    });
+    const page = await context.newPage();
+    try {
+      await openInvoicesAndWaitFor(page, `mark-paid-${enrollA.invoice.id}`);
+      await page.getByRole("tab", { name: /^family$/i }).click();
+      await expect(
+        page.getByTestId(`family-group-${SMOKE.users.STUDENT.id}`),
+      ).toBeVisible({ timeout: 30_000 });
+      await page.getByRole("tab", { name: /^individual$/i }).click();
+      await page.getByTestId(`mark-paid-${enrollA.invoice.id}`).click();
+
+      await expect(
+        page.getByRole("heading", { name: /collect payment ·/i }),
+      ).toBeVisible();
+      await expect(
+        page.getByTestId(`combine-invoice-${enrollA.invoice.id}`),
+      ).toBeVisible();
+      await expect(
+        page.getByTestId(`combine-invoice-${enrollB.invoice.id}`),
+      ).toBeVisible();
+      await page
+        .getByTestId(`combine-invoice-${enrollB.invoice.id}`)
+        .getByRole("checkbox")
+        .click();
+      await expect(page.getByTestId("family-combine-discount")).toHaveCount(0);
+      await expect(page.getByTestId("confirm-family-combine")).toContainText(
+        /combine/i,
+      );
     } finally {
       await closeSmokeContext(context, cleanup);
     }

@@ -122,14 +122,8 @@ test.describe("admin payments @critical", () => {
   }) => {
     const cleanup = new TestDataCleanup();
     const stamp = Date.now();
-    const kidA = await createLinkedFamilyKid(
-      cleanup,
-      `Combine A ${stamp}`,
-    );
-    const kidB = await createLinkedFamilyKid(
-      cleanup,
-      `Combine B ${stamp}`,
-    );
+    const kidA = await createLinkedFamilyKid(cleanup, `Combine A ${stamp}`);
+    const kidB = await createLinkedFamilyKid(cleanup, `Combine B ${stamp}`);
     const kidsBatch = await createCalendarBatch(cleanup, {
       kind: "prepaid",
       category: "KIDS",
@@ -165,7 +159,7 @@ test.describe("admin payments @critical", () => {
     await expect(page.getByTestId("sell-family-pack")).toHaveCount(0);
     await page.getByTestId(`family-group-${SEED.users.STUDENT.id}`).click();
     await expect(
-      page.getByRole("heading", { name: /combine ·/i }),
+      page.getByRole("heading", { name: /collect payment ·/i }),
     ).toBeVisible();
 
     await page

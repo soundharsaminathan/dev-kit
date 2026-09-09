@@ -23,6 +23,7 @@ import {
   cadencePriceHint,
   formatPrice,
   type Invoice,
+  invoicePeriodLabel,
   type ManualPaymentMethod,
   paymentPlanPrice,
 } from "./invoice-types";
@@ -263,7 +264,7 @@ export function CollectPaymentSheet({
                     ? "Combined family"
                     : "Individual",
                 invoice.batchName,
-                `Invoice ${invoice.id.slice(-6).toUpperCase()}`,
+                invoicePeriodLabel(invoice),
               ]
                 .filter(Boolean)
                 .join(" · ")}

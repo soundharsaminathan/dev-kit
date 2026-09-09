@@ -21,6 +21,10 @@ import { StudentBatchEnrollmentActions } from "@/modules/batches/student-batch-e
 import type { ChatConversation } from "@/modules/chat/types";
 import { TemporaryCredentialsPanel } from "@/modules/members/temporary-credentials-panel";
 import { CollectPaymentSheet } from "@/modules/payments/collect-payment-sheet";
+import {
+  findFamilyForStudent,
+  shouldOfferFamilyCombine,
+} from "@/modules/payments/family-combine";
 import { FamilyCombineSheet } from "@/modules/payments/family-combine-sheet";
 import {
   type Invoice,
@@ -131,53 +135,6 @@ type SheetKind =
   | "toggle-active"
   | "reset-password"
   | null;
-
-function isUnpaidInvoice(status: Invoice["status"]) {
-  return status === "PENDING" || status === "OVERDUE";
-}
-
-function findFamilyForStudent(
-  families: StudioFamily[],
-  studentId: string,
-): StudioFamily | null {
-  return (
-    families.find(
-      (family) =>
-        family.ownerId === studentId ||
-        family.members.some((member) => member.id === studentId),
-    ) ?? null
-  );
-}
-
-function syntheticFamilyFromStudent(
-  studentId: string,
-  studentName: string,
-): StudioFamily {
-  return {
-    ownerId: studentId,
-    ownerName: studentName,
-    ownerRole: "STUDENT",
-    ownerPhotoUrl: null,
-    members: [],
-  };
-}
-
-function householdUnpaidInvoices(
-  invoices: Invoice[],
-  family: StudioFamily,
-): Invoice[] {
-  const memberIds = new Set<string>([
-    family.ownerId,
-    ...family.members.map((member) => member.id),
-  ]);
-  return invoices.filter(
-    (invoice) =>
-      isUnpaidInvoice(invoice.status) &&
-      invoice.kind !== "COMBINED" &&
-      !invoice.combineMeta &&
-      memberIds.has(invoice.studentId),
-  );
-}
 
 function familyRelationLabel(
   relation: StudentStudioProfile["family"][number]["relation"],
@@ -360,14 +317,8 @@ function StudentDetailPage() {
   }
 
   function openMarkPaid(invoiceId: string) {
-    const allInvoices = invoicesQuery.data ?? [];
-    const families = familiesQuery.data ?? [];
-    const studentName = query.data?.student.name ?? "Student";
-    const family =
-      findFamilyForStudent(families, id) ??
-      syntheticFamilyFromStudent(id, studentName);
-    const unpaid = householdUnpaidInvoices(allInvoices, family);
-    if (unpaid.length >= 2) {
+    const family = findFamilyForStudent(familiesQuery.data ?? [], id);
+    if (shouldOfferFamilyCombine(family, invoicesQuery.data ?? [])) {
       setPayPreselectedIds([invoiceId]);
       setPayFamily(family);
       return;

@@ -19,6 +19,10 @@ import { fetchAllPages } from "@/lib/api-page";
 import { requireAdmin } from "@/lib/require-auth";
 import { useStudioId } from "@/lib/use-studio-id";
 import { CollectPaymentSheet } from "@/modules/payments/collect-payment-sheet";
+import {
+  findFamilyForStudent,
+  shouldOfferFamilyCombine,
+} from "@/modules/payments/family-combine";
 import { FamilyCombineSheet } from "@/modules/payments/family-combine-sheet";
 import {
   formatInvoiceMonthLabel,
@@ -85,47 +89,6 @@ function familySeatCounts(family: StudioFamily) {
 
 function isUnpaid(status: Invoice["status"]) {
   return status === "PENDING" || status === "OVERDUE";
-}
-
-function findFamilyForStudent(
-  families: StudioFamily[],
-  studentId: string,
-): StudioFamily | null {
-  return (
-    families.find(
-      (family) =>
-        family.ownerId === studentId ||
-        family.members.some((member) => member.id === studentId),
-    ) ?? null
-  );
-}
-
-function syntheticFamilyFromInvoice(invoice: Invoice): StudioFamily {
-  return {
-    ownerId: invoice.studentId,
-    ownerName: invoice.student?.name ?? "Student",
-    ownerRole: "STUDENT",
-    ownerPhotoUrl: null,
-    members: [],
-  };
-}
-
-/** Household unpaid invoices that can be optionally combined before pay. */
-function householdUnpaidInvoices(
-  invoices: Invoice[],
-  family: StudioFamily,
-): Invoice[] {
-  const memberIds = new Set<string>([
-    family.ownerId,
-    ...family.members.map((member) => member.id),
-  ]);
-  return invoices.filter(
-    (invoice) =>
-      isUnpaid(invoice.status) &&
-      invoice.kind !== "COMBINED" &&
-      !invoice.combineMeta &&
-      memberIds.has(invoice.studentId),
-  );
 }
 
 function canRefund(invoice: Invoice) {
@@ -440,13 +403,11 @@ function InvoicesPage() {
     membersQuery.data?.find((member) => member.id === studentId)?.name;
 
   function openCollect(invoice: Invoice) {
-    const families = familiesQuery.data ?? [];
-    const allInvoices = invoicesQuery.data ?? [];
-    const family =
-      findFamilyForStudent(families, invoice.studentId) ??
-      syntheticFamilyFromInvoice(invoice);
-    const unpaid = householdUnpaidInvoices(allInvoices, family);
-    if (unpaid.length >= 2) {
+    const family = findFamilyForStudent(
+      familiesQuery.data ?? [],
+      invoice.studentId,
+    );
+    if (shouldOfferFamilyCombine(family, invoicesQuery.data ?? [])) {
       setPayPreselectedIds([invoice.id]);
       setPayFamily(family);
       return;

@@ -9,10 +9,12 @@ import { FormInput } from "@/modules/ui/form-input";
 import staff from "@/modules/ui/staff.module.scss";
 import { EmptyState, ErrorState } from "@/modules/ui/states";
 import { TouchButton } from "@/modules/ui/touch-button";
+import { invoicesCoverMultiplePeople } from "./family-combine";
 import {
   allocateFamilyDiscount,
   formatPrice,
   type Invoice,
+  invoicePeriodLabel,
   type StudioFamily,
 } from "./invoice-types";
 import { parseDiscountInput } from "./print-invoice";
@@ -82,8 +84,11 @@ export function FamilyCombineSheet({
   );
 
   const selected = unpaid.filter((invoice) => selectedIds.includes(invoice.id));
+  const showFamilyDiscount = invoicesCoverMultiplePeople(selected);
   const subtotal = selected.reduce((sum, invoice) => sum + invoice.amount, 0);
-  const discountValue = parseDiscountInput(familyDiscount);
+  const discountValue = showFamilyDiscount
+    ? parseDiscountInput(familyDiscount)
+    : 0;
   const discountValid =
     !Number.isNaN(discountValue) &&
     discountValue >= 0 &&
@@ -184,15 +189,18 @@ export function FamilyCombineSheet({
         if (!open) onOpenChange(false);
       }}
       title={
-        family ? `Combine · ${family.ownerName}’s family` : "Combine invoices"
+        family
+          ? `Collect payment · ${family.ownerName}’s family`
+          : "Collect payment"
       }
       size="tall"
     >
       {family ? (
         <div className={staff.sheetStack}>
           <p className={staff.rowMeta}>
-            Check unpaid invoices to merge into one bill and keep the family
-            discount. Or pay a single invoice on its own.
+            Select unpaid household invoices to collect together. Family
+            discount applies when more than one person is included. Or pay a
+            single invoice on its own.
           </p>
 
           {unpaid.length === 0 ? (
@@ -218,11 +226,14 @@ export function FamilyCombineSheet({
                         {formatPrice(invoice.amount)}
                       </span>
                     </div>
-                    <p className={staff.rowMeta}>
+                    <p
+                      className={staff.rowMeta}
+                      data-testid={`combine-invoice-period-${invoice.id}`}
+                    >
                       {[
+                        invoicePeriodLabel(invoice),
                         invoice.batchName,
                         invoice.status,
-                        invoice.id.slice(-6).toUpperCase(),
                         invoice.chargeType === "PREPAID_PRORATED" &&
                         invoice.attendedSessionCount != null &&
                         invoice.billedSessionCount != null
@@ -244,20 +255,23 @@ export function FamilyCombineSheet({
             </div>
           )}
 
-          <FormInput
-            label="Family discount"
-            type="number"
-            min="0"
-            step="1"
-            inputMode="decimal"
-            data-testid="family-combine-discount"
-            value={familyDiscount}
-            onChange={setFamilyDiscount}
-            placeholder="0"
-            isDisabled={selected.length < 2}
-          />
+          {showFamilyDiscount ? (
+            <FormInput
+              label="Family discount"
+              type="number"
+              min="0"
+              step="1"
+              inputMode="decimal"
+              data-testid="family-combine-discount"
+              value={familyDiscount}
+              onChange={setFamilyDiscount}
+              placeholder="0"
+            />
+          ) : null}
 
-          {allocations.length > 0 && selected.length >= 2 ? (
+          {showFamilyDiscount &&
+          allocations.length > 0 &&
+          selected.length >= 2 ? (
             <div className={staff.list}>
               {allocations.map((row) => (
                 <p key={row.invoice.id} className={staff.rowMeta}>
