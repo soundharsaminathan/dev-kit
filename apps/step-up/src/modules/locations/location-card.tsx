@@ -72,9 +72,9 @@ export function LocationCard({
               </span>
             ) : null}
           </div>
-          {branch.description ? (
-            <p className={styles.description}>{branch.description}</p>
-          ) : null}
+          <p className={styles.description} aria-hidden={!branch.description}>
+            {branch.description}
+          </p>
         </div>
       </button>
       {footer ? <div className={styles.footer}>{footer}</div> : null}
