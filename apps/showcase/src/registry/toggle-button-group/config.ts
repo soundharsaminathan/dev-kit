@@ -6,6 +6,17 @@ export const toggleButtonGroupConfig: ComponentRegistryConfig = {
   category: "buttons",
   description: "Toggle Button Group component showcase.",
   controls: [
-    { name: "children", type: "string", defaultValue: "ToggleButtonGroup" },
+    {
+      name: "variant",
+      type: "enum",
+      options: ["default", "primary", "quiet", "segmented"],
+      defaultValue: "default",
+    },
+    {
+      name: "size",
+      type: "enum",
+      options: ["xs", "sm", "md", "lg"],
+      defaultValue: "md",
+    },
   ],
 };

@@ -288,7 +288,8 @@ export function CollectPaymentSheet({
                   selectionMode="single"
                   selectedKeys={activeCadence ? [activeCadence] : []}
                   disallowEmptySelection
-                  size="sm"
+                  variant="segmented"
+                  size="lg"
                   isDisabled={pending}
                   data-testid={`${discountTestIdPrefix}payment-plan`}
                   onSelectionChange={(keys) => {
@@ -391,7 +392,8 @@ export function CollectPaymentSheet({
                 aria-label="Payment method"
                 selectionMode="single"
                 selectedKeys={paymentMethod ? [paymentMethod] : []}
-                size="sm"
+                variant="segmented"
+                size="lg"
                 isDisabled={pending}
                 data-testid={`${discountTestIdPrefix}payment-method`}
                 onSelectionChange={(keys) => {
@@ -402,7 +404,6 @@ export function CollectPaymentSheet({
                     setPaymentMethod(null);
                   }
                 }}
-                className={styles.methodGroup}
               >
                 <ToggleButton
                   id="CASH"
