@@ -222,6 +222,7 @@ test.describe("admin payments @critical", () => {
     ).toBeVisible();
     await expect(page.getByText(/net earnings/i).first()).toBeVisible();
     await expect(page.getByTestId("payments-branch-switcher")).toBeVisible();
+    await expect(page.getByTestId("payments-month-filter")).toBeVisible();
     await context.close();
   });
 });

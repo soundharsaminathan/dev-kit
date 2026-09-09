@@ -549,6 +549,8 @@ describe("BillingService.getTrainerAnalytics", () => {
         platformFeePercent: 5,
         purchaseMeta: null,
         membership: null,
+        periodStart: new Date("2026-07-01T00:00:00.000Z"),
+        periodEnd: new Date("2026-07-31T23:59:59.999Z"),
         student: { id: "student-1", name: "Alex" },
       },
       {
@@ -561,6 +563,8 @@ describe("BillingService.getTrainerAnalytics", () => {
         platformFeePercent: 5,
         purchaseMeta: null,
         membership: null,
+        periodStart: new Date("2026-06-01T00:00:00.000Z"),
+        periodEnd: new Date("2026-06-30T23:59:59.999Z"),
         student: { id: "student-1", name: "Alex" },
       },
       {
@@ -606,6 +610,85 @@ describe("BillingService.getTrainerAnalytics", () => {
       batchId: "batch-1",
       batchName: "Kids Hip-Hop",
     });
+  });
+
+  it("filters analytics by billing month, not paidAt", async () => {
+    prisma.user.findFirst.mockResolvedValue({
+      id: "trainer-1",
+      name: "Lead Trainer",
+      role: UserRole.TRAINER,
+      studioId: "studio-1",
+    });
+    prisma.batchTrainer.findMany.mockResolvedValue([
+      {
+        batch: {
+          id: "batch-1",
+          name: "Kids Hip-Hop",
+          enrollments: [{ studentId: "student-1" }],
+        },
+      },
+    ]);
+    prisma.invoice.findMany.mockResolvedValue([
+      {
+        id: "inv-paid-later",
+        studentId: "student-1",
+        amount: 2000,
+        status: InvoiceStatus.PAID,
+        paymentMethod: PaymentMethod.CASH,
+        paidAt: new Date("2026-09-10T12:00:00.000Z"),
+        platformFeePercent: 5,
+        purchaseMeta: null,
+        membership: null,
+        periodStart: new Date("2026-08-01T00:00:00.000Z"),
+        periodEnd: new Date("2026-08-31T23:59:59.999Z"),
+        student: { id: "student-1", name: "Alex" },
+      },
+      {
+        id: "inv-pending-other-month",
+        studentId: "student-1",
+        amount: 800,
+        status: InvoiceStatus.PENDING,
+        paymentMethod: null,
+        paidAt: null,
+        platformFeePercent: 5,
+        purchaseMeta: {
+          batchId: "batch-1",
+          subscriptionId: "sub-1",
+          purchaserUserId: "student-1",
+          coveredStudents: [{ studentId: "student-1", seatRole: "ADULT" }],
+        },
+        membership: { periodStart: new Date("2026-07-01T00:00:00.000Z") },
+        periodStart: new Date("2026-07-01T00:00:00.000Z"),
+        periodEnd: new Date("2026-07-31T23:59:59.999Z"),
+        student: { id: "student-1", name: "Alex" },
+      },
+    ]);
+
+    const august = await service.getTrainerAnalytics(
+      makeUser({ role: UserRole.STAFF }),
+      "trainer-1",
+      "studio-1",
+      {
+        from: "2026-08-01T00:00:00.000Z",
+        to: "2026-08-31T23:59:59.999Z",
+        bucket: "month",
+      },
+    );
+    expect(august.totals.collected).toBe(2000);
+    expect(august.pendingPayments).toHaveLength(0);
+
+    const september = await service.getTrainerAnalytics(
+      makeUser({ role: UserRole.STAFF }),
+      "trainer-1",
+      "studio-1",
+      {
+        from: "2026-09-01T00:00:00.000Z",
+        to: "2026-09-30T23:59:59.999Z",
+        bucket: "month",
+      },
+    );
+    expect(september.totals.collected).toBe(0);
+    expect(september.invoiceCount).toBe(0);
   });
 
   it("allows studio admins to view any trainer in their studio", async () => {

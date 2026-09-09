@@ -35,6 +35,30 @@ export function mergeInvoicePeriods(
   return { periodStart, periodEnd: latestEnd };
 }
 
+/** True when the stored billing period overlaps `[from, to]`. Missing dates mean unbounded. */
+export function invoiceOverlapsRange(
+  invoice: {
+    periodStart?: Date | null;
+    periodEnd?: Date | null;
+    paidAt?: Date | null;
+    refundedAt?: Date | null;
+  },
+  from: Date | null,
+  to: Date | null,
+): boolean {
+  if (!from && !to) return true;
+  if (invoice.periodStart && invoice.periodEnd) {
+    if (from && invoice.periodEnd < from) return false;
+    if (to && invoice.periodStart > to) return false;
+    return true;
+  }
+  const activityAt = invoice.paidAt ?? invoice.refundedAt ?? null;
+  if (!activityAt) return false;
+  if (from && activityAt < from) return false;
+  if (to && activityAt > to) return false;
+  return true;
+}
+
 export function coveredMonthKeysFromPeriod(
   periodStart: Date,
   periodEnd?: Date | null,

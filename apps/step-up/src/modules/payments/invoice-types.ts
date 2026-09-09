@@ -49,15 +49,18 @@ export type Invoice = {
   batchId?: string | null | undefined;
   batchName?: string | null | undefined;
   student?: { name: string } | undefined;
-  membership?: {
-    periodStart?: string | null | undefined;
-    periodEnd?: string | null | undefined;
-    subscription?: {
-      name?: string | undefined;
-      billingCadence?: BillingCadence | undefined;
-      kind?: string | undefined;
-    } | null;
-  } | null | undefined;
+  membership?:
+    | {
+        periodStart?: string | null | undefined;
+        periodEnd?: string | null | undefined;
+        subscription?: {
+          name?: string | undefined;
+          billingCadence?: BillingCadence | undefined;
+          kind?: string | undefined;
+        } | null;
+      }
+    | null
+    | undefined;
   chargeType?:
     | "POSTPAID_PRORATED"
     | "PREPAID_PRORATED"
@@ -69,20 +72,29 @@ export type Invoice = {
   canConvertToQuarterly?: boolean | undefined;
   paymentPlan?: InvoicePaymentPlan | null | undefined;
   dueDate?: string | null | undefined;
-  familySummary?: {
-    planName: string | null;
-    adultCount: number | null;
-    kidCount: number | null;
-    coveredStudents: CoveredSeat[] | null;
-  } | null | undefined;
-  purchaseMeta?: {
-    subscriptionId: string;
-    purchaserUserId: string;
-    coveredStudents: CoveredSeat[];
-  } | null | undefined;
-  combineMeta?: {
-    sources: CombineSource[];
-  } | null | undefined;
+  familySummary?:
+    | {
+        planName: string | null;
+        adultCount: number | null;
+        kidCount: number | null;
+        coveredStudents: CoveredSeat[] | null;
+      }
+    | null
+    | undefined;
+  purchaseMeta?:
+    | {
+        subscriptionId: string;
+        purchaserUserId: string;
+        coveredStudents: CoveredSeat[];
+      }
+    | null
+    | undefined;
+  combineMeta?:
+    | {
+        sources: CombineSource[];
+      }
+    | null
+    | undefined;
 };
 
 export type StudioFamily = {
@@ -217,6 +229,16 @@ function dateFromMonthKey(key: string): Date | null {
   const [year, month] = key.split("-").map(Number);
   if (!year || !month) return null;
   return new Date(Date.UTC(year, month - 1, 1));
+}
+
+/** Inclusive UTC bounds for a `YYYY-MM` key. */
+export function utcMonthBounds(key: string): { from: Date; to: Date } | null {
+  const from = dateFromMonthKey(key);
+  if (!from) return null;
+  const to = new Date(
+    Date.UTC(from.getUTCFullYear(), from.getUTCMonth() + 1, 0, 23, 59, 59, 999),
+  );
+  return { from, to };
 }
 
 function invoicePeriodStart(invoice: InvoiceMonthSource): Date | null {

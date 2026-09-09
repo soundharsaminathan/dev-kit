@@ -4,6 +4,7 @@ import {
   billingPeriodForCadence,
   coveredMonthKeysFromPeriod,
   formatInvoicePeriodLabel,
+  invoiceOverlapsRange,
   mergeInvoicePeriods,
   presentInvoicePeriod,
 } from "./invoice-period";
@@ -38,6 +39,58 @@ describe("billingPeriodForCadence", () => {
     expect(formatInvoicePeriodLabel(["2026-06", "2026-07", "2026-08"])).toBe(
       "Jun, Jul, Aug 2026",
     );
+  });
+});
+
+describe("invoiceOverlapsRange", () => {
+  const august = {
+    periodStart: new Date("2026-08-01T00:00:00.000Z"),
+    periodEnd: new Date("2026-08-31T23:59:59.999Z"),
+  };
+
+  it("includes invoices whose stored period overlaps the selected month", () => {
+    expect(
+      invoiceOverlapsRange(
+        august,
+        new Date("2026-08-01T00:00:00.000Z"),
+        new Date("2026-08-31T23:59:59.999Z"),
+      ),
+    ).toBe(true);
+    expect(
+      invoiceOverlapsRange(
+        {
+          ...august,
+          paidAt: new Date("2026-09-10T12:00:00.000Z"),
+        },
+        new Date("2026-09-01T00:00:00.000Z"),
+        new Date("2026-09-30T23:59:59.999Z"),
+      ),
+    ).toBe(false);
+  });
+
+  it("includes a quarterly invoice in each covered month", () => {
+    const quarterly = {
+      periodStart: new Date("2026-06-01T00:00:00.000Z"),
+      periodEnd: new Date("2026-08-31T23:59:59.999Z"),
+    };
+    expect(
+      invoiceOverlapsRange(
+        quarterly,
+        new Date("2026-07-01T00:00:00.000Z"),
+        new Date("2026-07-31T23:59:59.999Z"),
+      ),
+    ).toBe(true);
+    expect(
+      invoiceOverlapsRange(
+        quarterly,
+        new Date("2026-09-01T00:00:00.000Z"),
+        new Date("2026-09-30T23:59:59.999Z"),
+      ),
+    ).toBe(false);
+  });
+
+  it("treats a missing range as unfiltered", () => {
+    expect(invoiceOverlapsRange(august, null, null)).toBe(true);
   });
 });
 

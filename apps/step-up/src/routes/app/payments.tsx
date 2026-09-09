@@ -38,13 +38,19 @@ import { useApi } from "@/lib/api-context";
 import { useAuth } from "@/lib/auth";
 import { requireAdmin } from "@/lib/require-auth";
 import { useStudioId } from "@/lib/use-studio-id";
+import {
+  formatInvoiceMonthLabel,
+  recentUtcMonthKeys,
+  utcMonthBounds,
+  utcMonthKey,
+} from "@/modules/payments/invoice-types";
 import styles from "@/modules/payments/payments-dashboard.module.scss";
+import { RequireStudioFeature } from "@/modules/studio-features/require-studio-feature";
 import { PullToRefresh } from "@/modules/ui/pull-to-refresh";
 import { Screen } from "@/modules/ui/screen";
 import { SkeletonBlock, SkeletonCardList } from "@/modules/ui/skeleton-block";
 import { EmptyState, ErrorState } from "@/modules/ui/states";
 import { TouchButton } from "@/modules/ui/touch-button";
-import { RequireStudioFeature } from "@/modules/studio-features/require-studio-feature";
 
 const ALL_TRAINERS_ID = "all";
 const ALL_BRANCHES_ID = "all";
@@ -134,22 +140,13 @@ type TrainerPaymentAnalytics = {
   }>;
 };
 
-type RangePreset = "all" | "7d" | "30d" | "month" | "3m" | "1y";
 type ChartType = "bar" | "area" | "line";
+const ANALYTICS_BUCKET: AnalyticsBucket = "month";
 
 const CHART_TYPES = [
   { id: "bar", label: "Bar", icon: "chart-bar" as const },
   { id: "area", label: "Area", icon: "activity" as const },
   { id: "line", label: "Line", icon: "chart-line" as const },
-] as const;
-
-const PERIOD_OPTIONS = [
-  { id: "all", label: "All time" },
-  { id: "month", label: "This month" },
-  { id: "30d", label: "Last 30 days" },
-  { id: "7d", label: "Last 7 days" },
-  { id: "3m", label: "Last 3 months" },
-  { id: "1y", label: "Last year" },
 ] as const;
 
 const METHOD_LABELS = {
@@ -179,39 +176,6 @@ export const Route = createFileRoute("/app/payments")({
   ),
 });
 
-function pad(value: number) {
-  return String(value).padStart(2, "0");
-}
-
-function formatDateInput(date: Date) {
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
-}
-
-function startOfMonthInput() {
-  const now = new Date();
-  return formatDateInput(new Date(now.getFullYear(), now.getMonth(), 1));
-}
-
-function daysAgoInput(days: number) {
-  const date = new Date();
-  date.setDate(date.getDate() - days);
-  return formatDateInput(date);
-}
-
-function monthsAgoInput(months: number) {
-  const date = new Date();
-  date.setMonth(date.getMonth() - months);
-  return formatDateInput(date);
-}
-
-function startOfDayIso(date: string) {
-  return new Date(`${date}T00:00:00`).toISOString();
-}
-
-function endOfDayIso(date: string) {
-  return new Date(`${date}T23:59:59.999`).toISOString();
-}
-
 function formatInr(amount: number) {
   return new Intl.NumberFormat("en-IN", {
     style: "currency",
@@ -227,39 +191,6 @@ function formatCompactInr(amount: number) {
     notation: "compact",
     maximumFractionDigits: 1,
   }).format(amount);
-}
-
-function detectPreset(from: string, to: string): RangePreset {
-  if (!from && !to) {
-    return "all";
-  }
-  const today = formatDateInput(new Date());
-  if (from === startOfMonthInput() && to === today) {
-    return "month";
-  }
-  if (from === daysAgoInput(7) && to === today) {
-    return "7d";
-  }
-  if (from === daysAgoInput(30) && to === today) {
-    return "30d";
-  }
-  if (from === monthsAgoInput(3) && to === today) {
-    return "3m";
-  }
-  if (from === monthsAgoInput(12) && to === today) {
-    return "1y";
-  }
-  return "all";
-}
-
-function bucketForPreset(preset: RangePreset): AnalyticsBucket {
-  if (preset === "7d" || preset === "30d") {
-    return "day";
-  }
-  if (preset === "3m") {
-    return "week";
-  }
-  return "month";
 }
 
 function formatSeriesLabel(start: string, bucket: AnalyticsBucket) {
@@ -310,13 +241,21 @@ function PaymentsPage() {
     useState<string>(ALL_TRAINERS_ID);
   const [selectedBranchId, setSelectedBranchId] =
     useState<string>(ALL_BRANCHES_ID);
-  const [fromDate, setFromDate] = useState("");
-  const [toDate, setToDate] = useState("");
+  const [monthFilter, setMonthFilter] = useState("ALL");
   const [chartType, setChartType] = useState<ChartType>("bar");
   const [refreshing, setRefreshing] = useState(false);
-
-  const rangePreset = detectPreset(fromDate, toDate);
-  const bucket = bucketForPreset(rangePreset);
+  const monthOptions = useMemo(() => {
+    const current = utcMonthKey();
+    return [
+      { id: "ALL", label: "All months" },
+      ...recentUtcMonthKeys(12).map((id) => ({
+        id,
+        label: id === current ? "This month" : formatInvoiceMonthLabel(id),
+      })),
+    ];
+  }, []);
+  const monthBounds =
+    monthFilter === "ALL" ? null : utcMonthBounds(monthFilter);
 
   const membersQuery = useQuery({
     queryKey: ["studio-members", studioId],
@@ -355,17 +294,17 @@ function PaymentsPage() {
       trainerId,
       studioId,
       branchId,
-      fromDate,
-      toDate,
-      bucket,
+      monthFilter,
+      ANALYTICS_BUCKET,
     ],
     queryFn: () => {
-      const params = new URLSearchParams({ studioId, bucket });
-      if (fromDate) {
-        params.set("from", startOfDayIso(fromDate));
-      }
-      if (toDate) {
-        params.set("to", endOfDayIso(toDate));
+      const params = new URLSearchParams({
+        studioId,
+        bucket: ANALYTICS_BUCKET,
+      });
+      if (monthBounds) {
+        params.set("from", monthBounds.from.toISOString());
+        params.set("to", monthBounds.to.toISOString());
       }
       if (branchId) {
         params.set("branchId", branchId);
@@ -376,40 +315,6 @@ function PaymentsPage() {
     },
     enabled: Boolean(trainerId) && (isTrainer || isStaff),
   });
-
-  function applyPreset(id: string) {
-    const today = formatDateInput(new Date());
-    if (id === "all") {
-      setFromDate("");
-      setToDate("");
-      return;
-    }
-    if (id === "month") {
-      setFromDate(startOfMonthInput());
-      setToDate(today);
-      return;
-    }
-    if (id === "7d") {
-      setFromDate(daysAgoInput(7));
-      setToDate(today);
-      return;
-    }
-    if (id === "30d") {
-      setFromDate(daysAgoInput(30));
-      setToDate(today);
-      return;
-    }
-    if (id === "3m") {
-      setFromDate(monthsAgoInput(3));
-      setToDate(today);
-      return;
-    }
-    if (id === "1y") {
-      setFromDate(monthsAgoInput(12));
-      setToDate(today);
-      return;
-    }
-  }
 
   async function refresh() {
     setRefreshing(true);
@@ -430,9 +335,9 @@ function PaymentsPage() {
     () =>
       (data?.series ?? []).map((point) => ({
         ...point,
-        label: formatSeriesLabel(point.start, bucket),
+        label: formatSeriesLabel(point.start, ANALYTICS_BUCKET),
       })),
-    [data?.series, bucket],
+    [data?.series],
   );
 
   const methodTotal =
@@ -634,18 +539,23 @@ function PaymentsPage() {
 
             <div className={styles.filterField}>
               <Select
-                label="Period"
-                selectedKey={rangePreset}
-                onSelectionChange={(key) =>
-                  applyPreset(key == null ? "all" : String(key))
-                }
+                label="Month"
+                selectedKey={monthFilter}
+                onSelectionChange={(key) => {
+                  if (key == null) return;
+                  setMonthFilter(String(key));
+                }}
               >
-                <SelectTrigger>
+                <SelectTrigger data-testid="payments-month-filter">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {PERIOD_OPTIONS.map((option) => (
-                    <SelectItem key={option.id} id={option.id}>
+                  {monthOptions.map((option) => (
+                    <SelectItem
+                      key={option.id}
+                      id={option.id}
+                      textValue={option.label}
+                    >
                       {option.label}
                     </SelectItem>
                   ))}

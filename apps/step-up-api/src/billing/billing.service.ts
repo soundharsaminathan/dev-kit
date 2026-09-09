@@ -45,7 +45,11 @@ import {
   parseCombineMeta,
   parsePurchaseMeta,
 } from "./family-combine";
-import { mergeInvoicePeriods, presentInvoicePeriod } from "./invoice-period";
+import {
+  invoiceOverlapsRange,
+  mergeInvoicePeriods,
+  presentInvoicePeriod,
+} from "./invoice-period";
 
 export type AnalyticsBucket = "day" | "week" | "month";
 
@@ -559,31 +563,9 @@ export class BillingService {
       batches.map((batch) => [batch.id, batch.name] as const),
     );
 
-    const filtered = invoices.filter((invoice) => {
-      if (!from && !to) {
-        return true;
-      }
-      if (
-        invoice.status === InvoiceStatus.PENDING ||
-        invoice.status === InvoiceStatus.OVERDUE
-      ) {
-        return true;
-      }
-      const activityAt =
-        invoice.status === InvoiceStatus.REFUNDED
-          ? (invoice.refundedAt ?? invoice.paidAt)
-          : invoice.paidAt;
-      if (!activityAt) {
-        return false;
-      }
-      if (from && activityAt < from) {
-        return false;
-      }
-      if (to && activityAt > to) {
-        return false;
-      }
-      return true;
-    });
+    const filtered = invoices.filter((invoice) =>
+      invoiceOverlapsRange(invoice, from, to),
+    );
 
     const byStatus: TrainerPaymentAnalytics["byStatus"] = {
       [InvoiceStatus.PAID]: { count: 0, amount: 0 },
@@ -728,7 +710,7 @@ export class BillingService {
 
     const netCollected = roundMoney(collected - platformFees);
     const series = buildAnalyticsSeries({
-      invoices: invoices.filter(
+      invoices: filtered.filter(
         (invoice) =>
           invoice.status === InvoiceStatus.PAID && invoice.paidAt != null,
       ),
@@ -744,7 +726,7 @@ export class BillingService {
       currentNetCollected: netCollected,
     });
     const pendingPayments = buildPendingPayments({
-      invoices: invoices.filter(
+      invoices: filtered.filter(
         (invoice) =>
           invoice.status === InvoiceStatus.PENDING ||
           invoice.status === InvoiceStatus.OVERDUE,
@@ -1791,11 +1773,25 @@ function nextBucketStart(start: Date, bucket: AnalyticsBucket): Date {
   return new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth() + 1, 1));
 }
 
+function seriesTimestamp(invoice: {
+  periodStart?: Date | null;
+  paidAt: Date;
+}): Date {
+  return invoice.periodStart ?? invoice.paidAt;
+}
+
+function clampToRange(at: Date, from: Date | null, to: Date | null): Date {
+  if (from && at < from) return from;
+  if (to && at > to) return to;
+  return at;
+}
+
 function buildAnalyticsSeries(input: {
   invoices: Array<{
     amount: unknown;
     platformFeePercent: number;
     paidAt: Date | null;
+    periodStart?: Date | null;
   }>;
   from: Date | null;
   to: Date | null;
@@ -1808,6 +1804,7 @@ function buildAnalyticsSeries(input: {
       amount: unknown;
       platformFeePercent: number;
       paidAt: Date;
+      periodStart?: Date | null;
     } => invoice.paidAt != null,
   );
 
@@ -1818,7 +1815,7 @@ function buildAnalyticsSeries(input: {
   let rangeStart = input.from;
   let rangeEnd = input.to;
   if (!rangeStart || !rangeEnd) {
-    const times = paid.map((invoice) => invoice.paidAt.getTime());
+    const times = paid.map((invoice) => seriesTimestamp(invoice).getTime());
     if (times.length === 0) {
       return [];
     }
@@ -1837,13 +1834,8 @@ function buildAnalyticsSeries(input: {
     let invoiceCount = 0;
 
     for (const invoice of paid) {
-      if (invoice.paidAt < cursor || invoice.paidAt > bucketEnd) {
-        continue;
-      }
-      if (input.from && invoice.paidAt < input.from) {
-        continue;
-      }
-      if (input.to && invoice.paidAt > input.to) {
+      const at = clampToRange(seriesTimestamp(invoice), input.from, input.to);
+      if (at < cursor || at > bucketEnd) {
         continue;
       }
       const amount = Number(invoice.amount);
@@ -1871,6 +1863,9 @@ function buildAnalyticsComparison(input: {
     amount: unknown;
     platformFeePercent: number;
     paidAt: Date | null;
+    periodStart?: Date | null;
+    periodEnd?: Date | null;
+    refundedAt?: Date | null;
   }>;
   from: Date | null;
   to: Date | null;
@@ -1898,9 +1893,7 @@ function buildAnalyticsComparison(input: {
   for (const invoice of input.invoices) {
     if (
       invoice.status !== InvoiceStatus.PAID ||
-      !invoice.paidAt ||
-      invoice.paidAt < previousFrom ||
-      invoice.paidAt > previousTo
+      !invoiceOverlapsRange(invoice, previousFrom, previousTo)
     ) {
       continue;
     }

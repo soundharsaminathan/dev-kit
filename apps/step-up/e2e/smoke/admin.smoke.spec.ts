@@ -303,6 +303,40 @@ test.describe("admin (staff) smoke @smoke", () => {
     }
   });
 
+  test("staff can filter payment analytics by billing month @smoke", async ({
+    browser,
+  }) => {
+    const context = await browser.newContext({
+      storageState: authFile("STAFF"),
+    });
+    const page = await context.newPage();
+    try {
+      await page.goto("/app/payments", { waitUntil: "domcontentloaded" });
+      await waitForAppReady(page);
+      await expect(page.getByTestId("payments-month-filter")).toBeVisible();
+
+      const now = new Date();
+      const from = new Date(
+        Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1),
+      ).toISOString();
+
+      const [response] = await Promise.all([
+        waitForApiResponse(page, {
+          method: "GET",
+          pathIncludes: `from=${encodeURIComponent(from)}`,
+        }),
+        (async () => {
+          await page.getByTestId("payments-month-filter").click();
+          await page.getByRole("option", { name: "This month" }).click();
+        })(),
+      ]);
+      expect(response.ok()).toBeTruthy();
+      await expect(page.getByText(/net earnings/i).first()).toBeVisible();
+    } finally {
+      await closeSmokeContext(context);
+    }
+  });
+
   test("staff payment analytics rejects an unknown branch @smoke", async () => {
     const token = await bearerFor("STAFF");
     const response = await fetch(

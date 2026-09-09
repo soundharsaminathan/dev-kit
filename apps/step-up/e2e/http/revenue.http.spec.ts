@@ -511,14 +511,14 @@ test.describe("Date-range filtering @http", () => {
       await markPaid(invoice.id);
 
       const now = new Date();
-      const todayStart = new Date(
-        Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
+      const monthStart = new Date(
+        Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1),
       ).toISOString();
-      const todayEnd = new Date(
+      const monthEnd = new Date(
         Date.UTC(
           now.getUTCFullYear(),
-          now.getUTCMonth(),
-          now.getUTCDate(),
+          now.getUTCMonth() + 1,
+          0,
           23,
           59,
           59,
@@ -527,12 +527,12 @@ test.describe("Date-range filtering @http", () => {
       ).toISOString();
 
       const analytics = await getTrainerAnalytics(SEED.users.TRAINER.id, {
-        from: todayStart,
-        to: todayEnd,
-        bucket: "day",
+        from: monthStart,
+        to: monthEnd,
+        bucket: "month",
       });
 
-      // Today's payment should appear in collected
+      // This billing month should include the new paid invoice
       expect(analytics.totals.collected).toBeGreaterThanOrEqual(
         ADULT_MONTHLY_PRICE,
       );
@@ -547,7 +547,7 @@ test.describe("Date-range filtering @http", () => {
     const analytics = await getTrainerAnalytics(SEED.users.TRAINER.id, {
       from: "2020-01-01T00:00:00.000Z",
       to: "2020-01-31T23:59:59.999Z",
-      bucket: "day",
+      bucket: "month",
     });
     expect(analytics.totals.collected).toBe(0);
     expect(analytics.series.every((row) => row.collected === 0)).toBe(true);
@@ -557,7 +557,7 @@ test.describe("Date-range filtering @http", () => {
     const analytics = await getTrainerAnalytics(SEED.users.TRAINER.id, {
       from: "2026-07-01T00:00:00.000Z",
       to: "2026-07-31T23:59:59.999Z",
-      bucket: "day",
+      bucket: "month",
     });
     // comparison should be defined (may be null delta if no prior data)
     expect(analytics.comparison).toBeDefined();
@@ -1421,16 +1421,15 @@ test.describe("Revenue reconciliation @http", () => {
       );
       await markPaid(invoice.id);
 
-      // Today's analytics should include this payment
       const now = new Date();
-      const todayStart = new Date(
-        Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
+      const monthStart = new Date(
+        Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1),
       ).toISOString();
-      const todayEnd = new Date(
+      const monthEnd = new Date(
         Date.UTC(
           now.getUTCFullYear(),
-          now.getUTCMonth(),
-          now.getUTCDate(),
+          now.getUTCMonth() + 1,
+          0,
           23,
           59,
           59,
@@ -1438,12 +1437,12 @@ test.describe("Revenue reconciliation @http", () => {
         ),
       ).toISOString();
 
-      const todayAnalytics = await getTrainerAnalytics(SEED.users.TRAINER.id, {
-        from: todayStart,
-        to: todayEnd,
-        bucket: "day",
+      const monthAnalytics = await getTrainerAnalytics(SEED.users.TRAINER.id, {
+        from: monthStart,
+        to: monthEnd,
+        bucket: "month",
       });
-      expect(todayAnalytics.totals.collected).toBeGreaterThanOrEqual(
+      expect(monthAnalytics.totals.collected).toBeGreaterThanOrEqual(
         ADULT_MONTHLY_PRICE,
       );
     } finally {

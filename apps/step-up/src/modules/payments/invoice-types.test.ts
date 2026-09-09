@@ -13,6 +13,7 @@ import {
   invoiceTilePeriodLabel,
   quarterlyPlanSavings,
   recentUtcMonthKeys,
+  utcMonthBounds,
   utcMonthKey,
 } from "./invoice-types";
 
@@ -121,6 +122,11 @@ describe("invoice month filter", () => {
     ]);
     expect(formatInvoiceMonthLabel("2026-08")).toBe("Aug 2026");
     expect(formatInvoiceMonthLabel("2026-09")).toBe("Sept 2026");
+    expect(utcMonthBounds("2026-08")).toEqual({
+      from: new Date("2026-08-01T00:00:00.000Z"),
+      to: new Date("2026-08-31T23:59:59.999Z"),
+    });
+    expect(utcMonthBounds("ALL")).toBeNull();
   });
 
   it("lists all three months for a quarterly invoice", () => {
