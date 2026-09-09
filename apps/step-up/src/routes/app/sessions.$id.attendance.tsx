@@ -15,7 +15,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useApi } from "@/lib/api-context";
 import { ADMIN_ROLES } from "@/lib/constants";
 import { useAuth } from "@/lib/use-auth";
+import { adjacentSessions } from "@/modules/attendance/adjacent-sessions";
 import { AttendanceRosterTable } from "@/modules/attendance/attendance-roster-table";
+import { SessionPager } from "@/modules/attendance/session-pager";
 import {
   type TrialCandidate,
   TrialCandidateCombobox,
@@ -545,6 +547,20 @@ function SessionAttendancePage() {
     enabled: Boolean(id),
   });
 
+  const batchId = sessionQuery.data?.batchId;
+  const batchSessionsQuery = useQuery({
+    queryKey: ["sessions", "batch", batchId],
+    queryFn: () =>
+      api.get<Array<{ id: string; startsAt: string }>>(
+        `/sessions/batch/${batchId}`,
+      ),
+    enabled: Boolean(batchId),
+  });
+  const { previousId, nextId } = adjacentSessions(
+    batchSessionsQuery.data ?? [],
+    id,
+  );
+
   const qrQuery = useQuery({
     queryKey: ["session-qr", id],
     queryFn: () =>
@@ -910,6 +926,8 @@ function SessionAttendancePage() {
     <section className={`page ${styles.root}`}>
       <PageHeader
         title="Session attendance"
+        titleEndInline
+        titleEnd={<SessionPager previousId={previousId} nextId={nextId} />}
         description={sessionDescription}
         actions={
           <div className={styles.headerActions}>

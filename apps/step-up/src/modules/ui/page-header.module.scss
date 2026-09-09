@@ -41,6 +41,20 @@
   margin-inline-start: auto;
 }
 
+@media (min-width: 768px) {
+  .titleRow[data-title-end-inline="true"] {
+    justify-content: flex-start;
+  }
+
+  .titleRow[data-title-end-inline="true"] .title {
+    flex: 0 1 auto;
+  }
+
+  .titleRow[data-title-end-inline="true"] .titleEnd {
+    margin-inline-start: 0;
+  }
+}
+
 .description {
   color: color-mix(in srgb, var(--color-fg) 62%, transparent);
   line-height: 1.4;

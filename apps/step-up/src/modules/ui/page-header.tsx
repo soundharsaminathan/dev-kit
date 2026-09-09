@@ -6,6 +6,7 @@ import styles from "./page-header.module.scss";
 type PageHeaderProps = {
   title: string;
   titleEnd?: ReactNode;
+  titleEndInline?: boolean;
   description?: string;
   actions?: ReactNode;
 };
@@ -14,13 +15,17 @@ type PageHeaderProps = {
 export function PageHeader({
   title,
   titleEnd,
+  titleEndInline = false,
   description,
   actions,
 }: PageHeaderProps) {
   return (
     <div className={styles.header}>
       <div className={styles.copy}>
-        <div className={styles.titleRow}>
+        <div
+          className={styles.titleRow}
+          data-title-end-inline={titleEndInline ? "true" : undefined}
+        >
           <Heading level={1} className={styles.title}>
             {title}
           </Heading>

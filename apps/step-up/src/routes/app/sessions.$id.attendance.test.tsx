@@ -9,6 +9,7 @@ const toastMock = vi.hoisted(() => vi.fn());
 const apiGetMock = vi.hoisted(() => vi.fn());
 const apiPostMock = vi.hoisted(() => vi.fn());
 const apiPatchMock = vi.hoisted(() => vi.fn());
+const navigateMock = vi.hoisted(() => vi.fn());
 const authUserMock = vi.hoisted(() => ({
   current: {
     id: "trainer-1",
@@ -89,7 +90,7 @@ vi.mock("@tanstack/react-router", async (importOriginal) => {
     await importOriginal<typeof import("@tanstack/react-router")>();
   return {
     ...actual,
-    useNavigate: () => vi.fn(),
+    useNavigate: () => navigateMock,
   };
 });
 
@@ -126,6 +127,27 @@ function renderAttendancePage() {
   renderWithProviders(<PageComponent />, { queryClient });
 }
 
+function mockAttendanceGets(
+  overrides: {
+    session?: typeof mockSession;
+    roster?: AttendanceRosterEntry[];
+    batchSessions?: Array<{ id: string; startsAt: string }>;
+  } = {},
+) {
+  apiGetMock.mockImplementation((url: string) => {
+    if (url === "/sessions/session-1") {
+      return Promise.resolve(overrides.session ?? mockSession);
+    }
+    if (url === "/attendance/session/session-1/roster") {
+      return Promise.resolve(structuredClone(overrides.roster ?? mockRoster));
+    }
+    if (url === "/sessions/batch/batch-1") {
+      return Promise.resolve(overrides.batchSessions ?? [mockSession]);
+    }
+    return Promise.reject(new Error(`Unhandled GET: ${url}`));
+  });
+}
+
 async function openCompleteSessionSheet() {
   await waitFor(() => {
     expect(screen.getByTestId("complete-session")).toBeInTheDocument();
@@ -145,15 +167,7 @@ describe("SessionAttendancePage optimistic updates", () => {
       { id: "trainer-2", name: "Second Trainer" },
     ];
 
-    apiGetMock.mockImplementation((url: string) => {
-      if (url === "/sessions/session-1") {
-        return Promise.resolve(mockSession);
-      }
-      if (url === "/attendance/session/session-1/roster") {
-        return Promise.resolve(structuredClone(mockRoster));
-      }
-      return Promise.reject(new Error(`Unhandled GET: ${url}`));
-    });
+    mockAttendanceGets();
   });
 
   it("shows a roster skeleton while session and roster load", async () => {
@@ -436,6 +450,9 @@ describe("SessionAttendancePage optimistic updates", () => {
       if (url === "/attendance/session/session-1/roster") {
         return Promise.resolve(structuredClone(liveRoster));
       }
+      if (url === "/sessions/batch/batch-1") {
+        return Promise.resolve([mockSession]);
+      }
       return Promise.reject(new Error(`Unhandled GET: ${url}`));
     });
 
@@ -544,15 +561,7 @@ describe("SessionAttendancePage complete session trainer picker", () => {
       trainerId: "trainer-1",
     });
 
-    apiGetMock.mockImplementation((url: string) => {
-      if (url === "/sessions/session-1") {
-        return Promise.resolve(mockSession);
-      }
-      if (url === "/attendance/session/session-1/roster") {
-        return Promise.resolve(structuredClone(mockRoster));
-      }
-      return Promise.reject(new Error(`Unhandled GET: ${url}`));
-    });
+    mockAttendanceGets();
   });
 
   it("skips instructor selection when the batch has one trainer", async () => {
@@ -574,23 +583,17 @@ describe("SessionAttendancePage complete session trainer picker", () => {
   });
 
   it("still asks staff to pick an instructor when the batch has multiple trainers", async () => {
-    apiGetMock.mockImplementation((url: string) => {
-      if (url === "/sessions/session-1") {
-        return Promise.resolve({
-          ...mockSession,
-          batch: {
-            name: "Hip Hop Beginners",
-            trainers: [
-              { trainerId: "trainer-1", sortOrder: 0 },
-              { trainerId: "trainer-2", sortOrder: 1 },
-            ],
-          },
-        });
-      }
-      if (url === "/attendance/session/session-1/roster") {
-        return Promise.resolve(structuredClone(mockRoster));
-      }
-      return Promise.reject(new Error(`Unhandled GET: ${url}`));
+    mockAttendanceGets({
+      session: {
+        ...mockSession,
+        batch: {
+          name: "Hip Hop Beginners",
+          trainers: [
+            { trainerId: "trainer-1", sortOrder: 0 },
+            { trainerId: "trainer-2", sortOrder: 1 },
+          ],
+        },
+      },
     });
 
     renderAttendancePage();
@@ -600,17 +603,11 @@ describe("SessionAttendancePage complete session trainer picker", () => {
   });
 
   it("keeps complete disabled until staff pick a trainer when the batch has none", async () => {
-    apiGetMock.mockImplementation((url: string) => {
-      if (url === "/sessions/session-1") {
-        return Promise.resolve({
-          ...mockSession,
-          batch: { name: "Hip Hop Beginners", trainers: [] },
-        });
-      }
-      if (url === "/attendance/session/session-1/roster") {
-        return Promise.resolve(structuredClone(mockRoster));
-      }
-      return Promise.reject(new Error(`Unhandled GET: ${url}`));
+    mockAttendanceGets({
+      session: {
+        ...mockSession,
+        batch: { name: "Hip Hop Beginners", trainers: [] },
+      },
     });
 
     renderAttendancePage();
@@ -619,5 +616,106 @@ describe("SessionAttendancePage complete session trainer picker", () => {
     expect(screen.getByTestId("complete-session-trainer")).toBeInTheDocument();
     expect(screen.getByTestId("confirm-complete-session")).toBeDisabled();
     expect(apiPatchMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("SessionAttendancePage session pager", () => {
+  const previousSession = {
+    id: "session-0",
+    startsAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+  };
+  const nextSession = {
+    id: "session-2",
+    startsAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    authUserMock.current = { ...TRAINER_AUTH };
+    studioTrainersMock.current = [
+      { id: "trainer-1", name: "Lead Trainer" },
+      { id: "trainer-2", name: "Second Trainer" },
+    ];
+  });
+
+  it("places prev and next controls beside the session attendance title", async () => {
+    mockAttendanceGets({
+      batchSessions: [previousSession, mockSession, nextSession],
+    });
+    renderAttendancePage();
+
+    const title = await screen.findByRole("heading", {
+      name: "Session attendance",
+    });
+    const prev = await screen.findByTestId("prev-session");
+    const next = await screen.findByTestId("next-session");
+    expect(
+      title.compareDocumentPosition(prev) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      prev.compareDocumentPosition(next) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
+  it("navigates to the next session in the batch", async () => {
+    mockAttendanceGets({
+      batchSessions: [previousSession, mockSession, nextSession],
+    });
+    renderAttendancePage();
+
+    await waitFor(() => {
+      expect(screen.getByTestId("next-session")).not.toBeDisabled();
+    });
+    fireEvent.click(screen.getByTestId("next-session"));
+
+    expect(navigateMock).toHaveBeenCalledWith({
+      to: "/app/sessions/$id/attendance",
+      params: { id: "session-2" },
+    });
+  });
+
+  it("navigates to the previous session in the batch", async () => {
+    mockAttendanceGets({
+      batchSessions: [previousSession, mockSession, nextSession],
+    });
+    renderAttendancePage();
+
+    await waitFor(() => {
+      expect(screen.getByTestId("prev-session")).not.toBeDisabled();
+    });
+    fireEvent.click(screen.getByTestId("prev-session"));
+
+    expect(navigateMock).toHaveBeenCalledWith({
+      to: "/app/sessions/$id/attendance",
+      params: { id: "session-0" },
+    });
+  });
+
+  it("disables previous on the first session", async () => {
+    mockAttendanceGets({
+      batchSessions: [mockSession, nextSession],
+    });
+    renderAttendancePage();
+
+    await waitFor(() => {
+      expect(screen.getByTestId("next-session")).not.toBeDisabled();
+    });
+    expect(screen.getByTestId("prev-session")).toBeDisabled();
+    fireEvent.click(screen.getByTestId("prev-session"));
+    expect(navigateMock).not.toHaveBeenCalled();
+  });
+
+  it("disables next on the last session", async () => {
+    mockAttendanceGets({
+      batchSessions: [previousSession, mockSession],
+    });
+    renderAttendancePage();
+
+    await waitFor(() => {
+      expect(screen.getByTestId("prev-session")).not.toBeDisabled();
+    });
+    expect(screen.getByTestId("next-session")).toBeDisabled();
+    fireEvent.click(screen.getByTestId("next-session"));
+    expect(navigateMock).not.toHaveBeenCalled();
   });
 });
