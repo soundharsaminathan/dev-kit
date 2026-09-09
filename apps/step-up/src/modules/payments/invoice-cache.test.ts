@@ -11,6 +11,10 @@ const pendingInvoice: Invoice = {
   amount: 1200,
   status: "PENDING",
   kind: "INDIVIDUAL",
+  periodStart: "2026-08-01T00:00:00.000Z",
+  periodEnd: "2026-08-31T23:59:59.999Z",
+  billMonthKeys: ["2026-08"],
+  billPeriodLabel: "Aug 2026",
   student: { name: "Alex" },
 };
 

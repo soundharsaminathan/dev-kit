@@ -1,7 +1,7 @@
 export type CoveredSeat = {
   studentId: string;
   seatRole: "ADULT" | "KID";
-  batchId?: string;
+  batchId?: string | undefined;
 };
 
 export type CombineSource = {
@@ -31,57 +31,58 @@ export type Invoice = {
   id: string;
   studentId: string;
   amount: number;
-  referralDiscount?: number;
-  studioDiscount?: number;
-  familyDiscount?: number;
-  refundedAmount?: number;
-  gstPercent?: number;
+  referralDiscount?: number | undefined;
+  studioDiscount?: number | undefined;
+  familyDiscount?: number | undefined;
+  refundedAmount?: number | undefined;
+  gstPercent?: number | undefined;
   status: "PENDING" | "PAID" | "OVERDUE" | "REFUNDED";
-  paymentMethod?: "CASH" | "UPI_MANUAL" | "RAZORPAY" | null;
-  paidAt?: string | null;
-  refundedAt?: string | null;
-  paymentHoldExpiresAt?: string | null;
+  paymentMethod?: "CASH" | "UPI_MANUAL" | "RAZORPAY" | null | undefined;
+  paidAt?: string | null | undefined;
+  refundedAt?: string | null | undefined;
+  paymentHoldExpiresAt?: string | null | undefined;
   periodStart: string;
   periodEnd: string;
   billMonthKeys: string[];
   billPeriodLabel: string;
   kind: "FAMILY" | "INDIVIDUAL" | "COMBINED";
-  batchId?: string | null;
-  batchName?: string | null;
-  student?: { name: string };
+  batchId?: string | null | undefined;
+  batchName?: string | null | undefined;
+  student?: { name: string } | undefined;
   membership?: {
-    periodStart?: string | null;
-    periodEnd?: string | null;
+    periodStart?: string | null | undefined;
+    periodEnd?: string | null | undefined;
     subscription?: {
-      name?: string;
-      billingCadence?: BillingCadence;
-      kind?: string;
+      name?: string | undefined;
+      billingCadence?: BillingCadence | undefined;
+      kind?: string | undefined;
     } | null;
-  } | null;
+  } | null | undefined;
   chargeType?:
     | "POSTPAID_PRORATED"
     | "PREPAID_PRORATED"
     | "PREPAID_FULL"
-    | "ADMISSION";
-  attendedSessionCount?: number | null;
-  billedSessionCount?: number | null;
-  canConvertToQuarterly?: boolean;
-  paymentPlan?: InvoicePaymentPlan | null;
-  dueDate?: string | null;
+    | "ADMISSION"
+    | undefined;
+  attendedSessionCount?: number | null | undefined;
+  billedSessionCount?: number | null | undefined;
+  canConvertToQuarterly?: boolean | undefined;
+  paymentPlan?: InvoicePaymentPlan | null | undefined;
+  dueDate?: string | null | undefined;
   familySummary?: {
     planName: string | null;
     adultCount: number | null;
     kidCount: number | null;
     coveredStudents: CoveredSeat[] | null;
-  } | null;
+  } | null | undefined;
   purchaseMeta?: {
     subscriptionId: string;
     purchaserUserId: string;
     coveredStudents: CoveredSeat[];
-  } | null;
+  } | null | undefined;
   combineMeta?: {
     sources: CombineSource[];
-  } | null;
+  } | null | undefined;
 };
 
 export type StudioFamily = {

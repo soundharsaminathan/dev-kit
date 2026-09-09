@@ -85,6 +85,9 @@ describe("EmailService", () => {
       amountPaid: 1000,
       paymentMethod: "UPI_MANUAL",
       paidAt: new Date("2026-09-06T10:00:00.000Z"),
+      billMonth: "2026-08-01T00:00:00.000Z",
+      billMonthKeys: ["2026-08"],
+      billPeriodLabel: "August 2026",
     });
 
     expect(createTransport).toHaveBeenCalledWith(
@@ -102,7 +105,7 @@ describe("EmailService", () => {
         html: expect.stringContaining("Your invoice PDF is attached."),
         attachments: [
           expect.objectContaining({
-            filename: "Asha_September2026.pdf",
+            filename: "Asha_August2026.pdf",
             contentType: "application/pdf",
             content: expect.any(Buffer),
           }),

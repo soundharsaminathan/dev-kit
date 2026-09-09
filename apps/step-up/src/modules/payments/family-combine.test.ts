@@ -12,10 +12,16 @@ function invoice(
   partial: Partial<Invoice> & Pick<Invoice, "id" | "studentId">,
 ): Invoice {
   return {
-    amount: 1000,
-    status: "PENDING",
-    kind: "INDIVIDUAL",
     ...partial,
+    id: partial.id,
+    studentId: partial.studentId,
+    amount: partial.amount ?? 1000,
+    status: partial.status ?? "PENDING",
+    kind: partial.kind ?? "INDIVIDUAL",
+    periodStart: partial.periodStart ?? "2026-08-01T00:00:00.000Z",
+    periodEnd: partial.periodEnd ?? "2026-08-31T23:59:59.999Z",
+    billMonthKeys: partial.billMonthKeys ?? ["2026-08"],
+    billPeriodLabel: partial.billPeriodLabel ?? "Aug 2026",
   };
 }
 
