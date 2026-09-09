@@ -231,8 +231,8 @@ export class BillingQueriesService {
         dueDate:
           invoiceDueDate({
             chargeType: invoice.chargeType,
-            periodStart: invoice.periodStart ?? invoice.membership?.periodStart,
-            periodEnd: invoice.periodEnd ?? invoice.membership?.periodEnd,
+            periodStart: invoice.periodStart,
+            periodEnd: invoice.periodEnd,
           })?.toISOString() ?? null,
         ...period,
         membership: invoice.membership
@@ -401,8 +401,8 @@ export class BillingQueriesService {
         dueDate:
           invoiceDueDate({
             chargeType: invoice.chargeType,
-            periodStart: invoice.periodStart ?? invoice.membership?.periodStart,
-            periodEnd: invoice.periodEnd ?? invoice.membership?.periodEnd,
+            periodStart: invoice.periodStart,
+            periodEnd: invoice.periodEnd,
           })?.toISOString() ?? null,
         ...presentInvoicePeriod(invoice),
         membership: invoice.membership

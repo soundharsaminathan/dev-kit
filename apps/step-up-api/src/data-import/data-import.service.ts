@@ -27,16 +27,17 @@ import {
 } from "@prisma/client";
 import { readPurchaseMetaBatchId } from "../billing/family-combine";
 import { billingPeriodForCadence } from "../billing/invoice-period";
-import { ScheduleConflictService } from "../calendar/schedule-conflict.service";
 import {
   formatConflictInstant,
   intervalsOverlap,
   type TimeInterval,
 } from "../calendar/schedule-conflict";
+import { ScheduleConflictService } from "../calendar/schedule-conflict.service";
 import {
   utcOffsetMinutesForZone,
   zonedLocalToUtc,
 } from "../common/zoned-local-time";
+import { OutboxService } from "../events/outbox.service";
 import {
   buildAdmissionInvoiceData,
   readAdmissionFeeAmount,
@@ -46,14 +47,13 @@ import {
   seatRoleForBatchCategory,
   utcMonthStart,
 } from "../memberships/membership-helpers";
-import { PrismaService } from "../prisma/prisma.service";
+import { NotificationsService } from "../notifications/notifications.service";
 import { importFailureMessage, withDbRetry } from "../prisma/db-retry";
+import { PrismaService } from "../prisma/prisma.service";
 import {
   currentMonthPeriod,
   ProjectionService,
 } from "../queues/processors/projection.service";
-import { OutboxService } from "../events/outbox.service";
-import { NotificationsService } from "../notifications/notifications.service";
 import { OUTBOX_EVENT_DATA_IMPORT_REQUESTED } from "../shared/outbox-events";
 import type { DecryptedUser } from "../users/user-crypto.service";
 import { UserCryptoService } from "../users/user-crypto.service";
@@ -65,8 +65,8 @@ import type {
   ImportInvoiceDto,
   ImportLocationDto,
   ImportSessionDto,
-  ImportStudioDataDto,
   ImportStudentDto,
+  ImportStudioDataDto,
 } from "./dto/import-studio-data.dto";
 import { resolveImportBatchName } from "./import-batch-name";
 import {
@@ -74,19 +74,19 @@ import {
   type GapExistingPeriodInput,
   type GapPaidInvoiceInput,
 } from "./import-invoice-gaps";
-import { ImportLockService } from "./import-lock.service";
-import { collectImportPlanPrecheckErrors } from "./import-plan-precheck";
-import { sanitizeImportStudioDataDto } from "./sanitize-import-dto";
 import {
   buildInitialEntities,
   dtoSliceCount,
   entitySamples,
-  type ImportEntityKey,
+  IMPORT_PROGRESS_CHUNK_SIZE,
   type ImportEntitiesSnapshot,
+  type ImportEntityKey,
   type ImportJobSnapshot,
   type ImportProgressPatch,
-  IMPORT_PROGRESS_CHUNK_SIZE,
 } from "./import-job.types";
+import { ImportLockService } from "./import-lock.service";
+import { collectImportPlanPrecheckErrors } from "./import-plan-precheck";
+import { sanitizeImportStudioDataDto } from "./sanitize-import-dto";
 
 type ImportCounts = { created: number; skipped: number };
 
@@ -241,7 +241,10 @@ export class DataImportService {
     return this.startImportJob(actor, dto);
   }
 
-  async getImportJob(actor: DecryptedUser, importId: string): Promise<ImportJobSnapshot> {
+  async getImportJob(
+    actor: DecryptedUser,
+    importId: string,
+  ): Promise<ImportJobSnapshot> {
     if (!actor.studioId) {
       throw new BadRequestException("User is not assigned to a studio");
     }
@@ -389,11 +392,12 @@ export class DataImportService {
       "students",
       dto,
       report,
-      () => this.importStudentsChunked(studioId, students, async (patch) => {
-        if (report) {
-          await report("students", patch);
-        }
-      }),
+      () =>
+        this.importStudentsChunked(studioId, students, async (patch) => {
+          if (report) {
+            await report("students", patch);
+          }
+        }),
     );
 
     const locationResult = await this.runEntityStage(
@@ -403,11 +407,8 @@ export class DataImportService {
       () => this.importLocations(studioId, locations),
     );
 
-    const batchResult = await this.runEntityStage(
-      "batches",
-      dto,
-      report,
-      () => this.importBatches(actor.id, studioId, batches, timeZone),
+    const batchResult = await this.runEntityStage("batches", dto, report, () =>
+      this.importBatches(actor.id, studioId, batches, timeZone),
     );
 
     const sessionResult = await this.runEntityStage(
@@ -886,10 +887,7 @@ export class DataImportService {
       });
 
       const processed = skipped + data.length;
-      if (
-        onProgress &&
-        processed % IMPORT_PROGRESS_CHUNK_SIZE === 0
-      ) {
+      if (onProgress && processed % IMPORT_PROGRESS_CHUNK_SIZE === 0) {
         await onProgress({
           processed,
           created: 0,
@@ -941,8 +939,7 @@ export class DataImportService {
         });
         created += chunk.length;
         if (onProgress) {
-          const processed =
-            skipped + (data.length - toCreate.length) + created;
+          const processed = skipped + (data.length - toCreate.length) + created;
           await onProgress({
             processed: Math.min(processed, rows.length),
             created,
@@ -974,9 +971,7 @@ export class DataImportService {
       trainerId: string | null;
     }>,
   ) {
-    const active = rows.filter(
-      (row) => row.status !== SessionStatus.CANCELLED,
-    );
+    const active = rows.filter((row) => row.status !== SessionStatus.CANCELLED);
     if (active.length === 0) {
       return;
     }
@@ -1474,8 +1469,9 @@ export class DataImportService {
           skipped,
           samples: rows
             .slice(Math.max(0, processed - 3), processed)
-            .map((enrollment) =>
-              `${enrollment.studentEmail} → ${enrollment.batchName}`,
+            .map(
+              (enrollment) =>
+                `${enrollment.studentEmail} → ${enrollment.batchName}`,
             ),
         });
       }
@@ -1674,10 +1670,7 @@ export class DataImportService {
       });
       activeMembershipPairs.add(`${row.batchId}:${row.studentId}`);
       membershipsCreated += 1;
-      if (
-        onProgress &&
-        membershipsCreated % IMPORT_PROGRESS_CHUNK_SIZE === 0
-      ) {
+      if (onProgress && membershipsCreated % IMPORT_PROGRESS_CHUNK_SIZE === 0) {
         const processed = skipped + membershipsCreated;
         await onProgress({
           processed: Math.min(processed, rows.length),
@@ -1685,8 +1678,9 @@ export class DataImportService {
           skipped,
           samples: rows
             .slice(Math.max(0, membershipsCreated - 3), membershipsCreated)
-            .map((enrollment) =>
-              `${enrollment.studentEmail} → ${enrollment.batchName}`,
+            .map(
+              (enrollment) =>
+                `${enrollment.studentEmail} → ${enrollment.batchName}`,
             ),
         });
       }
@@ -1910,10 +1904,7 @@ export class DataImportService {
         : undefined;
       const { periodStart, periodEnd } = membershipPeriod
         ? membershipPeriod
-        : billingPeriodForCadence(
-            paidAt ?? new Date(),
-            BillingCadence.MONTHLY,
-          );
+        : billingPeriodForCadence(paidAt ?? new Date(), BillingCadence.MONTHLY);
 
       data.push({
         studentId,
@@ -2078,6 +2069,7 @@ export class DataImportService {
         studentId: true,
         status: true,
         paidAt: true,
+        periodStart: true,
         purchaseMeta: true,
         membershipId: true,
         chargeType: true,
@@ -2103,23 +2095,11 @@ export class DataImportService {
         !Array.isArray(invoice.purchaseMeta)
           ? (invoice.purchaseMeta as Record<string, unknown>)
           : null;
-      const metaPeriod =
-        typeof meta?.periodStart === "string"
-          ? new Date(meta.periodStart)
-          : null;
-      const periodStart =
-        metaPeriod && !Number.isNaN(metaPeriod.getTime())
-          ? utcMonthStart(metaPeriod)
-          : invoice.paidAt
-            ? utcMonthStart(invoice.paidAt)
-            : null;
-      if (periodStart) {
-        existingPeriods.push({
-          studentId: invoice.studentId,
-          batchId,
-          periodStart,
-        });
-      }
+      existingPeriods.push({
+        studentId: invoice.studentId,
+        batchId,
+        periodStart: utcMonthStart(invoice.periodStart),
+      });
 
       if (invoice.status !== InvoiceStatus.PAID || !invoice.paidAt) {
         continue;
@@ -2294,8 +2274,9 @@ export class DataImportService {
           skipped,
           samples: rows
             .slice(Math.max(0, processed - 3), processed)
-            .map((attendance) =>
-              `${attendance.studentEmail} → ${attendance.batchName}`,
+            .map(
+              (attendance) =>
+                `${attendance.studentEmail} → ${attendance.batchName}`,
             ),
         });
       }
@@ -2382,8 +2363,9 @@ export class DataImportService {
             skipped,
             samples: rows
               .slice(Math.max(0, created - 3), created)
-              .map((attendance) =>
-                `${attendance.studentEmail} → ${attendance.batchName}`,
+              .map(
+                (attendance) =>
+                  `${attendance.studentEmail} → ${attendance.batchName}`,
               ),
           });
         }
@@ -2424,10 +2406,9 @@ export class DataImportService {
       return;
     }
 
-    const studentIdByEmail = await this.resolveStudentIdsByEmail(
-      studioId,
-      [...earliestByEmail.keys()],
-    );
+    const studentIdByEmail = await this.resolveStudentIdsByEmail(studioId, [
+      ...earliestByEmail.keys(),
+    ]);
 
     const targetCreatedAtById = new Map<string, Date>();
     for (const [email, enrolledAt] of earliestByEmail) {

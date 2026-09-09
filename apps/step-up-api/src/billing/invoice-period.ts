@@ -102,37 +102,25 @@ export function formatInvoicePeriodLabel(
 }
 
 export type InvoicePeriodFields = {
-  periodStart: string | null;
-  periodEnd: string | null;
+  periodStart: string;
+  periodEnd: string;
   billMonthKeys: string[];
-  billPeriodLabel: string | null;
+  billPeriodLabel: string;
 };
 
-/** Stored invoice period, falling back to linked membership for legacy rows. */
+/** Stored invoice billing period. Never paidAt, never membership. */
 export function presentInvoicePeriod(invoice: {
-  periodStart?: Date | null;
-  periodEnd?: Date | null;
-  membership?: {
-    periodStart?: Date | null;
-    periodEnd?: Date | null;
-  } | null;
+  periodStart: Date;
+  periodEnd: Date;
 }): InvoicePeriodFields {
-  const periodStart =
-    invoice.periodStart ?? invoice.membership?.periodStart ?? null;
-  const periodEnd = invoice.periodEnd ?? invoice.membership?.periodEnd ?? null;
-  if (!periodStart) {
-    return {
-      periodStart: null,
-      periodEnd: null,
-      billMonthKeys: [],
-      billPeriodLabel: null,
-    };
-  }
-  const billMonthKeys = coveredMonthKeysFromPeriod(periodStart, periodEnd);
+  const billMonthKeys = coveredMonthKeysFromPeriod(
+    invoice.periodStart,
+    invoice.periodEnd,
+  );
   return {
-    periodStart: periodStart.toISOString(),
-    periodEnd: periodEnd?.toISOString() ?? null,
+    periodStart: invoice.periodStart.toISOString(),
+    periodEnd: invoice.periodEnd.toISOString(),
     billMonthKeys,
-    billPeriodLabel: formatInvoicePeriodLabel(billMonthKeys) || null,
+    billPeriodLabel: formatInvoicePeriodLabel(billMonthKeys),
   };
 }

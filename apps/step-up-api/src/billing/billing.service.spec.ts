@@ -578,6 +578,8 @@ describe("BillingService.getTrainerAnalytics", () => {
           coveredStudents: [{ studentId: "student-1", seatRole: "ADULT" }],
         },
         membership: { periodStart: new Date("2026-07-01T00:00:00.000Z") },
+        periodStart: new Date("2026-07-01T00:00:00.000Z"),
+        periodEnd: new Date("2026-07-31T23:59:59.999Z"),
         student: { id: "student-1", name: "Alex" },
       },
     ]);
@@ -908,6 +910,8 @@ describe("BillingService.listForStudent", () => {
         purchaseMeta: null,
         combineMeta: null,
         membership: null,
+        periodStart: new Date(Date.UTC(2026, 7, 1)),
+        periodEnd: new Date(Date.UTC(2026, 7, 31, 23, 59, 59, 999)),
       },
     ]);
     await expect(
@@ -920,7 +924,8 @@ describe("BillingService.listForStudent", () => {
         id: "inv-1",
         amount: 1500,
         batchName: null,
-        dueDate: null,
+        dueDate: "2026-08-01T00:00:00.000Z",
+        billPeriodLabel: "Aug 2026",
       }),
     ]);
   });
@@ -988,6 +993,8 @@ describe("BillingService.listForStudent", () => {
         },
         combineMeta: null,
         membership: { periodStart: new Date("2026-07-01T00:00:00.000Z") },
+        periodStart: new Date("2026-07-01T00:00:00.000Z"),
+        periodEnd: new Date("2026-07-31T23:59:59.999Z"),
       },
     ]);
     prisma.batch.findMany.mockResolvedValue([
@@ -1046,6 +1053,8 @@ describe("BillingService.markPaid", () => {
         email: "student@example.com",
       },
       studio: { id: "studio-1", name: "classa Studio" },
+      periodStart: new Date("2026-07-01T00:00:00.000Z"),
+      periodEnd: new Date("2026-07-31T23:59:59.999Z"),
       ...overrides,
     };
   }
@@ -1534,6 +1543,8 @@ describe("BillingService.listByStudio", () => {
         amount: 5000,
         student: { id: "parent-1", nameEnc: "x" },
         membership: null,
+        periodStart: new Date(Date.UTC(2026, 7, 1)),
+        periodEnd: new Date(Date.UTC(2026, 7, 31, 23, 59, 59, 999)),
         purchaseMeta: {
           subscriptionId: "sub-fam",
           purchaserUserId: "parent-1",
@@ -1569,6 +1580,8 @@ describe("BillingService.listByStudio", () => {
         amount: 1500,
         student: { id: "student-1", nameEnc: "x" },
         membership: null,
+        periodStart: new Date(Date.UTC(2026, 7, 1)),
+        periodEnd: new Date(Date.UTC(2026, 7, 31, 23, 59, 59, 999)),
         purchaseMeta: {
           batchId: "batch-1",
           subscriptionId: "sub-1",

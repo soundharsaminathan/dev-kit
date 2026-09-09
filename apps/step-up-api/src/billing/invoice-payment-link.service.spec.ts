@@ -77,7 +77,9 @@ describe("InvoicePaymentLinkService", () => {
       });
       razorpay.isEnabled.mockReturnValue(false);
 
-      await expect(service.ensureInvoicePaymentLink("inv-1")).resolves.toBeNull();
+      await expect(
+        service.ensureInvoicePaymentLink("inv-1"),
+      ).resolves.toBeNull();
       expect(razorpay.createPaymentLink).not.toHaveBeenCalled();
     });
 
@@ -92,7 +94,9 @@ describe("InvoicePaymentLinkService", () => {
       });
       razorpay.isEnabled.mockReturnValue(true);
 
-      await expect(service.ensureInvoicePaymentLink("inv-1")).resolves.toBeNull();
+      await expect(
+        service.ensureInvoicePaymentLink("inv-1"),
+      ).resolves.toBeNull();
       expect(razorpay.createPaymentLink).not.toHaveBeenCalled();
     });
 
@@ -210,6 +214,8 @@ describe("InvoicePaymentLinkService", () => {
         combineMeta: null,
         student: {},
         studio: { id: "s1", name: "Studio", address: null, settings: null },
+        periodStart: new Date("2026-09-01"),
+        periodEnd: new Date("2026-09-30"),
         membership: {
           periodStart: new Date("2026-09-01"),
           periodEnd: new Date("2026-09-30"),
@@ -310,6 +316,8 @@ describe("InvoicePaymentLinkService", () => {
           address: null,
           settings: null,
         },
+        periodStart: new Date("2026-09-01"),
+        periodEnd: new Date("2026-09-30"),
         membership: null,
       };
       prisma.invoice.findUnique

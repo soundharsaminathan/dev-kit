@@ -177,13 +177,13 @@ describe("invoice month filter", () => {
     ).toBe("Aug 2026");
   });
 
-  it("falls back to membership period for legacy invoices without stored period", () => {
+  it("does not use membership as the invoice month", () => {
     expect(
       invoiceMonthKey({
         status: "PENDING",
         membership: { periodStart: "2026-04-01T00:00:00.000Z" },
-      }),
-    ).toBe("2026-04");
+      } as never),
+    ).toBeNull();
   });
 
   it("prints the stored period and ignores paidAt", () => {

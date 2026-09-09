@@ -312,8 +312,7 @@ export class InvoicePaymentLinkService {
           paymentMethod: PaymentMethod.RAZORPAY,
           paidAt,
           status: InvoiceStatus.PAID,
-          billMonth:
-            invoice.periodStart ?? invoice.membership?.periodStart ?? null,
+          billMonth: invoice.periodStart,
           billMonthKeys: period.billMonthKeys,
           billPeriodLabel: period.billPeriodLabel,
         })

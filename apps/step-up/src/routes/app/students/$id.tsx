@@ -103,10 +103,10 @@ type StudentStudioProfile = {
     paidAt?: string | null;
     dueDate?: string | null;
     paymentHoldExpiresAt?: string | null;
-    periodStart?: string | null;
-    periodEnd?: string | null;
-    billMonthKeys?: string[];
-    billPeriodLabel?: string | null;
+    periodStart: string;
+    periodEnd: string;
+    billMonthKeys: string[];
+    billPeriodLabel: string;
     batchId?: string | null;
     batchName?: string | null;
     chargeType?:

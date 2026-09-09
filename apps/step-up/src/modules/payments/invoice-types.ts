@@ -41,10 +41,10 @@ export type Invoice = {
   paidAt?: string | null;
   refundedAt?: string | null;
   paymentHoldExpiresAt?: string | null;
-  periodStart?: string | null;
-  periodEnd?: string | null;
-  billMonthKeys?: string[];
-  billPeriodLabel?: string | null;
+  periodStart: string;
+  periodEnd: string;
+  billMonthKeys: string[];
+  billPeriodLabel: string;
   kind: "FAMILY" | "INDIVIDUAL" | "COMBINED";
   batchId?: string | null;
   batchName?: string | null;
@@ -178,16 +178,13 @@ export function cadencePriceHint(
   return `${formatPrice(option.price)} / month`;
 }
 
-export type InvoiceMonthSource = Pick<
-  Invoice,
-  | "periodStart"
-  | "periodEnd"
-  | "billMonthKeys"
-  | "billPeriodLabel"
-  | "membership"
-  | "paymentPlan"
-  | "status"
->;
+export type InvoiceMonthSource = Pick<Invoice, "status"> &
+  Partial<
+    Pick<
+      Invoice,
+      "periodStart" | "periodEnd" | "billMonthKeys" | "billPeriodLabel"
+    >
+  >;
 
 export type InvoiceTilePeriodSource = InvoiceMonthSource &
   Pick<Invoice, "chargeType">;
@@ -222,9 +219,8 @@ function dateFromMonthKey(key: string): Date | null {
 }
 
 function invoicePeriodStart(invoice: InvoiceMonthSource): Date | null {
-  const source = invoice.periodStart ?? invoice.membership?.periodStart;
-  if (!source) return null;
-  const date = new Date(source);
+  if (!invoice.periodStart) return null;
+  const date = new Date(invoice.periodStart);
   if (Number.isNaN(date.getTime())) return null;
   return date;
 }
@@ -245,17 +241,9 @@ export function invoiceCoveredMonthKeys(invoice: InvoiceMonthSource): string[] {
   const start = invoicePeriodStart(invoice);
   if (!start) return [];
 
-  const cadence =
-    invoice.membership?.subscription?.billingCadence ??
-    invoice.paymentPlan?.currentCadence;
-
   let count = 1;
-  if (cadence === "QUARTERLY") {
-    count = 3;
-  } else if (invoice.periodEnd ?? invoice.membership?.periodEnd) {
-    const end = new Date(
-      invoice.periodEnd ?? invoice.membership?.periodEnd ?? "",
-    );
+  if (invoice.periodEnd) {
+    const end = new Date(invoice.periodEnd);
     if (!Number.isNaN(end.getTime())) {
       count = Math.min(12, Math.max(1, monthSpanUtc(start, end)));
     }
@@ -331,7 +319,7 @@ export function invoicePrintPeriod(invoice: InvoiceMonthSource): {
 } {
   const keys = invoiceCoveredMonthKeys(invoice);
   return {
-    billMonth: invoice.periodStart ?? invoice.membership?.periodStart ?? null,
+    billMonth: invoice.periodStart ?? null,
     billMonthKeys: keys,
     billPeriodLabel:
       keys.length > 0

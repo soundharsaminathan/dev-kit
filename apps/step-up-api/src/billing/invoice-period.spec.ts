@@ -42,44 +42,17 @@ describe("billingPeriodForCadence", () => {
 });
 
 describe("presentInvoicePeriod", () => {
-  it("uses the stored invoice period, not membership paid later", () => {
+  it("uses the stored invoice period, not a later membership month", () => {
     expect(
       presentInvoicePeriod({
         periodStart: new Date(Date.UTC(2026, 5, 1)),
         periodEnd: new Date(Date.UTC(2026, 5, 30, 23, 59, 59, 999)),
-        membership: {
-          periodStart: new Date(Date.UTC(2026, 7, 1)),
-          periodEnd: new Date(Date.UTC(2026, 7, 31, 23, 59, 59, 999)),
-        },
       }),
     ).toEqual({
       periodStart: "2026-06-01T00:00:00.000Z",
       periodEnd: "2026-06-30T23:59:59.999Z",
       billMonthKeys: ["2026-06"],
       billPeriodLabel: "Jun 2026",
-    });
-  });
-
-  it("falls back to membership for legacy rows with no stored period", () => {
-    expect(
-      presentInvoicePeriod({
-        periodStart: null,
-        membership: {
-          periodStart: new Date(Date.UTC(2026, 8, 1)),
-          periodEnd: new Date(Date.UTC(2026, 8, 30, 23, 59, 59, 999)),
-        },
-      }).billPeriodLabel,
-    ).toBe("Sept 2026");
-  });
-
-  it("returns empty keys when no period exists (unpaid without membership)", () => {
-    expect(
-      presentInvoicePeriod({ periodStart: null, membership: null }),
-    ).toEqual({
-      periodStart: null,
-      periodEnd: null,
-      billMonthKeys: [],
-      billPeriodLabel: null,
     });
   });
 });

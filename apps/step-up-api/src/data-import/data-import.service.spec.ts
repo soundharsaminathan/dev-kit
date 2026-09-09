@@ -197,9 +197,11 @@ describe("DataImportService.startImportJob", () => {
           ]),
         },
         batch: {
-          findMany: vi.fn().mockResolvedValue([
-            { id: "batch-1", name: "Kids Hip-Hop", category: "KIDS" },
-          ]),
+          findMany: vi
+            .fn()
+            .mockResolvedValue([
+              { id: "batch-1", name: "Kids Hip-Hop", category: "KIDS" },
+            ]),
         },
         batchPlan: {
           findMany: vi.fn().mockResolvedValue([]),
@@ -223,7 +225,7 @@ describe("DataImportService.startImportJob", () => {
         invoices: [],
       }),
     ).rejects.toThrow(
-      "Plan \"Kids Monthly\" is not attached to batch \"Kids Hip-Hop\"",
+      'Plan "Kids Monthly" is not attached to batch "Kids Hip-Hop"',
     );
     expect(prisma.studioDataImport.create).not.toHaveBeenCalled();
   });
@@ -1606,9 +1608,11 @@ describe("DataImportService.runStudioDataImport", () => {
             ]),
         },
         subscription: {
-          findMany: vi.fn().mockResolvedValue([
-            { id: "sub-quarterly", name: "Kids Quarterly" },
-          ]),
+          findMany: vi
+            .fn()
+            .mockResolvedValue([
+              { id: "sub-quarterly", name: "Kids Quarterly" },
+            ]),
         },
         membership: {
           findFirst: vi.fn().mockResolvedValue(null),
@@ -1775,14 +1779,18 @@ describe("DataImportService.runStudioDataImport", () => {
             ]),
         },
         batch: {
-          findMany: vi.fn().mockResolvedValue([
-            { id: "batch-1", name: "CB1", category: "KIDS" },
-          ]),
+          findMany: vi
+            .fn()
+            .mockResolvedValue([
+              { id: "batch-1", name: "CB1", category: "KIDS" },
+            ]),
         },
         batchPlan: {
-          findMany: vi.fn().mockResolvedValue([
-            { batchId: "batch-1", subscriptionId: "sub-m" },
-          ]),
+          findMany: vi
+            .fn()
+            .mockResolvedValue([
+              { batchId: "batch-1", subscriptionId: "sub-m" },
+            ]),
           createMany: vi.fn().mockResolvedValue({ count: 0 }),
         },
         subscription: {
@@ -1814,6 +1822,7 @@ describe("DataImportService.runStudioDataImport", () => {
               studentId: "student-1",
               status: InvoiceStatus.PAID,
               paidAt: new Date("2026-08-01T12:00:00.000Z"),
+              periodStart: new Date("2026-08-01T00:00:00.000Z"),
               purchaseMeta: {
                 batchId: "batch-1",
                 subscriptionId: "sub-m",
@@ -1845,7 +1854,9 @@ describe("DataImportService.runStudioDataImport", () => {
     expect(result.invoices.gapsCreated).toBe(2);
     const gapCall = invoiceCreateMany.mock.calls.find((call) => {
       const data = call[0]?.data as Array<Record<string, unknown>>;
-      return Array.isArray(data) && data.some((row) => row.status === "OVERDUE");
+      return (
+        Array.isArray(data) && data.some((row) => row.status === "OVERDUE")
+      );
     });
     expect(gapCall).toBeTruthy();
     const gapData = gapCall![0]!.data as Array<Record<string, unknown>>;
@@ -1881,14 +1892,18 @@ describe("DataImportService.runStudioDataImport", () => {
             ]),
         },
         batch: {
-          findMany: vi.fn().mockResolvedValue([
-            { id: "batch-1", name: "CB1", category: "KIDS" },
-          ]),
+          findMany: vi
+            .fn()
+            .mockResolvedValue([
+              { id: "batch-1", name: "CB1", category: "KIDS" },
+            ]),
         },
         batchPlan: {
-          findMany: vi.fn().mockResolvedValue([
-            { batchId: "batch-1", subscriptionId: "sub-q" },
-          ]),
+          findMany: vi
+            .fn()
+            .mockResolvedValue([
+              { batchId: "batch-1", subscriptionId: "sub-q" },
+            ]),
           createMany: vi.fn().mockResolvedValue({ count: 0 }),
         },
         subscription: {
@@ -1913,6 +1928,7 @@ describe("DataImportService.runStudioDataImport", () => {
               studentId: "student-1",
               status: InvoiceStatus.PAID,
               paidAt: new Date("2026-06-01T12:00:00.000Z"),
+              periodStart: new Date("2026-06-01T00:00:00.000Z"),
               purchaseMeta: {
                 batchId: "batch-1",
                 subscriptionId: "sub-q",
@@ -1944,7 +1960,9 @@ describe("DataImportService.runStudioDataImport", () => {
     expect(result.invoices.gapsCreated).toBe(0);
     const overdueCalls = invoiceCreateMany.mock.calls.filter((call) => {
       const data = call[0]?.data as Array<Record<string, unknown>>;
-      return Array.isArray(data) && data.some((row) => row.status === "OVERDUE");
+      return (
+        Array.isArray(data) && data.some((row) => row.status === "OVERDUE")
+      );
     });
     expect(overdueCalls).toHaveLength(0);
 
@@ -2189,14 +2207,18 @@ describe("DataImportService.runStudioDataImport", () => {
             ]),
         },
         batch: {
-          findMany: vi.fn().mockResolvedValue([
-            { id: "batch-1", name: "CB1", category: "KIDS" },
-          ]),
+          findMany: vi
+            .fn()
+            .mockResolvedValue([
+              { id: "batch-1", name: "CB1", category: "KIDS" },
+            ]),
         },
         batchPlan: {
-          findMany: vi.fn().mockResolvedValue([
-            { batchId: "batch-1", subscriptionId: "sub-m" },
-          ]),
+          findMany: vi
+            .fn()
+            .mockResolvedValue([
+              { batchId: "batch-1", subscriptionId: "sub-m" },
+            ]),
           createMany: vi.fn().mockResolvedValue({ count: 0 }),
         },
         subscription: {
@@ -2282,14 +2304,18 @@ describe("DataImportService.runStudioDataImport", () => {
             ]),
         },
         batch: {
-          findMany: vi.fn().mockResolvedValue([
-            { id: "batch-1", name: "CB1", category: "KIDS" },
-          ]),
+          findMany: vi
+            .fn()
+            .mockResolvedValue([
+              { id: "batch-1", name: "CB1", category: "KIDS" },
+            ]),
         },
         batchPlan: {
-          findMany: vi.fn().mockResolvedValue([
-            { batchId: "batch-1", subscriptionId: "sub-m" },
-          ]),
+          findMany: vi
+            .fn()
+            .mockResolvedValue([
+              { batchId: "batch-1", subscriptionId: "sub-m" },
+            ]),
           createMany: vi.fn().mockResolvedValue({ count: 0 }),
         },
         subscription: {

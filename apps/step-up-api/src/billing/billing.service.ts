@@ -398,8 +398,8 @@ export class BillingService {
         dueDate:
           invoiceDueDate({
             chargeType: invoice.chargeType,
-            periodStart: invoice.periodStart ?? invoice.membership?.periodStart,
-            periodEnd: invoice.periodEnd ?? invoice.membership?.periodEnd,
+            periodStart: invoice.periodStart,
+            periodEnd: invoice.periodEnd,
           })?.toISOString() ?? null,
         ...presentInvoicePeriod(invoice),
         batchId,
@@ -989,8 +989,7 @@ export class BillingService {
           paymentMethod: input.paymentMethod,
           paidAt,
           status: InvoiceStatus.PAID,
-          billMonth:
-            invoice.periodStart ?? invoice.membership?.periodStart ?? null,
+          billMonth: invoice.periodStart,
           billMonthKeys: period.billMonthKeys,
           billPeriodLabel: period.billPeriodLabel,
         })
@@ -1945,8 +1944,8 @@ function buildPendingPayments(input: {
     student: User;
     membership: { periodStart: Date; periodEnd?: Date } | null;
     chargeType?: import("@prisma/client").InvoiceChargeType;
-    periodStart?: Date | null;
-    periodEnd?: Date | null;
+    periodStart: Date;
+    periodEnd: Date;
   }>;
   studentBatchMap: Map<string, Set<string>>;
   batchNameById: Map<string, string>;
@@ -1974,8 +1973,8 @@ function buildPendingPayments(input: {
       dueDate:
         invoiceDueDate({
           chargeType: invoice.chargeType,
-          periodStart: invoice.periodStart ?? invoice.membership?.periodStart,
-          periodEnd: invoice.periodEnd ?? invoice.membership?.periodEnd,
+          periodStart: invoice.periodStart,
+          periodEnd: invoice.periodEnd,
         })?.toISOString() ?? null,
       batchId,
       batchName,

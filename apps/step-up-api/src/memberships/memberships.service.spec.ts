@@ -592,6 +592,8 @@ describe("MembershipsService.setInvoiceBillingCadence", () => {
       status: "OVERDUE",
       chargeType: "PREPAID_FULL",
       amount: 9000,
+      periodStart: new Date(Date.UTC(2026, 7, 1)),
+      periodEnd: new Date(Date.UTC(2026, 9, 31, 23, 59, 59, 999)),
       purchaseMeta: {
         batchId: "batch-1",
         subscriptionId: "sub-q",

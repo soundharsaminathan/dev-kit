@@ -765,7 +765,7 @@ export class MembershipsService {
         data: {
           amount: targetPlan.subscription.price,
           purchaseMeta: nextMeta as unknown as Prisma.InputJsonValue,
-          periodStart: invoice.periodStart ?? membership.periodStart,
+          periodStart: invoice.periodStart,
           periodEnd,
         },
       }),
