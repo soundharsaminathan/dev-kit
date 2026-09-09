@@ -126,19 +126,19 @@ export async function buildInvoiceReceiptPdf(
   if (input.referralDiscount > 0) {
     lines.push({
       label: "Referral discount",
-      value: `−${formatInr(input.referralDiscount)}`,
+      value: `-${formatInr(input.referralDiscount)}`,
     });
   }
   if (input.studioDiscount > 0) {
     lines.push({
       label: "Studio discount",
-      value: `−${formatInr(input.studioDiscount)}`,
+      value: `-${formatInr(input.studioDiscount)}`,
     });
   }
   if (familyDiscount > 0) {
     lines.push({
       label: "Family discount",
-      value: `−${formatInr(familyDiscount)}`,
+      value: `-${formatInr(familyDiscount)}`,
     });
   }
   if (gstPercent > 0) {
@@ -347,12 +347,13 @@ function formatPeriodFromDate(value: Date | string | null | undefined) {
   });
 }
 
-function formatInr(amount: number) {
-  return new Intl.NumberFormat("en-IN", {
-    style: "currency",
-    currency: "INR",
+export function formatInr(amount: number) {
+  // Helvetica is WinAnsi-only. ₹ (U+20B9) encodes as space + ¹.
+  const number = new Intl.NumberFormat("en-IN", {
+    minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(amount);
+  return `Rs ${number}`;
 }
 
 function formatPaymentMethod(method: string) {

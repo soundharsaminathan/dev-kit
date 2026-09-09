@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildInvoiceReceiptPdf,
   coveredMonthKeys,
+  formatInr,
   formatInvoicePeriodLabel,
   invoiceReceiptFileName,
 } from "./invoice-receipt-pdf";
@@ -51,6 +52,14 @@ describe("formatInvoicePeriodLabel", () => {
     expect(formatInvoicePeriodLabel(["2026-06", "2026-07", "2026-08"])).toBe(
       "June, July, August 2026",
     );
+  });
+});
+
+describe("formatInr", () => {
+  it("uses ASCII Rs so PDFKit Helvetica does not draw ₹ as ¹", () => {
+    expect(formatInr(12500)).toBe("Rs 12,500.00");
+    expect(formatInr(12500)).not.toContain("₹");
+    expect(formatInr(12500)).not.toContain("\u00b9");
   });
 });
 
