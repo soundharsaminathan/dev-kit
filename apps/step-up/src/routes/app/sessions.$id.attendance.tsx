@@ -519,11 +519,16 @@ function SessionAttendancePage() {
     queryFn: () => api.get<Session>(`/sessions/${id}`),
   });
 
-  const firstBatchTrainerId =
-    sessionQuery.data?.batch?.trainers?.[0]?.trainerId ?? null;
+  const batchTrainerIds =
+    sessionQuery.data?.batch?.trainers?.map((row) => row.trainerId) ?? [];
+  const firstBatchTrainerId = batchTrainerIds[0] ?? null;
+  const soleBatchTrainerId =
+    batchTrainerIds.length === 1 ? firstBatchTrainerId : null;
+  const showTrainerPicker = isAdmin && soleBatchTrainerId == null;
   const [selectedTrainerId, setSelectedTrainerId] = useState<string | null>(
     null,
   );
+  const completingTrainerId = soleBatchTrainerId ?? selectedTrainerId;
   useEffect(() => {
     setSelectedTrainerId((current) => current ?? firstBatchTrainerId);
   }, [firstBatchTrainerId]);
@@ -783,8 +788,8 @@ function SessionAttendancePage() {
     mutationFn: () =>
       api.patch(
         `/sessions/${id}/complete`,
-        isAdmin && selectedTrainerId
-          ? { trainerId: selectedTrainerId }
+        isAdmin && completingTrainerId
+          ? { trainerId: completingTrainerId }
           : undefined,
       ),
     onSuccess: async () => {
@@ -812,7 +817,6 @@ function SessionAttendancePage() {
       });
     },
   });
-
 
   const sessionDescription = sessionQuery.data
     ? [
@@ -1046,8 +1050,11 @@ function SessionAttendancePage() {
             Mark this session as completed? Attendance can still be reviewed
             afterward.
           </p>
-          {isAdmin ? (
-            <div className={styles.trainerField}>
+          {showTrainerPicker ? (
+            <div
+              className={styles.trainerField}
+              data-testid="complete-session-trainer"
+            >
               <Select
                 label="Instructor"
                 selectedKey={selectedTrainerId}
@@ -1077,7 +1084,7 @@ function SessionAttendancePage() {
               variant="primary"
               fullWidth
               isPending={completeSession.isPending}
-              isDisabled={isAdmin && !selectedTrainerId}
+              isDisabled={isAdmin && !completingTrainerId}
               data-testid="confirm-complete-session"
               onClick={() => completeSession.mutate()}
             >

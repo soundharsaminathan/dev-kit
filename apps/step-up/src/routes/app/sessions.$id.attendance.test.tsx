@@ -1,4 +1,5 @@
 import { fireEvent, screen, waitFor } from "@testing-library/react";
+import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { AttendanceRosterEntry } from "@/modules/attendance/types";
 import { createTestQueryClient, renderWithProviders } from "@/test/render";
@@ -8,6 +9,37 @@ const toastMock = vi.hoisted(() => vi.fn());
 const apiGetMock = vi.hoisted(() => vi.fn());
 const apiPostMock = vi.hoisted(() => vi.fn());
 const apiPatchMock = vi.hoisted(() => vi.fn());
+const authUserMock = vi.hoisted(() => ({
+  current: {
+    id: "trainer-1",
+    name: "Lead Trainer",
+    email: "trainer@example.com",
+    role: "TRAINER",
+    studioId: "studio-1",
+  },
+}));
+const studioTrainersMock = vi.hoisted(() => ({
+  current: [
+    { id: "trainer-1", name: "Lead Trainer" },
+    { id: "trainer-2", name: "Second Trainer" },
+  ],
+}));
+
+const TRAINER_AUTH = {
+  id: "trainer-1",
+  name: "Lead Trainer",
+  email: "trainer@example.com",
+  role: "TRAINER",
+  studioId: "studio-1",
+};
+
+const OWNER_AUTH = {
+  id: "owner-1",
+  name: "Studio Owner",
+  email: "owner@example.com",
+  role: "OWNER",
+  studioId: "studio-1",
+};
 
 vi.mock("@dev-ui/components/toast", () => ({
   useToastContext: () => ({ toast: toastMock }),
@@ -23,21 +55,33 @@ vi.mock("@/lib/api-context", () => ({
 
 vi.mock("@/lib/use-auth", () => ({
   useAuth: () => ({
-    user: {
-      id: "trainer-1",
-      name: "Lead Trainer",
-      email: "trainer@example.com",
-      role: "TRAINER",
-      studioId: "studio-1",
-    },
+    user: authUserMock.current,
   }),
 }));
 
 vi.mock("@/modules/trainers/use-trainers", () => ({
   useStudioTrainers: () => ({
-    data: [{ id: "trainer-1", name: "Lead Trainer" }],
+    data: studioTrainersMock.current,
     isLoading: false,
   }),
+}));
+
+vi.mock("@/modules/ui/app-sheet", () => ({
+  AppSheet: ({
+    children,
+    isOpen,
+    title,
+  }: {
+    children: ReactNode;
+    isOpen: boolean;
+    title?: string;
+  }) =>
+    isOpen ? (
+      <div>
+        {title ? <h2>{title}</h2> : null}
+        {children}
+      </div>
+    ) : null,
 }));
 
 vi.mock("@tanstack/react-router", async (importOriginal) => {
@@ -59,6 +103,7 @@ const mockSession = {
   status: "SCHEDULED" as const,
   batch: {
     name: "Hip Hop Beginners",
+    trainers: [{ trainerId: "trainer-1", sortOrder: 0 }],
   },
 };
 
@@ -75,9 +120,30 @@ const mockRoster: AttendanceRosterEntry[] = [
   },
 ];
 
+function renderAttendancePage() {
+  const queryClient = createTestQueryClient();
+  const PageComponent = Route.options.component!;
+  renderWithProviders(<PageComponent />, { queryClient });
+}
+
+async function openCompleteSessionSheet() {
+  await waitFor(() => {
+    expect(screen.getByTestId("complete-session")).toBeInTheDocument();
+  });
+  fireEvent.click(screen.getByTestId("complete-session"));
+  await waitFor(() => {
+    expect(screen.getByTestId("confirm-complete-session")).toBeInTheDocument();
+  });
+}
+
 describe("SessionAttendancePage optimistic updates", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    authUserMock.current = { ...TRAINER_AUTH };
+    studioTrainersMock.current = [
+      { id: "trainer-1", name: "Lead Trainer" },
+      { id: "trainer-2", name: "Second Trainer" },
+    ];
 
     apiGetMock.mockImplementation((url: string) => {
       if (url === "/sessions/session-1") {
@@ -461,5 +527,97 @@ describe("SessionAttendancePage optimistic updates", () => {
         variant: "error",
       }),
     );
+  });
+});
+
+describe("SessionAttendancePage complete session trainer picker", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    authUserMock.current = { ...OWNER_AUTH };
+    studioTrainersMock.current = [
+      { id: "trainer-1", name: "Lead Trainer" },
+      { id: "trainer-2", name: "Second Trainer" },
+    ];
+    apiPatchMock.mockResolvedValue({
+      id: "session-1",
+      status: "COMPLETED",
+      trainerId: "trainer-1",
+    });
+
+    apiGetMock.mockImplementation((url: string) => {
+      if (url === "/sessions/session-1") {
+        return Promise.resolve(mockSession);
+      }
+      if (url === "/attendance/session/session-1/roster") {
+        return Promise.resolve(structuredClone(mockRoster));
+      }
+      return Promise.reject(new Error(`Unhandled GET: ${url}`));
+    });
+  });
+
+  it("skips instructor selection when the batch has one trainer", async () => {
+    renderAttendancePage();
+    await openCompleteSessionSheet();
+
+    expect(screen.queryByTestId("complete-session-trainer")).toBeNull();
+
+    fireEvent.click(screen.getByTestId("confirm-complete-session"));
+
+    await waitFor(() => {
+      expect(apiPatchMock).toHaveBeenCalledWith(
+        "/sessions/session-1/complete",
+        {
+          trainerId: "trainer-1",
+        },
+      );
+    });
+  });
+
+  it("still asks staff to pick an instructor when the batch has multiple trainers", async () => {
+    apiGetMock.mockImplementation((url: string) => {
+      if (url === "/sessions/session-1") {
+        return Promise.resolve({
+          ...mockSession,
+          batch: {
+            name: "Hip Hop Beginners",
+            trainers: [
+              { trainerId: "trainer-1", sortOrder: 0 },
+              { trainerId: "trainer-2", sortOrder: 1 },
+            ],
+          },
+        });
+      }
+      if (url === "/attendance/session/session-1/roster") {
+        return Promise.resolve(structuredClone(mockRoster));
+      }
+      return Promise.reject(new Error(`Unhandled GET: ${url}`));
+    });
+
+    renderAttendancePage();
+    await openCompleteSessionSheet();
+
+    expect(screen.getByTestId("complete-session-trainer")).toBeInTheDocument();
+  });
+
+  it("keeps complete disabled until staff pick a trainer when the batch has none", async () => {
+    apiGetMock.mockImplementation((url: string) => {
+      if (url === "/sessions/session-1") {
+        return Promise.resolve({
+          ...mockSession,
+          batch: { name: "Hip Hop Beginners", trainers: [] },
+        });
+      }
+      if (url === "/attendance/session/session-1/roster") {
+        return Promise.resolve(structuredClone(mockRoster));
+      }
+      return Promise.reject(new Error(`Unhandled GET: ${url}`));
+    });
+
+    renderAttendancePage();
+    await openCompleteSessionSheet();
+
+    expect(screen.getByTestId("complete-session-trainer")).toBeInTheDocument();
+    expect(screen.getByTestId("confirm-complete-session")).toBeDisabled();
+    expect(apiPatchMock).not.toHaveBeenCalled();
   });
 });

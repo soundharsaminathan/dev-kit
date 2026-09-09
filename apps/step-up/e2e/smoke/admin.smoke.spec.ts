@@ -810,6 +810,28 @@ test.describe("admin (staff) smoke @smoke", () => {
     }
   });
 
+  test("staff complete session skips trainer picker on a single-trainer batch @smoke", async ({
+    browser,
+  }) => {
+    const context = await browser.newContext({
+      storageState: authFile("STAFF"),
+    });
+    const page = await context.newPage();
+    try {
+      await page.goto(`/app/sessions/${SMOKE.sessionAttendanceId}/attendance`, {
+        waitUntil: "domcontentloaded",
+      });
+      await waitForAppReady(page);
+
+      await page.getByTestId("complete-session").click();
+      await expect(page.getByTestId("confirm-complete-session")).toBeVisible();
+      await expect(page.getByTestId("complete-session-trainer")).toHaveCount(0);
+      await expect(page.getByTestId("confirm-complete-session")).toBeEnabled();
+    } finally {
+      await closeSmokeContext(context);
+    }
+  });
+
   test("staff cannot extend a batch schedule by more than one year @smoke", async () => {
     const cleanup = new SmokeDataCleanup();
     try {
