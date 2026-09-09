@@ -701,12 +701,16 @@ async function main() {
     where: {
       membershipId_studentId: {
         membershipId: SMOKE.membershipStudentId,
+      periodStart,
+      periodEnd,
         studentId: u.STUDENT.id,
       },
     },
     update: { seatRole: MembershipSeatRole.KID },
     create: {
       membershipId: SMOKE.membershipStudentId,
+      periodStart,
+      periodEnd,
       studentId: u.STUDENT.id,
       seatRole: MembershipSeatRole.KID,
     },
@@ -916,6 +920,8 @@ async function main() {
       platformFeePercent: 5,
       studioId,
       membershipId: null,
+      periodStart: monthStart,
+      periodEnd,
       paymentHoldExpiresAt: null,
       purchaseMeta: {
         batchId: SMOKE.beginnerBatchId,
@@ -938,6 +944,8 @@ async function main() {
       platformFeePercent: 5,
       studioId,
       membershipId: null,
+      periodStart: monthStart,
+      periodEnd,
       purchaseMeta: {
         batchId: SMOKE.beginnerBatchId,
         subscriptionId: SMOKE.adultMonthlyId,
@@ -964,6 +972,8 @@ async function main() {
       platformFeePercent: 5,
       studioId,
       membershipId: SMOKE.membershipStudentId,
+      periodStart,
+      periodEnd,
       paymentHoldExpiresAt: null,
       purchaseMeta: Prisma.DbNull,
     },
@@ -977,6 +987,8 @@ async function main() {
       platformFeePercent: 5,
       studioId,
       membershipId: SMOKE.membershipStudentId,
+      periodStart,
+      periodEnd,
     },
   });
 

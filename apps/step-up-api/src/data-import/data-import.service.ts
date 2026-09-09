@@ -26,6 +26,7 @@ import {
   UserRole,
 } from "@prisma/client";
 import { readPurchaseMetaBatchId } from "../billing/family-combine";
+import { billingPeriodForCadence } from "../billing/invoice-period";
 import { ScheduleConflictService } from "../calendar/schedule-conflict.service";
 import {
   formatConflictInstant,
@@ -1764,6 +1765,8 @@ export class DataImportService {
               purchaserUserId: true,
               batchId: true,
               subscriptionId: true,
+              periodStart: true,
+              periodEnd: true,
             },
             orderBy: { periodStart: "desc" },
           }),
@@ -1779,8 +1782,16 @@ export class DataImportService {
     );
     const membershipByStudentBatch = new Map<string, string>();
     const membershipByStudentBatchSub = new Map<string, string>();
+    const membershipPeriodById = new Map<
+      string,
+      { periodStart: Date; periodEnd: Date }
+    >();
     for (const membership of memberships) {
       if (!membership.batchId) continue;
+      membershipPeriodById.set(membership.id, {
+        periodStart: membership.periodStart,
+        periodEnd: membership.periodEnd,
+      });
       const pair = `${membership.purchaserUserId}:${membership.batchId}`;
       if (!membershipByStudentBatch.has(pair)) {
         membershipByStudentBatch.set(pair, membership.id);
@@ -1807,6 +1818,8 @@ export class DataImportService {
       platformFeePercent: number;
       gstPercent: number;
       purchaseMeta: Prisma.InputJsonValue | typeof Prisma.JsonNull;
+      periodStart: Date;
+      periodEnd: Date;
     }> = [];
     const periodsToRefresh = new Set<string>();
 
@@ -1892,6 +1905,16 @@ export class DataImportService {
         periodsToRefresh.add(currentMonthPeriod(refundedAt));
       }
 
+      const membershipPeriod = membershipId
+        ? membershipPeriodById.get(membershipId)
+        : undefined;
+      const { periodStart, periodEnd } = membershipPeriod
+        ? membershipPeriod
+        : billingPeriodForCadence(
+            paidAt ?? new Date(),
+            BillingCadence.MONTHLY,
+          );
+
       data.push({
         studentId,
         studioId,
@@ -1907,6 +1930,8 @@ export class DataImportService {
         platformFeePercent,
         gstPercent,
         purchaseMeta,
+        periodStart,
+        periodEnd,
       });
 
       const processed = skipped + data.length;
@@ -2188,6 +2213,8 @@ export class DataImportService {
               },
             ],
           },
+          periodStart: gap.periodStart,
+          periodEnd: gap.periodEnd,
         };
       }),
     });

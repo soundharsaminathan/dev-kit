@@ -9,7 +9,7 @@ export type PrintableInvoice = {
   status: string;
   paymentMethod?: string | null | undefined;
   paidAt?: string | Date | null | undefined;
-  /** Billing period month; falls back to paidAt when omitted. */
+  /** Stored billing-period start. Never paidAt. */
   billMonth?: string | Date | null | undefined;
   /** YYYY-MM keys covered by this invoice. Quarterly invoices pass all 3. */
   billMonthKeys?: string[] | undefined;
@@ -69,9 +69,11 @@ function printBillPeriodLabel(invoice: PrintableInvoice): string | null {
   if (invoice.billMonthKeys && invoice.billMonthKeys.length > 0) {
     return formatInvoicePeriodLabel(invoice.billMonthKeys, "long") || null;
   }
-  const source = invoice.billMonth ?? invoice.paidAt;
-  if (!source) return null;
-  const date = source instanceof Date ? source : new Date(source);
+  if (!invoice.billMonth) return null;
+  const date =
+    invoice.billMonth instanceof Date
+      ? invoice.billMonth
+      : new Date(invoice.billMonth);
   if (Number.isNaN(date.getTime())) return null;
   return date.toLocaleString("en-IN", {
     month: "long",
@@ -95,7 +97,9 @@ export function invoiceFileName(invoice: {
   const billMonth =
     invoice.billMonthKeys && invoice.billMonthKeys.length > 0
       ? formatBillPeriodFileName(invoice.billMonthKeys)
-      : formatBillMonth(invoice.billMonth ?? invoice.paidAt ?? new Date());
+      : invoice.billMonth
+        ? formatBillMonth(invoice.billMonth)
+        : "Unknown";
   return `${username || "invoice"}_${billMonth}`;
 }
 

@@ -16,6 +16,15 @@ describe("invoiceReceiptFileName", () => {
     ).toBe("Asha_Kumar_August2026.pdf");
   });
 
+  it("does not use paidAt as the billing month in the file name", () => {
+    expect(
+      invoiceReceiptFileName({
+        studentName: "Ravi",
+        paidAt: "2026-07-15T10:00:00.000Z",
+      }),
+    ).toBe("Ravi_Unknown.pdf");
+  });
+
   it("uses a first-last month range for quarterly invoices", () => {
     expect(
       invoiceReceiptFileName({

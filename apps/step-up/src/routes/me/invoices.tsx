@@ -5,7 +5,10 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useApi } from "@/lib/api-context";
 import { fetchAllPages } from "@/lib/api-page";
 import { useActiveStudentContext } from "@/modules/me/use-active-student-context";
-import { invoiceTilePeriodLabel } from "@/modules/payments/invoice-types";
+import {
+  type Invoice,
+  invoiceTilePeriodLabel,
+} from "@/modules/payments/invoice-types";
 import { PullToRefresh } from "@/modules/ui/pull-to-refresh";
 import { Screen } from "@/modules/ui/screen";
 import { SkeletonCardList } from "@/modules/ui/skeleton-block";
@@ -13,27 +16,25 @@ import { EmptyState, ErrorState } from "@/modules/ui/states";
 import { TouchButton } from "@/modules/ui/touch-button";
 import styles from "./invoices.module.scss";
 
-type Invoice = {
-  id: string;
-  amount: number;
-  status: "PENDING" | "PAID" | "OVERDUE" | "REFUNDED";
-  dueDate: string | null;
-  paidAt?: string | null;
-  batchName?: string | null;
-  chargeType?:
-    | "POSTPAID_PRORATED"
-    | "PREPAID_PRORATED"
-    | "PREPAID_FULL"
-    | "ADMISSION";
-  attendedSessionCount?: number | null;
-  billedSessionCount?: number | null;
-  canConvertToQuarterly?: boolean;
-  membership?: {
-    periodStart?: string | null;
-    periodEnd?: string | null;
-    subscription?: { billingCadence?: "MONTHLY" | "QUARTERLY" } | null;
-  } | null;
-};
+type MeInvoice = Pick<
+  Invoice,
+  | "id"
+  | "amount"
+  | "status"
+  | "dueDate"
+  | "paidAt"
+  | "paymentHoldExpiresAt"
+  | "batchName"
+  | "chargeType"
+  | "attendedSessionCount"
+  | "billedSessionCount"
+  | "canConvertToQuarterly"
+  | "periodStart"
+  | "periodEnd"
+  | "billMonthKeys"
+  | "billPeriodLabel"
+  | "membership"
+>;
 
 export const Route = createFileRoute("/me/invoices")({
   component: MeInvoicesPage,
@@ -48,12 +49,12 @@ function MeInvoicesPage() {
   const query = useQuery({
     queryKey: ["invoices", "student", studentId],
     queryFn: () =>
-      fetchAllPages<Invoice>((cursor) => {
+      fetchAllPages<MeInvoice>((cursor) => {
         const params = new URLSearchParams({ limit: "50" });
         if (cursor) params.set("cursor", cursor);
         return api.get<
-          | Invoice[]
-          | { items: Invoice[]; nextCursor: string | null; limit: number }
+          | MeInvoice[]
+          | { items: MeInvoice[]; nextCursor: string | null; limit: number }
         >(`/billing/student/${studentId}?${params.toString()}`);
       }),
     enabled: Boolean(studentId),

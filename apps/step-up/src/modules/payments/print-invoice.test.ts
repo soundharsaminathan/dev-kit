@@ -16,13 +16,13 @@ describe("invoiceFileName", () => {
     ).toBe("Asha_Kumar_August2026");
   });
 
-  it("falls back to paidAt when bill month is missing", () => {
+  it("does not use paidAt as the billing month", () => {
     expect(
       invoiceFileName({
         studentName: "Ravi",
         paidAt: "2026-07-15T10:00:00.000Z",
       }),
-    ).toBe("Ravi_July2026");
+    ).toBe("Ravi_Unknown");
   });
 
   it("uses a first-last month range for quarterly invoices", () => {

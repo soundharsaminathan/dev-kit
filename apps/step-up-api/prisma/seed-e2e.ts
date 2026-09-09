@@ -812,6 +812,8 @@ async function main() {
       studioId,
       membershipId: E2E.membershipStudentId,
       paymentHoldExpiresAt: null,
+      periodStart,
+      periodEnd,
     },
     create: {
       id: E2E.invoicePaidMembershipId,
@@ -823,6 +825,8 @@ async function main() {
       platformFeePercent: 5,
       studioId,
       membershipId: E2E.membershipStudentId,
+      periodStart,
+      periodEnd,
     },
   });
 
@@ -877,6 +881,8 @@ async function main() {
       studioId,
       membershipId: E2E.membershipStudentDueId,
       paymentHoldExpiresAt: null,
+      periodStart: duePeriodStart,
+      periodEnd: duePeriodEnd,
     },
     create: {
       id: E2E.invoiceRenewalPendingId,
@@ -886,6 +892,8 @@ async function main() {
       platformFeePercent: 5,
       studioId,
       membershipId: E2E.membershipStudentDueId,
+      periodStart: duePeriodStart,
+      periodEnd: duePeriodEnd,
     },
   });
 

@@ -33,7 +33,9 @@ import {
   parsePurchaseMeta,
   resolvePlanCadenceBySubscriptionId,
 } from "../billing/family-combine";
+import { presentInvoicePeriod } from "../billing/invoice-period";
 import { MediaService } from "../media/media.service";
+import { invoiceDueDate } from "../memberships/membership-helpers";
 import { PrismaService } from "../prisma/prisma.service";
 import { isAlwaysPublicRole } from "../social/visibility";
 import { ageFromDateOfBirth, ageRangeFromAge } from "./age-range";
@@ -1113,6 +1115,21 @@ export class UsersService {
           studioDiscount: Number(invoice.studioDiscount ?? 0),
           batchId,
           batchName,
+          dueDate:
+            invoiceDueDate({
+              chargeType: invoice.chargeType,
+              periodStart:
+                invoice.periodStart ?? invoice.membership?.periodStart,
+              periodEnd: invoice.periodEnd ?? invoice.membership?.periodEnd,
+            })?.toISOString() ?? null,
+          ...presentInvoicePeriod(invoice),
+          membership: invoice.membership
+            ? {
+                periodStart: invoice.membership.periodStart.toISOString(),
+                periodEnd: invoice.membership.periodEnd.toISOString(),
+                subscription: invoice.membership.subscription,
+              }
+            : null,
         };
       }),
       parents: await Promise.all(

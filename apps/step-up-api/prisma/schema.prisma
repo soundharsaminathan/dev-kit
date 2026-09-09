@@ -905,6 +905,8 @@ model Invoice {
   chargeType              InvoiceChargeType  @default(PREPAID_FULL)
   attendedSessionCount    Int?
   billedSessionCount      Int?
+  periodStart             DateTime?
+  periodEnd               DateTime?
 
   student    User        @relation(fields: [studentId], references: [id], onDelete: Cascade)
   membership Membership? @relation(fields: [membershipId], references: [id])
@@ -914,6 +916,7 @@ model Invoice {
   @@index([status, paymentHoldExpiresAt])
   @@index([studioId, id])
   @@index([studentId])
+  @@index([studioId, periodStart])
 }
 
 model WhatsappMessage {

@@ -3,13 +3,13 @@ import {
   allocateFamilyDiscount,
   cadencePriceHint,
   formatInvoiceMonthLabel,
-  formatInvoicePeriodLabel,
   formatPriceParts,
   type InvoicePaymentPlan,
   invoiceCoveredMonthKeys,
   invoiceMatchesMonth,
   invoiceMonthKey,
   invoicePeriodLabel,
+  invoicePrintPeriod,
   invoiceTilePeriodLabel,
   quarterlyPlanSavings,
   recentUtcMonthKeys,
@@ -67,51 +67,48 @@ describe("payment plan helpers", () => {
 });
 
 describe("invoice month filter", () => {
-  it("keys a billing period from membership.periodStart for unpaid invoices", () => {
+  it("keys a billing period from the stored invoice period", () => {
     expect(
       invoiceMonthKey({
         status: "PENDING",
-        membership: { periodStart: "2026-08-01T00:00:00.000Z" },
+        periodStart: "2026-08-01T00:00:00.000Z",
+        periodEnd: "2026-08-31T23:59:59.999Z",
       }),
     ).toBe("2026-08");
   });
 
-  it("prefers membership.periodStart over paidAt for PAID invoices", () => {
+  it("uses stored periodStart, not paidAt, for PAID invoices", () => {
     expect(
       invoiceMonthKey({
         status: "PAID",
-        membership: { periodStart: "2026-06-01T00:00:00.000Z" },
-        paidAt: "2026-08-01T12:00:00.000Z",
+        periodStart: "2026-06-01T00:00:00.000Z",
+        periodEnd: "2026-06-30T23:59:59.999Z",
+        billMonthKeys: ["2026-06"],
+        billPeriodLabel: "Jun 2026",
       }),
     ).toBe("2026-06");
   });
 
-  it("falls back to dueDate then paidAt when membership is missing", () => {
+  it("does not infer a month from paidAt when the invoice has no period", () => {
     expect(
       invoiceMonthKey({
-        status: "PENDING",
-        dueDate: "2026-07-31T23:59:59.999Z",
+        status: "PAID",
         paidAt: "2026-08-02T10:00:00.000Z",
-      }),
-    ).toBe("2026-07");
-    expect(
-      invoiceMonthKey({ status: "PAID", paidAt: "2026-06-15T08:00:00.000Z" }),
-    ).toBe("2026-06");
-  });
-
-  it("returns null when no date is present", () => {
+      } as never),
+    ).toBeNull();
     expect(invoiceMonthKey({ status: "PENDING" })).toBeNull();
   });
 
   it("matches a selected month and treats ALL as unfiltered", () => {
     const invoice = {
       status: "PENDING" as const,
-      membership: { periodStart: "2026-08-01T00:00:00.000Z" },
+      billMonthKeys: ["2026-08"],
+      billPeriodLabel: "Aug 2026",
     };
     expect(invoiceMatchesMonth(invoice, "2026-08")).toBe(true);
     expect(invoiceMatchesMonth(invoice, "2026-07")).toBe(false);
     expect(invoiceMatchesMonth(invoice, "ALL")).toBe(true);
-    expect(invoiceMatchesMonth({ status: "PENDING" }, "2026-08")).toBe(false);
+    expect(invoiceMatchesMonth({ status: "PENDING" }, "2020-01")).toBe(false);
   });
 
   it("lists recent UTC months newest first including the current month", () => {
@@ -129,11 +126,10 @@ describe("invoice month filter", () => {
   it("lists all three months for a quarterly invoice", () => {
     const invoice = {
       status: "PAID" as const,
-      membership: {
-        periodStart: "2026-06-01T00:00:00.000Z",
-        periodEnd: "2026-08-31T23:59:59.999Z",
-        subscription: { billingCadence: "QUARTERLY" as const },
-      },
+      periodStart: "2026-06-01T00:00:00.000Z",
+      periodEnd: "2026-08-31T23:59:59.999Z",
+      billMonthKeys: ["2026-06", "2026-07", "2026-08"],
+      billPeriodLabel: "Jun, Jul, Aug 2026",
     };
     expect(invoiceCoveredMonthKeys(invoice)).toEqual([
       "2026-06",
@@ -146,38 +142,26 @@ describe("invoice month filter", () => {
     expect(invoiceMatchesMonth(invoice, "2026-09")).toBe(false);
   });
 
-  it("uses paymentPlan cadence when membership subscription is missing", () => {
-    expect(
-      invoiceCoveredMonthKeys({
-        status: "PENDING",
-        membership: { periodStart: "2026-12-01T00:00:00.000Z" },
-        paymentPlan: { currentCadence: "QUARTERLY", options: [] },
-      }),
-    ).toEqual(["2026-12", "2027-01", "2027-02"]);
-    expect(formatInvoicePeriodLabel(["2026-12", "2027-01", "2027-02"])).toBe(
-      "Dec 2026, Jan 2027, Feb 2027",
-    );
-  });
-
-  it("labels tiles with the billing month, including unpaid invoices", () => {
+  it("uses API billPeriodLabel on tiles, including unpaid invoices", () => {
     expect(
       invoiceTilePeriodLabel({
         status: "PENDING",
         chargeType: "PREPAID_FULL",
-        membership: { periodStart: "2026-08-01T00:00:00.000Z" },
+        billPeriodLabel: "Aug 2026",
+        billMonthKeys: ["2026-08"],
       }),
     ).toBe("Aug 2026");
     expect(
       invoiceTilePeriodLabel({
         status: "PAID",
         chargeType: "PREPAID_FULL",
-        membership: { periodStart: "2026-06-01T00:00:00.000Z" },
-        paidAt: "2026-08-01T12:00:00.000Z",
+        billPeriodLabel: "Jun 2026",
+        billMonthKeys: ["2026-06"],
       }),
     ).toBe("Jun 2026");
   });
 
-  it("labels admission fee tiles as Admission fee instead of a month", () => {
+  it("labels admission fee tiles as Admission fee when the API has no period label", () => {
     expect(
       invoiceTilePeriodLabel({
         status: "PENDING",
@@ -188,9 +172,33 @@ describe("invoice month filter", () => {
       invoiceTilePeriodLabel({
         status: "PAID",
         chargeType: "ADMISSION",
-        paidAt: "2026-08-15T10:00:00.000Z",
+        billPeriodLabel: "Aug 2026",
       }),
-    ).toBe("Admission fee");
+    ).toBe("Aug 2026");
+  });
+
+  it("falls back to membership period for legacy invoices without stored period", () => {
+    expect(
+      invoiceMonthKey({
+        status: "PENDING",
+        membership: { periodStart: "2026-04-01T00:00:00.000Z" },
+      }),
+    ).toBe("2026-04");
+  });
+
+  it("prints the stored period and ignores paidAt", () => {
+    expect(
+      invoicePrintPeriod({
+        status: "PAID",
+        periodStart: "2026-06-01T00:00:00.000Z",
+        billMonthKeys: ["2026-06"],
+        billPeriodLabel: "Jun 2026",
+      }),
+    ).toEqual({
+      billMonth: "2026-06-01T00:00:00.000Z",
+      billMonthKeys: ["2026-06"],
+      billPeriodLabel: "June 2026",
+    });
   });
 });
 

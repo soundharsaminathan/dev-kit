@@ -7,7 +7,6 @@ import {
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import {
-  DeliveryStatus,
   InvoiceStatus,
   NotificationType,
   PaymentMethod,
@@ -15,10 +14,9 @@ import {
 } from "@prisma/client";
 import { EmailService } from "../email/email.service";
 import {
-  coveredMonthKeys,
-  formatInvoicePeriodLabel,
-} from "../email/invoice-receipt-pdf";
-import { computeGst, computePlatformFee } from "../memberships/membership-helpers";
+  computeGst,
+  computePlatformFee,
+} from "../memberships/membership-helpers";
 import { MembershipsService } from "../memberships/memberships.service";
 import { NotificationsService } from "../notifications/notifications.service";
 import {
@@ -28,6 +26,7 @@ import {
 import { PrismaService } from "../prisma/prisma.service";
 import { UserCryptoService } from "../users/user-crypto.service";
 import { parseCombineMeta, parsePurchaseMeta } from "./family-combine";
+import { presentInvoicePeriod } from "./invoice-period";
 
 function amountToPaise(amount: Prisma.Decimal | number | string) {
   const rupees = Number(amount);
@@ -294,12 +293,7 @@ export class InvoicePaymentLinkService {
     });
 
     if (student.email) {
-      const billMonthKeys = coveredMonthKeys({
-        periodStart: invoice.membership?.periodStart ?? null,
-        periodEnd: invoice.membership?.periodEnd ?? null,
-        billingCadence:
-          invoice.membership?.subscription?.billingCadence ?? null,
-      });
+      const period = presentInvoicePeriod(invoice);
       void this.email
         .sendPaymentInvoice({
           to: student.email,
@@ -318,9 +312,10 @@ export class InvoicePaymentLinkService {
           paymentMethod: PaymentMethod.RAZORPAY,
           paidAt,
           status: InvoiceStatus.PAID,
-          billMonth: invoice.membership?.periodStart ?? paidAt,
-          billMonthKeys,
-          billPeriodLabel: formatInvoicePeriodLabel(billMonthKeys) || null,
+          billMonth:
+            invoice.periodStart ?? invoice.membership?.periodStart ?? null,
+          billMonthKeys: period.billMonthKeys,
+          billPeriodLabel: period.billPeriodLabel,
         })
         .catch((error: unknown) => {
           this.logger.error(

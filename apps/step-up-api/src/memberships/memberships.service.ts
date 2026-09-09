@@ -28,6 +28,7 @@ import {
 import { REACTIVATE_ENROLLMENT_DATA } from "../batches/enrollment-status";
 import { enqueueInvoiceCreated } from "../billing/enqueue-invoice-created";
 import { parseCombineMeta, parsePurchaseMeta } from "../billing/family-combine";
+import { billingPeriodForCadence } from "../billing/invoice-period";
 import { ScheduleConflictService } from "../calendar/schedule-conflict.service";
 import { OutboxService } from "../events/outbox.service";
 import { NotificationsService } from "../notifications/notifications.service";
@@ -267,6 +268,10 @@ export class MembershipsService {
     };
 
     const holdPayment = args.paymentHold !== false;
+    const { periodStart, periodEnd } = billingPeriodForCadence(
+      new Date(),
+      planLink.subscription.billingCadence,
+    );
 
     const invoice = await this.prisma.invoice.create({
       data: {
@@ -275,6 +280,8 @@ export class MembershipsService {
         amount: planLink.subscription.price,
         status: InvoiceStatus.PENDING,
         chargeType: InvoiceChargeType.PREPAID_FULL,
+        periodStart,
+        periodEnd,
         ...invoiceFeePercents(settings),
         ...(holdPayment
           ? { paymentHoldExpiresAt: paymentHoldExpiresAt() }
@@ -359,6 +366,10 @@ export class MembershipsService {
     });
 
     const holdPayment = args.paymentHold !== false;
+    const { periodStart, periodEnd } = billingPeriodForCadence(
+      new Date(),
+      planLink.subscription.billingCadence,
+    );
     const db = args.tx ?? this.prisma;
     const invoices = [];
 
@@ -384,6 +395,8 @@ export class MembershipsService {
           amount: planLink.subscription.price,
           status: InvoiceStatus.PENDING,
           chargeType: InvoiceChargeType.PREPAID_FULL,
+          periodStart,
+          periodEnd,
           ...invoiceFeePercents(settings),
           ...(holdPayment
             ? { paymentHoldExpiresAt: paymentHoldExpiresAt() }
@@ -590,6 +603,8 @@ export class MembershipsService {
           chargeType: InvoiceChargeType.PREPAID_PRORATED,
           attendedSessionCount: remainingSessionCount,
           billedSessionCount,
+          periodStart: membership.periodStart,
+          periodEnd: membership.periodEnd,
           ...invoiceFeePercents(settings),
           purchaseMeta: {
             batchId: args.batchId,
@@ -750,6 +765,8 @@ export class MembershipsService {
         data: {
           amount: targetPlan.subscription.price,
           purchaseMeta: nextMeta as unknown as Prisma.InputJsonValue,
+          periodStart: invoice.periodStart ?? membership.periodStart,
+          periodEnd,
         },
       }),
     ]);
@@ -1321,6 +1338,8 @@ export class MembershipsService {
         amount: existing.subscription.price,
         status: InvoiceStatus.PENDING,
         chargeType: InvoiceChargeType.PREPAID_FULL,
+        periodStart: existing.periodStart,
+        periodEnd: existing.periodEnd,
         ...invoiceFeePercents(settings),
         ...(purchaseMeta ? { purchaseMeta } : {}),
       },

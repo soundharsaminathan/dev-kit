@@ -17,10 +17,6 @@ import {
 } from "@prisma/client";
 import { ACTIVE_ENROLLMENT_WHERE } from "../batches/enrollment-status";
 import { EmailService } from "../email/email.service";
-import {
-  coveredMonthKeys,
-  formatInvoicePeriodLabel,
-} from "../email/invoice-receipt-pdf";
 import { OutboxService } from "../events/outbox.service";
 import {
   computeGst,
@@ -49,6 +45,7 @@ import {
   parseCombineMeta,
   parsePurchaseMeta,
 } from "./family-combine";
+import { mergeInvoicePeriods, presentInvoicePeriod } from "./invoice-period";
 
 export type AnalyticsBucket = "day" | "week" | "month";
 
@@ -307,6 +304,7 @@ export class BillingService {
         combineMeta,
         batchId,
         batchName,
+        ...presentInvoicePeriod(invoice),
         familySummary:
           kind === "FAMILY"
             ? {
@@ -400,9 +398,10 @@ export class BillingService {
         dueDate:
           invoiceDueDate({
             chargeType: invoice.chargeType,
-            periodStart: invoice.membership?.periodStart,
-            periodEnd: invoice.membership?.periodEnd,
+            periodStart: invoice.periodStart ?? invoice.membership?.periodStart,
+            periodEnd: invoice.periodEnd ?? invoice.membership?.periodEnd,
           })?.toISOString() ?? null,
+        ...presentInvoicePeriod(invoice),
         batchId,
         batchName,
         purchaseMeta,
@@ -971,12 +970,7 @@ export class BillingService {
     });
 
     if (student.email) {
-      const billMonthKeys = coveredMonthKeys({
-        periodStart: invoice.membership?.periodStart ?? null,
-        periodEnd: invoice.membership?.periodEnd ?? null,
-        billingCadence:
-          invoice.membership?.subscription?.billingCadence ?? null,
-      });
+      const period = presentInvoicePeriod(invoice);
       void this.email
         .sendPaymentInvoice({
           to: student.email,
@@ -995,9 +989,10 @@ export class BillingService {
           paymentMethod: input.paymentMethod,
           paidAt,
           status: InvoiceStatus.PAID,
-          billMonth: invoice.membership?.periodStart ?? paidAt,
-          billMonthKeys,
-          billPeriodLabel: formatInvoicePeriodLabel(billMonthKeys) || null,
+          billMonth:
+            invoice.periodStart ?? invoice.membership?.periodStart ?? null,
+          billMonthKeys: period.billMonthKeys,
+          billPeriodLabel: period.billPeriodLabel,
         })
         .catch((error: unknown) => {
           this.logger.error(
@@ -1168,6 +1163,7 @@ export class BillingService {
       where: { studioId: data.studioId },
       select: { platformFeePercent: true, gstPercent: true },
     });
+    const { periodStart, periodEnd } = mergeInvoicePeriods(sources);
 
     const created = await this.prisma.$transaction(async (tx) => {
       const invoice = await tx.invoice.create({
@@ -1177,6 +1173,8 @@ export class BillingService {
           amount: netAmount,
           familyDiscount,
           status: InvoiceStatus.PENDING,
+          periodStart,
+          periodEnd,
           ...invoiceFeePercents(settings),
           combineMeta,
         },
@@ -1207,6 +1205,7 @@ export class BillingService {
       where: { id },
       include: {
         studio: { select: { id: true, name: true } },
+        membership: { select: { periodStart: true, periodEnd: true } },
       },
     });
     if (!invoice) {
@@ -1227,6 +1226,7 @@ export class BillingService {
     return {
       ...invoice,
       amount: Number(invoice.amount),
+      ...presentInvoicePeriod(invoice),
       batch,
       purchaseMeta,
     };
@@ -1945,6 +1945,8 @@ function buildPendingPayments(input: {
     student: User;
     membership: { periodStart: Date; periodEnd?: Date } | null;
     chargeType?: import("@prisma/client").InvoiceChargeType;
+    periodStart?: Date | null;
+    periodEnd?: Date | null;
   }>;
   studentBatchMap: Map<string, Set<string>>;
   batchNameById: Map<string, string>;
@@ -1972,8 +1974,8 @@ function buildPendingPayments(input: {
       dueDate:
         invoiceDueDate({
           chargeType: invoice.chargeType,
-          periodStart: invoice.membership?.periodStart,
-          periodEnd: invoice.membership?.periodEnd,
+          periodStart: invoice.periodStart ?? invoice.membership?.periodStart,
+          periodEnd: invoice.periodEnd ?? invoice.membership?.periodEnd,
         })?.toISOString() ?? null,
       batchId,
       batchName,

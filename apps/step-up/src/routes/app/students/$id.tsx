@@ -28,8 +28,7 @@ import {
 import { FamilyCombineSheet } from "@/modules/payments/family-combine-sheet";
 import {
   type Invoice,
-  invoiceCoveredMonthKeys,
-  invoicePeriodLabel,
+  invoicePrintPeriod,
   invoiceTilePeriodLabel,
   type StudioFamily,
 } from "@/modules/payments/invoice-types";
@@ -102,6 +101,12 @@ type StudentStudioProfile = {
     status: "PENDING" | "PAID" | "OVERDUE" | "REFUNDED";
     paymentMethod?: "CASH" | "UPI_MANUAL" | "RAZORPAY" | null;
     paidAt?: string | null;
+    dueDate?: string | null;
+    paymentHoldExpiresAt?: string | null;
+    periodStart?: string | null;
+    periodEnd?: string | null;
+    billMonthKeys?: string[];
+    billPeriodLabel?: string | null;
     batchId?: string | null;
     batchName?: string | null;
     chargeType?:
@@ -948,6 +953,7 @@ function StudentDetailPage() {
                               variant="default"
                               data-testid={`print-invoice-${invoice.id}`}
                               onClick={() => {
+                                const period = invoicePrintPeriod(invoice);
                                 const opened = printInvoice({
                                   id: invoice.id,
                                   amount: invoice.amount,
@@ -956,13 +962,9 @@ function StudentDetailPage() {
                                   status: invoice.status,
                                   paymentMethod: invoice.paymentMethod,
                                   paidAt: invoice.paidAt,
-                                  billMonth: invoice.membership?.periodStart,
-                                  billMonthKeys:
-                                    invoiceCoveredMonthKeys(invoice),
-                                  billPeriodLabel: invoicePeriodLabel(
-                                    invoice,
-                                    "long",
-                                  ),
+                                  billMonth: period.billMonth,
+                                  billMonthKeys: period.billMonthKeys,
+                                  billPeriodLabel: period.billPeriodLabel,
                                   studentName: profile.student.name,
                                   studioName: studioQuery.data?.name,
                                   studioLogoUrl: studioQuery.data?.logoUrl,

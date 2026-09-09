@@ -336,6 +336,8 @@ describe("MembershipsService.rollEndedActiveToNextDue", () => {
         chargeType: "PREPAID_FULL",
         amount: 3500,
         membershipId: "mem-sep",
+        periodStart: expect.any(Date),
+        periodEnd: expect.any(Date),
         purchaseMeta: expect.objectContaining({
           firstMonthConvertToQuarterly: true,
         }),
@@ -644,7 +646,11 @@ describe("MembershipsService.setInvoiceBillingCadence", () => {
       status: "PENDING",
       chargeType: "PREPAID_FULL",
       amount: 3000,
-      purchaseMeta: { subscriptionId: "sub-m", purchaserUserId: "u", coveredStudents: [] },
+      purchaseMeta: {
+        subscriptionId: "sub-m",
+        purchaserUserId: "u",
+        coveredStudents: [],
+      },
       membership: {
         id: "mem-1",
         batchId: "batch-1",
@@ -1152,6 +1158,8 @@ describe("MembershipsService.purchaseForBatch", () => {
         status: "PENDING",
         platformFeePercent: 5,
         paymentHoldExpiresAt: expect.any(Date),
+        periodStart: expect.any(Date),
+        periodEnd: expect.any(Date),
         purchaseMeta: {
           batchId: "batch-kid",
           subscriptionId: "sub-kid-mo",
@@ -1313,6 +1321,8 @@ describe("MembershipsService.purchaseForBatch", () => {
         studentId: "kid-1",
         amount: 2500,
         status: "PENDING",
+        periodStart: expect.any(Date),
+        periodEnd: expect.any(Date),
       }),
     });
     expect(prisma.invoice.create).toHaveBeenNthCalledWith(2, {
@@ -1320,6 +1330,8 @@ describe("MembershipsService.purchaseForBatch", () => {
         studentId: "kid-2",
         amount: 2500,
         status: "PENDING",
+        periodStart: expect.any(Date),
+        periodEnd: expect.any(Date),
       }),
     });
   });
@@ -1670,7 +1682,12 @@ describe("MembershipsService.beginBatchEnrollment", () => {
     batch: { findUnique: vi.fn(), findMany: vi.fn() },
     batchPlan: { findUnique: vi.fn() },
     subscription: { findUnique: vi.fn() },
-    membership: { findFirst: vi.fn(), findUnique: vi.fn(), create: vi.fn(), update: vi.fn() },
+    membership: {
+      findFirst: vi.fn(),
+      findUnique: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+    },
     session: { findFirst: vi.fn(), count: vi.fn() },
     studioSettings: { findUnique: vi.fn() },
     invoice: { create: vi.fn(), update: vi.fn(), findFirst: vi.fn() },
@@ -1818,13 +1835,12 @@ describe("MembershipsService.beginBatchEnrollment", () => {
     prisma.session.findFirst.mockResolvedValue({
       startsAt: new Date(Date.UTC(2026, 7, 4, 10, 0, 0)),
     });
-    prisma.session.count
-      .mockResolvedValueOnce(10)
-      .mockResolvedValueOnce(5);
+    prisma.session.count.mockResolvedValueOnce(10).mockResolvedValueOnce(5);
     prisma.membership.create.mockResolvedValue({
       id: "mem-1",
       status: "ACTIVE",
       billingPhase: "FIRST_POSTPAID",
+      periodStart: new Date(Date.UTC(2026, 7, 1)),
       periodEnd: new Date(Date.UTC(2026, 7, 31, 23, 59, 59, 999)),
       subscriptionId: "sub-kid-mo",
       purchaserUserId: "kid-1",
@@ -1853,6 +1869,8 @@ describe("MembershipsService.beginBatchEnrollment", () => {
         attendedSessionCount: 5,
         billedSessionCount: 10,
         membershipId: "mem-1",
+        periodStart: expect.any(Date),
+        periodEnd: expect.any(Date),
       }),
     });
     expect(prisma.membership.create).toHaveBeenCalledTimes(1);
@@ -1897,6 +1915,7 @@ describe("MembershipsService.beginBatchEnrollment", () => {
       id: "mem-1",
       status: "ACTIVE",
       billingPhase: "FIRST_POSTPAID",
+      periodStart: new Date(Date.UTC(2026, 7, 1)),
       periodEnd: new Date(Date.UTC(2026, 7, 31, 23, 59, 59, 999)),
       subscriptionId: "sub-kid-mo",
       purchaserUserId: "kid-1",
@@ -2102,7 +2121,10 @@ describe("MembershipsService.beginBatchEnrollment", () => {
       invoices: [],
       coveredStudents: [{ studentId: "kid-1", seatRole: "KID" }],
     });
-    prisma.membership.update.mockResolvedValue({ ...track, batchId: "batch-kid" });
+    prisma.membership.update.mockResolvedValue({
+      ...track,
+      batchId: "batch-kid",
+    });
     prisma.studioSettings.findUnique.mockResolvedValue({
       admissionFee: 1000,
       platformFeePercent: 5,

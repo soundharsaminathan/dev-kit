@@ -925,6 +925,35 @@ describe("BillingService.listForStudent", () => {
     ]);
   });
 
+  it("returns stored bill period for unpaid invoices without membership", async () => {
+    prisma.invoice.findMany.mockResolvedValue([
+      {
+        id: "inv-pending",
+        studentId: "student-1",
+        amount: 3500,
+        chargeType: "PREPAID_FULL",
+        purchaseMeta: null,
+        combineMeta: null,
+        membership: null,
+        periodStart: new Date(Date.UTC(2026, 5, 1)),
+        periodEnd: new Date(Date.UTC(2026, 5, 30, 23, 59, 59, 999)),
+      },
+    ]);
+    await expect(
+      service.listForStudent(
+        makeUser({ id: "student-1", role: UserRole.STUDENT }),
+        "student-1",
+      ),
+    ).resolves.toEqual([
+      expect.objectContaining({
+        id: "inv-pending",
+        billMonthKeys: ["2026-06"],
+        billPeriodLabel: "Jun 2026",
+        periodStart: "2026-06-01T00:00:00.000Z",
+      }),
+    ]);
+  });
+
   it("rejects a student listing another student's invoices", async () => {
     prisma.familyMember.findUnique.mockResolvedValue(null);
     prisma.parentChild.findUnique.mockResolvedValue(null);
@@ -1473,6 +1502,8 @@ describe("BillingService.listByStudio", () => {
         student: { id: "student-1", nameEnc: "x" },
         membership: { id: "mem-1", subscription: { kind: "INDIVIDUAL" } },
         purchaseMeta: null,
+        periodStart: new Date(Date.UTC(2026, 7, 1)),
+        periodEnd: new Date(Date.UTC(2026, 7, 31, 23, 59, 59, 999)),
       },
     ]);
 
@@ -1490,6 +1521,8 @@ describe("BillingService.listByStudio", () => {
     expect(rows[0]?.student.name).toBe("Decrypted");
     expect(rows[0]?.kind).toBe("INDIVIDUAL");
     expect(rows[0]?.batchName).toBeNull();
+    expect(rows[0]?.billPeriodLabel).toBe("Aug 2026");
+    expect(rows[0]?.billMonthKeys).toEqual(["2026-08"]);
   });
 
   it("marks family checkout invoices via purchaseMeta", async () => {
@@ -1837,6 +1870,8 @@ describe("BillingService.familyCombine", () => {
         purchaseMeta: null,
         combineMeta: null,
         membership: null,
+        periodStart: new Date(Date.UTC(2026, 5, 1)),
+        periodEnd: new Date(Date.UTC(2026, 5, 30, 23, 59, 59, 999)),
       },
       {
         id: "inv-b",
@@ -1848,6 +1883,8 @@ describe("BillingService.familyCombine", () => {
         purchaseMeta: null,
         combineMeta: null,
         membership: null,
+        periodStart: new Date(Date.UTC(2026, 5, 1)),
+        periodEnd: new Date(Date.UTC(2026, 5, 30, 23, 59, 59, 999)),
       },
     ];
   }
@@ -1880,6 +1917,8 @@ describe("BillingService.familyCombine", () => {
         amount: 1900,
         familyDiscount: 100,
         status: InvoiceStatus.PENDING,
+        periodStart: expect.any(Date),
+        periodEnd: expect.any(Date),
         combineMeta: expect.objectContaining({
           sources: expect.any(Array),
         }),

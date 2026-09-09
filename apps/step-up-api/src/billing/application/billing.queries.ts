@@ -17,6 +17,7 @@ import {
   parseCombineMeta,
   parsePurchaseMeta,
 } from "../family-combine";
+import { presentInvoicePeriod } from "../invoice-period";
 import { buildInvoicePaymentPlan, type SiblingPlanRow } from "../payment-plan";
 import { BillingQuery } from "../persistence/billing.query";
 
@@ -197,6 +198,7 @@ export class BillingQueriesService {
         membershipSubscription,
         siblingPlans,
       });
+      const period = presentInvoicePeriod(invoice);
 
       return {
         id: invoice.id,
@@ -229,9 +231,10 @@ export class BillingQueriesService {
         dueDate:
           invoiceDueDate({
             chargeType: invoice.chargeType,
-            periodStart: invoice.membership?.periodStart,
-            periodEnd: invoice.membership?.periodEnd,
+            periodStart: invoice.periodStart ?? invoice.membership?.periodStart,
+            periodEnd: invoice.periodEnd ?? invoice.membership?.periodEnd,
           })?.toISOString() ?? null,
+        ...period,
         membership: invoice.membership
           ? {
               id: invoice.membership.id,
@@ -398,15 +401,18 @@ export class BillingQueriesService {
         dueDate:
           invoiceDueDate({
             chargeType: invoice.chargeType,
-            periodStart: invoice.membership?.periodStart,
-            periodEnd: invoice.membership?.periodEnd,
+            periodStart: invoice.periodStart ?? invoice.membership?.periodStart,
+            periodEnd: invoice.periodEnd ?? invoice.membership?.periodEnd,
           })?.toISOString() ?? null,
+        ...presentInvoicePeriod(invoice),
         membership: invoice.membership
           ? {
               periodStart: invoice.membership.periodStart.toISOString(),
               periodEnd: invoice.membership.periodEnd.toISOString(),
             }
           : null,
+        paymentHoldExpiresAt:
+          invoice.paymentHoldExpiresAt?.toISOString() ?? null,
         chargeType: invoice.chargeType,
         attendedSessionCount: invoice.attendedSessionCount,
         billedSessionCount: invoice.billedSessionCount,

@@ -29,9 +29,8 @@ import {
   formatPrice,
   formatPriceParts,
   type Invoice,
-  invoiceCoveredMonthKeys,
   invoiceMatchesMonth,
-  invoicePeriodLabel,
+  invoicePrintPeriod,
   invoiceTilePeriodLabel,
   recentUtcMonthKeys,
   type StudioFamily,
@@ -239,6 +238,7 @@ function InvoiceCard({
                 variant="default"
                 data-testid={`print-invoice-${invoice.id}`}
                 onClick={() => {
+                  const period = invoicePrintPeriod(invoice);
                   const opened = printInvoice({
                     id: invoice.id,
                     amount: invoice.amount,
@@ -248,9 +248,9 @@ function InvoiceCard({
                     status: invoice.status,
                     paymentMethod: invoice.paymentMethod,
                     paidAt: invoice.paidAt,
-                    billMonth: invoice.membership?.periodStart,
-                    billMonthKeys: invoiceCoveredMonthKeys(invoice),
-                    billPeriodLabel: invoicePeriodLabel(invoice, "long"),
+                    billMonth: period.billMonth,
+                    billMonthKeys: period.billMonthKeys,
+                    billPeriodLabel: period.billPeriodLabel,
                     studentName: invoice.student?.name,
                     studioName: studio?.name,
                     studioLogoUrl: studio?.logoUrl,

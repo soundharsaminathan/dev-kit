@@ -40,6 +40,11 @@ export type Invoice = {
   paymentMethod?: "CASH" | "UPI_MANUAL" | "RAZORPAY" | null;
   paidAt?: string | null;
   refundedAt?: string | null;
+  paymentHoldExpiresAt?: string | null;
+  periodStart?: string | null;
+  periodEnd?: string | null;
+  billMonthKeys?: string[];
+  billPeriodLabel?: string | null;
   kind: "FAMILY" | "INDIVIDUAL" | "COMBINED";
   batchId?: string | null;
   batchName?: string | null;
@@ -175,7 +180,13 @@ export function cadencePriceHint(
 
 export type InvoiceMonthSource = Pick<
   Invoice,
-  "membership" | "dueDate" | "paidAt" | "refundedAt" | "status" | "paymentPlan"
+  | "periodStart"
+  | "periodEnd"
+  | "billMonthKeys"
+  | "billPeriodLabel"
+  | "membership"
+  | "paymentPlan"
+  | "status"
 >;
 
 export type InvoiceTilePeriodSource = InvoiceMonthSource &
@@ -211,11 +222,7 @@ function dateFromMonthKey(key: string): Date | null {
 }
 
 function invoicePeriodStart(invoice: InvoiceMonthSource): Date | null {
-  const source =
-    invoice.membership?.periodStart ??
-    invoice.dueDate ??
-    invoice.paidAt ??
-    invoice.refundedAt;
+  const source = invoice.periodStart ?? invoice.membership?.periodStart;
   if (!source) return null;
   const date = new Date(source);
   if (Number.isNaN(date.getTime())) return null;
@@ -230,8 +237,11 @@ function monthSpanUtc(start: Date, end: Date): number {
   );
 }
 
-/** Calendar months this invoice covers. Quarterly plans always list all 3. */
+/** Calendar months this invoice covers. Prefers the API billMonthKeys. */
 export function invoiceCoveredMonthKeys(invoice: InvoiceMonthSource): string[] {
+  if (invoice.billMonthKeys && invoice.billMonthKeys.length > 0) {
+    return invoice.billMonthKeys;
+  }
   const start = invoicePeriodStart(invoice);
   if (!start) return [];
 
@@ -242,8 +252,10 @@ export function invoiceCoveredMonthKeys(invoice: InvoiceMonthSource): string[] {
   let count = 1;
   if (cadence === "QUARTERLY") {
     count = 3;
-  } else if (invoice.membership?.periodEnd) {
-    const end = new Date(invoice.membership.periodEnd);
+  } else if (invoice.periodEnd ?? invoice.membership?.periodEnd) {
+    const end = new Date(
+      invoice.periodEnd ?? invoice.membership?.periodEnd ?? "",
+    );
     if (!Number.isNaN(end.getTime())) {
       count = Math.min(12, Math.max(1, monthSpanUtc(start, end)));
     }
@@ -301,13 +313,31 @@ export function invoicePeriodLabel(
   return formatInvoicePeriodLabel(keys, month);
 }
 
-/** Tile heading: billing months, or Admission fee (never the paid-at month). */
+/** Tile heading: stored billing months from the API. */
 export function invoiceTilePeriodLabel(
   invoice: InvoiceTilePeriodSource,
   month: "short" | "long" = "short",
 ): string | null {
+  if (invoice.billPeriodLabel) return invoice.billPeriodLabel;
   if (invoice.chargeType === "ADMISSION") return "Admission fee";
   return invoicePeriodLabel(invoice, month);
+}
+
+/** Receipt print fields from the stored invoice period, never paidAt. */
+export function invoicePrintPeriod(invoice: InvoiceMonthSource): {
+  billMonth: string | null;
+  billMonthKeys: string[];
+  billPeriodLabel: string | null;
+} {
+  const keys = invoiceCoveredMonthKeys(invoice);
+  return {
+    billMonth: invoice.periodStart ?? invoice.membership?.periodStart ?? null,
+    billMonthKeys: keys,
+    billPeriodLabel:
+      keys.length > 0
+        ? formatInvoicePeriodLabel(keys, "long")
+        : invoice.billPeriodLabel?.trim() || null,
+  };
 }
 
 export function invoiceMonthKey(invoice: InvoiceMonthSource): string | null {

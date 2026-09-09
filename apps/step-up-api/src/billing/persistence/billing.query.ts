@@ -58,6 +58,8 @@ const studioInvoiceSelect = {
   chargeType: true,
   attendedSessionCount: true,
   billedSessionCount: true,
+  periodStart: true,
+  periodEnd: true,
   student: { select: studentLiteSelect },
   membership: { select: membershipStudioSelect },
 } as const;
@@ -86,6 +88,8 @@ const studentInvoiceSelect = {
   chargeType: true,
   attendedSessionCount: true,
   billedSessionCount: true,
+  periodStart: true,
+  periodEnd: true,
   membership: { select: membershipStudentSelect },
 } as const;
 

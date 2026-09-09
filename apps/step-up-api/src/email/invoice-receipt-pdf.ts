@@ -41,7 +41,9 @@ export function invoiceReceiptFileName(input: {
   const billMonth =
     input.billMonthKeys && input.billMonthKeys.length > 0
       ? formatBillPeriodFileName(input.billMonthKeys)
-      : formatBillMonth(input.billMonth ?? input.paidAt ?? new Date());
+      : input.billMonth
+        ? formatBillMonth(input.billMonth)
+        : "Unknown";
   return `${username || "invoice"}_${billMonth}.pdf`;
 }
 
@@ -114,7 +116,7 @@ export async function buildInvoiceReceiptPdf(
     input.billPeriodLabel?.trim() ||
     (input.billMonthKeys && input.billMonthKeys.length > 0
       ? formatInvoicePeriodLabel(input.billMonthKeys)
-      : formatPeriodFromDate(input.billMonth ?? input.paidAt));
+      : formatPeriodFromDate(input.billMonth));
   const periodHeading =
     (input.billMonthKeys?.length ?? 0) > 1 ? "Invoice months" : "Invoice month";
   const studioName = input.studioName.trim() || "classa";

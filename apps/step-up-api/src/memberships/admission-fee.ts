@@ -1,8 +1,10 @@
 import {
+  BillingCadence,
   InvoiceChargeType,
   InvoiceStatus,
   type Prisma,
 } from "@prisma/client";
+import { billingPeriodForCadence } from "../billing/invoice-period";
 import { invoiceFeePercents, roundMoney } from "./membership-helpers";
 
 export const ADMISSION_FEE_KIND = "ADMISSION" as const;
@@ -49,6 +51,10 @@ export function buildAdmissionInvoiceData(args: {
     ...(args.batchId ? { batchId: args.batchId } : {}),
     ...(args.enrolledAt ? { enrolledAt: args.enrolledAt.toISOString() } : {}),
   };
+  const { periodStart, periodEnd } = billingPeriodForCadence(
+    args.enrolledAt ?? new Date(),
+    BillingCadence.MONTHLY,
+  );
 
   return {
     studentId: args.studentId,
@@ -57,6 +63,8 @@ export function buildAdmissionInvoiceData(args: {
     status: args.status ?? InvoiceStatus.PENDING,
     chargeType: InvoiceChargeType.ADMISSION,
     membershipId: null,
+    periodStart,
+    periodEnd,
     ...invoiceFeePercents(args.settings),
     purchaseMeta: purchaseMeta as unknown as Prisma.InputJsonValue,
   };

@@ -291,6 +291,8 @@ async function upsertInvoice(opts: {
   paymentMethod?: PaymentMethod | null;
   paidAt?: Date | null;
   membershipId?: string | null;
+  periodStart: Date;
+  periodEnd: Date;
 }) {
   await prisma.invoice.upsert({
     where: { id: opts.id },
@@ -303,6 +305,8 @@ async function upsertInvoice(opts: {
       platformFeePercent: 5,
       studioId: ANALYTICS.studioId,
       membershipId: opts.membershipId ?? null,
+      periodStart: opts.periodStart,
+      periodEnd: opts.periodEnd,
       paymentHoldExpiresAt: null,
       purchaseMeta: Prisma.DbNull,
     },
@@ -316,6 +320,8 @@ async function upsertInvoice(opts: {
       platformFeePercent: 5,
       studioId: ANALYTICS.studioId,
       membershipId: opts.membershipId ?? null,
+      periodStart: opts.periodStart,
+      periodEnd: opts.periodEnd,
     },
   });
 }
@@ -1093,6 +1099,8 @@ async function main() {
         paymentMethod: PAYMENT_METHODS[i % PAYMENT_METHODS.length],
         paidAt: daysAgo(35 + i * 3),
         membershipId: `analytics-mem-active-${i + 1}-prev`,
+        periodStart: previous.periodStart,
+        periodEnd: previous.periodEnd,
       });
       await upsertInvoice({
         id: `analytics-inv-active-${i + 1}-curr`,
@@ -1102,6 +1110,8 @@ async function main() {
         paymentMethod: PAYMENT_METHODS[(i + 1) % PAYMENT_METHODS.length],
         paidAt: daysAgo(2 + i),
         membershipId: `analytics-mem-active-${i + 1}-curr`,
+        periodStart: current.periodStart,
+        periodEnd: current.periodEnd,
       });
     } else if (plan.kind === "due") {
       const current = periodWindow(0);
@@ -1121,6 +1131,8 @@ async function main() {
         amount,
         status: InvoiceStatus.OVERDUE,
         membershipId: `analytics-mem-active-${i + 1}`,
+        periodStart: current.periodStart,
+        periodEnd: current.periodEnd,
       });
     } else if (plan.kind === "expired") {
       const past = periodWindow(2);
@@ -1140,6 +1152,8 @@ async function main() {
         amount,
         status: InvoiceStatus.PENDING,
         membershipId: `analytics-mem-active-${i + 1}`,
+        periodStart: past.periodStart,
+        periodEnd: past.periodEnd,
       });
     } else {
       const current = periodWindow(0);
@@ -1161,9 +1175,12 @@ async function main() {
         paymentMethod: PAYMENT_METHODS[i % PAYMENT_METHODS.length],
         paidAt: daysAgo(4 + i * 7),
         membershipId: `analytics-mem-active-${i + 1}`,
+        periodStart: current.periodStart,
+        periodEnd: current.periodEnd,
       });
       // Extra older paid invoice for payment series depth
       if (i % 2 === 0) {
+        const older = periodWindow(2);
         await upsertInvoice({
           id: `analytics-inv-active-${i + 1}-old`,
           studentId,
@@ -1172,6 +1189,8 @@ async function main() {
           paymentMethod: PAYMENT_METHODS[(i + 2) % PAYMENT_METHODS.length],
           paidAt: daysAgo(60 + i * 5),
           membershipId: `analytics-mem-active-${i + 1}`,
+          periodStart: older.periodStart,
+          periodEnd: older.periodEnd,
         });
       }
     }
@@ -1229,6 +1248,8 @@ async function main() {
       paymentMethod: PAYMENT_METHODS[i % PAYMENT_METHODS.length],
       paidAt,
       membershipId,
+      periodStart,
+      periodEnd,
     });
   }
 

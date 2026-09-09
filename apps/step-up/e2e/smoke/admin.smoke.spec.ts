@@ -327,6 +327,9 @@ test.describe("admin (staff) smoke @smoke", () => {
     const page = await context.newPage();
     try {
       await openInvoicesAndWaitFor(page, `mark-paid-${invoice.id}`);
+      await expect(
+        page.getByTestId(`invoice-months-${invoice.id}`),
+      ).toContainText(INVOICE_MONTH_YEAR);
       await page.getByTestId(`mark-paid-${invoice.id}`).click();
       await page.getByTestId("method-cash").click();
       const [response] = await Promise.all([
@@ -347,6 +350,10 @@ test.describe("admin (staff) smoke @smoke", () => {
           return latest.status;
         })
         .toBe("PAID");
+
+      await expect(
+        page.getByTestId(`invoice-months-${invoice.id}`),
+      ).toContainText(INVOICE_MONTH_YEAR);
     } finally {
       await closeSmokeContext(context, cleanup);
     }

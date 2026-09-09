@@ -545,6 +545,9 @@ export async function seedSmokeLoadData(deps: LoadDeps) {
   const periodEnd = new Date(
     Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1),
   );
+  const invoicePeriodEnd = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0, 23, 59, 59, 999),
+  );
 
   await mapPool(
     Array.from({ length: SMOKE_LOAD.invoices }, (_, i) => i + 1),
@@ -613,6 +616,8 @@ export async function seedSmokeLoadData(deps: LoadDeps) {
           platformFeePercent: 5,
           studioId: deps.studioId,
           membershipId,
+          periodStart,
+          periodEnd: invoicePeriodEnd,
           paymentHoldExpiresAt: null,
           purchaseMeta: {
             batchId: batchIds[(n - 1) % batchIds.length],
@@ -631,6 +636,8 @@ export async function seedSmokeLoadData(deps: LoadDeps) {
           platformFeePercent: 5,
           studioId: deps.studioId,
           membershipId,
+          periodStart,
+          periodEnd: invoicePeriodEnd,
           purchaseMeta: {
             batchId: batchIds[(n - 1) % batchIds.length],
             subscriptionId,

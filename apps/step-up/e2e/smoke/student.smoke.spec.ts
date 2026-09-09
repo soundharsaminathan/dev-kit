@@ -300,6 +300,26 @@ test.describe("student smoke @smoke", () => {
     }
   });
 
+  test("student pending invoice shows billing month @smoke", async ({
+    browser,
+  }) => {
+    const context = await browser.newContext({
+      storageState: authFile("STUDENT"),
+    });
+    const page = await context.newPage();
+    try {
+      await page.goto("/me/invoices", { waitUntil: "domcontentloaded" });
+      await waitForAppReady(page);
+      await expect(
+        page.getByTestId(`invoice-months-${SMOKE.invoicePendingId}`),
+      ).toContainText(
+        /(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sept?|Oct|Nov|Dec)\s+\d{4}/,
+      );
+    } finally {
+      await context.close();
+    }
+  });
+
   test("student check-in page loads @smoke", async ({ browser }) => {
     const context = await browser.newContext({
       storageState: authFile("STUDENT"),
