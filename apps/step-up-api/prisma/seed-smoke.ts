@@ -701,16 +701,12 @@ async function main() {
     where: {
       membershipId_studentId: {
         membershipId: SMOKE.membershipStudentId,
-      periodStart,
-      periodEnd,
         studentId: u.STUDENT.id,
       },
     },
     update: { seatRole: MembershipSeatRole.KID },
     create: {
       membershipId: SMOKE.membershipStudentId,
-      periodStart,
-      periodEnd,
       studentId: u.STUDENT.id,
       seatRole: MembershipSeatRole.KID,
     },
