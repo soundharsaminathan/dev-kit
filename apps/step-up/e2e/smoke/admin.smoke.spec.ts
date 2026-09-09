@@ -107,6 +107,10 @@ async function openInvoicesAndWaitFor(
   await expect(page.getByTestId(testId)).toBeVisible({ timeout: 30_000 });
 }
 
+/** en-IN short September is "Sept", not "Sep". */
+const INVOICE_MONTH_YEAR =
+  /(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sept?|Oct|Nov|Dec)\s+\d{4}/;
+
 async function createPendingTrialLead(cleanup: SmokeDataCleanup) {
   const slots = await apiRequest<Array<{ sessionId: string }>>(
     "STAFF",
@@ -963,9 +967,7 @@ test.describe("admin (staff) smoke @smoke", () => {
       ).toBeVisible({ timeout: 30_000 });
       await expect(
         page.getByTestId(`combine-invoice-period-${enrollA.invoice.id}`),
-      ).toContainText(
-        /(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{4}/,
-      );
+      ).toContainText(INVOICE_MONTH_YEAR);
       await page
         .getByTestId(`combine-invoice-${enrollA.invoice.id}`)
         .getByRole("checkbox")
@@ -1096,11 +1098,6 @@ test.describe("admin (staff) smoke @smoke", () => {
     const page = await context.newPage();
     try {
       await openInvoicesAndWaitFor(page, `mark-paid-${first.invoice.id}`);
-      await page.getByRole("tab", { name: /^family$/i }).click();
-      await expect(
-        page.getByTestId(`family-group-${SMOKE.users.STUDENT.id}`),
-      ).toBeVisible({ timeout: 30_000 });
-      await page.getByRole("tab", { name: /^individual$/i }).click();
       await page.getByTestId(`mark-paid-${first.invoice.id}`).click();
 
       await expect(page.getByTestId("confirm-family-combine")).toHaveCount(0);
@@ -1111,6 +1108,73 @@ test.describe("admin (staff) smoke @smoke", () => {
       await expect(
         page.getByRole("heading", { name: /^collect payment$/i }),
       ).toBeVisible();
+    } finally {
+      await closeSmokeContext(context, cleanup);
+    }
+  });
+
+  test("same-person family invoices hide family discount @smoke", async ({
+    browser,
+  }) => {
+    test.setTimeout(180_000);
+    const cleanup = new SmokeDataCleanup();
+    const stamp = Date.now();
+    const kidA = await createLinkedFamilyKid(
+      cleanup,
+      `Smoke Same Person A ${stamp}`,
+    );
+    const kidB = await createLinkedFamilyKid(
+      cleanup,
+      `Smoke Same Person B ${stamp}`,
+    );
+    const kidsBatch = await createCalendarBatch(cleanup, {
+      kind: "prepaid",
+      category: "KIDS",
+      capacity: 8,
+    });
+    const secondBatch = await createCalendarBatch(cleanup, {
+      kind: "prepaid",
+      category: "KIDS",
+      capacity: 8,
+    });
+    const enrollA1 = await enrollPrepaid(cleanup, {
+      category: "KIDS",
+      studentId: kidA.id,
+      batchId: kidsBatch.id,
+    });
+    const enrollA2 = await enrollPrepaid(cleanup, {
+      category: "KIDS",
+      studentId: kidA.id,
+      batchId: secondBatch.id,
+    });
+    await enrollPrepaid(cleanup, {
+      category: "KIDS",
+      studentId: kidB.id,
+      batchId: kidsBatch.id,
+    });
+
+    const context = await browser.newContext({
+      storageState: authFile("STAFF"),
+    });
+    const page = await context.newPage();
+    try {
+      await openInvoicesAndWaitFor(page, `mark-paid-${enrollA1.invoice.id}`);
+      await page.getByTestId(`mark-paid-${enrollA1.invoice.id}`).click();
+
+      await expect(
+        page.getByRole("heading", { name: /collect payment ·/i }),
+      ).toBeVisible();
+      await expect(
+        page.getByTestId(`combine-invoice-${enrollA1.invoice.id}`),
+      ).toBeVisible();
+      await page
+        .getByTestId(`combine-invoice-${enrollA2.invoice.id}`)
+        .getByRole("checkbox")
+        .click();
+      await expect(page.getByTestId("family-combine-discount")).toHaveCount(0);
+      await expect(page.getByTestId("confirm-family-combine")).toContainText(
+        /more than one person/i,
+      );
     } finally {
       await closeSmokeContext(context, cleanup);
     }

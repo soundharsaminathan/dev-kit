@@ -122,6 +122,7 @@ describe("invoice month filter", () => {
       "2026-06",
     ]);
     expect(formatInvoiceMonthLabel("2026-08")).toBe("Aug 2026");
+    expect(formatInvoiceMonthLabel("2026-09")).toBe("Sept 2026");
   });
 
   it("lists all three months for a quarterly invoice", () => {
