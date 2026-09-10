@@ -684,6 +684,7 @@ describe("MembershipsService.requestRenewalInvoice", () => {
     },
     invoice: {
       findFirst: vi.fn(),
+      findMany: vi.fn(),
       create: vi.fn(),
     },
     studioSettings: {
@@ -700,6 +701,7 @@ describe("MembershipsService.requestRenewalInvoice", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    prisma.invoice.findMany.mockResolvedValue([]);
     service = new MembershipsService(
       prisma as never,
       notifications as never,
@@ -823,6 +825,49 @@ describe("MembershipsService.requestRenewalInvoice", () => {
 
     expect(result.created).toBe(false);
     expect(result.invoice?.id).toBe("inv-paid");
+    expect(prisma.invoice.create).not.toHaveBeenCalled();
+  });
+
+  it("ensureRenewalInvoice does not create another invoice when a combined invoice already covers the period", async () => {
+    prisma.membership.findUnique.mockResolvedValue({
+      id: "mem-1",
+      purchaserUserId: "user-1",
+      subscriptionId: "sub-1",
+      status: "DUE",
+      periodStart: new Date("2026-09-01T00:00:00.000Z"),
+      periodEnd: new Date("2026-09-30T23:59:59.999Z"),
+      subscription: { price: 2000 },
+      coveredStudents: [{ studentId: "user-1", seatRole: "KID" }],
+      purchaser: { id: "user-1", studioId: "studio-1" },
+    });
+    prisma.invoice.findFirst.mockResolvedValue(null);
+    prisma.invoice.findMany.mockResolvedValue([
+      {
+        id: "inv-combined",
+        status: "PENDING",
+        periodStart: new Date("2026-09-01T00:00:00.000Z"),
+        periodEnd: new Date("2026-09-30T23:59:59.999Z"),
+        combineMeta: {
+          sources: [
+            {
+              invoiceId: "inv-source",
+              studentId: "user-1",
+              batchId: "batch-1",
+              originalAmount: 2000,
+              allocatedDiscount: 0,
+              netAmount: 2000,
+              membershipId: "mem-1",
+              purchaseMeta: { subscriptionId: "sub-1", purchaserUserId: "user-1" },
+            },
+          ],
+        },
+      },
+    ]);
+
+    const result = await service.ensureRenewalInvoice("mem-1");
+
+    expect(result.created).toBe(false);
+    expect(result.invoice?.id).toBe("inv-combined");
     expect(prisma.invoice.create).not.toHaveBeenCalled();
   });
 

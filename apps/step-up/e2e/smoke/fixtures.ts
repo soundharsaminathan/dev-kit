@@ -96,6 +96,77 @@ export async function waitForWebReady(request: {
     .toBe("ok");
 }
 
+/** Username/password only — skips the studio picker (see public.smoke for that). */
+export const SMOKE_LOGIN_PATH = "/login?direct=1";
+
+/** Wipe Firebase/local session leftovers so the next UI sign-in is clean. */
+export async function clearBrowserAuthState(page: Page) {
+  await page.evaluate(async () => {
+    try {
+      localStorage.clear();
+      sessionStorage.clear();
+      const databases = await indexedDB.databases?.();
+      if (databases) {
+        await Promise.all(
+          databases
+            .filter((db) => db.name)
+            .map(
+              (db) =>
+                new Promise<void>((resolve) => {
+                  const req = indexedDB.deleteDatabase(db.name!);
+                  req.onsuccess = () => resolve();
+                  req.onerror = () => resolve();
+                  req.onblocked = () => resolve();
+                }),
+            ),
+        );
+      }
+    } catch {
+      // Best-effort wipe.
+    }
+  });
+}
+
+export async function signInSmokeRole(
+  page: Page,
+  role: SmokeRole,
+  options?: { clearSession?: boolean },
+) {
+  const user = SMOKE.users[role];
+  const home = homePathForRole(role);
+
+  await page.goto(SMOKE_LOGIN_PATH, { waitUntil: "domcontentloaded" });
+  await waitForAppReady(page);
+
+  if (options?.clearSession) {
+    await clearBrowserAuthState(page);
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await waitForAppReady(page);
+  }
+
+  await page.getByLabel("Username").fill(user.email);
+  await page.getByLabel("Password", { exact: true }).fill(smokePassword());
+  await page
+    .getByRole("main")
+    .getByRole("button", { name: /^sign in$/i })
+    .click();
+
+  try {
+    await expect(page).toHaveURL(new RegExp(home.replace("/", "\\/")), {
+      timeout: 60_000,
+    });
+  } catch (error) {
+    const alertText = ((await page.getByRole("alert").textContent()) ?? "")
+      .trim()
+      .replace(/\s+/g, " ");
+    if (alertText) {
+      throw new Error(`Login as ${role} failed: ${alertText}`);
+    }
+    throw error;
+  }
+  await waitForAppReady(page);
+}
+
 /** Mint a Firebase ID token via Identity Toolkit REST (email/password). */
 export async function bearerFor(role: SmokeRole): Promise<string> {
   const cached = tokenCache.get(role);

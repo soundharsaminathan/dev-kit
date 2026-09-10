@@ -28,7 +28,10 @@ import {
 import { REACTIVATE_ENROLLMENT_DATA } from "../batches/enrollment-status";
 import { enqueueInvoiceCreated } from "../billing/enqueue-invoice-created";
 import { parseCombineMeta, parsePurchaseMeta } from "../billing/family-combine";
-import { billingPeriodForCadence } from "../billing/invoice-period";
+import {
+  billingPeriodForCadence,
+  invoiceOverlapsRange,
+} from "../billing/invoice-period";
 import { ScheduleConflictService } from "../calendar/schedule-conflict.service";
 import { OutboxService } from "../events/outbox.service";
 import { NotificationsService } from "../notifications/notifications.service";
@@ -1029,6 +1032,67 @@ export class MembershipsService {
     return Boolean(enrollment);
   }
 
+  private async findCoveringCombinedInvoice(membership: {
+    id: string;
+    purchaserUserId: string;
+    subscriptionId: string;
+    periodStart: Date;
+    periodEnd: Date;
+    coveredStudents?: Array<{ studentId: string }>;
+    purchaser: { studioId: string | null };
+  }) {
+    if (!membership.purchaser.studioId) {
+      return null;
+    }
+    const studentIds = [
+      membership.purchaserUserId,
+      ...(membership.coveredStudents ?? []).map((seat) => seat.studentId),
+    ];
+    const candidates = await this.prisma.invoice.findMany({
+      where: {
+        studioId: membership.purchaser.studioId,
+        combineMeta: { not: Prisma.DbNull },
+        chargeType: {
+          in: [
+            InvoiceChargeType.PREPAID_FULL,
+            InvoiceChargeType.PREPAID_PRORATED,
+          ],
+        },
+        status: {
+          in: [
+            InvoiceStatus.PENDING,
+            InvoiceStatus.OVERDUE,
+            InvoiceStatus.PAID,
+          ],
+        },
+        studentId: { in: studentIds },
+      },
+      orderBy: { id: "desc" },
+    });
+    return (
+      candidates.find((invoice) => {
+        if (
+          !invoiceOverlapsRange(
+            invoice,
+            membership.periodStart,
+            membership.periodEnd,
+          )
+        ) {
+          return false;
+        }
+        const meta = parseCombineMeta(invoice.combineMeta);
+        if (!meta) {
+          return false;
+        }
+        return meta.sources.some(
+          (source) =>
+            source.membershipId === membership.id ||
+            source.purchaseMeta?.subscriptionId === membership.subscriptionId,
+        );
+      }) ?? null
+    );
+  }
+
   private async voidOpenInvoicesForTrack(membership: {
     id: string;
     batchId: string | null;
@@ -1269,6 +1333,11 @@ export class MembershipsService {
     });
     if (billed) {
       return { invoice: billed, created: false as const };
+    }
+
+    const combined = await this.findCoveringCombinedInvoice(existing);
+    if (combined) {
+      return { invoice: combined, created: false as const };
     }
 
     const settings = await this.prisma.studioSettings.findUnique({
