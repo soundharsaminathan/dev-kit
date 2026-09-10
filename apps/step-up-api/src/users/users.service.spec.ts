@@ -1107,9 +1107,9 @@ describe("UsersService.updateStudioStudent", () => {
       update: vi.fn(),
     },
     batchEnrollment: { findMany: vi.fn() },
-    membership: { findMany: vi.fn() },
-    attendance: { findMany: vi.fn() },
-    invoice: { findMany: vi.fn() },
+    membership: { findMany: vi.fn(), count: vi.fn() },
+    attendance: { groupBy: vi.fn() },
+    invoice: { findMany: vi.fn(), count: vi.fn() },
     subscription: { findMany: vi.fn().mockResolvedValue([]) },
     parentChild: { findMany: vi.fn() },
     familyMember: { findMany: vi.fn() },
@@ -1168,8 +1168,10 @@ describe("UsersService.updateStudioStudent", () => {
     prisma.user.update.mockResolvedValue({ id: "student-1", active: false });
     prisma.batchEnrollment.findMany.mockResolvedValue([]);
     prisma.membership.findMany.mockResolvedValue([]);
-    prisma.attendance.findMany.mockResolvedValue([]);
+    prisma.membership.count.mockResolvedValue(0);
+    prisma.attendance.groupBy.mockResolvedValue([]);
     prisma.invoice.findMany.mockResolvedValue([]);
+    prisma.invoice.count.mockResolvedValue(0);
     prisma.parentChild.findMany.mockResolvedValue([]);
     prisma.familyMember.findMany.mockResolvedValue([]);
 
