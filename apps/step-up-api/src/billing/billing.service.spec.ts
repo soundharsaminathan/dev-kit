@@ -24,7 +24,10 @@ const razorpayStub = {
   keyId: vi.fn().mockReturnValue(""),
   createOrder: vi.fn(),
   createRefund: vi.fn(),
+  createPaymentLink: vi.fn(),
+  cancelPaymentLink: vi.fn().mockResolvedValue(undefined),
   verifyPaymentSignature: vi.fn().mockReturnValue(false),
+  fetchPaymentAmountPaise: vi.fn().mockResolvedValue(null),
 };
 
 const notificationsStub = {
@@ -955,6 +958,7 @@ describe("BillingService.refundInvoice", () => {
 describe("BillingService.listForStudent", () => {
   const prisma = {
     invoice: { findMany: vi.fn() },
+    user: { findUnique: vi.fn() },
     familyMember: { findUnique: vi.fn() },
     parentChild: { findUnique: vi.fn() },
     batchEnrollment: { findMany: vi.fn() },
@@ -982,6 +986,10 @@ describe("BillingService.listForStudent", () => {
     );
     prisma.batchEnrollment.findMany.mockResolvedValue([]);
     prisma.batch.findMany.mockResolvedValue([]);
+    prisma.user.findUnique.mockResolvedValue({
+      id: "student-1",
+      studioId: "studio-1",
+    });
   });
 
   it("allows a student to list their own invoices", async () => {
@@ -1043,6 +1051,10 @@ describe("BillingService.listForStudent", () => {
   });
 
   it("rejects a student listing another student's invoices", async () => {
+    prisma.user.findUnique.mockResolvedValue({
+      id: "student-2",
+      studioId: "studio-1",
+    });
     prisma.familyMember.findUnique.mockResolvedValue(null);
     prisma.parentChild.findUnique.mockResolvedValue(null);
 
@@ -1050,6 +1062,21 @@ describe("BillingService.listForStudent", () => {
       service.listForStudent(
         makeUser({ id: "student-1", role: UserRole.STUDENT }),
         "student-2",
+      ),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    expect(prisma.invoice.findMany).not.toHaveBeenCalled();
+  });
+
+  it("rejects staff listing invoices for a student in another studio", async () => {
+    prisma.user.findUnique.mockResolvedValue({
+      id: "student-other",
+      studioId: "studio-other",
+    });
+
+    await expect(
+      service.listForStudent(
+        makeUser({ role: UserRole.STAFF, studioId: "studio-1" }),
+        "student-other",
       ),
     ).rejects.toBeInstanceOf(ForbiddenException);
     expect(prisma.invoice.findMany).not.toHaveBeenCalled();
@@ -1206,6 +1233,19 @@ describe("BillingService.markPaid", () => {
         subtotal: 2000,
       }),
     );
+  });
+
+  it("rejects marking a refunded invoice as paid", async () => {
+    prisma.invoice.findUniqueOrThrow.mockResolvedValue(
+      unpaidInvoice({ status: InvoiceStatus.REFUNDED }),
+    );
+
+    await expect(
+      service.markPaid(makeUser({ role: UserRole.OWNER }), "inv-1", {
+        paymentMethod: PaymentMethod.CASH,
+      }),
+    ).rejects.toThrow(/refunded/i);
+    expect(prisma.invoice.update).not.toHaveBeenCalled();
   });
 
   it("computes GST from the snapshotted invoice percent", async () => {
@@ -1705,6 +1745,7 @@ describe("BillingService invoice checkout", () => {
       delete: vi.fn(),
       deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
     },
+    user: { findUnique: vi.fn() },
     batch: { findUnique: vi.fn() },
     familyMember: { findUnique: vi.fn() },
     parentChild: { findUnique: vi.fn() },
@@ -1718,6 +1759,10 @@ describe("BillingService invoice checkout", () => {
     vi.clearAllMocks();
     razorpayStub.isEnabled.mockReturnValue(false);
     razorpayStub.verifyPaymentSignature.mockReturnValue(false);
+    prisma.user.findUnique.mockResolvedValue({
+      id: "student-1",
+      studioId: "studio-1",
+    });
     membershipsStub.assign.mockResolvedValue({
       id: "mem-1",
       coveredStudents: [],
@@ -1962,10 +2007,13 @@ describe("BillingService.familyCombine", () => {
         studioId: "studio-1",
         amount: 1000,
         status: InvoiceStatus.PENDING,
+        chargeType: "PREPAID_FULL",
         membershipId: "mem-a",
         purchaseMeta: null,
         combineMeta: null,
+        razorpayPaymentLinkId: null,
         membership: null,
+        studio: { settings: null },
         periodStart: new Date(Date.UTC(2026, 5, 1)),
         periodEnd: new Date(Date.UTC(2026, 5, 30, 23, 59, 59, 999)),
       },
@@ -1975,10 +2023,13 @@ describe("BillingService.familyCombine", () => {
         studioId: "studio-1",
         amount: 1000,
         status: InvoiceStatus.PENDING,
+        chargeType: "PREPAID_FULL",
         membershipId: "mem-b",
         purchaseMeta: null,
         combineMeta: null,
+        razorpayPaymentLinkId: null,
         membership: null,
+        studio: { settings: null },
         periodStart: new Date(Date.UTC(2026, 5, 1)),
         periodEnd: new Date(Date.UTC(2026, 5, 30, 23, 59, 59, 999)),
       },
@@ -2032,6 +2083,54 @@ describe("BillingService.familyCombine", () => {
         studentId: "owner-1",
       }),
       { studioId: "studio-1" },
+    );
+  });
+
+  it("rejects combining admission invoices", async () => {
+    prisma.invoice.findMany.mockResolvedValue([
+      unpaidSources()[0],
+      {
+        ...unpaidSources()[1],
+        chargeType: "ADMISSION",
+      },
+    ]);
+
+    await expect(
+      service.familyCombine(makeUser(), {
+        studioId: "studio-1",
+        purchaserUserId: "owner-1",
+        invoiceIds: ["inv-a", "inv-b"],
+        familyDiscount: 0,
+      }),
+    ).rejects.toThrow(/prepaid membership/i);
+  });
+
+  it("cancels Razorpay links on sources before deleting them", async () => {
+    prisma.invoice.findMany.mockResolvedValue([
+      {
+        ...unpaidSources()[0],
+        razorpayPaymentLinkId: "plink_a",
+        studio: {
+          settings: {
+            razorpayKeyId: "rzp_test",
+            razorpayKeySecret: "enc",
+            razorpaySecretIv: "iv",
+          },
+        },
+      },
+      unpaidSources()[1],
+    ]);
+
+    await service.familyCombine(makeUser(), {
+      studioId: "studio-1",
+      purchaserUserId: "owner-1",
+      invoiceIds: ["inv-a", "inv-b"],
+      familyDiscount: 0,
+    });
+
+    expect(razorpayStub.cancelPaymentLink).toHaveBeenCalledWith(
+      "plink_a",
+      expect.objectContaining({ razorpayKeyId: "rzp_test" }),
     );
   });
 

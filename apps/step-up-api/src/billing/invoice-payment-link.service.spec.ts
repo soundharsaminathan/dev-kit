@@ -15,6 +15,7 @@ describe("InvoicePaymentLinkService", () => {
     isEnabled: vi.fn(),
     createPaymentLink: vi.fn(),
     verifyWebhookSignature: vi.fn(),
+    fetchPaymentAmountPaise: vi.fn(),
   };
   const crypto = {
     decryptUser: vi.fn(),
@@ -196,6 +197,46 @@ describe("InvoicePaymentLinkService", () => {
       ).rejects.toBeInstanceOf(BadRequestException);
     });
 
+    it("rejects when Razorpay charged amount does not match invoice", async () => {
+      prisma.invoice.findUnique.mockResolvedValue({
+        id: "inv-1",
+        status: InvoiceStatus.PENDING,
+        amount: 5000,
+        razorpayPaymentLinkId: "plink_1",
+        student: {},
+        studio: { id: "s1", name: "Studio", address: null, settings: null },
+        membership: null,
+      });
+
+      await expect(
+        service.settleInvoiceFromPaymentLink({
+          invoiceId: "inv-1",
+          paymentLinkId: "plink_1",
+          amountPaise: 200_000,
+        }),
+      ).rejects.toThrow(/does not match invoice/i);
+      expect(prisma.invoice.update).not.toHaveBeenCalled();
+    });
+
+    it("rejects settling a refunded invoice", async () => {
+      prisma.invoice.findUnique.mockResolvedValue({
+        id: "inv-1",
+        status: InvoiceStatus.REFUNDED,
+        amount: 1000,
+        razorpayPaymentLinkId: "plink_1",
+        student: {},
+        studio: { id: "s1", name: "Studio", address: null, settings: null },
+        membership: null,
+      });
+
+      await expect(
+        service.settleInvoiceFromPaymentLink({
+          invoiceId: "inv-1",
+          paymentLinkId: "plink_1",
+        }),
+      ).rejects.toThrow(/refunded/i);
+    });
+
     it("renews membership when membershipId is present", async () => {
       prisma.invoice.findUnique.mockResolvedValue({
         id: "inv-1",
@@ -346,6 +387,46 @@ describe("InvoicePaymentLinkService", () => {
         alreadyPaid: false,
       });
       expect(memberships.assign).toHaveBeenCalled();
+    });
+
+    it("second payment_link.paid delivery does not renew again", async () => {
+      razorpay.verifyWebhookSignature.mockReturnValue(true);
+      const body = Buffer.from(
+        JSON.stringify({
+          event: "payment_link.paid",
+          payload: {
+            payment_link: {
+              entity: { id: "plink_1", notes: { invoiceId: "inv-1" } },
+            },
+            payment: { entity: { id: "pay_1" } },
+          },
+        }),
+      );
+      prisma.invoice.findUnique
+        .mockResolvedValueOnce({
+          id: "inv-1",
+          studio: { settings: null },
+        })
+        .mockResolvedValueOnce({
+          id: "inv-1",
+          status: InvoiceStatus.PAID,
+          amount: 1000,
+          membershipId: "mem-1",
+          razorpayPaymentLinkId: "plink_1",
+          student: {},
+          studio: { id: "s1", name: "Studio", address: null, settings: null },
+          membership: null,
+        });
+
+      const result = await service.handleRazorpayWebhook(body, "good-sig");
+      expect(result).toMatchObject({
+        ok: true,
+        invoiceId: "inv-1",
+        alreadyPaid: true,
+      });
+      expect(memberships.renewFromPaidInvoice).not.toHaveBeenCalled();
+      expect(memberships.assign).not.toHaveBeenCalled();
+      expect(prisma.invoice.update).not.toHaveBeenCalled();
     });
   });
 });

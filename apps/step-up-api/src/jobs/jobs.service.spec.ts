@@ -243,6 +243,22 @@ describe("JobsService.runDaily", () => {
 
     expect(prisma.invoice.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
+        where: expect.objectContaining({
+          status: "PENDING",
+          OR: expect.arrayContaining([
+            expect.objectContaining({
+              membership: expect.objectContaining({
+                status: {
+                  in: [MembershipStatus.DUE, MembershipStatus.EXPIRED],
+                },
+              }),
+            }),
+            expect.objectContaining({
+              membershipId: null,
+              combineMeta: expect.anything(),
+            }),
+          ]),
+        }),
         data: { status: "OVERDUE" },
       }),
     );

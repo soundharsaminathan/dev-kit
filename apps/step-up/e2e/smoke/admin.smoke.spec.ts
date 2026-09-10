@@ -1254,6 +1254,44 @@ test.describe("admin (staff) smoke @smoke", () => {
     }
   });
 
+  test("staff cannot mark a refunded invoice paid @smoke", async () => {
+    const cleanup = new SmokeDataCleanup();
+    try {
+      const stamp = Date.now();
+      const { invoice } = await enrollPrepaid(cleanup, {
+        name: `Smoke Refund Rebill ${stamp}`,
+      });
+      await apiRequest("STAFF", `/billing/${invoice.id}/paid`, {
+        method: "PATCH",
+        body: JSON.stringify({ paymentMethod: "CASH" }),
+      });
+      await apiRequest("STAFF", `/billing/${invoice.id}/refund`, {
+        method: "POST",
+        body: JSON.stringify({
+          amount: invoice.amount,
+          reason: "smoke refund rebill guard",
+        }),
+      });
+
+      const token = await bearerFor("STAFF");
+      const response = await fetch(
+        `${apiBaseUrl()}/billing/${invoice.id}/paid`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ paymentMethod: "CASH" }),
+        },
+      );
+      expect(response.status).toBe(400);
+      expect(await response.text()).toMatch(/refunded/i);
+    } finally {
+      await cleanup.dispose();
+    }
+  });
+
   test("staff student import and create pages load @smoke", async ({
     browser,
   }) => {

@@ -334,6 +334,69 @@ export class RazorpayService {
     }
   }
 
+  async cancelPaymentLink(
+    paymentLinkId: string,
+    settings?: StudioRazorpaySettings,
+  ): Promise<void> {
+    const trimmed = paymentLinkId.trim();
+    if (!trimmed) {
+      return;
+    }
+    const keys = this.resolveKeys(settings);
+    if (!keys) {
+      return;
+    }
+    try {
+      const client = new Razorpay({
+        key_id: keys.keyId,
+        key_secret: keys.keySecret,
+      });
+      await client.paymentLink.cancel(trimmed);
+    } catch (error) {
+      const status = razorpayErrorStatus(error);
+      // Already cancelled / paid / not found — treat as best-effort success.
+      if (status === 400 || status === 404) {
+        return;
+      }
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Failed to cancel Razorpay payment link";
+      throw new InternalServerErrorException(message);
+    }
+  }
+
+  /**
+   * Fetch payment amount in paise from Razorpay. Returns null when keys are
+   * missing or the payment cannot be loaded.
+   */
+  async fetchPaymentAmountPaise(
+    paymentId: string,
+    settings?: StudioRazorpaySettings,
+  ): Promise<number | null> {
+    const trimmed = paymentId.trim();
+    if (!trimmed) {
+      return null;
+    }
+    const keys = this.resolveKeys(settings);
+    if (!keys) {
+      return null;
+    }
+    try {
+      const client = new Razorpay({
+        key_id: keys.keyId,
+        key_secret: keys.keySecret,
+      });
+      const payment = (await client.payments.fetch(trimmed)) as {
+        amount?: number | string;
+      };
+      const amount = Number(payment.amount);
+      return Number.isFinite(amount) ? Math.round(amount) : null;
+    } catch {
+      return null;
+    }
+  }
+
   verifyWebhookSignature(
     rawBody: string | Buffer,
     signature: string,

@@ -165,6 +165,8 @@ export class InvoicePaymentLinkService {
     invoiceId: string;
     paymentId?: string | null;
     paymentLinkId?: string | null;
+    /** Charged amount in paise from Razorpay webhook/payment entity. */
+    amountPaise?: number | null;
   }) {
     const invoice = await this.prisma.invoice.findUnique({
       where: { id: input.invoiceId },
@@ -175,7 +177,14 @@ export class InvoicePaymentLinkService {
             id: true,
             name: true,
             address: true,
-            settings: { select: { gstNumber: true } },
+            settings: {
+              select: {
+                gstNumber: true,
+                razorpayKeyId: true,
+                razorpayKeySecret: true,
+                razorpaySecretIv: true,
+              },
+            },
           },
         },
         membership: {
@@ -210,11 +219,33 @@ export class InvoicePaymentLinkService {
       };
     }
 
+    if (invoice.status === InvoiceStatus.REFUNDED) {
+      throw new BadRequestException("Refunded invoices cannot be settled");
+    }
+
     if (
       invoice.status !== InvoiceStatus.PENDING &&
       invoice.status !== InvoiceStatus.OVERDUE
     ) {
       throw new BadRequestException("Invoice cannot be settled");
+    }
+
+    const expectedPaise = amountToPaise(invoice.amount);
+    let chargedPaise =
+      typeof input.amountPaise === "number" &&
+      Number.isFinite(input.amountPaise)
+        ? Math.round(input.amountPaise)
+        : null;
+    if (chargedPaise == null && input.paymentId) {
+      chargedPaise = await this.razorpay.fetchPaymentAmountPaise(
+        input.paymentId,
+        invoice.studio.settings as StudioRazorpaySettings,
+      );
+    }
+    if (chargedPaise != null && chargedPaise !== expectedPaise) {
+      throw new BadRequestException(
+        `Razorpay payment amount ${chargedPaise} paise does not match invoice ${expectedPaise} paise`,
+      );
     }
 
     const purchaseMeta = parsePurchaseMeta(invoice.purchaseMeta);
@@ -344,6 +375,7 @@ export class InvoicePaymentLinkService {
         payment_link?: {
           entity?: {
             id?: string;
+            amount?: number | string;
             notes?: Record<string, unknown> | null;
             reference_id?: string | null;
           };
@@ -351,6 +383,7 @@ export class InvoicePaymentLinkService {
         payment?: {
           entity?: {
             id?: string;
+            amount?: number | string;
           };
         };
       };
@@ -449,10 +482,18 @@ export class InvoicePaymentLinkService {
     }
 
     const paymentId = payload.payload?.payment?.entity?.id?.trim() || null;
+    const paymentAmountRaw =
+      payload.payload?.payment?.entity?.amount ??
+      payload.payload?.payment_link?.entity?.amount;
+    const amountPaise =
+      paymentAmountRaw != null && Number.isFinite(Number(paymentAmountRaw))
+        ? Math.round(Number(paymentAmountRaw))
+        : null;
     const settled = await this.settleInvoiceFromPaymentLink({
       invoiceId: invoice.id,
       paymentId,
       paymentLinkId,
+      amountPaise,
     });
 
     return {

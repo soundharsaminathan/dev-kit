@@ -8,6 +8,7 @@ import {
 } from "@nestjs/common";
 import {
   type BillingCadence,
+  InvoiceChargeType,
   InvoiceStatus,
   NotificationType,
   PaymentMethod,
@@ -26,7 +27,10 @@ import {
 } from "../memberships/membership-helpers";
 import { MembershipsService } from "../memberships/memberships.service";
 import { NotificationsService } from "../notifications/notifications.service";
-import { RazorpayService } from "../payments/razorpay.service";
+import {
+  RazorpayService,
+  type StudioRazorpaySettings,
+} from "../payments/razorpay.service";
 import { PrismaService } from "../prisma/prisma.service";
 import {
   type DecryptedUser,
@@ -827,6 +831,9 @@ export class BillingService {
     if (existing.status === InvoiceStatus.PAID) {
       throw new BadRequestException("Invoice is already paid");
     }
+    if (existing.status === InvoiceStatus.REFUNDED) {
+      throw new BadRequestException("Refunded invoices cannot be marked paid");
+    }
 
     if (input.billingCadence) {
       await this.memberships.setInvoiceBillingCadence(id, input.billingCadence);
@@ -856,6 +863,9 @@ export class BillingService {
 
     if (invoice.status === InvoiceStatus.PAID) {
       throw new BadRequestException("Invoice is already paid");
+    }
+    if (invoice.status === InvoiceStatus.REFUNDED) {
+      throw new BadRequestException("Refunded invoices cannot be marked paid");
     }
 
     const subtotal = Number(invoice.amount);
@@ -1034,6 +1044,17 @@ export class BillingService {
       where: { id: { in: uniqueIds }, studioId: data.studioId },
       include: {
         membership: { include: { subscription: true } },
+        studio: {
+          select: {
+            settings: {
+              select: {
+                razorpayKeyId: true,
+                razorpayKeySecret: true,
+                razorpaySecretIv: true,
+              },
+            },
+          },
+        },
       },
     });
 
@@ -1047,6 +1068,14 @@ export class BillingService {
         invoice.status !== InvoiceStatus.OVERDUE
       ) {
         throw new BadRequestException("Only unpaid invoices can be combined");
+      }
+      if (
+        invoice.chargeType !== InvoiceChargeType.PREPAID_FULL &&
+        invoice.chargeType !== InvoiceChargeType.PREPAID_PRORATED
+      ) {
+        throw new BadRequestException(
+          "Only prepaid membership invoices can be combined",
+        );
       }
       if (parseCombineMeta(invoice.combineMeta)) {
         throw new BadRequestException(
@@ -1145,6 +1174,24 @@ export class BillingService {
       select: { platformFeePercent: true, gstPercent: true },
     });
     const { periodStart, periodEnd } = mergeInvoicePeriods(sources);
+
+    for (const source of sources) {
+      if (!source.razorpayPaymentLinkId) {
+        continue;
+      }
+      try {
+        await this.razorpay.cancelPaymentLink(
+          source.razorpayPaymentLinkId,
+          source.studio.settings as StudioRazorpaySettings,
+        );
+      } catch (error) {
+        this.logger.warn(
+          `Failed to cancel Razorpay link ${source.razorpayPaymentLinkId} before combine: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        );
+      }
+    }
 
     const created = await this.prisma.$transaction(async (tx) => {
       const invoice = await tx.invoice.create({
@@ -1564,12 +1611,29 @@ export class BillingService {
     actor: DecryptedUser,
     studentId: string,
   ) {
+    const student = await this.prisma.user.findUnique({
+      where: { id: studentId },
+      select: { id: true, studioId: true },
+    });
+    if (!student) {
+      throw new NotFoundException("Student not found");
+    }
+
     const staffRoles: UserRole[] = [
       UserRole.OWNER,
       UserRole.STAFF,
       UserRole.TRAINER,
     ];
-    if (staffRoles.includes(actor.role) || actor.id === studentId) {
+    if (staffRoles.includes(actor.role)) {
+      if (!actor.studioId || actor.studioId !== student.studioId) {
+        throw new ForbiddenException(
+          "Cannot access invoices for another studio",
+        );
+      }
+      return;
+    }
+
+    if (actor.id === studentId) {
       return;
     }
 

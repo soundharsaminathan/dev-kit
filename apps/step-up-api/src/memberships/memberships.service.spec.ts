@@ -191,6 +191,8 @@ describe("MembershipsService.rollEndedActiveToNextDue", () => {
     attendance: { count: vi.fn() },
     studioSettings: { findUnique: vi.fn() },
     batchEnrollment: { findFirst: vi.fn() },
+    $queryRaw: vi.fn(),
+    $transaction: vi.fn(),
   };
 
   const notifications = {
@@ -202,6 +204,10 @@ describe("MembershipsService.rollEndedActiveToNextDue", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     prisma.invoice.findMany.mockResolvedValue([]);
+    prisma.$queryRaw.mockResolvedValue([{ id: "mem-sep" }]);
+    prisma.$transaction.mockImplementation(
+      async (fn: (tx: typeof prisma) => Promise<unknown>) => fn(prisma),
+    );
     service = new MembershipsService(
       prisma as never,
       notifications as never,
@@ -641,6 +647,14 @@ describe("MembershipsService.setInvoiceBillingCadence", () => {
         }),
       }),
     );
+    expect(prisma.invoice.update).toHaveBeenCalledWith({
+      where: { id: "inv-q" },
+      data: expect.objectContaining({
+        amount: 3000,
+        razorpayPaymentLinkId: null,
+        razorpayPaymentLinkUrl: null,
+      }),
+    });
     expect(result.invoice.amount).toBe(3000);
   });
 
@@ -693,6 +707,8 @@ describe("MembershipsService.requestRenewalInvoice", () => {
       findUnique: vi.fn(),
     },
     batchEnrollment: { findFirst: vi.fn() },
+    $queryRaw: vi.fn(),
+    $transaction: vi.fn(),
   };
 
   const notifications = {
@@ -704,6 +720,10 @@ describe("MembershipsService.requestRenewalInvoice", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     prisma.invoice.findMany.mockResolvedValue([]);
+    prisma.$queryRaw.mockResolvedValue([{ id: "mem-1" }]);
+    prisma.$transaction.mockImplementation(
+      async (fn: (tx: typeof prisma) => Promise<unknown>) => fn(prisma),
+    );
     service = new MembershipsService(
       prisma as never,
       notifications as never,
@@ -726,6 +746,7 @@ describe("MembershipsService.requestRenewalInvoice", () => {
         purchaserUserId: "user-1",
         status: "DUE",
         subscription: { price: 2000 },
+        coveredStudents: [],
         purchaser: { id: "user-1", studioId: "studio-1" },
       });
     prisma.invoice.findFirst.mockResolvedValue(null);
@@ -766,6 +787,7 @@ describe("MembershipsService.requestRenewalInvoice", () => {
         purchaserUserId: "user-1",
         status: "EXPIRED",
         subscription: { price: 2000 },
+        coveredStudents: [],
         purchaser: { id: "user-1", studioId: "studio-1" },
       });
     prisma.invoice.findFirst.mockResolvedValue({
@@ -785,6 +807,7 @@ describe("MembershipsService.requestRenewalInvoice", () => {
       purchaserUserId: "user-1",
       status: "DUE",
       subscription: { price: 2000 },
+      coveredStudents: [],
       purchaser: { id: "user-1", studioId: "studio-1" },
     });
     prisma.invoice.findFirst.mockResolvedValue({
@@ -859,7 +882,10 @@ describe("MembershipsService.requestRenewalInvoice", () => {
               allocatedDiscount: 0,
               netAmount: 2000,
               membershipId: "mem-1",
-              purchaseMeta: { subscriptionId: "sub-1", purchaserUserId: "user-1" },
+              purchaseMeta: {
+                subscriptionId: "sub-1",
+                purchaserUserId: "user-1",
+              },
             },
           ],
         },
@@ -871,6 +897,132 @@ describe("MembershipsService.requestRenewalInvoice", () => {
     expect(result.created).toBe(false);
     expect(result.invoice?.id).toBe("inv-combined");
     expect(prisma.invoice.create).not.toHaveBeenCalled();
+  });
+
+  it("ensureRenewalInvoice treats a PAID combined invoice as coverage for the period", async () => {
+    prisma.membership.findUnique.mockResolvedValue({
+      id: "mem-1",
+      purchaserUserId: "user-1",
+      subscriptionId: "sub-1",
+      status: "DUE",
+      periodStart: new Date("2026-09-01T00:00:00.000Z"),
+      periodEnd: new Date("2026-09-30T23:59:59.999Z"),
+      subscription: { price: 2000 },
+      coveredStudents: [{ studentId: "user-1", seatRole: "KID" }],
+      purchaser: { id: "user-1", studioId: "studio-1" },
+    });
+    prisma.invoice.findFirst.mockResolvedValue(null);
+    prisma.invoice.findMany.mockResolvedValue([
+      {
+        id: "inv-combined-paid",
+        status: "PAID",
+        periodStart: new Date("2026-09-01T00:00:00.000Z"),
+        periodEnd: new Date("2026-09-30T23:59:59.999Z"),
+        combineMeta: {
+          sources: [
+            {
+              invoiceId: "inv-source",
+              studentId: "user-1",
+              batchId: "batch-1",
+              originalAmount: 2000,
+              allocatedDiscount: 0,
+              netAmount: 2000,
+              membershipId: "mem-1",
+              purchaseMeta: {
+                subscriptionId: "sub-1",
+                purchaserUserId: "user-1",
+              },
+            },
+          ],
+        },
+      },
+    ]);
+
+    const result = await service.ensureRenewalInvoice("mem-1");
+
+    expect(result.created).toBe(false);
+    expect(result.invoice?.id).toBe("inv-combined-paid");
+    expect(prisma.invoice.create).not.toHaveBeenCalled();
+  });
+
+  it("ensureRenewalInvoice does not treat a sibling combine on the same plan as coverage", async () => {
+    prisma.membership.findUnique.mockResolvedValue({
+      id: "mem-kid-a",
+      purchaserUserId: "kid-a",
+      subscriptionId: "sub-kids",
+      status: "DUE",
+      periodStart: new Date("2026-09-01T00:00:00.000Z"),
+      periodEnd: new Date("2026-09-30T23:59:59.999Z"),
+      subscription: { price: 2000 },
+      coveredStudents: [{ studentId: "kid-a", seatRole: "KID" }],
+      purchaser: { id: "kid-a", studioId: "studio-1" },
+    });
+    prisma.invoice.findFirst.mockResolvedValue(null);
+    prisma.invoice.findMany.mockResolvedValue([
+      {
+        id: "inv-sibling-combine",
+        status: "PENDING",
+        studentId: "owner-1",
+        periodStart: new Date("2026-09-01T00:00:00.000Z"),
+        periodEnd: new Date("2026-09-30T23:59:59.999Z"),
+        combineMeta: {
+          sources: [
+            {
+              invoiceId: "inv-kid-b",
+              studentId: "kid-b",
+              batchId: "batch-1",
+              originalAmount: 2000,
+              allocatedDiscount: 0,
+              netAmount: 2000,
+              membershipId: "mem-kid-b",
+              purchaseMeta: {
+                subscriptionId: "sub-kids",
+                purchaserUserId: "kid-b",
+              },
+            },
+          ],
+        },
+      },
+    ]);
+    prisma.studioSettings.findUnique.mockResolvedValue({
+      platformFeePercent: 5,
+      gstPercent: 18,
+    });
+    prisma.invoice.create.mockResolvedValue({
+      id: "inv-kid-a-new",
+      status: "PENDING",
+      membershipId: "mem-kid-a",
+    });
+
+    const result = await service.ensureRenewalInvoice("mem-kid-a");
+
+    expect(result.created).toBe(true);
+    expect(result.invoice?.id).toBe("inv-kid-a-new");
+  });
+
+  it("ensureRenewalInvoice creates again after a REFUNDED prepaid on the membership", async () => {
+    prisma.membership.findUnique.mockResolvedValue({
+      id: "mem-1",
+      purchaserUserId: "user-1",
+      status: "DUE",
+      subscription: { price: 2000 },
+      coveredStudents: [],
+      purchaser: { id: "user-1", studioId: "studio-1" },
+    });
+    // findFirst for billed statuses excludes REFUNDED → null
+    prisma.invoice.findFirst.mockResolvedValue(null);
+    prisma.studioSettings.findUnique.mockResolvedValue({
+      platformFeePercent: 5,
+    });
+    prisma.invoice.create.mockResolvedValue({
+      id: "inv-rebill",
+      status: "PENDING",
+    });
+
+    const result = await service.ensureRenewalInvoice("mem-1");
+
+    expect(result.created).toBe(true);
+    expect(result.invoice?.id).toBe("inv-rebill");
   });
 
   it("ensureRenewalInvoice creates pending invoice at plan price", async () => {

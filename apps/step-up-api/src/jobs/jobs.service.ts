@@ -5,6 +5,7 @@ import {
   InvoiceStatus,
   MembershipStatus,
   NotificationType,
+  Prisma,
   SessionStatus,
   TrainerPayoutStatus,
 } from "@prisma/client";
@@ -205,9 +206,22 @@ export class JobsService {
     const overdueInvoices = await this.prisma.invoice.updateMany({
       where: {
         status: InvoiceStatus.PENDING,
-        membership: {
-          status: { in: [MembershipStatus.DUE, MembershipStatus.EXPIRED] },
-        },
+        OR: [
+          {
+            membership: {
+              status: { in: [MembershipStatus.DUE, MembershipStatus.EXPIRED] },
+            },
+          },
+          {
+            // Combined invoices have no membershipId; mark overdue after the
+            // period start plus the studio's grace window (default 3 days).
+            membershipId: null,
+            combineMeta: { not: Prisma.DbNull },
+            periodStart: {
+              lt: new Date(now.getTime() - DEFAULT_GRACE_DAYS * DAY_MS),
+            },
+          },
+        ],
       },
       data: { status: InvoiceStatus.OVERDUE },
     });
