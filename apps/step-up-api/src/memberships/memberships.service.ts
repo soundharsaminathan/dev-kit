@@ -25,7 +25,10 @@ import {
   lockBatchRow,
   paymentHoldExpiresAt,
 } from "../batches/batch-capacity";
-import { REACTIVATE_ENROLLMENT_DATA } from "../batches/enrollment-status";
+import {
+  ACTIVE_ENROLLMENT_WHERE,
+  REACTIVATE_ENROLLMENT_DATA,
+} from "../batches/enrollment-status";
 import { enqueueInvoiceCreated } from "../billing/enqueue-invoice-created";
 import { parseCombineMeta, parsePurchaseMeta } from "../billing/family-combine";
 import {
@@ -526,8 +529,21 @@ export class MembershipsService {
     const track = await this.findCurrentPeriodTrack(args.studentId, now);
 
     if (track?.batchId && track.batchId !== args.batchId) {
-      await this.moveTrackToBatch(track.id, args.batchId);
-      return { kind: "switch", invoice: null };
+      // Unenrolled from the prior batch same month → reseat and reuse the
+      // open invoice. Still seated there → concurrent multi-batch enroll
+      // needs its own membership + invoice (switch is POST /batches/:id/switch).
+      const stillOnTrackBatch = await this.prisma.batchEnrollment.findFirst({
+        where: {
+          batchId: track.batchId,
+          studentId: args.studentId,
+          ...ACTIVE_ENROLLMENT_WHERE,
+        },
+        select: { id: true },
+      });
+      if (!stillOnTrackBatch) {
+        await this.moveTrackToBatch(track.id, args.batchId);
+        return { kind: "switch", invoice: null };
+      }
     }
 
     if (track && track.batchId === args.batchId) {
