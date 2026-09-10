@@ -1248,15 +1248,27 @@ export class MembershipsService {
       return { invoice: null, created: false as const };
     }
 
-    const open = await this.prisma.invoice.findFirst({
+    const billed = await this.prisma.invoice.findFirst({
       where: {
         membershipId,
-        status: { in: [InvoiceStatus.PENDING, InvoiceStatus.OVERDUE] },
+        chargeType: {
+          in: [
+            InvoiceChargeType.PREPAID_FULL,
+            InvoiceChargeType.PREPAID_PRORATED,
+          ],
+        },
+        status: {
+          in: [
+            InvoiceStatus.PENDING,
+            InvoiceStatus.OVERDUE,
+            InvoiceStatus.PAID,
+          ],
+        },
       },
       orderBy: { id: "desc" },
     });
-    if (open) {
-      return { invoice: open, created: false as const };
+    if (billed) {
+      return { invoice: billed, created: false as const };
     }
 
     const settings = await this.prisma.studioSettings.findUnique({

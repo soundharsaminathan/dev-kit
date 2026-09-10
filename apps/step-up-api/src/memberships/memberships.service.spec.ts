@@ -748,7 +748,7 @@ describe("MembershipsService.requestRenewalInvoice", () => {
         gstPercent: 18,
       }),
     });
-    expect(invoice.id).toBe("inv-1");
+    expect(invoice?.id).toBe("inv-1");
   });
 
   it("returns an existing pending renewal invoice", async () => {
@@ -771,7 +771,7 @@ describe("MembershipsService.requestRenewalInvoice", () => {
 
     const invoice = await service.requestRenewalInvoice("mem-1");
 
-    expect(invoice.id).toBe("inv-existing");
+    expect(invoice?.id).toBe("inv-existing");
     expect(prisma.invoice.create).not.toHaveBeenCalled();
   });
 
@@ -791,15 +791,39 @@ describe("MembershipsService.requestRenewalInvoice", () => {
     const result = await service.ensureRenewalInvoice("mem-1");
 
     expect(result.created).toBe(false);
-    expect(result.invoice.id).toBe("inv-overdue");
+    expect(result.invoice?.id).toBe("inv-overdue");
     expect(prisma.invoice.create).not.toHaveBeenCalled();
     expect(prisma.invoice.findFirst).toHaveBeenCalledWith({
       where: {
         membershipId: "mem-1",
-        status: { in: ["PENDING", "OVERDUE"] },
+        chargeType: {
+          in: ["PREPAID_FULL", "PREPAID_PRORATED"],
+        },
+        status: { in: ["PENDING", "OVERDUE", "PAID"] },
       },
       orderBy: { id: "desc" },
     });
+  });
+
+  it("ensureRenewalInvoice does not create another invoice when one is already paid", async () => {
+    prisma.membership.findUnique.mockResolvedValue({
+      id: "mem-1",
+      purchaserUserId: "user-1",
+      status: "DUE",
+      subscription: { price: 5000 },
+      coveredStudents: [{ studentId: "user-1", seatRole: "KID" }],
+      purchaser: { id: "user-1", studioId: "studio-1" },
+    });
+    prisma.invoice.findFirst.mockResolvedValue({
+      id: "inv-paid",
+      status: "PAID",
+    });
+
+    const result = await service.ensureRenewalInvoice("mem-1");
+
+    expect(result.created).toBe(false);
+    expect(result.invoice?.id).toBe("inv-paid");
+    expect(prisma.invoice.create).not.toHaveBeenCalled();
   });
 
   it("ensureRenewalInvoice creates pending invoice at plan price", async () => {
