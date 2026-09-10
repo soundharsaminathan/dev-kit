@@ -96,8 +96,11 @@ export async function waitForWebReady(request: {
     .toBe("ok");
 }
 
-/** Username/password only — skips the studio picker (see public.smoke for that). */
-export const SMOKE_LOGIN_PATH = "/login?direct=1";
+/**
+ * Canonical serialized search (`direct=true`). `direct=1` is rewritten by the
+ * router after hydrate, remounting the form and wiping Playwright's fill.
+ */
+export const SMOKE_LOGIN_PATH = "/login?direct=true";
 
 /** Wipe Firebase/local session leftovers so the next UI sign-in is clean. */
 export async function clearBrowserAuthState(page: Page) {
@@ -127,6 +130,29 @@ export async function clearBrowserAuthState(page: Page) {
   });
 }
 
+async function openSmokeLogin(page: Page) {
+  await page.goto(SMOKE_LOGIN_PATH, { waitUntil: "domcontentloaded" });
+  await waitForAppReady(page);
+  await expect(page).toHaveURL(/[?&]direct=(true|1)\b/);
+  await expect(page.getByTestId("login-studio-select")).toHaveCount(0);
+  await expect(page.getByRole("textbox", { name: /^username/i })).toBeVisible();
+}
+
+async function fillSmokeCredentials(
+  page: Page,
+  email: string,
+  password: string,
+) {
+  const identifier = page.getByRole("textbox", { name: /^username/i });
+  const secret = page.locator('input[name="password"]');
+  await identifier.click();
+  await identifier.fill(email);
+  await secret.click();
+  await secret.fill(password);
+  await expect(identifier).toHaveValue(email);
+  await expect(secret).toHaveValue(password);
+}
+
 export async function signInSmokeRole(
   page: Page,
   role: SmokeRole,
@@ -134,22 +160,38 @@ export async function signInSmokeRole(
 ) {
   const user = SMOKE.users[role];
   const home = homePathForRole(role);
+  const password = smokePassword();
 
-  await page.goto(SMOKE_LOGIN_PATH, { waitUntil: "domcontentloaded" });
-  await waitForAppReady(page);
+  await openSmokeLogin(page);
 
   if (options?.clearSession) {
     await clearBrowserAuthState(page);
     await page.reload({ waitUntil: "domcontentloaded" });
     await waitForAppReady(page);
+    await expect(page).toHaveURL(/[?&]direct=(true|1)\b/);
+    await expect(page.getByTestId("login-studio-select")).toHaveCount(0);
   }
 
-  await page.getByLabel(/username/i).fill(user.email);
-  await page.getByLabel("Password", { exact: true }).fill(smokePassword());
-  await page
+  const submit = page
     .getByRole("main")
-    .getByRole("button", { name: /^sign in$/i })
-    .click();
+    .getByRole("button", { name: /^sign in$/i });
+  let firebaseCalled = false;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    await fillSmokeCredentials(page, user.email, password);
+    const firebaseSignIn = page.waitForRequest(
+      (request) => request.url().includes("accounts:signInWithPassword"),
+      { timeout: 15_000 },
+    );
+    await expect(submit).toBeEnabled();
+    await submit.click();
+    firebaseCalled = await firebaseSignIn.then(() => true).catch(() => false);
+    if (firebaseCalled) {
+      break;
+    }
+    if (attempt === 0) {
+      await openSmokeLogin(page);
+    }
+  }
 
   try {
     await expect(page).toHaveURL(new RegExp(home.replace("/", "\\/")), {
@@ -164,10 +206,28 @@ export async function signInSmokeRole(
     )
       .trim()
       .replace(/\s+/g, " ");
+    const fieldText = (
+      (await page
+        .getByText(/enter your (email|username|password)/i)
+        .textContent({ timeout: 1_000 })
+        .catch(() => "")) ?? ""
+    )
+      .trim()
+      .replace(/\s+/g, " ");
+    const identifierValue = await page
+      .getByRole("textbox", { name: /^username/i })
+      .inputValue()
+      .catch(() => "");
+    const details = [
+      alertText,
+      fieldText,
+      firebaseCalled ? "firebase=called" : "firebase=not-called",
+      identifierValue ? `identifier=${identifierValue}` : "identifier=empty",
+    ]
+      .filter(Boolean)
+      .join("; ");
     throw new Error(
-      `Login as ${role} failed at ${page.url()}${
-        alertText ? `: ${alertText}` : `: ${String(error)}`
-      }`,
+      `Login as ${role} failed at ${page.url()}${details ? `: ${details}` : `: ${String(error)}`}`,
     );
   }
   await waitForAppReady(page);
