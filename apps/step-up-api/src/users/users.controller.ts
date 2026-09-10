@@ -17,6 +17,8 @@ import {
   ExperienceLevel,
   FamilyMemberKind,
   Gender,
+  InvoiceStatus,
+  MembershipStatus,
   ProfileVisibility,
   UserRole,
 } from "@prisma/client";
@@ -29,6 +31,7 @@ import {
   IsDateString,
   IsEmail,
   IsEnum,
+  IsIn,
   IsInt,
   IsNotEmpty,
   IsOptional,
@@ -43,6 +46,9 @@ import { CurrentUser } from "../auth/current-user.decorator";
 import { Roles } from "../auth/roles.decorator";
 import { RolesGuard } from "../auth/roles.guard";
 import { assertSameStudio } from "../auth/studio-access";
+import {
+  PaginationQueryDto,
+} from "../shared/pagination";
 import { SocialService } from "../social/social.service";
 import {
   isIsoDateKey,
@@ -227,6 +233,34 @@ class UpdateStudioStudentDto {
   @IsOptional()
   @IsBoolean()
   active?: boolean;
+}
+
+class StudentInvoiceHistoryQueryDto extends PaginationQueryDto {
+  @IsOptional()
+  @IsEnum(InvoiceStatus)
+  status?: InvoiceStatus;
+
+  @IsOptional()
+  @IsString()
+  batchName?: string;
+
+  @IsOptional()
+  @IsIn(["newest", "oldest"])
+  sort?: "newest" | "oldest";
+
+  @IsOptional()
+  @IsString()
+  q?: string;
+}
+
+class StudentMembershipHistoryQueryDto extends PaginationQueryDto {
+  @IsOptional()
+  @IsIn(["current", "past", "all"])
+  scope?: "current" | "past" | "all";
+
+  @IsOptional()
+  @IsEnum(MembershipStatus)
+  status?: MembershipStatus;
 }
 
 class ResetTemporaryPasswordDto {
@@ -747,6 +781,42 @@ export class UsersController {
   ) {
     assertSameStudio(user, studioId);
     return this.usersService.getStudentStudioProfile(studioId, studentId);
+  }
+
+  @Get("studio/:studioId/students/:studentId/invoices")
+  @Roles(UserRole.OWNER, UserRole.STAFF, UserRole.TRAINER)
+  listStudentStudioInvoices(
+    @CurrentUser() user: DecryptedUser,
+    @Param("studioId") studioId: string,
+    @Param("studentId") studentId: string,
+    @Query() query: StudentInvoiceHistoryQueryDto,
+  ) {
+    assertSameStudio(user, studioId);
+    return this.usersService.listStudentStudioInvoices(studioId, studentId, {
+      cursor: query.cursor,
+      limit: query.limit,
+      status: query.status,
+      batchName: query.batchName,
+      sort: query.sort,
+      q: query.q,
+    });
+  }
+
+  @Get("studio/:studioId/students/:studentId/memberships")
+  @Roles(UserRole.OWNER, UserRole.STAFF, UserRole.TRAINER)
+  listStudentStudioMemberships(
+    @CurrentUser() user: DecryptedUser,
+    @Param("studioId") studioId: string,
+    @Param("studentId") studentId: string,
+    @Query() query: StudentMembershipHistoryQueryDto,
+  ) {
+    assertSameStudio(user, studioId);
+    return this.usersService.listStudentStudioMemberships(studioId, studentId, {
+      cursor: query.cursor,
+      limit: query.limit,
+      scope: query.scope,
+      status: query.status,
+    });
   }
 
   @Patch("studio/:studioId/students/:studentId")

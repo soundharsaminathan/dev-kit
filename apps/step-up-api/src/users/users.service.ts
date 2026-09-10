@@ -15,6 +15,9 @@ import {
   type ExperienceLevel,
   FamilyMemberKind,
   type Gender,
+  type InvoiceStatus,
+  MembershipStatus,
+  type Prisma,
   ProfileVisibility,
   SessionStatus,
   UserRole,
@@ -37,6 +40,7 @@ import { presentInvoicePeriod } from "../billing/invoice-period";
 import { MediaService } from "../media/media.service";
 import { invoiceDueDate } from "../memberships/membership-helpers";
 import { PrismaService } from "../prisma/prisma.service";
+import { buildPage, resolvePageLimit } from "../shared/pagination";
 import { isAlwaysPublicRole } from "../social/visibility";
 import { ageFromDateOfBirth, ageRangeFromAge } from "./age-range";
 import {
@@ -76,6 +80,23 @@ export const PERSONAL_TRIAL_NOTES =
 
 export const PERSONAL_TRIAL_TIMED_NOTES =
   "Personal trial — preferred time requested";
+
+/** Overview keeps a short recent slice; full history is paginated separately. */
+export const STUDENT_PROFILE_RECENT_INVOICE_LIMIT = 3;
+
+const studentProfileInvoiceInclude = {
+  membership: {
+    select: {
+      periodStart: true,
+      periodEnd: true,
+      batchId: true,
+      subscription: { select: { billingCadence: true, name: true } },
+    },
+  },
+} as const;
+
+type StudentMembershipScope = "current" | "past" | "all";
+type StudentInvoiceSort = "newest" | "oldest";
 
 function generateTemporaryPassword() {
   return `Su-${randomBytes(6).toString("base64url")}`;
@@ -934,11 +955,21 @@ export class UsersService {
       ageRange: true,
     };
 
+    const membershipWhere = {
+      OR: [
+        { purchaserUserId: studentId },
+        { coveredStudents: { some: { studentId } } },
+      ],
+      subscription: { studioId },
+    } satisfies Prisma.MembershipWhereInput;
+
     const [
       enrollments,
       memberships,
-      attendanceRecords,
+      attendanceGroups,
       invoices,
+      invoiceCount,
+      pastMembershipCount,
       parentLinks,
       ownedFamilyLinks,
       membershipFamilyLinks,
@@ -963,37 +994,38 @@ export class UsersService {
       }),
       this.prisma.membership.findMany({
         where: {
-          OR: [
-            { purchaserUserId: studentId },
-            { coveredStudents: { some: { studentId } } },
-          ],
-          subscription: { studioId },
+          ...membershipWhere,
+          status: {
+            in: [MembershipStatus.ACTIVE, MembershipStatus.DUE],
+          },
         },
         include: {
           subscription: true,
           coveredStudents: true,
         },
-        orderBy: { periodStart: "desc" },
+        orderBy: { periodEnd: "desc" },
       }),
-      this.prisma.attendance.findMany({
+      this.prisma.attendance.groupBy({
+        by: ["status"],
         where: {
           studentId,
           session: { batch: { studioId } },
         },
-        select: { status: true },
+        _count: { _all: true },
       }),
       this.prisma.invoice.findMany({
         where: { studentId, studioId },
         orderBy: { id: "desc" },
-        take: 20,
-        include: {
-          membership: {
-            select: {
-              periodStart: true,
-              periodEnd: true,
-              subscription: { select: { billingCadence: true } },
-            },
-          },
+        take: STUDENT_PROFILE_RECENT_INVOICE_LIMIT,
+        include: studentProfileInvoiceInclude,
+      }),
+      this.prisma.invoice.count({
+        where: { studentId, studioId },
+      }),
+      this.prisma.membership.count({
+        where: {
+          ...membershipWhere,
+          status: MembershipStatus.EXPIRED,
         },
       }),
       this.prisma.parentChild.findMany({
@@ -1029,14 +1061,19 @@ export class UsersService {
     ]);
 
     const attendance = {
-      total: attendanceRecords.length,
-      present: attendanceRecords.filter(
-        (record) => record.status === AttendanceStatus.PRESENT,
-      ).length,
-      absent: attendanceRecords.filter(
-        (record) => record.status === AttendanceStatus.ABSENT,
-      ).length,
+      total: 0,
+      present: 0,
+      absent: 0,
     };
+    for (const group of attendanceGroups) {
+      const count = group._count._all;
+      attendance.total += count;
+      if (group.status === AttendanceStatus.PRESENT) {
+        attendance.present = count;
+      } else if (group.status === AttendanceStatus.ABSENT) {
+        attendance.absent = count;
+      }
+    }
 
     const cadenceBySubscriptionId = await resolvePlanCadenceBySubscriptionId(
       this.prisma,
@@ -1048,6 +1085,229 @@ export class UsersService {
         cadenceBySubscriptionId,
       }).get(studentId) ?? 0;
 
+    const presentedInvoices = await this.presentStudentStudioInvoices({
+      studioId,
+      studentId,
+      invoices,
+      enrollments,
+    });
+
+    return {
+      student: await this.presentUser(student),
+      paidMonths,
+      batches: enrollments.map((enrollment) => ({
+        ...enrollment.batch,
+        enrollmentStatus: enrollment.status,
+        enrolledAt: enrollment.enrolledAt,
+        endedAt: enrollment.endedAt,
+      })),
+      memberships,
+      pastMembershipCount,
+      attendance,
+      invoices: presentedInvoices,
+      invoiceCount,
+      parents: await Promise.all(
+        parentLinks.map(async (link) => this.presentUser(link.parent)),
+      ),
+      family: await this.presentStudentFamily({
+        parentLinks,
+        ownedFamilyLinks,
+        membershipFamilyLinks,
+      }),
+    };
+  }
+
+  async listStudentStudioInvoices(
+    studioId: string,
+    studentId: string,
+    query: {
+      cursor?: string;
+      limit?: number;
+      status?: InvoiceStatus;
+      batchName?: string;
+      sort?: StudentInvoiceSort;
+      q?: string;
+    } = {},
+  ) {
+    await this.assertStudentInStudio(studioId, studentId);
+
+    const limit = resolvePageLimit(query.limit);
+    const sort: StudentInvoiceSort = query.sort === "oldest" ? "oldest" : "newest";
+    const orderBy = { id: sort === "oldest" ? "asc" : "desc" } as const;
+
+    const where: Prisma.InvoiceWhereInput = {
+      studentId,
+      studioId,
+      ...(query.status ? { status: query.status } : {}),
+    };
+
+    if (query.batchName?.trim()) {
+      const batches = await this.prisma.batch.findMany({
+        where: { studioId, name: query.batchName.trim() },
+        select: { id: true },
+      });
+      const batchIds = batches.map((batch) => batch.id);
+      if (batchIds.length === 0) {
+        return buildPage([], limit, (row: { id: string }) => row.id);
+      }
+      where.OR = [
+        { membership: { batchId: { in: batchIds } } },
+        ...batchIds.map((batchId) => ({
+          purchaseMeta: {
+            path: ["batchId"],
+            equals: batchId,
+          },
+        })),
+      ];
+    }
+
+    const search = query.q?.trim().toLowerCase();
+    // Search needs batch labels; over-fetch one page then filter when searching.
+    const take = search ? Math.min(limit * 4, 50) + 1 : limit + 1;
+
+    const rows = await this.prisma.invoice.findMany({
+      where,
+      orderBy,
+      ...(query.cursor
+        ? { cursor: { id: query.cursor }, skip: 1 }
+        : {}),
+      take,
+      include: studentProfileInvoiceInclude,
+    });
+
+    const enrollments = await this.prisma.batchEnrollment.findMany({
+      where: { studentId, batch: { studioId } },
+      include: {
+        batch: { select: { id: true, name: true, active: true, category: true } },
+      },
+    });
+
+    let items = await this.presentStudentStudioInvoices({
+      studioId,
+      studentId,
+      invoices: rows,
+      enrollments,
+    });
+
+    if (search) {
+      items = items.filter((invoice) => {
+        const haystack = [
+          invoice.batchName,
+          invoice.status,
+          invoice.paymentMethod,
+          invoice.billPeriodLabel,
+          String(invoice.amount),
+          invoice.membership?.subscription?.billingCadence,
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
+        return haystack.includes(search);
+      });
+    }
+
+    return buildPage(items, limit, (row) => row.id);
+  }
+
+  async listStudentStudioMemberships(
+    studioId: string,
+    studentId: string,
+    query: {
+      cursor?: string;
+      limit?: number;
+      scope?: StudentMembershipScope;
+      status?: MembershipStatus;
+    } = {},
+  ) {
+    await this.assertStudentInStudio(studioId, studentId);
+
+    const limit = resolvePageLimit(query.limit);
+    const scope: StudentMembershipScope = query.scope ?? "all";
+
+    const statusFilter = query.status
+      ? { status: query.status }
+      : scope === "current"
+        ? {
+            status: {
+              in: [MembershipStatus.ACTIVE, MembershipStatus.DUE],
+            },
+          }
+        : scope === "past"
+          ? { status: MembershipStatus.EXPIRED }
+          : {};
+
+    const rows = await this.prisma.membership.findMany({
+      where: {
+        OR: [
+          { purchaserUserId: studentId },
+          { coveredStudents: { some: { studentId } } },
+        ],
+        subscription: { studioId },
+        ...statusFilter,
+      },
+      include: {
+        subscription: true,
+        coveredStudents: true,
+      },
+      orderBy: [{ periodEnd: "desc" }, { id: "desc" }],
+      ...(query.cursor
+        ? { cursor: { id: query.cursor }, skip: 1 }
+        : {}),
+      take: limit + 1,
+    });
+
+    return buildPage(rows, limit, (row) => row.id);
+  }
+
+  private async assertStudentInStudio(studioId: string, studentId: string) {
+    const student = await this.prisma.user.findFirst({
+      where: {
+        id: studentId,
+        studioId,
+        role: UserRole.STUDENT,
+      },
+      select: { id: true },
+    });
+    if (!student) {
+      throw new NotFoundException("Student not found in this studio");
+    }
+  }
+
+  private async presentStudentStudioInvoices(args: {
+    studioId: string;
+    studentId: string;
+    invoices: Array<{
+      id: string;
+      studentId: string;
+      amount: unknown;
+      referralDiscount: unknown;
+      studioDiscount: unknown;
+      status: InvoiceStatus;
+      paymentMethod: string | null;
+      paidAt: Date | null;
+      chargeType: string | null;
+      periodStart: Date;
+      periodEnd: Date;
+      purchaseMeta: unknown;
+      combineMeta: unknown;
+      gstPercent: number | null;
+      paymentHoldExpiresAt: Date | null;
+      membership: {
+        periodStart: Date;
+        periodEnd: Date;
+        batchId: string | null;
+        subscription: {
+          billingCadence: string;
+          name?: string;
+        } | null;
+      } | null;
+    }>;
+    enrollments: Array<{
+      status: string;
+      batch: { id: string; name: string };
+    }>;
+  }) {
+    const { studioId, studentId, invoices, enrollments } = args;
     const studentBatchMap = new Map<string, Set<string>>([
       [
         studentId,
@@ -1087,59 +1347,44 @@ export class UsersService {
       }
     }
 
-    return {
-      student: await this.presentUser(student),
-      paidMonths,
-      batches: enrollments.map((enrollment) => ({
-        ...enrollment.batch,
-        enrollmentStatus: enrollment.status,
-        enrolledAt: enrollment.enrolledAt,
-        endedAt: enrollment.endedAt,
-      })),
-      memberships,
-      attendance,
-      invoices: invoices.map((invoice) => {
-        const purchaseMeta = parsePurchaseMeta(invoice.purchaseMeta);
-        const combineMeta = parseCombineMeta(invoice.combineMeta);
-        const { batchId, batchName } = batchLabelForInvoice({
-          studentId: invoice.studentId,
-          purchaseMeta,
-          combineMeta,
-          studentBatchMap,
-          batchNameById,
-        });
-        return {
-          ...invoice,
-          amount: Number(invoice.amount),
-          referralDiscount: Number(invoice.referralDiscount ?? 0),
-          studioDiscount: Number(invoice.studioDiscount ?? 0),
-          batchId,
-          batchName,
-          dueDate:
-            invoiceDueDate({
-              chargeType: invoice.chargeType,
-              periodStart: invoice.periodStart,
-              periodEnd: invoice.periodEnd,
-            })?.toISOString() ?? null,
-          ...presentInvoicePeriod(invoice),
-          membership: invoice.membership
-            ? {
-                periodStart: invoice.membership.periodStart.toISOString(),
-                periodEnd: invoice.membership.periodEnd.toISOString(),
-                subscription: invoice.membership.subscription,
-              }
-            : null,
-        };
-      }),
-      parents: await Promise.all(
-        parentLinks.map(async (link) => this.presentUser(link.parent)),
-      ),
-      family: await this.presentStudentFamily({
-        parentLinks,
-        ownedFamilyLinks,
-        membershipFamilyLinks,
-      }),
-    };
+    return invoices.map((invoice) => {
+      const purchaseMeta = parsePurchaseMeta(invoice.purchaseMeta);
+      const combineMeta = parseCombineMeta(invoice.combineMeta);
+      const { batchId, batchName } = batchLabelForInvoice({
+        studentId: invoice.studentId,
+        purchaseMeta,
+        combineMeta,
+        studentBatchMap,
+        batchNameById,
+      });
+      return {
+        ...invoice,
+        amount: Number(invoice.amount),
+        referralDiscount: Number(invoice.referralDiscount ?? 0),
+        studioDiscount: Number(invoice.studioDiscount ?? 0),
+        batchId,
+        batchName,
+        dueDate:
+          invoiceDueDate({
+            chargeType: invoice.chargeType as
+              | "POSTPAID_PRORATED"
+              | "PREPAID_PRORATED"
+              | "PREPAID_FULL"
+              | "ADMISSION"
+              | null,
+            periodStart: invoice.periodStart,
+            periodEnd: invoice.periodEnd,
+          })?.toISOString() ?? null,
+        ...presentInvoicePeriod(invoice),
+        membership: invoice.membership
+          ? {
+              periodStart: invoice.membership.periodStart.toISOString(),
+              periodEnd: invoice.membership.periodEnd.toISOString(),
+              subscription: invoice.membership.subscription,
+            }
+          : null,
+      };
+    });
   }
 
   private async presentStudentFamily(args: {
