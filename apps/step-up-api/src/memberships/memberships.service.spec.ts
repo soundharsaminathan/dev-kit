@@ -183,6 +183,7 @@ describe("MembershipsService.rollEndedActiveToNextDue", () => {
     },
     invoice: {
       findFirst: vi.fn(),
+      findMany: vi.fn(),
       create: vi.fn(),
       deleteMany: vi.fn(),
     },
@@ -200,6 +201,7 @@ describe("MembershipsService.rollEndedActiveToNextDue", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    prisma.invoice.findMany.mockResolvedValue([]);
     service = new MembershipsService(
       prisma as never,
       notifications as never,
@@ -1761,7 +1763,12 @@ describe("MembershipsService.beginBatchEnrollment", () => {
     },
     session: { findFirst: vi.fn(), count: vi.fn() },
     studioSettings: { findUnique: vi.fn() },
-    invoice: { create: vi.fn(), update: vi.fn(), findFirst: vi.fn() },
+    invoice: {
+      create: vi.fn(),
+      update: vi.fn(),
+      findFirst: vi.fn(),
+      findMany: vi.fn(),
+    },
     batchEnrollment: { findMany: vi.fn(), findFirst: vi.fn(), upsert: vi.fn() },
     booking: { updateMany: vi.fn(), findMany: vi.fn() },
     $transaction: vi.fn(),
@@ -1797,6 +1804,7 @@ describe("MembershipsService.beginBatchEnrollment", () => {
     });
     prisma.membership.findFirst.mockResolvedValue(null);
     prisma.invoice.findFirst.mockResolvedValue(null);
+    prisma.invoice.findMany.mockResolvedValue([]);
     prisma.batch.findUnique.mockResolvedValue({
       id: "batch-kid",
       active: true,
