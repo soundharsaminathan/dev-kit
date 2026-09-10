@@ -359,10 +359,10 @@ importers:
   apps/step-up-api:
     dependencies:
       '@aws-sdk/client-s3':
-        specifier: ^3.1090.0
+        specifier: 3.1090.0
         version: 3.1090.0
       '@aws-sdk/s3-request-presigner':
-        specifier: ^3.1090.0
+        specifier: 3.1090.0
         version: 3.1090.0
       '@nestjs/bullmq':
         specifier: ^11.0.4

@@ -5,9 +5,11 @@
 FROM node:24-alpine AS deps
 WORKDIR /app
 RUN corepack enable && corepack prepare pnpm@11.6.0 --activate
-COPY package.json ./
+COPY package.json pnpm-lock.yaml ./
 # pnpm 11 defaults minimumReleaseAge=1440; without these, install/exec hangs on
 # "Verifying lockfile against supply-chain policies".
+# After changing package.json, refresh this image lockfile with:
+#   pnpm --dir apps/step-up-api install --ignore-workspace --lockfile-only --config.minimumReleaseAge=0
 RUN printf '%s\n' \
     'packages:' \
     "  - '.'" \
@@ -15,7 +17,7 @@ RUN printf '%s\n' \
     'minimumReleaseAge: 0' \
     'trustLockfile: true' \
     > pnpm-workspace.yaml \
-  && pnpm install --no-frozen-lockfile
+  && pnpm install --frozen-lockfile
 
 FROM node:24-alpine AS builder
 WORKDIR /app

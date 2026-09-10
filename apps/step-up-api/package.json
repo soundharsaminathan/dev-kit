@@ -27,8 +27,8 @@
     "test:migrations": "tsx scripts/test-migrations.ts --upgrade"
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.1090.0",
-    "@aws-sdk/s3-request-presigner": "^3.1090.0",
+    "@aws-sdk/client-s3": "3.1090.0",
+    "@aws-sdk/s3-request-presigner": "3.1090.0",
     "@nestjs/bullmq": "^11.0.4",
     "@nestjs/common": "^11.0.12",
     "@nestjs/config": "^4.0.2",
