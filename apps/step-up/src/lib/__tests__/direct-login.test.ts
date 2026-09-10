@@ -6,6 +6,7 @@ describe("direct-login", () => {
     expect(isDirectLoginFlag(true)).toBe(true);
     expect(isDirectLoginFlag("true")).toBe(true);
     expect(isDirectLoginFlag("1")).toBe(true);
+    expect(isDirectLoginFlag(1)).toBe(true);
   });
 
   it("rejects missing or unrelated values", () => {

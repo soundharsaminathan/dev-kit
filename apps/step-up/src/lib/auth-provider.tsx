@@ -35,6 +35,8 @@ import { setLastLoginIdentifier } from "./last-login";
 import { testEmail } from "./test-email";
 
 const AUTH_BOOTSTRAP_TIMEOUT_MS = 12_000;
+/** Public-route idle cap before `onAuthStateChanged` is subscribed. */
+const PUBLIC_FIREBASE_IDLE_MS = 2_500;
 
 function userHasPasswordProvider(firebaseUser: FirebaseUser | null): boolean {
   if (!firebaseUser) {
@@ -271,14 +273,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     return new Promise<AuthUser>((resolve, reject) => {
+      let settled = false;
+      const finish = (next: () => void) => {
+        if (settled) return;
+        settled = true;
+        window.clearTimeout(timeoutId);
+        next();
+      };
+      const timeoutId = window.setTimeout(() => {
+        finish(() => reject(new Error("Account sync timed out")));
+      }, AUTH_BOOTSTRAP_TIMEOUT_MS + PUBLIC_FIREBASE_IDLE_MS);
+
       const existing = syncWaitersRef.current.get(uid) ?? [];
-      existing.push({ resolve, reject });
+      existing.push({
+        resolve: (user) => finish(() => resolve(user)),
+        reject: (error) => finish(() => reject(error)),
+      });
       syncWaitersRef.current.set(uid, existing);
 
       if (lastSyncedRef.current?.uid === uid) {
         syncWaitersRef.current.delete(uid);
-        resolve(lastSyncedRef.current.user);
+        finish(() => resolve(lastSyncedRef.current!.user));
       }
+    });
+  }, []);
+
+  const flushUserIntoRouter = useCallback((next: AuthUser) => {
+    // Router beforeLoad reads context from the last render. Without a flush,
+    // login navigates to /admin|/app|/me while auth.user is still null and
+    // bounces back to /login — Playwright then sits on the form with no alert.
+    flushSync(() => {
+      setUser(next);
+      setEmailVerified(true);
     });
   }, []);
 
@@ -356,7 +382,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (isPublic) {
         await new Promise<void>((resolve) => {
           if (typeof requestIdleCallback === "function") {
-            requestIdleCallback(() => resolve(), { timeout: 2_500 });
+            requestIdleCallback(() => resolve(), {
+              timeout: PUBLIC_FIREBASE_IDLE_MS,
+            });
           } else {
             window.setTimeout(() => resolve(), 1);
           }
@@ -552,10 +580,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         _password,
       );
       const synced = await waitForSync(credential.user.uid);
+      flushUserIntoRouter(synced);
       setLastLoginIdentifier(identifier);
       return synced;
     },
-    [commitBypassSession, waitForSync],
+    [commitBypassSession, flushUserIntoRouter, waitForSync],
   );
 
   const signUp = useCallback(
@@ -620,19 +649,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             body: { name: displayName },
           });
           const mapped = mapSyncedUser(patched);
-          setUser(mapped);
           lastSyncedRef.current = {
             uid: credential.user.uid,
             user: mapped,
           };
+          flushUserIntoRouter(mapped);
           return mapped;
         } catch {
+          flushUserIntoRouter(synced);
           return synced;
         }
       }
+      flushUserIntoRouter(synced);
       return synced;
     },
-    [commitBypassSession, waitForSync],
+    [commitBypassSession, flushUserIntoRouter, waitForSync],
   );
 
   const signInWithGoogle = useCallback(
@@ -670,10 +701,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setEmailVerified(credential.user.emailVerified);
       setHasPasswordProvider(userHasPasswordProvider(credential.user));
       const synced = await waitForSync(credential.user.uid);
+      flushUserIntoRouter(synced);
       setLastLoginIdentifier(synced.email);
       return synced;
     },
-    [commitBypassSession, waitForSync],
+    [commitBypassSession, flushUserIntoRouter, waitForSync],
   );
 
   const resetPassword = useCallback(async (email: string) => {

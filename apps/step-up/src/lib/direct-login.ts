@@ -1,7 +1,7 @@
 export const DIRECT_LOGIN_PATH = "/login";
 
 export function isDirectLoginFlag(value: unknown): boolean {
-  return value === true || value === "true" || value === "1";
+  return value === true || value === "true" || value === "1" || value === 1;
 }
 
 export function buildDirectLoginUrl(origin: string): string {

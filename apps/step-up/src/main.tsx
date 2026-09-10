@@ -145,8 +145,19 @@ function AppRouter() {
       }
 
       const home = homePathForUser(auth.user);
+      const current = router.state.location.pathname;
+      // Firebase on /login is idle-deferred. A fast sign-in (smoke, returning
+      // session) can set user after login's beforeLoad already ran as a guest;
+      // first-settle skips invalidate, so bounce them home here.
+      if (
+        current.startsWith("/login") ||
+        current.startsWith("/register") ||
+        current.startsWith("/forgot-password")
+      ) {
+        await router.navigate({ to: home, replace: true });
+        return;
+      }
       if (home === "/app" || home.startsWith("/me")) {
-        const current = router.state.location.pathname;
         const alreadyThere = current === home || current.startsWith(`${home}/`);
         if (!alreadyThere) {
           await router.preloadRoute({ to: home }).catch(() => undefined);

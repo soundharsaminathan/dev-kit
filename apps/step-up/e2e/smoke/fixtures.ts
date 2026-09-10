@@ -144,7 +144,7 @@ export async function signInSmokeRole(
     await waitForAppReady(page);
   }
 
-  await page.getByLabel("Username").fill(user.email);
+  await page.getByLabel(/username/i).fill(user.email);
   await page.getByLabel("Password", { exact: true }).fill(smokePassword());
   await page
     .getByRole("main")
@@ -156,13 +156,19 @@ export async function signInSmokeRole(
       timeout: 60_000,
     });
   } catch (error) {
-    const alertText = ((await page.getByRole("alert").textContent()) ?? "")
+    const alertText = (
+      (await page
+        .getByRole("alert")
+        .textContent({ timeout: 1_000 })
+        .catch(() => "")) ?? ""
+    )
       .trim()
       .replace(/\s+/g, " ");
-    if (alertText) {
-      throw new Error(`Login as ${role} failed: ${alertText}`);
-    }
-    throw error;
+    throw new Error(
+      `Login as ${role} failed at ${page.url()}${
+        alertText ? `: ${alertText}` : `: ${String(error)}`
+      }`,
+    );
   }
   await waitForAppReady(page);
 }

@@ -6,6 +6,7 @@ describe("isIncludeTestFlag", () => {
     expect(isIncludeTestFlag(true)).toBe(true);
     expect(isIncludeTestFlag("true")).toBe(true);
     expect(isIncludeTestFlag("1")).toBe(true);
+    expect(isIncludeTestFlag(1)).toBe(true);
   });
 
   it("rejects missing or unrelated values", () => {
