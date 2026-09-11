@@ -11,7 +11,6 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 import { apiRequest } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { BRAND_LOGO_SRC, BRAND_NAME } from "@/lib/brand";
 import type { UserRole } from "@/lib/constants";
 import {
   homePathForUser,
@@ -175,23 +174,14 @@ function RegisterPage() {
     <PublicShell>
       <section className={styles.panel}>
         <div className={styles.brandBlock}>
-          <img
-            className={styles.brandMark}
-            src={BRAND_LOGO_SRC}
-            alt=""
-            aria-hidden
-          />
-          <div>
-            <p className={styles.brand}>{BRAND_NAME}</p>
-            <h1 className={styles.title}>
-              {audience === "studio" ? "Register your studio" : "Join the studio"}
-            </h1>
-            <p className={styles.subtitle}>
-              {audience === "studio"
-                ? "Tell us about your studio. We’ll email info@classa.in and follow up."
-                : "Create your student account and personalize your dance journey."}
-            </p>
-          </div>
+          <h1 className={styles.title}>
+            {audience === "studio" ? "Register your studio" : "Join the studio"}
+          </h1>
+          <p className={styles.subtitle}>
+            {audience === "studio"
+              ? "Tell us about your studio. We’ll email info@classa.in and follow up."
+              : "Create your student account and personalize your dance journey."}
+          </p>
         </div>
 
         <ToggleButtonGroup
