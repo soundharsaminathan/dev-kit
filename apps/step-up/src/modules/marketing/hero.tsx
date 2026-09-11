@@ -92,7 +92,11 @@ export function Hero() {
           </h1>
           <p className={styles.support}>{HERO.support}</p>
           <div className={styles.actions}>
-            <Link to="/register" className={styles.ctaLink}>
+            <Link
+              to="/register"
+              search={{ for: "studio" }}
+              className={styles.ctaLink}
+            >
               <Button variant="primary" className={shared.cta}>
                 {HERO.primaryCta}
               </Button>

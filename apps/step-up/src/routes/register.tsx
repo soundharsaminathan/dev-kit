@@ -1,11 +1,15 @@
 import { Alert, AlertDescription, AlertTitle } from "@dev-ui/components/alert";
 import { FieldError, Label } from "@dev-ui/components/field";
 import { Input } from "@dev-ui/components/input";
+import { TextArea } from "@dev-ui/components/text-area";
 import { TextField } from "@dev-ui/components/text-field";
+import { ToggleButton } from "@dev-ui/components/toggle-button";
+import { ToggleButtonGroup } from "@dev-ui/components/toggle-button-group";
 import { useOnlineStatus } from "@dev-ui/hooks";
 import { useForm } from "@tanstack/react-form";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
+import { apiRequest } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { BRAND_LOGO_SRC, BRAND_NAME } from "@/lib/brand";
 import type { UserRole } from "@/lib/constants";
@@ -21,11 +25,14 @@ import { StudioSelect, useStudioDirectory } from "@/modules/ui/studio-select";
 import { TouchButton } from "@/modules/ui/touch-button";
 import styles from "./login.module.scss";
 
+type RegisterAudience = "student" | "studio";
+
 type RegisterSearch = {
   redirect?: string;
   studio?: string;
   studioId?: string;
   includeTest?: true;
+  for?: RegisterAudience;
 };
 
 type RegisterFormValues = {
@@ -35,6 +42,20 @@ type RegisterFormValues = {
   password: string;
   confirmPassword: string;
 };
+
+type StudioInquiryFormValues = {
+  studioName: string;
+  ownerName: string;
+  email: string;
+  phone: string;
+  city: string;
+  message: string;
+};
+
+function parseAudience(value: unknown): RegisterAudience | undefined {
+  if (value === "student" || value === "studio") return value;
+  return undefined;
+}
 
 function parseSearch(search: Record<string, unknown>): RegisterSearch {
   const result: RegisterSearch = {};
@@ -49,6 +70,10 @@ function parseSearch(search: Record<string, unknown>): RegisterSearch {
   }
   if (isIncludeTestFlag(search.includeTest)) {
     result.includeTest = true;
+  }
+  const audience = parseAudience(search.for);
+  if (audience) {
+    result.for = audience;
   }
   return result;
 }
@@ -91,6 +116,20 @@ function validateConfirmPassword(value: string, password: string) {
   return undefined;
 }
 
+function validateStudioName(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) return "Enter your studio name";
+  if (trimmed.length < 2) return "Studio name must be at least 2 characters";
+  return undefined;
+}
+
+function validateOptionalPhone(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) return undefined;
+  if (trimmed.length < 7) return "Enter a valid phone number";
+  return undefined;
+}
+
 export const Route = createFileRoute("/register")({
   validateSearch: (search: Record<string, unknown>): RegisterSearch =>
     parseSearch(search),
@@ -107,7 +146,348 @@ function RegisterPage() {
     studio: searchStudioSlug,
     studioId: searchStudioId,
     includeTest,
+    for: audienceParam,
   } = Route.useSearch();
+
+  const audience: RegisterAudience =
+    audienceParam ??
+    (searchStudioId || searchStudioSlug ? "student" : "studio");
+
+  const setAudience = (next: RegisterAudience) => {
+    void navigate({
+      to: "/register",
+      search: {
+        for: next,
+        ...(redirectTo ? { redirect: redirectTo } : {}),
+        ...(next === "student" && searchStudioId
+          ? { studioId: searchStudioId }
+          : {}),
+        ...(next === "student" && searchStudioSlug
+          ? { studio: searchStudioSlug }
+          : {}),
+        ...(includeTest ? { includeTest: true } : {}),
+      },
+      replace: true,
+    });
+  };
+
+  return (
+    <PublicShell>
+      <section className={styles.panel}>
+        <div className={styles.brandBlock}>
+          <img
+            className={styles.brandMark}
+            src={BRAND_LOGO_SRC}
+            alt=""
+            aria-hidden
+          />
+          <div>
+            <p className={styles.brand}>{BRAND_NAME}</p>
+            <h1 className={styles.title}>
+              {audience === "studio" ? "Register your studio" : "Join the studio"}
+            </h1>
+            <p className={styles.subtitle}>
+              {audience === "studio"
+                ? "Tell us about your studio. We’ll email info@classa.in and follow up."
+                : "Create your student account and personalize your dance journey."}
+            </p>
+          </div>
+        </div>
+
+        <ToggleButtonGroup
+          aria-label="Register as"
+          selectionMode="single"
+          selectedKeys={[audience]}
+          disallowEmptySelection
+          variant="segmented"
+          size="lg"
+          data-testid="register-audience"
+          onSelectionChange={(keys) => {
+            const next = String([...keys][0] ?? "");
+            if (next === "student" || next === "studio") {
+              setAudience(next);
+            }
+          }}
+        >
+          <ToggleButton id="studio" data-testid="register-as-studio">
+            Studio
+          </ToggleButton>
+          <ToggleButton id="student" data-testid="register-as-student">
+            Student
+          </ToggleButton>
+        </ToggleButtonGroup>
+
+        {audience === "studio" ? (
+          <StudioInquiryForm />
+        ) : (
+          <StudentRegisterForm
+            {...(redirectTo ? { redirectTo } : {})}
+            {...(searchStudioSlug ? { searchStudioSlug } : {})}
+            {...(searchStudioId ? { searchStudioId } : {})}
+            {...(includeTest ? { includeTest } : {})}
+          />
+        )}
+      </section>
+    </PublicShell>
+  );
+}
+
+function StudioInquiryForm() {
+  const online = useOnlineStatus();
+  const [error, setError] = useState<string | null>(null);
+  const [sent, setSent] = useState(false);
+
+  const form = useForm({
+    defaultValues: {
+      studioName: "",
+      ownerName: "",
+      email: "",
+      phone: "",
+      city: "",
+      message: "",
+    } satisfies StudioInquiryFormValues,
+    onSubmit: async ({ value }) => {
+      setError(null);
+      try {
+        await apiRequest<{ ok: true }>("/contact/studio-inquiry", {
+          method: "POST",
+          body: {
+            studioName: value.studioName.trim(),
+            ownerName: value.ownerName.trim(),
+            email: value.email.trim(),
+            ...(value.phone.trim() ? { phone: value.phone.trim() } : {}),
+            ...(value.city.trim() ? { city: value.city.trim() } : {}),
+            ...(value.message.trim() ? { message: value.message.trim() } : {}),
+          },
+        });
+        setSent(true);
+      } catch (submitError) {
+        setError(
+          submitError instanceof Error
+            ? submitError.message
+            : "Unable to send registration",
+        );
+      }
+    },
+  });
+
+  if (sent) {
+    return (
+      <Alert variant="success" data-testid="studio-inquiry-success">
+        <AlertTitle>Request sent</AlertTitle>
+        <AlertDescription>
+          Thanks — we emailed info@classa.in. We’ll get back to you shortly.
+        </AlertDescription>
+      </Alert>
+    );
+  }
+
+  return (
+    <>
+      {error ? (
+        <Alert variant="danger">
+          <AlertTitle>Couldn’t send</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      ) : null}
+
+      {!online ? (
+        <Alert variant="warning">
+          <AlertTitle>You’re offline</AlertTitle>
+          <AlertDescription>
+            Sending a studio registration needs a network connection. Reconnect
+            and try again.
+          </AlertDescription>
+        </Alert>
+      ) : null}
+
+      <form
+        className={styles.form}
+        onSubmit={(event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          void form.handleSubmit();
+        }}
+      >
+        <form.Field
+          name="studioName"
+          validators={{
+            onBlur: ({ value }) => validateStudioName(value),
+            onSubmit: ({ value }) => validateStudioName(value),
+          }}
+        >
+          {(field) => {
+            const err = fieldError(field.state.meta.errors);
+            return (
+              <TextField>
+                <Label data-required="true">Studio name</Label>
+                <Input
+                  name={field.name}
+                  type="text"
+                  value={field.state.value}
+                  onBlur={field.handleBlur}
+                  onChange={(event) => field.handleChange(event.target.value)}
+                  autoComplete="organization"
+                  aria-invalid={Boolean(err)}
+                  required
+                  data-testid="studio-inquiry-name"
+                />
+                {err ? <FieldError>{err}</FieldError> : null}
+              </TextField>
+            );
+          }}
+        </form.Field>
+
+        <form.Field
+          name="ownerName"
+          validators={{
+            onBlur: ({ value }) => validateName(value),
+            onSubmit: ({ value }) => validateName(value),
+          }}
+        >
+          {(field) => {
+            const err = fieldError(field.state.meta.errors);
+            return (
+              <TextField>
+                <Label data-required="true">Your name</Label>
+                <Input
+                  name={field.name}
+                  type="text"
+                  value={field.state.value}
+                  onBlur={field.handleBlur}
+                  onChange={(event) => field.handleChange(event.target.value)}
+                  autoComplete="name"
+                  aria-invalid={Boolean(err)}
+                  required
+                />
+                {err ? <FieldError>{err}</FieldError> : null}
+              </TextField>
+            );
+          }}
+        </form.Field>
+
+        <form.Field
+          name="email"
+          validators={{
+            onBlur: ({ value }) => validateEmail(value),
+            onSubmit: ({ value }) => validateEmail(value),
+          }}
+        >
+          {(field) => {
+            const err = fieldError(field.state.meta.errors);
+            return (
+              <TextField>
+                <Label data-required="true">Email</Label>
+                <Input
+                  name={field.name}
+                  type="email"
+                  value={field.state.value}
+                  onBlur={field.handleBlur}
+                  onChange={(event) => field.handleChange(event.target.value)}
+                  autoComplete="email"
+                  aria-invalid={Boolean(err)}
+                  required
+                  data-testid="studio-inquiry-email"
+                />
+                {err ? <FieldError>{err}</FieldError> : null}
+              </TextField>
+            );
+          }}
+        </form.Field>
+
+        <form.Field
+          name="phone"
+          validators={{
+            onBlur: ({ value }) => validateOptionalPhone(value),
+            onSubmit: ({ value }) => validateOptionalPhone(value),
+          }}
+        >
+          {(field) => {
+            const err = fieldError(field.state.meta.errors);
+            return (
+              <TextField>
+                <Label>Phone</Label>
+                <Input
+                  name={field.name}
+                  type="tel"
+                  value={field.state.value}
+                  onBlur={field.handleBlur}
+                  onChange={(event) => field.handleChange(event.target.value)}
+                  autoComplete="tel"
+                  aria-invalid={Boolean(err)}
+                />
+                {err ? <FieldError>{err}</FieldError> : null}
+              </TextField>
+            );
+          }}
+        </form.Field>
+
+        <form.Field name="city">
+          {(field) => (
+            <TextField>
+              <Label>City</Label>
+              <Input
+                name={field.name}
+                type="text"
+                value={field.state.value}
+                onBlur={field.handleBlur}
+                onChange={(event) => field.handleChange(event.target.value)}
+                autoComplete="address-level2"
+              />
+            </TextField>
+          )}
+        </form.Field>
+
+        <form.Field name="message">
+          {(field) => (
+            <TextField>
+              <Label>Anything else?</Label>
+              <TextArea
+                name={field.name}
+                value={field.state.value}
+                onBlur={field.handleBlur}
+                onChange={(event) => field.handleChange(event.target.value)}
+                rows={3}
+              />
+            </TextField>
+          )}
+        </form.Field>
+
+        <form.Subscribe selector={(state) => state.isSubmitting}>
+          {(isSubmitting) => (
+            <TouchButton
+              type="submit"
+              variant="primary"
+              fullWidth
+              isPending={isSubmitting}
+              isDisabled={!online || isSubmitting}
+              data-testid="studio-inquiry-submit"
+            >
+              Send registration
+            </TouchButton>
+          )}
+        </form.Subscribe>
+      </form>
+
+      <Link to="/login" className={styles.footerLink}>
+        Already have an account? Sign in
+      </Link>
+    </>
+  );
+}
+
+function StudentRegisterForm({
+  redirectTo,
+  searchStudioSlug,
+  searchStudioId,
+  includeTest,
+}: {
+  redirectTo?: string;
+  searchStudioSlug?: string;
+  searchStudioId?: string;
+  includeTest?: true;
+}) {
+  const navigate = useNavigate();
   const { signUp, signInWithGoogle, user } = useAuth();
   const online = useOnlineStatus();
   const [error, setError] = useState<string | null>(null);
@@ -198,256 +578,239 @@ function RegisterPage() {
   };
 
   return (
-    <PublicShell>
-      <section className={styles.panel}>
-        <div className={styles.brandBlock}>
-          <img
-            className={styles.brandMark}
-            src={BRAND_LOGO_SRC}
-            alt=""
-            aria-hidden
-          />
-          <div>
-            <p className={styles.brand}>{BRAND_NAME}</p>
-            <h1 className={styles.title}>Join the studio</h1>
-            <p className={styles.subtitle}>
-              Create your student account and personalize your dance journey.
-            </p>
-          </div>
-        </div>
+    <>
+      {error ? (
+        <Alert variant="danger">
+          <AlertTitle>Sign up failed</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      ) : null}
 
-        {error ? (
-          <Alert variant="danger">
-            <AlertTitle>Sign up failed</AlertTitle>
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        ) : null}
+      {!online ? (
+        <Alert variant="warning">
+          <AlertTitle>You’re offline</AlertTitle>
+          <AlertDescription>
+            Creating an account needs a network connection. Reconnect and try
+            again.
+          </AlertDescription>
+        </Alert>
+      ) : null}
 
-        {!online ? (
-          <Alert variant="warning">
-            <AlertTitle>You’re offline</AlertTitle>
-            <AlertDescription>
-              Creating an account needs a network connection. Reconnect and try
-              again.
-            </AlertDescription>
-          </Alert>
-        ) : null}
-
-        <form
-          className={styles.form}
-          onSubmit={(event) => {
-            event.preventDefault();
-            event.stopPropagation();
-            void form.handleSubmit();
+      <form
+        className={styles.form}
+        onSubmit={(event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          void form.handleSubmit();
+        }}
+      >
+        <form.Field
+          name="studioId"
+          validators={{
+            onBlur: ({ value }) => validateStudioId(value),
+            onSubmit: ({ value }) => validateStudioId(value),
           }}
         >
-          <form.Field
-            name="studioId"
-            validators={{
-              onBlur: ({ value }) => validateStudioId(value),
-              onSubmit: ({ value }) => validateStudioId(value),
-            }}
-          >
-            {(field) => {
-              const err = fieldError(field.state.meta.errors);
-              return (
-                <StudioSelect
-                  selectedKey={field.state.value || null}
-                  onSelectionChange={(studioId) => {
-                    field.handleChange(studioId ?? "");
-                    void navigate({
-                      to: "/register",
-                      search: {
-                        ...(redirectTo ? { redirect: redirectTo } : {}),
-                        ...(studioId ? { studioId } : {}),
-                        ...(includeTest ? { includeTest: true } : {}),
-                      },
-                      replace: true,
-                    });
-                  }}
-                  includeTest={includeTest}
-                  isRequired
-                  isInvalid={Boolean(err)}
-                  errorMessage={err}
-                  data-testid="register-studio-select"
-                />
-              );
-            }}
-          </form.Field>
-
-          <form.Field
-            name="name"
-            validators={{
-              onBlur: ({ value }) => validateName(value),
-              onSubmit: ({ value }) => validateName(value),
-            }}
-          >
-            {(field) => {
-              const err = fieldError(field.state.meta.errors);
-              return (
-                <TextField>
-                  <Label data-required="true">Your name</Label>
-                  <Input
-                    name={field.name}
-                    type="text"
-                    value={field.state.value}
-                    onBlur={field.handleBlur}
-                    onChange={(event) => field.handleChange(event.target.value)}
-                    autoComplete="name"
-                    aria-invalid={Boolean(err)}
-                    required
-                  />
-                  {err ? <FieldError>{err}</FieldError> : null}
-                </TextField>
-              );
-            }}
-          </form.Field>
-
-          <form.Field
-            name="email"
-            validators={{
-              onBlur: ({ value }) => validateEmail(value),
-              onSubmit: ({ value }) => validateEmail(value),
-            }}
-          >
-            {(field) => {
-              const err = fieldError(field.state.meta.errors);
-              return (
-                <TextField>
-                  <Label data-required="true">Email</Label>
-                  <Input
-                    name={field.name}
-                    type="email"
-                    value={field.state.value}
-                    onBlur={field.handleBlur}
-                    onChange={(event) => field.handleChange(event.target.value)}
-                    autoComplete="email"
-                    aria-invalid={Boolean(err)}
-                    required
-                  />
-                  {err ? <FieldError>{err}</FieldError> : null}
-                </TextField>
-              );
-            }}
-          </form.Field>
-
-          <form.Field
-            name="password"
-            validators={{
-              onBlur: ({ value }) => validatePassword(value),
-              onSubmit: ({ value }) => validatePassword(value),
-            }}
-          >
-            {(field) => {
-              const err = fieldError(field.state.meta.errors);
-              return (
-                <TextField>
-                  <Label data-required="true">Password</Label>
-                  <PasswordInput
-                    name={field.name}
-                    value={field.state.value}
-                    onBlur={field.handleBlur}
-                    onChange={field.handleChange}
-                    autoComplete="new-password"
-                    isInvalid={Boolean(err)}
-                    required
-                  />
-                  {err ? <FieldError>{err}</FieldError> : null}
-                </TextField>
-              );
-            }}
-          </form.Field>
-
-          <form.Field
-            name="confirmPassword"
-            validators={{
-              onChangeListenTo: ["password"],
-              onBlur: ({ value, fieldApi }) =>
-                validateConfirmPassword(
-                  value,
-                  fieldApi.form.getFieldValue("password"),
-                ),
-              onChange: ({ value, fieldApi }) =>
-                validateConfirmPassword(
-                  value,
-                  fieldApi.form.getFieldValue("password"),
-                ),
-              onSubmit: ({ value, fieldApi }) =>
-                validateConfirmPassword(
-                  value,
-                  fieldApi.form.getFieldValue("password"),
-                ),
-            }}
-          >
-            {(field) => {
-              const err = fieldError(field.state.meta.errors);
-              return (
-                <TextField>
-                  <Label data-required="true">Confirm password</Label>
-                  <PasswordInput
-                    name={field.name}
-                    value={field.state.value}
-                    onBlur={field.handleBlur}
-                    onChange={field.handleChange}
-                    autoComplete="new-password"
-                    isInvalid={Boolean(err)}
-                    required
-                  />
-                  {err ? <FieldError>{err}</FieldError> : null}
-                </TextField>
-              );
-            }}
-          </form.Field>
-
-          <form.Subscribe selector={(state) => state.isSubmitting}>
-            {(isSubmitting) => (
-              <TouchButton
-                type="submit"
-                variant="primary"
-                fullWidth
-                isPending={isSubmitting}
-                isDisabled={!online || isSubmitting}
-              >
-                Create account
-              </TouchButton>
-            )}
-          </form.Subscribe>
-
-          <TouchButton
-            type="button"
-            variant="default"
-            fullWidth
-            isDisabled={!online}
-            onClick={() => void handleGoogleSignIn()}
-          >
-            Continue with Google
-          </TouchButton>
-        </form>
-
-        <form.Subscribe
-          selector={(state) => ({
-            email: state.values.email,
-            studioId: state.values.studioId,
-          })}
-        >
-          {({ email, studioId }) => {
-            const trimmed = email.trim();
+          {(field) => {
+            const err = fieldError(field.state.meta.errors);
             return (
-              <Link
-                to="/login"
-                search={{
-                  ...(trimmed ? { identifier: trimmed } : {}),
-                  ...(studioId.trim() ? { studioId: studioId.trim() } : {}),
-                  ...(includeTest ? { includeTest: true } : {}),
+              <StudioSelect
+                selectedKey={field.state.value || null}
+                onSelectionChange={(studioId) => {
+                  field.handleChange(studioId ?? "");
+                  void navigate({
+                    to: "/register",
+                    search: {
+                      for: "student",
+                      ...(redirectTo ? { redirect: redirectTo } : {}),
+                      ...(studioId ? { studioId } : {}),
+                      ...(includeTest ? { includeTest: true } : {}),
+                    },
+                    replace: true,
+                  });
                 }}
-                className={styles.footerLink}
-              >
-                Already have an account? Sign in
-              </Link>
+                includeTest={includeTest}
+                isRequired
+                isInvalid={Boolean(err)}
+                errorMessage={err}
+                data-testid="register-studio-select"
+              />
             );
           }}
+        </form.Field>
+
+        <form.Field
+          name="name"
+          validators={{
+            onBlur: ({ value }) => validateName(value),
+            onSubmit: ({ value }) => validateName(value),
+          }}
+        >
+          {(field) => {
+            const err = fieldError(field.state.meta.errors);
+            return (
+              <TextField>
+                <Label data-required="true">Your name</Label>
+                <Input
+                  name={field.name}
+                  type="text"
+                  value={field.state.value}
+                  onBlur={field.handleBlur}
+                  onChange={(event) => field.handleChange(event.target.value)}
+                  autoComplete="name"
+                  aria-invalid={Boolean(err)}
+                  required
+                />
+                {err ? <FieldError>{err}</FieldError> : null}
+              </TextField>
+            );
+          }}
+        </form.Field>
+
+        <form.Field
+          name="email"
+          validators={{
+            onBlur: ({ value }) => validateEmail(value),
+            onSubmit: ({ value }) => validateEmail(value),
+          }}
+        >
+          {(field) => {
+            const err = fieldError(field.state.meta.errors);
+            return (
+              <TextField>
+                <Label data-required="true">Email</Label>
+                <Input
+                  name={field.name}
+                  type="email"
+                  value={field.state.value}
+                  onBlur={field.handleBlur}
+                  onChange={(event) => field.handleChange(event.target.value)}
+                  autoComplete="email"
+                  aria-invalid={Boolean(err)}
+                  required
+                />
+                {err ? <FieldError>{err}</FieldError> : null}
+              </TextField>
+            );
+          }}
+        </form.Field>
+
+        <form.Field
+          name="password"
+          validators={{
+            onBlur: ({ value }) => validatePassword(value),
+            onSubmit: ({ value }) => validatePassword(value),
+          }}
+        >
+          {(field) => {
+            const err = fieldError(field.state.meta.errors);
+            return (
+              <TextField>
+                <Label data-required="true">Password</Label>
+                <PasswordInput
+                  name={field.name}
+                  value={field.state.value}
+                  onBlur={field.handleBlur}
+                  onChange={field.handleChange}
+                  autoComplete="new-password"
+                  isInvalid={Boolean(err)}
+                  required
+                />
+                {err ? <FieldError>{err}</FieldError> : null}
+              </TextField>
+            );
+          }}
+        </form.Field>
+
+        <form.Field
+          name="confirmPassword"
+          validators={{
+            onChangeListenTo: ["password"],
+            onBlur: ({ value, fieldApi }) =>
+              validateConfirmPassword(
+                value,
+                fieldApi.form.getFieldValue("password"),
+              ),
+            onChange: ({ value, fieldApi }) =>
+              validateConfirmPassword(
+                value,
+                fieldApi.form.getFieldValue("password"),
+              ),
+            onSubmit: ({ value, fieldApi }) =>
+              validateConfirmPassword(
+                value,
+                fieldApi.form.getFieldValue("password"),
+              ),
+          }}
+        >
+          {(field) => {
+            const err = fieldError(field.state.meta.errors);
+            return (
+              <TextField>
+                <Label data-required="true">Confirm password</Label>
+                <PasswordInput
+                  name={field.name}
+                  value={field.state.value}
+                  onBlur={field.handleBlur}
+                  onChange={field.handleChange}
+                  autoComplete="new-password"
+                  isInvalid={Boolean(err)}
+                  required
+                />
+                {err ? <FieldError>{err}</FieldError> : null}
+              </TextField>
+            );
+          }}
+        </form.Field>
+
+        <form.Subscribe selector={(state) => state.isSubmitting}>
+          {(isSubmitting) => (
+            <TouchButton
+              type="submit"
+              variant="primary"
+              fullWidth
+              isPending={isSubmitting}
+              isDisabled={!online || isSubmitting}
+            >
+              Create account
+            </TouchButton>
+          )}
         </form.Subscribe>
-      </section>
-    </PublicShell>
+
+        <TouchButton
+          type="button"
+          variant="default"
+          fullWidth
+          isDisabled={!online}
+          onClick={() => void handleGoogleSignIn()}
+        >
+          Continue with Google
+        </TouchButton>
+      </form>
+
+      <form.Subscribe
+        selector={(state) => ({
+          email: state.values.email,
+          studioId: state.values.studioId,
+        })}
+      >
+        {({ email, studioId }) => {
+          const trimmed = email.trim();
+          return (
+            <Link
+              to="/login"
+              search={{
+                ...(trimmed ? { identifier: trimmed } : {}),
+                ...(studioId.trim() ? { studioId: studioId.trim() } : {}),
+                ...(includeTest ? { includeTest: true } : {}),
+              }}
+              className={styles.footerLink}
+            >
+              Already have an account? Sign in
+            </Link>
+          );
+        }}
+      </form.Subscribe>
+    </>
   );
 }

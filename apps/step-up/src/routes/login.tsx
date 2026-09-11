@@ -444,6 +444,7 @@ function LoginPage() {
               <Link
                 to="/register"
                 search={{
+                  for: "student",
                   ...(studioId.trim() ? { studioId: studioId.trim() } : {}),
                   ...(studioSlug.trim() ? { studio: studioSlug.trim() } : {}),
                   ...(includeTest ? { includeTest: true } : {}),

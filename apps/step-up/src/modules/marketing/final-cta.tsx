@@ -20,7 +20,11 @@ export function FinalCta() {
           <p className={styles.support}>{FINAL_CTA.support}</p>
           <p className={styles.risk}>{FINAL_CTA.risk}</p>
           <div className={styles.actions}>
-            <Link to="/register" className={styles.ctaLink}>
+            <Link
+              to="/register"
+              search={{ for: "studio" }}
+              className={styles.ctaLink}
+            >
               <Button variant="primary" className={shared.cta}>
                 {FINAL_CTA.primaryCta}
               </Button>

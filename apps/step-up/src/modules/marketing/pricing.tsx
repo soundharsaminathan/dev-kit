@@ -133,6 +133,7 @@ export function Pricing() {
 
               <Link
                 to="/register"
+                search={{ for: "studio" }}
                 className={styles.ctaLink}
                 data-testid={`pricing-cta-${plan.id}`}
               >

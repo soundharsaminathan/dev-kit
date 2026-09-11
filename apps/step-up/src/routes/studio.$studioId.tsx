@@ -27,7 +27,11 @@ function StudioPage() {
     queryFn: () => getPublic<StudioProfile>(`/studios/${studioId}/public`),
   });
 
-  const registerSearch = { redirect: `/studio/${studioId}`, studioId };
+  const registerSearch = {
+    for: "student" as const,
+    redirect: `/studio/${studioId}`,
+    studioId,
+  };
 
   return (
     <PublicShell>

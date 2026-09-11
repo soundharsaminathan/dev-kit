@@ -144,7 +144,12 @@ export function Journey() {
           <span>{JOURNEY.closingHeadlineLine2}</span>
         </h3>
         <p className={styles.closingSupport}>{JOURNEY.closingSupport}</p>
-        <TouchButton as={Link} to="/register" variant="primary">
+        <TouchButton
+          as={Link}
+          to="/register"
+          search={{ for: "studio" } as never}
+          variant="primary"
+        >
           {JOURNEY.closingCta}
         </TouchButton>
       </div>

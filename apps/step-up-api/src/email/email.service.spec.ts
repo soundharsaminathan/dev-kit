@@ -171,4 +171,27 @@ describe("EmailService", () => {
       }),
     );
   });
+
+  it("sends studio inquiries to SMTP_USER with reply-to", async () => {
+    configValues.SMTP_USER = "info@classa.in";
+    configValues.SMTP_PASS = "mailbox-pass";
+    sendMail.mockResolvedValue({ messageId: "5" });
+
+    await service.sendStudioInquiry({
+      studioName: "Floor One",
+      ownerName: "Asha",
+      email: "asha@example.com",
+      phone: "9876543210",
+      city: "Chennai",
+      message: "We run three floors.",
+    });
+
+    expect(sendMail).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: "info@classa.in",
+        replyTo: "asha@example.com",
+        subject: "Studio registration: Floor One",
+      }),
+    );
+  });
 });

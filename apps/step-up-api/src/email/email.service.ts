@@ -38,6 +38,15 @@ export type NotificationDigestMailInput = {
   items: Array<{ title: string; body: string }>;
 };
 
+export type StudioInquiryMailInput = {
+  studioName: string;
+  ownerName: string;
+  email: string;
+  phone?: string;
+  city?: string;
+  message?: string;
+};
+
 type SmtpAuth = {
   host: string;
   port: number;
@@ -172,6 +181,38 @@ export class EmailService {
     );
   }
 
+  async sendStudioInquiry(input: StudioInquiryMailInput): Promise<void> {
+    const to = this.config.get<string>("SMTP_USER")?.trim();
+    if (!to) {
+      this.logger.warn("SMTP_USER missing — skipped studio inquiry email");
+      return;
+    }
+    const rows = [
+      row("Studio", input.studioName),
+      row("Owner", input.ownerName),
+      row("Email", input.email),
+      ...(input.phone?.trim() ? [row("Phone", input.phone.trim())] : []),
+      ...(input.city?.trim() ? [row("City", input.city.trim())] : []),
+    ];
+    const messageBlock = input.message?.trim()
+      ? `<p style="margin:16px 0 0;white-space:pre-wrap;">${escapeHtml(input.message.trim())}</p>`
+      : "";
+
+    await this.send(
+      to,
+      `Studio registration: ${input.studioName}`,
+      [
+        `<p>New studio registration request from the classa site.</p>`,
+        `<table style="border-collapse:collapse;width:100%;max-width:420px;margin:16px 0;font-family:system-ui,sans-serif;font-size:14px;">`,
+        ...rows,
+        `</table>`,
+        messageBlock,
+      ].join(""),
+      undefined,
+      input.email,
+    );
+  }
+
   private smtpAuth(): SmtpAuth | null {
     const user = this.config.get<string>("SMTP_USER")?.trim();
     const pass = this.config.get<string>("SMTP_PASS")?.trim();
@@ -199,6 +240,7 @@ export class EmailService {
       content: Buffer;
       contentType: string;
     }>,
+    replyTo?: string,
   ): Promise<void> {
     const auth = this.smtpAuth();
     if (!auth) {
@@ -221,6 +263,7 @@ export class EmailService {
         to,
         subject,
         html,
+        ...(replyTo?.trim() ? { replyTo: replyTo.trim() } : {}),
         ...(attachments?.length ? { attachments } : {}),
       });
     } catch (error) {

@@ -127,7 +127,7 @@ export function PublicShell({
         <Link to="/login" className={styles.navLink}>
           {NAV.login}
         </Link>
-        <Link to="/register">
+        <Link to="/register" search={{ for: "studio" }}>
           <Button variant="primary">{NAV.start}</Button>
         </Link>
       </>
@@ -265,6 +265,7 @@ export function PublicShell({
                   <TouchButton
                     as={Link}
                     to="/register"
+                    search={{ for: "studio" } as never}
                     variant="primary"
                     fullWidth
                     onClick={closeMenu}

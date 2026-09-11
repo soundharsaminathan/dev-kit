@@ -9,6 +9,7 @@ import { BranchesModule } from "./branches/branches.module";
 import { CalendarModule } from "./calendar/calendar.module";
 import { CertificatesModule } from "./certificates/certificates.module";
 import { ChatModule } from "./chat/chat.module";
+import { ContactModule } from "./contact/contact.module";
 import { ContestsModule } from "./contests/contests.module";
 import { DataImportModule } from "./data-import/data-import.module";
 import { EventsModule } from "./events/events.module";
@@ -74,6 +75,7 @@ import { WhatsappModule } from "./whatsapp/whatsapp.module";
     MediaModule,
     SocialModule,
     ChatModule,
+    ContactModule,
     StaffAgentModule,
     JobsModule,
     HealthModule,
