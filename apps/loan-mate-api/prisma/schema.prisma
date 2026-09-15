@@ -1,0 +1,373 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_DATABASE_URL")
+}
+
+enum UserRole {
+  SYSTEM_ADMIN
+  COMPANY_OWNER
+  COMPANY_ADMIN
+  BRANCH_MANAGER
+  LOAN_OFFICER
+  APPROVER
+  COLLECTION_OFFICER
+}
+
+enum LoanStatus {
+  DRAFT
+  SUBMITTED
+  VERIFIED
+  APPROVED
+  REJECTED
+  DISBURSED
+  ACTIVE
+  CLOSED
+}
+
+enum PaymentFrequency {
+  WEEKLY
+  BIWEEKLY
+  MONTHLY
+}
+
+enum MonthlyFirstEmiOption {
+  EXACT_DAY
+  CONVERT_TO_1ST_PARTIAL
+  CONVERT_TO_1ST_NEXT_MONTH
+}
+
+enum InstallmentStatus {
+  PENDING
+  PARTIAL
+  PAID
+  OVERDUE
+}
+
+enum PaymentMode {
+  CASH
+  UPI
+  BANK_TRANSFER
+  NEFT
+  RTGS
+}
+
+enum AdvanceTreatment {
+  REDUCE_PRINCIPAL
+  SKIP_NEXT_EMI
+  PARK_AS_ADVANCE
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum ApprovalType {
+  LOAN_APPROVAL
+  PRODUCT_OVERRIDE
+  RATE_CHANGE
+  PENALTY_WAIVER
+  PAYMENT_REVERSAL
+  OTHER
+}
+
+enum OutboxStatus {
+  PENDING
+  PROCESSED
+  FAILED
+}
+
+model Company {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  settings  CompanySettings?
+  branches  Branch[]
+  users     User[]
+  customers Customer[]
+  products  LoanProduct[]
+  loans     Loan[]
+  payments  Payment[]
+  approvals ApprovalRequest[]
+  auditLogs AuditLog[]
+}
+
+model Branch {
+  id        String   @id @default(cuid())
+  companyId String
+  name      String
+  code      String
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id])
+  users   User[]
+  loans   Loan[]
+
+  @@unique([companyId, code])
+  @@index([companyId])
+}
+
+model CompanySettings {
+  id                          String                 @id @default(cuid())
+  companyId                   String                 @unique
+  graceDays                   Int                    @default(0)
+  penaltyDailyPercent         Decimal                @default(0.1) @db.Decimal(8, 4)
+  defaultMonthlyFirstEmiOption MonthlyFirstEmiOption @default(EXACT_DAY)
+  defaultAdvanceTreatments    AdvanceTreatment[]     @default([REDUCE_PRINCIPAL, SKIP_NEXT_EMI, PARK_AS_ADVANCE])
+  createdAt                   DateTime               @default(now())
+  updatedAt                   DateTime               @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id])
+}
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  passwordHash String?
+  name         String
+  role         UserRole
+  companyId    String?
+  branchId     String?
+  active       Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  company            Company?          @relation(fields: [companyId], references: [id])
+  branch             Branch?           @relation(fields: [branchId], references: [id])
+  madeApprovals      ApprovalRequest[] @relation("ApprovalMaker")
+  checkedApprovals   ApprovalRequest[] @relation("ApprovalChecker")
+  auditLogs          AuditLog[]
+  recordedPayments   Payment[]         @relation("PaymentRecorder")
+
+  @@index([companyId])
+  @@index([branchId])
+}
+
+model Customer {
+  id             String   @id @default(cuid())
+  companyId      String
+  customerNumber String   @unique
+  name           String
+  mobile         String
+  pan            String
+  address        String?
+  blacklisted    Boolean  @default(false)
+  blacklistReason String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id])
+  loans   Loan[]
+
+  @@unique([companyId, mobile])
+  @@unique([companyId, pan])
+  @@index([companyId])
+}
+
+model LoanProduct {
+  id                     String                 @id @default(cuid())
+  companyId              String
+  name                   String
+  code                   String
+  defaultPrincipal       Decimal                @db.Decimal(14, 2)
+  defaultAnnualRate      Decimal                @db.Decimal(8, 4)
+  /// Rate when frequency = WEEKLY (falls back to defaultAnnualRate if null)
+  annualRateWeekly       Decimal?               @db.Decimal(8, 4)
+  /// Rate when frequency = BIWEEKLY
+  annualRateBiweekly     Decimal?               @db.Decimal(8, 4)
+  /// Rate when frequency = MONTHLY
+  annualRateMonthly      Decimal?               @db.Decimal(8, 4)
+  defaultTenure          Int
+  defaultFrequency       PaymentFrequency       @default(MONTHLY)
+  defaultMonthlyFirstEmi MonthlyFirstEmiOption  @default(EXACT_DAY)
+  processingFeePercent   Decimal                @default(0) @db.Decimal(8, 4)
+  active                 Boolean                @default(true)
+  createdAt              DateTime               @default(now())
+  updatedAt              DateTime               @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id])
+  loans   Loan[]
+
+  @@unique([companyId, code])
+  @@index([companyId])
+}
+
+model Loan {
+  id                      String                 @id @default(cuid())
+  companyId               String
+  branchId                String
+  customerId              String
+  productId               String
+  loanNumber              String                 @unique
+  status                  LoanStatus             @default(DRAFT)
+  principal               Decimal                @db.Decimal(14, 2)
+  annualRatePercent       Decimal                @db.Decimal(8, 4)
+  penaltyDailyPercent     Decimal?               @db.Decimal(8, 4)
+  tenureInstallments      Int
+  frequency               PaymentFrequency
+  monthlyFirstEmiOption   MonthlyFirstEmiOption
+  processingFee           Decimal                @default(0) @db.Decimal(14, 2)
+  rateOverride            Boolean                @default(false)
+  tenureOverride          Boolean                @default(false)
+  productOverride         Boolean                @default(false)
+  disbursementDate        DateTime?
+  netDisbursement         Decimal?               @db.Decimal(14, 2)
+  partialInterestDeducted Decimal                @default(0) @db.Decimal(14, 2)
+  advanceBalance          Decimal                @default(0) @db.Decimal(14, 2)
+  rejectionReason         String?
+  createdAt               DateTime               @default(now())
+  updatedAt               DateTime               @updatedAt
+
+  company       Company             @relation(fields: [companyId], references: [id])
+  branch        Branch              @relation(fields: [branchId], references: [id])
+  customer      Customer            @relation(fields: [customerId], references: [id])
+  product       LoanProduct         @relation(fields: [productId], references: [id])
+  installments  Installment[]
+  payments      Payment[]
+  approvals     ApprovalRequest[]
+
+  @@index([companyId, status])
+  @@index([customerId])
+  @@index([branchId])
+}
+
+model Installment {
+  id              String            @id @default(cuid())
+  loanId          String
+  number          Int
+  dueDate         DateTime          @db.Date
+  principalDue    Decimal           @db.Decimal(14, 2)
+  interestDue     Decimal           @db.Decimal(14, 2)
+  penaltyDue      Decimal           @default(0) @db.Decimal(14, 2)
+  paidPrincipal   Decimal           @default(0) @db.Decimal(14, 2)
+  paidInterest    Decimal           @default(0) @db.Decimal(14, 2)
+  paidPenalty     Decimal           @default(0) @db.Decimal(14, 2)
+  status          InstallmentStatus @default(PENDING)
+  lastPenaltyDate DateTime?         @db.Date
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  loan         Loan                @relation(fields: [loanId], references: [id])
+  allocations  PaymentAllocation[]
+
+  @@unique([loanId, number])
+  @@index([loanId, dueDate])
+  @@index([status])
+}
+
+model Payment {
+  id               String            @id @default(cuid())
+  companyId        String
+  loanId           String
+  receiptNumber    String            @unique
+  amount           Decimal           @db.Decimal(14, 2)
+  paymentDate      DateTime          @db.Date
+  mode             PaymentMode
+  reference        String?
+  details          String?
+  advanceTreatment AdvanceTreatment?
+  reversed         Boolean           @default(false)
+  reversedAt       DateTime?
+  recordedById     String
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  company     Company             @relation(fields: [companyId], references: [id])
+  loan        Loan                @relation(fields: [loanId], references: [id])
+  recordedBy  User                @relation("PaymentRecorder", fields: [recordedById], references: [id])
+  allocations PaymentAllocation[]
+
+  @@index([loanId])
+  @@index([companyId])
+}
+
+model PaymentAllocation {
+  id            String  @id @default(cuid())
+  paymentId     String
+  installmentId String
+  principal     Decimal @default(0) @db.Decimal(14, 2)
+  interest      Decimal @default(0) @db.Decimal(14, 2)
+  penalty       Decimal @default(0) @db.Decimal(14, 2)
+
+  payment     Payment     @relation(fields: [paymentId], references: [id])
+  installment Installment @relation(fields: [installmentId], references: [id])
+
+  @@index([paymentId])
+  @@index([installmentId])
+}
+
+model ApprovalRequest {
+  id         String         @id @default(cuid())
+  companyId  String
+  type       ApprovalType
+  entityType String
+  entityId   String
+  payload    Json
+  status     ApprovalStatus @default(PENDING)
+  reason     String?
+  makerId    String
+  checkerId  String?
+  decidedAt  DateTime?
+  loanId     String?
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id])
+  maker   User    @relation("ApprovalMaker", fields: [makerId], references: [id])
+  checker User?   @relation("ApprovalChecker", fields: [checkerId], references: [id])
+  loan    Loan?   @relation(fields: [loanId], references: [id])
+
+  @@index([companyId, status])
+  @@index([entityType, entityId])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  companyId  String?
+  actorId    String?
+  action     String
+  entityType String
+  entityId   String
+  before     Json?
+  after      Json?
+  reason     String?
+  createdAt  DateTime @default(now())
+
+  company Company? @relation(fields: [companyId], references: [id])
+  actor   User?    @relation(fields: [actorId], references: [id])
+
+  @@index([companyId, createdAt])
+  @@index([entityType, entityId])
+}
+
+model Sequence {
+  id    String @id @default(cuid())
+  name  String @unique
+  value Int    @default(0)
+}
+
+model OutboxEvent {
+  id          String       @id @default(cuid())
+  type        String
+  payload     Json
+  status      OutboxStatus @default(PENDING)
+  attempts    Int          @default(0)
+  lastError   String?
+  createdAt   DateTime     @default(now())
+  processedAt DateTime?
+
+  @@index([status, createdAt])
+}

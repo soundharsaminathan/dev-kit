@@ -1,0 +1,14 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    "noEmit": true,
+    "tsBuildInfoFile": "./dist/tsconfig.typecheck.tsbuildinfo"
+  },
+  "include": [
+    "src/**/*",
+    "prisma/**/*.ts",
+    "vitest.config.ts"
+  ],
+  "exclude": ["node_modules", "dist", "**/*.spec.ts"]
+}

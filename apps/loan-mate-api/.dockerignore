@@ -1,0 +1,11 @@
+node_modules
+dist
+coverage
+.env
+.env.*
+src/generated
+*.md
+*.tsbuildinfo
+vitest.config.ts
+**/*.spec.ts
+.git

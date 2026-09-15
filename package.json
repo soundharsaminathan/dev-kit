@@ -20,6 +20,8 @@
     "dev:portfolio": "pnpm nx run portfolio:dev",
     "dev:step-up": "pnpm nx run step-up:dev",
     "dev:step-up-api": "pnpm nx run step-up-api:dev",
+    "dev:loan-mate": "pnpm nx run loan-mate:dev",
+    "dev:loan-mate-api": "pnpm nx run loan-mate-api:dev",
     "build:storybook": "pnpm nx run storybook:build-storybook",
     "test:e2e": "pnpm nx run storybook:test:e2e",
     "test:e2e:update": "pnpm nx run storybook:test:e2e:update",

@@ -1,0 +1,327 @@
+name: loan-mate Deploy
+
+# GitHub is the source of truth for loan-mate config. This workflow upserts
+# Secret Manager versions from GitHub secrets, then deploys:
+#   web  -> Cloudflare Pages (loan-mate)
+#   api  -> Cloud Run (loan-mate-api) in the same GCP project/region as classa
+#   jobs -> Cloud Run Job (loan-mate-worker) + Cloud Scheduler (daily IST)
+#
+# Reused from classa (already set — do not duplicate):
+#   vars:    GCP_PROJECT_ID, GCP_REGION
+#   secrets: GCP_WORKLOAD_IDENTITY_PROVIDER, GCP_SERVICE_ACCOUNT,
+#            CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID, NX_CLOUD_ACCESS_TOKEN
+#
+# Create these before the first deploy (dummy values in the PR/chat):
+#   vars:    LOAN_MATE_WEB_URL, LOAN_MATE_API_URL
+#   secrets: LOAN_MATE_DATABASE_URL, LOAN_MATE_DIRECT_DATABASE_URL
+
+on:
+  push:
+    branches: [main, loan-mate]
+    paths:
+      - "apps/loan-mate/**"
+      - "apps/loan-mate-api/**"
+      - "packages/components/**"
+      - "packages/tokens/**"
+      - "packages/core/**"
+      - "packages/icons/**"
+      - "packages/icons-packs/**"
+      - ".github/workflows/loan-mate-deploy.yml"
+  pull_request:
+    types: [closed]
+    branches: [main, loan-mate]
+    paths:
+      - "apps/loan-mate/**"
+      - "apps/loan-mate-api/**"
+      - "packages/components/**"
+      - "packages/tokens/**"
+      - "packages/core/**"
+      - "packages/icons/**"
+      - "packages/icons-packs/**"
+      - ".github/workflows/loan-mate-deploy.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  NX_CLOUD_ACCESS_TOKEN: ${{ secrets.NX_CLOUD_ACCESS_TOKEN }}
+
+jobs:
+  prepare:
+    name: Resolve deploy target
+    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request' || github.event.pull_request.merged == true
+    outputs:
+      target: ${{ steps.meta.outputs.target }}
+      sha: ${{ steps.meta.outputs.sha }}
+      should_deploy: ${{ steps.meta.outputs.should_deploy }}
+    steps:
+      - id: meta
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            TARGET="${{ github.event.pull_request.base.ref }}"
+            SHA="${{ github.event.pull_request.merge_commit_sha }}"
+          else
+            TARGET="${{ github.ref_name }}"
+            SHA="${{ github.sha }}"
+          fi
+          if [ -z "$SHA" ]; then
+            echo "Missing deploy SHA for event ${{ github.event_name }}" >&2
+            exit 1
+          fi
+          {
+            echo "target=$TARGET"
+            echo "sha=$SHA"
+            if [ "$TARGET" = "main" ] || [ "$TARGET" = "loan-mate" ]; then
+              echo "should_deploy=true"
+            else
+              echo "should_deploy=false"
+            fi
+          } >> "$GITHUB_OUTPUT"
+          echo "Deploy target=$TARGET sha=$SHA"
+
+  test-api:
+    name: loan-mate API tests
+    needs: [prepare]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+      - uses: ./.github/actions/setup
+      - name: Generate Prisma client
+        run: pnpm --filter @loan-mate/api prisma:generate
+      - name: Test API
+        run: pnpm exec nx run loan-mate-api:test
+      - name: Typecheck API
+        run: pnpm exec nx run loan-mate-api:typecheck
+
+  test-web:
+    name: loan-mate web typecheck
+    needs: [prepare]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+      - uses: ./.github/actions/setup
+      - name: Typecheck web
+        run: pnpm exec nx run loan-mate:typecheck
+      - name: Test web
+        run: pnpm exec nx run loan-mate:test
+
+  deploy-api:
+    name: Deploy Cloud Run
+    needs: [prepare, test-web, test-api]
+    runs-on: ubuntu-latest
+    concurrency:
+      group: loan-mate-deploy-api-migrate
+      cancel-in-progress: false
+    if: >-
+      always() &&
+      needs.prepare.result == 'success' &&
+      needs.prepare.outputs.should_deploy == 'true' &&
+      needs.test-web.result == 'success' &&
+      needs.test-api.result == 'success'
+    timeout-minutes: 30
+    outputs:
+      api_url: ${{ steps.deploy.outputs.api_url }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+      - uses: ./.github/actions/setup
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+      - name: Enable APIs and Artifact Registry
+        run: |
+          set -euo pipefail
+          PROJECT="${{ vars.GCP_PROJECT_ID }}"
+          REGION="${{ vars.GCP_REGION }}"
+          gcloud config set project "$PROJECT"
+          gcloud services enable \
+            run.googleapis.com \
+            artifactregistry.googleapis.com \
+            secretmanager.googleapis.com \
+            cloudscheduler.googleapis.com \
+            --quiet
+          if ! gcloud artifacts repositories describe loan-mate \
+            --location="$REGION" --project="$PROJECT" >/dev/null 2>&1; then
+            gcloud artifacts repositories create loan-mate \
+              --repository-format=docker \
+              --location="$REGION" \
+              --description="loan-mate Cloud Run images" \
+              --project="$PROJECT"
+          fi
+      - name: Sync GitHub secrets to Secret Manager
+        env:
+          LOAN_MATE_DATABASE_URL: ${{ secrets.LOAN_MATE_DATABASE_URL }}
+          LOAN_MATE_DIRECT_DATABASE_URL: ${{ secrets.LOAN_MATE_DIRECT_DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          PROJECT="${{ vars.GCP_PROJECT_ID }}"
+
+          upsert_secret() {
+            local name="$1"
+            local value="$2"
+            if [ -z "$value" ]; then
+              echo "::error::GitHub secret $name is empty"
+              exit 1
+            fi
+            if printf '%s' "$value" | grep -q 'CHANGE_ME'; then
+              echo "::error::$name still has dummy CHANGE_ME — replace it in GitHub secrets (Settings → Secrets)"
+              exit 1
+            fi
+            if gcloud secrets describe "$name" --project="$PROJECT" >/dev/null 2>&1; then
+              printf '%s' "$value" | gcloud secrets versions add "$name" --data-file=- --project="$PROJECT"
+            else
+              printf '%s' "$value" | gcloud secrets create "$name" \
+                --replication-policy=automatic \
+                --data-file=- \
+                --project="$PROJECT"
+            fi
+          }
+
+          upsert_secret LOAN_MATE_DATABASE_URL "$LOAN_MATE_DATABASE_URL"
+          upsert_secret LOAN_MATE_DIRECT_DATABASE_URL "$LOAN_MATE_DIRECT_DATABASE_URL"
+
+          PROJECT_NUMBER="$(gcloud projects describe "$PROJECT" --format='value(projectNumber)')"
+          COMPUTE_SA="${PROJECT_NUMBER}-compute@developer.gserviceaccount.com"
+          for secret in LOAN_MATE_DATABASE_URL LOAN_MATE_DIRECT_DATABASE_URL; do
+            gcloud secrets add-iam-policy-binding "$secret" \
+              --member="serviceAccount:${COMPUTE_SA}" \
+              --role="roles/secretmanager.secretAccessor" \
+              --project="$PROJECT" \
+              --quiet
+          done
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker ${{ vars.GCP_REGION }}-docker.pkg.dev --quiet
+      - name: Build and push image
+        run: |
+          IMAGE="${{ vars.GCP_REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/loan-mate/api:${{ needs.prepare.outputs.sha }}"
+          docker build -f apps/loan-mate-api/Dockerfile -t "$IMAGE" apps/loan-mate-api
+          docker push "$IMAGE"
+          echo "IMAGE=$IMAGE" >> "$GITHUB_ENV"
+      - name: Prisma migrate deploy
+        run: |
+          pnpm --filter @loan-mate/api prisma:generate
+          pnpm --filter @loan-mate/api exec prisma migrate deploy
+        env:
+          DATABASE_URL: ${{ secrets.LOAN_MATE_DATABASE_URL }}
+          DIRECT_DATABASE_URL: ${{ secrets.LOAN_MATE_DIRECT_DATABASE_URL }}
+      - name: Deploy to Cloud Run
+        id: deploy
+        run: |
+          set -euo pipefail
+          PROJECT="${{ vars.GCP_PROJECT_ID }}"
+          REGION="${{ vars.GCP_REGION }}"
+          WEB_URL="${{ vars.LOAN_MATE_WEB_URL }}"
+          SECRETS="DATABASE_URL=LOAN_MATE_DATABASE_URL:latest,DIRECT_DATABASE_URL=LOAN_MATE_DIRECT_DATABASE_URL:latest"
+          ENV_VARS="^|^AUTH_BYPASS=false|NODE_ENV=production|CORS_ORIGIN=${WEB_URL}|APP_URL=${WEB_URL}"
+
+          gcloud run deploy loan-mate-api \
+            --image "$IMAGE" \
+            --region "$REGION" \
+            --platform managed \
+            --allow-unauthenticated \
+            --min-instances 0 \
+            --max-instances 3 \
+            --memory 512Mi \
+            --cpu 1 \
+            --port 8080 \
+            --cpu-boost \
+            --set-secrets="$SECRETS" \
+            --set-env-vars="$ENV_VARS"
+
+          gcloud run jobs deploy loan-mate-worker \
+            --image "$IMAGE" \
+            --region "$REGION" \
+            --command=node \
+            --args=dist/worker.main.js \
+            --tasks=1 \
+            --max-retries=1 \
+            --task-timeout=10m \
+            --memory 512Mi \
+            --cpu 1 \
+            --set-secrets="$SECRETS" \
+            --set-env-vars="$ENV_VARS"
+
+          SCHEDULER_SA="${{ secrets.GCP_SERVICE_ACCOUNT }}"
+          JOB_URI="https://${REGION}-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/${PROJECT}/jobs/loan-mate-worker:run"
+          gcloud run jobs add-iam-policy-binding loan-mate-worker \
+            --region="$REGION" \
+            --member="serviceAccount:${SCHEDULER_SA}" \
+            --role="roles/run.invoker" \
+            --quiet
+
+          if gcloud scheduler jobs describe loan-mate-overdue-daily \
+            --location="$REGION" >/dev/null 2>&1; then
+            gcloud scheduler jobs update http loan-mate-overdue-daily \
+              --location="$REGION" \
+              --schedule="30 0 * * *" \
+              --time-zone="Asia/Kolkata" \
+              --uri="$JOB_URI" \
+              --http-method=POST \
+              --oauth-service-account-email="$SCHEDULER_SA" \
+              --oauth-token-scope="https://www.googleapis.com/auth/cloud-platform"
+          else
+            gcloud scheduler jobs create http loan-mate-overdue-daily \
+              --location="$REGION" \
+              --schedule="30 0 * * *" \
+              --time-zone="Asia/Kolkata" \
+              --uri="$JOB_URI" \
+              --http-method=POST \
+              --oauth-service-account-email="$SCHEDULER_SA" \
+              --oauth-token-scope="https://www.googleapis.com/auth/cloud-platform"
+          fi
+
+          API_URL="$(gcloud run services describe loan-mate-api \
+            --region "$REGION" \
+            --format='value(status.url)')"
+          echo "api_url=$API_URL" >> "$GITHUB_OUTPUT"
+          echo "Cloud Run URL: $API_URL"
+          echo "Set GitHub var LOAN_MATE_API_URL to this value if it differs."
+
+  deploy-web:
+    name: Deploy Cloudflare Pages
+    needs: [prepare, test-web, test-api, deploy-api]
+    runs-on: ubuntu-latest
+    if: >-
+      always() &&
+      needs.prepare.result == 'success' &&
+      needs.prepare.outputs.should_deploy == 'true' &&
+      needs.test-web.result == 'success' &&
+      needs.test-api.result == 'success' &&
+      needs.deploy-api.result == 'success'
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+      - uses: ./.github/actions/setup
+      - name: Build loan-mate web
+        run: pnpm exec nx run loan-mate:build --skip-nx-cache
+        env:
+          VITE_API_URL: ${{ needs.deploy-api.outputs.api_url || vars.LOAN_MATE_API_URL }}
+          VITE_AUTH_BYPASS: "false"
+      - name: Publish to Cloudflare Pages
+        run: |
+          if ! npx --yes wrangler@4 pages project list 2>/dev/null | grep -qE '(^|[^a-zA-Z0-9_-])loan-mate([^a-zA-Z0-9_-]|$)'; then
+            npx --yes wrangler@4 pages project create loan-mate --production-branch=loan-mate
+          fi
+          npx --yes wrangler@4 pages deploy apps/loan-mate/dist \
+            --project-name=loan-mate \
+            --branch=loan-mate
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
