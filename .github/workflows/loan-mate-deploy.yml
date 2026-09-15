@@ -143,26 +143,6 @@ jobs:
           service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
-      - name: Enable APIs and Artifact Registry
-        run: |
-          set -euo pipefail
-          PROJECT="${{ vars.GCP_PROJECT_ID }}"
-          REGION="${{ vars.GCP_REGION }}"
-          gcloud config set project "$PROJECT"
-          gcloud services enable \
-            run.googleapis.com \
-            artifactregistry.googleapis.com \
-            secretmanager.googleapis.com \
-            cloudscheduler.googleapis.com \
-            --quiet
-          if ! gcloud artifacts repositories describe loan-mate \
-            --location="$REGION" --project="$PROJECT" >/dev/null 2>&1; then
-            gcloud artifacts repositories create loan-mate \
-              --repository-format=docker \
-              --location="$REGION" \
-              --description="loan-mate Cloud Run images" \
-              --project="$PROJECT"
-          fi
       - name: Sync GitHub secrets to Secret Manager
         env:
           LOAN_MATE_DATABASE_URL: ${{ secrets.LOAN_MATE_DATABASE_URL }}
