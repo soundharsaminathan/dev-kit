@@ -12,7 +12,7 @@ import { ApprovalsService } from "./approvals.service";
 @Module({
   imports: [
     AuditModule,
-    ClosuresModule,
+    forwardRef(() => ClosuresModule),
     forwardRef(() => LoansModule),
     forwardRef(() => PaymentsModule),
     forwardRef(() => CustomersModule),

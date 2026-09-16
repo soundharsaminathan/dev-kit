@@ -23,8 +23,9 @@ export class ApprovalApplicatorService {
     private readonly payments: PaymentsService,
     @Inject(forwardRef(() => CustomersService))
     private readonly customers: CustomersService,
-    @Inject(ClosuresService) private readonly closures: ClosuresService,
-    @Inject(LoanRestructureService)
+    @Inject(forwardRef(() => ClosuresService))
+    private readonly closures: ClosuresService,
+    @Inject(forwardRef(() => LoanRestructureService))
     private readonly restructure: LoanRestructureService,
   ) {}
 
