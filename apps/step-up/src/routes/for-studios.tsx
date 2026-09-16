@@ -33,7 +33,7 @@ function StudioLandingPage() {
   return (
     <PublicShell nav="marketing" width="full">
       <div className={styles.page}>
-        <Hero />
+        <Hero fillRemaining={!showSections} />
         {showSections ? (
           <Suspense fallback={null}>
             <LandingSections />

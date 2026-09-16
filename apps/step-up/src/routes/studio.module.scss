@@ -1,9 +1,11 @@
 .page {
   display: flex;
   flex-direction: column;
+  flex: 1;
   gap: var(--space-4, 1rem);
   padding: var(--space-6, 1.5rem) var(--space-4, 1rem);
   max-width: 40rem;
+  width: 100%;
   margin-inline: auto;
   animation: enter var(--motion-normal, 200ms) ease both;
 }

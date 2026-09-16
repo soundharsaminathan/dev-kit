@@ -63,12 +63,15 @@ function useTypedCycle(words: readonly string[]) {
   return text;
 }
 
-export function Hero() {
+export function Hero({ fillRemaining = false }: { fillRemaining?: boolean }) {
   const typed = useTypedCycle(CYCLE_WORDS);
   const sizer = CYCLE_WORDS.reduce((a, b) => (a.length >= b.length ? a : b));
 
   return (
-    <section className={styles.hero} aria-labelledby="hero-headline">
+    <section
+      className={`${styles.hero}${fillRemaining ? ` ${styles.heroFill}` : ""}`}
+      aria-labelledby="hero-headline"
+    >
       <div className={styles.stage}>
         <div className={styles.copy}>
           <h1
