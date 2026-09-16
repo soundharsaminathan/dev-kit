@@ -44,7 +44,14 @@ import { WhatsappModule } from "./whatsapp/whatsapp.module";
 @Module({
   imports: [
     ...sentryNestImports(),
-    ConfigModule.forRoot({ isGlobal: true }),
+    ConfigModule.forRoot({
+      isGlobal: true,
+      // Prefer the API package .env when nx runs from the monorepo root.
+      envFilePath: [
+        "apps/step-up-api/.env",
+        ".env",
+      ],
+    }),
     PrismaModule,
     RedisModule,
     QueueModule.forRoot({ role: "api" }),

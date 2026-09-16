@@ -106,4 +106,30 @@ describe("MediaService", () => {
     expect(readUrl).toMatch(/^https:\/\//);
     expect(readUrl).not.toMatch(/checksum/i);
   });
+
+  it("falls back to R2_PUBLIC_URL when storage credentials are missing", async () => {
+    const service = new MediaService({
+      get: (key: string) => {
+        const values: Record<string, string> = {
+          R2_BUCKET: "step-up",
+          R2_PUBLIC_URL: "https://media.example.com",
+        };
+        return values[key];
+      },
+    } as ConfigService);
+
+    await expect(
+      service.signReadUrl("studio-heroes/hero.jpg"),
+    ).resolves.toBe("https://media.example.com/studio-heroes/hero.jpg");
+  });
+
+  it("returns null for object keys when neither signing nor public URL is available", async () => {
+    const service = new MediaService({
+      get: () => undefined,
+    } as ConfigService);
+
+    await expect(
+      service.signReadUrl("studio-heroes/hero.jpg"),
+    ).resolves.toBeNull();
+  });
 });

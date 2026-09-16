@@ -69,15 +69,15 @@ export class MediaService {
   private readonly publicUrl: string;
 
   constructor(@Inject(ConfigService) private readonly config: ConfigService) {
-    this.bucket = this.config.get<string>("R2_BUCKET") ?? "step-up-media";
-    this.publicUrl = (this.config.get<string>("R2_PUBLIC_URL") ?? "").replace(
-      /\/$/,
-      "",
-    );
+    const read = (key: string) =>
+      this.config.get<string>(key) ?? process.env[key] ?? undefined;
 
-    const accountId = this.config.get<string>("R2_ACCOUNT_ID");
-    const accessKeyId = this.config.get<string>("R2_ACCESS_KEY_ID");
-    const secretAccessKey = this.config.get<string>("R2_SECRET_ACCESS_KEY");
+    this.bucket = read("R2_BUCKET") ?? "step-up-media";
+    this.publicUrl = (read("R2_PUBLIC_URL") ?? "").replace(/\/$/, "");
+
+    const accountId = read("R2_ACCOUNT_ID");
+    const accessKeyId = read("R2_ACCESS_KEY_ID");
+    const secretAccessKey = read("R2_SECRET_ACCESS_KEY");
 
     if (accountId && accessKeyId && secretAccessKey) {
       this.client = new S3Client({
@@ -203,35 +203,49 @@ export class MediaService {
     return null;
   }
 
+  private publicReadUrl(key: string): string | null {
+    if (!this.publicUrl) {
+      return null;
+    }
+    return `${this.publicUrl}/${key}`;
+  }
+
   async signReadUrl(value: string | null | undefined): Promise<string | null> {
     if (!value) {
       return null;
     }
     const key = this.resolveObjectKey(value);
     if (!key) {
+      // Already an absolute URL (or unknown opaque value) — pass through.
       return value;
     }
 
-    try {
-      const client = this.assertConfigured();
-      return await getSignedUrl(
-        client,
-        new GetObjectCommand({
-          Bucket: this.bucket,
-          Key: key,
-        }),
-        { expiresIn: READ_URL_EXPIRES_SECONDS },
-      );
-    } catch {
-      // Auth/bootstrap must not fail when object storage is misconfigured.
-      return value;
+    if (this.client) {
+      try {
+        return await getSignedUrl(
+          this.client,
+          new GetObjectCommand({
+            Bucket: this.bucket,
+            Key: key,
+          }),
+          { expiresIn: READ_URL_EXPIRES_SECONDS },
+        );
+      } catch {
+        // Fall through to public CDN / null — never return a relative object key.
+      }
     }
+
+    // Auth/bootstrap must not fail when object storage is misconfigured.
+    // Prefer the public CDN base over a bare key (browsers treat keys as site-relative).
+    return this.publicReadUrl(key);
   }
 
   async signReadUrls(values: string[]): Promise<string[]> {
-    return Promise.all(
-      values.map(async (value) => (await this.signReadUrl(value)) ?? value),
+    const signed = await Promise.all(
+      values.map((value) => this.signReadUrl(value)),
     );
+    // Drop unresolvable object keys — never emit site-relative storage paths.
+    return signed.filter((value): value is string => Boolean(value));
   }
 
   async createSignedUploadUrl(

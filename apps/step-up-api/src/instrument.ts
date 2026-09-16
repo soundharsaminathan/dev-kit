@@ -1,4 +1,26 @@
-import "dotenv/config";
+import { existsSync } from "node:fs";
+import { resolve } from "node:path";
+import { config as loadEnv } from "dotenv";
+
+/**
+ * Load package `.env` even when the process cwd is the monorepo root (nx).
+ * First existing file wins per key (`override: false`) so Playwright/e2e
+ * env and already-exported secrets are not clobbered.
+ */
+function loadPackageEnv() {
+  const candidates = [
+    resolve(__dirname, "..", ".env"),
+    resolve(process.cwd(), "apps", "step-up-api", ".env"),
+    resolve(process.cwd(), ".env"),
+  ];
+
+  for (const path of candidates) {
+    if (!existsSync(path)) continue;
+    loadEnv({ path, override: false });
+  }
+}
+
+loadPackageEnv();
 
 function sentryDisabled(): boolean {
   return (
