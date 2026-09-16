@@ -1,9 +1,6 @@
-import {
-  BadRequestException,
-  ForbiddenException,
-} from "@nestjs/common";
-import { UserRole } from "../generated/prisma";
+import { BadRequestException, ForbiddenException } from "@nestjs/common";
 import type { AuthUser } from "../auth/current-user.decorator";
+import { UserRole } from "../generated/prisma";
 
 export const COMPANY_ADMIN_ROLES: UserRole[] = [
   UserRole.COMPANY_OWNER,
@@ -47,4 +44,19 @@ export function assertBranchAccess(user: AuthUser, branchId: string) {
   if (user.branchId !== branchId) {
     throw new ForbiddenException("Branch access denied");
   }
+}
+
+/** Prisma `where` fragment for branch-scoped list queries. */
+export function branchWhere(actor: AuthUser): { branchId?: string } {
+  if (
+    actor.role === UserRole.SYSTEM_ADMIN ||
+    actor.role === UserRole.COMPANY_OWNER ||
+    actor.role === UserRole.COMPANY_ADMIN
+  ) {
+    return {};
+  }
+  if (!actor.branchId) {
+    throw new ForbiddenException("User has no branch");
+  }
+  return { branchId: actor.branchId };
 }

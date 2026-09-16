@@ -4,8 +4,8 @@ import { useState } from "react";
 import { useAuth } from "@/lib/auth";
 import {
   ADVANCE_TREATMENTS,
-  PAYMENT_MODES,
   type AdvanceTreatment,
+  PAYMENT_MODES,
   type PaymentMode,
 } from "@/lib/constants";
 
@@ -50,7 +50,9 @@ function CollectionsPage() {
     queryKey: ["loans", "collections"],
     queryFn: async () => {
       const all = await api.get<Loan[]>("/loans");
-      return all.filter((l) => ["DISBURSED", "ACTIVE"].includes(l.status));
+      return all.filter((l) =>
+        ["DISBURSED", "ACTIVE", "WRITTEN_OFF"].includes(l.status),
+      );
     },
   });
 
@@ -222,7 +224,9 @@ function CollectionsPage() {
               >
                 {ADVANCE_TREATMENTS.map((t) => (
                   <option key={t} value={t}>
-                    {t.replaceAll("_", " ")}
+                    {t === "SKIP_NEXT_EMI"
+                      ? "Skip next EMI"
+                      : t.replaceAll("_", " ")}
                   </option>
                 ))}
               </select>

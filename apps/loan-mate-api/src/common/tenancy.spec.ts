@@ -5,6 +5,7 @@ import { UserRole } from "../generated/prisma";
 import {
   assertBranchAccess,
   assertSameCompany,
+  branchWhere,
   requireCompany,
 } from "./tenancy";
 
@@ -65,5 +66,16 @@ describe("tenancy isolation", () => {
       companyId: "company-a",
     });
     expect(() => assertBranchAccess(actor, "branch-any")).not.toThrow();
+  });
+
+  it("branchWhere scopes branch roles only", () => {
+    const officer = user({
+      role: UserRole.LOAN_OFFICER,
+      companyId: "c1",
+      branchId: "b1",
+    });
+    expect(branchWhere(officer)).toEqual({ branchId: "b1" });
+    const owner = user({ role: UserRole.COMPANY_OWNER, companyId: "c1" });
+    expect(branchWhere(owner)).toEqual({});
   });
 });

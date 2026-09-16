@@ -9,13 +9,13 @@ import {
   Post,
   UseGuards,
 } from "@nestjs/common";
-import { UserRole } from "../generated/prisma";
 import { AuthGuard } from "../auth/auth.guard";
-import { CurrentUser, type AuthUser } from "../auth/current-user.decorator";
+import { type AuthUser, CurrentUser } from "../auth/current-user.decorator";
 import { Roles } from "../auth/roles.decorator";
 import { RolesGuard } from "../auth/roles.guard";
+import { UserRole } from "../generated/prisma";
 import { CustomersService } from "./customers.service";
-import {
+import type {
   BlacklistCustomerDto,
   CreateCustomerDto,
   UpdateCustomerDto,
@@ -88,6 +88,39 @@ export class CustomersController {
     @Body() dto: BlacklistCustomerDto,
   ) {
     return this.customers.blacklist(user, id, dto);
+  }
+
+  @Post(":id/request-npa-mark")
+  @Roles(
+    UserRole.COMPANY_OWNER,
+    UserRole.COMPANY_ADMIN,
+    UserRole.BRANCH_MANAGER,
+  )
+  requestNpaMark(
+    @CurrentUser() user: AuthUser,
+    @Param("id") id: string,
+    @Body() body: { reason: string; sourceLoanId?: string },
+  ) {
+    return this.customers.requestNpaMark(
+      user,
+      id,
+      body.reason,
+      body.sourceLoanId,
+    );
+  }
+
+  @Post(":id/request-npa-clear")
+  @Roles(
+    UserRole.COMPANY_OWNER,
+    UserRole.COMPANY_ADMIN,
+    UserRole.BRANCH_MANAGER,
+  )
+  requestNpaClear(
+    @CurrentUser() user: AuthUser,
+    @Param("id") id: string,
+    @Body() body: { reason?: string },
+  ) {
+    return this.customers.requestNpaClear(user, id, body.reason);
   }
 
   @Delete(":id")

@@ -2,15 +2,18 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
+import { ADVANCE_TREATMENTS, type AdvanceTreatment } from "@/lib/constants";
 import { useCompanyId } from "@/lib/use-company-id";
 
 type CompanyResponse = {
   id: string;
-  name: string;
   settings?: {
     graceDays?: number;
     penaltyDailyPercent?: string | number;
     defaultMonthlyFirstEmiOption?: string;
+    defaultAdvanceTreatments?: AdvanceTreatment[];
+    foreclosureChargePercent?: string | number;
+    maxRestructures?: number;
   };
 };
 
@@ -27,6 +30,10 @@ function SettingsPage() {
   const [form, setForm] = useState({
     graceDays: "0",
     penaltyDailyPercent: "0.1",
+    defaultMonthlyFirstEmiOption: "EXACT_DAY",
+    foreclosureChargePercent: "0",
+    maxRestructures: "3",
+    defaultAdvanceTreatments: [] as AdvanceTreatment[],
   });
 
   const settings = useQuery({
@@ -37,11 +44,17 @@ function SettingsPage() {
 
   useEffect(() => {
     if (!settings.data?.settings) return;
+    const s = settings.data.settings;
     setForm({
-      graceDays: String(settings.data.settings.graceDays ?? 0),
-      penaltyDailyPercent: String(
-        settings.data.settings.penaltyDailyPercent ?? 0.1,
-      ),
+      graceDays: String(s.graceDays ?? 0),
+      penaltyDailyPercent: String(s.penaltyDailyPercent ?? 0.1),
+      defaultMonthlyFirstEmiOption:
+        s.defaultMonthlyFirstEmiOption ?? "EXACT_DAY",
+      foreclosureChargePercent: String(s.foreclosureChargePercent ?? 0),
+      maxRestructures: String(s.maxRestructures ?? 3),
+      defaultAdvanceTreatments: s.defaultAdvanceTreatments ?? [
+        ...ADVANCE_TREATMENTS,
+      ],
     });
   }, [settings.data]);
 
@@ -50,6 +63,10 @@ function SettingsPage() {
       api.patch(`/companies/${companyId}/settings`, {
         graceDays: Number(form.graceDays),
         penaltyDailyPercent: Number(form.penaltyDailyPercent),
+        defaultMonthlyFirstEmiOption: form.defaultMonthlyFirstEmiOption,
+        foreclosureChargePercent: Number(form.foreclosureChargePercent),
+        maxRestructures: Number(form.maxRestructures),
+        defaultAdvanceTreatments: form.defaultAdvanceTreatments,
       }),
     onSuccess: async () => {
       setError(null);
@@ -115,6 +132,82 @@ function SettingsPage() {
                 }))
               }
             />
+          </div>
+          <div className="lm-form-row">
+            <label htmlFor="foreclosure">Foreclosure charge (%)</label>
+            <input
+              id="foreclosure"
+              type="number"
+              step="0.01"
+              value={form.foreclosureChargePercent}
+              onChange={(e) =>
+                setForm((f) => ({
+                  ...f,
+                  foreclosureChargePercent: e.target.value,
+                }))
+              }
+            />
+          </div>
+          <div className="lm-form-row">
+            <label htmlFor="maxRestructures">Max restructures</label>
+            <input
+              id="maxRestructures"
+              type="number"
+              min={0}
+              value={form.maxRestructures}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, maxRestructures: e.target.value }))
+              }
+            />
+          </div>
+          <div className="lm-form-row">
+            <label htmlFor="firstEmi">Default first EMI option</label>
+            <select
+              id="firstEmi"
+              value={form.defaultMonthlyFirstEmiOption}
+              onChange={(e) =>
+                setForm((f) => ({
+                  ...f,
+                  defaultMonthlyFirstEmiOption: e.target.value,
+                }))
+              }
+            >
+              <option value="EXACT_DAY">Exact day</option>
+              <option value="CONVERT_TO_1ST_PARTIAL">
+                Convert to 1st + partial
+              </option>
+              <option value="CONVERT_TO_1ST_NEXT_MONTH">
+                Convert to 1st next month
+              </option>
+            </select>
+          </div>
+          <div className="lm-form-row">
+            <span>Default advance treatments</span>
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: "0.35rem",
+              }}
+            >
+              {ADVANCE_TREATMENTS.map((t) => (
+                <label key={t}>
+                  <input
+                    type="checkbox"
+                    checked={form.defaultAdvanceTreatments.includes(t)}
+                    onChange={(e) => {
+                      setForm((f) => ({
+                        ...f,
+                        defaultAdvanceTreatments: e.target.checked
+                          ? [...f.defaultAdvanceTreatments, t]
+                          : f.defaultAdvanceTreatments.filter((x) => x !== t),
+                      }));
+                    }}
+                  />{" "}
+                  {t.replaceAll("_", " ")}
+                </label>
+              ))}
+            </div>
           </div>
           {error ? <p className="lm-error">{error}</p> : null}
           {success ? (

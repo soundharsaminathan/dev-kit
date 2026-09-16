@@ -4,18 +4,28 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
-import { ApprovalStatus, type ApprovalType, type Prisma } from "../generated/prisma";
-import type { AuthUser } from "../auth/current-user.decorator";
 import { AuditService } from "../audit/audit.service";
-import { requireCompany, assertSameCompany } from "../common/tenancy";
+import type { AuthUser } from "../auth/current-user.decorator";
+import { assertSameCompany, requireCompany } from "../common/tenancy";
+import {
+  ApprovalStatus,
+  type ApprovalType,
+  type Prisma,
+} from "../generated/prisma";
+import { NotificationService } from "../notifications/notifications.service";
 import { PrismaService } from "../prisma/prisma.service";
-import { CreateApprovalDto } from "./dto/approval.dto";
+import { ApprovalApplicatorService } from "./approval-applicator.service";
+import type { CreateApprovalDto } from "./dto/approval.dto";
 
 @Injectable()
 export class ApprovalsService {
   constructor(
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(AuditService) private readonly audit: AuditService,
+    @Inject(ApprovalApplicatorService)
+    private readonly applicator: ApprovalApplicatorService,
+    @Inject(NotificationService)
+    private readonly notifications: NotificationService,
   ) {}
 
   async create(maker: AuthUser, dto: CreateApprovalDto) {
@@ -32,6 +42,13 @@ export class ApprovalsService {
         loanId: dto.loanId,
       },
     });
+    await this.notifications.enqueueOutbox("approval.create", {
+      companyId,
+      entityType: "ApprovalRequest",
+      entityId: request.id,
+      summary: `${request.type} approval pending`,
+    });
+
     await this.audit.append({
       companyId,
       actorId: maker.id,
@@ -76,6 +93,9 @@ export class ApprovalsService {
     if (request.status !== ApprovalStatus.PENDING) {
       throw new BadRequestException("Approval already decided");
     }
+    if (request.appliedAt) {
+      throw new BadRequestException("Approval already applied");
+    }
     if (request.makerId === checker.id) {
       throw new BadRequestException("Maker cannot approve own request");
     }
@@ -102,6 +122,11 @@ export class ApprovalsService {
       after: { status },
       reason,
     });
+
+    if (status === ApprovalStatus.APPROVED) {
+      await this.applicator.apply(checker, updated);
+      return this.prisma.approvalRequest.findUnique({ where: { id } });
+    }
 
     return updated;
   }

@@ -15,18 +15,24 @@ import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppIndexRouteImport } from './routes/app/index'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
+import { Route as AppUsersRouteImport } from './routes/app/users'
 import { Route as AppSettingsRouteImport } from './routes/app/settings'
+import { Route as AppReportsRouteImport } from './routes/app/reports'
 import { Route as AppProfileRouteImport } from './routes/app/profile'
 import { Route as AppProductsRouteImport } from './routes/app/products'
+import { Route as AppNotificationsRouteImport } from './routes/app/notifications'
 import { Route as AppLoansRouteImport } from './routes/app/loans'
 import { Route as AppCustomersRouteImport } from './routes/app/customers'
 import { Route as AppCollectionsRouteImport } from './routes/app/collections'
+import { Route as AppBranchesRouteImport } from './routes/app/branches'
+import { Route as AppAuditRouteImport } from './routes/app/audit'
 import { Route as AppApprovalsRouteImport } from './routes/app/approvals'
 import { Route as AdminProfileRouteImport } from './routes/admin/profile'
 import { Route as AppProductsIndexRouteImport } from './routes/app/products.index'
 import { Route as AppLoansIndexRouteImport } from './routes/app/loans.index'
 import { Route as AppCustomersIndexRouteImport } from './routes/app/customers.index'
 import { Route as AppProductsNewRouteImport } from './routes/app/products.new'
+import { Route as AppProductsIdRouteImport } from './routes/app/products.$id'
 import { Route as AppLoansNewRouteImport } from './routes/app/loans.new'
 import { Route as AppLoansIdRouteImport } from './routes/app/loans.$id'
 import { Route as AppCustomersNewRouteImport } from './routes/app/customers.new'
@@ -62,9 +68,19 @@ const AdminIndexRoute = AdminIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AdminRoute,
 } as any)
+const AppUsersRoute = AppUsersRouteImport.update({
+  id: '/users',
+  path: '/users',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppSettingsRoute = AppSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppReportsRoute = AppReportsRouteImport.update({
+  id: '/reports',
+  path: '/reports',
   getParentRoute: () => AppRoute,
 } as any)
 const AppProfileRoute = AppProfileRouteImport.update({
@@ -75,6 +91,11 @@ const AppProfileRoute = AppProfileRouteImport.update({
 const AppProductsRoute = AppProductsRouteImport.update({
   id: '/products',
   path: '/products',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppNotificationsRoute = AppNotificationsRouteImport.update({
+  id: '/notifications',
+  path: '/notifications',
   getParentRoute: () => AppRoute,
 } as any)
 const AppLoansRoute = AppLoansRouteImport.update({
@@ -90,6 +111,16 @@ const AppCustomersRoute = AppCustomersRouteImport.update({
 const AppCollectionsRoute = AppCollectionsRouteImport.update({
   id: '/collections',
   path: '/collections',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppBranchesRoute = AppBranchesRouteImport.update({
+  id: '/branches',
+  path: '/branches',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAuditRoute = AppAuditRouteImport.update({
+  id: '/audit',
+  path: '/audit',
   getParentRoute: () => AppRoute,
 } as any)
 const AppApprovalsRoute = AppApprovalsRouteImport.update({
@@ -122,6 +153,11 @@ const AppProductsNewRoute = AppProductsNewRouteImport.update({
   path: '/new',
   getParentRoute: () => AppProductsRoute,
 } as any)
+const AppProductsIdRoute = AppProductsIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => AppProductsRoute,
+} as any)
 const AppLoansNewRoute = AppLoansNewRouteImport.update({
   id: '/new',
   path: '/new',
@@ -150,18 +186,24 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/admin/profile': typeof AdminProfileRoute
   '/app/approvals': typeof AppApprovalsRoute
+  '/app/audit': typeof AppAuditRoute
+  '/app/branches': typeof AppBranchesRoute
   '/app/collections': typeof AppCollectionsRoute
   '/app/customers': typeof AppCustomersRouteWithChildren
   '/app/loans': typeof AppLoansRouteWithChildren
+  '/app/notifications': typeof AppNotificationsRoute
   '/app/products': typeof AppProductsRouteWithChildren
   '/app/profile': typeof AppProfileRoute
+  '/app/reports': typeof AppReportsRoute
   '/app/settings': typeof AppSettingsRoute
+  '/app/users': typeof AppUsersRoute
   '/admin/': typeof AdminIndexRoute
   '/app/': typeof AppIndexRoute
   '/app/customers/$id': typeof AppCustomersIdRoute
   '/app/customers/new': typeof AppCustomersNewRoute
   '/app/loans/$id': typeof AppLoansIdRoute
   '/app/loans/new': typeof AppLoansNewRoute
+  '/app/products/$id': typeof AppProductsIdRoute
   '/app/products/new': typeof AppProductsNewRoute
   '/app/customers/': typeof AppCustomersIndexRoute
   '/app/loans/': typeof AppLoansIndexRoute
@@ -172,15 +214,21 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/admin/profile': typeof AdminProfileRoute
   '/app/approvals': typeof AppApprovalsRoute
+  '/app/audit': typeof AppAuditRoute
+  '/app/branches': typeof AppBranchesRoute
   '/app/collections': typeof AppCollectionsRoute
+  '/app/notifications': typeof AppNotificationsRoute
   '/app/profile': typeof AppProfileRoute
+  '/app/reports': typeof AppReportsRoute
   '/app/settings': typeof AppSettingsRoute
+  '/app/users': typeof AppUsersRoute
   '/admin': typeof AdminIndexRoute
   '/app': typeof AppIndexRoute
   '/app/customers/$id': typeof AppCustomersIdRoute
   '/app/customers/new': typeof AppCustomersNewRoute
   '/app/loans/$id': typeof AppLoansIdRoute
   '/app/loans/new': typeof AppLoansNewRoute
+  '/app/products/$id': typeof AppProductsIdRoute
   '/app/products/new': typeof AppProductsNewRoute
   '/app/customers': typeof AppCustomersIndexRoute
   '/app/loans': typeof AppLoansIndexRoute
@@ -194,18 +242,24 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/admin/profile': typeof AdminProfileRoute
   '/app/approvals': typeof AppApprovalsRoute
+  '/app/audit': typeof AppAuditRoute
+  '/app/branches': typeof AppBranchesRoute
   '/app/collections': typeof AppCollectionsRoute
   '/app/customers': typeof AppCustomersRouteWithChildren
   '/app/loans': typeof AppLoansRouteWithChildren
+  '/app/notifications': typeof AppNotificationsRoute
   '/app/products': typeof AppProductsRouteWithChildren
   '/app/profile': typeof AppProfileRoute
+  '/app/reports': typeof AppReportsRoute
   '/app/settings': typeof AppSettingsRoute
+  '/app/users': typeof AppUsersRoute
   '/admin/': typeof AdminIndexRoute
   '/app/': typeof AppIndexRoute
   '/app/customers/$id': typeof AppCustomersIdRoute
   '/app/customers/new': typeof AppCustomersNewRoute
   '/app/loans/$id': typeof AppLoansIdRoute
   '/app/loans/new': typeof AppLoansNewRoute
+  '/app/products/$id': typeof AppProductsIdRoute
   '/app/products/new': typeof AppProductsNewRoute
   '/app/customers/': typeof AppCustomersIndexRoute
   '/app/loans/': typeof AppLoansIndexRoute
@@ -220,18 +274,24 @@ export interface FileRouteTypes {
     | '/login'
     | '/admin/profile'
     | '/app/approvals'
+    | '/app/audit'
+    | '/app/branches'
     | '/app/collections'
     | '/app/customers'
     | '/app/loans'
+    | '/app/notifications'
     | '/app/products'
     | '/app/profile'
+    | '/app/reports'
     | '/app/settings'
+    | '/app/users'
     | '/admin/'
     | '/app/'
     | '/app/customers/$id'
     | '/app/customers/new'
     | '/app/loans/$id'
     | '/app/loans/new'
+    | '/app/products/$id'
     | '/app/products/new'
     | '/app/customers/'
     | '/app/loans/'
@@ -242,15 +302,21 @@ export interface FileRouteTypes {
     | '/login'
     | '/admin/profile'
     | '/app/approvals'
+    | '/app/audit'
+    | '/app/branches'
     | '/app/collections'
+    | '/app/notifications'
     | '/app/profile'
+    | '/app/reports'
     | '/app/settings'
+    | '/app/users'
     | '/admin'
     | '/app'
     | '/app/customers/$id'
     | '/app/customers/new'
     | '/app/loans/$id'
     | '/app/loans/new'
+    | '/app/products/$id'
     | '/app/products/new'
     | '/app/customers'
     | '/app/loans'
@@ -263,18 +329,24 @@ export interface FileRouteTypes {
     | '/login'
     | '/admin/profile'
     | '/app/approvals'
+    | '/app/audit'
+    | '/app/branches'
     | '/app/collections'
     | '/app/customers'
     | '/app/loans'
+    | '/app/notifications'
     | '/app/products'
     | '/app/profile'
+    | '/app/reports'
     | '/app/settings'
+    | '/app/users'
     | '/admin/'
     | '/app/'
     | '/app/customers/$id'
     | '/app/customers/new'
     | '/app/loans/$id'
     | '/app/loans/new'
+    | '/app/products/$id'
     | '/app/products/new'
     | '/app/customers/'
     | '/app/loans/'
@@ -332,11 +404,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminIndexRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/app/users': {
+      id: '/app/users'
+      path: '/users'
+      fullPath: '/app/users'
+      preLoaderRoute: typeof AppUsersRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/settings': {
       id: '/app/settings'
       path: '/settings'
       fullPath: '/app/settings'
       preLoaderRoute: typeof AppSettingsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/reports': {
+      id: '/app/reports'
+      path: '/reports'
+      fullPath: '/app/reports'
+      preLoaderRoute: typeof AppReportsRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/profile': {
@@ -351,6 +437,13 @@ declare module '@tanstack/react-router' {
       path: '/products'
       fullPath: '/app/products'
       preLoaderRoute: typeof AppProductsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/notifications': {
+      id: '/app/notifications'
+      path: '/notifications'
+      fullPath: '/app/notifications'
+      preLoaderRoute: typeof AppNotificationsRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/loans': {
@@ -372,6 +465,20 @@ declare module '@tanstack/react-router' {
       path: '/collections'
       fullPath: '/app/collections'
       preLoaderRoute: typeof AppCollectionsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/branches': {
+      id: '/app/branches'
+      path: '/branches'
+      fullPath: '/app/branches'
+      preLoaderRoute: typeof AppBranchesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/audit': {
+      id: '/app/audit'
+      path: '/audit'
+      fullPath: '/app/audit'
+      preLoaderRoute: typeof AppAuditRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/approvals': {
@@ -414,6 +521,13 @@ declare module '@tanstack/react-router' {
       path: '/new'
       fullPath: '/app/products/new'
       preLoaderRoute: typeof AppProductsNewRouteImport
+      parentRoute: typeof AppProductsRoute
+    }
+    '/app/products/$id': {
+      id: '/app/products/$id'
+      path: '/$id'
+      fullPath: '/app/products/$id'
+      preLoaderRoute: typeof AppProductsIdRouteImport
       parentRoute: typeof AppProductsRoute
     }
     '/app/loans/new': {
@@ -492,11 +606,13 @@ const AppLoansRouteWithChildren = AppLoansRoute._addFileChildren(
 )
 
 interface AppProductsRouteChildren {
+  AppProductsIdRoute: typeof AppProductsIdRoute
   AppProductsNewRoute: typeof AppProductsNewRoute
   AppProductsIndexRoute: typeof AppProductsIndexRoute
 }
 
 const AppProductsRouteChildren: AppProductsRouteChildren = {
+  AppProductsIdRoute: AppProductsIdRoute,
   AppProductsNewRoute: AppProductsNewRoute,
   AppProductsIndexRoute: AppProductsIndexRoute,
 }
@@ -507,23 +623,33 @@ const AppProductsRouteWithChildren = AppProductsRoute._addFileChildren(
 
 interface AppRouteChildren {
   AppApprovalsRoute: typeof AppApprovalsRoute
+  AppAuditRoute: typeof AppAuditRoute
+  AppBranchesRoute: typeof AppBranchesRoute
   AppCollectionsRoute: typeof AppCollectionsRoute
   AppCustomersRoute: typeof AppCustomersRouteWithChildren
   AppLoansRoute: typeof AppLoansRouteWithChildren
+  AppNotificationsRoute: typeof AppNotificationsRoute
   AppProductsRoute: typeof AppProductsRouteWithChildren
   AppProfileRoute: typeof AppProfileRoute
+  AppReportsRoute: typeof AppReportsRoute
   AppSettingsRoute: typeof AppSettingsRoute
+  AppUsersRoute: typeof AppUsersRoute
   AppIndexRoute: typeof AppIndexRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
   AppApprovalsRoute: AppApprovalsRoute,
+  AppAuditRoute: AppAuditRoute,
+  AppBranchesRoute: AppBranchesRoute,
   AppCollectionsRoute: AppCollectionsRoute,
   AppCustomersRoute: AppCustomersRouteWithChildren,
   AppLoansRoute: AppLoansRouteWithChildren,
+  AppNotificationsRoute: AppNotificationsRoute,
   AppProductsRoute: AppProductsRouteWithChildren,
   AppProfileRoute: AppProfileRoute,
+  AppReportsRoute: AppReportsRoute,
   AppSettingsRoute: AppSettingsRoute,
+  AppUsersRoute: AppUsersRoute,
   AppIndexRoute: AppIndexRoute,
 }
 

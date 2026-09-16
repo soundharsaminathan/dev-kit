@@ -4,14 +4,15 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
-import { UserRole } from "../generated/prisma";
+import { AccountingService } from "../accounting/accounting.service";
 import { AuditService } from "../audit/audit.service";
-import { hashPassword } from "../common/password";
-import { money } from "../common/money";
-import { PrismaService } from "../prisma/prisma.service";
 import type { AuthUser } from "../auth/current-user.decorator";
+import { money } from "../common/money";
+import { hashPassword } from "../common/password";
 import { assertSameCompany } from "../common/tenancy";
-import {
+import { UserRole } from "../generated/prisma";
+import { PrismaService } from "../prisma/prisma.service";
+import type {
   CreateCompanyDto,
   UpdateCompanySettingsDto,
 } from "./dto/company.dto";
@@ -21,6 +22,7 @@ export class CompaniesService {
   constructor(
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(AuditService) private readonly audit: AuditService,
+    @Inject(AccountingService) private readonly accounting: AccountingService,
   ) {}
 
   async create(actor: AuthUser, dto: CreateCompanyDto) {
@@ -62,6 +64,8 @@ export class CompaniesService {
 
       return created;
     });
+
+    await this.accounting.seedChartOfAccounts(company.id);
 
     await this.audit.append({
       companyId: company.id,
@@ -113,6 +117,11 @@ export class CompaniesService {
             : undefined,
         defaultMonthlyFirstEmiOption: dto.defaultMonthlyFirstEmiOption,
         defaultAdvanceTreatments: dto.defaultAdvanceTreatments,
+        foreclosureChargePercent:
+          dto.foreclosureChargePercent !== undefined
+            ? money(dto.foreclosureChargePercent)
+            : undefined,
+        maxRestructures: dto.maxRestructures,
       },
     });
 

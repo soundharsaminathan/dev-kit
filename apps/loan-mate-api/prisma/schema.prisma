@@ -28,6 +28,13 @@ enum LoanStatus {
   DISBURSED
   ACTIVE
   CLOSED
+  WRITTEN_OFF
+}
+
+enum ClosureType {
+  NORMAL
+  FORECLOSED
+  SETTLED
 }
 
 enum PaymentFrequency {
@@ -47,6 +54,7 @@ enum InstallmentStatus {
   PARTIAL
   PAID
   OVERDUE
+  SKIPPED
 }
 
 enum PaymentMode {
@@ -73,8 +81,16 @@ enum ApprovalType {
   LOAN_APPROVAL
   PRODUCT_OVERRIDE
   RATE_CHANGE
+  PENALTY_OVERRIDE
   PENALTY_WAIVER
+  INTEREST_WAIVER
   PAYMENT_REVERSAL
+  NPA_MARK
+  NPA_CLEAR
+  FORECLOSURE
+  SETTLEMENT
+  WRITE_OFF
+  RESTRUCTURE
   OTHER
 }
 
@@ -82,6 +98,43 @@ enum OutboxStatus {
   PENDING
   PROCESSED
   FAILED
+}
+
+enum DocumentEntityType {
+  CUSTOMER
+  LOAN
+  PAYMENT
+}
+
+enum DocumentKind {
+  KYC_PHOTO_ID
+  KYC_PAN
+  KYC_ADDRESS
+  LOAN_AGREEMENT
+  LOAN_SANCTION
+  PAYMENT_RECEIPT
+  OTHER
+}
+
+enum AccountType {
+  ASSET
+  LIABILITY
+  INCOME
+  EXPENSE
+  EQUITY
+}
+
+enum JournalSourceType {
+  DISBURSEMENT
+  PAYMENT
+  FEE
+  WAIVER
+  REVERSAL
+  FORECLOSURE
+  SETTLEMENT
+  WRITE_OFF
+  RESTRUCTURE
+  MANUAL
 }
 
 model Company {
@@ -92,15 +145,19 @@ model Company {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  settings  CompanySettings?
-  branches  Branch[]
-  users     User[]
-  customers Customer[]
-  products  LoanProduct[]
-  loans     Loan[]
-  payments  Payment[]
-  approvals ApprovalRequest[]
-  auditLogs AuditLog[]
+  settings      CompanySettings?
+  branches      Branch[]
+  users         User[]
+  customers     Customer[]
+  products      LoanProduct[]
+  loans         Loan[]
+  payments      Payment[]
+  approvals     ApprovalRequest[]
+  auditLogs     AuditLog[]
+  documents     Document[]
+  accounts      Account[]
+  journals      JournalEntry[]
+  notifications Notification[]
 }
 
 model Branch {
@@ -121,14 +178,16 @@ model Branch {
 }
 
 model CompanySettings {
-  id                          String                 @id @default(cuid())
-  companyId                   String                 @unique
-  graceDays                   Int                    @default(0)
-  penaltyDailyPercent         Decimal                @default(0.1) @db.Decimal(8, 4)
-  defaultMonthlyFirstEmiOption MonthlyFirstEmiOption @default(EXACT_DAY)
-  defaultAdvanceTreatments    AdvanceTreatment[]     @default([REDUCE_PRINCIPAL, SKIP_NEXT_EMI, PARK_AS_ADVANCE])
-  createdAt                   DateTime               @default(now())
-  updatedAt                   DateTime               @updatedAt
+  id                           String                 @id @default(cuid())
+  companyId                    String                 @unique
+  graceDays                    Int                    @default(0)
+  penaltyDailyPercent          Decimal                @default(0.1) @db.Decimal(8, 4)
+  defaultMonthlyFirstEmiOption MonthlyFirstEmiOption  @default(EXACT_DAY)
+  defaultAdvanceTreatments     AdvanceTreatment[]     @default([REDUCE_PRINCIPAL, SKIP_NEXT_EMI, PARK_AS_ADVANCE])
+  foreclosureChargePercent     Decimal                @default(0) @db.Decimal(8, 4)
+  maxRestructures              Int                    @default(3)
+  createdAt                    DateTime               @default(now())
+  updatedAt                    DateTime               @updatedAt
 
   company Company @relation(fields: [companyId], references: [id])
 }
@@ -145,29 +204,37 @@ model User {
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
-  company            Company?          @relation(fields: [companyId], references: [id])
-  branch             Branch?           @relation(fields: [branchId], references: [id])
-  madeApprovals      ApprovalRequest[] @relation("ApprovalMaker")
-  checkedApprovals   ApprovalRequest[] @relation("ApprovalChecker")
-  auditLogs          AuditLog[]
-  recordedPayments   Payment[]         @relation("PaymentRecorder")
+  company          Company?          @relation(fields: [companyId], references: [id])
+  branch           Branch?           @relation(fields: [branchId], references: [id])
+  madeApprovals    ApprovalRequest[] @relation("ApprovalMaker")
+  checkedApprovals ApprovalRequest[] @relation("ApprovalChecker")
+  auditLogs        AuditLog[]
+  recordedPayments Payment[]         @relation("PaymentRecorder")
+  uploadedDocs     Document[]        @relation("DocumentUploader")
+  journals         JournalEntry[]    @relation("JournalCreator")
+  notifications    Notification[]
 
   @@index([companyId])
   @@index([branchId])
 }
 
 model Customer {
-  id             String   @id @default(cuid())
-  companyId      String
-  customerNumber String   @unique
-  name           String
-  mobile         String
-  pan            String
-  address        String?
-  blacklisted    Boolean  @default(false)
+  id              String    @id @default(cuid())
+  companyId       String
+  customerNumber  String    @unique
+  name            String
+  mobile          String
+  pan             String
+  address         String?
+  blacklisted     Boolean   @default(false)
   blacklistReason String?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  npa             Boolean   @default(false)
+  npaReason       String?
+  npaMarkedAt     DateTime?
+  npaClearedAt    DateTime?
+  npaSourceLoanId String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
   company Company @relation(fields: [companyId], references: [id])
   loans   Loan[]
@@ -175,28 +242,26 @@ model Customer {
   @@unique([companyId, mobile])
   @@unique([companyId, pan])
   @@index([companyId])
+  @@index([companyId, npa])
 }
 
 model LoanProduct {
-  id                     String                 @id @default(cuid())
-  companyId              String
-  name                   String
-  code                   String
-  defaultPrincipal       Decimal                @db.Decimal(14, 2)
-  defaultAnnualRate      Decimal                @db.Decimal(8, 4)
-  /// Rate when frequency = WEEKLY (falls back to defaultAnnualRate if null)
-  annualRateWeekly       Decimal?               @db.Decimal(8, 4)
-  /// Rate when frequency = BIWEEKLY
-  annualRateBiweekly     Decimal?               @db.Decimal(8, 4)
-  /// Rate when frequency = MONTHLY
-  annualRateMonthly      Decimal?               @db.Decimal(8, 4)
-  defaultTenure          Int
-  defaultFrequency       PaymentFrequency       @default(MONTHLY)
-  defaultMonthlyFirstEmi MonthlyFirstEmiOption  @default(EXACT_DAY)
-  processingFeePercent   Decimal                @default(0) @db.Decimal(8, 4)
-  active                 Boolean                @default(true)
-  createdAt              DateTime               @default(now())
-  updatedAt              DateTime               @updatedAt
+  id                   String                @id @default(cuid())
+  companyId            String
+  name                 String
+  code                 String
+  defaultPrincipal     Decimal               @db.Decimal(14, 2)
+  defaultAnnualRate    Decimal               @db.Decimal(8, 4)
+  annualRateWeekly     Decimal?              @db.Decimal(8, 4)
+  annualRateBiweekly   Decimal?              @db.Decimal(8, 4)
+  annualRateMonthly    Decimal?              @db.Decimal(8, 4)
+  defaultTenure        Int
+  defaultFrequency     PaymentFrequency      @default(MONTHLY)
+  defaultMonthlyFirstEmi MonthlyFirstEmiOption @default(EXACT_DAY)
+  processingFeePercent Decimal               @default(0) @db.Decimal(8, 4)
+  active               Boolean               @default(true)
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
 
   company Company @relation(fields: [companyId], references: [id])
   loans   Loan[]
@@ -213,6 +278,7 @@ model Loan {
   productId               String
   loanNumber              String                 @unique
   status                  LoanStatus             @default(DRAFT)
+  closureType             ClosureType?
   principal               Decimal                @db.Decimal(14, 2)
   annualRatePercent       Decimal                @db.Decimal(8, 4)
   penaltyDailyPercent     Decimal?               @db.Decimal(8, 4)
@@ -224,20 +290,27 @@ model Loan {
   tenureOverride          Boolean                @default(false)
   productOverride         Boolean                @default(false)
   disbursementDate        DateTime?
+  disbursementMode        PaymentMode?
+  disbursementReference   String?
   netDisbursement         Decimal?               @db.Decimal(14, 2)
   partialInterestDeducted Decimal                @default(0) @db.Decimal(14, 2)
   advanceBalance          Decimal                @default(0) @db.Decimal(14, 2)
+  restructureCount        Int                    @default(0)
+  closedAt                DateTime?
+  writtenOffAt            DateTime?
   rejectionReason         String?
   createdAt               DateTime               @default(now())
   updatedAt               DateTime               @updatedAt
 
-  company       Company             @relation(fields: [companyId], references: [id])
-  branch        Branch              @relation(fields: [branchId], references: [id])
-  customer      Customer            @relation(fields: [customerId], references: [id])
-  product       LoanProduct         @relation(fields: [productId], references: [id])
-  installments  Installment[]
-  payments      Payment[]
-  approvals     ApprovalRequest[]
+  company      Company             @relation(fields: [companyId], references: [id])
+  branch       Branch              @relation(fields: [branchId], references: [id])
+  customer     Customer            @relation(fields: [customerId], references: [id])
+  product      LoanProduct         @relation(fields: [productId], references: [id])
+  installments Installment[]
+  payments     Payment[]
+  approvals    ApprovalRequest[]
+  closures     LoanClosure[]
+  restructures LoanRestructure[]
 
   @@index([companyId, status])
   @@index([customerId])
@@ -260,8 +333,8 @@ model Installment {
   createdAt       DateTime          @default(now())
   updatedAt       DateTime          @updatedAt
 
-  loan         Loan                @relation(fields: [loanId], references: [id])
-  allocations  PaymentAllocation[]
+  loan        Loan                @relation(fields: [loanId], references: [id])
+  allocations PaymentAllocation[]
 
   @@unique([loanId, number])
   @@index([loanId, dueDate])
@@ -310,20 +383,21 @@ model PaymentAllocation {
 }
 
 model ApprovalRequest {
-  id         String         @id @default(cuid())
-  companyId  String
-  type       ApprovalType
-  entityType String
-  entityId   String
-  payload    Json
-  status     ApprovalStatus @default(PENDING)
-  reason     String?
-  makerId    String
-  checkerId  String?
-  decidedAt  DateTime?
-  loanId     String?
-  createdAt  DateTime       @default(now())
-  updatedAt  DateTime       @updatedAt
+  id          String         @id @default(cuid())
+  companyId   String
+  type        ApprovalType
+  entityType  String
+  entityId    String
+  payload     Json
+  status      ApprovalStatus @default(PENDING)
+  reason      String?
+  makerId     String
+  checkerId   String?
+  decidedAt   DateTime?
+  appliedAt   DateTime?
+  loanId      String?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
 
   company Company @relation(fields: [companyId], references: [id])
   maker   User    @relation("ApprovalMaker", fields: [makerId], references: [id])
@@ -370,4 +444,128 @@ model OutboxEvent {
   processedAt DateTime?
 
   @@index([status, createdAt])
+}
+
+model Document {
+  id           String             @id @default(cuid())
+  companyId    String
+  entityType   DocumentEntityType
+  entityId     String
+  kind         DocumentKind
+  objectKey    String
+  fileName     String
+  contentType  String
+  sizeBytes    Int?
+  uploadedById String?
+  createdAt    DateTime           @default(now())
+
+  company    Company @relation(fields: [companyId], references: [id])
+  uploadedBy User?   @relation("DocumentUploader", fields: [uploadedById], references: [id])
+
+  @@index([companyId, entityType, entityId])
+}
+
+model LoanClosure {
+  id                    String      @id @default(cuid())
+  loanId                String
+  type                  ClosureType
+  asOfDate              DateTime    @db.Date
+  principalOutstanding  Decimal     @db.Decimal(14, 2)
+  interestAccrued       Decimal     @db.Decimal(14, 2)
+  penaltyOutstanding    Decimal     @db.Decimal(14, 2)
+  foreclosureCharge     Decimal     @default(0) @db.Decimal(14, 2)
+  settlementAmount      Decimal?    @db.Decimal(14, 2)
+  amountWrittenOff      Decimal     @default(0) @db.Decimal(14, 2)
+  amountCollected       Decimal     @default(0) @db.Decimal(14, 2)
+  reason                String?
+  createdAt             DateTime    @default(now())
+
+  loan Loan @relation(fields: [loanId], references: [id])
+
+  @@index([loanId])
+}
+
+model LoanRestructure {
+  id                 String   @id @default(cuid())
+  loanId             String
+  oldTenure          Int
+  newTenure          Int
+  oldRate            Decimal  @db.Decimal(8, 4)
+  newRate            Decimal  @db.Decimal(8, 4)
+  oldEmiAmount       Decimal? @db.Decimal(14, 2)
+  newEmiAmount       Decimal? @db.Decimal(14, 2)
+  reason             String?
+  createdAt          DateTime @default(now())
+
+  loan Loan @relation(fields: [loanId], references: [id])
+
+  @@index([loanId])
+}
+
+model Account {
+  id          String      @id @default(cuid())
+  companyId   String
+  code        String
+  name        String
+  type        AccountType
+  active      Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+
+  company Company       @relation(fields: [companyId], references: [id])
+  lines   JournalLine[]
+
+  @@unique([companyId, code])
+  @@index([companyId])
+}
+
+model JournalEntry {
+  id           String            @id @default(cuid())
+  companyId    String
+  entryDate    DateTime          @db.Date
+  memo         String?
+  sourceType   JournalSourceType
+  sourceId     String?
+  createdById  String?
+  createdAt    DateTime          @default(now())
+
+  company   Company       @relation(fields: [companyId], references: [id])
+  createdBy User?         @relation("JournalCreator", fields: [createdById], references: [id])
+  lines     JournalLine[]
+
+  @@index([companyId, entryDate])
+  @@index([sourceType, sourceId])
+}
+
+model JournalLine {
+  id        String  @id @default(cuid())
+  journalId String
+  accountId String
+  debit     Decimal @default(0) @db.Decimal(14, 2)
+  credit    Decimal @default(0) @db.Decimal(14, 2)
+
+  journal JournalEntry @relation(fields: [journalId], references: [id])
+  account Account      @relation(fields: [accountId], references: [id])
+
+  @@index([journalId])
+  @@index([accountId])
+}
+
+model Notification {
+  id        String    @id @default(cuid())
+  companyId String
+  userId    String
+  type      String
+  title     String
+  body      String
+  entityType String?
+  entityId  String?
+  readAt    DateTime?
+  emailSent Boolean   @default(false)
+  createdAt DateTime  @default(now())
+
+  company Company @relation(fields: [companyId], references: [id])
+  user    User    @relation(fields: [userId], references: [id])
+
+  @@index([userId, readAt])
+  @@index([companyId, createdAt])
 }

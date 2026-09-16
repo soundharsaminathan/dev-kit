@@ -11,6 +11,7 @@ import {
 import {
   MonthlyFirstEmiOption,
   PaymentFrequency,
+  PaymentMode,
 } from "../../generated/prisma";
 
 export class CreateLoanDto {
@@ -64,6 +65,24 @@ export class RejectLoanDto {
 export class DisburseLoanDto {
   @IsDateString()
   disbursementDate!: string;
+
+  @IsOptional()
+  @IsEnum(PaymentMode)
+  mode?: PaymentMode;
+
+  @IsOptional()
+  @IsString()
+  reference?: string;
+}
+
+export class PenaltyOverrideDto {
+  @IsNumber()
+  @Min(0)
+  penaltyDailyPercent!: number;
+
+  @IsOptional()
+  @IsString()
+  reason?: string;
 }
 
 export class RateChangeDto {

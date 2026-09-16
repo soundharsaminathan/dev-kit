@@ -1,5 +1,8 @@
+import { CHART_OF_ACCOUNTS_TEMPLATE } from "../src/accounting/chart-of-accounts";
 import { hashPasswordDeterministic } from "../src/common/password";
 import {
+  DocumentEntityType,
+  DocumentKind,
   MonthlyFirstEmiOption,
   PaymentFrequency,
   PrismaClient,
@@ -19,6 +22,13 @@ function pwd() {
 async function main() {
   console.log("Seeding loan-mate…");
 
+  await prisma.notification.deleteMany();
+  await prisma.journalLine.deleteMany();
+  await prisma.journalEntry.deleteMany();
+  await prisma.account.deleteMany();
+  await prisma.document.deleteMany();
+  await prisma.loanClosure.deleteMany();
+  await prisma.loanRestructure.deleteMany();
   await prisma.auditLog.deleteMany();
   await prisma.paymentAllocation.deleteMany();
   await prisma.payment.deleteMany();
@@ -52,10 +62,23 @@ async function main() {
           graceDays: 2,
           penaltyDailyPercent: "0.1000",
           defaultMonthlyFirstEmiOption: MonthlyFirstEmiOption.EXACT_DAY,
+          foreclosureChargePercent: "2.0000",
+          maxRestructures: 3,
         },
       },
     },
   });
+
+  for (const row of CHART_OF_ACCOUNTS_TEMPLATE) {
+    await prisma.account.create({
+      data: {
+        companyId: company.id,
+        code: row.code,
+        name: row.name,
+        type: row.type,
+      },
+    });
+  }
 
   const branch = await prisma.branch.create({
     data: {
@@ -155,6 +178,19 @@ async function main() {
       mobile: "9876543210",
       pan: "ABCDE1234F",
       address: "12 MG Road, Bengaluru",
+    },
+  });
+
+  await prisma.document.create({
+    data: {
+      companyId: company.id,
+      entityType: DocumentEntityType.CUSTOMER,
+      entityId: customer.id,
+      kind: DocumentKind.KYC_PAN,
+      objectKey: "seed/kyc-pan.pdf",
+      fileName: "pan.pdf",
+      contentType: "application/pdf",
+      uploadedById: owner.id,
     },
   });
 

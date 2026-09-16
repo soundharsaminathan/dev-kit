@@ -1,9 +1,21 @@
 import {
   BadRequestException,
+  forwardRef,
   Inject,
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
+import { AccountingService } from "../accounting/accounting.service";
+import { ApprovalsService } from "../approvals/approvals.service";
+import { AuditService } from "../audit/audit.service";
+import type { AuthUser } from "../auth/current-user.decorator";
+import { money, toNumber } from "../common/money";
+import { nextSequence, padSeq } from "../common/sequence";
+import {
+  assertBranchAccess,
+  assertSameCompany,
+  requireCompany,
+} from "../common/tenancy";
 import {
   AdvanceTreatment,
   ApprovalStatus,
@@ -11,21 +23,16 @@ import {
   InstallmentStatus,
   LoanStatus,
 } from "../generated/prisma";
-import type { AuthUser } from "../auth/current-user.decorator";
-import { ApprovalsService } from "../approvals/approvals.service";
-import { AuditService } from "../audit/audit.service";
-import { money, toNumber } from "../common/money";
-import { nextSequence, padSeq } from "../common/sequence";
-import { assertSameCompany, requireCompany } from "../common/tenancy";
+import { NotificationService } from "../notifications/notifications.service";
 import { PrismaService } from "../prisma/prisma.service";
 import {
+  type AllocatableInstallment,
   allocatePayment,
   totalOutstanding,
-  type AllocatableInstallment,
 } from "../schedules/domain/allocation";
-import { computePenaltyDue } from "../schedules/domain/penalty";
 import { round2 } from "../schedules/domain/emi";
-import {
+import { computePenaltyDue } from "../schedules/domain/penalty";
+import type {
   RecordPaymentDto,
   RequestReversalDto,
   RequestWaiverDto,
@@ -36,7 +43,11 @@ export class PaymentsService {
   constructor(
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(AuditService) private readonly audit: AuditService,
-    @Inject(ApprovalsService) private readonly approvals: ApprovalsService,
+    @Inject(forwardRef(() => ApprovalsService))
+    private readonly approvals: ApprovalsService,
+    @Inject(AccountingService) private readonly accounting: AccountingService,
+    @Inject(NotificationService)
+    private readonly notifications: NotificationService,
   ) {}
 
   private toAllocatable(
@@ -98,10 +109,12 @@ export class PaymentsService {
     });
     if (!loan) throw new NotFoundException("Loan not found");
     assertSameCompany(actor, loan.companyId);
-    if (
-      loan.status !== LoanStatus.ACTIVE &&
-      loan.status !== LoanStatus.DISBURSED
-    ) {
+    assertBranchAccess(actor, loan.branchId);
+    const collectible =
+      loan.status === LoanStatus.ACTIVE ||
+      loan.status === LoanStatus.DISBURSED ||
+      loan.status === LoanStatus.WRITTEN_OFF;
+    if (!collectible) {
       throw new BadRequestException("Loan is not collectible");
     }
 
@@ -222,8 +235,12 @@ export class PaymentsService {
       }
 
       // Close loan if fully paid
-      const remaining = await tx.installment.findMany({ where: { loanId: loan.id } });
-      const stillOpen = remaining.some((i) => i.status !== InstallmentStatus.PAID);
+      const remaining = await tx.installment.findMany({
+        where: { loanId: loan.id },
+      });
+      const stillOpen = remaining.some(
+        (i) => i.status !== InstallmentStatus.PAID,
+      );
       if (!stillOpen) {
         await tx.loan.update({
           where: { id: loan.id },
@@ -232,6 +249,35 @@ export class PaymentsService {
       }
 
       return pay;
+    });
+
+    let allocPrincipal = 0;
+    let allocInterest = 0;
+    let allocPenalty = 0;
+    for (const line of allocation.lines) {
+      allocPrincipal += line.principal;
+      allocInterest += line.interest;
+      allocPenalty += line.penalty;
+    }
+
+    await this.accounting.postPayment({
+      companyId,
+      paymentId: payment.id,
+      entryDate: paymentDate,
+      amount: dto.amount,
+      principal: allocPrincipal,
+      interest: allocInterest,
+      penalty: allocPenalty,
+      createdById: actor.id,
+    });
+
+    await this.notifications.enqueueOutbox("payment.record", {
+      companyId,
+      entityType: "Payment",
+      entityId: payment.id,
+      receiptNumber,
+      userId: actor.id,
+      summary: `Payment ${receiptNumber} recorded for ${loan.loanNumber}`,
     });
 
     await this.audit.append({
@@ -363,7 +409,7 @@ export class PaymentsService {
       return { basePayment, advancePayment: pay, treatment };
     }
 
-    // SKIP_NEXT_EMI — park and mark next pending as skipped via advance balance covering it
+    // SKIP_NEXT_EMI — allocate excess to next PENDING/PARTIAL installment
     const next = await this.prisma.installment.findFirst({
       where: {
         loanId,
@@ -371,25 +417,112 @@ export class PaymentsService {
       },
       orderBy: { dueDate: "asc" },
     });
-    const pay = await this.prisma.payment.create({
-      data: {
-        companyId,
-        loanId,
-        receiptNumber,
-        amount: money(excess),
-        paymentDate,
-        mode: dto.mode,
-        advanceTreatment: treatment,
-        recordedById: actor.id,
-        reference: dto.reference,
-        details: `Skip next EMI ${next?.number ?? ""}`,
-      },
+    if (!next) {
+      const pay = await this.prisma.payment.create({
+        data: {
+          companyId,
+          loanId,
+          receiptNumber,
+          amount: money(excess),
+          paymentDate,
+          mode: dto.mode,
+          advanceTreatment: treatment,
+          recordedById: actor.id,
+          reference: dto.reference,
+          details: dto.details,
+        },
+      });
+      await this.prisma.loan.update({
+        where: { id: loanId },
+        data: { advanceBalance: { increment: money(excess) } },
+      });
+      return { basePayment, advancePayment: pay, treatment };
+    }
+
+    const remPenalty = round2(
+      toNumber(next.penaltyDue) - toNumber(next.paidPenalty),
+    );
+    const remInterest = round2(
+      toNumber(next.interestDue) - toNumber(next.paidInterest),
+    );
+    const remPrincipal = round2(
+      toNumber(next.principalDue) - toNumber(next.paidPrincipal),
+    );
+    const emiDue = round2(remPenalty + remInterest + remPrincipal);
+
+    let left = excess;
+    const takePenalty = Math.min(left, remPenalty);
+    left = round2(left - takePenalty);
+    const takeInterest = Math.min(left, remInterest);
+    left = round2(left - takeInterest);
+    const takePrincipal = Math.min(left, remPrincipal);
+    left = round2(left - takePrincipal);
+
+    const paidPenalty = round2(toNumber(next.paidPenalty) + takePenalty);
+    const paidInterest = round2(toNumber(next.paidInterest) + takeInterest);
+    const paidPrincipal = round2(toNumber(next.paidPrincipal) + takePrincipal);
+    const fullyCovered = emiDue <= excess + 0.001;
+    const newStatus = fullyCovered
+      ? InstallmentStatus.SKIPPED
+      : this.statusAfterPay({
+          principalDue: toNumber(next.principalDue),
+          interestDue: toNumber(next.interestDue),
+          penaltyDue: toNumber(next.penaltyDue),
+          paidPrincipal,
+          paidInterest,
+          paidPenalty,
+          dueDate: next.dueDate,
+        });
+
+    const pay = await this.prisma.$transaction(async (tx) => {
+      const p = await tx.payment.create({
+        data: {
+          companyId,
+          loanId,
+          receiptNumber,
+          amount: money(excess),
+          paymentDate,
+          mode: dto.mode,
+          advanceTreatment: treatment,
+          recordedById: actor.id,
+          reference: dto.reference,
+          details: dto.details ?? `Skip EMI #${next.number}`,
+        },
+      });
+      await tx.paymentAllocation.create({
+        data: {
+          paymentId: p.id,
+          installmentId: next.id,
+          principal: money(takePrincipal),
+          interest: money(takeInterest),
+          penalty: money(takePenalty),
+        },
+      });
+      await tx.installment.update({
+        where: { id: next.id },
+        data: {
+          paidPrincipal: money(paidPrincipal),
+          paidInterest: money(paidInterest),
+          paidPenalty: money(paidPenalty),
+          status: newStatus,
+        },
+      });
+      if (left > 0.001) {
+        await tx.loan.update({
+          where: { id: loanId },
+          data: { advanceBalance: { increment: money(left) } },
+        });
+      }
+      return p;
     });
-    await this.prisma.loan.update({
-      where: { id: loanId },
-      data: { advanceBalance: { increment: money(excess) } },
-    });
-    return { basePayment, advancePayment: pay, treatment, nextInstallmentId: next?.id };
+
+    return {
+      basePayment,
+      advancePayment: pay,
+      treatment,
+      nextInstallmentId: next.id,
+      skipped: fullyCovered,
+    };
   }
 
   async requestReversal(
@@ -419,13 +552,9 @@ export class PaymentsService {
   async executeReversal(actor: AuthUser, paymentId: string) {
     const payment = await this.prisma.payment.findUnique({
       where: { id: paymentId },
-      include: { allocations: true },
     });
     if (!payment) throw new NotFoundException("Payment not found");
     assertSameCompany(actor, payment.companyId);
-    if (payment.reversed) {
-      throw new BadRequestException("Already reversed");
-    }
 
     const pending = await this.prisma.approvalRequest.findFirst({
       where: {
@@ -437,6 +566,19 @@ export class PaymentsService {
     });
     if (!pending) {
       throw new BadRequestException("Approved reversal request required");
+    }
+    return this.applyReversal(actor, paymentId);
+  }
+
+  async applyReversal(actor: AuthUser, paymentId: string) {
+    const payment = await this.prisma.payment.findUnique({
+      where: { id: paymentId },
+      include: { allocations: true },
+    });
+    if (!payment) throw new NotFoundException("Payment not found");
+    assertSameCompany(actor, payment.companyId);
+    if (payment.reversed) {
+      throw new BadRequestException("Already reversed");
     }
 
     await this.prisma.$transaction(async (tx) => {
@@ -493,8 +635,33 @@ export class PaymentsService {
     return { reversed: true };
   }
 
+  async requestInterestWaiver(actor: AuthUser, dto: RequestWaiverDto) {
+    const inst = await this.prisma.installment.findUnique({
+      where: { id: dto.installmentId },
+      include: { loan: true },
+    });
+    if (!inst) throw new NotFoundException("Installment not found");
+    assertSameCompany(actor, inst.loan.companyId);
+
+    const remInterest = round2(
+      toNumber(inst.interestDue) - toNumber(inst.paidInterest),
+    );
+    if (dto.amount > remInterest + 0.001) {
+      throw new BadRequestException("Waiver exceeds unpaid interest");
+    }
+
+    return this.approvals.create(actor, {
+      type: ApprovalType.INTEREST_WAIVER,
+      entityType: "Installment",
+      entityId: inst.id,
+      loanId: inst.loanId,
+      payload: { installmentId: inst.id, amount: dto.amount },
+      reason: dto.reason,
+    });
+  }
+
   async requestWaiver(actor: AuthUser, dto: RequestWaiverDto) {
-    const companyId = requireCompany(actor);
+    requireCompany(actor);
     const inst = await this.prisma.installment.findUnique({
       where: { id: dto.installmentId },
       include: { loan: true },
@@ -520,13 +687,6 @@ export class PaymentsService {
   }
 
   async executeWaiver(actor: AuthUser, installmentId: string, amount: number) {
-    const inst = await this.prisma.installment.findUnique({
-      where: { id: installmentId },
-      include: { loan: true },
-    });
-    if (!inst) throw new NotFoundException("Installment not found");
-    assertSameCompany(actor, inst.loan.companyId);
-
     const approved = await this.prisma.approvalRequest.findFirst({
       where: {
         type: ApprovalType.PENALTY_WAIVER,
@@ -538,6 +698,20 @@ export class PaymentsService {
     if (!approved) {
       throw new BadRequestException("Approved waiver required");
     }
+    return this.applyPenaltyWaiver(actor, installmentId, amount);
+  }
+
+  async applyPenaltyWaiver(
+    actor: AuthUser,
+    installmentId: string,
+    amount: number,
+  ) {
+    const inst = await this.prisma.installment.findUnique({
+      where: { id: installmentId },
+      include: { loan: true },
+    });
+    if (!inst) throw new NotFoundException("Installment not found");
+    assertSameCompany(actor, inst.loan.companyId);
 
     const newPenaltyDue = round2(
       Math.max(0, toNumber(inst.penaltyDue) - amount),
@@ -545,6 +719,15 @@ export class PaymentsService {
     const updated = await this.prisma.installment.update({
       where: { id: installmentId },
       data: { penaltyDue: money(newPenaltyDue) },
+    });
+
+    await this.accounting.postWaiver({
+      companyId: inst.loan.companyId,
+      installmentId,
+      entryDate: new Date(),
+      interestWaived: 0,
+      penaltyWaived: amount,
+      createdById: actor.id,
     });
 
     await this.audit.append({
@@ -559,10 +742,52 @@ export class PaymentsService {
     return updated;
   }
 
+  async applyInterestWaiver(
+    actor: AuthUser,
+    installmentId: string,
+    amount: number,
+  ) {
+    const inst = await this.prisma.installment.findUnique({
+      where: { id: installmentId },
+      include: { loan: true },
+    });
+    if (!inst) throw new NotFoundException("Installment not found");
+    assertSameCompany(actor, inst.loan.companyId);
+
+    const newInterestDue = round2(
+      Math.max(0, toNumber(inst.interestDue) - amount),
+    );
+    const updated = await this.prisma.installment.update({
+      where: { id: installmentId },
+      data: { interestDue: money(newInterestDue) },
+    });
+
+    await this.accounting.postWaiver({
+      companyId: inst.loan.companyId,
+      installmentId,
+      entryDate: new Date(),
+      interestWaived: amount,
+      penaltyWaived: 0,
+      createdById: actor.id,
+    });
+
+    await this.audit.append({
+      companyId: inst.loan.companyId,
+      actorId: actor.id,
+      action: "interest.waiver",
+      entityType: "Installment",
+      entityId: installmentId,
+      after: { interestDue: newInterestDue, waived: amount },
+    });
+
+    return updated;
+  }
+
   async listByLoan(actor: AuthUser, loanId: string) {
     const loan = await this.prisma.loan.findUnique({ where: { id: loanId } });
     if (!loan) throw new NotFoundException("Loan not found");
     assertSameCompany(actor, loan.companyId);
+    assertBranchAccess(actor, loan.branchId);
     return this.prisma.payment.findMany({
       where: { loanId },
       include: { allocations: true },

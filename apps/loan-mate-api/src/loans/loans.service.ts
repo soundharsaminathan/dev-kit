@@ -1,28 +1,33 @@
 import {
   BadRequestException,
+  forwardRef,
   Inject,
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
-import {
-  ApprovalStatus,
-  ApprovalType,
-  InstallmentStatus,
-  LoanStatus,
-} from "../generated/prisma";
-import type { AuthUser } from "../auth/current-user.decorator";
+import { AccountingService } from "../accounting/accounting.service";
 import { ApprovalsService } from "../approvals/approvals.service";
 import { AuditService } from "../audit/audit.service";
+import type { AuthUser } from "../auth/current-user.decorator";
 import { money, toNumber } from "../common/money";
 import { nextSequence, padSeq } from "../common/sequence";
 import {
   assertBranchAccess,
   assertSameCompany,
+  branchWhere,
   requireCompany,
 } from "../common/tenancy";
+import {
+  ApprovalStatus,
+  ApprovalType,
+  DocumentEntityType,
+  InstallmentStatus,
+  LoanStatus,
+} from "../generated/prisma";
+import { NotificationService } from "../notifications/notifications.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { generateSchedule } from "../schedules/domain/emi";
-import {
+import type {
   CreateLoanDto,
   DisburseLoanDto,
   RateChangeDto,
@@ -34,7 +39,11 @@ export class LoansService {
   constructor(
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(AuditService) private readonly audit: AuditService,
-    @Inject(ApprovalsService) private readonly approvals: ApprovalsService,
+    @Inject(forwardRef(() => ApprovalsService))
+    private readonly approvals: ApprovalsService,
+    @Inject(AccountingService) private readonly accounting: AccountingService,
+    @Inject(NotificationService)
+    private readonly notifications: NotificationService,
   ) {}
 
   async createDraft(actor: AuthUser, dto: CreateLoanDto) {
@@ -57,6 +66,9 @@ export class LoansService {
     if (customer.blacklisted) {
       throw new BadRequestException("Customer is blacklisted");
     }
+    if (customer.npa) {
+      throw new BadRequestException("Customer is NPA; new loans not allowed");
+    }
     if (!product || product.companyId !== companyId || !product.active) {
       throw new NotFoundException("Product not found");
     }
@@ -66,12 +78,10 @@ export class LoansService {
     if (!company) throw new NotFoundException("Company not found");
 
     const principal = dto.principal ?? toNumber(product.defaultPrincipal);
-    const tenureInstallments =
-      dto.tenureInstallments ?? product.defaultTenure;
+    const tenureInstallments = dto.tenureInstallments ?? product.defaultTenure;
     const frequency = dto.frequency ?? product.defaultFrequency;
     const productRateForFrequency = rateForFrequency(product, frequency);
-    const annualRatePercent =
-      dto.annualRatePercent ?? productRateForFrequency;
+    const annualRatePercent = dto.annualRatePercent ?? productRateForFrequency;
     const monthlyFirstEmiOption =
       dto.monthlyFirstEmiOption ??
       product.defaultMonthlyFirstEmi ??
@@ -130,13 +140,31 @@ export class LoansService {
       after: { loanNumber, status: loan.status },
     });
 
+    if (productOverride) {
+      await this.approvals.create(actor, {
+        type: ApprovalType.PRODUCT_OVERRIDE,
+        entityType: "Loan",
+        entityId: loan.id,
+        loanId: loan.id,
+        payload: {
+          loanNumber,
+          principal,
+          annualRatePercent,
+          tenureInstallments,
+          rateOverride,
+          tenureOverride,
+        },
+        reason: "Product terms differ from catalog defaults",
+      });
+    }
+
     return loan;
   }
 
   async list(actor: AuthUser) {
     const companyId = requireCompany(actor);
     return this.prisma.loan.findMany({
-      where: { companyId },
+      where: { companyId, ...branchWhere(actor) },
       include: { customer: true, product: true, branch: true },
       orderBy: { createdAt: "desc" },
     });
@@ -154,7 +182,9 @@ export class LoansService {
     });
     if (!loan) throw new NotFoundException("Loan not found");
     assertSameCompany(actor, loan.companyId);
-    return loan;
+    assertBranchAccess(actor, loan.branchId);
+    const dpd = computeLoanDpd(loan.installments);
+    return { ...loan, dpd };
   }
 
   private async transition(
@@ -192,10 +222,36 @@ export class LoansService {
   }
 
   submit(actor: AuthUser, id: string) {
-    return this.transition(actor, id, [LoanStatus.DRAFT], LoanStatus.SUBMITTED, "submit");
+    return this.transition(
+      actor,
+      id,
+      [LoanStatus.DRAFT],
+      LoanStatus.SUBMITTED,
+      "submit",
+    );
   }
 
-  verify(actor: AuthUser, id: string) {
+  async verify(actor: AuthUser, id: string) {
+    const loan = await this.get(actor, id);
+    const customer = loan.customer;
+    if (!customer.pan?.trim()) {
+      throw new BadRequestException("Customer PAN required before verify");
+    }
+    if (!customer.address?.trim()) {
+      throw new BadRequestException("Customer address required before verify");
+    }
+    const kycCount = await this.prisma.document.count({
+      where: {
+        companyId: loan.companyId,
+        entityType: DocumentEntityType.CUSTOMER,
+        entityId: customer.id,
+      },
+    });
+    if (kycCount === 0) {
+      throw new BadRequestException(
+        "At least one KYC document required before verify",
+      );
+    }
     return this.transition(
       actor,
       id,
@@ -206,9 +262,28 @@ export class LoansService {
   }
 
   async requestApproval(actor: AuthUser, id: string) {
-    const loan = await this.get(actor, id);
+    const loan = await this.prisma.loan.findUnique({ where: { id } });
+    if (!loan) throw new NotFoundException("Loan not found");
+    assertSameCompany(actor, loan.companyId);
     if (loan.status !== LoanStatus.VERIFIED) {
-      throw new BadRequestException("Loan must be VERIFIED to request approval");
+      throw new BadRequestException(
+        "Loan must be VERIFIED to request approval",
+      );
+    }
+    if (loan.productOverride) {
+      const overrideApplied = await this.prisma.approvalRequest.findFirst({
+        where: {
+          type: ApprovalType.PRODUCT_OVERRIDE,
+          entityId: id,
+          status: ApprovalStatus.APPROVED,
+          appliedAt: { not: null },
+        },
+      });
+      if (!overrideApplied) {
+        throw new BadRequestException(
+          "Product override must be approved before loan approval",
+        );
+      }
     }
     return this.approvals.create(actor, {
       type: ApprovalType.LOAN_APPROVAL,
@@ -224,12 +299,13 @@ export class LoansService {
   }
 
   async approve(actor: AuthUser, id: string) {
-    const loan = await this.get(actor, id);
+    const loan = await this.prisma.loan.findUnique({ where: { id } });
+    if (!loan) throw new NotFoundException("Loan not found");
+    assertSameCompany(actor, loan.companyId);
     if (loan.status !== LoanStatus.VERIFIED) {
       throw new BadRequestException("Loan must be VERIFIED");
     }
 
-    // Prefer closing a pending LOAN_APPROVAL if present
     const pending = await this.prisma.approvalRequest.findFirst({
       where: {
         entityType: "Loan",
@@ -238,16 +314,33 @@ export class LoansService {
         status: ApprovalStatus.PENDING,
       },
     });
-    if (pending) {
-      if (pending.makerId === actor.id) {
-        throw new BadRequestException("Maker cannot approve own request");
-      }
-      await this.approvals.approve(actor, pending.id);
+    if (!pending) {
+      throw new BadRequestException("Pending loan approval request required");
     }
+    return this.approvals.approve(actor, pending.id);
+  }
 
+  /** Called by ApprovalApplicator after LOAN_APPROVAL is approved. */
+  async applyLoanApproval(actor: AuthUser, loanId: string) {
+    const loan = await this.prisma.loan.findUnique({ where: { id: loanId } });
+    if (!loan) throw new NotFoundException("Loan not found");
+    assertSameCompany(actor, loan.companyId);
+    if (loan.productOverride) {
+      const overrideApplied = await this.prisma.approvalRequest.findFirst({
+        where: {
+          type: ApprovalType.PRODUCT_OVERRIDE,
+          entityId: loanId,
+          status: ApprovalStatus.APPROVED,
+          appliedAt: { not: null },
+        },
+      });
+      if (!overrideApplied) {
+        throw new BadRequestException("Product override not applied");
+      }
+    }
     return this.transition(
       actor,
-      id,
+      loanId,
       [LoanStatus.VERIFIED],
       LoanStatus.APPROVED,
       "approve",
@@ -294,16 +387,42 @@ export class LoansService {
         })),
       });
 
-      return tx.loan.update({
+      await tx.loan.update({
         where: { id },
         data: {
-          status: LoanStatus.ACTIVE,
+          status: LoanStatus.DISBURSED,
           disbursementDate,
+          disbursementMode: dto.mode,
+          disbursementReference: dto.reference,
           netDisbursement: money(result.netDisbursement),
           partialInterestDeducted: money(result.partialInterestDeducted),
         },
+      });
+
+      return tx.loan.update({
+        where: { id },
+        data: { status: LoanStatus.ACTIVE },
         include: { installments: { orderBy: { number: "asc" } } },
       });
+    });
+
+    await this.accounting.postDisbursement({
+      companyId: loan.companyId,
+      loanId: id,
+      entryDate: disbursementDate,
+      principal: toNumber(loan.principal),
+      netDisbursement: result.netDisbursement,
+      processingFee: toNumber(loan.processingFee),
+      partialInterestDeducted: result.partialInterestDeducted,
+      createdById: actor.id,
+    });
+
+    await this.notifications.enqueueOutbox("loan.disburse", {
+      companyId: loan.companyId,
+      entityType: "Loan",
+      entityId: id,
+      loanNumber: loan.loanNumber,
+      summary: `Loan ${loan.loanNumber} disbursed`,
     });
 
     await this.audit.append({
@@ -322,9 +441,60 @@ export class LoansService {
     return updated;
   }
 
+  async requestPenaltyOverride(
+    actor: AuthUser,
+    id: string,
+    penaltyDailyPercent: number,
+    reason?: string,
+  ) {
+    const loan = await this.prisma.loan.findUnique({ where: { id } });
+    if (!loan) throw new NotFoundException("Loan not found");
+    assertSameCompany(actor, loan.companyId);
+    return this.approvals.create(actor, {
+      type: ApprovalType.PENALTY_OVERRIDE,
+      entityType: "Loan",
+      entityId: loan.id,
+      loanId: loan.id,
+      payload: {
+        loanNumber: loan.loanNumber,
+        penaltyDailyPercent,
+        previous: loan.penaltyDailyPercent
+          ? toNumber(loan.penaltyDailyPercent)
+          : null,
+      },
+      reason,
+    });
+  }
+
+  async applyPenaltyOverride(
+    actor: AuthUser,
+    loanId: string,
+    penaltyDailyPercent: number,
+  ) {
+    const loan = await this.prisma.loan.findUnique({ where: { id: loanId } });
+    if (!loan) throw new NotFoundException("Loan not found");
+    assertSameCompany(actor, loan.companyId);
+    const updated = await this.prisma.loan.update({
+      where: { id: loanId },
+      data: { penaltyDailyPercent: money(penaltyDailyPercent) },
+    });
+    await this.audit.append({
+      companyId: loan.companyId,
+      actorId: actor.id,
+      action: "loan.penalty_override",
+      entityType: "Loan",
+      entityId: loanId,
+      after: { penaltyDailyPercent },
+    });
+    return updated;
+  }
+
   async requestRateChange(actor: AuthUser, id: string, dto: RateChangeDto) {
     const loan = await this.get(actor, id);
-    if (loan.status !== LoanStatus.ACTIVE && loan.status !== LoanStatus.DISBURSED) {
+    if (
+      loan.status !== LoanStatus.ACTIVE &&
+      loan.status !== LoanStatus.DISBURSED
+    ) {
       throw new BadRequestException("Rate change only after disbursement");
     }
     return this.approvals.create(actor, {
@@ -341,26 +511,28 @@ export class LoansService {
     });
   }
 
+  async applyRateChangeFromApproval(
+    actor: AuthUser,
+    id: string,
+    annualRatePercent: number,
+  ) {
+    return this.applyRateChange(actor, id, {
+      annualRatePercent,
+      reason: "Approved rate change",
+    });
+  }
+
   /**
    * Q19: regenerate remaining unpaid EMIs from next due date at the new rate.
    * Paid installments are left unchanged.
    */
   async applyRateChange(actor: AuthUser, id: string, dto: RateChangeDto) {
     const loan = await this.get(actor, id);
-    if (loan.status !== LoanStatus.ACTIVE && loan.status !== LoanStatus.DISBURSED) {
+    if (
+      loan.status !== LoanStatus.ACTIVE &&
+      loan.status !== LoanStatus.DISBURSED
+    ) {
       throw new BadRequestException("Rate change only after disbursement");
-    }
-
-    const approved = await this.prisma.approvalRequest.findFirst({
-      where: {
-        type: ApprovalType.RATE_CHANGE,
-        entityId: id,
-        status: ApprovalStatus.APPROVED,
-      },
-      orderBy: { decidedAt: "desc" },
-    });
-    if (!approved) {
-      throw new BadRequestException("Approved rate-change request required");
     }
 
     const unpaid = loan.installments.filter(
@@ -386,10 +558,17 @@ export class LoansService {
       disbursementDate: new Date(
         nextDue.getFullYear(),
         nextDue.getMonth(),
-        nextDue.getDate() - (loan.frequency === "WEEKLY" ? 7 : loan.frequency === "BIWEEKLY" ? 14 : 30),
+        nextDue.getDate() -
+          (loan.frequency === "WEEKLY"
+            ? 7
+            : loan.frequency === "BIWEEKLY"
+              ? 14
+              : 30),
       ),
       monthlyFirstEmiOption:
-        loan.frequency === "MONTHLY" ? "CONVERT_TO_1ST_NEXT_MONTH" : "EXACT_DAY",
+        loan.frequency === "MONTHLY"
+          ? "CONVERT_TO_1ST_NEXT_MONTH"
+          : "EXACT_DAY",
       processingFee: 0,
     });
 
@@ -437,6 +616,46 @@ export class LoansService {
 
 function roundFee(principal: number, percent: number): number {
   return Math.round(((principal * percent) / 100) * 100) / 100;
+}
+
+function computeLoanDpd(
+  installments: Array<{
+    status: InstallmentStatus;
+    dueDate: Date;
+    principalDue: { toNumber(): number } | number;
+    interestDue: { toNumber(): number } | number;
+    penaltyDue: { toNumber(): number } | number;
+    paidPrincipal: { toNumber(): number } | number;
+    paidInterest: { toNumber(): number } | number;
+    paidPenalty: { toNumber(): number } | number;
+  }>,
+  asOf = new Date(),
+): number {
+  const today = new Date(asOf);
+  today.setHours(0, 0, 0, 0);
+  let maxDpd = 0;
+  for (const inst of installments) {
+    if (
+      inst.status === InstallmentStatus.PAID ||
+      inst.status === InstallmentStatus.SKIPPED
+    ) {
+      continue;
+    }
+    const rem =
+      Math.max(0, toNumber(inst.principalDue) - toNumber(inst.paidPrincipal)) +
+      Math.max(0, toNumber(inst.interestDue) - toNumber(inst.paidInterest)) +
+      Math.max(0, toNumber(inst.penaltyDue) - toNumber(inst.paidPenalty));
+    if (rem <= 0) continue;
+    const due = new Date(inst.dueDate);
+    due.setHours(0, 0, 0, 0);
+    if (today.getTime() > due.getTime()) {
+      const dpd = Math.floor(
+        (today.getTime() - due.getTime()) / (24 * 60 * 60 * 1000),
+      );
+      maxDpd = Math.max(maxDpd, dpd);
+    }
+  }
+  return maxDpd;
 }
 
 function rateForFrequency(

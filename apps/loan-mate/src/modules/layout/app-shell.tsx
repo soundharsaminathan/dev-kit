@@ -10,6 +10,11 @@ const APP_NAV = [
   { to: "/app/loans", label: "Loans" },
   { to: "/app/approvals", label: "Approvals" },
   { to: "/app/collections", label: "Collections" },
+  { to: "/app/users", label: "Users" },
+  { to: "/app/branches", label: "Branches" },
+  { to: "/app/audit", label: "Audit" },
+  { to: "/app/reports", label: "Reports" },
+  { to: "/app/notifications", label: "Notifications" },
   { to: "/app/settings", label: "Settings" },
   { to: "/app/profile", label: "Profile" },
 ] as const;
@@ -50,7 +55,11 @@ export function AppShell({ children }: { children: ReactNode }) {
             <strong>{user?.name}</strong>
             <span>{user?.role.replaceAll("_", " ")}</span>
           </div>
-          <button type="button" className="lm-btn lm-btn-secondary" onClick={logout}>
+          <button
+            type="button"
+            className="lm-btn lm-btn-secondary"
+            onClick={logout}
+          >
             Sign out
           </button>
         </div>

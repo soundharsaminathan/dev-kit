@@ -10,6 +10,7 @@ type Customer = {
   pan?: string;
   branchId?: string;
   blacklisted?: boolean;
+  npa?: boolean;
 };
 
 export const Route = createFileRoute("/app/customers/")({
@@ -65,6 +66,8 @@ function CustomersPage() {
                   <td>
                     {c.blacklisted ? (
                       <span className="lm-badge">Blacklisted</span>
+                    ) : c.npa ? (
+                      <span className="lm-badge">NPA</span>
                     ) : (
                       "Active"
                     )}

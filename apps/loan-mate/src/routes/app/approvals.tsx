@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
+import { formatApprovalPayload } from "@/lib/approval-summary";
 import { useAuth } from "@/lib/auth";
 
 type Approval = {
@@ -12,7 +13,7 @@ type Approval = {
   reason?: string;
   createdAt?: string;
   maker?: { id: string; name: string; email: string };
-  payload?: { loanNumber?: string; principal?: number };
+  payload?: Record<string, unknown> | null;
 };
 
 export const Route = createFileRoute("/app/approvals")({
@@ -86,17 +87,19 @@ function ApprovalsPage() {
               {approvals.data.map((a) => (
                 <tr key={a.id}>
                   <td>
-                    <span className="lm-badge">{a.type ?? a.entityType ?? "—"}</span>
+                    <span className="lm-badge">
+                      {a.type ?? a.entityType ?? "—"}
+                    </span>
                   </td>
                   <td>
-                    {a.payload?.loanNumber ??
-                      `${a.entityType ?? ""} ${a.entityId ?? ""}`}
+                    {formatApprovalPayload(
+                      a.payload as Record<string, unknown> | undefined,
+                    )}
+                    {a.reason ? ` — ${a.reason}` : ""}
                   </td>
                   <td>{a.maker?.name ?? "—"}</td>
                   <td>
-                    {a.createdAt
-                      ? new Date(a.createdAt).toLocaleString()
-                      : "—"}
+                    {a.createdAt ? new Date(a.createdAt).toLocaleString() : "—"}
                   </td>
                   <td>
                     <div className="lm-actions">
@@ -127,9 +130,7 @@ function ApprovalsPage() {
                           decide.mutate({
                             id: a.id,
                             decision: "reject",
-                            ...(rejectionReason
-                              ? { rejectionReason }
-                              : {}),
+                            ...(rejectionReason ? { rejectionReason } : {}),
                           });
                         }}
                       >

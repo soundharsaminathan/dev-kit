@@ -55,7 +55,11 @@ function ProductsPage() {
             <tbody>
               {products.data.map((p) => (
                 <tr key={p.id}>
-                  <td>{p.name}</td>
+                  <td>
+                    <Link to="/app/products/$id" params={{ id: p.id }}>
+                      {p.name}
+                    </Link>
+                  </td>
                   <td>{p.code}</td>
                   <td>{String(p.defaultAnnualRate)}%</td>
                   <td>{p.defaultFrequency}</td>

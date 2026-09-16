@@ -7,14 +7,15 @@ import {
   Post,
   UseGuards,
 } from "@nestjs/common";
-import { UserRole } from "../generated/prisma";
 import { AuthGuard } from "../auth/auth.guard";
-import { CurrentUser, type AuthUser } from "../auth/current-user.decorator";
+import { type AuthUser, CurrentUser } from "../auth/current-user.decorator";
 import { Roles } from "../auth/roles.decorator";
 import { RolesGuard } from "../auth/roles.guard";
-import {
+import { UserRole } from "../generated/prisma";
+import type {
   CreateLoanDto,
   DisburseLoanDto,
+  PenaltyOverrideDto,
   RateChangeDto,
   RejectLoanDto,
 } from "./dto/loan.dto";
@@ -95,21 +96,13 @@ export class LoansController {
   }
 
   @Post(":id/approve")
-  @Roles(
-    UserRole.COMPANY_OWNER,
-    UserRole.COMPANY_ADMIN,
-    UserRole.APPROVER,
-  )
+  @Roles(UserRole.COMPANY_OWNER, UserRole.COMPANY_ADMIN, UserRole.APPROVER)
   approve(@CurrentUser() user: AuthUser, @Param("id") id: string) {
     return this.loans.approve(user, id);
   }
 
   @Post(":id/reject")
-  @Roles(
-    UserRole.COMPANY_OWNER,
-    UserRole.COMPANY_ADMIN,
-    UserRole.APPROVER,
-  )
+  @Roles(UserRole.COMPANY_OWNER, UserRole.COMPANY_ADMIN, UserRole.APPROVER)
   reject(
     @CurrentUser() user: AuthUser,
     @Param("id") id: string,
@@ -132,6 +125,25 @@ export class LoansController {
     return this.loans.disburse(user, id, dto);
   }
 
+  @Post(":id/request-penalty-override")
+  @Roles(
+    UserRole.COMPANY_OWNER,
+    UserRole.COMPANY_ADMIN,
+    UserRole.BRANCH_MANAGER,
+  )
+  requestPenaltyOverride(
+    @CurrentUser() user: AuthUser,
+    @Param("id") id: string,
+    @Body() dto: PenaltyOverrideDto,
+  ) {
+    return this.loans.requestPenaltyOverride(
+      user,
+      id,
+      dto.penaltyDailyPercent,
+      dto.reason,
+    );
+  }
+
   @Post(":id/request-rate-change")
   @Roles(
     UserRole.COMPANY_OWNER,
@@ -147,11 +159,7 @@ export class LoansController {
   }
 
   @Post(":id/apply-rate-change")
-  @Roles(
-    UserRole.COMPANY_OWNER,
-    UserRole.COMPANY_ADMIN,
-    UserRole.APPROVER,
-  )
+  @Roles(UserRole.COMPANY_OWNER, UserRole.COMPANY_ADMIN, UserRole.APPROVER)
   applyRateChange(
     @CurrentUser() user: AuthUser,
     @Param("id") id: string,

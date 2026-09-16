@@ -7,12 +7,12 @@ import {
   Post,
   UseGuards,
 } from "@nestjs/common";
-import { UserRole } from "../generated/prisma";
 import { AuthGuard } from "../auth/auth.guard";
-import { CurrentUser, type AuthUser } from "../auth/current-user.decorator";
+import { type AuthUser, CurrentUser } from "../auth/current-user.decorator";
 import { Roles } from "../auth/roles.decorator";
 import { RolesGuard } from "../auth/roles.guard";
-import {
+import { UserRole } from "../generated/prisma";
+import type {
   RecordPaymentDto,
   RequestReversalDto,
   RequestWaiverDto,
@@ -46,10 +46,7 @@ export class PaymentsController {
     UserRole.COLLECTION_OFFICER,
     UserRole.APPROVER,
   )
-  listByLoan(
-    @CurrentUser() user: AuthUser,
-    @Param("loanId") loanId: string,
-  ) {
+  listByLoan(@CurrentUser() user: AuthUser, @Param("loanId") loanId: string) {
     return this.payments.listByLoan(user, loanId);
   }
 
@@ -68,11 +65,7 @@ export class PaymentsController {
   }
 
   @Post(":id/reverse")
-  @Roles(
-    UserRole.COMPANY_OWNER,
-    UserRole.COMPANY_ADMIN,
-    UserRole.APPROVER,
-  )
+  @Roles(UserRole.COMPANY_OWNER, UserRole.COMPANY_ADMIN, UserRole.APPROVER)
   reverse(@CurrentUser() user: AuthUser, @Param("id") id: string) {
     return this.payments.executeReversal(user, id);
   }
@@ -83,23 +76,26 @@ export class PaymentsController {
     UserRole.COMPANY_ADMIN,
     UserRole.COLLECTION_OFFICER,
   )
-  requestWaiver(
-    @CurrentUser() user: AuthUser,
-    @Body() dto: RequestWaiverDto,
-  ) {
+  requestWaiver(@CurrentUser() user: AuthUser, @Body() dto: RequestWaiverDto) {
     return this.payments.requestWaiver(user, dto);
   }
 
-  @Post("waiver/execute")
+  @Post("interest-waiver/request")
   @Roles(
     UserRole.COMPANY_OWNER,
     UserRole.COMPANY_ADMIN,
-    UserRole.APPROVER,
+    UserRole.COLLECTION_OFFICER,
   )
-  executeWaiver(
+  requestInterestWaiver(
     @CurrentUser() user: AuthUser,
     @Body() dto: RequestWaiverDto,
   ) {
+    return this.payments.requestInterestWaiver(user, dto);
+  }
+
+  @Post("waiver/execute")
+  @Roles(UserRole.COMPANY_OWNER, UserRole.COMPANY_ADMIN, UserRole.APPROVER)
+  executeWaiver(@CurrentUser() user: AuthUser, @Body() dto: RequestWaiverDto) {
     return this.payments.executeWaiver(user, dto.installmentId, dto.amount);
   }
 }

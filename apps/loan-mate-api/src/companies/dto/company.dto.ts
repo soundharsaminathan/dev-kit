@@ -54,4 +54,14 @@ export class UpdateCompanySettingsDto {
   @IsArray()
   @IsEnum(AdvanceTreatment, { each: true })
   defaultAdvanceTreatments?: AdvanceTreatment[];
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  foreclosureChargePercent?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  maxRestructures?: number;
 }
