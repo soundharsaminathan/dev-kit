@@ -128,7 +128,11 @@ jobs:
         if: github.event_name != 'merge_group'
         run: |
           pnpm affected:e2e --base=origin/${{ github.base_ref }}
-          pnpm exec nx run showcase:test:e2e
+          if pnpm exec nx show projects --affected --base=origin/${{ github.base_ref }} | grep -qx showcase; then
+            pnpm exec nx run showcase:test:e2e
+          else
+            echo "Skipping showcase visual e2e (showcase not affected)"
+          fi
         env:
           CI: true
 

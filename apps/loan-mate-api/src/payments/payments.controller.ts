@@ -1,5 +1,4 @@
 import {
-  Body,
   Controller,
   Get,
   Inject,
@@ -11,8 +10,9 @@ import { AuthGuard } from "../auth/auth.guard";
 import { type AuthUser, CurrentUser } from "../auth/current-user.decorator";
 import { Roles } from "../auth/roles.decorator";
 import { RolesGuard } from "../auth/roles.guard";
+import { BodyDto } from "../common/body-dto";
 import { UserRole } from "../generated/prisma";
-import type {
+import {
   RecordPaymentDto,
   RequestReversalDto,
   RequestWaiverDto,
@@ -33,7 +33,10 @@ export class PaymentsController {
     UserRole.BRANCH_MANAGER,
     UserRole.COLLECTION_OFFICER,
   )
-  record(@CurrentUser() user: AuthUser, @Body() dto: RecordPaymentDto) {
+  record(
+    @CurrentUser() user: AuthUser,
+    @BodyDto(RecordPaymentDto) dto: RecordPaymentDto,
+  ) {
     return this.payments.record(user, dto);
   }
 
@@ -59,7 +62,7 @@ export class PaymentsController {
   requestReversal(
     @CurrentUser() user: AuthUser,
     @Param("id") id: string,
-    @Body() dto: RequestReversalDto,
+    @BodyDto(RequestReversalDto) dto: RequestReversalDto,
   ) {
     return this.payments.requestReversal(user, id, dto);
   }
@@ -76,7 +79,10 @@ export class PaymentsController {
     UserRole.COMPANY_ADMIN,
     UserRole.COLLECTION_OFFICER,
   )
-  requestWaiver(@CurrentUser() user: AuthUser, @Body() dto: RequestWaiverDto) {
+  requestWaiver(
+    @CurrentUser() user: AuthUser,
+    @BodyDto(RequestWaiverDto) dto: RequestWaiverDto,
+  ) {
     return this.payments.requestWaiver(user, dto);
   }
 
@@ -88,14 +94,17 @@ export class PaymentsController {
   )
   requestInterestWaiver(
     @CurrentUser() user: AuthUser,
-    @Body() dto: RequestWaiverDto,
+    @BodyDto(RequestWaiverDto) dto: RequestWaiverDto,
   ) {
     return this.payments.requestInterestWaiver(user, dto);
   }
 
   @Post("waiver/execute")
   @Roles(UserRole.COMPANY_OWNER, UserRole.COMPANY_ADMIN, UserRole.APPROVER)
-  executeWaiver(@CurrentUser() user: AuthUser, @Body() dto: RequestWaiverDto) {
+  executeWaiver(
+    @CurrentUser() user: AuthUser,
+    @BodyDto(RequestWaiverDto) dto: RequestWaiverDto,
+  ) {
     return this.payments.executeWaiver(user, dto.installmentId, dto.amount);
   }
 }

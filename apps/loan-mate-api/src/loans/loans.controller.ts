@@ -1,5 +1,4 @@
 import {
-  Body,
   Controller,
   Get,
   Inject,
@@ -11,8 +10,9 @@ import { AuthGuard } from "../auth/auth.guard";
 import { type AuthUser, CurrentUser } from "../auth/current-user.decorator";
 import { Roles } from "../auth/roles.decorator";
 import { RolesGuard } from "../auth/roles.guard";
+import { BodyDto } from "../common/body-dto";
 import { UserRole } from "../generated/prisma";
-import type {
+import {
   CreateLoanDto,
   DisburseLoanDto,
   PenaltyOverrideDto,
@@ -33,7 +33,10 @@ export class LoansController {
     UserRole.BRANCH_MANAGER,
     UserRole.LOAN_OFFICER,
   )
-  create(@CurrentUser() user: AuthUser, @Body() dto: CreateLoanDto) {
+  create(
+    @CurrentUser() user: AuthUser,
+    @BodyDto(CreateLoanDto) dto: CreateLoanDto,
+  ) {
     return this.loans.createDraft(user, dto);
   }
 
@@ -106,7 +109,7 @@ export class LoansController {
   reject(
     @CurrentUser() user: AuthUser,
     @Param("id") id: string,
-    @Body() dto: RejectLoanDto,
+    @BodyDto(RejectLoanDto) dto: RejectLoanDto,
   ) {
     return this.loans.reject(user, id, dto);
   }
@@ -120,7 +123,7 @@ export class LoansController {
   disburse(
     @CurrentUser() user: AuthUser,
     @Param("id") id: string,
-    @Body() dto: DisburseLoanDto,
+    @BodyDto(DisburseLoanDto) dto: DisburseLoanDto,
   ) {
     return this.loans.disburse(user, id, dto);
   }
@@ -134,7 +137,7 @@ export class LoansController {
   requestPenaltyOverride(
     @CurrentUser() user: AuthUser,
     @Param("id") id: string,
-    @Body() dto: PenaltyOverrideDto,
+    @BodyDto(PenaltyOverrideDto) dto: PenaltyOverrideDto,
   ) {
     return this.loans.requestPenaltyOverride(
       user,
@@ -153,7 +156,7 @@ export class LoansController {
   requestRateChange(
     @CurrentUser() user: AuthUser,
     @Param("id") id: string,
-    @Body() dto: RateChangeDto,
+    @BodyDto(RateChangeDto) dto: RateChangeDto,
   ) {
     return this.loans.requestRateChange(user, id, dto);
   }
@@ -163,7 +166,7 @@ export class LoansController {
   applyRateChange(
     @CurrentUser() user: AuthUser,
     @Param("id") id: string,
-    @Body() dto: RateChangeDto,
+    @BodyDto(RateChangeDto) dto: RateChangeDto,
   ) {
     return this.loans.applyRateChange(user, id, dto);
   }
