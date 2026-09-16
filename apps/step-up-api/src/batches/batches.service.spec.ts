@@ -319,6 +319,9 @@ describe("BatchesService update", () => {
   });
 
   it("replaces trainers and syncs sessions when schedule changes", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-09-01T12:00:00.000Z"));
+
     prisma.user.findMany.mockResolvedValue([
       {
         id: "trainer-1",
@@ -332,19 +335,23 @@ describe("BatchesService update", () => {
       },
     ]);
 
-    await service.update("batch-1", {
-      trainerIds: ["trainer-1", "trainer-2"],
-      danceCategories: [{ name: "Jazz", description: "Foundations" }],
-      scheduleJson: {
-        frequency: "WEEKLY",
-        weekdays: [1],
-        startDate: "2026-09-07",
-        endDate: "2026-09-14",
-        startTime: "18:00",
-        endTime: "19:00",
-        utcOffsetMinutes: -330,
-      },
-    });
+    try {
+      await service.update("batch-1", {
+        trainerIds: ["trainer-1", "trainer-2"],
+        danceCategories: [{ name: "Jazz", description: "Foundations" }],
+        scheduleJson: {
+          frequency: "WEEKLY",
+          weekdays: [1],
+          startDate: "2026-09-07",
+          endDate: "2026-09-14",
+          startTime: "18:00",
+          endTime: "19:00",
+          utcOffsetMinutes: -330,
+        },
+      });
+    } finally {
+      vi.useRealTimers();
+    }
 
     expect(prisma.batchTrainer.deleteMany).toHaveBeenCalledWith({
       where: { batchId: "batch-1" },
