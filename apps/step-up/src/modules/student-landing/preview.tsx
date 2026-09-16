@@ -30,19 +30,25 @@ export function StudentPreview() {
             </div>
             <div className={styles.screens}>
               <figure className={styles.screen}>
-                <StudentHomePreview />
+                <div className={styles.device}>
+                  <StudentHomePreview />
+                </div>
                 <figcaption className={styles.caption}>
                   {STUDENT_PREVIEW.home}
                 </figcaption>
               </figure>
               <figure className={styles.screen}>
-                <StudentDiscoverPreview />
+                <div className={styles.device}>
+                  <StudentDiscoverPreview />
+                </div>
                 <figcaption className={styles.caption}>
                   {STUDENT_PREVIEW.discover}
                 </figcaption>
               </figure>
               <figure className={styles.screen}>
-                <StudentProfilePreview />
+                <div className={styles.device}>
+                  <StudentProfilePreview />
+                </div>
                 <figcaption className={styles.caption}>
                   {STUDENT_PREVIEW.profile}
                 </figcaption>

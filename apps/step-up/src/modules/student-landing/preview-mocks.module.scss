@@ -1,7 +1,9 @@
 .phone {
-  display: flex;
-  flex-direction: column;
-  min-height: 22rem;
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  min-height: 0;
   background: #f5f6fb;
   color: #2a2a35;
   font-size: 0.6875rem;
@@ -9,6 +11,7 @@
 }
 
 .head {
+  flex-shrink: 0;
   padding: 12px 12px 8px;
 }
 
@@ -21,11 +24,12 @@
 }
 
 .body {
-  flex: 1;
+  min-height: 0;
+  overflow: hidden;
   display: grid;
   align-content: start;
   gap: 8px;
-  padding: 0 12px 12px;
+  padding: 0 12px 8px;
 }
 
 .eyebrow,
@@ -214,7 +218,7 @@
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 4px;
-  padding: 8px;
+  padding: 8px 8px 12px;
   background: #2a2a35;
   color: rgb(255 255 255 / 62%);
 }
