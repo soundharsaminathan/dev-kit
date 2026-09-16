@@ -1,5 +1,4 @@
 import {
-  Body,
   Controller,
   Delete,
   Get,
@@ -13,6 +12,7 @@ import { AuthGuard } from "../auth/auth.guard";
 import { type AuthUser, CurrentUser } from "../auth/current-user.decorator";
 import { Roles } from "../auth/roles.decorator";
 import { RolesGuard } from "../auth/roles.guard";
+import { BodyDto } from "../common/body-dto";
 import { STAFF_ROLES } from "../common/tenancy";
 import { type DocumentEntityType, UserRole } from "../generated/prisma";
 import { DocumentsService } from "./documents.service";
@@ -27,13 +27,19 @@ export class DocumentsController {
 
   @Post("signed-url")
   @Roles(...STAFF_ROLES)
-  signedUrl(@CurrentUser() user: AuthUser, @Body() dto: SignedUrlDto) {
+  signedUrl(
+    @CurrentUser() user: AuthUser,
+    @BodyDto(SignedUrlDto) dto: SignedUrlDto,
+  ) {
     return this.documents.createSignedUploadUrl(user, dto);
   }
 
   @Post()
   @Roles(...STAFF_ROLES)
-  create(@CurrentUser() user: AuthUser, @Body() dto: CreateDocumentDto) {
+  create(
+    @CurrentUser() user: AuthUser,
+    @BodyDto(CreateDocumentDto) dto: CreateDocumentDto,
+  ) {
     return this.documents.create(user, dto);
   }
 
