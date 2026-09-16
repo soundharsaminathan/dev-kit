@@ -85,22 +85,49 @@
 
 .proof {
   margin: 16px 0 0;
+}
 
-  a {
-    font-size: 0.875rem;
-    font-weight: 600;
-    color: var(--color-primary);
-    text-decoration: none;
+.proofLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 2.5rem;
+  padding: 8px 14px;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--color-primary) 35%, transparent);
+  background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-primary);
+  text-decoration: none;
+  transition:
+    background 700ms var(--lp-ease),
+    border-color 700ms var(--lp-ease),
+    transform 700ms var(--lp-ease);
 
-    &:hover {
-      text-decoration: underline;
-    }
-
-    &:focus-visible {
-      outline: 2px solid var(--color-border-focus);
-      outline-offset: 2px;
-    }
+  &:hover {
+    background: color-mix(in srgb, var(--color-primary) 20%, transparent);
+    border-color: color-mix(in srgb, var(--color-primary) 55%, transparent);
   }
+
+  &:active {
+    transform: scale(0.98);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--color-border-focus);
+    outline-offset: 2px;
+  }
+}
+
+.proofArrow {
+  font-size: 1rem;
+  line-height: 1;
+  transition: transform 700ms var(--lp-ease);
+}
+
+.proofLink:hover .proofArrow {
+  transform: translateX(3px);
 }
 
 .visual {
@@ -114,8 +141,9 @@
   display: block;
   width: 100%;
   height: auto;
-  aspect-ratio: 4 / 5;
+  aspect-ratio: 3 / 4;
   object-fit: cover;
+  object-position: center 38%;
 }
 
 .floatStack {
@@ -132,20 +160,22 @@
   gap: 2px;
   padding: 12px;
   border-radius: 12px;
-  background: color-mix(in srgb, #fff 88%, transparent);
+  /* Opaque themed surface — frosted #fff + --color-fg goes white-on-white in dark mode. */
+  background: color-mix(in srgb, var(--color-card, #fff) 94%, transparent);
   backdrop-filter: blur(12px);
-  border: 1px solid color-mix(in srgb, var(--color-fg) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-fg) 12%, transparent);
   text-decoration: none;
-  color: var(--color-fg);
-  box-shadow: 0 4px 16px color-mix(in srgb, var(--color-fg) 8%, transparent);
+  color: var(--color-fg, #111);
+  box-shadow: 0 4px 16px color-mix(in srgb, var(--color-fg) 12%, transparent);
 
   strong {
     font-size: 0.9375rem;
+    color: inherit;
   }
 
   span {
     font-size: 0.75rem;
-    color: color-mix(in srgb, var(--color-fg) 62%, transparent);
+    color: color-mix(in srgb, var(--color-fg, #111) 68%, transparent);
   }
 
   &:focus-visible {
@@ -206,7 +236,17 @@
 
 @media (prefers-reduced-motion: reduce) {
   .input,
-  .select {
+  .select,
+  .proofLink,
+  .proofArrow {
     transition: none;
+  }
+
+  .proofLink:active {
+    transform: none;
+  }
+
+  .proofLink:hover .proofArrow {
+    transform: none;
   }
 }

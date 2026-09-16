@@ -184,6 +184,9 @@ export function PublicShell({
         </Link>
         <Link to="/for-studios" className={styles.secondaryCta}>
           {STUDENT_NAV.joinStudio}
+          <span className={styles.secondaryCtaArrow} aria-hidden>
+            →
+          </span>
         </Link>
         <Link to="/discover">
           <Button variant="primary">{STUDENT_NAV.findStudio}</Button>

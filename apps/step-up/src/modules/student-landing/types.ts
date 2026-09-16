@@ -87,13 +87,13 @@ export const CATEGORY_META: Array<{
   label: string;
   image: string;
 }> = [
-  { id: "dance", label: "Dance", image: "/marketing/student/cat-dance.svg" },
-  { id: "music", label: "Music", image: "/marketing/student/cat-music.svg" },
-  { id: "art", label: "Art", image: "/marketing/student/cat-art.svg" },
+  { id: "dance", label: "Dance", image: "/marketing/student/cat-dance.png" },
+  { id: "music", label: "Music", image: "/marketing/student/cat-music.png" },
+  { id: "art", label: "Art", image: "/marketing/student/cat-art.png" },
   {
     id: "fitness",
     label: "Fitness",
-    image: "/marketing/student/cat-fitness.svg",
+    image: "/marketing/student/cat-fitness.png",
   },
   {
     id: "swimming",

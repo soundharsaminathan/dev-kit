@@ -93,8 +93,15 @@ export function StudentHero() {
           </form>
 
           <p className={styles.proof}>
-            <Link to="/discover" search={city ? { city } : {}}>
+            <Link
+              to="/discover"
+              search={city ? { city } : {}}
+              className={styles.proofLink}
+            >
               {STUDENT_HERO.proof}
+              <span className={styles.proofArrow} aria-hidden>
+                →
+              </span>
             </Link>
           </p>
         </div>
@@ -102,10 +109,12 @@ export function StudentHero() {
         <div className={styles.visual} aria-hidden={false}>
           <img
             className={styles.heroImage}
-            src="/marketing/student/hero-editorial.svg"
-            alt="Students practicing together in a bright studio"
-            width={900}
-            height={1100}
+            src="/marketing/student/hero.png"
+            alt="classa mark as a studio window into dance, music, swimming, and martial arts"
+            width={864}
+            height={1152}
+            fetchPriority="high"
+            decoding="async"
           />
           <div className={styles.floatStack}>
             {(floatQuery.data ?? []).slice(0, 2).map((studio) => {

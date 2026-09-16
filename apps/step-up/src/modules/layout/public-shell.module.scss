@@ -67,24 +67,45 @@
 .secondaryCta {
   display: inline-flex;
   align-items: center;
-  padding: 8px 12px;
+  gap: 6px;
+  min-height: 2.5rem;
+  padding: 8px 14px;
   font-size: 0.875rem;
   font-weight: 600;
   line-height: 1.25rem;
-  color: var(--color-fg);
+  color: var(--color-primary);
   text-decoration: none;
-  border-radius: 999px;
-  border: 1px solid color-mix(in srgb, var(--color-fg) 14%, transparent);
-  transition: background 700ms var(--lp-ease, cubic-bezier(0.32, 0.72, 0, 1));
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--color-primary) 35%, transparent);
+  background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+  transition:
+    background 700ms var(--lp-ease, cubic-bezier(0.32, 0.72, 0, 1)),
+    border-color 700ms var(--lp-ease, cubic-bezier(0.32, 0.72, 0, 1)),
+    transform 700ms var(--lp-ease, cubic-bezier(0.32, 0.72, 0, 1));
 
   &:hover {
-    background: color-mix(in srgb, var(--color-fg) 5%, transparent);
+    background: color-mix(in srgb, var(--color-primary) 20%, transparent);
+    border-color: color-mix(in srgb, var(--color-primary) 55%, transparent);
+  }
+
+  &:active {
+    transform: scale(0.98);
   }
 
   &:focus-visible {
     outline: 2px solid var(--color-border-focus);
     outline-offset: 2px;
   }
+}
+
+.secondaryCtaArrow {
+  font-size: 1rem;
+  line-height: 1;
+  transition: transform 700ms var(--lp-ease, cubic-bezier(0.32, 0.72, 0, 1));
+}
+
+.secondaryCta:hover .secondaryCtaArrow {
+  transform: translateX(3px);
 }
 
 .mainStudent {
@@ -565,11 +586,18 @@
   }
 
   .menuBar,
-  .navLink {
+  .navLink,
+  .secondaryCta,
+  .secondaryCtaArrow {
     transition: none;
   }
 
-  .navLink:active {
+  .navLink:active,
+  .secondaryCta:active {
+    transform: none;
+  }
+
+  .secondaryCta:hover .secondaryCtaArrow {
     transform: none;
   }
 }

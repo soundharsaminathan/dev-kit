@@ -19,7 +19,7 @@ export function StudentCategories() {
           </h2>
         </Reveal>
         <div className={styles.rail}>
-          {CATEGORY_META.map((category, index) => (
+          {CATEGORY_META.slice(0, 4).map((category, index) => (
             <Reveal key={category.id} delay={index * 40} as="div">
               <Link
                 to="/discover"
