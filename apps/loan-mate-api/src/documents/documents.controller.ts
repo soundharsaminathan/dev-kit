@@ -16,7 +16,7 @@ import { RolesGuard } from "../auth/roles.guard";
 import { STAFF_ROLES } from "../common/tenancy";
 import { type DocumentEntityType, UserRole } from "../generated/prisma";
 import { DocumentsService } from "./documents.service";
-import type { CreateDocumentDto, SignedUrlDto } from "./dto/document.dto";
+import { CreateDocumentDto, SignedUrlDto } from "./dto/document.dto";
 
 @Controller("documents")
 @UseGuards(AuthGuard, RolesGuard)

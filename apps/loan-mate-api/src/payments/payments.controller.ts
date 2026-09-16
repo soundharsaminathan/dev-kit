@@ -12,7 +12,7 @@ import { type AuthUser, CurrentUser } from "../auth/current-user.decorator";
 import { Roles } from "../auth/roles.decorator";
 import { RolesGuard } from "../auth/roles.guard";
 import { UserRole } from "../generated/prisma";
-import type {
+import {
   RecordPaymentDto,
   RequestReversalDto,
   RequestWaiverDto,

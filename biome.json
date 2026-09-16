@@ -74,6 +74,23 @@
           "react": "none"
         }
       }
+    },
+    {
+      "includes": ["apps/loan-mate-api/**/*.controller.ts"],
+      "assist": {
+        "actions": {
+          "source": {
+            "organizeImports": "off"
+          }
+        }
+      },
+      "linter": {
+        "rules": {
+          "style": {
+            "useImportType": "off"
+          }
+        }
+      }
     }
   ]
 }
