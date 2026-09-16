@@ -3,21 +3,59 @@
   flex-direction: column;
   gap: var(--space-4, 1rem);
   padding: var(--space-6, 1.5rem) var(--space-4, 1rem);
-  max-width: 28rem;
+  max-width: 40rem;
   margin-inline: auto;
   animation: enter var(--motion-normal, 200ms) ease both;
 }
 
+.hero,
+.heroPlaceholder {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: 16px;
+  object-fit: cover;
+  display: block;
+}
+
+.heroPlaceholder {
+  display: grid;
+  place-items: center;
+  background: color-mix(in srgb, var(--color-primary) 22%, #f8f4ec);
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: color-mix(in srgb, var(--color-fg) 55%, transparent);
+}
+
+.eyebrow {
+  margin: 0;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: color-mix(in srgb, var(--color-fg) 58%, transparent);
+}
+
 .title {
+  margin: 0;
   font-size: 2rem;
   font-weight: 700;
   letter-spacing: -0.03em;
   line-height: 1.15;
+  text-wrap: balance;
 }
 
 .lead {
+  margin: 0;
   color: color-mix(in srgb, var(--color-fg) 64%, transparent);
   line-height: 1.5;
+  text-wrap: pretty;
+}
+
+.metaRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: color-mix(in srgb, var(--color-fg) 72%, transparent);
 }
 
 .card {
@@ -26,7 +64,8 @@
   gap: var(--space-2, 0.5rem);
   padding: var(--space-4, 1rem);
   border-radius: var(--radius-2xl, 1.25rem);
-  background: color-mix(in srgb, var(--color-fg) 4%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-fg) 8%, transparent);
+  background: var(--color-card, #fff);
   box-shadow: var(--shadow-sm, 0 1px 3px rgb(0 0 0 / 6%));
 }
 
@@ -37,6 +76,43 @@
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: color-mix(in srgb, var(--color-fg) 52%, transparent);
+}
+
+.batches {
+  display: grid;
+  gap: 12px;
+}
+
+.batchesTitle {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 700;
+}
+
+.batchList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.batchItem {
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--color-fg) 8%, transparent);
+  background: var(--color-card, #fff);
+}
+
+.batchName {
+  margin: 0;
+  font-weight: 700;
+}
+
+.batchMeta {
+  margin: 4px 0 0;
+  font-size: 0.8125rem;
+  color: color-mix(in srgb, var(--color-fg) 58%, transparent);
 }
 
 .actions {

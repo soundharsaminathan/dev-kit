@@ -21,12 +21,12 @@
     />
     <meta
       name="description"
-      content="classa is the workspace for dance studio owners. Collect fees, mark attendance, and run batches in one place, without chasing parents on WhatsApp."
+      content="Discover studios and classes near you, compare schedules and pricing, then join."
     />
-    <meta property="og:title" content="classa | Collect every fee without chasing parents" />
+    <meta property="og:title" content="classa | Find a class you’ll love" />
     <meta
       property="og:description"
-      content="Students, batches, attendance, and payments in one workspace so you can teach instead of chase."
+      content="Discover studios and classes near you, compare schedules and pricing, then join."
     />
     <meta property="og:image" content="/icons/icon-512.png" />
     <meta name="twitter:card" content="summary" />
@@ -48,7 +48,41 @@
       type="font/woff2"
       crossorigin
     />
-    <title>classa | Collect every fee without chasing parents</title>
+    <title>classa | Find a class you’ll love</title>
+    <script>
+      (function () {
+        try {
+          var path = location.pathname || "/";
+          if (path === "/for-studios" || path === "/for-studios/") {
+            document.title =
+              "classa | Collect every fee without chasing parents";
+            var desc = document.querySelector('meta[name="description"]');
+            if (desc) {
+              desc.setAttribute(
+                "content",
+                "classa is the workspace for dance studio owners. Collect fees, mark attendance, and run batches in one place, without chasing parents on WhatsApp.",
+              );
+            }
+            var ogTitle = document.querySelector('meta[property="og:title"]');
+            if (ogTitle) {
+              ogTitle.setAttribute(
+                "content",
+                "classa | Collect every fee without chasing parents",
+              );
+            }
+            var ogDesc = document.querySelector(
+              'meta[property="og:description"]',
+            );
+            if (ogDesc) {
+              ogDesc.setAttribute(
+                "content",
+                "Students, batches, attendance, and payments in one workspace so you can teach instead of chase.",
+              );
+            }
+          }
+        } catch (metaError) {}
+      })();
+    </script>
     <script>
       (function () {
         try {
@@ -621,8 +655,26 @@
         // Public routes: paint real LCP text in HTML before the module graph.
         if (path === "/" || path === "") {
           mountPublic(
+            '<h1 class="hero-brand">Find a class you’ll love.</h1>' +
+              '<p class="hero-support">Discover studios, classes, and activities near you, then find the right place to learn, grow, and have fun.</p>',
+            "shell-main-landing",
+          );
+          return;
+        }
+
+        if (path === "/for-studios" || path === "/for-studios/") {
+          mountPublic(
             '<h1 class="hero-brand">Collect every fee<br />without chasing parents</h1>' +
               '<p class="hero-support">classa is the workspace for dance studio owners. Students, batches, attendance, and payments live in one place so you can teach instead of chase.</p>',
+            "shell-main-landing",
+          );
+          return;
+        }
+
+        if (path === "/discover" || path === "/discover/") {
+          mountPublic(
+            '<h1 class="hero-brand">Find a studio</h1>' +
+              '<p class="hero-support">Browse live studios on classa. Open a studio to join.</p>',
             "shell-main-landing",
           );
           return;

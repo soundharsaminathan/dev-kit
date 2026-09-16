@@ -5,6 +5,7 @@ import {
   useCallback,
   useEffect,
   useId,
+  useMemo,
   useRef,
   useState,
 } from "react";
@@ -14,16 +15,38 @@ import { homePathForUser } from "@/lib/require-auth";
 import { useDismissBootPublic } from "@/lib/use-dismiss-boot-public";
 import { ClassaWordmark } from "@/modules/branding/classa-wordmark";
 import { FOOTER, NAV } from "@/modules/marketing/content";
+import {
+  STUDENT_FOOTER,
+  STUDENT_NAV,
+  STUDIO_NAV_EXTRA,
+} from "@/modules/student-landing/content";
 import { TouchButton } from "@/modules/ui/touch-button";
 import styles from "./public-shell.module.scss";
 
 type PublicShellProps = {
   children: ReactNode;
-  /** `marketing` adds full landing nav; `minimal` keeps Sign in. */
-  nav?: "minimal" | "marketing";
+  /** `student` consumer landing; `marketing` studio landing; `minimal` auth pages. */
+  nav?: "minimal" | "marketing" | "student";
   /** `full` removes main max-width clamp for edge-to-edge sections. */
   width?: "prose" | "full";
 };
+
+type HashLink = { label: string; href: string };
+type RouteLink = { label: string; to: "/for-studios" | "/" };
+
+function SearchIcon({ className }: { className?: string | undefined }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 256 256"
+      fill="currentColor"
+      aria-hidden
+      focusable="false"
+    >
+      <path d="M229.66,218.34l-50.07-50.06a88.11,88.11,0,1,0-11.31,11.31l50.06,50.07a8,8,0,0,0,11.32-11.32ZM40,112a72,72,0,1,1,72,72A72.08,72.08,0,0,1,40,112Z" />
+    </svg>
+  );
+}
 
 export function PublicShell({
   children,
@@ -34,11 +57,35 @@ export function PublicShell({
   const { user, loading } = useAuth();
   const appHome = user ? homePathForUser(user) : null;
   const isMarketing = nav === "marketing";
+  const isStudent = nav === "student";
+  const isLanding = isMarketing || isStudent;
   const [menuOpen, setMenuOpen] = useState(false);
   const [activeHref, setActiveHref] = useState<string | null>(null);
   const menuId = useId();
   const menuRef = useRef<HTMLDivElement | null>(null);
   const toggleRef = useRef<HTMLButtonElement | null>(null);
+
+  const hashLinks = useMemo((): HashLink[] => {
+    if (isStudent) {
+      return STUDENT_NAV.links.flatMap((link) =>
+        "href" in link ? [{ label: link.label, href: link.href }] : [],
+      );
+    }
+    if (isMarketing) return [...NAV.links];
+    return [];
+  }, [isMarketing, isStudent]);
+
+  const routeLinks = useMemo((): RouteLink[] => {
+    if (isStudent) {
+      return STUDENT_NAV.links.flatMap((link) =>
+        "to" in link ? [{ label: link.label, to: link.to }] : [],
+      );
+    }
+    if (isMarketing) {
+      return [{ label: STUDIO_NAV_EXTRA.forStudents, to: "/" }];
+    }
+    return [];
+  }, [isMarketing, isStudent]);
 
   const closeMenu = useCallback(() => setMenuOpen(false), []);
 
@@ -72,15 +119,15 @@ export function PublicShell({
   }, [menuOpen]);
 
   useEffect(() => {
-    if (!isMarketing) return;
+    if (!isLanding || hashLinks.length === 0) return;
 
     let observer: IntersectionObserver | null = null;
 
     const connect = () => {
-      const els = NAV.links
+      const els = hashLinks
         .map((link) => document.getElementById(link.href.slice(1)))
         .filter((el): el is HTMLElement => Boolean(el));
-      if (els.length !== NAV.links.length) return false;
+      if (els.length === 0) return false;
 
       observer = new IntersectionObserver(
         (entries) => {
@@ -106,17 +153,45 @@ export function PublicShell({
       window.clearInterval(id);
       observer?.disconnect();
     };
-  }, [isMarketing]);
+  }, [isLanding, hashLinks]);
 
-  const shellClass = [styles.shell, isMarketing ? styles.shellMarketing : ""]
+  const shellClass = [
+    styles.shell,
+    isMarketing ? styles.shellMarketing : "",
+    isStudent ? styles.shellStudent : "",
+  ]
     .filter(Boolean)
     .join(" ");
 
-  const mainClass = [styles.main, width === "full" ? styles.mainFull : ""]
+  const mainClass = [
+    styles.main,
+    width === "full" ? styles.mainFull : "",
+    isStudent ? styles.mainStudent : "",
+  ]
     .filter(Boolean)
     .join(" ");
 
-  const authActions =
+  const studentActions =
+    !loading &&
+    (appHome ? (
+      <Link to={appHome}>
+        <Button variant="primary">Open app</Button>
+      </Link>
+    ) : (
+      <>
+        <Link to="/login" className={styles.navLink}>
+          {STUDENT_NAV.login}
+        </Link>
+        <Link to="/for-studios" className={styles.secondaryCta}>
+          {STUDENT_NAV.joinStudio}
+        </Link>
+        <Link to="/discover">
+          <Button variant="primary">{STUDENT_NAV.findStudio}</Button>
+        </Link>
+      </>
+    ));
+
+  const marketingActions =
     !loading &&
     (appHome ? (
       <Link to={appHome}>
@@ -135,15 +210,15 @@ export function PublicShell({
 
   return (
     <div className={shellClass}>
-      {isMarketing ? (
+      {isLanding ? (
         <a href="#main-content" className={styles.skip}>
           Skip to content
         </a>
       ) : null}
 
-      {isMarketing ? (
-        <header className={styles.islandWrap}>
-          <div className={styles.island}>
+      {isStudent ? (
+        <header className={styles.studentHeader}>
+          <div className={styles.studentHeaderInner}>
             <Link to="/" className={styles.brand} onClick={closeMenu}>
               <img
                 className={styles.brandIcon}
@@ -156,7 +231,7 @@ export function PublicShell({
               <ClassaWordmark variant="mono" />
             </Link>
             <nav className={styles.desktopNav} aria-label="Primary">
-              {NAV.links.map((link) => (
+              {hashLinks.map((link) => (
                 <a
                   key={link.href}
                   href={link.href}
@@ -166,8 +241,78 @@ export function PublicShell({
                   {link.label}
                 </a>
               ))}
+              {routeLinks.map((link) => (
+                <Link key={link.to} to={link.to} className={styles.navLink}>
+                  {link.label}
+                </Link>
+              ))}
             </nav>
-            <div className={styles.desktopActions}>{authActions}</div>
+            <div className={styles.desktopActions}>{studentActions}</div>
+            <div className={styles.mobileHeaderActions}>
+              <Link
+                to="/discover"
+                className={styles.iconButton}
+                aria-label="Search classes"
+              >
+                <SearchIcon className={styles.iconSvg} />
+              </Link>
+              <button
+                ref={toggleRef}
+                type="button"
+                className={styles.menuToggle}
+                aria-expanded={menuOpen}
+                aria-controls={menuId}
+                aria-label={menuOpen ? "Close menu" : "Open menu"}
+                onClick={() => setMenuOpen((o) => !o)}
+              >
+                <span
+                  className={styles.menuBar}
+                  data-open={menuOpen || undefined}
+                />
+                <span
+                  className={styles.menuBar}
+                  data-open={menuOpen || undefined}
+                />
+              </button>
+            </div>
+          </div>
+        </header>
+      ) : isMarketing ? (
+        <header className={styles.islandWrap}>
+          <div className={styles.island}>
+            <Link
+              to="/for-studios"
+              className={styles.brand}
+              onClick={closeMenu}
+            >
+              <img
+                className={styles.brandIcon}
+                src={BRAND_ICON_SRC}
+                width={32}
+                height={32}
+                alt=""
+                aria-hidden
+              />
+              <ClassaWordmark variant="mono" />
+            </Link>
+            <nav className={styles.desktopNav} aria-label="Primary">
+              {hashLinks.map((link) => (
+                <a
+                  key={link.href}
+                  href={link.href}
+                  className={styles.navLink}
+                  aria-current={activeHref === link.href ? "true" : undefined}
+                >
+                  {link.label}
+                </a>
+              ))}
+              {routeLinks.map((link) => (
+                <Link key={link.to} to={link.to} className={styles.navLink}>
+                  {link.label}
+                </Link>
+              ))}
+            </nav>
+            <div className={styles.desktopActions}>{marketingActions}</div>
             <button
               ref={toggleRef}
               type="button"
@@ -216,17 +361,22 @@ export function PublicShell({
         </header>
       )}
 
-      {isMarketing && menuOpen ? (
+      {isLanding && menuOpen ? (
         <div
           ref={menuRef}
           id={menuId}
-          className={styles.mobilePanel}
+          className={[
+            styles.mobilePanel,
+            isStudent ? styles.mobilePanelStudent : "",
+          ]
+            .filter(Boolean)
+            .join(" ")}
           role="dialog"
           aria-modal="true"
           aria-label="Navigation"
         >
           <nav className={styles.mobileNav} aria-label="Primary">
-            {NAV.links.map((link, i) => (
+            {hashLinks.map((link, i) => (
               <a
                 key={link.href}
                 href={link.href}
@@ -237,6 +387,19 @@ export function PublicShell({
               >
                 {link.label}
               </a>
+            ))}
+            {routeLinks.map((link, i) => (
+              <Link
+                key={link.to}
+                to={link.to}
+                className={styles.mobileLink}
+                style={{
+                  animationDelay: `${100 + (hashLinks.length + i) * 50}ms`,
+                }}
+                onClick={closeMenu}
+              >
+                {link.label}
+              </Link>
             ))}
           </nav>
           <div className={styles.mobileActions}>
@@ -251,6 +414,36 @@ export function PublicShell({
                 >
                   Open app
                 </TouchButton>
+              ) : isStudent ? (
+                <>
+                  <TouchButton
+                    as={Link}
+                    to="/login"
+                    variant="default"
+                    fullWidth
+                    onClick={closeMenu}
+                  >
+                    {STUDENT_NAV.login}
+                  </TouchButton>
+                  <TouchButton
+                    as={Link}
+                    to="/for-studios"
+                    variant="default"
+                    fullWidth
+                    onClick={closeMenu}
+                  >
+                    {STUDENT_NAV.joinStudio}
+                  </TouchButton>
+                  <TouchButton
+                    as={Link}
+                    to="/discover"
+                    variant="primary"
+                    fullWidth
+                    onClick={closeMenu}
+                  >
+                    {STUDENT_NAV.findStudio}
+                  </TouchButton>
+                </>
               ) : (
                 <>
                   <TouchButton
@@ -282,8 +475,66 @@ export function PublicShell({
         {children}
       </main>
 
-      <footer className={isMarketing ? styles.footerMarketing : styles.footer}>
-        {isMarketing ? (
+      {isStudent ? (
+        <footer className={styles.footerMarketing}>
+          <div className={styles.footerInnerWide}>
+            <div className={styles.footerBrand}>
+              <img
+                className={styles.brandIcon}
+                src={BRAND_ICON_SRC}
+                width={32}
+                height={32}
+                alt=""
+                aria-hidden
+              />
+              <ClassaWordmark variant="italic-a" />
+              <p className={styles.footerTagline}>{STUDENT_FOOTER.tagline}</p>
+            </div>
+            <div className={styles.footerColumns}>
+              <div>
+                <p className={styles.footerColTitle}>
+                  {STUDENT_FOOTER.forStudents}
+                </p>
+                <nav
+                  className={styles.footerColLinks}
+                  aria-label="For students"
+                >
+                  <Link to="/discover">{STUDENT_FOOTER.discoverStudios}</Link>
+                  <Link to="/discover">{STUDENT_FOOTER.findClasses}</Link>
+                  <a href="#how-it-works">{STUDENT_FOOTER.howItWorks}</a>
+                </nav>
+              </div>
+              <div>
+                <p className={styles.footerColTitle}>
+                  {STUDENT_FOOTER.forStudios}
+                </p>
+                <nav className={styles.footerColLinks} aria-label="For studios">
+                  <Link to="/for-studios">{STUDENT_FOOTER.joinAsStudio}</Link>
+                  <Link to="/login">{STUDENT_FOOTER.studioLogin}</Link>
+                  <a href="/for-studios#features">{STUDENT_FOOTER.features}</a>
+                </nav>
+              </div>
+              <div>
+                <p className={styles.footerColTitle}>
+                  {STUDENT_FOOTER.company}
+                </p>
+                <nav className={styles.footerColLinks} aria-label="Company">
+                  <a href="#faq">{STUDENT_FOOTER.about}</a>
+                  <Link to="/register" search={{ for: "studio" }}>
+                    {STUDENT_FOOTER.contact}
+                  </Link>
+                  <Link to="/privacy">{STUDENT_FOOTER.privacy}</Link>
+                  <Link to="/terms">{STUDENT_FOOTER.terms}</Link>
+                </nav>
+              </div>
+            </div>
+            <p className={styles.footerCopy}>
+              © {new Date().getFullYear()} {STUDENT_FOOTER.copyright}
+            </p>
+          </div>
+        </footer>
+      ) : isMarketing ? (
+        <footer className={styles.footerMarketing}>
           <div className={styles.footerInner}>
             <div className={styles.footerBrand}>
               <img
@@ -303,6 +554,7 @@ export function PublicShell({
                   {link.label}
                 </a>
               ))}
+              <Link to="/">{STUDIO_NAV_EXTRA.forStudents}</Link>
               <Link to="/login">{NAV.login}</Link>
               <Link to="/privacy">{FOOTER.privacy}</Link>
               <Link to="/terms">{FOOTER.terms}</Link>
@@ -311,10 +563,12 @@ export function PublicShell({
               © {new Date().getFullYear()} {FOOTER.copyright}
             </p>
           </div>
-        ) : (
-          "classa Dance Studio — move with confidence."
-        )}
-      </footer>
+        </footer>
+      ) : (
+        <footer className={styles.footer}>
+          classa Dance Studio — move with confidence.
+        </footer>
+      )}
     </div>
   );
 }

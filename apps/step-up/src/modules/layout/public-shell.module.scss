@@ -5,12 +5,171 @@
   background: var(--surface-background, var(--color-bg));
 }
 
-.shellMarketing {
+.shellStudent {
   --lp-ease: cubic-bezier(0.32, 0.72, 0, 1);
-  --island-offset: calc(24px + env(safe-area-inset-top, 0px));
-  --island-size: 3.75rem;
+  --student-header-h: 3.75rem;
   background: var(--surface-background, #f8f4ec);
   hyphens: none;
+}
+
+.studentHeader {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-fg) 8%, transparent);
+  background: color-mix(in srgb, var(--surface-background, #f8f4ec) 88%, transparent);
+  backdrop-filter: blur(16px);
+}
+
+.studentHeaderInner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: var(--student-header-h);
+  max-width: 72rem;
+  margin-inline: auto;
+  padding: 8px 16px;
+  padding-top: calc(8px + env(safe-area-inset-top, 0px));
+}
+
+.mobileHeaderActions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+}
+
+.iconButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 999px;
+  color: var(--color-fg);
+  text-decoration: none;
+
+  &:hover {
+    background: color-mix(in srgb, var(--color-fg) 5%, transparent);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--color-border-focus);
+    outline-offset: 2px;
+  }
+}
+
+.iconSvg {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.secondaryCta {
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 12px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.25rem;
+  color: var(--color-fg);
+  text-decoration: none;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--color-fg) 14%, transparent);
+  transition: background 700ms var(--lp-ease, cubic-bezier(0.32, 0.72, 0, 1));
+
+  &:hover {
+    background: color-mix(in srgb, var(--color-fg) 5%, transparent);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--color-border-focus);
+    outline-offset: 2px;
+  }
+}
+
+.mainStudent {
+  padding-top: 0;
+}
+
+.mobilePanelStudent {
+  padding-top: calc(
+    var(--student-header-h) + env(safe-area-inset-top, 0px) + 24px
+  );
+}
+
+.footerInnerWide {
+  max-width: 72rem;
+  margin-inline: auto;
+  display: grid;
+  gap: var(--space-6, 1.5rem);
+}
+
+.footerColumns {
+  display: grid;
+  gap: var(--space-5, 1.25rem);
+}
+
+.footerColTitle {
+  margin: 0 0 8px;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--color-fg) 55%, transparent);
+}
+
+.footerColLinks {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+
+  a {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: color-mix(in srgb, var(--color-fg) 72%, transparent);
+    text-decoration: none;
+
+    &:hover {
+      color: var(--color-fg);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--color-border-focus);
+      outline-offset: 2px;
+    }
+  }
+}
+
+@media (min-width: 768px) {
+  .studentHeaderInner {
+    padding-inline: 24px;
+  }
+
+  .footerColumns {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 900px) {
+  .mobileHeaderActions {
+    display: none;
+  }
+
+  .studentHeaderInner .desktopNav,
+  .studentHeaderInner .desktopActions {
+    display: flex;
+  }
+
+  .studentHeaderInner .desktopNav {
+    flex: 1;
+    justify-content: center;
+  }
+}
+
+@media (min-width: 1100px) {
+  .studentHeaderInner {
+    padding-inline: 32px;
+  }
 }
 
 .skip {

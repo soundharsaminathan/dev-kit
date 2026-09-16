@@ -4,6 +4,8 @@ test.describe("public smoke @smoke", () => {
   test("guest public pages render @smoke", async ({ page }) => {
     for (const pathName of [
       "/",
+      "/discover",
+      "/for-studios",
       "/login",
       "/register",
       "/forgot-password",

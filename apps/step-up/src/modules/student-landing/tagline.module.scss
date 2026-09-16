@@ -1,0 +1,38 @@
+.section {
+  padding-block: var(--lp-space-700) !important;
+}
+
+.line {
+  margin: 0;
+  max-width: 42.5rem;
+  font-size: var(--lp-text-4xl);
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.03em;
+  text-wrap: balance;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35em;
+}
+
+.word {
+  color: color-mix(in srgb, var(--color-fg) 30%, transparent);
+  transition: color 700ms cubic-bezier(0.32, 0.72, 0, 1);
+
+  &[data-active] {
+    color: var(--color-fg);
+  }
+}
+
+@media (min-width: 768px) {
+  .line {
+    font-size: var(--lp-text-5xl);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .word {
+    transition: none;
+    color: var(--color-fg);
+  }
+}

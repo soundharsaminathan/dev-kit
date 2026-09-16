@@ -1,0 +1,99 @@
+.section {
+  padding-block: var(--lp-space-700) !important;
+}
+
+.header {
+  display: grid;
+  gap: 16px;
+}
+
+.city {
+  display: grid;
+  gap: 4px;
+  max-width: 16rem;
+
+  select {
+    min-height: 2.75rem;
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 1px solid color-mix(in srgb, var(--color-fg) 12%, transparent);
+    background: var(--color-card, #fff);
+    font: inherit;
+  }
+}
+
+.cityLabel {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: color-mix(in srgb, var(--color-fg) 55%, transparent);
+}
+
+.grid {
+  margin-top: 24px;
+  display: grid;
+  gap: 16px;
+}
+
+.empty {
+  margin-top: 24px;
+  padding: 24px;
+  border-radius: 16px;
+  border: 1px solid color-mix(in srgb, var(--color-fg) 10%, transparent);
+  background: var(--color-card, #fff);
+
+  p {
+    margin: 0 0 16px;
+    color: color-mix(in srgb, var(--color-fg) 68%, transparent);
+    text-wrap: pretty;
+  }
+}
+
+.altCities {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.25rem;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--color-fg) 12%, transparent);
+  background: transparent;
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-fg);
+  text-decoration: none;
+  cursor: pointer;
+
+  &:hover {
+    background: color-mix(in srgb, var(--color-fg) 5%, transparent);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--color-border-focus);
+    outline-offset: 2px;
+  }
+}
+
+@media (min-width: 768px) {
+  .header {
+    grid-template-columns: 1fr auto;
+    align-items: end;
+  }
+
+  .grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1100px) {
+  .grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}

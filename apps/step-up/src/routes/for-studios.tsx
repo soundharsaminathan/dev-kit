@@ -2,24 +2,22 @@ import { createFileRoute, redirect } from "@tanstack/react-router";
 import { lazy, Suspense, useEffect, useState } from "react";
 import { homePathForUser } from "@/lib/require-auth";
 import { PublicShell } from "@/modules/layout/public-shell";
-import { StudentHero } from "@/modules/student-landing/hero";
+import { Hero } from "@/modules/marketing/hero";
 import styles from "./index.module.scss";
 
-const StudentLandingSections = lazy(
-  () => import("@/modules/student-landing/sections"),
-);
+const LandingSections = lazy(() => import("@/modules/marketing/sections"));
 
-export const Route = createFileRoute("/")({
+export const Route = createFileRoute("/for-studios")({
   beforeLoad: ({ context }) => {
     const user = context.auth.user;
     if (user) {
       throw redirect({ to: homePathForUser(user), replace: true });
     }
   },
-  component: StudentLandingPage,
+  component: StudioLandingPage,
 });
 
-function StudentLandingPage() {
+function StudioLandingPage() {
   const [showSections, setShowSections] = useState(false);
 
   useEffect(() => {
@@ -33,12 +31,12 @@ function StudentLandingPage() {
   }, []);
 
   return (
-    <PublicShell nav="student" width="full">
+    <PublicShell nav="marketing" width="full">
       <div className={styles.page}>
-        <StudentHero />
+        <Hero />
         {showSections ? (
           <Suspense fallback={null}>
-            <StudentLandingSections />
+            <LandingSections />
           </Suspense>
         ) : null}
       </div>

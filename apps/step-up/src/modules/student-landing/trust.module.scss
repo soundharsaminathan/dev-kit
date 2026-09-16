@@ -1,0 +1,43 @@
+.section {
+  padding-block: var(--lp-space-700) !important;
+}
+
+.grid {
+  margin-top: 24px;
+  display: grid;
+  gap: 12px;
+}
+
+.stat {
+  padding: 24px 20px;
+  border-radius: 16px;
+  border: 1px solid color-mix(in srgb, var(--color-fg) 10%, transparent);
+  background: var(--color-card, #fff);
+  text-align: center;
+}
+
+.value {
+  margin: 0;
+  font-size: 2rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+.label {
+  margin: 4px 0 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: color-mix(in srgb, var(--color-fg) 58%, transparent);
+}
+
+.skeleton {
+  height: 6rem;
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--color-fg) 6%, transparent);
+}
+
+@media (min-width: 768px) {
+  .grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
