@@ -5,19 +5,13 @@
 .rail {
   margin-top: 24px;
   display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: minmax(9.5rem, 11rem);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
-  overflow-x: auto;
-  padding-bottom: 8px;
-  scroll-snap-type: x mandatory;
-  -webkit-overflow-scrolling: touch;
 }
 
 .card {
   display: grid;
   gap: 8px;
-  scroll-snap-align: start;
   text-decoration: none;
   color: inherit;
   transition: transform 700ms cubic-bezier(0.32, 0.72, 0, 1);
@@ -79,11 +73,9 @@
   letter-spacing: -0.01em;
 }
 
-@media (min-width: 1100px) {
+@media (min-width: 768px) {
   .rail {
-    grid-auto-flow: row;
     grid-template-columns: repeat(4, minmax(0, 1fr));
-    overflow: visible;
   }
 }
 
