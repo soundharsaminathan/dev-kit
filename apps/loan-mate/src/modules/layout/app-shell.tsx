@@ -10,7 +10,7 @@ const APP_NAV = [
   { to: "/app/loans", label: "Loans" },
   { to: "/app/approvals", label: "Approvals" },
   { to: "/app/collections", label: "Collections" },
-  { to: "/app/users", label: "Users" },
+  { to: "/app/users", label: "Employees" },
   { to: "/app/branches", label: "Branches" },
   { to: "/app/audit", label: "Audit" },
   { to: "/app/reports", label: "Reports" },

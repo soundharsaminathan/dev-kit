@@ -2,7 +2,10 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
+import type { UserRole } from "@/lib/constants";
 import { DocumentsPanel } from "@/lib/documents-panel";
+
+type StaffRef = { id: string; name: string; role?: UserRole };
 
 type Customer = {
   id: string;
@@ -16,6 +19,10 @@ type Customer = {
   blacklisted?: boolean;
   npa?: boolean;
   npaReason?: string | null;
+  createdById?: string | null;
+  collectionOfficerId?: string | null;
+  createdBy?: StaffRef | null;
+  collectionOfficer?: StaffRef | null;
 };
 
 type Loan = {
@@ -25,14 +32,28 @@ type Loan = {
   principal?: number;
 };
 
+type UserRow = {
+  id: string;
+  name: string;
+  role: UserRole;
+  active: boolean;
+};
+
+const MANAGER_ROLES: UserRole[] = [
+  "COMPANY_OWNER",
+  "COMPANY_ADMIN",
+  "BRANCH_MANAGER",
+];
+
 export const Route = createFileRoute("/app/customers/$id")({
   component: CustomerDetailPage,
 });
 
 function CustomerDetailPage() {
   const { id } = Route.useParams();
-  const { api } = useAuth();
+  const { api, user } = useAuth();
   const queryClient = useQueryClient();
+  const canAssign = user ? MANAGER_ROLES.includes(user.role) : false;
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [editOpen, setEditOpen] = useState(false);
@@ -42,6 +63,7 @@ function CustomerDetailPage() {
     pan: "",
     address: "",
   });
+  const [officerId, setOfficerId] = useState("");
   const [blacklistReason, setBlacklistReason] = useState("");
   const [npaReason, setNpaReason] = useState("");
   const [npaClearReason, setNpaClearReason] = useState("");
@@ -56,6 +78,12 @@ function CustomerDetailPage() {
     queryFn: () => api.get<Loan[]>(`/loans?customerId=${id}`),
   });
 
+  const officers = useQuery({
+    queryKey: ["users", "assignable"],
+    queryFn: () => api.get<UserRow[]>("/users"),
+    enabled: canAssign,
+  });
+
   useEffect(() => {
     if (!customer.data) return;
     setEditForm({
@@ -64,6 +92,7 @@ function CustomerDetailPage() {
       pan: customer.data.pan ?? "",
       address: customer.data.address ?? "",
     });
+    setOfficerId(customer.data.collectionOfficerId ?? "");
   }, [customer.data]);
 
   const invalidate = async () => {
@@ -81,6 +110,18 @@ function CustomerDetailPage() {
     onSuccess: async () => {
       setSuccess("Customer updated.");
       setEditOpen(false);
+      await invalidate();
+    },
+    onError: onErr,
+  });
+
+  const saveAssignment = useMutation({
+    mutationFn: () =>
+      api.patch(`/customers/${id}/assignment`, {
+        collectionOfficerId: officerId || null,
+      }),
+    onSuccess: async () => {
+      setSuccess("Collection officer updated.");
       await invalidate();
     },
     onError: onErr,
@@ -136,6 +177,11 @@ function CustomerDetailPage() {
   }
 
   const c = customer.data;
+  const assignableOfficers = (officers.data ?? []).filter(
+    (u) =>
+      u.active &&
+      (u.role === "COLLECTION_OFFICER" || u.role === "BRANCH_MANAGER"),
+  );
 
   return (
     <div className="lm-page">
@@ -245,6 +291,33 @@ function CustomerDetailPage() {
               <dd style={{ margin: 0 }}>{c.address ?? "—"}</dd>
             </div>
             <div>
+              <dt className="lm-muted">Created by</dt>
+              <dd style={{ margin: 0 }}>
+                {c.createdBy ? (
+                  <Link to="/app/users/$id" params={{ id: c.createdBy.id }}>
+                    {c.createdBy.name}
+                  </Link>
+                ) : (
+                  "—"
+                )}
+              </dd>
+            </div>
+            <div>
+              <dt className="lm-muted">Collection officer</dt>
+              <dd style={{ margin: 0 }}>
+                {c.collectionOfficer ? (
+                  <Link
+                    to="/app/users/$id"
+                    params={{ id: c.collectionOfficer.id }}
+                  >
+                    {c.collectionOfficer.name}
+                  </Link>
+                ) : (
+                  "Unassigned"
+                )}
+              </dd>
+            </div>
+            <div>
               <dt className="lm-muted">Status</dt>
               <dd style={{ margin: 0 }}>
                 {c.blacklisted ? (
@@ -265,6 +338,42 @@ function CustomerDetailPage() {
           </dl>
         )}
       </div>
+
+      {canAssign ? (
+        <div className="lm-card">
+          <h2>Collection assignment</h2>
+          <form
+            className="lm-form"
+            onSubmit={(e) => {
+              e.preventDefault();
+              saveAssignment.mutate();
+            }}
+          >
+            <div className="lm-form-row">
+              <label htmlFor="officer">Collection officer</label>
+              <select
+                id="officer"
+                value={officerId}
+                onChange={(e) => setOfficerId(e.target.value)}
+              >
+                <option value="">Unassigned</option>
+                {assignableOfficers.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.name} ({u.role.replaceAll("_", " ")})
+                  </option>
+                ))}
+              </select>
+            </div>
+            <button
+              type="submit"
+              className="lm-btn"
+              disabled={saveAssignment.isPending}
+            >
+              Save assignment
+            </button>
+          </form>
+        </div>
+      ) : null}
 
       <div className="lm-card">
         <h2>Blacklist</h2>

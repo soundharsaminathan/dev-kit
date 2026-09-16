@@ -49,10 +49,21 @@ function CollectionsPage() {
   const loans = useQuery({
     queryKey: ["loans", "collections"],
     queryFn: async () => {
-      const all = await api.get<Loan[]>("/loans");
-      return all.filter((l) =>
-        ["DISBURSED", "ACTIVE", "WRITTEN_OFF"].includes(l.status),
-      );
+      const all = await api.get<
+        Array<
+          Loan & {
+            customer?: { name?: string };
+          }
+        >
+      >("/loans");
+      return all
+        .filter((l) =>
+          ["DISBURSED", "ACTIVE", "WRITTEN_OFF"].includes(l.status),
+        )
+        .map((l) => ({
+          ...l,
+          customerName: l.customerName ?? l.customer?.name,
+        }));
     },
   });
 
@@ -93,10 +104,20 @@ function CollectionsPage() {
           <h1>Collections</h1>
           <p>
             Staff-entered payments — Penalty → Interest → Principal, oldest
-            overdue first.
+            overdue first. Collection officers only see loans for customers
+            assigned to them.
           </p>
         </div>
       </div>
+
+      {loans.isSuccess && !(loans.data?.length ?? 0) ? (
+        <div className="lm-card">
+          <p className="lm-muted">
+            No collectible loans in your queue. Ask a manager to assign
+            customers as collection targets.
+          </p>
+        </div>
+      ) : null}
 
       <div className="lm-card">
         <form

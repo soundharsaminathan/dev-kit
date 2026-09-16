@@ -28,9 +28,11 @@ import { Route as AppBranchesRouteImport } from './routes/app/branches'
 import { Route as AppAuditRouteImport } from './routes/app/audit'
 import { Route as AppApprovalsRouteImport } from './routes/app/approvals'
 import { Route as AdminProfileRouteImport } from './routes/admin/profile'
+import { Route as AppUsersIndexRouteImport } from './routes/app/users.index'
 import { Route as AppProductsIndexRouteImport } from './routes/app/products.index'
 import { Route as AppLoansIndexRouteImport } from './routes/app/loans.index'
 import { Route as AppCustomersIndexRouteImport } from './routes/app/customers.index'
+import { Route as AppUsersIdRouteImport } from './routes/app/users.$id'
 import { Route as AppProductsNewRouteImport } from './routes/app/products.new'
 import { Route as AppProductsIdRouteImport } from './routes/app/products.$id'
 import { Route as AppLoansNewRouteImport } from './routes/app/loans.new'
@@ -133,6 +135,11 @@ const AdminProfileRoute = AdminProfileRouteImport.update({
   path: '/profile',
   getParentRoute: () => AdminRoute,
 } as any)
+const AppUsersIndexRoute = AppUsersIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppUsersRoute,
+} as any)
 const AppProductsIndexRoute = AppProductsIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -147,6 +154,11 @@ const AppCustomersIndexRoute = AppCustomersIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AppCustomersRoute,
+} as any)
+const AppUsersIdRoute = AppUsersIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => AppUsersRoute,
 } as any)
 const AppProductsNewRoute = AppProductsNewRouteImport.update({
   id: '/new',
@@ -196,7 +208,7 @@ export interface FileRoutesByFullPath {
   '/app/profile': typeof AppProfileRoute
   '/app/reports': typeof AppReportsRoute
   '/app/settings': typeof AppSettingsRoute
-  '/app/users': typeof AppUsersRoute
+  '/app/users': typeof AppUsersRouteWithChildren
   '/admin/': typeof AdminIndexRoute
   '/app/': typeof AppIndexRoute
   '/app/customers/$id': typeof AppCustomersIdRoute
@@ -205,9 +217,11 @@ export interface FileRoutesByFullPath {
   '/app/loans/new': typeof AppLoansNewRoute
   '/app/products/$id': typeof AppProductsIdRoute
   '/app/products/new': typeof AppProductsNewRoute
+  '/app/users/$id': typeof AppUsersIdRoute
   '/app/customers/': typeof AppCustomersIndexRoute
   '/app/loans/': typeof AppLoansIndexRoute
   '/app/products/': typeof AppProductsIndexRoute
+  '/app/users/': typeof AppUsersIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -221,7 +235,6 @@ export interface FileRoutesByTo {
   '/app/profile': typeof AppProfileRoute
   '/app/reports': typeof AppReportsRoute
   '/app/settings': typeof AppSettingsRoute
-  '/app/users': typeof AppUsersRoute
   '/admin': typeof AdminIndexRoute
   '/app': typeof AppIndexRoute
   '/app/customers/$id': typeof AppCustomersIdRoute
@@ -230,9 +243,11 @@ export interface FileRoutesByTo {
   '/app/loans/new': typeof AppLoansNewRoute
   '/app/products/$id': typeof AppProductsIdRoute
   '/app/products/new': typeof AppProductsNewRoute
+  '/app/users/$id': typeof AppUsersIdRoute
   '/app/customers': typeof AppCustomersIndexRoute
   '/app/loans': typeof AppLoansIndexRoute
   '/app/products': typeof AppProductsIndexRoute
+  '/app/users': typeof AppUsersIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -252,7 +267,7 @@ export interface FileRoutesById {
   '/app/profile': typeof AppProfileRoute
   '/app/reports': typeof AppReportsRoute
   '/app/settings': typeof AppSettingsRoute
-  '/app/users': typeof AppUsersRoute
+  '/app/users': typeof AppUsersRouteWithChildren
   '/admin/': typeof AdminIndexRoute
   '/app/': typeof AppIndexRoute
   '/app/customers/$id': typeof AppCustomersIdRoute
@@ -261,9 +276,11 @@ export interface FileRoutesById {
   '/app/loans/new': typeof AppLoansNewRoute
   '/app/products/$id': typeof AppProductsIdRoute
   '/app/products/new': typeof AppProductsNewRoute
+  '/app/users/$id': typeof AppUsersIdRoute
   '/app/customers/': typeof AppCustomersIndexRoute
   '/app/loans/': typeof AppLoansIndexRoute
   '/app/products/': typeof AppProductsIndexRoute
+  '/app/users/': typeof AppUsersIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -293,9 +310,11 @@ export interface FileRouteTypes {
     | '/app/loans/new'
     | '/app/products/$id'
     | '/app/products/new'
+    | '/app/users/$id'
     | '/app/customers/'
     | '/app/loans/'
     | '/app/products/'
+    | '/app/users/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -309,7 +328,6 @@ export interface FileRouteTypes {
     | '/app/profile'
     | '/app/reports'
     | '/app/settings'
-    | '/app/users'
     | '/admin'
     | '/app'
     | '/app/customers/$id'
@@ -318,9 +336,11 @@ export interface FileRouteTypes {
     | '/app/loans/new'
     | '/app/products/$id'
     | '/app/products/new'
+    | '/app/users/$id'
     | '/app/customers'
     | '/app/loans'
     | '/app/products'
+    | '/app/users'
   id:
     | '__root__'
     | '/'
@@ -348,9 +368,11 @@ export interface FileRouteTypes {
     | '/app/loans/new'
     | '/app/products/$id'
     | '/app/products/new'
+    | '/app/users/$id'
     | '/app/customers/'
     | '/app/loans/'
     | '/app/products/'
+    | '/app/users/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -495,6 +517,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminProfileRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/app/users/': {
+      id: '/app/users/'
+      path: '/'
+      fullPath: '/app/users/'
+      preLoaderRoute: typeof AppUsersIndexRouteImport
+      parentRoute: typeof AppUsersRoute
+    }
     '/app/products/': {
       id: '/app/products/'
       path: '/'
@@ -515,6 +544,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/app/customers/'
       preLoaderRoute: typeof AppCustomersIndexRouteImport
       parentRoute: typeof AppCustomersRoute
+    }
+    '/app/users/$id': {
+      id: '/app/users/$id'
+      path: '/$id'
+      fullPath: '/app/users/$id'
+      preLoaderRoute: typeof AppUsersIdRouteImport
+      parentRoute: typeof AppUsersRoute
     }
     '/app/products/new': {
       id: '/app/products/new'
@@ -621,6 +657,20 @@ const AppProductsRouteWithChildren = AppProductsRoute._addFileChildren(
   AppProductsRouteChildren,
 )
 
+interface AppUsersRouteChildren {
+  AppUsersIdRoute: typeof AppUsersIdRoute
+  AppUsersIndexRoute: typeof AppUsersIndexRoute
+}
+
+const AppUsersRouteChildren: AppUsersRouteChildren = {
+  AppUsersIdRoute: AppUsersIdRoute,
+  AppUsersIndexRoute: AppUsersIndexRoute,
+}
+
+const AppUsersRouteWithChildren = AppUsersRoute._addFileChildren(
+  AppUsersRouteChildren,
+)
+
 interface AppRouteChildren {
   AppApprovalsRoute: typeof AppApprovalsRoute
   AppAuditRoute: typeof AppAuditRoute
@@ -633,7 +683,7 @@ interface AppRouteChildren {
   AppProfileRoute: typeof AppProfileRoute
   AppReportsRoute: typeof AppReportsRoute
   AppSettingsRoute: typeof AppSettingsRoute
-  AppUsersRoute: typeof AppUsersRoute
+  AppUsersRoute: typeof AppUsersRouteWithChildren
   AppIndexRoute: typeof AppIndexRoute
 }
 
@@ -649,7 +699,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppProfileRoute: AppProfileRoute,
   AppReportsRoute: AppReportsRoute,
   AppSettingsRoute: AppSettingsRoute,
-  AppUsersRoute: AppUsersRoute,
+  AppUsersRoute: AppUsersRouteWithChildren,
   AppIndexRoute: AppIndexRoute,
 }
 

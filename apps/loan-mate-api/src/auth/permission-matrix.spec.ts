@@ -30,11 +30,23 @@ const PERMISSION_MATRIX: MatrixRow[] = [
     ],
   },
   {
-    action: "users.create / list",
+    action: "users.create / update",
     allowed: [
       UserRole.SYSTEM_ADMIN,
       UserRole.COMPANY_OWNER,
       UserRole.COMPANY_ADMIN,
+    ],
+  },
+  {
+    action: "users.list / get / performance",
+    allowed: [
+      UserRole.SYSTEM_ADMIN,
+      UserRole.COMPANY_OWNER,
+      UserRole.COMPANY_ADMIN,
+      UserRole.BRANCH_MANAGER,
+      UserRole.LOAN_OFFICER,
+      UserRole.APPROVER,
+      UserRole.COLLECTION_OFFICER,
     ],
   },
   {
@@ -44,6 +56,14 @@ const PERMISSION_MATRIX: MatrixRow[] = [
       UserRole.COMPANY_ADMIN,
       UserRole.BRANCH_MANAGER,
       UserRole.LOAN_OFFICER,
+    ],
+  },
+  {
+    action: "customers.assign_collection",
+    allowed: [
+      UserRole.COMPANY_OWNER,
+      UserRole.COMPANY_ADMIN,
+      UserRole.BRANCH_MANAGER,
     ],
   },
   {

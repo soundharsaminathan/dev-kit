@@ -1,4 +1,10 @@
-import { IsBoolean, IsOptional, IsString, MinLength } from "class-validator";
+import {
+  IsBoolean,
+  IsOptional,
+  IsString,
+  MinLength,
+  ValidateIf,
+} from "class-validator";
 
 export class CreateCustomerDto {
   @IsString()
@@ -43,4 +49,10 @@ export class BlacklistCustomerDto {
   @IsOptional()
   @IsString()
   reason?: string;
+}
+
+export class AssignCollectionOfficerDto {
+  @ValidateIf((_, v) => v !== null)
+  @IsString()
+  collectionOfficerId!: string | null;
 }

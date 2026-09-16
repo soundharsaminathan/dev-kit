@@ -15,7 +15,8 @@ import { Roles } from "../auth/roles.decorator";
 import { RolesGuard } from "../auth/roles.guard";
 import { UserRole } from "../generated/prisma";
 import { CustomersService } from "./customers.service";
-import type {
+import {
+  AssignCollectionOfficerDto,
   BlacklistCustomerDto,
   CreateCustomerDto,
   UpdateCustomerDto,
@@ -78,6 +79,20 @@ export class CustomersController {
     @Body() dto: UpdateCustomerDto,
   ) {
     return this.customers.update(user, id, dto);
+  }
+
+  @Patch(":id/assignment")
+  @Roles(
+    UserRole.COMPANY_OWNER,
+    UserRole.COMPANY_ADMIN,
+    UserRole.BRANCH_MANAGER,
+  )
+  assignCollectionOfficer(
+    @CurrentUser() user: AuthUser,
+    @Param("id") id: string,
+    @Body() dto: AssignCollectionOfficerDto,
+  ) {
+    return this.customers.assignCollectionOfficer(user, id, dto);
   }
 
   @Post(":id/blacklist")

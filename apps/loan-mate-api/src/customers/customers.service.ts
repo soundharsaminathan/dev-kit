@@ -11,14 +11,26 @@ import { AuditService } from "../audit/audit.service";
 import type { AuthUser } from "../auth/current-user.decorator";
 import { nextSequence, padSeq } from "../common/sequence";
 import { assertSameCompany, requireCompany } from "../common/tenancy";
-import { ApprovalType, LoanStatus } from "../generated/prisma";
+import { ApprovalType, LoanStatus, UserRole } from "../generated/prisma";
 import { NotificationService } from "../notifications/notifications.service";
 import { PrismaService } from "../prisma/prisma.service";
-import type {
+import {
+  AssignCollectionOfficerDto,
   BlacklistCustomerDto,
   CreateCustomerDto,
   UpdateCustomerDto,
 } from "./dto/customer.dto";
+
+const CUSTOMER_STAFF_SELECT = {
+  id: true,
+  name: true,
+  role: true,
+} as const;
+
+const ASSIGNABLE_ROLES: UserRole[] = [
+  UserRole.COLLECTION_OFFICER,
+  UserRole.BRANCH_MANAGER,
+];
 
 @Injectable()
 export class CustomersService {
@@ -46,6 +58,11 @@ export class CustomersService {
           mobile: dto.mobile,
           pan: dto.pan.toUpperCase(),
           address: dto.address,
+          createdById: actor.id,
+        },
+        include: {
+          createdBy: { select: CUSTOMER_STAFF_SELECT },
+          collectionOfficer: { select: CUSTOMER_STAFF_SELECT },
         },
       });
       await this.audit.append({
@@ -74,15 +91,72 @@ export class CustomersService {
     const companyId = requireCompany(actor);
     return this.prisma.customer.findMany({
       where: { companyId },
+      include: {
+        createdBy: { select: CUSTOMER_STAFF_SELECT },
+        collectionOfficer: { select: CUSTOMER_STAFF_SELECT },
+      },
       orderBy: { createdAt: "desc" },
     });
   }
 
   async get(actor: AuthUser, id: string) {
-    const customer = await this.prisma.customer.findUnique({ where: { id } });
+    const customer = await this.prisma.customer.findUnique({
+      where: { id },
+      include: {
+        createdBy: { select: CUSTOMER_STAFF_SELECT },
+        collectionOfficer: { select: CUSTOMER_STAFF_SELECT },
+      },
+    });
     if (!customer) throw new NotFoundException("Customer not found");
     assertSameCompany(actor, customer.companyId);
     return customer;
+  }
+
+  async assignCollectionOfficer(
+    actor: AuthUser,
+    id: string,
+    dto: AssignCollectionOfficerDto,
+  ) {
+    const customer = await this.get(actor, id);
+    let collectionOfficerId: string | null = dto.collectionOfficerId;
+
+    if (collectionOfficerId) {
+      const officer = await this.prisma.user.findUnique({
+        where: { id: collectionOfficerId },
+      });
+      if (!officer || !officer.active) {
+        throw new BadRequestException("Collection officer not found or inactive");
+      }
+      if (officer.companyId !== customer.companyId) {
+        throw new BadRequestException("Officer must belong to the same company");
+      }
+      if (!ASSIGNABLE_ROLES.includes(officer.role)) {
+        throw new BadRequestException(
+          "Assignee must be a COLLECTION_OFFICER or BRANCH_MANAGER",
+        );
+      }
+    } else {
+      collectionOfficerId = null;
+    }
+
+    const updated = await this.prisma.customer.update({
+      where: { id },
+      data: { collectionOfficerId },
+      include: {
+        createdBy: { select: CUSTOMER_STAFF_SELECT },
+        collectionOfficer: { select: CUSTOMER_STAFF_SELECT },
+      },
+    });
+    await this.audit.append({
+      companyId: customer.companyId,
+      actorId: actor.id,
+      action: "customer.assign_collection",
+      entityType: "Customer",
+      entityId: id,
+      before: { collectionOfficerId: customer.collectionOfficerId },
+      after: { collectionOfficerId: updated.collectionOfficerId },
+    });
+    return updated;
   }
 
   async update(actor: AuthUser, id: string, dto: UpdateCustomerDto) {
@@ -95,6 +169,10 @@ export class CustomersService {
           mobile: dto.mobile,
           pan: dto.pan?.toUpperCase(),
           address: dto.address,
+        },
+        include: {
+          createdBy: { select: CUSTOMER_STAFF_SELECT },
+          collectionOfficer: { select: CUSTOMER_STAFF_SELECT },
         },
       });
       await this.audit.append({

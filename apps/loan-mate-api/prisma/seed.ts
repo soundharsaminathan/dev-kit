@@ -178,6 +178,8 @@ async function main() {
       mobile: "9876543210",
       pan: "ABCDE1234F",
       address: "12 MG Road, Bengaluru",
+      createdById: loanOfficer.id,
+      collectionOfficerId: collector.id,
     },
   });
 

@@ -213,36 +213,44 @@ model User {
   uploadedDocs     Document[]        @relation("DocumentUploader")
   journals         JournalEntry[]    @relation("JournalCreator")
   notifications    Notification[]
+  customersCreated Customer[]        @relation("CustomerCreator")
+  customersAssigned Customer[]       @relation("CustomerCollector")
 
   @@index([companyId])
   @@index([branchId])
 }
 
 model Customer {
-  id              String    @id @default(cuid())
-  companyId       String
-  customerNumber  String    @unique
-  name            String
-  mobile          String
-  pan             String
-  address         String?
-  blacklisted     Boolean   @default(false)
-  blacklistReason String?
-  npa             Boolean   @default(false)
-  npaReason       String?
-  npaMarkedAt     DateTime?
-  npaClearedAt    DateTime?
-  npaSourceLoanId String?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  id                   String    @id @default(cuid())
+  companyId            String
+  customerNumber       String    @unique
+  name                 String
+  mobile               String
+  pan                  String
+  address              String?
+  blacklisted          Boolean   @default(false)
+  blacklistReason      String?
+  npa                  Boolean   @default(false)
+  npaReason            String?
+  npaMarkedAt          DateTime?
+  npaClearedAt         DateTime?
+  npaSourceLoanId      String?
+  createdById          String?
+  collectionOfficerId  String?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
 
-  company Company @relation(fields: [companyId], references: [id])
-  loans   Loan[]
+  company            Company @relation(fields: [companyId], references: [id])
+  createdBy          User?   @relation("CustomerCreator", fields: [createdById], references: [id])
+  collectionOfficer  User?   @relation("CustomerCollector", fields: [collectionOfficerId], references: [id])
+  loans              Loan[]
 
   @@unique([companyId, mobile])
   @@unique([companyId, pan])
   @@index([companyId])
   @@index([companyId, npa])
+  @@index([createdById])
+  @@index([collectionOfficerId])
 }
 
 model LoanProduct {

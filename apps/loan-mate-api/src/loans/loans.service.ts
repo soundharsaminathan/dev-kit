@@ -23,6 +23,7 @@ import {
   DocumentEntityType,
   InstallmentStatus,
   LoanStatus,
+  UserRole,
 } from "../generated/prisma";
 import { NotificationService } from "../notifications/notifications.service";
 import { PrismaService } from "../prisma/prisma.service";
@@ -163,8 +164,12 @@ export class LoansService {
 
   async list(actor: AuthUser) {
     const companyId = requireCompany(actor);
+    const assignmentFilter =
+      actor.role === UserRole.COLLECTION_OFFICER
+        ? { customer: { collectionOfficerId: actor.id } }
+        : {};
     return this.prisma.loan.findMany({
-      where: { companyId, ...branchWhere(actor) },
+      where: { companyId, ...branchWhere(actor), ...assignmentFilter },
       include: { customer: true, product: true, branch: true },
       orderBy: { createdAt: "desc" },
     });
