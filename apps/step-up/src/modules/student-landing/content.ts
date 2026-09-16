@@ -36,6 +36,7 @@ export const STUDENT_TAGLINE = {
 
 export const STUDENT_CATEGORIES = {
   headline: "What are you looking to learn?",
+  comingSoon: "Coming soon",
 } as const;
 
 export const STUDENT_NEARBY = {
@@ -116,6 +117,9 @@ export const STUDENT_PREVIEW = {
   headline: "Your classes, all in one place.",
   support:
     "From discovering your next class to keeping track of your schedule, classa keeps everything simple.",
+  home: "Home",
+  discover: "Discover",
+  profile: "Profile",
 } as const;
 
 export const STUDENT_TRUST = {

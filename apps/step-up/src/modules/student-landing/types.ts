@@ -86,6 +86,7 @@ export const CATEGORY_META: Array<{
   id: DiscoverCategoryId;
   label: string;
   image: string;
+  comingSoon?: boolean;
 }> = [
   { id: "dance", label: "Dance", image: "/marketing/student/cat-dance.png" },
   { id: "music", label: "Music", image: "/marketing/student/cat-music.png" },
@@ -98,22 +99,26 @@ export const CATEGORY_META: Array<{
   {
     id: "swimming",
     label: "Swimming",
-    image: "/marketing/student/cat-swimming.svg",
+    image: "/marketing/student/cat-swimming.png",
+    comingSoon: true,
   },
   {
     id: "martial-arts",
     label: "Martial arts",
-    image: "/marketing/student/cat-martial.svg",
+    image: "/marketing/student/cat-martial.png",
+    comingSoon: true,
   },
   {
     id: "theatre",
     label: "Theatre",
-    image: "/marketing/student/cat-theatre.svg",
+    image: "/marketing/student/cat-theatre.png",
+    comingSoon: true,
   },
   {
     id: "other",
     label: "Other classes",
-    image: "/marketing/student/cat-other.svg",
+    image: "/marketing/student/cat-other.png",
+    comingSoon: true,
   },
 ];
 

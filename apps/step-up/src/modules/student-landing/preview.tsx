@@ -1,9 +1,11 @@
 import shared from "@/modules/marketing/marketing.module.scss";
-import { AttendanceMock } from "@/modules/marketing/mocks/attendance";
-import { ScheduleMock } from "@/modules/marketing/mocks/schedule";
-import { StudentProfileMock } from "@/modules/marketing/mocks/student-profile";
 import { Reveal } from "@/modules/marketing/reveal";
 import { STUDENT_PREVIEW } from "./content";
+import {
+  StudentDiscoverPreview,
+  StudentHomePreview,
+  StudentProfilePreview,
+} from "./preview-mocks";
 import styles from "./preview.module.scss";
 
 export function StudentPreview() {
@@ -27,15 +29,24 @@ export function StudentPreview() {
               <span />
             </div>
             <div className={styles.screens}>
-              <div className={styles.screen}>
-                <StudentProfileMock />
-              </div>
-              <div className={styles.screen}>
-                <ScheduleMock />
-              </div>
-              <div className={styles.screen}>
-                <AttendanceMock />
-              </div>
+              <figure className={styles.screen}>
+                <StudentHomePreview />
+                <figcaption className={styles.caption}>
+                  {STUDENT_PREVIEW.home}
+                </figcaption>
+              </figure>
+              <figure className={styles.screen}>
+                <StudentDiscoverPreview />
+                <figcaption className={styles.caption}>
+                  {STUDENT_PREVIEW.discover}
+                </figcaption>
+              </figure>
+              <figure className={styles.screen}>
+                <StudentProfilePreview />
+                <figcaption className={styles.caption}>
+                  {STUDENT_PREVIEW.profile}
+                </figcaption>
+              </figure>
             </div>
           </div>
         </Reveal>

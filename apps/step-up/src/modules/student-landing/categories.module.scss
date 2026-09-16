@@ -30,15 +30,47 @@
     outline: 2px solid var(--color-border-focus);
     outline-offset: 2px;
   }
+
+  &[data-soon] {
+    cursor: default;
+
+    &:hover {
+      transform: none;
+    }
+  }
+}
+
+.media {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--color-fg) 8%, transparent);
 }
 
 .image {
   width: 100%;
   aspect-ratio: 4 / 3;
   object-fit: cover;
-  border-radius: 12px;
-  border: 1px solid color-mix(in srgb, var(--color-fg) 8%, transparent);
   display: block;
+}
+
+.card[data-soon] .image {
+  opacity: 0.72;
+}
+
+.soonBadge {
+  position: absolute;
+  left: 8px;
+  bottom: 8px;
+  padding: 4px 8px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--color-card, #fff) 92%, transparent);
+  color: var(--color-fg);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1rem;
 }
 
 .label {

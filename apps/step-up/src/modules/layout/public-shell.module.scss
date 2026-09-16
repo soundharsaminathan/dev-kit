@@ -476,6 +476,77 @@
   font-size: 0.875rem;
 }
 
+.footerCompact {
+  padding: 16px;
+  padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid color-mix(in srgb, var(--color-fg) 8%, transparent);
+}
+
+.footerCompactInner {
+  max-width: 72rem;
+  margin-inline: auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 16px;
+}
+
+.footerCompactInner .footerBrand {
+  text-decoration: none;
+  color: inherit;
+  gap: 8px;
+  transition: transform 700ms cubic-bezier(0.32, 0.72, 0, 1);
+
+  &:hover {
+    color: var(--color-fg);
+  }
+
+  &:active {
+    transform: scale(0.98);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--color-border-focus);
+    outline-offset: 2px;
+  }
+}
+
+.footerCompactInner .brandIcon {
+  width: 24px;
+  height: 24px;
+}
+
+.footerCompactMeta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  margin-inline-start: auto;
+}
+
+.footerCompactLinks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+
+  a {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: color-mix(in srgb, var(--color-fg) 68%, transparent);
+    text-decoration: none;
+
+    &:hover {
+      color: var(--color-fg);
+    }
+
+    &:focus-visible {
+      color: var(--color-fg);
+      outline: 2px solid var(--color-border-focus);
+      outline-offset: 2px;
+    }
+  }
+}
+
 .footerMarketing {
   padding: var(--space-10, 2.5rem) var(--space-4, 1rem);
   padding-bottom: calc(var(--space-8, 2rem) + env(safe-area-inset-bottom, 0px));
@@ -553,6 +624,10 @@
     padding-inline: var(--space-6, 1.5rem);
   }
 
+  .footerCompact {
+    padding-inline: 24px;
+  }
+
   .footerInner {
     grid-template-columns: 1.4fr 1fr;
     align-items: start;
@@ -588,12 +663,14 @@
   .menuBar,
   .navLink,
   .secondaryCta,
-  .secondaryCtaArrow {
+  .secondaryCtaArrow,
+  .footerCompactInner .footerBrand {
     transition: none;
   }
 
   .navLink:active,
-  .secondaryCta:active {
+  .secondaryCta:active,
+  .footerCompactInner .footerBrand:active {
     transform: none;
   }
 
@@ -609,5 +686,9 @@
 
   .footerMarketing {
     padding-inline: var(--space-8, 2rem);
+  }
+
+  .footerCompact {
+    padding-inline: 32px;
   }
 }

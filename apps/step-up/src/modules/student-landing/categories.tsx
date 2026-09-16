@@ -19,23 +19,47 @@ export function StudentCategories() {
           </h2>
         </Reveal>
         <div className={styles.rail}>
-          {CATEGORY_META.slice(0, 4).map((category, index) => (
-            <Reveal key={category.id} delay={index * 40} as="div">
-              <Link
-                to="/discover"
-                search={{ category: category.id }}
-                className={styles.card}
-              >
-                <img
-                  src={category.image}
-                  alt=""
-                  className={styles.image}
-                  loading="lazy"
-                />
+          {CATEGORY_META.map((category, index) => {
+            const visual = (
+              <>
+                <span className={styles.media}>
+                  <img
+                    src={category.image}
+                    alt=""
+                    className={styles.image}
+                    loading="lazy"
+                  />
+                  {category.comingSoon ? (
+                    <span className={styles.soonBadge}>
+                      {STUDENT_CATEGORIES.comingSoon}
+                    </span>
+                  ) : null}
+                </span>
                 <span className={styles.label}>{category.label}</span>
-              </Link>
-            </Reveal>
-          ))}
+              </>
+            );
+            return (
+              <Reveal key={category.id} delay={index * 40} as="div">
+                {category.comingSoon ? (
+                  <div
+                    className={styles.card}
+                    data-soon=""
+                    aria-label={`${category.label}, ${STUDENT_CATEGORIES.comingSoon}`}
+                  >
+                    {visual}
+                  </div>
+                ) : (
+                  <Link
+                    to="/discover"
+                    search={{ category: category.id }}
+                    className={styles.card}
+                  >
+                    {visual}
+                  </Link>
+                )}
+              </Reveal>
+            );
+          })}
         </div>
       </div>
     </section>

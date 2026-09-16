@@ -37,10 +37,16 @@
   border-radius: 12px;
   overflow: hidden;
   border: 1px solid color-mix(in srgb, var(--color-fg) 8%, transparent);
-  background: var(--surface-background, #f8f4ec);
-  transform: scale(0.92);
-  transform-origin: top left;
-  width: 108%;
+  background: #f5f6fb;
+  margin: 0;
+}
+
+.caption {
+  margin: 0;
+  padding: 8px 12px 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: color-mix(in srgb, var(--color-fg) 62%, transparent);
 }
 
 @media (min-width: 1100px) {

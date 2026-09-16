@@ -1,5 +1,5 @@
 import { Button } from "@dev-ui/components/button";
-import { Link } from "@tanstack/react-router";
+import { Link, useRouterState } from "@tanstack/react-router";
 import {
   type ReactNode,
   useCallback,
@@ -59,6 +59,8 @@ export function PublicShell({
   const isMarketing = nav === "marketing";
   const isStudent = nav === "student";
   const isLanding = isMarketing || isStudent;
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const isStudentHome = isStudent && pathname === "/";
   const [menuOpen, setMenuOpen] = useState(false);
   const [activeHref, setActiveHref] = useState<string | null>(null);
   const menuId = useId();
@@ -478,7 +480,7 @@ export function PublicShell({
         {children}
       </main>
 
-      {isStudent ? (
+      {isStudentHome ? (
         <footer className={styles.footerMarketing}>
           <div className={styles.footerInnerWide}>
             <div className={styles.footerBrand}>
@@ -534,6 +536,31 @@ export function PublicShell({
             <p className={styles.footerCopy}>
               © {new Date().getFullYear()} {STUDENT_FOOTER.copyright}
             </p>
+          </div>
+        </footer>
+      ) : isStudent ? (
+        <footer className={styles.footerCompact}>
+          <div className={styles.footerCompactInner}>
+            <Link to="/" className={styles.footerBrand}>
+              <img
+                className={styles.brandIcon}
+                src={BRAND_ICON_SRC}
+                width={24}
+                height={24}
+                alt=""
+                aria-hidden
+              />
+              <ClassaWordmark variant="italic-a" />
+            </Link>
+            <div className={styles.footerCompactMeta}>
+              <nav className={styles.footerCompactLinks} aria-label="Footer">
+                <Link to="/privacy">{STUDENT_FOOTER.privacy}</Link>
+                <Link to="/terms">{STUDENT_FOOTER.terms}</Link>
+              </nav>
+              <p className={styles.footerCopy}>
+                © {new Date().getFullYear()} {STUDENT_FOOTER.copyright}
+              </p>
+            </div>
           </div>
         </footer>
       ) : isMarketing ? (
