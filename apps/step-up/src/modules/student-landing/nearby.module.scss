@@ -71,6 +71,12 @@
   text-decoration: none;
   cursor: pointer;
 
+  &[data-active] {
+    color: var(--color-primary-fg, #fff);
+    background: var(--color-primary);
+    border-color: transparent;
+  }
+
   &:hover {
     background: color-mix(in srgb, var(--color-fg) 5%, transparent);
   }

@@ -2,6 +2,7 @@ import { Inject, Injectable, NotFoundException } from "@nestjs/common";
 import {
   type BatchCategory,
   type BillingCadence,
+  SessionStatus,
   StudioStatus,
   UserRole,
 } from "@prisma/client";
@@ -18,9 +19,16 @@ import {
 import {
   DISCOVER_CITIES,
   findCityById,
+  isLiveCity,
   matchCityFromAddress,
 } from "./discover.cities";
 import { nearestDistanceKm, roundDistanceKm } from "./discover.geo";
+import {
+  CHENNAI_LOCALITIES,
+  findLocalityById,
+  matchLocality,
+  stylesMatchQuery,
+} from "./discover.localities";
 import {
   batchTimingLabel,
   dayBandsFromSchedule,
@@ -31,6 +39,8 @@ export type DiscoverStudioFilters = {
   q?: string;
   city?: string;
   category?: string;
+  style?: string;
+  locality?: string;
   audience?: "KIDS" | "ADULTS";
   days?: "weekday" | "weekend";
   time?: "morning" | "evening";
@@ -47,6 +57,8 @@ export type DiscoverStudioCard = {
   name: string;
   city: string | null;
   cityId: string | null;
+  locality: string | null;
+  localityId: string | null;
   styles: string[];
   categories: DiscoverCategoryId[];
   imageUrl: string | null;
@@ -120,6 +132,8 @@ type StudioRow = {
 
 const DEFAULT_LIMIT = 24;
 const MAX_LIMIT = 48;
+const CATALOG_TTL_MS = 30_000;
+const TRIAL_HORIZON_DAYS = 35;
 
 function priceNumber(value: { toString(): string } | number): number {
   return typeof value === "number" ? value : Number(value.toString());
@@ -203,6 +217,20 @@ function studioMinPrice(batches: StudioRow["batches"]): {
   return best;
 }
 
+function studioLocality(studio: StudioRow) {
+  const firstPoint = studio.branches.find(
+    (branch) => branch.latitude != null && branch.longitude != null,
+  );
+  return matchLocality({
+    addresses: [
+      studio.address,
+      ...studio.branches.map((branch) => branch.address),
+    ],
+    latitude: firstPoint?.latitude ?? null,
+    longitude: firstPoint?.longitude ?? null,
+  });
+}
+
 function pickImageKey(studio: StudioRow): string | null {
   return (
     studio.heroDesktopUrl ||
@@ -230,12 +258,18 @@ function matchesText(studio: StudioRow, styles: string[], q: string): boolean {
 
 @Injectable()
 export class DiscoverService {
+  private catalog: { at: number; rows: StudioRow[] } | null = null;
+
   constructor(
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(MediaService) private readonly media: MediaService,
   ) {}
 
   private async loadActiveStudios(): Promise<StudioRow[]> {
+    if (this.catalog && Date.now() - this.catalog.at < CATALOG_TTL_MS) {
+      return this.catalog.rows;
+    }
+
     const studios = await this.prisma.studio.findMany({
       where: { status: StudioStatus.ACTIVE },
       orderBy: { name: "asc" },
@@ -291,7 +325,9 @@ export class DiscoverService {
       },
     });
 
-    return studios.filter((studio) => !isTestStudio(studio));
+    const rows = studios.filter((studio) => !isTestStudio(studio));
+    this.catalog = { at: Date.now(), rows };
+    return rows;
   }
 
   private async toCard(
@@ -305,6 +341,7 @@ export class DiscoverService {
       studio.address,
       ...studio.branches.map((branch) => branch.address),
     );
+    const locality = studioLocality(studio);
     const rating = weightedRating(activeBatches);
     const timing = studioTiming(activeBatches);
     const price = studioMinPrice(activeBatches);
@@ -318,6 +355,8 @@ export class DiscoverService {
       name: studio.name,
       city: city?.label ?? null,
       cityId: city?.id ?? null,
+      locality: locality?.label ?? null,
+      localityId: locality?.id ?? null,
       styles,
       categories,
       imageUrl: await this.media.signReadUrl(imageKey),
@@ -347,6 +386,12 @@ export class DiscoverService {
       filters.category && isValidCategoryId(filters.category)
         ? filters.category
         : null;
+    const localityFilter = filters.locality
+      ? findLocalityById(filters.locality)
+      : null;
+    if (filters.locality && !localityFilter) {
+      return [];
+    }
 
     return studios.filter((studio) => {
       const activeBatches = studio.batches.filter((batch) => batch.active);
@@ -356,11 +401,16 @@ export class DiscoverService {
         studio.address,
         ...studio.branches.map((branch) => branch.address),
       );
+      const locality = studioLocality(studio);
       const timing = studioTiming(activeBatches);
       const price = studioMinPrice(activeBatches);
 
       if (filters.q && !matchesText(studio, styles, filters.q)) return false;
+      if (filters.style && !stylesMatchQuery(styles, filters.style)) {
+        return false;
+      }
       if (cityFilter && city?.id !== cityFilter.id) return false;
+      if (localityFilter && locality?.id !== localityFilter.id) return false;
       if (categoryFilter && !categories.includes(categoryFilter)) return false;
       if (filters.audience) {
         const hasAudience = activeBatches.some(
@@ -574,4 +624,143 @@ export class DiscoverService {
       learners,
     };
   }
+
+  async listLanding(cityId = "chennai") {
+    const city = findCityById(cityId) ?? findCityById("chennai");
+    const resolvedCityId = city?.id ?? "chennai";
+    const available = isLiveCity(resolvedCityId);
+    const studios = available
+      ? await this.listStudios({
+          city: resolvedCityId,
+          category: "dance",
+          limit: 8,
+        })
+      : [];
+    const catalog = await this.loadActiveStudios();
+    const styleCounts = new Map<string, { label: string; count: number }>();
+    const areaCounts = new Map<string, number>();
+
+    for (const studio of catalog) {
+      const studioCity = matchCityFromAddress(
+        studio.address,
+        ...studio.branches.map((branch) => branch.address),
+      );
+      if (studioCity?.id !== resolvedCityId) continue;
+      const styles = studioStyles(
+        studio.batches.filter((batch) => batch.active),
+      );
+      const categories = categoriesFromStyles(styles);
+      if (!categories.includes("dance")) continue;
+      for (const style of styles) {
+        if (categorizeAsDance(style)) {
+          const key = style.toLowerCase();
+          const current = styleCounts.get(key);
+          if (current) current.count += 1;
+          else styleCounts.set(key, { label: style, count: 1 });
+        }
+      }
+      const locality = studioLocality(studio);
+      if (locality) {
+        areaCounts.set(locality.id, (areaCounts.get(locality.id) ?? 0) + 1);
+      }
+    }
+
+    const citiesWithCounts = await this.listCities();
+    const cityCountById = new Map(
+      citiesWithCounts.map((item) => [item.id, item.studioCount]),
+    );
+
+    return {
+      city: {
+        id: resolvedCityId,
+        label: city?.label ?? "Chennai",
+        available,
+      },
+      cities: DISCOVER_CITIES.map((item) => ({
+        id: item.id,
+        label: item.label,
+        studioCount: cityCountById.get(item.id) ?? 0,
+        available: isLiveCity(item.id),
+      })),
+      styles: [...styleCounts.values()]
+        .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label))
+        .map((item) => ({
+          id: item.label.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+          label: item.label,
+          studioCount: item.count,
+        })),
+      areas:
+        resolvedCityId === "chennai"
+          ? CHENNAI_LOCALITIES.filter(
+              (locality) =>
+                locality.popular || (areaCounts.get(locality.id) ?? 0) > 0,
+            ).map((locality) => ({
+              id: locality.id,
+              label: locality.label,
+              studioCount: areaCounts.get(locality.id) ?? 0,
+              popular: Boolean(locality.popular),
+            }))
+          : [],
+      studios,
+    };
+  }
+
+  async listPublicTrialSlots(idOrSlug: string) {
+    const studio = await this.prisma.studio.findFirst({
+      where: {
+        OR: [{ id: idOrSlug }, { slug: idOrSlug }],
+        status: StudioStatus.ACTIVE,
+      },
+      select: { id: true, slug: true, name: true },
+    });
+    if (!studio || isTestStudio(studio)) {
+      throw new NotFoundException("Studio not found");
+    }
+
+    const now = new Date();
+    const horizon = new Date(
+      now.getTime() + TRIAL_HORIZON_DAYS * 24 * 60 * 60 * 1000,
+    );
+    const sessions = await this.prisma.session.findMany({
+      where: {
+        status: SessionStatus.SCHEDULED,
+        startsAt: { gte: now, lte: horizon },
+        batch: { studioId: studio.id, active: true },
+      },
+      orderBy: { startsAt: "asc" },
+      take: 24,
+      select: {
+        id: true,
+        batchId: true,
+        startsAt: true,
+        endsAt: true,
+        batch: {
+          select: {
+            name: true,
+            category: true,
+            danceCategories: true,
+          },
+        },
+      },
+    });
+
+    return sessions.map((session) => ({
+      sessionId: session.id,
+      batchId: session.batchId,
+      batchName: session.batch.name,
+      audience: session.batch.category,
+      styleBadge: firstStyleName(session.batch.danceCategories),
+      startsAt: session.startsAt.toISOString(),
+      endsAt: session.endsAt.toISOString(),
+    }));
+  }
+}
+
+function categorizeAsDance(style: string) {
+  return categoriesFromStyles([style]).includes("dance");
+}
+
+function firstStyleName(danceCategories: unknown): string | null {
+  const styles = stylesFromDanceCategories(danceCategories);
+  return styles[0] ?? null;
 }

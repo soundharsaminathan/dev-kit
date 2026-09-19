@@ -16,6 +16,8 @@ export type DiscoverStudioCard = {
   name: string;
   city: string | null;
   cityId: string | null;
+  locality: string | null;
+  localityId: string | null;
   styles: string[];
   categories: DiscoverCategoryId[];
   imageUrl: string | null;
@@ -54,18 +56,50 @@ export type DiscoverCity = {
   id: string;
   label: string;
   studioCount: number;
+  available?: boolean;
 };
 
-export type DiscoverStats = {
-  studios: number;
-  classes: number;
-  learners: number;
+export type DiscoverStyleFacet = {
+  id: string;
+  label: string;
+  studioCount: number;
+};
+
+export type DiscoverAreaFacet = {
+  id: string;
+  label: string;
+  studioCount: number;
+  popular: boolean;
+};
+
+export type DiscoverLanding = {
+  city: {
+    id: string;
+    label: string;
+    available: boolean;
+  };
+  cities: DiscoverCity[];
+  styles: DiscoverStyleFacet[];
+  areas: DiscoverAreaFacet[];
+  studios: DiscoverStudioCard[];
+};
+
+export type DiscoverTrialSlot = {
+  sessionId: string;
+  batchId: string;
+  batchName: string;
+  audience: "KIDS" | "ADULTS";
+  styleBadge: string | null;
+  startsAt: string;
+  endsAt: string;
 };
 
 export type DiscoverStudiosQuery = {
   q?: string;
   city?: string;
   category?: string;
+  style?: string;
+  locality?: string;
   audience?: "KIDS" | "ADULTS";
   days?: "weekday" | "weekend";
   time?: "morning" | "evening";
@@ -76,6 +110,9 @@ export type DiscoverStudiosQuery = {
   limit?: number;
 };
 
+export const DEFAULT_CITY_ID = "chennai";
+export const LIVE_CITY_IDS = ["chennai"] as const;
+
 export const LAUNCH_CITY_IDS = [
   "chennai",
   "bengaluru",
@@ -84,3 +121,7 @@ export const LAUNCH_CITY_IDS = [
   "delhi",
   "coimbatore",
 ] as const;
+
+export function isLiveCity(id: string) {
+  return (LIVE_CITY_IDS as readonly string[]).includes(id.trim().toLowerCase());
+}

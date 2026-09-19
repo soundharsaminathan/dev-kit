@@ -9,6 +9,9 @@ describe("DiscoverService", () => {
       findMany: vi.fn(),
       findFirst: vi.fn(),
     },
+    session: {
+      findMany: vi.fn(),
+    },
     user: {
       count: vi.fn(),
     },
@@ -117,6 +120,8 @@ describe("DiscoverService", () => {
       name: "Rhythm House",
       city: "Chennai",
       cityId: "chennai",
+      locality: "T Nagar",
+      localityId: "t-nagar",
       styles: ["Bharatanatyam"],
       categories: ["dance"],
       imageUrl: "signed:heroes/rh.png",
@@ -190,5 +195,86 @@ describe("DiscoverService", () => {
       classes: 1,
       learners: 42,
     });
+  });
+
+  it("filters by style and locality without a second catalog load", async () => {
+    prisma.studio.findMany.mockResolvedValue([studioFixture]);
+
+    await expect(
+      service.listStudios({ city: "chennai", style: "bharatanatyam" }),
+    ).resolves.toHaveLength(1);
+    await expect(
+      service.listStudios({ city: "chennai", style: "hip-hop" }),
+    ).resolves.toEqual([]);
+    await expect(
+      service.listStudios({ city: "chennai", locality: "t-nagar" }),
+    ).resolves.toHaveLength(1);
+    await expect(
+      service.listStudios({ city: "chennai", locality: "velachery" }),
+    ).resolves.toEqual([]);
+    expect(prisma.studio.findMany).toHaveBeenCalledTimes(1);
+  });
+
+  it("returns a Chennai landing payload with coming soon cities", async () => {
+    prisma.studio.findMany.mockResolvedValue([studioFixture]);
+
+    const landing = await service.listLanding("chennai");
+    expect(landing.city).toEqual({
+      id: "chennai",
+      label: "Chennai",
+      available: true,
+    });
+    expect(
+      landing.cities.some((item) => item.id === "bengaluru" && !item.available),
+    ).toBe(true);
+    expect(landing.styles.some((item) => item.label === "Bharatanatyam")).toBe(
+      true,
+    );
+    expect(landing.areas.some((item) => item.id === "t-nagar")).toBe(true);
+    expect(landing.studios).toHaveLength(1);
+  });
+
+  it("lists public trial slots and hides test studios", async () => {
+    prisma.studio.findFirst.mockResolvedValue({
+      id: studioFixture.id,
+      slug: studioFixture.slug,
+      name: studioFixture.name,
+    });
+    prisma.session.findMany.mockResolvedValue([
+      {
+        id: "session-1",
+        batchId: "batch-1",
+        startsAt: new Date("2026-09-20T10:00:00.000Z"),
+        endsAt: new Date("2026-09-20T11:00:00.000Z"),
+        batch: {
+          name: "Bharatanatyam Kids",
+          category: "KIDS",
+          danceCategories: [{ name: "Bharatanatyam" }],
+        },
+      },
+    ]);
+
+    await expect(service.listPublicTrialSlots("rhythm-house")).resolves.toEqual(
+      [
+        {
+          sessionId: "session-1",
+          batchId: "batch-1",
+          batchName: "Bharatanatyam Kids",
+          audience: "KIDS",
+          styleBadge: "Bharatanatyam",
+          startsAt: "2026-09-20T10:00:00.000Z",
+          endsAt: "2026-09-20T11:00:00.000Z",
+        },
+      ],
+    );
+
+    prisma.studio.findFirst.mockResolvedValue({
+      id: "test-1",
+      slug: "smoke-test",
+      name: "Smoke Test Studio",
+    });
+    await expect(
+      service.listPublicTrialSlots("smoke-test"),
+    ).rejects.toBeInstanceOf(NotFoundException);
   });
 });

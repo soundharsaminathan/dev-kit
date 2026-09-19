@@ -1,10 +1,11 @@
 import { getPublic } from "@/lib/api";
 import type {
   DiscoverCity,
-  DiscoverStats,
+  DiscoverLanding,
   DiscoverStudioCard,
   DiscoverStudioDetail,
   DiscoverStudiosQuery,
+  DiscoverTrialSlot,
 } from "./types";
 
 function buildQuery(params: DiscoverStudiosQuery): string {
@@ -12,6 +13,8 @@ function buildQuery(params: DiscoverStudiosQuery): string {
   if (params.q) search.set("q", params.q);
   if (params.city) search.set("city", params.city);
   if (params.category) search.set("category", params.category);
+  if (params.style) search.set("style", params.style);
+  if (params.locality) search.set("locality", params.locality);
   if (params.audience) search.set("audience", params.audience);
   if (params.days) search.set("days", params.days);
   if (params.time) search.set("time", params.time);
@@ -40,10 +43,27 @@ export function fetchDiscoverCities() {
   return getPublic<DiscoverCity[]>("/discover/cities");
 }
 
-export function fetchDiscoverStats() {
-  return getPublic<DiscoverStats>("/discover/stats");
+export function fetchDiscoverLanding(city?: string) {
+  const qs = city ? `?city=${encodeURIComponent(city)}` : "";
+  return getPublic<DiscoverLanding>(`/discover/landing${qs}`);
+}
+
+export function fetchDiscoverTrialSlots(studioId: string) {
+  return getPublic<DiscoverTrialSlot[]>(
+    `/discover/studios/${encodeURIComponent(studioId)}/trial-slots`,
+  );
 }
 
 export function discoverStudiosQueryKey(params: DiscoverStudiosQuery) {
   return ["discover-studios", params] as const;
+}
+
+export function danceDiscoverQuery(
+  params: DiscoverStudiosQuery = {},
+): DiscoverStudiosQuery {
+  return {
+    ...params,
+    category: "dance",
+    city: params.city ?? "chennai",
+  };
 }

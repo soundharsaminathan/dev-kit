@@ -1,13 +1,15 @@
 /** Student landing copy — no hyphens in body text. */
 
 export const STUDENT_HERO = {
-  headline: "Find a dance class you’ll love.",
-  support:
-    "Discover dance studios and classes near you, then find the right place to learn, grow, and have fun.",
-  searchPlaceholder: "Search dance classes or studios",
-  locationPlaceholder: "Your location",
-  searchCta: "Search classes",
-  proof: "Explore studios near you",
+  headline: (city: string) => `Dance classes in ${city}`,
+  support: "Search by style or area, then request a trial.",
+  searchPlaceholder: "Style or studio",
+  areaPlaceholder: "Area",
+  nearMe: "Use my location",
+  searchCta: "Search studios",
+  proof: "Browse without an account",
+  kids: "Kids",
+  adults: "Adults",
 } as const;
 
 export const STUDENT_NAV: {
@@ -21,24 +23,40 @@ export const STUDENT_NAV: {
   links: [
     { label: "Discover", href: "#discover" },
     { label: "How it works", href: "#how-it-works" },
-    { label: "For students", href: "#for-students" },
     { label: "For studios", to: "/for-studios" },
   ],
-  findStudio: "Find a studio",
-  joinStudio: "Join as studio",
+  findStudio: "Search studios",
+  joinStudio: "For studios",
   login: "Log in",
 };
 
 export const STUDENT_TAGLINE = {
-  line1: "Find the right class.",
-  line2: "Discover studios near you.",
+  line1: "Find the right floor in Chennai.",
+  line2: "Book a trial in a few taps.",
+} as const;
+
+export const STUDENT_STYLES = {
+  headline: "Browse by style",
+  support: "Start from the dance you want to learn.",
+} as const;
+
+export const STUDENT_AREAS = {
+  headline: "Browse by area",
+  support: "Pick a neighbourhood or search near you.",
+  nearMe: "Near me",
 } as const;
 
 export const STUDENT_NEARBY = {
-  headline: "Studios near you",
-  support: "Explore classes and studios around your area.",
-  empty: "No studios in this city yet. Try another city or browse all.",
+  headline: (city: string) => `Dance studios in ${city}`,
+  support: "Compare batches, timings, and starting fees.",
+  empty: "No dance studios match these filters yet. Try another area or style.",
+  emptyCity: "Dance studios here are coming soon. Browse Chennai for now.",
   viewStudio: "View studio",
+  seeAll: "See all studios",
+  kids: "Kids",
+  adults: "Adults",
+  evening: "Evening",
+  weekend: "Weekend",
 } as const;
 
 export const STUDENT_HOW = {
@@ -48,112 +66,53 @@ export const STUDENT_HOW = {
       id: "search",
       number: "01",
       title: "Search",
-      body: "Find dance classes near you by style, location, age group, or preferred time.",
+      body: "Find dance classes by style, area, or studio name.",
     },
     {
-      id: "explore",
+      id: "compare",
       number: "02",
-      title: "Explore",
-      body: "Compare studios and classes. View schedules, pricing, locations, and available batches.",
+      title: "Compare",
+      body: "Open a studio to see batches, timings, and starting fees.",
     },
     {
-      id: "join",
+      id: "trial",
       number: "03",
-      title: "Join",
-      body: "Enroll with confidence. Choose a batch and start your learning journey.",
+      title: "Request a trial",
+      body: "Pick a slot, then leave your name and phone. No account needed to browse.",
     },
   ],
-} as const;
-
-export const STUDENT_PERSONALIZED = {
-  headline: "Something for every learner",
-  support:
-    "classa helps you narrow the search so finding the right class takes less effort.",
-} as const;
-
-export const STUDENT_LOCATIONS = {
-  headline: "Find classes wherever you are",
-  support: "Pick a city and explore studios nearby.",
-  comingSoon: "Coming soon",
-} as const;
-
-export const STUDENT_BENEFITS = {
-  headline: "Everything you need to choose the right class",
-  items: [
-    {
-      id: "discovery",
-      title: "Easy discovery",
-      body: "Find studios and classes around you.",
-    },
-    {
-      id: "schedules",
-      title: "Clear schedules",
-      body: "See available batches and timings.",
-    },
-    {
-      id: "pricing",
-      title: "Transparent pricing",
-      body: "Understand plans and fees before joining.",
-    },
-    {
-      id: "enrollment",
-      title: "Simple enrollment",
-      body: "Start your enrollment without unnecessary steps.",
-    },
-    {
-      id: "journey",
-      title: "Track your journey",
-      body: "Keep your classes, attendance, and invoices in one place.",
-    },
-  ],
-} as const;
-
-export const STUDENT_PREVIEW = {
-  headline: "Your classes, all in one place.",
-  support:
-    "From discovering your next class to keeping track of your schedule, classa keeps everything simple.",
-  home: "Home",
-  discover: "Discover",
-  profile: "Profile",
-} as const;
-
-export const STUDENT_TRUST = {
-  headline: "Learners discovering better ways to learn",
-  studios: "Studios",
-  classes: "Classes",
-  learners: "Learners",
 } as const;
 
 export const STUDENT_FAQ = {
   headline: "Questions students and parents ask",
   items: [
     {
-      q: "What is classa for students?",
-      a: "classa helps you discover studios and classes near you, compare schedules and pricing, then join and manage your learning in one place.",
-    },
-    {
       q: "Do I need an account to browse studios?",
-      a: "No. You can search and explore public studio listings without signing in. You create an account when you join a studio.",
+      a: "No. You can search Chennai dance studios without signing in. You create an account when you request a trial.",
     },
     {
-      q: "How do I join a class?",
-      a: "Open a studio page, create a student account for that studio, then book a trial or enroll in a batch from the member app.",
+      q: "When do I register?",
+      a: "When you request a trial. We ask for your name and phone, plus an email so you can come back to the booking.",
     },
     {
-      q: "Can I compare more than one studio?",
-      a: "Yes. Browse listings by city and filters, then open each studio to compare styles, batches, and pricing.",
+      q: "Can a parent book for a child?",
+      a: "Yes. Request the trial with your name and phone, and add the child’s first name if the class is for them.",
     },
     {
       q: "Is pricing shown before I join?",
-      a: "When a studio publishes plans, we show a starting price on the listing. Some studios may list classes without a public price yet.",
+      a: "When a studio publishes plans, we show a starting fee on the listing. Some studios may list classes without a public price yet.",
     },
     {
-      q: "What if my city has no studios yet?",
-      a: "Browse other cities or check back soon. Studios join classa over time, and empty cities are marked clearly.",
+      q: "What if my area has no studio?",
+      a: "We show nearby Chennai floors, or you can browse all dance studios in the city.",
     },
     {
-      q: "Can parents manage a child’s classes?",
-      a: "Yes. Parents can create an account, link children, and follow schedules, attendance, and invoices from the member app.",
+      q: "Are other cities live?",
+      a: "Chennai is live. Bengaluru, Hyderabad, Mumbai, Delhi, and Coimbatore are coming soon.",
+    },
+    {
+      q: "How do I find Bharatanatyam classes in Chennai?",
+      a: "Tap Bharatanatyam on the homepage, or search that style and pick an area such as Mylapore or Adyar.",
     },
     {
       q: "How do studios get listed?",
@@ -163,14 +122,14 @@ export const STUDENT_FAQ = {
 } as const;
 
 export const STUDENT_FINAL_CTA = {
-  headline: "Ready to find your next class?",
-  support: "Discover studios and classes near you.",
-  primary: "Find a studio",
-  secondary: "Explore classes",
+  headline: "Ready to find a class in Chennai?",
+  support: "Search by style or area, then request a trial.",
+  primary: "Search studios",
+  secondary: "See how it works",
 } as const;
 
 export const STUDENT_FOOTER = {
-  tagline: "Dance studio operations, beautifully simple.",
+  tagline: "Dance studios across Chennai, in one search.",
   copyright: "classa",
   forStudents: "For students",
   forStudios: "For studios",
@@ -185,9 +144,37 @@ export const STUDENT_FOOTER = {
   contact: "Contact",
   privacy: "Privacy",
   terms: "Terms",
+  styles: "Styles",
+  areas: "Areas",
 } as const;
 
-/** Studio landing nav addition */
 export const STUDIO_NAV_EXTRA = {
   forStudents: "For students",
+} as const;
+
+export const STUDENT_CITY = {
+  label: "City",
+  comingSoon: "Coming soon",
+  pickerTitle: "Choose your city",
+  liveHint: "Chennai is live. Other cities are on the way.",
+} as const;
+
+export const STUDENT_TRIAL = {
+  cta: "Book a trial",
+  signIn: "Already on classa? Sign in",
+  back: "Back to discover",
+  sheetTitle: "Book a trial",
+  pickSlot: "Pick a slot",
+  noSlots:
+    "This studio has no open trial slots right now. Leave your details and they can follow up.",
+  yourDetails: "Your details",
+  name: "Your name",
+  phone: "Phone",
+  email: "Email",
+  password: "Password",
+  childToggle: "This is for my child",
+  childName: "Child first name",
+  submit: "Request this trial",
+  google: "Continue with Google",
+  success: "Trial requested. The studio will confirm the slot.",
 } as const;

@@ -2,7 +2,10 @@ import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { PublicShell } from "@/modules/layout/public-shell";
 import shared from "@/modules/marketing/marketing.module.scss";
-import { fetchDiscoverStudios } from "@/modules/student-landing/api";
+import {
+  danceDiscoverQuery,
+  fetchDiscoverStudios,
+} from "@/modules/student-landing/api";
 import {
   StudioCard,
   StudioCardSkeleton,
@@ -14,6 +17,8 @@ export type DiscoverSearch = {
   q?: string;
   city?: string;
   category?: string;
+  style?: string;
+  locality?: string;
   audience?: "KIDS" | "ADULTS";
   days?: "weekday" | "weekend";
   time?: "morning" | "evening";
@@ -25,6 +30,14 @@ export type DiscoverSearch = {
 
 function parseOptionalString(value: unknown): string | undefined {
   return typeof value === "string" && value.trim() ? value.trim() : undefined;
+}
+
+function prettySearchBit(value: string) {
+  return value
+    .split(/[-_]+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
 }
 
 function parseOptionalNumber(value: unknown): number | undefined {
@@ -42,6 +55,8 @@ export const Route = createFileRoute("/discover")({
     const q = parseOptionalString(search.q);
     const city = parseOptionalString(search.city);
     const category = parseOptionalString(search.category);
+    const style = parseOptionalString(search.style);
+    const locality = parseOptionalString(search.locality);
     const audience = search.audience;
     const days = search.days;
     const time = search.time;
@@ -52,6 +67,8 @@ export const Route = createFileRoute("/discover")({
     if (q) result.q = q;
     if (city) result.city = city;
     if (category) result.category = category;
+    if (style) result.style = style;
+    if (locality) result.locality = locality;
     if (audience === "KIDS" || audience === "ADULTS") {
       result.audience = audience;
     }
@@ -68,17 +85,20 @@ export const Route = createFileRoute("/discover")({
 
 function DiscoverPage() {
   const search = Route.useSearch();
-  const filters: DiscoverStudiosQuery = { limit: 24 };
-  if (search.q) filters.q = search.q;
-  if (search.city) filters.city = search.city;
-  if (search.category) filters.category = search.category;
-  if (search.audience) filters.audience = search.audience;
-  if (search.days) filters.days = search.days;
-  if (search.time) filters.time = search.time;
-  if (search.lat != null) filters.lat = search.lat;
-  if (search.lng != null) filters.lng = search.lng;
-  if (search.maxKm != null) filters.maxKm = search.maxKm;
-  if (search.maxPrice != null) filters.maxPrice = search.maxPrice;
+  const filters: DiscoverStudiosQuery = danceDiscoverQuery({
+    limit: 24,
+    ...(search.q ? { q: search.q } : {}),
+    ...(search.city ? { city: search.city } : {}),
+    ...(search.style ? { style: search.style } : {}),
+    ...(search.locality ? { locality: search.locality } : {}),
+    ...(search.audience ? { audience: search.audience } : {}),
+    ...(search.days ? { days: search.days } : {}),
+    ...(search.time ? { time: search.time } : {}),
+    ...(search.lat != null ? { lat: search.lat } : {}),
+    ...(search.lng != null ? { lng: search.lng } : {}),
+    ...(search.maxKm != null ? { maxKm: search.maxKm } : {}),
+    ...(search.maxPrice != null ? { maxPrice: search.maxPrice } : {}),
+  });
 
   const studiosQuery = useQuery({
     queryKey: ["discover-studios", filters],
@@ -86,7 +106,14 @@ function DiscoverPage() {
     staleTime: 30_000,
   });
 
-  const titleBits = [search.q, search.city, search.category].filter(Boolean);
+  const facetBits = [search.style, search.locality, search.q]
+    .filter((value): value is string => Boolean(value))
+    .map(prettySearchBit);
+  const cityBit = prettySearchBit(search.city ?? "chennai");
+  const title =
+    facetBits.length > 0
+      ? `Dance studios for ${facetBits.join(" · ")}`
+      : `Dance studios in ${cityBit}`;
 
   return (
     <PublicShell nav="student" width="full">
@@ -95,13 +122,9 @@ function DiscoverPage() {
           <div className={styles.header}>
             <div>
               <p className={styles.eyebrow}>Discover</p>
-              <h1 className={shared.title}>
-                {titleBits.length > 0
-                  ? `Results for ${titleBits.join(" · ")}`
-                  : "Find a studio"}
-              </h1>
+              <h1 className={shared.title}>{title}</h1>
               <p className={shared.lede}>
-                Browse live studios on classa. Open a studio to join.
+                Browse Chennai dance studios. Open a studio to request a trial.
               </p>
             </div>
             <Link to="/" className={styles.back}>
@@ -127,7 +150,8 @@ function DiscoverPage() {
 
           {studiosQuery.data && studiosQuery.data.length === 0 ? (
             <p className={styles.empty}>
-              No studios match these filters yet. Try another city or category.
+              No dance studios match these filters yet. Try another area or
+              style.
             </p>
           ) : null}
 

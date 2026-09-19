@@ -32,6 +32,16 @@ class DiscoverStudiosQueryDto {
   category?: string;
 
   @IsOptional()
+  @IsString()
+  @MaxLength(80)
+  style?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(80)
+  locality?: string;
+
+  @IsOptional()
   @IsIn(["KIDS", "ADULTS"])
   audience?: "KIDS" | "ADULTS";
 
@@ -88,6 +98,10 @@ function toFilters(query: DiscoverStudiosQueryDto): DiscoverStudioFilters {
   if (query.category?.trim() && isValidCategoryId(query.category.trim())) {
     filters.category = query.category.trim();
   }
+  if (query.style?.trim()) filters.style = query.style.trim();
+  if (query.locality?.trim()) {
+    filters.locality = query.locality.trim().toLowerCase();
+  }
   if (query.audience) filters.audience = query.audience;
   if (query.days) filters.days = query.days;
   if (query.time) filters.time = query.time;
@@ -110,6 +124,16 @@ export class DiscoverController {
   @Get("studios")
   listStudios(@Query() query: DiscoverStudiosQueryDto) {
     return this.discover.listStudios(toFilters(query));
+  }
+
+  @Get("landing")
+  listLanding(@Query("city") city?: string) {
+    return this.discover.listLanding(city);
+  }
+
+  @Get("studios/:id/trial-slots")
+  listTrialSlots(@Param("id") id: string) {
+    return this.discover.listPublicTrialSlots(id);
   }
 
   @Get("studios/:id")

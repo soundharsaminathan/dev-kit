@@ -1,13 +1,10 @@
-import { StudentBenefits } from "./benefits";
+import { StudentBrowseAreas } from "./browse-areas";
+import { StudentBrowseStyles } from "./browse-styles";
 import { StudentFaq } from "./faq";
 import { StudentFinalCta } from "./final-cta";
 import { StudentHowItWorks } from "./how-it-works";
-import { StudentLocations } from "./locations";
-import { StudentNearby } from "./nearby";
-import { StudentPersonalized } from "./personalized";
-import { StudentPreview } from "./preview";
+import { StudentStudioGrid } from "./studio-grid";
 import { StudentTagline } from "./tagline";
-import { StudentTrust } from "./trust";
 
 /**
  * Below-fold student landing sections — lazy-loaded chunk boundary.
@@ -15,14 +12,11 @@ import { StudentTrust } from "./trust";
 export default function StudentLandingSections() {
   return (
     <>
+      <StudentBrowseStyles />
+      <StudentBrowseAreas />
+      <StudentStudioGrid />
       <StudentTagline />
-      <StudentNearby />
       <StudentHowItWorks />
-      <StudentPersonalized />
-      <StudentLocations />
-      <StudentBenefits />
-      <StudentPreview />
-      <StudentTrust />
       <StudentFaq />
       <StudentFinalCta />
     </>

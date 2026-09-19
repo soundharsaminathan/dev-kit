@@ -21,12 +21,12 @@
     />
     <meta
       name="description"
-      content="Discover studios and classes near you, compare schedules and pricing, then join."
+      content="Find Chennai dance studios by style and area. Compare batches and fees, then request a trial."
     />
-    <meta property="og:title" content="classa | Find a class you’ll love" />
+    <meta property="og:title" content="Dance classes in Chennai | classa" />
     <meta
       property="og:description"
-      content="Discover studios and classes near you, compare schedules and pricing, then join."
+      content="Find Chennai dance studios by style and area. Compare batches and fees, then request a trial."
     />
     <meta property="og:image" content="/icons/icon-512.png" />
     <meta name="twitter:card" content="summary" />
@@ -48,11 +48,17 @@
       type="font/woff2"
       crossorigin
     />
-    <title>classa | Find a class you’ll love</title>
+    <title>Dance classes in Chennai | classa</title>
     <script>
       (function () {
         try {
           var path = location.pathname || "/";
+          if (path === "/" || path === "") {
+            document.title = "Dance classes in Chennai | classa";
+          }
+          if (path === "/discover" || path === "/discover/") {
+            document.title = "Dance studios in Chennai | classa";
+          }
           if (path === "/for-studios" || path === "/for-studios/") {
             document.title =
               "classa | Collect every fee without chasing parents";
@@ -546,9 +552,95 @@
         max-width: 42.5rem;
         font-size: 2.25rem;
         font-weight: 700;
-        letter-spacing: -0.04em;
-        line-height: 1;
+        letter-spacing: -0.03em;
+        line-height: 2.5rem;
         color: #1c1a17;
+      }
+
+      #boot-public .hero-search {
+        display: grid;
+        gap: 12px;
+        width: 100%;
+        max-width: 42.5rem;
+        margin-top: 8px;
+        padding: 12px;
+        border-radius: 16px;
+        border: 1px solid rgb(28 26 23 / 12%);
+        background: #fff;
+        box-sizing: border-box;
+      }
+
+      #boot-public .hero-field {
+        display: grid;
+        gap: 4px;
+      }
+
+      #boot-public .hero-field span {
+        font-size: 0.75rem;
+        font-weight: 700;
+        letter-spacing: 0.02em;
+        text-transform: uppercase;
+        color: rgb(28 26 23 / 55%);
+      }
+
+      #boot-public .hero-field input,
+      #boot-public .hero-field select {
+        width: 100%;
+        min-height: 2.75rem;
+        padding: 8px 12px;
+        border-radius: 8px;
+        border: 1px solid rgb(28 26 23 / 12%);
+        background: #f8f4ec;
+        color: #1c1a17;
+        font: inherit;
+        font-size: 1rem;
+        box-sizing: border-box;
+      }
+
+      #boot-public .hero-submit {
+        min-height: 2.75rem;
+        padding: 8px 12px;
+        border: 0;
+        border-radius: 8px;
+        background: #ee8a55;
+        color: #fff;
+        font: inherit;
+        font-size: 1rem;
+        font-weight: 600;
+        cursor: pointer;
+      }
+
+      #boot-public .hero-chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        max-width: 42.5rem;
+      }
+
+      #boot-public .hero-chip {
+        display: inline-flex;
+        align-items: center;
+        min-height: 2.25rem;
+        padding: 6px 12px;
+        border-radius: 999px;
+        border: 1px solid rgb(28 26 23 / 12%);
+        background: #fff;
+        color: #1c1a17;
+        font-size: 0.875rem;
+        font-weight: 600;
+        text-decoration: none;
+      }
+
+      #boot-public .city-pill {
+        display: inline-flex;
+        align-items: center;
+        min-height: 2.25rem;
+        padding: 4px 12px;
+        border-radius: 999px;
+        border: 1px solid rgb(28 26 23 / 12%);
+        background: #fff;
+        font-size: 0.875rem;
+        font-weight: 600;
       }
 
       html[data-theme-mode="dark"] #boot-public .hero-brand {
@@ -629,6 +721,7 @@
         if (!root) return;
 
         function publicShell(inner, mainClass) {
+          var isLanding = mainClass === "shell-main-landing";
           return (
             '<div id="boot-public">' +
             '<header class="shell-header">' +
@@ -636,13 +729,18 @@
             '<img src="/icons/classa-header.png" width="32" height="32" alt="" />' +
             "<span>classa</span>" +
             "</a>" +
+            (isLanding ? '<span class="city-pill">Chennai</span>' : "") +
             "</header>" +
             '<main class="shell-main' +
             (mainClass ? " " + mainClass : "") +
             '">' +
             inner +
             "</main>" +
-            '<footer class="shell-footer">classa Dance Studio — move with confidence.</footer>' +
+            '<footer class="shell-footer">' +
+            (isLanding
+              ? "Dance studios across Chennai, in one search."
+              : "classa Dance Studio — move with confidence.") +
+            "</footer>" +
             "</div>"
           );
         }
@@ -661,8 +759,21 @@
         // Public routes: paint real LCP text in HTML before the module graph.
         if (path === "/" || path === "") {
           mountPublic(
-            '<h1 class="hero-brand">Find a class you’ll love.</h1>' +
-              '<p class="hero-support">Discover studios, classes, and activities near you, then find the right place to learn, grow, and have fun.</p>',
+            '<h1 class="hero-brand">Dance classes in Chennai</h1>' +
+              '<p class="hero-support">Search by style or area, then request a trial.</p>' +
+              '<form class="hero-search" action="/discover" method="get">' +
+              '<input type="hidden" name="city" value="chennai" />' +
+              '<input type="hidden" name="category" value="dance" />' +
+              '<label class="hero-field"><span>Style</span><input name="q" type="search" placeholder="Style or studio" /></label>' +
+              '<label class="hero-field"><span>Area</span><select name="locality"><option value="">Area</option><option value="adyar">Adyar</option><option value="velachery">Velachery</option><option value="anna-nagar">Anna Nagar</option><option value="t-nagar">T Nagar</option><option value="omr">OMR</option><option value="mylapore">Mylapore</option></select></label>' +
+              '<button class="hero-submit" type="submit">Search studios</button>' +
+              "</form>" +
+              '<nav class="hero-chips" aria-label="Popular styles">' +
+              '<a class="hero-chip" href="/discover?city=chennai&amp;category=dance&amp;style=hip-hop">Hip hop</a>' +
+              '<a class="hero-chip" href="/discover?city=chennai&amp;category=dance&amp;style=bharatanatyam">Bharatanatyam</a>' +
+              '<a class="hero-chip" href="/discover?city=chennai&amp;category=dance&amp;style=western">Western</a>' +
+              '<a class="hero-chip" href="/discover?city=chennai&amp;category=dance&amp;audience=KIDS">Kids</a>' +
+              "</nav>",
             "shell-main-landing",
           );
           return;
@@ -679,8 +790,14 @@
 
         if (path === "/discover" || path === "/discover/") {
           mountPublic(
-            '<h1 class="hero-brand">Find a studio</h1>' +
-              '<p class="hero-support">Browse live studios on classa. Open a studio to join.</p>',
+            '<h1 class="hero-brand">Dance studios in Chennai</h1>' +
+              '<p class="hero-support">Browse Chennai dance studios. Open a studio to request a trial.</p>' +
+              '<form class="hero-search" action="/discover" method="get">' +
+              '<input type="hidden" name="city" value="chennai" />' +
+              '<input type="hidden" name="category" value="dance" />' +
+              '<label class="hero-field"><span>Style</span><input name="q" type="search" placeholder="Style or studio" /></label>' +
+              '<button class="hero-submit" type="submit">Search studios</button>' +
+              "</form>",
             "shell-main-landing",
           );
           return;

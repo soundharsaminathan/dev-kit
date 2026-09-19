@@ -12,12 +12,16 @@
 .card {
   display: grid;
   gap: 4px;
+  width: 100%;
   padding: 20px 16px;
   border-radius: 16px;
   border: 1px solid color-mix(in srgb, var(--color-fg) 10%, transparent);
   background: var(--color-card, #fff);
-  text-decoration: none;
   color: inherit;
+  font: inherit;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
   transition:
     transform 700ms cubic-bezier(0.32, 0.72, 0, 1),
     box-shadow 700ms cubic-bezier(0.32, 0.72, 0, 1);
@@ -30,10 +34,6 @@
   &:focus-visible {
     outline: 2px solid var(--color-border-focus);
     outline-offset: 2px;
-  }
-
-  &[data-soon] {
-    opacity: 0.72;
   }
 }
 
@@ -54,10 +54,17 @@
   }
 }
 
+@media (min-width: 1100px) {
+  .grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .card {
     transition: none;
   }
+
   .card:hover {
     transform: none;
   }

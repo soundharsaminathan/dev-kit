@@ -6,6 +6,13 @@ export type DiscoverCity = {
   aliases: string[];
 };
 
+/** Cities that currently have a live student catalog. Others stay coming soon. */
+export const LIVE_CITY_IDS = ["chennai"] as const;
+
+export function isLiveCity(id: string): boolean {
+  return (LIVE_CITY_IDS as readonly string[]).includes(id.trim().toLowerCase());
+}
+
 export const DISCOVER_CITIES: readonly DiscoverCity[] = [
   {
     id: "chennai",
@@ -39,7 +46,7 @@ export const DISCOVER_CITIES: readonly DiscoverCity[] = [
   },
 ] as const;
 
-function normalizeAddress(value: string): string {
+export function normalizeAddress(value: string): string {
   return value
     .toLowerCase()
     .normalize("NFKD")
@@ -79,4 +86,18 @@ export function matchCityFromAddress(
 export function findCityById(id: string): DiscoverCity | null {
   const key = id.trim().toLowerCase();
   return DISCOVER_CITIES.find((city) => city.id === key) ?? null;
+}
+
+export function containsAddressToken(
+  normalized: string,
+  alias: string,
+): boolean {
+  const needle = alias.toLowerCase().trim();
+  if (!needle) return false;
+  return (
+    normalized === needle ||
+    normalized.startsWith(`${needle} `) ||
+    normalized.endsWith(` ${needle}`) ||
+    normalized.includes(` ${needle} `)
+  );
 }

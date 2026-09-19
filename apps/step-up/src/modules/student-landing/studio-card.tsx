@@ -46,7 +46,11 @@ export function StudioCard({ studio, className }: StudioCardProps) {
               {studio.name}
             </Link>
           </h3>
-          {studio.city ? <p className={styles.city}>{studio.city}</p> : null}
+          {studio.locality || studio.city ? (
+            <p className={styles.city}>
+              {[studio.locality, studio.city].filter(Boolean).join(" · ")}
+            </p>
+          ) : null}
         </div>
         {stylesLabel ? <p className={styles.styles}>{stylesLabel}</p> : null}
         <div className={styles.meta}>

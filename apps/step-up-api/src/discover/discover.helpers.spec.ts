@@ -13,6 +13,11 @@ import {
   roundDistanceKm,
 } from "./discover.geo";
 import {
+  extractPincode,
+  matchLocality,
+  stylesMatchQuery,
+} from "./discover.localities";
+import {
   batchTimingLabel,
   dayBandsFromSchedule,
   timeBandsFromSchedule,
@@ -33,6 +38,20 @@ describe("discover.cities", () => {
   it("returns null for unmatched addresses instead of guessing", () => {
     expect(matchCityFromAddress("Somewhere in Tamil Nadu")).toBeNull();
     expect(matchCityFromAddress(null, undefined, "")).toBeNull();
+  });
+});
+
+describe("discover.localities", () => {
+  it("matches Chennai areas from address pincode and aliases", () => {
+    expect(
+      matchLocality({ addresses: ["12 Anna Nagar, Chennai 600040"] })?.id,
+    ).toBe("anna-nagar");
+    expect(matchLocality({ addresses: ["Dspot, Velachery"] })?.id).toBe(
+      "velachery",
+    );
+    expect(extractPincode("No 5, 600042")).toBe("600042");
+    expect(stylesMatchQuery(["Hip Hop", "Jazz"], "hip-hop")).toBe(true);
+    expect(stylesMatchQuery(["Bharatanatyam"], "salsa")).toBe(false);
   });
 });
 

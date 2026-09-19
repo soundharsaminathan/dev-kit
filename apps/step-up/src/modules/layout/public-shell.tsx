@@ -15,11 +15,15 @@ import { homePathForUser } from "@/lib/require-auth";
 import { useDismissBootPublic } from "@/lib/use-dismiss-boot-public";
 import { ClassaWordmark } from "@/modules/branding/classa-wordmark";
 import { FOOTER, NAV } from "@/modules/marketing/content";
+import { DiscoverCityProvider } from "@/modules/student-landing/city-context";
+import { CitySwitcher } from "@/modules/student-landing/city-switcher";
 import {
   STUDENT_FOOTER,
   STUDENT_NAV,
   STUDIO_NAV_EXTRA,
 } from "@/modules/student-landing/content";
+import { DEFAULT_CITY_ID } from "@/modules/student-landing/types";
+import { useDiscoverLanding } from "@/modules/student-landing/use-landing";
 import { TouchButton } from "@/modules/ui/touch-button";
 import styles from "./public-shell.module.scss";
 
@@ -43,6 +47,7 @@ function SearchIcon({ className }: { className?: string | undefined }) {
       aria-hidden
       focusable="false"
     >
+      <title>Search</title>
       <path d="M229.66,218.34l-50.07-50.06a88.11,88.11,0,1,0-11.31,11.31l50.06,50.07a8,8,0,0,0,11.32-11.32ZM40,112a72,72,0,1,1,72,72A72.08,72.08,0,0,1,40,112Z" />
     </svg>
   );
@@ -184,13 +189,10 @@ export function PublicShell({
         <Link to="/login" className={styles.navLink}>
           {STUDENT_NAV.login}
         </Link>
-        <Link to="/for-studios" className={styles.secondaryCta}>
-          {STUDENT_NAV.joinStudio}
-          <span className={styles.secondaryCtaArrow} aria-hidden>
-            →
-          </span>
-        </Link>
-        <Link to="/discover">
+        <Link
+          to="/discover"
+          search={{ city: DEFAULT_CITY_ID, category: "dance" }}
+        >
           <Button variant="primary">{STUDENT_NAV.findStudio}</Button>
         </Link>
       </>
@@ -213,7 +215,7 @@ export function PublicShell({
       </>
     ));
 
-  return (
+  const shell = (
     <div className={shellClass}>
       {isLanding ? (
         <a href="#main-content" className={styles.skip}>
@@ -235,6 +237,7 @@ export function PublicShell({
               />
               <ClassaWordmark variant="mono" />
             </Link>
+            <CitySwitcher />
             <nav className={styles.desktopNav} aria-label="Primary">
               {hashLinks.map((link) => (
                 <a
@@ -256,6 +259,7 @@ export function PublicShell({
             <div className={styles.mobileHeaderActions}>
               <Link
                 to="/discover"
+                search={{ city: DEFAULT_CITY_ID, category: "dance" }}
                 className={styles.iconButton}
                 aria-label="Search classes"
               >
@@ -432,16 +436,8 @@ export function PublicShell({
                   </TouchButton>
                   <TouchButton
                     as={Link}
-                    to="/for-studios"
-                    variant="default"
-                    fullWidth
-                    onClick={closeMenu}
-                  >
-                    {STUDENT_NAV.joinStudio}
-                  </TouchButton>
-                  <TouchButton
-                    as={Link}
                     to="/discover"
+                    search={{ city: "chennai", category: "dance" } as never}
                     variant="primary"
                     fullWidth
                     onClick={closeMenu}
@@ -504,9 +500,20 @@ export function PublicShell({
                   className={styles.footerColLinks}
                   aria-label="For students"
                 >
-                  <Link to="/discover">{STUDENT_FOOTER.discoverStudios}</Link>
-                  <Link to="/discover">{STUDENT_FOOTER.findClasses}</Link>
+                  <Link
+                    to="/discover"
+                    search={{ city: DEFAULT_CITY_ID, category: "dance" }}
+                  >
+                    {STUDENT_FOOTER.discoverStudios}
+                  </Link>
+                  <Link
+                    to="/discover"
+                    search={{ city: DEFAULT_CITY_ID, category: "dance" }}
+                  >
+                    {STUDENT_FOOTER.findClasses}
+                  </Link>
                   <a href="#how-it-works">{STUDENT_FOOTER.howItWorks}</a>
+                  <StudentFooterFacets />
                 </nav>
               </div>
               <div>
@@ -600,5 +607,49 @@ export function PublicShell({
         </footer>
       )}
     </div>
+  );
+
+  if (isStudent) {
+    return <DiscoverCityProvider>{shell}</DiscoverCityProvider>;
+  }
+  return shell;
+}
+
+function StudentFooterFacets() {
+  const landing = useDiscoverLanding();
+  const styles = landing.data?.styles.slice(0, 6) ?? [];
+  const areas = (landing.data?.areas ?? [])
+    .filter((area) => area.popular)
+    .slice(0, 6);
+  if (styles.length === 0 && areas.length === 0) return null;
+  return (
+    <>
+      {styles.map((style) => (
+        <Link
+          key={style.id}
+          to="/discover"
+          search={{
+            city: DEFAULT_CITY_ID,
+            category: "dance",
+            style: style.id,
+          }}
+        >
+          {style.label}
+        </Link>
+      ))}
+      {areas.map((area) => (
+        <Link
+          key={area.id}
+          to="/discover"
+          search={{
+            city: DEFAULT_CITY_ID,
+            category: "dance",
+            locality: area.id,
+          }}
+        >
+          {area.label}
+        </Link>
+      ))}
+    </>
   );
 }

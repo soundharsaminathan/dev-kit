@@ -4,10 +4,8 @@
 }
 
 .stage {
-  max-width: 72rem;
+  max-width: 42.5rem;
   margin-inline: auto;
-  display: grid;
-  gap: 32px;
 }
 
 .copy {
@@ -83,6 +81,46 @@
   min-height: 2.75rem;
 }
 
+.audience {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.25rem;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--color-fg) 12%, transparent);
+  background: var(--color-card, #fff);
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: color-mix(in srgb, var(--color-fg) 72%, transparent);
+  text-decoration: none;
+  cursor: pointer;
+
+  &[data-active] {
+    color: var(--color-primary-fg, #fff);
+    background: var(--color-primary);
+    border-color: transparent;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--color-border-focus);
+    outline-offset: 2px;
+  }
+}
+
+.geoError {
+  margin: 12px 0 0;
+  font-size: 0.875rem;
+  color: color-mix(in srgb, var(--color-fg) 62%, transparent);
+}
+
 .proof {
   margin: 16px 0 0;
 }
@@ -130,69 +168,9 @@
   transform: translateX(3px);
 }
 
-.visual {
-  position: relative;
-  border-radius: 16px;
-  overflow: hidden;
-  background: color-mix(in srgb, var(--color-fg) 4%, transparent);
-}
-
-.heroImage {
-  display: block;
-  width: 100%;
-  height: auto;
-  aspect-ratio: 3 / 4;
-  object-fit: cover;
-  object-position: center 38%;
-}
-
-.floatStack {
-  position: absolute;
-  left: 12px;
-  right: 12px;
-  bottom: 12px;
-  display: grid;
-  gap: 8px;
-}
-
-.floatCard {
-  display: grid;
-  gap: 2px;
-  padding: 12px;
-  border-radius: 12px;
-  /* Opaque themed surface — frosted #fff + --color-fg goes white-on-white in dark mode. */
-  background: color-mix(in srgb, var(--color-card, #fff) 94%, transparent);
-  backdrop-filter: blur(12px);
-  border: 1px solid color-mix(in srgb, var(--color-fg) 12%, transparent);
-  text-decoration: none;
-  color: var(--color-fg, #111);
-  box-shadow: 0 4px 16px color-mix(in srgb, var(--color-fg) 12%, transparent);
-
-  strong {
-    font-size: 0.9375rem;
-    color: inherit;
-  }
-
-  span {
-    font-size: 0.75rem;
-    color: color-mix(in srgb, var(--color-fg, #111) 68%, transparent);
-  }
-
-  &:focus-visible {
-    outline: 2px solid var(--color-border-focus);
-    outline-offset: 2px;
-  }
-}
-
 @media (min-width: 768px) {
   .hero {
     padding: 40px 24px 56px;
-  }
-
-  .stage {
-    grid-template-columns: 1.05fr 0.95fr;
-    align-items: center;
-    gap: 40px;
   }
 
   .headline {
@@ -208,13 +186,6 @@
   .submit {
     width: auto;
     padding-inline: 16px;
-  }
-
-  .floatStack {
-    left: auto;
-    right: 16px;
-    bottom: 16px;
-    width: min(16rem, 70%);
   }
 }
 

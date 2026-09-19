@@ -62,6 +62,28 @@ test.describe("discover HTTP @http", () => {
     expect(statsData.learners).toBeGreaterThanOrEqual(0);
   });
 
+  test("guest landing payload is city scoped @http", async () => {
+    const response = await fetch(
+      `${apiBaseUrl()}/discover/landing?city=chennai`,
+    );
+    expect(response.ok).toBeTruthy();
+    const data = (await response.json()) as {
+      city: { id: string; available: boolean };
+      cities: Array<{ id: string; available: boolean }>;
+      styles: unknown[];
+      areas: unknown[];
+      studios: unknown[];
+    };
+    expect(data.city.id).toBe("chennai");
+    expect(data.city.available).toBe(true);
+    expect(
+      data.cities.some((city) => city.id === "bengaluru" && !city.available),
+    ).toBe(true);
+    expect(Array.isArray(data.styles)).toBe(true);
+    expect(Array.isArray(data.areas)).toBe(true);
+    expect(Array.isArray(data.studios)).toBe(true);
+  });
+
   test("unknown city and empty category return empty lists @http", async () => {
     const emptyCity = await fetch(
       `${apiBaseUrl()}/discover/studios?city=atlantis`,
@@ -81,6 +103,18 @@ test.describe("discover HTTP @http", () => {
       `${apiBaseUrl()}/discover/studios/does-not-exist-xyz`,
     );
     expect(response.status).toBe(404);
+  });
+
+  test("public trial slots 404 for missing or test studios @http", async () => {
+    const missing = await fetch(
+      `${apiBaseUrl()}/discover/studios/does-not-exist-xyz/trial-slots`,
+    );
+    expect(missing.status).toBe(404);
+
+    const seeded = await fetch(
+      `${apiBaseUrl()}/discover/studios/${SEED.studioSlug}/trial-slots`,
+    );
+    expect(seeded.status).toBe(404);
   });
 
   test("seeded test studios are excluded from public discover @http", async () => {

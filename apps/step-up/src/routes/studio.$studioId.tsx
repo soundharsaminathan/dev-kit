@@ -1,11 +1,15 @@
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useState } from "react";
 import { PublicShell } from "@/modules/layout/public-shell";
 import { fetchDiscoverStudio } from "@/modules/student-landing/api";
+import { STUDENT_TRIAL } from "@/modules/student-landing/content";
 import {
   formatPriceFrom,
   formatRating,
 } from "@/modules/student-landing/format";
+import { TrialRequestSheet } from "@/modules/student-landing/trial-request-sheet";
+import { DEFAULT_CITY_ID } from "@/modules/student-landing/types";
 import { SkeletonBlock } from "@/modules/ui/skeleton-block";
 import { EmptyState, ErrorState } from "@/modules/ui/states";
 import { TouchButton } from "@/modules/ui/touch-button";
@@ -17,17 +21,13 @@ export const Route = createFileRoute("/studio/$studioId")({
 
 function StudioPage() {
   const { studioId } = Route.useParams();
+  const [trialOpen, setTrialOpen] = useState(false);
   const query = useQuery({
     queryKey: ["discover-studio", studioId],
     queryFn: () => fetchDiscoverStudio(studioId),
   });
 
   const studio = query.data;
-  const registerSearch = {
-    for: "student" as const,
-    redirect: `/studio/${studio?.slug || studioId}`,
-    studioId: studio?.id || studioId,
-  };
 
   const rating = studio
     ? formatRating(studio.ratingAvg, studio.ratingCount)
@@ -82,8 +82,8 @@ function StudioPage() {
             </p>
             <h1 className={styles.title}>{studio.name}</h1>
             <p className={styles.lead}>
-              Train with confidence. Book a trial, join a batch, or visit us in
-              person.
+              Compare batches and fees, then request a trial. Browse without an
+              account.
             </p>
             <div className={styles.metaRow}>
               {rating ? <span>★ {rating}</span> : null}
@@ -149,13 +149,11 @@ function StudioPage() {
             ) : null}
             <div className={styles.actions}>
               <TouchButton
-                as={Link}
-                to="/register"
-                search={registerSearch as never}
                 variant="primary"
                 fullWidth
+                onClick={() => setTrialOpen(true)}
               >
-                Join this studio
+                {STUDENT_TRIAL.cta}
               </TouchButton>
               <TouchButton
                 as={Link}
@@ -164,12 +162,24 @@ function StudioPage() {
                 variant="quiet"
                 fullWidth
               >
-                Sign in to book
+                {STUDENT_TRIAL.signIn}
               </TouchButton>
-              <TouchButton as={Link} to="/discover" variant="quiet" fullWidth>
-                Back to discover
+              <TouchButton
+                as={Link}
+                to="/discover"
+                search={{ city: DEFAULT_CITY_ID, category: "dance" } as never}
+                variant="quiet"
+                fullWidth
+              >
+                {STUDENT_TRIAL.back}
               </TouchButton>
             </div>
+            <TrialRequestSheet
+              open={trialOpen}
+              onOpenChange={setTrialOpen}
+              studioId={studio.id}
+              studioName={studio.name}
+            />
           </>
         ) : null}
         {!query.isLoading && !query.isError && !studio ? (
