@@ -54,6 +54,7 @@ function StudioPage() {
           <StudioLanding
             studio={studio}
             onBookTrial={() => setTrialOpen(true)}
+            dockHidden={trialOpen}
           />
           <TrialRequestSheet
             open={trialOpen}

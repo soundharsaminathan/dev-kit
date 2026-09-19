@@ -156,13 +156,20 @@ function studioBenefits(
 export function StudioLanding({
   studio,
   onBookTrial,
+  dockHidden = false,
 }: {
   studio: DiscoverStudioDetail;
   onBookTrial: () => void;
+  dockHidden?: boolean;
 }) {
   const rating = formatRating(studio.ratingAvg, studio.ratingCount);
   const price = formatPriceFrom(studio.priceFrom, studio.priceCadence);
   const nextTrial = studio.nextTrialSlot ?? null;
+  const dockMeta = nextTrial
+    ? formatTrialSlot(nextTrial)
+    : price
+      ? STUDENT_STUDIO.proofFrom(price)
+      : null;
   const trainers = studio.trainers ?? [];
   const gallery = studio.gallery ?? [];
   const faqs = studio.faqs ?? [];
@@ -536,15 +543,17 @@ export function StudioLanding({
         </div>
       </section>
 
-      <div className={styles.dock}>
-        <p className={styles.dockMeta}>
-          {nextTrial
-            ? STUDENT_STUDIO.proofTrial(formatTrialSlot(nextTrial))
-            : price
-              ? STUDENT_STUDIO.proofFrom(price)
-              : STUDENT_STUDIO.finalSupport}
-        </p>
-        <TouchButton variant="primary" fullWidth onClick={onBookTrial}>
+      <div
+        className={styles.dock}
+        data-hidden={dockHidden || undefined}
+        data-solo={!dockMeta || undefined}
+      >
+        {dockMeta ? <p className={styles.dockMeta}>{dockMeta}</p> : null}
+        <TouchButton
+          variant="primary"
+          className={styles.dockCta}
+          onClick={onBookTrial}
+        >
           {STUDENT_TRIAL.cta}
         </TouchButton>
       </div>

@@ -401,20 +401,51 @@
 
 .dock {
   position: fixed;
-  inset-inline: 0;
-  bottom: 0;
   z-index: 25;
-  display: grid;
-  gap: var(--lp-space-75);
-  padding: var(--lp-space-200);
-  padding-bottom: calc(var(--lp-space-200) + env(safe-area-inset-bottom, 0px));
-  background: var(--surface-background, #f8f4ec);
-  border-top: 1px solid color-mix(in srgb, var(--color-fg) 8%, transparent);
+  inset-inline: var(--lp-space-200);
+  bottom: calc(var(--lp-space-200) + env(safe-area-inset-bottom, 0px));
+  display: flex;
+  align-items: center;
+  gap: var(--lp-space-100);
+  width: calc(100% - 2rem);
+  max-width: calc(100% - 2rem);
+  padding: var(--lp-space-75);
+  padding-left: var(--lp-space-200);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--surface-background, #f8f4ec) 88%, transparent);
+  backdrop-filter: blur(16px);
+  border: 1px solid color-mix(in srgb, var(--color-fg) 8%, transparent);
+  box-shadow: 0 16px 40px color-mix(in srgb, var(--color-fg) 12%, transparent);
+  transition:
+    opacity 700ms var(--lp-ease),
+    transform 700ms var(--lp-ease);
+}
+
+.dock[data-solo] {
+  padding-left: var(--lp-space-75);
+  width: max-content;
+  margin-inline: auto;
+}
+
+.dock[data-hidden] {
+  opacity: 0;
+  transform: translateY(8px);
+  pointer-events: none;
+  visibility: hidden;
 }
 
 .dockMeta {
-  text-align: center;
-  color: color-mix(in srgb, var(--color-fg) 58%, transparent);
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dockCta {
+  flex: none;
+  border-radius: 999px !important;
 }
 
 @media (min-width: 768px) {
@@ -460,12 +491,18 @@
   .dock {
     inset-inline: auto;
     left: 50%;
-    bottom: var(--lp-space-200);
-    width: min(28rem, calc(100% - 2rem));
+    width: max-content;
+    max-width: calc(100% - 2rem);
     transform: translateX(-50%);
-    border: 1px solid color-mix(in srgb, var(--color-fg) 8%, transparent);
-    border-radius: var(--lp-radius-2xl);
-    box-shadow: 0 16px 40px color-mix(in srgb, var(--color-fg) 12%, transparent);
+    padding-left: var(--lp-space-300);
+  }
+
+  .dock[data-solo] {
+    padding-left: var(--lp-space-75);
+  }
+
+  .dock[data-hidden] {
+    transform: translateX(-50%) translateY(8px);
   }
 }
 
@@ -508,14 +545,15 @@
   }
 
   .dock {
-    background: #181818;
+    background: color-mix(in srgb, #181818 88%, transparent);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .classCard,
   .links a,
-  .textLink {
+  .textLink,
+  .dock {
     transition: none;
   }
 

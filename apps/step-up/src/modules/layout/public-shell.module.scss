@@ -490,13 +490,7 @@
 }
 
 .footerDock {
-  padding-bottom: calc(6.5rem + env(safe-area-inset-bottom, 0px));
-}
-
-@media (min-width: 768px) {
-  .footerDock {
-    padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
-  }
+  padding-bottom: calc(5rem + env(safe-area-inset-bottom, 0px));
 }
 
 .footerCompactInner {
