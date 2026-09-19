@@ -1,8 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { FormInput } from "@/modules/ui/form-input";
 import { TouchButton } from "@/modules/ui/touch-button";
 import styles from "./branch-map.module.scss";
-import { isShortMapLink, parseMapLink } from "./parse-map-link";
+import {
+  extractMapLinkInput,
+  isShortMapLink,
+  parseMapLink,
+} from "./parse-map-link";
 import type { MapCoordinates } from "./types";
 
 type BranchMapProps = {
@@ -69,6 +73,7 @@ export function BranchMap({
   const [link, setLink] = useState("");
   const [linkError, setLinkError] = useState<string | null>(null);
   const [pinning, setPinning] = useState(false);
+  const ignoreEmptyChangeRef = useRef(false);
 
   useEffect(() => {
     let active = true;
@@ -110,7 +115,7 @@ export function BranchMap({
   }, []);
 
   async function pinFromLink(raw: string) {
-    const trimmed = raw.trim();
+    const trimmed = extractMapLinkInput(raw);
     if (!trimmed) {
       setLinkError("Paste a Google Maps link first");
       return;
@@ -139,7 +144,6 @@ export function BranchMap({
       }
 
       onChange(coords);
-      setLink("");
     } catch (error) {
       setLinkError(
         error instanceof Error ? error.message : "Couldn’t pin from that link",
@@ -160,15 +164,24 @@ export function BranchMap({
             placeholder="https://maps.app.goo.gl/… or full maps URL"
             value={link}
             onChange={(next) => {
+              if (ignoreEmptyChangeRef.current && !next.trim()) {
+                return;
+              }
               setLink(next);
               if (linkError) setLinkError(null);
             }}
             onPaste={(event) => {
-              const pasted = event.clipboardData.getData("text");
-              if (!pasted.trim()) return;
-              event.preventDefault();
+              const pasted = extractMapLinkInput(
+                event.clipboardData.getData("text/plain") ||
+                  event.clipboardData.getData("text"),
+              );
+              if (!pasted) return;
+              ignoreEmptyChangeRef.current = true;
               setLink(pasted);
               void pinFromLink(pasted);
+              queueMicrotask(() => {
+                ignoreEmptyChangeRef.current = false;
+              });
             }}
             onKeyDown={(event) => {
               if (event.key === "Enter") {

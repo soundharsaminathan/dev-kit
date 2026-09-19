@@ -5,11 +5,36 @@ import { useApi } from "@/lib/api-context";
 import { useAuth } from "@/lib/auth";
 import { AppSheet } from "@/modules/ui/app-sheet";
 import { FormInput } from "@/modules/ui/form-input";
+import { SkeletonBlock } from "@/modules/ui/skeleton-block";
 import { TouchButton } from "@/modules/ui/touch-button";
 import { fetchDiscoverTrialSlots } from "./api";
 import { STUDENT_TRIAL } from "./content";
 import styles from "./trial-request-sheet.module.scss";
 import type { DiscoverTrialSlot } from "./types";
+
+const SLOT_SKELETON_KEYS = [
+  "trial-slot-0",
+  "trial-slot-1",
+  "trial-slot-2",
+] as const;
+
+function TrialSlotsSkeleton() {
+  return (
+    <div
+      className={styles.slots}
+      role="status"
+      aria-busy="true"
+      aria-label={STUDENT_TRIAL.loadingSlots}
+    >
+      {SLOT_SKELETON_KEYS.map((key) => (
+        <div key={key} className={styles.slotSkeleton} aria-hidden>
+          <SkeletonBlock height="1rem" width="55%" radius="4px" />
+          <SkeletonBlock height="0.75rem" width="35%" radius="4px" />
+        </div>
+      ))}
+    </div>
+  );
+}
 
 type TrialStep = "slot" | "register";
 
@@ -112,6 +137,7 @@ export function TrialRequestSheet({
   const sections = useMemo(() => groupSlotsByBatch(slots), [slots]);
   const selected = slots.find((slot) => slot.sessionId === sessionId) ?? null;
   const needsAccount = !user;
+  const slotsLoading = slotsQuery.isLoading;
 
   useEffect(() => {
     if (!open || sessionId || slots.length !== 1) return;
@@ -240,48 +266,48 @@ export function TrialRequestSheet({
           <>
             <fieldset className={styles.fieldset}>
               <legend>{STUDENT_TRIAL.pickSlot}</legend>
-              {slotsQuery.isLoading || slotsQuery.isPending ? (
-                <p className={styles.hint}>Loading slots…</p>
-              ) : null}
-              {slots.length === 0 &&
-              !slotsQuery.isLoading &&
-              !slotsQuery.isPending ? (
+              {slotsLoading ? <TrialSlotsSkeleton /> : null}
+              {slots.length === 0 && !slotsLoading ? (
                 <p className={styles.hint}>{STUDENT_TRIAL.noSlots}</p>
               ) : null}
-              <div className={styles.sections}>
-                {sections.map((section) => (
-                  <div key={section.batchId} className={styles.section}>
-                    {sections.length > 1 ? (
-                      <p className={styles.sectionTitle}>{section.batchName}</p>
-                    ) : null}
-                    <div className={styles.slots}>
-                      {section.slots.map((slot) => (
-                        <button
-                          key={slot.sessionId}
-                          type="button"
-                          className={styles.slot}
-                          aria-label={[
-                            section.batchName,
-                            formatSlot(slot),
-                            slot.styleBadge,
-                          ]
-                            .filter(Boolean)
-                            .join(", ")}
-                          data-active={
-                            sessionId === slot.sessionId || undefined
-                          }
-                          onClick={() => setSessionId(slot.sessionId)}
-                        >
-                          <strong>{formatSlot(slot)}</strong>
-                          {slot.styleBadge ? (
-                            <span>{slot.styleBadge}</span>
-                          ) : null}
-                        </button>
-                      ))}
+              {slotsLoading ? null : (
+                <div className={styles.sections}>
+                  {sections.map((section) => (
+                    <div key={section.batchId} className={styles.section}>
+                      {sections.length > 1 ? (
+                        <p className={styles.sectionTitle}>
+                          {section.batchName}
+                        </p>
+                      ) : null}
+                      <div className={styles.slots}>
+                        {section.slots.map((slot) => (
+                          <button
+                            key={slot.sessionId}
+                            type="button"
+                            className={styles.slot}
+                            aria-label={[
+                              section.batchName,
+                              formatSlot(slot),
+                              slot.styleBadge,
+                            ]
+                              .filter(Boolean)
+                              .join(", ")}
+                            data-active={
+                              sessionId === slot.sessionId || undefined
+                            }
+                            onClick={() => setSessionId(slot.sessionId)}
+                          >
+                            <strong>{formatSlot(slot)}</strong>
+                            {slot.styleBadge ? (
+                              <span>{slot.styleBadge}</span>
+                            ) : null}
+                          </button>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </fieldset>
 
             {error ? <p className={styles.error}>{error}</p> : null}
@@ -290,7 +316,7 @@ export function TrialRequestSheet({
               variant="primary"
               fullWidth
               onClick={goToRegister}
-              isDisabled={slotsQuery.isLoading || slotsQuery.isPending}
+              isDisabled={slotsLoading}
             >
               {STUDENT_TRIAL.continue}
             </TouchButton>

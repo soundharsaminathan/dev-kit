@@ -281,6 +281,7 @@ export const STUDENT_TRIAL = {
   stepSlot: "1 of 2 · Pick a slot",
   stepRegister: "2 of 2 · Register",
   pickSlot: "Pick a slot",
+  loadingSlots: "Loading trial slots",
   noSlots:
     "This studio has no open trial slots right now. Leave your details and they can follow up.",
   yourDetails: "Your details",

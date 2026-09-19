@@ -66,6 +66,16 @@
   gap: 8px;
 }
 
+.slotSkeleton {
+  display: grid;
+  gap: 2px;
+  width: 100%;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--color-fg) 12%, transparent);
+  background: var(--color-card, #fff);
+}
+
 .slot {
   display: grid;
   gap: 2px;

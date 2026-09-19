@@ -90,6 +90,34 @@ describe("TrialRequestSheet", () => {
     ]);
   });
 
+  it("shows slot skeletons while trial slots load", async () => {
+    let resolveSlots!: (value: DiscoverTrialSlot[]) => void;
+    fetchSlots.mockImplementation(
+      () =>
+        new Promise<DiscoverTrialSlot[]>((resolve) => {
+          resolveSlots = resolve;
+        }),
+    );
+
+    renderSheet();
+
+    expect(
+      screen.getByRole("status", { name: "Loading trial slots" }),
+    ).toBeVisible();
+    expect(screen.queryByText("Loading slots…")).not.toBeInTheDocument();
+    expect(screen.queryByText("Hip hop kids")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Continue" })).toBeDisabled();
+
+    resolveSlots([slot()]);
+
+    expect(
+      await screen.findByRole("button", { name: /Hip hop kids/i }),
+    ).toBeVisible();
+    expect(
+      screen.queryByRole("status", { name: "Loading trial slots" }),
+    ).not.toBeInTheDocument();
+  });
+
   it("keeps register off the first step until a slot is chosen", async () => {
     renderSheet();
 
