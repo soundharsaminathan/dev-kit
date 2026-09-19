@@ -57,7 +57,7 @@ function slot(overrides: Partial<DiscoverTrialSlot> = {}): DiscoverTrialSlot {
   };
 }
 
-function renderSheet(batchId?: string | null) {
+function renderSheet(batchId: string | null = null) {
   return renderWithProviders(
     <TrialRequestSheet
       open
