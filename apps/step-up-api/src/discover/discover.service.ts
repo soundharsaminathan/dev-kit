@@ -11,10 +11,13 @@ import { PrismaService } from "../prisma/prisma.service";
 import { isTestStudio } from "../studios/test-studio";
 import { UserCryptoService, userPiiSelect } from "../users/user-crypto.service";
 import {
-  categoriesFromStyles,
+  categoriesFromEntries,
+  type DanceCategoryEntry,
   DISCOVER_CATEGORIES,
   type DiscoverCategoryId,
+  danceCategoryEntries,
   isValidCategoryId,
+  resolveStyleEntry,
   stylesFromDanceCategories,
 } from "./discover.categories";
 import {
@@ -248,18 +251,34 @@ function weightedRating(
   return { avg: Math.round((weighted / count) * 10) / 10, count };
 }
 
-function studioStyles(batches: StudioRow["batches"]): string[] {
+function studioStyleEntries(
+  batches: StudioRow["batches"],
+): DanceCategoryEntry[] {
+  const entries: DanceCategoryEntry[] = [];
+  for (const batch of batches) {
+    entries.push(...danceCategoryEntries(batch.danceCategories));
+  }
+  return entries;
+}
+
+function uniqueStyleNames(entries: DanceCategoryEntry[]): string[] {
   const seen = new Set<string>();
   const styles: string[] = [];
-  for (const batch of batches) {
-    for (const style of stylesFromDanceCategories(batch.danceCategories)) {
-      const key = style.toLowerCase();
-      if (seen.has(key)) continue;
-      seen.add(key);
-      styles.push(style);
-    }
+  for (const entry of entries) {
+    const key = entry.name.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    styles.push(entry.name);
   }
   return styles;
+}
+
+function studioStyles(batches: StudioRow["batches"]): string[] {
+  return uniqueStyleNames(studioStyleEntries(batches));
+}
+
+function studioCategories(batches: StudioRow["batches"]): DiscoverCategoryId[] {
+  return categoriesFromEntries(studioStyleEntries(batches));
 }
 
 function studioTiming(batches: StudioRow["batches"]): {
@@ -416,7 +435,7 @@ export class DiscoverService {
   ): Promise<DiscoverStudioCard> {
     const activeBatches = studio.batches.filter((batch) => batch.active);
     const styles = studioStyles(activeBatches);
-    const categories = categoriesFromStyles(styles);
+    const categories = studioCategories(activeBatches);
     const city = matchCityFromAddress(
       studio.address,
       ...studio.branches.map((branch) => branch.address),
@@ -476,7 +495,7 @@ export class DiscoverService {
     return studios.filter((studio) => {
       const activeBatches = studio.batches.filter((batch) => batch.active);
       const styles = studioStyles(activeBatches);
-      const categories = categoriesFromStyles(styles);
+      const categories = studioCategories(activeBatches);
       const city = matchCityFromAddress(
         studio.address,
         ...studio.branches.map((branch) => branch.address),
@@ -820,8 +839,9 @@ export class DiscoverService {
     const counts = new Map<DiscoverCategoryId, number>();
 
     for (const studio of studios) {
-      const styles = studioStyles(studio.batches.filter((b) => b.active));
-      const categories = categoriesFromStyles(styles);
+      const categories = studioCategories(
+        studio.batches.filter((b) => b.active),
+      );
       for (const category of categories) {
         counts.set(category, (counts.get(category) ?? 0) + 1);
       }
@@ -882,13 +902,14 @@ export class DiscoverService {
         ...studio.branches.map((branch) => branch.address),
       );
       if (studioCity?.id !== resolvedCityId) continue;
-      const styles = studioStyles(
+      const styleEntries = studioStyleEntries(
         studio.batches.filter((batch) => batch.active),
       );
-      const categories = categoriesFromStyles(styles);
+      const styles = uniqueStyleNames(styleEntries);
+      const categories = categoriesFromEntries(styleEntries);
       if (!categories.includes("dance")) continue;
       for (const style of styles) {
-        if (categorizeAsDance(style)) {
+        if (resolveStyleEntry({ name: style }).categoryId === "dance") {
           const key = style.toLowerCase();
           const current = styleCounts.get(key);
           if (current) current.count += 1;
@@ -1022,10 +1043,6 @@ function toPublicTrainer(user: {
     styles: user.styles,
     instagramUrl: user.instagramUrl ?? null,
   };
-}
-
-function categorizeAsDance(style: string) {
-  return categoriesFromStyles([style]).includes("dance");
 }
 
 function firstStyleName(danceCategories: unknown): string | null {

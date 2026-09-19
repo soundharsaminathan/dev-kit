@@ -1,166 +1,259 @@
-/** Activity taxonomy for public discover. Maps danceCategories names → buckets. */
+/** Resolves free-text style names against the activity catalog. */
 
-export type DiscoverCategoryId =
-  | "dance"
-  | "music"
-  | "art"
-  | "fitness"
-  | "swimming"
-  | "martial-arts"
-  | "theatre"
-  | "other";
+import {
+  DISCOVER_ACTIVITIES,
+  DISCOVER_CATEGORIES,
+  type DiscoverActivity,
+  type DiscoverCategoryId,
+} from "./discover.taxonomy";
 
-export type DiscoverCategory = {
-  id: DiscoverCategoryId;
-  label: string;
+export {
+  DISCOVER_ACTIVITIES,
+  DISCOVER_CATEGORIES,
+  type DiscoverActivity,
+  type DiscoverCategory,
+  type DiscoverCategoryId,
+} from "./discover.taxonomy";
+
+export type StyleClassification = {
+  activityId: string | null;
+  categoryId: DiscoverCategoryId;
 };
 
-export const DISCOVER_CATEGORIES: readonly DiscoverCategory[] = [
-  { id: "dance", label: "Dance" },
-  { id: "music", label: "Music" },
-  { id: "art", label: "Art" },
-  { id: "fitness", label: "Fitness" },
-  { id: "swimming", label: "Swimming" },
-  { id: "martial-arts", label: "Martial arts" },
-  { id: "theatre", label: "Theatre" },
-  { id: "other", label: "Other classes" },
-] as const;
+export type DanceCategoryEntry = {
+  name: string;
+  activityId?: string;
+  categoryId?: DiscoverCategoryId;
+};
 
-const KEYWORD_MAP: Array<{ id: DiscoverCategoryId; patterns: RegExp[] }> = [
-  {
-    id: "dance",
-    patterns: [
-      /\bdance\b/i,
-      /\bbharatanatyam\b/i,
-      /\bkuchipudi\b/i,
-      /\bodissi\b/i,
-      /\bkathak\b/i,
-      /\bmohiniyattam\b/i,
-      /\bhip[\s-]?hop\b/i,
-      /\bcontemporary\b/i,
-      /\bballet\b/i,
-      /\bsalsa\b/i,
-      /\bbhangra\b/i,
-      /\bfolk\b/i,
-      /\bwestern\b/i,
-      /\bbreak(?:ing|dance)\b/i,
-      /\bjazz\b/i,
-      /\btap\b/i,
-      /\bfree[\s-]?style\b/i,
-      /\bchoreo(?:graphy)?\b/i,
-      /\bbachata\b/i,
-      /\bbollywood\b/i,
-      /\blatin\b/i,
-      /\blyrical\b/i,
-      /\bcommercial\b/i,
-      /\bstreet\b/i,
-      /\bkuthu\b/i,
-      /\bsemi[\s-]?classical\b/i,
-    ],
-  },
-  {
-    id: "music",
-    patterns: [
-      /\bmusic\b/i,
-      /\bsinging\b/i,
-      /\bvocal\b/i,
-      /\bpiano\b/i,
-      /\bguitar\b/i,
-      /\bviolin\b/i,
-      /\bdrums?\b/i,
-      /\bcarnatic\b/i,
-      /\bhindustani\b/i,
-      /\binstrument\b/i,
-    ],
-  },
-  {
-    id: "art",
-    patterns: [
-      /\bart\b/i,
-      /\bpaint(?:ing)?\b/i,
-      /\bdraw(?:ing)?\b/i,
-      /\bsketch\b/i,
-      /\bcraft\b/i,
-      /\bpottery\b/i,
-    ],
-  },
-  {
-    id: "fitness",
-    patterns: [
-      /\bfitness\b/i,
-      /\byoga\b/i,
-      /\bpilates\b/i,
-      /\bzumba\b/i,
-      /\baerobic/i,
-      /\bgym\b/i,
-      /\bstrength\b/i,
-    ],
-  },
-  {
-    id: "swimming",
-    patterns: [/\bswim(?:ming)?\b/i, /\baquatic\b/i],
-  },
-  {
-    id: "martial-arts",
-    patterns: [
-      /\bmartial\b/i,
-      /\bkarate\b/i,
-      /\btaekwondo\b/i,
-      /\bkung[\s-]?fu\b/i,
-      /\bjudo\b/i,
-      /\bkalaripayattu\b/i,
-      /\bboxing\b/i,
-    ],
-  },
-  {
-    id: "theatre",
-    patterns: [
-      /\btheatre\b/i,
-      /\btheater\b/i,
-      /\bdrama\b/i,
-      /\bacting\b/i,
-      /\bimprov\b/i,
-    ],
-  },
-];
+type CompiledTerm = {
+  alias: string;
+  tokenCount: number;
+  activityId: string;
+  categoryId: Exclude<DiscoverCategoryId, "other">;
+};
 
-export function categorizeStyleName(name: string): DiscoverCategoryId {
-  const value = name.trim();
-  if (!value) return "other";
-  for (const entry of KEYWORD_MAP) {
-    if (entry.patterns.some((pattern) => pattern.test(value))) {
-      return entry.id;
+const QUALIFIERS = new Set([
+  "beginner",
+  "beginners",
+  "intro",
+  "introduction",
+  "intermediate",
+  "advanced",
+  "kids",
+  "kid",
+  "children",
+  "child",
+  "junior",
+  "senior",
+  "adult",
+  "adults",
+  "basic",
+  "basics",
+  "foundation",
+  "foundations",
+  "level",
+  "grade",
+  "workshop",
+  "class",
+  "classes",
+  "club",
+  "course",
+  "courses",
+  "indian",
+  "traditional",
+  "modern",
+  "hatha",
+  "ashtanga",
+  "vinyasa",
+  "iyengar",
+  "open",
+  "private",
+  "group",
+  "batch",
+]);
+
+const activityById = new Map<string, DiscoverActivity>();
+const exactTerms = new Map<string, CompiledTerm>();
+const phraseTerms: CompiledTerm[] = [];
+const qualifiedTerms: CompiledTerm[] = [];
+
+function normalizeStyleName(value: string): string {
+  return value
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function containsStyleToken(normalized: string, alias: string): boolean {
+  return (
+    normalized === alias ||
+    normalized.startsWith(`${alias} `) ||
+    normalized.endsWith(` ${alias}`) ||
+    normalized.includes(` ${alias} `)
+  );
+}
+
+function leftoverTokens(normalized: string, alias: string): string[] {
+  const tokens = normalized.split(" ");
+  for (const token of alias.split(" ")) {
+    const index = tokens.indexOf(token);
+    if (index === -1) return tokens;
+    tokens.splice(index, 1);
+  }
+  return tokens;
+}
+
+function byLongestAlias(left: CompiledTerm, right: CompiledTerm) {
+  return (
+    right.tokenCount - left.tokenCount || right.alias.length - left.alias.length
+  );
+}
+
+function registerTerm(activity: DiscoverActivity, rawAlias: string) {
+  const alias = normalizeStyleName(rawAlias);
+  if (!alias || exactTerms.has(alias)) return;
+
+  const term: CompiledTerm = {
+    alias,
+    tokenCount: alias.split(" ").length,
+    activityId: activity.id,
+    categoryId: activity.categoryId,
+  };
+  exactTerms.set(alias, term);
+  if (activity.match === "qualified") {
+    qualifiedTerms.push(term);
+    return;
+  }
+  phraseTerms.push(term);
+}
+
+for (const activity of DISCOVER_ACTIVITIES) {
+  activityById.set(activity.id, activity);
+  registerTerm(activity, activity.label);
+  for (const alias of activity.aliases) {
+    registerTerm(activity, alias);
+  }
+}
+
+phraseTerms.sort(byLongestAlias);
+qualifiedTerms.sort(byLongestAlias);
+
+function classificationFromTerm(term: CompiledTerm): StyleClassification {
+  return { activityId: term.activityId, categoryId: term.categoryId };
+}
+
+export function classifyStyleName(name: string): StyleClassification {
+  const normalized = normalizeStyleName(name);
+  if (!normalized) {
+    return { activityId: null, categoryId: "other" };
+  }
+
+  const exact = exactTerms.get(normalized);
+  if (exact) return classificationFromTerm(exact);
+
+  for (const term of phraseTerms) {
+    if (containsStyleToken(normalized, term.alias)) {
+      return classificationFromTerm(term);
     }
   }
-  return "other";
+
+  for (const term of qualifiedTerms) {
+    if (!containsStyleToken(normalized, term.alias)) continue;
+    if (
+      leftoverTokens(normalized, term.alias).every((token) =>
+        QUALIFIERS.has(token),
+      )
+    ) {
+      return classificationFromTerm(term);
+    }
+  }
+
+  return { activityId: null, categoryId: "other" };
+}
+
+export function categorizeStyleName(name: string): DiscoverCategoryId {
+  return classifyStyleName(name).categoryId;
+}
+
+export function isValidCategoryId(value: string): value is DiscoverCategoryId {
+  return DISCOVER_CATEGORIES.some((category) => category.id === value);
+}
+
+export function resolveStyleEntry(
+  entry: DanceCategoryEntry,
+): StyleClassification {
+  if (entry.activityId) {
+    const activity = activityById.get(entry.activityId);
+    if (activity) {
+      return { activityId: activity.id, categoryId: activity.categoryId };
+    }
+  }
+  if (entry.categoryId && isValidCategoryId(entry.categoryId)) {
+    return {
+      activityId: entry.activityId ?? null,
+      categoryId: entry.categoryId,
+    };
+  }
+  return classifyStyleName(entry.name);
+}
+
+export function danceCategoryEntries(
+  danceCategories: unknown,
+): DanceCategoryEntry[] {
+  if (!Array.isArray(danceCategories)) return [];
+  const entries: DanceCategoryEntry[] = [];
+  for (const item of danceCategories) {
+    if (!item || typeof item !== "object") continue;
+    const record = item as {
+      name?: unknown;
+      activityId?: unknown;
+      categoryId?: unknown;
+    };
+    const name = typeof record.name === "string" ? record.name.trim() : "";
+    if (!name) continue;
+    const entry: DanceCategoryEntry = { name };
+    if (typeof record.activityId === "string" && record.activityId.trim()) {
+      entry.activityId = record.activityId.trim();
+    }
+    if (
+      typeof record.categoryId === "string" &&
+      isValidCategoryId(record.categoryId)
+    ) {
+      entry.categoryId = record.categoryId;
+    }
+    entries.push(entry);
+  }
+  return entries;
 }
 
 export function stylesFromDanceCategories(danceCategories: unknown): string[] {
-  if (!Array.isArray(danceCategories)) return [];
-  const names: string[] = [];
-  for (const item of danceCategories) {
-    if (!item || typeof item !== "object") continue;
-    const name = (item as { name?: unknown }).name;
-    if (typeof name === "string" && name.trim()) {
-      names.push(name.trim());
-    }
-  }
-  return names;
+  return danceCategoryEntries(danceCategories).map((entry) => entry.name);
 }
 
-export function categoriesFromStyles(styles: string[]): DiscoverCategoryId[] {
+export function categoriesFromEntries(
+  entries: DanceCategoryEntry[],
+): DiscoverCategoryId[] {
   const seen = new Set<DiscoverCategoryId>();
-  for (const style of styles) {
-    seen.add(categorizeStyleName(style));
+  for (const entry of entries) {
+    seen.add(resolveStyleEntry(entry).categoryId);
   }
   if (seen.size === 0 || (seen.size === 1 && seen.has("other"))) {
-    // This catalog is dance-first. Empty or unrecognized imported styles
-    // (e.g. "Free style & Choreography" before it had a keyword) still list.
+    // Dance-first catalog: empty or unrecognized imported styles still list.
     seen.add("dance");
   }
   return [...seen];
 }
 
-export function isValidCategoryId(value: string): value is DiscoverCategoryId {
-  return DISCOVER_CATEGORIES.some((category) => category.id === value);
+export function categoriesFromStyles(styles: string[]): DiscoverCategoryId[] {
+  return categoriesFromEntries(styles.map((name) => ({ name })));
+}
+
+export function categoriesFromDanceCategories(
+  danceCategories: unknown,
+): DiscoverCategoryId[] {
+  return categoriesFromEntries(danceCategoryEntries(danceCategories));
 }

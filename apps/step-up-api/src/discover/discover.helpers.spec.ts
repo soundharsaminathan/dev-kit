@@ -1,9 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { isTestStudio } from "../studios/test-studio";
 import {
+  categoriesFromDanceCategories,
   categoriesFromStyles,
   categorizeStyleName,
+  classifyStyleName,
+  DISCOVER_ACTIVITIES,
   isValidCategoryId,
+  resolveStyleEntry,
   stylesFromDanceCategories,
 } from "./discover.categories";
 import { matchCityFromAddress } from "./discover.cities";
@@ -57,7 +61,7 @@ describe("discover.localities", () => {
 });
 
 describe("discover.categories", () => {
-  it("maps style names into activity buckets", () => {
+  it("resolves style names through the activity catalog", () => {
     expect(categorizeStyleName("Bharatanatyam")).toBe("dance");
     expect(categorizeStyleName("Free style & Choreography")).toBe("dance");
     expect(categorizeStyleName("Freestyle")).toBe("dance");
@@ -68,6 +72,28 @@ describe("discover.categories", () => {
     expect(categorizeStyleName("Karate")).toBe("martial-arts");
     expect(categorizeStyleName("Drama club")).toBe("theatre");
     expect(categorizeStyleName("Mystery hobby")).toBe("other");
+    expect(classifyStyleName("Hip-hop").activityId).toBe("hip-hop");
+  });
+
+  it("lets longer catalog phrases win over ambiguous words", () => {
+    expect(categorizeStyleName("Martial arts")).toBe("martial-arts");
+    expect(categorizeStyleName("Jazz piano")).toBe("music");
+    expect(categorizeStyleName("Contemporary art")).toBe("art");
+    expect(categorizeStyleName("Folk music")).toBe("music");
+    expect(categorizeStyleName("Western classical")).toBe("music");
+    expect(categorizeStyleName("Indian folk")).toBe("dance");
+    expect(categorizeStyleName("Jazz")).toBe("dance");
+  });
+
+  it("honors stored activity or category instead of guessing", () => {
+    expect(
+      resolveStyleEntry({ name: "Jazz", activityId: "piano" }).categoryId,
+    ).toBe("music");
+    expect(
+      categoriesFromDanceCategories([
+        { name: "Open studio", categoryId: "fitness" },
+      ]),
+    ).toEqual(["fitness"]);
   });
 
   it("extracts styles and defaults empty studios to dance", () => {
@@ -86,6 +112,26 @@ describe("discover.categories", () => {
     expect(categoriesFromStyles(["Carnatic vocals"])).toEqual(["music"]);
     expect(isValidCategoryId("dance")).toBe(true);
     expect(isValidCategoryId("cooking")).toBe(false);
+  });
+
+  it("keeps catalog aliases unique after normalize", () => {
+    const seen = new Set<string>();
+    const duplicates: string[] = [];
+    for (const activity of DISCOVER_ACTIVITIES) {
+      for (const raw of [activity.label, ...activity.aliases]) {
+        const alias = raw
+          .toLowerCase()
+          .normalize("NFKD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .replace(/[^a-z0-9\s]/g, " ")
+          .replace(/\s+/g, " ")
+          .trim();
+        if (!alias) continue;
+        if (seen.has(alias)) duplicates.push(alias);
+        seen.add(alias);
+      }
+    }
+    expect(duplicates).toEqual([]);
   });
 });
 
