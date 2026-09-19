@@ -156,6 +156,12 @@ export const STUDENT_CITY = {
   label: "City",
   comingSoon: "Coming soon",
   pickerTitle: "Choose your city",
+  searchPlaceholder: "Search for your city",
+  popular: "Popular cities",
+  detect: "Detect my location",
+  detecting: "Finding your city",
+  detectHint: "classa is live in Chennai first.",
+  empty: "No cities match that search.",
   liveHint: "Chennai is live. Other cities are on the way.",
 } as const;
 

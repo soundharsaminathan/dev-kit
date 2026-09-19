@@ -41,6 +41,24 @@ export function ChartLineIcon({ className }: IconProps) {
   );
 }
 
+export function MapPinIcon({ className }: IconProps) {
+  return (
+    <PhosphorIcon
+      className={className ?? ""}
+      path="M128,16a88.1,88.1,0,0,0-88,88c0,75.3,80,132.17,83.41,134.55a8,8,0,0,0,9.18,0C136,236.17,216,179.3,216,104A88.1,88.1,0,0,0,128,16Zm0,206c-16.53-13-72-60.76-72-118a72,72,0,0,1,144,0C200,161.23,144.53,209,128,222ZM128,64a40,40,0,1,0,40,40A40,40,0,0,0,128,64Zm0,64a24,24,0,1,1,24-24A24,24,0,0,1,128,128Z"
+    />
+  );
+}
+
+export function MagnifyingGlassIcon({ className }: IconProps) {
+  return (
+    <PhosphorIcon
+      className={className ?? ""}
+      path="M229.66,218.34l-50.07-50.06a88.11,88.11,0,1,0-11.31,11.31l50.06,50.07a8,8,0,0,0,11.32-11.32ZM40,112a72,72,0,1,1,72,72A72.08,72.08,0,0,1,40,112Z"
+    />
+  );
+}
+
 export function CaretDownIcon({ className }: IconProps) {
   return (
     <PhosphorIcon
