@@ -8,4 +8,4 @@ export type {
 } from "./polymorphic";
 export type { Prettify } from "./prettify";
 export type { ThemeContextValue, ThemeProviderProps } from "./ThemeProvider";
-export { ThemeProvider, useTheme } from "./ThemeProvider";
+export { ThemeProvider, useTheme, useThemeOptional } from "./ThemeProvider";

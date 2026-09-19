@@ -24,6 +24,7 @@ import {
 } from "@/modules/student-landing/content";
 import { DEFAULT_CITY_ID } from "@/modules/student-landing/types";
 import { useDiscoverLanding } from "@/modules/student-landing/use-landing";
+import { ThemeSwitcher } from "@/modules/ui/theme-switcher";
 import { TouchButton } from "@/modules/ui/touch-button";
 import styles from "./public-shell.module.scss";
 
@@ -255,8 +256,12 @@ export function PublicShell({
                 </Link>
               ))}
             </nav>
-            <div className={styles.desktopActions}>{studentActions}</div>
+            <div className={styles.desktopActions}>
+              <ThemeSwitcher />
+              {studentActions}
+            </div>
             <div className={styles.mobileHeaderActions}>
+              <ThemeSwitcher />
               <Link
                 to="/discover"
                 search={{ city: DEFAULT_CITY_ID, category: "dance" }}
@@ -321,7 +326,11 @@ export function PublicShell({
                 </Link>
               ))}
             </nav>
-            <div className={styles.desktopActions}>{marketingActions}</div>
+            <div className={styles.desktopActions}>
+              <ThemeSwitcher />
+              {marketingActions}
+            </div>
+            <ThemeSwitcher className={styles.islandTheme} />
             <button
               ref={toggleRef}
               type="button"
@@ -356,6 +365,7 @@ export function PublicShell({
             <ClassaWordmark variant="italic-a" />
           </Link>
           <nav className={styles.nav}>
+            <ThemeSwitcher />
             {!loading &&
               (appHome ? (
                 <Link to={appHome}>
@@ -412,6 +422,7 @@ export function PublicShell({
             ))}
           </nav>
           <div className={styles.mobileActions}>
+            <ThemeSwitcher variant="segmented" />
             {!loading &&
               (appHome ? (
                 <TouchButton

@@ -3,7 +3,7 @@ import "@testing-library/jest-dom/vitest";
 import { act, cleanup, render, screen } from "@testing-library/react";
 import { renderToString } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { ThemeProvider, useTheme } from "../ThemeProvider";
+import { ThemeProvider, useTheme, useThemeOptional } from "../ThemeProvider";
 
 function createMatchMediaMock(
   getMatches: (query: string) => boolean,
@@ -194,6 +194,16 @@ describe("ThemeProvider", () => {
 
     unmount();
     expect(removeEventListener).toHaveBeenCalled();
+  });
+
+  it("returns null from useThemeOptional outside ThemeProvider", () => {
+    function OptionalConsumer() {
+      const theme = useThemeOptional();
+      return <div>{theme ? theme.mode : "none"}</div>;
+    }
+
+    const { getByText } = render(<OptionalConsumer />);
+    expect(getByText("none")).toBeTruthy();
   });
 
   it("throws when useTheme is used outside ThemeProvider", () => {

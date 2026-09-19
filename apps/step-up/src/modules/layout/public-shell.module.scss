@@ -647,10 +647,18 @@
   }
 }
 
+.islandTheme {
+  flex: none;
+}
+
 @media (min-width: 900px) {
   .desktopNav,
   .desktopActions {
     display: flex;
+  }
+
+  .islandTheme {
+    display: none;
   }
 
   .menuToggle {
