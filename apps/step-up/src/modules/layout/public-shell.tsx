@@ -34,6 +34,8 @@ type PublicShellProps = {
   nav?: "minimal" | "marketing" | "student";
   /** `full` removes main max-width clamp for edge-to-edge sections. */
   width?: "prose" | "full";
+  /** Extra footer padding so a page dock does not cover legal links. */
+  dock?: boolean;
 };
 
 type HashLink = { label: string; href: string };
@@ -58,6 +60,7 @@ export function PublicShell({
   children,
   nav = "minimal",
   width = "prose",
+  dock = false,
 }: PublicShellProps) {
   useDismissBootPublic();
   const { user, loading } = useAuth();
@@ -557,7 +560,11 @@ export function PublicShell({
           </div>
         </footer>
       ) : isStudent ? (
-        <footer className={styles.footerCompact}>
+        <footer
+          className={[styles.footerCompact, dock ? styles.footerDock : ""]
+            .filter(Boolean)
+            .join(" ")}
+        >
           <div className={styles.footerCompactInner}>
             <Link to="/" className={styles.footerBrand}>
               <img
