@@ -1,6 +1,5 @@
 import { getPublic } from "@/lib/api";
 import type {
-  DiscoverCategory,
   DiscoverCity,
   DiscoverStats,
   DiscoverStudioCard,
@@ -39,10 +38,6 @@ export function fetchDiscoverStudio(id: string) {
 
 export function fetchDiscoverCities() {
   return getPublic<DiscoverCity[]>("/discover/cities");
-}
-
-export function fetchDiscoverCategories() {
-  return getPublic<DiscoverCategory[]>("/discover/categories");
 }
 
 export function fetchDiscoverStats() {

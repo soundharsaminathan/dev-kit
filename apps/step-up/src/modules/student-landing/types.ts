@@ -56,12 +56,6 @@ export type DiscoverCity = {
   studioCount: number;
 };
 
-export type DiscoverCategory = {
-  id: DiscoverCategoryId;
-  label: string;
-  studioCount: number;
-};
-
 export type DiscoverStats = {
   studios: number;
   classes: number;
@@ -81,46 +75,6 @@ export type DiscoverStudiosQuery = {
   maxPrice?: number;
   limit?: number;
 };
-
-export const CATEGORY_META: Array<{
-  id: DiscoverCategoryId;
-  label: string;
-  image: string;
-  comingSoon?: boolean;
-}> = [
-  { id: "dance", label: "Dance", image: "/marketing/student/cat-dance.png" },
-  { id: "music", label: "Music", image: "/marketing/student/cat-music.png" },
-  { id: "art", label: "Art", image: "/marketing/student/cat-art.png" },
-  {
-    id: "fitness",
-    label: "Fitness",
-    image: "/marketing/student/cat-fitness.png",
-  },
-  {
-    id: "swimming",
-    label: "Swimming",
-    image: "/marketing/student/cat-swimming.png",
-    comingSoon: true,
-  },
-  {
-    id: "martial-arts",
-    label: "Martial arts",
-    image: "/marketing/student/cat-martial.png",
-    comingSoon: true,
-  },
-  {
-    id: "theatre",
-    label: "Theatre",
-    image: "/marketing/student/cat-theatre.png",
-    comingSoon: true,
-  },
-  {
-    id: "other",
-    label: "Other classes",
-    image: "/marketing/student/cat-other.png",
-    comingSoon: true,
-  },
-];
 
 export const LAUNCH_CITY_IDS = [
   "chennai",

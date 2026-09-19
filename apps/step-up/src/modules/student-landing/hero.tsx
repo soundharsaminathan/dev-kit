@@ -110,7 +110,7 @@ export function StudentHero() {
           <img
             className={styles.heroImage}
             src="/marketing/student/hero.png"
-            alt="classa mark as a studio window into dance, music, swimming, and martial arts"
+            alt="classa mark as a studio window into dance class"
             width={864}
             height={1152}
             fetchPriority="high"

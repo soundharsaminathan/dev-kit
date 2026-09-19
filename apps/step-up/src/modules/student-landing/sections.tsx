@@ -1,5 +1,4 @@
 import { StudentBenefits } from "./benefits";
-import { StudentCategories } from "./categories";
 import { StudentFaq } from "./faq";
 import { StudentFinalCta } from "./final-cta";
 import { StudentHowItWorks } from "./how-it-works";
@@ -16,7 +15,6 @@ import { StudentTrust } from "./trust";
 export default function StudentLandingSections() {
   return (
     <>
-      <StudentCategories />
       <StudentTagline />
       <StudentNearby />
       <StudentHowItWorks />

@@ -1,10 +1,10 @@
 /** Student landing copy — no hyphens in body text. */
 
 export const STUDENT_HERO = {
-  headline: "Find a class you’ll love.",
+  headline: "Find a dance class you’ll love.",
   support:
-    "Discover studios, classes, and activities near you, then find the right place to learn, grow, and have fun.",
-  searchPlaceholder: "Search classes, studios or activities",
+    "Discover dance studios and classes near you, then find the right place to learn, grow, and have fun.",
+  searchPlaceholder: "Search dance classes or studios",
   locationPlaceholder: "Your location",
   searchCta: "Search classes",
   proof: "Explore studios near you",
@@ -34,11 +34,6 @@ export const STUDENT_TAGLINE = {
   line2: "Discover studios near you.",
 } as const;
 
-export const STUDENT_CATEGORIES = {
-  headline: "What are you looking to learn?",
-  comingSoon: "Coming soon",
-} as const;
-
 export const STUDENT_NEARBY = {
   headline: "Studios near you",
   support: "Explore classes and studios around your area.",
@@ -53,7 +48,7 @@ export const STUDENT_HOW = {
       id: "search",
       number: "01",
       title: "Search",
-      body: "Find classes near you by activity, location, age group, or preferred time.",
+      body: "Find dance classes near you by style, location, age group, or preferred time.",
     },
     {
       id: "explore",
@@ -146,7 +141,7 @@ export const STUDENT_FAQ = {
     },
     {
       q: "Can I compare more than one studio?",
-      a: "Yes. Browse listings by city, category, and filters, then open each studio to compare styles, batches, and pricing.",
+      a: "Yes. Browse listings by city and filters, then open each studio to compare styles, batches, and pricing.",
     },
     {
       q: "Is pricing shown before I join?",
