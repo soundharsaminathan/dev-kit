@@ -54,6 +54,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+  margin-top: var(--lp-space-300, 24px);
 }
 
 .chip {

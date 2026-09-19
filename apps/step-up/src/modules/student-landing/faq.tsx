@@ -18,7 +18,7 @@ const FAQ_JSON_LD = {
   })),
 };
 
-function FaqItem({
+export function FaqItem({
   question,
   answer,
   open,
@@ -50,10 +50,14 @@ function FaqItem({
       <section
         id={panelId}
         aria-labelledby={buttonId}
-        hidden={!open}
+        aria-hidden={!open}
+        inert={!open}
+        data-open={open}
         className={styles.panel}
       >
-        <p className={styles.answer}>{answer}</p>
+        <div className={styles.panelInner}>
+          <p className={styles.answer}>{answer}</p>
+        </div>
       </section>
     </div>
   );
@@ -80,7 +84,7 @@ export function StudentFaq() {
       aria-labelledby="student-faq-headline"
     >
       <div className={shared.sectionInner}>
-        <Reveal>
+        <Reveal className={styles.intro}>
           <h2 id="student-faq-headline" className={shared.title}>
             {STUDENT_FAQ.headline}
           </h2>

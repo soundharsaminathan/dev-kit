@@ -9,10 +9,10 @@
   font-weight: 700;
   line-height: 1.15;
   letter-spacing: -0.03em;
-  text-wrap: balance;
   display: flex;
   flex-wrap: wrap;
-  gap: 0.35em;
+  column-gap: 0.35em;
+  row-gap: 0;
 }
 
 .word {
@@ -26,7 +26,16 @@
 
 @media (min-width: 768px) {
   .line {
+    max-width: none;
     font-size: var(--lp-text-5xl);
+    flex-wrap: nowrap;
+    white-space: nowrap;
+  }
+}
+
+@media (min-width: 1100px) {
+  .line {
+    font-size: var(--lp-text-6xl);
   }
 }
 

@@ -50,10 +50,14 @@ function FaqItem({
       <section
         id={panelId}
         aria-labelledby={buttonId}
-        hidden={!open}
+        aria-hidden={!open}
+        inert={!open}
+        data-open={open}
         className={styles.panel}
       >
-        <p className={styles.answer}>{answer}</p>
+        <div className={styles.panelInner}>
+          <p className={styles.answer}>{answer}</p>
+        </div>
       </section>
     </div>
   );

@@ -1,16 +1,16 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@dev-ui/components/avatar";
-import { useEffect, useId, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   AMENITY_OPTIONS,
   mapsUrl,
   type OpeningHours,
   WEEKDAY_LABELS,
 } from "@/modules/locations/types";
-import { CaretDownIcon } from "@/modules/marketing/icons";
 import shared from "@/modules/marketing/marketing.module.scss";
 import { Reveal } from "@/modules/marketing/reveal";
 import { TouchButton } from "@/modules/ui/touch-button";
 import { STUDENT_STUDIO, STUDENT_TRIAL } from "./content";
+import { FaqItem } from "./faq";
 import faqStyles from "./faq.module.scss";
 import { formatPriceFrom, formatRating } from "./format";
 import howStyles from "./how-it-works.module.scss";
@@ -523,7 +523,7 @@ export function StudioLanding({
         aria-labelledby="studio-faq"
       >
         <div className={shared.sectionInner}>
-          <Reveal>
+          <Reveal className={faqStyles.intro}>
             <h2 id="studio-faq" className={shared.title}>
               {STUDENT_STUDIO.faq}
             </h2>
@@ -738,47 +738,6 @@ function StudioFaq({
           />
         </Reveal>
       ))}
-    </div>
-  );
-}
-
-function FaqItem({
-  question,
-  answer,
-  open,
-  onToggle,
-}: {
-  question: string;
-  answer: string;
-  open: boolean;
-  onToggle: () => void;
-}) {
-  const panelId = useId();
-  const buttonId = useId();
-
-  return (
-    <div className={faqStyles.item}>
-      <h3 className={faqStyles.itemTitle}>
-        <button
-          id={buttonId}
-          type="button"
-          className={faqStyles.trigger}
-          aria-expanded={open}
-          aria-controls={panelId}
-          onClick={onToggle}
-        >
-          <span>{question}</span>
-          <CaretDownIcon className={faqStyles.caret ?? ""} />
-        </button>
-      </h3>
-      <section
-        id={panelId}
-        aria-labelledby={buttonId}
-        hidden={!open}
-        className={faqStyles.panel}
-      >
-        <p className={faqStyles.answer}>{answer}</p>
-      </section>
     </div>
   );
 }
