@@ -274,6 +274,40 @@ describe("DiscoverService", () => {
     expect(landing.studios).toHaveLength(1);
   });
 
+  it("keeps imported freestyle studios in the default dance listings", async () => {
+    const flo = {
+      ...studioFixture,
+      id: "studio-flo",
+      slug: "4d-flo",
+      name: "4D-Flo",
+      batches: [
+        {
+          ...studioFixture.batches[0],
+          danceCategories: [
+            { name: "Free style & Choreography", description: "" },
+          ],
+        },
+      ],
+    };
+    prisma.studio.findMany.mockResolvedValue([flo]);
+
+    await expect(
+      service.listStudios({ city: "chennai", category: "dance" }),
+    ).resolves.toEqual([
+      expect.objectContaining({
+        slug: "4d-flo",
+        styles: ["Free style & Choreography"],
+        categories: ["dance"],
+      }),
+    ]);
+
+    const landing = await service.listLanding("chennai");
+    expect(landing.studios.map((studio) => studio.slug)).toEqual(["4d-flo"]);
+    expect(
+      landing.styles.some((item) => item.label === "Free style & Choreography"),
+    ).toBe(true);
+  });
+
   it("lists public trial slots and hides test studios", async () => {
     prisma.studio.findFirst.mockResolvedValue({
       id: studioFixture.id,

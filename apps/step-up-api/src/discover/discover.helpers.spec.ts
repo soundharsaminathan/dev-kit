@@ -59,6 +59,8 @@ describe("discover.localities", () => {
 describe("discover.categories", () => {
   it("maps style names into activity buckets", () => {
     expect(categorizeStyleName("Bharatanatyam")).toBe("dance");
+    expect(categorizeStyleName("Free style & Choreography")).toBe("dance");
+    expect(categorizeStyleName("Freestyle")).toBe("dance");
     expect(categorizeStyleName("Carnatic vocals")).toBe("music");
     expect(categorizeStyleName("Watercolor painting")).toBe("art");
     expect(categorizeStyleName("Hatha Yoga")).toBe("fitness");
@@ -77,6 +79,11 @@ describe("discover.categories", () => {
       ]),
     ).toEqual(["Hip Hop"]);
     expect(categoriesFromStyles([])).toEqual(["dance"]);
+    expect(categoriesFromStyles(["Free style & Choreography"])).toEqual([
+      "dance",
+    ]);
+    expect(categoriesFromStyles(["Mystery hobby"])).toEqual(["other", "dance"]);
+    expect(categoriesFromStyles(["Carnatic vocals"])).toEqual(["music"]);
     expect(isValidCategoryId("dance")).toBe(true);
     expect(isValidCategoryId("cooking")).toBe(false);
   });

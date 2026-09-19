@@ -46,6 +46,16 @@ const KEYWORD_MAP: Array<{ id: DiscoverCategoryId; patterns: RegExp[] }> = [
       /\bbreak(?:ing|dance)\b/i,
       /\bjazz\b/i,
       /\btap\b/i,
+      /\bfree[\s-]?style\b/i,
+      /\bchoreo(?:graphy)?\b/i,
+      /\bbachata\b/i,
+      /\bbollywood\b/i,
+      /\blatin\b/i,
+      /\blyrical\b/i,
+      /\bcommercial\b/i,
+      /\bstreet\b/i,
+      /\bkuthu\b/i,
+      /\bsemi[\s-]?classical\b/i,
     ],
   },
   {
@@ -143,8 +153,9 @@ export function categoriesFromStyles(styles: string[]): DiscoverCategoryId[] {
   for (const style of styles) {
     seen.add(categorizeStyleName(style));
   }
-  if (seen.size === 0) {
-    // Dance studios with no styles still count as dance for empty taxonomy.
+  if (seen.size === 0 || (seen.size === 1 && seen.has("other"))) {
+    // This catalog is dance-first. Empty or unrecognized imported styles
+    // (e.g. "Free style & Choreography" before it had a keyword) still list.
     seen.add("dance");
   }
   return [...seen];
