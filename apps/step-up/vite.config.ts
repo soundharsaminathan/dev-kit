@@ -136,6 +136,18 @@ export default defineConfig(({ mode }) => {
       ),
     },
     build: {
+      // The entry already statically imports these tiny helper chunks. Vite
+      // still modulepreloads them from index.html and again from every
+      // dynamic-import dep list; Chrome then warns they were "preloaded but
+      // not used" because the first fetch is never the one that evaluates.
+      modulePreload: {
+        resolveDependencies: (_filename, deps) =>
+          deps.filter(
+            (dep) =>
+              !dep.includes("rolldown-runtime") &&
+              !dep.includes("preload-helper"),
+          ),
+      },
       rollupOptions: {
         output: {
           manualChunks: stepUpManualChunks,

@@ -174,11 +174,13 @@ export function CitySwitcher() {
                           />
                         </span>
                         <span className={styles.tileName}>{city.label}</span>
-                        {city.available ? null : (
-                          <span className={styles.soon}>
-                            {STUDENT_CITY.comingSoon}
-                          </span>
-                        )}
+                        <span
+                          className={styles.soon}
+                          data-visible={!city.available || undefined}
+                          aria-hidden={city.available || undefined}
+                        >
+                          {STUDENT_CITY.comingSoon}
+                        </span>
                       </button>
                     </li>
                   ))}

@@ -639,8 +639,32 @@
         border-radius: 999px;
         border: 1px solid rgb(28 26 23 / 12%);
         background: #fff;
+        color: #1c1a17;
         font-size: 0.875rem;
         font-weight: 600;
+      }
+
+      html[data-theme-mode="dark"] #boot-public .shell-header {
+        border-bottom-color: rgb(255 255 255 / 10%);
+      }
+
+      html[data-theme-mode="dark"] #boot-public .city-pill,
+      html[data-theme-mode="dark"] #boot-public .hero-search,
+      html[data-theme-mode="dark"] #boot-public .hero-chip {
+        background: #272727;
+        border-color: rgb(255 255 255 / 14%);
+        color: #fff;
+      }
+
+      html[data-theme-mode="dark"] #boot-public .hero-field input,
+      html[data-theme-mode="dark"] #boot-public .hero-field select {
+        background: #1f1f1f;
+        border-color: rgb(255 255 255 / 14%);
+        color: #fff;
+      }
+
+      html[data-theme-mode="dark"] #boot-public .hero-field span {
+        color: rgb(255 255 255 / 55%);
       }
 
       html[data-theme-mode="dark"] #boot-public .hero-brand {
@@ -650,6 +674,9 @@
       @media (min-width: 768px) {
         #boot-public .hero-brand {
           font-size: 3rem;
+          /* Must grow with font-size — a leftover 2.5rem line box
+             overlaps “Dance classes” onto “in Chennai”. Matches .headline. */
+          line-height: 1;
         }
       }
 
