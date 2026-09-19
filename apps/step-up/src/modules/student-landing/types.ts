@@ -30,6 +30,12 @@ export type DiscoverStudioCard = {
   priceCadence: "MONTHLY" | "QUARTERLY" | null;
 };
 
+export type DiscoverBatchTrainer = {
+  id: string;
+  name: string;
+  photoUrl: string | null;
+};
+
 export type DiscoverBatchSummary = {
   id: string;
   name: string;
@@ -41,6 +47,50 @@ export type DiscoverBatchSummary = {
   ratingCount: number;
   priceFrom: number | null;
   priceCadence: "MONTHLY" | "QUARTERLY" | null;
+  coverImageUrl?: string | null;
+  trainers?: DiscoverBatchTrainer[];
+};
+
+export type DiscoverTrainer = {
+  id: string;
+  name: string;
+  photoUrl: string | null;
+  bio: string | null;
+  styles: string[];
+  instagramUrl: string | null;
+};
+
+export type DiscoverGalleryItem = {
+  url: string;
+  caption: string | null;
+};
+
+export type DiscoverBranchVisit = {
+  id: string;
+  name: string;
+  address: string;
+  latitude: number | null;
+  longitude: number | null;
+  amenities: string[];
+  openingHours: unknown;
+  pricingBlurb: string | null;
+  description: string | null;
+  coverUrl: string | null;
+};
+
+export type DiscoverFaq = {
+  id: string;
+  question: string;
+  answer: string;
+  sortOrder: number;
+};
+
+export type DiscoverTestimonial = {
+  id: string;
+  quote: string;
+  authorName: string;
+  rating: number | null;
+  sortOrder: number;
 };
 
 export type DiscoverStudioDetail = DiscoverStudioCard & {
@@ -49,7 +99,24 @@ export type DiscoverStudioDetail = DiscoverStudioCard & {
   logoUrl: string | null;
   heroDesktopUrl: string | null;
   heroMobileUrl: string | null;
+  tagline?: string | null;
+  about?: string | null;
+  foundedYear?: number | null;
+  email?: string | null;
+  whatsapp?: string | null;
+  instagramUrl?: string | null;
+  youtubeUrl?: string | null;
+  websiteUrl?: string | null;
+  whatToBring?: string | null;
+  trialBlurb?: string | null;
+  photos?: string[];
+  trainers?: DiscoverTrainer[];
+  branches?: DiscoverBranchVisit[];
+  gallery?: DiscoverGalleryItem[];
+  faqs?: DiscoverFaq[];
+  testimonials?: DiscoverTestimonial[];
   batches: DiscoverBatchSummary[];
+  nextTrialSlot?: DiscoverTrialSlot | null;
 };
 
 export type DiscoverCity = {

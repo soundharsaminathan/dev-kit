@@ -8,6 +8,17 @@ import {
   formatPriceFrom,
   formatRating,
 } from "@/modules/student-landing/format";
+import {
+  formatTrialSlot,
+  StudioAbout,
+  StudioFaqs,
+  StudioGallery,
+  StudioLinks,
+  StudioPrep,
+  StudioReviews,
+  StudioTrainers,
+  StudioVisit,
+} from "@/modules/student-landing/studio-detail";
 import { TrialRequestSheet } from "@/modules/student-landing/trial-request-sheet";
 import { DEFAULT_CITY_ID } from "@/modules/student-landing/types";
 import { SkeletonBlock } from "@/modules/ui/skeleton-block";
@@ -35,6 +46,7 @@ function StudioPage() {
   const price = studio
     ? formatPriceFrom(studio.priceFrom, studio.priceCadence)
     : null;
+  const nextTrial = studio?.nextTrialSlot ?? null;
 
   return (
     <PublicShell nav="student" width="full">
@@ -75,15 +87,22 @@ function StudioPage() {
                 {studio.name.slice(0, 1)}
               </div>
             )}
-            <p className={styles.eyebrow}>
-              {[studio.city, studio.styles.slice(0, 2).join(" · ")]
-                .filter(Boolean)
-                .join(" · ") || "Studio"}
-            </p>
-            <h1 className={styles.title}>{studio.name}</h1>
+            <div className={styles.identity}>
+              {studio.logoUrl ? (
+                <img className={styles.logo} src={studio.logoUrl} alt="" />
+              ) : null}
+              <div>
+                <p className={styles.eyebrow}>
+                  {[studio.city, studio.styles.slice(0, 2).join(" · ")]
+                    .filter(Boolean)
+                    .join(" · ") || "Studio"}
+                </p>
+                <h1 className={styles.title}>{studio.name}</h1>
+              </div>
+            </div>
             <p className={styles.lead}>
-              Compare batches and fees, then request a trial. Browse without an
-              account.
+              {studio.tagline ||
+                "Compare classes and fees, then request a trial. Browse without an account."}
             </p>
             <div className={styles.metaRow}>
               {rating ? <span>★ {rating}</span> : null}
@@ -95,23 +114,26 @@ function StudioPage() {
               ) : null}
               {studio.timingLabel ? <span>{studio.timingLabel}</span> : null}
               {price ? <span>From {price}</span> : null}
+              {nextTrial ? (
+                <span>
+                  Next trial {formatTrialSlot(nextTrial)}
+                  {nextTrial.styleBadge ? ` · ${nextTrial.styleBadge}` : ""}
+                </span>
+              ) : null}
             </div>
-            {studio.address || studio.contact ? (
-              <div className={styles.card}>
-                {studio.address ? (
-                  <>
-                    <p className={styles.label}>Address</p>
-                    <p>{studio.address}</p>
-                  </>
-                ) : null}
-                {studio.contact ? (
-                  <>
-                    <p className={styles.label}>Contact</p>
-                    <p>{studio.contact}</p>
-                  </>
-                ) : null}
-              </div>
-            ) : null}
+            <StudioLinks
+              contact={studio.contact}
+              email={studio.email}
+              whatsapp={studio.whatsapp}
+              instagramUrl={studio.instagramUrl}
+              youtubeUrl={studio.youtubeUrl}
+              websiteUrl={studio.websiteUrl}
+            />
+            <StudioAbout
+              about={studio.about}
+              foundedYear={studio.foundedYear}
+            />
+            <StudioPrep whatToBring={studio.whatToBring} />
             {studio.batches.length > 0 ? (
               <div className={styles.batches}>
                 <h2 className={styles.batchesTitle}>Classes</h2>
@@ -125,6 +147,9 @@ function StudioPage() {
                       batch.ratingAvg,
                       batch.ratingCount,
                     );
+                    const trainerNames = (batch.trainers ?? [])
+                      .map((trainer) => trainer.name)
+                      .join(", ");
                     return (
                       <li key={batch.id} className={styles.batchItem}>
                         <div>
@@ -133,7 +158,9 @@ function StudioPage() {
                             {[
                               batch.category === "KIDS" ? "Kids" : "Adults",
                               batch.styles[0],
+                              batch.scheduleLabel,
                               batch.timingLabel,
+                              trainerNames,
                               batchRating ? `★ ${batchRating}` : null,
                               batchPrice,
                             ]
@@ -147,6 +174,14 @@ function StudioPage() {
                 </ul>
               </div>
             ) : null}
+            <StudioTrainers trainers={studio.trainers ?? []} />
+            <StudioGallery items={studio.gallery ?? []} />
+            <StudioVisit
+              address={studio.address}
+              branches={studio.branches ?? []}
+            />
+            <StudioReviews testimonials={studio.testimonials ?? []} />
+            <StudioFaqs faqs={studio.faqs ?? []} />
             <div className={styles.actions}>
               <TouchButton
                 variant="primary"
@@ -155,6 +190,9 @@ function StudioPage() {
               >
                 {STUDENT_TRIAL.cta}
               </TouchButton>
+              {studio.trialBlurb ? (
+                <p className={styles.trialNote}>{studio.trialBlurb}</p>
+              ) : null}
               <TouchButton
                 as={Link}
                 to="/login"

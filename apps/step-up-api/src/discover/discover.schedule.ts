@@ -96,3 +96,50 @@ export function batchTimingLabel(bands: {
   if (bands.evening) return "Evening batches";
   return null;
 }
+
+const DAY_LABELS: Record<number, string> = {
+  0: "Sun",
+  1: "Mon",
+  2: "Tue",
+  3: "Wed",
+  4: "Thu",
+  5: "Fri",
+  6: "Sat",
+  7: "Sun",
+};
+
+function collectWeekdays(schedule: ScheduleShape): number[] {
+  const days = new Set<number>();
+  for (const slot of schedule.dayTimes ?? []) {
+    if (typeof slot?.weekday === "number") days.add(slot.weekday);
+  }
+  for (const day of schedule.weekdays ?? []) {
+    if (typeof day === "number") days.add(day);
+  }
+  return [...days]
+    .map((day) => (day === 7 ? 0 : day))
+    .filter((day, index, all) => all.indexOf(day) === index)
+    .sort((a, b) => a - b);
+}
+
+function firstStartTime(schedule: ScheduleShape): string | null {
+  for (const slot of schedule.dayTimes ?? []) {
+    if (slot?.startTime) return slot.startTime;
+  }
+  return schedule.startTime ?? null;
+}
+
+export function batchScheduleLabel(schedule: unknown): string | null {
+  const parsed = parseSchedule(schedule);
+  if (!parsed) return null;
+  const start = firstStartTime(parsed);
+  if (parsed.frequency === "DAILY") {
+    return start ? `Daily · ${start}` : "Daily";
+  }
+  const days = collectWeekdays(parsed)
+    .map((day) => DAY_LABELS[day])
+    .filter(Boolean);
+  const dayPart = days.length > 0 ? days.join(", ") : null;
+  if (dayPart && start) return `${dayPart} · ${start}`;
+  return dayPart ?? start;
+}

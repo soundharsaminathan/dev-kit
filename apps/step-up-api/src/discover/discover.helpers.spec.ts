@@ -18,6 +18,7 @@ import {
   stylesMatchQuery,
 } from "./discover.localities";
 import {
+  batchScheduleLabel,
   batchTimingLabel,
   dayBandsFromSchedule,
   timeBandsFromSchedule,
@@ -131,6 +132,18 @@ describe("discover.schedule", () => {
       "Morning and evening batches",
     );
     expect(batchTimingLabel({ morning: false, evening: false })).toBeNull();
+
+    expect(
+      batchScheduleLabel({
+        startTime: "09:00",
+        endTime: "10:00",
+        weekdays: [6],
+      }),
+    ).toBe("Sat · 09:00");
+    expect(batchScheduleLabel({ frequency: "DAILY", startTime: "18:00" })).toBe(
+      "Daily · 18:00",
+    );
+    expect(batchScheduleLabel(null)).toBeNull();
   });
 });
 

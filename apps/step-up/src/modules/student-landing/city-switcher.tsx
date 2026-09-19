@@ -124,7 +124,7 @@ export function CitySwitcher() {
               </div>
 
               <div className={styles.search}>
-                <MagnifyingGlassIcon className={styles.searchIcon} />
+                <MagnifyingGlassIcon className={styles.searchIcon ?? ""} />
                 <input
                   id={searchId}
                   ref={searchRef}
@@ -144,7 +144,7 @@ export function CitySwitcher() {
                 onClick={detectLocation}
                 disabled={geoPending}
               >
-                <MapPinIcon className={styles.detectIcon} />
+                <MapPinIcon className={styles.detectIcon ?? ""} />
                 <span>
                   {geoPending ? STUDENT_CITY.detecting : STUDENT_CITY.detect}
                 </span>
@@ -202,9 +202,9 @@ export function CitySwitcher() {
         aria-expanded={open}
         onClick={() => setOpen((value) => !value)}
       >
-        <MapPinIcon className={styles.triggerIcon} />
+        <MapPinIcon className={styles.triggerIcon ?? ""} />
         <span>{cityLabel}</span>
-        <CaretDownIcon className={styles.caret} />
+        <CaretDownIcon className={styles.caret ?? ""} />
       </button>
       {picker}
     </div>

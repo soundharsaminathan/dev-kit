@@ -28,6 +28,20 @@
   color: color-mix(in srgb, var(--color-fg) 55%, transparent);
 }
 
+.identity {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.logo {
+  width: 56px;
+  height: 56px;
+  border-radius: 12px;
+  object-fit: cover;
+  flex: none;
+}
+
 .eyebrow {
   margin: 0;
   font-size: 0.8125rem;
@@ -122,6 +136,14 @@
   flex-direction: column;
   gap: var(--space-2, 0.5rem);
   margin-top: var(--space-2, 0.5rem);
+}
+
+.trialNote {
+  margin: 0;
+  text-align: center;
+  font-size: 0.875rem;
+  color: color-mix(in srgb, var(--color-fg) 64%, transparent);
+  text-wrap: pretty;
 }
 
 @keyframes enter {

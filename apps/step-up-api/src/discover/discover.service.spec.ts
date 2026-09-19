@@ -20,6 +20,21 @@ describe("DiscoverService", () => {
     signReadUrl: vi.fn(async (url: string | null) =>
       url ? `signed:${url}` : null,
     ),
+    signReadUrls: vi.fn(async (urls: string[]) =>
+      urls.map((url) => `signed:${url}`),
+    ),
+  };
+  const crypto = {
+    decryptUser: vi.fn((user: { id: string }) => ({
+      id: user.id,
+      name: "Priya",
+      photoUrl: "avatars/priya.jpg",
+      bio: "Bharatanatyam faculty",
+      styles: ["Bharatanatyam"],
+      instagramUrl: "https://instagram.com/priya",
+      email: "priya@secret.test",
+      phone: "9999999999",
+    })),
   };
 
   let service: DiscoverService;
@@ -33,14 +48,32 @@ describe("DiscoverService", () => {
     logoUrl: "logos/rh.png",
     heroMobileUrl: null,
     heroDesktopUrl: "heroes/rh.png",
-    photos: [],
+    photos: ["gallery/one.jpg"],
+    tagline: null as string | null,
+    about: null as string | null,
+    foundedYear: null as number | null,
+    email: null as string | null,
+    whatsapp: null as string | null,
+    instagramUrl: null as string | null,
+    youtubeUrl: null as string | null,
+    websiteUrl: null as string | null,
+    whatToBring: null as string | null,
+    trialBlurb: null as string | null,
     branches: [
       {
+        id: "branch-1",
+        name: "T Nagar",
         address: "T Nagar, Chennai",
         latitude: 13.04,
         longitude: 80.24,
+        amenities: ["parking"],
+        openingHours: null,
+        pricingBlurb: null,
+        description: null,
         coverMedia: null,
         media: [],
+        faqs: [],
+        testimonials: [],
       },
     ],
     batches: [
@@ -58,6 +91,7 @@ describe("DiscoverService", () => {
         ratingAvg: 4.8,
         ratingCount: 10,
         coverImageUrl: null,
+        trainers: [],
         plans: [
           {
             subscription: {
@@ -73,7 +107,13 @@ describe("DiscoverService", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    service = new DiscoverService(prisma as never, media as never);
+    prisma.session.findMany.mockResolvedValue([]);
+    prisma.session.findFirst = vi.fn();
+    service = new DiscoverService(
+      prisma as never,
+      media as never,
+      crypto as never,
+    );
   });
 
   it("lists studio cards with honest fields and omits empty ratings", async () => {
@@ -276,5 +316,85 @@ describe("DiscoverService", () => {
     await expect(
       service.listPublicTrialSlots("smoke-test"),
     ).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it("returns public studio details without trainer PII", async () => {
+    prisma.studio.findFirst.mockResolvedValue({
+      ...studioFixture,
+      tagline: "Hip Hop in T Nagar",
+      about: "A neighborhood floor.",
+      foundedYear: 2018,
+      email: "hello@rhythm.house",
+      whatsapp: "+91 98765 43210",
+      instagramUrl: "https://instagram.com/rhythmhouse",
+      batches: [
+        {
+          ...studioFixture.batches[0],
+          trainers: [
+            {
+              trainer: {
+                id: "trainer-1",
+                photoUrl: "avatars/priya.jpg",
+                styles: ["Bharatanatyam"],
+                active: true,
+                encryptedKey: "k",
+                piiCiphertext: "c",
+                piiIv: "iv",
+              },
+            },
+          ],
+        },
+      ],
+    });
+
+    const detail = await service.getStudio("rhythm-house");
+    expect(detail).toMatchObject({
+      id: "studio-1",
+      tagline: "Hip Hop in T Nagar",
+      about: "A neighborhood floor.",
+      foundedYear: 2018,
+      email: "hello@rhythm.house",
+      whatsapp: "+91 98765 43210",
+      instagramUrl: "https://instagram.com/rhythmhouse",
+      photos: ["signed:gallery/one.jpg"],
+    });
+    expect(detail.batches[0]?.scheduleLabel).toBe("Sat · 09:00");
+    expect(detail.trainers).toEqual([
+      {
+        id: "trainer-1",
+        name: "Priya",
+        photoUrl: "signed:avatars/priya.jpg",
+        bio: "Bharatanatyam faculty",
+        styles: ["Bharatanatyam"],
+        instagramUrl: "https://instagram.com/priya",
+      },
+    ]);
+    expect(JSON.stringify(detail.trainers)).not.toMatch(/email|phone|secret/i);
+    expect(detail.trainers[0]).not.toHaveProperty("email");
+    expect(detail.trainers[0]).not.toHaveProperty("phone");
+    expect(detail.branches[0]).toMatchObject({
+      id: "branch-1",
+      name: "T Nagar",
+      amenities: ["parking"],
+    });
+  });
+
+  it("returns empty optional details for a studio with no extras", async () => {
+    prisma.studio.findFirst.mockResolvedValue({
+      ...studioFixture,
+      photos: [],
+      branches: [],
+      batches: [],
+    });
+
+    const detail = await service.getStudio("studio-1");
+    expect(detail.tagline).toBeNull();
+    expect(detail.trainers).toEqual([]);
+    expect(detail.branches).toEqual([]);
+    expect(detail.gallery).toEqual([]);
+    expect(detail.faqs).toEqual([]);
+    expect(detail.testimonials).toEqual([]);
+    expect(detail.batches).toEqual([]);
+    expect(detail.nextTrialSlot).toBeNull();
   });
 });

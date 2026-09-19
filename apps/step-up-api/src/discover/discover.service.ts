@@ -9,6 +9,7 @@ import {
 import { MediaService } from "../media/media.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { isTestStudio } from "../studios/test-studio";
+import { UserCryptoService, userPiiSelect } from "../users/user-crypto.service";
 import {
   categoriesFromStyles,
   DISCOVER_CATEGORIES,
@@ -30,6 +31,7 @@ import {
   stylesMatchQuery,
 } from "./discover.localities";
 import {
+  batchScheduleLabel,
   batchTimingLabel,
   dayBandsFromSchedule,
   timeBandsFromSchedule,
@@ -71,6 +73,12 @@ export type DiscoverStudioCard = {
   priceCadence: BillingCadence | null;
 };
 
+export type DiscoverBatchTrainer = {
+  id: string;
+  name: string;
+  photoUrl: string | null;
+};
+
 export type DiscoverBatchSummary = {
   id: string;
   name: string;
@@ -82,6 +90,60 @@ export type DiscoverBatchSummary = {
   ratingCount: number;
   priceFrom: number | null;
   priceCadence: BillingCadence | null;
+  coverImageUrl: string | null;
+  trainers: DiscoverBatchTrainer[];
+};
+
+export type DiscoverTrainer = {
+  id: string;
+  name: string;
+  photoUrl: string | null;
+  bio: string | null;
+  styles: string[];
+  instagramUrl: string | null;
+};
+
+export type DiscoverGalleryItem = {
+  url: string;
+  caption: string | null;
+};
+
+export type DiscoverBranchVisit = {
+  id: string;
+  name: string;
+  address: string;
+  latitude: number | null;
+  longitude: number | null;
+  amenities: string[];
+  openingHours: unknown;
+  pricingBlurb: string | null;
+  description: string | null;
+  coverUrl: string | null;
+};
+
+export type DiscoverFaq = {
+  id: string;
+  question: string;
+  answer: string;
+  sortOrder: number;
+};
+
+export type DiscoverTestimonial = {
+  id: string;
+  quote: string;
+  authorName: string;
+  rating: number | null;
+  sortOrder: number;
+};
+
+export type DiscoverTrialSlot = {
+  sessionId: string;
+  batchId: string;
+  batchName: string;
+  audience: BatchCategory;
+  styleBadge: string | null;
+  startsAt: string;
+  endsAt: string;
 };
 
 export type DiscoverStudioDetail = DiscoverStudioCard & {
@@ -90,7 +152,24 @@ export type DiscoverStudioDetail = DiscoverStudioCard & {
   logoUrl: string | null;
   heroDesktopUrl: string | null;
   heroMobileUrl: string | null;
+  tagline: string | null;
+  about: string | null;
+  foundedYear: number | null;
+  email: string | null;
+  whatsapp: string | null;
+  instagramUrl: string | null;
+  youtubeUrl: string | null;
+  websiteUrl: string | null;
+  whatToBring: string | null;
+  trialBlurb: string | null;
+  photos: string[];
+  trainers: DiscoverTrainer[];
+  branches: DiscoverBranchVisit[];
+  gallery: DiscoverGalleryItem[];
+  faqs: DiscoverFaq[];
+  testimonials: DiscoverTestimonial[];
   batches: DiscoverBatchSummary[];
+  nextTrialSlot: DiscoverTrialSlot | null;
 };
 
 type StudioRow = {
@@ -263,6 +342,7 @@ export class DiscoverService {
   constructor(
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(MediaService) private readonly media: MediaService,
+    @Inject(UserCryptoService) private readonly crypto: UserCryptoService,
   ) {}
 
   private async loadActiveStudios(): Promise<StudioRow[]> {
@@ -481,17 +561,55 @@ export class DiscoverService {
         heroMobileUrl: true,
         heroDesktopUrl: true,
         photos: true,
+        tagline: true,
+        about: true,
+        foundedYear: true,
+        email: true,
+        whatsapp: true,
+        instagramUrl: true,
+        youtubeUrl: true,
+        websiteUrl: true,
+        whatToBring: true,
+        trialBlurb: true,
         branches: {
+          orderBy: { name: "asc" },
           select: {
+            id: true,
+            name: true,
             address: true,
             latitude: true,
             longitude: true,
+            amenities: true,
+            openingHours: true,
+            pricingBlurb: true,
+            description: true,
             coverMedia: { select: { objectKey: true } },
             media: {
               where: { archivedAt: null },
               orderBy: { sortOrder: "asc" },
-              take: 1,
-              select: { objectKey: true },
+              take: 8,
+              select: { objectKey: true, caption: true },
+            },
+            faqs: {
+              orderBy: { sortOrder: "asc" },
+              take: 8,
+              select: {
+                id: true,
+                question: true,
+                answer: true,
+                sortOrder: true,
+              },
+            },
+            testimonials: {
+              orderBy: { sortOrder: "asc" },
+              take: 8,
+              select: {
+                id: true,
+                quote: true,
+                authorName: true,
+                rating: true,
+                sortOrder: true,
+              },
             },
           },
         },
@@ -518,6 +636,20 @@ export class DiscoverService {
                 },
               },
             },
+            trainers: {
+              orderBy: { sortOrder: "asc" },
+              select: {
+                trainer: {
+                  select: {
+                    id: true,
+                    photoUrl: true,
+                    styles: true,
+                    active: true,
+                    ...userPiiSelect,
+                  },
+                },
+              },
+            },
           },
         },
       },
@@ -527,26 +659,113 @@ export class DiscoverService {
       throw new NotFoundException("Studio not found");
     }
 
-    const card = await this.toCard(studio);
-    const batches: DiscoverBatchSummary[] = studio.batches.map((batch) => {
-      const styles = stylesFromDanceCategories(batch.danceCategories);
-      const timing = timeBandsFromSchedule(batch.scheduleJson);
-      const plan = minActivePlan(batch.plans);
-      const ratingCount = batch.ratingCount;
-      return {
-        id: batch.id,
-        name: batch.name,
-        category: batch.category,
-        styles,
-        scheduleLabel: null,
-        timingLabel: batchTimingLabel(timing),
-        ratingAvg:
-          ratingCount > 0 && batch.ratingAvg != null ? batch.ratingAvg : null,
-        ratingCount,
-        priceFrom: plan?.price ?? null,
-        priceCadence: plan?.cadence ?? null,
-      };
+    const card = await this.toCard({
+      id: studio.id,
+      slug: studio.slug,
+      name: studio.name,
+      address: studio.address,
+      contact: studio.contact,
+      logoUrl: studio.logoUrl,
+      heroMobileUrl: studio.heroMobileUrl,
+      heroDesktopUrl: studio.heroDesktopUrl,
+      photos: studio.photos,
+      branches: studio.branches.map((branch) => ({
+        address: branch.address,
+        latitude: branch.latitude,
+        longitude: branch.longitude,
+        coverMedia: branch.coverMedia,
+        media: branch.media.map((item) => ({ objectKey: item.objectKey })),
+      })),
+      batches: studio.batches,
     });
+
+    const trainerMap = new Map<string, DiscoverTrainer>();
+    const batches: DiscoverBatchSummary[] = await Promise.all(
+      studio.batches.map(async (batch) => {
+        const styles = stylesFromDanceCategories(batch.danceCategories);
+        const timing = timeBandsFromSchedule(batch.scheduleJson);
+        const plan = minActivePlan(batch.plans);
+        const ratingCount = batch.ratingCount;
+        const batchTrainers: DiscoverBatchTrainer[] = [];
+
+        for (const row of batch.trainers) {
+          if (!row.trainer.active) continue;
+          const trainer = this.crypto.decryptUser(row.trainer);
+          const publicTrainer = toPublicTrainer(trainer);
+          if (!trainerMap.has(publicTrainer.id)) {
+            trainerMap.set(publicTrainer.id, publicTrainer);
+          }
+          batchTrainers.push({
+            id: publicTrainer.id,
+            name: publicTrainer.name,
+            photoUrl: publicTrainer.photoUrl,
+          });
+        }
+
+        return {
+          id: batch.id,
+          name: batch.name,
+          category: batch.category,
+          styles,
+          scheduleLabel: batchScheduleLabel(batch.scheduleJson),
+          timingLabel: batchTimingLabel(timing),
+          ratingAvg:
+            ratingCount > 0 && batch.ratingAvg != null ? batch.ratingAvg : null,
+          ratingCount,
+          priceFrom: plan?.price ?? null,
+          priceCadence: plan?.cadence ?? null,
+          coverImageUrl: await this.media.signReadUrl(batch.coverImageUrl),
+          trainers: await Promise.all(
+            batchTrainers.map(async (trainer) => ({
+              ...trainer,
+              photoUrl: await this.media.signReadUrl(trainer.photoUrl),
+            })),
+          ),
+        };
+      }),
+    );
+
+    const trainers = await Promise.all(
+      [...trainerMap.values()].map(async (trainer) => ({
+        ...trainer,
+        photoUrl: await this.media.signReadUrl(trainer.photoUrl),
+      })),
+    );
+
+    const photos = await this.media.signReadUrls(studio.photos);
+    const gallery: DiscoverGalleryItem[] = [
+      ...photos.map((url) => ({ url, caption: null })),
+    ];
+    for (const branch of studio.branches) {
+      for (const item of branch.media) {
+        const url = await this.media.signReadUrl(item.objectKey);
+        if (url) gallery.push({ url, caption: item.caption });
+      }
+    }
+
+    const branches: DiscoverBranchVisit[] = await Promise.all(
+      studio.branches.map(async (branch) => ({
+        id: branch.id,
+        name: branch.name,
+        address: branch.address,
+        latitude: branch.latitude,
+        longitude: branch.longitude,
+        amenities: branch.amenities,
+        openingHours: branch.openingHours,
+        pricingBlurb: branch.pricingBlurb,
+        description: branch.description,
+        coverUrl: await this.media.signReadUrl(
+          branch.coverMedia?.objectKey ?? branch.media[0]?.objectKey ?? null,
+        ),
+      })),
+    );
+
+    const faqs = studio.branches.flatMap((branch) => branch.faqs).slice(0, 12);
+    const testimonials = studio.branches
+      .flatMap((branch) => branch.testimonials)
+      .slice(0, 12);
+
+    const nextTrialSlot = await this.nextPublicTrialSlot(studio.id);
 
     return {
       ...card,
@@ -555,7 +774,24 @@ export class DiscoverService {
       logoUrl: await this.media.signReadUrl(studio.logoUrl),
       heroDesktopUrl: await this.media.signReadUrl(studio.heroDesktopUrl),
       heroMobileUrl: await this.media.signReadUrl(studio.heroMobileUrl),
+      tagline: studio.tagline,
+      about: studio.about,
+      foundedYear: studio.foundedYear,
+      email: studio.email,
+      whatsapp: studio.whatsapp,
+      instagramUrl: studio.instagramUrl,
+      youtubeUrl: studio.youtubeUrl,
+      websiteUrl: studio.websiteUrl,
+      whatToBring: studio.whatToBring,
+      trialBlurb: studio.trialBlurb,
+      photos,
+      trainers,
+      branches,
+      gallery: gallery.slice(0, 12),
+      faqs,
+      testimonials,
       batches,
+      nextTrialSlot,
     };
   }
 
@@ -717,6 +953,20 @@ export class DiscoverService {
       throw new NotFoundException("Studio not found");
     }
 
+    return this.loadPublicTrialSlots(studio.id, 24);
+  }
+
+  private async nextPublicTrialSlot(
+    studioId: string,
+  ): Promise<DiscoverTrialSlot | null> {
+    const slots = await this.loadPublicTrialSlots(studioId, 1);
+    return slots[0] ?? null;
+  }
+
+  private async loadPublicTrialSlots(
+    studioId: string,
+    take: number,
+  ): Promise<DiscoverTrialSlot[]> {
     const now = new Date();
     const horizon = new Date(
       now.getTime() + TRIAL_HORIZON_DAYS * 24 * 60 * 60 * 1000,
@@ -725,10 +975,10 @@ export class DiscoverService {
       where: {
         status: SessionStatus.SCHEDULED,
         startsAt: { gte: now, lte: horizon },
-        batch: { studioId: studio.id, active: true },
+        batch: { studioId, active: true },
       },
       orderBy: { startsAt: "asc" },
-      take: 24,
+      take,
       select: {
         id: true,
         batchId: true,
@@ -754,6 +1004,24 @@ export class DiscoverService {
       endsAt: session.endsAt.toISOString(),
     }));
   }
+}
+
+function toPublicTrainer(user: {
+  id: string;
+  name: string;
+  photoUrl?: string | null;
+  bio?: string | null;
+  styles: string[];
+  instagramUrl?: string | null;
+}): DiscoverTrainer {
+  return {
+    id: user.id,
+    name: user.name,
+    photoUrl: user.photoUrl ?? null,
+    bio: user.bio ?? null,
+    styles: user.styles,
+    instagramUrl: user.instagramUrl ?? null,
+  };
 }
 
 function categorizeAsDance(style: string) {

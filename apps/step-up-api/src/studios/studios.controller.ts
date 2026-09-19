@@ -12,10 +12,13 @@ import {
   UseGuards,
 } from "@nestjs/common";
 import { UserRole } from "@prisma/client";
+import { Type } from "class-transformer";
 import {
   Allow,
+  IsArray,
   IsEmail,
   IsIn,
+  IsInt,
   IsNumber,
   IsOptional,
   IsString,
@@ -89,6 +92,72 @@ class UpdateStudioDto {
   @ValidateIf((_, value) => value !== null)
   @IsString()
   heroDesktopUrl?: string | null;
+
+  @IsOptional()
+  @ValidateIf((_, value) => value !== null)
+  @IsString()
+  @MaxLength(80)
+  tagline?: string | null;
+
+  @IsOptional()
+  @ValidateIf((_, value) => value !== null)
+  @IsString()
+  @MaxLength(2000)
+  about?: string | null;
+
+  @IsOptional()
+  @ValidateIf((_, value) => value !== null && value !== "")
+  @Type(() => Number)
+  @IsInt()
+  @Min(1950)
+  @Max(2100)
+  foundedYear?: number | null;
+
+  @IsOptional()
+  @ValidateIf((_, value) => value !== null && value !== "")
+  @IsEmail()
+  email?: string | null;
+
+  @IsOptional()
+  @ValidateIf((_, value) => value !== null)
+  @IsString()
+  @MaxLength(32)
+  whatsapp?: string | null;
+
+  @IsOptional()
+  @ValidateIf((_, value) => value !== null)
+  @IsString()
+  @MaxLength(200)
+  instagramUrl?: string | null;
+
+  @IsOptional()
+  @ValidateIf((_, value) => value !== null)
+  @IsString()
+  @MaxLength(300)
+  youtubeUrl?: string | null;
+
+  @IsOptional()
+  @ValidateIf((_, value) => value !== null)
+  @IsString()
+  @MaxLength(300)
+  websiteUrl?: string | null;
+
+  @IsOptional()
+  @ValidateIf((_, value) => value !== null)
+  @IsString()
+  @MaxLength(500)
+  whatToBring?: string | null;
+
+  @IsOptional()
+  @ValidateIf((_, value) => value !== null)
+  @IsString()
+  @MaxLength(200)
+  trialBlurb?: string | null;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  photos?: string[];
 }
 
 class UpdateStudioSettingsDto {
@@ -218,7 +287,8 @@ export class StudiosController {
     if (
       (dto.heroMobileUrl !== undefined ||
         dto.heroDesktopUrl !== undefined ||
-        dto.logoUrl !== undefined) &&
+        dto.logoUrl !== undefined ||
+        dto.photos !== undefined) &&
       user.role !== UserRole.OWNER &&
       user.role !== UserRole.SYSTEM_ADMIN
     ) {

@@ -27,6 +27,10 @@ import {
   toAiProviderEnum,
 } from "./ai-provider";
 import { parseDanceStyles } from "./dance-styles";
+import {
+  normalizeStudioPublicDetails,
+  type StudioPublicDetailsInput,
+} from "./studio-public-fields";
 import { isTestStudio } from "./test-studio";
 
 type StudioSettingsRow = {
@@ -342,6 +346,16 @@ export class StudiosService {
         logoUrl: true,
         heroMobileUrl: true,
         heroDesktopUrl: true,
+        tagline: true,
+        about: true,
+        foundedYear: true,
+        email: true,
+        whatsapp: true,
+        instagramUrl: true,
+        youtubeUrl: true,
+        websiteUrl: true,
+        whatToBring: true,
+        trialBlurb: true,
       },
     });
 
@@ -351,6 +365,7 @@ export class StudiosService {
 
     return {
       ...studio,
+      photos: await this.media.signReadUrls(studio.photos),
       logoUrl: await this.media.signReadUrl(studio.logoUrl),
       heroMobileUrl: await this.media.signReadUrl(studio.heroMobileUrl),
       heroDesktopUrl: await this.media.signReadUrl(studio.heroDesktopUrl),
@@ -373,6 +388,7 @@ export class StudiosService {
 
     return {
       ...studio,
+      photos: await this.media.signReadUrls(studio.photos),
       logoUrl: await this.media.signReadUrl(studio.logoUrl),
       heroMobileUrl: await this.media.signReadUrl(studio.heroMobileUrl),
       heroDesktopUrl: await this.media.signReadUrl(studio.heroDesktopUrl),
@@ -390,8 +406,9 @@ export class StudiosService {
       logoUrl?: string | null;
       heroMobileUrl?: string | null;
       heroDesktopUrl?: string | null;
-    },
+    } & StudioPublicDetailsInput,
   ) {
+    const details = normalizeStudioPublicDetails(data);
     const update: Prisma.StudioUpdateInput = {};
 
     if (data.name !== undefined) update.name = data.name;
@@ -404,6 +421,26 @@ export class StudiosService {
     if (data.heroDesktopUrl !== undefined) {
       update.heroDesktopUrl = data.heroDesktopUrl;
     }
+    if (details.tagline !== undefined) update.tagline = details.tagline;
+    if (details.about !== undefined) update.about = details.about;
+    if (details.foundedYear !== undefined) {
+      update.foundedYear = details.foundedYear;
+    }
+    if (details.email !== undefined) update.email = details.email;
+    if (details.whatsapp !== undefined) update.whatsapp = details.whatsapp;
+    if (details.instagramUrl !== undefined) {
+      update.instagramUrl = details.instagramUrl;
+    }
+    if (details.youtubeUrl !== undefined)
+      update.youtubeUrl = details.youtubeUrl;
+    if (details.websiteUrl !== undefined)
+      update.websiteUrl = details.websiteUrl;
+    if (details.whatToBring !== undefined) {
+      update.whatToBring = details.whatToBring;
+    }
+    if (details.trialBlurb !== undefined)
+      update.trialBlurb = details.trialBlurb;
+    if (details.photos !== undefined) update.photos = details.photos;
 
     return this.prisma.studio.update({
       where: { id },

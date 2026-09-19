@@ -59,6 +59,9 @@ describe("StudiosService", () => {
     signReadUrl: vi.fn(async (url: string | null) =>
       url ? `signed:${url}` : null,
     ),
+    signReadUrls: vi.fn(async (urls: string[]) =>
+      urls.map((url) => `signed:${url}`),
+    ),
   };
   const razorpay = {
     assertValidCredentials: vi.fn(async () => undefined),
@@ -445,6 +448,15 @@ describe("StudiosService", () => {
     expect(saved.admissionFee).toBe(1500);
   });
 
+  it("rejects invalid public Instagram", () => {
+    expect(() =>
+      service.updateStudio("studio-1", {
+        instagramUrl: "https://tiktok.com/x",
+      }),
+    ).toThrow(BadRequestException);
+    expect(prisma.studio.update).not.toHaveBeenCalled();
+  });
+
   it("rejects negative admissionFee", async () => {
     await expect(
       service.updateSettings("studio-1", { admissionFee: -1 }),
@@ -562,6 +574,31 @@ describe("StudiosService", () => {
       data: {
         heroMobileUrl: "studio-heroes/mobile.jpg",
         heroDesktopUrl: "studio-heroes/desktop.jpg",
+      },
+    });
+  });
+
+  it("persists public studio details and nullifies blanks", async () => {
+    prisma.studio.update.mockResolvedValue({ id: "studio-1" });
+
+    await service.updateStudio("studio-1", {
+      tagline: "Hip Hop in T Nagar",
+      about: "  ",
+      email: "Hello@Studio.IN",
+      whatsapp: "+91 98765 43210",
+      instagramUrl: "@rhythmhouse",
+      foundedYear: 2018,
+    });
+
+    expect(prisma.studio.update).toHaveBeenCalledWith({
+      where: { id: "studio-1" },
+      data: {
+        tagline: "Hip Hop in T Nagar",
+        about: null,
+        email: "hello@studio.in",
+        whatsapp: "+91 98765 43210",
+        instagramUrl: "https://instagram.com/rhythmhouse",
+        foundedYear: 2018,
       },
     });
   });
