@@ -17,6 +17,17 @@ export const Route = createFileRoute("/studio/$studioId")({
 function StudioPage() {
   const { studioId } = Route.useParams();
   const [trialOpen, setTrialOpen] = useState(false);
+  const [trialBatchId, setTrialBatchId] = useState<string | null>(null);
+
+  const openTrial = (batchId?: string) => {
+    setTrialBatchId(typeof batchId === "string" ? batchId : null);
+    setTrialOpen(true);
+  };
+
+  const onTrialOpenChange = (open: boolean) => {
+    setTrialOpen(open);
+    if (!open) setTrialBatchId(null);
+  };
   const query = useQuery({
     queryKey: ["discover-studio", studioId],
     queryFn: () => fetchDiscoverStudio(studioId),
@@ -53,14 +64,15 @@ function StudioPage() {
         <>
           <StudioLanding
             studio={studio}
-            onBookTrial={() => setTrialOpen(true)}
+            onBookTrial={openTrial}
             dockHidden={trialOpen}
           />
           <TrialRequestSheet
             open={trialOpen}
-            onOpenChange={setTrialOpen}
+            onOpenChange={onTrialOpenChange}
             studioId={studio.id}
             studioName={studio.name}
+            batchId={trialBatchId}
           />
         </>
       ) : null}

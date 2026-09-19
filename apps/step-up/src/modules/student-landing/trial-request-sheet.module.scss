@@ -3,6 +3,15 @@
   gap: 16px;
 }
 
+.step {
+  margin: 0;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--color-fg) 55%, transparent);
+}
+
 .recap {
   margin: 0;
   font-size: 0.9375rem;
@@ -34,6 +43,22 @@
   font-size: 0.875rem;
   color: color-mix(in srgb, var(--color-fg) 62%, transparent);
   text-wrap: pretty;
+}
+
+.sections {
+  display: grid;
+  gap: 16px;
+}
+
+.section {
+  display: grid;
+  gap: 8px;
+}
+
+.sectionTitle {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 700;
 }
 
 .slots {
@@ -82,4 +107,9 @@
   margin: 0;
   font-size: 0.875rem;
   color: var(--color-danger, #b42318);
+}
+
+.actions {
+  display: grid;
+  gap: 8px;
 }

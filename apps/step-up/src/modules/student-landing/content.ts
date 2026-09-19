@@ -274,7 +274,12 @@ export const STUDENT_TRIAL = {
   cta: "Book a trial",
   signIn: "Already on classa? Sign in",
   back: "Back to discover",
+  backStep: "Back",
+  continue: "Continue",
   sheetTitle: "Book a trial",
+  registerTitle: "Register",
+  stepSlot: "1 of 2 · Pick a slot",
+  stepRegister: "2 of 2 · Register",
   pickSlot: "Pick a slot",
   noSlots:
     "This studio has no open trial slots right now. Leave your details and they can follow up.",

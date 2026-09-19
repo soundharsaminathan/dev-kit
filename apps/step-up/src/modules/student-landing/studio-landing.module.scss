@@ -240,7 +240,15 @@
   color: var(--color-fg);
 }
 
+.classGrid > li {
+  display: flex;
+  min-height: 100%;
+}
+
 .classCard {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
   overflow: hidden;
   padding: 0;
   transition:
@@ -262,7 +270,9 @@
 }
 
 .classBody {
-  display: grid;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
   gap: var(--lp-space-50);
   padding: var(--lp-space-200);
 }
@@ -275,6 +285,11 @@
 .classPrice {
   font-weight: 700;
   color: var(--color-fg);
+}
+
+.classCta {
+  margin-top: auto;
+  padding-top: var(--lp-space-100);
 }
 
 .trainer {

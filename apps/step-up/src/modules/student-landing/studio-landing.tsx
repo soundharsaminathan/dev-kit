@@ -159,7 +159,7 @@ export function StudioLanding({
   dockHidden = false,
 }: {
   studio: DiscoverStudioDetail;
-  onBookTrial: () => void;
+  onBookTrial: (batchId?: string) => void;
   dockHidden?: boolean;
 }) {
   const rating = formatRating(studio.ratingAvg, studio.ratingCount);
@@ -238,7 +238,7 @@ export function StudioLanding({
               {nextTrial?.styleBadge ? ` · ${nextTrial.styleBadge}` : ""}
             </p>
             <div className={styles.heroCta}>
-              <TouchButton variant="primary" onClick={onBookTrial}>
+              <TouchButton variant="primary" onClick={() => onBookTrial()}>
                 {STUDENT_TRIAL.cta}
               </TouchButton>
             </div>
@@ -328,8 +328,16 @@ export function StudioLanding({
                 {STUDENT_STUDIO.classes}
               </h2>
             </Reveal>
-            <ClassGroup title={STUDENT_STUDIO.kids} batches={kids} />
-            <ClassGroup title={STUDENT_STUDIO.adults} batches={adults} />
+            <ClassGroup
+              title={STUDENT_STUDIO.kids}
+              batches={kids}
+              onBookTrial={onBookTrial}
+            />
+            <ClassGroup
+              title={STUDENT_STUDIO.adults}
+              batches={adults}
+              onBookTrial={onBookTrial}
+            />
           </div>
         </section>
       ) : null}
@@ -535,7 +543,7 @@ export function StudioLanding({
             </h2>
             <p className={shared.lede}>{STUDENT_STUDIO.finalSupport}</p>
             <div className={styles.finalCta}>
-              <TouchButton variant="primary" onClick={onBookTrial}>
+              <TouchButton variant="primary" onClick={() => onBookTrial()}>
                 {STUDENT_TRIAL.cta}
               </TouchButton>
             </div>
@@ -552,7 +560,7 @@ export function StudioLanding({
         <TouchButton
           variant="primary"
           className={styles.dockCta}
-          onClick={onBookTrial}
+          onClick={() => onBookTrial()}
         >
           {STUDENT_TRIAL.cta}
         </TouchButton>
@@ -586,9 +594,11 @@ function HeroHeadline({ studio }: { studio: DiscoverStudioDetail }) {
 function ClassGroup({
   title,
   batches,
+  onBookTrial,
 }: {
   title: string;
   batches: DiscoverBatchSummary[];
+  onBookTrial: (batchId?: string) => void;
 }) {
   if (batches.length === 0) return null;
   return (
@@ -633,6 +643,16 @@ function ClassGroup({
                   {batchPrice ? (
                     <p className={styles.classPrice}>{batchPrice}</p>
                   ) : null}
+                  <div className={styles.classCta}>
+                    <TouchButton
+                      variant="primary"
+                      size="md"
+                      fullWidth
+                      onClick={() => onBookTrial(batch.id)}
+                    >
+                      {STUDENT_TRIAL.cta}
+                    </TouchButton>
+                  </div>
                 </div>
               </article>
             </Reveal>
