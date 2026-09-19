@@ -14,6 +14,7 @@ type BranchMapProps = {
   onChange: (value: MapCoordinates) => void;
   resolveShortLink?: (url: string) => Promise<string>;
   className?: string;
+  compact?: boolean;
 };
 
 type MapModule = {
@@ -68,11 +69,13 @@ export function BranchMap({
   onChange,
   resolveShortLink,
   className,
+  compact = false,
 }: BranchMapProps) {
   const [mapModule, setMapModule] = useState<MapModule | null>(null);
   const [link, setLink] = useState("");
   const [linkError, setLinkError] = useState<string | null>(null);
   const [pinning, setPinning] = useState(false);
+  const [pinOpen, setPinOpen] = useState(!compact);
   const ignoreEmptyChangeRef = useRef(false);
 
   useEffect(() => {
@@ -154,57 +157,88 @@ export function BranchMap({
   }
 
   const center = value ?? DEFAULT_CENTER;
+  const mapsHref = value
+    ? `https://www.google.com/maps?q=${value.latitude},${value.longitude}`
+    : null;
 
   return (
-    <div className={[styles.mapShell, className].filter(Boolean).join(" ")}>
-      <div className={styles.linkRow}>
-        <div className={styles.linkField}>
-          <FormInput
-            label="Paste Google Maps link"
-            placeholder="https://maps.app.goo.gl/… or full maps URL"
-            value={link}
-            onChange={(next) => {
-              if (ignoreEmptyChangeRef.current && !next.trim()) {
-                return;
-              }
-              setLink(next);
-              if (linkError) setLinkError(null);
-            }}
-            onPaste={(event) => {
-              const pasted = extractMapLinkInput(
-                event.clipboardData.getData("text/plain") ||
-                  event.clipboardData.getData("text"),
-              );
-              if (!pasted) return;
-              ignoreEmptyChangeRef.current = true;
-              setLink(pasted);
-              void pinFromLink(pasted);
-              queueMicrotask(() => {
-                ignoreEmptyChangeRef.current = false;
-              });
-            }}
-            onKeyDown={(event) => {
-              if (event.key === "Enter") {
-                event.preventDefault();
-                void pinFromLink(link);
-              }
-            }}
-            inputMode="url"
-            autoComplete="off"
-            data-testid="map-link-input"
-          />
+    <div
+      className={[styles.mapShell, compact ? styles.compact : "", className]
+        .filter(Boolean)
+        .join(" ")}
+    >
+      {compact ? (
+        <div className={styles.toolbar}>
+          <TouchButton
+            size="sm"
+            variant="quiet"
+            onClick={() => setPinOpen((open) => !open)}
+          >
+            Set location
+          </TouchButton>
+          {mapsHref ? (
+            <a
+              className={styles.fullLink}
+              href={mapsHref}
+              target="_blank"
+              rel="noreferrer"
+            >
+              Fullscreen
+            </a>
+          ) : null}
         </div>
-        <TouchButton
-          size="md"
-          variant="default"
-          onClick={() => void pinFromLink(link)}
-          isPending={pinning}
-          isDisabled={pinning || !link.trim()}
-          data-testid="map-link-pin"
-        >
-          Pin
-        </TouchButton>
-      </div>
+      ) : null}
+
+      {pinOpen ? (
+        <div className={styles.linkRow}>
+          <div className={styles.linkField}>
+            <FormInput
+              label="Paste Google Maps link"
+              placeholder="https://maps.app.goo.gl/… or full maps URL"
+              value={link}
+              onChange={(next) => {
+                if (ignoreEmptyChangeRef.current && !next.trim()) {
+                  return;
+                }
+                setLink(next);
+                if (linkError) setLinkError(null);
+              }}
+              onPaste={(event) => {
+                const pasted = extractMapLinkInput(
+                  event.clipboardData.getData("text/plain") ||
+                    event.clipboardData.getData("text"),
+                );
+                if (!pasted) return;
+                ignoreEmptyChangeRef.current = true;
+                setLink(pasted);
+                void pinFromLink(pasted);
+                queueMicrotask(() => {
+                  ignoreEmptyChangeRef.current = false;
+                });
+              }}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  void pinFromLink(link);
+                }
+              }}
+              inputMode="url"
+              autoComplete="off"
+              data-testid="map-link-input"
+            />
+          </div>
+          <TouchButton
+            size="md"
+            variant="default"
+            onClick={() => void pinFromLink(link)}
+            isPending={pinning}
+            isDisabled={pinning || !link.trim()}
+            data-testid="map-link-pin"
+          >
+            Pin
+          </TouchButton>
+        </div>
+      ) : null}
       {linkError ? <p className={styles.linkError}>{linkError}</p> : null}
 
       {!mapModule ? (

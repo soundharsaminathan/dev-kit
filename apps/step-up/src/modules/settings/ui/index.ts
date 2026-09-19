@@ -1,3 +1,4 @@
+export { useSettingsHeader } from "./settings-header";
 export { SettingsLayout } from "./settings-layout";
 export {
   SettingsComingSoon,

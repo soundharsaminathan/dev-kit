@@ -9,6 +9,8 @@ type SettingsSaveBarProps = {
   onSave: () => void;
   saveLabel?: string;
   message?: string;
+  detail?: string;
+  dock?: boolean;
 };
 
 export function SettingsSaveBar({
@@ -18,12 +20,21 @@ export function SettingsSaveBar({
   onSave,
   saveLabel = "Save changes",
   message = "Unsaved changes",
+  detail,
+  dock = false,
 }: SettingsSaveBarProps) {
   if (!isDirty) return null;
 
   return (
-    <div className={styles.saveBar} role="status">
-      <p className={styles.saveBarMessage}>{message}</p>
+    <div
+      className={styles.saveBar}
+      data-dock={dock ? "true" : undefined}
+      role="status"
+    >
+      <div className={styles.saveBarCopy}>
+        <p className={styles.saveBarMessage}>{message}</p>
+        {detail ? <p className={styles.saveBarDetail}>{detail}</p> : null}
+      </div>
       <div className={styles.saveBarActions}>
         <TouchButton
           variant="quiet"
@@ -31,7 +42,7 @@ export function SettingsSaveBar({
           isDisabled={isPending}
           onClick={onCancel}
         >
-          Cancel
+          Discard
         </TouchButton>
         <TouchButton
           variant="primary"

@@ -83,12 +83,15 @@ export function normalizeHours(
     days: fallbackDays.map((fallback) => {
       const match = incoming.find((day) => day.day === fallback.day);
       if (!match) return fallback;
-      return {
+      const open = match.open ?? fallback.open;
+      const close = match.close ?? fallback.close;
+      const day: OpeningHoursDay = {
         day: fallback.day,
         closed: Boolean(match.closed),
-        open: match.open ?? fallback.open,
-        close: match.close ?? fallback.close,
       };
+      if (open != null) day.open = open;
+      if (close != null) day.close = close;
+      return day;
     }),
   };
   if (hours?.timezone) next.timezone = hours.timezone;
@@ -221,7 +224,10 @@ export function updateHoursDay(
 }
 
 function parseTimeMinutes(value: string) {
-  const [hours, minutes] = value.split(":").map(Number);
+  const [hoursText, minutesText] = value.split(":");
+  if (hoursText == null || minutesText == null) return null;
+  const hours = Number(hoursText);
+  const minutes = Number(minutesText);
   if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return null;
   return hours * 60 + minutes;
 }
