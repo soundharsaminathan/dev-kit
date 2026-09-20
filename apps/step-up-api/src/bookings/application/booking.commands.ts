@@ -17,6 +17,7 @@ export class BookingCommandsService {
       batchId?: string;
       sessionId?: string;
       trainerId?: string;
+      branchId?: string;
       notes?: string;
       startsAt?: string;
       endsAt?: string;

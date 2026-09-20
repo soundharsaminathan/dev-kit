@@ -131,6 +131,42 @@ export function buildNotificationCopy(input: NotificationTemplateInput): {
           input.body ??
           "A classa plan invoice is ready. Review it under Settings → classa plan.",
       };
+    case "BOOKING_REQUESTED":
+      return {
+        title: input.title ?? "Booking requested",
+        body:
+          input.body ??
+          "Your booking request is with the studio. They will confirm the slot.",
+      };
+    case "BOOKING_CONFIRMED":
+      return {
+        title: input.title ?? "Booking confirmed",
+        body: input.body ?? "Your booking is confirmed.",
+      };
+    case "BOOKING_CANCELLED":
+      return {
+        title: input.title ?? "Booking cancelled",
+        body: input.body ?? "Your booking was cancelled.",
+      };
+    case "BOOKING_RESCHEDULE_REQUESTED":
+      return {
+        title: input.title ?? "Reschedule requested",
+        body: input.body ?? "A booking reschedule is waiting for confirmation.",
+      };
+    case "BOOKING_RESCHEDULED":
+      return {
+        title: input.title ?? "Booking rescheduled",
+        body: input.body ?? "Your booking was moved to a new slot.",
+      };
+    case "BOOKING_REMINDER":
+      return {
+        title: input.title ?? "Upcoming session",
+        body:
+          input.body ??
+          `${input.batchName ?? "Your session"} is coming up${
+            input.sessionDate ? ` on ${input.sessionDate}` : ""
+          }.`,
+      };
     default:
       return {
         title: input.title ?? "Notification",
@@ -192,5 +228,29 @@ export const NOTIFICATION_TYPE_REGISTRY: Record<
   STUDIO_PLAN_INVOICE: {
     label: "classa plan invoices",
     defaultChannels: ["IN_APP"],
+  },
+  BOOKING_REQUESTED: {
+    label: "Booking requests",
+    defaultChannels: ["IN_APP", "PUSH"],
+  },
+  BOOKING_CONFIRMED: {
+    label: "Booking confirmations",
+    defaultChannels: ["IN_APP", "PUSH"],
+  },
+  BOOKING_CANCELLED: {
+    label: "Booking cancellations",
+    defaultChannels: ["IN_APP", "PUSH"],
+  },
+  BOOKING_RESCHEDULE_REQUESTED: {
+    label: "Reschedule requests",
+    defaultChannels: ["IN_APP", "PUSH"],
+  },
+  BOOKING_RESCHEDULED: {
+    label: "Rescheduled bookings",
+    defaultChannels: ["IN_APP", "PUSH"],
+  },
+  BOOKING_REMINDER: {
+    label: "Session reminders",
+    defaultChannels: ["IN_APP", "PUSH"],
   },
 };

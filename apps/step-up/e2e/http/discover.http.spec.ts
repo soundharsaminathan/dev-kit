@@ -123,4 +123,93 @@ test.describe("discover HTTP @http", () => {
     const data = (await response.json()) as Array<{ slug: string }>;
     expect(data.some((studio) => studio.slug === SEED.studioSlug)).toBe(false);
   });
+
+  test("marketplace catalog endpoints return the envelope @http", async () => {
+    const [classes, trainers, studios] = await Promise.all([
+      fetch(`${apiBaseUrl()}/discover/classes?category=DANCE&city=chennai`),
+      fetch(`${apiBaseUrl()}/discover/trainers?category=DANCE&city=chennai`),
+      fetch(
+        `${apiBaseUrl()}/discover/studios?category=DANCE&sort=availability`,
+      ),
+    ]);
+    expect(classes.ok).toBeTruthy();
+    expect(trainers.ok).toBeTruthy();
+    expect(studios.ok).toBeTruthy();
+
+    const classPage = (await classes.json()) as {
+      tab: string;
+      category: string;
+      city: string;
+      sort: string;
+      empty: { kind: string | null; message: string | null };
+      items: Array<{
+        canTrial?: boolean;
+        seatLabel?: string | null;
+        viewerEnrolled?: boolean | null;
+      }>;
+    };
+    expect(classPage.tab).toBe("classes");
+    expect(classPage.category).toBe("DANCE");
+    expect(classPage.city).toBe("chennai");
+    expect(classPage.sort).toBe("availability");
+    expect(classPage.empty).toEqual(
+      expect.objectContaining({
+        kind: expect.anything(),
+        message: expect.anything(),
+      }),
+    );
+    expect(Array.isArray(classPage.items)).toBe(true);
+    for (const item of classPage.items) {
+      expect(item.viewerEnrolled).toBeNull();
+      expect(typeof item.canTrial).toBe("boolean");
+    }
+
+    const trainerPage = (await trainers.json()) as {
+      tab: string;
+      items: unknown[];
+    };
+    expect(trainerPage.tab).toBe("trainers");
+    expect(Array.isArray(trainerPage.items)).toBe(true);
+
+    const studioPage = (await studios.json()) as {
+      tab: string;
+      items: unknown[];
+    };
+    expect(studioPage.tab).toBe("studios");
+    expect(Array.isArray(studioPage.items)).toBe(true);
+  });
+
+  test("legacy lowercase category still returns a studio array @http", async () => {
+    const response = await fetch(
+      `${apiBaseUrl()}/discover/studios?category=dance`,
+    );
+    expect(response.ok).toBeTruthy();
+    const data = await response.json();
+    expect(Array.isArray(data)).toBe(true);
+  });
+
+  test("marketplace class detail 404s missing slugs @http", async () => {
+    const response = await fetch(
+      `${apiBaseUrl()}/discover/classes/does-not-exist-xyz`,
+    );
+    expect(response.status).toBe(404);
+    const trainer = await fetch(
+      `${apiBaseUrl()}/discover/trainers/does-not-exist-xyz`,
+    );
+    expect(trainer.status).toBe(404);
+  });
+
+  test("zero-result marketplace search returns empty copy @http", async () => {
+    const response = await fetch(
+      `${apiBaseUrl()}/discover/classes?category=DANCE&city=chennai&q=zzzznotaclass`,
+    );
+    expect(response.ok).toBeTruthy();
+    const page = (await response.json()) as {
+      items: unknown[];
+      empty: { kind: string | null; message: string | null };
+    };
+    expect(page.items).toEqual([]);
+    expect(page.empty.kind).toBe("filters");
+    expect(page.empty.message).toContain("filters");
+  });
 });

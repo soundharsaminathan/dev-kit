@@ -22,6 +22,7 @@
     "devtool:backdate-students": "tsx devtool/backdate-imported-students.ts",
     "devtool:backfill-admission": "tsx devtool/backfill-admission-invoices.ts",
     "devtool:create-month-invoices": "tsx devtool/create-current-month-invoices.ts",
+    "devtool:backfill-marketplace": "tsx scripts/backfill-marketplace-contract.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:migrations": "tsx scripts/test-migrations.ts --upgrade"

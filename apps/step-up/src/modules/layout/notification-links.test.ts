@@ -102,4 +102,10 @@ describe("resolveNotificationDestination", () => {
       resolveNotificationDestination("STUDIO_PLAN_INVOICE", {}, "app"),
     ).toEqual({ to: "/app/settings/plan" });
   });
+
+  it("routes marketplace booking notifications to student bookings", () => {
+    expect(
+      resolveNotificationDestination("BOOKING_CONFIRMED", {}, "me"),
+    ).toEqual({ to: "/me/bookings" });
+  });
 });

@@ -146,6 +146,7 @@ export class BookingsService {
       batchId?: string;
       sessionId?: string;
       trainerId?: string;
+      branchId?: string;
       notes?: string;
       startsAt?: string;
       endsAt?: string;
@@ -345,6 +346,7 @@ export class BookingsService {
             batchId,
             sessionId,
             trainerId: data.trainerId,
+            branchId: data.branchId,
             notes: data.notes,
             startsAt: startsAt ? new Date(startsAt) : undefined,
             endsAt: endsAt ? new Date(endsAt) : undefined,

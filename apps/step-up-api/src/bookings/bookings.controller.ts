@@ -45,6 +45,10 @@ class CreateBookingDto {
 
   @IsOptional()
   @IsString()
+  branchId?: string;
+
+  @IsOptional()
+  @IsString()
   notes?: string;
 
   @IsOptional()

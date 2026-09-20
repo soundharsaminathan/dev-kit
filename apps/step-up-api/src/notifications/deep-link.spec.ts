@@ -65,6 +65,9 @@ describe("resolveDeepLink", () => {
     expect(resolveDeepLink({ type: "PAYMENT_RECEIVED", meta: {} })).toBe(
       "/me/invoices",
     );
+    expect(resolveDeepLink({ type: "BOOKING_CONFIRMED", meta: {} })).toBe(
+      "/me/bookings",
+    );
   });
 });
 

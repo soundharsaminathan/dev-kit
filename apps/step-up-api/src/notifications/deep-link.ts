@@ -5,6 +5,9 @@ const DEEP_LINK_ALLOWLIST = [
   /^\/app(\/|$)/,
   /^\/users\//,
   /^\/chat(\/|$)/,
+  /^\/classes(\/|$)/,
+  /^\/studios(\/|$)/,
+  /^\/trainers(\/|$)/,
 ] as const;
 
 export function sanitizeDeepLink(
@@ -80,6 +83,13 @@ export function resolveDeepLink(input: {
     }
     case "STUDIO_PLAN_INVOICE":
       return "/app/settings/plan";
+    case "BOOKING_REQUESTED":
+    case "BOOKING_CONFIRMED":
+    case "BOOKING_CANCELLED":
+    case "BOOKING_RESCHEDULE_REQUESTED":
+    case "BOOKING_RESCHEDULED":
+    case "BOOKING_REMINDER":
+      return "/me/bookings";
     default:
       return null;
   }

@@ -189,6 +189,7 @@ export function toSessionEvent(session: SessionForCalendar): CalendarEventDto {
 function bookingTypeLabel(type: BookingType): string {
   if (type === "TRIAL") return "Trial";
   if (type === "PRIVATE") return "Private";
+  if (type === "FLOOR_HIRE") return "Floor hire";
   return "Open seat";
 }
 

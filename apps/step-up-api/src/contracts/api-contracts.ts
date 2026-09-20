@@ -27,10 +27,11 @@ export const sessionRosterEntrySchema = z.object({
 export const bookingCreateRequestSchema = z.object({
   studioId: z.string().min(1),
   studentId: z.string().min(1),
-  type: z.enum(["OPEN_SEAT", "TRIAL", "PRIVATE"]),
+  type: z.enum(["OPEN_SEAT", "TRIAL", "PRIVATE", "FLOOR_HIRE"]),
   sessionId: z.string().min(1).optional(),
   trainerId: z.string().min(1).optional(),
   batchId: z.string().min(1).optional(),
+  branchId: z.string().min(1).optional(),
   notes: z.string().optional(),
   startsAt: z.string().datetime().optional(),
   endsAt: z.string().datetime().optional(),

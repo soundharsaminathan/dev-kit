@@ -14,6 +14,14 @@ import {
   DiscoverService,
   type DiscoverStudioFilters,
 } from "./discover.service";
+import { CLASS_LEVELS, MARKETPLACE_SORTS } from "./marketplace.contract";
+import { MarketplaceCatalogService } from "./marketplace-catalog.service";
+import {
+  parseClassLevel,
+  parseMarketplaceCategory,
+  usesMarketplaceCatalogQuery,
+} from "./marketplace-catalog.query";
+import type { MarketplaceCatalogFilters } from "./marketplace-catalog.types";
 
 class DiscoverStudiosQueryDto {
   @IsOptional()
@@ -44,6 +52,10 @@ class DiscoverStudiosQueryDto {
   @IsOptional()
   @IsIn(["KIDS", "ADULTS"])
   audience?: "KIDS" | "ADULTS";
+
+  @IsOptional()
+  @IsIn([...CLASS_LEVELS])
+  level?: (typeof CLASS_LEVELS)[number];
 
   @IsOptional()
   @IsIn(["weekday", "weekend"])
@@ -82,6 +94,10 @@ class DiscoverStudiosQueryDto {
   maxPrice?: number;
 
   @IsOptional()
+  @IsIn([...MARKETPLACE_SORTS])
+  sort?: (typeof MARKETPLACE_SORTS)[number];
+
+  @IsOptional()
   @Type(() => Number)
   @IsNumber()
   @Min(1)
@@ -89,7 +105,7 @@ class DiscoverStudiosQueryDto {
   limit?: number;
 }
 
-function toFilters(query: DiscoverStudiosQueryDto): DiscoverStudioFilters {
+function toLegacyFilters(query: DiscoverStudiosQueryDto): DiscoverStudioFilters {
   const filters: DiscoverStudioFilters = {};
   if (query.q?.trim()) filters.q = query.q.trim();
   if (query.city?.trim()) {
@@ -115,15 +131,68 @@ function toFilters(query: DiscoverStudiosQueryDto): DiscoverStudioFilters {
   return filters;
 }
 
+function toCatalogFilters(
+  query: DiscoverStudiosQueryDto,
+): MarketplaceCatalogFilters {
+  const filters: MarketplaceCatalogFilters = {
+    category: parseMarketplaceCategory(query.category),
+    city: query.city ?? "chennai",
+  };
+  if (query.q?.trim()) filters.q = query.q.trim();
+  if (query.style?.trim()) filters.style = query.style.trim();
+  if (query.locality?.trim()) {
+    filters.locality = query.locality.trim().toLowerCase();
+  }
+  if (query.audience) filters.audience = query.audience;
+  const level = parseClassLevel(query.level);
+  if (level) filters.level = level;
+  if (query.days) filters.days = query.days;
+  if (query.time) filters.time = query.time;
+  if (query.lat != null && query.lng != null) {
+    filters.lat = query.lat;
+    filters.lng = query.lng;
+  }
+  if (query.maxKm != null) filters.maxKm = query.maxKm;
+  if (query.maxPrice != null) filters.maxPrice = query.maxPrice;
+  if (query.sort) filters.sort = query.sort;
+  if (query.limit != null) filters.limit = query.limit;
+  return filters;
+}
+
 @Controller("discover")
 export class DiscoverController {
   constructor(
     @Inject(DiscoverService) private readonly discover: DiscoverService,
+    @Inject(MarketplaceCatalogService)
+    private readonly catalog: MarketplaceCatalogService,
   ) {}
+
+  @Get("classes")
+  listClasses(@Query() query: DiscoverStudiosQueryDto) {
+    return this.catalog.listClasses(toCatalogFilters(query));
+  }
+
+  @Get("trainers")
+  listTrainers(@Query() query: DiscoverStudiosQueryDto) {
+    return this.catalog.listTrainers(toCatalogFilters(query));
+  }
+
+  @Get("classes/:idOrSlug")
+  getClass(@Param("idOrSlug") idOrSlug: string) {
+    return this.catalog.getClass(idOrSlug);
+  }
+
+  @Get("trainers/:idOrSlug")
+  getTrainer(@Param("idOrSlug") idOrSlug: string) {
+    return this.catalog.getTrainer(idOrSlug);
+  }
 
   @Get("studios")
   listStudios(@Query() query: DiscoverStudiosQueryDto) {
-    return this.discover.listStudios(toFilters(query));
+    if (usesMarketplaceCatalogQuery(query)) {
+      return this.catalog.listStudios(toCatalogFilters(query));
+    }
+    return this.discover.listStudios(toLegacyFilters(query));
   }
 
   @Get("landing")

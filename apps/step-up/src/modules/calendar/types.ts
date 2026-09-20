@@ -1,6 +1,6 @@
 export type CalendarEventKind = "SESSION" | "BOOKING";
 
-export type BookingType = "TRIAL" | "OPEN_SEAT" | "PRIVATE";
+export type BookingType = "TRIAL" | "OPEN_SEAT" | "PRIVATE" | "FLOOR_HIRE";
 
 export type CalendarEvent = {
   id: string;
