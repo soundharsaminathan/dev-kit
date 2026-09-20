@@ -30,7 +30,9 @@ import {
   DEFAULT_FLOOR_HIRE_MINUTES,
   DEFAULT_PRIVATE_MINUTES,
   marketplaceFirstPaint,
+  marketplaceMapPins,
   marketplaceViewerStudentAllowed,
+  type MarketplaceMapPinInput,
   type PublicMarketplaceCategory,
 } from "./marketplace.contract";
 import {
@@ -255,6 +257,30 @@ function locateStudio(studio: StudioRow) {
   return { city, locality };
 }
 
+function mapPinFromBranch(
+  branch: {
+    id: string;
+    latitude: number | null;
+    longitude: number | null;
+    address: string;
+  },
+  label: string,
+): MarketplaceMapPinInput | null {
+  if (branch.latitude == null || branch.longitude == null) return null;
+  const locality = matchLocality({
+    addresses: [branch.address],
+    latitude: branch.latitude,
+    longitude: branch.longitude,
+  });
+  return {
+    id: branch.id,
+    lat: branch.latitude,
+    lng: branch.longitude,
+    label,
+    area: locality?.label ?? null,
+  };
+}
+
 function studioCover(studio: StudioRow) {
   return {
     heroDesktopUrl: studio.heroDesktopUrl,
@@ -314,8 +340,9 @@ export class MarketplaceCatalogService {
     const ranked = [...classes].sort((left, right) =>
       compareCatalogItems(left.sort, right.sort, sort),
     );
+    const sliced = ranked.slice(0, catalogLimit(filters.limit));
     const items = await this.paintClassViewerState(
-      ranked.slice(0, catalogLimit(filters.limit)).map((row) => row.card),
+      sliced.map((row) => row.card),
       viewer,
     );
     return {
@@ -332,6 +359,9 @@ export class MarketplaceCatalogService {
         findCityById(filters.city)?.label ?? filters.city,
       ),
       items,
+      pins: marketplaceMapPins(
+        sliced.map((row) => ({ itemId: row.card.id, pins: row.pins })),
+      ),
     };
   }
 
@@ -347,9 +377,8 @@ export class MarketplaceCatalogService {
     const ranked = [...studios].sort((left, right) =>
       compareCatalogItems(left.sort, right.sort, sort),
     );
-    const items = ranked
-      .slice(0, catalogLimit(filters.limit))
-      .map((row) => row.card);
+    const sliced = ranked.slice(0, catalogLimit(filters.limit));
+    const items = sliced.map((row) => row.card);
     return {
       tab: "studios",
       category: filters.category,
@@ -364,6 +393,9 @@ export class MarketplaceCatalogService {
         findCityById(filters.city)?.label ?? filters.city,
       ),
       items,
+      pins: marketplaceMapPins(
+        sliced.map((row) => ({ itemId: row.card.id, pins: row.pins })),
+      ),
     };
   }
 
@@ -379,9 +411,8 @@ export class MarketplaceCatalogService {
     const ranked = [...trainers].sort((left, right) =>
       compareCatalogItems(left.sort, right.sort, sort),
     );
-    const items = ranked
-      .slice(0, catalogLimit(filters.limit))
-      .map((row) => row.card);
+    const sliced = ranked.slice(0, catalogLimit(filters.limit));
+    const items = sliced.map((row) => row.card);
     return {
       tab: "trainers",
       category: filters.category,
@@ -396,6 +427,9 @@ export class MarketplaceCatalogService {
         findCityById(filters.city)?.label ?? filters.city,
       ),
       items,
+      pins: marketplaceMapPins(
+        sliced.map((row) => ({ itemId: row.card.id, pins: row.pins })),
+      ),
     };
   }
 
@@ -772,16 +806,19 @@ export class MarketplaceCatalogService {
     const classes: Array<{
       card: MarketplaceClassCard;
       sort: Parameters<typeof compareCatalogItems>[0];
+      pins: MarketplaceMapPinInput[];
     }> = [];
     const studios: Array<{
       card: MarketplaceStudioCard;
       sort: Parameters<typeof compareCatalogItems>[0];
+      pins: MarketplaceMapPinInput[];
     }> = [];
     const trainers = new Map<
       string,
       {
         card: MarketplaceTrainerCard;
         sort: Parameters<typeof compareCatalogItems>[0];
+        pins: MarketplaceMapPinInput[];
       }
     >();
 
@@ -1093,10 +1130,15 @@ export class MarketplaceCatalogService {
       viewerEnrolled: null,
       viewerTrialBooked: null,
       viewerForChild: null,
+      branchId: batch.branch.id,
+      lat: batch.branch.latitude,
+      lng: batch.branch.longitude,
     };
+    const pin = mapPinFromBranch(batch.branch, studio.name);
 
     return {
       card,
+      pins: pin ? [pin] : [],
       sort: {
         bookable: canTrial || canEnroll,
         distanceKm: card.distanceKm,
@@ -1282,9 +1324,18 @@ export class MarketplaceCatalogService {
       canPrivate: settings.bookingPrivate,
       canFloorHire: settings.bookingFloorHire,
     };
+    const pinBranches = studio.branches.filter((branch) =>
+      categoryBatches.some(
+        (batch) => batch.branchId === branch.id || batch.branch.id === branch.id,
+      ),
+    );
+    const pins = (pinBranches.length ? pinBranches : studio.branches)
+      .map((branch) => mapPinFromBranch(branch, studio.name))
+      .filter((pin): pin is MarketplaceMapPinInput => Boolean(pin));
 
     return {
       card,
+      pins,
       sort: {
         bookable: canTrial || canEnroll || settings.bookingPrivate,
         distanceKm: card.distanceKm,
@@ -1454,9 +1505,23 @@ export class MarketplaceCatalogService {
       canTrial,
       canPrivate,
     };
+    const taughtPins = new Map<string, MarketplaceMapPinInput>();
+    for (const batch of taught) {
+      const pin = mapPinFromBranch(batch.branch, name);
+      if (pin) taughtPins.set(pin.id, pin);
+    }
+    if (taughtPins.size === 0) {
+      for (const studio of listedStudios) {
+        for (const branch of studio.branches) {
+          const pin = mapPinFromBranch(branch, studio.name);
+          if (pin) taughtPins.set(pin.id, pin);
+        }
+      }
+    }
 
     return {
       card,
+      pins: [...taughtPins.values()],
       sort: {
         bookable: canTrial || canPrivate,
         distanceKm: card.distanceKm,

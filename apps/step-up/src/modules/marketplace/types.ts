@@ -57,6 +57,15 @@ export type MarketplaceEmpty = {
   message: string | null;
 };
 
+export type MarketplaceMapPin = {
+  id: string;
+  lat: number;
+  lng: number;
+  label: string;
+  area: string | null;
+  itemIds: string[];
+};
+
 export type MarketplaceCatalogPage<T> = {
   tab: MarketplaceCatalogTab;
   category: PublicMarketplaceCategory;
@@ -64,6 +73,7 @@ export type MarketplaceCatalogPage<T> = {
   sort: MarketplaceSort;
   empty: MarketplaceEmpty;
   items: T[];
+  pins?: MarketplaceMapPin[];
 };
 
 export type MarketplaceClassCard = {
@@ -99,6 +109,9 @@ export type MarketplaceClassCard = {
   viewerEnrolled: boolean | null;
   viewerTrialBooked: boolean | null;
   viewerForChild: boolean | null;
+  branchId?: string | null;
+  lat?: number | null;
+  lng?: number | null;
 };
 
 export type MarketplaceFetchAuth = {

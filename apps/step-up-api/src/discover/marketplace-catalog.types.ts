@@ -2,6 +2,7 @@ import type { BillingCadence } from "../generated/prisma/client";
 import type {
   ClassAudience,
   ClassLevel,
+  MarketplaceMapPin,
   MarketplaceSort,
   PublicMarketplaceCategory,
 } from "./marketplace.contract";
@@ -63,6 +64,9 @@ export type MarketplaceClassCard = {
   viewerEnrolled: boolean | null;
   viewerTrialBooked: boolean | null;
   viewerForChild: boolean | null;
+  branchId: string | null;
+  lat: number | null;
+  lng: number | null;
 };
 
 export type MarketplaceCatalogViewer = {
@@ -126,6 +130,7 @@ export type MarketplaceCatalogPage<T> = {
   sort: MarketplaceSort;
   empty: MarketplaceEmpty;
   items: T[];
+  pins: MarketplaceMapPin[];
 };
 
 export type MarketplaceClassPlan = {

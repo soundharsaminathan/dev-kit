@@ -6,6 +6,7 @@ import {
   DiscoverCityProvider,
   useDiscoverCity,
 } from "@/modules/student-landing/city-context";
+import { isLiveCity } from "@/modules/student-landing/types";
 import { BookSheet } from "./book-sheet";
 import type { BookSheetTarget } from "./book";
 import { AppSheet } from "@/modules/ui/app-sheet";
@@ -30,22 +31,32 @@ import {
   MarketplaceStudioCardView,
   MarketplaceTrainerCardView,
 } from "./cards";
+import { MarketplaceMap } from "./map";
+import {
+  marketplacePlaceTitle,
+  marketplacePinsForItems,
+  type MarketplacePlace,
+} from "./place";
 import {
   categoryLabel,
   clearMarketplaceFilters,
   hasNarrowFilters,
+  marketplaceCanonicalPath,
   marketplaceCatalogQuery,
-  marketplacePathForTab,
-  marketplaceTitle,
+  marketplaceNavigateArgs,
+  marketplacePageShouldIndex,
+  marketplacePlaceFromSearch,
   matchesWhenFilter,
   toggleAudience,
   toggleLevel,
   writeStoredCategory,
   type MarketplaceUrlSearch,
 } from "./search";
+import { useMarketplaceSeo } from "./seo";
 import type {
   MarketplaceCatalogTab,
   MarketplaceClassCard,
+  MarketplaceMapPin,
   MarketplaceStudioCard,
   MarketplaceTrainerCard,
   PublicMarketplaceCategory,
@@ -71,10 +82,12 @@ export function MarketplaceHome({
   tab,
   search,
   variant = "public",
+  place,
 }: {
   tab: MarketplaceCatalogTab;
   search: MarketplaceUrlSearch;
   variant?: "public" | "member";
+  place?: MarketplacePlace | null;
 }) {
   const navigate = useNavigate();
   const { user, viewerKey, resolveAuth } = useMarketplaceAuth();
@@ -83,68 +96,64 @@ export function MarketplaceHome({
   const [areaOpen, setAreaOpen] = useState(false);
   const [geoHint, setGeoHint] = useState<string | null>(null);
   const [book, setBook] = useState<BookTarget | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const city = search.city ?? cityId;
   const category = search.category ?? "DANCE";
+  const view = search.view === "map" ? "map" : "list";
+  const activePlace = place ?? marketplacePlaceFromSearch(search);
+  const title = marketplacePlaceTitle({
+    categoryLabel: categoryLabel(category),
+    cityLabel,
+    tab,
+    place: activePlace,
+  });
 
   useEffect(() => {
     writeStoredCategory(category);
   }, [category]);
 
   useEffect(() => {
-    if (search.city && search.city !== cityId) {
-      selectCity(search.city);
-      return;
-    }
-    if (!search.city || search.city === cityId) return;
-  }, [cityId, search.city, selectCity]);
+    if (isLiveCity(city)) selectCity(city);
+  }, [city, selectCity]);
 
   useEffect(() => {
-    if (cityId !== city) {
-      void navigate({
-        to: ".",
-        search: { ...search, city: cityId, category },
-        replace: true,
-      });
-    }
-  }, [category, city, cityId, navigate, search]);
+    if (cityId === city || !isLiveCity(cityId)) return;
+    go({ city: cityId }, tab, true);
+    // city switcher is the only writer of a live cityId change
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cityId]);
 
   useEffect(() => {
     setDraftQ(search.q ?? "");
   }, [search.q]);
 
-  useEffect(() => {
-    const title = `${marketplaceTitle(category, cityLabel, tab)} | classa`;
-    const previous = document.title;
-    document.title = title;
-    return () => {
-      document.title = previous;
+  function go(
+    next: Partial<MarketplaceUrlSearch>,
+    nextTab = tab,
+    replace = true,
+  ) {
+    const merged: MarketplaceUrlSearch = {
+      ...search,
+      city,
+      category,
+      ...next,
     };
-  }, [category, cityLabel, tab]);
-
-  function patchSearch(next: Partial<MarketplaceUrlSearch>) {
+    const target = marketplaceNavigateArgs(nextTab, merged, variant);
     void navigate({
-      to: ".",
-      search: {
-        ...search,
-        city,
-        category,
-        ...next,
-      },
-      replace: true,
+      to: target.to,
+      ...(target.params ? { params: target.params } : {}),
+      search: target.search,
+      replace,
     });
   }
 
+  function patchSearch(next: Partial<MarketplaceUrlSearch>) {
+    go(next, tab, true);
+  }
+
   function goTab(nextTab: MarketplaceCatalogTab) {
-    void navigate({
-      to: marketplacePathForTab(nextTab, variant),
-      search: {
-        ...search,
-        city,
-        category,
-        tab: variant === "member" ? nextTab : undefined,
-      },
-    });
+    go({}, nextTab, false);
   }
 
   function submitSearch() {
@@ -235,12 +244,17 @@ export function MarketplaceHome({
     );
   }, [search.when, trainersQuery.data?.items]);
 
-  const visibleCount =
+  const visibleItems =
     tab === "classes"
-      ? classItems.length
+      ? classItems
       : tab === "studios"
-        ? studioItems.length
-        : trainerItems.length;
+        ? studioItems
+        : trainerItems;
+  const visibleCount = visibleItems.length;
+  const pins = useMemo(
+    () => marketplacePinsForItems(page?.pins, visibleItems.map((item) => item.id)),
+    [page?.pins, visibleItems],
+  );
   const emptyFromWhen = Boolean(search.when) && visibleCount === 0 && page;
   const empty = emptyFromWhen
     ? {
@@ -248,6 +262,18 @@ export function MarketplaceHome({
         message: `No ${tab} match these filters.`,
       }
     : (page?.empty ?? { kind: null, message: null });
+
+  useMarketplaceSeo({
+    title,
+    path: marketplaceCanonicalPath({ ...search, city, category }, tab),
+    count: visibleCount,
+    index: marketplacePageShouldIndex(
+      { ...search, city, category },
+      !loading && visibleCount > 0,
+      Boolean(place),
+    ),
+    enabled: variant === "public",
+  });
 
   const sortChips = [
     ...(search.q ? [{ id: "relevance", label: "Relevance" }] : []),
@@ -285,6 +311,20 @@ export function MarketplaceHome({
     search.locality ? "area" : undefined,
     search.sort === "nearest" ? "near" : undefined,
   ].filter((value): value is string => Boolean(value));
+
+  function selectPin(pin: MarketplaceMapPin) {
+    setSelectedId(pin.id);
+    const itemId = pin.itemIds[0];
+    if (!itemId) return;
+    document
+      .getElementById(`marketplace-card-${itemId}`)
+      ?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+
+  function selectItem(itemId: string) {
+    const pin = pins.find((entry) => entry.itemIds.includes(itemId));
+    if (pin) setSelectedId(pin.id);
+  }
 
   async function bookTrainer(item: MarketplaceTrainerCard) {
     const detail = await fetchMarketplaceTrainer(item.slug ?? item.id);
@@ -357,8 +397,40 @@ export function MarketplaceHome({
     });
   }
 
+  const classesLink = marketplaceNavigateArgs(
+    "classes",
+    { ...search, city, category },
+    variant,
+  );
+  const studiosLink = marketplaceNavigateArgs(
+    "studios",
+    { ...search, city, category },
+    variant,
+  );
+
+  const viewToggle = (
+    <div className={styles.viewToggle} role="group" aria-label="View">
+      <button
+        type="button"
+        className={styles.viewBtn}
+        data-active={view === "list" || undefined}
+        onClick={() => patchSearch({ view: "list" })}
+      >
+        List
+      </button>
+      <button
+        type="button"
+        className={styles.viewBtn}
+        data-active={view === "map" || undefined}
+        onClick={() => patchSearch({ view: "map" })}
+      >
+        Map
+      </button>
+    </div>
+  );
+
   const feed = (
-    <div className={styles.page} data-variant={variant}>
+    <div className={styles.page} data-variant={variant} data-view={view}>
         <div className={styles.chrome} data-variant={variant}>
           <div className={styles.chromeInner}>
             <div className={styles.tabs} role="tablist" aria-label="Category">
@@ -429,36 +501,39 @@ export function MarketplaceHome({
                 }
               }}
             />
-            <FilterChipRow
-              chips={railChips}
-              selected={selectedRail}
-              onToggle={(id) => {
-                if (id === "today" || id === "tomorrow") {
-                  patchSearch({
-                    when: search.when === id ? undefined : id,
-                    sort: "earliest",
-                  });
-                  return;
-                }
-                if (id === "weekend") {
-                  patchSearch({
-                    days: search.days === "weekend" ? undefined : "weekend",
-                  });
-                  return;
-                }
-                if (id === "evening") {
-                  patchSearch({
-                    time: search.time === "evening" ? undefined : "evening",
-                  });
-                  return;
-                }
-                if (id === "area") {
-                  setAreaOpen(true);
-                  return;
-                }
-                if (id === "near") requestNearMe();
-              }}
-            />
+            <div className={styles.rail}>
+              <FilterChipRow
+                chips={railChips}
+                selected={selectedRail}
+                onToggle={(id) => {
+                  if (id === "today" || id === "tomorrow") {
+                    patchSearch({
+                      when: search.when === id ? undefined : id,
+                      sort: "earliest",
+                    });
+                    return;
+                  }
+                  if (id === "weekend") {
+                    patchSearch({
+                      days: search.days === "weekend" ? undefined : "weekend",
+                    });
+                    return;
+                  }
+                  if (id === "evening") {
+                    patchSearch({
+                      time: search.time === "evening" ? undefined : "evening",
+                    });
+                    return;
+                  }
+                  if (id === "area") {
+                    setAreaOpen(true);
+                    return;
+                  }
+                  if (id === "near") requestNearMe();
+                }}
+                trailing={viewToggle}
+              />
+            </div>
             <FilterChipRow
               chips={sortChips}
               selected={[search.sort ?? catalogInput.sort ?? "availability"]}
@@ -475,16 +550,12 @@ export function MarketplaceHome({
           </div>
         </div>
 
-        <section className={styles.feed}>
+        <section className={styles.feed} data-view={view}>
           <div className={styles.heading}>
             {variant === "member" ? (
-              <p className={styles.title}>
-                {marketplaceTitle(category, cityLabel, tab)}
-              </p>
+              <p className={styles.title}>{title}</p>
             ) : (
-              <h1 className={styles.title}>
-                {marketplaceTitle(category, cityLabel, tab)}
-              </h1>
+              <h1 className={styles.title}>{title}</h1>
             )}
             {geoHint ? <p className={styles.hint}>{geoHint}</p> : null}
             <RateLastClass enabled={Boolean(user?.id)} />
@@ -510,28 +581,10 @@ export function MarketplaceHome({
                 ) : null}
                 {empty.kind === "tab" ? (
                   <>
-                    <Link
-                      to={marketplacePathForTab("classes", variant)}
-                      search={{
-                        ...search,
-                        city,
-                        category,
-                        tab: variant === "member" ? "classes" : undefined,
-                      }}
-                      className={styles.emptyLink}
-                    >
+                    <Link {...classesLink} className={styles.emptyLink}>
                       Browse classes
                     </Link>
-                    <Link
-                      to={marketplacePathForTab("studios", variant)}
-                      search={{
-                        ...search,
-                        city,
-                        category,
-                        tab: variant === "member" ? "studios" : undefined,
-                      }}
-                      className={styles.emptyLink}
-                    >
+                    <Link {...studiosLink} className={styles.emptyLink}>
                       Browse studios
                     </Link>
                   </>
@@ -545,34 +598,84 @@ export function MarketplaceHome({
           ) : null}
 
           {!loading && visibleCount > 0 ? (
-            <div className={cardStyles.grid}>
-              {tab === "classes"
-                ? classItems.map((item) => (
-                    <MarketplaceClassCardView
-                      key={item.id}
-                      item={item}
-                      onBook={bookClass}
-                    />
-                  ))
-                : null}
-              {tab === "studios"
-                ? studioItems.map((item) => (
-                    <MarketplaceStudioCardView
-                      key={item.id}
-                      item={item}
-                      onBook={bookStudio}
-                    />
-                  ))
-                : null}
-              {tab === "trainers"
-                ? trainerItems.map((item) => (
-                    <MarketplaceTrainerCardView
-                      key={item.id}
-                      item={item}
-                      onBook={(next) => void bookTrainer(next)}
-                    />
-                  ))
-                : null}
+            <div className={styles.board} data-view={view}>
+              {view === "map" ? (
+                <div className={styles.mapPane}>
+                  <MarketplaceMap
+                    pins={pins}
+                    selectedId={selectedId}
+                    onSelect={selectPin}
+                  />
+                </div>
+              ) : null}
+              <div className={cardStyles.grid} data-view={view}>
+                {tab === "classes"
+                  ? classItems.map((item) => (
+                      <div
+                        key={item.id}
+                        id={`marketplace-card-${item.id}`}
+                        className={styles.cardWrap}
+                        data-selected={
+                          pins.some(
+                            (pin) =>
+                              pin.id === selectedId &&
+                              pin.itemIds.includes(item.id),
+                          ) || undefined
+                        }
+                        onClick={() => selectItem(item.id)}
+                      >
+                        <MarketplaceClassCardView
+                          item={item}
+                          onBook={bookClass}
+                        />
+                      </div>
+                    ))
+                  : null}
+                {tab === "studios"
+                  ? studioItems.map((item) => (
+                      <div
+                        key={item.id}
+                        id={`marketplace-card-${item.id}`}
+                        className={styles.cardWrap}
+                        data-selected={
+                          pins.some(
+                            (pin) =>
+                              pin.id === selectedId &&
+                              pin.itemIds.includes(item.id),
+                          ) || undefined
+                        }
+                        onClick={() => selectItem(item.id)}
+                      >
+                        <MarketplaceStudioCardView
+                          item={item}
+                          onBook={bookStudio}
+                        />
+                      </div>
+                    ))
+                  : null}
+                {tab === "trainers"
+                  ? trainerItems.map((item) => (
+                      <div
+                        key={item.id}
+                        id={`marketplace-card-${item.id}`}
+                        className={styles.cardWrap}
+                        data-selected={
+                          pins.some(
+                            (pin) =>
+                              pin.id === selectedId &&
+                              pin.itemIds.includes(item.id),
+                          ) || undefined
+                        }
+                        onClick={() => selectItem(item.id)}
+                      >
+                        <MarketplaceTrainerCardView
+                          item={item}
+                          onBook={(next) => void bookTrainer(next)}
+                        />
+                      </div>
+                    ))
+                  : null}
+              </div>
             </div>
           ) : null}
         </section>
@@ -601,7 +704,10 @@ export function MarketplaceHome({
               className={styles.areaBtn}
               data-active={search.locality === area.id || undefined}
               onClick={() => {
-                patchSearch({ locality: area.id });
+                patchSearch({
+                  locality: area.id,
+                  style: undefined,
+                });
                 setAreaOpen(false);
               }}
             >

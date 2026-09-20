@@ -55,6 +55,7 @@ import { Route as AppImportRouteImport } from './routes/app/import'
 import { Route as AppFeedRouteImport } from './routes/app/feed'
 import { Route as AppCalendarRouteImport } from './routes/app/calendar'
 import { Route as AdminProfileRouteImport } from './routes/admin/profile'
+import { Route as CityPlaceRouteImport } from './routes/$city.$place'
 import { Route as MeTrainersIndexRouteImport } from './routes/me/trainers/index'
 import { Route as MeMessagesIndexRouteImport } from './routes/me/messages/index'
 import { Route as MeLocationsIndexRouteImport } from './routes/me/locations/index'
@@ -357,6 +358,11 @@ const AdminProfileRoute = AdminProfileRouteImport.update({
   id: '/profile',
   path: '/profile',
   getParentRoute: () => AdminRoute,
+} as any)
+const CityPlaceRoute = CityPlaceRouteImport.update({
+  id: '/$city/$place',
+  path: '/$city/$place',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const MeTrainersIndexRoute = MeTrainersIndexRouteImport.update({
   id: '/trainers/',
@@ -738,6 +744,7 @@ export interface FileRoutesByFullPath {
   '/register': typeof RegisterRoute
   '/studios': typeof StudiosRoute
   '/terms': typeof TermsRoute
+  '/$city/$place': typeof CityPlaceRoute
   '/admin/profile': typeof AdminProfileRoute
   '/app/calendar': typeof AppCalendarRoute
   '/app/feed': typeof AppFeedRoute
@@ -855,6 +862,7 @@ export interface FileRoutesByTo {
   '/register': typeof RegisterRoute
   '/studios': typeof StudiosRoute
   '/terms': typeof TermsRoute
+  '/$city/$place': typeof CityPlaceRoute
   '/admin/profile': typeof AdminProfileRoute
   '/app/calendar': typeof AppCalendarRoute
   '/app/feed': typeof AppFeedRoute
@@ -975,6 +983,7 @@ export interface FileRoutesById {
   '/register': typeof RegisterRoute
   '/studios': typeof StudiosRoute
   '/terms': typeof TermsRoute
+  '/$city/$place': typeof CityPlaceRoute
   '/admin/profile': typeof AdminProfileRoute
   '/app/calendar': typeof AppCalendarRoute
   '/app/feed': typeof AppFeedRoute
@@ -1097,6 +1106,7 @@ export interface FileRouteTypes {
     | '/register'
     | '/studios'
     | '/terms'
+    | '/$city/$place'
     | '/admin/profile'
     | '/app/calendar'
     | '/app/feed'
@@ -1214,6 +1224,7 @@ export interface FileRouteTypes {
     | '/register'
     | '/studios'
     | '/terms'
+    | '/$city/$place'
     | '/admin/profile'
     | '/app/calendar'
     | '/app/feed'
@@ -1333,6 +1344,7 @@ export interface FileRouteTypes {
     | '/register'
     | '/studios'
     | '/terms'
+    | '/$city/$place'
     | '/admin/profile'
     | '/app/calendar'
     | '/app/feed'
@@ -1454,6 +1466,7 @@ export interface RootRouteChildren {
   RegisterRoute: typeof RegisterRoute
   StudiosRoute: typeof StudiosRoute
   TermsRoute: typeof TermsRoute
+  CityPlaceRoute: typeof CityPlaceRoute
   AuthActionRoute: typeof AuthActionRoute
   ClassesSlugRoute: typeof ClassesSlugRoute
   PostsIdRoute: typeof PostsIdRoute
@@ -1787,6 +1800,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/profile'
       preLoaderRoute: typeof AdminProfileRouteImport
       parentRoute: typeof AdminRoute
+    }
+    '/$city/$place': {
+      id: '/$city/$place'
+      path: '/$city/$place'
+      fullPath: '/$city/$place'
+      preLoaderRoute: typeof CityPlaceRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/me/trainers/': {
       id: '/me/trainers/'
@@ -2536,6 +2556,7 @@ const rootRouteChildren: RootRouteChildren = {
   RegisterRoute: RegisterRoute,
   StudiosRoute: StudiosRoute,
   TermsRoute: TermsRoute,
+  CityPlaceRoute: CityPlaceRoute,
   AuthActionRoute: AuthActionRoute,
   ClassesSlugRoute: ClassesSlugRoute,
   PostsIdRoute: PostsIdRoute,

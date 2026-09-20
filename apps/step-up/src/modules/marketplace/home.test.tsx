@@ -57,6 +57,14 @@ vi.mock("./book-sheet", () => ({
   }) => (open ? <div>Trial for {target?.studioName}</div> : null),
 }));
 
+vi.mock("./map", () => ({
+  MarketplaceMap: ({
+    pins,
+  }: {
+    pins: Array<{ id: string }>;
+  }) => <div data-testid="marketplace-map">{pins.length} pins</div>,
+}));
+
 function classCard(): MarketplaceClassCard {
   return {
     id: "class-1",
@@ -104,6 +112,18 @@ function classPage(
     sort: "availability",
     empty: { kind: null, message: null },
     items,
+    pins: items.length
+      ? [
+          {
+            id: "branch-1",
+            lat: 13.04,
+            lng: 80.25,
+            label: "Rhythm House",
+            area: "T Nagar",
+            itemIds: items.map((item) => item.id),
+          },
+        ]
+      : [],
   };
 }
 
@@ -136,7 +156,11 @@ describe("MarketplaceHome", () => {
       "aria-pressed",
       "true",
     );
-    expect(screen.queryByRole("button", { name: "Map" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Map" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "List" })).toHaveAttribute(
+      "data-active",
+      "true",
+    );
     expect(screen.getByRole("button", { name: "Music" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Fitness" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Art" })).toBeInTheDocument();
@@ -211,5 +235,66 @@ describe("MarketplaceHome", () => {
     expect(
       screen.getByText("Dance classes in Chennai"),
     ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Map" })).toBeInTheDocument();
+  });
+
+  it("keeps list and map on the same result set", async () => {
+    renderWithProviders(
+      <MarketplaceHome
+        tab="classes"
+        search={{ category: "DANCE", city: "chennai", view: "map" }}
+      />,
+    );
+
+    expect(await screen.findByTestId("marketplace-map")).toHaveTextContent(
+      "1 pins",
+    );
+    expect(await screen.findByRole("button", { name: "Book" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "List" }));
+    expect(navigate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        search: expect.objectContaining({ view: "list" }),
+      }),
+    );
+  });
+
+  it("titles a style place and moves Area onto an SEO path", async () => {
+    renderWithProviders(
+      <MarketplaceHome
+        tab="classes"
+        search={{ category: "DANCE", city: "chennai", style: "hip-hop" }}
+        place={{ kind: "style", id: "hip-hop", label: "Hip Hop" }}
+      />,
+    );
+
+    expect(
+      await screen.findByRole("heading", { name: "Hip Hop classes in Chennai" }),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Area" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Adyar" }));
+    expect(navigate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: "/$city/$place",
+        params: { city: "chennai", place: "adyar" },
+      }),
+    );
+  });
+
+  it("opens map from the time rail without leaving the inventory IA", async () => {
+    renderWithProviders(
+      <MarketplaceHome
+        tab="classes"
+        search={{ category: "DANCE", city: "chennai" }}
+      />,
+    );
+
+    await screen.findByRole("heading", { name: "Dance classes in Chennai" });
+    fireEvent.click(screen.getByRole("button", { name: "Map" }));
+    expect(navigate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        search: expect.objectContaining({ view: "map" }),
+      }),
+    );
   });
 });

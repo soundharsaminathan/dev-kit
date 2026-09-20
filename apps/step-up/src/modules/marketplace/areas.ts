@@ -9,4 +9,5 @@ export const MARKETPLACE_AREAS = [
   { id: "mylapore", label: "Mylapore" },
   { id: "porur", label: "Porur" },
   { id: "sholinganallur", label: "Sholinganallur" },
+  { id: "chromepet", label: "Chromepet" },
 ] as const;

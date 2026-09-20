@@ -452,6 +452,137 @@ export function marketplaceMissingMediaAlert(input: {
   };
 }
 
+export type MarketplaceMapPin = {
+  id: string;
+  lat: number;
+  lng: number;
+  label: string;
+  area: string | null;
+  itemIds: string[];
+};
+
+export type MarketplaceMapPinInput = {
+  id: string;
+  lat: number;
+  lng: number;
+  label: string;
+  area: string | null;
+};
+
+export function marketplaceMapPins(
+  rows: Array<{ itemId: string; pins: MarketplaceMapPinInput[] }>,
+): MarketplaceMapPin[] {
+  const byId = new Map<string, MarketplaceMapPin>();
+  for (const row of rows) {
+    for (const pin of row.pins) {
+      if (!Number.isFinite(pin.lat) || !Number.isFinite(pin.lng)) continue;
+      const current = byId.get(pin.id);
+      if (current) {
+        if (!current.itemIds.includes(row.itemId)) {
+          current.itemIds.push(row.itemId);
+        }
+        continue;
+      }
+      byId.set(pin.id, {
+        id: pin.id,
+        lat: pin.lat,
+        lng: pin.lng,
+        label: pin.label,
+        area: pin.area,
+        itemIds: [row.itemId],
+      });
+    }
+  }
+  return [...byId.values()];
+}
+
+export function clusterMarketplacePins(
+  pins: MarketplaceMapPin[],
+  zoom: number,
+): Array<{
+  id: string;
+  lat: number;
+  lng: number;
+  count: number;
+  pinIds: string[];
+}> {
+  if (zoom >= 13) {
+    return pins.map((pin) => ({
+      id: pin.id,
+      lat: pin.lat,
+      lng: pin.lng,
+      count: 1,
+      pinIds: [pin.id],
+    }));
+  }
+  const cell = zoom >= 11 ? 0.04 : 0.12;
+  const groups = new Map<
+    string,
+    { lat: number; lng: number; pinIds: string[] }
+  >();
+  for (const pin of pins) {
+    const key = `${Math.round(pin.lat / cell)}:${Math.round(pin.lng / cell)}`;
+    const group = groups.get(key);
+    if (group) {
+      group.pinIds.push(pin.id);
+      group.lat += pin.lat;
+      group.lng += pin.lng;
+      continue;
+    }
+    groups.set(key, { lat: pin.lat, lng: pin.lng, pinIds: [pin.id] });
+  }
+  return [...groups.entries()].map(([key, group]) => ({
+    id: group.pinIds.length === 1 ? (group.pinIds[0] ?? key) : `cluster:${key}`,
+    lat: group.lat / group.pinIds.length,
+    lng: group.lng / group.pinIds.length,
+    count: group.pinIds.length,
+    pinIds: group.pinIds,
+  }));
+}
+
+export function marketplaceHasNarrowFilters(input: {
+  q?: string;
+  audience?: string;
+  level?: string;
+  days?: string;
+  time?: string;
+  when?: string;
+  sort?: string;
+  view?: string;
+}): boolean {
+  return Boolean(
+    input.q ||
+      input.audience ||
+      input.level ||
+      input.days ||
+      input.time ||
+      input.when,
+  );
+}
+
+export function marketplaceShouldIndex(input: {
+  hasItems: boolean;
+  place?: boolean;
+  filterOnly?: boolean;
+}): boolean {
+  if (!input.hasItems) return false;
+  if (input.filterOnly) return false;
+  return true;
+}
+
+export function marketplaceSeoPath(input: {
+  city: string;
+  style?: string;
+  locality?: string;
+}): string | null {
+  const city = input.city.trim().toLowerCase();
+  if (!city) return null;
+  if (input.style && input.locality) return null;
+  const place = (input.style ?? input.locality)?.trim().toLowerCase();
+  if (!place) return null;
+  return `/${city}/${place}`;
+}
+
 export function marketplacePersonalBadges(input: {
   viewerEnrolled?: boolean | null;
   viewerTrialBooked?: boolean | null;

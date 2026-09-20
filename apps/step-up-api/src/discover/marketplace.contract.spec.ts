@@ -25,6 +25,10 @@ import {
   freelanceTrainerAttachError,
   marketplacePersonalBadges,
   marketplaceViewerStudentAllowed,
+  marketplaceMapPins,
+  clusterMarketplacePins,
+  marketplaceSeoPath,
+  marketplaceShouldIndex,
   STUDIO_MARKETPLACE_TOGGLES,
   studioMarketplaceTogglesFrom,
   PUBLIC_MARKETPLACE_CATEGORIES,
@@ -457,5 +461,75 @@ describe("marketplace viewer personalization", () => {
         childIds: ["kid-1", "kid-2"],
       }),
     ).toEqual(["kid-1"]);
+  });
+});
+
+describe("marketplace place and map", () => {
+  it("builds city/style and city/area SEO paths only", () => {
+    expect(marketplaceSeoPath({ city: "chennai", style: "hip-hop" })).toBe(
+      "/chennai/hip-hop",
+    );
+    expect(marketplaceSeoPath({ city: "chennai", locality: "adyar" })).toBe(
+      "/chennai/adyar",
+    );
+    expect(
+      marketplaceSeoPath({
+        city: "chennai",
+        style: "hip-hop",
+        locality: "adyar",
+      }),
+    ).toBeNull();
+    expect(marketplaceSeoPath({ city: "chennai" })).toBeNull();
+  });
+
+  it("does not index empty or filter-only query URLs", () => {
+    expect(marketplaceShouldIndex({ hasItems: true, place: true })).toBe(true);
+    expect(
+      marketplaceShouldIndex({ hasItems: false, place: true }),
+    ).toBe(false);
+    expect(
+      marketplaceShouldIndex({ hasItems: true, filterOnly: true }),
+    ).toBe(false);
+  });
+
+  it("keeps one map marker per branch and clusters when zoomed out", () => {
+    const pins = marketplaceMapPins([
+      {
+        itemId: "class-1",
+        pins: [
+          {
+            id: "branch-1",
+            lat: 13.04,
+            lng: 80.24,
+            label: "Rhythm House",
+            area: "T Nagar",
+          },
+        ],
+      },
+      {
+        itemId: "class-2",
+        pins: [
+          {
+            id: "branch-1",
+            lat: 13.04,
+            lng: 80.24,
+            label: "Rhythm House",
+            area: "T Nagar",
+          },
+        ],
+      },
+    ]);
+    expect(pins).toEqual([
+      {
+        id: "branch-1",
+        lat: 13.04,
+        lng: 80.24,
+        label: "Rhythm House",
+        area: "T Nagar",
+        itemIds: ["class-1", "class-2"],
+      },
+    ]);
+    expect(clusterMarketplacePins(pins, 14)).toHaveLength(1);
+    expect(clusterMarketplacePins(pins, 10)[0]?.count).toBe(1);
   });
 });

@@ -1,4 +1,8 @@
 import {
+  marketplaceSeoPath,
+  parseMarketplacePlace,
+} from "./place";
+import {
   CLASS_LEVELS,
   defaultMarketplaceSort,
   MARKETPLACE_SORTS,
@@ -209,12 +213,125 @@ export function marketplaceCatalogQuery(
 export function marketplacePathForTab(
   tab: MarketplaceCatalogTab,
   embed: "public" | "member" = "public",
-): "/" | "/classes" | "/studios" | "/trainers" | "/me/book" {
+  search?: MarketplaceUrlSearch,
+): "/" | "/classes" | "/studios" | "/trainers" | "/me/book" | "/$city/$place" {
   if (embed === "member") return "/me/book";
+  if (
+    search &&
+    marketplaceSeoPath({
+      city: search.city,
+      style: search.style,
+      locality: search.locality,
+    })
+  ) {
+    return "/$city/$place";
+  }
   if (tab === "studios") return "/studios";
   if (tab === "trainers") return "/trainers";
   if (tab === "classes") return "/classes";
   return "/";
+}
+
+export function marketplaceTabSearch(
+  search: MarketplaceUrlSearch,
+  tab: MarketplaceCatalogTab,
+  embed: "public" | "member" = "public",
+): MarketplaceUrlSearch {
+  if (embed === "member") return { ...search, tab };
+  if (marketplacePathForTab(tab, embed, search) === "/$city/$place") {
+    return { ...search, tab: tab === "classes" ? undefined : tab };
+  }
+  return { ...search, tab: undefined };
+}
+
+export function marketplacePlaceParams(
+  search: MarketplaceUrlSearch,
+): { city: string; place: string } | null {
+  if (
+    !marketplaceSeoPath({
+      city: search.city,
+      style: search.style,
+      locality: search.locality,
+    })
+  ) {
+    return null;
+  }
+  const city = search.city;
+  const place = search.style ?? search.locality;
+  if (!city || !place) return null;
+  return { city, place };
+}
+
+export function marketplacePlaceFromSearch(
+  search: MarketplaceUrlSearch,
+): ReturnType<typeof parseMarketplacePlace> {
+  return parseMarketplacePlace(search.style) ?? parseMarketplacePlace(search.locality);
+}
+
+export function marketplaceFilterOnly(search: MarketplaceUrlSearch): boolean {
+  return Boolean(
+    search.q ||
+      search.audience ||
+      search.level ||
+      search.days ||
+      search.time ||
+      search.when,
+  );
+}
+
+export function marketplaceCanonicalPath(
+  search: MarketplaceUrlSearch,
+  tab: MarketplaceCatalogTab,
+): string {
+  const seo = marketplaceSeoPath({
+    city: search.city,
+    style: search.style,
+    locality: search.locality,
+  });
+  if (seo) return tab === "classes" ? seo : `${seo}?tab=${tab}`;
+  if (tab === "studios") return "/studios";
+  if (tab === "trainers") return "/trainers";
+  return "/";
+}
+
+export function marketplacePageShouldIndex(
+  search: MarketplaceUrlSearch,
+  hasItems: boolean,
+  onPlaceRoute = false,
+): boolean {
+  if (!hasItems) return false;
+  if (marketplaceFilterOnly(search)) return false;
+  if (search.style && search.locality) return false;
+  const seo = marketplaceSeoPath({
+    city: search.city,
+    style: search.style,
+    locality: search.locality,
+  });
+  if (seo && !onPlaceRoute) return false;
+  return true;
+}
+
+export function marketplaceNavigateArgs(
+  tab: MarketplaceCatalogTab,
+  search: MarketplaceUrlSearch,
+  embed: "public" | "member" = "public",
+): {
+  to: "/" | "/classes" | "/studios" | "/trainers" | "/me/book" | "/$city/$place";
+  params?: { city: string; place: string };
+  search: MarketplaceUrlSearch;
+} {
+  const to = marketplacePathForTab(tab, embed, search);
+  const nextSearch = marketplaceTabSearch(search, tab, embed);
+  if (to === "/$city/$place") {
+    const { city: _city, style: _style, locality: _locality, ...rest } =
+      nextSearch;
+    return {
+      to,
+      params: marketplacePlaceParams(search) ?? undefined,
+      search: rest,
+    };
+  }
+  return { to, search: nextSearch };
 }
 
 export function toggleAudience(

@@ -254,6 +254,13 @@ describe("MarketplaceCatalogService", () => {
     });
     expect(studios.items).toHaveLength(1);
     expect(studios.items[0]?.name).toBe("Rhythm House");
+    expect(classes.pins).toEqual([
+      expect.objectContaining({
+        id: "branch-1",
+        label: "Rhythm House",
+        itemIds: ["visible"],
+      }),
+    ]);
   });
 
   it("does not leak Music inventory into Dance", async () => {

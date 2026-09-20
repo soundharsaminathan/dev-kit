@@ -3,7 +3,10 @@ import {
   clearMarketplaceFilters,
   MARKETPLACE_CATEGORY_KEY,
   mapDiscoverToMarketplace,
+  marketplaceCanonicalPath,
   marketplaceCatalogQuery,
+  marketplaceNavigateArgs,
+  marketplacePageShouldIndex,
   marketplacePathForTab,
   marketplaceTitle,
   matchesWhenFilter,
@@ -83,5 +86,52 @@ describe("marketplace search contract", () => {
         audience: "KIDS",
       }),
     ).toEqual({ category: "ART", city: "chennai" });
+  });
+
+  it("shares city/style and city/area on SEO paths, not chip routes", () => {
+    expect(
+      marketplacePathForTab("classes", "public", {
+        city: "chennai",
+        style: "hip-hop",
+      }),
+    ).toBe("/$city/$place");
+    expect(
+      marketplaceNavigateArgs("studios", {
+        city: "chennai",
+        locality: "adyar",
+      }),
+    ).toEqual({
+      to: "/$city/$place",
+      params: { city: "chennai", place: "adyar" },
+      search: { tab: "studios" },
+    });
+    expect(
+      marketplaceCanonicalPath(
+        { city: "chennai", style: "hip-hop" },
+        "classes",
+      ),
+    ).toBe("/chennai/hip-hop");
+    expect(
+      marketplacePageShouldIndex(
+        { city: "chennai", style: "hip-hop" },
+        true,
+        true,
+      ),
+    ).toBe(true);
+    expect(
+      marketplacePageShouldIndex(
+        { city: "chennai", style: "hip-hop" },
+        true,
+        false,
+      ),
+    ).toBe(false);
+    expect(
+      marketplacePageShouldIndex(
+        { city: "chennai", style: "hip-hop", audience: "KIDS" },
+        true,
+        true,
+      ),
+    ).toBe(false);
+    expect(marketplacePageShouldIndex({ city: "chennai" }, false)).toBe(false);
   });
 });
