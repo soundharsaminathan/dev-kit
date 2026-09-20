@@ -1,5 +1,5 @@
 import { Button } from "@dev-ui/components/button";
-import { Link } from "@tanstack/react-router";
+import { Link, useRouterState } from "@tanstack/react-router";
 import {
   type ReactNode,
   useCallback,
@@ -37,7 +37,27 @@ type PublicShellProps = {
 };
 
 type HashLink = { label: string; href: string };
-type RouteLink = { label: string; to: "/for-studios" | "/" };
+type StudentRouteTo =
+  | "/"
+  | "/classes"
+  | "/studios"
+  | "/trainers"
+  | "/for-studios";
+type RouteLink = { label: string; to: StudentRouteTo | "/for-studios" | "/" };
+
+function isStudentNavActive(pathname: string, to: StudentRouteTo): boolean {
+  if (to === "/") return pathname === "/";
+  if (to === "/trainers") {
+    return pathname === "/trainers" || pathname.startsWith("/trainers/");
+  }
+  if (to === "/classes") {
+    return pathname === "/classes" || pathname.startsWith("/classes/");
+  }
+  if (to === "/studios") {
+    return pathname === "/studios" || pathname.startsWith("/studios/");
+  }
+  return pathname === to || pathname.startsWith(`${to}/`);
+}
 
 function SearchIcon({ className }: { className?: string | undefined }) {
   return (
@@ -62,6 +82,7 @@ export function PublicShell({
 }: PublicShellProps) {
   useDismissBootPublic();
   const { user, loading } = useAuth();
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
   const appHome = user ? homePathForUser(user) : null;
   const isMarketing = nav === "marketing";
   const isStudent = nav === "student";
@@ -185,9 +206,17 @@ export function PublicShell({
         <Button variant="primary">Open app</Button>
       </Link>
     ) : (
-      <Link to="/login">
-        <Button variant="primary">{STUDENT_NAV.login}</Button>
-      </Link>
+      <>
+        <Link to="/for-studios" className={styles.navLink}>
+          {STUDENT_NAV.listStudio}
+        </Link>
+        <Link to="/login" className={styles.navLink}>
+          {STUDENT_NAV.login}
+        </Link>
+        <Link to="/register" search={{ for: "student" }}>
+          <Button variant="primary">{STUDENT_NAV.signup}</Button>
+        </Link>
+      </>
     ));
 
   const marketingActions =
@@ -242,7 +271,16 @@ export function PublicShell({
                 </a>
               ))}
               {routeLinks.map((link) => (
-                <Link key={link.to} to={link.to} className={styles.navLink}>
+                <Link
+                  key={link.to}
+                  to={link.to}
+                  className={styles.navLink}
+                  aria-current={
+                    isStudentNavActive(pathname, link.to as StudentRouteTo)
+                      ? "page"
+                      : undefined
+                  }
+                >
                   {link.label}
                 </Link>
               ))}
@@ -253,13 +291,13 @@ export function PublicShell({
             </div>
             <div className={styles.mobileHeaderActions}>
               <ThemeSwitcher />
-              <a
-                href="#marketplace-search"
+              <Link
+                to="/classes"
                 className={styles.iconButton}
                 aria-label="Search classes"
               >
                 <SearchIcon className={styles.iconSvg} />
-              </a>
+              </Link>
               <button
                 ref={toggleRef}
                 type="button"
@@ -405,6 +443,13 @@ export function PublicShell({
                 style={{
                   animationDelay: `${100 + (hashLinks.length + i) * 50}ms`,
                 }}
+                aria-current={
+                  isStudent
+                    ? isStudentNavActive(pathname, link.to as StudentRouteTo)
+                      ? "page"
+                      : undefined
+                    : undefined
+                }
                 onClick={closeMenu}
               >
                 {link.label}
@@ -425,15 +470,36 @@ export function PublicShell({
                   Open app
                 </TouchButton>
               ) : isStudent ? (
-                <TouchButton
-                  as={Link}
-                  to="/login"
-                  variant="primary"
-                  fullWidth
-                  onClick={closeMenu}
-                >
-                  {STUDENT_NAV.login}
-                </TouchButton>
+                <>
+                  <TouchButton
+                    as={Link}
+                    to="/for-studios"
+                    variant="default"
+                    fullWidth
+                    onClick={closeMenu}
+                  >
+                    {STUDENT_NAV.listStudio}
+                  </TouchButton>
+                  <TouchButton
+                    as={Link}
+                    to="/login"
+                    variant="default"
+                    fullWidth
+                    onClick={closeMenu}
+                  >
+                    {STUDENT_NAV.login}
+                  </TouchButton>
+                  <TouchButton
+                    as={Link}
+                    to="/register"
+                    search={{ for: "student" } as never}
+                    variant="primary"
+                    fullWidth
+                    onClick={closeMenu}
+                  >
+                    {STUDENT_NAV.signup}
+                  </TouchButton>
+                </>
               ) : (
                 <>
                   <TouchButton

@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { Clock, Heart, MapPin } from "lucide-react";
 import { formatPriceFrom } from "@/modules/student-landing/format";
 import { MarketplaceStars } from "./stars";
 import type {
@@ -15,11 +16,34 @@ function audienceLabel(value: "KIDS" | "ADULTS" | "BOTH" | null): string | null 
   return null;
 }
 
-function levelLabel(value: string | null): string | null {
-  if (value === "BEGINNER") return "Beginner";
-  if (value === "INTERMEDIATE") return "Intermediate";
-  if (value === "ADVANCED") return "Advanced";
-  return null;
+function formatClassPrice(
+  price: number | null,
+  cadence: "MONTHLY" | "QUARTERLY" | null,
+): string | null {
+  if (price == null) return null;
+  const formatted = new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+    maximumFractionDigits: 0,
+  }).format(price);
+  if (cadence === "QUARTERLY") return `From ${formatted} / quarter`;
+  return `From ${formatted} / month`;
+}
+
+function formatLocalityLine(
+  locality: string | null,
+  distanceKm: number | null,
+): string | null {
+  const parts: string[] = [];
+  if (locality) parts.push(locality);
+  if (distanceKm != null) {
+    const rounded =
+      distanceKm < 10
+        ? Math.round(distanceKm * 10) / 10
+        : Math.round(distanceKm);
+    parts.push(`${rounded} km`);
+  }
+  return parts.length > 0 ? parts.join(" · ") : null;
 }
 
 export function MarketplaceClassCardView({
@@ -31,19 +55,28 @@ export function MarketplaceClassCardView({
   onBook: (item: MarketplaceClassCard) => void;
   bookVisible?: boolean;
 }) {
-  const price = formatPriceFrom(item.priceFrom, item.priceCadence);
-  const audience = audienceLabel(item.audience);
-  const level = levelLabel(item.level);
+  const price = formatClassPrice(item.priceFrom, item.priceCadence);
+  const localityLine = formatLocalityLine(item.locality, item.distanceKm);
   const personal = marketplacePersonalBadges(item);
+  const seatUrgency =
+    item.seatLabel && item.seatLabel !== "Full"
+      ? item.seatLabel
+      : item.availableSeats > 0 && item.availableSeats <= 8
+        ? `${item.availableSeats} seats left`
+        : item.seatLabel === "Full"
+          ? "Full"
+          : null;
 
   return (
     <article className={styles.card}>
-      <Link
-        to="/classes/$slug"
-        params={{ slug: item.slug }}
-        className={styles.cardLink}
-      >
-        <div className={styles.media}>
+      <div className={styles.media}>
+        <Link
+          to="/classes/$slug"
+          params={{ slug: item.slug }}
+          className={styles.mediaLink}
+          tabIndex={-1}
+          aria-hidden
+        >
           {item.coverImageUrl ? (
             <img className={styles.image} src={item.coverImageUrl} alt="" />
           ) : (
@@ -51,62 +84,85 @@ export function MarketplaceClassCardView({
               {item.name.slice(0, 1)}
             </div>
           )}
-          <div className={styles.badges}>
-            {personal.map((badge) => (
-              <span
-                key={badge.id}
-                className={styles.personal}
-                data-kind={badge.id}
-              >
-                {badge.label}
-              </span>
-            ))}
-            {level ? <span className={styles.badge}>{level}</span> : null}
-            {audience ? <span className={styles.badge}>{audience}</span> : null}
-          </div>
+        </Link>
+        <div className={styles.badges}>
+          {personal.map((badge) => (
+            <span
+              key={badge.id}
+              className={styles.personal}
+              data-kind={badge.id}
+            >
+              {badge.label}
+            </span>
+          ))}
+          {item.canTrial ? (
+            <span className={styles.trialBadge}>Trial available</span>
+          ) : null}
         </div>
-        <div className={styles.body}>
+        <button
+          type="button"
+          className={styles.wish}
+          aria-label={`Save ${item.name}`}
+          onClick={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+          }}
+        >
+          <Heart aria-hidden className={styles.wishIcon} strokeWidth={2} />
+        </button>
+      </div>
+      <div className={styles.body}>
+        <Link
+          to="/classes/$slug"
+          params={{ slug: item.slug }}
+          className={styles.copyLink}
+        >
           <h3 className={styles.name}>{item.name}</h3>
-          <p className={styles.sub}>
-            {[item.studioName, item.locality].filter(Boolean).join(" · ")}
-          </p>
+          <p className={styles.sub}>{item.studioName}</p>
+          {localityLine ? (
+            <p className={styles.metaLine}>
+              <MapPin aria-hidden className={styles.metaIcon} />
+              <span>{localityLine}</span>
+            </p>
+          ) : null}
+          <div className={styles.ratingRow}>
+            <MarketplaceStars rating={item.studioRating} />
+          </div>
           {item.scheduleLabel ? (
-            <p className={styles.meta}>{item.scheduleLabel}</p>
+            <p className={styles.metaLine}>
+              <Clock aria-hidden className={styles.metaIcon} />
+              <span>{item.scheduleLabel}</span>
+            </p>
           ) : null}
-          {item.trainerName ? (
-            <p className={styles.meta}>{item.trainerName}</p>
-          ) : null}
-          <div className={styles.row}>
-            <MarketplaceStars rating={item.studioRating} label="Studio" />
-            {item.trainerRating.visible ? (
-              <MarketplaceStars rating={item.trainerRating} label="Trainer" />
-            ) : null}
-            {price ? <span className={styles.price}>From {price}</span> : null}
-            {item.seatLabel ? (
-              <span className={styles.seat}>{item.seatLabel}</span>
-            ) : null}
-            {item.seatLabel === "Full" && item.canTrial ? (
-              <span className={styles.trialOpen}>Trial open</span>
+        </Link>
+        <div className={styles.footer}>
+          <div className={styles.footerMeta}>
+            {price ? <span className={styles.price}>{price}</span> : null}
+            {seatUrgency ? (
+              <span
+                className={styles.seat}
+                data-full={seatUrgency === "Full" ? "true" : undefined}
+              >
+                {seatUrgency}
+              </span>
             ) : null}
           </div>
+          {bookVisible ? (
+            <button
+              type="button"
+              className={styles.book}
+              disabled={!item.canTrial}
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                onBook(item);
+              }}
+            >
+              Book
+            </button>
+          ) : null}
         </div>
-      </Link>
-      {bookVisible ? (
-        <div className={styles.actions}>
-          <button
-            type="button"
-            className={styles.book}
-            disabled={!item.canTrial}
-            onClick={(event) => {
-              event.preventDefault();
-              event.stopPropagation();
-              onBook(item);
-            }}
-          >
-            Book
-          </button>
-        </div>
-      ) : null}
+      </div>
     </article>
   );
 }
@@ -121,15 +177,18 @@ export function MarketplaceStudioCardView({
   const price = formatPriceFrom(item.priceFrom, item.priceCadence);
   const audience = audienceLabel(item.audience);
   const canBook = item.canTrial || item.canPrivate || item.canFloorHire;
+  const localityLine = formatLocalityLine(item.locality, item.distanceKm);
 
   return (
     <article className={styles.card}>
-      <Link
-        to="/studios/$slug"
-        params={{ slug: item.slug }}
-        className={styles.cardLink}
-      >
-        <div className={`${styles.media} ${styles.studioMedia}`}>
+      <div className={styles.media}>
+        <Link
+          to="/studios/$slug"
+          params={{ slug: item.slug }}
+          className={styles.mediaLink}
+          tabIndex={-1}
+          aria-hidden
+        >
           {item.coverImageUrl ? (
             <img className={styles.image} src={item.coverImageUrl} alt="" />
           ) : (
@@ -137,39 +196,50 @@ export function MarketplaceStudioCardView({
               {item.name.slice(0, 1)}
             </div>
           )}
-          {audience ? (
-            <div className={styles.badges}>
-              <span className={styles.badge}>{audience}</span>
-            </div>
-          ) : null}
-        </div>
-        <div className={styles.body}>
+        </Link>
+        {audience ? (
+          <div className={styles.badges}>
+            <span className={styles.trialBadge}>{audience}</span>
+          </div>
+        ) : null}
+      </div>
+      <div className={styles.body}>
+        <Link
+          to="/studios/$slug"
+          params={{ slug: item.slug }}
+          className={styles.copyLink}
+        >
           <h3 className={styles.name}>{item.name}</h3>
-          <p className={styles.sub}>
-            {[item.locality, item.city].filter(Boolean).join(" · ")}
-          </p>
-          {item.styles.length > 0 ? (
-            <p className={styles.meta}>{item.styles.slice(0, 3).join(" · ")}</p>
+          {localityLine ? (
+            <p className={styles.metaLine}>
+              <MapPin aria-hidden className={styles.metaIcon} />
+              <span>{localityLine}</span>
+            </p>
           ) : null}
-          <div className={styles.row}>
+          {item.styles.length > 0 ? (
+            <p className={styles.sub}>{item.styles.slice(0, 3).join(" · ")}</p>
+          ) : null}
+          <div className={styles.ratingRow}>
             <MarketplaceStars rating={item.rating} />
+          </div>
+        </Link>
+        <div className={styles.footer}>
+          <div className={styles.footerMeta}>
             {price ? <span className={styles.price}>From {price}</span> : null}
           </div>
+          <button
+            type="button"
+            className={styles.book}
+            disabled={!canBook}
+            onClick={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              onBook(item);
+            }}
+          >
+            Book
+          </button>
         </div>
-      </Link>
-      <div className={styles.actions}>
-        <button
-          type="button"
-          className={styles.book}
-          disabled={!canBook}
-          onClick={(event) => {
-            event.preventDefault();
-            event.stopPropagation();
-            onBook(item);
-          }}
-        >
-          Book
-        </button>
       </div>
     </article>
   );
@@ -187,12 +257,14 @@ export function MarketplaceTrainerCardView({
 
   return (
     <article className={styles.card}>
-      <Link
-        to="/trainers/$slug"
-        params={{ slug: item.slug ?? item.id }}
-        className={styles.cardLink}
-      >
-        <div className={`${styles.media} ${styles.trainerMedia}`}>
+      <div className={`${styles.media} ${styles.trainerMedia}`}>
+        <Link
+          to="/trainers/$slug"
+          params={{ slug: item.slug ?? item.id }}
+          className={styles.mediaLink}
+          tabIndex={-1}
+          aria-hidden
+        >
           {item.photoUrl ? (
             <img className={styles.image} src={item.photoUrl} alt="" />
           ) : (
@@ -200,29 +272,41 @@ export function MarketplaceTrainerCardView({
               {item.name.slice(0, 1)}
             </div>
           )}
-        </div>
-        <div className={styles.body}>
+        </Link>
+      </div>
+      <div className={styles.body}>
+        <Link
+          to="/trainers/$slug"
+          params={{ slug: item.slug ?? item.id }}
+          className={styles.copyLink}
+        >
           <h3 className={styles.name}>{item.name}</h3>
           {teaches ? <p className={styles.sub}>Teaches at {teaches}</p> : null}
-          {item.locality ? <p className={styles.meta}>{item.locality}</p> : null}
-          <div className={styles.row}>
+          {item.locality ? (
+            <p className={styles.metaLine}>
+              <MapPin aria-hidden className={styles.metaIcon} />
+              <span>{item.locality}</span>
+            </p>
+          ) : null}
+          <div className={styles.ratingRow}>
             <MarketplaceStars rating={item.rating} />
           </div>
+        </Link>
+        <div className={styles.footer}>
+          <div className={styles.footerMeta} />
+          <button
+            type="button"
+            className={styles.book}
+            disabled={!canBook}
+            onClick={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              onBook(item);
+            }}
+          >
+            Book
+          </button>
         </div>
-      </Link>
-      <div className={styles.actions}>
-        <button
-          type="button"
-          className={styles.book}
-          disabled={!canBook}
-          onClick={(event) => {
-            event.preventDefault();
-            event.stopPropagation();
-            onBook(item);
-          }}
-        >
-          Book
-        </button>
       </div>
     </article>
   );

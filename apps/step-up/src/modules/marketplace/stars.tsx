@@ -25,7 +25,7 @@ export function MarketplaceStars({
         ★
       </span>
       <strong>{rating.avg.toFixed(1)}</strong>
-      <span className={styles.count}>{rating.count}</span>
+      <span className={styles.count}>({rating.count})</span>
     </span>
   );
 }

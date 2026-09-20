@@ -247,8 +247,12 @@ describe("BookSheet", () => {
         }),
       );
     });
-    expect(await screen.findByRole("heading", { name: "You're booked" })).toBeVisible();
+    expect(
+      (await screen.findAllByRole("heading", { name: "Trial class booked" }))
+        .length,
+    ).toBeGreaterThan(0);
     expect(screen.getByRole("button", { name: "View booking" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Back to home" })).toBeVisible();
     expect(navigate).not.toHaveBeenCalled();
   });
 });

@@ -105,10 +105,12 @@ export function BookSheet({
   open,
   onOpenChange,
   target,
+  mode = "sheet",
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   target: BookSheetTarget | null;
+  mode?: "sheet" | "panel";
 }) {
   const navigate = useNavigate();
   const api = useApi();
@@ -361,7 +363,9 @@ export function BookSheet({
 
   const title =
     step === "success"
-      ? "You're booked"
+      ? bookType === "TRIAL"
+        ? "Trial class booked"
+        : "You're booked"
       : step === "account"
         ? STUDENT_TRIAL.registerTitle
         : types.length === 1 && bookType === "TRIAL"
@@ -544,22 +548,26 @@ export function BookSheet({
     mutation.mutate();
   };
 
-  return (
-    <AppSheet
-      isOpen={open}
-      onOpenChange={onOpenChange}
-      title={title}
-      size="tall"
-    >
-      <div className={styles.body} data-testid="marketplace-book-sheet">
+  const successTitle =
+    success?.status === "AWAITING_PAYMENT"
+      ? "Pay to confirm"
+      : success?.type === "TRIAL"
+        ? "Trial class booked"
+        : "You're booked";
+
+  const body = (
+      <div
+        className={styles.body}
+        data-testid="marketplace-book-sheet"
+        data-mode={mode}
+      >
         {step === "success" && success ? (
           <div className={styles.success}>
+            <div className={styles.successMark} aria-hidden>
+              ✓
+            </div>
             <SuccessState
-              title={
-                success.status === "AWAITING_PAYMENT"
-                  ? "Pay to confirm"
-                  : "Request sent"
-              }
+              title={successTitle}
               description={marketplaceBookingStatusLabel(success.status)}
             />
             <dl className={styles.facts}>
@@ -582,6 +590,12 @@ export function BookSheet({
               <dt>Status</dt>
               <dd>{marketplaceBookingStatusLabel(success.status)}</dd>
             </dl>
+            {success.place ? (
+              <p className={styles.mapHint}>
+                Studio location: {success.place}. Open your booking for map
+                directions.
+              </p>
+            ) : null}
             <div className={styles.actions}>
               <TouchButton
                 variant="primary"
@@ -607,12 +621,46 @@ export function BookSheet({
               >
                 View booking
               </TouchButton>
+              {success.when ? (
+                <TouchButton
+                  variant="default"
+                  fullWidth
+                  onClick={() => {
+                    const start = new Date(success.when as string);
+                    if (Number.isNaN(start.getTime())) return;
+                    const end = new Date(start.getTime() + 60 * 60 * 1000);
+                    const stamp = (d: Date) =>
+                      d
+                        .toISOString()
+                        .replace(/[-:]/g, "")
+                        .replace(/\.\d{3}/, "");
+                    const url = new URL(
+                      "https://calendar.google.com/calendar/render",
+                    );
+                    url.searchParams.set("action", "TEMPLATE");
+                    url.searchParams.set("text", success.title);
+                    url.searchParams.set(
+                      "dates",
+                      `${stamp(start)}/${stamp(end)}`,
+                    );
+                    if (success.place) {
+                      url.searchParams.set("location", success.place);
+                    }
+                    window.open(url.toString(), "_blank", "noopener,noreferrer");
+                  }}
+                >
+                  Add to calendar
+                </TouchButton>
+              ) : null}
               <TouchButton
                 variant="quiet"
                 fullWidth
-                onClick={() => onOpenChange(false)}
+                onClick={() => {
+                  onOpenChange(false);
+                  void navigate({ to: "/" });
+                }}
               >
-                Back to class
+                Back to home
               </TouchButton>
             </div>
           </div>
@@ -995,6 +1043,26 @@ export function BookSheet({
           </>
         ) : null}
       </div>
+  );
+
+  if (mode === "panel") {
+    if (!open || !target) return null;
+    return (
+      <div className={styles.panel} aria-label={title}>
+        <h2 className={styles.panelTitle}>{title}</h2>
+        {body}
+      </div>
+    );
+  }
+
+  return (
+    <AppSheet
+      isOpen={open}
+      onOpenChange={onOpenChange}
+      title={title}
+      size="tall"
+    >
+      {body}
     </AppSheet>
   );
 }

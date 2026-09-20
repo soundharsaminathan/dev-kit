@@ -34,7 +34,15 @@ vi.mock("./catalog", async () => {
   return {
     ...actual,
     fetchMarketplaceClasses: (...args: unknown[]) => fetchClasses(...args),
-    fetchMarketplaceStudios: vi.fn(),
+    fetchMarketplaceStudios: vi.fn().mockResolvedValue({
+      tab: "studios",
+      category: "DANCE",
+      city: "chennai",
+      sort: "rating",
+      empty: { kind: null, message: null },
+      items: [],
+      pins: [],
+    }),
     fetchMarketplaceTrainers: vi.fn(),
     fetchMarketplaceClass: vi.fn(),
     fetchMarketplaceTrainer: vi.fn(),
@@ -145,7 +153,7 @@ describe("MarketplaceHome", () => {
       await screen.findByRole("heading", { name: "Dance classes in Chennai" }),
     ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Dance" })).toHaveAttribute(
-      "data-active",
+      "aria-pressed",
       "true",
     );
     expect(screen.getByRole("button", { name: "Classes" })).toHaveAttribute(

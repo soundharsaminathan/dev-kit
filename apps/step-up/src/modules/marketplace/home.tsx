@@ -206,6 +206,21 @@ export function MarketplaceHome({
     staleTime: 30_000,
   });
 
+  const featuredStudiosQuery = useQuery({
+    queryKey: marketplaceStudiosQueryKey(
+      { ...catalogInput, sort: "rating", limit: 6 },
+      `featured:${viewerKey}`,
+    ),
+    queryFn: async () =>
+      fetchMarketplaceStudios(
+        { ...catalogInput, sort: "rating", limit: 6 },
+        await resolveAuth(),
+      ),
+    enabled: variant === "public" && tab === "classes",
+    staleTime: 60_000,
+  });
+  const featuredStudios = (featuredStudiosQuery.data?.items ?? []).slice(0, 4);
+
   const page =
     tab === "classes"
       ? classesQuery.data
@@ -276,11 +291,13 @@ export function MarketplaceHome({
   });
 
   const sortChips = [
+    { id: "availability", label: "Availability" },
     ...(search.q ? [{ id: "relevance", label: "Relevance" }] : []),
     { id: "earliest", label: "Earliest" },
     { id: "price", label: "Price" },
     { id: "rating", label: "Rating" },
     { id: "nearest", label: "Nearest" },
+    { id: "popularity", label: "Popular" },
   ];
 
   const filterChips = [
@@ -429,27 +446,167 @@ export function MarketplaceHome({
     </div>
   );
 
+  const filterSidebar = (
+    <aside className={styles.sidebar} aria-label="Filters">
+      <div className={styles.filterGroup}>
+        <h2 className={styles.filterTitle}>Category</h2>
+        <div className={styles.filterList}>
+          {CATEGORY_CHIPS.map((chip) => (
+            <label key={chip.id} className={styles.filterOption}>
+              <input
+                type="radio"
+                name="marketplace-category"
+                checked={chip.id === category}
+                onChange={() =>
+                  patchSearch({
+                    category: chip.id as PublicMarketplaceCategory,
+                  })
+                }
+              />
+              <span>{chip.label}</span>
+            </label>
+          ))}
+        </div>
+      </div>
+      <div className={styles.filterGroup}>
+        <h2 className={styles.filterTitle}>Audience</h2>
+        <div className={styles.filterList}>
+          {[
+            { id: "ALL", label: "All" },
+            { id: "KIDS", label: "Kids" },
+            { id: "ADULTS", label: "Adults" },
+          ].map((chip) => (
+            <label key={chip.id} className={styles.filterOption}>
+              <input
+                type="radio"
+                name="marketplace-audience"
+                checked={(search.audience ?? "ALL") === chip.id}
+                onChange={() => {
+                  if (chip.id === "ALL") {
+                    patchSearch({ audience: undefined });
+                    return;
+                  }
+                  patchSearch({
+                    audience: chip.id as "KIDS" | "ADULTS",
+                  });
+                }}
+              />
+              <span>{chip.label}</span>
+            </label>
+          ))}
+        </div>
+      </div>
+      <div className={styles.filterGroup}>
+        <h2 className={styles.filterTitle}>Level</h2>
+        <div className={styles.filterList}>
+          {[
+            { id: "BEGINNER", label: "Beginner" },
+            { id: "INTERMEDIATE", label: "Intermediate" },
+            { id: "ADVANCED", label: "Advanced" },
+          ].map((chip) => (
+            <label key={chip.id} className={styles.filterOption}>
+              <input
+                type="checkbox"
+                checked={search.level === chip.id}
+                onChange={() =>
+                  patchSearch({
+                    level: toggleLevel(
+                      search.level,
+                      chip.id as "BEGINNER" | "INTERMEDIATE" | "ADVANCED",
+                    ),
+                  })
+                }
+              />
+              <span>{chip.label}</span>
+            </label>
+          ))}
+        </div>
+      </div>
+      <div className={styles.filterGroup}>
+        <h2 className={styles.filterTitle}>Date and time</h2>
+        <div className={styles.filterList}>
+          {[
+            { id: "today", label: "Today", key: "when" as const },
+            { id: "tomorrow", label: "Tomorrow", key: "when" as const },
+            { id: "weekend", label: "Weekend", key: "days" as const },
+            { id: "evening", label: "Evening", key: "time" as const },
+          ].map((chip) => {
+            const active =
+              chip.key === "when"
+                ? search.when === chip.id
+                : chip.key === "days"
+                  ? search.days === chip.id
+                  : search.time === chip.id;
+            return (
+              <label key={chip.id} className={styles.filterOption}>
+                <input
+                  type="checkbox"
+                  checked={Boolean(active)}
+                  onChange={() => {
+                    if (chip.key === "when") {
+                      patchSearch({
+                        when:
+                          search.when === chip.id
+                            ? undefined
+                            : (chip.id as "today" | "tomorrow"),
+                        sort: "earliest",
+                      });
+                      return;
+                    }
+                    if (chip.key === "days") {
+                      patchSearch({
+                        days:
+                          search.days === "weekend" ? undefined : "weekend",
+                      });
+                      return;
+                    }
+                    patchSearch({
+                      time: search.time === "evening" ? undefined : "evening",
+                    });
+                  }}
+                />
+                <span>{chip.label}</span>
+              </label>
+            );
+          })}
+        </div>
+      </div>
+      <div className={styles.filterGroup}>
+        <h2 className={styles.filterTitle}>Area</h2>
+        <button
+          type="button"
+          className={styles.filterBtn}
+          onClick={() => setAreaOpen(true)}
+        >
+          {search.locality
+            ? (MARKETPLACE_AREAS.find((a) => a.id === search.locality)?.label ??
+              "Area")
+            : "All areas"}
+        </button>
+        <button
+          type="button"
+          className={styles.filterBtn}
+          onClick={requestNearMe}
+        >
+          Near me
+        </button>
+      </div>
+      {hasNarrowFilters(search) || search.locality ? (
+        <button
+          type="button"
+          className={styles.clearFilters}
+          onClick={() => patchSearch(clearMarketplaceFilters(search))}
+        >
+          Clear filters
+        </button>
+      ) : null}
+    </aside>
+  );
+
   const feed = (
     <div className={styles.page} data-variant={variant} data-view={view}>
         <div className={styles.chrome} data-variant={variant}>
           <div className={styles.chromeInner}>
-            <div className={styles.tabs} role="tablist" aria-label="Category">
-              {CATEGORY_CHIPS.map((chip) => (
-                <button
-                  key={chip.id}
-                  type="button"
-                  className={styles.category}
-                  data-active={chip.id === category || undefined}
-                  onClick={() =>
-                    patchSearch({
-                      category: chip.id as PublicMarketplaceCategory,
-                    })
-                  }
-                >
-                  {chip.label}
-                </button>
-              ))}
-            </div>
             <div className={styles.tabs} role="tablist" aria-label="Browse">
               {TAB_CHIPS.map((chip) => (
                 <button
@@ -480,83 +637,111 @@ export function MarketplaceHome({
                 onChange={(event) => setDraftQ(event.target.value)}
               />
             </form>
-            <FilterChipRow
-              chips={filterChips}
-              selected={selectedFilters}
-              onToggle={(id) => {
-                if (id === "ALL") {
-                  patchSearch({ audience: undefined });
-                  return;
-                }
-                if (id === "KIDS" || id === "ADULTS") {
-                  patchSearch({ audience: toggleAudience(search.audience, id) });
-                  return;
-                }
-                if (
-                  id === "BEGINNER" ||
-                  id === "INTERMEDIATE" ||
-                  id === "ADVANCED"
-                ) {
-                  patchSearch({ level: toggleLevel(search.level, id) });
-                }
-              }}
-            />
-            <div className={styles.rail}>
+            <div className={styles.mobileFilters}>
               <FilterChipRow
-                chips={railChips}
-                selected={selectedRail}
-                onToggle={(id) => {
-                  if (id === "today" || id === "tomorrow") {
-                    patchSearch({
-                      when: search.when === id ? undefined : id,
-                      sort: "earliest",
-                    });
-                    return;
-                  }
-                  if (id === "weekend") {
-                    patchSearch({
-                      days: search.days === "weekend" ? undefined : "weekend",
-                    });
-                    return;
-                  }
-                  if (id === "evening") {
-                    patchSearch({
-                      time: search.time === "evening" ? undefined : "evening",
-                    });
-                    return;
-                  }
-                  if (id === "area") {
-                    setAreaOpen(true);
-                    return;
-                  }
-                  if (id === "near") requestNearMe();
-                }}
-                trailing={viewToggle}
-              />
-            </div>
-            <FilterChipRow
-              chips={sortChips}
-              selected={[search.sort ?? catalogInput.sort ?? "availability"]}
-              onToggle={(id) => {
-                if (id === "nearest" && (search.lat == null || search.lng == null)) {
-                  requestNearMe();
-                  return;
+                chips={CATEGORY_CHIPS}
+                selected={[category]}
+                onToggle={(id) =>
+                  patchSearch({
+                    category: id as PublicMarketplaceCategory,
+                  })
                 }
-                patchSearch({
-                  sort: id as MarketplaceUrlSearch["sort"],
-                });
-              }}
-            />
+              />
+              <FilterChipRow
+                chips={filterChips}
+                selected={selectedFilters}
+                onToggle={(id) => {
+                  if (id === "ALL") {
+                    patchSearch({ audience: undefined });
+                    return;
+                  }
+                  if (id === "KIDS" || id === "ADULTS") {
+                    patchSearch({ audience: toggleAudience(search.audience, id) });
+                    return;
+                  }
+                  if (
+                    id === "BEGINNER" ||
+                    id === "INTERMEDIATE" ||
+                    id === "ADVANCED"
+                  ) {
+                    patchSearch({ level: toggleLevel(search.level, id) });
+                  }
+                }}
+              />
+              <div className={styles.rail}>
+                <FilterChipRow
+                  chips={railChips}
+                  selected={selectedRail}
+                  onToggle={(id) => {
+                    if (id === "today" || id === "tomorrow") {
+                      patchSearch({
+                        when: search.when === id ? undefined : id,
+                        sort: "earliest",
+                      });
+                      return;
+                    }
+                    if (id === "weekend") {
+                      patchSearch({
+                        days: search.days === "weekend" ? undefined : "weekend",
+                      });
+                      return;
+                    }
+                    if (id === "evening") {
+                      patchSearch({
+                        time: search.time === "evening" ? undefined : "evening",
+                      });
+                      return;
+                    }
+                    if (id === "area") {
+                      setAreaOpen(true);
+                      return;
+                    }
+                    if (id === "near") requestNearMe();
+                  }}
+                />
+              </div>
+            </div>
           </div>
         </div>
 
-        <section className={styles.feed} data-view={view}>
+        <div className={styles.browse} data-view={view}>
+          {filterSidebar}
+          <section className={styles.feed} data-view={view}>
           <div className={styles.heading}>
-            {variant === "member" ? (
-              <p className={styles.title}>{title}</p>
-            ) : (
-              <h1 className={styles.title}>{title}</h1>
-            )}
+            <div className={styles.headingRow}>
+              {variant === "member" ? (
+                <p className={styles.title}>{title}</p>
+              ) : (
+                <h1 className={styles.title}>{title}</h1>
+              )}
+              <div className={styles.headingTools}>
+                {visibleCount > 0 ? (
+                  <p className={styles.count}>{visibleCount} results</p>
+                ) : null}
+                <label className={styles.sortLabel}>
+                  <span className={styles.sortText}>Sort by</span>
+                  <select
+                    className={styles.sortSelect}
+                    value={search.sort ?? catalogInput.sort ?? "availability"}
+                    onChange={(event) => {
+                      const next = event.target.value as MarketplaceUrlSearch["sort"];
+                      if (next === "nearest" && (search.lat == null || search.lng == null)) {
+                        requestNearMe();
+                        return;
+                      }
+                      patchSearch({ sort: next });
+                    }}
+                  >
+                    {sortChips.map((chip) => (
+                      <option key={chip.id} value={chip.id}>
+                        {chip.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                {viewToggle}
+              </div>
+            </div>
             {geoHint ? <p className={styles.hint}>{geoHint}</p> : null}
             <RateLastClass enabled={Boolean(user?.id)} />
           </div>
@@ -608,7 +793,11 @@ export function MarketplaceHome({
                   />
                 </div>
               ) : null}
-              <div className={cardStyles.grid} data-view={view}>
+              <div
+                className={cardStyles.grid}
+                data-view={view}
+                data-layout={view === "list" ? "list" : undefined}
+              >
                 {tab === "classes"
                   ? classItems.map((item) => (
                       <div
@@ -678,7 +867,34 @@ export function MarketplaceHome({
               </div>
             </div>
           ) : null}
+
+          {featuredStudios.length > 0 ? (
+            <section className={styles.featured} aria-labelledby="featured-studios">
+              <div className={styles.featuredHead}>
+                <h2 id="featured-studios" className={styles.featuredTitle}>
+                  Featured studios
+                </h2>
+                <Link
+                  {...studiosLink}
+                  className={styles.featuredLink}
+                >
+                  See all studios
+                </Link>
+              </div>
+              <div className={styles.featuredRail}>
+                {featuredStudios.map((item) => (
+                  <div key={item.id} className={styles.featuredCard}>
+                    <MarketplaceStudioCardView
+                      item={item}
+                      onBook={bookStudio}
+                    />
+                  </div>
+                ))}
+              </div>
+            </section>
+          ) : null}
         </section>
+        </div>
 
       <AppSheet
         isOpen={areaOpen}

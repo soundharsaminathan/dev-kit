@@ -1,4 +1,4 @@
-import { screen } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { renderWithProviders } from "@/test/render";
 import {
@@ -189,7 +189,7 @@ describe("marketplace detail loop", () => {
       "href",
       "/studios/rhythm-house",
     );
-    expect(screen.getByRole("link", { name: "Priya" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: /Priya/ })).toHaveAttribute(
       "href",
       "/trainers/priya",
     );
@@ -243,7 +243,10 @@ describe("marketplace detail loop", () => {
     const listing = screen
       .getByRole("heading", { name: "Hip Hop Foundations" })
       .closest("article");
-    expect(listing?.querySelector("button")).toBeNull();
+    expect(listing).not.toBeNull();
+    expect(
+      within(listing as HTMLElement).queryByRole("button", { name: "Book" }),
+    ).toBeNull();
     expect(screen.getAllByRole("button", { name: "Book" }).length).toBeGreaterThan(
       0,
     );

@@ -6,6 +6,7 @@ Tagline on the public landing page: *Dance studio operations, beautifully simple
 
 This document is a product and architecture summary. Setup, testing, and API layering live in:
 
+- [`docs/classa-features.md`](../../docs/classa-features.md) — complete feature catalog
 - [README.md](./README.md) — local dev, PWA, deploy
 - [TESTING.md](./TESTING.md) and [FLOW_COVERAGE_MATRIX.md](./FLOW_COVERAGE_MATRIX.md) — test contract
 - [`apps/step-up-api/ARCHITECTURE.md`](../step-up-api/ARCHITECTURE.md) — API layering, outbox, CQRS

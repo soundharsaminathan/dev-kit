@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { ApiError } from "@/lib/api";
 import { PublicShell } from "@/modules/layout/public-shell";
 import {
@@ -147,97 +147,159 @@ function DetailStatus({
 export function MarketplaceClassDetailView({
   item,
   onBook,
+  bookSlot,
 }: {
   item: MarketplaceClassDetail;
   onBook: () => void;
+  bookSlot?: ReactNode;
 }) {
   const price = formatPriceFrom(item.priceFrom, item.priceCadence);
   const showBook = item.upcomingSessions.length > 0 && item.canTrial;
+  const primaryTrainer = item.trainers[0];
 
   return (
-    <article className={styles.page}>
-      <div className={styles.hero}>
-        {item.coverImageUrl ? (
-          <img src={item.coverImageUrl} alt="" />
-        ) : (
-          <div className={styles.placeholder} aria-hidden>
-            {item.name.slice(0, 1)}
-          </div>
-        )}
-      </div>
-      <div>
-        <p className={styles.kicker}>{item.branchName}</p>
-        <h1 className={styles.title}>{item.name}</h1>
-        <div className={styles.row}>
-          <Link
-            to="/studios/$slug"
-            params={{ slug: item.studioSlug }}
-            className={styles.link}
-          >
-            {item.studioName}
-          </Link>
-          {item.locality ? <span className={styles.meta}>{item.locality}</span> : null}
-          <MarketplaceStars rating={item.studioRating} label="Studio" />
-          {item.trainerRating.visible ? (
-            <MarketplaceStars rating={item.trainerRating} label="Trainer" />
+    <article className={styles.page} data-layout={bookSlot ? "split" : undefined}>
+      <div className={styles.mainCol}>
+        <div className={styles.hero}>
+          {item.coverImageUrl ? (
+            <img src={item.coverImageUrl} alt="" />
+          ) : (
+            <div className={styles.placeholder} aria-hidden>
+              {item.name.slice(0, 1)}
+            </div>
+          )}
+          {item.canTrial ? (
+            <span className={styles.heroBadge}>Trial available</span>
           ) : null}
         </div>
+        <div className={styles.headerBlock}>
+          <p className={styles.kicker}>{item.branchName}</p>
+          <h1 className={styles.title}>{item.name}</h1>
+          <div className={styles.row}>
+            <Link
+              to="/studios/$slug"
+              params={{ slug: item.studioSlug }}
+              className={styles.link}
+            >
+              {item.studioName}
+            </Link>
+            {item.locality ? (
+              <span className={styles.meta}>{item.locality}</span>
+            ) : null}
+            <MarketplaceStars rating={item.studioRating} label="Studio" />
+            {item.trainerRating.visible ? (
+              <MarketplaceStars rating={item.trainerRating} label="Trainer" />
+            ) : null}
+          </div>
+          <div className={styles.facts}>
+            {item.scheduleLabel ? (
+              <span className={styles.fact}>{item.scheduleLabel}</span>
+            ) : null}
+            {item.nextSessionAt ? (
+              <span className={styles.fact}>
+                Next {formatWhen(item.nextSessionAt)}
+              </span>
+            ) : null}
+            {item.seatLabel ? (
+              <span className={styles.fact} data-warn={item.seatLabel === "Full" || undefined}>
+                {item.seatLabel}
+              </span>
+            ) : null}
+            {price ? <span className={styles.fact}>From {price}</span> : null}
+          </div>
+        </div>
+
+        {primaryTrainer ? (
+          <section className={styles.section}>
+            <h2 className={styles.sectionTitle}>Trainer</h2>
+            <Link
+              to="/trainers/$slug"
+              params={{ slug: primaryTrainer.slug }}
+              className={styles.personCard}
+            >
+              {primaryTrainer.photoUrl ? (
+                <img
+                  className={styles.avatar}
+                  src={primaryTrainer.photoUrl}
+                  alt=""
+                />
+              ) : (
+                <span className={styles.avatarFallback} aria-hidden>
+                  {primaryTrainer.name.slice(0, 1)}
+                </span>
+              )}
+              <span className={styles.personCopy}>
+                <strong>{primaryTrainer.name}</strong>
+                <span>View profile</span>
+              </span>
+            </Link>
+          </section>
+        ) : null}
+
+        {item.plans.length > 0 ? (
+          <section className={styles.section}>
+            <h2 className={styles.sectionTitle}>Plans</h2>
+            <ul className={styles.list}>
+              {item.plans.map((plan) => (
+                <li key={`${plan.name}-${plan.price}`} className={styles.planRow}>
+                  <span>{plan.name}</span>
+                  <strong>{formatPriceFrom(plan.price, plan.cadence)}</strong>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
+
+        {item.trainers.length > 1 ? (
+          <section className={styles.section}>
+            <h2 className={styles.sectionTitle}>Trainers</h2>
+            <ul className={styles.list}>
+              {item.trainers.map((trainer) => (
+                <li key={trainer.id}>
+                  <Link
+                    to="/trainers/$slug"
+                    params={{ slug: trainer.slug }}
+                    className={styles.related}
+                  >
+                    <span className={styles.relatedName}>{trainer.name}</span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
+
+        {item.upcomingSessions.length > 0 ? (
+          <section className={styles.section}>
+            <h2 className={styles.sectionTitle}>Upcoming sessions</h2>
+            <ul className={styles.sessionList}>
+              {item.upcomingSessions.map((session) => (
+                <li key={session.sessionId} className={styles.sessionRow}>
+                  <span>{formatWhen(session.startsAt)}</span>
+                  {showBook ? (
+                    <button
+                      type="button"
+                      className={styles.sessionBook}
+                      onClick={onBook}
+                    >
+                      Book
+                    </button>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
+
+        {showBook && !bookSlot ? (
+          <div className={styles.mobileBookBar}>
+            <button type="button" className={styles.book} onClick={onBook}>
+              Book
+            </button>
+          </div>
+        ) : null}
       </div>
-      {item.scheduleLabel ? <p className={styles.meta}>{item.scheduleLabel}</p> : null}
-      {item.nextSessionAt ? (
-        <p className={styles.meta}>Next: {formatWhen(item.nextSessionAt)}</p>
-      ) : null}
-      {item.seatLabel ? <p className={styles.meta}>{item.seatLabel}</p> : null}
-      {price ? <p className={styles.meta}>From {price}</p> : null}
-
-      {item.plans.length > 0 ? (
-        <section className={styles.section}>
-          <h2 className={styles.sectionTitle}>Plans</h2>
-          <ul className={styles.list}>
-            {item.plans.map((plan) => (
-              <li key={`${plan.name}-${plan.price}`}>
-                {plan.name} · {formatPriceFrom(plan.price, plan.cadence)}
-              </li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
-
-      {item.trainers.length > 0 ? (
-        <section className={styles.section}>
-          <h2 className={styles.sectionTitle}>Trainers</h2>
-          <ul className={styles.list}>
-            {item.trainers.map((trainer) => (
-              <li key={trainer.id}>
-                <Link
-                  to="/trainers/$slug"
-                  params={{ slug: trainer.slug }}
-                  className={styles.related}
-                >
-                  <span className={styles.relatedName}>{trainer.name}</span>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
-
-      {item.upcomingSessions.length > 0 ? (
-        <section className={styles.section}>
-          <h2 className={styles.sectionTitle}>Upcoming sessions</h2>
-          <ul className={styles.list}>
-            {item.upcomingSessions.map((session) => (
-              <li key={session.sessionId}>{formatWhen(session.startsAt)}</li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
-
-      {showBook ? (
-        <button type="button" className={styles.book} onClick={onBook}>
-          Book
-        </button>
-      ) : null}
+      {bookSlot ? <aside className={styles.bookCol}>{bookSlot}</aside> : null}
     </article>
   );
 }
@@ -374,30 +436,63 @@ export function MarketplaceTrainerDetailView({
   onBook: () => void;
 }) {
   const showBook = item.canTrial || item.canPrivate;
+  const locality =
+    item.locality ||
+    item.studios[0]?.name ||
+    item.city ||
+    null;
 
   return (
     <article className={styles.page}>
-      <div className={styles.hero}>
+      <div className={styles.profileHero}>
         {item.photoUrl ? (
-          <img src={item.photoUrl} alt="" />
+          <img className={styles.cover} src={item.photoUrl} alt="" />
         ) : (
-          <div className={styles.placeholder} aria-hidden>
-            {item.name.slice(0, 1)}
-          </div>
+          <div className={styles.coverPlaceholder} aria-hidden />
         )}
-      </div>
-      <div>
-        <h1 className={styles.title}>{item.name}</h1>
-        <div className={styles.row}>
-          <MarketplaceStars rating={item.rating} />
-          {item.categories.map((category) => (
-            <span key={category} className={styles.chip}>
-              {categoryLabel(category)}
+        <div className={styles.profileIdentity}>
+          {item.photoUrl ? (
+            <img className={styles.profileAvatar} src={item.photoUrl} alt="" />
+          ) : (
+            <span className={styles.profileAvatarFallback} aria-hidden>
+              {item.name.slice(0, 1)}
             </span>
-          ))}
+          )}
+          <div>
+            <h1 className={styles.title}>{item.name}</h1>
+            <div className={styles.row}>
+              <MarketplaceStars rating={item.rating} />
+              {locality ? <span className={styles.meta}>{locality}</span> : null}
+            </div>
+          </div>
         </div>
       </div>
-      {item.bio ? <p className={styles.about}>{item.bio}</p> : null}
+
+      {item.categories.length > 0 || item.styles.length > 0 ? (
+        <section className={styles.section}>
+          <h2 className={styles.sectionTitle}>Specialties</h2>
+          <div className={styles.row}>
+            {item.categories.map((category) => (
+              <span key={category} className={styles.chip}>
+                {categoryLabel(category)}
+              </span>
+            ))}
+            {item.styles.map((style) => (
+              <span key={style} className={styles.chip}>
+                {style}
+              </span>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      {item.bio ? (
+        <section className={styles.section}>
+          <h2 className={styles.sectionTitle}>About</h2>
+          <p className={styles.about}>{item.bio}</p>
+        </section>
+      ) : null}
+
       {item.nextClassAt ? (
         <p className={styles.meta}>Next class: {formatWhen(item.nextClassAt)}</p>
       ) : null}
@@ -423,28 +518,51 @@ export function MarketplaceTrainerDetailView({
 
       {item.classes.length > 0 ? (
         <section className={styles.section}>
-          <h2 className={styles.sectionTitle}>Classes</h2>
-          <ul className={styles.list}>
+          <h2 className={styles.sectionTitle}>Upcoming sessions</h2>
+          <ul className={styles.sessionList}>
             {item.classes.map((klass) => (
-              <li key={klass.id}>
+              <li key={klass.id} className={styles.sessionRow}>
                 <Link
                   to="/classes/$slug"
                   params={{ slug: klass.slug }}
-                  className={styles.related}
+                  className={styles.sessionCopyLink}
                 >
-                  <span className={styles.relatedName}>{klass.name}</span>
+                  <strong>{klass.name}</strong>
                   <span className={styles.relatedMeta}>{klass.studioName}</span>
                 </Link>
+                {showBook ? (
+                  <button
+                    type="button"
+                    className={styles.sessionBook}
+                    onClick={onBook}
+                  >
+                    Book
+                  </button>
+                ) : null}
               </li>
             ))}
           </ul>
         </section>
       ) : null}
 
+      {item.rating.visible ? (
+        <section className={styles.section}>
+          <h2 className={styles.sectionTitle}>Reviews</h2>
+          <div className={styles.reviewSummary}>
+            <MarketplaceStars rating={item.rating} />
+            <p className={styles.meta}>
+              {item.rating.count} review{item.rating.count === 1 ? "" : "s"}
+            </p>
+          </div>
+        </section>
+      ) : null}
+
       {showBook ? (
-        <button type="button" className={styles.book} onClick={onBook}>
-          Book
-        </button>
+        <div className={styles.mobileBookBar}>
+          <button type="button" className={styles.book} onClick={onBook}>
+            Book
+          </button>
+        </div>
       ) : null}
     </article>
   );
@@ -476,11 +594,41 @@ export function MarketplaceClassDetailPage({ slug }: { slug: string }) {
   });
   const item = query.data;
   const [book, setBook] = useState<BookTarget | null>(null);
+  const [panelOpen, setPanelOpen] = useState(true);
   useCanonicalSlug(slug, item?.slug);
   useSeo(
     item ? classDetailTitle(item) : "Class",
     `/classes/${item?.slug ?? slug}`,
   );
+
+  const bookTarget: BookTarget | null = item
+    ? {
+        source: "class",
+        studioId: item.studioId,
+        studioName: item.studioName,
+        batchId: item.id,
+        classSlug: item.slug,
+        className: item.name,
+        audience: item.audience,
+        trainerId: item.trainerId,
+        trainerName: item.trainerName,
+        canTrial: item.canTrial,
+        canEnroll: item.canEnroll,
+        canPrivate: item.canPrivate,
+        canFloorHire: false,
+        viewerEnrolled: item.viewerEnrolled,
+      }
+    : null;
+
+  const openBook = () => {
+    setBook(bookTarget);
+  };
+
+  const showPanel =
+    Boolean(item) &&
+    Boolean(bookTarget) &&
+    item!.upcomingSessions.length > 0 &&
+    item!.canTrial;
 
   return (
     <PublicShell nav="student" width="full">
@@ -493,23 +641,16 @@ export function MarketplaceClassDetailPage({ slug }: { slug: string }) {
       {item ? (
         <MarketplaceClassDetailView
           item={item}
-          onBook={() =>
-            setBook({
-              source: "class",
-              studioId: item.studioId,
-              studioName: item.studioName,
-              batchId: item.id,
-              classSlug: item.slug,
-              className: item.name,
-              audience: item.audience,
-              trainerId: item.trainerId,
-              trainerName: item.trainerName,
-              canTrial: item.canTrial,
-              canEnroll: item.canEnroll,
-              canPrivate: item.canPrivate,
-              canFloorHire: false,
-              viewerEnrolled: item.viewerEnrolled,
-            })
+          onBook={openBook}
+          bookSlot={
+            showPanel ? (
+              <BookSheet
+                mode="panel"
+                open={panelOpen}
+                onOpenChange={setPanelOpen}
+                target={bookTarget}
+              />
+            ) : null
           }
         />
       ) : null}

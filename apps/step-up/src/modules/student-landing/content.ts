@@ -14,16 +14,29 @@ export const STUDENT_HERO = {
 
 export const STUDENT_NAV: {
   links: Array<
-    { label: string; href: string } | { label: string; to: "/for-studios" }
+    | { label: string; href: string }
+    | {
+        label: string;
+        to: "/" | "/classes" | "/studios" | "/trainers" | "/for-studios";
+      }
   >;
   findStudio: string;
   joinStudio: string;
+  listStudio: string;
   login: string;
+  signup: string;
 } = {
-  links: [{ label: "For studios", to: "/for-studios" }],
+  links: [
+    { label: "Explore", to: "/" },
+    { label: "Classes", to: "/classes" },
+    { label: "Studios", to: "/studios" },
+    { label: "Trainers", to: "/trainers" },
+  ],
   findStudio: "Log in",
   joinStudio: "For studios",
+  listStudio: "List your studio",
   login: "Log in",
+  signup: "Sign up",
 };
 
 export const STUDENT_TAGLINE = {

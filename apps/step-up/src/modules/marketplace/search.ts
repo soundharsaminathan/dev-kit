@@ -291,7 +291,7 @@ export function marketplaceCanonicalPath(
   if (seo) return tab === "classes" ? seo : `${seo}?tab=${tab}`;
   if (tab === "studios") return "/studios";
   if (tab === "trainers") return "/trainers";
-  return "/";
+  return "/classes";
 }
 
 export function marketplacePageShouldIndex(
