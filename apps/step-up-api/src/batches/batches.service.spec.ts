@@ -1320,6 +1320,33 @@ describe("BatchesService.remove and enroll", () => {
     ).rejects.toThrow(/adults only/);
   });
 
+  it("blocks an adult join on a kids class when marketplace enrollment is on", async () => {
+    prisma.familyMember.findFirst.mockResolvedValue(null);
+    prisma.parentChild.findFirst.mockResolvedValue(null);
+    prisma.batch.findUnique.mockResolvedValue({
+      id: "batch-1",
+      studioId: "studio-1",
+      active: true,
+      capacity: 10,
+      classAudience: "KIDS",
+      enrollmentMode: EnrollmentMode.STAFF_ONLY,
+      enrollments: [],
+      studio: { settings: { bookingEnrollment: true } },
+    });
+
+    await expect(
+      service.enroll(
+        "batch-1",
+        "student-1",
+        {
+          id: "student-1",
+          role: UserRole.STUDENT,
+        } as never,
+        "sub-1",
+      ),
+    ).rejects.toThrow(/this class is for kids/i);
+  });
+
   it("enrolls with a package and creates a pending invoice", async () => {
     prisma.batch.findUnique.mockResolvedValue({
       id: "batch-1",

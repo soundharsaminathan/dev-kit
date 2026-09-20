@@ -66,6 +66,9 @@ const QUICK_FILTERS = [
 
 const HERO_COLLAGE_BG = "/marketplace/hero-collage-bg.jpg";
 const HERO_COLLAGE_BG_DARK = "/marketplace/hero-collage-bg-dark.jpg";
+const HERO_COLLAGE_BG_MOBILE = "/marketplace/hero-collage-bg-mobile.jpg";
+const HERO_COLLAGE_BG_MOBILE_DARK =
+  "/marketplace/hero-collage-bg-mobile-dark.jpg";
 
 const CATEGORY_CARDS: Array<{
   id: PublicMarketplaceCategory;
@@ -210,10 +213,27 @@ function LandingInner() {
       <section className={styles.hero} aria-labelledby="home-hero-title">
         <img
           className={styles.heroBg}
+          src={HERO_COLLAGE_BG_MOBILE}
+          alt=""
+          aria-hidden
+          data-theme="light"
+          data-viewport="mobile"
+        />
+        <img
+          className={styles.heroBg}
+          src={HERO_COLLAGE_BG_MOBILE_DARK}
+          alt=""
+          aria-hidden
+          data-theme="dark"
+          data-viewport="mobile"
+        />
+        <img
+          className={styles.heroBg}
           src={HERO_COLLAGE_BG}
           alt=""
           aria-hidden
           data-theme="light"
+          data-viewport="desktop"
         />
         <img
           className={styles.heroBg}
@@ -221,6 +241,7 @@ function LandingInner() {
           alt=""
           aria-hidden
           data-theme="dark"
+          data-viewport="desktop"
         />
         <div className={styles.heroInner}>
           <h1 id="home-hero-title" className={styles.headline}>

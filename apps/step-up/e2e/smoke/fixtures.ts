@@ -133,9 +133,10 @@ export async function clearBrowserAuthState(page: Page) {
 async function openSmokeLogin(page: Page) {
   await page.goto(SMOKE_LOGIN_PATH, { waitUntil: "domcontentloaded" });
   await waitForAppReady(page);
-  await expect(page).toHaveURL(/[?&]direct=(true|1)\b/);
+  await expect(page).toHaveURL(/[?&]direct=true\b/);
   await expect(page.getByTestId("login-studio-select")).toHaveCount(0);
   await expect(page.getByRole("textbox", { name: /^username/i })).toBeVisible();
+  await expect(page.locator('input[name="password"]')).toBeEnabled();
 }
 
 async function fillSmokeCredentials(
@@ -145,12 +146,15 @@ async function fillSmokeCredentials(
 ) {
   const identifier = page.getByRole("textbox", { name: /^username/i });
   const secret = page.locator('input[name="password"]');
-  await identifier.click();
-  await identifier.fill(email);
-  await secret.click();
-  await secret.fill(password);
-  await expect(identifier).toHaveValue(email);
-  await expect(secret).toHaveValue(password);
+  // Hydrate / search rewrite remounts the controlled form and can wipe fill().
+  await expect(async () => {
+    await identifier.click();
+    await identifier.fill(email);
+    await secret.click();
+    await secret.fill(password);
+    expect(await identifier.inputValue()).toBe(email);
+    expect(await secret.inputValue()).toBe(password);
+  }).toPass({ timeout: 20_000, intervals: [250, 500, 1_000] });
 }
 
 export async function signInSmokeRole(
@@ -168,8 +172,9 @@ export async function signInSmokeRole(
     await clearBrowserAuthState(page);
     await page.reload({ waitUntil: "domcontentloaded" });
     await waitForAppReady(page);
-    await expect(page).toHaveURL(/[?&]direct=(true|1)\b/);
+    await expect(page).toHaveURL(/[?&]direct=true\b/);
     await expect(page.getByTestId("login-studio-select")).toHaveCount(0);
+    await expect(page.locator('input[name="password"]')).toBeEnabled();
   }
 
   const submit = page
