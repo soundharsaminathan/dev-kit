@@ -175,7 +175,7 @@ export const SETTINGS_PAGE_META: Record<
   },
   "/app/settings/branding": {
     title: "Branding",
-    subtitle: "Logo and member home hero images.",
+    subtitle: "Logo and member home hero images used throughout classa.",
   },
   "/app/settings/styles": {
     title: "Dance styles",

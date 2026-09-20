@@ -110,7 +110,9 @@ export function SettingsLayout({
   const isAdmin = user?.role === "OWNER" || user?.role === "STAFF";
   const isWorkspace =
     pathname === "/app/settings/profile" ||
-    pathname.startsWith("/app/settings/profile/");
+    pathname.startsWith("/app/settings/profile/") ||
+    pathname === "/app/settings/branding" ||
+    pathname.startsWith("/app/settings/branding/");
 
   const featuresQuery = useStudioFeatures();
   const features = featuresQuery.data?.features;

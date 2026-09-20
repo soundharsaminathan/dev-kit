@@ -248,11 +248,13 @@ export function StudioProfilePreview({
 type StudioProfileCompletionProps = {
   percent: number;
   items: CompletionItem[];
+  title?: string;
 };
 
 export function StudioProfileCompletion({
   percent,
   items,
+  title = "Profile completion",
 }: StudioProfileCompletionProps) {
   const done = items.filter((item) => item.done);
   const todo = items.filter((item) => !item.done);
@@ -263,14 +265,10 @@ export function StudioProfileCompletion({
       data-testid="studio-profile-completion"
     >
       <div className={styles.completionHead}>
-        <h2 className={styles.completionTitle}>Profile completion</h2>
+        <h2 className={styles.completionTitle}>{title}</h2>
         <p className={styles.percent}>{percent}%</p>
       </div>
-      <ProgressBar
-        value={percent}
-        maxValue={100}
-        aria-label="Profile completion"
-      >
+      <ProgressBar value={percent} maxValue={100} aria-label={title}>
         <ProgressBarTrack>
           <ProgressBarFill />
         </ProgressBarTrack>

@@ -1,12 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { useApi } from "@/lib/api-context";
 import { useStudioId } from "@/lib/use-studio-id";
-import { BrandingPanel } from "@/modules/branding/branding-panel";
 import { SkeletonBlock } from "@/modules/ui/skeleton-block";
 import { EmptyState, ErrorState } from "@/modules/ui/states";
 import { TouchButton } from "@/modules/ui/touch-button";
+import { StudioBrandingWorkspace } from "./studio-branding-workspace";
 import type { Studio } from "./types";
-import { SettingsSection } from "./ui";
 
 export function StudioBrandingPage() {
   const api = useApi();
@@ -47,17 +46,5 @@ export function StudioBrandingPage() {
     );
   }
 
-  return (
-    <SettingsSection
-      title="Assets"
-      description="Logo and hero images used on the member home experience."
-    >
-      <BrandingPanel
-        studioName={studioQuery.data.name}
-        logoUrl={studioQuery.data.logoUrl ?? null}
-        heroMobileUrl={studioQuery.data.heroMobileUrl ?? null}
-        heroDesktopUrl={studioQuery.data.heroDesktopUrl ?? null}
-      />
-    </SettingsSection>
-  );
+  return <StudioBrandingWorkspace studio={studioQuery.data} />;
 }

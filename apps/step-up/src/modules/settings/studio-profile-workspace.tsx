@@ -534,6 +534,7 @@ export function StudioProfileWorkspace({
               logoUrl={studio.logoUrl ?? null}
               heroMobileUrl={studio.heroMobileUrl ?? null}
               heroDesktopUrl={studio.heroDesktopUrl ?? null}
+              embedded
             />
           </OptionalSection>
         ) : null}
