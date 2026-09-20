@@ -54,7 +54,7 @@ async function request<T>(
 
 export function getPublic<T>(
   path: string,
-  init?: Omit<RequestOptions, "body" | "token">,
+  init?: Omit<RequestOptions, "body">,
 ) {
   return request<T>(path, init);
 }

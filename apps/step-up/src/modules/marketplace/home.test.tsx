@@ -14,6 +14,11 @@ vi.mock("@tanstack/react-router", async () => {
   return {
     ...actual,
     useNavigate: () => navigate,
+    useCanGoBack: () => false,
+    useRouter: () => ({
+      history: { back: vi.fn() },
+      navigate,
+    }),
     Link: ({
       children,
       to,
@@ -85,6 +90,7 @@ function classCard(): MarketplaceClassCard {
     canEnroll: true,
     viewerEnrolled: null,
     viewerTrialBooked: null,
+    viewerForChild: null,
   };
 }
 
@@ -164,5 +170,46 @@ describe("MarketplaceHome", () => {
     ).toBeInTheDocument();
     expect(screen.queryByText("Browse by style")).not.toBeInTheDocument();
     expect(screen.queryByText("Browse by area")).not.toBeInTheDocument();
+  });
+
+  it("keeps the same marketplace IA inside Discover", async () => {
+    fetchClasses.mockResolvedValue(
+      classPage([
+        {
+          ...classCard(),
+          viewerEnrolled: true,
+          viewerTrialBooked: true,
+          viewerForChild: true,
+        },
+      ]),
+    );
+
+    renderWithProviders(
+      <MarketplaceHome
+        tab="classes"
+        search={{ category: "DANCE", city: "chennai" }}
+        variant="member"
+      />,
+    );
+
+    expect(
+      await screen.findByRole("heading", { name: /^discover$/i }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Classes" })).toHaveAttribute(
+      "data-active",
+      "true",
+    );
+    expect(screen.getByRole("button", { name: "Studios" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Trainers" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Dance" })).toBeInTheDocument();
+    expect(
+      screen.getByLabelText("Search class, studio, or trainer"),
+    ).toBeInTheDocument();
+    expect(await screen.findByText("Enrolled")).toBeInTheDocument();
+    expect(screen.getByText("Trial booked")).toBeInTheDocument();
+    expect(screen.getByText("Your child")).toBeInTheDocument();
+    expect(
+      screen.getByText("Dance classes in Chennai"),
+    ).toBeInTheDocument();
   });
 });

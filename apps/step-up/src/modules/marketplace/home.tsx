@@ -2,11 +2,18 @@ import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { PublicShell } from "@/modules/layout/public-shell";
-import { useDiscoverCity } from "@/modules/student-landing/city-context";
+import {
+  DiscoverCityProvider,
+  useDiscoverCity,
+} from "@/modules/student-landing/city-context";
 import { BookSheet } from "./book-sheet";
 import type { BookSheetTarget } from "./book";
 import { AppSheet } from "@/modules/ui/app-sheet";
 import { FilterChipRow } from "@/modules/ui/filter-chip-row";
+import { PullToRefresh } from "@/modules/ui/pull-to-refresh";
+import { Screen } from "@/modules/ui/screen";
+import { RateLastClass } from "./rate-last-class";
+import { useMarketplaceAuth } from "./use-marketplace-auth";
 import { MARKETPLACE_AREAS } from "./areas";
 import {
   fetchMarketplaceClasses,
@@ -63,11 +70,14 @@ type BookTarget = BookSheetTarget;
 export function MarketplaceHome({
   tab,
   search,
+  variant = "public",
 }: {
   tab: MarketplaceCatalogTab;
   search: MarketplaceUrlSearch;
+  variant?: "public" | "member";
 }) {
   const navigate = useNavigate();
+  const { user, viewerKey, resolveAuth } = useMarketplaceAuth();
   const { cityId, cityLabel, selectCity } = useDiscoverCity();
   const [draftQ, setDraftQ] = useState(search.q ?? "");
   const [areaOpen, setAreaOpen] = useState(false);
@@ -127,8 +137,13 @@ export function MarketplaceHome({
 
   function goTab(nextTab: MarketplaceCatalogTab) {
     void navigate({
-      to: marketplacePathForTab(nextTab),
-      search: { ...search, city, category },
+      to: marketplacePathForTab(nextTab, variant),
+      search: {
+        ...search,
+        city,
+        category,
+        tab: variant === "member" ? nextTab : undefined,
+      },
     });
   }
 
@@ -161,20 +176,23 @@ export function MarketplaceHome({
 
   const catalogInput = marketplaceCatalogQuery({ ...search, city, category });
   const classesQuery = useQuery({
-    queryKey: marketplaceClassesQueryKey(catalogInput),
-    queryFn: () => fetchMarketplaceClasses(catalogInput),
+    queryKey: marketplaceClassesQueryKey(catalogInput, viewerKey),
+    queryFn: async () =>
+      fetchMarketplaceClasses(catalogInput, await resolveAuth()),
     enabled: tab === "classes",
     staleTime: 30_000,
   });
   const studiosQuery = useQuery({
-    queryKey: marketplaceStudiosQueryKey(catalogInput),
-    queryFn: () => fetchMarketplaceStudios(catalogInput),
+    queryKey: marketplaceStudiosQueryKey(catalogInput, viewerKey),
+    queryFn: async () =>
+      fetchMarketplaceStudios(catalogInput, await resolveAuth()),
     enabled: tab === "studios",
     staleTime: 30_000,
   });
   const trainersQuery = useQuery({
-    queryKey: marketplaceTrainersQueryKey(catalogInput),
-    queryFn: () => fetchMarketplaceTrainers(catalogInput),
+    queryKey: marketplaceTrainersQueryKey(catalogInput, viewerKey),
+    queryFn: async () =>
+      fetchMarketplaceTrainers(catalogInput, await resolveAuth()),
     enabled: tab === "trainers",
     staleTime: 30_000,
   });
@@ -339,10 +357,9 @@ export function MarketplaceHome({
     });
   }
 
-  return (
-    <PublicShell nav="student" width="full">
-      <div className={styles.page}>
-        <div className={styles.chrome}>
+  const feed = (
+    <div className={styles.page} data-variant={variant}>
+        <div className={styles.chrome} data-variant={variant}>
           <div className={styles.chromeInner}>
             <div className={styles.tabs} role="tablist" aria-label="Category">
               {CATEGORY_CHIPS.map((chip) => (
@@ -460,10 +477,17 @@ export function MarketplaceHome({
 
         <section className={styles.feed}>
           <div className={styles.heading}>
-            <h1 className={styles.title}>
-              {marketplaceTitle(category, cityLabel, tab)}
-            </h1>
+            {variant === "member" ? (
+              <p className={styles.title}>
+                {marketplaceTitle(category, cityLabel, tab)}
+              </p>
+            ) : (
+              <h1 className={styles.title}>
+                {marketplaceTitle(category, cityLabel, tab)}
+              </h1>
+            )}
             {geoHint ? <p className={styles.hint}>{geoHint}</p> : null}
+            <RateLastClass enabled={Boolean(user?.id)} />
           </div>
 
           {loading ? <MarketplaceCardSkeletonGrid /> : null}
@@ -487,15 +511,25 @@ export function MarketplaceHome({
                 {empty.kind === "tab" ? (
                   <>
                     <Link
-                      to={marketplacePathForTab("classes")}
-                      search={{ ...search, city, category }}
+                      to={marketplacePathForTab("classes", variant)}
+                      search={{
+                        ...search,
+                        city,
+                        category,
+                        tab: variant === "member" ? "classes" : undefined,
+                      }}
                       className={styles.emptyLink}
                     >
                       Browse classes
                     </Link>
                     <Link
-                      to={marketplacePathForTab("studios")}
-                      search={{ ...search, city, category }}
+                      to={marketplacePathForTab("studios", variant)}
+                      search={{
+                        ...search,
+                        city,
+                        category,
+                        tab: variant === "member" ? "studios" : undefined,
+                      }}
                       className={styles.emptyLink}
                     >
                       Browse studios
@@ -542,7 +576,6 @@ export function MarketplaceHome({
             </div>
           ) : null}
         </section>
-      </div>
 
       <AppSheet
         isOpen={areaOpen}
@@ -585,6 +618,32 @@ export function MarketplaceHome({
         }}
         target={book}
       />
+    </div>
+  );
+
+  if (variant === "member") {
+    return (
+      <DiscoverCityProvider>
+        <Screen title="Discover" wide>
+          <PullToRefresh
+            onRefresh={async () => {
+              await Promise.all([
+                classesQuery.refetch(),
+                studiosQuery.refetch(),
+                trainersQuery.refetch(),
+              ]);
+            }}
+          >
+            {feed}
+          </PullToRefresh>
+        </Screen>
+      </DiscoverCityProvider>
+    );
+  }
+
+  return (
+    <PublicShell nav="student" width="full">
+      {feed}
     </PublicShell>
   );
 }

@@ -98,6 +98,12 @@ export type MarketplaceClassCard = {
   canEnroll: boolean;
   viewerEnrolled: boolean | null;
   viewerTrialBooked: boolean | null;
+  viewerForChild: boolean | null;
+};
+
+export type MarketplaceFetchAuth = {
+  token?: string | null;
+  studentId?: string;
 };
 
 export type MarketplaceStudioCard = {

@@ -21,6 +21,7 @@ import {
 } from "class-validator";
 import { AuthGuard } from "../auth/auth.guard";
 import { CurrentUser } from "../auth/current-user.decorator";
+import { OptionalAuthGuard } from "../auth/optional-auth.guard";
 import type { DecryptedUser } from "../users/user-crypto.service";
 import { MarketplaceRatingsService } from "./marketplace-ratings.service";
 import { isValidCategoryId } from "./discover.categories";
@@ -35,7 +36,10 @@ import {
   parseMarketplaceCategory,
   usesMarketplaceCatalogQuery,
 } from "./marketplace-catalog.query";
-import type { MarketplaceCatalogFilters } from "./marketplace-catalog.types";
+import type {
+  MarketplaceCatalogFilters,
+  MarketplaceCatalogViewer,
+} from "./marketplace-catalog.types";
 
 class DiscoverStudiosQueryDto {
   @IsOptional()
@@ -117,6 +121,11 @@ class DiscoverStudiosQueryDto {
   @Min(1)
   @Max(48)
   limit?: number;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  studentId?: string;
 }
 
 function toLegacyFilters(query: DiscoverStudiosQueryDto): DiscoverStudioFilters {
@@ -143,6 +152,18 @@ function toLegacyFilters(query: DiscoverStudiosQueryDto): DiscoverStudioFilters 
   if (query.maxPrice != null) filters.maxPrice = query.maxPrice;
   if (query.limit != null) filters.limit = query.limit;
   return filters;
+}
+
+function catalogViewer(
+  user?: DecryptedUser,
+  studentId?: string,
+): MarketplaceCatalogViewer | undefined {
+  if (!user) return undefined;
+  return {
+    actorId: user.id,
+    role: user.role,
+    requestedStudentId: studentId,
+  };
 }
 
 function toCatalogFilters(
@@ -224,18 +245,31 @@ export class DiscoverController {
   }
 
   @Get("classes")
-  listClasses(@Query() query: DiscoverStudiosQueryDto) {
-    return this.catalog.listClasses(toCatalogFilters(query));
+  @UseGuards(OptionalAuthGuard)
+  listClasses(
+    @Query() query: DiscoverStudiosQueryDto,
+    @CurrentUser() user?: DecryptedUser,
+  ) {
+    return this.catalog.listClasses(
+      toCatalogFilters(query),
+      catalogViewer(user, query.studentId),
+    );
   }
 
   @Get("trainers")
+  @UseGuards(OptionalAuthGuard)
   listTrainers(@Query() query: DiscoverStudiosQueryDto) {
     return this.catalog.listTrainers(toCatalogFilters(query));
   }
 
   @Get("classes/:idOrSlug")
-  getClass(@Param("idOrSlug") idOrSlug: string) {
-    return this.catalog.getClass(idOrSlug);
+  @UseGuards(OptionalAuthGuard)
+  getClass(
+    @Param("idOrSlug") idOrSlug: string,
+    @Query("studentId") studentId?: string,
+    @CurrentUser() user?: DecryptedUser,
+  ) {
+    return this.catalog.getClass(idOrSlug, catalogViewer(user, studentId));
   }
 
   @Get("trainers/:idOrSlug")
@@ -244,6 +278,7 @@ export class DiscoverController {
   }
 
   @Get("studios")
+  @UseGuards(OptionalAuthGuard)
   listStudios(@Query() query: DiscoverStudiosQueryDto) {
     if (usesMarketplaceCatalogQuery(query)) {
       return this.catalog.listStudios(toCatalogFilters(query));
@@ -262,8 +297,13 @@ export class DiscoverController {
   }
 
   @Get("studios/:idOrSlug/page")
-  getMarketplaceStudio(@Param("idOrSlug") idOrSlug: string) {
-    return this.catalog.getStudio(idOrSlug);
+  @UseGuards(OptionalAuthGuard)
+  getMarketplaceStudio(
+    @Param("idOrSlug") idOrSlug: string,
+    @Query("studentId") studentId?: string,
+    @CurrentUser() user?: DecryptedUser,
+  ) {
+    return this.catalog.getStudio(idOrSlug, catalogViewer(user, studentId));
   }
 
   @Get("studios/:id")

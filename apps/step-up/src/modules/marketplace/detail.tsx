@@ -22,6 +22,7 @@ import {
   marketplaceStudioQueryKey,
   marketplaceTrainerQueryKey,
 } from "./catalog";
+import { useMarketplaceAuth } from "./use-marketplace-auth";
 import {
   MarketplaceClassCardView,
   MarketplaceTrainerCardView,
@@ -468,9 +469,10 @@ function DetailBookSheet({
 }
 
 export function MarketplaceClassDetailPage({ slug }: { slug: string }) {
+  const { viewerKey, resolveAuth } = useMarketplaceAuth();
   const query = useQuery({
-    queryKey: marketplaceClassQueryKey(slug),
-    queryFn: () => fetchMarketplaceClass(slug),
+    queryKey: marketplaceClassQueryKey(slug, viewerKey),
+    queryFn: async () => fetchMarketplaceClass(slug, await resolveAuth()),
   });
   const item = query.data;
   const [book, setBook] = useState<BookTarget | null>(null);
@@ -517,9 +519,10 @@ export function MarketplaceClassDetailPage({ slug }: { slug: string }) {
 }
 
 export function MarketplaceStudioDetailPage({ slug }: { slug: string }) {
+  const { viewerKey, resolveAuth } = useMarketplaceAuth();
   const query = useQuery({
-    queryKey: marketplaceStudioQueryKey(slug),
-    queryFn: () => fetchMarketplaceStudio(slug),
+    queryKey: marketplaceStudioQueryKey(slug, viewerKey),
+    queryFn: async () => fetchMarketplaceStudio(slug, await resolveAuth()),
   });
   const item = query.data;
   const [book, setBook] = useState<BookTarget | null>(null);

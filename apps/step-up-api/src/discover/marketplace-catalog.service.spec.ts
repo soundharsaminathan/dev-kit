@@ -179,6 +179,9 @@ describe("MarketplaceCatalogService", () => {
     user: { findMany: vi.fn(), findFirst: vi.fn() },
     booking: { findMany: vi.fn() },
     batch: { findFirst: vi.fn() },
+    batchEnrollment: { findMany: vi.fn() },
+    parentChild: { findMany: vi.fn() },
+    familyMember: { findMany: vi.fn() },
     slugRedirect: { findMany: vi.fn(), upsert: vi.fn(), updateMany: vi.fn() },
   };
   const media = {
@@ -216,6 +219,9 @@ describe("MarketplaceCatalogService", () => {
     vi.clearAllMocks();
     prisma.booking.findMany.mockResolvedValue([]);
     prisma.user.findMany.mockResolvedValue([]);
+    prisma.batchEnrollment.findMany.mockResolvedValue([]);
+    prisma.parentChild.findMany.mockResolvedValue([]);
+    prisma.familyMember.findMany.mockResolvedValue([]);
     slugs.resolve.mockImplementation(async (_kind: string, value: string) => value);
     service = new MarketplaceCatalogService(
       prisma as never,
@@ -597,6 +603,85 @@ describe("MarketplaceCatalogService", () => {
       label: "New",
       count: 0,
     });
+  });
+
+  it("keeps guest viewer fields null and marks a logged-in student", async () => {
+    seed([studioRow({ batches: [batchRow("visible", { name: "Hip Hop" })] })]);
+
+    const guest = await service.listClasses({
+      category: "DANCE",
+      city: "chennai",
+    });
+    expect(guest.items[0]?.viewerEnrolled).toBeNull();
+    expect(guest.items[0]?.viewerTrialBooked).toBeNull();
+    expect(guest.items[0]?.viewerForChild).toBeNull();
+
+    prisma.batchEnrollment.findMany.mockResolvedValue([
+      { batchId: "visible", studentId: "stu-1" },
+    ]);
+    const student = await service.listClasses(
+      { category: "DANCE", city: "chennai" },
+      { actorId: "stu-1", role: "STUDENT" },
+    );
+    expect(student.items[0]?.viewerEnrolled).toBe(true);
+    expect(student.items[0]?.viewerTrialBooked).toBe(false);
+    expect(student.items[0]?.viewerForChild).toBe(false);
+  });
+
+  it("does not personalize staff and ignores another family's child", async () => {
+    seed([studioRow({ batches: [batchRow("visible", { name: "Hip Hop" })] })]);
+    prisma.batchEnrollment.findMany.mockImplementation(
+      async (args?: { where?: { studentId?: { in?: string[] } } }) => {
+        const allowed = args?.where?.studentId?.in ?? [];
+        return allowed.includes("stranger-kid")
+          ? [{ batchId: "visible", studentId: "stranger-kid" }]
+          : [];
+      },
+    );
+
+    const staff = await service.listClasses(
+      { category: "DANCE", city: "chennai" },
+      { actorId: "owner-1", role: "OWNER" },
+    );
+    expect(staff.items[0]?.viewerEnrolled).toBeNull();
+
+    prisma.parentChild.findMany.mockResolvedValue([
+      { childUserId: "kid-1" },
+    ]);
+    const parent = await service.listClasses(
+      { category: "DANCE", city: "chennai" },
+      {
+        actorId: "parent-1",
+        role: "PARENT",
+        requestedStudentId: "stranger-kid",
+      },
+    );
+    expect(parent.items[0]?.viewerEnrolled).toBe(false);
+    expect(parent.items[0]?.viewerForChild).toBe(false);
+  });
+
+  it("marks a parent's child as enrolled and trial booked", async () => {
+    seed([studioRow({ batches: [batchRow("visible", { name: "Hip Hop" })] })]);
+    prisma.parentChild.findMany.mockResolvedValue([{ childUserId: "kid-1" }]);
+    prisma.batchEnrollment.findMany.mockResolvedValue([
+      { batchId: "visible", studentId: "kid-1" },
+    ]);
+    prisma.booking.findMany.mockImplementation(
+      async (args?: { where?: { type?: string } }) => {
+        if (args?.where?.type === "TRIAL") {
+          return [{ batchId: "visible", studentId: "kid-1" }];
+        }
+        return [];
+      },
+    );
+
+    const page = await service.listClasses(
+      { category: "DANCE", city: "chennai" },
+      { actorId: "parent-1", role: "PARENT", requestedStudentId: "kid-1" },
+    );
+    expect(page.items[0]?.viewerEnrolled).toBe(true);
+    expect(page.items[0]?.viewerTrialBooked).toBe(true);
+    expect(page.items[0]?.viewerForChild).toBe(true);
   });
 
   it("404s a class that fails the public image gate", async () => {

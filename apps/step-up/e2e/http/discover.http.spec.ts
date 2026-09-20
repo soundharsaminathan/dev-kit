@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { apiBaseUrl, SEED } from "../fixtures/seed";
+import { apiBaseUrl, bearerFor, SEED } from "../fixtures/seed";
 import {
   createHttpStudent,
   expectStatus,
@@ -166,6 +166,8 @@ test.describe("discover HTTP @http", () => {
     expect(Array.isArray(classPage.items)).toBe(true);
     for (const item of classPage.items) {
       expect(item.viewerEnrolled).toBeNull();
+      expect(item.viewerTrialBooked).toBeNull();
+      expect(item.viewerForChild).toBeNull();
       expect(typeof item.canTrial).toBe("boolean");
     }
 
@@ -238,6 +240,73 @@ test.describe("discover HTTP @http", () => {
           }),
         },
         { userId: student.id },
+      );
+    } finally {
+      await cleanup.dispose();
+    }
+  });
+
+  test("logged-in student sees personalization without changing the catalog @http", async () => {
+    const cleanup = new TestDataCleanup();
+    try {
+      const student = await createHttpStudent("Never Enrolled Viewer", cleanup);
+      const [guest, loggedIn, staff, badToken] = await Promise.all([
+        fetch(
+          `${apiBaseUrl()}/discover/classes?category=DANCE&city=chennai`,
+        ),
+        fetch(`${apiBaseUrl()}/discover/classes?category=DANCE&city=chennai`, {
+          headers: { Authorization: `Bearer dev:STUDENT:${student.id}` },
+        }),
+        fetch(`${apiBaseUrl()}/discover/classes?category=DANCE&city=chennai`, {
+          headers: { Authorization: `Bearer ${bearerFor("STAFF")}` },
+        }),
+        fetch(`${apiBaseUrl()}/discover/classes?category=DANCE&city=chennai`, {
+          headers: { Authorization: "Bearer not-a-real-token" },
+        }),
+      ]);
+      expect(guest.ok).toBeTruthy();
+      expect(loggedIn.ok).toBeTruthy();
+      expect(staff.ok).toBeTruthy();
+      expect(badToken.ok).toBeTruthy();
+
+      const guestPage = (await guest.json()) as {
+        tab: string;
+        items: Array<{
+          viewerEnrolled: boolean | null;
+          viewerTrialBooked: boolean | null;
+        }>;
+      };
+      const studentPage = (await loggedIn.json()) as {
+        tab: string;
+        items: Array<{
+          viewerEnrolled: boolean | null;
+          viewerTrialBooked: boolean | null;
+          viewerForChild: boolean | null;
+        }>;
+      };
+      const staffPage = (await staff.json()) as {
+        items: Array<{ viewerEnrolled: boolean | null }>;
+      };
+      const badPage = (await badToken.json()) as {
+        items: Array<{ viewerEnrolled: boolean | null }>;
+      };
+
+      expect(guestPage.tab).toBe("classes");
+      expect(studentPage.tab).toBe("classes");
+      expect(guestPage.items.map((item) => item.viewerEnrolled)).toEqual(
+        guestPage.items.map(() => null),
+      );
+      expect(studentPage.items.length).toBe(guestPage.items.length);
+      for (const item of studentPage.items) {
+        expect(item.viewerEnrolled).toBe(false);
+        expect(item.viewerTrialBooked).toBe(false);
+        expect(item.viewerForChild).toBe(false);
+      }
+      expect(staffPage.items.map((item) => item.viewerEnrolled)).toEqual(
+        staffPage.items.map(() => null),
+      );
+      expect(badPage.items.map((item) => item.viewerEnrolled)).toEqual(
+        badPage.items.map(() => null),
       );
     } finally {
       await cleanup.dispose();

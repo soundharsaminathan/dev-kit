@@ -142,6 +142,12 @@ test.describe("student smoke @smoke", () => {
       await expect(
         page.getByRole("heading", { name: /^discover$/i }),
       ).toBeVisible();
+      await expect(page.getByRole("button", { name: "Classes" })).toBeVisible();
+      await expect(page.getByRole("button", { name: "Studios" })).toBeVisible();
+      await expect(page.getByRole("button", { name: "Trainers" })).toBeVisible();
+      await expect(
+        page.getByLabel("Search class, studio, or trainer"),
+      ).toBeVisible();
       const kids = page.getByRole("button", { name: /^Kids$/i });
       if ((await kids.count()) > 0) {
         await kids.first().click();

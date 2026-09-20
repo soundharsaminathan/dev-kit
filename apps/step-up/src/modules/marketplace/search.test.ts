@@ -38,6 +38,8 @@ describe("marketplace search contract", () => {
     expect(mapped.audience).toBe("KIDS");
     expect(mapped.locality).toBe("adyar");
     expect(marketplacePathForTab("studios")).toBe("/studios");
+    expect(marketplacePathForTab("trainers", "member")).toBe("/me/book");
+    expect(parseMarketplaceSearch({ tab: "trainers" }).tab).toBe("trainers");
   });
 
   it("defaults sort to availability, or relevance when searching", () => {

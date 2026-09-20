@@ -15,6 +15,11 @@
   border-bottom: 1px solid color-mix(in srgb, var(--color-fg) 8%, transparent);
 }
 
+.chrome[data-variant="member"] {
+  top: 0;
+  background: color-mix(in srgb, var(--surface-background, #f5f6fb) 92%, transparent);
+}
+
 .chromeInner {
   display: flex;
   flex-direction: column;
@@ -124,6 +129,39 @@
   font-weight: 800;
   letter-spacing: -0.03em;
   line-height: 1.2;
+}
+
+.ratePrompt {
+  display: grid;
+  gap: 2px;
+  width: 100%;
+  margin-top: var(--space-3, 0.75rem);
+  min-height: 4.5rem;
+  padding: var(--space-4, 1rem);
+  border: 0;
+  border-radius: var(--radius-2xl, 1.25rem);
+  background: var(--hero-gradient, var(--color-primary));
+  color: var(--color-fg-on-primary, #fff);
+  text-align: left;
+  cursor: pointer;
+  box-shadow: var(--shadow-md, 0 8px 20px rgb(0 0 0 / 8%));
+}
+
+.ratePrompt strong {
+  font-size: 1.125rem;
+  letter-spacing: -0.02em;
+}
+
+.ratePrompt span {
+  font-size: 0.875rem;
+  color: color-mix(in srgb, var(--color-fg-on-primary, #fff) 80%, transparent);
+}
+
+.rateKicker {
+  font-size: 0.75rem !important;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 .hint,

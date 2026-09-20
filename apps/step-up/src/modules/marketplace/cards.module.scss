@@ -83,6 +83,29 @@
   letter-spacing: 0.01em;
 }
 
+.personal {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.5rem;
+  padding: 0 var(--space-2, 0.5rem);
+  border-radius: 999px;
+  background: var(--tag-lilac-bg, color-mix(in srgb, var(--color-primary) 18%, #fff));
+  color: var(--tag-lilac-fg, var(--color-fg));
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+}
+
+.personal[data-kind="enrolled"] {
+  background: var(--tag-mint-bg, color-mix(in srgb, #2f9e7d 18%, #fff));
+  color: var(--tag-mint-fg, #146c54);
+}
+
+.personal[data-kind="trial"] {
+  background: var(--tag-amber-bg, color-mix(in srgb, #d97706 16%, #fff));
+  color: var(--tag-amber-fg, #92400e);
+}
+
 .cardLink {
   display: flex;
   flex-direction: column;

@@ -306,6 +306,9 @@ test.describe("discover and book @critical", () => {
     await expect(
       page.getByRole("heading", { name: /^discover$/i }),
     ).toBeVisible();
+    await expect(page.getByRole("button", { name: "Classes" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Studios" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Trainers" })).toBeVisible();
 
     const kids = page.getByRole("button", { name: /^Kids$/i });
     if ((await kids.count()) > 0) {

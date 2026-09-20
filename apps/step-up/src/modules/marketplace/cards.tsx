@@ -6,6 +6,7 @@ import type {
   MarketplaceStudioCard,
   MarketplaceTrainerCard,
 } from "./types";
+import { marketplacePersonalBadges } from "./viewer";
 import styles from "./cards.module.scss";
 
 function audienceLabel(value: "KIDS" | "ADULTS" | "BOTH" | null): string | null {
@@ -33,6 +34,7 @@ export function MarketplaceClassCardView({
   const price = formatPriceFrom(item.priceFrom, item.priceCadence);
   const audience = audienceLabel(item.audience);
   const level = levelLabel(item.level);
+  const personal = marketplacePersonalBadges(item);
 
   return (
     <article className={styles.card}>
@@ -50,6 +52,15 @@ export function MarketplaceClassCardView({
             </div>
           )}
           <div className={styles.badges}>
+            {personal.map((badge) => (
+              <span
+                key={badge.id}
+                className={styles.personal}
+                data-kind={badge.id}
+              >
+                {badge.label}
+              </span>
+            ))}
             {level ? <span className={styles.badge}>{level}</span> : null}
             {audience ? <span className={styles.badge}>{audience}</span> : null}
           </div>

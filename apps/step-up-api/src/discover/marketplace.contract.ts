@@ -452,6 +452,35 @@ export function marketplaceMissingMediaAlert(input: {
   };
 }
 
+export function marketplacePersonalBadges(input: {
+  viewerEnrolled?: boolean | null;
+  viewerTrialBooked?: boolean | null;
+  viewerForChild?: boolean | null;
+}): string[] {
+  const badges: string[] = [];
+  if (input.viewerForChild) badges.push("Your child");
+  if (input.viewerEnrolled) badges.push("Enrolled");
+  if (input.viewerTrialBooked) badges.push("Trial booked");
+  return badges;
+}
+
+export function marketplaceViewerStudentAllowed(input: {
+  actorId: string;
+  role: string;
+  requestedStudentId?: string | null;
+  childIds: string[];
+}): string[] | null {
+  if (input.role === "STUDENT") return [input.actorId];
+  if (input.role !== "PARENT") return null;
+  if (
+    input.requestedStudentId &&
+    input.childIds.includes(input.requestedStudentId)
+  ) {
+    return [input.requestedStudentId];
+  }
+  return input.childIds;
+}
+
 export function freelanceTrainerAttachError(input: {
   role: string;
   active: boolean;

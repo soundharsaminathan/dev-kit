@@ -62,6 +62,13 @@ export type MarketplaceClassCard = {
   canEnroll: boolean;
   viewerEnrolled: boolean | null;
   viewerTrialBooked: boolean | null;
+  viewerForChild: boolean | null;
+};
+
+export type MarketplaceCatalogViewer = {
+  actorId: string;
+  role: string;
+  requestedStudentId?: string | null;
 };
 
 export type MarketplaceStudioCard = {

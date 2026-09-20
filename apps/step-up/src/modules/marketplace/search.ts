@@ -29,6 +29,7 @@ export type MarketplaceUrlSearch = {
   sort?: MarketplaceSort;
   when?: MarketplaceWhen;
   view?: MarketplaceView;
+  tab?: MarketplaceCatalogTab;
   lat?: number;
   lng?: number;
 };
@@ -166,6 +167,13 @@ export function parseMarketplaceSearch(
   if (search.view === "map" || search.view === "list") {
     result.view = search.view;
   }
+  if (
+    search.tab === "classes" ||
+    search.tab === "studios" ||
+    search.tab === "trainers"
+  ) {
+    result.tab = search.tab;
+  }
   const lat = parseOptionalNumber(search.lat);
   const lng = parseOptionalNumber(search.lng);
   if (lat != null) result.lat = lat;
@@ -198,7 +206,11 @@ export function marketplaceCatalogQuery(
   return query;
 }
 
-export function marketplacePathForTab(tab: MarketplaceCatalogTab): "/" | "/classes" | "/studios" | "/trainers" {
+export function marketplacePathForTab(
+  tab: MarketplaceCatalogTab,
+  embed: "public" | "member" = "public",
+): "/" | "/classes" | "/studios" | "/trainers" | "/me/book" {
+  if (embed === "member") return "/me/book";
   if (tab === "studios") return "/studios";
   if (tab === "trainers") return "/trainers";
   if (tab === "classes") return "/classes";

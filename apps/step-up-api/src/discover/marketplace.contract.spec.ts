@@ -23,6 +23,8 @@ import {
   marketplaceSessionCancelCopy,
   marketplaceMissingMediaAlert,
   freelanceTrainerAttachError,
+  marketplacePersonalBadges,
+  marketplaceViewerStudentAllowed,
   STUDIO_MARKETPLACE_TOGGLES,
   studioMarketplaceTogglesFrom,
   PUBLIC_MARKETPLACE_CATEGORIES,
@@ -395,5 +397,65 @@ describe("marketplace studio controls", () => {
         hasAvailability: true,
       }),
     ).toBeNull();
+  });
+});
+
+describe("marketplace viewer personalization", () => {
+  it("keeps guests without enrolled or trial badges", () => {
+    expect(marketplacePersonalBadges({})).toEqual([]);
+    expect(
+      marketplacePersonalBadges({
+        viewerEnrolled: null,
+        viewerTrialBooked: null,
+        viewerForChild: null,
+      }),
+    ).toEqual([]);
+  });
+
+  it("shows enrolled, trial booked, and your child without renaming them", () => {
+    expect(
+      marketplacePersonalBadges({
+        viewerEnrolled: true,
+        viewerTrialBooked: true,
+        viewerForChild: true,
+      }),
+    ).toEqual(["Your child", "Enrolled", "Trial booked"]);
+  });
+
+  it("students only see their own personalization; staff see none", () => {
+    expect(
+      marketplaceViewerStudentAllowed({
+        actorId: "stu-1",
+        role: "STUDENT",
+        requestedStudentId: "other-child",
+        childIds: ["other-child"],
+      }),
+    ).toEqual(["stu-1"]);
+    expect(
+      marketplaceViewerStudentAllowed({
+        actorId: "owner-1",
+        role: "OWNER",
+        childIds: ["kid-1"],
+      }),
+    ).toBeNull();
+  });
+
+  it("parents only personalize their own children", () => {
+    expect(
+      marketplaceViewerStudentAllowed({
+        actorId: "parent-1",
+        role: "PARENT",
+        requestedStudentId: "stranger-kid",
+        childIds: ["kid-1"],
+      }),
+    ).toEqual(["kid-1"]);
+    expect(
+      marketplaceViewerStudentAllowed({
+        actorId: "parent-1",
+        role: "PARENT",
+        requestedStudentId: "kid-1",
+        childIds: ["kid-1", "kid-2"],
+      }),
+    ).toEqual(["kid-1"]);
   });
 });

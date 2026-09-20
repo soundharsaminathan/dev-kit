@@ -6,6 +6,7 @@ import { AuthController } from "./auth.controller";
 import { AuthGuard } from "./auth.guard";
 import { AuthService } from "./auth.service";
 import { FirebaseService } from "./firebase.service";
+import { OptionalAuthGuard } from "./optional-auth.guard";
 import { RolesGuard } from "./roles.guard";
 import { TokenGuard } from "./token.guard";
 
@@ -17,7 +18,21 @@ import { TokenGuard } from "./token.guard";
     forwardRef(() => StaffInvitesModule),
   ],
   controllers: [AuthController],
-  providers: [AuthService, FirebaseService, AuthGuard, TokenGuard, RolesGuard],
-  exports: [AuthService, FirebaseService, AuthGuard, TokenGuard, RolesGuard],
+  providers: [
+    AuthService,
+    FirebaseService,
+    AuthGuard,
+    OptionalAuthGuard,
+    TokenGuard,
+    RolesGuard,
+  ],
+  exports: [
+    AuthService,
+    FirebaseService,
+    AuthGuard,
+    OptionalAuthGuard,
+    TokenGuard,
+    RolesGuard,
+  ],
 })
 export class AuthModule {}

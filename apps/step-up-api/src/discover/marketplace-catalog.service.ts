@@ -1,6 +1,9 @@
 import { Inject, Injectable, NotFoundException } from "@nestjs/common";
 import {
+  BatchEnrollmentStatus,
   BookingStatus,
+  BookingType,
+  FamilyMemberKind,
   MarketplaceCategory,
   type BillingCadence,
   SessionStatus,
@@ -27,6 +30,7 @@ import {
   DEFAULT_FLOOR_HIRE_MINUTES,
   DEFAULT_PRIVATE_MINUTES,
   marketplaceFirstPaint,
+  marketplaceViewerStudentAllowed,
   type PublicMarketplaceCategory,
 } from "./marketplace.contract";
 import {
@@ -53,6 +57,7 @@ import {
 import type {
   MarketplaceCatalogFilters,
   MarketplaceCatalogPage,
+  MarketplaceCatalogViewer,
   MarketplaceClassCard,
   MarketplaceClassDetail,
   MarketplaceStudioCard,
@@ -298,6 +303,7 @@ export class MarketplaceCatalogService {
 
   async listClasses(
     raw: MarketplaceCatalogFilters,
+    viewer?: MarketplaceCatalogViewer | null,
   ): Promise<MarketplaceCatalogPage<MarketplaceClassCard>> {
     const filters = this.normalizeFilters(raw);
     const { classes, studios, trainers } = await this.collect(filters);
@@ -308,9 +314,10 @@ export class MarketplaceCatalogService {
     const ranked = [...classes].sort((left, right) =>
       compareCatalogItems(left.sort, right.sort, sort),
     );
-    const items = ranked
-      .slice(0, catalogLimit(filters.limit))
-      .map((row) => row.card);
+    const items = await this.paintClassViewerState(
+      ranked.slice(0, catalogLimit(filters.limit)).map((row) => row.card),
+      viewer,
+    );
     return {
       tab: "classes",
       category: filters.category,
@@ -392,7 +399,10 @@ export class MarketplaceCatalogService {
     };
   }
 
-  async getClass(idOrSlug: string): Promise<MarketplaceClassDetail> {
+  async getClass(
+    idOrSlug: string,
+    viewer?: MarketplaceCatalogViewer | null,
+  ): Promise<MarketplaceClassDetail> {
     const now = new Date();
     const resolved = await this.slugs.resolve("CLASS", idOrSlug);
     const batch = await this.prisma.batch.findFirst({
@@ -479,8 +489,9 @@ export class MarketplaceCatalogService {
         cadence: plan.subscription.billingCadence,
       }));
 
+    const [painted] = await this.paintClassViewerState([card.card], viewer);
     return {
-      ...card.card,
+      ...(painted ?? card.card),
       studioSlug: studio.slug,
       branchId: batch.branch.id,
       branchName: batch.branch.name,
@@ -492,7 +503,10 @@ export class MarketplaceCatalogService {
     };
   }
 
-  async getStudio(idOrSlug: string): Promise<MarketplaceStudioDetail> {
+  async getStudio(
+    idOrSlug: string,
+    viewer?: MarketplaceCatalogViewer | null,
+  ): Promise<MarketplaceStudioDetail> {
     const resolved = await this.slugs.resolve("STUDIO", idOrSlug);
     const studio = await this.prisma.studio.findFirst({
       where: {
@@ -660,7 +674,7 @@ export class MarketplaceCatalogService {
             ? `https://www.google.com/maps?q=${branch.latitude},${branch.longitude}`
             : null,
       })),
-      classes,
+      classes: await this.paintClassViewerState(classes, viewer),
       trainers,
       privateSessionPaise: studio.settings?.privateSessionPaise ?? null,
       privateSessionMinutes:
@@ -817,6 +831,128 @@ export class MarketplaceCatalogService {
     return { classes, studios, trainers: [...trainers.values()] };
   }
 
+  private async resolveViewerStudents(
+    viewer: MarketplaceCatalogViewer,
+  ): Promise<{ studentIds: string[]; childIds: Set<string> } | null> {
+    if (viewer.role === UserRole.STUDENT) {
+      return { studentIds: [viewer.actorId], childIds: new Set() };
+    }
+    if (viewer.role !== UserRole.PARENT) return null;
+
+    const [parentLinks, familyKids] = await Promise.all([
+      this.prisma.parentChild.findMany({
+        where: { parentUserId: viewer.actorId },
+        select: { childUserId: true },
+      }),
+      this.prisma.familyMember.findMany({
+        where: { ownerUserId: viewer.actorId, kind: FamilyMemberKind.KID },
+        select: { memberUserId: true },
+      }),
+    ]);
+    const childIds = [
+      ...new Set([
+        ...parentLinks.map((link) => link.childUserId),
+        ...familyKids.map((link) => link.memberUserId),
+      ]),
+    ];
+    const studentIds = marketplaceViewerStudentAllowed({
+      actorId: viewer.actorId,
+      role: viewer.role,
+      requestedStudentId: viewer.requestedStudentId,
+      childIds,
+    });
+    if (!studentIds) return null;
+    return { studentIds, childIds: new Set(childIds) };
+  }
+
+  private async paintClassViewerState<T extends MarketplaceClassCard>(
+    cards: T[],
+    viewer?: MarketplaceCatalogViewer | null,
+  ): Promise<T[]> {
+    if (!viewer) {
+      return cards.map((card) => ({
+        ...card,
+        viewerEnrolled: null,
+        viewerTrialBooked: null,
+        viewerForChild: null,
+      }));
+    }
+
+    const resolved = await this.resolveViewerStudents(viewer);
+    if (!resolved) {
+      return cards.map((card) => ({
+        ...card,
+        viewerEnrolled: null,
+        viewerTrialBooked: null,
+        viewerForChild: null,
+      }));
+    }
+
+    if (cards.length === 0 || resolved.studentIds.length === 0) {
+      return cards.map((card) => ({
+        ...card,
+        viewerEnrolled: false,
+        viewerTrialBooked: false,
+        viewerForChild: false,
+      }));
+    }
+
+    const batchIds = cards.map((card) => card.id);
+    const [enrollments, trials] = await Promise.all([
+      this.prisma.batchEnrollment.findMany({
+        where: {
+          studentId: { in: resolved.studentIds },
+          status: BatchEnrollmentStatus.ACTIVE,
+          batchId: { in: batchIds },
+        },
+        select: { batchId: true, studentId: true },
+      }),
+      this.prisma.booking.findMany({
+        where: {
+          studentId: { in: resolved.studentIds },
+          type: BookingType.TRIAL,
+          batchId: { in: batchIds },
+          status: {
+            in: [
+              BookingStatus.PENDING,
+              BookingStatus.CONFIRMED,
+              BookingStatus.AWAITING_PAYMENT,
+            ],
+          },
+        },
+        select: { batchId: true, studentId: true },
+      }),
+    ]);
+
+    const enrolledByBatch = new Map<string, Set<string>>();
+    const trialByBatch = new Map<string, Set<string>>();
+    for (const row of enrollments) {
+      const set = enrolledByBatch.get(row.batchId) ?? new Set<string>();
+      set.add(row.studentId);
+      enrolledByBatch.set(row.batchId, set);
+    }
+    for (const row of trials) {
+      if (!row.batchId) continue;
+      const set = trialByBatch.get(row.batchId) ?? new Set<string>();
+      set.add(row.studentId);
+      trialByBatch.set(row.batchId, set);
+    }
+
+    return cards.map((card) => {
+      const enrolledIds = enrolledByBatch.get(card.id) ?? new Set<string>();
+      const trialIds = trialByBatch.get(card.id) ?? new Set<string>();
+      const childMatch = [...enrolledIds, ...trialIds].some((id) =>
+        resolved.childIds.has(id),
+      );
+      return {
+        ...card,
+        viewerEnrolled: enrolledIds.size > 0,
+        viewerTrialBooked: trialIds.size > 0,
+        viewerForChild: childMatch,
+      };
+    });
+  }
+
   private async toClassCard(
     batch: BatchRow,
     studio: StudioRow,
@@ -956,6 +1092,7 @@ export class MarketplaceCatalogService {
       canEnroll,
       viewerEnrolled: null,
       viewerTrialBooked: null,
+      viewerForChild: null,
     };
 
     return {

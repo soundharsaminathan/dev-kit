@@ -72,6 +72,7 @@ function classCard(): MarketplaceClassCard {
     canEnroll: true,
     viewerEnrolled: null,
     viewerTrialBooked: null,
+    viewerForChild: null,
   };
 }
 

@@ -47,4 +47,10 @@ describe("marketplace catalog client", () => {
     expect(qs).toContain("level=BEGINNER");
     expect(qs).toContain("category=MUSIC");
   });
+
+  it("sends the selected child when a parent is browsing", () => {
+    expect(
+      buildMarketplaceQuery({ category: "DANCE" }, { studentId: "kid-1" }),
+    ).toContain("studentId=kid-1");
+  });
 });

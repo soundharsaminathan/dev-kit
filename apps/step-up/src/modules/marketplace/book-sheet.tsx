@@ -28,6 +28,7 @@ import {
   fetchMarketplaceStudio,
   fetchMarketplaceTrainer,
 } from "./catalog";
+import { useMarketplaceAuth } from "./use-marketplace-auth";
 import type { MarketplaceClassPlan } from "./types";
 import styles from "./book-sheet.module.scss";
 
@@ -112,6 +113,7 @@ export function BookSheet({
   const navigate = useNavigate();
   const api = useApi();
   const { user, signUp, signInWithGoogle } = useAuth();
+  const { viewerKey, resolveAuth } = useMarketplaceAuth();
   const [step, setStep] = useState<SheetStep>("type");
   const [bookType, setBookType] = useState<MarketplaceBookType>("TRIAL");
   const [sessionId, setSessionId] = useState("");
@@ -161,14 +163,14 @@ export function BookSheet({
 
   const classKey = target?.classSlug || target?.batchId || "";
   const classQuery = useQuery({
-    queryKey: ["marketplace-class", classKey],
-    queryFn: () => fetchMarketplaceClass(classKey),
+    queryKey: ["marketplace-class", classKey, viewerKey],
+    queryFn: async () => fetchMarketplaceClass(classKey, await resolveAuth()),
     enabled: open && Boolean(classKey),
     staleTime: 30_000,
   });
   const studioQuery = useQuery({
-    queryKey: ["marketplace-studio", studioId],
-    queryFn: () => fetchMarketplaceStudio(studioId),
+    queryKey: ["marketplace-studio", studioId, viewerKey],
+    queryFn: async () => fetchMarketplaceStudio(studioId, await resolveAuth()),
     enabled: open && Boolean(studioId),
     staleTime: 30_000,
   });
