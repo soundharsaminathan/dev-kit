@@ -21,6 +21,10 @@ import {
   marketplaceRatingStars,
   marketplaceRatingUniqueKey,
   marketplaceSessionCancelCopy,
+  marketplaceMissingMediaAlert,
+  freelanceTrainerAttachError,
+  STUDIO_MARKETPLACE_TOGGLES,
+  studioMarketplaceTogglesFrom,
   PUBLIC_MARKETPLACE_CATEGORIES,
   publicRatingOrNew,
   seatCopy,
@@ -303,5 +307,93 @@ describe("marketplace book contract", () => {
     expect(branchIsOpenAt(hours, monday, new Date("2026-09-21T19:00:00"))).toBe(
       false,
     );
+  });
+});
+
+describe("marketplace studio controls", () => {
+  it("locks the eight visibility and booking toggles", () => {
+    expect(STUDIO_MARKETPLACE_TOGGLES.map((item) => item.key)).toEqual([
+      "publicStudioListing",
+      "publicClasses",
+      "publicTrainers",
+      "publicRatings",
+      "bookingTrial",
+      "bookingEnrollment",
+      "bookingPrivate",
+      "bookingFloorHire",
+    ]);
+    expect(studioMarketplaceTogglesFrom(null).bookingFloorHire).toBe(false);
+    expect(studioMarketplaceTogglesFrom(null).publicTrainers).toBe(true);
+  });
+
+  it("alerts missing media per object instead of a whole-studio draft", () => {
+    expect(
+      marketplaceMissingMediaAlert({
+        kind: "CLASS",
+        objectId: "class-1",
+        objectName: "Hip Hop",
+        coverImageUrl: null,
+      }),
+    ).toEqual({
+      kind: "CLASS",
+      objectId: "class-1",
+      objectName: "Hip Hop",
+      message: "Add a cover photo so this class can appear on classa.",
+    });
+    expect(
+      marketplaceMissingMediaAlert({
+        kind: "STUDIO",
+        objectId: "studio-1",
+        objectName: "Rhythm",
+        heroDesktopUrl: "heroes/rh.png",
+      }),
+    ).toBeNull();
+    expect(
+      marketplaceMissingMediaAlert({
+        kind: "TRAINER",
+        objectId: "trainer-1",
+        objectName: "Priya",
+        photoUrl: "  ",
+      })?.message,
+    ).toBe("Add a photo so this trainer can appear on classa.");
+  });
+
+  it("only attaches freelance trainers who published availability", () => {
+    expect(
+      freelanceTrainerAttachError({
+        role: "STUDENT",
+        active: true,
+        alreadyLinked: false,
+        homeStudio: false,
+        hasAvailability: true,
+      }),
+    ).toBe("Only trainers can be attached");
+    expect(
+      freelanceTrainerAttachError({
+        role: "TRAINER",
+        active: true,
+        alreadyLinked: true,
+        homeStudio: false,
+        hasAvailability: true,
+      }),
+    ).toBe("Trainer is already attached");
+    expect(
+      freelanceTrainerAttachError({
+        role: "TRAINER",
+        active: true,
+        alreadyLinked: false,
+        homeStudio: false,
+        hasAvailability: false,
+      }),
+    ).toBe("Trainer has no published availability");
+    expect(
+      freelanceTrainerAttachError({
+        role: "TRAINER",
+        active: true,
+        alreadyLinked: false,
+        homeStudio: false,
+        hasAvailability: true,
+      }),
+    ).toBeNull();
   });
 });

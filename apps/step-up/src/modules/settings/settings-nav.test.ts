@@ -2,6 +2,16 @@ import { describe, expect, it } from "vitest";
 import { filterSettingsNav, SETTINGS_NAV } from "./settings-nav";
 
 describe("settings-nav integrations", () => {
+  it("shows classa listing to staff", () => {
+    const groups = filterSettingsNav(SETTINGS_NAV, {
+      isOwner: false,
+      isAdmin: true,
+      isFeatureEnabled: () => true,
+    });
+    const items = groups.flatMap((g) => g.items);
+    expect(items.some((item) => item.id === "marketplace")).toBe(true);
+  });
+
   it("hides integrations from staff", () => {
     const groups = filterSettingsNav(SETTINGS_NAV, {
       isOwner: false,

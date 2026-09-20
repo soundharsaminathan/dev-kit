@@ -92,6 +92,7 @@ import { Route as AppSettingsProfileRouteImport } from './routes/app/settings.pr
 import { Route as AppSettingsPlanRouteImport } from './routes/app/settings.plan'
 import { Route as AppSettingsPaymentsRouteImport } from './routes/app/settings.payments'
 import { Route as AppSettingsNotificationsRouteImport } from './routes/app/settings.notifications'
+import { Route as AppSettingsMarketplaceRouteImport } from './routes/app/settings.marketplace'
 import { Route as AppSettingsIntegrationsRouteImport } from './routes/app/settings.integrations'
 import { Route as AppSettingsFeaturesRouteImport } from './routes/app/settings.features'
 import { Route as AppSettingsChatRouteImport } from './routes/app/settings.chat'
@@ -543,6 +544,11 @@ const AppSettingsNotificationsRoute =
     path: '/notifications',
     getParentRoute: () => AppSettingsRoute,
   } as any)
+const AppSettingsMarketplaceRoute = AppSettingsMarketplaceRouteImport.update({
+  id: '/marketplace',
+  path: '/marketplace',
+  getParentRoute: () => AppSettingsRoute,
+} as any)
 const AppSettingsIntegrationsRoute = AppSettingsIntegrationsRouteImport.update({
   id: '/integrations',
   path: '/integrations',
@@ -790,6 +796,7 @@ export interface FileRoutesByFullPath {
   '/app/settings/chat': typeof AppSettingsChatRoute
   '/app/settings/features': typeof AppSettingsFeaturesRoute
   '/app/settings/integrations': typeof AppSettingsIntegrationsRoute
+  '/app/settings/marketplace': typeof AppSettingsMarketplaceRoute
   '/app/settings/notifications': typeof AppSettingsNotificationsRoute
   '/app/settings/payments': typeof AppSettingsPaymentsRoute
   '/app/settings/plan': typeof AppSettingsPlanRoute
@@ -905,6 +912,7 @@ export interface FileRoutesByTo {
   '/app/settings/chat': typeof AppSettingsChatRoute
   '/app/settings/features': typeof AppSettingsFeaturesRoute
   '/app/settings/integrations': typeof AppSettingsIntegrationsRoute
+  '/app/settings/marketplace': typeof AppSettingsMarketplaceRoute
   '/app/settings/notifications': typeof AppSettingsNotificationsRoute
   '/app/settings/payments': typeof AppSettingsPaymentsRoute
   '/app/settings/plan': typeof AppSettingsPlanRoute
@@ -1025,6 +1033,7 @@ export interface FileRoutesById {
   '/app/settings/chat': typeof AppSettingsChatRoute
   '/app/settings/features': typeof AppSettingsFeaturesRoute
   '/app/settings/integrations': typeof AppSettingsIntegrationsRoute
+  '/app/settings/marketplace': typeof AppSettingsMarketplaceRoute
   '/app/settings/notifications': typeof AppSettingsNotificationsRoute
   '/app/settings/payments': typeof AppSettingsPaymentsRoute
   '/app/settings/plan': typeof AppSettingsPlanRoute
@@ -1146,6 +1155,7 @@ export interface FileRouteTypes {
     | '/app/settings/chat'
     | '/app/settings/features'
     | '/app/settings/integrations'
+    | '/app/settings/marketplace'
     | '/app/settings/notifications'
     | '/app/settings/payments'
     | '/app/settings/plan'
@@ -1261,6 +1271,7 @@ export interface FileRouteTypes {
     | '/app/settings/chat'
     | '/app/settings/features'
     | '/app/settings/integrations'
+    | '/app/settings/marketplace'
     | '/app/settings/notifications'
     | '/app/settings/payments'
     | '/app/settings/plan'
@@ -1380,6 +1391,7 @@ export interface FileRouteTypes {
     | '/app/settings/chat'
     | '/app/settings/features'
     | '/app/settings/integrations'
+    | '/app/settings/marketplace'
     | '/app/settings/notifications'
     | '/app/settings/payments'
     | '/app/settings/plan'
@@ -2035,6 +2047,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSettingsNotificationsRouteImport
       parentRoute: typeof AppSettingsRoute
     }
+    '/app/settings/marketplace': {
+      id: '/app/settings/marketplace'
+      path: '/marketplace'
+      fullPath: '/app/settings/marketplace'
+      preLoaderRoute: typeof AppSettingsMarketplaceRouteImport
+      parentRoute: typeof AppSettingsRoute
+    }
     '/app/settings/integrations': {
       id: '/app/settings/integrations'
       path: '/integrations'
@@ -2302,6 +2321,7 @@ interface AppSettingsRouteChildren {
   AppSettingsChatRoute: typeof AppSettingsChatRoute
   AppSettingsFeaturesRoute: typeof AppSettingsFeaturesRoute
   AppSettingsIntegrationsRoute: typeof AppSettingsIntegrationsRoute
+  AppSettingsMarketplaceRoute: typeof AppSettingsMarketplaceRoute
   AppSettingsNotificationsRoute: typeof AppSettingsNotificationsRoute
   AppSettingsPaymentsRoute: typeof AppSettingsPaymentsRoute
   AppSettingsPlanRoute: typeof AppSettingsPlanRoute
@@ -2317,6 +2337,7 @@ const AppSettingsRouteChildren: AppSettingsRouteChildren = {
   AppSettingsChatRoute: AppSettingsChatRoute,
   AppSettingsFeaturesRoute: AppSettingsFeaturesRoute,
   AppSettingsIntegrationsRoute: AppSettingsIntegrationsRoute,
+  AppSettingsMarketplaceRoute: AppSettingsMarketplaceRoute,
   AppSettingsNotificationsRoute: AppSettingsNotificationsRoute,
   AppSettingsPaymentsRoute: AppSettingsPaymentsRoute,
   AppSettingsPlanRoute: AppSettingsPlanRoute,

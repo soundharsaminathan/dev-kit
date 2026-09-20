@@ -17,6 +17,7 @@ export function useCalendarEvents(
   if (scope.branchId) params.set("branchId", scope.branchId);
   if (scope.trainerId) params.set("trainerId", scope.trainerId);
   if (scope.studentId) params.set("studentId", scope.studentId);
+  if (scope.includeHireable) params.set("includeHireable", "true");
 
   return useQuery({
     queryKey: [
@@ -26,6 +27,7 @@ export function useCalendarEvents(
       scope.branchId,
       scope.trainerId,
       scope.studentId,
+      scope.includeHireable,
       from.toISOString(),
       to.toISOString(),
     ],

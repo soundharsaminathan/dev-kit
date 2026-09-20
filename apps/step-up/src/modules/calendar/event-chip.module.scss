@@ -84,6 +84,12 @@
   border-left-color: var(--color-success, #22c55e);
 }
 
+.availability {
+  background: color-mix(in srgb, var(--color-accent, #8b5cf6) 16%, transparent);
+  border-left-color: var(--color-accent, #8b5cf6);
+  border-style: dashed;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .chip {
     transition-duration: 0ms;

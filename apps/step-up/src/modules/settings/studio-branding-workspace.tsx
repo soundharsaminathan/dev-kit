@@ -10,6 +10,8 @@ import { BRAND_IMAGE_CROPS } from "@/modules/branding/brand-image-crops";
 import { BrandingAssetSlot } from "@/modules/branding/branding-asset-slot";
 import { useStudioBranding } from "@/modules/branding/use-studio-branding";
 import { ImageCropSheet } from "@/modules/ui/image-crop-sheet";
+import { marketplaceMissingMediaAlert } from "@/modules/marketplace/controls";
+import { MarketplaceMediaAlertBanner } from "@/modules/marketplace/media-alert";
 import { studioBrandingCompletion } from "./studio-branding-model";
 import styles from "./studio-branding-workspace.module.scss";
 import { StudioProfileCompletion } from "./studio-profile-preview";
@@ -36,8 +38,17 @@ export function StudioBrandingWorkspace({
       ? (studio.heroDesktopUrl ?? studio.heroMobileUrl)
       : (studio.heroMobileUrl ?? studio.heroDesktopUrl);
 
+  const studioAlert = marketplaceMissingMediaAlert({
+    kind: "STUDIO",
+    objectId: studio.id,
+    objectName: studio.name,
+    heroDesktopUrl: studio.heroDesktopUrl,
+    heroMobileUrl: studio.heroMobileUrl,
+  });
+
   return (
     <>
+      <MarketplaceMediaAlertBanner alert={studioAlert} />
       <div className={styles.workspace}>
         <div className={styles.editor}>
           <section className={styles.card}>

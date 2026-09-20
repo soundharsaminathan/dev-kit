@@ -42,6 +42,8 @@ import { DanceStyleSelect } from "@/modules/styles/dance-style-select";
 import { ApiState } from "@/modules/ui/api-state";
 import { FormInput } from "@/modules/ui/form-input";
 import { ImageCropSheet } from "@/modules/ui/image-crop-sheet";
+import { marketplaceMissingMediaAlert } from "@/modules/marketplace/controls";
+import { MarketplaceMediaAlertBanner } from "@/modules/marketplace/media-alert";
 import { PageHeader } from "@/modules/ui/page-header";
 import { SkeletonBlock } from "@/modules/ui/skeleton-block";
 import formStyles from "./new.module.scss";
@@ -420,8 +422,16 @@ function BasicsTab({ batch }: { batch: Batch }) {
     setCoverError(null);
   }
 
+  const classAlert = marketplaceMissingMediaAlert({
+    kind: "CLASS",
+    objectId: batch.id,
+    objectName: batch.name,
+    coverImageUrl: coverPreview,
+  });
+
   return (
     <>
+      <MarketplaceMediaAlertBanner alert={classAlert} />
       <div className={formStyles.formGrid}>
         <FormInput label="Name" value={name} onChange={setName} />
         <div className={`${formStyles.coverField} ${formStyles.fullWidth}`}>

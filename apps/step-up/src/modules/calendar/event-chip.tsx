@@ -11,13 +11,15 @@ type EventChipProps = {
 
 export function EventChip({ event, compact, onSelect }: EventChipProps) {
   const tone =
-    event.kind === "BOOKING"
-      ? event.bookingType === "PRIVATE"
-        ? "private"
-        : event.bookingType === "TRIAL"
-          ? "trial"
-          : "booking"
-      : "session";
+    event.kind === "AVAILABILITY"
+      ? "availability"
+      : event.kind === "BOOKING"
+        ? event.bookingType === "PRIVATE"
+          ? "private"
+          : event.bookingType === "TRIAL"
+            ? "trial"
+            : "booking"
+        : "session";
 
   const start = new Date(event.startsAt);
 

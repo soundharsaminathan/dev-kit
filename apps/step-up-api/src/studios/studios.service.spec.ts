@@ -1,6 +1,7 @@
 import { BadRequestException, ConflictException } from "@nestjs/common";
 import { Prisma, StudioStatus, UserRole } from "../generated/prisma/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { DEFAULT_STUDIO_MARKETPLACE_TOGGLES } from "../discover/marketplace.contract";
 import { StudiosService } from "./studios.service";
 
 describe("StudiosService", () => {
@@ -171,6 +172,7 @@ describe("StudiosService", () => {
       aiConfigured: false,
       aiProvider: null,
       aiChatModel: null,
+      ...DEFAULT_STUDIO_MARKETPLACE_TOGGLES,
     });
     expect(result).not.toHaveProperty("razorpayKeySecret");
     expect(result).not.toHaveProperty("aiApiKey");
@@ -215,6 +217,45 @@ describe("StudiosService", () => {
     expect(result.aiProvider).toBe("groq");
     expect(result).not.toHaveProperty("aiApiKey");
     expect(result).not.toHaveProperty("aiApiKeyIv");
+  });
+
+  it("persists marketplace visibility and booking toggles", async () => {
+    prisma.studioSettings.upsert.mockResolvedValue({
+      graceDays: 3,
+      expireAlertDays: 7,
+      platformFeePercent: 5,
+      timezone: "Asia/Kolkata",
+      razorpayKeyId: null,
+      razorpayKeySecret: null,
+      razorpaySecretIv: null,
+      danceStyles: null,
+      gstNumber: null,
+      gstPercent: 0,
+      admissionFee: 0,
+      aiProvider: null,
+      aiApiKey: null,
+      aiApiKeyIv: null,
+      aiChatModel: null,
+      publicTrainers: false,
+      bookingFloorHire: true,
+    });
+
+    const result = await service.updateSettings("studio-1", {
+      publicTrainers: false,
+      bookingFloorHire: true,
+    });
+
+    expect(prisma.studioSettings.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        update: expect.objectContaining({
+          publicTrainers: false,
+          bookingFloorHire: true,
+        }),
+      }),
+    );
+    expect(result.publicTrainers).toBe(false);
+    expect(result.bookingFloorHire).toBe(true);
+    expect(result.publicClasses).toBe(true);
   });
 
   it("rejects saving an AI key without a provider", async () => {

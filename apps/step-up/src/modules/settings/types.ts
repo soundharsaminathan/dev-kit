@@ -14,6 +14,14 @@ export type StudioSettings = {
   aiConfigured?: boolean;
   aiProvider?: "groq" | "gemini" | "openai" | null;
   aiChatModel?: string | null;
+  publicStudioListing?: boolean;
+  publicClasses?: boolean;
+  publicTrainers?: boolean;
+  publicRatings?: boolean;
+  bookingTrial?: boolean;
+  bookingEnrollment?: boolean;
+  bookingPrivate?: boolean;
+  bookingFloorHire?: boolean;
 };
 
 export type Studio = {

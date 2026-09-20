@@ -74,6 +74,23 @@ describe("resolveEventNavigation", () => {
       expect(resolveEventNavigation(session(), true)).toBeNull();
     });
 
+    it("does not navigate hireable availability tiles", () => {
+      expect(
+        resolveEventNavigation(
+          {
+            id: "avail-1",
+            kind: "AVAILABILITY",
+            title: "Hire Priya",
+            startsAt: "2026-09-21T04:30:00.000Z",
+            endsAt: "2026-09-21T06:30:00.000Z",
+            status: "HIREABLE",
+            trainerIds: ["trainer-1"],
+          },
+          true,
+        ),
+      ).toBeNull();
+    });
+
     it("navigates a booking tile to bookings", () => {
       expect(resolveEventNavigation(booking(), true)).toEqual({
         to: "/app/bookings",

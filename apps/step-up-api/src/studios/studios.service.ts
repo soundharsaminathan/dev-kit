@@ -32,6 +32,10 @@ import {
   type StudioPublicDetailsInput,
 } from "./studio-public-fields";
 import { isTestStudio } from "./test-studio";
+import {
+  type StudioMarketplaceToggles,
+  studioMarketplaceTogglesFrom,
+} from "../discover/marketplace.contract";
 
 type StudioSettingsRow = {
   graceDays: number;
@@ -49,7 +53,7 @@ type StudioSettingsRow = {
   aiApiKey: string | null;
   aiApiKeyIv: string | null;
   aiChatModel: string | null;
-};
+} & Partial<StudioMarketplaceToggles>;
 
 function toPublicStudioSettings(settings: StudioSettingsRow) {
   return {
@@ -70,6 +74,7 @@ function toPublicStudioSettings(settings: StudioSettingsRow) {
     aiConfigured: isAiConfigured(settings),
     aiProvider: toAiProviderApiValue(settings.aiProvider),
     aiChatModel: settings.aiChatModel ?? null,
+    ...studioMarketplaceTogglesFrom(settings),
   };
 }
 
@@ -464,6 +469,14 @@ export class StudiosService {
       aiProvider?: string | null;
       aiApiKey?: string | null;
       aiChatModel?: string | null;
+      publicStudioListing?: boolean;
+      publicClasses?: boolean;
+      publicTrainers?: boolean;
+      publicRatings?: boolean;
+      bookingTrial?: boolean;
+      bookingEnrollment?: boolean;
+      bookingPrivate?: boolean;
+      bookingFloorHire?: boolean;
     },
   ) {
     const update: {
@@ -482,6 +495,14 @@ export class StudiosService {
       aiApiKey?: string | null;
       aiApiKeyIv?: string | null;
       aiChatModel?: string | null;
+      publicStudioListing?: boolean;
+      publicClasses?: boolean;
+      publicTrainers?: boolean;
+      publicRatings?: boolean;
+      bookingTrial?: boolean;
+      bookingEnrollment?: boolean;
+      bookingPrivate?: boolean;
+      bookingFloorHire?: boolean;
     } = {};
 
     if (data.graceDays !== undefined) update.graceDays = data.graceDays;
@@ -538,6 +559,30 @@ export class StudiosService {
     if (data.aiChatModel !== undefined) {
       const trimmed = data.aiChatModel?.trim() ?? "";
       update.aiChatModel = trimmed || null;
+    }
+    if (data.publicStudioListing !== undefined) {
+      update.publicStudioListing = data.publicStudioListing;
+    }
+    if (data.publicClasses !== undefined) {
+      update.publicClasses = data.publicClasses;
+    }
+    if (data.publicTrainers !== undefined) {
+      update.publicTrainers = data.publicTrainers;
+    }
+    if (data.publicRatings !== undefined) {
+      update.publicRatings = data.publicRatings;
+    }
+    if (data.bookingTrial !== undefined) {
+      update.bookingTrial = data.bookingTrial;
+    }
+    if (data.bookingEnrollment !== undefined) {
+      update.bookingEnrollment = data.bookingEnrollment;
+    }
+    if (data.bookingPrivate !== undefined) {
+      update.bookingPrivate = data.bookingPrivate;
+    }
+    if (data.bookingFloorHire !== undefined) {
+      update.bookingFloorHire = data.bookingFloorHire;
     }
 
     const existing = await this.prisma.studioSettings.findUnique({

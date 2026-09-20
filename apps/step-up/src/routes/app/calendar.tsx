@@ -76,6 +76,7 @@ function AppCalendarPage() {
       branchesLoading={isStaff && branchesQuery.isLoading}
       selectedBranchId={search.branchId ?? null}
       staffActions
+      canHire={isStaff}
       onViewChange={(view) => {
         void navigate({
           search: (prev) => ({ ...prev, view }),

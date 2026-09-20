@@ -449,6 +449,43 @@ describe("MarketplaceCatalogService", () => {
     expect(page.items[1]?.priceFrom).toBeNull();
   });
 
+  it("hides trainer cards when the studio turns Trainers off", async () => {
+    seed([
+      studioRow({
+        settings: { publicTrainers: false },
+        trainers: [trainerRow("hidden-house")],
+        batches: [batchRow("class-1")],
+      }),
+    ]);
+
+    const page = await service.listTrainers({
+      category: "DANCE",
+      city: "chennai",
+    });
+    expect(page.items.map((item) => item.id)).not.toContain("hidden-house");
+
+    const studio = studioRow({
+      settings: { publicTrainers: false },
+      trainers: [trainerRow("hidden-house")],
+      batches: [batchRow("class-1")],
+    });
+    seed([studio]);
+    prisma.studio.findFirst.mockResolvedValue({
+      ...studio,
+      about: null,
+      tagline: null,
+      photos: [],
+      branches: studio.branches.map((branch) => ({
+        ...branch,
+        amenities: [],
+        openingHours: null,
+        media: [],
+      })),
+    });
+    const detail = await service.getStudio("rhythm-house");
+    expect(detail.trainers.map((item) => item.id)).not.toContain("hidden-house");
+  });
+
   it("hides trainers without a photo and lists independents with a photo", async () => {
     seed(
       [

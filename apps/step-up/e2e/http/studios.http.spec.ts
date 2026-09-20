@@ -196,4 +196,73 @@ test.describe("studios HTTP @http", () => {
       await cleanup.dispose();
     }
   });
+
+  test("students cannot change marketplace toggles or attach trainers @http", async () => {
+    await expectStatus(
+      "STUDENT",
+      `/studios/${SEED.studioId}/settings`,
+      403,
+      {
+        method: "PATCH",
+        body: JSON.stringify({ publicTrainers: false }),
+      },
+    );
+    await expectStatus(
+      "STUDENT",
+      `/studios/${SEED.studioId}/trainer-links`,
+      403,
+      {
+        method: "POST",
+        body: JSON.stringify({ trainerId: SEED.users.TRAINER.id }),
+      },
+    );
+  });
+
+  test("staff can toggle trainers and cannot attach a home trainer @http", async () => {
+    const cleanup = new TestDataCleanup();
+    const stamp = Date.now();
+    try {
+      const created = await expectOk<{
+        id: string;
+        owner: { id: string };
+      }>("SYSTEM_ADMIN", "/studios", {
+        method: "POST",
+        body: JSON.stringify({
+          name: `HTTP Market ${stamp}`,
+          ownerEmail: testEmail(`http-market-${stamp}`),
+          ownerName: "Market Owner",
+          temporaryPassword: `Su-Mkt${stamp.toString(36)}xx`,
+        }),
+      });
+      cleanup.trackStudio(created.id);
+
+      const toggled = await expectOk<{
+        publicTrainers: boolean;
+        bookingFloorHire: boolean;
+      }>("SYSTEM_ADMIN", `/studios/${created.id}/settings`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          publicTrainers: false,
+          bookingFloorHire: true,
+        }),
+      });
+      expect(toggled.publicTrainers).toBe(false);
+      expect(toggled.bookingFloorHire).toBe(true);
+
+      const denied = await expectStatus(
+        "STAFF",
+        `/studios/${SEED.studioId}/trainer-links`,
+        400,
+        {
+          method: "POST",
+          body: JSON.stringify({ trainerId: SEED.users.TRAINER.id }),
+        },
+      );
+      expect(denied.text).toMatch(
+        /already attached|already belongs|no published availability/i,
+      );
+    } finally {
+      await cleanup.dispose();
+    }
+  });
 });

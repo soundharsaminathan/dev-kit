@@ -1,4 +1,4 @@
-export type CalendarEventKind = "SESSION" | "BOOKING";
+export type CalendarEventKind = "SESSION" | "BOOKING" | "AVAILABILITY";
 
 export type BookingType = "TRIAL" | "OPEN_SEAT" | "PRIVATE" | "FLOOR_HIRE";
 
@@ -25,6 +25,7 @@ export type CalendarScope = {
   branchId?: string | undefined;
   trainerId?: string | undefined;
   studentId?: string | undefined;
+  includeHireable?: boolean | undefined;
 };
 
 export function startOfDay(date: Date): Date {

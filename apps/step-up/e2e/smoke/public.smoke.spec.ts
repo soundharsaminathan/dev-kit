@@ -76,6 +76,18 @@ test.describe("public smoke @smoke", () => {
     }
   });
 
+  test("guest cannot attach a freelance trainer @smoke", async () => {
+    const response = await fetch(
+      `${apiBaseUrl()}/studios/${SMOKE.studioId}/trainer-links`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ trainerId: SMOKE.users.TRAINER.id }),
+      },
+    );
+    expect(response.status).toBe(401);
+  });
+
   test("guest rating write is denied @smoke", async () => {
     const response = await fetch(`${apiBaseUrl()}/discover/ratings`, {
       method: "POST",

@@ -53,6 +53,12 @@
   flex-shrink: 0;
 }
 
+.hireActions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
 .layout {
   flex: 1;
   min-height: 0;

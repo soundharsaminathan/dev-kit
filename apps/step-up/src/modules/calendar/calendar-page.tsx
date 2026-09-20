@@ -12,6 +12,7 @@ import { Screen } from "@/modules/ui/screen";
 import { SkeletonBlock } from "@/modules/ui/skeleton-block";
 import { ErrorState } from "@/modules/ui/states";
 import { TouchButton } from "@/modules/ui/touch-button";
+import { HireTrainerSheet } from "./hire-trainer-sheet";
 import styles from "./calendar-page.module.scss";
 import { MonthView } from "./month-view";
 import {
@@ -164,6 +165,9 @@ export function resolveEventNavigation(
       params: { id: event.sessionId },
     };
   }
+  if (event.kind === "AVAILABILITY") {
+    return null;
+  }
   if (event.kind === "BOOKING" && staffActions) {
     return { to: "/app/bookings" };
   }
@@ -189,6 +193,7 @@ type CalendarPageProps = {
   onFocusChange: (focus: Date) => void;
   onBranchChange?: ((branchId: string | null) => void) | undefined;
   staffActions?: boolean | undefined;
+  canHire?: boolean | undefined;
 };
 
 export function CalendarPage({
@@ -204,12 +209,20 @@ export function CalendarPage({
   onFocusChange,
   onBranchChange,
   staffActions = false,
+  canHire = false,
 }: CalendarPageProps) {
   const navigate = useNavigate();
   const [scrollToNowToken, setScrollToNowToken] = useState(0);
+  const [hireOpen, setHireOpen] = useState(false);
+  const [hireMode, setHireMode] = useState(false);
+  const [focusTrainerId, setFocusTrainerId] = useState<string | null>(null);
   const range = useMemo(() => rangeForView(focus, view), [focus, view]);
+  const eventScope = {
+    ...scope,
+    includeHireable: canHire && hireMode,
+  };
 
-  const eventsQuery = useCalendarEvents(scope, range.from, range.to);
+  const eventsQuery = useCalendarEvents(eventScope, range.from, range.to);
 
   const rangeLabel =
     view === "week"
@@ -225,6 +238,11 @@ export function CalendarPage({
   };
 
   const handleSelectEvent = (event: CalendarEvent) => {
+    if (event.kind === "AVAILABILITY") {
+      setFocusTrainerId(event.trainerIds?.[0] ?? null);
+      setHireOpen(true);
+      return;
+    }
     const destination = resolveEventNavigation(event, staffActions);
     if (destination) {
       void navigate(destination);
@@ -293,6 +311,29 @@ export function CalendarPage({
                 height="2.5rem"
                 radius="var(--radius-md, 0.5rem)"
               />
+            </div>
+          ) : null}
+          {canHire ? (
+            <div className={styles.hireActions}>
+              <TouchButton
+                size="sm"
+                variant={hireMode ? "primary" : "quiet"}
+                data-testid="calendar-hire-mode"
+                onClick={() => setHireMode((value) => !value)}
+              >
+                {hireMode ? "Hiring on" : "Show availability"}
+              </TouchButton>
+              <TouchButton
+                size="sm"
+                variant="default"
+                data-testid="calendar-hire-trainer"
+                onClick={() => {
+                  setFocusTrainerId(null);
+                  setHireOpen(true);
+                }}
+              >
+                Hire trainer
+              </TouchButton>
             </div>
           ) : null}
           {switcher === "ready" && onBranchChange ? (
@@ -373,6 +414,16 @@ export function CalendarPage({
           </div>
         </div>
       </div>
+      {canHire && scope.studioId ? (
+        <HireTrainerSheet
+          isOpen={hireOpen}
+          onOpenChange={setHireOpen}
+          studioId={scope.studioId}
+          from={range.from}
+          to={range.to}
+          focusTrainerId={focusTrainerId}
+        />
+      ) : null}
     </Screen>
   );
 }

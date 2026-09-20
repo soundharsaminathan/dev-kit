@@ -4,6 +4,7 @@ import { MediaModule } from "../media/media.module";
 import { PaymentsModule } from "../payments/payments.module";
 import { UserCryptoModule } from "../users/user-crypto.module";
 import { UsersModule } from "../users/users.module";
+import { MarketplaceControlsModule } from "./marketplace-controls.module";
 import { StudiosController } from "./studios.controller";
 import { StudiosService } from "./studios.service";
 
@@ -14,9 +15,10 @@ import { StudiosService } from "./studios.service";
     MediaModule,
     PaymentsModule,
     UsersModule,
+    MarketplaceControlsModule,
   ],
   controllers: [StudiosController],
   providers: [StudiosService],
-  exports: [StudiosService],
+  exports: [StudiosService, MarketplaceControlsModule],
 })
 export class StudiosModule {}

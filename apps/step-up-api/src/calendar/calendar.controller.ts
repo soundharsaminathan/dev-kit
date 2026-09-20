@@ -1,5 +1,6 @@
 import { Controller, Get, Inject, Query, UseGuards } from "@nestjs/common";
-import { IsDateString, IsOptional, IsString } from "class-validator";
+import { Transform } from "class-transformer";
+import { IsBoolean, IsDateString, IsOptional, IsString } from "class-validator";
 import { AuthGuard } from "../auth/auth.guard";
 import { CurrentUser } from "../auth/current-user.decorator";
 import { RolesGuard } from "../auth/roles.guard";
@@ -28,6 +29,11 @@ class CalendarEventsQueryDto {
   @IsOptional()
   @IsString()
   studentId?: string;
+
+  @IsOptional()
+  @Transform(({ value }) => value === true || value === "true" || value === "1")
+  @IsBoolean()
+  includeHireable?: boolean;
 }
 
 class UnscheduledQueryDto {

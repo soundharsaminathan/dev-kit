@@ -49,6 +49,13 @@ export const SETTINGS_NAV: SettingsNavGroup[] = [
         to: "/app/settings/styles",
         ownerOnly: true,
       },
+      {
+        id: "marketplace",
+        label: "classa listing",
+        icon: "globe",
+        kind: "internal",
+        to: "/app/settings/marketplace",
+      },
     ],
   },
   {
@@ -180,6 +187,10 @@ export const SETTINGS_PAGE_META: Record<
   "/app/settings/styles": {
     title: "Dance styles",
     subtitle: "Styles students and trainers can pick at this studio.",
+  },
+  "/app/settings/marketplace": {
+    title: "classa listing",
+    subtitle: "Choose what students see and book on classa.",
   },
   "/app/settings/billing": {
     title: "Billing",
