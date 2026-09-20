@@ -298,13 +298,6 @@
   gap: 8px 16px;
 }
 
-.sectionCopy {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 0;
-}
-
 .sectionTitle {
   margin: 0;
   font-size: clamp(1.5rem, 3vw, 1.875rem);
@@ -313,13 +306,6 @@
   line-height: 1.2;
   text-wrap: balance;
   color: var(--landing-ink);
-}
-
-.sectionSupport {
-  margin: 0;
-  font-size: 0.9375rem;
-  line-height: 1.5;
-  color: color-mix(in srgb, var(--landing-ink) 58%, transparent);
 }
 
 .sectionLink {
@@ -333,50 +319,6 @@
   &:hover {
     text-decoration: underline;
     text-underline-offset: 0.15em;
-  }
-
-  &:focus-visible {
-    outline: 2px solid var(--color-border-focus);
-    outline-offset: 2px;
-  }
-}
-
-.filterRow {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.filterChip {
-  display: inline-flex;
-  align-items: center;
-  min-height: 2.25rem;
-  padding: 4px 14px;
-  border-radius: 999px;
-  border: 1px solid color-mix(in srgb, var(--landing-ink) 14%, transparent);
-  background: #fff;
-  color: var(--landing-ink);
-  font-size: 0.875rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition:
-    background 700ms var(--lp-ease),
-    color 700ms var(--lp-ease),
-    border-color 700ms var(--lp-ease),
-    transform 700ms var(--lp-ease);
-
-  &[data-active="true"] {
-    border-color: var(--landing-navy);
-    background: var(--landing-navy);
-    color: #fff;
-  }
-
-  &:hover:not([data-active="true"]) {
-    background: #f3f4f6;
-  }
-
-  &:active {
-    transform: scale(0.98);
   }
 
   &:focus-visible {
@@ -508,19 +450,270 @@
   font-size: 0.9375rem;
 }
 
-.cardRail {
+.tryPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 20px 16px 24px;
+  border-radius: 24px;
+  background: #f6e4ea;
+  color: #1a1f2c;
+}
+
+.tryHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px 16px;
+}
+
+.tryCopyBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.tryTitle {
+  margin: 0;
+  font-size: clamp(1.5rem, 3vw, 1.875rem);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.2;
+  color: #1a1f2c;
+}
+
+.trySupport {
+  margin: 0;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  color: color-mix(in srgb, #1a1f2c 58%, transparent);
+}
+
+.tryExplore {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #1a1f2c;
+  text-decoration: none;
+  white-space: nowrap;
+  margin-top: 4px;
+
+  &:hover {
+    text-decoration: underline;
+    text-underline-offset: 0.15em;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--color-border-focus);
+    outline-offset: 2px;
+  }
+}
+
+.tryRail {
   display: grid;
   grid-auto-flow: column;
-  grid-auto-columns: minmax(17.5rem, 20rem);
-  gap: 16px;
+  grid-auto-columns: minmax(15.5rem, 17.5rem);
+  gap: 14px;
   overflow-x: auto;
-  padding-bottom: 8px;
+  padding-bottom: 4px;
   scroll-snap-type: x mandatory;
   scrollbar-width: thin;
 }
 
-.railCard {
+.tryRailItem {
   scroll-snap-align: start;
+  min-width: 0;
+}
+
+.tryCard {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 1px 2px rgb(26 31 44 / 6%);
+  color: #1a1f2c;
+  transition:
+    transform 700ms var(--lp-ease),
+    box-shadow 700ms var(--lp-ease);
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 28px rgb(26 31 44 / 10%);
+  }
+}
+
+.tryMedia {
+  position: relative;
+  aspect-ratio: 16 / 11;
+  overflow: hidden;
+  background: color-mix(in srgb, #1a1f2c 6%, #fff);
+}
+
+.tryMediaLink {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.tryImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.tryPlaceholder {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, #c45c26, #1a1f2c);
+  color: #fff;
+  font-size: 2rem;
+  font-weight: 800;
+}
+
+.tryCat {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.4rem;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 92%);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+
+  &[data-cat="DANCE"] {
+    color: #8b4aa8;
+  }
+
+  &[data-cat="MUSIC"] {
+    color: #1f8a7a;
+  }
+
+  &[data-cat="FITNESS"] {
+    color: #c45c26;
+  }
+
+  &[data-cat="ART"] {
+    color: #c45b7a;
+  }
+}
+
+.tryBody {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px 14px 14px;
+  flex: 1;
+}
+
+.tryCopy {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: inherit;
+  text-decoration: none;
+  min-width: 0;
+
+  &:focus-visible {
+    outline: 2px solid var(--color-border-focus);
+    outline-offset: 2px;
+  }
+}
+
+.tryName {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+  text-wrap: balance;
+}
+
+.tryStudio {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.35;
+  color: color-mix(in srgb, #1a1f2c 58%, transparent);
+}
+
+.tryRating {
+  margin-top: 2px;
+}
+
+.tryMeta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 2px 0 0;
+  font-size: 0.8125rem;
+  color: color-mix(in srgb, #1a1f2c 62%, transparent);
+}
+
+.tryMetaIcon {
+  width: 0.875rem;
+  height: 0.875rem;
+  flex-shrink: 0;
+}
+
+.tryFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: auto;
+}
+
+.tryPrice {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #1a1f2c;
+}
+
+.tryBook {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2rem;
+  padding: 4px 12px;
+  border: 0;
+  border-radius: 10px;
+  background: #1a1f2c;
+  color: #fff;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background 700ms var(--lp-ease),
+    transform 700ms var(--lp-ease);
+
+  &:hover:not(:disabled) {
+    background: #2a3140;
+  }
+
+  &:active:not(:disabled) {
+    transform: scale(0.98);
+  }
+
+  &:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--color-border-focus);
+    outline-offset: 2px;
+  }
 }
 
 .mapSplit {
@@ -585,6 +778,16 @@
     gap: 80px;
   }
 
+  .tryPanel {
+    padding: 24px 24px 28px;
+    gap: 24px;
+  }
+
+  .tryRail {
+    grid-auto-columns: minmax(16.5rem, 18rem);
+    gap: 16px;
+  }
+
   .categoryGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -641,17 +844,19 @@
   .searchCta,
   .quickChip,
   .areaChip,
-  .filterChip,
-  .categoryCard {
+  .categoryCard,
+  .tryCard,
+  .tryBook {
     transition: none;
   }
 
   .searchCta:active,
   .quickChip:active,
   .areaChip:active,
-  .filterChip:active,
   .categoryCard:active,
-  .categoryCard:hover {
+  .categoryCard:hover,
+  .tryCard:hover,
+  .tryBook:active {
     transform: none;
   }
 }
@@ -751,7 +956,6 @@
   color: #f5f5f5;
 }
 
-:global(html[data-theme-mode="dark"]) .sectionSupport,
 :global(html[data-theme-mode="dark"]) .hint {
   color: rgb(255 255 255 / 58%);
 }
@@ -762,16 +966,41 @@
   color: #f5f5f5;
 }
 
-:global(html[data-theme-mode="dark"]) .filterChip {
-  background: #1c1f26;
-  border-color: rgb(255 255 255 / 12%);
+:global(html[data-theme-mode="dark"]) .tryPanel {
+  background: #2a1f24;
+}
+
+:global(html[data-theme-mode="dark"]) .tryTitle,
+:global(html[data-theme-mode="dark"]) .tryExplore {
   color: #f5f5f5;
 }
 
-:global(html[data-theme-mode="dark"]) .filterChip[data-active="true"] {
+:global(html[data-theme-mode="dark"]) .trySupport {
+  color: rgb(255 255 255 / 58%);
+}
+
+:global(html[data-theme-mode="dark"]) .tryCard {
+  background: #16181d;
+  color: #f5f5f5;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 35%);
+}
+
+:global(html[data-theme-mode="dark"]) .tryStudio,
+:global(html[data-theme-mode="dark"]) .tryMeta {
+  color: rgb(255 255 255 / 58%);
+}
+
+:global(html[data-theme-mode="dark"]) .tryPrice {
+  color: #f5f5f5;
+}
+
+:global(html[data-theme-mode="dark"]) .tryBook {
   background: #f0f0f0;
-  border-color: #f0f0f0;
   color: #1a1f2c;
+}
+
+:global(html[data-theme-mode="dark"]) .tryBook:hover:not(:disabled) {
+  background: #fff;
 }
 
 :global(html[data-theme-mode="dark"]) .mapPane {

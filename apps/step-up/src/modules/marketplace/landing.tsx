@@ -8,6 +8,7 @@ import {
   Palette,
   PersonStanding,
   Search,
+  Signal,
   Users,
 } from "lucide-react";
 import { type FormEvent, useEffect, useState } from "react";
@@ -18,10 +19,7 @@ import { CitySwitcher } from "@/modules/student-landing/city-switcher";
 import { MARKETPLACE_AREAS } from "./areas";
 import type { BookSheetTarget } from "./book";
 import { BookSheet } from "./book-sheet";
-import {
-  MarketplaceClassCardView,
-  MarketplaceStudioCardView,
-} from "./cards";
+import { MarketplaceStudioCardView } from "./cards";
 import {
   fetchMarketplaceClasses,
   fetchMarketplaceStudios,
@@ -31,7 +29,9 @@ import {
 import { MarketplaceMap } from "./map";
 import { marketplacePinsForItems } from "./place";
 import { categoryLabel, writeStoredCategory } from "./search";
+import { MarketplaceStars } from "./stars";
 import type {
+  ClassLevel,
   MarketplaceClassCard,
   MarketplaceStudioCard,
   PublicMarketplaceCategory,
@@ -102,23 +102,94 @@ const CATEGORY_CARDS: Array<{
   },
 ];
 
-const TRY_NEW = [
-  { id: "hip-hop", label: "Hip hop", category: "DANCE" as const },
-  { id: "yoga", label: "Yoga", category: "FITNESS" as const },
-  { id: "vocals", label: "Vocals", category: "MUSIC" as const },
-  { id: "drawing", label: "Drawing", category: "ART" as const },
-  { id: "bharatanatyam", label: "Bharatanatyam", category: "DANCE" as const },
-  { id: "guitar", label: "Guitar", category: "MUSIC" as const },
-];
+function levelLabel(level: ClassLevel | null): string {
+  if (level === "BEGINNER") return "Beginner";
+  if (level === "INTERMEDIATE") return "Intermediate";
+  if (level === "ADVANCED") return "Advanced";
+  return "All levels";
+}
+
+function formatTryPrice(
+  price: number | null,
+  cadence: "MONTHLY" | "QUARTERLY" | null,
+): string | null {
+  if (price == null) return null;
+  const formatted = new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+    maximumFractionDigits: 0,
+  }).format(price);
+  if (cadence === "QUARTERLY") return `From ${formatted} / quarter`;
+  return `From ${formatted} / month`;
+}
+
+function TryNewClassCard({
+  item,
+  onBook,
+}: {
+  item: MarketplaceClassCard;
+  onBook: (item: MarketplaceClassCard) => void;
+}) {
+  const price = formatTryPrice(item.priceFrom, item.priceCadence);
+  return (
+    <article className={styles.tryCard}>
+      <div className={styles.tryMedia}>
+        <Link
+          to="/classes/$slug"
+          params={{ slug: item.slug }}
+          className={styles.tryMediaLink}
+          tabIndex={-1}
+          aria-hidden
+        >
+          {item.coverImageUrl ? (
+            <img className={styles.tryImage} src={item.coverImageUrl} alt="" />
+          ) : (
+            <div className={styles.tryPlaceholder} aria-hidden>
+              {item.name.slice(0, 1)}
+            </div>
+          )}
+        </Link>
+        <span className={styles.tryCat} data-cat={item.category}>
+          {categoryLabel(item.category)}
+        </span>
+      </div>
+      <div className={styles.tryBody}>
+        <Link
+          to="/classes/$slug"
+          params={{ slug: item.slug }}
+          className={styles.tryCopy}
+        >
+          <h3 className={styles.tryName}>{item.name}</h3>
+          <p className={styles.tryStudio}>{item.studioName}</p>
+          <div className={styles.tryRating}>
+            <MarketplaceStars rating={item.studioRating} />
+          </div>
+          <p className={styles.tryMeta}>
+            <Signal aria-hidden className={styles.tryMetaIcon} />
+            <span>{levelLabel(item.level)}</span>
+          </p>
+        </Link>
+        <div className={styles.tryFooter}>
+          {price ? <span className={styles.tryPrice}>{price}</span> : <span />}
+          <button
+            type="button"
+            className={styles.tryBook}
+            disabled={!item.canTrial && !item.canEnroll}
+            onClick={() => onBook(item)}
+          >
+            Book →
+          </button>
+        </div>
+      </div>
+    </article>
+  );
+}
 
 function LandingInner() {
   const navigate = useNavigate();
   const { cityId, cityLabel } = useDiscoverCity();
   const { viewerKey, resolveAuth } = useMarketplaceAuth();
   const [q, setQ] = useState("");
-  const [popularCategory, setPopularCategory] = useState<
-    PublicMarketplaceCategory | "ALL"
-  >("ALL");
   const [book, setBook] = useState<BookSheetTarget | null>(null);
   const [selectedPin, setSelectedPin] = useState<string | null>(null);
 
@@ -126,17 +197,16 @@ function LandingInner() {
     document.title = `Find your next class in ${cityLabel} | classa`;
   }, [cityLabel]);
 
-  const popularSearch = {
+  const trySearch = {
     city: cityId,
-    ...(popularCategory === "ALL" ? {} : { category: popularCategory }),
-    sort: "popularity" as const,
+    sort: "rating" as const,
     limit: 8,
   };
 
-  const classesQuery = useQuery({
-    queryKey: marketplaceClassesQueryKey(popularSearch, viewerKey),
+  const tryQuery = useQuery({
+    queryKey: marketplaceClassesQueryKey(trySearch, viewerKey),
     queryFn: async () =>
-      fetchMarketplaceClasses(popularSearch, await resolveAuth()),
+      fetchMarketplaceClasses(trySearch, await resolveAuth()),
     staleTime: 60_000,
   });
 
@@ -153,7 +223,7 @@ function LandingInner() {
     staleTime: 60_000,
   });
 
-  const popular = (classesQuery.data?.items ?? []).slice(0, 8);
+  const tryClasses = (tryQuery.data?.items ?? []).slice(0, 8);
   const featuredStudios = (studiosQuery.data?.items ?? []).slice(0, 4);
   const pins = marketplacePinsForItems(
     studiosQuery.data?.pins ?? [],
@@ -369,84 +439,6 @@ function LandingInner() {
           </div>
         </section>
 
-        <section className={styles.section} aria-labelledby="popular-title">
-          <Reveal>
-            <div className={styles.sectionHead}>
-              <div className={styles.sectionCopy}>
-                <h2 id="popular-title" className={styles.sectionTitle}>
-                  Popular classes near you
-                </h2>
-                <p className={styles.sectionSupport}>
-                  Great places to start in {cityLabel}
-                </p>
-              </div>
-              <Link
-                to="/classes"
-                search={{
-                  city: cityId,
-                  sort: "popularity",
-                  ...(popularCategory === "ALL"
-                    ? {}
-                    : { category: popularCategory }),
-                }}
-                className={styles.sectionLink}
-              >
-                View all →
-              </Link>
-            </div>
-          </Reveal>
-          <div className={styles.filterRow} role="list">
-            {(
-              [
-                { id: "ALL", label: "All" },
-                { id: "DANCE", label: "Dance" },
-                { id: "MUSIC", label: "Music" },
-                { id: "FITNESS", label: "Fitness" },
-                { id: "ART", label: "Art" },
-              ] as const
-            ).map((chip) => (
-              <button
-                key={chip.id}
-                type="button"
-                role="listitem"
-                className={styles.filterChip}
-                data-active={popularCategory === chip.id ? "true" : undefined}
-                aria-pressed={popularCategory === chip.id}
-                onClick={() => setPopularCategory(chip.id)}
-              >
-                {chip.label}
-              </button>
-            ))}
-          </div>
-          {classesQuery.isLoading ? (
-            <p className={styles.hint}>Loading popular classes</p>
-          ) : null}
-          {classesQuery.isError ? (
-            <p className={styles.hint}>
-              Could not load classes. Start the API (`pnpm dev:step-up-api`) and
-              refresh.
-            </p>
-          ) : null}
-          {!classesQuery.isLoading &&
-          !classesQuery.isError &&
-          popular.length === 0 ? (
-            <p className={styles.hint}>
-              {popularCategory === "ALL"
-                ? `Classes in ${cityLabel} are coming soon.`
-                : `${categoryLabel(popularCategory)} classes in ${cityLabel} are coming soon.`}
-            </p>
-          ) : null}
-          {popular.length > 0 ? (
-            <div className={styles.cardRail}>
-              {popular.map((item) => (
-                <div key={item.id} className={styles.railCard}>
-                  <MarketplaceClassCardView item={item} onBook={bookClass} />
-                </div>
-              ))}
-            </div>
-          ) : null}
-        </section>
-
         <section className={styles.section} aria-labelledby="map-title">
           <Reveal>
             <div className={styles.sectionHead}>
@@ -489,25 +481,52 @@ function LandingInner() {
         </section>
 
         <section className={styles.section} aria-labelledby="try-title">
-          <Reveal>
-            <h2 id="try-title" className={styles.sectionTitle}>
-              Try something new
-            </h2>
-          </Reveal>
-          <div className={styles.chipRow}>
-            {TRY_NEW.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                className={styles.areaChip}
-                onClick={() => {
-                  writeStoredCategory(item.category);
-                  goBrowse({ category: item.category, q: item.label });
-                }}
-              >
-                {item.label}
-              </button>
-            ))}
+          <div className={styles.tryPanel}>
+            <Reveal>
+              <div className={styles.tryHead}>
+                <div className={styles.tryCopyBlock}>
+                  <h2 id="try-title" className={styles.tryTitle}>
+                    Try something new
+                  </h2>
+                  <p className={styles.trySupport}>
+                    Fresh studios. New experiences.
+                  </p>
+                </div>
+                <Link
+                  to="/classes"
+                  search={{ city: cityId, sort: "rating" }}
+                  className={styles.tryExplore}
+                >
+                  Explore all →
+                </Link>
+              </div>
+            </Reveal>
+            {tryQuery.isLoading ? (
+              <p className={styles.hint}>Loading classes to try</p>
+            ) : null}
+            {tryQuery.isError ? (
+              <p className={styles.hint}>
+                Could not load classes. Start the API and refresh.
+              </p>
+            ) : null}
+            {!tryQuery.isLoading &&
+            !tryQuery.isError &&
+            tryClasses.length === 0 ? (
+              <p className={styles.hint}>
+                New classes in {cityLabel} are coming soon.
+              </p>
+            ) : null}
+            {tryClasses.length > 0 ? (
+              <div className={styles.tryRail}>
+                {tryClasses.map((item, index) => (
+                  <Reveal key={item.id} delay={index * 40}>
+                    <div className={styles.tryRailItem}>
+                      <TryNewClassCard item={item} onBook={bookClass} />
+                    </div>
+                  </Reveal>
+                ))}
+              </div>
+            ) : null}
           </div>
         </section>
       </div>

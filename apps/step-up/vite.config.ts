@@ -21,7 +21,8 @@ function firebaseMessagingSwPlugin(env: Record<string, string>): Plugin {
       appId: env.VITE_FIREBASE_APP_ID ?? "",
     };
 
-    return `importScripts("https://www.gstatic.com/firebasejs/11.10.0/firebase-app-compat.js");
+    return `self.skipWaiting();
+importScripts("https://www.gstatic.com/firebasejs/11.10.0/firebase-app-compat.js");
 importScripts("https://www.gstatic.com/firebasejs/11.10.0/firebase-messaging-compat.js");
 firebase.initializeApp(${JSON.stringify(config)});
 firebase.messaging().onBackgroundMessage((payload) => {
