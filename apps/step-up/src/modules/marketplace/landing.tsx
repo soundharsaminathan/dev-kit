@@ -16,7 +16,6 @@ import { PublicShell } from "@/modules/layout/public-shell";
 import { Reveal } from "@/modules/marketing/reveal";
 import { useDiscoverCity } from "@/modules/student-landing/city-context";
 import { CitySwitcher } from "@/modules/student-landing/city-switcher";
-import { MARKETPLACE_AREAS } from "./areas";
 import type { BookSheetTarget } from "./book";
 import { BookSheet } from "./book-sheet";
 import { MarketplaceStudioCardView } from "./cards";
@@ -69,6 +68,13 @@ const HERO_COLLAGE_BG_DARK = "/marketplace/hero-collage-bg-dark.jpg";
 const HERO_COLLAGE_BG_MOBILE = "/marketplace/hero-collage-bg-mobile.jpg";
 const HERO_COLLAGE_BG_MOBILE_DARK =
   "/marketplace/hero-collage-bg-mobile-dark.jpg";
+
+const CATEGORY_ICONS = {
+  DANCE: PersonStanding,
+  MUSIC: Music2,
+  FITNESS: Dumbbell,
+  ART: Palette,
+} as const;
 
 const CATEGORY_CARDS: Array<{
   id: PublicMarketplaceCategory;
@@ -377,35 +383,6 @@ function LandingInner() {
       </section>
 
       <div className={styles.content}>
-        <section className={styles.section} aria-labelledby="areas-title">
-          <Reveal>
-            <div className={styles.sectionHead}>
-              <h2 id="areas-title" className={styles.sectionTitle}>
-                Explore classes in {cityLabel}
-              </h2>
-              <Link
-                to="/classes"
-                search={{ city: cityId }}
-                className={styles.sectionLink}
-              >
-                See all
-              </Link>
-            </div>
-          </Reveal>
-          <div className={styles.chipRow}>
-            {MARKETPLACE_AREAS.map((area) => (
-              <Link
-                key={area.id}
-                to="/$city/$place"
-                params={{ city: cityId, place: area.id }}
-                className={styles.areaChip}
-              >
-                {area.label}
-              </Link>
-            ))}
-          </div>
-        </section>
-
         <section className={styles.section} aria-labelledby="learn-title">
           <Reveal>
             <h2 id="learn-title" className={styles.sectionTitle}>
@@ -413,29 +390,35 @@ function LandingInner() {
             </h2>
           </Reveal>
           <div className={styles.categoryGrid}>
-            {CATEGORY_CARDS.map((item, index) => (
-              <Reveal key={item.id} delay={index * 40}>
-                <Link
-                  to="/classes"
-                  search={{ city: cityId, category: item.id }}
-                  className={styles.categoryCard}
-                  data-cat={item.id}
-                  onClick={() => writeStoredCategory(item.id)}
-                >
-                  <img
-                    className={styles.categoryImage}
-                    src={item.image}
-                    alt=""
-                  />
-                  <span className={styles.categoryFooter}>
-                    <span className={styles.categoryLabel}>{item.label}</span>
-                    <span className={styles.categoryStyles}>
-                      {item.styles.join(" · ")}
+            {CATEGORY_CARDS.map((item, index) => {
+              const Icon = CATEGORY_ICONS[item.id];
+              return (
+                <Reveal key={item.id} delay={index * 40}>
+                  <Link
+                    to="/classes"
+                    search={{ city: cityId, category: item.id }}
+                    className={styles.categoryCard}
+                    data-cat={item.id}
+                    onClick={() => writeStoredCategory(item.id)}
+                  >
+                    <img
+                      className={styles.categoryImage}
+                      src={item.image}
+                      alt=""
+                    />
+                    <span className={styles.categoryFooter}>
+                      <span className={styles.categoryTitle}>
+                        <Icon aria-hidden className={styles.categoryIcon} />
+                        <span className={styles.categoryLabel}>{item.label}</span>
+                      </span>
+                      <span className={styles.categoryStyles}>
+                        {item.styles.join(" · ")}
+                      </span>
                     </span>
-                  </span>
-                </Link>
-              </Reveal>
-            ))}
+                  </Link>
+                </Reveal>
+              );
+            })}
           </div>
         </section>
 
