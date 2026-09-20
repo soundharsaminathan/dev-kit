@@ -38,7 +38,7 @@ export function StudentHero() {
       to: "/discover",
       search: {
         city: cityId,
-        category: "dance",
+        category: "DANCE",
         ...search,
       },
     });
@@ -135,7 +135,7 @@ export function StudentHero() {
                 to="/discover"
                 search={{
                   city: cityId,
-                  category: "dance",
+                  category: "DANCE",
                   style: style.id,
                 }}
                 className={styles.chip}
@@ -169,7 +169,7 @@ export function StudentHero() {
           <p className={styles.proof}>
             <Link
               to="/discover"
-              search={{ city: cityId, category: "dance" }}
+              search={{ city: cityId, category: "DANCE" }}
               className={styles.proofLink}
             >
               {STUDENT_HERO.proof}

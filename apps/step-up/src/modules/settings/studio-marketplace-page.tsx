@@ -63,12 +63,12 @@ export function StudioMarketplacePage() {
       generation.current.set(key, gen);
       await queryClient.cancelQueries({ queryKey });
       queryClient.setQueryData<Studio>(queryKey, (prev) => {
-        if (!prev) return prev;
+        if (!prev?.settings) return prev;
         return {
           ...prev,
           settings: {
+            ...prev.settings,
             ...studioMarketplaceTogglesFrom(prev.settings),
-            ...(prev.settings ?? {}),
             [key]: enabled,
           },
         };
@@ -78,12 +78,12 @@ export function StudioMarketplacePage() {
     onError: (error, variables, context) => {
       if (context && generation.current.get(variables.key) === context.gen) {
         queryClient.setQueryData<Studio>(queryKey, (prev) => {
-          if (!prev) return prev;
+          if (!prev?.settings) return prev;
           return {
             ...prev,
             settings: {
+              ...prev.settings,
               ...studioMarketplaceTogglesFrom(prev.settings),
-              ...(prev.settings ?? {}),
               [variables.key]: !variables.enabled,
             },
           };

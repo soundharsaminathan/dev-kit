@@ -48,8 +48,8 @@ type SuccessFact = {
   when: string | null;
   place: string | null;
   status: string;
-  bookingId?: string;
-  invoiceId?: string;
+  bookingId?: string | undefined;
+  invoiceId?: string | undefined;
 };
 
 function validatePhone(value: string) {
@@ -210,7 +210,7 @@ export function BookSheet({
           false,
         canFloorHire: target?.canFloorHire ?? studio?.canFloorHire ?? false,
         source: target?.source ?? "studio",
-        viewerEnrolled: target?.viewerEnrolled ?? klass?.viewerEnrolled,
+        viewerEnrolled: target?.viewerEnrolled ?? klass?.viewerEnrolled ?? null,
       }),
     [klass, studio, target, trainer, studioId],
   );
@@ -462,7 +462,7 @@ export function BookSheet({
           when: null,
           place: studioName,
           status: invoice?.status === "PENDING" ? "AWAITING_PAYMENT" : "CONFIRMED",
-          invoiceId: invoice?.id,
+          ...(invoice?.id ? { invoiceId: invoice.id } : {}),
         } satisfies SuccessFact;
       }
 

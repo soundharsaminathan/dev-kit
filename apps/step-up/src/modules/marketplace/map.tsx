@@ -43,12 +43,7 @@ async function loadMapModule(): Promise<MapModule> {
   return cachedModule;
 }
 
-function pinIcon(
-  L: LeafletNS,
-  count: number,
-  selected: boolean,
-  label: string,
-) {
+function pinIcon(L: LeafletNS, count: number, selected: boolean) {
   const clustered = count > 1;
   return L.divIcon({
     className: [
@@ -63,7 +58,6 @@ function pinIcon(
     iconAnchor: clustered ? [18, 18] : [11, 11],
     popupAnchor: [0, clustered ? -18 : -11],
     tooltipAnchor: [0, -8],
-    title: label,
   });
 }
 
@@ -196,7 +190,8 @@ export function MarketplaceMap({
             <Marker
               key={cluster.id}
               position={[cluster.lat, cluster.lng]}
-              icon={pinIcon(L, cluster.count, selectedCluster, label)}
+              title={label}
+              icon={pinIcon(L, cluster.count, selectedCluster)}
               eventHandlers={{
                 click: () => {
                   if (pin) {

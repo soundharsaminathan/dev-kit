@@ -23,7 +23,7 @@ export function StudentFinalCta() {
           <div className={styles.actions}>
             <Link
               to="/discover"
-              search={{ city: cityId, category: "dance" }}
+              search={{ city: cityId, category: "DANCE" }}
               className={styles.primary}
             >
               <Button variant="primary">{STUDENT_FINAL_CTA.primary}</Button>

@@ -1,7 +1,7 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@dev-ui/components/avatar";
 import { CheckboxControl } from "@dev-ui/components/checkbox";
 import { Icon } from "@dev-ui/icons";
-import type { KeyboardEvent } from "react";
+import type { KeyboardEvent, MouseEvent } from "react";
 import { TouchButton } from "@/modules/ui/touch-button";
 import styles from "./leads.module.scss";
 import {
@@ -111,7 +111,7 @@ export function LeadCard({
                   className={styles.callAction}
                   aria-label={`Call ${lead.name}`}
                   data-testid={`lead-call-${lead.id}`}
-                  onClick={(event) => event.stopPropagation()}
+                  onClick={(event: MouseEvent<HTMLElement>) => event.stopPropagation()}
                 >
                   <Icon name="phone-call" />
                 </TouchButton>
@@ -135,7 +135,7 @@ export function LeadCard({
             className={styles.commentAction}
             aria-label={`Comments for ${lead.name}`}
             data-testid={`lead-remarks-${lead.id}`}
-            onClick={(event) => {
+            onClick={(event: MouseEvent<HTMLButtonElement>) => {
               event.stopPropagation();
               onOpenRemarks(lead);
             }}

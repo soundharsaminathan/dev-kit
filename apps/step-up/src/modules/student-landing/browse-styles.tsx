@@ -31,7 +31,7 @@ export function StudentBrowseStyles() {
                 to="/discover"
                 search={{
                   city: cityId,
-                  category: "dance",
+                  category: "DANCE",
                   style: style.id,
                 }}
                 className={styles.card}

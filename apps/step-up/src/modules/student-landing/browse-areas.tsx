@@ -18,7 +18,7 @@ export function StudentBrowseAreas() {
     if (!navigator.geolocation) {
       void navigate({
         to: "/discover",
-        search: { city: cityId, category: "dance" },
+        search: { city: cityId, category: "DANCE" },
       });
       return;
     }
@@ -28,17 +28,16 @@ export function StudentBrowseAreas() {
           to: "/discover",
           search: {
             city: cityId,
-            category: "dance",
+            category: "DANCE",
             lat: position.coords.latitude,
             lng: position.coords.longitude,
-            maxKm: 8,
           },
         });
       },
       () => {
         void navigate({
           to: "/discover",
-          search: { city: cityId, category: "dance" },
+          search: { city: cityId, category: "DANCE" },
         });
       },
       { enableHighAccuracy: false, timeout: 8000 },
@@ -70,7 +69,7 @@ export function StudentBrowseAreas() {
                 to="/discover"
                 search={{
                   city: cityId,
-                  category: "dance",
+                  category: "DANCE",
                   locality: area.id,
                 }}
                 className={styles.card}

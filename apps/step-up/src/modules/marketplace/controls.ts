@@ -121,11 +121,11 @@ export function marketplaceMissingMediaAlert(input: {
   kind: MarketplaceMediaKind;
   objectId: string;
   objectName: string;
-  coverImageUrl?: string | null;
-  heroDesktopUrl?: string | null;
-  heroMobileUrl?: string | null;
-  branchCoverUrl?: string | null;
-  photoUrl?: string | null;
+  coverImageUrl?: string | null | undefined;
+  heroDesktopUrl?: string | null | undefined;
+  heroMobileUrl?: string | null | undefined;
+  branchCoverUrl?: string | null | undefined;
+  photoUrl?: string | null | undefined;
 }): MarketplaceMediaAlert | null {
   const missing =
     input.kind === "CLASS"

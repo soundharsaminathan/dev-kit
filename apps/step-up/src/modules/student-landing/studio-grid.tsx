@@ -79,7 +79,7 @@ export function StudentStudioGrid() {
             </div>
             <Link
               to="/discover"
-              search={{ city: cityId, category: "dance" }}
+              search={{ city: cityId, category: "DANCE" }}
               className={styles.chip}
             >
               {STUDENT_NEARBY.seeAll}

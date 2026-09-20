@@ -21,21 +21,21 @@ export type MarketplaceWhen = "today" | "tomorrow";
 export type MarketplaceView = "list" | "map";
 
 export type MarketplaceUrlSearch = {
-  category?: PublicMarketplaceCategory;
-  city?: string;
-  q?: string;
-  style?: string;
-  audience?: "KIDS" | "ADULTS";
-  level?: ClassLevel;
-  days?: "weekday" | "weekend";
-  time?: "morning" | "evening";
-  locality?: string;
-  sort?: MarketplaceSort;
-  when?: MarketplaceWhen;
-  view?: MarketplaceView;
-  tab?: MarketplaceCatalogTab;
-  lat?: number;
-  lng?: number;
+  category?: PublicMarketplaceCategory | undefined;
+  city?: string | undefined;
+  q?: string | undefined;
+  style?: string | undefined;
+  audience?: "KIDS" | "ADULTS" | undefined;
+  level?: ClassLevel | undefined;
+  days?: "weekday" | "weekend" | undefined;
+  time?: "morning" | "evening" | undefined;
+  locality?: string | undefined;
+  sort?: MarketplaceSort | undefined;
+  when?: MarketplaceWhen | undefined;
+  view?: MarketplaceView | undefined;
+  tab?: MarketplaceCatalogTab | undefined;
+  lat?: number | undefined;
+  lng?: number | undefined;
 };
 
 const CATEGORY_LABELS: Record<PublicMarketplaceCategory, string> = {
@@ -323,13 +323,11 @@ export function marketplaceNavigateArgs(
   const to = marketplacePathForTab(tab, embed, search);
   const nextSearch = marketplaceTabSearch(search, tab, embed);
   if (to === "/$city/$place") {
+    const params = marketplacePlaceParams(search);
     const { city: _city, style: _style, locality: _locality, ...rest } =
       nextSearch;
-    return {
-      to,
-      params: marketplacePlaceParams(search) ?? undefined,
-      search: rest,
-    };
+    if (params) return { to, params, search: rest };
+    return { to: "/", search: rest };
   }
   return { to, search: nextSearch };
 }

@@ -67,9 +67,9 @@ export function parseMarketplacePlace(value: string | undefined): MarketplacePla
 }
 
 export function marketplaceSeoPath(input: {
-  city?: string;
-  style?: string;
-  locality?: string;
+  city?: string | undefined;
+  style?: string | undefined;
+  locality?: string | undefined;
 }): string | null {
   const city = parseMarketplaceCity(input.city);
   if (!city) return null;

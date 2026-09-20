@@ -6,18 +6,18 @@ export type BookSheetTarget = {
   source: BookSheetSource;
   studioId: string;
   studioName: string;
-  studioSlug?: string | null;
-  batchId?: string | null;
-  classSlug?: string | null;
-  className?: string | null;
-  audience?: "KIDS" | "ADULTS" | "BOTH" | null;
-  trainerId?: string | null;
-  trainerName?: string | null;
-  canTrial?: boolean;
-  canEnroll?: boolean;
-  canPrivate?: boolean;
-  canFloorHire?: boolean;
-  viewerEnrolled?: boolean | null;
+  studioSlug?: string | null | undefined;
+  batchId?: string | null | undefined;
+  classSlug?: string | null | undefined;
+  className?: string | null | undefined;
+  audience?: "KIDS" | "ADULTS" | "BOTH" | null | undefined;
+  trainerId?: string | null | undefined;
+  trainerName?: string | null | undefined;
+  canTrial?: boolean | undefined;
+  canEnroll?: boolean | undefined;
+  canPrivate?: boolean | undefined;
+  canFloorHire?: boolean | undefined;
+  viewerEnrolled?: boolean | null | undefined;
 };
 
 export function childAudienceBlocked(input: {
@@ -40,7 +40,7 @@ export function visibleMarketplaceBookTypes(input: {
   canPrivate: boolean;
   canFloorHire: boolean;
   source: BookSheetSource;
-  viewerEnrolled?: boolean | null;
+  viewerEnrolled?: boolean | null | undefined;
 }): MarketplaceBookType[] {
   const types: MarketplaceBookType[] = [];
   if (input.canTrial) types.push("TRIAL");
