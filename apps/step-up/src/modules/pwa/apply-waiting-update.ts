@@ -15,7 +15,7 @@ export type ServiceWorkerRegistrationLike = {
 };
 
 export type ApplyWaitingUpdateDeps = {
-  getRegistrations: () => Promise<ServiceWorkerRegistrationLike[]>;
+  getRegistrations: () => Promise<readonly ServiceWorkerRegistrationLike[]>;
   onControllerChange: (listener: () => void) => void;
   reload: () => void;
   schedule: (fn: () => void, ms: number) => void;
