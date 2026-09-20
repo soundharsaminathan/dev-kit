@@ -156,6 +156,7 @@ export type DiscoverTrialSlot = {
   batchId: string;
   batchName: string;
   audience: "KIDS" | "ADULTS";
+  classAudience?: "KIDS" | "ADULTS" | "BOTH";
   styleBadge: string | null;
   startsAt: string;
   endsAt: string;

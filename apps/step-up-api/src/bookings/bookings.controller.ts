@@ -213,7 +213,13 @@ export class BookingsController {
   }
 
   @Post(":id/cancel")
-  @Roles(UserRole.STUDENT, UserRole.PARENT)
+  @Roles(
+    UserRole.STUDENT,
+    UserRole.PARENT,
+    UserRole.OWNER,
+    UserRole.STAFF,
+    UserRole.SYSTEM_ADMIN,
+  )
   cancelBooking(
     @Param("id") id: string,
     @CurrentUser() user: DecryptedUser,

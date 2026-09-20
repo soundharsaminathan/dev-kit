@@ -9,7 +9,8 @@ import {
   type OpeningHours,
 } from "@/modules/locations/types";
 import { formatPriceFrom } from "@/modules/student-landing/format";
-import { TrialRequestSheet } from "@/modules/student-landing/trial-request-sheet";
+import { BookSheet } from "./book-sheet";
+import type { BookSheetTarget } from "./book";
 import { EmptyState, ErrorState } from "@/modules/ui/states";
 import { TouchButton } from "@/modules/ui/touch-button";
 import {
@@ -41,11 +42,7 @@ import type {
 } from "./types";
 import styles from "./detail.module.scss";
 
-type BookTarget = {
-  studioId: string;
-  studioName: string;
-  batchId?: string | null;
-};
+type BookTarget = BookSheetTarget;
 
 function ratingLabel(rating: MarketplaceRatingView): string {
   if (rating.visible) return `★ ${rating.avg.toFixed(1)}`;
@@ -257,7 +254,7 @@ export function MarketplaceStudioDetailView({
   onBookTrainer: (next: MarketplaceTrainerCard) => void;
 }) {
   const photos = item.photos.slice(0, 6);
-  const canBook = item.canTrial || item.canPrivate;
+  const canBook = item.canTrial || item.canPrivate || item.canFloorHire;
 
   return (
     <article className={styles.page}>
@@ -453,7 +450,7 @@ export function MarketplaceTrainerDetailView({
   );
 }
 
-function BookSheet({
+function DetailBookSheet({
   book,
   onClose,
 }: {
@@ -461,14 +458,12 @@ function BookSheet({
   onClose: () => void;
 }) {
   return (
-    <TrialRequestSheet
+    <BookSheet
       open={Boolean(book)}
       onOpenChange={(open) => {
         if (!open) onClose();
       }}
-      studioId={book?.studioId ?? ""}
-      studioName={book?.studioName ?? ""}
-      batchId={book?.batchId ?? null}
+      target={book}
     />
   );
 }
@@ -499,14 +494,25 @@ export function MarketplaceClassDetailPage({ slug }: { slug: string }) {
           item={item}
           onBook={() =>
             setBook({
+              source: "class",
               studioId: item.studioId,
               studioName: item.studioName,
               batchId: item.id,
+              classSlug: item.slug,
+              className: item.name,
+              audience: item.audience,
+              trainerId: item.trainerId,
+              trainerName: item.trainerName,
+              canTrial: item.canTrial,
+              canEnroll: item.canEnroll,
+              canPrivate: item.canPrivate,
+              canFloorHire: false,
+              viewerEnrolled: item.viewerEnrolled,
             })
           }
         />
       ) : null}
-      <BookSheet book={book} onClose={() => setBook(null)} />
+      <DetailBookSheet book={book} onClose={() => setBook(null)} />
     </PublicShell>
   );
 }
@@ -524,21 +530,24 @@ export function MarketplaceStudioDetailPage({ slug }: { slug: string }) {
     `/studios/${item?.slug ?? slug}`,
   );
 
-  async function bookTrainer(next: MarketplaceTrainerCard) {
-    const detail = await fetchMarketplaceTrainer(marketplaceTrainerSlug(next));
-    const firstClass = detail.classes[0];
-    const firstStudio = detail.studios[0];
-    if (firstClass) {
-      setBook({
-        studioId: item?.id ?? firstStudio?.id ?? "",
-        studioName: item?.name ?? firstStudio?.name ?? "",
-        batchId: firstClass.id,
-      });
-      return;
-    }
-    if (item) {
-      setBook({ studioId: item.id, studioName: item.name });
-    }
+  function bookTrainer(next: MarketplaceTrainerCard) {
+    if (!item) return;
+    const firstClass =
+      item.classes.find((klass) => klass.trainerId === next.id) ?? item.classes[0];
+    setBook({
+      source: "trainer",
+      studioId: item.id,
+      studioName: item.name,
+      batchId: firstClass?.id,
+      classSlug: firstClass?.slug,
+      className: firstClass?.name,
+      audience: firstClass?.audience,
+      trainerId: next.id,
+      trainerName: next.name,
+      canTrial: next.canTrial,
+      canPrivate: next.canPrivate,
+      canFloorHire: false,
+    });
   }
 
   return (
@@ -552,18 +561,40 @@ export function MarketplaceStudioDetailPage({ slug }: { slug: string }) {
       {item ? (
         <MarketplaceStudioDetailView
           item={item}
-          onBook={() => setBook({ studioId: item.id, studioName: item.name })}
+          onBook={() =>
+            setBook({
+              source: "studio-detail",
+              studioId: item.id,
+              studioName: item.name,
+              studioSlug: item.slug,
+              canTrial: item.canTrial,
+              canEnroll: false,
+              canPrivate: item.canPrivate,
+              canFloorHire: item.canFloorHire,
+            })
+          }
           onBookClass={(klass) =>
             setBook({
+              source: "class",
               studioId: klass.studioId,
               studioName: klass.studioName,
               batchId: klass.id,
+              classSlug: klass.slug,
+              className: klass.name,
+              audience: klass.audience,
+              trainerId: klass.trainerId,
+              trainerName: klass.trainerName,
+              canTrial: klass.canTrial,
+              canEnroll: klass.canEnroll,
+              canPrivate: false,
+              canFloorHire: false,
+              viewerEnrolled: klass.viewerEnrolled,
             })
           }
-          onBookTrainer={(next) => void bookTrainer(next)}
+          onBookTrainer={bookTrainer}
         />
       ) : null}
-      <BookSheet book={book} onClose={() => setBook(null)} />
+      <DetailBookSheet book={book} onClose={() => setBook(null)} />
     </PublicShell>
   );
 }
@@ -589,22 +620,30 @@ export function MarketplaceTrainerDetailPage({ slug }: { slug: string }) {
     }
   }, [navigate, query.error, slug]);
 
-  async function bookTrainer() {
+  function bookTrainer() {
     if (!item) return;
     const firstClass = item.classes[0];
-    const firstStudio = item.studios[0];
-    if (firstClass) {
-      const klass = await fetchMarketplaceClass(firstClass.slug || firstClass.id);
-      setBook({
-        studioId: klass.studioId,
-        studioName: klass.studioName,
-        batchId: klass.id,
-      });
-      return;
-    }
-    if (firstStudio) {
-      setBook({ studioId: firstStudio.id, studioName: firstStudio.name });
-    }
+    const classStudio = firstClass
+      ? item.studios.find((studio) => studio.slug === firstClass.studioSlug)
+      : undefined;
+    const firstStudio =
+      classStudio ??
+      item.studios.find((studio) => studio.canPrivate) ??
+      item.studios[0];
+    if (!firstStudio) return;
+    setBook({
+      source: "trainer",
+      studioId: firstStudio.id,
+      studioName: firstStudio.name,
+      batchId: firstClass?.id,
+      classSlug: firstClass?.slug,
+      className: firstClass?.name,
+      trainerId: item.id,
+      trainerName: item.name,
+      canTrial: item.canTrial,
+      canPrivate: item.canPrivate,
+      canFloorHire: false,
+    });
   }
 
   return (
@@ -620,9 +659,9 @@ export function MarketplaceTrainerDetailPage({ slug }: { slug: string }) {
         empty={false}
       />
       {item ? (
-        <MarketplaceTrainerDetailView item={item} onBook={() => void bookTrainer()} />
+        <MarketplaceTrainerDetailView item={item} onBook={bookTrainer} />
       ) : null}
-      <BookSheet book={book} onClose={() => setBook(null)} />
+      <DetailBookSheet book={book} onClose={() => setBook(null)} />
     </PublicShell>
   );
 }

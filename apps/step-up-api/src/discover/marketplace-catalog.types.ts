@@ -122,6 +122,7 @@ export type MarketplaceCatalogPage<T> = {
 };
 
 export type MarketplaceClassPlan = {
+  id: string;
   name: string;
   price: number;
   cadence: BillingCadence;
@@ -184,4 +185,8 @@ export type MarketplaceStudioDetail = MarketplaceStudioCard & {
   branches: MarketplaceStudioBranch[];
   classes: MarketplaceClassCard[];
   trainers: MarketplaceTrainerCard[];
+  privateSessionPaise: number | null;
+  privateSessionMinutes: number;
+  floorHirePaise: number | null;
+  floorHireSlotMinutes: number;
 };

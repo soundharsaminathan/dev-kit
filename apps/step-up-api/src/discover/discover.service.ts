@@ -146,6 +146,7 @@ export type DiscoverTrialSlot = {
   batchId: string;
   batchName: string;
   audience: BatchCategory;
+  classAudience?: "KIDS" | "ADULTS" | "BOTH";
   styleBadge: string | null;
   startsAt: string;
   endsAt: string;
@@ -1005,6 +1006,7 @@ export class DiscoverService {
           select: {
             name: true,
             category: true,
+            classAudience: true,
             danceCategories: true,
           },
         },
@@ -1016,6 +1018,7 @@ export class DiscoverService {
       batchId: session.batchId,
       batchName: session.batch.name,
       audience: session.batch.category,
+      classAudience: session.batch.classAudience,
       styleBadge: firstStyleName(session.batch.danceCategories),
       startsAt: session.startsAt.toISOString(),
       endsAt: session.endsAt.toISOString(),

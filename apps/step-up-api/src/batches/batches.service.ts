@@ -13,6 +13,7 @@ import {
   BillingCadence,
   BookingStatus,
   EnrollmentMode,
+  FamilyMemberKind,
   IndividualAudience,
   InvoiceStatus,
   Prisma,
@@ -21,6 +22,7 @@ import {
   SubscriptionKind,
   UserRole,
 } from "../generated/prisma/client";
+import { childAudienceBlocked } from "../discover/marketplace.contract";
 import { BillingService } from "../billing/billing.service";
 import {
   loadPaidMonthsByStudent,
@@ -1524,6 +1526,11 @@ export class BatchesService {
       where: { id: batchId },
       include: {
         enrollments: { where: ACTIVE_ENROLLMENT_WHERE },
+        studio: {
+          select: {
+            settings: { select: { bookingEnrollment: true } },
+          },
+        },
       },
     });
 
@@ -1536,10 +1543,23 @@ export class BatchesService {
       throw new BadRequestException("Batch is not active");
     }
 
-    if (!isStaff && batch.enrollmentMode !== EnrollmentMode.SELF_JOIN) {
+    if (
+      !isStaff &&
+      batch.enrollmentMode !== EnrollmentMode.SELF_JOIN &&
+      !batch.studio?.settings?.bookingEnrollment
+    ) {
       throw new BadRequestException(
         "This batch does not allow self-enrollment",
       );
+    }
+
+    const forChild = await this.isMarketplaceChild(studentId);
+    const blocked = childAudienceBlocked({
+      forChild,
+      classAudience: batch.classAudience,
+    });
+    if (blocked) {
+      throw new BadRequestException(blocked);
     }
 
     if (
@@ -1588,6 +1608,20 @@ export class BatchesService {
           }
         : null,
     };
+  }
+
+  private async isMarketplaceChild(studentId: string) {
+    const [family, parent] = await Promise.all([
+      this.prisma.familyMember.findFirst({
+        where: { memberUserId: studentId },
+        select: { kind: true },
+      }),
+      this.prisma.parentChild.findFirst({
+        where: { childUserId: studentId },
+        select: { id: true },
+      }),
+    ]);
+    return Boolean(parent) || family?.kind === FamilyMemberKind.KID;
   }
 
   async enrollBulk(

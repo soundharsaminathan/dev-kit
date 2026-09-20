@@ -1119,8 +1119,8 @@ describe("BatchesService.remove and enroll", () => {
       findUnique: vi.fn(),
       delete: vi.fn(),
     },
-    familyMember: { findUnique: vi.fn() },
-    parentChild: { findUnique: vi.fn() },
+    familyMember: { findUnique: vi.fn(), findFirst: vi.fn() },
+    parentChild: { findUnique: vi.fn(), findFirst: vi.fn() },
     batchEnrollment: {
       upsert: vi.fn(),
       findMany: vi.fn(),
@@ -1185,6 +1185,8 @@ describe("BatchesService.remove and enroll", () => {
     prisma.booking.findMany.mockResolvedValue([]);
     prisma.booking.findFirst.mockResolvedValue(null);
     prisma.booking.updateMany.mockResolvedValue({ count: 0 });
+    prisma.familyMember.findFirst.mockResolvedValue(null);
+    prisma.parentChild.findFirst.mockResolvedValue(null);
   });
 
   it("deletes a batch and invalidates trial slots cache", async () => {
@@ -1237,6 +1239,7 @@ describe("BatchesService.remove and enroll", () => {
       category: "ADULTS",
       enrollmentMode: EnrollmentMode.STAFF_ONLY,
       enrollments: [],
+      studio: { settings: { bookingEnrollment: false } },
     });
 
     await expect(
@@ -1250,6 +1253,71 @@ describe("BatchesService.remove and enroll", () => {
         "sub-1",
       ),
     ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it("allows member join when marketplace enrollment is on", async () => {
+    prisma.batch.findUnique.mockResolvedValue({
+      id: "batch-1",
+      studioId: "studio-1",
+      active: true,
+      capacity: 10,
+      category: "ADULTS",
+      classAudience: "ADULTS",
+      enrollmentMode: EnrollmentMode.STAFF_ONLY,
+      enrollments: [],
+      studio: { settings: { bookingEnrollment: true } },
+    });
+    memberships.beginBatchEnrollment.mockResolvedValue({
+      kind: "invoice",
+      invoice: { id: "inv-1", amount: 1500 },
+    });
+    prisma.batchEnrollment.upsert.mockResolvedValue({
+      id: "enroll-1",
+      batchId: "batch-1",
+      studentId: "student-1",
+    });
+
+    const result = await service.enroll(
+      "batch-1",
+      "student-1",
+      {
+        id: "student-1",
+        role: UserRole.STUDENT,
+      } as never,
+      "sub-1",
+    );
+
+    expect(result.billingKind).toBe("invoice");
+  });
+
+  it("blocks a child join on an adults-only class", async () => {
+    prisma.familyMember.findUnique.mockResolvedValue({
+      ownerUserId: "parent-1",
+      memberUserId: "child-1",
+    });
+    prisma.familyMember.findFirst.mockResolvedValue({ kind: "KID" });
+    prisma.batch.findUnique.mockResolvedValue({
+      id: "batch-1",
+      studioId: "studio-1",
+      active: true,
+      capacity: 10,
+      classAudience: "ADULTS",
+      enrollmentMode: EnrollmentMode.SELF_JOIN,
+      enrollments: [],
+      studio: { settings: { bookingEnrollment: true } },
+    });
+
+    await expect(
+      service.enroll(
+        "batch-1",
+        "child-1",
+        {
+          id: "parent-1",
+          role: UserRole.PARENT,
+        } as never,
+        "sub-1",
+      ),
+    ).rejects.toThrow(/adults only/);
   });
 
   it("enrolls with a package and creates a pending invoice", async () => {

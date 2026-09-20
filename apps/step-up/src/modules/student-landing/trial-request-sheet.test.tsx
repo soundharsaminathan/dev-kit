@@ -13,6 +13,7 @@ const authUser = vi.hoisted(() => ({ current: null as { id: string } | null }));
 const api = vi.hoisted(() => ({
   patch: vi.fn(),
   post: vi.fn(),
+  get: vi.fn(),
 }));
 
 vi.mock("@tanstack/react-router", () => ({
@@ -44,6 +45,19 @@ vi.mock("./api", () => ({
   fetchDiscoverTrialSlots: (...args: unknown[]) => fetchSlots(...args),
 }));
 
+vi.mock("@/modules/marketplace/catalog", () => ({
+  fetchMarketplaceClass: vi.fn().mockResolvedValue(null),
+  fetchMarketplaceStudio: vi.fn().mockResolvedValue({
+    id: "studio-1",
+    name: "Rhythm House",
+    canTrial: true,
+    canPrivate: false,
+    canFloorHire: false,
+    branches: [],
+  }),
+  fetchMarketplaceTrainer: vi.fn().mockResolvedValue(null),
+}));
+
 function slot(overrides: Partial<DiscoverTrialSlot> = {}): DiscoverTrialSlot {
   return {
     sessionId: "session-1",
@@ -73,10 +87,15 @@ function pickKidsSlot() {
   fireEvent.click(screen.getByRole("button", { name: /Hip hop kids/i }));
 }
 
+function pickAdultsSlot() {
+  fireEvent.click(screen.getByRole("button", { name: /Hip hop adults/i }));
+}
+
 describe("TrialRequestSheet", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     authUser.current = null;
+    api.get.mockResolvedValue([]);
     fetchSlots.mockResolvedValue([
       slot(),
       slot({
@@ -131,7 +150,7 @@ describe("TrialRequestSheet", () => {
     expect(await screen.findByText("Pick a trial slot")).toBeVisible();
     expect(screen.queryByLabelText("Your name")).not.toBeInTheDocument();
 
-    pickKidsSlot();
+    pickAdultsSlot();
     fireEvent.click(screen.getByRole("button", { name: "Continue" }));
 
     expect(
@@ -156,8 +175,8 @@ describe("TrialRequestSheet", () => {
 
   it("returns to the session step from register", async () => {
     renderSheet();
-    await screen.findByText("Hip hop kids");
-    pickKidsSlot();
+    await screen.findByText("Hip hop adults");
+    pickAdultsSlot();
     fireEvent.click(screen.getByRole("button", { name: "Continue" }));
     expect(
       await screen.findByRole("heading", { name: "Register" }),
@@ -186,8 +205,8 @@ describe("TrialRequestSheet", () => {
       />,
     );
 
-    await screen.findByText("Hip hop kids");
-    pickKidsSlot();
+    await screen.findByText("Hip hop adults");
+    pickAdultsSlot();
     fireEvent.click(screen.getByRole("button", { name: "Continue" }));
     await screen.findByLabelText(/Your name/);
 
@@ -216,10 +235,11 @@ describe("TrialRequestSheet", () => {
         studioId: "studio-1",
         studentId: "student-1",
         type: "TRIAL",
-        sessionId: "session-1",
+        sessionId: "session-2",
         notes: "Phone: 9876543210",
       });
-      expect(onOpenChange).toHaveBeenCalledWith(false);
     });
+    expect(await screen.findByRole("button", { name: "View booking" })).toBeVisible();
+    expect(onOpenChange).not.toHaveBeenCalledWith(false);
   });
 });

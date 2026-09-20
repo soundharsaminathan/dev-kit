@@ -6,6 +6,8 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import {
+  BookingStatus,
+  BookingType,
   NotificationType,
   SessionStatus,
   SessionType,
@@ -16,6 +18,7 @@ import { ScheduleConflictService } from "../calendar/schedule-conflict.service";
 import { ChatService } from "../chat/chat.service";
 import { ImportLockService } from "../data-import/import-lock.service";
 import { primaryStyleName } from "../discover/discover.categories";
+import { marketplaceSessionCancelCopy } from "../discover/marketplace.contract";
 import { NotificationsService } from "../notifications/notifications.service";
 import { PrismaService } from "../prisma/prisma.service";
 import {
@@ -322,7 +325,14 @@ export class SessionsService {
     const existing = await this.prisma.session.findUnique({
       where: { id },
       include: {
-        batch: { select: { id: true, name: true, studioId: true } },
+        batch: {
+          select: {
+            id: true,
+            name: true,
+            studioId: true,
+            studio: { select: { name: true } },
+          },
+        },
       },
     });
     if (!existing) {
@@ -339,6 +349,32 @@ export class SessionsService {
       where: { id },
       data: { status: SessionStatus.CANCELLED },
     });
+
+    const trials = await this.prisma.booking.findMany({
+      where: {
+        sessionId: id,
+        type: BookingType.TRIAL,
+        status: {
+          in: [BookingStatus.PENDING, BookingStatus.CONFIRMED],
+        },
+      },
+      select: { id: true, studentId: true },
+    });
+    if (trials.length > 0) {
+      await this.prisma.booking.updateMany({
+        where: { id: { in: trials.map((trial) => trial.id) } },
+        data: { status: BookingStatus.CANCELLED },
+      });
+      void this.notifyCancelledTrials(actor, {
+        sessionId: session.id,
+        batchId: existing.batch.id,
+        className: existing.batch.name,
+        studioName: existing.batch.studio?.name ?? existing.batch.name,
+        startsAt: existing.startsAt,
+        endsAt: existing.endsAt,
+        studentIds: trials.map((trial) => trial.studentId),
+      }).catch(() => undefined);
+    }
 
     await this.trialSlotsCache.invalidate(existing.batch.studioId);
     void this.announceScheduleChange(actor, {
@@ -496,6 +532,62 @@ export class SessionsService {
     }
     if (endsAt <= startsAt) {
       throw new BadRequestException("endsAt must be after startsAt");
+    }
+  }
+
+  private async notifyCancelledTrials(
+    actor: DecryptedUser,
+    input: {
+      sessionId: string;
+      batchId: string;
+      className: string;
+      studioName: string;
+      startsAt: Date;
+      endsAt: Date;
+      studentIds: string[];
+    },
+  ) {
+    const when = formatSessionWhen(input.startsAt, input.endsAt);
+    const body = marketplaceSessionCancelCopy({
+      className: input.className,
+      when,
+      studioName: input.studioName,
+    });
+    const uniqueStudents = [...new Set(input.studentIds)];
+    const [familyLinks, parentLinks] = await Promise.all([
+      this.prisma.familyMember.findMany({
+        where: { memberUserId: { in: uniqueStudents } },
+        select: { memberUserId: true, ownerUserId: true },
+      }),
+      this.prisma.parentChild.findMany({
+        where: { childUserId: { in: uniqueStudents } },
+        select: { childUserId: true, parentUserId: true },
+      }),
+    ]);
+    const recipients = new Set(uniqueStudents);
+    for (const link of familyLinks) recipients.add(link.ownerUserId);
+    for (const link of parentLinks) recipients.add(link.parentUserId);
+
+    const stamp = Date.now();
+    for (const userId of recipients) {
+      await this.notifications.create({
+        userId,
+        type: NotificationType.BOOKING_CANCELLED,
+        title: "Trial cancelled",
+        body,
+        batchName: input.className,
+        sessionDate: input.startsAt.toISOString().slice(0, 10),
+        dedupeKey: `BOOKING_CANCELLED:${input.sessionId}:${userId}:${stamp}`,
+        meta: {
+          sessionId: input.sessionId,
+          batchId: input.batchId,
+          action: "session-cancel",
+        },
+        deepLink: `/classes`,
+        actorId: actor.id,
+        entityType: "session",
+        entityId: input.sessionId,
+      });
     }
   }
 

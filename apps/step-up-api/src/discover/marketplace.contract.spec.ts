@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   batchSlugFromName,
+  branchIsOpenAt,
   canRefundPaidMarketplaceBooking,
+  childAudienceBlocked,
   classAudienceFromBatchCategory,
   defaultMarketplaceSort,
   emptyMarketplaceCopy,
@@ -11,12 +13,16 @@ import {
   hasPublicTrainerPhoto,
   isJoinBookable,
   isPublicMarketplaceCategory,
+  marketplaceBookingNeedsMembership,
+  marketplaceBookingRequiresPayment,
   marketplaceFirstPaint,
   marketplaceRatingUniqueKey,
+  marketplaceSessionCancelCopy,
   PUBLIC_MARKETPLACE_CATEGORIES,
   publicRatingOrNew,
   seatCopy,
   tokenizeSearch,
+  visibleMarketplaceBookTypes,
 } from "./marketplace.contract";
 
 describe("marketplace contract", () => {
@@ -146,5 +152,114 @@ describe("marketplace contract", () => {
         city: "Chennai",
       }),
     ).toBe("Dance classes in Chennai are coming soon.");
+  });
+});
+
+describe("marketplace book contract", () => {
+  it("blocks child × audience mismatches with the locked copy", () => {
+    expect(
+      childAudienceBlocked({ forChild: true, classAudience: "ADULTS" }),
+    ).toBe("This class is for adults only");
+    expect(
+      childAudienceBlocked({ forChild: false, classAudience: "KIDS" }),
+    ).toBe("This class is for kids. Book with a child profile.");
+    expect(
+      childAudienceBlocked({ forChild: true, classAudience: "KIDS" }),
+    ).toBeNull();
+    expect(
+      childAudienceBlocked({ forChild: true, classAudience: "BOTH" }),
+    ).toBeNull();
+    expect(
+      childAudienceBlocked({ forChild: false, classAudience: "ADULTS" }),
+    ).toBeNull();
+    expect(
+      childAudienceBlocked({ forChild: false, classAudience: "BOTH" }),
+    ).toBeNull();
+  });
+
+  it("omits floor hire unless the sheet opened from studio detail", () => {
+    const flags = {
+      canTrial: true,
+      canEnroll: true,
+      canPrivate: true,
+      canFloorHire: true,
+    };
+    expect(
+      visibleMarketplaceBookTypes({ ...flags, source: "studio" }),
+    ).toEqual(["TRIAL", "JOIN", "PRIVATE"]);
+    expect(
+      visibleMarketplaceBookTypes({ ...flags, source: "studio-detail" }),
+    ).toEqual(["TRIAL", "JOIN", "PRIVATE", "FLOOR_HIRE"]);
+    expect(
+      visibleMarketplaceBookTypes({
+        ...flags,
+        source: "class",
+        viewerEnrolled: true,
+      }),
+    ).toEqual(["TRIAL", "PRIVATE"]);
+  });
+
+  it("skips membership for public private and floor hire only", () => {
+    expect(marketplaceBookingNeedsMembership("TRIAL", {})).toBe(false);
+    expect(
+      marketplaceBookingNeedsMembership("PRIVATE", { bookingPrivate: true }),
+    ).toBe(false);
+    expect(
+      marketplaceBookingNeedsMembership("PRIVATE", { bookingPrivate: false }),
+    ).toBe(true);
+    expect(
+      marketplaceBookingNeedsMembership("FLOOR_HIRE", {
+        bookingFloorHire: false,
+      }),
+    ).toBe(true);
+    expect(
+      marketplaceBookingNeedsMembership("FLOOR_HIRE", {
+        bookingFloorHire: true,
+      }),
+    ).toBe(false);
+    expect(
+      marketplaceBookingNeedsMembership("OPEN_SEAT", {
+        bookingPrivate: true,
+        bookingFloorHire: true,
+      }),
+    ).toBe(true);
+  });
+
+  it("requires payment only when a private or floor price is set", () => {
+    expect(marketplaceBookingRequiresPayment(null)).toBe(false);
+    expect(marketplaceBookingRequiresPayment(0)).toBe(false);
+    expect(marketplaceBookingRequiresPayment(150000)).toBe(true);
+  });
+
+  it("uses the locked session-cancel trial copy", () => {
+    expect(
+      marketplaceSessionCancelCopy({
+        className: "Adults Advance",
+        when: "Mon, 21 Sep · 7:00 PM – 8:00 PM",
+        studioName: "E-Grade",
+      }),
+    ).toBe(
+      "Your trial for Adults Advance on Mon, 21 Sep · 7:00 PM – 8:00 PM was cancelled by E-Grade. Book another time from the class page.",
+    );
+  });
+
+  it("treats a closed branch day as not bookable", () => {
+    const sunday = new Date("2026-09-20T10:00:00");
+    const monday = new Date("2026-09-21T10:00:00");
+    const hours = {
+      days: [
+        { day: 0, closed: true },
+        { day: 1, open: "09:00", close: "18:00" },
+      ],
+    };
+    expect(branchIsOpenAt(hours, sunday, new Date("2026-09-20T11:00:00"))).toBe(
+      false,
+    );
+    expect(branchIsOpenAt(hours, monday, new Date("2026-09-21T11:00:00"))).toBe(
+      true,
+    );
+    expect(branchIsOpenAt(hours, monday, new Date("2026-09-21T19:00:00"))).toBe(
+      false,
+    );
   });
 });

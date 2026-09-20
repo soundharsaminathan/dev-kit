@@ -189,3 +189,108 @@ export function emptyMarketplaceCopy(input: {
 export function canRefundPaidMarketplaceBooking(startsAt: Date, now = new Date()) {
   return startsAt.getTime() - now.getTime() >= CANCEL_REFUND_HOURS * 60 * 60 * 1000;
 }
+
+export type BookSheetSource = "class" | "studio" | "trainer" | "studio-detail";
+
+export function childAudienceBlocked(input: {
+  forChild: boolean;
+  classAudience?: ClassAudience | null;
+}): string | null {
+  if (!input.classAudience) return null;
+  if (input.forChild && input.classAudience === "ADULTS") {
+    return "This class is for adults only";
+  }
+  if (!input.forChild && input.classAudience === "KIDS") {
+    return "This class is for kids. Book with a child profile.";
+  }
+  return null;
+}
+
+export function visibleMarketplaceBookTypes(input: {
+  canTrial: boolean;
+  canEnroll: boolean;
+  canPrivate: boolean;
+  canFloorHire: boolean;
+  source: BookSheetSource;
+  viewerEnrolled?: boolean | null;
+}): MarketplaceBookingType[] {
+  const types: MarketplaceBookingType[] = [];
+  if (input.canTrial) types.push("TRIAL");
+  if (input.canEnroll && !input.viewerEnrolled) types.push("JOIN");
+  if (input.canPrivate) types.push("PRIVATE");
+  if (input.canFloorHire && input.source === "studio-detail") {
+    types.push("FLOOR_HIRE");
+  }
+  return types;
+}
+
+export function marketplaceBookingNeedsMembership(
+  type: string,
+  settings: { bookingPrivate?: boolean | null; bookingFloorHire?: boolean | null },
+): boolean {
+  if (type === "TRIAL") return false;
+  if (type === "PRIVATE") return settings.bookingPrivate !== true;
+  if (type === "FLOOR_HIRE") return settings.bookingFloorHire !== true;
+  return true;
+}
+
+export function marketplaceBookingRequiresPayment(
+  pricePaise: number | null | undefined,
+): boolean {
+  return (pricePaise ?? 0) > 0;
+}
+
+export function padIntervalEnd(
+  endsAt: Date,
+  bufferMinutes = PRIVATE_BUFFER_MINUTES,
+): Date {
+  return new Date(endsAt.getTime() + bufferMinutes * 60 * 1000);
+}
+
+export function marketplaceSessionCancelCopy(input: {
+  className: string;
+  when: string;
+  studioName: string;
+}): string {
+  return `Your trial for ${input.className} on ${input.when} was cancelled by ${input.studioName}. Book another time from the class page.`;
+}
+
+export function marketplaceBookingStatusLabel(status: string): string {
+  if (status === "AWAITING_PAYMENT") return "Pay to confirm";
+  if (status === "CONFIRMED") return "Confirmed";
+  if (status === "PENDING") return "Waiting for studio";
+  if (status === "CANCELLED") return "Cancelled";
+  return status;
+}
+
+function minutesFromClock(value: string): number {
+  const [hours, minutes] = value.split(":").map((part) => Number(part));
+  return (hours ?? 0) * 60 + (minutes ?? 0);
+}
+
+export function branchIsOpenAt(
+  openingHours: unknown,
+  startsAt: Date,
+  endsAt: Date,
+): boolean {
+  if (!openingHours || typeof openingHours !== "object") return true;
+  const days = (openingHours as {
+    days?: Array<{
+      day: number;
+      closed?: boolean;
+      open?: string;
+      close?: string;
+    }>;
+  }).days;
+  if (!days?.length) return true;
+  const day = days.find((item) => item.day === startsAt.getDay());
+  if (!day) return true;
+  if (day.closed) return false;
+  if (!day.open || !day.close) return true;
+  const startMin = startsAt.getHours() * 60 + startsAt.getMinutes();
+  const endMin = endsAt.getHours() * 60 + endsAt.getMinutes();
+  return (
+    startMin >= minutesFromClock(day.open) &&
+    endMin <= minutesFromClock(day.close)
+  );
+}

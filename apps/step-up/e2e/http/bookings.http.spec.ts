@@ -154,4 +154,31 @@ test.describe("bookings HTTP @http", () => {
       await cleanup.dispose();
     }
   });
+
+  test("student cannot cancel an awaiting-payment hold @http", async () => {
+    const cleanup = new TestDataCleanup();
+    try {
+      const student = await createHttpStudent("Booking Hold Cancel Deny", cleanup);
+      const studentId = student.id;
+      await expectStatus(
+        "STUDENT",
+        "/bookings",
+        400,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            studioId: SEED.users.STUDENT.studioId,
+            studentId,
+            type: "FLOOR_HIRE",
+            branchId: SEED.branchMainId,
+            startsAt: new Date(Date.now() + 86400000).toISOString(),
+            endsAt: new Date(Date.now() + 90000000).toISOString(),
+          }),
+        },
+        { userId: studentId },
+      );
+    } finally {
+      await cleanup.dispose();
+    }
+  });
 });

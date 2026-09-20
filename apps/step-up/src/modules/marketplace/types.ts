@@ -144,6 +144,7 @@ export type MarketplaceTrainerCard = {
 };
 
 export type MarketplaceClassPlan = {
+  id: string;
   name: string;
   price: number;
   cadence: "MONTHLY" | "QUARTERLY";
@@ -205,6 +206,10 @@ export type MarketplaceStudioDetail = MarketplaceStudioCard & {
   branches: MarketplaceStudioBranch[];
   classes: MarketplaceClassCard[];
   trainers: MarketplaceTrainerCard[];
+  privateSessionPaise?: number | null;
+  privateSessionMinutes?: number;
+  floorHirePaise?: number | null;
+  floorHireSlotMinutes?: number;
 };
 
 export function marketplaceFirstPaint() {

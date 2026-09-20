@@ -401,8 +401,13 @@ class CreateFamilyMemberDto {
   @IsEnum(FamilyMemberKind)
   kind!: FamilyMemberKind;
 
+  @IsOptional()
   @IsEnum(Gender)
-  gender!: Gender;
+  gender?: Gender;
+
+  @IsOptional()
+  @IsString()
+  studioId?: string;
 
   @IsOptional()
   @IsDateString()

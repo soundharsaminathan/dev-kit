@@ -2749,7 +2749,8 @@ export class UsersService {
     data: {
       name: string;
       kind: FamilyMemberKind;
-      gender: Gender;
+      gender?: Gender;
+      studioId?: string;
       dateOfBirth?: string;
       age?: number;
       guardianName?: string;
@@ -2761,7 +2762,8 @@ export class UsersService {
     if (!name) {
       throw new BadRequestException("Name is required");
     }
-    if (!owner.studioId) {
+    const studioId = data.studioId ?? owner.studioId;
+    if (!studioId) {
       throw new BadRequestException("Owner must belong to a studio");
     }
 
@@ -2784,7 +2786,7 @@ export class UsersService {
           firebaseUid: `dependent:${dependentId}`,
           ...sealed,
           role: UserRole.STUDENT,
-          studioId: owner.studioId,
+          studioId,
           gender: data.gender,
           ageRange: ageFields.ageRange,
           ...(ageFields.dateOfBirth !== undefined

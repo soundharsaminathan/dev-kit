@@ -9,6 +9,7 @@ import {
 import {
   BookingStatus,
   BookingType,
+  FamilyMemberKind,
   InvoiceStatus,
   MembershipStatus,
   SessionStatus,
@@ -21,6 +22,15 @@ import {
   paymentHoldExpiresAt,
 } from "../batches/batch-capacity";
 import { ScheduleConflictService } from "../calendar/schedule-conflict.service";
+import {
+  branchIsOpenAt,
+  canRefundPaidMarketplaceBooking,
+  childAudienceBlocked,
+  marketplaceBookingNeedsMembership,
+  marketplaceBookingRequiresPayment,
+  PRIVATE_BUFFER_MINUTES,
+  type ClassAudience,
+} from "../discover/marketplace.contract";
 import { MembershipsService } from "../memberships/memberships.service";
 import { RazorpayService } from "../payments/razorpay.service";
 import { PrismaService } from "../prisma/prisma.service";
@@ -29,6 +39,12 @@ import {
   UserCryptoService,
   userPiiSelect,
 } from "../users/user-crypto.service";
+
+const STUDIO_CANCEL_ROLES: UserRole[] = [
+  UserRole.OWNER,
+  UserRole.STAFF,
+  UserRole.SYSTEM_ADMIN,
+];
 
 export type UpdateBookingStatusInput = {
   status: BookingStatus;
@@ -170,12 +186,48 @@ export class BookingsService {
       this.assertValidRange(data.startsAt, data.endsAt);
     }
 
+    const studio = await this.prisma.studio.findUnique({
+      where: { id: data.studioId },
+      select: {
+        id: true,
+        settings: {
+          select: {
+            bookingTrial: true,
+            bookingPrivate: true,
+            bookingFloorHire: true,
+            privateSessionPaise: true,
+            privateSessionMinutes: true,
+            floorHirePaise: true,
+            floorHireSlotMinutes: true,
+          },
+        },
+      },
+    });
+    if (!studio) {
+      throw new BadRequestException("Studio not found");
+    }
+    const settings = studio.settings ?? {
+      bookingTrial: true,
+      bookingPrivate: false,
+      bookingFloorHire: false,
+      privateSessionPaise: null,
+      privateSessionMinutes: 60,
+      floorHirePaise: null,
+      floorHireSlotMinutes: 60,
+    };
+
     let batchId = data.batchId;
     const sessionId = data.sessionId;
     let startsAt = data.startsAt;
     let endsAt = data.endsAt;
+    let trainerId = data.trainerId;
+    let branchId = data.branchId;
+    let classAudience: ClassAudience | null = null;
 
     if (data.type === BookingType.TRIAL) {
+      if (settings.bookingTrial === false) {
+        throw new BadRequestException("Trials are not available at this studio");
+      }
       const isPersonalTimed = Boolean(startsAt && endsAt) && !sessionId;
       if (!sessionId && !isPersonalTimed) {
         throw new BadRequestException(
@@ -186,7 +238,14 @@ export class BookingsService {
         const session = await this.prisma.session.findUnique({
           where: { id: sessionId },
           include: {
-            batch: { select: { id: true, studioId: true, active: true } },
+            batch: {
+              select: {
+                id: true,
+                studioId: true,
+                active: true,
+                classAudience: true,
+              },
+            },
           },
         });
         if (
@@ -202,6 +261,35 @@ export class BookingsService {
         batchId = session.batchId;
         startsAt = session.startsAt.toISOString();
         endsAt = session.endsAt.toISOString();
+        classAudience = session.batch.classAudience;
+      }
+    } else if (
+      !marketplaceBookingNeedsMembership(data.type, settings)
+    ) {
+      if (data.type === BookingType.PRIVATE) {
+        const resolved = await this.assertMarketplacePrivate({
+          studioId: data.studioId,
+          trainerId,
+          branchId,
+          batchId,
+          startsAt,
+          endsAt,
+        });
+        trainerId = resolved.trainerId;
+        branchId = resolved.branchId;
+        startsAt = resolved.startsAt;
+        endsAt = resolved.endsAt;
+      } else if (data.type === BookingType.FLOOR_HIRE) {
+        const resolved = await this.assertMarketplaceFloorHire({
+          studioId: data.studioId,
+          branchId,
+          startsAt,
+          endsAt,
+        });
+        trainerId = undefined;
+        branchId = resolved.branchId;
+        startsAt = resolved.startsAt;
+        endsAt = resolved.endsAt;
       }
     } else {
       const activeMembership = await this.prisma.membership.findFirst({
@@ -241,17 +329,37 @@ export class BookingsService {
       }
     }
 
+    if (classAudience) {
+      const forChild = await this.isMarketplaceChild(data.studentId);
+      const blocked = childAudienceBlocked({ forChild, classAudience });
+      if (blocked) {
+        throw new BadRequestException(blocked);
+      }
+    }
+
     await this.assertBookingScheduleConflicts({
       ...data,
       batchId,
       sessionId,
+      trainerId,
+      branchId,
       startsAt,
       endsAt,
+      bufferMinutes:
+        data.type === BookingType.PRIVATE ? PRIVATE_BUFFER_MINUTES : 0,
     });
 
+    const pricePaise = await this.resolveMarketplacePricePaise({
+      type: data.type,
+      studioId: data.studioId,
+      trainerId,
+      settings,
+    });
     // Trials are free — never put student/parent trial requests on a payment hold.
     const requirePayment =
-      options.requirePayment === true && data.type !== BookingType.TRIAL;
+      data.type !== BookingType.TRIAL &&
+      (options.requirePayment === true ||
+        marketplaceBookingRequiresPayment(pricePaise));
     const status = requirePayment
       ? BookingStatus.AWAITING_PAYMENT
       : BookingStatus.PENDING;
@@ -345,8 +453,8 @@ export class BookingsService {
             type: data.type,
             batchId,
             sessionId,
-            trainerId: data.trainerId,
-            branchId: data.branchId,
+            trainerId,
+            branchId,
             notes: data.notes,
             startsAt: startsAt ? new Date(startsAt) : undefined,
             endsAt: endsAt ? new Date(endsAt) : undefined,
@@ -388,7 +496,13 @@ export class BookingsService {
       return { mode: "demo" };
     }
 
-    const amount = this.razorpay.bookingAmountPaise();
+    const amount =
+      (await this.resolveMarketplacePricePaise({
+        type: booking.type,
+        studioId: booking.studioId,
+        trainerId: booking.trainerId,
+        settings,
+      })) ?? this.razorpay.bookingAmountPaise();
     const keyId = this.razorpay.keyId(settings);
 
     if (booking.razorpayOrderId) {
@@ -564,20 +678,44 @@ export class BookingsService {
   }
 
   async cancelBooking(id: string, actor: DecryptedUser, reason?: string) {
-    const booking = await this.prisma.booking.findUnique({ where: { id } });
+    const booking = await this.prisma.booking.findUnique({
+      where: { id },
+      include: {
+        studio: { include: { settings: true } },
+      },
+    });
     if (!booking) {
       throw new NotFoundException("Booking not found");
     }
 
     await this.assertCanAccessBooking(booking.studentId, actor);
+    const studioInitiated = STUDIO_CANCEL_ROLES.includes(actor.role);
 
-    if (
+    if (studioInitiated) {
+      if (
+        booking.status !== BookingStatus.PENDING &&
+        booking.status !== BookingStatus.CONFIRMED &&
+        booking.status !== BookingStatus.AWAITING_PAYMENT
+      ) {
+        throw new BadRequestException(
+          "Only pending, confirmed, or awaiting-payment bookings can be cancelled",
+        );
+      }
+    } else if (
       booking.status !== BookingStatus.PENDING &&
       booking.status !== BookingStatus.CONFIRMED
     ) {
       throw new BadRequestException(
         "Only pending or confirmed bookings can be cancelled",
       );
+    }
+
+    if (
+      !studioInitiated &&
+      booking.startsAt &&
+      booking.startsAt.getTime() <= Date.now()
+    ) {
+      throw new BadRequestException("This booking has already started");
     }
 
     const notes =
@@ -587,10 +725,15 @@ export class BookingsService {
             .join("\n")
         : booking.notes;
 
+    await this.refundMarketplaceBookingIfNeeded(booking, {
+      studioInitiated,
+    });
+
     return this.prisma.booking.update({
       where: { id },
       data: {
         status: BookingStatus.CANCELLED,
+        paymentHoldExpiresAt: null,
         ...(notes !== booking.notes ? { notes } : {}),
       },
       include: {
@@ -759,10 +902,25 @@ export class BookingsService {
       throw new BadRequestException("Booking not found");
     }
 
-    if (existing.status === BookingStatus.AWAITING_PAYMENT) {
+    if (
+      existing.status === BookingStatus.AWAITING_PAYMENT &&
+      status !== BookingStatus.CANCELLED
+    ) {
       throw new BadRequestException(
         "Cannot review a booking that is still awaiting payment",
       );
+    }
+
+    if (status === BookingStatus.CANCELLED) {
+      const paid = await this.prisma.booking.findUnique({
+        where: { id },
+        include: { studio: { include: { settings: true } } },
+      });
+      if (paid) {
+        await this.refundMarketplaceBookingIfNeeded(paid, {
+          studioInitiated: true,
+        });
+      }
     }
 
     if (
@@ -922,9 +1080,11 @@ export class BookingsService {
     batchId?: string;
     sessionId?: string;
     trainerId?: string;
+    branchId?: string;
     startsAt?: string;
     endsAt?: string;
     excludeBookingIds?: string[];
+    bufferMinutes?: number;
   }) {
     if (data.sessionId) {
       const session = await this.prisma.session.findUnique({
@@ -955,6 +1115,7 @@ export class BookingsService {
         branchId: session.batch.branchId,
         excludeSessionIds: [session.id],
         excludeBookingIds: data.excludeBookingIds,
+        bufferMinutes: data.bufferMinutes,
       });
       return;
     }
@@ -962,7 +1123,7 @@ export class BookingsService {
     if (data.startsAt && data.endsAt) {
       const startsAt = new Date(data.startsAt);
       const endsAt = new Date(data.endsAt);
-      let branchId: string | undefined;
+      let branchId = data.branchId;
       const trainerIds = [...(data.trainerId ? [data.trainerId] : [])];
 
       if (data.batchId) {
@@ -971,7 +1132,7 @@ export class BookingsService {
           include: { trainers: { select: { trainerId: true } } },
         });
         if (batch) {
-          branchId = batch.branchId;
+          branchId = branchId ?? batch.branchId;
           for (const trainer of batch.trainers) {
             if (!trainerIds.includes(trainer.trainerId)) {
               trainerIds.push(trainer.trainerId);
@@ -986,6 +1147,7 @@ export class BookingsService {
         trainerIds,
         branchId,
         excludeBookingIds: data.excludeBookingIds,
+        bufferMinutes: data.bufferMinutes,
       });
       return;
     }
@@ -1006,6 +1168,188 @@ export class BookingsService {
     }
     if (end <= start) {
       throw new BadRequestException("endsAt must be after startsAt");
+    }
+  }
+
+  private async isMarketplaceChild(studentId: string) {
+    const [family, parent] = await Promise.all([
+      this.prisma.familyMember.findFirst({
+        where: { memberUserId: studentId },
+        select: { kind: true },
+      }),
+      this.prisma.parentChild.findFirst({
+        where: { childUserId: studentId },
+        select: { id: true },
+      }),
+    ]);
+    return Boolean(parent) || family?.kind === FamilyMemberKind.KID;
+  }
+
+  private async assertMarketplacePrivate(input: {
+    studioId: string;
+    trainerId?: string;
+    branchId?: string;
+    batchId?: string;
+    startsAt?: string;
+    endsAt?: string;
+  }) {
+    if (!input.trainerId) {
+      throw new BadRequestException("Private bookings require a trainer");
+    }
+    if (!input.startsAt || !input.endsAt) {
+      throw new BadRequestException("Private bookings require a time");
+    }
+    const attach = await this.prisma.trainerStudio.findUnique({
+      where: {
+        trainerId_studioId: {
+          trainerId: input.trainerId,
+          studioId: input.studioId,
+        },
+      },
+      select: { trainerId: true },
+    });
+    if (!attach) {
+      throw new BadRequestException(
+        "This trainer is not attached to this studio",
+      );
+    }
+    let branchId = input.branchId;
+    if (!branchId && input.batchId) {
+      const batch = await this.prisma.batch.findUnique({
+        where: { id: input.batchId },
+        select: { branchId: true, studioId: true },
+      });
+      if (batch?.studioId === input.studioId) {
+        branchId = batch.branchId;
+      }
+    }
+    if (!branchId) {
+      throw new BadRequestException("Private bookings require a floor");
+    }
+    await this.assertBranchOpen(input.studioId, branchId, input.startsAt, input.endsAt);
+    return {
+      trainerId: input.trainerId,
+      branchId,
+      startsAt: input.startsAt,
+      endsAt: input.endsAt,
+    };
+  }
+
+  private async assertMarketplaceFloorHire(input: {
+    studioId: string;
+    branchId?: string;
+    startsAt?: string;
+    endsAt?: string;
+  }) {
+    if (!input.branchId) {
+      throw new BadRequestException("Floor hire requires a floor");
+    }
+    if (!input.startsAt || !input.endsAt) {
+      throw new BadRequestException("Floor hire requires a time");
+    }
+    await this.assertBranchOpen(
+      input.studioId,
+      input.branchId,
+      input.startsAt,
+      input.endsAt,
+    );
+    return {
+      branchId: input.branchId,
+      startsAt: input.startsAt,
+      endsAt: input.endsAt,
+    };
+  }
+
+  private async assertBranchOpen(
+    studioId: string,
+    branchId: string,
+    startsAt: string,
+    endsAt: string,
+  ) {
+    const branch = await this.prisma.studioBranch.findUnique({
+      where: { id: branchId },
+      select: { studioId: true, openingHours: true },
+    });
+    if (!branch || branch.studioId !== studioId) {
+      throw new BadRequestException("Pick a floor at this studio");
+    }
+    if (
+      !branchIsOpenAt(
+        branch.openingHours,
+        new Date(startsAt),
+        new Date(endsAt),
+      )
+    ) {
+      throw new BadRequestException("The studio is closed at that time");
+    }
+  }
+
+  private async resolveMarketplacePricePaise(input: {
+    type: BookingType | string;
+    studioId: string;
+    trainerId?: string | null;
+    settings?: {
+      privateSessionPaise?: number | null;
+      floorHirePaise?: number | null;
+    } | null;
+  }) {
+    if (input.type === BookingType.PRIVATE || input.type === "PRIVATE") {
+      if (input.trainerId) {
+        const link = await this.prisma.trainerStudio.findUnique({
+          where: {
+            trainerId_studioId: {
+              trainerId: input.trainerId,
+              studioId: input.studioId,
+            },
+          },
+          select: { privateSessionPaise: true },
+        });
+        if (link?.privateSessionPaise != null) {
+          return link.privateSessionPaise;
+        }
+      }
+      return input.settings?.privateSessionPaise ?? null;
+    }
+    if (input.type === BookingType.FLOOR_HIRE || input.type === "FLOOR_HIRE") {
+      return input.settings?.floorHirePaise ?? null;
+    }
+    return null;
+  }
+
+  private async refundMarketplaceBookingIfNeeded(
+    booking: {
+      type: BookingType;
+      status: BookingStatus;
+      startsAt: Date | null;
+      razorpayPaymentId: string | null;
+      studio?: { settings?: Parameters<RazorpayService["isEnabled"]>[0] };
+    },
+    input: { studioInitiated: boolean },
+  ) {
+    const paidTypes =
+      booking.type === BookingType.PRIVATE ||
+      booking.type === BookingType.FLOOR_HIRE;
+    if (!paidTypes || !booking.razorpayPaymentId) return;
+    if (booking.status === BookingStatus.AWAITING_PAYMENT) return;
+    const startsAt = booking.startsAt ?? new Date();
+    if (
+      !input.studioInitiated &&
+      !canRefundPaidMarketplaceBooking(startsAt)
+    ) {
+      return;
+    }
+    const settings = booking.studio?.settings;
+    if (!this.razorpay.isEnabled(settings)) return;
+    try {
+      await this.razorpay.createRefund(
+        {
+          paymentId: booking.razorpayPaymentId,
+          amountPaise: this.razorpay.bookingAmountPaise(),
+        },
+        settings,
+      );
+    } catch {
+      // Refund is best-effort; the booking still cancels.
     }
   }
 }

@@ -3,12 +3,12 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { PublicShell } from "@/modules/layout/public-shell";
 import { useDiscoverCity } from "@/modules/student-landing/city-context";
-import { TrialRequestSheet } from "@/modules/student-landing/trial-request-sheet";
+import { BookSheet } from "./book-sheet";
+import type { BookSheetTarget } from "./book";
 import { AppSheet } from "@/modules/ui/app-sheet";
 import { FilterChipRow } from "@/modules/ui/filter-chip-row";
 import { MARKETPLACE_AREAS } from "./areas";
 import {
-  fetchMarketplaceClass,
   fetchMarketplaceClasses,
   fetchMarketplaceStudios,
   fetchMarketplaceTrainer,
@@ -58,11 +58,7 @@ const TAB_CHIPS: Array<{ id: MarketplaceCatalogTab; label: string }> = [
   { id: "trainers", label: "Trainers" },
 ];
 
-type BookTarget = {
-  studioId: string;
-  studioName: string;
-  batchId?: string | null;
-};
+type BookTarget = BookSheetTarget;
 
 export function MarketplaceHome({
   tab,
@@ -275,36 +271,71 @@ export function MarketplaceHome({
   async function bookTrainer(item: MarketplaceTrainerCard) {
     const detail = await fetchMarketplaceTrainer(item.slug ?? item.id);
     const firstClass = detail.classes[0];
-    const firstStudio = detail.studios[0];
+    const classStudio = firstClass
+      ? detail.studios.find((studio) => studio.slug === firstClass.studioSlug)
+      : undefined;
+    const firstStudio =
+      classStudio ??
+      detail.studios.find((studio) => studio.canPrivate) ??
+      detail.studios[0];
     if (firstClass && firstStudio) {
-      const klass = await fetchMarketplaceClass(firstClass.slug || firstClass.id);
       setBook({
-        studioId: klass.studioId,
-        studioName: klass.studioName,
-        batchId: klass.id,
+        source: "trainer",
+        studioId: firstStudio.id,
+        studioName: firstStudio.name,
+        batchId: firstClass.id,
+        classSlug: firstClass.slug,
+        className: firstClass.name,
+        trainerId: item.id,
+        trainerName: item.name,
+        canTrial: item.canTrial,
+        canPrivate: item.canPrivate,
+        canFloorHire: false,
       });
       return;
     }
     if (firstStudio) {
       setBook({
+        source: "trainer",
         studioId: firstStudio.id,
         studioName: firstStudio.name,
+        trainerId: item.id,
+        trainerName: item.name,
+        canTrial: item.canTrial,
+        canPrivate: item.canPrivate,
+        canFloorHire: false,
       });
     }
   }
 
   function bookClass(item: MarketplaceClassCard) {
     setBook({
+      source: "class",
       studioId: item.studioId,
       studioName: item.studioName,
       batchId: item.id,
+      classSlug: item.slug,
+      className: item.name,
+      audience: item.audience,
+      trainerId: item.trainerId,
+      trainerName: item.trainerName,
+      canTrial: item.canTrial,
+      canEnroll: item.canEnroll,
+      canPrivate: false,
+      canFloorHire: false,
+      viewerEnrolled: item.viewerEnrolled,
     });
   }
 
   function bookStudio(item: MarketplaceStudioCard) {
     setBook({
+      source: "studio",
       studioId: item.id,
       studioName: item.name,
+      canTrial: item.canTrial,
+      canEnroll: false,
+      canPrivate: item.canPrivate,
+      canFloorHire: false,
     });
   }
 
@@ -547,14 +578,12 @@ export function MarketplaceHome({
         </div>
       </AppSheet>
 
-      <TrialRequestSheet
+      <BookSheet
         open={Boolean(book)}
         onOpenChange={(open) => {
           if (!open) setBook(null);
         }}
-        studioId={book?.studioId ?? ""}
-        studioName={book?.studioName ?? ""}
-        batchId={book?.batchId ?? null}
+        target={book}
       />
     </PublicShell>
   );

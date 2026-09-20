@@ -88,7 +88,7 @@ function classDetail(): MarketplaceClassDetail {
         endsAt: new Date(Date.now() + 90000000).toISOString(),
       },
     ],
-    plans: [{ name: "Monthly", price: 1500, cadence: "MONTHLY" }],
+    plans: [{ id: "plan-1", name: "Monthly", price: 1500, cadence: "MONTHLY" }],
     canPrivate: false,
     canFloorHire: false,
   };

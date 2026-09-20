@@ -30,6 +30,7 @@ describe("BookingsService schedule conflicts", () => {
 
   const prisma = {
     invoice: { findFirst: vi.fn() },
+    studio: { findUnique: vi.fn() },
     batch: { findUnique: vi.fn() },
     booking: {
       findFirst: vi.fn(),
@@ -39,6 +40,10 @@ describe("BookingsService schedule conflicts", () => {
     },
     session: { findUnique: vi.fn() },
     membership: { findFirst: vi.fn() },
+    familyMember: { findFirst: vi.fn() },
+    parentChild: { findFirst: vi.fn() },
+    trainerStudio: { findUnique: vi.fn() },
+    studioBranch: { findUnique: vi.fn() },
     $transaction: vi.fn(async (fn: (client: typeof tx) => unknown) => fn(tx)),
   };
 
@@ -72,6 +77,20 @@ describe("BookingsService schedule conflicts", () => {
       undefined,
     );
     razorpayDisabled.isEnabled.mockReturnValue(false);
+    prisma.studio.findUnique.mockResolvedValue({
+      id: "studio-1",
+      settings: {
+        bookingTrial: true,
+        bookingPrivate: false,
+        bookingFloorHire: false,
+        privateSessionPaise: null,
+        privateSessionMinutes: 60,
+        floorHirePaise: null,
+        floorHireSlotMinutes: 60,
+      },
+    });
+    prisma.familyMember.findFirst.mockResolvedValue(null);
+    prisma.parentChild.findFirst.mockResolvedValue(null);
     service = new BookingsService(
       prisma as never,
       memberships as never,
@@ -964,5 +983,283 @@ describe("BookingsService.create overdue invoice freeze", () => {
       }),
     ).rejects.toThrow(/overdue invoice/);
     expect(tx.booking.create).not.toHaveBeenCalled();
+  });
+});
+
+describe("BookingsService marketplace F5", () => {
+  const tx = {
+    $queryRaw: vi.fn().mockResolvedValue([{ id: "batch-1" }]),
+    batch: { findUnique: vi.fn() },
+    booking: {
+      findFirst: vi.fn(),
+      findMany: vi.fn().mockResolvedValue([]),
+      create: vi.fn(),
+      update: vi.fn(),
+      updateMany: vi.fn().mockResolvedValue({ count: 0 }),
+    },
+    batchEnrollment: {
+      findMany: vi.fn().mockResolvedValue([]),
+      findFirst: vi.fn().mockResolvedValue(null),
+      count: vi.fn().mockResolvedValue(0),
+    },
+  };
+
+  const prisma = {
+    invoice: { findFirst: vi.fn() },
+    studio: { findUnique: vi.fn() },
+    batch: { findUnique: vi.fn() },
+    booking: {
+      findFirst: vi.fn(),
+      findUnique: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+    },
+    session: { findUnique: vi.fn() },
+    membership: { findFirst: vi.fn() },
+    familyMember: { findFirst: vi.fn() },
+    parentChild: { findFirst: vi.fn() },
+    trainerStudio: { findUnique: vi.fn() },
+    studioBranch: { findUnique: vi.fn() },
+    $transaction: vi.fn(async (fn: (client: typeof tx) => unknown) => fn(tx)),
+  };
+
+  const razorpay = {
+    ...razorpayDisabled,
+    createRefund: vi.fn(),
+  };
+
+  let service: BookingsService;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    prisma.$transaction.mockImplementation(
+      async (fn: (client: typeof tx) => unknown) => fn(tx),
+    );
+    tx.booking.findFirst.mockResolvedValue(null);
+    tx.booking.create.mockResolvedValue({ id: "bk-1", status: "PENDING" });
+    prisma.invoice.findFirst.mockResolvedValue(null);
+    prisma.familyMember.findFirst.mockResolvedValue(null);
+    prisma.parentChild.findFirst.mockResolvedValue(null);
+    prisma.studio.findUnique.mockResolvedValue({
+      id: "studio-1",
+      settings: {
+        bookingTrial: true,
+        bookingPrivate: true,
+        bookingFloorHire: true,
+        privateSessionPaise: 0,
+        privateSessionMinutes: 60,
+        floorHirePaise: 0,
+        floorHireSlotMinutes: 60,
+      },
+    });
+    prisma.trainerStudio.findUnique.mockResolvedValue({ trainerId: "trainer-1" });
+    prisma.studioBranch.findUnique.mockResolvedValue({
+      studioId: "studio-1",
+      openingHours: null,
+    });
+    service = new BookingsService(
+      prisma as never,
+      { findActiveForBatch: vi.fn() } as never,
+      { decryptUser: (user: unknown) => user } as never,
+      {
+        assertNoConflicts: vi.fn().mockResolvedValue(undefined),
+        assertStudentAvailableForBatch: vi.fn().mockResolvedValue(undefined),
+      } as never,
+      razorpay as never,
+    );
+  });
+
+  it("creates a public private without membership when the toggle is on", async () => {
+    await service.create({
+      studioId: "studio-1",
+      studentId: "student-1",
+      type: "PRIVATE",
+      trainerId: "trainer-1",
+      branchId: "branch-1",
+      startsAt: "2026-09-21T10:00:00.000Z",
+      endsAt: "2026-09-21T11:00:00.000Z",
+    });
+
+    expect(prisma.membership.findFirst).not.toHaveBeenCalled();
+    expect(tx.booking.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          type: "PRIVATE",
+          trainerId: "trainer-1",
+          branchId: "branch-1",
+          status: "PENDING",
+        }),
+      }),
+    );
+  });
+
+  it("rejects public private when the trainer is not attached", async () => {
+    prisma.trainerStudio.findUnique.mockResolvedValue(null);
+
+    await expect(
+      service.create({
+        studioId: "studio-1",
+        studentId: "student-1",
+        type: "PRIVATE",
+        trainerId: "trainer-9",
+        branchId: "branch-1",
+        startsAt: "2026-09-21T10:00:00.000Z",
+        endsAt: "2026-09-21T11:00:00.000Z",
+      }),
+    ).rejects.toThrow(/not attached/);
+    expect(tx.booking.create).not.toHaveBeenCalled();
+  });
+
+  it("rejects floor hire when the studio toggle is off", async () => {
+    prisma.studio.findUnique.mockResolvedValue({
+      id: "studio-1",
+      settings: {
+        bookingTrial: true,
+        bookingPrivate: false,
+        bookingFloorHire: false,
+        privateSessionPaise: null,
+        floorHirePaise: 200000,
+      },
+    });
+
+    await expect(
+      service.create({
+        studioId: "studio-1",
+        studentId: "student-1",
+        type: "FLOOR_HIRE",
+        branchId: "branch-1",
+        startsAt: "2026-09-21T10:00:00.000Z",
+        endsAt: "2026-09-21T11:00:00.000Z",
+      }),
+    ).rejects.toThrow(/active membership/);
+  });
+
+  it("holds a priced private for payment", async () => {
+    prisma.studio.findUnique.mockResolvedValue({
+      id: "studio-1",
+      settings: {
+        bookingTrial: true,
+        bookingPrivate: true,
+        bookingFloorHire: false,
+        privateSessionPaise: 150000,
+        privateSessionMinutes: 60,
+        floorHirePaise: null,
+        floorHireSlotMinutes: 60,
+      },
+    });
+
+    await service.create({
+      studioId: "studio-1",
+      studentId: "student-1",
+      type: "PRIVATE",
+      trainerId: "trainer-1",
+      branchId: "branch-1",
+      startsAt: "2026-09-21T10:00:00.000Z",
+      endsAt: "2026-09-21T11:00:00.000Z",
+    });
+
+    expect(tx.booking.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          status: "AWAITING_PAYMENT",
+        }),
+      }),
+    );
+  });
+
+  it("blocks a child trial on an adults-only class", async () => {
+    prisma.familyMember.findFirst.mockResolvedValue({ kind: "KID" });
+    prisma.session.findUnique.mockResolvedValue({
+      id: "session-1",
+      batchId: "batch-1",
+      startsAt: new Date("2026-09-21T10:00:00.000Z"),
+      endsAt: new Date("2026-09-21T11:00:00.000Z"),
+      status: "SCHEDULED",
+      batch: {
+        id: "batch-1",
+        studioId: "studio-1",
+        active: true,
+        classAudience: "ADULTS",
+      },
+    });
+
+    await expect(
+      service.create({
+        studioId: "studio-1",
+        studentId: "child-1",
+        type: "TRIAL",
+        sessionId: "session-1",
+      }),
+    ).rejects.toThrow(/adults only/);
+    expect(tx.booking.create).not.toHaveBeenCalled();
+  });
+
+  it("blocks an adult trial on a kids-only class", async () => {
+    prisma.session.findUnique.mockResolvedValue({
+      id: "session-1",
+      batchId: "batch-1",
+      startsAt: new Date("2026-09-21T10:00:00.000Z"),
+      endsAt: new Date("2026-09-21T11:00:00.000Z"),
+      status: "SCHEDULED",
+      batch: {
+        id: "batch-1",
+        studioId: "studio-1",
+        active: true,
+        classAudience: "KIDS",
+      },
+    });
+
+    await expect(
+      service.create({
+        studioId: "studio-1",
+        studentId: "student-1",
+        type: "TRIAL",
+        sessionId: "session-1",
+      }),
+    ).rejects.toThrow(/kids/);
+  });
+
+  it("rejects student cancel after the slot has started", async () => {
+    prisma.booking.findUnique.mockResolvedValue({
+      id: "bk-1",
+      studentId: "student-1",
+      status: "CONFIRMED",
+      type: "TRIAL",
+      startsAt: new Date("2020-01-01T10:00:00.000Z"),
+      notes: null,
+      razorpayPaymentId: null,
+    });
+
+    await expect(
+      service.cancelBooking("bk-1", {
+        id: "student-1",
+        role: "STUDENT",
+      } as never),
+    ).rejects.toThrow(/already started/);
+  });
+
+  it("lets staff cancel an awaiting-payment hold", async () => {
+    prisma.booking.findUnique.mockResolvedValue({
+      id: "bk-1",
+      studentId: "student-1",
+      status: "AWAITING_PAYMENT",
+      type: "PRIVATE",
+      startsAt: new Date("2026-09-22T10:00:00.000Z"),
+      notes: null,
+      razorpayPaymentId: null,
+      studio: { settings: null },
+    });
+    prisma.booking.update.mockResolvedValue({ id: "bk-1", status: "CANCELLED" });
+
+    await service.cancelBooking("bk-1", {
+      id: "owner-1",
+      role: "OWNER",
+    } as never);
+
+    expect(prisma.booking.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ status: "CANCELLED" }),
+      }),
+    );
   });
 });

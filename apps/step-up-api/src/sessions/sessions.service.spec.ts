@@ -18,6 +18,16 @@ const baseSchedulePrisma = () => ({
   batchEnrollment: {
     findMany: vi.fn().mockResolvedValue([]),
   },
+  booking: {
+    findMany: vi.fn().mockResolvedValue([]),
+    updateMany: vi.fn().mockResolvedValue({ count: 0 }),
+  },
+  familyMember: {
+    findMany: vi.fn().mockResolvedValue([]),
+  },
+  parentChild: {
+    findMany: vi.fn().mockResolvedValue([]),
+  },
   user: {
     findFirst: vi.fn(),
     findMany: vi.fn(),
@@ -492,6 +502,16 @@ describe("SessionsService schedule mutations", () => {
     batchEnrollment: {
       findMany: vi.fn(),
     },
+    booking: {
+      findMany: vi.fn().mockResolvedValue([]),
+      updateMany: vi.fn().mockResolvedValue({ count: 0 }),
+    },
+    familyMember: {
+      findMany: vi.fn().mockResolvedValue([]),
+    },
+    parentChild: {
+      findMany: vi.fn().mockResolvedValue([]),
+    },
   };
 
   const scheduleConflicts = {
@@ -690,6 +710,56 @@ describe("SessionsService schedule mutations", () => {
         actor,
         "batch-1",
         expect.objectContaining({ title: "Session cancelled" }),
+      );
+    });
+  });
+
+  it("bulk-cancels trials on the session then notifies bookers", async () => {
+    prisma.session.findUnique.mockResolvedValue({
+      id: "session-1",
+      status: SessionStatus.SCHEDULED,
+      startsAt: new Date("2026-08-10T10:00:00.000Z"),
+      endsAt: new Date("2026-08-10T11:00:00.000Z"),
+      batch: {
+        id: "batch-1",
+        name: "Kids Hip-hop",
+        studioId: "studio-1",
+        studio: { name: "Rhythm House" },
+      },
+    });
+    prisma.session.update.mockResolvedValue({
+      id: "session-1",
+      status: SessionStatus.CANCELLED,
+    });
+    prisma.booking.findMany.mockResolvedValue([
+      { id: "trial-1", studentId: "child-1" },
+    ]);
+    prisma.parentChild.findMany.mockResolvedValue([
+      { childUserId: "child-1", parentUserId: "parent-1" },
+    ]);
+    prisma.batchEnrollment.findMany.mockResolvedValue([]);
+
+    await service.cancel(actor as never, "session-1");
+
+    expect(prisma.booking.updateMany).toHaveBeenCalledWith({
+      where: { id: { in: ["trial-1"] } },
+      data: { status: "CANCELLED" },
+    });
+    await vi.waitFor(() => {
+      expect(notifications.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId: "child-1",
+          type: "BOOKING_CANCELLED",
+          body: expect.stringContaining(
+            "Your trial for Kids Hip-hop",
+          ),
+        }),
+      );
+      expect(notifications.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId: "parent-1",
+          type: "BOOKING_CANCELLED",
+        }),
       );
     });
   });

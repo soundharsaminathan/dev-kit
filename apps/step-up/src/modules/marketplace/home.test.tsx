@@ -42,14 +42,14 @@ vi.mock("@/modules/layout/public-shell", () => ({
   ),
 }));
 
-vi.mock("@/modules/student-landing/trial-request-sheet", () => ({
-  TrialRequestSheet: ({
+vi.mock("./book-sheet", () => ({
+  BookSheet: ({
     open,
-    studioName,
+    target,
   }: {
     open: boolean;
-    studioName: string;
-  }) => (open ? <div>Trial for {studioName}</div> : null),
+    target: { studioName?: string } | null;
+  }) => (open ? <div>Trial for {target?.studioName}</div> : null),
 }));
 
 function classCard(): MarketplaceClassCard {

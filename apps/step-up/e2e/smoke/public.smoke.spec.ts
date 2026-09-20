@@ -76,6 +76,21 @@ test.describe("public smoke @smoke", () => {
     }
   });
 
+  test("marketplace class Book opens the unified sheet @smoke", async ({
+    page,
+  }) => {
+    await page.goto("/", { waitUntil: "domcontentloaded" });
+    await waitForAppReady(page);
+    const book = page.getByRole("button", { name: "Book" }).first();
+    if ((await book.count()) === 0) {
+      test.skip(true, "No public class inventory on this seed");
+      return;
+    }
+    await book.click();
+    await expect(page.getByTestId("marketplace-book-sheet")).toBeVisible();
+    await expect(page.getByText(/trial|book/i).first()).toBeVisible();
+  });
+
   test("public entity pages render for seeded ids @smoke", async ({ page }) => {
     const paths = [
       `/studio/${SMOKE.studioId}`,

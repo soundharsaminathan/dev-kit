@@ -24,6 +24,8 @@ import {
 } from "./discover.localities";
 import { batchScheduleLabel } from "./discover.schedule";
 import {
+  DEFAULT_FLOOR_HIRE_MINUTES,
+  DEFAULT_PRIVATE_MINUTES,
   marketplaceFirstPaint,
   type PublicMarketplaceCategory,
 } from "./marketplace.contract";
@@ -117,6 +119,7 @@ type BatchRow = {
   summary: { availableSeats: number } | null;
   plans: Array<{
     subscription: {
+      id?: string;
       name?: string;
       price: { toString(): string } | number;
       billingCadence: BillingCadence;
@@ -466,6 +469,7 @@ export class MarketplaceCatalogService {
     const plans = batch.plans
       .filter((plan) => plan.subscription.active)
       .map((plan) => ({
+        id: plan.subscription.id ?? "",
         name: plan.subscription.name?.trim() || "Plan",
         price: priceNumber(plan.subscription.price),
         cadence: plan.subscription.billingCadence,
@@ -517,6 +521,10 @@ export class MarketplaceCatalogService {
             bookingEnrollment: true,
             bookingPrivate: true,
             bookingFloorHire: true,
+            privateSessionPaise: true,
+            privateSessionMinutes: true,
+            floorHirePaise: true,
+            floorHireSlotMinutes: true,
           },
         },
         marketplaceCategories: { select: { category: true } },
@@ -650,6 +658,12 @@ export class MarketplaceCatalogService {
       })),
       classes,
       trainers,
+      privateSessionPaise: studio.settings?.privateSessionPaise ?? null,
+      privateSessionMinutes:
+        studio.settings?.privateSessionMinutes ?? DEFAULT_PRIVATE_MINUTES,
+      floorHirePaise: studio.settings?.floorHirePaise ?? null,
+      floorHireSlotMinutes:
+        studio.settings?.floorHireSlotMinutes ?? DEFAULT_FLOOR_HIRE_MINUTES,
     };
   }
 
@@ -1460,6 +1474,7 @@ export class MarketplaceCatalogService {
         select: {
           subscription: {
             select: {
+              id: true,
               name: true,
               price: true,
               billingCadence: true,
