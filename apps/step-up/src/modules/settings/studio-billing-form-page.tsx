@@ -1,50 +1,24 @@
-import { Input } from "@dev-ui/components/input";
 import { useToastContext } from "@dev-ui/components/toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect } from "react";
+import { useBlocker } from "@tanstack/react-router";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useApi } from "@/lib/api-context";
 import { useAuth } from "@/lib/auth";
 import { useStudioId } from "@/lib/use-studio-id";
 import { SkeletonBlock } from "@/modules/ui/skeleton-block";
 import { EmptyState, ErrorState } from "@/modules/ui/states";
 import { TouchButton } from "@/modules/ui/touch-button";
-import type { Studio } from "./types";
 import {
-  SettingsField,
-  SettingsSaveBar,
-  SettingsSection,
-  useSettingsDirtyForm,
-} from "./ui";
-
-/** Chennai / India Standard Time — IANA id is Asia/Kolkata (no separate Asia/Chennai). */
-const DEFAULT_STUDIO_TIMEZONE = "Asia/Kolkata";
-
-const TIMEZONE_OPTIONS = [
-  DEFAULT_STUDIO_TIMEZONE,
-  "Asia/Dubai",
-  "Asia/Singapore",
-  "Europe/London",
-  "America/New_York",
-  "UTC",
-] as const;
-
-function isValidIanaTimeZone(timeZone: string): boolean {
-  const trimmed = timeZone.trim();
-  if (!trimmed) return false;
-  try {
-    Intl.DateTimeFormat(undefined, { timeZone: trimmed });
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-type BillingValues = {
-  graceDays: string;
-  expireAlertDays: string;
-  timezone: string;
-  admissionFee: string;
-};
+  type BillingValues,
+  billingFieldErrors,
+  buildBillingPayload,
+  hasBillingErrors,
+  isValidIanaTimeZone,
+  valuesFromSettings,
+} from "./studio-billing-model";
+import { StudioBillingWorkspace } from "./studio-billing-workspace";
+import type { Studio } from "./types";
+import { useSettingsDirtyForm, useSettingsHeader } from "./ui";
 
 export function StudioBillingFormPage() {
   const api = useApi();
@@ -53,6 +27,8 @@ export function StudioBillingFormPage() {
   const queryClient = useQueryClient();
   const { toast } = useToastContext("StudioBillingFormPage");
   const isOwner = user?.role === "OWNER";
+  const [showErrors, setShowErrors] = useState(false);
+  const [saved, setSaved] = useState(false);
   const { hydrate, hydrated, values, setField, isDirty, reset, markSaved } =
     useSettingsDirtyForm<BillingValues>({
       graceDays: "",
@@ -68,40 +44,38 @@ export function StudioBillingFormPage() {
 
   useEffect(() => {
     if (!studioQuery.data || hydrated) return;
-    const settings = studioQuery.data.settings;
-    hydrate({
-      graceDays: String(settings?.graceDays ?? 3),
-      expireAlertDays: String(settings?.expireAlertDays ?? 7),
-      timezone: settings?.timezone || DEFAULT_STUDIO_TIMEZONE,
-      admissionFee: String(settings?.admissionFee ?? 0),
-    });
+    hydrate(valuesFromSettings(studioQuery.data.settings));
   }, [studioQuery.data, hydrated, hydrate]);
+
+  useEffect(() => {
+    if (isDirty) setSaved(false);
+  }, [isDirty]);
+
+  useEffect(() => {
+    if (!saved) return;
+    const timer = window.setTimeout(() => setSaved(false), 2000);
+    return () => window.clearTimeout(timer);
+  }, [saved]);
+
+  const errors = useMemo(
+    () => billingFieldErrors(values, { isOwner }),
+    [values, isOwner],
+  );
 
   const updateSettings = useMutation({
     mutationFn: () => {
-      const nextTimezone = values.timezone.trim();
-      if (isOwner && !isValidIanaTimeZone(nextTimezone)) {
-        throw new Error(
-          "Enter a valid IANA timezone (e.g. Asia/Kolkata for Chennai).",
-        );
+      if (isOwner && !isValidIanaTimeZone(values.timezone)) {
+        throw new Error("Choose a valid studio timezone.");
       }
-      const payload: {
-        graceDays?: number;
-        expireAlertDays: number;
-        timezone?: string;
-        admissionFee?: number;
-      } = {
-        expireAlertDays: Number(values.expireAlertDays),
-      };
-      if (isOwner) {
-        payload.graceDays = Number(values.graceDays);
-        payload.timezone = nextTimezone;
-        payload.admissionFee = Number(values.admissionFee);
-      }
-      return api.patch(`/studios/${studioId}/settings`, payload);
+      return api.patch(
+        `/studios/${studioId}/settings`,
+        buildBillingPayload(values, isOwner),
+      );
     },
     onSuccess: () => {
       markSaved();
+      setShowErrors(false);
+      setSaved(true);
       void queryClient.invalidateQueries({ queryKey: ["studio", studioId] });
       void queryClient.invalidateQueries({
         queryKey: ["studio-public", studioId],
@@ -122,6 +96,33 @@ export function StudioBillingFormPage() {
         variant: "error",
       });
     },
+  });
+
+  const onSave = useCallback(() => {
+    if (hasBillingErrors(errors)) {
+      setShowErrors(true);
+      return;
+    }
+    updateSettings.mutate();
+  }, [errors, updateSettings]);
+
+  const onDiscard = useCallback(() => {
+    reset();
+    setShowErrors(false);
+  }, [reset]);
+
+  const blocker = useBlocker({
+    shouldBlockFn: () => isDirty,
+    withResolver: true,
+    enableBeforeUnload: isDirty,
+  });
+
+  useSettingsHeader({
+    dirty: isDirty,
+    pending: updateSettings.isPending,
+    saved,
+    onSave,
+    onDiscard,
   });
 
   if (studioQuery.isLoading) {
@@ -155,98 +156,30 @@ export function StudioBillingFormPage() {
   }
 
   return (
-    <>
-      <SettingsSection
-        title="Membership"
-        description="Controls how dues and expiry alerts behave."
-      >
-        {isOwner ? (
-          <SettingsField
-            label="Due days"
-            description="Grace period after a membership payment is due."
-          >
-            <Input
-              type="number"
-              value={values.graceDays}
-              onChange={(event) => setField("graceDays", event.target.value)}
-            />
-          </SettingsField>
-        ) : null}
-        <SettingsField
-          label="Expire alert days"
-          description="How many days before expiry to notify members."
-        >
-          <Input
-            type="number"
-            value={values.expireAlertDays}
-            onChange={(event) =>
-              setField("expireAlertDays", event.target.value)
-            }
-          />
-        </SettingsField>
-        {isOwner ? (
-          <SettingsField
-            label="Admission fee"
-            description="One-time fee on a student's first enrollment. Set to 0 to disable."
-          >
-            <Input
-              type="number"
-              value={values.admissionFee}
-              onChange={(event) => setField("admissionFee", event.target.value)}
-            />
-          </SettingsField>
-        ) : null}
-      </SettingsSection>
-
-      {isOwner ? (
-        <SettingsSection
-          title="Timezone"
-          description="Used when importing Excel dates and times as local wall clock."
-        >
-          <SettingsField
-            label="Studio timezone"
-            description={`Default is Chennai (Asia/Kolkata). Common values: ${TIMEZONE_OPTIONS.join(", ")}.`}
-          >
-            <Input
-              value={values.timezone}
-              onChange={(event) => setField("timezone", event.target.value)}
-              placeholder={DEFAULT_STUDIO_TIMEZONE}
-            />
-          </SettingsField>
-        </SettingsSection>
-      ) : null}
-
-      <SettingsSection title="Platform" description="Set by classa admin.">
-        <SettingsField
-          label="Platform fee percent"
-          description="Contact support to change it."
-        >
-          <Input
-            type="number"
-            value={String(studioQuery.data.settings?.platformFeePercent ?? 5)}
-            onChange={() => undefined}
-            disabled
-            readOnly
-          />
-        </SettingsField>
-      </SettingsSection>
-
-      {updateSettings.isError ? (
-        <ErrorState
-          description={
-            updateSettings.error instanceof Error
-              ? updateSettings.error.message
-              : "Could not save billing settings."
-          }
-        />
-      ) : null}
-
-      <SettingsSaveBar
-        isDirty={isDirty}
-        isPending={updateSettings.isPending}
-        onCancel={reset}
-        onSave={() => updateSettings.mutate()}
-      />
-    </>
+    <StudioBillingWorkspace
+      values={values}
+      setField={setField}
+      platformFeePercent={studioQuery.data.settings?.platformFeePercent ?? 5}
+      isOwner={isOwner}
+      isDirty={isDirty}
+      isPending={updateSettings.isPending}
+      showErrors={showErrors}
+      errors={errors}
+      saveError={
+        updateSettings.isError
+          ? updateSettings.error instanceof Error
+            ? updateSettings.error.message
+            : "Could not save billing settings."
+          : null
+      }
+      onSave={onSave}
+      onDiscard={onDiscard}
+      leaveOpen={blocker.status === "blocked"}
+      onStay={() => blocker.reset?.()}
+      onLeaveWithoutSaving={() => {
+        onDiscard();
+        blocker.proceed?.();
+      }}
+    />
   );
 }

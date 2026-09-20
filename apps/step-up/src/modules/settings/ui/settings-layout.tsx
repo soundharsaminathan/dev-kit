@@ -112,7 +112,9 @@ export function SettingsLayout({
     pathname === "/app/settings/profile" ||
     pathname.startsWith("/app/settings/profile/") ||
     pathname === "/app/settings/branding" ||
-    pathname.startsWith("/app/settings/branding/");
+    pathname.startsWith("/app/settings/branding/") ||
+    pathname === "/app/settings/billing" ||
+    pathname.startsWith("/app/settings/billing/");
 
   const featuresQuery = useStudioFeatures();
   const features = featuresQuery.data?.features;
@@ -163,7 +165,11 @@ export function SettingsLayout({
                 isDisabled={!header.dirty || header.pending}
                 onClick={header.onSave}
               >
-                {header.saveLabel ?? "Save changes"}
+                {header.pending
+                  ? "Saving…"
+                  : header.saved
+                    ? "Saved"
+                    : (header.saveLabel ?? "Save changes")}
               </TouchButton>
             ) : null}
           </div>

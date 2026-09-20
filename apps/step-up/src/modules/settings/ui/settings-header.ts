@@ -3,6 +3,7 @@ import { createContext, useContext, useLayoutEffect, useMemo } from "react";
 export type SettingsHeaderRegistration = {
   dirty: boolean;
   pending?: boolean;
+  saved?: boolean;
   onSave: () => void;
   onDiscard?: () => void;
   saveLabel?: string;
@@ -18,6 +19,7 @@ export function useSettingsHeader(
   const setHeader = useContext(SettingsHeaderContext);
   const dirty = registration?.dirty ?? false;
   const pending = registration?.pending ?? false;
+  const saved = registration?.saved ?? false;
   const onSave = registration?.onSave;
   const onDiscard = registration?.onDiscard;
   const saveLabel = registration?.saveLabel;
@@ -28,12 +30,13 @@ export function useSettingsHeader(
         ? {
             dirty,
             pending,
+            saved,
             onSave,
             ...(onDiscard ? { onDiscard } : {}),
             ...(saveLabel ? { saveLabel } : {}),
           }
         : null,
-    [dirty, pending, onSave, onDiscard, saveLabel],
+    [dirty, pending, saved, onSave, onDiscard, saveLabel],
   );
 
   useLayoutEffect(() => {

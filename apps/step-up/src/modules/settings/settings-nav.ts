@@ -183,7 +183,8 @@ export const SETTINGS_PAGE_META: Record<
   },
   "/app/settings/billing": {
     title: "Billing",
-    subtitle: "Due days, expiry alerts, admission fee, and timezone.",
+    subtitle:
+      "Configure membership dues, expiry alerts, admission fees, and timezone.",
   },
   "/app/settings/plan": {
     title: "classa plan",
