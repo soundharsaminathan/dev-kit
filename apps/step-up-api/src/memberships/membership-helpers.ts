@@ -10,7 +10,7 @@ import {
   MembershipSeatRole,
   MembershipStatus,
   SubscriptionKind,
-} from "@prisma/client";
+} from "../generated/prisma/client";
 
 export type CatalogSeatInput = {
   kind: SubscriptionKind;

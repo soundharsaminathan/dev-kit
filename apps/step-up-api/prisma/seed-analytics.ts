@@ -14,14 +14,14 @@ import {
   MembershipStatus,
   PaymentMethod,
   Prisma,
-  PrismaClient,
   ProfileVisibility,
   SessionStatus,
   SessionType,
   SubscriptionKind,
   UserRole,
-} from "@prisma/client";
+} from "../src/generated/prisma/client";
 import { UserCryptoService } from "../src/users/user-crypto.service";
+import { createScriptPrismaClient } from "./script-db";
 import {
   ensureStudioFeaturesEnabled,
   seedFeatureCatalog,
@@ -37,7 +37,7 @@ import { SEED_PASSWORD, syncSeedFirebaseUser } from "./sync-seed-auth";
  * Log in (AUTH_BYPASS): soundhar.adi+analytics-owner@gmail.com
  */
 
-const prisma = new PrismaClient();
+const prisma = createScriptPrismaClient();
 const crypto = new UserCryptoService(new ConfigService());
 
 export const ANALYTICS = {

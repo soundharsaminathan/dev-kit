@@ -1,5 +1,6 @@
 node_modules/
 dist/
+apps/step-up-api/src/generated/
 **/dist-route-gen/
 coverage/
 .nx/

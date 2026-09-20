@@ -1,4 +1,4 @@
-import type { Prisma } from "@prisma/client";
+import type { Prisma } from "../generated/prisma/client";
 import type { OutboxService } from "../events/outbox.service";
 import type { PrismaService } from "../prisma/prisma.service";
 import { OUTBOX_EVENT_INVOICE_CREATED } from "../shared/outbox-events";

@@ -9,7 +9,7 @@ import { AuditService } from "../audit/audit.service";
 import { requireCompany, assertSameCompany } from "../common/tenancy";
 import { PrismaService } from "../prisma/prisma.service";
 import { CreateBranchDto, UpdateBranchDto } from "./dto/branch.dto";
-import { UserRole } from "../generated/prisma";
+import { UserRole } from "../generated/prisma/client";
 
 @Injectable()
 export class BranchesService {

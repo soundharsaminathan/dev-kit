@@ -13,7 +13,7 @@ import {
   MembershipStatus,
   SessionStatus,
   UserRole,
-} from "@prisma/client";
+} from "../generated/prisma/client";
 import {
   assertBatchHasSeat,
   expireStalePaymentHolds,

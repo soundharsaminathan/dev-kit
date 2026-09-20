@@ -14,7 +14,7 @@ import { type AuthUser, CurrentUser } from "../auth/current-user.decorator";
 import { Roles } from "../auth/roles.decorator";
 import { RolesGuard } from "../auth/roles.guard";
 import { STAFF_ROLES } from "../common/tenancy";
-import { type DocumentEntityType, UserRole } from "../generated/prisma";
+import { type DocumentEntityType, UserRole } from "../generated/prisma/client";
 import { DocumentsService } from "./documents.service";
 import type { CreateDocumentDto, SignedUrlDto } from "./dto/document.dto";
 

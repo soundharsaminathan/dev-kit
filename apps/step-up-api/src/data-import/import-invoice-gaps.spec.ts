@@ -1,4 +1,4 @@
-import { BillingCadence, InvoiceStatus } from "@prisma/client";
+import { BillingCadence, InvoiceStatus } from "../generated/prisma/client";
 import { describe, expect, it } from "vitest";
 import {
   buildImportGapInvoices,

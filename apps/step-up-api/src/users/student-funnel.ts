@@ -1,10 +1,10 @@
-import type { MembershipStatus } from "@prisma/client";
+import type { MembershipStatus } from "../generated/prisma/client";
 import {
   AttendanceStatus,
   BookingStatus,
   BookingType,
   SessionStatus,
-} from "@prisma/client";
+} from "../generated/prisma/client";
 
 export type StudentFunnelStage =
   | "active"

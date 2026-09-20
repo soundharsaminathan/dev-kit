@@ -1,5 +1,5 @@
 import { Inject, Injectable } from "@nestjs/common";
-import { AttendanceStatus, MembershipStatus } from "@prisma/client";
+import { AttendanceStatus, MembershipStatus } from "../generated/prisma/client";
 import { loadPaidMonthsByStudent } from "../billing/family-combine";
 import { PrismaService } from "../prisma/prisma.service";
 import { UserCryptoService } from "../users/user-crypto.service";

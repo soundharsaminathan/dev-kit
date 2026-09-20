@@ -1,4 +1,4 @@
-import { UserRole } from "@prisma/client";
+import { UserRole } from "../../generated/prisma/client";
 
 export const STUDIO_ID = "studio-seed-1";
 

@@ -12,7 +12,7 @@ import {
   Prisma,
   StudioStatus,
   UserRole,
-} from "@prisma/client";
+} from "../generated/prisma/client";
 import { FirebaseService } from "../auth/firebase.service";
 import { isValidIanaTimeZone } from "../common/zoned-local-time";
 import { MediaService } from "../media/media.service";

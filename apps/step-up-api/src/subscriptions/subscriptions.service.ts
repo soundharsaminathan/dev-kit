@@ -11,7 +11,7 @@ import {
   type IndividualAudience,
   type Prisma,
   SubscriptionKind,
-} from "@prisma/client";
+} from "../generated/prisma/client";
 import { seatsForCatalog } from "../memberships/membership-helpers";
 import { PrismaService } from "../prisma/prisma.service";
 

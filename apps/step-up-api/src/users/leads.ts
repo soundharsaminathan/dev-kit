@@ -1,5 +1,5 @@
-import type { AgeRange } from "@prisma/client";
-import { BookingStatus, BookingType } from "@prisma/client";
+import type { AgeRange } from "../generated/prisma/client";
+import { BookingStatus, BookingType } from "../generated/prisma/client";
 import { matchesPersonSearch } from "./person-search";
 import {
   hasActiveBatchEnrollment,

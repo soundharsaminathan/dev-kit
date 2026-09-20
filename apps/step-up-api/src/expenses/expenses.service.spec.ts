@@ -7,7 +7,7 @@ import {
   ExpensePaymentMethod,
   ExpenseRecurrenceFrequency,
   Prisma,
-} from "@prisma/client";
+} from "../generated/prisma/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createPrismaMock } from "../test/mocks/create-prisma-mock";
 import { ExpensesService } from "./expenses.service";

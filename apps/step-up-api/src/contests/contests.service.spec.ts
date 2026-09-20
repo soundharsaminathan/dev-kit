@@ -3,7 +3,7 @@ import {
   ForbiddenException,
   NotFoundException,
 } from "@nestjs/common";
-import { ContestEntryStatus, ContestStatus, UserRole } from "@prisma/client";
+import { ContestEntryStatus, ContestStatus, UserRole } from "../generated/prisma/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ContestsService } from "./contests.service";
 

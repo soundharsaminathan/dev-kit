@@ -1,5 +1,5 @@
 import { createParamDecorator, type ExecutionContext } from "@nestjs/common";
-import type { User } from "../generated/prisma";
+import type { User } from "../generated/prisma/client";
 
 export type AuthUser = User;
 

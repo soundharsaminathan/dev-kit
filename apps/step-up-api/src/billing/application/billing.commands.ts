@@ -1,5 +1,5 @@
 import { Inject, Injectable } from "@nestjs/common";
-import type { BillingCadence, PaymentMethod } from "@prisma/client";
+import type { BillingCadence, PaymentMethod } from "../../generated/prisma/client";
 import { OutboxService } from "../../events/outbox.service";
 import { PrismaService } from "../../prisma/prisma.service";
 import { ProjectionService } from "../../queues/processors/projection.service";

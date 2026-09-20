@@ -4,7 +4,7 @@ import {
   BatchEnrollmentStatus,
   SessionStatus,
   SessionType,
-} from "@prisma/client";
+} from "../generated/prisma/client";
 import { monthPeriodBounds } from "../home/home-stats";
 
 const MONTH_KEY_RE = /^(\d{4})-(\d{2})$/;

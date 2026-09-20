@@ -7,7 +7,7 @@ import {
   Query,
   UseGuards,
 } from "@nestjs/common";
-import { UserRole } from "@prisma/client";
+import { UserRole } from "../generated/prisma/client";
 import { Type } from "class-transformer";
 import { IsInt, IsOptional, IsString, Max, Min } from "class-validator";
 import { AuthGuard } from "../auth/auth.guard";

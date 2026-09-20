@@ -19,7 +19,7 @@ import {
   SessionStatus,
   SessionType,
   SubscriptionKind,
-} from "@prisma/client";
+} from "../generated/prisma/client";
 import {
   countOccupiedSeats,
   lockBatchRow,

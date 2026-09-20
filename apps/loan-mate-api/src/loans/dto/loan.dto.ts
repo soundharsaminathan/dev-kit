@@ -12,7 +12,7 @@ import {
   MonthlyFirstEmiOption,
   PaymentFrequency,
   PaymentMode,
-} from "../../generated/prisma";
+} from "../../generated/prisma/client";
 
 export class CreateLoanDto {
   @IsString()

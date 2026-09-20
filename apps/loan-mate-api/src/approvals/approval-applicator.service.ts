@@ -8,7 +8,7 @@ import type { AuthUser } from "../auth/current-user.decorator";
 import { ClosuresService } from "../closures/closures.service";
 import { LoanRestructureService } from "../closures/loan-restructure.service";
 import { CustomersService } from "../customers/customers.service";
-import { type ApprovalRequest, ApprovalType } from "../generated/prisma";
+import { type ApprovalRequest, ApprovalType } from "../generated/prisma/client";
 import { LoansService } from "../loans/loans.service";
 import { PaymentsService } from "../payments/payments.service";
 import { PrismaService } from "../prisma/prisma.service";

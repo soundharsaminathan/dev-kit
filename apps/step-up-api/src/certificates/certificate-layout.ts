@@ -1,5 +1,5 @@
 import { BadRequestException } from "@nestjs/common";
-import type { Prisma } from "@prisma/client";
+import type { Prisma } from "../generated/prisma/client";
 
 export const CERTIFICATE_PAGE = { width: 800, height: 566 } as const;
 export const MAX_CERTIFICATE_ELEMENTS = 40;

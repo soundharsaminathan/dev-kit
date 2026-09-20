@@ -10,7 +10,7 @@ import {
   SessionStatus,
   SessionType,
   UserRole,
-} from "@prisma/client";
+} from "../generated/prisma/client";
 import { ACTIVE_ENROLLMENT_WHERE } from "../batches/enrollment-status";
 import { ScheduleConflictService } from "../calendar/schedule-conflict.service";
 import { ChatService } from "../chat/chat.service";

@@ -1,5 +1,5 @@
 import { BadRequestException, ConflictException } from "@nestjs/common";
-import { Prisma, StudioStatus, UserRole } from "@prisma/client";
+import { Prisma, StudioStatus, UserRole } from "../generated/prisma/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { StudiosService } from "./studios.service";
 

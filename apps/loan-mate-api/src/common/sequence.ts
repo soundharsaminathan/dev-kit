@@ -1,4 +1,4 @@
-import type { PrismaClient } from "../generated/prisma";
+import type { PrismaClient } from "../generated/prisma/client";
 
 /** Atomically increment a named sequence and return the new value. */
 export async function nextSequence(

@@ -1,4 +1,4 @@
-import type { NotificationType, Prisma } from "@prisma/client";
+import type { NotificationType, Prisma } from "../generated/prisma/client";
 
 const DEEP_LINK_ALLOWLIST = [
   /^\/me(\/|$)/,

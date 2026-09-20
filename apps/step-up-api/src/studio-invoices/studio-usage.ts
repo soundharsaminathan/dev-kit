@@ -3,7 +3,7 @@ import {
   SessionStatus,
   UserRole,
   type PrismaClient,
-} from "@prisma/client";
+} from "../generated/prisma/client";
 import { zonedLocalToUtc } from "../common/zoned-local-time";
 
 export const STUDIO_PLAN_AMOUNTS = {

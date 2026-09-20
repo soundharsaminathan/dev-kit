@@ -15,7 +15,7 @@ import {
   Prisma,
   type User,
   UserRole,
-} from "@prisma/client";
+} from "../generated/prisma/client";
 import { ACTIVE_ENROLLMENT_WHERE } from "../batches/enrollment-status";
 import { EmailService } from "../email/email.service";
 import { OutboxService } from "../events/outbox.service";
@@ -2000,7 +2000,7 @@ function buildPendingPayments(input: {
     combineMeta?: unknown;
     student: User;
     membership: { periodStart: Date; periodEnd?: Date } | null;
-    chargeType?: import("@prisma/client").InvoiceChargeType;
+    chargeType?: import("../generated/prisma/client").InvoiceChargeType;
     periodStart: Date;
     periodEnd: Date;
   }>;

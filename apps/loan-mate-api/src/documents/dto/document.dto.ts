@@ -6,7 +6,7 @@ import {
   Min,
   MinLength,
 } from "class-validator";
-import { DocumentEntityType, DocumentKind } from "../../generated/prisma";
+import { DocumentEntityType, DocumentKind } from "../../generated/prisma/client";
 
 export class SignedUrlDto {
   @IsString()

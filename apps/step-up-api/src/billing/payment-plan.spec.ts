@@ -3,7 +3,7 @@ import {
   InvoiceChargeType,
   InvoiceStatus,
   SubscriptionKind,
-} from "@prisma/client";
+} from "../generated/prisma/client";
 import { describe, expect, it } from "vitest";
 import { buildInvoicePaymentPlan } from "./payment-plan";
 

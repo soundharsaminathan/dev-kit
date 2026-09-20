@@ -7,7 +7,7 @@ import {
   SessionStatus,
   SessionType,
   type SubscriptionKind,
-} from "@prisma/client";
+} from "../../generated/prisma/client";
 import { loadPaidMonthsByStudent } from "../../billing/family-combine";
 import { styleIdentityKey } from "../../common/dance-style-name";
 import { primaryStyleName } from "../../discover/discover.categories";

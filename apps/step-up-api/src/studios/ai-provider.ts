@@ -1,4 +1,4 @@
-import { AiProvider } from "@prisma/client";
+import { AiProvider } from "../generated/prisma/client";
 
 export const AI_PROVIDER_API_VALUES = ["groq", "gemini", "openai"] as const;
 export type AiProviderApiValue = (typeof AI_PROVIDER_API_VALUES)[number];

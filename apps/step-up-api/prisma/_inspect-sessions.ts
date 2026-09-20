@@ -1,7 +1,7 @@
-import { PrismaClient } from "@prisma/client";
+import { createScriptPrismaClient } from "./script-db";
 
 async function main() {
-  const p = new PrismaClient();
+  const p = createScriptPrismaClient();
   const rows = await p.session.findMany({
     where: {
       batch: { studioId: "studio-e2e-1" },

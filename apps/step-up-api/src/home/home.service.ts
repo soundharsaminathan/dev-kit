@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
-import { UserRole } from "@prisma/client";
+import { UserRole } from "../generated/prisma/client";
 import { primaryStyleName } from "../discover/discover.categories";
 import { MediaService } from "../media/media.service";
 import { batchCategoryForAgeRange } from "../memberships/membership-helpers";

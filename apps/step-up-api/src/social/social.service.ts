@@ -11,7 +11,7 @@ import {
   NotificationType,
   ProfileVisibility,
   UserRole,
-} from "@prisma/client";
+} from "../generated/prisma/client";
 import { MediaService } from "../media/media.service";
 import { NotificationsService } from "../notifications/notifications.service";
 import { PrismaService } from "../prisma/prisma.service";

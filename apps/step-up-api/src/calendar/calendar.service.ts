@@ -4,7 +4,7 @@ import {
   Inject,
   Injectable,
 } from "@nestjs/common";
-import { SessionStatus, UserRole } from "@prisma/client";
+import { SessionStatus, UserRole } from "../generated/prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import type { DecryptedUser } from "../users/user-crypto.service";
 import {

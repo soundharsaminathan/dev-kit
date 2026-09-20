@@ -1,5 +1,5 @@
 import { Inject, Injectable } from "@nestjs/common";
-import type { EnrollmentMode, Prisma } from "@prisma/client";
+import type { EnrollmentMode, Prisma } from "../../generated/prisma/client";
 import type { CoveredStudentInput } from "../../memberships/memberships.service";
 import type { DecryptedUser } from "../../users/user-crypto.service";
 import { BatchesService } from "../batches.service";

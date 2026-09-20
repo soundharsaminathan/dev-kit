@@ -5,7 +5,7 @@ import {
   Inject,
   Injectable,
 } from "@nestjs/common";
-import { UserRole } from "@prisma/client";
+import { UserRole } from "../generated/prisma/client";
 import type { DecryptedUser } from "../users/user-crypto.service";
 import type { StudioContext } from "./studio-context";
 import { TenantResolverService } from "./tenant-resolver.service";

@@ -20,7 +20,7 @@ import {
   SessionType,
   SubscriptionKind,
   UserRole,
-} from "@prisma/client";
+} from "../generated/prisma/client";
 import { BillingService } from "../billing/billing.service";
 import {
   loadPaidMonthsByStudent,

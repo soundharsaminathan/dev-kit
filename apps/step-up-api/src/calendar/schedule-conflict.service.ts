@@ -1,5 +1,5 @@
 import { ConflictException, Inject, Injectable } from "@nestjs/common";
-import { BookingStatus, type Prisma, SessionStatus } from "@prisma/client";
+import { BookingStatus, type Prisma, SessionStatus } from "../generated/prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import {
   collapseWindow,

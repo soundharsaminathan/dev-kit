@@ -1,5 +1,5 @@
 import { BadRequestException } from "@nestjs/common";
-import { BookingStatus, BookingType, UserRole } from "@prisma/client";
+import { BookingStatus, BookingType, UserRole } from "../generated/prisma/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { DecryptedUser } from "../users/user-crypto.service";
 import {

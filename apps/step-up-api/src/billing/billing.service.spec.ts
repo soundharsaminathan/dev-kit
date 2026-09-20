@@ -8,7 +8,7 @@ import {
   PaymentMethod,
   ProfileVisibility,
   UserRole,
-} from "@prisma/client";
+} from "../generated/prisma/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { DecryptedUser } from "../users/user-crypto.service";
 import { BillingService } from "./billing.service";

@@ -1,5 +1,5 @@
 import { ServiceUnavailableException } from "@nestjs/common";
-import { AiProvider } from "@prisma/client";
+import { AiProvider } from "../generated/prisma/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { StaffAgentConfigService } from "./staff-agent-config.service";
 

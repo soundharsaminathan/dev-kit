@@ -24,7 +24,7 @@ import {
   type SessionType,
   SubscriptionKind,
   UserRole,
-} from "@prisma/client";
+} from "../generated/prisma/client";
 import { readPurchaseMetaBatchId } from "../billing/family-combine";
 import { billingPeriodForCadence } from "../billing/invoice-period";
 import {

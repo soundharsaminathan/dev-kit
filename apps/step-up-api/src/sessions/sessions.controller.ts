@@ -10,7 +10,7 @@ import {
   Query,
   UseGuards,
 } from "@nestjs/common";
-import { SessionType, UserRole } from "@prisma/client";
+import { SessionType, UserRole } from "../generated/prisma/client";
 import { IsDateString, IsEnum, IsOptional, IsString } from "class-validator";
 import { AttendanceService } from "../attendance/attendance.service";
 import { AuthGuard } from "../auth/auth.guard";

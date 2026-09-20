@@ -8,7 +8,7 @@ import {
   Post,
   UseGuards,
 } from "@nestjs/common";
-import { BookingStatus, BookingType, UserRole } from "@prisma/client";
+import { BookingStatus, BookingType, UserRole } from "../generated/prisma/client";
 import { IsDateString, IsEnum, IsOptional, IsString } from "class-validator";
 import { AuthGuard } from "../auth/auth.guard";
 import { CurrentUser } from "../auth/current-user.decorator";

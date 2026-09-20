@@ -1,4 +1,4 @@
-import { ProfileVisibility, type User, UserRole } from "@prisma/client";
+import { ProfileVisibility, type User, UserRole } from "../generated/prisma/client";
 
 const ALWAYS_PUBLIC_ROLES: UserRole[] = [
   UserRole.OWNER,

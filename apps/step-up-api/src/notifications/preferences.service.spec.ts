@@ -1,4 +1,4 @@
-import { NotificationChannel } from "@prisma/client";
+import { NotificationChannel } from "../generated/prisma/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PreferencesService } from "./preferences.service";
 import { NOTIFICATION_TYPE_REGISTRY } from "./templates/notification-templates";

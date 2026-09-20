@@ -1,5 +1,5 @@
 import { Inject, Injectable, Logger } from "@nestjs/common";
-import { OutboxStatus, UserRole } from "../generated/prisma";
+import { OutboxStatus, UserRole } from "../generated/prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import { NotificationService } from "./notifications.service";
 

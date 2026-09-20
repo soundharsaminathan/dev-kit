@@ -1,4 +1,4 @@
-import { AccountType } from "../generated/prisma";
+import { AccountType } from "../generated/prisma/client";
 
 export type CoaTemplateRow = {
   code: string;

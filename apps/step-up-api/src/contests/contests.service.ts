@@ -12,7 +12,7 @@ import {
   ContestStatus,
   type Prisma,
   UserRole,
-} from "@prisma/client";
+} from "../generated/prisma/client";
 import { formatCertificateNumber } from "../certificates/certificate-layout";
 import { canonicalizeFreeStyleName } from "../common/dance-style-name";
 import { PrismaService } from "../prisma/prisma.service";

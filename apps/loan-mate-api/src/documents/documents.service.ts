@@ -1,7 +1,7 @@
 import { Inject, Injectable, NotFoundException } from "@nestjs/common";
 import type { AuthUser } from "../auth/current-user.decorator";
 import { assertSameCompany, requireCompany } from "../common/tenancy";
-import type { DocumentEntityType } from "../generated/prisma";
+import type { DocumentEntityType } from "../generated/prisma/client";
 import { MediaService } from "../media/media.service";
 import { PrismaService } from "../prisma/prisma.service";
 import type { CreateDocumentDto, SignedUrlDto } from "./dto/document.dto";

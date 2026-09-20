@@ -1,4 +1,4 @@
-import { SessionStatus, SessionType } from "@prisma/client";
+import { SessionStatus, SessionType } from "../generated/prisma/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createImportLockMock } from "../test/mocks/import-lock.mock";
 import { SessionsService } from "./sessions.service";

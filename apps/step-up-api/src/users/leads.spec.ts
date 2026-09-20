@@ -1,4 +1,4 @@
-import { AttendanceStatus, BookingStatus } from "@prisma/client";
+import { AttendanceStatus, BookingStatus } from "../generated/prisma/client";
 import { describe, expect, it } from "vitest";
 import {
   classifyLeadSection,

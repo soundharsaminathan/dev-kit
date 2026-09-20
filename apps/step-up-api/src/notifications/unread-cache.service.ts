@@ -1,5 +1,5 @@
 import { Inject, Injectable } from "@nestjs/common";
-import { NotificationStatus } from "@prisma/client";
+import { NotificationStatus } from "../generated/prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import { RedisService } from "../redis/redis.service";
 

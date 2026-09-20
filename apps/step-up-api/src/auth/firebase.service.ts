@@ -5,7 +5,7 @@ import {
   UnauthorizedException,
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import { UserRole } from "@prisma/client";
+import { UserRole } from "../generated/prisma/client";
 import * as admin from "firebase-admin";
 import { MediaService } from "../media/media.service";
 import { PrismaService } from "../prisma/prisma.service";

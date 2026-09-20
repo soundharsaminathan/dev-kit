@@ -1,5 +1,5 @@
 import { Inject, Injectable } from "@nestjs/common";
-import type { BookingStatus, BookingType } from "@prisma/client";
+import type { BookingStatus, BookingType } from "../../generated/prisma/client";
 import type { DecryptedUser } from "../../users/user-crypto.service";
 import { BookingsService } from "../bookings.service";
 

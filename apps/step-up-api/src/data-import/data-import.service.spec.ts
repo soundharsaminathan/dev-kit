@@ -3,7 +3,7 @@ import {
   BatchCategory,
   BatchEnrollmentStatus,
   InvoiceStatus,
-} from "@prisma/client";
+} from "../generated/prisma/client";
 import { describe, expect, it, vi } from "vitest";
 import { createNotificationsMock } from "../test/mocks/notifications.mock";
 import { DataImportService } from "./data-import.service";

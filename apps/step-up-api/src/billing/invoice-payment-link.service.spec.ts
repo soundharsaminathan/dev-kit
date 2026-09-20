@@ -1,5 +1,5 @@
 import { BadRequestException } from "@nestjs/common";
-import { InvoiceStatus, PaymentMethod } from "@prisma/client";
+import { InvoiceStatus, PaymentMethod } from "../generated/prisma/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { InvoicePaymentLinkService } from "./invoice-payment-link.service";
 

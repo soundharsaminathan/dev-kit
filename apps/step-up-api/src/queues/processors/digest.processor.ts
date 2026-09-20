@@ -4,7 +4,7 @@ import {
   DeliveryStatus,
   NotificationChannel,
   NotificationStatus,
-} from "@prisma/client";
+} from "../../generated/prisma/client";
 import type { Job } from "bullmq";
 import { EmailService } from "../../email/email.service";
 import { PreferencesService } from "../../notifications/preferences.service";

@@ -5,7 +5,7 @@ import {
   SessionStatus,
   StudioStatus,
   UserRole,
-} from "@prisma/client";
+} from "../generated/prisma/client";
 import { MediaService } from "../media/media.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { isTestStudio } from "../studios/test-studio";

@@ -3,7 +3,7 @@ import {
   Inject,
   Injectable,
 } from "@nestjs/common";
-import type { StudioDataImport } from "@prisma/client";
+import type { StudioDataImport } from "../generated/prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import type { ImportStudioDataDto } from "./dto/import-studio-data.dto";
 import {

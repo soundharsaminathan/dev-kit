@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { DeliveryStatus } from "@prisma/client";
+import { DeliveryStatus } from "../generated/prisma/client";
 import { toE164, WhatsappService } from "./whatsapp.service";
 
 describe("toE164", () => {

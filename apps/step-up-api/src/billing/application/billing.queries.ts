@@ -3,7 +3,7 @@ import {
   BillingCadence,
   type InvoiceStatus,
   SubscriptionKind,
-} from "@prisma/client";
+} from "../../generated/prisma/client";
 import { ACTIVE_ENROLLMENT_WHERE } from "../../batches/enrollment-status";
 import { invoiceDueDate } from "../../memberships/membership-helpers";
 import { PrismaService } from "../../prisma/prisma.service";

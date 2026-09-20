@@ -1,4 +1,4 @@
-import type { BookingType } from "@prisma/client";
+import type { BookingType } from "../generated/prisma/client";
 
 export type CalendarEventKind = "SESSION" | "BOOKING";
 

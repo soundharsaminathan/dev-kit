@@ -3,7 +3,7 @@ import {
   InvoiceStatus,
   MembershipSeatRole,
   Prisma,
-} from "@prisma/client";
+} from "../generated/prisma/client";
 import type {
   CoveredStudentInput,
   InvoicePurchaseMeta,

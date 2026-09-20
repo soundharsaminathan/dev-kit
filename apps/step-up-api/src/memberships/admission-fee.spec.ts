@@ -1,4 +1,4 @@
-import { InvoiceChargeType, InvoiceStatus } from "@prisma/client";
+import { InvoiceChargeType, InvoiceStatus } from "../generated/prisma/client";
 import { describe, expect, it } from "vitest";
 import {
   ADMISSION_FEE_KIND,

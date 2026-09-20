@@ -11,7 +11,7 @@ import {
   ApprovalStatus,
   type ApprovalType,
   type Prisma,
-} from "../generated/prisma";
+} from "../generated/prisma/client";
 import { NotificationService } from "../notifications/notifications.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { ApprovalApplicatorService } from "./approval-applicator.service";

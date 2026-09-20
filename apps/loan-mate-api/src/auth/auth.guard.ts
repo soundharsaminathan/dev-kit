@@ -5,7 +5,7 @@ import {
   Injectable,
   UnauthorizedException,
 } from "@nestjs/common";
-import { UserRole } from "../generated/prisma";
+import { UserRole } from "../generated/prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import type { AuthUser } from "./current-user.decorator";
 

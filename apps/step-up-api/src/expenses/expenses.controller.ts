@@ -15,7 +15,7 @@ import {
   ExpensePaymentMethod,
   ExpenseRecurrenceFrequency,
   UserRole,
-} from "@prisma/client";
+} from "../generated/prisma/client";
 import { Type } from "class-transformer";
 import {
   IsDateString,

@@ -1,4 +1,4 @@
-import { TrainerPayoutStatus, UserRole } from "@prisma/client";
+import { TrainerPayoutStatus, UserRole } from "../generated/prisma/client";
 import { describe, expect, it, vi } from "vitest";
 import { PayoutsService } from "./payouts.service";
 

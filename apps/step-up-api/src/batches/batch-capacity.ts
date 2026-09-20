@@ -1,5 +1,5 @@
 import { BadRequestException } from "@nestjs/common";
-import { BookingStatus, BookingType, type Prisma } from "@prisma/client";
+import { BookingStatus, BookingType, type Prisma } from "../generated/prisma/client";
 import { ACTIVE_ENROLLMENT_WHERE } from "./enrollment-status";
 
 export const PAYMENT_HOLD_MS = 600_000;

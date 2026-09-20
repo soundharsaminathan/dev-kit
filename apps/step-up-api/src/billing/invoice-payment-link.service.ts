@@ -11,7 +11,7 @@ import {
   NotificationType,
   PaymentMethod,
   type Prisma,
-} from "@prisma/client";
+} from "../generated/prisma/client";
 import { EmailService } from "../email/email.service";
 import {
   computeGst,

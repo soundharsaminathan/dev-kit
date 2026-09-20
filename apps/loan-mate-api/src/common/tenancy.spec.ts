@@ -1,7 +1,7 @@
 import { BadRequestException, ForbiddenException } from "@nestjs/common";
 import { describe, expect, it } from "vitest";
 import type { AuthUser } from "../auth/current-user.decorator";
-import { UserRole } from "../generated/prisma";
+import { UserRole } from "../generated/prisma/client";
 import {
   assertBranchAccess,
   assertSameCompany,

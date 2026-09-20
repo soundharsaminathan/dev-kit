@@ -1,5 +1,5 @@
 import { Inject, Injectable } from "@nestjs/common";
-import type { InvoiceStatus, Prisma } from "@prisma/client";
+import type { InvoiceStatus, Prisma } from "../../generated/prisma/client";
 import { PrismaService } from "../../prisma/prisma.service";
 import { resolvePageLimit } from "../../shared/pagination";
 import { userPiiSelect } from "../../users/user-crypto.service";

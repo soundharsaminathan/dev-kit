@@ -3,7 +3,7 @@ import {
   Injectable,
   ServiceUnavailableException,
 } from "@nestjs/common";
-import type { AiProvider } from "@prisma/client";
+import type { AiProvider } from "../generated/prisma/client";
 import { toAiProviderApiValue } from "../studios/ai-provider";
 import { UserCryptoService } from "../users/user-crypto.service";
 import type { StaffAgentProvider } from "./agent.types";

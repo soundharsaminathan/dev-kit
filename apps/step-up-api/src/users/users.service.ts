@@ -21,7 +21,7 @@ import {
   ProfileVisibility,
   SessionStatus,
   UserRole,
-} from "@prisma/client";
+} from "../generated/prisma/client";
 import { FirebaseService } from "../auth/firebase.service";
 import { assertBatchHasSeat, lockBatchRow } from "../batches/batch-capacity";
 import { REACTIVATE_ENROLLMENT_DATA } from "../batches/enrollment-status";

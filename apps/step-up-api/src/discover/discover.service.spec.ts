@@ -1,5 +1,5 @@
 import { NotFoundException } from "@nestjs/common";
-import { BillingCadence } from "@prisma/client";
+import { BillingCadence } from "../generated/prisma/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { DiscoverService } from "./discover.service";
 

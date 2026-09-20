@@ -1,4 +1,4 @@
-import { BatchEnrollmentStatus, type Prisma } from "@prisma/client";
+import { BatchEnrollmentStatus, type Prisma } from "../generated/prisma/client";
 
 export const ACTIVE_ENROLLMENT_WHERE = {
   status: BatchEnrollmentStatus.ACTIVE,

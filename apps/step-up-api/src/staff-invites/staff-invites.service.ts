@@ -12,7 +12,7 @@ import {
   ProfileVisibility,
   type User,
   UserRole,
-} from "@prisma/client";
+} from "../generated/prisma/client";
 import { EmailService } from "../email/email.service";
 import { MediaService } from "../media/media.service";
 import { PrismaService } from "../prisma/prisma.service";

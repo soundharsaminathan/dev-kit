@@ -1,6 +1,6 @@
 import { ForbiddenException } from "@nestjs/common";
 import type { Reflector } from "@nestjs/core";
-import { UserRole } from "@prisma/client";
+import { UserRole } from "../generated/prisma/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { FIXTURE_USERS } from "../test/fixtures/users";
 import { RolesGuard } from "./roles.guard";

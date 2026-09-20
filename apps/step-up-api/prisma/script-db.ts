@@ -1,8 +1,5 @@
-import { PrismaClient } from "@prisma/client";
-import {
-  withDatabaseConnectTimeout,
-  withDbRetry,
-} from "../src/prisma/db-retry";
+import type { PrismaClient } from "../src/generated/prisma/client";
+import { createPrismaClient } from "../src/prisma/create-prisma-client";
 
 /**
  * Shared helpers for one-shot Prisma scripts that talk to remote Neon.
@@ -10,13 +7,7 @@ import {
  */
 
 export function createScriptPrismaClient(): PrismaClient {
-  return new PrismaClient({
-    datasources: {
-      db: {
-        url: withDatabaseConnectTimeout(process.env.DATABASE_URL, 30),
-      },
-    },
-  });
+  return createPrismaClient();
 }
 
 export { withDbRetry } from "../src/prisma/db-retry";

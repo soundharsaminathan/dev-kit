@@ -26,6 +26,8 @@ COPY . .
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/pnpm-lock.yaml ./pnpm-lock.yaml
 COPY --from=deps /app/pnpm-workspace.yaml ./pnpm-workspace.yaml
+ENV DATABASE_URL="postgresql://postgres:postgres@127.0.0.1:5432/step_up?schema=public"
+ENV DIRECT_DATABASE_URL="postgresql://postgres:postgres@127.0.0.1:5432/step_up?schema=public"
 RUN pnpm exec prisma generate
 RUN pnpm exec nest build
 
@@ -37,6 +39,7 @@ COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/prisma ./prisma
+COPY --from=builder /app/prisma.config.ts ./prisma.config.ts
 USER app
 EXPOSE 8080
 ENV PORT=8080

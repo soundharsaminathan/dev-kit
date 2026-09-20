@@ -2,7 +2,7 @@ import {
   type BatchCategory,
   BillingCadence,
   type IndividualAudience,
-} from "@prisma/client";
+} from "../generated/prisma/client";
 import type {
   ImportBatchDto,
   ImportEnrollmentDto,
