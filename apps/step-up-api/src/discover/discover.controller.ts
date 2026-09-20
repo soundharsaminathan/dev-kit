@@ -1,7 +1,17 @@
-import { Controller, Get, Inject, Param, Query } from "@nestjs/common";
+import {
+  Body,
+  Controller,
+  Get,
+  Inject,
+  Param,
+  Post,
+  Query,
+  UseGuards,
+} from "@nestjs/common";
 import { Type } from "class-transformer";
 import {
   IsIn,
+  IsInt,
   IsNumber,
   IsOptional,
   IsString,
@@ -9,6 +19,10 @@ import {
   MaxLength,
   Min,
 } from "class-validator";
+import { AuthGuard } from "../auth/auth.guard";
+import { CurrentUser } from "../auth/current-user.decorator";
+import type { DecryptedUser } from "../users/user-crypto.service";
+import { MarketplaceRatingsService } from "./marketplace-ratings.service";
 import { isValidCategoryId } from "./discover.categories";
 import {
   DiscoverService,
@@ -159,13 +173,55 @@ function toCatalogFilters(
   return filters;
 }
 
+class CreateMarketplaceRatingDto {
+  @IsString()
+  studentId!: string;
+
+  @IsIn(["STUDIO", "TRAINER"])
+  target!: "STUDIO" | "TRAINER";
+
+  @IsOptional()
+  @IsString()
+  studioId?: string;
+
+  @IsOptional()
+  @IsString()
+  trainerId?: string;
+
+  @IsIn(["DANCE", "MUSIC", "FITNESS", "ART"])
+  category!: "DANCE" | "MUSIC" | "FITNESS" | "ART";
+
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(5)
+  rating!: number;
+}
+
 @Controller("discover")
 export class DiscoverController {
   constructor(
     @Inject(DiscoverService) private readonly discover: DiscoverService,
     @Inject(MarketplaceCatalogService)
     private readonly catalog: MarketplaceCatalogService,
+    @Inject(MarketplaceRatingsService)
+    private readonly ratings: MarketplaceRatingsService,
   ) {}
+
+  @Get("ratings/pending")
+  @UseGuards(AuthGuard)
+  listPendingRatings(@CurrentUser() user: DecryptedUser) {
+    return this.ratings.listPending(user);
+  }
+
+  @Post("ratings")
+  @UseGuards(AuthGuard)
+  createRating(
+    @CurrentUser() user: DecryptedUser,
+    @Body() body: CreateMarketplaceRatingDto,
+  ) {
+    return this.ratings.create(user, body);
+  }
 
   @Get("classes")
   listClasses(@Query() query: DiscoverStudiosQueryDto) {

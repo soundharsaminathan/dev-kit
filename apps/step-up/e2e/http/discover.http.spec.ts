@@ -1,5 +1,10 @@
 import { expect, test } from "@playwright/test";
 import { apiBaseUrl, SEED } from "../fixtures/seed";
+import {
+  createHttpStudent,
+  expectStatus,
+  TestDataCleanup,
+} from "./helpers";
 
 test.describe("discover HTTP @http", () => {
   test("guest can list studios without auth @http", async () => {
@@ -197,6 +202,46 @@ test.describe("discover HTTP @http", () => {
       `${apiBaseUrl()}/discover/trainers/does-not-exist-xyz`,
     );
     expect(trainer.status).toBe(404);
+  });
+
+  test("guest cannot write marketplace ratings @http", async () => {
+    const response = await fetch(`${apiBaseUrl()}/discover/ratings`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        studentId: "anon",
+        target: "STUDIO",
+        studioId: SEED.users.STUDENT.studioId,
+        category: "DANCE",
+        rating: 5,
+      }),
+    });
+    expect(response.status).toBe(401);
+  });
+
+  test("student cannot rate a studio they never attended @http", async () => {
+    const cleanup = new TestDataCleanup();
+    try {
+      const student = await createHttpStudent("Never Attended Rater", cleanup);
+      await expectStatus(
+        "STUDENT",
+        "/discover/ratings",
+        400,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            studentId: student.id,
+            target: "STUDIO",
+            studioId: SEED.users.STUDENT.studioId,
+            category: "DANCE",
+            rating: 5,
+          }),
+        },
+        { userId: student.id },
+      );
+    } finally {
+      await cleanup.dispose();
+    }
   });
 
   test("zero-result marketplace search returns empty copy @http", async () => {

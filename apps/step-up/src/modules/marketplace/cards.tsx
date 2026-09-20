@@ -1,17 +1,12 @@
 import { Link } from "@tanstack/react-router";
 import { formatPriceFrom } from "@/modules/student-landing/format";
+import { MarketplaceStars } from "./stars";
 import type {
   MarketplaceClassCard,
-  MarketplaceRatingView,
   MarketplaceStudioCard,
   MarketplaceTrainerCard,
 } from "./types";
 import styles from "./cards.module.scss";
-
-function ratingLabel(rating: MarketplaceRatingView): string {
-  if (rating.visible) return `★ ${rating.avg.toFixed(1)}`;
-  return rating.label;
-}
 
 function audienceLabel(value: "KIDS" | "ADULTS" | "BOTH" | null): string | null {
   if (value === "KIDS") return "Kids";
@@ -71,7 +66,10 @@ export function MarketplaceClassCardView({
             <p className={styles.meta}>{item.trainerName}</p>
           ) : null}
           <div className={styles.row}>
-            <span className={styles.stars}>{ratingLabel(item.studioRating)}</span>
+            <MarketplaceStars rating={item.studioRating} label="Studio" />
+            {item.trainerRating.visible ? (
+              <MarketplaceStars rating={item.trainerRating} label="Trainer" />
+            ) : null}
             {price ? <span className={styles.price}>From {price}</span> : null}
             {item.seatLabel ? (
               <span className={styles.seat}>{item.seatLabel}</span>
@@ -143,7 +141,7 @@ export function MarketplaceStudioCardView({
             <p className={styles.meta}>{item.styles.slice(0, 3).join(" · ")}</p>
           ) : null}
           <div className={styles.row}>
-            <span className={styles.stars}>{ratingLabel(item.rating)}</span>
+            <MarketplaceStars rating={item.rating} />
             {price ? <span className={styles.price}>From {price}</span> : null}
           </div>
         </div>
@@ -197,7 +195,7 @@ export function MarketplaceTrainerCardView({
           {teaches ? <p className={styles.sub}>Teaches at {teaches}</p> : null}
           {item.locality ? <p className={styles.meta}>{item.locality}</p> : null}
           <div className={styles.row}>
-            <span className={styles.stars}>{ratingLabel(item.rating)}</span>
+            <MarketplaceStars rating={item.rating} />
           </div>
         </div>
       </Link>

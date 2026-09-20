@@ -1,4 +1,4 @@
-import { expect, SMOKE, test, waitForAppReady } from "./fixtures";
+import { apiBaseUrl, expect, SMOKE, test, waitForAppReady } from "./fixtures";
 
 test.describe("public smoke @smoke", () => {
   test("guest public pages render @smoke", async ({ page }) => {
@@ -74,6 +74,21 @@ test.describe("public smoke @smoke", () => {
       await waitForAppReady(page);
       await expect(page).toHaveURL(/\/login/);
     }
+  });
+
+  test("guest rating write is denied @smoke", async () => {
+    const response = await fetch(`${apiBaseUrl()}/discover/ratings`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        studentId: "anon",
+        target: "STUDIO",
+        studioId: SMOKE.studioId,
+        category: "DANCE",
+        rating: 5,
+      }),
+    });
+    expect(response.status).toBe(401);
   });
 
   test("marketplace class Book opens the unified sheet @smoke", async ({

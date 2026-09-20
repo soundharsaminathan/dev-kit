@@ -169,6 +169,31 @@ export function marketplaceRatingUniqueKey(input: {
   return `${input.studentId}:${input.target}:${targetId ?? ""}:${input.category}`;
 }
 
+export function marketplaceRatingStars(value: number): number | null {
+  if (!Number.isInteger(value) || value < 1 || value > 5) return null;
+  return value;
+}
+
+export function marketplacePrivateCompleted(
+  status: string,
+  endsAt?: Date | null,
+  now = new Date(),
+): boolean {
+  if (status === "COMPLETED") return true;
+  return status === "CONFIRMED" && Boolean(endsAt && endsAt.getTime() <= now.getTime());
+}
+
+export function marketplaceRatingSourceFromVisit(input: {
+  enrolledPresent: boolean;
+  trialPresent: boolean;
+  privateCompleted: boolean;
+}): "CLASS" | "TRIAL" | "PRIVATE" | null {
+  if (input.enrolledPresent) return "CLASS";
+  if (input.trialPresent) return "TRIAL";
+  if (input.privateCompleted) return "PRIVATE";
+  return null;
+}
+
 export function emptyMarketplaceCopy(input: {
   kind: "category" | "tab" | "filters";
   category: string;

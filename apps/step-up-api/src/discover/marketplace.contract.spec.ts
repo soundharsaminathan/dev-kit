@@ -16,6 +16,9 @@ import {
   marketplaceBookingNeedsMembership,
   marketplaceBookingRequiresPayment,
   marketplaceFirstPaint,
+  marketplacePrivateCompleted,
+  marketplaceRatingSourceFromVisit,
+  marketplaceRatingStars,
   marketplaceRatingUniqueKey,
   marketplaceSessionCancelCopy,
   PUBLIC_MARKETPLACE_CATEGORIES,
@@ -132,6 +135,45 @@ describe("marketplace contract", () => {
         category: "DANCE",
       }),
     ).toBe("s1:STUDIO:st1:DANCE");
+  });
+
+  it("accepts only 1–5 star ratings", () => {
+    expect(marketplaceRatingStars(5)).toBe(5);
+    expect(marketplaceRatingStars(0)).toBeNull();
+    expect(marketplaceRatingStars(4.5)).toBeNull();
+  });
+
+  it("treats ended confirmed privates as completed", () => {
+    const ended = new Date("2026-09-19T10:00:00.000Z");
+    const now = new Date("2026-09-20T10:00:00.000Z");
+    expect(marketplacePrivateCompleted("COMPLETED")).toBe(true);
+    expect(marketplacePrivateCompleted("CONFIRMED", ended, now)).toBe(true);
+    expect(marketplacePrivateCompleted("CONFIRMED", now, ended)).toBe(false);
+    expect(marketplacePrivateCompleted("PENDING", ended, now)).toBe(false);
+  });
+
+  it("prefers class present over trial for rating source", () => {
+    expect(
+      marketplaceRatingSourceFromVisit({
+        enrolledPresent: true,
+        trialPresent: true,
+        privateCompleted: true,
+      }),
+    ).toBe("CLASS");
+    expect(
+      marketplaceRatingSourceFromVisit({
+        enrolledPresent: false,
+        trialPresent: true,
+        privateCompleted: true,
+      }),
+    ).toBe("TRIAL");
+    expect(
+      marketplaceRatingSourceFromVisit({
+        enrolledPresent: false,
+        trialPresent: false,
+        privateCompleted: false,
+      }),
+    ).toBeNull();
   });
 
   it("refunds paid private or floor hire only 12 hours before start", () => {

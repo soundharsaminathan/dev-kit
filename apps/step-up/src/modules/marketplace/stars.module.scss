@@ -1,0 +1,30 @@
+.pill,
+.score {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1, 4px);
+  min-height: 1.5rem;
+  font-size: 0.8125rem;
+  font-weight: 700;
+}
+
+.pill {
+  padding: 0 var(--space-2, 8px);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+  color: var(--color-primary);
+}
+
+.score {
+  color: var(--color-fg);
+}
+
+.mark {
+  color: var(--color-primary);
+  font-size: 0.95rem;
+}
+
+.count {
+  font-weight: 600;
+  color: color-mix(in srgb, var(--color-fg) 58%, transparent);
+}

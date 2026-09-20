@@ -50,6 +50,46 @@
   padding-inline: 0;
 }
 
+.ratePrompt {
+  display: grid;
+  gap: 2px;
+  width: 100%;
+  min-height: 72px;
+  padding: var(--space-4, 16px);
+  border: 0;
+  border-radius: var(--radius-2xl, 20px);
+  background: var(--hero-gradient, var(--color-primary));
+  color: var(--color-fg-on-primary);
+  text-align: left;
+  cursor: pointer;
+  box-shadow: var(--shadow-md, 0 8px 20px rgb(0 0 0 / 8%));
+
+  strong {
+    font-size: 1.125rem;
+    letter-spacing: -0.02em;
+  }
+
+  span {
+    font-size: 0.875rem;
+    color: color-mix(in srgb, var(--color-fg-on-primary) 80%, transparent);
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    transition: transform var(--motion-fast, 140ms) ease;
+
+    &:active {
+      transform: scale(0.98);
+    }
+  }
+}
+
+.rateKicker {
+  font-size: 0.75rem !important;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
 .sectionLink {
   flex-shrink: 0;
   font-size: 0.8125rem;

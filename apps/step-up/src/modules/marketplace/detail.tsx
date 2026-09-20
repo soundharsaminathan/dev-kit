@@ -11,6 +11,7 @@ import {
 import { formatPriceFrom } from "@/modules/student-landing/format";
 import { BookSheet } from "./book-sheet";
 import type { BookSheetTarget } from "./book";
+import { MarketplaceStars } from "./stars";
 import { EmptyState, ErrorState } from "@/modules/ui/states";
 import { TouchButton } from "@/modules/ui/touch-button";
 import {
@@ -35,7 +36,6 @@ import {
 import type {
   MarketplaceClassCard,
   MarketplaceClassDetail,
-  MarketplaceRatingView,
   MarketplaceStudioDetail,
   MarketplaceTrainerCard,
   MarketplaceTrainerDetail,
@@ -44,10 +44,6 @@ import styles from "./detail.module.scss";
 
 type BookTarget = BookSheetTarget;
 
-function ratingLabel(rating: MarketplaceRatingView): string {
-  if (rating.visible) return `★ ${rating.avg.toFixed(1)}`;
-  return rating.label;
-}
 
 function formatWhen(iso: string): string {
   return new Intl.DateTimeFormat("en-IN", {
@@ -180,7 +176,10 @@ export function MarketplaceClassDetailView({
             {item.studioName}
           </Link>
           {item.locality ? <span className={styles.meta}>{item.locality}</span> : null}
-          <span className={styles.stars}>{ratingLabel(item.studioRating)}</span>
+          <MarketplaceStars rating={item.studioRating} label="Studio" />
+          {item.trainerRating.visible ? (
+            <MarketplaceStars rating={item.trainerRating} label="Trainer" />
+          ) : null}
         </div>
       </div>
       {item.scheduleLabel ? <p className={styles.meta}>{item.scheduleLabel}</p> : null}
@@ -277,7 +276,7 @@ export function MarketplaceStudioDetailView({
         </p>
         <h1 className={styles.title}>{item.name}</h1>
         <div className={styles.row}>
-          <span className={styles.stars}>{ratingLabel(item.rating)}</span>
+          <MarketplaceStars rating={item.rating} />
           {item.categories.map((category) => (
             <span key={category} className={styles.chip}>
               {categoryLabel(category)}
@@ -389,7 +388,7 @@ export function MarketplaceTrainerDetailView({
       <div>
         <h1 className={styles.title}>{item.name}</h1>
         <div className={styles.row}>
-          <span className={styles.stars}>{ratingLabel(item.rating)}</span>
+          <MarketplaceStars rating={item.rating} />
           {item.categories.map((category) => (
             <span key={category} className={styles.chip}>
               {categoryLabel(category)}

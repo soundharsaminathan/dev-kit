@@ -98,7 +98,7 @@ type TrainerPiiRow = {
   piiCiphertext: string;
   piiIv: string;
   trainerCategories: Array<{ category: string }>;
-  trainerMarketplaceRatings: Array<{ rating: number }>;
+  trainerMarketplaceRatings: Array<{ rating: number; category?: string }>;
 };
 
 type BatchRow = {
@@ -145,7 +145,7 @@ type StudioRow = {
   primaryCategory: string;
   settings: SettingsRow | null;
   marketplaceCategories: Array<{ category: string }>;
-  marketplaceRatings: Array<{ rating: number }>;
+  marketplaceRatings: Array<{ rating: number; category?: string }>;
   branches: BranchRow[];
   batches: BatchRow[];
   trainerLinks: Array<{ trainer: TrainerPiiRow }>;
@@ -215,16 +215,20 @@ function planOf(batch: BatchRow) {
 }
 
 function ratingFromRows(
-  rows: Array<{ rating: number }>,
+  rows: Array<{ rating: number; category?: string }>,
   publicRatings: boolean,
+  category?: string,
 ) {
-  if (!publicRatings || rows.length === 0) {
+  const scoped = category
+    ? rows.filter((row) => !row.category || row.category === category)
+    : rows;
+  if (!publicRatings || scoped.length === 0) {
     return toRatingView(null, 0);
   }
-  const count = rows.length;
+  const count = scoped.length;
   const avg =
     Math.round(
-      (rows.reduce((sum, row) => sum + row.rating, 0) / count) * 10,
+      (scoped.reduce((sum, row) => sum + row.rating, 0) / count) * 10,
     ) / 10;
   return toRatingView(avg, count);
 }
@@ -528,7 +532,7 @@ export class MarketplaceCatalogService {
           },
         },
         marketplaceCategories: { select: { category: true } },
-        marketplaceRatings: { select: { rating: true } },
+        marketplaceRatings: { select: { rating: true, category: true } },
         branches: {
           orderBy: { name: "asc" as const },
           select: {
@@ -941,10 +945,12 @@ export class MarketplaceCatalogService {
       studioRating: ratingFromRows(
         studio.marketplaceRatings,
         settings.publicRatings,
+        filters.category,
       ),
       trainerRating: ratingFromRows(
         firstTrainer?.trainer.trainerMarketplaceRatings ?? [],
         settings.publicRatings,
+        filters.category,
       ),
       canTrial,
       canEnroll,
@@ -1123,7 +1129,11 @@ export class MarketplaceCatalogService {
       coverImageUrl: await this.media.signReadUrl(
         cover.heroDesktopUrl || cover.heroMobileUrl || cover.branchCoverUrl,
       ),
-      rating: ratingFromRows(studio.marketplaceRatings, settings.publicRatings),
+      rating: ratingFromRows(
+        studio.marketplaceRatings,
+        settings.publicRatings,
+        filters.category,
+      ),
       audience,
       priceFrom: plan?.price ?? null,
       priceCadence: plan?.cadence ?? null,
@@ -1287,6 +1297,7 @@ export class MarketplaceCatalogService {
     const rating = ratingFromRows(
       trainer.trainerMarketplaceRatings,
       independent || publicRatings,
+      filters.category,
     );
 
     const card: MarketplaceTrainerCard = {
@@ -1382,7 +1393,7 @@ export class MarketplaceCatalogService {
           },
           batches: {
             where: { active: true },
-            select: this.listBatchSelect(horizon),
+            select: this.listBatchSelect(horizon, category),
           },
           trainerLinks: {
             select: { trainer: { select: this.trainerSelect(category) } },
@@ -1444,7 +1455,10 @@ export class MarketplaceCatalogService {
     return this.snapshot;
   }
 
-  private listBatchSelect(horizon: Date) {
+  private listBatchSelect(
+    horizon: Date,
+    category?: PublicMarketplaceCategory,
+  ) {
     return {
       id: true,
       name: true,
@@ -1484,7 +1498,7 @@ export class MarketplaceCatalogService {
         },
       },
       trainers: {
-        select: { trainer: { select: this.trainerSelect() } },
+        select: { trainer: { select: this.trainerSelect(category) } },
       },
       sessions: {
         where: {
@@ -1534,7 +1548,7 @@ export class MarketplaceCatalogService {
             },
           },
           marketplaceCategories: { select: { category: true } },
-          marketplaceRatings: { select: { rating: true } },
+          marketplaceRatings: { select: { rating: true, category: true } },
           branches: {
             select: {
               id: true,
@@ -1566,7 +1580,7 @@ export class MarketplaceCatalogService {
         where: category
           ? { category: category as MarketplaceCategory }
           : undefined,
-        select: { rating: true },
+        select: { rating: true, category: true },
       },
     } as const;
   }

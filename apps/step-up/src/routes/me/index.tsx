@@ -20,6 +20,12 @@ import {
 } from "@/modules/me/home-sections";
 import type { HomePayload } from "@/modules/me/home-types";
 import { useActiveStudentContext } from "@/modules/me/use-active-student-context";
+import {
+  ratePromptHint,
+  ratePromptTitle,
+  type MarketplaceRatingPrompt,
+} from "@/modules/marketplace/rate";
+import { RateSheet } from "@/modules/marketplace/rate-sheet";
 import { InstallAppBar } from "@/modules/pwa/install-app-bar";
 import { BloomMenu } from "@/modules/ui/bloom-menu";
 import { HScrollRow } from "@/modules/ui/h-scroll-row";
@@ -44,6 +50,9 @@ function MeHomePage() {
   const queryClient = useQueryClient();
   const { studentId, loading: studentLoading } = useActiveStudentContext();
   const [installBarVisible, setInstallBarVisible] = useState(false);
+  const [ratePrompt, setRatePrompt] = useState<MarketplaceRatingPrompt | null>(
+    null,
+  );
 
   const homeQueryKey = ["home", studentId] as const;
   const goalRequestId = useRef(0);
@@ -115,6 +124,13 @@ function MeHomePage() {
     ? !(data.hasEnrollment ?? data.progress.length > 0)
     : false;
   const notices = useHomeNotices({ membership: data?.membership ?? null });
+  const pendingRatings = useQuery({
+    queryKey: ["marketplace-ratings-pending"],
+    queryFn: () => api.get<MarketplaceRatingPrompt[]>("/discover/ratings/pending"),
+    enabled: Boolean(user?.id),
+    staleTime: 30_000,
+  });
+  const rateQueue = pendingRatings.data ?? [];
 
   function selectGoalPreset(id: string) {
     const target = Number(id);
@@ -194,6 +210,21 @@ function MeHomePage() {
           {data ? (
             <>
               <HomeNotices notices={notices} flushHero />
+
+              {rateQueue[0] ? (
+                <section className={styles.section}>
+                  <button
+                    type="button"
+                    className={styles.ratePrompt}
+                    data-testid="marketplace-rate-prompt"
+                    onClick={() => setRatePrompt(rateQueue[0] ?? null)}
+                  >
+                    <span className={styles.rateKicker}>Rate last class</span>
+                    <strong>{ratePromptTitle(rateQueue[0])}</strong>
+                    <span>{ratePromptHint(rateQueue[0])}</span>
+                  </button>
+                </section>
+              ) : null}
 
               {data.instructors?.length ? (
                 <section className={styles.section}>
@@ -318,6 +349,14 @@ function MeHomePage() {
               description="Pull to refresh your dance home."
             />
           ) : null}
+
+          <RateSheet
+            open={Boolean(ratePrompt)}
+            onOpenChange={(open) => {
+              if (!open) setRatePrompt(null);
+            }}
+            prompt={ratePrompt}
+          />
 
           <p className={styles.madeWith}>
             Make with

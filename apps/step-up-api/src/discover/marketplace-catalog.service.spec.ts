@@ -118,6 +118,7 @@ function studioRow(
     trainers?: ReturnType<typeof trainerRow>[];
     address?: string;
     ratings?: number[];
+    ratedRows?: Array<{ rating: number; category: string }>;
     settings?: Partial<{
       publicStudioListing: boolean;
       publicClasses: boolean;
@@ -154,7 +155,9 @@ function studioRow(
     marketplaceCategories: (extra.categories ?? ["DANCE"]).map((category) => ({
       category,
     })),
-    marketplaceRatings: (extra.ratings ?? []).map((rating) => ({ rating })),
+    marketplaceRatings:
+      extra.ratedRows ??
+      (extra.ratings ?? []).map((rating) => ({ rating })),
     branches: [
       {
         id: "branch-1",
@@ -536,6 +539,27 @@ describe("MarketplaceCatalogService", () => {
     expect(detail.trainers[0]?.id).toBe("trainer-1");
     expect(detail.branches[0]?.mapsUrl).toContain("13.04");
     expect(detail.photos.length).toBeGreaterThan(0);
+  });
+
+  it("does not let Fitness stars lift Dance cards", async () => {
+    seed([
+      studioRow({
+        ratedRows: [
+          { rating: 5, category: "FITNESS" },
+          { rating: 5, category: "FITNESS" },
+          { rating: 5, category: "FITNESS" },
+        ],
+      }),
+    ]);
+    const page = await service.listStudios({
+      category: "DANCE",
+      city: "chennai",
+    });
+    expect(page.items[0]?.rating).toEqual({
+      visible: false,
+      label: "New",
+      count: 0,
+    });
   });
 
   it("404s a class that fails the public image gate", async () => {

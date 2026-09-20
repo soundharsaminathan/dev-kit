@@ -746,6 +746,7 @@ model MarketplaceRating {
   rating      Int
   source      MarketplaceRatingSource
   attendedAt  DateTime
+  uniqueKey   String                    @unique
   createdAt   DateTime                  @default(now())
   updatedAt   DateTime                  @updatedAt
 
