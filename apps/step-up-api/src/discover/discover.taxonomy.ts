@@ -88,8 +88,8 @@ export const DISCOVER_ACTIVITIES: readonly DiscoverActivity[] = [
     { id: "tap", label: "Tap" },
     {
       id: "freestyle",
-      label: "Freestyle",
-      aliases: ["free style"],
+      label: "Free Style",
+      aliases: ["freestyle"],
     },
     {
       id: "choreography",

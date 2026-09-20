@@ -29,9 +29,10 @@ import type {
   ContestEntryType,
   ContestStatus,
 } from "@/modules/contests/types";
+import { RequireStudioFeature } from "@/modules/studio-features/require-studio-feature";
+import { DanceStyleSelect } from "@/modules/styles/dance-style-select";
 import { FormInput } from "@/modules/ui/form-input";
 import { PageHeader } from "@/modules/ui/page-header";
-import { RequireStudioFeature } from "@/modules/studio-features/require-studio-feature";
 
 type StudioMember = {
   id: string;
@@ -322,13 +323,13 @@ function NewContestPage() {
               }
               placeholder="Hip Hop Juniors Solo"
             />
-            <FormInput
+            <DanceStyleSelect
               label="Dance style"
+              placeholder="Select a style"
               value={category.danceStyle}
               onChange={(value) =>
                 updateCategory(category.key, { danceStyle: value })
               }
-              placeholder="Hip Hop"
             />
             <div className="grid-cards">
               <FormInput

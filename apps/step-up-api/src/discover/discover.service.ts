@@ -17,8 +17,10 @@ import {
   type DiscoverCategoryId,
   danceCategoryEntries,
   isValidCategoryId,
+  primaryStyleName,
   resolveStyleEntry,
   stylesFromDanceCategories,
+  uniqueCanonicalStyleNames,
 } from "./discover.categories";
 import {
   DISCOVER_CITIES,
@@ -262,15 +264,7 @@ function studioStyleEntries(
 }
 
 function uniqueStyleNames(entries: DanceCategoryEntry[]): string[] {
-  const seen = new Set<string>();
-  const styles: string[] = [];
-  for (const entry of entries) {
-    const key = entry.name.toLowerCase();
-    if (seen.has(key)) continue;
-    seen.add(key);
-    styles.push(entry.name);
-  }
-  return styles;
+  return uniqueCanonicalStyleNames(entries.map((entry) => entry.name));
 }
 
 function studioStyles(batches: StudioRow["batches"]): string[] {
@@ -701,7 +695,9 @@ export class DiscoverService {
     const trainerMap = new Map<string, DiscoverTrainer>();
     const batches: DiscoverBatchSummary[] = await Promise.all(
       studio.batches.map(async (batch) => {
-        const styles = stylesFromDanceCategories(batch.danceCategories);
+        const styles = uniqueCanonicalStyleNames(
+          stylesFromDanceCategories(batch.danceCategories),
+        );
         const timing = timeBandsFromSchedule(batch.scheduleJson);
         const plan = minActivePlan(batch.plans);
         const ratingCount = batch.ratingCount;
@@ -1040,12 +1036,11 @@ function toPublicTrainer(user: {
     name: user.name,
     photoUrl: user.photoUrl ?? null,
     bio: user.bio ?? null,
-    styles: user.styles,
+    styles: uniqueCanonicalStyleNames(user.styles),
     instagramUrl: user.instagramUrl ?? null,
   };
 }
 
 function firstStyleName(danceCategories: unknown): string | null {
-  const styles = stylesFromDanceCategories(danceCategories);
-  return styles[0] ?? null;
+  return primaryStyleName(danceCategories);
 }

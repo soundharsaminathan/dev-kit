@@ -1,5 +1,9 @@
 import { BadRequestException } from "@nestjs/common";
 import { z } from "zod";
+import {
+  canonicalizeFreeStyleName,
+  styleIdentityKey,
+} from "../common/dance-style-name";
 
 const HEX_COLOR = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/;
 const MAX_DANCE_STYLES = 40;
@@ -45,11 +49,15 @@ export function parseDanceStyles(value: unknown): StudioDanceStyle[] | null {
 
   const ids = new Set<string>();
   const labels = new Set<string>();
-  for (const style of parsed.data) {
+  const normalized = parsed.data.map((style) => ({
+    ...style,
+    label: canonicalizeFreeStyleName(style.label),
+  }));
+  for (const style of normalized) {
     if (ids.has(style.id)) {
       throw new BadRequestException(`Duplicate dance style id: ${style.id}`);
     }
-    const labelKey = style.label.toLowerCase();
+    const labelKey = styleIdentityKey(style.label);
     if (labels.has(labelKey)) {
       throw new BadRequestException(
         `Duplicate dance style label: ${style.label}`,
@@ -59,5 +67,5 @@ export function parseDanceStyles(value: unknown): StudioDanceStyle[] | null {
     labels.add(labelKey);
   }
 
-  return parsed.data;
+  return normalized;
 }

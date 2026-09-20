@@ -28,6 +28,7 @@ import {
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useApi } from "@/lib/api-context";
+import { canonicalizeFreeStyleName } from "@/lib/dance-styles";
 import { useStudioId } from "@/lib/use-studio-id";
 import { occupiedSeatsForOverview } from "@/modules/batches/batch-overview";
 import {
@@ -37,6 +38,7 @@ import {
 } from "@/modules/batches/upload";
 import { CertificatePreview } from "@/modules/certificates/certificate-preview";
 import type { CertificateTemplate } from "@/modules/certificates/types";
+import { DanceStyleSelect } from "@/modules/styles/dance-style-select";
 import { ApiState } from "@/modules/ui/api-state";
 import { FormInput } from "@/modules/ui/form-input";
 import { ImageCropSheet } from "@/modules/ui/image-crop-sheet";
@@ -173,7 +175,7 @@ function danceCategoriesFromBatch(
 ): DanceCategory[] {
   return categories.map((category, index) => ({
     id: index + 1,
-    name: category.name,
+    name: canonicalizeFreeStyleName(category.name),
     description: category.description,
   }));
 }
@@ -622,11 +624,7 @@ function ScheduleTab({ batch }: { batch: Batch }) {
     }
   }
 
-  function updateDayTiming(
-    day: number,
-    field: keyof DayTiming,
-    value: string,
-  ) {
+  function updateDayTiming(day: number, field: keyof DayTiming, value: string) {
     setDayTimings((current) => ({
       ...current,
       [day]: {
@@ -638,9 +636,7 @@ function ScheduleTab({ batch }: { batch: Batch }) {
 
   function buildScheduleJson() {
     const orderedWeekdays =
-      frequency === "DAILY"
-        ? []
-        : [...selectedWeekdays].sort((a, b) => a - b);
+      frequency === "DAILY" ? [] : [...selectedWeekdays].sort((a, b) => a - b);
     const dayTimes =
       frequency === "WEEKLY"
         ? orderedWeekdays.map((weekday) => {
@@ -922,9 +918,9 @@ function CategoriesTab({ batch }: { batch: Batch }) {
                 </Button>
               ) : null}
             </div>
-            <FormInput
-              label="Dance category"
-              placeholder="For example, Hip-hop"
+            <DanceStyleSelect
+              label="Dance style"
+              placeholder="Select a style"
               value={danceCategory.name}
               onChange={(value) =>
                 setDanceCategories((current) =>

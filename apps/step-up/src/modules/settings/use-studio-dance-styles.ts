@@ -3,10 +3,12 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { useApi } from "@/lib/api-context";
 import {
+  canonicalizeFreeStyleName,
   type DanceStyle,
   effectiveDanceStyles,
   fallbackAbbrev,
   slugifyDanceStyleId,
+  styleIdentityKey,
 } from "@/lib/dance-styles";
 import { useStudioId } from "@/lib/use-studio-id";
 import type { Studio } from "./types";
@@ -148,7 +150,7 @@ export function useStudioDanceStyles() {
       .map((style) => ({
         ...style,
         id: style.id.trim(),
-        label: style.label.trim(),
+        label: canonicalizeFreeStyleName(style.label.trim()),
         abbrev: style.abbrev.trim().toUpperCase().slice(0, 4),
         color: style.color.trim(),
         emoji: style.emoji.trim(),
@@ -172,7 +174,15 @@ export function useStudioDanceStyles() {
       };
     });
 
-    updateSettings.mutate(withIds);
+    const seenLabels = new Set<string>();
+    const unique = withIds.filter((style) => {
+      const key = styleIdentityKey(style.label);
+      if (seenLabels.has(key)) return false;
+      seenLabels.add(key);
+      return true;
+    });
+
+    updateSettings.mutate(unique);
   }
 
   return {

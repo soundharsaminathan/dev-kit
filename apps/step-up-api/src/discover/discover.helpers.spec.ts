@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { isTestStudio } from "../studios/test-studio";
 import {
+  canonicalStyleLabel,
   categoriesFromDanceCategories,
   categoriesFromStyles,
   categorizeStyleName,
@@ -9,6 +10,7 @@ import {
   isValidCategoryId,
   resolveStyleEntry,
   stylesFromDanceCategories,
+  uniqueCanonicalStyleNames,
 } from "./discover.categories";
 import { matchCityFromAddress } from "./discover.cities";
 import {
@@ -65,6 +67,12 @@ describe("discover.categories", () => {
     expect(categorizeStyleName("Bharatanatyam")).toBe("dance");
     expect(categorizeStyleName("Free style & Choreography")).toBe("dance");
     expect(categorizeStyleName("Freestyle")).toBe("dance");
+    expect(canonicalStyleLabel("freestyle")).toBe("Free Style");
+    expect(canonicalStyleLabel("Free Style")).toBe("Free Style");
+    expect(canonicalStyleLabel("Free style & Choreography")).toBe("Free Style");
+    expect(uniqueCanonicalStyleNames(["Free Style", "freestyle"])).toEqual([
+      "Free Style",
+    ]);
     expect(categorizeStyleName("Carnatic vocals")).toBe("music");
     expect(categorizeStyleName("Watercolor painting")).toBe("art");
     expect(categorizeStyleName("Hatha Yoga")).toBe("fitness");

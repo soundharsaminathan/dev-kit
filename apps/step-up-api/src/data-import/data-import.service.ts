@@ -34,6 +34,10 @@ import {
 } from "../calendar/schedule-conflict";
 import { ScheduleConflictService } from "../calendar/schedule-conflict.service";
 import {
+  canonicalizeDanceCategories,
+  canonicalizeFreeStyleName,
+} from "../common/dance-style-name";
+import {
   utcOffsetMinutesForZone,
   zonedLocalToUtc,
 } from "../common/zoned-local-time";
@@ -1174,11 +1178,13 @@ export class DataImportService {
       }
       const styles = (row.danceStyles ?? "")
         .split(/[,;]/)
-        .map((style) => style.trim())
+        .map((style) => canonicalizeFreeStyleName(style))
         .filter(Boolean);
       const danceCategories =
         styles.length > 0
-          ? styles.map((style) => ({ name: style, description: style }))
+          ? canonicalizeDanceCategories(
+              styles.map((style) => ({ name: style, description: style })),
+            )
           : [{ name: "General", description: "General" }];
 
       const utcOffsetMinutes =

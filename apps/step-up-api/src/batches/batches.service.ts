@@ -22,7 +22,6 @@ import {
   UserRole,
 } from "@prisma/client";
 import { BillingService } from "../billing/billing.service";
-import { ImportLockService } from "../data-import/import-lock.service";
 import {
   loadPaidMonthsByStudent,
   parseCombineMeta,
@@ -31,6 +30,12 @@ import {
 } from "../billing/family-combine";
 import { ScheduleConflictService } from "../calendar/schedule-conflict.service";
 import { ChatService } from "../chat/chat.service";
+import {
+  canonicalizeDanceCategories,
+  styleIdentityKey,
+} from "../common/dance-style-name";
+import { ImportLockService } from "../data-import/import-lock.service";
+import { primaryStyleName } from "../discover/discover.categories";
 import { MediaService } from "../media/media.service";
 import {
   batchCategoryForAgeRange,
@@ -164,11 +169,7 @@ function scheduleLabelFrom(schedule: unknown): string | null {
 }
 
 function primaryStyleFrom(danceCategories: unknown): string | null {
-  if (!Array.isArray(danceCategories) || danceCategories.length === 0) {
-    return null;
-  }
-  const first = danceCategories[0] as { name?: string };
-  return first?.name?.trim() || null;
+  return primaryStyleName(danceCategories);
 }
 
 const branchCoverInclude = {
@@ -786,10 +787,12 @@ export class BatchesService {
       }),
     );
 
-    const styleFilter = filters.style?.toLowerCase();
+    const styleFilter = filters.style ? styleIdentityKey(filters.style) : "";
     const filtered = styleFilter
       ? mapped.filter(
-          (batch) => batch.styleBadge?.toLowerCase() === styleFilter,
+          (batch) =>
+            Boolean(batch.styleBadge) &&
+            styleIdentityKey(batch.styleBadge as string) === styleFilter,
         )
       : mapped;
 
@@ -1062,7 +1065,7 @@ export class BatchesService {
         branchId: data.branchId,
         name: data.name.trim(),
         category: data.category,
-        danceCategories: data.danceCategories,
+        danceCategories: canonicalizeDanceCategories(data.danceCategories),
         scheduleJson: data.scheduleJson,
         capacity: data.capacity,
         enrollmentMode: data.enrollmentMode,
@@ -1426,7 +1429,9 @@ export class BatchesService {
         where: { id },
         data: {
           ...batchData,
-          ...(danceCategories ? { danceCategories } : {}),
+          ...(danceCategories
+            ? { danceCategories: canonicalizeDanceCategories(danceCategories) }
+            : {}),
           ...(scheduleJson ? { scheduleJson } : {}),
           certificateTemplateId: certificationEnabled
             ? certificateTemplateId

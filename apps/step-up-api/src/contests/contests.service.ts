@@ -14,6 +14,7 @@ import {
   UserRole,
 } from "@prisma/client";
 import { formatCertificateNumber } from "../certificates/certificate-layout";
+import { canonicalizeFreeStyleName } from "../common/dance-style-name";
 import { PrismaService } from "../prisma/prisma.service";
 import {
   type DecryptedUser,
@@ -286,7 +287,7 @@ export class ContestsService {
         categories: {
           create: categories.map((category) => ({
             name: category.name.trim(),
-            danceStyle: category.danceStyle.trim(),
+            danceStyle: canonicalizeFreeStyleName(category.danceStyle),
             ageMin: category.ageMin,
             ageMax: category.ageMax,
             entryType: category.entryType,
@@ -433,7 +434,7 @@ export class ContestsService {
       data: {
         contestId,
         name: data.name.trim(),
-        danceStyle: data.danceStyle.trim(),
+        danceStyle: canonicalizeFreeStyleName(data.danceStyle),
         ageMin: data.ageMin,
         ageMax: data.ageMax,
         entryType: data.entryType,
@@ -495,7 +496,7 @@ export class ContestsService {
       where: { id: categoryId },
       data: {
         name: next.name.trim(),
-        danceStyle: next.danceStyle.trim(),
+        danceStyle: canonicalizeFreeStyleName(next.danceStyle),
         ageMin: next.ageMin,
         ageMax: next.ageMax,
         entryType: next.entryType,

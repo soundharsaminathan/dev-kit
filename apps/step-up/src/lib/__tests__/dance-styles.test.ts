@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  collectStyleFilterChips,
   collectTrainerStyleFilters,
   resolveDanceStyle,
   trainerHasStyle,
@@ -17,6 +18,12 @@ describe("resolveDanceStyle", () => {
     const style = resolveDanceStyle("Krump");
     expect(style.label).toBe("Krump");
     expect(style.abbrev).toBe("KR");
+  });
+
+  it("collapses free-style spellings onto the catalog label", () => {
+    expect(resolveDanceStyle("freestyle").label).toBe("Free Style");
+    expect(resolveDanceStyle("Free Style").label).toBe("Free Style");
+    expect(trainerHasStyle(["freestyle"], "Free Style")).toBe(true);
   });
 
   it("resolves from a studio catalog", () => {
@@ -70,6 +77,25 @@ describe("collectTrainerStyleFilters", () => {
       { styles: ["Krump"] },
       { styles: ["Hip Hop", "Krump"] },
     ]);
-    expect(filters.map((filter) => filter.label)).toEqual(["Krump", "Hip Hop"]);
+    expect(filters.map((filter) => filter.label)).toEqual(["Hip Hop", "Krump"]);
+  });
+
+  it("collapses free-style variants into one filter chip", () => {
+    const filters = collectTrainerStyleFilters([
+      { styles: ["freestyle"] },
+      { styles: ["Free Style"] },
+    ]);
+    expect(filters.map((filter) => filter.label)).toEqual(["Free Style"]);
+  });
+});
+
+describe("collectStyleFilterChips", () => {
+  it("collapses free-text spellings so filters show one chip", () => {
+    expect(
+      collectStyleFilterChips(["Free Style", "freestyle", "Hip Hop"]),
+    ).toEqual([
+      { id: "Free Style", label: "Free Style" },
+      { id: "Hip Hop", label: "Hip Hop" },
+    ]);
   });
 });

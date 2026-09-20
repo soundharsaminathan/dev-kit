@@ -35,6 +35,7 @@ import {
   ensureCertificateDocument,
 } from "@/modules/certificates/types";
 import type { StudioBranch } from "@/modules/locations/types";
+import { DanceStyleSelect } from "@/modules/styles/dance-style-select";
 import { FormInput } from "@/modules/ui/form-input";
 import { ImageCropSheet } from "@/modules/ui/image-crop-sheet";
 import styles from "./new.module.scss";
@@ -296,11 +297,7 @@ function NewBatchPage() {
     }
   }
 
-  function updateDayTiming(
-    day: number,
-    field: keyof DayTiming,
-    value: string,
-  ) {
+  function updateDayTiming(day: number, field: keyof DayTiming, value: string) {
     setDayTimings((current) => ({
       ...current,
       [day]: {
@@ -312,9 +309,7 @@ function NewBatchPage() {
 
   function buildScheduleJson() {
     const orderedWeekdays =
-      frequency === "DAILY"
-        ? []
-        : [...selectedWeekdays].sort((a, b) => a - b);
+      frequency === "DAILY" ? [] : [...selectedWeekdays].sort((a, b) => a - b);
     const dayTimes =
       frequency === "WEEKLY"
         ? orderedWeekdays.map((weekday) => {
@@ -828,9 +823,9 @@ function NewBatchPage() {
                       </Button>
                     )}
                   </div>
-                  <FormInput
-                    label="Dance category"
-                    placeholder="For example, Hip-hop"
+                  <DanceStyleSelect
+                    label="Dance style"
+                    placeholder="Select a style"
                     value={danceCategory.name}
                     onChange={(value) =>
                       setDanceCategories((current) =>

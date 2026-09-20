@@ -296,16 +296,16 @@ describe("DiscoverService", () => {
     ).resolves.toEqual([
       expect.objectContaining({
         slug: "4d-flo",
-        styles: ["Free style & Choreography"],
+        styles: ["Free Style"],
         categories: ["dance"],
       }),
     ]);
 
     const landing = await service.listLanding("chennai");
     expect(landing.studios.map((studio) => studio.slug)).toEqual(["4d-flo"]);
-    expect(
-      landing.styles.some((item) => item.label === "Free style & Choreography"),
-    ).toBe(true);
+    expect(landing.styles.some((item) => item.label === "Free Style")).toBe(
+      true,
+    );
   });
 
   it("lists public trial slots and hides test studios", async () => {

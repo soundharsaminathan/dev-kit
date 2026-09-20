@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useApi } from "@/lib/api-context";
-import { type DanceStyle, effectiveDanceStyles } from "@/lib/dance-styles";
+import { type DanceStyle, danceStyleOptions } from "@/lib/dance-styles";
 import { useOptionalStudioId } from "@/lib/use-studio-id";
 import type { Studio } from "@/modules/settings/types";
 
@@ -15,7 +15,7 @@ export function useStudioDanceStyles() {
   });
 
   const stored = studioQuery.data?.settings?.danceStyles ?? null;
-  const styles: DanceStyle[] = effectiveDanceStyles(stored);
+  const styles: DanceStyle[] = danceStyleOptions(stored);
 
   return {
     styles,

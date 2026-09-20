@@ -15,6 +15,7 @@ import { ACTIVE_ENROLLMENT_WHERE } from "../batches/enrollment-status";
 import { ScheduleConflictService } from "../calendar/schedule-conflict.service";
 import { ChatService } from "../chat/chat.service";
 import { ImportLockService } from "../data-import/import-lock.service";
+import { primaryStyleName } from "../discover/discover.categories";
 import { NotificationsService } from "../notifications/notifications.service";
 import { PrismaService } from "../prisma/prisma.service";
 import {
@@ -26,11 +27,7 @@ import { TrialSlotsCacheService } from "./trial-slots-cache.service";
 const TRIAL_HORIZON_DAYS = 35;
 
 function styleBadgeFromCategories(danceCategories: unknown): string | null {
-  if (!Array.isArray(danceCategories) || danceCategories.length === 0) {
-    return null;
-  }
-  const first = danceCategories[0] as { name?: string };
-  return first?.name?.trim() || null;
+  return primaryStyleName(danceCategories);
 }
 
 function formatSessionWhen(startsAt: Date, endsAt: Date) {

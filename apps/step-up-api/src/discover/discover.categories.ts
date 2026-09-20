@@ -1,6 +1,10 @@
 /** Resolves free-text style names against the activity catalog. */
 
 import {
+  canonicalizeFreeStyleName,
+  styleIdentityKey,
+} from "../common/dance-style-name";
+import {
   DISCOVER_ACTIVITIES,
   DISCOVER_CATEGORIES,
   type DiscoverActivity,
@@ -232,6 +236,39 @@ export function danceCategoryEntries(
 
 export function stylesFromDanceCategories(danceCategories: unknown): string[] {
   return danceCategoryEntries(danceCategories).map((entry) => entry.name);
+}
+
+export function canonicalStyleLabel(name: string): string {
+  const trimmed = name.trim();
+  if (!trimmed) return trimmed;
+  const freeStyle = canonicalizeFreeStyleName(trimmed);
+  if (freeStyle !== trimmed) return freeStyle;
+  const classified = classifyStyleName(trimmed);
+  if (classified.activityId) {
+    const activity = activityById.get(classified.activityId);
+    if (activity) return activity.label;
+  }
+  return trimmed;
+}
+
+export function uniqueCanonicalStyleNames(names: string[]): string[] {
+  const seen = new Set<string>();
+  const styles: string[] = [];
+  for (const name of names) {
+    const label = canonicalStyleLabel(name);
+    if (!label) continue;
+    const key = styleIdentityKey(label);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    styles.push(label);
+  }
+  return styles;
+}
+
+export function primaryStyleName(danceCategories: unknown): string | null {
+  const names = stylesFromDanceCategories(danceCategories);
+  const first = names[0];
+  return first ? canonicalizeFreeStyleName(first) : null;
 }
 
 export function categoriesFromEntries(
