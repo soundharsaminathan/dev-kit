@@ -926,6 +926,10 @@
   color: #1a1f2c;
 }
 
+:global(html[data-theme-mode="dark"]) .searchInput::placeholder {
+  color: rgb(26 31 44 / 45%);
+}
+
 :global(html[data-theme-mode="dark"]) .searchDivider {
   background: rgb(26 31 44 / 16%);
 }
