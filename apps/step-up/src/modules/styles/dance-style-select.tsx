@@ -28,7 +28,7 @@ export function DanceStyleSelect({
   onChange,
   placeholder = "Select a style",
   catalog: catalogProp,
-  isDisabled,
+  isDisabled = false,
 }: DanceStyleSelectProps) {
   const { styles: studioStyles } = useStudioDanceStyles();
   const catalog = danceStyleOptions(catalogProp ?? studioStyles);
