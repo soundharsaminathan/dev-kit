@@ -1,42 +1,23 @@
-import { useQuery } from "@tanstack/react-query";
+import { useToastContext } from "@dev-ui/components/toast";
+import { Icon } from "@dev-ui/icons";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useState } from "react";
 import { useApi } from "@/lib/api-context";
+import { unwrapPage } from "@/lib/api-page";
 import { requireAdmin } from "@/lib/require-auth";
 import { useStudioId } from "@/lib/use-studio-id";
-import { PressableCard } from "@/modules/ui/pressable-card";
+import type { Invoice } from "@/modules/payments/invoice-types";
+import {
+  activityFromInvoices,
+  nextDuplicateName,
+  subscribersFromInvoices,
+} from "@/modules/subscriptions/subscription-model";
+import type { StudioSubscription } from "@/modules/subscriptions/subscription-types";
+import { SubscriptionsWorkspace } from "@/modules/subscriptions/subscriptions-workspace";
 import { PullToRefresh } from "@/modules/ui/pull-to-refresh";
 import { Screen } from "@/modules/ui/screen";
-import { SkeletonCardList } from "@/modules/ui/skeleton-block";
-import staff from "@/modules/ui/staff.module.scss";
-import { EmptyState, ErrorState } from "@/modules/ui/states";
 import { TouchButton } from "@/modules/ui/touch-button";
-
-type SubscriptionKind = "INDIVIDUAL" | "FAMILY";
-type IndividualAudience = "ADULT" | "KID";
-type FamilyPack =
-  | "TWO_KIDS"
-  | "ONE_ADULT_ONE_KID"
-  | "TWO_ADULTS"
-  | "ONE_ADULT_TWO_KIDS"
-  | "TWO_ADULTS_ONE_KID"
-  | "TWO_ADULTS_TWO_KIDS";
-type BillingCadence = "MONTHLY" | "QUARTERLY";
-
-type Subscription = {
-  id: string;
-  name: string;
-  kind: SubscriptionKind;
-  individualAudience?: IndividualAudience | null;
-  familyPack?: FamilyPack | null;
-  billingCadence: BillingCadence;
-  price: number | string;
-  adultSeats: number;
-  kidSeats: number;
-  active: boolean;
-  membershipCount?: number;
-  batchPlanCount?: number;
-  canDelete?: boolean;
-};
 
 export const Route = createFileRoute("/app/subscriptions/")({
   beforeLoad: ({ context, location }) => {
@@ -48,136 +29,167 @@ export const Route = createFileRoute("/app/subscriptions/")({
   component: SubscriptionsPage,
 });
 
-function formatPrice(amount: number) {
-  return new Intl.NumberFormat("en-IN", {
-    style: "currency",
-    currency: "INR",
-    maximumFractionDigits: 0,
-  }).format(amount);
-}
-
-function kindLabel(kind: SubscriptionKind) {
-  return kind === "FAMILY" ? "Family" : "Individual";
-}
-
-function audienceOrPackLabel(sub: Subscription) {
-  if (sub.kind === "INDIVIDUAL") {
-    return sub.individualAudience === "KID" ? "Kid" : "Adult";
-  }
-  switch (sub.familyPack) {
-    case "TWO_KIDS":
-      return "2 kids";
-    case "ONE_ADULT_ONE_KID":
-      return "1 adult + 1 kid";
-    case "TWO_ADULTS":
-      return "2 adults";
-    case "ONE_ADULT_TWO_KIDS":
-      return "1 adult + 2 kids";
-    case "TWO_ADULTS_ONE_KID":
-      return "2 adults + 1 kid";
-    case "TWO_ADULTS_TWO_KIDS":
-      return "2 adults + 2 kids";
-    default:
-      return "Family";
-  }
-}
-
-function cadenceSuffix(cadence: BillingCadence) {
-  return cadence === "QUARTERLY" ? "/qtr" : "/mo";
-}
-
 function SubscriptionsPage() {
   const api = useApi();
   const studioId = useStudioId();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const { toast } = useToastContext("SubscriptionsPage");
+  const [subscriberPlan, setSubscriberPlan] =
+    useState<StudioSubscription | null>(null);
 
   const query = useQuery({
     queryKey: ["subscriptions", studioId],
-    queryFn: () => api.get<Subscription[]>(`/subscriptions/studio/${studioId}`),
+    queryFn: () =>
+      api.get<StudioSubscription[]>(`/subscriptions/studio/${studioId}`),
+  });
+
+  const invoicesQuery = useQuery({
+    queryKey: ["subscription-activity", studioId],
+    enabled: Boolean(studioId),
+    queryFn: () =>
+      api.get<
+        | Invoice[]
+        | { items: Invoice[]; nextCursor: string | null; limit: number }
+      >(`/billing/studio/${studioId}?limit=20`),
+  });
+
+  const invoices = unwrapPage(invoicesQuery.data);
+  const activity = activityFromInvoices(invoices);
+
+  const duplicatePlan = useMutation({
+    mutationFn: (plan: StudioSubscription) =>
+      api.post<StudioSubscription>("/subscriptions", {
+        studioId,
+        name: nextDuplicateName(
+          plan.name,
+          (query.data ?? []).map((item) => item.name),
+        ),
+        kind: "INDIVIDUAL",
+        individualAudience: plan.individualAudience === "KID" ? "KID" : "ADULT",
+        billingCadence:
+          plan.billingCadence === "QUARTERLY" ? "QUARTERLY" : "MONTHLY",
+        price: Number(plan.price),
+        active: false,
+      }),
+    onSuccess: async (created) => {
+      await queryClient.invalidateQueries({
+        queryKey: ["subscriptions", studioId],
+      });
+      toast({
+        title: "Plan duplicated",
+        description: `${created.name} was added as a draft.`,
+        variant: "success",
+      });
+      await navigate({
+        to: "/app/subscriptions/$id",
+        params: { id: created.id },
+      });
+    },
+    onError: (error: unknown) => {
+      toast({
+        title: "Could not duplicate plan",
+        description:
+          error instanceof Error
+            ? error.message
+            : "The plan could not be copied.",
+        variant: "error",
+      });
+    },
+  });
+
+  const archivePlan = useMutation({
+    mutationFn: (plan: StudioSubscription) =>
+      api.patch<StudioSubscription>(`/subscriptions/${plan.id}`, {
+        active: false,
+      }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: ["subscriptions", studioId],
+      });
+      toast({
+        title: "Plan archived",
+        description: "Students can no longer subscribe to this plan.",
+        variant: "success",
+      });
+    },
+    onError: (error: unknown) => {
+      toast({
+        title: "Could not archive plan",
+        description:
+          error instanceof Error
+            ? error.message
+            : "The plan could not be archived.",
+        variant: "error",
+      });
+    },
   });
 
   return (
     <Screen
       title="Subscriptions"
       subtitle="Studio-wide membership offers students can subscribe to."
+      wide
       actions={
-        <TouchButton variant="primary" size="md">
-          <Link to="/app/subscriptions/new">Add</Link>
+        <TouchButton
+          as={Link}
+          to="/app/subscriptions/new"
+          variant="primary"
+          size="md"
+        >
+          <Icon name="plus" />
+          Add subscription
         </TouchButton>
       }
     >
-      <PullToRefresh onRefresh={() => query.refetch()}>
-        <div className={staff.section}>
-          {query.isLoading ? <SkeletonCardList count={3} /> : null}
-
-          {query.isError ? (
-            <ErrorState
-              description={
-                query.error instanceof Error
-                  ? query.error.message
-                  : "Could not load subscriptions."
-              }
-              action={
-                <TouchButton variant="primary" onClick={() => query.refetch()}>
-                  Try again
-                </TouchButton>
-              }
-            />
-          ) : null}
-
-          {query.data && query.data.length === 0 ? (
-            <EmptyState
-              title="No subscriptions yet"
-              description="Create a subscription to sell memberships."
-              action={
-                <TouchButton variant="primary">
-                  <Link to="/app/subscriptions/new">Add subscription</Link>
-                </TouchButton>
-              }
-            />
-          ) : null}
-
-          {query.data && query.data.length > 0 ? (
-            <div className={staff.list}>
-              {query.data.map((subscription) => (
-                <PressableCard
-                  key={subscription.id}
-                  onClick={() =>
-                    void navigate({
-                      to: "/app/subscriptions/$id",
-                      params: { id: subscription.id },
-                    })
-                  }
-                >
-                  <div className={staff.rowCard}>
-                    <div className={staff.attentionTop}>
-                      <span className={staff.rowTitle}>
-                        {subscription.name}
-                      </span>
-                      <span className={staff.rowMeta}>
-                        {formatPrice(Number(subscription.price))}
-                        {cadenceSuffix(subscription.billingCadence)}
-                      </span>
-                    </div>
-                    <p className={staff.rowMeta}>
-                      {kindLabel(subscription.kind)} ·{" "}
-                      {audienceOrPackLabel(subscription)} ·{" "}
-                      {subscription.billingCadence === "QUARTERLY"
-                        ? "Quarterly"
-                        : "Monthly"}
-                      {subscription.active ? "" : " · Inactive"}
-                      {subscription.canDelete === true
-                        ? " · Unused"
-                        : subscription.canDelete === false
-                          ? " · In use"
-                          : ""}
-                    </p>
-                  </div>
-                </PressableCard>
-              ))}
-            </div>
-          ) : null}
-        </div>
+      <PullToRefresh
+        onRefresh={() =>
+          Promise.all([query.refetch(), invoicesQuery.refetch()])
+        }
+      >
+        <SubscriptionsWorkspace
+          subscriptions={query.data ?? []}
+          activity={activity}
+          isLoading={query.isLoading}
+          isError={query.isError}
+          error={query.error}
+          onRetry={() => {
+            void query.refetch();
+          }}
+          onEdit={(plan) => {
+            void navigate({
+              to: "/app/subscriptions/$id",
+              params: { id: plan.id },
+            });
+          }}
+          onDuplicate={(plan) => {
+            if (plan.kind === "FAMILY") {
+              toast({
+                title: "Family plans cannot be duplicated",
+                description:
+                  "Household pricing is combined from invoices, not copied as a new plan.",
+                variant: "error",
+              });
+              return;
+            }
+            duplicatePlan.mutate(plan);
+          }}
+          onArchive={(plan) => archivePlan.mutate(plan)}
+          archivePending={archivePlan.isPending}
+          subscribers={
+            subscriberPlan
+              ? subscribersFromInvoices(invoices, subscriberPlan.name)
+              : null
+          }
+          subscribersTitle={
+            subscriberPlan ? `${subscriberPlan.name} subscribers` : undefined
+          }
+          subscribersLoading={
+            Boolean(subscriberPlan) && invoicesQuery.isLoading
+          }
+          onViewSubscribers={setSubscriberPlan}
+          onCloseSubscribers={() => setSubscriberPlan(null)}
+        />
       </PullToRefresh>
     </Screen>
   );
