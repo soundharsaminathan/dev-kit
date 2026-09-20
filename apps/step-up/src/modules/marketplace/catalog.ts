@@ -7,6 +7,7 @@ import {
   type MarketplaceClassCard,
   type MarketplaceClassDetail,
   type MarketplaceStudioCard,
+  type MarketplaceStudioDetail,
   type MarketplaceTrainerCard,
   type MarketplaceTrainerDetail,
 } from "./types";
@@ -69,6 +70,12 @@ export function fetchMarketplaceTrainer(idOrSlug: string) {
   );
 }
 
+export function fetchMarketplaceStudio(idOrSlug: string) {
+  return getPublic<MarketplaceStudioDetail>(
+    `/discover/studios/${encodeURIComponent(idOrSlug)}/page`,
+  );
+}
+
 export function marketplaceClassesQueryKey(params: MarketplaceCatalogQuery) {
   return ["marketplace-classes", params] as const;
 }
@@ -87,4 +94,8 @@ export function marketplaceClassQueryKey(idOrSlug: string) {
 
 export function marketplaceTrainerQueryKey(idOrSlug: string) {
   return ["marketplace-trainer", idOrSlug] as const;
+}
+
+export function marketplaceStudioQueryKey(idOrSlug: string) {
+  return ["marketplace-studio", idOrSlug] as const;
 }

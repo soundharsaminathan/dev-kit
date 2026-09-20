@@ -20,12 +20,8 @@ export const STUDENT_NAV: {
   joinStudio: string;
   login: string;
 } = {
-  links: [
-    { label: "Discover", href: "#discover" },
-    { label: "How it works", href: "#how-it-works" },
-    { label: "For studios", to: "/for-studios" },
-  ],
-  findStudio: "Search studios",
+  links: [{ label: "For studios", to: "/for-studios" }],
+  findStudio: "Log in",
   joinStudio: "For studios",
   login: "Log in",
 };

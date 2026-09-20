@@ -77,6 +77,7 @@ export type MarketplaceClassCard = {
   studioSlug: string;
   studioName: string;
   trainerId: string | null;
+  trainerSlug: string | null;
   trainerName: string | null;
   locality: string | null;
   localityId: string | null;
@@ -142,15 +143,27 @@ export type MarketplaceTrainerCard = {
   canPrivate: boolean;
 };
 
+export type MarketplaceClassPlan = {
+  name: string;
+  price: number;
+  cadence: "MONTHLY" | "QUARTERLY";
+};
+
 export type MarketplaceClassDetail = MarketplaceClassCard & {
   branchId: string;
   branchName: string;
-  trainers: Array<{ id: string; name: string; photoUrl: string | null }>;
+  trainers: Array<{
+    id: string;
+    slug: string;
+    name: string;
+    photoUrl: string | null;
+  }>;
   upcomingSessions: Array<{
     sessionId: string;
     startsAt: string;
     endsAt: string;
   }>;
+  plans: MarketplaceClassPlan[];
   canPrivate: boolean;
   canFloorHire: boolean;
 };
@@ -168,8 +181,30 @@ export type MarketplaceTrainerDetail = MarketplaceTrainerCard & {
     id: string;
     slug: string;
     name: string;
+    studioSlug: string;
     studioName: string;
   }>;
+};
+
+export type MarketplaceStudioBranch = {
+  id: string;
+  name: string;
+  address: string;
+  latitude: number | null;
+  longitude: number | null;
+  amenities: string[];
+  openingHours: unknown;
+  mapsUrl: string | null;
+};
+
+export type MarketplaceStudioDetail = MarketplaceStudioCard & {
+  about: string | null;
+  tagline: string | null;
+  address: string | null;
+  photos: string[];
+  branches: MarketplaceStudioBranch[];
+  classes: MarketplaceClassCard[];
+  trainers: MarketplaceTrainerCard[];
 };
 
 export function marketplaceFirstPaint() {

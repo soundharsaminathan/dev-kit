@@ -205,6 +205,11 @@ export class DiscoverController {
     return this.discover.listPublicTrialSlots(id);
   }
 
+  @Get("studios/:idOrSlug/page")
+  getMarketplaceStudio(@Param("idOrSlug") idOrSlug: string) {
+    return this.catalog.getStudio(idOrSlug);
+  }
+
   @Get("studios/:id")
   getStudio(@Param("id") id: string) {
     return this.discover.getStudio(id);

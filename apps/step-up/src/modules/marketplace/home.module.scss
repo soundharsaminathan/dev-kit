@@ -1,0 +1,210 @@
+.page {
+  width: 100%;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.chrome {
+  position: sticky;
+  top: var(--student-header-h, 3.75rem);
+  z-index: 15;
+  background: color-mix(in srgb, var(--surface-background, #f8f4ec) 92%, transparent);
+  backdrop-filter: blur(16px);
+  border-bottom: 1px solid color-mix(in srgb, var(--color-fg) 8%, transparent);
+}
+
+.chromeInner {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 0.75rem);
+  max-width: 72rem;
+  margin-inline: auto;
+  padding: var(--space-3, 0.75rem) var(--space-4, 1rem) var(--space-4, 1rem);
+}
+
+.tabs {
+  display: flex;
+  gap: var(--space-1, 0.25rem);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.tab,
+.category {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.75rem;
+  padding: 0 var(--space-3, 0.75rem);
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--color-fg);
+  font-size: 0.9375rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.tab[data-active="true"],
+.category[data-active="true"] {
+  background: var(--color-fg);
+  color: var(--color-bg, #fff);
+}
+
+.search {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2, 0.5rem);
+  min-height: 3rem;
+  padding: 0 var(--space-4, 1rem);
+  border-radius: 999px;
+  background: var(--color-card, #fff);
+  border: 1px solid color-mix(in srgb, var(--color-fg) 10%, transparent);
+}
+
+.searchInput {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-fg);
+  font-size: 1rem;
+  outline: none;
+}
+
+.viewToggle {
+  display: flex;
+  margin-left: auto;
+  padding: 2px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-fg) 6%, transparent);
+}
+
+.viewBtn {
+  min-height: 2rem;
+  padding: 0 var(--space-3, 0.75rem);
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--color-fg);
+  font-size: 0.8125rem;
+  font-weight: 700;
+}
+
+.viewBtn[data-active="true"] {
+  background: var(--color-card, #fff);
+}
+
+.feed {
+  max-width: 72rem;
+  width: 100%;
+  margin-inline: auto;
+  padding: var(--space-4, 1rem);
+  padding-bottom: calc(var(--space-8, 2rem) + env(safe-area-inset-bottom, 0px));
+}
+
+.heading {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1, 0.25rem);
+  margin-bottom: var(--space-4, 1rem);
+}
+
+.title {
+  margin: 0;
+  font-size: clamp(1.5rem, 4vw, 2rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.2;
+}
+
+.hint,
+.empty {
+  margin: 0;
+  color: color-mix(in srgb, var(--color-fg) 62%, transparent);
+  font-size: 0.9375rem;
+  line-height: 1.5;
+}
+
+.emptyBox {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4, 1rem);
+  padding: var(--space-8, 2rem) var(--space-4, 1rem);
+  border-radius: var(--radius-2xl, 1.25rem);
+  background: var(--color-card, #fff);
+}
+
+.emptyActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2, 0.5rem);
+}
+
+.emptyBtn {
+  min-height: 2.75rem;
+  padding: 0 var(--space-4, 1rem);
+  border: 0;
+  border-radius: var(--radius-lg, 0.75rem);
+  background: var(--color-primary);
+  color: var(--color-primary-fg, #fff);
+  font-weight: 700;
+}
+
+.emptyLink {
+  min-height: 2.75rem;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 var(--space-4, 1rem);
+  border-radius: var(--radius-lg, 0.75rem);
+  background: color-mix(in srgb, var(--color-fg) 8%, transparent);
+  color: var(--color-fg);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.groupTitle {
+  margin: var(--space-6, 1.5rem) 0 var(--space-3, 0.75rem);
+  font-size: 1.125rem;
+  font-weight: 750;
+}
+
+.areaSheet {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 0.5rem);
+}
+
+.areaBtn {
+  min-height: 2.75rem;
+  padding: 0 var(--space-3, 0.75rem);
+  border: 0;
+  border-radius: var(--radius-lg, 0.75rem);
+  background: color-mix(in srgb, var(--color-fg) 6%, transparent);
+  color: var(--color-fg);
+  font-weight: 650;
+  text-align: left;
+}
+
+.areaBtn[data-active="true"] {
+  background: var(--color-fg);
+  color: var(--color-bg, #fff);
+}
+
+@media (min-width: 768px) {
+  .chromeInner {
+    padding-inline: var(--space-6, 1.5rem);
+  }
+
+  .feed {
+    padding-inline: var(--space-6, 1.5rem);
+  }
+}

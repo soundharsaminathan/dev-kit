@@ -30,7 +30,9 @@ function trainerRow(
     trainerCategories: (extra.categories ?? ["DANCE"]).map((category) => ({
       category,
     })),
-    marketplaceRatings: (extra.ratings ?? []).map((rating) => ({ rating })),
+    trainerMarketplaceRatings: (extra.ratings ?? []).map((rating) => ({
+      rating,
+    })),
   };
 }
 
@@ -170,15 +172,23 @@ function studioRow(
 
 describe("MarketplaceCatalogService", () => {
   const prisma = {
-    studio: { findMany: vi.fn() },
+    studio: { findMany: vi.fn(), findFirst: vi.fn() },
     user: { findMany: vi.fn(), findFirst: vi.fn() },
     booking: { findMany: vi.fn() },
     batch: { findFirst: vi.fn() },
+    slugRedirect: { findMany: vi.fn(), upsert: vi.fn(), updateMany: vi.fn() },
   };
   const media = {
     signReadUrl: vi.fn(async (url: string | null) =>
       url ? `signed:${url}` : null,
     ),
+    signReadUrls: vi.fn(async (urls: string[]) =>
+      urls.map((url) => `signed:${url}`),
+    ),
+  };
+  const slugs = {
+    resolve: vi.fn(async (_kind: string, value: string) => value),
+    record: vi.fn(),
   };
   const crypto = {
     decryptUser: vi.fn((user: { id: string }) => ({
@@ -203,10 +213,12 @@ describe("MarketplaceCatalogService", () => {
     vi.clearAllMocks();
     prisma.booking.findMany.mockResolvedValue([]);
     prisma.user.findMany.mockResolvedValue([]);
+    slugs.resolve.mockImplementation(async (_kind: string, value: string) => value);
     service = new MarketplaceCatalogService(
       prisma as never,
       media as never,
       crypto as never,
+      slugs as never,
     );
   });
 
@@ -478,6 +490,52 @@ describe("MarketplaceCatalogService", () => {
     expect(detail.canFloorHire).toBe(true);
     expect(detail.upcomingSessions).toHaveLength(1);
     expect(detail.viewerEnrolled).toBeNull();
+    expect(detail.trainerSlug).toBe("trainer-1-slug");
+    expect(detail.plans[0]?.name).toBe("Plan");
+  });
+
+  it("follows an old class slug through SlugRedirect", async () => {
+    slugs.resolve.mockResolvedValueOnce("detail-slug");
+    const batch = batchRow("detail", { name: "Hip Hop Foundations" });
+    prisma.batch.findFirst.mockResolvedValue({
+      ...batch,
+      studio: studioRow({ batches: [batch] }),
+    });
+    const detail = await service.getClass("old-class");
+    expect(slugs.resolve).toHaveBeenCalledWith("CLASS", "old-class");
+    expect(detail.slug).toBe("detail-slug");
+  });
+
+  it("returns studio detail with classes, trainers, and visit fields", async () => {
+    const batch = batchRow("detail", { name: "Hip Hop Foundations" });
+    const studio = studioRow({
+      batches: [batch],
+      settings: { bookingFloorHire: true },
+    });
+    seed([studio]);
+    prisma.studio.findFirst.mockResolvedValue({
+      ...studio,
+      about: "A downtown floor.",
+      tagline: "Move more",
+      photos: ["studios/tour.jpg"],
+      branches: studio.branches.map((branch) => ({
+        ...branch,
+        amenities: ["parking"],
+        openingHours: { days: [{ day: 1, open: "10:00", close: "20:00" }] },
+        media: [{ objectKey: "branches/hall.jpg" }],
+      })),
+    });
+
+    const detail = await service.getStudio("rhythm-house");
+    expect(detail.name).toBe("Rhythm House");
+    expect(detail.about).toBe("A downtown floor.");
+    expect(detail.canFloorHire).toBe(true);
+    expect(detail.classes.map((item) => item.name)).toEqual([
+      "Hip Hop Foundations",
+    ]);
+    expect(detail.trainers[0]?.id).toBe("trainer-1");
+    expect(detail.branches[0]?.mapsUrl).toContain("13.04");
+    expect(detail.photos.length).toBeGreaterThan(0);
   });
 
   it("404s a class that fails the public image gate", async () => {

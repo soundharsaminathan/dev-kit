@@ -41,6 +41,7 @@ export type MarketplaceClassCard = {
   studioSlug: string;
   studioName: string;
   trainerId: string | null;
+  trainerSlug: string | null;
   trainerName: string | null;
   locality: string | null;
   localityId: string | null;
@@ -120,12 +121,19 @@ export type MarketplaceCatalogPage<T> = {
   items: T[];
 };
 
+export type MarketplaceClassPlan = {
+  name: string;
+  price: number;
+  cadence: BillingCadence;
+};
+
 export type MarketplaceClassDetail = MarketplaceClassCard & {
   studioSlug: string;
   branchId: string;
   branchName: string;
   trainers: Array<{
     id: string;
+    slug: string;
     name: string;
     photoUrl: string | null;
   }>;
@@ -134,6 +142,7 @@ export type MarketplaceClassDetail = MarketplaceClassCard & {
     startsAt: string;
     endsAt: string;
   }>;
+  plans: MarketplaceClassPlan[];
   canPrivate: boolean;
   canFloorHire: boolean;
 };
@@ -151,6 +160,28 @@ export type MarketplaceTrainerDetail = MarketplaceTrainerCard & {
     id: string;
     slug: string;
     name: string;
+    studioSlug: string;
     studioName: string;
   }>;
+};
+
+export type MarketplaceStudioBranch = {
+  id: string;
+  name: string;
+  address: string;
+  latitude: number | null;
+  longitude: number | null;
+  amenities: string[];
+  openingHours: unknown;
+  mapsUrl: string | null;
+};
+
+export type MarketplaceStudioDetail = MarketplaceStudioCard & {
+  about: string | null;
+  tagline: string | null;
+  address: string | null;
+  photos: string[];
+  branches: MarketplaceStudioBranch[];
+  classes: MarketplaceClassCard[];
+  trainers: MarketplaceTrainerCard[];
 };

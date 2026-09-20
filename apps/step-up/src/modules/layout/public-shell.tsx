@@ -1,5 +1,5 @@
 import { Button } from "@dev-ui/components/button";
-import { Link, useRouterState } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import {
   type ReactNode,
   useCallback,
@@ -22,8 +22,6 @@ import {
   STUDENT_NAV,
   STUDIO_NAV_EXTRA,
 } from "@/modules/student-landing/content";
-import { DEFAULT_CITY_ID } from "@/modules/student-landing/types";
-import { useDiscoverLanding } from "@/modules/student-landing/use-landing";
 import { ThemeSwitcher } from "@/modules/ui/theme-switcher";
 import { TouchButton } from "@/modules/ui/touch-button";
 import styles from "./public-shell.module.scss";
@@ -68,8 +66,6 @@ export function PublicShell({
   const isMarketing = nav === "marketing";
   const isStudent = nav === "student";
   const isLanding = isMarketing || isStudent;
-  const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const isStudentHome = isStudent && pathname === "/";
   const [menuOpen, setMenuOpen] = useState(false);
   const [activeHref, setActiveHref] = useState<string | null>(null);
   const menuId = useId();
@@ -189,17 +185,9 @@ export function PublicShell({
         <Button variant="primary">Open app</Button>
       </Link>
     ) : (
-      <>
-        <Link to="/login" className={styles.navLink}>
-          {STUDENT_NAV.login}
-        </Link>
-        <Link
-          to="/discover"
-          search={{ city: DEFAULT_CITY_ID, category: "dance" }}
-        >
-          <Button variant="primary">{STUDENT_NAV.findStudio}</Button>
-        </Link>
-      </>
+      <Link to="/login">
+        <Button variant="primary">{STUDENT_NAV.login}</Button>
+      </Link>
     ));
 
   const marketingActions =
@@ -265,14 +253,13 @@ export function PublicShell({
             </div>
             <div className={styles.mobileHeaderActions}>
               <ThemeSwitcher />
-              <Link
-                to="/discover"
-                search={{ city: DEFAULT_CITY_ID, category: "dance" }}
+              <a
+                href="#marketplace-search"
                 className={styles.iconButton}
                 aria-label="Search classes"
               >
                 <SearchIcon className={styles.iconSvg} />
-              </Link>
+              </a>
               <button
                 ref={toggleRef}
                 type="button"
@@ -438,27 +425,15 @@ export function PublicShell({
                   Open app
                 </TouchButton>
               ) : isStudent ? (
-                <>
-                  <TouchButton
-                    as={Link}
-                    to="/login"
-                    variant="default"
-                    fullWidth
-                    onClick={closeMenu}
-                  >
-                    {STUDENT_NAV.login}
-                  </TouchButton>
-                  <TouchButton
-                    as={Link}
-                    to="/discover"
-                    search={{ city: "chennai", category: "dance" } as never}
-                    variant="primary"
-                    fullWidth
-                    onClick={closeMenu}
-                  >
-                    {STUDENT_NAV.findStudio}
-                  </TouchButton>
-                </>
+                <TouchButton
+                  as={Link}
+                  to="/login"
+                  variant="primary"
+                  fullWidth
+                  onClick={closeMenu}
+                >
+                  {STUDENT_NAV.login}
+                </TouchButton>
               ) : (
                 <>
                   <TouchButton
@@ -490,76 +465,7 @@ export function PublicShell({
         {children}
       </main>
 
-      {isStudentHome ? (
-        <footer className={styles.footerMarketing}>
-          <div className={styles.footerInnerWide}>
-            <div className={styles.footerBrand}>
-              <img
-                className={styles.brandIcon}
-                src={BRAND_ICON_SRC}
-                width={32}
-                height={32}
-                alt=""
-                aria-hidden
-              />
-              <ClassaWordmark variant="italic-a" />
-              <p className={styles.footerTagline}>{STUDENT_FOOTER.tagline}</p>
-            </div>
-            <div className={styles.footerColumns}>
-              <div>
-                <p className={styles.footerColTitle}>
-                  {STUDENT_FOOTER.forStudents}
-                </p>
-                <nav
-                  className={styles.footerColLinks}
-                  aria-label="For students"
-                >
-                  <Link
-                    to="/discover"
-                    search={{ city: DEFAULT_CITY_ID, category: "dance" }}
-                  >
-                    {STUDENT_FOOTER.discoverStudios}
-                  </Link>
-                  <Link
-                    to="/discover"
-                    search={{ city: DEFAULT_CITY_ID, category: "dance" }}
-                  >
-                    {STUDENT_FOOTER.findClasses}
-                  </Link>
-                  <a href="#how-it-works">{STUDENT_FOOTER.howItWorks}</a>
-                  <StudentFooterFacets />
-                </nav>
-              </div>
-              <div>
-                <p className={styles.footerColTitle}>
-                  {STUDENT_FOOTER.forStudios}
-                </p>
-                <nav className={styles.footerColLinks} aria-label="For studios">
-                  <Link to="/for-studios">{STUDENT_FOOTER.joinAsStudio}</Link>
-                  <Link to="/login">{STUDENT_FOOTER.studioLogin}</Link>
-                  <a href="/for-studios#features">{STUDENT_FOOTER.features}</a>
-                </nav>
-              </div>
-              <div>
-                <p className={styles.footerColTitle}>
-                  {STUDENT_FOOTER.company}
-                </p>
-                <nav className={styles.footerColLinks} aria-label="Company">
-                  <a href="#faq">{STUDENT_FOOTER.about}</a>
-                  <Link to="/register" search={{ for: "studio" }}>
-                    {STUDENT_FOOTER.contact}
-                  </Link>
-                  <Link to="/privacy">{STUDENT_FOOTER.privacy}</Link>
-                  <Link to="/terms">{STUDENT_FOOTER.terms}</Link>
-                </nav>
-              </div>
-            </div>
-            <p className={styles.footerCopy}>
-              © {new Date().getFullYear()} {STUDENT_FOOTER.copyright}
-            </p>
-          </div>
-        </footer>
-      ) : isStudent ? (
+      {isStudent ? (
         <footer
           className={[styles.footerCompact, dock ? styles.footerDock : ""]
             .filter(Boolean)
@@ -631,43 +537,4 @@ export function PublicShell({
     return <DiscoverCityProvider>{shell}</DiscoverCityProvider>;
   }
   return shell;
-}
-
-function StudentFooterFacets() {
-  const landing = useDiscoverLanding();
-  const styles = landing.data?.styles.slice(0, 6) ?? [];
-  const areas = (landing.data?.areas ?? [])
-    .filter((area) => area.popular)
-    .slice(0, 6);
-  if (styles.length === 0 && areas.length === 0) return null;
-  return (
-    <>
-      {styles.map((style) => (
-        <Link
-          key={style.id}
-          to="/discover"
-          search={{
-            city: DEFAULT_CITY_ID,
-            category: "dance",
-            style: style.id,
-          }}
-        >
-          {style.label}
-        </Link>
-      ))}
-      {areas.map((area) => (
-        <Link
-          key={area.id}
-          to="/discover"
-          search={{
-            city: DEFAULT_CITY_ID,
-            category: "dance",
-            locality: area.id,
-          }}
-        >
-          {area.label}
-        </Link>
-      ))}
-    </>
-  );
 }

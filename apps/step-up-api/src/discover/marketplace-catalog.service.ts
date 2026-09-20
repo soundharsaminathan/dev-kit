@@ -54,9 +54,11 @@ import type {
   MarketplaceClassCard,
   MarketplaceClassDetail,
   MarketplaceStudioCard,
+  MarketplaceStudioDetail,
   MarketplaceTrainerCard,
   MarketplaceTrainerDetail,
 } from "./marketplace-catalog.types";
+import { SlugRedirectService } from "./slug-redirect.service";
 
 const CATALOG_TTL_MS = 30_000;
 const POPULARITY_WINDOW_DAYS = 30;
@@ -94,7 +96,7 @@ type TrainerPiiRow = {
   piiCiphertext: string;
   piiIv: string;
   trainerCategories: Array<{ category: string }>;
-  marketplaceRatings: Array<{ rating: number }>;
+  trainerMarketplaceRatings: Array<{ rating: number }>;
 };
 
 type BatchRow = {
@@ -115,6 +117,7 @@ type BatchRow = {
   summary: { availableSeats: number } | null;
   plans: Array<{
     subscription: {
+      name?: string;
       price: { toString(): string } | number;
       billingCadence: BillingCadence;
       active: boolean;
@@ -269,6 +272,7 @@ export class MarketplaceCatalogService {
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(MediaService) private readonly media: MediaService,
     @Inject(UserCryptoService) private readonly crypto: UserCryptoService,
+    @Inject(SlugRedirectService) private readonly slugs: SlugRedirectService,
   ) {}
 
   normalizeFilters(
@@ -383,10 +387,16 @@ export class MarketplaceCatalogService {
 
   async getClass(idOrSlug: string): Promise<MarketplaceClassDetail> {
     const now = new Date();
+    const resolved = await this.slugs.resolve("CLASS", idOrSlug);
     const batch = await this.prisma.batch.findFirst({
       where: {
         active: true,
-        OR: [{ id: idOrSlug }, { slug: idOrSlug }],
+        OR: [
+          { id: resolved },
+          { slug: resolved },
+          { id: idOrSlug },
+          { slug: idOrSlug },
+        ],
         studio: { status: StudioStatus.ACTIVE },
       },
       select: this.detailBatchSelect(),
@@ -447,10 +457,19 @@ export class MarketplaceCatalogService {
         .filter((row) => row.trainer.active)
         .map(async (row) => ({
           id: row.trainer.id,
+          slug: row.trainer.publicSlug ?? row.trainer.id,
           name: trainerName(this.crypto, row.trainer),
           photoUrl: await this.media.signReadUrl(row.trainer.photoUrl),
         })),
     );
+
+    const plans = batch.plans
+      .filter((plan) => plan.subscription.active)
+      .map((plan) => ({
+        name: plan.subscription.name?.trim() || "Plan",
+        price: priceNumber(plan.subscription.price),
+        cadence: plan.subscription.billingCadence,
+      }));
 
     return {
       ...card.card,
@@ -459,17 +478,193 @@ export class MarketplaceCatalogService {
       branchName: batch.branch.name,
       trainers,
       upcomingSessions: upcoming,
+      plans,
       canPrivate: settings.bookingPrivate,
       canFloorHire: settings.bookingFloorHire,
     };
   }
 
+  async getStudio(idOrSlug: string): Promise<MarketplaceStudioDetail> {
+    const resolved = await this.slugs.resolve("STUDIO", idOrSlug);
+    const studio = await this.prisma.studio.findFirst({
+      where: {
+        status: StudioStatus.ACTIVE,
+        OR: [
+          { id: resolved },
+          { slug: resolved },
+          { id: idOrSlug },
+          { slug: idOrSlug },
+        ],
+      },
+      select: {
+        id: true,
+        slug: true,
+        name: true,
+        address: true,
+        about: true,
+        tagline: true,
+        photos: true,
+        heroDesktopUrl: true,
+        heroMobileUrl: true,
+        primaryCategory: true,
+        settings: {
+          select: {
+            publicStudioListing: true,
+            publicClasses: true,
+            publicTrainers: true,
+            publicRatings: true,
+            bookingTrial: true,
+            bookingEnrollment: true,
+            bookingPrivate: true,
+            bookingFloorHire: true,
+          },
+        },
+        marketplaceCategories: { select: { category: true } },
+        marketplaceRatings: { select: { rating: true } },
+        branches: {
+          orderBy: { name: "asc" as const },
+          select: {
+            id: true,
+            name: true,
+            address: true,
+            latitude: true,
+            longitude: true,
+            amenities: true,
+            openingHours: true,
+            coverMedia: { select: { objectKey: true } },
+            media: {
+              where: { archivedAt: null },
+              orderBy: { sortOrder: "asc" as const },
+              take: 8,
+              select: { objectKey: true },
+            },
+          },
+        },
+      },
+    });
+    if (!studio || isTestStudio(studio)) {
+      throw new NotFoundException("Studio not found");
+    }
+
+    const category = parseMarketplaceCategory(studio.primaryCategory);
+    const snapshot = await this.loadSnapshot(category);
+    const row = snapshot.studios.find((item) => item.id === studio.id);
+    if (!row) throw new NotFoundException("Studio not found");
+
+    const filters: MarketplaceCatalogFilters = {
+      category,
+      city:
+        matchCityFromAddress(
+          studio.address,
+          ...studio.branches.map((branch) => branch.address),
+        )?.id ?? marketplaceFirstPaint().city,
+    };
+    let mapped = await this.toStudioCard(
+      row,
+      filters,
+      snapshot.popularity,
+      new Date(),
+      { ignoreCity: true },
+    );
+    if (!mapped) {
+      for (const categoryRow of studio.marketplaceCategories) {
+        mapped = await this.toStudioCard(
+          row,
+          {
+            ...filters,
+            category: parseMarketplaceCategory(categoryRow.category),
+          },
+          snapshot.popularity,
+          new Date(),
+          { ignoreCity: true },
+        );
+        if (mapped) break;
+      }
+    }
+    if (!mapped) throw new NotFoundException("Studio not found");
+
+    const classes: MarketplaceClassCard[] = [];
+    for (const batch of row.batches) {
+      const card = await this.toClassCard(
+        batch,
+        row,
+        {
+          ...filters,
+          category: parseMarketplaceCategory(batch.marketplaceCategory),
+        },
+        snapshot.popularity,
+        new Date(),
+        { requireHomeWindow: false, ignoreCity: true },
+      );
+      if (card) classes.push(card.card);
+    }
+
+    const trainers: MarketplaceTrainerCard[] = [];
+    for (const link of row.trainerLinks) {
+      const card = await this.toTrainerCard(
+        link.trainer,
+        snapshot.studios,
+        filters,
+        snapshot.popularity,
+        new Date(),
+        { ignoreCity: true },
+      );
+      if (card) trainers.push(card.card);
+    }
+
+    const photoKeys = [
+      studio.heroDesktopUrl,
+      studio.heroMobileUrl,
+      ...studio.photos,
+      ...studio.branches.flatMap((branch) => [
+        branch.coverMedia?.objectKey ?? null,
+        ...branch.media.map((item) => item.objectKey),
+      ]),
+    ].filter((key): key is string => Boolean(key));
+    const photos = [
+      ...new Set(
+        (await this.media.signReadUrls(photoKeys)).filter(
+          (url): url is string => Boolean(url),
+        ),
+      ),
+    ];
+
+    return {
+      ...mapped.card,
+      about: studio.about,
+      tagline: studio.tagline,
+      address: studio.address,
+      photos,
+      branches: studio.branches.map((branch) => ({
+        id: branch.id,
+        name: branch.name,
+        address: branch.address,
+        latitude: branch.latitude,
+        longitude: branch.longitude,
+        amenities: branch.amenities,
+        openingHours: branch.openingHours,
+        mapsUrl:
+          branch.latitude != null && branch.longitude != null
+            ? `https://www.google.com/maps?q=${branch.latitude},${branch.longitude}`
+            : null,
+      })),
+      classes,
+      trainers,
+    };
+  }
+
   async getTrainer(idOrSlug: string): Promise<MarketplaceTrainerDetail> {
+    const resolved = await this.slugs.resolve("TRAINER", idOrSlug);
     const trainer = await this.prisma.user.findFirst({
       where: {
         role: UserRole.TRAINER,
         active: true,
-        OR: [{ id: idOrSlug }, { publicSlug: idOrSlug }],
+        OR: [
+          { id: resolved },
+          { publicSlug: resolved },
+          { id: idOrSlug },
+          { publicSlug: idOrSlug },
+        ],
       },
       select: this.trainerSelect(),
     });
@@ -507,6 +702,7 @@ export class MarketplaceCatalogService {
           id: batch.id,
           slug: batch.slug ?? batch.id,
           name: batch.name,
+          studioSlug: studio.slug,
           studioName: studio.name,
         })),
     );
@@ -609,7 +805,7 @@ export class MarketplaceCatalogService {
     filters: MarketplaceCatalogFilters,
     popularity: Popularity,
     now: Date,
-    options?: { requireHomeWindow?: boolean },
+    options?: { requireHomeWindow?: boolean; ignoreCity?: boolean },
   ) {
     if (batch.marketplaceCategory !== filters.category) return null;
     if (!audienceMatches(batch.classAudience, filters.audience)) return null;
@@ -639,7 +835,9 @@ export class MarketplaceCatalogService {
       ...studio,
       branches: [batch.branch, ...studio.branches],
     });
-    if (filters.city && city?.id !== filters.city) return null;
+    if (!options?.ignoreCity && filters.city && city?.id !== filters.city) {
+      return null;
+    }
     if (filters.locality) {
       const wanted = findLocalityById(filters.locality);
       if (!wanted || locality?.id !== wanted.id) return null;
@@ -707,6 +905,9 @@ export class MarketplaceCatalogService {
       studioSlug: studio.slug,
       studioName: studio.name,
       trainerId: firstTrainer?.trainer.id ?? null,
+      trainerSlug: firstTrainer
+        ? (firstTrainer.trainer.publicSlug ?? firstTrainer.trainer.id)
+        : null,
       trainerName: firstTrainer
         ? trainerName(this.crypto, firstTrainer.trainer)
         : null,
@@ -728,7 +929,7 @@ export class MarketplaceCatalogService {
         settings.publicRatings,
       ),
       trainerRating: ratingFromRows(
-        firstTrainer?.trainer.marketplaceRatings ?? [],
+        firstTrainer?.trainer.trainerMarketplaceRatings ?? [],
         settings.publicRatings,
       ),
       canTrial,
@@ -758,6 +959,7 @@ export class MarketplaceCatalogService {
     filters: MarketplaceCatalogFilters,
     popularity: Popularity,
     now: Date,
+    options?: { ignoreCity?: boolean },
   ) {
     if (isTestStudio(studio)) return null;
     const settings = settingsOf(studio);
@@ -782,7 +984,9 @@ export class MarketplaceCatalogService {
     }
 
     const { city, locality } = locateStudio(studio);
-    if (filters.city && city?.id !== filters.city) return null;
+    if (!options?.ignoreCity && filters.city && city?.id !== filters.city) {
+      return null;
+    }
     if (filters.locality) {
       const wanted = findLocalityById(filters.locality);
       if (!wanted || locality?.id !== wanted.id) return null;
@@ -1067,7 +1271,7 @@ export class MarketplaceCatalogService {
       settingsOf(studio).publicRatings,
     );
     const rating = ratingFromRows(
-      trainer.marketplaceRatings,
+      trainer.trainerMarketplaceRatings,
       independent || publicRatings,
     );
 
@@ -1255,7 +1459,12 @@ export class MarketplaceCatalogService {
       plans: {
         select: {
           subscription: {
-            select: { price: true, billingCadence: true, active: true },
+            select: {
+              name: true,
+              price: true,
+              billingCadence: true,
+              active: true,
+            },
           },
         },
       },
@@ -1338,7 +1547,7 @@ export class MarketplaceCatalogService {
       trainerRatingCount: true,
       ...userPiiSelect,
       trainerCategories: { select: { category: true } },
-      marketplaceRatings: {
+      trainerMarketplaceRatings: {
         where: category
           ? { category: category as MarketplaceCategory }
           : undefined,

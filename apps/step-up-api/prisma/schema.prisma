@@ -191,6 +191,12 @@ enum MarketplaceRatingSource {
   PRIVATE
 }
 
+enum MarketplaceSlugKind {
+  CLASS
+  STUDIO
+  TRAINER
+}
+
 enum BookingStatus {
   AWAITING_PAYMENT
   PENDING
@@ -750,6 +756,18 @@ model MarketplaceRating {
   @@index([studioId, category])
   @@index([trainerId, category])
   @@index([studentId, target])
+}
+
+model SlugRedirect {
+  id        String              @id @default(cuid())
+  kind      MarketplaceSlugKind
+  fromSlug  String
+  toSlug    String
+  createdAt DateTime            @default(now())
+  updatedAt DateTime            @updatedAt
+
+  @@unique([kind, fromSlug])
+  @@index([kind, toSlug])
 }
 
 model StaffInvite {

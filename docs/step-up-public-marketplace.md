@@ -34,10 +34,11 @@ Classa          City ▾
 Dance | Music | Fitness | Art
 Classes | Studios | Trainers
 [ Search: class, studio, trainer ]
-Kids · Adults · Beginner · Intermediate · Advanced
+Kids · Adults · All · Beginner · Intermediate · Advanced
 Today · Tomorrow · Weekend · Evening · Price · Area · Near me
-list | map
 ```
+
+`list | map` ships in **Feature 9**. F3–F8 are list only. Do not show a map control or a fake map.
 
 Same discovery after login. Login only adds **enrolled**, **trial booked**, seats, child, booking state, ability to rate.
 
@@ -333,6 +334,15 @@ After register, user is a **STUDENT** (existing). Then create the booking.
 
 Do not allow booking for an unlinked student id.
 
+**Child × audience** — block mismatches. Discovery stays filter-driven; booking is strict. Enforce on **submit** in the sheet and again server-side. Do not hide Adults classes from a parent who is browsing All or Adults.
+
+| Booked for | Class audience | Result |
+|---|---|---|
+| Child | `KIDS` or `BOTH` | Allow |
+| Child | `ADULTS` | Block: “This class is for adults only” |
+| Adult (self) | `ADULTS` or `BOTH` | Allow |
+| Adult (self) | `KIDS` | Block: “This class is for kids. Book with a child profile.” |
+
 ### 6. Booking, payment, cancel, reschedule
 
 Do **not** add a new status enum. Map the marketplace words onto existing `BookingStatus`:
@@ -365,6 +375,28 @@ Do **not** add a new status enum. Map the marketplace words onto existing `Booki
 - Trial: no refund (free).
 - Paid private / floor: **full refund** if cancelled **≥ 12 hours** before `startsAt`. After that, no automatic refund. Studio-initiated cancel always full refund.
 - Join / membership: existing staff invoice refund only. Marketplace cancel of a trial does not unenroll.
+
+**Trainer cancel / trainer absent** — no separate trainer-cancel status. Trainer has **no** public student-facing cancel. Trainer marks unavailable; staff (or system acting for the trainer) cancels in ops. Marketplace treats that as **studio-initiated**.
+
+| Case | What happens |
+|---|---|
+| Private (paid or ₹0) | Booking → `CANCELLED`. Paid: **full refund** always (same as studio cancel). ₹0 / `PENDING`: cancel only. Notify student (and parent if child): cancelled by the studio/trainer, with time + trainer name. |
+| Class session dropped / trainer absent | This is a **session cancel**, not a per-booking student cancel. Studio/ops sets `Session` to `CANCELLED`. All `PENDING` / `CONFIRMED` trials on that `sessionId` auto-move to `CANCELLED`. Notify each booker (parent if child). Copy: “Your trial for {Class} on {date/time} was cancelled by {Studio}. Book another time from the class page.” No refund. Join / membership is untouched. |
+
+**Studio cancels a session with many confirmed trials** — auto-cancel, then notify. Do not only notify (cards would still show trial booked, reminders would fire, rating eligibility would stay wrong).
+
+1. Bulk-cancel trial bookings for that `sessionId` in `PENDING` or `CONFIRMED`.
+2. Fire cancelled notification per booker (parent if child).
+3. Personal card state (trial booked) clears on the next catalog fetch.
+4. Leave Join / membership alone.
+5. “Pick another session” deep link is optional later.
+
+**Confirmation** after first book is **in-sheet**, then durable My bookings — not email-only.
+
+1. Book sheet success: type, class/studio/trainer, time, branch, status (Waiting for studio / Confirmed / Pay…).
+2. Primary CTA: **View booking** → `/me/bookings`. Secondary: **Back to class** / marketplace.
+3. Email and in-app notification mirror the same facts; they are backup.
+4. Logged-out → register/sign-in → create booking → same success sheet.
 
 **Reschedule** (extends `requestReschedule`)
 
@@ -466,7 +498,7 @@ Reuse `Notification` + existing channels. Fire these; add `NotificationType` val
 - Booking confirmed
 - Trial reminder (24h and 2h before)
 - Class / private / floor reminder (same)
-- Cancelled (student or studio)
+- Cancelled (student or studio; includes trainer-absent / session cancel treated as studio-side)
 - Reschedule requested / accepted
 
 Do not build a new comms stack in F2.
@@ -484,6 +516,12 @@ Do not build a new comms stack in F2.
 
 Every indexed page: meta description (one sentence, inventory-specific), canonical, `og:image` = cover/photo, JSON-LD `LocalBusiness` (studio) or `Event`/`Course` (class) where it fits. No duplicate `/discover` and `/` both indexed — `/discover` 301.
 
+**Slugs**
+
+- Collision on create / backfill: **numeric suffix**, not a studio prefix. `hip-hop-beginners`, then `hip-hop-beginners-2`. Same rule for studio and trainer slugs. Reuse `uniquifySlug`.
+- Rename: new slug is canonical. Persist `SlugRedirect` (old → new, object type). Old `/classes/:slug`, `/studios/:slug`, `/trainers/:slug` **301** to the current slug.
+- Do not 404 old slugs. Do not keep two indexed URLs — `rel=canonical` is the current slug only.
+
 ### 14. Analytics
 
 Event names (do not rename):
@@ -499,6 +537,85 @@ Payload: `{ object, id, category, city, tab, q? }`. Wire in F3+; do not block F2
 - Duplicate studio/trainer: do not auto-merge in this revamp. Admin hides one.
 - Rating abuse: delete that `MarketplaceRating` row and recompute aggregates. Student can be blocked from rating by staff later; not required for F6.
 - Wrong photos: studio edits; admin can suspend if they refuse.
+
+### 16. Derived locks (2026-09-20 audit)
+
+These close gaps that were already implied by existing contracts or existing booking code. They are product law. Do not re-invent them in F4–F5.
+
+**Home chrome**
+
+- First-paint audience is **All** (no `audience` query). Kids and Adults are toggles. All clears the filter.
+- Today / Tomorrow match the object’s **next bookable timestamp** in the visitor’s local calendar day (`nextSessionAt` / `nextTrialAt` / `nextClassAt`). They are not `scheduleJson` pattern matches.
+- Weekend → `days=weekend`. Evening → `time=evening`. Those hit the catalog API (schedule window), not the next-session day filter.
+- Near me requests geolocation, then `sort=nearest`. Denied or missing geo: keep city, do not apply nearest, show “Turn on location to sort by nearest”.
+- `list | map` is **hidden until F9**. §10 Map still stands; F3 does not ship a map control.
+
+**Full × Book**
+
+- Card CTA stays **Book**.
+- `availableSeats === 0` shows **Full**. If `canTrial`, also show **Trial open**. Book stays enabled and opens trial.
+- Join is disabled when Full. Do not rename Book to Trial.
+
+**Detail Book with no upcoming session**
+
+- Class on studio detail with no future `SCHEDULED` session: hide Book (not a dead button). The class can still render.
+- Home class feed never shows that class (35-day window already).
+
+**Studio / trainer card Book (until F5)**
+
+- Class card Book → trial, `batchId`.
+- Studio card Book → trial for that studio (no batch preselect). Floor hire is **not** a home-card action; it is studio detail only (F7).
+- Trainer card Book → trial if a class + studio resolve; otherwise do not open a private sheet until F5.
+
+**Trials (existing `createBooking`)**
+
+- Trials do **not** take class seats. There is **no per-session trial cap** across different students.
+- One live trial per `(sessionId, studentId)`: reject if that student already has `PENDING`, `CONFIRMED`, or a live `AWAITING_PAYMENT` hold on that session.
+- Parent + child are different `studentId`s, so both may hold a trial on the same session.
+- Cancelled trial may be rebooked on the same session. No extra rate limit.
+- `PENDING` trial on a session blocks a second trial from that same `studentId` only.
+
+**Join eligibility (marketplace-facing; pay/enroll detail stays in [step-up-flows.md](./step-up-flows.md))**
+
+- Join requires the trial-bookable rules + `bookingEnrollment` + public plan + `availableSeats > 0`.
+- Already enrolled in that batch: do not open Join. Card shows enrolled (F8); Book opens trial only if a trial is still allowed, else the sheet is manage/membership — **do not start a second enroll**.
+- Active membership on another batch does not block Join on this batch.
+- Trial `PENDING` / `CONFIRMED` on this batch does **not** block Join.
+- Expired membership re-join uses the existing enroll path in `step-up-flows.md`.
+
+**Private floor ownership**
+
+- Student picks the floor among **attached** studios (`TrainerStudio`) that have `bookingPrivate` on and at least one open branch.
+- If the trainer has several attached private-on studios, the sheet lists those studios / branches. There is no “home studio only” default that hides the others.
+- If the only attached studio has `bookingPrivate` off: private is hidden. Floor hire on that studio does not substitute.
+- Freelance private **requires** a `TrainerStudio` row to that floor’s studio. A public trainer cannot use an arbitrary studio that turned private on.
+- Independent with no `TrainerStudio` and no private-on attached studio: trainer may still appear if the independent+private-bookable feed rule holds **and** a floor can be completed; if no attached private floor exists, hide Private (they can still Trial via a class).
+
+**Slot hold**
+
+- Selecting a slot does **not** persist a hold.
+- Hold starts when the paid private/floor row is created as `AWAITING_PAYMENT` (`PAYMENT_HOLD_MS`, 10 min).
+- Live `AWAITING_PAYMENT` blocks the same trainer/branch interval (existing overlap rule). A second user must not see that hour as free.
+- Expired hold → `CANCELLED`; the interval is free immediately.
+
+**Ratings**
+
+- `CLASS` source: first `PRESENT` attendance on an enrolled class session in that category (not membership end, not “N sessions”).
+- Uniqueness is per booked **`studentId`** (child), studio, and category — not per parent login.
+- Stars on cards are for the **active category**, not the studio’s primary only.
+
+**Book sheet types (F5 UI)**
+
+- Default type = **Trial** when valid.
+- Types appear as a **list** of available types (not tabs). Hidden types are omitted, not disabled.
+- Floor hire is listed only on studio detail, never from home chrome or studio-card Book.
+
+**Stars / price**
+
+- Unset `privateSessionPaise` → request flow (`PENDING`), no exact rupee on the card.
+- Quarterly plans show `/ quarter`, never as `/ month`.
+
+**Trainer cancel / session cancel / child audience / confirmation / slugs** — see §5, §6, and §13. Nothing in that set is still open.
 
 ---
 
@@ -551,7 +668,7 @@ F9 Place + SEO       map, time rail polish, city/style URLs
 - Batch `classAudience` from `Batch.category`
 - `TrainerStudio` from `User.studioId` where role is TRAINER (`isHome` true)
 - Trainer categories from `User.styles` / trained batches
-- Slugs from unique slugify(name)
+- Slugs from unique slugify(name) + numeric suffix (`uniquifySlug`)
 
 **In tree**
 
@@ -608,6 +725,8 @@ Logged-in optional viewer state: enrolled, trial booked, remaining seats (do not
 
 ### Feature 3 — Marketplace home
 
+**Status:** Done. `/` is the class feed (Dance · Chennai first paint). `/classes` `/studios` `/trainers` share the chrome. `/discover` 301s to `/studios` with the same filters. Brochure Browse-by-style/area is gone. Class **Book** opens the existing trial sheet.
+
 **Goal:** `/` is the inventory.
 
 - Replace brochure sections. **No** Browse by style / area / category / How it works as structure
@@ -621,14 +740,26 @@ Logged-in optional viewer state: enrolled, trial booked, remaining seats (do not
 
 **Reuse:** `PublicShell`, city switcher, `StudioCard` / `BatchCard` restyled.
 
+**In tree**
+
+- [x] Marketplace chrome + three feeds: `src/modules/marketplace/home.tsx`
+- [x] Image-first class / studio / trainer cards with **Book**
+- [x] `/`, `/classes`, `/studios`, `/trainers` share search + category memory
+- [x] `/discover` redirects to `/studios` with mapped filters
+- [x] Students are not bounced off `/`; staff keep Open app
+- [x] Brochure Browse by style / area / How it works removed from `/`
+
 **Done when:** a logged-out visitor sees class image cards and can start a trial without visiting `/discover`. Music / Fitness / Art tabs exist even if empty.
 
 ### Feature 4 — Detail pages
 
-- `/classes/:slug` — schedule, next session, seats, price, studio, trainer, Book
-- `/studios/:slug` — photo tour, map, hours, amenities, categories, audience, stars, classes, trainers, booking options, floor hire if on. Marketplace listing, not `/app`
-- `/trainers/:slug` — photo, categories, studios, classes, next slot, stars, Book (trial or private)
-- Redirect `/studio/:id` and `/trainers/:id` → new slugs
+- [x] `/classes/:slug` — schedule, next session, seats, price, studio, trainer, Book
+- [x] `/studios/:slug` — photo tour, map, hours, amenities, categories, audience, stars, classes, trainers, booking options, floor hire if on. Marketplace listing, not `/app`
+- [x] `/trainers/:slug` — photo, categories, studios, classes, next slot, stars, Book (trial or private)
+- [x] Redirect `/studio/:id` and `/trainers/:id` → new slugs
+- [x] `SlugRedirect` + **301** old public slugs; collision = numeric suffix (`uniquifySlug`)
+
+**Status:** Done. Old ids and renamed slugs resolve through `SlugRedirect`; the public page replaces to the canonical slug (`rel=canonical` is the live slug only). Class → studio → trainer links stay on `/classes`, `/studios`, and `/trainers`.
 
 **Done when:** class → studio → trainer → back to class never leaves the marketplace.
 
@@ -640,6 +771,9 @@ One sheet, four types, settings-gated.
 - Join: existing enroll / checkout
 - Private: trainer + `branchId` + time; **no membership** if `bookingPrivate`
 - Floor hire: `FLOOR_HIRE` + `branchId` + time; no trainer
+- Child × audience gate on submit + server
+- Success state in-sheet, then **View booking** → `/me/bookings`
+- Session cancel bulk-cancels trials; trainer cancel = studio-initiated
 
 **Done when:** class, studio, and trainer Book all open the same sheet; private and floor hire work when toggles are on and are hidden when off.
 
@@ -692,11 +826,9 @@ One feature per PR. Do not rebuild all of `/` in one diff.
 
 ---
 
-## Current public spine (until Feature 3)
+## Current public spine
 
-`apps/step-up/src/routes/index.tsx` → hero + `StudentBrowseStyles` + `StudentBrowseAreas` + `StudentStudioGrid` + tagline + how it works + FAQ.
-
-Remove browse/how-it-works as **structure** in Feature 3. FAQ can live in footer or `/help`.
+`/` · `/classes` · `/studios` · `/trainers` share `MarketplaceHome`. `/discover` redirects to `/studios`. Brochure browse/how-it-works is gone. FAQ can live in footer or `/help`.
 
 ---
 
@@ -715,3 +847,5 @@ Remove browse/how-it-works as **structure** in Feature 3. FAQ can live in footer
 | 2026-09-20 | Feature split revised after codebase audit (this file) |
 | 2026-09-20 | Product scope complete; F1–F9 are execution slices only |
 | 2026-09-20 | Locked search, sort, seats, pricing, auth/children, booking lifecycle, branches, schedule conflicts, empty/data-quality, map, notifications, SEO, analytics, moderation |
+| 2026-09-20 | Audit locks: All default; list-only until F9; Full + Trial open; trial duplicate per student+session; private floor = attached `TrainerStudio` + `bookingPrivate`; hold = `AWAITING_PAYMENT`; `CLASS` rating = first PRESENT; uniqueness per `studentId` |
+| 2026-09-20 | Trainer cancel = studio-initiated (full refund if paid). Session cancel auto-cancels trials then notifies. Child × audience blocked on submit. First-book success is in-sheet then `/me/bookings`. Slug collision = numeric suffix; rename 301 via `SlugRedirect`. |

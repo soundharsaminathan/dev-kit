@@ -557,6 +557,30 @@
         color: #1c1a17;
       }
 
+      #boot-public .market-tabs {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        max-width: 42.5rem;
+      }
+
+      #boot-public .market-tab {
+        display: inline-flex;
+        align-items: center;
+        min-height: 2.5rem;
+        padding: 0 12px;
+        border-radius: 999px;
+        color: inherit;
+        font-size: 0.9375rem;
+        font-weight: 700;
+        text-decoration: none;
+      }
+
+      #boot-public .market-tab[data-active] {
+        background: #1c1a17;
+        color: #fff;
+      }
+
       #boot-public .hero-search {
         display: grid;
         gap: 12px;
@@ -784,23 +808,71 @@
         }
 
         // Public routes: paint real LCP text in HTML before the module graph.
-        if (path === "/" || path === "") {
+        if (
+          path === "/" ||
+          path === "" ||
+          path === "/classes" ||
+          path === "/classes/" ||
+          path === "/studios" ||
+          path === "/studios/" ||
+          path === "/trainers" ||
+          path === "/trainers/"
+        ) {
+          var tab =
+            path.indexOf("/studios") === 0
+              ? "studios"
+              : path.indexOf("/trainers") === 0
+                ? "trainers"
+                : "classes";
+          var heading =
+            tab === "studios"
+              ? "Dance studios in Chennai"
+              : tab === "trainers"
+                ? "Dance trainers in Chennai"
+                : "Dance classes in Chennai";
+          var action =
+            tab === "studios"
+              ? "/studios"
+              : tab === "trainers"
+                ? "/trainers"
+                : "/classes";
           mountPublic(
-            '<h1 class="hero-brand">Dance classes in Chennai</h1>' +
-              '<p class="hero-support">Search by style or area, then request a trial.</p>' +
-              '<form class="hero-search" action="/discover" method="get">' +
+            '<nav class="market-tabs" aria-label="Category">' +
+              '<a class="market-tab" data-active href="' +
+              action +
+              '?category=DANCE&amp;city=chennai">Dance</a>' +
+              '<a class="market-tab" href="' +
+              action +
+              '?category=MUSIC&amp;city=chennai">Music</a>' +
+              '<a class="market-tab" href="' +
+              action +
+              '?category=FITNESS&amp;city=chennai">Fitness</a>' +
+              '<a class="market-tab" href="' +
+              action +
+              '?category=ART&amp;city=chennai">Art</a>' +
+              "</nav>" +
+              '<nav class="market-tabs" aria-label="Browse">' +
+              '<a class="market-tab"' +
+              (tab === "classes" ? " data-active" : "") +
+              ' href="/?category=DANCE&amp;city=chennai">Classes</a>' +
+              '<a class="market-tab"' +
+              (tab === "studios" ? " data-active" : "") +
+              ' href="/studios?category=DANCE&amp;city=chennai">Studios</a>' +
+              '<a class="market-tab"' +
+              (tab === "trainers" ? " data-active" : "") +
+              ' href="/trainers?category=DANCE&amp;city=chennai">Trainers</a>' +
+              "</nav>" +
+              '<h1 class="hero-brand">' +
+              heading +
+              "</h1>" +
+              '<form class="hero-search" action="' +
+              action +
+              '" method="get">' +
               '<input type="hidden" name="city" value="chennai" />' +
-              '<input type="hidden" name="category" value="dance" />' +
-              '<label class="hero-field"><span>Style</span><input name="q" type="search" placeholder="Style or studio" /></label>' +
-              '<label class="hero-field"><span>Area</span><select name="locality"><option value="">Area</option><option value="adyar">Adyar</option><option value="velachery">Velachery</option><option value="anna-nagar">Anna Nagar</option><option value="t-nagar">T Nagar</option><option value="omr">OMR</option><option value="mylapore">Mylapore</option></select></label>' +
-              '<button class="hero-submit" type="submit">Search studios</button>' +
-              "</form>" +
-              '<nav class="hero-chips" aria-label="Popular styles">' +
-              '<a class="hero-chip" href="/discover?city=chennai&amp;category=dance&amp;style=hip-hop">Hip hop</a>' +
-              '<a class="hero-chip" href="/discover?city=chennai&amp;category=dance&amp;style=bharatanatyam">Bharatanatyam</a>' +
-              '<a class="hero-chip" href="/discover?city=chennai&amp;category=dance&amp;style=western">Western</a>' +
-              '<a class="hero-chip" href="/discover?city=chennai&amp;category=dance&amp;audience=KIDS">Kids</a>' +
-              "</nav>",
+              '<input type="hidden" name="category" value="DANCE" />' +
+              '<label class="hero-field"><span>Search</span><input name="q" type="search" placeholder="Search class, studio, or trainer" /></label>' +
+              '<button class="hero-submit" type="submit">Search</button>' +
+              "</form>",
             "shell-main-landing",
           );
           return;
@@ -818,13 +890,7 @@
         if (path === "/discover" || path === "/discover/") {
           mountPublic(
             '<h1 class="hero-brand">Dance studios in Chennai</h1>' +
-              '<p class="hero-support">Browse Chennai dance studios. Open a studio to request a trial.</p>' +
-              '<form class="hero-search" action="/discover" method="get">' +
-              '<input type="hidden" name="city" value="chennai" />' +
-              '<input type="hidden" name="category" value="dance" />' +
-              '<label class="hero-field"><span>Style</span><input name="q" type="search" placeholder="Style or studio" /></label>' +
-              '<button class="hero-submit" type="submit">Search studios</button>' +
-              "</form>",
+              '<p class="hero-support">Opening the studio feed.</p>',
             "shell-main-landing",
           );
           return;
