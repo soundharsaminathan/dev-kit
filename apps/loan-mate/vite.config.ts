@@ -37,13 +37,17 @@ export default defineConfig(({ mode }) => {
         ...CORE_OPTIMIZE_DEPS,
         "@tanstack/react-router",
         "@tanstack/react-query",
-        "lucide-react",
+        "@dev-ui/icons",
       ],
       entries: [path.resolve(appRoot, "index.html")],
     },
     resolve: {
       alias: {
         "@": path.resolve(appRoot, "src"),
+        "@dev-ui/icons-packs/lucide": path.resolve(
+          appRoot,
+          "../../packages/icons-packs/src/lucide/index.tsx",
+        ),
       },
       dedupe: ["react", "react-dom"],
     },

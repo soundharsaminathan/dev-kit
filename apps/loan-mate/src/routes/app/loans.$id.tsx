@@ -1,9 +1,12 @@
+import { Button } from "@dev-ui/components/button";
+import { Icon } from "@dev-ui/icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { PAYMENT_MODES, type PaymentMode } from "@/lib/constants";
 import { DocumentsPanel } from "@/lib/documents-panel";
+import { FormInput, FormSelect } from "@/modules/ui/form-fields";
 
 type Installment = {
   id: string;
@@ -54,6 +57,7 @@ export const Route = createFileRoute("/app/loans/$id")({
 
 function LoanDetailPage() {
   const { id } = Route.useParams();
+  const navigate = useNavigate();
   const { api } = useAuth();
   const queryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);
@@ -302,71 +306,76 @@ function LoanDetailPage() {
         </div>
         <div className="lm-actions">
           {l.status === "DRAFT" ? (
-            <button
+            <Button
               type="button"
-              className="lm-btn lm-btn-secondary"
-              disabled={busy}
+              variant="outline"
+              isDisabled={busy}
               onClick={() => submit.mutate()}
             >
               Submit
-            </button>
+            </Button>
           ) : null}
           {l.status === "SUBMITTED" ? (
-            <button
+            <Button
               type="button"
-              className="lm-btn lm-btn-secondary"
-              disabled={busy}
+              variant="outline"
+              isDisabled={busy}
               onClick={() => verify.mutate()}
             >
               Verify
-            </button>
+            </Button>
           ) : null}
           {l.status === "VERIFIED" ? (
             <>
-              <button
+              <Button
                 type="button"
-                className="lm-btn lm-btn-secondary"
-                disabled={busy}
+                variant="outline"
+                isDisabled={busy}
                 onClick={() => requestApproval.mutate()}
               >
                 Request approval
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
-                className="lm-btn"
-                disabled={busy}
+                variant="primary"
+                isDisabled={busy}
                 onClick={() => approve.mutate()}
               >
                 Approve
-              </button>
+              </Button>
             </>
           ) : null}
           {["SUBMITTED", "VERIFIED"].includes(l.status) ? (
             <>
-              <input
-                placeholder="Reject reason"
+              <FormInput
+                label="Reject reason"
                 value={rejectReason}
-                onChange={(e) => setRejectReason(e.target.value)}
-                style={{ minWidth: "8rem", padding: "0.4rem 0.5rem" }}
+                onChange={setRejectReason}
               />
-              <button
+              <Button
                 type="button"
-                className="lm-btn lm-btn-danger"
-                disabled={busy || !rejectReason.trim()}
+                variant="danger"
+                isDisabled={busy || !rejectReason.trim()}
                 onClick={() => reject.mutate()}
               >
                 Reject
-              </button>
+              </Button>
             </>
           ) : null}
           {postDisburse ? (
-            <Link
-              to="/app/collections"
-              search={{ loanId: l.id }}
-              className="lm-btn lm-btn-secondary"
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() =>
+                void navigate({
+                  to: "/app/collections",
+                  search: { loanId: l.id },
+                })
+              }
             >
+              <Icon name="credit-card" />
               Record payment
-            </Link>
+            </Button>
           ) : null}
         </div>
       </div>
@@ -415,57 +424,43 @@ function LoanDetailPage() {
               disburse.mutate();
             }}
           >
-            <div className="lm-form-row">
-              <label htmlFor="disb-date">Disbursement date</label>
-              <input
-                id="disb-date"
-                type="date"
-                value={disburseForm.disbursementDate}
-                onChange={(e) =>
-                  setDisburseForm((f) => ({
-                    ...f,
-                    disbursementDate: e.target.value,
-                  }))
-                }
-                required
-              />
-            </div>
-            <div className="lm-form-row">
-              <label htmlFor="disb-mode">Mode</label>
-              <select
-                id="disb-mode"
-                value={disburseForm.mode}
-                onChange={(e) =>
-                  setDisburseForm((f) => ({
-                    ...f,
-                    mode: e.target.value as PaymentMode,
-                  }))
-                }
-              >
-                {PAYMENT_MODES.map((m) => (
-                  <option key={m} value={m}>
-                    {m.replaceAll("_", " ")}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="lm-form-row">
-              <label htmlFor="disb-ref">Reference</label>
-              <input
-                id="disb-ref"
-                value={disburseForm.reference}
-                onChange={(e) =>
-                  setDisburseForm((f) => ({ ...f, reference: e.target.value }))
-                }
-              />
-            </div>
-            <button
+            <FormInput
+              label="Disbursement date"
+              type="date"
+              value={disburseForm.disbursementDate}
+              onChange={(disbursementDate) =>
+                setDisburseForm((f) => ({ ...f, disbursementDate }))
+              }
+              required
+            />
+            <FormSelect
+              label="Mode"
+              value={disburseForm.mode}
+              onChange={(mode) =>
+                setDisburseForm((f) => ({
+                  ...f,
+                  mode: mode as PaymentMode,
+                }))
+              }
+              options={PAYMENT_MODES.map((m) => ({
+                value: m,
+                label: m.replaceAll("_", " "),
+              }))}
+            />
+            <FormInput
+              label="Reference"
+              value={disburseForm.reference}
+              onChange={(reference) =>
+                setDisburseForm((f) => ({ ...f, reference }))
+              }
+            />
+            <Button
               type="submit"
-              className="lm-btn"
-              disabled={disburse.isPending}
+              variant="primary"
+              isDisabled={disburse.isPending}
             >
               Disburse
-            </button>
+            </Button>
           </form>
         </div>
       ) : null}
@@ -481,39 +476,28 @@ function LoanDetailPage() {
                 requestRateChange.mutate();
               }}
             >
-              <div className="lm-form-row">
-                <label htmlFor="new-rate">New rate (% p.a.)</label>
-                <input
-                  id="new-rate"
-                  type="number"
-                  step="0.01"
-                  value={rateForm.annualRatePercent}
-                  onChange={(e) =>
-                    setRateForm((f) => ({
-                      ...f,
-                      annualRatePercent: e.target.value,
-                    }))
-                  }
-                  required
-                />
-              </div>
-              <div className="lm-form-row">
-                <label htmlFor="rate-reason">Reason</label>
-                <input
-                  id="rate-reason"
-                  value={rateForm.reason}
-                  onChange={(e) =>
-                    setRateForm((f) => ({ ...f, reason: e.target.value }))
-                  }
-                />
-              </div>
-              <button
+              <FormInput
+                label="New rate (% p.a.)"
+                type="number"
+                step="0.01"
+                value={rateForm.annualRatePercent}
+                onChange={(annualRatePercent) =>
+                  setRateForm((f) => ({ ...f, annualRatePercent }))
+                }
+                required
+              />
+              <FormInput
+                label="Reason"
+                value={rateForm.reason}
+                onChange={(reason) => setRateForm((f) => ({ ...f, reason }))}
+              />
+              <Button
                 type="submit"
-                className="lm-btn lm-btn-secondary"
-                disabled={requestRateChange.isPending}
+                variant="outline"
+                isDisabled={requestRateChange.isPending}
               >
                 Request rate change
-              </button>
+              </Button>
             </form>
           </div>
 
@@ -526,39 +510,30 @@ function LoanDetailPage() {
                 requestPenaltyOverride.mutate();
               }}
             >
-              <div className="lm-form-row">
-                <label htmlFor="penalty-rate">Daily penalty (%)</label>
-                <input
-                  id="penalty-rate"
-                  type="number"
-                  step="0.001"
-                  value={penaltyForm.penaltyDailyPercent}
-                  onChange={(e) =>
-                    setPenaltyForm((f) => ({
-                      ...f,
-                      penaltyDailyPercent: e.target.value,
-                    }))
-                  }
-                  required
-                />
-              </div>
-              <div className="lm-form-row">
-                <label htmlFor="penalty-reason">Reason</label>
-                <input
-                  id="penalty-reason"
-                  value={penaltyForm.reason}
-                  onChange={(e) =>
-                    setPenaltyForm((f) => ({ ...f, reason: e.target.value }))
-                  }
-                />
-              </div>
-              <button
+              <FormInput
+                label="Daily penalty (%)"
+                type="number"
+                step="0.001"
+                value={penaltyForm.penaltyDailyPercent}
+                onChange={(penaltyDailyPercent) =>
+                  setPenaltyForm((f) => ({ ...f, penaltyDailyPercent }))
+                }
+                required
+              />
+              <FormInput
+                label="Reason"
+                value={penaltyForm.reason}
+                onChange={(reason) =>
+                  setPenaltyForm((f) => ({ ...f, reason }))
+                }
+              />
+              <Button
                 type="submit"
-                className="lm-btn lm-btn-secondary"
-                disabled={requestPenaltyOverride.isPending}
+                variant="outline"
+                isDisabled={requestPenaltyOverride.isPending}
               >
                 Request penalty override
-              </button>
+              </Button>
             </form>
           </div>
 
@@ -572,47 +547,34 @@ function LoanDetailPage() {
               }}
             >
               <p className="lm-muted">Penalty waiver</p>
-              <div className="lm-form-row">
-                <label htmlFor="pw-inst">Installment</label>
-                <select
-                  id="pw-inst"
-                  value={waiverForm.installmentId}
-                  onChange={(e) =>
-                    setWaiverForm((f) => ({
-                      ...f,
-                      installmentId: e.target.value,
-                    }))
-                  }
-                  required
-                >
-                  <option value="">Select EMI</option>
-                  {installments.map((row) => (
-                    <option key={row.id} value={row.id}>
-                      #{row.number} · {String(row.dueDate).slice(0, 10)}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="lm-form-row">
-                <label htmlFor="pw-amt">Amount</label>
-                <input
-                  id="pw-amt"
-                  type="number"
-                  step="0.01"
-                  value={waiverForm.amount}
-                  onChange={(e) =>
-                    setWaiverForm((f) => ({ ...f, amount: e.target.value }))
-                  }
-                  required
-                />
-              </div>
-              <button
+              <FormSelect
+                label="Installment"
+                placeholder="Select EMI"
+                value={waiverForm.installmentId}
+                onChange={(installmentId) =>
+                  setWaiverForm((f) => ({ ...f, installmentId }))
+                }
+                required
+                options={installments.map((row) => ({
+                  value: row.id,
+                  label: `#${row.number} · ${String(row.dueDate).slice(0, 10)}`,
+                }))}
+              />
+              <FormInput
+                label="Amount"
+                type="number"
+                step="0.01"
+                value={waiverForm.amount}
+                onChange={(amount) => setWaiverForm((f) => ({ ...f, amount }))}
+                required
+              />
+              <Button
                 type="submit"
-                className="lm-btn lm-btn-secondary"
-                disabled={requestPenaltyWaiver.isPending}
+                variant="outline"
+                isDisabled={requestPenaltyWaiver.isPending}
               >
                 Request penalty waiver
-              </button>
+              </Button>
             </form>
             <form
               className="lm-form"
@@ -623,64 +585,50 @@ function LoanDetailPage() {
               }}
             >
               <p className="lm-muted">Interest waiver</p>
-              <div className="lm-form-row">
-                <label htmlFor="iw-inst">Installment</label>
-                <select
-                  id="iw-inst"
-                  value={interestWaiverForm.installmentId}
-                  onChange={(e) =>
-                    setInterestWaiverForm((f) => ({
-                      ...f,
-                      installmentId: e.target.value,
-                    }))
-                  }
-                  required
-                >
-                  <option value="">Select EMI</option>
-                  {installments.map((row) => (
-                    <option key={row.id} value={row.id}>
-                      #{row.number}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="lm-form-row">
-                <label htmlFor="iw-amt">Amount</label>
-                <input
-                  id="iw-amt"
-                  type="number"
-                  step="0.01"
-                  value={interestWaiverForm.amount}
-                  onChange={(e) =>
-                    setInterestWaiverForm((f) => ({
-                      ...f,
-                      amount: e.target.value,
-                    }))
-                  }
-                  required
-                />
-              </div>
-              <button
+              <FormSelect
+                label="Installment"
+                placeholder="Select EMI"
+                value={interestWaiverForm.installmentId}
+                onChange={(installmentId) =>
+                  setInterestWaiverForm((f) => ({ ...f, installmentId }))
+                }
+                required
+                options={installments.map((row) => ({
+                  value: row.id,
+                  label: `#${row.number}`,
+                }))}
+              />
+              <FormInput
+                label="Amount"
+                type="number"
+                step="0.01"
+                value={interestWaiverForm.amount}
+                onChange={(amount) =>
+                  setInterestWaiverForm((f) => ({ ...f, amount }))
+                }
+                required
+              />
+              <Button
                 type="submit"
-                className="lm-btn lm-btn-secondary"
-                disabled={requestInterestWaiver.isPending}
+                variant="outline"
+                isDisabled={requestInterestWaiver.isPending}
               >
                 Request interest waiver
-              </button>
+              </Button>
             </form>
           </div>
 
           <div className="lm-card">
             <h2>Closure requests</h2>
             <div className="lm-actions" style={{ marginBottom: "1rem" }}>
-              <button
+              <Button
                 type="button"
-                className="lm-btn lm-btn-secondary"
-                disabled={loadForeclosureQuote.isPending}
+                variant="outline"
+                isDisabled={loadForeclosureQuote.isPending}
                 onClick={() => loadForeclosureQuote.mutate()}
               >
                 Foreclosure quote
-              </button>
+              </Button>
             </div>
             {foreclosureQuote ? (
               <pre
@@ -697,21 +645,18 @@ function LoanDetailPage() {
                 requestForeclosure.mutate();
               }}
             >
-              <div className="lm-form-row">
-                <label htmlFor="fc-reason">Foreclosure reason</label>
-                <input
-                  id="fc-reason"
-                  value={foreclosureReason}
-                  onChange={(e) => setForeclosureReason(e.target.value)}
-                />
-              </div>
-              <button
+              <FormInput
+                label="Foreclosure reason"
+                value={foreclosureReason}
+                onChange={setForeclosureReason}
+              />
+              <Button
                 type="submit"
-                className="lm-btn lm-btn-secondary"
-                disabled={requestForeclosure.isPending}
+                variant="outline"
+                isDisabled={requestForeclosure.isPending}
               >
                 Request foreclosure
-              </button>
+              </Button>
             </form>
             <form
               className="lm-form"
@@ -721,39 +666,30 @@ function LoanDetailPage() {
                 requestSettlement.mutate();
               }}
             >
-              <div className="lm-form-row">
-                <label htmlFor="settle-amt">Settlement amount</label>
-                <input
-                  id="settle-amt"
-                  type="number"
-                  step="0.01"
-                  value={settlementForm.settlementAmount}
-                  onChange={(e) =>
-                    setSettlementForm((f) => ({
-                      ...f,
-                      settlementAmount: e.target.value,
-                    }))
-                  }
-                  required
-                />
-              </div>
-              <div className="lm-form-row">
-                <label htmlFor="settle-reason">Reason</label>
-                <input
-                  id="settle-reason"
-                  value={settlementForm.reason}
-                  onChange={(e) =>
-                    setSettlementForm((f) => ({ ...f, reason: e.target.value }))
-                  }
-                />
-              </div>
-              <button
+              <FormInput
+                label="Settlement amount"
+                type="number"
+                step="0.01"
+                value={settlementForm.settlementAmount}
+                onChange={(settlementAmount) =>
+                  setSettlementForm((f) => ({ ...f, settlementAmount }))
+                }
+                required
+              />
+              <FormInput
+                label="Reason"
+                value={settlementForm.reason}
+                onChange={(reason) =>
+                  setSettlementForm((f) => ({ ...f, reason }))
+                }
+              />
+              <Button
                 type="submit"
-                className="lm-btn lm-btn-secondary"
-                disabled={requestSettlement.isPending}
+                variant="outline"
+                isDisabled={requestSettlement.isPending}
               >
                 Request settlement
-              </button>
+              </Button>
             </form>
             <form
               className="lm-form"
@@ -763,21 +699,18 @@ function LoanDetailPage() {
                 requestWriteOff.mutate();
               }}
             >
-              <div className="lm-form-row">
-                <label htmlFor="wo-reason">Write-off reason</label>
-                <input
-                  id="wo-reason"
-                  value={writeOffReason}
-                  onChange={(e) => setWriteOffReason(e.target.value)}
-                />
-              </div>
-              <button
+              <FormInput
+                label="Write-off reason"
+                value={writeOffReason}
+                onChange={setWriteOffReason}
+              />
+              <Button
                 type="submit"
-                className="lm-btn lm-btn-danger"
-                disabled={requestWriteOff.isPending}
+                variant="danger"
+                isDisabled={requestWriteOff.isPending}
               >
                 Request write-off
-              </button>
+              </Button>
             </form>
             <form
               className="lm-form"
@@ -787,45 +720,33 @@ function LoanDetailPage() {
                 requestRestructure.mutate();
               }}
             >
-              <div className="lm-form-row">
-                <label htmlFor="rs-tenure">New tenure</label>
-                <input
-                  id="rs-tenure"
-                  type="number"
-                  min={1}
-                  value={restructureForm.newTenure}
-                  onChange={(e) =>
-                    setRestructureForm((f) => ({
-                      ...f,
-                      newTenure: e.target.value,
-                    }))
-                  }
-                  required
-                />
-              </div>
-              <div className="lm-form-row">
-                <label htmlFor="rs-rate">New rate (%)</label>
-                <input
-                  id="rs-rate"
-                  type="number"
-                  step="0.01"
-                  value={restructureForm.newRate}
-                  onChange={(e) =>
-                    setRestructureForm((f) => ({
-                      ...f,
-                      newRate: e.target.value,
-                    }))
-                  }
-                  required
-                />
-              </div>
-              <button
+              <FormInput
+                label="New tenure"
+                type="number"
+                min={1}
+                value={restructureForm.newTenure}
+                onChange={(newTenure) =>
+                  setRestructureForm((f) => ({ ...f, newTenure }))
+                }
+                required
+              />
+              <FormInput
+                label="New rate (%)"
+                type="number"
+                step="0.01"
+                value={restructureForm.newRate}
+                onChange={(newRate) =>
+                  setRestructureForm((f) => ({ ...f, newRate }))
+                }
+                required
+              />
+              <Button
                 type="submit"
-                className="lm-btn lm-btn-secondary"
-                disabled={requestRestructure.isPending}
+                variant="outline"
+                isDisabled={requestRestructure.isPending}
               >
                 Request restructure
-              </button>
+              </Button>
             </form>
           </div>
         </>
@@ -855,14 +776,15 @@ function LoanDetailPage() {
                     {p.reversed ? (
                       "Reversed"
                     ) : (
-                      <button
+                      <Button
                         type="button"
-                        className="lm-btn lm-btn-secondary"
-                        disabled={requestReversal.isPending}
+                        variant="outline"
+                        size="sm"
+                        isDisabled={requestReversal.isPending}
                         onClick={() => requestReversal.mutate(p.id)}
                       >
                         Request reversal
-                      </button>
+                      </Button>
                     )}
                   </td>
                 </tr>

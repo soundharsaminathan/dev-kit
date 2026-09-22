@@ -1,7 +1,9 @@
+import { Button } from "@dev-ui/components/button";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useAuth } from "@/lib/auth";
+import { CheckControl, TextControl } from "@/modules/ui/controls";
 
 type Branch = {
   id: string;
@@ -84,35 +86,25 @@ function BranchesPage() {
             createBranch.mutate();
           }}
         >
-          <div className="lm-form-row">
-            <label htmlFor="b-name">Name</label>
-            <input
-              id="b-name"
-              value={createForm.name}
-              onChange={(e) =>
-                setCreateForm((f) => ({ ...f, name: e.target.value }))
-              }
-              required
-            />
-          </div>
-          <div className="lm-form-row">
-            <label htmlFor="b-code">Code</label>
-            <input
-              id="b-code"
-              value={createForm.code}
-              onChange={(e) =>
-                setCreateForm((f) => ({ ...f, code: e.target.value }))
-              }
-              required
-            />
-          </div>
-          <button
+          <TextControl
+            label="Name"
+            value={createForm.name}
+            onChange={(name) => setCreateForm((f) => ({ ...f, name }))}
+            isRequired
+          />
+          <TextControl
+            label="Code"
+            value={createForm.code}
+            onChange={(code) => setCreateForm((f) => ({ ...f, code }))}
+            isRequired
+          />
+          <Button
             type="submit"
-            className="lm-btn"
-            disabled={createBranch.isPending}
+            variant="primary"
+            isDisabled={createBranch.isPending}
           >
             Create branch
-          </button>
+          </Button>
         </form>
       </div>
 
@@ -135,10 +127,11 @@ function BranchesPage() {
                   <td>{b.code}</td>
                   <td>
                     {editId === b.id ? (
-                      <input
+                      <TextControl
+                        label="Branch name"
                         value={editForm.name}
-                        onChange={(e) =>
-                          setEditForm((f) => ({ ...f, name: e.target.value }))
+                        onChange={(name) =>
+                          setEditForm((f) => ({ ...f, name }))
                         }
                       />
                     ) : (
@@ -147,19 +140,13 @@ function BranchesPage() {
                   </td>
                   <td>
                     {editId === b.id ? (
-                      <label>
-                        <input
-                          type="checkbox"
-                          checked={editForm.active}
-                          onChange={(e) =>
-                            setEditForm((f) => ({
-                              ...f,
-                              active: e.target.checked,
-                            }))
-                          }
-                        />{" "}
-                        Active
-                      </label>
+                      <CheckControl
+                        label="Active"
+                        isSelected={editForm.active}
+                        onChange={(active) =>
+                          setEditForm((f) => ({ ...f, active }))
+                        }
+                      />
                     ) : b.active ? (
                       "Yes"
                     ) : (
@@ -169,33 +156,33 @@ function BranchesPage() {
                   <td>
                     {editId === b.id ? (
                       <div className="lm-actions">
-                        <button
+                        <Button
                           type="button"
-                          className="lm-btn"
-                          disabled={updateBranch.isPending}
+                          variant="primary"
+                          isDisabled={updateBranch.isPending}
                           onClick={() => updateBranch.mutate()}
                         >
                           Save
-                        </button>
-                        <button
+                        </Button>
+                        <Button
                           type="button"
-                          className="lm-btn lm-btn-secondary"
+                          variant="outline"
                           onClick={() => setEditId(null)}
                         >
                           Cancel
-                        </button>
+                        </Button>
                       </div>
                     ) : (
-                      <button
+                      <Button
                         type="button"
-                        className="lm-btn lm-btn-secondary"
+                        variant="outline"
                         onClick={() => {
                           setEditId(b.id);
                           setEditForm({ name: b.name, active: b.active });
                         }}
                       >
                         Edit
-                      </button>
+                      </Button>
                     )}
                   </td>
                 </tr>

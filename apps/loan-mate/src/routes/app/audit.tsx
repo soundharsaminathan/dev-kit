@@ -1,8 +1,11 @@
+import { Button } from "@dev-ui/components/button";
+import { Icon } from "@dev-ui/icons";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { downloadAuthed } from "@/lib/download";
+import { FormInput } from "@/modules/ui/form-fields";
 
 type AuditRow = {
   id: string;
@@ -42,10 +45,10 @@ function AuditPage() {
           <h1>Audit log</h1>
           <p>Append-only company activity.</p>
         </div>
-        <button
+        <Button
           type="button"
-          className="lm-btn lm-btn-secondary"
-          disabled={!token}
+          variant="outline"
+          isDisabled={!token}
           onClick={() => {
             if (!token) return;
             setDownloadError(null);
@@ -62,8 +65,9 @@ function AuditPage() {
             });
           }}
         >
+          <Icon name="download" />
           Download CSV
-        </button>
+        </Button>
       </div>
 
       <div className="lm-card">
@@ -74,31 +78,21 @@ function AuditPage() {
             void logs.refetch();
           }}
         >
-          <div className="lm-form-row">
-            <label htmlFor="action">Action</label>
-            <input
-              id="action"
-              placeholder="e.g. loan.disburse"
-              value={filters.action}
-              onChange={(e) =>
-                setFilters((f) => ({ ...f, action: e.target.value }))
-              }
-            />
-          </div>
-          <div className="lm-form-row">
-            <label htmlFor="entityType">Entity type</label>
-            <input
-              id="entityType"
-              placeholder="e.g. Loan"
-              value={filters.entityType}
-              onChange={(e) =>
-                setFilters((f) => ({ ...f, entityType: e.target.value }))
-              }
-            />
-          </div>
-          <button type="submit" className="lm-btn lm-btn-secondary">
+          <FormInput
+            label="Action"
+            placeholder="e.g. loan.disburse"
+            value={filters.action}
+            onChange={(action) => setFilters((f) => ({ ...f, action }))}
+          />
+          <FormInput
+            label="Entity type"
+            placeholder="e.g. Loan"
+            value={filters.entityType}
+            onChange={(entityType) => setFilters((f) => ({ ...f, entityType }))}
+          />
+          <Button type="submit" variant="outline">
             Apply filters
-          </button>
+          </Button>
         </form>
         {downloadError ? <p className="lm-error">{downloadError}</p> : null}
       </div>

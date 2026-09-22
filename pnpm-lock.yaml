@@ -91,6 +91,12 @@ importers:
       '@dev-ui/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@dev-ui/icons':
+        specifier: workspace:*
+        version: link:../../packages/icons
+      '@dev-ui/icons-packs':
+        specifier: workspace:*
+        version: link:../../packages/icons-packs
       '@dev-ui/tokens':
         specifier: workspace:*
         version: link:../../packages/tokens

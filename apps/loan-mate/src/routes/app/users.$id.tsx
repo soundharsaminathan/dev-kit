@@ -1,8 +1,10 @@
+import { Button } from "@dev-ui/components/button";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import type { UserRole } from "@/lib/constants";
+import { FormInput, FormSelect } from "@/modules/ui/form-fields";
 
 type UserRow = {
   id: string;
@@ -183,22 +185,8 @@ function EmployeeDetailPage() {
         <div className="lm-page-header" style={{ marginBottom: "1rem" }}>
           <h2 style={{ margin: 0 }}>Performance</h2>
           <div className="lm-actions">
-            <label className="lm-muted">
-              From{" "}
-              <input
-                type="date"
-                value={from}
-                onChange={(ev) => setFrom(ev.target.value)}
-              />
-            </label>
-            <label className="lm-muted">
-              To{" "}
-              <input
-                type="date"
-                value={to}
-                onChange={(ev) => setTo(ev.target.value)}
-              />
-            </label>
+            <FormInput label="From" type="date" value={from} onChange={setFrom} />
+            <FormInput label="To" type="date" value={to} onChange={setTo} />
           </div>
         </div>
         {performance.isLoading ? <p>Loading…</p> : null}
@@ -250,32 +238,26 @@ function EmployeeDetailPage() {
               assign.mutate(assignCustomerId);
             }}
           >
-            <div className="lm-form-row">
-              <label htmlFor="assignCustomer">Customer</label>
-              <select
-                id="assignCustomer"
-                value={assignCustomerId}
-                onChange={(ev) => setAssignCustomerId(ev.target.value)}
-                required
-              >
-                <option value="">Select customer</option>
-                {assignable.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.customerNumber ?? c.id} — {c.name}
-                    {c.collectionOfficer
-                      ? ` (now: ${c.collectionOfficer.name})`
-                      : ""}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <button
+            <FormSelect
+              label="Customer"
+              placeholder="Select customer"
+              value={assignCustomerId}
+              onChange={setAssignCustomerId}
+              required
+              options={assignable.map((c) => ({
+                value: c.id,
+                label: `${c.customerNumber ?? c.id} — ${c.name}${
+                  c.collectionOfficer ? ` (now: ${c.collectionOfficer.name})` : ""
+                }`,
+              }))}
+            />
+            <Button
               type="submit"
-              className="lm-btn"
-              disabled={assign.isPending || !assignCustomerId}
+              variant="primary"
+              isDisabled={assign.isPending || !assignCustomerId}
             >
               Assign customer
-            </button>
+            </Button>
           </form>
 
           <div className="lm-table-wrap" style={{ marginTop: "1.25rem" }}>
@@ -299,14 +281,14 @@ function EmployeeDetailPage() {
                       </td>
                       <td>{c.mobile}</td>
                       <td>
-                        <button
+                        <Button
                           type="button"
-                          className="lm-btn lm-btn-secondary"
-                          disabled={unassign.isPending}
+                          variant="outline"
+                          isDisabled={unassign.isPending}
                           onClick={() => unassign.mutate(c.id)}
                         >
                           Unassign
-                        </button>
+                        </Button>
                       </td>
                     </tr>
                   ))}

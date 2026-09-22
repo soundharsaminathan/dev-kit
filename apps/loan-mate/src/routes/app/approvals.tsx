@@ -1,8 +1,10 @@
+import { Button } from "@dev-ui/components/button";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { formatApprovalPayload } from "@/lib/approval-summary";
 import { useAuth } from "@/lib/auth";
+import { FormInput } from "@/modules/ui/form-fields";
 
 type Approval = {
   id: string;
@@ -103,28 +105,29 @@ function ApprovalsPage() {
                   </td>
                   <td>
                     <div className="lm-actions">
-                      <button
+                      <Button
                         type="button"
-                        className="lm-btn"
-                        disabled={decide.isPending}
+                        variant="primary"
+                        size="sm"
+                        isDisabled={decide.isPending}
                         onClick={() =>
                           decide.mutate({ id: a.id, decision: "approve" })
                         }
                       >
                         Approve
-                      </button>
-                      <input
-                        placeholder="Reject reason"
+                      </Button>
+                      <FormInput
+                        label="Reject reason"
                         value={reason[a.id] ?? ""}
-                        onChange={(e) =>
-                          setReason((r) => ({ ...r, [a.id]: e.target.value }))
+                        onChange={(value) =>
+                          setReason((r) => ({ ...r, [a.id]: value }))
                         }
-                        style={{ minWidth: "8rem", padding: "0.4rem 0.5rem" }}
                       />
-                      <button
+                      <Button
                         type="button"
-                        className="lm-btn lm-btn-danger"
-                        disabled={decide.isPending}
+                        variant="danger"
+                        size="sm"
+                        isDisabled={decide.isPending}
                         onClick={() => {
                           const rejectionReason = reason[a.id]?.trim();
                           decide.mutate({
@@ -135,7 +138,7 @@ function ApprovalsPage() {
                         }}
                       >
                         Reject
-                      </button>
+                      </Button>
                     </div>
                   </td>
                 </tr>

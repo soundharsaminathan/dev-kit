@@ -1,21 +1,21 @@
 import type { ReactNode } from "react";
-import { StaffShell } from "./staff-shell";
+import { type NavItem, StaffShell } from "./staff-shell";
 
-const APP_NAV = [
-  { to: "/app", label: "Home", exact: true },
-  { to: "/app/customers", label: "Customers" },
-  { to: "/app/products", label: "Products" },
-  { to: "/app/loans", label: "Loans" },
-  { to: "/app/approvals", label: "Approvals" },
-  { to: "/app/collections", label: "Collections" },
-  { to: "/app/users", label: "Employees" },
-  { to: "/app/branches", label: "Branches" },
-  { to: "/app/audit", label: "Audit" },
-  { to: "/app/reports", label: "Reports" },
-  { to: "/app/notifications", label: "Notifications" },
-  { to: "/app/settings", label: "Settings" },
-  { to: "/app/profile", label: "Profile" },
-] as const;
+const APP_NAV: readonly NavItem[] = [
+  { to: "/app", label: "Home", icon: "home", exact: true },
+  { to: "/app/customers", label: "Customers", icon: "users" },
+  { to: "/app/products", label: "Products", icon: "tag" },
+  { to: "/app/loans", label: "Loans", icon: "wallet" },
+  { to: "/app/approvals", label: "Approvals", icon: "badge-check" },
+  { to: "/app/collections", label: "Collections", icon: "credit-card" },
+  { to: "/app/users", label: "Employees", icon: "circle-user" },
+  { to: "/app/branches", label: "Branches", icon: "building" },
+  { to: "/app/audit", label: "Audit", icon: "file-text" },
+  { to: "/app/reports", label: "Reports", icon: "chart-bar" },
+  { to: "/app/notifications", label: "Notifications", icon: "bell" },
+  { to: "/app/settings", label: "Settings", icon: "settings" },
+  { to: "/app/profile", label: "Profile", icon: "user" },
+];
 
 export function AppShell({ children }: { children: ReactNode }) {
   return (

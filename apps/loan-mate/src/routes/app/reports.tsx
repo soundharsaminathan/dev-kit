@@ -1,8 +1,10 @@
+import { Button } from "@dev-ui/components/button";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { JsonTable } from "@/lib/json-table";
+import { FormInput } from "@/modules/ui/form-fields";
 
 const REPORTS = [
   { id: "portfolio", label: "Portfolio", path: "/reports/portfolio" },
@@ -72,35 +74,26 @@ function ReportsPage() {
         style={{ flexWrap: "wrap", marginBottom: "1rem" }}
       >
         {REPORTS.map((r) => (
-          <button
+          <Button
             key={r.id}
             type="button"
-            className={active === r.id ? "lm-btn" : "lm-btn lm-btn-secondary"}
+            variant={active === r.id ? "primary" : "outline"}
             onClick={() => setActive(r.id)}
           >
             {r.label}
-          </button>
+          </Button>
         ))}
       </div>
 
       {needsRange ? (
         <div className="lm-actions" style={{ marginBottom: "1rem" }}>
-          <label className="lm-muted">
-            From{" "}
-            <input
-              type="date"
-              value={from}
-              onChange={(e) => setFrom(e.target.value)}
-            />
-          </label>
-          <label className="lm-muted">
-            To{" "}
-            <input
-              type="date"
-              value={to}
-              onChange={(e) => setTo(e.target.value)}
-            />
-          </label>
+          <FormInput
+            label="From"
+            type="date"
+            value={from}
+            onChange={setFrom}
+          />
+          <FormInput label="To" type="date" value={to} onChange={setTo} />
         </div>
       ) : null}
 

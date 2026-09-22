@@ -1,7 +1,9 @@
+import { Button } from "@dev-ui/components/button";
 import { useMutation } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { useAuth } from "@/lib/auth";
+import { FormInput, FormSelect } from "@/modules/ui/form-fields";
 
 export const Route = createFileRoute("/app/products/new")({
   component: NewProductPage,
@@ -64,164 +66,126 @@ function NewProductPage() {
             create.mutate();
           }}
         >
-          <div className="lm-form-row">
-            <label htmlFor="name">Name</label>
-            <input
-              id="name"
-              value={form.name}
-              onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-              required
-            />
-          </div>
-          <div className="lm-form-row">
-            <label htmlFor="code">Code</label>
-            <input
-              id="code"
-              value={form.code}
-              onChange={(e) => setForm((f) => ({ ...f, code: e.target.value }))}
-              required
-            />
-          </div>
-          <div className="lm-form-row">
-            <label htmlFor="principal">Default principal</label>
-            <input
-              id="principal"
-              type="number"
-              min={1}
-              value={form.defaultPrincipal}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, defaultPrincipal: e.target.value }))
-              }
-              required
-            />
-          </div>
-          <div className="lm-form-row">
-            <label htmlFor="defaultAnnualRate">Default rate (% p.a.)</label>
-            <input
-              id="defaultAnnualRate"
-              type="number"
-              step="0.01"
-              value={form.defaultAnnualRate}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, defaultAnnualRate: e.target.value }))
-              }
-              required
-            />
-          </div>
-          <div className="lm-form-row">
-            <label htmlFor="weekly">Weekly rate (% p.a.)</label>
-            <input
-              id="weekly"
-              type="number"
-              step="0.01"
-              value={form.annualRateWeekly}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, annualRateWeekly: e.target.value }))
-              }
-            />
-          </div>
-          <div className="lm-form-row">
-            <label htmlFor="biweekly">Bi-weekly rate (% p.a.)</label>
-            <input
-              id="biweekly"
-              type="number"
-              step="0.01"
-              value={form.annualRateBiweekly}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, annualRateBiweekly: e.target.value }))
-              }
-            />
-          </div>
-          <div className="lm-form-row">
-            <label htmlFor="monthly">Monthly rate (% p.a.)</label>
-            <input
-              id="monthly"
-              type="number"
-              step="0.01"
-              value={form.annualRateMonthly}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, annualRateMonthly: e.target.value }))
-              }
-            />
-          </div>
-          <div className="lm-form-row">
-            <label htmlFor="frequency">Default frequency</label>
-            <select
-              id="frequency"
-              value={form.defaultFrequency}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, defaultFrequency: e.target.value }))
-              }
-            >
-              <option value="WEEKLY">Weekly</option>
-              <option value="BIWEEKLY">Bi-Weekly</option>
-              <option value="MONTHLY">Monthly</option>
-            </select>
-          </div>
-          <div className="lm-form-row">
-            <label htmlFor="tenure">Default tenure (installments)</label>
-            <input
-              id="tenure"
-              type="number"
-              min={1}
-              value={form.defaultTenure}
-              onChange={(e) =>
-                setForm((f) => ({
-                  ...f,
-                  defaultTenure: e.target.value,
-                }))
-              }
-              required
-            />
-          </div>
-          <div className="lm-form-row">
-            <label htmlFor="firstEmi">Default first EMI (monthly)</label>
-            <select
-              id="firstEmi"
-              value={form.defaultMonthlyFirstEmi}
-              onChange={(e) =>
-                setForm((f) => ({
-                  ...f,
-                  defaultMonthlyFirstEmi: e.target.value,
-                }))
-              }
-            >
-              <option value="EXACT_DAY">Exact day</option>
-              <option value="CONVERT_TO_1ST_PARTIAL">
-                Convert to 1st + partial
-              </option>
-              <option value="CONVERT_TO_1ST_NEXT_MONTH">
-                Convert to 1st next month
-              </option>
-            </select>
-          </div>
-          <div className="lm-form-row">
-            <label htmlFor="fee">Processing fee (%)</label>
-            <input
-              id="fee"
-              type="number"
-              step="0.01"
-              value={form.processingFeePercent}
-              onChange={(e) =>
-                setForm((f) => ({
-                  ...f,
-                  processingFeePercent: e.target.value,
-                }))
-              }
-            />
-          </div>
+          <FormInput
+            label="Name"
+            value={form.name}
+            onChange={(name) => setForm((f) => ({ ...f, name }))}
+            required
+          />
+          <FormInput
+            label="Code"
+            value={form.code}
+            onChange={(code) => setForm((f) => ({ ...f, code }))}
+            required
+          />
+          <FormInput
+            label="Default principal"
+            type="number"
+            min={1}
+            value={form.defaultPrincipal}
+            onChange={(defaultPrincipal) =>
+              setForm((f) => ({ ...f, defaultPrincipal }))
+            }
+            required
+          />
+          <FormInput
+            label="Default rate (% p.a.)"
+            type="number"
+            step="0.01"
+            value={form.defaultAnnualRate}
+            onChange={(defaultAnnualRate) =>
+              setForm((f) => ({ ...f, defaultAnnualRate }))
+            }
+            required
+          />
+          <FormInput
+            label="Weekly rate (% p.a.)"
+            type="number"
+            step="0.01"
+            value={form.annualRateWeekly}
+            onChange={(annualRateWeekly) =>
+              setForm((f) => ({ ...f, annualRateWeekly }))
+            }
+          />
+          <FormInput
+            label="Bi-weekly rate (% p.a.)"
+            type="number"
+            step="0.01"
+            value={form.annualRateBiweekly}
+            onChange={(annualRateBiweekly) =>
+              setForm((f) => ({ ...f, annualRateBiweekly }))
+            }
+          />
+          <FormInput
+            label="Monthly rate (% p.a.)"
+            type="number"
+            step="0.01"
+            value={form.annualRateMonthly}
+            onChange={(annualRateMonthly) =>
+              setForm((f) => ({ ...f, annualRateMonthly }))
+            }
+          />
+          <FormSelect
+            label="Default frequency"
+            value={form.defaultFrequency}
+            onChange={(defaultFrequency) =>
+              setForm((f) => ({ ...f, defaultFrequency }))
+            }
+            options={[
+              { value: "WEEKLY", label: "Weekly" },
+              { value: "BIWEEKLY", label: "Bi-Weekly" },
+              { value: "MONTHLY", label: "Monthly" },
+            ]}
+          />
+          <FormInput
+            label="Default tenure (installments)"
+            type="number"
+            min={1}
+            value={form.defaultTenure}
+            onChange={(defaultTenure) =>
+              setForm((f) => ({ ...f, defaultTenure }))
+            }
+            required
+          />
+          <FormSelect
+            label="Default first EMI (monthly)"
+            value={form.defaultMonthlyFirstEmi}
+            onChange={(defaultMonthlyFirstEmi) =>
+              setForm((f) => ({ ...f, defaultMonthlyFirstEmi }))
+            }
+            options={[
+              { value: "EXACT_DAY", label: "Exact day" },
+              {
+                value: "CONVERT_TO_1ST_PARTIAL",
+                label: "Convert to 1st + partial",
+              },
+              {
+                value: "CONVERT_TO_1ST_NEXT_MONTH",
+                label: "Convert to 1st next month",
+              },
+            ]}
+          />
+          <FormInput
+            label="Processing fee (%)"
+            type="number"
+            step="0.01"
+            value={form.processingFeePercent}
+            onChange={(processingFeePercent) =>
+              setForm((f) => ({ ...f, processingFeePercent }))
+            }
+          />
           {error ? <p className="lm-error">{error}</p> : null}
           <div className="lm-actions">
-            <button type="submit" className="lm-btn" disabled={create.isPending}>
+            <Button type="submit" variant="primary" isDisabled={create.isPending}>
               Create product
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
-              className="lm-btn lm-btn-secondary"
+              variant="outline"
               onClick={() => void navigate({ to: "/app/products" })}
             >
               Cancel
-            </button>
+            </Button>
           </div>
         </form>
       </div>

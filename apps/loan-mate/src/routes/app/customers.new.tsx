@@ -1,7 +1,9 @@
+import { Button } from "@dev-ui/components/button";
 import { useMutation } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { useAuth } from "@/lib/auth";
+import { TextControl, AreaControl } from "@/modules/ui/controls";
 
 export const Route = createFileRoute("/app/customers/new")({
   component: NewCustomerPage,
@@ -50,58 +52,42 @@ function NewCustomerPage() {
             create.mutate();
           }}
         >
-          <div className="lm-form-row">
-            <label htmlFor="name">Full name</label>
-            <input
-              id="name"
-              value={form.name}
-              onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-              required
-            />
-          </div>
-          <div className="lm-form-row">
-            <label htmlFor="mobile">Mobile</label>
-            <input
-              id="mobile"
-              value={form.mobile}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, mobile: e.target.value }))
-              }
-              required
-            />
-          </div>
-          <div className="lm-form-row">
-            <label htmlFor="pan">PAN</label>
-            <input
-              id="pan"
-              value={form.pan}
-              onChange={(e) => setForm((f) => ({ ...f, pan: e.target.value }))}
-              required
-            />
-          </div>
-          <div className="lm-form-row">
-            <label htmlFor="address">Address</label>
-            <textarea
-              id="address"
-              rows={3}
-              value={form.address}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, address: e.target.value }))
-              }
-            />
-          </div>
+          <TextControl
+            label="Full name"
+            value={form.name}
+            onChange={(name) => setForm((f) => ({ ...f, name }))}
+            isRequired
+          />
+          <TextControl
+            label="Mobile"
+            value={form.mobile}
+            onChange={(mobile) => setForm((f) => ({ ...f, mobile }))}
+            isRequired
+          />
+          <TextControl
+            label="PAN"
+            value={form.pan}
+            onChange={(pan) => setForm((f) => ({ ...f, pan }))}
+            isRequired
+          />
+          <AreaControl
+            label="Address"
+            rows={3}
+            value={form.address}
+            onChange={(address) => setForm((f) => ({ ...f, address }))}
+          />
           {error ? <p className="lm-error">{error}</p> : null}
           <div className="lm-actions">
-            <button type="submit" className="lm-btn" disabled={create.isPending}>
+            <Button type="submit" variant="primary" isDisabled={create.isPending}>
               Create customer
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
-              className="lm-btn lm-btn-secondary"
+              variant="outline"
               onClick={() => void navigate({ to: "/app/customers" })}
             >
               Cancel
-            </button>
+            </Button>
           </div>
         </form>
       </div>

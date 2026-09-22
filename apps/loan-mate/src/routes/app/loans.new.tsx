@@ -1,7 +1,9 @@
+import { Button } from "@dev-ui/components/button";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { useAuth } from "@/lib/auth";
+import { FormInput, FormSelect } from "@/modules/ui/form-fields";
 
 type Customer = { id: string; name: string; customerNumber?: string };
 type Product = {
@@ -151,144 +153,107 @@ function NewLoanPage() {
             create.mutate();
           }}
         >
-          <div className="lm-form-row">
-            <label htmlFor="customerId">Customer</label>
-            <select
-              id="customerId"
-              value={form.customerId}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, customerId: e.target.value }))
-              }
-              required
-            >
-              <option value="">Select customer</option>
-              {(customers.data ?? []).map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                  {c.customerNumber ? ` (${c.customerNumber})` : ""}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="lm-form-row">
-            <label htmlFor="branchId">Branch</label>
-            <select
-              id="branchId"
-              value={form.branchId}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, branchId: e.target.value }))
-              }
-              required
-            >
-              <option value="">Select branch</option>
-              {(branches.data ?? []).map((b) => (
-                <option key={b.id} value={b.id}>
-                  {b.name} ({b.code})
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="lm-form-row">
-            <label htmlFor="productId">Product</label>
-            <select
-              id="productId"
-              value={form.productId}
-              onChange={(e) => onProductChange(e.target.value)}
-              required
-            >
-              <option value="">Select product</option>
-              {(products.data ?? []).map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="lm-form-row">
-            <label htmlFor="principal">Principal</label>
-            <input
-              id="principal"
-              type="number"
-              min={1}
-              value={form.principal}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, principal: e.target.value }))
-              }
-              required
-            />
-          </div>
-          <div className="lm-form-row">
-            <label htmlFor="annualRatePercent">Interest rate (% p.a.)</label>
-            <input
-              id="annualRatePercent"
-              type="number"
-              step="0.01"
-              value={form.annualRatePercent}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, annualRatePercent: e.target.value }))
-              }
-            />
-          </div>
-          <div className="lm-form-row">
-            <label htmlFor="tenure">Tenure (installments)</label>
-            <input
-              id="tenure"
-              type="number"
-              min={1}
-              value={form.tenureInstallments}
-              onChange={(e) =>
-                setForm((f) => ({
-                  ...f,
-                  tenureInstallments: e.target.value,
-                }))
-              }
-            />
-          </div>
-          <div className="lm-form-row">
-            <label htmlFor="frequency">Frequency</label>
-            <select
-              id="frequency"
-              value={form.frequency}
-              onChange={(e) => onFrequencyChange(e.target.value)}
-            >
-              <option value="WEEKLY">Weekly</option>
-              <option value="BIWEEKLY">Bi-Weekly</option>
-              <option value="MONTHLY">Monthly</option>
-            </select>
-          </div>
-          <div className="lm-form-row">
-            <label htmlFor="firstEmi">First EMI option (monthly)</label>
-            <select
-              id="firstEmi"
-              value={form.monthlyFirstEmiOption}
-              onChange={(e) =>
-                setForm((f) => ({
-                  ...f,
-                  monthlyFirstEmiOption: e.target.value,
-                }))
-              }
-            >
-              <option value="EXACT_DAY">Exact day</option>
-              <option value="CONVERT_TO_1ST_PARTIAL">
-                Convert to 1st + partial from disbursement
-              </option>
-              <option value="CONVERT_TO_1ST_NEXT_MONTH">
-                Convert to 1st next month
-              </option>
-            </select>
-          </div>
+          <FormSelect
+            label="Customer"
+            placeholder="Select customer"
+            value={form.customerId}
+            onChange={(customerId) => setForm((f) => ({ ...f, customerId }))}
+            required
+            options={(customers.data ?? []).map((c) => ({
+              value: c.id,
+              label: c.customerNumber
+                ? `${c.name} (${c.customerNumber})`
+                : c.name,
+            }))}
+          />
+          <FormSelect
+            label="Branch"
+            placeholder="Select branch"
+            value={form.branchId}
+            onChange={(branchId) => setForm((f) => ({ ...f, branchId }))}
+            required
+            options={(branches.data ?? []).map((b) => ({
+              value: b.id,
+              label: `${b.name} (${b.code})`,
+            }))}
+          />
+          <FormSelect
+            label="Product"
+            placeholder="Select product"
+            value={form.productId}
+            onChange={onProductChange}
+            required
+            options={(products.data ?? []).map((p) => ({
+              value: p.id,
+              label: p.name,
+            }))}
+          />
+          <FormInput
+            label="Principal"
+            type="number"
+            min={1}
+            value={form.principal}
+            onChange={(principal) => setForm((f) => ({ ...f, principal }))}
+            required
+          />
+          <FormInput
+            label="Interest rate (% p.a.)"
+            type="number"
+            step="0.01"
+            value={form.annualRatePercent}
+            onChange={(annualRatePercent) =>
+              setForm((f) => ({ ...f, annualRatePercent }))
+            }
+          />
+          <FormInput
+            label="Tenure (installments)"
+            type="number"
+            min={1}
+            value={form.tenureInstallments}
+            onChange={(tenureInstallments) =>
+              setForm((f) => ({ ...f, tenureInstallments }))
+            }
+          />
+          <FormSelect
+            label="Frequency"
+            value={form.frequency}
+            onChange={onFrequencyChange}
+            options={[
+              { value: "WEEKLY", label: "Weekly" },
+              { value: "BIWEEKLY", label: "Bi-Weekly" },
+              { value: "MONTHLY", label: "Monthly" },
+            ]}
+          />
+          <FormSelect
+            label="First EMI option (monthly)"
+            value={form.monthlyFirstEmiOption}
+            onChange={(monthlyFirstEmiOption) =>
+              setForm((f) => ({ ...f, monthlyFirstEmiOption }))
+            }
+            options={[
+              { value: "EXACT_DAY", label: "Exact day" },
+              {
+                value: "CONVERT_TO_1ST_PARTIAL",
+                label: "Convert to 1st + partial from disbursement",
+              },
+              {
+                value: "CONVERT_TO_1ST_NEXT_MONTH",
+                label: "Convert to 1st next month",
+              },
+            ]}
+          />
           {error ? <p className="lm-error">{error}</p> : null}
           <div className="lm-actions">
-            <button type="submit" className="lm-btn" disabled={create.isPending}>
+            <Button type="submit" variant="primary" isDisabled={create.isPending}>
               Create loan
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
-              className="lm-btn lm-btn-secondary"
+              variant="outline"
               onClick={() => void navigate({ to: "/app/loans" })}
             >
               Cancel
-            </button>
+            </Button>
           </div>
         </form>
       </div>

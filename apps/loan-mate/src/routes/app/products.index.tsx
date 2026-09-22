@@ -1,3 +1,5 @@
+import { Button } from "@dev-ui/components/button";
+import { Icon } from "@dev-ui/icons";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useAuth } from "@/lib/auth";
@@ -30,9 +32,10 @@ function ProductsPage() {
           <h1>Products</h1>
           <p>Configurable loan products — defaults confirmed at origination.</p>
         </div>
-        <Link to="/app/products/new" className="lm-btn">
+        <Button as={Link} to="/app/products/new" variant="primary">
+          <Icon name="plus" />
           New product
-        </Link>
+        </Button>
       </div>
 
       <div className="lm-card lm-table-wrap">

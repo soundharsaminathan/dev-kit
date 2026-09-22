@@ -1,7 +1,9 @@
+import { Button } from "@dev-ui/components/button";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useAuth } from "@/lib/auth";
+import { FormInput, FormPassword } from "@/modules/ui/form-fields";
 
 type Company = {
   id: string;
@@ -74,68 +76,49 @@ function AdminCompaniesPage() {
             createCompany.mutate();
           }}
         >
-          <div className="lm-form-row">
-            <label htmlFor="company-name">Name</label>
-            <input
-              id="company-name"
-              value={form.name}
-              onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-              required
-            />
-          </div>
-          <div className="lm-form-row">
-            <label htmlFor="company-slug">Slug</label>
-            <input
-              id="company-slug"
-              value={form.slug}
-              onChange={(e) => setForm((f) => ({ ...f, slug: e.target.value }))}
-              pattern="[a-z0-9-]+"
-              required
-            />
-          </div>
-          <div className="lm-form-row">
-            <label htmlFor="owner-name">Owner name</label>
-            <input
-              id="owner-name"
-              value={form.ownerName}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, ownerName: e.target.value }))
-              }
-              required
-            />
-          </div>
-          <div className="lm-form-row">
-            <label htmlFor="owner-email">Owner email</label>
-            <input
-              id="owner-email"
-              type="email"
-              value={form.ownerEmail}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, ownerEmail: e.target.value }))
-              }
-              required
-            />
-          </div>
-          <div className="lm-form-row">
-            <label htmlFor="owner-password">Owner password</label>
-            <input
-              id="owner-password"
-              type="password"
-              value={form.ownerPassword}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, ownerPassword: e.target.value }))
-              }
-              required
-            />
-          </div>
+          <FormInput
+            label="Name"
+            value={form.name}
+            onChange={(name) => setForm((f) => ({ ...f, name }))}
+            required
+          />
+          <FormInput
+            label="Slug"
+            value={form.slug}
+            onChange={(slug) => setForm((f) => ({ ...f, slug }))}
+            pattern="[a-z0-9-]+"
+            required
+          />
+          <FormInput
+            label="Owner name"
+            value={form.ownerName}
+            onChange={(ownerName) => setForm((f) => ({ ...f, ownerName }))}
+            required
+          />
+          <FormInput
+            label="Owner email"
+            type="email"
+            value={form.ownerEmail}
+            onChange={(ownerEmail) => setForm((f) => ({ ...f, ownerEmail }))}
+            required
+          />
+          <FormPassword
+            label="Owner password"
+            value={form.ownerPassword}
+            onChange={(ownerPassword) =>
+              setForm((f) => ({ ...f, ownerPassword }))
+            }
+            autoComplete="new-password"
+            required
+          />
           {error ? <p className="lm-error">{error}</p> : null}
-          <button
+          <Button
             type="submit"
-            className="lm-btn"
-            disabled={createCompany.isPending}
+            variant="primary"
+            isDisabled={createCompany.isPending}
           >
             Create company
-          </button>
+          </Button>
         </form>
       </div>
 

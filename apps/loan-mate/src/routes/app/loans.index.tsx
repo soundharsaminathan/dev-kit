@@ -1,3 +1,5 @@
+import { Button } from "@dev-ui/components/button";
+import { Icon } from "@dev-ui/icons";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useAuth } from "@/lib/auth";
@@ -29,9 +31,10 @@ function LoansPage() {
           <h1>Loans</h1>
           <p>Origination through disbursement and active servicing.</p>
         </div>
-        <Link to="/app/loans/new" className="lm-btn">
+        <Button as={Link} to="/app/loans/new" variant="primary">
+          <Icon name="plus" />
           New loan
-        </Link>
+        </Button>
       </div>
 
       <div className="lm-card lm-table-wrap">

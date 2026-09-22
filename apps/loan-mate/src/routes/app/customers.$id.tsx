@@ -1,9 +1,12 @@
+import { Button } from "@dev-ui/components/button";
+import { Icon } from "@dev-ui/icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import type { UserRole } from "@/lib/constants";
 import { DocumentsPanel } from "@/lib/documents-panel";
+import { FormInput, FormSelect, FormTextArea } from "@/modules/ui/form-fields";
 
 type StaffRef = { id: string; name: string; role?: UserRole };
 
@@ -51,6 +54,7 @@ export const Route = createFileRoute("/app/customers/$id")({
 
 function CustomerDetailPage() {
   const { id } = Route.useParams();
+  const navigate = useNavigate();
   const { api, user } = useAuth();
   const queryClient = useQueryClient();
   const canAssign = user ? MANAGER_ROLES.includes(user.role) : false;
@@ -198,13 +202,19 @@ function CustomerDetailPage() {
             {c.npa ? <span className="lm-badge">NPA</span> : null}
           </div>
         </div>
-        <Link
-          to="/app/loans/new"
-          search={{ customerId: c.id }}
-          className="lm-btn"
+        <Button
+          type="button"
+          variant="primary"
+          onClick={() =>
+            void navigate({
+              to: "/app/loans/new",
+              search: { customerId: c.id },
+            })
+          }
         >
+          <Icon name="plus" />
           New loan
-        </Link>
+        </Button>
       </div>
 
       {error ? <p className="lm-error">{error}</p> : null}
@@ -213,13 +223,14 @@ function CustomerDetailPage() {
       <div className="lm-card">
         <div className="lm-page-header" style={{ marginBottom: "1rem" }}>
           <h2 style={{ margin: 0 }}>Profile</h2>
-          <button
+          <Button
             type="button"
-            className="lm-btn lm-btn-secondary"
+            variant="outline"
             onClick={() => setEditOpen((v) => !v)}
           >
+            <Icon name={editOpen ? "x" : "edit"} />
             {editOpen ? "Cancel edit" : "Edit"}
-          </button>
+          </Button>
         </div>
         {editOpen ? (
           <form
@@ -229,56 +240,36 @@ function CustomerDetailPage() {
               saveCustomer.mutate();
             }}
           >
-            <div className="lm-form-row">
-              <label htmlFor="name">Name</label>
-              <input
-                id="name"
-                value={editForm.name}
-                onChange={(e) =>
-                  setEditForm((f) => ({ ...f, name: e.target.value }))
-                }
-                required
-              />
-            </div>
-            <div className="lm-form-row">
-              <label htmlFor="mobile">Mobile</label>
-              <input
-                id="mobile"
-                value={editForm.mobile}
-                onChange={(e) =>
-                  setEditForm((f) => ({ ...f, mobile: e.target.value }))
-                }
-                required
-              />
-            </div>
-            <div className="lm-form-row">
-              <label htmlFor="pan">PAN</label>
-              <input
-                id="pan"
-                value={editForm.pan}
-                onChange={(e) =>
-                  setEditForm((f) => ({ ...f, pan: e.target.value }))
-                }
-              />
-            </div>
-            <div className="lm-form-row">
-              <label htmlFor="address">Address</label>
-              <textarea
-                id="address"
-                rows={2}
-                value={editForm.address}
-                onChange={(e) =>
-                  setEditForm((f) => ({ ...f, address: e.target.value }))
-                }
-              />
-            </div>
-            <button
+            <FormInput
+              label="Name"
+              value={editForm.name}
+              onChange={(name) => setEditForm((f) => ({ ...f, name }))}
+              required
+            />
+            <FormInput
+              label="Mobile"
+              value={editForm.mobile}
+              onChange={(mobile) => setEditForm((f) => ({ ...f, mobile }))}
+              required
+            />
+            <FormInput
+              label="PAN"
+              value={editForm.pan}
+              onChange={(pan) => setEditForm((f) => ({ ...f, pan }))}
+            />
+            <FormTextArea
+              label="Address"
+              rows={2}
+              value={editForm.address}
+              onChange={(address) => setEditForm((f) => ({ ...f, address }))}
+            />
+            <Button
               type="submit"
-              className="lm-btn"
-              disabled={saveCustomer.isPending}
+              variant="primary"
+              isDisabled={saveCustomer.isPending}
             >
               Save
-            </button>
+            </Button>
           </form>
         ) : (
           <dl style={{ display: "grid", gap: "0.75rem", margin: 0 }}>
@@ -349,28 +340,23 @@ function CustomerDetailPage() {
               saveAssignment.mutate();
             }}
           >
-            <div className="lm-form-row">
-              <label htmlFor="officer">Collection officer</label>
-              <select
-                id="officer"
-                value={officerId}
-                onChange={(e) => setOfficerId(e.target.value)}
-              >
-                <option value="">Unassigned</option>
-                {assignableOfficers.map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {u.name} ({u.role.replaceAll("_", " ")})
-                  </option>
-                ))}
-              </select>
-            </div>
-            <button
+            <FormSelect
+              label="Collection officer"
+              placeholder="Unassigned"
+              value={officerId}
+              onChange={setOfficerId}
+              options={assignableOfficers.map((u) => ({
+                value: u.id,
+                label: `${u.name} (${u.role.replaceAll("_", " ")})`,
+              }))}
+            />
+            <Button
               type="submit"
-              className="lm-btn"
-              disabled={saveAssignment.isPending}
+              variant="primary"
+              isDisabled={saveAssignment.isPending}
             >
               Save assignment
-            </button>
+            </Button>
           </form>
         </div>
       ) : null}
@@ -378,33 +364,30 @@ function CustomerDetailPage() {
       <div className="lm-card">
         <h2>Blacklist</h2>
         <div className="lm-form">
-          <div className="lm-form-row">
-            <label htmlFor="bl-reason">Reason</label>
-            <input
-              id="bl-reason"
-              value={blacklistReason}
-              onChange={(e) => setBlacklistReason(e.target.value)}
-            />
-          </div>
+          <FormInput
+            label="Reason"
+            value={blacklistReason}
+            onChange={setBlacklistReason}
+          />
           <div className="lm-actions">
             {!c.blacklisted ? (
-              <button
+              <Button
                 type="button"
-                className="lm-btn lm-btn-danger"
-                disabled={blacklist.isPending}
+                variant="danger"
+                isDisabled={blacklist.isPending}
                 onClick={() => blacklist.mutate(true)}
               >
                 Blacklist
-              </button>
+              </Button>
             ) : (
-              <button
+              <Button
                 type="button"
-                className="lm-btn lm-btn-secondary"
-                disabled={blacklist.isPending}
+                variant="outline"
+                isDisabled={blacklist.isPending}
                 onClick={() => blacklist.mutate(false)}
               >
                 Remove blacklist
-              </button>
+              </Button>
             )}
           </div>
         </div>
@@ -423,22 +406,19 @@ function CustomerDetailPage() {
               requestNpaMark.mutate();
             }}
           >
-            <div className="lm-form-row">
-              <label htmlFor="npa-reason">Reason</label>
-              <input
-                id="npa-reason"
-                value={npaReason}
-                onChange={(e) => setNpaReason(e.target.value)}
-                required
-              />
-            </div>
-            <button
+            <FormInput
+              label="Reason"
+              value={npaReason}
+              onChange={setNpaReason}
+              required
+            />
+            <Button
               type="submit"
-              className="lm-btn lm-btn-secondary"
-              disabled={requestNpaMark.isPending}
+              variant="outline"
+              isDisabled={requestNpaMark.isPending}
             >
               Request NPA mark
-            </button>
+            </Button>
           </form>
         ) : (
           <form
@@ -448,21 +428,18 @@ function CustomerDetailPage() {
               requestNpaClear.mutate();
             }}
           >
-            <div className="lm-form-row">
-              <label htmlFor="npa-clear">Reason (optional)</label>
-              <input
-                id="npa-clear"
-                value={npaClearReason}
-                onChange={(e) => setNpaClearReason(e.target.value)}
-              />
-            </div>
-            <button
+            <FormInput
+              label="Reason (optional)"
+              value={npaClearReason}
+              onChange={setNpaClearReason}
+            />
+            <Button
               type="submit"
-              className="lm-btn lm-btn-secondary"
-              disabled={requestNpaClear.isPending}
+              variant="outline"
+              isDisabled={requestNpaClear.isPending}
             >
               Request NPA clear
-            </button>
+            </Button>
           </form>
         )}
       </div>

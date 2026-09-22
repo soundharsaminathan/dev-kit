@@ -1,3 +1,5 @@
+import { Button } from "@dev-ui/components/button";
+import { Icon } from "@dev-ui/icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
@@ -55,14 +57,15 @@ function NotificationsPage() {
           <h1>Notifications</h1>
           <p>In-app inbox for your user.</p>
         </div>
-        <button
+        <Button
           type="button"
-          className="lm-btn lm-btn-secondary"
-          disabled={markAllRead.isPending}
+          variant="outline"
+          isDisabled={markAllRead.isPending}
           onClick={() => markAllRead.mutate()}
         >
+          <Icon name="check" />
           Mark all read
-        </button>
+        </Button>
       </div>
 
       {error ? <p className="lm-error">{error}</p> : null}
@@ -96,14 +99,15 @@ function NotificationsPage() {
                   <td>{n.body}</td>
                   <td>
                     {!n.readAt ? (
-                      <button
+                      <Button
                         type="button"
-                        className="lm-btn lm-btn-secondary"
-                        disabled={markRead.isPending}
+                        variant="outline"
+                        size="sm"
+                        isDisabled={markRead.isPending}
                         onClick={() => markRead.mutate(n.id)}
                       >
                         Mark read
-                      </button>
+                      </Button>
                     ) : (
                       "Read"
                     )}

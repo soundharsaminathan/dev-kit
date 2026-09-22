@@ -1,9 +1,11 @@
+import { Button } from "@dev-ui/components/button";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { ADVANCE_TREATMENTS, type AdvanceTreatment } from "@/lib/constants";
 import { useCompanyId } from "@/lib/use-company-id";
+import { FormCheckbox, FormInput, FormSelect } from "@/modules/ui/form-fields";
 
 type CompanyResponse = {
   id: string;
@@ -106,116 +108,83 @@ function SettingsPage() {
             save.mutate();
           }}
         >
-          <div className="lm-form-row">
-            <label htmlFor="graceDays">Grace days (delays penalty only)</label>
-            <input
-              id="graceDays"
-              type="number"
-              min={0}
-              value={form.graceDays}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, graceDays: e.target.value }))
-              }
-            />
-          </div>
-          <div className="lm-form-row">
-            <label htmlFor="penalty">Default penalty daily rate (%)</label>
-            <input
-              id="penalty"
-              type="number"
-              step="0.001"
-              value={form.penaltyDailyPercent}
-              onChange={(e) =>
-                setForm((f) => ({
-                  ...f,
-                  penaltyDailyPercent: e.target.value,
-                }))
-              }
-            />
-          </div>
-          <div className="lm-form-row">
-            <label htmlFor="foreclosure">Foreclosure charge (%)</label>
-            <input
-              id="foreclosure"
-              type="number"
-              step="0.01"
-              value={form.foreclosureChargePercent}
-              onChange={(e) =>
-                setForm((f) => ({
-                  ...f,
-                  foreclosureChargePercent: e.target.value,
-                }))
-              }
-            />
-          </div>
-          <div className="lm-form-row">
-            <label htmlFor="maxRestructures">Max restructures</label>
-            <input
-              id="maxRestructures"
-              type="number"
-              min={0}
-              value={form.maxRestructures}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, maxRestructures: e.target.value }))
-              }
-            />
-          </div>
-          <div className="lm-form-row">
-            <label htmlFor="firstEmi">Default first EMI option</label>
-            <select
-              id="firstEmi"
-              value={form.defaultMonthlyFirstEmiOption}
-              onChange={(e) =>
-                setForm((f) => ({
-                  ...f,
-                  defaultMonthlyFirstEmiOption: e.target.value,
-                }))
-              }
-            >
-              <option value="EXACT_DAY">Exact day</option>
-              <option value="CONVERT_TO_1ST_PARTIAL">
-                Convert to 1st + partial
-              </option>
-              <option value="CONVERT_TO_1ST_NEXT_MONTH">
-                Convert to 1st next month
-              </option>
-            </select>
-          </div>
+          <FormInput
+            label="Grace days (delays penalty only)"
+            type="number"
+            min={0}
+            value={form.graceDays}
+            onChange={(graceDays) => setForm((f) => ({ ...f, graceDays }))}
+          />
+          <FormInput
+            label="Default penalty daily rate (%)"
+            type="number"
+            step="0.001"
+            value={form.penaltyDailyPercent}
+            onChange={(penaltyDailyPercent) =>
+              setForm((f) => ({ ...f, penaltyDailyPercent }))
+            }
+          />
+          <FormInput
+            label="Foreclosure charge (%)"
+            type="number"
+            step="0.01"
+            value={form.foreclosureChargePercent}
+            onChange={(foreclosureChargePercent) =>
+              setForm((f) => ({ ...f, foreclosureChargePercent }))
+            }
+          />
+          <FormInput
+            label="Max restructures"
+            type="number"
+            min={0}
+            value={form.maxRestructures}
+            onChange={(maxRestructures) =>
+              setForm((f) => ({ ...f, maxRestructures }))
+            }
+          />
+          <FormSelect
+            label="Default first EMI option"
+            value={form.defaultMonthlyFirstEmiOption}
+            onChange={(defaultMonthlyFirstEmiOption) =>
+              setForm((f) => ({ ...f, defaultMonthlyFirstEmiOption }))
+            }
+            options={[
+              { value: "EXACT_DAY", label: "Exact day" },
+              {
+                value: "CONVERT_TO_1ST_PARTIAL",
+                label: "Convert to 1st + partial",
+              },
+              {
+                value: "CONVERT_TO_1ST_NEXT_MONTH",
+                label: "Convert to 1st next month",
+              },
+            ]}
+          />
           <div className="lm-form-row">
             <span>Default advance treatments</span>
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                gap: "0.35rem",
-              }}
-            >
-              {ADVANCE_TREATMENTS.map((t) => (
-                <label key={t}>
-                  <input
-                    type="checkbox"
-                    checked={form.defaultAdvanceTreatments.includes(t)}
-                    onChange={(e) => {
-                      setForm((f) => ({
-                        ...f,
-                        defaultAdvanceTreatments: e.target.checked
-                          ? [...f.defaultAdvanceTreatments, t]
-                          : f.defaultAdvanceTreatments.filter((x) => x !== t),
-                      }));
-                    }}
-                  />{" "}
-                  {t.replaceAll("_", " ")}
-                </label>
-              ))}
-            </div>
+            {ADVANCE_TREATMENTS.map((t) => (
+              <FormCheckbox
+                key={t}
+                label={t.replaceAll("_", " ")}
+                isSelected={form.defaultAdvanceTreatments.includes(t)}
+                onChange={(checked) => {
+                  setForm((f) => ({
+                    ...f,
+                    defaultAdvanceTreatments: checked
+                      ? [...f.defaultAdvanceTreatments, t]
+                      : f.defaultAdvanceTreatments.filter((x) => x !== t),
+                  }));
+                }}
+              />
+            ))}
           </div>
           {error ? <p className="lm-error">{error}</p> : null}
           {success ? (
             <p style={{ color: "var(--lm-success)" }}>{success}</p>
           ) : null}
-          <button type="submit" className="lm-btn" disabled={save.isPending}>
+          <Button type="submit" variant="primary" isDisabled={save.isPending}>
             Save settings
-          </button>
+          </Button>
         </form>
       </div>
     </div>

@@ -1,3 +1,4 @@
+import { Button } from "@dev-ui/components/button";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
@@ -8,6 +9,12 @@ import {
   PAYMENT_MODES,
   type PaymentMode,
 } from "@/lib/constants";
+import {
+  FormCheckbox,
+  FormInput,
+  FormSelect,
+  FormTextArea,
+} from "@/modules/ui/form-fields";
 
 type Loan = {
   id: string;
@@ -127,139 +134,90 @@ function CollectionsPage() {
             pay.mutate();
           }}
         >
-          <div className="lm-form-row">
-            <label htmlFor="loanId">Loan</label>
-            <select
-              id="loanId"
-              value={form.loanId}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, loanId: e.target.value }))
-              }
-              required
-            >
-              <option value="">Select loan</option>
-              {(loans.data ?? []).map((l) => (
-                <option key={l.id} value={l.id}>
-                  {l.loanNumber ?? l.id}
-                  {l.customerName ? ` — ${l.customerName}` : ""}
-                </option>
-              ))}
-            </select>
-            {selected?.outstanding != null ? (
-              <p className="lm-muted" style={{ margin: 0 }}>
-                Outstanding: {selected.outstanding}
-              </p>
-            ) : null}
-          </div>
-          <div className="lm-form-row">
-            <label htmlFor="amount">Amount</label>
-            <input
-              id="amount"
-              type="number"
-              min={0.01}
-              step="0.01"
-              value={form.amount}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, amount: e.target.value }))
-              }
-              required
-            />
-          </div>
-          <div className="lm-form-row">
-            <label htmlFor="mode">Mode</label>
-            <select
-              id="mode"
-              value={form.mode}
-              onChange={(e) =>
+          <FormSelect
+            label="Loan"
+            placeholder="Select loan"
+            value={form.loanId}
+            onChange={(loanId) => setForm((f) => ({ ...f, loanId }))}
+            required
+            options={(loans.data ?? []).map((l) => ({
+              value: l.id,
+              label: `${l.loanNumber ?? l.id}${l.customerName ? ` — ${l.customerName}` : ""}`,
+            }))}
+          />
+          {selected?.outstanding != null ? (
+            <p className="lm-muted" style={{ margin: 0 }}>
+              Outstanding: {selected.outstanding}
+            </p>
+          ) : null}
+          <FormInput
+            label="Amount"
+            type="number"
+            min={0.01}
+            step="0.01"
+            value={form.amount}
+            onChange={(amount) => setForm((f) => ({ ...f, amount }))}
+            required
+          />
+          <FormSelect
+            label="Mode"
+            value={form.mode}
+            onChange={(mode) =>
+              setForm((f) => ({ ...f, mode: mode as PaymentMode }))
+            }
+            options={PAYMENT_MODES.map((m) => ({
+              value: m,
+              label: m.replaceAll("_", " "),
+            }))}
+          />
+          <FormInput
+            label="Payment date"
+            type="date"
+            value={form.paymentDate}
+            onChange={(paymentDate) => setForm((f) => ({ ...f, paymentDate }))}
+            required
+          />
+          <FormInput
+            label="Reference"
+            value={form.reference}
+            onChange={(reference) => setForm((f) => ({ ...f, reference }))}
+          />
+          <FormTextArea
+            label="Details"
+            rows={2}
+            value={form.details}
+            onChange={(details) => setForm((f) => ({ ...f, details }))}
+          />
+          <FormCheckbox
+            label="Advance payment"
+            isSelected={form.isAdvance}
+            onChange={(isAdvance) => setForm((f) => ({ ...f, isAdvance }))}
+          />
+          {form.isAdvance ? (
+            <FormSelect
+              label="Advance treatment"
+              value={form.advanceTreatment}
+              onChange={(advanceTreatment) =>
                 setForm((f) => ({
                   ...f,
-                  mode: e.target.value as PaymentMode,
+                  advanceTreatment: advanceTreatment as AdvanceTreatment,
                 }))
               }
-            >
-              {PAYMENT_MODES.map((m) => (
-                <option key={m} value={m}>
-                  {m.replaceAll("_", " ")}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="lm-form-row">
-            <label htmlFor="paymentDate">Payment date</label>
-            <input
-              id="paymentDate"
-              type="date"
-              value={form.paymentDate}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, paymentDate: e.target.value }))
-              }
               required
+              options={ADVANCE_TREATMENTS.map((t) => ({
+                value: t,
+                label:
+                  t === "SKIP_NEXT_EMI" ? "Skip next EMI" : t.replaceAll("_", " "),
+              }))}
             />
-          </div>
-          <div className="lm-form-row">
-            <label htmlFor="reference">Reference</label>
-            <input
-              id="reference"
-              value={form.reference}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, reference: e.target.value }))
-              }
-            />
-          </div>
-          <div className="lm-form-row">
-            <label htmlFor="details">Details</label>
-            <textarea
-              id="details"
-              rows={2}
-              value={form.details}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, details: e.target.value }))
-              }
-            />
-          </div>
-          <div className="lm-form-row">
-            <label>
-              <input
-                type="checkbox"
-                checked={form.isAdvance}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, isAdvance: e.target.checked }))
-                }
-              />{" "}
-              Advance payment
-            </label>
-          </div>
-          {form.isAdvance ? (
-            <div className="lm-form-row">
-              <label htmlFor="advanceTreatment">Advance treatment</label>
-              <select
-                id="advanceTreatment"
-                value={form.advanceTreatment}
-                onChange={(e) =>
-                  setForm((f) => ({
-                    ...f,
-                    advanceTreatment: e.target.value as AdvanceTreatment,
-                  }))
-                }
-                required
-              >
-                {ADVANCE_TREATMENTS.map((t) => (
-                  <option key={t} value={t}>
-                    {t === "SKIP_NEXT_EMI"
-                      ? "Skip next EMI"
-                      : t.replaceAll("_", " ")}
-                  </option>
-                ))}
-              </select>
-            </div>
           ) : null}
           {error ? <p className="lm-error">{error}</p> : null}
           {success ? (
             <p style={{ color: "var(--lm-success)" }}>{success}</p>
           ) : null}
-          <button type="submit" className="lm-btn" disabled={pay.isPending}>
+          <Button type="submit" variant="primary" isDisabled={pay.isPending}>
             Record payment
-          </button>
+          </Button>
         </form>
       </div>
     </div>

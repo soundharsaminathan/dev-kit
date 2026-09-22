@@ -1,6 +1,8 @@
+import { Button } from "@dev-ui/components/button";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useAuth } from "@/lib/auth";
+import { FileControl, ChoiceControl } from "@/modules/ui/controls";
 
 type DocumentRow = {
   id: string;
@@ -129,37 +131,32 @@ export function DocumentsPanel({
           upload.mutate();
         }}
       >
-        <div className="lm-form-row">
-          <label htmlFor={`doc-kind-${entityId}`}>Kind</label>
-          <select
-            id={`doc-kind-${entityId}`}
-            value={kind}
-            onChange={(e) => setKind(e.target.value)}
-          >
-            <option value="KYC_PHOTO_ID">KYC photo ID</option>
-            <option value="KYC_PAN">KYC PAN</option>
-            <option value="KYC_ADDRESS">KYC address</option>
-            <option value="LOAN_AGREEMENT">Loan agreement</option>
-            <option value="LOAN_SANCTION">Loan sanction</option>
-            <option value="OTHER">Other</option>
-          </select>
-        </div>
-        <div className="lm-form-row">
-          <label htmlFor={`doc-file-${entityId}`}>File</label>
-          <input
-            id={`doc-file-${entityId}`}
-            type="file"
-            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-          />
-        </div>
+        <ChoiceControl
+          label="Kind"
+          value={kind}
+          onChange={setKind}
+          options={[
+            { id: "KYC_PHOTO_ID", label: "KYC photo ID" },
+            { id: "KYC_PAN", label: "KYC PAN" },
+            { id: "KYC_ADDRESS", label: "KYC address" },
+            { id: "LOAN_AGREEMENT", label: "Loan agreement" },
+            { id: "LOAN_SANCTION", label: "Loan sanction" },
+            { id: "OTHER", label: "Other" },
+          ]}
+        />
+        <FileControl
+          label="File"
+          fileName={file?.name}
+          onSelect={setFile}
+        />
         {error ? <p className="lm-error">{error}</p> : null}
-        <button
+        <Button
           type="submit"
-          className="lm-btn lm-btn-secondary"
-          disabled={upload.isPending || !file}
+          variant="outline"
+          isDisabled={upload.isPending || !file}
         >
           Upload
-        </button>
+        </Button>
       </form>
     </div>
   );

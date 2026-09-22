@@ -1,3 +1,5 @@
+import { Button } from "@dev-ui/components/button";
+import { Icon } from "@dev-ui/icons";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useAuth } from "@/lib/auth";
@@ -31,9 +33,10 @@ function CustomersPage() {
           <h1>Customers</h1>
           <p>Company customers — mobile and PAN unique within company.</p>
         </div>
-        <Link to="/app/customers/new" className="lm-btn">
+        <Button as={Link} to="/app/customers/new" variant="primary">
+          <Icon name="plus" />
           New customer
-        </Link>
+        </Button>
       </div>
 
       <div className="lm-card lm-table-wrap">

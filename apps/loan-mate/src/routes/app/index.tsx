@@ -1,3 +1,5 @@
+import { Button } from "@dev-ui/components/button";
+import { Icon } from "@dev-ui/icons";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useAuth } from "@/lib/auth";
@@ -64,18 +66,22 @@ function DashboardPage() {
       <div className="lm-card">
         <h2>Quick links</h2>
         <div className="lm-actions">
-          <Link to="/app/customers/new" className="lm-btn">
+          <Button as={Link} to="/app/customers/new" variant="primary">
+            <Icon name="plus" />
             New customer
-          </Link>
-          <Link to="/app/loans/new" className="lm-btn lm-btn-secondary">
+          </Button>
+          <Button as={Link} to="/app/loans/new" variant="outline">
+            <Icon name="wallet" />
             New loan
-          </Link>
-          <Link to="/app/collections" className="lm-btn lm-btn-secondary">
+          </Button>
+          <Button as={Link} to="/app/collections" variant="outline">
+            <Icon name="credit-card" />
             Record payment
-          </Link>
-          <Link to="/app/approvals" className="lm-btn lm-btn-secondary">
+          </Button>
+          <Button as={Link} to="/app/approvals" variant="outline">
+            <Icon name="badge-check" />
             Review approvals
-          </Link>
+          </Button>
         </div>
       </div>
     </div>

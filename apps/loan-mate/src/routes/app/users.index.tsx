@@ -1,3 +1,4 @@
+import { Button } from "@dev-ui/components/button";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
@@ -8,6 +9,7 @@ import {
   STAFF_ROLES,
   type UserRole,
 } from "@/lib/constants";
+import { FormInput, FormSelect } from "@/modules/ui/form-fields";
 
 type UserRow = {
   id: string;
@@ -131,76 +133,51 @@ function EmployeesPage() {
               createUser.mutate();
             }}
           >
-            <div className="lm-form-row">
-              <label htmlFor="name">Name</label>
-              <input
-                id="name"
-                value={createForm.name}
-                onChange={(e) =>
-                  setCreateForm((f) => ({ ...f, name: e.target.value }))
-                }
-                required
-              />
-            </div>
-            <div className="lm-form-row">
-              <label htmlFor="email">Email</label>
-              <input
-                id="email"
-                type="email"
-                value={createForm.email}
-                onChange={(e) =>
-                  setCreateForm((f) => ({ ...f, email: e.target.value }))
-                }
-                required
-              />
-            </div>
-            <div className="lm-form-row">
-              <label htmlFor="role">Role</label>
-              <select
-                id="role"
-                value={createForm.role}
-                onChange={(e) =>
-                  setCreateForm((f) => ({
-                    ...f,
-                    role: e.target.value as UserRole,
-                  }))
-                }
-              >
-                {STAFF_ROLES.map((role) => (
-                  <option key={role} value={role}>
-                    {role.replaceAll("_", " ")}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="lm-form-row">
-              <label htmlFor="branchId">Branch</label>
-              <select
-                id="branchId"
-                value={createForm.branchId}
-                onChange={(e) =>
-                  setCreateForm((f) => ({ ...f, branchId: e.target.value }))
-                }
-              >
-                <option value="">—</option>
-                {(branches.data ?? []).map((b) => (
-                  <option key={b.id} value={b.id}>
-                    {b.code} — {b.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <FormInput
+              label="Name"
+              value={createForm.name}
+              onChange={(name) => setCreateForm((f) => ({ ...f, name }))}
+              required
+            />
+            <FormInput
+              label="Email"
+              type="email"
+              value={createForm.email}
+              onChange={(email) => setCreateForm((f) => ({ ...f, email }))}
+              required
+            />
+            <FormSelect
+              label="Role"
+              value={createForm.role}
+              onChange={(role) =>
+                setCreateForm((f) => ({ ...f, role: role as UserRole }))
+              }
+              options={STAFF_ROLES.map((role) => ({
+                value: role,
+                label: role.replaceAll("_", " "),
+              }))}
+            />
+            <FormSelect
+              label="Branch"
+              placeholder="No branch"
+              value={createForm.branchId}
+              onChange={(branchId) => setCreateForm((f) => ({ ...f, branchId }))}
+              options={(branches.data ?? []).map((b) => ({
+                value: b.id,
+                label: `${b.code} — ${b.name}`,
+              }))}
+            />
             {error ? <p className="lm-error">{error}</p> : null}
             {success ? (
               <p style={{ color: "var(--lm-success)" }}>{success}</p>
             ) : null}
-            <button
+            <Button
               type="submit"
-              className="lm-btn"
-              disabled={createUser.isPending}
+              variant="primary"
+              isDisabled={createUser.isPending}
             >
               Create employee
-            </button>
+            </Button>
           </form>
         </div>
       ) : null}
@@ -242,22 +219,20 @@ function EmployeesPage() {
                     <td>
                       <div className="lm-actions">
                         {canLoginAs && u.id !== user?.id ? (
-                          <button
+                          <Button
                             type="button"
-                            className="lm-btn lm-btn-secondary"
-                            disabled={!u.active || loggingInAs !== null}
+                            variant="outline"
+                            isDisabled={!u.active || loggingInAs !== null}
                             onClick={() => void loginAsEmployee(u)}
                           >
                             {loggingInAs === u.id ? "Signing in…" : "Login as"}
-                          </button>
+                          </Button>
                         ) : null}
                         {canManage ? (
-                          <button
+                          <Button
                             type="button"
-                            className={
-                              u.active ? "lm-btn lm-btn-secondary" : "lm-btn"
-                            }
-                            disabled={toggleActive.isPending}
+                            variant={u.active ? "outline" : "primary"}
+                            isDisabled={toggleActive.isPending}
                             onClick={() =>
                               toggleActive.mutate({
                                 id: u.id,
@@ -266,7 +241,7 @@ function EmployeesPage() {
                             }
                           >
                             {u.active ? "Deactivate" : "Activate"}
-                          </button>
+                          </Button>
                         ) : null}
                       </div>
                     </td>

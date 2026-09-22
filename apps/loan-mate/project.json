@@ -28,7 +28,11 @@
         "script": "build"
       },
       "outputs": ["{projectRoot}/dist"],
-      "dependsOn": ["tokens:build:tokens", "components:build"]
+      "dependsOn": [
+        "tokens:build:tokens",
+        "components:build",
+        "icons-packs:build"
+      ]
     },
     "test": {
       "executor": "nx:run-commands",
