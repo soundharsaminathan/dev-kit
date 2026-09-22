@@ -1,0 +1,186 @@
+@use "@dev-ui/tokens/scss" as *;
+
+.workspace {
+  display: grid;
+  gap: var(--space-3, 0.75rem);
+  align-items: start;
+  min-width: 0;
+}
+
+.form,
+.preview {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 0.75rem);
+  min-width: 0;
+  padding: var(--space-4, 1rem);
+  border-radius: 0.75rem;
+  border: 1px solid color-mix(in srgb, var(--color-fg) 10%, transparent);
+  background: color-mix(in srgb, var(--color-fg) 3.5%, var(--color-bg));
+}
+
+.sectionLabel {
+  margin: 0;
+  font-size: 0.75rem;
+  font-weight: 650;
+  color: color-mix(in srgb, var(--color-fg) 62%, transparent);
+}
+
+.segmented {
+  display: flex;
+  gap: 0.25rem;
+  margin: 0;
+  min-inline-size: 0;
+  padding: 0.25rem;
+  border-radius: 0.75rem;
+  border: 1px solid color-mix(in srgb, var(--color-fg) 10%, transparent);
+  background: color-mix(in srgb, var(--color-fg) 3%, transparent);
+}
+
+.segment {
+  flex: 1;
+  min-height: 2.75rem;
+  padding: 0 0.75rem;
+  border: 0;
+  border-radius: 0.65rem;
+  background: transparent;
+  color: color-mix(in srgb, var(--color-fg) 62%, transparent);
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.segment[data-selected="true"] {
+  background: color-mix(in srgb, var(--color-fg) 8%, transparent);
+  color: var(--color-fg);
+}
+
+.segment:focus-visible,
+.priceInput:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.readonly {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-height: 2.75rem;
+  justify-content: center;
+}
+
+.readonlyValue {
+  font-size: 0.9375rem;
+  font-weight: 650;
+}
+
+.hint {
+  margin: 0;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  color: color-mix(in srgb, var(--color-fg) 56%, transparent);
+}
+
+.switchRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3, 0.75rem);
+  min-height: 2.75rem;
+}
+
+.priceField {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.priceWrap {
+  display: flex;
+  align-items: center;
+  min-height: 2.75rem;
+  padding: 0 0.75rem;
+  border-radius: 0.75rem;
+  border: 1px solid color-mix(in srgb, var(--color-fg) 12%, transparent);
+  background: color-mix(in srgb, var(--color-fg) 3%, transparent);
+}
+
+.currency {
+  margin-inline-end: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 650;
+  color: color-mix(in srgb, var(--color-fg) 58%, transparent);
+}
+
+.priceInput {
+  flex: 1;
+  min-width: 0;
+  height: 2.75rem;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 1rem;
+  font-weight: 650;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2, 0.5rem);
+  flex-wrap: wrap;
+}
+
+.previewHeader {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.previewTitle {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 650;
+}
+
+.previewCard {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: var(--space-3, 0.75rem);
+  border-radius: 0.65rem;
+  border: 1px solid color-mix(in srgb, var(--color-fg) 10%, transparent);
+  background: color-mix(in srgb, var(--color-fg) 4%, transparent);
+}
+
+.previewPrice {
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+}
+
+.previewMeta {
+  margin: 0;
+  font-size: 0.75rem;
+  color: color-mix(in srgb, var(--color-fg) 58%, transparent);
+}
+
+.dangerZone {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 0.5rem);
+  padding-top: var(--space-2, 0.5rem);
+}
+
+@media (min-width: 960px) {
+  .workspace {
+    grid-template-columns: minmax(0, 1.4fr) minmax(16rem, 0.8fr);
+  }
+
+  .preview {
+    position: sticky;
+    top: 4.5rem;
+  }
+}

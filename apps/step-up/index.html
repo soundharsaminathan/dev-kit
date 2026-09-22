@@ -21,12 +21,12 @@
     />
     <meta
       name="description"
-      content="classa is the workspace for dance studio owners. Collect fees, mark attendance, and run batches in one place, without chasing parents on WhatsApp."
+      content="Find Chennai dance studios by style and area. Compare batches and fees, then request a trial."
     />
-    <meta property="og:title" content="classa | Collect every fee without chasing parents" />
+    <meta property="og:title" content="Dance classes in Chennai | classa" />
     <meta
       property="og:description"
-      content="Students, batches, attendance, and payments in one workspace so you can teach instead of chase."
+      content="Find Chennai dance studios by style and area. Compare batches and fees, then request a trial."
     />
     <meta property="og:image" content="/icons/icon-512.png" />
     <meta name="twitter:card" content="summary" />
@@ -48,7 +48,47 @@
       type="font/woff2"
       crossorigin
     />
-    <title>classa | Collect every fee without chasing parents</title>
+    <title>Dance classes in Chennai | classa</title>
+    <script>
+      (function () {
+        try {
+          var path = location.pathname || "/";
+          if (path === "/" || path === "") {
+            document.title = "Dance classes in Chennai | classa";
+          }
+          if (path === "/discover" || path === "/discover/") {
+            document.title = "Dance studios in Chennai | classa";
+          }
+          if (path === "/for-studios" || path === "/for-studios/") {
+            document.title =
+              "classa | Collect every fee without chasing parents";
+            var desc = document.querySelector('meta[name="description"]');
+            if (desc) {
+              desc.setAttribute(
+                "content",
+                "classa is the workspace for dance studio owners. Collect fees, mark attendance, and run batches in one place, without chasing parents on WhatsApp.",
+              );
+            }
+            var ogTitle = document.querySelector('meta[property="og:title"]');
+            if (ogTitle) {
+              ogTitle.setAttribute(
+                "content",
+                "classa | Collect every fee without chasing parents",
+              );
+            }
+            var ogDesc = document.querySelector(
+              'meta[property="og:description"]',
+            );
+            if (ogDesc) {
+              ogDesc.setAttribute(
+                "content",
+                "Students, batches, attendance, and payments in one workspace so you can teach instead of chase.",
+              );
+            }
+          }
+        } catch (metaError) {}
+      })();
+    </script>
     <script>
       (function () {
         try {
@@ -428,7 +468,11 @@
         position: fixed;
         inset: 0;
         z-index: 70;
+        box-sizing: border-box;
+        height: 100%;
+        height: 100dvh;
         min-height: 100%;
+        min-height: 100dvh;
         display: flex;
         flex-direction: column;
         background: #f5efe6;
@@ -508,9 +552,143 @@
         max-width: 42.5rem;
         font-size: 2.25rem;
         font-weight: 700;
-        letter-spacing: -0.04em;
-        line-height: 1;
+        letter-spacing: -0.03em;
+        line-height: 2.5rem;
         color: #1c1a17;
+      }
+
+      #boot-public .market-tabs {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        max-width: 42.5rem;
+      }
+
+      #boot-public .market-tab {
+        display: inline-flex;
+        align-items: center;
+        min-height: 2.5rem;
+        padding: 0 12px;
+        border-radius: 999px;
+        color: inherit;
+        font-size: 0.9375rem;
+        font-weight: 700;
+        text-decoration: none;
+      }
+
+      #boot-public .market-tab[data-active] {
+        background: #1c1a17;
+        color: #fff;
+      }
+
+      #boot-public .hero-search {
+        display: grid;
+        gap: 12px;
+        width: 100%;
+        max-width: 42.5rem;
+        margin-top: 8px;
+        padding: 12px;
+        border-radius: 16px;
+        border: 1px solid rgb(28 26 23 / 12%);
+        background: #fff;
+        box-sizing: border-box;
+      }
+
+      #boot-public .hero-field {
+        display: grid;
+        gap: 4px;
+      }
+
+      #boot-public .hero-field span {
+        font-size: 0.75rem;
+        font-weight: 700;
+        letter-spacing: 0.02em;
+        text-transform: uppercase;
+        color: rgb(28 26 23 / 55%);
+      }
+
+      #boot-public .hero-field input,
+      #boot-public .hero-field select {
+        width: 100%;
+        min-height: 2.75rem;
+        padding: 8px 12px;
+        border-radius: 8px;
+        border: 1px solid rgb(28 26 23 / 12%);
+        background: #f8f4ec;
+        color: #1c1a17;
+        font: inherit;
+        font-size: 1rem;
+        box-sizing: border-box;
+      }
+
+      #boot-public .hero-submit {
+        min-height: 2.75rem;
+        padding: 8px 12px;
+        border: 0;
+        border-radius: 8px;
+        background: #ee8a55;
+        color: #fff;
+        font: inherit;
+        font-size: 1rem;
+        font-weight: 600;
+        cursor: pointer;
+      }
+
+      #boot-public .hero-chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        max-width: 42.5rem;
+      }
+
+      #boot-public .hero-chip {
+        display: inline-flex;
+        align-items: center;
+        min-height: 2.25rem;
+        padding: 6px 12px;
+        border-radius: 999px;
+        border: 1px solid rgb(28 26 23 / 12%);
+        background: #fff;
+        color: #1c1a17;
+        font-size: 0.875rem;
+        font-weight: 600;
+        text-decoration: none;
+      }
+
+      #boot-public .city-pill {
+        display: inline-flex;
+        align-items: center;
+        min-height: 2.25rem;
+        padding: 4px 12px;
+        border-radius: 999px;
+        border: 1px solid rgb(28 26 23 / 12%);
+        background: #fff;
+        color: #1c1a17;
+        font-size: 0.875rem;
+        font-weight: 600;
+      }
+
+      html[data-theme-mode="dark"] #boot-public .shell-header {
+        border-bottom-color: rgb(255 255 255 / 10%);
+      }
+
+      html[data-theme-mode="dark"] #boot-public .city-pill,
+      html[data-theme-mode="dark"] #boot-public .hero-search,
+      html[data-theme-mode="dark"] #boot-public .hero-chip {
+        background: #272727;
+        border-color: rgb(255 255 255 / 14%);
+        color: #fff;
+      }
+
+      html[data-theme-mode="dark"] #boot-public .hero-field input,
+      html[data-theme-mode="dark"] #boot-public .hero-field select {
+        background: #1f1f1f;
+        border-color: rgb(255 255 255 / 14%);
+        color: #fff;
+      }
+
+      html[data-theme-mode="dark"] #boot-public .hero-field span {
+        color: rgb(255 255 255 / 55%);
       }
 
       html[data-theme-mode="dark"] #boot-public .hero-brand {
@@ -520,6 +698,9 @@
       @media (min-width: 768px) {
         #boot-public .hero-brand {
           font-size: 3rem;
+          /* Must grow with font-size — a leftover 2.5rem line box
+             overlaps “Dance classes” onto “in Chennai”. Matches .headline. */
+          line-height: 1;
         }
       }
 
@@ -555,6 +736,8 @@
       }
 
       #boot-public .shell-footer {
+        flex-shrink: 0;
+        margin-top: auto;
         padding: 1.5rem 1rem;
         text-align: center;
         color: rgb(28 26 23 / 56%);
@@ -589,6 +772,7 @@
         if (!root) return;
 
         function publicShell(inner, mainClass) {
+          var isLanding = mainClass === "shell-main-landing";
           return (
             '<div id="boot-public">' +
             '<header class="shell-header">' +
@@ -596,13 +780,18 @@
             '<img src="/icons/classa-header.png" width="32" height="32" alt="" />' +
             "<span>classa</span>" +
             "</a>" +
+            (isLanding ? '<span class="city-pill">Chennai</span>' : "") +
             "</header>" +
             '<main class="shell-main' +
             (mainClass ? " " + mainClass : "") +
             '">' +
             inner +
             "</main>" +
-            '<footer class="shell-footer">classa Dance Studio — move with confidence.</footer>' +
+            '<footer class="shell-footer">' +
+            (isLanding
+              ? "Dance studios across Chennai, in one search."
+              : "classa Dance Studio — move with confidence.") +
+            "</footer>" +
             "</div>"
           );
         }
@@ -619,10 +808,89 @@
         }
 
         // Public routes: paint real LCP text in HTML before the module graph.
-        if (path === "/" || path === "") {
+        if (
+          path === "/" ||
+          path === "" ||
+          path === "/classes" ||
+          path === "/classes/" ||
+          path === "/studios" ||
+          path === "/studios/" ||
+          path === "/trainers" ||
+          path === "/trainers/"
+        ) {
+          var tab =
+            path.indexOf("/studios") === 0
+              ? "studios"
+              : path.indexOf("/trainers") === 0
+                ? "trainers"
+                : "classes";
+          var heading =
+            tab === "studios"
+              ? "Dance studios in Chennai"
+              : tab === "trainers"
+                ? "Dance trainers in Chennai"
+                : "Dance classes in Chennai";
+          var action =
+            tab === "studios"
+              ? "/studios"
+              : tab === "trainers"
+                ? "/trainers"
+                : "/classes";
+          mountPublic(
+            '<nav class="market-tabs" aria-label="Category">' +
+              '<a class="market-tab" data-active href="' +
+              action +
+              '?category=DANCE&amp;city=chennai">Dance</a>' +
+              '<a class="market-tab" href="' +
+              action +
+              '?category=MUSIC&amp;city=chennai">Music</a>' +
+              '<a class="market-tab" href="' +
+              action +
+              '?category=FITNESS&amp;city=chennai">Fitness</a>' +
+              '<a class="market-tab" href="' +
+              action +
+              '?category=ART&amp;city=chennai">Art</a>' +
+              "</nav>" +
+              '<nav class="market-tabs" aria-label="Browse">' +
+              '<a class="market-tab"' +
+              (tab === "classes" ? " data-active" : "") +
+              ' href="/?category=DANCE&amp;city=chennai">Classes</a>' +
+              '<a class="market-tab"' +
+              (tab === "studios" ? " data-active" : "") +
+              ' href="/studios?category=DANCE&amp;city=chennai">Studios</a>' +
+              '<a class="market-tab"' +
+              (tab === "trainers" ? " data-active" : "") +
+              ' href="/trainers?category=DANCE&amp;city=chennai">Trainers</a>' +
+              "</nav>" +
+              '<h1 class="hero-brand">' +
+              heading +
+              "</h1>" +
+              '<form class="hero-search" action="' +
+              action +
+              '" method="get">' +
+              '<input type="hidden" name="city" value="chennai" />' +
+              '<input type="hidden" name="category" value="DANCE" />' +
+              '<label class="hero-field"><span>Search</span><input name="q" type="search" placeholder="Search class, studio, or trainer" /></label>' +
+              '<button class="hero-submit" type="submit">Search</button>' +
+              "</form>",
+            "shell-main-landing",
+          );
+          return;
+        }
+
+        if (path === "/for-studios" || path === "/for-studios/") {
           mountPublic(
             '<h1 class="hero-brand">Collect every fee<br />without chasing parents</h1>' +
               '<p class="hero-support">classa is the workspace for dance studio owners. Students, batches, attendance, and payments live in one place so you can teach instead of chase.</p>',
+            "shell-main-landing",
+          );
+          return;
+        }
+
+        if (path === "/discover" || path === "/discover/") {
+          mountPublic(
+            '<h1 class="hero-brand">Dance studios in Chennai</h1>' +
+              '<p class="hero-support">Opening the studio feed.</p>',
             "shell-main-landing",
           );
           return;

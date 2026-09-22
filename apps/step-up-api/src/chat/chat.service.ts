@@ -12,7 +12,7 @@ import {
   MessageType,
   Prisma,
   UserRole,
-} from "@prisma/client";
+} from "../generated/prisma/client";
 import { MediaService } from "../media/media.service";
 import { ChatNotificationBridgeService } from "../notifications/chat-notification-bridge.service";
 import { PrismaService } from "../prisma/prisma.service";

@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
-import { StudentGoalType } from "@prisma/client";
+import { StudentGoalType } from "../generated/prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import { monthPeriodBounds } from "./home-stats";
 

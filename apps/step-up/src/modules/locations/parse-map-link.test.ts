@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { isShortMapLink, parseMapLink } from "./parse-map-link";
+import {
+  extractMapLinkInput,
+  isShortMapLink,
+  parseMapLink,
+} from "./parse-map-link";
 import { mapsUrl } from "./types";
 
 describe("parseMapLink", () => {
@@ -58,6 +62,30 @@ describe("parseMapLink", () => {
     ).toBeNull();
     expect(parseMapLink("https://maps.app.goo.gl/abc123")).toBeNull();
     expect(parseMapLink("99.5, 77.5")).toBeNull();
+  });
+
+  it("parses a Maps URL buried in share text", () => {
+    expect(
+      parseMapLink(
+        "Rhythm House\nhttps://www.google.com/maps/place/Studio/@12.9715987,77.5945627,17z",
+      ),
+    ).toEqual({ latitude: 12.9715987, longitude: 77.5945627 });
+  });
+});
+
+describe("extractMapLinkInput", () => {
+  it("keeps a clean Maps URL", () => {
+    expect(extractMapLinkInput("https://maps.app.goo.gl/abc123")).toBe(
+      "https://maps.app.goo.gl/abc123",
+    );
+  });
+
+  it("pulls the URL out of a Google Maps share card", () => {
+    expect(
+      extractMapLinkInput(
+        "Studio Name\n12 Main Street\nhttps://maps.app.goo.gl/abc123?g_st=ic",
+      ),
+    ).toBe("https://maps.app.goo.gl/abc123?g_st=ic");
   });
 });
 

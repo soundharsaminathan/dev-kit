@@ -69,7 +69,6 @@ function StudentLocationsPage() {
                       onClick={() =>
                         void navigate({
                           to: "/me/book",
-                          search: { branchId: branch.id },
                         })
                       }
                     >

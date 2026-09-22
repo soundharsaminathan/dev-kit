@@ -15,7 +15,7 @@ import {
   InvoiceStatus,
   PaymentMethod,
   UserRole,
-} from "@prisma/client";
+} from "../generated/prisma/client";
 import {
   ArrayMinSize,
   IsArray,

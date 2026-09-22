@@ -1,4 +1,4 @@
-import { AgeRange } from "@prisma/client";
+import { AgeRange } from "../generated/prisma/client";
 
 const MIN_IMPORT_AGE = 0;
 const MAX_IMPORT_AGE = 120;

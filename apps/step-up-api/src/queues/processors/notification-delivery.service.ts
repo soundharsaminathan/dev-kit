@@ -5,7 +5,7 @@ import {
   DeliveryStatus,
   NotificationChannel,
   NotificationStatus,
-} from "@prisma/client";
+} from "../../generated/prisma/client";
 import type { Queue } from "bullmq";
 import { NotificationsGateway } from "../../notifications/notifications.gateway";
 import { PreferencesService } from "../../notifications/preferences.service";

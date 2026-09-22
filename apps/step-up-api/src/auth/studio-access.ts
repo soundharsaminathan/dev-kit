@@ -1,5 +1,5 @@
 import { ForbiddenException } from "@nestjs/common";
-import { UserRole } from "@prisma/client";
+import { UserRole } from "../generated/prisma/client";
 import type { StudioContext } from "../tenancy/studio-context";
 import type { DecryptedUser } from "../users/user-crypto.service";
 

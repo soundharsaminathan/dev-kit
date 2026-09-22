@@ -1,5 +1,5 @@
 import { Body, Controller, Inject, Post, UseGuards } from "@nestjs/common";
-import { UserRole } from "@prisma/client";
+import { UserRole } from "../generated/prisma/client";
 import { Transform, Type } from "class-transformer";
 import {
   ArrayMaxSize,

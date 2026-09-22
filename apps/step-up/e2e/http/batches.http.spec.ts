@@ -279,10 +279,10 @@ test.describe("batches HTTP @http", () => {
     });
   });
 
-  test("student cannot self-enroll into STAFF_ONLY kids batch @http", async () => {
+  test("adult cannot enroll into a kids class @http", async () => {
     const cleanup = new TestDataCleanup();
     try {
-      const student = await createHttpStudent("Staff Only Deny", cleanup);
+      const student = await createHttpStudent("Kids Audience Deny", cleanup);
       const result = await expectStatus(
         "STUDENT",
         `/batches/${SEED.kidsBatchId}/enroll`,
@@ -296,7 +296,7 @@ test.describe("batches HTTP @http", () => {
         },
         { userId: student.id },
       );
-      expect(result.text).toMatch(/self-enrollment/i);
+      expect(result.text).toMatch(/this class is for kids/i);
     } finally {
       await cleanup.dispose();
     }

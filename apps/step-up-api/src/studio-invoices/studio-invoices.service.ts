@@ -14,7 +14,7 @@ import {
   StudioPlan,
   UserRole,
   type StudioInvoice,
-} from "@prisma/client";
+} from "../generated/prisma/client";
 import { NotificationCommandsService } from "../notifications/notification-commands.service";
 import { PrismaService } from "../prisma/prisma.service";
 import type { DecryptedUser } from "../users/user-crypto.service";

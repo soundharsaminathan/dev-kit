@@ -1,0 +1,61 @@
+.sheet {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4, 1rem);
+}
+
+.lead {
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: color-mix(in srgb, var(--color-fg) 62%, transparent);
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 0.75rem);
+}
+
+.card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3, 0.75rem);
+  padding: var(--space-3, 0.75rem);
+  border-radius: var(--radius-xl, 1rem);
+  background: var(--color-bg-elevated, var(--color-bg));
+  box-shadow: var(--shadow-sm, 0 1px 2px rgb(0 0 0 / 6%));
+}
+
+.photo,
+.photoFallback {
+  width: 3rem;
+  height: 3rem;
+  flex-shrink: 0;
+  border-radius: var(--radius-lg, 0.75rem);
+  object-fit: cover;
+}
+
+.photoFallback {
+  background: color-mix(in srgb, var(--color-primary) 16%, transparent);
+}
+
+.copy {
+  min-width: 0;
+  flex: 1;
+}
+
+.name {
+  margin: 0;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+}
+
+.hours {
+  margin: 0.15rem 0 0;
+  font-size: 0.75rem;
+  color: color-mix(in srgb, var(--color-fg) 58%, transparent);
+}

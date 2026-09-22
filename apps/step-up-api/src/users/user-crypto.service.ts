@@ -10,7 +10,7 @@ import {
   InternalServerErrorException,
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import type { User } from "@prisma/client";
+import type { User } from "../generated/prisma/client";
 
 const ALGORITHM = "aes-256-gcm";
 const IV_LENGTH = 12;

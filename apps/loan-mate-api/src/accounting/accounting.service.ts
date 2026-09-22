@@ -5,7 +5,7 @@ import {
   Logger,
 } from "@nestjs/common";
 import { money } from "../common/money";
-import { JournalSourceType } from "../generated/prisma";
+import { JournalSourceType } from "../generated/prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import { round2 } from "../schedules/domain/emi";
 import { CHART_OF_ACCOUNTS_TEMPLATE } from "./chart-of-accounts";

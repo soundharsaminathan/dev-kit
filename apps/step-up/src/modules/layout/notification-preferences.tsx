@@ -26,6 +26,12 @@ const PREF_LABELS: Record<string, string> = {
   NOT_RENEWED: "Subscription not renewed",
   NEW_FOLLOW: "New followers",
   CHAT_MESSAGE: "Chat messages",
+  BOOKING_REQUESTED: "Booking requests",
+  BOOKING_CONFIRMED: "Booking confirmations",
+  BOOKING_CANCELLED: "Booking cancellations",
+  BOOKING_RESCHEDULE_REQUESTED: "Reschedule requests",
+  BOOKING_RESCHEDULED: "Rescheduled bookings",
+  BOOKING_REMINDER: "Session reminders",
 };
 
 const PREF_DESCRIPTIONS: Record<string, string> = {
@@ -45,6 +51,12 @@ const PREF_DESCRIPTIONS: Record<string, string> = {
     "When your membership expires because it was not renewed in time.",
   NEW_FOLLOW: "When someone starts following your profile.",
   CHAT_MESSAGE: "When you receive a new message in chat.",
+  BOOKING_REQUESTED: "When you request a trial, private, or floor hire.",
+  BOOKING_CONFIRMED: "When a studio confirms your booking.",
+  BOOKING_CANCELLED: "When a booking is cancelled.",
+  BOOKING_RESCHEDULE_REQUESTED: "When a booking reschedule is requested.",
+  BOOKING_RESCHEDULED: "When a booking moves to a new slot.",
+  BOOKING_REMINDER: "Reminders before an upcoming session.",
 };
 
 function preferencesKey(userId: string | undefined) {

@@ -15,7 +15,7 @@ import {
   IndividualAudience,
   SubscriptionKind,
   UserRole,
-} from "@prisma/client";
+} from "../generated/prisma/client";
 import {
   IsBoolean,
   IsEnum,

@@ -1,6 +1,6 @@
 import { BadRequestException, ForbiddenException } from "@nestjs/common";
 import type { AuthUser } from "../auth/current-user.decorator";
-import { UserRole } from "../generated/prisma";
+import { UserRole } from "../generated/prisma/client";
 
 export const COMPANY_ADMIN_ROLES: UserRole[] = [
   UserRole.COMPANY_OWNER,

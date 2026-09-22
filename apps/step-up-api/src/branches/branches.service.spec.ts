@@ -3,7 +3,7 @@ import {
   ConflictException,
   ForbiddenException,
 } from "@nestjs/common";
-import { BranchMediaKind, ProfileVisibility, UserRole } from "@prisma/client";
+import { BranchMediaKind, ProfileVisibility, UserRole } from "../generated/prisma/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { DecryptedUser } from "../users/user-crypto.service";
 import { BranchesService } from "./branches.service";

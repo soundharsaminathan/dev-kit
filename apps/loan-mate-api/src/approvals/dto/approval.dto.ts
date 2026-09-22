@@ -1,5 +1,5 @@
 import { IsEnum, IsObject, IsOptional, IsString, MinLength } from "class-validator";
-import { ApprovalType } from "../../generated/prisma";
+import { ApprovalType } from "../../generated/prisma/client";
 
 export class CreateApprovalDto {
   @IsEnum(ApprovalType)

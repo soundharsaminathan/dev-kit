@@ -5,11 +5,11 @@ import {
   DocumentKind,
   MonthlyFirstEmiOption,
   PaymentFrequency,
-  PrismaClient,
   UserRole,
-} from "../src/generated/prisma";
+} from "../src/generated/prisma/client";
+import { createPrismaClient } from "../src/prisma/create-prisma-client";
 
-const prisma = new PrismaClient();
+const prisma = createPrismaClient();
 
 /** Matches apps/loan-mate SEED_PASSWORD / quick-login. */
 const SEED_PASSWORD = "password";

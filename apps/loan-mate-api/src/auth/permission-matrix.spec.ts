@@ -1,7 +1,7 @@
 import { ForbiddenException } from "@nestjs/common";
 import type { Reflector } from "@nestjs/core";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { UserRole } from "../generated/prisma";
+import { UserRole } from "../generated/prisma/client";
 import { RolesGuard } from "./roles.guard";
 
 type MatrixRow = {

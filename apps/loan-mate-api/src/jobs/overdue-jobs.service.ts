@@ -1,5 +1,5 @@
 import { Inject, Injectable } from "@nestjs/common";
-import { InstallmentStatus, LoanStatus } from "../generated/prisma";
+import { InstallmentStatus, LoanStatus } from "../generated/prisma/client";
 import { money, toNumber } from "../common/money";
 import { PrismaService } from "../prisma/prisma.service";
 import { computePenaltyDue } from "../schedules/domain/penalty";

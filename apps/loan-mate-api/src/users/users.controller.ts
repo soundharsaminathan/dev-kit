@@ -13,7 +13,7 @@ import { AuthGuard } from "../auth/auth.guard";
 import { CurrentUser, type AuthUser } from "../auth/current-user.decorator";
 import { Roles } from "../auth/roles.decorator";
 import { RolesGuard } from "../auth/roles.guard";
-import { UserRole } from "../generated/prisma";
+import { UserRole } from "../generated/prisma/client";
 import { CreateUserDto, UpdateUserDto } from "./dto/user.dto";
 import { UsersService } from "./users.service";
 

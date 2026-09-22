@@ -1,5 +1,5 @@
 import { Inject, Injectable } from "@nestjs/common";
-import type { User } from "@prisma/client";
+import type { User } from "../generated/prisma/client";
 import { MediaService } from "../media/media.service";
 import {
   type EncryptedUserFields,

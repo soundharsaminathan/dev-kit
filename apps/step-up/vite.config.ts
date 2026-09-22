@@ -21,7 +21,8 @@ function firebaseMessagingSwPlugin(env: Record<string, string>): Plugin {
       appId: env.VITE_FIREBASE_APP_ID ?? "",
     };
 
-    return `importScripts("https://www.gstatic.com/firebasejs/11.10.0/firebase-app-compat.js");
+    return `self.skipWaiting();
+importScripts("https://www.gstatic.com/firebasejs/11.10.0/firebase-app-compat.js");
 importScripts("https://www.gstatic.com/firebasejs/11.10.0/firebase-messaging-compat.js");
 firebase.initializeApp(${JSON.stringify(config)});
 firebase.messaging().onBackgroundMessage((payload) => {
@@ -136,6 +137,18 @@ export default defineConfig(({ mode }) => {
       ),
     },
     build: {
+      // The entry already statically imports these tiny helper chunks. Vite
+      // still modulepreloads them from index.html and again from every
+      // dynamic-import dep list; Chrome then warns they were "preloaded but
+      // not used" because the first fetch is never the one that evaluates.
+      modulePreload: {
+        resolveDependencies: (_filename, deps) =>
+          deps.filter(
+            (dep) =>
+              !dep.includes("rolldown-runtime") &&
+              !dep.includes("preload-helper"),
+          ),
+      },
       rollupOptions: {
         output: {
           manualChunks: stepUpManualChunks,

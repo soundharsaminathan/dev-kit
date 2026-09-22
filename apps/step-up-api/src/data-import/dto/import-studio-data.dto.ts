@@ -8,7 +8,7 @@ import {
   PaymentMethod,
   SessionStatus,
   SessionType,
-} from "@prisma/client";
+} from "../../generated/prisma/client";
 import { Transform, Type } from "class-transformer";
 import {
   ArrayMaxSize,

@@ -12,6 +12,7 @@ import { ChatModule } from "./chat/chat.module";
 import { ContactModule } from "./contact/contact.module";
 import { ContestsModule } from "./contests/contests.module";
 import { DataImportModule } from "./data-import/data-import.module";
+import { DiscoverModule } from "./discover/discover.module";
 import { EventsModule } from "./events/events.module";
 import { ExpensesModule } from "./expenses/expenses.module";
 import { HealthModule } from "./health/health.module";
@@ -43,7 +44,14 @@ import { WhatsappModule } from "./whatsapp/whatsapp.module";
 @Module({
   imports: [
     ...sentryNestImports(),
-    ConfigModule.forRoot({ isGlobal: true }),
+    ConfigModule.forRoot({
+      isGlobal: true,
+      // Prefer the API package .env when nx runs from the monorepo root.
+      envFilePath: [
+        "apps/step-up-api/.env",
+        ".env",
+      ],
+    }),
     PrismaModule,
     RedisModule,
     QueueModule.forRoot({ role: "api" }),
@@ -76,6 +84,7 @@ import { WhatsappModule } from "./whatsapp/whatsapp.module";
     SocialModule,
     ChatModule,
     ContactModule,
+    DiscoverModule,
     StaffAgentModule,
     JobsModule,
     HealthModule,

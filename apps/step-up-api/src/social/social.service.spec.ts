@@ -1,4 +1,4 @@
-import { NotificationType, ProfileVisibility, UserRole } from "@prisma/client";
+import { NotificationType, ProfileVisibility, UserRole } from "../generated/prisma/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { SocialService } from "./social.service";
 

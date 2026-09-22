@@ -1,4 +1,4 @@
-import type { PrismaClient } from "@prisma/client";
+import type { PrismaClient } from "../src/generated/prisma/client";
 import { FEATURE_CATALOG } from "../src/studio-features/feature-keys";
 
 /** Upsert the global feature catalog (idempotent). */

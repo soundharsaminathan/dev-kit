@@ -1,4 +1,4 @@
-import { MembershipStatus, NotificationType } from "@prisma/client";
+import { MembershipStatus, NotificationType } from "../generated/prisma/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { JobsService } from "./jobs.service";
 

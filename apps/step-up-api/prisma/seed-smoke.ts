@@ -23,7 +23,7 @@ import {
   SessionType,
   SubscriptionKind,
   UserRole,
-} from "@prisma/client";
+} from "../src/generated/prisma/client";
 import { SAMPLE_CERTIFICATE_LAYOUT } from "../src/certificates/certificate-layout";
 import { ChatCryptoService } from "../src/chat/chat-crypto.service";
 import { UserCryptoService } from "../src/users/user-crypto.service";

@@ -1,5 +1,5 @@
 import { Body, Controller, Inject, Post, Req, UseGuards } from "@nestjs/common";
-import { UserRole } from "@prisma/client";
+import { UserRole } from "../generated/prisma/client";
 import {
   IsBoolean,
   IsEmail,

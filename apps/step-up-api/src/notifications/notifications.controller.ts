@@ -11,7 +11,7 @@ import {
   Query,
   UseGuards,
 } from "@nestjs/common";
-import { NotificationChannel } from "@prisma/client";
+import { NotificationChannel } from "../generated/prisma/client";
 import { Type } from "class-transformer";
 import {
   IsArray,

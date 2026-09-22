@@ -1,4 +1,4 @@
-import { BillingCadence, InvoiceStatus } from "@prisma/client";
+import { BillingCadence, InvoiceStatus } from "../generated/prisma/client";
 import { getPeriodEnd, utcMonthStart } from "../memberships/membership-helpers";
 
 export type GapEnrollmentInput = {

@@ -14,6 +14,14 @@ export type StudioSettings = {
   aiConfigured?: boolean;
   aiProvider?: "groq" | "gemini" | "openai" | null;
   aiChatModel?: string | null;
+  publicStudioListing?: boolean;
+  publicClasses?: boolean;
+  publicTrainers?: boolean;
+  publicRatings?: boolean;
+  bookingTrial?: boolean;
+  bookingEnrollment?: boolean;
+  bookingPrivate?: boolean;
+  bookingFloorHire?: boolean;
 };
 
 export type Studio = {
@@ -24,6 +32,17 @@ export type Studio = {
   logoUrl?: string | null;
   heroMobileUrl?: string | null;
   heroDesktopUrl?: string | null;
+  tagline?: string | null;
+  about?: string | null;
+  foundedYear?: number | null;
+  email?: string | null;
+  whatsapp?: string | null;
+  instagramUrl?: string | null;
+  youtubeUrl?: string | null;
+  websiteUrl?: string | null;
+  whatToBring?: string | null;
+  trialBlurb?: string | null;
+  photos?: string[];
   settings: StudioSettings | null;
 };
 

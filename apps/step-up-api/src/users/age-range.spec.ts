@@ -1,4 +1,4 @@
-import { AgeRange } from "@prisma/client";
+import { AgeRange } from "../generated/prisma/client";
 import { describe, expect, it } from "vitest";
 import { ageFromDateOfBirth, ageRangeFromAge, isImportAge } from "./age-range";
 

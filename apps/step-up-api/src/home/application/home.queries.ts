@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
-import { UserRole } from "@prisma/client";
+import { UserRole } from "../../generated/prisma/client";
 import { PrismaService } from "../../prisma/prisma.service";
 import type { DecryptedUser } from "../../users/user-crypto.service";
 import { GoalsService } from "../goals.service";

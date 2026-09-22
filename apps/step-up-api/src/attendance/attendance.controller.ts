@@ -8,7 +8,7 @@ import {
   Query,
   UseGuards,
 } from "@nestjs/common";
-import { AttendanceSource, AttendanceStatus, UserRole } from "@prisma/client";
+import { AttendanceSource, AttendanceStatus, UserRole } from "../generated/prisma/client";
 import { IsEnum, IsOptional, IsString } from "class-validator";
 import { AuthGuard } from "../auth/auth.guard";
 import { CurrentUser } from "../auth/current-user.decorator";

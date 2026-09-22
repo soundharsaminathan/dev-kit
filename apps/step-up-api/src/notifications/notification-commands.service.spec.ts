@@ -1,4 +1,4 @@
-import { NotificationChannel, NotificationType } from "@prisma/client";
+import { NotificationChannel, NotificationType } from "../generated/prisma/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { OUTBOX_EVENT_NOTIFICATION_CREATED } from "../queues/queue.constants";
 import { NotificationCommandsService } from "./notification-commands.service";

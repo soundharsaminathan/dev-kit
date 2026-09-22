@@ -15,7 +15,7 @@ import {
   NotificationType,
   SessionStatus,
   UserRole,
-} from "@prisma/client";
+} from "../generated/prisma/client";
 import { enrollmentVisibleAtSession } from "../batches/enrollment-status";
 import { loadPaidMonthsByStudent } from "../billing/family-combine";
 import { ImportLockService } from "../data-import/import-lock.service";

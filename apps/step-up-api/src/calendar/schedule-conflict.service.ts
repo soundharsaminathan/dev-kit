@@ -1,5 +1,6 @@
 import { ConflictException, Inject, Injectable } from "@nestjs/common";
-import { BookingStatus, type Prisma, SessionStatus } from "@prisma/client";
+import { BookingStatus, type Prisma, SessionStatus } from "../generated/prisma/client";
+import { padIntervalEnd } from "../discover/marketplace.contract";
 import { PrismaService } from "../prisma/prisma.service";
 import {
   collapseWindow,
@@ -18,6 +19,7 @@ export type AssertNoConflictsInput = {
   excludeBookingIds?: string[];
   excludeBatchId?: string;
   excludeBatchIds?: string[];
+  bufferMinutes?: number;
 };
 
 /** Conflicts are checked against a rolling window instead of all future sessions. */
@@ -59,6 +61,15 @@ export class ScheduleConflictService {
         input.excludeBatchIds,
       ),
     });
+
+    const bufferMinutes = input.bufferMinutes ?? 0;
+    if (bufferMinutes > 0 && trainerIds.length > 0) {
+      for (const slot of occupancy) {
+        if (slot.trainerIds.some((id) => trainerIds.includes(id))) {
+          slot.endsAt = padIntervalEnd(slot.endsAt, bufferMinutes);
+        }
+      }
+    }
 
     const conflict = findScheduleConflict(intervals, occupancy, {
       trainerIds,
@@ -193,13 +204,16 @@ export class ScheduleConflictService {
     }
     if (branchId) {
       bookingPartyFilters.push({
-        OR: [{ session: { batch: { branchId } } }, { batch: { branchId } }],
+        OR: [
+          { branchId },
+          { session: { batch: { branchId } } },
+          { batch: { branchId } },
+        ],
       });
     }
 
     const bookings = await this.prisma.booking.findMany({
       where: {
-        status: BookingStatus.CONFIRMED,
         ...(excludeBookingIds?.length
           ? { id: { notIn: excludeBookingIds } }
           : {}),
@@ -213,6 +227,19 @@ export class ScheduleConflictService {
           : {}),
         OR: bookingPartyFilters,
         AND: [
+          {
+            OR: [
+              {
+                status: {
+                  in: [BookingStatus.PENDING, BookingStatus.CONFIRMED],
+                },
+              },
+              {
+                status: BookingStatus.AWAITING_PAYMENT,
+                paymentHoldExpiresAt: { gt: new Date() },
+              },
+            ],
+          },
           {
             OR: [
               {
@@ -240,6 +267,7 @@ export class ScheduleConflictService {
         id: true,
         studentId: true,
         trainerId: true,
+        branchId: true,
         startsAt: true,
         endsAt: true,
         session: {
@@ -301,7 +329,10 @@ export class ScheduleConflictService {
         trainerIds: [...trainerIdsForSlot],
         studentIds: [booking.studentId],
         branchId:
-          booking.session?.batch.branchId ?? booking.batch?.branchId ?? null,
+          booking.branchId ??
+          booking.session?.batch.branchId ??
+          booking.batch?.branchId ??
+          null,
       });
     }
 

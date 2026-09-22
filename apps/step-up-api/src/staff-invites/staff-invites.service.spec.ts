@@ -3,7 +3,7 @@ import {
   ConflictException,
   NotFoundException,
 } from "@nestjs/common";
-import { InviteStatus, UserRole } from "@prisma/client";
+import { InviteStatus, UserRole } from "../generated/prisma/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { StaffInvitesService } from "./staff-invites.service";
 

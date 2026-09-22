@@ -1,5 +1,5 @@
 import { BadRequestException } from "@nestjs/common";
-import { NotificationType } from "@prisma/client";
+import { NotificationType } from "../generated/prisma/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { MembershipsService } from "./memberships.service";
 

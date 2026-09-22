@@ -3,7 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
-import { StudioStatus } from "@prisma/client";
+import { StudioStatus } from "../generated/prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import type { TenantResolveInput } from "./studio-context";
 

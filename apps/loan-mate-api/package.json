@@ -11,14 +11,11 @@
     "worker:once": "nest start --entryFile worker.main",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate deploy",
-    "prisma:migrate:dev": "prisma migrate dev",
+    "prisma:migrate:dev": "prisma migrate dev && prisma generate",
     "prisma:seed": "tsx prisma/seed.ts",
     "db:setup": "prisma generate && prisma migrate deploy && tsx prisma/seed.ts",
     "test": "vitest run",
     "test:watch": "vitest"
-  },
-  "prisma": {
-    "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.12",
@@ -27,9 +24,11 @@
     "@nestjs/platform-express": "^11.0.12",
     "@aws-sdk/client-s3": "3.1090.0",
     "@aws-sdk/s3-request-presigner": "3.1090.0",
-    "@prisma/client": "^6.8.2",
+    "@prisma/adapter-pg": "^7.10.0",
+    "@prisma/client": "^7.10.0",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.2",
+    "pg": "^8.16.3",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",
     "zod": "^4.1.5"
@@ -39,8 +38,9 @@
     "@nestjs/schematics": "^11.0.5",
     "@types/express": "^5.0.3",
     "@types/node": "^22.15.21",
+    "@types/pg": "^8.16.0",
     "dotenv": "^17.4.2",
-    "prisma": "^6.8.2",
+    "prisma": "^7.10.0",
     "tsx": "^4.22.4",
     "typescript": "^6.0.3",
     "vitest": "^4.1.10"

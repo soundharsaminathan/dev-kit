@@ -1,5 +1,5 @@
 import { Inject, Injectable } from "@nestjs/common";
-import type { OutboxEvent, Prisma } from "@prisma/client";
+import type { OutboxEvent, Prisma } from "../generated/prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 
 type ClaimedOutboxRow = {

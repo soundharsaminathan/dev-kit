@@ -1,9 +1,11 @@
-import { expect, SMOKE, test, waitForAppReady } from "./fixtures";
+import { apiBaseUrl, expect, SMOKE, test, waitForAppReady } from "./fixtures";
 
 test.describe("public smoke @smoke", () => {
   test("guest public pages render @smoke", async ({ page }) => {
     for (const pathName of [
       "/",
+      "/discover",
+      "/for-studios",
       "/login",
       "/register",
       "/forgot-password",
@@ -72,6 +74,48 @@ test.describe("public smoke @smoke", () => {
       await waitForAppReady(page);
       await expect(page).toHaveURL(/\/login/);
     }
+  });
+
+  test("guest cannot attach a freelance trainer @smoke", async () => {
+    const response = await fetch(
+      `${apiBaseUrl()}/studios/${SMOKE.studioId}/trainer-links`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ trainerId: SMOKE.users.TRAINER.id }),
+      },
+    );
+    expect(response.status).toBe(401);
+  });
+
+  test("guest rating write is denied @smoke", async () => {
+    const response = await fetch(`${apiBaseUrl()}/discover/ratings`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        studentId: "anon",
+        target: "STUDIO",
+        studioId: SMOKE.studioId,
+        category: "DANCE",
+        rating: 5,
+      }),
+    });
+    expect(response.status).toBe(401);
+  });
+
+  test("marketplace class Book opens the unified sheet @smoke", async ({
+    page,
+  }) => {
+    await page.goto("/", { waitUntil: "domcontentloaded" });
+    await waitForAppReady(page);
+    const book = page.getByRole("button", { name: "Book" }).first();
+    if ((await book.count()) === 0) {
+      test.skip(true, "No public class inventory on this seed");
+      return;
+    }
+    await book.click();
+    await expect(page.getByTestId("marketplace-book-sheet")).toBeVisible();
+    await expect(page.getByText(/trial|book/i).first()).toBeVisible();
   });
 
   test("public entity pages render for seeded ids @smoke", async ({ page }) => {

@@ -1,11 +1,11 @@
 generator client {
-  provider = "prisma-client-js"
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "cjs"
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_DATABASE_URL")
+  provider = "postgresql"
 }
 
 enum UserRole {
@@ -158,6 +158,43 @@ enum BookingType {
   OPEN_SEAT
   TRIAL
   PRIVATE
+  FLOOR_HIRE
+}
+
+enum MarketplaceCategory {
+  DANCE
+  MUSIC
+  FITNESS
+  ART
+}
+
+enum ClassLevel {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+}
+
+enum ClassAudience {
+  KIDS
+  ADULTS
+  BOTH
+}
+
+enum MarketplaceRatingTarget {
+  STUDIO
+  TRAINER
+}
+
+enum MarketplaceRatingSource {
+  TRIAL
+  CLASS
+  PRIVATE
+}
+
+enum MarketplaceSlugKind {
+  CLASS
+  STUDIO
+  TRAINER
 }
 
 enum BookingStatus {
@@ -183,6 +220,12 @@ enum NotificationType {
   TRAINER_PAYOUT
   DATA_IMPORT_COMPLETE
   STUDIO_PLAN_INVOICE
+  BOOKING_REQUESTED
+  BOOKING_CONFIRMED
+  BOOKING_CANCELLED
+  BOOKING_RESCHEDULE_REQUESTED
+  BOOKING_RESCHEDULED
+  BOOKING_REMINDER
 }
 
 enum StudioPlan {
@@ -347,12 +390,21 @@ model User {
   onboardingCompletedAt  DateTime?
   profileVisibility      ProfileVisibility @default(PRIVATE)
   studioId               String?
+  publicSlug             String?           @unique
+  trainerRatingAvg       Float?
+  trainerRatingCount     Int               @default(0)
   active                 Boolean           @default(true)
   mustChangePassword     Boolean           @default(false)
   createdAt              DateTime          @default(now())
   updatedAt              DateTime          @updatedAt
 
   studio            Studio?           @relation("StudioMembers", fields: [studioId], references: [id])
+  trainedStudios    TrainerStudio[]
+  trainerCategories TrainerMarketplaceCategory[]
+  trainerAvailabilities TrainerAvailability[]
+  trainerBlocks     TrainerBlock[]
+  marketplaceRatingsGiven MarketplaceRating[] @relation("MarketplaceRatingAuthor")
+  trainerMarketplaceRatings MarketplaceRating[] @relation("TrainerMarketplaceRatings")
   preferredBranch   StudioBranch?     @relation("UserPreferredBranch", fields: [preferredBranchId], references: [id], onDelete: SetNull)
   ownedStudio       Studio?           @relation("StudioOwner")
   parentLinks       ParentChild[]     @relation("Parent")
@@ -465,12 +517,28 @@ model Studio {
   logoUrl         String?
   heroMobileUrl   String?
   heroDesktopUrl  String?
+  tagline         String?
+  about           String?      @db.Text
+  foundedYear     Int?
+  email           String?
+  whatsapp        String?
+  instagramUrl    String?
+  youtubeUrl      String?
+  websiteUrl      String?
+  whatToBring     String?
+  trialBlurb      String?
+  primaryCategory MarketplaceCategory @default(DANCE)
+  ratingAvg       Float?
+  ratingCount     Int                 @default(0)
   ownerId         String       @unique
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @default(now()) @updatedAt
 
   owner                User                 @relation("StudioOwner", fields: [ownerId], references: [id])
   members              User[]               @relation("StudioMembers")
+  trainerLinks         TrainerStudio[]
+  marketplaceCategories StudioMarketplaceCategory[]
+  marketplaceRatings   MarketplaceRating[] @relation("StudioMarketplaceRatings")
   settings             StudioSettings?
   branches             StudioBranch[]
   batches              Batch[]
@@ -587,8 +655,120 @@ model StudioSettings {
   aiApiKey           String?
   aiApiKeyIv         String?
   aiChatModel        String?
+  publicStudioListing Boolean @default(true)
+  publicClasses       Boolean @default(true)
+  publicTrainers      Boolean @default(true)
+  publicRatings       Boolean @default(true)
+  bookingTrial        Boolean @default(true)
+  bookingEnrollment   Boolean @default(true)
+  bookingPrivate      Boolean @default(false)
+  bookingFloorHire    Boolean @default(false)
+  privateSessionPaise     Int?
+  privateSessionMinutes   Int     @default(60)
+  floorHirePaise          Int?
+  floorHireSlotMinutes    Int     @default(60)
 
   studio Studio @relation(fields: [studioId], references: [id], onDelete: Cascade)
+}
+
+model StudioMarketplaceCategory {
+  studioId String
+  category MarketplaceCategory
+
+  studio Studio @relation(fields: [studioId], references: [id], onDelete: Cascade)
+
+  @@id([studioId, category])
+  @@index([category])
+}
+
+model TrainerStudio {
+  trainerId              String
+  studioId               String
+  isHome                 Boolean  @default(false)
+  privateSessionPaise    Int?
+  privateSessionMinutes  Int?
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  trainer User   @relation(fields: [trainerId], references: [id], onDelete: Cascade)
+  studio  Studio @relation(fields: [studioId], references: [id], onDelete: Cascade)
+
+  @@id([trainerId, studioId])
+  @@index([studioId])
+}
+
+model TrainerAvailability {
+  id        String   @id @default(cuid())
+  trainerId String
+  weekday   Int
+  startsAt  String
+  endsAt    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  trainer User @relation(fields: [trainerId], references: [id], onDelete: Cascade)
+
+  @@unique([trainerId, weekday, startsAt, endsAt])
+  @@index([trainerId, weekday])
+}
+
+model TrainerBlock {
+  id        String   @id @default(cuid())
+  trainerId String
+  startsAt  DateTime
+  endsAt    DateTime
+  reason    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  trainer User @relation(fields: [trainerId], references: [id], onDelete: Cascade)
+
+  @@index([trainerId, startsAt, endsAt])
+}
+
+model TrainerMarketplaceCategory {
+  trainerId String
+  category  MarketplaceCategory
+
+  trainer User @relation(fields: [trainerId], references: [id], onDelete: Cascade)
+
+  @@id([trainerId, category])
+  @@index([category])
+}
+
+model MarketplaceRating {
+  id          String                    @id @default(cuid())
+  studentId   String
+  target      MarketplaceRatingTarget
+  studioId    String?
+  trainerId   String?
+  category    MarketplaceCategory
+  rating      Int
+  source      MarketplaceRatingSource
+  attendedAt  DateTime
+  uniqueKey   String                    @unique
+  createdAt   DateTime                  @default(now())
+  updatedAt   DateTime                  @updatedAt
+
+  student User    @relation("MarketplaceRatingAuthor", fields: [studentId], references: [id], onDelete: Cascade)
+  studio  Studio? @relation("StudioMarketplaceRatings", fields: [studioId], references: [id], onDelete: Cascade)
+  trainer User?   @relation("TrainerMarketplaceRatings", fields: [trainerId], references: [id], onDelete: Cascade)
+
+  @@index([studioId, category])
+  @@index([trainerId, category])
+  @@index([studentId, target])
+}
+
+model SlugRedirect {
+  id        String              @id @default(cuid())
+  kind      MarketplaceSlugKind
+  fromSlug  String
+  toSlug    String
+  createdAt DateTime            @default(now())
+  updatedAt DateTime            @updatedAt
+
+  @@unique([kind, fromSlug])
+  @@index([kind, toSlug])
 }
 
 model StaffInvite {
@@ -636,6 +816,7 @@ model StudioBranch {
   contests          Contest[]
   preferredByUsers  User[]              @relation("UserPreferredBranch")
   expenses          Expense[]
+  bookings          Booking[]
 
   @@unique([studioId, name])
   @@index([studioId])
@@ -725,6 +906,10 @@ model Batch {
   certificationEnabled  Boolean        @default(false)
   certificateTemplateId String?
   coverImageUrl         String?
+  slug                  String?        @unique
+  marketplaceCategory   MarketplaceCategory @default(DANCE)
+  classLevel            ClassLevel?
+  classAudience         ClassAudience  @default(ADULTS)
   ratingAvg             Float?
   ratingCount           Int            @default(0)
 
@@ -744,6 +929,7 @@ model Batch {
 
   @@unique([studioId, branchId, name])
   @@index([studioId, active])
+  @@index([marketplaceCategory, active])
 }
 
 model BatchSummary {
@@ -1101,6 +1287,7 @@ model Booking {
   batchId              String?
   sessionId            String?
   trainerId            String?
+  branchId             String?
   status               BookingStatus @default(PENDING)
   notes                String?
   startsAt             DateTime?
@@ -1114,8 +1301,10 @@ model Booking {
   batch   Batch?   @relation(fields: [batchId], references: [id], onDelete: SetNull)
   session Session? @relation(fields: [sessionId], references: [id])
   trainer User?    @relation("TrainerBookings", fields: [trainerId], references: [id])
+  branch  StudioBranch? @relation(fields: [branchId], references: [id], onDelete: SetNull)
 
   @@index([batchId])
+  @@index([branchId])
   @@index([status, paymentHoldExpiresAt])
   @@index([studentId, status])
   @@index([trainerId, status])

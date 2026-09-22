@@ -1,4 +1,4 @@
-import { ProfileVisibility, UserRole } from "@prisma/client";
+import { ProfileVisibility, UserRole } from "../generated/prisma/client";
 import { describe, expect, it } from "vitest";
 import {
   canViewContent,

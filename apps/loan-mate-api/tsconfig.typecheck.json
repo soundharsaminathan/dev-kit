@@ -8,6 +8,7 @@
   "include": [
     "src/**/*",
     "prisma/**/*.ts",
+    "prisma.config.ts",
     "vitest.config.ts"
   ],
   "exclude": ["node_modules", "dist", "**/*.spec.ts"]

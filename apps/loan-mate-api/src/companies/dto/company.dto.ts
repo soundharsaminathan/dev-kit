@@ -11,7 +11,7 @@ import {
 import {
   AdvanceTreatment,
   MonthlyFirstEmiOption,
-} from "../../generated/prisma";
+} from "../../generated/prisma/client";
 
 export class CreateCompanyDto {
   @IsString()

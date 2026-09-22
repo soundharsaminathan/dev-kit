@@ -1,11 +1,12 @@
 import { testEmail } from "../src/test/test-email";
 import "dotenv/config";
 import { ConfigService } from "@nestjs/config";
-import { PrismaClient, ProfileVisibility, UserRole } from "@prisma/client";
 import * as admin from "firebase-admin";
+import { ProfileVisibility, UserRole } from "../src/generated/prisma/client";
 import { UserCryptoService } from "../src/users/user-crypto.service";
+import { createScriptPrismaClient } from "./script-db";
 
-const prisma = new PrismaClient();
+const prisma = createScriptPrismaClient();
 const crypto = new UserCryptoService(new ConfigService());
 
 const SEED_PASSWORD = "password";

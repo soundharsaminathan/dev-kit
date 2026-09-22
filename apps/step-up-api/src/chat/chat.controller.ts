@@ -10,7 +10,7 @@ import {
   Query,
   UseGuards,
 } from "@nestjs/common";
-import { EventRsvpStatus } from "@prisma/client";
+import { EventRsvpStatus } from "../generated/prisma/client";
 import { Type } from "class-transformer";
 import {
   ArrayMaxSize,

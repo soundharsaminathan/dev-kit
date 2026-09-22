@@ -8,7 +8,7 @@ import {
   Post,
   UseGuards,
 } from "@nestjs/common";
-import { BookingStatus, BookingType, UserRole } from "@prisma/client";
+import { BookingStatus, BookingType, UserRole } from "../generated/prisma/client";
 import { IsDateString, IsEnum, IsOptional, IsString } from "class-validator";
 import { AuthGuard } from "../auth/auth.guard";
 import { CurrentUser } from "../auth/current-user.decorator";
@@ -42,6 +42,10 @@ class CreateBookingDto {
   @IsOptional()
   @IsString()
   batchId?: string;
+
+  @IsOptional()
+  @IsString()
+  branchId?: string;
 
   @IsOptional()
   @IsString()
@@ -209,7 +213,13 @@ export class BookingsController {
   }
 
   @Post(":id/cancel")
-  @Roles(UserRole.STUDENT, UserRole.PARENT)
+  @Roles(
+    UserRole.STUDENT,
+    UserRole.PARENT,
+    UserRole.OWNER,
+    UserRole.STAFF,
+    UserRole.SYSTEM_ADMIN,
+  )
   cancelBooking(
     @Param("id") id: string,
     @CurrentUser() user: DecryptedUser,

@@ -1,5 +1,5 @@
 import { Inject, Injectable, Logger } from "@nestjs/common";
-import { BookingStatus, BookingType, InvoiceStatus } from "@prisma/client";
+import { BookingStatus, BookingType, InvoiceStatus } from "../../generated/prisma/client";
 import { ACTIVE_ENROLLMENT_WHERE } from "../../batches/enrollment-status";
 import { PrismaService } from "../../prisma/prisma.service";
 

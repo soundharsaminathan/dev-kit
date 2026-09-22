@@ -9,7 +9,7 @@ import {
   NotificationType,
   TrainerPayoutStatus,
   UserRole,
-} from "@prisma/client";
+} from "../generated/prisma/client";
 import { NotificationsService } from "../notifications/notifications.service";
 import { PrismaService } from "../prisma/prisma.service";
 import {

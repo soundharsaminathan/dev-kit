@@ -14,7 +14,13 @@ export type NotificationType =
   | "CHAT_MESSAGE"
   | "DATA_IMPORT_COMPLETE"
   | "STUDIO_PLAN_INVOICE"
-  | "TRAINER_PAYOUT";
+  | "TRAINER_PAYOUT"
+  | "BOOKING_REQUESTED"
+  | "BOOKING_CONFIRMED"
+  | "BOOKING_CANCELLED"
+  | "BOOKING_RESCHEDULE_REQUESTED"
+  | "BOOKING_RESCHEDULED"
+  | "BOOKING_REMINDER";
 
 export type NotificationMeta = {
   sessionId?: string;
@@ -33,6 +39,7 @@ export type NotificationDestination =
   | { to: "/me/invoices" }
   | { to: "/me/attendance" }
   | { to: "/me/calendar" }
+  | { to: "/me/bookings" }
   | { to: "/me/messages" }
   | { to: "/me/messages/$id"; params: { id: string } }
   | { to: "/app/messages" }
@@ -117,6 +124,13 @@ export function resolveNotificationDestination(
       case "PAYMENT_OVERDUE":
       case "PAYMENT_RECEIVED":
         return { to: "/me/invoices" };
+      case "BOOKING_REQUESTED":
+      case "BOOKING_CONFIRMED":
+      case "BOOKING_CANCELLED":
+      case "BOOKING_RESCHEDULE_REQUESTED":
+      case "BOOKING_RESCHEDULED":
+      case "BOOKING_REMINDER":
+        return { to: "/me/bookings" };
       default:
         return null;
     }

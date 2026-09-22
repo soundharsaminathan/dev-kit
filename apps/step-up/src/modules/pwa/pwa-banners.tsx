@@ -2,6 +2,7 @@ import { useRegisterSW } from "virtual:pwa-register/react";
 import { useOnlineStatus } from "@dev-ui/hooks";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
+import { applyWaitingServiceWorkerUpdate } from "@/modules/pwa/apply-waiting-update";
 import {
   StatusBanner,
   StatusBannerAction,
@@ -74,7 +75,9 @@ export function PwaBanners() {
               </StatusBannerAction>
               <StatusBannerAction
                 primary
-                onClick={() => void updateServiceWorker(true)}
+                onClick={() =>
+                  void applyWaitingServiceWorkerUpdate(updateServiceWorker)
+                }
               >
                 Reload
               </StatusBannerAction>

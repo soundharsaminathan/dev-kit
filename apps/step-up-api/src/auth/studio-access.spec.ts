@@ -1,5 +1,5 @@
 import { ForbiddenException } from "@nestjs/common";
-import { UserRole } from "@prisma/client";
+import { UserRole } from "../generated/prisma/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { assertSameStudio, requireUserStudioId } from "./studio-access";
 import { slugifyStudioName, uniquifySlug } from "../tenancy/studio-slug";

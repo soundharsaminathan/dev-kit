@@ -10,15 +10,15 @@ import {
   MembershipSeatRole,
   MembershipStatus,
   type Prisma,
-  PrismaClient,
   ProfileVisibility,
   SessionStatus,
   SessionType,
   SubscriptionKind,
   TrainerPayoutStatus,
   UserRole,
-} from "@prisma/client";
+} from "../src/generated/prisma/client";
 import { UserCryptoService } from "../src/users/user-crypto.service";
+import { createScriptPrismaClient } from "./script-db";
 import {
   ensureStudioFeaturesEnabled,
   seedFeatureCatalog,
@@ -31,7 +31,7 @@ import { SEED_PASSWORD, syncSeedFirebaseUser } from "./sync-seed-auth";
  *   pnpm --filter @step-up/api prisma:seed:e2e
  */
 
-const prisma = new PrismaClient();
+const prisma = createScriptPrismaClient();
 const crypto = new UserCryptoService(new ConfigService());
 
 export const E2E = {

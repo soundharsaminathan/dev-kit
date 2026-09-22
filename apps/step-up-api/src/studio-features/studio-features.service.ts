@@ -5,7 +5,7 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
-import type { Feature } from "@prisma/client";
+import type { Feature } from "../generated/prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import {
   type FeatureKey,

@@ -22,7 +22,7 @@ import {
   ApprovalType,
   InstallmentStatus,
   LoanStatus,
-} from "../generated/prisma";
+} from "../generated/prisma/client";
 import { NotificationService } from "../notifications/notifications.service";
 import { PrismaService } from "../prisma/prisma.service";
 import {

@@ -4,9 +4,10 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
-import { UserRole } from "@prisma/client";
-import { batchCategoryForAgeRange } from "../memberships/membership-helpers";
+import { UserRole } from "../generated/prisma/client";
+import { primaryStyleName } from "../discover/discover.categories";
 import { MediaService } from "../media/media.service";
+import { batchCategoryForAgeRange } from "../memberships/membership-helpers";
 import { PrismaService } from "../prisma/prisma.service";
 import type { DecryptedUser } from "../users/user-crypto.service";
 import { UserPresenter } from "../users/user-presenter";
@@ -33,11 +34,7 @@ function greetingFor(now: Date) {
 }
 
 function styleBadgeFromCategories(danceCategories: unknown): string | null {
-  if (!Array.isArray(danceCategories) || !danceCategories[0]) return null;
-  const name = String(
-    (danceCategories[0] as { name?: string }).name ?? "",
-  ).trim();
-  return name || null;
+  return primaryStyleName(danceCategories);
 }
 
 const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];

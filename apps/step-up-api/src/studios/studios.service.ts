@@ -12,7 +12,7 @@ import {
   Prisma,
   StudioStatus,
   UserRole,
-} from "@prisma/client";
+} from "../generated/prisma/client";
 import { FirebaseService } from "../auth/firebase.service";
 import { isValidIanaTimeZone } from "../common/zoned-local-time";
 import { MediaService } from "../media/media.service";
@@ -27,7 +27,15 @@ import {
   toAiProviderEnum,
 } from "./ai-provider";
 import { parseDanceStyles } from "./dance-styles";
+import {
+  normalizeStudioPublicDetails,
+  type StudioPublicDetailsInput,
+} from "./studio-public-fields";
 import { isTestStudio } from "./test-studio";
+import {
+  type StudioMarketplaceToggles,
+  studioMarketplaceTogglesFrom,
+} from "../discover/marketplace.contract";
 
 type StudioSettingsRow = {
   graceDays: number;
@@ -45,7 +53,7 @@ type StudioSettingsRow = {
   aiApiKey: string | null;
   aiApiKeyIv: string | null;
   aiChatModel: string | null;
-};
+} & Partial<StudioMarketplaceToggles>;
 
 function toPublicStudioSettings(settings: StudioSettingsRow) {
   return {
@@ -66,6 +74,7 @@ function toPublicStudioSettings(settings: StudioSettingsRow) {
     aiConfigured: isAiConfigured(settings),
     aiProvider: toAiProviderApiValue(settings.aiProvider),
     aiChatModel: settings.aiChatModel ?? null,
+    ...studioMarketplaceTogglesFrom(settings),
   };
 }
 
@@ -342,6 +351,16 @@ export class StudiosService {
         logoUrl: true,
         heroMobileUrl: true,
         heroDesktopUrl: true,
+        tagline: true,
+        about: true,
+        foundedYear: true,
+        email: true,
+        whatsapp: true,
+        instagramUrl: true,
+        youtubeUrl: true,
+        websiteUrl: true,
+        whatToBring: true,
+        trialBlurb: true,
       },
     });
 
@@ -351,6 +370,7 @@ export class StudiosService {
 
     return {
       ...studio,
+      photos: await this.media.signReadUrls(studio.photos),
       logoUrl: await this.media.signReadUrl(studio.logoUrl),
       heroMobileUrl: await this.media.signReadUrl(studio.heroMobileUrl),
       heroDesktopUrl: await this.media.signReadUrl(studio.heroDesktopUrl),
@@ -373,6 +393,7 @@ export class StudiosService {
 
     return {
       ...studio,
+      photos: await this.media.signReadUrls(studio.photos),
       logoUrl: await this.media.signReadUrl(studio.logoUrl),
       heroMobileUrl: await this.media.signReadUrl(studio.heroMobileUrl),
       heroDesktopUrl: await this.media.signReadUrl(studio.heroDesktopUrl),
@@ -390,8 +411,9 @@ export class StudiosService {
       logoUrl?: string | null;
       heroMobileUrl?: string | null;
       heroDesktopUrl?: string | null;
-    },
+    } & StudioPublicDetailsInput,
   ) {
+    const details = normalizeStudioPublicDetails(data);
     const update: Prisma.StudioUpdateInput = {};
 
     if (data.name !== undefined) update.name = data.name;
@@ -404,6 +426,26 @@ export class StudiosService {
     if (data.heroDesktopUrl !== undefined) {
       update.heroDesktopUrl = data.heroDesktopUrl;
     }
+    if (details.tagline !== undefined) update.tagline = details.tagline;
+    if (details.about !== undefined) update.about = details.about;
+    if (details.foundedYear !== undefined) {
+      update.foundedYear = details.foundedYear;
+    }
+    if (details.email !== undefined) update.email = details.email;
+    if (details.whatsapp !== undefined) update.whatsapp = details.whatsapp;
+    if (details.instagramUrl !== undefined) {
+      update.instagramUrl = details.instagramUrl;
+    }
+    if (details.youtubeUrl !== undefined)
+      update.youtubeUrl = details.youtubeUrl;
+    if (details.websiteUrl !== undefined)
+      update.websiteUrl = details.websiteUrl;
+    if (details.whatToBring !== undefined) {
+      update.whatToBring = details.whatToBring;
+    }
+    if (details.trialBlurb !== undefined)
+      update.trialBlurb = details.trialBlurb;
+    if (details.photos !== undefined) update.photos = details.photos;
 
     return this.prisma.studio.update({
       where: { id },
@@ -427,6 +469,14 @@ export class StudiosService {
       aiProvider?: string | null;
       aiApiKey?: string | null;
       aiChatModel?: string | null;
+      publicStudioListing?: boolean;
+      publicClasses?: boolean;
+      publicTrainers?: boolean;
+      publicRatings?: boolean;
+      bookingTrial?: boolean;
+      bookingEnrollment?: boolean;
+      bookingPrivate?: boolean;
+      bookingFloorHire?: boolean;
     },
   ) {
     const update: {
@@ -445,6 +495,14 @@ export class StudiosService {
       aiApiKey?: string | null;
       aiApiKeyIv?: string | null;
       aiChatModel?: string | null;
+      publicStudioListing?: boolean;
+      publicClasses?: boolean;
+      publicTrainers?: boolean;
+      publicRatings?: boolean;
+      bookingTrial?: boolean;
+      bookingEnrollment?: boolean;
+      bookingPrivate?: boolean;
+      bookingFloorHire?: boolean;
     } = {};
 
     if (data.graceDays !== undefined) update.graceDays = data.graceDays;
@@ -501,6 +559,30 @@ export class StudiosService {
     if (data.aiChatModel !== undefined) {
       const trimmed = data.aiChatModel?.trim() ?? "";
       update.aiChatModel = trimmed || null;
+    }
+    if (data.publicStudioListing !== undefined) {
+      update.publicStudioListing = data.publicStudioListing;
+    }
+    if (data.publicClasses !== undefined) {
+      update.publicClasses = data.publicClasses;
+    }
+    if (data.publicTrainers !== undefined) {
+      update.publicTrainers = data.publicTrainers;
+    }
+    if (data.publicRatings !== undefined) {
+      update.publicRatings = data.publicRatings;
+    }
+    if (data.bookingTrial !== undefined) {
+      update.bookingTrial = data.bookingTrial;
+    }
+    if (data.bookingEnrollment !== undefined) {
+      update.bookingEnrollment = data.bookingEnrollment;
+    }
+    if (data.bookingPrivate !== undefined) {
+      update.bookingPrivate = data.bookingPrivate;
+    }
+    if (data.bookingFloorHire !== undefined) {
+      update.bookingFloorHire = data.bookingFloorHire;
     }
 
     const existing = await this.prisma.studioSettings.findUnique({

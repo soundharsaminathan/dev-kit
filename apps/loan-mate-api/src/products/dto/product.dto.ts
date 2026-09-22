@@ -11,7 +11,7 @@ import {
 import {
   MonthlyFirstEmiOption,
   PaymentFrequency,
-} from "../../generated/prisma";
+} from "../../generated/prisma/client";
 
 export class CreateProductDto {
   @IsString()

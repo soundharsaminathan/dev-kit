@@ -1,0 +1,223 @@
+.hero {
+  --lp-ease: cubic-bezier(0.32, 0.72, 0, 1);
+  padding: 32px 16px 48px;
+}
+
+.stage {
+  max-width: 42.5rem;
+  margin-inline: auto;
+}
+
+.copy {
+  max-width: 42.5rem;
+}
+
+.headline {
+  margin: 0;
+  max-width: 42.5rem;
+  font-size: 2.25rem;
+  font-weight: 700;
+  line-height: 2.5rem;
+  letter-spacing: -0.03em;
+  text-wrap: balance;
+  background: linear-gradient(90deg, #000 0%, #666 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.support {
+  margin-top: 16px;
+}
+
+.search {
+  margin-top: 24px;
+  display: grid;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 16px;
+  border: 1px solid color-mix(in srgb, var(--color-fg) 12%, transparent);
+  background: var(--color-card, #fff);
+  box-shadow: 0 8px 28px color-mix(in srgb, var(--color-fg) 6%, transparent);
+}
+
+.field {
+  display: grid;
+  gap: 4px;
+}
+
+.fieldLabel {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--color-fg) 55%, transparent);
+}
+
+.input,
+.select {
+  width: 100%;
+  min-height: 2.75rem;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid color-mix(in srgb, var(--color-fg) 12%, transparent);
+  background: var(--surface-background, #f8f4ec);
+  color: var(--color-fg);
+  font: inherit;
+  font-size: 1rem;
+  transition:
+    border-color 700ms var(--lp-ease),
+    box-shadow 700ms var(--lp-ease);
+
+  &:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 25%, transparent);
+  }
+}
+
+.submit {
+  width: 100%;
+  min-height: 2.75rem;
+}
+
+.audience {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.25rem;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--color-fg) 12%, transparent);
+  background: var(--color-card, #fff);
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: color-mix(in srgb, var(--color-fg) 72%, transparent);
+  text-decoration: none;
+  cursor: pointer;
+
+  &[data-active] {
+    color: var(--color-primary-fg, #fff);
+    background: var(--color-primary);
+    border-color: transparent;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--color-border-focus);
+    outline-offset: 2px;
+  }
+}
+
+.geoError {
+  margin: 12px 0 0;
+  font-size: 0.875rem;
+  color: color-mix(in srgb, var(--color-fg) 62%, transparent);
+}
+
+.proof {
+  margin: 16px 0 0;
+}
+
+.proofLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 2.5rem;
+  padding: 8px 14px;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--color-primary) 35%, transparent);
+  background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-primary);
+  text-decoration: none;
+  transition:
+    background 700ms var(--lp-ease),
+    border-color 700ms var(--lp-ease),
+    transform 700ms var(--lp-ease);
+
+  &:hover {
+    background: color-mix(in srgb, var(--color-primary) 20%, transparent);
+    border-color: color-mix(in srgb, var(--color-primary) 55%, transparent);
+  }
+
+  &:active {
+    transform: scale(0.98);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--color-border-focus);
+    outline-offset: 2px;
+  }
+}
+
+.proofArrow {
+  font-size: 1rem;
+  line-height: 1;
+  transition: transform 700ms var(--lp-ease);
+}
+
+.proofLink:hover .proofArrow {
+  transform: translateX(3px);
+}
+
+@media (min-width: 768px) {
+  .hero {
+    padding: 40px 24px 56px;
+  }
+
+  .headline {
+    font-size: 3rem;
+    line-height: 1;
+  }
+
+  .search {
+    grid-template-columns: 1.3fr 1fr auto;
+    align-items: end;
+  }
+
+  .submit {
+    width: auto;
+    padding-inline: 16px;
+  }
+}
+
+@media (min-width: 1100px) {
+  .hero {
+    padding: 48px 32px 64px;
+  }
+
+  .headline {
+    font-size: 3.75rem;
+  }
+}
+
+:global(html[data-theme-mode="dark"]) .headline {
+  background: linear-gradient(90deg, #fff 0%, #9b9b9b 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .input,
+  .select,
+  .proofLink,
+  .proofArrow {
+    transition: none;
+  }
+
+  .proofLink:active {
+    transform: none;
+  }
+
+  .proofLink:hover .proofArrow {
+    transform: none;
+  }
+}

@@ -2,6 +2,7 @@ import { SearchField } from "@dev-ui/components/search-field";
 import { Icon } from "@dev-ui/icons";
 import { useMemo, useState } from "react";
 import { useAuth } from "@/lib/auth";
+import { collectStyleFilterChips } from "@/lib/dance-styles";
 import { ENTITY_ICONS } from "@/lib/entity-icons";
 import { useActiveStudentContext } from "@/modules/me/use-active-student-context";
 import { BatchCard } from "@/modules/ui/batch-card";
@@ -81,13 +82,13 @@ export function DiscoverPage({
 
   const batches = query.data ?? [];
 
-  const styleChips = useMemo(() => {
-    const stylesSet = new Set<string>();
-    for (const batch of query.data ?? []) {
-      if (batch.styleBadge) stylesSet.add(batch.styleBadge);
-    }
-    return [...stylesSet].sort().map((name) => ({ id: name, label: name }));
-  }, [query.data]);
+  const styleChips = useMemo(
+    () =>
+      collectStyleFilterChips(
+        (query.data ?? []).map((batch) => batch.styleBadge),
+      ),
+    [query.data],
+  );
 
   const quickChips = useMemo(
     () => [...categoryChipsForPreferred(preferredCategory), ...styleChips],

@@ -10,7 +10,7 @@ import {
   type ExpensePaymentMethod,
   type ExpenseRecurrenceFrequency,
   Prisma,
-} from "@prisma/client";
+} from "../generated/prisma/client";
 import { BillingService } from "../billing/billing.service";
 import { MediaService } from "../media/media.service";
 import { PrismaService } from "../prisma/prisma.service";

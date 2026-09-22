@@ -21,7 +21,7 @@ import {
   ProfileVisibility,
   SessionStatus,
   UserRole,
-} from "@prisma/client";
+} from "../generated/prisma/client";
 import { FirebaseService } from "../auth/firebase.service";
 import { assertBatchHasSeat, lockBatchRow } from "../batches/batch-capacity";
 import { REACTIVATE_ENROLLMENT_DATA } from "../batches/enrollment-status";
@@ -37,6 +37,7 @@ import {
   resolvePlanCadenceBySubscriptionId,
 } from "../billing/family-combine";
 import { presentInvoicePeriod } from "../billing/invoice-period";
+import { canonicalizeStyleList } from "../common/dance-style-name";
 import { MediaService } from "../media/media.service";
 import { invoiceDueDate } from "../memberships/membership-helpers";
 import { PrismaService } from "../prisma/prisma.service";
@@ -681,7 +682,7 @@ export class UsersService {
           ? { dateOfBirth: data.dateOfBirth }
           : {}),
         ...(data.ageYears !== undefined ? { ageYears: data.ageYears } : {}),
-        styles: data.styles ?? [],
+        styles: canonicalizeStyleList(data.styles ?? []),
         profileVisibility: isAlwaysPublicRole(data.role)
           ? ProfileVisibility.PUBLIC
           : ProfileVisibility.PRIVATE,
@@ -1132,7 +1133,8 @@ export class UsersService {
     await this.assertStudentInStudio(studioId, studentId);
 
     const limit = resolvePageLimit(query.limit);
-    const sort: StudentInvoiceSort = query.sort === "oldest" ? "oldest" : "newest";
+    const sort: StudentInvoiceSort =
+      query.sort === "oldest" ? "oldest" : "newest";
     const orderBy = { id: sort === "oldest" ? "asc" : "desc" } as const;
 
     const where: Prisma.InvoiceWhereInput = {
@@ -1168,9 +1170,7 @@ export class UsersService {
     const rows = await this.prisma.invoice.findMany({
       where,
       orderBy,
-      ...(query.cursor
-        ? { cursor: { id: query.cursor }, skip: 1 }
-        : {}),
+      ...(query.cursor ? { cursor: { id: query.cursor }, skip: 1 } : {}),
       take,
       include: studentProfileInvoiceInclude,
     });
@@ -1178,7 +1178,9 @@ export class UsersService {
     const enrollments = await this.prisma.batchEnrollment.findMany({
       where: { studentId, batch: { studioId } },
       include: {
-        batch: { select: { id: true, name: true, active: true, category: true } },
+        batch: {
+          select: { id: true, name: true, active: true, category: true },
+        },
       },
     });
 
@@ -1250,9 +1252,7 @@ export class UsersService {
         coveredStudents: true,
       },
       orderBy: [{ periodEnd: "desc" }, { id: "desc" }],
-      ...(query.cursor
-        ? { cursor: { id: query.cursor }, skip: 1 }
-        : {}),
+      ...(query.cursor ? { cursor: { id: query.cursor }, skip: 1 } : {}),
       take: limit + 1,
     });
 
@@ -1720,7 +1720,9 @@ export class UsersService {
         ...(photoUrl !== undefined ? { photoUrl } : {}),
         ...(bannerUrl !== undefined ? { bannerUrl } : {}),
         ...(coverUrl !== undefined ? { coverUrl } : {}),
-        ...(styles !== undefined ? { styles } : {}),
+        ...(styles !== undefined
+          ? { styles: canonicalizeStyleList(styles) }
+          : {}),
         ...(experienceLevel !== undefined ? { experienceLevel } : {}),
         ...(scheduleVibe !== undefined ? { scheduleVibe } : {}),
         ...(gender !== undefined ? { gender } : {}),
@@ -2747,7 +2749,8 @@ export class UsersService {
     data: {
       name: string;
       kind: FamilyMemberKind;
-      gender: Gender;
+      gender?: Gender;
+      studioId?: string;
       dateOfBirth?: string;
       age?: number;
       guardianName?: string;
@@ -2759,7 +2762,8 @@ export class UsersService {
     if (!name) {
       throw new BadRequestException("Name is required");
     }
-    if (!owner.studioId) {
+    const studioId = data.studioId ?? owner.studioId;
+    if (!studioId) {
       throw new BadRequestException("Owner must belong to a studio");
     }
 
@@ -2782,7 +2786,7 @@ export class UsersService {
           firebaseUid: `dependent:${dependentId}`,
           ...sealed,
           role: UserRole.STUDENT,
-          studioId: owner.studioId,
+          studioId,
           gender: data.gender,
           ageRange: ageFields.ageRange,
           ...(ageFields.dateOfBirth !== undefined

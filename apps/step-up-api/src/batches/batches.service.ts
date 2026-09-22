@@ -13,6 +13,7 @@ import {
   BillingCadence,
   BookingStatus,
   EnrollmentMode,
+  FamilyMemberKind,
   IndividualAudience,
   InvoiceStatus,
   Prisma,
@@ -20,9 +21,9 @@ import {
   SessionType,
   SubscriptionKind,
   UserRole,
-} from "@prisma/client";
+} from "../generated/prisma/client";
+import { childAudienceBlocked } from "../discover/marketplace.contract";
 import { BillingService } from "../billing/billing.service";
-import { ImportLockService } from "../data-import/import-lock.service";
 import {
   loadPaidMonthsByStudent,
   parseCombineMeta,
@@ -31,6 +32,12 @@ import {
 } from "../billing/family-combine";
 import { ScheduleConflictService } from "../calendar/schedule-conflict.service";
 import { ChatService } from "../chat/chat.service";
+import {
+  canonicalizeDanceCategories,
+  styleIdentityKey,
+} from "../common/dance-style-name";
+import { ImportLockService } from "../data-import/import-lock.service";
+import { primaryStyleName } from "../discover/discover.categories";
 import { MediaService } from "../media/media.service";
 import {
   batchCategoryForAgeRange,
@@ -164,11 +171,7 @@ function scheduleLabelFrom(schedule: unknown): string | null {
 }
 
 function primaryStyleFrom(danceCategories: unknown): string | null {
-  if (!Array.isArray(danceCategories) || danceCategories.length === 0) {
-    return null;
-  }
-  const first = danceCategories[0] as { name?: string };
-  return first?.name?.trim() || null;
+  return primaryStyleName(danceCategories);
 }
 
 const branchCoverInclude = {
@@ -786,10 +789,12 @@ export class BatchesService {
       }),
     );
 
-    const styleFilter = filters.style?.toLowerCase();
+    const styleFilter = filters.style ? styleIdentityKey(filters.style) : "";
     const filtered = styleFilter
       ? mapped.filter(
-          (batch) => batch.styleBadge?.toLowerCase() === styleFilter,
+          (batch) =>
+            Boolean(batch.styleBadge) &&
+            styleIdentityKey(batch.styleBadge as string) === styleFilter,
         )
       : mapped;
 
@@ -1062,7 +1067,7 @@ export class BatchesService {
         branchId: data.branchId,
         name: data.name.trim(),
         category: data.category,
-        danceCategories: data.danceCategories,
+        danceCategories: canonicalizeDanceCategories(data.danceCategories),
         scheduleJson: data.scheduleJson,
         capacity: data.capacity,
         enrollmentMode: data.enrollmentMode,
@@ -1426,7 +1431,9 @@ export class BatchesService {
         where: { id },
         data: {
           ...batchData,
-          ...(danceCategories ? { danceCategories } : {}),
+          ...(danceCategories
+            ? { danceCategories: canonicalizeDanceCategories(danceCategories) }
+            : {}),
           ...(scheduleJson ? { scheduleJson } : {}),
           certificateTemplateId: certificationEnabled
             ? certificateTemplateId
@@ -1519,6 +1526,11 @@ export class BatchesService {
       where: { id: batchId },
       include: {
         enrollments: { where: ACTIVE_ENROLLMENT_WHERE },
+        studio: {
+          select: {
+            settings: { select: { bookingEnrollment: true } },
+          },
+        },
       },
     });
 
@@ -1531,10 +1543,23 @@ export class BatchesService {
       throw new BadRequestException("Batch is not active");
     }
 
-    if (!isStaff && batch.enrollmentMode !== EnrollmentMode.SELF_JOIN) {
+    if (
+      !isStaff &&
+      batch.enrollmentMode !== EnrollmentMode.SELF_JOIN &&
+      !batch.studio?.settings?.bookingEnrollment
+    ) {
       throw new BadRequestException(
         "This batch does not allow self-enrollment",
       );
+    }
+
+    const forChild = await this.isMarketplaceChild(studentId);
+    const blocked = childAudienceBlocked({
+      forChild,
+      classAudience: batch.classAudience,
+    });
+    if (blocked) {
+      throw new BadRequestException(blocked);
     }
 
     if (
@@ -1583,6 +1608,20 @@ export class BatchesService {
           }
         : null,
     };
+  }
+
+  private async isMarketplaceChild(studentId: string) {
+    const [family, parent] = await Promise.all([
+      this.prisma.familyMember.findFirst({
+        where: { memberUserId: studentId },
+        select: { kind: true },
+      }),
+      this.prisma.parentChild.findFirst({
+        where: { childUserId: studentId },
+        select: { id: true },
+      }),
+    ]);
+    return Boolean(parent) || family?.kind === FamilyMemberKind.KID;
   }
 
   async enrollBulk(

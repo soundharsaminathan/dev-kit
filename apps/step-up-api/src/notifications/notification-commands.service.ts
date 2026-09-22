@@ -5,7 +5,7 @@ import {
   NotificationStatus,
   NotificationType,
   type Prisma,
-} from "@prisma/client";
+} from "../generated/prisma/client";
 import { OutboxService } from "../events/outbox.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { OUTBOX_EVENT_NOTIFICATION_CREATED } from "../queues/queue.constants";

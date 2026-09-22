@@ -32,6 +32,7 @@ type MediaManagerProps = {
   branchId: string;
   media: BranchMedia[];
   coverMediaId: string | null;
+  heading?: string | null;
 };
 
 function moveItem<T>(items: T[], from: number, to: number) {
@@ -84,6 +85,7 @@ export function MediaManager({
   branchId,
   media,
   coverMediaId,
+  heading = "Gallery",
 }: MediaManagerProps) {
   const api = useApi();
   const queryClient = useQueryClient();
@@ -243,7 +245,7 @@ export function MediaManager({
     <section className={styles.root}>
       <div className={styles.header}>
         <div>
-          <h2 className={styles.heading}>Gallery</h2>
+          {heading ? <h2 className={styles.heading}>{heading}</h2> : null}
           <p className={styles.help}>
             {imageCount}/{MAX_BRANCH_IMAGES} images · {videoCount}/
             {MAX_BRANCH_VIDEOS} videos · muted promos only

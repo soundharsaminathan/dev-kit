@@ -7,8 +7,10 @@ import {
   SessionStatus,
   SessionType,
   type SubscriptionKind,
-} from "@prisma/client";
+} from "../../generated/prisma/client";
 import { loadPaidMonthsByStudent } from "../../billing/family-combine";
+import { styleIdentityKey } from "../../common/dance-style-name";
+import { primaryStyleName } from "../../discover/discover.categories";
 import { MediaService } from "../../media/media.service";
 import { MembershipsService } from "../../memberships/memberships.service";
 import { PrismaService } from "../../prisma/prisma.service";
@@ -111,11 +113,7 @@ function scheduleLabelFrom(schedule: unknown): string | null {
 }
 
 function primaryStyleFrom(danceCategories: unknown): string | null {
-  if (!Array.isArray(danceCategories) || danceCategories.length === 0) {
-    return null;
-  }
-  const first = danceCategories[0] as { name?: string };
-  return first?.name?.trim() || null;
+  return primaryStyleName(danceCategories);
 }
 
 function extractPlans(
@@ -176,12 +174,12 @@ export class BatchQueriesService {
       rows.map(async (batch) => this.shapeCard(batch)),
     );
 
-    const styleFilter = filters.style?.toLowerCase();
+    const styleFilter = filters.style ? styleIdentityKey(filters.style) : "";
     let items = styleFilter
       ? mapped.filter(
           (batch) =>
-            (batch.styleBadge as string | null | undefined)?.toLowerCase() ===
-            styleFilter,
+            Boolean(batch.styleBadge) &&
+            styleIdentityKey(String(batch.styleBadge)) === styleFilter,
         )
       : mapped;
 

@@ -142,6 +142,12 @@ test.describe("student smoke @smoke", () => {
       await expect(
         page.getByRole("heading", { name: /^discover$/i }),
       ).toBeVisible();
+      await expect(page.getByRole("button", { name: "Classes" })).toBeVisible();
+      await expect(page.getByRole("button", { name: "Studios" })).toBeVisible();
+      await expect(page.getByRole("button", { name: "Trainers" })).toBeVisible();
+      await expect(
+        page.getByLabel("Search class, studio, or trainer"),
+      ).toBeVisible();
       const kids = page.getByRole("button", { name: /^Kids$/i });
       if ((await kids.count()) > 0) {
         await kids.first().click();
@@ -407,7 +413,7 @@ test.describe("student smoke @smoke", () => {
     expect(deleteSession.status).toBe(403);
   });
 
-  test("onboarding student cannot self-enroll into STAFF_ONLY kids batch @smoke", async () => {
+  test("onboarding adult cannot enroll into a kids class @smoke", async () => {
     const token = await bearerFor("ONBOARDING");
     const response = await fetch(
       `${apiBaseUrl()}/batches/${SMOKE.kidsBatchId}/enroll`,
@@ -424,7 +430,7 @@ test.describe("student smoke @smoke", () => {
       },
     );
     expect(response.status).toBe(400);
-    expect(await response.text()).toMatch(/self-enrollment/i);
+    expect(await response.text()).toMatch(/this class is for kids/i);
   });
 
   test("student cannot call staff bulk enroll @smoke", async () => {

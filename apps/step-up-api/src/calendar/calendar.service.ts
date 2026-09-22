@@ -4,8 +4,9 @@ import {
   Inject,
   Injectable,
 } from "@nestjs/common";
-import { SessionStatus, UserRole } from "@prisma/client";
+import { SessionStatus, UserRole } from "../generated/prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
+import { MarketplaceControlsService } from "../studios/marketplace-controls.service";
 import type { DecryptedUser } from "../users/user-crypto.service";
 import {
   assertCalendarRange,
@@ -16,7 +17,11 @@ import {
 
 @Injectable()
 export class CalendarService {
-  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
+  constructor(
+    @Inject(PrismaService) private readonly prisma: PrismaService,
+    @Inject(MarketplaceControlsService)
+    private readonly marketplaceControls: MarketplaceControlsService,
+  ) {}
 
   async listEvents(
     user: DecryptedUser,
@@ -27,6 +32,7 @@ export class CalendarService {
       branchId?: string;
       trainerId?: string;
       studentId?: string;
+      includeHireable?: boolean;
     },
   ) {
     const query = this.resolveQuery(user, raw);
@@ -122,7 +128,24 @@ export class CalendarService {
       },
     });
 
-    return buildCalendarEvents(sessions, bookings, query);
+    const events = buildCalendarEvents(sessions, bookings, query);
+    const canHire =
+      raw.includeHireable === true &&
+      Boolean(query.studioId) &&
+      (user.role === UserRole.OWNER ||
+        user.role === UserRole.STAFF ||
+        user.role === UserRole.SYSTEM_ADMIN);
+    if (!canHire || !query.studioId) return events;
+
+    const availability = await this.marketplaceControls.listAvailabilityEvents({
+      studioId: query.studioId,
+      from: query.from,
+      to: query.to,
+      trainerId: query.trainerId,
+    });
+    return [...events, ...availability].sort(
+      (a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime(),
+    );
   }
 
   async listUnscheduled(

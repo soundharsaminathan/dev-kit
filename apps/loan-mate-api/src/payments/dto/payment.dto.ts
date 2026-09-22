@@ -7,7 +7,7 @@ import {
   Min,
   MinLength,
 } from "class-validator";
-import { AdvanceTreatment, PaymentMode } from "../../generated/prisma";
+import { AdvanceTreatment, PaymentMode } from "../../generated/prisma/client";
 
 export class RecordPaymentDto {
   @IsString()

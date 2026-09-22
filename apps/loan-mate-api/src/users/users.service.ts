@@ -15,7 +15,7 @@ import {
   InstallmentStatus,
   LoanStatus,
   UserRole,
-} from "../generated/prisma";
+} from "../generated/prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import { CreateUserDto, UpdateUserDto } from "./dto/user.dto";
 

@@ -17,7 +17,7 @@ import {
   SessionStatus,
   SessionType,
   UserRole,
-} from "@prisma/client";
+} from "../src/generated/prisma/client";
 import { testEmail } from "../src/test/test-email";
 import { UserCryptoService } from "../src/users/user-crypto.service";
 

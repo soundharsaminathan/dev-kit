@@ -14,7 +14,7 @@ import {
   ApprovalType,
   InstallmentStatus,
   LoanStatus,
-} from "../generated/prisma";
+} from "../generated/prisma/client";
 
 import { PrismaService } from "../prisma/prisma.service";
 

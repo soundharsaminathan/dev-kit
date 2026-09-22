@@ -1,13 +1,16 @@
 import { describe, expect, it } from "vitest";
+import { zonedLocalToUtc } from "../common/zoned-local-time";
 import {
   assertCalendarRange,
   type BookingForCalendar,
   bookingMatchesScope,
   buildCalendarEvents,
   buildUnscheduledBookings,
+  expandTrainerAvailabilityWindows,
   resolveBookingTimes,
   type SessionForCalendar,
   sessionMatchesScope,
+  toAvailabilityEvent,
   toBookingEvent,
 } from "./calendar-query";
 
@@ -276,6 +279,31 @@ describe("buildCalendarEvents", () => {
     expect(events).toHaveLength(1);
     expect(events[0]?.kind).toBe("BOOKING");
     expect(events[0]?.title).toBe("Kids Hip-Hop");
+  });
+});
+
+describe("trainer availability on calendar", () => {
+  it("expands weekday windows into hireable calendar events", () => {
+    const from = new Date("2026-09-21T00:00:00.000Z");
+    const to = new Date("2026-09-22T00:00:00.000Z");
+    const windows = expandTrainerAvailabilityWindows(
+      [{ weekday: 1, startsAt: "10:00", endsAt: "12:00" }],
+      from,
+      to,
+      "Asia/Kolkata",
+      zonedLocalToUtc,
+    );
+    expect(windows.length).toBeGreaterThan(0);
+    const event = toAvailabilityEvent({
+      trainerId: "trainer-1",
+      trainerName: "Priya",
+      startsAt: windows[0]!.startsAt,
+      endsAt: windows[0]!.endsAt,
+      attached: false,
+    });
+    expect(event.kind).toBe("AVAILABILITY");
+    expect(event.title).toBe("Hire Priya");
+    expect(event.status).toBe("HIREABLE");
   });
 });
 

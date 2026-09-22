@@ -24,7 +24,7 @@ import {
   type SessionType,
   SubscriptionKind,
   UserRole,
-} from "@prisma/client";
+} from "../generated/prisma/client";
 import { readPurchaseMetaBatchId } from "../billing/family-combine";
 import { billingPeriodForCadence } from "../billing/invoice-period";
 import {
@@ -33,6 +33,10 @@ import {
   type TimeInterval,
 } from "../calendar/schedule-conflict";
 import { ScheduleConflictService } from "../calendar/schedule-conflict.service";
+import {
+  canonicalizeDanceCategories,
+  canonicalizeFreeStyleName,
+} from "../common/dance-style-name";
 import {
   utcOffsetMinutesForZone,
   zonedLocalToUtc,
@@ -1174,11 +1178,13 @@ export class DataImportService {
       }
       const styles = (row.danceStyles ?? "")
         .split(/[,;]/)
-        .map((style) => style.trim())
+        .map((style) => canonicalizeFreeStyleName(style))
         .filter(Boolean);
       const danceCategories =
         styles.length > 0
-          ? styles.map((style) => ({ name: style, description: style }))
+          ? canonicalizeDanceCategories(
+              styles.map((style) => ({ name: style, description: style })),
+            )
           : [{ name: "General", description: "General" }];
 
       const utcOffsetMinutes =

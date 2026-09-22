@@ -1,4 +1,5 @@
 import { Button } from "@dev-ui/components/button";
+import type { MouseEvent } from "react";
 
 type FollowButtonProps = {
   isFollowing: boolean;
@@ -46,7 +47,7 @@ export function FollowButton({
         variant="default"
         className={className}
         aria-pressed={true}
-        onClick={(event) => {
+        onClick={(event: MouseEvent<HTMLButtonElement>) => {
           event.stopPropagation();
           event.preventDefault();
           onUnfollow?.();
@@ -63,7 +64,7 @@ export function FollowButton({
       variant="primary"
       className={className}
       aria-pressed={false}
-      onClick={(event) => {
+      onClick={(event: MouseEvent<HTMLButtonElement>) => {
         event.stopPropagation();
         event.preventDefault();
         onFollow?.();

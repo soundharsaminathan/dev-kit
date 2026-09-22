@@ -10,7 +10,7 @@ import {
   Query,
   UseGuards,
 } from "@nestjs/common";
-import { BranchMediaCategory, BranchMediaKind, UserRole } from "@prisma/client";
+import { BranchMediaCategory, BranchMediaKind, UserRole } from "../generated/prisma/client";
 import { Type } from "class-transformer";
 import {
   ArrayMaxSize,

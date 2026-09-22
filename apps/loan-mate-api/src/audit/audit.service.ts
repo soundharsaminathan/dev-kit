@@ -1,7 +1,7 @@
 import { Inject, Injectable } from "@nestjs/common";
 import type { AuthUser } from "../auth/current-user.decorator";
 import { requireCompany } from "../common/tenancy";
-import type { Prisma } from "../generated/prisma";
+import type { Prisma } from "../generated/prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 
 export type AuditListFilters = {

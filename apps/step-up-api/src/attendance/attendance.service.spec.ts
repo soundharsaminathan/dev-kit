@@ -8,7 +8,7 @@ import {
   AttendanceStatus,
   NotificationType,
   UserRole,
-} from "@prisma/client";
+} from "../generated/prisma/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { makeSession } from "../test/fixtures/sessions";
 import { FIXTURE_USERS } from "../test/fixtures/users";

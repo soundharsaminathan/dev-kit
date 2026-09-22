@@ -1,6 +1,6 @@
 import { type Mock, vi } from "vitest";
 import type { ImportStudioDataDto } from "../../data-import/dto/import-studio-data.dto";
-import type { StudioDataImport } from "@prisma/client";
+import type { StudioDataImport } from "../../generated/prisma/client";
 
 export type ImportLockMock = {
   assertBatchUnlocked: Mock<

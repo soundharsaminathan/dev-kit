@@ -1,7 +1,8 @@
 import { execSync } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { PrismaClient } from "@prisma/client";
+import { createScriptPrismaClient } from "../prisma/script-db";
+import type { PrismaClient } from "../src/generated/prisma/client";
 
 const appRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -135,7 +136,7 @@ async function assertSchema(prisma: PrismaClient) {
 }
 
 async function smokeOnce(label: string) {
-  const prisma = new PrismaClient();
+  const prisma = createScriptPrismaClient();
   try {
     console.log(`[${label}] Resetting public schema…`);
     await resetSchema(prisma);

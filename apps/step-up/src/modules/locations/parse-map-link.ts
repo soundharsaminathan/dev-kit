@@ -1,8 +1,22 @@
 import type { MapCoordinates } from "./types";
 
 const COORD_PAIR = /(-?\d{1,3}(?:\.\d+)?)\s*[, ]\s*(-?\d{1,3}(?:\.\d+)?)/;
+const URL_IN_TEXT = /https?:\/\/[^\s<>"']+/i;
 
 const SHORT_MAP_HOSTS = new Set(["maps.app.goo.gl", "goo.gl", "g.co"]);
+
+/** Pull a URL or coordinate pair out of Google Maps share text. */
+export function extractMapLinkInput(input: string): string {
+  const trimmed = input.replace(/^\uFEFF/, "").trim();
+  if (!trimmed) return "";
+
+  const urlMatch = trimmed.match(URL_IN_TEXT);
+  if (urlMatch?.[0]) {
+    return urlMatch[0].replace(/[),.;]+$/, "");
+  }
+
+  return trimmed;
+}
 
 function asCoordinates(
   latitude: number,
@@ -91,7 +105,7 @@ function parsePathCoords(
 }
 
 export function isShortMapLink(input: string): boolean {
-  const trimmed = input.trim();
+  const trimmed = extractMapLinkInput(input);
   if (!trimmed) return false;
   try {
     const url = new URL(
@@ -107,7 +121,7 @@ export function isShortMapLink(input: string): boolean {
 }
 
 export function parseMapLink(input: string): MapCoordinates | null {
-  const trimmed = input.trim();
+  const trimmed = extractMapLinkInput(input);
   if (!trimmed) return null;
 
   if (/^geo:/i.test(trimmed)) {

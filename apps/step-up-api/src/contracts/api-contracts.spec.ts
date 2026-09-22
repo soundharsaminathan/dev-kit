@@ -52,6 +52,15 @@ describe("API contracts", () => {
     ).toBe("TRIAL");
 
     expect(bookingPaymentConfirmSchema.parse({ id: "bk-1" }).id).toBe("bk-1");
+
+    expect(
+      bookingCreateRequestSchema.parse({
+        studioId: "studio-1",
+        studentId: "student-1",
+        type: "FLOOR_HIRE",
+        branchId: "branch-1",
+      }).type,
+    ).toBe("FLOOR_HIRE");
   });
 
   it("accepts notification list item fields used by the student UI", () => {

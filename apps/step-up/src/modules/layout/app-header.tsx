@@ -30,6 +30,7 @@ import {
 } from "@/modules/admin/use-admin-studio";
 import { StudioBrandMark } from "@/modules/branding/studio-brand-mark";
 import { StaffAgentControl } from "@/modules/staff-agent/staff-agent-control";
+import { ThemeSwitcher } from "@/modules/ui/theme-switcher";
 import {
   TooltipIconBar,
   TooltipIconBarItem,
@@ -465,6 +466,9 @@ export function AppHeader({ variant }: AppHeaderProps) {
           </TooltipIconBarItem>
         ))}
         {showStaffAgent ? <StaffAgentControl /> : null}
+        <TooltipIconBarItem label="Theme">
+          <ThemeSwitcher className={styles.navIcon} />
+        </TooltipIconBarItem>
         <NotificationsControl variant={variant} />
         <ProfileControl variant={variant} />
       </TooltipIconBar>

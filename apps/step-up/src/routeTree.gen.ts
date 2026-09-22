@@ -10,20 +10,26 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TermsRouteImport } from './routes/terms'
+import { Route as StudiosRouteImport } from './routes/studios'
 import { Route as RegisterRouteImport } from './routes/register'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as MeRouteImport } from './routes/me'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as JoinRouteImport } from './routes/join'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
+import { Route as ForStudiosRouteImport } from './routes/for-studios'
+import { Route as DiscoverRouteImport } from './routes/discover'
+import { Route as ClassesRouteImport } from './routes/classes'
 import { Route as AppRouteImport } from './routes/app'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as TrainersIndexRouteImport } from './routes/trainers.index'
 import { Route as MeIndexRouteImport } from './routes/me/index'
 import { Route as AppIndexRouteImport } from './routes/app/index'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as UsersIdRouteImport } from './routes/users.$id'
-import { Route as TrainersIdRouteImport } from './routes/trainers.$id'
+import { Route as TrainersSlugRouteImport } from './routes/trainers.$slug'
+import { Route as StudiosSlugRouteImport } from './routes/studios_.$slug'
 import { Route as StudioStudioIdRouteImport } from './routes/studio.$studioId'
 import { Route as PostsIdRouteImport } from './routes/posts.$id'
 import { Route as MeSubscriptionsRouteImport } from './routes/me/subscriptions'
@@ -38,6 +44,7 @@ import { Route as MeCalendarRouteImport } from './routes/me/calendar'
 import { Route as MeBookingsRouteImport } from './routes/me/bookings'
 import { Route as MeBookRouteImport } from './routes/me/book'
 import { Route as MeAttendanceRouteImport } from './routes/me/attendance'
+import { Route as ClassesSlugRouteImport } from './routes/classes_.$slug'
 import { Route as AuthActionRouteImport } from './routes/auth.action'
 import { Route as AppSettingsRouteImport } from './routes/app/settings'
 import { Route as AppRetentionRouteImport } from './routes/app/retention'
@@ -48,6 +55,7 @@ import { Route as AppImportRouteImport } from './routes/app/import'
 import { Route as AppFeedRouteImport } from './routes/app/feed'
 import { Route as AppCalendarRouteImport } from './routes/app/calendar'
 import { Route as AdminProfileRouteImport } from './routes/admin/profile'
+import { Route as CityPlaceRouteImport } from './routes/$city.$place'
 import { Route as MeTrainersIndexRouteImport } from './routes/me/trainers/index'
 import { Route as MeMessagesIndexRouteImport } from './routes/me/messages/index'
 import { Route as MeLocationsIndexRouteImport } from './routes/me/locations/index'
@@ -85,6 +93,7 @@ import { Route as AppSettingsProfileRouteImport } from './routes/app/settings.pr
 import { Route as AppSettingsPlanRouteImport } from './routes/app/settings.plan'
 import { Route as AppSettingsPaymentsRouteImport } from './routes/app/settings.payments'
 import { Route as AppSettingsNotificationsRouteImport } from './routes/app/settings.notifications'
+import { Route as AppSettingsMarketplaceRouteImport } from './routes/app/settings.marketplace'
 import { Route as AppSettingsIntegrationsRouteImport } from './routes/app/settings.integrations'
 import { Route as AppSettingsFeaturesRouteImport } from './routes/app/settings.features'
 import { Route as AppSettingsChatRouteImport } from './routes/app/settings.chat'
@@ -125,6 +134,11 @@ const TermsRoute = TermsRouteImport.update({
   path: '/terms',
   getParentRoute: () => rootRouteImport,
 } as any)
+const StudiosRoute = StudiosRouteImport.update({
+  id: '/studios',
+  path: '/studios',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RegisterRoute = RegisterRouteImport.update({
   id: '/register',
   path: '/register',
@@ -155,6 +169,21 @@ const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
   path: '/forgot-password',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ForStudiosRoute = ForStudiosRouteImport.update({
+  id: '/for-studios',
+  path: '/for-studios',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DiscoverRoute = DiscoverRouteImport.update({
+  id: '/discover',
+  path: '/discover',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ClassesRoute = ClassesRouteImport.update({
+  id: '/classes',
+  path: '/classes',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AppRoute = AppRouteImport.update({
   id: '/app',
   path: '/app',
@@ -168,6 +197,11 @@ const AdminRoute = AdminRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TrainersIndexRoute = TrainersIndexRouteImport.update({
+  id: '/trainers/',
+  path: '/trainers/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MeIndexRoute = MeIndexRouteImport.update({
@@ -190,9 +224,14 @@ const UsersIdRoute = UsersIdRouteImport.update({
   path: '/users/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
-const TrainersIdRoute = TrainersIdRouteImport.update({
-  id: '/trainers/$id',
-  path: '/trainers/$id',
+const TrainersSlugRoute = TrainersSlugRouteImport.update({
+  id: '/trainers/$slug',
+  path: '/trainers/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StudiosSlugRoute = StudiosSlugRouteImport.update({
+  id: '/studios_/$slug',
+  path: '/studios/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
 const StudioStudioIdRoute = StudioStudioIdRouteImport.update({
@@ -265,6 +304,11 @@ const MeAttendanceRoute = MeAttendanceRouteImport.update({
   path: '/attendance',
   getParentRoute: () => MeRoute,
 } as any)
+const ClassesSlugRoute = ClassesSlugRouteImport.update({
+  id: '/classes_/$slug',
+  path: '/classes/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthActionRoute = AuthActionRouteImport.update({
   id: '/auth/action',
   path: '/auth/action',
@@ -314,6 +358,11 @@ const AdminProfileRoute = AdminProfileRouteImport.update({
   id: '/profile',
   path: '/profile',
   getParentRoute: () => AdminRoute,
+} as any)
+const CityPlaceRoute = CityPlaceRouteImport.update({
+  id: '/$city/$place',
+  path: '/$city/$place',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const MeTrainersIndexRoute = MeTrainersIndexRouteImport.update({
   id: '/trainers/',
@@ -501,6 +550,11 @@ const AppSettingsNotificationsRoute =
     path: '/notifications',
     getParentRoute: () => AppSettingsRoute,
   } as any)
+const AppSettingsMarketplaceRoute = AppSettingsMarketplaceRouteImport.update({
+  id: '/marketplace',
+  path: '/marketplace',
+  getParentRoute: () => AppSettingsRoute,
+} as any)
 const AppSettingsIntegrationsRoute = AppSettingsIntegrationsRouteImport.update({
   id: '/integrations',
   path: '/integrations',
@@ -679,13 +733,18 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
   '/app': typeof AppRouteWithChildren
+  '/classes': typeof ClassesRoute
+  '/discover': typeof DiscoverRoute
+  '/for-studios': typeof ForStudiosRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/join': typeof JoinRoute
   '/login': typeof LoginRoute
   '/me': typeof MeRouteWithChildren
   '/privacy': typeof PrivacyRoute
   '/register': typeof RegisterRoute
+  '/studios': typeof StudiosRoute
   '/terms': typeof TermsRoute
+  '/$city/$place': typeof CityPlaceRoute
   '/admin/profile': typeof AdminProfileRoute
   '/app/calendar': typeof AppCalendarRoute
   '/app/feed': typeof AppFeedRoute
@@ -696,6 +755,7 @@ export interface FileRoutesByFullPath {
   '/app/retention': typeof AppRetentionRoute
   '/app/settings': typeof AppSettingsRouteWithChildren
   '/auth/action': typeof AuthActionRoute
+  '/classes/$slug': typeof ClassesSlugRoute
   '/me/attendance': typeof MeAttendanceRoute
   '/me/book': typeof MeBookRoute
   '/me/bookings': typeof MeBookingsRoute
@@ -710,11 +770,13 @@ export interface FileRoutesByFullPath {
   '/me/subscriptions': typeof MeSubscriptionsRoute
   '/posts/$id': typeof PostsIdRoute
   '/studio/$studioId': typeof StudioStudioIdRoute
-  '/trainers/$id': typeof TrainersIdRoute
+  '/studios/$slug': typeof StudiosSlugRoute
+  '/trainers/$slug': typeof TrainersSlugRoute
   '/users/$id': typeof UsersIdRoute
   '/admin/': typeof AdminIndexRoute
   '/app/': typeof AppIndexRoute
   '/me/': typeof MeIndexRoute
+  '/trainers/': typeof TrainersIndexRoute
   '/admin/studios/$id': typeof AdminStudiosIdRoute
   '/admin/studios/new': typeof AdminStudiosNewRoute
   '/app/batches/$id': typeof AppBatchesIdRoute
@@ -741,6 +803,7 @@ export interface FileRoutesByFullPath {
   '/app/settings/chat': typeof AppSettingsChatRoute
   '/app/settings/features': typeof AppSettingsFeaturesRoute
   '/app/settings/integrations': typeof AppSettingsIntegrationsRoute
+  '/app/settings/marketplace': typeof AppSettingsMarketplaceRoute
   '/app/settings/notifications': typeof AppSettingsNotificationsRoute
   '/app/settings/payments': typeof AppSettingsPaymentsRoute
   '/app/settings/plan': typeof AppSettingsPlanRoute
@@ -789,12 +852,17 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/classes': typeof ClassesRoute
+  '/discover': typeof DiscoverRoute
+  '/for-studios': typeof ForStudiosRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/join': typeof JoinRoute
   '/login': typeof LoginRoute
   '/privacy': typeof PrivacyRoute
   '/register': typeof RegisterRoute
+  '/studios': typeof StudiosRoute
   '/terms': typeof TermsRoute
+  '/$city/$place': typeof CityPlaceRoute
   '/admin/profile': typeof AdminProfileRoute
   '/app/calendar': typeof AppCalendarRoute
   '/app/feed': typeof AppFeedRoute
@@ -804,6 +872,7 @@ export interface FileRoutesByTo {
   '/app/profile': typeof AppProfileRoute
   '/app/retention': typeof AppRetentionRoute
   '/auth/action': typeof AuthActionRoute
+  '/classes/$slug': typeof ClassesSlugRoute
   '/me/attendance': typeof MeAttendanceRoute
   '/me/book': typeof MeBookRoute
   '/me/bookings': typeof MeBookingsRoute
@@ -818,11 +887,13 @@ export interface FileRoutesByTo {
   '/me/subscriptions': typeof MeSubscriptionsRoute
   '/posts/$id': typeof PostsIdRoute
   '/studio/$studioId': typeof StudioStudioIdRoute
-  '/trainers/$id': typeof TrainersIdRoute
+  '/studios/$slug': typeof StudiosSlugRoute
+  '/trainers/$slug': typeof TrainersSlugRoute
   '/users/$id': typeof UsersIdRoute
   '/admin': typeof AdminIndexRoute
   '/app': typeof AppIndexRoute
   '/me': typeof MeIndexRoute
+  '/trainers': typeof TrainersIndexRoute
   '/admin/studios/$id': typeof AdminStudiosIdRoute
   '/admin/studios/new': typeof AdminStudiosNewRoute
   '/app/batches/$id': typeof AppBatchesIdRoute
@@ -849,6 +920,7 @@ export interface FileRoutesByTo {
   '/app/settings/chat': typeof AppSettingsChatRoute
   '/app/settings/features': typeof AppSettingsFeaturesRoute
   '/app/settings/integrations': typeof AppSettingsIntegrationsRoute
+  '/app/settings/marketplace': typeof AppSettingsMarketplaceRoute
   '/app/settings/notifications': typeof AppSettingsNotificationsRoute
   '/app/settings/payments': typeof AppSettingsPaymentsRoute
   '/app/settings/plan': typeof AppSettingsPlanRoute
@@ -900,13 +972,18 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
   '/app': typeof AppRouteWithChildren
+  '/classes': typeof ClassesRoute
+  '/discover': typeof DiscoverRoute
+  '/for-studios': typeof ForStudiosRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/join': typeof JoinRoute
   '/login': typeof LoginRoute
   '/me': typeof MeRouteWithChildren
   '/privacy': typeof PrivacyRoute
   '/register': typeof RegisterRoute
+  '/studios': typeof StudiosRoute
   '/terms': typeof TermsRoute
+  '/$city/$place': typeof CityPlaceRoute
   '/admin/profile': typeof AdminProfileRoute
   '/app/calendar': typeof AppCalendarRoute
   '/app/feed': typeof AppFeedRoute
@@ -917,6 +994,7 @@ export interface FileRoutesById {
   '/app/retention': typeof AppRetentionRoute
   '/app/settings': typeof AppSettingsRouteWithChildren
   '/auth/action': typeof AuthActionRoute
+  '/classes_/$slug': typeof ClassesSlugRoute
   '/me/attendance': typeof MeAttendanceRoute
   '/me/book': typeof MeBookRoute
   '/me/bookings': typeof MeBookingsRoute
@@ -931,11 +1009,13 @@ export interface FileRoutesById {
   '/me/subscriptions': typeof MeSubscriptionsRoute
   '/posts/$id': typeof PostsIdRoute
   '/studio/$studioId': typeof StudioStudioIdRoute
-  '/trainers/$id': typeof TrainersIdRoute
+  '/studios_/$slug': typeof StudiosSlugRoute
+  '/trainers/$slug': typeof TrainersSlugRoute
   '/users/$id': typeof UsersIdRoute
   '/admin/': typeof AdminIndexRoute
   '/app/': typeof AppIndexRoute
   '/me/': typeof MeIndexRoute
+  '/trainers/': typeof TrainersIndexRoute
   '/admin/studios/$id': typeof AdminStudiosIdRoute
   '/admin/studios/new': typeof AdminStudiosNewRoute
   '/app/batches/$id': typeof AppBatchesIdRoute
@@ -962,6 +1042,7 @@ export interface FileRoutesById {
   '/app/settings/chat': typeof AppSettingsChatRoute
   '/app/settings/features': typeof AppSettingsFeaturesRoute
   '/app/settings/integrations': typeof AppSettingsIntegrationsRoute
+  '/app/settings/marketplace': typeof AppSettingsMarketplaceRoute
   '/app/settings/notifications': typeof AppSettingsNotificationsRoute
   '/app/settings/payments': typeof AppSettingsPaymentsRoute
   '/app/settings/plan': typeof AppSettingsPlanRoute
@@ -1014,13 +1095,18 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/app'
+    | '/classes'
+    | '/discover'
+    | '/for-studios'
     | '/forgot-password'
     | '/join'
     | '/login'
     | '/me'
     | '/privacy'
     | '/register'
+    | '/studios'
     | '/terms'
+    | '/$city/$place'
     | '/admin/profile'
     | '/app/calendar'
     | '/app/feed'
@@ -1031,6 +1117,7 @@ export interface FileRouteTypes {
     | '/app/retention'
     | '/app/settings'
     | '/auth/action'
+    | '/classes/$slug'
     | '/me/attendance'
     | '/me/book'
     | '/me/bookings'
@@ -1045,11 +1132,13 @@ export interface FileRouteTypes {
     | '/me/subscriptions'
     | '/posts/$id'
     | '/studio/$studioId'
-    | '/trainers/$id'
+    | '/studios/$slug'
+    | '/trainers/$slug'
     | '/users/$id'
     | '/admin/'
     | '/app/'
     | '/me/'
+    | '/trainers/'
     | '/admin/studios/$id'
     | '/admin/studios/new'
     | '/app/batches/$id'
@@ -1076,6 +1165,7 @@ export interface FileRouteTypes {
     | '/app/settings/chat'
     | '/app/settings/features'
     | '/app/settings/integrations'
+    | '/app/settings/marketplace'
     | '/app/settings/notifications'
     | '/app/settings/payments'
     | '/app/settings/plan'
@@ -1124,12 +1214,17 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/classes'
+    | '/discover'
+    | '/for-studios'
     | '/forgot-password'
     | '/join'
     | '/login'
     | '/privacy'
     | '/register'
+    | '/studios'
     | '/terms'
+    | '/$city/$place'
     | '/admin/profile'
     | '/app/calendar'
     | '/app/feed'
@@ -1139,6 +1234,7 @@ export interface FileRouteTypes {
     | '/app/profile'
     | '/app/retention'
     | '/auth/action'
+    | '/classes/$slug'
     | '/me/attendance'
     | '/me/book'
     | '/me/bookings'
@@ -1153,11 +1249,13 @@ export interface FileRouteTypes {
     | '/me/subscriptions'
     | '/posts/$id'
     | '/studio/$studioId'
-    | '/trainers/$id'
+    | '/studios/$slug'
+    | '/trainers/$slug'
     | '/users/$id'
     | '/admin'
     | '/app'
     | '/me'
+    | '/trainers'
     | '/admin/studios/$id'
     | '/admin/studios/new'
     | '/app/batches/$id'
@@ -1184,6 +1282,7 @@ export interface FileRouteTypes {
     | '/app/settings/chat'
     | '/app/settings/features'
     | '/app/settings/integrations'
+    | '/app/settings/marketplace'
     | '/app/settings/notifications'
     | '/app/settings/payments'
     | '/app/settings/plan'
@@ -1234,13 +1333,18 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/app'
+    | '/classes'
+    | '/discover'
+    | '/for-studios'
     | '/forgot-password'
     | '/join'
     | '/login'
     | '/me'
     | '/privacy'
     | '/register'
+    | '/studios'
     | '/terms'
+    | '/$city/$place'
     | '/admin/profile'
     | '/app/calendar'
     | '/app/feed'
@@ -1251,6 +1355,7 @@ export interface FileRouteTypes {
     | '/app/retention'
     | '/app/settings'
     | '/auth/action'
+    | '/classes_/$slug'
     | '/me/attendance'
     | '/me/book'
     | '/me/bookings'
@@ -1265,11 +1370,13 @@ export interface FileRouteTypes {
     | '/me/subscriptions'
     | '/posts/$id'
     | '/studio/$studioId'
-    | '/trainers/$id'
+    | '/studios_/$slug'
+    | '/trainers/$slug'
     | '/users/$id'
     | '/admin/'
     | '/app/'
     | '/me/'
+    | '/trainers/'
     | '/admin/studios/$id'
     | '/admin/studios/new'
     | '/app/batches/$id'
@@ -1296,6 +1403,7 @@ export interface FileRouteTypes {
     | '/app/settings/chat'
     | '/app/settings/features'
     | '/app/settings/integrations'
+    | '/app/settings/marketplace'
     | '/app/settings/notifications'
     | '/app/settings/payments'
     | '/app/settings/plan'
@@ -1347,18 +1455,26 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRouteWithChildren
   AppRoute: typeof AppRouteWithChildren
+  ClassesRoute: typeof ClassesRoute
+  DiscoverRoute: typeof DiscoverRoute
+  ForStudiosRoute: typeof ForStudiosRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   JoinRoute: typeof JoinRoute
   LoginRoute: typeof LoginRoute
   MeRoute: typeof MeRouteWithChildren
   PrivacyRoute: typeof PrivacyRoute
   RegisterRoute: typeof RegisterRoute
+  StudiosRoute: typeof StudiosRoute
   TermsRoute: typeof TermsRoute
+  CityPlaceRoute: typeof CityPlaceRoute
   AuthActionRoute: typeof AuthActionRoute
+  ClassesSlugRoute: typeof ClassesSlugRoute
   PostsIdRoute: typeof PostsIdRoute
   StudioStudioIdRoute: typeof StudioStudioIdRoute
-  TrainersIdRoute: typeof TrainersIdRoute
+  StudiosSlugRoute: typeof StudiosSlugRoute
+  TrainersSlugRoute: typeof TrainersSlugRoute
   UsersIdRoute: typeof UsersIdRoute
+  TrainersIndexRoute: typeof TrainersIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -1368,6 +1484,13 @@ declare module '@tanstack/react-router' {
       path: '/terms'
       fullPath: '/terms'
       preLoaderRoute: typeof TermsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/studios': {
+      id: '/studios'
+      path: '/studios'
+      fullPath: '/studios'
+      preLoaderRoute: typeof StudiosRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/register': {
@@ -1412,6 +1535,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ForgotPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/for-studios': {
+      id: '/for-studios'
+      path: '/for-studios'
+      fullPath: '/for-studios'
+      preLoaderRoute: typeof ForStudiosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/discover': {
+      id: '/discover'
+      path: '/discover'
+      fullPath: '/discover'
+      preLoaderRoute: typeof DiscoverRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/classes': {
+      id: '/classes'
+      path: '/classes'
+      fullPath: '/classes'
+      preLoaderRoute: typeof ClassesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/app': {
       id: '/app'
       path: '/app'
@@ -1431,6 +1575,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/trainers/': {
+      id: '/trainers/'
+      path: '/trainers'
+      fullPath: '/trainers/'
+      preLoaderRoute: typeof TrainersIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/me/': {
@@ -1461,11 +1612,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof UsersIdRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/trainers/$id': {
-      id: '/trainers/$id'
-      path: '/trainers/$id'
-      fullPath: '/trainers/$id'
-      preLoaderRoute: typeof TrainersIdRouteImport
+    '/trainers/$slug': {
+      id: '/trainers/$slug'
+      path: '/trainers/$slug'
+      fullPath: '/trainers/$slug'
+      preLoaderRoute: typeof TrainersSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/studios_/$slug': {
+      id: '/studios_/$slug'
+      path: '/studios/$slug'
+      fullPath: '/studios/$slug'
+      preLoaderRoute: typeof StudiosSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/studio/$studioId': {
@@ -1566,6 +1724,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MeAttendanceRouteImport
       parentRoute: typeof MeRoute
     }
+    '/classes_/$slug': {
+      id: '/classes_/$slug'
+      path: '/classes/$slug'
+      fullPath: '/classes/$slug'
+      preLoaderRoute: typeof ClassesSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/auth/action': {
       id: '/auth/action'
       path: '/auth/action'
@@ -1635,6 +1800,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/profile'
       preLoaderRoute: typeof AdminProfileRouteImport
       parentRoute: typeof AdminRoute
+    }
+    '/$city/$place': {
+      id: '/$city/$place'
+      path: '/$city/$place'
+      fullPath: '/$city/$place'
+      preLoaderRoute: typeof CityPlaceRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/me/trainers/': {
       id: '/me/trainers/'
@@ -1893,6 +2065,13 @@ declare module '@tanstack/react-router' {
       path: '/notifications'
       fullPath: '/app/settings/notifications'
       preLoaderRoute: typeof AppSettingsNotificationsRouteImport
+      parentRoute: typeof AppSettingsRoute
+    }
+    '/app/settings/marketplace': {
+      id: '/app/settings/marketplace'
+      path: '/marketplace'
+      fullPath: '/app/settings/marketplace'
+      preLoaderRoute: typeof AppSettingsMarketplaceRouteImport
       parentRoute: typeof AppSettingsRoute
     }
     '/app/settings/integrations': {
@@ -2162,6 +2341,7 @@ interface AppSettingsRouteChildren {
   AppSettingsChatRoute: typeof AppSettingsChatRoute
   AppSettingsFeaturesRoute: typeof AppSettingsFeaturesRoute
   AppSettingsIntegrationsRoute: typeof AppSettingsIntegrationsRoute
+  AppSettingsMarketplaceRoute: typeof AppSettingsMarketplaceRoute
   AppSettingsNotificationsRoute: typeof AppSettingsNotificationsRoute
   AppSettingsPaymentsRoute: typeof AppSettingsPaymentsRoute
   AppSettingsPlanRoute: typeof AppSettingsPlanRoute
@@ -2177,6 +2357,7 @@ const AppSettingsRouteChildren: AppSettingsRouteChildren = {
   AppSettingsChatRoute: AppSettingsChatRoute,
   AppSettingsFeaturesRoute: AppSettingsFeaturesRoute,
   AppSettingsIntegrationsRoute: AppSettingsIntegrationsRoute,
+  AppSettingsMarketplaceRoute: AppSettingsMarketplaceRoute,
   AppSettingsNotificationsRoute: AppSettingsNotificationsRoute,
   AppSettingsPaymentsRoute: AppSettingsPaymentsRoute,
   AppSettingsPlanRoute: AppSettingsPlanRoute,
@@ -2364,18 +2545,26 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRouteWithChildren,
   AppRoute: AppRouteWithChildren,
+  ClassesRoute: ClassesRoute,
+  DiscoverRoute: DiscoverRoute,
+  ForStudiosRoute: ForStudiosRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
   JoinRoute: JoinRoute,
   LoginRoute: LoginRoute,
   MeRoute: MeRouteWithChildren,
   PrivacyRoute: PrivacyRoute,
   RegisterRoute: RegisterRoute,
+  StudiosRoute: StudiosRoute,
   TermsRoute: TermsRoute,
+  CityPlaceRoute: CityPlaceRoute,
   AuthActionRoute: AuthActionRoute,
+  ClassesSlugRoute: ClassesSlugRoute,
   PostsIdRoute: PostsIdRoute,
   StudioStudioIdRoute: StudioStudioIdRoute,
-  TrainersIdRoute: TrainersIdRoute,
+  StudiosSlugRoute: StudiosSlugRoute,
+  TrainersSlugRoute: TrainersSlugRoute,
   UsersIdRoute: UsersIdRoute,
+  TrainersIndexRoute: TrainersIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

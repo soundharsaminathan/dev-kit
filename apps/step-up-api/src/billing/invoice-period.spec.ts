@@ -1,4 +1,4 @@
-import { BillingCadence } from "@prisma/client";
+import { BillingCadence } from "../generated/prisma/client";
 import { describe, expect, it } from "vitest";
 import {
   billingPeriodForCadence,

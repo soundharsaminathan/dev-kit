@@ -1,6 +1,7 @@
 import { BadRequestException, ConflictException } from "@nestjs/common";
-import { Prisma, StudioStatus, UserRole } from "@prisma/client";
+import { Prisma, StudioStatus, UserRole } from "../generated/prisma/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { DEFAULT_STUDIO_MARKETPLACE_TOGGLES } from "../discover/marketplace.contract";
 import { StudiosService } from "./studios.service";
 
 describe("StudiosService", () => {
@@ -58,6 +59,9 @@ describe("StudiosService", () => {
   const media = {
     signReadUrl: vi.fn(async (url: string | null) =>
       url ? `signed:${url}` : null,
+    ),
+    signReadUrls: vi.fn(async (urls: string[]) =>
+      urls.map((url) => `signed:${url}`),
     ),
   };
   const razorpay = {
@@ -168,6 +172,7 @@ describe("StudiosService", () => {
       aiConfigured: false,
       aiProvider: null,
       aiChatModel: null,
+      ...DEFAULT_STUDIO_MARKETPLACE_TOGGLES,
     });
     expect(result).not.toHaveProperty("razorpayKeySecret");
     expect(result).not.toHaveProperty("aiApiKey");
@@ -212,6 +217,45 @@ describe("StudiosService", () => {
     expect(result.aiProvider).toBe("groq");
     expect(result).not.toHaveProperty("aiApiKey");
     expect(result).not.toHaveProperty("aiApiKeyIv");
+  });
+
+  it("persists marketplace visibility and booking toggles", async () => {
+    prisma.studioSettings.upsert.mockResolvedValue({
+      graceDays: 3,
+      expireAlertDays: 7,
+      platformFeePercent: 5,
+      timezone: "Asia/Kolkata",
+      razorpayKeyId: null,
+      razorpayKeySecret: null,
+      razorpaySecretIv: null,
+      danceStyles: null,
+      gstNumber: null,
+      gstPercent: 0,
+      admissionFee: 0,
+      aiProvider: null,
+      aiApiKey: null,
+      aiApiKeyIv: null,
+      aiChatModel: null,
+      publicTrainers: false,
+      bookingFloorHire: true,
+    });
+
+    const result = await service.updateSettings("studio-1", {
+      publicTrainers: false,
+      bookingFloorHire: true,
+    });
+
+    expect(prisma.studioSettings.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        update: expect.objectContaining({
+          publicTrainers: false,
+          bookingFloorHire: true,
+        }),
+      }),
+    );
+    expect(result.publicTrainers).toBe(false);
+    expect(result.bookingFloorHire).toBe(true);
+    expect(result.publicClasses).toBe(true);
   });
 
   it("rejects saving an AI key without a provider", async () => {
@@ -445,6 +489,15 @@ describe("StudiosService", () => {
     expect(saved.admissionFee).toBe(1500);
   });
 
+  it("rejects invalid public Instagram", () => {
+    expect(() =>
+      service.updateStudio("studio-1", {
+        instagramUrl: "https://tiktok.com/x",
+      }),
+    ).toThrow(BadRequestException);
+    expect(prisma.studio.update).not.toHaveBeenCalled();
+  });
+
   it("rejects negative admissionFee", async () => {
     await expect(
       service.updateSettings("studio-1", { admissionFee: -1 }),
@@ -562,6 +615,31 @@ describe("StudiosService", () => {
       data: {
         heroMobileUrl: "studio-heroes/mobile.jpg",
         heroDesktopUrl: "studio-heroes/desktop.jpg",
+      },
+    });
+  });
+
+  it("persists public studio details and nullifies blanks", async () => {
+    prisma.studio.update.mockResolvedValue({ id: "studio-1" });
+
+    await service.updateStudio("studio-1", {
+      tagline: "Hip Hop in T Nagar",
+      about: "  ",
+      email: "Hello@Studio.IN",
+      whatsapp: "+91 98765 43210",
+      instagramUrl: "@rhythmhouse",
+      foundedYear: 2018,
+    });
+
+    expect(prisma.studio.update).toHaveBeenCalledWith({
+      where: { id: "studio-1" },
+      data: {
+        tagline: "Hip Hop in T Nagar",
+        about: null,
+        email: "hello@studio.in",
+        whatsapp: "+91 98765 43210",
+        instagramUrl: "https://instagram.com/rhythmhouse",
+        foundedYear: 2018,
       },
     });
   });

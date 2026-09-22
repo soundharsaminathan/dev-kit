@@ -10,7 +10,7 @@ import type { AuthUser } from "../auth/current-user.decorator";
 import { money } from "../common/money";
 import { hashPassword } from "../common/password";
 import { assertSameCompany } from "../common/tenancy";
-import { UserRole } from "../generated/prisma";
+import { UserRole } from "../generated/prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import type {
   CreateCompanyDto,

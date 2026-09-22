@@ -37,7 +37,6 @@ export function PwaInstallProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const onBeforeInstall = (event: Event) => {
-      event.preventDefault();
       setDeferred(event as BeforeInstallPromptEvent);
     };
     const onInstalled = () => {
@@ -62,10 +61,15 @@ export function PwaInstallProvider({ children }: { children: ReactNode }) {
     if (!deferred) {
       return "unavailable" as const;
     }
-    await deferred.prompt();
-    const { outcome } = await deferred.userChoice;
-    setDeferred(null);
-    return outcome;
+    try {
+      await deferred.prompt();
+      const { outcome } = await deferred.userChoice;
+      setDeferred(null);
+      return outcome;
+    } catch {
+      setDeferred(null);
+      return "unavailable" as const;
+    }
   }, [deferred]);
 
   const value = useMemo(

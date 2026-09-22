@@ -3,7 +3,7 @@ import {
   InvoiceChargeType,
   InvoiceStatus,
   type Prisma,
-} from "@prisma/client";
+} from "../generated/prisma/client";
 import { billingPeriodForCadence } from "../billing/invoice-period";
 import { invoiceFeePercents, roundMoney } from "./membership-helpers";
 

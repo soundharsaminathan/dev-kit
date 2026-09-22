@@ -21,6 +21,49 @@ describe("parseDanceStyles", () => {
     expect(parseDanceStyles(styles)).toEqual(styles);
   });
 
+  it("collapses free-style spellings to one label", () => {
+    expect(() =>
+      parseDanceStyles([
+        {
+          id: "free-style",
+          label: "Free Style",
+          abbrev: "FS",
+          color: "#E4572E",
+          emoji: "🎤",
+        },
+        {
+          id: "freestyle",
+          label: "freestyle",
+          abbrev: "FR",
+          color: "#0984E3",
+          emoji: "💃",
+        },
+      ]),
+    ).toThrow(BadRequestException);
+  });
+
+  it("rewrites free-style labels to Free Style", () => {
+    expect(
+      parseDanceStyles([
+        {
+          id: "freestyle",
+          label: "freestyle",
+          abbrev: "FR",
+          color: "#0984E3",
+          emoji: "💃",
+        },
+      ]),
+    ).toEqual([
+      {
+        id: "freestyle",
+        label: "Free Style",
+        abbrev: "FR",
+        color: "#0984E3",
+        emoji: "💃",
+      },
+    ]);
+  });
+
   it("rejects duplicate labels", () => {
     expect(() =>
       parseDanceStyles([

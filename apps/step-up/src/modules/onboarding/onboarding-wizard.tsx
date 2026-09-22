@@ -354,7 +354,6 @@ export function OnboardingWizard() {
       } else {
         await navigate({
           to: "/me/book",
-          search: { intent: "trial" },
           replace: true,
         });
       }

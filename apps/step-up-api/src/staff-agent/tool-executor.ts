@@ -4,7 +4,7 @@ import {
   BookingStatus,
   BookingType,
   Gender,
-} from "@prisma/client";
+} from "../generated/prisma/client";
 import { BatchCommandsService } from "../batches/application/batch.commands";
 import { BatchQueriesService } from "../batches/application/batch.queries";
 import { BookingCommandsService } from "../bookings/application/booking.commands";

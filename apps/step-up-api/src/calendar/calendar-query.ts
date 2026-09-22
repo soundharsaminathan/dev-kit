@@ -1,6 +1,6 @@
-import type { BookingType } from "@prisma/client";
+import type { BookingType } from "../generated/prisma/client";
 
-export type CalendarEventKind = "SESSION" | "BOOKING";
+export type CalendarEventKind = "SESSION" | "BOOKING" | "AVAILABILITY";
 
 export type CalendarEventDto = {
   id: string;
@@ -189,7 +189,83 @@ export function toSessionEvent(session: SessionForCalendar): CalendarEventDto {
 function bookingTypeLabel(type: BookingType): string {
   if (type === "TRIAL") return "Trial";
   if (type === "PRIVATE") return "Private";
+  if (type === "FLOOR_HIRE") return "Floor hire";
   return "Open seat";
+}
+
+export type TrainerAvailabilityWindow = {
+  weekday: number;
+  startsAt: string;
+  endsAt: string;
+};
+
+const WEEKDAY_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+export function weekdayInTimeZone(date: Date, timeZone: string): number {
+  const label = new Intl.DateTimeFormat("en-US", {
+    weekday: "short",
+    timeZone,
+  }).format(date);
+  return WEEKDAY_SHORT.indexOf(label);
+}
+
+export function ymdInTimeZone(date: Date, timeZone: string): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(date);
+}
+
+export function expandTrainerAvailabilityWindows(
+  windows: TrainerAvailabilityWindow[],
+  from: Date,
+  to: Date,
+  timeZone: string,
+  zonedLocalToUtc: (ymd: string, hm: string, zone: string) => Date,
+): Array<{ startsAt: Date; endsAt: Date }> {
+  const events: Array<{ startsAt: Date; endsAt: Date }> = [];
+  const seen = new Set<string>();
+  const cursor = new Date(from.getTime());
+  while (cursor.getTime() < to.getTime() + 36 * 60 * 60 * 1000) {
+    const ymd = ymdInTimeZone(cursor, timeZone);
+    if (!seen.has(ymd)) {
+      seen.add(ymd);
+      const weekday = weekdayInTimeZone(cursor, timeZone);
+      for (const window of windows) {
+        if (window.weekday !== weekday) continue;
+        const startsAt = zonedLocalToUtc(ymd, window.startsAt, timeZone);
+        const endsAt = zonedLocalToUtc(ymd, window.endsAt, timeZone);
+        if (endsAt > from && startsAt < to) {
+          events.push({ startsAt, endsAt });
+        }
+      }
+    }
+    cursor.setUTCHours(cursor.getUTCHours() + 12);
+    if (seen.size > 80) break;
+  }
+  return events.sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime());
+}
+
+export function toAvailabilityEvent(input: {
+  trainerId: string;
+  trainerName: string;
+  startsAt: Date;
+  endsAt: Date;
+  attached: boolean;
+}): CalendarEventDto {
+  return {
+    id: `availability:${input.trainerId}:${input.startsAt.toISOString()}`,
+    kind: "AVAILABILITY",
+    title: input.attached
+      ? `${input.trainerName} available`
+      : `Hire ${input.trainerName}`,
+    startsAt: input.startsAt.toISOString(),
+    endsAt: input.endsAt.toISOString(),
+    status: input.attached ? "ATTACHED" : "HIREABLE",
+    trainerIds: [input.trainerId],
+  };
 }
 
 export function toBookingEvent(

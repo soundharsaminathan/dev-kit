@@ -21,7 +21,7 @@ import {
   MembershipStatus,
   ProfileVisibility,
   UserRole,
-} from "@prisma/client";
+} from "../generated/prisma/client";
 import { Transform, Type } from "class-transformer";
 import {
   ArrayMaxSize,
@@ -401,8 +401,13 @@ class CreateFamilyMemberDto {
   @IsEnum(FamilyMemberKind)
   kind!: FamilyMemberKind;
 
+  @IsOptional()
   @IsEnum(Gender)
-  gender!: Gender;
+  gender?: Gender;
+
+  @IsOptional()
+  @IsString()
+  studioId?: string;
 
   @IsOptional()
   @IsDateString()

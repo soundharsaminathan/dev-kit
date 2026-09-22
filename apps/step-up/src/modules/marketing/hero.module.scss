@@ -28,6 +28,13 @@
   hyphens: none;
 }
 
+.heroFill {
+  flex: 1;
+  height: auto;
+  min-height: 0;
+  max-height: none;
+}
+
 .stage {
   flex: 1;
   min-height: 0;

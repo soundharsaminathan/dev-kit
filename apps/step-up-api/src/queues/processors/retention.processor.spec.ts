@@ -1,4 +1,4 @@
-import { NotificationStatus } from "@prisma/client";
+import { NotificationStatus } from "../../generated/prisma/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { RetentionProcessor } from "./retention.processor";
 

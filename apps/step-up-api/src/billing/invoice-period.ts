@@ -1,4 +1,4 @@
-import { BillingCadence } from "@prisma/client";
+import { BillingCadence } from "../generated/prisma/client";
 import { getPeriodEnd, utcMonthStart } from "../memberships/membership-helpers";
 
 export function billingPeriodForCadence(

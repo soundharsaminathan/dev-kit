@@ -6,7 +6,7 @@ import {
   Injectable,
   UnauthorizedException,
 } from "@nestjs/common";
-import { UserRole } from "@prisma/client";
+import { UserRole } from "../generated/prisma/client";
 import { EmailService } from "../email/email.service";
 import { MediaService } from "../media/media.service";
 import { PushService } from "../notifications/push.service";

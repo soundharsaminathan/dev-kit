@@ -1,6 +1,6 @@
 import { Processor, WorkerHost } from "@nestjs/bullmq";
 import { Inject, Logger } from "@nestjs/common";
-import { NotificationStatus } from "@prisma/client";
+import { NotificationStatus } from "../../generated/prisma/client";
 import type { Job } from "bullmq";
 import { PrismaService } from "../../prisma/prisma.service";
 import { NOTIFICATION_RETENTION_QUEUE } from "../queue.constants";

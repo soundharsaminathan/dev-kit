@@ -11,7 +11,7 @@ import { AuditService } from "../audit/audit.service";
 import type { AuthUser } from "../auth/current-user.decorator";
 import { nextSequence, padSeq } from "../common/sequence";
 import { assertSameCompany, requireCompany } from "../common/tenancy";
-import { ApprovalType, LoanStatus, UserRole } from "../generated/prisma";
+import { ApprovalType, LoanStatus, UserRole } from "../generated/prisma/client";
 import { NotificationService } from "../notifications/notifications.service";
 import { PrismaService } from "../prisma/prisma.service";
 import {

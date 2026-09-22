@@ -8,7 +8,7 @@ import {
   Prisma,
   SessionStatus,
   TrainerPayoutStatus,
-} from "@prisma/client";
+} from "../generated/prisma/client";
 import type { Queue } from "bullmq";
 import { MembershipsService } from "../memberships/memberships.service";
 import { NotificationsService } from "../notifications/notifications.service";
