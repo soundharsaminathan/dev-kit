@@ -1,4 +1,5 @@
 import { Button } from "@dev-ui/components/button";
+import { Drawer } from "@dev-ui/components/drawer";
 import {
   PanelLeftIcon,
   Sidebar,
@@ -14,7 +15,7 @@ import {
 } from "@dev-ui/components/sidebar";
 import { Icon, type IconName } from "@dev-ui/icons";
 import { Link, useRouterState } from "@tanstack/react-router";
-import { type ReactNode, useEffect, useState } from "react";
+import { type CSSProperties, type ReactNode, useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import styles from "./shell.module.scss";
 
@@ -52,10 +53,12 @@ function NavLinks({
   items,
   navLabel,
   onNavigate,
+  withTooltips = true,
 }: {
   items: readonly NavItem[];
   navLabel?: string;
-  onNavigate?: () => void;
+  onNavigate?: (() => void) | undefined;
+  withTooltips?: boolean;
 }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
 
@@ -70,11 +73,16 @@ function NavLinks({
             ? pathname === item.to
             : pathname === item.to || pathname.startsWith(`${item.to}/`);
           return (
-            <SidebarItem key={item.to} tooltip={item.label}>
+            <SidebarItem
+              key={item.to}
+              {...(withTooltips ? { tooltip: item.label } : {})}
+            >
               <Link
                 to={item.to}
                 activeOptions={{ exact: Boolean(item.exact) }}
-                className={active ? styles.linkActive : styles.link}
+                className={
+                  active ? `${styles.link} ${styles.linkActive}` : styles.link
+                }
                 aria-label={item.label}
                 onClick={onNavigate}
               >
@@ -95,13 +103,60 @@ function NavLinks({
   return list;
 }
 
+function StaffSidebar({
+  subtitle,
+  navLabel,
+  items,
+  onNavigate,
+  withTooltips,
+}: Omit<StaffShellProps, "children"> & {
+  onNavigate?: () => void;
+  withTooltips: boolean;
+}) {
+  const { user, logout } = useAuth();
+
+  return (
+    <Sidebar placement="left">
+      <SidebarHeader>
+        <div className={styles.brand}>
+          <span className={styles.mark} aria-hidden>
+            <Icon name="wallet" />
+          </span>
+          <div data-sidebar-label="">
+            <strong>loan-mate</strong>
+            <p>{subtitle}</p>
+          </div>
+        </div>
+        {onNavigate ? null : <SidebarToggle />}
+      </SidebarHeader>
+      <SidebarContent>
+        <NavLinks
+          items={items}
+          navLabel={navLabel}
+          onNavigate={onNavigate}
+          withTooltips={withTooltips}
+        />
+      </SidebarContent>
+      <SidebarFooter>
+        <div className={styles.user} data-sidebar-label="">
+          <strong>{user?.name}</strong>
+          <span>{user?.role.replaceAll("_", " ")}</span>
+        </div>
+        <Button variant="outline" onClick={logout}>
+          <Icon name="log-out" />
+          <span data-sidebar-label="">Sign out</span>
+        </Button>
+      </SidebarFooter>
+    </Sidebar>
+  );
+}
+
 export function StaffShell({
   subtitle,
   navLabel,
   items,
   children,
 }: StaffShellProps) {
-  const { user, logout } = useAuth();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -119,22 +174,6 @@ export function StaffShell({
     setDrawerOpen(false);
   }, [pathname]);
 
-  useEffect(() => {
-    if (!drawerOpen) return;
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setDrawerOpen(false);
-    };
-    document.addEventListener("keydown", onKey);
-    const previous = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.removeEventListener("keydown", onKey);
-      document.body.style.overflow = previous;
-    };
-  }, [drawerOpen]);
-
-  const showDrawer = mobile && drawerOpen;
-
   return (
     <SidebarProvider
       isOpen={sidebarOpen}
@@ -142,46 +181,45 @@ export function StaffShell({
       className={styles.shell}
     >
       <div className={styles.sidebarWrap}>
-        <Sidebar placement="left">
-          <SidebarHeader>
-            <div className={styles.brand}>
-              <span className={styles.mark} aria-hidden>
-                <Icon name="wallet" />
-              </span>
-              <div data-sidebar-label="">
-                <strong>loan-mate</strong>
-                <p>{subtitle}</p>
-              </div>
-            </div>
-            <SidebarToggle />
-          </SidebarHeader>
-          <SidebarContent>
-            <NavLinks items={items} navLabel={navLabel} />
-          </SidebarContent>
-          <SidebarFooter>
-            <div className={styles.user} data-sidebar-label="">
-              <strong>{user?.name}</strong>
-              <span>{user?.role.replaceAll("_", " ")}</span>
-            </div>
-            <Button variant="outline" onClick={logout}>
-              <Icon name="log-out" />
-              <span data-sidebar-label="">Sign out</span>
-            </Button>
-          </SidebarFooter>
-        </Sidebar>
+        <StaffSidebar
+          subtitle={subtitle}
+          navLabel={navLabel}
+          items={items}
+          withTooltips
+        />
       </div>
+
+      {mobile ? (
+        <Drawer
+          placement="left"
+          sizing="static"
+          isOpen={drawerOpen}
+          onOpenChange={setDrawerOpen}
+          isDismissable
+          style={{ "--drawer-inline-size": "18rem" } as CSSProperties}
+        >
+          <div className={styles.drawerSidebar}>
+            <StaffSidebar
+              subtitle={subtitle}
+              navLabel={navLabel}
+              items={items}
+              withTooltips={false}
+              onNavigate={() => setDrawerOpen(false)}
+            />
+          </div>
+        </Drawer>
+      ) : null}
 
       <div className={styles.workspace}>
         <header className={styles.topbar}>
           <Button
             variant="quiet"
             isIconOnly
-            aria-expanded={showDrawer}
-            aria-controls="staff-drawer"
-            aria-label={showDrawer ? "Close menu" : "Open menu"}
+            aria-expanded={drawerOpen}
+            aria-label={drawerOpen ? "Close menu" : "Open menu"}
             onClick={() => setDrawerOpen((value) => !value)}
           >
-            <Icon name={showDrawer ? "x" : "menu"} />
+            <Icon name={drawerOpen ? "x" : "menu"} />
           </Button>
           <div className={styles.brand}>
             <span className={styles.mark} aria-hidden>
@@ -193,36 +231,6 @@ export function StaffShell({
             </div>
           </div>
         </header>
-        {showDrawer ? (
-          <button
-            type="button"
-            className={styles.backdrop}
-            aria-label="Close menu"
-            onClick={() => setDrawerOpen(false)}
-          />
-        ) : null}
-        <aside
-          id="staff-drawer"
-          className={styles.drawer}
-          data-open={showDrawer ? "true" : "false"}
-          inert={mobile && !drawerOpen ? true : undefined}
-        >
-          <NavLinks
-            items={items}
-            navLabel={navLabel}
-            onNavigate={() => setDrawerOpen(false)}
-          />
-          <div className={styles.drawerFooter}>
-            <div className={styles.user}>
-              <strong>{user?.name}</strong>
-              <span>{user?.role.replaceAll("_", " ")}</span>
-            </div>
-            <Button variant="outline" onClick={logout}>
-              <Icon name="log-out" />
-              Sign out
-            </Button>
-          </div>
-        </aside>
         <main className={styles.main}>{children}</main>
       </div>
     </SidebarProvider>

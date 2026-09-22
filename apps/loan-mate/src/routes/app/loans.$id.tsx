@@ -1,4 +1,6 @@
+import { Badge } from "@dev-ui/components/badge";
 import { Button } from "@dev-ui/components/button";
+import { Tab, TabList, TabPanel, Tabs } from "@dev-ui/components/tabs";
 import { Icon } from "@dev-ui/icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
@@ -6,7 +8,7 @@ import { useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { PAYMENT_MODES, type PaymentMode } from "@/lib/constants";
 import { DocumentsPanel } from "@/lib/documents-panel";
-import { FormInput, FormSelect } from "@/modules/ui/form-fields";
+import { FormError, FormInput, FormSelect, FormSuccess } from "@/modules/ui/form-fields";
 
 type Installment = {
   id: string;
@@ -266,9 +268,9 @@ function LoanDetailPage() {
   if (loan.isLoading) return <p>Loading…</p>;
   if (loan.isError || !loan.data) {
     return (
-      <p className="lm-error">
+      <FormError>
         {(loan.error as Error)?.message ?? "Loan not found"}
-      </p>
+      </FormError>
     );
   }
 
@@ -380,13 +382,13 @@ function LoanDetailPage() {
         </div>
       </div>
 
-      {error ? <p className="lm-error">{error}</p> : null}
-      {msg ? <p style={{ color: "var(--lm-success)" }}>{msg}</p> : null}
+      {error ? <FormError>{error}</FormError> : null}
+      {msg ? <FormSuccess>{msg}</FormSuccess> : null}
 
       <div className="lm-grid-stats">
         <div className="lm-stat">
           <strong>
-            <span className="lm-badge">{l.status}</span>
+            <Badge appearance="subtle">{l.status}</Badge>
           </strong>
           <span>Status</span>
         </div>
@@ -465,8 +467,105 @@ function LoanDetailPage() {
         </div>
       ) : null}
 
-      {["ACTIVE", "DISBURSED"].includes(l.status) ? (
-        <>
+      <Tabs aria-label="Loan" defaultSelectedKey="schedule">
+        <TabList variant="line" className="lm-tab-list">
+          <Tab id="schedule">Schedule</Tab>
+          <Tab id="payments">Payments</Tab>
+          {["ACTIVE", "DISBURSED"].includes(l.status) ? (
+            <Tab id="servicing">Servicing</Tab>
+          ) : null}
+          <Tab id="documents">Documents</Tab>
+        </TabList>
+        <TabPanel id="schedule">
+          <div className="lm-card lm-table-wrap">
+            <h2>EMI schedule</h2>
+            {installments.length === 0 ? (
+              <p className="lm-muted">Schedule is generated at disbursement.</p>
+            ) : (
+              <table className="lm-table">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Due</th>
+                    <th>Principal</th>
+                    <th>Interest</th>
+                    <th>Penalty</th>
+                    <th>Paid</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {installments.map((row) => {
+                    const paid =
+                      num(row.paidPrincipal) +
+                      num(row.paidInterest) +
+                      num(row.paidPenalty);
+                    const statusLabel =
+                      row.status === "SKIPPED" ? "SKIP_NEXT_EMI" : row.status;
+                    return (
+                      <tr key={row.id}>
+                        <td>{row.number}</td>
+                        <td>{String(row.dueDate).slice(0, 10)}</td>
+                        <td>{num(row.principalDue).toFixed(2)}</td>
+                        <td>{num(row.interestDue).toFixed(2)}</td>
+                        <td>{num(row.penaltyDue).toFixed(2)}</td>
+                        <td>{paid.toFixed(2)}</td>
+                        <td>{statusLabel}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </TabPanel>
+        <TabPanel id="payments">
+          {payments.data && payments.data.length > 0 ? (
+            <div className="lm-card lm-table-wrap">
+              <h2>Payments</h2>
+              <table className="lm-table">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Amount</th>
+                    <th>Mode</th>
+                    <th>Reference</th>
+                    <th />
+                  </tr>
+                </thead>
+                <tbody>
+                  {payments.data.map((p) => (
+                    <tr key={p.id}>
+                      <td>{String(p.paymentDate).slice(0, 10)}</td>
+                      <td>{num(p.amount).toFixed(2)}</td>
+                      <td>{p.mode}</td>
+                      <td>{p.reference ?? "—"}</td>
+                      <td>
+                        {p.reversed ? (
+                          "Reversed"
+                        ) : (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            isDisabled={requestReversal.isPending}
+                            onClick={() => requestReversal.mutate(p.id)}
+                          >
+                            Request reversal
+                          </Button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p className="lm-muted">No payments yet.</p>
+          )}
+        </TabPanel>
+        {["ACTIVE", "DISBURSED"].includes(l.status) ? (
+          <TabPanel id="servicing">
           <div className="lm-card">
             <h2>Rate change</h2>
             <form
@@ -749,94 +848,12 @@ function LoanDetailPage() {
               </Button>
             </form>
           </div>
-        </>
-      ) : null}
-
-      {payments.data && payments.data.length > 0 ? (
-        <div className="lm-card lm-table-wrap">
-          <h2>Payments</h2>
-          <table className="lm-table">
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th>Amount</th>
-                <th>Mode</th>
-                <th>Reference</th>
-                <th />
-              </tr>
-            </thead>
-            <tbody>
-              {payments.data.map((p) => (
-                <tr key={p.id}>
-                  <td>{String(p.paymentDate).slice(0, 10)}</td>
-                  <td>{num(p.amount).toFixed(2)}</td>
-                  <td>{p.mode}</td>
-                  <td>{p.reference ?? "—"}</td>
-                  <td>
-                    {p.reversed ? (
-                      "Reversed"
-                    ) : (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        isDisabled={requestReversal.isPending}
-                        onClick={() => requestReversal.mutate(p.id)}
-                      >
-                        Request reversal
-                      </Button>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ) : null}
-
-      <DocumentsPanel entityType="LOAN" entityId={l.id} />
-
-      <div className="lm-card lm-table-wrap">
-        <h2>EMI schedule</h2>
-        {installments.length === 0 ? (
-          <p className="lm-muted">Schedule is generated at disbursement.</p>
-        ) : (
-          <table className="lm-table">
-            <thead>
-              <tr>
-                <th>#</th>
-                <th>Due</th>
-                <th>Principal</th>
-                <th>Interest</th>
-                <th>Penalty</th>
-                <th>Paid</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {installments.map((row) => {
-                const paid =
-                  num(row.paidPrincipal) +
-                  num(row.paidInterest) +
-                  num(row.paidPenalty);
-                const statusLabel =
-                  row.status === "SKIPPED" ? "SKIP_NEXT_EMI" : row.status;
-                return (
-                  <tr key={row.id}>
-                    <td>{row.number}</td>
-                    <td>{String(row.dueDate).slice(0, 10)}</td>
-                    <td>{num(row.principalDue).toFixed(2)}</td>
-                    <td>{num(row.interestDue).toFixed(2)}</td>
-                    <td>{num(row.penaltyDue).toFixed(2)}</td>
-                    <td>{paid.toFixed(2)}</td>
-                    <td>{statusLabel}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        )}
-      </div>
+          </TabPanel>
+        ) : null}
+        <TabPanel id="documents">
+          <DocumentsPanel entityType="LOAN" entityId={l.id} />
+        </TabPanel>
+      </Tabs>
     </div>
   );
 }

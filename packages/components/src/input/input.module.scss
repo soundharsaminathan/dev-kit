@@ -2,8 +2,10 @@
 
 .input {
   display: inline-flex;
+  box-sizing: border-box;
   width: 100%;
   align-items: center;
+  padding-block: 0;
   border: 1px solid var(--input-border-color, var(--color-border-field));
   border-radius: var(--input-radius);
   background-color: var(--input-background, var(--color-field));
@@ -70,6 +72,7 @@
 
 .dateInput {
   display: inline-flex;
+  box-sizing: border-box;
   width: 100%;
   align-items: center;
   gap: 0.125rem;

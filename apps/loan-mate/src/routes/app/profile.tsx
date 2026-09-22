@@ -1,3 +1,4 @@
+import { Badge } from "@dev-ui/components/badge";
 import { createFileRoute } from "@tanstack/react-router";
 import { useAuth } from "@/lib/auth";
 
@@ -29,7 +30,7 @@ function ProfilePage() {
           <div>
             <dt className="lm-muted">Role</dt>
             <dd style={{ margin: 0 }}>
-              <span className="lm-badge">{user?.role}</span>
+              <Badge appearance="subtle">{user?.role}</Badge>
             </dd>
           </div>
           <div>

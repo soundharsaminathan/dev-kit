@@ -8,11 +8,13 @@ import { useTouchTooltipTriggerProps } from "../use-touch-tooltip-trigger";
 function TouchTriggerHarness({
   canHover = false,
   touchBehavior = "toggle",
+  isDisabled = false,
 }: {
   canHover?: boolean;
   touchBehavior?: TouchBehavior;
+  isDisabled?: boolean;
 }) {
-  const state = useTooltipTriggerState({ delay: 0 });
+  const state = useTooltipTriggerState({ delay: 0, isDisabled });
   const onPointerDown = vi.fn();
   const onKeyDown = vi.fn();
   const triggerProps = useTouchTooltipTriggerProps(
@@ -20,6 +22,7 @@ function TouchTriggerHarness({
     state,
     canHover,
     touchBehavior,
+    isDisabled,
   );
 
   return (
@@ -62,6 +65,15 @@ describe("useTouchTooltipTriggerProps", () => {
     render(<TouchTriggerHarness canHover touchBehavior="toggle" />);
 
     fireEvent.click(screen.getByTestId("trigger"));
+
+    expect(screen.getByTestId("open")).toHaveTextContent("false");
+  });
+
+  it("leaves clicks alone when the tooltip is disabled", () => {
+    render(<TouchTriggerHarness isDisabled />);
+    const trigger = screen.getByTestId("trigger");
+
+    fireEvent.click(trigger);
 
     expect(screen.getByTestId("open")).toHaveTextContent("false");
   });

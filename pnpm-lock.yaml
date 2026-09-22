@@ -100,6 +100,9 @@ importers:
       '@dev-ui/tokens':
         specifier: workspace:*
         version: link:../../packages/tokens
+      '@internationalized/date':
+        specifier: ^3.12.2
+        version: 3.12.2
       '@tanstack/react-form':
         specifier: 1.33.2
         version: 1.33.2(react-dom@19.2.7(react@19.2.7))(react@19.2.7)

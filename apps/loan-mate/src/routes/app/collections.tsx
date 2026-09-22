@@ -11,8 +11,10 @@ import {
 } from "@/lib/constants";
 import {
   FormCheckbox,
+  FormError,
   FormInput,
   FormSelect,
+  FormSuccess,
   FormTextArea,
 } from "@/modules/ui/form-fields";
 
@@ -211,9 +213,9 @@ function CollectionsPage() {
               }))}
             />
           ) : null}
-          {error ? <p className="lm-error">{error}</p> : null}
+          {error ? <FormError>{error}</FormError> : null}
           {success ? (
-            <p style={{ color: "var(--lm-success)" }}>{success}</p>
+            <FormSuccess>{success}</FormSuccess>
           ) : null}
           <Button type="submit" variant="primary" isDisabled={pay.isPending}>
             Record payment

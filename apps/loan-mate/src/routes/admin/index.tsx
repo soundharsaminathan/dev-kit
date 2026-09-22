@@ -1,8 +1,19 @@
 import { Button } from "@dev-ui/components/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@dev-ui/components/card";
+import { Skeleton } from "@dev-ui/components/skeleton";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableColumn,
+  TableHeader,
+  TableRow,
+} from "@dev-ui/components/table";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useAuth } from "@/lib/auth";
+import { FormError } from "@/modules/ui/controls";
 import { FormInput, FormPassword } from "@/modules/ui/form-fields";
 
 type Company = {
@@ -111,7 +122,7 @@ function AdminCompaniesPage() {
             autoComplete="new-password"
             required
           />
-          {error ? <p className="lm-error">{error}</p> : null}
+          {error ? <FormError>{error}</FormError> : null}
           <Button
             type="submit"
             variant="primary"
@@ -122,36 +133,43 @@ function AdminCompaniesPage() {
         </form>
       </div>
 
-      <div className="lm-card lm-table-wrap">
-        {companies.isLoading ? <p>Loading…</p> : null}
+      <Card>
+        <CardHeader>
+          <CardTitle>Companies</CardTitle>
+        </CardHeader>
+        <CardContent>
+        {companies.isLoading ? <Skeleton /> : null}
         {companies.isError ? (
-          <p className="lm-error">
+          <FormError>
             {(companies.error as Error).message || "Failed to load companies"}
-          </p>
+          </FormError>
         ) : null}
         {companies.data ? (
-          <table className="lm-table">
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Slug</th>
-                <th>Id</th>
-              </tr>
-            </thead>
-            <tbody>
-              {companies.data.map((c) => (
-                <tr key={c.id}>
-                  <td>{c.name}</td>
-                  <td>{c.slug}</td>
-                  <td>
-                    <code>{c.id}</code>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <Table<Company> aria-label="Companies" items={companies.data}>
+            <TableHeader>
+              <TableColumn id="name" isRowHeader>
+                Name
+              </TableColumn>
+              <TableColumn id="slug">Slug</TableColumn>
+              <TableColumn id="id">Id</TableColumn>
+            </TableHeader>
+            <TableBody<Company>>
+              {(company) => (
+                <TableRow>
+                  {(column) => (
+                    <TableCell>
+                      {column.id === "name" ? company.name : null}
+                      {column.id === "slug" ? company.slug : null}
+                      {column.id === "id" ? <code>{company.id}</code> : null}
+                    </TableCell>
+                  )}
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
         ) : null}
-      </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

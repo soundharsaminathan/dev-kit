@@ -18,9 +18,15 @@ import {
   SelectItem,
   SelectTrigger,
 } from "@dev-ui/components/select";
+import {
+  DatePicker,
+  DatePickerPopover,
+  DatePickerTrigger,
+} from "@dev-ui/components/date-picker";
 import { TextArea } from "@dev-ui/components/text-area";
 import { TextField } from "@dev-ui/components/text-field";
 import { Icon } from "@dev-ui/icons";
+import { parseDate, type DateValue } from "@internationalized/date";
 import { type ComponentProps, useState } from "react";
 
 const EMPTY_OPTION = "__empty";
@@ -104,6 +110,44 @@ export function PasswordControl({
         </InputGroupAddon>
       </InputGroup>
     </TextField>
+  );
+}
+
+function parseIsoDate(value: string): DateValue | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
+  try {
+    return parseDate(value);
+  } catch {
+    return null;
+  }
+}
+
+type DateControlProps = {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  isRequired?: boolean | undefined;
+};
+
+export function DateControl({
+  label,
+  value,
+  onChange,
+  isRequired,
+}: DateControlProps) {
+  return (
+    <DatePicker
+      value={parseIsoDate(value)}
+      granularity="day"
+      {...(isRequired ? { isRequired: true } : {})}
+      onChange={(next) => {
+        onChange(next ? next.toString() : "");
+      }}
+    >
+      <Label {...(isRequired ? { "data-required": "true" } : {})}>{label}</Label>
+      <DatePickerTrigger />
+      <DatePickerPopover />
+    </DatePicker>
   );
 }
 

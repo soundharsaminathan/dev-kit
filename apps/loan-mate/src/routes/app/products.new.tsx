@@ -3,7 +3,7 @@ import { useMutation } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { useAuth } from "@/lib/auth";
-import { FormInput, FormSelect } from "@/modules/ui/form-fields";
+import { FormError, FormInput, FormSelect } from "@/modules/ui/form-fields";
 
 export const Route = createFileRoute("/app/products/new")({
   component: NewProductPage,
@@ -174,7 +174,7 @@ function NewProductPage() {
               setForm((f) => ({ ...f, processingFeePercent }))
             }
           />
-          {error ? <p className="lm-error">{error}</p> : null}
+          {error ? <FormError>{error}</FormError> : null}
           <div className="lm-actions">
             <Button type="submit" variant="primary" isDisabled={create.isPending}>
               Create product

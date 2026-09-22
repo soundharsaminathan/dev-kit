@@ -1,4 +1,6 @@
+import { Badge } from "@dev-ui/components/badge";
 import { Button } from "@dev-ui/components/button";
+import { Tab, TabList, TabPanel, Tabs } from "@dev-ui/components/tabs";
 import { Icon } from "@dev-ui/icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
@@ -6,7 +8,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import type { UserRole } from "@/lib/constants";
 import { DocumentsPanel } from "@/lib/documents-panel";
-import { FormInput, FormSelect, FormTextArea } from "@/modules/ui/form-fields";
+import { FormError, FormInput, FormSelect, FormSuccess, FormTextArea } from "@/modules/ui/form-fields";
 
 type StaffRef = { id: string; name: string; role?: UserRole };
 
@@ -174,9 +176,9 @@ function CustomerDetailPage() {
   if (customer.isLoading) return <p>Loading…</p>;
   if (customer.isError || !customer.data) {
     return (
-      <p className="lm-error">
+      <FormError>
         {(customer.error as Error)?.message ?? "Customer not found"}
-      </p>
+      </FormError>
     );
   }
 
@@ -197,9 +199,13 @@ function CustomerDetailPage() {
           </p>
           <div className="lm-actions" style={{ marginTop: "0.5rem" }}>
             {c.blacklisted ? (
-              <span className="lm-badge">Blacklisted</span>
+              <Badge variant="danger" appearance="subtle">Blacklisted</Badge>
             ) : null}
-            {c.npa ? <span className="lm-badge">NPA</span> : null}
+            {c.npa ? (
+              <Badge variant="warning" appearance="subtle">
+                NPA
+              </Badge>
+            ) : null}
           </div>
         </div>
         <Button
@@ -217,9 +223,17 @@ function CustomerDetailPage() {
         </Button>
       </div>
 
-      {error ? <p className="lm-error">{error}</p> : null}
-      {success ? <p style={{ color: "var(--lm-success)" }}>{success}</p> : null}
+      {error ? <FormError>{error}</FormError> : null}
+      {success ? <FormSuccess>{success}</FormSuccess> : null}
 
+      <Tabs aria-label="Customer" defaultSelectedKey="profile">
+        <TabList variant="line" className="lm-tab-list">
+          <Tab id="profile">Profile</Tab>
+          <Tab id="risk">Risk</Tab>
+          <Tab id="loans">Loans</Tab>
+          <Tab id="documents">Documents</Tab>
+        </TabList>
+        <TabPanel id="profile">
       <div className="lm-card">
         <div className="lm-page-header" style={{ marginBottom: "1rem" }}>
           <h2 style={{ margin: 0 }}>Profile</h2>
@@ -312,17 +326,19 @@ function CustomerDetailPage() {
               <dt className="lm-muted">Status</dt>
               <dd style={{ margin: 0 }}>
                 {c.blacklisted ? (
-                  <span className="lm-badge">
+                  <Badge variant="danger" appearance="subtle">
                     Blacklisted
                     {c.blacklistReason ? `: ${c.blacklistReason}` : ""}
-                  </span>
+                  </Badge>
                 ) : (
-                  "Active"
+                  <Badge variant="success" appearance="subtle">
+                    Active
+                  </Badge>
                 )}
                 {c.npa ? (
-                  <span className="lm-badge" style={{ marginLeft: "0.5rem" }}>
+                  <Badge variant="warning" appearance="subtle">
                     NPA{c.npaReason ? `: ${c.npaReason}` : ""}
-                  </span>
+                  </Badge>
                 ) : null}
               </dd>
             </div>
@@ -360,7 +376,8 @@ function CustomerDetailPage() {
           </form>
         </div>
       ) : null}
-
+        </TabPanel>
+        <TabPanel id="risk">
       <div className="lm-card">
         <h2>Blacklist</h2>
         <div className="lm-form">
@@ -443,9 +460,11 @@ function CustomerDetailPage() {
           </form>
         )}
       </div>
-
-      <DocumentsPanel entityType="CUSTOMER" entityId={c.id} />
-
+        </TabPanel>
+        <TabPanel id="documents">
+          <DocumentsPanel entityType="CUSTOMER" entityId={c.id} />
+        </TabPanel>
+        <TabPanel id="loans">
       <div className="lm-card lm-table-wrap">
         <h2>Loans</h2>
         {loans.data?.length ? (
@@ -466,7 +485,7 @@ function CustomerDetailPage() {
                     </Link>
                   </td>
                   <td>
-                    <span className="lm-badge">{l.status}</span>
+                    <Badge appearance="subtle">{l.status}</Badge>
                   </td>
                   <td>{l.principal ?? "—"}</td>
                 </tr>
@@ -477,6 +496,8 @@ function CustomerDetailPage() {
           <p className="lm-muted">No loans yet.</p>
         )}
       </div>
+        </TabPanel>
+      </Tabs>
     </div>
   );
 }

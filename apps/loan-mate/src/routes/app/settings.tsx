@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { ADVANCE_TREATMENTS, type AdvanceTreatment } from "@/lib/constants";
 import { useCompanyId } from "@/lib/use-company-id";
-import { FormCheckbox, FormInput, FormSelect } from "@/modules/ui/form-fields";
+import { FormCheckbox, FormError, FormInput, FormSelect, FormSuccess } from "@/modules/ui/form-fields";
 
 type CompanyResponse = {
   id: string;
@@ -84,7 +84,7 @@ function SettingsPage() {
   });
 
   if (!companyId) {
-    return <p className="lm-error">No company on this user.</p>;
+    return <FormError>No company on this user.</FormError>;
   }
 
   return (
@@ -178,9 +178,9 @@ function SettingsPage() {
               />
             ))}
           </div>
-          {error ? <p className="lm-error">{error}</p> : null}
+          {error ? <FormError>{error}</FormError> : null}
           {success ? (
-            <p style={{ color: "var(--lm-success)" }}>{success}</p>
+            <FormSuccess>{success}</FormSuccess>
           ) : null}
           <Button type="submit" variant="primary" isDisabled={save.isPending}>
             Save settings

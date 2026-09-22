@@ -125,6 +125,16 @@ p {
   align-items: center;
 }
 
+.lm-tab-list {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+[data-tab-panel] {
+  display: grid;
+  gap: 1.25rem;
+}
+
 .lm-error {
   color: var(--color-danger);
   font-size: 0.875rem;

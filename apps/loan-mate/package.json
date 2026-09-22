@@ -9,6 +9,7 @@
     "preview": "vite preview",
     "test": "vitest run --config vitest.config.ts",
     "test:e2e": "playwright test --config playwright.config.ts",
+    "test:e2e:ui": "playwright test --config playwright.ui.config.ts",
     "typecheck": "tsc -b --pretty false"
   },
   "dependencies": {
@@ -17,6 +18,7 @@
     "@dev-ui/icons": "workspace:*",
     "@dev-ui/icons-packs": "workspace:*",
     "@dev-ui/tokens": "workspace:*",
+    "@internationalized/date": "^3.12.2",
     "@tanstack/react-form": "1.33.2",
     "@tanstack/react-query": "^5.90.2",
     "@tanstack/react-router": "^1.168.2",

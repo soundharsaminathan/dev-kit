@@ -1,8 +1,22 @@
+import { Badge } from "@dev-ui/components/badge";
 import { Button } from "@dev-ui/components/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@dev-ui/components/card";
+import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@dev-ui/components/empty";
+import { Heading } from "@dev-ui/components/heading";
+import { Skeleton } from "@dev-ui/components/skeleton";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableColumn,
+  TableHeader,
+  TableRow,
+} from "@dev-ui/components/table";
 import { Icon } from "@dev-ui/icons";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useAuth } from "@/lib/auth";
+import { FormError } from "@/modules/ui/controls";
 
 type Customer = {
   id: string;
@@ -30,7 +44,7 @@ function CustomersPage() {
     <div className="lm-page">
       <div className="lm-page-header">
         <div>
-          <h1>Customers</h1>
+          <Heading level={1}>Customers</Heading>
           <p>Company customers — mobile and PAN unique within company.</p>
         </div>
         <Button as={Link} to="/app/customers/new" variant="primary">
@@ -39,48 +53,71 @@ function CustomersPage() {
         </Button>
       </div>
 
-      <div className="lm-card lm-table-wrap">
-        {customers.isLoading ? <p>Loading…</p> : null}
-        {customers.isError ? (
-          <p className="lm-error">{(customers.error as Error).message}</p>
-        ) : null}
-        {customers.data ? (
-          <table className="lm-table">
-            <thead>
-              <tr>
-                <th>Number</th>
-                <th>Name</th>
-                <th>Mobile</th>
-                <th>PAN</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {customers.data.map((c) => (
-                <tr key={c.id}>
-                  <td>
-                    <Link to="/app/customers/$id" params={{ id: c.id }}>
-                      {c.customerNumber ?? c.id}
-                    </Link>
-                  </td>
-                  <td>{c.name}</td>
-                  <td>{c.mobile}</td>
-                  <td>{c.pan ?? "—"}</td>
-                  <td>
-                    {c.blacklisted ? (
-                      <span className="lm-badge">Blacklisted</span>
-                    ) : c.npa ? (
-                      <span className="lm-badge">NPA</span>
-                    ) : (
-                      "Active"
+      <Card>
+        <CardHeader>
+          <CardTitle>Directory</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {customers.isLoading ? <Skeleton /> : null}
+          {customers.isError ? (
+            <FormError>{(customers.error as Error).message}</FormError>
+          ) : null}
+          {customers.data?.length === 0 ? (
+            <Empty>
+              <EmptyHeader>
+                <EmptyTitle>No customers</EmptyTitle>
+                <EmptyDescription>Add a customer to start origination.</EmptyDescription>
+              </EmptyHeader>
+            </Empty>
+          ) : null}
+          {customers.data && customers.data.length > 0 ? (
+            <Table<Customer> aria-label="Customers" items={customers.data}>
+              <TableHeader>
+                <TableColumn id="number" isRowHeader>
+                  Number
+                </TableColumn>
+                <TableColumn id="name">Name</TableColumn>
+                <TableColumn id="mobile">Mobile</TableColumn>
+                <TableColumn id="pan">PAN</TableColumn>
+                <TableColumn id="status">Status</TableColumn>
+              </TableHeader>
+              <TableBody<Customer>>
+                {(customer) => (
+                  <TableRow>
+                    {(column) => (
+                      <TableCell>
+                        {column.id === "number" ? (
+                          <Link to="/app/customers/$id" params={{ id: customer.id }}>
+                            {customer.customerNumber ?? customer.id}
+                          </Link>
+                        ) : null}
+                        {column.id === "name" ? customer.name : null}
+                        {column.id === "mobile" ? customer.mobile : null}
+                        {column.id === "pan" ? (customer.pan ?? "—") : null}
+                        {column.id === "status" ? (
+                          customer.blacklisted ? (
+                            <Badge variant="danger" appearance="subtle">
+                              Blacklisted
+                            </Badge>
+                          ) : customer.npa ? (
+                            <Badge variant="warning" appearance="subtle">
+                              NPA
+                            </Badge>
+                          ) : (
+                            <Badge variant="success" appearance="subtle">
+                              Active
+                            </Badge>
+                          )
+                        ) : null}
+                      </TableCell>
                     )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        ) : null}
-      </div>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          ) : null}
+        </CardContent>
+      </Card>
     </div>
   );
 }

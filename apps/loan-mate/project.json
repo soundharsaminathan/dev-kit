@@ -48,6 +48,13 @@
         "cwd": "apps/loan-mate",
         "command": "playwright test --config playwright.config.ts"
       }
+    },
+    "test:e2e:ui": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "apps/loan-mate",
+        "command": "playwright test --config playwright.ui.config.ts"
+      }
     }
   }
 }

@@ -3,7 +3,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { useAuth } from "@/lib/auth";
-import { FormInput, FormSelect } from "@/modules/ui/form-fields";
+import { FormError, FormInput, FormSelect } from "@/modules/ui/form-fields";
 
 type Customer = { id: string; name: string; customerNumber?: string };
 type Product = {
@@ -242,7 +242,7 @@ function NewLoanPage() {
               },
             ]}
           />
-          {error ? <p className="lm-error">{error}</p> : null}
+          {error ? <FormError>{error}</FormError> : null}
           <div className="lm-actions">
             <Button type="submit" variant="primary" isDisabled={create.isPending}>
               Create loan

@@ -1,53 +1,74 @@
+import { Empty, EmptyDescription } from "@dev-ui/components/empty";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableColumn,
+  TableHeader,
+  TableRow,
+} from "@dev-ui/components/table";
+
 type JsonTableProps = {
   data: unknown;
   emptyLabel?: string;
 };
 
-function asRows(data: unknown): Record<string, unknown>[] {
-  if (Array.isArray(data)) {
-    return data.filter(
-      (row): row is Record<string, unknown> =>
-        typeof row === "object" && row !== null && !Array.isArray(row),
-    );
-  }
-  if (typeof data === "object" && data !== null && !Array.isArray(data)) {
-    return [data as Record<string, unknown>];
-  }
-  return [];
+type JsonRow = {
+  id: string;
+  cells: Record<string, unknown>;
+};
+
+function asRows(data: unknown): JsonRow[] {
+  const source = Array.isArray(data)
+    ? data.filter(
+        (row): row is Record<string, unknown> =>
+          typeof row === "object" && row !== null && !Array.isArray(row),
+      )
+    : typeof data === "object" && data !== null
+      ? [data as Record<string, unknown>]
+      : [];
+
+  return source.map((row, index) => ({
+    id: String(row.id ?? row.loanId ?? row.customerNumber ?? index),
+    cells: row,
+  }));
 }
 
 export function JsonTable({ data, emptyLabel = "No rows." }: JsonTableProps) {
   const rows = asRows(data);
   if (rows.length === 0) {
-    return <p className="lm-muted">{emptyLabel}</p>;
+    return (
+      <Empty>
+        <EmptyDescription>{emptyLabel}</EmptyDescription>
+      </Empty>
+    );
   }
-  const columns = [...new Set(rows.flatMap((row) => Object.keys(row)))];
+
+  const columns = [...new Set(rows.flatMap((row) => Object.keys(row.cells)))];
+
   return (
-    <div className="lm-table-wrap">
-      <table className="lm-table">
-        <thead>
-          <tr>
-            {columns.map((col) => (
-              <th key={col}>{col}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row) => {
-            const key = String(
-              row.id ?? row.loanId ?? row.customerNumber ?? JSON.stringify(row),
-            );
-            return (
-              <tr key={key}>
-                {columns.map((col) => (
-                  <td key={col}>{formatCell(row[col])}</td>
-                ))}
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
+    <Table<JsonRow> aria-label="Report" items={rows}>
+      <TableHeader>
+        {columns.map((column, index) => (
+          <TableColumn
+            key={column}
+            id={column}
+            {...(index === 0 ? { isRowHeader: true } : {})}
+          >
+            {column}
+          </TableColumn>
+        ))}
+      </TableHeader>
+      <TableBody<JsonRow>>
+        {(row) => (
+          <TableRow>
+            {(column) => (
+              <TableCell>{formatCell(row.cells[String(column.id)])}</TableCell>
+            )}
+          </TableRow>
+        )}
+      </TableBody>
+    </Table>
   );
 }
 

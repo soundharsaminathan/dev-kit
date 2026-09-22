@@ -5,7 +5,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { downloadAuthed } from "@/lib/download";
-import { FormInput } from "@/modules/ui/form-fields";
+import { FormError, FormInput } from "@/modules/ui/form-fields";
 
 type AuditRow = {
   id: string;
@@ -94,13 +94,13 @@ function AuditPage() {
             Apply filters
           </Button>
         </form>
-        {downloadError ? <p className="lm-error">{downloadError}</p> : null}
+        {downloadError ? <FormError>{downloadError}</FormError> : null}
       </div>
 
       <div className="lm-card lm-table-wrap">
         {logs.isLoading ? <p>Loading…</p> : null}
         {logs.isError ? (
-          <p className="lm-error">{(logs.error as Error).message}</p>
+          <FormError>{(logs.error as Error).message}</FormError>
         ) : null}
         {logs.data ? (
           <table className="lm-table">

@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useAuth } from "@/lib/auth";
-import { CheckControl, TextControl } from "@/modules/ui/controls";
+import { CheckControl, FormError, TextControl } from "@/modules/ui/controls";
 
 type Branch = {
   id: string;
@@ -75,7 +75,7 @@ function BranchesPage() {
         </div>
       </div>
 
-      {error ? <p className="lm-error">{error}</p> : null}
+      {error ? <FormError>{error}</FormError> : null}
 
       <div className="lm-card">
         <h2>New branch</h2>

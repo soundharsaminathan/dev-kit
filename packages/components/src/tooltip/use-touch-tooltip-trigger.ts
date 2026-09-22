@@ -10,16 +10,17 @@ export function useTouchTooltipTriggerProps(
   state: TooltipTriggerState,
   canHover: boolean,
   touchBehavior: TouchBehavior,
+  isDisabled = false,
 ) {
   const { longPressProps } = useLongPress({
-    isDisabled: canHover || touchBehavior !== "longPress",
+    isDisabled: canHover || isDisabled || touchBehavior !== "longPress",
     onLongPress: () => {
       state.open(false);
     },
   });
 
   return useMemo(() => {
-    if (canHover) {
+    if (canHover || isDisabled) {
       return ariaTriggerProps;
     }
 
@@ -64,5 +65,5 @@ export function useTouchTooltipTriggerProps(
         }
       },
     });
-  }, [ariaTriggerProps, canHover, longPressProps, state, touchBehavior]);
+  }, [ariaTriggerProps, canHover, isDisabled, longPressProps, state, touchBehavior]);
 }

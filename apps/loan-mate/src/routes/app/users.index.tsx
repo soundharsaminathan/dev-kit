@@ -1,4 +1,15 @@
+import { Badge } from "@dev-ui/components/badge";
 import { Button } from "@dev-ui/components/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@dev-ui/components/card";
+import { Skeleton } from "@dev-ui/components/skeleton";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableColumn,
+  TableHeader,
+  TableRow,
+} from "@dev-ui/components/table";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
@@ -10,6 +21,7 @@ import {
   type UserRole,
 } from "@/lib/constants";
 import { FormInput, FormSelect } from "@/modules/ui/form-fields";
+import { FormError, FormSuccess } from "@/modules/ui/controls";
 
 type UserRow = {
   id: string;
@@ -167,9 +179,9 @@ function EmployeesPage() {
                 label: `${b.code} — ${b.name}`,
               }))}
             />
-            {error ? <p className="lm-error">{error}</p> : null}
+            {error ? <FormError>{error}</FormError> : null}
             {success ? (
-              <p style={{ color: "var(--lm-success)" }}>{success}</p>
+              <FormSuccess>{success}</FormSuccess>
             ) : null}
             <Button
               type="submit"
@@ -182,76 +194,93 @@ function EmployeesPage() {
         </div>
       ) : null}
 
-      <div className="lm-card lm-table-wrap">
-        <h2>Staff</h2>
-        {users.isLoading ? <p>Loading…</p> : null}
+      <Card>
+        <CardHeader>
+          <CardTitle>Staff</CardTitle>
+        </CardHeader>
+        <CardContent>
+        {users.isLoading ? <Skeleton /> : null}
         {users.isError ? (
-          <p className="lm-error">{(users.error as Error).message}</p>
+          <FormError>{(users.error as Error).message}</FormError>
         ) : null}
         {users.data ? (
-          <table className="lm-table">
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Email</th>
-                <th>Role</th>
-                <th>Branch</th>
-                <th>Active</th>
-                {showActions ? <th>Actions</th> : null}
-              </tr>
-            </thead>
-            <tbody>
-              {users.data.map((u) => (
-                <tr key={u.id}>
-                  <td>
-                    <Link to="/app/users/$id" params={{ id: u.id }}>
-                      {u.name}
-                    </Link>
-                  </td>
-                  <td>{u.email}</td>
-                  <td>{u.role.replaceAll("_", " ")}</td>
-                  <td>
-                    {branches.data?.find((b) => b.id === u.branchId)?.code ??
-                      "—"}
-                  </td>
-                  <td>{u.active ? "Yes" : "No"}</td>
-                  {showActions ? (
-                    <td>
-                      <div className="lm-actions">
-                        {canLoginAs && u.id !== user?.id ? (
-                          <Button
-                            type="button"
-                            variant="outline"
-                            isDisabled={!u.active || loggingInAs !== null}
-                            onClick={() => void loginAsEmployee(u)}
-                          >
-                            {loggingInAs === u.id ? "Signing in…" : "Login as"}
-                          </Button>
-                        ) : null}
-                        {canManage ? (
-                          <Button
-                            type="button"
-                            variant={u.active ? "outline" : "primary"}
-                            isDisabled={toggleActive.isPending}
-                            onClick={() =>
-                              toggleActive.mutate({
-                                id: u.id,
-                                active: !u.active,
-                              })
-                            }
-                          >
-                            {u.active ? "Deactivate" : "Activate"}
-                          </Button>
-                        ) : null}
-                      </div>
-                    </td>
-                  ) : null}
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <Table<UserRow> aria-label="Staff" items={users.data}>
+            <TableHeader>
+              <TableColumn id="name" isRowHeader>
+                Name
+              </TableColumn>
+              <TableColumn id="email">Email</TableColumn>
+              <TableColumn id="role">Role</TableColumn>
+              <TableColumn id="branch">Branch</TableColumn>
+              <TableColumn id="active">Active</TableColumn>
+              {showActions ? <TableColumn id="actions">Actions</TableColumn> : null}
+            </TableHeader>
+            <TableBody<UserRow>>
+              {(employee) => (
+                <TableRow>
+                  {(column) => (
+                    <TableCell>
+                      {column.id === "name" ? (
+                        <Link to="/app/users/$id" params={{ id: employee.id }}>
+                          {employee.name}
+                        </Link>
+                      ) : null}
+                      {column.id === "email" ? employee.email : null}
+                      {column.id === "role"
+                        ? employee.role.replaceAll("_", " ")
+                        : null}
+                      {column.id === "branch"
+                        ? (branches.data?.find((b) => b.id === employee.branchId)
+                            ?.code ?? "—")
+                        : null}
+                      {column.id === "active" ? (
+                        <Badge
+                          appearance="subtle"
+                          variant={employee.active ? "success" : "neutral"}
+                        >
+                          {employee.active ? "Yes" : "No"}
+                        </Badge>
+                      ) : null}
+                      {column.id === "actions" && showActions ? (
+                        <div className="lm-actions">
+                          {canLoginAs && employee.id !== user?.id ? (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              isDisabled={!employee.active || loggingInAs !== null}
+                              onClick={() => void loginAsEmployee(employee)}
+                            >
+                              {loggingInAs === employee.id
+                                ? "Signing in…"
+                                : "Login as"}
+                            </Button>
+                          ) : null}
+                          {canManage ? (
+                            <Button
+                              type="button"
+                              variant={employee.active ? "outline" : "primary"}
+                              isDisabled={toggleActive.isPending}
+                              onClick={() =>
+                                toggleActive.mutate({
+                                  id: employee.id,
+                                  active: !employee.active,
+                                })
+                              }
+                            >
+                              {employee.active ? "Deactivate" : "Activate"}
+                            </Button>
+                          ) : null}
+                        </div>
+                      ) : null}
+                    </TableCell>
+                  )}
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
         ) : null}
-      </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

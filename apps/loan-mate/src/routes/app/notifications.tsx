@@ -1,9 +1,22 @@
+import { Badge } from "@dev-ui/components/badge";
 import { Button } from "@dev-ui/components/button";
+import { Card, CardContent } from "@dev-ui/components/card";
+import { Empty, EmptyDescription } from "@dev-ui/components/empty";
+import { Skeleton } from "@dev-ui/components/skeleton";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableColumn,
+  TableHeader,
+  TableRow,
+} from "@dev-ui/components/table";
 import { Icon } from "@dev-ui/icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useAuth } from "@/lib/auth";
+import { FormError } from "@/modules/ui/controls";
 
 type NotificationRow = {
   id: string;
@@ -68,56 +81,72 @@ function NotificationsPage() {
         </Button>
       </div>
 
-      {error ? <p className="lm-error">{error}</p> : null}
+      {error ? <FormError>{error}</FormError> : null}
 
-      <div className="lm-card lm-table-wrap">
-        {notifications.isLoading ? <p>Loading…</p> : null}
+      <Card>
+        <CardContent>
+        {notifications.isLoading ? <Skeleton /> : null}
         {notifications.isError ? (
-          <p className="lm-error">{(notifications.error as Error).message}</p>
+          <FormError>{(notifications.error as Error).message}</FormError>
         ) : null}
         {notifications.data?.length === 0 ? (
-          <p className="lm-muted">No notifications.</p>
+          <Empty>
+            <EmptyDescription>No notifications.</EmptyDescription>
+          </Empty>
         ) : null}
         {notifications.data && notifications.data.length > 0 ? (
-          <table className="lm-table">
-            <thead>
-              <tr>
-                <th>When</th>
-                <th>Title</th>
-                <th>Message</th>
-                <th />
-              </tr>
-            </thead>
-            <tbody>
-              {notifications.data.map((n) => (
-                <tr key={n.id}>
-                  <td>{new Date(n.createdAt).toLocaleString()}</td>
-                  <td>
-                    {!n.readAt ? <span className="lm-badge">New</span> : null}{" "}
-                    {n.title}
-                  </td>
-                  <td>{n.body}</td>
-                  <td>
-                    {!n.readAt ? (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        isDisabled={markRead.isPending}
-                        onClick={() => markRead.mutate(n.id)}
-                      >
-                        Mark read
-                      </Button>
-                    ) : (
-                      "Read"
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <Table<NotificationRow> aria-label="Notifications" items={notifications.data}>
+            <TableHeader>
+              <TableColumn id="when" isRowHeader>
+                When
+              </TableColumn>
+              <TableColumn id="title">Title</TableColumn>
+              <TableColumn id="message">Message</TableColumn>
+              <TableColumn id="action">Action</TableColumn>
+            </TableHeader>
+            <TableBody<NotificationRow>>
+              {(note) => (
+                <TableRow>
+                  {(column) => (
+                    <TableCell>
+                      {column.id === "when"
+                        ? new Date(note.createdAt).toLocaleString()
+                        : null}
+                      {column.id === "title" ? (
+                        <>
+                          {!note.readAt ? (
+                            <Badge variant="info" appearance="subtle">
+                              New
+                            </Badge>
+                          ) : null}{" "}
+                          {note.title}
+                        </>
+                      ) : null}
+                      {column.id === "message" ? note.body : null}
+                      {column.id === "action" ? (
+                        !note.readAt ? (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            isDisabled={markRead.isPending}
+                            onClick={() => markRead.mutate(note.id)}
+                          >
+                            Mark read
+                          </Button>
+                        ) : (
+                          "Read"
+                        )
+                      ) : null}
+                    </TableCell>
+                  )}
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
         ) : null}
-      </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

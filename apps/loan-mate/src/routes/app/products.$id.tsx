@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
-import { FormCheckbox, FormInput, FormSelect } from "@/modules/ui/form-fields";
+import { FormCheckbox, FormError, FormInput, FormSelect } from "@/modules/ui/form-fields";
 
 type Product = {
   id: string;
@@ -88,9 +88,9 @@ function EditProductPage() {
   if (product.isLoading) return <p>Loading…</p>;
   if (product.isError || !product.data) {
     return (
-      <p className="lm-error">
+      <FormError>
         {(product.error as Error)?.message ?? "Product not found"}
-      </p>
+      </FormError>
     );
   }
 
@@ -198,7 +198,7 @@ function EditProductPage() {
             isSelected={form.active}
             onChange={(active) => setForm((f) => ({ ...f, active }))}
           />
-          {error ? <p className="lm-error">{error}</p> : null}
+          {error ? <FormError>{error}</FormError> : null}
           <Button type="submit" variant="primary" isDisabled={save.isPending}>
             Save product
           </Button>

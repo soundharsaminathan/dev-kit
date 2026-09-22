@@ -3,7 +3,7 @@ import { useMutation } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { useAuth } from "@/lib/auth";
-import { TextControl, AreaControl } from "@/modules/ui/controls";
+import { AreaControl, FormError, TextControl } from "@/modules/ui/controls";
 
 export const Route = createFileRoute("/app/customers/new")({
   component: NewCustomerPage,
@@ -76,7 +76,7 @@ function NewCustomerPage() {
             value={form.address}
             onChange={(address) => setForm((f) => ({ ...f, address }))}
           />
-          {error ? <p className="lm-error">{error}</p> : null}
+          {error ? <FormError>{error}</FormError> : null}
           <div className="lm-actions">
             <Button type="submit" variant="primary" isDisabled={create.isPending}>
               Create customer

@@ -1,10 +1,10 @@
-import { Button } from "@dev-ui/components/button";
+import { Tab, TabList, TabPanel, Tabs } from "@dev-ui/components/tabs";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { JsonTable } from "@/lib/json-table";
-import { FormInput } from "@/modules/ui/form-fields";
+import { FormError, FormInput } from "@/modules/ui/form-fields";
 
 const REPORTS = [
   { id: "portfolio", label: "Portfolio", path: "/reports/portfolio" },
@@ -69,42 +69,42 @@ function ReportsPage() {
         </div>
       </div>
 
-      <div
-        className="lm-actions"
-        style={{ flexWrap: "wrap", marginBottom: "1rem" }}
+      <Tabs
+        aria-label="Reports"
+        selectedKey={active}
+        onSelectionChange={(key) => {
+          if (key != null) setActive(String(key) as ReportId);
+        }}
       >
-        {REPORTS.map((r) => (
-          <Button
-            key={r.id}
-            type="button"
-            variant={active === r.id ? "primary" : "outline"}
-            onClick={() => setActive(r.id)}
-          >
-            {r.label}
-          </Button>
-        ))}
-      </div>
-
-      {needsRange ? (
-        <div className="lm-actions" style={{ marginBottom: "1rem" }}>
-          <FormInput
-            label="From"
-            type="date"
-            value={from}
-            onChange={setFrom}
-          />
-          <FormInput label="To" type="date" value={to} onChange={setTo} />
-        </div>
-      ) : null}
-
-      <div className="lm-card">
-        <h2>{report.label}</h2>
-        {data.isLoading ? <p>Loading…</p> : null}
-        {data.isError ? (
-          <p className="lm-error">{(data.error as Error).message}</p>
-        ) : null}
-        {data.data != null ? <JsonTable data={data.data} /> : null}
-      </div>
+        <TabList variant="line" className="lm-tab-list">
+          {REPORTS.map((item) => (
+            <Tab key={item.id} id={item.id}>
+              {item.label}
+            </Tab>
+          ))}
+        </TabList>
+        <TabPanel id={active}>
+          {needsRange ? (
+            <div className="lm-actions" style={{ marginBottom: "1rem" }}>
+              <FormInput
+                label="From"
+                type="date"
+                value={from}
+                onChange={setFrom}
+              />
+              <FormInput label="To" type="date" value={to} onChange={setTo} />
+            </div>
+          ) : null}
+          <div className="lm-card">
+            <h2>{report.label}</h2>
+            {data.isLoading ? <p>Loading…</p> : null}
+            {data.isError ? (
+              <FormError>{(data.error as Error).message}</FormError>
+            ) : null}
+            {data.data != null ? <JsonTable data={data.data} /> : null}
+          </div>
+        </TabPanel>
+      </Tabs>
     </div>
   );
 }

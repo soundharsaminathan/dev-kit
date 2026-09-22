@@ -4,7 +4,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import type { UserRole } from "@/lib/constants";
-import { FormInput, FormSelect } from "@/modules/ui/form-fields";
+import { FormError, FormInput, FormSelect, FormSuccess } from "@/modules/ui/form-fields";
 
 type UserRow = {
   id: string;
@@ -152,9 +152,9 @@ function EmployeeDetailPage() {
   if (employee.isLoading) return <p>Loading…</p>;
   if (employee.isError || !employee.data) {
     return (
-      <p className="lm-error">
+      <FormError>
         {(employee.error as Error)?.message ?? "Employee not found"}
-      </p>
+      </FormError>
     );
   }
 
@@ -178,8 +178,8 @@ function EmployeeDetailPage() {
         </div>
       </div>
 
-      {error ? <p className="lm-error">{error}</p> : null}
-      {success ? <p style={{ color: "var(--lm-success)" }}>{success}</p> : null}
+      {error ? <FormError>{error}</FormError> : null}
+      {success ? <FormSuccess>{success}</FormSuccess> : null}
 
       <div className="lm-card">
         <div className="lm-page-header" style={{ marginBottom: "1rem" }}>
@@ -191,7 +191,7 @@ function EmployeeDetailPage() {
         </div>
         {performance.isLoading ? <p>Loading…</p> : null}
         {performance.isError ? (
-          <p className="lm-error">{(performance.error as Error).message}</p>
+          <FormError>{(performance.error as Error).message}</FormError>
         ) : null}
         {metrics ? (
           <div

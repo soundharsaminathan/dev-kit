@@ -2,6 +2,7 @@ import {
   AreaControl,
   CheckControl,
   ChoiceControl,
+  DateControl,
   FileControl,
   NumberControl,
   PasswordControl,
@@ -35,6 +36,17 @@ export function FormInput({
         {...(required ? { isRequired: true } : {})}
         {...(min == null || min === "" ? {} : { minValue: Number(min) })}
         {...(step == null || step === "" ? {} : { step: Number(step) })}
+      />
+    );
+  }
+
+  if (type === "date") {
+    return (
+      <DateControl
+        label={label}
+        value={value}
+        onChange={onChange}
+        {...(required ? { isRequired: true } : {})}
       />
     );
   }
@@ -115,6 +127,8 @@ export function FormSelect(props: {
     />
   );
 }
+
+export { FormError, FormSuccess } from "@/modules/ui/controls";
 
 export function FormCheckbox(props: {
   label: string;

@@ -223,6 +223,7 @@ function Tooltip({
     state,
     canHover,
     touchBehavior,
+    Boolean(props.isDisabled),
   );
 
   const contentChild = findChildByDisplayName(children, "TooltipContent");

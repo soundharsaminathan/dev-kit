@@ -1,8 +1,19 @@
 import { Button } from "@dev-ui/components/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@dev-ui/components/card";
+import { Empty, EmptyDescription } from "@dev-ui/components/empty";
+import { Skeleton } from "@dev-ui/components/skeleton";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableColumn,
+  TableHeader,
+  TableRow,
+} from "@dev-ui/components/table";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useAuth } from "@/lib/auth";
-import { FileControl, ChoiceControl } from "@/modules/ui/controls";
+import { ChoiceControl, FileControl, FormError } from "@/modules/ui/controls";
 
 type DocumentRow = {
   id: string;
@@ -90,37 +101,48 @@ export function DocumentsPanel({
   });
 
   return (
-    <div className="lm-card">
-      <h2>{title}</h2>
-      {docs.isLoading ? <p>Loading…</p> : null}
+    <Card>
+      <CardHeader>
+        <CardTitle>{title}</CardTitle>
+      </CardHeader>
+      <CardContent>
+      {docs.isLoading ? <Skeleton /> : null}
       {docs.isError ? (
-        <p className="lm-muted">
-          Documents unavailable ({(docs.error as Error).message})
-        </p>
+        <FormError>
+          {`Documents unavailable (${(docs.error as Error).message})`}
+        </FormError>
       ) : null}
-      {docs.data?.length ? (
-        <table className="lm-table">
-          <thead>
-            <tr>
-              <th>Kind</th>
-              <th>File</th>
-              <th>Uploaded</th>
-            </tr>
-          </thead>
-          <tbody>
-            {docs.data.map((d) => (
-              <tr key={d.id}>
-                <td>{d.kind}</td>
-                <td>{d.fileName}</td>
-                <td>
-                  {d.createdAt ? new Date(d.createdAt).toLocaleString() : "—"}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      {docs.data && docs.data.length > 0 ? (
+        <Table<DocumentRow> aria-label={title} items={docs.data}>
+          <TableHeader>
+            <TableColumn id="kind" isRowHeader>
+              Kind
+            </TableColumn>
+            <TableColumn id="file">File</TableColumn>
+            <TableColumn id="uploaded">Uploaded</TableColumn>
+          </TableHeader>
+          <TableBody<DocumentRow>>
+            {(doc) => (
+              <TableRow>
+                {(column) => (
+                  <TableCell>
+                    {column.id === "kind" ? doc.kind : null}
+                    {column.id === "file" ? doc.fileName : null}
+                    {column.id === "uploaded"
+                      ? doc.createdAt
+                        ? new Date(doc.createdAt).toLocaleString()
+                        : "—"
+                      : null}
+                  </TableCell>
+                )}
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
       ) : docs.isSuccess ? (
-        <p className="lm-muted">No documents yet.</p>
+        <Empty>
+          <EmptyDescription>No documents yet.</EmptyDescription>
+        </Empty>
       ) : null}
 
       <form
@@ -149,7 +171,7 @@ export function DocumentsPanel({
           fileName={file?.name}
           onSelect={setFile}
         />
-        {error ? <p className="lm-error">{error}</p> : null}
+        {error ? <FormError>{error}</FormError> : null}
         <Button
           type="submit"
           variant="outline"
@@ -158,6 +180,7 @@ export function DocumentsPanel({
           Upload
         </Button>
       </form>
-    </div>
+      </CardContent>
+    </Card>
   );
 }
