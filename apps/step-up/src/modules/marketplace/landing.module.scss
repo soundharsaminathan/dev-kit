@@ -692,30 +692,6 @@
   }
 }
 
-.mapSplit {
-  display: grid;
-  gap: 16px;
-}
-
-.mapList {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  max-height: 28rem;
-  overflow: auto;
-}
-
-.mapListCard {
-  min-width: 0;
-}
-
-.mapPane {
-  min-height: 16rem;
-  border-radius: 16px;
-  overflow: hidden;
-  border: 1px solid color-mix(in srgb, var(--landing-ink) 10%, transparent);
-}
-
 @media (min-width: 768px) {
   .hero {
     min-height: min(90vh, 56rem);
@@ -766,15 +742,6 @@
 
   .categoryGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .mapSplit {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
-    align-items: stretch;
-  }
-
-  .mapPane {
-    min-height: 28rem;
   }
 }
 
@@ -973,8 +940,4 @@
 
 :global(html[data-theme-mode="dark"]) .tryBook:hover:not(:disabled) {
   background: #fff;
-}
-
-:global(html[data-theme-mode="dark"]) .mapPane {
-  border-color: rgb(255 255 255 / 12%);
 }

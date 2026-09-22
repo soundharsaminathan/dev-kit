@@ -4,6 +4,7 @@ import {
   Baby,
   Dumbbell,
   Lock,
+  MapPin,
   Music2,
   Palette,
   PersonStanding,
@@ -18,15 +19,12 @@ import { useDiscoverCity } from "@/modules/student-landing/city-context";
 import { CitySwitcher } from "@/modules/student-landing/city-switcher";
 import type { BookSheetTarget } from "./book";
 import { BookSheet } from "./book-sheet";
-import { MarketplaceStudioCardView } from "./cards";
 import {
   fetchMarketplaceClasses,
   fetchMarketplaceStudios,
   marketplaceClassesQueryKey,
   marketplaceStudiosQueryKey,
 } from "./catalog";
-import { MarketplaceMap } from "./map";
-import { marketplacePinsForItems } from "./place";
 import { categoryLabel, writeStoredCategory } from "./search";
 import { MarketplaceStars } from "./stars";
 import type {
@@ -191,13 +189,79 @@ function TryNewClassCard({
   );
 }
 
+function NearYouStudioCard({
+  item,
+  onBook,
+}: {
+  item: MarketplaceStudioCard;
+  onBook: (item: MarketplaceStudioCard) => void;
+}) {
+  const price = formatTryPrice(item.priceFrom, item.priceCadence);
+  const canBook = item.canTrial || item.canPrivate || item.canFloorHire;
+  const stylesLine =
+    item.styles.length > 0 ? item.styles.slice(0, 3).join(" · ") : null;
+  return (
+    <article className={styles.tryCard}>
+      <div className={styles.tryMedia}>
+        <Link
+          to="/studios/$slug"
+          params={{ slug: item.slug }}
+          className={styles.tryMediaLink}
+          tabIndex={-1}
+          aria-hidden
+        >
+          {item.coverImageUrl ? (
+            <img className={styles.tryImage} src={item.coverImageUrl} alt="" />
+          ) : (
+            <div className={styles.tryPlaceholder} aria-hidden>
+              {item.name.slice(0, 1)}
+            </div>
+          )}
+        </Link>
+        <span className={styles.tryCat} data-cat={item.primaryCategory}>
+          {categoryLabel(item.primaryCategory)}
+        </span>
+      </div>
+      <div className={styles.tryBody}>
+        <Link
+          to="/studios/$slug"
+          params={{ slug: item.slug }}
+          className={styles.tryCopy}
+        >
+          <h3 className={styles.tryName}>{item.name}</h3>
+          {stylesLine ? <p className={styles.tryStudio}>{stylesLine}</p> : null}
+          <div className={styles.tryRating}>
+            <MarketplaceStars rating={item.rating} />
+          </div>
+          {item.locality ? (
+            <p className={styles.tryMeta}>
+              <MapPin aria-hidden className={styles.tryMetaIcon} />
+              <span>{item.locality}</span>
+            </p>
+          ) : null}
+        </Link>
+        <div className={styles.tryFooter}>
+          {price ? <span className={styles.tryPrice}>{price}</span> : <span />}
+          <button
+            type="button"
+            className={styles.tryBook}
+            disabled={!canBook}
+            onClick={() => onBook(item)}
+          >
+            Book →
+          </button>
+        </div>
+      </div>
+    </article>
+  );
+}
+
 function LandingInner() {
   const navigate = useNavigate();
   const { cityId, cityLabel } = useDiscoverCity();
   const { viewerKey, resolveAuth } = useMarketplaceAuth();
   const [q, setQ] = useState("");
   const [book, setBook] = useState<BookSheetTarget | null>(null);
-  const [selectedPin, setSelectedPin] = useState<string | null>(null);
 
   useEffect(() => {
     document.title = `Find your next class in ${cityLabel} | classa`;
@@ -218,23 +282,19 @@ function LandingInner() {
 
   const studiosQuery = useQuery({
     queryKey: marketplaceStudiosQueryKey(
-      { city: cityId, category: "DANCE", sort: "rating", limit: 6 },
+      { city: cityId, category: "DANCE", sort: "rating", limit: 8 },
       viewerKey,
     ),
     queryFn: async () =>
       fetchMarketplaceStudios(
-        { city: cityId, category: "DANCE", sort: "rating", limit: 6 },
+        { city: cityId, category: "DANCE", sort: "rating", limit: 8 },
         await resolveAuth(),
       ),
     staleTime: 60_000,
   });
 
   const tryClasses = (tryQuery.data?.items ?? []).slice(0, 8);
-  const featuredStudios = (studiosQuery.data?.items ?? []).slice(0, 4);
-  const pins = marketplacePinsForItems(
-    studiosQuery.data?.pins ?? [],
-    featuredStudios.map((item) => item.id),
-  );
+  const featuredStudios = (studiosQuery.data?.items ?? []).slice(0, 8);
 
   const goBrowse = (search: Record<string, string | undefined>) => {
     void navigate({
@@ -422,45 +482,43 @@ function LandingInner() {
           </div>
         </section>
 
-        <section className={styles.section} aria-labelledby="map-title">
+        <section className={styles.section} aria-labelledby="near-title">
           <Reveal>
             <div className={styles.sectionHead}>
-              <h2 id="map-title" className={styles.sectionTitle}>
+              <h2 id="near-title" className={styles.sectionTitle}>
                 Find classes near you
               </h2>
               <Link
-                to="/classes"
-                search={{ city: cityId, view: "map" }}
+                to="/studios"
+                search={{ city: cityId, sort: "rating" }}
                 className={styles.sectionLink}
               >
-                Open map
+                Explore all →
               </Link>
             </div>
           </Reveal>
-          <div className={styles.mapSplit}>
-            <div className={styles.mapList}>
-              {studiosQuery.isError ? (
-                <p className={styles.hint}>Could not load nearby studios.</p>
-              ) : null}
-              {featuredStudios.length === 0 &&
-              !studiosQuery.isLoading &&
-              !studiosQuery.isError ? (
-                <p className={styles.hint}>Studios will appear here soon.</p>
-              ) : null}
-              {featuredStudios.map((item) => (
-                <div key={item.id} className={styles.mapListCard}>
-                  <MarketplaceStudioCardView item={item} onBook={bookStudio} />
-                </div>
+          {studiosQuery.isLoading ? (
+            <p className={styles.hint}>Loading nearby studios</p>
+          ) : null}
+          {studiosQuery.isError ? (
+            <p className={styles.hint}>Could not load nearby studios.</p>
+          ) : null}
+          {!studiosQuery.isLoading &&
+          !studiosQuery.isError &&
+          featuredStudios.length === 0 ? (
+            <p className={styles.hint}>Studios will appear here soon.</p>
+          ) : null}
+          {featuredStudios.length > 0 ? (
+            <div className={styles.tryRail}>
+              {featuredStudios.map((item, index) => (
+                <Reveal key={item.id} delay={index * 40}>
+                  <div className={styles.tryRailItem}>
+                    <NearYouStudioCard item={item} onBook={bookStudio} />
+                  </div>
+                </Reveal>
               ))}
             </div>
-            <div className={styles.mapPane}>
-              <MarketplaceMap
-                pins={pins}
-                selectedId={selectedPin}
-                onSelect={(pin) => setSelectedPin(pin.id)}
-              />
-            </div>
-          </div>
+          ) : null}
         </section>
 
         <section className={styles.section} aria-labelledby="try-title">
