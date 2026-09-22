@@ -37,6 +37,49 @@ test.describe("servicing @http", () => {
     expect(num(updated.annualRatePercent)).not.toBeCloseTo(before, 2);
   });
 
+  test("a rejected rate change leaves the booked rate in place @http", async () => {
+    const { loan } = await activateLoan();
+    const before = num(loan.annualRatePercent);
+    const request = await expectOk<{ id: string }>(
+      "owner",
+      `/loans/${loan.id}/request-rate-change`,
+      post({ annualRatePercent: 9, reason: "Too steep" }),
+    );
+
+    await expectStatus(
+      "officer",
+      `/approvals/${request.id}/reject`,
+      403,
+      post({ reason: "no" }),
+    );
+    const maker = await expectStatus(
+      "owner",
+      `/approvals/${request.id}/reject`,
+      400,
+      post({ reason: "withdraw" }),
+    );
+    expect(errorMessage(maker.data)).toContain("Maker cannot approve");
+
+    const rejected = await expectOk<{ status: string }>(
+      "approver",
+      `/approvals/${request.id}/reject`,
+      post({ reason: "Keep booked rate" }),
+    );
+    expect(rejected.status).toBe("REJECTED");
+
+    const after = await expectOk<LoanDetail>("officer", `/loans/${loan.id}`);
+    expect(num(after.annualRatePercent)).toBeCloseTo(before, 2);
+    expect(after.installments).toHaveLength(loan.installments.length);
+
+    const twice = await expectStatus(
+      "approver",
+      `/approvals/${request.id}/approve`,
+      400,
+      post({}),
+    );
+    expect(errorMessage(twice.data)).toContain("already decided");
+  });
+
   test("penalty override applies only after checker approval @http", async () => {
     const { loan } = await activateLoan();
     const request = await expectOk<{ id: string }>(

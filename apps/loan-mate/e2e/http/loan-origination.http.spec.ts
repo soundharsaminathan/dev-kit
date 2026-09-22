@@ -54,6 +54,91 @@ test.describe("loan origination @http", () => {
     expect(shifted.loan.productOverride).toBe(false);
   });
 
+  test("biweekly and partial-interest first EMI use the product terms @http", async () => {
+    const biweekly = await activateLoan({ frequency: "BIWEEKLY" });
+    expect(biweekly.loan.frequency).toBe("BIWEEKLY");
+    expect(biweekly.loan.productOverride).toBe(false);
+    expect(num(biweekly.loan.annualRatePercent)).toBeCloseTo(17, 2);
+    expect(biweekly.loan.installments).toHaveLength(12);
+
+    const exact = await activateLoan({ monthlyFirstEmiOption: "EXACT_DAY" });
+    const partial = await activateLoan({
+      monthlyFirstEmiOption: "CONVERT_TO_1ST_PARTIAL",
+    });
+    expect(partial.loan.productOverride).toBe(false);
+    expect(num(partial.loan.netDisbursement)).toBeLessThan(
+      num(exact.loan.netDisbursement),
+    );
+    expect(num(partial.loan.netDisbursement)).toBeLessThan(
+      num(partial.loan.principal),
+    );
+  });
+
+  test("a rejected loan approval stays verified until a later checker approves @http", async () => {
+    const { loan } = await draftLoan();
+    await expectOk("officer", `/loans/${loan.id}/submit`, post({}));
+    await expectOk("manager", `/loans/${loan.id}/verify`, post({}));
+    const approval = await expectOk<{ id: string }>(
+      "officer",
+      `/loans/${loan.id}/request-approval`,
+      post({}),
+    );
+
+    await expectStatus(
+      "officer",
+      `/approvals/${approval.id}/reject`,
+      403,
+      post({ reason: "Not my queue" }),
+    );
+    const own = await expectStatus(
+      "officer",
+      `/approvals/${approval.id}/approve`,
+      403,
+      post({}),
+    );
+    expect(own.status).toBe(403);
+
+    const rejected = await expectOk<{ status: string }>(
+      "approver",
+      `/approvals/${approval.id}/reject`,
+      post({ reason: "Income docs incomplete" }),
+    );
+    expect(rejected.status).toBe("REJECTED");
+
+    const stillVerified = await expectOk<{ status: string }>(
+      "officer",
+      `/loans/${loan.id}`,
+    );
+    expect(stillVerified.status).toBe("VERIFIED");
+    const disburse = await expectStatus(
+      "manager",
+      `/loans/${loan.id}/disburse`,
+      400,
+      post({ disbursementDate: FUTURE_DISBURSEMENT, mode: "CASH" }),
+    );
+    expect(errorMessage(disburse.data)).toContain("APPROVED");
+
+    const again = await expectStatus(
+      "approver",
+      `/approvals/${approval.id}/approve`,
+      400,
+      post({}),
+    );
+    expect(errorMessage(again.data)).toContain("already decided");
+
+    const retry = await expectOk<{ id: string }>(
+      "officer",
+      `/loans/${loan.id}/request-approval`,
+      post({}),
+    );
+    await expectOk("approver", `/approvals/${retry.id}/approve`, post({}));
+    const approved = await expectOk<{ status: string }>(
+      "manager",
+      `/loans/${loan.id}`,
+    );
+    expect(approved.status).toBe("APPROVED");
+  });
+
   test("product override must be approved before the loan can be approved @http", async () => {
     const catalog = await acme();
     const customer = await createCustomer();

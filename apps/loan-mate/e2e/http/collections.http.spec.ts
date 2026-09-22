@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { activateLoan, draftLoan, FUTURE_DISBURSEMENT } from "./flows";
 import {
+  acme,
   errorMessage,
   expectOk,
   expectStatus,
@@ -8,6 +9,7 @@ import {
   type LoanDetail,
   loanOutstanding,
   num,
+  patch,
   type Payment,
   post,
 } from "./helpers";
@@ -95,6 +97,136 @@ test.describe("collections @http", () => {
     const after = await expectOk<LoanDetail>("owner", `/loans/${loan.id}`);
     expect(num(after.advanceBalance)).toBeCloseTo(250, 2);
     expect(loanOutstanding(after)).toBe(0);
+  });
+
+  test("a partial EMI stays open and is applied to interest before principal @http", async () => {
+    const { loan } = await activateLoan();
+    const first = loan.installments[0]!;
+    expect(num(first.interestDue)).toBeGreaterThan(1);
+    expect(num(first.penaltyDue)).toBe(0);
+
+    const cheque = await expectStatus(
+      "collector",
+      "/payments",
+      400,
+      post({
+        loanId: loan.id,
+        amount: 1,
+        paymentDate: FUTURE_DISBURSEMENT,
+        mode: "CHEQUE",
+      }),
+    );
+    expect(errorMessage(cheque.data).toLowerCase()).toContain("mode");
+
+    await expectOk<Payment>(
+      "collector",
+      "/payments",
+      post({
+        loanId: loan.id,
+        amount: 1,
+        paymentDate: FUTURE_DISBURSEMENT,
+        mode: "RTGS",
+        reference: "RTGS-PARTIAL",
+      }),
+    );
+
+    const after = await expectOk<LoanDetail>("officer", `/loans/${loan.id}`);
+    const partial = after.installments.find((row) => row.id === first.id)!;
+    expect(partial.status).toBe("PARTIAL");
+    expect(num(partial.paidInterest)).toBeCloseTo(1, 2);
+    expect(num(partial.paidPrincipal)).toBe(0);
+    expect(installmentRemaining(partial)).toBeCloseTo(
+      installmentRemaining(first) - 1,
+      2,
+    );
+    expect(after.status).toBe("ACTIVE");
+  });
+
+  test("reduce-principal and skip-next-EMI treatments book the excess @http", async () => {
+    const reduced = await activateLoan();
+    const reducedOutstanding = loanOutstanding(reduced.loan);
+    const reducedPay = await expectOk<{
+      treatment: string;
+      advancePayment: { advanceTreatment: string; amount: string | number };
+    }>(
+      "collector",
+      "/payments",
+      post({
+        loanId: reduced.loan.id,
+        amount: roundAmount(reducedOutstanding + 100),
+        paymentDate: FUTURE_DISBURSEMENT,
+        mode: "BANK_TRANSFER",
+        reference: "REDUCE-1",
+        advanceTreatment: "REDUCE_PRINCIPAL",
+      }),
+    );
+    expect(reducedPay.treatment).toBe("REDUCE_PRINCIPAL");
+    expect(reducedPay.advancePayment.advanceTreatment).toBe("REDUCE_PRINCIPAL");
+    expect(num(reducedPay.advancePayment.amount)).toBeCloseTo(100, 2);
+    const afterReduce = await expectOk<LoanDetail>(
+      "owner",
+      `/loans/${reduced.loan.id}`,
+    );
+    expect(loanOutstanding(afterReduce)).toBe(0);
+
+    const skipped = await activateLoan();
+    const skippedOutstanding = loanOutstanding(skipped.loan);
+    const skippedPay = await expectOk<{ treatment: string }>(
+      "manager",
+      "/payments",
+      post({
+        loanId: skipped.loan.id,
+        amount: roundAmount(skippedOutstanding + 40),
+        paymentDate: FUTURE_DISBURSEMENT,
+        mode: "CASH",
+        advanceTreatment: "SKIP_NEXT_EMI",
+      }),
+    );
+    expect(skippedPay.treatment).toBe("SKIP_NEXT_EMI");
+    const afterSkip = await expectOk<LoanDetail>(
+      "collector",
+      `/loans/${skipped.loan.id}`,
+    );
+    expect(loanOutstanding(afterSkip)).toBe(0);
+    expect(num(afterSkip.advanceBalance)).toBeCloseTo(40, 2);
+  });
+
+  test("grace delays penalty while days past due still show @http", async () => {
+    const { companyId } = await acme();
+    const before = await expectOk<{ settings: { graceDays: number } }>(
+      "owner",
+      `/companies/${companyId}`,
+    );
+    try {
+      await expectOk(
+        "owner",
+        `/companies/${companyId}/settings`,
+        patch({ graceDays: 5000 }),
+      );
+      const { loan } = await activateLoan({ disbursementDate: "2025-01-15" });
+      expect(loan.dpd).toBeGreaterThan(0);
+
+      await expectOk(
+        "collector",
+        "/payments",
+        post({
+          loanId: loan.id,
+          amount: 1,
+          paymentDate: "2026-09-22",
+          mode: "NEFT",
+          reference: "grace-window",
+        }),
+      );
+      const after = await expectOk<LoanDetail>("officer", `/loans/${loan.id}`);
+      expect(after.dpd).toBeGreaterThan(0);
+      expect(num(after.installments[0]?.penaltyDue)).toBe(0);
+    } finally {
+      await expectOk(
+        "owner",
+        `/companies/${companyId}/settings`,
+        patch({ graceDays: before.settings.graceDays }),
+      );
+    }
   });
 
   test("a draft loan is not collectible @http", async () => {
