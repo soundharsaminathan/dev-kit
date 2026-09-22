@@ -115,9 +115,45 @@ jobs:
       - name: Test web
         run: pnpm exec nx run loan-mate:test
 
+  test-e2e:
+    name: loan-mate flow e2e
+    needs: [prepare]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: loan_mate_e2e
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      AUTH_BYPASS: "true"
+      LOAN_MATE_API_PORT: "3011"
+      LOAN_MATE_API_URL: http://127.0.0.1:3011
+      LOAN_MATE_E2E_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/loan_mate_e2e?schema=public
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/loan_mate_e2e?schema=public
+      DIRECT_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/loan_mate_e2e?schema=public
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+      - uses: ./.github/actions/setup
+      - name: Flow-level HTTP e2e
+        run: pnpm exec nx run loan-mate:test:e2e
+        env:
+          CI: true
+
   deploy-api:
     name: Deploy Cloud Run
-    needs: [prepare, test-web, test-api]
+    needs: [prepare, test-web, test-api, test-e2e]
     runs-on: ubuntu-latest
     concurrency:
       group: loan-mate-deploy-api-migrate
@@ -127,7 +163,8 @@ jobs:
       needs.prepare.result == 'success' &&
       needs.prepare.outputs.should_deploy == 'true' &&
       needs.test-web.result == 'success' &&
-      needs.test-api.result == 'success'
+      needs.test-api.result == 'success' &&
+      needs.test-e2e.result == 'success'
     timeout-minutes: 30
     outputs:
       api_url: ${{ steps.deploy.outputs.api_url }}

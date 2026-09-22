@@ -8,6 +8,7 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "test": "vitest run --config vitest.config.ts",
+    "test:e2e": "playwright test --config playwright.config.ts",
     "typecheck": "tsc -b --pretty false"
   },
   "dependencies": {
@@ -22,6 +23,7 @@
     "react-dom": "catalog:"
   },
   "devDependencies": {
+    "@playwright/test": "1.60.0",
     "@tanstack/router-plugin": "^1.168.2",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",

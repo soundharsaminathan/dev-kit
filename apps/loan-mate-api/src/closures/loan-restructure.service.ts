@@ -188,8 +188,6 @@ export class LoanRestructureService {
         const row = regenerated.schedule[idx];
 
         if (!row) {
-          await tx.installment.delete({ where: { id: inst.id } });
-
           continue;
         }
 

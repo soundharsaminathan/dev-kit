@@ -43,6 +43,7 @@ export type AuthContextValue = {
   api: ApiClient;
   login: (email: string, password: string) => Promise<AuthUser>;
   loginAsSeed: (email: string) => Promise<AuthUser>;
+  loginAs: (userId: string) => Promise<AuthUser>;
   logout: () => void;
   refreshMe: () => Promise<AuthUser | null>;
   homePath: string;
@@ -130,6 +131,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [applySession],
   );
 
+  const loginAs = useCallback(
+    async (userId: string) => {
+      if (!isAuthBypassEnabled()) {
+        throw new Error("Auth bypass is disabled");
+      }
+      const data = await apiRequest<LoginResponse>("/auth/bypass", {
+        method: "POST",
+        body: { userId },
+      });
+      return applySession(normalizeLogin(data));
+    },
+    [applySession],
+  );
+
   const refreshMe = useCallback(async () => {
     if (!token) return null;
     try {
@@ -152,11 +167,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       api,
       login,
       loginAsSeed,
+      loginAs,
       logout,
       refreshMe,
       homePath: user ? homePathForUser(user.role) : "/login",
     }),
-    [user, token, loading, api, login, loginAsSeed, logout, refreshMe],
+    [user, token, loading, api, login, loginAsSeed, loginAs, logout, refreshMe],
   );
 
   return createElement(AuthContext.Provider, { value }, children);

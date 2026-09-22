@@ -12,7 +12,8 @@ type DocumentRow = {
 
 type SignedUrlResponse = {
   uploadUrl: string;
-  objectKey: string;
+  key: string;
+  provider: string;
 };
 
 type DocumentsPanelProps = {
@@ -48,33 +49,31 @@ export function DocumentsPanel({
   const upload = useMutation({
     mutationFn: async () => {
       if (!file) throw new Error("Choose a file");
+      const contentType = file.type || "application/octet-stream";
       const signed = await api.post<SignedUrlResponse>(
         "/documents/signed-url",
         {
-          entityType,
-          entityId,
-          kind,
           fileName: file.name,
-          contentType: file.type || "application/octet-stream",
+          contentType,
         },
       );
-      const put = await fetch(signed.uploadUrl, {
-        method: "PUT",
-        body: file,
-        headers: {
-          "Content-Type": file.type || "application/octet-stream",
-        },
-      });
-      if (!put.ok) {
-        throw new Error("Upload to storage failed");
+      if (signed.provider !== "dev-stub") {
+        const put = await fetch(signed.uploadUrl, {
+          method: "PUT",
+          body: file,
+          headers: { "Content-Type": contentType },
+        });
+        if (!put.ok) {
+          throw new Error("Upload to storage failed");
+        }
       }
       await api.post("/documents", {
         entityType,
         entityId,
         kind,
-        objectKey: signed.objectKey,
+        objectKey: signed.key,
         fileName: file.name,
-        contentType: file.type || "application/octet-stream",
+        contentType,
         sizeBytes: file.size,
       });
     },

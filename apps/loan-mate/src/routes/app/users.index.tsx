@@ -1,8 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { useAuth } from "@/lib/auth";
-import { STAFF_ROLES, type UserRole } from "@/lib/constants";
+import {
+  homePathForUser,
+  isAuthBypassEnabled,
+  STAFF_ROLES,
+  type UserRole,
+} from "@/lib/constants";
 
 type UserRow = {
   id: string;
@@ -26,9 +31,12 @@ export const Route = createFileRoute("/app/users/")({
 });
 
 function EmployeesPage() {
-  const { api, user } = useAuth();
+  const { api, user, loginAs } = useAuth();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const canManage = user ? CAN_MANAGE.includes(user.role) : false;
+  const canLoginAs = isAuthBypassEnabled();
+  const [loggingInAs, setLoggingInAs] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [createForm, setCreateForm] = useState({
@@ -42,6 +50,9 @@ function EmployeesPage() {
     queryKey: ["users"],
     queryFn: () => api.get<UserRow[]>("/users"),
   });
+  const showActions =
+    canManage ||
+    (canLoginAs && (users.data ?? []).some((row) => row.id !== user?.id));
 
   const branches = useQuery({
     queryKey: ["branches"],
@@ -76,6 +87,21 @@ function EmployeesPage() {
       setError(err instanceof Error ? err.message : "Create failed");
     },
   });
+
+  async function loginAsEmployee(employee: UserRow) {
+    setError(null);
+    setSuccess(null);
+    setLoggingInAs(employee.id);
+    try {
+      const next = await loginAs(employee.id);
+      queryClient.clear();
+      await navigate({ to: homePathForUser(next.role) });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Login as failed");
+    } finally {
+      setLoggingInAs(null);
+    }
+  }
 
   const toggleActive = useMutation({
     mutationFn: ({ id, active }: { id: string; active: boolean }) =>
@@ -194,7 +220,7 @@ function EmployeesPage() {
                 <th>Role</th>
                 <th>Branch</th>
                 <th>Active</th>
-                {canManage ? <th>Actions</th> : null}
+                {showActions ? <th>Actions</th> : null}
               </tr>
             </thead>
             <tbody>
@@ -212,20 +238,37 @@ function EmployeesPage() {
                       "—"}
                   </td>
                   <td>{u.active ? "Yes" : "No"}</td>
-                  {canManage ? (
+                  {showActions ? (
                     <td>
-                      <button
-                        type="button"
-                        className={
-                          u.active ? "lm-btn lm-btn-secondary" : "lm-btn"
-                        }
-                        disabled={toggleActive.isPending}
-                        onClick={() =>
-                          toggleActive.mutate({ id: u.id, active: !u.active })
-                        }
-                      >
-                        {u.active ? "Deactivate" : "Activate"}
-                      </button>
+                      <div className="lm-actions">
+                        {canLoginAs && u.id !== user?.id ? (
+                          <button
+                            type="button"
+                            className="lm-btn lm-btn-secondary"
+                            disabled={!u.active || loggingInAs !== null}
+                            onClick={() => void loginAsEmployee(u)}
+                          >
+                            {loggingInAs === u.id ? "Signing in…" : "Login as"}
+                          </button>
+                        ) : null}
+                        {canManage ? (
+                          <button
+                            type="button"
+                            className={
+                              u.active ? "lm-btn lm-btn-secondary" : "lm-btn"
+                            }
+                            disabled={toggleActive.isPending}
+                            onClick={() =>
+                              toggleActive.mutate({
+                                id: u.id,
+                                active: !u.active,
+                              })
+                            }
+                          >
+                            {u.active ? "Deactivate" : "Activate"}
+                          </button>
+                        ) : null}
+                      </div>
                     </td>
                   ) : null}
                 </tr>

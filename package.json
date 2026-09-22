@@ -28,6 +28,7 @@
     "test:showcase:e2e": "pnpm nx run showcase:test:e2e",
     "test:showcase:e2e:update": "pnpm nx run showcase:test:e2e:update",
     "test:step-up:e2e": "pnpm nx run step-up:test:e2e",
+    "test:loan-mate:e2e": "pnpm nx run loan-mate:test:e2e",
     "test:step-up:e2e:critical": "pnpm nx run step-up:test:e2e:critical",
     "test:step-up:regression": "pnpm nx run step-up:test:regression",
     "affected:e2e": "pnpm nx affected -t test:e2e:affected",
