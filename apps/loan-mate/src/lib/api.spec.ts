@@ -29,7 +29,9 @@ describe("api client", () => {
   });
 
   it("sends the bearer token and parses a success body", async () => {
-    const fetchMock = vi.fn(async () => jsonResponse(200, { id: "loan-1" }));
+    const fetchMock = vi.fn(async (_url: string, _init?: RequestInit) =>
+      jsonResponse(200, { id: "loan-1" }),
+    );
     vi.stubGlobal("fetch", fetchMock);
     const api = createApiClient(() => "staff-token");
 
@@ -37,11 +39,11 @@ describe("api client", () => {
       id: "loan-1",
     });
 
-    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    const [url, init] = fetchMock.mock.calls[0] ?? [];
     expect(url).toContain("/loans");
-    expect(init.method).toBe("POST");
-    expect(init.body).toBe(JSON.stringify({ principal: 1000 }));
-    expect(new Headers(init.headers).get("Authorization")).toBe(
+    expect(init?.method).toBe("POST");
+    expect(init?.body).toBe(JSON.stringify({ principal: 1000 }));
+    expect(new Headers(init?.headers).get("Authorization")).toBe(
       "Bearer staff-token",
     );
   });
